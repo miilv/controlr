@@ -1,4 +1,4 @@
-# Rotation round (docs/ROTATION_REPORT.md): the waffle pick-to-box with the tool heading
+# Rotation round (docs/experiments/2026-10-02-rotation-yaw.md): the waffle pick-to-box with the tool heading
 # commanded (action.rotation=yaw: MOVE ee_delta dx dy dz dyaw). The packet is turned
 # uniformly within +-40 deg of its nominal pose and the tool starts turned within +-20 deg,
 # so the jaws must be turned across the packet before the grasp. Reach (UR3, demo tilt):

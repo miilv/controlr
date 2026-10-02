@@ -61,7 +61,7 @@ planner stays the suffixed id `claude/claude-opus-5-5-xhigh`, which exists in `G
 
 ## Live runs (compute3, Isaac, seed 0)
 
-Corrected after the reviews (see docs/FIXLOG.md): the "TTFT" column is the first *content* byte,
+Corrected after the reviews (see docs/reviews/2026-10-02-fixlog.md): the "TTFT" column is the first *content* byte,
 which on the thinking `claude/claude-sonnet-5` route includes the thinking (e.g. 9.4 s with 658
 reasoning tokens); the Sonnet rows' 6 `finish_reason=length` turns of the first run have no TTFT
 (median over 9 of 15 turns). Run 105745 was missing from this table. The reach runs all used seed 0,

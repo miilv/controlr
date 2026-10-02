@@ -1,5 +1,5 @@
 """LLM layer: streaming client, cache-marker placement, append-only transcript,
-and a scripted fake for offline tests. See docs/ARCHITECTURE.md "LLM client",
+and a scripted fake for offline tests. See ARCHITECTURE.md "LLM client",
 "Caching", "Transcript"."""
 
 from .caching import apply_cache_markers, cache_style_for

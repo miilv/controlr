@@ -250,7 +250,7 @@ def test_no_events_for_safe_chunk(clamp):
 
 
 # ---------------------------------------------------------------------------
-# review fixes (docs/FIXLOG.md): fingertip clearance, straight paths, reference
+# review fixes (docs/reviews/2026-10-02-fixlog.md): fingertip clearance, straight paths, reference
 # orientation, joint-mode TCP step / path checks
 # ---------------------------------------------------------------------------
 
@@ -346,7 +346,7 @@ def test_elbow_limit_matches_the_urdf():
 
 
 # ---------------------------------------------------------------------------
-# rotation=yaw on the tilted Isaac start pose (docs/ROTATION_REPORT.md)
+# rotation=yaw on the tilted Isaac start pose (docs/experiments/2026-10-02-rotation-yaw.md)
 # ---------------------------------------------------------------------------
 
 Q_TILT = (0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406)     # configs/sim_waffle.yaml start_q

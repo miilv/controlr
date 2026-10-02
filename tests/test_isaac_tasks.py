@@ -141,7 +141,7 @@ def test_scripted_plan_is_reachable_on_one_ik_branch(seed):
 
 
 # ---------------------------------------------------------------------------
-# review fixes (docs/FIXLOG.md)
+# review fixes (docs/reviews/2026-10-02-fixlog.md)
 # ---------------------------------------------------------------------------
 
 def test_old_seed0_reach_marker_is_rejected_as_infeasible():
@@ -175,7 +175,7 @@ def test_push_fails_when_the_packet_was_carried():
 
 
 # ---------------------------------------------------------------------------
-# rotation experiment (docs/ROTATION_REPORT.md): wider packet yaw, start yaw, scene record
+# rotation experiment (docs/experiments/2026-10-02-rotation-yaw.md): wider packet yaw, start yaw, scene record
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("seed", range(5))
@@ -304,7 +304,7 @@ def test_scripted_yaw_expert_is_feasible_through_the_envelope(offset, dy, start_
 
 @pytest.mark.parametrize("offset,dy", [(40, 0.0), (40, -0.02), (25, 0.02)])
 def test_large_positive_packet_yaw_is_boxed_in(offset, dy):
-    """The limit of the graspable range (docs/ROTATION_REPORT.md): with the demo tilt, jaws
+    """The limit of the graspable range (docs/experiments/2026-10-02-rotation-yaw.md): with the demo tilt, jaws
     turned +40 deg put the gripper housing within ~50 mm of the box's near wall, and moving the
     grasp away from the box runs out of reach; +25 deg fails once the packet sits 20 mm closer
     to the box. Rotation alone cannot solve these (a different tilt would be needed)."""

@@ -47,7 +47,7 @@ class LLMConfig:
     request_nonce: bool = True
     # Extra HTTP request headers (e.g. a router lease/session header to pin one upstream
     # account per run; omniroute advertises X-OmniRoute-Lease-Owner — unverified, see
-    # docs/FIXLOG.md). Values may use ${VAR}.
+    # docs/reviews/2026-10-02-fixlog.md). Values may use ${VAR}.
     extra_headers: dict = field(default_factory=dict)
 
 
