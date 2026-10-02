@@ -1,0 +1,69 @@
+B1_ik_to_kp {'sig0': (100.0, np.float64(98.1), np.float64(100.0)), 'sig2': (44.0, np.float64(37.3), np.float64(50.9)), 'sig5': (8.5, np.float64(5.4), np.float64(13.2)), 'sig10': (1.5, np.float64(0.5), np.float64(4.3)), 'stale2': (0.0, np.float64(0.0), np.float64(1.9)), 'stale5': (0.0, np.float64(0.0), np.float64(1.9)), 'stale10': (0.0, np.float64(0.0), np.float64(1.9)), 'erase': (0.0, np.float64(0.0), np.float64(1.9)), 'shift': (0.0, np.float64(0.0), np.float64(1.9))}
+B2_servo_mask {'sig0': (100.0, np.float64(98.1), np.float64(100.0)), 'sig2': (100.0, np.float64(98.1), np.float64(100.0)), 'sig5': (100.0, np.float64(98.1), np.float64(100.0)), 'sig10': (100.0, np.float64(98.1), np.float64(100.0)), 'stale2': (100.0, np.float64(98.1), np.float64(100.0)), 'stale5': (100.0, np.float64(98.1), np.float64(100.0)), 'stale10': (83.0, np.float64(77.2), np.float64(87.6)), 'erase': (31.5, np.float64(25.5), np.float64(38.2)), 'shift': (0.0, np.float64(0.0), np.float64(1.9))}
+S1 seed0: expert demo success 1.000
+S1|phase|R0|seed0 loss=0.078 n=8937 {'sig0': 21.0, 'sig2': 21.0, 'sig5': 21.0, 'sig10': 21.0, 'stale2': 21.0, 'stale5': 21.0, 'stale10': 21.0, 'erase': 21.0, 'shift': 21.0} follow_shift 20.0 18s
+S1|kp3d|R0|seed0 loss=0.032 n=8937 {'sig0': 100.0, 'sig2': 62.5, 'sig5': 19.0, 'sig10': 4.5, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.0, 'shift': 0.0} follow_shift 100.0 33s
+S1|kp3d|R1|seed0 loss=0.054 n=8937 {'sig0': 100.0, 'sig2': 63.0, 'sig5': 25.5, 'sig10': 7.0, 'stale2': 2.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 22.5, 'shift': 0.0} follow_shift 100.0 48s
+S1|kp3d|R2|seed0 loss=0.051 n=8937 {'sig0': 89.5, 'sig2': 88.5, 'sig5': 87.5, 'sig10': 75.5, 'stale2': 86.5, 'stale5': 56.0, 'stale10': 1.0, 'erase': 24.0, 'shift': 0.0} follow_shift 88.5 63s
+S1|kp2d|R0|seed0 loss=0.035 n=8937 {'sig0': 100.0, 'sig2': 68.0, 'sig5': 20.0, 'sig10': 5.0, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.0, 'shift': 0.0} follow_shift 100.0 81s
+S1|kp2d|R1|seed0 loss=0.057 n=8937 {'sig0': 100.0, 'sig2': 62.5, 'sig5': 23.5, 'sig10': 11.5, 'stale2': 9.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 15.5, 'shift': 0.0} follow_shift 100.0 95s
+S1|kp2d|R2|seed0 loss=0.055 n=8937 {'sig0': 84.0, 'sig2': 85.0, 'sig5': 86.0, 'sig10': 80.0, 'stale2': 84.0, 'stale5': 57.0, 'stale10': 3.0, 'erase': 26.0, 'shift': 0.0} follow_shift 84.0 110s
+S1|mask|R0|seed0 loss=0.041 n=8937 {'sig0': 94.0, 'sig2': 94.0, 'sig5': 94.0, 'sig10': 94.0, 'stale2': 94.0, 'stale5': 94.0, 'stale10': 79.0, 'erase': 0.5, 'shift': 0.0} follow_shift 94.0 125s
+S1|mask|R1|seed0 loss=0.061 n=8937 {'sig0': 93.0, 'sig2': 93.0, 'sig5': 93.0, 'sig10': 93.0, 'stale2': 93.0, 'stale5': 93.0, 'stale10': 77.5, 'erase': 25.5, 'shift': 0.0} follow_shift 92.5 150s
+S1|mask|R2|seed0 loss=0.056 n=8937 {'sig0': 87.0, 'sig2': 87.0, 'sig5': 87.0, 'sig10': 87.0, 'stale2': 87.0, 'stale5': 87.0, 'stale10': 72.5, 'erase': 17.5, 'shift': 0.0} follow_shift 91.5 167s
+S1|kp3d+mask|R0|seed0 loss=0.032 n=8937 {'sig0': 100.0, 'sig2': 62.0, 'sig5': 18.0, 'sig10': 4.5, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.0, 'shift': 0.0} follow_shift 100.0 183s
+S1|kp3d+mask|R1|seed0 loss=0.056 n=8937 {'sig0': 100.0, 'sig2': 61.0, 'sig5': 27.0, 'sig10': 5.5, 'stale2': 2.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 20.5, 'shift': 0.0} follow_shift 100.0 202s
+S1|kp3d+mask|R2|seed0 loss=0.051 n=8937 {'sig0': 93.0, 'sig2': 91.5, 'sig5': 89.5, 'sig10': 80.5, 'stale2': 91.5, 'stale5': 63.0, 'stale10': 0.0, 'erase': 18.5, 'shift': 0.0} follow_shift 92.0 217s
+S1 seed1: expert demo success 1.000
+S1|phase|R0|seed1 loss=0.079 n=8869 {'sig0': 20.0, 'sig2': 20.0, 'sig5': 20.0, 'sig10': 20.0, 'stale2': 20.0, 'stale5': 20.0, 'stale10': 20.0, 'erase': 20.0, 'shift': 20.0} follow_shift 24.5 232s
+S1|kp3d|R0|seed1 loss=0.031 n=8869 {'sig0': 100.0, 'sig2': 55.5, 'sig5': 21.5, 'sig10': 5.0, 'stale2': 5.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.5, 'shift': 0.0} follow_shift 100.0 246s
+S1|kp3d|R1|seed1 loss=0.046 n=8869 {'sig0': 100.0, 'sig2': 59.5, 'sig5': 17.0, 'sig10': 4.5, 'stale2': 0.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 23.5, 'shift': 0.0} follow_shift 99.5 264s
+S1|kp3d|R2|seed1 loss=0.048 n=8869 {'sig0': 93.0, 'sig2': 92.0, 'sig5': 87.5, 'sig10': 68.5, 'stale2': 85.5, 'stale5': 51.5, 'stale10': 1.0, 'erase': 25.0, 'shift': 0.0} follow_shift 91.5 279s
+S1|kp2d|R0|seed1 loss=0.034 n=8869 {'sig0': 100.0, 'sig2': 47.0, 'sig5': 17.0, 'sig10': 5.0, 'stale2': 4.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.0, 'shift': 0.0} follow_shift 100.0 294s
+S1|kp2d|R1|seed1 loss=0.048 n=8869 {'sig0': 100.0, 'sig2': 55.0, 'sig5': 19.0, 'sig10': 4.5, 'stale2': 3.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 20.0, 'shift': 0.0} follow_shift 100.0 309s
+S1|kp2d|R2|seed1 loss=0.054 n=8869 {'sig0': 86.0, 'sig2': 87.0, 'sig5': 86.0, 'sig10': 79.0, 'stale2': 83.5, 'stale5': 53.0, 'stale10': 1.5, 'erase': 25.5, 'shift': 0.0} follow_shift 90.0 327s
+S1|mask|R0|seed1 loss=0.041 n=8869 {'sig0': 86.5, 'sig2': 86.5, 'sig5': 86.5, 'sig10': 86.5, 'stale2': 86.5, 'stale5': 86.5, 'stale10': 72.5, 'erase': 0.0, 'shift': 0.0} follow_shift 86.5 342s
+S1|mask|R1|seed1 loss=0.053 n=8869 {'sig0': 94.5, 'sig2': 94.5, 'sig5': 94.5, 'sig10': 94.5, 'stale2': 94.5, 'stale5': 94.5, 'stale10': 79.5, 'erase': 25.0, 'shift': 0.0} follow_shift 91.5 358s
+S1|mask|R2|seed1 loss=0.053 n=8869 {'sig0': 91.5, 'sig2': 91.5, 'sig5': 91.5, 'sig10': 91.5, 'stale2': 91.5, 'stale5': 91.5, 'stale10': 77.0, 'erase': 26.0, 'shift': 0.0} follow_shift 91.5 374s
+S1|kp3d+mask|R0|seed1 loss=0.031 n=8869 {'sig0': 100.0, 'sig2': 57.5, 'sig5': 19.0, 'sig10': 4.5, 'stale2': 1.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 1.0, 'shift': 0.0} follow_shift 100.0 389s
+S1|kp3d+mask|R1|seed1 loss=0.045 n=8869 {'sig0': 100.0, 'sig2': 58.5, 'sig5': 14.5, 'sig10': 3.5, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 22.0, 'shift': 0.0} follow_shift 100.0 404s
+S1|kp3d+mask|R2|seed1 loss=0.048 n=8869 {'sig0': 87.0, 'sig2': 85.0, 'sig5': 83.0, 'sig10': 61.5, 'stale2': 82.0, 'stale5': 54.0, 'stale10': 1.0, 'erase': 24.5, 'shift': 0.0} follow_shift 84.5 419s
+B3 seed 0 {'sig0': 98.0, 'sig2': 98.0, 'sig5': 94.0, 'sig10': 85.5, 'stale2': 91.5, 'stale5': 84.5, 'stale10': 60.5, 'erase': 23.0, 'shift': 0.0}
+B3 seed 1 {'sig0': 98.0, 'sig2': 97.5, 'sig5': 95.0, 'sig10': 90.5, 'stale2': 93.5, 'stale5': 88.0, 'stale10': 65.0, 'erase': 27.5, 'shift': 0.0}
+S2 seed0: expert demo success 1.000
+S2|phase|R0|seed0 loss=0.043 n=8937 {'sig0': 91.0, 'sig2': 91.0, 'sig5': 91.0, 'sig10': 91.0, 'stale2': 91.0, 'stale5': 91.0, 'stale10': 91.0, 'erase': 91.0, 'shift': 91.0} follow_shift 0.0 479s
+S2|kp3d|R0|seed0 loss=0.032 n=8937 {'sig0': 100.0, 'sig2': 61.5, 'sig5': 18.0, 'sig10': 4.5, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.5, 'shift': 0.0} follow_shift 100.0 495s
+S2|kp3d|R1|seed0 loss=0.036 n=8937 {'sig0': 100.0, 'sig2': 67.5, 'sig5': 20.5, 'sig10': 5.5, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 85.0, 'shift': 0.0} follow_shift 0.0 509s
+S2|kp3d|R2|seed0 loss=0.040 n=8937 {'sig0': 92.5, 'sig2': 92.0, 'sig5': 91.0, 'sig10': 86.0, 'stale2': 91.0, 'stale5': 84.0, 'stale10': 12.5, 'erase': 94.0, 'shift': 0.0} follow_shift 0.0 524s
+S2|kp3d|R3|seed0 loss=0.049 n=8937 {'sig0': 86.5, 'sig2': 86.0, 'sig5': 85.0, 'sig10': 76.0, 'stale2': 89.0, 'stale5': 65.0, 'stale10': 15.0, 'erase': 88.5, 'shift': 0.5} follow_shift 68.0 539s
+S2|kp2d|R0|seed0 loss=0.035 n=8937 {'sig0': 100.0, 'sig2': 62.0, 'sig5': 16.0, 'sig10': 4.0, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.5, 'shift': 0.0} follow_shift 100.0 554s
+S2|kp2d|R1|seed0 loss=0.038 n=8937 {'sig0': 100.0, 'sig2': 59.5, 'sig5': 27.5, 'sig10': 9.0, 'stale2': 5.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 84.0, 'shift': 0.0} follow_shift 1.0 569s
+S2|kp2d|R2|seed0 loss=0.041 n=8937 {'sig0': 87.5, 'sig2': 88.5, 'sig5': 89.5, 'sig10': 90.0, 'stale2': 90.5, 'stale5': 76.5, 'stale10': 6.5, 'erase': 92.0, 'shift': 0.0} follow_shift 0.0 584s
+S2|kp2d|R3|seed0 loss=0.049 n=8937 {'sig0': 92.5, 'sig2': 91.5, 'sig5': 90.0, 'sig10': 88.0, 'stale2': 91.0, 'stale5': 70.5, 'stale10': 10.5, 'erase': 85.0, 'shift': 0.0} follow_shift 49.5 598s
+S2|mask|R0|seed0 loss=0.043 n=8937 {'sig0': 91.0, 'sig2': 91.0, 'sig5': 91.0, 'sig10': 91.0, 'stale2': 91.0, 'stale5': 91.0, 'stale10': 76.0, 'erase': 0.5, 'shift': 1.0} follow_shift 0.0 614s
+S2|mask|R1|seed0 loss=0.042 n=8937 {'sig0': 90.0, 'sig2': 90.0, 'sig5': 90.0, 'sig10': 90.0, 'stale2': 90.0, 'stale5': 90.0, 'stale10': 75.0, 'erase': 89.0, 'shift': 0.0} follow_shift 0.0 630s
+S2|mask|R2|seed0 loss=0.042 n=8937 {'sig0': 94.5, 'sig2': 94.5, 'sig5': 94.5, 'sig10': 94.5, 'stale2': 94.5, 'stale5': 94.5, 'stale10': 79.0, 'erase': 95.0, 'shift': 0.5} follow_shift 0.0 646s
+S2|mask|R3|seed0 loss=0.052 n=8937 {'sig0': 90.0, 'sig2': 90.0, 'sig5': 90.0, 'sig10': 90.0, 'stale2': 90.0, 'stale5': 90.0, 'stale10': 75.5, 'erase': 84.5, 'shift': 8.0} follow_shift 79.0 660s
+S2|kp3d+mask|R0|seed0 loss=0.032 n=8937 {'sig0': 100.0, 'sig2': 60.0, 'sig5': 18.5, 'sig10': 4.5, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.0, 'shift': 0.0} follow_shift 100.0 676s
+S2|kp3d+mask|R1|seed0 loss=0.036 n=8937 {'sig0': 100.0, 'sig2': 71.5, 'sig5': 28.0, 'sig10': 9.5, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 95.0, 'shift': 0.0} follow_shift 0.5 690s
+S2|kp3d+mask|R2|seed0 loss=0.041 n=8937 {'sig0': 96.0, 'sig2': 96.0, 'sig5': 95.5, 'sig10': 86.5, 'stale2': 95.0, 'stale5': 85.5, 'stale10': 7.0, 'erase': 95.5, 'shift': 0.0} follow_shift 0.0 704s
+S2|kp3d+mask|R3|seed0 loss=0.048 n=8937 {'sig0': 96.0, 'sig2': 97.0, 'sig5': 97.0, 'sig10': 90.5, 'stale2': 96.5, 'stale5': 77.0, 'stale10': 15.0, 'erase': 90.0, 'shift': 0.0} follow_shift 91.0 718s
+S2 seed1: expert demo success 1.000
+S2|phase|R0|seed1 loss=0.042 n=8869 {'sig0': 90.0, 'sig2': 90.0, 'sig5': 90.0, 'sig10': 90.0, 'stale2': 90.0, 'stale5': 90.0, 'stale10': 90.0, 'erase': 90.0, 'shift': 90.0} follow_shift 0.0 736s
+S2|kp3d|R0|seed1 loss=0.031 n=8869 {'sig0': 100.0, 'sig2': 57.5, 'sig5': 20.5, 'sig10': 6.5, 'stale2': 8.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.0, 'shift': 0.0} follow_shift 100.0 755s
+S2|kp3d|R1|seed1 loss=0.034 n=8869 {'sig0': 100.0, 'sig2': 65.5, 'sig5': 22.5, 'sig10': 7.0, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 92.5, 'shift': 0.0} follow_shift 7.0 771s
+S2|kp3d|R2|seed1 loss=0.038 n=8869 {'sig0': 96.0, 'sig2': 95.5, 'sig5': 93.5, 'sig10': 80.5, 'stale2': 93.0, 'stale5': 70.5, 'stale10': 4.5, 'erase': 94.5, 'shift': 0.5} follow_shift 0.0 785s
+S2|kp3d|R3|seed1 loss=0.048 n=8869 {'sig0': 93.5, 'sig2': 94.5, 'sig5': 93.0, 'sig10': 84.5, 'stale2': 92.5, 'stale5': 75.5, 'stale10': 14.0, 'erase': 93.0, 'shift': 2.0} follow_shift 53.5 801s
+S2|kp2d|R0|seed1 loss=0.035 n=8869 {'sig0': 100.0, 'sig2': 55.0, 'sig5': 18.5, 'sig10': 5.0, 'stale2': 2.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 0.0, 'shift': 0.0} follow_shift 99.5 815s
+S2|kp2d|R1|seed1 loss=0.037 n=8869 {'sig0': 100.0, 'sig2': 62.0, 'sig5': 17.0, 'sig10': 4.0, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 92.5, 'shift': 0.0} follow_shift 0.0 829s
+S2|kp2d|R2|seed1 loss=0.040 n=8869 {'sig0': 93.5, 'sig2': 93.0, 'sig5': 91.5, 'sig10': 88.0, 'stale2': 91.0, 'stale5': 73.5, 'stale10': 3.5, 'erase': 94.5, 'shift': 0.0} follow_shift 0.0 843s
+S2|kp2d|R3|seed1 loss=0.047 n=8869 {'sig0': 95.0, 'sig2': 94.0, 'sig5': 91.5, 'sig10': 86.0, 'stale2': 88.5, 'stale5': 56.0, 'stale10': 3.5, 'erase': 93.5, 'shift': 0.0} follow_shift 39.0 860s
+S2|mask|R0|seed1 loss=0.041 n=8869 {'sig0': 89.5, 'sig2': 89.5, 'sig5': 89.5, 'sig10': 89.5, 'stale2': 89.5, 'stale5': 89.5, 'stale10': 74.5, 'erase': 4.0, 'shift': 0.0} follow_shift 0.5 874s
+S2|mask|R1|seed1 loss=0.041 n=8869 {'sig0': 87.0, 'sig2': 87.0, 'sig5': 87.0, 'sig10': 87.0, 'stale2': 87.0, 'stale5': 87.0, 'stale10': 72.5, 'erase': 91.0, 'shift': 0.0} follow_shift 0.0 889s
+S2|mask|R2|seed1 loss=0.042 n=8869 {'sig0': 90.5, 'sig2': 90.5, 'sig5': 90.5, 'sig10': 90.5, 'stale2': 90.5, 'stale5': 90.5, 'stale10': 75.5, 'erase': 88.5, 'shift': 1.5} follow_shift 0.0 905s
+S2|mask|R3|seed1 loss=0.052 n=8869 {'sig0': 96.5, 'sig2': 96.5, 'sig5': 96.5, 'sig10': 96.5, 'stale2': 96.5, 'stale5': 96.5, 'stale10': 81.5, 'erase': 93.5, 'shift': 0.5} follow_shift 67.5 924s
+S2|kp3d+mask|R0|seed1 loss=0.031 n=8869 {'sig0': 100.0, 'sig2': 56.5, 'sig5': 21.0, 'sig10': 6.5, 'stale2': 0.5, 'stale5': 0.0, 'stale10': 0.0, 'erase': 1.0, 'shift': 0.0} follow_shift 100.0 939s
+S2|kp3d+mask|R1|seed1 loss=0.035 n=8869 {'sig0': 100.0, 'sig2': 62.5, 'sig5': 16.0, 'sig10': 5.0, 'stale2': 0.0, 'stale5': 0.0, 'stale10': 0.0, 'erase': 94.0, 'shift': 0.0} follow_shift 4.5 954s
+S2|kp3d+mask|R2|seed1 loss=0.038 n=8869 {'sig0': 93.5, 'sig2': 92.5, 'sig5': 91.0, 'sig10': 82.5, 'stale2': 90.0, 'stale5': 72.5, 'stale10': 8.0, 'erase': 92.5, 'shift': 0.0} follow_shift 0.0 968s
+S2|kp3d+mask|R3|seed1 loss=0.049 n=8869 {'sig0': 98.0, 'sig2': 97.0, 'sig5': 96.0, 'sig10': 88.0, 'stale2': 93.5, 'stale5': 79.0, 'stale10': 17.0, 'erase': 90.0, 'shift': 0.0} follow_shift 77.0 985s
+total 985.2914500236511

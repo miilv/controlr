@@ -1,0 +1,361 @@
+run_id,model,task,rig,order_on_rig,started,score,termination,model_final_call,llm_calls,wall_s,api_lat_p50_s,api_lat_max_s,out_tok_per_call,cache_read_share,closes,empty_closes,failure_class,false_success_claim
+adhoc_7a164900,claude-opus-5,Cap Pen,omen-2/rig-4,41,2026-09-22T22:09:56.525636+00:00,0.2,done,done,28,348.8,8.07,34.63,735,0.832,3,1,(not coded),0
+adhoc_e40cb2c0,claude-opus-5,Cap Pen,omen-2/rig-4,42,2026-09-22T22:20:00.671961+00:00,0.2,give_up,give_up,36,384.6,8.5,31.19,585,0.87,4,3,(not coded),0
+adhoc_111ef97d,claude-opus-5,Cap Pen,omen-2/rig-4,43,2026-09-22T22:27:18.320395+00:00,0.2,give_up,give_up,28,427.1,12.93,34.68,860,0.834,3,2,(not coded),0
+adhoc_619478b2,claude-opus-5,Cap Pen,omen-2/rig-4,44,2026-09-22T22:35:34.424137+00:00,0,give_up,give_up,34,528.5,13.13,35.62,866,0.857,6,6,(not coded),0
+adhoc_254802b3,claude-opus-5,Cap Pen,omen-2/rig-4,45,2026-09-22T22:54:22.798042+00:00,0,give_up,give_up,36,516.1,12.62,33.18,811,0.86,6,6,(not coded),0
+adhoc_f29a9d88,claude-opus-5,Cap Pen,omen-2/rig-4,46,2026-09-22T23:04:46.171082+00:00,0,give_up,give_up,32,470.1,11.04,35.56,821,0.851,3,3,(not coded),0
+adhoc_3d90fe06,claude-opus-5,Cap Pen,omen-2/rig-4,47,2026-09-22T23:16:56.321487+00:00,0,give_up,give_up,36,396.0,8.82,23.72,614,0.867,4,3,(not coded),0
+adhoc_80b6b381,claude-opus-5,Cap Pen,omen-2/rig-4,48,2026-09-22T23:25:07.889189+00:00,0,give_up,give_up,35,551.4,11.7,51.15,937,0.852,3,3,(not coded),0
+adhoc_feb61fcd,claude-opus-5,Cap Pen,omen-2/rig-4,49,2026-09-22T23:36:26.830213+00:00,0.2,give_up,none(forced),40,507.6,10.73,28.42,704,0.872,6,5,(not coded),0
+adhoc_90ec2c99,claude-opus-5,Cap Pen,omen-2/rig-4,50,2026-09-22T23:46:17.270501+00:00,0.75,done,done,35,473.6,9.0,41.7,796,0.861,3,1,(not coded),0
+adhoc_37e4bbbb,claude-opus-5,Cap Pen,omen-2/rig-4,51,2026-09-22T23:55:55.968849+00:00,0.75,done,done,32,428.8,9.72,35.8,782,0.85,3,1,(not coded),0
+adhoc_8e745851,claude-opus-5,Cap Pen,omen-2/rig-4,52,2026-09-23T00:04:26.752476+00:00,0.2,give_up,give_up,40,565.8,10.51,49.03,789,0.87,7,7,(not coded),0
+adhoc_59550648,claude-opus-5,Cap Pen,omen-2/rig-4,53,2026-09-23T00:15:32.803352+00:00,0.2,give_up,give_up,34,499.1,13.03,30.44,803,0.855,2,0,(not coded),0
+adhoc_4875311c,claude-opus-5,Cap Pen,omen-2/rig-4,54,2026-09-23T00:25:52.863462+00:00,0.5,overheat,none(forced),25,468.1,16.65,67.76,1144,0.806,2,0,(not coded),0
+adhoc_0b9dad84,claude-opus-5,Cap Pen,omen-2/rig-4,55,2026-09-23T00:34:21.391641+00:00,0,done,done,38,427.5,8.65,22.47,599,0.873,3,2,(not coded),0
+adhoc_6e292210,claude-opus-5,Cap Pen,omen-2/rig-4,56,2026-09-23T00:42:34.837379+00:00,0.2,give_up,give_up,30,416.4,9.26,44.46,823,0.843,4,3,(not coded),0
+adhoc_c6006876,claude-opus-5,Cap Pen,omen-2/rig-4,57,2026-09-23T00:50:49.357539+00:00,0,give_up,give_up,36,511.5,11.63,36.06,816,0.865,5,4,(not coded),0
+adhoc_9cedc351,claude-opus-5,Cap Pen,omen-2/rig-4,58,2026-09-23T01:02:28.271737+00:00,0,give_up,give_up,36,503.4,11.64,33.58,769,0.866,6,5,(not coded),0
+adhoc_fd61e0e4,claude-opus-5,Cap Pen,omen-2/rig-4,59,2026-09-23T01:15:17.724953+00:00,0.2,give_up,give_up,35,399.2,10.07,27.07,706,0.863,7,6,(not coded),0
+adhoc_373156b8,claude-opus-5,Cap Pen,omen-2/rig-4,60,2026-09-23T01:24:17.424577+00:00,0.5,overheat,none(forced),19,290.9,10.01,32.44,878,0.788,2,0,(not coded),0
+adhoc_16760f6f,claude-opus-5-5,Cap Pen,omen-2/rig-4,21,2026-09-22T18:18:29.669733+00:00,0.2,give_up,give_up,31,328.4,8.54,21.17,617,0.844,5,3,NG,0
+adhoc_2db99b64,claude-opus-5-5,Cap Pen,omen-2/rig-4,22,2026-09-22T18:24:56.503619+00:00,0.5,give_up,give_up,35,305.3,6.32,20.94,496,0.861,3,1,AL,0
+adhoc_3cc20a62,claude-opus-5-5,Cap Pen,omen-2/rig-4,23,2026-09-22T18:31:24.203355+00:00,0.5,give_up,give_up,36,316.5,6.08,23.5,556,0.864,3,1,AL,0
+adhoc_67e593e3,claude-opus-5-5,Cap Pen,omen-2/rig-4,24,2026-09-22T18:45:00.755624+00:00,0.5,give_up,give_up,26,281.2,6.31,54.55,745,0.832,2,0,AL,0
+adhoc_7a6d1e50,claude-opus-5-5,Cap Pen,omen-2/rig-4,25,2026-09-22T18:51:52.228063+00:00,0.5,give_up,give_up,34,235.8,5.74,15.03,396,0.864,3,1,AL,0
+adhoc_2cfa2a56,claude-opus-5-5,Cap Pen,omen-2/rig-4,26,2026-09-22T18:56:42.734626+00:00,0.75,give_up,give_up,35,323.2,7.04,21.72,569,0.859,2,0,AL,0
+adhoc_82007e65,claude-opus-5-5,Cap Pen,omen-2/rig-4,27,2026-09-22T19:03:28.729557+00:00,0.75,give_up,give_up,36,312.6,7.51,13.99,545,0.865,3,1,AL,0
+adhoc_3a8878be,claude-opus-5-5,Cap Pen,omen-2/rig-4,28,2026-09-22T19:09:28.722290+00:00,0.75,give_up,give_up,33,337.8,8.5,26.32,621,0.85,2,0,AL,0
+adhoc_80d8f14e,claude-opus-5-5,Cap Pen,omen-2/rig-4,29,2026-09-22T19:18:45.417523+00:00,0.75,give_up,give_up,31,298.8,7.59,26.86,605,0.856,3,0,AL,0
+adhoc_6afdf1a7,claude-opus-5-5,Cap Pen,omen-2/rig-4,30,2026-09-22T19:50:54.333741+00:00,0.75,done,done,19,165.9,7.04,20.41,513,0.804,2,0,AL,1
+adhoc_0278a4ba,claude-opus-5-5,Cap Pen,omen-2/rig-4,31,2026-09-22T19:56:13.358744+00:00,0.5,give_up,give_up,31,348.2,8.56,23.96,743,0.851,2,0,AL,0
+adhoc_a28b56df,claude-opus-5-5,Cap Pen,omen-2/rig-4,32,2026-09-22T20:03:11.506580+00:00,0.75,give_up,give_up,35,325.3,7.26,20.84,617,0.865,5,2,AL,0
+adhoc_4212d51a,claude-opus-5-5,Cap Pen,omen-2/rig-4,33,2026-09-22T20:11:06.093927+00:00,0.5,give_up,give_up,36,342.8,7.18,16.86,580,0.86,6,3,AL,0
+adhoc_45536686,claude-opus-5-5,Cap Pen,omen-2/rig-4,34,2026-09-22T20:18:45.481535+00:00,0.75,give_up,give_up,36,332.6,6.79,21.29,625,0.859,4,2,AL,0
+adhoc_9ea13997,claude-opus-5-5,Cap Pen,omen-2/rig-4,35,2026-09-22T20:26:52.311574+00:00,0.5,give_up,give_up,28,324.9,7.61,34.41,740,0.828,2,1,AL,0
+adhoc_f1d6d538,claude-opus-5-5,Cap Pen,omen-2/rig-4,36,2026-09-22T20:33:36.540021+00:00,0.75,give_up,give_up,33,269.5,6.72,14.68,498,0.854,3,1,AL,0
+adhoc_e2fb52a9,claude-opus-5-5,Cap Pen,omen-2/rig-4,37,2026-09-22T20:42:05.307082+00:00,0.2,give_up,give_up,30,222.9,5.13,16.42,425,0.853,3,2,RK,0
+adhoc_f668d60f,claude-opus-5-5,Cap Pen,omen-2/rig-4,38,2026-09-22T20:46:56.871595+00:00,0.5,give_up,give_up,32,293.5,7.57,23.37,550,0.847,3,1,AL,0
+adhoc_e51c38e8,claude-opus-5-5,Cap Pen,omen-2/rig-4,39,2026-09-22T21:56:32.469164+00:00,0.5,give_up,give_up,31,280.7,6.29,23.73,544,0.847,5,3,AL,0
+adhoc_088677f8,claude-opus-5-5,Cap Pen,omen-2/rig-4,40,2026-09-22T22:03:19.872094+00:00,0.5,give_up,give_up,37,352.7,7.95,25.66,610,0.865,4,2,AL,0
+adhoc_860edee9,gpt-6-astra,Cap Pen,omen-2/rig-4,1,2026-09-22T16:13:37.499397+00:00,0.5,give_up,give_up,31,346.1,7.83,25.36,213,0.297,6,3,AL,0
+adhoc_ea4ce6d5,gpt-6-astra,Cap Pen,omen-2/rig-4,2,2026-09-22T16:20:22.444725+00:00,0.2,give_up,give_up,24,216.0,6.25,33.68,124,0.385,4,3,NG,0
+adhoc_03070594,gpt-6-astra,Cap Pen,omen-2/rig-4,3,2026-09-22T16:26:05.665113+00:00,0.5,give_up,give_up,23,219.4,7.16,26.86,168,0.376,4,2,AL,0
+adhoc_39fc5465,gpt-6-astra,Cap Pen,omen-2/rig-4,4,2026-09-22T16:31:14.380489+00:00,0.2,give_up,give_up,9,95.8,9.42,15.22,197,0.576,2,1,RK,0
+adhoc_384197c1,gpt-6-astra,Cap Pen,omen-2/rig-4,5,2026-09-22T16:33:57.411688+00:00,0.2,give_up,give_up,30,256.9,7.63,12.21,131,0.327,3,2,NG,0
+adhoc_bafd221b,gpt-6-astra,Cap Pen,omen-2/rig-4,6,2026-09-22T16:39:45.161104+00:00,0.2,give_up,give_up,33,298.9,7.34,21.69,140,0.308,6,4,AL,0
+adhoc_a1042bd3,gpt-6-astra,Cap Pen,omen-2/rig-4,7,2026-09-22T16:48:18.451103+00:00,0.2,give_up,give_up,32,284.1,7.24,17.46,156,0.307,4,3,NG,0
+adhoc_c90697a3,gpt-6-astra,Cap Pen,omen-2/rig-4,8,2026-09-22T16:57:13.373087+00:00,0.5,give_up,give_up,34,268.0,6.49,17.5,152,0.298,2,0,AL,0
+adhoc_52b4224f,gpt-6-astra,Cap Pen,omen-2/rig-4,9,2026-09-22T17:03:01.490248+00:00,0.5,give_up,give_up,20,168.2,6.83,12.76,145,0.416,2,0,AL,0
+adhoc_1ed52a2d,gpt-6-astra,Cap Pen,omen-2/rig-4,10,2026-09-22T17:10:52.295565+00:00,0.5,give_up,give_up,23,231.5,7.97,23.98,181,0.36,5,3,AL,0
+adhoc_64cc6e67,gpt-6-astra,Cap Pen,omen-2/rig-4,11,2026-09-22T17:17:32.645407+00:00,0.5,give_up,give_up,28,251.6,6.92,16.86,166,0.332,5,3,AL,0
+adhoc_5c003223,gpt-6-astra,Cap Pen,omen-2/rig-4,12,2026-09-22T17:24:01.708172+00:00,0.5,give_up,give_up,32,260.8,6.95,17.96,147,0.31,2,0,AL,0
+adhoc_8c374bd7,gpt-6-astra,Cap Pen,omen-2/rig-4,13,2026-09-22T17:33:24.766638+00:00,0.5,give_up,give_up,33,265.5,6.48,12.53,141,0.307,6,3,AL,0
+adhoc_3725eacb,gpt-6-astra,Cap Pen,omen-2/rig-4,14,2026-09-22T17:38:48.362397+00:00,0.2,give_up,give_up,15,128.8,5.48,12.21,142,0.477,2,1,NG,0
+adhoc_fd46061e,gpt-6-astra,Cap Pen,omen-2/rig-4,15,2026-09-22T17:42:17.250086+00:00,0.5,give_up,give_up,31,278.8,7.71,13.58,179,0.31,3,1,AL,0
+adhoc_056dd208,gpt-6-astra,Cap Pen,omen-2/rig-4,16,2026-09-22T17:48:02.277146+00:00,0.5,give_up,give_up,23,208.3,6.68,22.58,170,0.374,2,0,AL,0
+adhoc_6b26663f,gpt-6-astra,Cap Pen,omen-2/rig-4,17,2026-09-22T17:52:19.111287+00:00,0.5,give_up,give_up,31,270.6,6.78,16.64,176,0.31,2,0,AL,0
+adhoc_75a68a5f,gpt-6-astra,Cap Pen,omen-2/rig-4,18,2026-09-22T17:58:02.881096+00:00,0.5,give_up,give_up,32,271.3,6.38,25.44,151,0.306,4,2,AL,0
+adhoc_7bf854fd,gpt-6-astra,Cap Pen,omen-2/rig-4,19,2026-09-22T18:03:18.338898+00:00,0.5,give_up,give_up,27,266.7,8.14,19.18,173,0.337,2,0,AL,0
+adhoc_cfdac569,gpt-6-astra,Cap Pen,omen-2/rig-4,20,2026-09-22T18:09:05.368752+00:00,0.5,give_up,give_up,27,280.3,8.65,27.34,182,0.337,2,0,AL,0
+adhoc_a53093ac,claude-opus-5,Classify Objects,omen/rig-6,41,2026-09-23T00:24:47.411542+00:00,0.17,done,done,35,363.8,7.67,20.2,525,0.866,5,2,(not coded),0
+adhoc_77534b74,claude-opus-5,Classify Objects,omen/rig-6,42,2026-09-23T00:31:47.448309+00:00,0.17,give_up,none(forced),40,430.1,7.38,36.09,520,0.877,8,3,(not coded),0
+adhoc_5295496a,claude-opus-5,Classify Objects,omen/rig-6,43,2026-09-23T00:41:40.046529+00:00,0.17,done,done,36,387.3,7.64,24.37,539,0.867,6,3,(not coded),0
+adhoc_805fd3d0,claude-opus-5,Classify Objects,omen/rig-6,44,2026-09-23T00:48:49.765171+00:00,0.34,done,done,34,345.2,7.09,22.34,483,0.863,4,1,(not coded),0
+adhoc_dd131c4b,claude-opus-5,Classify Objects,omen/rig-6,45,2026-09-23T00:57:08.720082+00:00,0.17,done,done,35,533.1,10.55,42.04,805,0.865,6,0,(not coded),0
+adhoc_40fec2a0,claude-opus-5,Classify Objects,omen/rig-6,46,2026-09-23T01:07:37.195138+00:00,0.34,give_up,none(forced),40,362.5,5.99,18.14,437,0.877,7,1,(not coded),0
+adhoc_5c9710f9,claude-opus-5,Classify Objects,omen/rig-6,47,2026-09-23T01:14:42.027764+00:00,0,done,done,37,384.2,6.99,25.07,473,0.874,6,1,(not coded),0
+adhoc_9cf0c286,claude-opus-5,Classify Objects,omen/rig-6,48,2026-09-23T01:24:02.439529+00:00,0,done,done,35,401.2,8.64,33.33,597,0.864,8,0,(not coded),0
+adhoc_71cab9b8,claude-opus-5,Classify Objects,omen/rig-6,49,2026-09-23T01:41:39.059550+00:00,0.66,give_up,none(forced),40,393.7,6.61,28.14,474,0.875,5,1,(not coded),0
+adhoc_c6ad5dfe,claude-opus-5,Classify Objects,omen/rig-6,50,2026-09-23T01:51:40.603319+00:00,0.17,done,done,38,323.9,5.05,25.69,430,0.877,9,0,(not coded),0
+adhoc_59d12b51,claude-opus-5,Classify Objects,omen/rig-6,51,2026-09-23T01:59:38.146112+00:00,0.33,done,done,40,372.7,6.75,19.75,451,0.877,6,2,(not coded),0
+adhoc_eb266140,claude-opus-5,Classify Objects,omen/rig-6,52,2026-09-23T02:06:29.663527+00:00,0,give_up,give_up,35,518.9,9.45,44.04,753,0.863,5,2,(not coded),0
+adhoc_0c61efcf,claude-opus-5,Classify Objects,omen/rig-6,53,2026-09-23T02:16:23.183183+00:00,0.34,done,done,36,514.1,8.52,59.43,535,0.868,5,2,(not coded),0
+adhoc_4bc3d71a,claude-opus-5,Classify Objects,omen/rig-6,54,2026-09-23T02:28:02.679190+00:00,0,overheat,none(forced),17,241.6,7.77,22.19,629,0.792,2,0,(not coded),0
+adhoc_5f0bcacf,claude-opus-5,Classify Objects,omen/rig-6,55,2026-09-23T02:33:31.542891+00:00,0.17,done,done,34,343.2,5.94,27.0,528,0.86,5,1,(not coded),0
+adhoc_f1d10fd8,claude-opus-5,Classify Objects,omen/rig-6,56,2026-09-23T02:41:14.993114+00:00,0.66,done,done,38,375.2,6.76,30.79,465,0.879,6,0,(not coded),0
+adhoc_74ec52e1,claude-opus-5,Classify Objects,omen/rig-6,57,2026-09-23T02:53:06.731061+00:00,0.33,done,done,35,345.3,5.83,33.21,526,0.858,6,2,(not coded),0
+adhoc_90bb448e,claude-opus-5,Classify Objects,omen/rig-6,58,2026-09-23T02:59:50.183155+00:00,0.17,give_up,none(forced),40,497.3,8.57,28.09,625,0.877,6,1,(not coded),0
+adhoc_edc19690,claude-opus-5,Classify Objects,omen/rig-6,59,2026-09-23T03:10:23.521025+00:00,0,give_up,give_up,37,393.7,7.97,25.13,526,0.872,7,0,(not coded),0
+adhoc_2d769f62,claude-opus-5,Classify Objects,omen/rig-6,60,2026-09-23T03:19:52.459104+00:00,0.17,give_up,none(forced),40,467.6,9.98,20.61,509,0.877,6,2,(not coded),0
+adhoc_a256663e,claude-opus-5-5,Classify Objects,omen/rig-6,21,2026-09-22T22:03:17.682505+00:00,0.17,give_up,give_up,33,262.7,5.36,13.59,387,0.863,4,1,HW,0
+adhoc_3c29b401,claude-opus-5-5,Classify Objects,omen/rig-6,22,2026-09-22T22:08:45.344010+00:00,0.66,done,done,39,274.5,3.96,19.4,352,0.88,8,4,SD,0
+adhoc_c8090456,claude-opus-5-5,Classify Objects,omen/rig-6,23,2026-09-22T22:14:10.781301+00:00,0,give_up,give_up,39,326.4,5.84,14.13,406,0.877,4,0,PM,0
+adhoc_690d0a9c,claude-opus-5-5,Classify Objects,omen/rig-6,24,2026-09-22T22:20:55.267263+00:00,0.5,done,done,38,283.7,4.5,23.38,350,0.878,7,5,BU,0
+adhoc_0fab5548,claude-opus-5-5,Classify Objects,omen/rig-6,25,2026-09-22T22:26:38.394059+00:00,0.83,done,done,39,312.8,4.6,26.34,346,0.881,7,1,PM,1
+adhoc_9ee913e3,claude-opus-5-5,Classify Objects,omen/rig-6,26,2026-09-22T22:32:59.667361+00:00,0.33,give_up,give_up,34,260.2,4.74,14.59,352,0.865,8,4,NG,0
+adhoc_0d529075,claude-opus-5-5,Classify Objects,omen/rig-6,27,2026-09-22T22:40:18.286134+00:00,0.5,done,done,34,269.8,4.93,19.78,365,0.871,7,3,NG,0
+adhoc_fbc95441,claude-opus-5-5,Classify Objects,omen/rig-6,28,2026-09-22T22:54:30.984612+00:00,0.5,done,done,38,279.1,4.35,21.1,330,0.869,6,0,BU,0
+adhoc_6860b8a2,claude-opus-5-5,Classify Objects,omen/rig-6,29,2026-09-22T23:01:23.090895+00:00,0.5,give_up,give_up,38,286.5,4.57,27.14,354,0.878,6,3,CO,0
+adhoc_f0755aa7,claude-opus-5-5,Classify Objects,omen/rig-6,30,2026-09-22T23:09:33.492483+00:00,0.34,done,done,36,314.0,5.1,25.25,436,0.869,7,1,PM,0
+adhoc_27954a23,claude-opus-5-5,Classify Objects,omen/rig-6,31,2026-09-22T23:15:45.364874+00:00,0.33,give_up,give_up,36,276.3,3.72,19.74,382,0.87,4,0,CO,0
+adhoc_d3478f90,claude-opus-5-5,Classify Objects,omen/rig-6,32,2026-09-22T23:22:11.409802+00:00,0.83,done,done,38,271.3,3.73,19.86,328,0.877,7,2,BU,0
+adhoc_40938102,claude-opus-5-5,Classify Objects,omen/rig-6,33,2026-09-22T23:27:59.034066+00:00,0.34,done,done,40,331.4,5.07,21.57,419,0.879,10,6,SD,0
+adhoc_7c3c3d9c,claude-opus-5-5,Classify Objects,omen/rig-6,34,2026-09-22T23:35:58.885961+00:00,0.34,done,done,37,294.4,4.83,33.89,403,0.876,4,1,HW,0
+adhoc_417c1918,claude-opus-5-5,Classify Objects,omen/rig-6,35,2026-09-22T23:42:27.442694+00:00,0.33,done,done,35,340.6,4.82,37.92,564,0.869,8,4,PM,0
+adhoc_5f58faf8,claude-opus-5-5,Classify Objects,omen/rig-6,36,2026-09-22T23:48:59.793141+00:00,0.33,done,done,39,304.2,4.94,26.73,387,0.88,5,0,PM,0
+adhoc_fb431dca,claude-opus-5-5,Classify Objects,omen/rig-6,37,2026-09-22T23:55:31.713413+00:00,0.17,done,done,36,297.4,5.57,24.08,387,0.872,6,1,PM,0
+adhoc_bfbbcd79,claude-opus-5-5,Classify Objects,omen/rig-6,38,2026-09-23T00:03:24.685925+00:00,0.5,done,done,35,332.0,5.97,23.84,362,0.871,7,3,PM,0
+adhoc_5368719f,claude-opus-5-5,Classify Objects,omen/rig-6,39,2026-09-23T00:09:56.989893+00:00,0.66,done,done,32,223.3,4.17,18.38,334,0.863,4,0,BU,0
+adhoc_0f51c8e7,claude-opus-5-5,Classify Objects,omen/rig-6,40,2026-09-23T00:14:45.833486+00:00,0.5,done,done,36,268.6,4.31,15.78,337,0.871,6,1,PM,0
+adhoc_0956b213,gpt-6-astra,Classify Objects,omen/rig-6,1,2026-09-22T18:39:51.741905+00:00,0.5,give_up,give_up,38,399.9,7.66,19.66,153,0.28,6,2,NG,0
+adhoc_0eeed5bb,gpt-6-astra,Classify Objects,omen/rig-6,2,2026-09-22T18:47:59.539131+00:00,0.5,give_up,give_up,34,358.3,6.97,32.7,108,0.315,6,2,NG,0
+adhoc_e3a65067,gpt-6-astra,Classify Objects,omen/rig-6,3,2026-09-22T18:55:17.799578+00:00,0.33,give_up,give_up,33,306.2,6.91,15.25,114,0.32,7,4,CO,0
+adhoc_3e6cb784,gpt-6-astra,Classify Objects,omen/rig-6,4,2026-09-22T19:01:19.678726+00:00,0.5,give_up,give_up,33,306.7,6.56,15.33,120,0.322,6,2,PM,0
+adhoc_27a06023,gpt-6-astra,Classify Objects,omen/rig-6,5,2026-09-22T19:08:14.650600+00:00,0.67,give_up,give_up,40,348.2,6.01,13.2,118,0.278,10,5,PM,0
+adhoc_771d6c1d,gpt-6-astra,Classify Objects,omen/rig-6,6,2026-09-22T19:15:08.588886+00:00,0.67,give_up,give_up,36,305.1,6.03,12.97,123,0.3,7,2,PM,0
+adhoc_81e337c6,gpt-6-astra,Classify Objects,omen/rig-6,7,2026-09-22T19:42:23.490947+00:00,0.5,give_up,give_up,30,298.8,6.86,16.13,139,0.33,7,4,NG,0
+adhoc_3d89896a,gpt-6-astra,Classify Objects,omen/rig-6,8,2026-09-22T19:49:58.455621+00:00,0.67,give_up,give_up,34,279.3,5.64,11.99,104,0.314,7,3,PM,0
+adhoc_6b46479f,gpt-6-astra,Classify Objects,omen/rig-6,9,2026-09-22T19:56:53.070776+00:00,0.5,give_up,give_up,33,273.9,5.63,10.53,106,0.321,7,3,NG,0
+adhoc_30e8354a,gpt-6-astra,Classify Objects,omen/rig-6,10,2026-09-22T20:02:30.835952+00:00,0.17,give_up,give_up,31,265.7,5.65,11.46,110,0.335,5,2,PM,0
+adhoc_16c5f77d,gpt-6-astra,Classify Objects,omen/rig-6,11,2026-09-22T20:07:53.427209+00:00,0,give_up,give_up,8,78.1,6.79,10.48,135,0.622,2,2,RK,0
+adhoc_da102096,gpt-6-astra,Classify Objects,omen/rig-6,12,2026-09-22T20:09:59.954778+00:00,0.5,give_up,give_up,32,337.7,7.36,17.81,160,0.312,10,5,NG,0
+adhoc_b1004444,gpt-6-astra,Classify Objects,omen/rig-6,13,2026-09-22T20:16:26.048684+00:00,0,give_up,give_up,8,74.9,6.4,11.06,152,0.616,2,2,RK,0
+adhoc_e6a44f0a,gpt-6-astra,Classify Objects,omen/rig-6,14,2026-09-22T20:18:27.100860+00:00,0.5,give_up,give_up,31,257.7,5.89,15.85,105,0.334,5,2,NG,0
+adhoc_a48432e5,gpt-6-astra,Classify Objects,omen/rig-6,15,2026-09-22T20:26:48.477557+00:00,0.83,give_up,give_up,35,318.7,7.18,14.14,128,0.3,7,1,BU,0
+adhoc_b718e614,gpt-6-astra,Classify Objects,omen/rig-6,16,2026-09-22T20:33:11.359328+00:00,0.33,give_up,give_up,30,299.6,7.14,15.31,142,0.33,6,2,PM,0
+adhoc_fddf8e11,gpt-6-astra,Classify Objects,omen/rig-6,17,2026-09-22T20:40:18.711129+00:00,0.17,give_up,give_up,33,306.8,6.62,14.7,133,0.309,5,2,PM,0
+adhoc_d84a5998,gpt-6-astra,Classify Objects,omen/rig-6,18,2026-09-22T20:46:21.537302+00:00,0,give_up,give_up,31,314.4,7.2,16.22,162,0.311,8,5,NG,0
+adhoc_a52eacc7,gpt-6-astra,Classify Objects,omen/rig-6,19,2026-09-22T20:54:36.675132+00:00,0.5,give_up,give_up,34,372.9,7.26,38.89,167,0.291,7,1,BU,0
+adhoc_9fe28652,gpt-6-astra,Classify Objects,omen/rig-6,20,2026-09-22T21:56:34.928020+00:00,0.34,give_up,give_up,33,298.7,5.86,12.97,117,0.309,5,2,PM,0
+adhoc_ab097f2e,claude-opus-5,Pack And Pour Fruit,omen/rig-1,41,2026-09-22T20:40:21.286540+00:00,0.1,done,done,37,371.0,7.04,22.06,494,0.864,8,6,(not coded),0
+adhoc_db53cc41,claude-opus-5,Pack And Pour Fruit,omen/rig-1,42,2026-09-22T20:47:10.286434+00:00,0.1,done,done,36,376.5,8.03,23.63,523,0.861,5,2,(not coded),0
+adhoc_3fa1032a,claude-opus-5,Pack And Pour Fruit,omen/rig-1,43,2026-09-22T20:54:38.678845+00:00,0.3,give_up,none(forced),40,413.6,6.8,44.51,536,0.872,4,0,(not coded),0
+adhoc_49d399f0,claude-opus-5,Pack And Pour Fruit,omen/rig-1,44,2026-09-22T21:56:26.496861+00:00,0.3,done,done,38,396.2,7.25,34.37,557,0.859,4,1,(not coded),0
+adhoc_46aa3c65,claude-opus-5,Pack And Pour Fruit,omen/rig-1,45,2026-09-22T22:04:01.881771+00:00,0.1,done,done,39,330.2,5.97,23.09,409,0.875,5,0,(not coded),0
+adhoc_254594ef,claude-opus-5,Pack And Pour Fruit,omen/rig-1,46,2026-09-22T22:11:55.978301+00:00,0.1,done,done,39,399.7,6.7,28.76,494,0.876,7,4,(not coded),0
+adhoc_66a5e17c,claude-opus-5,Pack And Pour Fruit,omen/rig-1,47,2026-09-22T22:19:27.333766+00:00,0.3,give_up,none(forced),40,348.9,5.58,29.93,458,0.879,5,2,(not coded),0
+adhoc_7b9f11b7,claude-opus-5,Pack And Pour Fruit,omen/rig-1,48,2026-09-22T22:26:08.647461+00:00,0.5,give_up,none(forced),40,373.7,5.79,30.2,478,0.877,4,0,(not coded),0
+adhoc_1409e28d,claude-opus-5,Pack And Pour Fruit,omen/rig-1,49,2026-09-22T22:33:42.402725+00:00,0.1,overheat,none(forced),33,428.7,9.64,30.92,696,0.847,0,0,(not coded),0
+adhoc_098b31bf,claude-opus-5,Pack And Pour Fruit,omen/rig-1,50,2026-09-22T22:41:46.461986+00:00,0.1,done,done,38,418.1,5.99,44.84,568,0.871,6,1,(not coded),0
+adhoc_060ca989,claude-opus-5,Pack And Pour Fruit,omen/rig-1,51,2026-09-22T22:54:32.674830+00:00,0.3,done,done,38,393.9,5.52,31.67,541,0.88,7,3,(not coded),0
+adhoc_b34911dd,claude-opus-5,Pack And Pour Fruit,omen/rig-1,52,2026-09-22T23:05:44.835175+00:00,0,give_up,give_up,39,412.5,7.94,30.39,541,0.875,9,3,(not coded),0
+adhoc_40ba07a9,claude-opus-5,Pack And Pour Fruit,omen/rig-1,53,2026-09-22T23:15:47.868130+00:00,0,overheat,none(forced),21,310.6,8.11,42.82,785,0.795,5,4,(not coded),0
+adhoc_0b0acbb8,claude-opus-5,Pack And Pour Fruit,omen/rig-1,54,2026-09-22T23:22:14.984775+00:00,0.1,done,done,39,340.9,6.0,22.45,464,0.876,6,5,(not coded),0
+adhoc_995f5d45,claude-opus-5,Pack And Pour Fruit,omen/rig-1,55,2026-09-22T23:28:32.903419+00:00,0.5,done,done,38,497.0,9.66,41.13,663,0.873,10,6,(not coded),0
+adhoc_c4cf5e1c,claude-opus-5,Pack And Pour Fruit,omen/rig-1,56,2026-09-22T23:37:41.884954+00:00,0.1,give_up,none(forced),40,398.1,6.88,31.92,489,0.876,8,6,(not coded),0
+adhoc_9977d4e9,claude-opus-5,Pack And Pour Fruit,omen/rig-1,57,2026-09-22T23:45:05.451996+00:00,0.1,done,done,37,343.2,6.49,19.61,529,0.869,4,1,(not coded),0
+adhoc_671c63f9,claude-opus-5,Pack And Pour Fruit,omen/rig-1,58,2026-09-22T23:51:54.533932+00:00,0.1,give_up,none(forced),40,414.6,6.9,33.42,533,0.879,9,7,(not coded),0
+adhoc_b029a695,claude-opus-5,Pack And Pour Fruit,omen/rig-1,59,2026-09-22T23:59:24.235419+00:00,0.1,done,done,40,452.3,8.15,32.64,552,0.869,8,6,(not coded),0
+adhoc_fd95a478,claude-opus-5,Pack And Pour Fruit,omen/rig-1,60,2026-09-23T00:07:35.938617+00:00,0.1,done,done,35,449.4,8.41,43.39,660,0.858,4,1,(not coded),0
+adhoc_ab652ee7,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,21,2026-09-22T18:22:03.617071+00:00,0.3,give_up,give_up,34,216.6,4.1,13.6,274,0.866,6,4,NG,0
+adhoc_f9147747,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,22,2026-09-22T18:26:28.203696+00:00,0.1,give_up,give_up,32,239.3,4.51,19.24,343,0.863,4,0,PM,0
+adhoc_bb2e2b47,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,23,2026-09-22T18:32:31.662879+00:00,0.3,done,done,38,284.6,4.62,15.25,413,0.871,5,0,PM,0
+adhoc_a38ee5da,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,24,2026-09-22T18:40:22.445310+00:00,0.5,give_up,none(forced),40,270.9,4.28,24.23,310,0.882,6,2,BU,0
+adhoc_58c79a28,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,25,2026-09-22T18:45:44.533035+00:00,0.3,give_up,none(forced),40,250.5,4.12,13.62,306,0.877,5,2,BU,0
+adhoc_82b96a61,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,26,2026-09-22T18:50:57.220749+00:00,0.1,give_up,give_up,37,265.1,5.29,16.46,331,0.873,4,1,PM,0
+adhoc_dbe5a8c1,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,27,2026-09-22T18:56:09.000936+00:00,0.1,give_up,give_up,32,205.6,4.45,11.76,297,0.862,4,1,PM,0
+adhoc_edd7154c,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,28,2026-09-22T19:00:34.400869+00:00,0.3,give_up,give_up,35,281.7,4.52,17.14,421,0.86,6,3,PM,0
+adhoc_8de99531,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,29,2026-09-22T19:05:58.781476+00:00,0.3,give_up,give_up,33,251.9,4.64,19.89,381,0.861,4,1,BU,0
+adhoc_7a7c815d,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,30,2026-09-22T19:11:51.609385+00:00,0.3,overheat,give_up,34,306.1,6.29,20.82,453,0.86,5,2,HW,0
+adhoc_12ad972c,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,31,2026-09-22T19:18:03.950921+00:00,0.3,done,done,37,301.1,5.27,15.19,360,0.871,6,3,PM,0
+adhoc_ad505183,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,32,2026-09-22T19:50:00.266074+00:00,0.5,done,done,37,255.1,4.64,14.74,336,0.871,7,3,FS,0
+adhoc_d8dd3c32,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,33,2026-09-22T19:55:02.118511+00:00,0.1,give_up,give_up,34,268.7,5.66,17.99,387,0.863,2,1,HW,0
+adhoc_7750019e,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,34,2026-09-22T20:00:29.032121+00:00,0.3,give_up,give_up,29,255.5,4.62,27.11,479,0.844,4,1,PM,0
+adhoc_1726b2db,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,35,2026-09-22T20:05:30.394348+00:00,0.1,give_up,give_up,30,241.7,5.29,16.8,331,0.855,4,1,PM,0
+adhoc_ef6726f8,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,36,2026-09-22T20:10:30.973542+00:00,0.3,give_up,give_up,35,213.8,4.4,9.08,278,0.868,3,1,NG,0
+adhoc_3778a415,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,37,2026-09-22T20:15:37.783996+00:00,0.1,give_up,give_up,33,246.3,5.17,15.51,328,0.862,5,3,PM,0
+adhoc_5a09ba17,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,38,2026-09-22T20:21:12.688261+00:00,0.1,give_up,none(forced),40,217.2,3.79,16.08,269,0.882,5,2,PM,0
+adhoc_dc5cfd2c,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,39,2026-09-22T20:26:40.486270+00:00,0.1,give_up,give_up,32,200.5,3.99,14.37,284,0.862,7,5,PM,0
+adhoc_1c824ede,claude-opus-5-5,Pack And Pour Fruit,omen/rig-1,40,2026-09-22T20:30:59.542991+00:00,0.3,done,done,37,259.5,4.68,15.51,343,0.872,5,1,BU,0
+adhoc_1e88ab05,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,1,2026-09-22T16:13:30.844642+00:00,0.1,give_up,give_up,31,270.9,5.72,16.01,123,0.329,7,2,NG,0
+adhoc_8176242a,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,2,2026-09-22T16:28:15.218806+00:00,0.3,give_up,give_up,34,320.7,6.6,18.61,127,0.305,5,1,CO,0
+adhoc_c41bb949,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,3,2026-09-22T16:34:36.710753+00:00,0.1,give_up,give_up,32,250.2,5.17,12.45,96,0.332,5,0,PM,0
+adhoc_79ea898c,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,4,2026-09-22T16:39:37.983307+00:00,0.3,give_up,give_up,39,339.5,5.77,16.79,117,0.285,5,1,BU,0
+adhoc_db8da7fd,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,5,2026-09-22T16:48:13.033177+00:00,0.5,give_up,give_up,35,284.7,5.56,14.34,116,0.307,7,4,FS,0
+adhoc_7b7a59f4,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,6,2026-09-22T17:02:57.313179+00:00,0.1,give_up,give_up,26,215.6,5.68,15.25,108,0.371,4,1,PM,0
+adhoc_b2c02190,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,7,2026-09-22T17:10:45.818773+00:00,0.1,give_up,give_up,30,246.0,5.85,12.95,105,0.344,6,2,PM,0
+adhoc_d93ff36e,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,8,2026-09-22T17:17:24.567066+00:00,0.1,give_up,give_up,26,229.9,5.88,14.12,134,0.368,5,2,PM,0
+adhoc_104a1ad2,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,9,2026-09-22T17:23:26.302372+00:00,0.3,give_up,give_up,38,314.1,5.69,18.56,119,0.289,2,1,HW,0
+adhoc_25c95925,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,10,2026-09-22T17:33:21.806870+00:00,0.3,give_up,give_up,33,269.4,4.93,18.68,125,0.317,6,1,SD,0
+adhoc_4bb21963,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,11,2026-09-22T17:38:53.175142+00:00,0,give_up,give_up,11,124.6,7.05,11.26,144,0.549,2,2,NG,0
+adhoc_d946f7ca,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,12,2026-09-22T17:41:57.306524+00:00,0.1,give_up,give_up,32,226.2,5.26,12.1,103,0.329,6,3,CO,0
+adhoc_8f185abc,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,13,2026-09-22T17:46:27.368730+00:00,0.3,give_up,give_up,34,264.0,5.66,13.96,120,0.305,5,4,RK,0
+adhoc_15dbcc03,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,14,2026-09-22T17:51:29.893181+00:00,0.1,overheat,none(forced),9,104.7,6.04,10.48,132,0.596,0,0,HW,0
+adhoc_6dbd1ae8,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,15,2026-09-22T17:54:24.629026+00:00,0.1,give_up,give_up,21,158.2,4.73,10.36,114,0.415,4,1,PM,0
+adhoc_6ca104ed,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,16,2026-09-22T17:57:38.336323+00:00,0.3,give_up,give_up,32,283.8,6.44,13.36,115,0.32,4,1,CO,0
+adhoc_77ba9459,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,17,2026-09-22T18:02:55.575183+00:00,0,overheat,none(forced),7,106.2,7.45,15.99,153,0.647,1,0,HW,0
+adhoc_97b0fdaa,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,18,2026-09-22T18:05:21.493237+00:00,0.1,give_up,give_up,35,311.8,6.31,15.27,128,0.299,6,2,SD,0
+adhoc_b0eb34ca,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,19,2026-09-22T18:12:21.998263+00:00,0.1,give_up,give_up,24,228.5,7.33,21.54,112,0.387,3,0,PM,0
+adhoc_81f38b50,gpt-6-astra,Pack And Pour Fruit,omen/rig-1,20,2026-09-22T18:17:17.806790+00:00,0.1,give_up,give_up,29,245.1,5.87,13.29,102,0.351,5,2,PM,0
+adhoc_cd59a127,claude-opus-5,Stack Bowls,omen/rig-2,41,2026-09-22T20:40:35.085248+00:00,0.5,done,done,39,403.7,9.01,25.68,514,0.876,5,4,(not coded),0
+adhoc_745609e7,claude-opus-5,Stack Bowls,omen/rig-2,42,2026-09-22T20:50:04.675837+00:00,0,give_up,give_up,35,490.2,11.2,38.37,800,0.855,8,5,(not coded),0
+adhoc_2735a941,claude-opus-5,Stack Bowls,omen/rig-2,43,2026-09-22T21:56:27.645601+00:00,0,give_up,give_up,35,506.5,8.64,49.06,842,0.849,9,9,(not coded),0
+adhoc_0533a42b,claude-opus-5,Stack Bowls,omen/rig-2,44,2026-09-22T22:05:37.138167+00:00,1,done,done,35,417.0,9.85,40.18,705,0.866,3,1,COMPLETE,0
+adhoc_5e27c80f,claude-opus-5,Stack Bowls,omen/rig-2,45,2026-09-22T22:14:48.656018+00:00,0,give_up,give_up,34,606.5,10.84,53.33,1003,0.856,8,8,(not coded),0
+adhoc_15e45bc4,claude-opus-5,Stack Bowls,omen/rig-2,46,2026-09-22T22:25:29.860991+00:00,0.25,done,done,35,526.6,12.66,50.82,856,0.858,2,1,(not coded),0
+adhoc_76335623,claude-opus-5,Stack Bowls,omen/rig-2,47,2026-09-22T22:34:52.378184+00:00,1,done,done,26,298.5,9.31,24.81,649,0.844,3,1,COMPLETE,0
+adhoc_a735fa5e,claude-opus-5,Stack Bowls,omen/rig-2,48,2026-09-22T22:40:42.942971+00:00,0.25,done,done,37,479.7,9.71,40.49,737,0.865,3,3,(not coded),0
+adhoc_76bcd18e,claude-opus-5,Stack Bowls,omen/rig-2,49,2026-09-22T22:54:27.493683+00:00,0.5,give_up,none(forced),40,445.9,8.06,27.93,581,0.878,5,4,(not coded),0
+adhoc_7e19792c,claude-opus-5,Stack Bowls,omen/rig-2,50,2026-09-22T23:05:47.895098+00:00,0.75,done,done,33,417.2,8.29,39.56,794,0.868,4,4,(not coded),0
+adhoc_2a28d514,claude-opus-5,Stack Bowls,omen/rig-2,51,2026-09-22T23:16:01.457926+00:00,0.25,give_up,none(forced),40,399.8,7.07,41.12,596,0.873,4,0,(not coded),0
+adhoc_4236fcc4,claude-opus-5,Stack Bowls,omen/rig-2,52,2026-09-22T23:23:34.915973+00:00,0,give_up,give_up,33,456.7,12.36,27.07,769,0.857,4,2,(not coded),0
+adhoc_62211a47,claude-opus-5,Stack Bowls,omen/rig-2,53,2026-09-22T23:31:54.407772+00:00,0.5,done,done,36,612.6,12.27,36.76,1014,0.861,3,3,(not coded),0
+adhoc_aa147130,claude-opus-5,Stack Bowls,omen/rig-2,54,2026-09-22T23:42:48.496998+00:00,0,done,done,35,570.2,13.93,45.73,936,0.861,3,2,(not coded),0
+adhoc_d9994827,claude-opus-5,Stack Bowls,omen/rig-2,55,2026-09-22T23:53:02.525057+00:00,0.5,give_up,give_up,40,601.6,11.18,46.2,827,0.879,5,3,(not coded),0
+adhoc_5bb09466,claude-opus-5,Stack Bowls,omen/rig-2,56,2026-09-23T00:04:19.303959+00:00,0.25,done,done,37,511.4,11.82,40.63,695,0.873,2,1,(not coded),0
+adhoc_8df2c275,claude-opus-5,Stack Bowls,omen/rig-2,57,2026-09-23T00:15:09.181609+00:00,0,done,done,36,465.7,10.75,31.73,712,0.857,4,4,(not coded),0
+adhoc_9d6a3f38,claude-opus-5,Stack Bowls,omen/rig-2,58,2026-09-23T00:25:25.585060+00:00,0.25,done,done,36,446.2,9.55,33.45,682,0.869,2,2,(not coded),0
+adhoc_264a8a61,claude-opus-5,Stack Bowls,omen/rig-2,59,2026-09-23T00:33:38.765851+00:00,0,give_up,give_up,39,400.7,8.09,18.96,606,0.867,5,4,(not coded),0
+adhoc_16022541,claude-opus-5,Stack Bowls,omen/rig-2,60,2026-09-23T00:41:55.457320+00:00,0,done,done,36,661.1,14.57,43.67,1072,0.859,9,8,(not coded),0
+adhoc_72a90a0a,claude-opus-5-5,Stack Bowls,omen/rig-2,21,2026-09-22T18:28:58.206731+00:00,0.75,done,done,36,259.6,5.11,14.79,397,0.871,5,4,PM,1
+adhoc_b5fa8b20,claude-opus-5-5,Stack Bowls,omen/rig-2,22,2026-09-22T18:35:24.830437+00:00,0.25,done,done,37,238.9,4.59,15.71,350,0.875,3,1,BU,0
+adhoc_7d4116c2,claude-opus-5-5,Stack Bowls,omen/rig-2,23,2026-09-22T18:40:47.051343+00:00,0,done,done,36,266.1,5.11,15.08,412,0.869,4,3,PM,0
+adhoc_fa110597,claude-opus-5-5,Stack Bowls,omen/rig-2,24,2026-09-22T18:46:06.416307+00:00,0.75,done,done,31,223.1,5.01,15.82,394,0.861,6,5,PM,1
+adhoc_c97eb33b,claude-opus-5-5,Stack Bowls,omen/rig-2,25,2026-09-22T18:51:21.595158+00:00,0,give_up,give_up,37,297.3,6.03,15.46,433,0.87,4,3,PM,0
+adhoc_9327e2e7,claude-opus-5-5,Stack Bowls,omen/rig-2,26,2026-09-22T18:57:25.546518+00:00,0.5,give_up,none(forced),40,304.4,6.07,12.08,368,0.88,4,3,BU,0
+adhoc_1a7007be,claude-opus-5-5,Stack Bowls,omen/rig-2,27,2026-09-22T19:03:10.636346+00:00,0,give_up,give_up,35,263.4,5.62,13.8,430,0.867,4,3,PM,0
+adhoc_dc9d3cf7,claude-opus-5-5,Stack Bowls,omen/rig-2,28,2026-09-22T19:09:09.533412+00:00,0,give_up,give_up,36,268.4,5.39,16.53,435,0.871,3,2,PM,0
+adhoc_8087bad6,claude-opus-5-5,Stack Bowls,omen/rig-2,29,2026-09-22T19:14:40.042353+00:00,0,give_up,give_up,37,277.1,5.49,19.43,416,0.867,3,1,HW,0
+adhoc_6d8903ca,claude-opus-5-5,Stack Bowls,omen/rig-2,30,2026-09-22T19:21:45.553843+00:00,0.25,done,done,36,325.3,6.48,22.16,523,0.853,7,5,RK,0
+adhoc_570715d2,claude-opus-5-5,Stack Bowls,omen/rig-2,31,2026-09-22T19:41:39.376954+00:00,0.75,done,done,36,285.1,5.7,20.76,487,0.866,3,1,PM,1
+adhoc_c35330bc,claude-opus-5-5,Stack Bowls,omen/rig-2,32,2026-09-22T19:50:23.618470+00:00,0.5,done,done,38,296.8,5.51,18.18,438,0.876,3,3,RK,0
+adhoc_b46c8b4c,claude-opus-5-5,Stack Bowls,omen/rig-2,33,2026-09-22T19:56:09.080368+00:00,0.5,done,done,38,259.5,5.43,19.11,398,0.876,2,2,PM,0
+adhoc_5fa3cc62,claude-opus-5-5,Stack Bowls,omen/rig-2,34,2026-09-22T20:01:10.169441+00:00,0.75,done,done,26,195.6,5.43,15.81,365,0.849,2,2,PM,1
+adhoc_d34c98e6,claude-opus-5-5,Stack Bowls,omen/rig-2,35,2026-09-22T20:05:31.628202+00:00,0.75,done,done,29,197.1,4.66,13.24,358,0.855,2,2,PM,1
+adhoc_edc23234,claude-opus-5-5,Stack Bowls,omen/rig-2,36,2026-09-22T20:09:36.872866+00:00,0.5,done,done,32,279.9,6.51,20.13,523,0.856,5,2,RK,0
+adhoc_a8091683,claude-opus-5-5,Stack Bowls,omen/rig-2,37,2026-09-22T20:15:55.041476+00:00,0.75,done,done,19,136.9,5.36,14.59,364,0.821,2,1,PM,1
+adhoc_2fa6b10e,claude-opus-5-5,Stack Bowls,omen/rig-2,38,2026-09-22T20:19:04.715753+00:00,0.75,done,done,30,221.6,5.68,20.33,433,0.854,2,2,PM,1
+adhoc_fcffc9d2,claude-opus-5-5,Stack Bowls,omen/rig-2,39,2026-09-22T20:26:39.323672+00:00,0.75,give_up,none(forced),40,310.1,5.27,23.89,392,0.881,4,2,PM,0
+adhoc_758bdf6c,claude-opus-5-5,Stack Bowls,omen/rig-2,40,2026-09-22T20:32:35.945943+00:00,0,done,done,38,298.6,6.15,17.86,448,0.874,2,2,PM,0
+adhoc_84213354,gpt-6-astra,Stack Bowls,omen/rig-2,1,2026-09-22T16:13:32.176681+00:00,0.75,done,done,26,226.6,7.08,16.37,139,0.36,3,1,PM,1
+adhoc_5dbfc05f,gpt-6-astra,Stack Bowls,omen/rig-2,2,2026-09-22T16:28:13.964781+00:00,0.75,done,done,24,200.4,5.93,15.32,124,0.383,3,2,PM,1
+adhoc_4ebd22d9,gpt-6-astra,Stack Bowls,omen/rig-2,3,2026-09-22T16:32:36.840961+00:00,0.75,done,done,23,186.2,6.27,11.42,111,0.397,2,2,PM,1
+adhoc_82cb1cee,gpt-6-astra,Stack Bowls,omen/rig-2,4,2026-09-22T16:39:39.027737+00:00,0.75,done,done,32,275.4,6.55,16.03,122,0.324,6,4,PM,1
+adhoc_744c9a12,gpt-6-astra,Stack Bowls,omen/rig-2,5,2026-09-22T16:48:14.141820+00:00,0.75,done,done,26,230.1,6.97,13.8,137,0.355,4,4,PM,1
+adhoc_0c744180,gpt-6-astra,Stack Bowls,omen/rig-2,6,2026-09-22T17:02:53.558028+00:00,0.75,done,done,24,175.5,6.53,10.85,111,0.388,3,1,PM,1
+adhoc_6264db49,gpt-6-astra,Stack Bowls,omen/rig-2,7,2026-09-22T17:10:46.936820+00:00,0.75,done,done,24,184.5,6.03,10.25,138,0.375,3,3,PM,1
+adhoc_8987b031,gpt-6-astra,Stack Bowls,omen/rig-2,8,2026-09-22T17:17:25.521332+00:00,1,done,done,23,160.4,5.24,8.53,113,0.397,2,1,COMPLETE,0
+adhoc_2190daaf,gpt-6-astra,Stack Bowls,omen/rig-2,9,2026-09-22T17:20:54.319720+00:00,1,done,done,25,171.0,4.94,9.18,102,0.383,2,0,COMPLETE,0
+adhoc_b7f0d5d3,gpt-6-astra,Stack Bowls,omen/rig-2,10,2026-09-22T17:25:34.255015+00:00,1,done,done,34,247.9,6.05,11.1,106,0.321,4,4,COMPLETE,0
+adhoc_88a31f16,gpt-6-astra,Stack Bowls,omen/rig-2,11,2026-09-22T17:33:18.408032+00:00,0.75,done,done,28,211.0,5.84,11.69,124,0.349,4,4,PM,1
+adhoc_8bd38133,gpt-6-astra,Stack Bowls,omen/rig-2,12,2026-09-22T17:38:54.866356+00:00,0.5,give_up,give_up,32,292.8,6.45,19.6,170,0.309,7,4,NG,0
+adhoc_d426b9ec,gpt-6-astra,Stack Bowls,omen/rig-2,13,2026-09-22T17:45:17.088709+00:00,0.5,give_up,give_up,34,289.6,6.89,15.23,159,0.299,4,4,NG,0
+adhoc_75a90497,gpt-6-astra,Stack Bowls,omen/rig-2,14,2026-09-22T17:51:44.642943+00:00,0.75,done,done,30,218.4,5.74,11.66,127,0.331,4,3,PM,1
+adhoc_68dd7ddb,gpt-6-astra,Stack Bowls,omen/rig-2,15,2026-09-22T17:57:02.867907+00:00,0.75,done,done,29,245.4,6.35,34.25,118,0.343,3,3,PM,1
+adhoc_244563fd,gpt-6-astra,Stack Bowls,omen/rig-2,16,2026-09-22T18:01:56.238084+00:00,0.75,done,done,23,182.0,6.25,14.59,117,0.392,2,1,PM,1
+adhoc_c894aefc,gpt-6-astra,Stack Bowls,omen/rig-2,17,2026-09-22T18:05:59.852854+00:00,0,give_up,give_up,34,309.4,7.64,16.4,150,0.299,5,3,NG,0
+adhoc_fc5c5d74,gpt-6-astra,Stack Bowls,omen/rig-2,18,2026-09-22T18:12:34.728591+00:00,0,give_up,give_up,27,268.7,8.34,22.77,153,0.347,8,8,NG,0
+adhoc_9f711f10,gpt-6-astra,Stack Bowls,omen/rig-2,19,2026-09-22T18:17:56.441589+00:00,0,give_up,give_up,32,311.3,7.04,18.29,156,0.312,5,5,PM,0
+adhoc_eb8a7c3b,gpt-6-astra,Stack Bowls,omen/rig-2,20,2026-09-22T18:23:56.787366+00:00,0.75,done,done,31,253.3,6.56,11.72,133,0.32,4,2,PM,1
+adhoc_20f29643,claude-opus-5,Stand Up Bottles,omen-2/rig-5,41,2026-09-22T20:54:55.552738+00:00,0.1,give_up,give_up,30,657.8,14.94,59.73,1308,0.832,2,2,(not coded),0
+adhoc_a5cf3430,claude-opus-5,Stand Up Bottles,omen-2/rig-5,42,2026-09-22T21:56:33.452823+00:00,0.1,give_up,give_up,37,490.4,10.35,29.81,696,0.861,1,1,(not coded),0
+adhoc_58096a0b,claude-opus-5,Stand Up Bottles,omen-2/rig-5,43,2026-09-22T22:05:41.845837+00:00,0.1,give_up,give_up,29,446.6,11.29,27.51,965,0.846,0,0,(not coded),0
+adhoc_bac591f8,claude-opus-5,Stand Up Bottles,omen-2/rig-5,44,2026-09-22T22:14:46.534864+00:00,0,done,done,39,477.0,8.94,38.46,651,0.877,0,0,(not coded),0
+adhoc_90322df9,claude-opus-5,Stand Up Bottles,omen-2/rig-5,45,2026-09-22T22:25:07.081145+00:00,0.1,give_up,give_up,33,456.3,11.57,30.48,769,0.859,1,1,(not coded),0
+adhoc_b53a7bfa,claude-opus-5,Stand Up Bottles,omen-2/rig-5,46,2026-09-22T22:34:10.569364+00:00,0,give_up,give_up,35,572.5,12.54,55.56,977,0.863,1,0,(not coded),0
+adhoc_b91e77ec,claude-opus-5,Stand Up Bottles,omen-2/rig-5,47,2026-09-22T22:54:29.122526+00:00,0.1,give_up,give_up,36,546.1,11.01,39.8,877,0.861,3,1,(not coded),0
+adhoc_0857509d,claude-opus-5,Stand Up Bottles,omen-2/rig-5,48,2026-09-22T23:05:57.541718+00:00,0,give_up,none(forced),40,742.8,13.02,55.13,1088,0.872,1,1,(not coded),0
+adhoc_c0470b46,claude-opus-5,Stand Up Bottles,omen-2/rig-5,49,2026-09-22T23:22:45.307227+00:00,0,done,done,29,477.9,12.3,41.67,1007,0.852,0,0,(not coded),0
+adhoc_a3e316a1,claude-opus-5,Stand Up Bottles,omen-2/rig-5,50,2026-09-22T23:31:50.298981+00:00,0,give_up,give_up,38,482.3,10.54,29.49,709,0.872,0,0,(not coded),0
+adhoc_d9940578,claude-opus-5,Stand Up Bottles,omen-2/rig-5,51,2026-09-22T23:42:30.627477+00:00,0,done,done,37,669.5,14.25,43.05,1014,0.871,0,0,(not coded),0
+adhoc_b1f8db16,claude-opus-5,Stand Up Bottles,omen-2/rig-5,52,2026-09-22T23:54:46.647554+00:00,0.1,give_up,give_up,34,446.7,9.01,33.32,765,0.857,0,0,(not coded),0
+adhoc_fba279c0,claude-opus-5,Stand Up Bottles,omen-2/rig-5,53,2026-09-23T00:04:28.266097+00:00,0.1,give_up,give_up,38,573.1,11.22,38.92,839,0.87,1,0,(not coded),0
+adhoc_705ad400,claude-opus-5,Stand Up Bottles,omen-2/rig-5,54,2026-09-23T00:15:14.392733+00:00,0.1,give_up,give_up,35,442.9,9.15,28.62,667,0.863,4,0,(not coded),0
+adhoc_f451f55f,claude-opus-5,Stand Up Bottles,omen-2/rig-5,55,2026-09-23T00:25:16.765645+00:00,0,done,done,39,529.9,11.61,32.04,828,0.876,2,1,(not coded),0
+adhoc_4d360671,claude-opus-5,Stand Up Bottles,omen-2/rig-5,56,2026-09-23T00:35:20.478813+00:00,0.1,give_up,give_up,36,585.0,9.9,56.92,890,0.867,4,2,(not coded),0
+adhoc_dd6198e7,claude-opus-5,Stand Up Bottles,omen-2/rig-5,57,2026-09-23T00:46:42.204100+00:00,0,give_up,give_up,36,491.4,9.65,36.77,746,0.87,0,0,(not coded),0
+adhoc_4b133657,claude-opus-5,Stand Up Bottles,omen-2/rig-5,58,2026-09-23T00:57:30.711579+00:00,0,overheat,none(forced),12,323.2,20.08,56.85,1545,0.717,2,1,(not coded),0
+adhoc_9970d85d,claude-opus-5,Stand Up Bottles,omen-2/rig-5,59,2026-09-23T01:04:12.688885+00:00,0.1,give_up,give_up,37,493.9,11.62,33.8,738,0.872,0,0,(not coded),0
+adhoc_30d8a194,claude-opus-5,Stand Up Bottles,omen-2/rig-5,60,2026-09-23T01:14:59.304064+00:00,0,give_up,give_up,39,637.5,14.53,41.35,933,0.871,3,2,(not coded),0
+adhoc_b5e10867,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,21,2026-09-22T18:24:28.876330+00:00,0,give_up,give_up,34,242.7,5.02,18.01,423,0.858,2,0,PM,0
+adhoc_132c8a88,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,22,2026-09-22T18:29:51.389760+00:00,0,give_up,give_up,33,271.3,6.23,19.43,488,0.859,4,3,NG,0
+adhoc_14f73148,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,23,2026-09-22T18:35:19.896011+00:00,0,done,done,39,278.6,5.04,18.41,405,0.879,0,0,PM,1
+adhoc_c21c86c2,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,24,2026-09-22T18:44:27.784321+00:00,0,give_up,give_up,38,303.3,5.9,18.88,474,0.873,9,7,NG,0
+adhoc_9fc8a745,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,25,2026-09-22T18:51:23.471666+00:00,0,give_up,give_up,33,361.8,7.49,60.33,551,0.862,2,0,RK,0
+adhoc_b85d2168,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,26,2026-09-22T18:58:35.844980+00:00,0,give_up,give_up,38,342.8,6.78,23.32,543,0.871,5,4,PM,0
+adhoc_cb1b67d7,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,27,2026-09-22T19:05:17.157308+00:00,0,give_up,give_up,30,296.5,7.84,17.77,601,0.846,6,5,RK,0
+adhoc_a1fd08bf,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,28,2026-09-22T19:12:09.410245+00:00,0,done,done,37,304.5,5.4,23.81,502,0.878,2,0,PM,0
+adhoc_e3b14824,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,29,2026-09-22T19:18:20.625819+00:00,0,give_up,give_up,35,358.0,8.71,29.68,672,0.864,6,5,RK,0
+adhoc_9a96764d,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,30,2026-09-22T19:41:42.800715+00:00,0.1,give_up,give_up,27,234.8,6.18,25.34,538,0.831,2,2,RK,0
+adhoc_236a45d9,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,31,2026-09-22T19:50:21.677743+00:00,0,give_up,give_up,33,249.8,6.08,14.17,438,0.856,4,3,NG,0
+adhoc_a9d5bc4b,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,32,2026-09-22T19:56:15.167442+00:00,0,give_up,give_up,35,319.3,6.92,19.72,604,0.864,6,5,NG,0
+adhoc_271513da,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,33,2026-09-22T20:02:48.087854+00:00,0,give_up,give_up,31,305.8,7.48,29.88,597,0.853,5,4,NG,0
+adhoc_22e090b4,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,34,2026-09-22T20:09:40.463885+00:00,0,give_up,give_up,27,261.8,7.26,19.34,609,0.839,5,3,RK,0
+adhoc_1c817a13,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,35,2026-09-22T20:15:57.687362+00:00,0,give_up,give_up,33,244.1,5.45,15.86,423,0.866,7,4,RK,0
+adhoc_0d5425e8,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,36,2026-09-22T20:25:22.009353+00:00,0,give_up,give_up,29,209.2,4.62,21.07,430,0.843,2,1,PM,0
+adhoc_7f971858,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,37,2026-09-22T20:31:24.760571+00:00,0,give_up,give_up,27,207.6,6.12,15.95,449,0.844,5,4,NG,0
+adhoc_fdff5e0a,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,38,2026-09-22T20:36:45.009702+00:00,0,give_up,give_up,32,269.3,5.95,20.49,506,0.861,3,0,RK,0
+adhoc_a527ea18,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,39,2026-09-22T20:42:16.669716+00:00,0,give_up,give_up,32,216.6,4.88,16.54,370,0.858,2,0,RK,0
+adhoc_72237537,claude-opus-5-5,Stand Up Bottles,omen-2/rig-5,40,2026-09-22T20:46:56.105287+00:00,0,give_up,give_up,30,298.7,7.05,27.16,607,0.845,6,3,NG,0
+adhoc_0b7a1dcf,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,1,2026-09-22T16:13:36.502264+00:00,0,give_up,give_up,27,245.0,7.16,15.86,142,0.342,4,2,NG,0
+adhoc_b9d42309,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,2,2026-09-22T16:19:32.740479+00:00,0.1,give_up,give_up,20,187.5,7.11,17.39,154,0.415,2,1,NG,0
+adhoc_006960bb,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,3,2026-09-22T16:26:04.588769+00:00,0,give_up,give_up,20,194.8,7.14,18.83,178,0.407,2,1,NG,0
+adhoc_9a75f48a,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,4,2026-09-22T16:31:15.421138+00:00,0.1,give_up,give_up,27,267.0,7.25,19.09,173,0.342,3,3,NG,0
+adhoc_7a89a22a,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,5,2026-09-22T16:39:46.406982+00:00,0,give_up,give_up,34,318.7,8.02,18.41,164,0.292,7,6,NG,0
+adhoc_e73ab824,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,6,2026-09-22T16:48:17.327093+00:00,0,give_up,give_up,15,164.2,8.11,21.76,190,0.464,2,2,NG,0
+adhoc_0967e483,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,7,2026-09-22T16:57:12.269693+00:00,0,give_up,give_up,22,203.6,8.02,13.44,152,0.396,2,1,NG,0
+adhoc_d2a0d4ef,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,8,2026-09-22T17:03:00.641360+00:00,0,give_up,give_up,17,194.5,9.2,22.97,214,0.425,2,2,RK,0
+adhoc_525a1b6c,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,9,2026-09-22T17:10:51.250507+00:00,0,give_up,give_up,30,275.2,6.86,22.5,155,0.321,5,2,NG,0
+adhoc_33149326,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,10,2026-09-22T17:17:31.709486+00:00,0,give_up,give_up,28,249.3,6.53,17.51,155,0.339,6,5,NG,0
+adhoc_6b42cafa,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,11,2026-09-22T17:24:00.635488+00:00,0,give_up,give_up,17,171.9,7.81,20.39,190,0.431,0,0,RK,0
+adhoc_c1c1e28a,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,12,2026-09-22T17:33:23.838042+00:00,0,give_up,give_up,20,187.9,8.11,13.43,160,0.409,4,4,NG,0
+adhoc_990dac28,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,13,2026-09-22T17:38:46.959424+00:00,0,give_up,give_up,24,227.0,8.06,16.38,159,0.374,4,3,RK,0
+adhoc_7e97033d,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,14,2026-09-22T17:43:21.861279+00:00,0,give_up,give_up,30,282.7,7.35,16.02,151,0.327,7,6,NG,0
+adhoc_f2186810,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,15,2026-09-22T17:48:46.276914+00:00,0,give_up,give_up,18,189.2,8.02,21.34,179,0.431,2,2,NG,0
+adhoc_2fe7a8f5,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,16,2026-09-22T17:52:35.118703+00:00,0.1,give_up,give_up,32,328.6,8.76,21.01,167,0.301,9,6,SD,0
+adhoc_46998b33,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,17,2026-09-22T17:59:27.505175+00:00,0.1,give_up,give_up,34,333.0,7.76,29.57,165,0.293,5,4,NG,0
+adhoc_0e28d23e,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,18,2026-09-22T18:06:02.570166+00:00,0,give_up,give_up,35,357.4,8.51,17.73,165,0.286,5,3,NG,0
+adhoc_09287e7e,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,19,2026-09-22T18:12:55.193617+00:00,0,give_up,give_up,20,268.3,10.13,28.76,187,0.406,2,2,NG,0
+adhoc_b044a3e4,gpt-6-astra,Stand Up Bottles,omen-2/rig-5,20,2026-09-22T18:18:02.151978+00:00,0.1,give_up,give_up,26,312.6,9.58,24.62,183,0.345,2,1,NG,0
+adhoc_c01371fc,claude-opus-5,Store In Safe,omen-2/rig-3,41,2026-09-22T22:03:18.128708+00:00,0,overheat,none(forced),29,318.5,8.64,23.26,496,0.845,2,0,(not coded),0
+adhoc_8eca0a87,claude-opus-5,Store In Safe,omen-2/rig-3,42,2026-09-22T22:09:41.438773+00:00,0.75,give_up,none(forced),40,368.5,7.25,23.01,416,0.877,3,2,(not coded),0
+adhoc_bc295a83,claude-opus-5,Store In Safe,omen-2/rig-3,43,2026-09-22T22:19:53.617474+00:00,0.5,give_up,none(forced),40,359.5,6.49,32.89,418,0.88,6,2,(not coded),0
+adhoc_b6b2e4eb,claude-opus-5,Store In Safe,omen-2/rig-3,44,2026-09-22T22:27:53.223689+00:00,0.5,give_up,none(forced),40,390.2,7.06,32.99,448,0.879,6,4,(not coded),0
+adhoc_813f863c,claude-opus-5,Store In Safe,omen-2/rig-3,45,2026-09-22T22:35:24.663860+00:00,0,give_up,none(forced),40,402.8,7.4,28.24,521,0.877,7,5,(not coded),0
+adhoc_15cdeaed,claude-opus-5,Store In Safe,omen-2/rig-3,46,2026-09-22T22:54:21.007864+00:00,0,done,done,33,343.9,7.25,24.13,554,0.844,1,0,(not coded),0
+adhoc_e58aea82,claude-opus-5,Store In Safe,omen-2/rig-3,47,2026-09-22T23:04:19.613316+00:00,0,give_up,give_up,39,431.2,7.56,31.47,568,0.872,4,1,(not coded),0
+adhoc_43ad72fc,claude-opus-5,Store In Safe,omen-2/rig-3,48,2026-09-22T23:16:54.622158+00:00,0.5,done,done,38,375.0,6.95,33.38,500,0.873,5,2,(not coded),0
+adhoc_478fd2f0,claude-opus-5,Store In Safe,omen-2/rig-3,49,2026-09-22T23:24:51.343447+00:00,0,give_up,give_up,35,450.5,10.31,23.01,583,0.855,6,4,(not coded),0
+adhoc_86c2e282,claude-opus-5,Store In Safe,omen-2/rig-3,50,2026-09-22T23:36:23.495095+00:00,0.5,done,done,36,394.2,9.19,22.12,526,0.868,4,1,(not coded),0
+adhoc_4ae92aac,claude-opus-5,Store In Safe,omen-2/rig-3,51,2026-09-22T23:44:02.435694+00:00,0.5,give_up,none(forced),40,382.8,7.29,20.03,390,0.88,3,0,(not coded),0
+adhoc_00188e02,claude-opus-5,Store In Safe,omen-2/rig-3,52,2026-09-22T23:52:07.406462+00:00,0.25,done,done,39,433.9,8.62,32.77,548,0.872,6,1,(not coded),0
+adhoc_9d99ae23,claude-opus-5,Store In Safe,omen-2/rig-3,53,2026-09-23T00:00:00.348903+00:00,0,overheat,none(forced),8,108.9,10.49,25.38,626,0.732,1,0,(not coded),0
+adhoc_e7afdd0d,claude-opus-5,Store In Safe,omen-2/rig-3,54,2026-09-23T00:04:15.249132+00:00,0.5,done,done,36,381.0,8.0,31.11,494,0.868,6,2,(not coded),0
+adhoc_7af13ec9,claude-opus-5,Store In Safe,omen-2/rig-3,55,2026-09-23T00:12:38.087874+00:00,0,overheat,none(forced),24,230.0,6.89,26.96,477,0.83,5,4,(not coded),0
+adhoc_c138ba80,claude-opus-5,Store In Safe,omen-2/rig-3,56,2026-09-23T00:18:16.661211+00:00,0,done,done,39,395.4,9.1,23.21,476,0.874,8,6,(not coded),0
+adhoc_3f7bb941,claude-opus-5,Store In Safe,omen-2/rig-3,57,2026-09-23T00:25:44.980132+00:00,0.5,done,done,39,360.4,7.12,19.33,467,0.873,3,1,(not coded),0
+adhoc_27e0c67f,claude-opus-5,Store In Safe,omen-2/rig-3,58,2026-09-23T00:32:57.747422+00:00,0,done,done,34,322.4,7.35,22.73,481,0.857,6,4,(not coded),0
+adhoc_9b37e6ab,claude-opus-5,Store In Safe,omen-2/rig-3,59,2026-09-23T00:42:24.002471+00:00,0.5,done,done,38,355.3,7.69,24.9,454,0.874,8,7,(not coded),0
+adhoc_ec8dc88e,claude-opus-5,Store In Safe,omen-2/rig-3,60,2026-09-23T00:49:08.224557+00:00,0,overheat,none(forced),19,183.7,7.83,19.98,413,0.812,1,0,(not coded),0
+adhoc_74de7d67,claude-opus-5-5,Store In Safe,omen-2/rig-3,21,2026-09-22T18:35:41.980935+00:00,0.75,done,done,38,206.2,3.62,13.93,274,0.876,4,2,FS,0
+adhoc_46ab2c83,claude-opus-5-5,Store In Safe,omen-2/rig-3,22,2026-09-22T18:45:11.860773+00:00,0.25,done,done,34,244.4,5.12,15.65,383,0.862,5,1,CO,0
+adhoc_9d0c7c76,claude-opus-5-5,Store In Safe,omen-2/rig-3,23,2026-09-22T18:51:45.375901+00:00,0,give_up,give_up,28,197.5,5.09,20.38,382,0.851,7,6,NG,0
+adhoc_e3463608,claude-opus-5-5,Store In Safe,omen-2/rig-3,24,2026-09-22T18:56:33.390566+00:00,0.75,give_up,give_up,35,257.0,4.67,16.38,375,0.865,5,2,FS,0
+adhoc_0d5a923a,claude-opus-5-5,Store In Safe,omen-2/rig-3,25,2026-09-22T19:01:58.408808+00:00,0.75,overheat,none(forced),33,232.7,4.69,13.77,331,0.86,5,2,FS,0
+adhoc_901e49d8,claude-opus-5-5,Store In Safe,omen-2/rig-3,26,2026-09-22T19:06:36.028572+00:00,0.5,done,done,38,269.7,5.18,16.38,376,0.874,6,3,PM,0
+adhoc_64352e5f,claude-opus-5-5,Store In Safe,omen-2/rig-3,27,2026-09-22T19:12:25.484045+00:00,0.75,done,done,36,244.1,4.83,14.74,307,0.87,4,2,FS,0
+adhoc_118b151b,claude-opus-5-5,Store In Safe,omen-2/rig-3,28,2026-09-22T19:18:38.757254+00:00,1,done,done,36,239.2,4.9,14.44,322,0.867,6,4,COMPLETE,0
+adhoc_c5d84aa1,claude-opus-5-5,Store In Safe,omen-2/rig-3,29,2026-09-22T19:50:46.802771+00:00,0.5,done,done,37,240.2,5.01,15.86,344,0.874,3,1,BU,0
+adhoc_e82cd960,claude-opus-5-5,Store In Safe,omen-2/rig-3,30,2026-09-22T19:56:05.084666+00:00,0.25,give_up,give_up,32,201.6,4.47,13.98,309,0.861,5,2,NG,0
+adhoc_8b93656c,claude-opus-5-5,Store In Safe,omen-2/rig-3,31,2026-09-22T20:00:25.215727+00:00,0.5,done,done,37,261.7,5.12,11.66,324,0.871,7,3,PM,0
+adhoc_fba6820e,claude-opus-5-5,Store In Safe,omen-2/rig-3,32,2026-09-22T20:05:48.365040+00:00,0.25,give_up,give_up,32,216.9,5.14,14.73,289,0.862,4,1,HW,0
+adhoc_3d70e589,claude-opus-5-5,Store In Safe,omen-2/rig-3,33,2026-09-22T20:10:59.553843+00:00,0.5,give_up,give_up,31,212.1,5.08,14.88,303,0.859,5,4,RK,0
+adhoc_fd4aac8b,claude-opus-5-5,Store In Safe,omen-2/rig-3,34,2026-09-22T20:16:45.298453+00:00,0.5,give_up,give_up,37,243.3,4.59,15.18,317,0.873,5,2,CO,0
+adhoc_e2b1634c,claude-opus-5-5,Store In Safe,omen-2/rig-3,35,2026-09-22T20:26:32.182473+00:00,0.75,give_up,give_up,37,220.1,3.94,15.29,274,0.874,6,4,FS,0
+adhoc_21c02a64,claude-opus-5-5,Store In Safe,omen-2/rig-3,36,2026-09-22T20:31:42.569898+00:00,0.25,give_up,give_up,29,192.9,4.71,15.27,331,0.852,6,4,SD,0
+adhoc_9e35bf03,claude-opus-5-5,Store In Safe,omen-2/rig-3,37,2026-09-22T20:36:37.200101+00:00,0,give_up,give_up,25,184.1,5.45,16.41,392,0.836,3,2,NG,0
+adhoc_275a33d3,claude-opus-5-5,Store In Safe,omen-2/rig-3,38,2026-09-22T20:41:55.718990+00:00,0.5,give_up,give_up,38,268.2,5.55,15.05,332,0.875,7,5,PM,0
+adhoc_9b50f232,claude-opus-5-5,Store In Safe,omen-2/rig-3,39,2026-09-22T20:47:19.569229+00:00,0.5,done,done,38,255.4,4.28,19.71,363,0.878,6,6,RK,0
+adhoc_73a0135c,claude-opus-5-5,Store In Safe,omen-2/rig-3,40,2026-09-22T21:56:24.491013+00:00,0.5,done,done,38,250.1,5.1,16.65,288,0.871,4,1,PM,0
+adhoc_b3fed07e,gpt-6-astra,Store In Safe,omen-2/rig-3,1,2026-09-22T16:13:28.056817+00:00,0,give_up,give_up,10,94.3,7.25,12.37,170,0.507,1,1,RK,0
+adhoc_e3395e6b,gpt-6-astra,Store In Safe,omen-2/rig-3,2,2026-09-22T16:20:12.776620+00:00,0.5,give_up,give_up,35,285.9,5.85,23.01,106,0.31,7,6,NG,0
+adhoc_76312ad0,gpt-6-astra,Store In Safe,omen-2/rig-3,3,2026-09-22T16:26:02.792590+00:00,0.25,give_up,give_up,31,228.8,6.17,11.91,106,0.339,8,7,NG,0
+adhoc_ebeff3ff,gpt-6-astra,Store In Safe,omen-2/rig-3,4,2026-09-22T16:31:07.506222+00:00,0.5,give_up,give_up,33,240.5,5.87,11.78,107,0.322,9,7,NG,0
+adhoc_05fab2b6,gpt-6-astra,Store In Safe,omen-2/rig-3,5,2026-09-22T16:39:35.247065+00:00,0.25,give_up,give_up,30,244.0,6.03,14.49,111,0.342,7,6,NG,0
+adhoc_29b81aa0,gpt-6-astra,Store In Safe,omen-2/rig-3,6,2026-09-22T16:48:10.454789+00:00,1,give_up,none(forced),40,271.3,5.58,8.89,101,0.287,9,7,COMPLETE,0
+adhoc_92b0e8f2,gpt-6-astra,Store In Safe,omen-2/rig-3,7,2026-09-22T17:02:50.158515+00:00,0.5,give_up,give_up,33,231.5,4.91,13.37,103,0.324,5,4,NG,0
+adhoc_6d847f17,gpt-6-astra,Store In Safe,omen-2/rig-3,8,2026-09-22T17:10:43.069749+00:00,0.75,give_up,none(forced),40,304.3,6.2,13.03,106,0.286,6,3,FS,0
+adhoc_9fb0ac79,gpt-6-astra,Store In Safe,omen-2/rig-3,9,2026-09-22T17:17:21.675869+00:00,0.25,give_up,give_up,28,195.8,5.88,8.71,109,0.36,5,3,NG,0
+adhoc_e712ce01,gpt-6-astra,Store In Safe,omen-2/rig-3,10,2026-09-22T17:23:53.857087+00:00,0.5,give_up,give_up,31,212.2,5.57,12.03,98,0.34,7,6,PM,0
+adhoc_463f5d04,gpt-6-astra,Store In Safe,omen-2/rig-3,11,2026-09-22T17:33:14.983035+00:00,0.5,give_up,give_up,34,242.9,5.46,11.4,113,0.314,6,4,PM,0
+adhoc_f2e41a82,gpt-6-astra,Store In Safe,omen-2/rig-3,12,2026-09-22T17:38:50.972951+00:00,0.25,give_up,give_up,32,266.5,7.3,16.77,142,0.317,8,4,NG,0
+adhoc_eb89c04e,gpt-6-astra,Store In Safe,omen-2/rig-3,13,2026-09-22T17:45:13.613211+00:00,0.75,give_up,give_up,37,238.2,4.8,10.73,90,0.308,6,4,FS,0
+adhoc_cf827508,gpt-6-astra,Store In Safe,omen-2/rig-3,14,2026-09-22T17:52:04.557803+00:00,0.5,give_up,give_up,31,211.5,5.01,9.28,112,0.334,11,9,NG,0
+adhoc_0365171f,gpt-6-astra,Store In Safe,omen-2/rig-3,15,2026-09-22T17:56:59.636902+00:00,0.75,give_up,give_up,40,275.8,5.18,10.47,104,0.286,7,5,FS,0
+adhoc_294bea6e,gpt-6-astra,Store In Safe,omen-2/rig-3,16,2026-09-22T18:02:12.511787+00:00,0.5,give_up,give_up,34,283.4,5.89,32.69,99,0.32,9,6,NG,0
+adhoc_d8570335,gpt-6-astra,Store In Safe,omen-2/rig-3,17,2026-09-22T18:08:58.482543+00:00,0.75,give_up,give_up,38,277.8,6.0,10.2,97,0.3,6,3,FS,0
+adhoc_d1e173f9,gpt-6-astra,Store In Safe,omen-2/rig-3,18,2026-09-22T18:17:13.868146+00:00,0.75,give_up,give_up,35,280.6,6.18,12.62,111,0.31,10,7,FS,0
+adhoc_8deefa55,gpt-6-astra,Store In Safe,omen-2/rig-3,19,2026-09-22T18:22:39.687371+00:00,1,give_up,none(forced),40,350.6,5.85,32.09,101,0.284,7,3,COMPLETE,0
+adhoc_c6f29938,gpt-6-astra,Store In Safe,omen-2/rig-3,20,2026-09-22T18:29:25.899476+00:00,0.5,give_up,give_up,35,280.5,6.82,11.23,118,0.303,6,4,NG,0

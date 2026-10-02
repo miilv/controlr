@@ -1,0 +1,13 @@
+# secrets
+.env
+*.env.local
+# research clones (see research/repos/REPOS_MANIFEST.md)
+research/repos/
+# runs / caches
+runs/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.pyc

@@ -1,0 +1,9466 @@
+{
+ "B1_ik_to_kp": {
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 88,
+   "succ_pct": [
+    44.0,
+    37.3,
+    50.9
+   ],
+   "follow": 88,
+   "follow_pct": [
+    44.0,
+    37.3,
+    50.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 17,
+   "succ_pct": [
+    8.5,
+    5.4,
+    13.2
+   ],
+   "follow": 17,
+   "follow_pct": [
+    8.5,
+    5.4,
+    13.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 3,
+   "succ_pct": [
+    1.5,
+    0.5,
+    4.3
+   ],
+   "follow": 3,
+   "follow_pct": [
+    1.5,
+    0.5,
+    4.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "B2_servo_mask": {
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 166,
+   "succ_pct": [
+    83.0,
+    77.2,
+    87.6
+   ],
+   "follow": 166,
+   "follow_pct": [
+    83.0,
+    77.2,
+    87.6
+   ],
+   "wrong_hole": 34
+  },
+  "erase": {
+   "n": 200,
+   "succ": 63,
+   "succ_pct": [
+    31.5,
+    25.5,
+    38.2
+   ],
+   "follow": 63,
+   "follow_pct": [
+    31.5,
+    25.5,
+    38.2
+   ],
+   "wrong_hole": 137
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|phase|R0|seed0": {
+  "loss": 0.07769201695919037,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 85
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 85
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 85
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 85
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 85
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 85
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 85
+  },
+  "erase": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 85
+  },
+  "shift": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 85
+  }
+ },
+ "S1|kp3d|R0|seed0": {
+  "loss": 0.03216482698917389,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 125,
+   "succ_pct": [
+    62.5,
+    55.6,
+    68.9
+   ],
+   "follow": 125,
+   "follow_pct": [
+    62.5,
+    55.6,
+    68.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 38,
+   "succ_pct": [
+    19.0,
+    14.2,
+    25.0
+   ],
+   "follow": 38,
+   "follow_pct": [
+    19.0,
+    14.2,
+    25.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp3d|R1|seed0": {
+  "loss": 0.05430412292480469,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 126,
+   "succ_pct": [
+    63.0,
+    56.1,
+    69.4
+   ],
+   "follow": 126,
+   "follow_pct": [
+    63.0,
+    56.1,
+    69.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 51,
+   "succ_pct": [
+    25.5,
+    20.0,
+    32.0
+   ],
+   "follow": 51,
+   "follow_pct": [
+    25.5,
+    20.0,
+    32.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 14,
+   "succ_pct": [
+    7.0,
+    4.2,
+    11.4
+   ],
+   "follow": 14,
+   "follow_pct": [
+    7.0,
+    4.2,
+    11.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 5,
+   "succ_pct": [
+    2.5,
+    1.1,
+    5.7
+   ],
+   "follow": 5,
+   "follow_pct": [
+    2.5,
+    1.1,
+    5.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 45,
+   "succ_pct": [
+    22.5,
+    17.3,
+    28.8
+   ],
+   "follow": 45,
+   "follow_pct": [
+    22.5,
+    17.3,
+    28.8
+   ],
+   "wrong_hole": 103
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp3d|R2|seed0": {
+  "loss": 0.05134839937090874,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 177,
+   "succ_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "follow": 177,
+   "follow_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 175,
+   "succ_pct": [
+    87.5,
+    82.2,
+    91.4
+   ],
+   "follow": 175,
+   "follow_pct": [
+    87.5,
+    82.2,
+    91.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 151,
+   "succ_pct": [
+    75.5,
+    69.1,
+    80.9
+   ],
+   "follow": 151,
+   "follow_pct": [
+    75.5,
+    69.1,
+    80.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 112,
+   "succ_pct": [
+    56.0,
+    49.1,
+    62.7
+   ],
+   "follow": 112,
+   "follow_pct": [
+    56.0,
+    49.1,
+    62.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 2,
+   "succ_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "follow": 2,
+   "follow_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "wrong_hole": 3
+  },
+  "erase": {
+   "n": 200,
+   "succ": 48,
+   "succ_pct": [
+    24.0,
+    18.6,
+    30.4
+   ],
+   "follow": 48,
+   "follow_pct": [
+    24.0,
+    18.6,
+    30.4
+   ],
+   "wrong_hole": 99
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 177,
+   "follow_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "wrong_hole": 177
+  }
+ },
+ "S1|kp2d|R0|seed0": {
+  "loss": 0.03515477478504181,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 136,
+   "succ_pct": [
+    68.0,
+    61.2,
+    74.1
+   ],
+   "follow": 136,
+   "follow_pct": [
+    68.0,
+    61.2,
+    74.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 10,
+   "succ_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "follow": 10,
+   "follow_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp2d|R1|seed0": {
+  "loss": 0.05715921148657799,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 125,
+   "succ_pct": [
+    62.5,
+    55.6,
+    68.9
+   ],
+   "follow": 125,
+   "follow_pct": [
+    62.5,
+    55.6,
+    68.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 47,
+   "succ_pct": [
+    23.5,
+    18.2,
+    29.8
+   ],
+   "follow": 47,
+   "follow_pct": [
+    23.5,
+    18.2,
+    29.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 23,
+   "succ_pct": [
+    11.5,
+    7.8,
+    16.7
+   ],
+   "follow": 23,
+   "follow_pct": [
+    11.5,
+    7.8,
+    16.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 19,
+   "succ_pct": [
+    9.5,
+    6.2,
+    14.4
+   ],
+   "follow": 19,
+   "follow_pct": [
+    9.5,
+    6.2,
+    14.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 31,
+   "succ_pct": [
+    15.5,
+    11.1,
+    21.2
+   ],
+   "follow": 31,
+   "follow_pct": [
+    15.5,
+    11.1,
+    21.2
+   ],
+   "wrong_hole": 92
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp2d|R2|seed0": {
+  "loss": 0.054728567600250244,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 168,
+   "succ_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "follow": 168,
+   "follow_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 170,
+   "succ_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "follow": 170,
+   "follow_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 172,
+   "succ_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "follow": 172,
+   "follow_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 160,
+   "succ_pct": [
+    80.0,
+    73.9,
+    85.0
+   ],
+   "follow": 160,
+   "follow_pct": [
+    80.0,
+    73.9,
+    85.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 168,
+   "succ_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "follow": 168,
+   "follow_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 114,
+   "succ_pct": [
+    57.0,
+    50.1,
+    63.7
+   ],
+   "follow": 114,
+   "follow_pct": [
+    57.0,
+    50.1,
+    63.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 6,
+   "succ_pct": [
+    3.0,
+    1.4,
+    6.4
+   ],
+   "follow": 6,
+   "follow_pct": [
+    3.0,
+    1.4,
+    6.4
+   ],
+   "wrong_hole": 5
+  },
+  "erase": {
+   "n": 200,
+   "succ": 52,
+   "succ_pct": [
+    26.0,
+    20.4,
+    32.5
+   ],
+   "follow": 52,
+   "follow_pct": [
+    26.0,
+    20.4,
+    32.5
+   ],
+   "wrong_hole": 123
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 168,
+   "follow_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "wrong_hole": 168
+  }
+ },
+ "S1|mask|R0|seed0": {
+  "loss": 0.041425593197345734,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 158,
+   "succ_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "follow": 158,
+   "follow_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "wrong_hole": 33
+  },
+  "erase": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 188
+  }
+ },
+ "S1|mask|R1|seed0": {
+  "loss": 0.06063740327954292,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 155,
+   "succ_pct": [
+    77.5,
+    71.2,
+    82.7
+   ],
+   "follow": 155,
+   "follow_pct": [
+    77.5,
+    71.2,
+    82.7
+   ],
+   "wrong_hole": 33
+  },
+  "erase": {
+   "n": 200,
+   "succ": 51,
+   "succ_pct": [
+    25.5,
+    20.0,
+    32.0
+   ],
+   "follow": 51,
+   "follow_pct": [
+    25.5,
+    20.0,
+    32.0
+   ],
+   "wrong_hole": 107
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 185,
+   "follow_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "wrong_hole": 185
+  }
+ },
+ "S1|mask|R2|seed0": {
+  "loss": 0.05550053343176842,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 145,
+   "succ_pct": [
+    72.5,
+    65.9,
+    78.2
+   ],
+   "follow": 145,
+   "follow_pct": [
+    72.5,
+    65.9,
+    78.2
+   ],
+   "wrong_hole": 31
+  },
+  "erase": {
+   "n": 200,
+   "succ": 35,
+   "succ_pct": [
+    17.5,
+    12.9,
+    23.4
+   ],
+   "follow": 35,
+   "follow_pct": [
+    17.5,
+    12.9,
+    23.4
+   ],
+   "wrong_hole": 86
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 183
+  }
+ },
+ "S1|kp3d+mask|R0|seed0": {
+  "loss": 0.032309550791978836,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 124,
+   "succ_pct": [
+    62.0,
+    55.1,
+    68.4
+   ],
+   "follow": 124,
+   "follow_pct": [
+    62.0,
+    55.1,
+    68.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 36,
+   "succ_pct": [
+    18.0,
+    13.3,
+    23.9
+   ],
+   "follow": 36,
+   "follow_pct": [
+    18.0,
+    13.3,
+    23.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp3d+mask|R1|seed0": {
+  "loss": 0.05555729568004608,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 122,
+   "succ_pct": [
+    61.0,
+    54.1,
+    67.5
+   ],
+   "follow": 122,
+   "follow_pct": [
+    61.0,
+    54.1,
+    67.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 54,
+   "succ_pct": [
+    27.0,
+    21.3,
+    33.5
+   ],
+   "follow": 54,
+   "follow_pct": [
+    27.0,
+    21.3,
+    33.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 11,
+   "succ_pct": [
+    5.5,
+    3.1,
+    9.6
+   ],
+   "follow": 11,
+   "follow_pct": [
+    5.5,
+    3.1,
+    9.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 5,
+   "succ_pct": [
+    2.5,
+    1.1,
+    5.7
+   ],
+   "follow": 5,
+   "follow_pct": [
+    2.5,
+    1.1,
+    5.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 41,
+   "succ_pct": [
+    20.5,
+    15.5,
+    26.6
+   ],
+   "follow": 41,
+   "follow_pct": [
+    20.5,
+    15.5,
+    26.6
+   ],
+   "wrong_hole": 104
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp3d+mask|R2|seed0": {
+  "loss": 0.051188673824071884,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 161,
+   "succ_pct": [
+    80.5,
+    74.5,
+    85.4
+   ],
+   "follow": 161,
+   "follow_pct": [
+    80.5,
+    74.5,
+    85.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 126,
+   "succ_pct": [
+    63.0,
+    56.1,
+    69.4
+   ],
+   "follow": 126,
+   "follow_pct": [
+    63.0,
+    56.1,
+    69.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 6
+  },
+  "erase": {
+   "n": 200,
+   "succ": 37,
+   "succ_pct": [
+    18.5,
+    13.7,
+    24.5
+   ],
+   "follow": 37,
+   "follow_pct": [
+    18.5,
+    13.7,
+    24.5
+   ],
+   "wrong_hole": 98
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 184,
+   "follow_pct": [
+    92.0,
+    87.4,
+    95.0
+   ],
+   "wrong_hole": 184
+  }
+ },
+ "S1|phase|R0|seed1": {
+  "loss": 0.078505739569664,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 89
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 89
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 89
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 89
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 89
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 89
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 89
+  },
+  "erase": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 89
+  },
+  "shift": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 49,
+   "follow_pct": [
+    24.5,
+    19.1,
+    30.9
+   ],
+   "wrong_hole": 89
+  }
+ },
+ "S1|kp3d|R0|seed1": {
+  "loss": 0.030750399455428123,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 111,
+   "succ_pct": [
+    55.5,
+    48.6,
+    62.2
+   ],
+   "follow": 111,
+   "follow_pct": [
+    55.5,
+    48.6,
+    62.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 43,
+   "succ_pct": [
+    21.5,
+    16.4,
+    27.7
+   ],
+   "follow": 43,
+   "follow_pct": [
+    21.5,
+    16.4,
+    27.7
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 10,
+   "succ_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "follow": 10,
+   "follow_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 11,
+   "succ_pct": [
+    5.5,
+    3.1,
+    9.6
+   ],
+   "follow": 11,
+   "follow_pct": [
+    5.5,
+    3.1,
+    9.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp3d|R1|seed1": {
+  "loss": 0.04619563743472099,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 119,
+   "succ_pct": [
+    59.5,
+    52.6,
+    66.1
+   ],
+   "follow": 119,
+   "follow_pct": [
+    59.5,
+    52.6,
+    66.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 34,
+   "succ_pct": [
+    17.0,
+    12.4,
+    22.8
+   ],
+   "follow": 34,
+   "follow_pct": [
+    17.0,
+    12.4,
+    22.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 47,
+   "succ_pct": [
+    23.5,
+    18.2,
+    29.8
+   ],
+   "follow": 47,
+   "follow_pct": [
+    23.5,
+    18.2,
+    29.8
+   ],
+   "wrong_hole": 112
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 199,
+   "follow_pct": [
+    99.5,
+    97.2,
+    99.9
+   ],
+   "wrong_hole": 199
+  }
+ },
+ "S1|kp3d|R2|seed1": {
+  "loss": 0.04829944670200348,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 184,
+   "succ_pct": [
+    92.0,
+    87.4,
+    95.0
+   ],
+   "follow": 184,
+   "follow_pct": [
+    92.0,
+    87.4,
+    95.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 175,
+   "succ_pct": [
+    87.5,
+    82.2,
+    91.4
+   ],
+   "follow": 175,
+   "follow_pct": [
+    87.5,
+    82.2,
+    91.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 137,
+   "succ_pct": [
+    68.5,
+    61.8,
+    74.5
+   ],
+   "follow": 137,
+   "follow_pct": [
+    68.5,
+    61.8,
+    74.5
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 171,
+   "succ_pct": [
+    85.5,
+    80.0,
+    89.7
+   ],
+   "follow": 171,
+   "follow_pct": [
+    85.5,
+    80.0,
+    89.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 103,
+   "succ_pct": [
+    51.5,
+    44.6,
+    58.3
+   ],
+   "follow": 103,
+   "follow_pct": [
+    51.5,
+    44.6,
+    58.3
+   ],
+   "wrong_hole": 1
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 2,
+   "succ_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "follow": 2,
+   "follow_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "wrong_hole": 4
+  },
+  "erase": {
+   "n": 200,
+   "succ": 50,
+   "succ_pct": [
+    25.0,
+    19.5,
+    31.4
+   ],
+   "follow": 50,
+   "follow_pct": [
+    25.0,
+    19.5,
+    31.4
+   ],
+   "wrong_hole": 132
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 183
+  }
+ },
+ "S1|kp2d|R0|seed1": {
+  "loss": 0.034108810126781464,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 94,
+   "succ_pct": [
+    47.0,
+    40.2,
+    53.9
+   ],
+   "follow": 94,
+   "follow_pct": [
+    47.0,
+    40.2,
+    53.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 34,
+   "succ_pct": [
+    17.0,
+    12.4,
+    22.8
+   ],
+   "follow": 34,
+   "follow_pct": [
+    17.0,
+    12.4,
+    22.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 10,
+   "succ_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "follow": 10,
+   "follow_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp2d|R1|seed1": {
+  "loss": 0.047684404999017715,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 110,
+   "succ_pct": [
+    55.0,
+    48.1,
+    61.7
+   ],
+   "follow": 110,
+   "follow_pct": [
+    55.0,
+    48.1,
+    61.7
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 38,
+   "succ_pct": [
+    19.0,
+    14.2,
+    25.0
+   ],
+   "follow": 38,
+   "follow_pct": [
+    19.0,
+    14.2,
+    25.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 6,
+   "succ_pct": [
+    3.0,
+    1.4,
+    6.4
+   ],
+   "follow": 6,
+   "follow_pct": [
+    3.0,
+    1.4,
+    6.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 40,
+   "succ_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "follow": 40,
+   "follow_pct": [
+    20.0,
+    15.0,
+    26.1
+   ],
+   "wrong_hole": 114
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp2d|R2|seed1": {
+  "loss": 0.05384921655058861,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 172,
+   "succ_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "follow": 172,
+   "follow_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 172,
+   "succ_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "follow": 172,
+   "follow_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 158,
+   "succ_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "follow": 158,
+   "follow_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 167,
+   "succ_pct": [
+    83.5,
+    77.7,
+    88.0
+   ],
+   "follow": 167,
+   "follow_pct": [
+    83.5,
+    77.7,
+    88.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 106,
+   "succ_pct": [
+    53.0,
+    46.1,
+    59.8
+   ],
+   "follow": 106,
+   "follow_pct": [
+    53.0,
+    46.1,
+    59.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 3,
+   "succ_pct": [
+    1.5,
+    0.5,
+    4.3
+   ],
+   "follow": 3,
+   "follow_pct": [
+    1.5,
+    0.5,
+    4.3
+   ],
+   "wrong_hole": 3
+  },
+  "erase": {
+   "n": 200,
+   "succ": 51,
+   "succ_pct": [
+    25.5,
+    20.0,
+    32.0
+   ],
+   "follow": 51,
+   "follow_pct": [
+    25.5,
+    20.0,
+    32.0
+   ],
+   "wrong_hole": 131
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 180
+  }
+ },
+ "S1|mask|R0|seed1": {
+  "loss": 0.041370972990989685,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 145,
+   "succ_pct": [
+    72.5,
+    65.9,
+    78.2
+   ],
+   "follow": 145,
+   "follow_pct": [
+    72.5,
+    65.9,
+    78.2
+   ],
+   "wrong_hole": 32
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 173
+  }
+ },
+ "S1|mask|R1|seed1": {
+  "loss": 0.05271812155842781,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 159,
+   "succ_pct": [
+    79.5,
+    73.4,
+    84.5
+   ],
+   "follow": 159,
+   "follow_pct": [
+    79.5,
+    73.4,
+    84.5
+   ],
+   "wrong_hole": 32
+  },
+  "erase": {
+   "n": 200,
+   "succ": 50,
+   "succ_pct": [
+    25.0,
+    19.5,
+    31.4
+   ],
+   "follow": 50,
+   "follow_pct": [
+    25.0,
+    19.5,
+    31.4
+   ],
+   "wrong_hole": 95
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 183
+  }
+ },
+ "S1|mask|R2|seed1": {
+  "loss": 0.0525858998298645,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 154,
+   "succ_pct": [
+    77.0,
+    70.7,
+    82.3
+   ],
+   "follow": 154,
+   "follow_pct": [
+    77.0,
+    70.7,
+    82.3
+   ],
+   "wrong_hole": 33
+  },
+  "erase": {
+   "n": 200,
+   "succ": 52,
+   "succ_pct": [
+    26.0,
+    20.4,
+    32.5
+   ],
+   "follow": 52,
+   "follow_pct": [
+    26.0,
+    20.4,
+    32.5
+   ],
+   "wrong_hole": 107
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 183
+  }
+ },
+ "S1|kp3d+mask|R0|seed1": {
+  "loss": 0.03081853687763214,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 115,
+   "succ_pct": [
+    57.5,
+    50.6,
+    64.1
+   ],
+   "follow": 115,
+   "follow_pct": [
+    57.5,
+    50.6,
+    64.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 38,
+   "succ_pct": [
+    19.0,
+    14.2,
+    25.0
+   ],
+   "follow": 38,
+   "follow_pct": [
+    19.0,
+    14.2,
+    25.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 3,
+   "succ_pct": [
+    1.5,
+    0.5,
+    4.3
+   ],
+   "follow": 3,
+   "follow_pct": [
+    1.5,
+    0.5,
+    4.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 2,
+   "succ_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "follow": 2,
+   "follow_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp3d+mask|R1|seed1": {
+  "loss": 0.04528983309864998,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 117,
+   "succ_pct": [
+    58.5,
+    51.6,
+    65.1
+   ],
+   "follow": 117,
+   "follow_pct": [
+    58.5,
+    51.6,
+    65.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 29,
+   "succ_pct": [
+    14.5,
+    10.3,
+    20.0
+   ],
+   "follow": 29,
+   "follow_pct": [
+    14.5,
+    10.3,
+    20.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 7,
+   "succ_pct": [
+    3.5,
+    1.7,
+    7.0
+   ],
+   "follow": 7,
+   "follow_pct": [
+    3.5,
+    1.7,
+    7.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 44,
+   "succ_pct": [
+    22.0,
+    16.8,
+    28.2
+   ],
+   "follow": 44,
+   "follow_pct": [
+    22.0,
+    16.8,
+    28.2
+   ],
+   "wrong_hole": 100
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S1|kp3d+mask|R2|seed1": {
+  "loss": 0.048439960926771164,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 170,
+   "succ_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "follow": 170,
+   "follow_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 166,
+   "succ_pct": [
+    83.0,
+    77.2,
+    87.6
+   ],
+   "follow": 166,
+   "follow_pct": [
+    83.0,
+    77.2,
+    87.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 123,
+   "succ_pct": [
+    61.5,
+    54.6,
+    68.0
+   ],
+   "follow": 123,
+   "follow_pct": [
+    61.5,
+    54.6,
+    68.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 164,
+   "succ_pct": [
+    82.0,
+    76.1,
+    86.7
+   ],
+   "follow": 164,
+   "follow_pct": [
+    82.0,
+    76.1,
+    86.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 108,
+   "succ_pct": [
+    54.0,
+    47.1,
+    60.8
+   ],
+   "follow": 108,
+   "follow_pct": [
+    54.0,
+    47.1,
+    60.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 2,
+   "succ_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "follow": 2,
+   "follow_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "wrong_hole": 5
+  },
+  "erase": {
+   "n": 200,
+   "succ": 49,
+   "succ_pct": [
+    24.5,
+    19.1,
+    30.9
+   ],
+   "follow": 49,
+   "follow_pct": [
+    24.5,
+    19.1,
+    30.9
+   ],
+   "wrong_hole": 128
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 169,
+   "follow_pct": [
+    84.5,
+    78.8,
+    88.9
+   ],
+   "wrong_hole": 169
+  }
+ },
+ "B3_staged_primitive|seed0": {
+  "sig0": {
+   "n": 200,
+   "succ": 196,
+   "succ_pct": [
+    98.0,
+    95.0,
+    99.2
+   ],
+   "follow": 196,
+   "follow_pct": [
+    98.0,
+    95.0,
+    99.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 196,
+   "succ_pct": [
+    98.0,
+    95.0,
+    99.2
+   ],
+   "follow": 196,
+   "follow_pct": [
+    98.0,
+    95.0,
+    99.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 171,
+   "succ_pct": [
+    85.5,
+    80.0,
+    89.7
+   ],
+   "follow": 171,
+   "follow_pct": [
+    85.5,
+    80.0,
+    89.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 169,
+   "succ_pct": [
+    84.5,
+    78.8,
+    88.9
+   ],
+   "follow": 169,
+   "follow_pct": [
+    84.5,
+    78.8,
+    88.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 121,
+   "succ_pct": [
+    60.5,
+    53.6,
+    67.0
+   ],
+   "follow": 121,
+   "follow_pct": [
+    60.5,
+    53.6,
+    67.0
+   ],
+   "wrong_hole": 26
+  },
+  "erase": {
+   "n": 200,
+   "succ": 46,
+   "succ_pct": [
+    23.0,
+    17.7,
+    29.3
+   ],
+   "follow": 46,
+   "follow_pct": [
+    23.0,
+    17.7,
+    29.3
+   ],
+   "wrong_hole": 134
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 197,
+   "follow_pct": [
+    98.5,
+    95.7,
+    99.5
+   ],
+   "wrong_hole": 197
+  }
+ },
+ "B3_staged_primitive|seed1": {
+  "sig0": {
+   "n": 200,
+   "succ": 196,
+   "succ_pct": [
+    98.0,
+    95.0,
+    99.2
+   ],
+   "follow": 196,
+   "follow_pct": [
+    98.0,
+    95.0,
+    99.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 195,
+   "succ_pct": [
+    97.5,
+    94.3,
+    98.9
+   ],
+   "follow": 195,
+   "follow_pct": [
+    97.5,
+    94.3,
+    98.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 190,
+   "succ_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "follow": 190,
+   "follow_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 187,
+   "succ_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "follow": 187,
+   "follow_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 176,
+   "succ_pct": [
+    88.0,
+    82.8,
+    91.8
+   ],
+   "follow": 176,
+   "follow_pct": [
+    88.0,
+    82.8,
+    91.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 130,
+   "succ_pct": [
+    65.0,
+    58.2,
+    71.3
+   ],
+   "follow": 130,
+   "follow_pct": [
+    65.0,
+    58.2,
+    71.3
+   ],
+   "wrong_hole": 18
+  },
+  "erase": {
+   "n": 200,
+   "succ": 55,
+   "succ_pct": [
+    27.5,
+    21.8,
+    34.1
+   ],
+   "follow": 55,
+   "follow_pct": [
+    27.5,
+    21.8,
+    34.1
+   ],
+   "wrong_hole": 130
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 194,
+   "follow_pct": [
+    97.0,
+    93.6,
+    98.6
+   ],
+   "wrong_hole": 194
+  }
+ },
+ "S2|phase|R0|seed0": {
+  "loss": 0.042697448283433914,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|kp3d|R0|seed0": {
+  "loss": 0.031898561865091324,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 123,
+   "succ_pct": [
+    61.5,
+    54.6,
+    68.0
+   ],
+   "follow": 123,
+   "follow_pct": [
+    61.5,
+    54.6,
+    68.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 36,
+   "succ_pct": [
+    18.0,
+    13.3,
+    23.9
+   ],
+   "follow": 36,
+   "follow_pct": [
+    18.0,
+    13.3,
+    23.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S2|kp3d|R1|seed0": {
+  "loss": 0.03636763617396355,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 135,
+   "succ_pct": [
+    67.5,
+    60.7,
+    73.6
+   ],
+   "follow": 135,
+   "follow_pct": [
+    67.5,
+    60.7,
+    73.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 41,
+   "succ_pct": [
+    20.5,
+    15.5,
+    26.6
+   ],
+   "follow": 41,
+   "follow_pct": [
+    20.5,
+    15.5,
+    26.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 11,
+   "succ_pct": [
+    5.5,
+    3.1,
+    9.6
+   ],
+   "follow": 11,
+   "follow_pct": [
+    5.5,
+    3.1,
+    9.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 170,
+   "succ_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "follow": 170,
+   "follow_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|kp3d|R2|seed0": {
+  "loss": 0.04047912731766701,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 185,
+   "succ_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "follow": 185,
+   "follow_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 184,
+   "succ_pct": [
+    92.0,
+    87.4,
+    95.0
+   ],
+   "follow": 184,
+   "follow_pct": [
+    92.0,
+    87.4,
+    95.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 172,
+   "succ_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "follow": 172,
+   "follow_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 168,
+   "succ_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "follow": 168,
+   "follow_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 25,
+   "succ_pct": [
+    12.5,
+    8.6,
+    17.8
+   ],
+   "follow": 25,
+   "follow_pct": [
+    12.5,
+    8.6,
+    17.8
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|kp3d|R3|seed0": {
+  "loss": 0.0487992949783802,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 172,
+   "succ_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "follow": 172,
+   "follow_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 170,
+   "succ_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "follow": 170,
+   "follow_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 152,
+   "succ_pct": [
+    76.0,
+    69.6,
+    81.4
+   ],
+   "follow": 152,
+   "follow_pct": [
+    76.0,
+    69.6,
+    81.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 178,
+   "succ_pct": [
+    89.0,
+    83.9,
+    92.6
+   ],
+   "follow": 178,
+   "follow_pct": [
+    89.0,
+    83.9,
+    92.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 130,
+   "succ_pct": [
+    65.0,
+    58.2,
+    71.3
+   ],
+   "follow": 130,
+   "follow_pct": [
+    65.0,
+    58.2,
+    71.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 30,
+   "succ_pct": [
+    15.0,
+    10.7,
+    20.6
+   ],
+   "follow": 30,
+   "follow_pct": [
+    15.0,
+    10.7,
+    20.6
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 177,
+   "succ_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "follow": 177,
+   "follow_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "wrong_hole": 2
+  },
+  "shift": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 136,
+   "follow_pct": [
+    68.0,
+    61.2,
+    74.1
+   ],
+   "wrong_hole": 136
+  }
+ },
+ "S2|kp2d|R0|seed0": {
+  "loss": 0.035076383501291275,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 124,
+   "succ_pct": [
+    62.0,
+    55.1,
+    68.4
+   ],
+   "follow": 124,
+   "follow_pct": [
+    62.0,
+    55.1,
+    68.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 32,
+   "succ_pct": [
+    16.0,
+    11.6,
+    21.7
+   ],
+   "follow": 32,
+   "follow_pct": [
+    16.0,
+    11.6,
+    21.7
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 8,
+   "succ_pct": [
+    4.0,
+    2.0,
+    7.7
+   ],
+   "follow": 8,
+   "follow_pct": [
+    4.0,
+    2.0,
+    7.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S2|kp2d|R1|seed0": {
+  "loss": 0.038409266620874405,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 119,
+   "succ_pct": [
+    59.5,
+    52.6,
+    66.1
+   ],
+   "follow": 119,
+   "follow_pct": [
+    59.5,
+    52.6,
+    66.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 55,
+   "succ_pct": [
+    27.5,
+    21.8,
+    34.1
+   ],
+   "follow": 55,
+   "follow_pct": [
+    27.5,
+    21.8,
+    34.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 18,
+   "succ_pct": [
+    9.0,
+    5.8,
+    13.8
+   ],
+   "follow": 18,
+   "follow_pct": [
+    9.0,
+    5.8,
+    13.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 11,
+   "succ_pct": [
+    5.5,
+    3.1,
+    9.6
+   ],
+   "follow": 11,
+   "follow_pct": [
+    5.5,
+    3.1,
+    9.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 168,
+   "succ_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "follow": 168,
+   "follow_pct": [
+    84.0,
+    78.3,
+    88.4
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 2,
+   "follow_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "wrong_hole": 2
+  }
+ },
+ "S2|kp2d|R2|seed0": {
+  "loss": 0.041316788643598557,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 175,
+   "succ_pct": [
+    87.5,
+    82.2,
+    91.4
+   ],
+   "follow": 175,
+   "follow_pct": [
+    87.5,
+    82.2,
+    91.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 177,
+   "succ_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "follow": 177,
+   "follow_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 153,
+   "succ_pct": [
+    76.5,
+    70.2,
+    81.8
+   ],
+   "follow": 153,
+   "follow_pct": [
+    76.5,
+    70.2,
+    81.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 13,
+   "succ_pct": [
+    6.5,
+    3.8,
+    10.8
+   ],
+   "follow": 13,
+   "follow_pct": [
+    6.5,
+    3.8,
+    10.8
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 184,
+   "succ_pct": [
+    92.0,
+    87.4,
+    95.0
+   ],
+   "follow": 184,
+   "follow_pct": [
+    92.0,
+    87.4,
+    95.0
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 2
+  }
+ },
+ "S2|kp2d|R3|seed0": {
+  "loss": 0.049049247056245804,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 185,
+   "succ_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "follow": 185,
+   "follow_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 176,
+   "succ_pct": [
+    88.0,
+    82.8,
+    91.8
+   ],
+   "follow": 176,
+   "follow_pct": [
+    88.0,
+    82.8,
+    91.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 141,
+   "succ_pct": [
+    70.5,
+    63.8,
+    76.4
+   ],
+   "follow": 141,
+   "follow_pct": [
+    70.5,
+    63.8,
+    76.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 21,
+   "succ_pct": [
+    10.5,
+    7.0,
+    15.5
+   ],
+   "follow": 21,
+   "follow_pct": [
+    10.5,
+    7.0,
+    15.5
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 170,
+   "succ_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "follow": 170,
+   "follow_pct": [
+    85.0,
+    79.4,
+    89.3
+   ],
+   "wrong_hole": 2
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 99,
+   "follow_pct": [
+    49.5,
+    42.6,
+    56.4
+   ],
+   "wrong_hole": 99
+  }
+ },
+ "S2|mask|R0|seed0": {
+  "loss": 0.042687222361564636,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 152,
+   "succ_pct": [
+    76.0,
+    69.6,
+    81.4
+   ],
+   "follow": 152,
+   "follow_pct": [
+    76.0,
+    69.6,
+    81.4
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 2,
+   "succ_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|mask|R1|seed0": {
+  "loss": 0.042413488030433655,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 150,
+   "succ_pct": [
+    75.0,
+    68.6,
+    80.5
+   ],
+   "follow": 150,
+   "follow_pct": [
+    75.0,
+    68.6,
+    80.5
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 178,
+   "succ_pct": [
+    89.0,
+    83.9,
+    92.6
+   ],
+   "follow": 178,
+   "follow_pct": [
+    89.0,
+    83.9,
+    92.6
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|mask|R2|seed0": {
+  "loss": 0.04211737588047981,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 158,
+   "succ_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "follow": 158,
+   "follow_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 190,
+   "succ_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "follow": 190,
+   "follow_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|mask|R3|seed0": {
+  "loss": 0.05151643231511116,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 151,
+   "succ_pct": [
+    75.5,
+    69.1,
+    80.9
+   ],
+   "follow": 151,
+   "follow_pct": [
+    75.5,
+    69.1,
+    80.9
+   ],
+   "wrong_hole": 27
+  },
+  "erase": {
+   "n": 200,
+   "succ": 169,
+   "succ_pct": [
+    84.5,
+    78.8,
+    88.9
+   ],
+   "follow": 169,
+   "follow_pct": [
+    84.5,
+    78.8,
+    88.9
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 16,
+   "succ_pct": [
+    8.0,
+    5.0,
+    12.6
+   ],
+   "follow": 158,
+   "follow_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "wrong_hole": 158
+  }
+ },
+ "S2|kp3d+mask|R0|seed0": {
+  "loss": 0.03229481354355812,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 120,
+   "succ_pct": [
+    60.0,
+    53.1,
+    66.5
+   ],
+   "follow": 120,
+   "follow_pct": [
+    60.0,
+    53.1,
+    66.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 37,
+   "succ_pct": [
+    18.5,
+    13.7,
+    24.5
+   ],
+   "follow": 37,
+   "follow_pct": [
+    18.5,
+    13.7,
+    24.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S2|kp3d+mask|R1|seed0": {
+  "loss": 0.036325063556432724,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 143,
+   "succ_pct": [
+    71.5,
+    64.9,
+    77.3
+   ],
+   "follow": 143,
+   "follow_pct": [
+    71.5,
+    64.9,
+    77.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 56,
+   "succ_pct": [
+    28.0,
+    22.2,
+    34.6
+   ],
+   "follow": 56,
+   "follow_pct": [
+    28.0,
+    22.2,
+    34.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 19,
+   "succ_pct": [
+    9.5,
+    6.2,
+    14.4
+   ],
+   "follow": 19,
+   "follow_pct": [
+    9.5,
+    6.2,
+    14.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 190,
+   "succ_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "follow": 190,
+   "follow_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 1
+  }
+ },
+ "S2|kp3d+mask|R2|seed0": {
+  "loss": 0.04067935422062874,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 192,
+   "succ_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "follow": 192,
+   "follow_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 192,
+   "succ_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "follow": 192,
+   "follow_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 191,
+   "succ_pct": [
+    95.5,
+    91.7,
+    97.6
+   ],
+   "follow": 191,
+   "follow_pct": [
+    95.5,
+    91.7,
+    97.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 173,
+   "succ_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "follow": 173,
+   "follow_pct": [
+    86.5,
+    81.1,
+    90.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 190,
+   "succ_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "follow": 190,
+   "follow_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 171,
+   "succ_pct": [
+    85.5,
+    80.0,
+    89.7
+   ],
+   "follow": 171,
+   "follow_pct": [
+    85.5,
+    80.0,
+    89.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 14,
+   "succ_pct": [
+    7.0,
+    4.2,
+    11.4
+   ],
+   "follow": 14,
+   "follow_pct": [
+    7.0,
+    4.2,
+    11.4
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 191,
+   "succ_pct": [
+    95.5,
+    91.7,
+    97.6
+   ],
+   "follow": 191,
+   "follow_pct": [
+    95.5,
+    91.7,
+    97.6
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|kp3d+mask|R3|seed0": {
+  "loss": 0.04806805029511452,
+  "n_train": 8937,
+  "sig0": {
+   "n": 200,
+   "succ": 192,
+   "succ_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "follow": 192,
+   "follow_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 194,
+   "succ_pct": [
+    97.0,
+    93.6,
+    98.6
+   ],
+   "follow": 194,
+   "follow_pct": [
+    97.0,
+    93.6,
+    98.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 194,
+   "succ_pct": [
+    97.0,
+    93.6,
+    98.6
+   ],
+   "follow": 194,
+   "follow_pct": [
+    97.0,
+    93.6,
+    98.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 193,
+   "succ_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "follow": 193,
+   "follow_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 154,
+   "succ_pct": [
+    77.0,
+    70.7,
+    82.3
+   ],
+   "follow": 154,
+   "follow_pct": [
+    77.0,
+    70.7,
+    82.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 30,
+   "succ_pct": [
+    15.0,
+    10.7,
+    20.6
+   ],
+   "follow": 30,
+   "follow_pct": [
+    15.0,
+    10.7,
+    20.6
+   ],
+   "wrong_hole": 2
+  },
+  "erase": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 182
+  }
+ },
+ "S2|phase|R0|seed1": {
+  "loss": 0.04205302521586418,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|kp3d|R0|seed1": {
+  "loss": 0.031000949442386627,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 115,
+   "succ_pct": [
+    57.5,
+    50.6,
+    64.1
+   ],
+   "follow": 115,
+   "follow_pct": [
+    57.5,
+    50.6,
+    64.1
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 41,
+   "succ_pct": [
+    20.5,
+    15.5,
+    26.6
+   ],
+   "follow": 41,
+   "follow_pct": [
+    20.5,
+    15.5,
+    26.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 13,
+   "succ_pct": [
+    6.5,
+    3.8,
+    10.8
+   ],
+   "follow": 13,
+   "follow_pct": [
+    6.5,
+    3.8,
+    10.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 16,
+   "succ_pct": [
+    8.0,
+    5.0,
+    12.6
+   ],
+   "follow": 16,
+   "follow_pct": [
+    8.0,
+    5.0,
+    12.6
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S2|kp3d|R1|seed1": {
+  "loss": 0.03437081351876259,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 131,
+   "succ_pct": [
+    65.5,
+    58.7,
+    71.7
+   ],
+   "follow": 131,
+   "follow_pct": [
+    65.5,
+    58.7,
+    71.7
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 45,
+   "succ_pct": [
+    22.5,
+    17.3,
+    28.8
+   ],
+   "follow": 45,
+   "follow_pct": [
+    22.5,
+    17.3,
+    28.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 14,
+   "succ_pct": [
+    7.0,
+    4.2,
+    11.4
+   ],
+   "follow": 14,
+   "follow_pct": [
+    7.0,
+    4.2,
+    11.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 185,
+   "succ_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "follow": 185,
+   "follow_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 14,
+   "follow_pct": [
+    7.0,
+    4.2,
+    11.4
+   ],
+   "wrong_hole": 14
+  }
+ },
+ "S2|kp3d|R2|seed1": {
+  "loss": 0.03805764764547348,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 192,
+   "succ_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "follow": 192,
+   "follow_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 191,
+   "succ_pct": [
+    95.5,
+    91.7,
+    97.6
+   ],
+   "follow": 191,
+   "follow_pct": [
+    95.5,
+    91.7,
+    97.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 187,
+   "succ_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "follow": 187,
+   "follow_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 161,
+   "succ_pct": [
+    80.5,
+    74.5,
+    85.4
+   ],
+   "follow": 161,
+   "follow_pct": [
+    80.5,
+    74.5,
+    85.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 141,
+   "succ_pct": [
+    70.5,
+    63.8,
+    76.4
+   ],
+   "follow": 141,
+   "follow_pct": [
+    70.5,
+    63.8,
+    76.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 9,
+   "succ_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 1
+  }
+ },
+ "S2|kp3d|R3|seed1": {
+  "loss": 0.04772941395640373,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 187,
+   "succ_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "follow": 187,
+   "follow_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 169,
+   "succ_pct": [
+    84.5,
+    78.8,
+    88.9
+   ],
+   "follow": 169,
+   "follow_pct": [
+    84.5,
+    78.8,
+    88.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 185,
+   "succ_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "follow": 185,
+   "follow_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 151,
+   "succ_pct": [
+    75.5,
+    69.1,
+    80.9
+   ],
+   "follow": 151,
+   "follow_pct": [
+    75.5,
+    69.1,
+    80.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 28,
+   "succ_pct": [
+    14.0,
+    9.9,
+    19.5
+   ],
+   "follow": 28,
+   "follow_pct": [
+    14.0,
+    9.9,
+    19.5
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 6
+  },
+  "shift": {
+   "n": 200,
+   "succ": 4,
+   "succ_pct": [
+    2.0,
+    0.8,
+    5.0
+   ],
+   "follow": 107,
+   "follow_pct": [
+    53.5,
+    46.6,
+    60.3
+   ],
+   "wrong_hole": 107
+  }
+ },
+ "S2|kp2d|R0|seed1": {
+  "loss": 0.03451845049858093,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 110,
+   "succ_pct": [
+    55.0,
+    48.1,
+    61.7
+   ],
+   "follow": 110,
+   "follow_pct": [
+    55.0,
+    48.1,
+    61.7
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 37,
+   "succ_pct": [
+    18.5,
+    13.7,
+    24.5
+   ],
+   "follow": 37,
+   "follow_pct": [
+    18.5,
+    13.7,
+    24.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 10,
+   "succ_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "follow": 10,
+   "follow_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 5,
+   "succ_pct": [
+    2.5,
+    1.1,
+    5.7
+   ],
+   "follow": 5,
+   "follow_pct": [
+    2.5,
+    1.1,
+    5.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 1
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 199,
+   "follow_pct": [
+    99.5,
+    97.2,
+    99.9
+   ],
+   "wrong_hole": 199
+  }
+ },
+ "S2|kp2d|R1|seed1": {
+  "loss": 0.03724458068609238,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 124,
+   "succ_pct": [
+    62.0,
+    55.1,
+    68.4
+   ],
+   "follow": 124,
+   "follow_pct": [
+    62.0,
+    55.1,
+    68.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 34,
+   "succ_pct": [
+    17.0,
+    12.4,
+    22.8
+   ],
+   "follow": 34,
+   "follow_pct": [
+    17.0,
+    12.4,
+    22.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 8,
+   "succ_pct": [
+    4.0,
+    2.0,
+    7.7
+   ],
+   "follow": 8,
+   "follow_pct": [
+    4.0,
+    2.0,
+    7.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 185,
+   "succ_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "follow": 185,
+   "follow_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|kp2d|R2|seed1": {
+  "loss": 0.04035487025976181,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 187,
+   "succ_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "follow": 187,
+   "follow_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 186,
+   "succ_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "follow": 186,
+   "follow_pct": [
+    93.0,
+    88.6,
+    95.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 176,
+   "succ_pct": [
+    88.0,
+    82.8,
+    91.8
+   ],
+   "follow": 176,
+   "follow_pct": [
+    88.0,
+    82.8,
+    91.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 147,
+   "succ_pct": [
+    73.5,
+    67.0,
+    79.1
+   ],
+   "follow": 147,
+   "follow_pct": [
+    73.5,
+    67.0,
+    79.1
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 7,
+   "succ_pct": [
+    3.5,
+    1.7,
+    7.0
+   ],
+   "follow": 7,
+   "follow_pct": [
+    3.5,
+    1.7,
+    7.0
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 189,
+   "succ_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "follow": 189,
+   "follow_pct": [
+    94.5,
+    90.4,
+    96.9
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|kp2d|R3|seed1": {
+  "loss": 0.04749259352684021,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 190,
+   "succ_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "follow": 190,
+   "follow_pct": [
+    95.0,
+    91.0,
+    97.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 183,
+   "succ_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "follow": 183,
+   "follow_pct": [
+    91.5,
+    86.8,
+    94.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 172,
+   "succ_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "follow": 172,
+   "follow_pct": [
+    86.0,
+    80.5,
+    90.1
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 177,
+   "succ_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "follow": 177,
+   "follow_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 112,
+   "succ_pct": [
+    56.0,
+    49.1,
+    62.7
+   ],
+   "follow": 112,
+   "follow_pct": [
+    56.0,
+    49.1,
+    62.7
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 7,
+   "succ_pct": [
+    3.5,
+    1.7,
+    7.0
+   ],
+   "follow": 7,
+   "follow_pct": [
+    3.5,
+    1.7,
+    7.0
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 187,
+   "succ_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "follow": 187,
+   "follow_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "wrong_hole": 4
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 78,
+   "follow_pct": [
+    39.0,
+    32.5,
+    45.9
+   ],
+   "wrong_hole": 78
+  }
+ },
+ "S2|mask|R0|seed1": {
+  "loss": 0.04147554561495781,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 179,
+   "succ_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "follow": 179,
+   "follow_pct": [
+    89.5,
+    84.5,
+    93.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 149,
+   "succ_pct": [
+    74.5,
+    68.0,
+    80.0
+   ],
+   "follow": 149,
+   "follow_pct": [
+    74.5,
+    68.0,
+    80.0
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 8,
+   "succ_pct": [
+    4.0,
+    2.0,
+    7.7
+   ],
+   "follow": 8,
+   "follow_pct": [
+    4.0,
+    2.0,
+    7.7
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 1
+  }
+ },
+ "S2|mask|R1|seed1": {
+  "loss": 0.04138321802020073,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 174,
+   "succ_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "follow": 174,
+   "follow_pct": [
+    87.0,
+    81.6,
+    91.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 145,
+   "succ_pct": [
+    72.5,
+    65.9,
+    78.2
+   ],
+   "follow": 145,
+   "follow_pct": [
+    72.5,
+    65.9,
+    78.2
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|mask|R2|seed1": {
+  "loss": 0.041858818382024765,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 181,
+   "succ_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "follow": 181,
+   "follow_pct": [
+    90.5,
+    85.6,
+    93.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 151,
+   "succ_pct": [
+    75.5,
+    69.1,
+    80.9
+   ],
+   "follow": 151,
+   "follow_pct": [
+    75.5,
+    69.1,
+    80.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 177,
+   "succ_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "follow": 177,
+   "follow_pct": [
+    88.5,
+    83.3,
+    92.2
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 3,
+   "succ_pct": [
+    1.5,
+    0.5,
+    4.3
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|mask|R3|seed1": {
+  "loss": 0.05184777081012726,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 193,
+   "succ_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "follow": 193,
+   "follow_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 193,
+   "succ_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "follow": 193,
+   "follow_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 193,
+   "succ_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "follow": 193,
+   "follow_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 193,
+   "succ_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "follow": 193,
+   "follow_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 193,
+   "succ_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "follow": 193,
+   "follow_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 193,
+   "succ_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "follow": 193,
+   "follow_pct": [
+    96.5,
+    93.0,
+    98.3
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 163,
+   "succ_pct": [
+    81.5,
+    75.5,
+    86.3
+   ],
+   "follow": 163,
+   "follow_pct": [
+    81.5,
+    75.5,
+    86.3
+   ],
+   "wrong_hole": 22
+  },
+  "erase": {
+   "n": 200,
+   "succ": 187,
+   "succ_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "follow": 187,
+   "follow_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "wrong_hole": 4
+  },
+  "shift": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 135,
+   "follow_pct": [
+    67.5,
+    60.7,
+    73.6
+   ],
+   "wrong_hole": 135
+  }
+ },
+ "S2|kp3d+mask|R0|seed1": {
+  "loss": 0.03109036199748516,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 113,
+   "succ_pct": [
+    56.5,
+    49.6,
+    63.2
+   ],
+   "follow": 113,
+   "follow_pct": [
+    56.5,
+    49.6,
+    63.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 42,
+   "succ_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "follow": 42,
+   "follow_pct": [
+    21.0,
+    15.9,
+    27.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 13,
+   "succ_pct": [
+    6.5,
+    3.8,
+    10.8
+   ],
+   "follow": 13,
+   "follow_pct": [
+    6.5,
+    3.8,
+    10.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 1,
+   "succ_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "follow": 1,
+   "follow_pct": [
+    0.5,
+    0.1,
+    2.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 2,
+   "succ_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "follow": 2,
+   "follow_pct": [
+    1.0,
+    0.3,
+    3.6
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 200
+  }
+ },
+ "S2|kp3d+mask|R1|seed1": {
+  "loss": 0.03453052043914795,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 200,
+   "succ_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "follow": 200,
+   "follow_pct": [
+    100.0,
+    98.1,
+    100.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 125,
+   "succ_pct": [
+    62.5,
+    55.6,
+    68.9
+   ],
+   "follow": 125,
+   "follow_pct": [
+    62.5,
+    55.6,
+    68.9
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 32,
+   "succ_pct": [
+    16.0,
+    11.6,
+    21.7
+   ],
+   "follow": 32,
+   "follow_pct": [
+    16.0,
+    11.6,
+    21.7
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 10,
+   "succ_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "follow": 10,
+   "follow_pct": [
+    5.0,
+    2.7,
+    9.0
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 188,
+   "succ_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "follow": 188,
+   "follow_pct": [
+    94.0,
+    89.8,
+    96.5
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 9,
+   "follow_pct": [
+    4.5,
+    2.4,
+    8.3
+   ],
+   "wrong_hole": 9
+  }
+ },
+ "S2|kp3d+mask|R2|seed1": {
+  "loss": 0.03773067146539688,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 187,
+   "succ_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "follow": 187,
+   "follow_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 185,
+   "succ_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "follow": 185,
+   "follow_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 182,
+   "succ_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "follow": 182,
+   "follow_pct": [
+    91.0,
+    86.2,
+    94.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 165,
+   "succ_pct": [
+    82.5,
+    76.6,
+    87.1
+   ],
+   "follow": 165,
+   "follow_pct": [
+    82.5,
+    76.6,
+    87.1
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 145,
+   "succ_pct": [
+    72.5,
+    65.9,
+    78.2
+   ],
+   "follow": 145,
+   "follow_pct": [
+    72.5,
+    65.9,
+    78.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 16,
+   "succ_pct": [
+    8.0,
+    5.0,
+    12.6
+   ],
+   "follow": 16,
+   "follow_pct": [
+    8.0,
+    5.0,
+    12.6
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 185,
+   "succ_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "follow": 185,
+   "follow_pct": [
+    92.5,
+    88.0,
+    95.4
+   ],
+   "wrong_hole": 0
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 0,
+   "follow_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "wrong_hole": 0
+  }
+ },
+ "S2|kp3d+mask|R3|seed1": {
+  "loss": 0.04866057634353638,
+  "n_train": 8869,
+  "sig0": {
+   "n": 200,
+   "succ": 196,
+   "succ_pct": [
+    98.0,
+    95.0,
+    99.2
+   ],
+   "follow": 196,
+   "follow_pct": [
+    98.0,
+    95.0,
+    99.2
+   ],
+   "wrong_hole": 0
+  },
+  "sig2": {
+   "n": 200,
+   "succ": 194,
+   "succ_pct": [
+    97.0,
+    93.6,
+    98.6
+   ],
+   "follow": 194,
+   "follow_pct": [
+    97.0,
+    93.6,
+    98.6
+   ],
+   "wrong_hole": 0
+  },
+  "sig5": {
+   "n": 200,
+   "succ": 192,
+   "succ_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "follow": 192,
+   "follow_pct": [
+    96.0,
+    92.3,
+    98.0
+   ],
+   "wrong_hole": 0
+  },
+  "sig10": {
+   "n": 200,
+   "succ": 176,
+   "succ_pct": [
+    88.0,
+    82.8,
+    91.8
+   ],
+   "follow": 176,
+   "follow_pct": [
+    88.0,
+    82.8,
+    91.8
+   ],
+   "wrong_hole": 0
+  },
+  "stale2": {
+   "n": 200,
+   "succ": 187,
+   "succ_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "follow": 187,
+   "follow_pct": [
+    93.5,
+    89.2,
+    96.2
+   ],
+   "wrong_hole": 0
+  },
+  "stale5": {
+   "n": 200,
+   "succ": 158,
+   "succ_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "follow": 158,
+   "follow_pct": [
+    79.0,
+    72.8,
+    84.1
+   ],
+   "wrong_hole": 0
+  },
+  "stale10": {
+   "n": 200,
+   "succ": 34,
+   "succ_pct": [
+    17.0,
+    12.4,
+    22.8
+   ],
+   "follow": 34,
+   "follow_pct": [
+    17.0,
+    12.4,
+    22.8
+   ],
+   "wrong_hole": 0
+  },
+  "erase": {
+   "n": 200,
+   "succ": 180,
+   "succ_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "follow": 180,
+   "follow_pct": [
+    90.0,
+    85.1,
+    93.4
+   ],
+   "wrong_hole": 5
+  },
+  "shift": {
+   "n": 200,
+   "succ": 0,
+   "succ_pct": [
+    0.0,
+    0.0,
+    1.9
+   ],
+   "follow": 154,
+   "follow_pct": [
+    77.0,
+    70.7,
+    82.3
+   ],
+   "wrong_hole": 154
+  }
+ }
+}
