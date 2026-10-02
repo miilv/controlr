@@ -27,6 +27,10 @@
   warnings → wasted HOLDs.
 - [ ] **`grid` / `ee_marker` overlays in a live run** — implemented and projecting correctly,
   never tested live; 80–200 mm depth error is the main source of mistakes.
+- [ ] **Reach target is ambiguous in depth:** a 12 mm ball on an invisible 1.5 mm pole that
+  projects onto the packet; every planner put it on the mat (0/4 reach in
+  [smoke-v0](experiments/2026-10-02-smoke-v0.md) §3.1). Give it a visible base/pole and state its
+  height in the instruction; check that `setup.json` now records the marker position.
 - [ ] **Grasp yaw window −40…+30°** at the current tilt: a `yaw_min/max` clip param or `rotation=full`.
 - [ ] **The planner should always write "packet heading h, grasp yaw = h ± 90"** — when it does, models hit it exactly.
 - [ ] **`no-think/claude/claude-sonnet-5-5`** in an episode: Sonnet 5.5 spends 3–5× more reasoning than Opus for the same behaviour.
