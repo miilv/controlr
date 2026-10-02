@@ -1,15 +1,15 @@
-# 2026-10-02 — структура проекта по образцу Blick
+# 2026-10-02 — project structure modelled on Blick
 
-**Сделано:** `CLAUDE.md` (+ `AGENTS.md` симлинком), `HUMAN.md`, `ARCHITECTURE.md` в корне;
-`docs/{DEVELOPMENT,EXPERIMENTS,RUNBOOK,ENVIRONMENT,BACKLOG}.md`; каталоги `docs/journal/`,
-`docs/experiments/` (отчёты + индекс), `docs/reviews/`, `docs/incidents/` (два постмортема);
-CI (`.github/workflows/ci.yml`: юнит-тесты, py_compile, bash -n, secret scan) и шаблон PR.
-Старые отчёты перенесены с датами: SMOKE_REPORT/ROTATION_REPORT → `docs/experiments/`,
-INTEGRATION_NOTES → journal, review_*/FIXLOG → `docs/reviews/`; ссылки в коде/тестах/доках
-обновлены. `REPOS_MANIFEST.md` вынесен из игнорируемого `research/repos/` в `research/`.
+**Done:** `CLAUDE.md` (+ `AGENTS.md` as a symlink), `HUMAN.md`, `ARCHITECTURE.md` at the root;
+`docs/{DEVELOPMENT,EXPERIMENTS,RUNBOOK,ENVIRONMENT,BACKLOG}.md`; directories `docs/journal/`,
+`docs/experiments/` (reports + index), `docs/reviews/`, `docs/incidents/` (two postmortems);
+CI (`.github/workflows/ci.yml`: unit tests, compileall, bash -n, secret scan) and a PR template.
+Old reports moved with dates: SMOKE_REPORT/ROTATION_REPORT → `docs/experiments/`,
+INTEGRATION_NOTES → journal, review_*/FIXLOG → `docs/reviews/`; references in code/tests/docs
+updated. `REPOS_MANIFEST.md` moved out of the ignored `research/repos/` into `research/`.
 
-**Решения:** отдельный жанр `docs/experiments/` (в Blick его нет) — проект исследовательский,
-результаты прогонов не должны тонуть в журнале работ. Стабильные доки — по-русски (как в Blick),
-`ARCHITECTURE.md` и `research/` — по-английски (контракты и источники, уже написаны так).
+**Decisions:** a separate `docs/experiments/` genre (Blick doesn't have one) — this is a
+research project, and run results shouldn't drown in the work log. All docs in English (first
+drafted in Russian like Blick, switched at Ilia's request).
 
-**Не доделано:** скилл `run-experiment`, Isaac-тесты в CI — в BACKLOG.
+**Not done:** the `run-experiment` skill, Isaac tests in CI — in BACKLOG.

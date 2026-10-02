@@ -1,73 +1,73 @@
-# Эксперименты: как ставить, гонять и отчитываться
+# Experiments: how to design, run and report them
 
-Проект — экспериментальная платформа, поэтому результат = прогон, который можно повторить и
-сравнить. Отчёты лежат в [experiments/](experiments/) (индекс — там же в README).
+This project is an experimentation platform, so a result = a run that can be repeated and
+compared. Reports live in [experiments/](experiments/) (index in its README).
 
-## 1. Протокол
+## 1. Protocol
 
-1. **Вопрос и гипотеза** одной строкой: что сравниваем и какой исход ждём
-   («вторая камера сверху снизит провалы переноса через борт коробки»).
-2. **Конфиг в git**: `configs/<эксперимент>.yaml` через `extends:` от базового; варьируемое — через
-   `--set` или свип (`configs/sweeps/*.yaml`). Дефолты не трогаем.
-3. **Контроль шума**:
-   - seeds (разные сцены) **и** повторы на seed (стохастика модели);
-   - при сравнении контрол-моделей — один и тот же план (`planner.plan_file`) или планировщик выключен;
-   - одна переменная за раз против базового прогона.
-4. **Бюджет** заранее: число вызовов контрол-модели и планировщика (оценка: ходов на эпизод × эпизоды).
-   Живые прогоны — только с бюджетом от владельца.
-5. **Гоняем**: `scripts/remote_run.sh run|sweep ...` на compute3 → `runs/` подтягиваются локально.
-6. **Отчёт** `docs/experiments/YYYY-MM-DD-<slug>.md` + строка в индексе
-   [experiments/README.md](experiments/README.md); видео успехов и типичного провала —
-   `scripts/turn_video.py` в `docs/video/`; найденные баги/мины — в [BACKLOG](BACKLOG.md).
+1. **Question and hypothesis** in one line: what we compare and what outcome we expect
+   ("a second top-down camera reduces failures when carrying over the box rim").
+2. **Config in git**: `configs/<experiment>.yaml` via `extends:` from the base; the varied part
+   via `--set` or a sweep (`configs/sweeps/*.yaml`). Don't touch defaults.
+3. **Control the noise**:
+   - seeds (different scenes) **and** repeats per seed (model stochasticity);
+   - when comparing control models — the same plan (`planner.plan_file`) or the planner off;
+   - one variable at a time against a baseline run.
+4. **Budget** up front: control-model and planner calls (estimate: turns per episode × episodes).
+   Live runs only with a budget from the owner.
+5. **Run**: `scripts/remote_run.sh run|sweep ...` on compute3 → `runs/` are synced back locally.
+6. **Report** `docs/experiments/YYYY-MM-DD-<slug>.md` + a row in the index
+   [experiments/README.md](experiments/README.md); videos of successes and a typical failure via
+   `scripts/turn_video.py` into `docs/video/`; bugs/landmines found → [BACKLOG](BACKLOG.md).
 
-Размер выборки: на 20 эпизодах на плечо различима разница ≈ 40 п.п. успеха; 50 % vs 70 % требует
-≈ 90 эпизодов на плечо. «2/4» — описание, не вывод.
+Sample size: with 20 episodes per arm you can only distinguish a ≈40-point difference in success;
+50 % vs 70 % needs ≈90 episodes per arm. "2/4" is a description, not a finding.
 
-## 2. Оси экспериментов (все — поля конфига)
+## 2. Experiment axes (all config fields)
 
-| Ось | Поле | Значения |
+| Axis | Field | Values |
 |---|---|---|
-| контрол-модель | `llm.model` | `claude/claude-sonnet-5-5` (дефолт), `claude/claude-opus-5-5`, `no-think/claude/...`, effort-суффиксы `-low…-xhigh`, другие vision-модели роутера |
-| планировщик | `planner.enabled`, `planner.model`, `planner.plan_file` | вкл/выкл, модель, зафиксированный план |
-| мануал робота | `prompt.system`, `prompt.extra_rules`, `prompt.fewshot` | версии `system_vN`, доп. правила, демо в кэшируемом префиксе |
-| формат действий | `action.mode` | `ee_delta` (дефолт), `ee_abs`, `joint_delta`, `joint_abs` |
-| поворот инструмента | `action.rotation` | `none`, `yaw`, `full` |
-| чанкинг | `action.max_chunk` | 1 (дефолт) … N MOVE-строк за ход |
-| единицы | `action.pos_unit`, `action.ang_unit` | mm/cm/m, deg/rad |
-| камеры | `observation.cameras`, `observation.tile` | список камер, тайл в одну картинку или отдельно |
-| размер кадра | `observation.size`, `observation.first_turn_size` | 224 / 336 / 448 / 672 px |
-| представление кадра | `observation.renderers` | `raw`, `grid`, `axes`, `ee_marker`, `diff`, `heatmap` |
-| проприоцепция | `observation.state_text` | STATE-строка вкл/выкл |
-| фидбек о цели | `episode.goal_feedback`, `episode.trust_done` | `never`/`on_done`/`always` |
-| безопасность | `safety.*` | шаг, клиренс, скорость, пороги силы |
-| задача и сцена | `task.name`, `task.params` | `waffle_pick_place`, `reach`, `push`; разброс позы/yaw объекта, стартовый yaw |
-| кэш | `llm.cache`, `llm.cache_ttl` | `auto`/`anthropic`/`none`, 5m/1h (влияние через роутер не подтверждено) |
+| control model | `llm.model` | `claude/claude-sonnet-5-5` (default), `claude/claude-opus-5-5`, `no-think/claude/...`, effort suffixes `-low…-xhigh`, other vision models on the router |
+| planner | `planner.enabled`, `planner.model`, `planner.plan_file` | on/off, model, pinned plan |
+| robot manual | `prompt.system`, `prompt.extra_rules`, `prompt.fewshot` | `system_vN` versions, extra rules, demo in the cached prefix |
+| action format | `action.mode` | `ee_delta` (default), `ee_abs`, `joint_delta`, `joint_abs` |
+| tool rotation | `action.rotation` | `none`, `yaw`, `full` |
+| chunking | `action.max_chunk` | 1 (default) … N MOVE lines per turn |
+| units | `action.pos_unit`, `action.ang_unit` | mm/cm/m, deg/rad |
+| cameras | `observation.cameras`, `observation.tile` | camera list, tiled into one image or separate |
+| frame size | `observation.size`, `observation.first_turn_size` | 224 / 336 / 448 / 672 px |
+| frame representation | `observation.renderers` | `raw`, `grid`, `axes`, `ee_marker`, `diff`, `heatmap` |
+| proprioception | `observation.state_text` | STATE line on/off |
+| goal feedback | `episode.goal_feedback`, `episode.trust_done` | `never` / `on_done` / `always` |
+| safety | `safety.*` | step, clearance, speed, force thresholds |
+| task and scene | `task.name`, `task.params` | `waffle_pick_place`, `reach`, `push`; object pose/yaw spread, start yaw |
+| cache | `llm.cache`, `llm.cache_ttl` | `auto` / `anthropic` / `none`, 5m/1h (effect through the router unconfirmed) |
 
-## 3. Метрики (что пишет `runs/<run>/`)
+## 3. Metrics (what `runs/<run>/` contains)
 
-| Файл | Содержимое |
+| File | Contents |
 |---|---|
-| `config.yaml`, `system_prompt.md`, `plan.md`, `planner.json` | что именно запускали |
-| `setup.json`, `cameras.json`, `spec.json` | сцена этого seed'а (позы объектов, старт), калибровка камер, робот |
-| `turns.jsonl` | на ход: тайминги (рендер, LLM ttft/complete/end, исполнение), usage (prompt / cache read / write / reasoning), ответ модели, распарсенные и исполненные действия, события safety, состояние, цель |
-| `messages.jsonl`, `images/<sha>.jpg` | транскрипт ровно как отправлен (картинки по хэшу) |
-| `summary.json` | исход, ходы, токены, доля cache read, латентность p50/p90, просадки кэша |
+| `config.yaml`, `system_prompt.md`, `plan.md`, `planner.json` | exactly what was run |
+| `setup.json`, `cameras.json`, `spec.json` | this seed's scene (object poses, start), camera calibration, robot |
+| `turns.jsonl` | per turn: timings (render, LLM ttft/complete/end, execution), usage (prompt / cache read / write / reasoning), model reply, parsed and executed actions, safety events, state, goal |
+| `messages.jsonl`, `images/<sha>.jpg` | the transcript exactly as sent (images by hash) |
+| `summary.json` | outcome, turns, tokens, cache-read share, latency p50/p90, cache regressions |
 
-Главные метрики: успех (проверка цели симом), ходы до успеха, латентность хода (LLM и полная),
-токены и доля чтения из кэша, число STOP/CLAMP, исход (`success`/`max_turns`/`safety_stop`/
-`llm_error`/`unstable`). Сводка: `uv run controlr report runs/...`.
+Key metrics: success (the sim's goal check), turns to success, turn latency (LLM and full),
+tokens and cache-read share, number of STOP/CLAMP events, outcome (`success` / `max_turns` /
+`safety_stop` / `llm_error` / `unstable`). Summary: `uv run controlr report runs/...`.
 
-## 4. Шаблон отчёта
+## 4. Report template
 
 ```markdown
-# YYYY-MM-DD — <вопрос одной строкой>
+# YYYY-MM-DD — <the question in one line>
 
-**Гипотеза:** …
-**Сетап:** конфиг (`configs/…`), модели, seeds × повторы, план зафиксирован/нет, коммит.
-**Бюджет и расход:** вызовы контрол/планировщик, токены, доля кэша, GPU-время.
-**Результаты:** таблица (seed, сцена, модель, исход, ходы, LLM p50, cache share).
-**Режимы отказа:** с цитатами ответов модели и ссылками на прогоны/видео.
-**Выводы (с поправкой на n):** …
-**Найдено попутно → BACKLOG:** …
-**Следующий эксперимент:** …
+**Hypothesis:** …
+**Setup:** config (`configs/…`), models, seeds × repeats, plan pinned or not, commit.
+**Budget and spend:** control/planner calls, tokens, cache share, GPU time.
+**Results:** table (seed, scene, model, outcome, turns, LLM p50, cache share).
+**Failure modes:** with quoted model replies and links to runs/videos.
+**Conclusions (given n):** …
+**Found along the way → BACKLOG:** …
+**Next experiment:** …
 ```

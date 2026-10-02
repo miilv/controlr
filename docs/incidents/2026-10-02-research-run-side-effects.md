@@ -1,24 +1,24 @@
-# 2026-10-02 — исследовательский прогон агентов: забитый диск и непрошеные траты
+# 2026-10-02 — the agents' research run: a full disk and unrequested spend
 
-**Симптом:** локальный диск 100 % (166 МБ свободно из 96 ГБ); в отчёте агентов — «измерения»,
-сделанные реальными вызовами моделей, хотя бюджет на вызовы не выдавался.
+**Symptom:** the local disk at 100 % (166 MB free of 96 GB); the agents' report contained
+"measurements" made with real model calls, although no call budget had been given.
 
-**Причина:** промпты агентов-исследователей не ограничивали побочные эффекты:
-- ~10 ГБ полных клонов репозиториев (84 шт.) в `research/repos/`;
-- ~5 ГБ моделей faster-whisper (base…large-v3): агент по General Robotics скачал видео и подкаст
-  через `yt-dlp` и расшифровывал их на CPU, его фактчекер — повторно;
-- несколько копий torch/CUDA в `~/.cache/uv`;
-- один gap-агент сделал ~1 750 вызовов (Opus 5.5 / GPT-6 Astra / GPT-5.6 Sol) через креды сессии
-  агента (`ANTHROPIC_AUTH_TOKEN`) — ≈ $40–50 по его же ценам за проверку.
+**Root cause:** the research-agent prompts didn't restrict side effects:
+- ~10 GB of full repository clones (84 of them) in `research/repos/`;
+- ~5 GB of faster-whisper models (base…large-v3): the General Robotics agent downloaded a video
+  and a podcast with `yt-dlp` and transcribed them on CPU, and its fact-checker did it again;
+- several copies of torch/CUDA in `~/.cache/uv`;
+- one gap agent made ~1,750 calls (Opus 5.5 / GPT-6 Astra / GPT-5.6 Sol) using the agent
+  session's credentials (`ANTHROPIC_AUTH_TOKEN`) — ≈ $40–50 at its own per-check prices.
 
-**Как чинили:** удалены скретч-каталоги и whisper-модели, `research/repos/` урезан до 22 нужных
-(манифест с URL и коммитами для восстановления — `research/REPOS_MANIFEST.md`);
-по ошибке удалённый код toy-симуляции gap-3 восстановлен из транскрипта агента
-(`research/gaps/gap-3-sim/`). Свободно стало 15 ГБ.
+**How it was fixed:** scratch dirs and the whisper models deleted, `research/repos/` trimmed to
+the 22 needed (a manifest with URLs and commits for restoring the rest — `research/REPOS_MANIFEST.md`);
+the gap-3 toy-simulation code, deleted by mistake, was rebuilt from the agent's transcript
+(`research/gaps/gap-3-sim/`). 15 GB freed.
 
-**Что поменяли:** правило 9 и правило 3 в [CLAUDE.md](../../CLAUDE.md) (без моделей/медиа/torch,
-shallow-клоны во `/tmp`, вызовы только по бюджету и только через `OMNIROUTE_*`); блок HARD RULES
-во всех последующих промптах агентов.
+**What changed:** rules 9 and 3 in [CLAUDE.md](../../CLAUDE.md) (no models/media/torch, shallow
+clones in `/tmp`, calls only within a budget and only via `OMNIROUTE_*`); a HARD RULES block in
+every subsequent agent prompt.
 
-**Уроки:** у субагентов те же права, что у сессии, включая её API-креды и диск; «исследовать»
-без явных запретов они понимают как «добыть любой ценой». Ограничения пишутся в промпт заранее.
+**Lessons:** subagents have the session's rights, including its API credentials and disk; without
+explicit limits they read "research" as "get it at any cost". Limits go into the prompt up front.

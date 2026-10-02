@@ -1,18 +1,18 @@
 # configs
 
-Один YAML = один эксперимент. Порядок: дефолты `controlr/config.py` ← `extends:` ← файл ←
-`--set key=value`. Неизвестный ключ — ошибка (опечатка не должна тихо откатиться к дефолту).
-Все оси — в [../docs/EXPERIMENTS.md](../docs/EXPERIMENTS.md) §2.
+One YAML = one experiment. Resolution order: defaults in `controlr/config.py` ← `extends:` ←
+the file ← `--set key=value`. An unknown key is an error (a typo must not silently fall back to
+a default). All axes — [../docs/EXPERIMENTS.md](../docs/EXPERIMENTS.md) §2.
 
-| Файл | Что |
+| File | What |
 |---|---|
-| `base.yaml` | общие дефолты: модель, планировщик, наблюдение, действия, safety, эпизод |
-| `sim_waffle.yaml` | Isaac: пакет вафель → коробка, ориентация инструмента фиксирована |
-| `sim_waffle_yaw.yaml` | то же + `rotation=yaw`, разброс yaw пакета ±40°, стартовый yaw ±20° |
-| `sim_reach.yaml` | Isaac: довести TCP до маркера |
-| `mock.yaml` | кинематический mock-робот без физики (для `--fake-llm` и дешёвых проверок) |
-| `bench/latency.yaml` | матрица латентности: модели × размер кадра × длина истории |
-| `sweeps/*.yaml` | свипы: `config` + `set` + `grid` × `seeds` → `controlr sweep` |
+| `base.yaml` | shared defaults: model, planner, observation, actions, safety, episode |
+| `sim_waffle.yaml` | Isaac: waffle packet → box, fixed tool orientation |
+| `sim_waffle_yaw.yaml` | the same + `rotation=yaw`, packet yaw spread ±40°, start yaw ±20° |
+| `sim_reach.yaml` | Isaac: move the TCP to a marker |
+| `mock.yaml` | kinematic mock robot without physics (for `--fake-llm` and cheap checks) |
+| `bench/latency.yaml` | latency matrix: models × frame size × history length |
+| `sweeps/*.yaml` | sweeps: `config` + `set` + `grid` × `seeds` → `controlr sweep` |
 
-Новый эксперимент — новый файл через `extends:`, а не правка существующего: старые отчёты
-ссылаются на эти конфиги.
+A new experiment = a new file via `extends:`, not an edit of an existing one: old reports
+reference these configs.

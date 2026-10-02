@@ -1,21 +1,22 @@
-# 2026-10-01 — литобзор: LLM как контроллер робота
+# 2026-10-01 — literature review: LLMs as robot controllers
 
-**Сделано:** мульти-агентный разбор 14 источников Ильи (Robocurve GPT-6 Astra, RoboDojo,
-GPT-as-Policy, EmbodiedSWE, quackd, innate-os PR#817, …) + 8 обзоров ландшафта (frontier-модели,
-VLA и action heads, LLM-планировщики, прямое управление, бенчмарки, индустрия, инженерные вызовы,
-каталог open-source харнессов), адверсариальный фактчек каждой заметки, 6 gap-исследований.
-Всё — в [research/](../../research/README.md): `REPORT.md`, `HARNESS_DESIGN.md`, `sources/`,
-`landscape/`, `gaps/`.
+**Done:** a multi-agent teardown of Ilia's 14 sources (Robocurve GPT-6 Astra, RoboDojo,
+GPT-as-Policy, EmbodiedSWE, quackd, innate-os PR#817, …) + 8 landscape sweeps (frontier models,
+VLAs and action heads, LLM planners, direct control, benchmarks, industry, engineering
+challenges, a catalogue of open-source harnesses), an adversarial fact-check of every note,
+6 gap studies. Everything is in [research/](../../research/README.md): `REPORT.md`,
+`HARNESS_DESIGN.md`, `sources/`, `landscape/`, `gaps/`.
 
-**Решения / выводы, повлиявшие на проект:**
-- Узкое место — ожидание модели, не «интеллект»: на реальных стендах Opus 5.5 ≈ 5.3 с p50 на вызов.
-- Прямое числовое управление моделью уже пробовали (Robocurve, RoboDojo RoboProbe, GPT-as-Policy),
-  но не в режиме «короткие ответы, без reasoning, вся история в кэше, абляции представлений
-  кадра» — это и есть ниша controlr.
-- RoboDojo: Astra #7/51 (22.48 % SR), почти ноль на точности; без head-камеры 6/8, без head+запястья 3/8.
+**Decisions / findings that shaped the project:**
+- The bottleneck is waiting for the model, not "intelligence": on real rigs Opus 5.5 ≈ 5.3 s p50 per call.
+- Direct numeric control by a model has been tried (Robocurve, RoboDojo's RoboProbe,
+  GPT-as-Policy), but not in the regime "short replies, no reasoning, the whole history cached,
+  ablations of the frame representation" — that is controlr's niche.
+- RoboDojo: Astra #7/51 (22.48 % SR), near zero on precision; without the head camera 6/8,
+  without head + wrist 3/8.
 
-**Найдено попутно:** субагенты без ограничений забили диск и потратили деньги —
-[инцидент](../incidents/2026-10-02-research-run-side-effects.md); StructuredOutput недоступен
-субагентам воркфлоу.
+**Found along the way:** unrestricted subagents filled the disk and spent money —
+[incident](../incidents/2026-10-02-research-run-side-effects.md); StructuredOutput is unavailable
+to workflow subagents.
 
-**Следующий шаг:** харнесс (см. [2026-10-02-design-decisions](2026-10-02-design-decisions.md)).
+**Next step:** the harness (see [2026-10-02-design-decisions](2026-10-02-design-decisions.md)).

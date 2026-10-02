@@ -1,58 +1,59 @@
-# Бэклог
+# Backlog
 
-> Очередь задач. Берёшь пункт → ветка → PR со ссылкой на пункт → вычеркни здесь в том же PR
-> (`- [x] ~~…~~ (journal/… или experiments/…)`). Нашёл мину — добавь сюда.
-> Источники: [experiments/](experiments/), [reviews/](reviews/), [journal/](journal/).
+> The task queue. Take an item → branch → PR linking the item → strike it here in the same PR
+> (`- [x] ~~…~~ (journal/… or experiments/…)`). Found a landmine — add it here.
+> Sources: [experiments/](experiments/), [reviews/](reviews/), [journal/](journal/).
 
-## P1 — к следующему раунду (провалы переноса и восприятие)
+## P1 — before the next round (carry failures and perception)
 
-- [ ] **Камеры (гипотеза: главная причина провалов — одна D435 под углом).** Добавить в Isaac-сцену
-  виртуальную камеру на запястье и вторую фиксированную (сверху/сбоку); эксперимент
-  1 камера vs + запястье vs + сверху (тайл и раздельно). Рендерер и конфиг уже умеют
-  (`observation.cameras`, `observation.tile`); нужны камеры в сервере + `CameraInfo`.
-  Реальному стенду понадобится физическая камера на запястье — решить после сима.
-- [ ] **Геометрия коробки и коридор переноса в мануал/задачу:** ближняя стенка y ≈ −85 мм, борт
-  z = 180 мм, пакет висит ≈30 мм ниже TCP; поднимайся, двигаясь к +y; пересекай стенку на z ≥ 260
-  (5 из 8 провалов поворотного раунда). Перегнать seeds 0–3 с теми же планами
+- [ ] **Cameras (hypothesis: the main failure cause is a single angled D435).** Add a virtual
+  wrist camera and a second fixed one (top/side) to the Isaac scene; experiment 1 camera vs
+  + wrist vs + top (tiled and separate). The renderer and config already support it
+  (`observation.cameras`, `observation.tile`); the server needs the cameras + `CameraInfo`.
+  The real rig would need a physical wrist camera — decide after sim.
+- [ ] **Box geometry and carry corridor in the manual/task:** near wall at y ≈ −85 mm, rim at
+  z = 180 mm, the packet hangs ≈30 mm below the TCP; rise while moving toward +y; cross the wall
+  at z ≥ 260 (5 of 8 failures in the rotation round). Re-run seeds 0–3 with the same plans
   ([rotation-yaw](experiments/2026-10-02-rotation-yaw.md) §6.1).
-- [ ] **Звенья руки vs коробка в `SafetyEnvelope`** (запястье/корпус захвата против тела коробки,
-  инфляция ≈50 мм, как `tasks.body_box_clearance`) — блокировать до исполнения, а не ловить PhysX.
-- [ ] **Стоп по силе объекта ложно срабатывает** от собственного усилия захвата (85–89 Н в воздухе
-  при реальных заклиниваниях 47–222 Н). Нужен contact view «пакет vs окружение» в сервере и стоп
-  по нему, а не по силе на подушках.
-- [ ] **Escape/home в джоинт-пространстве**: рука застревает на краю досягаемости, почти все
-  движения отклоняются (Sonnet seed 0 — 17 ходов впустую).
-- [ ] **Шум в фидбеке:** повторяющееся «touched the packet 14 N» при удержании, предупреждения
-  «не устоялась» → лишние HOLD.
-- [ ] **Оверлеи `grid` / `ee_marker` в живом прогоне** — реализованы, проецируются верно, вживую
-  не проверены; глубина 80–200 мм — главный источник ошибок.
-- [ ] **Окно yaw захвата −40…+30°** при текущем наклоне: параметр клипа `yaw_min/max` или `rotation=full`.
-- [ ] **Планировщик всегда пишет «курс пакета h, yaw захвата = h ± 90»** — когда пишет, модели попадают точно.
-- [ ] **`no-think/claude/claude-sonnet-5-5`** в эпизоде: Sonnet 5.5 тратит в 3–5× больше reasoning, чем Opus, при том же поведении.
+- [ ] **Arm links vs box in `SafetyEnvelope`** (wrist/gripper housing against the box body,
+  ≈50 mm inflation, like `tasks.body_box_clearance`) — block before execution instead of
+  catching PhysX blow-ups.
+- [ ] **Object-force stop fires falsely** on the gripper's own grip force (85–89 N in free air
+  vs real jams of 47–222 N). Needs a "packet vs environment" contact view in the server and a
+  stop based on it, not on pad force.
+- [ ] **Joint-space escape/home**: the arm gets stuck at the edge of reach and almost every move
+  is refused (Sonnet seed 0 — 17 turns wasted).
+- [ ] **Feedback noise:** a repeated "touched the packet 14 N" while holding, "not settled"
+  warnings → wasted HOLDs.
+- [ ] **`grid` / `ee_marker` overlays in a live run** — implemented and projecting correctly,
+  never tested live; 80–200 mm depth error is the main source of mistakes.
+- [ ] **Grasp yaw window −40…+30°** at the current tilt: a `yaw_min/max` clip param or `rotation=full`.
+- [ ] **The planner should always write "packet heading h, grasp yaw = h ± 90"** — when it does, models hit it exactly.
+- [ ] **`no-think/claude/claude-sonnet-5-5`** in an episode: Sonnet 5.5 spends 3–5× more reasoning than Opus for the same behaviour.
 
-## P2 — харнесс и инфраструктура
+## P2 — harness and infrastructure
 
-- [ ] **Проба кэша через роутер (~6 вызовов):** влияют ли `llm.cache` / `cache_ttl` на `claude/`/`cc/` вообще (сейчас похоже, что границу ставит роутер) — до того не свипать эти оси.
-- [ ] **Привязка к одному апстрим-аккаунту** (заголовок lease/session в `llm.extra_headers`) — просадки кэша на ходах 4, 5, 7 в одном прогоне.
-- [ ] **Haiku 4.5 не кэширует первые ходы** (мануал < 4096 токенов) — осмысленное приложение (кинематика/примеры), не мусор.
-- [ ] **`action.format=tool`** (действия tool-calls вместо текстовой грамматики) — ось эксперимента, не реализована.
-- [ ] **Непрерывная запись видео в Isaac** (`log.record_video`), сейчас видео — только покадрово по ходам.
-- [ ] **Isaac ~0.24× реального времени** — подключить быстрые сцены PHANTOM (4 мс sliding-pad) или ускорить исполнение.
-- [ ] **Usage-grace не настоящий дедлайн** (отложено в ревью, L8): до 0–0.2 с на ход.
-- [ ] **Самоколлизии руки** не детектятся стопом по силе (S5, частично).
-- [ ] **Mock: table_z 0.053 vs Isaac −0.0095** — привести к одному spec (только mock, безвредно).
-- [ ] **Архив `runs/`** (722 МБ локально, не в git): куда складывать прогоны, на которые ссылаются отчёты (HF bucket/датасет или compute3).
-- [ ] **CI для Isaac-тестов** — self-hosted раннер на compute3 или ночной прогон; сейчас только руками.
-- [ ] **Скилл `.claude/skills/run-experiment`**: протокол EXPERIMENTS.md как скилл (конфиг → бюджет → прогон → отчёт → видео → индекс).
+- [ ] **Cache probe through the router (~6 calls):** do `llm.cache` / `cache_ttl` matter at all on `claude/` / `cc/` (the router seems to set the boundary) — don't sweep these axes until then.
+- [ ] **Pin one upstream account** (a lease/session header in `llm.extra_headers`) — cache drops on turns 4, 5, 7 in one run.
+- [ ] **Haiku 4.5 doesn't cache the first turns** (manual < 4096 tokens) — a meaningful appendix (kinematics/examples), not filler.
+- [ ] **`action.format=tool`** (actions as tool calls instead of the text grammar) — an experiment axis, not implemented.
+- [ ] **Continuous video recording in Isaac** (`log.record_video`); today videos are per-turn frames only.
+- [ ] **Isaac runs at ~0.24× real time** — wire up PHANTOM's faster scenes (4 ms sliding-pad) or speed up execution.
+- [ ] **Usage grace is not a real deadline** (deferred in review, L8): up to 0–0.2 s per turn.
+- [ ] **Arm self-collisions** aren't detected by the force stop (S5, partial).
+- [ ] **Mock: table_z 0.053 vs Isaac −0.0095** — unify in one spec (mock only, harmless).
+- [ ] **Archive of `runs/`** (722 MB locally, not in git): where to keep runs that reports reference (HF bucket/dataset or compute3).
+- [ ] **CI for Isaac tests** — a self-hosted runner on compute3 or a nightly run; manual for now.
+- [ ] **Skill `.claude/skills/run-experiment`**: the EXPERIMENTS.md protocol as a skill (config → budget → run → report → videos → index).
 
-## P3 — следующие направления
+## P3 — next directions
 
-- [ ] **RoboDojo:** обёртка controlr как policy-сервер XPolicyLab; сокращённый прогон (10 эпизодов/задачу, 1 seed, ≈$300 на Sonnet при работающем кэше) для профиля по 5 измерениям vs Astra 22.48 %. Isaac 5.1 есть на compute2.
-- [ ] **Бэкенд реального UR3** через драйверы PHANTOM + `SafetyMonitor` (RTDE, Robotiq, RealSense).
-- [ ] **Экспорт прогонов в LeRobotDataset** — данные для будущей лёгкой action head.
-- [ ] **Action head** (transformer/diffusion), закрывающий ~1 с между ходами модели.
+- [ ] **RoboDojo:** wrap controlr as an XPolicyLab policy server; a reduced run (10 episodes/task, 1 seed, ≈$300 on Sonnet with caching working) for a 5-dimension profile vs Astra's 22.48 %. Isaac 5.1 is on compute2.
+- [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).
+- [ ] **Export runs to LeRobotDataset** — data for a future light action head.
+- [ ] **Action head** (transformer/diffusion) closing the ~1 s between model turns.
 
-## Инфраструктура compute3
+## compute3 infrastructure
 
-- [ ] Мета-пакет `linux-modules-nvidia-595-open-generic-hwe-24.04` отстаёт от ядра → следующее обновление ядра снова уронит GPU ([инцидент](incidents/2026-10-02-compute3-nvidia-driver.md)). Обновить вместе с ядром (по согласованию с владельцем машины).
-- [ ] Удалить старые `~/controlr-dev-isaac`, `~/controlr-dev-loopcli` (≈100 МБ; `.env` из них уже удалён).
+- [ ] The meta package `linux-modules-nvidia-595-open-generic-hwe-24.04` lags the kernel → the next kernel update will drop the GPU again ([incident](incidents/2026-10-02-compute3-nvidia-driver.md)). Upgrade it together with the kernel (agree with the machine's owner).
+- [ ] Delete the old `~/controlr-dev-isaac`, `~/controlr-dev-loopcli` (≈100 MB; their `.env` copies are already deleted).

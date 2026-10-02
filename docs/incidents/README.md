@@ -1,15 +1,15 @@
-# Постмортемы
+# Postmortems
 
-Каждый инцидент (сломанная машина, порча данных, неожиданные траты, вред железу) = файл
-`YYYY-MM-DD-<slug>.md`, в течение суток, без поиска виноватых. Это память агента о том, как
-ломается именно наша среда — читать перед похожими действиями.
+Every incident (a broken machine, corrupted data, unexpected spend, damage to hardware) = a file
+`YYYY-MM-DD-<slug>.md`, written within a day, blameless. This is the agent's memory of how our
+particular environment breaks — read it before similar actions.
 
 ```markdown
-# YYYY-MM-DD — <что сломалось, одной строкой>
+# YYYY-MM-DD — <what broke, in one line>
 
-**Симптом:** что видели, когда началось.
-**Причина (root cause):** первопричина, не симптом.
-**Как чинили:** шаги, команды, сколько заняло.
-**Что поменяли, чтобы не повторилось:** коммиты / правила / пункты BACKLOG.
-**Уроки:** чего не знали / что понимали неправильно.
+**Symptom:** what was seen, when it started.
+**Root cause:** the underlying cause, not the symptom.
+**How it was fixed:** steps, commands, how long it took.
+**What changed so it won't repeat:** commits / rules / BACKLOG items.
+**Lessons:** what we didn't know / got wrong.
 ```

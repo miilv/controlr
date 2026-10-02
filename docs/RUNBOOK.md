@@ -1,63 +1,63 @@
-# Runbook: когда что-то сломалось
+# Runbook: when something breaks
 
-Машины и пути — [ENVIRONMENT.md](ENVIRONMENT.md). Прошлые случаи — [incidents/](incidents/).
-compute3 — общая машина: по умолчанию только чтение, своё — только в `~/controlr*`.
+Machines and paths — [ENVIRONMENT.md](ENVIRONMENT.md). Past cases — [incidents/](incidents/).
+compute3 is a shared machine: read-only by default, ours is only `~/controlr*`.
 
-## 1. compute3: нет GPU (`nvidia-smi` не видит драйвер)
+## 1. compute3: no GPU (`nvidia-smi` can't reach the driver)
 
-Типичная причина — авто-обновление ядра без модуля NVIDIA под новое ядро
-([инцидент 2026-10-02](incidents/2026-10-02-compute3-nvidia-driver.md)).
+Typical cause: an automatic kernel upgrade without the NVIDIA module for the new kernel
+([incident 2026-10-02](incidents/2026-10-02-compute3-nvidia-driver.md)).
 
 ```bash
 ssh compute3 'uname -r; lsmod | grep -c nvidia; dpkg -l | grep linux-modules-nvidia | awk "{print \$2}"'
-# модуля под текущее ядро нет -> (только по явной просьбе владельца; sudo без пароля есть)
+# no module for the running kernel -> (only on the owner's explicit request; passwordless sudo exists)
 ssh compute3 'sudo apt-get install -y linux-modules-nvidia-595-open-$(uname -r) && sudo modprobe nvidia nvidia_uvm && nvidia-smi'
 ```
-Ребут не нужен, если `modprobe` прошёл. Ребут убивает чужие сессии/джобы — только с согласия.
+No reboot needed if `modprobe` succeeds. A reboot kills other people's sessions/jobs — only with consent.
 
-## 2. Isaac-сервер
+## 2. Isaac server
 
-- Обычно им управляет `scripts/remote_run.sh`: поднимает, если порт `7801` свободен, ждёт
-  готовности (до 600 с), гасит после прогона. Лог: `~/controlr/runs/isaac_server.log`.
-- Тесты поднимают свой сервер на порту `7821` (`CONTROLR_ISAAC_TEST_PORT`), не на боевом.
-- Ручной запуск (из `~/controlr`): `setsid nohup bash scripts/isaac_server.sh --port 7801 > runs/isaac_server.log 2>&1 &`
-- Кто держит порт / как погасить свой сервер:
+- Usually `scripts/remote_run.sh` manages it: starts it if port `7801` is free, waits for
+  readiness (up to 600 s), stops it after the run. Log: `~/controlr/runs/isaac_server.log`.
+- Tests start their own server on port `7821` (`CONTROLR_ISAAC_TEST_PORT`), never on the main one.
+- Manual start (from `~/controlr`): `setsid nohup bash scripts/isaac_server.sh --port 7801 > runs/isaac_server.log 2>&1 &`
+- Who holds the port / how to stop our server:
   ```bash
   ssh compute3 'ss -ltnp "sport = :7801"; pgrep -af "controlr/robot/isaac/server.py"'
-  ssh compute3 'pkill -f "controlr/robot/isaac/server.py --phantom"'   # только наш процесс
+  ssh compute3 'pkill -f "controlr/robot/isaac/server.py --phantom"'   # our process only
   ```
-- «Isaac server died» сразу → смотри хвост лога: чаще всего GPU (п.1) или `PHANTOM_ROOT`/`ISAAC_SIM_ROOT`.
-- Эпизод закончился `unstable` → PhysX разошёлся (пережатый объект/удар). Это исход эпизода,
-  не баг харнесса; повторяется на одном seed — смотри контакты в `turns.jsonl` и BACKLOG.
+- "Isaac server died" immediately → check the log tail: most often the GPU (§1) or `PHANTOM_ROOT` / `ISAAC_SIM_ROOT`.
+- An episode ended `unstable` → PhysX diverged (squeezed object / impact). That's an episode
+  outcome, not a harness bug; if it repeats on one seed, inspect contacts in `turns.jsonl` and BACKLOG.
 
-## 3. Роутер (omniroute) и модели
+## 3. Router (omniroute) and models
 
-| Симптом | Причина / действие |
+| Symptom | Cause / action |
 |---|---|
-| ответ за ~0.4 с без usage | реплей кэшированного **ответа** роутером на одинаковый запрос; проверь `llm.request_nonce: true` |
-| `400 unsupported_image_block` | маршрут без картинок (`dva/*`); бери `claude/`, `cc/`, `no-think/`, `cx/` |
-| пустой ответ, `finish_reason` = length | thinking съел `llm.max_tokens`; подними лимит или `no-think/` маршрут |
-| модели нет в `/models`, но нужна | пробуй прямой вызов — роутер принимает часть неперечисленных id (так было с `claude-sonnet-5-5`) |
-| 429 / 5xx | клиент сам ретраит с backoff; при подписочных маршрутах реальный предел — лимиты подписки |
+| reply in ~0.4 s with no usage | the router replayed a cached **response** to an identical request; check `llm.request_nonce: true` |
+| `400 unsupported_image_block` | a route without image support (`dva/*`); use `claude/`, `cc/`, `no-think/`, `cx/` |
+| empty reply, `finish_reason` = length | thinking used up `llm.max_tokens`; raise it or use a `no-think/` route |
+| model not in `/models` but needed | try a direct call — the router accepts some unlisted ids (that was the case for `claude-sonnet-5-5`) |
+| 429 / 5xx | the client retries with backoff; on subscription routes the real limit is the subscription quota |
 
-Список моделей: `uv run controlr models --filter claude`.
+Model list: `uv run controlr models --filter claude`.
 
-## 4. Кэш не работает (растёт стоимость, `cache_read` ≈ 0)
+## 4. Cache not working (cost grows, `cache_read` ≈ 0)
 
-1. `summary.json` → `cache_regressions` (ходы, где кэш просел) и доля чтения по ходам в `turns.jsonl`.
-2. Частые причины: изменился ранний байт транскрипта (недетерминированный текст/картинка),
-   поменяли effort посреди эпизода, ход добавил > 20 блоков (lookback), префикс короче минимума
-   модели (Haiku 4.5 — 4096 токенов), запросы ушли на разные апстрим-аккаунты роутера.
-3. Изолированная проверка: `uv run controlr bench-cache --model <id> --turns 20` (⚠️ ~20 вызовов).
+1. `summary.json` → `cache_regressions` (turns where the cache dropped) and the per-turn read share in `turns.jsonl`.
+2. Common causes: an early byte of the transcript changed (non-deterministic text/image), effort
+   changed mid-episode, a turn added > 20 blocks (lookback), the prefix is below the model's
+   minimum (Haiku 4.5 — 4096 tokens), requests landed on different upstream router accounts.
+3. Isolated check: `uv run controlr bench-cache --model <id> --turns 20` (⚠️ ~20 calls).
 
-## 5. Диск
+## 5. Disk
 
-Локально прогоны (`runs/`) и клоны (`research/repos/`) — основные потребители; на compute3 —
-`~/controlr/runs`. Перед тяжёлой работой: `df -h /`. Кэши `~/.cache/uv`, `~/.cache/huggingface`
-общие — чистить только своё и только по договорённости
-([инцидент 2026-10-02](incidents/2026-10-02-research-run-side-effects.md)).
+Locally, runs (`runs/`) and clones (`research/repos/`) are the main consumers; on compute3 —
+`~/controlr/runs`. Before heavy work: `df -h /`. The `~/.cache/uv` and `~/.cache/huggingface`
+caches are shared — clean only our own and only by agreement
+([incident 2026-10-02](incidents/2026-10-02-research-run-side-effects.md)).
 
-## 6. Реальный UR3 (когда появится бэкенд)
+## 6. Real UR3 (once the backend exists)
 
-Только с явного разрешения на сессию и человеком у e-stop. Драйверы и `SafetyMonitor` — из PHANTOM.
-Порядок аварии: e-stop → `robot.hold()` → разбор логов → инцидент.
+Only with explicit per-session permission and a human at the e-stop. Drivers and `SafetyMonitor`
+come from PHANTOM. Emergency order: e-stop → `robot.hold()` → read the logs → incident report.

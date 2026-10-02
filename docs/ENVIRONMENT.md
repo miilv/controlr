@@ -1,37 +1,37 @@
-# Окружение: переменные, машины, пути
+# Environment: variables, machines, paths
 
-Новая переменная → `.env.example` (без значения) + строка здесь, в том же PR.
+New variable → `.env.example` (no value) + a row here, in the same PR.
 
-## Переменные окружения
+## Environment variables
 
-| Переменная | Где нужна | Что |
+| Variable | Needed where | What |
 |---|---|---|
-| `OMNIROUTE_BASE_URL` | везде, где живые вызовы | OpenAI-совместимый роутер (`.../v1`) |
-| `OMNIROUTE_API_KEY` | там же | ключ роутера; только `.env` локально и `~/controlr/.env` на compute3 |
-| `CONTROLR_ISAAC_AUTHKEY` | compute3 | общий секрет клиент↔Isaac-сервер; не задан → клиент сам генерирует на запуск (фолбэк `controlr-isaac-dev` — только для дев-бокса) |
-| `CONTROLR_ISAAC_READY_FILE` | compute3 | файл-флаг готовности сервера (выставляет `remote_run.sh`) |
-| `ISAAC_SIM_ROOT` | compute3 | дефолт `/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0` |
-| `PHANTOM_ROOT` | compute3 | дефолт `/home/physicalai/phantom-icra-2027/phantom` |
-| `CONTROLR_LIVE=1` | тесты | включить живые тесты (`@pytest.mark.live`) — тратит деньги |
-| `CONTROLR_ISAAC=1` | тесты на compute3 | включить Isaac-тесты (`@pytest.mark.isaac`) |
-| `CONTROLR_ISAAC_TEST_PORT` | тесты | порт тестового сервера (дефолт 7821, не боевой 7801) |
-| `CONTROLR_ISAAC_IMG_DIR` | тесты | куда сохранить кадры из isaac-тестов для просмотра |
+| `OMNIROUTE_BASE_URL` | anywhere with live calls | OpenAI-compatible router (`.../v1`) |
+| `OMNIROUTE_API_KEY` | same | router key; only in `.env` locally and `~/controlr/.env` on compute3 |
+| `CONTROLR_ISAAC_AUTHKEY` | compute3 | shared secret client↔Isaac server; unset → the client generates one per launch (fallback `controlr-isaac-dev` is for a dev box only) |
+| `CONTROLR_ISAAC_READY_FILE` | compute3 | server readiness flag file (set by `remote_run.sh`) |
+| `ISAAC_SIM_ROOT` | compute3 | default `/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0` |
+| `PHANTOM_ROOT` | compute3 | default `/home/physicalai/phantom-icra-2027/phantom` |
+| `CONTROLR_LIVE=1` | tests | enable live tests (`@pytest.mark.live`) — costs money |
+| `CONTROLR_ISAAC=1` | tests on compute3 | enable Isaac tests (`@pytest.mark.isaac`) |
+| `CONTROLR_ISAAC_TEST_PORT` | tests | test server port (default 7821, not the main 7801) |
+| `CONTROLR_ISAAC_IMG_DIR` | tests | where Isaac tests save frames for inspection |
 
-## Машины
+## Machines
 
-| Хост (`~/.ssh/config`) | Что это | Для чего нам | Правила |
+| Host (`~/.ssh/config`) | What it is | What we use it for | Rules |
 |---|---|---|---|
-| локально | дев-бокс без GPU | код, юнит-тесты, mock/replay, отчёты, видео | — |
-| `compute3` (`physicalai`) | Ubuntu 24.04, py3.12, RTX 5090 32 GB, Isaac Sim 6.0, PHANTOM | Isaac-бэкенд, все прогоны | общая машина; только `~/controlr*`; GPU наш |
-| `compute2` (`isr-lab-4`, root) | Ubuntu 22.04, RTX 4090, Isaac Sim 5.1 в docker | запасной хост; кандидат под RoboDojo (Isaac 5.1) | общая лаб-машина; только `/root/controlr*` |
-| `nuc` | NUC у реального стенда (PHANTOM деплой) | будущий бэкенд реального UR3 | не трогать без задачи |
+| local | dev box, no GPU | code, unit tests, mock/replay, reports, videos | — |
+| `compute3` (`physicalai`) | Ubuntu 24.04, py3.12, RTX 5090 32 GB, Isaac Sim 6.0, PHANTOM | Isaac backend, all runs | shared machine; only `~/controlr*`; the GPU is ours |
+| `compute2` (`isr-lab-4`, root) | Ubuntu 22.04, RTX 4090, Isaac Sim 5.1 in docker | spare host; candidate for RoboDojo (Isaac 5.1) | shared lab machine; only `/root/controlr*` |
+| `nuc` | NUC at the real rig (PHANTOM deployment) | future real-UR3 backend | don't touch without a task |
 
-## Пути
+## Paths
 
-| Что | Где |
+| What | Where |
 |---|---|
-| деплой | `compute3:~/controlr` (`scripts/deploy.sh`, venv `.venv`, `.env`) |
-| прогоны | `runs/` локально и `compute3:~/controlr/runs` (`remote_run.sh` синкает назад) |
+| deployment | `compute3:~/controlr` (`scripts/deploy.sh`, venv `.venv`, `.env`) |
+| runs | `runs/` locally and `compute3:~/controlr/runs` (`remote_run.sh` syncs back) |
 | Isaac Sim | `compute3:/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0` |
-| PHANTOM | `compute3:~/phantom-icra-2027/phantom`, локально `~/skoltech/research` (не модифицируем) |
-| реальный UR3 | IP и железо — `configs/hardware.yaml` в PHANTOM |
+| PHANTOM | `compute3:~/phantom-icra-2027/phantom`, locally `~/skoltech/research` (never modified) |
+| real UR3 | IP and hardware — `configs/hardware.yaml` in PHANTOM |

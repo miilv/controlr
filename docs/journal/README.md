@@ -1,22 +1,22 @@
-# Журнал работ
+# Work log
 
-Датированные записи о задачах: что делали, что решили, что нашли, что осталось.
-**Единственное место для сиюминутного** — стабильные доки (ARCHITECTURE, DEVELOPMENT,
-RUNBOOK, EXPERIMENTS…) дат и статусов не содержат и поэтому не гниют; журнал датирован и
-тоже не гниёт: запись честно описывает прошлое и не требует уборки.
+Dated entries about tasks: what was done, what was decided, what was found, what's left.
+**The only place for time-bound content** — stable docs (ARCHITECTURE, DEVELOPMENT, RUNBOOK,
+EXPERIMENTS…) carry no dates or statuses and so don't rot; the journal is dated and doesn't rot
+either: an entry honestly describes the past and needs no cleanup.
 
-## Конвенция
+## Convention
 
-- Файл: `YYYY-MM-DD-<slug>.md`, одна задача/сессия = один файл; задним числом не правим.
-- Пишет агент в конце значимой работы (правило 10 в CLAUDE.md) или человек.
-- Результаты экспериментов — не сюда, а в [../experiments/](../experiments/); ревью кода — в [../reviews/](../reviews/).
-- Скелет:
+- File: `YYYY-MM-DD-<slug>.md`, one task/session = one file; never edited after the fact.
+- Written by the agent at the end of significant work (rule 10 in CLAUDE.md) or by a human.
+- Experiment results don't go here but to [../experiments/](../experiments/); code reviews to [../reviews/](../reviews/).
+- Skeleton:
 
 ```markdown
-# YYYY-MM-DD — <задача одной строкой>
+# YYYY-MM-DD — <the task in one line>
 
-**Сделано:** что изменилось (PR, коммиты).
-**Решения:** что и почему выбрали (для будущих «а почему так?»).
-**Найдено попутно:** мины/долг — продублировать в BACKLOG.md.
-**Не доделано / следующий шаг:** с чего продолжать.
+**Done:** what changed (PRs, commits).
+**Decisions:** what was chosen and why (for future "why is it like this?").
+**Found along the way:** landmines/debt — duplicate into BACKLOG.md.
+**Not done / next step:** where to continue.
 ```

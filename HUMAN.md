@@ -1,42 +1,43 @@
-# HUMAN.md — как ставить задачи агенту в controlr
+# HUMAN.md — how to give the agent tasks in controlr
 
-> Для человека-оператора. Правила, которые агент и так знает, — [CLAUDE.md](CLAUDE.md);
-> процесс — [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md); эксперименты — [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
+> For the human operator. Rules the agent already knows — [CLAUDE.md](CLAUDE.md);
+> process — [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md); experiments — [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
 
-## 0. Твоя роль
+## 0. Your role
 
-Ты даёшь то, чего нет в репо: **вопрос** (что хотим узнать), **бюджет** (вызовы/деньги/GPU-часы),
-**критерий готовности** и **решения** с последствиями (железо, деньги, реальный робот).
-Агент сильный и быстрый, но не телепат и по умолчанию тратит столько, сколько не запрещено.
+You provide what isn't in the repo: the **question** (what we want to learn), the **budget**
+(calls / money / GPU hours), the **definition of done**, and the **decisions** with consequences
+(hardware, money, the real robot). The agent is strong and fast, but it isn't a mind reader, and
+by default it spends whatever it isn't told not to.
 
-## 1. Два типа задач
+## 1. Two kinds of tasks
 
-**Код** (фича, фикс, рефакторинг):
-> В ходе переноса пакет цепляет борт коробки, а SafetyEnvelope этого не видит
-> (experiments/2026-10-02-rotation-yaw §6.2). Добавь проверку звеньев руки против тела коробки
-> с инфляцией ~50 мм. Грамматику и промпт не трогать. Готово = юнит + isaac-тест + PR.
+**Code** (feature, fix, refactor):
+> While carrying, the packet catches the box rim and SafetyEnvelope doesn't see it
+> (experiments/2026-10-02-rotation-yaw §6.2). Add a check of the arm links against the box body
+> with ~50 mm inflation. Don't touch the grammar or the prompt. Done = unit + isaac test + PR.
 
-**Эксперимент** (обязательно: вопрос, сетап, бюджет, что считаем результатом):
-> Гипотеза: вторая камера сверху снижает провалы переноса. waffle + rotation=yaw, seeds 0–3 × 2
-> повтора, Sonnet 5.5, план зафиксирован по seed. Плечи: scene vs scene+top (тайл). Бюджет
-> ≤ 300 вызовов, 0 планировщика. Готово = отчёт в docs/experiments + видео 1 успеха и 1 провала.
+**Experiment** (required: question, setup, budget, what counts as the result):
+> Hypothesis: a second, top-down camera reduces carry failures. waffle + rotation=yaw, seeds 0–3
+> × 2 repeats, Sonnet 5.5, plan pinned per seed. Arms: scene vs scene+top (tiled). Budget
+> ≤ 300 calls, 0 planner. Done = a report in docs/experiments + videos of 1 success and 1 failure.
 
-## 2. Сначала план
+## 2. Plan first
 
-Для нетривиального — «Составь план, пока ничего не меняй». Полезные вопросы к плану:
-- «Сколько вызовов/долларов/GPU-часов это съест и почему столько?»
-- «Что из этого можно проверить на mock/replay без денег?»
-- «Как поймём, что разница — не шум (n, seeds, повторы)?»
-- «Что поменяется в промпте/формате, и не сломает ли это сравнимость со старыми прогонами?»
+For anything non-trivial: "Make a plan, don't change anything yet." Useful questions for a plan:
+- "How many calls / dollars / GPU hours will this take, and why that many?"
+- "What can be checked on mock/replay for free?"
+- "How will we know the difference isn't noise (n, seeds, repeats)?"
+- "What changes in the prompt/format, and does it break comparability with earlier runs?"
 
-## 3. На что смотреть в результате
+## 3. What to check in the result
 
-- **Отчёт эксперимента**: n, расход, режимы отказа с цитатами ответов модели, видео. «2/4» — не вывод.
-- **Дифф**: менялись ли дефолты конфига или промпт (это меняет все будущие сравнения).
-- **compute3**: Isaac-сервер погашен, в чужое не лезли, диск не раздут.
-- **Хвосты**: BACKLOG вычеркнут/пополнен, journal/experiments написаны.
+- **Experiment report**: n, spend, failure modes with quoted model replies, videos. "2/4" is not a finding.
+- **Diff**: did config defaults or the prompt change (that changes every future comparison)?
+- **compute3**: Isaac server stopped, nothing of anyone else's touched, disk not bloated.
+- **Loose ends**: BACKLOG struck/extended, journal/experiments written.
 
-## 4. Красные зоны (решаешь ты)
+## 4. Red zones (your call)
 
-Реальный UR3 (только с тобой у e-stop) · apt/драйверы/ребут на compute3 · живые прогоны сверх
-бюджета · смена дефолтной модели/формата действий · удаление чужого на общих машинах.
+The real UR3 (only with you at the e-stop) · apt/drivers/reboot on compute3 · live runs over
+budget · changing the default model/action format · deleting anything on shared machines.
