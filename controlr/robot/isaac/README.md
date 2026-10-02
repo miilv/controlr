@@ -70,7 +70,7 @@ The robot base is at the right edge, level with the box's near wall. This is
 
 | name | scene change | success (privileged, at check time) |
 |---|---|---|
-| `waffle_pick_place` (alias `pick_place`) | packet centre N(0,10 mm) clipped ±20 mm, yaw N(0,5°) clipped ±10° (PHANTOM `expert_campaign.py`); `params.nominal: true` = measured pose | PHANTOM `policy_metrics` full_task at one instant: all 8 packet corners inside the box interior (2 mm tol), pads < 0.1 N, robot–packet < 0.1 N, packet < 0.03 m/s and < 0.5 rad/s |
+| `waffle_pick_place` (alias `pick_place`) | packet centre N(0,10 mm) clipped ±20 mm, yaw N(0,5°) clipped ±10° (PHANTOM `expert_campaign.py`); `params.nominal: true` = measured pose; `yaw_dist: uniform` = U(±`yaw_max_deg`); `yaw_offset_deg` = fixed packet yaw offset; `start_yaw_deg` = tool yaw offset at reset about the vertical through the start TCP (v → U(−v, v), [lo, hi] → U(lo, hi); drawn after the packet, so seeds keep their packet poses) | PHANTOM `policy_metrics` full_task at one instant: all 8 packet corners inside the box interior (2 mm tol), pads < 0.1 N, robot–packet < 0.1 N, packet < 0.03 m/s and < 0.5 rad/s |
 | `reach` | red ball on a pole, x∈[−0.50,−0.26], y∈[−0.33,−0.12], 5–16 cm above the table, ≥ 8 cm from the packet, never behind the start-pose gripper; feasible: IK with the start orientation, open fingertips above the table, gripper body/wrist ≥ 45 mm clear of the blue box (`tasks.reach_feasibility`; the old sampler's seed-0 marker put the housing inside the box wall) | TCP within 15 mm of the ball centre |
 | `push` | green 5 cm square 6–10 cm from the packet along its long axis (−x side) | packet centre within 25 mm of the square centre, not held or lifted |
 
@@ -81,6 +81,19 @@ this rig. Params in `task.params` override any key of `tasks.*_DEFAULTS`.
 `tasks.scripted_pick_place_plan` is a privileged IK reference solution
 (PHANTOM expert rotation means); it succeeds in the sim
 (`docs/img/isaac_pick_{lift,lower,done}.png`).
+
+### Rotation (`action.rotation: yaw`, `configs/sim_waffle_yaw.yaml`)
+
+With the demo tool tilt fixed and only the heading commanded, the packet is graspable for yaw
+offsets of about −40…+30° from its nominal pose (+35° only when the packet lies ≥ 20 mm toward
+−y). Beyond +30° the gripper housing sits over the box's near wall (< 50 mm away; 47 mm already
+touched it in the sim), and shifting the grasp away from the box runs out of reach; below −40° the
+pregrasp is out of reach (elbow straight). At the high start pose a negative turn straightens the
+elbow after ~27°, so `start_yaw_deg` up to 20 is safe and large negative turns must be made lower.
+`tasks.run_scripted_yaw_pick_place` is a closed-loop scripted expert in the model's own action space
+(ee_delta + dyaw + GRIP through the yaw envelope); `tasks.body_box_clearance` measures wrist/housing
+clearance to the box. `reset` returns `episode["scene"]` (`tasks.scene_record`), logged to
+`setup.json`.
 
 ## Running
 

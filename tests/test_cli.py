@@ -46,7 +46,7 @@ def test_shipped_configs_load(name):
 
 def test_base_defaults():
     cfg = load_config(ROOT / "configs" / "base.yaml", dotenv=None)
-    assert cfg.llm.model == "claude/claude-sonnet-5"
+    assert cfg.llm.model == "claude/claude-sonnet-5-5"
     assert cfg.planner.model == "claude/claude-opus-5-5-xhigh"
     assert cfg.planner.extra_body == {}
     assert cfg.robot.backend == "isaac" and cfg.observation.size == 448

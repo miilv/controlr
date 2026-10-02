@@ -303,7 +303,7 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
             robot = make_robot(cfg)
         spec = robot.spec
         renderer = ObservationRenderer(cfg.observation, cfg.action, spec)
-        safety = SafetyEnvelope(spec, cfg.safety)
+        safety = SafetyEnvelope(spec, cfg.safety, rotation=cfg.action.rotation)
         style = cache_style_for(cfg.llm.model, cfg.llm.cache)
 
         t0 = time.perf_counter()
@@ -365,7 +365,8 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
                                       "cache_warning": warn, "lookback_warning": renderer.lookback_warning,
                                       "llm_backend": result.llm_backend,
                                       "state0": _state_rec(obs.state), "reference_state": _state_rec(ref),
-                                      "obs0_images": [p.sha for p in rendered.images], "raw0": raw0})
+                                      "obs0_images": [p.sha for p in rendered.images], "raw0": raw0,
+                                      "scene": to_jsonable(getattr(robot, "scene_record", lambda: None)())})
 
         stop_when = is_complete if cfg.llm.early_stop else None
         parse_streak = 0

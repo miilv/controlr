@@ -405,3 +405,15 @@ def test_truncated_note_is_stripped_from_the_stored_reply(tmp_path):
     res = run_episode(_cfg(tmp_path, **{"episode.max_turns": 1}), robot=RecMock(), llm=Cut(["x"]))
     rec = res.records[0]
     assert rec["reply"] == "MOVE ee_delta 0 0 -5\nSTATUS OK" and rec["reply_streamed"].endswith("abo")
+
+
+def test_setup_records_the_sampled_scene(tmp_path):
+    """Rotation round: setup.json carries the task scene the backend sampled (here the mock's
+    reach target and start pose; Isaac: packet pose + yaw offset, box, start yaw, marker)."""
+    from controlr.loop import run_episode
+
+    res = run_episode(_cfg(tmp_path), robot=RecMock(), llm=FakeLLM(["STATUS FAIL"]))
+    scene = json.loads((Path(res.run_dir) / "setup.json").read_text())["scene"]
+    assert scene["task"] == "reach"
+    assert scene["target_mm"] == pytest.approx([v * 1000 for v in NEAR])
+    assert scene["start"]["tcp_mm"] and scene["start"]["tcp_yaw_deg"] is not None

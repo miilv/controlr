@@ -27,7 +27,7 @@ from typing import Any
 class LLMConfig:
     base_url: str = "${OMNIROUTE_BASE_URL}"
     api_key_env: str = "OMNIROUTE_API_KEY"
-    model: str = "claude/claude-sonnet-5"
+    model: str = "claude/claude-sonnet-5-5"
     max_tokens: int = 2000         # counts thinking tokens too; 400 starved claude/claude-sonnet-5 (empty replies)
     temperature: float | None = None
     extra_body: dict = field(default_factory=dict)   # passed through verbatim (e.g. reasoning_effort)

@@ -24,7 +24,10 @@ the previous action's resolved target, not from the measured state):
 3. rotation=none: the tool orientation target is the reference orientation
    captured by ``reset(state0)`` (not the measured one), so a tilt caused by a
    contact is undone by the next move instead of being locked in (WARN when the
-   tool is off by > 3 deg);
+   tool is off by > 3 deg). rotation=yaw (``SafetyEnvelope(..., rotation="yaw")``):
+   only roll/pitch are held at the reference (the tilt); the heading is the
+   current yaw + the commanded dyaw (ee_delta) or the commanded yaw (ee_abs), so a
+   yaw turn is never undone and a contact tilt still is;
 4. joint modes: per-line joint step limit, TCP step limit (``max_step_m``, via
    FK), soft joint limits, then the TCP / fingertips are checked against the
    workspace/table at samples ALONG the joint path, and the move is shortened
@@ -72,6 +75,11 @@ def _rz(a: float) -> np.ndarray:
     return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
 
 
+def _wrap(a: float) -> float:
+    """Angle wrapped to [-pi, pi)."""
+    return (a + math.pi) % (2 * math.pi) - math.pi
+
+
 def finger_drop(spec: RobotSpec, R: np.ndarray, width_m: float) -> float:
     """How far (m) the lowest finger-pad corner sits below the TCP for tool
     orientation ``R`` and finger opening ``width_m`` (0 without pad geometry).
@@ -98,9 +106,13 @@ class SafetyEnvelope:
     MIN_FRACTION = 0.10      # shorter remainders are not worth executing: skip + ik_fail
     JOINT_PATH_SAMPLES = 10
 
-    def __init__(self, spec: RobotSpec, cfg: SafetyConfig, kin: UR3Kinematics | None = None) -> None:
+    def __init__(self, spec: RobotSpec, cfg: SafetyConfig, kin: UR3Kinematics | None = None,
+                 rotation: str | None = None) -> None:
         self.spec = spec
         self.cfg = cfg
+        # ActionConfig.rotation of the experiment. "yaw": ee_delta values (dx dy dz 0 0 dyaw)
+        # hold the reference roll/pitch; None/"full": 6 values are a free extrinsic rotation.
+        self.rotation = rotation
         self.kin = kin or UR3Kinematics(tcp_offset=spec.tcp_offset or DEFAULT_TCP_OFFSET)
         hard = np.array([[j.lower, j.upper] for j in spec.joints], dtype=float)
         self.hard = hard
@@ -114,6 +126,7 @@ class SafetyEnvelope:
         self.path_options = IKOptions(restarts=0)
         self.names = [j.name for j in spec.joints]
         self.R_ref: np.ndarray | None = None
+        self.elbow_sign = 0.0
 
     # ------------------------------------------------------------------ api
     def reset(self, state0: RobotState) -> None:
@@ -121,12 +134,23 @@ class SafetyEnvelope:
         this orientation for the whole episode). Call after every robot reset with
         the nominal reset state (``Robot.reference_state()`` or the measured one)."""
         self.R_ref = self.kin.fk_matrix(np.asarray(state0.q, float))[:3, :3].copy()
+        q0 = np.asarray(state0.q, float)
+        # elbow branch of the episode (UR: elbow up/down = sign of the elbow joint)
+        self.elbow_sign = float(np.sign(q0[2])) if len(q0) == 6 and abs(q0[2]) > 1e-3 else 0.0
 
     def tcp_floor(self, R: np.ndarray, width_m: float) -> float:
         """Lowest allowed TCP z for orientation ``R`` and opening ``width_m``."""
         if self.table_floor is None:
             return float(self.ws_lo[2])
         return float(max(self.ws_lo[2], self.table_floor + finger_drop(self.spec, R, width_m)))
+
+    def hold_tilt(self, R_now: np.ndarray, yaw: float) -> np.ndarray:
+        """Reference roll/pitch (the tool's tilt) with heading ``yaw``: the orientation a
+        rotation=yaw move targets. Pre-multiplying by Rz leaves extrinsic roll/pitch
+        unchanged, so this is Rz(yaw - yaw_ref) @ R_ref."""
+        R_base = self.R_ref if self.R_ref is not None else R_now
+        r, p, _ = matrix_to_rpy(R_base)
+        return rpy_to_matrix([r, p, yaw])
 
     def filter(self, actions: list[Action], state: RobotState) -> tuple[list[Action], list[SafetyEvent]]:
         events: list[SafetyEvent] = []
@@ -139,6 +163,13 @@ class SafetyEnvelope:
             if tilt > _TILT_WARN_RAD:
                 self._ev(events, "tilt", f"the tool is tilted {_deg(tilt)} away from its fixed orientation "
                                          f"(after a contact?); this move turns it back")
+        elif self.R_ref is not None and self.rotation == "yaw" and any(
+                a.mode in _EE and a.values is not None and len(a.values) in (4, 6) for a in actions):
+            R_now = self.kin.fk_matrix(q)[:3, :3]
+            tilt = rotation_angle(self.hold_tilt(R_now, matrix_to_rpy(R_now)[2]) @ R_now.T)
+            if tilt > _TILT_WARN_RAD:
+                self._ev(events, "tilt", f"the tool is tilted {_deg(tilt)} away from its fixed tilt "
+                                         f"(after a contact?); this move turns it back (yaw is kept)")
         for a in actions:
             res = self._one(a, q, width, events)
             if res is None:
@@ -193,8 +224,26 @@ class SafetyEnvelope:
         p0, R0 = T[:3, 3], T[:3, :3]
         R_base = self.R_ref if self.R_ref is not None else R0     # orientation the tool should keep
         delta = a.mode is ActionMode.EE_DELTA
+        yaw_mode = self.rotation == "yaw" and n in (4, 6)
         # -- requested absolute target
-        if delta:
+        if yaw_mode:
+            # rotation=yaw: heading = current yaw + dyaw (delta) or the commanded heading (abs);
+            # roll/pitch = the reference tilt (a contact tilt is undone, a yaw turn is kept)
+            p = p0 + v[:3] if delta else v[:3].copy()
+            yaw0 = matrix_to_rpy(R0)[2]
+            dyaw = float(v[-1]) if delta else _wrap(float(v[-1]) - yaw0)
+            if abs(dyaw) > self.cfg.max_step_rad + 1e-9:
+                if not self._violation(events, "step_limit",
+                                       f"yaw change {_deg(dyaw)} exceeds the per-line limit "
+                                       f"{_deg(self.cfg.max_step_rad)}",
+                                       f"scaled to {_deg(math.copysign(self.cfg.max_step_rad, dyaw))}"):
+                    return None
+                dyaw = math.copysign(self.cfg.max_step_rad, dyaw)
+                changed_yaw = True
+            else:
+                changed_yaw = False
+            R = self.hold_tilt(R0, yaw0 + dyaw)
+        elif delta:
             p = p0 + v[:3]
             R = {3: lambda: R_base, 4: lambda: _rz(v[3]) @ R0, 6: lambda: rpy_to_matrix(v[3:]) @ R0}[n]()
         else:
@@ -206,7 +255,7 @@ class SafetyEnvelope:
                 R = rpy_to_matrix([r0, p0_, v[3]])
             else:
                 R = rpy_to_matrix(v[3:])
-        changed = False
+        changed = yaw_mode and changed_yaw
         # -- per-line step limits
         d = p - p0
         dn = float(np.linalg.norm(d))
@@ -220,7 +269,7 @@ class SafetyEnvelope:
         R_rel = R @ R0.T
         ang = rotation_angle(R_rel)
         if ang > self.cfg.max_step_rad + 1e-9:
-            if n == 3:     # re-aligning a tilted tool: silently partial (the tilt WARN says why)
+            if n == 3 or yaw_mode:   # re-aligning a tilted tool: silently partial (the tilt WARN says why)
                 pass
             elif not self._violation(events, "step_limit",
                                      f"rotation {_deg(ang)} exceeds the per-line limit {_deg(self.cfg.max_step_rad)}",
@@ -254,9 +303,15 @@ class SafetyEnvelope:
         # -- straight-line path with IK per step
         path, frac, why = self._line_path(q, p0, R0, p, R)
         if frac < 1.0 - 1e-9:
-            p_end = self.kin.fk_matrix(path[-1])[:3, 3] if path else p0
-            moved = float(np.linalg.norm(p_end - p0))
+            T_end = self.kin.fk_matrix(path[-1]) if path else self.kin.fk_matrix(q)
+            moved = float(np.linalg.norm(T_end[:3, 3] - p0))
             target = f"TCP target x={_mm(p[0])} y={_mm(p[1])} z={_mm(p[2])}"
+            turn = rotation_angle(R @ R0.T)
+            done = f"{_mm(moved)}"
+            if turn > math.radians(0.5):      # a turn is part of the move: say so (a pure turn moves 0 mm)
+                yaw_t = matrix_to_rpy(R)[2]
+                target += (f" with yaw {_deg(yaw_t)}" if self.rotation == "yaw" or n == 4 else " with this rotation")
+                done += f", turned {_deg(rotation_angle(T_end[:3, :3] @ R0.T))} of {_deg(turn)}"
             if not path or frac < self.MIN_FRACTION:
                 self._ev(events, "ik_fail",
                          f"{target} is not reachable {why} -> action skipped")
@@ -265,14 +320,16 @@ class SafetyEnvelope:
                 self._ev(events, "ik_fail", f"{target} is not reachable {why} -> action rejected")
                 return None
             self._ev(events, "reach", f"{target} is not reachable {why} -> moved {frac * 100:.0f} % of the way "
-                                      f"({_mm(moved)}); the reachable edge is in that direction")
-            T_end = self.kin.fk_matrix(path[-1])
+                                      f"({done}); the reachable edge is in that direction")
             p, R = T_end[:3, 3].copy(), T_end[:3, :3].copy()
             changed = True
         qt = path[-1] if path else q.copy()
         # -- executed values in the requested mode
         if changed:
-            if delta:
+            if delta and yaw_mode:
+                dy = _wrap(matrix_to_rpy(R)[2] - matrix_to_rpy(R0)[2])
+                vals = list(p - p0) + ([dy] if n == 4 else [0.0, 0.0, dy])
+            elif delta:
                 R_ex = R @ R0.T
                 rot = {3: [], 4: [matrix_to_rpy(R_ex)[2]], 6: list(matrix_to_rpy(R_ex))}[n]
                 vals = list(p - p0) + rot
@@ -304,13 +361,50 @@ class SafetyEnvelope:
             qk = self.kin.ik(pk, matrix_to_rotvec(Rk), q_prev, self.soft, orientation="full",
                              options=self.path_options)
             if qk is None:
-                return path, (k - 1) / n, "with this gripper orientation inside the joint limits"
-            if float(np.max(np.abs(qk - q_prev))) > guard:
-                return path, (k - 1) / n, ("without a large joint swing (near a wrist singularity or a "
-                                           "joint limit)")
+                return path, (k - 1) / n, ("with this gripper orientation inside the joint limits"
+                                           + self._why_stuck(q_prev))
+            jump = float(np.max(np.abs(qk - q_prev)))
+            if jump > guard and not self._leaves_stretch(q_prev, qk, jump):
+                return path, (k - 1) / n, "without a large joint swing" + (
+                    self._why_stuck(q_prev, qk) or " (near a wrist singularity or a joint limit)")
+            if self._too_straight(qk) and not self._too_straight(q_prev):
+                # never END a move on the stretched-arm singularity: from elbow ~0 every
+                # direction needs a large first-step joint change (live run 184337: trapped)
+                return path, (k - 1) / n, "without a large joint swing" + self._why_stuck(qk)
             path.append(qk)
             q_prev = qk
         return path, 1.0, ""
+
+    ELBOW_STRAIGHT_RAD = math.radians(20.0)
+    WRIST_SINGULAR_RAD = math.radians(10.0)
+
+    ELBOW_MIN_RAD = math.radians(8.0)        # moves stop before the elbow gets this straight
+    LEAVE_STRETCH_RAD = 0.8                  # allowed first-step joint change when bending out of it
+
+    def _too_straight(self, q: np.ndarray) -> bool:
+        return len(self.names) == 6 and abs(float(q[2])) < self.ELBOW_MIN_RAD
+
+    def _leaves_stretch(self, q_prev: np.ndarray, qk: np.ndarray, jump: float) -> bool:
+        """At a (nearly) straight elbow the first step of any inward move needs a large
+        elbow change (the Jacobian is singular): allow it when the elbow BENDS (|elbow| grows)
+        toward the episode's branch sign, so the arm can always back out of the reach edge."""
+        if len(self.names) != 6 or abs(float(q_prev[2])) >= self.ELBOW_STRAIGHT_RAD:
+            return False
+        bends = abs(float(qk[2])) > abs(float(q_prev[2]))
+        branch_ok = self.elbow_sign == 0.0 or np.sign(qk[2]) == self.elbow_sign
+        return bends and branch_ok and jump <= self.LEAVE_STRETCH_RAD
+
+    def _why_stuck(self, *qs: np.ndarray) -> str:
+        """Name the kinematic reason an ee path ends (UR geometry): a straight elbow is
+        the edge of the arm's reach; wrist_2 near 0 / 180 deg is the wrist singularity."""
+        if len(self.names) != 6:
+            return ""
+        if any(abs(float(q[2])) < self.ELBOW_STRAIGHT_RAD for q in qs):
+            return (" (the arm is stretched to the edge of its reach: elbow almost straight; come "
+                    "closer to the robot base or lower)")
+        if any(min(abs(math.remainder(float(q[4]), math.pi)), math.pi) < self.WRIST_SINGULAR_RAD for q in qs):
+            return " (wrist singularity: wrist_2 near 0/180 deg)"
+        return ""
 
     # ------------------------------------------------------------- joint modes
     def _inside(self, qx: np.ndarray, w: float) -> bool:

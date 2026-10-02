@@ -343,3 +343,107 @@ def test_elbow_limit_matches_the_urdf():
     names = [j.name for j in REAL.joints]
     e = REAL.joints[names.index("elbow")]
     assert e.lower == pytest.approx(-np.pi) and e.upper == pytest.approx(np.pi)
+
+
+# ---------------------------------------------------------------------------
+# rotation=yaw on the tilted Isaac start pose (docs/ROTATION_REPORT.md)
+# ---------------------------------------------------------------------------
+
+Q_TILT = (0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406)     # configs/sim_waffle.yaml start_q
+SPEC_RIG = ur3_cb3_spec(table_z=-0.0095)
+
+
+def _yaw_env(**kw) -> SafetyEnvelope:
+    env = SafetyEnvelope(SPEC_RIG, dataclasses.replace(SafetyConfig(), **kw), rotation="yaw")
+    env.reset(_state(Q_TILT))
+    return env
+
+
+def _rpy(q):
+    return matrix_to_rpy(KIN.fk_matrix(q)[:3, :3])
+
+
+def _yaw_move(env, q, d=(0, 0, 0), dyaw=0.0):
+    return env.filter([Action(ActionMode.EE_DELTA, (*d, 0.0, 0.0, dyaw))], _state(q))
+
+
+def test_yaw_delta_turns_the_heading_and_holds_the_tilt():
+    env = _yaw_env()
+    out, ev = _yaw_move(env, Q_TILT, (0.01, -0.01, -0.02), np.radians(20))
+    assert out and not [e for e in ev if e.kind in ("reach", "ik_fail", "step_limit")], [e.message for e in ev]
+    r0, r1 = _rpy(Q_TILT), _rpy(out[0].q_target)
+    assert np.degrees(r1[2] - r0[2]) == pytest.approx(20, abs=0.5)
+    np.testing.assert_allclose(r1[:2], r0[:2], atol=np.radians(0.5))
+    assert np.linalg.norm(_tcp(out[0]) - KIN.fk(Q_TILT)[0] - [0.01, -0.01, -0.02]) < 1e-3
+    # the straight-line waypoints keep the TCP on the line while turning
+    for qw in out[0].q_path or ():
+        p = KIN.fk(qw)[0] - KIN.fk(Q_TILT)[0]
+        assert np.linalg.norm(np.cross(p, [0.01, -0.01, -0.02])) / np.linalg.norm([0.01, -0.01, -0.02]) < 1.5e-3
+
+
+def test_yaw_is_kept_by_later_translations_and_a_contact_tilt_is_undone():
+    env = _yaw_env()
+    out, _ = _yaw_move(env, Q_TILT, dyaw=np.radians(25))
+    q1 = np.asarray(out[0].q_target)
+    out, ev = _yaw_move(env, q1, (0.0, 0.0, -0.02), 0.0)          # translation only: yaw stays
+    assert np.degrees(_rpy(out[0].q_target)[2] - _rpy(Q_TILT)[2]) == pytest.approx(25, abs=0.5)
+    # a measured pose tilted by a contact (4 deg about base x): the next move restores the
+    # reference roll/pitch, keeps the turned heading, and says so
+    T = KIN.fk_matrix(q1)
+    c, s = np.cos(np.radians(4)), np.sin(np.radians(4))
+    R_tilted = np.array([[1, 0, 0], [0, c, -s], [0, s, c]]) @ T[:3, :3]
+    from controlr.robot.kinematics import matrix_to_rotvec
+    q_t = KIN.ik(T[:3, 3], matrix_to_rotvec(R_tilted), q1)
+    out, ev = _yaw_move(env, q_t, (0.0, 0.0, 0.01), 0.0)
+    assert any(e.kind == "tilt" and "yaw is kept" in e.message for e in ev)
+    r = _rpy(out[0].q_target)
+    np.testing.assert_allclose(r[:2], _rpy(Q_TILT)[:2], atol=np.radians(0.6))
+    assert np.degrees(r[2] - _rpy(Q_TILT)[2]) == pytest.approx(25, abs=1.0)
+
+
+def test_yaw_step_limit_clamps_the_turn_only():
+    env = _yaw_env()
+    out, ev = _yaw_move(env, Q_TILT, dyaw=np.radians(45))
+    e = [e for e in ev if e.kind == "step_limit"]
+    assert e and "45.0 deg" in e[0].message and "30.0 deg" in e[0].message
+    assert np.degrees(out[0].values[5]) == pytest.approx(30, abs=0.1)
+    assert np.degrees(_rpy(out[0].q_target)[2] - _rpy(Q_TILT)[2]) == pytest.approx(30, abs=0.5)
+
+
+def test_yaw_turn_at_the_reach_edge_names_the_reason_and_the_turned_angle():
+    """At the high start pose a -30 deg turn straightens the elbow (edge of reach)."""
+    env = _yaw_env()
+    out, ev = _yaw_move(env, Q_TILT, dyaw=np.radians(-30))
+    msg = " ".join(e.message for e in ev if e.kind in ("reach", "ik_fail"))
+    assert "edge of its reach" in msg and "turned" in msg and "with yaw" in msg, msg
+
+
+def test_yaw_mode_without_rotation_flag_is_unchanged():
+    """rotation unset (None): 6 ee_delta values stay a free extrinsic rotation of the measured pose."""
+    env = SafetyEnvelope(SPEC_RIG, SafetyConfig())
+    env.reset(_state(Q_TILT))
+    out, _ = _yaw_move(env, Q_TILT, dyaw=np.radians(10))
+    assert np.degrees(_rpy(out[0].q_target)[2] - _rpy(Q_TILT)[2]) == pytest.approx(10, abs=0.5)
+
+
+# live run 20261002T184337Z (sonnet-5-5 seed 0): a reach-clamped lift parked the arm at elbow
+# 0.0 deg; from there 17 turns of moves were refused as "large joint swing" (any inward move needs
+# a big first-step elbow change at the singularity) and the episode ran out of turns.
+Q_LIFT_184337 = (0.51103, -0.94978, 0.63688, 0.97799, 1.9256, -2.46481)
+Q_STUCK_184337 = (0.50874, -0.72156, 0.00037, 1.38219, 1.92205, -2.46824)
+
+
+def test_reach_clamped_lift_stops_before_the_stretched_elbow():
+    env = _yaw_env()
+    out, ev = _yaw_move(env, Q_LIFT_184337, (0.0, 0.0, 0.06))
+    assert out and any(e.kind == "reach" and "edge of its reach" in e.message for e in ev)
+    assert abs(np.degrees(out[0].q_target[2])) >= 8.0
+
+
+@pytest.mark.parametrize("d", [(0.03, 0.0, 0.0), (0.0, 0.0, -0.015), (0.0, 0.1, 0.0), (0.04, 0.04, -0.04)])
+def test_arm_can_back_out_of_a_stretched_elbow(d):
+    env = _yaw_env()
+    out, ev = _yaw_move(env, Q_STUCK_184337, d)
+    assert out, [e.message for e in ev]
+    assert np.degrees(out[0].q_target[2]) > 8.0                      # bent back on the start branch
+    assert np.linalg.norm(_tcp(out[0]) - KIN.fk(Q_STUCK_184337)[0] - d) < 1e-3

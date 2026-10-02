@@ -220,7 +220,8 @@ LANCZOS, never upscale. Deterministic output for identical input (cache stabilit
 
 ### Robot backends
 `controlr/robot/base.py::Robot` (reset/observe/state/execute/check_goal/close; optional
-`reference_state()` — the commanded reset state, default None).
+`reference_state()` — the commanded reset state, default None; optional `scene_record()` — the
+sampled task scene for `setup.json`, default None).
 Contract additions in `types.py` (backwards compatible, defaults None): `RobotSpec.finger_pad`
 (pad half length / half width / thickness, m), `Action.q_path` (envelope waypoints); `Action.values`
 of ee_abs + rotation=yaw has 4 entries (x, y, z, yaw).
@@ -236,8 +237,13 @@ Factory: `controlr.robot.make_robot(cfg: Config) -> Robot`.
   its TCP), joint soft limits, near-limit warnings, clamp vs reject. ee moves: IK every
   `safety.path_step_m` (5 mm) along the straight TCP line -> `Action.q_path` waypoints; an
   unreachable or near-singular stretch (joint jump > 0.02 rad/mm + 0.05) SHORTENS the move
-  (CLAMP "moved N % of the way"; < 10 % -> skipped, `ik_fail`). rotation=none keeps the
-  reference orientation from `reset` (a contact tilt is undone; WARN > 3 deg). Joint moves are
+  (CLAMP "moved N % of the way", with the turned angle when the move turns, and the kinematic
+  reason: elbow straight = edge of reach, wrist_2 near 0/180 = wrist singularity; < 10 % ->
+  skipped, `ik_fail`). rotation=none keeps the reference orientation from `reset` (a contact tilt
+  is undone; WARN > 3 deg). rotation=yaw (`SafetyEnvelope(..., rotation=cfg.action.rotation)`,
+  set by the loop and the backends' fallback envelopes) holds only the reference roll/pitch: the
+  target heading is the current yaw + dyaw (ee_delta) or the commanded yaw (ee_abs), dyaw clamped
+  to `max_step_rad`; a contact tilt is undone, a turn is kept. Joint moves are
   checked at samples along the joint path. Backend-independent.
 * Isaac backend (primary sim): reuses PHANTOM's Isaac Sim 6.0 reconstruction of the real rig
   (`~/phantom-icra-2027/phantom` on compute3: `phantom/sim/scene.py`, `camera.py`, `kinematics.py`,
@@ -257,7 +263,9 @@ Factory: `controlr.robot.make_robot(cfg: Config) -> Robot`.
 `runs/<UTC timestamp>_[fake_]<name>/`: `config.yaml`, `system_prompt.md`, `plan.md`,
 `images/<sha>.jpg` (exact bytes sent), `messages.jsonl` (transcript with image refs),
 `turns.jsonl`, `summary.json`, `setup.json` (reset time, instruction, cache style, `llm_backend`
-live|fake, state0 + reference state, turn-0 image shas, lookback warning), `cameras.json` (K,
+live|fake, state0 + reference state, turn-0 image shas, lookback warning, `scene` =
+`Robot.scene_record()`: the sampled task scene — Isaac: packet pose / yaw / yaw offset from nominal /
+tilt / settle drift, box pose, start joints / TCP / tool yaw / start yaw offset, marker, zone; mm, deg), `cameras.json` (K,
 T_cam_base), `spec.json` (RobotSpec), `planner.json` (planner request/usage/timings/reasoning),
 `raw/<turn>_<cam>.png` (native frames without overlays, `log.save_raw_frames`).
 

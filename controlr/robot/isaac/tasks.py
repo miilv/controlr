@@ -104,6 +104,15 @@ def _param(params: dict, defaults: dict, key: str):
 
 WAFFLE_DEFAULTS = {
     "xy_sigma_m": 0.010, "xy_max_m": 0.020, "yaw_sigma_deg": 5.0, "yaw_max_deg": 10.0,
+    # packet yaw offset from the nominal pose: "normal" = N(0, yaw_sigma) clipped to +-yaw_max
+    # (PHANTOM), "uniform" = U(-yaw_max, +yaw_max). Graspable with the demo tool tilt and
+    # rotation=yaw: offsets -40..+50 deg (UR3 reach; -45 is out of reach, see ROTATION_REPORT).
+    "yaw_dist": "normal",
+    # tool yaw offset about the vertical through the start TCP, drawn after the packet:
+    # a number v -> U(-v, v) deg, a pair (lo, hi) -> U(lo, hi) deg; 0 = the recorded start
+    # (no draw, so seeds keep their packet poses). Start-pose reach: -27..+50 deg.
+    "start_yaw_deg": 0.0,
+    "yaw_offset_deg": None,             # explicit packet yaw offset (deg); overrides the draw
     "nominal": False,                   # True -> PHANTOM's measured nominal pose
     "bin_tolerance_m": 0.002, "contact_force_n": 0.1,
     "settle_speed_m_s": 0.03, "settle_angular_speed_rad_s": 0.5, "lift_height_m": 0.03,
@@ -120,19 +129,112 @@ def _sample_object(rng: np.random.Generator, params: dict, scene: dict, defaults
         yaw_max = np.radians(float(_param(params, defaults, "yaw_max_deg")))
         center[:2] += np.clip(rng.normal(0.0, float(_param(params, defaults, "xy_sigma_m")), 2),
                               -xy_max, xy_max)
-        yaw += float(np.clip(rng.normal(0.0, np.radians(float(_param(params, defaults, "yaw_sigma_deg")))),
-                             -yaw_max, yaw_max))
-    return {"object_pos": center, "object_yaw": yaw}
+        dist = str(params.get("yaw_dist", defaults.get("yaw_dist", "normal")))
+        if dist == "uniform":
+            yaw += float(rng.uniform(-yaw_max, yaw_max))
+        elif dist == "normal":
+            yaw += float(np.clip(rng.normal(0.0, np.radians(float(_param(params, defaults, "yaw_sigma_deg")))),
+                                 -yaw_max, yaw_max))
+        else:
+            raise ValueError(f"yaw_dist {dist!r}: normal | uniform")
+    fixed = params.get("yaw_offset_deg", defaults.get("yaw_offset_deg"))
+    if fixed is not None:                       # after the draws: the RNG stream is unchanged
+        yaw = float(obj["yaw"]) + float(np.radians(float(fixed)))
+    return {"object_pos": center, "object_yaw": yaw, "object_yaw_offset": yaw - float(obj["yaw"])}
 
 
-def _start(params: dict, defaults: dict) -> dict:
-    return {"start_q": np.asarray(_param(params, defaults, "start_q"), float),
+def rotate_start_q(start_q, yaw: float, step_rad: float = np.radians(2.0)) -> np.ndarray:
+    """Joints with the start TCP kept and the tool turned by ``yaw`` (rad) about the vertical
+    through the TCP (roll/pitch kept). Followed in small steps from ``start_q`` with IK seeded
+    by the previous step, so the result is on the same branch as the recorded start (the arm
+    could drive there with ``rotation=yaw`` moves). Raises if a step has no solution."""
+    from controlr.robot.kinematics import IKOptions, UR3Kinematics, matrix_to_rotvec
+    from controlr.robot.spec import ur3_cb3_spec
+
+    q = np.asarray(start_q, float).copy()
+    if abs(yaw) < 1e-9:
+        return q
+    kin = UR3Kinematics()
+    margin = 0.0873
+    lim = np.array([[j.lower + margin, j.upper - margin] for j in ur3_cb3_spec().joints])
+    T0 = kin.fk_matrix(q)
+    n = max(1, int(np.ceil(abs(yaw) / step_rad)))
+    for k in range(1, n + 1):
+        qn = kin.ik(T0[:3, 3], matrix_to_rotvec(_rz(yaw * k / n) @ T0[:3, :3]), q, lim,
+                    options=IKOptions(restarts=0))
+        if qn is None or float(np.max(np.abs(qn - q))) > 0.3:
+            raise ValueError(f"start_yaw {np.degrees(yaw):.1f} deg: the start TCP cannot be kept at "
+                             f"{np.degrees(yaw * k / n):.1f} deg (reach limit); narrow start_yaw_deg")
+        q = qn
+    return q
+
+
+def _start(params: dict, defaults: dict, rng: np.random.Generator | None = None) -> dict:
+    q0 = np.asarray(_param(params, defaults, "start_q"), float)
+    spec = params.get("start_yaw_deg", defaults.get("start_yaw_deg", 0.0))
+    lo, hi = (-float(spec), float(spec)) if np.isscalar(spec) else (float(spec[0]), float(spec[1]))
+    yaw = 0.0
+    if rng is not None and (lo != 0.0 or hi != 0.0):
+        yaw = float(np.radians(rng.uniform(min(lo, hi), max(lo, hi))))
+    return {"start_q": rotate_start_q(q0, yaw), "start_yaw_offset": yaw,
             "start_gripper": _param(params, defaults, "start_gripper")}
 
 
 def sample_waffle(rng, params, scene):
-    return {**_sample_object(rng, params, scene, WAFFLE_DEFAULTS), **_start(params, WAFFLE_DEFAULTS),
+    return {**_sample_object(rng, params, scene, WAFFLE_DEFAULTS), **_start(params, WAFFLE_DEFAULTS, rng),
             "marker": None, "zone": None}
+
+
+def scene_record(episode: dict, scene: dict) -> dict:
+    """The sampled task scene of one episode in loggable units (mm / deg, base frame):
+    packet pose (sampled and settled) and its yaw offset from the nominal pose, box pose,
+    start joints / TCP / tool yaw (+ the randomised start yaw offset), reach marker / push
+    zone. ``episode`` is the server's episode dict, ``scene`` its ``scene_info``."""
+    from controlr.robot.kinematics import UR3Kinematics, matrix_to_rpy
+
+    def mm(v):
+        return None if v is None else [round(float(x) * 1000.0, 2) for x in np.asarray(v, float).reshape(-1)]
+
+    def deg(a):
+        return None if a is None else round(float(np.degrees(a)), 3)
+
+    obj = scene.get("object", {})
+    nominal_yaw = float(obj.get("yaw", 0.0))
+    quat = episode.get("object_quat_wxyz")
+    settled_yaw = None
+    tilt = None
+    if quat is not None:
+        R = quat_wxyz_to_matrix(quat)
+        settled_yaw = float(np.arctan2(R[1, 0], R[0, 0]))
+        tilt = float(np.degrees(tilt_angle(quat)))
+    sampled_yaw = episode.get("object_yaw_sampled")
+    kin = UR3Kinematics()
+    q0 = episode.get("start_q")
+    tcp_yaw0 = None
+    tcp0 = None
+    if q0 is not None:
+        T = kin.fk_matrix(np.asarray(q0, float))
+        tcp0, tcp_yaw0 = T[:3, 3], float(matrix_to_rpy(T[:3, :3])[2])
+    b = scene.get("bin") or {}
+    return {
+        "task": episode.get("task"), "seed": episode.get("seed"),
+        "packet": {"pos_mm": mm(episode.get("object_pos")), "pos_sampled_mm": mm(episode.get("object_pos_sampled")),
+                   "yaw_deg": deg(settled_yaw), "yaw_sampled_deg": deg(sampled_yaw),
+                   "nominal_yaw_deg": deg(nominal_yaw),
+                   "yaw_offset_deg": deg(None if settled_yaw is None else
+                                         (settled_yaw - nominal_yaw + np.pi) % (2 * np.pi) - np.pi),
+                   "tilt_deg": None if tilt is None else round(tilt, 3),
+                   "size_mm": mm(obj.get("size")),
+                   "settle_drift_mm": None if episode.get("settle_drift_m") is None
+                   else round(float(episode["settle_drift_m"]) * 1000, 2)},
+        "box": {"center_mm": mm(b.get("center")), "yaw_deg": deg(b.get("yaw")),
+                "interior_lower_mm": mm(b.get("lower")), "interior_upper_mm": mm(b.get("upper"))},
+        "start": {"q_deg": None if q0 is None else [round(float(np.degrees(v)), 3) for v in q0],
+                  "tcp_mm": mm(tcp0), "tcp_yaw_deg": deg(tcp_yaw0),
+                  "yaw_offset_deg": deg(episode.get("start_yaw_offset", 0.0)),
+                  "gripper": episode.get("start_gripper")},
+        "marker_mm": mm(episode.get("marker")), "zone_mm": mm(episode.get("zone")),
+    }
 
 
 def evaluate_waffle(snap: dict, episode: dict) -> dict:
@@ -260,7 +362,7 @@ def reach_feasibility(marker, scene: dict, start_q, *, body_clearance: float = 0
 
 def sample_reach(rng, params, scene):
     d = REACH_DEFAULTS
-    out = {**_sample_object(rng, params, scene, d), **_start(params, d), "zone": None}
+    out = {**_sample_object(rng, params, scene, d), **_start(params, d, rng), "zone": None}
     lo_x, hi_x = _param(params, d, "marker_x")
     lo_y, hi_y = _param(params, d, "marker_y")
     lo_h, hi_h = _param(params, d, "marker_height")
@@ -308,7 +410,7 @@ PUSH_DEFAULTS = {**WAFFLE_DEFAULTS, "push_distance_m": (0.06, 0.10), "tolerance_
 
 def sample_push(rng, params, scene):
     d = PUSH_DEFAULTS
-    out = {**_sample_object(rng, params, scene, d), **_start(params, d), "marker": None}
+    out = {**_sample_object(rng, params, scene, d), **_start(params, d, rng), "marker": None}
     lo, hi = _param(params, d, "push_distance_m")
     # Push along the packet's long axis: pushing its broad face tips the 90 mm
     # tall, 35 mm thick packet over. The target lies on the -x side (left in
@@ -433,3 +535,117 @@ def scripted_pick_place_plan(object_pos, object_yaw: float, bin_center, *, grasp
         {"name": "release", "pos": place, "R": R, "gripper": open_width_m, "linear": False},
         {"name": "retreat", "pos": np.array([b[0], b[1], retreat_z_m]), "R": R, "gripper": None, "linear": True},
     ]
+
+
+def body_box_clearance(q, scene: dict, skip_m: float = 0.06) -> float:
+    """Distance (m) from the tool/wrist centre line (TCP-``skip_m`` along the tool -> flange ->
+    wrist 3 -> wrist 2) to the blue box's outer solid (walls included); 0 inside. The Robotiq
+    housing / wrist links are ~40-50 mm in radius: in Isaac 47 mm already meant contact."""
+    from controlr.robot.kinematics import UR3Kinematics
+    solid = _bin_solid(scene, 0.0)
+    if solid is None:
+        return float("inf")
+    lo, hi, c, yaw = solid
+    F = UR3Kinematics().frames(np.asarray(q, float))
+    chain = [F[7][:3, 3], F[6][:3, 3], F[5][:3, 3], F[4][:3, 3]]
+    pts = np.concatenate([np.linspace(a, b, 15) for a, b in zip(chain, chain[1:])])
+    pts = pts[np.linalg.norm(pts - F[7][:3, 3], axis=1) > skip_m]
+    local = to_bin_frame(pts, c, yaw)
+    d = np.maximum(lo - local, 0.0) + np.maximum(local - hi, 0.0)
+    return float(np.min(np.linalg.norm(d, axis=1)))
+
+
+def jaw_yaw_for(object_yaw: float, near: float) -> float:
+    """Tool heading (STATE yaw: extrinsic RPY yaw = heading of the jaw line, tool x) that
+    closes the jaws across the packet's thin axis (local y): object_yaw + 90 deg, taken
+    modulo 180 deg (the jaws are symmetric) nearest to ``near``."""
+    target = float(object_yaw) + np.pi / 2
+    return near + ((target - near + np.pi / 2) % np.pi - np.pi / 2)
+
+
+def run_scripted_yaw_pick_place(object_pos, object_yaw: float, bin_center, act: Callable, T0,
+                                *, grasp_above_center_m: float = 0.035, approach_m: float = 0.08,
+                                lift0_m: float = 0.03, lift_z_m: float = 0.16, carry_z_m: float = 0.29,
+                                place_tcp_z_m: float = 0.11, retreat_z_m: float = 0.26,
+                                carry_yaw: float | None = None, open_width_m: float = 0.085,
+                                grasp_shift_m: float = 0.05, turn_above_m: float = 0.02,
+                                turn_back_m: float = 0.0,
+                                max_step_m: float = 0.09, fine_step_m: float = 0.02,
+                                max_yaw_rad: float = np.radians(30.0), max_moves: int = 120) -> list[dict]:
+    """Closed-loop scripted expert for ``action.rotation=yaw`` that uses ONLY the model's action
+    space (``MOVE ee_delta dx dy dz dyaw`` + GRIP), never shown to the model.
+
+    ``act(values, gripper, phase)`` executes one ee_delta action (SI values ``(dx, dy, dz, 0, 0, dyaw)``,
+    gripper width or None) and returns the measured TCP pose (4x4) afterwards; ``T0`` is the
+    measured pose now. Phases: hover ``turn_above_m`` above (and ``turn_back_m`` toward -y of)
+    the pregrasp point of the TARGET heading, keeping the current heading; turn the jaws across
+    the packet (``jaw_yaw_for``) there — low enough for the turn to be in reach (at the high start
+    pose a negative turn straightens the elbow after ~27 deg) and with the housing clear of the
+    box's near wall (turning at the old-heading pregrasp swung it into the wall); pregrasp; approach
+    along the tool axis to the packet centre — or, when the jaws turn more than 10 deg past the
+    demo heading, a point ``grasp_shift_m`` from it along the long axis toward -y (with the jaws
+    turned +25..+40 deg the housing otherwise sits over the box's near wall); close; lift ``lift0_m``; turn back to
+    ``carry_yaw`` (default: the demo heading, ``EXPERT_ROT_GRASP``) while low — a lift with the
+    jaws turned -40 deg runs out of reach at ~135 mm; then lift, climb, carry, lower, release,
+    retreat as ``scripted_pick_place_plan``. Returns one record per action:
+    ``{"phase", "values", "gripper", "T_before", "T_after"}``."""
+    from controlr.robot.kinematics import matrix_to_rpy
+
+    p_obj = np.asarray(object_pos, float)
+    axis = np.array([np.cos(object_yaw), np.sin(object_yaw), 0.0])
+    if axis[1] < 0:
+        axis = -axis                                  # long axis pointing toward +y (the box)
+    b = np.asarray(bin_center, float)
+    if carry_yaw is None:
+        carry_yaw = float(matrix_to_rpy(_rotvec_to_matrix(EXPERT_ROT_GRASP))[2])
+    T = np.asarray(T0, float)
+    jaw = jaw_yaw_for(object_yaw, float(matrix_to_rpy(T[:3, :3])[2]))
+    # jaws turned positive (past the demo heading) swing the housing toward the box: grasp off-centre
+    positive = (jaw - carry_yaw + np.pi) % (2 * np.pi) - np.pi > np.radians(10.0)
+    grasp = p_obj - (grasp_shift_m if positive else 0.0) * axis + np.array([0.0, 0.0, grasp_above_center_m])
+    log: list[dict] = []
+
+    def heading(Tm) -> float:
+        return float(matrix_to_rpy(Tm[:3, :3])[2])
+
+    def do(phase, d=(0.0, 0.0, 0.0), dyaw=0.0, grip=None):
+        nonlocal T
+        if len(log) >= max_moves:
+            raise RuntimeError(f"scripted yaw expert: more than {max_moves} moves (stuck in {phase})")
+        vals = (float(d[0]), float(d[1]), float(d[2]), 0.0, 0.0, float(dyaw))
+        T_new = np.asarray(act(vals, grip, phase), float)
+        log.append({"phase": phase, "values": vals, "gripper": grip, "T_before": T, "T_after": T_new})
+        T = T_new
+
+    def goto(phase, target, step, tol=0.001):
+        for _ in range(40):
+            d = np.asarray(target, float) - T[:3, 3]
+            n = float(np.linalg.norm(d))
+            if n < tol:
+                return
+            do(phase, d * min(1.0, step / n))
+        raise RuntimeError(f"scripted yaw expert: {phase} did not converge ({n * 1000:.1f} mm left)")
+
+    def turn_to(phase, yaw, tol=np.radians(0.3)):
+        for _ in range(10):
+            dy = (yaw - heading(T) + np.pi) % (2 * np.pi) - np.pi
+            if abs(dy) < tol:
+                return
+            do(phase, dyaw=float(np.clip(dy, -max_yaw_rad, max_yaw_rad)))
+        raise RuntimeError(f"scripted yaw expert: {phase} did not converge")
+
+    z_target = (_rz(jaw - heading(T)) @ T[:3, :3])[:, 2]        # tool axis after the turn
+    goto("hover", grasp - approach_m * z_target + np.array([0.0, -turn_back_m, turn_above_m]), max_step_m)
+    turn_to("align", jaw)
+    goto("pregrasp", grasp - approach_m * T[:3, 2], max_step_m)
+    goto("approach", grasp, fine_step_m)
+    do("close", grip=0.0)
+    goto("lift0", grasp + np.array([0.0, 0.0, lift0_m]), fine_step_m)
+    turn_to("unrotate", carry_yaw)
+    goto("lift", np.array([grasp[0], grasp[1], lift_z_m]), max_step_m)
+    goto("climb", np.array([b[0], b[1] - 0.165, carry_z_m]), max_step_m)
+    goto("carry", np.array([b[0], b[1], carry_z_m]), max_step_m)
+    goto("lower", np.array([b[0], b[1], place_tcp_z_m]), max_step_m)
+    do("release", grip=open_width_m)
+    goto("retreat", np.array([b[0], b[1], retreat_z_m]), max_step_m)
+    return log

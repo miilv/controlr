@@ -326,8 +326,13 @@ class IsaacRig:
                          for p in self.pads])
 
     def _tcp_measured(self):
+        """Measured TCP (pos, rotvec); NaN when PhysX has diverged (invalid transforms: zero or
+        NaN quaternion — live run 20261002T194251Z crashed the server here instead of stopping)."""
         pos, quat = self.tool.get_world_pose()
-        R = self.Rotation.from_quat(np.asarray(quat)[[1, 2, 3, 0]])
+        quat = np.asarray(quat, float)
+        if not (np.all(np.isfinite(quat)) and np.all(np.isfinite(pos)) and np.linalg.norm(quat) > 1e-6):
+            return np.full(3, np.nan), np.full(3, np.nan)
+        R = self.Rotation.from_quat(quat[[1, 2, 3, 0]])
         return np.asarray(pos) + R.apply([0, 0, TCP_OFFSET_M]), R.as_rotvec()
 
     def state(self) -> dict:
@@ -421,8 +426,13 @@ class IsaacRig:
                         "marker": plan.get("marker"), "zone": plan.get("zone"),
                         "tcp_pos0": st["tcp_pos"], "start_q": q0, "settle_drift_m": drift,
                         "instruction": spec.instruction,
+                        "object_pos_sampled": np.asarray(plan["object_pos"], float),
+                        "object_yaw_sampled": float(plan["object_yaw"]),
+                        "start_yaw_offset": float(plan.get("start_yaw_offset", 0.0)), "start_gripper": g,
                         # running record for "pushed, not carried" (tasks.evaluate_push)
                         "max_lift_m": 0.0, "ever_held": False}
+        # the sampled scene in loggable units (setup.json "scene"; tasks.scene_record)
+        self.episode["scene"] = task_registry.scene_record(self.episode, self.scene_info)
         obs = self.observe()
         return {"obs": obs, "episode": self.episode, "reset_s": time.perf_counter() - t}
 
@@ -512,7 +522,9 @@ class IsaacRig:
                 now = self._sample_contacts(peak)
                 env = [f for k, f in now.items() if not k.endswith("-object") and k != "unstable"]
                 st_flags["env_force"] = max(env) if env else 0.0
-                if "unstable" in now or any(f > UNSTABLE_FORCE_N for f in now.values()):
+                q_now = np.asarray(self.robot.get_joint_positions(), float)
+                if "unstable" in now or any(f > UNSTABLE_FORCE_N for f in now.values()) \
+                        or not np.all(np.isfinite(q_now)):
                     stop("physics became unstable (reset the episode)")       # also with the stop disabled
                 else:
                     for key, f in now.items():
@@ -521,7 +533,10 @@ class IsaacRig:
                         if thr <= 0 or (is_obj and st_flags["gripping"]):
                             continue
                         if (key.endswith("-table") or key.endswith("-box") or is_obj) and f > floor_for(key):
-                            what = "the packet" if is_obj else key.split("-", 1)[1]
+                            held = is_obj and self.grip_intent == "closed" and self.closure_cmd > 0.05
+                            what = ("the held packet (pushed against an obstacle such as the box wall, or swung hard; "
+                                    "the grip is still closed)" if held else "the packet" if is_obj
+                                    else key.split("-", 1)[1])
                             stop(f"contact force {f:.0f} N against {what} > {floor_for(key):.0f} N")
                             break
                 prof["contacts_s"] += time.perf_counter() - t_c
@@ -569,6 +584,9 @@ class IsaacRig:
             q_err = self._integrate() if integrate else 0.0
             qd = np.abs(np.asarray(self.robot.get_joint_velocities()[self.ids], float))
             tcp_now = self._tcp_measured()[0]
+            if not np.all(np.isfinite(tcp_now)):
+                stop("physics became unstable (reset the episode)")
+                break
             v_tcp = float(np.linalg.norm(tcp_now - tcp_prev)) / (10 * self.dt)
             tcp_prev = tcp_now
             if t_settle >= settle["min_s"] and qd.max() < settle["joint_speed_rad_s"] \

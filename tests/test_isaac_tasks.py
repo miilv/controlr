@@ -172,3 +172,141 @@ def test_push_fails_when_the_packet_was_carried():
     assert tasks.evaluate_push(snapshot(on_zone), {**ep, "max_lift_m": 0.0, "ever_held": False})["success"]
     assert not tasks.evaluate_push(snapshot(on_zone), {**ep, "max_lift_m": 0.06})["success"]
     assert not tasks.evaluate_push(snapshot(on_zone), {**ep, "ever_held": True})["success"]
+
+
+# ---------------------------------------------------------------------------
+# rotation experiment (docs/ROTATION_REPORT.md): wider packet yaw, start yaw, scene record
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", range(5))
+def test_default_sampling_is_unchanged_by_the_new_params(seed):
+    """Defaults stay backward compatible: same RNG draws, recorded start joints."""
+    rng = np.random.default_rng(seed)
+    xy = np.clip(rng.normal(0.0, 0.010, 2), -0.020, 0.020)
+    yaw = float(np.clip(rng.normal(0.0, np.radians(5.0)), -np.radians(10), np.radians(10)))
+    s = tasks.sample_waffle(np.random.default_rng(seed), {}, SCENE)
+    np.testing.assert_allclose(s["object_pos"][:2], np.asarray(SCENE["object"]["center"][:2]) + xy)
+    assert s["object_yaw"] == pytest.approx(SCENE["object"]["yaw"] + yaw)
+    np.testing.assert_allclose(s["start_q"], tasks.START_Q)
+    assert s["start_yaw_offset"] == 0.0
+
+
+def test_uniform_packet_yaw_covers_the_range():
+    offs = [tasks.sample_waffle(np.random.default_rng(k), {"yaw_dist": "uniform", "yaw_max_deg": 40}, SCENE)
+            ["object_yaw_offset"] for k in range(200)]
+    offs = np.degrees(offs)
+    assert offs.min() >= -40 - 1e-9 and offs.max() <= 40 + 1e-9
+    assert offs.min() < -30 and offs.max() > 30
+    with pytest.raises(ValueError):
+        tasks.sample_waffle(np.random.default_rng(0), {"yaw_dist": "cauchy"}, SCENE)
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_start_yaw_keeps_the_tcp_and_tilt_and_turns_the_heading(seed):
+    from controlr.robot.kinematics import matrix_to_rpy
+    q_sim = (0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406)        # configs/sim_waffle.yaml start_q
+    s = tasks.sample_waffle(np.random.default_rng(seed), {"start_yaw_deg": 20, "start_q": q_sim}, SCENE)
+    ref = tasks.sample_waffle(np.random.default_rng(seed), {"start_q": q_sim}, SCENE)
+    np.testing.assert_allclose(s["object_pos"], ref["object_pos"])       # drawn after the packet
+    assert abs(np.degrees(s["start_yaw_offset"])) <= 20
+    T0, T1 = KIN.fk_matrix(q_sim), KIN.fk_matrix(s["start_q"])
+    assert np.linalg.norm(T1[:3, 3] - T0[:3, 3]) < 1e-3
+    r0, r1 = matrix_to_rpy(T0[:3, :3]), matrix_to_rpy(T1[:3, :3])
+    np.testing.assert_allclose(r1[:2], r0[:2], atol=np.radians(0.5))
+    dyaw = (r1[2] - r0[2] + np.pi) % (2 * np.pi) - np.pi
+    assert dyaw == pytest.approx(s["start_yaw_offset"], abs=np.radians(0.5))
+    assert np.max(np.abs(np.asarray(s["start_q"]) - q_sim)) < np.radians(60)    # same IK branch
+
+
+def test_start_yaw_range_pair_and_unreachable_start_raises():
+    s = tasks.sample_waffle(np.random.default_rng(3), {"start_yaw_deg": [10, 10]}, SCENE)
+    assert np.degrees(s["start_yaw_offset"]) == pytest.approx(10)
+    with pytest.raises(ValueError, match="reach limit"):
+        tasks.rotate_start_q((0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406), np.radians(-45))
+
+
+def test_scene_record_has_packet_box_start_and_targets():
+    from controlr.robot.kinematics import matrix_to_rpy
+    s = tasks.sample_waffle(np.random.default_rng(2), {"yaw_dist": "uniform", "yaw_max_deg": 40,
+                                                       "start_yaw_deg": 15}, SCENE)
+    ep = {"task": "waffle_pick_place", "seed": 2, "object_pos": s["object_pos"],
+          "object_quat_wxyz": tasks.yaw_quat_wxyz(s["object_yaw"]), "object_pos_sampled": s["object_pos"],
+          "object_yaw_sampled": s["object_yaw"], "start_q": s["start_q"],
+          "start_yaw_offset": s["start_yaw_offset"], "start_gripper": "open", "settle_drift_m": 0.0004,
+          "marker": None, "zone": None}
+    rec = tasks.scene_record(ep, SCENE)
+    import json
+    json.dumps(rec)                                               # plain JSON
+    assert rec["packet"]["yaw_offset_deg"] == pytest.approx(np.degrees(s["object_yaw_offset"]), abs=1e-3)
+    assert rec["packet"]["yaw_deg"] == pytest.approx(np.degrees(s["object_yaw"]), abs=1e-3)
+    assert rec["packet"]["size_mm"] == [170.0, 35.0, 90.0] and rec["packet"]["tilt_deg"] == pytest.approx(0, abs=1e-6)
+    assert rec["box"]["center_mm"][0] == pytest.approx(-390.5)
+    assert rec["start"]["yaw_offset_deg"] == pytest.approx(np.degrees(s["start_yaw_offset"]), abs=1e-3)
+    yaw0 = np.degrees(matrix_to_rpy(KIN.fk_matrix(s["start_q"])[:3, :3])[2])
+    assert rec["start"]["tcp_yaw_deg"] == pytest.approx(yaw0, abs=1e-3)
+    assert rec["marker_mm"] is None and rec["zone_mm"] is None
+
+
+def test_explicit_packet_yaw_offset():
+    for nominal in (False, True):
+        s = tasks.sample_waffle(np.random.default_rng(4), {"yaw_offset_deg": -40, "nominal": nominal}, SCENE)
+        assert np.degrees(s["object_yaw_offset"]) == pytest.approx(-40)
+    a = tasks.sample_waffle(np.random.default_rng(4), {"yaw_offset_deg": 30}, SCENE)
+    b = tasks.sample_waffle(np.random.default_rng(4), {}, SCENE)
+    np.testing.assert_allclose(a["object_pos"], b["object_pos"])
+
+
+SIM_START_Q = (0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406)      # configs/sim_waffle.yaml
+
+
+@pytest.mark.parametrize("start_yaw", [-20, 0, 20])
+@pytest.mark.parametrize("offset,dy", [(-40, 0.0), (-15, 0.0), (15, 0.0), (25, 0.0), (30, 0.0), (35, -0.02)])
+def test_scripted_yaw_expert_is_feasible_through_the_envelope(offset, dy, start_yaw):
+    """Kinematic twin of tests/test_isaac_sim.py::test_scripted_yaw_expert_succeeds: every
+    action of the closed-loop yaw expert passes the rotation=yaw envelope unclamped."""
+    from controlr.config import SafetyConfig
+    from controlr.robot.safety import SafetyEnvelope
+    from controlr.robot.spec import ur3_cb3_spec
+    from controlr.types import Action, ActionMode, RobotState
+
+    spec = ur3_cb3_spec(table_z=-0.0095)
+    q0 = tasks.rotate_start_q(SIM_START_Q, np.radians(start_yaw))
+    env = SafetyEnvelope(spec, SafetyConfig(), KIN, rotation="yaw")
+
+    def state(q, g):
+        p, rv = KIN.fk(q)
+        return RobotState(0.0, np.asarray(q), p, rv, g * 1000, False, False)
+
+    env.reset(state(q0, 0.0913))
+    cur = {"q": np.asarray(q0), "g": 0.0913}
+
+    def act(vals, grip, phase=""):
+        out, ev = env.filter([Action(ActionMode.EE_DELTA, vals, grip)], state(cur["q"], cur["g"]))
+        bad = [e.message for e in ev if e.kind in ("reach", "ik_fail", "step_limit", "workspace", "table")]
+        assert out and not bad, bad
+        if phase not in ("lower", "release", "retreat"):       # those are meant to be in the box
+            for qq in list(out[0].q_path or ()) + [out[0].q_target]:
+                clear[phase] = min(clear.get(phase, 1.0), tasks.body_box_clearance(qq, SCENE))
+        cur["q"] = np.asarray(out[0].q_target)
+        cur["g"] = grip if grip is not None else cur["g"]
+        return KIN.fk_matrix(cur["q"])
+
+    clear: dict[str, float] = {}
+    yaw = SCENE["object"]["yaw"] + np.radians(offset)
+    obj = np.asarray(SCENE["object"]["center"]) + [0.0, dy, 0.0]
+    log = tasks.run_scripted_yaw_pick_place(obj, yaw, SCENE["bin"]["center"], act, KIN.fk_matrix(q0))
+    # the wrist / housing keep > 55 mm from the box (47 mm meant contact in Isaac)
+    assert min(clear.values()) > 0.055, {k: round(v * 1000) for k, v in clear.items()}
+    R = [r for r in log if r["phase"] == "close"][0]["T_after"][:3, :3]
+    thin = np.array([-np.sin(yaw), np.cos(yaw)])
+    assert abs(np.dot(R[:2, 0] / np.linalg.norm(R[:2, 0]), thin)) > 0.999      # jaws across the thin axis
+
+
+@pytest.mark.parametrize("offset,dy", [(40, 0.0), (40, -0.02), (25, 0.02)])
+def test_large_positive_packet_yaw_is_boxed_in(offset, dy):
+    """The limit of the graspable range (docs/ROTATION_REPORT.md): with the demo tilt, jaws
+    turned +40 deg put the gripper housing within ~50 mm of the box's near wall, and moving the
+    grasp away from the box runs out of reach; +25 deg fails once the packet sits 20 mm closer
+    to the box. Rotation alone cannot solve these (a different tilt would be needed)."""
+    with pytest.raises(AssertionError):
+        test_scripted_yaw_expert_is_feasible_through_the_envelope(offset, dy, 0)

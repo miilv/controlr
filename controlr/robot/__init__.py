@@ -16,7 +16,7 @@ def make_robot(cfg) -> Robot:
     params = dict(cfg.robot.params or {})
     if backend == "mock":
         from controlr.robot.mock import MockRobot
-        return MockRobot(params, safety=cfg.safety)
+        return MockRobot(params, safety=cfg.safety, rotation=cfg.action.rotation)
     if backend == "replay":
         from controlr.robot.replay import ReplayRobot
         return ReplayRobot(params)

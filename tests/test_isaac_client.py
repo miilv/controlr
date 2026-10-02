@@ -227,3 +227,38 @@ def test_peak_speeds_of_the_generated_trajectory_stay_within_limits():
         assert v_joint <= 1.0 * 1.02, v_joint
         assert v_tcp <= 0.15 * 1.10, v_tcp           # TCP: waypoints ~uniform along the line
         np.testing.assert_allclose(qs[-1], rows[-1])
+
+
+def test_scene_record_comes_from_the_server_episode(fake):
+    robot, rig = fake
+    rig.handle_orig = rig.handle
+
+    def handle(op, args):
+        out = rig.handle_orig(op, args)
+        if op == "reset":
+            out["episode"]["scene"] = {"packet": {"yaw_offset_deg": -31.5}, "start": {"yaw_offset_deg": 12.0}}
+        return out
+    rig.handle = handle
+    assert robot.scene_record() is None
+    robot.reset({"name": "waffle_pick_place"}, seed=1)
+    assert robot.scene_record()["packet"]["yaw_offset_deg"] == -31.5
+
+
+def test_solver_blow_up_after_an_ordinary_stop_is_unstable(fake):
+    """Live run 20261002T192358Z: a 45 N packet stop was followed by contact peaks of 1e17 N (the
+    solver diverged while settling); the episode must end as unstable, not continue."""
+    robot, rig = fake
+    robot.reset({"name": "waffle_pick_place"}, seed=0)
+    q1 = tuple(np.asarray(tasks.START_Q) + 0.05)
+    rig.stop = True
+    rig.next_contacts = {"gripper-object": 2085.0, "arm-box": 2.17e17}
+    rep = robot.execute([Action(ActionMode.JOINT_ABS, q1, q_target=q1)])
+    stops = [e for e in rep.events if e.level is EventLevel.STOP]
+    assert rep.stopped and len(stops) == 1 and stops[0].kind == "unstable" and "unstable" in stops[0].message
+    rig.stop = False                                     # no stop at all, but absurd peaks
+    rig.next_contacts = {"arm-table": float("inf")}
+    rep = robot.execute([Action(ActionMode.JOINT_ABS, q1, q_target=q1)])
+    assert rep.stopped and [e.kind for e in rep.events if e.level is EventLevel.STOP] == ["unstable"]
+    rig.next_contacts = {"arm-box": 300.0}               # a hard but real contact stays a warning
+    rep = robot.execute([Action(ActionMode.JOINT_ABS, q1, q_target=q1)])
+    assert not rep.stopped

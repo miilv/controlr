@@ -114,3 +114,17 @@ Spend: 0 LLM calls. Isaac: ~8 min of GPU time on compute3 (test server on port 7
 | # | finding | status | what changed |
 |---|---|---|---|
 | K1 | a reply cut by `max_tokens` while thinking (Sonnet: 2000/2000 reasoning tokens, empty text) was fed back only as "missing STATUS line" | fixed | `loop.run_episode`: if `finish_reason == "length"` and no STATUS was parsed, a first PARSE ERROR says the reply was cut off by the output limit (thinking counts) and asks for one short command. Test: `test_loop.py::test_length_cutoff_is_explained`. Live runs of the smoke test predate the fix. |
+
+## Rotation round (2026-10-02, see docs/ROTATION_REPORT.md)
+
+| # | finding | status | what changed |
+|---|---|---|---|
+| R1 | rotation=yaw ee_delta rotated the MEASURED orientation (`Rz(dyaw) @ R0`): a contact tilt was locked in | fixed | `SafetyEnvelope(rotation=...)`: reference roll/pitch held, heading = yaw + dyaw (clamped 30°/line); loop + fallback envelopes pass `cfg.action.rotation`. Tests in `test_safety.py`. |
+| R2 | pure turns that ran out of reach said "moved 87 % of the way (0 mm)" | fixed | CLAMP text adds "turned A of B deg" and the kinematic reason (elbow straight = edge of reach / wrist singularity). |
+| R3 | straight-elbow trap: a reach-clamped lift parked the arm at elbow 0.0°, every later move refused for 17 turns (live run 184337) | fixed | moves stop before elbow < 8°; a move that bends the elbow out of the stretch on the episode's branch may take a large first step. Regression tests with the logged joints. |
+| R4 | PhysX NaN transforms crashed the server (`Found zero norm quaternions`, run 194251) | fixed | `_tcp_measured` returns NaN; NaN TCP / joints stop as `unstable`. |
+| R5 | a solver blow-up after an ordinary stop (peaks 1e17 N, arm teleported) did not end the episode (runs 192358, 194251) | fixed | client: absurd / non-finite contact peaks -> `unstable` STOP. Test with the fake server. |
+| R6 | object STOP while holding said "against the packet" when the held packet hit the box wall | fixed (wording) | "the held packet (pushed against an obstacle such as the box wall, or swung hard; ...)". |
+| R7 | held-packet force STOPs in free air (85-89 N grip dynamics, run 193020) | open | overlaps with genuine wall jams (47-222 N): needs packet-vs-environment contacts in the server. |
+| R8 | the manual said nothing about the tool with rotation=yaw | fixed | yaw tool paragraph (heading definition, tilt, image-angle rule from the calibration, reach advice), real-heading STATE / Appendix B, pure-turn example. |
+| R9 | setup.json did not record the sampled scene | fixed | `setup.json` `scene` (`Robot.scene_record`, `tasks.scene_record`). |

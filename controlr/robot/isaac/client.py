@@ -75,8 +75,11 @@ DEFAULTS: dict = {
 }
 
 
+UNSTABLE_PEAK_N = 5000.0     # = server.UNSTABLE_FORCE_N: no real contact on this rig gets near it
+
+
 class IsaacRobot(Robot):
-    def __init__(self, params: dict | None = None, *, safety=None) -> None:
+    def __init__(self, params: dict | None = None, *, safety=None, rotation: str | None = None) -> None:
         from controlr.config import SafetyConfig
         p = {**DEFAULTS, **(params or {})}
         self.p = p
@@ -97,7 +100,7 @@ class IsaacRobot(Robot):
                             name="UR3 CB3 + Robotiq 2F-85 with DM-Tac W2L pads (Isaac Sim reconstruction)")
         self.spec: RobotSpec = dataclasses.replace(spec, base_frame_doc=ISAAC_BASE_DOC.format(table_mm=mat_top * 1000))
         self.kin = UR3Kinematics(tcp_offset=tcp_offset)
-        self._fallback = SafetyEnvelope(self.spec, self.safety_cfg, self.kin)
+        self._fallback = SafetyEnvelope(self.spec, self.safety_cfg, self.kin, rotation=rotation)
         self.task_instruction = ""
         self.episode: dict = {}
         self.last_reset_s: float | None = None
@@ -105,7 +108,7 @@ class IsaacRobot(Robot):
 
     @classmethod
     def from_config(cls, cfg) -> "IsaacRobot":
-        return cls(cfg.robot.params, safety=cfg.safety)
+        return cls(cfg.robot.params, safety=cfg.safety, rotation=cfg.action.rotation)
 
     # ------------------------------------------------------------ connection
     def _try_connect(self):
@@ -178,6 +181,13 @@ class IsaacRobot(Robot):
         self._fallback.reset(self._reference)
         return obs
 
+    def scene_record(self) -> dict | None:
+        """``tasks.scene_record`` of the last reset, computed by the server (packet pose and
+        yaw offset, box pose, start joints / TCP / tool yaw and start yaw offset, marker /
+        zone; mm / deg)."""
+        rec = self.episode.get("scene")
+        return dict(rec) if rec is not None else None
+
     def reference_state(self) -> RobotState | None:
         """FK of the COMMANDED start joints: the measured reset pose carries a few
         mrad of settle sag/jitter, which would make the cached manual's tool lines
@@ -240,13 +250,24 @@ class IsaacRobot(Robot):
         # on a stop in action k (n_done = k) action k was partly executed: keep it
         return ExecReport(requested=list(actions), executed=executed[:n_done + 1] if r["stopped"] else executed,
                           events=events, state_before=before, state_after=after,
-                          duration_s=float(r["sim_s"]), stopped=bool(r["stopped"]))
+                          duration_s=float(r["sim_s"]),
+                          stopped=bool(r["stopped"]) or any(e.kind == "unstable" for e in events))
 
     def _events(self, r: dict) -> list[SafetyEvent]:
         ev: list[SafetyEvent] = []
-        if r["stopped"]:
-            ev.append(SafetyEvent(EventLevel.STOP, "unstable" if r.get("unstable") else "collision",
-                                  f"motion stopped: {r['stop_reason']}; the arm holds its current pose"))
+        # The server flags "unstable" only when the sample that STOPPED the motion was absurd; a
+        # solver blow-up after an ordinary stop (live run 192358: a 45 N packet stop, then peaks of
+        # 1e17 N and a teleported arm) must end the episode as well.
+        peaks = [float(f) for f in r.get("contacts_peak_n", {}).values()]
+        blown = any(not np.isfinite(f) or f > UNSTABLE_PEAK_N for f in peaks)
+        if r["stopped"] or blown:
+            unstable = bool(r.get("unstable")) or blown
+            reason = r["stop_reason"] if r["stopped"] else ""
+            if blown and "unstable" not in reason:
+                reason = (reason + "; " if reason else "") + (
+                    f"physics became unstable (contact peak {max(peaks):.3g} N; reset the episode)")
+            ev.append(SafetyEvent(EventLevel.STOP, "unstable" if unstable else "collision",
+                                  f"motion stopped: {reason}; the arm holds its current pose"))
         thr = float(self.p["contact_report_n"])
         obj_warn = 0.5 * float(self.safety_cfg.object_force_stop_n or 0.0)
         names = {"arm-table": "arm touched the table/mat", "gripper-table": "gripper touched the table/mat",

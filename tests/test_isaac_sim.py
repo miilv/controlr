@@ -183,3 +183,111 @@ def test_reach_seed0_marker_is_reachable_in_the_sim(robot):
         assert not rep.stopped, [e.message for e in rep.events]
         st = rep.state_after
     assert robot.check_goal().success, (st.tcp_pos, marker)
+
+
+# ---------------------------------------------------------------------------
+# rotation=yaw (docs/ROTATION_REPORT.md)
+# ---------------------------------------------------------------------------
+
+SIM_START_Q = (0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406)      # configs/sim_waffle.yaml
+
+
+def _yaw_envelope(robot):
+    from controlr.config import SafetyConfig
+    from controlr.robot.safety import SafetyEnvelope
+    env = SafetyEnvelope(robot.spec, SafetyConfig(), rotation="yaw")
+    env.reset(robot.reference_state())
+    return env
+
+
+def _rpy_measured(st):
+    from controlr.robot.kinematics import matrix_to_rpy
+    return matrix_to_rpy(_rotvec_matrix(st.tcp_rotvec))
+
+
+def _wrap_deg(a):
+    return (a + 180.0) % 360.0 - 180.0
+
+
+def test_yaw_delta_moves_track_on_the_tilted_tool(robot):
+    """ee_delta dyaw through the rotation=yaw envelope: achieved yaw within 1 deg of the
+    executed command, TCP within 2 mm of the commanded translation (0 for pure turns),
+    roll/pitch held at the reference tilt within 1 deg."""
+    obs = robot.reset({"name": "waffle_pick_place", "params": {"start_q": list(SIM_START_Q), "nominal": True}},
+                      seed=0)
+    env = _yaw_envelope(robot)
+    ref = _rpy_measured(robot.reference_state())
+    st = obs.state
+    moves = [((0, 0, 0), 20), ((0, 0, 0), -20), ((0, 0, -0.06), 25), ((0.02, -0.02, 0), -30),
+             ((0, 0, 0), -15), ((-0.02, 0.01, 0.03), 10), ((0, 0, 0), 30), ((0, 0, 0.03), -40)]
+    worst = {"yaw": 0.0, "pos": 0.0, "tilt": 0.0}
+    for d, dyaw in moves:
+        acts, ev = env.filter([Action(ActionMode.EE_DELTA, (*d, 0.0, 0.0, np.radians(dyaw)))], st)
+        assert acts, [e.message for e in ev]
+        cmd = acts[0].values                                   # after any step-limit clamp
+        rep = robot.execute(acts)
+        assert not rep.stopped, [e.message for e in rep.events]
+        r0, r1 = _rpy_measured(rep.state_before), _rpy_measured(rep.state_after)
+        yaw_err = abs(_wrap_deg(np.degrees(r1[2] - r0[2]) - np.degrees(cmd[5])))
+        pos_err = float(np.linalg.norm(rep.state_after.tcp_pos - rep.state_before.tcp_pos - np.asarray(cmd[:3])))
+        tilt_err = float(np.max(np.abs([_wrap_deg(v) for v in np.degrees(np.asarray(r1[:2]) - ref[:2])])))
+        worst = {k: max(worst[k], v) for k, v in (("yaw", yaw_err), ("pos", pos_err * 1000), ("tilt", tilt_err))}
+        assert yaw_err < 1.0, (d, dyaw, yaw_err)
+        assert pos_err < 0.002, (d, dyaw, pos_err)
+        assert tilt_err < 1.0, (d, dyaw, tilt_err)
+        st = rep.state_after
+    print("yaw tracking worst:", {k: round(v, 3) for k, v in worst.items()})
+
+
+@pytest.mark.parametrize("offset", [-45, 45])
+def test_packet_stands_still_at_large_yaw(robot, offset):
+    robot.reset({"name": "waffle_pick_place", "params": {"yaw_offset_deg": offset}}, seed=5)
+    rec = robot.scene_record()
+    assert rec["packet"]["tilt_deg"] < 1.0 and rec["packet"]["settle_drift_mm"] < 3.0, rec["packet"]
+    assert abs(rec["packet"]["yaw_offset_deg"] - offset) < 1.0, rec["packet"]
+    goal = robot.check_goal()
+    assert goal.metrics["object_tilt_deg"] < 1.0 and goal.metrics["object_speed_m_s"] < 0.01
+
+
+@pytest.mark.parametrize("offset,start_yaw", [(-40, 20), (-15, 0), (15, -20), (30, 0)])
+def test_scripted_yaw_expert_succeeds(robot, offset, start_yaw):
+    """A scripted expert in the model's action space (ee_delta + dyaw + GRIP, through the
+    rotation=yaw envelope) turns the jaws across the rotated packet, grasps, turns back
+    while low, and places it in the box."""
+    from controlr.robot.isaac.tasks import run_scripted_yaw_pick_place
+    from controlr.robot.kinematics import pose_to_matrix
+
+    params = {"start_q": list(SIM_START_Q), "yaw_offset_deg": offset, "start_yaw_deg": [start_yaw, start_yaw],
+              "nominal": True}                  # nominal packet xy (+30 deg needs it; see test_isaac_tasks)
+    obs = robot.reset({"name": "waffle_pick_place", "params": params}, seed=offset + 100)
+    rec = robot.scene_record()
+    assert abs(rec["start"]["yaw_offset_deg"] - start_yaw) < 0.01
+    env = _yaw_envelope(robot)
+    cur = {"st": obs.state}
+    holding: list[bool] = []
+    img_dir = os.environ.get("CONTROLR_ISAAC_IMG_DIR")
+
+    def act(vals, grip, phase=""):
+        acts, ev = env.filter([Action(ActionMode.EE_DELTA, vals, grip)], cur["st"])
+        bad = [e.message for e in ev if e.kind in ("reach", "ik_fail", "table", "workspace")]
+        assert acts and not bad, bad
+        rep = robot.execute(acts)
+        assert not rep.stopped, [e.message for e in rep.events]
+        cur["st"] = rep.state_after
+        holding.append(bool(rep.state_after.holding))
+        return pose_to_matrix(rep.state_after.tcp_pos, rep.state_after.tcp_rotvec)
+
+    ep = robot.episode
+    w, z = ep["object_quat_wxyz"][0], ep["object_quat_wxyz"][3]
+    log = run_scripted_yaw_pick_place(ep["object_pos"], 2 * np.arctan2(z, w),
+                                      robot.server_info["scene_info"]["bin"]["center"], act,
+                                      pose_to_matrix(obs.state.tcp_pos, obs.state.tcp_rotvec))
+    phases = [r["phase"] for r in log]
+    i_lift = len(phases) - 1 - phases[::-1].index("lift0")
+    assert holding[i_lift], "packet not held after the first lift"
+    goal = robot.check_goal()
+    if img_dir:
+        from PIL import Image
+        Image.fromarray(robot.observe().images["scene"]).save(f"{img_dir}/yaw_expert_{offset:+d}_done.png")
+    assert goal.success, (offset, start_yaw, goal)
+    print(f"yaw expert offset {offset:+d} start {start_yaw:+d}: {len(log)} actions, success")

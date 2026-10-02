@@ -105,7 +105,8 @@ class _Scene:
 class MockRobot(Robot):
     """Kinematic UR3 CB3 + 2F-85 with synthetic rendering (see module doc)."""
 
-    def __init__(self, params: dict | None = None, *, safety: SafetyConfig | None = None) -> None:
+    def __init__(self, params: dict | None = None, *, safety: SafetyConfig | None = None,
+                 rotation: str | None = None) -> None:
         p = dict(params or {})
         spec_kw = {k: tuple(p[k]) if isinstance(p[k], list) else p[k]
                    for k in ("home_q", "table_z", "tcp_offset", "gripper_max_mm") if k in p}
@@ -124,7 +125,7 @@ class MockRobot(Robot):
         self.supersample = int(p.get("supersample", 2))
         # Actions arriving without q_target (not filtered) are resolved with the
         # configured envelope so the mock never executes an unchecked target.
-        self._fallback = SafetyEnvelope(self.spec, safety or SafetyConfig(), self.kin)
+        self._fallback = SafetyEnvelope(self.spec, safety or SafetyConfig(), self.kin, rotation=rotation)
         self.task_instruction = TASK_INSTRUCTIONS["reach"]
         self._t = 0.0
         self._q = np.array(self.spec.home_q, dtype=float)
@@ -142,6 +143,7 @@ class MockRobot(Robot):
         rng = np.random.default_rng(seed)
         self._t = 0.0
         self._q = np.array(prm.get("home_q", self.spec.home_q), dtype=float)
+        self._q_start = self._q.copy()
         self._grip = self.spec.gripper_max_mm / 1000.0
         self._grip_closed = False
         tz = self.spec.table_z if self.spec.table_z is not None else TABLE_Z
@@ -168,6 +170,17 @@ class MockRobot(Robot):
         obs = self.observe()
         self._fallback.reset(obs.state)
         return obs
+
+    def scene_record(self) -> dict | None:
+        sc = self._scene
+
+        def mm(v):
+            return None if v is None else [round(float(x) * 1000.0, 2) for x in np.asarray(v, float).reshape(-1)]
+        T = self.kin.fk_matrix(np.asarray(getattr(self, "_q_start", self.spec.home_q), float))
+        return {"task": sc.task, "target_mm": mm(sc.target), "cube_mm": mm(sc.cube),
+                "cube_yaw_deg": round(float(np.degrees(sc.cube_yaw)), 3) if sc.cube is not None else None,
+                "zone_mm": mm(sc.zone), "start": {"tcp_mm": mm(T[:3, 3]),
+                                                  "tcp_yaw_deg": round(float(np.degrees(matrix_to_rpy(T[:3, :3])[2])), 3)}}
 
     # ------------------------------------------------------------------ state
     def _tcp(self, q: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:

@@ -50,6 +50,11 @@ class Robot(ABC):
         identical across episodes. Default None: the loop uses the measured reset state."""
         return None
 
+    def scene_record(self) -> dict | None:
+        """The task scene sampled by the last ``reset`` (object poses, start pose, targets) as
+        a JSON-able dict for the run log (``setup.json`` "scene"); None if not known."""
+        return None
+
     def hold(self) -> None:
         """Keep the current pose (default: nothing to do for position-controlled robots)."""
 

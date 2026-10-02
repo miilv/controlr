@@ -148,7 +148,18 @@ def test_tool_orientation_doc_from_state0():
     assert "fingertips straddle the TCP" in text and "lowest fingertip is" in text
     assert "Tool orientation" not in build_system_prompt(cfg, spec)          # no state -> no line
     cfg.action.rotation = "yaw"
-    assert "Tool orientation" not in build_system_prompt(cfg, spec, state0=st)
+    yaw_text = build_system_prompt(cfg, spec, state0=st)
+    tool = [ln for ln in yaw_text.splitlines() if ln.startswith("Tool orientation")][0]
+    assert "you command the heading (yaw) only" in tool and "36 deg below horizontal" in tool
+    assert "heading of the object's long side) ± 90 deg" in tool and "edge of the arm's reach" in tool
+    # the paragraph is invariant under a turn about the vertical (randomised start yaw)
+    c, s_ = np.cos(0.3), np.sin(0.3)
+    st2 = RobotState(t=0.0, q=np.zeros(6), tcp_pos=st.tcp_pos,
+                     tcp_rotvec=matrix_to_rotvec(np.array([[c, -s_, 0], [s_, c, 0], [0, 0, 1]]) @ R),
+                     gripper_mm=85.0, gripper_closed=False, holding=False)
+    tool2 = [ln for ln in build_system_prompt(cfg, spec, state0=st2).splitlines()
+             if ln.startswith("Tool orientation")][0]
+    assert tool2 == tool
 
 
 # ---------------------------------------------------------------------------
@@ -213,3 +224,33 @@ def test_fewshot_file_and_run_dir_land_in_the_manual(tmp_path):
     cfg.prompt.fewshot = str(tmp_path / "missing.md")
     with pytest.raises(FileNotFoundError):
         build_system_prompt(cfg, SPEC, "t")
+
+
+def test_yaw_manual_reads_headings_from_the_calibrated_camera():
+    """rotation=yaw on the Isaac D435: the manual states the image-angle rule, a pure-turn
+    example, the STATE yaw of the real tilted tool and an Appendix B turn that parses."""
+    from controlr.prompts.builder import build_system_prompt
+    from controlr.robot.kinematics import UR3Kinematics, matrix_to_rpy
+    from controlr.robot.spec import ur3_cb3_spec
+    from controlr.types import CameraInfo, RobotState
+
+    cam_t_wc = np.array([
+        [0.9999720414746357, -0.005669109656577374, 0.00487621418213748, -0.35399058583569004],
+        [-0.007215535335001398, -0.9026929426481264, 0.4302248102365732, -0.44643379477503714],
+        [0.0019627325028448834, -0.4302479662810364, -0.9027086103456388, 0.9535],
+        [0.0, 0.0, 0.0, 1.0]])
+    K = np.array([[609.28, 0, 337.81], [0, 608.13, 249.65], [0, 0, 1]])
+    cams = {"scene": CameraInfo("scene", 640, 480, K, np.linalg.inv(cam_t_wc))}
+    kin = UR3Kinematics()
+    q = np.array([0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406])
+    p, rv = kin.fk(q)
+    st = RobotState(0.0, q, p, rv, 91.0, False, False)
+    cfg = Config()
+    cfg.action.rotation = "yaw"
+    spec = ur3_cb3_spec(table_z=-0.0095)
+    text = build_system_prompt(cfg, spec, cameras=cams, state0=st)
+    assert "a positive dyaw turns the jaw line counter-clockwise in the image" in text
+    assert "`MOVE ee_delta 0 0 0 20`" in text
+    yaw = round(float(np.degrees(matrix_to_rpy(kin.fk_matrix(q)[:3, :3])[2])))
+    assert f"yaw={yaw} deg | grip" in text                       # example STATE with the rig's heading
+    assert f"yaw={yaw + 15} deg" in text and "MOVE ee_delta 30 20 0 15 GRIP open" in text

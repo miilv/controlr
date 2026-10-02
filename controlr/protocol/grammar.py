@@ -237,8 +237,9 @@ def grammar_spec(cfg: ActionConfig, spec: RobotSpec) -> str:
             lines.append("  Orientation is not commanded: the tool keeps its current orientation.")
         elif cfg.rotation == "yaw":
             if delta:
-                lines.append(f"  dyaw turns the tool about the vertical base z axis "
-                             f"(positive = counter-clockwise seen from above).")
+                lines.append("  dyaw turns the tool about the vertical line through the TCP (positive = "
+                             "counter-clockwise seen from above); the tilt is kept. A line with both a "
+                             "move and a turn does both along the way; dyaw 0 keeps the current heading.")
             else:
                 lines.append("  yaw is the absolute tool heading about the vertical base z axis; the "
                              "tool keeps its tilt (only the heading is commanded).")

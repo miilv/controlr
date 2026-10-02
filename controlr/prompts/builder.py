@@ -221,11 +221,11 @@ def _observation_doc(cfg: Config, spec: RobotSpec | None = None) -> str:
     return "\n".join(lines)
 
 
-def _state_values(cfg: Config, spec: RobotSpec) -> dict[str, str]:
+def _state_values(cfg: Config, spec: RobotSpec, rv=None) -> dict[str, str]:
     """Manual text that depends on whether a STATE line is given (observation.state_text):
     with it off, the manual must not mention, show or rely on a STATE line."""
     if cfg.observation.state_text:
-        st = _example_state(cfg, spec)
+        st = _example_state(cfg, spec, rv=rv)
         doc = ("The STATE line reports the measured robot state after the last motion, e.g.:\n\n"
                f"    {format_state(st, cfg)}\n\n"
                "`grip` is the measured finger opening and whether the last gripper command was open or\n"
@@ -291,13 +291,15 @@ def _table_top(spec: RobotSpec) -> float:
 
 
 def _example_state(cfg: Config, spec: RobotSpec, pos=None, grip_mm=None,
-                   closed=False, holding=False, q=None) -> RobotState:
+                   closed=False, holding=False, q=None, rv=None) -> RobotState:
+    """``rv``: tool orientation (rotvec) shown in the example STATE; default top-down. With
+    rotation=yaw the manual passes the reference orientation so the example yaw is the rig's."""
     n = len(spec.joints)
     return RobotState(
         t=0.0,
         q=np.asarray(q if q is not None else (list(spec.home_q) + [0.0] * n)[:n], dtype=float),
         tcp_pos=np.asarray(example_xyz(spec) if pos is None else pos, dtype=float),
-        tcp_rotvec=np.array([math.pi, 0.0, 0.0]),
+        tcp_rotvec=np.array([math.pi, 0.0, 0.0]) if rv is None else np.asarray(rv, dtype=float),
         gripper_mm=spec.gripper_max_mm if grip_mm is None else grip_mm,
         gripper_closed=closed,
         holding=holding,
@@ -313,7 +315,11 @@ def _ee_values(cfg: Config, xyz: tuple[float, float, float], yaw: float = 0.0) -
     return tuple(xyz) + (roll, 0.0, yaw)
 
 
-def _example_steps(cfg: Config, spec: RobotSpec) -> list[tuple[Action, RobotState, RobotState, list[SafetyEvent], str]]:
+EXAMPLE_TURN_DEG = 15.0     # rotation=yaw: the first example move also turns the jaws
+
+
+def _example_steps(cfg: Config, spec: RobotSpec, rv=None
+                   ) -> list[tuple[Action, RobotState, RobotState, list[SafetyEvent], str]]:
     """A short synthetic episode (approach above, descend in a small step that stays
     above the table, grasp, lift and check) in the configured action space:
     (action, before, after, events, status line). It demonstrates the technique of
@@ -326,7 +332,14 @@ def _example_steps(cfg: Config, spec: RobotSpec) -> list[tuple[Action, RobotStat
     p1, p2 = p0 + d1, p0 + d1 + d2
     p3 = p2 + d3
     gmax = spec.gripper_max_mm
-    s0 = _example_state(cfg, spec, p0, q=home)
+    from controlr.robot.kinematics import matrix_to_rotvec, matrix_to_rpy, rotvec_to_matrix
+    turn = math.radians(EXAMPLE_TURN_DEG) if (a.rotation == "yaw" and a.mode in EE_MODES) else 0.0
+    R0 = rotvec_to_matrix(np.asarray(rv, float)) if rv is not None else None
+    rv1 = rv
+    if turn and R0 is not None:
+        c, sn = math.cos(turn), math.sin(turn)
+        rv1 = matrix_to_rotvec(np.array([[c, -sn, 0.0], [sn, c, 0.0], [0.0, 0.0, 1.0]]) @ R0)
+    s0 = _example_state(cfg, spec, p0, q=home, rv=rv)
     if a.mode in JOINT_MODES:
         dq1 = np.zeros(n)
         dq1[0] = math.radians(8)
@@ -342,29 +355,37 @@ def _example_steps(cfg: Config, spec: RobotSpec) -> list[tuple[Action, RobotStat
     else:
         mode = ActionMode(a.mode)
         delta = a.mode == "ee_delta"
-        v1 = _ee_values(cfg, tuple(d1) if delta else tuple(p1))
-        v2 = _ee_values(cfg, tuple(d2) if delta else tuple(p2))
-        v3 = _ee_values(cfg, tuple(d3) if delta else tuple(p3))
+        yaw1 = float(matrix_to_rpy(rotvec_to_matrix(np.asarray(rv1, float)))[2]) if rv1 is not None else turn
+        if a.rotation == "yaw" and not delta:
+            v1 = (*p1, yaw1)
+            v2 = (*p2, yaw1)
+            v3 = (*p3, yaw1)
+        else:
+            v1 = _ee_values(cfg, tuple(d1) if delta else tuple(p1), turn)
+            v2 = _ee_values(cfg, tuple(d2) if delta else tuple(p2))
+            v3 = _ee_values(cfg, tuple(d3) if delta else tuple(p3))
         q1 = q2 = q3 = home
-    s1 = _example_state(cfg, spec, p1, q=q1)
-    s2 = _example_state(cfg, spec, p2, q=q2)
+    s1 = _example_state(cfg, spec, p1, q=q1, rv=rv1)
+    s2 = _example_state(cfg, spec, p2, q=q2, rv=rv1)
     grip_w = 32.0
-    s3 = _example_state(cfg, spec, p2, grip_mm=grip_w, closed=True, holding=True, q=q2)
-    s4 = _example_state(cfg, spec, p3, grip_mm=grip_w, closed=True, holding=True, q=q3)
+    s3 = _example_state(cfg, spec, p2, grip_mm=grip_w, closed=True, holding=True, q=q2, rv=rv1)
+    s4 = _example_state(cfg, spec, p3, grip_mm=grip_w, closed=True, holding=True, q=q3, rv=rv1)
+    first = ("STATUS OK above the block, jaws turned across it, gripper open" if turn
+             else "STATUS OK moving above the block, gripper open")
     return [
-        (Action(mode, v1, gmax * 1e-3), s0, s1, [], "STATUS OK moving above the block, gripper open"),
+        (Action(mode, v1, gmax * 1e-3), s0, s1, [], first),
         (Action(mode, v2, None), s1, s2, [], "STATUS OK fingers straddle the block, descending"),
         (Action(None, None, 0.0), s2, s3, [], "STATUS OK closing on the block"),
         (Action(mode, v3, None), s3, s4, [], "STATUS OK lifting to check the grasp"),
     ]
 
 
-def _example_exchange(cfg: Config, spec: RobotSpec) -> str:
+def _example_exchange(cfg: Config, spec: RobotSpec, rv=None) -> str:
     """Generated with the real formatter/parser so the example can never drift
     from the grammar actually in force."""
     from controlr.protocol.feedback import format_action
     out = ["## Appendix B: example exchange (illustrative numbers; images omitted)", ""]
-    steps = _example_steps(cfg, spec)
+    steps = _example_steps(cfg, spec, rv)
     obs0 = Observation(t=0.0, images={}, cameras={}, state=steps[0][1])
     out.append("user:")
     out += ["    " + ln for ln in format_feedback(0, None, None, None, obs0, cfg).splitlines()]
@@ -393,7 +414,14 @@ def _conventions_appendix(cfg: Config, spec: RobotSpec) -> str:
                  f"(1 rad = 57.3 deg, 90 deg = 1.571 rad).")
     lines.append(f"- Joint-limit margin used by the harness: {_angle(cfg, cfg.safety.joint_margin_rad)} "
                  f"inside each hard limit; a WARN appears within {_angle(cfg, cfg.safety.near_limit_rad)}.")
-    if a.mode in EE_MODES:
+    if a.mode in EE_MODES and a.rotation == "yaw":
+        lines.append("- yaw (" + ("STATE, " if cfg.observation.state_text else "") + "dyaw) is the heading of "
+                     "the jaw line about the vertical base z axis, from +x toward +y; it is the yaw of the "
+                     "extrinsic roll/pitch/yaw of the tool, R = Rz(yaw)·Ry(pitch)·Rx(roll), with roll and "
+                     "pitch (the tilt) fixed. Headings wrap at ±180 deg: 170 + 20 = -170.")
+        lines.append("- Positive rotation about an axis is counter-clockwise when looking from the positive "
+                     "end of that axis toward the origin (right-hand rule).")
+    elif a.mode in EE_MODES:
         lines.append(f"- Orientations ({'STATE and ' if cfg.observation.state_text else ''}rotation commands) "
                      "are extrinsic roll/pitch/yaw about the "
                      f"fixed base x, y, z axes: R = Rz(yaw)·Ry(pitch)·Rx(roll). A tool pointing straight "
@@ -448,20 +476,26 @@ def _worked_example(cfg: Config, spec: RobotSpec) -> str:  # noqa: C901
             r = f" {fmt_num(math.pi / ang_factor(a), ang_decimals(a))} 0 0"
         m1 = f"MOVE ee_abs {_num(cfg, tgt[0])} {_num(cfg, tgt[1])} {_num(cfg, cur[2])}{r}"
         m2 = f"MOVE ee_abs {_num(cfg, tgt[0])} {_num(cfg, tgt[1])} {_num(cfg, cur[2] - 0.05)}{r}"
+    turn = ""
+    if a.rotation == "yaw" and a.mode == "ee_delta":
+        turn = (f" To turn the jaw line {fmt_num(20.0 / (1 if a.ang_unit == 'deg' else 57.29578), ang_decimals(a))} "
+                f"{a.ang_unit} counter-clockwise (seen from above) without moving the TCP: "
+                f"`MOVE ee_delta 0 0 0 {fmt_num(20.0 / (1 if a.ang_unit == 'deg' else 57.29578), ang_decimals(a))}`.")
     where = (f"STATE says `tcp x={_num(cfg, cur[0])} y={_num(cfg, cur[1])} z={_num(cfg, cur[2])}`"
              if cfg.observation.state_text else
              f"the TCP is at about x={_num(cfg, cur[0])} y={_num(cfg, cur[1])} z={_num(cfg, cur[2])}")
     return (f"{where} and you "
             f"estimate the object's centre at x={_num(cfg, tgt[0])} y={_num(cfg, tgt[1])} {a.pos_unit}. "
             f"First move above it at the same height: `{m1}`. Check the new image; if the fingers are "
-            f"centred over the object, descend: `{m2}`.")
+            f"centred over the object, descend: `{m2}`.{turn}")
 
 
 def _vec(v) -> str:
     return "(" + ", ".join(f"{float(x):+.2f}" for x in v) + ")"
 
 
-def _tool_doc(cfg: Config, spec: RobotSpec, state0: RobotState | None) -> str:
+def _tool_doc(cfg: Config, spec: RobotSpec, state0: RobotState | None,
+              cameras: dict[str, CameraInfo] | None = None) -> str:
     """Where the tool points when its orientation is not commanded (rotation=none).
     (Directions printed with 2 decimals from the reference state — the loop passes
     ``Robot.reference_state()`` when the backend has one, so settle jitter cannot
@@ -472,6 +506,8 @@ def _tool_doc(cfg: Config, spec: RobotSpec, state0: RobotState | None) -> str:
     A tilted tool (the Isaac rig: ~35 deg below horizontal) is the difference between a
     clean grasp and driving the gripper housing into the box wall. Computed from the
     first observation, so it is exact for every backend."""
+    if state0 is not None and cfg.action.mode in EE_MODES and cfg.action.rotation == "yaw":
+        return _tool_doc_yaw(cfg, spec, state0, cameras)
     if state0 is None or cfg.action.mode not in EE_MODES or cfg.action.rotation != "none":
         return ""
     from controlr.robot.kinematics import rotvec_to_matrix
@@ -499,6 +535,95 @@ def _tool_doc(cfg: Config, spec: RobotSpec, state0: RobotState | None) -> str:
     return s
 
 
+def _heading_deg(v) -> float:
+    return math.degrees(math.atan2(float(v[1]), float(v[0])))
+
+
+def _wrap180(a: float) -> float:
+    return (a + 180.0) % 360.0 - 180.0
+
+
+def _image_yaw_rule(cfg: Config, spec: RobotSpec, cameras: dict[str, CameraInfo] | None) -> str:
+    """How a heading in the base x-y plane looks in the first calibrated camera: if a line at
+    heading h on the table appears at image angle ~h (counter-clockwise from the image's
+    rightward direction) within 10 deg for every h, say so with the measured error."""
+    if not cameras:
+        return ""
+    names = [n for n in (list(cfg.observation.cameras) or sorted(cameras)) if n in cameras]
+    if not names:
+        return ""
+    from controlr.observation.renderers import project_points, resolve_grid_z
+    info = cameras[names[0]]
+    lo, hi = np.asarray(spec.workspace_lo, float), np.asarray(spec.workspace_hi, float)
+    c = np.array([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, resolve_grid_z(cfg.observation, spec)])
+    errs, signs = [], []
+    for h in range(0, 180, 15):
+        d = np.array([math.cos(math.radians(h)), math.sin(math.radians(h)), 0.0]) * 0.05
+        uv, ok = project_points(info, np.stack([c - d, c + d]), info.width, info.height)
+        if not (ok[0] and ok[1]):
+            return ""
+        v = uv[1] - uv[0]
+        img = math.degrees(math.atan2(-float(v[1]), float(v[0])))       # image y points down
+        errs.append(abs(_wrap180(2 * (img - h)) / 2))                    # lines: modulo 180
+        signs.append(img)
+    if max(errs) > 10.0:
+        return ""
+    return (f"In the `{names[0]}` image a heading is easy to read: a line at heading h on the table "
+            f"appears at about h counter-clockwise from the image's rightward direction (within "
+            f"{math.ceil(max(errs))} deg here): heading 0 = left-right, 90 = up-down in the image. "
+            f"So yaw is roughly the image angle of the jaw line, a positive dyaw turns the jaw line "
+            f"counter-clockwise in the image, and an object's long edge drawn at image angle A "
+            f"(counter-clockwise from rightward) has heading about A.")
+
+
+def _tool_doc_yaw(cfg: Config, spec: RobotSpec, state0: RobotState,
+                  cameras: dict[str, CameraInfo] | None) -> str:
+    """rotation=yaw: the model commands the heading; the tilt is fixed. Everything printed is
+    invariant under a turn about the vertical (tilt below horizontal, the finger direction
+    RELATIVE to the jaw heading, fingertip drop), so a randomised start yaw does not change the
+    manual; the start heading itself is in the first STATE line."""
+    from controlr.robot.kinematics import matrix_to_rpy, rotvec_to_matrix
+    from controlr.robot.safety import finger_drop
+    R = rotvec_to_matrix(np.asarray(state0.tcp_rotvec, float))
+    ax, jaw = R[:, 2], R[:, 0]
+    yaw = math.degrees(float(matrix_to_rpy(R)[2]))
+    below = math.degrees(math.asin(max(-1.0, min(1.0, -float(ax[2])))))
+    jaw_tilt = math.degrees(math.asin(max(-1.0, min(1.0, abs(float(jaw[2]))))))
+    rel = _wrap180(_heading_deg(ax) - yaw)
+    off = float(np.linalg.norm(spec.tcp_offset[:3])) if spec.tcp_offset is not None else 0.18
+
+    def ang(v):
+        return _angle(cfg, math.radians(v))
+    s = (f"Tool orientation: you command the heading (yaw) only; the tilt is fixed. `yaw` is the "
+         f"direction of the jaw line — the line along which the two fingertips close — in the base "
+         f"x-y plane, measured from +x toward +y (counter-clockwise seen from above; {ang(0)} = along "
+         f"+x, {ang(90)} = along +y). The jaw line itself dips {ang(jaw_tilt)} from horizontal. The "
+         f"fingers point {ang(below)} below horizontal, toward heading yaw {'+' if rel >= 0 else '-'} "
+         f"{ang(abs(rel))} (roughly "
+         f"across the jaw line); the finger bases, the gripper housing and the wrist lie BEHIND the "
+         f"TCP on the opposite side (up to {_len(cfg, off)} back to the flange, then the wrist) — "
+         f"that side hits walls and objects first. A dyaw turn pivots the whole gripper about the "
+         f"vertical line through the TCP: the TCP stays where it is, the fingertips turn around it "
+         f"and the housing and wrist swing to a new side. The jaw line at yaw and yaw ± {ang(180)} is "
+         f"the same line. To grasp an object, set yaw = (heading of the object's long side) ± "
+         f"{ang(90)}: the jaws then close across its thin side; pick the sign that needs the "
+         f"smaller turn.")
+    rule = _image_yaw_rule(cfg, spec, cameras)
+    if rule:
+        s += " " + rule
+    s += (" Large turns are not reachable everywhere: high up and far from the robot base a turn can "
+          "run into the edge of the arm's reach (the CLAMP line then says how far it turned). Turn "
+          "the jaws close to working height with the fingers clear of objects (e.g. above and a little "
+          "back from the object, before the final descent), and turn back toward the start heading "
+          "before long carries.")
+    if spec.finger_pad is not None:
+        lo_open = finger_drop(spec, R, spec.gripper_max_mm * 1e-3)
+        lo_shut = finger_drop(spec, R, 0.0)
+        s += (f" The lowest fingertip is {_len(cfg, lo_open)} below the TCP with the gripper fully open "
+              f"({_len(cfg, lo_shut)} closed), at any yaw.")
+    return s
+
+
 def _values(cfg: Config, spec: RobotSpec, task_text: str,
             cameras: dict[str, CameraInfo] | None, state0: RobotState | None = None) -> dict[str, str]:
     a, s, e = cfg.action, cfg.safety, cfg.episode
@@ -519,7 +644,9 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
     if a.mode in JOINT_MODES or a.rotation != "none":
         step_limits += f" and at most {_angle(cfg, s.max_step_rad)} of rotation / joint change per line"
     extra = "\n".join(f"- {r}" for r in cfg.prompt.extra_rules) if cfg.prompt.extra_rules else "(none)"
-    appendix = _conventions_appendix(cfg, spec) + "\n\n" + _example_exchange(cfg, spec)
+    rv0 = (np.asarray(state0.tcp_rotvec, float)
+           if state0 is not None and a.rotation == "yaw" and a.mode in EE_MODES else None)
+    appendix = _conventions_appendix(cfg, spec) + "\n\n" + _example_exchange(cfg, spec, rv0)
     # z lower bound actually enforced for the TCP (the table clearance applies to the lowest
     # fingertip, which depends on the tool orientation and the opening)
     z_lo, z_note = lo[2], ""
@@ -527,7 +654,8 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
         from controlr.robot.kinematics import rotvec_to_matrix
         from controlr.robot.safety import finger_drop
         floor = spec.table_z + s.table_clearance_m
-        if state0 is not None and a.rotation == "none" and spec.finger_pad is not None:
+        # the fingertip drop depends only on the tilt, which rotation=yaw keeps
+        if state0 is not None and a.rotation in ("none", "yaw") and spec.finger_pad is not None:
             R0 = rotvec_to_matrix(np.asarray(state0.tcp_rotvec, float))
             z_lo = max(lo[2], floor + finger_drop(spec, R0, spec.gripper_max_mm * 1e-3))
             z_note = (f" (TCP z lower bound with the gripper fully open; closed it is "
@@ -549,7 +677,7 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
         "joint_table": _joint_table(cfg, spec),
         "base_frame_doc": spec.base_frame_doc.strip(),
         "tcp_doc": spec.tcp_doc.strip(),
-        "tool_doc": _tool_doc(cfg, spec, state0),
+        "tool_doc": _tool_doc(cfg, spec, state0, cameras),
         "gripper_doc": _gripper_doc(cfg, spec),
         "ws_x": f"{_num(cfg, lo[0])}..{_num(cfg, hi[0])}",
         "ws_y": f"{_num(cfg, lo[1])}..{_num(cfg, hi[1])}",
@@ -562,7 +690,7 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
         "camera_axes": _camera_axes(cfg, spec, cameras),
         "worked_example": _worked_example(cfg, spec),
         "observation_doc": _observation_doc(cfg, spec),
-        **_state_values(cfg, spec),
+        **_state_values(cfg, spec, rv0),
         "grammar": grammar_spec(a, spec),
         "goal_line": goal_line,
         "done_rule": done_rule,
