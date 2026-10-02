@@ -1,0 +1,63 @@
+# Runbook: when something breaks
+
+Machines and paths — [ENVIRONMENT.md](ENVIRONMENT.md). Past cases — [incidents/](incidents/).
+compute3 is a shared machine: read-only by default, ours is only `~/controlr*`.
+
+## 1. compute3: no GPU (`nvidia-smi` can't reach the driver)
+
+Typical cause: an automatic kernel upgrade without the NVIDIA module for the new kernel
+([incident 2026-10-02](incidents/2026-10-02-compute3-nvidia-driver.md)).
+
+```bash
+ssh compute3 'uname -r; lsmod | grep -c nvidia; dpkg -l | grep linux-modules-nvidia | awk "{print \$2}"'
+# no module for the running kernel -> (only on the owner's explicit request; passwordless sudo exists)
+ssh compute3 'sudo apt-get install -y linux-modules-nvidia-595-open-$(uname -r) && sudo modprobe nvidia nvidia_uvm && nvidia-smi'
+```
+No reboot needed if `modprobe` succeeds. A reboot kills other people's sessions/jobs — only with consent.
+
+## 2. Isaac server
+
+- Usually `scripts/remote_run.sh` manages it: starts it if port `7801` is free, waits for
+  readiness (up to 600 s), stops it after the run. Log: `~/controlr/runs/isaac_server.log`.
+- Tests start their own server on port `7821` (`CONTROLR_ISAAC_TEST_PORT`), never on the main one.
+- Manual start (from `~/controlr`): `setsid nohup bash scripts/isaac_server.sh --port 7801 > runs/isaac_server.log 2>&1 &`
+- Who holds the port / how to stop our server:
+  ```bash
+  ssh compute3 'ss -ltnp "sport = :7801"; pgrep -af "controlr/robot/isaac/server.py"'
+  ssh compute3 'pkill -f "controlr/robot/isaac/server.py --phantom"'   # our process only
+  ```
+- "Isaac server died" immediately → check the log tail: most often the GPU (§1) or `PHANTOM_ROOT` / `ISAAC_SIM_ROOT`.
+- An episode ended `unstable` → PhysX diverged (squeezed object / impact). That's an episode
+  outcome, not a harness bug; if it repeats on one seed, inspect contacts in `turns.jsonl` and BACKLOG.
+
+## 3. Router (omniroute) and models
+
+| Symptom | Cause / action |
+|---|---|
+| reply in ~0.4 s with no usage | the router replayed a cached **response** to an identical request; check `llm.request_nonce: true` |
+| `400 unsupported_image_block` | a route without image support (`dva/*`); use `claude/`, `cc/`, `no-think/`, `cx/` |
+| empty reply, `finish_reason` = length | thinking used up `llm.max_tokens`; raise it or use a `no-think/` route |
+| model not in `/models` but needed | try a direct call — the router accepts some unlisted ids (that was the case for `claude-sonnet-5-5`) |
+| 429 / 5xx | the client retries with backoff; on subscription routes the real limit is the subscription quota |
+
+Model list: `uv run controlr models --filter claude`.
+
+## 4. Cache not working (cost grows, `cache_read` ≈ 0)
+
+1. `summary.json` → `cache_regressions` (turns where the cache dropped) and the per-turn read share in `turns.jsonl`.
+2. Common causes: an early byte of the transcript changed (non-deterministic text/image), effort
+   changed mid-episode, a turn added > 20 blocks (lookback), the prefix is below the model's
+   minimum (Haiku 4.5 — 4096 tokens), requests landed on different upstream router accounts.
+3. Isolated check: `uv run controlr bench-cache --model <id> --turns 20` (⚠️ ~20 calls).
+
+## 5. Disk
+
+Locally, runs (`runs/`) and clones (`research/repos/`) are the main consumers; on compute3 —
+`~/controlr/runs`. Before heavy work: `df -h /`. The `~/.cache/uv` and `~/.cache/huggingface`
+caches are shared — clean only our own and only by agreement
+([incident 2026-10-02](incidents/2026-10-02-research-run-side-effects.md)).
+
+## 6. Real UR3 (once the backend exists)
+
+Only with explicit per-session permission and a human at the e-stop. Drivers and `SafetyMonitor`
+come from PHANTOM. Emergency order: e-stop → `robot.hold()` → read the logs → incident report.

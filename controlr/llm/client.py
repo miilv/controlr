@@ -32,7 +32,7 @@ import httpx
 
 
 # ---------------------------------------------------------------------------
-# result types (contract: docs/ARCHITECTURE.md "LLM client")
+# result types (contract: ARCHITECTURE.md "LLM client")
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -294,7 +294,7 @@ class LLMClient:
     the grace period ends first, ``LLMResult.truncated`` is set. 0 = close
     immediately (usage is then None). The deadline is checked when a chunk
     arrives; a router that stalls after STATUS can still hold the call up to the
-    read timeout (not observed; see docs/FIXLOG.md).
+    read timeout (not observed; see docs/reviews/2026-10-02-fixlog.md).
 
     ``headers``: extra request headers (e.g. a router lease header).
     ``complete(..., timeout_s=, max_retries=)`` override the client defaults

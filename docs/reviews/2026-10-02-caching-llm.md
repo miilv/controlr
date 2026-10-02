@@ -32,8 +32,8 @@ No blockers found. Majors: 1–5.
 
 **Where:**
 - `controlr/llm/caching.py:13-21`
-- `docs/ARCHITECTURE.md:97-108`
-- `docs/INTEGRATION_NOTES.md:72-80`
+- `ARCHITECTURE.md:97-108`
+- `docs/journal/2026-10-02-v0-build-integration.md:72-80`
 - `configs/base.yaml` `llm.cache`, `llm.cache_ttl`
 
 **Problem.** controlr marks three places: the system message, the last user message and the

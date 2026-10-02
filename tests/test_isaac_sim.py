@@ -186,7 +186,7 @@ def test_reach_seed0_marker_is_reachable_in_the_sim(robot):
 
 
 # ---------------------------------------------------------------------------
-# rotation=yaw (docs/ROTATION_REPORT.md)
+# rotation=yaw (docs/experiments/2026-10-02-rotation-yaw.md)
 # ---------------------------------------------------------------------------
 
 SIM_START_Q = (0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406)      # configs/sim_waffle.yaml

@@ -16,7 +16,7 @@ Placement (``anthropic`` style), at most 4 breakpoints total (API limit):
      Anthropic's 20-block lookback.
 
 WHAT IS ACTUALLY OBSERVED through omniroute (review 2026-10-02, all 7 live runs;
-docs/FIXLOG.md): every Claude route (``claude/``, ``cc/``, ``no-think/claude/``)
+docs/reviews/2026-10-02-fixlog.md): every Claude route (``claude/``, ``cc/``, ``no-think/claude/``)
 is served by omniroute's ``cc`` provider (``x-omniroute-provider: cc``), which
 places its OWN breakpoints. The cached prefix ends right after the newest
 ASSISTANT reply, a position we never mark (write_N = uncached_{N-1} +

@@ -1,0 +1,34 @@
+name: CI
+
+# Validation only: unit tests (live/isaac tests skip themselves), syntax checks, secret scan.
+# Isaac tests need the GPU on compute3 and run by hand (docs/DEVELOPMENT.md §2).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+      - name: unit tests
+        run: |
+          uv sync --extra dev --python 3.11
+          uv run pytest -q
+
+      - name: py_compile (incl. the Isaac server, which runs under Isaac's own python)
+        run: uv run python -m compileall -q controlr scripts tests
+
+      - name: bash -n (shell scripts)
+        run: for f in $(git ls-files '*.sh'); do echo "check $f"; bash -n "$f"; done
+
+      - name: secret scan (no key values in tree)
+        run: |
+          if git grep -nIE 'sk-[0-9a-f]{16}-[0-9a-f]{6}-[0-9a-f]{8}|sk-ant-[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|OMNIROUTE_API_KEY=sk-[A-Za-z0-9]' \
+             -- . ':(exclude)*.example'; then
+            echo "::error::Possible secret value committed"; exit 1
+          fi
+          echo "secret scan clean"

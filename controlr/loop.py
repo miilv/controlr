@@ -1,6 +1,6 @@
 """Episode runner: planner call + the turn loop + end conditions.
 
-The loop is deliberately boring and sequential (see docs/ARCHITECTURE.md
+The loop is deliberately boring and sequential (see ARCHITECTURE.md
 "Turn loop"): the robot holds still while the model thinks, every reply is
 parsed and safety-filtered before anything moves, and every turn is written to
 the run log *before* the next request goes out — a crash or Ctrl-C always

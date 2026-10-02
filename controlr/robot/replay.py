@@ -5,7 +5,7 @@ image sequences without a simulator — the model's replies must not change
 what it sees next, or two models/configs could not be compared turn by turn.
 
 Sources (``params["dir"]``):
-* a run directory (see docs/ARCHITECTURE.md "Run log"): the first image of
+* a run directory (see ARCHITECTURE.md "Run log"): the first image of
   every user message in ``messages.jsonl`` (or the image whose label equals
   ``params["label"]``), bytes from ``images/<sha>.jpg``; states from
   ``setup.json`` (``state0``) and ``turns.jsonl`` (``state`` after each turn);
