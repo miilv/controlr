@@ -1,0 +1,178 @@
+"""CLI argument parsing, sweep expansion, latency matrix and report — offline."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+import yaml
+
+from controlr.bench.latency import LatencyBench, Variant, load_bench, markdown_table, run_latency
+from controlr.bench.sweep import Sweep, load_sweep, run_sweep
+from controlr.cli import build_parser, format_table, main, report_rows
+from controlr.config import load_config, parse_override
+from controlr.llm.fake import FakeLLM
+from controlr.runlog import RunLog
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_parse_run():
+    a = build_parser().parse_args(["run", "-c", "configs/mock.yaml", "--set", "llm.model=x",
+                                   "--set", "seed=3", "--seeds", "0,1,2"])
+    assert a.cmd == "run" and a.sets == ["llm.model=x", "seed=3"] and a.seeds == [0, 1, 2]
+    a = build_parser().parse_args(["run", "-c", "c.yaml", "--episodes", "4"])
+    assert a.episodes == 4 and a.seeds is None
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["run", "-c", "c.yaml", "--episodes", "2", "--seeds", "1"])
+
+
+def test_parse_other_commands():
+    p = build_parser()
+    a = p.parse_args(["bench-cache", "--model", "m", "--turns", "5", "--size", "224", "--frames", "d"])
+    assert (a.model, a.turns, a.size, a.frames) == ("m", 5, 224, "d")
+    assert p.parse_args(["bench-latency", "-c", "x.yaml", "--dry-run"]).dry_run
+    assert p.parse_args(["sweep", "s.yaml"]).sweep == "s.yaml"
+    assert p.parse_args(["report", "a", "b"]).paths == ["a", "b"]
+    assert p.parse_args(["models", "--filter", "claude"]).filter == "claude"
+
+
+@pytest.mark.parametrize("name", ["base.yaml", "sim_waffle.yaml", "sim_reach.yaml", "mock.yaml"])
+def test_shipped_configs_load(name):
+    cfg = load_config(ROOT / "configs" / name, dotenv=None)
+    assert cfg.llm.model and cfg.episode.max_turns > 0
+
+
+def test_base_defaults():
+    cfg = load_config(ROOT / "configs" / "base.yaml", dotenv=None)
+    assert cfg.llm.model == "claude/claude-sonnet-5"
+    assert cfg.planner.model == "claude/claude-opus-5-5-xhigh"
+    assert cfg.planner.extra_body == {}
+    assert cfg.robot.backend == "isaac" and cfg.observation.size == 448
+    assert cfg.action.mode == "ee_delta" and cfg.action.pos_unit == "mm" and cfg.episode.max_turns == 40
+    assert load_config(ROOT / "configs" / "mock.yaml", dotenv=None).robot.backend == "mock"
+
+
+def test_sweep_expansion(tmp_path):
+    p = tmp_path / "s.yaml"
+    p.write_text(yaml.safe_dump({
+        "config": "base.yaml", "set": ["planner.enabled=false"], "seeds": [0, 1],
+        "grid": {"llm.model": ["claude/a", "b"], "observation.size": [224, 448],
+                 "llm.extra_body": [{"reasoning_effort": "low"}]}}))
+    sw = load_sweep(p)
+    assert sw.name == "s" and sw.config == str((tmp_path / "base.yaml").resolve())
+    pts = sw.points()
+    assert len(pts) == 2 * 2 * 1 * 2
+    assert [pt.seed for pt in pts[:2]] == [0, 1]
+    assert pts[0].overrides[0] == "planner.enabled=false"
+    vals = {".".join(k): v for k, v in (parse_override(o) for o in pts[0].overrides[1:])}
+    assert vals == {"llm.model": "claude/a", "observation.size": 224,
+                    "llm.extra_body": {"reasoning_effort": "low"}}
+    assert "model=a" in pts[0].label and "seed=0" in pts[0].label
+
+
+def test_example_sweep_file():
+    sw = load_sweep(ROOT / "configs" / "sweeps" / "example.yaml")
+    assert len(sw.points()) == 2 * 2 * 2
+    for pt in sw.points():
+        load_config(sw.config, pt.overrides, dotenv=None)
+
+
+def test_run_sweep_with_stub_runner(tmp_path):
+    base = tmp_path / "base.yaml"
+    base.write_text("name: t\n")
+    sw = Sweep(name="t", config=str(base), seeds=[0, 1], grid={"observation.size": [224, 448]})
+    seen = []
+
+    class R:
+        def __init__(self, cfg):
+            self.cfg = cfg
+
+        def summary(self):
+            if self.cfg.observation.size == 448 and self.cfg.seed == 1:
+                raise RuntimeError("boom")
+            return {"outcome": "success", "success": True, "turns": 3, "run_dir": "x",
+                    "latency": {"llm_end_s": {"p50": 1.0}}, "totals": {"prompt_tokens": 10}}
+
+    def run_fn(cfg):
+        seen.append((cfg.observation.size, cfg.seed, cfg.log.root))
+        return R(cfg)
+
+    rows, out = run_sweep(sw, run_fn=run_fn, out_dir=tmp_path / "out", printer=None)
+    assert [(s, sd) for s, sd, _ in seen] == [(224, 0), (224, 1), (448, 0), (448, 1)]
+    assert all(root == str(tmp_path / "out") for _, _, root in seen)
+    assert rows[0]["outcome"] == "success" and rows[0]["llm_end_p50"] == 1.0
+    assert rows[3]["outcome"] == "error" and "boom" in rows[3]["error"]
+    assert (out / "aggregate.csv").read_text().count("\n") == 5
+
+
+def test_sweep_dry_run_cli(capsys):
+    assert main(["sweep", str(ROOT / "configs" / "sweeps" / "example.yaml"), "--dry-run"]) == 0
+    assert len(capsys.readouterr().out.strip().splitlines()) == 8
+
+
+def test_latency_bench_file_and_dry_run(capsys):
+    b = load_bench(ROOT / "configs" / "bench" / "latency.yaml")
+    assert len(b.models) == 6 and b.sizes == [224, 448, 672] and b.history == [1, 10, 30]
+    assert "no-think/claude/claude-haiku-4-5-20251001" in b.models
+    assert b.plan_calls() == 6 * 3 * 3 * len(b.variants) * (1 + b.repeats)
+    assert main(["bench-latency", "-c", str(ROOT / "configs" / "bench" / "latency.yaml"), "--dry-run"]) == 0
+    assert "calls" in capsys.readouterr().out
+
+
+def test_latency_matrix_with_fake(tmp_path):
+    b = LatencyBench(models=["claude/claude-sonnet-5", "gpt-x"], sizes=[64], history=[1, 3],
+                     variants=[Variant(), Variant("low", {"reasoning_effort": "low"})], repeats=2)
+    llm = FakeLLM(["MOVE ee_delta 1 0 0\nSTATUS OK"])
+    rows, out = run_latency(b, llm, out_dir=tmp_path, printer=None)
+    assert len(rows) == len(llm.calls) == b.plan_calls() == 2 * 2 * 2 * 3
+    h3 = [c for c, r in zip(llm.calls, rows) if r["history"] == 3 and r["model"].startswith("claude")]
+    n_img = lambda c: json.dumps(c["messages"]).count('"type": "image_url"')  # noqa: E731
+    assert [n_img(c) for c in h3[:3]] == [3, 4, 5]
+    assert "cache_control" in json.dumps(h3[0]["messages"])
+    assert any(c["extra_body"] == {"reasoning_effort": "low"} for c in llm.calls)
+    assert (tmp_path / "calls.csv").exists() and "| claude/claude-sonnet-5 |" in (tmp_path / "table.md").read_text()
+    assert markdown_table(rows).count("\n") == 2 + 8
+
+
+def test_cache_probe_with_fake(tmp_path):
+    from controlr.bench.cache_probe import run_cache_probe
+
+    llm = FakeLLM(["MOVE ee_delta 5 0 0\nSTATUS OK"])
+    rows = run_cache_probe(llm, "claude/claude-haiku-4-5-20251001", turns=4, size=96,
+                           out_dir=tmp_path, printer=None)
+    assert [r.n_images for r in rows] == [1, 2, 3, 4]
+    assert len(llm.calls) == 4 and (tmp_path / "probe.csv").exists()
+    # same prefix each turn: the earlier messages are byte-identical apart from markers
+    a, b = llm.calls[1]["messages"], llm.calls[2]["messages"]
+    assert json.dumps(a[0]) == json.dumps(b[0])
+
+
+def test_report(tmp_path, capsys):
+    log = RunLog(tmp_path, "r1")
+    log.write_summary({"outcome": "success", "success": True, "turns": 4, "model": "m",
+                       "latency": {"llm_end_s": {"p50": 1.234, "p90": 2.0}}, "cache_read_share": 0.9,
+                       "totals": {"prompt_tokens": 1000, "completion_tokens": 50}})
+    log2 = RunLog(tmp_path, "r2")
+    log2.append_turn({"turn": 0, "llm": {"t_end": 1.0}, "usage": None})
+    rows = report_rows([str(tmp_path / "*")])
+    assert {r["outcome"] for r in rows} == {"success", "incomplete"}
+    assert "1.23" in format_table(rows)
+    assert main(["report", str(tmp_path), "--csv", str(tmp_path / "r.csv")]) == 0
+    assert "success" in capsys.readouterr().out and (tmp_path / "r.csv").exists()
+    assert main(["report", str(tmp_path / "nothing")]) == 1
+
+
+def test_run_fake_llm_cli(tmp_path, capsys):
+    """`controlr run --fake-llm` drives the full pipeline (mock robot) without network."""
+    from controlr.cli import main
+
+    rc = main(["run", "-c", str(ROOT / "configs" / "mock.yaml"), "--fake-llm",
+               "--set", f"log.root={tmp_path}", "--set", "episode.max_turns=5"])
+    assert rc == 0
+    runs = list(tmp_path.iterdir())
+    assert len(runs) == 1
+    for f in ("config.yaml", "system_prompt.md", "messages.jsonl", "turns.jsonl", "summary.json"):
+        assert (runs[0] / f).exists(), f
+    assert any((runs[0] / "images").glob("*.jpg"))

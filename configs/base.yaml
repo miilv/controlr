@@ -1,0 +1,83 @@
+# Defaults shared by every experiment. Task configs `extends: base.yaml` and
+# override only what differs. Every key is a controlr.config field; unknown
+# keys are an error (typos must not silently fall back to defaults).
+name: base
+seed: 0
+
+llm:
+  base_url: ${OMNIROUTE_BASE_URL}
+  api_key_env: OMNIROUTE_API_KEY      # the key itself never appears in configs or run logs
+  model: claude/claude-sonnet-5
+  max_tokens: 400
+  temperature: null
+  extra_body: {}
+  cache: auto                          # anthropic markers on claude/cc/no-think routes
+  cache_ttl: 5m
+  early_stop: true                     # close the stream once STATUS is emitted
+  timeout_s: 180
+  max_retries: 3
+  usage_grace_s: 0.3                   # after early stop, wait <=0.3 s for the usage chunk (cache stats)
+
+planner:
+  enabled: true
+  model: claude/claude-opus-5-5-xhigh   # effort via the id suffix (extra_body.reasoning_effort is not reliably honoured by the router)
+  extra_body: {}
+  max_tokens: 16000
+  include_in_context: true
+  prompt: planner_v0
+
+robot:
+  backend: isaac
+  params: {}
+
+task:
+  name: pick_place
+  instruction: ""
+  params: {}
+
+observation:
+  cameras: [scene]
+  size: 448
+  renderers: [raw]
+  tile: false
+  state_text: true
+  jpeg_quality: 90
+  first_turn_size: null
+  grid_z: null                         # grid plane height; null = the robot spec's table top
+  grid_step: 0.05
+
+action:
+  mode: ee_delta
+  rotation: none
+  pos_unit: mm
+  ang_unit: deg
+  max_chunk: 1
+  gripper: binary
+  format: text
+
+safety:
+  max_step_m: 0.10
+  max_step_rad: 0.5236
+  workspace_margin_m: 0.0
+  table_clearance_m: 0.005
+  joint_margin_rad: 0.0873
+  near_limit_rad: 0.2618
+  clamp: true
+  max_tcp_speed_m_s: 0.15
+  contact_force_stop_n: 80.0
+
+prompt:
+  system: system_v0
+  fewshot: null
+  extra_rules: []
+
+episode:
+  max_turns: 40
+  max_parse_errors: 3
+  goal_feedback: on_done
+  trust_done: false
+  end_on_fail: true
+
+log:
+  root: runs
+  save_images: true

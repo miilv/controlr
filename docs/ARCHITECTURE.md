@@ -15,7 +15,7 @@ controller. Alternatives are config switches, not code forks.
 
 ```
 reset(task) -> obs0
-[planner]  one separate call (default claude-opus-5-5, reasoning_effort=xhigh): system prompt
+[planner]  one separate call (default claude/claude-opus-5-5-xhigh; effort via id suffix): system prompt
            + task + obs0 -> plan text (not cached, not part of the control transcript
            except as text in turn 0 when planner.include_in_context)
 turn 0     user: task instruction (+ plan) + observation(obs0)
@@ -46,7 +46,7 @@ The robot never moves while the model thinks. Latency is a measured quantity
 | `controlr/robot/safety.py` | SafetyEnvelope: filter/clamp actions, near-limit warnings |
 | `controlr/robot/mock.py` | kinematic mock robot (no physics; synthetic rendering) for tests |
 | `controlr/robot/replay.py` | replays recorded frames regardless of actions (latency/caching benchmarks) |
-| `controlr/robot/mujoco_sim/` | MuJoCo UR3 + Robotiq 2F-85 scene, cameras, tasks (reach / push / pick_place) |
+| `controlr/robot/isaac/` | Isaac Sim 6.0 backend: PHANTOM's calibrated UR3 CB3 + Robotiq + D435 scene (server inside Isaac's python, numpy-only RPC client in controlr) |
 | `controlr/loop.py` | episode runner (planner + turn loop), end conditions |
 | `controlr/runlog.py` | run directory writer |
 | `controlr/bench/` | cache probe, latency matrix, sweep runner |
@@ -180,13 +180,15 @@ Factory: `controlr.robot.make_robot(cfg: Config) -> Robot`.
 * `safety.py`: `SafetyEnvelope(spec, cfg).filter(actions, state) -> (actions_out, events)`:
   per-line step limits, workspace box, table clearance, joint soft limits (via IK for ee modes),
   near-limit warnings, clamp vs reject. Backend-independent.
-* MuJoCo backend: UR3 CB3 from PHANTOM's URDF (`assets/sim/ur3`, BSD) + Menagerie
-  `robotiq_2f85` (Apache-2.0), table, task objects, cameras `scene` (fixed, D435-like, 640x480)
-  and `wrist`. Execution: Cartesian straight-line interpolation with IK at waypoints at
-  `safety.max_tcp_speed_m_s`, position-controlled joints, then settle; gripper actuation; contact
-  monitoring -> events. Headless rendering via EGL (`MUJOCO_GL=egl`) on compute2.
-* Tasks: `reach` (TCP within tol of a marker), `push` (cube into a zone), `pick_place`
-  (cube into a bowl). Randomised object poses by seed; success + progress metrics.
+* Isaac backend (primary sim): reuses PHANTOM's Isaac Sim 6.0 reconstruction of the real rig
+  (`~/phantom-icra-2027/phantom` on compute3: `phantom/sim/scene.py`, `camera.py`, `kinematics.py`,
+  native gripper, calibrated D435 640x480, waffle packet + box; carton/egg task scenes). A server
+  process runs inside Isaac's python (`isaac-sim-6.0/python.sh`, headless) and exposes
+  reset/observe/state/execute/check_goal over `multiprocessing.connection` with numpy-only payloads
+  (same pattern as PHANTOM `phantom/sim/remote_policy.py`). `controlr.robot.isaac.IsaacRobot` is the
+  client. Physics is paused between turns; `execute` steps physics until settled, then the D435
+  view is rendered. Tasks: the PHANTOM waffle pick-to-box first, then simple reach/push variants.
+  The mock robot covers GPU-free unit tests.
 
 ### Run log (`controlr/runlog.py`)
 `runs/<UTC timestamp>_<name>/`: `config.yaml`, `system_prompt.md`, `plan.md`,
@@ -196,7 +198,6 @@ goal, state), `summary.json` (outcome, turns, token totals, cache-read share, la
 Later: export to LeRobotDataset for the action head.
 
 ## Deployment
-Code runs on **compute2** (`isr-lab-4`, RTX 4090, Ubuntu 22.04, py3.10/3.11) under
-`/root/controlr` with a uv venv; `MUJOCO_GL=egl`. `scripts/deploy.sh` rsyncs the repo (no
-`.env` in git — copied separately). compute3 (Isaac Sim 6.0, PHANTOM scene) is for the
-later Isaac backend once its NVIDIA driver works.
+Code runs on **compute3** (`physicalai`, RTX 5090, Ubuntu 24.04, py3.12, Isaac Sim 6.0) under
+`~/controlr` with a uv venv; the Isaac server runs under Isaac's own python. `scripts/deploy.sh` rsyncs the repo (no
+`.env` in git — copied separately).

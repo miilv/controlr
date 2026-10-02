@@ -1,0 +1,13 @@
+# Kinematic mock robot (no GPU, synthetic frames) driven by the REAL LLM:
+# the cheapest live test of prompt / grammar / caching. Unit tests do not use
+# this file's LLM — they inject FakeLLM.
+extends: base.yaml
+name: mock
+robot:
+  backend: mock
+task:
+  name: reach
+planner:
+  enabled: false                       # enable explicitly to test the planner path (Opus xhigh is slow)
+episode:
+  max_turns: 10

@@ -38,13 +38,19 @@ class LLMConfig:
     early_stop: bool = True        # close the stream once the reply grammar is complete
     timeout_s: float = 180.0
     max_retries: int = 3
+    # after an early stop keep reading (text frozen) up to this long for the trailing
+    # usage chunk; 0 = close immediately (usage then None -> no cache/token stats)
+    usage_grace_s: float = 0.0
 
 
 @dataclass
 class PlannerConfig:
     enabled: bool = True
-    model: str = "claude/claude-opus-5-5"
-    extra_body: dict = field(default_factory=lambda: {"reasoning_effort": "xhigh"})
+    # Effort is encoded in the model id: through omniroute, extra_body.reasoning_effort on
+    # claude/claude-opus-5-5 changed reasoning_tokens only marginally (low 162 vs xhigh 253 on
+    # the same prompt) — not a reliable switch. The suffixed id is unambiguous.
+    model: str = "claude/claude-opus-5-5-xhigh"
+    extra_body: dict = field(default_factory=dict)
     max_tokens: int = 16000
     include_in_context: bool = True   # plan text goes into the first user turn of the control transcript
     prompt: str = "planner_v0"
@@ -52,7 +58,7 @@ class PlannerConfig:
 
 @dataclass
 class RobotConfig:
-    backend: str = "mujoco"         # mujoco | mock | replay | ur (later) | isaac (later)
+    backend: str = "isaac"          # isaac | mock | replay | ur (later)
     params: dict = field(default_factory=dict)   # backend-specific (scene, physics, cameras, replay dir...)
 
 
@@ -74,6 +80,8 @@ class ObservationConfig:
     state_text: bool = True          # append proprioceptive state as text
     jpeg_quality: int = 90
     first_turn_size: int | None = None   # optional larger image on the first turn
+    grid_z: float | None = None      # m, base-frame height of the "grid" overlay plane; None = RobotSpec.table_z (else 0)
+    grid_step: float = 0.05          # m, grid line spacing (labels every 2 lines)
 
 
 @dataclass

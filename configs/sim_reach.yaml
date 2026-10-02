@@ -1,0 +1,12 @@
+# Simple reach in the Isaac rig: bring the TCP to a target above the table.
+# Cheapest end-to-end sanity check of the whole loop (no grasping).
+extends: base.yaml
+name: sim_reach
+robot:
+  backend: isaac
+task:
+  name: reach
+planner:
+  enabled: false                       # reach does not need a plan; saves an Opus call
+episode:
+  max_turns: 20

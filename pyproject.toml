@@ -11,7 +11,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-sim = ["mujoco>=3.2"]
 dev = ["pytest>=8"]
 
 [project.scripts]
@@ -25,7 +24,11 @@ build-backend = "setuptools.build_meta"
 include = ["controlr*"]
 
 [tool.setuptools.package-data]
-"controlr" = ["prompts/*.md", "robot/mujoco_sim/assets/**/*"]
+"controlr" = ["prompts/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "live: calls the live LLM endpoint (run with CONTROLR_LIVE=1)",
+  "isaac: needs the Isaac Sim server on compute3 (run with CONTROLR_ISAAC=1)",
+]

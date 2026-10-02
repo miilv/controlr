@@ -1,0 +1,11 @@
+# PHANTOM waffle pick-to-box in the calibrated Isaac Sim 6.0 rig (compute3).
+# Task name / params are interpreted by controlr.robot.isaac.
+extends: base.yaml
+name: sim_waffle
+robot:
+  backend: isaac
+task:
+  name: waffle_pick_place          # controlr.robot.isaac.tasks (aliases: pick_place, waffles)
+  instruction: ""                      # empty -> backend default instruction
+episode:
+  max_turns: 40

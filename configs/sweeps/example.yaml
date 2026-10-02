@@ -1,0 +1,11 @@
+# controlr sweep configs/sweeps/example.yaml [--dry-run]
+# cartesian product of grid values x seeds; every point is a normal run dir
+# under runs/<stamp>_sweep_<name>/, plus aggregate.csv.
+name: example
+config: ../mock.yaml
+set:
+  - planner.enabled=false
+seeds: [0, 1]
+grid:
+  llm.model: [claude/claude-sonnet-5, no-think/claude/claude-haiku-4-5-20251001]
+  observation.size: [224, 448]

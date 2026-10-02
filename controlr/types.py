@@ -43,6 +43,9 @@ class RobotSpec:
     workspace_lo: tuple[float, float, float]   # m, base frame, safe box for the TCP
     workspace_hi: tuple[float, float, float]
     home_q: tuple[float, ...]          # rad
+    # --- optional (added by the robot backends; defaults keep older constructors valid) ---
+    table_z: float | None = None       # m, base frame height of the table surface (None: no table)
+    tcp_offset: tuple[float, ...] | None = None   # flange(tool0)->TCP pose xyz+rotvec; None: kinematics default
 
 
 @dataclass(frozen=True)
@@ -98,6 +101,9 @@ class Action:
     values: tuple[float, ...] | None
     gripper: float | None = None   # target opening, m (0 = closed); None = unchanged
     raw: str = ""                  # the source line, for logs/feedback
+    # Resolved absolute joint target (rad), attached by SafetyEnvelope.filter so
+    # backends need not redo IK. None for unfiltered actions.
+    q_target: tuple[float, ...] | None = None
 
 
 class Status(str, Enum):
