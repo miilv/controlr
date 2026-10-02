@@ -2,7 +2,7 @@
 
 <!-- 1-3 sentences; link the BACKLOG item / experiment report -->
 
-## Checklist ([docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md))
+## Checklist (docs/DEVELOPMENT.md)
 
 - [ ] `uv run pytest -q` green; touched robot/loop/safety/isaac → Isaac tests on compute3 green
 - [ ] Config defaults and prompt/feedback format unchanged — or the change is deliberate and logged in the journal
