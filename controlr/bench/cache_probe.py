@@ -13,7 +13,6 @@ model identical pixels.
 
 from __future__ import annotations
 
-import csv
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,21 +21,24 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from controlr.runlog import to_jsonable, utc_stamp
+from controlr.runlog import to_jsonable, utc_stamp, write_csv  # noqa: F401  (write_csv re-exported)
 
 _IMG_EXT = (".jpg", ".jpeg", ".png")
 
-# Stand-in operating manual for the probe. Long enough (> 4096 tokens with a
-# few images; > 1024 on its own) to clear every Claude route's minimum
-# cacheable prefix, deterministic so repeated probes hit the same cache.
+# Stand-in operating manual for the probe: deterministic reference text, > 5k tokens
+# on its own (~19k characters; estimate_tokens ~5.3k), so even Haiku 4.5 (4096-token
+# minimum) caches it at history 1. The earlier ~2.4k-token version left the Haiku
+# cells at h=1 uncached while the bench reported them as steady state.
 PROBE_SYSTEM = (
     "You are the low-level controller of a UR3 robot arm with a parallel gripper. "
     "Each user turn shows one camera frame of the workspace. Reply with exactly two lines:\n"
     "MOVE ee_delta <dx> <dy> <dz>   (millimetres, base frame)\n"
     "STATUS OK\n"
     "No other text. This is a latency/caching benchmark; any small plausible motion is fine.\n\n"
-    + "\n".join(f"Rule {i}: keep the gripper above the table, move at most 50 mm per line, "
-                f"prefer small corrective motions, and never leave the workspace box." for i in range(60))
+    "Reference table of workspace cells (cell id, centre x y z in mm, recommended step mm):\n"
+    + "\n".join(f"cell {i:03d}: centre x={-550 + 25 * (i % 17)} y={-400 + 30 * (i % 21)} "
+                f"z={20 + 15 * (i % 13)}; step {5 + i % 7} mm; keep the gripper above the table, move at "
+                f"most 50 mm per line and never leave the workspace box." for i in range(130))
 )
 PROBE_REPLY = "MOVE ee_delta 5 0 0\nSTATUS OK"
 
@@ -108,18 +110,39 @@ class ProbeTurn:
     completion_tokens: int | None
     share: float | None
     error: str | None
+    response_cache: str | None = None     # router response-cache header (HIT = replayed, not measured)
+    ttft_any: float | None = None
+    reasoning_tokens: int | None = None
+
+
+def response_cache_header(res) -> str | None:
+    """omniroute's response-replay marker (``x-omniroute-cache: HIT|MISS``), if any."""
+    for k, v in (getattr(res, "headers", None) or {}).items():
+        if k.lower() in ("x-omniroute-cache", "x-cache"):
+            return str(v)
+    return None
 
 
 def run_cache_probe(llm, model: str, *, turns: int = 20, size: int = 448,
                     frames_dir: str | Path | None = None, cache: str = "auto",
-                    ttl: str = "5m", jpeg_quality: int = 90, max_tokens: int = 40,
+                    ttl: str = "5m", jpeg_quality: int = 90, max_tokens: int = 2000,
                     extra_body: dict | None = None,
-                    out_dir: str | Path | None = None,
+                    out_dir: str | Path | None = None, nonce: str | None = None,
                     printer: Callable[[str], None] | None = print) -> list[ProbeTurn]:
     """Grow a transcript for ``turns`` turns; one request per turn. Writes
-    ``probe.csv`` to ``out_dir`` when given. Spend: exactly ``turns`` calls."""
+    ``probe.csv`` to ``out_dir`` when given. Spend: exactly ``turns`` calls.
+
+    ``max_tokens`` counts thinking on thinking routes (40 starved Sonnet/Opus: empty
+    replies); the early stop at STATUS keeps the real output short. ``nonce`` (default:
+    the out_dir name) goes at the start of the FIRST user turn: omniroute replays
+    responses to byte-identical requests (~0.4 s, no cache counters), so a rerun would
+    silently measure the replay. The system prompt stays identical (provider cache shared)."""
     from controlr.llm.caching import apply_cache_markers, cache_style_for
     from controlr.llm.transcript import Transcript, encode_image
+    from controlr.protocol.grammar import is_complete
+
+    if nonce is None:
+        nonce = Path(out_dir).name if out_dir else utc_stamp()
 
     src = frame_source(frames_dir)
     style = cache_style_for(model, cache)
@@ -130,15 +153,20 @@ def run_cache_probe(llm, model: str, *, turns: int = 20, size: int = 448,
         printer(f"{'turn':>4} {'imgs':>4} {'ttft':>6} {'end':>6} {'prompt':>7} {'read':>7} {'write':>6} {'share':>6}")
     for i in range(turns):
         img = encode_image(resize_long_edge(src(i), size), jpeg_quality, f"scene t{i}")
-        tr.add_user([f"TURN {i}", img])
+        head = f"RUN {nonce}\nTURN {i}" if (i == 0 and nonce) else f"TURN {i}"
+        tr.add_user([head, img])
         msgs = apply_cache_markers(tr.to_messages(), style, ttl)
-        res = llm.complete(model, msgs, max_tokens=max_tokens, extra_body=extra_body or None)
+        res = llm.complete(model, msgs, max_tokens=max_tokens, extra_body=extra_body or None,
+                           stop_when=is_complete)
         u = res.usage
         pt = getattr(u, "prompt_tokens", None)
         cr = getattr(u, "cache_read_tokens", None)
         row = ProbeTurn(i, tr.n_images(), res.timings.ttft, res.timings.t_end, pt, cr,
                         getattr(u, "cache_write_tokens", None), getattr(u, "completion_tokens", None),
-                        (cr / pt) if (pt and cr is not None) else None, res.error)
+                        (cr / pt) if (pt and cr is not None) else None, res.error,
+                        response_cache=response_cache_header(res),
+                        ttft_any=getattr(res.timings, "ttft_any", None),
+                        reasoning_tokens=getattr(u, "reasoning_tokens", None))
         rows.append(row)
         if printer:
             printer(_fmt_row(row))
@@ -159,21 +187,9 @@ def _fmt(v, nd=2) -> str:
 def _fmt_row(r: ProbeTurn) -> str:
     s = (f"{r.turn:>4} {r.n_images:>4} {_fmt(r.ttft):>6} {_fmt(r.t_end):>6} {_fmt(r.prompt_tokens):>7} "
          f"{_fmt(r.cache_read):>7} {_fmt(r.cache_write):>6} {_fmt(r.share):>6}")
+    if r.response_cache and r.response_cache.upper().startswith("HIT"):
+        s += "  REPLAYED (router response cache)"
     return s + (f"  ERROR {r.error}" if r.error else "")
-
-
-def write_csv(path: str | Path, rows: list[dict]) -> Path:
-    p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    keys: list[str] = []
-    for r in rows:
-        keys.extend(k for k in r if k not in keys)
-    with open(p, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=keys)
-        w.writeheader()
-        for r in rows:
-            w.writerow(r)
-    return p
 
 
 def default_out_dir(root: str | Path, kind: str) -> Path:

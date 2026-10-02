@@ -8,7 +8,10 @@ One episode = one directory ``<root>/<UTC timestamp>_<name>/``::
     images/<sha>.jpg   the exact JPEG bytes that were sent, content-addressed (dedup for free)
     messages.jsonl     the control transcript, one message per line, images as {"image_sha": ...}
     turns.jsonl        one record per turn (timings, usage, reply, actions, events, goal, state)
-    summary.json       outcome, turns, token totals, cache-read share, latency p50/p90
+    summary.json       outcome, turns, token totals, cache-read share, latency p50/p90,
+                       per-turn cache trace + cache regressions
+    setup.json / cameras.json / spec.json / planner.json   (see controlr.loop)
+    raw/<turn>_<cam>.png   native frames without overlays (log.save_raw_frames)
 
 WHY append + flush per turn: a crashed / Ctrl-C'd / OOM-killed episode must
 still leave a readable log, and ``controlr report`` can rebuild the summary
@@ -20,6 +23,7 @@ offline ``report`` command compute the same numbers from the same records.
 
 from __future__ import annotations
 
+import csv
 import dataclasses
 import json
 import math
@@ -187,14 +191,34 @@ class RunLog:
 # stats (shared by loop summary and offline report)
 # ---------------------------------------------------------------------------
 
+def write_csv(path: str | Path, rows: list[dict]) -> Path:
+    """Union of keys as columns (first-seen order)."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    keys: list[str] = []
+    for r in rows:
+        keys.extend(k for k in r if k not in keys)
+    with open(p, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=keys)
+        w.writeheader()
+        for r in rows:
+            w.writerow(r)
+    return p
+
+
 def percentiles(values: Iterable[float | None], qs: tuple[int, ...] = (50, 90)) -> dict[str, float | None]:
-    v = [float(x) for x in values if x is not None and math.isfinite(float(x))]
+    """p50/p90/mean/max over the present values; ``n`` = values used, ``missing`` =
+    values that were None (e.g. no content before ``finish_reason=length``) — a
+    percentile over a biased subset must say so."""
+    raw = list(values)
+    v = [float(x) for x in raw if x is not None and math.isfinite(float(x))]
     out: dict[str, float | None] = {}
     for q in qs:
         out[f"p{q}"] = float(np.percentile(v, q)) if v else None
     out["mean"] = float(np.mean(v)) if v else None
     out["max"] = float(np.max(v)) if v else None
     out["n"] = len(v)
+    out["missing"] = len(raw) - len(v)
     return out
 
 
@@ -223,19 +247,64 @@ def cache_read_share(totals: dict) -> float | None:
     return (totals.get("cache_read_tokens") or 0) / pt if pt else None
 
 
+REGRESSION_SLACK_TOKENS = 64
+
+
+def cache_trace(records: list[dict]) -> dict:
+    """Per-turn cache split and cache REGRESSIONS.
+
+    Each turn's request is the previous request + the previous reply + one new
+    user turn, so a healthy cache reads at least what the previous call read +
+    wrote. A turn that reads clearly less (``read_N < read_{N-1} + write_{N-1} -
+    64``) missed an entry that should exist — e.g. the router sent it to another
+    upstream account (seen live: run 20261002T105745Z turn 4 read 0 and rewrote
+    5250 tokens). ``uncached`` (= total - read - write) is the part the provider
+    did not cache; in steady state it is about the newest user turn."""
+    rows: list[dict | None] = []
+    regressions: list[dict] = []
+    prev: dict | None = None
+    for r in records:
+        u = r.get("usage")
+        if not u:
+            rows.append(None)
+            prev = None
+            continue
+        tot = int(u.get("prompt_tokens") or 0)
+        rd = int(u.get("cache_read_tokens") or 0)
+        wr = int(u.get("cache_write_tokens") or 0)
+        row = {"turn": r.get("turn"), "prompt": tot, "read": rd, "write": wr, "uncached": tot - rd - wr,
+               "read_share": (rd / tot) if tot else None}
+        rows.append(row)
+        if prev is not None and prev["read"] + prev["write"] > 0:
+            expected = prev["read"] + prev["write"]
+            if rd < expected - REGRESSION_SLACK_TOKENS:
+                regressions.append({"turn": r.get("turn"), "read": rd, "expected_at_least": expected})
+        prev = row
+    return {"turns": rows, "regressions": regressions}
+
+
 def summarize_turns(records: list[dict]) -> dict:
     """Latency + token aggregates from per-turn records (the turns.jsonl schema
-    written by ``controlr.loop``)."""
+    written by ``controlr.loop``). ``llm_ttft_s`` is the first CONTENT byte (on
+    thinking routes it includes the thinking); ``llm_ttft_any_s`` the first byte
+    of anything (thinking or content); ``llm_headers_s`` the response headers."""
     llm = [r.get("llm") or {} for r in records]
     tim = [r.get("timings") or {} for r in records]
     totals = token_totals(r.get("usage") for r in records)
+    trace = cache_trace(records)
+    shares = [t["read_share"] for t in trace["turns"] if t]
     return {
         "totals": totals,
         "cache_read_share": cache_read_share(totals),
+        "cache_read_share_turns": percentiles(shares),
+        "cache_regressions": trace["regressions"],
         "latency": {
             "llm_end_s": percentiles(x.get("t_end") for x in llm),
             "llm_ttft_s": percentiles(x.get("ttft") for x in llm),
+            "llm_ttft_any_s": percentiles(x.get("ttft_any") for x in llm),
+            "llm_headers_s": percentiles(x.get("t_headers") for x in llm),
             "llm_complete_s": percentiles(x.get("t_complete") for x in llm),
+            "llm_wall_s": percentiles(x.get("t_wall") for x in llm),
             "exec_s": percentiles(x.get("exec") for x in tim),
             "cycle_s": percentiles(x.get("cycle") for x in tim),
         },
@@ -281,4 +350,13 @@ def load_run(path: str | Path) -> dict:
         cfg = yaml.safe_load(cfg_p.read_text()) or {}
         s["name"] = cfg.get("name")
         s["model"] = (cfg.get("llm") or {}).get("model")
+        s["seed"] = cfg.get("seed")
+        s["task"] = (cfg.get("task") or {}).get("name")
+        s["backend"] = (cfg.get("robot") or {}).get("backend")
+    setup_p = p / "setup.json"
+    if setup_p.exists():
+        try:
+            s["llm_backend"] = json.loads(setup_p.read_text()).get("llm_backend")
+        except json.JSONDecodeError:
+            pass
     return s

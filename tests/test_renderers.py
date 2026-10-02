@@ -79,7 +79,10 @@ def test_segment_clipping_behind_camera():
 
 def test_describe_axes_top_down():
     s = describe_axes(cam_top_down(), np.array([0.3, 0.0, 0.0]))
-    assert s == "+x points right, +y points up, +z points toward the camera in the image"
+    assert s == ("+x points right (50 px per 100 mm), +y points up (50 px per 100 mm), "
+                 "+z points toward the camera in the 640-px image")
+    s2 = describe_axes(cam_top_down(), np.array([0.3, 0.0, 0.0]), long_edge=320, per="10.0 cm")
+    assert "(25 px per 10.0 cm)" in s2 and "320-px image" in s2
 
 
 def test_resize_never_upscales():
@@ -183,3 +186,15 @@ def test_grid_z_defaults_to_table_and_jaw_is_tool_x():
     assert resolve_grid_z(ObservationConfig(grid_z=0.1), spec) == 0.1
     assert resolve_grid_z(ObservationConfig(), None) == 0.0
     assert JAW_AXIS == 0
+
+
+def test_lookback_guard_warns_on_too_many_blocks_per_turn():
+    """Review caching #12: > ~18 blocks per turn defeat Anthropic's 20-block lookback."""
+    from controlr.config import ObservationConfig
+    from controlr.observation.renderers import blocks_per_turn, lookback_warning
+
+    many = ObservationConfig(cameras=[f"c{i}" for i in range(6)], renderers=["raw", "diff", "heatmap"])
+    assert blocks_per_turn(many) == 21 and "tile" in lookback_warning(many)
+    many.tile = True
+    assert lookback_warning(many) is None
+    assert lookback_warning(ObservationConfig()) is None

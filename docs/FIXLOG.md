@@ -1,0 +1,116 @@
+# Fix log: v0 review findings (2026-10-02)
+
+Source reviews: `docs/review_contracts-tests-ux.md` (C), `docs/review_control-safety.md` (S),
+`docs/review_caching-llm.md` (L). Every finding was checked against the code before fixing.
+Status: **fixed**, **partial** (what remains is stated), **deferred** (valid, not cheap; reason),
+**rejected** (wrong; reason). No live LLM calls were made (none were authorised for this pass).
+
+Contract additions (all backwards compatible): `RobotSpec.finger_pad`, `Action.q_path`,
+`Robot.reference_state()` (non-abstract, default None), `LLMResult.request_bytes/truncated`,
+`Timings.t_headers`, `LLMClient(headers=...)`, `complete(..., timeout_s=, max_retries=)`, config
+fields `llm.extra_headers`, `planner.timeout_s/max_retries/plan_file`,
+`safety.object_force_stop_n/path_step_m`, `episode.end_on_goal`, `log.save_raw_frames`; ee_abs +
+rotation=yaw now produces 4 SI values (x, y, z, yaw). ARCHITECTURE.md updated accordingly.
+
+## Blockers
+
+| # | finding | status | what changed |
+|---|---|---|---|
+| C1 | `prompt.fewshot` never read | fixed | `builder._load_fewshot`: a .md/.txt file verbatim, or a run dir's messages.jsonl rendered as text (images -> `<image>`), appended as "Appendix C" (cached prefix); missing path raises. Tests: file + run dir + missing. |
+| S1 | reach infeasible at seed 0 (gripper body through the box wall) | fixed | `tasks.reach_feasibility`: IK with the start orientation inside the soft limits, open fingertips above the table, TCP→flange→wrist chain inflated 45 mm clear of the bin's outer box (wall thickness now in `scene_info.bin.wall`). `sample_reach` rejects infeasible draws, raises after 500, and refuses an explicit infeasible `params.marker`. Verified: the old seed-0 marker (-496, -159, 138) is rejected ("inside the blue box"); ~23 % of raw draws are feasible; seeds 0..49 all feasible (test). New seed-0 marker (-482, -315, 133). README claim now true. |
+
+## Majors
+
+| # | finding | status | what changed |
+|---|---|---|---|
+| C2 | STATE / ee_abs examples at x=+300 | fixed | `grammar.example_xyz(spec)` (workspace centre, table-relative) drives the STATE example, ee_abs examples, worked example and Appendix B. Test fixture is now `ur3_cb3_spec()`; new tests assert every example position in the manual parses and lies in the workspace. |
+| C3 | camera-axis line cannot tell +y from +z | fixed | `describe_axes` adds px per 100 mm (in LLM units, at the sent image size); the manual adds "a pure +y move and a pure +z move both shift the gripper up; tell them apart with STATE / drop line" whenever two axes share a direction. Tested on the real tilted D435 (y px > 1.5 × z px). |
+| C4 / S2 | table clearance protects only the TCP | fixed | `RobotSpec.finger_pad` (PHANTOM pad 48 × 39 mm, 6 mm thick) + `safety.finger_drop`: the LOWEST pad corner (TCP ± (w/2+t)·jaw ± hl·tool_z ± hw·tool_y, w = max(current, commanded) opening) is kept `table_clearance_m` above the table, also along joint paths. CLAMP text names the fingertip. Manual: §8 "the lowest fingertip", tool doc states the drop (open/closed), workspace z shows the enforced lower bound. Appendix B no longer descends blindly into the clamp. |
+| C5 | prose with keywords -> false PARSE ERRORs; "Status: ok" stops the stream | fixed | Uppercase keyword = command; mixed-case keyword line counts only if it parses (STATUS only as last line), else prose; `is_complete` requires uppercase STATUS. Regression tests from the review's examples. |
+| C6 | safety/goal/backend messages always mm/deg | fixed | Envelope and backends keep canonical mm/deg; `feedback.to_llm_units` converts every event and goal message (single place). Test: mock + FakeLLM with cm/rad has no mm/deg in the feedback. |
+| C7 | `state_text=false` manual contradicts itself | fixed | STATE-dependent manual text is placeholder-driven (`_state_values`): no STATE line, example or reference anywhere when off; the manual says EXEC still reports measured motion. Test: "STATE" absent. (The optional `no_holding` variant was not added.) |
+| C8 | enum-like config values not validated | fixed | `config.validate` (called by `load_config` and `run_episode`): mode, rotation, units, gripper, format (`text` only), goal_feedback, cache, cache_ttl, backend, renderer names, basic ranges. One test per field. |
+| C9 | multi-camera axis cannot run | partial | Mock: `params.cameras: [scene, top]` adds a synthetic top-down camera (tile vs separate now runnable, tested). The loop fails early with a clear message when a configured camera is missing. A second calibrated Isaac camera is **deferred** (needs a camera pose decision + GPU validation); documented in the Isaac README. |
+| C10 | run log insufficient for an action head | fixed | Per turn: `obs_images`, `state_before`, `q_target`/`q_path` per action, `reasoning`, `next_obs_images` + `state` (also after the terminal turn = final frame); `setup.json` has `obs0_images`, reference state; `cameras.json`, `spec.json`; optional `log.save_raw_frames` (native PNGs without overlays). Test rebuilds (obs_t, action_t, obs_t+1) from turns.jsonl alone. |
+| C11 | `--fake-llm` runs indistinguishable | fixed | `FakeLLM.is_fake`; run dir `<stamp>_fake_<name>`; `llm_backend: fake|live` in setup + summary; `report` shows `llm`, name, task, seed, backend, verified columns and skips fake runs unless `--include-fake`. |
+| C12 | sweeps: no fake-llm, no resume, exit 0, re-plans every point | fixed | `sweep --fake-llm`, `--resume SWEEP_DIR` (skips finished points), exit 1 when any point ended error/llm_error/interrupted; `planner.plan_file` pins a plan (documented for control-side ablations). |
+| S3 | only the end point is checked; joint-space path bends | fixed | ee moves: IK every `safety.path_step_m` (5 mm) along the straight TCP line (orientation slerped), per-step branch guard `|dq| <= 0.02 rad/mm + 2·rot + 0.05` instead of the π/2 guard; waypoints go to the backend as `Action.q_path`; the Isaac server passes through them in ONE min-jerk motion (`isaac/motion.py`, arc-length parameterised). Test: all waypoints within 1.5 mm of the line, no joint jumps. |
+| S4 | IK failure drops the whole move | fixed | Same path: the move is shortened to the last feasible waypoint (CLAMP "not reachable … moved N % of the way (… mm)"); < 10 % -> skipped (`ik_fail`). |
+| S5 | force stop overshoots; object/self contact blind | partial | Contacts sampled every physics step during motion (10 steps while settling); new `safety.object_force_stop_n` (40 N) stops robot-vs-packet contact (not while the gripper itself closes); finger-packet contact above half that threshold is WARN, not INFO. Robot self-collision is still not observed (documented). |
+| S6 | STOP during settle keeps pushing; integral windup | fixed | One `stop()` freezes the drive target at the measured pose and zeroes the bias whenever a stop happens (motion, gripper, settle); integration paused while robot-environment contact > 5 N; bias bound 0.01 -> 0.004 rad (~14 N·m at PHANTOM stiffness, still > the 3 mrad sag). |
+| S7 | speed limits are averages; min-jerk peaks 1.875× | fixed | `motion.group_duration` sizes each group so the PEAK TCP / joint / rotation speed is at the limit (15/8 factor, exact per-joint bound along the waypoint polyline). Test integrates the generated trajectory: peak joint ≤ 1.0 rad/s, peak TCP ≤ 0.15 m/s (+10 % for waypoint non-uniformity). |
+| S8 | rotation=none re-anchored to the measured pose | fixed | `SafetyEnvelope.reset(ref)`; rotation=none targets the reference orientation (contact tilt undone; WARN "tool is tilted N deg" > 3 deg); `ref` = `Robot.reference_state()` (Isaac: FK of the commanded start joints) or the measured reset state. The manual's tool lines use the same `ref`. |
+| L1 | cache boundary set by omniroute's `cc` provider, not our markers | partial | Contract and `caching.py` rewritten to describe what is observed; per-turn cache trace + regressions in every summary (boundary changes become visible). The confirming probe (`bench-cache` with `--set llm.cache=none`, and `cache_ttl=1h` + 6-min pause; ~6 calls) was **not run**: no live spend was authorised for this pass. Until then the docs say: do not sweep `llm.cache`/`cache_ttl` on `cc` routes. |
+| L2 | unreported cache split; runlog cannot detect it | fixed / partial | `runlog.cache_trace` flags `read_N < read_{N-1} + write_{N-1} − 64`; `summary.json` `cache_regressions` + `cache_read_share_turns`; CLI warning; report column. Re-computed on run 105745: turns 4, 5, 7 flagged. `llm.extra_headers` can send a lease header; whether omniroute honours `X-OmniRoute-Lease-Owner` is unverified (needs live calls). |
+| L3 | logs drop `ttft_any`, `t_wall`, reasoning; percentiles skip None silently | fixed | Turn and planner records keep every Timings field (+ new `t_headers`), `reasoning`, `reasoning_chars`, `request_bytes`; summary adds `llm_ttft_any_s`, `llm_headers_s`, `llm_wall_s`; every percentile reports `n` and `missing`. INTEGRATION_NOTES column renamed and the bias explained. |
+| L4 | latency bench invalid (max_tokens 40; probe prompt < Haiku minimum) | fixed | `max_tokens` 2000 in bench file, `LatencyBench` and `run_cache_probe` (early stop at STATUS keeps output short; the probe now early-stops too); `PROBE_SYSTEM` ~19k chars (`estimate_tokens` 5357); cells with median cache share < 0.5 are flagged UNCACHED in `table.md`. |
+| L5 | benches send byte-identical requests (router replay) | fixed | Nonce (`RUN <out dir> …`) at the start of the first user turn of the probe and of every latency cell (system prompt unchanged); `x-omniroute-cache` recorded per call; HIT rows excluded from the medians and flagged ("REPLAYED"). |
+
+## Minors
+
+| # | finding | status | what changed / why not |
+|---|---|---|---|
+| C13 / S18a | `success` vs `outcome` disagree; no `end_on_goal` | fixed | `success_verified` (= outcome success) added to result/summary/aggregate/report; `success` documented as the end-of-episode goal check; `episode.end_on_goal` -> outcome `goal_reached`; outcome comment fixed. |
+| C14 | dead / duplicated code | fixed | `build_planner_messages`/`_image_url` removed; feedback's rotation helpers now wrap `kinematics` (one implementation); `make_robot` getattr fallback removed; `write_csv` moved to `runlog` (re-exported by `cache_probe`). |
+| C15 | config default drift; manual home ≠ reset pose | fixed | `usage_grace_s` default 0.3 = base.yaml; base.yaml lists every default (test asserts base.yaml == dataclass defaults); Isaac client sets `spec.home_q` to the episode's start joints at reset (the loop reads `robot.spec` after reset). |
+| C16 | grammar examples tell a different story | fixed | Neutral "object", sequence approach (with GRIP open) → descend → close → check → release → lift + DONE. |
+| C17 | "fingers … lie BEHIND the TCP" | fixed | "The fingertips straddle the TCP along the jaw line; the finger bases, housing and wrist lie behind …" + fingertip drop. |
+| C18 | noisy headers; summary embeds planner record | fixed | Header allow-list (`x-omniroute*`, request ids, rate limits, retry-after, x-cache); summary keeps a pointer + usage only. |
+| C19 / L9 | early-stop note truncation is chunk-dependent | fixed | During the grace period the client completes the STATUS line (cut at its newline); if the stream is cut first, `truncated=True` and the loop stores `strip_partial_note(text)` (`reply_streamed` keeps the raw text). FakeLLM mimics the grace behaviour. |
+| C20 | trailing unit token, Unicode minus | fixed | Both accepted. |
+| C21 | sweep labels collide; `--set` collapses grid keys | fixed | Full-key labels; `--set` on a grid key raises. |
+| C22 | robot built before key check; `.env` relative to CWD | fixed | LLM client (key + URL check) is built before the robot; `.env` read from CWD then repo root; an unexpanded `${…}` base URL fails fast. |
+| C23 | report cannot separate arms | fixed | name/task/seed/backend/llm/verified/cache_regr columns. |
+| C24 | `types.Action` docstring contradictory | fixed | Docstring describes 3/4/6 values and RPY. |
+| C25 | prefix-stability test nearly vacuous | fixed | Markers stripped structurally; every call pair compared in full (`b[:n] == a`), with grid + ee_marker + diff on. |
+| C26 | CLI silent during the planner; no prompt preview | fixed | `on_status` progress ("planner … / planner done in N s"); `controlr prompt -c CFG [--setup RUN_DIR] [--planner]`. |
+| C27 | ARCHITECTURE drift | fixed | spec.py in the table; renderer/feedback/client signatures; turns.jsonl/summary fields documented. |
+| S9 | joint modes bypass the TCP step limit; monotone-path assumption | fixed | TCP travel limited via FK bisection; envelope checks 10 samples along the joint path. |
+| S10 | elbow limit ±360° vs URDF ±180° | fixed | `ur3_cb3_spec` elbow ±π (verified in PHANTOM `ur3_cb3.urdf`). |
+| S11 | ee_abs examples off-workspace; ee_abs+yaw forces a top-down tool | fixed | Examples from the workspace centre; ee_abs+yaw = heading only, tilt kept from the reference orientation. |
+| S12 | manual's z lower bound is the table | fixed | Prints the enforced TCP floor (table + clearance + fingertip drop for the reference orientation, open), with the closed value. |
+| S13 | `gripper_closed`/`holding` semantics | fixed | Server tracks the commanded intent; `holding` requires a commanded closure. |
+| S14 | force baseline is a global max | fixed | Baseline per (robot group, env group) pair, capped at 2× the threshold. |
+| S15 | unstable solver not stopped when the force stop is off | fixed | Unstable/NaN always stops. |
+| S16 | executed list on a stop omits the interrupted action | fixed | `executed[:n_done + 1]`. |
+| S17 | unsettled arm frozen mid-motion; 1 s settle timeout | fixed | Settle timeout 2 s (sim time); unchanged thresholds. |
+| S18b | push success ignores carry | fixed | Server keeps `max_lift_m` / `ever_held` per episode; `evaluate_push` fails on either. |
+| S18c | reach sampler silently keeps a rejected sample | fixed | Raises (see S1). |
+| S19 | mock fallback ignores `cfg.safety`; held cube sinks | fixed | `MockRobot(params, safety=cfg.safety)` via `make_robot`; held cube clamped to the table. |
+| S20 | README `table_z` 0.053 | fixed | README rewritten for the new execution / force-stop behaviour. |
+| L6 | docs claim planner/control cache sharing | fixed | caching.py, loop docstring, INTEGRATION_NOTES corrected. |
+| L7 | planner timeout + full-cost retries | fixed | `planner.timeout_s` 600, `planner.max_retries` 1 (per-call overrides in the client). |
+| L8 | usage grace is not a wall-clock deadline | deferred | A real deadline needs a reader thread or closing the socket from another thread (not cheap to do safely with httpx sync streams). Observed cost 0–0.2 s; documented in the client docstring. |
+| L10 | usage normalisation heuristics | partial | `x-omniroute-provider` is now kept per turn (header allow-list) and the cache trace gives the per-turn consistency check; the normalisation rule itself is unchanged (no data from a non-`cc` route that reports writes). |
+| L11 | turns without usage silently dropped; FakeLLM diverges | fixed | `calls_without_usage` was already in totals; percentiles now report `missing`; FakeLLM returns usage on early stop like the real client with grace. |
+| L12 | no guard for the 20-block lookback | fixed | `renderers.lookback_warning` (> 18 blocks/turn) -> `setup.json`. |
+| L13 | manual depends on the measured reset state | fixed | `Robot.reference_state()` (Isaac: FK of commanded start_q) feeds the manual and the envelope. |
+| L14 | ttft includes upload; stale live-test comment | fixed | `t_headers` and `request_bytes` logged per turn; the request body is serialised once; the comment in `tests/test_llm_live.py` corrected. |
+
+## Rejected
+
+None — every finding was reproduced or confirmed against code/logs. Two were fixed only partly
+(C9 Isaac second camera, S5 self-collision) and two need live calls to close (L1 probe, L2 lease
+header); see above.
+
+## Tests
+
+| where | command | result |
+|---|---|---|
+| local (no GPU) | `uv run pytest -q` | 307 passed, 14 skipped (live + isaac) — was 246 / 12 |
+| compute3 `~/controlr` (deployed with `scripts/deploy.sh`) | `CONTROLR_ISAAC=1 .venv/bin/python -m pytest -q tests/` | 315 passed, 4 skipped (live), 3 min 46 s |
+| compute3, after adding 2 Isaac regression tests | `CONTROLR_ISAAC=1 … pytest -q tests/test_isaac_sim.py` | 10 passed, 4 min 30 s |
+
+The Isaac suite verifies the new execution path on the real sim: small ee moves (now waypoint
+groups) still track within 2 mm, the scripted waffle pick-place still succeeds with the 40 N
+object stop enabled, a joint target 30 mm into the mat stops below 250 N and holds, then backs off;
+and the new seed-0 reach marker is reached along the envelope's straight-line waypoints without
+a collision (goal check passes).
+
+Spend: 0 LLM calls. Isaac: ~8 min of GPU time on compute3 (test server on port 7821, stopped).
+
+## Smoke test (2026-10-02, see docs/SMOKE_REPORT.md)
+
+| # | finding | status | what changed |
+|---|---|---|---|
+| K1 | a reply cut by `max_tokens` while thinking (Sonnet: 2000/2000 reasoning tokens, empty text) was fed back only as "missing STATUS line" | fixed | `loop.run_episode`: if `finish_reason == "length"` and no STATUS was parsed, a first PARSE ERROR says the reply was cut off by the output limit (thinking counts) and asks for one short command. Test: `test_loop.py::test_length_cutoff_is_explained`. Live runs of the smoke test predate the fix. |

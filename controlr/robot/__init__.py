@@ -10,26 +10,19 @@ from controlr.robot.base import Robot
 
 
 def make_robot(cfg) -> Robot:
-    """Build the backend named by ``cfg.robot.backend`` with ``cfg.robot.params``."""
+    """Build the backend named by ``cfg.robot.backend`` with ``cfg.robot.params``
+    (backends that run their own fallback envelope get ``cfg.safety``)."""
     backend = cfg.robot.backend
     params = dict(cfg.robot.params or {})
     if backend == "mock":
         from controlr.robot.mock import MockRobot
-        return MockRobot(params)
+        return MockRobot(params, safety=cfg.safety)
     if backend == "replay":
         from controlr.robot.replay import ReplayRobot
         return ReplayRobot(params)
     if backend == "isaac":
-        # ARCHITECTURE names ``controlr.robot.isaac.IsaacRobot``; fall back to the
-        # client submodule in case the package __init__ does not re-export it.
-        import importlib
-        pkg = importlib.import_module("controlr.robot.isaac")
-        robot_cls = getattr(pkg, "IsaacRobot", None)
-        if robot_cls is None:
-            robot_cls = importlib.import_module("controlr.robot.isaac.client").IsaacRobot
-        if hasattr(robot_cls, "from_config"):
-            return robot_cls.from_config(cfg)
-        return robot_cls(params)
+        from controlr.robot.isaac.client import IsaacRobot
+        return IsaacRobot.from_config(cfg)
     raise ValueError(f"unknown robot backend {backend!r} (mock | replay | isaac)")
 
 

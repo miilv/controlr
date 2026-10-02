@@ -26,10 +26,18 @@ Rotation conventions (contract additions documented here, see types.Action):
     pre-multiplied onto the current orientation: R_new = Rz Ry Rx · R_cur.
   * ``ee_abs`` + rotation=full: (x, y, z, roll, pitch, yaw), absolute extrinsic
     RPY about base x/y/z: R = Rz(yaw) Ry(pitch) Rx(roll).
-  * ``ee_abs`` + rotation=yaw: the tool points straight down (roll = 180 deg,
-    pitch = 0) and ``yaw`` is its heading — values = (x, y, z, pi, 0, yaw).
-    Yaw-only control is meant for top-down manipulation; the STATE line
+  * ``ee_abs`` + rotation=yaw: values = (x, y, z, yaw) — 4 values: ``yaw`` is the
+    absolute heading about base z; the tool keeps its tilt (roll/pitch of the
+    episode's reference orientation). A forced top-down tool is unreachable on the
+    Isaac rig, so the heading is the only thing this mode commands. The STATE line
     reports yaw extracted with the same convention, so the numbers round-trip.
+
+Command vs prose (models write prose despite the manual): a line is a command
+when its keyword is UPPERCASE (``MOVE``/``GRIP``/``HOLD``/``STATUS``). A
+mixed/lower-case keyword line ("Move the gripper left", "Hold on", "Status: ok so
+far") is a command only if it parses cleanly (and, for STATUS, only as the last
+line of the reply); otherwise it is prose and ignored without an error. The
+streaming early stop (``is_complete``) only fires on an uppercase ``STATUS``.
 """
 
 from __future__ import annotations
@@ -125,16 +133,30 @@ def _grip_syntax(cfg: ActionConfig) -> str:
     return "open|close" if cfg.gripper == "binary" else f"open|close|<width {cfg.pos_unit}>"
 
 
+def example_xyz(spec: RobotSpec, dz_above_table: float = 0.15) -> tuple[float, float, float]:
+    """A plausible TCP position for examples: the workspace centre (rounded to 10 mm) at
+    ``dz_above_table`` above the table — same signs and magnitudes as the real rig (a fixed
+    x=+300 example contradicted a workspace at negative x and invited sign errors)."""
+    lo, hi = spec.workspace_lo, spec.workspace_hi
+    top = float(spec.table_z) if spec.table_z is not None else float(lo[2])
+    return (round((lo[0] + hi[0]) / 2, 2), round((lo[1] + hi[1]) / 2, 2), round(top + dz_above_table, 2))
+
+
+# example sequence (approach, descend, grasp, lift, release, lift away + DONE)
+EE_DELTA_STEPS = ([0.03, 0.02, 0.0], [0.0, 0.0, -0.03], [0.0, 0.0, 0.05])
+
+
 def _example_values(cfg: ActionConfig, spec: RobotSpec, which: int) -> list[float]:
     """Plausible example values in LLM units (for the spec text only)."""
     p, a = pos_factor(cfg), ang_factor(cfg)
     lay = _layout(cfg, spec)
     if cfg.mode == "ee_delta":
-        si = [[0.02, 0.0, -0.01], [0.0, -0.015, 0.0], [0.0, 0.0, -0.03]][which]
+        si = EE_DELTA_STEPS[which]
         rot = {0: [0.0, 0.0, math.radians(10)], 1: [0.0, 0.0, 0.0], 2: [0.0, 0.0, 0.0]}[which]
     elif cfg.mode == "ee_abs":
-        si = [[0.30, -0.05, 0.15], [0.30, -0.05, 0.08], [0.25, 0.10, 0.20]][which]
-        rot = {0: [180.0, 0.0, 15.0], 1: [180.0, 0.0, 15.0], 2: [180.0, 0.0, 0.0]}[which]
+        x, y, z = example_xyz(spec)
+        si = [[x + 0.03, y + 0.02, z], [x + 0.03, y + 0.02, z - 0.03], [x + 0.03, y + 0.02, z + 0.02]][which]
+        rot = {0: [180.0, 0.0, 15.0], 1: [180.0, 0.0, 15.0], 2: [180.0, 0.0, 15.0]}[which]
         rot = [math.radians(v) for v in rot]
     else:
         n = len(spec.joints)
@@ -218,8 +240,8 @@ def grammar_spec(cfg: ActionConfig, spec: RobotSpec) -> str:
                 lines.append(f"  dyaw turns the tool about the vertical base z axis "
                              f"(positive = counter-clockwise seen from above).")
             else:
-                lines.append(f"  yaw is the tool heading about the vertical base z axis; the tool "
-                             f"always points straight down (roll {half_turn}, pitch 0 in the STATE line).")
+                lines.append("  yaw is the absolute tool heading about the vertical base z axis; the "
+                             "tool keeps its tilt (only the heading is commanded).")
         else:
             if delta:
                 lines.append("  droll dpitch dyaw rotate the tool about the base x, y, z axes "
@@ -251,27 +273,32 @@ def grammar_spec(cfg: ActionConfig, spec: RobotSpec) -> str:
                  "The note after the status word is optional and short (<= 12 words).")
     # examples
     lines.append("")
-    lines.append("Examples:")
+    lines.append("Examples (each block is one whole reply, from successive turns):")
     ex0 = _fmt_values(_example_values(cfg, spec, 0), cfg, spec)
     ex1 = _fmt_values(_example_values(cfg, spec, 1), cfg, spec)
     ex2 = _fmt_values(_example_values(cfg, spec, 2), cfg, spec)
-    lines.append("")
-    lines.append(f"    MOVE {cfg.mode} {ex0}")
-    lines.append("    STATUS OK approaching the cube")
+    lines.append(f"    MOVE {cfg.mode} {ex0} GRIP open")
+    lines.append("    STATUS OK moving above the object, gripper open")
     lines.append("")
     if cfg.max_chunk >= 2:
-        lines.append(f"    MOVE {cfg.mode} {ex1} GRIP open")
-        lines.append(f"    MOVE {cfg.mode} {ex2}")
-        lines.append("    STATUS OK aligned, descending")
+        lines.append(f"    MOVE {cfg.mode} {ex1}")
+        lines.append("    GRIP close")
+        lines.append("    STATUS OK descended and grasping")
     else:
-        lines.append(f"    MOVE {cfg.mode} {ex1} GRIP open")
-        lines.append("    STATUS OK aligned above target")
-    lines.append("")
-    lines.append("    GRIP close")
-    lines.append("    STATUS OK grasping")
+        lines.append(f"    MOVE {cfg.mode} {ex1}")
+        lines.append("    STATUS OK aligned, descending to grasp height")
+        lines.append("")
+        lines.append("    GRIP close")
+        lines.append("    STATUS OK grasping")
     lines.append("")
     lines.append("    HOLD")
-    lines.append("    STATUS DONE cube is inside the box")
+    lines.append("    STATUS OK checking the grasp in a new image")
+    lines.append("")
+    lines.append("    GRIP open")
+    lines.append("    STATUS OK releasing above the destination")
+    lines.append("")
+    lines.append(f"    MOVE {cfg.mode} {ex2}")
+    lines.append("    STATUS DONE object released at the destination, gripper lifted clear")
     return "\n".join(lines)
 
 
@@ -282,15 +309,17 @@ def grammar_spec(cfg: ActionConfig, spec: RobotSpec) -> str:
 _KEYWORDS = ("MOVE", "GRIP", "HOLD", "STATUS")
 # leading list/quote/markdown decoration: "- ", "* ", "> ", "1. ", "1) ", "**", "`"
 _DECOR_RE = re.compile(r"^(?:[-*>•]\s+|\d+[.)]\s+|[*_`>]+)+")
+# keyword case-sensitive (uppercase STATUS only), status word any case
 _STATUS_LINE_RE = re.compile(
-    r"^\s*(?:[-*>•]\s+|\d+[.)]\s+|[*_`>]+)*\s*STATUS\b[\s:=*_`]*(" + "|".join(STATUS_WORDS) + r")(?=[\s.,;:!*_`)]|$)",
-    re.IGNORECASE | re.MULTILINE,
+    r"^\s*(?:[-*>•]\s+|\d+[.)]\s+|[*_`>]+)*\s*STATUS\b[\s:=*_`]*(?i:(" + "|".join(STATUS_WORDS)
+    + r"))(?=[\s.,;:!*_`)]|$)",
+    re.MULTILINE,
 )
 _NUM_RE = re.compile(r"^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$", re.IGNORECASE)
 
 
 def _clean_line(line: str) -> str:
-    s = line.strip()
+    s = line.replace("\u2212", "-").strip()           # Unicode minus -> ASCII
     s = _DECOR_RE.sub("", s).strip()
     # strip markdown emphasis/backticks anywhere; tolerate "STATUS: OK"
     s = s.replace("`", "").replace("**", "").strip()
@@ -350,7 +379,7 @@ def _values_to_action(vals: list[float], cfg: ActionConfig) -> tuple[float, ...]
         x, y, z, yaw = vals
         if cfg.mode == "ee_delta":
             return (x, y, z, 0.0, 0.0, yaw)
-        return (x, y, z, TOP_DOWN_ROLL, 0.0, yaw)
+        return (x, y, z, yaw)           # absolute heading; the envelope keeps the reference tilt
     return tuple(vals)
 
 
@@ -368,6 +397,9 @@ def _parse_move(tokens: list[str], cfg: ActionConfig, spec: RobotSpec) -> Action
         i = upper.index("GRIP")
         grip = _parse_grip(rest[i + 1:], cfg, spec)
         rest = rest[:i]
+    # a trailing unit word equal to the configured unit ("MOVE ee_delta 0 0 -10 mm")
+    if len(rest) == len(lay.names) + 1 and rest[-1].lower() in (cfg.pos_unit, cfg.ang_unit):
+        rest = rest[:-1]
     if len(rest) != len(lay.names):
         raise ValueError(f"MOVE {cfg.mode} needs {len(lay.names)} numbers "
                          f"({' '.join(lay.names)}), got {len(rest)}")
@@ -383,32 +415,36 @@ def _looks_numeric(tok: str) -> bool:
 def parse_reply(text: str, cfg: ActionConfig, spec: RobotSpec) -> ParsedReply:
     """Tolerant parser. Never raises on model output; problems go to ``errors``.
 
-    Accepted noise: markdown fences, list bullets, bold/backticks, any case,
-    prose lines (ignored), commas between numbers, ``dx=20`` tokens, a unit
-    suffix equal to the configured unit. A line that starts with a keyword but
-    is malformed is dropped and reported."""
+    Accepted noise: markdown fences, list bullets, bold/backticks, prose lines
+    (ignored), commas between numbers, ``dx=20`` tokens, a unit suffix or trailing
+    unit word equal to the configured unit, Unicode minus. An UPPERCASE keyword line
+    that is malformed is dropped and reported; a mixed-case keyword line that does
+    not parse is prose (see the module docstring)."""
     out = ParsedReply(actions=[], status=None)
     n_action_lines = 0
     dropped = 0
     after_status: list[str] = []
-    for raw_line in text.splitlines():
-        line = _clean_line(raw_line)
-        if not line or line.startswith("```"):
-            continue
+    lines = [ln for ln in (_clean_line(r) for r in text.splitlines()) if ln and not ln.startswith("```")]
+    for idx, line in enumerate(lines):
         toks = _split_tokens(line)
         if not toks:
             continue
-        kw = toks[0].upper().rstrip(":")
+        head = toks[0].rstrip(":")
+        kw = head.upper()
         if kw not in _KEYWORDS:
             continue   # prose
+        strict = head == kw            # uppercase keyword: a command, errors are reported
         if out.complete:
-            if kw != "STATUS":
+            if kw != "STATUS" and strict:
                 after_status.append(line)
             continue
         if kw == "STATUS":
             word = toks[1].upper().rstrip(".,;:!") if len(toks) > 1 else ""
+            if not strict and idx != len(lines) - 1:
+                continue               # "Status: ok so far. Next I'll ..." mid-reply is prose
             if word not in STATUS_WORDS:
-                out.errors.append(f"STATUS needs one of {'|'.join(STATUS_WORDS)}, got {line!r}")
+                if strict:
+                    out.errors.append(f"STATUS needs one of {'|'.join(STATUS_WORDS)}, got {line!r}")
                 continue
             out.status = Status(word)
             note_m = re.match(r"^\s*STATUS\b[\s:=]*\S+\s*(.*)$", line, re.IGNORECASE)
@@ -426,7 +462,8 @@ def parse_reply(text: str, cfg: ActionConfig, spec: RobotSpec) -> ParsedReply:
                 a = _parse_move(toks[1:], cfg, spec)
                 action = Action(mode=a.mode, values=a.values, gripper=a.gripper, raw=line)
         except ValueError as e:
-            out.errors.append(f"{line!r}: {e}")
+            if strict:
+                out.errors.append(f"{line!r}: {e}")
             continue
         n_action_lines += 1
         if n_action_lines > cfg.max_chunk:
@@ -454,3 +491,20 @@ def is_complete(text: str) -> bool:
     word may truncate the optional note — that is accepted (notes are optional,
     latency is not)."""
     return _STATUS_LINE_RE.search(text) is not None
+
+
+def strip_partial_note(text: str) -> str:
+    """Reply text to STORE after an early stop whose STATUS line was cut mid-note.
+
+    The cut point of a stream depends on the router's chunking ("STATUS OK moving
+    above est"), and the stored reply is re-sent (cached) every later turn. If the
+    STATUS line is newline-terminated it was complete and the text is kept up to that
+    newline; otherwise the partial note is dropped (``STATUS OK``) — deterministic
+    whatever the chunking."""
+    m = _STATUS_LINE_RE.search(text)
+    if m is None:
+        return text
+    nl = text.find("\n", m.end())
+    if nl >= 0:
+        return text[:nl]
+    return text[:m.end()]

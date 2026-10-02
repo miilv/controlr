@@ -138,3 +138,37 @@ def test_scripted_plan_is_reachable_on_one_ik_branch(seed):
     thin = np.array([-np.sin(s["object_yaw"]), np.cos(s["object_yaw"])])
     x_h = R[:2, 0] / np.linalg.norm(R[:2, 0])
     assert abs(np.dot(x_h, thin)) > 0.99
+
+
+# ---------------------------------------------------------------------------
+# review fixes (docs/FIXLOG.md)
+# ---------------------------------------------------------------------------
+
+def test_old_seed0_reach_marker_is_rejected_as_infeasible():
+    """Review control-safety #1 (blocker): the seed-0 marker of every live reach run put
+    the gripper body through the blue box's near wall."""
+    why = tasks.reach_feasibility((-0.496, -0.159, 0.138), SCENE, tasks.START_Q)
+    assert "blue box" in why
+
+
+def test_reach_samples_are_feasible_for_seeds_0_to_49():
+    for seed in range(50):
+        m = tasks.sample_reach(np.random.default_rng(seed), {}, SCENE)["marker"]
+        assert tasks.reach_feasibility(m, SCENE, tasks.START_Q) == "", (seed, m)
+
+
+def test_explicit_infeasible_marker_raises_and_exhausted_sampler_raises():
+    with pytest.raises(ValueError, match="infeasible"):
+        tasks.sample_reach(np.random.default_rng(0), {"marker": [-0.496, -0.159, 0.138]}, SCENE)
+    with pytest.raises(RuntimeError, match="no visible"):
+        tasks.sample_reach(np.random.default_rng(0), {"marker_y": (0.05, 0.06)}, SCENE)   # all inside the box
+
+
+def test_push_fails_when_the_packet_was_carried():
+    """Review control-safety #18: pick up, carry and release on the square is not a push."""
+    ep = tasks.sample_push(np.random.default_rng(0), {}, SCENE)
+    ep["object_pos"] = np.asarray(ep["object_pos"])
+    on_zone = (ep["zone"][0], ep["zone"][1], ep["object_pos"][2])
+    assert tasks.evaluate_push(snapshot(on_zone), {**ep, "max_lift_m": 0.0, "ever_held": False})["success"]
+    assert not tasks.evaluate_push(snapshot(on_zone), {**ep, "max_lift_m": 0.06})["success"]
+    assert not tasks.evaluate_push(snapshot(on_zone), {**ep, "ever_held": True})["success"]

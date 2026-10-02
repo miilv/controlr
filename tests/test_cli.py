@@ -176,3 +176,100 @@ def test_run_fake_llm_cli(tmp_path, capsys):
     for f in ("config.yaml", "system_prompt.md", "messages.jsonl", "turns.jsonl", "summary.json"):
         assert (runs[0] / f).exists(), f
     assert any((runs[0] / "images").glob("*.jpg"))
+
+
+# ---------------------------------------------------------------------------
+# review fixes: config validation, base.yaml defaults, sweeps, report, prompt
+# ---------------------------------------------------------------------------
+
+def test_base_yaml_equals_dataclass_defaults():
+    """Review contracts #15: one source for defaults (usage_grace_s, max_stops drifted)."""
+    import dataclasses
+
+    from controlr.config import Config
+    cfg, d = load_config(ROOT / "configs" / "base.yaml", dotenv=None), Config()
+    for sec in ("llm", "planner", "action", "safety", "prompt", "episode", "log"):
+        for f in dataclasses.fields(getattr(d, sec)):
+            if sec == "llm" and f.name == "base_url":
+                continue
+            assert getattr(getattr(cfg, sec), f.name) == getattr(getattr(d, sec), f.name), f"{sec}.{f.name}"
+
+
+@pytest.mark.parametrize("bad", ["action.format=tool", "episode.goal_feedback=alwyas", "action.gripper=widht",
+                                 "action.mode=ee", "action.rotation=pitch", "action.pos_unit=inch",
+                                 "llm.cache=yes", "llm.cache_ttl=2h", "robot.backend=ur",
+                                 "observation.renderers=[raw,gird]", "action.max_chunk=0", "observation.size=0"])
+def test_enum_like_values_are_validated(bad):
+    """Review contracts #8: typos in values silently fell back."""
+    with pytest.raises(ValueError, match="invalid config"):
+        load_config(None, [bad], dotenv=None)
+
+
+def test_sweep_rejects_set_on_a_grid_key_and_uses_full_key_labels(tmp_path):
+    from controlr.bench.sweep import check_overrides
+    sw = Sweep(name="t", config=None, grid={"llm.model": ["a/x", "b/y"], "planner.model": ["c"]})
+    labels = [p.label for p in sw.points()]
+    assert labels[0] == "llm.model=x,planner.model=c,seed=0"
+    with pytest.raises(ValueError, match="grid key"):
+        check_overrides(sw, ["llm.model=z"])
+    check_overrides(sw, ["episode.max_turns=3"])
+
+
+def test_sweep_resume_skips_finished_points(tmp_path):
+    base = tmp_path / "base.yaml"
+    base.write_text("name: t\n")
+    sw = Sweep(name="t", config=str(base), seeds=[0, 1, 2])
+    calls = []
+
+    class R:
+        def __init__(self, outcome):
+            self.outcome = outcome
+
+        def summary(self):
+            return {"outcome": self.outcome, "turns": 1}
+
+    def first(cfg):
+        calls.append(cfg.seed)
+        return R("error" if cfg.seed == 1 else "max_turns")
+
+    rows, out = run_sweep(sw, run_fn=first, out_dir=tmp_path / "s", printer=None)
+    assert [r["outcome"] for r in rows] == ["max_turns", "error", "max_turns"]
+    calls.clear()
+    rows, _ = run_sweep(sw, run_fn=lambda cfg: (calls.append(cfg.seed), R("success"))[1],
+                        out_dir=out, resume=True, printer=None)
+    assert calls == [1] and [r["outcome"] for r in rows] == ["max_turns", "success", "max_turns"]
+
+
+def test_sweep_fake_llm_cli_and_exit_code(tmp_path, capsys):
+    """Review contracts #12: sweeps can be smoke-tested offline; failures exit non-zero."""
+    sw = tmp_path / "s.yaml"
+    sw.write_text(yaml.safe_dump({"name": "t", "config": str(ROOT / "configs" / "mock.yaml"),
+                                  "set": [f"log.root={tmp_path}", "episode.max_turns=3"], "seeds": [0],
+                                  "grid": {"observation.size": [224, 448]}, "out_root": str(tmp_path)}))
+    assert main(["sweep", str(sw), "--fake-llm"]) == 0
+    agg = next(tmp_path.glob("*_sweep_t")) / "aggregate.csv"
+    text = agg.read_text()
+    assert text.count("\n") == 3 and "fake" in text
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(yaml.safe_dump({"name": "b", "config": str(ROOT / "configs" / "mock.yaml"), "seeds": [0],
+                                   "set": ["task.name=fly"], "out_root": str(tmp_path)}))
+    assert main(["sweep", str(bad), "--fake-llm"]) == 1
+
+
+def test_report_skips_fake_runs_unless_asked(tmp_path, capsys):
+    from controlr.loop import run_episode
+    from controlr.robot.mock import MockRobot
+
+    cfg = load_config(ROOT / "configs" / "mock.yaml", [f"log.root={tmp_path}", "episode.max_turns=1"], dotenv=None)
+    run_episode(cfg, robot=MockRobot({"width": 160, "height": 120}), llm=FakeLLM(["STATUS FAIL"]))
+    assert report_rows([str(tmp_path)]) == []
+    rows = report_rows([str(tmp_path)], include_fake=True)
+    assert len(rows) == 1 and rows[0]["llm"] == "fake" and rows[0]["task"] == "reach" and rows[0]["seed"] == 0
+
+
+def test_prompt_command(tmp_path, capsys):
+    assert main(["prompt", "-c", str(ROOT / "configs" / "mock.yaml")]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("# Operating manual") and "px per 100 mm" in out
+    assert main(["prompt", "-c", str(ROOT / "configs" / "mock.yaml"), "--planner"]) == 0
+    assert "PLANNING CALL" in capsys.readouterr().out

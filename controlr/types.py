@@ -46,6 +46,10 @@ class RobotSpec:
     # --- optional (added by the robot backends; defaults keep older constructors valid) ---
     table_z: float | None = None       # m, base frame height of the table surface (None: no table)
     tcp_offset: tuple[float, ...] | None = None   # flange(tool0)->TCP pose xyz+rotvec; None: kinematics default
+    # finger pad extent around the TCP (m): (half length along tool z, half width along tool y,
+    # thickness outward along the jaw axis). Lets the safety envelope keep the lowest FINGERTIP
+    # (not only the TCP) above the table. None: only the TCP point is checked.
+    finger_pad: tuple[float, float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -93,10 +97,10 @@ class ActionMode(str, Enum):
 @dataclass(frozen=True)
 class Action:
     """One motion step. ``values`` length depends on mode:
-    ee_*: 3 (xyz, m) or 6 (xyz m + rotvec-style rx ry rz in rad, see protocol);
-    joint_*: n_joints (rad). ``values`` may be None for gripper-only / hold.
-    ``rotation`` for ee modes is given as extrinsic roll/pitch/yaw (rad) about
-    base-frame x/y/z when 6 values are present (protocol converts deg->rad)."""
+    ee_*: 3 (xyz, m), 4 (xyz m + yaw rad; ee_abs only: heading about base z, the tool keeps
+    its tilt) or 6 (xyz m + extrinsic roll/pitch/yaw in rad about base x/y/z, see
+    controlr.protocol.grammar); joint_*: n_joints (rad). ``values`` may be None for
+    gripper-only / hold."""
     mode: ActionMode | None
     values: tuple[float, ...] | None
     gripper: float | None = None   # target opening, m (0 = closed); None = unchanged
@@ -104,6 +108,10 @@ class Action:
     # Resolved absolute joint target (rad), attached by SafetyEnvelope.filter so
     # backends need not redo IK. None for unfiltered actions.
     q_target: tuple[float, ...] | None = None
+    # Intermediate joint waypoints (rad, excluding q_target) along the straight TCP line of
+    # an ee move, attached by SafetyEnvelope.filter. Backends that interpolate should pass
+    # through them (joint-linear interpolation to q_target alone bends the TCP path).
+    q_path: tuple[tuple[float, ...], ...] | None = None
 
 
 class Status(str, Enum):

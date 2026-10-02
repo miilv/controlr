@@ -70,6 +70,29 @@ def resolve_grid_z(cfg: ObservationConfig, spec: RobotSpec | None) -> float:
     return 0.0
 
 
+# Anthropic looks back at most 20 content blocks from a cache breakpoint for an earlier
+# cache entry; one turn adds 1 assistant block + feedback text + images + legend text.
+MAX_BLOCKS_PER_TURN = 18
+
+
+def blocks_per_turn(cfg: ObservationConfig) -> int:
+    """Upper bound of content blocks one turn adds to the transcript."""
+    if cfg.tile or "tile" in cfg.renderers:
+        n_img = 1
+    else:
+        n_img = len(cfg.cameras) * (1 + sum(r in DERIVED for r in cfg.renderers))
+    return 1 + 1 + n_img + 1        # assistant reply, feedback text, images, legend
+
+
+def lookback_warning(cfg: ObservationConfig) -> str | None:
+    n = blocks_per_turn(cfg)
+    if n > MAX_BLOCKS_PER_TURN:
+        return (f"{n} content blocks per turn exceed the ~{MAX_BLOCKS_PER_TURN} that fit Anthropic's "
+                f"20-block cache lookback: every turn would miss the previous cache entry; set "
+                f"observation.tile=true")
+    return None
+
+
 # Tool-frame axis the gripper fingers move along (0 = x). See ee_marker.
 JAW_AXIS = 0
 
@@ -147,12 +170,22 @@ def _project_segment(info: CameraInfo, p0: np.ndarray, p1: np.ndarray, w: int, h
     return (float(uv[0, 0]), float(uv[0, 1])), (float(uv[1, 0]), float(uv[1, 1]))
 
 
-def describe_axes(info: CameraInfo, origin: np.ndarray | None = None) -> str:
-    """One sentence: how the base +x/+y/+z axes appear in this camera, e.g.
-    "+x points down-left, +y points right, +z points up in the image".
-    Generated from the calibration so the manual cannot contradict the
-    images (inspect-robots models spent calls discovering exactly this)."""
+def describe_axes(info: CameraInfo, origin: np.ndarray | None = None, long_edge: int | None = None,
+                  per: str = "100 mm") -> str:
+    """One sentence: how the base +x/+y/+z axes appear in this camera, with the
+    projected length of a 100 mm step, e.g. "+x points right (98 px per 100 mm),
+    +y points up (85 px per 100 mm), +z points up (39 px per 100 mm) in the
+    448-px image".
+
+    WHY the lengths: on a camera tilted ~25 deg from vertical, +y (away from the
+    camera) and +z (up) both go "up" the image and differ only in magnitude —
+    direction words alone cannot separate depth from height, the dominant failure
+    of the live runs. Generated from the calibration so the manual cannot
+    contradict the images. ``long_edge``: the size the image is sent at (pixel
+    lengths are scaled to it; default native). ``per``: label of the 0.1 m step
+    in the LLM unit."""
     o = np.zeros(3) if origin is None else np.asarray(origin, dtype=float)
+    scale = (long_edge / max(info.width, info.height)) if long_edge else 1.0
     parts = []
     for name, d in (("x", (1, 0, 0)), ("y", (0, 1, 0)), ("z", (0, 0, 1))):
         seg = _project_segment(info, o, o + 0.1 * np.asarray(d, dtype=float), info.width, info.height)
@@ -165,11 +198,26 @@ def describe_axes(info: CameraInfo, origin: np.ndarray | None = None) -> str:
             depth = to_camera(info, np.stack([o, o + 0.1 * np.asarray(d, float)]))[:, 2]
             parts.append(f"+{name} points {'away from' if depth[1] > depth[0] else 'toward'} the camera")
             continue
-        parts.append(f"+{name} points {_direction_word(du / n, dv / n)}")
-    return ", ".join(parts) + " in the image"
+        parts.append(f"+{name} points {_direction_word(du / n, dv / n)} ({n * scale:.0f} px per {per})")
+    size = f"{long_edge}-px" if long_edge else f"{max(info.width, info.height)}-px"
+    return ", ".join(parts) + f" in the {size} image"
+
+
+def axis_directions(info: CameraInfo, origin: np.ndarray | None = None) -> dict[str, str | None]:
+    """Direction word per base axis (None when along the viewing ray / invisible)."""
+    o = np.zeros(3) if origin is None else np.asarray(origin, dtype=float)
+    out: dict[str, str | None] = {}
+    for name, d in (("x", (1, 0, 0)), ("y", (0, 1, 0)), ("z", (0, 0, 1))):
+        seg = _project_segment(info, o, o + 0.1 * np.asarray(d, dtype=float), info.width, info.height)
+        if seg is None or math.hypot(seg[1][0] - seg[0][0], seg[1][1] - seg[0][1]) < 2.0:
+            out[name] = None
+        else:
+            out[name] = _direction_word(seg[1][0] - seg[0][0], seg[1][1] - seg[0][1])
+    return out
 
 
 def _direction_word(du: float, dv: float) -> str:
+    """Eight-way word for an image direction (any length; v grows downward)."""
     ang = math.degrees(math.atan2(-dv, du)) % 360   # 0 = right, 90 = up (image v grows downward)
     words = ["right", "up-right", "up", "up-left", "left", "down-left", "down", "down-right"]
     return words[int(((ang + 22.5) % 360) // 45)]
@@ -245,6 +293,7 @@ class ObservationRenderer:
         self._encoder = encoder
         self.grid_z = resolve_grid_z(cfg, spec)
         self.tile = cfg.tile or "tile" in cfg.renderers
+        self.lookback_warning = lookback_warning(cfg)
 
     # -- public -------------------------------------------------------------
 

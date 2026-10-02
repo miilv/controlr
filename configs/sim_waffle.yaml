@@ -7,5 +7,12 @@ robot:
 task:
   name: waffle_pick_place          # controlr.robot.isaac.tasks (aliases: pick_place, waffles)
   instruction: ""                      # empty -> backend default instruction
+  params:
+    # Start with the tool in PHANTOM's expert grasp orientation (tasks.EXPERT_ROT_GRASP), TCP at
+    # (-335, -250, 280) mm. With action.rotation=none the orientation never changes, and the
+    # recorded START_Q orientation is 30 deg away from it (tool only 17 deg below horizontal) —
+    # the scripted reference pick uses this orientation for every phase, so it is known feasible.
+    # IK: UR3Kinematics().ik((-0.335, -0.25, 0.28), EXPERT_ROT_GRASP, START_Q).
+    start_q: [0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406]
 episode:
   max_turns: 40

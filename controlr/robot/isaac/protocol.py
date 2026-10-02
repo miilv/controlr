@@ -24,7 +24,10 @@ the model thinks):
 * ``state``       -> STATE (no rendering)
 * ``execute``     args ``q`` (N,6) rad joint targets, ``gripper`` (N,) target
                   opening in m (NaN = unchanged), ``durations`` (N,) s,
-                  ``force_stop_n``, ``settle`` dict -> EXEC report dict
+                  ``force_stop_n``, ``settle`` dict -> EXEC report dict;
+                  optional ``group`` (N,) ints: consecutive rows with one id are
+                  one action passed through in one motion (absent: one row per
+                  action), ``object_force_stop_n``
 * ``check_goal``  -> ``{"success", "progress", "message", "metrics"}``
 * ``close``       -> ends this client session (server keeps running)
 * ``shutdown``    -> server process exits

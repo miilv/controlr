@@ -57,12 +57,18 @@ class Timings:
     ttft_any:   first non-empty content OR reasoning delta (thinking routes
                 start "talking" long before the visible reply) — addition
     t_wall:     whole call including failed attempts and backoff sleeps — addition
+    t_headers:  response headers received (request upload + router queue; the
+                rest of ``ttft`` is the model) — addition
+
+    NB: on thinking routes ``ttft`` includes the thinking time (the first
+    CONTENT delta comes after it); compare ``ttft_any`` and the reasoning tokens.
     """
     ttft: float | None
     t_complete: float | None
     t_end: float
     ttft_any: float | None = None
     t_wall: float | None = None
+    t_headers: float | None = None
 
 
 @dataclass
@@ -78,6 +84,10 @@ class LLMResult:
     reasoning_text: str = ""   # addition: streamed thinking deltas, if the route exposes them
     headers: dict = field(default_factory=dict)   # addition: response headers (diagnostics, e.g.
                                                   # gateway response-cache hits); no cookies
+    request_bytes: int = 0      # addition: serialised request size (all images are re-uploaded each turn)
+    # addition: True when an early stop cut the STATUS line mid-note (the stream was closed
+    # before that line ended); the loop then stores the reply without the partial note
+    truncated: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -276,15 +286,26 @@ class LLMClient:
     [50%, 100%]; a server ``Retry-After`` (capped at ``retry_after_max``)
     takes precedence. ``transport``/``sleep`` are injection points for tests.
 
-    ``usage_grace_s``: after ``stop_when`` fires, keep reading (text frozen at
-    the stop point) for up to this long to catch the trailing usage chunk —
-    early stop otherwise loses token/cache accounting for that turn. 0 = close
-    immediately (the contract default; usage is then None).
+    ``usage_grace_s``: after ``stop_when`` fires, keep reading for up to this
+    long to catch the trailing usage chunk — early stop otherwise loses
+    token/cache accounting for that turn. During the grace period the text keeps
+    growing only until the line that completed the reply (the STATUS line) ends,
+    so the stored note does not depend on where the router cut its chunks; if
+    the grace period ends first, ``LLMResult.truncated`` is set. 0 = close
+    immediately (usage is then None). The deadline is checked when a chunk
+    arrives; a router that stalls after STATUS can still hold the call up to the
+    read timeout (not observed; see docs/FIXLOG.md).
+
+    ``headers``: extra request headers (e.g. a router lease header).
+    ``complete(..., timeout_s=, max_retries=)`` override the client defaults
+    per call (the planner needs a long read timeout and few retries: a retry
+    re-pays the whole think).
     """
 
     def __init__(self, base_url: str, api_key: str, timeout_s: float, max_retries: int, *,
                  backoff_base: float = 0.5, backoff_max: float = 20.0,
                  retry_after_max: float = 60.0, usage_grace_s: float = 0.0,
+                 headers: dict | None = None,
                  transport: httpx.BaseTransport | None = None,
                  sleep: Callable[[float], None] = time.sleep,
                  rng: random.Random | None = None) -> None:
@@ -296,11 +317,19 @@ class LLMClient:
         self.usage_grace_s = usage_grace_s
         self._sleep = sleep
         self._rng = rng or random.Random()
+        self.timeout_s = timeout_s
+        hdrs = {str(k): str(v) for k, v in (headers or {}).items()}
+        hdrs.update({"Authorization": f"Bearer {api_key}", "Accept": "text/event-stream",
+                     "Content-Type": "application/json"})
         self._http = httpx.Client(
-            timeout=httpx.Timeout(timeout_s, connect=min(15.0, timeout_s)),
-            headers={"Authorization": f"Bearer {api_key}", "Accept": "text/event-stream"},
+            timeout=self._timeout(timeout_s),
+            headers=hdrs,
             transport=transport,
         )
+
+    @staticmethod
+    def _timeout(t: float) -> httpx.Timeout:
+        return httpx.Timeout(t, connect=min(15.0, t))
 
     # -- lifecycle -----------------------------------------------------------
     def close(self) -> None:
@@ -318,7 +347,8 @@ class LLMClient:
     # -- public --------------------------------------------------------------
     def complete(self, model: str, messages: list[dict], *, max_tokens: int,
                  temperature: float | None = None, extra_body: dict | None = None,
-                 stop_when: Callable[[str], bool] | None = None) -> LLMResult:
+                 stop_when: Callable[[str], bool] | None = None,
+                 timeout_s: float | None = None, max_retries: int | None = None) -> LLMResult:
         body: dict[str, Any] = {
             "model": model,
             "messages": messages,
@@ -330,18 +360,22 @@ class LLMClient:
             body["temperature"] = temperature
         if extra_body:
             body.update(extra_body)
+        payload = json.dumps(body).encode()       # serialised once; size logged per turn
+        retries = self.max_retries if max_retries is None else max(0, int(max_retries))
+        timeout = self._timeout(timeout_s) if timeout_s is not None else None
 
         t_wall0 = time.perf_counter()
         attempt = 0
         while True:
             attempt += 1
             try:
-                res = self._attempt(body, stop_when)
+                res = self._attempt(payload, stop_when, timeout)
                 res.attempts = attempt
                 res.timings.t_wall = time.perf_counter() - t_wall0
+                res.request_bytes = len(payload)
                 return res
             except _Retryable as e:
-                if attempt > self.max_retries:
+                if attempt > retries:
                     return LLMResult(
                         text="", usage=None,
                         timings=Timings(None, None, time.perf_counter() - t_wall0,
@@ -358,19 +392,24 @@ class LLMClient:
         return d * (0.5 + 0.5 * self._rng.random())
 
     # -- one HTTP attempt ------------------------------------------------------
-    def _attempt(self, body: dict, stop_when: Callable[[str], bool] | None) -> LLMResult:
+    def _attempt(self, payload: bytes, stop_when: Callable[[str], bool] | None,
+                 timeout: httpx.Timeout | None = None) -> LLMResult:
         """Run one request. Raises ``_Retryable`` for transient failures that
         happened before a usable reply existed; returns an LLMResult (possibly
         with ``error``) otherwise."""
         t0 = time.perf_counter()
         st = StreamState()
-        ttft = ttft_any = t_complete = None
+        ttft = ttft_any = t_complete = t_headers = None
         stopped = False
+        line_done = False          # the line that completed the reply has ended (newline or end of stream)
         frozen = ("", "")
+        stop_len = 0
         headers: dict = {}
         status: int | None = None
+        kw = {"timeout": timeout} if timeout is not None else {}
         try:
-            with self._http.stream("POST", f"{self.base_url}/chat/completions", json=body) as r:
+            with self._http.stream("POST", f"{self.base_url}/chat/completions", content=payload, **kw) as r:
+                t_headers = time.perf_counter() - t0
                 status = r.status_code
                 headers = {k: v for k, v in r.headers.items()
                            if k.lower() not in ("set-cookie", "authorization")}
@@ -390,11 +429,12 @@ class LLMClient:
                     if stop_when is not None and stop_when(st.text):
                         t_complete = ttft
                 else:
-                    for payload in iter_sse_data(r.iter_lines()):
-                        if payload.strip() == DONE:
+                    for data in iter_sse_data(r.iter_lines()):
+                        if data.strip() == DONE:
+                            line_done = True
                             break
                         try:
-                            chunk = json.loads(payload)
+                            chunk = json.loads(data)
                         except json.JSONDecodeError:
                             continue          # tolerate junk keep-alives
                         if not isinstance(chunk, dict):
@@ -408,13 +448,25 @@ class LLMClient:
                         if st.error:
                             break
                         if stopped:
+                            if dc and not line_done:
+                                txt = frozen[0] + dc
+                                nl = txt.find("\n", stop_len)
+                                if nl >= 0:
+                                    txt, line_done = txt[:nl], True
+                                frozen = (txt, frozen[1])
+                            if st.finish_reason or st.usage_raw is not None:
+                                line_done = True
                             if st.usage_raw is not None or now - t_complete > self.usage_grace_s:
                                 break
                             continue
                         if dc and stop_when is not None and stop_when(st.text):
                             t_complete = now
                             stopped = True
+                            stop_len = len(st.text)
                             frozen = (st.text, st.reasoning)
+                            nl = st.text.find("\n", max(0, len(st.text) - len(dc)))
+                            if nl >= 0 and stop_when(st.text[:nl]):
+                                frozen, line_done = (st.text[:nl], st.reasoning), True
                             if self.usage_grace_s <= 0:
                                 break     # leaving the `with` closes the connection
         except (httpx.TransportError,) as e:   # connect/read/protocol errors, timeouts
@@ -434,7 +486,7 @@ class LLMClient:
                 raise _Retryable(st.error, es or status)
         return LLMResult(
             text=st.text, usage=normalize_usage(st.usage_raw),
-            timings=Timings(ttft, t_complete, t_end, ttft_any=ttft_any),
+            timings=Timings(ttft, t_complete, t_end, ttft_any=ttft_any, t_headers=t_headers),
             stopped_early=stopped, finish_reason=st.finish_reason,
             error=st.error, http_status=status, attempts=1, reasoning_text=st.reasoning,
-            headers=headers)
+            headers=headers, truncated=stopped and not line_done)

@@ -1,12 +1,13 @@
 """Scripted stand-in for ``LLMClient`` — loop tests run without network.
 
 Same ``complete()`` signature and the same ``LLMResult`` shape, including
-early stop: the scripted reply is "streamed" in small chunks and cut at the
-first chunk where ``stop_when`` turns True, exactly like the real client, so
-the loop's truncation handling is exercised too. Timings and usage are
-synthetic but plausible (cache reads grow with the transcript like a warm
-Anthropic cache), so run logs / summaries written from fake runs have every
-field populated.
+early stop: the scripted reply is "streamed" in small chunks; once ``stop_when``
+turns True the text is completed to the end of that line, as the real client
+does during its usage grace period. Timings and usage are synthetic but
+plausible (cache reads grow with the transcript like a warm Anthropic cache)
+and usage is returned on early stops too (like the real client with grace), so
+run logs / summaries written from fake runs have every field populated.
+``is_fake = True`` lets the loop mark dry runs in the run log.
 """
 
 from __future__ import annotations
@@ -23,6 +24,8 @@ class FakeLLM:
     """``replies``: a list consumed in order (the last one repeats when the
     list runs out; an ``Exception`` instance yields an error result), or a
     callable ``f(messages) -> str``. Every call is recorded in ``calls``."""
+
+    is_fake = True
 
     def __init__(self, replies: list[Reply] | Callable[[list[dict]], str], *,
                  chunk_chars: int = 8, ttft_s: float = 0.4, s_per_chunk: float = 0.01) -> None:
@@ -48,9 +51,11 @@ class FakeLLM:
 
     def complete(self, model: str, messages: list[dict], *, max_tokens: int,
                  temperature: float | None = None, extra_body: dict | None = None,
-                 stop_when: Callable[[str], bool] | None = None) -> LLMResult:
+                 stop_when: Callable[[str], bool] | None = None,
+                 timeout_s: float | None = None, max_retries: int | None = None) -> LLMResult:
         self.calls.append({"model": model, "messages": messages, "max_tokens": max_tokens,
-                           "temperature": temperature, "extra_body": extra_body})
+                           "temperature": temperature, "extra_body": extra_body,
+                           "timeout_s": timeout_s, "max_retries": max_retries})
         reply = self._next(messages)
         if isinstance(reply, Exception):
             return LLMResult(text="", usage=None, timings=Timings(None, None, 0.05, t_wall=0.05),
@@ -63,6 +68,10 @@ class FakeLLM:
             t += self.s_per_chunk
             if stop_when is not None and stop_when(text):
                 t_complete, stopped = t, True
+                nl = reply.find("\n", len(text) - self.chunk_chars)
+                while nl >= 0 and not stop_when(reply[:nl]):
+                    nl = reply.find("\n", nl + 1)
+                text = reply[:nl] if nl >= 0 else reply      # finish the STATUS line
                 break
         finish = None if stopped else "stop"
         if not stopped and max_tokens and len(text) > 4 * max_tokens:
@@ -79,11 +88,11 @@ class FakeLLM:
         prompt = n_chars // 4 + 300 * n_img + 50 * len(messages)
         read = min(self._prev_prompt, prompt)
         self._prev_prompt = prompt
-        usage = None if stopped else Usage(
+        usage = Usage(
             prompt_tokens=prompt, completion_tokens=max(1, len(text) // 4),
             cache_read_tokens=read, cache_write_tokens=prompt - read, reasoning_tokens=0,
             raw={"fake": True})
         return LLMResult(text=text, usage=usage,
                          timings=Timings(self.ttft_s, t_complete, t, ttft_any=self.ttft_s, t_wall=t),
                          stopped_early=stopped, finish_reason=finish, error=None,
-                         http_status=200, attempts=1)
+                         http_status=200, attempts=1, request_bytes=n_chars + 40_000 * n_img)

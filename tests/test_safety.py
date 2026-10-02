@@ -15,7 +15,9 @@ from controlr.robot.spec import HOME_Q_TOPDOWN, ur3_cb3_spec
 from controlr.types import Action, ActionMode, EventLevel, RobotState
 
 KIN = UR3Kinematics()
-SPEC = ur3_cb3_spec(table_z=0.053)   # envelope logic tested against a raised 53 mm table
+# envelope logic tested against a raised 53 mm table, TCP-only clearance (finger geometry is
+# tested separately below with the real pad sizes)
+SPEC = ur3_cb3_spec(table_z=0.053, finger_pad=None)
 
 
 def _state(q=HOME_Q_TOPDOWN) -> RobotState:
@@ -83,20 +85,38 @@ def test_workspace_box_with_margin():
     out, ev = _env(workspace_margin_m=0.02, max_step_m=1.0).filter([a], st)
     kinds = _kinds(ev)
     assert "workspace" in kinds
-    if out:                                # clamped target may still be out of reach -> ik_fail
+    if out and "reach" not in kinds:       # clamped target may still be out of reach -> shortened
         assert abs(out[0].values[0] - lo_x) < 1e-9
     else:
-        assert "ik_fail" in kinds
+        assert "ik_fail" in kinds or "reach" in kinds
 
 
-def test_unreachable_target_is_ik_fail_and_dropped():
+def test_unreachable_target_is_shortened_to_the_reachable_part():
+    """Review control-safety #4: an IK failure used to drop the whole move although most
+    of it was feasible; now the TCP goes as far along the line as IK allows."""
     st = _state()
     # inside the box but tool-down at 400 mm height is not reachable
     a = Action(ActionMode.EE_ABS, (-0.35, -0.15, 0.40))
     out, ev = _env(max_step_m=1.0).filter([a], st)
-    assert out == []
-    e = [e for e in ev if e.kind == "ik_fail"][0]
-    assert "not reachable" in e.message and "400 mm" in e.message
+    e = [e for e in ev if e.kind == "reach"][0]
+    assert "not reachable" in e.message and "400 mm" in e.message and "% of the way" in e.message
+    assert out and e.level == EventLevel.WARN
+    p = _tcp(out[0])
+    line = np.array([-0.35, -0.15, 0.40]) - st.tcp_pos
+    off = (p - st.tcp_pos) - line * np.dot(p - st.tcp_pos, line) / np.dot(line, line)
+    assert np.linalg.norm(off) < 2e-3 and p[2] > st.tcp_pos[2] + 0.05       # went up along the line
+    assert np.allclose(out[0].values, p, atol=1e-3)
+
+
+def test_completely_unreachable_target_is_skipped():
+    st = _state()
+    out, ev = _env(max_step_m=1.0).filter([Action(ActionMode.EE_ABS, (-0.35, -0.15, 0.40))], st)
+    assert out                                    # (partial, see above) — now from the edge itself:
+    q_edge = np.asarray(out[0].q_target)
+    pos, rv = KIN.fk(q_edge)
+    st2 = RobotState(t=0.0, q=q_edge, tcp_pos=pos, tcp_rotvec=rv, gripper_mm=85.0, gripper_closed=False)
+    out2, ev2 = _env(max_step_m=1.0).filter([Action(ActionMode.EE_ABS, (-0.35, -0.15, 0.40))], st2)
+    assert out2 == [] and "ik_fail" in _kinds(ev2)
 
 
 def test_chunk_chains_from_previous_target():
@@ -115,8 +135,9 @@ def test_ik_fail_in_chunk_keeps_chain_from_last_good_target():
             Action(ActionMode.EE_ABS, (-0.35, -0.15, 0.40)),       # unreachable
             Action(ActionMode.EE_DELTA, (0.0, 0.02, 0.0))]
     out, ev = _env(max_step_m=1.0).filter(acts, st)
-    assert len(out) == 2 and "ik_fail" in _kinds(ev)
-    assert np.linalg.norm(_tcp(out[-1]) - (st.tcp_pos + [0.02, 0.02, 0.0])) < 2e-3
+    assert len(out) == 3 and "reach" in _kinds(ev)           # the middle one is shortened
+    p_mid = _tcp(out[1])
+    assert np.linalg.norm(_tcp(out[-1]) - (p_mid + [0.0, 0.02, 0.0])) < 2e-3
 
 
 def test_yaw_rotation_and_rotation_step_limit():
@@ -226,3 +247,99 @@ def test_no_events_for_safe_chunk(clamp):
     acts = [Action(ActionMode.EE_DELTA, (0.01, 0.01, 0.0), gripper=0.04)]
     out, ev = _env(clamp=clamp).filter(acts, st)
     assert len(out) == 1 and ev == []
+
+
+# ---------------------------------------------------------------------------
+# review fixes (docs/FIXLOG.md): fingertip clearance, straight paths, reference
+# orientation, joint-mode TCP step / path checks
+# ---------------------------------------------------------------------------
+
+from controlr.robot.isaac.tasks import START_Q  # noqa: E402
+from controlr.robot.safety import finger_drop  # noqa: E402
+
+REAL = ur3_cb3_spec()            # real pad geometry, real table
+
+
+def test_finger_drop_geometry():
+    R_down = np.diag([1.0, -1.0, -1.0])                 # tool z = -base z
+    assert finger_drop(REAL, R_down, 0.085) == pytest.approx(REAL.finger_pad[0])
+    assert finger_drop(ur3_cb3_spec(finger_pad=None), R_down, 0.085) == 0.0
+    R_tilt = KIN.fk_matrix(START_Q)[:3, :3]             # Isaac start: tilted tool + tilted jaw line
+    assert finger_drop(REAL, R_tilt, 0.091) > finger_drop(REAL, R_tilt, 0.0) > 0.02
+
+
+def test_table_clearance_protects_the_lowest_fingertip():
+    """Review control-safety #2 / contracts #4: with the tilted tool fully open the
+    lower pad sits far below the TCP; the TCP-only floor let it into the mat."""
+    q = np.asarray(START_Q)
+    pos, rv = KIN.fk(q)
+    st = RobotState(t=0.0, q=q, tcp_pos=pos, tcp_rotvec=rv, gripper_mm=91.0, gripper_closed=False)
+    env = SafetyEnvelope(REAL, SafetyConfig(max_step_m=1.0))
+    env.reset(st)
+    out, ev = env.filter([Action(ActionMode.EE_DELTA, (0.0, 0.0, -(pos[2] - REAL.table_z) - 0.05))], st)
+    e = [e for e in ev if e.kind == "table"][0]
+    assert "lowest fingertip" in e.message
+    if out:
+        T = KIN.fk_matrix(out[0].q_target)
+        lowest = T[2, 3] - finger_drop(REAL, T[:3, :3], 0.091)
+        assert lowest >= REAL.table_z + SafetyConfig().table_clearance_m - 1.5e-3
+
+
+def test_ee_move_follows_a_straight_line_with_waypoints():
+    """Review control-safety #3: joint-linear interpolation bent 100 mm moves by up to
+    115 mm; the envelope now hands the backend IK waypoints every path_step_m."""
+    st = _state()
+    a = Action(ActionMode.EE_DELTA, (0.06, 0.04, -0.03))
+    out, ev = _env().filter([a], st)
+    assert out and out[0].q_path is not None
+    path = [np.asarray(x) for x in out[0].q_path] + [np.asarray(out[0].q_target)]
+    d = np.asarray(a.values)
+    assert len(path) >= int(np.linalg.norm(d) / 0.005)
+    for qk in path:
+        p = KIN.fk(qk)[0] - st.tcp_pos
+        assert np.linalg.norm(p - d * np.dot(p, d) / np.dot(d, d)) < 1.5e-3
+    for qa, qb in zip([st.q] + path[:-1], path):      # no joint jumps between waypoints
+        assert np.max(np.abs(qb - qa)) < 0.2
+
+
+def test_reference_orientation_undoes_a_contact_tilt():
+    """Review control-safety #8: rotation=none re-anchored to the measured pose, so a
+    tilt from a collision was locked in for the rest of the episode."""
+    st0 = _state()
+    env = _env()
+    env.reset(st0)
+    q_t = np.asarray(st0.q) + np.array([0, 0, 0, 0.12, 0, 0])      # wrist knocked ~7 deg
+    pos, rv = KIN.fk(q_t)
+    st = RobotState(t=0.0, q=q_t, tcp_pos=pos, tcp_rotvec=rv, gripper_mm=85.0, gripper_closed=False)
+    out, ev = env.filter([Action(ActionMode.EE_DELTA, (0.01, 0.0, 0.0))], st)
+    assert out and "tilt" in _kinds(ev)
+    R = KIN.fk_matrix(out[0].q_target)[:3, :3]
+    assert rotation_angle(R @ KIN.fk_matrix(st0.q)[:3, :3].T) < np.deg2rad(0.6)
+    assert np.allclose(out[0].values, (0.01, 0.0, 0.0))          # translation as asked
+
+
+def test_joint_move_respects_tcp_step_limit():
+    """Review control-safety #9: 30 deg of shoulder_pan moved the TCP ~230 mm."""
+    st = _state()
+    out, ev = _env(max_step_m=0.05).filter([Action(ActionMode.JOINT_DELTA, (0.4, 0, 0, 0, 0, 0))], st)
+    assert out and "step_limit" in _kinds(ev)
+    assert np.linalg.norm(_tcp(out[0]) - st.tcp_pos) <= 0.05 + 1e-4
+
+
+def test_joint_path_is_checked_between_the_end_points():
+    env = _env()
+    st = _state()
+    q = np.asarray(st.q)
+    # all samples of a safe small move are inside
+    assert env._path_inside(q, q + np.array([0.05, 0, 0, 0, 0, 0]), 0.085)
+    # a path that dips under the floor and comes back is rejected although both ends are fine
+    calls = []
+    orig = env._inside
+    env._inside = lambda qx, w: (calls.append(1), orig(qx, w) and not np.allclose(qx, q + 0.5 * 0.1))[1]
+    assert not env._path_inside(q, q + 0.1, 0.085)
+
+
+def test_elbow_limit_matches_the_urdf():
+    names = [j.name for j in REAL.joints]
+    e = REAL.joints[names.index("elbow")]
+    assert e.lower == pytest.approx(-np.pi) and e.upper == pytest.approx(np.pi)

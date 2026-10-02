@@ -133,3 +133,33 @@ def test_task_params_and_unknown_task():
     assert r.task_instruction == "custom words"
     with pytest.raises(ValueError):
         r.reset({"name": "juggle"})
+
+
+def test_top_camera_and_tiling_make_the_multicamera_axis_runnable():
+    """Review contracts #9: every backend returned exactly one camera."""
+    from controlr.config import ObservationConfig
+    from controlr.observation.renderers import ObservationRenderer
+
+    r = MockRobot({"width": 160, "height": 120, "cameras": ["scene", "top"]})
+    obs = r.reset({"name": "reach"}, seed=0)
+    assert set(obs.images) == {"scene", "top"} and set(obs.cameras) == {"scene", "top"}
+    assert not np.array_equal(obs.images["scene"], obs.images["top"])
+    sep = ObservationRenderer(ObservationConfig(cameras=["scene", "top"]), encoder=lambda a, q, l: (l, a.shape))
+    assert len(sep.render(obs, None, 0).images) == 2
+    til = ObservationRenderer(ObservationConfig(cameras=["scene", "top"], tile=True),
+                              encoder=lambda a, q, l: (l, a.shape))
+    assert len(til.render(obs, None, 0).images) == 1
+
+
+def test_mock_uses_configured_safety_and_held_cube_stays_on_the_table():
+    """Review control-safety #19."""
+    from controlr.config import SafetyConfig
+    from controlr.types import Action, ActionMode
+
+    r = MockRobot({"width": 160, "height": 120}, safety=SafetyConfig(max_step_m=0.02))
+    assert r._fallback.cfg.max_step_m == 0.02
+    r.reset({"name": "pick_place", "params": {"cube_xy": [-0.30, -0.15]}}, seed=0)
+    sc = r._scene
+    sc.held, sc.hold_offset = True, np.array([0.0, 0.0, -0.05])
+    r.execute([Action(ActionMode.EE_DELTA, (0.0, 0.0, -0.01))])
+    assert sc.cube[2] >= r.spec.table_z + sc.cube_size / 2 - 1e-9

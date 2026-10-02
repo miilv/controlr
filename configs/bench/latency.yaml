@@ -15,7 +15,7 @@ variants:
   # - {name: low, extra_body: {reasoning_effort: low}}
   # - {name: low-suffix, model_suffix: "-low"}     # effort-suffixed ids, e.g. claude/claude-sonnet-5-low
 repeats: 3
-max_tokens: 40
+max_tokens: 2000      # counts thinking tokens (40 starved Sonnet/Opus); early stop at STATUS keeps output short
 jpeg_quality: 90
 frames: null          # frame dir or a run dir (its images/); null -> synthetic frames
 cache: auto

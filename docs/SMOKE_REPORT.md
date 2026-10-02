@@ -1,0 +1,128 @@
+# Smoke test report (v0, 2026-10-02)
+
+Deployed with `scripts/deploy.sh` to compute3 `~/controlr`. The runs used `scripts/remote_run.sh`
+(Isaac Sim 6.0 headless, RTX 5090) and were synced to `runs/`. Table from
+`controlr report runs/20261002T14*_sim_*`.
+
+**Spend:** 184 control-model calls (60 bench + 124 episode turns) and 8 planner calls
+(`claude/claude-opus-5-5-xhigh`, 1 attempt each, `planner.max_retries=0`). About 1.75 M prompt
+tokens were sent, ~1.5 M of them cache reads. Budget: 400 / 8.
+
+## 1. Cache bench (`controlr bench-cache`, 20 turns, 448 px synthetic frames, 1 image/turn)
+
+| model | turn 0 s | p50 s (turns 1-19) | p90 s | max s | read share, median of turns ≥1 | full misses | prompt tok, turn 0 → 19 |
+|---|---|---|---|---|---|---|---|
+| no-think/claude/claude-haiku-4-5-20251001 | 2.98 | 1.38 | 2.09 | 2.24 | 0.946 | 1 (turn 12: read 0, rewrite 9.0k) | 6.6k → 10.7k |
+| claude/claude-sonnet-5 | 1.90 | 1.95 | 2.79 | 4.22 | 0.957 | 1 (turn 12: read 0, rewrite 10.5k) | 8.0k → 12.3k |
+| claude/claude-opus-5-5 | 2.89 | 2.33 | 2.74 | 4.67 | 0.958 | 0 | 8.0k → 12.3k |
+
+- Caching works as designed. Each turn ≥1 reads the whole previous prefix and writes ~220 tokens:
+  the new image plus feedback (≈ 219–226 tokens per 448×336 image turn).
+- Haiku also cached from turn 0 here, because the bench prefix (6.4k) is above its 4096 minimum.
+  In the reach episodes the manual is ~3.9k, below that minimum, and `setup.json` warns about it.
+- Full misses look like upstream rotation. Haiku and Sonnet both missed at turn 12 in back-to-back
+  runs. There were further partial regressions: Haiku turns 16 and 18 read less than expected.
+- Without thinking (synthetic prompt: 0 reasoning tokens on Sonnet, 53 in total on Opus),
+  per-turn latency is about 1.4 s (Haiku), 2 s (Sonnet) and 2.3 s (Opus) and stays flat from 6k
+  to 12k prompt tokens. In real episodes Sonnet thinks much more (see below).
+
+## 2. Sim episodes (planner on: opus-5-5-xhigh; `episode.max_turns=30`)
+
+| task | model | seed | outcome | turns | LLM p50 / p90 s | turn cycle p50 s | prompt tok | completion (reasoning) tok | cache-read share (episode / turn median) | planner s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| reach | no-think haiku-4.5 | 0 | safety_stop (box 260 N, packet 107 N, 63 N) | 10 | 1.6 / 1.9 | 8.6 | 64.9k | 236 (0) | 0.83 / 0.90 | 110 |
+| reach | no-think haiku-4.5 | 1 | safety_stop (box ×3: 176, 168, 671 N) | 12 | 1.6 / 1.8 | 7.0 | 83.4k | 325 (0) | 0.80 / 0.89 (5 regressions) | 84 |
+| reach | sonnet-5 | 0 | safety_stop (box ×3: 187, 859, 86 N) | 11 | 5.3 / 26.1 | 17.4 | 94.2k | 9679 (9359) | 0.78 / 0.91 | 102 |
+| reach | sonnet-5 | 1 | safety_stop (box ×3: 90, 164, 689 N) | 10 | 4.2 / 12.7 | 10.6 | 82.9k | 4654 (4255) | 0.90 / 0.91 | 88 |
+| waffle_pick_place | sonnet-5 | 0 | max_turns (packet held 200 mm up, arm stuck at reach edge) | 30 | 5.7 / 14.0 | 9.3 | 369.1k | 13148 (12071) | 0.89 / 0.94 | 73 |
+| waffle_pick_place | sonnet-5 | 1 | **success** (verified) | 17 | 3.5 / 7.7 | 10.9 | 163.2k | 3398 (2775) | 0.89 / 0.90 (6 regressions) | 91 |
+| waffle_pick_place | opus-5-5 | 0 | safety_stop (physics unstable: arm hit box 102 kN while carrying) | 15 | 3.7 / 6.0 | 11.9 | 137.5k | 2343 (1807) | 0.87 / 0.93 | 89 |
+| waffle_pick_place | opus-5-5 | 1 | **success** (verified) | 19 | 3.7 / 5.3 | 10.6 | 175.7k | 3072 (2476) | 0.92 / 0.93 | 111 |
+
+**Score:** 2/4 waffle (the first LLM-controlled pick-and-place successes) and 0/4 reach. The
+per-turn cycle is dominated by Isaac executing at 0.24× real time (exec p50 4.6–7 s) plus 0.5–1 s
+of settle and observation. Robot time is longer than LLM time even on Opus.
+
+## 3. Failure modes (with examples)
+
+1. **Reach: the target is ambiguous in depth.** The reach marker is a 12 mm red ball floating
+   on a 1.5 mm pole that cannot be seen. The seed-0 marker is at (-482, -315, 133) mm, recovered
+   by trilateration from the per-turn goal distances, because the marker is not logged. It
+   projects to pixel (167, 300), exactly on the red end of the packet lying on the mat.
+   - Every planner assumed the ball lies on the mat: "Red ball … Estimated centre x≈-515
+     y≈-245 z≈5", and "Red ball: not clearly visible. Best candidate is the red rounded object at
+     the left end of the wooden block". Its estimate moves along the camera ray, about 70 mm too
+     far in +y and 120 mm too low.
+   - The control models followed the plan toward y≈-210…-245. That position is next to the box's
+     near wall, and because the gripper housing hangs +x/+y of the TCP, 11 of 12 reach STOPs were
+     box contacts.
+   - Haiku seed 0 got within 21 mm of the ball at turn 4. It then moved away toward the
+     "ball on the mat": "MOVE ee_delta -30 20 -80 / STATUS OK moving toward ball, avoiding blue
+     box".
+   - The models learn little from repeated stops. Haiku seed 1 made the same +y/−z approach and
+     hit the box three times: "MOVE ee_delta -50 0 -36 / STATUS OK moving back toward ball at
+     safer height z=150" → STOP 168 N.
+2. **Thinking starves the reply (Sonnet).** In reach seed 0, turns 5, 8 and 9 used 2000/2000
+   reasoning tokens. Each returned empty text after about 26 s, and the model was told only
+   "missing STATUS line". Reasoning grows after stops: 95 → 1190 → 2000 tokens. Sonnet's p90 LLM
+   time was 12–26 s in reach, against about 2 s in the bench. Fixed in the feedback (K1 below);
+   the latency problem itself remains.
+3. **Kinematic dead end with rotation=none (Sonnet waffle seed 0).** The grasp and lift were
+   fine. While carrying, the arm reached (-423, -19, 311). From there almost every direction was
+   refused: "TCP target … not reachable without a large joint swing … -> action skipped". This
+   held for −z, ±x, and −y/−z. Sonnet spent the last 10 turns probing in 10–30 mm steps ("trying
+   opposite x direction to escape singularity") and ran out of turns while holding the packet
+   200 mm above the box. Reaching that pose was legal, but leaving it was not. The swing check
+   depends on the path, and the manual does not describe the reachable corridor.
+4. **Arm-link collision while carrying (Opus waffle seed 0).** The packet was already over the
+   box interior (see the turn-13 image) when Opus kept "centring": "MOVE ee_delta 0 60 0 / STATUS
+   OK centring packet over box interior". The arm hit the box at 102 kN, and the solver
+   diverged ("physics became unstable"). The model misjudged depth over the box, and the envelope
+   has no link collision check, so nothing stopped the move before it ran.
+5. **Grasp descent overshoots.** Sonnet seed 0 (52 N, 76 N) and Opus seed 1 (263 N) pressed on
+   the packet before closing. Both recovered and grasped; Opus seed 1 went on to succeed.
+6. **Noise and wasted turns.** While holding, every turn reports "EVENT: gripper/fingers touched
+   the packet (peak 14 N)". "WARN: the arm had not fully settled" made Haiku spend whole turns on
+   `HOLD` ("waiting for arm to settle fully").
+
+## 4. Did the harness work?
+
+- **Grammar:** yes. Haiku had 0 parse errors in 22 turns. Sonnet and Opus had none except the 4
+  length cut-offs. Replies are a single MOVE line plus STATUS. Haiku no longer adds prose.
+  `MOVE … GRIP open` combined lines parse.
+- **Feedback:** yes. EXEC achieved-vs-commanded, CLAMP (per-line 100 mm scaling, reach edge with
+  "moved 88 % of the way"), STOP with force and object, and STATE were all correct and acted on.
+  Every STOP was followed by a sensible back-off, and the force-stop fix from the integration pass
+  works (back-offs ran their full length).
+- **Prompt:** the tool-geometry hints were used. Both planners reasoned about "the housing trails
+  +x+y+z". The planner is the main source of the reach error, though: it is confident in a wrong
+  3-D estimate taken from one view, and the control models trust the plan over later images.
+- **Caching:** 0.78–0.92 of prompt tokens were read from cache per episode, and 0.89–0.94 per
+  turn (median). Regressions (a turn reading less than expected) happened on Haiku and Sonnet but
+  not on Opus.
+- **Planner:** 73–111 s per call (6.6k–9.7k completion tokens, mostly reasoning). This is over
+  half of a successful episode's LLM wall time.
+
+**Fix made (logged as K1 in docs/FIXLOG.md):** `loop.py` now adds a specific PARSE ERROR when
+`finish_reason == "length"` and no STATUS was parsed: "your reply was cut off by the output limit
+(thinking counts toward it) …". A test was added, and the local suite passes (308 passed, 14
+skipped). The live runs predate the fix.
+
+## 5. Top 5 next experiments
+
+1. **Make reach unambiguous, then re-measure.** Options: draw the pole thicker or give it a
+   visible shadow/base disc; tell the model the marker height; or turn on `[raw, grid, ee_marker]`
+   overlays or a second (side) view. Also log `marker` in `setup.json`. As it stands, the reach
+   result measures the monocular ambiguity, not control.
+2. **Waffle at n≥5 seeds × {no-think/claude/claude-sonnet-5, claude/claude-sonnet-5-low,
+   opus-5-5}.** Removing or capping thinking should cut Sonnet's 12–26 s tail without losing the
+   successes. Report success, turns and cost.
+3. **Joint-space escape and corridor:** add a `HOME`/`MOVE joint` command, or relax the
+   joint-swing refusal to replan IK from a neutral seed. Also put the reachable corridor for the
+   carry (y < 0 at z≈250, descend before y > 50) into the manual. Re-run Sonnet seed 0.
+4. **Link-vs-box collision check in the envelope,** plus a lower object-contact stop during
+   descent. This avoids the 102 kN divergence. Also hide the steady "touched the packet" EVENT
+   while holding and lower the settle-WARN noise.
+5. **Planner ablation:** planner off, planner on, and a pinned plan (`planner.plan_file`) on the
+   same seeds. The planner costs about 90 s, and in reach it introduced the error. Also test
+   whether a cheaper planner (sonnet-5-high) is as good.

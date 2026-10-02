@@ -43,6 +43,13 @@ class Robot(ABC):
     def check_goal(self) -> GoalReport:
         """Task success / progress from privileged state (sim) or a checker (real)."""
 
+    def reference_state(self) -> RobotState | None:
+        """The commanded (nominal) reset state, if the backend knows it — e.g. FK of the
+        commanded start joints, free of settle jitter/gravity sag. Used for the fixed tool
+        orientation (rotation=none) and the manual's tool description, so they are
+        identical across episodes. Default None: the loop uses the measured reset state."""
+        return None
+
     def hold(self) -> None:
         """Keep the current pose (default: nothing to do for position-controlled robots)."""
 

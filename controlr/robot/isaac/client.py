@@ -4,13 +4,15 @@ Runs in controlr's normal python — no Isaac / PHANTOM imports. It
 (optionally) launches ``scripts/isaac_server.sh``, waits for the socket, and
 then speaks the numpy-only protocol in ``protocol.py``.
 
-Mapping of controlr Actions to the server: every action becomes one joint
-waypoint. Actions that went through ``SafetyEnvelope.filter`` carry
-``q_target`` (the envelope already did IK with the same UR3 kinematics), so the
-backend executes exactly what the envelope approved. Unfiltered actions are
-resolved by a default envelope, so the sim never runs an unchecked target.
-Segment duration comes from the configured TCP speed and the joint speed
-limits; the server interpolates with a min-jerk profile and settles.
+Mapping of controlr Actions to the server: every action becomes one motion
+group — its ``q_path`` waypoints (IK along the straight TCP line) and its
+``q_target``. Actions that went through ``SafetyEnvelope.filter`` carry them
+(the envelope already did IK with the same UR3 kinematics), so the backend
+executes exactly what the envelope approved. Unfiltered actions are resolved by
+the configured envelope, so the sim never runs an unchecked target. The group
+duration keeps the PEAK speed of the min-jerk profile within the configured TCP
+and joint speed limits (``motion.group_duration``); the server passes through
+the waypoints in one smooth motion and settles.
 
 Frames: the Isaac stage's world frame IS the UR controller base frame
 (PHANTOM builds it that way), so ``T_cam_base`` is the inverse of the
@@ -31,7 +33,7 @@ from pathlib import Path
 import numpy as np
 
 from controlr.robot.base import Robot
-from controlr.robot.isaac import protocol
+from controlr.robot.isaac import motion, protocol
 from controlr.robot.isaac.tasks import START_Q, get_task
 from controlr.robot.kinematics import UR3Kinematics, rotation_angle
 from controlr.robot.safety import SafetyEnvelope
@@ -99,6 +101,7 @@ class IsaacRobot(Robot):
         self.task_instruction = ""
         self.episode: dict = {}
         self.last_reset_s: float | None = None
+        self._reference: RobotState | None = None
 
     @classmethod
     def from_config(cls, cfg) -> "IsaacRobot":
@@ -166,7 +169,20 @@ class IsaacRobot(Robot):
         self.episode = res["episode"]
         self.last_reset_s = float(res["reset_s"])
         self.task_instruction = task_cfg.get("instruction") or spec.instruction
-        return self._obs(res["obs"])
+        obs = self._obs(res["obs"])
+        # the manual's "home" column = the pose this episode actually starts from
+        q0 = np.asarray(self.episode.get("start_q", obs.state.q), float)
+        self.spec = dataclasses.replace(self.spec, home_q=tuple(float(v) for v in q0))
+        pos, rv = self.kin.fk(q0)
+        self._reference = dataclasses.replace(obs.state, q=q0, tcp_pos=pos, tcp_rotvec=rv)
+        self._fallback.reset(self._reference)
+        return obs
+
+    def reference_state(self) -> RobotState | None:
+        """FK of the COMMANDED start joints: the measured reset pose carries a few
+        mrad of settle sag/jitter, which would make the cached manual's tool lines
+        and the rotation=none reference differ between episodes."""
+        return self._reference
 
     def observe(self) -> Observation:
         return self._obs(self.call("observe"))
@@ -181,13 +197,18 @@ class IsaacRobot(Robot):
             return list(actions), []
         return self._fallback.filter(actions, state)
 
-    def _duration(self, q0: np.ndarray, q1: np.ndarray) -> float:
+    def _duration(self, q0: np.ndarray, waypoints: np.ndarray) -> float:
+        """Group duration with the PEAK speeds of the min-jerk profile within the limits
+        (15/8 x average; review control-safety #7)."""
         v = float(self.p["tcp_speed_m_s"] or self.safety_cfg.max_tcp_speed_m_s)
-        T0, T1 = self.kin.fk_matrix(q0), self.kin.fk_matrix(q1)
-        d = float(np.linalg.norm(T1[:3, 3] - T0[:3, 3]))
-        ang = rotation_angle(T1[:3, :3] @ T0[:3, :3].T)
-        return max(d / v, float(np.max(np.abs(q1 - q0))) / float(self.p["joint_speed_rad_s"]),
-                   ang / float(self.p["rot_speed_rad_s"]), float(self.p["min_segment_s"]))
+        pts = [np.asarray(q0, float)] + [np.asarray(w, float) for w in waypoints]
+        Ts = [self.kin.fk_matrix(q) for q in pts]
+        d = float(sum(np.linalg.norm(b[:3, 3] - a[:3, 3]) for a, b in zip(Ts, Ts[1:])))
+        ang = float(sum(rotation_angle(b[:3, :3] @ a[:3, :3].T) for a, b in zip(Ts, Ts[1:])))
+        return motion.group_duration(pts[0], np.asarray(pts[1:]), d, ang, tcp_speed=v,
+                                     joint_speed=float(self.p["joint_speed_rad_s"]),
+                                     rot_speed=float(self.p["rot_speed_rad_s"]),
+                                     min_s=float(self.p["min_segment_s"]))
 
     def execute(self, actions: list[Action]) -> ExecReport:
         before = self.state()
@@ -195,37 +216,47 @@ class IsaacRobot(Robot):
         if not executed:
             return ExecReport(requested=list(actions), executed=[], events=events, state_before=before,
                               state_after=before, duration_s=0.0)
-        qs, grips, durs = [], [], []
+        qs, grips, durs, group = [], [], [], []
         q_prev = np.asarray(before.q, float)
-        for a in executed:
-            q = np.asarray(a.q_target, float)
-            qs.append(q)
-            grips.append(np.nan if a.gripper is None else float(a.gripper))
-            durs.append(self._duration(q_prev, q) if not np.allclose(q, q_prev, atol=1e-6) else 0.0)
-            q_prev = q
+        for gi, a in enumerate(executed):
+            rows = [np.asarray(w, float) for w in (a.q_path or ())] + [np.asarray(a.q_target, float)]
+            moving = not np.allclose(rows[-1], q_prev, atol=1e-6) or len(rows) > 1
+            dur = self._duration(q_prev, np.asarray(rows)) if moving else 0.0
+            for k, q in enumerate(rows):
+                last = k == len(rows) - 1
+                qs.append(q)
+                grips.append(float(a.gripper) if (last and a.gripper is not None) else np.nan)
+                durs.append(dur if last else 0.0)
+                group.append(gi)
+            q_prev = rows[-1]
         force_stop = self.p["force_stop_n"] if self.p["force_stop_n"] is not None else self.safety_cfg.contact_force_stop_n
         r = self.call("execute", q=np.asarray(qs), gripper=np.asarray(grips), durations=np.asarray(durs),
-                      force_stop_n=float(force_stop), settle=dict(self.p["settle"]))
+                      group=np.asarray(group), force_stop_n=float(force_stop),
+                      object_force_stop_n=float(self.safety_cfg.object_force_stop_n),
+                      settle=dict(self.p["settle"]))
         events.extend(self._events(r))
         after = self._state(r["state"])
         n_done = int(r["segments_done"])
-        return ExecReport(requested=list(actions), executed=executed[:max(n_done, 1)] if r["stopped"] else executed,
+        # on a stop in action k (n_done = k) action k was partly executed: keep it
+        return ExecReport(requested=list(actions), executed=executed[:n_done + 1] if r["stopped"] else executed,
                           events=events, state_before=before, state_after=after,
                           duration_s=float(r["sim_s"]), stopped=bool(r["stopped"]))
 
     def _events(self, r: dict) -> list[SafetyEvent]:
         ev: list[SafetyEvent] = []
         if r["stopped"]:
-            ev.append(SafetyEvent(EventLevel.STOP, "collision",
+            ev.append(SafetyEvent(EventLevel.STOP, "unstable" if r.get("unstable") else "collision",
                                   f"motion stopped: {r['stop_reason']}; the arm holds its current pose"))
         thr = float(self.p["contact_report_n"])
+        obj_warn = 0.5 * float(self.safety_cfg.object_force_stop_n or 0.0)
         names = {"arm-table": "arm touched the table/mat", "gripper-table": "gripper touched the table/mat",
                  "arm-box": "arm touched the blue box", "gripper-box": "gripper touched the blue box",
                  "arm-object": "arm touched the packet", "gripper-object": "gripper/fingers touched the packet"}
         for key, f in sorted(r["contacts_peak_n"].items()):
             if f < thr or key not in names:
                 continue
-            level = EventLevel.INFO if key == "gripper-object" else EventLevel.WARN
+            # fingers on the packet are normal (grasping) unless pressed hard
+            level = EventLevel.INFO if key == "gripper-object" and not (obj_warn and f > obj_warn) else EventLevel.WARN
             ev.append(SafetyEvent(level, "contact" if level is EventLevel.INFO else "collision",
                                   f"{names[key]} (peak {f:.0f} N)"))
         if float(r["tcp_err_m"]) > float(self.p["tracking_warn_m"]):

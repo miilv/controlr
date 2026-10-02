@@ -5,20 +5,30 @@ prefix ending at a ``cache_control`` breakpoint, and the prefix must be
 byte-identical between calls. If markers lived in the stored messages, the
 "moving" marker on the newest user turn would be left behind on old turns and
 the old turns would differ from what a fresh serialisation produces. Adding
-them on a deep copy keeps the stored transcript canonical; the only bytes that
-change between turn N and N+1 are the marker positions themselves, and those
-don't break prefix matching (verified through omniroute: cache reads cover all
-but the newest turn).
+them on a deep copy keeps the stored transcript canonical.
 
 Placement (``anthropic`` style), at most 4 breakpoints total (API limit):
   1. last content part of the system message — the operating manual is the
-     most reused prefix (also shared with the planner call's system prompt);
-  2. last content part of the LAST user message — writes the cache for the
-     next turn;
-  3. last content part of the SECOND-TO-LAST user message — the read point
-     for this turn. Anthropic only looks back 20 blocks from a breakpoint for
-     an earlier cache entry; a turn with several images + text can add many
-     blocks, so we keep an explicit breakpoint where last turn's write ended.
+     most reused prefix (across the episodes of one config);
+  2. last content part of the LAST user message — would write the cache for
+     the next turn;
+  3. last content part of the SECOND-TO-LAST user message — a read point inside
+     Anthropic's 20-block lookback.
+
+WHAT IS ACTUALLY OBSERVED through omniroute (review 2026-10-02, all 7 live runs;
+docs/FIXLOG.md): every Claude route (``claude/``, ``cc/``, ``no-think/claude/``)
+is served by omniroute's ``cc`` provider (``x-omniroute-provider: cc``), which
+places its OWN breakpoints. The cached prefix ends right after the newest
+ASSISTANT reply, a position we never mark (write_N = uncached_{N-1} +
+reply_{N-1}), and unmarked planner requests still cached their system prompt.
+So on these routes our markers are probably ignored or redundant, and
+``llm.cache`` / ``llm.cache_ttl`` are probably no-ops — unverified, because the
+probe that would settle it (``bench-cache`` with ``cache=none`` and with
+``cache_ttl=1h`` + a 6-minute pause, ~6 calls) needs approved spend. Until then
+do not sweep these two axes on ``cc`` routes. The markers stay for upstreams
+that honour them (a direct Anthropic route). The run log records, per turn, the
+read/write/uncached split and flags cache regressions (``runlog.cache_trace``),
+so a change of the router's strategy is visible in every summary.
 
 Other routes (OpenAI, Gemini, ...) cache prefixes automatically -> style
 ``none``: no markers, but prefix stability still matters.

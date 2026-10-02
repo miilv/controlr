@@ -15,8 +15,9 @@ Cache minimums (Anthropic): 512 tokens (Opus 5.x / Fable), 1024 (Sonnet 5),
 4096 (Haiku 4.5). The manual is ~2.5-3.5k tokens with the generated appendix
 (worked example exchange + conventions), which caches on Opus/Sonnet. For
 Haiku, add *useful* reference text — task-specific rules via
-``prompt.extra_rules`` or a recorded exchange via ``prompt.fewshot`` — never
-filler; ``cache_warning`` tells the loop when the prefix is too short.
+``prompt.extra_rules`` or a recorded exchange via ``prompt.fewshot`` (a .md file
+or a run directory, appended as "Appendix C") — never filler; ``cache_warning``
+tells the loop when the prefix is too short.
 
 Ideas borrowed (paraphrased, not copied) from research/sources/:
   * inspect-robots (Robocurve): "small, deliberate motions; re-check the
@@ -32,21 +33,21 @@ Ideas borrowed (paraphrased, not copied) from research/sources/:
 
 from __future__ import annotations
 
-import base64
+import json
 import math
 import re
 from pathlib import Path
-from typing import Any
-
 import numpy as np
 
 from controlr.config import Config
 from controlr.protocol.feedback import format_feedback, format_state
 from controlr.protocol.grammar import (
+    EE_DELTA_STEPS,
     EE_MODES,
     JOINT_MODES,
     ang_decimals,
     ang_factor,
+    example_xyz,
     fmt_num,
     grammar_spec,
     parse_reply,
@@ -163,11 +164,22 @@ def _camera_axes(cfg: Config, spec: RobotSpec, cameras: dict[str, CameraInfo] | 
     lo, hi = np.asarray(spec.workspace_lo, float), np.asarray(spec.workspace_hi, float)
     from controlr.observation.renderers import resolve_grid_z
     centre = np.array([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, resolve_grid_z(cfg.observation, spec)])
+    from controlr.observation.renderers import axis_directions
     names = list(cfg.observation.cameras) or sorted(cameras)
-    lines = ["How the base axes appear in the camera images (at the middle of the workspace):"]
+    lines = ["How the base axes appear in the camera images (at the middle of the workspace; pixel "
+             "lengths of a move of that size at that spot):"]
     for n in names:
         if n in cameras:
-            lines.append(f"- `{n}`: {describe_axes(cameras[n], centre)}.")
+            lines.append(f"- `{n}`: {describe_axes(cameras[n], centre, cfg.observation.size, _len(cfg, 0.1))}.")
+            dirs = axis_directions(cameras[n], centre)
+            for a, b in (("x", "y"), ("x", "z"), ("y", "z")):
+                if dirs[a] is not None and dirs[a] == dirs[b]:
+                    cue = "the STATE line" if cfg.observation.state_text else "the EXEC line"
+                    if "ee_marker" in cfg.observation.renderers:
+                        cue += " or the TCP drop line"
+                    lines.append(f"  In `{n}` a pure +{a} move and a pure +{b} move both shift the gripper "
+                                 f"{dirs[a]}; only the pixel lengths differ. Tell them apart with {cue}, "
+                                 f"never from the image direction alone.")
     return "\n".join(lines) if len(lines) > 1 else ""
 
 
@@ -203,18 +215,88 @@ def _observation_doc(cfg: Config, spec: RobotSpec | None = None) -> str:
     if o.state_text:
         lines.append("- The feedback block ends with a STATE line (measured, see below).")
     else:
-        lines.append("- No STATE line is given in this configuration; judge the robot state from "
-                     "the images and EXEC lines.")
+        lines.append("- The feedback has no line with the measured robot state: judge it from the "
+                     "images. The EXEC line still reports the measured motion of each command"
+                     + (" and the TCP marker shows its height" if "ee_marker" in ov else "") + ".")
     return "\n".join(lines)
 
 
-def _example_state(cfg: Config, spec: RobotSpec, pos=(0.30, -0.05, 0.15), grip_mm=None,
+def _state_values(cfg: Config, spec: RobotSpec) -> dict[str, str]:
+    """Manual text that depends on whether a STATE line is given (observation.state_text):
+    with it off, the manual must not mention, show or rely on a STATE line."""
+    if cfg.observation.state_text:
+        st = _example_state(cfg, spec)
+        doc = ("The STATE line reports the measured robot state after the last motion, e.g.:\n\n"
+               f"    {format_state(st, cfg)}\n\n"
+               "`grip` is the measured finger opening and whether the last gripper command was open or\n"
+               "closed; `holding` is the robot's own grasp detection (`unknown` if it cannot tell).\n"
+               "A closed gripper whose opening is near 0 is holding nothing; a closed gripper stopped\n"
+               "at roughly an object's width is probably holding it — confirm in the image.")
+        return {"state_item": ", the robot STATE", "state_check": "the STATE line",
+                "overlay_state": "the overlays and the STATE line", "state_doc": doc,
+                "state_line": "    STATE: <measured state>\n",
+                "grasp_check": "STATE grip width, `holding`, the image",
+                "depth_cues": "the overlays (if any), the STATE numbers"}
+    return {"state_item": "", "state_check": "the EXEC line",
+            "overlay_state": "the overlays (if any) and the EXEC lines",
+            "state_doc": ("The feedback does not report the measured robot state: the position of the TCP "
+                          "is not given as numbers. Track it from the images and from the achieved motion in "
+                          "each EXEC line."),
+            "state_line": "",
+            "grasp_check": "the image, and whether the fingers stopped at the object's width",
+            "depth_cues": "the overlays (if any), the achieved motion in EXEC"}
+
+
+def _load_fewshot(cfg: Config) -> str:
+    """``prompt.fewshot`` -> "Appendix C" text (empty when unset). A markdown/text file is
+    used verbatim; a run directory's messages.jsonl is rendered as a plain exchange with
+    images shown as ``<image>`` (the demo then lands in the cached system prefix)."""
+    ref = cfg.prompt.fewshot
+    if not ref:
+        return ""
+    p = Path(ref)
+    if p.is_dir():
+        mp = p / "messages.jsonl"
+        if not mp.exists():
+            raise FileNotFoundError(f"prompt.fewshot: {p} has no messages.jsonl")
+        out = []
+        for line in mp.read_text().splitlines():
+            if not line.strip():
+                continue
+            m = json.loads(line)
+            if m.get("role") == "system":
+                continue
+            c = m.get("content")
+            parts = c if isinstance(c, list) else [c]
+            txt = []
+            for part in parts:
+                if isinstance(part, str):
+                    txt.append(part)
+                elif isinstance(part, dict) and ("image_sha" in part or part.get("type") == "image_url"):
+                    txt.append("<image>")
+                elif isinstance(part, dict):
+                    txt.append(str(part.get("text", "")))
+            out.append(f"{m.get('role')}:")
+            out += ["    " + ln for ln in "\n".join(t for t in txt if t).splitlines()]
+        body = "\n".join(out)
+    elif p.is_file():
+        body = p.read_text().strip()
+    else:
+        raise FileNotFoundError(f"prompt.fewshot: {ref} not found")
+    return ("## Appendix C: demonstration (a recorded episode; images omitted)\n\n" + body).strip()
+
+
+def _table_top(spec: RobotSpec) -> float:
+    return float(spec.table_z) if spec.table_z is not None else float(spec.workspace_lo[2])
+
+
+def _example_state(cfg: Config, spec: RobotSpec, pos=None, grip_mm=None,
                    closed=False, holding=False, q=None) -> RobotState:
     n = len(spec.joints)
     return RobotState(
         t=0.0,
         q=np.asarray(q if q is not None else (list(spec.home_q) + [0.0] * n)[:n], dtype=float),
-        tcp_pos=np.asarray(pos, dtype=float),
+        tcp_pos=np.asarray(example_xyz(spec) if pos is None else pos, dtype=float),
         tcp_rotvec=np.array([math.pi, 0.0, 0.0]),
         gripper_mm=spec.gripper_max_mm if grip_mm is None else grip_mm,
         gripper_closed=closed,
@@ -232,15 +314,17 @@ def _ee_values(cfg: Config, xyz: tuple[float, float, float], yaw: float = 0.0) -
 
 
 def _example_steps(cfg: Config, spec: RobotSpec) -> list[tuple[Action, RobotState, RobotState, list[SafetyEvent], str]]:
-    """A short synthetic episode (approach, descend w/ clamp, grasp, lift) in the
-    configured action space: (action, before, after, events, status line)."""
+    """A short synthetic episode (approach above, descend in a small step that stays
+    above the table, grasp, lift and check) in the configured action space:
+    (action, before, after, events, status line). It demonstrates the technique of
+    section 10 — no blind descents into the safety clamp."""
     a = cfg.action
-    step = min(0.04, cfg.safety.max_step_m * 0.8)
     n = len(spec.joints)
     home = np.asarray((list(spec.home_q) + [0.0] * n)[:n], dtype=float)
-    p0 = np.array([0.30, -0.05, 0.15])
-    p1 = p0 + np.array([step, 0.75 * step, 0.0])
-    p2 = p1 + np.array([0.0, 0.0, -0.045])
+    d1, d2, d3 = (np.asarray(v, float) for v in EE_DELTA_STEPS)
+    p0 = np.asarray(example_xyz(spec, 0.12))
+    p1, p2 = p0 + d1, p0 + d1 + d2
+    p3 = p2 + d3
     gmax = spec.gripper_max_mm
     s0 = _example_state(cfg, spec, p0, q=home)
     if a.mode in JOINT_MODES:
@@ -258,23 +342,19 @@ def _example_steps(cfg: Config, spec: RobotSpec) -> list[tuple[Action, RobotStat
     else:
         mode = ActionMode(a.mode)
         delta = a.mode == "ee_delta"
-        v1 = _ee_values(cfg, tuple(p1 - p0) if delta else tuple(p1))
-        v2 = _ee_values(cfg, (0.0, 0.0, -0.06) if delta else (p1[0], p1[1], p1[2] - 0.06))
-        v3 = _ee_values(cfg, (0.0, 0.0, 0.05) if delta else tuple(p2 + np.array([0, 0, 0.05])))
+        v1 = _ee_values(cfg, tuple(d1) if delta else tuple(p1))
+        v2 = _ee_values(cfg, tuple(d2) if delta else tuple(p2))
+        v3 = _ee_values(cfg, tuple(d3) if delta else tuple(p3))
         q1 = q2 = q3 = home
     s1 = _example_state(cfg, spec, p1, q=q1)
     s2 = _example_state(cfg, spec, p2, q=q2)
-    clamp_txt = (f"z target {_len(cfg, p1[2] - 0.06)} -> {_len(cfg, p2[2])} (table clearance)")
-    grip_w = 0.032 * 1e3
-    close_w = 0.0
+    grip_w = 32.0
     s3 = _example_state(cfg, spec, p2, grip_mm=grip_w, closed=True, holding=True, q=q2)
-    s4 = _example_state(cfg, spec, p2 + np.array([0, 0, 0.05]), grip_mm=grip_w, closed=True,
-                        holding=True, q=q3)
+    s4 = _example_state(cfg, spec, p3, grip_mm=grip_w, closed=True, holding=True, q=q3)
     return [
-        (Action(mode, v1, None), s0, s1, [], "STATUS OK moving above the block"),
-        (Action(mode, v2, gmax * 1e-3), s1, s2,
-         [SafetyEvent(EventLevel.WARN, "clamp", clamp_txt)], "STATUS OK descending, gripper open"),
-        (Action(None, None, close_w), s2, s3, [], "STATUS OK fingers around the block"),
+        (Action(mode, v1, gmax * 1e-3), s0, s1, [], "STATUS OK moving above the block, gripper open"),
+        (Action(mode, v2, None), s1, s2, [], "STATUS OK fingers straddle the block, descending"),
+        (Action(None, None, 0.0), s2, s3, [], "STATUS OK closing on the block"),
         (Action(mode, v3, None), s3, s4, [], "STATUS OK lifting to check the grasp"),
     ]
 
@@ -314,7 +394,8 @@ def _conventions_appendix(cfg: Config, spec: RobotSpec) -> str:
     lines.append(f"- Joint-limit margin used by the harness: {_angle(cfg, cfg.safety.joint_margin_rad)} "
                  f"inside each hard limit; a WARN appears within {_angle(cfg, cfg.safety.near_limit_rad)}.")
     if a.mode in EE_MODES:
-        lines.append("- Orientations (STATE and rotation commands) are extrinsic roll/pitch/yaw about the "
+        lines.append(f"- Orientations ({'STATE and ' if cfg.observation.state_text else ''}rotation commands) "
+                     "are extrinsic roll/pitch/yaw about the "
                      f"fixed base x, y, z axes: R = Rz(yaw)·Ry(pitch)·Rx(roll). A tool pointing straight "
                      f"down has roll {_angle(cfg, math.pi)}, pitch 0; yaw then turns the jaw line about the vertical.")
         lines.append("- Positive rotation about an axis is counter-clockwise when looking from the positive "
@@ -328,11 +409,11 @@ def _conventions_appendix(cfg: Config, spec: RobotSpec) -> str:
                  f"{_num(cfg, hi[0] - lo[0])} x {_num(cfg, hi[1] - lo[1])} x {_num(cfg, hi[2] - lo[2])} {a.pos_unit}.")
     lines.append("- Perspective: objects farther from the camera look smaller and higher in the image; "
                  "a height difference can look like a horizontal offset. Prefer the numeric overlays "
-                 "and STATE over pixel distances.")
+                 + ("and STATE " if cfg.observation.state_text else "and EXEC ") + "over pixel distances.")
     return "\n".join(lines)
 
 
-def _worked_example(cfg: Config, spec: RobotSpec) -> str:
+def _worked_example(cfg: Config, spec: RobotSpec) -> str:  # noqa: C901
     a = cfg.action
     if a.mode in JOINT_MODES:
         n = len(spec.joints)
@@ -349,8 +430,9 @@ def _worked_example(cfg: Config, spec: RobotSpec) -> str:
         return (f"from the home pose, turning the first joint ({spec.joints[0].name}) by "
                 f"+{fmt_num(math.radians(10) / f, dd)} {a.ang_unit} is `MOVE joint_abs {vals}` "
                 f"(all joints listed, absolute).")
-    tgt = (0.34, -0.02)
-    cur = (0.30, -0.05, 0.15)
+    cur = example_xyz(spec)
+    x0, y0 = cur[0], cur[1]
+    tgt = (x0 + 0.04, y0 + 0.03)
     rot = {"none": "", "yaw": " 0", "full": ""}[a.rotation]
     if a.mode == "ee_delta":
         r = rot
@@ -365,15 +447,60 @@ def _worked_example(cfg: Config, spec: RobotSpec) -> str:
         elif a.rotation == "full":
             r = f" {fmt_num(math.pi / ang_factor(a), ang_decimals(a))} 0 0"
         m1 = f"MOVE ee_abs {_num(cfg, tgt[0])} {_num(cfg, tgt[1])} {_num(cfg, cur[2])}{r}"
-        m2 = f"MOVE ee_abs {_num(cfg, tgt[0])} {_num(cfg, tgt[1])} {_num(cfg, 0.10)}{r}"
-    return (f"STATE says `tcp x={_num(cfg, cur[0])} y={_num(cfg, cur[1])} z={_num(cfg, cur[2])}` and you "
+        m2 = f"MOVE ee_abs {_num(cfg, tgt[0])} {_num(cfg, tgt[1])} {_num(cfg, cur[2] - 0.05)}{r}"
+    where = (f"STATE says `tcp x={_num(cfg, cur[0])} y={_num(cfg, cur[1])} z={_num(cfg, cur[2])}`"
+             if cfg.observation.state_text else
+             f"the TCP is at about x={_num(cfg, cur[0])} y={_num(cfg, cur[1])} z={_num(cfg, cur[2])}")
+    return (f"{where} and you "
             f"estimate the object's centre at x={_num(cfg, tgt[0])} y={_num(cfg, tgt[1])} {a.pos_unit}. "
             f"First move above it at the same height: `{m1}`. Check the new image; if the fingers are "
             f"centred over the object, descend: `{m2}`.")
 
 
+def _vec(v) -> str:
+    return "(" + ", ".join(f"{float(x):+.2f}" for x in v) + ")"
+
+
+def _tool_doc(cfg: Config, spec: RobotSpec, state0: RobotState | None) -> str:
+    """Where the tool points when its orientation is not commanded (rotation=none).
+    (Directions printed with 2 decimals from the reference state — the loop passes
+    ``Robot.reference_state()`` when the backend has one, so settle jitter cannot
+    change the cached manual between episodes.)
+
+    The model cannot see the orientation in STATE and cannot change it, yet it decides
+    what the gripper body and wrist sweep through and along which line the jaws close.
+    A tilted tool (the Isaac rig: ~35 deg below horizontal) is the difference between a
+    clean grasp and driving the gripper housing into the box wall. Computed from the
+    first observation, so it is exact for every backend."""
+    if state0 is None or cfg.action.mode not in EE_MODES or cfg.action.rotation != "none":
+        return ""
+    from controlr.robot.kinematics import rotvec_to_matrix
+    R = rotvec_to_matrix(np.asarray(state0.tcp_rotvec, float))
+    a, jaw = R[:, 2], R[:, 0]
+    below = math.degrees(math.asin(max(-1.0, min(1.0, -float(a[2])))))
+    off = float(np.linalg.norm(spec.tcp_offset[:3])) if spec.tcp_offset is not None else 0.18
+    horiz = [f"{'+' if a[i] > 0 else '-'}{n}" for i, n in ((0, "x"), (1, "y")) if abs(a[i]) > 0.25]
+    if below > 80:
+        where = "straight down"
+    else:
+        where = f"{below:.0f} deg below horizontal, toward {' and '.join(horiz) or 'the vertical'}"
+    from controlr.robot.safety import finger_drop
+    s = (f"Tool orientation (fixed for the whole episode; you command the TCP position only): the "
+         f"fingers point along base {_vec(a)}, i.e. {where}. The fingertips straddle the TCP along "
+         f"the jaw line; the finger bases, the gripper housing and the wrist lie BEHIND the TCP along "
+         f"{_vec(-a)} (up to {_len(cfg, off)} back to the flange, then the wrist) — that side of the TCP "
+         f"hits walls and objects first. The jaws open and close along {_vec(jaw)}: an object to be "
+         f"grasped must have its thin side along that line.")
+    if spec.finger_pad is not None:
+        lo_open = finger_drop(spec, R, spec.gripper_max_mm * 1e-3)
+        lo_shut = finger_drop(spec, R, 0.0)
+        s += (f" The lowest fingertip is {_len(cfg, lo_open)} below the TCP with the gripper fully open "
+              f"({_len(cfg, lo_shut)} closed).")
+    return s
+
+
 def _values(cfg: Config, spec: RobotSpec, task_text: str,
-            cameras: dict[str, CameraInfo] | None) -> dict[str, str]:
+            cameras: dict[str, CameraInfo] | None, state0: RobotState | None = None) -> dict[str, str]:
     a, s, e = cfg.action, cfg.safety, cfg.episode
     lo, hi = spec.workspace_lo, spec.workspace_hi
     goal_line = {
@@ -384,12 +511,37 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
     done_rule = ("DONE ends the episode immediately, so be sure." if e.trust_done else
                  "The harness checks the task after DONE; if the check fails you will be told "
                  "and must continue.")
+    stop_rule = ("- STOP means the arm stopped early (e.g. it pushed against something too hard) and now "
+                 "holds still. Look at the image, back off, and try a different way. "
+                 + ("The first STOP ends the episode." if e.max_stops <= 1 else
+                    f"The episode ends after {e.max_stops} STOPs."))
     step_limits = f"at most {_len(cfg, s.max_step_m)} of TCP travel per MOVE line"
     if a.mode in JOINT_MODES or a.rotation != "none":
         step_limits += f" and at most {_angle(cfg, s.max_step_rad)} of rotation / joint change per line"
     extra = "\n".join(f"- {r}" for r in cfg.prompt.extra_rules) if cfg.prompt.extra_rules else "(none)"
-    st = _example_state(cfg, spec)
     appendix = _conventions_appendix(cfg, spec) + "\n\n" + _example_exchange(cfg, spec)
+    # z lower bound actually enforced for the TCP (the table clearance applies to the lowest
+    # fingertip, which depends on the tool orientation and the opening)
+    z_lo, z_note = lo[2], ""
+    if spec.table_z is not None:
+        from controlr.robot.kinematics import rotvec_to_matrix
+        from controlr.robot.safety import finger_drop
+        floor = spec.table_z + s.table_clearance_m
+        if state0 is not None and a.rotation == "none" and spec.finger_pad is not None:
+            R0 = rotvec_to_matrix(np.asarray(state0.tcp_rotvec, float))
+            z_lo = max(lo[2], floor + finger_drop(spec, R0, spec.gripper_max_mm * 1e-3))
+            z_note = (f" (TCP z lower bound with the gripper fully open; closed it is "
+                      f"{_num(cfg, max(lo[2], floor + finger_drop(spec, R0, 0.0)))})")
+        else:
+            z_lo = max(lo[2], floor)
+            if spec.finger_pad is not None:
+                z_note = " (higher when the fingertips reach below the TCP; see section 8)"
+    clearance_point = "the lowest fingertip" if spec.finger_pad is not None else "the TCP"
+    path_rule = ("Each MOVE runs along a straight line. If the far end of the line is out of reach (or "
+                 "would need a large joint swing), the move stops at the reachable part and a CLAMP "
+                 "line says how far it got." if a.mode in EE_MODES else
+                 "Joint moves are checked along the whole joint path; a move that would leave the "
+                 "envelope on the way is shortened and a CLAMP line says so.")
     return {
         "robot_name": spec.name,
         "n_joints": str(len(spec.joints)),
@@ -397,19 +549,24 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
         "joint_table": _joint_table(cfg, spec),
         "base_frame_doc": spec.base_frame_doc.strip(),
         "tcp_doc": spec.tcp_doc.strip(),
+        "tool_doc": _tool_doc(cfg, spec, state0),
         "gripper_doc": _gripper_doc(cfg, spec),
         "ws_x": f"{_num(cfg, lo[0])}..{_num(cfg, hi[0])}",
         "ws_y": f"{_num(cfg, lo[1])}..{_num(cfg, hi[1])}",
-        "ws_z": f"{_num(cfg, lo[2])}..{_num(cfg, hi[2])}",
+        "ws_z": f"{_num(cfg, z_lo)}..{_num(cfg, hi[2])}",
+        "ws_z_note": z_note,
+        "clearance_point": clearance_point,
+        "path_rule": path_rule,
         "pos_unit": a.pos_unit,
         "ang_unit": a.ang_unit,
         "camera_axes": _camera_axes(cfg, spec, cameras),
         "worked_example": _worked_example(cfg, spec),
         "observation_doc": _observation_doc(cfg, spec),
-        "state_example": format_state(st, cfg),
+        **_state_values(cfg, spec),
         "grammar": grammar_spec(a, spec),
         "goal_line": goal_line,
         "done_rule": done_rule,
+        "stop_rule": stop_rule,
         "table_clearance": _len(cfg, s.table_clearance_m),
         "step_limits": step_limits,
         "clamp_mode": "clamped to the nearest allowed value" if s.clamp else "rejected (not executed)",
@@ -418,6 +575,7 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
         "extra_rules": extra,
         "task": task_text.strip() or "(given in the first user turn)",
         "appendix": appendix,
+        "fewshot": _load_fewshot(cfg),
     }
 
 
@@ -426,51 +584,28 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
 # ---------------------------------------------------------------------------
 
 def build_system_prompt(cfg: Config, spec: RobotSpec, task_text: str = "",
-                        cameras: dict[str, CameraInfo] | None = None) -> str:
+                        cameras: dict[str, CameraInfo] | None = None,
+                        state0: RobotState | None = None) -> str:
     """The operating manual for one episode.
 
     ``task_text`` empty (the loop's default) -> the task is given in the first
     user turn and the manual is identical across tasks, which lets the provider
     cache it across episodes too. ``cameras`` (optional): calibrated cameras of
     the first observation; when given, the manual states how the base axes
-    appear in each image."""
-    text = fill(load_template(cfg.prompt.system), _values(cfg, spec, task_text, cameras))
+    appear in each image. ``state0`` (optional): the reset state; with rotation=none
+    the manual then states the fixed tool orientation."""
+    text = fill(load_template(cfg.prompt.system), _values(cfg, spec, task_text, cameras, state0))
     return re.sub(r"\n{3,}", "\n\n", text).strip() + "\n"
 
 
 def build_planner_prompt(cfg: Config, spec: RobotSpec, task_text: str = "",
-                         cameras: dict[str, CameraInfo] | None = None, max_words: int = 250) -> str:
+                         cameras: dict[str, CameraInfo] | None = None, max_words: int = 250,
+                         state0: RobotState | None = None) -> str:
     """System text for the one-off planning call: the same manual the controller
     gets (same frame, units and limits, so the plan's numbers transfer) followed
     by the planning instructions. The TASK and the first observation go in the
-    user message (see ``build_planner_messages``)."""
-    manual = build_system_prompt(cfg, spec, task_text, cameras)
+    user message (``controlr.loop.run_planner``)."""
+    manual = build_system_prompt(cfg, spec, task_text, cameras, state0)
     planner = fill(load_template(cfg.planner.prompt),
                    {"pos_unit": cfg.action.pos_unit, "max_words": str(max_words)})
     return manual + "\n---\n\n" + planner.strip() + "\n"
-
-
-def _image_url(img: Any) -> str:
-    if isinstance(img, str):
-        return img
-    url = getattr(img, "data_url", None)
-    if isinstance(url, str):
-        return url
-    return "data:image/jpeg;base64," + base64.b64encode(img.jpeg).decode("ascii")
-
-
-def build_planner_messages(cfg: Config, spec: RobotSpec, task_text: str, images: list,
-                           obs_text: str = "", cameras: dict[str, CameraInfo] | None = None,
-                           max_words: int = 250) -> list[dict]:
-    """OpenAI-format messages for the planning call (for callers that do not go
-    through a Transcript). ``images``: ImageParts (``.data_url`` or ``.jpeg``)
-    or data-URL strings; ``obs_text``: STATE / IMAGES text of the first turn."""
-    system = build_planner_prompt(cfg, spec, cameras=cameras, max_words=max_words)
-    content: list[dict] = [{"type": "text", "text": f"TASK: {task_text.strip()}"}]
-    content += [{"type": "image_url", "image_url": {"url": _image_url(im)}} for im in images]
-    if obs_text.strip():
-        content.append({"type": "text", "text": obs_text.strip()})
-    return [
-        {"role": "system", "content": [{"type": "text", "text": system}]},
-        {"role": "user", "content": content},
-    ]

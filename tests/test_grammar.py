@@ -88,7 +88,8 @@ def test_rotation_layouts():
     d = parse_reply("MOVE ee_delta 0 0 0 30\nSTATUS OK", acfg(rotation="yaw"), SPEC)
     assert d.actions[0].values == pytest.approx((0, 0, 0, 0, 0, math.radians(30)))
     a = parse_reply("MOVE ee_abs 300 0 100 -45\nSTATUS OK", acfg(mode="ee_abs", rotation="yaw"), SPEC)
-    assert a.actions[0].values == pytest.approx((0.3, 0, 0.1, math.pi, 0, math.radians(-45)))
+    # ee_abs + yaw: 4 values, absolute heading; the envelope keeps the reference tilt
+    assert a.actions[0].values == pytest.approx((0.3, 0, 0.1, math.radians(-45)))
     f = parse_reply("MOVE ee_abs 300 0 100 3.1416 0 0.5\nSTATUS OK",
                     acfg(mode="ee_abs", rotation="full", ang_unit="rad"), SPEC)
     assert f.actions[0].values == pytest.approx((0.3, 0, 0.1, 3.1416, 0, 0.5))
@@ -140,7 +141,7 @@ def test_parse_never_raises_on_garbage():
 @pytest.mark.parametrize("text,done", [
     ("STATUS O", False), ("STATUS DON", False), ("STATUS", False), ("MOVE ee_delta 1 2 3\n", False),
     ("STATUS OK", True), ("STATUS OK\n", True), ("MOVE ee_delta 1 0 0\nSTATUS DONE all set", True),
-    ("status done", True), ("**STATUS:** OK", True), ("- STATUS LIMIT\n", True),
+    ("status done", False), ("Status: ok so far. Next I'll descend.", False), ("**STATUS:** OK", True), ("- STATUS LIMIT\n", True),
     ("the STATUS OK is next", False), ("STATUS OKAY", False), ("STATUS STUCK.", True),
 ])
 def test_is_complete(text, done):
@@ -149,7 +150,7 @@ def test_is_complete(text, done):
 
 def _example_replies(spec_text: str) -> list[str]:
     """Indented example blocks after 'Examples:' in the grammar spec."""
-    body = spec_text.split("Examples:", 1)[1]
+    body = spec_text.split("Examples", 1)[1].split("\n", 1)[1]
     blocks = [b for b in re.split(r"\n\s*\n", body) if b.strip()]
     return ["\n".join(ln.strip() for ln in b.splitlines()) for b in blocks]
 
@@ -181,3 +182,55 @@ def test_spec_mentions_configuration():
     rem = grammar_reminder(acfg(), SPEC)
     assert "\n" not in rem and "MOVE ee_delta dx dy dz" in rem
     assert "<one value per joint>" in grammar_reminder(acfg(mode="joint_abs"), None)
+
+
+# ---------------------------------------------------------------------------
+# review fixes: prose vs commands, unit tokens, partial notes, examples
+# ---------------------------------------------------------------------------
+
+def test_prose_starting_with_a_keyword_is_not_an_error():
+    """Review contracts #5: Haiku's prose ("Move the gripper ...") produced PARSE ERRORs
+    and "Status: ok so far." closed the stream before the real MOVE."""
+    text = ("Move the gripper left toward the packet.\nHold on, the fingers look close.\n"
+            "Grip looks fine.\nStatus: ok so far. Next I'll descend.\nMOVE ee_delta 0 0 -10\nSTATUS OK")
+    r = parse_reply(text, acfg(), SPEC)
+    assert r.errors == [] and r.status == Status.OK
+    assert len(r.actions) == 1 and r.actions[0].values == pytest.approx((0, 0, -0.01))
+    assert not is_complete("Status: ok so far. Next I'll descend.\n")
+
+
+def test_mixed_case_commands_still_parse_when_well_formed():
+    r = parse_reply("Move ee_delta 10 0 0\nstatus ok", acfg(), SPEC)
+    assert r.errors == [] and r.status == Status.OK and len(r.actions) == 1
+
+
+def test_uppercase_malformed_command_is_still_reported():
+    r = parse_reply("MOVE the gripper left\nSTATUS OK", acfg(), SPEC)
+    assert r.actions == [] and r.errors and "not available" in r.errors[0]
+
+
+def test_trailing_unit_word_and_unicode_minus():
+    r = parse_reply("MOVE ee_delta 0 0 \u221210 mm\nSTATUS OK", acfg(), SPEC)
+    assert r.errors == [] and r.actions[0].values == pytest.approx((0, 0, -0.01))
+
+
+def test_strip_partial_note_is_deterministic():
+    from controlr.protocol.grammar import strip_partial_note
+    assert strip_partial_note("MOVE ee_delta 1 0 0\nSTATUS OK moving above est") == "MOVE ee_delta 1 0 0\nSTATUS OK"
+    assert strip_partial_note("MOVE ee_delta 1 0 0\nSTATUS OK moving above\nmore") == \
+        "MOVE ee_delta 1 0 0\nSTATUS OK moving above"
+    assert strip_partial_note("no status") == "no status"
+
+
+@pytest.mark.parametrize("mode", ["ee_abs", "ee_delta"])
+def test_example_positions_lie_in_the_real_workspace(mode):
+    """Review contracts #2: ee_abs examples used x=+300 mm; the rig works at negative x."""
+    from controlr.robot.spec import ur3_cb3_spec
+    spec = ur3_cb3_spec()
+    cfg = acfg(mode=mode)
+    for ex in _example_replies(grammar_spec(cfg, spec)):
+        for a in parse_reply(ex, cfg, spec).actions:
+            if mode == "ee_abs" and a.values is not None:
+                assert all(lo <= v <= hi for v, lo, hi in zip(a.values[:3], spec.workspace_lo, spec.workspace_hi)), ex
+    text = grammar_spec(cfg, spec)
+    assert "cube" not in text and "STATUS DONE" in text

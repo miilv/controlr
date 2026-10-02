@@ -176,10 +176,12 @@ def evaluate_waffle(snap: dict, episode: dict) -> dict:
 
 REACH_DEFAULTS = {
     **WAFFLE_DEFAULTS,
-    # marker centre box in the base frame (over the mat, inside the start-
-    # orientation reachable set); height measured from the table top
+    # marker centre box in the base frame (over the mat); height measured from the
+    # table top. Every sample is also checked for feasibility (reach_feasibility).
     "marker_x": (-0.50, -0.26), "marker_y": (-0.33, -0.12), "marker_height": (0.05, 0.16),
     "min_object_clearance_m": 0.08, "tolerance_m": 0.015,
+    # the gripper housing / wrist must stay this far from the blue box at the marker
+    "body_clearance_m": 0.045,
     # D435 pixel box hidden behind the gripper at START_Q (u0, v0, u1, v1):
     # markers projecting into it are re-drawn so the model can see them
     "occluded_px": (285, 225, 525, 455),
@@ -202,6 +204,60 @@ def _occluded(scene: dict, p, box) -> bool:
     return uv is not None and box[0] <= uv[0] <= box[2] and box[1] <= uv[1] <= box[3]
 
 
+def _bin_solid(scene: dict, margin: float) -> tuple[np.ndarray, np.ndarray, np.ndarray, float] | None:
+    """Outer box of the bin (walls included) in the bin frame, inflated by ``margin``:
+    (lower, upper, centre, yaw), or None without bin geometry."""
+    b = scene.get("bin")
+    if not b:
+        return None
+    wall = float(b.get("wall", 0.02))
+    lo = np.asarray(b["lower"], float).copy()
+    hi = np.asarray(b["upper"], float).copy()
+    lo[:2] -= wall + margin
+    hi[:2] += wall + margin
+    lo[2] = float(b["center"][2]) - margin
+    hi[2] += margin
+    return lo, hi, np.asarray(b["center"], float), float(b["yaw"])
+
+
+def reach_feasibility(marker, scene: dict, start_q, *, body_clearance: float = 0.045,
+                      table_clearance: float = 0.005, open_width: float = 0.091) -> str:
+    """Why a reach target cannot be touched with the START orientation ("" if it can).
+
+    With action.rotation=none the tool keeps its start orientation, so (a) IK must
+    reach the marker with that orientation inside the soft joint limits, (b) the
+    open fingertips must stay above the table at the marker, and (c) the tool body
+    (TCP -> flange -> wrist, inflated by ``body_clearance``) must not pass through
+    the blue box: at seed 0 the old sampler put the housing inside the box's near
+    wall, so no controller could succeed (review control-safety #1)."""
+    from controlr.robot.kinematics import UR3Kinematics, matrix_to_rotvec   # numpy only
+    from controlr.robot.safety import finger_drop
+    from controlr.robot.spec import ur3_cb3_spec
+
+    spec = ur3_cb3_spec()
+    kin = UR3Kinematics()
+    q0 = np.asarray(start_q, float)
+    R0 = kin.fk_matrix(q0)[:3, :3]
+    margin = 0.0873
+    lim = np.array([[j.lower + margin, j.upper - margin] for j in spec.joints])
+    m = np.asarray(marker, float)
+    q = kin.ik(m, matrix_to_rotvec(R0), q0, lim)
+    if q is None:
+        return "not reachable with the start orientation"
+    if m[2] - finger_drop(spec, R0, open_width) < float(scene["table_top_z"]) + table_clearance:
+        return "open fingertips would be below the table"
+    solid = _bin_solid(scene, body_clearance)
+    if solid is not None:
+        lo, hi, c, yaw = solid
+        F = kin.frames(q)
+        chain = [F[7][:3, 3], F[6][:3, 3], F[5][:3, 3], F[4][:3, 3]]     # TCP, flange, wrist 3, wrist 2
+        pts = np.concatenate([np.linspace(a, b, 12) for a, b in zip(chain, chain[1:])])
+        local = to_bin_frame(pts, c, yaw)
+        if np.any(np.all((local >= lo) & (local <= hi), axis=1)):
+            return "the gripper body would be inside the blue box"
+    return ""
+
+
 def sample_reach(rng, params, scene):
     d = REACH_DEFAULTS
     out = {**_sample_object(rng, params, scene, d), **_start(params, d), "zone": None}
@@ -209,17 +265,28 @@ def sample_reach(rng, params, scene):
     lo_y, hi_y = _param(params, d, "marker_y")
     lo_h, hi_h = _param(params, d, "marker_height")
     clear = float(_param(params, d, "min_object_clearance_m"))
+    body = float(_param(params, d, "body_clearance_m"))
     box = _param(params, d, "occluded_px")
     top = float(scene["table_top_z"])
+    if "marker" in params:                       # explicit marker: still refuse an impossible one
+        m = np.asarray(params["marker"], float)
+        why = reach_feasibility(m, scene, out["start_q"], body_clearance=body)
+        if why:
+            raise ValueError(f"reach marker {m.tolist()} is infeasible: {why}")
+        out["marker"] = m
+        return out
     for _ in range(500):
         m = np.array([rng.uniform(lo_x, hi_x), rng.uniform(lo_y, hi_y), top + rng.uniform(lo_h, hi_h)])
         if np.linalg.norm(m[:2] - out["object_pos"][:2]) < clear:
             continue
         if _occluded(scene, m, box) or _occluded(scene, (m[0], m[1], top), box):
             continue
-        break
-    out["marker"] = m
-    return out
+        if reach_feasibility(m, scene, out["start_q"], body_clearance=body):
+            continue
+        out["marker"] = m
+        return out
+    raise RuntimeError("sample_reach: no visible, reachable, collision-free marker in 500 draws; "
+                       "check marker_x/marker_y/marker_height and start_q")
 
 
 def evaluate_reach(snap: dict, episode: dict) -> dict:
@@ -255,12 +322,18 @@ def sample_push(rng, params, scene):
 
 
 def evaluate_push(snap: dict, episode: dict) -> dict:
+    """Pushed, not carried: besides the state at the check instant, the server's running
+    record of the episode (``episode["max_lift_m"]``, ``episode["ever_held"]``) must show
+    that the packet was never lifted > 20 mm or gripped (picking it up, carrying it and
+    releasing it on the square used to count as a push)."""
     p = {**PUSH_DEFAULTS, **episode.get("params", {})}
     target = np.asarray(episode["zone"], float)[:2]
     d = float(np.linalg.norm(np.asarray(snap["object_pos"], float)[:2] - target))
     d0 = float(np.linalg.norm(np.asarray(episode["object_pos"], float)[:2] - target)) or 1.0
-    held = bool(np.all(np.asarray(snap["pad_object_force_n"], float) > p["contact_force_n"]))
-    lifted = float(snap["object_pos"][2] - np.asarray(episode["object_pos"], float)[2]) > 0.02
+    held = bool(np.all(np.asarray(snap["pad_object_force_n"], float) > p["contact_force_n"])
+                or episode.get("ever_held", False))
+    lift_now = float(snap["object_pos"][2] - np.asarray(episode["object_pos"], float)[2])
+    lifted = max(lift_now, float(episode.get("max_lift_m", 0.0))) > 0.02
     success = bool(d <= float(p["tolerance_m"]) and not held and not lifted)
     return {"success": success, "progress": float(np.clip(1.0 - d / d0, 0.0, 1.0)),
             "message": ("goal reached: the packet is on the green square" if success

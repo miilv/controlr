@@ -264,9 +264,51 @@ def test_early_stop_with_usage_grace_keeps_frozen_text_but_gets_usage():
 
     with make_client(h, usage_grace_s=5.0) as c:
         r = c.complete("m", [], max_tokens=50, stop_when=lambda s: "STATUS" in s)
-    assert r.stopped_early and r.text == "STATUS OK"
+    # the STATUS line's note is completed during the grace period (stream ended -> complete)
+    assert r.stopped_early and r.text == "STATUS OK trailing" and not r.truncated
     assert r.usage is not None and r.usage.prompt_tokens == 5000
     assert r.finish_reason == "stop"
+    assert r.request_bytes > 0 and r.timings.t_headers is not None
+
+
+def test_grace_cuts_the_note_at_the_end_of_the_status_line():
+    """Review caching #9 / contracts #19: the stored note must not depend on chunking."""
+    for split in ([chunk("STATUS OK mov"), chunk("ing above\nprose"), chunk(usage=USAGE)],
+                  [chunk("STATUS OK moving above\npr"), chunk("ose"), chunk(usage=USAGE)],
+                  [chunk("STATUS OK moving a"), chunk("bove"), chunk("\nprose", finish="stop"), chunk(usage=USAGE)]):
+        stream = CountingStream(_events(split))
+
+        def h(req, stream=stream):
+            return httpx.Response(200, stream=stream, headers={"content-type": "text/event-stream"})
+
+        with make_client(h, usage_grace_s=5.0) as c:
+            r = c.complete("m", [], max_tokens=50, stop_when=lambda s: "STATUS OK" in s)
+        assert r.text == "STATUS OK moving above" and not r.truncated, split
+
+
+def test_no_grace_marks_a_cut_note_as_truncated():
+    stream = CountingStream(_events([chunk("STATUS OK mov"), chunk("ing\n"), chunk(usage=USAGE)]))
+
+    def h(req):
+        return httpx.Response(200, stream=stream, headers={"content-type": "text/event-stream"})
+
+    with make_client(h, usage_grace_s=0.0) as c:
+        r = c.complete("m", [], max_tokens=50, stop_when=lambda s: "STATUS OK" in s)
+    assert r.text == "STATUS OK mov" and r.truncated
+
+
+def test_per_call_timeout_and_retries_and_extra_headers():
+    seen = []
+
+    def h(req):
+        seen.append(req)
+        return httpx.Response(503, json={"error": {"message": "busy"}})
+
+    with make_client(h, max_retries=3, headers={"X-Test-Lease": "run-1"}) as c:
+        r = c.complete("m", [], max_tokens=5, timeout_s=600, max_retries=1)
+    assert r.error and r.attempts == 2 and len(seen) == 2
+    assert seen[0].headers["X-Test-Lease"] == "run-1"
+    assert seen[0].extensions["timeout"]["read"] == 600
 
 
 def test_stop_when_only_checked_on_content():

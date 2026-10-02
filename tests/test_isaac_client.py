@@ -69,12 +69,15 @@ class FakeRig:
             return self._state()
         if op == "execute":
             q, g = np.asarray(args["q"]), np.asarray(args["gripper"])
-            n = 1 if self.stop else len(q)
-            self.q = q[n - 1].copy()
-            if np.isfinite(g[n - 1]):
-                self.grip = float(g[n - 1])
+            grp = np.asarray(args.get("group", np.arange(len(q))))
+            last_rows = [int(np.flatnonzero(grp == gid)[-1]) for gid in dict.fromkeys(grp.tolist())]
+            done = 0 if self.stop else len(last_rows)        # a stop inside the first group
+            r = last_rows[0] if self.stop else last_rows[-1]
+            self.q = q[r].copy()
+            if not self.stop and np.isfinite(g[r]):
+                self.grip = float(g[r])
             return {"state": self._state(), "stopped": self.stop, "stop_reason": "contact force 99 N > 80 N",
-                    "segments_done": n, "sim_s": float(np.sum(args["durations"])) + 0.1, "settle_s": 0.1,
+                    "segments_done": done, "sim_s": float(np.sum(args["durations"])) + 0.1, "settle_s": 0.1,
                     "settled": True, "tcp_err_m": 0.0, "contacts_peak_n": self.next_contacts,
                     "gripper_mechanics_ok": True}
         if op == "check_goal":
@@ -134,11 +137,17 @@ def test_unfiltered_ee_delta_resolved_and_timed(fake):
     p0 = robot.state().tcp_pos
     rep = robot.execute([Action(ActionMode.EE_DELTA, (0.03, 0.0, -0.04), gripper=0.0)])
     op, args = rig.calls[-1]
-    assert op == "execute" and args["q"].shape == (1, 6)
-    np.testing.assert_allclose(KIN.fk(args["q"][0])[0], p0 + [0.03, 0, -0.04], atol=1e-3)
-    # 50 mm at the default 0.15 m/s
-    assert args["durations"][0] >= 0.05 / 0.15 - 1e-9
-    assert args["gripper"][0] == 0.0 and args["force_stop_n"] == 80.0
+    # one group: waypoints along the straight line every <= 5 mm, then the target
+    assert op == "execute" and args["q"].shape[0] >= 10 and set(args["group"].tolist()) == {0}
+    np.testing.assert_allclose(KIN.fk(args["q"][-1])[0], p0 + [0.03, 0, -0.04], atol=1e-3)
+    for qk in args["q"]:
+        d = KIN.fk(qk)[0] - p0
+        line = np.array([0.03, 0, -0.04])
+        assert np.linalg.norm(d - line * (d @ line) / (line @ line)) < 1.5e-3
+    # 50 mm at the default 0.15 m/s PEAK speed: min-jerk peaks at 15/8 of the average
+    assert args["durations"].sum() >= 15 / 8 * 0.05 / 0.15 - 1e-9
+    assert np.all(np.isnan(args["gripper"][:-1])) and args["gripper"][-1] == 0.0
+    assert args["force_stop_n"] == 80.0 and args["object_force_stop_n"] == 40.0
     np.testing.assert_allclose(rep.state_after.tcp_pos - rep.state_before.tcp_pos, [0.03, 0, -0.04], atol=1e-3)
     assert rep.executed[0].q_target is not None and not rep.stopped
 
@@ -160,6 +169,7 @@ def test_filtered_q_target_used_verbatim_and_events(fake):
     assert not any("table" in e.message for e in rep.events)          # below the report threshold
     rig.stop = True
     rep = robot.execute(acts)
+    # stopped inside action 0: action 0 was (partly) executed and is reported
     assert rep.stopped and rep.events[0].level is EventLevel.STOP and len(rep.executed) == 1
 
 
@@ -170,3 +180,50 @@ def test_goal_and_hold(fake):
     assert g.success and g.progress == 1.0 and g.metrics == {"x": 1}
     rep = robot.execute([])
     assert rep.executed == [] and rep.duration_s == 0.0
+
+
+def test_reset_sets_home_and_reference_state(fake):
+    """Review contracts #15 / caching #13: home_q = the pose the episode starts from, and
+    the reference state is FK of the commanded start joints."""
+    robot, rig = fake
+    q0 = np.asarray(tasks.START_Q) + 0.01
+    rig.handle_orig = rig.handle
+
+    def handle(op, args):
+        out = rig.handle_orig(op, args)
+        if op == "reset":
+            out["episode"]["start_q"] = q0
+        return out
+    rig.handle = handle
+    robot.reset({"name": "reach"}, seed=0)
+    np.testing.assert_allclose(robot.spec.home_q, q0)
+    ref = robot.reference_state()
+    np.testing.assert_allclose(ref.tcp_pos, KIN.fk(q0)[0])
+
+
+def test_peak_speeds_of_the_generated_trajectory_stay_within_limits():
+    """Review control-safety #7: durations were average-speed based; min-jerk peaks 1.875x."""
+    from controlr.robot.isaac import motion
+    from controlr.robot.safety import SafetyEnvelope
+    from controlr.robot.spec import ur3_cb3_spec
+    from controlr.types import RobotState
+
+    q0 = np.asarray(tasks.START_Q)
+    pos, rv = KIN.fk(q0)
+    st = RobotState(t=0.0, q=q0, tcp_pos=pos, tcp_rotvec=rv, gripper_mm=85.0, gripper_closed=False)
+    env = SafetyEnvelope(ur3_cb3_spec(), SafetyConfig())
+    for d in ((0.1, 0.0, 0.0), (0.0, -0.08, 0.05), (-0.05, 0.05, -0.05)):
+        out, _ = env.filter([Action(ActionMode.EE_DELTA, d)], st)
+        rows = np.array([*out[0].q_path, out[0].q_target])
+        Ts = [KIN.fk_matrix(q) for q in [q0, *rows]]
+        L = sum(np.linalg.norm(b[:3, 3] - a[:3, 3]) for a, b in zip(Ts, Ts[1:]))
+        T = motion.group_duration(q0, rows, L, 0.0, tcp_speed=0.15, joint_speed=1.0, rot_speed=1.0, min_s=0.1)
+        dt = 0.001
+        qs = motion.interpolate_group(q0, rows, int(round(T / dt)))
+        qs = np.vstack([q0[None], qs])
+        v_joint = np.abs(np.diff(qs, axis=0)).max() / dt
+        p = np.array([KIN.fk(q)[0] for q in qs[::5]])
+        v_tcp = np.linalg.norm(np.diff(p, axis=0), axis=1).max() / (5 * dt)
+        assert v_joint <= 1.0 * 1.02, v_joint
+        assert v_tcp <= 0.15 * 1.10, v_tcp           # TCP: waypoints ~uniform along the line
+        np.testing.assert_allclose(qs[-1], rows[-1])

@@ -28,6 +28,7 @@ renderers and the prompt builder reuse it rather than formatting state twice.
 from __future__ import annotations
 
 import math
+import re
 
 import numpy as np
 
@@ -57,41 +58,24 @@ from controlr.types import (
 
 
 # ---------------------------------------------------------------------------
-# rotation helpers (numpy only; shared with renderers / builder)
+# rotation helpers: ONE implementation (controlr.robot.kinematics, numpy only);
+# thin wrappers keep this module's (roll, pitch, yaw) call style for callers.
 # ---------------------------------------------------------------------------
 
-def rotvec_to_matrix(rv: np.ndarray) -> np.ndarray:
-    """Rodrigues: rotation vector (axis*angle, rad) -> 3x3 matrix."""
-    rv = np.asarray(rv, dtype=float).reshape(3)
-    th = float(np.linalg.norm(rv))
-    if th < 1e-12:
-        return np.eye(3)
-    k = rv / th
-    K = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
-    return np.eye(3) + math.sin(th) * K + (1 - math.cos(th)) * (K @ K)
+from controlr.robot.kinematics import matrix_to_rpy as _matrix_to_rpy  # noqa: E402
+from controlr.robot.kinematics import rotvec_to_matrix  # noqa: E402,F401  (re-exported for renderers)
+from controlr.robot.kinematics import rpy_to_matrix as _rpy_to_matrix  # noqa: E402
 
 
 def rpy_to_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
     """Extrinsic x-y-z (= Rz(yaw) @ Ry(pitch) @ Rx(roll)), the grammar convention."""
-    cr, sr, cp, sp, cy, sy = (math.cos(roll), math.sin(roll), math.cos(pitch),
-                              math.sin(pitch), math.cos(yaw), math.sin(yaw))
-    Rx = np.array([[1, 0, 0], [0, cr, -sr], [0, sr, cr]])
-    Ry = np.array([[cp, 0, sp], [0, 1, 0], [-sp, 0, cp]])
-    Rz = np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1]])
-    return Rz @ Ry @ Rx
+    return _rpy_to_matrix((roll, pitch, yaw))
 
 
 def matrix_to_rpy(R: np.ndarray) -> tuple[float, float, float]:
     """Inverse of ``rpy_to_matrix`` (rad). At pitch = ±90 deg roll is set to 0."""
-    R = np.asarray(R, dtype=float)
-    sp = -float(R[2, 0])
-    sp = max(-1.0, min(1.0, sp))
-    pitch = math.asin(sp)
-    if abs(sp) > 1 - 1e-9:
-        return 0.0, pitch, math.atan2(-float(R[0, 1]), float(R[1, 1]))
-    roll = math.atan2(float(R[2, 1]), float(R[2, 2]))
-    yaw = math.atan2(float(R[1, 0]), float(R[0, 0]))
-    return roll, pitch, yaw
+    r, p, y = _matrix_to_rpy(R)
+    return float(r), float(p), float(y)
 
 
 def _wrap_pi(a: float) -> float:
@@ -136,7 +120,9 @@ def format_action(action: Action, a: ActionConfig) -> str:
             nums = [_ang(x, a, fine=True) for x in v]
         else:
             nums = [_p(x, a) for x in v[:3]]
-            if len(v) >= 6:
+            if len(v) == 4:                         # ee_abs + yaw: absolute heading
+                nums.append(_ang(v[3], a))
+            elif len(v) >= 6:
                 if a.rotation == "yaw":
                     nums.append(_ang(v[5], a))
                 elif a.rotation == "full":
@@ -208,7 +194,26 @@ def _achieved(report: ExecReport, a: ActionConfig) -> str:
     return txt
 
 
-_CLAMP_KINDS = {"clamp", "step_limit", "workspace", "table_clearance", "table", "reject", "rejected"}
+_CLAMP_KINDS = {"clamp", "step_limit", "workspace", "table_clearance", "table", "reject", "rejected", "reach"}
+
+_LEN_RE = re.compile(r"(?<![\w.])(-?\d+(?:\.\d+)?)(\s*)mm\b")
+_ANG_RE = re.compile(r"(?<![\w.])(-?\d+(?:\.\d+)?)(\s*)deg\b")
+
+
+def to_llm_units(text: str, a: ActionConfig) -> str:
+    """Rewrite ``<n> mm`` / ``<n> deg`` in backend and safety messages into the configured
+    LLM units. The envelope and the backends write canonical mm/deg (they need not know
+    the experiment's units); this is the single place that converts, so ``pos_unit=cm``
+    never yields mixed-unit feedback ("Never mix in other units", says the manual)."""
+    if a.pos_unit != "mm":
+        f = 1e-3 / pos_factor(a)
+        text = _LEN_RE.sub(lambda m: f"{fmt_num(float(m.group(1)) * f, pos_decimals(a))}{m.group(2)}{a.pos_unit}",
+                           text)
+    if a.ang_unit != "deg":
+        f = math.pi / 180.0 / ang_factor(a)
+        text = _ANG_RE.sub(lambda m: f"{fmt_num(float(m.group(1)) * f, ang_decimals(a, True))}{m.group(2)}"
+                                     f"{a.ang_unit}", text)
+    return text
 
 
 def _event_tag(ev: SafetyEvent) -> str:
@@ -222,20 +227,22 @@ def _event_tag(ev: SafetyEvent) -> str:
     return "EVENT"
 
 
-def format_events(events: list[SafetyEvent]) -> list[str]:
+def format_events(events: list[SafetyEvent], a: ActionConfig | None = None) -> list[str]:
     """Group events as CLAMP, WARN, EVENT, STOP (that order; original order
-    within a group; exact duplicates collapsed with a count)."""
+    within a group; exact duplicates collapsed with a count). With ``a`` the
+    messages are converted to the LLM units (``to_llm_units``)."""
     order = ["CLAMP", "WARN", "EVENT", "STOP"]
     groups: dict[str, list[str]] = {t: [] for t in order}
     counts: dict[tuple[str, str], int] = {}
     for ev in events:
         tag = _event_tag(ev)
-        key = (tag, ev.message)
+        msg = to_llm_units(ev.message, a) if a is not None else ev.message
+        key = (tag, msg)
         if key in counts:
             counts[key] += 1
             continue
         counts[key] = 1
-        groups[tag].append(ev.message)
+        groups[tag].append(msg)
     out = []
     for t in order:
         for msg in groups[t]:
@@ -244,12 +251,12 @@ def format_events(events: list[SafetyEvent]) -> list[str]:
     return out
 
 
-def format_goal(goal: GoalReport) -> str:
+def format_goal(goal: GoalReport, a: ActionConfig | None = None) -> str:
     s = "GOAL: " + ("reached" if goal.success else "not reached")
     if goal.progress is not None and not goal.success:
         s += f" (progress {int(round(100 * goal.progress))}%)"
     if goal.message:
-        s += f" - {goal.message}"
+        s += f" - {to_llm_units(goal.message, a) if a is not None else goal.message}"
     return s
 
 
@@ -285,7 +292,7 @@ def format_feedback(turn: int, parsed: ParsedReply | None, report: ExecReport | 
             lines.append(f"EXEC: {what} -> nothing executed ({report.duration_s:.2f} s)")
         else:
             lines.append(f"EXEC: {what} -> achieved {_achieved(report, a)} ({report.duration_s:.2f} s)")
-        lines += format_events(report.events)
+        lines += format_events(report.events, a)
         if report.stopped and not any(e.level == EventLevel.STOP for e in report.events):
             lines.append("STOP: execution stopped early")
     elif parsed is not None:
@@ -298,7 +305,7 @@ def format_feedback(turn: int, parsed: ParsedReply | None, report: ExecReport | 
             lines.append(f"PARSE ERROR: {err}")
         lines.append(grammar_reminder(a, spec))
     if _show_goal(parsed, goal, cfg):
-        lines.append(format_goal(goal))
+        lines.append(format_goal(goal, a))
     if cfg.observation.state_text:
         lines.append(format_state(obs.state, cfg))
     return "\n".join(lines)

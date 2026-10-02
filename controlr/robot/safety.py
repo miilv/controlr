@@ -11,24 +11,38 @@ the previous action's resolved target, not from the measured state):
 1. gripper width clamped to [0, gripper_max];
 2. ee modes: resolve the absolute TCP target, limit the per-line translation
    / rotation (``max_step_m`` / ``max_step_rad``), clamp to the workspace box
-   (shrunk by ``workspace_margin_m``) and to the table clearance, then IK
-   within the soft joint limits (hard limits minus ``joint_margin_rad``);
-   no IK solution -> ``ik_fail`` event and the action is dropped;
-3. joint modes: per-line step limit, soft joint limits, then the TCP of the
-   joint target is checked against the workspace/table and the move is
-   shortened (bisection along the joint path) if it would leave them;
-4. near-limit warnings for joints that end within ``near_limit_rad`` of a
-   soft limit (one per joint per filter call, last state wins).
+   (shrunk by ``workspace_margin_m``) and to the table clearance — applied to
+   the LOWEST point of the finger pads (``RobotSpec.finger_pad``), not just the
+   TCP: a tilted, open gripper reaches 15-45 mm below its TCP. Then the TCP is
+   moved along the commanded straight line in steps of ``path_step_m`` with IK
+   per step (soft joint limits, seeded by the previous step, no branch
+   switching): the backend gets the waypoints (``Action.q_path``) so the robot
+   follows the line instead of a joint-space arc. A step that has no IK
+   solution, or needs a joint jump far out of proportion to the TCP step
+   (a wrist singularity), ends the move there: the move is SHORTENED to the
+   feasible fraction (>= 10 %, else skipped as ``ik_fail``) and reported;
+3. rotation=none: the tool orientation target is the reference orientation
+   captured by ``reset(state0)`` (not the measured one), so a tilt caused by a
+   contact is undone by the next move instead of being locked in (WARN when the
+   tool is off by > 3 deg);
+4. joint modes: per-line joint step limit, TCP step limit (``max_step_m``, via
+   FK), soft joint limits, then the TCP / fingertips are checked against the
+   workspace/table at samples ALONG the joint path, and the move is shortened
+   to the largest safe fraction if any sample leaves the envelope;
+5. near-limit warnings for joints that end within ``near_limit_rad`` of a
+   soft limit.
 
 ``cfg.clamp`` False turns every clamp into a rejection (the action is dropped).
 Executed actions keep the requested mode with the clamped values (values are
 untouched when nothing was clamped, so feedback can compare requested vs
-executed exactly) and carry ``q_target`` so backends need not redo IK.
-Messages are written for the model: mm / deg, what was asked, what happens.
+executed exactly) and carry ``q_target`` (+ ``q_path``) so backends need not
+redo IK. Messages are written for the model in canonical mm / deg;
+``controlr.protocol.feedback`` converts them to the configured LLM units.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 
 import numpy as np
@@ -42,6 +56,7 @@ from controlr.types import Action, ActionMode, EventLevel, RobotSpec, RobotState
 
 _EE = (ActionMode.EE_DELTA, ActionMode.EE_ABS)
 _AXES = "xyz"
+_TILT_WARN_RAD = math.radians(3.0)
 
 
 def _mm(v: float) -> str:
@@ -57,11 +72,31 @@ def _rz(a: float) -> np.ndarray:
     return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
 
 
+def finger_drop(spec: RobotSpec, R: np.ndarray, width_m: float) -> float:
+    """How far (m) the lowest finger-pad corner sits below the TCP for tool
+    orientation ``R`` and finger opening ``width_m`` (0 without pad geometry).
+
+    The pads are boxes centred on the TCP: half length ``hl`` along tool z, half
+    width ``hw`` along tool y, and their outer faces at ``width/2 + thickness``
+    along the jaw axis (tool x). The lowest corner is the sum of the absolute
+    vertical components."""
+    if spec.finger_pad is None:
+        return 0.0
+    hl, hw, th = spec.finger_pad
+    R = np.asarray(R, float)
+    return float(abs(R[2, 0]) * (max(width_m, 0.0) / 2 + th) + abs(R[2, 2]) * hl + abs(R[2, 1]) * hw)
+
+
 class SafetyEnvelope:
-    # Largest joint change an ee-mode IK solution may need for one MOVE line.
-    # A bigger jump means IK flipped to another arm branch: the robot would
-    # swing through the workspace to reach a nearby TCP pose — refuse it.
-    BRANCH_GUARD_RAD = np.pi / 2
+    # Branch guard for one interpolation step of an ee move: max |dq| may be at most
+    # DQ_PER_M * (TCP step) + DQ_PER_RAD * (tool rotation step) + DQ_ABS. A bigger jump
+    # means IK swung the wrist through a singularity (seen live: 78 deg of wrist_3 for a
+    # 50 mm move) or flipped branch — the move is shortened before that point.
+    DQ_PER_M = 20.0          # 0.02 rad per mm
+    DQ_PER_RAD = 2.0
+    DQ_ABS = 0.05
+    MIN_FRACTION = 0.10      # shorter remainders are not worth executing: skip + ik_fail
+    JOINT_PATH_SAMPLES = 10
 
     def __init__(self, spec: RobotSpec, cfg: SafetyConfig, kin: UR3Kinematics | None = None) -> None:
         self.spec = spec
@@ -73,22 +108,44 @@ class SafetyEnvelope:
         m = cfg.workspace_margin_m
         self.ws_lo = np.asarray(spec.workspace_lo, float) + m
         self.ws_hi = np.asarray(spec.workspace_hi, float) - m
-        self.z_floor = self.ws_lo[2]
-        if spec.table_z is not None:
-            self.z_floor = max(self.z_floor, spec.table_z + cfg.table_clearance_m)
-        self.ik_options = IKOptions(max_joint_delta=self.BRANCH_GUARD_RAD)
+        # height the lowest finger point (or the TCP, without pad geometry) must keep
+        self.table_floor = (spec.table_z + cfg.table_clearance_m) if spec.table_z is not None else None
+        self.z_floor = self.ws_lo[2] if self.table_floor is None else max(self.ws_lo[2], self.table_floor)
+        self.path_options = IKOptions(restarts=0)
         self.names = [j.name for j in spec.joints]
+        self.R_ref: np.ndarray | None = None
 
     # ------------------------------------------------------------------ api
+    def reset(self, state0: RobotState) -> None:
+        """Capture the reference tool orientation (rotation=none keeps the tool at
+        this orientation for the whole episode). Call after every robot reset with
+        the nominal reset state (``Robot.reference_state()`` or the measured one)."""
+        self.R_ref = self.kin.fk_matrix(np.asarray(state0.q, float))[:3, :3].copy()
+
+    def tcp_floor(self, R: np.ndarray, width_m: float) -> float:
+        """Lowest allowed TCP z for orientation ``R`` and opening ``width_m``."""
+        if self.table_floor is None:
+            return float(self.ws_lo[2])
+        return float(max(self.ws_lo[2], self.table_floor + finger_drop(self.spec, R, width_m)))
+
     def filter(self, actions: list[Action], state: RobotState) -> tuple[list[Action], list[SafetyEvent]]:
         events: list[SafetyEvent] = []
         out: list[Action] = []
         q = np.asarray(state.q, dtype=float).copy()
+        width = float(state.gripper_mm) / 1000.0
+        if self.R_ref is not None and any(a.mode in _EE and a.values is not None and len(a.values) == 3
+                                          for a in actions):
+            tilt = rotation_angle(self.R_ref @ self.kin.fk_matrix(q)[:3, :3].T)
+            if tilt > _TILT_WARN_RAD:
+                self._ev(events, "tilt", f"the tool is tilted {_deg(tilt)} away from its fixed orientation "
+                                         f"(after a contact?); this move turns it back")
         for a in actions:
-            res = self._one(a, q, events)
+            res = self._one(a, q, width, events)
             if res is None:
                 continue
             act, q = res
+            if act.gripper is not None:
+                width = act.gripper
             out.append(act)
         events.extend(self._near_limit_events(q) if out else [])
         return out, events
@@ -115,16 +172,18 @@ class SafetyEnvelope:
             self._ev(events, "clamp", f"gripper width {_mm(a.gripper)} -> {_mm(g)} (range 0..{_mm(gmax)})")
         return g
 
-    def _one(self, a: Action, q: np.ndarray, events) -> tuple[Action, np.ndarray] | None:
+    def _one(self, a: Action, q: np.ndarray, width: float, events) -> tuple[Action, np.ndarray] | None:
         g = self._gripper(a, events)
         if a.mode is None or a.values is None:
-            return replace(a, gripper=g, q_target=tuple(float(v) for v in q)), q
+            return replace(a, gripper=g, q_target=tuple(float(v) for v in q), q_path=None), q
+        # the fingers are as wide as now during the motion, and as commanded after it
+        w_eff = max(width, g) if g is not None else width
         if a.mode in _EE:
-            return self._ee(a, g, q, events)
-        return self._joint(a, g, q, events)
+            return self._ee(a, g, q, w_eff, events)
+        return self._joint(a, g, q, w_eff, events)
 
     # ---------------------------------------------------------------- ee modes
-    def _ee(self, a: Action, g, q: np.ndarray, events):
+    def _ee(self, a: Action, g, q: np.ndarray, w: float, events):
         v = np.asarray(a.values, dtype=float)
         n = len(v)
         if n not in (3, 4, 6):
@@ -132,17 +191,18 @@ class SafetyEnvelope:
             return None
         T = self.kin.fk_matrix(q)
         p0, R0 = T[:3, 3], T[:3, :3]
+        R_base = self.R_ref if self.R_ref is not None else R0     # orientation the tool should keep
         delta = a.mode is ActionMode.EE_DELTA
         # -- requested absolute target
         if delta:
             p = p0 + v[:3]
-            R = {3: lambda: R0, 4: lambda: _rz(v[3]) @ R0, 6: lambda: rpy_to_matrix(v[3:]) @ R0}[n]()
+            R = {3: lambda: R_base, 4: lambda: _rz(v[3]) @ R0, 6: lambda: rpy_to_matrix(v[3:]) @ R0}[n]()
         else:
             p = v[:3].copy()
             if n == 3:
-                R = R0
-            elif n == 4:
-                r0, p0_, _ = matrix_to_rpy(R0)
+                R = R_base
+            elif n == 4:   # heading only: keep the reference tilt (roll/pitch), set yaw
+                r0, p0_, _ = matrix_to_rpy(R_base)
                 R = rpy_to_matrix([r0, p0_, v[3]])
             else:
                 R = rpy_to_matrix(v[3:])
@@ -160,22 +220,28 @@ class SafetyEnvelope:
         R_rel = R @ R0.T
         ang = rotation_angle(R_rel)
         if ang > self.cfg.max_step_rad + 1e-9:
-            if not self._violation(events, "step_limit",
-                                   f"rotation {_deg(ang)} exceeds the per-line limit {_deg(self.cfg.max_step_rad)}",
-                                   f"scaled to {_deg(self.cfg.max_step_rad)}"):
+            if n == 3:     # re-aligning a tilted tool: silently partial (the tilt WARN says why)
+                pass
+            elif not self._violation(events, "step_limit",
+                                     f"rotation {_deg(ang)} exceeds the per-line limit {_deg(self.cfg.max_step_rad)}",
+                                     f"scaled to {_deg(self.cfg.max_step_rad)}"):
                 return None
+            else:
+                changed = True
             rv = matrix_to_rotvec(R_rel)
             R = rotvec_to_matrix(rv * (self.cfg.max_step_rad / ang)) @ R0
-            changed = True
-        # -- workspace box and table clearance
+        # -- workspace box and table clearance (lowest fingertip, not just the TCP)
+        floor = self.tcp_floor(R, w)
         lo = self.ws_lo.copy()
-        lo[2] = self.z_floor
+        lo[2] = max(lo[2], floor)
         for i in range(3):
             c = float(np.clip(p[i], lo[i], self.ws_hi[i]))
             if abs(c - p[i]) > 1e-9:
-                if i == 2 and p[i] < lo[2] and self.spec.table_z is not None and lo[2] > self.ws_lo[2]:
-                    why = (f"table clearance: table surface z={_mm(self.spec.table_z)}"
-                           f" + {_mm(self.cfg.table_clearance_m)}")
+                if i == 2 and p[i] < lo[2] and self.table_floor is not None and lo[2] > self.ws_lo[2] + 1e-12:
+                    drop = finger_drop(self.spec, R, w)
+                    why = (f"table clearance: table surface z={_mm(self.spec.table_z)}, the lowest fingertip "
+                           f"must stay {_mm(self.cfg.table_clearance_m)} above it"
+                           + (f" and is {_mm(drop)} below the TCP" if drop > 0 else ""))
                     kind = "table"
                 else:
                     why = f"workspace {_AXES[i]} range {_mm(lo[i])}..{_mm(self.ws_hi[i])}"
@@ -185,13 +251,25 @@ class SafetyEnvelope:
                     return None
                 p[i] = c
                 changed = True
-        # -- IK within soft joint limits, near the current branch
-        qt = self.kin.ik(p, matrix_to_rotvec(R), q, self.soft, orientation="full", options=self.ik_options)
-        if qt is None:
-            self._ev(events, "ik_fail",
-                     f"TCP target x={_mm(p[0])} y={_mm(p[1])} z={_mm(p[2])} is not reachable with this "
-                     f"gripper orientation inside the joint limits -> action skipped")
-            return None
+        # -- straight-line path with IK per step
+        path, frac, why = self._line_path(q, p0, R0, p, R)
+        if frac < 1.0 - 1e-9:
+            p_end = self.kin.fk_matrix(path[-1])[:3, 3] if path else p0
+            moved = float(np.linalg.norm(p_end - p0))
+            target = f"TCP target x={_mm(p[0])} y={_mm(p[1])} z={_mm(p[2])}"
+            if not path or frac < self.MIN_FRACTION:
+                self._ev(events, "ik_fail",
+                         f"{target} is not reachable {why} -> action skipped")
+                return None
+            if not self.cfg.clamp:
+                self._ev(events, "ik_fail", f"{target} is not reachable {why} -> action rejected")
+                return None
+            self._ev(events, "reach", f"{target} is not reachable {why} -> moved {frac * 100:.0f} % of the way "
+                                      f"({_mm(moved)}); the reachable edge is in that direction")
+            T_end = self.kin.fk_matrix(path[-1])
+            p, R = T_end[:3, 3].copy(), T_end[:3, :3].copy()
+            changed = True
+        qt = path[-1] if path else q.copy()
         # -- executed values in the requested mode
         if changed:
             if delta:
@@ -204,16 +282,58 @@ class SafetyEnvelope:
             values = tuple(float(x) for x in vals)
         else:
             values = a.values
-        return replace(a, values=values, gripper=g, q_target=tuple(float(x) for x in qt)), qt
+        q_path = tuple(tuple(float(x) for x in qq) for qq in path[:-1]) or None
+        return replace(a, values=values, gripper=g, q_target=tuple(float(x) for x in qt), q_path=q_path), qt
+
+    def _line_path(self, q: np.ndarray, p0: np.ndarray, R0: np.ndarray, p: np.ndarray, R: np.ndarray
+                   ) -> tuple[list[np.ndarray], float, str]:
+        """Joint waypoints along the straight TCP line p0 -> p (orientation slerped
+        R0 -> R). Returns (waypoints incl. the end, feasible fraction, reason)."""
+        dist = float(np.linalg.norm(p - p0))
+        rv = matrix_to_rotvec(R @ R0.T)
+        ang = float(np.linalg.norm(rv))
+        step = max(self.cfg.path_step_m, 1e-4)
+        n = max(1, math.ceil(max(dist / step, ang / math.radians(2.0)) - 1e-9))
+        guard = self.DQ_PER_M * dist / n + self.DQ_PER_RAD * ang / n + self.DQ_ABS
+        path: list[np.ndarray] = []
+        q_prev = q
+        for k in range(1, n + 1):
+            s = k / n
+            pk = p0 + s * (p - p0)
+            Rk = rotvec_to_matrix(rv * s) @ R0
+            qk = self.kin.ik(pk, matrix_to_rotvec(Rk), q_prev, self.soft, orientation="full",
+                             options=self.path_options)
+            if qk is None:
+                return path, (k - 1) / n, "with this gripper orientation inside the joint limits"
+            if float(np.max(np.abs(qk - q_prev))) > guard:
+                return path, (k - 1) / n, ("without a large joint swing (near a wrist singularity or a "
+                                           "joint limit)")
+            path.append(qk)
+            q_prev = qk
+        return path, 1.0, ""
 
     # ------------------------------------------------------------- joint modes
-    def _inside(self, qx: np.ndarray) -> bool:
-        p = self.kin.fk_matrix(qx)[:3, 3]
+    def _inside(self, qx: np.ndarray, w: float) -> bool:
+        T = self.kin.fk_matrix(qx)
+        p = T[:3, 3]
         lo = self.ws_lo.copy()
-        lo[2] = self.z_floor
+        lo[2] = max(lo[2], self.tcp_floor(T[:3, :3], w))
         return bool(np.all(p >= lo - 1e-9) and np.all(p <= self.ws_hi + 1e-9))
 
-    def _joint(self, a: Action, g, q: np.ndarray, events):
+    def _path_inside(self, q: np.ndarray, qt: np.ndarray, w: float) -> bool:
+        """Envelope check at samples along the joint-linear path (the TCP of a
+        joint move is not monotone: it can leave the box and come back)."""
+        return all(self._inside(q + s * (qt - q), w)
+                   for s in np.linspace(0.0, 1.0, self.JOINT_PATH_SAMPLES + 1)[1:])
+
+    def _largest_fraction(self, ok) -> float:
+        lo_s, hi_s = 0.0, 1.0
+        for _ in range(20):
+            mid = 0.5 * (lo_s + hi_s)
+            lo_s, hi_s = (mid, hi_s) if ok(mid) else (lo_s, mid)
+        return lo_s
+
+    def _joint(self, a: Action, g, q: np.ndarray, w: float, events):
         v = np.asarray(a.values, dtype=float)
         nj = len(self.names)
         if len(v) != nj:
@@ -243,37 +363,51 @@ class SafetyEnvelope:
                     return None
                 qt[j] = c
                 changed = True
-        if not self._inside(qt):
-            if not self._inside(q):
+        # -- TCP travel per line (max_step_m applies in every mode)
+        p0 = self.kin.fk_matrix(q)[:3, 3]
+
+        def travel(s: float) -> float:
+            return float(np.linalg.norm(self.kin.fk_matrix(q + s * (qt - q))[:3, 3] - p0))
+
+        if travel(1.0) > self.cfg.max_step_m + 1e-9:
+            s = self._largest_fraction(lambda x: travel(x) <= self.cfg.max_step_m)
+            if not self._violation(events, "step_limit",
+                                   f"joint move would carry the TCP {_mm(travel(1.0))}, more than the per-line "
+                                   f"limit {_mm(self.cfg.max_step_m)}", f"move shortened to {s * 100:.0f} %"):
+                return None
+            qt = q + s * (qt - q)
+            changed = True
+        if not self._path_inside(q, qt, w):
+            if not self._inside(q, w):
                 # Already outside (e.g. an odd reset pose): allow the move unless it
                 # goes further down below the table clearance, and say so.
-                z0, zt = self.kin.fk_matrix(q)[2, 3], self.kin.fk_matrix(qt)[2, 3]
-                if zt < self.z_floor and zt < z0 - 1e-6:
-                    self._ev(events, "table", f"joint move would lower the TCP to z={_mm(zt)}, below the "
-                                              f"table clearance z >= {_mm(self.z_floor)} -> action skipped")
+                T0, Tt = self.kin.fk_matrix(q), self.kin.fk_matrix(qt)
+                z0 = T0[2, 3] - finger_drop(self.spec, T0[:3, :3], w)
+                zt = Tt[2, 3] - finger_drop(self.spec, Tt[:3, :3], w)
+                fl = self.table_floor if self.table_floor is not None else self.z_floor
+                if zt < fl and zt < z0 - 1e-6:
+                    self._ev(events, "table", f"joint move would lower the fingertips to z={_mm(zt)}, below the "
+                                              f"table clearance z >= {_mm(fl)} -> action skipped")
                     return None
                 self._ev(events, "workspace", "TCP is currently outside the workspace/table envelope; "
                                               "move toward the work area")
             else:
                 p = self.kin.fk_matrix(qt)[:3, 3]
-                lo_s, hi_s = 0.0, 1.0
-                for _ in range(20):                      # largest safe fraction of the joint move
-                    mid = 0.5 * (lo_s + hi_s)
-                    lo_s, hi_s = (mid, hi_s) if self._inside(q + mid * (qt - q)) else (lo_s, mid)
-                what = (f"joint move would put the TCP at x={_mm(p[0])} y={_mm(p[1])} z={_mm(p[2])}, "
-                        f"outside the workspace/table clearance (z >= {_mm(self.z_floor)})")
-                if lo_s < 0.01:
+                s = self._largest_fraction(lambda x: self._path_inside(q, q + x * (qt - q), w))
+                what = (f"joint move would put the TCP at x={_mm(p[0])} y={_mm(p[1])} z={_mm(p[2])} or pass "
+                        f"outside the workspace / table clearance on the way")
+                if s < 0.01:
                     self._ev(events, "workspace", f"{what} -> action skipped")
                     return None
-                if not self._violation(events, "workspace", what, f"move shortened to {lo_s * 100:.0f} %"):
+                if not self._violation(events, "workspace", what, f"move shortened to {s * 100:.0f} %"):
                     return None
-                qt = q + lo_s * (qt - q)
+                qt = q + s * (qt - q)
                 changed = True
         if changed:
             values = tuple(float(x) for x in (qt - q if delta else qt))
         else:
             values = a.values
-        return replace(a, values=values, gripper=g, q_target=tuple(float(x) for x in qt)), qt
+        return replace(a, values=values, gripper=g, q_target=tuple(float(x) for x in qt), q_path=None), qt
 
     # --------------------------------------------------------------- warnings
     def _near_limit_events(self, q: np.ndarray) -> list[SafetyEvent]:

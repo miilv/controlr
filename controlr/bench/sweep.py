@@ -13,6 +13,11 @@ just "base config + grid of ``--set`` overrides + seeds"::
 
 Each point runs as a normal episode with ``log.root`` = the sweep directory,
 so every run dir is self-contained; ``aggregate.csv`` has one row per run.
+
+Control-side ablations should pin the plan (``planner.plan_file`` in ``set``):
+the Opus planner is slow and nondeterministic, so re-planning at every point
+confounds each control axis with a different plan. ``--resume <sweep dir>``
+skips points that already finished; ``--fake-llm`` dry-runs the whole sweep.
 """
 
 from __future__ import annotations
@@ -24,7 +29,13 @@ from typing import Any, Callable
 
 import yaml
 
-from controlr.bench.cache_probe import default_out_dir, write_csv
+import csv
+
+from controlr.bench.cache_probe import default_out_dir
+from controlr.runlog import write_csv
+
+# outcomes that do not count as a finished point (re-run on --resume, non-zero exit)
+FAILED_OUTCOMES = ("error", "llm_error", "interrupted")
 
 
 @dataclass
@@ -51,8 +62,7 @@ class Sweep:
         for combo in combos:
             grid_ov = [f"{k}={_yaml_scalar(v)}" for k, v in zip(keys, combo)]
             for seed in self.seeds:
-                label = ",".join([f"{k.split('.')[-1]}={_short(v)}" for k, v in zip(keys, combo)]
-                                 + [f"seed={seed}"])
+                label = ",".join([f"{k}={_short(v)}" for k, v in zip(keys, combo)] + [f"seed={seed}"])
                 pts.append(SweepPoint(len(pts), list(self.set) + grid_ov, int(seed), label))
         return pts
 
@@ -89,6 +99,8 @@ def aggregate_row(point: SweepPoint, summary: dict) -> dict:
         k, v = ov.split("=", 1)
         row[k] = v
     row.update(outcome=summary.get("outcome"), success=summary.get("success"),
+               success_verified=summary.get("success_verified"), llm_backend=summary.get("llm_backend"),
+               cache_regressions=len(summary.get("cache_regressions") or []),
                turns=summary.get("turns"),
                llm_end_p50=(lat.get("llm_end_s") or {}).get("p50"),
                llm_end_p90=(lat.get("llm_end_s") or {}).get("p90"),
@@ -100,25 +112,54 @@ def aggregate_row(point: SweepPoint, summary: dict) -> dict:
     return row
 
 
+def check_overrides(sweep: Sweep, extra_overrides: list[str] | None) -> None:
+    """``--set`` is applied after the grid values, so a ``--set`` on a grid key would
+    silently collapse that axis to one value: refuse it."""
+    keys = {ov.split("=", 1)[0].strip() for ov in extra_overrides or []}
+    clash = sorted(keys & set(sweep.grid))
+    if clash:
+        raise ValueError(f"--set overrides grid key(s) {clash}; change the grid in the sweep file instead")
+
+
+def _done_rows(out: Path) -> dict[int, dict]:
+    """Rows of an existing aggregate.csv whose point finished (for --resume)."""
+    p = out / "aggregate.csv"
+    if not p.exists():
+        return {}
+    with open(p, newline="") as f:
+        rows = list(csv.DictReader(f))
+    return {int(r["index"]): r for r in rows if r.get("outcome") and r["outcome"] not in FAILED_OUTCOMES}
+
+
 def run_sweep(sweep: Sweep, *, run_fn: Callable[[Any], Any] | None = None,
               extra_overrides: list[str] | None = None, out_dir: str | Path | None = None,
+              resume: bool = False,
               printer: Callable[[str], None] | None = print) -> tuple[list[dict], Path]:
     """Run every point (sequentially — one robot, one sim). ``run_fn(cfg)``
     defaults to ``controlr.loop.run_episode``; it must return an object with
     ``summary()``. A failing point is recorded and the sweep continues; Ctrl-C
-    (outcome "interrupted") stops the sweep after writing the aggregate."""
+    (outcome "interrupted") stops the sweep after writing the aggregate.
+    ``resume`` (with ``out_dir`` = an existing sweep dir): points already finished
+    in its aggregate.csv are kept and not re-run."""
     from controlr.config import load_config
 
+    check_overrides(sweep, extra_overrides)
     if run_fn is None:
         from controlr.loop import run_episode as run_fn  # type: ignore[assignment]
     out = Path(out_dir) if out_dir else default_out_dir(sweep.out_root, f"sweep_{sweep.name}")
     out.mkdir(parents=True, exist_ok=True)
+    done = _done_rows(out) if resume else {}
     (out / "sweep.yaml").write_text(yaml.safe_dump(
         {"name": sweep.name, "config": sweep.config, "set": sweep.set, "seeds": sweep.seeds,
          "grid": sweep.grid}, sort_keys=False))
     pts = sweep.points()
     rows: list[dict] = []
     for pt in pts:
+        if pt.index in done:
+            rows.append(done[pt.index])
+            if printer:
+                printer(f"[{pt.index + 1}/{len(pts)}] {pt.label}  (done: {done[pt.index]['outcome']})")
+            continue
         ov = pt.overrides + list(extra_overrides or []) + [f"seed={pt.seed}", f"log.root={out}"]
         if printer:
             printer(f"[{pt.index + 1}/{len(pts)}] {pt.label}")

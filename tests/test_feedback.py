@@ -200,3 +200,27 @@ def test_format_action_canonical():
     assert format_action(Action(None, None, None), cfg.action) == "HOLD"
     cfg.action.gripper = "width"
     assert format_action(Action(None, None, 0.04), cfg.action) == "GRIP 40"
+
+
+def test_backend_and_safety_messages_follow_the_llm_units(tmp_path):
+    """Review contracts #6: safety/goal messages were always mm/deg."""
+    import re as _re
+
+    from controlr.config import load_config
+    from controlr.llm.fake import FakeLLM
+    from controlr.loop import run_episode
+    from controlr.protocol.feedback import to_llm_units
+    from controlr.robot.mock import MockRobot
+
+    from controlr.config import ActionConfig
+    a = ActionConfig(pos_unit="cm", ang_unit="rad")
+    assert to_llm_units("translation 200 mm exceeds 100 mm; wrist_2 at 171.0 deg (peak 170 N)", a) == \
+        "translation 20.0 cm exceeds 10.0 cm; wrist_2 at 2.985 rad (peak 170 N)"
+    cfg = load_config(None, [f"log.root={tmp_path}", "planner.enabled=false", "robot.backend=mock",
+                             "task.name=reach", "action.pos_unit=cm", "action.ang_unit=rad",
+                             "episode.goal_feedback=always", "episode.max_turns=2"], dotenv=None)
+    res = run_episode(cfg, robot=MockRobot({"width": 160, "height": 120}),
+                      llm=FakeLLM(["MOVE ee_delta 20 0 0\nSTATUS OK", "STATUS FAIL"]))
+    fb = res.records[0]["feedback"]
+    assert "CLAMP" in fb and "GOAL" in fb
+    assert not _re.search(r"\d\s*mm\b|\d\s*deg\b", fb), fb

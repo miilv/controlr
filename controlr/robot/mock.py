@@ -17,6 +17,11 @@ releases it and it drops onto the table.
 Tasks (``task_cfg["name"]``): ``reach`` (TCP to a red ball) and
 ``pick_place`` (red cube into the green square). ``task_cfg["params"]``
 overrides positions/tolerances; positions are randomised from ``seed``.
+
+Cameras (``params.cameras``, default ``[scene]``): ``scene`` is the Isaac
+D435 view; ``top`` is a synthetic top-down camera 1 m above the mat — enough
+to exercise the multi-camera axis (``observation.cameras: [scene, top]``,
+tiled or separate) without a GPU.
 """
 
 from __future__ import annotations
@@ -62,6 +67,17 @@ TASK_INSTRUCTIONS = {
 }
 
 
+def top_camera(width: int = 640, height: int = 480, name: str = "top") -> CameraInfo:
+    """Synthetic top-down camera above the mock mat (image right = +x, image up = +y)."""
+    R = np.array([[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]])
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = -R @ np.array([MAT_CENTER_XY[0], MAT_CENTER_XY[1], 1.0])
+    f = 0.9 * width
+    K = np.array([[f, 0.0, width / 2], [0.0, f, height / 2], [0.0, 0.0, 1.0]])
+    return CameraInfo(name=name, width=width, height=height, K=K, T_cam_base=T)
+
+
 def d435_camera(width: int = 640, height: int = 480, name: str = "scene") -> CameraInfo:
     """The Isaac scene's calibrated D435, scaled to ``width``x``height``."""
     K = D435_K.copy()
@@ -89,20 +105,26 @@ class _Scene:
 class MockRobot(Robot):
     """Kinematic UR3 CB3 + 2F-85 with synthetic rendering (see module doc)."""
 
-    def __init__(self, params: dict | None = None) -> None:
+    def __init__(self, params: dict | None = None, *, safety: SafetyConfig | None = None) -> None:
         p = dict(params or {})
         spec_kw = {k: tuple(p[k]) if isinstance(p[k], list) else p[k]
                    for k in ("home_q", "table_z", "tcp_offset", "gripper_max_mm") if k in p}
         self.spec = ur3_cb3_spec(**spec_kw)
         self.kin = UR3Kinematics(tcp_offset=self.spec.tcp_offset)
-        self.camera = d435_camera(int(p.get("width", 640)), int(p.get("height", 480)),
-                                  str(p.get("camera", "scene")))
+        w, h = int(p.get("width", 640)), int(p.get("height", 480))
+        self.camera = d435_camera(w, h, str(p.get("camera", "scene")))
+        self.cameras = {self.camera.name: self.camera}
+        for name in p.get("cameras") or []:
+            if name == "top":
+                self.cameras["top"] = top_camera(w, h)
+            elif name != self.camera.name:
+                raise ValueError(f"MockRobot: unknown camera {name!r} (scene | top)")
         self.settle_s = float(p.get("settle_s", 0.2))
         self.grasp_radius_m = float(p.get("grasp_radius_m", 0.015))
         self.supersample = int(p.get("supersample", 2))
-        # Actions arriving without q_target (not filtered) are resolved with a
-        # default envelope so the mock never executes an unchecked target.
-        self._fallback = SafetyEnvelope(self.spec, SafetyConfig(), self.kin)
+        # Actions arriving without q_target (not filtered) are resolved with the
+        # configured envelope so the mock never executes an unchecked target.
+        self._fallback = SafetyEnvelope(self.spec, safety or SafetyConfig(), self.kin)
         self.task_instruction = TASK_INSTRUCTIONS["reach"]
         self._t = 0.0
         self._q = np.array(self.spec.home_q, dtype=float)
@@ -143,7 +165,9 @@ class MockRobot(Robot):
             raise ValueError(f"MockRobot: unknown task {name!r} (reach | pick_place)")
         self._scene = sc
         self.task_instruction = task_cfg.get("instruction") or TASK_INSTRUCTIONS[name]
-        return self.observe()
+        obs = self.observe()
+        self._fallback.reset(obs.state)
+        return obs
 
     # ------------------------------------------------------------------ state
     def _tcp(self, q: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
@@ -157,8 +181,8 @@ class MockRobot(Robot):
 
     def observe(self) -> Observation:
         st = self.state()
-        return Observation(t=self._t, images={self.camera.name: self.render()},
-                           cameras={self.camera.name: self.camera}, state=st)
+        return Observation(t=self._t, images={n: self.render(c) for n, c in self.cameras.items()},
+                           cameras=dict(self.cameras), state=st)
 
     # ---------------------------------------------------------------- execute
     def execute(self, actions: list[Action]) -> ExecReport:
@@ -183,6 +207,8 @@ class MockRobot(Robot):
             if sc.held:
                 T = self.kin.fk_matrix(self._q)
                 sc.cube = T[:3, 3] + sc.hold_offset
+                tz = self.spec.table_z if self.spec.table_z is not None else TABLE_Z
+                sc.cube[2] = max(sc.cube[2], tz + sc.cube_size / 2)   # a held cube cannot sink into the table
                 sc.cube_yaw += matrix_to_rpy(T[:3, :3])[2] - yaw0
             if a.gripper is not None:
                 events.extend(self._gripper(float(a.gripper)))
@@ -246,17 +272,17 @@ class MockRobot(Robot):
         return GoalReport(False, prog, msg, {"cube_zone_dist_m": dz, "held": sc.held})
 
     # -------------------------------------------------------------- rendering
-    def render(self) -> np.ndarray:
-        return _Renderer(self, self.supersample).draw()
+    def render(self, camera: CameraInfo | None = None) -> np.ndarray:
+        return _Renderer(self, self.supersample, camera).draw()
 
 
 class _Renderer:
     """Pinhole rendering with PIL polygons/lines, painter's ordering by depth.
     Deterministic for identical state (needed for cache-stable JPEGs)."""
 
-    def __init__(self, robot: MockRobot, ss: int) -> None:
+    def __init__(self, robot: MockRobot, ss: int, camera: CameraInfo | None = None) -> None:
         self.r = robot
-        cam = robot.camera
+        cam = camera or robot.camera
         self.ss = max(1, ss)
         self.W, self.H = cam.width * self.ss, cam.height * self.ss
         self.K = cam.K.copy()

@@ -112,9 +112,9 @@ CACHE_KEYS = ("cache_read_input_tokens", "cache_creation_input_tokens", "prompt_
 
 def _check_cache(results: list) -> None:
     if not any(k in r.usage.raw for r in results for k in CACHE_KEYS):
-        # Measured 2026-10-02: the no-think/claude/* route returns only
-        # prompt/completion/total — cache counters are dropped, so cache reads
-        # cannot be verified from usage on that route (latency suggests hits).
+        # Guard only: every live no-think/claude/* run of 2026-10-02 DID report
+        # cache_read_input_tokens / cache_creation_input_tokens / cached_tokens (an
+        # earlier comment here claimed they were dropped — refuted by the run logs).
         pytest.xfail("route reports no cache counters in usage")
     for r in results[1:]:
         u = r.usage

@@ -31,16 +31,22 @@ from pathlib import Path
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-try:                                   # imported from controlr (CPU tests)
-    from controlr.robot.isaac import protocol
-    from controlr.robot.isaac import tasks as task_registry
-except ImportError:                    # run as a script inside Isaac's python: controlr is not installed
-    sys.path.insert(0, str(HERE))
-    import protocol  # noqa: E402  (same file as controlr.robot.isaac.protocol)
-    import tasks as task_registry  # noqa: E402
+# Inside Isaac's python controlr is not installed: put the repo root on sys.path so the
+# numpy-only modules (protocol, tasks, motion, and the kinematics/spec they use) import
+# as ``controlr.*`` — one copy of each, same as in the client.
+if str(HERE.parents[2]) not in sys.path:
+    sys.path.insert(0, str(HERE.parents[2]))
+from controlr.robot.isaac import motion  # noqa: E402
+from controlr.robot.isaac import protocol  # noqa: E402
+from controlr.robot.isaac import tasks as task_registry  # noqa: E402
 
 TCP_OFFSET_M = 0.18      # PHANTOM tcp: tool0 + 180 mm along tool z (configs/hardware.yaml)
-BIAS_LIMIT_RAD = 0.01       # bound of the gravity-compensating integral term (see _integrate)
+# Bound of the gravity-compensating integral term (see _integrate). At PHANTOM's drive
+# stiffness (3500 N m/rad) 0.004 rad is ~14 N m per joint: enough for the ~3 mrad elbow
+# sag, far below the 0.01 rad (~35 N m, ~90 N at the TCP) that could push into an obstacle.
+BIAS_LIMIT_RAD = 0.004
+ANTI_WINDUP_N = 5.0         # no integration while robot-environment contact exceeds this
+FORCE_STOP_RISE_N = 20.0    # a force stop needs this much more force than before the motion
 UNSTABLE_FORCE_N = 5000.0   # no real contact on this rig gets near this: the solver blew up
 
 
@@ -154,8 +160,12 @@ class IsaacRig:
         self.obj_cfg = object_config(cfg)
         bg = bin_geometry(cfg["bin"])
         lower, upper = bg.interior_bounds
+        wall = 0.02
+        if "outer_size" in cfg["bin"] and "opening_size" in cfg["bin"]:
+            wall = float(np.min(np.asarray(cfg["bin"]["outer_size"][:2], float)
+                                - np.asarray(cfg["bin"]["opening_size"], float)) / 2)
         self.bin_info = {"lower": lower, "upper": upper, "center": np.asarray(bg.center, float),
-                         "yaw": float(bg.yaw)}
+                         "yaw": float(bg.yaw), "wall": wall}
         self.scene_info = {
             "object": {"center": list(self.obj_cfg["center"]), "yaw": float(self.obj_cfg.get("yaw", 0.0)),
                        "size": list(self.obj_cfg["size"])},
@@ -168,6 +178,7 @@ class IsaacRig:
         # commanded state
         self.q_cmd = np.asarray(task_registry.START_Q, float)
         self.closure_cmd = 0.0
+        self.grip_intent = "open"          # last commanded gripper intent: open | closed | width
         self.q_bias = np.zeros(6)
         self.render_updates = 4
         self.t0 = 0.0
@@ -328,7 +339,10 @@ class IsaacRig:
                     self.robot.get_joint_velocities()[self.ids], float),
                 "tcp_pos": tcp_pos, "tcp_rotvec": tcp_rv, "tcp_fk_pos": fk[:3], "tcp_fk_rotvec": fk[3:],
                 "gripper_m": self._gripper_width(), "gripper_closure": self._measured_closure(),
-                "gripper_closed": bool(self.closure_cmd >= 0.5), "holding": bool(np.all(pads > 0.1)),
+                # contract: "last commanded state is closed" (a GRIP close that latched on a wide
+                # object is still "closed"); holding needs a commanded closure, not just contact
+                "gripper_closed": self.grip_intent == "closed",
+                "holding": bool(self.closure_cmd > 0.05 and np.all(pads > 0.1)),
                 "pad_object_force_n": pads}
 
     def render(self, updates: int | None = None) -> tuple[np.ndarray, float]:
@@ -371,6 +385,7 @@ class IsaacRig:
         g = plan["start_gripper"]
         closure = 0.0 if g == "open" else 1.0 if g == "closed" else self.width_to_closure(float(g))
         self.q_cmd, self.closure_cmd = q0.copy(), closure
+        self.grip_intent = "open" if g == "open" else "closed" if g == "closed" else "width"
         self._teleport(q0, closure)
         quat = task_registry.yaw_quat_wxyz(plan["object_yaw"])
         self.packet.set_world_pose(position=plan["object_pos"], orientation=quat)
@@ -405,83 +420,140 @@ class IsaacRig:
                         "object_pos": np.asarray(pos, float), "object_quat_wxyz": np.asarray(quat_now, float),
                         "marker": plan.get("marker"), "zone": plan.get("zone"),
                         "tcp_pos0": st["tcp_pos"], "start_q": q0, "settle_drift_m": drift,
-                        "instruction": spec.instruction}
+                        "instruction": spec.instruction,
+                        # running record for "pushed, not carried" (tasks.evaluate_push)
+                        "max_lift_m": 0.0, "ever_held": False}
         obs = self.observe()
         return {"obs": obs, "episode": self.episode, "reset_s": time.perf_counter() - t}
 
-    def _sample_contacts(self, peak: dict) -> float:
-        """Accumulate peak normal force per (robot group, environment group);
-        return the peak arm/gripper-vs-table/box force of this sample (N)."""
+    def _sample_contacts(self, peak: dict) -> dict[str, float]:
+        """Accumulate peak normal force per (robot group, environment group) into
+        ``peak``; return THIS sample's force per pair key (``"unstable": inf`` when the
+        contact buffers hold NaN). Per-sample, not the running peak: the force stop
+        compares it with the force of the same pair at the start of the motion, so a
+        stopped arm resting against the box can still back away."""
         try:
             data = self.contacts.get_all(self.dt)
         except RuntimeError:          # NaN / saturated contact buffers: the solver diverged
             peak["unstable"] = float("inf")
-            return float("inf")
-        worst = 0.0
+            return {"unstable": float("inf")}
+        now: dict[str, float] = {}
         for actor in data["per_actor"]:
             group = self.body_group.get(actor["actor_path"], "arm")
             for c in actor["contacts"]:
                 key = f"{group}-{self.env_group.get(c['filter_path'], 'env')}"
                 f = float(c["normal_force_magnitude_n"])
                 peak[key] = max(peak.get(key, 0.0), f)
-        for key, f in peak.items():
-            if key.endswith("-table") or key.endswith("-box") or key == "unstable":
-                worst = max(worst, f)
-        return worst
+                now[key] = max(now.get(key, 0.0), f)
+        return now
 
     def execute(self, q, gripper, durations, force_stop_n: float = 80.0, settle: dict | None = None,
-                contact_every: int = 10) -> dict:
+                contact_every: int = 1, group=None, object_force_stop_n: float = 0.0) -> dict:
+        """Rows of ``q`` with the same ``group`` id form one action: the arm passes through
+        all of them in ONE min-jerk motion (``motion.interpolate_group``), the group's
+        duration is the sum of its rows' ``durations``, and its gripper command (the
+        group's last finite ``gripper``) acts after the motion. Without ``group`` every
+        row is its own action (protocol v1 behaviour). ``segments_done`` counts groups.
+
+        Force stop: contacts are sampled every ``contact_every`` physics steps during
+        motion (every step by default: at 10 ms sampling the logged stops overshot the
+        80 N threshold up to 1297 N) and every 10 steps while settling. A pair stops the
+        motion when its force exceeds max(threshold, its force before the motion + 20 N,
+        capped at 2x threshold): arm/gripper vs table/box with ``force_stop_n``, vs the
+        manipulated object with ``object_force_stop_n`` (not while the gripper itself
+        is closing — that contact is the grasp). A STOP at ANY point (motion, gripper,
+        settle) freezes the drive target at the measured pose and clears the integral
+        term, so the arm never keeps pushing into what it hit."""
         wall = time.perf_counter()
         q = np.asarray(q, float).reshape(-1, 6)
         gripper = np.asarray(gripper, float).reshape(-1)
         durations = np.asarray(durations, float).reshape(-1)
-        settle = {"joint_speed_rad_s": 0.03, "tcp_speed_m_s": 0.005, "joint_err_rad": 5e-4, "min_s": 0.05, "max_s": 1.0,
+        group = np.arange(len(q)) if group is None else np.asarray(group, int).reshape(-1)
+        settle = {"joint_speed_rad_s": 0.03, "tcp_speed_m_s": 0.005, "joint_err_rad": 5e-4, "min_s": 0.05, "max_s": 2.0,
                   "grip_min_s": 0.3, "grip_max_s": 1.2, **(settle or {})}
         t_begin = float(self.world.current_time)
         peak: dict[str, float] = {}
         pad_peak = np.zeros(2)
-        stopped, stop_reason, n_steps = False, "", 0
+        st_flags = {"stopped": False, "reason": "", "gripping": False, "env_force": 0.0}
+        n_steps = 0
         done_segments = 0
         prof = {"physics_s": 0.0, "contacts_s": 0.0}
+        thr_env = float(force_stop_n or 0.0)
+        thr_obj = float(object_force_stop_n or 0.0)
+        f0 = self._sample_contacts({})
+        floors = {}
+        for key, f in f0.items():
+            thr = thr_obj if key.endswith("-object") else thr_env
+            if thr > 0 and np.isfinite(f):
+                floors[key] = max(thr, min(f + FORCE_STOP_RISE_N, 2.0 * thr))
+        obj_z0 = float(np.asarray(self.episode.get("object_pos", np.zeros(3)), float)[2]) if self.episode else 0.0
 
-        def step(q_target, closure):
-            nonlocal n_steps, stopped, stop_reason, pad_peak
+        def floor_for(key: str) -> float:
+            if key in floors:
+                return floors[key]
+            return thr_obj if key.endswith("-object") else thr_env
+
+        def stop(reason: str) -> None:
+            if not st_flags["stopped"]:
+                st_flags["stopped"], st_flags["reason"] = True, reason
+                # hold where we are: the drive target becomes the measured pose
+                self.q_cmd = np.asarray(self.robot.get_joint_positions()[self.ids], float)
+                self.q_bias = np.zeros(6)
+
+        def step(q_target, closure, every: int = 10):
+            nonlocal n_steps, pad_peak
             t_s = time.perf_counter()
-            self._apply(q_target, closure)
+            self._apply(self.q_cmd if st_flags["stopped"] else q_target, closure)
             self.world.step(render=False)
             n_steps += 1
             prof["physics_s"] += time.perf_counter() - t_s
-            if n_steps % contact_every == 0:
+            if n_steps % every == 0:
                 t_c = time.perf_counter()
-                pad_peak = np.maximum(pad_peak, self._pad_forces())
-                worst = self._sample_contacts(peak)
+                now = self._sample_contacts(peak)
+                env = [f for k, f in now.items() if not k.endswith("-object") and k != "unstable"]
+                st_flags["env_force"] = max(env) if env else 0.0
+                if "unstable" in now or any(f > UNSTABLE_FORCE_N for f in now.values()):
+                    stop("physics became unstable (reset the episode)")       # also with the stop disabled
+                else:
+                    for key, f in now.items():
+                        is_obj = key.endswith("-object")
+                        thr = thr_obj if is_obj else thr_env
+                        if thr <= 0 or (is_obj and st_flags["gripping"]):
+                            continue
+                        if (key.endswith("-table") or key.endswith("-box") or is_obj) and f > floor_for(key):
+                            what = "the packet" if is_obj else key.split("-", 1)[1]
+                            stop(f"contact force {f:.0f} N against {what} > {floor_for(key):.0f} N")
+                            break
                 prof["contacts_s"] += time.perf_counter() - t_c
-                if force_stop_n and worst > force_stop_n:
-                    stopped, stop_reason = True, f"contact force {worst:.0f} N > {force_stop_n:.0f} N"
-                if worst > UNSTABLE_FORCE_N:
-                    stop_reason = "physics became unstable (reset the episode)"
+            if n_steps % 10 == 0 and self.episode:
+                pads = self._pad_forces()
+                pad_peak = np.maximum(pad_peak, pads)
+                if self.closure_cmd > 0.05 and np.all(pads > 0.1):
+                    self.episode["ever_held"] = True
+                z = float(np.asarray(self.packet.get_world_pose()[0], float)[2])
+                self.episode["max_lift_m"] = max(float(self.episode.get("max_lift_m", 0.0)), z - obj_z0)
 
-        for i in range(len(q)):
-            q_from, q_to = self.q_cmd.copy(), q[i]
-            n = max(1, int(round(max(float(durations[i]), self.dt) / self.dt)))
-            for k in range(1, n + 1):
-                s = k / n
-                s = s * s * s * (10 - 15 * s + 6 * s * s)       # min-jerk position profile
-                self.q_cmd = q_from + s * (q_to - q_from)
-                step(self.q_cmd, self.closure_cmd)
-                if stopped:
+        groups = [np.flatnonzero(group == gid) for gid in dict.fromkeys(group.tolist())]
+        for rows in groups:
+            q_from = self.q_cmd.copy()
+            dur = float(np.sum(durations[rows]))
+            n = max(1, int(round(max(dur, self.dt) / self.dt)))
+            for q_k in motion.interpolate_group(q_from, q[rows], n):
+                self.q_cmd = q_k
+                step(q_k, self.closure_cmd, every=max(1, int(contact_every)))
+                if st_flags["stopped"]:
                     break
-            if stopped:
+            if st_flags["stopped"]:
                 break
-            if np.isfinite(gripper[i]):
-                self._actuate_gripper(float(gripper[i]), step, settle, lambda: stopped)
+            g = gripper[rows][np.isfinite(gripper[rows])]
+            if len(g):
+                st_flags["gripping"] = True
+                self._actuate_gripper(float(g[-1]), lambda qq, cc: step(qq, cc), settle,
+                                      lambda: st_flags["stopped"])
+                st_flags["gripping"] = False
             done_segments += 1
-            if stopped:
+            if st_flags["stopped"]:
                 break
-        if stopped:
-            # hold where we are: the drive target becomes the measured pose
-            self.q_cmd = np.asarray(self.robot.get_joint_positions()[self.ids], float)
-            self.q_bias = np.zeros(6)
         # Settled = joints slow, the TCP barely moving and the joints on target
         # (integral action removes the gravity sag). The arm keeps a ~0.01
         # rad/s elbow micro-oscillation under PHANTOM's drive gains, so the
@@ -492,7 +564,9 @@ class IsaacRig:
             for _ in range(10):
                 step(self.q_cmd, self.closure_cmd)
             t_settle += 10 * self.dt
-            q_err = self._integrate() if not stopped else 0.0
+            # anti-windup: no integration after a stop or while pressing on something
+            integrate = not st_flags["stopped"] and st_flags["env_force"] < ANTI_WINDUP_N
+            q_err = self._integrate() if integrate else 0.0
             qd = np.abs(np.asarray(self.robot.get_joint_velocities()[self.ids], float))
             tcp_now = self._tcp_measured()[0]
             v_tcp = float(np.linalg.norm(tcp_now - tcp_prev)) / (10 * self.dt)
@@ -511,6 +585,7 @@ class IsaacRig:
             mech_ok, mech_note = bool(mech["passed"]), ""
         except Exception as exc:  # noqa: BLE001 - diagnostics only
             mech_ok, mech_note = False, str(exc)
+        stopped, stop_reason = st_flags["stopped"], st_flags["reason"]
         return {
             "state": st, "stopped": stopped, "stop_reason": stop_reason, "segments_done": done_segments,
             "sim_s": float(self.world.current_time - t_begin), "settle_s": t_settle,
@@ -533,6 +608,7 @@ class IsaacRig:
         destabilises PhysX (observed: the arm and packet were flung), and
         PHANTOM's own expert only commands 0.62 (scripted_expert.grip_close)."""
         target = self.width_to_closure(width_m)
+        self.grip_intent = "closed" if target >= 1.0 else "open" if width_m >= self.grip_max_m - 1e-4 else "width"
         chunk = 20
         rate = float(settle.get("grip_rate_per_s", 1.5))          # closure units / s
         contact_n = float(settle.get("grip_contact_n", 0.5))

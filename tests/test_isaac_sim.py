@@ -139,3 +139,47 @@ def test_scripted_waffle_pick_place_succeeds(robot):
     goal = res["goal"]
     assert goal.success, goal
     assert goal.metrics["inside_bin"] and goal.metrics["unloaded"]
+
+
+def test_force_stop_into_the_mat_is_tight_and_holds_then_backs_off(robot):
+    """Review control-safety #5/#6: contacts are sampled every step during motion (stops
+    overshot 80 N up to 1297 N at 10 ms sampling), and a stop freezes the target at the
+    measured pose (the arm used to keep pushing during settling)."""
+    obs = robot.reset({"name": "reach", "params": {"nominal": True}}, seed=0)
+    q0 = np.asarray(obs.state.q)
+    p0, rv0 = KIN.fk(q0)
+    target = p0.copy()
+    target[2] = robot.spec.table_z - 0.03                   # TCP 30 mm into the mat (no envelope)
+    q_in = KIN.ik(target, rv0, q0)
+    assert q_in is not None
+    rep = robot.execute([joint_action(q_in)])
+    assert rep.stopped and rep.events[0].level.value == "stop", [e.message for e in rep.events]
+    peak = float(rep.events[0].message.split("contact force ")[1].split(" N")[0])
+    assert peak < 250.0, rep.events[0].message
+    st = robot.state()
+    np.testing.assert_allclose(st.q, rep.state_after.q, atol=1e-6)     # paused, holding
+    up = robot.execute([Action(ActionMode.EE_DELTA, (0.0, 0.0, 0.04))])
+    assert not up.stopped and up.state_after.tcp_pos[2] > rep.state_after.tcp_pos[2] + 0.03
+
+
+def test_reach_seed0_marker_is_reachable_in_the_sim(robot):
+    """Review control-safety #1: drive the TCP to the (now feasible) seed-0 marker along the
+    envelope's straight-line waypoints; no collision on the way."""
+    from controlr.config import SafetyConfig
+    from controlr.robot.safety import SafetyEnvelope
+
+    obs = robot.reset({"name": "reach"}, seed=0)
+    marker = np.asarray(robot.episode["marker"], float)
+    env = SafetyEnvelope(robot.spec, SafetyConfig())
+    env.reset(robot.reference_state())
+    st = obs.state
+    for _ in range(12):
+        d = marker - st.tcp_pos
+        if np.linalg.norm(d) < 0.005:
+            break
+        acts, _ = env.filter([Action(ActionMode.EE_DELTA, tuple(d))], st)
+        assert acts, "envelope refused the move"
+        rep = robot.execute(acts)
+        assert not rep.stopped, [e.message for e in rep.events]
+        st = rep.state_after
+    assert robot.check_goal().success, (st.tcp_pos, marker)

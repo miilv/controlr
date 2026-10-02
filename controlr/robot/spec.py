@@ -14,6 +14,11 @@ Numbers and their provenance (PHANTOM, /home/agent/skoltech/research):
   (x -0.518..-0.230, y -0.377..0.166, z up to 0.476) padded by ~3 cm; the lower
   z bound is the table, the clearance itself is SafetyConfig's job.
 * joint speed 1.0 rad/s: hardware.yaml arm.limits.joint_speed_rad_s.
+* joint limits +-360 deg except the elbow, +-180 deg: PHANTOM's URDF
+  (assets/sim/ur3/ur3_cb3.urdf) limits the elbow to +-pi — the Isaac drive stalls
+  there, and the real elbow self-collides near +-170 deg anyway.
+* finger pads: PHANTOM gripper.pad_size (W2L gel pads ~48 mm long along the tool
+  axis, ~39 mm wide), centred on the TCP; ~6 mm finger thickness outward of the gap.
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ from controlr.robot.kinematics import DEFAULT_TCP_OFFSET, JOINT_NAMES
 from controlr.types import JointSpec, RobotSpec
 
 TABLE_Z = -0.0095
+FINGER_PAD = (0.024, 0.019, 0.006)     # half length (tool z), half width (tool y), outward thickness
 # Tool pointing straight down (tool z = -base z), TCP at about (-0.30, -0.15, 0.15):
 # the natural pose for top-down tasks with rotation=none (see tests/test_kinematics.py).
 HOME_Q_TOPDOWN = (0.12248, -1.49581, 1.41546, -1.49026, -1.57119, -4.58983)
@@ -48,12 +54,13 @@ def ur3_cb3_spec(*, home_q: tuple[float, ...] = HOME_Q_TOPDOWN, table_z: float =
                  gripper_max_mm: float = 85.0, joint_speed: float = 1.0,
                  workspace_lo: tuple[float, float, float] | None = None,
                  workspace_hi: tuple[float, float, float] = (-0.15, 0.22, 0.48),
+                 finger_pad: tuple[float, float, float] | None = FINGER_PAD,
                  name: str = "UR3 CB3 + Robotiq 2F-85") -> RobotSpec:
     """RobotSpec for the Skoltech UR3 CB3 rig. Backends override only what
     their scene differs in (e.g. the Isaac backend's effective pad aperture
     or a measured TCP offset) — keep the defaults in sync with PHANTOM."""
-    lim = 2 * np.pi
-    joints = tuple(JointSpec(n, -lim, lim, joint_speed) for n in JOINT_NAMES)
+    lims = {n: (np.pi if n == "elbow" else 2 * np.pi) for n in JOINT_NAMES}
+    joints = tuple(JointSpec(n, -lims[n], lims[n], joint_speed) for n in JOINT_NAMES)
     lo = workspace_lo if workspace_lo is not None else (-0.55, -0.42, table_z)
     return RobotSpec(
         name=name,
@@ -66,4 +73,5 @@ def ur3_cb3_spec(*, home_q: tuple[float, ...] = HOME_Q_TOPDOWN, table_z: float =
         home_q=tuple(float(v) for v in home_q),
         table_z=float(table_z),
         tcp_offset=tuple(float(v) for v in tcp_offset),
+        finger_pad=tuple(float(v) for v in finger_pad) if finger_pad is not None else None,
     )

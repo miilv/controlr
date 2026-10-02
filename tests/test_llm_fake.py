@@ -37,7 +37,8 @@ def test_early_stop_truncates_like_real_client():
     f = FakeLLM(["MOVE ee_delta 1 0 0\nSTATUS OK\nthen some trailing prose"], chunk_chars=4)
     r = f.complete("m", [], max_tokens=100, stop_when=lambda s: "STATUS OK" in s)
     assert r.stopped_early and r.text.startswith("MOVE ee_delta 1 0 0\nSTATUS OK")
-    assert "prose" not in r.text and r.timings.t_complete is not None and r.usage is None
+    assert "prose" not in r.text and r.timings.t_complete is not None
+    assert r.usage is not None and not r.truncated      # like the real client with usage grace
 
 
 def test_exception_reply_is_error_result():

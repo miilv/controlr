@@ -70,14 +70,38 @@ def test_success_after_moves(tmp_path):
     summary = json.loads((run / "summary.json").read_text())
     assert summary["outcome"] == "success" and summary["turns"] == 3
     assert summary["cache_read_share"] is not None
-    # transcript prefix is append-only: every request extends the previous one
-    calls = llm.calls
+    _assert_prefix_stable(llm.calls)
+
+
+def _strip_markers(messages):
+    """Remove cache_control structurally (markers move every turn by design)."""
+    out = []
+    for m in messages:
+        c = m.get("content")
+        if isinstance(c, list):
+            c = [{k: v for k, v in p.items() if k != "cache_control"} if isinstance(p, dict) else p for p in c]
+        out.append({**m, "content": c})
+    return json.dumps(out, sort_keys=True)
+
+
+def _assert_prefix_stable(calls):
+    """Every request = previous request (byte-identical without markers) + reply + user turn."""
     for a, b in zip(calls, calls[1:]):
         n = len(a["messages"])
-        strip = lambda ms: json.dumps(ms, sort_keys=True).replace('"cache_control"', "")  # noqa: E731
         assert len(b["messages"]) == n + 2
-        assert [m["role"] for m in b["messages"][:n]] == [m["role"] for m in a["messages"]]
-        assert strip(b["messages"][:1]) == strip(a["messages"][:1])
+        assert _strip_markers(b["messages"][:n]) == _strip_markers(a["messages"])
+
+
+def test_prefix_is_byte_stable_with_overlays_and_diff(tmp_path):
+    """Review contracts #25: the old check compared only the system message."""
+    from controlr.loop import run_episode
+
+    llm = FakeLLM(["MOVE ee_delta 10 0 0\nSTATUS OK", "MOVE ee_delta 0 10 0\nSTATUS OK",
+                   "MOVE ee_delta 0 0 -10\nSTATUS OK", "MOVE ee_delta -10 0 0\nSTATUS OK", "STATUS FAIL"])
+    res = run_episode(_cfg(tmp_path, **{"observation.renderers": "[grid,ee_marker,diff]"}),
+                      robot=RecMock(), llm=llm)
+    assert res.outcome == "fail" and len(llm.calls) == 5
+    _assert_prefix_stable(llm.calls)
 
 
 def test_done_not_verified_continues_then_max_turns(tmp_path):
@@ -113,6 +137,18 @@ def test_parse_error_streak(tmp_path):
     turns = read_jsonl(Path(res.run_dir) / "turns.jsonl")
     assert turns[0]["parse_errors"]
     assert "PARSE ERROR" in turns[0]["feedback"]
+
+
+def test_length_cutoff_is_explained(tmp_path):
+    """A reply cut by max_tokens (thinking routes) gets a specific PARSE ERROR, not only
+    'missing STATUS' (smoke test: Sonnet spent all 2000 tokens thinking)."""
+    from controlr.loop import run_episode
+
+    res = run_episode(_cfg(tmp_path, **{"episode.max_parse_errors": 1, "llm.max_tokens": 5}),
+                      robot=RecMock(), llm=FakeLLM(["I am thinking very hard about the next move"]))
+    turns = read_jsonl(Path(res.run_dir) / "turns.jsonl")
+    assert turns[0]["finish_reason"] == "length"
+    assert "cut off by the output limit" in turns[0]["parse_errors"][0]
 
 
 def test_llm_error_ends_episode(tmp_path):
@@ -213,3 +249,159 @@ def test_with_real_mock_robot(tmp_path):
     assert res.turns == 2
     turns = read_jsonl(Path(res.run_dir) / "turns.jsonl")
     assert turns[0]["state"]["tcp_pos"] is not None
+
+
+class StopMock(RecMock):
+    """Every execute ends in a STOP event of the given kind (contact stop / diverged sim)."""
+
+    def __init__(self, kind="collision"):
+        super().__init__()
+        self.kind = kind
+
+    def execute(self, actions):
+        from controlr.types import EventLevel, SafetyEvent
+        rep = super().execute(actions)
+        rep.stopped = True
+        rep.events.append(SafetyEvent(EventLevel.STOP, self.kind, "motion stopped: contact force 120 N > 80 N"))
+        return rep
+
+
+def test_stops_end_episode_after_max_stops(tmp_path):
+    from controlr.loop import run_episode
+
+    llm = FakeLLM(["MOVE ee_delta 0 0 -10\nSTATUS OK"])
+    res = run_episode(_cfg(tmp_path, **{"episode.max_stops": "2"}), robot=StopMock(), llm=llm)
+    assert res.outcome == "safety_stop" and res.turns == 2
+    turns = read_jsonl(Path(res.run_dir) / "turns.jsonl")
+    assert "STOP: motion stopped" in turns[0]["feedback"]      # the model saw the first stop
+
+
+def test_unstable_stop_ends_immediately(tmp_path):
+    from controlr.loop import run_episode
+
+    res = run_episode(_cfg(tmp_path, **{"episode.max_stops": "5"}), robot=StopMock("unstable"),
+                      llm=FakeLLM(["MOVE ee_delta 0 0 -10\nSTATUS OK"]))
+    assert res.outcome == "safety_stop" and res.turns == 1
+
+
+def test_run_nonce_in_turn0_only(tmp_path):
+    from controlr.loop import run_episode
+
+    llm = FakeLLM(["STATUS FAIL x"])
+    res = run_episode(_cfg(tmp_path), robot=RecMock(), llm=llm)
+    first = llm.calls[0]["messages"][1]["content"][0]["text"]
+    assert first.startswith(f"RUN {Path(res.run_dir).name}\nTASK:")
+    assert "RUN " not in llm.calls[0]["messages"][0]["content"][0]["text"]   # system prompt untouched
+
+
+# ---------------------------------------------------------------------------
+# review fixes: run-log completeness, fake marking, plan file, end_on_goal, ...
+# ---------------------------------------------------------------------------
+
+def test_turn_records_rebuild_obs_action_next_obs(tmp_path):
+    """Review contracts #10: (obs_t, action_t, obs_t+1) must be reconstructable from
+    turns.jsonl alone, including the terminal turn's final frame."""
+    from controlr.loop import run_episode
+
+    llm = FakeLLM(["MOVE ee_delta 0 0 -25\nSTATUS OK", "MOVE ee_delta 0 0 -25\nSTATUS OK", "STATUS DONE"])
+    res = run_episode(_cfg(tmp_path, **{"log.save_raw_frames": "true"}), robot=RecMock(), llm=llm)
+    run = Path(res.run_dir)
+    turns = read_jsonl(run / "turns.jsonl")
+    setup = json.loads((run / "setup.json").read_text())
+    assert turns[0]["obs_images"] == setup["obs0_images"]
+    for a, b in zip(turns, turns[1:]):
+        assert b["obs_images"] == a["next_obs_images"]
+        assert b["state_before"]["tcp_pos"] == pytest.approx(a["state"]["tcp_pos"])
+    for t in turns:
+        assert t["obs_images"] and t["next_obs_images"] and t["state_before"] and t["state"]
+        for sha in t["obs_images"] + t["next_obs_images"]:
+            assert (run / "images" / f"{sha}.jpg").exists()
+        assert (run / t["next_raw_frames"][0]).exists()
+    assert turns[0]["executed"][0]["q_target"] and "reasoning" in turns[0]
+    assert "feedback" not in turns[-1]                    # terminal turn: no next user turn
+    cams = json.loads((run / "cameras.json").read_text())
+    assert cams["scene"]["K"] and len(cams["scene"]["T_cam_base"]) == 4
+    spec = json.loads((run / "spec.json").read_text())
+    assert spec["workspace_lo"] and spec["table_z"] is not None
+
+
+def test_fake_runs_are_marked(tmp_path):
+    """Review contracts #11: dry runs were indistinguishable from live runs."""
+    from controlr.loop import run_episode
+
+    res = run_episode(_cfg(tmp_path), robot=RecMock(), llm=FakeLLM(["STATUS FAIL"]))
+    run = Path(res.run_dir)
+    assert run.name.split("_", 1)[1].startswith("fake_")
+    assert json.loads((run / "summary.json").read_text())["llm_backend"] == "fake"
+    assert json.loads((run / "setup.json").read_text())["llm_backend"] == "fake"
+
+
+def test_plan_file_replaces_the_planner_call(tmp_path):
+    from controlr.loop import run_episode
+
+    plan = tmp_path / "plan.txt"
+    plan.write_text("PINNED PLAN: go down")
+    llm = FakeLLM(["STATUS FAIL"])
+    res = run_episode(_cfg(tmp_path, **{"planner.enabled": "true", "planner.plan_file": str(plan)}),
+                      robot=RecMock(), llm=llm)
+    assert len(llm.calls) == 1 and "PINNED PLAN" in json.dumps(llm.calls[0]["messages"][1])
+    assert res.plan == "PINNED PLAN: go down"
+
+
+def test_planner_gets_long_timeout_and_few_retries(tmp_path):
+    from controlr.loop import run_episode
+
+    llm = FakeLLM(["a plan", "STATUS FAIL"])
+    run_episode(_cfg(tmp_path, **{"planner.enabled": "true"}), robot=RecMock(), llm=llm)
+    assert llm.calls[0]["timeout_s"] == 600 and llm.calls[0]["max_retries"] == 1
+    assert llm.calls[1]["timeout_s"] is None
+
+
+def test_end_on_goal_and_success_fields(tmp_path):
+    from controlr.loop import run_episode
+
+    llm = FakeLLM(["MOVE ee_delta 0 0 -25\nSTATUS OK", "MOVE ee_delta 0 0 -25\nSTATUS OK", "STATUS OK"])
+    res = run_episode(_cfg(tmp_path, **{"episode.end_on_goal": "true"}), robot=RecMock(), llm=llm)
+    assert res.outcome == "goal_reached" and res.success and not res.success_verified and res.turns == 2
+    s = json.loads((Path(res.run_dir) / "summary.json").read_text())
+    assert s["success_verified"] is False and s["success"] is True
+    assert s["planner"] is None and "cache_regressions" in s
+
+
+def test_missing_camera_fails_early_with_a_clear_message(tmp_path):
+    from controlr.loop import run_episode
+
+    res = run_episode(_cfg(tmp_path, **{"observation.cameras": "[scene,top]"}), robot=RecMock(),
+                      llm=FakeLLM(["STATUS FAIL"]))
+    assert res.outcome == "error" and "not provided by backend" in res.error
+
+
+def test_reference_state_fixes_the_tool_orientation(tmp_path):
+    """Review control-safety #8 / caching #13: the envelope and the manual use the
+    backend's nominal reset state when it has one."""
+    from controlr.loop import run_episode
+
+    seen = []
+
+    class RefMock(RecMock):
+        def reference_state(self):
+            seen.append(1)
+            return self.state()
+
+    run_episode(_cfg(tmp_path), robot=RefMock(), llm=FakeLLM(["STATUS FAIL"]))
+    assert seen
+
+
+def test_truncated_note_is_stripped_from_the_stored_reply(tmp_path):
+    from controlr.llm.client import LLMResult, Timings
+    from controlr.loop import run_episode
+
+    class Cut(FakeLLM):
+        def complete(self, *a, **kw):
+            r = super().complete(*a, **kw)
+            return LLMResult("MOVE ee_delta 0 0 -5\nSTATUS OK moving abo", r.usage, r.timings, True, None, None,
+                             200, 1, truncated=True)
+
+    res = run_episode(_cfg(tmp_path, **{"episode.max_turns": 1}), robot=RecMock(), llm=Cut(["x"]))
+    rec = res.records[0]
+    assert rec["reply"] == "MOVE ee_delta 0 0 -5\nSTATUS OK" and rec["reply_streamed"].endswith("abo")
