@@ -3,8 +3,10 @@
 #   scripts/remote_run.sh run -c configs/sim_waffle.yaml --episodes 3
 #   scripts/remote_run.sh bench-latency -c configs/bench/latency.yaml
 # If the command's config uses the isaac backend, the Isaac server is started
-# first (headless, under Isaac's own python) unless one is already listening,
-# and stopped afterwards if we started it. Deploy first: scripts/deploy.sh
+# first (headless, under Isaac's own python, with the config's physics settings —
+# robot.params.physics -> client.server_args_for) unless one is already listening,
+# and stopped afterwards if we started it. A running server with other physics
+# settings is refused by the client. Deploy first: scripts/deploy.sh
 set -euo pipefail
 HOST="${CONTROLR_HOST:-compute3}"
 REMOTE_DIR="${CONTROLR_REMOTE_DIR:-controlr}"
@@ -27,29 +29,38 @@ cd "\$HOME/$REMOTE_DIR"
 export PATH="\$HOME/.local/bin:\$PATH"
 set -a; [ -f .env ] && . ./.env; set +a     # e.g. CONTROLR_ISAAC_AUTHKEY for server + client
 backend=none
+server_args=""
 if [ $needs_isaac = 1 ]; then
-  backend=\$(.venv/bin/python - $ARGS <<'PY'
+  # first line: the backend; second: the Isaac server args of the config (robot.params.physics)
+  resolved=\$(.venv/bin/python - $ARGS <<'PY'
+import shlex
 import sys
 from controlr.cli import build_parser
 from controlr.config import load_config
 a = build_parser().parse_args(sys.argv[1:])
 if a.cmd == "run":
-    print(load_config(a.config, a.sets).robot.backend)
+    cfg = load_config(a.config, a.sets)
 else:
     from controlr.bench.sweep import load_sweep
     s = load_sweep(a.sweep)
-    print(load_config(s.config, s.set + a.sets).robot.backend)
+    cfg = load_config(s.config, s.set + a.sets)
+print(cfg.robot.backend)
+if cfg.robot.backend == "isaac":
+    from controlr.robot.isaac.client import server_args_for
+    print(" ".join(shlex.quote(x) for x in server_args_for(cfg.robot.params)))
 PY
 )
+  backend=\$(echo "\$resolved" | sed -n 1p)
+  server_args=\$(echo "\$resolved" | sed -n 2p)
 fi
 started=0
 # (no TCP probe: an unauthenticated connect would hit the server's HMAC handshake)
 if [ "\$backend" = isaac ] && ! ss -ltnH "sport = :$ISAAC_PORT" | grep -q .; then
   mkdir -p runs
-  echo "starting Isaac server (port $ISAAC_PORT) -> runs/isaac_server.log"
+  echo "starting Isaac server (port $ISAAC_PORT, args: \$server_args) -> runs/isaac_server.log"
   export CONTROLR_ISAAC_READY_FILE="\$PWD/runs/.isaac_ready"
   rm -f "\$CONTROLR_ISAAC_READY_FILE"
-  setsid nohup bash scripts/isaac_server.sh --port $ISAAC_PORT > runs/isaac_server.log 2>&1 &
+  setsid nohup bash scripts/isaac_server.sh --port $ISAAC_PORT \$server_args > runs/isaac_server.log 2>&1 &
   srv=\$!
   started=1
   for i in \$(seq 1 300); do

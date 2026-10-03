@@ -46,6 +46,7 @@ observation:
   renderers: [raw]
   tile: false
   state_text: true
+  tactile: false                       # fingertip/pad forces + pad-based `holding` (feedback.level=full); off since 2026-10-02
   jpeg_quality: 90
   first_turn_size: null
   grid_z: null                         # grid plane height; null = the robot spec's table top
@@ -70,13 +71,22 @@ safety:
   clamp: true
   max_tcp_speed_m_s: 0.15              # PEAK TCP speed of the min-jerk profile
   contact_force_stop_n: 80.0
-  object_force_stop_n: 40.0            # robot vs the manipulated object (Isaac)
+  box_force_stop_n: 30.0               # arm/gripper vs the box: a light touch stops and is reported (null = contact_force_stop_n)
+  box_push_stop_m: 0.005               # touching the (light, sliding) box while it moved this far stops too; 0 = off
+  object_force_stop_n: 40.0            # robot vs the manipulated object while NOT held (Isaac)
+  held_object_force_stop_n: null       # held object vs table/mat/box (null = object_force_stop_n); grip forces never count
+  box_collision: warn                  # predictive wrist/housing-vs-box check: block | warn | off
+  box_clearance_m: 0.05                # inflation of the box walls for that check
   path_step_m: 0.005                   # ee moves follow the straight TCP line, IK every 5 mm
 
 prompt:
   system: system_v0
   fewshot: null
   extra_rules: []
+
+feedback:
+  level: short                         # short: TASK/STATE/WARN/STOP only (since 2026-10-02) | full: TURN/EXEC/CLAMP/WARN/EVENT/STOP/GOAL/STATE
+  repeat_task: false                   # short: repeat the TASK line every turn
 
 episode:
   max_turns: 40

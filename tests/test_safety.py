@@ -447,3 +447,76 @@ def test_arm_can_back_out_of_a_stretched_elbow(d):
     assert out, [e.message for e in ev]
     assert np.degrees(out[0].q_target[2]) > 8.0                      # bent back on the start branch
     assert np.linalg.norm(_tcp(out[0]) - KIN.fk(Q_STUCK_184337)[0] - d) < 1e-3
+
+
+# ---------------------------------------------------------------------------
+# predictive wrist / housing vs box check (safety.box_collision)
+# ---------------------------------------------------------------------------
+
+_BIN = {"lower": [-0.5705, -0.0651, -0.0055], "upper": [-0.2105, 0.1949, 0.1805],
+        "center": [-0.3905, 0.0649, -0.0095], "yaw": -0.0121, "wall": 0.02}
+_SIM_Q = np.array([0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406])      # configs/sim_waffle.yaml
+
+
+def _box_env(mode: str, **kw):
+    from controlr.robot.obstacles import box_from_bin_info
+    spec = ur3_cb3_spec(table_z=-0.0095)
+    env = SafetyEnvelope(spec, dataclasses.replace(SafetyConfig(), box_collision=mode, **kw), rotation="yaw")
+    env.reset(_state(_SIM_Q))
+    env.set_obstacles([box_from_bin_info(_BIN)])
+    return env
+
+
+def _walk(env, moves):
+    """Apply ee_delta (dx, dy, dz) moves from the sim start; returns [(actions, events)]."""
+    q, out = _SIM_Q.copy(), []
+    for d in moves:
+        acts, ev = env.filter([Action(ActionMode.EE_DELTA, (*d, 0.0, 0.0, 0.0))], _state(q))
+        out.append((acts, ev))
+        if acts:
+            q = np.asarray(acts[0].q_target)
+    return out
+
+
+_TOWARD_WALL = [(0, 0, -0.1), (0, 0.06, 0), (0, 0.06, 0), (0, 0.06, 0)]      # low, toward the near wall
+
+
+def test_box_block_shortens_then_skips_a_move_into_the_near_wall_and_says_why():
+    res = _walk(_box_env("block"), _TOWARD_WALL)
+    assert not res[0][1] and not res[1][1]                                  # far from the box: silent
+    acts, ev = res[2]
+    assert acts and [e.kind for e in ev] == ["box"]
+    assert ev[0].brief == "move shortened: the wrist / gripper housing would hit the blue box (near (-y) wall)"
+    assert "it must stay 50 mm clear" in ev[0].message and "% of the way" in ev[0].message
+    assert 0.0 < acts[0].values[1] < 0.06                                   # executed values = the shortened move
+    acts, ev = res[3]
+    assert not acts and ev[0].brief.startswith("move skipped:")
+    # backing away from the wall is always allowed
+    q = np.asarray(res[2][0][0].q_target)
+    acts, ev = _box_env("block").filter([Action(ActionMode.EE_DELTA, (0, -0.05, 0.02, 0, 0, 0))], _state(q))
+    assert acts and not ev
+
+
+def test_box_warn_executes_and_warns_and_off_is_silent():
+    res = _walk(_box_env("warn"), _TOWARD_WALL)
+    acts, ev = res[2]
+    assert acts and acts[0].values[1] == pytest.approx(0.06) and [e.kind for e in ev] == ["box_warn"]
+    assert ev[0].level is EventLevel.WARN and "close to the blue box" in ev[0].brief
+    assert all(not ev for _, ev in _walk(_box_env("off"), _TOWARD_WALL))
+    # no obstacles known (mock / old backends): no check
+    env = _box_env("block")
+    env.set_obstacles([])
+    assert all(acts and not ev for acts, ev in _walk(env, _TOWARD_WALL))
+
+
+def test_box_block_in_reject_mode_and_joint_moves():
+    res = _walk(_box_env("block", clamp=False), _TOWARD_WALL)
+    assert not res[2][0] and res[2][1][0].brief.startswith("move rejected:")
+    # a joint move that swings the wrist toward the box is shortened before the 50 mm zone
+    from controlr.robot.obstacles import body_clearance, box_from_bin_info
+    q = np.asarray(_walk(_box_env("off"), _TOWARD_WALL[:2])[1][0][0].q_target)
+    box = box_from_bin_info(_BIN)
+    assert body_clearance(KIN, q + np.array([0, 0, 0, 0, 0.3, 0]), [box])[0] < 0.03     # unchecked: 29 mm
+    acts, ev = _box_env("block").filter([Action(ActionMode.JOINT_DELTA, (0, 0, 0, 0, 0.3, 0))], _state(q))
+    assert [e.kind for e in ev] == ["box"] and acts
+    assert body_clearance(KIN, np.asarray(acts[0].q_target), [box])[0] >= 0.045

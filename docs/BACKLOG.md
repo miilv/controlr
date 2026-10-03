@@ -15,22 +15,15 @@
   z = 180 mm, the packet hangs ≈30 mm below the TCP; rise while moving toward +y; cross the wall
   at z ≥ 260 (5 of 8 failures in the rotation round). Re-run seeds 0–3 with the same plans
   ([rotation-yaw](experiments/2026-10-02-rotation-yaw.md) §6.1).
-- [ ] **Arm links vs box in `SafetyEnvelope`** (wrist/gripper housing against the box body,
-  ≈50 mm inflation, like `tasks.body_box_clearance`) — block before execution instead of
-  catching PhysX blow-ups.
-- [ ] **Object-force stop fires falsely** on the gripper's own grip force (85–89 N in free air
-  vs real jams of 47–222 N). Needs a "packet vs environment" contact view in the server and a
-  stop based on it, not on pad force.
+- [x] ~~**Arm links vs box in `SafetyEnvelope`**~~ — `safety.box_collision: block | warn | off` (default warn), the box is a dynamic body, a light touch stops the arm (journal/2026-10-03-contacts-and-speed.md, experiments/2026-10-02-contacts-and-speed.md)
+- [x] ~~**Object-force stop fires falsely**~~ — the held-packet stop uses a packet-vs-environment contact view (journal/2026-10-03-contacts-and-speed.md, experiments/2026-10-02-contacts-and-speed.md)
 - [ ] **Joint-space escape/home**: the arm gets stuck at the edge of reach and almost every move
   is refused (Sonnet seed 0 — 17 turns wasted).
-- [ ] **Feedback noise:** a repeated "touched the packet 14 N" while holding, "not settled"
-  warnings → wasted HOLDs.
+- [x] ~~**Feedback noise**~~ — `feedback.level: short` (TASK / STATE / WARN / STOP), no tactile, no settle notices (journal/2026-10-03-contacts-and-speed.md, experiments/2026-10-02-contacts-and-speed.md)
 - [ ] **`grid` / `ee_marker` overlays in a live run** — implemented and projecting correctly,
   never tested live; 80–200 mm depth error is the main source of mistakes.
-- [ ] **Reach target is ambiguous in depth:** a 12 mm ball on an invisible 1.5 mm pole that
-  projects onto the packet; every planner put it on the mat (0/4 reach in
-  [smoke-v0](experiments/2026-10-02-smoke-v0.md) §3.1). Give it a visible base/pole and state its
-  height in the instruction; check that `setup.json` now records the marker position.
+- [x] ~~**Reach target is ambiguous in depth**~~ — the marker is gone; reach / push targets are text relative to visible objects (journal/2026-10-03-contacts-and-speed.md, experiments/2026-10-02-contacts-and-speed.md)
+- [ ] **Reach / push with text targets never run live** (only CPU tests + the Isaac reset test).
 - [ ] **Grasp yaw window −40…+30°** at the current tilt: a `yaw_min/max` clip param or `rotation=full`.
 - [ ] **The planner should always write "packet heading h, grasp yaw = h ± 90"** — when it does, models hit it exactly.
 - [ ] **`no-think/claude/claude-sonnet-5-5`** in an episode: Sonnet 5.5 spends 3–5× more reasoning than Opus for the same behaviour.
@@ -42,7 +35,9 @@
 - [ ] **Haiku 4.5 doesn't cache the first turns** (manual < 4096 tokens) — a meaningful appendix (kinematics/examples), not filler.
 - [ ] **`action.format=tool`** (actions as tool calls instead of the text grammar) — an experiment axis, not implemented.
 - [ ] **Continuous video recording in Isaac** (`log.record_video`); today videos are per-turn frames only.
-- [ ] **Isaac runs at ~0.24× real time** — wire up PHANTOM's faster scenes (4 ms sliding-pad) or speed up execution.
+- [x] ~~**Isaac runs at ~0.24× real time**~~ — ~0.94× with the new defaults (journal/2026-10-03-contacts-and-speed.md, experiments/2026-10-02-contacts-and-speed.md)
+- [ ] **Isaac ≥ 1× real time:** settling is ~45 % of sim time (fixed thresholds, ≤ 2 s); self-collisions off gives 1.02× (not default: the force stop does not see self-contact either); 24 iterations failed 1 of 4 expert scenes, 16 failed 1/2, dt 2 ms lost the grasp. Next: settle criteria per move, contact-report only during motion.
+- [ ] **Force-stop overshoot is an impact spike, not sampling:** driving the fingers into the mat at 0.15 m/s peaks at 85–350 N against an 80 N limit at every sampling rate (1 ms included). Slow the last ~20 mm near contact, or a compliant wrist.
 - [ ] **Usage grace is not a real deadline** (deferred in review, L8): up to 0–0.2 s per turn.
 - [ ] **Arm self-collisions** aren't detected by the force stop (S5, partial).
 - [ ] **Mock: table_z 0.053 vs Isaac −0.0095** — unify in one spec (mock only, harmless).

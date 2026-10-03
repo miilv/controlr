@@ -78,6 +78,7 @@ def test_config_switches_change_the_manual():
     assert "GOAL:" not in s
     assert "Grid overlay" in s and "TCP marker" in s and "Diff image" in s
     assert "rejected (not executed)" in s
+    cfg.feedback.level = "full"
     cfg.episode.goal_feedback = "always"
     assert "GOAL: <whether the task is complete" in build_system_prompt(cfg, SPEC, "t")
 
@@ -254,3 +255,86 @@ def test_yaw_manual_reads_headings_from_the_calibrated_camera():
     yaw = round(float(np.degrees(matrix_to_rpy(kin.fk_matrix(q)[:3, :3])[2])))
     assert f"yaw={yaw} deg | grip" in text                       # example STATE with the rig's heading
     assert f"yaw={yaw + 15} deg" in text and "MOVE ee_delta 30 20 0 15 GRIP open" in text
+
+
+# ---------------------------------------------------------------------------
+# legacy manuals stay byte-identical; the short feedback manual names only its four lines
+# ---------------------------------------------------------------------------
+
+_ISAAC_T_WC = np.array([
+    [0.9999720414746357, -0.005669109656577374, 0.00487621418213748, -0.35399058583569004],
+    [-0.007215535335001398, -0.9026929426481264, 0.4302248102365732, -0.44643379477503714],
+    [0.0019627325028448834, -0.4302479662810364, -0.9027086103456388, 0.9535],
+    [0.0, 0.0, 0.0, 1.0]])
+
+
+def _isaac_like():
+    from controlr.robot.kinematics import UR3Kinematics
+    from controlr.types import RobotState
+    K = np.array([[609.28, 0, 337.81], [0, 608.13, 249.65], [0, 0, 1]])
+    cams = {"scene": CameraInfo("scene", 640, 480, K, np.linalg.inv(_ISAAC_T_WC))}
+    q = np.array([0.1796, -1.4011, 0.8725, 1.176, 1.2852, -2.9406])
+    p, rv = UR3Kinematics().fk(q)
+    return ur3_cb3_spec(table_z=-0.0095), cams, RobotState(0.0, q, p, rv, 91.0, False, False)
+
+
+def _legacy(cfg: Config) -> Config:
+    """Every manual before 2026-10-02 was rendered with these settings."""
+    cfg.feedback.level = "full"
+    cfg.observation.state_text = True
+    cfg.observation.tactile = True
+    cfg.safety.box_collision = "off"
+    return cfg
+
+
+# sha256 of the manuals rendered at commit 8a90afa (before the contacts-and-speed changes)
+_LEGACY_SHA = {
+    "isaac_none": "d70ceec302056b2d39c8f626b1ba1b4a67121386f691fada63138c988e690e26",
+    "isaac_none_planner": "2d9d7c11f120903b0f01094354da0ee47ff0d2bd351cff706d6e0dbde827f1f1",
+    "isaac_yaw": "e87c1fee1d92611e2691d410b81c0c73e6ccb3817adab6fc3e3b40bae8def432",
+    "isaac_yaw_planner": "6610b1cc253475058e6944fa08705db5577ff13a2d0525d17772967de5dc4323",
+    "bare": "0dd136c7948b917a4a122e24c605cec3875f3f91c10d09c1a477a8a319b35b1e",
+    "bare_nostate": "a7ca0b51494c4a36a0ddc9f3b1dc9b8c51ec06b8fee52b8e466029d07a0d60a0",
+}
+
+
+def test_legacy_settings_reproduce_the_old_manual_byte_for_byte():
+    """system_v0 gained placeholders (feedback level, tactile, box check); with the old
+    settings the rendered manual must not change by a byte (comparability with old runs)."""
+    import hashlib
+    spec, cams, st = _isaac_like()
+    out = {}
+    for name in ("none", "yaw"):
+        cfg = _legacy(Config())
+        cfg.action.rotation = name
+        out[f"isaac_{name}"] = build_system_prompt(cfg, spec, cameras=cams, state0=st)
+        out[f"isaac_{name}_planner"] = build_planner_prompt(cfg, spec, cameras=cams, state0=st)
+    out["bare"] = build_system_prompt(_legacy(Config()), ur3_cb3_spec())
+    cfg = _legacy(Config())
+    cfg.observation.state_text = False
+    out["bare_nostate"] = build_system_prompt(cfg, ur3_cb3_spec())
+    for k, text in out.items():
+        assert hashlib.sha256(text.encode()).hexdigest() == _LEGACY_SHA[k], k
+
+
+@pytest.mark.parametrize("box", ["warn", "block", "off"])
+@pytest.mark.parametrize("rotation", ["none", "yaw"])
+def test_short_feedback_manual_describes_only_task_state_warn_stop(box, rotation):
+    from controlr.robot.obstacles import box_from_bin_info
+    spec, cams, st = _isaac_like()
+    ob = box_from_bin_info({"lower": [-0.5705, -0.0651, -0.0055], "upper": [-0.2105, 0.1949, 0.1805],
+                            "center": [-0.3905, 0.0649, -0.0095], "yaw": -0.0121, "wall": 0.02, "dynamic": True})
+    cfg = Config()
+    cfg.action.rotation = rotation
+    cfg.safety.box_collision = box
+    s = build_system_prompt(cfg, spec, cameras=cams, state0=st, obstacles=[ob])
+    for absent in ("EXEC", "CLAMP", "EVENT", "GOAL", "TURN ", "PARSE ERROR", "`holding`", "holding:", "GRAMMAR"):
+        assert absent not in s, absent
+    for line in ("    TASK: <", "    STATE: <measured state>", "    WARN: <", "    STOP: <"):
+        assert line in s
+    assert "| grip 85 mm open\n" in s                               # example STATE without holding
+    if box == "off":
+        assert "NOT the\n  objects" in s
+    else:
+        assert "the blue box" in s and "slides when pushed" in s and "50 mm" in s
+    assert ("is shortened or\n  skipped (WARN)" in s) is (box == "block")

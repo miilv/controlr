@@ -69,7 +69,9 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **On `claude/` / `cc/` the router sets the cache boundary itself**; our markers there seem to
   have no effect (not confirmed by a probe — see BACKLOG). Haiku 4.5 doesn't cache prefixes
   under 4096 tokens.
-- **Isaac runs at ~0.24× real time**: a 100 mm move ≈ 4 s — often more than the LLM.
+- **Isaac speed**: with PHANTOM's settings (1 ms steps, every step through `World.step`, USD
+  write-back, a contact read per body) the sim ran at ~0.18× real time; see the
+  contacts-and-speed report for what each speed setting buys and which defaults were chosen.
 - **PhysX blows up** on a squeezed object; such episodes end as `unstable`, and the server now
   survives NaNs — but check the server log when things look odd.
 - **The prompt and grammar must match the config**: examples in the manual are generated from
@@ -77,6 +79,22 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **A single angled D435** gives poor depth: 80–200 mm depth errors are the main failure cause
   so far (hypothesis in BACKLOG).
 - **`uv run` in the repo root creates `.venv`**; on compute3 `deploy.sh` builds `~/controlr/.venv`.
+- **YAML reads a bare `off` as `false`** (`box_collision: off`, `--set safety.box_collision=off`);
+  `config.validate` maps it back to `"off"`. Quote other on/off-like strings in YAML.
+- **The manual must describe exactly the feedback the model gets.** `system_v0.md` has
+  placeholders for every feedback-dependent sentence; with the legacy settings it must render
+  byte-identical (`test_prompts::test_legacy_settings_reproduce_the_old_manual_byte_for_byte`,
+  hashes of the old manuals). Changing a legacy sentence = a new `system_vN.md`, not an edit.
+- **The blue box moves.** It is a dynamic body in Isaac: anything that uses box geometry must
+  take the CURRENT pose (server `state()["bin"]`, `IsaacRobot.obstacles()`, `tasks.bin_info_at`),
+  never `scene_info["bin"]` (the authored pose). Resting partly on the 3 mm mat it tips ~0.7°, so
+  containment is checked in the box's own frame (`tasks.to_box_interior`) — a yaw-only test put a
+  packet standing on the floor 0.6 mm "below" it and failed the scripted expert.
+- **`pkill -f <pattern>` over ssh kills the ssh session's own shell** (its command line contains
+  the pattern). Find PIDs with `pgrep -af`, then `kill <pid>`; a client killed without `close()`
+  leaves its Isaac server running — kill that PID too.
+- **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
+  with machine load — compare speed settings within one session, and note the load.
 
 ## 5. What lives where
 

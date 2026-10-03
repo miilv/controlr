@@ -144,8 +144,11 @@ class EventLevel(str, Enum):
 @dataclass(frozen=True)
 class SafetyEvent:
     level: EventLevel
-    kind: str              # "clamp" | "joint_limit_near" | "workspace" | "collision" | "ik_fail" | "step_limit" | ...
+    kind: str              # "clamp" | "joint_limit_near" | "workspace" | "collision" | "ik_fail" | "step_limit"
+                           # | "box" | "tactile" (fingertip sensing; shown only with observation.tactile) | ...
     message: str           # human/LLM-readable, already in LLM units where relevant
+    # one-line notice without measurement numbers (feedback.level=minimal); "" -> message
+    brief: str = ""
 
 
 @dataclass
@@ -157,6 +160,9 @@ class ExecReport:
     state_after: RobotState
     duration_s: float                       # robot/sim time spent moving + settling
     stopped: bool = False                   # a STOP-level event ended execution early
+    # backend diagnostics for the run log only (never shown to the model): e.g. Isaac's
+    # per-execute profile (physics / contact-read / wall seconds), contact peaks, pad forces
+    backend: dict | None = None
 
 
 @dataclass(frozen=True)

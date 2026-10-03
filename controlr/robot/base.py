@@ -55,6 +55,12 @@ class Robot(ABC):
         a JSON-able dict for the run log (``setup.json`` "scene"); None if not known."""
         return None
 
+    def obstacles(self) -> list:
+        """Known obstacles at their CURRENT pose (``controlr.robot.obstacles.BoxObstacle``) for
+        the envelope's predictive wrist / housing check (``safety.box_collision``) and the
+        manual. Default: none (the envelope then only knows workspace, table and joints)."""
+        return []
+
     def hold(self) -> None:
         """Keep the current pose (default: nothing to do for position-controlled robots)."""
 

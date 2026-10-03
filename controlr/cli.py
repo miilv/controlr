@@ -212,7 +212,7 @@ def cmd_sweep(args) -> int:
 
 def cmd_prompt(args) -> int:
     """Render the manual without a backend reset: the mock rig's spec + D435 camera,
-    or a recorded run's reference state and cameras (``--setup RUN_DIR``)."""
+    or a recorded run's reference state, cameras and known obstacles (``--setup RUN_DIR``)."""
     import json
 
     import numpy as np
@@ -227,6 +227,7 @@ def cmd_prompt(args) -> int:
     spec = ur3_cb3_spec()
     cams = {"scene": d435_camera()}
     state0 = None
+    obstacles = None
     if args.setup:
         run = Path(args.setup)
         setup = json.loads((run / "setup.json").read_text())
@@ -235,6 +236,9 @@ def cmd_prompt(args) -> int:
             state0 = RobotState(t=0.0, q=np.asarray(st["q"]), tcp_pos=np.asarray(st["tcp_pos"]),
                                 tcp_rotvec=np.asarray(st["tcp_rotvec"]), gripper_mm=float(st["gripper_mm"]),
                                 gripper_closed=bool(st["gripper_closed"]), holding=st.get("holding"))
+        if setup.get("obstacles"):
+            from controlr.robot.obstacles import BoxObstacle
+            obstacles = [BoxObstacle.from_dict(o) for o in setup["obstacles"]]
         if (run / "cameras.json").exists():
             cams = {n: CameraInfo(n, c["width"], c["height"], np.asarray(c["K"]), np.asarray(c["T_cam_base"]))
                     for n, c in json.loads((run / "cameras.json").read_text()).items()}
@@ -244,7 +248,7 @@ def cmd_prompt(args) -> int:
             d["joints"] = tuple(JointSpec(**j) for j in d["joints"])
             spec = RobotSpec(**{k: tuple(v) if isinstance(v, list) else v for k, v in d.items()})
     build = build_planner_prompt if args.planner else build_system_prompt
-    print(build(cfg, spec, cameras=cams, state0=state0), end="")
+    print(build(cfg, spec, cameras=cams, state0=state0, obstacles=obstacles), end="")
     return 0
 
 

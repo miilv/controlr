@@ -158,7 +158,17 @@ def _action_rec(a: Action) -> dict:
 
 
 def _event_rec(e: SafetyEvent) -> dict:
-    return {"level": e.level.value, "kind": e.kind, "message": e.message}
+    rec = {"level": e.level.value, "kind": e.kind, "message": e.message}
+    if e.brief:
+        rec["brief"] = e.brief
+    return rec
+
+
+def robot_obstacles(robot) -> list:
+    """The backend's known obstacles at their current pose (optional ``Robot.obstacles()``;
+    none for backends without a scene model)."""
+    fn = getattr(robot, "obstacles", None)
+    return list(fn() or []) if callable(fn) else []
 
 
 def _state_rec(s: Any) -> dict | None:
@@ -192,7 +202,8 @@ def _user_parts(text: str, rendered) -> list:
 # ---------------------------------------------------------------------------
 
 def run_planner(cfg: Config, llm, spec, instruction: str, rendered, obs_text: str,
-                cameras: dict | None = None, nonce: str = "", state0=None) -> tuple[str | None, dict]:
+                cameras: dict | None = None, nonce: str = "", state0=None,
+                obstacles=None) -> tuple[str | None, dict]:
     """One separate, uncached, high-effort call. The planner reads the same
     operating manual as the controller (same frame, units, limits) plus the
     planning instructions. It runs on a different model, and its system text
@@ -205,7 +216,7 @@ def run_planner(cfg: Config, llm, spec, instruction: str, rendered, obs_text: st
     from controlr.llm.transcript import Transcript
     from controlr.prompts.builder import build_planner_prompt
 
-    tr = Transcript(build_planner_prompt(cfg, spec, cameras=cameras, state0=state0))
+    tr = Transcript(build_planner_prompt(cfg, spec, cameras=cameras, state0=state0, obstacles=obstacles))
     tr.add_user([(f"RUN {nonce}\n" if nonce else "") + f"TASK: {instruction}", *rendered.images]
                 + ([obs_text] if obs_text else []))
     t0 = time.perf_counter()
@@ -319,10 +330,12 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
         # rotation=none orientation and keeps the manual identical across episodes
         ref = getattr(robot, "reference_state", lambda: None)() or obs.state
         safety.reset(ref)
+        # known obstacles at their reset pose (the backend's current scene; refreshed every turn)
+        obstacles = robot_obstacles(robot)
 
         # Task-free manual (the task goes in turn 0) -> identical across tasks/episodes;
         # cameras let it state how the base axes appear in each calibrated image.
-        system_text = build_system_prompt(cfg, spec, cameras=obs.cameras, state0=ref)
+        system_text = build_system_prompt(cfg, spec, cameras=obs.cameras, state0=ref, obstacles=obstacles)
         log.write_system_prompt(system_text)
         warn = cache_warning(cfg.llm.model, system_text) if style != "none" else None
         log.write_json("cameras.json", {n: _camera_rec(c) for n, c in obs.cameras.items()})
@@ -346,7 +359,7 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
         elif cfg.planner.enabled:
             say(f"planner {cfg.planner.model} ...")
             plan, planner_rec = run_planner(cfg, llm, spec, instruction, rendered, obs_text, obs.cameras,
-                                            nonce=nonce, state0=ref)
+                                            nonce=nonce, state0=ref, obstacles=obstacles)
             log.write_json("planner.json", planner_rec)
             say(f"planner done in {planner_rec['wall_s']:.1f} s"
                 + (f" (error: {planner_rec['error']})" if planner_rec.get("error") else ""))
@@ -366,7 +379,8 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
                                       "llm_backend": result.llm_backend,
                                       "state0": _state_rec(obs.state), "reference_state": _state_rec(ref),
                                       "obs0_images": [p.sha for p in rendered.images], "raw0": raw0,
-                                      "scene": to_jsonable(getattr(robot, "scene_record", lambda: None)())})
+                                      "scene": to_jsonable(getattr(robot, "scene_record", lambda: None)()),
+                                      "obstacles": [o.to_dict() for o in obstacles]})
 
         stop_when = is_complete if cfg.llm.early_stop else None
         parse_streak = 0
@@ -428,6 +442,7 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
             t0 = time.perf_counter()
             if parsed.actions:
                 state = robot.state()
+                safety.set_obstacles(robot_obstacles(robot))     # current pose (the box may have moved)
                 filtered, sevents = safety.filter(parsed.actions, state)
                 if any(e.level == EventLevel.STOP for e in sevents) or not filtered:
                     report = _empty_report(parsed.actions, sevents, state)
@@ -440,6 +455,8 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
                 rec.update(executed=[_action_rec(a) for a in report.executed],
                            events=[_event_rec(e) for e in report.events],
                            exec_duration_s=report.duration_s, exec_stopped=report.stopped)
+                if report.backend:          # e.g. Isaac: profile, contact peaks, pad forces (log only)
+                    rec["backend"] = to_jsonable(report.backend)
 
             t0 = time.perf_counter()
             goal = robot.check_goal()
@@ -530,6 +547,6 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
         planner_ptr["usage"] = planner_rec.get("usage")
     summary.update(name=cfg.name, seed=cfg.seed, model=cfg.llm.model, planner=planner_ptr,
                    task=cfg.task.name, backend=cfg.robot.backend,
-                   cache_read_share_turns=stats["cache_read_share_turns"])
+                   cache_read_share_turns=stats["cache_read_share_turns"], sim_time=stats["sim_time"])
     log.write_summary(summary)
     return result

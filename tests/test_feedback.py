@@ -62,6 +62,15 @@ def obs(st: RobotState) -> Observation:
     return Observation(t=0.0, images={}, cameras={}, state=st)
 
 
+def legacy_cfg() -> Config:
+    """The feedback of every run before 2026-10-02: full receipt, STATE line, tactile."""
+    cfg = Config()
+    cfg.feedback.level = "full"
+    cfg.observation.state_text = True
+    cfg.observation.tactile = True
+    return cfg
+
+
 def test_rpy_roundtrip_and_rotvec():
     for rpy in [(0.1, -0.2, 0.3), (math.pi, 0.0, 0.5), (-2.0, 0.4, -3.0)]:
         R = rpy_to_matrix(*rpy)
@@ -71,14 +80,19 @@ def test_rpy_roundtrip_and_rotvec():
 
 
 def test_state_line_matches_contract_example():
-    cfg = Config()
+    cfg = legacy_cfg()
     cfg.action.rotation = "yaw"
     assert format_state(state(), cfg) == \
         "STATE: tcp x=312 y=-45 z=88 mm yaw=12 deg | grip 42 mm open | holding: no"
+    # the default (short feedback) and full feedback without tactile sensing: no `holding`
+    for cfg in (Config(), legacy_cfg()):
+        cfg.action.rotation = "yaw"
+        cfg.observation.tactile = False
+        assert format_state(state(), cfg) == "STATE: tcp x=312 y=-45 z=88 mm yaw=12 deg | grip 42 mm open"
 
 
 def test_state_line_variants():
-    cfg = Config()   # rotation none: no orientation
+    cfg = legacy_cfg()   # rotation none: no orientation
     assert format_state(state(holding=None), cfg) == \
         "STATE: tcp x=312 y=-45 z=88 mm | grip 42 mm open | holding: unknown"
     cfg.action.rotation = "full"
@@ -102,7 +116,7 @@ def _report(before, after, actions, events=(), dur=0.41, executed=None, stopped=
 
 
 def test_full_feedback_shape_and_order():
-    cfg = Config()
+    cfg = legacy_cfg()
     cfg.action.rotation = "yaw"
     cfg.episode.goal_feedback = "always"
     parsed = parse_reply("MOVE ee_delta 20 0 -10 0\nSTATUS OK", cfg.action, SPEC)
@@ -131,7 +145,7 @@ def test_full_feedback_shape_and_order():
 
 
 def test_stop_event_and_stopped_flag():
-    cfg = Config()
+    cfg = legacy_cfg()
     st = state()
     parsed = parse_reply("MOVE ee_delta 0 0 -50\nSTATUS OK", cfg.action, SPEC)
     fb = format_feedback(3, parsed, _report(st, st, parsed.actions,
@@ -149,7 +163,7 @@ def test_stop_event_and_stopped_flag():
     ("always", "OK", True),
 ])
 def test_goal_visibility(mode, status, shown):
-    cfg = Config()
+    cfg = legacy_cfg()
     cfg.episode.goal_feedback = mode
     parsed = parse_reply(f"HOLD\nSTATUS {status}", cfg.action, SPEC)
     st = state()
@@ -158,7 +172,7 @@ def test_goal_visibility(mode, status, shown):
 
 
 def test_parse_errors_and_grammar_reminder():
-    cfg = Config()
+    cfg = legacy_cfg()
     parsed = parse_reply("MOVE ee_delta 1 2\nI think", cfg.action, SPEC)
     st = state()
     fb = format_feedback(4, parsed, None, None, obs(st), cfg, SPEC)
@@ -172,7 +186,7 @@ def test_parse_errors_and_grammar_reminder():
 
 
 def test_turn0_and_state_text_off():
-    cfg = Config()
+    cfg = legacy_cfg()
     st = state()
     assert format_feedback(0, None, None, None, obs(st), cfg) == "TURN 0\n" + format_state(st, cfg)
     cfg.observation.state_text = False
@@ -180,7 +194,7 @@ def test_turn0_and_state_text_off():
 
 
 def test_gripper_only_and_joint_achieved():
-    cfg = Config()
+    cfg = legacy_cfg()
     b, a = state(grip=85.0), state(grip=31.6, closed=True, holding=True)
     parsed = parse_reply("GRIP close\nSTATUS OK", cfg.action, SPEC)
     fb = format_feedback(5, parsed, _report(b, a, parsed.actions, dur=0.6), None, obs(a), cfg)
@@ -216,11 +230,80 @@ def test_backend_and_safety_messages_follow_the_llm_units(tmp_path):
     a = ActionConfig(pos_unit="cm", ang_unit="rad")
     assert to_llm_units("translation 200 mm exceeds 100 mm; wrist_2 at 171.0 deg (peak 170 N)", a) == \
         "translation 20.0 cm exceeds 10.0 cm; wrist_2 at 2.985 rad (peak 170 N)"
-    cfg = load_config(None, [f"log.root={tmp_path}", "planner.enabled=false", "robot.backend=mock",
-                             "task.name=reach", "action.pos_unit=cm", "action.ang_unit=rad",
-                             "episode.goal_feedback=always", "episode.max_turns=2"], dotenv=None)
-    res = run_episode(cfg, robot=MockRobot({"width": 160, "height": 120}),
-                      llm=FakeLLM(["MOVE ee_delta 20 0 0\nSTATUS OK", "STATUS FAIL"]))
-    fb = res.records[0]["feedback"]
-    assert "CLAMP" in fb and "GOAL" in fb
-    assert not _re.search(r"\d\s*mm\b|\d\s*deg\b", fb), fb
+    for level in ("full", "short"):
+        cfg = load_config(None, [f"log.root={tmp_path}", "planner.enabled=false", "robot.backend=mock",
+                                 "task.name=reach", "action.pos_unit=cm", "action.ang_unit=rad",
+                                 "episode.goal_feedback=always", "episode.max_turns=2",
+                                 f"feedback.level={level}"], dotenv=None)
+        res = run_episode(cfg, robot=MockRobot({"width": 160, "height": 120}),
+                          llm=FakeLLM(["MOVE ee_delta 20 0 0\nSTATUS OK", "STATUS FAIL"]))
+        fb = res.records[0]["feedback"]
+        assert (("CLAMP" in fb and "GOAL" in fb) if level == "full" else
+                ("WARN: move shortened: 10.0 cm per-line limit" in fb)), fb
+        assert not _re.search(r"\d\s*mm\b|\d\s*deg\b", fb), fb
+
+
+def _stop_and_clamp_events():
+    return [
+        SafetyEvent(EventLevel.WARN, "reach", "TCP target x=-400 y=10 z=300 mm is not reachable -> moved 40 % "
+                                              "of the way (31 mm)", "move shortened: only part of it was reachable"),
+        SafetyEvent(EventLevel.WARN, "settle", "the arm had not fully settled when the image was taken"),
+        SafetyEvent(EventLevel.WARN, "joint_limit_near", "wrist_2 at 171 deg, soft limit 175 deg"),
+        SafetyEvent(EventLevel.INFO, "tactile", "gripper/fingers touched the packet (peak 14 N)"),
+        SafetyEvent(EventLevel.INFO, "contact", "gripper touched the blue box (peak 4 N)"),
+        SafetyEvent(EventLevel.STOP, "collision", "motion stopped: contact force 52 N against the blue box > 30 N; "
+                                                  "the arm holds its current pose",
+                    "the gripper pushed against the blue box; the arm stopped and holds still"),
+    ]
+
+
+def test_short_level_is_task_state_warn_stop_only():
+    cfg = Config()                         # defaults: short feedback, STATE on, no tactile
+    assert cfg.feedback.level == "short" and cfg.observation.state_text and not cfg.observation.tactile
+    parsed = parse_reply("MOVE ee_delta 0 50 0\nSTATUS OK", cfg.action, SPEC)
+    st = state()
+    fb = format_feedback(3, parsed, _report(st, st, parsed.actions, _stop_and_clamp_events(), stopped=True),
+                         GoalReport(False, 0.4, "not yet"), obs(st), cfg, SPEC, task="Pick it up.")
+    assert fb.splitlines() == [
+        "STATE: tcp x=312 y=-45 z=88 mm | grip 42 mm open",
+        "WARN: move shortened: only part of it was reachable",
+        "WARN: wrist_2 at 171 deg, soft limit 175 deg",          # an event without a brief: its message
+        "STOP: the gripper pushed against the blue box; the arm stopped and holds still",
+    ]
+    # nothing to report: just STATE; turn 0 too (TASK comes from the loop's turn-0 head)
+    assert format_feedback(4, parsed, _report(st, st, parsed.actions), None, obs(st), cfg) == format_state(st, cfg)
+    assert format_feedback(0, None, None, None, obs(st), cfg) == format_state(st, cfg)
+    # a reply that could not be used, and a DONE whose check failed, are WARN lines
+    bad = parse_reply("MOVE ee_delta 1 2\nI think", cfg.action, SPEC)
+    lines = format_feedback(4, bad, None, None, obs(st), cfg, SPEC).splitlines()
+    warns = [ln for ln in lines if ln.startswith("WARN: reply not understood: ")]
+    assert len(warns) == 2 and all(ln.endswith("- nothing executed") for ln in warns)
+    assert not any(ln.startswith(("PARSE ERROR", "GRAMMAR", "TURN", "EXEC", "GOAL", "EVENT")) for ln in lines)
+    done = parse_reply("HOLD\nSTATUS DONE", cfg.action, SPEC)
+    assert "WARN: task not complete yet" in format_feedback(6, done, _report(st, st, []),
+                                                           GoalReport(False, 0.4, "x"), obs(st), cfg)
+    cfg.episode.goal_feedback = "never"
+    assert "task not complete" not in format_feedback(6, done, _report(st, st, []),
+                                                      GoalReport(False, 0.4, "x"), obs(st), cfg)
+    # TASK every turn only on request; STATE is its own switch
+    cfg.feedback.repeat_task = True
+    cfg.observation.state_text = False
+    assert format_feedback(4, parsed, _report(st, st, parsed.actions), None, obs(st), cfg,
+                           task="Pick it up.") == "TASK: Pick it up."
+    # a stop without a STOP event
+    assert format_feedback(4, parsed, _report(st, st, parsed.actions, stopped=True), None, obs(st),
+                           cfg) == "STOP: motion stopped early"
+
+
+def test_tactile_events_only_with_tactile_on():
+    st = state()
+    cfg = legacy_cfg()
+    parsed = parse_reply("MOVE ee_delta 0 50 0\nSTATUS OK", cfg.action, SPEC)
+    rep = _report(st, st, parsed.actions, _stop_and_clamp_events(), stopped=True)
+    fb = format_feedback(3, parsed, rep, None, obs(st), cfg, SPEC)
+    assert "EVENT: gripper/fingers touched the packet (peak 14 N)" in fb
+    assert "EVENT: gripper touched the blue box (peak 4 N)" in fb
+    assert "STOP: motion stopped: contact force 52 N against the blue box > 30 N" in fb
+    cfg.observation.tactile = False
+    fb = format_feedback(3, parsed, rep, None, obs(st), cfg, SPEC)
+    assert "touched the packet" not in fb and "EVENT: gripper touched the blue box (peak 4 N)" in fb

@@ -5,12 +5,17 @@ WHY pure numpy and no Isaac / PHANTOM imports: this module is imported by the
 Isaac server (to place objects and score) *and* by CPU unit tests, so the
 randomisation ranges and success rules are testable without a GPU. The server
 hands ``evaluate`` a plain "privileged snapshot" dict (object pose/velocity,
-pad/robot contact forces, bin interior bounds, TCP); everything here is
-arithmetic on that dict.
+pad/robot contact forces, the box's CURRENT interior bounds and pose — the box is a
+dynamic body and can be pushed —, TCP); everything here is arithmetic on that dict.
+
+Targets are text only (Ilia: "the text instruction must be enough"): no visual markers.
+A reach target is a point stated relative to a visible object ("60 mm above the centre
+of the top of the wafer packet"), a push target a distance and direction from the
+packet's start pose; both are checked against the objects' current poses.
 
 Tasks share ONE stage (PHANTOM's measured waffle rig): switching between them
-moves the packet and toggles visual-only markers instead of rebuilding the
-scene, so the ~1 min Isaac startup is paid once per server.
+moves the packet instead of rebuilding the scene, so the ~1 min Isaac startup is
+paid once per server.
 
 Ranges follow PHANTOM where it documents them: packet centre N(0, 10 mm)
 clipped to +-20 mm and yaw N(0, 5 deg) clipped to +-10 deg
@@ -82,6 +87,49 @@ def tilt_angle(quat_wxyz) -> float:
     return float(np.arccos(np.clip(quat_wxyz_to_matrix(quat_wxyz)[2, 2], -1.0, 1.0)))
 
 
+def bin_info_at(b0: dict, pose0, pos, quat_wxyz) -> dict:
+    """The box geometry ``b0`` (server ``bin_info`` at the authored pose ``pose0`` =
+    (position, quaternion wxyz) of the ``/World/Bin`` body) moved rigidly to the body's
+    CURRENT pose ``(pos, quat_wxyz)``: centre and yaw follow the body; the interior bounds,
+    kept in the bin frame (absolute coordinates rotated about the centre by -yaw), shift
+    with the centre. ``tilt_deg`` reports a tipped box (the interior test assumes upright)."""
+    p0, q0 = np.asarray(pose0[0], float), np.asarray(pose0[1], float)
+    R0, R = quat_wxyz_to_matrix(q0), quat_wxyz_to_matrix(quat_wxyz)
+    dR = R @ R0.T
+    c0 = np.asarray(b0["center"], float)
+    c = dR @ (c0 - p0) + np.asarray(pos, float)
+    dyaw = float(np.arctan2(dR[1, 0], dR[0, 0]))
+    out = dict(b0)
+    out["center"] = c
+    out["yaw"] = float(b0.get("yaw", 0.0)) + dyaw
+    out["lower"] = np.asarray(b0["lower"], float) - c0 + c
+    out["upper"] = np.asarray(b0["upper"], float) - c0 + c
+    out["tilt_deg"] = float(np.degrees(np.arccos(np.clip(dR[2, 2], -1.0, 1.0))))
+    out["shift_m"] = float(np.linalg.norm(c - c0))
+    # exact frame for the containment test of a tilted box (a dynamic box resting partly on
+    # the 3 mm mat tips by ~0.7 deg): points -> authored box frame -> authored bounds
+    out["frame0"] = {"R": dR.tolist(), "center": c.tolist(), "center0": c0.tolist(),
+                     "yaw0": float(b0.get("yaw", 0.0)), "lower0": np.asarray(b0["lower"], float).tolist(),
+                     "upper0": np.asarray(b0["upper"], float).tolist()}
+    return out
+
+
+def to_box_interior(points, b: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """(points in the box's interior frame, lower, upper): with a moved / tilted box
+    (``bin_info_at``'s ``frame0``) the points are carried back into the authored box pose
+    first, so containment is exact for any rigid displacement; otherwise the yaw-only
+    convention of PHANTOM ``BinGeometry.to_interior_frame``."""
+    f = b.get("frame0")
+    pts = np.asarray(points, float)
+    if f:
+        R = np.asarray(f["R"], float)
+        back = (pts - np.asarray(f["center"], float)) @ R + np.asarray(f["center0"], float)
+        return (to_bin_frame(back, np.asarray(f["center0"], float), float(f["yaw0"])),
+                np.asarray(f["lower0"], float), np.asarray(f["upper0"], float))
+    return (to_bin_frame(pts, np.asarray(b["center"], float), float(b["yaw"])),
+            np.asarray(b["lower"], float), np.asarray(b["upper"], float))
+
+
 # ---------------------------------------------------------------------------
 # registry
 # ---------------------------------------------------------------------------
@@ -117,6 +165,9 @@ WAFFLE_DEFAULTS = {
     "bin_tolerance_m": 0.002, "contact_force_n": 0.1,
     "settle_speed_m_s": 0.03, "settle_angular_speed_rad_s": 0.5, "lift_height_m": 0.03,
     "start_q": START_Q, "start_gripper": "open",
+    # the blue box: a dynamic rigid body (a push slides it) since 2026-10-02; False = the
+    # immovable box of every run before (kinematic, like PHANTOM's static colliders)
+    "box_dynamic": True, "box_mass_kg": 0.4,
 }
 
 
@@ -181,15 +232,15 @@ def _start(params: dict, defaults: dict, rng: np.random.Generator | None = None)
 
 
 def sample_waffle(rng, params, scene):
-    return {**_sample_object(rng, params, scene, WAFFLE_DEFAULTS), **_start(params, WAFFLE_DEFAULTS, rng),
-            "marker": None, "zone": None}
+    return {**_sample_object(rng, params, scene, WAFFLE_DEFAULTS), **_start(params, WAFFLE_DEFAULTS, rng)}
 
 
 def scene_record(episode: dict, scene: dict) -> dict:
     """The sampled task scene of one episode in loggable units (mm / deg, base frame):
     packet pose (sampled and settled) and its yaw offset from the nominal pose, box pose,
-    start joints / TCP / tool yaw (+ the randomised start yaw offset), reach marker / push
-    zone. ``episode`` is the server's episode dict, ``scene`` its ``scene_info``."""
+    start joints / TCP / tool yaw (+ the randomised start yaw offset), the text reach / push
+    target. ``episode`` is the server's episode dict, ``scene`` its ``scene_info`` (with the
+    box at its pose after the reset settle)."""
     from controlr.robot.kinematics import UR3Kinematics, matrix_to_rpy
 
     def mm(v):
@@ -216,6 +267,8 @@ def scene_record(episode: dict, scene: dict) -> dict:
         T = kin.fk_matrix(np.asarray(q0, float))
         tcp0, tcp_yaw0 = T[:3, 3], float(matrix_to_rpy(T[:3, :3])[2])
     b = scene.get("bin") or {}
+    rt = episode.get("reach_target") or None
+    pt = episode.get("push_target") or None
     return {
         "task": episode.get("task"), "seed": episode.get("seed"),
         "packet": {"pos_mm": mm(episode.get("object_pos")), "pos_sampled_mm": mm(episode.get("object_pos_sampled")),
@@ -228,12 +281,16 @@ def scene_record(episode: dict, scene: dict) -> dict:
                    "settle_drift_mm": None if episode.get("settle_drift_m") is None
                    else round(float(episode["settle_drift_m"]) * 1000, 2)},
         "box": {"center_mm": mm(b.get("center")), "yaw_deg": deg(b.get("yaw")),
-                "interior_lower_mm": mm(b.get("lower")), "interior_upper_mm": mm(b.get("upper"))},
+                "interior_lower_mm": mm(b.get("lower")), "interior_upper_mm": mm(b.get("upper")),
+                "dynamic": episode.get("box_dynamic", (episode.get("params") or {}).get("box_dynamic"))},
         "start": {"q_deg": None if q0 is None else [round(float(np.degrees(v)), 3) for v in q0],
                   "tcp_mm": mm(tcp0), "tcp_yaw_deg": deg(tcp_yaw0),
                   "yaw_offset_deg": deg(episode.get("start_yaw_offset", 0.0)),
                   "gripper": episode.get("start_gripper")},
-        "marker_mm": mm(episode.get("marker")), "zone_mm": mm(episode.get("zone")),
+        "reach_target": None if not rt else {"text": rt.get("text"), "ref": rt.get("ref"),
+                                             "offset_mm": mm(rt.get("offset")), "point_mm": mm(rt.get("point0"))},
+        "push_target": None if not pt else {"text": pt.get("text"), "distance_mm": round(float(pt["distance"]) * 1000, 1),
+                                            "point_mm": mm(pt.get("point"))},
     }
 
 
@@ -241,11 +298,9 @@ def evaluate_waffle(snap: dict, episode: dict) -> dict:
     p = {**WAFFLE_DEFAULTS, **episode.get("params", {})}
     tol = float(p["bin_tolerance_m"])
     corners = box_corners(snap["object_pos"], snap["object_quat_wxyz"], snap["object_size"])
-    b = snap["bin"]
-    lower, upper = np.asarray(b["lower"], float), np.asarray(b["upper"], float)
-    local = to_bin_frame(corners, np.asarray(b["center"], float), float(b["yaw"]))
+    local, lower, upper = to_box_interior(corners, snap["bin"])        # the box's CURRENT pose
     over_bin = bool(np.all((local[:, :2] >= lower[:2] - tol) & (local[:, :2] <= upper[:2] + tol)))
-    inside = bool(over_bin and corners[:, 2].min() >= lower[2] - tol and corners[:, 2].max() <= upper[2] + tol)
+    inside = bool(over_bin and local[:, 2].min() >= lower[2] - tol and local[:, 2].max() <= upper[2] + tol)
     pads = np.asarray(snap["pad_object_force_n"], float)
     thr = float(p["contact_force_n"])
     gripped = bool(np.all(pads > thr))
@@ -276,17 +331,27 @@ def evaluate_waffle(snap: dict, episode: dict) -> dict:
 
 # -- reach --------------------------------------------------------------------
 
+# Text targets relative to visible objects (Ilia: "the text instruction must be enough"):
+# (reference point, metres above it, how the instruction names it). The reference point
+# is computed from the object's CURRENT pose when the goal is checked.
+REACH_TARGETS = (
+    ("packet_top", 0.06, "60 mm above the centre of the top face of the wafer packet"),
+    ("packet_top", 0.10, "100 mm above the centre of the top face of the wafer packet"),
+    ("box_opening", 0.05, "50 mm above the rim of the blue box, over the centre of its opening"),
+    ("box_near_rim", 0.05, "50 mm above the middle of the blue box's near rim (the rim closest to the camera)"),
+    ("box_near_right", 0.05, "50 mm above the near-right corner of the blue box's rim (closest to the camera, "
+                             "on the right in the image)"),
+    ("box_near_left", 0.05, "50 mm above the near-left corner of the blue box's rim (closest to the camera, "
+                            "on the left in the image)"),
+)
+
 REACH_DEFAULTS = {
     **WAFFLE_DEFAULTS,
-    # marker centre box in the base frame (over the mat); height measured from the
-    # table top. Every sample is also checked for feasibility (reach_feasibility).
-    "marker_x": (-0.50, -0.26), "marker_y": (-0.33, -0.12), "marker_height": (0.05, 0.16),
-    "min_object_clearance_m": 0.08, "tolerance_m": 0.015,
-    # the gripper housing / wrist must stay this far from the blue box at the marker
+    "targets": None,                     # subset of REACH_TARGETS indices (None = all)
+    "target_index": None,                # explicit choice (index into REACH_TARGETS)
+    "tolerance_m": 0.015,
+    # the gripper housing / wrist must stay this far from the blue box at the target
     "body_clearance_m": 0.045,
-    # D435 pixel box hidden behind the gripper at START_Q (u0, v0, u1, v1):
-    # markers projecting into it are re-drawn so the model can see them
-    "occluded_px": (285, 225, 525, 455),
 }
 
 
@@ -301,25 +366,32 @@ def project(scene: dict, p) -> np.ndarray | None:
     return uv[:2] / uv[2]
 
 
-def _occluded(scene: dict, p, box) -> bool:
-    uv = project(scene, p)
-    return uv is not None and box[0] <= uv[0] <= box[2] and box[1] <= uv[1] <= box[3]
+def _box(b: dict | None):
+    from controlr.robot.obstacles import box_from_bin_info
+    return None if not b else box_from_bin_info(b)
 
 
-def _bin_solid(scene: dict, margin: float) -> tuple[np.ndarray, np.ndarray, np.ndarray, float] | None:
-    """Outer box of the bin (walls included) in the bin frame, inflated by ``margin``:
-    (lower, upper, centre, yaw), or None without bin geometry."""
-    b = scene.get("bin")
-    if not b:
-        return None
-    wall = float(b.get("wall", 0.02))
-    lo = np.asarray(b["lower"], float).copy()
-    hi = np.asarray(b["upper"], float).copy()
-    lo[:2] -= wall + margin
-    hi[:2] += wall + margin
-    lo[2] = float(b["center"][2]) - margin
-    hi[2] += margin
-    return lo, hi, np.asarray(b["center"], float), float(b["yaw"])
+def reach_reference(ref: str, obj_pos, obj_quat_wxyz, obj_size, bin_info: dict | None) -> np.ndarray:
+    """Base-frame reference point of a reach target from the objects' poses: ``packet_top``
+    = centre of the packet's top face; ``box_*`` = points of the box's top rim (outer
+    corners: near = -y, toward the camera; right = +x, image right)."""
+    if ref == "packet_top":
+        R = quat_wxyz_to_matrix(obj_quat_wxyz)
+        return np.asarray(obj_pos, float) + R @ np.array([0.0, 0.0, float(obj_size[2]) / 2])
+    box = _box(bin_info)
+    if box is None:
+        raise ValueError("reach target relative to the box, but the scene has no box")
+    sx, sy, h = box.outer
+    local = {"box_opening": (0.0, 0.0), "box_near_rim": (0.0, -sy / 2), "box_near_right": (sx / 2, -sy / 2),
+             "box_near_left": (-sx / 2, -sy / 2)}[ref]
+    c, sn = np.cos(box.yaw), np.sin(box.yaw)
+    xy = np.asarray(box.center[:2], float) + np.array([c * local[0] - sn * local[1], sn * local[0] + c * local[1]])
+    return np.array([xy[0], xy[1], box.center[2] + h])
+
+
+def reach_target_point(target: dict, obj_pos, obj_quat_wxyz, obj_size, bin_info: dict | None) -> np.ndarray:
+    return reach_reference(target["ref"], obj_pos, obj_quat_wxyz, obj_size, bin_info) + np.asarray(
+        target["offset"], float)
 
 
 def reach_feasibility(marker, scene: dict, start_q, *, body_clearance: float = 0.045,
@@ -327,12 +399,13 @@ def reach_feasibility(marker, scene: dict, start_q, *, body_clearance: float = 0
     """Why a reach target cannot be touched with the START orientation ("" if it can).
 
     With action.rotation=none the tool keeps its start orientation, so (a) IK must
-    reach the marker with that orientation inside the soft joint limits, (b) the
-    open fingertips must stay above the table at the marker, and (c) the tool body
-    (TCP -> flange -> wrist, inflated by ``body_clearance``) must not pass through
-    the blue box: at seed 0 the old sampler put the housing inside the box's near
+    reach the target with that orientation inside the soft joint limits, (b) the
+    open fingertips must stay above the table at the target, and (c) the tool body
+    (TCP -> flange -> wrist, inflated by ``body_clearance``) must stay clear of the blue
+    box's walls and floor: at seed 0 the old sampler put the housing inside the box's near
     wall, so no controller could succeed (review control-safety #1)."""
     from controlr.robot.kinematics import UR3Kinematics, matrix_to_rotvec   # numpy only
+    from controlr.robot.obstacles import body_clearance as _body_clearance
     from controlr.robot.safety import finger_drop
     from controlr.robot.spec import ur3_cb3_spec
 
@@ -348,59 +421,52 @@ def reach_feasibility(marker, scene: dict, start_q, *, body_clearance: float = 0
         return "not reachable with the start orientation"
     if m[2] - finger_drop(spec, R0, open_width) < float(scene["table_top_z"]) + table_clearance:
         return "open fingertips would be below the table"
-    solid = _bin_solid(scene, body_clearance)
-    if solid is not None:
-        lo, hi, c, yaw = solid
-        F = kin.frames(q)
-        chain = [F[7][:3, 3], F[6][:3, 3], F[5][:3, 3], F[4][:3, 3]]     # TCP, flange, wrist 3, wrist 2
-        pts = np.concatenate([np.linspace(a, b, 12) for a, b in zip(chain, chain[1:])])
-        local = to_bin_frame(pts, c, yaw)
-        if np.any(np.all((local >= lo) & (local <= hi), axis=1)):
-            return "the gripper body would be inside the blue box"
+    box = _box(scene.get("bin"))
+    if box is not None and _body_clearance(kin, q, [box], skip_m=0.0)[0] < body_clearance:
+        return "the gripper body would hit the blue box"
     return ""
 
 
 def sample_reach(rng, params, scene):
     d = REACH_DEFAULTS
-    out = {**_sample_object(rng, params, scene, d), **_start(params, d, rng), "zone": None}
-    lo_x, hi_x = _param(params, d, "marker_x")
-    lo_y, hi_y = _param(params, d, "marker_y")
-    lo_h, hi_h = _param(params, d, "marker_height")
-    clear = float(_param(params, d, "min_object_clearance_m"))
+    out = {**_sample_object(rng, params, scene, d), **_start(params, d, rng)}
     body = float(_param(params, d, "body_clearance_m"))
-    box = _param(params, d, "occluded_px")
-    top = float(scene["table_top_z"])
-    if "marker" in params:                       # explicit marker: still refuse an impossible one
-        m = np.asarray(params["marker"], float)
-        why = reach_feasibility(m, scene, out["start_q"], body_clearance=body)
-        if why:
-            raise ValueError(f"reach marker {m.tolist()} is infeasible: {why}")
-        out["marker"] = m
-        return out
-    for _ in range(500):
-        m = np.array([rng.uniform(lo_x, hi_x), rng.uniform(lo_y, hi_y), top + rng.uniform(lo_h, hi_h)])
-        if np.linalg.norm(m[:2] - out["object_pos"][:2]) < clear:
-            continue
-        if _occluded(scene, m, box) or _occluded(scene, (m[0], m[1], top), box):
-            continue
-        if reach_feasibility(m, scene, out["start_q"], body_clearance=body):
-            continue
-        out["marker"] = m
-        return out
-    raise RuntimeError("sample_reach: no visible, reachable, collision-free marker in 500 draws; "
-                       "check marker_x/marker_y/marker_height and start_q")
+    obj = scene["object"]
+    quat = yaw_quat_wxyz(out["object_yaw"])
+    cand = list(range(len(REACH_TARGETS))) if params.get("targets") is None else [int(i) for i in params["targets"]]
+    if params.get("target_index") is not None:
+        cand = [int(params["target_index"])]
+    feasible = []
+    for i in cand:
+        ref, up, text = REACH_TARGETS[i]
+        target = {"ref": ref, "offset": [0.0, 0.0, up], "text": text, "index": i}
+        pt = reach_target_point(target, out["object_pos"], quat, obj["size"], scene.get("bin"))
+        if not reach_feasibility(pt, scene, out["start_q"], body_clearance=body):
+            feasible.append((target, pt))
+    if not feasible:
+        raise ValueError(f"reach: none of the targets {cand} is reachable from this start pose "
+                         f"(check start_q / targets)")
+    # drawn AFTER the packet / start draws: the RNG stream of those is unchanged
+    target, pt = feasible[int(rng.integers(len(feasible)))]
+    target["point0"] = pt
+    out["reach_target"] = target
+    out["instruction"] = (f"Move the gripper so that the point between its fingertips is {target['text']}. "
+                          f"Do not touch anything.")
+    return out
 
 
 def evaluate_reach(snap: dict, episode: dict) -> dict:
     p = {**REACH_DEFAULTS, **episode.get("params", {})}
-    target = np.asarray(episode["marker"], float)
+    tgt = episode["reach_target"]
+    target = reach_target_point(tgt, snap["object_pos"], snap["object_quat_wxyz"], snap["object_size"],
+                                snap.get("bin"))
     d = float(np.linalg.norm(np.asarray(snap["tcp_pos"], float) - target))
-    d0 = float(np.linalg.norm(np.asarray(episode["tcp_pos0"], float) - target)) or 1.0
+    d0 = float(np.linalg.norm(np.asarray(episode["tcp_pos0"], float) - np.asarray(tgt["point0"], float))) or 1.0
     success = bool(d <= float(p["tolerance_m"]))
     return {"success": success, "progress": float(np.clip(1.0 - d / d0, 0.0, 1.0)),
-            "message": ("goal reached: the fingertips are at the red ball" if success
-                        else f"the fingertips are {d * 1000:.0f} mm from the red ball"),
-            "metrics": {"distance_m": d, "tolerance_m": float(p["tolerance_m"])}}
+            "message": ("goal reached: the fingertips are at the target point" if success
+                        else f"the fingertips are {d * 1000:.0f} mm from the target point"),
+            "metrics": {"distance_m": d, "tolerance_m": float(p["tolerance_m"]), "target": target.tolist()}}
 
 
 # -- push ---------------------------------------------------------------------
@@ -410,7 +476,7 @@ PUSH_DEFAULTS = {**WAFFLE_DEFAULTS, "push_distance_m": (0.06, 0.10), "tolerance_
 
 def sample_push(rng, params, scene):
     d = PUSH_DEFAULTS
-    out = {**_sample_object(rng, params, scene, d), **_start(params, d, rng), "marker": None}
+    out = {**_sample_object(rng, params, scene, d), **_start(params, d, rng)}
     lo, hi = _param(params, d, "push_distance_m")
     # Push along the packet's long axis: pushing its broad face tips the 90 mm
     # tall, 35 mm thick packet over. The target lies on the -x side (left in
@@ -418,8 +484,14 @@ def sample_push(rng, params, scene):
     axis = np.array([np.cos(out["object_yaw"]), np.sin(out["object_yaw"])])
     if axis[0] > 0:
         axis = -axis
-    target = out["object_pos"][:2] + axis * rng.uniform(lo, hi)
-    out["zone"] = np.array([target[0], target[1], float(scene["table_top_z"])])
+    dist = float(rng.uniform(lo, hi))
+    target = out["object_pos"][:2] + axis * dist
+    mm = int(round(dist * 1000 / 10.0) * 10)
+    text = (f"about {mm} mm along its long side, toward the left of the image (-x), so that its centre ends "
+            f"{mm} mm from where it stands now")
+    out["push_target"] = {"point": np.array([target[0], target[1], float(scene["table_top_z"])]),
+                          "distance": dist, "text": text}
+    out["instruction"] = (f"Push the wafer packet {text}. Do not pick it up; keep it upright if you can.")
     return out
 
 
@@ -427,9 +499,9 @@ def evaluate_push(snap: dict, episode: dict) -> dict:
     """Pushed, not carried: besides the state at the check instant, the server's running
     record of the episode (``episode["max_lift_m"]``, ``episode["ever_held"]``) must show
     that the packet was never lifted > 20 mm or gripped (picking it up, carrying it and
-    releasing it on the square used to count as a push)."""
+    releasing it on the target used to count as a push)."""
     p = {**PUSH_DEFAULTS, **episode.get("params", {})}
-    target = np.asarray(episode["zone"], float)[:2]
+    target = np.asarray(episode["push_target"]["point"], float)[:2]
     d = float(np.linalg.norm(np.asarray(snap["object_pos"], float)[:2] - target))
     d0 = float(np.linalg.norm(np.asarray(episode["object_pos"], float)[:2] - target)) or 1.0
     held = bool(np.all(np.asarray(snap["pad_object_force_n"], float) > p["contact_force_n"])
@@ -438,8 +510,8 @@ def evaluate_push(snap: dict, episode: dict) -> dict:
     lifted = max(lift_now, float(episode.get("max_lift_m", 0.0))) > 0.02
     success = bool(d <= float(p["tolerance_m"]) and not held and not lifted)
     return {"success": success, "progress": float(np.clip(1.0 - d / d0, 0.0, 1.0)),
-            "message": ("goal reached: the packet is on the green square" if success
-                        else f"the packet centre is {d * 1000:.0f} mm from the green square"
+            "message": ("goal reached: the packet stands at the target" if success
+                        else f"the packet centre is {d * 1000:.0f} mm from the target"
                         + (" (it must be pushed, not carried)" if held or lifted else "")),
             "metrics": {"distance_m": d, "held": held, "lifted": lifted,
                         "object_tilt_deg": float(np.degrees(tilt_angle(snap["object_quat_wxyz"])))}}
@@ -452,14 +524,16 @@ TASKS: dict[str, TaskSpec] = {
         "and put it into the blue box. Open the gripper so the packet rests inside the box, "
         "then move the gripper up and away.",
         sample_waffle, evaluate_waffle, WAFFLE_DEFAULTS),
+    # reach / push: the instruction is drawn per seed (sample -> "instruction"); these are
+    # the generic forms
     "reach": TaskSpec(
         "reach", WAFFLE_SCENE,
-        "Move the gripper so that the point between its fingertips touches the red ball. "
-        "Do not touch anything else.",
+        "Move the gripper so that the point between its fingertips is at the point the task names "
+        "(relative to the wafer packet or the blue box). Do not touch anything.",
         sample_reach, evaluate_reach, REACH_DEFAULTS),
     "push": TaskSpec(
         "push", WAFFLE_SCENE,
-        "Push the wafer packet along the mat until it stands on the green square. "
+        "Push the wafer packet along the mat by the distance and in the direction the task names. "
         "Do not pick it up; keep it upright if you can.",
         sample_push, evaluate_push, PUSH_DEFAULTS),
 }
@@ -539,20 +613,16 @@ def scripted_pick_place_plan(object_pos, object_yaw: float, bin_center, *, grasp
 
 def body_box_clearance(q, scene: dict, skip_m: float = 0.06) -> float:
     """Distance (m) from the tool/wrist centre line (TCP-``skip_m`` along the tool -> flange ->
-    wrist 3 -> wrist 2) to the blue box's outer solid (walls included); 0 inside. The Robotiq
-    housing / wrist links are ~40-50 mm in radius: in Isaac 47 mm already meant contact."""
+    wrist 3 -> wrist 2 -> wrist 1, ``controlr.robot.obstacles.body_points``) to the blue box's
+    walls and floor (``scene["bin"]``, e.g. the CURRENT box from the server state); 0 inside a
+    wall. The Robotiq housing / wrist links are ~40-50 mm in radius: in Isaac 47 mm already
+    meant contact. The same check guards moves in ``SafetyEnvelope`` (safety.box_collision)."""
     from controlr.robot.kinematics import UR3Kinematics
-    solid = _bin_solid(scene, 0.0)
-    if solid is None:
+    from controlr.robot.obstacles import body_clearance
+    box = _box(scene.get("bin"))
+    if box is None:
         return float("inf")
-    lo, hi, c, yaw = solid
-    F = UR3Kinematics().frames(np.asarray(q, float))
-    chain = [F[7][:3, 3], F[6][:3, 3], F[5][:3, 3], F[4][:3, 3]]
-    pts = np.concatenate([np.linspace(a, b, 15) for a, b in zip(chain, chain[1:])])
-    pts = pts[np.linalg.norm(pts - F[7][:3, 3], axis=1) > skip_m]
-    local = to_bin_frame(pts, c, yaw)
-    d = np.maximum(lo - local, 0.0) + np.maximum(local - hi, 0.0)
-    return float(np.min(np.linalg.norm(d, axis=1)))
+    return body_clearance(UR3Kinematics(), q, [box], skip_m)[0]
 
 
 def jaw_yaw_for(object_yaw: float, near: float) -> float:

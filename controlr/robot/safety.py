@@ -32,7 +32,13 @@ the previous action's resolved target, not from the measured state):
    FK), soft joint limits, then the TCP / fingertips are checked against the
    workspace/table at samples ALONG the joint path, and the move is shortened
    to the largest safe fraction if any sample leaves the envelope;
-5. near-limit warnings for joints that end within ``near_limit_rad`` of a
+5. known obstacles (``set_obstacles``: the backend's current scene, e.g. the blue box
+   from its CURRENT pose): the wrist / gripper-housing centre line (``obstacles.body_points``)
+   along the move is checked against the box walls and floor inflated by
+   ``box_clearance_m``. ``box_collision=block`` shortens (or skips) a move that would get
+   closer than that, reported like a clamp; ``warn`` executes it and adds a WARN; ``off``
+   does not check. A move that does not get closer is always allowed (backing out);
+6. near-limit warnings for joints that end within ``near_limit_rad`` of a
    soft limit.
 
 ``cfg.clamp`` False turns every clamp into a rejection (the action is dropped).
@@ -40,7 +46,8 @@ Executed actions keep the requested mode with the clamped values (values are
 untouched when nothing was clamped, so feedback can compare requested vs
 executed exactly) and carry ``q_target`` (+ ``q_path``) so backends need not
 redo IK. Messages are written for the model in canonical mm / deg;
-``controlr.protocol.feedback`` converts them to the configured LLM units.
+``controlr.protocol.feedback`` converts them to the configured LLM units. Every clamp also
+carries a ``brief`` (what was cut, a few words, no measurements) for ``feedback.level=short``.
 """
 
 from __future__ import annotations
@@ -55,6 +62,7 @@ from controlr.robot.kinematics import (
     DEFAULT_TCP_OFFSET, IKOptions, UR3Kinematics, matrix_to_rotvec, matrix_to_rpy,
     rotation_angle, rotvec_to_matrix, rpy_to_matrix,
 )
+from controlr.robot.obstacles import body_clearance
 from controlr.types import Action, ActionMode, EventLevel, RobotSpec, RobotState, SafetyEvent
 
 _EE = (ActionMode.EE_DELTA, ActionMode.EE_ABS)
@@ -127,6 +135,14 @@ class SafetyEnvelope:
         self.names = [j.name for j in spec.joints]
         self.R_ref: np.ndarray | None = None
         self.elbow_sign = 0.0
+        self.obstacles: list = []
+
+    BOX_TOL_M = 0.0005           # a move "gets closer" to an obstacle only beyond this
+
+    def set_obstacles(self, obstacles) -> None:
+        """Known obstacles (``controlr.robot.obstacles.BoxObstacle``) at their CURRENT pose;
+        the loop refreshes them from the backend before every filter."""
+        self.obstacles = list(obstacles or [])
 
     # ------------------------------------------------------------------ api
     def reset(self, state0: RobotState) -> None:
@@ -162,14 +178,16 @@ class SafetyEnvelope:
             tilt = rotation_angle(self.R_ref @ self.kin.fk_matrix(q)[:3, :3].T)
             if tilt > _TILT_WARN_RAD:
                 self._ev(events, "tilt", f"the tool is tilted {_deg(tilt)} away from its fixed orientation "
-                                         f"(after a contact?); this move turns it back")
+                                         f"(after a contact?); this move turns it back",
+                         brief="tool tilted by a contact; this move turns it back")
         elif self.R_ref is not None and self.rotation == "yaw" and any(
                 a.mode in _EE and a.values is not None and len(a.values) in (4, 6) for a in actions):
             R_now = self.kin.fk_matrix(q)[:3, :3]
             tilt = rotation_angle(self.hold_tilt(R_now, matrix_to_rpy(R_now)[2]) @ R_now.T)
             if tilt > _TILT_WARN_RAD:
                 self._ev(events, "tilt", f"the tool is tilted {_deg(tilt)} away from its fixed tilt "
-                                         f"(after a contact?); this move turns it back (yaw is kept)")
+                                         f"(after a contact?); this move turns it back (yaw is kept)",
+                         brief="tool tilted by a contact; this move turns it back")
         for a in actions:
             res = self._one(a, q, width, events)
             if res is None:
@@ -182,16 +200,20 @@ class SafetyEnvelope:
         return out, events
 
     # ------------------------------------------------------------ internals
-    def _ev(self, events: list[SafetyEvent], kind: str, msg: str, level: EventLevel = EventLevel.WARN) -> None:
-        events.append(SafetyEvent(level, kind, msg))
+    def _ev(self, events: list[SafetyEvent], kind: str, msg: str, level: EventLevel = EventLevel.WARN,
+            brief: str = "") -> None:
+        events.append(SafetyEvent(level, kind, msg, brief))
 
-    def _violation(self, events, kind: str, what: str, clamped_to: str) -> bool:
+    def _violation(self, events, kind: str, what: str, clamped_to: str, brief: str = "") -> bool:
         """Record a limit violation; returns True if the action may continue
-        (clamp mode) and False if it must be dropped (reject mode)."""
+        (clamp mode) and False if it must be dropped (reject mode). ``brief``: the
+        clamp in a few words (the reject brief is derived from it)."""
         if self.cfg.clamp:
-            self._ev(events, kind, f"{what} -> {clamped_to}")
+            self._ev(events, kind, f"{what} -> {clamped_to}", brief=brief)
             return True
-        self._ev(events, kind, f"{what} -> action rejected")
+        rej = (brief.replace("shortened", "rejected", 1) if "shortened" in brief
+               else f"move rejected: {brief}" if brief else "move rejected")
+        self._ev(events, kind, f"{what} -> action rejected", brief=rej)
         return False
 
     def _gripper(self, a: Action, events) -> float | None:
@@ -200,7 +222,8 @@ class SafetyEnvelope:
         gmax = self.spec.gripper_max_mm / 1000.0
         g = float(np.clip(a.gripper, 0.0, gmax))
         if abs(g - a.gripper) > 1e-9:
-            self._ev(events, "clamp", f"gripper width {_mm(a.gripper)} -> {_mm(g)} (range 0..{_mm(gmax)})")
+            self._ev(events, "clamp", f"gripper width {_mm(a.gripper)} -> {_mm(g)} (range 0..{_mm(gmax)})",
+                     brief="gripper width limited to its range")
         return g
 
     def _one(self, a: Action, q: np.ndarray, width: float, events) -> tuple[Action, np.ndarray] | None:
@@ -218,7 +241,8 @@ class SafetyEnvelope:
         v = np.asarray(a.values, dtype=float)
         n = len(v)
         if n not in (3, 4, 6):
-            self._ev(events, "invalid", f"{a.mode.value} needs 3, 4 or 6 values, got {n} -> action skipped")
+            self._ev(events, "invalid", f"{a.mode.value} needs 3, 4 or 6 values, got {n} -> action skipped",
+                     brief="move skipped: wrong number of values")
             return None
         T = self.kin.fk_matrix(q)
         p0, R0 = T[:3, 3], T[:3, :3]
@@ -236,7 +260,8 @@ class SafetyEnvelope:
                 if not self._violation(events, "step_limit",
                                        f"yaw change {_deg(dyaw)} exceeds the per-line limit "
                                        f"{_deg(self.cfg.max_step_rad)}",
-                                       f"scaled to {_deg(math.copysign(self.cfg.max_step_rad, dyaw))}"):
+                                       f"scaled to {_deg(math.copysign(self.cfg.max_step_rad, dyaw))}",
+                                       brief=f"turn shortened: {_deg(self.cfg.max_step_rad)} per-line limit"):
                     return None
                 dyaw = math.copysign(self.cfg.max_step_rad, dyaw)
                 changed_yaw = True
@@ -262,7 +287,8 @@ class SafetyEnvelope:
         if dn > self.cfg.max_step_m + 1e-9:
             if not self._violation(events, "step_limit",
                                    f"translation {_mm(dn)} exceeds the per-line limit {_mm(self.cfg.max_step_m)}",
-                                   f"scaled to {_mm(self.cfg.max_step_m)}"):
+                                   f"scaled to {_mm(self.cfg.max_step_m)}",
+                                   brief=f"move shortened: {_mm(self.cfg.max_step_m)} per-line limit"):
                 return None
             p = p0 + d * (self.cfg.max_step_m / dn)
             changed = True
@@ -273,7 +299,8 @@ class SafetyEnvelope:
                 pass
             elif not self._violation(events, "step_limit",
                                      f"rotation {_deg(ang)} exceeds the per-line limit {_deg(self.cfg.max_step_rad)}",
-                                     f"scaled to {_deg(self.cfg.max_step_rad)}"):
+                                     f"scaled to {_deg(self.cfg.max_step_rad)}",
+                                     brief=f"rotation shortened: {_deg(self.cfg.max_step_rad)} per-line limit"):
                 return None
             else:
                 changed = True
@@ -292,11 +319,13 @@ class SafetyEnvelope:
                            f"must stay {_mm(self.cfg.table_clearance_m)} above it"
                            + (f" and is {_mm(drop)} below the TCP" if drop > 0 else ""))
                     kind = "table"
+                    brief = "move shortened: table clearance"
                 else:
                     why = f"workspace {_AXES[i]} range {_mm(lo[i])}..{_mm(self.ws_hi[i])}"
                     kind = "workspace"
+                    brief = f"move shortened: workspace edge ({_AXES[i]})"
                 if not self._violation(events, kind, f"{_AXES[i]} target {_mm(p[i])} outside ({why})",
-                                       f"{_mm(c)}"):
+                                       f"{_mm(c)}", brief=brief):
                     return None
                 p[i] = c
                 changed = True
@@ -312,17 +341,31 @@ class SafetyEnvelope:
                 yaw_t = matrix_to_rpy(R)[2]
                 target += (f" with yaw {_deg(yaw_t)}" if self.rotation == "yaw" or n == 4 else " with this rotation")
                 done += f", turned {_deg(rotation_angle(T_end[:3, :3] @ R0.T))} of {_deg(turn)}"
+            short = self._why_brief(why)
             if not path or frac < self.MIN_FRACTION:
                 self._ev(events, "ik_fail",
-                         f"{target} is not reachable {why} -> action skipped")
+                         f"{target} is not reachable {why} -> action skipped",
+                         brief=f"move skipped: {short}")
                 return None
             if not self.cfg.clamp:
-                self._ev(events, "ik_fail", f"{target} is not reachable {why} -> action rejected")
+                self._ev(events, "ik_fail", f"{target} is not reachable {why} -> action rejected",
+                         brief=f"move rejected: {short}")
                 return None
             self._ev(events, "reach", f"{target} is not reachable {why} -> moved {frac * 100:.0f} % of the way "
-                                      f"({done}); the reachable edge is in that direction")
+                                      f"({done}); the reachable edge is in that direction",
+                     brief=f"move shortened: {short}")
             p, R = T_end[:3, 3].copy(), T_end[:3, :3].copy()
             changed = True
+        # -- known obstacles (the box) along the reachable part of the line
+        if path and self.obstacles and self.cfg.box_collision != "off":
+            k = self._box_check(q, path, events, frac)
+            if k is None:
+                return None
+            if k < len(path):
+                path = path[:k]
+                T_end = self.kin.fk_matrix(path[-1])
+                p, R = T_end[:3, 3].copy(), T_end[:3, :3].copy()
+                changed = True
         qt = path[-1] if path else q.copy()
         # -- executed values in the requested mode
         if changed:
@@ -341,6 +384,58 @@ class SafetyEnvelope:
             values = a.values
         q_path = tuple(tuple(float(x) for x in qq) for qq in path[:-1]) or None
         return replace(a, values=values, gripper=g, q_target=tuple(float(x) for x in qt), q_path=q_path), qt
+
+    def _why_brief(self, why: str) -> str:
+        if "edge of its reach" in why:
+            return "edge of reach"
+        if "singularity" in why:
+            return "wrist singularity"
+        if "joint swing" in why:
+            return "it needs a large joint swing"
+        return "not reachable with this orientation"
+
+    def _box_check(self, q0: np.ndarray, qs: list[np.ndarray], events, frac_of_full: float = 1.0) -> int | None:
+        """Predictive wrist / housing-vs-obstacle check along the joint waypoints ``qs`` of
+        one move (``box_collision`` block | warn). Returns how many waypoints may be executed
+        (``len(qs)`` = all), or None when the move is skipped / rejected. A waypoint is a
+        violation when its clearance is below ``box_clearance_m`` AND smaller than anything
+        seen before on this move (from the start pose on): a move that keeps or gains distance
+        is always allowed, so the arm can back away from a box it is already close to."""
+        margin = float(self.cfg.box_clearance_m)
+        c0, _, _ = body_clearance(self.kin, q0, self.obstacles)
+        best = c0
+        first_bad = None
+        worst = (c0, "", "")
+        for k, qk in enumerate(qs):
+            ck, name, part = body_clearance(self.kin, qk, self.obstacles)
+            if ck < worst[0]:
+                worst = (ck, name, part)
+            if first_bad is None and ck < margin and ck < best - self.BOX_TOL_M:
+                first_bad = (k, ck, name, part)
+            best = min(best, ck)
+        if first_bad is None:
+            return len(qs)
+        k, ck, name, part = first_bad
+        d, name, part = worst if self.cfg.box_collision == "warn" else (ck, name, part)
+        body = "the wrist / gripper housing"
+        if self.cfg.box_collision == "warn":
+            self._ev(events, "box_warn", f"this move brings {body} within {_mm(d)} of {name} ({part}; keep "
+                                         f"{_mm(margin)}); a contact stops the arm",
+                     brief=f"move brings the wrist / gripper housing close to {name} ({part})")
+            return len(qs)
+        what = f"{body} would come within {_mm(ck)} of {name} ({part}; it must stay {_mm(margin)} clear)"
+        frac = frac_of_full * k / max(len(qs), 1)
+        if k == 0 or frac < self.MIN_FRACTION:
+            self._ev(events, "box", f"{what} -> action skipped",
+                     brief=f"move skipped: the wrist / gripper housing would hit {name} ({part})")
+            return None
+        if not self.cfg.clamp:
+            self._ev(events, "box", f"{what} -> action rejected",
+                     brief=f"move rejected: the wrist / gripper housing would hit {name} ({part})")
+            return None
+        self._ev(events, "box", f"{what} -> moved {frac * 100:.0f} % of the way",
+                 brief=f"move shortened: the wrist / gripper housing would hit {name} ({part})")
+        return k
 
     def _line_path(self, q: np.ndarray, p0: np.ndarray, R0: np.ndarray, p: np.ndarray, R: np.ndarray
                    ) -> tuple[list[np.ndarray], float, str]:
@@ -431,7 +526,8 @@ class SafetyEnvelope:
         v = np.asarray(a.values, dtype=float)
         nj = len(self.names)
         if len(v) != nj:
-            self._ev(events, "invalid", f"{a.mode.value} needs {nj} values, got {len(v)} -> action skipped")
+            self._ev(events, "invalid", f"{a.mode.value} needs {nj} values, got {len(v)} -> action skipped",
+                     brief="move skipped: wrong number of values")
             return None
         delta = a.mode is ActionMode.JOINT_DELTA
         qt = q + v if delta else v.copy()
@@ -443,7 +539,8 @@ class SafetyEnvelope:
             if not self._violation(events, "step_limit",
                                    f"{self.names[j]} change {_deg(dq[j])} exceeds the per-line limit "
                                    f"{_deg(self.cfg.max_step_rad)}",
-                                   f"whole move scaled by {self.cfg.max_step_rad / m:.2f}"):
+                                   f"whole move scaled by {self.cfg.max_step_rad / m:.2f}",
+                                   brief=f"joint move shortened: {_deg(self.cfg.max_step_rad)} per-line limit"):
                 return None
             qt = q + dq * (self.cfg.max_step_rad / m)
             changed = True
@@ -453,7 +550,7 @@ class SafetyEnvelope:
                 if not self._violation(events, "joint_limit",
                                        f"{self.names[j]} target {_deg(qt[j])} beyond the soft limit "
                                        f"{_deg(self.soft[j, 0] if qt[j] < c else self.soft[j, 1])}",
-                                       _deg(c)):
+                                       _deg(c), brief=f"move shortened: {self.names[j]} joint limit"):
                     return None
                 qt[j] = c
                 changed = True
@@ -467,7 +564,8 @@ class SafetyEnvelope:
             s = self._largest_fraction(lambda x: travel(x) <= self.cfg.max_step_m)
             if not self._violation(events, "step_limit",
                                    f"joint move would carry the TCP {_mm(travel(1.0))}, more than the per-line "
-                                   f"limit {_mm(self.cfg.max_step_m)}", f"move shortened to {s * 100:.0f} %"):
+                                   f"limit {_mm(self.cfg.max_step_m)}", f"move shortened to {s * 100:.0f} %",
+                                   brief=f"joint move shortened: {_mm(self.cfg.max_step_m)} per-line limit"):
                 return None
             qt = q + s * (qt - q)
             changed = True
@@ -481,21 +579,33 @@ class SafetyEnvelope:
                 fl = self.table_floor if self.table_floor is not None else self.z_floor
                 if zt < fl and zt < z0 - 1e-6:
                     self._ev(events, "table", f"joint move would lower the fingertips to z={_mm(zt)}, below the "
-                                              f"table clearance z >= {_mm(fl)} -> action skipped")
+                                              f"table clearance z >= {_mm(fl)} -> action skipped",
+                             brief="joint move skipped: table clearance")
                     return None
                 self._ev(events, "workspace", "TCP is currently outside the workspace/table envelope; "
-                                              "move toward the work area")
+                                              "move toward the work area",
+                         brief="TCP outside the workspace; move toward the work area")
             else:
                 p = self.kin.fk_matrix(qt)[:3, 3]
                 s = self._largest_fraction(lambda x: self._path_inside(q, q + x * (qt - q), w))
                 what = (f"joint move would put the TCP at x={_mm(p[0])} y={_mm(p[1])} z={_mm(p[2])} or pass "
                         f"outside the workspace / table clearance on the way")
                 if s < 0.01:
-                    self._ev(events, "workspace", f"{what} -> action skipped")
+                    self._ev(events, "workspace", f"{what} -> action skipped",
+                             brief="joint move skipped: workspace / table clearance")
                     return None
-                if not self._violation(events, "workspace", what, f"move shortened to {s * 100:.0f} %"):
+                if not self._violation(events, "workspace", what, f"move shortened to {s * 100:.0f} %",
+                                       brief="joint move shortened: workspace / table clearance"):
                     return None
                 qt = q + s * (qt - q)
+                changed = True
+        if self.obstacles and self.cfg.box_collision != "off":
+            fr = np.linspace(0.0, 1.0, self.JOINT_PATH_SAMPLES + 1)[1:]
+            k = self._box_check(q, [q + f * (qt - q) for f in fr], events)
+            if k is None:
+                return None
+            if k < len(fr):
+                qt = q + fr[k - 1] * (qt - q)
                 changed = True
         if changed:
             values = tuple(float(x) for x in (qt - q if delta else qt))
@@ -510,8 +620,8 @@ class SafetyEnvelope:
             lo, hi = self.soft[j]
             if q[j] - lo < self.cfg.near_limit_rad:
                 out.append(SafetyEvent(EventLevel.WARN, "joint_limit_near",
-                                       f"{name} at {_deg(q[j])}, soft limit {_deg(lo)}"))
+                                       f"{name} at {_deg(q[j])}, soft limit {_deg(lo)}", f"{name} near its joint limit"))
             elif hi - q[j] < self.cfg.near_limit_rad:
                 out.append(SafetyEvent(EventLevel.WARN, "joint_limit_near",
-                                       f"{name} at {_deg(q[j])}, soft limit {_deg(hi)}"))
+                                       f"{name} at {_deg(q[j])}, soft limit {_deg(hi)}", f"{name} near its joint limit"))
         return out
