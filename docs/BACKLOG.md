@@ -35,8 +35,10 @@
 - [ ] **Haiku 4.5 doesn't cache the first turns** (manual < 4096 tokens) — a meaningful appendix (kinematics/examples), not filler.
 - [ ] **`action.format=tool`** (actions as tool calls instead of the text grammar) — an experiment axis, not implemented.
 - [ ] **Continuous video recording in Isaac** (`log.record_video`); today videos are per-turn frames only.
-- [x] ~~**Isaac runs at ~0.24× real time**~~ — ~0.94× with the new defaults (journal/2026-10-03-contacts-and-speed.md, experiments/2026-10-02-contacts-and-speed.md)
+- [x] ~~**Isaac runs at ~0.24× real time**~~ — ~0.7× with the new defaults (journal/2026-10-03-contacts-and-speed.md, experiments/2026-10-02-contacts-and-speed.md)
 - [ ] **Isaac ≥ 1× real time:** settling is ~45 % of sim time (fixed thresholds, ≤ 2 s); self-collisions off gives 1.02× (not default: the force stop does not see self-contact either); 24 iterations failed 1 of 4 expert scenes, 16 failed 1/2, dt 2 ms lost the grasp. Next: settle criteria per move, contact-report only during motion.
+- [ ] **5 ms drive-target ticks blow up some grasps** (2 of 4 live closes near the mat; replay-confirmed, 1 ms is fine) although the scripted expert passes — find why before using `substeps > 1`.
+- [ ] **Release can trip the object stop** when one pad unloads before the packet is free (3 STOPs in a row while opening, 32-iteration run): suspend the robot-vs-packet rule during an opening command too.
 - [ ] **Force-stop overshoot is an impact spike, not sampling:** driving the fingers into the mat at 0.15 m/s peaks at 85–350 N against an 80 N limit at every sampling rate (1 ms included). Slow the last ~20 mm near contact, or a compliant wrist.
 - [ ] **Usage grace is not a real deadline** (deferred in review, L8): up to 0–0.2 s per turn.
 - [ ] **Arm self-collisions** aren't detected by the force stop (S5, partial).
