@@ -161,10 +161,13 @@ server on port 7821; ~2 min).
 | 10 mm `ee_delta` incl. settle | 0.44 s sim, ~1.9 s wall (error 0.05 mm) |
 | 80 mm `ee_delta` | 0.8 s sim, ~3.5 s wall |
 | gripper close / open | ~0.5 s sim, ~2 s wall |
-| scripted pick-place (9 phases) | ~11 s sim, ~50 s wall |
+| scripted pick-place (9 phases) | ~11 s sim, ~50 s wall (PHANTOM's step path; ~16 s with the defaults) |
 
-Physics runs at ~0.24× real time: 4.2 ms per 1 ms step, independent of solver
-iterations (16–64), contact reporting, CCD or self-collision (all measured).
+With PHANTOM's step path (USD write-back of every body after every 1 ms step, ~30 per-body
+contact views read each step, `World.step` / `apply_action` wrappers) physics ran at ~0.18–0.24×
+real time; the default path (no per-step USD write-back, one contact matrix, PhysX stepped
+directly) runs at ~0.7× with the same physics. USD write-back was ~70 % of the old step cost.
+Per-setting measurements: docs/experiments/2026-10-02-contacts-and-speed.md.
 The RTX annotator lags one app update; 2 updates give the current frame,
 further updates only refine the denoiser (4 used).
 

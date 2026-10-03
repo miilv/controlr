@@ -213,6 +213,67 @@ def scenario(name, robot, rec, args):
                 goals.append({"error": f"{type(exc).__name__}: {exc}"[:300]})
                 print("   expert failed:", type(exc).__name__, str(exc)[:300], flush=True)
         return {"success": ok, "goals": goals}
+    if name.startswith("replay="):
+        # re-execute a live run's approved actions (q_path / q_target / gripper) on this server
+        run = Path(name.split("=", 1)[1])
+        cfg = json.loads(json.dumps(__import__("yaml").safe_load((run / "config.yaml").read_text())))
+        robot.reset({"name": cfg["task"]["name"], "params": {**cfg["task"]["params"], **SCENE_EXTRA}}, seed=cfg["seed"])
+        out = []
+        for line in (run / "turns.jsonl").read_text().splitlines():
+            t = json.loads(line)
+            acts = []
+            for a in t.get("executed") or []:
+                if a.get("q_target") is None:
+                    continue
+                mode = ActionMode(a["mode"]) if a.get("mode") else None
+                acts.append(Action(mode, tuple(a["values_si"]) if a.get("values_si") else None, a.get("gripper_m"),
+                                   q_target=tuple(a["q_target"]),
+                                   q_path=tuple(tuple(q) for q in a["q_path"]) if a.get("q_path") else None))
+            if not acts:
+                continue
+            rep = rec.execute(acts)
+            last = rec.rows[-1]
+            out.append((t["turn"], (last.get("stop") or {}).get("kind"), bool(last.get("holding_pads"))))
+            if rep.stopped:
+                break
+        return {"replay": out}
+    if name == "low_grasp":
+        # close the gripper with the TCP 15-25 mm above the packet centre (fingertips near the
+        # mat), as the live models did, then lift: must not blow up
+        res = []
+        for above in (0.025, 0.02, 0.015):
+            obs = robot.reset({"name": "waffle_pick_place", "params": scene_params(-15)}, seed=7)
+            env = yaw_env(robot)
+            cur = {"st": obs.state}
+
+            class Lifted(Exception):
+                pass
+
+            def act(vals, grip, phase=""):
+                if phase == "unrotate":
+                    raise Lifted
+                env.set_obstacles(robot.obstacles())
+                acts, _ = env.filter([Action(ActionMode.EE_DELTA, vals, grip)], cur["st"])
+                rep = rec.execute(acts)
+                cur["st"] = rep.state_after
+                if rep.stopped:
+                    raise Lifted
+                return pose_to_matrix(rep.state_after.tcp_pos, rep.state_after.tcp_rotvec)
+            ep = robot.episode
+            w, z = ep["object_quat_wxyz"][0], ep["object_quat_wxyz"][3]
+            try:
+                run_scripted_yaw_pick_place(ep["object_pos"], 2 * np.arctan2(z, w),
+                                            robot.server_info["scene_info"]["bin"]["center"], act,
+                                            pose_to_matrix(obs.state.tcp_pos, obs.state.tcp_rotvec),
+                                            grasp_above_center_m=above)
+            except Lifted:
+                pass
+            except Exception as exc:  # noqa: BLE001
+                res.append((above, f"error {exc}"[:80]))
+                continue
+            last = rec.rows[-1]
+            res.append((above, (last.get("stop") or {}).get("kind"), bool(last.get("holding_pads"))))
+        return {"low_grasp": res}
     if name == "free_air":
         env, cur = grasp(robot, rec, -15)
         held0 = bool(rec.rows[-1].get("holding_pads"))
@@ -311,7 +372,7 @@ def main() -> int:
                       f"render {s['render_s']:5.1f}s ratio {s['ratio_exec'] or 0:.2f}/{s['ratio_turn'] or 0:.2f} | "
                       f"tgt {s['targets_s']:.1f} sim {s['simulate_s']:.1f} cont {s['contacts_s']:.1f} "
                       f"book {s['bookkeeping_s']:.1f} settle {s['settle_checks_s']:.1f} other {s['other_s']:.1f} | "
-                      f"{res} stops {[(x.get('kind'), x.get('pair'), round(x.get('force', 0)), round(x.get('threshold', 0))) for x in s['stop_info']]} "
+                      f"{res} stops {[(x.get('kind'), x.get('pair'), x.get('force'), x.get('threshold')) for x in s['stop_info']]} "
                       f"box {s['box_shift_mm']:.0f} mm", flush=True)
     finally:
         robot.close()

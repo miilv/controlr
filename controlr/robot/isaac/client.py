@@ -64,19 +64,20 @@ DEFAULTS: dict = {
     "server_args": [],                  # extra args for server.py (prefer "physics" below)
     # Server physics (startup args; None = PHANTOM's scene value). A running server with other
     # values is refused (restart it): dt (s), solver iterations, USD write-back every step.
-    # Defaults = the fastest setting that kept the scripted expert succeeding and the physics
-    # stable (docs/experiments/2026-10-02-contacts-and-speed.md; ~0.95x real time vs 0.18x with
-    # PHANTOM's settings, which are: solver_position_iterations 64, usd_writeback true,
-    # legacy_contact_views true, reader phantom, substeps 1, direct false, predict_stop false).
-    "physics": {"dt": None, "solver_position_iterations": 32, "solver_velocity_iterations": None,
+    # Defaults = the fastest setting that kept the scripted expert succeeding AND the live grasps
+    # stable (docs/experiments/2026-10-02-contacts-and-speed.md: ~0.7x real time vs 0.18x with
+    # PHANTOM's settings, which are usd_writeback true, legacy_contact_views true, reader
+    # phantom, direct false). Faster, measured and rejected: 32 iterations (a low grasp dropped
+    # the packet), substeps 5 (two live grasps blew up; replay-confirmed), dt 2 ms (no grasp).
+    "physics": {"dt": None, "solver_position_iterations": None, "solver_velocity_iterations": None,
                 "forearm_collision_approximation": None, "num_threads": None, "usd_writeback": False,
                 "legacy_contact_views": False, "self_collisions": True},
     # Per-execute speed settings:
     "reader": "matrix",                 # contact reader: matrix (one PhysX matrix) | phantom (one view per body)
-    "substeps": 5,                      # physics steps per drive-target update + contact tick
+    "substeps": 1,                      # physics steps per drive-target update + contact tick
     "contact_every": 1,                 # contact samples every N ticks during motion
     "direct": True,                     # step PhysX / set drive targets without the isaacsim.core wrappers
-    "predict_stop": True,               # also stop when the force extrapolated one sample ahead exceeds the floor
+    "predict_stop": False,              # also stop when the force extrapolated one sample ahead exceeds the floor
     "startup_timeout_s": 300.0,
     "camera": "scene",
     "tcp_speed_m_s": None,              # None -> SafetyConfig.max_tcp_speed_m_s (0.15)

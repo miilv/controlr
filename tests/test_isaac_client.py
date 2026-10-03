@@ -125,7 +125,7 @@ def test_spec_camera_and_observation(fake):
     obs = robot.reset({"name": "pick_place", "params": {"nominal": True}}, seed=3)
     assert {k: v for k, v in rig.calls[-1][1].items() if k != "settings"} == \
         {"task": "waffle_pick_place", "seed": 3, "params": {"nominal": True}}
-    assert rig.calls[-1][1]["settings"]["reader"] == "matrix" and rig.calls[-1][1]["settings"]["substeps"] == 5
+    assert rig.calls[-1][1]["settings"]["reader"] == "matrix" and rig.calls[-1][1]["settings"]["substeps"] == 1
     assert robot.task_instruction == tasks.TASKS["waffle_pick_place"].instruction
     cam = obs.cameras["scene"]
     assert obs.images["scene"].shape == (480, 640, 3) and cam.K.shape == (3, 3) and cam.T_cam_base.shape == (4, 4)
@@ -313,8 +313,8 @@ def test_execute_sends_the_new_limits_and_logs_diagnostics(fake):
     rep = robot.execute([Action(ActionMode.JOINT_ABS, q1, q_target=q1)])
     args = rig.calls[-1][1]
     assert args["box_force_stop_n"] == 30.0 and args["held_object_force_stop_n"] is None
-    assert args["reader"] == "matrix" and args["substeps"] == 5 and args["direct"] is True
-    assert args["predict_stop"] is True and args["box_push_stop_m"] == 0.005
+    assert args["reader"] == "matrix" and args["substeps"] == 1 and args["direct"] is True
+    assert args["predict_stop"] is False and args["box_push_stop_m"] == 0.005
     stops = [e for e in rep.events if e.level is EventLevel.STOP]
     assert stops[0].brief == "the held packet pushed against the box wall"
     assert rep.backend["profile"]["physics_s"] == 1.0 and rep.backend["holding_grip"] is True
@@ -326,7 +326,7 @@ def test_execute_sends_the_new_limits_and_logs_diagnostics(fake):
 
 def test_server_args_and_physics_mismatch():
     from controlr.robot.isaac.client import physics_mismatch, server_args_for
-    assert server_args_for({}) == ["--solver-iterations", "32", "--no-usd-writeback", "--no-legacy-contact-views"]
+    assert server_args_for({}) == ["--no-usd-writeback", "--no-legacy-contact-views"]
     legacy = {"solver_position_iterations": None, "usd_writeback": True, "legacy_contact_views": True}
     assert server_args_for({"physics": legacy}) == []
     args = server_args_for({"physics": {"dt": 0.002, "solver_position_iterations": 32, "usd_writeback": False},

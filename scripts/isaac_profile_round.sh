@@ -41,6 +41,15 @@ for stage in "$@"; do
             --plan "sub5p:expert+mat_push" --expert-scenes 2 ;;
     f_on) $P --label frames_usd --physics '{"usd_writeback": true}' --plan "sub5p:frames" ;;
     f_off) $P --label frames_nousd --physics '{"usd_writeback": false}' --plan "sub5p:frames" ;;
+    g32) $P --label grasp_it32 --plan "sub5p:low_grasp" ;;
+    g64) $P --label grasp_it64 --physics '{"solver_position_iterations": 64}' --plan "sub5p:low_grasp" ;;
+    g32s1) $P --label grasp_it32_sub1 --plan "sub1:low_grasp" ;;
+    r32) $P --label replay_it32 --plan "sub5p:replay=runs/20261003T010358Z_sim_waffle_yaw+replay=runs/20261003T005821Z_sim_waffle_yaw" ;;
+    r64) $P --label replay_it64 --physics '{"solver_position_iterations": 64}' --plan "sub5p:replay=runs/20261003T010358Z_sim_waffle_yaw+replay=runs/20261003T005821Z_sim_waffle_yaw" ;;
+    rleg) $P --label replay_legacy --physics '{"solver_position_iterations": 64, "usd_writeback": true, "legacy_contact_views": true}' --plan "baseline:replay=runs/20261003T010358Z_sim_waffle_yaw" ;;
+    rsub1) $P --label replay_it64_sub1 --physics '{"solver_position_iterations": 64}' --plan "sub1:replay=runs/20261003T010358Z_sim_waffle_yaw" ;;
+    rstatic) $P --label replay_it64_static --physics '{"solver_position_iterations": 64}' --scene '{"box_dynamic": false}' --plan "sub5p:replay=runs/20261003T010358Z_sim_waffle_yaw" ;;
+    fix) $P --label it64_sub1 --physics '{"solver_position_iterations": 64}' --plan "sub1:expert+low_grasp+replay=runs/20261003T005821Z_sim_waffle_yaw+replay=runs/20261003T010358Z_sim_waffle_yaw+mat_push+box_push" ;;
     *) echo "unknown stage $stage" ;;
   esac
 done
