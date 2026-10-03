@@ -62,8 +62,13 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 
 - **omniroute replays responses** to byte-identical requests (~0.4 s, no usage). That's why
   `llm.request_nonce: true` puts the run id into the first turn. Benchmarks too.
-- **Effort through the router is a model-id suffix** (`claude/claude-opus-5-5-xhigh`);
-  `extra_body.reasoning_effort` is effectively ignored.
+- **Thinking control through the router differs per model.** Opus planner: effort only via the id
+  suffix (`claude/claude-opus-5-5-xhigh`); `reasoning_effort` barely changes it. Sonnet 5.5:
+  `extra_body: {reasoning_effort: low|medium|high}` works (no field = behaves like high); the
+  `-low/-medium/-high` id suffixes are listed but rejected; `no-think/` still thinks; `thinking:
+  {type: disabled}` is a 400 — the API wants `{type: between_tools}`, which moves the reasoning
+  into the visible reply as prose; `output_config.effort` is dropped by the router
+  ([journal](journal/2026-10-03-thinking-controls.md)).
 - **Opus 5.5 can't turn thinking off**; Sonnet 5.5 thinks and can exhaust `max_tokens` → an empty
   reply. `llm.max_tokens` counts thinking tokens too. For fast turns use `no-think/...` routes.
 - **On `claude/` / `cc/` the router sets the cache boundary itself**; our markers there seem to
