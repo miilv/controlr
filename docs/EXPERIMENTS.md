@@ -25,9 +25,15 @@ Sample size: with 20 episodes per arm you can only distinguish a ≈40-point dif
 
 ## 2. Experiment axes (all config fields)
 
+**Models under test (until further notice, Ilia):** the only control model is
+`claude/claude-sonnet-5-5`; the planner stays `claude/claude-opus-5-5-xhigh`. Do not run Haiku
+(or other control models) without the owner's go-ahead — the bench and sweep configs list Sonnet 5.5
+only.
+
 | Axis | Field | Values |
 |---|---|---|
-| control model | `llm.model` | `claude/claude-sonnet-5-5` (default), `claude/claude-opus-5-5`, `no-think/claude/...`, effort suffixes `-low…-xhigh`, other vision models on the router |
+| control model | `llm.model` | `claude/claude-sonnet-5-5` (default; the only one under test for now), `claude/claude-opus-5-5`, `no-think/claude/...` (Sonnet 5.5 still thinks there) |
+| thinking effort | `llm.extra_body.reasoning_effort` | Sonnet 5.5: `low` / `medium` / `high`; unset ≈ `high`. Id suffixes `-low…-xhigh` are rejected for Sonnet 5.5 through the router; the Opus planner takes effort only via its id suffix |
 | planner | `planner.enabled`, `planner.model`, `planner.plan_file` | on/off, model, pinned plan |
 | robot manual | `prompt.system`, `prompt.extra_rules`, `prompt.fewshot` | `system_vN` versions, extra rules, demo in the cached prefix |
 | action format | `action.mode` | `ee_delta` (default), `ee_abs`, `joint_delta`, `joint_abs` |
@@ -38,9 +44,13 @@ Sample size: with 20 episodes per arm you can only distinguish a ≈40-point dif
 | frame size | `observation.size`, `observation.first_turn_size` | 224 / 336 / 448 / 672 px |
 | frame representation | `observation.renderers` | `raw`, `grid`, `axes`, `ee_marker`, `diff`, `heatmap` |
 | proprioception | `observation.state_text` | STATE line on/off |
-| goal feedback | `episode.goal_feedback`, `episode.trust_done` | `never` / `on_done` / `always` |
-| safety | `safety.*` | step, clearance, speed, force thresholds |
-| task and scene | `task.name`, `task.params` | `waffle_pick_place`, `reach`, `push`; object pose/yaw spread, start yaw |
+| feedback text | `feedback.level`, `feedback.repeat_task` | `short` (default: TASK / STATE / WARN / STOP only) / `full` (TURN, EXEC, CLAMP, WARN, EVENT, STOP, PARSE ERROR, GOAL, STATE — the legacy receipt) |
+| tactile sensing | `observation.tactile` | fingertip pad forces, "touched the packet" events and pad-based `holding` in the full feedback (default off) |
+| goal feedback | `episode.goal_feedback`, `episode.trust_done` | `never` / `on_done` / `always` (short feedback: a failed DONE is `WARN: task not complete yet`) |
+| safety | `safety.*` | step, clearance, speed, force thresholds (`contact_force_stop_n`, `box_force_stop_n`, `object_force_stop_n`, `held_object_force_stop_n`) |
+| box collision | `safety.box_collision`, `safety.box_clearance_m` | predictive wrist/housing-vs-box check: `block` / `warn` (default) / `off`; inflation 50 mm |
+| task and scene | `task.name`, `task.params` | `waffle_pick_place`, `reach` (text target relative to the packet / box), `push` (text distance + direction); object pose/yaw spread, start yaw; `box_dynamic` (default true), `box_mass_kg` (0.4) |
+| sim speed (Isaac) | `robot.params.physics`, `robot.params.{reader,substeps,contact_every,direct,predict_stop,tcp_speed_m_s,settle}` | physics step / solver iterations / USD write-back; contact reader, physics steps per drive-target update, contact sampling; see the contacts-and-speed report |
 | cache | `llm.cache`, `llm.cache_ttl` | `auto` / `anthropic` / `none`, 5m/1h (effect through the router unconfirmed) |
 
 ## 3. Metrics (what `runs/<run>/` contains)
@@ -55,7 +65,8 @@ Sample size: with 20 episodes per arm you can only distinguish a ≈40-point dif
 
 Key metrics: success (the sim's goal check), turns to success, turn latency (LLM and full),
 tokens and cache-read share, number of STOP/CLAMP events, outcome (`success` / `max_turns` /
-`safety_stop` / `llm_error` / `unstable`). Summary: `uv run controlr report runs/...`.
+`safety_stop` / `llm_error` / `unstable`), robot time vs wall time (`summary.json` `sim_time`;
+per turn `turns.jsonl` `backend.profile`). Summary: `uv run controlr report runs/...`.
 
 ## 4. Report template
 

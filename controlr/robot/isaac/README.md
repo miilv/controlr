@@ -17,8 +17,18 @@ tasks.py (numpy only) is imported by both sides: placement randomisation + succe
   `configs/sim/waffles_w2l_adaptive_parallel_dt1ms_20260909.json` (native
   adaptive W2L gripper, 1 ms physics — the config PHANTOM's scripted-expert
   data campaign uses; factory D435 RGB K, measured extrinsics). The stage is
-  built once; `reset` teleports the arm, moves the packet and toggles
-  visual-only markers, so tasks switch without a rebuild.
+  built once; `reset` teleports the arm, moves the packet and puts the box back, so
+  tasks switch without a rebuild. There are no visual markers: reach / push targets are
+  text (see Tasks).
+* **The blue box is a dynamic body** (applied after PHANTOM builds the stage; PHANTOM has
+  it as five static colliders): `/World/Bin` gets `RigidBodyAPI` + `MassAPI` and its five
+  collider cubes become one compound body, 0.4 kg (`task.params.box_mass_kg`), PHANTOM's
+  friction (its `BinContact` material stays bound). `task.params.box_dynamic: false`
+  makes it kinematic (immovable, the behaviour before). `reset` restores the authored pose;
+  resting partly on the 3 mm mat the box tips ~0.7°. The server's `state()` carries the
+  box's CURRENT geometry (`tasks.bin_info_at`): the goal check (exact containment in the
+  moved / tilted box, `tasks.to_box_interior`), `IsaacRobot.obstacles()` (the envelope's
+  wrist / housing check) and `tasks.body_box_clearance` use it.
 * **Frames**: the stage world frame is the UR controller base frame.
   `CameraInfo.K` = PHANTOM's factory intrinsics (fx 609.28, cx 337.8, cy 249.7),
   `T_cam_base = inv(world_from_cv)`. TCP = sim `tool0` + 180 mm along tool z,
@@ -35,27 +45,45 @@ tasks.py (numpy only) is imported by both sides: placement randomisation + succe
   A bounded integral term (≤ 0.004 rad, ~14 N·m) removes the ~2 mm gravity sag of
   PHANTOM's pure-PD drives — the real UR controller tracks to ~0.1 mm; it is frozen
   after a stop and while the robot presses on anything (> 5 N, anti-windup).
-* **Force stop**: contacts are sampled every physics step during motion (every
-  10 ms while settling). Arm/gripper vs table/box above `safety.contact_force_stop_n`
-  and robot vs the packet above `safety.object_force_stop_n` (not while the gripper
-  itself closes) stop the motion — only if the force of that pair also exceeds its
-  force before the motion by 20 N (baseline capped at 2× the threshold), so an arm
-  resting against the box after a stop can back away. A stop at any point (motion,
-  gripper, settle) freezes the drive target at the measured pose and clears the
-  integral term. > 5 kN or NaN contact data = the solver blew up: STOP of kind
-  `unstable` even with the force stop disabled (reset).
+* **Force stop** (`contacts.py`, CPU-tested): contacts are sampled every control tick
+  during motion and every ~10 ms while settling / gripping. Robot bodies: ONE PhysX
+  contact-force matrix (all arm / gripper bodies × table, mat, box parts, packet;
+  `reader: matrix`) or PHANTOM's per-body diagnostic views (`reader: phantom`, the legacy
+  path, ~7× slower to read). The packet has its own view against table / mat / box parts.
+  Rules: arm/gripper vs table above `safety.contact_force_stop_n`; vs the box above
+  `safety.box_force_stop_n`; vs the packet above `safety.object_force_stop_n` only while
+  the packet is NOT held (and not while the gripper itself closes); while it IS held (close
+  command + both pads loaded) the packet-vs-environment force above
+  `safety.held_object_force_stop_n` stops ("the held packet pushed against the box wall") —
+  the grip's own pad forces never stop the arm (they reached 85–89 N in free air). Every
+  pair also needs its force before the motion + 20 N (capped at 2× the threshold), so an
+  arm resting against something can back away. `predict_stop` also stops when the force
+  extrapolated one sample ahead exceeds the limit (sparse sampling). A stop at any point
+  freezes the drive target at the measured pose and clears the integral term. > 5 kN or
+  NaN contact data = the solver blew up: STOP of kind `unstable` even with the force stop
+  disabled (reset). The server returns the stop structured (`kind`, `pair`, `force`,
+  `threshold`); the client words it (no fingertip numbers without `observation.tactile`).
 * **Gripper**: opening = gap between the gel faces, calibrated at startup on
   the sim linkage (0.9 … 91.3 mm; the W2L pads sit 5.5 mm outboard of the
   Robotiq fingertips). "close" ramps the command and latches 0.12 closure past
   first bilateral contact (Robotiq-like object detection). Squeezing to full
   closure through the 35 mm packet makes PhysX diverge; PHANTOM's own expert
   commands 0.62 and the latch lands at ~0.58. `holding` = a commanded closure and
-  both pads > 0.1 N on the packet; `gripper_closed` = the last command was "close"
-  (also when the latch stopped on a wide object).
-* **Events to the model**: STOP (force stop / instability), WARN collision
-  (arm or gripper vs table/mat/box/packet, peak > 2 N), INFO finger–packet
-  contact (WARN above half the object stop threshold), WARN tracking (> 5 mm from the command), WARN not settled,
-  WARN gripper linkage abnormal (PHANTOM `mechanical_diagnostics`).
+  both pads > 0.1 N on the packet (tactile; shown to the model only with
+  `feedback.level=full` + `observation.tactile`); `holding_grip` = the Robotiq-style object
+  detection (closed fingers held > 0.03 closure short of the command and > 3 mm above full
+  closure), logged only; `gripper_closed` = the last command was "close" (also when the
+  latch stopped on a wide object).
+* **Events** (what reaches the model depends on `feedback.level`): STOP (force stop /
+  instability; `brief` = "the gripper pushed against the blue box", "the held packet pushed
+  against the box wall", ...), WARN collision (arm or gripper vs table/mat/box/packet, peak
+  > 2 N; full level only), `tactile` finger–packet contact (full + tactile only), WARN tracking
+  (> 5 mm from the command), WARN not settled (full only), WARN gripper linkage abnormal
+  (PHANTOM `mechanical_diagnostics`).
+* **Run log**: every `execute` returns `profile` (seconds in drive targets / PhysX steps /
+  contact reads / bookkeeping / settle checks, ticks, samples), `wall_s`, `sim_s`,
+  contact peaks incl. pad forces, the box shift and the settings; the client puts them in
+  `ExecReport.backend` → `turns.jsonl` `backend` (never shown to the model).
 
 ## Base frame as seen by the D435 (verified)
 
@@ -71,8 +99,8 @@ The robot base is at the right edge, level with the box's near wall. This is
 | name | scene change | success (privileged, at check time) |
 |---|---|---|
 | `waffle_pick_place` (alias `pick_place`) | packet centre N(0,10 mm) clipped ±20 mm, yaw N(0,5°) clipped ±10° (PHANTOM `expert_campaign.py`); `params.nominal: true` = measured pose; `yaw_dist: uniform` = U(±`yaw_max_deg`); `yaw_offset_deg` = fixed packet yaw offset; `start_yaw_deg` = tool yaw offset at reset about the vertical through the start TCP (v → U(−v, v), [lo, hi] → U(lo, hi); drawn after the packet, so seeds keep their packet poses) | PHANTOM `policy_metrics` full_task at one instant: all 8 packet corners inside the box interior (2 mm tol), pads < 0.1 N, robot–packet < 0.1 N, packet < 0.03 m/s and < 0.5 rad/s |
-| `reach` | red ball on a pole, x∈[−0.50,−0.26], y∈[−0.33,−0.12], 5–16 cm above the table, ≥ 8 cm from the packet, never behind the start-pose gripper; feasible: IK with the start orientation, open fingertips above the table, gripper body/wrist ≥ 45 mm clear of the blue box (`tasks.reach_feasibility`; the old sampler's seed-0 marker put the housing inside the box wall) | TCP within 15 mm of the ball centre |
-| `push` | green 5 cm square 6–10 cm from the packet along its long axis (−x side) | packet centre within 25 mm of the square centre, not held or lifted |
+| `reach` | a TEXT target relative to a visible object, drawn per seed from `tasks.REACH_TARGETS` (e.g. "60 mm above the centre of the top face of the wafer packet", "50 mm above the near-right corner of the blue box's rim"); only targets that are feasible from the start (IK with the start orientation, open fingertips above the table, wrist / housing ≥ 45 mm from the box walls — `tasks.reach_feasibility`); `targets` / `target_index` restrict the choice. No marker in the scene | TCP within 15 mm of the target computed from the object's CURRENT pose |
+| `push` | TEXT: "push the wafer packet about N mm along its long side, toward the left of the image (−x)", N ∈ 60–100 mm (rounded to 10 mm in the text). No marker | packet centre within 25 mm of the target point, not held or lifted |
 
 All tasks start from a real recorded start state (`tasks.START_Q`, PHANTOM
 `initial_states/waffles_aug22_1787395928_000.json`), gripper open. The tool is
@@ -105,7 +133,12 @@ CONTROLR_ISAAC_AUTHKEY=<secret> scripts/isaac_server.sh --port 7801      # print
 ```
 
 `robot.params` (all optional): `host`, `port` (7801), `launch`, `server_args`
-(e.g. `["--render-updates", "4"]`), `startup_timeout_s`, `camera` ("scene"),
+(e.g. `["--render-updates", "4"]`), `physics` (server start args: `dt`,
+`solver_position_iterations`, `solver_velocity_iterations`, `usd_writeback`; a running
+server with other values is refused; `scripts/remote_run.sh` starts the server with the
+config's values), `reader` (`matrix` | `phantom`), `substeps` (physics steps per drive-target
+update / contact tick), `contact_every`, `direct` (PhysX stepped and drive targets set without
+the isaacsim.core wrappers), `predict_stop`, `startup_timeout_s`, `camera` ("scene"),
 `tcp_speed_m_s` (default `safety.max_tcp_speed_m_s`), `joint_speed_rad_s`,
 `force_stop_n`, `contact_report_n`, `tracking_warn_m`, `settle` (server
 overrides: `max_s`, `joint_err_rad`, `grip_squeeze`, `grip_max_s`, …),
@@ -128,19 +161,22 @@ server on port 7821; ~2 min).
 | 10 mm `ee_delta` incl. settle | 0.44 s sim, ~1.9 s wall (error 0.05 mm) |
 | 80 mm `ee_delta` | 0.8 s sim, ~3.5 s wall |
 | gripper close / open | ~0.5 s sim, ~2 s wall |
-| scripted pick-place (9 phases) | ~11 s sim, ~50 s wall |
+| scripted pick-place (9 phases) | ~11 s sim, ~50 s wall (PHANTOM's step path; ~16 s with the defaults) |
 
-Physics runs at ~0.24× real time: 4.2 ms per 1 ms step, independent of solver
-iterations (16–64), contact reporting, CCD or self-collision (all measured).
+With PHANTOM's step path (USD write-back of every body after every 1 ms step, ~30 per-body
+contact views read each step, `World.step` / `apply_action` wrappers) physics ran at ~0.18–0.24×
+real time; the default path (no per-step USD write-back, one contact matrix, PhysX stepped
+directly) runs at ~0.7× with the same physics. USD write-back was ~70 % of the old step cost.
+Per-setting measurements: docs/experiments/2026-10-02-contacts-and-speed.md.
 The RTX annotator lags one app update; 2 updates give the current frame,
 further updates only refine the denoiser (4 used).
 
 ## Open issues
 
-* Wall time per turn is dominated by physics (1 ms steps required by the W2L
-  gripper, `phantom.sim.gripper_adaptive.validate_physics_timestep`). The legacy
-  sliding-pad scenes run at 4 ms but need PHANTOM's separate gripper visual
-  (not wired up here).
+* Speed: see the measurements in docs/experiments/2026-10-02-contacts-and-speed.md and the
+  `robot.params` speed keys above. The legacy sliding-pad scenes (`waffles.json`, 4 ms) are a
+  different, older reconstruction (table at +53 mm, estimated pad geometry) and need PHANTOM's
+  separate gripper visual — not comparable with the calibrated W2L rig, not wired up.
 * Carton / egg scenes (`configs/sim/carton_*.json`, `egg_*.json`) would need a
   second server (different stage); `tasks.py` only registers the waffle rig.
 * Contact forces are PhysX normal impulses / dt (every step during motion):

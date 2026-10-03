@@ -136,7 +136,7 @@ def test_parse_error_streak(tmp_path):
     assert res.outcome == "parse_errors" and res.turns == 2
     turns = read_jsonl(Path(res.run_dir) / "turns.jsonl")
     assert turns[0]["parse_errors"]
-    assert "PARSE ERROR" in turns[0]["feedback"]
+    assert "WARN: reply not understood" in turns[0]["feedback"]
 
 
 def test_length_cutoff_is_explained(tmp_path):
@@ -417,3 +417,64 @@ def test_setup_records_the_sampled_scene(tmp_path):
     assert scene["task"] == "reach"
     assert scene["target_mm"] == pytest.approx([v * 1000 for v in NEAR])
     assert scene["start"]["tcp_mm"] and scene["start"]["tcp_yaw_deg"] is not None
+
+
+class BoxMock(RecMock):
+    """RecMock with a known obstacle (a box that moves after the first execute) and backend
+    diagnostics in its ExecReport — the Isaac contract."""
+
+    def __init__(self, params=None):
+        super().__init__(params)
+        self.n_exec = 0
+
+    def obstacles(self):
+        from controlr.robot.obstacles import box_from_bin_info
+        dx = 0.02 * self.n_exec
+        return [box_from_bin_info({"lower": [-0.5705 + dx, 0.0, -0.0055], "upper": [-0.2105 + dx, 0.26, 0.1805],
+                                   "center": [-0.3905 + dx, 0.13, -0.0095], "yaw": 0.0, "wall": 0.02,
+                                   "dynamic": True})]
+
+    def execute(self, actions):
+        rep = super().execute(actions)
+        self.n_exec += 1
+        rep.backend = {"profile": {"physics_s": 0.5, "contacts_s": 0.1}, "wall_s": 0.7, "sim_s": 0.4,
+                       "contacts_peak_n": {"gripper-object": 14.0}}
+        return rep
+
+
+def test_obstacles_reach_manual_envelope_and_log_and_backend_profile_is_logged(tmp_path):
+    """contacts-and-speed: the backend's obstacles (current pose) go to the manual (setup.json
+    records them) and to the envelope every turn; ExecReport.backend lands in turns.jsonl."""
+    from controlr.loop import run_episode
+
+    robot = BoxMock()
+    res = run_episode(_cfg(tmp_path, **{"episode.max_turns": 2}), robot=robot,
+                      llm=FakeLLM(["MOVE ee_delta 0 0 -10\nSTATUS OK", "MOVE ee_delta 0 0 -10\nSTATUS OK"]))
+    run = Path(res.run_dir)
+    setup = json.loads((run / "setup.json").read_text())
+    assert setup["obstacles"][0]["name"] == "the blue box" and setup["obstacles"][0]["movable"]
+    assert "slides when pushed" in (run / "system_prompt.md").read_text()
+    turns = read_jsonl(run / "turns.jsonl")
+    assert turns[0]["backend"]["profile"]["physics_s"] == 0.5
+    assert turns[0]["backend"]["contacts_peak_n"]["gripper-object"] == 14.0
+    summary = json.loads((run / "summary.json").read_text())
+    assert summary["sim_time"]["sim_s"] == pytest.approx(0.8) and summary["sim_time"]["server_wall_s"] == pytest.approx(1.4)
+    # default feedback: STATE only (no TURN / EXEC / holding)
+    assert turns[0]["feedback"].startswith("STATE: tcp ") and "holding" not in turns[0]["feedback"]
+    assert "TURN" not in turns[0]["feedback"] and "EXEC" not in turns[0]["feedback"]
+
+
+def test_envelope_sees_the_box_where_it_is_now(tmp_path, monkeypatch):
+    from controlr.loop import run_episode
+    from controlr.robot import safety as safety_mod
+
+    centres = []
+    orig = safety_mod.SafetyEnvelope.set_obstacles
+
+    def spy(self, obstacles):
+        centres.append(obstacles[0].center[0])
+        return orig(self, obstacles)
+    monkeypatch.setattr(safety_mod.SafetyEnvelope, "set_obstacles", spy)
+    run_episode(_cfg(tmp_path, **{"episode.max_turns": 3}), robot=BoxMock(),
+                llm=FakeLLM(["MOVE ee_delta 0 0 -5\nSTATUS OK"] * 3))
+    assert centres == pytest.approx([-0.3905, -0.3705, -0.3505])

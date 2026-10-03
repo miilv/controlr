@@ -114,9 +114,9 @@ def test_sweep_dry_run_cli(capsys):
 
 def test_latency_bench_file_and_dry_run(capsys):
     b = load_bench(ROOT / "configs" / "bench" / "latency.yaml")
-    assert len(b.models) == 6 and b.sizes == [224, 448, 672] and b.history == [1, 10, 30]
-    assert "no-think/claude/claude-haiku-4-5-20251001" in b.models
-    assert b.plan_calls() == 6 * 3 * 3 * len(b.variants) * (1 + b.repeats)
+    assert b.models == ["claude/claude-sonnet-5-5"] and b.sizes == [224, 448, 672] and b.history == [1, 10, 30]
+    assert not any("haiku" in m for m in b.models)          # Ilia: Sonnet 5.5 only for now
+    assert b.plan_calls() == 1 * 3 * 3 * len(b.variants) * (1 + b.repeats)
     assert main(["bench-latency", "-c", str(ROOT / "configs" / "bench" / "latency.yaml"), "--dry-run"]) == 0
     assert "calls" in capsys.readouterr().out
 
@@ -140,7 +140,7 @@ def test_cache_probe_with_fake(tmp_path):
     from controlr.bench.cache_probe import run_cache_probe
 
     llm = FakeLLM(["MOVE ee_delta 5 0 0\nSTATUS OK"])
-    rows = run_cache_probe(llm, "claude/claude-haiku-4-5-20251001", turns=4, size=96,
+    rows = run_cache_probe(llm, "claude/claude-sonnet-5-5", turns=4, size=96,
                            out_dir=tmp_path, printer=None)
     assert [r.n_images for r in rows] == [1, 2, 3, 4]
     assert len(llm.calls) == 4 and (tmp_path / "probe.csv").exists()
@@ -273,3 +273,12 @@ def test_prompt_command(tmp_path, capsys):
     assert out.startswith("# Operating manual") and "px per 100 mm" in out
     assert main(["prompt", "-c", str(ROOT / "configs" / "mock.yaml"), "--planner"]) == 0
     assert "PLANNING CALL" in capsys.readouterr().out
+
+
+def test_yaml_off_means_off_for_box_collision():
+    cfg = load_config(None, ["safety.box_collision=off"], dotenv=None)
+    assert cfg.safety.box_collision == "off"
+    with pytest.raises(ValueError, match="box_collision"):
+        load_config(None, ["safety.box_collision=maybe"], dotenv=None)
+    with pytest.raises(ValueError, match="feedback.level"):
+        load_config(None, ["feedback.level=minimal"], dotenv=None)

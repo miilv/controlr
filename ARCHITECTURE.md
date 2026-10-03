@@ -19,9 +19,10 @@ reset(task) -> obs0
            timeout 600 s, 1 retry): planner system prompt + task + obs0 -> plan text (shares no
            cache entry with the control transcript; only its text enters turn 0 when
            planner.include_in_context). planner.plan_file pins a plan instead (sweeps).
-turn 0     user: RUN <run id> (llm.request_nonce) + task instruction (+ plan) + observation(obs0)
+turn 0     user: RUN <run id> (llm.request_nonce) + TASK: instruction (+ plan) + observation(obs0)
 loop:      assistant reply (streamed; early-stop once grammar complete)
-           -> parse (MOVE*/STATUS) -> SafetyEnvelope.filter -> robot.execute (blocks until settled)
+           -> parse (MOVE*/STATUS) -> SafetyEnvelope.set_obstacles(robot.obstacles()) (current
+           pose) -> SafetyEnvelope.filter -> robot.execute (blocks until settled)
            -> goal check -> end? -> observe -> user: feedback + observation
 end:       DONE (goal verified unless trust_done) | FAIL | max_turns | episode.max_stops STOP events
            (default 3; a STOP of kind "unstable" ends at once) | parse-error streak
@@ -29,11 +30,17 @@ end:       DONE (goal verified unless trust_done) | FAIL | max_turns | episode.m
 ```
 
 The system prompt is built after `reset`: `build_system_prompt(cfg, spec, cameras=obs.cameras,
-state0=ref)` where `ref = robot.reference_state() or obs.state` (the COMMANDED reset pose, free of
+state0=ref, obstacles=robot.obstacles())` where `ref = robot.reference_state() or obs.state` (the COMMANDED reset pose, free of
 settle jitter) — the cameras give per-image axis directions and pixel lengths, `ref` gives the fixed
 tool orientation (rotation=none), the jaw line and the fingertip drop. The same `ref` is the
-safety envelope's reference orientation (`SafetyEnvelope.reset(ref)`). Still task-free, so it is
-identical across episodes of one config. `prompt.fewshot` (a .md file or a run dir) is appended as
+safety envelope's reference orientation (`SafetyEnvelope.reset(ref)`). `obstacles` (optional
+`Robot.obstacles()`: Isaac's blue box at its reset pose) let section 8 say what the envelope knows
+about the box (`safety.box_collision`). Still task-free, so it is identical across episodes of one
+config. The manual describes exactly the feedback the config gives (`feedback.level`,
+`observation.state_text`, `observation.tactile`): `system_v0.md` has placeholders for every
+feedback-dependent sentence, and with the legacy settings (`feedback.level=full`,
+`state_text=true`, `tactile=true`, `box_collision=off`) it renders byte-identical to before
+(`test_prompts::test_legacy_settings_reproduce_the_old_manual_byte_for_byte`). `prompt.fewshot` (a .md file or a run dir) is appended as
 "Appendix C" (cached prefix). The run id goes into turn 0 (not the system prompt) because omniroute replays cached
 *responses* for byte-identical requests.
 
@@ -50,13 +57,14 @@ The robot never moves while the model thinks. Latency is a measured quantity
 | `controlr/llm/caching.py` | cache-marker placement per model route (applied at serialisation, never stored) |
 | `controlr/llm/transcript.py` | append-only transcript; images encoded once and stored as bytes |
 | `controlr/protocol/grammar.py` | reply grammar: render the spec for the prompt, parse replies, completeness check |
-| `controlr/protocol/feedback.py` | feedback text for the next user turn (exec receipt, clamps, limits, events, goal, state) |
+| `controlr/protocol/feedback.py` | feedback text for the next user turn (`short`: TASK / STATE / WARN / STOP; `full`: exec receipt, clamps, limits, events, goal, state) |
 | `controlr/prompts/*.md`, `controlr/prompts/builder.py` | system prompt (robot operating manual) + planner prompt templates |
 | `controlr/observation/renderers.py` | observation -> list of image parts + text (resize, overlays, diff, heatmap, tile) |
 | `controlr/robot/base.py` | Robot ABC (contract) |
 | `controlr/robot/spec.py` | the one `RobotSpec` constructor of the UR3 CB3 rig (shared by mock + Isaac) |
 | `controlr/robot/kinematics.py` | UR3 CB3 FK/IK (DH, controller base frame), backend-independent; the ONE rotation-helper implementation |
-| `controlr/robot/safety.py` | SafetyEnvelope: filter/clamp actions, near-limit warnings |
+| `controlr/robot/safety.py` | SafetyEnvelope: filter/clamp actions, near-limit warnings, predictive wrist/housing-vs-box check |
+| `controlr/robot/obstacles.py` | known obstacles (`BoxObstacle`: an open-top box, walls + floor) and the robot body centre line checked against them; numpy only |
 | `controlr/robot/mock.py` | kinematic mock robot (no physics; synthetic rendering) for tests |
 | `controlr/robot/replay.py` | replays recorded frames regardless of actions (latency/caching benchmarks) |
 | `controlr/robot/isaac/` | Isaac Sim 6.0 backend: PHANTOM's calibrated UR3 CB3 + Robotiq + D435 scene (server inside Isaac's python, numpy-only RPC client in controlr; `motion.py` = trajectory timing shared by both) |
@@ -182,11 +190,28 @@ def is_complete(text: str) -> bool                                   # a STATUS 
 ```python
 def format_feedback(turn: int, parsed: ParsedReply | None, report: ExecReport | None,
                     goal: GoalReport | None, obs: Observation, cfg: Config,
-                    spec: RobotSpec | None = None) -> str
+                    spec: RobotSpec | None = None, task: str | None = None) -> str
+def visible_events(events: list[SafetyEvent], cfg: Config) -> list[SafetyEvent]
 def to_llm_units(text: str, a: ActionConfig) -> str   # "<n> mm"/"<n> deg" -> configured units
 ```
-Safety and backend messages (`SafetyEvent.message`, `GoalReport.message`) are written in
+Safety and backend messages (`SafetyEvent.message`, `.brief`, `GoalReport.message`) are written in
 canonical mm / deg; `format_feedback` converts them, so `pos_unit=cm` never mixes units.
+
+`feedback.level=short` (the default) — only four line types, in this order:
+```
+TASK: <instruction>                 (turn 0 head; every turn with feedback.repeat_task)
+STATE: tcp x=312 y=-45 z=88 mm yaw=12 deg | grip 42 mm open        (no `holding`)
+WARN: move shortened: table clearance                               (one short line per issue)
+STOP: the gripper pushed against the blue box
+```
+WARN = every clamp / skipped move (`SafetyEvent.brief`, a few words without measurements), every
+unusable reply line (`reply not understood: ... - nothing executed`), near-limit and box-proximity
+warnings and a DONE whose check failed (`task not complete yet`); contacts below the stop force,
+settle notices and fingertip events are not shown. STOP = a stopped motion (`.brief`). No TURN /
+EXEC / EVENT / GOAL / PARSE ERROR lines.
+
+`feedback.level=full` — the legacy receipt (events of kind `tactile` only
+with `observation.tactile`; `holding` in STATE only with `full` + `tactile`).
 Compact, line-oriented, LLM units, e.g.
 ```
 TURN 7
@@ -221,8 +246,11 @@ LANCZOS, never upscale. Deterministic output for identical input (cache stabilit
 ### Robot backends
 `controlr/robot/base.py::Robot` (reset/observe/state/execute/check_goal/close; optional
 `reference_state()` — the commanded reset state, default None; optional `scene_record()` — the
-sampled task scene for `setup.json`, default None).
-Contract additions in `types.py` (backwards compatible, defaults None): `RobotSpec.finger_pad`
+sampled task scene for `setup.json`, default None; optional `obstacles()` — known obstacles at their
+current pose, default []).
+Contract additions in `types.py` (backwards compatible, defaults None / ""): `SafetyEvent.brief`
+(the event in a few words, no measurements: the short feedback), `ExecReport.backend` (backend
+diagnostics for the run log only), `RobotSpec.finger_pad`
 (pad half length / half width / thickness, m), `Action.q_path` (envelope waypoints); `Action.values`
 of ee_abs + rotation=yaw has 4 entries (x, y, z, yaw).
 Factory: `controlr.robot.make_robot(cfg: Config) -> Robot`.
@@ -231,8 +259,14 @@ Factory: `controlr.robot.make_robot(cfg: Config) -> Robot`.
   d=[0.1519,0,0,0.11235,0.08535,0.0819], alpha=[pi/2,0,0,pi/2,-pi/2,0]; TCP offset +z 0.18 m
   for Robotiq 2F-85 fingertip centre — configurable), `ik(pos, rotvec, q_seed) -> q | None`
   (damped least squares, joint-limit aware, nearest to seed).
-* `safety.py`: `SafetyEnvelope(spec, cfg).reset(state0)`, `.filter(actions, state) -> (actions_out,
-  events)`: per-line step limits (TCP travel also in joint modes), workspace box, table clearance
+* `obstacles.py`: `BoxObstacle` (centre at the floor underside, yaw, outer size, wall and floor
+  thickness, `movable`) — walls and floor only, the opening is free (the gripper places INTO the
+  box); `box_from_bin_info(bin_info)`; `body_points(kin, q)` = the wrist / gripper-housing centre
+  line TCP → flange → wrist 3 → wrist 2 → wrist 1 without the first 60 mm (the fingers);
+  `body_clearance(kin, q, obstacles)`.
+* `safety.py`: `SafetyEnvelope(spec, cfg).reset(state0)`, `.set_obstacles(obstacles)` (the loop
+  passes `Robot.obstacles()` at their CURRENT pose before every filter), `.filter(actions, state) ->
+  (actions_out, events)`: per-line step limits (TCP travel also in joint modes), workspace box, table clearance
   of the LOWEST FINGERTIP (`RobotSpec.finger_pad`; a tilted open gripper reaches 15-45 mm below
   its TCP), joint soft limits, near-limit warnings, clamp vs reject. ee moves: IK every
   `safety.path_step_m` (5 mm) along the straight TCP line -> `Action.q_path` waypoints; an
@@ -244,7 +278,13 @@ Factory: `controlr.robot.make_robot(cfg: Config) -> Robot`.
   set by the loop and the backends' fallback envelopes) holds only the reference roll/pitch: the
   target heading is the current yaw + dyaw (ee_delta) or the commanded yaw (ee_abs), dyaw clamped
   to `max_step_rad`; a contact tilt is undone, a turn is kept. Joint moves are
-  checked at samples along the joint path. Backend-independent.
+  checked at samples along the joint path. Known obstacles (`safety.box_collision`): along the
+  move's waypoints the body centre line must keep `box_clearance_m` (50 mm) from the box walls and
+  floor; a waypoint closer than that AND closer than anything before on this move is a violation
+  (moving away or along is always allowed): `block` shortens the move there (kind `box`, CLAMP;
+  skipped below 10 %, rejected with `clamp: false`), `warn` executes it and adds a WARN (kind
+  `box_warn`), `off` does not check. Every clamp event carries a `brief` for the short feedback.
+  Backend-independent.
 * Isaac backend (primary sim): reuses PHANTOM's Isaac Sim 6.0 reconstruction of the real rig
   (`~/phantom-icra-2027/phantom` on compute3: `phantom/sim/scene.py`, `camera.py`, `kinematics.py`,
   native gripper, calibrated D435 640x480, waffle packet + box; carton/egg task scenes). A server
@@ -255,8 +295,20 @@ Factory: `controlr.robot.make_robot(cfg: Config) -> Robot`.
   min-jerk motion timed so PEAK speeds respect the TCP/joint limits (`motion.py`), samples
   contacts every step during motion, stops on table/box and robot-object force (baselines per
   contact pair), freezes the target at any stop (also during settling), then settles and the D435
-  view is rendered. Reach targets are sampled feasible (IK, fingertip floor, tool body clear of the
-  box). One camera (`scene`); the mock adds an optional synthetic `top` camera. Tasks: the PHANTOM waffle pick-to-box first, then simple reach/push variants.
+  view is rendered. The blue box `/World/Bin` is made ONE dynamic rigid body (its five PHANTOM
+  colliders, mass `task.params.box_mass_kg` 0.4 kg, PHANTOM's friction; `box_dynamic: false` =
+  kinematic, i.e. the old immovable box); `reset` restores its pose; the server's `state()` carries
+  the box's CURRENT geometry (`tasks.bin_info_at`), which the goal check, the envelope
+  (`IsaacRobot.obstacles()`) and `tasks.body_box_clearance` use. Force stop rules
+  (`robot/isaac/contacts.py`, CPU-tested): arm/gripper vs table at `contact_force_stop_n`, vs the box
+  at `box_force_stop_n`, vs the packet at `object_force_stop_n` only while NOT held; while held, the
+  packet's own contact view against table/mat/box at `held_object_force_stop_n` ("the held packet
+  pushed against the box wall") — the grip's pad forces never stop the arm. `execute` returns a
+  `profile` (targets / simulate / contacts / bookkeeping / settle seconds) and the client puts it,
+  the contact peaks (incl. pad forces), the gripper's own object detection and the box shift into
+  `ExecReport.backend` (run log only). Reach and push targets are TEXT relative to visible objects
+  (no markers), drawn per seed; the instruction comes from the server's episode. One camera
+  (`scene`); the mock adds an optional synthetic `top` camera. Tasks: the PHANTOM waffle pick-to-box first, then simple reach/push variants.
   The mock robot covers GPU-free unit tests.
 
 ### Run log (`controlr/runlog.py`)
@@ -269,14 +321,18 @@ tilt / settle drift, box pose, start joints / TCP / tool yaw / start yaw offset,
 T_cam_base), `spec.json` (RobotSpec), `planner.json` (planner request/usage/timings/reasoning),
 `raw/<turn>_<cam>.png` (native frames without overlays, `log.save_raw_frames`).
 
-`turns.jsonl`, one record per turn — enough to rebuild (obs_t, action_t, obs_t+1):
+`turns.jsonl`, one record per turn — enough to rebuild (obs_t, action_t, obs_t+1) (+ `backend`:
+`ExecReport.backend` diagnostics never shown to the model — Isaac: server profile, wall / sim seconds,
+contact peaks incl. tactile pad forces, holding by pads and by gripper stall, box pose / shift, stop):
 `obs_images` (shas the model saw), `state_before`, `reply` (stored, note-stripped if truncated;
 `reply_streamed` when it differs), `reasoning`/`reasoning_chars`, `actions` / `executed` (SI values,
 `q_target`, `q_path`), `events`, `goal`, `next_obs_images` + `state` (after the action; also after
 the terminal turn), `feedback` (absent on the terminal turn), `llm` (all Timings fields), `usage`,
 `request_bytes`, allow-listed `headers` (x-omniroute-*, request ids, rate limits), `timings`.
 
-`summary.json`: `outcome`, `success` (goal check at the end), `success_verified` (outcome ==
+`setup.json` also records `obstacles` (the backend's known obstacles at reset; `controlr prompt
+--setup` uses them). `summary.json`: `sim_time` (sum of backend sim seconds, server and execution
+wall seconds, `sim_per_wall`), `outcome`, `success` (goal check at the end), `success_verified` (outcome ==
 success: DONE claimed AND verified — aggregate this), `llm_backend`, token totals,
 `cache_read_share` (episode) + `cache_read_share_turns`, `cache_regressions`, latency percentiles
 with `n`/`missing` counts (`llm_ttft_s` = first content incl. thinking, `llm_ttft_any_s`,

@@ -123,7 +123,9 @@ def test_spec_camera_and_observation(fake):
     assert robot.spec.tcp_offset[2] == pytest.approx(0.18)
     assert "RIGHT" in robot.spec.base_frame_doc and "AWAY from the camera" in robot.spec.base_frame_doc
     obs = robot.reset({"name": "pick_place", "params": {"nominal": True}}, seed=3)
-    assert rig.calls[-1][1] == {"task": "waffle_pick_place", "seed": 3, "params": {"nominal": True}}
+    assert {k: v for k, v in rig.calls[-1][1].items() if k != "settings"} == \
+        {"task": "waffle_pick_place", "seed": 3, "params": {"nominal": True}}
+    assert rig.calls[-1][1]["settings"]["reader"] == "matrix" and rig.calls[-1][1]["settings"]["substeps"] == 1
     assert robot.task_instruction == tasks.TASKS["waffle_pick_place"].instruction
     cam = obs.cameras["scene"]
     assert obs.images["scene"].shape == (480, 640, 3) and cam.K.shape == (3, 3) and cam.T_cam_base.shape == (4, 4)
@@ -165,7 +167,8 @@ def test_filtered_q_target_used_verbatim_and_events(fake):
     np.testing.assert_allclose(args["q"], [q1, q2])
     assert np.isnan(args["gripper"][0]) and args["gripper"][1] == 0.05
     kinds = {(e.kind, e.level) for e in rep.events}
-    assert ("collision", EventLevel.WARN) in kinds and ("contact", EventLevel.INFO) in kinds
+    # fingertip contact with the packet is tactile information (observation.tactile)
+    assert ("collision", EventLevel.WARN) in kinds and ("tactile", EventLevel.INFO) in kinds
     assert not any("table" in e.message for e in rep.events)          # below the report threshold
     rig.stop = True
     rep = robot.execute(acts)
@@ -262,3 +265,91 @@ def test_solver_blow_up_after_an_ordinary_stop_is_unstable(fake):
     rig.next_contacts = {"arm-box": 300.0}               # a hard but real contact stays a warning
     rep = robot.execute([Action(ActionMode.JOINT_ABS, q1, q_target=q1)])
     assert not rep.stopped
+
+
+
+# ---------------------------------------------------------------------------
+# contacts-and-speed (docs/experiments/2026-10-02-contacts-and-speed.md)
+# ---------------------------------------------------------------------------
+
+def test_stop_messages_say_what_was_hit_without_fingertip_numbers():
+    from controlr.robot.isaac.client import stop_messages
+    env = {"kind": "env", "pair": "gripper-box", "force": 41.7, "threshold": 30.0}
+    msg, brief = stop_messages(env, "x", tactile=False)
+    assert brief == "the gripper pushed against the blue box" and "42 N > 30 N" in msg
+    held = {"kind": "held_object", "pair": "packet-box_wall", "force": 55.0, "threshold": 40.0}
+    msg, brief = stop_messages(held, "x", tactile=False)
+    assert brief == "the held packet pushed against the box wall" and "55 N" in msg
+    obj = {"kind": "object", "pair": "gripper-object", "force": 63.0, "threshold": 40.0}
+    msg, brief = stop_messages(obj, "x", tactile=False)
+    assert brief == "the gripper pushed against the packet" and "63" not in msg and "40 N stop limit" in msg
+    assert "63 N" in stop_messages(obj, "x", tactile=True)[0]
+    assert "unstable" in stop_messages({"kind": "unstable"}, "physics became unstable", tactile=False)[1]
+    push = {"kind": "env", "pair": "gripper-box", "force": 4.0, "threshold": 30.0, "pushed": True, "moved_m": 0.012}
+    msg, brief = stop_messages(push, "x", tactile=False)
+    assert brief == "the gripper pushed the blue box (it moved)" and "12 mm" in msg
+    msg, brief = stop_messages({**push, "pair": "packet-box_wall"}, "x", tactile=False)
+    assert brief == "the held packet pushed against the box wall (the box moved)" and "moved 12 mm)" in msg
+
+
+def test_execute_sends_the_new_limits_and_logs_diagnostics(fake):
+    robot, rig = fake
+    robot.reset({"name": "reach"}, seed=0)
+    q1 = tuple(np.asarray(tasks.START_Q) + 0.05)
+    rig.handle_orig = rig.handle
+
+    def handle(op, args):
+        out = rig.handle_orig(op, args)
+        if op == "execute":
+            out.update(profile={"physics_s": 1.0, "contacts_s": 0.5}, wall_s=2.0, physics_steps=900,
+                       stop={"kind": "held_object", "pair": "packet-box_wall", "force": 50.0, "threshold": 40.0},
+                       contacts_peak_n={"gripper-object": 85.0, "packet-box_wall": 50.0})
+            out["state"]["holding_grip"] = True
+            out["state"]["bin"] = {"lower": [-0.5305, -0.0651, -0.0055], "upper": [-0.1705, 0.1949, 0.1805],
+                                   "center": [-0.3505, 0.0649, -0.0095], "yaw": 0.0, "wall": 0.02}
+        return out
+    rig.handle = handle
+    rig.stop = True
+    rep = robot.execute([Action(ActionMode.JOINT_ABS, q1, q_target=q1)])
+    args = rig.calls[-1][1]
+    assert args["box_force_stop_n"] == 30.0 and args["held_object_force_stop_n"] is None
+    assert args["reader"] == "matrix" and args["substeps"] == 1 and args["direct"] is True
+    assert args["predict_stop"] is False and args["box_push_stop_m"] == 0.005
+    stops = [e for e in rep.events if e.level is EventLevel.STOP]
+    assert stops[0].brief == "the held packet pushed against the box wall"
+    assert rep.backend["profile"]["physics_s"] == 1.0 and rep.backend["holding_grip"] is True
+    assert rep.backend["contacts_peak_n"]["gripper-object"] == 85.0          # tactile data stays in the log
+    # the box moved 40 mm: the envelope gets it from the last state
+    (box,) = robot.obstacles()
+    assert box.center[0] == pytest.approx(-0.3505) and box.outer[0] == pytest.approx(0.40)
+
+
+def test_server_args_and_physics_mismatch():
+    from controlr.robot.isaac.client import physics_mismatch, server_args_for
+    assert server_args_for({}) == ["--no-usd-writeback", "--no-legacy-contact-views"]
+    legacy = {"solver_position_iterations": None, "usd_writeback": True, "legacy_contact_views": True}
+    assert server_args_for({"physics": legacy}) == []
+    args = server_args_for({"physics": {"dt": 0.002, "solver_position_iterations": 32, "usd_writeback": False},
+                            "server_args": ["--render-updates", "4"]})
+    assert args == ["--dt", "0.002", "--solver-iterations", "32", "--no-usd-writeback", "--no-legacy-contact-views",
+                    "--render-updates", "4"]
+    server = {"dt": 0.001, "solver_position_iterations": 64, "solver_velocity_iterations": 8, "usd_writeback": True}
+    assert physics_mismatch({"solver_position_iterations": 64, **legacy}, server) == []
+    bad = physics_mismatch({"dt": 0.002, "solver_position_iterations": 64}, server)
+    assert len(bad) == 2 and "dt" in bad[0]          # dt and the default usd_writeback=False
+
+
+def test_instruction_comes_from_the_episode(fake):
+    robot, rig = fake
+    rig.handle_orig = rig.handle
+
+    def handle(op, args):
+        out = rig.handle_orig(op, args)
+        if op == "reset":
+            out["episode"]["instruction"] = "Move the gripper so that ... 60 mm above the packet."
+        return out
+    rig.handle = handle
+    robot.reset({"name": "reach"}, seed=0)
+    assert robot.task_instruction.endswith("60 mm above the packet.")
+    robot.reset({"name": "reach", "instruction": "custom"}, seed=0)
+    assert robot.task_instruction == "custom"

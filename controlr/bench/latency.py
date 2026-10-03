@@ -17,7 +17,7 @@ ReplayRobot would serve) or deterministic synthetic frames.
 
 Config (YAML)::
 
-    models: [no-think/claude/claude-haiku-4-5-20251001, ...]
+    models: [claude/claude-sonnet-5-5, ...]
     sizes: [224, 448, 672]
     history: [1, 10, 30]
     variants:                       # reasoning variants; model_suffix appended to the id

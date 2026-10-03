@@ -1,7 +1,19 @@
 """Feedback text for the next user turn.
 
-Every turn after the first starts with a compact, line-oriented receipt of
-what happened, in the model's units::
+``feedback.level=short`` (the default since 2026-10-02, Ilia: "keep feedback super
+short") gives only four line types, in this order::
+
+    TASK: <instruction>                      (turn 0; every turn with feedback.repeat_task)
+    STATE: tcp x=312 y=-45 z=88 mm yaw=12 deg | grip 42 mm open
+    WARN: move shortened: table clearance    (one short line per issue)
+    STOP: the gripper pushed against the blue box
+
+WARN folds clamps, skipped moves, unusable reply lines, near-limit and box-proximity
+warnings and a DONE whose check failed; STOP is a stopped motion. No TURN / EXEC /
+EVENT / GOAL lines, no `holding`, no force numbers.
+
+``feedback.level=full`` is the receipt every run before 2026-10-02 got: after the
+first turn a compact, line-oriented record of what happened, in the model's units::
 
     TURN 7
     EXEC: MOVE ee_delta 20 0 -10 -> achieved dx=19.6 dy=0.2 dz=-9.8 mm (0.41 s)
@@ -137,13 +149,19 @@ def format_action(action: Action, a: ActionConfig) -> str:
     return " ".join(parts)
 
 
+def shows_holding(cfg: Config) -> bool:
+    """`holding` is part of STATE only in the full feedback with tactile sensing on (the
+    backends' holding is pad-based); the short feedback never has it."""
+    return cfg.feedback.level == "full" and bool(cfg.observation.tactile)
+
+
 def format_state(state: RobotState, cfg: Config) -> str:
     """The canonical STATE line (deterministic, LLM units).
 
     Orientation is shown only as far as the model can command it
     (rotation=none -> omitted, yaw -> yaw, full -> roll pitch yaw); joint
-    angles only in joint modes. Keeping the line short matters: it is repeated
-    every turn."""
+    angles only in joint modes; `holding` only per ``shows_holding``. Keeping the
+    line short matters: it is repeated every turn."""
     a = cfg.action
     pu = a.pos_unit
     x, y, z = (float(v) for v in np.asarray(state.tcp_pos).reshape(3))
@@ -160,8 +178,9 @@ def format_state(state: RobotState, cfg: Config) -> str:
         s += f" | q=[{q}] {a.ang_unit}"
     grip_state = "closed" if state.gripper_closed else "open"
     s += f" | grip {_p(state.gripper_mm * 1e-3, a)} {pu} {grip_state}"
-    holding = "unknown" if state.holding is None else ("yes" if state.holding else "no")
-    s += f" | holding: {holding}"
+    if shows_holding(cfg):
+        holding = "unknown" if state.holding is None else ("yes" if state.holding else "no")
+        s += f" | holding: {holding}"
     return s
 
 
@@ -194,7 +213,7 @@ def _achieved(report: ExecReport, a: ActionConfig) -> str:
     return txt
 
 
-_CLAMP_KINDS = {"clamp", "step_limit", "workspace", "table_clearance", "table", "reject", "rejected", "reach"}
+_CLAMP_KINDS = {"clamp", "step_limit", "workspace", "table_clearance", "table", "reject", "rejected", "reach", "box"}
 
 _LEN_RE = re.compile(r"(?<![\w.])(-?\d+(?:\.\d+)?)(\s*)mm\b")
 _ANG_RE = re.compile(r"(?<![\w.])(-?\d+(?:\.\d+)?)(\s*)deg\b")
@@ -271,16 +290,68 @@ def _show_goal(parsed: ParsedReply | None, goal: GoalReport | None, cfg: Config)
     return False
 
 
+# event kinds never shown in the short feedback: contacts below the stop force (only a STOP
+# reports contact), settle notices (noise: they made models spend whole turns on HOLD),
+# fingertip sensing
+_SHORT_HIDDEN = {"contact", "collision", "settle", "tactile"}
+
+
+def visible_events(events: list[SafetyEvent], cfg: Config) -> list[SafetyEvent]:
+    """Events the model may see under this config. full: all, except fingertip-sensing
+    events (kind ``tactile``) without ``observation.tactile``. short: STOPs and every
+    warning / clamp except contacts below the stop force, settle notices and tactile."""
+    if cfg.feedback.level == "full":
+        return [e for e in events if cfg.observation.tactile or e.kind != "tactile"]
+    return [e for e in events if e.level == EventLevel.STOP
+            or (e.level != EventLevel.INFO and e.kind not in _SHORT_HIDDEN)
+            or _event_tag(e) == "CLAMP"]
+
+
+def _short_lines(tag: str, msgs: list[str]) -> list[str]:
+    seen: dict[str, int] = {}
+    for m in msgs:
+        seen[m] = seen.get(m, 0) + 1
+    return [f"{tag}: {m}" + (f" (x{n})" if n > 1 else "") for m, n in seen.items()]
+
+
+def _parse_warnings(parsed: ParsedReply) -> list[str]:
+    nothing = not parsed.actions
+    out = []
+    for err in parsed.errors:
+        out.append(f"reply not understood: {err}" + (" - nothing executed" if nothing else " - line ignored"))
+    return out
+
+
 def format_feedback(turn: int, parsed: ParsedReply | None, report: ExecReport | None,
                     goal: GoalReport | None, obs: Observation, cfg: Config,
-                    spec: RobotSpec | None = None) -> str:
+                    spec: RobotSpec | None = None, task: str | None = None) -> str:
     """Feedback text for the user turn that follows the model's reply ``turn``.
 
-    Turn 0 (no reply yet): call with ``parsed=None, report=None`` to get just
-    ``TURN 0`` + the STATE line. ``spec`` (optional, contract addition) only
-    sharpens the grammar reminder with joint names; without it a generic
-    reminder is used."""
+    Turn 0 (no reply yet): call with ``parsed=None, report=None`` to get the turn-0 text
+    (full: ``TURN 0`` + STATE; short: STATE). ``spec`` (optional) only sharpens the full
+    level's grammar reminder with joint names. ``task``: the instruction, for the short
+    level's ``feedback.repeat_task``.
+
+    ``cfg.feedback.level``: see the module docstring. In ``short`` the WARN / STOP lines use
+    ``SafetyEvent.brief`` (a few words, no measurements) when the event has one."""
     a = cfg.action
+    if cfg.feedback.level != "full":
+        lines = []
+        if task and cfg.feedback.repeat_task and turn > 0:
+            lines.append(f"TASK: {task.strip()}")
+        if cfg.observation.state_text:
+            lines.append(format_state(obs.state, cfg))
+        evs = visible_events(report.events, cfg) if report is not None else []
+        warns = [to_llm_units(e.brief or e.message, a) for e in evs if e.level != EventLevel.STOP]
+        if parsed is not None:
+            warns += _parse_warnings(parsed)
+            if parsed.status == Status.DONE and goal is not None and not goal.success \
+                    and cfg.episode.goal_feedback != "never":
+                warns.append("task not complete yet")
+        stops = [to_llm_units(e.brief or e.message, a) for e in evs if e.level == EventLevel.STOP]
+        if report is not None and report.stopped and not stops:
+            stops.append("motion stopped early")
+        return "\n".join(lines + _short_lines("WARN", warns) + _short_lines("STOP", stops))
     lines = [f"TURN {turn}"]
     if report is not None:
         req = report.requested or (parsed.actions if parsed else [])
@@ -292,7 +363,7 @@ def format_feedback(turn: int, parsed: ParsedReply | None, report: ExecReport | 
             lines.append(f"EXEC: {what} -> nothing executed ({report.duration_s:.2f} s)")
         else:
             lines.append(f"EXEC: {what} -> achieved {_achieved(report, a)} ({report.duration_s:.2f} s)")
-        lines += format_events(report.events, a)
+        lines += format_events(visible_events(report.events, cfg), a)
         if report.stopped and not any(e.level == EventLevel.STOP for e in report.events):
             lines.append("STOP: execution stopped early")
     elif parsed is not None:
@@ -309,4 +380,3 @@ def format_feedback(turn: int, parsed: ParsedReply | None, report: ExecReport | 
     if cfg.observation.state_text:
         lines.append(format_state(obs.state, cfg))
     return "\n".join(lines)
-

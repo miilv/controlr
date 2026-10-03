@@ -64,30 +64,51 @@ def test_sampling_is_seeded_and_within_phantom_ranges(name):
     np.testing.assert_allclose(nominal["object_pos"], c0)
 
 
-def test_reach_markers_visible_clear_and_reachable_from_start():
+def test_reach_targets_are_text_relative_to_objects_and_reachable():
+    """Ilia: the text instruction must be enough — no marker; the target is named relative to
+    a visible object and checked from that object's CURRENT pose."""
     q0 = np.asarray(tasks.START_Q)
     rv0 = KIN.fk(q0)[1]
-    box = tasks.REACH_DEFAULTS["occluded_px"]
+    seen = set()
     for seed in range(40):
         s = tasks.sample_reach(np.random.default_rng(seed), {}, SCENE)
-        m = s["marker"]
-        assert np.linalg.norm(m[:2] - s["object_pos"][:2]) >= 0.08
-        u, v = tasks.project(SCENE, m)
-        assert 0 <= u < 640 and 0 <= v < 480, "marker must be inside the D435 image"
-        assert not (box[0] <= u <= box[2] and box[1] <= v <= box[3]), "marker hidden behind the gripper"
+        t = s["reach_target"]
+        seen.add(t["index"])
+        assert t["text"] in s["instruction"] and "red ball" not in s["instruction"]
+        assert "marker" not in s and "zone" not in s
+        pt = tasks.reach_target_point(t, s["object_pos"], tasks.yaw_quat_wxyz(s["object_yaw"]),
+                                      SCENE["object"]["size"], SCENE["bin"])
+        np.testing.assert_allclose(pt, t["point0"])
+        u, v = tasks.project(SCENE, pt)
+        assert 0 <= u < 640 and 0 <= v < 480, "the target must be inside the D435 image"
         # reachable while keeping the start orientation (action.rotation=none)
-        assert KIN.ik(m, rv0, q0) is not None, f"seed {seed}: marker {m} unreachable"
+        assert KIN.ik(pt, rv0, q0) is not None, f"seed {seed}: target {pt} unreachable"
+    assert len(seen) >= 3, seen
+    # packet top: 60 mm above the top face of the packet, wherever the packet is now
+    tgt = {"ref": "packet_top", "offset": [0, 0, 0.06]}
+    pt = tasks.reach_target_point(tgt, [-0.4, -0.27, 0.0355], tasks.yaw_quat_wxyz(0.3), [0.17, 0.035, 0.09], None)
+    np.testing.assert_allclose(pt, [-0.4, -0.27, 0.0355 + 0.045 + 0.06])
+    # box corner moves with the box
+    moved = tasks.bin_info_at(SCENE["bin"], (np.asarray(SCENE["bin"]["center"]), tasks.yaw_quat_wxyz(SCENE["bin"]["yaw"])),
+                              np.asarray(SCENE["bin"]["center"]) + [0.03, 0.0, 0.0],
+                              tasks.yaw_quat_wxyz(SCENE["bin"]["yaw"]))
+    a = tasks.reach_reference("box_near_right", None, None, None, SCENE["bin"])
+    b = tasks.reach_reference("box_near_right", None, None, None, moved)
+    np.testing.assert_allclose(b - a, [0.03, 0.0, 0.0], atol=1e-9)
 
 
-def test_push_target_on_mat_along_long_axis():
+def test_push_target_is_text_along_the_long_axis():
     for seed in range(50):
         s = tasks.sample_push(np.random.default_rng(seed), {}, SCENE)
-        d = s["zone"][:2] - s["object_pos"][:2]
+        tgt = s["push_target"]
+        d = tgt["point"][:2] - s["object_pos"][:2]
         assert 0.06 - 1e-9 <= np.linalg.norm(d) <= 0.10 + 1e-9
         axis = np.array([np.cos(s["object_yaw"]), np.sin(s["object_yaw"])])
-        assert abs(abs(np.dot(d / np.linalg.norm(d), axis)) - 1.0) < 1e-9
+        assert abs(abs(np.dot(d / np.linalg.norm(d), axis)) - 1.0) < 1e-9 and d[0] < 0
         mat_c, half = np.asarray(SCENE["mat"]["center"][:2]), np.asarray(SCENE["mat"]["size"][:2]) / 2
-        assert np.all(np.abs(s["zone"][:2] - mat_c) <= half)
+        assert np.all(np.abs(tgt["point"][:2] - mat_c) <= half)
+        assert tgt["text"] in s["instruction"] and "green square" not in s["instruction"]
+        assert f"{int(round(np.linalg.norm(d) * 100)) * 10} mm" in s["instruction"]
 
 
 def test_waffle_success_rules():
@@ -107,12 +128,17 @@ def test_waffle_success_rules():
 
 
 def test_reach_and_push_rules():
-    ep = {"marker": np.array([-0.4, -0.2, 0.1]), "tcp_pos0": np.array([-0.33, -0.3, 0.35]),
-          "object_pos": np.asarray(SCENE["object"]["center"]), "zone": np.array([-0.47, -0.29, -0.0125]),
-          "params": {}}
-    assert tasks.evaluate_reach(snapshot(SCENE["object"]["center"], tcp=(-0.41, -0.2, 0.1)), ep)["success"]
-    far = tasks.evaluate_reach(snapshot(SCENE["object"]["center"], tcp=(-0.33, -0.3, 0.35)), ep)
+    c = np.asarray(SCENE["object"]["center"])
+    top = c + [0, 0, 0.045 + 0.06]                                  # 60 mm above the packet top (yaw 0)
+    ep = {"reach_target": {"ref": "packet_top", "offset": [0, 0, 0.06], "point0": top},
+          "tcp_pos0": top + [0.07, -0.03, 0.25], "object_pos": c,
+          "push_target": {"point": np.array([-0.47, -0.29, -0.0125]), "distance": 0.08}, "params": {}}
+    assert tasks.evaluate_reach(snapshot(c, tcp=top + [0.01, 0, 0]), ep)["success"]
+    far = tasks.evaluate_reach(snapshot(c, tcp=top + [0.07, -0.03, 0.25]), ep)
     assert not far["success"] and far["progress"] == 0.0
+    # the target follows the packet's CURRENT pose: the packet was knocked 50 mm
+    moved = tasks.evaluate_reach(snapshot(c + [0.05, 0, 0], tcp=top + [0.05, 0, 0]), ep)
+    assert moved["success"]
     assert tasks.evaluate_push(snapshot([-0.465, -0.285, 0.0355]), ep)["success"]
     carried = tasks.evaluate_push(snapshot([-0.465, -0.285, 0.0355], pads=(1, 1)), ep)
     assert not carried["success"] and "pushed" in carried["message"]
@@ -153,22 +179,22 @@ def test_old_seed0_reach_marker_is_rejected_as_infeasible():
 
 def test_reach_samples_are_feasible_for_seeds_0_to_49():
     for seed in range(50):
-        m = tasks.sample_reach(np.random.default_rng(seed), {}, SCENE)["marker"]
-        assert tasks.reach_feasibility(m, SCENE, tasks.START_Q) == "", (seed, m)
+        t = tasks.sample_reach(np.random.default_rng(seed), {}, SCENE)["reach_target"]
+        assert tasks.reach_feasibility(t["point0"], SCENE, tasks.START_Q) == "", (seed, t)
 
 
-def test_explicit_infeasible_marker_raises_and_exhausted_sampler_raises():
-    with pytest.raises(ValueError, match="infeasible"):
-        tasks.sample_reach(np.random.default_rng(0), {"marker": [-0.496, -0.159, 0.138]}, SCENE)
-    with pytest.raises(RuntimeError, match="no visible"):
-        tasks.sample_reach(np.random.default_rng(0), {"marker_y": (0.05, 0.06)}, SCENE)   # all inside the box
+def test_explicit_target_choice_and_no_feasible_target_raises():
+    s = tasks.sample_reach(np.random.default_rng(0), {"target_index": 2}, SCENE)
+    assert s["reach_target"]["ref"] == "box_opening"
+    with pytest.raises(ValueError, match="none of the targets"):
+        tasks.sample_reach(np.random.default_rng(0), {"targets": [0], "start_q": [0, -1.57, 0, -1.57, 0, 0]}, SCENE)
 
 
 def test_push_fails_when_the_packet_was_carried():
     """Review control-safety #18: pick up, carry and release on the square is not a push."""
     ep = tasks.sample_push(np.random.default_rng(0), {}, SCENE)
     ep["object_pos"] = np.asarray(ep["object_pos"])
-    on_zone = (ep["zone"][0], ep["zone"][1], ep["object_pos"][2])
+    on_zone = (ep["push_target"]["point"][0], ep["push_target"]["point"][1], ep["object_pos"][2])
     assert tasks.evaluate_push(snapshot(on_zone), {**ep, "max_lift_m": 0.0, "ever_held": False})["success"]
     assert not tasks.evaluate_push(snapshot(on_zone), {**ep, "max_lift_m": 0.06})["success"]
     assert not tasks.evaluate_push(snapshot(on_zone), {**ep, "ever_held": True})["success"]
@@ -233,7 +259,7 @@ def test_scene_record_has_packet_box_start_and_targets():
           "object_quat_wxyz": tasks.yaw_quat_wxyz(s["object_yaw"]), "object_pos_sampled": s["object_pos"],
           "object_yaw_sampled": s["object_yaw"], "start_q": s["start_q"],
           "start_yaw_offset": s["start_yaw_offset"], "start_gripper": "open", "settle_drift_m": 0.0004,
-          "marker": None, "zone": None}
+          "box_dynamic": True}
     rec = tasks.scene_record(ep, SCENE)
     import json
     json.dumps(rec)                                               # plain JSON
@@ -244,7 +270,11 @@ def test_scene_record_has_packet_box_start_and_targets():
     assert rec["start"]["yaw_offset_deg"] == pytest.approx(np.degrees(s["start_yaw_offset"]), abs=1e-3)
     yaw0 = np.degrees(matrix_to_rpy(KIN.fk_matrix(s["start_q"])[:3, :3])[2])
     assert rec["start"]["tcp_yaw_deg"] == pytest.approx(yaw0, abs=1e-3)
-    assert rec["marker_mm"] is None and rec["zone_mm"] is None
+    assert rec["reach_target"] is None and rec["push_target"] is None and rec["box"]["dynamic"] is True
+    r = tasks.sample_reach(np.random.default_rng(1), {}, SCENE)
+    rec = tasks.scene_record({**ep, "reach_target": r["reach_target"]}, SCENE)
+    json.dumps(rec)
+    assert rec["reach_target"]["text"] == r["reach_target"]["text"] and len(rec["reach_target"]["point_mm"]) == 3
 
 
 def test_explicit_packet_yaw_offset():
@@ -310,3 +340,34 @@ def test_large_positive_packet_yaw_is_boxed_in(offset, dy):
     to the box. Rotation alone cannot solve these (a different tilt would be needed)."""
     with pytest.raises(AssertionError):
         test_scripted_yaw_expert_is_feasible_through_the_envelope(offset, dy, 0)
+
+
+def test_goal_check_follows_a_moved_and_tilted_box():
+    """The box is a dynamic body (contacts-and-speed): resting partly on the 3 mm mat it tips
+    ~0.7 deg, and a push moves it. A packet standing on the (tilted, moved) floor is inside;
+    a packet where the box USED to be is not."""
+    b0 = SCENE["bin"]
+    c0 = np.asarray(b0["center"])
+    pose0 = (c0, tasks.yaw_quat_wxyz(b0["yaw"]))
+    tilt = np.radians(0.7)
+    q_tilt = np.array([np.cos(tilt / 2), np.sin(tilt / 2), 0.0, 0.0])          # about +x (box far side down)
+    def qmul(a, b):
+        w1, x1, y1, z1 = a
+        w2, x2, y2, z2 = b
+        return np.array([w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+                         w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2])
+    shift = np.array([0.06, 0.02, 0.0015])
+    b = tasks.bin_info_at(b0, pose0, c0 + shift, qmul(q_tilt, pose0[1]))
+    assert b["tilt_deg"] == pytest.approx(0.7, abs=0.01) and b["shift_m"] == pytest.approx(np.linalg.norm(shift))
+    R = tasks.quat_wxyz_to_matrix(q_tilt)
+    floor_pt = c0 + shift + R @ np.array([0.0, -0.03, 0.004])                     # on the floor, 30 mm toward -y
+    pos = floor_pt + R @ np.array([0.0, 0.0, 0.045])                               # packet centre, standing on it
+    snap = snapshot(pos)
+    snap["object_quat_wxyz"] = qmul(q_tilt, tasks.yaw_quat_wxyz(0.0))
+    snap["bin"] = b
+    ep = {"object_pos": np.asarray(SCENE["object"]["center"]), "params": {}}
+    assert tasks.evaluate_waffle(snap, ep)["metrics"]["inside_bin"]
+    # a packet inside where the box was before the 60 mm push now hangs over its -x wall
+    before = snapshot(np.asarray([-0.47, 0.065, 0.04]))
+    assert tasks.evaluate_waffle({**before, "bin": b0}, ep)["metrics"]["inside_bin"]
+    assert not tasks.evaluate_waffle({**before, "bin": b}, ep)["metrics"]["inside_bin"]

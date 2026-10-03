@@ -162,14 +162,16 @@ def test_force_stop_into_the_mat_is_tight_and_holds_then_backs_off(robot):
     assert not up.stopped and up.state_after.tcp_pos[2] > rep.state_after.tcp_pos[2] + 0.03
 
 
-def test_reach_seed0_marker_is_reachable_in_the_sim(robot):
-    """Review control-safety #1: drive the TCP to the (now feasible) seed-0 marker along the
-    envelope's straight-line waypoints; no collision on the way."""
+def test_reach_seed0_target_is_reachable_in_the_sim(robot):
+    """Review control-safety #1: drive the TCP to the seed-0 target (text, relative to a visible
+    object since 2026-10-02: no marker) along the envelope's straight-line waypoints; no
+    collision on the way."""
     from controlr.config import SafetyConfig
     from controlr.robot.safety import SafetyEnvelope
 
     obs = robot.reset({"name": "reach"}, seed=0)
-    marker = np.asarray(robot.episode["marker"], float)
+    assert robot.episode["reach_target"]["text"] in robot.task_instruction
+    marker = np.asarray(robot.episode["reach_target"]["point0"], float)
     env = SafetyEnvelope(robot.spec, SafetyConfig())
     env.reset(robot.reference_state())
     st = obs.state
@@ -291,3 +293,103 @@ def test_scripted_yaw_expert_succeeds(robot, offset, start_yaw):
         Image.fromarray(robot.observe().images["scene"]).save(f"{img_dir}/yaw_expert_{offset:+d}_done.png")
     assert goal.success, (offset, start_yaw, goal)
     print(f"yaw expert offset {offset:+d} start {start_yaw:+d}: {len(log)} actions, success")
+
+
+
+# ---------------------------------------------------------------------------
+# contacts-and-speed (docs/experiments/2026-10-02-contacts-and-speed.md)
+# ---------------------------------------------------------------------------
+
+def _to(robot, st, target):
+    """Straight-line IK to a TCP target, no envelope (contact tests)."""
+    q = np.asarray(st.q, float)
+    p0, rv = KIN.fk(q)
+    n = max(1, int(np.ceil(np.linalg.norm(np.asarray(target) - p0) / 0.005)))
+    path = []
+    for k in range(1, n + 1):
+        qk = KIN.ik(p0 + (np.asarray(target) - p0) * k / n, rv, q)
+        assert qk is not None
+        path.append(qk)
+        q = qk
+    a = Action(ActionMode.JOINT_ABS, tuple(path[-1]), q_target=tuple(path[-1]),
+               q_path=tuple(tuple(x) for x in path[:-1]) or None)
+    return robot.execute([a])
+
+
+def test_dynamic_box_slides_when_pushed_stops_the_arm_and_reset_restores_it(robot):
+    """The blue box is one dynamic rigid body: driving the gripper into its near wall stops
+    the arm at the box limit with a clear message, the box moves a little, nothing blows up
+    (a static box gave 102 kN / 136 kN and PhysX divergence), and reset puts it back."""
+    obs = robot.reset({"name": "waffle_pick_place", "params": {"start_q": list(SIM_START_Q), "nominal": True}},
+                      seed=1)
+    box0 = np.asarray(robot.obstacles()[0].center)
+    st = obs.state
+    p = np.asarray(st.tcp_pos)
+    st = _to(robot, st, (p[0], -0.20, 0.12)).state_after
+    stops = []
+    for _ in range(5):
+        rep = _to(robot, st, np.asarray(st.tcp_pos) + [0, 0.05, 0])
+        st = rep.state_after
+        stops += [e for e in rep.events if e.level.value == "stop"]
+        if rep.stopped:
+            break
+    assert stops, "pushing into the box never stopped the arm"
+    assert stops[0].kind == "collision" and "blue box" in stops[0].brief, stops[0]
+    moved = np.asarray(robot.obstacles()[0].center) - box0
+    assert 0.001 < np.linalg.norm(moved[:2]) < 0.15, moved
+    assert all(np.isfinite(st.q))
+    robot.reset({"name": "waffle_pick_place", "params": {"start_q": list(SIM_START_Q), "nominal": True}}, seed=1)
+    np.testing.assert_allclose(robot.obstacles()[0].center, box0, atol=0.002)
+
+
+def test_held_packet_free_air_never_stops_but_a_wall_jam_does(robot):
+    """The held-packet stop uses packet-vs-environment force: lift + yaw turn + climb in free
+    air (85-89 N of grip force stopped the arm in the rotation round) runs through; carrying
+    the packet into the box's near wall stops with "the held packet pushed against ..."."""
+    from controlr.robot.isaac.tasks import run_scripted_yaw_pick_place
+    from controlr.robot.kinematics import pose_to_matrix
+
+    params = {"start_q": list(SIM_START_Q), "yaw_offset_deg": -15, "nominal": True}
+    obs = robot.reset({"name": "waffle_pick_place", "params": params}, seed=85)
+    env = _yaw_envelope(robot)
+    cur = {"st": obs.state}
+
+    class Grasped(Exception):
+        pass
+
+    def act(vals, grip, phase=""):
+        if phase == "unrotate":
+            raise Grasped
+        acts, _ = env.filter([Action(ActionMode.EE_DELTA, vals, grip)], cur["st"])
+        rep = robot.execute(acts)
+        assert not rep.stopped, [e.message for e in rep.events]
+        cur["st"] = rep.state_after
+        return pose_to_matrix(rep.state_after.tcp_pos, rep.state_after.tcp_rotvec)
+    ep = robot.episode
+    w, z = ep["object_quat_wxyz"][0], ep["object_quat_wxyz"][3]
+    with pytest.raises(Grasped):
+        run_scripted_yaw_pick_place(ep["object_pos"], 2 * np.arctan2(z, w),
+                                    robot.server_info["scene_info"]["bin"]["center"], act,
+                                    pose_to_matrix(obs.state.tcp_pos, obs.state.tcp_rotvec))
+    for d, dyaw in [((0, 0, 0.03), 0), ((0, 0, 0), 25), ((0, 0, 0.05), -25), ((0, 0.04, 0.05), 0),
+                    ((0.03, 0.03, 0.03), 20), ((0, 0, 0), -20)]:
+        acts, _ = env.filter([Action(ActionMode.EE_DELTA, (*d, 0.0, 0.0, np.radians(dyaw)))], cur["st"])
+        rep = robot.execute(acts)
+        assert not rep.stopped, [e.message for e in rep.events]
+        cur["st"] = rep.state_after
+    assert rep.backend["holding_pads"], "the packet was dropped"
+    # over the box's near wall (the packet's long side along it), then down onto the rim: the
+    # packet hangs ~80 mm below the TCP, so it meets the wall top before the gripper does
+    # (carrying toward +y, the housing trails ahead of the TCP and would touch the wall first)
+    wall_y = float(robot.obstacles()[0].center[1]) - 0.15 + 0.01
+    st = _to(robot, cur["st"], (cur["st"].tcp_pos[0], cur["st"].tcp_pos[1], 0.30)).state_after
+    st = _to(robot, st, (-0.39, wall_y, 0.30)).state_after
+    stop = None
+    for _ in range(8):
+        rep = _to(robot, st, np.asarray(st.tcp_pos) + [0, 0, -0.02])
+        st = rep.state_after
+        stop = next((e for e in rep.events if e.level.value == "stop"), None)
+        if stop:
+            break
+    assert stop is not None and stop.brief.startswith("the held packet pushed against the box"), stop
+    assert stop.kind == "collision"

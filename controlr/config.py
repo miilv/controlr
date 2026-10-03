@@ -94,7 +94,12 @@ class ObservationConfig:
     # raw | grid | ee_marker | axes | diff | heatmap  — applied per camera in order;
     # "diff"/"heatmap" add an extra image derived from the previous observation.
     tile: bool = False               # tile all cameras (and derived images) into one image
-    state_text: bool = True          # append proprioceptive state as text
+    state_text: bool = True          # append the measured state as a STATE line
+    # Fingertip (tactile pad) information in the feedback (feedback.level=full only): pad
+    # forces, "touched the packet" events and the pad-based `holding` field of STATE. False
+    # (default since 2026-10-02): none of it reaches the model. Tactile data and the gripper's
+    # own object detection are still logged (turns.jsonl "backend").
+    tactile: bool = False
     jpeg_quality: int = 90
     first_turn_size: int | None = None   # optional larger image on the first turn
     grid_z: float | None = None      # m, base-frame height of the "grid" overlay plane; None = RobotSpec.table_z (else 0)
@@ -123,9 +128,26 @@ class SafetyConfig:
     clamp: bool = True               # clamp to the envelope (True) or reject the action (False)
     max_tcp_speed_m_s: float = 0.15  # execution speed (PEAK of the velocity profile)
     contact_force_stop_n: float = 80.0
-    # robot-vs-manipulated-object force that stops arm motion (the waffle packet weighs 35 g;
-    # pressing it into the mat/box made the solver diverge). 0 = off.
+    # arm/gripper vs the box (a light touch stops the arm and is reported: contact is
+    # information). None -> contact_force_stop_n (the behaviour before 2026-10-02).
+    box_force_stop_n: float | None = 30.0
+    # the box is light (it slides at a few newtons, under any force limit): touching it while it
+    # has moved this far since the motion began also stops the arm ("pushed the blue box").
+    # Isaac only; 0 = off.
+    box_push_stop_m: float = 0.005
+    # robot-vs-manipulated-object force that stops arm motion while the object is NOT held
+    # (pressing the packet into the mat made the solver diverge). 0 = off.
     object_force_stop_n: float = 40.0
+    # while the object IS held: force between the object and the environment (table, mat,
+    # box) that stops the arm ("the held packet pushed against the box wall"); the grip's own
+    # pad forces never count. None -> object_force_stop_n.
+    held_object_force_stop_n: float | None = None
+    # predictive link-vs-box check before execution: the wrist / gripper housing centre line
+    # against the box walls (from the CURRENT box pose) inflated by box_clearance_m.
+    # block = shorten / reject the move (reported like a clamp); warn = execute, add a WARN;
+    # off = no check (before 2026-10-02).
+    box_collision: str = "warn"
+    box_clearance_m: float = 0.05
     # ee modes: interpolate the TCP along a straight line in steps of at most this (IK per
     # step): the robot follows the commanded line instead of a joint-space arc, and an
     # unreachable or near-singular stretch shortens the move instead of dropping it.
@@ -139,6 +161,19 @@ class PromptConfig:
     # messages.jsonl is rendered as text (images shown as <image>).
     fewshot: str | None = None
     extra_rules: list[str] = field(default_factory=list)
+
+
+@dataclass
+class FeedbackConfig:
+    # What text the model gets with each turn's images:
+    #   short - only TASK (turn 0), STATE (no `holding`), WARN (one short line per issue:
+    #           clamps, skipped moves, unusable reply lines, near limits, box proximity, a DONE
+    #           whose check failed) and STOP (motion stopped: contact, instability). Default
+    #           since 2026-10-02 (Ilia: "keep feedback super short").
+    #   full  - TURN / EXEC / CLAMP / WARN / EVENT / STOP / PARSE ERROR / GOAL / STATE (the
+    #           behaviour before 2026-10-02).
+    level: str = "short"
+    repeat_task: bool = False        # short: repeat the TASK line in every turn, not only turn 0
 
 
 @dataclass
@@ -179,6 +214,7 @@ class Config:
     action: ActionConfig = field(default_factory=ActionConfig)
     safety: SafetyConfig = field(default_factory=SafetyConfig)
     prompt: PromptConfig = field(default_factory=PromptConfig)
+    feedback: FeedbackConfig = field(default_factory=FeedbackConfig)
     episode: EpisodeConfig = field(default_factory=EpisodeConfig)
     log: LogConfig = field(default_factory=LogConfig)
 
@@ -282,6 +318,7 @@ _SECTION_TYPES = {
     (Config, "action"): ActionConfig,
     (Config, "safety"): SafetyConfig,
     (Config, "prompt"): PromptConfig,
+    (Config, "feedback"): FeedbackConfig,
     (Config, "episode"): EpisodeConfig,
     (Config, "log"): LogConfig,
 }
@@ -300,6 +337,8 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("llm", "cache"): ("auto", "anthropic", "none"),
     ("llm", "cache_ttl"): ("5m", "1h"),
     ("robot", "backend"): ("isaac", "mock", "replay"),
+    ("feedback", "level"): ("short", "full"),
+    ("safety", "box_collision"): ("block", "warn", "off"),
 }
 _RENDERERS = ("raw", "grid", "axes", "ee_marker", "diff", "heatmap", "tile")
 
@@ -308,6 +347,9 @@ def validate(cfg: Config) -> Config:
     """Reject values that would silently do something else than written.
     Called by ``load_config`` and ``run_episode``; returns ``cfg`` for chaining."""
     errs: list[str] = []
+    # YAML 1.1 reads a bare `off` as False (`box_collision: off`, `--set safety.box_collision=off`)
+    if cfg.safety.box_collision is False:
+        cfg.safety.box_collision = "off"
     for (sec, key), allowed in _CHOICES.items():
         v = getattr(getattr(cfg, sec), key)
         if v not in allowed:
@@ -322,6 +364,7 @@ def validate(cfg: Config) -> Config:
                      ("episode.max_stops >= 1", cfg.episode.max_stops >= 1),
                      ("safety.max_step_m > 0", cfg.safety.max_step_m > 0),
                      ("safety.path_step_m > 0", cfg.safety.path_step_m > 0),
+                     ("safety.box_clearance_m >= 0", cfg.safety.box_clearance_m >= 0),
                      ("observation.cameras non-empty", bool(cfg.observation.cameras))):
         if not ok:
             errs.append(name)

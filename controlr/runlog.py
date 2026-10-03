@@ -293,8 +293,14 @@ def summarize_turns(records: list[dict]) -> dict:
     totals = token_totals(r.get("usage") for r in records)
     trace = cache_trace(records)
     shares = [t["read_share"] for t in trace["turns"] if t]
+    sim = sum(float((r.get("backend") or {}).get("sim_s") or 0.0) for r in records)
+    server_wall = sum(float((r.get("backend") or {}).get("wall_s") or 0.0) for r in records)
+    exec_wall = sum(float(t.get("exec") or 0.0) for t in tim)
     return {
         "totals": totals,
+        # robot time vs wall time of execution (backends that log ExecReport.backend: Isaac)
+        "sim_time": {"sim_s": sim, "server_wall_s": server_wall, "exec_wall_s": exec_wall,
+                     "sim_per_wall": (sim / exec_wall) if exec_wall > 0 and sim > 0 else None},
         "cache_read_share": cache_read_share(totals),
         "cache_read_share_turns": percentiles(shares),
         "cache_regressions": trace["regressions"],

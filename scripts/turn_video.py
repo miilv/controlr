@@ -111,7 +111,7 @@ def main() -> None:
         imgs = [_sha(i) for i in (t.get("obs_images") or [])]
         if not imgs:
             continue
-        fb = [ln for ln in (t.get("feedback") or "").splitlines()[1:] if not ln.startswith("STATE:")]
+        fb = [ln for ln in (t.get("feedback") or "").splitlines() if not ln.startswith(("STATE:", "TURN "))]
         if not t.get("feedback"):
             g = t.get("goal") or {}
             fb = [f"GOAL: {'reached' if g.get('success') else 'not reached'} - {g.get('message', '')}"]

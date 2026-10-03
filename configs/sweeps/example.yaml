@@ -5,7 +5,8 @@ name: example
 config: ../mock.yaml
 set:
   - planner.enabled=false
+  - llm.model=claude/claude-sonnet-5-5   # the only control model under test for now (EXPERIMENTS.md)
 seeds: [0, 1]
 grid:
-  llm.model: [claude/claude-sonnet-5, no-think/claude/claude-haiku-4-5-20251001]
+  feedback.level: [short, full]
   observation.size: [224, 448]
