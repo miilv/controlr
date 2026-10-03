@@ -34,4 +34,4 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | runs | `runs/` locally and `compute3:~/controlr/runs` (`remote_run.sh` syncs back) |
 | Isaac Sim | `compute3:/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0` |
 | PHANTOM | `compute3:~/phantom-icra-2027/phantom`, locally `~/skoltech/research` (never modified) |
-| real UR3 | IP and hardware — `configs/hardware.yaml` in PHANTOM |
+| real UR3 | **UR3 CB3** (no built-in wrist F/T; TCP force only estimated from joint currents) + Robotiq 2F-85 + RealSense D435; IP and the rest — `configs/hardware.yaml` in PHANTOM (which still says `e-series` — wrong) |

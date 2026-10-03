@@ -14,7 +14,9 @@
   the start of the move (+ UR protective stop on hardware), message `STOP: contact force at the
   wrist[, toward ±axis], motion stopped` — the model works out from the image what it hit; box
   WARNs off by default; no goal-check feedback (DONE ends the episode, scored afterwards); manual
-  text updated. Depends on the UR3 generation question (P3).
+  text updated. The arm is a **CB3**: the sim detector must emulate a coarse joint-current force
+  estimate (threshold well above the noise floor, direction unreliable) — so the default message
+  carries no direction; an FT-300S would allow `toward ±axis`.
 - [ ] **Release false stops:** never apply the robot-vs-packet stop while the gripper is opening
   (3 STOPs in a row while releasing, contacts-and-speed first pass), and don't count harness-caused
   stops toward `episode.max_stops`.
@@ -68,7 +70,7 @@
 
 - [ ] **RoboDojo:** wrap controlr as an XPolicyLab policy server; a reduced run (10 episodes/task, 1 seed, ≈$300 on Sonnet with caching working) for a 5-dimension profile vs Astra's 22.48 %. Isaac 5.1 is on compute2.
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).
-- [ ] **Which UR3 is it — CB3 or e-Series?** PHANTOM's Isaac model is a CB3, `configs/hardware.yaml` says `e-series` (marked BENCH, unverified). e-Series has a 500 Hz wrist F/T (clean contact signal with direction); CB3 only estimates TCP force from joint currents (PHANTOM's notes: buy a Robotiq FT-300S). Decides how the real-sensor contact STOP works.
+- [x] ~~**Which UR3 is it — CB3 or e-Series?**~~ — **CB3** (Ilia, 2026-10-03). No built-in wrist F/T: contact sensing on hardware = `getActualTCPForce` (estimated from joint currents, coarse) + UR protective stops, unless a Robotiq FT-300S is added. Note: PHANTOM's `configs/hardware.yaml` still says `generation: e-series` (500 Hz rates, `wrist_ft.source: ur_internal`) — PHANTOM's to fix, not ours.
 - [ ] **Ideas from Waddle Labs** ([research/sources/waddle-labs.md](../research/sources/waddle-labs.md)): a recovery rule (when already out of bounds, accept a command that reduces one violation without worsening others — generalises the straight-elbow fix); tag every executed action by source (model / safety clamp / human) and log holds and e-stops (needed for the real UR3); success-vs-cost curves across effort levels with n and CIs; a cross-episode "lessons" appendix in the cached prefix as an ablation; their 32 MuJoCo task environments (Apache-2.0) as a task catalogue.
 - [ ] **Export runs to LeRobotDataset** — data for a future light action head.
 - [ ] **Action head** (transformer/diffusion) closing the ~1 s between model turns.
