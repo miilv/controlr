@@ -32,7 +32,8 @@ only.
 
 | Axis | Field | Values |
 |---|---|---|
-| control model | `llm.model` | `claude/claude-sonnet-5-5` (default; the only one under test for now), `claude/claude-opus-5-5`, `no-think/claude/...`, effort suffixes `-low…-xhigh` |
+| control model | `llm.model` | `claude/claude-sonnet-5-5` (default; the only one under test for now), `claude/claude-opus-5-5`, `no-think/claude/...` (Sonnet 5.5 still thinks there) |
+| thinking effort | `llm.extra_body.reasoning_effort` | Sonnet 5.5: `low` / `medium` / `high`; unset ≈ `high`. Id suffixes `-low…-xhigh` are rejected for Sonnet 5.5 through the router; the Opus planner takes effort only via its id suffix |
 | planner | `planner.enabled`, `planner.model`, `planner.plan_file` | on/off, model, pinned plan |
 | robot manual | `prompt.system`, `prompt.extra_rules`, `prompt.fewshot` | `system_vN` versions, extra rules, demo in the cached prefix |
 | action format | `action.mode` | `ee_delta` (default), `ee_abs`, `joint_delta`, `joint_abs` |

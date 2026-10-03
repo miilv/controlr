@@ -6,6 +6,24 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Real-sensor feedback (`feedback.sensing: real | privileged`, default real).** Today every
+  STOP names what was hit ("the held packet pushed against the box wall (the box moved)"), the box
+  proximity WARNs need the box's exact current pose, and a wrong DONE gets "task not complete yet" —
+  all simulator ground truth no real sensor provides ([journal](journal/2026-10-03-feedback-realism.md)).
+  Emulate the real rig instead: one contact detector = net external force at the wrist relative to
+  the start of the move (+ UR protective stop on hardware), message `STOP: contact force at the
+  wrist[, toward ±axis], motion stopped` — the model works out from the image what it hit; box
+  WARNs off by default; no goal-check feedback (DONE ends the episode, scored afterwards); manual
+  text updated. Depends on the UR3 generation question (P3).
+- [ ] **Release false stops:** never apply the robot-vs-packet stop while the gripper is opening
+  (3 STOPs in a row while releasing, contacts-and-speed first pass), and don't count harness-caused
+  stops toward `episode.max_stops`.
+- [ ] **Effort experiment:** `llm.extra_body.reasoning_effort: low` (≈2 s/turn, 0 thinking) vs the
+  default (≈high, 3.3 s mean) on the same 4 rotation seeds with the same plans (~90 calls)
+  ([journal](journal/2026-10-03-thinking-controls.md)).
+- [ ] **Planner on vs off vs pinned** on the same seeds — the planner's single-view 3-D guesses were
+  confidently wrong (rim 110–130 mm vs 180 mm) and it costs 57–111 s per episode.
+- [ ] **Repeats per seed** (≥ 3) before claiming any success rate; 4/4 on 4 seeds says the stack works, not which change mattered.
 - [ ] **Cameras (hypothesis: the main failure cause is a single angled D435).** Add a virtual
   wrist camera and a second fixed one (top/side) to the Isaac scene; experiment 1 camera vs
   + wrist vs + top (tiled and separate). The renderer and config already support it
@@ -26,7 +44,7 @@
 - [ ] **Reach / push with text targets never run live** (only CPU tests + the Isaac reset test).
 - [ ] **Grasp yaw window −40…+30°** at the current tilt: a `yaw_min/max` clip param or `rotation=full`.
 - [ ] **The planner should always write "packet heading h, grasp yaw = h ± 90"** — when it does, models hit it exactly.
-- [ ] **`no-think/claude/claude-sonnet-5-5`** in an episode: Sonnet 5.5 spends 3–5× more reasoning than Opus for the same behaviour.
+- [x] ~~**`no-think/claude/claude-sonnet-5-5`** in an episode~~ — `no-think/` still thinks for Sonnet 5.5; `reasoning_effort: low` is the working switch (journal/2026-10-03-thinking-controls.md); the episode-level comparison is the effort experiment above.
 
 ## P2 — harness and infrastructure
 
@@ -38,7 +56,6 @@
 - [x] ~~**Isaac runs at ~0.24× real time**~~ — ~0.7× with the new defaults (journal/2026-10-03-contacts-and-speed.md, experiments/2026-10-02-contacts-and-speed.md)
 - [ ] **Isaac ≥ 1× real time:** settling is ~45 % of sim time (fixed thresholds, ≤ 2 s); self-collisions off gives 1.02× (not default: the force stop does not see self-contact either); 24 iterations failed 1 of 4 expert scenes, 16 failed 1/2, dt 2 ms lost the grasp. Next: settle criteria per move, contact-report only during motion.
 - [ ] **5 ms drive-target ticks blow up some grasps** (2 of 4 live closes near the mat; replay-confirmed, 1 ms is fine) although the scripted expert passes — find why before using `substeps > 1`.
-- [ ] **Release can trip the object stop** when one pad unloads before the packet is free (3 STOPs in a row while opening, 32-iteration run): suspend the robot-vs-packet rule during an opening command too.
 - [ ] **Force-stop overshoot is an impact spike, not sampling:** driving the fingers into the mat at 0.15 m/s peaks at 85–350 N against an 80 N limit at every sampling rate (1 ms included). Slow the last ~20 mm near contact, or a compliant wrist.
 - [ ] **Usage grace is not a real deadline** (deferred in review, L8): up to 0–0.2 s per turn.
 - [ ] **Arm self-collisions** aren't detected by the force stop (S5, partial).
@@ -51,6 +68,8 @@
 
 - [ ] **RoboDojo:** wrap controlr as an XPolicyLab policy server; a reduced run (10 episodes/task, 1 seed, ≈$300 on Sonnet with caching working) for a 5-dimension profile vs Astra's 22.48 %. Isaac 5.1 is on compute2.
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).
+- [ ] **Which UR3 is it — CB3 or e-Series?** PHANTOM's Isaac model is a CB3, `configs/hardware.yaml` says `e-series` (marked BENCH, unverified). e-Series has a 500 Hz wrist F/T (clean contact signal with direction); CB3 only estimates TCP force from joint currents (PHANTOM's notes: buy a Robotiq FT-300S). Decides how the real-sensor contact STOP works.
+- [ ] **Ideas from Waddle Labs** ([research/sources/waddle-labs.md](../research/sources/waddle-labs.md)): a recovery rule (when already out of bounds, accept a command that reduces one violation without worsening others — generalises the straight-elbow fix); tag every executed action by source (model / safety clamp / human) and log holds and e-stops (needed for the real UR3); success-vs-cost curves across effort levels with n and CIs; a cross-episode "lessons" appendix in the cached prefix as an ablation; their 32 MuJoCo task environments (Apache-2.0) as a task catalogue.
 - [ ] **Export runs to LeRobotDataset** — data for a future light action head.
 - [ ] **Action head** (transformer/diffusion) closing the ~1 s between model turns.
 

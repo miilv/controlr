@@ -70,7 +70,8 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   into the visible reply as prose; `output_config.effort` is dropped by the router
   ([journal](journal/2026-10-03-thinking-controls.md)).
 - **Opus 5.5 can't turn thinking off**; Sonnet 5.5 thinks and can exhaust `max_tokens` → an empty
-  reply. `llm.max_tokens` counts thinking tokens too. For fast turns use `no-think/...` routes.
+  reply. `llm.max_tokens` counts thinking tokens too. For fast Sonnet 5.5 turns use
+  `llm.extra_body.reasoning_effort: low` (≈2 s, 0 thinking), not the `no-think/` route.
 - **On `claude/` / `cc/` the router sets the cache boundary itself**; our markers there seem to
   have no effect (not confirmed by a probe — see BACKLOG). Haiku 4.5 doesn't cache prefixes
   under 4096 tokens.
@@ -81,6 +82,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   survives NaNs — but check the server log when things look odd.
 - **The prompt and grammar must match the config**: examples in the manual are generated from
   `grammar_spec`; don't hand-write examples.
+- **Feedback can leak simulator ground truth.** STOP texts name the object hit, box WARNs use the
+  box's true pose, `task not complete yet` uses the sim's goal check — none of it exists on the
+  real rig (journal/2026-10-03-feedback-realism.md, BACKLOG P1). New feedback must be derivable
+  from real sensors (RTDE pose/joints, wrist force, Robotiq position/fault, the harness's own rules).
 - **A single angled D435** gives poor depth: 80–200 mm depth errors are the main failure cause
   so far (hypothesis in BACKLOG).
 - **`uv run` in the repo root creates `.venv`**; on compute3 `deploy.sh` builds `~/controlr/.venv`.
