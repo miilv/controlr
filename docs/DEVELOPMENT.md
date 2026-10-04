@@ -31,7 +31,7 @@ gh pr merge --merge --delete-branch                   # after green CI
 git worktree remove ../controlr-<task>
 ```
 
-Live runs (money) — only in a task with a budget, following [EXPERIMENTS.md](EXPERIMENTS.md).
+Live runs (money) — soft cap ~5k calls a day, following [EXPERIMENTS.md](EXPERIMENTS.md).
 
 ## 2. Tests: three tiers
 
@@ -39,7 +39,7 @@ Live runs (money) — only in a task with a budget, following [EXPERIMENTS.md](E
 |---|---|---|---|
 | unit | everything without network or Isaac: grammar, feedback, cache markers, transcript, kinematics, safety, loop on `FakeLLM`+`MockRobot`, client on `httpx.MockTransport` | `uv run pytest -q` | locally + CI |
 | isaac | Isaac server, motion tracking, kinematics-vs-sim consistency, scripted expert | `CONTROLR_ISAAC=1 pytest -m isaac` (full run ~20 min) | compute3 only |
-| live | real calls through the router | `CONTROLR_LIVE=1 pytest -m live` | by budget, manually |
+| live | real calls through the router | `CONTROLR_LIVE=1 pytest -m live` | manually |
 
 Rule: new logic → a unit test. Changed motion execution / contacts / scene → an isaac test.
 Changed message serialisation → a prefix stability test (`tests/test_llm_transcript.py`) and
@@ -55,7 +55,7 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | observation (overlays, diff, tiling) | `observation/renderers.py` | `test_renderers` (determinism, projecting a known point) |
 | a new Isaac task | `robot/isaac/tasks.py` (+ server if new objects are needed) | `test_isaac_tasks` (no GPU) + scripted expert in the isaac tests; look at the frames (`docs/img/`) |
 | a new backend (real UR3 etc.) | `robot/<backend>.py`, factory in `robot/__init__.py` | the `robot/base.py` contract; mock tests as the template |
-| cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` (budget) |
+| cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
 
 ## 4. Pitfalls (already stepped on)

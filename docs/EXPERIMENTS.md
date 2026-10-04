@@ -13,8 +13,8 @@ compared. Reports live in [experiments/](experiments/) (index in its README).
    - seeds (different scenes) **and** repeats per seed (model stochasticity);
    - when comparing control models — the same plan (`planner.plan_file`) or the planner off;
    - one variable at a time against a baseline run.
-4. **Budget** up front: control-model and planner calls (estimate: turns per episode × episodes).
-   Live runs only with a budget from the owner.
+4. **Estimate calls** up front: control-model and planner calls (turns per episode × episodes).
+   Soft cap ~5k calls a day overall; no per-run budget sign-off needed.
 5. **Run**: `scripts/remote_run.sh run|sweep ...` on compute3 → `runs/` are synced back locally.
 6. **Report** `docs/experiments/YYYY-MM-DD-<slug>.md` + a row in the index
    [experiments/README.md](experiments/README.md); videos of successes and a typical failure via

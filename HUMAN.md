@@ -5,9 +5,8 @@
 
 ## 0. Your role
 
-You provide what isn't in the repo: the **question** (what we want to learn), the **budget**
-(calls / money / GPU hours), the **definition of done**, and the **decisions** with consequences
-(hardware, money, the real robot). The agent is strong and fast, but it isn't a mind reader, and
+You provide what isn't in the repo: the **question** (what we want to learn), the **definition
+of done**, and the **decisions** with consequences (hardware, money, the real robot). The agent is strong and fast, but it isn't a mind reader, and
 by default it spends whatever it isn't told not to.
 
 ## 1. Two kinds of tasks
@@ -17,10 +16,10 @@ by default it spends whatever it isn't told not to.
 > (experiments/2026-10-02-rotation-yaw §6.2). Add a check of the arm links against the box body
 > with ~50 mm inflation. Don't touch the grammar or the prompt. Done = unit + isaac test + PR.
 
-**Experiment** (required: question, setup, budget, what counts as the result):
+**Experiment** (required: question, setup, what counts as the result):
 > Hypothesis: a second, top-down camera reduces carry failures. waffle + rotation=yaw, seeds 0–3
-> × 2 repeats, Sonnet 5.5, plan pinned per seed. Arms: scene vs scene+top (tiled). Budget
-> ≤ 300 calls, 0 planner. Done = a report in docs/experiments + videos of 1 success and 1 failure.
+> × 2 repeats, Sonnet 5.5, plan pinned per seed. Arms: scene vs scene+top (tiled), 0 planner.
+> Done = a report in docs/experiments + videos of 1 success and 1 failure.
 
 ## 2. Plan first
 
@@ -39,5 +38,5 @@ For anything non-trivial: "Make a plan, don't change anything yet." Useful quest
 
 ## 4. Red zones (your call)
 
-The real UR3 (only with you at the e-stop) · apt/drivers/reboot on compute3 · live runs over
-budget · changing the default model/action format · deleting anything on shared machines.
+The real UR3 (only with you at the e-stop) · apt/drivers/reboot on compute3 · runs beyond ~5k
+calls a day · changing the default model/action format · deleting anything on shared machines.
