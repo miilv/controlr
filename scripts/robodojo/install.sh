@@ -58,11 +58,12 @@ step_isaaclab() { run_rd isaaclab; }
 step_curobo()   { run_rd curobo; }
 
 step_assets() {
-  # Only what evaluation needs (init_assets.sh REQUIRED_DIRS; layouts of seed 0 — add seeds to
-  # SPARSE when needed). A sparse git-lfs clone: the LFS batch API fetches ~100 files per
+  # Every Assets folder except other configs' / seeds' layouts (init_assets.sh's REQUIRED_DIRS
+  # is not enough: scenes load Assets/Room too). Add seeds to SPARSE when needed. A sparse git-lfs clone: the LFS batch API fetches ~100 files per
   # request, while per-file downloads (hf download) hit HF's anonymous rate limit after ~650
   # files. The LFS object store is dropped afterwards so the 38.9 GB are stored once.
-  local SPARSE=("/Assets/Robots/" "/Assets/Object/" "/Assets/Material/" "/Assets/Eval_Layout/RoboDojo/arx_x5/0/")
+  local SPARSE=("/Assets/Robots/" "/Assets/Object/" "/Assets/Material/" "/Assets/Room/" "/Assets/Background/"
+                "/Assets/Sensor/" "/Assets/Traj/" "/Assets/Eval_Layout/RoboDojo/arx_x5/0/")
   cd "$RD_HOME"
   if [[ ! -d hf_git/.git ]]; then
     log "assets: clone (pointers only)"

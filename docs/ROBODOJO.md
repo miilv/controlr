@@ -47,7 +47,8 @@ ssh compute2 'cd /root/controlr-robodojo && setsid nohup bash install.sh > insta
 
 Everything lands in `/root/controlr-robodojo` (own Miniconda + env `miniconda3/envs/robodojo`,
 RoboDojo clone with its IsaacLab / cuRobo / XPolicyLab submodules, pip cache, the eval assets
-— Robots, Object, Material and the seed-0 layouts, 38.9 GB, as a sparse git-lfs clone in
+— every `Assets/` folder (Robots, Object, Material, Room, Background, Sensor, Traj) plus the
+seed-0 layouts, ~41 GB, as a sparse git-lfs clone in
 `hf_git/`: anonymous `hf download` is rate limited by Hugging Face after ~650 files, the LFS batch
 API is not). Nothing touches `~/.bashrc` or a shared conda.
 Steps are resumable: `bash install.sh isaaclab curobo assets check`.
@@ -73,4 +74,9 @@ per episode: a normal controlr run dir.
   shim plans itself and sends joint targets.
 - Camera extrinsics come from RoboDojo's `get_camera_extrinsics` (camera-to-world, converted from
   the USD to the OpenCV camera axes in the shim); overlays that project points rely on it.
+- RoboDojo's `init_assets.sh` checks only Robots / Object / Material / Eval_Layout, but scenes
+  also load `Assets/Room`; and `Assets/Robots/**/curobo.yml` must be generated from the
+  `*_tmp.yml` templates (`utils/update_embodiment_config_path.py`). `install.sh` does both.
+- XPolicyLab's ws policy server needs `websockets>=14`, RoboDojo's env pins 12.0: the no-op
+  policy server runs in `policy_venv`.
 - Eval layouts are consumed in order: `--seed S --eval-num N` = layouts 0..N-1 of seed S.

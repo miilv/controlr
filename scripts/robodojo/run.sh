@@ -48,6 +48,9 @@ WS_PORT="$(free_port)"
 PIDS=()
 cleanup() {
   for p in "${PIDS[@]}"; do kill -TERM -- -"$p" 2>/dev/null || kill "$p" 2>/dev/null || true; done
+  # setsid children get their own process group: find them by this run's unique ports
+  pkill -f "port=$WS_PORT" 2>/dev/null || true
+  pkill -f "src/eval_client/main.py.*--port $WS_PORT" 2>/dev/null || true
   # RoboDojo's results for this run
   if compgen -G "$RD/eval_result/RoboDojo/$TASK/controlr/*" >/dev/null; then
     newest="$(ls -td "$RD"/eval_result/RoboDojo/"$TASK"/controlr/*/*/* 2>/dev/null | head -1 || true)"
@@ -63,7 +66,7 @@ for _ in $(seq 60); do [[ -f "$CONTROLR_ROBODOJO_READY_FILE" ]] && break; sleep 
 [[ -f "$CONTROLR_ROBODOJO_READY_FILE" ]] || { echo "controlr robodojo-serve did not start:"; cat "$LOGS/serve.log"; exit 1; }
 
 # 3. XPolicyLab ws policy server (no-op model) in its own env (websockets>=14; install.sh policy_env)
-( cd "$RD/XPolicyLab" && PYTHONPATH="$RD" setsid "$RD_HOME/policy_venv/bin/python" setup_policy_server.py \
+( cd "$RD/XPolicyLab" && PYTHONPATH="$RD" exec setsid "$RD_HOME/policy_venv/bin/python" setup_policy_server.py \
     --config_path "$POL/deploy.yml" --overrides port="$WS_PORT" host=127.0.0.1 policy_name=controlr \
     > "$LOGS/policy_server.log" 2>&1 ) &
 PIDS+=($!)
@@ -72,6 +75,7 @@ for _ in $(seq 60); do (echo > /dev/tcp/127.0.0.1/"$WS_PORT") 2>/dev/null && bre
 
 source "$CONDA/bin/activate" "$CONDA/envs/robodojo"
 export OMNI_KIT_ACCEPT_EULA=YES
+export ROBODOJO_MAX_BASH_RETRIES="${ROBODOJO_MAX_BASH_RETRIES:-2}"   # RoboDojo restarts a crashed sim up to 10x by default
 
 # 4. RoboDojo's eval client: the episodes
 echo "RoboDojo $TASK seed=$SEED eval-num=$NUM -> logs $LOGS"
