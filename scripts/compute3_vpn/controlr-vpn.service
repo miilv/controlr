@@ -1,16 +1,15 @@
 [Unit]
-Description=controlr VPN proxy (sing-box, HTTP 127.0.0.1:18810 / SOCKS 18811; no tun) — ~/controlr-vpn
+Description=controlr VPN (sing-box, machine-wide tun0 + HTTP 10809/18810, SOCKS 10808/18811) — ~/controlr-vpn
 Documentation=file:///home/physicalai/controlr-vpn/refresh.py
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=physicalai
+User=root
 ExecStart=/home/physicalai/controlr-vpn/bin/sing-box run -c /home/physicalai/controlr-vpn/config.json --disable-color
 Restart=always
 RestartSec=5
-NoNewPrivileges=true
-PrivateTmp=true
+LimitNOFILE=infinity
 
 [Install]
 WantedBy=multi-user.target

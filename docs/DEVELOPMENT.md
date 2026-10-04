@@ -73,13 +73,13 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   Responses-only; `reasoning_effort: none` = no thinking, `low` still thinks on ~1/3 of turns
   (hidden, +4–8 s); `service_tier: priority` is accepted but unverifiable; the usage chunk can trail
   the reply by ~0.5 s (raise `llm.usage_grace_s`) ([journal](journal/2026-10-04-luna-latency.md)).
-- **Direct Codex calls (chatgpt.com) from compute3 need `HTTPS_PROXY=http://127.0.0.1:18810`**
-  (`controlr-vpn`, RUNBOOK §3a): chatgpt.com and api.anthropic.com answer 403 from Skoltech. controlr's own Codex login (`scripts/codex_login.py`) has a rotating refresh
+- **chatgpt.com and api.anthropic.com answer 403 from Skoltech without a VPN**: compute3's machine-wide
+  `controlr-vpn` (RUNBOOK §3a) handles it; if direct Codex calls get 403 there, the VPN is down. controlr's own Codex login (`scripts/codex_login.py`) has a rotating refresh
   token — keep the token file on ONE machine; a second copy that refreshes kills the first, and the
   router's login must never be reused (it would break the router for every client).
 - **LLM latency measured on compute3 depends on its network.** Each turn re-uploads the transcript with
   every image (~42 KB per image, ~730 KB by turn 16). Runs before 2026-10-04 17:20 MSK went through the
-  Happ VPN (40–140 KB/s upload); since then the router is reached directly (~1.1–1.5 MB/s). Before
+  Happ VPN (40–140 KB/s upload); since then the router is reached directly (~1.5 MB/s, `controlr-vpn` routes it direct). Before
   comparing latency across runs, check `scripts/net_check.sh` (RUNBOOK §3a).
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.

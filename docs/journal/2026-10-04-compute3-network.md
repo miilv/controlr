@@ -40,3 +40,18 @@ that relied on Happ for blocked sites now goes direct (Ilia's decision).
 
 **Next:** ethernet on `eno1` (Ilia) — `controlr-vpn` is not bound to an interface, so it follows the
 default route automatically; re-run `scripts/net_check.sh` after the switch.
+
+## Correction (same day): machine-wide, like the dev box
+
+The proxy-only variant above was my choice while Happ still held the tun; Ilia asked for "the same VPN
+as the dev box", which is machine-wide. Switched at 17:32 MSK (dead-man rollback to proxy-only armed,
+not needed): `tun0` + auto_route, the dev box's rules (RU domains / geoip-ru / private / torrent
+direct, DNS 1.1.1.1 direct), plus compute3-specific direct rules for the router and the subscription
+host, tailscale's ranges excluded; proxies on 10809/10808 (Happ's old ports) and 18810/18811; runs
+as root (tun). This also undoes the side effect noted above — other users of compute3 have a VPN again.
+
+| path (no proxy variables) | 740 KB to the router | chatgpt.com / anthropic |
+|---|---|---|
+| machine-wide `controlr-vpn` | 0.43–0.48 s (1.5–1.7 MB/s; router direct by rule) | 401 in 0.29–0.32 s |
+
+Egress Helsinki (urltest), ya.ru direct (32 ms), tailscale direct path to the dev box intact.
