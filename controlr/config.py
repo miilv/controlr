@@ -34,6 +34,11 @@ class LLMConfig:
     cache: str = "auto"            # auto | anthropic | none   (auto: anthropic markers for claude routes)
     cache_ttl: str = "5m"          # 5m | 1h  (anthropic marker ttl)
     early_stop: bool = True        # close the stream once the reply grammar is complete
+    # Execute as soon as the STATUS word has streamed (the action lines are complete then);
+    # the rest of the STATUS note and the usage chunk are read in the background during
+    # execution. The stored reply and the executed actions are the same as without it —
+    # only the turn gets shorter (~0.3 s mean on cx/; journal/2026-10-04-turn-latency.md).
+    overlap_tail: bool = True
     timeout_s: float = 180.0
     max_retries: int = 3
     # after an early stop keep reading up to this long for the trailing usage chunk (and the

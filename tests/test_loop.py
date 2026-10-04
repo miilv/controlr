@@ -478,3 +478,103 @@ def test_envelope_sees_the_box_where_it_is_now(tmp_path, monkeypatch):
     run_episode(_cfg(tmp_path, **{"episode.max_turns": 3}), robot=BoxMock(),
                 llm=FakeLLM(["MOVE ee_delta 0 0 -5\nSTATUS OK"] * 3))
     assert centres == pytest.approx([-0.3905, -0.3705, -0.3505])
+
+
+# ---------------------------------------------------------------------------
+# llm.overlap_tail: execute on the STATUS word, finish the note + usage meanwhile
+# ---------------------------------------------------------------------------
+
+class _TailLLM(FakeLLM):
+    """Streams the reply; after stop_when fires it does not return until ``release`` is
+    set — like a router still sending the note and the usage chunk."""
+
+    def __init__(self, replies, release, **kw):
+        super().__init__(replies, **kw)
+        self.release = release
+        self.waited: list[bool] = []
+
+    def complete(self, *a, stop_when=None, **kw):
+        fired = []
+
+        def sw(text):
+            done = stop_when(text) if stop_when else False
+            if done:
+                fired.append(text)
+            return done
+
+        r = super().complete(*a, stop_when=sw, **kw)
+        if fired:
+            self.waited.append(self.release.wait(5.0))
+            self.release.clear()
+        return r
+
+
+class _SignalRobot(RecMock):
+    def __init__(self, release):
+        super().__init__()
+        self.release = release
+
+    def execute(self, actions):
+        self.release.set()          # the call may only return after the robot started moving
+        return super().execute(actions)
+
+
+def test_overlap_executes_before_the_call_returns_and_stores_the_full_reply(tmp_path):
+    import threading
+
+    from controlr.loop import run_episode
+
+    release = threading.Event()
+    replies = ["MOVE ee_delta 0 0 -25\nSTATUS OK lowering to the target", "MOVE ee_delta 0 0 -25\nSTATUS OK again",
+               "STATUS DONE reached"]
+    llm = _TailLLM(replies, release)
+    robot = _SignalRobot(release)
+    # max_turns=3: the DONE turn has no action, so nothing releases it -> its call waits 5 s;
+    # keep it out by ending on the second move
+    res = run_episode(_cfg(tmp_path, **{"episode.max_turns": 2}), robot=robot, llm=llm)
+    assert llm.waited == [True, True]                     # execution started while the call was open
+    recs = res.records
+    assert recs[0]["reply"] == replies[0]                 # the note streamed after the STATUS word is kept
+    assert recs[0]["timings"]["exec_overlapped"] is True and "llm_tail" in recs[0]["timings"]
+    assert recs[0]["usage"] is not None and "overlap_mismatch" not in recs[0]
+    assert [a["raw"] for a in recs[0]["executed"]] == ["MOVE ee_delta 0 0 -25"]
+    msgs = read_jsonl(Path(res.run_dir) / "messages.jsonl")
+    assert msgs[2]["content"] == replies[0]
+
+
+def test_overlap_and_classic_paths_give_the_same_transcript(tmp_path):
+    from controlr.loop import run_episode
+
+    replies = ["MOVE ee_delta 0 0 -25\nSTATUS OK one", "MOVE ee_delta 0 0 -25\nSTATUS OK two", "STATUS DONE reached"]
+    runs = {}
+    for flag in ("true", "false"):
+        res = run_episode(_cfg(tmp_path / flag, **{"llm.overlap_tail": flag, "llm.request_nonce": "false"}),
+                          robot=RecMock(), llm=FakeLLM(list(replies)))
+        assert res.outcome == "success"
+        runs[flag] = (Path(res.run_dir) / "messages.jsonl").read_text(), [r["executed"] for r in res.records[:2]]
+        assert all(("exec_overlapped" in r["timings"]) == (flag == "true") for r in res.records[:2])
+    assert runs["true"] == runs["false"]
+
+
+def test_overlap_falls_back_when_the_reply_never_completes(tmp_path):
+    from controlr.loop import run_episode
+
+    # no STATUS -> stop_when never fires -> classic path: parse error, nothing executed early
+    res = run_episode(_cfg(tmp_path, **{"episode.max_turns": 1}), robot=RecMock(),
+                      llm=FakeLLM(["MOVE ee_delta 0 0 -10"]))
+    rec = res.records[0]
+    assert "exec_overlapped" not in rec["timings"] and rec["parse_errors"]
+    res = run_episode(_cfg(tmp_path, **{"episode.max_turns": 2}), robot=RecMock(),
+                      llm=FakeLLM(["MOVE ee_delta 0 0 -10\nSTATUS OK", RuntimeError("503 retries exhausted")]))
+    assert res.outcome == "llm_error" and res.turns == 2
+
+
+def test_overlap_reraises_client_exceptions_in_the_loop(tmp_path):
+    from controlr.loop import run_episode
+
+    class Boom(FakeLLM):
+        def complete(self, *a, **kw):
+            raise ValueError("client bug")
+
+    res = run_episode(_cfg(tmp_path), robot=RecMock(), llm=Boom(["x"]))
+    assert res.outcome == "error" and "client bug" in res.error

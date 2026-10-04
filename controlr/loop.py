@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import threading
 import time
 import traceback
 from dataclasses import dataclass, field
@@ -270,6 +271,66 @@ def _camera_rec(info) -> dict:
             "K": to_jsonable(info.K), "T_cam_base": to_jsonable(info.T_cam_base)}
 
 
+class _LLMCall:
+    """One control-model call, optionally overlapped with execution.
+
+    ``overlap=False``: ``llm.complete`` runs in the caller's thread and
+    ``wait_for_reply()`` returns None (the classic path: execute after the call).
+    ``overlap=True``: the call runs on a daemon thread; ``stop_when`` is wrapped so
+    that the first time it fires, the text so far (the reply up to and including the
+    STATUS word) is handed to the loop, which parses and executes it while the client
+    keeps reading the rest of the STATUS line and the usage chunk. ``result()`` then
+    joins the call; the loop stores THAT reply, so the transcript is the same as
+    without overlap. ``wait_for_reply()`` returns None when the call ended without the
+    reply ever completing (errors, length cut-offs) — the loop then takes the classic
+    path on ``result()``."""
+
+    def __init__(self, llm, cfg: Config, messages: list[dict], stop_when, *, overlap: bool) -> None:
+        self._snapshot: str | None = None
+        self._res = None
+        self._exc: BaseException | None = None
+        self._ready = threading.Event()
+        kw = dict(max_tokens=cfg.llm.max_tokens, temperature=cfg.llm.temperature,
+                  extra_body=dict(cfg.llm.extra_body) or None)
+        if not overlap:
+            self._res = llm.complete(cfg.llm.model, messages, stop_when=stop_when, **kw)
+            self._thread = None
+            return
+
+        def wrapped(text: str) -> bool:
+            done = stop_when(text)
+            if done and self._snapshot is None:
+                self._snapshot = text
+                self._ready.set()
+            return done
+
+        def run() -> None:
+            try:
+                self._res = llm.complete(cfg.llm.model, messages, stop_when=wrapped, **kw)
+            except BaseException as e:  # noqa: BLE001 — re-raised in the loop's thread
+                self._exc = e
+            finally:
+                self._ready.set()
+
+        self._thread = threading.Thread(target=run, name="controlr-llm", daemon=True)
+        self._thread.start()
+
+    def wait_for_reply(self) -> str | None:
+        if self._thread is None:
+            return None
+        while not self._ready.wait(0.1):     # short waits keep Ctrl-C responsive
+            pass
+        return self._snapshot
+
+    def result(self):
+        if self._thread is not None:
+            while self._thread.is_alive():
+                self._thread.join(0.1)
+        if self._exc is not None:
+            raise self._exc
+        return self._res
+
+
 def run_episode(cfg: Config, robot=None, llm=None, *,
                 on_turn: Callable[[dict], None] | None = None,
                 on_status: Callable[[str], None] | None = None) -> EpisodeResult:
@@ -383,6 +444,19 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
                                       "obstacles": [o.to_dict() for o in obstacles]})
 
         stop_when = is_complete if cfg.llm.early_stop else None
+
+        def _execute(actions: list) -> ExecReport | None:
+            if not actions:
+                return None
+            state = robot.state()
+            safety.set_obstacles(robot_obstacles(robot))     # current pose (the box may have moved)
+            filtered, sevents = safety.filter(actions, state)
+            if any(e.level == EventLevel.STOP for e in sevents) or not filtered:
+                return _empty_report(actions, sevents, state)
+            report = robot.execute(list(filtered))
+            report.requested = list(actions)
+            report.events = list(sevents) + list(report.events)
+            return report
         parse_streak = 0
         n_stops = 0
         prev_obs = obs
@@ -392,10 +466,18 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
         for turn in range(cfg.episode.max_turns):
             t_cycle = time.perf_counter()
             messages = apply_cache_markers(transcript.to_messages(), style, cfg.llm.cache_ttl)
-            res = llm.complete(cfg.llm.model, messages, max_tokens=cfg.llm.max_tokens,
-                               temperature=cfg.llm.temperature,
-                               extra_body=dict(cfg.llm.extra_body) or None, stop_when=stop_when)
+            call = _LLMCall(llm, cfg, messages, stop_when, overlap=cfg.llm.overlap_tail and stop_when is not None)
+            # The loop blocks only until the reply is complete (STATUS word); with overlap_tail
+            # the call finishes the note + usage in the background while the robot moves.
+            snapshot = call.wait_for_reply()
             t_llm_wall = time.perf_counter() - t_cycle
+            early: tuple[Any, ExecReport | None, float] | None = None
+            if snapshot is not None:
+                early_parsed = parse_reply(strip_partial_note(snapshot), cfg.action, spec)
+                t0 = time.perf_counter()
+                early = (early_parsed, _execute(early_parsed.actions), time.perf_counter() - t0)
+            res = call.result()
+            t_llm_tail = time.perf_counter() - t_cycle - t_llm_wall - (early[2] if early else 0.0)
             reasoning = getattr(res, "reasoning_text", "") or ""
             rec: dict[str, Any] = {
                 "turn": turn, "llm": _timings_dict(res.timings), "usage": _usage_dict(res.usage),
@@ -407,6 +489,8 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
                 "reasoning_chars": len(reasoning), "reasoning": reasoning,
             }
             timings: dict[str, Any] = {"llm_wall": t_llm_wall}
+            if early is not None:   # call time left after execution (> 0: the tail outlasted it)
+                timings["llm_tail"] = max(0.0, t_llm_tail)
             rec["timings"] = timings
 
             if res.error:
@@ -438,19 +522,17 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
                 rec["reply_streamed"] = res.text
 
             # -- execute (safety first; the robot never sees unfiltered actions)
-            report: ExecReport | None = None
-            t0 = time.perf_counter()
-            if parsed.actions:
-                state = robot.state()
-                safety.set_obstacles(robot_obstacles(robot))     # current pose (the box may have moved)
-                filtered, sevents = safety.filter(parsed.actions, state)
-                if any(e.level == EventLevel.STOP for e in sevents) or not filtered:
-                    report = _empty_report(parsed.actions, sevents, state)
-                else:
-                    report = robot.execute(list(filtered))
-                    report.requested = list(parsed.actions)
-                    report.events = list(sevents) + list(report.events)
-            timings["exec"] = time.perf_counter() - t0
+            if early is not None:
+                # executed from the reply as it stood at the STATUS word: the action lines precede
+                # STATUS, so they are the same as in the final reply (checked, logged if not)
+                report, timings["exec"] = early[1], early[2]
+                timings["exec_overlapped"] = True
+                if [_action_rec(a) for a in early[0].actions] != rec["actions"]:
+                    rec["overlap_mismatch"] = [_action_rec(a) for a in early[0].actions]
+            else:
+                t0 = time.perf_counter()
+                report = _execute(parsed.actions)
+                timings["exec"] = time.perf_counter() - t0
             if report is not None:
                 rec.update(executed=[_action_rec(a) for a in report.executed],
                            events=[_event_rec(e) for e in report.events],

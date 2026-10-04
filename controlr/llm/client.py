@@ -277,6 +277,12 @@ def _error_message(status: int, body: bytes) -> str:
     return f"HTTP {status}: {msg}" if msg else f"HTTP {status}"
 
 
+# Idle connections are kept this long. httpx's default (5 s) is shorter than a turn on a slow
+# robot, and a new TCP+TLS handshake through the proxy chain costs ~0.25 s per call
+# (journal/2026-10-04-luna-latency.md); a stale socket fails as a TransportError and is retried.
+KEEPALIVE_S = 120.0
+
+
 class LLMClient:
     """Reusable client: one ``httpx.Client`` (connection pool, keep-alive) for
     all calls, so turn N+1 skips the TLS handshake.
@@ -325,6 +331,7 @@ class LLMClient:
             timeout=self._timeout(timeout_s),
             headers=hdrs,
             transport=transport,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5, keepalive_expiry=KEEPALIVE_S),
         )
 
     @staticmethod
