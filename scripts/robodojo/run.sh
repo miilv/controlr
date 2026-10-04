@@ -62,14 +62,16 @@ PIDS+=($!)
 for _ in $(seq 60); do [[ -f "$CONTROLR_ROBODOJO_READY_FILE" ]] && break; sleep 1; done
 [[ -f "$CONTROLR_ROBODOJO_READY_FILE" ]] || { echo "controlr robodojo-serve did not start:"; cat "$LOGS/serve.log"; exit 1; }
 
-# 3. XPolicyLab ws policy server (no-op model) in RoboDojo's env
-source "$CONDA/bin/activate" "$CONDA/envs/robodojo"
-export OMNI_KIT_ACCEPT_EULA=YES
-( cd "$RD/XPolicyLab" && PYTHONPATH="$RD" setsid python setup_policy_server.py \
+# 3. XPolicyLab ws policy server (no-op model) in its own env (websockets>=14; install.sh policy_env)
+( cd "$RD/XPolicyLab" && PYTHONPATH="$RD" setsid "$RD_HOME/policy_venv/bin/python" setup_policy_server.py \
     --config_path "$POL/deploy.yml" --overrides port="$WS_PORT" host=127.0.0.1 policy_name=controlr \
     > "$LOGS/policy_server.log" 2>&1 ) &
 PIDS+=($!)
 for _ in $(seq 60); do (echo > /dev/tcp/127.0.0.1/"$WS_PORT") 2>/dev/null && break; sleep 1; done
+(echo > /dev/tcp/127.0.0.1/"$WS_PORT") 2>/dev/null || { echo "policy server did not start:"; tail -20 "$LOGS/policy_server.log"; exit 1; }
+
+source "$CONDA/bin/activate" "$CONDA/envs/robodojo"
+export OMNI_KIT_ACCEPT_EULA=YES
 
 # 4. RoboDojo's eval client: the episodes
 echo "RoboDojo $TASK seed=$SEED eval-num=$NUM -> logs $LOGS"

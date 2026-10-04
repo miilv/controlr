@@ -5,7 +5,7 @@
 # step is skipped when its result exists. Run under nohup; log goes to $RD_HOME/install.log.
 #
 #   RD_HOME=/root/controlr-robodojo bash scripts/robodojo/install.sh [step...]
-#   steps: conda clone deps isaacsim isaaclab curobo assets check   (default: all, in order)
+#   steps: conda clone deps isaacsim isaaclab curobo assets policy_env check   (default: all, in order)
 set -euo pipefail
 RD_HOME="${RD_HOME:-/root/controlr-robodojo}"
 RD_REPO="${RD_REPO:-https://github.com/RoboDojo-Benchmark/RoboDojo.git}"
@@ -86,6 +86,15 @@ step_assets() {
   activate; cd "$SRC" && python utils/update_embodiment_config_path.py < /dev/null
 }
 
+step_policy_env() {
+  # XPolicyLab's ws policy server needs websockets>=14, RoboDojo's env pins 12.0: like RoboDojo's
+  # own policies, the (no-op) policy server gets its own small env.
+  local UV="${UV:-$(command -v uv || echo "$HOME/.local/bin/uv")}"
+  [[ -x "$RD_HOME/policy_venv/bin/python" ]] || "$UV" venv -q --python 3.11 "$RD_HOME/policy_venv"
+  "$UV" pip install -q --python "$RD_HOME/policy_venv/bin/python" "numpy>=1.23" "pyyaml>=6" \
+    "websockets>=14" "msgpack>=1.0.8" "msgpack-numpy>=0.4.8" "pydantic>=2.5" opencv-python-headless h5py
+}
+
 step_check() {
   activate; cd "$SRC"
   python - <<'PY'
@@ -96,6 +105,6 @@ PY
   du -sh "$RD_HOME" 2>/dev/null; df -h / | tail -1
 }
 
-steps=("$@"); [[ ${#steps[@]} -gt 0 ]] || steps=(conda clone deps isaacsim isaaclab curobo assets check)
+steps=("$@"); [[ ${#steps[@]} -gt 0 ]] || steps=(conda clone deps isaacsim isaaclab curobo assets policy_env check)
 for s in "${steps[@]}"; do log "== $s"; "step_$s"; done
 log "done"
