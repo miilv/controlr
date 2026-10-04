@@ -246,6 +246,9 @@ class Rig:
                         ended = True
                         break
             rec["env_steps"] = done
+            for arm, path in paths.items():      # run-log diagnostics: plan end vs where the arm is
+                rec["arms"][arm]["q_goal"] = [round(float(v), 4) for v in path[-1]]
+                rec["arms"][arm]["q_after"] = [round(float(v), 4) for v in self._measured_q(arm)]
             out_steps.append(rec)
         return {"steps": out_steps, "env_steps": self.steps_used() - n0, "ended": self.ended(),
                 "success": self.success(), "steps_used": self.steps_used(), "step_lim": self.step_lim(),

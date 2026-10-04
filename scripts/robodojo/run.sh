@@ -2,7 +2,7 @@
 # One RoboDojo evaluation with controlr as the controller (run ON the RoboDojo host, compute2).
 #
 #   scripts/robodojo/run.sh --task general_pickup --seed 0 --eval-num 5 [-c configs/robodojo.yaml]
-#                           [--fake-llm] [--set key=value ...]
+#                           [--fake-llm | --fake-llm-file FILE] [--set key=value ...]
 #
 # Starts three processes and stops all of them on exit:
 #   1. controlr robodojo-serve  (our venv)  — the controller, one run dir per episode
@@ -23,6 +23,7 @@ while [[ $# -gt 0 ]]; do
     --eval-num) NUM="$2"; shift 2 ;;
     -c|--config) CFG="$2"; shift 2 ;;
     --fake-llm) FAKE="--fake-llm"; shift ;;
+    --fake-llm-file) FAKE="--fake-llm=$2"; shift 2 ;;      # scripted replies separated by --- lines
     --set) SETS+=(--set "$2"); shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
