@@ -161,7 +161,11 @@ def format_state(state: RobotState, cfg: Config) -> str:
     Orientation is shown only as far as the model can command it
     (rotation=none -> omitted, yaw -> yaw, full -> roll pitch yaw); joint
     angles only in joint modes; `holding` only per ``shows_holding``. Keeping the
-    line short matters: it is repeated every turn."""
+    line short matters: it is repeated every turn. Multi-arm robots get one line per arm
+    (``STATE L: ...``)."""
+    if state.arms:
+        return "\n".join(format_state(s, cfg).replace("STATE:", f"STATE {arm}:", 1)
+                         for arm, s in state.arms.items())
     a = cfg.action
     pu = a.pos_unit
     x, y, z = (float(v) for v in np.asarray(state.tcp_pos).reshape(3))
@@ -341,6 +345,7 @@ def format_feedback(turn: int, parsed: ParsedReply | None, report: ExecReport | 
             lines.append(f"TASK: {task.strip()}")
         if cfg.observation.state_text:
             lines.append(format_state(obs.state, cfg))
+        lines += list(obs.notes)
         evs = visible_events(report.events, cfg) if report is not None else []
         warns = [to_llm_units(e.brief or e.message, a) for e in evs if e.level != EventLevel.STOP]
         if parsed is not None:
@@ -379,4 +384,5 @@ def format_feedback(turn: int, parsed: ParsedReply | None, report: ExecReport | 
         lines.append(format_goal(goal, a))
     if cfg.observation.state_text:
         lines.append(format_state(obs.state, cfg))
+    lines += list(obs.notes)
     return "\n".join(lines)

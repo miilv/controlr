@@ -832,6 +832,76 @@ def _values(cfg: Config, spec: RobotSpec, task_text: str,
     }
 
 
+def _values_arms(cfg: Config, spec: RobotSpec, task_text: str,
+                 cameras: dict[str, CameraInfo] | None) -> dict[str, str]:
+    """Placeholders of the multi-arm manual (``system_v1``; ``RobotSpec.arms``)."""
+    a, s, e = cfg.action, cfg.safety, cfg.episode
+    lo, hi = spec.workspace_lo, spec.workspace_hi
+    z_lo = max(lo[2], (spec.table_z or lo[2]) + s.table_clearance_m)
+    rot = {"none": "", "yaw": " of turning", "full": " of rotation"}[a.rotation]
+    step_limits = f"at most {_len(cfg, s.max_step_m)} of TCP travel" + (
+        f" and {_angle(cfg, s.max_step_rad)}{rot}" if a.rotation != "none" else "") + " per arm per MOVE line"
+    stop_rule = ("STOP means the arms stopped early and now hold still. Look at the images, back off, "
+                 "and try a different way. " + ("The first STOP ends the episode." if e.max_stops <= 1 else
+                                                f"The episode ends after {e.max_stops} STOPs."))
+    done_rule = ("DONE ends the episode immediately, so be sure." if e.trust_done else
+                 "The harness checks the task after DONE; if the check fails a WARN line says "
+                 "`task not complete yet` and you must continue.")
+    # an example STATE: both arms above the table, gripper open
+    z = (spec.table_z or 0.0) + 0.20
+    R_down = np.diag([1.0, -1.0, -1.0])
+    from controlr.robot.kinematics import matrix_to_rotvec
+    arms = {}
+    for i, arm in enumerate(spec.arms):
+        x = -0.25 if i == 0 else 0.25
+        arms[arm] = RobotState(t=0.0, q=np.zeros(6), tcp_pos=np.array([x, -0.15, z]),
+                               tcp_rotvec=matrix_to_rotvec(R_down), gripper_mm=spec.gripper_max_mm,
+                               gripper_closed=False)
+    first = arms[spec.arms[0]]
+    st = RobotState(t=0.0, q=first.q, tcp_pos=first.tcp_pos, tcp_rotvec=first.tcp_rotvec,
+                    gripper_mm=first.gripper_mm, gripper_closed=False, arms=arms)
+    state_example = format_state(st, cfg)
+    names = sorted(cameras or {})
+    if names:
+        cam_doc = ("Camera images, in this order: " + ", ".join(f"`{n}`" for n in names) + ". "
+                   + ("The head camera looks at the table from above and behind the arms; " if any("head" in n for n in names) else "")
+                   + ("each wrist camera rides on its arm and looks along its gripper, so its view moves "
+                      "with the arm (move the arm to look somewhere else)." if any("wrist" in n for n in names) else ""))
+    else:
+        cam_doc = "Camera images of the scene (their names label each image)."
+    cam_doc += (" There is no depth image: judge distances from object sizes, the gripper in the wrist "
+                "views, and where objects touch the table.")
+    steps_doc = ("The STEPS line says how much arm motion is left in this episode: every env step moves "
+                 "the arms for 1/25 s, and the episode ends when none are left.")
+    return {
+        "robot_name": spec.name,
+        "arm_names": " and ".join(spec.arms),
+        "base_frame_doc": spec.base_frame_doc.strip(),
+        "tcp_doc": spec.tcp_doc.strip(),
+        "ws_x": f"{_num(cfg, lo[0])}..{_num(cfg, hi[0])}",
+        "ws_y": f"{_num(cfg, lo[1])}..{_num(cfg, hi[1])}",
+        "ws_z": f"{_num(cfg, z_lo)}..{_num(cfg, hi[2])}",
+        "reach": _len(cfg, 0.65),
+        "pos_unit": a.pos_unit,
+        "ang_unit": a.ang_unit,
+        "camera_doc": cam_doc,
+        "state_example": "\n".join("    " + ln for ln in state_example.splitlines()),
+        "state_example_indented": "\n".join("    " + ln.split(":", 1)[0] + ": <" + ln.split(":", 1)[0].split()[-1]
+                                            + " TCP and gripper, as above>" for ln in state_example.splitlines()),
+        "steps_doc": steps_doc,
+        "grammar": grammar_spec(a, spec),
+        "stop_rule": stop_rule,
+        "done_rule": done_rule,
+        "table_clearance": _len(cfg, s.table_clearance_m),
+        "step_limits": step_limits,
+        "clamp_mode": "clamped to the nearest allowed value" if s.clamp else "rejected (not executed)",
+        "coarse_step": _len(cfg, s.max_step_m * 0.5),
+        "fine_step": _len(cfg, 0.01),
+        "extra_rules": "\n".join(f"- {r}" for r in cfg.prompt.extra_rules) if cfg.prompt.extra_rules else "(none)",
+        "task": task_text.strip() or "(given in the first user turn)",
+    }
+
+
 # ---------------------------------------------------------------------------
 # public API
 # ---------------------------------------------------------------------------
@@ -849,7 +919,9 @@ def build_system_prompt(cfg: Config, spec: RobotSpec, task_text: str = "",
     the manual then states the fixed tool orientation. ``obstacles`` (optional): the
     backend's known obstacles (``Robot.obstacles()`` at reset) — what the safety envelope
     knows about the box (``safety.box_collision``)."""
-    text = fill(load_template(cfg.prompt.system), _values(cfg, spec, task_text, cameras, state0, obstacles))
+    values = (_values_arms(cfg, spec, task_text, cameras) if spec.arms
+              else _values(cfg, spec, task_text, cameras, state0, obstacles))
+    text = fill(load_template(cfg.prompt.system), values)
     return re.sub(r"\n{3,}", "\n\n", text).strip() + "\n"
 
 

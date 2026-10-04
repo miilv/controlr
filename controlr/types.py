@@ -50,6 +50,14 @@ class RobotSpec:
     # thickness outward along the jaw axis). Lets the safety envelope keep the lowest FINGERTIP
     # (not only the TCP) above the table. None: only the TCP point is checked.
     finger_pad: tuple[float, float, float] | None = None
+    # Who resolves joint targets: "ur3" = the harness (UR3 kinematics, SafetyEnvelope plans the
+    # straight-line joint path); "backend" = the backend's own planner (e.g. RoboDojo's cuRobo).
+    # With "backend" the envelope is Cartesian-only and ee actions carry ``Action.tcp_target``.
+    kinematics: str = "ur3"
+    # Arm names of a multi-arm robot (e.g. ("L", "R")); empty = one arm. With arms, every
+    # MOVE/GRIP part names its arm, ``RobotState.arms`` holds one state per arm and all arms
+    # share this spec (same frame, workspace, gripper).
+    arms: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -61,6 +69,9 @@ class RobotState:
     gripper_mm: float                  # current opening width
     gripper_closed: bool               # last commanded state is "closed"
     holding: bool | None = None        # backend's grasp detection; None = unknown
+    # multi-arm robots (RobotSpec.arms): one state per arm, same frame. The top-level fields then
+    # mirror the FIRST arm (so single-arm consumers keep working); arm-aware code reads ``arms``.
+    arms: dict[str, "RobotState"] | None = None
 
 
 @dataclass(frozen=True)
@@ -81,6 +92,9 @@ class Observation:
     images: dict[str, np.ndarray]      # camera name -> HxWx3 uint8 RGB, native resolution
     cameras: dict[str, CameraInfo]
     state: RobotState
+    # extra feedback lines from the backend, shown after STATE (deterministic text, e.g.
+    # RoboDojo's "STEPS: 143 of 200 left"); only facts a real robot would also know
+    notes: tuple[str, ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +126,14 @@ class Action:
     # an ee move, attached by SafetyEnvelope.filter. Backends that interpolate should pass
     # through them (joint-linear interpolation to q_target alone bends the TCP path).
     q_path: tuple[tuple[float, ...], ...] | None = None
+    # multi-arm robots: the arm this action drives (RobotSpec.arms); None = the only arm
+    arm: str | None = None
+    # index of the reply line the action came from: actions with the same step (one per arm)
+    # move at the same time. None = its own step.
+    step: int | None = None
+    # RobotSpec.kinematics == "backend": the envelope-approved absolute TCP target, base frame,
+    # (x, y, z, rx, ry, rz) m + rotvec; the backend plans the joints. None otherwise.
+    tcp_target: tuple[float, ...] | None = None
 
 
 class Status(str, Enum):

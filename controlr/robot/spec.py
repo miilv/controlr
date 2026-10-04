@@ -23,6 +23,8 @@ Numbers and their provenance (PHANTOM, /home/agent/skoltech/research):
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from controlr.robot.kinematics import DEFAULT_TCP_OFFSET, JOINT_NAMES
@@ -74,4 +76,46 @@ def ur3_cb3_spec(*, home_q: tuple[float, ...] = HOME_Q_TOPDOWN, table_z: float =
         table_z=float(table_z),
         tcp_offset=tuple(float(v) for v in tcp_offset),
         finger_pad=tuple(float(v) for v in finger_pad) if finger_pad is not None else None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# RoboDojo: dual ARX X5 (Isaac Sim 5.1, RoboDojo's own scene)
+# ---------------------------------------------------------------------------
+
+# RoboDojo world frame (env_cfg/robot/dual_x5.yml, env_cfg/scene/default.yml): z up, origin
+# on the floor below the table centre-front; arm bases at x = -/+0.30, y = -0.45 on the table
+# top (z 0.765), both facing +y. Grasp point = flange + 0.1501 m along the flange's +x (the
+# centre of the gripping face; XPolicyLab GPT_6_Astra_Direct_EEF pose.py, from X5A.urdf).
+ARX_X5_TABLE_Z = 0.765
+ARX_X5_GRASP_OFFSET_M = 0.1501
+ARX_X5_BASES = {"L": (-0.30, -0.45, 0.765), "R": (0.30, -0.45, 0.765)}
+
+
+def arx_x5_dual_spec(*, gripper_max_mm: float = 80.0,
+                     workspace_lo: tuple[float, float, float] = (-0.75, -0.65, 0.765),
+                     workspace_hi: tuple[float, float, float] = (0.75, 0.45, 1.40)) -> RobotSpec:
+    """Both RoboDojo ARX X5 arms as one multi-arm ``RobotSpec`` (shared world frame; the
+    backend's cuRobo plans the joints, so the joint table is informational only)."""
+    joints = tuple(JointSpec(f"joint{i}", -math.pi, math.pi, 3.0) for i in range(1, 7))
+    return RobotSpec(
+        name="two ARX X5 6-DoF arms with parallel grippers (RoboDojo, simulated)",
+        joints=joints,
+        base_frame_doc=(
+            "One WORLD frame for both arms, in metres internally: z points up; the table top is at "
+            f"z = {ARX_X5_TABLE_Z * 1000:.0f} mm. The two arms stand on the near edge of the table, "
+            "600 mm apart, both reaching forward along +y: arm L at x = -300 mm, arm R at x = +300 mm, "
+            "y = -450 mm. +x points from L to R (to the right seen from behind the arms), +y away "
+            "from the arms across the table."),
+        tcp_doc=(
+            "Each arm's TCP is the grasp point: the centre of its gripping face, between the finger "
+            f"pads, {ARX_X5_GRASP_OFFSET_M * 1000:.0f} mm out from the wrist flange along the tool "
+            "axis. Tool z points out of the gripper (from the wrist toward the fingertips)."),
+        gripper_max_mm=gripper_max_mm,
+        workspace_lo=tuple(workspace_lo),
+        workspace_hi=tuple(workspace_hi),
+        home_q=(0.0,) * 12,
+        table_z=ARX_X5_TABLE_Z,
+        kinematics="backend",
+        arms=("L", "R"),
     )

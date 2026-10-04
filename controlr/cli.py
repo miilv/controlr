@@ -69,6 +69,13 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--csv", default=None, help="also write the table as CSV")
     rp.add_argument("--include-fake", action="store_true", help="also list --fake-llm dry runs")
 
+    rd = sub.add_parser("robodojo-serve", help="be RoboDojo's controller: run one episode per shim connection")
+    rd.add_argument("-c", "--config", required=True)
+    rd.add_argument("--set", dest="sets", action="append", default=[], metavar="KEY=VALUE")
+    rd.add_argument("--episodes", type=int, default=None, help="stop after N episodes (default: until killed)")
+    rd.add_argument("--fake-llm", nargs="?", const="-", default=None, metavar="FILE",
+                    help="no network: scripted two-arm replies (see run --fake-llm)")
+
     m = sub.add_parser("models", help="list models on the endpoint (GET /models)")
     m.add_argument("--filter", default=None)
     m.add_argument("--set", dest="sets", action="append", default=[], metavar="KEY=VALUE")
@@ -98,6 +105,16 @@ FAKE_SCRIPT = [
 ]
 
 
+# The same dry run for multi-arm robots (RoboDojo): rotation=full, both arms.
+FAKE_SCRIPT_ARMS = [
+    "MOVE R ee_delta 0 30 0 0 0 0 GRIP open\nSTATUS OK",
+    "MOVE L ee_delta 0 30 0 0 0 0 R ee_delta 0 0 -30 0 0 0\nSTATUS OK",
+    "GRIP R close\nSTATUS OK",
+    "MOVE R ee_delta 0 0 60 0 0 0\nSTATUS OK",
+    "HOLD\nSTATUS DONE dry run finished",
+]
+
+
 FAKE_PLAN = "1. Locate the target.\n2. Move above it.\n3. Descend and finish."
 
 
@@ -112,6 +129,26 @@ def fake_llm_from_arg(arg: str, planner: bool = False):
     text = Path(arg).read_text()
     replies = [r.strip() for r in text.split("\n---\n") if r.strip()]
     return FakeLLM(replies, ttft_s=0.05)
+
+
+def cmd_robodojo_serve(args) -> int:
+    from controlr.config import load_config
+    from controlr.llm.fake import FakeLLM
+    from controlr.robot.robodojo.serve import serve
+
+    cfg = load_config(args.config, args.sets)
+    if cfg.robot.backend != "robodojo":
+        print(f"config backend is {cfg.robot.backend!r}, expected robodojo", file=sys.stderr)
+        return 2
+    factory = None
+    if args.fake_llm == "-":
+        factory = lambda: FakeLLM(list(FAKE_SCRIPT_ARMS), ttft_s=0.05)  # noqa: E731
+    elif args.fake_llm:
+        factory = lambda: fake_llm_from_arg(args.fake_llm)  # noqa: E731
+    results = serve(cfg, llm_factory=factory, max_episodes=args.episodes, on_turn=_progress)
+    n = sum(r.success for r in results)
+    print(f"robodojo: success {n}/{len(results)}")
+    return 0 if all(r.outcome not in ("error", "llm_error", "interrupted") for r in results) else 1
 
 
 def _status(msg: str) -> None:
@@ -226,6 +263,10 @@ def cmd_prompt(args) -> int:
     cfg = load_config(args.config, args.sets)
     spec = ur3_cb3_spec()
     cams = {"scene": d435_camera()}
+    if cfg.robot.backend == "robodojo":
+        from controlr.robot.spec import arx_x5_dual_spec
+        spec = arx_x5_dual_spec(gripper_max_mm=float(cfg.robot.params.get("gripper_max_mm", 80.0)))
+        cams = {n: CameraInfo(n, 640, 480, np.eye(3), np.eye(4)) for n in cfg.observation.cameras}
     state0 = None
     obstacles = None
     if args.setup:
@@ -330,7 +371,8 @@ def cmd_models(args) -> int:
 
 
 COMMANDS = {"run": cmd_run, "prompt": cmd_prompt, "bench-cache": cmd_bench_cache,
-            "bench-latency": cmd_bench_latency, "sweep": cmd_sweep, "report": cmd_report, "models": cmd_models}
+            "bench-latency": cmd_bench_latency, "sweep": cmd_sweep, "report": cmd_report, "models": cmd_models,
+            "robodojo-serve": cmd_robodojo_serve}
 
 
 def main(argv: Sequence[str] | None = None) -> int:

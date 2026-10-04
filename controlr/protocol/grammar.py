@@ -198,14 +198,20 @@ def move_syntax(cfg: ActionConfig, spec: RobotSpec | None) -> str:
         names = "<one value per joint>"
     else:
         names = " ".join(_layout(cfg, spec).names)   # type: ignore[arg-type]
+    if spec is not None and spec.arms:
+        part = f"{cfg.mode} {names} [GRIP {_grip_syntax(cfg)}]"
+        a0, a1 = spec.arms[0], spec.arms[-1]
+        return f"MOVE {a0} {part} [{a1} {part}]"
     return f"MOVE {cfg.mode} {names} [GRIP {_grip_syntax(cfg)}]"
 
 
 def grammar_reminder(cfg: ActionConfig, spec: RobotSpec | None = None) -> str:
     """One line, appended to feedback after parse errors."""
     unit = f"{cfg.pos_unit}/{cfg.ang_unit}"
+    grip = (f"GRIP {spec.arms[0]} {_grip_syntax(cfg)} [{spec.arms[-1]} ...]" if spec is not None and spec.arms
+            else f"GRIP {_grip_syntax(cfg)}")
     return (f"GRAMMAR: up to {cfg.max_chunk} line(s) of `{move_syntax(cfg, spec)}` | "
-            f"`GRIP {_grip_syntax(cfg)}` | `HOLD`, then exactly one "
+            f"`{grip}` | `HOLD`, then exactly one "
             f"`STATUS {'|'.join(STATUS_WORDS)} [note]` as the last line ({unit}).")
 
 
@@ -214,6 +220,8 @@ def grammar_spec(cfg: ActionConfig, spec: RobotSpec) -> str:
 
     Rendered from the configuration so the prompt can never disagree with the
     parser (mode, arity, units, rotation, gripper, chunk size)."""
+    if spec.arms:
+        return _grammar_spec_arms(cfg, spec)
     lay = _layout(cfg, spec)
     P, A = cfg.pos_unit, cfg.ang_unit
     delta = cfg.mode.endswith("_delta")
@@ -300,6 +308,77 @@ def grammar_spec(cfg: ActionConfig, spec: RobotSpec) -> str:
     lines.append("")
     lines.append(f"    MOVE {cfg.mode} {ex2}")
     lines.append("    STATUS DONE object released at the destination, gripper lifted clear")
+    return "\n".join(lines)
+
+
+def _grammar_spec_arms(cfg: ActionConfig, spec: RobotSpec) -> str:
+    """``grammar_spec`` for a multi-arm robot (``RobotSpec.arms``)."""
+    lay = _layout(cfg, spec)
+    P, A = cfg.pos_unit, cfg.ang_unit
+    delta = cfg.mode.endswith("_delta")
+    a0, a1 = spec.arms[0], spec.arms[-1]
+    part = f"{cfg.mode} {' '.join(lay.names)} [GRIP {_grip_syntax(cfg)}]"
+    lines = ["Reply with plain text lines, nothing else (no markdown, no code fences):", "",
+             f"    MOVE {a0} {part} [{a1} {part}]",
+             f"    GRIP {a0} {_grip_syntax(cfg)} [{a1} {_grip_syntax(cfg)}]",
+             "    HOLD",
+             f"    STATUS {'|'.join(STATUS_WORDS)} [short note]", "",
+             f"- Each MOVE / GRIP line commands one or both arms ({' and '.join(spec.arms)}): every part starts "
+             f"with the arm's name, each arm at most once per line. The parts of one line run AT THE SAME "
+             f"TIME; an arm not named in a line holds still.",
+             "- In a MOVE line, a part may also be just `GRIP ...` (that arm only works its gripper)."]
+    if cfg.mode not in EE_MODES:
+        raise ValueError("multi-arm robots support ee modes only")
+    what = "a relative move of that arm's TCP from where it is now" if delta else "an absolute TCP target"
+    lines.append(f"- MOVE part `{cfg.mode}`: {what}, in the shared world frame. Exactly {len(lay.names)} "
+                 f"numbers: {' '.join(lay.names)}.")
+    lines.append(f"  Positions in {P}." + (f" Angles in {A}." if len(lay.names) > 3 else ""))
+    if cfg.rotation == "none":
+        lines.append("  Orientation is not commanded: each tool keeps its current orientation.")
+    elif cfg.rotation == "yaw":
+        lines.append("  dyaw turns the tool about the vertical line through its TCP (positive = counter-clockwise "
+                     "seen from above); the tilt is kept." if delta else
+                     "  yaw is the absolute tool heading about the vertical z axis; the tilt is kept.")
+    else:
+        half_turn = fmt_num(math.pi / ang_factor(cfg), ang_decimals(cfg))
+        lines.append("  droll dpitch dyaw rotate the tool about the world x, y, z axes (extrinsic, applied in "
+                     "that order), pivoting about the TCP." if delta else
+                     f"  roll pitch yaw are absolute extrinsic angles about world x, y, z "
+                     f"(R = Rz(yaw)·Ry(pitch)·Rx(roll)); tool straight down = roll {half_turn} pitch 0.")
+    if cfg.gripper == "binary":
+        lines.append(f"- GRIP open = fully open, GRIP close = close until the fingers stop (on an object or "
+                     f"fully shut).")
+    else:
+        lines.append(f"- GRIP <width>: target finger opening in {P} (0 = closed, "
+                     f"{fmt_num(spec.gripper_max_mm * 1e-3 / pos_factor(cfg), pos_decimals(cfg))} = fully open); "
+                     f"open/close also work.")
+    lines.append("  A GRIP in a MOVE part acts after that arm's motion. Grippers keep their last state.")
+    lines.append("- HOLD: do nothing this turn (e.g. to take another look).")
+    if cfg.max_chunk == 1:
+        lines.append("- At most 1 MOVE or GRIP line per reply. You see new images after it.")
+    else:
+        lines.append(f"- At most {cfg.max_chunk} MOVE/GRIP lines per reply, executed in order without "
+                     f"looking; you see new images after the last one. Extra lines are dropped.")
+    lines.append("- STATUS is mandatory and must be the LAST line; anything after it is ignored. "
+                 "The note after the status word is optional and short (<= 12 words).")
+    ex0 = _fmt_values(_example_values(cfg, spec, 0), cfg, spec)
+    ex1 = _fmt_values(_example_values(cfg, spec, 1), cfg, spec)
+    ex2 = _fmt_values(_example_values(cfg, spec, 2), cfg, spec)
+    lines += ["", "Examples (each block is one whole reply, from successive turns):",
+              f"    MOVE {a1} {cfg.mode} {ex0} GRIP open",
+              f"    STATUS OK {a1} arm moving above the object",
+              "",
+              f"    MOVE {a1} {cfg.mode} {ex1}",
+              f"    STATUS OK {a1} descending to grasp height",
+              "",
+              f"    GRIP {a1} close",
+              f"    STATUS OK {a1} grasping",
+              "",
+              f"    MOVE {a1} {cfg.mode} {ex2} {a0} {cfg.mode} {ex0}",
+              f"    STATUS OK lifting with {a1} while {a0} moves toward the second object",
+              "",
+              "    HOLD",
+              "    STATUS OK checking both grasps in new images"]
     return "\n".join(lines)
 
 
@@ -408,6 +487,36 @@ def _parse_move(tokens: list[str], cfg: ActionConfig, spec: RobotSpec) -> Action
     return Action(mode=ActionMode(cfg.mode), values=_values_to_action(vals, cfg), gripper=grip)
 
 
+def _parse_arm_line(kw: str, tokens: list[str], cfg: ActionConfig, spec: RobotSpec, line: str,
+                    step: int) -> list[Action]:
+    """Multi-arm line (``RobotSpec.arms``): ``MOVE L <mode> v.. [GRIP g] R <mode> v.. [GRIP g]``
+    or ``GRIP L g R g``; every part starts with an arm name, each arm at most once, and the
+    parts of one line move at the same time (``Action.step``). In a MOVE line a part may also be
+    ``GRIP g`` alone (that arm only works its gripper during the step)."""
+    names = {a.upper(): a for a in spec.arms}
+    if not tokens or tokens[0].upper() not in names:
+        raise ValueError(f"start each part with an arm ({' or '.join(spec.arms)}), "
+                         f"e.g. {kw} {spec.arms[0]} ...")
+    parts: list[tuple[str, list[str]]] = []
+    for t in tokens:
+        if t.upper() in names:
+            parts.append((names[t.upper()], []))
+        else:
+            parts[-1][1].append(t)
+    seen = [arm for arm, _ in parts]
+    if len(set(seen)) != len(seen):
+        raise ValueError("name each arm at most once per line (one line = one simultaneous step)")
+    out = []
+    for arm, ptoks in parts:
+        if kw == "GRIP" or (ptoks and ptoks[0].upper() == "GRIP"):
+            g = _parse_grip(ptoks[1:] if kw == "MOVE" else ptoks, cfg, spec)
+            out.append(Action(mode=None, values=None, gripper=g, raw=line, arm=arm, step=step))
+        else:
+            a = _parse_move(ptoks, cfg, spec)
+            out.append(Action(mode=a.mode, values=a.values, gripper=a.gripper, raw=line, arm=arm, step=step))
+    return out
+
+
 def _looks_numeric(tok: str) -> bool:
     t = tok.split("=", 1)[1] if "=" in tok else tok
     return bool(re.match(r"^[+-]?(?:\d|\.\d)", t))
@@ -457,11 +566,13 @@ def parse_reply(text: str, cfg: ActionConfig, spec: RobotSpec) -> ParsedReply:
                 if len(toks) > 1:
                     raise ValueError(f"HOLD takes no arguments: {line!r}")
                 continue   # explicit no-op: no Action (an empty action list = hold)
-            if kw == "GRIP":
-                action = Action(mode=None, values=None, gripper=_parse_grip(toks[1:], cfg, spec), raw=line)
+            if spec.arms:
+                line_actions = _parse_arm_line(kw, toks[1:], cfg, spec, line, n_action_lines)
+            elif kw == "GRIP":
+                line_actions = [Action(mode=None, values=None, gripper=_parse_grip(toks[1:], cfg, spec), raw=line)]
             else:
                 a = _parse_move(toks[1:], cfg, spec)
-                action = Action(mode=a.mode, values=a.values, gripper=a.gripper, raw=line)
+                line_actions = [Action(mode=a.mode, values=a.values, gripper=a.gripper, raw=line)]
         except ValueError as e:
             if strict:
                 out.errors.append(f"{line!r}: {e}")
@@ -470,7 +581,7 @@ def parse_reply(text: str, cfg: ActionConfig, spec: RobotSpec) -> ParsedReply:
         if n_action_lines > cfg.max_chunk:
             dropped += 1
             continue
-        out.actions.append(action)
+        out.actions.extend(line_actions)
     if dropped:
         out.errors.append(f"{n_action_lines} action lines, max is {cfg.max_chunk}: "
                           f"executed the first {cfg.max_chunk}, dropped {dropped}")
