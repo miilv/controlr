@@ -316,3 +316,15 @@ def test_episode_that_gives_up_is_failed_in_robodojo(tmp_path):
     res = _run_pair(tmp_path, ["MOVE L ee_delta 0 0 0 0 0 0 Z\nSTATUS FAIL nope"], env)
     assert res.outcome == "fail" and not res.success
     assert env.end_flag == [True] and env.success == [False]
+
+
+def test_shim_step_size_and_free_noop_gripper():
+    env = FakeTaskEnv()
+    rig = shim.Rig(env, planner=fake_planner)
+    rig.observe()
+    target = env._flange("right").copy()
+    target[1] += 0.2
+    res = rig.execute([{"right": {"flange": target.tolist(), "grip": 1.0}}], arm_step_rad=0.1, grip_step=0.5)
+    assert res["env_steps"] == 2                 # 0.2 at 0.1 per step; the open gripper costs nothing
+    res = rig.execute([{"right": {"flange": None, "grip": 0.0}}], arm_step_rad=0.1, grip_step=0.5)
+    assert res["env_steps"] == 2                 # 1 -> 0 at 0.5 per step

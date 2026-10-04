@@ -1,0 +1,18 @@
+# robodojo.yaml with the fast-turn settings measured on compute3 (journal/2026-10-04-sonnet-latency.md):
+# Sonnet 5.5 reasoning_effort low (STATUS word 1.8 vs 3.4 s p50; the default thinks ~430 tokens per
+# turn here), 336 px frames (~-0.2 s, ~110 instead of ~200 image tokens; 224 px made Sonnet think
+# more), JPEG quality 75 (-41 % upload bytes, same image tokens). Arm motion per env step 0.12 rad
+# (robodojo.yaml: 0.05): the 2026-10-04 tracking probe landed within 3.0 mm (median 0.9) with 51 %
+# fewer env steps; grippers 0.5 of their range per step (2 steps to close instead of 4).
+extends: robodojo.yaml
+name: robodojo_fast
+llm:
+  extra_body:
+    reasoning_effort: low
+robot:
+  params:
+    arm_step_rad: 0.12
+    grip_step: 0.5
+observation:
+  size: 336
+  jpeg_quality: 75

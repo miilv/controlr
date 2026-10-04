@@ -19,7 +19,8 @@ Ops:
 * ``observe``     -> OBS (renders all cameras)
 * ``execute``     args ``steps``: list of ``{arm: {"flange": [x y z qw qx qy qz] | None,
                   "grip": 0..1 | None}}`` (world frame, RoboDojo's flange = link6 pose;
-                  grip 1 = open) -> EXEC
+                  grip 1 = open); optional ``arm_step_rad`` (max joint travel per env step),
+                  ``grip_step`` (gripper range per env step) -> EXEC
 * ``check_goal``  -> ``{"success", "ended", "score", "steps_used", "step_lim"}``
 * ``done``        args ``outcome`` -> ends the episode on the shim side (an episode that
                   RoboDojo has not ended is marked failed, as RoboDojo's own policies do)
