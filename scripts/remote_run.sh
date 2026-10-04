@@ -7,6 +7,9 @@
 # robot.params.physics -> client.server_args_for) unless one is already listening,
 # and stopped afterwards if we started it. A running server with other physics
 # settings is refused by the client. Deploy first: scripts/deploy.sh
+# CONTROLR_LLM_PROXY (local env, e.g. http://127.0.0.1:18809) becomes HTTPS_PROXY for the controlr
+# process only — the LLM calls; the Isaac server is unaffected. Use it with an ssh reverse tunnel when
+# compute3's own route to the router is slow (RUNBOOK §slow LLM from compute3).
 set -euo pipefail
 HOST="${CONTROLR_HOST:-compute3}"
 REMOTE_DIR="${CONTROLR_REMOTE_DIR:-controlr}"
@@ -71,7 +74,7 @@ if [ "\$backend" = isaac ] && ! ss -ltnH "sport = :$ISAAC_PORT" | grep -q .; the
   [ -f "\$CONTROLR_ISAAC_READY_FILE" ] || { echo "Isaac server not ready after 600 s"; kill -- -\$srv; exit 1; }
 fi
 rc=0
-.venv/bin/controlr $ARGS || rc=\$?
+${CONTROLR_LLM_PROXY:+HTTPS_PROXY=$CONTROLR_LLM_PROXY }.venv/bin/controlr $ARGS || rc=\$?
 # setsid -> own process group: stops python.sh and its Isaac child, nothing else
 if [ \$started = 1 ]; then kill -- -\$srv 2>/dev/null || true; fi
 exit \$rc

@@ -1,0 +1,18 @@
+# GPT-6 Luna as the control model on the rotation pick-to-box (docs/experiments/2026-10-04-luna-control.md).
+# Same task, scene, safety and feedback as sim_waffle_yaw; only the control model differs. Run with the
+# pinned rotation-round plans (planner.plan_file=runs/rot_plans/seed<k>.md) to compare with Sonnet 5.5.
+# Through omniroute (probed 2026-10-04, journal 2026-10-04-luna-latency):
+# - cx/gpt-6-luna is served via the Responses API; chat-completions is translated. cxa/ has no credentials.
+# - reasoning_effort: none -> 0 reasoning tokens (0/16 calls). low still thought on 5/16 calls (113-282
+#   hidden tokens, up to 10 s); no field = thinks a little more.
+# - service_tier: priority ("fast mode") is accepted, but the router reports no tier and the latency
+#   difference was within noise — kept as asked, effect unverified.
+# - the usage chunk trails the STATUS line by up to ~0.5 s on this route (0.3 s lost it on 6/30 turns).
+extends: sim_waffle_yaw.yaml
+name: sim_waffle_yaw_luna
+llm:
+  model: cx/gpt-6-luna
+  extra_body:
+    reasoning_effort: none
+    service_tier: priority
+  usage_grace_s: 0.6

@@ -25,15 +25,15 @@ Sample size: with 20 episodes per arm you can only distinguish a ≈40-point dif
 
 ## 2. Experiment axes (all config fields)
 
-**Models under test (until further notice, Ilia):** the only control model is
-`claude/claude-sonnet-5-5`; the planner stays `claude/claude-opus-5-5-xhigh`. Do not run Haiku
-(or other control models) without the owner's go-ahead — the bench and sweep configs list Sonnet 5.5
-only.
+**Models under test (until further notice, Ilia):** control models `claude/claude-sonnet-5-5`
+(default, the baseline) and `cx/gpt-6-luna` (`configs/sim_waffle_yaw_luna.yaml`); the planner stays
+`claude/claude-opus-5-5-xhigh`. Do not run Haiku (or other control models) without the owner's
+go-ahead.
 
 | Axis | Field | Values |
 |---|---|---|
-| control model | `llm.model` | `claude/claude-sonnet-5-5` (default; the only one under test for now), `claude/claude-opus-5-5`, `no-think/claude/...` (Sonnet 5.5 still thinks there) |
-| thinking effort | `llm.extra_body.reasoning_effort` | Sonnet 5.5: `low` / `medium` / `high`; unset ≈ `high`. Id suffixes `-low…-xhigh` are rejected for Sonnet 5.5 through the router; the Opus planner takes effort only via its id suffix |
+| control model | `llm.model` | `claude/claude-sonnet-5-5` (default), `cx/gpt-6-luna` (`cxa/` has no credentials), `claude/claude-opus-5-5`, `no-think/claude/...` (Sonnet 5.5 still thinks there) |
+| thinking effort | `llm.extra_body.reasoning_effort` | Sonnet 5.5: `low` / `medium` / `high`; unset ≈ `high`. Id suffixes `-low…-xhigh` are rejected for Sonnet 5.5 through the router; the Opus planner takes effort only via its id suffix. Luna: `none` (0 thinking) / `low` (thinks on ~1/3 of turns) / … `max`; `service_tier: priority` accepted, effect unverified |
 | planner | `planner.enabled`, `planner.model`, `planner.plan_file` | on/off, model, pinned plan |
 | robot manual | `prompt.system`, `prompt.extra_rules`, `prompt.fewshot` | `system_vN` versions, extra rules, demo in the cached prefix |
 | action format | `action.mode` | `ee_delta` (default), `ee_abs`, `joint_delta`, `joint_abs` |

@@ -17,6 +17,7 @@
   text updated. The arm is a **CB3**: the sim detector must emulate a coarse joint-current force
   estimate (threshold well above the noise floor, direction unreliable) — so the default message
   carries no direction; an FT-300S would allow `toward ±axis`.
+- [ ] **Luna's grasps blow up PhysX:** 4 of 7 Luna failures (both efforts) were `unstable` at `GRIP close` after small low descents next to the mat; Sonnet's final round had none ([experiment](experiments/2026-10-04-luna-control.md)). Replay those closes on a fresh server and find what differs (finger depth, packet offset, closing onto the mat).
 - [ ] **Release false stops:** never apply the robot-vs-packet stop while the gripper is opening
   (3 STOPs in a row while releasing, contacts-and-speed first pass), and don't count harness-caused
   stops toward `episode.max_stops`.
@@ -50,6 +51,8 @@
 
 ## P2 — harness and infrastructure
 
+- [ ] **Turn latency, harness side** ([journal](journal/2026-10-04-luna-latency.md)): execute the action as soon as the action line(s) are complete instead of waiting for STATUS + the usage chunk (−0.3–0.6 s/turn; STATUS still parsed and logged before the next turn); `LLMClient` keep-alive expiry 120 s (httpx default 5 s re-handshakes, +0.23 s); `observation.jpeg_quality: 75` (−41 % upload, same image tokens) as an A/B. On `cx/` the first token is ≥ ~0.9 s even for a tiny prompt — < 1 s/call needs another upstream.
+- [ ] **Router-side latency (needs the router admin):** `OMNIROUTE_TRACE=true` or `/api/telemetry/summary` to split OmniRoute vs Codex time; longer `FETCH_KEEPALIVE_TIMEOUT_MS` / fewer `OMNIROUTE_DIRECT_DISPATCHER_CONNECTIONS` (OmniRoute reconnects to chatgpt.com on most calls); try `codexTransport=websocket` for the `cx` connection; an OpenAI API-platform key as a non-Codex route for Luna.
 - [ ] **Cache probe through the router (~6 calls):** do `llm.cache` / `cache_ttl` matter at all on `claude/` / `cc/` (the router seems to set the boundary) — don't sweep these axes until then.
 - [ ] **Pin one upstream account** (a lease/session header in `llm.extra_headers`) — cache drops on turns 4, 5, 7 in one run.
 - [ ] **Haiku 4.5 doesn't cache the first turns** (manual < 4096 tokens) — a meaningful appendix (kinematics/examples), not filler.
@@ -59,7 +62,8 @@
 - [ ] **Isaac ≥ 1× real time:** settling is ~45 % of sim time (fixed thresholds, ≤ 2 s); self-collisions off gives 1.02× (not default: the force stop does not see self-contact either); 24 iterations failed 1 of 4 expert scenes, 16 failed 1/2, dt 2 ms lost the grasp. Next: settle criteria per move, contact-report only during motion.
 - [ ] **5 ms drive-target ticks blow up some grasps** (2 of 4 live closes near the mat; replay-confirmed, 1 ms is fine) although the scripted expert passes — find why before using `substeps > 1`.
 - [ ] **Force-stop overshoot is an impact spike, not sampling:** driving the fingers into the mat at 0.15 m/s peaks at 85–350 N against an 80 N limit at every sampling rate (1 ms included). Slow the last ~20 mm near contact, or a compliant wrist.
-- [ ] **Usage grace is not a real deadline** (deferred in review, L8): up to 0–0.2 s per turn.
+- [ ] **Usage grace is not a real deadline** (deferred in review, L8): up to 0–0.2 s per turn. On `cx/` (Luna) the usage chunk trails by up to ~0.5 s — the Luna config sets 0.6 s; a usage-less turn makes `summary.json`'s cache share wrong (count usage-less turns in the summary). Better: execute the parsed action at `t_complete` and collect usage concurrently — the wait was 0.1–0.7 s (~0.3 s mean, ~10 % of a Luna call) in the Luna round.
+- [ ] **Every turn re-uploads the whole transcript** (all images as base64: ~42 KB per image, ~730 KB by turn 16). Harmless on a fast link, 10–17 s per call on compute3's slow days ([journal](journal/2026-10-04-luna-latency.md)). Options: the router's `/responses` with server-side state (only the new turn uploaded — check cache and the append-only invariant), or run the loop where the uplink is fast. Also: ~1.4 s of each call is router + upstream overhead (Luna 1.15–1.4 s TTFT on a 31-token prompt).
 - [ ] **Arm self-collisions** aren't detected by the force stop (S5, partial).
 - [ ] **Mock: table_z 0.053 vs Isaac −0.0095** — unify in one spec (mock only, harmless).
 - [ ] **Archive of `runs/`** (722 MB locally, not in git): where to keep runs that reports reference (HF bucket/dataset or compute3).
@@ -77,5 +81,6 @@
 
 ## compute3 infrastructure
 
+- [ ] **No wired link; the router is reached through a VPN proxy (Wi-Fi → sing-box/xray)** whose upload was 42–138 KB/s on 2026-10-04 ([journal](journal/2026-10-04-luna-latency.md)). A cable on `eno1` or a faster route for the router host would remove the need for the ssh tunnel (owner's call).
 - [ ] The meta package `linux-modules-nvidia-595-open-generic-hwe-24.04` lags the kernel → the next kernel update will drop the GPU again ([incident](incidents/2026-10-02-compute3-nvidia-driver.md)). Upgrade it together with the kernel (agree with the machine's owner).
 - [ ] Delete the old `~/controlr-dev-isaac`, `~/controlr-dev-loopcli` (≈100 MB; their `.env` copies are already deleted).
