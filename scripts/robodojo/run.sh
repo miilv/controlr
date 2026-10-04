@@ -52,6 +52,9 @@ cleanup() {
   # setsid children get their own process group: find them by this run's unique ports
   pkill -f "port=$WS_PORT" 2>/dev/null || true
   pkill -f "src/eval_client/main.py.*--port $WS_PORT" 2>/dev/null || true
+  # Isaac Sim can ignore SIGTERM and keep ~5 GB of GPU memory: escalate
+  sleep 5
+  pkill -9 -f "src/eval_client/main.py.*--port $WS_PORT" 2>/dev/null || true
   # RoboDojo's results for this run
   if compgen -G "$RD/eval_result/RoboDojo/$TASK/controlr/*" >/dev/null; then
     newest="$(ls -td "$RD"/eval_result/RoboDojo/"$TASK"/controlr/*/*/* 2>/dev/null | head -1 || true)"
