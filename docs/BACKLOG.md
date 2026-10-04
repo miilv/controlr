@@ -85,6 +85,6 @@
 
 ## compute3 infrastructure
 
-- [ ] **No wired link; the router is reached through a VPN proxy (Wi-Fi → sing-box/xray)** whose upload was 42–138 KB/s on 2026-10-04 ([journal](journal/2026-10-04-luna-latency.md)); Ilia may move compute3 to ethernet + a better VPN. Accept it when `scripts/net_check.sh` shows 740 KB uploaded in < 0.75 s and TLS < 0.1 s. A split tunnel only for omniroute / chatgpt.com / api.anthropic.com would keep other traffic unchanged.
+- [x] ~~**Slow VPN on compute3**~~ — Happ/AmneziaVPN/OpenVPN removed, router direct (740 KB in 0.5–0.7 s), `controlr-vpn` proxy for chatgpt/anthropic (journal/2026-10-04-compute3-network.md). Remaining: ethernet on `eno1` (Ilia).
 - [ ] The meta package `linux-modules-nvidia-595-open-generic-hwe-24.04` lags the kernel → the next kernel update will drop the GPU again ([incident](incidents/2026-10-02-compute3-nvidia-driver.md)). Upgrade it together with the kernel (agree with the machine's owner).
 - [ ] Delete the old `~/controlr-dev-isaac`, `~/controlr-dev-loopcli` (≈100 MB; their `.env` copies are already deleted).
