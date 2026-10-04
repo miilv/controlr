@@ -69,7 +69,11 @@ per episode: a normal controlr run dir.
 
 ## Pitfalls
 
-- `general_pickup` has 200 env steps (8 s of arm motion): long moves eat the budget.
+- `general_pickup` has 200 env steps (8 s of arm motion): long moves eat the budget. What one
+  env step may move is `robot.params.arm_step_rad` (default 0.05 rad, RoboDojo's own LLM adapter)
+  and `grip_step` (0.25). Tracking probe (11 scripted moves): 0.05 → 90 steps, max landing error
+  0.5 mm; 0.08 → 59, 1.7 mm; 0.12 → 44, 3.0 mm; 0.2 → 28, 9.8 mm. A gripper command that changes
+  nothing costs no step.
 - RoboDojo's EE-pose action mode silently drops an arm command when IK fails — that is why the
   shim plans itself and sends joint targets.
 - Camera extrinsics come from RoboDojo's `get_camera_extrinsics` (camera-to-world, converted from

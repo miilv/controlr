@@ -56,14 +56,14 @@ def resample_path(path: np.ndarray, steps: int) -> np.ndarray:
     return np.stack([np.interp(dst, src, path[:, j]) for j in range(path.shape[1])], axis=1)
 
 
-def arm_steps(path: np.ndarray) -> int:
-    """Env steps that keep every joint under ``ARM_STEP_RAD`` per step (total variation:
+def arm_steps(path: np.ndarray, step_rad: float = ARM_STEP_RAD) -> int:
+    """Env steps that keep every joint under ``step_rad`` per step (total variation:
     a cuRobo path can double back)."""
     path = np.asarray(path, float)
     if len(path) < 2:
         return 1
     travel = np.abs(np.diff(path, axis=0)).sum(axis=0)
-    return max(1, int(np.ceil(float(travel.max()) / ARM_STEP_RAD - 1e-9)))
+    return max(1, int(np.ceil(float(travel.max()) / step_rad - 1e-9)))
 
 
 def default_planner(task_env: Any) -> Callable[[str, np.ndarray, np.ndarray], dict]:
@@ -192,7 +192,8 @@ class Rig:
             self._raw_obs()
         return bool(self.env.is_episode_end())
 
-    def execute(self, steps: list[dict]) -> dict:
+    def execute(self, steps: list[dict], arm_step_rad: float = ARM_STEP_RAD,
+                grip_step: float = GRIP_STEP) -> dict:
         t0, n0 = time.perf_counter(), self.steps_used()
         if not self.hold_q:
             self._raw_obs()
@@ -221,10 +222,10 @@ class Rig:
                     continue
                 paths[arm] = _np(pos).reshape(-1, 6)
                 rec["arms"][arm] = {"status": "Success"}
-            n_arm = max((arm_steps(p) for p in paths.values()), default=0)
+            n_arm = max((arm_steps(p, arm_step_rad) for p in paths.values()), default=0)
             grips = {arm: float(np.clip(cmd["grip"], 0.0, 1.0)) for arm, cmd in step.items()
                      if arm in ARMS and cmd.get("grip") is not None}
-            n_grip = max((int(np.ceil(abs(g - self.hold_g[arm]) / GRIP_STEP - 1e-9)) for arm, g in grips.items()),
+            n_grip = max((int(np.ceil(abs(g - self.hold_g[arm]) / grip_step - 1e-9)) for arm, g in grips.items()),
                          default=0)
             for arm, path in paths.items():
                 rec["arms"][arm]["waypoints"] = n_arm
@@ -237,10 +238,10 @@ class Rig:
                 if self._step_env():
                     ended = True
                     break
-            if not ended and grips:
+            if not ended and n_grip:                  # a gripper already where it was told costs nothing
                 for arm, g in grips.items():          # gripper after the arm has arrived
                     self.hold_g[arm] = g
-                for _ in range(max(n_grip, 1)):
+                for _ in range(n_grip):
                     done += 1
                     if self._step_env():
                         ended = True
@@ -283,7 +284,9 @@ def serve(conn, rig: Rig) -> str:
             if op == "observe":
                 conn.send(P.ok(rig.observe(), t0))
             elif op == "execute":
-                conn.send(P.ok(rig.execute(list(args.get("steps") or [])), t0))
+                conn.send(P.ok(rig.execute(list(args.get("steps") or []),
+                                           float(args.get("arm_step_rad") or ARM_STEP_RAD),
+                                           float(args.get("grip_step") or GRIP_STEP)), t0))
             elif op == "check_goal":
                 conn.send(P.ok(rig.check_goal(), t0))
             elif op == "done":

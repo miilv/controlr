@@ -87,6 +87,10 @@ class RoboDojoRobot(Robot):
         self.task_instruction = str(self.episode.get("instruction") or "")
         self.control_hz = float(self.episode.get("control_hz") or 25.0)
         self.show_steps = bool(params.get("show_steps", True))
+        # joint travel per env step (rad) and gripper range per step: what one env step may move.
+        # 0.05 / 0.25 = RoboDojo's own LLM adapter (tracked cleanly); larger = fewer steps per move
+        self.arm_step_rad = float(params.get("arm_step_rad", 0.05))
+        self.grip_step = float(params.get("grip_step", 0.25))
         self._state: RobotState | None = None
         self._ended = False
         self._success = False
@@ -170,7 +174,8 @@ class RoboDojoRobot(Robot):
     def execute(self, actions: list[Action]) -> ExecReport:
         before = self.state()
         t0 = time.perf_counter()
-        res = self._call("execute", steps=self._steps_payload(actions))
+        res = self._call("execute", steps=self._steps_payload(actions), arm_step_rad=self.arm_step_rad,
+                         grip_step=self.grip_step)
         self._track(res)
         after = self.observe().state
         events: list[SafetyEvent] = []
