@@ -39,8 +39,11 @@ No reboot needed if `modprobe` succeeds. A reboot kills other people's sessions/
 | empty reply, `finish_reason` = length | thinking used up `llm.max_tokens`; raise it or use a `no-think/` route |
 | model not in `/models` but needed | try a direct call — the router accepts some unlisted ids (that was the case for `claude-sonnet-5-5`) |
 | 429 / 5xx | the client retries with backoff; on subscription routes the real limit is the subscription quota |
+| LLM calls from compute3 take 5–20 s and grow with the turn number (headers late, 0 reasoning) | compute3's route to the router (Wi-Fi + VPN proxy) uploads slowly, and every turn re-sends all images. Check: `curl -w '%{time_total} %{speed_upload}\n' --data-binary @<~740 KB file>` to `$OMNIROUTE_BASE_URL/chat/completions` from compute3 (< 1 s is healthy; 5–17 s seen). Workaround: from the dev box `ssh -N -R 127.0.0.1:18809:127.0.0.1:<dev box HTTP proxy port> compute3` (keep it up for the whole round), then `CONTROLR_LLM_PROXY=http://127.0.0.1:18809 scripts/remote_run.sh …` |
+| `401 No active credentials for provider: codex-app-server` | `cxa/` routes have no account; use `cx/` |
 
-Model list: `uv run controlr models --filter claude`.
+Model list: `uv run controlr models --filter claude`. Where a call's time goes (router only vs
+upstream vs model, chat vs Responses, tiny vs a replayed real turn): `scripts/router_latency_stand.py`.
 
 ## 4. Cache not working (cost grows, `cache_read` ≈ 0)
 

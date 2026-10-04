@@ -69,6 +69,14 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   {type: disabled}` is a 400 — the API wants `{type: between_tools}`, which moves the reasoning
   into the visible reply as prose; `output_config.effort` is dropped by the router
   ([journal](journal/2026-10-03-thinking-controls.md)).
+- **GPT-6 Luna (`cx/gpt-6-luna`)**: chat-completions works although the catalog lists the route as
+  Responses-only; `reasoning_effort: none` = no thinking, `low` still thinks on ~1/3 of turns
+  (hidden, +4–8 s); `service_tier: priority` is accepted but unverifiable; the usage chunk can trail
+  the reply by ~0.5 s (raise `llm.usage_grace_s`) ([journal](journal/2026-10-04-luna-latency.md)).
+- **LLM latency measured on compute3 depends on its network.** compute3 is on Wi-Fi behind a VPN
+  proxy whose upload varied 40 KB/s – >1 MB/s; each turn re-uploads the transcript with every image
+  (~42 KB per image, ~730 KB by turn 16). Before comparing latency across runs, check the upload
+  (RUNBOOK §3); use `CONTROLR_LLM_PROXY` + a tunnel when it is slow.
 - **Opus 5.5 can't turn thinking off**; Sonnet 5.5 thinks and can exhaust `max_tokens` → an empty
   reply. `llm.max_tokens` counts thinking tokens too. For fast Sonnet 5.5 turns use
   `llm.extra_body.reasoning_effort: low` (≈2 s, 0 thinking), not the `no-think/` route.

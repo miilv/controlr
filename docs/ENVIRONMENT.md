@@ -12,6 +12,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `CONTROLR_ISAAC_READY_FILE` | compute3 | server readiness flag file (set by `remote_run.sh`) |
 | `ISAAC_SIM_ROOT` | compute3 | default `/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0` |
 | `PHANTOM_ROOT` | compute3 | default `/home/physicalai/phantom-icra-2027/phantom` |
+| `CONTROLR_LLM_PROXY` | local shell, `scripts/remote_run.sh` | optional; becomes `HTTPS_PROXY` for the remote `controlr` process only (LLM calls through an ssh reverse tunnel when compute3's own route is slow — RUNBOOK §3) |
 | `CONTROLR_LIVE=1` | tests | enable live tests (`@pytest.mark.live`) — costs money |
 | `CONTROLR_ISAAC=1` | tests on compute3 | enable Isaac tests (`@pytest.mark.isaac`) |
 | `CONTROLR_ISAAC_TEST_PORT` | tests | test server port (default 7821, not the main 7801) |
@@ -22,7 +23,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | Host (`~/.ssh/config`) | What it is | What we use it for | Rules |
 |---|---|---|---|
 | local | dev box, no GPU | code, unit tests, mock/replay, reports, videos | — |
-| `compute3` (`physicalai`) | Ubuntu 24.04, py3.12, RTX 5090 32 GB, Isaac Sim 6.0, PHANTOM | Isaac backend, all runs | shared machine; only `~/controlr*`; the GPU is ours |
+| `compute3` (`physicalai`) | Ubuntu 24.04, py3.12, RTX 5090 32 GB, Isaac Sim 6.0, PHANTOM | Isaac backend, all runs | shared machine; only `~/controlr*`; the GPU is ours; no wired link — Wi-Fi + VPN proxy to the router (slow upload some days) |
 | `compute2` (`isr-lab-4`, root) | Ubuntu 22.04, RTX 4090, Isaac Sim 5.1 in docker | spare host; candidate for RoboDojo (Isaac 5.1) | shared lab machine; only `/root/controlr*` |
 | `nuc` | NUC at the real rig (PHANTOM deployment) | future real-UR3 backend | don't touch without a task |
 
