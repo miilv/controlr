@@ -6,7 +6,7 @@ env-step cost of each move (probe: max landing error 3 mm), so fewer episodes ru
 RoboDojo's 200-step budget — the failure mode of the [pilot](2026-10-04-robodojo-pilot.md).
 
 **Setup:** `general_pickup`, eval seed 0, layouts 0–9, 1 repeat, no planner, control model
-`claude/claude-sonnet-5-5`; controlr `58d4ba7` (PR #9), RoboDojo `266130a`, compute2. Arms:
+`claude/claude-sonnet-5-5`; controlr `3760c8a` (PR #9), RoboDojo `266130a`, compute2. Arms:
 
 | Arm | Config | Effort | Frames | Motion per env step (arm / gripper) |
 |---|---|---|---|---|
