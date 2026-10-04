@@ -52,6 +52,7 @@
 ## P2 — harness and infrastructure
 
 - [x] ~~**Turn latency, harness side:** execute on the STATUS word with the note + usage read in the background; keep-alive 120 s~~ — `llm.overlap_tail` (default on), `KEEPALIVE_S` (journal/2026-10-04-turn-latency.md)
+- [ ] **`observation.size: 336` A/B for Sonnet** (≈ −0.2 s/turn; 224 px makes Sonnet think — journal/2026-10-04-sonnet-latency.md).
 - [ ] **`observation.jpeg_quality: 75` A/B** (−41 % upload bytes, same image tokens) — success and latency vs 90 on the same seeds.
 - [ ] **Execute each action line as soon as it is complete** (before the STATUS word): another ~0.1–0.2 s/turn; changes behaviour on replies that later fail to parse — needs a rule for that first.
 - [ ] **Direct Codex WebSocket transport for the loop** (`llm.transport: router | codex_ws`): measured −0.3–0.6 s/turn vs the router and 57 KB instead of up to 0.7 MB per turn (journal/2026-10-04-turn-latency.md). Needs: manual in `instructions`; `previous_response_id` incremental input; on any error drop the socket and resend in full; **retry on `invalid_prompt` moderation false positives (≈ 3–4 % of direct calls)**; reconnect at the 60-min limit; token refresh with a single holder (where the loop runs: compute3 — then the dev-box copy must go); from compute3 through its VPN (direct is blocked).
@@ -84,6 +85,6 @@
 
 ## compute3 infrastructure
 
-- [ ] **No wired link; the router is reached through a VPN proxy (Wi-Fi → sing-box/xray)** whose upload was 42–138 KB/s on 2026-10-04 ([journal](journal/2026-10-04-luna-latency.md)). A cable on `eno1` or a faster route for the router host would remove the need for the ssh tunnel (owner's call).
+- [ ] **No wired link; the router is reached through a VPN proxy (Wi-Fi → sing-box/xray)** whose upload was 42–138 KB/s on 2026-10-04 ([journal](journal/2026-10-04-luna-latency.md)); Ilia may move compute3 to ethernet + a better VPN. Accept it when `scripts/net_check.sh` shows 740 KB uploaded in < 0.75 s and TLS < 0.1 s. A split tunnel only for omniroute / chatgpt.com / api.anthropic.com would keep other traffic unchanged.
 - [ ] The meta package `linux-modules-nvidia-595-open-generic-hwe-24.04` lags the kernel → the next kernel update will drop the GPU again ([incident](incidents/2026-10-02-compute3-nvidia-driver.md)). Upgrade it together with the kernel (agree with the machine's owner).
 - [ ] Delete the old `~/controlr-dev-isaac`, `~/controlr-dev-loopcli` (≈100 MB; their `.env` copies are already deleted).

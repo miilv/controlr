@@ -81,6 +81,9 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   proxy whose upload varied 40 KB/s – >1 MB/s; each turn re-uploads the transcript with every image
   (~42 KB per image, ~730 KB by turn 16). Before comparing latency across runs, check the upload
   (RUNBOOK §3); use `CONTROLR_LLM_PROXY` + a tunnel when it is slow.
+- **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
+  the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
+  Very small frames (224 px) also make `low` think ([journal](journal/2026-10-04-sonnet-latency.md)).
 - **Opus 5.5 can't turn thinking off**; Sonnet 5.5 thinks and can exhaust `max_tokens` → an empty
   reply. `llm.max_tokens` counts thinking tokens too. For fast Sonnet 5.5 turns use
   `llm.extra_body.reasoning_effort: low` (≈2 s, 0 thinking), not the `no-think/` route.

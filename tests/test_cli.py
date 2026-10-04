@@ -282,3 +282,15 @@ def test_yaml_off_means_off_for_box_collision():
         load_config(None, ["safety.box_collision=maybe"], dotenv=None)
     with pytest.raises(ValueError, match="feedback.level"):
         load_config(None, ["feedback.level=minimal"], dotenv=None)
+
+
+def test_effort_none_on_claude_routes_is_rejected():
+    import pytest
+
+    from controlr.config import load_config
+
+    with pytest.raises(ValueError, match="use 'low'"):
+        load_config(None, ["llm.model=claude/claude-sonnet-5-5", "llm.extra_body={reasoning_effort: none}"], dotenv=None)
+    cfg = load_config(None, ["llm.model=cx/gpt-6-luna", "llm.extra_body={reasoning_effort: none}"], dotenv=None)
+    assert cfg.llm.extra_body["reasoning_effort"] == "none"
+    load_config(None, ["llm.model=claude/claude-sonnet-5-5", "llm.extra_body={reasoning_effort: low}"], dotenv=None)
