@@ -373,6 +373,15 @@ def validate(cfg: Config) -> Config:
                      ("observation.cameras non-empty", bool(cfg.observation.cameras))):
         if not ok:
             errs.append(name)
+    # Through omniroute a Claude route does not know effort "none"/"minimal": it falls back to the
+    # default (adaptive thinking) — Sonnet 5.5 thought on 17 of 22 turns (journal/2026-10-04-sonnet-latency.md).
+    # Use "low" for no thinking on Claude; "none" is right for cx/gpt-6-luna.
+    for sec in ("llm", "planner"):
+        eff = (getattr(cfg, sec).extra_body or {}).get("reasoning_effort")
+        model = getattr(cfg, sec).model.lower()
+        if eff in ("none", "minimal") and ("claude" in model or model.startswith("cc/")):
+            errs.append(f"{sec}.extra_body.reasoning_effort={eff!r} on {getattr(cfg, sec).model} means "
+                        f"'default thinking' through the router; use 'low' for no thinking")
     if errs:
         raise ValueError("invalid config: " + "; ".join(errs))
     return cfg
