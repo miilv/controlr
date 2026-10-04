@@ -14,6 +14,7 @@ llm:
   cache: auto                          # anthropic markers on claude/cc/no-think routes
   cache_ttl: 5m
   early_stop: true                     # close the stream once STATUS is emitted
+  overlap_tail: true                   # execute on the STATUS word; finish the note + usage in the background (since 2026-10-04)
   timeout_s: 180
   max_retries: 3
   usage_grace_s: 0.3                   # after early stop, wait <=0.3 s for the usage chunk + end of the STATUS line

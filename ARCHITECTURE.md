@@ -24,6 +24,12 @@ loop:      assistant reply (streamed; early-stop once grammar complete)
            -> parse (MOVE*/STATUS) -> SafetyEnvelope.set_obstacles(robot.obstacles()) (current
            pose) -> SafetyEnvelope.filter -> robot.execute (blocks until settled)
            -> goal check -> end? -> observe -> user: feedback + observation
+           (llm.overlap_tail, default on: the call runs on a worker thread; the loop parses and
+           executes the reply as it stands at the STATUS word while the client reads the rest of
+           the STATUS note and the usage chunk; the transcript gets the call's final reply, so it
+           is identical to the non-overlapped path. Turn record: timings.exec_overlapped,
+           timings.llm_tail = call time left after execution; overlap_mismatch if the final
+           reply's actions ever differed from the executed ones)
 end:       DONE (goal verified unless trust_done) | FAIL | max_turns | episode.max_stops STOP events
            (default 3; a STOP of kind "unstable" ends at once) | parse-error streak
            | goal reached (only with episode.end_on_goal); then one final observe (logged)
@@ -55,6 +61,7 @@ The robot never moves while the model thinks. Latency is a measured quantity
 | `controlr/config.py` | experiment config (YAML + `--set` overrides); every experiment axis is a field |
 | `controlr/llm/client.py` | streaming OpenAI-compatible chat client with timings + normalised usage + early stop |
 | `controlr/llm/caching.py` | cache-marker placement per model route (applied at serialisation, never stored) |
+| `controlr/llm/codex_auth.py` | controlr's OWN ChatGPT login for the Codex backend (device code, rotating refresh; token file outside the repo, one holder) — used by `scripts/codex_direct_stand.py`, not by the loop yet |
 | `controlr/llm/transcript.py` | append-only transcript; images encoded once and stored as bytes |
 | `controlr/protocol/grammar.py` | reply grammar: render the spec for the prompt, parse replies, completeness check |
 | `controlr/protocol/feedback.py` | feedback text for the next user turn (`short`: TASK / STATE / WARN / STOP; `full`: exec receipt, clamps, limits, events, goal, state) |
@@ -113,6 +120,7 @@ class LLMClient:
   ends first, `truncated=True` and the loop stores the reply with the partial note stripped
   (`grammar.strip_partial_note`). `completion_tokens` then includes discarded tokens.
 * Retries: connection errors, 429, 5xx with exponential backoff; 4xx other -> no retry.
+* Idle connections are kept 120 s (`KEEPALIVE_S`; httpx's 5 s default re-handshakes between slow turns).
 
 ### Caching (`controlr/llm/caching.py`)
 ```python

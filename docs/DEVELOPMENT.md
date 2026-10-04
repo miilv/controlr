@@ -73,6 +73,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   Responses-only; `reasoning_effort: none` = no thinking, `low` still thinks on ~1/3 of turns
   (hidden, +4–8 s); `service_tier: priority` is accepted but unverifiable; the usage chunk can trail
   the reply by ~0.5 s (raise `llm.usage_grace_s`) ([journal](journal/2026-10-04-luna-latency.md)).
+- **Direct Codex calls (chatgpt.com) from compute3 need the VPN or the tunnel**: Skoltech Wi-Fi
+  blocks chatgpt.com. controlr's own Codex login (`scripts/codex_login.py`) has a rotating refresh
+  token — keep the token file on ONE machine; a second copy that refreshes kills the first, and the
+  router's login must never be reused (it would break the router for every client).
 - **LLM latency measured on compute3 depends on its network.** compute3 is on Wi-Fi behind a VPN
   proxy whose upload varied 40 KB/s – >1 MB/s; each turn re-uploads the transcript with every image
   (~42 KB per image, ~730 KB by turn 16). Before comparing latency across runs, check the upload

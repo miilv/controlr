@@ -434,3 +434,15 @@ def test_http_client_reused_across_calls():
         c.complete("m", [], max_tokens=5)
         assert c._http is h1 and not h1.is_closed
     assert h1.is_closed
+
+
+def test_idle_connections_are_kept_longer_than_a_slow_turn():
+    from controlr.llm.client import KEEPALIVE_S, LLMClient
+
+    c = LLMClient("http://localhost:1", "k", timeout_s=5, max_retries=0)
+    try:
+        pool = getattr(getattr(c._http, "_transport", None), "_pool", None)
+        if pool is not None and hasattr(pool, "_keepalive_expiry"):     # httpx internals; skip if they move
+            assert pool._keepalive_expiry == KEEPALIVE_S >= 60
+    finally:
+        c.close()

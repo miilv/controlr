@@ -13,6 +13,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `ISAAC_SIM_ROOT` | compute3 | default `/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0` |
 | `PHANTOM_ROOT` | compute3 | default `/home/physicalai/phantom-icra-2027/phantom` |
 | `CONTROLR_LLM_PROXY` | local shell, `scripts/remote_run.sh` | optional; becomes `HTTPS_PROXY` for the remote `controlr` process only (LLM calls through an ssh reverse tunnel when compute3's own route is slow — RUNBOOK §3) |
+| `CONTROLR_CODEX_AUTH` | where direct Codex calls run | optional path of controlr's own ChatGPT/Codex token file (default `~/.controlr/codex_auth.json`, 0600, created by `scripts/codex_login.py`); a secret, ONE holder only (refresh tokens rotate), never in git/runs/logs |
 | `CONTROLR_LIVE=1` | tests | enable live tests (`@pytest.mark.live`) — costs money |
 | `CONTROLR_ISAAC=1` | tests on compute3 | enable Isaac tests (`@pytest.mark.isaac`) |
 | `CONTROLR_ISAAC_TEST_PORT` | tests | test server port (default 7821, not the main 7801) |
