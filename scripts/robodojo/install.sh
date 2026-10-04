@@ -81,6 +81,9 @@ step_assets() {
   done
   rm -rf .git/lfs/objects
   ln -sfn "$RD_HOME/hf_git/Assets" "$SRC/Assets"
+  # cuRobo robot configs (Assets/Robots/**/curobo.yml) are generated from *_tmp.yml with
+  # absolute paths baked in; without them RoboDojo dies at robot setup.
+  activate; cd "$SRC" && python utils/update_embodiment_config_path.py < /dev/null
 }
 
 step_check() {
