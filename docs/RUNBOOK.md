@@ -48,21 +48,23 @@ upstream vs model, chat vs Responses, tiny vs a replayed real turn): `scripts/ro
 
 ## 3a. compute3 network (controlr-vpn)
 
-compute3 has no system VPN: it goes out directly via the Skoltech Wi-Fi (Moscow). The router
-(omniroute, Frankfurt) is reachable directly and fastest that way; chatgpt.com and api.anthropic.com
-answer 403 (geo-block) without a VPN. For those, `controlr-vpn` runs a sing-box HTTP proxy on
-`127.0.0.1:18810` (SOCKS `18811`) — no tun, only processes with `HTTPS_PROXY` use it.
+compute3's VPN is `controlr-vpn`: sing-box, machine-wide like the dev box's (`tun0` + auto_route;
+`.ru`/`.su`/`.рф`/Yandex/geoip-ru, private IPs, torrents, **the router** (direct is faster) and the
+subscription host go direct; everything else through urltest over the Nofox WiFi nodes). Nothing needs
+`HTTPS_PROXY`; HTTP/SOCKS proxies exist anyway on `127.0.0.1:10809/10808` and `18810/18811`. tailscale
+(our ssh) keeps its own policy rules, which come before sing-box's.
 
 | Task | Command |
 |---|---|
-| health / speed | `bash scripts/net_check.sh` (direct) and `HTTPS_PROXY=http://127.0.0.1:18810 bash scripts/net_check.sh` |
+| health / speed | `bash scripts/net_check.sh` — 740 KB to the router < 0.75 s, chatgpt.com / api.anthropic.com 401 (403 = the VPN is down) |
 | status / logs | `systemctl status controlr-vpn`, `journalctl -u controlr-vpn` |
 | refresh nodes now | `sudo systemctl start controlr-vpn-refresh` (timer: every 6 h; restarts the proxy only if nodes changed) |
-| turn compute3's VPN off for good | on the dev box: delete the `compute3` `[[profiles]]` block in `~/vpn-retranslator/config.toml`, `sudo systemctl restart vpn-retranslator` (the next refresh fails and keeps the last config — also `sudo systemctl disable --now controlr-vpn controlr-vpn-refresh.timer` on compute3) |
+| turn compute3's VPN off | on compute3: `sudo systemctl disable --now controlr-vpn controlr-vpn-refresh.timer` (tun0 and its rules go away, the machine goes direct). Revoke the link: delete the `compute3` `[[profiles]]` block in the dev box's `~/vpn-retranslator/config.toml` + `sudo systemctl restart vpn-retranslator` (refreshes then fail and keep the last config) |
 | reinstall | `scripts/compute3_vpn/install.sh <token file>` from the dev box |
 | the old VPN (Happ, AmneziaVPN, OpenVPN — removed 2026-10-04) | backup + `rollback.sh` in `compute3:~/controlr-netbackup-20261004/` |
 
-Files on compute3: `~/controlr-vpn/{bin/sing-box, config.json (0600), sub_token (0600), refresh.py}`,
+Files on compute3: `~/controlr-vpn/{bin/sing-box, config.json (0600), sub_token (0600), refresh.py, geoip-ru.srs}`
+(the earlier proxy-only variant: `config.proxy-only.json`, `refresh.proxy-only.py`, `controlr-vpn.service.proxy-only`),
 units `/etc/systemd/system/controlr-vpn{,-refresh}.service`, `controlr-vpn-refresh.timer`.
 
 ## 4. Cache not working (cost grows, `cache_read` ≈ 0)
