@@ -1,0 +1,24 @@
+# RoboDojo (Isaac Sim 5.1, dual ARX X5) driven through RoboDojo's own eval client:
+# RoboDojo picks the task layout, counts env steps, judges success and writes the official
+# result; controlr is the controller (docs/ROBODOJO.md). Task and seed come from RoboDojo
+# (seed = layout id), so task.name here is only a label. Run with scripts/robodojo/run.sh.
+# The model gets RoboDojo's instruction as the TASK and nothing task-specific besides.
+extends: base.yaml
+name: robodojo
+planner:
+  enabled: false                 # the TASK is RoboDojo's instruction only
+robot:
+  backend: robodojo
+  params:
+    gripper_max_mm: 80           # nominal width for open (RoboDojo commands 0..1)
+    show_steps: true             # STEPS line: env steps left before RoboDojo's step limit
+task:
+  name: robodojo
+observation:
+  cameras: [cam_head, cam_left_wrist, cam_right_wrist]
+action:
+  rotation: full                 # MOVE <arm> ee_delta dx dy dz droll dpitch dyaw
+prompt:
+  system: system_v1
+episode:
+  max_turns: 60

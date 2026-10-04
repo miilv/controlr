@@ -625,3 +625,98 @@ class SafetyEnvelope:
                 out.append(SafetyEvent(EventLevel.WARN, "joint_limit_near",
                                        f"{name} at {_deg(q[j])}, soft limit {_deg(hi)}", f"{name} near its joint limit"))
         return out
+
+
+# ---------------------------------------------------------------------------
+# backend kinematics (RobotSpec.kinematics == "backend"), one or several arms
+# ---------------------------------------------------------------------------
+
+class PoseKinematics:
+    """Stand-in kinematics for robots whose backend plans the joints itself (RoboDojo:
+    cuRobo). The "joint vector" is the TCP pose (x, y, z, rx, ry, rz: m + rotvec), so
+    ``fk_matrix`` is exact and the envelope's Cartesian logic (target resolution, step
+    limits, workspace, table clearance) runs unchanged; reachability is the backend's call."""
+
+    def fk_matrix(self, q) -> np.ndarray:
+        q = np.asarray(q, float)
+        T = np.eye(4)
+        T[:3, :3] = rotvec_to_matrix(q[3:6])
+        T[:3, 3] = q[:3]
+        return T
+
+
+def _pose_q(pos, rotvec) -> np.ndarray:
+    return np.concatenate([np.asarray(pos, float).reshape(3), np.asarray(rotvec, float).reshape(3)])
+
+
+class CartesianEnvelope(SafetyEnvelope):
+    """``SafetyEnvelope`` for ``RobotSpec.kinematics == "backend"``: the same per-line step
+    limits, workspace box, table clearance (lowest fingertip) and rotation conventions, but no
+    IK — an approved ee action carries its absolute target in ``Action.tcp_target`` and the
+    backend plans the joints (an unreachable target comes back as a backend event). Joint
+    modes are rejected. Multi-arm robots (``RobotSpec.arms``): every action names its arm; each
+    arm chains from its own state and keeps its own reference orientation."""
+
+    def __init__(self, spec: RobotSpec, cfg: SafetyConfig, rotation: str | None = None) -> None:
+        super().__init__(spec, cfg, kin=PoseKinematics(), rotation=rotation)  # type: ignore[arg-type]
+        self.R_refs: dict[str | None, np.ndarray] = {}
+
+    @staticmethod
+    def _arm_states(spec: RobotSpec, state: RobotState) -> dict[str | None, RobotState]:
+        if spec.arms:
+            return dict(state.arms or {})
+        return {None: state}
+
+    def reset(self, state0: RobotState) -> None:
+        self.R_refs = {arm: rotvec_to_matrix(np.asarray(s.tcp_rotvec, float))
+                       for arm, s in self._arm_states(self.spec, state0).items()}
+        self.R_ref = next(iter(self.R_refs.values()), None)
+        self.elbow_sign = 0.0
+
+    def filter(self, actions: list[Action], state: RobotState) -> tuple[list[Action], list[SafetyEvent]]:
+        events: list[SafetyEvent] = []
+        out: list[Action] = []
+        arms = self._arm_states(self.spec, state)
+        pose = {arm: _pose_q(s.tcp_pos, s.tcp_rotvec) for arm, s in arms.items()}
+        width = {arm: float(s.gripper_mm) / 1000.0 for arm, s in arms.items()}
+        for a in actions:
+            arm = a.arm if self.spec.arms else None
+            if arm not in pose:
+                self._ev(events, "invalid", f"{a.raw or 'action'}: no arm {a.arm!r} on this robot "
+                                            f"(arms: {' '.join(self.spec.arms)}) -> skipped",
+                         brief="move skipped: unknown arm")
+                continue
+            if a.mode is not None and a.mode not in _EE:
+                self._ev(events, "invalid", f"{a.mode.value} is not available on this robot -> skipped",
+                         brief="move skipped: joint modes are not available")
+                continue
+            self.R_ref = self.R_refs.get(arm)
+            res = self._one(a, pose[arm], width[arm], events)
+            if res is None:
+                continue
+            act, q = res
+            target = tuple(float(x) for x in q) if act.mode is not None else None
+            out.append(replace(act, q_target=None, q_path=None, tcp_target=target))
+            pose[arm] = q
+            if act.gripper is not None:
+                width[arm] = act.gripper
+        return out, events
+
+    def _line_path(self, q, p0, R0, p, R):
+        # no IK here: the straight line is the backend's to follow (or to refuse)
+        return [_pose_q(p, matrix_to_rotvec(R))], 1.0, ""
+
+    def _near_limit_events(self, q) -> list[SafetyEvent]:
+        return []
+
+
+def make_envelope(spec: RobotSpec, cfg: SafetyConfig, rotation: str | None = None) -> SafetyEnvelope:
+    """The envelope for this robot: UR3 kinematics in the harness (default) or Cartesian-only
+    when the backend plans the joints (``RobotSpec.kinematics``)."""
+    if spec.kinematics == "backend":
+        return CartesianEnvelope(spec, cfg, rotation=rotation)
+    if spec.kinematics != "ur3":
+        raise ValueError(f"unknown RobotSpec.kinematics {spec.kinematics!r} (ur3 | backend)")
+    if spec.arms:
+        raise ValueError("multi-arm robots need RobotSpec.kinematics='backend'")
+    return SafetyEnvelope(spec, cfg, rotation=rotation)

@@ -32,7 +32,9 @@ loop:      assistant reply (streamed; early-stop once grammar complete)
            reply's actions ever differed from the executed ones)
 end:       DONE (goal verified unless trust_done) | FAIL | max_turns | episode.max_stops STOP events
            (default 3; a STOP of kind "unstable" ends at once) | parse-error streak
-           | goal reached (only with episode.end_on_goal); then one final observe (logged)
+           | goal reached (only with episode.end_on_goal) | the backend ended the episode
+           (`Robot.episode_over()`, outcome env_end: RoboDojo's step limit / success latch);
+           then one final observe (logged)
 ```
 
 The system prompt is built after `reset`: `build_system_prompt(cfg, spec, cameras=obs.cameras,
@@ -68,13 +70,14 @@ The robot never moves while the model thinks. Latency is a measured quantity
 | `controlr/prompts/*.md`, `controlr/prompts/builder.py` | system prompt (robot operating manual) + planner prompt templates |
 | `controlr/observation/renderers.py` | observation -> list of image parts + text (resize, overlays, diff, heatmap, tile) |
 | `controlr/robot/base.py` | Robot ABC (contract) |
-| `controlr/robot/spec.py` | the one `RobotSpec` constructor of the UR3 CB3 rig (shared by mock + Isaac) |
+| `controlr/robot/spec.py` | the `RobotSpec` constructors: the UR3 CB3 rig (shared by mock + Isaac) and RoboDojo's dual ARX X5 |
 | `controlr/robot/kinematics.py` | UR3 CB3 FK/IK (DH, controller base frame), backend-independent; the ONE rotation-helper implementation |
-| `controlr/robot/safety.py` | SafetyEnvelope: filter/clamp actions, near-limit warnings, predictive wrist/housing-vs-box check |
+| `controlr/robot/safety.py` | SafetyEnvelope: filter/clamp actions, near-limit warnings, predictive wrist/housing-vs-box check; `CartesianEnvelope` for backends that plan the joints (`make_envelope`) |
 | `controlr/robot/obstacles.py` | known obstacles (`BoxObstacle`: an open-top box, walls + floor) and the robot body centre line checked against them; numpy only |
 | `controlr/robot/mock.py` | kinematic mock robot (no physics; synthetic rendering) for tests |
 | `controlr/robot/replay.py` | replays recorded frames regardless of actions (latency/caching benchmarks) |
 | `controlr/robot/isaac/` | Isaac Sim 6.0 backend: PHANTOM's calibrated UR3 CB3 + Robotiq + D435 scene (server inside Isaac's python, numpy-only RPC client in controlr; `motion.py` = trajectory timing shared by both) |
+| `controlr/robot/robodojo/` | RoboDojo backend ([docs/ROBODOJO.md](docs/ROBODOJO.md)): `serve.py` (`controlr robodojo-serve`), `client.py` (`RoboDojoRobot`), `protocol.py`, `shim/` (runs inside RoboDojo's eval client as XPolicyLab policy `controlr`) |
 | `controlr/loop.py` | episode runner (planner + turn loop), end conditions |
 | `controlr/runlog.py` | run directory writer |
 | `controlr/bench/` | cache probe, latency matrix, sweep runner |
@@ -261,7 +264,28 @@ Contract additions in `types.py` (backwards compatible, defaults None / ""): `Sa
 diagnostics for the run log only), `RobotSpec.finger_pad`
 (pad half length / half width / thickness, m), `Action.q_path` (envelope waypoints); `Action.values`
 of ee_abs + rotation=yaw has 4 entries (x, y, z, yaw).
-Factory: `controlr.robot.make_robot(cfg: Config) -> Robot`.
+Factory: `controlr.robot.make_robot(cfg: Config) -> Robot` (not for `robodojo`: its episodes are
+started by RoboDojo, see below). Optional `episode_over() -> str | None`: the backend ended the
+episode itself (the loop ends with outcome `env_end`).
+
+Multi-arm robots and backend kinematics (contract additions, defaults keep single-arm code
+unchanged): `RobotSpec.arms` (e.g. `("L", "R")`; all arms share the spec — frame, workspace,
+gripper), `RobotState.arms` (one state per arm; the top-level fields mirror the first arm),
+`Action.arm` / `Action.step` (the parts of one reply line, one per arm, move together),
+`RobotSpec.kinematics` (`ur3` = UR3 kinematics in the harness; `backend` = the backend plans the
+joints: `make_envelope` returns a `CartesianEnvelope` — same step limits, workspace, table
+clearance and rotation conventions, no IK — and approved ee actions carry `Action.tcp_target`),
+`Observation.notes` (backend feedback lines after STATE, e.g. RoboDojo's `STEPS:`). With arms the
+grammar is `MOVE L <mode> v.. [GRIP g] R <mode> v.. [GRIP g]` / `GRIP L g R g`, STATE is one line
+per arm, and the manual is `system_v1` (`build_system_prompt` uses `_values_arms`).
+* RoboDojo backend (`robot/robodojo/`, [docs/ROBODOJO.md](docs/ROBODOJO.md)): RoboDojo's eval
+  client owns the episode and calls the shim (`XPolicyLab/policy/controlr/deploy.py`) per episode;
+  the shim connects to `controlr robodojo-serve` (localhost, HMAC), announces the episode and
+  serves observe / execute / check_goal / done. `RoboDojoRobot` converts flange (link6) poses to
+  the grasp-point TCP (150.1 mm along flange +x, tool z on that axis), 0..1 grippers to widths and
+  `L`/`R` to `left`/`right`; the shim plans each arm target with RoboDojo's cuRobo, resamples to
+  ≤ 0.05 rad per joint per env step, moves grippers after the arm, sends both arms every step and
+  marks an episode controlr ended early as failed.
 * `kinematics.py`: `fk(q) -> (pos, rotvec)` of the TCP in the UR controller base frame
   (DH from PHANTOM `phantom/sim/kinematics.py`: a=[0,-0.24365,-0.21325,0,0,0],
   d=[0.1519,0,0,0.11235,0.08535,0.0819], alpha=[pi/2,0,0,pi/2,-pi/2,0]; TCP offset +z 0.18 m

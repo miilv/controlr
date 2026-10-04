@@ -47,6 +47,8 @@ from controlr.types import (
 #   max_turns        turn budget exhausted
 #   safety_stop      episode.max_stops STOP events, or one STOP of kind "unstable"
 #   parse_errors     episode.max_parse_errors consecutive unparsable replies
+#   env_end          the backend ended the episode itself (``Robot.episode_over()``: e.g.
+#                    RoboDojo's step limit or its success latch); ``success`` says how
 #   llm_error        the client gave up (retries exhausted / non-retryable 4xx)
 #   interrupted      Ctrl-C
 #   error            unexpected exception in the harness or backend (traceback in summary)
@@ -155,6 +157,12 @@ def _action_rec(a: Action) -> dict:
         rec["q_target"] = list(a.q_target)
     if a.q_path:
         rec["q_path"] = [list(q) for q in a.q_path]
+    if a.arm is not None:
+        rec["arm"] = a.arm
+    if a.step is not None:
+        rec["step"] = a.step
+    if a.tcp_target is not None:
+        rec["tcp_target"] = list(a.tcp_target)
     return rec
 
 
@@ -170,6 +178,12 @@ def robot_obstacles(robot) -> list:
     none for backends without a scene model)."""
     fn = getattr(robot, "obstacles", None)
     return list(fn() or []) if callable(fn) else []
+
+
+def episode_over(robot) -> str | None:
+    """Why the backend ended the episode itself (optional ``Robot.episode_over()``), else None."""
+    fn = getattr(robot, "episode_over", None)
+    return fn() if callable(fn) else None
 
 
 def _state_rec(s: Any) -> dict | None:
@@ -354,7 +368,7 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
     from controlr.prompts.builder import build_system_prompt, cache_warning
     from controlr.protocol.feedback import format_feedback
     from controlr.protocol.grammar import is_complete, parse_reply, strip_partial_note
-    from controlr.robot.safety import SafetyEnvelope
+    from controlr.robot.safety import make_envelope
 
     validate(cfg)
     fake = bool(getattr(llm, "is_fake", False))
@@ -375,7 +389,7 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
             robot = make_robot(cfg)
         spec = robot.spec
         renderer = ObservationRenderer(cfg.observation, cfg.action, spec)
-        safety = SafetyEnvelope(spec, cfg.safety, rotation=cfg.action.rotation)
+        safety = make_envelope(spec, cfg.safety, rotation=cfg.action.rotation)
         style = cache_style_for(cfg.llm.model, cfg.llm.cache)
 
         t0 = time.perf_counter()
@@ -559,6 +573,9 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
                 outcome = "done_unverified"
             elif goal.success and cfg.episode.end_on_goal:
                 outcome = "goal_reached"
+            elif episode_over(robot):
+                outcome = "env_end"
+                rec["env_end"] = episode_over(robot)
             elif parsed.status == Status.FAIL and cfg.episode.end_on_fail:
                 outcome = "fail"
             elif parse_streak >= cfg.episode.max_parse_errors:

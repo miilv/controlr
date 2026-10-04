@@ -80,7 +80,7 @@ class PlannerConfig:
 
 @dataclass
 class RobotConfig:
-    backend: str = "isaac"          # isaac | mock | replay | ur (later)
+    backend: str = "isaac"          # isaac | mock | replay | robodojo | ur (later)
     params: dict = field(default_factory=dict)   # backend-specific (scene, physics, cameras, replay dir...)
 
 
@@ -341,7 +341,7 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("episode", "goal_feedback"): ("never", "on_done", "always"),
     ("llm", "cache"): ("auto", "anthropic", "none"),
     ("llm", "cache_ttl"): ("5m", "1h"),
-    ("robot", "backend"): ("isaac", "mock", "replay"),
+    ("robot", "backend"): ("isaac", "mock", "replay", "robodojo"),
     ("feedback", "level"): ("short", "full"),
     ("safety", "box_collision"): ("block", "warn", "off"),
 }

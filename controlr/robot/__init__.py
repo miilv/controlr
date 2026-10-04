@@ -23,7 +23,10 @@ def make_robot(cfg) -> Robot:
     if backend == "isaac":
         from controlr.robot.isaac.client import IsaacRobot
         return IsaacRobot.from_config(cfg)
-    raise ValueError(f"unknown robot backend {backend!r} (mock | replay | isaac)")
+    if backend == "robodojo":
+        raise ValueError("robot.backend=robodojo episodes are started by RoboDojo's eval client: "
+                         "run `controlr robodojo-serve` (scripts/robodojo/run.sh), not `controlr run`")
+    raise ValueError(f"unknown robot backend {backend!r} (mock | replay | isaac | robodojo)")
 
 
 __all__ = ["Robot", "make_robot"]

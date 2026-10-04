@@ -1,0 +1,15 @@
+# XPolicyLab policy "controlr": the controller is controlr (an LLM over omniroute), reached by
+# deploy.py over a localhost connection; the websocket policy server only satisfies the
+# eval client's handshake (model.py is a no-op). One env, no batching.
+policy_name: controlr
+protocol: ws
+host: localhost
+port: 6000
+bench_name: null
+task_name: null
+ckpt_name: null
+env_cfg_type: null
+seed: null
+action_type: joint
+gpu_id: null
+eval_batch: false
