@@ -39,12 +39,31 @@ No reboot needed if `modprobe` succeeds. A reboot kills other people's sessions/
 | empty reply, `finish_reason` = length | thinking used up `llm.max_tokens`; raise it or use a `no-think/` route |
 | model not in `/models` but needed | try a direct call — the router accepts some unlisted ids (that was the case for `claude-sonnet-5-5`) |
 | 429 / 5xx | the client retries with backoff; on subscription routes the real limit is the subscription quota |
-| LLM calls from compute3 take 5–20 s and grow with the turn number (headers late, 0 reasoning) | compute3's route to the router (Wi-Fi + VPN proxy) uploads slowly, and every turn re-sends all images. Check: `curl -w '%{time_total} %{speed_upload}\n' --data-binary @<~740 KB file>` to `$OMNIROUTE_BASE_URL/chat/completions` from compute3 (< 1 s is healthy; 5–17 s seen). Workaround: from the dev box `ssh -N -R 127.0.0.1:18809:127.0.0.1:<dev box HTTP proxy port> compute3` (keep it up for the whole round), then `CONTROLR_LLM_PROXY=http://127.0.0.1:18809 scripts/remote_run.sh …` |
+| LLM calls from compute3 take 5–20 s and grow with the turn number (headers late, 0 reasoning) | (history: the Happ VPN, removed 2026-10-04, uploaded at ~50 KB/s; now see §3a) the route to the router uploads slowly, and every turn re-sends all images. Check: `curl -w '%{time_total} %{speed_upload}\n' --data-binary @<~740 KB file>` to `$OMNIROUTE_BASE_URL/chat/completions` from compute3 (< 1 s is healthy; 5–17 s seen). Workaround: from the dev box `ssh -N -R 127.0.0.1:18809:127.0.0.1:<dev box HTTP proxy port> compute3` (keep it up for the whole round), then `CONTROLR_LLM_PROXY=http://127.0.0.1:18809 scripts/remote_run.sh …` |
 | `401 No active credentials for provider: codex-app-server` | `cxa/` routes have no account; use `cx/` |
 
 Model list: `uv run controlr models --filter claude`. Is the network the problem? `bash scripts/net_check.sh` on
 compute3 (no LLM calls): 740 KB upload to the router should take < 0.75 s. Where a call's time goes (router only vs
 upstream vs model, chat vs Responses, tiny vs a replayed real turn): `scripts/router_latency_stand.py`.
+
+## 3a. compute3 network (controlr-vpn)
+
+compute3 has no system VPN: it goes out directly via the Skoltech Wi-Fi (Moscow). The router
+(omniroute, Frankfurt) is reachable directly and fastest that way; chatgpt.com and api.anthropic.com
+answer 403 (geo-block) without a VPN. For those, `controlr-vpn` runs a sing-box HTTP proxy on
+`127.0.0.1:18810` (SOCKS `18811`) — no tun, only processes with `HTTPS_PROXY` use it.
+
+| Task | Command |
+|---|---|
+| health / speed | `bash scripts/net_check.sh` (direct) and `HTTPS_PROXY=http://127.0.0.1:18810 bash scripts/net_check.sh` |
+| status / logs | `systemctl status controlr-vpn`, `journalctl -u controlr-vpn` |
+| refresh nodes now | `sudo systemctl start controlr-vpn-refresh` (timer: every 6 h; restarts the proxy only if nodes changed) |
+| turn compute3's VPN off for good | on the dev box: delete the `compute3` `[[profiles]]` block in `~/vpn-retranslator/config.toml`, `sudo systemctl restart vpn-retranslator` (the next refresh fails and keeps the last config — also `sudo systemctl disable --now controlr-vpn controlr-vpn-refresh.timer` on compute3) |
+| reinstall | `scripts/compute3_vpn/install.sh <token file>` from the dev box |
+| the old VPN (Happ, AmneziaVPN, OpenVPN — removed 2026-10-04) | backup + `rollback.sh` in `compute3:~/controlr-netbackup-20261004/` |
+
+Files on compute3: `~/controlr-vpn/{bin/sing-box, config.json (0600), sub_token (0600), refresh.py}`,
+units `/etc/systemd/system/controlr-vpn{,-refresh}.service`, `controlr-vpn-refresh.timer`.
 
 ## 4. Cache not working (cost grows, `cache_read` ≈ 0)
 

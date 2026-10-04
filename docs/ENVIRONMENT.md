@@ -14,6 +14,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `PHANTOM_ROOT` | compute3 | default `/home/physicalai/phantom-icra-2027/phantom` |
 | `CONTROLR_LLM_PROXY` | local shell, `scripts/remote_run.sh` | optional; becomes `HTTPS_PROXY` for the remote `controlr` process only (LLM calls through an ssh reverse tunnel when compute3's own route is slow — RUNBOOK §3) |
 | `CONTROLR_CODEX_AUTH` | where direct Codex calls run | optional path of controlr's own ChatGPT/Codex token file (default `~/.controlr/codex_auth.json`, 0600, created by `scripts/codex_login.py`); a secret, ONE holder only (refresh tokens rotate), never in git/runs/logs |
+| `HTTPS_PROXY=http://127.0.0.1:18810` | compute3, per process | only for direct chatgpt.com / api.anthropic.com calls (geo-blocked from Skoltech); router calls go direct |
 | `CONTROLR_LIVE=1` | tests | enable live tests (`@pytest.mark.live`) — costs money |
 | `CONTROLR_ISAAC=1` | tests on compute3 | enable Isaac tests (`@pytest.mark.isaac`) |
 | `CONTROLR_ISAAC_TEST_PORT` | tests | test server port (default 7821, not the main 7801) |
@@ -24,7 +25,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | Host (`~/.ssh/config`) | What it is | What we use it for | Rules |
 |---|---|---|---|
 | local | dev box, no GPU | code, unit tests, mock/replay, reports, videos | — |
-| `compute3` (`physicalai`) | Ubuntu 24.04, py3.12, RTX 5090 32 GB, Isaac Sim 6.0, PHANTOM | Isaac backend, all runs | shared machine; only `~/controlr*`; the GPU is ours; no wired link — Wi-Fi + VPN proxy to the router (slow upload some days) |
+| `compute3` (`physicalai`) | Ubuntu 24.04, py3.12, RTX 5090 32 GB, Isaac Sim 6.0, PHANTOM | Isaac backend, all runs | shared machine; only `~/controlr*`; the GPU is ours; Wi-Fi only (no cable yet), no system VPN — the router directly, chatgpt.com/anthropic via `controlr-vpn` (HTTP proxy 127.0.0.1:18810, RUNBOOK §3a) |
 | `compute2` (`isr-lab-4`, root) | Ubuntu 22.04, RTX 4090, Isaac Sim 5.1 in docker | spare host; candidate for RoboDojo (Isaac 5.1) | shared lab machine; only `/root/controlr*` |
 | `nuc` | NUC at the real rig (PHANTOM deployment) | future real-UR3 backend | don't touch without a task |
 

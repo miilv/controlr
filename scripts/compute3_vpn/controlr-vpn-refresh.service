@@ -1,0 +1,7 @@
+[Unit]
+Description=controlr VPN: refresh nodes from the compute3 subscription profile (restart the proxy if they changed)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "runuser -u physicalai -- /home/physicalai/controlr-vpn/refresh.py; rc=$?; if [ $rc -eq 10 ]; then systemctl restart controlr-vpn; elif [ $rc -ne 0 ]; then exit 1; fi"
