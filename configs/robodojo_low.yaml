@@ -1,0 +1,11 @@
+# robodojo.yaml with Sonnet 5.5 reasoning_effort low (2.2x faster turns on general_pickup: 3.7 vs
+# 8.2 s p50; experiments/2026-10-04-robodojo-fast-ab.md), images unchanged (448 px, JPEG 90), motion
+# per env step unchanged (0.05 rad / 0.25), and up to 120 turns (low effort spends more turns per
+# episode; 60 ended 3 episodes with env steps left in the fast arm).
+extends: robodojo.yaml
+name: robodojo_low
+llm:
+  extra_body:
+    reasoning_effort: low
+episode:
+  max_turns: 120
