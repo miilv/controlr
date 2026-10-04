@@ -47,7 +47,9 @@ ssh compute2 'cd /root/controlr-robodojo && setsid nohup bash install.sh > insta
 
 Everything lands in `/root/controlr-robodojo` (own Miniconda + env `miniconda3/envs/robodojo`,
 RoboDojo clone with its IsaacLab / cuRobo / XPolicyLab submodules, pip cache, the eval assets
-via `hf download` — 38.9 GB, no git-lfs duplicate). Nothing touches `~/.bashrc` or a shared conda.
+— Robots, Object, Material and the seed-0 layouts, 38.9 GB, as a sparse git-lfs clone in
+`hf_git/`: anonymous `hf download` is rate limited by Hugging Face after ~650 files, the LFS batch
+API is not). Nothing touches `~/.bashrc` or a shared conda.
 Steps are resumable: `bash install.sh isaaclab curobo assets check`.
 
 ## Run

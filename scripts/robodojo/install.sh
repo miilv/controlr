@@ -13,7 +13,7 @@ CONDA="$RD_HOME/miniconda3"
 ENV="$CONDA/envs/robodojo"
 SRC="$RD_HOME/RoboDojo"
 export PIP_CACHE_DIR="$RD_HOME/.cache/pip" TMPDIR="$RD_HOME/.tmp" PIP_USER=0 PYTHONNOUSERSITE=1
-export HF_HOME="$RD_HOME/.cache/hf" OMNI_KIT_ACCEPT_EULA=YES TERM=xterm-256color
+export OMNI_KIT_ACCEPT_EULA=YES TERM=xterm-256color
 mkdir -p "$RD_HOME" "$PIP_CACHE_DIR" "$TMPDIR"
 log() { echo "[$(date -u +%H:%M:%S)] $*"; }
 
@@ -58,17 +58,29 @@ step_isaaclab() { run_rd isaaclab; }
 step_curobo()   { run_rd curobo; }
 
 step_assets() {
-  # Only the folders evaluation needs (init_assets.sh REQUIRED_DIRS). hf download into a plain
-  # directory: no git-lfs object store, so the 38.9 GB are stored once.
-  activate
-  cd "$SRC"
-  if [[ ! -d Assets/Eval_Layout ]]; then
-    log "assets -> $SRC/Assets"
-    pip install -q "huggingface_hub[cli]>=0.30"
-    hf download RoboDojo-Benchmark/RoboDojo --repo-type dataset --local-dir "$RD_HOME/hf_assets" \
-      --include "Assets/Robots/**" "Assets/Object/**" "Assets/Material/**" "Assets/Eval_Layout/**"
-    ln -sfn "$RD_HOME/hf_assets/Assets" Assets
+  # Only what evaluation needs (init_assets.sh REQUIRED_DIRS; layouts of seed 0 — add seeds to
+  # SPARSE when needed). A sparse git-lfs clone: the LFS batch API fetches ~100 files per
+  # request, while per-file downloads (hf download) hit HF's anonymous rate limit after ~650
+  # files. The LFS object store is dropped afterwards so the 38.9 GB are stored once.
+  local SPARSE=("/Assets/Robots/" "/Assets/Object/" "/Assets/Material/" "/Assets/Eval_Layout/RoboDojo/arx_x5/0/")
+  cd "$RD_HOME"
+  if [[ ! -d hf_git/.git ]]; then
+    log "assets: clone (pointers only)"
+    GIT_LFS_SKIP_SMUDGE=1 git clone -q --depth 1 --no-checkout \
+      https://huggingface.co/datasets/RoboDojo-Benchmark/RoboDojo hf_git
   fi
+  cd hf_git
+  git sparse-checkout init --no-cone
+  printf '%s\n' "${SPARSE[@]}" > .git/info/sparse-checkout
+  GIT_LFS_SKIP_SMUDGE=1 git checkout -q main
+  local inc; inc="$(printf '%s**,' "${SPARSE[@]#/}")"
+  for i in $(seq 1 30); do
+    log "assets: lfs pull $i"
+    git lfs pull --include "${inc%,}" && break
+    sleep 300
+  done
+  rm -rf .git/lfs/objects
+  ln -sfn "$RD_HOME/hf_git/Assets" "$SRC/Assets"
 }
 
 step_check() {
