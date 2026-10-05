@@ -328,3 +328,21 @@ def test_shim_step_size_and_free_noop_gripper():
     assert res["env_steps"] == 2                 # 0.2 at 0.1 per step; the open gripper costs nothing
     res = rig.execute([{"right": {"flange": None, "grip": 0.0}}], arm_step_rad=0.1, grip_step=0.5)
     assert res["env_steps"] == 2                 # 1 -> 0 at 0.5 per step
+
+
+def test_direction_state_text_and_its_manual():
+    from controlr.config import validate
+    from controlr.protocol.feedback import tool_direction_text
+
+    cfg = load_config("configs/robodojo_low_dir.yaml")
+    lines = format_state(_dual(), cfg).splitlines()
+    assert lines[0].endswith("| tool points straight down [+0.00 +0.00 -1.00] | jaw line along x | grip 80 mm open")
+    R0 = np.array([[-1.0, 0, 0], [0, 0, 1.0], [0, 1.0, 0]])      # ARX start Rz(180) Rx(90): tool toward +y
+    assert tool_direction_text(matrix_to_rotvec(R0)).startswith("tool points horizontally toward +y")
+    tilted = rotvec_to_matrix([np.radians(-30), 0, 0]) @ R0           # droll -30: tip down
+    assert tool_direction_text(matrix_to_rotvec(tilted)).startswith("tool points 30 deg below horizontal, toward +y")
+    text = build_system_prompt(cfg, SPEC)
+    assert "to tilt its tip DOWN" in text and "tool points straight down" in text and "roll=" not in text
+    cfg.prompt.system = "system_v1"
+    with pytest.raises(ValueError, match="orientation=direction"):
+        validate(cfg)

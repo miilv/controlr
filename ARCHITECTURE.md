@@ -218,7 +218,9 @@ STOP: the gripper pushed against the blue box
 WARN = every clamp / skipped move (`SafetyEvent.brief`, a few words without measurements), every
 unusable reply line (`reply not understood: ... - nothing executed`), near-limit and box-proximity
 warnings and a DONE whose check failed (`task not complete yet`); contacts below the stop force,
-settle notices and fingertip events are not shown. STOP = a stopped motion (`.brief`). No TURN /
+settle notices and fingertip events are not shown. With `feedback.orientation=direction` STATE describes the tool orientation as where it points and how its jaw
+line lies (`tool points 30 deg below horizontal, toward +y [+0.00 +0.87 -0.50] | jaw line along x`)
+instead of roll/pitch/yaw (`system_v2` explains it and the rotation signs). STOP = a stopped motion (`.brief`). No TURN /
 EXEC / EVENT / GOAL / PARSE ERROR lines.
 
 `feedback.level=full` — the legacy receipt (events of kind `tactile` only

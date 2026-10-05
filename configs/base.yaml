@@ -88,6 +88,7 @@ prompt:
 feedback:
   level: short                         # short: TASK/STATE/WARN/STOP only (since 2026-10-02) | full: TURN/EXEC/CLAMP/WARN/EVENT/STOP/GOAL/STATE
   repeat_task: false                   # short: repeat the TASK line every turn
+  orientation: rpy                     # STATE tool orientation: rpy angles | direction (where the tool points, jaw line)
 
 episode:
   max_turns: 40

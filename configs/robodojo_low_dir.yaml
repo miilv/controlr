@@ -1,0 +1,10 @@
+# robodojo_low.yaml with STATE reporting where each tool points instead of roll/pitch/yaw
+# (feedback.orientation=direction) and the manual that explains it plus the rotation sign rules
+# (system_v2). Why: with world-axis rotation deltas, RPY in STATE showed a world-x turn of -30 deg
+# as roll +30 at the ARX start pose (yaw 180) and the model "corrected" the wrong way.
+extends: robodojo_low.yaml
+name: robodojo_low_dir
+prompt:
+  system: system_v2
+feedback:
+  orientation: direction
