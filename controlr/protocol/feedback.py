@@ -155,6 +155,51 @@ def shows_holding(cfg: Config) -> bool:
     return cfg.feedback.level == "full" and bool(cfg.observation.tactile)
 
 
+_AXIS_NAMES = ((0.0, "+x"), (90.0, "+y"), (180.0, "-x"), (-180.0, "-x"), (-90.0, "-y"))
+
+
+def _heading_words(deg: float) -> str:
+    """A horizontal direction (deg from +x, counter-clockwise from above) as the nearest world
+    axis plus the offset toward the neighbouring one: 90 -> "+y", 70 -> "+y, 20 deg toward +x"."""
+    base, name = min(_AXIS_NAMES, key=lambda a: abs(_wrap180(deg - a[0])))
+    off = _wrap180(deg - base)
+    if abs(off) < 2.5:
+        return name
+    nb = {"+x": ("+y", "-y"), "+y": ("-x", "+x"), "-x": ("-y", "+y"), "-y": ("+x", "-x")}[name]
+    return f"{name}, {abs(off):.0f} deg toward {nb[0] if off > 0 else nb[1]}"
+
+
+def _wrap180(a: float) -> float:
+    return (a + 180.0) % 360.0 - 180.0
+
+
+def tool_direction_text(rotvec) -> str:
+    """Where the tool points and how its jaw line lies, for STATE (feedback.orientation=direction).
+
+    Tool z = out of the gripper, tool x = the jaw (closing) direction. Words first (what a
+    person would say), then the pointing vector so small tilts stay readable; deterministic."""
+    R = rotvec_to_matrix(np.asarray(rotvec, float))
+    t, j = R[:, 2], R[:, 0]
+    elev = math.degrees(math.asin(float(np.clip(t[2], -1.0, 1.0))))
+    head = math.degrees(math.atan2(float(t[1]), float(t[0])))
+    if elev <= -85.0:
+        point = "straight down" + ("" if elev <= -89.5 else f" (tip {90 + elev:.0f} deg toward {_heading_words(head)})")
+    elif elev >= 85.0:
+        point = "straight up"
+    elif abs(elev) < 2.5:
+        point = f"horizontally toward {_heading_words(head)}"
+    else:
+        point = f"{abs(elev):.0f} deg {'below' if elev < 0 else 'above'} horizontal, toward {_heading_words(head)}"
+    vec = " ".join(f"{round(float(v), 2) + 0.0:+.2f}" for v in t)       # + 0.0: no "-0.00"
+    jh = math.degrees(math.atan2(float(j[1]), float(j[0])))
+    jaw = ((jh + 90.0) % 180.0) - 90.0              # a line: -90..90 deg from x
+    jaw_txt = "along x" if abs(jaw) < 2.5 else ("along y" if abs(abs(jaw) - 90.0) < 2.5 else
+                                                f"{abs(jaw):.0f} deg from x toward {'+y' if jaw > 0 else '-y'}")
+    if abs(j[2]) > 0.94:
+        jaw_txt = "vertical"
+    return f"tool points {point} [{vec}] | jaw line {jaw_txt}"
+
+
 def format_state(state: RobotState, cfg: Config) -> str:
     """The canonical STATE line (deterministic, LLM units).
 
@@ -170,7 +215,9 @@ def format_state(state: RobotState, cfg: Config) -> str:
     pu = a.pos_unit
     x, y, z = (float(v) for v in np.asarray(state.tcp_pos).reshape(3))
     s = f"STATE: tcp x={_p(x, a)} y={_p(y, a)} z={_p(z, a)} {pu}"
-    if a.mode in EE_MODES and a.rotation != "none":
+    if a.mode in EE_MODES and a.rotation != "none" and cfg.feedback.orientation == "direction":
+        s += " | " + tool_direction_text(state.tcp_rotvec)
+    elif a.mode in EE_MODES and a.rotation != "none":
         roll, pitch, yaw = matrix_to_rpy(rotvec_to_matrix(state.tcp_rotvec))
         if a.rotation == "yaw":
             s += f" yaw={_ang(yaw, a)} {a.ang_unit}"

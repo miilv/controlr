@@ -45,6 +45,7 @@ go-ahead.
 | frame representation | `observation.renderers` | `raw`, `grid`, `axes`, `ee_marker`, `diff`, `heatmap` |
 | proprioception | `observation.state_text` | STATE line on/off |
 | feedback text | `feedback.level`, `feedback.repeat_task` | `short` (default: TASK / STATE / WARN / STOP only) / `full` (TURN, EXEC, CLAMP, WARN, EVENT, STOP, PARSE ERROR, GOAL, STATE — the legacy receipt) |
+| tool orientation in STATE | `feedback.orientation` | `rpy` (default: roll/pitch/yaw) / `direction` (where the tool points + jaw line; needs `system_v2`) |
 | tactile sensing | `observation.tactile` | fingertip pad forces, "touched the packet" events and pad-based `holding` in the full feedback (default off) |
 | goal feedback | `episode.goal_feedback`, `episode.trust_done` | `never` / `on_done` / `always` (short feedback: a failed DONE is `WARN: task not complete yet`) |
 | safety | `safety.*` | step, clearance, speed, force thresholds (`contact_force_stop_n`, `box_force_stop_n`, `object_force_stop_n`, `held_object_force_stop_n`) |

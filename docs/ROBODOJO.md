@@ -69,6 +69,10 @@ per episode: a normal controlr run dir.
 
 ## Pitfalls
 
+- Orientation in STATE: the ARX start pose has yaw 180 deg, where roll/pitch/yaw read against
+  world-axis rotation deltas flip sign (`droll -30` shows as roll +30). `configs/robodojo_low_dir.yaml`
+  reports where the tool points instead (`feedback.orientation=direction`, manual `system_v2`).
+
 - `general_pickup` has 200 env steps (8 s of arm motion): long moves eat the budget. What one
   env step may move is `robot.params.arm_step_rad` (default 0.05 rad, RoboDojo's own LLM adapter)
   and `grip_step` (0.25). Tracking probe (11 scripted moves): 0.05 → 90 steps, max landing error

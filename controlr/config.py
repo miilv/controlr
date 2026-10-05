@@ -179,6 +179,12 @@ class FeedbackConfig:
     #           behaviour before 2026-10-02).
     level: str = "short"
     repeat_task: bool = False        # short: repeat the TASK line in every turn, not only turn 0
+    # How STATE reports the tool orientation (ee modes with rotation yaw/full):
+    #   rpy       - roll / pitch / yaw angles (extrinsic x-y-z), the behaviour before 2026-10-05
+    #   direction - where the tool points and how the jaw line lies, in words + a unit vector.
+    #               RPY misleads with world-axis deltas: at yaw 180 deg a world-x turn of -30 deg
+    #               reads as roll +30 (RoboDojo pilot, experiments/2026-10-04-robodojo-fast-ab.md)
+    orientation: str = "rpy"
 
 
 @dataclass
@@ -343,6 +349,7 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("llm", "cache_ttl"): ("5m", "1h"),
     ("robot", "backend"): ("isaac", "mock", "replay", "robodojo"),
     ("feedback", "level"): ("short", "full"),
+    ("feedback", "orientation"): ("rpy", "direction"),
     ("safety", "box_collision"): ("block", "warn", "off"),
 }
 _RENDERERS = ("raw", "grid", "axes", "ee_marker", "diff", "heatmap", "tile")
@@ -359,6 +366,9 @@ def validate(cfg: Config) -> Config:
         v = getattr(getattr(cfg, sec), key)
         if v not in allowed:
             errs.append(f"{sec}.{key}={v!r} (allowed: {', '.join(allowed)})")
+    if cfg.feedback.orientation == "direction" and cfg.prompt.system in ("system_v0", "system_v1"):
+        errs.append(f"feedback.orientation=direction needs a manual that explains it (system_v2+), "
+                    f"not {cfg.prompt.system}")
     bad = [r for r in cfg.observation.renderers if r not in _RENDERERS]
     if bad:
         errs.append(f"observation.renderers has unknown {bad} (known: {', '.join(_RENDERERS)})")
