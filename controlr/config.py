@@ -80,7 +80,14 @@ class DecisionsConfig:
     # expected = probability-weighted level (unsure -> smaller step); argmax = the likeliest level
     reduce: str = "expected"
     deadband: float = 1.0                  # |step| below this (LLM units) -> 0
-    history: int = 6                       # past (action, feedback) pairs carried in `state`
+    history: int = 6                       # state_layout=window: past (action, feedback) pairs carried in `state`
+    # window = one JSON text part (manual, task, the last `history` steps) + the newest images;
+    # transcript = the whole episode as append-only parts: manual, task, turn-0 images, then per
+    # step its action + feedback (+ that turn's images every `history_image_every` turns), the newest
+    # images last — every past decision and its outcome stays in context, and the prefix is
+    # byte-stable from turn to turn (prompt caching)
+    state_layout: str = "window"
+    history_image_every: int = 0           # transcript: past turns' images every k turns (0 = only the newest)
     include_manual: bool = True            # the operating manual (camera geometry, frame) in `state`
     # what the direction questions locate, as concretely as possible ({target} in decisions_v5+):
     # "the red ball" beats "the point the fingertips must reach next" by far (mock probes 2026-10-07).
@@ -389,6 +396,7 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("decisions", "reduce"): ("expected", "argmax"),
     ("decisions", "head"): ("signed", "split"),
     ("decisions", "image_mode"): ("parts", "field"),
+    ("decisions", "state_layout"): ("window", "transcript"),
     ("llm", "cache"): ("auto", "anthropic", "none"),
     ("llm", "cache_ttl"): ("5m", "1h"),
     ("robot", "backend"): ("isaac", "mock", "replay", "robodojo"),
@@ -454,6 +462,10 @@ def validate(cfg: Config) -> Config:
             errs.append(f"decisions.magnitudes must be positive and strictly increasing (got {list(d.magnitudes)})")
         if d.head == "split" and a.rotation == "yaw":
             errs.append("decisions.head=split does not do yaw yet (use head=signed with rotation=yaw)")
+        if d.state_layout == "transcript" and d.image_mode != "parts":
+            errs.append("decisions.state_layout=transcript needs decisions.image_mode=parts")
+        if d.history_image_every < 0:
+            errs.append("decisions.history_image_every must be >= 0")
         if d.history < 0 or d.deadband < 0:
             errs.append("decisions.history and decisions.deadband must be >= 0")
     if errs:

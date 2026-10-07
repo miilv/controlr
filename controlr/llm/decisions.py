@@ -191,11 +191,52 @@ def build_questions(dcfg, acfg, tpl: dict, hints: dict[str, str] | None = None,
     return q
 
 
+def _image_parts(urls: list[str], labels: list[str] | None, prefix: str = "") -> list[dict]:
+    named = labels if labels and len(labels) == len(urls) else [None] * len(urls)
+    out: list[dict] = []
+    for name, u in zip(named, urls):
+        if name:
+            out.append({"type": "text", "text": f"{prefix}image `{name}`:"})
+        out.append({"type": "image_url", "image_url": {"url": u}})
+    return out
+
+
+def build_transcript_state(messages: list[dict], dcfg, labels: list[str] | None = None) -> list[dict]:
+    """``state_layout=transcript``: the whole episode, oldest first, as append-only parts — the
+    parts of turn N are a byte-identical prefix of turn N+1's (only the tail moves: the newest
+    images and the NOW line), so a provider prefix cache can hold everything before them.
+    Past turns' images are kept every ``history_image_every`` turns (turn index multiple of k);
+    the newest turn's images always come last, labelled as the current view."""
+    system = next((_text(m["content"]) for m in messages if m["role"] == "system"), "")
+    users = [m for m in messages if m["role"] == "user"]
+    replies = [_text(m["content"]) for m in messages if m["role"] == "assistant"]
+    parts: list[dict] = []
+    if dcfg.include_manual and system:
+        parts.append({"type": "text", "text": "OPERATING MANUAL\n" + system})
+    k = int(dcfg.history_image_every)
+    last = len(users) - 1
+    for i, u in enumerate(users):
+        if i == 0:
+            parts.append({"type": "text", "text": "EPISODE START (turn 0)\n" + _text(u["content"])})
+        else:
+            parts.append({"type": "text", "text": f"TURN {i - 1} ACTION\n{replies[i - 1]}\n"
+                                                  f"TURN {i} FEEDBACK\n{_text(u['content'])}"})
+        if i != last and k > 0 and i % k == 0:
+            parts += _image_parts(_image_urls(u["content"]), labels, f"turn {i} (past) ")
+    if users:
+        parts.append({"type": "text", "text": f"NOW: turn {last}. The current images follow; decide the "
+                                              f"next step from them and from the history above."})
+        parts += _image_parts(_image_urls(users[-1]["content"]), labels)
+    return parts
+
+
 def build_state(messages: list[dict], dcfg, labels: list[str] | None = None) -> Any:
     """``state`` from the chat transcript (system, user0, then assistant/user pairs). ``labels``:
     image names in send order; when they match the newest turn's images one-to-one, each image part
     is preceded by a text part "image `<name>`:" (questions refer to images by name; an unlabeled
     list left the model guessing which was which — probes 2026-10-07)."""
+    if getattr(dcfg, "state_layout", "window") == "transcript":
+        return build_transcript_state(messages, dcfg, labels)
     system = next((_text(m["content"]) for m in messages if m["role"] == "system"), "")
     users = [m for m in messages if m["role"] == "user"]
     replies = [_text(m["content"]) for m in messages if m["role"] == "assistant"]
@@ -210,13 +251,7 @@ def build_state(messages: list[dict], dcfg, labels: list[str] | None = None) -> 
     images = _image_urls(users[-1]["content"]) if users else []
     if dcfg.image_mode == "field":
         return {**obj, "images": images}
-    parts: list[dict] = [{"type": "text", "text": json.dumps(obj, ensure_ascii=False)}]
-    named = labels if labels and len(labels) == len(images) else [None] * len(images)
-    for name, u in zip(named, images):
-        if name:
-            parts.append({"type": "text", "text": f"image `{name}`:"})
-        parts.append({"type": "image_url", "image_url": {"url": u}})
-    return parts
+    return [{"type": "text", "text": json.dumps(obj, ensure_ascii=False)}, *_image_parts(images, labels)]
 
 
 # ---------------------------------------------------------------------------

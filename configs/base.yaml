@@ -33,6 +33,8 @@ decisions:                             # only with llm.backend=decisions (contro
   reduce: expected                     # expected (probability-weighted) | argmax
   deadband: 1.0                        # smaller steps -> 0
   history: 6                           # past (action, feedback) pairs in the request state
+  state_layout: window                 # window (manual + last `history` steps + newest images) | transcript (whole episode, append-only)
+  history_image_every: 0               # transcript: past turns' images every k turns (0 = newest only)
   include_manual: true
   target: the point the fingertips must reach next for the task   # {target} in decisions_v5+; "{task}" = the instruction
   image_mode: parts                    # parts | field (how the frame goes into state)

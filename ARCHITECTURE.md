@@ -150,7 +150,13 @@ def render_reply(answers, dcfg, acfg) -> (str, dict)    # answers -> grammar tex
   `STATUS <s>` alone (no motion on a terminal turn); open/close → `GRIP <g>` alone (in place); all
   zero → `HOLD`; else `MOVE ee_delta dx dy dz [dyaw]` (1 decimal). The rendered text is the stored
   reply, so the parser, envelope, feedback and run log are the chat path's.
-* `state` is rebuilt every turn (the API keeps no history): `manual` (system text, with
+* `decisions.state_layout: transcript` — the whole episode in `state`, append-only parts:
+  `OPERATING MANUAL`, `EPISODE START (turn 0)` + task text, then per step `TURN i ACTION` /
+  `TURN i+1 FEEDBACK`, past turns' images every `history_image_every` turns (labelled
+  "turn i (past) image `<name>`:"), then `NOW: turn N` and the current images. Turn N's parts are
+  a byte-identical prefix of turn N+1's. The Decisions API does NOT cache it (identical request
+  re-billed in full, same latency; probe 2026-10-07): ~200 tokens per turn with one 448 px image.
+* `state_layout: window` (default) is rebuilt every turn (the API keeps no history): `manual` (system text, with
   `include_manual`), `task` (turn 0's text: task, plan, first STATE), `turn`, `recent_steps` (last
   `history` (action, feedback) pairs), and the newest frame(s) — as content parts after a JSON
   text part (`image_mode=parts`) or a data-URL list field (`field`). No prompt caching; the
