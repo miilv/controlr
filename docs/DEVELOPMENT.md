@@ -56,7 +56,7 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | a new Isaac task | `robot/isaac/tasks.py` (+ server if new objects are needed) | `test_isaac_tasks` (no GPU) + scripted expert in the isaac tests; look at the frames (`docs/img/`) |
 | a new backend (real UR3 etc.) | `robot/<backend>.py`, factory in `robot/__init__.py` | the `robot/base.py` contract; mock tests as the template |
 | RoboDojo (shim, frames, two-arm grammar) | `robot/robodojo/`, `protocol/grammar.py` (`_parse_arm_line`), `prompts/system_v1.md` | `test_robodojo` (shim vs a fake `TASK_ENV`, a whole episode over a real connection); then `scripts/robodojo/run.sh --fake-llm` on compute2 ([ROBODOJO.md](ROBODOJO.md)) |
-| decision head (questions, reduction, state) | `llm/decisions.py`, `prompts/decisions_vN.yaml` (+ `config.DecisionsConfig`) | `test_llm_decisions`; image format / that the model sees the frame: `CONTROLR_LIVE=1 pytest tests/test_llm_decisions_live.py -s` (4 calls) |
+| decision head (questions, reduction, state) — tune with `scripts/decisions_probe.py` (one call per scene) and `scripts/decisions_perception.py` (image relations per camera) before episodes | `llm/decisions.py`, `prompts/decisions_vN.yaml` (+ `config.DecisionsConfig`) | `test_llm_decisions`; image format / that the model sees the frame: `CONTROLR_LIVE=1 pytest tests/test_llm_decisions_live.py -s` (4 calls) |
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
 
@@ -91,6 +91,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   model; with `field` (data URLs inside the JSON) it does not see the frame and guesses
   (`tests/test_llm_decisions_live.py`).
   Question wording is a prompt: a new wording = a new `decisions_vN.yaml`.
+- **Decision-head probes must be balanced.** With the target on the same side in most samples a
+  constant answer scores "24/24" (it happened). `scripts/decisions_probe.py` / `decisions_perception.py`
+  place the start around the aim point with a random sign per axis; always read the accuracy on the
+  minority class. The decision head locates only VISIBLE, concretely named things ("the red ball"):
+  "the point 50 mm above the box rim" stays at chance (journal 2026-10-07-decision-head-tuning).
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
   Very small frames (224 px) also make `low` think ([journal](journal/2026-10-04-sonnet-latency.md)).

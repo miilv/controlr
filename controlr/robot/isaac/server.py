@@ -48,6 +48,7 @@ HERE = Path(__file__).resolve().parent
 # as ``controlr.*`` — one copy of each, same as in the client.
 if str(HERE.parents[2]) not in sys.path:
     sys.path.insert(0, str(HERE.parents[2]))
+from controlr.robot.isaac import cameras as virtual_cams  # noqa: E402
 from controlr.robot.isaac import contacts as contact_rules  # noqa: E402
 from controlr.robot.isaac import motion  # noqa: E402
 from controlr.robot.isaac import protocol  # noqa: E402
@@ -73,7 +74,7 @@ class IsaacRig:
     """One built stage + handles. Methods map 1:1 to protocol ops."""
 
     def __init__(self, app, phantom: Path, scene_rel: str, out: Path, *, solver_iterations: int | None = None,
-                 physics: dict | None = None):
+                 physics: dict | None = None, extra_cameras: list[str] | None = None):
         t_start = time.perf_counter()
         self.app, self.phantom, self.out = app, phantom, out
         self.scene_rel = scene_rel
@@ -182,6 +183,21 @@ class IsaacRig:
         configure_camera_intrinsics(self.camera, cam)
         self.camera.set_clipping_range(0.02, 10)
         self.camera.set_focus_distance(1.0)
+        # virtual views (cameras.py): name -> (Camera, config); aimed between the mat and the box
+        self.extra: dict[str, tuple] = {}
+        if extra_cameras:
+            mat_xy = np.asarray(cfg["mat"]["center"][:2], float)
+            centre = (mat_xy + np.asarray(bin_geometry(cfg["bin"]).center, float)[:2]) / 2
+            for name in extra_cameras:
+                vc = virtual_cams.virtual_camera(name, centre, float(cfg["table"]["top_z"]), cam["resolution"])
+                c = Camera(f"/World/VirtualCamera_{name}", frequency=15, resolution=tuple(vc["resolution"]))
+                vt = np.asarray(vc["world_from_cv"], float)
+                q = Rotation.from_matrix(vt[:3, :3] @ np.diag([1, -1, -1])).as_quat()
+                c.set_world_pose(position=vt[:3, 3], orientation=q[[3, 0, 1, 2]], camera_axes="usd")
+                configure_camera_intrinsics(c, vc)
+                c.set_clipping_range(0.02, 10)
+                c.set_focus_distance(1.0)
+                self.extra[name] = (c, vc)
         self.world.reset()
         for pad in self.pads:
             pad.initialize()
@@ -200,6 +216,14 @@ class IsaacRig:
         # -1 is the class's "acquire on every rendered frame" state.
         self.camera._frequency = -1
         self.camera_report = validate_camera_intrinsics(self.camera, cam)
+        self.extra_info: dict[str, dict] = {}
+        for name, (c, vc) in self.extra.items():
+            c.initialize()
+            c._frequency = -1
+            validate_camera_intrinsics(c, vc)
+            self.extra_info[name] = {"name": name, "width": vc["resolution"][0], "height": vc["resolution"][1],
+                                     "K": virtual_cams.intrinsics(vc),
+                                     "T_cam_base": np.linalg.inv(np.asarray(vc["world_from_cv"], float))}
         from phantom.sim.camera import camera_projection
         self.K = camera_projection(cam).matrix
         self.T_cam_base = np.linalg.inv(twc)          # world frame == UR controller base frame
@@ -505,13 +529,23 @@ class IsaacRig:
 
     def observe(self, render_updates: int | None = None) -> dict:
         rgb, dt = self.render(render_updates)
-        return {"rgb": rgb, "state": self.state(), "render_s": dt}
+        out = {"rgb": rgb, "state": self.state(), "render_s": dt}
+        if self.extra:          # rendered by the same world.render() calls
+            extra = {}
+            for name, (c, _) in self.extra.items():
+                rgba = c.get_rgba()
+                if rgba is None or rgba.size == 0:
+                    raise RuntimeError(f"virtual camera {name} returned no frame")
+                extra[name] = np.ascontiguousarray(rgba[:, :, :3]).astype(np.uint8)
+            out["extra"] = extra
+        return out
 
     def info(self) -> dict:
         return {"protocol": protocol.PROTOCOL_VERSION, "scene": self.scene_rel, "physics_dt": self.dt,
                 "physics": self.physics_info(),
                 "camera": {"name": "scene", "width": self.resolution[0], "height": self.resolution[1],
                            "K": self.K, "T_cam_base": self.T_cam_base, "report": self.camera_report},
+                "extra_cameras": self.extra_info,
                 "gripper": {"max_m": self.grip_max_m, "min_m": self.grip_min_m, "closures": self.grip_closures, "widths_m": self.grip_widths,
                             "pad_midpoint_in_tool_m": self.pad_midpoint_in_tool,
                             "closing_axis_in_tool": self.closing_axis_in_tool, "tcp_offset_m": TCP_OFFSET_M},
@@ -988,6 +1022,8 @@ def main() -> None:
                     help="do not write body transforms to USD after every physics step (only before renders)")
     ap.add_argument("--render-updates", type=int, default=4, help="app updates per observation (RTX pipeline depth)")
     ap.add_argument("--once", action="store_true", help="exit after the first client disconnects")
+    ap.add_argument("--extra-cameras", default="", help="virtual views next to the D435, comma list "
+                    "(top, side; controlr/robot/isaac/cameras.py)")
     args = ap.parse_args()
     if args.host not in ("127.0.0.1", "localhost"):
         raise SystemExit("the Isaac server only listens on localhost")
@@ -1006,7 +1042,8 @@ def main() -> None:
             "forearm_collision_approximation": args.forearm_approx, "num_threads": args.num_threads,
             "legacy_contact_views": not args.no_legacy_contact_views,
             "self_collisions": not args.no_self_collisions,
-            "usd_writeback": not args.no_usd_writeback})
+            "usd_writeback": not args.no_usd_writeback},
+            extra_cameras=[c for c in args.extra_cameras.split(",") if c])
         rig.render_updates = max(1, args.render_updates)
         rig.timings["app_start_s"] = t_app - t0
         rig.timings["startup_total_s"] = time.perf_counter() - t0

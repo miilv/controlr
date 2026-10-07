@@ -198,3 +198,25 @@ def test_lookback_guard_warns_on_too_many_blocks_per_turn():
     many.tile = True
     assert lookback_warning(many) is None
     assert lookback_warning(ObservationConfig()) is None
+
+
+def test_fovea_is_a_zoomed_crop_with_a_cross_at_the_tcp():
+    from controlr.config import ObservationConfig
+    from controlr.observation.renderers import ObservationRenderer, project_points
+    from controlr.robot.mock import MockRobot
+
+    r = MockRobot({"width": 640, "height": 480})
+    obs = r.reset({"name": "reach"}, seed=3)
+    rend = ObservationRenderer(ObservationConfig(renderers=["raw", "fovea"], fovea_px=200, size=448), spec=r.spec)
+    arrays = rend.render_arrays(obs, None, 1)
+    assert [label for label, _ in arrays] == ["scene", "scene fovea"]
+    fov = arrays[1][1]
+    assert fov.shape == (448, 448, 3)
+    uv, ok = project_points(obs.cameras["scene"], obs.state.tcp_pos[None])
+    assert ok[0]
+    # the TCP sits inside the frame here, so the crop is centred on it: magenta at the centre
+    c = fov[224, 224]
+    assert c[0] > 200 and c[1] < 80 and c[2] > 200
+    again = rend.render_arrays(obs, None, 1)[1][1]
+    assert np.array_equal(fov, again)                                     # deterministic
+    assert "fovea" in rend.legend(arrays)

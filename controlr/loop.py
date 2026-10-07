@@ -427,6 +427,8 @@ def run_episode(cfg: Config, robot=None, llm=None, *, planner_llm=None,
         # known obstacles at their reset pose (the backend's current scene; refreshed every turn)
         obstacles = robot_obstacles(robot)
 
+        if hasattr(llm, "set_scene"):        # decision head: per-axis image directions for its questions
+            llm.set_scene(obs.cameras, origin=ref.tcp_pos, task=instruction)
         # Task-free manual (the task goes in turn 0) -> identical across tasks/episodes;
         # cameras let it state how the base axes appear in each calibrated image.
         system_text = build_system_prompt(cfg, spec, cameras=obs.cameras, state0=ref, obstacles=obstacles)

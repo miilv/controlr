@@ -78,6 +78,18 @@ def top_camera(width: int = 640, height: int = 480, name: str = "top") -> Camera
     return CameraInfo(name=name, width=width, height=height, K=K, T_cam_base=T)
 
 
+def side_camera(width: int = 640, height: int = 480, name: str = "side") -> CameraInfo:
+    """Synthetic horizontal camera beside the mat, looking along base +x (image right = -y,
+    image up = +z): height reads directly as image height."""
+    R = np.array([[0.0, -1.0, 0.0], [0.0, 0.0, -1.0], [1.0, 0.0, 0.0]])
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = -R @ np.array([MAT_CENTER_XY[0] - 0.55, MAT_CENTER_XY[1], 0.08])
+    f = 0.9 * width
+    K = np.array([[f, 0.0, width / 2], [0.0, f, height / 2], [0.0, 0.0, 1.0]])
+    return CameraInfo(name=name, width=width, height=height, K=K, T_cam_base=T)
+
+
 def d435_camera(width: int = 640, height: int = 480, name: str = "scene") -> CameraInfo:
     """The Isaac scene's calibrated D435, scaled to ``width``x``height``."""
     K = D435_K.copy()
@@ -118,8 +130,10 @@ class MockRobot(Robot):
         for name in p.get("cameras") or []:
             if name == "top":
                 self.cameras["top"] = top_camera(w, h)
+            elif name == "side":
+                self.cameras["side"] = side_camera(w, h)
             elif name != self.camera.name:
-                raise ValueError(f"MockRobot: unknown camera {name!r} (scene | top)")
+                raise ValueError(f"MockRobot: unknown camera {name!r} (scene | top | side)")
         self.settle_s = float(p.get("settle_s", 0.2))
         self.grasp_radius_m = float(p.get("grasp_radius_m", 0.015))
         self.supersample = int(p.get("supersample", 2))

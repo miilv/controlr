@@ -12,6 +12,12 @@
   (`configs/mock.yaml --set llm.backend=decisions ...`); (3) the 4 rotation seeds with the pinned
   plans vs Sonnet 5.5 / Luna chat — success, turns, wall time per episode, cost. Then axes:
   `levels` (resolution), `reduce`, `history`, `include_manual`.
+  → Tuning round done (journal/2026-10-07-decision-head-tuning.md): mock reach 11/12 with the split head,
+  3 cameras, fovea and a named target. Open: (a) **top up the OpenRouter credit** (402 at ~$1.9);
+  (b) visible, concretely named targets on Isaac: the planner names the object per phase and a
+  `phase` choice picks it (one request can carry every phase's questions); (c) the status question
+  (DONE 2/12) — or end on a sensor-checkable condition; (d) scene/top left/right on photoreal
+  frames still leans "left" even in the fovea; (e) yaw for the split head.
 
 - [ ] **Real-sensor feedback (`feedback.sensing: real | privileged`, default real).** Today every
   STOP names what was hit ("the held packet pushed against the box wall (the box moved)"), the box

@@ -72,11 +72,20 @@ class DecisionsConfig:
     # ordered step levels per axis, in action.pos_unit / action.ang_unit (must contain 0)
     levels: list = field(default_factory=lambda: [-30.0, -10.0, -3.0, 0.0, 3.0, 10.0, 30.0])
     yaw_levels: list = field(default_factory=lambda: [-20.0, -5.0, 0.0, 5.0, 20.0])
+    # signed = one score over signed levels per axis; split = per axis a direction choice (-, 0, +)
+    # and an unsigned distance score over `magnitudes` (the model judged "far" but not the sign on a
+    # signed scale: probes 2026-10-07)
+    head: str = "signed"
+    magnitudes: list = field(default_factory=lambda: [3.0, 10.0, 30.0])   # split: step sizes, LLM units
     # expected = probability-weighted level (unsure -> smaller step); argmax = the likeliest level
     reduce: str = "expected"
     deadband: float = 1.0                  # |step| below this (LLM units) -> 0
     history: int = 6                       # past (action, feedback) pairs carried in `state`
     include_manual: bool = True            # the operating manual (camera geometry, frame) in `state`
+    # what the direction questions locate, as concretely as possible ({target} in decisions_v5+):
+    # "the red ball" beats "the point the fingertips must reach next" by far (mock probes 2026-10-07).
+    # "{task}" inside it is replaced by the episode's instruction.
+    target: str = "the point the fingertips must reach next for the task"
     # how the frame goes into `state` (the Decisions schema does not document images):
     # parts = [text part, image_url parts...]; field = {..., "images": [data URLs]}
     image_mode: str = "parts"
@@ -135,6 +144,9 @@ class ObservationConfig:
     first_turn_size: int | None = None   # optional larger image on the first turn
     grid_z: float | None = None      # m, base-frame height of the "grid" overlay plane; None = RobotSpec.table_z (else 0)
     grid_step: float = 0.05          # m, grid line spacing (labels every 2 lines)
+    # "fovea" renderer: a zoomed crop of the NATIVE frame around the projected TCP, this many native
+    # px square, scaled to `size` (the one place images are upscaled), magenta cross at the TCP
+    fovea_px: int = 200
 
 
 @dataclass
@@ -375,6 +387,7 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("episode", "goal_feedback"): ("never", "on_done", "always"),
     ("llm", "backend"): ("chat", "decisions"),
     ("decisions", "reduce"): ("expected", "argmax"),
+    ("decisions", "head"): ("signed", "split"),
     ("decisions", "image_mode"): ("parts", "field"),
     ("llm", "cache"): ("auto", "anthropic", "none"),
     ("llm", "cache_ttl"): ("5m", "1h"),
@@ -383,7 +396,7 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("feedback", "orientation"): ("rpy", "direction"),
     ("safety", "box_collision"): ("block", "warn", "off"),
 }
-_RENDERERS = ("raw", "grid", "axes", "ee_marker", "diff", "heatmap", "tile")
+_RENDERERS = ("raw", "grid", "axes", "ee_marker", "diff", "heatmap", "fovea", "tile")
 
 
 def validate(cfg: Config) -> Config:
@@ -436,6 +449,11 @@ def validate(cfg: Config) -> Config:
             lv = list(getattr(d, key))
             if 0 not in lv or lv != sorted(set(lv)):
                 errs.append(f"decisions.{key} must be strictly increasing and contain 0 (got {lv})")
+        if d.head == "split" and (not d.magnitudes or list(d.magnitudes) != sorted(set(d.magnitudes))
+                                  or min(d.magnitudes) <= 0):
+            errs.append(f"decisions.magnitudes must be positive and strictly increasing (got {list(d.magnitudes)})")
+        if d.head == "split" and a.rotation == "yaw":
+            errs.append("decisions.head=split does not do yaw yet (use head=signed with rotation=yaw)")
         if d.history < 0 or d.deadband < 0:
             errs.append("decisions.history and decisions.deadband must be >= 0")
     if errs:

@@ -80,6 +80,8 @@ DEFAULTS: dict = {
     "predict_stop": False,              # also stop when the force extrapolated one sample ahead exceeds the floor
     "startup_timeout_s": 300.0,
     "camera": "scene",
+    # virtual views next to the D435 (server startup arg; cameras.py): [] | [top] | [top, side]
+    "extra_cameras": [],
     "tcp_speed_m_s": None,              # None -> SafetyConfig.max_tcp_speed_m_s (0.15)
     "joint_speed_rad_s": 1.0,           # PHANTOM hardware.yaml arm.limits.joint_speed_rad_s
     "rot_speed_rad_s": 1.0,
@@ -114,6 +116,8 @@ def server_args_for(params: dict | None) -> list[str]:
         args.append("--no-legacy-contact-views")
     if not phys.get("self_collisions", True):
         args.append("--no-self-collisions")
+    if p.get("extra_cameras"):
+        args += ["--extra-cameras", ",".join(p["extra_cameras"])]
     return args + [str(a) for a in p.get("server_args") or []]
 
 
@@ -194,6 +198,14 @@ class IsaacRobot(Robot):
             raise RuntimeError("the running Isaac server has other physics settings than the config ("
                                + "; ".join(bad) + "); restart it with these settings "
                                "(scripts/remote_run.sh does; or stop it and let the client launch one)")
+        have = set((info.get("extra_cameras") or {}).keys())
+        if set(p.get("extra_cameras") or []) - have:
+            raise RuntimeError(f"the running Isaac server has virtual cameras {sorted(have)}, the config asks for "
+                               f"{list(p['extra_cameras'])}; restart it (scripts/remote_run.sh does)")
+        self.extra_cameras = {n: CameraInfo(name=n, width=int(c["width"]), height=int(c["height"]),
+                                            K=np.asarray(c["K"], float), T_cam_base=np.asarray(c["T_cam_base"], float))
+                              for n, c in (info.get("extra_cameras") or {}).items()
+                              if n in (p.get("extra_cameras") or [])}
         cam = info["camera"]
         self.camera = CameraInfo(name=p["camera"], width=int(cam["width"]), height=int(cam["height"]),
                                  K=np.asarray(cam["K"], float), T_cam_base=np.asarray(cam["T_cam_base"], float))
@@ -268,8 +280,11 @@ class IsaacRobot(Robot):
 
     def _obs(self, o: dict) -> Observation:
         st = self._state(o["state"])
-        return Observation(t=st.t, images={self.camera.name: np.asarray(o["rgb"], np.uint8)},
-                           cameras={self.camera.name: self.camera}, state=st)
+        images = {self.camera.name: np.asarray(o["rgb"], np.uint8)}
+        images.update({n: np.asarray(img, np.uint8) for n, img in (o.get("extra") or {}).items()
+                       if n in self.extra_cameras})
+        return Observation(t=st.t, images=images, cameras={self.camera.name: self.camera, **self.extra_cameras},
+                           state=st)
 
     # ------------------------------------------------------------------- api
     def reset(self, task_cfg: dict, seed: int | None = None) -> Observation:

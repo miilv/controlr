@@ -11,7 +11,8 @@ can be measured.
 Pipeline per camera (``ObservationConfig.cameras`` order):
   resize to the long edge (LANCZOS, never upscale) -> overlays in configured
   order (``grid``, ``axes``, ``ee_marker``; ``raw`` = none) -> main image;
-  ``diff`` / ``heatmap`` add one derived image each (needs ``prev``); then
+  ``diff`` / ``heatmap`` add one derived image each (needs ``prev``); ``fovea`` adds a zoomed
+  crop of the native frame around the projected TCP (magenta cross at the TCP); then
   optionally everything is tiled into one labelled image (``tile``).
 
 Everything is deterministic for identical input (fixed colours, fixed font,
@@ -38,7 +39,7 @@ from controlr.protocol.grammar import fmt_num, pos_decimals, pos_factor
 from controlr.types import CameraInfo, Observation, RobotSpec
 
 OVERLAYS = ("grid", "axes", "ee_marker")
-DERIVED = ("diff", "heatmap")
+DERIVED = ("diff", "heatmap", "fovea")
 KNOWN = ("raw",) + OVERLAYS + DERIVED + ("tile",)
 
 _NEAR = 0.02          # m, near clipping plane for projected segments
@@ -168,6 +169,19 @@ def _project_segment(info: CameraInfo, p0: np.ndarray, p1: np.ndarray, w: int, h
     if not np.all(np.isfinite(uv)) or np.any(np.abs(uv) > 1e5):
         return None
     return (float(uv[0, 0]), float(uv[0, 1])), (float(uv[1, 0]), float(uv[1, 1]))
+
+
+def image_labels(cfg: ObservationConfig) -> list[str] | None:
+    """Labels of the images one turn sends, in order, when they do not depend on the previous
+    observation (None with diff / heatmap / tile): camera, then "<camera> fovea" if configured."""
+    if cfg.tile or any(r in cfg.renderers for r in ("diff", "heatmap", "tile")):
+        return None
+    out = []
+    for cam in cfg.cameras:
+        out.append(cam)
+        if "fovea" in cfg.renderers:
+            out.append(f"{cam} fovea")
+    return out
 
 
 def describe_axes(info: CameraInfo, origin: np.ndarray | None = None, long_edge: int | None = None,
@@ -320,7 +334,9 @@ class ObservationRenderer:
                 if p.shape == base.shape:
                     prev_img = p
             for r in self.cfg.renderers:
-                if r == "diff" and prev_img is not None:
+                if r == "fovea" and info is not None:
+                    out.append((f"{cam} fovea", self._fovea(obs.images[cam], info, obs, size)))
+                elif r == "diff" and prev_img is not None:
                     out.append((f"{cam} diff", self._diff(base, prev_img)))
                 elif r == "heatmap" and prev_img is not None:
                     out.append((f"{cam} heatmap", self._heatmap(base, prev_img)))
@@ -342,6 +358,9 @@ class ObservationRenderer:
             h, w = rgb.shape[:2]
             if label == "tile":
                 parts.append(f"tile {w}x{h} (labelled panels)")
+            elif label.endswith(" fovea"):
+                parts.append(f"{label} {w}x{h} (zoom around the TCP, {self.cfg.fovea_px} camera px wide; "
+                             f"magenta cross = TCP)")
             elif label.endswith(" diff"):
                 parts.append(f"{label} {w}x{h} (amplified change since the previous image)")
             elif label.endswith(" heatmap"):
@@ -453,6 +472,25 @@ class ObservationRenderer:
             draw.line([(u - 9, v), (u + 9, v)], fill=_COLORS["tcp"], width=1)
             draw.line([(u, v - 9), (u, v + 9)], fill=_COLORS["tcp"], width=1)
             _label(draw, (u - 80, v - 24), f"TCP z={self._num(tcp[2])}", font, _COLORS["tcp"], w, h)
+
+    def _fovea(self, native: np.ndarray, info: CameraInfo, obs: Observation, size: int) -> np.ndarray:
+        """Square crop of the native frame centred on the projected TCP (shifted inside the frame
+        near the edges), scaled to ``size``; magenta cross at the TCP."""
+        h, w = native.shape[:2]
+        side = int(min(self.cfg.fovea_px, w, h))
+        uv, ok = project_points(info, np.asarray(obs.state.tcp_pos, float).reshape(1, 3), w, h)
+        u, v = (uv[0] if ok[0] else (w / 2, h / 2))
+        x0 = int(round(min(max(u - side / 2, 0), w - side)))
+        y0 = int(round(min(max(v - side / 2, 0), h - side)))
+        crop = Image.fromarray(np.ascontiguousarray(native[y0:y0 + side, x0:x0 + side, :3]).astype(np.uint8))
+        img = crop.resize((size, size), Image.Resampling.LANCZOS)
+        if ok[0]:
+            k = size / side
+            cu, cv = (u - x0) * k, (v - y0) * k
+            d = ImageDraw.Draw(img)
+            d.line([(cu - 14, cv), (cu + 14, cv)], fill=_COLORS["tcp"][:3], width=3)
+            d.line([(cu, cv - 14), (cu, cv + 14)], fill=_COLORS["tcp"][:3], width=3)
+        return np.asarray(img, dtype=np.uint8)
 
     @staticmethod
     def _diff(cur: np.ndarray, prev: np.ndarray) -> np.ndarray:
