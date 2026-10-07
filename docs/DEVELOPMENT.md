@@ -91,6 +91,9 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   model; with `field` (data URLs inside the JSON) it does not see the frame and guesses
   (`tests/test_llm_decisions_live.py`).
   Question wording is a prompt: a new wording = a new `decisions_vN.yaml`.
+- **The Decisions API has no prompt cache**: an identical request is billed in full at the same
+  latency (probe 2026-10-07). History in `state` (`state_layout: transcript`) costs input tokens
+  every turn (~200 per turn with one 448 px image); thin past images with `history_image_every`.
 - **Decision-head probes must be balanced.** With the target on the same side in most samples a
   constant answer scores "24/24" (it happened). `scripts/decisions_probe.py` / `decisions_perception.py`
   place the start around the aim point with a random sign per axis; always read the accuracy on the

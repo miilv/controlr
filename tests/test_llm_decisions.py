@@ -343,3 +343,31 @@ def test_state_labels_each_image_when_counts_match():
     assert [p.get("text") for p in st[1:]] == ["image `scene`:", None, "image `top`:", None]
     st = build_state(m, cfg.decisions, ["scene"])                 # mismatch: no labels
     assert [p["type"] for p in st[1:]] == ["image_url", "image_url"]
+
+
+# ---------------------------------------------------------------------------
+# state_layout=transcript: the whole episode, append-only
+# ---------------------------------------------------------------------------
+
+def test_transcript_state_keeps_every_step_and_is_prefix_stable():
+    cfg = _cfg(None, "decisions.state_layout=transcript")
+    s3, s4 = build_state(_messages(3), cfg.decisions), build_state(_messages(4), cfg.decisions)
+    texts = [p["text"] for p in s4 if p["type"] == "text"]
+    assert texts[0] == "OPERATING MANUAL\nMANUAL" and texts[1].startswith("EPISODE START (turn 0)\nTASK: reach")
+    assert [t.split("\n")[0] for t in texts[2:6]] == ["TURN 0 ACTION", "TURN 1 ACTION", "TURN 2 ACTION", "TURN 3 ACTION"]
+    assert "TURN 4 FEEDBACK\nSTATE: 3" in texts[5] and texts[6].startswith("NOW: turn 4")
+    assert [p["image_url"]["url"] for p in s4 if p["type"] == "image_url"] == ["data:image/jpeg;base64,I3"]
+    # everything before the moving tail (NOW line + newest images) is a byte-identical prefix
+    tail = 2                                                  # NOW + 1 image
+    assert json.dumps(s4[:len(s3) - tail]) == json.dumps(s3[:len(s3) - tail])
+
+
+def test_transcript_state_keeps_past_images_every_k_turns():
+    cfg = _cfg(None, "decisions.state_layout=transcript", "decisions.history_image_every=2")
+    s = build_state(_messages(4), cfg.decisions, ["scene"])
+    urls = [p["image_url"]["url"] for p in s if p["type"] == "image_url"]
+    assert urls == ["data:image/jpeg;base64,AAA", "data:image/jpeg;base64,I1", "data:image/jpeg;base64,I3"]
+    labels = [p["text"] for p in s if p["type"] == "text" and "image `" in p["text"]]
+    assert labels == ["turn 0 (past) image `scene`:", "turn 2 (past) image `scene`:", "image `scene`:"]
+    with pytest.raises(ValueError):
+        _cfg(None, "decisions.state_layout=transcript", "decisions.image_mode=field")
