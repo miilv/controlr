@@ -25,6 +25,10 @@ from typing import Any
 
 @dataclass
 class LLMConfig:
+    # chat = OpenAI-compatible chat completions (the reply is grammar text);
+    # decisions = OpenRouter's Decisions API (typed probabilistic answers, rendered into grammar
+    # text by controlr.llm.decisions; settings in the `decisions` section). The planner always uses chat.
+    backend: str = "chat"
     base_url: str = "${OMNIROUTE_BASE_URL}"
     api_key_env: str = "OMNIROUTE_API_KEY"
     model: str = "claude/claude-sonnet-5-5"
@@ -54,6 +58,28 @@ class LLMConfig:
     # account per run; omniroute advertises X-OmniRoute-Lease-Owner — unverified, see
     # docs/reviews/2026-10-02-fixlog.md). Values may use ${VAR}.
     extra_headers: dict = field(default_factory=dict)
+
+
+@dataclass
+class DecisionsConfig:
+    """The decision head (``llm.backend=decisions``, ``controlr/llm/decisions.py``). A decision
+    model returns probabilities over options we define, never free text: each turn asks one
+    ``score`` question per motion axis (ordered levels, LLM units), a gripper and a status
+    ``choice``, and renders the answers as MOVE/GRIP/HOLD/STATUS text."""
+    base_url: str = "https://openrouter.ai/api/alpha"     # POST {base_url}/decisions
+    api_key_env: str = "OPENROUTER_API_KEY"
+    questions: str = "decisions_v0"        # controlr/prompts/<name>.yaml: question texts
+    # ordered step levels per axis, in action.pos_unit / action.ang_unit (must contain 0)
+    levels: list = field(default_factory=lambda: [-30.0, -10.0, -3.0, 0.0, 3.0, 10.0, 30.0])
+    yaw_levels: list = field(default_factory=lambda: [-20.0, -5.0, 0.0, 5.0, 20.0])
+    # expected = probability-weighted level (unsure -> smaller step); argmax = the likeliest level
+    reduce: str = "expected"
+    deadband: float = 1.0                  # |step| below this (LLM units) -> 0
+    history: int = 6                       # past (action, feedback) pairs carried in `state`
+    include_manual: bool = True            # the operating manual (camera geometry, frame) in `state`
+    # how the frame goes into `state` (the Decisions schema does not document images):
+    # parts = [text part, image_url parts...]; field = {..., "images": [data URLs]}
+    image_mode: str = "parts"
 
 
 @dataclass
@@ -218,6 +244,7 @@ class Config:
     name: str = "default"
     seed: int = 0
     llm: LLMConfig = field(default_factory=LLMConfig)
+    decisions: DecisionsConfig = field(default_factory=DecisionsConfig)
     planner: PlannerConfig = field(default_factory=PlannerConfig)
     robot: RobotConfig = field(default_factory=RobotConfig)
     task: TaskConfig = field(default_factory=TaskConfig)
@@ -322,6 +349,7 @@ def _build(cls, data: dict):
 
 _SECTION_TYPES = {
     (Config, "llm"): LLMConfig,
+    (Config, "decisions"): DecisionsConfig,
     (Config, "planner"): PlannerConfig,
     (Config, "robot"): RobotConfig,
     (Config, "task"): TaskConfig,
@@ -345,6 +373,9 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("action", "gripper"): ("binary", "width"),
     ("action", "format"): ("text",),            # "tool" is not implemented
     ("episode", "goal_feedback"): ("never", "on_done", "always"),
+    ("llm", "backend"): ("chat", "decisions"),
+    ("decisions", "reduce"): ("expected", "argmax"),
+    ("decisions", "image_mode"): ("parts", "field"),
     ("llm", "cache"): ("auto", "anthropic", "none"),
     ("llm", "cache_ttl"): ("5m", "1h"),
     ("robot", "backend"): ("isaac", "mock", "replay", "robodojo"),
@@ -392,6 +423,21 @@ def validate(cfg: Config) -> Config:
         if eff in ("none", "minimal") and ("claude" in model or model.startswith("cc/")):
             errs.append(f"{sec}.extra_body.reasoning_effort={eff!r} on {getattr(cfg, sec).model} means "
                         f"'default thinking' through the router; use 'low' for no thinking")
+    if cfg.llm.backend == "decisions":
+        d, a = cfg.decisions, cfg.action
+        if a.mode != "ee_delta" or a.rotation not in ("none", "yaw"):
+            errs.append(f"llm.backend=decisions supports action.mode=ee_delta with rotation none|yaw "
+                        f"(got {a.mode}, {a.rotation})")
+        if a.gripper != "binary":
+            errs.append("llm.backend=decisions supports action.gripper=binary only")
+        if cfg.robot.backend == "robodojo":
+            errs.append("llm.backend=decisions renders single-arm replies; robot.backend=robodojo is two-arm")
+        for key in ("levels", "yaw_levels"):
+            lv = list(getattr(d, key))
+            if 0 not in lv or lv != sorted(set(lv)):
+                errs.append(f"decisions.{key} must be strictly increasing and contain 0 (got {lv})")
+        if d.history < 0 or d.deadband < 0:
+            errs.append("decisions.history and decisions.deadband must be >= 0")
     if errs:
         raise ValueError("invalid config: " + "; ".join(errs))
     return cfg

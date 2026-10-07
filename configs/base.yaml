@@ -5,6 +5,7 @@ name: base
 seed: 0
 
 llm:
+  backend: chat                        # chat | decisions (OpenRouter Decisions API; see the decisions section)
   base_url: ${OMNIROUTE_BASE_URL}
   api_key_env: OMNIROUTE_API_KEY      # the key itself never appears in configs or run logs
   model: claude/claude-sonnet-5-5
@@ -20,6 +21,18 @@ llm:
   usage_grace_s: 0.3                   # after early stop, wait <=0.3 s for the usage chunk + end of the STATUS line
   request_nonce: true                  # RUN <run id> in turn 0: defeats the router's response replay
   extra_headers: {}                    # e.g. a router lease header to pin one upstream (unverified)
+
+decisions:                             # only with llm.backend=decisions (controlr/llm/decisions.py)
+  base_url: https://openrouter.ai/api/alpha
+  api_key_env: OPENROUTER_API_KEY
+  questions: decisions_v0              # controlr/prompts/decisions_v0.yaml
+  levels: [-30, -10, -3, 0, 3, 10, 30] # step levels per axis, action.pos_unit
+  yaw_levels: [-20, -5, 0, 5, 20]      # action.ang_unit (rotation=yaw)
+  reduce: expected                     # expected (probability-weighted) | argmax
+  deadband: 1.0                        # smaller steps -> 0
+  history: 6                           # past (action, feedback) pairs in the request state
+  include_manual: true
+  image_mode: parts                    # parts | field (how the frame goes into state)
 
 planner:
   enabled: true

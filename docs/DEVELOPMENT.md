@@ -56,6 +56,7 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | a new Isaac task | `robot/isaac/tasks.py` (+ server if new objects are needed) | `test_isaac_tasks` (no GPU) + scripted expert in the isaac tests; look at the frames (`docs/img/`) |
 | a new backend (real UR3 etc.) | `robot/<backend>.py`, factory in `robot/__init__.py` | the `robot/base.py` contract; mock tests as the template |
 | RoboDojo (shim, frames, two-arm grammar) | `robot/robodojo/`, `protocol/grammar.py` (`_parse_arm_line`), `prompts/system_v1.md` | `test_robodojo` (shim vs a fake `TASK_ENV`, a whole episode over a real connection); then `scripts/robodojo/run.sh --fake-llm` on compute2 ([ROBODOJO.md](ROBODOJO.md)) |
+| decision head (questions, reduction, state) | `llm/decisions.py`, `prompts/decisions_vN.yaml` (+ `config.DecisionsConfig`) | `test_llm_decisions`; image format / that the model sees the frame: `CONTROLR_LIVE=1 pytest tests/test_llm_decisions_live.py -s` (4 calls) |
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
 
@@ -82,6 +83,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   every image (~42 KB per image, ~730 KB by turn 16). Runs before 2026-10-04 17:20 MSK went through the
   Happ VPN (40–140 KB/s upload); since then the router is reached directly (~1.5 MB/s, `controlr-vpn` routes it direct). Before
   comparing latency across runs, check `scripts/net_check.sh` (RUNBOOK §3a).
+- **GPT-6 Luna Decisions is not a chat model.** It answers typed questions with probabilities on
+  OpenRouter's `/api/alpha/decisions` (alpha API); chat SDKs and omniroute do not work with it
+  (omniroute 404s every decisions path). It cannot write numbers — steps are levels we define
+  (`decisions.levels`), so the step size resolution is a config axis. The schema does not document
+  images in `state`: `decisions.image_mode` must be confirmed by the live probe before a run counts.
+  Question wording is a prompt: a new wording = a new `decisions_vN.yaml`.
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
   Very small frames (224 px) also make `low` think ([journal](journal/2026-10-04-sonnet-latency.md)).

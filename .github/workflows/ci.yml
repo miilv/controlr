@@ -27,7 +27,7 @@ jobs:
 
       - name: secret scan (no key values in tree)
         run: |
-          if git grep -nIE 'sk-[0-9a-f]{16}-[0-9a-f]{6}-[0-9a-f]{8}|sk-ant-[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|OMNIROUTE_API_KEY=sk-[A-Za-z0-9]' \
+          if git grep -nIE 'sk-[0-9a-f]{16}-[0-9a-f]{6}-[0-9a-f]{8}|sk-ant-[A-Za-z0-9_-]{20,}|sk-or-v1-[0-9a-f]{32,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|OMNIROUTE_API_KEY=sk-[A-Za-z0-9]' \
              -- . ':(exclude)*.example'; then
             echo "::error::Possible secret value committed"; exit 1
           fi

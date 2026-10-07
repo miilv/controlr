@@ -53,7 +53,9 @@ feedback-dependent sentence, and with the legacy settings (`feedback.level=full`
 *responses* for byte-identical requests.
 
 The robot never moves while the model thinks. Latency is a measured quantity
-(~1 s/turn is the target, not a constraint).
+(~1 s/turn is the target, not a constraint). With `llm.backend=decisions` the "assistant reply"
+is rendered from a decision model's typed answers (see Decision head): ~0.3 s per call, many
+small steps.
 
 ## Modules and ownership (each file has one owner; interfaces below are the contract)
 
@@ -62,6 +64,7 @@ The robot never moves while the model thinks. Latency is a measured quantity
 | `controlr/types.py` | shared dataclasses (frozen contract — do not change without updating all users) |
 | `controlr/config.py` | experiment config (YAML + `--set` overrides); every experiment axis is a field |
 | `controlr/llm/client.py` | streaming OpenAI-compatible chat client with timings + normalised usage + early stop |
+| `controlr/llm/decisions.py` | decision head (`llm.backend=decisions`): `DecisionsClient` — the `LLMClient` signature over OpenRouter's Decisions API; transcript → state + typed questions → answers rendered as grammar text |
 | `controlr/llm/caching.py` | cache-marker placement per model route (applied at serialisation, never stored) |
 | `controlr/llm/codex_auth.py` | controlr's OWN ChatGPT login for the Codex backend (device code, rotating refresh; token file outside the repo, one holder) — used by `scripts/codex_direct_stand.py`, not by the loop yet |
 | `controlr/llm/transcript.py` | append-only transcript; images encoded once and stored as bytes |
@@ -124,6 +127,40 @@ class LLMClient:
   (`grammar.strip_partial_note`). `completion_tokens` then includes discarded tokens.
 * Retries: connection errors, 429, 5xx with exponential backoff; 4xx other -> no retry.
 * Idle connections are kept 120 s (`KEEPALIVE_S`; httpx's 5 s default re-handshakes between slow turns).
+
+### Decision head (`controlr/llm/decisions.py`, `llm.backend=decisions`)
+A decision model (`openai/gpt-6-luna-decisions`) writes no text: it reads a `state` and returns
+probabilities for named, typed questions — `score` (ordered levels), `choice`, `noul` (yes/no).
+`POST {decisions.base_url}/decisions` (OpenRouter `/api/alpha/decisions`, key
+`decisions.api_key_env`; omniroute has no such route), one non-streamed request per turn.
+```python
+class DecisionsClient:   # same complete() signature and LLMResult as LLMClient
+    def __init__(self, base_url: str, api_key: str, cfg: Config, timeout_s: float, max_retries: int, *,
+                 headers=None, transport=None, sleep=time.sleep, rng=None): ...
+def build_state(messages, dcfg) -> list | dict          # transcript -> state
+def build_questions(dcfg, acfg, tpl) -> dict            # prompts/<decisions.questions>.yaml
+def render_reply(answers, dcfg, acfg) -> (str, dict)    # answers -> grammar text + log record
+```
+* Questions per turn (fixed key order): `dx dy dz` (+ `dyaw` with rotation=yaw) as `score` over
+  `decisions.levels` / `yaw_levels` (LLM units, contain 0), `grip` choice keep|open|close,
+  `status` choice CONTINUE|DONE|FAIL. Supported: `ee_delta`, rotation none|yaw, binary gripper,
+  single arm (`config.validate`).
+* Reduction: `expected` = probability-weighted level (an unsure model takes a smaller step),
+  `argmax` = likeliest level; `|step| < deadband` → 0; a missing answer → 0. Rendering: DONE/FAIL →
+  `STATUS <s>` alone (no motion on a terminal turn); open/close → `GRIP <g>` alone (in place); all
+  zero → `HOLD`; else `MOVE ee_delta dx dy dz [dyaw]` (1 decimal). The rendered text is the stored
+  reply, so the parser, envelope, feedback and run log are the chat path's.
+* `state` is rebuilt every turn (the API keeps no history): `manual` (system text, with
+  `include_manual`), `task` (turn 0's text: task, plan, first STATE), `turn`, `recent_steps` (last
+  `history` (action, feedback) pairs), and the newest frame(s) — as content parts after a JSON
+  text part (`image_mode=parts`) or a data-URL list field (`field`). No prompt caching; the
+  transcript stays append-only for the log.
+* `LLMResult.decisions` (turn record `decisions`): reduced steps, grip, status, per-question
+  probabilities / score / confidence, response id. `Usage.prompt_tokens` = `input_tokens`;
+  `raw.cost` is OpenRouter's cost. Timings: one response time (`ttft = t_complete = t_end`).
+* The planner always uses the chat client (`run_episode(planner_llm=...)`; default: `llm` for
+  chat control or a fake, else `make_llm_client(cfg)`); `make_control_client(cfg)` picks the
+  control client.
 
 ### Caching (`controlr/llm/caching.py`)
 ```python
