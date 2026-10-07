@@ -34,3 +34,12 @@ instead of 30, no streaming / overlap.
 go into `state`; `decisions.image_mode` (content parts vs a data-URL field) is a guess until
 `tests/test_llm_decisions_live.py` (4 calls, left/right red-square check) passes for one mode.
 Then a mock episode, then the 4 rotation seeds with pinned plans against the chat models.
+
+**Update — key in place, image probe (4 calls, $0.0001).** `OPENROUTER_API_KEY` is set locally and in
+`~/controlr/.env` on compute3. `tests/test_llm_decisions_live.py`, a red square left vs right in a
+320x240 frame, asked "where is the red square?":
+- `image_mode: parts` (JSON text part + `image_url` parts as `state`): left 1.00 / right 1.00 —
+  the model sees the frame. 200 OK in 0.49 s and 0.28 s, 235 input tokens, $0.0000235 per call.
+- `image_mode: field` (data URLs as a JSON field): left 0.59 / left 0.62, confidence 0.18-0.24 — it
+  does not see the image (the URL is read as text, if at all).
+The default (`parts`) is the working one; `field` is useless as it stands.

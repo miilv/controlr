@@ -7,8 +7,8 @@
 ## P1 — before the next round (carry failures and perception)
 
 - [ ] **Decision head, first light** (`configs/sim_waffle_yaw_luna_dec.yaml`, journal/2026-10-07-luna-decisions.md):
-  needs `OPENROUTER_API_KEY` in `.env` (local + compute3). (1) `tests/test_llm_decisions_live.py`
-  (4 calls) → which `decisions.image_mode` the model actually sees; (2) one mock episode
+  (1) ~~image format probe~~ done: `parts` is seen, `field` is not (journal/2026-10-07-luna-decisions.md);
+  drop `field` or make its live test expect blindness; (2) one mock episode
   (`configs/mock.yaml --set llm.backend=decisions ...`); (3) the 4 rotation seeds with the pinned
   plans vs Sonnet 5.5 / Luna chat — success, turns, wall time per episode, cost. Then axes:
   `levels` (resolution), `reduce`, `history`, `include_manual`.

@@ -87,7 +87,9 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   OpenRouter's `/api/alpha/decisions` (alpha API); chat SDKs and omniroute do not work with it
   (omniroute 404s every decisions path). It cannot write numbers — steps are levels we define
   (`decisions.levels`), so the step size resolution is a config axis. The schema does not document
-  images in `state`: `decisions.image_mode` must be confirmed by the live probe before a run counts.
+  images in `state`: only `image_mode: parts` (content parts after a JSON text part) reaches the
+  model; with `field` (data URLs inside the JSON) it does not see the frame and guesses
+  (`tests/test_llm_decisions_live.py`).
   Question wording is a prompt: a new wording = a new `decisions_vN.yaml`.
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
