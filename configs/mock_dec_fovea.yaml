@@ -1,0 +1,18 @@
+# Mock reach with the tuned decision head (journal 2026-10-07-decision-head-tuning): per-axis
+# direction choices asked as image relations in the camera where that axis reads unambiguously
+# (scene / top / side), in a zoomed crop around the TCP (fovea) with the full frame as fallback,
+# the target named concretely (decisions.target), unsigned distance score. 11/12 seeds within
+# 15 mm (v4 + named target, same settings).
+extends: mock_dec.yaml
+name: mock_dec_fovea
+robot:
+  params:
+    cameras: [top, side]
+observation:
+  cameras: [scene, top, side]
+  renderers: [raw, fovea]
+  fovea_px: 320
+decisions:
+  head: split
+  questions: decisions_v5
+  target: the red ball

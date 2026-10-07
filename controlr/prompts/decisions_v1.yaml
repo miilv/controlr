@@ -1,0 +1,46 @@
+# Questions for the decision head (llm.backend=decisions, controlr/llm/decisions.py).
+# A decision model answers named questions about `state` with probabilities over the options
+# below; it writes no text. Placeholders: {axis} (x|y|z), {unit} (action.pos_unit / ang_unit),
+# {v} (a signed level). Never edit a released file — a new wording is decisions_v1.yaml
+# (comparability across runs), like system_vN.md.
+#
+# v1: each axis question says where that axis points in the images ({hint}, generated from the
+# calibration by axis_hints) and asks one image-grounded relation instead of a base-frame distance.
+
+axis:
+  instructions: >-
+    You move a robot gripper in small steps; `state` holds the task, the plan, the recent steps
+    and the current camera image(s). Only the robot base {axis} axis matters for this question:
+    {hint}. Look where the gripper fingertips are and where they must get to next for the task,
+    and judge how far that point is from the fingertips along +{axis} or -{axis}, using the
+    image direction above. Choose 0 if they are already level along {axis}.
+  move: "move the fingertips {v} {unit} along {axis}"
+  zero: "already level along {axis}: no motion along {axis}"
+
+yaw:
+  instructions: >-
+    Same robot and state. Decide how far to turn the tool about the vertical (base z) axis in this
+    step so the jaws line up as the plan requires; positive turns counter-clockwise seen from above.
+    Choose 0 when the jaws are already lined up.
+  move: "turn the tool {v} {unit} about base z"
+  zero: "do not turn the tool in this step"
+
+grip:
+  instructions: >-
+    Same robot and state. Should the gripper change in this step? Close it only when the object is
+    between the open jaws at grasp height; open it only to release the object at the goal or to
+    retry a failed grasp. A gripper change is done in place, without motion.
+  criteria:
+    keep: the gripper stays as it is
+    open: open the gripper now
+    close: close the gripper now
+
+status:
+  instructions: >-
+    Same robot and state. Is the task finished? DONE only when the current image clearly shows the
+    goal reached (for a pick-and-place: the object released at its target and the gripper clear).
+    FAIL only when the task can no longer be completed. Otherwise CONTINUE.
+  criteria:
+    CONTINUE: the task is not finished yet; keep working
+    DONE: the task is complete as the current image shows
+    FAIL: the task cannot be completed any more

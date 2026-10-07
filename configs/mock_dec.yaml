@@ -1,0 +1,11 @@
+# Mock reach with the decision head (llm.backend=decisions): the cheap bench for tuning it
+# (scripts/decisions_probe.py, one call per scene; then short mock episodes).
+extends: mock.yaml
+name: mock_dec
+llm:
+  backend: decisions
+  model: openai/gpt-6-luna-decisions
+  overlap_tail: false
+  timeout_s: 30
+episode:
+  max_turns: 40

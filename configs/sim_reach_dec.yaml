@@ -1,0 +1,21 @@
+# Isaac reach with the decision head (llm.backend=decisions): the realistic bench for tuning it
+# (scripts/decisions_probe.py on compute3; then episodes). Virtual top + side cameras next to the
+# D435 (robot.params.extra_cameras, controlr/robot/isaac/cameras.py) so each base axis reads in
+# some image on its own; direction questions are image relations (decisions_v3, head split).
+extends: sim_reach.yaml
+name: sim_reach_dec
+robot:
+  params:
+    extra_cameras: [top, side]
+observation:
+  cameras: [scene, top, side]
+llm:
+  backend: decisions
+  model: openai/gpt-6-luna-decisions
+  overlap_tail: false
+  timeout_s: 30
+decisions:
+  head: split
+  questions: decisions_v3
+episode:
+  max_turns: 60

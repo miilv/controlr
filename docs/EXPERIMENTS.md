@@ -33,7 +33,8 @@ go-ahead.
 | Axis | Field | Values |
 |---|---|---|
 | control model | `llm.model` | `claude/claude-sonnet-5-5` (default), `cx/gpt-6-luna` (`cxa/` has no credentials), `claude/claude-opus-5-5`, `no-think/claude/...` (Sonnet 5.5 still thinks there) |
-| control backend | `llm.backend` + `decisions.*` | `chat` (default) / `decisions` (decision head: `openai/gpt-6-luna-decisions` on OpenRouter; `decisions.levels` / `yaw_levels` = step resolution, `reduce` expected/argmax, `history`, `include_manual`, `image_mode`, `questions` = wording file) |
+| control backend | `llm.backend` + `decisions.*` | `chat` (default) / `decisions` (decision head: `openai/gpt-6-luna-decisions` on OpenRouter; `decisions.levels` / `yaw_levels` = step resolution, `reduce` expected/argmax, `history`, `include_manual`, `image_mode`, `questions` = wording file; `head` signed/split, `magnitudes`, `target`) |
+| cameras / fovea | `robot.params.extra_cameras` (Isaac) / `robot.params.cameras` (mock), `observation.cameras`, `observation.renderers: fovea`, `observation.fovea_px` | virtual `top` / `side` next to the D435; a zoomed crop around the TCP per camera |
 | thinking effort | `llm.extra_body.reasoning_effort` | Sonnet 5.5: `low` / `medium` / `high`; unset ≈ `high`. Id suffixes `-low…-xhigh` are rejected for Sonnet 5.5 through the router; the Opus planner takes effort only via its id suffix. Luna: `none` (0 thinking) / `low` (thinks on ~1/3 of turns) / … `max`; `service_tier: priority` accepted, effect unverified |
 | planner | `planner.enabled`, `planner.model`, `planner.plan_file` | on/off, model, pinned plan |
 | robot manual | `prompt.system`, `prompt.extra_rules`, `prompt.fewshot` | `system_vN` versions, extra rules, demo in the cached prefix |

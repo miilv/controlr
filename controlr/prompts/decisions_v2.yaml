@@ -1,0 +1,55 @@
+# Questions for the decision head, decisions.head=split (controlr/llm/decisions.py).
+# Placeholders: {axis} (x|y|z), {hint} (where the axis points in the images, from the calibration),
+# {v} (a step size), {unit}. Never edit a released file — a new wording is a new decisions_vN.yaml.
+#
+# v2: per axis a DIRECTION choice (neg / zero / pos) and an unsigned DISTANCE score. Probes of v0/v1
+# (2026-10-07) showed a signed ordinal scale is read as "how far" — mass on both extremes — while
+# image-grounded choices (left/right, higher/lower) were answered correctly.
+
+direction:
+  instructions: >-
+    You move a robot gripper in small steps; `state` holds the task, the plan, the recent steps
+    and the current camera image(s). This question is only about the robot base {axis} axis:
+    {hint}. Find the gripper fingertips and the point they must reach next for the task. Using
+    that image direction, is the point toward +{axis} or toward -{axis} of the fingertips, or
+    already level with them along {axis}?
+  criteria:
+    neg: "the point is toward -{axis} from the fingertips: move toward -{axis}"
+    zero: "the fingertips are already level with the point along {axis}: no motion along {axis}"
+    pos: "the point is toward +{axis} from the fingertips: move toward +{axis}"
+
+distance:
+  instructions: >-
+    Same robot and state. Along the robot base {axis} axis only ({hint}), how far are the gripper
+    fingertips from the point they must reach next? Pick the step that brings them closer without
+    overshooting.
+  level: "a step of {v} {unit} along {axis}"
+
+yaw:
+  instructions: >-
+    Same robot and state. Decide how far to turn the tool about the vertical (base z) axis in this
+    step so the jaws line up as the plan requires; positive turns counter-clockwise seen from above.
+    Choose 0 when the jaws are already lined up.
+  move: "turn the tool {v} {unit} about base z"
+  zero: "do not turn the tool in this step"
+
+grip:
+  instructions: >-
+    Same robot and state. Should the gripper change in this step? Close it only when the object is
+    between the open jaws at grasp height; open it only to release the object at the goal or to
+    retry a failed grasp. A gripper change is done in place, without motion.
+  criteria:
+    keep: the gripper stays as it is
+    open: open the gripper now
+    close: close the gripper now
+
+status:
+  instructions: >-
+    Same robot and state. Is the task finished? DONE only when the current image clearly shows the
+    goal reached (for a pick-and-place: the object released at its target and the gripper clear;
+    for a reach: the fingertips at the target point). FAIL only when the task can no longer be
+    completed. Otherwise CONTINUE.
+  criteria:
+    CONTINUE: the task is not finished yet; keep working
+    DONE: the task is complete as the current image shows
+    FAIL: the task cannot be completed any more

@@ -155,6 +155,24 @@ def render_reply(answers, dcfg, acfg) -> (str, dict)    # answers -> grammar tex
   `history` (action, feedback) pairs), and the newest frame(s) — as content parts after a JSON
   text part (`image_mode=parts`) or a data-URL list field (`field`). No prompt caching; the
   transcript stays append-only for the log.
+* `head: split` (`decisions_v2+`): per axis a direction `choice` neg|zero|pos (`dir_<a>`) and an
+  unsigned distance `score` over `decisions.magnitudes` (`far_<a>`); step = (P(pos) − P(neg)) ×
+  expected distance (`argmax`: likeliest sign × likeliest distance). A signed ordinal scale is read
+  as "how far", not "which way" (journal 2026-10-07-decision-head-tuning). No yaw yet.
+  `DecisionsClient.set_scene(cameras, origin, task)` (called by the loop after reset) computes per
+  axis `axis_hints` (how it points in each image) and `axis_views`: the image where the axis reads
+  unambiguously (its projection ≥ 35° from every other axis that projects ≥ 30 % as long; longest
+  wins). `decisions_v3+` ask the direction there as an image relation ("to the left of",
+  "nearer the top edge of the image than"); z without such an image as height above the table.
+  With the `fovea` renderer the relation is asked in `<camera> fovea` (relative to the magenta
+  cross) plus the same question on the full frame (`wide_<a>`): the crop's "level" mass defers to
+  it — a target outside the crop reads as "level" there. `{target}` (`decisions_v5`,
+  `decisions.target`, `{task}` → the instruction) names what is located; concrete names ("the red
+  ball") are what makes it work. Image parts are preceded by "image `<name>`:" when
+  `renderers.image_labels` matches the turn's images.
+* A refused question (`502 ... refused to answer question "<q>"`; the same payload is refused again)
+  is dropped and the request repeated without backoff (≤ 3 drops; its axis holds);
+  `decisions.refused` in the turn record.
 * `LLMResult.decisions` (turn record `decisions`): reduced steps, grip, status, per-question
   probabilities / score / confidence, response id. `Usage.prompt_tokens` = `input_tokens`;
   `raw.cost` is OpenRouter's cost. Timings: one response time (`ttft = t_complete = t_end`).
@@ -290,6 +308,10 @@ Renderers (applied per camera, in configured order): `raw`; `grid` (base-frame X
 table plane projected via CameraInfo, labelled in LLM units); `axes` (base x/y/z arrows at the
 TCP); `ee_marker` (projected TCP + gripper footprint); `diff` (extra image: |I_t - I_{t-1}|
 amplified); `heatmap` (extra image: colour heat of change magnitude over the current frame);
+`fovea` (extra image `<camera> fovea`: a square crop of the NATIVE frame, `fovea_px` wide, around
+the projected TCP — shifted inside the frame at the edges — scaled to `size`, the one upscale;
+magenta cross at the TCP; `image_labels(cfg)` = the labels of a turn's images when they do not
+depend on the previous frame);
 `tile` (all images of the turn in one grid image, labelled). Resize to `size` long edge with
 LANCZOS, never upscale. Deterministic output for identical input (cache stability).
 
@@ -378,8 +400,12 @@ per arm, and the manual is `system_v1` (`build_system_prompt` uses `_values_arms
   `profile` (targets / simulate / contacts / bookkeeping / settle seconds) and the client puts it,
   the contact peaks (incl. pad forces), the gripper's own object detection and the box shift into
   `ExecReport.backend` (run log only). Reach and push targets are TEXT relative to visible objects
-  (no markers), drawn per seed; the instruction comes from the server's episode. One camera
-  (`scene`); the mock adds an optional synthetic `top` camera. Tasks: the PHANTOM waffle pick-to-box first, then simple reach/push variants.
+  (no markers), drawn per seed; the instruction comes from the server's episode. Cameras: the
+  calibrated D435 (`scene`) and, with `robot.params.extra_cameras` (server `--extra-cameras`),
+  virtual `top` (looking down: right = +x, up = +y) and `side` (horizontal along +x: right = −y,
+  up = +z) views aimed between the mat and the box (`robot/isaac/cameras.py`, numpy; PHANTOM's
+  intrinsics helpers; a running server without them is refused). The mock has the same synthetic
+  `top` / `side` (`robot.params.cameras`). Tasks: the PHANTOM waffle pick-to-box first, then simple reach/push variants.
   The mock robot covers GPU-free unit tests.
 
 ### Run log (`controlr/runlog.py`)

@@ -245,3 +245,101 @@ def test_decisions_backend_without_key_fails_fast(tmp_path, monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     res = run_episode(_cfg(tmp_path))
     assert res.outcome == "error" and "OPENROUTER_API_KEY" in res.error
+
+
+def test_a_refused_question_is_dropped_not_retried():
+    bodies = []
+
+    def h(req):
+        b = json.loads(req.content)
+        bodies.append(b)
+        if "dx" in b["questions"]:
+            return httpx.Response(502, json={"error": {"code": 502,
+                                                       "message": 'OpenAI refused to answer question "dx"'}})
+        return _response(_answers(dy={"6": 1.0}))
+    res = _client(h).complete("m", _messages(0))
+    assert len(bodies) == 2 and "dx" not in bodies[1]["questions"]            # no backoff retries
+    assert res.error is None and res.text == "MOVE ee_delta 0.0 30.0 0.0\nSTATUS OK"
+    assert res.decisions["refused"] == ["dx"]
+
+
+def test_split_head_defers_to_the_wide_view_when_the_crop_says_level():
+    from controlr.llm.decisions import reduce_split
+
+    mags = [3.0, 10.0, 30.0]
+    far = {"probabilities": {"0": 0.0, "1": 1.0, "2": 0.0}}
+    crop_level = {"probabilities": {"neg": 0.1, "zero": 0.8, "pos": 0.1}}
+    wide_pos = {"probabilities": {"neg": 0.0, "zero": 0.0, "pos": 1.0}}
+    assert reduce_split(crop_level, far, mags, "expected", 0.0) == 0.0
+    assert reduce_split(crop_level, far, mags, "expected", 0.0, wide_pos) == 8.0     # (0 + 0.8 * 1) * 10
+    assert reduce_split({"probabilities": {"neg": 1.0, "zero": 0.0, "pos": 0.0}}, far, mags, "expected", 0.0,
+                        wide_pos) == -10.0                                          # a sure crop wins
+    assert reduce_split({"choice": "zero"}, far, mags, "argmax", 0.0, {"choice": "pos"}) == 10.0
+
+
+# ---------------------------------------------------------------------------
+# split head: image-relation questions, views, labels, fovea, target
+# ---------------------------------------------------------------------------
+
+def _mock3():
+    from controlr.robot.mock import d435_camera, side_camera, top_camera
+
+    return {"scene": d435_camera(640, 480, "scene"), "top": top_camera(640, 480), "side": side_camera(640, 480)}
+
+
+def test_axis_views_pick_an_unambiguous_image_per_axis():
+    import numpy as np
+
+    from controlr.llm.decisions import axis_views
+
+    o = np.array([-0.3, -0.1, 0.1])
+    v = axis_views(_mock3(), ["scene", "top", "side"], o)
+    assert v["x"]["image"] == "scene" and v["x"]["pos"] == "to the right of"
+    assert v["y"]["image"] == "side" and v["y"]["pos"] == "to the left of"
+    assert v["z"]["image"] == "side" and v["z"]["pos"] == "nearer the top edge of the image than"
+    # the angled D435 alone: +y and +z both point up -> neither reads on its own
+    v1 = axis_views({"scene": _mock3()["scene"]}, ["scene"], o)
+    assert v1["x"] is not None and v1["y"] is None and v1["z"] is None
+
+
+def test_split_questions_fill_target_views_and_fovea():
+    from controlr.llm.decisions import load_questions
+
+    cfg = _cfg(None, "decisions.head=split", "decisions.questions=decisions_v5", "decisions.target=the red ball",
+               "robot.params={cameras: [top, side]}", "observation.cameras=[scene,top,side]",
+               "observation.renderers=[raw,fovea]")
+    c = DecisionsClient("http://x", "k", cfg, 5, 0)
+    import numpy as np
+    c.set_scene(_mock3(), np.array([-0.3, -0.1, 0.1]), task="reach it")
+    q = build_questions(cfg.decisions, cfg.action, load_questions("decisions_v5"), c.hints, c.views, c.task)
+    assert list(q) == ["dir_x", "wide_x", "far_x", "dir_y", "wide_y", "far_y", "dir_z", "wide_z", "far_z",
+                       "grip", "status"]
+    assert "`scene fovea`" in q["dir_x"]["instructions"] and "the red ball" in q["dir_x"]["instructions"]
+    assert "magenta cross" in q["dir_x"]["criteria"]["pos"]
+    assert "`scene` image only" in q["wide_x"]["instructions"] and "fingertips" in q["wide_x"]["criteria"]["pos"]
+    assert "the red ball" in q["far_y"]["instructions"]
+    assert "3 px" not in c.hints["z"]                     # perspective drift is not offered as a cue
+    body = c.request_body("m", _messages(0))      # 1 image but 6 configured: unlabeled, not mislabeled
+    assert [p["text"] for p in body["state"] if p["type"] == "text"][1:] == []
+
+
+def test_target_task_placeholder_and_image_labels():
+    from controlr.llm.decisions import load_questions
+    from controlr.observation.renderers import image_labels
+
+    cfg = _cfg(None, "decisions.head=split", "decisions.questions=decisions_v5", "decisions.target=the spot named in {task}")
+    q = build_questions(cfg.decisions, cfg.action, load_questions("decisions_v5"), {}, {}, " grab the cup ")
+    assert "the spot named in grab the cup" in q["dir_z"]["instructions"]
+    o = _cfg(None, "observation.cameras=[scene,top]", "observation.renderers=[raw,fovea]").observation
+    assert image_labels(o) == ["scene", "scene fovea", "top", "top fovea"]
+    assert image_labels(_cfg(None, "observation.renderers=[raw,diff]").observation) is None
+
+
+def test_state_labels_each_image_when_counts_match():
+    cfg = _cfg()
+    m = _messages(0)
+    m[-1]["content"].append({"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,BBB"}})
+    st = build_state(m, cfg.decisions, ["scene", "top"])
+    assert [p.get("text") for p in st[1:]] == ["image `scene`:", None, "image `top`:", None]
+    st = build_state(m, cfg.decisions, ["scene"])                 # mismatch: no labels
+    assert [p["type"] for p in st[1:]] == ["image_url", "image_url"]

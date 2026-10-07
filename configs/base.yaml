@@ -28,10 +28,13 @@ decisions:                             # only with llm.backend=decisions (contro
   questions: decisions_v0              # controlr/prompts/decisions_v0.yaml
   levels: [-30, -10, -3, 0, 3, 10, 30] # step levels per axis, action.pos_unit
   yaw_levels: [-20, -5, 0, 5, 20]      # action.ang_unit (rotation=yaw)
+  head: signed                         # signed (score over signed levels) | split (direction choice + distance score)
+  magnitudes: [3, 10, 30]              # split: unsigned step sizes, action.pos_unit
   reduce: expected                     # expected (probability-weighted) | argmax
   deadband: 1.0                        # smaller steps -> 0
   history: 6                           # past (action, feedback) pairs in the request state
   include_manual: true
+  target: the point the fingertips must reach next for the task   # {target} in decisions_v5+; "{task}" = the instruction
   image_mode: parts                    # parts | field (how the frame goes into state)
 
 planner:
