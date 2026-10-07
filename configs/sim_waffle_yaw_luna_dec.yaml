@@ -1,0 +1,17 @@
+# GPT-6 Luna Decisions as a decision head on the rotation pick-to-box (llm.backend=decisions,
+# controlr/llm/decisions.py). Same task, scene, safety and feedback as sim_waffle_yaw; the control
+# model answers typed questions (dx dy dz dyaw as ordered step levels, grip, status) in one ~0.3 s
+# request instead of writing a reply, so turns are short and many: small steps, a higher turn budget.
+# The planner (Opus via omniroute) is unchanged — the decision head cannot plan. Compare with the
+# chat models on the pinned rotation-round plans (planner.plan_file=runs/rot_plans/seed<k>.md).
+# Endpoint: OpenRouter directly (omniroute has no decisions route), key OPENROUTER_API_KEY.
+extends: sim_waffle_yaw.yaml
+name: sim_waffle_yaw_luna_dec
+llm:
+  backend: decisions
+  model: openai/gpt-6-luna-decisions
+  overlap_tail: false                  # nothing is streamed: the answer arrives whole
+  timeout_s: 30
+episode:
+  max_turns: 150                       # ~5x the chat budget: steps are up to 30 mm (10 mm typical)
+  max_parse_errors: 3

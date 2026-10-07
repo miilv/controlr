@@ -14,7 +14,7 @@ models through one OpenAI-compatible router (omniroute). Next: the real UR3.
 
 | Code | What |
 |---|---|
-| `controlr/llm/` | streaming client (timings, usage, early stop), cache markers, append-only transcript, `FakeLLM` |
+| `controlr/llm/` | streaming client (timings, usage, early stop), decision head (`decisions.py`: Decisions API → grammar text), cache markers, append-only transcript, `FakeLLM` |
 | `controlr/protocol/` | reply grammar (MOVE/GRIP/HOLD/STATUS) and feedback text |
 | `controlr/prompts/` | system prompt = robot operating manual (`system_v0.md`), planner prompt |
 | `controlr/observation/` | frame renderers: resize, grid, ee_marker, axes, diff, heatmap, tile |
@@ -59,8 +59,8 @@ uv run controlr bench-cache --model claude/claude-sonnet-5-5 --turns 20   # ⚠�
 3. **Live LLM calls cost money, but limits are generous.** Soft cap: don't burn more than
    ~5k calls a day, and don't waste calls on runs that can't teach anything. Unit
    tests use only `FakeLLM` / `httpx.MockTransport`; live tests are marked `@pytest.mark.live`
-   and run only with `CONTROLR_LIVE=1`. Key: only `OMNIROUTE_*` from `.env`, **never** the agent
-   session's credentials (`ANTHROPIC_AUTH_TOKEN` etc.). Actual spend (calls, tokens) goes into
+   and run only with `CONTROLR_LIVE=1`. Keys: only `OMNIROUTE_*` (and `OPENROUTER_API_KEY` for the decision head) from `.env`,
+   **never** the agent session's credentials (`ANTHROPIC_AUTH_TOKEN` etc.). Actual spend (calls, tokens) goes into
    the report.
 4. **compute3 is a shared machine** (someone else's work runs there too). Write only under
    `~/controlr*`; the GPU is ours, CPU/RAM in moderation; never touch other processes; stop the

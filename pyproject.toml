@@ -24,7 +24,7 @@ build-backend = "setuptools.build_meta"
 include = ["controlr*"]
 
 [tool.setuptools.package-data]
-"controlr" = ["prompts/*.md"]
+"controlr" = ["prompts/*.md", "prompts/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

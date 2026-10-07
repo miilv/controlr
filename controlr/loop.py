@@ -103,6 +103,20 @@ def make_llm_client(cfg: Config):
                      usage_grace_s=cfg.llm.usage_grace_s, headers=dict(cfg.llm.extra_headers))
 
 
+def make_control_client(cfg: Config):
+    """The client for control turns: the chat client, or with ``llm.backend=decisions`` a
+    ``DecisionsClient`` (own endpoint and key, ``cfg.decisions``). Fails fast on a missing key."""
+    if cfg.llm.backend != "decisions":
+        return make_llm_client(cfg)
+    from controlr.llm.decisions import DecisionsClient
+
+    key = os.environ.get(cfg.decisions.api_key_env, "")
+    if not key:
+        raise RuntimeError(f"API key env var {cfg.decisions.api_key_env} is not set (see .env.example)")
+    return DecisionsClient(cfg.decisions.base_url, key, cfg, cfg.llm.timeout_s, cfg.llm.max_retries,
+                           headers=dict(cfg.llm.extra_headers))
+
+
 def task_instruction(cfg: Config, robot: Any) -> str:
     """The instruction the model sees. Config wins; otherwise the backend's
     default for the task (``robot.task_instruction`` attribute or method), else
@@ -345,14 +359,15 @@ class _LLMCall:
         return self._res
 
 
-def run_episode(cfg: Config, robot=None, llm=None, *,
+def run_episode(cfg: Config, robot=None, llm=None, *, planner_llm=None,
                 on_turn: Callable[[dict], None] | None = None,
                 on_status: Callable[[str], None] | None = None) -> EpisodeResult:
     """Run one episode end to end and write its run directory.
 
-    ``robot``/``llm`` default to ``make_robot(cfg)`` / the omniroute client (the
+    ``robot``/``llm`` default to ``make_robot(cfg)`` / ``make_control_client(cfg)`` (the
     client — and its key/URL check — comes first, so a missing key fails before
-    the backend starts). The robot is always held and closed at the end (also on
+    the backend starts). ``planner_llm`` (default: ``llm`` for chat control or a fake ``llm``,
+    else the chat client) serves the planner, which always needs text. The robot is always held and closed at the end (also on
     Ctrl-C/errors). ``on_turn`` receives each turn record, ``on_status`` short
     progress messages (planner start/end) — the CLI prints both.
 
@@ -383,7 +398,11 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
 
     try:
         if llm is None:
-            llm = make_llm_client(cfg)
+            llm = make_control_client(cfg)
+        if planner_llm is None:
+            needs = cfg.planner.enabled and not cfg.planner.plan_file
+            chat = cfg.llm.backend == "chat" or getattr(llm, "is_fake", False)
+            planner_llm = llm if chat else (make_llm_client(cfg) if needs else None)
         if robot is None:
             from controlr.robot import make_robot
             robot = make_robot(cfg)
@@ -433,7 +452,7 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
             log.write_json("planner.json", planner_rec)
         elif cfg.planner.enabled:
             say(f"planner {cfg.planner.model} ...")
-            plan, planner_rec = run_planner(cfg, llm, spec, instruction, rendered, obs_text, obs.cameras,
+            plan, planner_rec = run_planner(cfg, planner_llm, spec, instruction, rendered, obs_text, obs.cameras,
                                             nonce=nonce, state0=ref, obstacles=obstacles)
             log.write_json("planner.json", planner_rec)
             say(f"planner done in {planner_rec['wall_s']:.1f} s"
@@ -502,6 +521,8 @@ def run_episode(cfg: Config, robot=None, llm=None, *,
                 "state_before": _state_rec(prev_obs.state),
                 "reasoning_chars": len(reasoning), "reasoning": reasoning,
             }
+            if getattr(res, "decisions", None) is not None:   # decision head: steps + probabilities
+                rec["decisions"] = res.decisions
             timings: dict[str, Any] = {"llm_wall": t_llm_wall}
             if early is not None:   # call time left after execution (> 0: the tail outlasted it)
                 timings["llm_tail"] = max(0.0, t_llm_tail)

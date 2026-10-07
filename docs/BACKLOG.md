@@ -6,6 +6,13 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Decision head, first light** (`configs/sim_waffle_yaw_luna_dec.yaml`, journal/2026-10-07-luna-decisions.md):
+  needs `OPENROUTER_API_KEY` in `.env` (local + compute3). (1) `tests/test_llm_decisions_live.py`
+  (4 calls) → which `decisions.image_mode` the model actually sees; (2) one mock episode
+  (`configs/mock.yaml --set llm.backend=decisions ...`); (3) the 4 rotation seeds with the pinned
+  plans vs Sonnet 5.5 / Luna chat — success, turns, wall time per episode, cost. Then axes:
+  `levels` (resolution), `reduce`, `history`, `include_manual`.
+
 - [ ] **Real-sensor feedback (`feedback.sensing: real | privileged`, default real).** Today every
   STOP names what was hit ("the held packet pushed against the box wall (the box moved)"), the box
   proximity WARNs need the box's exact current pose, and a wrong DONE gets "task not complete yet" —

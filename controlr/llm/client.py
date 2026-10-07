@@ -88,6 +88,9 @@ class LLMResult:
     # addition: True when an early stop cut the STATUS line mid-note (the stream was closed
     # before that line ended); the loop then stores the reply without the partial note
     truncated: bool = False
+    # addition: decision-head record (llm.backend=decisions): reduced steps, grip, status and the
+    # raw probabilities per question; None for chat routes
+    decisions: dict | None = None
 
 
 # ---------------------------------------------------------------------------
