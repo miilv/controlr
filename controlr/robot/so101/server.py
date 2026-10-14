@@ -293,7 +293,7 @@ class Server:
                  limit_margin_rad: float = math.radians(3.0), settle_s: float = 0.15,
                  settle_tol_rad: float = math.radians(0.5), settle_max_s: float = 1.5,
                  correct_tol_rad: float = math.radians(0.4), max_offset_rad: float = math.radians(8.0),
-                 correct_iters: int = 8) -> None:
+                 correct_iters: int = 8, gripper_max: float = 100.0) -> None:
         self.arm, self.camera = arm, camera
         self.hz = control_hz
         self.max_speed = max_joint_speed
@@ -304,10 +304,11 @@ class Server:
         # Sag compensation: the servos' low position gain (P=16) leaves the loaded joints several
         # degrees short of their goal (first jog: 5-13 mm low per move). After a move the goal is
         # offset by the measured error until the joints arrive (integral settle, capped); the
-        # offset carries into the next move (no drop at its start) and is cleared by a stop or a
-        # torque change.
+        # offset carries into the next move (no drop at its start), also after a stop (a stop
+        # without it made the next lift lag 8.7 deg and stop again); a torque change clears it.
         self.correct_tol, self.max_offset, self.correct_iters = correct_tol_rad, max_offset_rad, correct_iters
         self.offset = np.zeros(5)
+        self.gripper_max = float(gripper_max)      # never open the jaws wider than this (0..100)
         self.last_cmd: tuple[np.ndarray, float] | None = None
         self.t0 = time.monotonic()
         self.last_still = time.monotonic()
@@ -324,7 +325,7 @@ class Server:
                 "temp_c": temp, "voltage_v": volt}
 
     def info(self) -> dict:
-        return {"motors": list(MOTORS), "limits_rad": self.lim, "gripper_range": [0.0, 100.0],
+        return {"motors": list(MOTORS), "limits_rad": self.lim, "gripper_range": [0.0, self.gripper_max],
                 "camera": {"width": self.camera.width, "height": self.camera.height, "fps": self.camera.fps,
                            "fake": self.camera.fake},
                 "fake": bool(self.arm.fake), "control_hz": self.hz, "rest_q": np.radians(REST_DEG),
@@ -360,8 +361,8 @@ class Server:
             self.offset[:] = 0.0
         stop = dict(stop or {})
         track_stop = float(stop.get("track_stop_rad", math.radians(12.0)))
-        cur_stop = stop.get("current_stop_ma")
-        cur_stop = float(cur_stop) if cur_stop else None
+        cur_stop = stop.get("current_stop_ma")      # one value or one per arm joint
+        cur_stop = np.broadcast_to(np.asarray(cur_stop, float), (5,)) if cur_stop else None
         stop_ticks = int(stop.get("stop_ticks", 3))
         q0, g0 = self.arm.read()
         rows = [q0] + [self.clamp(r) for r in np.asarray(q_rows, float).reshape(-1, 5)]
@@ -369,7 +370,7 @@ class Server:
         grip = [g0]
         for i in range(1, len(rows)):
             gv = g_in[i - 1] if i - 1 < len(g_in) else math.nan
-            grip.append(grip[-1] if math.isnan(gv) else float(np.clip(gv, 0.0, 100.0)))
+            grip.append(grip[-1] if math.isnan(gv) else float(np.clip(gv, 0.0, self.gripper_max)))
         Q, G = np.array(rows), np.array(grip)
         seg = np.max(np.abs(np.diff(Q, axis=0)), axis=1) if len(Q) > 1 else np.zeros(0)
         cum = np.concatenate([[0.0], np.cumsum(seg)])
@@ -412,9 +413,10 @@ class Server:
                     score = np.maximum(score, cur[:5] / cur_stop)
                 i = int(np.argmax(np.where(bad, score, 0.0)))
                 stopped, joint = True, ARM[i]
-                reason = "tracking" if err[i] > track_stop else "current"
-                self.offset[:] = 0.0
-                self._write(q, g)               # freeze where it is, no push
+                reason = "tracking" if err[i] > track_stop else f"current {cur[i]:.0f} mA"
+                self.arm.write(q, g)            # freeze where it is, no push (the sag offset is
+                self.last_cmd = (q, float(g))   # hold() must not re-send the blocked goal
+                break                           # kept: it compensates gravity, not the obstacle)
                 break
             if t >= duration:
                 break
@@ -573,6 +575,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--listen-port", type=int, default=P.DEFAULT_PORT)
     ap.add_argument("--control-hz", type=float, default=50.0)
     ap.add_argument("--max-joint-speed", type=float, default=1.0, help="rad/s, peak")
+    ap.add_argument("--gripper-max", type=float, default=75.0, help="widest jaw opening allowed, 0..100")
     ap.add_argument("--fake", action="store_true", help="no hardware: kinematic arm and a test image")
     ap.add_argument("--print-info", action="store_true", help="print info + state as JSON and exit")
     ap.add_argument("--allow-limp-start", action="store_true",
@@ -580,7 +583,8 @@ def main(argv: list[str] | None = None) -> None:
     a = ap.parse_args(argv)
     arm = FakeArm() if a.fake else LerobotArm(a.port, a.robot_id, a.calibration_dir, a.allow_limp_start)
     camera = Camera(None if a.fake and not a.camera else a.camera, a.width, a.height, a.fps)
-    server = Server(arm, camera, control_hz=a.control_hz, max_joint_speed=a.max_joint_speed)
+    server = Server(arm, camera, control_hz=a.control_hz, max_joint_speed=a.max_joint_speed,
+                    gripper_max=a.gripper_max)
     try:
         if a.print_info:
             info, st = server.info(), server.state()

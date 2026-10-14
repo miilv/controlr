@@ -100,7 +100,7 @@ def test_reset_moves_home_and_observes(rig, monkeypatch):
     obs = robot.reset({})
     assert np.allclose(obs.state.tcp_pos, [0.24, 0.0, 0.10], atol=2e-3)
     assert obs.images["wrist"].shape == (180, 320, 3)
-    assert obs.state.gripper_mm == pytest.approx(70.0, abs=1.0)
+    assert obs.state.gripper_mm == pytest.approx(28.0, abs=1.0)        # GRIP open = 40 %
     assert obs.notes and obs.notes[0].startswith("VIEW: from the jaw tips in the wrist image, +x points up")
     assert robot.spec.kinematics == "backend" and len(robot.spec.joints) == 5
     robot.close()
@@ -136,6 +136,16 @@ def test_sag_is_corrected_and_the_offset_carries_over(rig, monkeypatch):
     assert not rep.events
     assert np.allclose(rep.state_after.tcp_pos, tgt[:3], atol=2e-3)
     assert np.max(np.abs(rep.backend["runs"][-1]["offset_rad"])) > np.radians(1.0)
+    robot.close()
+
+
+def test_gripper_never_opens_past_the_cap(rig, monkeypatch):
+    arm, address = rig
+    robot = _robot(address, monkeypatch)
+    robot.reset({})
+    rep = robot.execute([Action(None, None, gripper=0.07, raw="GRIP 70 mm")])
+    assert rep.state_after.gripper_mm == pytest.approx(28.0, abs=1.0)
+    assert robot.spec.gripper_max_mm == pytest.approx(28.0)
     robot.close()
 
 

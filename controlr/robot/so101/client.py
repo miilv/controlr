@@ -53,11 +53,15 @@ DEFAULTS: dict = {
                                         # (image up = forward, jaws closing sideways); 0 = image turned 90 deg
     "home_tcp": [0.24, 0.0, 0.10],      # m, base frame, at tool_pitch_deg / tool_roll_deg
     "gripper_max_mm": 70.0,             # jaw opening at 100 % (approximate: linear map)
+    "gripper_open_pct": 40.0,           # GRIP open = this much: both jaws stay in the wrist image up to ~40 %
     "tcp_speed_m_s": None,              # peak TCP speed of a move (None: safety.max_tcp_speed_m_s;
                                         # the server caps the joint speed too)
     "reset_duration_s": 4.0,
-    "track_stop_deg": 12.0,             # a joint this far behind its goal for stop_ticks = blocked
-    "current_stop_ma": None,            # also stop above this servo current (None: off, logged only)
+    # collision = a joint drawing more than current_stop_ma for stop_ticks (free moves 2026-10-14:
+    # <= 280 mA); tracking error only as a backstop for a hard block: a loaded joint in a stretched
+    # pose lags ~10 deg with nothing in the way (false STOPs at 8 deg, so101_ball_down run 1)
+    "track_stop_deg": 20.0,
+    "current_stop_ma": [400.0, 600.0, 600.0, 400.0, 300.0],   # per arm joint; None = off
     "stop_ticks": 3,
     "arrive_warn_m": 0.010,
     "view_note": True,                  # per-turn VIEW line: how the base axes look in the wrist image
@@ -89,7 +93,9 @@ class So101Robot(Robot):
         self.conn = conn if conn is not None else self._connect()
         self.info = self._call("info")
         self.limits = np.asarray(self.info["limits_rad"], float)
-        self.gmax_m = float(self.p["gripper_max_mm"]) / 1000.0
+        self.gmax_m = float(self.p["gripper_max_mm"]) / 1000.0          # width at 100 %
+        self.open_pct = min(float(self.p["gripper_open_pct"]),
+                            float((self.info.get("gripper_range") or [0, 100])[1]))
         ws = {}
         if self.p.get("workspace_lo"):
             ws["workspace_lo"] = tuple(self.p["workspace_lo"])
@@ -97,7 +103,7 @@ class So101Robot(Robot):
             ws["workspace_hi"] = tuple(self.p["workspace_hi"])
         self.home_q = self._solve_home()
         self.spec = so101_spec(limits_rad=self.limits, tool_pitch_deg=float(self.p["tool_pitch_deg"]),
-                               gripper_max_mm=float(self.p["gripper_max_mm"]),
+                               gripper_max_mm=float(self.p["gripper_max_mm"]) * self.open_pct / 100.0,
                                joint_speed=float(self.info.get("max_joint_speed", 1.0)),
                                home_q=tuple(float(v) for v in self.home_q), **ws)
         self._load_camera()
@@ -193,13 +199,13 @@ class So101Robot(Robot):
         return (f"VIEW: from the jaw tips in the {info.name} image, " + ", ".join(parts),)
 
     def _grip_pct(self, width_m: float) -> float:
-        return float(np.clip(width_m / self.gmax_m * 100.0, 0.0, 100.0))
+        return float(np.clip(width_m / self.gmax_m * 100.0, 0.0, self.open_pct))
 
     # ----------------------------------------------------------- contract
     def reset(self, task_cfg: dict, seed: int | None = None) -> Observation:
         if self.p["operator_reset"]:
             input("[so101] set up the scene for the next episode, then press Enter ")
-        res = self._call("move_joints", q=self.home_q, gripper=100.0,
+        res = self._call("move_joints", q=self.home_q, gripper=self.open_pct,
                          duration_s=float(self.p["reset_duration_s"]))
         self._closed_cmd, self._holding = False, None
         if res.get("stopped"):
@@ -207,7 +213,8 @@ class So101Robot(Robot):
                                "clear the way and retry")
         T = K.fk(self.home_q)
         self._ref = RobotState(t=0.0, q=self.home_q.copy(), tcp_pos=T[:3, 3].copy(),
-                               tcp_rotvec=matrix_to_rotvec(T[:3, :3]), gripper_mm=self.gmax_m * 1000.0,
+                               tcp_rotvec=matrix_to_rotvec(T[:3, :3]),
+                               gripper_mm=self.gmax_m * self.open_pct / 100.0 * 1000.0,
                                gripper_closed=False)
         return self.observe()
 
@@ -232,7 +239,7 @@ class So101Robot(Robot):
     def _stop_args(self) -> dict:
         cur = self.p.get("current_stop_ma")
         return {"track_stop_rad": math.radians(float(self.p["track_stop_deg"])),
-                "current_stop_ma": float(cur) if cur else None, "stop_ticks": int(self.p["stop_ticks"])}
+                "current_stop_ma": cur if cur else None, "stop_ticks": int(self.p["stop_ticks"])}
 
     def execute(self, actions: list[Action]) -> ExecReport:
         before = self.state()
@@ -292,8 +299,9 @@ class So101Robot(Robot):
             if res.get("stopped"):
                 stopped = True
                 j = str(res.get("stop_joint") or "a joint").replace("_", " ")
+                why = str(res.get("stop_reason") or "")
                 events.append(SafetyEvent(EventLevel.STOP, "contact",
-                                          f"the arm was blocked ({j} could not follow) and stopped where it is",
+                                          f"the arm hit something ({j}: {why}) and stopped where it is",
                                           brief="the arm pushed against something and stopped"))
                 break
             if target is not None:

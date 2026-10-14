@@ -1,0 +1,15 @@
+# Pick the jute ball (~50 mm, soft) lying on the table against the laptop's front edge
+# (2026-10-14: ball centre ~x 250 mm, laptop edge ~x 275 mm, deck ~18 mm). Floor lowered to 15 mm so the
+# jaw tips reach the ball's middle; x capped at 270 mm (first try capped at 250 blocked the grasp:
+# runs/20261014T215237Z_so101_ball). Gripper opens 75 %.
+extends: so101_desk.yaml
+name: so101_ball
+task:
+  name: pick_ball
+  instruction: "Pick up the beige rope ball lying on the table in front of the laptop and lift it 50 mm above the table. Only the left jaw shows in the image while the gripper is open; the jaws close along y, so the ball is between them only when the jaw tips reach as far forward (+x) as the middle of the ball - if the jaws close in front of the ball, open, move forward and try again. Report DONE when the ball is held between the jaws and lifted."
+robot:
+  params:
+    workspace_lo: [0.14, -0.16, 0.015]
+    workspace_hi: [0.27, 0.16, 0.15]
+episode:
+  max_turns: 40

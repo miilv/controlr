@@ -20,8 +20,10 @@ robot:
     tool_roll_deg: 90                  # stock wrist camera upright: image up = forward
     home_tcp: [0.24, 0.0, 0.10]
     camera_calib: null                 # ~/.config/controlr/so101_wrist.json after scripts/so101_calibrate.py
-    track_stop_deg: 12
-    current_stop_ma: null              # tune from the logged peaks (turns.jsonl backend.runs) first
+    gripper_open_pct: 40               # GRIP open = 40 %: the widest at which BOTH jaws stay in the image
+                                       # (sweep 2026-10-14: 30 % clearly, 40 % at the edge, 50 % the moving jaw is out)
+    current_stop_ma: [400, 600, 600, 400, 300]   # collision: above this for 60 ms (free moves <= 280 mA)
+    track_stop_deg: 20                 # backstop only: loaded joints lag ~10 deg in stretched poses
 task:
   name: real
   instruction: ""
