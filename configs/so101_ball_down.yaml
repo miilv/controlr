@@ -1,7 +1,8 @@
 # Pick the jute ball with the gripper pointing STRAIGHT DOWN. With the default 60-deg tilt every close
 # landed in front of the ball (runs/20261014T215535Z_so101_ball: the sloped jaws meet the top of a 50 mm
 # ball before the tips pass its middle). Vertical jaws drop on both sides and close at its middle.
-# Ball ~(270, -55) mm against the laptop's front edge (~x 295, deck ~18 mm); x capped at 280 mm.
+# Ball against the laptop's front edge (ball centre up to ~x 295, edge ~x 320, deck ~18 mm); x capped at
+# 300 mm (the straight-down reach).
 extends: so101_desk.yaml
 name: so101_ball_down
 task:
@@ -12,6 +13,6 @@ robot:
     tool_pitch_deg: 90
     home_tcp: [0.22, 0.0, 0.08]
     workspace_lo: [0.14, -0.16, 0.008]
-    workspace_hi: [0.28, 0.16, 0.09]
+    workspace_hi: [0.30, 0.16, 0.09]          # 280 kept the ball (x ~295) out of reach
 episode:
   max_turns: 40

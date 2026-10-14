@@ -199,7 +199,8 @@ class Camera:
     """Grabs frames continuously on a thread, so ``fresh()`` can wait for a frame exposed after
     a given time (no stale buffered frame of the arm mid-motion)."""
 
-    def __init__(self, path: str | None, width: int, height: int, fps: int) -> None:
+    def __init__(self, path: str | None, width: int, height: int, fps: int, *, mjpg: bool = True,
+                 strict: bool = True) -> None:
         self.width, self.height, self.fps = width, height, fps
         self.fake = path is None
         self._lock = threading.Condition()
@@ -213,7 +214,8 @@ class Camera:
         import cv2
 
         self.cap = cv2.VideoCapture(path, cv2.CAP_V4L2)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        if mjpg:
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         self.cap.set(cv2.CAP_PROP_FPS, fps)
@@ -223,7 +225,10 @@ class Camera:
             raise SystemExit(f"camera {path} gives no frames (another program using it?)")
         h, w = frame.shape[:2]
         if (w, h) != (width, height):
-            raise SystemExit(f"camera {path} delivers {w}x{h}, asked for {width}x{height}")
+            if strict:
+                raise SystemExit(f"camera {path} delivers {w}x{h}, asked for {width}x{height}")
+            _log(f"camera {path} delivers {w}x{h} (asked {width}x{height})")
+            self.width, self.height = w, h
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -289,12 +294,14 @@ def min_jerk(s: float) -> float:
 
 
 class Server:
-    def __init__(self, arm, camera: Camera, *, control_hz: float = 50.0, max_joint_speed: float = 1.0,
+    def __init__(self, arm, camera: Camera, *, extra_cameras: dict[str, Camera] | None = None,
+                 control_hz: float = 50.0, max_joint_speed: float = 1.0,
                  limit_margin_rad: float = math.radians(3.0), settle_s: float = 0.15,
                  settle_tol_rad: float = math.radians(0.5), settle_max_s: float = 1.5,
                  correct_tol_rad: float = math.radians(0.4), max_offset_rad: float = math.radians(8.0),
                  correct_iters: int = 8, gripper_max: float = 100.0) -> None:
         self.arm, self.camera = arm, camera
+        self.extra_cameras = dict(extra_cameras or {})       # fixed scene cameras, e.g. the laptop's
         self.hz = control_hz
         self.max_speed = max_joint_speed
         lim = arm.limits_rad()
@@ -328,12 +335,16 @@ class Server:
         return {"motors": list(MOTORS), "limits_rad": self.lim, "gripper_range": [0.0, self.gripper_max],
                 "camera": {"width": self.camera.width, "height": self.camera.height, "fps": self.camera.fps,
                            "fake": self.camera.fake},
+                "extra_cameras": {n: {"width": c.width, "height": c.height, "fake": c.fake}
+                                  for n, c in self.extra_cameras.items()},
                 "fake": bool(self.arm.fake), "control_hz": self.hz, "rest_q": np.radians(REST_DEG),
                 "max_joint_speed": self.max_speed}
 
     def observe(self, jpeg_quality: int = 92) -> dict:
         frame, t = self.camera.fresh(after=self.last_still)
-        return {"jpeg": encode_jpeg(frame, jpeg_quality), "frame_t": t - self.t0, "state": self.state()}
+        extra = {n: encode_jpeg(c.fresh(after=self.last_still)[0], jpeg_quality) for n, c in self.extra_cameras.items()}
+        return {"jpeg": encode_jpeg(frame, jpeg_quality), "frame_t": t - self.t0, "state": self.state(),
+                "extra_jpegs": extra}
 
     def _write(self, q, g) -> None:
         q = self.clamp(np.asarray(q, float))
@@ -568,6 +579,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--robot-id", default="follower_v1", help="LeRobot calibration id")
     ap.add_argument("--calibration-dir", default=None)
     ap.add_argument("--camera", default=None, help="V4L2 device path (/dev/v4l/by-id/...)")
+    ap.add_argument("--camera2", default=None, help="a fixed scene camera (e.g. the laptop's, through "
+                    "libcamera's v4l2-compat preload): V4L2 device path")
+    ap.add_argument("--camera2-name", default="front")
+    ap.add_argument("--camera2-width", type=int, default=1280)
+    ap.add_argument("--camera2-height", type=int, default=720)
     ap.add_argument("--width", type=int, default=1280)
     ap.add_argument("--height", type=int, default=720)
     ap.add_argument("--fps", type=int, default=30)
@@ -583,7 +599,10 @@ def main(argv: list[str] | None = None) -> None:
     a = ap.parse_args(argv)
     arm = FakeArm() if a.fake else LerobotArm(a.port, a.robot_id, a.calibration_dir, a.allow_limp_start)
     camera = Camera(None if a.fake and not a.camera else a.camera, a.width, a.height, a.fps)
-    server = Server(arm, camera, control_hz=a.control_hz, max_joint_speed=a.max_joint_speed,
+    extra = {}
+    if a.camera2:
+        extra[a.camera2_name] = Camera(a.camera2, a.camera2_width, a.camera2_height, a.fps, mjpg=False, strict=False)
+    server = Server(arm, camera, extra_cameras=extra, control_hz=a.control_hz, max_joint_speed=a.max_joint_speed,
                     gripper_max=a.gripper_max)
     try:
         if a.print_info:
@@ -598,6 +617,8 @@ def main(argv: list[str] | None = None) -> None:
                 server.rest()
         finally:
             camera.close()
+            for c in extra.values():
+                c.close()
             arm.close()
 
 

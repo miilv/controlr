@@ -248,7 +248,12 @@ class So101Robot(Robot):
         self._state = state
         rgb = np.asarray(Image.open(io.BytesIO(res["jpeg"])).convert("RGB"))
         info = self._camera_info(state.q)
-        return Observation(t=state.t, images={info.name: rgb}, cameras={info.name: info}, state=state,
+        images = {info.name: rgb}
+        # fixed scene cameras (e.g. the laptop's): images only — uncalibrated, so no CameraInfo
+        # (no overlays, no VIEW line for them)
+        for name, jpeg in (res.get("extra_jpegs") or {}).items():
+            images[name] = np.asarray(Image.open(io.BytesIO(jpeg)).convert("RGB"))
+        return Observation(t=state.t, images=images, cameras={info.name: info}, state=state,
                            notes=self._view_note(info, state))
 
     def state(self) -> RobotState:
