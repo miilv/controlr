@@ -69,6 +69,11 @@ DEFAULTS: dict = {
     "operator_reset": False,            # ask on stdin to reset the scene before each episode
     "workspace_lo": None,               # override so101_spec's box
     "workspace_hi": None,
+    # Joint zero calibration (scripts/so101_fit_offsets.py, docs/SO101.md): per arm joint, deg,
+    # [pan, lift, elbow, wrist, roll]. Kinematic (URDF) angle = server's measured angle + offset;
+    # everything sent to the server is model - offset. The server never sees the offsets: its q,
+    # goals and limits stay in LeRobot's DEGREES (zero = middle of the calibrated range).
+    "joint_offsets_deg": [0.0, 0.0, 0.0, 0.0, 0.0],
 }
 
 
@@ -90,9 +95,13 @@ class So101Robot(Robot):
         if rotation == "full":
             raise ValueError("so101: action.rotation=full is not reachable with 5 joints")
         self.rotation = rotation
+        off = np.radians(np.asarray(self.p["joint_offsets_deg"] or [0.0] * 5, float))
+        if off.shape != (5,):
+            raise ValueError(f"so101: joint_offsets_deg needs 5 values (arm joints), got {self.p['joint_offsets_deg']}")
+        self.offset = off
         self.conn = conn if conn is not None else self._connect()
         self.info = self._call("info")
-        self.limits = np.asarray(self.info["limits_rad"], float)
+        self.limits = self._to_model(np.asarray(self.info["limits_rad"], float).T).T     # model frame
         self.gmax_m = float(self.p["gripper_max_mm"]) / 1000.0          # width at 100 %
         self.open_pct = min(float(self.p["gripper_open_pct"]),
                             float((self.info.get("gripper_range") or [0, 100])[1]))
@@ -135,6 +144,14 @@ class So101Robot(Robot):
         return P.unwrap(self.conn.recv())
 
     # ------------------------------------------------------------ helpers
+    # Two joint frames: the SERVER's (LeRobot DEGREES, as measured and commanded) and the MODEL's
+    # (URDF zero, what FK/IK/limits/home/RobotState.q use). Every q crosses between them here.
+    def _to_model(self, q_server) -> np.ndarray:
+        return np.asarray(q_server, float) + self.offset
+
+    def _to_server(self, q_model) -> np.ndarray:
+        return np.asarray(q_model, float) - self.offset
+
     def _load_camera(self) -> None:
         cam = self.info.get("camera") or {}
         w, h = int(cam.get("width", 1280)), int(cam.get("height", 720))
@@ -171,7 +188,7 @@ class So101Robot(Robot):
         return q
 
     def _robot_state(self, s: dict) -> RobotState:
-        q = np.asarray(s["q"], float)
+        q = self._to_model(s["q"])
         T = K.fk(q)
         return RobotState(t=float(s["t"]), q=q, tcp_pos=T[:3, 3].copy(), tcp_rotvec=matrix_to_rotvec(T[:3, :3]),
                           gripper_mm=float(s["gripper"]) / 100.0 * self.gmax_m * 1000.0,
@@ -224,7 +241,7 @@ class So101Robot(Robot):
     def reset(self, task_cfg: dict, seed: int | None = None) -> Observation:
         if self.p["operator_reset"]:
             input("[so101] set up the scene for the next episode, then press Enter ")
-        res = self._call("move_joints", q=self.home_q, gripper=self.open_pct,
+        res = self._call("move_joints", q=self._to_server(self.home_q), gripper=self.open_pct,
                          duration_s=float(self.p["reset_duration_s"]))
         self._closed_cmd, self._holding = False, None
         if res.get("stopped"):
@@ -307,7 +324,7 @@ class So101Robot(Robot):
                 calls.append(([rows[-1]], [g], 0.0))
             res: dict = {}
             for rows_k, grip_k, dur in calls:
-                res = self._call("execute", q=np.array(rows_k), gripper=np.array(grip_k), duration_s=dur,
+                res = self._call("execute", q=self._to_server(np.array(rows_k)), gripper=np.array(grip_k), duration_s=dur,
                                  stop=self._stop_args())
                 wall += float(res.get("wall_s", 0.0))
                 runs.append({k: res.get(k) for k in ("stopped", "stop_reason", "stop_joint", "ticks", "wall_s",
@@ -319,7 +336,7 @@ class So101Robot(Robot):
             if g is not None and not res.get("stopped"):
                 self._closed_cmd = g < self.open_pct / 2       # "open" is open_pct (40 %), not 100
                 self._holding = bool(res.get("gripper_blocked")) if self._closed_cmd else False
-            q = np.asarray(res["state"]["q"], float)
+            q = self._to_model(res["state"]["q"])
             if res.get("stopped"):
                 stopped = True
                 j = str(res.get("stop_joint") or "a joint").replace("_", " ")
@@ -349,6 +366,7 @@ class So101Robot(Robot):
         return {"home_q_deg": np.degrees(self.home_q).round(2).tolist(),
                 "home_tcp_mm": (np.asarray(self.p["home_tcp"], float) * 1000).round(1).tolist(),
                 "tool_pitch_deg": float(self.p["tool_pitch_deg"]), "camera_calibrated": self.calibrated,
+                "joint_offsets_deg": np.degrees(self.offset).round(3).tolist(),
                 "server_fake": bool(self.info.get("fake"))}
 
     def close(self) -> None:
