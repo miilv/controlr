@@ -41,10 +41,17 @@ def main(argv: list[str]) -> None:
     ap.add_argument("--port", type=int, default=7811)
     ap.add_argument("--tcp-speed", type=float, default=0.03)
     ap.add_argument("--no-gripper", action="store_true")
+    ap.add_argument("--workspace", default=None, help="lo_x,lo_y,lo_z,hi_x,hi_y,hi_z in m (narrower than the spec)")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    robot = So101Robot({"port": a.port, "reset_duration_s": 5.0}, tcp_speed_m_s=a.tcp_speed)
+    params = {"port": a.port, "reset_duration_s": 5.0}
+    if a.workspace:
+        w = [float(v) for v in a.workspace.split(",")]
+        params.update(workspace_lo=w[:3], workspace_hi=w[3:])
+    robot = So101Robot(params, tcp_speed_m_s=a.tcp_speed)
+    print("workspace mm:", np.round(np.array(robot.spec.workspace_lo) * 1000).tolist(),
+          np.round(np.array(robot.spec.workspace_hi) * 1000).tolist())
     print("server:", {k: robot.info[k] for k in ("fake", "camera", "max_joint_speed")})
     print("limits deg:", np.degrees(robot.limits).round(1).tolist())
     print("home q deg:", np.degrees(robot.home_q).round(1).tolist())

@@ -98,7 +98,9 @@
 - [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).
 - [x] ~~**A real arm**~~ — SO-101 with a wrist camera: `robot.backend: so101` ([SO101.md](SO101.md)); first motion and live runs pending.
-- [ ] **SO-101: first motion** (`scripts/so101_jog.py`): check that the arm goes where FK says (±20 mm per axis), the VIEW directions match the image, the stop rule does not fire on free moves; record the peak currents / tracking errors of free moves and set `current_stop_ma` / `track_stop_deg` from them.
+- [x] ~~**SO-101: first motion**~~ — jog ±20 mm per axis within ~1 mm after sag compensation; VIEW directions match the image; no stop on free moves (journal 2026-10-14-so101-backend).
+- [ ] **SO-101: stop thresholds** — set `current_stop_ma` above the peak currents of free moves (`turns.jsonl` → `backend.runs`); `track_stop_deg` 12 never fired.
+- [ ] **SO-101: only one jaw in the wrist image** at home — calibrate, then pick `tool_roll_deg` / home so both jaw tips are visible.
 - [ ] **SO-101: hand-eye calibration** (`scripts/so101_calibrate.py`) — until then the stock URDF camera mount; then enable `grid` / `ee_marker` overlays and compare against `raw` (a config axis).
 - [ ] **SO-101: gripper width** — the 0..100 % → 0..70 mm map is linear and unmeasured; measure the jaw opening at a few settings.
 - [ ] **SO-101: camera-frame moves** (`MOVE cam_delta right forward up`): with a wrist camera the base axes rotate in the image as the arm pans; a move in image directions may suit the model better than base axes + VIEW. New grammar mode = a config axis.

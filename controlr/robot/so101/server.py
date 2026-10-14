@@ -57,7 +57,8 @@ class LerobotArm:
 
     fake = False
 
-    def __init__(self, port: str, robot_id: str, calibration_dir: str | None = None) -> None:
+    def __init__(self, port: str, robot_id: str, calibration_dir: str | None = None,
+                 allow_limp_start: bool = False) -> None:
         from lerobot.robots.so101_follower import SO101Follower, SO101FollowerConfig
 
         cfg = SO101FollowerConfig(port=port, id=robot_id, use_degrees=True,
@@ -72,6 +73,13 @@ class LerobotArm:
         if not self.bus.is_calibrated:
             raise SystemExit("the motors' calibration registers differ from the calibration file: "
                              "run lerobot-calibrate (or connect once with lerobot) before serving")
+        held = [m for m, v in self.bus.sync_read("Torque_Enable").items() if v]
+        if held and not allow_limp_start:
+            self.bus.disconnect(disable_torque=False)
+            raise SystemExit(f"torque is ON ({', '.join(held)}): the arm may be holding itself up and would fall "
+                             "when this server configures the motors. Stop the previous process with its "
+                             "shutdown (it parks the arm on its rest stops), or support the arm and pass "
+                             "--allow-limp-start")
         # LeRobot's SO101Follower.configure(), but the goal is set to the present position
         # BEFORE torque comes on: a stale Goal_Position register would make the arm jump.
         self.bus.disable_torque()
@@ -144,6 +152,7 @@ class FakeArm:
         self.t = time.monotonic()
         self.torque = False
         self.block: dict[int, float] = {}
+        self.sag = np.zeros(5)           # rad the loaded joints stay short of their goal
 
     def _advance(self) -> None:
         now = time.monotonic()
@@ -151,7 +160,8 @@ class FakeArm:
         if not self.torque:
             return
         step = self.speed * dt
-        self.q = self.q + np.clip(self.goal_q - self.q, -step, step)
+        goal = self.goal_q - self.sag          # gravity: the loaded joints stop short
+        self.q = self.q + np.clip(goal - self.q, -step, step)
         for i, lim in self.block.items():
             self.q[i] = min(self.q[i], lim)
         self.g += float(np.clip(self.goal_g - self.g, -300 * dt, 300 * dt))
@@ -281,7 +291,9 @@ def min_jerk(s: float) -> float:
 class Server:
     def __init__(self, arm, camera: Camera, *, control_hz: float = 50.0, max_joint_speed: float = 1.0,
                  limit_margin_rad: float = math.radians(3.0), settle_s: float = 0.15,
-                 settle_tol_rad: float = math.radians(0.5), settle_max_s: float = 1.5) -> None:
+                 settle_tol_rad: float = math.radians(0.5), settle_max_s: float = 1.5,
+                 correct_tol_rad: float = math.radians(0.4), max_offset_rad: float = math.radians(8.0),
+                 correct_iters: int = 8) -> None:
         self.arm, self.camera = arm, camera
         self.hz = control_hz
         self.max_speed = max_joint_speed
@@ -289,6 +301,14 @@ class Server:
         self.lim = np.stack([lim[:, 0] + limit_margin_rad, lim[:, 1] - limit_margin_rad], axis=1)
         self.settle_s, self.settle_tol, self.settle_max = settle_s, settle_tol_rad, settle_max_s
         self.frozen = False          # Ctrl-C: refuse motion until the next client connects
+        # Sag compensation: the servos' low position gain (P=16) leaves the loaded joints several
+        # degrees short of their goal (first jog: 5-13 mm low per move). After a move the goal is
+        # offset by the measured error until the joints arrive (integral settle, capped); the
+        # offset carries into the next move (no drop at its start) and is cleared by a stop or a
+        # torque change.
+        self.correct_tol, self.max_offset, self.correct_iters = correct_tol_rad, max_offset_rad, correct_iters
+        self.offset = np.zeros(5)
+        self.last_cmd: tuple[np.ndarray, float] | None = None
         self.t0 = time.monotonic()
         self.last_still = time.monotonic()
 
@@ -314,9 +334,19 @@ class Server:
         frame, t = self.camera.fresh(after=self.last_still)
         return {"jpeg": encode_jpeg(frame, jpeg_quality), "frame_t": t - self.t0, "state": self.state()}
 
-    def hold(self) -> dict:
-        q, g = self.arm.read()
+    def _write(self, q, g) -> None:
+        q = self.clamp(np.asarray(q, float))
         self.arm.write(q, g)
+        self.last_cmd = (q, float(g))
+
+    def hold(self) -> dict:
+        """Keep the arm where it is: re-send the last command (incl. the sag offset), or the
+        present position after a torque change."""
+        if self.last_cmd is not None and self.arm.torque:
+            self.arm.write(*self.last_cmd)
+        else:
+            q, g = self.arm.read()
+            self._write(q, g)
         self.last_still = time.monotonic()
         return self.state()
 
@@ -327,6 +357,7 @@ class Server:
             raise RuntimeError("the arm is frozen (Ctrl-C on the server): reconnect to resume")
         if not self.arm.torque:
             self.arm.set_torque(True)
+            self.offset[:] = 0.0
         stop = dict(stop or {})
         track_stop = float(stop.get("track_stop_rad", math.radians(12.0)))
         cur_stop = stop.get("current_stop_ma")
@@ -364,7 +395,7 @@ class Server:
             else:
                 q_goal = Q[-1]
             g_goal = G[0] + s * (G[-1] - G[0])
-            self.arm.write(q_goal, g_goal)
+            self._write(q_goal + self.offset, g_goal)
             q, g = self.arm.read()
             cur = self.arm.read_current_ma()
             err = np.abs(np.append(q_goal - q, 0.0))
@@ -382,18 +413,33 @@ class Server:
                 i = int(np.argmax(np.where(bad, score, 0.0)))
                 stopped, joint = True, ARM[i]
                 reason = "tracking" if err[i] > track_stop else "current"
-                self.arm.write(q, g)            # freeze where it is
+                self.offset[:] = 0.0
+                self._write(q, g)               # freeze where it is, no push
                 break
             if t >= duration:
                 break
             time.sleep(max(0.0, dt - ((time.monotonic() - t_start) - t)))
         self._settle()
+        if not stopped:
+            self._correct(Q[-1], G[-1])
         q, g = self.arm.read()
         # the gripper was told to close but stopped short: something is between the jaws
         blocked = bool(G[-1] < G[0] - 1 and g > G[-1] + 5)
         return {"state": self.state(), "stopped": stopped, "stop_reason": reason, "stop_joint": joint,
                 "ticks": ticks, "wall_s": time.monotonic() - t_start, "duration_s": duration,
-                "peak_current_ma": peak_cur, "peak_track_err_rad": peak_err, "gripper_blocked": blocked}
+                "peak_current_ma": peak_cur, "peak_track_err_rad": peak_err, "gripper_blocked": blocked,
+                "final_err_rad": Q[-1] - q, "offset_rad": self.offset.copy()}
+
+    def _correct(self, target: np.ndarray, g: float) -> None:
+        for _ in range(self.correct_iters):
+            q, _ = self.arm.read()
+            e = target - q
+            if float(np.max(np.abs(e))) < self.correct_tol:
+                break
+            self.offset = np.clip(self.offset + 0.8 * e, -self.max_offset, self.max_offset)
+            self._write(target + self.offset, g)
+            time.sleep(0.12)
+        self._settle()
 
     def _settle(self) -> None:
         t0 = time.monotonic()
@@ -417,6 +463,8 @@ class Server:
 
     def torque(self, on: bool) -> dict:
         self.arm.set_torque(bool(on))
+        self.offset[:] = 0.0
+        self.last_cmd = None
         return self.state()
 
     def rest(self) -> None:
@@ -527,8 +575,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--max-joint-speed", type=float, default=1.0, help="rad/s, peak")
     ap.add_argument("--fake", action="store_true", help="no hardware: kinematic arm and a test image")
     ap.add_argument("--print-info", action="store_true", help="print info + state as JSON and exit")
+    ap.add_argument("--allow-limp-start", action="store_true",
+                    help="start even if torque is on (the arm goes limp while the motors are configured)")
     a = ap.parse_args(argv)
-    arm = FakeArm() if a.fake else LerobotArm(a.port, a.robot_id, a.calibration_dir)
+    arm = FakeArm() if a.fake else LerobotArm(a.port, a.robot_id, a.calibration_dir, a.allow_limp_start)
     camera = Camera(None if a.fake and not a.camera else a.camera, a.width, a.height, a.fps)
     server = Server(arm, camera, control_hz=a.control_hz, max_joint_speed=a.max_joint_speed)
     try:

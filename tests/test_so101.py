@@ -125,6 +125,20 @@ def test_move_and_grip_through_the_envelope(rig, monkeypatch):
     robot.close()
 
 
+def test_sag_is_corrected_and_the_offset_carries_over(rig, monkeypatch):
+    arm, address = rig
+    arm.sag = np.radians([0.0, 3.0, -2.5, 1.5, 0.0])
+    robot = _robot(address, monkeypatch)
+    obs = robot.reset({})
+    assert np.allclose(obs.state.tcp_pos, [0.24, 0.0, 0.10], atol=2e-3)
+    tgt = tuple(obs.state.tcp_pos + [0.02, 0.0, -0.02]) + tuple(obs.state.tcp_rotvec)
+    rep = robot.execute([Action(ActionMode.EE_DELTA, (0.02, 0.0, -0.02), raw="MOVE", tcp_target=tgt)])
+    assert not rep.events
+    assert np.allclose(rep.state_after.tcp_pos, tgt[:3], atol=2e-3)
+    assert np.max(np.abs(rep.backend["runs"][-1]["offset_rad"])) > np.radians(1.0)
+    robot.close()
+
+
 def test_unreachable_move_is_skipped_and_a_blocked_joint_stops(rig, monkeypatch):
     arm, address = rig
     robot = _robot(address, monkeypatch)

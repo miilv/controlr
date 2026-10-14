@@ -281,7 +281,7 @@ class So101Robot(Robot):
                 wall += float(res.get("wall_s", 0.0))
                 runs.append({k: res.get(k) for k in ("stopped", "stop_reason", "stop_joint", "ticks", "wall_s",
                                                      "duration_s", "peak_current_ma", "peak_track_err_rad",
-                                                     "gripper_blocked")})
+                                                     "gripper_blocked", "final_err_rad", "offset_rad")})
                 if res.get("stopped"):
                     break
             executed.append(a)

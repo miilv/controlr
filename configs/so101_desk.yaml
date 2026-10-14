@@ -1,0 +1,11 @@
+# The SO-101 rig as it stands (2026-10-14): the rig laptop lies in front of the arm (front edge
+# ~x 230 mm, deck top ~18 mm, screen out of reach). Workspace shrunk so the jaws stay >= 20 mm
+# above the deck and short of the keyboard's far end; the task comes from --set task.instruction.
+extends: so101.yaml
+name: so101_desk
+robot:
+  params:
+    workspace_lo: [0.14, -0.16, 0.04]
+    workspace_hi: [0.30, 0.16, 0.15]
+episode:
+  max_turns: 15
