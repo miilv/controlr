@@ -51,6 +51,24 @@ def _log(msg: str) -> None:
     print(f"[so101 {time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
+BUS_TRIES = 3                   # attempts per bus transaction
+BUS_RETRY_S = 0.005
+
+
+def _bus(fn, what: str, *args, **kwargs):
+    """``fn(*args, **kwargs)`` with up to BUS_TRIES attempts. A single garbled status packet is
+    common on the Feetech bus (LeRobot: ConnectionError "Incorrect status packet") and must not
+    abort a move; the next transaction is usually fine. Re-raises the last failure."""
+    for attempt in range(1, BUS_TRIES + 1):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:  # noqa: BLE001  (not KeyboardInterrupt/SystemExit)
+            if attempt == BUS_TRIES:
+                raise
+            _log(f"bus {what} failed ({type(e).__name__}: {e}), retry {attempt}/{BUS_TRIES - 1}")
+            time.sleep(BUS_RETRY_S)
+
+
 # ---------------------------------------------------------------------------- arm backends
 class LerobotArm:
     """The real arm through LeRobot's FeetechMotorsBus with the saved calibration."""
@@ -73,7 +91,7 @@ class LerobotArm:
         if not self.bus.is_calibrated:
             raise SystemExit("the motors' calibration registers differ from the calibration file: "
                              "run lerobot-calibrate (or connect once with lerobot) before serving")
-        held = [m for m, v in self.bus.sync_read("Torque_Enable").items() if v]
+        held = [m for m, v in _bus(self.bus.sync_read, "read Torque_Enable", "Torque_Enable").items() if v]
         if held and not allow_limp_start:
             self.bus.disconnect(disable_torque=False)
             raise SystemExit(f"torque is ON ({', '.join(held)}): the arm may be holding itself up and would fall "
@@ -104,31 +122,31 @@ class LerobotArm:
         return np.array(out)
 
     def read(self) -> tuple[np.ndarray, float]:
-        pos = self.bus.sync_read("Present_Position")
+        pos = _bus(self.bus.sync_read, "read Present_Position", "Present_Position")
         q = np.radians([pos[m] for m in ARM])
         return q, float(pos["gripper"])
 
     def read_current_ma(self) -> np.ndarray:
-        cur = self.bus.sync_read("Present_Current", normalize=False)
+        cur = _bus(self.bus.sync_read, "read Present_Current", "Present_Current", normalize=False)
         return np.array([abs(int(cur[m])) * 6.5 for m in MOTORS])     # STS3215: 6.5 mA per unit
 
     def read_health(self) -> tuple[list[float], float]:
-        temp = self.bus.sync_read("Present_Temperature", normalize=False)
-        volt = self.bus.sync_read("Present_Voltage", normalize=False)
+        temp = _bus(self.bus.sync_read, "read Present_Temperature", "Present_Temperature", normalize=False)
+        volt = _bus(self.bus.sync_read, "read Present_Voltage", "Present_Voltage", normalize=False)
         return [float(temp[m]) for m in MOTORS], float(np.mean([volt[m] for m in MOTORS])) / 10.0
 
     def write(self, q: np.ndarray, gripper: float) -> None:
         goal = {m: float(np.degrees(v)) for m, v in zip(ARM, q)}
         goal["gripper"] = float(gripper)
-        self.bus.sync_write("Goal_Position", goal)
+        _bus(self.bus.sync_write, "write Goal_Position", "Goal_Position", goal)
 
     def set_torque(self, on: bool) -> None:
         if on:
             q, g = self.read()
             self.write(q, g)
-            self.bus.enable_torque()
+            _bus(self.bus.enable_torque, "torque on")
         else:
-            self.bus.disable_torque()
+            _bus(self.bus.disable_torque, "torque off")
         self.torque = on
 
     def close(self) -> None:
@@ -153,6 +171,19 @@ class FakeArm:
         self.torque = False
         self.block: dict[int, float] = {}
         self.sag = np.zeros(5)           # rad the loaded joints stay short of their goal
+        # failure injection (tests): after ``fail_after`` more reads, the next ``fail_reads`` bus
+        # reads raise like a garbled status packet (below the retry, as on the real bus)
+        self.fail_reads = 0
+        self.fail_after = 0
+
+    def _bus_read(self) -> None:
+        if self.fail_reads <= 0:
+            return
+        if self.fail_after > 0:
+            self.fail_after -= 1
+            return
+        self.fail_reads -= 1
+        raise ConnectionError("fake: Incorrect status packet")
 
     def _advance(self) -> None:
         now = time.monotonic()
@@ -170,10 +201,12 @@ class FakeArm:
         return np.radians([[-110, 110], [-100, 100], [-97, 97], [-95, 95], [-157, 163]])
 
     def read(self) -> tuple[np.ndarray, float]:
+        _bus(self._bus_read, "read Present_Position")
         self._advance()
         return self.q.copy(), self.g
 
     def read_current_ma(self) -> np.ndarray:
+        _bus(self._bus_read, "read Present_Current")
         self._advance()
         lag = np.abs(np.append(self.goal_q - self.q, (self.goal_g - self.g) / 100))
         return np.minimum(lag * 4000.0, 3000.0)
@@ -396,6 +429,8 @@ class Server:
         peak_err = np.zeros(6)
         over = 0
         stopped, reason, joint = False, "", ""
+        bus_err = ""
+        q, g = q0, g0
         t_start = time.monotonic()
         ticks = 0
         dt = 1.0 / self.hz
@@ -410,9 +445,20 @@ class Server:
             else:
                 q_goal = Q[-1]
             g_goal = G[0] + s * (G[-1] - G[0])
-            self._write(q_goal + self.offset, g_goal)
-            q, g = self.arm.read()
-            cur = self.arm.read_current_ma()
+            try:
+                self._write(q_goal + self.offset, g_goal)
+                q, g = self.arm.read()
+                cur = self.arm.read_current_ma()
+            except Exception as e:  # noqa: BLE001  (failed after the retries: stop, don't raise)
+                bus_err = f"bus error: {type(e).__name__}: {e}"
+                stopped, reason = True, bus_err
+                _log(f"{bus_err}: stopping the move")
+                try:
+                    if self.last_cmd is not None:
+                        self.arm.write(*self.last_cmd)      # freeze at the last goal sent
+                except Exception as e2:  # noqa: BLE001
+                    _log(f"freeze after the bus error failed: {e2}")
+                break
             err = np.abs(np.append(q_goal - q, 0.0))
             peak_cur = np.maximum(peak_cur, cur)
             peak_err = np.maximum(peak_err, err)
@@ -431,17 +477,26 @@ class Server:
                 self.arm.write(q, g)            # freeze where it is, no push (the sag offset is
                 self.last_cmd = (q, float(g))   # hold() must not re-send the blocked goal
                 break                           # kept: it compensates gravity, not the obstacle)
-                break
             if t >= duration:
                 break
             time.sleep(max(0.0, dt - ((time.monotonic() - t_start) - t)))
-        self._settle()
-        if not stopped and correct:
-            self._correct(Q[-1], G[-1])
-        q, g = self.arm.read()
+        try:
+            self._settle()
+            if not stopped and correct:
+                self._correct(Q[-1], G[-1])
+            q, g = self.arm.read()
+            state = self.state()
+        except Exception as e:  # noqa: BLE001
+            if not bus_err:
+                raise
+            # the bus is still failing: report the last good reading (the client gets a STOP)
+            _log(f"no state after the bus error: {type(e).__name__}: {e}")
+            self.last_still = time.monotonic()
+            state = {"t": time.monotonic() - self.t0, "q": q, "gripper": g, "current_ma": np.zeros(6),
+                     "torque": bool(self.arm.torque), "temp_c": [math.nan] * 6, "voltage_v": math.nan}
         # the gripper was told to close but stopped short: something is between the jaws
         blocked = bool(G[-1] < G[0] - 1 and g > G[-1] + 5)
-        return {"state": self.state(), "stopped": stopped, "stop_reason": reason, "stop_joint": joint,
+        return {"state": state, "stopped": stopped, "stop_reason": reason, "stop_joint": joint,
                 "ticks": ticks, "wall_s": time.monotonic() - t_start, "duration_s": duration,
                 "peak_current_ma": peak_cur, "peak_track_err_rad": peak_err, "gripper_blocked": blocked,
                 "final_err_rad": Q[-1] - q, "offset_rad": self.offset.copy()}
@@ -513,6 +568,7 @@ def serve(server: Server, host: str, port: int, authkey: bytes, *, listener=None
     """Serve clients one after another until ``shutdown`` (or ``max_clients`` sessions).
     ``listener``: an already bound ``Listener`` (tests); ``handle_sigint`` needs the main thread."""
     last_int = [0.0]
+    accept_fails: dict[str, list] = {}      # message -> [last logged, not logged since]
 
     def on_sigint(signum, frame):  # noqa: ARG001
         now = time.monotonic()
@@ -540,7 +596,14 @@ def serve(server: Server, host: str, port: int, authkey: bytes, *, listener=None
             try:
                 conn = listener.accept()
             except (OSError, EOFError) as e:
-                _log(f"accept failed: {e}")
+                # something probes the port every ~15 s ("bad message length"): once a minute
+                last = accept_fails.setdefault(str(e), [-math.inf, 0])
+                if time.monotonic() - last[0] >= 60.0:
+                    more = f" (+{last[1]} since the last report)" if last[1] else ""
+                    _log(f"accept failed: {e}{more}")
+                    last[:] = [time.monotonic(), 0]
+                else:
+                    last[1] += 1
                 continue
             server.frozen = False
             _log("client connected")

@@ -164,6 +164,36 @@ def test_unreachable_move_is_skipped_and_a_blocked_joint_stops(rig, monkeypatch)
     robot.close()
 
 
+def _bare_server(arm):
+    return S.Server(arm, S.Camera(None, 320, 180, 30), control_hz=200.0, max_joint_speed=20.0,
+                    settle_s=0.02, settle_max_s=0.2)
+
+
+def test_a_garbled_bus_read_is_retried_and_the_move_completes():
+    arm = S.FakeArm(speed_rad_s=30.0)
+    server = _bare_server(arm)
+    target = arm.q + np.radians([10.0, 5.0, -5.0, 0.0, 0.0])
+    arm.fail_after, arm.fail_reads = 6, 2            # two reads in a row fail mid-move: retried
+    res = server.run_path([target], None, 0.3)
+    assert arm.fail_reads == 0
+    assert not res["stopped"] and res["stop_reason"] == ""
+    assert np.allclose(res["state"]["q"], target, atol=np.radians(0.5))
+
+
+def test_a_persistent_bus_error_stops_the_move_without_raising():
+    arm = S.FakeArm(speed_rad_s=30.0)
+    server = _bare_server(arm)
+    q0 = arm.q.copy()
+    target = q0 + np.radians([30.0, 0.0, 0.0, 0.0, 0.0])
+    arm.fail_after, arm.fail_reads = 6, 10**6        # the bus dies mid-move
+    res = server.run_path([target], None, 1.0)
+    assert res["stopped"] and res["stop_reason"].startswith("bus error: ConnectionError")
+    assert res["ticks"] < 10 and res["wall_s"] < 0.5
+    assert np.allclose(arm.goal_q, server.last_cmd[0])           # frozen at the last goal sent
+    assert abs(arm.goal_q[0] - q0[0]) < np.radians(15.0)         # well short of the target
+    assert set(res) >= {"state", "stopped", "stop_reason", "stop_joint", "final_err_rad", "offset_rad"}
+
+
 def test_whole_episode_with_fake_llm(rig, monkeypatch, tmp_path):
     arm, address = rig
     monkeypatch.setenv("CONTROLR_SO101_AUTHKEY", "test")
