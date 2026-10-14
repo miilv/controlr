@@ -69,12 +69,17 @@ def main() -> None:
     ap.add_argument("--from", dest="t_from", type=float, default=0.0)
     ap.add_argument("--until", type=float, default=1e9)
     ap.add_argument("--cuts", default="3.53,3.94", help="segment boundaries, demo seconds")
+    ap.add_argument("--reverse", action="store_true", help="play backwards (put the object back down)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--port", type=int, default=7811)
     args = ap.parse_args()
 
     samples = [s for s in load(args.demo, args.every) if args.t_from <= s[0] <= args.until]
-    segs = segments(samples, [float(c) for c in args.cuts.split(",") if c])
+    cuts = [float(c) for c in args.cuts.split(",") if c]
+    if args.reverse:   # time runs backwards: negate it so segments() still sees it increasing
+        samples = [(-t, q, g) for t, q, g in reversed(samples)]
+        cuts = [-c for c in cuts]
+    segs = segments(samples, cuts)
     for i, s in enumerate(segs):
         q0, q1 = np.degrees(s[0][1]), np.degrees(s[-1][1])
         print(f"seg {i}: t {s[0][0]:5.2f}-{s[-1][0]:5.2f}  grip {s[0][2]:5.1f}->{s[-1][2]:5.1f}  "
