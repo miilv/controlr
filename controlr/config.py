@@ -122,7 +122,7 @@ class PlannerConfig:
 
 @dataclass
 class RobotConfig:
-    backend: str = "isaac"          # isaac | mock | replay | robodojo | ur (later)
+    backend: str = "isaac"          # isaac | mock | replay | robodojo | so101 | ur (later)
     params: dict = field(default_factory=dict)   # backend-specific (scene, physics, cameras, replay dir...)
 
 
@@ -399,7 +399,7 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("decisions", "state_layout"): ("window", "transcript"),
     ("llm", "cache"): ("auto", "anthropic", "none"),
     ("llm", "cache_ttl"): ("5m", "1h"),
-    ("robot", "backend"): ("isaac", "mock", "replay", "robodojo"),
+    ("robot", "backend"): ("isaac", "mock", "replay", "robodojo", "so101"),
     ("feedback", "level"): ("short", "full"),
     ("feedback", "orientation"): ("rpy", "direction"),
     ("safety", "box_collision"): ("block", "warn", "off"),
@@ -418,8 +418,11 @@ def validate(cfg: Config) -> Config:
         v = getattr(getattr(cfg, sec), key)
         if v not in allowed:
             errs.append(f"{sec}.{key}={v!r} (allowed: {', '.join(allowed)})")
-    if cfg.feedback.orientation == "direction" and cfg.prompt.system in ("system_v0", "system_v1"):
-        errs.append(f"feedback.orientation=direction needs a manual that explains it (system_v2+), "
+    if cfg.robot.backend == "so101" and cfg.prompt.system in ("system_v0", "system_v1", "system_v2"):
+        errs.append(f"robot.backend=so101 has its camera on the gripper: prompt.system={cfg.prompt.system} says the "
+                    f"camera is fixed; use system_v3")
+    if cfg.feedback.orientation == "direction" and cfg.prompt.system in ("system_v0", "system_v1", "system_v3"):
+        errs.append(f"feedback.orientation=direction needs a manual that explains it (system_v2), "
                     f"not {cfg.prompt.system}")
     bad = [r for r in cfg.observation.renderers if r not in _RENDERERS]
     if bad:

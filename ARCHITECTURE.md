@@ -80,6 +80,7 @@ small steps.
 | `controlr/robot/mock.py` | kinematic mock robot (no physics; synthetic rendering) for tests |
 | `controlr/robot/replay.py` | replays recorded frames regardless of actions (latency/caching benchmarks) |
 | `controlr/robot/isaac/` | Isaac Sim 6.0 backend: PHANTOM's calibrated UR3 CB3 + Robotiq + D435 scene (server inside Isaac's python, numpy-only RPC client in controlr; `motion.py` = trajectory timing shared by both) |
+| `controlr/robot/so101/` | real SO-101 follower with a wrist camera ([docs/SO101.md](docs/SO101.md)): `server.py` (runs on the rig in LeRobot's env: bus, camera, stop rules), `client.py` (`So101Robot`), `kinematics.py` (URDF FK/IK, 5-joint orientation rule, camera pose), `protocol.py` |
 | `controlr/robot/robodojo/` | RoboDojo backend ([docs/ROBODOJO.md](docs/ROBODOJO.md)): `serve.py` (`controlr robodojo-serve`), `client.py` (`RoboDojoRobot`), `protocol.py`, `shim/` (runs inside RoboDojo's eval client as XPolicyLab policy `controlr`) |
 | `controlr/loop.py` | episode runner (planner + turn loop), end conditions |
 | `controlr/runlog.py` | run directory writer |
@@ -353,6 +354,20 @@ per arm, and the manual is `system_v1` (`build_system_prompt` uses `_values_arms
   `L`/`R` to `left`/`right`; the shim plans each arm target with RoboDojo's cuRobo, resamples to
   ≤ 0.05 rad per joint per env step, moves grippers after the arm, sends both arms every step and
   marks an episode controlr ended early as failed.
+* SO-101 backend (`robot/so101/`, [docs/SO101.md](docs/SO101.md)): `RobotSpec.kinematics = "backend"`, so
+  the `CartesianEnvelope` approves `Action.tcp_target` and `So101Robot` plans: the target rotation is
+  turned to the one 5 joints can hold (`reachable_rotation`: fixed tool pitch and roll, pointing away
+  from the base), IK every 5 mm along the straight line (`line_path`; an unreachable stretch shortens
+  the move, WARN `clamp` / `ik_fail`), then ONE server `execute` per motion (min-jerk, peak TCP speed
+  `safety.max_tcp_speed_m_s`) and one per gripper change after it. The server (LeRobot's python on the
+  rig, `multiprocessing.connection` over ssh tunnels) clamps to the calibrated range, caps joint
+  speed, freezes the arm when a joint lags its goal > `track_stop_deg` (STOP `contact`), settles arm
+  and jaws, and `observe` waits for a frame exposed after the arm stood still. The camera rides on the
+  gripper: `CameraInfo.T_cam_base` is recomputed every observation from FK and `T_tcp_cam` (hand-eye
+  calibration or the stock URDF mount), and `Observation.notes` carries a VIEW line (which way +x/+y
+  run in this image from the jaw tips). The manual for a moving camera is `system_v3` (required with
+  `so101`). No automatic success check: `check_goal` never succeeds; configs use `trust_done` and
+  the operator writes `verdict.json` (`scripts/so101_verdict.py`).
 * `kinematics.py`: `fk(q) -> (pos, rotvec)` of the TCP in the UR controller base frame
   (DH from PHANTOM `phantom/sim/kinematics.py`: a=[0,-0.24365,-0.21325,0,0,0],
   d=[0.1519,0,0,0.11235,0.08535,0.0819], alpha=[pi/2,0,0,pi/2,-pi/2,0]; TCP offset +z 0.18 m

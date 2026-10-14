@@ -13,6 +13,8 @@ a default). All axes — [../docs/EXPERIMENTS.md](../docs/EXPERIMENTS.md) §2.
 | `mock_dec.yaml`, `mock_dec_fovea.yaml` | mock reach with the decision head: plain, and the tuned setup (split head, 3 cameras, fovea, named target; 11/12 within 15 mm) |
 | `sim_reach_dec.yaml` | Isaac reach with the decision head and virtual top/side cameras |
 | `sim_reach.yaml` | Isaac: move the TCP to a marker |
+| `so101.yaml` | real SO-101 with a wrist camera ([../docs/SO101.md](../docs/SO101.md)): `system_v3`, `trust_done`, 50 mm per line, 0.05 m/s; task from `--set task.instruction=...` |
+| `so101_touch.yaml`, `so101_pick.yaml` | first real tasks: touch the tape roll with closed jaws; small object into a cup |
 | `mock.yaml` | kinematic mock robot without physics (for `--fake-llm` and cheap checks) |
 | `bench/latency.yaml` | latency matrix: models × frame size × history length |
 | `sweeps/*.yaml` | sweeps: `config` + `set` + `grid` × `seeds` → `controlr sweep` |

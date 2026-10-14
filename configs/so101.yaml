@@ -1,0 +1,44 @@
+# Real SO-101 follower with a camera on the gripper (docs/SO101.md). The arm server runs on the
+# rig (scripts/so101_server.sh); this process reaches it through an ssh tunnel on localhost:7811.
+# There is no automatic success check on the real rig: DONE ends the episode (trust_done) and
+# the operator records the verdict (scripts/so101_verdict.py). The task comes from the command
+# line: --set task.instruction="..." (or the so101_*.yaml task files).
+# A human stays at the arm's power switch for every run.
+extends: base.yaml
+name: so101
+llm:
+  model: claude/claude-sonnet-5-5
+  extra_body: {reasoning_effort: low}  # ~2 s turns (docs/DEVELOPMENT.md pitfalls)
+planner:
+  enabled: false
+prompt:
+  system: system_v3                    # the camera rides on the gripper (VIEW line every turn)
+robot:
+  backend: so101
+  params:
+    tool_pitch_deg: 60                 # 90 = straight down (only then rotation=yaw works)
+    tool_roll_deg: 90                  # stock wrist camera upright: image up = forward
+    home_tcp: [0.24, 0.0, 0.10]
+    camera_calib: null                 # ~/.config/controlr/so101_wrist.json after scripts/so101_calibrate.py
+    track_stop_deg: 12
+    current_stop_ma: null              # tune from the logged peaks (turns.jsonl backend.runs) first
+task:
+  name: real
+  instruction: ""
+observation:
+  cameras: [wrist]
+  size: 512
+  renderers: [raw]                     # grid / ee_marker / axes need the hand-eye calibration
+action:
+  rotation: none
+safety:
+  max_step_m: 0.05                     # a small arm: at most 50 mm per MOVE line
+  table_clearance_m: 0.01
+  max_tcp_speed_m_s: 0.05
+episode:
+  max_turns: 30
+  goal_feedback: never
+  trust_done: true
+  max_stops: 2
+log:
+  save_raw_frames: true                # clean frames for a future LeRobotDataset export

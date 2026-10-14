@@ -119,3 +119,48 @@ def arx_x5_dual_spec(*, gripper_max_mm: float = 80.0,
         kinematics="backend",
         arms=("L", "R"),
     )
+
+
+# ---------------------------------------------------------------------------
+# SO-101 follower (LeRobot) with a wrist camera
+# ---------------------------------------------------------------------------
+
+SO101_JOINTS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll")
+
+
+def so101_spec(*, limits_rad=None, tool_pitch_deg: float = 60.0, gripper_max_mm: float = 70.0,
+               joint_speed: float = 1.0,
+               workspace_lo: tuple[float, float, float] = (0.12, -0.25, 0.0),
+               workspace_hi: tuple[float, float, float] = (0.38, 0.25, 0.16),
+               home_q: tuple[float, ...] = (0.0,) * 5) -> RobotSpec:
+    """RobotSpec for the SO-101 follower arm (5 joints + gripper, Feetech STS3215) with a wrist
+    camera. ``limits_rad`` (5, 2): the arm's calibrated range from the server (default: URDF).
+    The backend plans the joints (``kinematics="backend"``, ``controlr.robot.so101.kinematics``);
+    the tool keeps a fixed pitch ``tool_pitch_deg`` below horizontal (90 = straight down) and,
+    with 5 joints, always points away from the base (radially)."""
+    from controlr.robot.so101.kinematics import URDF_LIMITS
+
+    lim = np.asarray(URDF_LIMITS if limits_rad is None else limits_rad, float)
+    joints = tuple(JointSpec(n, float(lo), float(hi), joint_speed) for n, (lo, hi) in zip(SO101_JOINTS, lim))
+    down = tool_pitch_deg >= 89.5
+    return RobotSpec(
+        name="SO-101 follower arm (5 joints + parallel gripper) with a camera on the gripper",
+        joints=joints,
+        base_frame_doc=(
+            "Robot base frame: origin on the table under the centre of the arm's base, z points up "
+            "(the table surface is z = 0 mm), +x points forward from the base toward the work area, "
+            "+y to the LEFT seen from behind the arm. The arm reaches about 120 to 380 mm forward."),
+        tcp_doc=(
+            "The TCP is the point between the tips of the two gripper jaws. "
+            + ("The gripper always points straight down." if down else
+               f"The gripper always points {tool_pitch_deg:.0f} degrees below horizontal, away from the "
+               "base: moving sideways turns it with the arm.")
+            + " The camera rides on the gripper, behind and above the jaws, and looks along them: "
+            "both jaws show at the bottom of its image, and the image moves with every move."),
+        gripper_max_mm=gripper_max_mm,
+        workspace_lo=tuple(float(v) for v in workspace_lo),
+        workspace_hi=tuple(float(v) for v in workspace_hi),
+        home_q=tuple(float(v) for v in home_q),
+        table_z=0.0,
+        kinematics="backend",
+    )

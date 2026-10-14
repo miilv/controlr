@@ -1,0 +1,8 @@
+# Pick-and-place on the real SO-101: a small object (~2-4 cm) into a cup or box.
+extends: so101.yaml
+name: so101_pick
+task:
+  name: pick_place
+  instruction: "Pick up the small object in front of the arm and put it into the cup. Report DONE when it is in the cup and the gripper is open above it."
+episode:
+  max_turns: 40
