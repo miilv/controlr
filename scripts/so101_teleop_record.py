@@ -13,6 +13,8 @@ serial error is logged and the tick retried.
 
 Stop: Ctrl-C, `touch <out>/STOP`, or `--seconds`. End with the leader in the rest pose: the
 follower's torque goes off on exit. Nothing else may hold the serial ports (lerobot-teleoperate).
+ttyUSB numbers swap on re-plug: an arm whose motors do not hold its calibration file is refused
+(lerobot would offer to overwrite the motors).
 """
 
 from __future__ import annotations
@@ -123,9 +125,9 @@ def main() -> None:
     ap.add_argument("--frame-every", type=float, default=0.1)
     ap.add_argument("--ramp-rate", type=float, default=25.0,
                     help="soft start speed, normalised units/s (200 = a joint's whole range)")
-    ap.add_argument("--follower-port", default="/dev/ttyUSB0")
+    ap.add_argument("--follower-port", default="/dev/ttyUSB1")
     ap.add_argument("--follower-id", default="follower_v1")
-    ap.add_argument("--leader-port", default="/dev/ttyUSB1")
+    ap.add_argument("--leader-port", default="/dev/ttyUSB0")
     ap.add_argument("--leader-id", default="leader_v1")
     ap.add_argument("--camera", default="/dev/video32")
     ap.add_argument("--width", type=int, default=1280)
@@ -143,8 +145,17 @@ def main() -> None:
     cam = Camera(args.camera, args.width, args.height)
     leader = SO101Leader(SO101LeaderConfig(port=args.leader_port, id=args.leader_id))
     follower = SO101Follower(SO101FollowerConfig(port=args.follower_port, id=args.follower_id))
-    leader.connect()
-    follower.connect()
+    # lerobot's connect() answers a calibration mismatch by offering to write the file into the
+    # motors (ENTER): on swapped ports that wrote the follower's calibration into the leader and
+    # drove it. Same steps as connect() (no cameras here), but a mismatch = wrong port: refuse.
+    for dev in (leader, follower):
+        dev.bus.connect()
+        if not dev.is_calibrated:
+            dev.bus.port_handler.closePort()
+            raise SystemExit(
+                f"{dev.id} on {dev.config.port}: its motors do not hold {dev.id}'s calibration. "
+                "Wrong port (ttyUSB numbers swap on re-plug)? Nothing was written.")
+        dev.configure()
 
     q: queue.Queue = queue.Queue()
     w = threading.Thread(target=writer, args=(out, q, cam, args.frame_every))
