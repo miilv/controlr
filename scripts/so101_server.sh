@@ -9,7 +9,8 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY="${SO101_PYTHON:-$HOME/miniconda3/envs/lerobot/bin/python}"
-PORT="${SO101_PORT:-/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0}"
+# by-path = the physical USB socket (both CH340s share one by-id name; ttyUSB0/1 swap on re-plug)
+PORT="${SO101_PORT:-/dev/serial/by-path/pci-0000:00:14.0-usb-0:7:1.0-port0}"
 ROBOT_ID="${SO101_ROBOT_ID:-follower_v1}"
 CAMERA="${SO101_CAMERA:-/dev/v4l/by-id/usb-WebCamera_WebCamera_2502131600-video-index0}"
 if [[ " $* " == *" --fake "* ]]; then

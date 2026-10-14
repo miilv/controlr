@@ -363,8 +363,11 @@ class Server:
         return self.state()
 
     # -- motion
-    def run_path(self, q_rows, g_rows, duration_s: float, stop: dict | None = None) -> dict:
-        """Stream a min-jerk timed path through joint waypoints; stop on blocking."""
+    def run_path(self, q_rows, g_rows, duration_s: float, stop: dict | None = None,
+                 correct: bool = True) -> dict:
+        """Stream a min-jerk timed path through joint waypoints; stop on blocking.
+
+        correct=False skips the integral sag settle (a probe that must not push into contact)."""
         if self.frozen:
             raise RuntimeError("the arm is frozen (Ctrl-C on the server): reconnect to resume")
         if not self.arm.torque:
@@ -433,7 +436,7 @@ class Server:
                 break
             time.sleep(max(0.0, dt - ((time.monotonic() - t_start) - t)))
         self._settle()
-        if not stopped:
+        if not stopped and correct:
             self._correct(Q[-1], G[-1])
         q, g = self.arm.read()
         # the gripper was told to close but stopped short: something is between the jaws
@@ -495,7 +498,7 @@ class Server:
             return self.state()
         if op == "execute":
             return self.run_path(args["q"], args.get("gripper"), float(args.get("duration_s", 0.0)),
-                                 args.get("stop"))
+                                 args.get("stop"), bool(args.get("correct", True)))
         if op == "move_joints":
             return self.move_joints(args["q"], args.get("gripper"), float(args.get("duration_s", 3.0)))
         if op == "hold":
