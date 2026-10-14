@@ -154,6 +154,9 @@ class ObservationConfig:
     # "fovea" renderer: a zoomed crop of the NATIVE frame around the projected TCP, this many native
     # px square, scaled to `size` (the one place images are upscaled), magenta cross at the TCP
     fovea_px: int = 200
+    # "aim" overlay: a fixed image point (fractions of width, height) — with a camera on the gripper,
+    # where a held object sits in the image (the grasp point); needs no calibration
+    aim_uv: list[float] | None = None
 
 
 @dataclass
@@ -404,7 +407,7 @@ _CHOICES: dict[tuple[str, str], tuple] = {
     ("feedback", "orientation"): ("rpy", "direction"),
     ("safety", "box_collision"): ("block", "warn", "off"),
 }
-_RENDERERS = ("raw", "grid", "axes", "ee_marker", "diff", "heatmap", "fovea", "tile")
+_RENDERERS = ("raw", "grid", "axes", "ee_marker", "aim", "diff", "heatmap", "fovea", "tile")
 
 
 def validate(cfg: Config) -> Config:

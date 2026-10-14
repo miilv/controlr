@@ -196,7 +196,26 @@ class So101Robot(Robot):
             parts = [x for x in parts if not x.startswith("+z")]
             parts.append("+z points toward the camera (height: read z in STATE)")
         parts[-1] += f" in the {size}"
-        return (f"VIEW: from the jaw tips in the {info.name} image, " + ", ".join(parts),)
+        # The px lengths above are at the jaw tips' height. Objects on the table are farther from
+        # the camera, so the same pixel offset there is MORE millimetres: reading it with the tips'
+        # scale made every estimate short (the ball runs, 2026-10-14). Give the table's scale too.
+        table = self._table_scale(info, state)
+        return (f"VIEW: from the jaw tips in the {info.name} image, " + ", ".join(parts)
+                + (f"; on the table (z = 0) 100 mm is only {table} - use that scale for things lying on "
+                   "the table" if table else ""),)
+
+    def _table_scale(self, info: CameraInfo, state: RobotState) -> str:
+        from controlr.observation.renderers import _project_segment
+
+        o = np.array([state.tcp_pos[0], state.tcp_pos[1], self.spec.table_z or 0.0])
+        scale = int(self.p["view_long_edge"]) / max(info.width, info.height)
+        out = []
+        for name, d in (("x", (1, 0, 0)), ("y", (0, 1, 0))):
+            seg = _project_segment(info, o, o + 0.1 * np.asarray(d, float), info.width, info.height)
+            if seg is None:
+                return ""
+            out.append(f"{math.hypot(seg[1][0] - seg[0][0], seg[1][1] - seg[0][1]) * scale:.0f} px along {name}")
+        return " and ".join(out)
 
     def _grip_pct(self, width_m: float) -> float:
         return float(np.clip(width_m / self.gmax_m * 100.0, 0.0, self.open_pct))
@@ -293,7 +312,7 @@ class So101Robot(Robot):
                     break
             executed.append(a)
             if g is not None and not res.get("stopped"):
-                self._closed_cmd = g < 50.0
+                self._closed_cmd = g < self.open_pct / 2       # "open" is open_pct (40 %), not 100
                 self._holding = bool(res.get("gripper_blocked")) if self._closed_cmd else False
             q = np.asarray(res["state"]["q"], float)
             if res.get("stopped"):
