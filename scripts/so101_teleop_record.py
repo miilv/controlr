@@ -89,12 +89,40 @@ def writer(out: Path, q: queue.Queue, cam: Camera, frame_every: float) -> None:
     log.close()
 
 
+def soft_start(follower, leader, fps: int, rate: float, q: queue.Queue, timeout: float = 20.0) -> None:
+    """Walk the follower from where it is to the leader's pose at `rate` units/s.
+
+    The teleop loop sends the leader pose unclipped (as lerobot-teleoperate does): if the arms
+    disagree at start, the follower would cross the whole gap in one tick.
+    """
+    cmd = {k: float(v) for k, v in follower.get_observation().items()}
+    step = rate / fps
+    t0 = time.perf_counter()
+    print("soft start: follower walking to the leader's pose (hold the leader still)", flush=True)
+    while time.perf_counter() - t0 < timeout:
+        loop_start = time.perf_counter()
+        target = leader.get_action()
+        gap = max(abs(target[k] - cmd[k]) for k in cmd)
+        if gap < 1.0:
+            break
+        for k in cmd:
+            cmd[k] += max(-step, min(step, target[k] - cmd[k]))
+        follower.send_action(cmd)
+        precise_sleep(1 / fps - (time.perf_counter() - loop_start))
+    else:
+        raise RuntimeError(f"soft start: leader still {gap:.0f} units away after {timeout:.0f} s")
+    q.put({"t": 0.0, "event": "soft_start_done", "s": round(time.perf_counter() - t0, 2)})
+    print(f"soft start done in {time.perf_counter() - t0:.1f} s: teleop live", flush=True)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--seconds", type=float, default=300.0)
     ap.add_argument("--fps", type=int, default=60)
     ap.add_argument("--frame-every", type=float, default=0.1)
+    ap.add_argument("--ramp-rate", type=float, default=25.0,
+                    help="soft start speed, normalised units/s (200 = a joint's whole range)")
     ap.add_argument("--follower-port", default="/dev/ttyUSB0")
     ap.add_argument("--follower-id", default="follower_v1")
     ap.add_argument("--leader-port", default="/dev/ttyUSB1")
@@ -127,6 +155,8 @@ def main() -> None:
     t0 = time.perf_counter()
     errors = 0
     try:
+        soft_start(follower, leader, args.fps, args.ramp_rate, q)
+        t0 = time.perf_counter()
         while time.perf_counter() - t0 < args.seconds and not stop_file.exists():
             loop_start = time.perf_counter()
             try:
