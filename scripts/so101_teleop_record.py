@@ -77,13 +77,19 @@ def writer(out: Path, q: queue.Queue, cam: Camera, frame_every: float) -> None:
             break
         frame, stamp = cam.latest()
         if frame is not None and rec["t"] - last_frame >= frame_every:
-            name = f"{rec['t']:.3f}.jpg"
-            tmp = out / "frames" / (name + ".tmp")
-            cv2.imwrite(str(tmp), frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
-            os.replace(tmp, out / "frames" / name)
-            rec["frame"] = name
-            rec["frame_age"] = round(rec["t"] - stamp, 3)
             last_frame = rec["t"]
+            name = f"{rec['t']:.3f}.jpg"
+            try:  # a frame failure must not stop the joint log
+                ok, jpg = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                if not ok:
+                    raise RuntimeError("imencode failed")
+                tmp = out / "frames" / (name + ".tmp")
+                tmp.write_bytes(jpg.tobytes())
+                os.replace(tmp, out / "frames" / name)
+                rec["frame"] = name
+                rec["frame_age"] = round(rec["t"] - stamp, 3)
+            except Exception as e:
+                rec["frame_error"] = f"{type(e).__name__}: {e}"
         log.write(json.dumps(rec) + "\n")
         if q.empty():
             log.flush()
