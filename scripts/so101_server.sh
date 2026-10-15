@@ -9,8 +9,9 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY="${SO101_PYTHON:-$HOME/miniconda3/envs/lerobot/bin/python}"
-# by-path = the physical USB socket (both CH340s share one by-id name; ttyUSB0/1 swap on re-plug)
-PORT="${SO101_PORT:-/dev/serial/by-path/pci-0000:00:14.0-usb-0:7:1.0-port0}"
+# both CH340s share one by-id name and the sockets change on re-plug: the operator's mapping is
+# follower = ttyUSB1, leader = ttyUSB0. A wrong port is refused (motors' calibration != follower_v1).
+PORT="${SO101_PORT:-/dev/ttyUSB1}"
 ROBOT_ID="${SO101_ROBOT_ID:-follower_v1}"
 CAMERA="${SO101_CAMERA:-/dev/v4l/by-id/usb-WebCamera_WebCamera_2502131600-video-index0}"
 if [[ " $* " == *" --fake "* ]]; then

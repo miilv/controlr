@@ -97,13 +97,21 @@ def writer(out: Path, q: queue.Queue, cam: Camera, frame_every: float) -> None:
     log.close()
 
 
-def soft_start(follower, leader, fps: int, rate: float, q: queue.Queue, timeout: float = 20.0) -> None:
+def soft_start(follower, leader, fps: int, rate: float, q: queue.Queue, timeout: float = 20.0,
+               max_gap: float = 30.0) -> None:
     """Walk the follower from where it is to the leader's pose at `rate` units/s.
 
     The teleop loop sends the leader pose unclipped (as lerobot-teleoperate does): if the arms
-    disagree at start, the follower would cross the whole gap in one tick.
+    disagree at start, the follower would cross the whole gap in one tick. A gap over `max_gap`
+    units (any joint) is refused: walking it could sweep the arm into the rig.
     """
     cmd = {k: float(v) for k, v in follower.get_observation().items()}
+    target = leader.get_action()
+    far = {k.removesuffix(".pos"): round(target[k] - cmd[k]) for k in cmd
+           if not k.startswith("gripper") and abs(target[k] - cmd[k]) > max_gap}
+    if far:
+        raise SystemExit(f"the leader is far from the follower's pose (leader - follower: {far}); put the "
+                         "leader in the follower's pose (usually rest) and start again. Nothing moved.")
     step = rate / fps
     t0 = time.perf_counter()
     print("soft start: follower walking to the leader's pose (hold the leader still)", flush=True)
