@@ -2,9 +2,10 @@
 into, and speaks ``protocol.py`` to ``So101Robot``.
 
 Runs in LeRobot's environment (python >= 3.10, numpy, opencv, lerobot[feetech]); imports
-nothing from controlr but ``protocol`` (loaded by path, so no controlr install is needed):
+nothing from controlr but ``protocol`` and ``arm_id`` (loaded by path, so no controlr install is
+needed). ``--port auto`` finds the follower among /dev/ttyUSB* by its encoders (``arm_id``):
 
-    python controlr/robot/so101/server.py --port /dev/ttyUSB1 --robot-id follower_v1 \
+    python controlr/robot/so101/server.py --port auto --robot-id follower_v1 \
         --camera /dev/v4l/by-id/usb-...-video-index0
     python controlr/robot/so101/server.py --fake          # no hardware: kinematic arm + test image
 
@@ -39,6 +40,9 @@ import numpy as np
 _spec = importlib.util.spec_from_file_location("so101_protocol", Path(__file__).with_name("protocol.py"))
 P = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(P)  # type: ignore[union-attr]
+_spec = importlib.util.spec_from_file_location("so101_arm_id", Path(__file__).with_name("arm_id.py"))
+arm_id = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(arm_id)  # type: ignore[union-attr]
 
 MOTORS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
 ARM = MOTORS[:5]
@@ -79,18 +83,31 @@ class LerobotArm:
                  allow_limp_start: bool = False) -> None:
         from lerobot.robots.so101_follower import SO101Follower, SO101FollowerConfig
 
-        cfg = SO101FollowerConfig(port=port, id=robot_id, use_degrees=True,
-                                  calibration_dir=Path(calibration_dir) if calibration_dir else None)
-        robot = SO101Follower(cfg)
+        def make(port: str):
+            return SO101Follower(SO101FollowerConfig(port=port, id=robot_id, use_degrees=True,
+                                                     calibration_dir=Path(calibration_dir) if calibration_dir else None))
+
+        robot = make(port)
         if not robot.calibration:
             raise SystemExit(f"no LeRobot calibration for id {robot_id!r} ({robot.calibration_fpath}); "
                              "run lerobot-calibrate first")
+        if port == "auto":      # ttyUSB numbers swap on re-plug: find the follower by its encoders
+            _log(f"--port auto: looking for {robot_id} among {arm_id.PORT_GLOB}")
+            try:
+                port = arm_id.find({robot_id: robot.calibration}, log=_log)[0][robot_id]
+            except arm_id.ArmIdError as e:
+                raise SystemExit(f"cannot find {robot_id}'s port: {e}\npass --port /dev/ttyUSBn") from None
+            robot = make(port)
+        self.port = port
         self.bus = robot.bus
         self.calibration = robot.calibration
         self.bus.connect()
         if not self.bus.is_calibrated:
-            raise SystemExit("the motors' calibration registers differ from the calibration file: "
-                             "run lerobot-calibrate (or connect once with lerobot) before serving")
+            self.bus.port_handler.closePort()
+            raise SystemExit(f"{port}: the motors' calibration registers differ from {robot_id}'s calibration "
+                             "file: wrong port, or the motors hold another arm's calibration. Nothing was "
+                             "written. scripts/so101_teleop_record.py prints which (and --restore-calibration "
+                             "fixes it); never let lerobot overwrite them")
         held = [m for m, v in _bus(self.bus.sync_read, "read Torque_Enable", "Torque_Enable").items() if v]
         if held and not allow_limp_start:
             self.bus.disconnect(disable_torque=False)
@@ -641,7 +658,8 @@ def serve(server: Server, host: str, port: int, authkey: bytes, *, listener=None
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--port", default="/dev/ttyUSB1", help="serial port of the follower arm")
+    ap.add_argument("--port", default="auto", help="serial port of the follower arm; auto = find it among "
+                    "/dev/ttyUSB* by its encoders (arm_id.py)")
     ap.add_argument("--robot-id", default="follower_v1", help="LeRobot calibration id")
     ap.add_argument("--calibration-dir", default=None)
     ap.add_argument("--camera", default=None, help="V4L2 device path (/dev/v4l/by-id/...)")

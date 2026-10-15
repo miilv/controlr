@@ -9,21 +9,29 @@ calibration files) and saves the latest wrist frame every `--frame-every` s. ler
 keeps joint data in memory until the episode ends; here a crash loses at most a few ticks, and a
 serial error is logged and the tick retried.
 
-    python so101_teleop_record.py --out ~/controlr-so101/demos/ball_demo_2
+    python scripts/so101_teleop_record.py --out ~/controlr-so101/demos/ball_demo_2
 
 Stop: Ctrl-C, `touch <out>/STOP`, or `--seconds`. End with the leader in the rest pose: the
 follower's torque goes off on exit. Nothing else may hold the serial ports (lerobot-teleoperate).
-ttyUSB numbers swap on re-plug: an arm whose motors do not hold its calibration file is refused
-(lerobot would offer to overwrite the motors).
+
+Ports: ttyUSB numbers swap on re-plug and both adapters share one by-id name. `--follower-port`
+/ `--leader-port` default to `auto`: every /dev/ttyUSB* is read and each arm found by its encoders
+against its calibration file (`controlr/robot/so101/arm_id.py`, loaded by path from the repo or
+the deployed copy: same layout, `<root>/scripts/` + `<root>/controlr/robot/so101/`). Explicit
+ports are checked the same way and refused on a mismatch. An arm whose motors do not hold its
+calibration file is refused (lerobot would offer to overwrite the motors); when arm_id knows
+which arm it is, `--restore-calibration` writes the file into its motors (torque off only).
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import queue
 import shutil
+import sys
 import threading
 import time
 from pathlib import Path
@@ -34,6 +42,83 @@ from lerobot.teleoperators.so101_leader import SO101Leader, SO101LeaderConfig
 from lerobot.utils.robot_utils import precise_sleep
 
 CALIB = Path.home() / ".cache/huggingface/lerobot/calibration"
+
+
+def _load_arm_id():
+    """arm_id.py by path (no controlr install in LeRobot's env): <root>/controlr/robot/so101/ next
+    to <root>/scripts/ (repo and rig deploy), or next to this file (an old flat copy)."""
+    here = Path(__file__).resolve().parent
+    tried = [here.parent / "controlr/robot/so101/arm_id.py", here / "controlr/robot/so101/arm_id.py"]
+    for path in tried:
+        if path.exists():
+            spec = importlib.util.spec_from_file_location("so101_arm_id", path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)  # type: ignore[union-attr]
+            return mod
+    raise SystemExit("arm_id.py not found (deploy it with this script): " + ", ".join(map(str, tried)))
+
+
+A = _load_arm_id()
+
+
+def resolve_ports(roles: dict[str, tuple[str, str]], calibs: dict) -> tuple[dict[str, str], dict]:
+    """roles {role: (arm id, port or 'auto')} -> ({arm id: port}, arm_id readings). Explicit ports
+    are verified, never trusted; refuses (SystemExit) on any doubt. Writes nothing."""
+    explicit = {ident: port for ident, port in roles.values() if port != "auto"}
+    ports = set(explicit.values())
+    if len(explicit) < len(roles):
+        ports |= set(A.candidate_ports())
+    print(f"identifying the arms on {', '.join(sorted(ports)) or '(no /dev/ttyUSB*)'}:", flush=True)
+    try:
+        mapping, readings = A.find(calibs, sorted(ports))
+    except A.ArmIdError as e:
+        raise SystemExit(f"arm identification failed: {e}\nNothing was written.") from None
+    for role, (ident, port) in roles.items():
+        if port != "auto" and mapping[ident] != port:
+            other = {p: i for i, p in mapping.items()}.get(port)
+            what = f"that is {other}" if other else "that is not one of the arms"
+            raise SystemExit(f"--{role}-port {port}: {what}; {ident} is on {mapping[ident]} (scores above). "
+                             f"Pass --{role}-port {mapping[ident]} or auto. Nothing was written.")
+    return mapping, readings
+
+
+def check_calibration(dev, calibs: dict, reading, restore: bool) -> None:
+    """The motors must hold dev's calibration file (lerobot's is_calibrated). arm_id already knows
+    the arm is dev (resolve_ports), so a mismatch means its motors hold the wrong calibration:
+    say whose, and with ``restore`` write the file into them (torque off only)."""
+    if dev.is_calibrated:
+        return
+    held = A.holder(reading[1], calibs)
+    what = f"{held}'s calibration" if held else "a calibration that matches no file"
+    if not restore:
+        dev.bus.port_handler.closePort()
+        cmd = " ".join([Path(sys.executable).name, *sys.argv, "--restore-calibration"])
+        raise SystemExit(
+            f"{dev.id} on {dev.config.port}: this arm IS {dev.id} (its encoders fit {dev.id}'s ranges, see "
+            f"above), but its motors hold {what} (Homing_Offset / position limits in EEPROM; an earlier "
+            f"swapped-port connect wrote it). Nothing was written. To write {dev.id}'s file back into this "
+            f"arm's motors (arm still; it does not move):\n  {cmd}")
+    torque = {m: v for m, v in dev.bus.sync_read("Torque_Enable").items() if v}
+    if torque:
+        dev.bus.port_handler.closePort()
+        raise SystemExit(f"{dev.id}: --restore-calibration refused, torque is on ({', '.join(torque)}). "
+                         "Nothing was written.")
+    before = dev.bus.read_calibration()
+    dev.bus.disable_torque()                    # already off; unlocks the EEPROM (Lock = 0)
+    dev.bus.write_calibration(dev.calibration)
+    # a new Homing_Offset moves Present_Position; a stale Goal_Position register would then point
+    # somewhere else and configure() turns the follower's torque on: goal := present first
+    present = dev.bus.sync_read("Present_Position", normalize=False)
+    dev.bus.sync_write("Goal_Position", present, normalize=False)
+    print(f"{dev.id} on {dev.config.port}: wrote {dev.id}'s calibration file into the motors (were: {what}):",
+          flush=True)
+    for m, c in dev.calibration.items():
+        b = before[m]
+        print(f"  {m}: homing_offset {b.homing_offset} -> {c.homing_offset}, range [{b.range_min}, "
+              f"{b.range_max}] -> [{c.range_min}, {c.range_max}]", flush=True)
+    if not dev.is_calibrated:
+        dev.bus.port_handler.closePort()
+        raise SystemExit(f"{dev.id}: the motors still differ from the file after the write; stop and check.")
 
 
 class Camera:
@@ -139,20 +224,29 @@ def main() -> None:
     ap.add_argument("--frame-every", type=float, default=0.1)
     ap.add_argument("--ramp-rate", type=float, default=25.0,
                     help="soft start speed, normalised units/s (200 = a joint's whole range)")
-    ap.add_argument("--follower-port", default="/dev/ttyUSB1")
+    ap.add_argument("--follower-port", default="auto", help="auto = find it by its encoders (arm_id)")
     ap.add_argument("--follower-id", default="follower_v1")
-    ap.add_argument("--leader-port", default="/dev/ttyUSB0")
+    ap.add_argument("--leader-port", default="auto", help="auto = find it by its encoders (arm_id)")
     ap.add_argument("--leader-id", default="leader_v1")
+    ap.add_argument("--restore-calibration", action="store_true",
+                    help="an arm identified by arm_id whose motors hold the wrong calibration: write its "
+                         "file into the motors (torque must be off) instead of refusing")
     ap.add_argument("--camera", default="/dev/video32")
     ap.add_argument("--width", type=int, default=1280)
     ap.add_argument("--height", type=int, default=720)
     args = ap.parse_args()
 
+    files = {args.follower_id: CALIB / "robots/so101_follower" / f"{args.follower_id}.json",
+             args.leader_id: CALIB / "teleoperators/so101_leader" / f"{args.leader_id}.json"}
+    calibs = {ident: A.load_calib(f) for ident, f in files.items()}
+    ports, readings = resolve_ports({"follower": (args.follower_id, args.follower_port),
+                                     "leader": (args.leader_id, args.leader_port)}, calibs)
+    args.follower_port, args.leader_port = ports[args.follower_id], ports[args.leader_id]
+
     out = Path(args.out).expanduser()
     (out / "frames").mkdir(parents=True, exist_ok=True)
-    for kind, typ, ident in (("robots", "so101_follower", args.follower_id),
-                             ("teleoperators", "so101_leader", args.leader_id)):
-        shutil.copy(CALIB / kind / typ / f"{ident}.json", out / f"calib_{typ}.json")
+    for (ident, f), typ in zip(files.items(), ("so101_follower", "so101_leader")):
+        shutil.copy(f, out / f"calib_{typ}.json")
     stop_file = out / "STOP"
     stop_file.unlink(missing_ok=True)
 
@@ -161,14 +255,11 @@ def main() -> None:
     follower = SO101Follower(SO101FollowerConfig(port=args.follower_port, id=args.follower_id))
     # lerobot's connect() answers a calibration mismatch by offering to write the file into the
     # motors (ENTER): on swapped ports that wrote the follower's calibration into the leader and
-    # drove it. Same steps as connect() (no cameras here), but a mismatch = wrong port: refuse.
+    # drove it. Same steps as connect() (no cameras here), but a mismatch is refused (or, with
+    # --restore-calibration and the arm identified, fixed from the file).
     for dev in (leader, follower):
         dev.bus.connect()
-        if not dev.is_calibrated:
-            dev.bus.port_handler.closePort()
-            raise SystemExit(
-                f"{dev.id} on {dev.config.port}: its motors do not hold {dev.id}'s calibration. "
-                "Wrong port (ttyUSB numbers swap on re-plug)? Nothing was written.")
+        check_calibration(dev, calibs, readings[dev.config.port], args.restore_calibration)
         dev.configure()
 
     q: queue.Queue = queue.Queue()

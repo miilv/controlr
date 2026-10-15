@@ -80,7 +80,7 @@ small steps.
 | `controlr/robot/mock.py` | kinematic mock robot (no physics; synthetic rendering) for tests |
 | `controlr/robot/replay.py` | replays recorded frames regardless of actions (latency/caching benchmarks) |
 | `controlr/robot/isaac/` | Isaac Sim 6.0 backend: PHANTOM's calibrated UR3 CB3 + Robotiq + D435 scene (server inside Isaac's python, numpy-only RPC client in controlr; `motion.py` = trajectory timing shared by both) |
-| `controlr/robot/so101/` | real SO-101 follower with a wrist camera ([docs/SO101.md](docs/SO101.md)): `server.py` (runs on the rig in LeRobot's env: bus, camera, stop rules), `client.py` (`So101Robot`), `kinematics.py` (URDF FK/IK, 5-joint orientation rule, camera pose), `protocol.py`, `zero_fit.py` (joint zero offsets from table touches; the client applies `joint_offsets_deg`, the server never sees them) |
+| `controlr/robot/so101/` | real SO-101 follower with a wrist camera ([docs/SO101.md](docs/SO101.md)): `server.py` (runs on the rig in LeRobot's env: bus, camera, stop rules), `client.py` (`So101Robot`), `kinematics.py` (URDF FK/IK, 5-joint orientation rule, camera pose), `protocol.py`, `arm_id.py` (which arm is on which serial port, from encoders vs calibration files), `zero_fit.py` (joint zero offsets from table touches; the client applies `joint_offsets_deg`, the server never sees them) |
 | `controlr/robot/robodojo/` | RoboDojo backend ([docs/ROBODOJO.md](docs/ROBODOJO.md)): `serve.py` (`controlr robodojo-serve`), `client.py` (`RoboDojoRobot`), `protocol.py`, `shim/` (runs inside RoboDojo's eval client as XPolicyLab policy `controlr`) |
 | `controlr/loop.py` | episode runner (planner + turn loop), end conditions |
 | `controlr/runlog.py` | run directory writer |
