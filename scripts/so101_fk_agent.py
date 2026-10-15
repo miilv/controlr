@@ -32,9 +32,18 @@ from controlr.fkagent.agent import AgentConfig, FkAgent, ServerArm  # noqa: E402
 from controlr.fkagent.dataset import load_sessions  # noqa: E402
 
 MODEL = "claude/claude-opus-5-5"
+DEFAULT_CAMERA_FIT = "fitted"          # visual.FITTED_R_FIX_DEG (same as runs/fk_agent/camera_fit.json)
 
 
-def make_llm(fake: bool):
+def make_llm(fake: bool, loop: str = ""):
+    if fake and loop == "pixel":
+        from controlr.llm import FakeLLM
+
+        # plumbing only: "the ball is in the image centre" twice (look, then grasp), then "done"
+        centre = json.dumps({"object_px": [320, 180], "target_px": [320, 180], "held": False, "done": False,
+                             "person": False, "note": "fake"})
+        return FakeLLM([centre, centre, json.dumps({"object_px": None, "target_px": None, "held": False,
+                                                     "done": True, "person": False, "note": "fake done"})])
     if fake:
         from controlr.llm import FakeLLM
 
@@ -149,6 +158,21 @@ def cmd_rest(a) -> int:
 def cmd_live(a) -> int:
     sessions, root = load_sessions(a.dataset) if a.dataset else ([], Path("."))
     shots = pick_fewshot(sessions, a.fewshot)
+    camera = None
+    if a.loop == "pixel":
+        from controlr.fkagent import visual as V
+
+        if a.camera_fit == "fitted":
+            camera = V.Camera.fitted()
+            print(f"camera: built-in fit, R_fix {V.FITTED_R_FIX_DEG} deg")
+        elif a.camera_fit == "stock":
+            camera = V.Camera()
+            print("camera: STOCK mount: pixel -> table errors ~76 mm")
+        elif Path(a.camera_fit).exists():
+            camera = V.Camera.load(a.camera_fit)
+            print(f"camera: {a.camera_fit} (R_fix {camera.to_json()['R_fix_rotvec_deg']} deg)")
+        else:
+            raise SystemExit(f"--camera-fit {a.camera_fit}: no such file (use fitted | stock | <json>)")
     arm = _arm(a)
     try:
         lim = _limits(a, arm)
@@ -158,9 +182,11 @@ def cmd_live(a) -> int:
                           gripper_open_max=a.gripper_max, gripper_open_default=min(30.0, a.gripper_max),
                           place_back=not a.no_place_back, loop=a.loop, place_xyz_mm=_xyz(a.place_xyz),
                           carry_min_z_mm=a.carry_min_z, max_tokens=a.max_tokens,
-                          extra_body={"reasoning_effort": a.effort} if a.effort else {})
+                          extra_body={"reasoning_effort": a.effort} if a.effort else {},
+                          camera=camera, object_z_mm=a.object_z_mm, grasp_z_mm=a.grasp_z_mm,
+                          target_z_mm=a.target_z_mm, release_dz_mm=a.release_dz_mm, look_z_mm=a.look_z_mm)
         tag = time.strftime("%Y%m%d-%H%M%S") + f"_{a.loop[:4]}_{'fs' if shots else 'zero'}_{a.name}"
-        agent = FkAgent(arm, make_llm(a.fake_llm), cfg, Path(a.log_root) / tag, limits=lim)
+        agent = FkAgent(arm, make_llm(a.fake_llm, a.loop), cfg, Path(a.log_root) / tag, limits=lim)
         print(f"log -> {agent.dir}; few-shot sessions: {[s['session_id'] for s in shots]}; fake arm: {arm.fake}")
         summary = agent.run()
         print(json.dumps(summary, indent=1))
@@ -218,11 +244,21 @@ def main(argv=None) -> int:
             s.add_argument("--release-at-end", action="store_true")
             s.add_argument("--gripper-max", type=float, default=35.0, help="widest jaw opening, %% (camera clearance)")
             s.add_argument("--no-place-back", action="store_true", help="return loop: keep holding after a grasp")
-            s.add_argument("--loop", default="continuous", choices=("continuous", "plan_once", "return"),
+            s.add_argument("--loop", default="continuous", choices=("continuous", "plan_once", "return", "pixel"),
                            help="continuous: re-plan from the current pose, start pose only when done; "
                                 "return: back to the start pose after every action")
             s.add_argument("--effort", default="low", help="reasoning_effort for the router ('' = model default)")
             s.add_argument("--max-tokens", type=int, default=4000)
+            # pixel loop (defaults: the rope ball onto the plush carrot)
+            s.add_argument("--camera-fit", default=DEFAULT_CAMERA_FIT,
+                           help="fitted (built-in, default) | stock | a JSON from visual.Camera.to_json")
+            s.add_argument("--object-z-mm", type=float, default=40.0,
+                           help="height of the object's visible centre for the pixel ray (rope ball: 40)")
+            s.add_argument("--grasp-z-mm", type=float, default=18.0, help="TCP height at the grasp (rope ball: 18)")
+            s.add_argument("--target-z-mm", type=float, default=50.0,
+                           help="height of the place target's top (plush carrot: ~50; table: 0)")
+            s.add_argument("--release-dz-mm", type=float, default=40.0, help="release this far above the target top")
+            s.add_argument("--look-z-mm", type=float, default=120.0, help="look-from-above height before a grasp")
             s.add_argument("--carry-min-z", type=float, default=None,
                            help="while holding, keep the TCP at least this high along every path (mm)")
             s.add_argument("--place-xyz", default="", help="continuous: the place spot of the task 'x,y' mm (metrics)")

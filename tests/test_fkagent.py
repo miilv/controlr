@@ -719,8 +719,41 @@ def test_pixel_loop_pick_place_done_and_fold(server_factory, monkeypatch, tmp_pa
     place = next(r for r in recs if r.get("action") == "place")
     np.testing.assert_allclose(place["target_estimate_mm"], target, atol=2.0)
     assert summary["success"] and summary["model_judged_done"] and summary["fold"]["folded"]
+    assert summary["motions"] == 3                       # look, grasp, place
     np.testing.assert_allclose(np.degrees(fake.q), S.REST_DEG, atol=0.5)
     # the model never sees a request for joint angles; it gets the code's estimate as text
     sysmsg = llm.calls[0]["messages"][0]["content"]
     assert "never give" in sysmsg and "object_px" in sysmsg
     assert "object estimate from your pixel" in json.dumps(llm.calls[2]["messages"])
+
+
+def test_cli_live_pixel_defaults_on_the_fake_server(server_factory, monkeypatch, tmp_path, capsys):
+    import importlib.util
+    from controlr.fkagent import visual as V
+    spec = importlib.util.spec_from_file_location("fkcli", "scripts/so101_fk_agent.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    fake, address = server_factory()
+    monkeypatch.setenv("CONTROLR_SO101_AUTHKEY", "test")
+    seen = {}
+    real = cli.FkAgent
+
+    def spy(arm, llm, cfg, log_dir, **kw):
+        seen["cfg"] = cfg
+        return real(arm, llm, cfg, log_dir, **kw)
+
+    monkeypatch.setattr(cli, "FkAgent", spy)
+    rc = cli.main(["live", "--host", address[0], "--port", str(address[1]), "--loop", "pixel", "--fake-llm",
+                   "--task", "put the beige rope ball on the plush carrot", "--max-steps", "4",
+                   "--tcp-speed", "2000", "--log-root", str(tmp_path)])
+    assert rc == 0
+    cfg = seen["cfg"]
+    assert cfg.loop == "pixel" and cfg.target_z_mm == 50.0 and cfg.object_z_mm == 40.0 and cfg.grasp_z_mm == 18.0
+    np.testing.assert_allclose(cfg.camera.R_fix, V.Camera.fitted().R_fix)
+    assert cfg.gripper_open_max == 35.0 and cfg.extra_body == {"reasoning_effort": "low"}
+    out = capsys.readouterr().out
+    assert "built-in fit" in out and '"outcome": "done"' in out
+    np.testing.assert_allclose(np.degrees(fake.q), S.REST_DEG, atol=0.5)        # folded at the end
+    with pytest.raises(SystemExit, match="no such file"):
+        cli.main(["live", "--host", address[0], "--port", str(address[1]), "--loop", "pixel", "--fake-llm",
+                  "--task", "x", "--camera-fit", str(tmp_path / "missing.json"), "--log-root", str(tmp_path)])

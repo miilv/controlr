@@ -28,6 +28,14 @@ from controlr.robot.kinematics import matrix_to_rotvec, rotvec_to_matrix
 from controlr.robot.so101 import kinematics as K
 
 
+# Rotation correction of the stock wrist mount (camera frame, rotation vector, deg), fitted with
+# ``fit_rotation`` on 8 live photos of the rope ball (2026-10-15, episodes e1/e2/e4/e5 + 2 survey
+# photos) whose position was known from the later grasp FK. Pixel -> table error: stock ~76 mm,
+# fitted 18 mm median (leave-one-episode-out), 49 mm at the image edge. Refit if the camera is
+# re-mounted (the jaws move in the image).
+FITTED_R_FIX_DEG = [-9.992, -16.123, -2.75]
+
+
 @dataclass
 class Camera:
     width: int = 1280
@@ -67,6 +75,10 @@ class Camera:
     def from_json(cls, d: dict) -> "Camera":
         return cls(int(d.get("width", 1280)), int(d.get("height", 720)), float(d.get("hfov_deg", 80.0)),
                    rotvec_to_matrix(np.radians(d.get("R_fix_rotvec_deg", [0, 0, 0]))))
+
+    @classmethod
+    def fitted(cls) -> "Camera":
+        return cls(R_fix=rotvec_to_matrix(np.radians(FITTED_R_FIX_DEG)))
 
     @classmethod
     def load(cls, path) -> "Camera":

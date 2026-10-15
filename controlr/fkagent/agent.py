@@ -567,7 +567,8 @@ class FkAgent:
         summary = {"outcome": outcome, "success": ok, "loop": self.cfg.loop,
                    "steps": len(self.steps) - 1,
                    "motions": sum(1 for s in self.steps if s.action in ("move", "grip", "place", "grasp", "lift",
-                                                                         "carry", "release")),
+                                                                         "carry", "release", "look", "search",
+                                                                         "look_target")),
                    "llm_calls": calls_total, "grips": sum(1 for s in self.steps if s.action == "grip"),
                    "final_tcp_mm": None if last_tcp is None else np.round(last_tcp, 1).tolist(),
                    "wall_s": round(time.monotonic() - t0, 1), "fewshot": len(self.cfg.fewshot), **extra}
