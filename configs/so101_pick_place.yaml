@@ -11,8 +11,8 @@ task:
     Pick up the beige rope ball lying on the table and put it down at the place spot
     x = 200 mm, y = +100 mm (STATE coordinates), then go back up. Sequence: from the start pose
     move above the ball; descend with the jaws open until the ball sits between the two green jaws
-    with its lower edge at the jaw tips (the magenta mark shows where the ball's centre should be in
-    the image at that moment) and the TCP is about 15-25 mm above the table; GRIP close; check the
+    centred between them (the magenta mark shows where the ball's centre should be in the image at
+    that moment; the ball then fills about 37 % of the image width) and the TCP is about 15-25 mm above the table; GRIP close; check the
     gripper is blocked (the ball is held), lift to z = 80 mm; move to x = 200, y = +100 at z = 80;
     lower to z = 25 mm; GRIP open; lift to z = 80 mm. Report DONE after the ball rests at the place
     spot and the jaws are up and open. If a close misses (gripper not blocked), open, lift 30 mm and
@@ -26,6 +26,7 @@ robot:
     workspace_hi: [0.27, 0.15, 0.13]    # laptop front edge x ~300 mm (2026-10-15 touches)
 observation:
   renderers: [aim]
-  aim_uv: [0.30, 0.58]                  # ball centre at the close in the repaired camera (demo frames); jog check pending
+  aim_uv: [0.58, 0.52]                  # ball centre at the successful close of run 20261015T003500Z (raw/012):
+                                        # centred between the jaws, ~37 % of the image width
 episode:
   max_turns: 30
