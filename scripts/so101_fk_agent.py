@@ -35,6 +35,21 @@ MODEL = "claude/claude-opus-5-5"
 DEFAULT_CAMERA_FIT = "fitted"          # visual.FITTED_R_FIX_DEG (same as runs/fk_agent/camera_fit.json)
 
 
+def make_tool_llm(fake: bool):
+    from controlr.fkagent.toolchat import FakeToolChat, ToolChat
+
+    if fake:   # plumbing only: look ahead, go down, close, done
+        script = iter([("", [("move_to", {"u": 320, "v": 180, "height_mm": 40, "above_mm": 80})]),
+                       ("", [("move_to", {"u": 320, "v": 300, "height_mm": 40, "z": 18})]),
+                       ("", [("grip", {"action": "close"})]),
+                       ("", [("done", {"summary": "fake"})])])
+        return FakeToolChat(lambda m: next(script, ("", [("give_up", {"reason": "fake script ended"})])))
+    base, key = os.environ.get("OMNIROUTE_BASE_URL", ""), os.environ.get("OMNIROUTE_API_KEY", "")
+    if not base.startswith("http") or not key:
+        raise SystemExit("OMNIROUTE_BASE_URL / OMNIROUTE_API_KEY not set (load .env)")
+    return ToolChat(base, key)
+
+
 def make_llm(fake: bool, loop: str = ""):
     if fake and loop == "pixel":
         from controlr.llm import FakeLLM
@@ -159,7 +174,7 @@ def cmd_live(a) -> int:
     sessions, root = load_sessions(a.dataset) if a.dataset else ([], Path("."))
     shots = pick_fewshot(sessions, a.fewshot)
     camera = None
-    if a.loop == "pixel":
+    if a.loop in ("pixel", "tools"):
         from controlr.fkagent import visual as V
 
         if a.camera_fit == "fitted":
@@ -184,9 +199,15 @@ def cmd_live(a) -> int:
                           carry_min_z_mm=a.carry_min_z, max_tokens=a.max_tokens,
                           extra_body={"reasoning_effort": a.effort} if a.effort else {},
                           camera=camera, object_z_mm=a.object_z_mm, grasp_z_mm=a.grasp_z_mm,
-                          target_z_mm=a.target_z_mm, release_dz_mm=a.release_dz_mm, look_z_mm=a.look_z_mm)
+                          target_z_mm=a.target_z_mm, release_dz_mm=a.release_dz_mm, look_z_mm=a.look_z_mm,
+                          search=a.search)
         tag = time.strftime("%Y%m%d-%H%M%S") + f"_{a.loop[:4]}_{'fs' if shots else 'zero'}_{a.name}"
-        agent = FkAgent(arm, make_llm(a.fake_llm, a.loop), cfg, Path(a.log_root) / tag, limits=lim)
+        if a.loop == "tools":
+            from controlr.fkagent.toolagent import ToolAgent
+
+            agent = ToolAgent(arm, make_tool_llm(a.fake_llm), cfg, Path(a.log_root) / tag, limits=lim)
+        else:
+            agent = FkAgent(arm, make_llm(a.fake_llm, a.loop), cfg, Path(a.log_root) / tag, limits=lim)
         print(f"log -> {agent.dir}; few-shot sessions: {[s['session_id'] for s in shots]}; fake arm: {arm.fake}")
         summary = agent.run()
         print(json.dumps(summary, indent=1))
@@ -244,7 +265,7 @@ def main(argv=None) -> int:
             s.add_argument("--release-at-end", action="store_true")
             s.add_argument("--gripper-max", type=float, default=35.0, help="widest jaw opening, %% (camera clearance)")
             s.add_argument("--no-place-back", action="store_true", help="return loop: keep holding after a grasp")
-            s.add_argument("--loop", default="continuous", choices=("continuous", "plan_once", "return", "pixel"),
+            s.add_argument("--loop", default="continuous", choices=("continuous", "plan_once", "return", "pixel", "tools"),
                            help="continuous: re-plan from the current pose, start pose only when done; "
                                 "return: back to the start pose after every action")
             s.add_argument("--effort", default="low", help="reasoning_effort for the router ('' = model default)")
@@ -259,6 +280,9 @@ def main(argv=None) -> int:
                            help="height of the place target's top (plush carrot: ~50; table: 0)")
             s.add_argument("--release-dz-mm", type=float, default=40.0, help="release this far above the target top")
             s.add_argument("--look-z-mm", type=float, default=120.0, help="look-from-above height before a grasp")
+            s.add_argument("--search", action=argparse.BooleanOptionalAction, default=True,
+                           help="pixel loop: look around (pan -40..+40, far, near) until the object and the target "
+                                "are located (default on)")
             s.add_argument("--carry-min-z", type=float, default=None,
                            help="while holding, keep the TCP at least this high along every path (mm)")
             s.add_argument("--place-xyz", default="", help="continuous: the place spot of the task 'x,y' mm (metrics)")

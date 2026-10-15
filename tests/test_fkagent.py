@@ -645,6 +645,23 @@ def test_continuous_cut_place_does_not_release(server_factory, monkeypatch, tmp_
 
 # ----------------------------------------------------------------------------- pixel loop
 
+def _eye(ag, cam, ball, target, *, blind: int = 0, calls=[0]):  # noqa: B006 (counter shared per test via reset)
+    """A perfect fake 'model': projects the true ball / target into the newest photo's camera."""
+    q = ag.steps[-1].q_deg
+    holding = bool(ag.steps[-1].holding)
+    if any(s.action == "place" for s in ag.steps):
+        return json.dumps({"object_px": None, "target_px": None, "held": False, "done": True, "note": "on target"})
+    out = {"object_px": None, "target_px": None, "held": holding, "done": False, "person": False, "note": "t"}
+    if len([s for s in ag.steps]) > blind:
+        for key, pt in (("object_px", ball), ("target_px", target)):
+            if key == "object_px" and holding:
+                continue
+            u, v, z = cam.project(q, pt)
+            if z > 0 and 0 <= u <= 1280 and 0 <= v <= 720:
+                out[key] = [u / 2, v / 2]
+    return json.dumps(out)
+
+
 def test_pixel_geometry_roundtrip_and_fit():
     from controlr.fkagent import visual as V
     true = V.Camera(R_fix=V.rotvec_to_matrix(np.radians([-10.0, -16.0, -3.0])))
@@ -683,22 +700,7 @@ def test_pixel_loop_pick_place_done_and_fold(server_factory, monkeypatch, tmp_pa
     state = {"agent": None}
 
     def eye(messages):
-        ag = state["agent"]
-        q = ag.steps[-1].q_deg
-        holding = bool(ag.steps[-1].holding)
-        placed = any(s.action == "place" for s in ag.steps)
-        if placed:
-            return json.dumps({"object_px": None, "target_px": None, "held": False, "done": True, "note": "on target"})
-        out = {"object_px": None, "target_px": None, "held": holding, "done": False, "person": False, "note": "t"}
-        if not holding:
-            u, v, z = cam.project(q, ball)
-            if z > 0 and 0 <= u <= 1280 and 0 <= v <= 720:
-                out["object_px"] = [u / 2, v / 2]
-        else:
-            u, v, z = cam.project(q, target)
-            if z > 0 and 0 <= u <= 1280 and 0 <= v <= 720:
-                out["target_px"] = [u / 2, v / 2]
-        return json.dumps(out)
+        return _eye(state["agent"], cam, ball, target)
 
     monkeypatch.setenv("CONTROLR_SO101_AUTHKEY", "test")
     arm = _arm(address)
@@ -757,3 +759,198 @@ def test_cli_live_pixel_defaults_on_the_fake_server(server_factory, monkeypatch,
     with pytest.raises(SystemExit, match="no such file"):
         cli.main(["live", "--host", address[0], "--port", str(address[1]), "--loop", "pixel", "--fake-llm",
                   "--task", "x", "--camera-fit", str(tmp_path / "missing.json"), "--log-root", str(tmp_path)])
+
+
+def _pixel_agent(address, monkeypatch, tmp_path, eye_fn, cam, **cfg):
+    monkeypatch.setenv("CONTROLR_SO101_AUTHKEY", "test")
+    arm = _arm(address)
+    agent = FkAgent(arm, FakeLLM(eye_fn), AgentConfig(task="ball on target", max_steps=12, loop="pixel", camera=cam,
+                                                      fold=False, **cfg), tmp_path / "ep", limits=arm.limits())
+    return agent, arm
+
+
+def test_pixel_search_looks_around_until_both_are_located(server_factory, monkeypatch, tmp_path):
+    from controlr.fkagent import visual as V
+    fake, address = server_factory(stall=22.0)
+    cam = V.Camera()
+    ball, target = np.array([237.0, 2.0, 40.0]), np.array([200.0, -60.0, 0.0])
+    holder = {}
+    # "not visible" in the first 3 photos (start pose + 2 look poses)
+    agent, arm = _pixel_agent(address, monkeypatch, tmp_path, lambda m: _eye(holder["a"], cam, ball, target, blind=3), cam)
+    holder["a"] = agent
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    recs = _steps(agent)
+    acts = [r.get("action") for r in recs]
+    assert acts[1:4] == ["search", "search", "search"], acts       # step 0 + 2 looks were blind
+    assert summary["searches"] == 3 and summary["success"]
+    np.testing.assert_allclose(summary["found"]["object"]["xyz_mm"], ball, atol=2.0)
+    np.testing.assert_allclose(summary["found"]["target"]["xyz_mm"], target, atol=2.0)
+    assert "place" in acts and acts[-1] == "done"
+    assert any("LOCATED" in n for r in recs for n in (r.get("notes") or []))
+
+
+def test_pixel_out_of_reach_is_reported_not_chased(server_factory, monkeypatch, tmp_path):
+    from controlr.fkagent import visual as V
+    fake, address = server_factory()
+    cam = V.Camera()
+    ball, target = np.array([300.0, 20.0, 40.0]), np.array([200.0, -60.0, 0.0])   # x 300 > 270
+    holder = {}
+    agent, arm = _pixel_agent(address, monkeypatch, tmp_path, lambda m: _eye(holder["a"], cam, ball, target), cam)
+    holder["a"] = agent
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    assert summary["outcome"] == "out_of_reach" and not summary["success"]
+    far = summary["out_of_reach"]["object"]
+    np.testing.assert_allclose(far["xyz_mm"][:2], ball[:2], atol=2.0)
+    assert "outside the workspace" in far["why"]
+    acts = [r.get("action") for r in _steps(agent)]
+    assert "grasp" not in acts and "look" not in acts
+
+
+def test_search_poses_are_inside_the_limits(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory()
+    agent, arm = _pixel_agent(address, monkeypatch, tmp_path, lambda m: "{}", None)
+    try:
+        poses = agent._search_poses()
+    finally:
+        arm.close()
+    names = [n for n, _ in poses]
+    assert names[:4] == ["pan -20", "pan +20", "pan -40", "pan +40"] and "far" in names and "near" in names
+    for _, q in poses:
+        assert G.check_path([q], agent.lim) == ""
+    far_q = dict(poses)["far"]
+    assert G.tool_pitch_deg(far_q) < 60                   # tilted forward: sees farther
+
+
+# ----------------------------------------------------------------------------- tool-calling dialog
+
+def _tool_script(holder, cam, ball, target, *, blind_frames=0):
+    """A fake model that 'sees' the true scene through the same camera and calls tools."""
+    st = {"phase": "find", "looks": 0}
+
+    def px(pt):
+        ag = holder["a"]
+        u, v, z = cam.project(ag._frame_q, pt)
+        return (u / 2, v / 2) if (z > 0 and 0 <= u <= 1280 and 0 <= v <= 720) else None
+
+    def script(messages):
+        ag = holder["a"]
+        assert messages[-1]["role"] in ("user", "tool")
+        blind = ag._n_frame < blind_frames
+        b, t = (None, None) if blind else (px(ball), px(target))
+        ph = st["phase"]
+        if ph == "find":
+            if b is None or t is None:
+                st["looks"] += 1
+                return "", [("look", {"pose": ["pan+20", "pan-20", "far", "near"][min(st["looks"] - 1, 3)]})]
+            st["phase"] = "above"
+            return "", [("locate", {"u": b[0], "v": b[1], "height_mm": 40}),
+                        ("move_to", {"u": b[0], "v": b[1], "height_mm": 40, "above_mm": 80})]
+        if ph == "above":
+            st["phase"] = "down"
+            return "", [("move_to", {"u": b[0], "v": b[1], "height_mm": 40, "z": 18})]
+        if ph == "down":
+            st["phase"] = "close"
+            return "", [("grip", {"action": "close"})]
+        if ph == "close":
+            st["phase"] = "lift"
+            return "", [("lift", {"dz_mm": 50}), ("move_to", {"x": 1, "y": 1, "z": 1})]   # 2nd motion is refused
+        if ph == "lift":
+            if t is None:
+                return "", [("look", {"pose": "survey"})]
+            st["phase"] = "release"
+            return "", [("move_to", {"u": t[0], "v": t[1], "height_mm": 0, "above_mm": 40})]
+        if ph == "release":
+            st["phase"] = "up"
+            return "", [("grip", {"action": "open"})]
+        if ph == "up":
+            st["phase"] = "end"
+            return "", [("lift", {})]
+        return "ball is on the target", [("done", {"summary": "ball on target"})]
+
+    return script
+
+
+def _tool_agent(address, monkeypatch, tmp_path, script, cam, **cfg):
+    from controlr.fkagent.toolagent import ToolAgent
+    from controlr.fkagent.toolchat import FakeToolChat
+    monkeypatch.setenv("CONTROLR_SO101_AUTHKEY", "test")
+    arm = _arm(address)
+    chat = FakeToolChat(script)
+    ag = ToolAgent(arm, chat, AgentConfig(task="put the ball on the target", max_steps=20, loop="tools", camera=cam,
+                                          **cfg), tmp_path / "ep", limits=arm.limits())
+    return ag, arm, chat
+
+
+def test_tool_dialog_pick_place_with_search(server_factory, monkeypatch, tmp_path):
+    from controlr.fkagent import visual as V
+    fake, address = server_factory(stall=22.0)
+    cam = V.Camera()
+    ball, target = np.array([237.0, 2.0, 40.0]), np.array([200.0, -60.0, 0.0])
+    holder = {}
+    ag, arm, chat = _tool_agent(address, monkeypatch, tmp_path, _tool_script(holder, cam, ball, target, blind_frames=2), cam)
+    holder["a"] = ag
+    try:
+        summary = ag.run()
+    finally:
+        arm.close()
+    assert summary["outcome"] == "done" and summary["success"] and summary["grasped"], summary
+    assert summary["fold"]["folded"]
+    np.testing.assert_allclose(np.degrees(fake.q), S.REST_DEG, atol=0.5)
+    recs = _steps(ag)
+    names = [t["name"] for r in recs for t in r.get("tool_calls", [])]
+    assert names[:2] == ["look", "look"] and "grip" in names and names[-1] == "done"
+    loc = next(t for r in recs for t in r.get("tool_calls", []) if t["name"] == "locate")
+    np.testing.assert_allclose(loc["result"]["xyz_mm"], ball, atol=2.0)
+    grip = next(t for r in recs for t in r.get("tool_calls", []) if t["name"] == "grip")
+    assert grip["result"]["blocked"]
+    refused = [t for r in recs for t in r.get("tool_calls", []) if "one motion per turn" in str(t["result"])]
+    assert len(refused) == 1
+    np.testing.assert_allclose(summary["released_at_mm"][:2], target[:2] + 0, atol=5.0)
+    # the dialog is one append-only conversation: system, frame, (assistant, tool..., frame)*
+    msgs = chat.calls[-1]["messages"]
+    assert msgs[0]["role"] == "system" and msgs[1]["role"] == "user"
+    for i, m in enumerate(msgs):
+        if m["role"] == "tool":
+            j = i - 1
+            while msgs[j]["role"] == "tool":
+                j -= 1
+            assert msgs[j]["role"] == "assistant" and msgs[j]["tool_calls"]
+    imgs = sum(1 for m in msgs if m["role"] == "user" and isinstance(m["content"], list)
+               for c in m["content"] if c["type"] == "image_url")
+    assert imgs <= ag.keep_photos
+    assert any("omitted" in json.dumps(m) for m in msgs)
+    prefix = json.dumps(chat.calls[1]["messages"][:2])
+    assert json.dumps(chat.calls[2]["messages"][:2]) == prefix                 # append-only head (cache)
+
+
+def test_tool_dialog_out_of_reach_and_bad_calls(server_factory, monkeypatch, tmp_path):
+    from controlr.fkagent import visual as V
+    fake, address = server_factory()
+    cam = V.Camera()
+    holder = {}
+    turns = iter([
+        ("", [("move_to", {"x": 330, "y": 0, "z": 20})]),              # outside the box: refused, no motion
+        ("", [("locate", {"u": 900, "v": 50, "height_mm": 40})]),      # outside the frame
+        ("", [("frobnicate", {})]),
+        ("nothing", []),                                                # no tool call: nudged
+        ("", [("give_up", {"reason": "ball at x 330 is outside the workspace"})]),
+    ])
+    ag, arm, chat = _tool_agent(address, monkeypatch, tmp_path, lambda m: next(turns), cam)
+    holder["a"] = ag
+    try:
+        summary = ag.run()
+    finally:
+        arm.close()
+    assert summary["outcome"] == "give_up" and not summary["success"] and "outside" in summary["end_text"]
+    recs = _steps(ag)
+    res = [t["result"] for r in recs for t in r.get("tool_calls", [])]
+    assert "outside the workspace" in res[0]["why"] and "outside the 640x360 frame" in res[1]["why"]
+    assert "unknown tool" in res[2]["why"]
+    assert any(r.get("action") == "no_tool_call" for r in recs)
+    assert summary["frames"] == 0                                       # nothing moved, no new frame

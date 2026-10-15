@@ -181,6 +181,7 @@ class AgentConfig:
     target_z_mm: float = 0.0           # height of the place target's top (table: 0)
     release_dz_mm: float = 40.0        # release this far above the target's top
     look_z_mm: float = 120.0           # look-from-above pose height before grasping
+    search: bool = True                # pixel loop: look around (fixed look poses) until both objects are located
     photo_size: tuple = (640, 360)     # what the model sees (pixels are scaled to the camera's size)
     loop: str = "return"               # return: back to the start pose after every action (the first design);
                                        # continuous: re-plan from the current pose, start pose only when done
@@ -1045,6 +1046,38 @@ class FkAgent:
         sy = cam.height / self.cfg.photo_size[1]
         return V.pixel_to_point(cam, q_obs, px[0] * sx, px[1] * sy, z_mm)
 
+    def _search_poses(self) -> list[tuple[str, np.ndarray]]:
+        """Look poses for finding objects: the start (survey) pose turned by the pan joint, a far
+        look (camera tilted forward) and a near look. Every pose is checked like any target."""
+        from controlr.fkagent import visual as V
+
+        out = []
+        for d in (-20.0, 20.0, -40.0, 40.0):
+            q = self.start_q + np.array([d, 0.0, 0.0, 0.0, 0.0])
+            if not G.check_path([q], self.lim):
+                out.append((f"pan {d:+.0f}", q))
+        for name, xyz, pitches in (("far", (250.0, 0.0, 170.0), (40.0, 45.0, 50.0, 35.0, 55.0)),
+                                   ("near", (165.0, 0.0, 110.0), (85.0, 80.0, 75.0, 70.0, 65.0, 60.0))):
+            q, _ = V.tool_pose_q(xyz, self.lim, self.start_q, pitches=pitches)
+            if q is not None and not G.check_path([q], self.lim):
+                out.append((name, q))
+        if not self.cfg.search:
+            out = out[:2]
+        return out
+
+    def _unreachable(self, name: str, xyz, seed) -> str:
+        """'' if the object can be grasped (or the target placed on) inside the limits."""
+        p = np.asarray(xyz, float)
+        lo, hi, m = np.asarray(self.lim.box_lo_mm), np.asarray(self.lim.box_hi_mm), self.lim.target_margin_mm
+        if not (lo[0] + m <= p[0] <= hi[0] - m and lo[1] + m <= p[1] <= hi[1] - m):
+            return (f"(x, y) = ({p[0]:.0f}, {p[1]:.0f}) mm is outside the workspace "
+                    f"x {lo[0]:.0f}..{hi[0]:.0f}, y {lo[1]:.0f}..{hi[1]:.0f}")
+        z = self.cfg.grasp_z_mm if name == "object" else self.cfg.target_z_mm + self.cfg.release_dz_mm
+        q, _ = self._pose_for((p[0], p[1], z), seed)
+        if q is None:
+            return f"no reachable {'grasp' if name == 'object' else 'release'} pose at ({p[0]:.0f}, {p[1]:.0f}, {z:.0f}) mm"
+        return ""
+
     def _pose_for(self, xyz, seed):
         from controlr.fkagent import visual as V
 
@@ -1055,8 +1088,8 @@ class FkAgent:
         if not self.steps:
             self.reset()
         holding, phase, look_xy, calls_total = False, "search", None, 0
-        searches = [self.start_q, self.start_q + np.array([-25.0, 0, 0, 0, 0]),
-                    self.start_q + np.array([25.0, 0, 0, 0, 0])]
+        searches = self._search_poses()
+        found: dict = {}
         n_search, first, grasped_once, outcome, judged_done = 0, True, False, "max_steps", False
         self._closest = None
         last_tcp = None
@@ -1095,20 +1128,47 @@ class FkAgent:
                 outcome = "done"
                 break
             action, target, gripper, result = None, None, None, ""
-            if not holding:
-                P = None if rep.object_px is None else self._px_point(q_obs, rep.object_px, self.cfg.object_z_mm)
-                if P is None:
-                    if n_search >= len(searches):
-                        rec["action"] = "give_up"
-                        self._log(rec)
-                        outcome = "not_found"
-                        break
-                    action, target = "search", searches[n_search]
-                    n_search += 1
-                    notes.append("object not visible: looking from another pose")
+            P = None if (holding or rep.object_px is None) else self._px_point(q_obs, rep.object_px, self.cfg.object_z_mm)
+            T = None if rep.target_px is None else self._px_point(q_obs, rep.target_px, self.cfg.target_z_mm)
+            for name, pt in (("object", P), ("target", T)):
+                if pt is not None:
+                    new_loc = name not in found
+                    found[name] = {"xyz_mm": pt.round(1).tolist(), "step": self.steps[-1].index}
+                    rec[f"{name}_estimate_mm"] = pt.round(1).tolist()
+                    notes.append(f"{name} {'LOCATED' if new_loc else 'estimate'} from your pixel: {_v3(pt)} mm")
+            # located but not reachable: report and skip the task (the operator moves it)
+            far = {}
+            for name in ("object", "target"):
+                if name in found and not (name == "object" and holding):
+                    why = self._unreachable(name, found[name]["xyz_mm"], q_obs)
+                    if why:
+                        far[name] = {**found[name], "why": why}
+            if far:
+                rec.update({"action": "out_of_reach", "out_of_reach": far, "notes": notes})
+                self._log(rec)
+                outcome = "out_of_reach"
+                break
+            need = ["target"] if holding else ["object", "target"]
+            missing = [n for n in need if n not in found] if self.cfg.search else []
+            if not self.cfg.search and not holding and P is None and "object" not in found:
+                missing = ["object"]
+            if missing:
+                if n_search >= len(searches):
+                    rec.update({"action": "give_up", "missing": missing})
+                    self._log(rec)
+                    outcome = "not_found"
+                    break
+                sname, target = searches[n_search]
+                action = "search"
+                n_search += 1
+                notes.append(f"{' and '.join(missing)} not located yet: look pose '{sname}'")
+            elif not holding:
+                Pk = np.asarray(found["object"]["xyz_mm"], float)
+                if P is None:              # not in this photo: go and look above where it was located
+                    qt, pitch = self._pose_for((Pk[0], Pk[1], self.cfg.look_z_mm), q_obs)
+                    action, target, look_xy, phase = "look", qt, Pk[:2].copy(), "go_look"
+                    notes.append(f"object not in this photo: look from above its located position (pitch {pitch})")
                 else:
-                    rec["object_estimate_mm"] = P.round(1).tolist()
-                    notes.append(f"object estimate from your pixel: {_v3(P)} mm")
                     near = look_xy is not None and float(np.linalg.norm(P[:2] - look_xy)) < 25.0 and phase == "looked"
                     if not near:
                         qt, pitch = self._pose_for((P[0], P[1], self.cfg.look_z_mm), q_obs)
@@ -1120,16 +1180,16 @@ class FkAgent:
                         action, target, gripper = "grasp", qt, self.cfg.gripper_open_default
                         notes.append(f"grasp at TCP z {self.cfg.grasp_z_mm:.0f} mm (pitch {pitch})")
             else:
-                T = None if rep.target_px is None else self._px_point(q_obs, rep.target_px, self.cfg.target_z_mm)
-                if T is None:
-                    action, target = "look_target", self.start_q
-                    notes.append("target not visible: looking from the start pose")
+                Tk = np.asarray(found["target"]["xyz_mm"], float)
+                if T is None:              # target not in this photo: look above where it was located
+                    z = self.cfg.target_z_mm + self.cfg.look_z_mm
+                    qt, pitch = self._pose_for((Tk[0], Tk[1], min(z, self.lim.box_hi_mm[2] - 10)), q_obs)
+                    action, target = "look_target", qt
+                    notes.append(f"target not in this photo: look from above its located position (pitch {pitch})")
                 else:
-                    rec["target_estimate_mm"] = T.round(1).tolist()
                     qt, pitch = self._pose_for((T[0], T[1], self.cfg.target_z_mm + self.cfg.release_dz_mm), q_obs)
                     action, target = "place", qt
-                    notes.append(f"target estimate from your pixel: {_v3(T)} mm; release {self.cfg.release_dz_mm:.0f} mm "
-                                 f"above it (pitch {pitch})")
+                    notes.append(f"release {self.cfg.release_dz_mm:.0f} mm above the target (pitch {pitch})")
             rec["action"] = action
             if target is None:
                 notes.append("no reachable pose for that point")
@@ -1195,7 +1255,10 @@ class FkAgent:
             rec.update({"notes": notes, "result": result, "reached_q_deg": np.round(q, 2).tolist(), "gripper": g,
                         **G.pose_summary(q), "photo": self._save_photo(k, photo), "holding": holding})
             self._log(rec)
-        extra = {"grasped": grasped_once, "model_judged_done": judged_done}
+        extra = {"grasped": grasped_once, "model_judged_done": judged_done, "found": found,
+                 "searches": n_search}
+        if outcome == "out_of_reach":
+            extra["out_of_reach"] = far
         if outcome != "stopped" and outcome != "overheat":
             extra["end"] = self._finish_unplaced(holding, None) if holding else self._home_only()
         summary = self._summary(outcome, t0, calls_total, last_tcp, extra)
