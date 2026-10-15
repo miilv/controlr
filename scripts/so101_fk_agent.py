@@ -47,7 +47,7 @@ def make_llm(fake: bool):
     base, key = os.environ.get("OMNIROUTE_BASE_URL", ""), os.environ.get("OMNIROUTE_API_KEY", "")
     if not base.startswith("http") or not key:
         raise SystemExit("OMNIROUTE_BASE_URL / OMNIROUTE_API_KEY not set (load .env)")
-    return LLMClient(base, key, timeout_s=400.0, max_retries=2)
+    return LLMClient(base, key, timeout_s=400.0, max_retries=2, usage_grace_s=0.5)
 
 
 def pick_fewshot(sessions, spec: str, exclude: str = "") -> list[dict]:
@@ -109,13 +109,38 @@ def cmd_survey(a) -> int:
         why = G.check_path([start], lim)
         if why:
             raise SystemExit(f"start pose breaks the limits: {why}")
-        r = arm.move_joints(start, 35.0, 5.0)
+        q0, _ = arm.state()
+        why = G.check_path([q0, start], lim)          # e.g. rest -> survey: checked, never a blind joint move
+        if why:
+            raise SystemExit(f"the path to the start pose is not safe: {why}")
+        r = arm.move([q0, start], a.gripper_open)
         jpeg, q, g = arm.observe()
         out = Path(a.out)
         out.mkdir(parents=True, exist_ok=True)
         (out / "survey.jpg").write_bytes(jpeg)
         print(f"stopped={r['stopped']} q_deg={q.round(1).tolist()} {G.pose_summary(q)} gripper={g:.0f} "
               f"-> {out / 'survey.jpg'}")
+    finally:
+        arm.close()
+    return 0
+
+
+def cmd_rest(a) -> int:
+    """Start pose -> the server's rest pose (joint move, jaws nearly closed)."""
+    import numpy as np
+
+    arm = _arm(a)
+    try:
+        rest_meas = np.degrees(np.asarray(arm.info["rest_q"], float))
+        q, _ = arm.state()
+        print(f"from {q.round(1).tolist()} (model) to rest {(rest_meas + arm.offsets).round(1).tolist()} (model)")
+        lim = _limits(a, arm)
+        why = G.check_path([q, rest_meas + arm.offsets], lim)
+        if why:
+            raise SystemExit(f"the path to the rest pose is not safe: {why}")
+        r = arm.move([q, rest_meas + arm.offsets], 2.0)
+        q, g = arm.state()
+        print(f"stopped={r['stopped']} q_deg={q.round(1).tolist()} gripper={g:.0f}")
     finally:
         arm.close()
     return 0
@@ -129,8 +154,12 @@ def cmd_live(a) -> int:
         lim = _limits(a, arm)
         cfg = AgentConfig(task=a.task, model=a.model, max_steps=a.max_steps,
                           start_q_deg=_xyz(a.start_q) or G.SURVEY_Q_DEG, object_xyz_mm=_xyz(a.object_xyz),
-                          fewshot=shots, fewshot_root=str(root), release_at_end=a.release_at_end)
-        tag = time.strftime("%Y%m%d-%H%M%S") + f"_{'fs' if shots else 'zero'}_{a.name}"
+                          fewshot=shots, fewshot_root=str(root), release_at_end=a.release_at_end,
+                          gripper_open_max=a.gripper_max, gripper_open_default=min(30.0, a.gripper_max),
+                          place_back=not a.no_place_back, loop=a.loop, place_xyz_mm=_xyz(a.place_xyz),
+                          carry_min_z_mm=a.carry_min_z, max_tokens=a.max_tokens,
+                          extra_body={"reasoning_effort": a.effort} if a.effort else {})
+        tag = time.strftime("%Y%m%d-%H%M%S") + f"_{a.loop[:4]}_{'fs' if shots else 'zero'}_{a.name}"
         agent = FkAgent(arm, make_llm(a.fake_llm), cfg, Path(a.log_root) / tag, limits=lim)
         print(f"log -> {agent.dir}; few-shot sessions: {[s['session_id'] for s in shots]}; fake arm: {arm.fake}")
         summary = agent.run()
@@ -163,6 +192,7 @@ def main(argv=None) -> int:
     p.set_defaults(fn=cmd_prompt)
 
     for name, fn, help_ in (("survey", cmd_survey, "move to the start pose, save its photo (no LLM)"),
+                            ("rest", cmd_rest, "move to the server's rest pose (no LLM)"),
                             ("live", cmd_live, "run one episode on the arm server")):
         s = sub.add_parser(name, help=help_)
         s.add_argument("--host", default="127.0.0.1")
@@ -170,19 +200,32 @@ def main(argv=None) -> int:
         s.add_argument("--start-q", default="", help="start pose, MODEL deg 'pan,lift,elbow,wflex,roll'")
         s.add_argument("--box-x", default="", help="TCP workspace x range 'lo,hi' mm (default 140,270)")
         s.add_argument("--max-step-mm", type=float, default=80.0)
-        s.add_argument("--tcp-speed", type=float, default=40.0, help="mm/s along the path")
-        if name == "survey":
+        s.add_argument("--tcp-speed", type=float, default=50.0, help="mm/s along the path (safety max 50)")
+        if name == "rest":
+            pass
+        elif name == "survey":
             s.add_argument("--out", default="runs/fk_agent/survey")
+            s.add_argument("--gripper-open", type=float, default=30.0)
         else:
             s.add_argument("--dataset", default="")
             s.add_argument("--fewshot", default="all", help="all | none | comma-separated session ids/recordings")
             s.add_argument("--task", required=True)
             s.add_argument("--object-xyz", default="", help="operator-measured object centre 'x,y,z' mm (metrics)")
-            s.add_argument("--max-steps", type=int, default=6)
+            s.add_argument("--max-steps", type=int, default=8)
             s.add_argument("--name", default="ep")
             s.add_argument("--log-root", default="runs/fk_agent")
             s.add_argument("--model", default=MODEL)
             s.add_argument("--release-at-end", action="store_true")
+            s.add_argument("--gripper-max", type=float, default=35.0, help="widest jaw opening, %% (camera clearance)")
+            s.add_argument("--no-place-back", action="store_true", help="return loop: keep holding after a grasp")
+            s.add_argument("--loop", default="continuous", choices=("continuous", "plan_once", "return"),
+                           help="continuous: re-plan from the current pose, start pose only when done; "
+                                "return: back to the start pose after every action")
+            s.add_argument("--effort", default="low", help="reasoning_effort for the router ('' = model default)")
+            s.add_argument("--max-tokens", type=int, default=4000)
+            s.add_argument("--carry-min-z", type=float, default=None,
+                           help="while holding, keep the TCP at least this high along every path (mm)")
+            s.add_argument("--place-xyz", default="", help="continuous: the place spot of the task 'x,y' mm (metrics)")
             s.add_argument("--fake-llm", action="store_true")
         s.set_defaults(fn=fn)
     a = ap.parse_args(argv)

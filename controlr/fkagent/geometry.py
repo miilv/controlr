@@ -90,6 +90,8 @@ class Limits:
     approach_dz_mm: float = 40.0                 # come down onto the target from this far above
     path_step_deg: float = 1.0                   # path sampling for the checks
     path_tol_mm: float = 2.0                     # the box may be missed by this much on the path (IK noise)
+    target_margin_mm: float = 3.0                # targets stay this far inside the box (tracking error must
+                                                 # not leave the reached pose outside it: live 2026-10-15)
 
     def to_dict(self) -> dict:
         return {k: (list(v) if isinstance(v, tuple) else v) for k, v in self.__dict__.items()}
@@ -179,10 +181,23 @@ def approach_path(start_q, target_q, lim: Limits) -> list[np.ndarray]:
     return rows
 
 
-def _feasible(start_q, q, ref_q, lim: Limits, *, first: bool) -> tuple[str, list]:
+def continuous_path(cur_q, target_q, lim: Limits) -> list[np.ndarray]:
+    """From the CURRENT pose (continuous loop): straight up ``approach_dz`` first (when that is
+    reachable and safe: the jaws leave the object/table vertically), then as ``approach_path``:
+    above the target and straight down onto it."""
+    cur_q = np.asarray(cur_q, float)
+    rows = [cur_q]
+    if lim.approach_dz_mm > 0:
+        up = lift_path(cur_q, lim.approach_dz_mm, lim)
+        if len(up) > 1 and not check_path(up, lim):
+            rows = up
+    return rows + approach_path(rows[-1], target_q, lim)[1:]
+
+
+def _feasible(start_q, q, ref_q, lim: Limits, *, first: bool, path=None) -> tuple[str, list]:
     p = tcp_mm(q)
-    if not in_box(p, lim):
-        return f"target TCP outside the workspace ({box_violation(p, lim)} mm)", []
+    if not in_box(p, lim, -lim.target_margin_mm):
+        return f"target TCP outside the workspace ({box_violation(p, lim) or 'within %.0f mm of its edge' % lim.target_margin_mm} mm)", []
     if not first:
         d = float(np.linalg.norm(p - tcp_mm(ref_q)))
         if d > lim.max_step_mm + 1e-6:
@@ -190,12 +205,12 @@ def _feasible(start_q, q, ref_q, lim: Limits, *, first: bool) -> tuple[str, list
         j = float(np.max(np.abs(q - ref_q)))
         if j > lim.max_joint_step_deg + 1e-6:
             return f"a joint changes {j:.0f} deg from the previous target > {lim.max_joint_step_deg:.0f}", []
-    rows = approach_path(start_q, q, lim)
+    rows = (path or approach_path)(start_q, q, lim)
     why = check_path(rows, lim)
     return why, rows
 
 
-def plan_target(start_q, requested_q, lim: Limits, prev_target_q=None) -> Plan:
+def plan_target(start_q, requested_q, lim: Limits, prev_target_q=None, *, path=None) -> Plan:
     """Validate a joint target. Joint limits are clipped; a target that leaves the box, steps too
     far from the previous target, or whose path is unsafe is pulled back along the joint line
     from the previous target (or the start pose) to the farthest safe fraction; below 5 % of the
@@ -210,14 +225,14 @@ def plan_target(start_q, requested_q, lim: Limits, prev_target_q=None) -> Plan:
         notes.append(f"{ARM[i]} clipped to its limit ({req[i]:.1f} -> {q[i]:.1f} deg)")
     first = prev_target_q is None
     ref = start_q if first else np.asarray(prev_target_q, float)[:5]
-    why, rows = _feasible(start_q, q, ref, lim, first=first)
+    why, rows = _feasible(start_q, q, ref, lim, first=first, path=path)
     if not why:
         return Plan(True, q, req, rows, bool(notes), 1.0, notes)
     # bisection on the fraction of the way from ref to q
     good, good_rows, bad = 0.0, None, 1.0
     for _ in range(14):
         s = 0.5 * (good + bad)
-        w, r = _feasible(start_q, ref + s * (q - ref), ref, lim, first=first)
+        w, r = _feasible(start_q, ref + s * (q - ref), ref, lim, first=first, path=path)
         if w:
             bad = s
         else:

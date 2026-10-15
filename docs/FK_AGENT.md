@@ -243,3 +243,53 @@ The initial move to the start pose is an unchecked `move_joints` from wherever t
 - LLM calls and tokens.
 
 Report n and spread per condition (CLAUDE.md rule 8).
+
+## Loop variants (`--loop`)
+
+| loop | who computes poses | what the model returns | returns to start |
+|---|---|---|---|
+| `return` (first design) | model (joint angles) | object estimate + `q_deg` + action | after every action |
+| `continuous` | model (joint angles) | same; re-plans from the current pose | only when done |
+| `plan_once` | model (joint angles), once | grasp + place joints up front; code runs grasp → lift → carry → release → home with a check per stage, re-plan on a failed check (≤ 3) | only when done |
+| `pixel` (owner's analytic design) | **code** | object / target pixel in the newest photo, `held`, `done`, `person`, ≤ 12-word note | only when done |
+
+Common rules:
+- Every episode starts and ends folded at the server's rest pose. Rest ↔ start pose is a
+  path-checked move (`fold: true`).
+- History: the last 25 states in order. Photos at full size only for the newest 3; older
+  ones at 320 px.
+- Few-shot examples: 2 photos per session at 320 px.
+- Safety: any motor above 55 °C stops the episode.
+- A move cut by the guard never closes or opens the jaws: the agent re-plans from where the
+  arm stopped. In `plan_once`, cuts at the per-step limit are split into sub-moves instead.
+- Targets keep 3 mm inside the box, so tracking error cannot leave the reached pose outside it.
+- `wait`, or `person: true`, holds still and takes a new photo.
+
+**`pixel` mode:**
+- Code turns each pixel into a ray from the camera pose (FK of the measured joints + wrist
+  camera model) and intersects it with the object's height (`object_z_mm`) or the target's
+  (`target_z_mm`).
+- It solves the steepest reachable tool pose by IK (`visual.tool_pose_q`).
+- Sequence: look from 120 mm above → grasp at `grasp_z_mm` → lift 50 → place `release_dz_mm`
+  above the target → open → lift.
+- Completion is the model's `done`, judged from the photos. Code facts (gripper stall, 3D
+  estimates) are shown only as text for orientation.
+
+**Wrist camera correction** (`runs/fk_agent/camera_fit.json`, `visual.fit_rotation`):
+- The stock URDF mount maps pixels to the table about 76 mm off (median).
+- A 3-dof rotation correction was fitted on 8 live observations of the ball at positions known
+  from later grasps. Rotation vector (−10.0°, −16.1°, −2.8°).
+- Leave-one-episode-out error drops to 18 mm median, 49 mm at the image edge.
+- With the model doing the pointing, the error is also 18 mm median. Each call takes ~2.7 s
+  with ~60 output tokens.
+
+## LLM latency
+
+- Before: Opus at its default effort with 20+ images took 15–40 s per call, writing
+  1.2–3.6k output tokens (mostly hidden thinking).
+- JSON-first replies + closing the stream at the first complete JSON + `reasoning_effort: low`
+  took the same query from 15.4 s to ~8–9 s. The router does accept `reasoning_effort` for
+  Opus chat calls.
+- Pixel mode (~60 output tokens) takes 2.4–4.7 s per call.
+- Motion per move: 3–8 s at 50 mm/s, including the 40 mm approach from above. Fold/unfold
+  ~3 s each; observe ~0.1 s.

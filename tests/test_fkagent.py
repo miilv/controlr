@@ -234,6 +234,7 @@ def test_system_text_states_the_limits():
     lim = G.Limits()
     s = Pm.system_text(lim, max_steps=5)
     assert "x 140..270" in s and "z 5..260" in s and "at most 5 steps" in s and "80 mm" in s
+    assert "gripper_open_pct 10..35" in s
     assert "{" in s and "q_deg" in s
 
 
@@ -351,7 +352,7 @@ def _agent(address, monkeypatch, tmp_path, replies, **cfg):
     monkeypatch.setenv("CONTROLR_SO101_AUTHKEY", "test")
     arm = _arm(address)
     llm = FakeLLM(replies)
-    agent = FkAgent(arm, llm, AgentConfig(task="pick up the ball", max_steps=4, reset_duration_s=0.2, **cfg),
+    agent = FkAgent(arm, llm, AgentConfig(task="pick up the ball", max_steps=4, reset_duration_s=0.2, fold=False, **cfg),
                     tmp_path / "ep", limits=arm.limits())
     return agent, arm, llm
 
@@ -401,6 +402,37 @@ def test_loop_grasp_lifts_and_ends(server_factory, monkeypatch, tmp_path):
     assert rec["result"].startswith("GRASPED")
     assert rec["after_lift"]["tcp_mm"][2] == pytest.approx(G.tcp_mm(q)[2] + 50, abs=4)
     assert (agent.dir / rec["photo_after_lift"]).exists()
+    assert rec["placed_back"] and rec["place_down"] and not rec["place_down"]["stopped"]
+    np.testing.assert_allclose(rec["place_down"]["q_deg"], q, atol=0.5)       # put down where it was
+    np.testing.assert_allclose(np.degrees(fake.q), np.asarray(G.SURVEY_Q_DEG) - G.JOINT_OFFSETS_DEG, atol=0.5)
+    assert fake.g == pytest.approx(35.0, abs=1.0)        # reopened (requested 40 %, capped at 35 %)
+
+
+def test_wait_does_not_move_and_people_rule_is_in_the_prompt(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory()
+    agent, arm, llm = _agent(address, monkeypatch, tmp_path, ['{"action": "wait"}', _reply("give_up", None)])
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    recs = [json.loads(x) for x in (agent.dir / "steps.jsonl").read_text().splitlines()]
+    assert [r["action"] for r in recs] == ["observe", "wait", "give_up"] and summary["motions"] == 0
+    assert (agent.dir / recs[1]["photo"]).exists()
+    sysmsg = llm.calls[0]["messages"][0]["content"]
+    assert "a hand or an arm is visible" in sysmsg and '"wait"' in sysmsg and "10..35" in sysmsg
+
+
+def test_repeated_boundary_clamps_stop_the_episode(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory()
+    far = np.array([0.0, 40.0, -20.0, 70.0, -90.0])          # beyond x = 270 every time
+    agent, arm, _ = _agent(address, monkeypatch, tmp_path, [_reply("move", far)] * 4)
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    recs = [json.loads(x) for x in (agent.dir / "steps.jsonl").read_text().splitlines()]
+    assert summary["outcome"] == "boundary"
+    assert [r["action"] for r in recs] == ["observe", "move", "boundary_stop"]
     np.testing.assert_allclose(np.degrees(fake.q), np.asarray(G.SURVEY_Q_DEG) - G.JOINT_OFFSETS_DEG, atol=0.5)
 
 
@@ -411,7 +443,7 @@ def test_loop_rejected_target_does_not_move(server_factory, monkeypatch, tmp_pat
     arm = _arm(address)
     lim = arm.limits(max_step_mm=0.5)           # after the first target nothing may move further
     agent = FkAgent(arm, FakeLLM([_reply("move", q), _reply("move", q + [-15, 0, 0, 0, 0]), _reply("give_up", None)]),
-                    AgentConfig(max_steps=3, reset_duration_s=0.2), tmp_path / "ep", limits=lim)
+                    AgentConfig(max_steps=3, reset_duration_s=0.2, fold=False), tmp_path / "ep", limits=lim)
     try:
         agent.run()
     finally:
@@ -452,3 +484,243 @@ def test_fewshot_split_excludes_the_held_out_session():
     assert [s["session_id"] for s in O.fewshot_for("loo", ss[0], ss)] == ["a#2", "b#1"]
     assert [s["session_id"] for s in O.fewshot_for("loo_rec", ss[0], ss)] == ["b#1"]
     assert O.fewshot_for("zero", ss[0], ss) == []
+
+
+# ----------------------------------------------------------------------------- continuous loop
+
+def _cagent(address, monkeypatch, tmp_path, replies, **cfg):
+    monkeypatch.setenv("CONTROLR_SO101_AUTHKEY", "test")
+    arm = _arm(address)
+    llm = FakeLLM(replies)
+    cfg = {"loop": "continuous", "fold": False, **cfg}
+    agent = FkAgent(arm, llm, AgentConfig(task="pick and place", max_steps=5, reset_duration_s=0.2, **cfg),
+                    tmp_path / "ep", limits=arm.limits())
+    return agent, arm, llm
+
+
+def _steps(agent):
+    return [json.loads(x) for x in (agent.dir / "steps.jsonl").read_text().splitlines()]
+
+
+def test_continuous_pick_and_place(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory(stall=22.0)
+    q = GRASP + G.JOINT_OFFSETS_DEG
+    place = q + np.array([-12.0, 0, 0, 0, 0])            # ~50 mm to the left
+    agent, arm, llm = _cagent(address, monkeypatch, tmp_path, [_reply("grip", q), _reply("place", place)],
+                              object_xyz_mm=(237, 2, 30), place_xyz_mm=tuple(G.tcp_mm(place)[:2]))
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    assert summary["outcome"] == "placed" and summary["success"] and summary["grasped"]
+    recs = _steps(agent)
+    assert [r["action"] for r in recs] == ["observe", "grip", "place", "home"]
+    # no return to the start pose between the grasp and the place: step 2 starts at the lifted pose
+    lifted = G.tcp_mm(recs[2]["start_q_deg"])
+    assert lifted[2] == pytest.approx(G.tcp_mm(q)[2] + 50, abs=4)
+    assert recs[1]["holding"] and not recs[2]["holding"]
+    assert summary["place_error_xy_mm"] < 5 and summary["closest_tcp_to_object_mm"] < 25
+    np.testing.assert_allclose(np.degrees(fake.q), np.asarray(G.SURVEY_Q_DEG) - G.JOINT_OFFSETS_DEG, atol=0.5)
+    sysmsg = llm.calls[0]["messages"][0]["content"]
+    assert "(continuous)" in sysmsg and '"place"' in sysmsg and "FROM WHERE IT IS NOW" in sysmsg
+    assert "HOLDING the object" in json.dumps(llm.calls[1]["messages"])
+
+
+def test_continuous_empty_grip_stays_low_revisit_refused_then_home(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory()
+    q = GRASP + G.JOINT_OFFSETS_DEG
+    agent, arm, llm = _cagent(address, monkeypatch, tmp_path,
+                              [_reply("grip", q), _reply("place", q + [0, -5, 0, 0, 0]),
+                               _reply("move", q + [0.3, 0, 0, 0, 0]), _reply("give_up", None)])
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    recs = _steps(agent)
+    assert [r["action"] for r in recs] == ["observe", "grip", "rejected", "rejected", "give_up"]
+    assert recs[1]["result"].startswith("the jaws closed EMPTY")
+    assert "needs the object" in recs[2]["refused"] and "revisit" in recs[3]["refused"]
+    # stayed at the grasp pose after the empty close (no return to start in between)
+    np.testing.assert_allclose(recs[2]["start_q_deg"], q, atol=0.5)
+    assert summary["outcome"] == "give_up" and "returned to the start pose" in summary["end"]
+    np.testing.assert_allclose(np.degrees(fake.q), np.asarray(G.SURVEY_Q_DEG) - G.JOINT_OFFSETS_DEG, atol=0.5)
+
+
+def test_continuous_path_lifts_first():
+    lim = G.Limits()
+    q = GRASP + G.JOINT_OFFSETS_DEG
+    rows = G.continuous_path(q, q + np.array([-10.0, 0, 0, 0, 0]), lim)
+    assert G.tcp_mm(rows[1])[2] > G.tcp_mm(q)[2]
+    up_end = max(G.tcp_mm(r)[2] for r in rows)
+    assert up_end >= G.tcp_mm(q)[2] + lim.approach_dz_mm - 3
+    assert G.check_path(rows, lim) == ""
+
+
+def _plan(grasp, place, action="plan", g=30, rel=35):
+    return json.dumps({"object": {"xyz_mm": [237, 2, 30]}, "action": action,
+                       "grasp_q_deg": None if grasp is None else [float(v) for v in grasp], "gripper_open_pct": g,
+                       "place_q_deg": None if place is None else [float(v) for v in place], "release_open_pct": rel,
+                       "reason": "test"})
+
+
+def test_plan_once_stages_checks_and_fold(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory(stall=22.0)
+    q = GRASP + G.JOINT_OFFSETS_DEG
+    place = q + np.array([-30.0, 0, 0, 0, 0])            # ~120 mm away: split by the 80 mm step limit
+    agent, arm, llm = _cagent(address, monkeypatch, tmp_path, [_plan(q, place)], loop="plan_once", fold=True)
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    recs = _steps(agent)
+    stages = [r.get("stage") or r.get("action") for r in recs]
+    assert stages == ["observe", "plan", "grasp", "lift", "carry", "release", "home"]
+    assert all(r["check"]["ok"] for r in recs if "check" in r)
+    carry = next(r for r in recs if r.get("stage") == "carry")
+    assert len(carry["moves"]) >= 2 and any("split" in n for n in carry["notes"])
+    assert summary["outcome"] == "placed" and summary["replans"] == 0 and len(llm.calls) == 1
+    assert summary["fold"]["folded"]
+    np.testing.assert_allclose(np.degrees(fake.q), S.REST_DEG, atol=0.5)       # folded at the end
+    assert "(plan once)" in llm.calls[0]["messages"][0]["content"]
+
+
+def test_plan_once_empty_grasp_replans(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory()                      # nothing between the jaws
+    q = GRASP + G.JOINT_OFFSETS_DEG
+    agent, arm, llm = _cagent(address, monkeypatch, tmp_path,
+                              [_plan(q, q + [-10, 0, 0, 0, 0]), _plan(q + [3, 0, 0, 0, 0], q + [-10, 0, 0, 0, 0]),
+                               _plan(None, None, action="give_up")], loop="plan_once")
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    recs = _steps(agent)
+    checks = [r["check"] for r in recs if "check" in r]
+    assert [c["ok"] for c in checks] == [False, False]
+    assert [r["action"] for r in recs if r.get("action") in ("plan", "replan")] == ["plan", "replan", "replan"]
+    assert summary["outcome"] == "give_up" and summary["replans"] == 2 and not summary["grasped"]
+    assert "closed EMPTY" in json.dumps(llm.calls[1]["messages"])
+
+
+def test_history_keeps_25_states_and_downscales_old_photos(tmp_path):
+    img = np.zeros((360, 640, 3), np.uint8)
+    import io
+    buf = io.BytesIO()
+    Image.fromarray(img).save(buf, format="JPEG")
+    steps = [Pm.Step(i, "observe" if i == 0 else "move", [0, 0, 0, 0, 0], 30.0, buf.getvalue(),
+                     requested_q_deg=None if i == 0 else [0, 0, 0, 0, 0]) for i in range(30)]
+    parts = Pm.history_parts("t", steps, long_edge=640)
+    imgs = [p for p in parts if not isinstance(p, str)]
+    assert len(imgs) == 25 and "(5 older steps omitted)" in parts
+    assert [p.width for p in imgs].count(640) == 1 + 5 and [p.width for p in imgs].count(320) == 19
+
+
+def test_temperature_guard(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory()
+    agent, arm, llm = _cagent(address, monkeypatch, tmp_path, [_reply("move", GRASP + G.JOINT_OFFSETS_DEG)],
+                              max_temp_c=20.0)          # the fake reports 25 C
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    assert summary["outcome"] == "overheat" and len(llm.calls) == 0
+
+
+def test_continuous_cut_place_does_not_release(server_factory, monkeypatch, tmp_path):
+    fake, address = server_factory(stall=22.0)
+    q = GRASP + G.JOINT_OFFSETS_DEG
+    far = q + np.array([-40.0, 0, 0, 0, 0])               # > 80 mm away: the place move is cut
+    agent, arm, llm = _cagent(address, monkeypatch, tmp_path,
+                              [_reply("grip", q), _reply("place", far), _reply("give_up", None)])
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    recs = _steps(agent)
+    assert recs[2]["requested_action"] == "place" and recs[2]["action"] == "move"
+    assert "CUT" in recs[2]["result"] and recs[2]["holding"]
+    assert summary["outcome"] == "give_up" and summary["placed_tcp_mm"] is None
+    assert "put the object back down" in summary["end"]
+
+
+# ----------------------------------------------------------------------------- pixel loop
+
+def test_pixel_geometry_roundtrip_and_fit():
+    from controlr.fkagent import visual as V
+    true = V.Camera(R_fix=V.rotvec_to_matrix(np.radians([-10.0, -16.0, -3.0])))
+    q = np.asarray(G.SURVEY_Q_DEG)
+    P = np.array([230.0, -60.0, 40.0])
+    u, v, _ = true.project(q, P)
+    np.testing.assert_allclose(V.pixel_to_point(true, q, u, v, 40.0), P, atol=0.5)
+    # the stock mount misses it; a fit from 4 observations recovers the rotation
+    assert np.linalg.norm(V.pixel_to_point(V.Camera(), q, u, v, 40.0)[:2] - P[:2]) > 40
+    obs = []
+    for qq, pp in [(q, P), (q + [10, 0, 0, 0, 0], [250, 40, 30]), (q + [0, 15, -10, 0, 0], [240, -20, 0]),
+                   (q + [-15, 0, 0, 0, 0], [210, 90, 20])]:
+        uu, vv, _ = true.project(qq, pp)
+        obs.append((qq, uu, vv, np.asarray(pp, float)))
+    fit = V.fit_rotation(obs)
+    np.testing.assert_allclose(V.pixel_to_point(fit, q, u, v, 40.0), P, atol=1.0)
+    qg, pitch = V.tool_pose_q((237.0, 2.0, 18.0), G.Limits(), q)
+    assert qg is not None and pitch >= 60
+    np.testing.assert_allclose(G.tcp_mm(qg), [237, 2, 18], atol=2.0)
+
+
+def test_parse_pixel_reply():
+    r = Pm.parse_pixel_reply('{"object_px": [320, 100], "target_px": null, "held": false, "done": false, '
+                             '"person": false, "note": "ball upper middle"}', 640, 360)
+    assert r.object_px == [320.0, 100.0] and r.target_px is None and not r.done
+    with pytest.raises(Pm.ReplyError, match="outside"):
+        Pm.parse_pixel_reply('{"object_px": [900, 100], "done": false}', 640, 360)
+    assert Pm.pixel_json_complete('{"object_px": null, "done": true}') and not Pm.pixel_json_complete('{"object_px": [1,')
+
+
+def test_pixel_loop_pick_place_done_and_fold(server_factory, monkeypatch, tmp_path):
+    from controlr.fkagent import visual as V
+    fake, address = server_factory(stall=22.0)
+    cam = V.Camera()
+    ball, target = np.array([237.0, 2.0, 40.0]), np.array([200.0, -60.0, 0.0])
+    state = {"agent": None}
+
+    def eye(messages):
+        ag = state["agent"]
+        q = ag.steps[-1].q_deg
+        holding = bool(ag.steps[-1].holding)
+        placed = any(s.action == "place" for s in ag.steps)
+        if placed:
+            return json.dumps({"object_px": None, "target_px": None, "held": False, "done": True, "note": "on target"})
+        out = {"object_px": None, "target_px": None, "held": holding, "done": False, "person": False, "note": "t"}
+        if not holding:
+            u, v, z = cam.project(q, ball)
+            if z > 0 and 0 <= u <= 1280 and 0 <= v <= 720:
+                out["object_px"] = [u / 2, v / 2]
+        else:
+            u, v, z = cam.project(q, target)
+            if z > 0 and 0 <= u <= 1280 and 0 <= v <= 720:
+                out["target_px"] = [u / 2, v / 2]
+        return json.dumps(out)
+
+    monkeypatch.setenv("CONTROLR_SO101_AUTHKEY", "test")
+    arm = _arm(address)
+    llm = FakeLLM(eye)
+    agent = FkAgent(arm, llm, AgentConfig(task="put the ball on the target", max_steps=8, loop="pixel", camera=cam,
+                                          fold=True), tmp_path / "ep", limits=arm.limits())
+    state["agent"] = agent
+    try:
+        summary = agent.run()
+    finally:
+        arm.close()
+    recs = _steps(agent)
+    acts = [r.get("action") for r in recs]
+    assert acts[:4] == ["observe", "look", "grasp", "place"] and acts[-1] == "done", acts
+    grasp = next(r for r in recs if r.get("action") == "grasp")
+    np.testing.assert_allclose(grasp["object_estimate_mm"], ball, atol=2.0)
+    assert grasp["holding"] and "stalled" in grasp["result"]
+    place = next(r for r in recs if r.get("action") == "place")
+    np.testing.assert_allclose(place["target_estimate_mm"], target, atol=2.0)
+    assert summary["success"] and summary["model_judged_done"] and summary["fold"]["folded"]
+    np.testing.assert_allclose(np.degrees(fake.q), S.REST_DEG, atol=0.5)
+    # the model never sees a request for joint angles; it gets the code's estimate as text
+    sysmsg = llm.calls[0]["messages"][0]["content"]
+    assert "never give" in sysmsg and "object_px" in sysmsg
+    assert "object estimate from your pixel" in json.dumps(llm.calls[2]["messages"])
