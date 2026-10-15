@@ -119,6 +119,8 @@ def _arm(a) -> ServerArm:
 
 def _limits(a, arm) -> G.Limits:
     kw = {}
+    if getattr(a, "side_y", None):
+        kw["side_y_mm"], kw["side_x_max_mm"] = float(a.side_y), float(a.side_x_max)
     if a.box_x:
         x = _xyz(a.box_x)
         kw["box_lo_mm"], kw["box_hi_mm"] = (x[0], -150.0, 5.0), (x[1], 150.0, 260.0)
@@ -200,7 +202,7 @@ def cmd_live(a) -> int:
                           extra_body={"reasoning_effort": a.effort} if a.effort else {},
                           camera=camera, object_z_mm=a.object_z_mm, grasp_z_mm=a.grasp_z_mm,
                           target_z_mm=a.target_z_mm, release_dz_mm=a.release_dz_mm, look_z_mm=a.look_z_mm,
-                          search=a.search)
+                          search=a.search, gripper_wide_pct=a.gripper_wide)
         tag = time.strftime("%Y%m%d-%H%M%S") + f"_{a.loop[:4]}_{'fs' if shots else 'zero'}_{a.name}"
         if a.loop == "tools":
             from controlr.fkagent.toolagent import ToolAgent
@@ -247,6 +249,8 @@ def main(argv=None) -> int:
         s.add_argument("--start-q", default="", help="start pose, MODEL deg 'pan,lift,elbow,wflex,roll'")
         s.add_argument("--box-x", default="", help="TCP workspace x range 'lo,hi' mm (default 140,270)")
         s.add_argument("--max-step-mm", type=float, default=80.0)
+        s.add_argument("--side-y", type=float, default=None, help="extend the box to |y| <= this (mm) where x <= --side-x-max")
+        s.add_argument("--side-x-max", type=float, default=230.0)
         s.add_argument("--tcp-speed", type=float, default=50.0, help="mm/s along the path (safety max 50)")
         if name == "rest":
             pass
@@ -264,6 +268,8 @@ def main(argv=None) -> int:
             s.add_argument("--model", default=MODEL)
             s.add_argument("--release-at-end", action="store_true")
             s.add_argument("--gripper-max", type=float, default=35.0, help="widest jaw opening, %% (camera clearance)")
+            s.add_argument("--gripper-wide", type=float, default=0.0,
+                           help="tools loop: grip(open, object='carrot') may open up to this %% (checked: 50)")
             s.add_argument("--no-place-back", action="store_true", help="return loop: keep holding after a grasp")
             s.add_argument("--loop", default="continuous", choices=("continuous", "plan_once", "return", "pixel", "tools"),
                            help="continuous: re-plan from the current pose, start pose only when done; "

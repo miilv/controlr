@@ -31,7 +31,7 @@ You control a real SO-101 robot arm (5 joints + a parallel gripper) with tools. 
 The robot:
 * Base frame in mm: +x forward (away from the robot), +y to the robot's left, +z up; the table is
   z = 0. TCP = the point between the jaw tips.
-* Workspace the TCP may reach: x {box_lo[0]:.0f}..{box_hi[0]:.0f}, y {box_lo[1]:.0f}..{box_hi[1]:.0f}, z {box_lo[2]:.0f}..{box_hi[2]:.0f} mm.
+* Workspace the TCP may reach: {workspace}.
   Objects outside it cannot be handled: do not chase them, give_up and report their position.
 * The only camera rides on the gripper. Each FRAME is a {w}x{h} px photo, (0, 0) top-left; the
   green jaws are at the bottom; a held object is between them. With the tool pointing down,
@@ -49,11 +49,17 @@ Keep text to one short sentence or none.
 A typical pick-and-place:
 1. Find both objects; if something is not visible, look(pose) through the look poses.
 2. move_to(u, v, height_mm=<object centre height>, above_mm=80): look from above the object.
-3. move_to(u, v, height_mm=<centre height>, z=<grasp TCP height>): jaw tips around the object.
-4. grip("close"): blocked=true means the object is held; then lift(50).
-5. move_to(u, v of the CENTRE of the target's top in the newest frame, height_mm=<target top
-   height>, above_mm=15) - release LOW: a round object dropped from higher rolls off a rounded
-   target - then grip("open"), then lift(50).
+3. move_to(u, v, height_mm=<centre height>, z=<grasp TCP height + 30>): just above grasp height.
+   CHECK the photo: the object must be centred between the two jaw tips. If not, nudge(right_mm,
+   up_mm) toward it (small steps, look again). Positions from far-away photos can be off by
+   several cm; the photo at this height is the truth.
+4. lift(-30) to descend onto it, check again, then grip("close"): blocked=true means held; then lift(50).
+5. Put it down: move_to the spot (pixel of a free table spot: height_mm=0, z = the height you grasped
+   it at + 2..5 mm; or the CENTRE of a target's top: height_mm=<top height>, above_mm=15). Release LOW,
+   never drop it: a round object dropped from higher rolls away. Then grip("open"), then lift(50).
+* Jaws: open_pct {omax:.0f} at most; for the plush carrot open up to {wide:.0f} (grip open with
+  object="carrot") and grasp it by a narrow part (the tip or the leaves end), not the wide body.
+* A free spot for a temporary put-down must be clear of other objects by ~60 mm.
 6. When the photos show the task complete, call done(summary). If impossible, give_up(reason).
 
 SAFETY: if a person, a hand or an arm is visible in the newest frame, call wait() and nothing else.
@@ -92,10 +98,17 @@ def tool_specs(look_names: list[str]) -> list[dict]:
           {"q_deg": {"type": "array", "items": {"type": "number"}, "minItems": 5, "maxItems": 5}}, ("q_deg",)),
         f("look", "MOTION. Go to a fixed look pose to search for objects: " + ", ".join(look_names) + ".",
           {"pose": {"type": "string", "enum": look_names}}, ("pose",)),
-        f("lift", "MOTION. Straight up by dz_mm (default 50).", {"dz_mm": {"type": "number"}}),
-        f("grip", "MOTION (jaws). close -> returns blocked (true = something is held); open -> releases "
-                  "(open_pct 10..35, default 35).",
-          {"action": {"type": "string", "enum": ["open", "close"]}, "open_pct": {"type": "number"}}, ("action",)),
+        f("lift", "MOTION. Straight up by dz_mm (default 50); negative = straight DOWN (to descend onto an "
+                  "object once it is centred between the jaw tips).", {"dz_mm": {"type": "number"}}),
+        f("nudge", "MOTION. Small sideways TCP correction in the NEWEST photo's directions, at the same height: "
+                   "right_mm > 0 moves the jaws toward what is at the image's right, up_mm > 0 toward what is "
+                   "higher in the image. Each at most 40 mm. Use it to centre an object between the jaw tips.",
+          {"right_mm": {"type": "number"}, "up_mm": {"type": "number"}}),
+        f("grip", "MOTION (jaws). close -> returns blocked (true = something is held); open -> releases / opens "
+                  "(open_pct 10..35, default 35; up to the wide cap with object='carrot').",
+          {"action": {"type": "string", "enum": ["open", "close"]}, "open_pct": {"type": "number"},
+           "object": {"type": "string", "description": "what you will grasp; 'carrot' allows open_pct up to the wide cap"}},
+          ("action",)),
         f("home", "MOTION. Back to the start (survey) pose.", {}),
         f("wait", "Do not move; a new frame in ~2 s (use when a person/hand is visible).", {}),
         f("done", "The task is complete as the photos show. Ends the episode.",
@@ -105,7 +118,7 @@ def tool_specs(look_names: list[str]) -> list[dict]:
     ]
 
 
-MOTION_TOOLS = {"move_to", "move_joints", "look", "lift", "grip", "home", "wait"}
+MOTION_TOOLS = {"move_to", "move_joints", "look", "lift", "nudge", "grip", "home", "wait"}
 
 
 class ToolAgent(FkAgent):
@@ -155,6 +168,13 @@ class ToolAgent(FkAgent):
         return {"frame": k, "photo": photo, "t_frame": round(time.monotonic() - t0, 2), "text": text}
 
     # ------------------------------------------------------------------ tools
+    def _ws_text(self) -> str:
+        lo, hi, L = self.lim.box_lo_mm, self.lim.box_hi_mm, self.lim
+        t = f"x {lo[0]:.0f}..{hi[0]:.0f}, y {lo[1]:.0f}..{hi[1]:.0f}, z {lo[2]:.0f}..{hi[2]:.0f} mm"
+        if L.side_y_mm is not None:
+            t += f"; and |y| up to {L.side_y_mm:.0f} where x <= {L.side_x_max_mm:.0f}"
+        return t
+
     def _locate(self, a: dict):
         u, v, h = _num(a, "u"), _num(a, "v"), _num(a, "height_mm", self.cfg.object_z_mm)
         if u is None or v is None:
@@ -170,11 +190,10 @@ class ToolAgent(FkAgent):
     def _reach(self, x, y, z, pitch=None) -> tuple[np.ndarray | None, str, float | None]:
         from controlr.fkagent import visual as V
 
-        lo, hi, m = np.asarray(self.lim.box_lo_mm), np.asarray(self.lim.box_hi_mm), self.lim.target_margin_mm
+        lo, hi = np.asarray(self.lim.box_lo_mm), np.asarray(self.lim.box_hi_mm)
         p = np.array([x, y, z], float)
-        if np.any(p < lo + m) or np.any(p > hi - m):
-            return None, (f"({x:.0f}, {y:.0f}, {z:.0f}) mm is outside the workspace x {lo[0]:.0f}..{hi[0]:.0f}, "
-                          f"y {lo[1]:.0f}..{hi[1]:.0f}, z {lo[2]:.0f}..{hi[2]:.0f}"), None
+        if not G.in_box(p, self.lim, -self.lim.target_margin_mm):
+            return None, f"({x:.0f}, {y:.0f}, {z:.0f}) mm is outside the workspace ({self._ws_text()})", None
         kw = {} if pitch is None else {"pitches": (float(pitch),)}
         q, pt = V.tool_pose_q(p, self.lim, self._frame_q, **kw)
         if q is None:
@@ -239,8 +258,10 @@ class ToolAgent(FkAgent):
             return self._motion(f"look {a['pose']}", poses[a["pose"]], rec)
         if name == "home":
             return self._motion("home", self.start_q, rec)
+        if name == "nudge":
+            return self._nudge(_num(a, "right_mm", 0.0) or 0.0, _num(a, "up_mm", 0.0) or 0.0)
         if name == "lift":
-            dz = float(np.clip(_num(a, "dz_mm", 50.0) or 50.0, 5.0, 100.0))
+            dz = float(np.clip(_num(a, "dz_mm", 50.0) or 50.0, -100.0, 100.0))
             q, _ = self.arm.state()
             up = G.lift_path(q, dz, self._lim_for(self.holding, q))
             if len(up) < 2 or G.check_path(up, self._lim_for(self.holding, q)):
@@ -256,18 +277,62 @@ class ToolAgent(FkAgent):
                 self.holding = bool(r["gripper_blocked"] or r["gripper"] > self.cfg.close_pct + self.cfg.grasp_margin)
                 self.grasped_once |= self.holding
                 return {"ok": True, "gripper_pct": round(r["gripper"], 1), "blocked": self.holding}
-            pct = float(np.clip(_num(a, "open_pct", self.cfg.gripper_open_max) or self.cfg.gripper_open_max,
-                                self.cfg.gripper_open_min, self.cfg.gripper_open_max))
+            cap = self.cfg.gripper_open_max
+            if str(a.get("object", "")).lower() == "carrot" and self.cfg.gripper_wide_pct:
+                cap = max(cap, self.cfg.gripper_wide_pct)    # checked in place: no camera contact up to 55 %
+            want = _num(a, "open_pct", self.cfg.gripper_open_max) or self.cfg.gripper_open_max
+            pct = float(np.clip(want, self.cfg.gripper_open_min, cap))
             r = self.arm.set_gripper(pct)
             was = self.holding
             self.holding = False
             if was:
                 self.released_at = G.tcp_mm(self.arm.state()[0]).round(1).tolist()
-            return {"ok": True, "gripper_pct": round(r["gripper"], 1), "released": was}
+            out = {"ok": True, "gripper_pct": round(r["gripper"], 1), "released": was}
+            if want > cap:
+                out["note"] = f"opening capped at {cap:.0f} %"
+            return out
         if name == "wait":
             time.sleep(2.0)
             return {"ok": True}
         return {"ok": False, "why": f"unknown tool {name}"}
+
+    def _nudge(self, right: float, up: float) -> dict:
+        """Translate the TCP along the image's right / up directions projected onto the table
+        (same height, same tool orientation, straight line, checked)."""
+        from controlr.fkagent import visual as V
+        from controlr.robot.so101 import kinematics as K
+
+        right, up = float(np.clip(right, -40, 40)), float(np.clip(up, -40, 40))
+        if abs(right) < 0.5 and abs(up) < 0.5:
+            return {"ok": False, "why": "nothing to do"}
+        q, _ = self.arm.state()
+        cam = self.cfg.camera or V.Camera()
+        Rc = cam.T_base_cam(q)[:3, :3]
+        def flat(v):
+            v = np.array([v[0], v[1], 0.0])
+            n = np.linalg.norm(v)
+            return v / n if n > 1e-6 else v
+        ex, ey = flat(Rc[:, 0]), flat(-Rc[:, 1])          # image right, image up, on the table
+        T = G.fk_T(q)
+        p = T[:3, 3] * 1000.0 + right * ex + up * ey
+        lim = self._lim_for(self.holding, q)
+        if not G.in_box(p, lim, -lim.target_margin_mm):
+            return {"ok": False, "why": f"({p[0]:.0f}, {p[1]:.0f}, {p[2]:.0f}) mm is outside the workspace"}
+        lim_rad = np.radians(np.stack([lim.joint_lo_deg, lim.joint_hi_deg], axis=1))
+        R = K.reachable_rotation(p / 1000.0, T[:3, :3])       # 5 joints: the tool turns with the pan
+        path, frac, why = K.line_path(np.radians(q), p / 1000.0, R, lim_rad)
+        rows = [q] + [np.degrees(x) for x in path]
+        if frac < 0.99 or len(rows) < 2:
+            return {"ok": False, "why": f"not reachable that way ({why or 'IK'})"}
+        bad = G.check_path(rows, lim)
+        if bad:
+            return {"ok": False, "why": bad}
+        r = self.arm.move(rows, None)
+        if r["stopped"]:
+            self._stopped = True
+        q2, _ = self.arm.state()
+        return {"ok": not r["stopped"], "moved": True, "reached_tcp_mm": G.tcp_mm(q2).round(1).tolist(),
+                "moved_mm": [round(right, 1), round(up, 1)]}
 
     # ------------------------------------------------------------------ loop
     def _run_tools(self) -> dict:
@@ -281,7 +346,8 @@ class ToolAgent(FkAgent):
         self.tools = tool_specs([n for n, _ in self._looks])
         w, h = self.cfg.photo_size
         self.messages.append({"role": "system", "content": SYSTEM.format(
-            task=self.cfg.task, box_lo=self.lim.box_lo_mm, box_hi=self.lim.box_hi_mm, w=w, h=h)})
+            task=self.cfg.task, workspace=self._ws_text(), w=w, h=h, wide=self.cfg.gripper_wide_pct,
+            omax=self.cfg.gripper_open_max)})
         self.reset()                                # fold -> start pose (checked), photo = step 0
         self.steps.clear()
         f0 = self._frame("Start.")

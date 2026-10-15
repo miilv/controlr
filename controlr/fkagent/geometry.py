@@ -90,6 +90,10 @@ class Limits:
     approach_dz_mm: float = 40.0                 # come down onto the target from this far above
     path_step_deg: float = 1.0                   # path sampling for the checks
     path_tol_mm: float = 2.0                     # the box may be missed by this much on the path (IK noise)
+    # side extension of the box (owner, 2026-10-15): |y| up to side_y_mm where x <= side_x_max_mm (the
+    # table extends sideways; the laptop is in front at x ~300). None = plain box.
+    side_y_mm: float | None = None
+    side_x_max_mm: float = 230.0
     target_margin_mm: float = 3.0                # targets stay this far inside the box (tracking error must
                                                  # not leave the reached pose outside it: live 2026-10-15)
 
@@ -105,10 +109,19 @@ class Limits:
 
 def in_box(p_mm, lim: Limits, tol: float = 0.0) -> bool:
     lo, hi = np.asarray(lim.box_lo_mm) - tol, np.asarray(lim.box_hi_mm) + tol
-    return bool(np.all(p_mm >= lo) and np.all(p_mm <= hi))
+    if bool(np.all(p_mm >= lo) and np.all(p_mm <= hi)):
+        return True
+    if lim.side_y_mm is None:
+        return False
+    # the side extension: same x lower bound and z range, x up to side_x_max, |y| up to side_y
+    return bool(lo[0] <= p_mm[0] <= lim.side_x_max_mm + tol and abs(p_mm[1]) <= lim.side_y_mm + tol
+                and lo[2] <= p_mm[2] <= hi[2])
 
 
 def box_violation(p_mm, lim: Limits) -> str:
+    if lim.side_y_mm is not None and abs(p_mm[1]) > lim.box_hi_mm[1] and abs(p_mm[1]) <= lim.side_y_mm \
+            and p_mm[0] > lim.side_x_max_mm:
+        return f"x {p_mm[0]:.0f} > {lim.side_x_max_mm:.0f} where |y| > {lim.box_hi_mm[1]:.0f}"
     out = []
     for i, ax in enumerate("xyz"):
         if p_mm[i] < lim.box_lo_mm[i]:

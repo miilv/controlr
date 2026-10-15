@@ -954,3 +954,61 @@ def test_tool_dialog_out_of_reach_and_bad_calls(server_factory, monkeypatch, tmp
     assert "unknown tool" in res[2]["why"]
     assert any(r.get("action") == "no_tool_call" for r in recs)
     assert summary["frames"] == 0                                       # nothing moved, no new frame
+
+
+def test_side_extension_of_the_box():
+    lim = G.Limits(side_y_mm=175.0, side_x_max_mm=230.0)
+    assert G.in_box(np.array([193.0, 161.0, 40.0]), lim)              # the ball after t1
+    assert G.in_box(np.array([193.0, -170.0, 40.0]), lim)
+    assert not G.in_box(np.array([250.0, 161.0, 40.0]), lim)           # beyond x 230 on the side
+    assert not G.in_box(np.array([193.0, 180.0, 40.0]), lim)
+    assert not G.in_box(np.array([193.0, 161.0, 40.0]), G.Limits())     # off by default
+    assert "where |y|" in G.box_violation(np.array([250.0, 161.0, 40.0]), lim)
+
+
+def test_tool_grip_wide_only_for_the_carrot(server_factory, monkeypatch, tmp_path):
+    from controlr.fkagent import visual as V
+    fake, address = server_factory()
+    turns = iter([("", [("grip", {"action": "open", "open_pct": 50})]),
+                  ("", [("grip", {"action": "open", "open_pct": 50, "object": "carrot"})]),
+                  ("", [("grip", {"action": "open", "open_pct": 70, "object": "carrot"})]),
+                  ("", [("give_up", {"reason": "test"})])])
+    ag, arm, chat = _tool_agent(address, monkeypatch, tmp_path, lambda m: next(turns), V.Camera(), gripper_wide_pct=50.0,
+                                fold=False)
+    try:
+        ag.run()
+    finally:
+        arm.close()
+    res = [t["result"] for r in _steps(ag) for t in r.get("tool_calls", [])]
+    assert res[0]["gripper_pct"] == pytest.approx(35, abs=1.5) and "capped at 35" in res[0]["note"]
+    assert res[1]["gripper_pct"] == pytest.approx(50, abs=1.5) and "note" not in res[1]
+    assert res[2]["gripper_pct"] == pytest.approx(50, abs=1.5) and "capped at 50" in res[2]["note"]
+    assert "up to 50" in chat.calls[0]["messages"][0]["content"]
+
+
+def test_tool_nudge_moves_along_the_image_axes_and_lift_down(server_factory, monkeypatch, tmp_path):
+    from controlr.fkagent import visual as V
+    fake, address = server_factory()
+    cam = V.Camera()
+    q = GRASP + G.JOINT_OFFSETS_DEG + np.array([0, -8, 0, 0, 0])       # some height above the table
+    turns = iter([("", [("move_joints", {"q_deg": [float(v) for v in q]})]),
+                  ("", [("nudge", {"right_mm": 20})]),
+                  ("", [("nudge", {"up_mm": -15})]),
+                  ("", [("lift", {"dz_mm": -10})]),
+                  ("", [("nudge", {"right_mm": 500})]),
+                  ("", [("give_up", {"reason": "test"})])])
+    ag, arm, chat = _tool_agent(address, monkeypatch, tmp_path, lambda m: next(turns), cam, fold=False)
+    try:
+        ag.run()
+    finally:
+        arm.close()
+    res = [t["result"] for r in _steps(ag) for t in r.get("tool_calls", [])]
+    p0 = np.array(res[0]["reached_tcp_mm"])
+    p1, p2, p3 = (np.array(r["reached_tcp_mm"]) for r in res[1:4])
+    assert np.linalg.norm(p1[:2] - p0[:2]) == pytest.approx(20, abs=2.5) and abs(p1[2] - p0[2]) < 2.5
+    assert np.linalg.norm(p2[:2] - p1[:2]) == pytest.approx(15, abs=2.5)
+    Rc = cam.T_base_cam(q)[:3, :3]
+    right = np.array([Rc[0, 0], Rc[1, 0]]) / np.linalg.norm(Rc[:2, 0])
+    assert (p1[:2] - p0[:2]) @ right > 15                                 # along the image's right
+    assert p3[2] == pytest.approx(p2[2] - 10, abs=2.5)                    # lift(-10) went down
+    assert res[4]["moved_mm"] == [40.0, 0.0] or not res[4]["ok"]          # clipped to 40 mm (or refused)

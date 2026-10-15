@@ -154,6 +154,7 @@ class AgentConfig:
     start_q_deg: tuple = G.SURVEY_Q_DEG
     gripper_open_default: float = 30.0
     gripper_open_max: float = 35.0     # wider: the moving jaw can knock the wrist camera (operator, 2026-10-15)
+    gripper_wide_pct: float = 0.0      # tools loop: grip(open, object="carrot") may open up to this (0 = off)
     gripper_open_min: float = 10.0
     close_pct: float = 0.0
     grasp_margin: float = 2.5          # gripper % above the close command = something between the jaws
