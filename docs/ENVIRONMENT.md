@@ -10,6 +10,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `OMNIROUTE_API_KEY` | same | router key; only in `.env` locally and `~/controlr/.env` on compute3 |
 | `OPENROUTER_API_KEY` | live runs with `llm.backend=decisions` | OpenRouter key for the Decisions API (`decisions.api_key_env`; omniroute has no decisions route); same storage rules as the router key |
 | `CONTROLR_ISAAC_AUTHKEY` | compute3 | shared secret client↔Isaac server; unset → the client generates one per launch (fallback `controlr-isaac-dev` is for a dev box only) |
+| `CONTROLR_SO101_AUTHKEY` | the SO-101 rig and the controlr process driving it | shared secret client↔so101 server ([SO101.md](SO101.md)); on the rig in `~/.so101_authkey` (0600); fallback `controlr-so101-dev` is for a dev box only |
 | `CONTROLR_ISAAC_READY_FILE` | compute3 | server readiness flag file (set by `remote_run.sh`) |
 | `ISAAC_SIM_ROOT` | compute3 | default `/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0` |
 | `PHANTOM_ROOT` | compute3 | default `/home/physicalai/phantom-icra-2027/phantom` |
@@ -30,6 +31,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | local | dev box, no GPU | code, unit tests, mock/replay, reports, videos | — |
 | `compute3` (`physicalai`) | Ubuntu 24.04, py3.12, RTX 5090 32 GB, Isaac Sim 6.0, PHANTOM | Isaac backend, all runs | shared machine; only `~/controlr*`; the GPU is ours; Wi-Fi only (no cable yet); machine-wide VPN `controlr-vpn` (sing-box tun, router + RU direct; RUNBOOK §3a) |
 | `compute2` (`isr-lab-4`, root) | Ubuntu 22.04, RTX 4090 24 GB, 32 cores, 62 GB RAM | RoboDojo (its own Isaac Sim 5.1 pip install in `/root/controlr-robodojo`, [ROBODOJO.md](ROBODOJO.md)) | shared lab machine (other teams' docker images and a `vlm-api` service run there); only `/root/controlr*` |
+| SO-101 rig (`sp@192.168.1.22`, LAN; reached via `ssh mac`) | Ubuntu 24.04 laptop, i7-1370P, no NVIDIA GPU; SO-101 follower on `/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0` (LeRobot id `follower_v1`), wrist camera `/dev/v4l/by-id/usb-WebCamera_WebCamera_2502131600-video-index0`; LeRobot 0.4.2 in conda env `lerobot` | `scripts/so101_server.sh` from `~/controlr-so101` ([SO101.md](SO101.md)); controlr runs elsewhere (the rig cannot reach the router) | the owner's personal machine: only `~/controlr-so101` and `~/.so101_authkey`; no installs; another agent (Codex) may use the arm — one serial client at a time |
 | `nuc` | NUC at the real rig (PHANTOM deployment) | future real-UR3 backend | don't touch without a task |
 
 ## Paths

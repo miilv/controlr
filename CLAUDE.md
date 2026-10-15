@@ -7,8 +7,9 @@ feedback. Turn-based (the robot holds still while the model thinks); the transcr
 append-only and fully prompt-cached. The goal is an experimentation platform: can large API
 models, with the right prompt and architecture, act as the controller without a VLA?
 
-Today: UR3 CB3 + Robotiq in Isaac Sim 6.0 (PHANTOM's calibrated scene) on `compute3`;
-models through one OpenAI-compatible router (omniroute). Next: the real UR3.
+Today: UR3 CB3 + Robotiq in Isaac Sim 6.0 (PHANTOM's calibrated scene) on `compute3`, and a
+real SO-101 arm with a wrist camera ([docs/SO101.md](docs/SO101.md)); models through one
+OpenAI-compatible router (omniroute). Next: the real UR3.
 
 ## Components
 
@@ -18,7 +19,7 @@ models through one OpenAI-compatible router (omniroute). Next: the real UR3.
 | `controlr/protocol/` | reply grammar (MOVE/GRIP/HOLD/STATUS) and feedback text |
 | `controlr/prompts/` | system prompt = robot operating manual (`system_v0.md`), planner prompt |
 | `controlr/observation/` | frame renderers: resize, grid, ee_marker, axes, diff, heatmap, tile |
-| `controlr/robot/` | `Robot` ABC, `spec`, UR3 kinematics, `SafetyEnvelope`, mock, replay, `isaac/` (server in Isaac's python + client) |
+| `controlr/robot/` | `Robot` ABC, `spec`, UR3 kinematics, `SafetyEnvelope`, mock, replay, `isaac/` (server in Isaac's python + client), `so101/` (real SO-101: server on the rig in LeRobot's python + client) |
 | `controlr/loop.py`, `runlog.py`, `cli.py`, `bench/` | episode (planner + turn loop), run logs, CLI, cache/latency benchmarks, sweeps |
 | `configs/` | experiments as YAML (`extends:`); every experiment axis is a config field |
 | `scripts/` | deploy and run on compute3, Isaac server, run videos |
@@ -77,7 +78,7 @@ uv run controlr bench-cache --model claude/claude-sonnet-5-5 --turns 20   # ⚠�
 7. **Safety lives in code, not in the prompt.** Every action goes through `SafetyEnvelope`;
    clamps and stops are reported back to the model as feedback. The real UR3 — only through
    PHANTOM's drivers + `SafetyMonitor` and only with explicit per-session permission (a human
-   at the e-stop).
+   at the e-stop). Same for the real SO-101: a human at its power switch, workspace cleared.
 8. **An experiment is reproducible or it doesn't count:** config in git, seeds × repeats, the
    same plan (`planner.plan_file`) when comparing control models, n and spread in the report;
    "2/4" is noise, not a finding. Report: `docs/experiments/YYYY-MM-DD-<slug>.md` + a row in the

@@ -1,0 +1,44 @@
+# Pick the rope ball and place it at a marked spot, the way the operator's demos do it
+# (gym_objects_demo_2, ball_demo_4): from above with the tool tilted ~20 deg off vertical, the ball
+# between the jaws with its lower edge at the jaw tips when the jaws close, open ~35 %, then back to
+# the start pose, then down at the place spot and open. Opus with the gradient-descent rules of
+# so101_ball_opus; the joint offsets (so101.yaml) make the STATE/VIEW geometry real.
+extends: so101_ball_opus.yaml
+name: so101_pick_place
+task:
+  name: pick_place_ball
+  instruction: >-
+    Pick up the beige rope ball (about 60 mm across) lying on the table and put it down at the
+    place spot x = 200 mm, y = +100 mm (STATE coordinates), then go back up. Do not touch other
+    objects (the blue marker is not the target). The magenta cross in the image is the grasp
+    point: it sits midway between the two green jaw tips, at the tips' height; a ball held by the
+    jaws has its centre there. Sequence: from the start pose move above the ball; descend with the
+    jaws open; at TCP z = 20-24 mm move only horizontally until the ball's centre is on the magenta
+    cross (between the two jaws, its widest part at the tips) and the ball fills about 35-40 % of
+    the image width; GRIP close (no descent in that turn); check the gripper is blocked (the ball
+    is held), lift to z = 80 mm; move to x = 200, y = +100 at z = 80; lower to z = 25 mm; GRIP
+    open; lift to z = 80 mm. Report DONE after the ball rests at the place spot and the jaws are
+    up and open. If a close misses (gripper not blocked), open, lift 20 mm, correct by where the
+    ball now is and try again.
+prompt:
+  extra_rules:
+    - "Approach like gradient descent: each turn estimate the remaining offset from the jaws to the grasp position (x, y, z in mm) and move about 70 % of it in ONE move line (all axes together; at most 80 mm). Steps shrink as the error shrinks; when the estimate is under 10 mm, move the full amount. Never creep with fixed small steps."
+    - "Learn from this episode's history: your earlier replies say where you thought the target was and what you expected. Compare that with what the new image shows; if your moves keep ending short (or past) the target in some direction, scale your next estimate in that direction accordingly."
+    - "Write the action lines FIRST, then the STATUS line. Put your reasoning on the STATUS line after the status word, 1-3 sentences: the remaining offset you estimate (mm), what you expect after this move, and how the last move compared with your expectation. It is streamed while the arm moves; the 12-word note limit does not apply to it."
+    - "Grasp height is fixed: once the ball is roughly between the jaws (within ~30 mm), go straight to TCP z = 22 mm in one move (read z from STATE, not from the image) and do all remaining centring there with horizontal moves only. Descending shifts the ball in the image (the camera sits above and behind the jaw tips), so never judge centring at one height and then close at another."
+    - "Before every GRIP close check the magenta cross: the ball's centre must be on it (within ~1/20 of the image width), not below it. A ball whose centre appears BELOW the cross (toward the bottom edge) is nearer the base than the jaws: move -x (by the VIEW line's direction; at z 22 roughly 1 mm per 5 px of a 512 px image, so 50 px is ~10 mm). Attempt history on this rig: closing with the ball's centre well below the jaw tips missed behind the ball; closing with it on the tips' line held it."
+    - "Keep x and y bookkeeping in STATE millimetres: write the ball's estimated position (x, y) in the STATUS reasoning and update it every turn from the image offset plus your current STATE, so a miss tells you which way to correct."
+    - "Placing: before lowering at the place spot, look at the image: if anything else lies within ~50 mm of the spot, shift the place point to the nearest clear table 40-60 mm away (inside the workspace) and say so. After GRIP open, the next move is straight up (+z only, to z >= 70 mm) before any horizontal move: open jaws can hook a neighbouring object and drag it (attempt history: a plush carrot was dragged 125 mm)."
+robot:
+  params:
+    tool_pitch_deg: 70                  # ~20 deg off vertical, as in the demos; reaches the whole box
+    home_tcp: [0.20, 0.0, 0.10]
+    gripper_open_pct: 35                # the demos opened 35 % for the ball
+    workspace_lo: [0.14, -0.15, 0.005]
+    workspace_hi: [0.27, 0.15, 0.13]    # laptop front edge x ~300 mm (2026-10-15 touches)
+observation:
+  renderers: [aim]                      # grasp point between the jaw tips, at the tips' height; measured on a
+  aim_uv: [0.59, 0.73]                  # fresh frame after the operator re-seated the camera (2026-10-15 ~01:25):
+                                        # inner tips at u 0.38 / 0.81, tip tops at v 0.75. Re-measure if the camera moves.
+episode:
+  max_turns: 30

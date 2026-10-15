@@ -1,6 +1,6 @@
 """Robot backends. ``make_robot(cfg)`` is the only constructor the loop uses.
 
-The Isaac backend is imported lazily: its client is light, but importing it
+The Isaac and SO-101 backends are imported lazily: its client is light, but importing it
 must never be a side effect of using the mock / replay backends in tests.
 """
 
@@ -23,10 +23,13 @@ def make_robot(cfg) -> Robot:
     if backend == "isaac":
         from controlr.robot.isaac.client import IsaacRobot
         return IsaacRobot.from_config(cfg)
+    if backend == "so101":
+        from controlr.robot.so101.client import So101Robot
+        return So101Robot.from_config(cfg)
     if backend == "robodojo":
         raise ValueError("robot.backend=robodojo episodes are started by RoboDojo's eval client: "
                          "run `controlr robodojo-serve` (scripts/robodojo/run.sh), not `controlr run`")
-    raise ValueError(f"unknown robot backend {backend!r} (mock | replay | isaac | robodojo)")
+    raise ValueError(f"unknown robot backend {backend!r} (mock | replay | isaac | so101 | robodojo)")
 
 
 __all__ = ["Robot", "make_robot"]

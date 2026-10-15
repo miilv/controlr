@@ -1,0 +1,17 @@
+# Same as so101_pick_place, but places at B = (200, -60) mm: alternate with it so the ball needs no
+# human between attempts (A = (200, +100) -> pick there, place at B -> pick there, place at A ...).
+extends: so101_pick_place.yaml
+name: so101_pick_place_b
+task:
+  instruction: >-
+    Pick up the beige rope ball (about 60 mm across) lying on the table and put it down at the place
+    spot x = 200 mm, y = -60 mm (STATE coordinates), then go back up. Do not touch other objects
+    (the blue marker is not the target). The magenta cross in the image is the grasp point: it sits
+    midway between the two green jaw tips, at the tips' height; a ball held by the jaws has its
+    centre there. Sequence: from the start pose move above the ball; descend with the jaws open; at
+    TCP z = 20-24 mm move only horizontally until the ball's centre is on the magenta cross (between
+    the two jaws, its widest part at the tips) and the ball fills about 35-40 % of the image width;
+    GRIP close (no descent in that turn); check the gripper is blocked (the ball is held), lift to z
+    = 80 mm; move to x = 200, y = -60 at z = 80; lower to z = 25 mm; GRIP open; lift to z = 80 mm.
+    Report DONE after the ball rests at the place spot and the jaws are up and open. If a close
+    misses (gripper not blocked), open, lift 20 mm, correct by where the ball now is and try again.

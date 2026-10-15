@@ -200,7 +200,7 @@ def _observation_doc(cfg: Config, spec: RobotSpec | None = None) -> str:
     lines = [f"- Camera image(s): {cams}, resized to {o.size} px on the long edge"
              + (f" ({o.first_turn_size} px on the first turn)" if o.first_turn_size else "")
              + ", taken after the robot came to rest."]
-    ov = [r for r in o.renderers if r in ("grid", "axes", "ee_marker")]
+    ov = [r for r in o.renderers if r in ("grid", "axes", "ee_marker", "aim")]
     if "grid" in ov:
         lines.append(f"- Grid overlay: base-frame lines every {_len(cfg, o.grid_step)} drawn on the "
                      f"plane z={_len(cfg, resolve_grid_z(o, spec))} (the table), labelled with their x= / y= value.")
@@ -211,6 +211,12 @@ def _observation_doc(cfg: Config, spec: RobotSpec | None = None) -> str:
         lines.append("- TCP marker: magenta circle + cross at the projected TCP with its height, "
                      "yellow squares at the two fingertips (current opening), and a magenta drop "
                      "line from the TCP straight down to the table (its foot marks the TCP's x, y).")
+    if "aim" in ov:
+        lines.append("- Grasp point: a magenta circle with a cross at a FIXED place in the image. The camera "
+                     "moves with the jaws, so this is where an object sits in the image when it is held "
+                     "between the closed jaws. Lower the open jaws to the object's middle height, put the "
+                     "object on the cross, then close: it will be grasped. From higher up the object "
+                     "appears shifted (perspective), so align finally at grasp height.")
     if not ov:
         lines.append("- No overlays: the images are the raw camera view.")
     if "diff" in o.renderers:

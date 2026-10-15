@@ -1,0 +1,9 @@
+# so101_ball_opus + the rig laptop's built-in camera as a fixed `front` view (looking back at the
+# arm): x / z of the jaws relative to the ball, which the wrist camera cannot judge. Server:
+# scripts/so101_server.sh with SO101_CAMERA2 (libcamera v4l2-compat; docs/SO101.md).
+extends: so101_ball_opus.yaml
+name: so101_ball_front
+prompt:
+  system: system_v4
+observation:
+  cameras: [wrist, front]

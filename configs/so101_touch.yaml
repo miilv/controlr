@@ -1,0 +1,7 @@
+# First real task: touch a visible object with the closed jaws (no grasp). Put a roll of tape
+# (or any object ~5 cm tall) 20-30 cm in front of the base.
+extends: so101.yaml
+name: so101_touch
+task:
+  name: touch
+  instruction: "Close the gripper, then move it until the jaw tips lightly touch the top of the roll of tape. Do not push. Report DONE when touching."

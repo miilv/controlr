@@ -38,7 +38,7 @@ from controlr.protocol.feedback import rotvec_to_matrix
 from controlr.protocol.grammar import fmt_num, pos_decimals, pos_factor
 from controlr.types import CameraInfo, Observation, RobotSpec
 
-OVERLAYS = ("grid", "axes", "ee_marker")
+OVERLAYS = ("grid", "axes", "ee_marker", "aim")
 DERIVED = ("diff", "heatmap", "fovea")
 KNOWN = ("raw",) + OVERLAYS + DERIVED + ("tile",)
 
@@ -352,6 +352,7 @@ class ObservationRenderer:
                      f"on the plane z={self._len_text(self.grid_z)}"),
             "axes": "base +x/+y/+z arrows (red/green/blue) at the TCP",
             "ee_marker": "TCP (magenta) + finger tips (yellow) + drop line to the table",
+            "aim": "grasp point (magenta circle + cross)",
         }
         parts = []
         for label, rgb in arrays:
@@ -404,6 +405,21 @@ class ObservationRenderer:
         for r in ov:
             getattr(self, f"_draw_{r}")(draw, info, obs, w, h, font)
         return np.asarray(Image.alpha_composite(img, layer).convert("RGB"))
+
+    def _draw_aim(self, draw, info, obs, w, h, font) -> None:
+        """A fixed image point (``observation.aim_uv``, fractions of width / height): for a camera
+        riding on the gripper, where a held object sits in the image — the grasp point. Needs no
+        calibration: the jaws do not move relative to the camera."""
+        if not self.cfg.aim_uv:
+            return
+        u, v = float(self.cfg.aim_uv[0]) * w, float(self.cfg.aim_uv[1]) * h
+        r = max(6, int(0.03 * max(w, h)))
+        col = (255, 0, 255, 230)
+        draw.ellipse([u - r, v - r, u + r, v + r], outline=col, width=2)
+        draw.line([(u - 2 * r, v), (u - r // 2, v)], fill=col, width=2)
+        draw.line([(u + r // 2, v), (u + 2 * r, v)], fill=col, width=2)
+        draw.line([(u, v - 2 * r), (u, v - r // 2)], fill=col, width=2)
+        draw.line([(u, v + r // 2), (u, v + 2 * r)], fill=col, width=2)
 
     def _draw_grid(self, draw, info, obs, w, h, font) -> None:
         step = self.cfg.grid_step

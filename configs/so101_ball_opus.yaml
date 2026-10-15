@@ -1,0 +1,30 @@
+# Ball pick with Opus 5.5: gradient-descent approach (70 % of the estimated offset per turn), a plan
+# first, learning from the episode's own history (no lessons file), and the
+# reasoning written AFTER the action on the STATUS line: llm.overlap_tail executes the moves at the
+# STATUS word, the rest of the line streams while the arm moves (usage_grace_s keeps reading it) and
+# `controlr run` prints it. Previous: so101_ball_down (Sonnet, 27 turns, under-reaching every time).
+extends: so101_ball_down.yaml
+name: so101_ball_opus
+llm:
+  model: claude/claude-opus-5-5          # the -low/-high routes are listed but rejected (400)
+  extra_body: {}
+  max_tokens: 4000
+  usage_grace_s: 20.0                  # let the reasoning after STATUS finish streaming (during the move)
+planner:
+  enabled: true
+  model: claude/claude-opus-5-5
+  timeout_s: 300
+prompt:
+  extra_rules:
+    - "Approach like gradient descent: each turn estimate the remaining offset from the jaws to the grasp position (x, y, z in mm) and move about 70 % of it in ONE move line (all axes together; at most 80 mm). Steps shrink as the error shrinks; when the estimate is under 10 mm, move the full amount. Never creep with fixed small steps."
+    - "Learn from this episode's history: your earlier replies say where you thought the target was and what you expected. Compare that with what the new image shows; if your moves keep ending short (or past) the target in some direction, scale your next estimate in that direction accordingly."
+    - "Write the action lines FIRST, then the STATUS line. Put your reasoning on the STATUS line after the status word, 1-3 sentences: the remaining offset you estimate (mm), what you expect after this move, and how the last move compared with your expectation. It is streamed while the arm moves; the 12-word note limit does not apply to it."
+observation:
+  renderers: [aim]
+  aim_uv: [0.61, 0.72]               # where the held ball sat in the image (hand-fed grasp, run 20261014T220447Z)
+action:
+  max_chunk: 2                        # one move (+ an optional GRIP) per turn
+safety:
+  max_step_m: 0.08
+episode:
+  max_turns: 20

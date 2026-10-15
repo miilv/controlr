@@ -93,6 +93,8 @@ def _progress(rec: dict) -> None:
     print(f"  turn {rec['turn']:>3} {rec.get('status') or '-':>5}  llm {end if end is None else round(end, 2)} s"
           f"  read {u.get('cache_read_tokens', '-')}/{u.get('prompt_tokens', '-')}"
           f"  {' | '.join(a['raw'] for a in rec.get('actions') or [])[:80]}", flush=True)
+    if rec.get("note") and len(rec["note"]) > 60:     # a reasoning note (written after the action)
+        print(f"        > {rec['note']}", flush=True)
 
 
 # Built-in dry-run script: a few small moves in the default text grammar, then DONE.
