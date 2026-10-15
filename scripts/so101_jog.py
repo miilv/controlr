@@ -42,10 +42,15 @@ def main(argv: list[str]) -> None:
     ap.add_argument("--tcp-speed", type=float, default=0.03)
     ap.add_argument("--no-gripper", action="store_true")
     ap.add_argument("--workspace", default=None, help="lo_x,lo_y,lo_z,hi_x,hi_y,hi_z in m (narrower than the spec)")
+    ap.add_argument("--config", default=None, help="take robot.params (joint offsets, tool pitch, home, workspace) "
+                                                   "from this controlr config")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     params = {"port": a.port, "reset_duration_s": 5.0}
+    if a.config:
+        from controlr.config import load_config
+        params = {**dict(load_config(a.config).robot.params or {}), **params}
     if a.workspace:
         w = [float(v) for v in a.workspace.split(",")]
         params.update(workspace_lo=w[:3], workspace_hi=w[3:])

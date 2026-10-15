@@ -1,0 +1,31 @@
+# Pick the rope ball and place it at a marked spot, the way the operator's demos do it
+# (gym_objects_demo_2, ball_demo_4): from above with the tool tilted ~20 deg off vertical, the ball
+# between the jaws with its lower edge at the jaw tips when the jaws close, open ~35 %, then back to
+# the start pose, then down at the place spot and open. Opus with the gradient-descent rules of
+# so101_ball_opus; the joint offsets (so101.yaml) make the STATE/VIEW geometry real.
+extends: so101_ball_opus.yaml
+name: so101_pick_place
+task:
+  name: pick_place_ball
+  instruction: >-
+    Pick up the beige rope ball lying on the table and put it down at the place spot
+    x = 200 mm, y = +100 mm (STATE coordinates), then go back up. Sequence: from the start pose
+    move above the ball; descend with the jaws open until the ball sits between the two green jaws
+    with its lower edge at the jaw tips (the magenta mark shows where the ball's centre should be in
+    the image at that moment) and the TCP is about 15-25 mm above the table; GRIP close; check the
+    gripper is blocked (the ball is held), lift to z = 80 mm; move to x = 200, y = +100 at z = 80;
+    lower to z = 25 mm; GRIP open; lift to z = 80 mm. Report DONE after the ball rests at the place
+    spot and the jaws are up and open. If a close misses (gripper not blocked), open, lift 30 mm and
+    try again.
+robot:
+  params:
+    tool_pitch_deg: 70                  # ~20 deg off vertical, as in the demos; reaches the whole box
+    home_tcp: [0.20, 0.0, 0.10]
+    gripper_open_pct: 35                # the demos opened 35 % for the ball
+    workspace_lo: [0.14, -0.15, 0.005]
+    workspace_hi: [0.27, 0.15, 0.13]    # laptop front edge x ~300 mm (2026-10-15 touches)
+observation:
+  renderers: [aim]
+  aim_uv: [0.30, 0.58]                  # ball centre at the close in the repaired camera (demo frames); jog check pending
+episode:
+  max_turns: 30

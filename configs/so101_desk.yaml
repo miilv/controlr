@@ -1,11 +1,12 @@
-# The SO-101 rig as it stands (2026-10-14): the rig laptop lies in front of the arm (front edge
-# ~x 230 mm, deck top ~18 mm, screen out of reach). Workspace shrunk so the jaws stay >= 20 mm
-# above the deck and short of the keyboard's far end; the task comes from --set task.instruction.
+# The SO-101 rig as it stands (2026-10-15, joint offsets applied in so101.yaml): the rig laptop's
+# front edge is at x ~300 mm in front of the base (touch probe hit it at x 299, z +13; the table is
+# free to x ~300 at y 0 and to ~340 at y +60). Workspace stops 30 mm short of the edge.
+# The task comes from --set task.instruction.
 extends: so101.yaml
 name: so101_desk
 robot:
   params:
-    workspace_lo: [0.14, -0.16, 0.04]
-    workspace_hi: [0.30, 0.16, 0.15]
+    workspace_lo: [0.14, -0.15, 0.04]
+    workspace_hi: [0.27, 0.15, 0.13]
 episode:
   max_turns: 15
