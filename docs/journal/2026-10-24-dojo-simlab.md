@@ -78,3 +78,117 @@ Numbers (compute2, RTX 4090, stack_blocks): Kit boot 20-60 s (35 s typical); loa
   a Kit boot of ours hit `ERROR_OUT_OF_DEVICE_MEMORY` while another Isaac grew, and hung on a GUI dialog
   (killed; that is why `rdpy.sh` now waits for free VRAM). Not caused by our runs as far as visible.
   Continued on compute3: minimal RoboDojo install (deliverable 6) brought forward, so G2a can run there.
+- **compute2 still down** at 20:10 UTC (off the tailnet). By the lead's decision, work moved to compute3
+  (RTX 5090) and D0 / genuine-5.1 frames go back to compute2 when it returns.
+- **Team rule since 19:20: one GPU-heavy job per machine.** `scripts/simlab/rdpy.sh` and `isaac6.sh` hold
+  `flock ~/dojo-gpu.lock` (compute2 `/root/dojo-gpu.lock`) for the life of the process and write
+  pid / stream / start / cmd into it.
+
+## 2. Dev-layout generator (`dojo/simlab/gen_layouts.py`) and asset coverage
+
+- RoboDojo's sampler is not public, so the generator drives RoboDojo's own placement engine
+  (`ClutteredGenerator.add_model_from_config`) with the public task configs:
+  - per-group `select_mode` (`unique` / `same` / `allow_duplicate` / `hierarchical` with groups);
+  - `xlim/ylim` (single or multi-range), `zlim` + `qpos` for fixed-height objects, `rotate_deg`, `place_tag`, `margin`;
+  - `ProhibitedArea`;
+  - the scene's `camera_stand`;
+  - `Clutter` blocks: `category_unique` from `Clutter/clutter.yml`, excluding the task's own categories;
+    tall objects are kept out of the front strip by the engine's `cluttered` rule.
+- Support planes are as in `LayoutManager.cluttered_generator_init`: table top z = 0.765, container
+  x in [-0.65, 0.65], y in [-0.55, 0.45]; ground at z = 0.05.
+- Seeds: layout id = seed, ours start at 100000 (D0 100000+, G2 110000+, twin bench 100500+); records are
+  deterministic in the seed.
+- Clutter: tight strips get fewer than `nums` (push_T_random: 15-17 of 20). That is kept as is: the one
+  eval key tree had ~13 clutter categories, so RoboDojo's own records are not full either.
+- **Load + settle check:** every generated record so far loaded through RoboDojo's reset and passed its
+  stability check (stack_blocks, push_T: 2 + 20 + 3 G2 seeds, 0 rejected). Task-object drift during settle:
+  0.04 mm / 0.14 deg (blocks); the same value on the 4090 (rendered) and on the 5090 (physics-only).
+  The other 4 D0 tasks are being checked by the D0 run (`index.json` records rejected ids).
+- **Assets** (`check_assets.py --git-tree`, against the published HF tree, so independent of what a sparse
+  install pulled):
+  - every `_random` held-out instance exists: block 20-28, bowl 11-15, T 1, car 1-5, toothbrush 4-6,
+    hammer 6-8, shoe 8-17, mug 10-14 / 17-19, cup_holder 1, toaster 2/4, headset 8-10, laptop 1-3,
+    matryoshka 15-24, number 30-49, Top_Long 6/7/11, wuliangye 1-3, sweep_blocks_random's brick / earbuds /
+    paper_ball 0-2;
+  - all 193 Clutter instances (in 101 categories) exist, with metadata usable by the placement engine;
+  - 656 of 660 pooled task-object instances are complete. **Missing: `Rigid/broom_shovel` 1 and 4**
+    (sweep_blocks / sweep_blocks_random pool [0, 1, 4]; only 00000 is published). An eval layout using them
+    cannot be rebuilt from public assets.
+- Not verifiable from code: object `scale` (assumed 1.0) and clutter mass when metadata has none (RoboDojo
+  default 0.5 kg). A wrong scale would show as a size mismatch against official videos.
+
+## Isaac Sim 5.1 on compute3 (RTX 5090, driver 595.91.07): RTX segfaults, physics-only works
+
+- Minimal install `~/dojo-robodojo` (`scripts/simlab/install_min.sh`): RoboDojo f57e163, conda env 22 GB,
+  sparse assets 5.9 GB (6 D0 tasks + all Clutter), ~29.5 GB total. No pip cache.
+- **Every Isaac Sim 5.1 boot segfaults** in `librtx.scenedb.plugin` (`carbOnPluginStartup`), right after "app ready".
+  This holds for 12 of 12 variants:
+  - bare SimulationApp, IsaacLab headless (no-rendering) kit;
+  - RaytracedLighting / PathTracing;
+  - DLSS / AA off, all RTX features off, multi-GPU off, shader cache off;
+  - empty `/renderer/enabled`;
+  - isolated HOME caches.
+
+  Flags do apply (`fsWatcherEnabled=0` removed the inotify ENOSPC errors, so inotify is not the cause).
+  Isaac Sim 6.0 runs on the same driver; pypi.nvidia.com has no 5.1.x patch. Likely Kit 107.3 RTX vs driver
+  595 / Blackwell. A driver change is not ours to make.
+- **Physics-only mode** (`RoboDojoRunner(physics_only=True)`):
+  - a derived Kit experience (IsaacLab headless kit, `renderer.enabled=""`, no MDL / metrics-UI deps);
+  - `args.enable_cameras=False`: RoboDojo's IsaacLab fork defaults it to True, and its `ENABLE_CAMERAS`
+    env check never fires (int compared with `is False`);
+  - stub modules for RoboDojo's camera manager, tiled capture and render sync, and a USD-only
+    `create_mdl_material`.
+
+  All RoboDojo cameras are collision-free pinhole Xforms, so the physics scene is unchanged. On the 5090:
+  boot 15 s, load + settle 2.8-6.6 s (vs 7-17 s rendered on the 4090).
+
+## 4. G2a: same-GPU determinism and sensitivity (compute3, physics-only)
+
+`dojo/simlab/g2.py`, `scripts/simlab/g2_all.sh`. Data: `compute3:~/dojo-data/simlab/g2_c3b/`. Scripted with
+cuRobo on our layouts: `pick_place` (stack_blocks seed 110000: grasp block_1, lift 10 cm, put down 8 cm away,
+home; 130 env steps, place error 0.96 mm), `stack` (stack_blocks seed 110007: block_1 then block_2 on block_0,
+home; 264 steps, **task success, score 1.0**), `push` (push_T seed 110000: closed jaws, push the T 60 mm
+towards its pad; 116 steps, T moved 81 mm). The action list is recorded and replayed open-loop.
+
+- **Determinism: bitwise.** Live (planned) run = replay 1 = replay 2 (same process) = replay in a fresh process,
+  in all 3 scenarios: every task-object pose at every env step is identical (max divergence 0.000 mm /
+  0.000 deg); reward and score agree. (stack: identical over all 264 common steps; the live run logs one
+  extra frame after the episode ended.)
+- A first run showed 0.002-0.38 mm live-vs-replay gaps starting at first contact (steps 43-54): the trajectory
+  JSON rounded actions to 9 decimals (1 float32 ulp), and contact amplified it. Now bit-exact (test added).
+- **Sensitivity** (same actions, manipulated object's initial pose perturbed; final pose change of that object
+  vs nominal; n = 1 layout per scenario, so these are probes, not rates):
+
+| scenario | dx 0.5 / 1 / 2 / 5 mm | dy 0.5 / 1 / 2 / 5 mm | yaw 0.5 / 2 deg | success flips |
+|---|---|---|---|---|
+| pick_place | 0.16 / 0.15 / 0.12 / 0.13 mm | 0.48 / 0.85 / 1.65 / 4.38 mm (0.3-0.8 deg) | 0.07 mm, 0.37 deg / 0.22 mm | 0 / 10 |
+| stack | 0.22 / 0.04 / 0.11 / 0.14 mm (any object ≤ 0.71) | 0.95 / 0.71 / 1.68 / 4.54 mm (1.3-1.7 deg) | ≤ 0.46 mm | 0 / 10 (success at every level) |
+| push | 0.28 / **19.2 / 10.0 / 15.4** mm | 0.46 / 0.99 / 2.01 / 5.61 mm | 0.75 mm / 2.73 mm, 2.15 deg | 0 / 10 (nominal not a success) |
+
+- Readout:
+  - x is pick_place's jaw-closing axis, so the grasp re-centres the block; y errors pass through ~1:1.
+  - Pushing is chaotic along the push direction (1 mm -> 10-19 mm, non-monotonic), so open-loop pushes from
+    an estimated pose will not reproduce; they need resync.
+  - On the same GPU the twin is an exact predictor, and the gap to eval is the state estimate.
+- G2b (cross-GPU) is open: replay the same files on compute2 (4090, rendered) when it returns.
+
+## 3. D0, compute3 proxy (`make_d0.py --physics-only` + `render_d0_proxy.py`, `scripts/simlab/d0_proxy.sh`)
+
+Isaac 5.1 cannot render on compute3, so per layout:
+1. the physics-only 5.1 twin does RoboDojo's reset + settle and the 3 scripted moves, and dumps GT, every
+   robot link pose, RoboDojo's camera definitions and RoboDojo's own USD stage;
+2. Isaac Sim 6.0 (`scripts/simlab/isaac6.sh`, controlr's install) opens that stage, puts objects and links at
+   the recorded poses and builds the cameras as RoboDojo's CameraManager does;
+3. it renders 640x480 with IsaacLab's quality settings + DLAA, as RoboDojo configures them.
+
+Every frame says `meta.renderer = "isaac-6.0 (proxy for 5.1)"`. Format: `compute3:~/dojo-data/d0/README.md`.
+Pitfalls found on the way:
+- RoboDojo's camera Euler convention is its own `utils.rotations.euler_angles_to_quat`: intrinsic XYZ
+  (R = Rx Ry Rz), not isaacsim's extrinsic one. Only the wrist cameras (0, -80, -90) differ.
+- Link poses are float32 quaternions: normalise before handing them to USD, or `Gf.Transform` yields NaN links.
+- Head camera: RoboDojo's template has a non-square vertical aperture (fy would be 336.5), but RTX renders
+  square pixels. GT block centres projected with fx = fy = 288.13 land on the blocks within ~2 px.
+
+Speed: states ~6 s / layout, rendering ~2 s / layout (4 frames x 3 cams). Visually the proxy matches the
+genuine 5.1 frames of the same layout taken on compute2 (head view, wrist views, arm occlusion).
+First slice (stack_blocks + push_T x 10) at 20:04 UTC; READY touched; full 6 x 25 running.
