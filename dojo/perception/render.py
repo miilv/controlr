@@ -22,6 +22,7 @@ from .cameras import Camera
 GL_MAX_FACES = int(os.environ.get("DOJO_GL_MAX_FACES", "100000000"))  # decimation measurably hurt identity
 TEX_MAX_PX = int(os.environ.get("DOJO_TEX_MAX_PX", "512"))
 TEX_CACHE = 6
+GL_NODE_CACHE = 64  # LRU over object meshes; a smaller cache thrashes on pack (22 candidates): 70-100 s/frame
 
 CATALOG_DIRS = (
     os.environ.get("DOJO_CATALOG", ""),
@@ -61,8 +62,7 @@ class Asset:
         self.dir = root / key
         g = np.load(self.dir / "geom.npz")
         self.V = g["vertices"].astype(float)
-        self.F = g["faces"].astype(np.int64)
-        self.face_colors = g["colors"] if "colors" in g else None
+        self.F = g["faces"].astype(np.int32)
         self.info = json.loads((self.dir / "info.json").read_text())
         ext = float(np.max(self.info["extents"]))
         cell = cell if cell is not None else float(np.clip(ext / 60.0, 0.0005, 0.004))
@@ -84,7 +84,7 @@ class Asset:
         return np.asarray(self.info["extents"], dtype=float)
 
 
-@lru_cache(maxsize=512)
+@lru_cache(maxsize=48)
 def load_asset(key: str) -> Asset:
     return Asset(key)
 
@@ -285,8 +285,14 @@ class GLSilhouettes:
         self.nodes: dict[str, object] = {}
 
     def _node(self, key: str, V: np.ndarray, F: np.ndarray):
-        n = self.nodes.get(key)
+        n = self.nodes.pop(key, None)
         if n is None:
+            # LRU over object meshes (robot links stay): a long eval otherwise keeps every mesh it has
+            # ever seen resident in each GL context
+            objs = [k for k in self.nodes if not k.startswith("robot:")]
+            while len(objs) >= GL_NODE_CACHE:
+                old = objs.pop(0)
+                self.scene.remove_node(self.nodes.pop(old))
             import trimesh
 
             # smooth=True keeps vertices shared (flat shading would unweld every face: ~3x the memory);
@@ -294,7 +300,7 @@ class GLSilhouettes:
             m = self.pr.Mesh.from_trimesh(trimesh.Trimesh(V, F, process=False), smooth=True)
             m.is_visible = False
             n = self.scene.add(m, pose=np.eye(4))
-            self.nodes[key] = n
+        self.nodes[key] = n  # (re)insert as most recent
         return n
 
     def render(self, cam: Camera, items: list[tuple[str, np.ndarray, np.ndarray, np.ndarray]], depth: bool = False):

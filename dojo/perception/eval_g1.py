@@ -268,7 +268,10 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
     gt = d0.load_gt(ep, k)  # DEV-ONLY, after the estimate
     task = obs["task"]
     rows, n_gt, n_pred = score_record(rec, gt, task, {"episode": ep.name, "frame": k, "wrists": use_wrists, "fuse": fuse})
-    return {"frame": {"task": task, "episode": ep.name, "frame": k, "runtime_s": runtime, "error": err,
+    import resource
+
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    return {"frame": {"task": task, "episode": ep.name, "frame": k, "runtime_s": runtime, "error": err, "peak_rss_mb": round(peak),
                       "timings": rec.get("_perception", {}).get("timings"), "missing": rec.get("_missing", []),
                       "n_gt": n_gt, "n_pred": n_pred, "wrists": use_wrists, "fuse": fuse},
             "objects": rows}
