@@ -244,3 +244,57 @@ one 20 GB / 12-core scope; machine otherwise quiet, load < 20):
   in 5.8 s batched. A fresh layout from perception loads in 3.1 s (n=1).
 - Rendering is not measured on compute3 (no 5.1 RTX); on compute2 (4090) a full RoboDojo reset with
   rendering was 7-17 s per layout, and render cost per camera is still to be measured there.
+
+## Skills request: swap_blocks + press_by_number
+
+- Assets added to the compute3 sparse install: SpringButton 00002/00003, cube 00003, cube_cushion 00001,
+  number_card 00001-00009 (install 29 GB).
+- Generator: objects can rest on other objects (`relative_plane: [mat0, mat1, mat2]`). Each cube goes on a
+  distinct mat's `passive.support` point (child rest frame from `active.place`, ±30° yaw). The record keeps
+  the chosen mat label, because swap_blocks' reward reads it back to find the empty mat. The full metadata
+  `physics` dict is now kept (SpringButton `reset_drive`).
+- 25 + 25 layouts (`~/dojo-data/simlab/layouts/{swap_blocks,press_by_number}/1000xx.json`) all pass
+  RoboDojo's stability check.
+  - press_by_number: zero settle drift.
+  - swap_blocks: the cubes move ≤ 5.75 mm / ≤ 14° (median 3-5°) during settle, because the mats are Geometry
+    objects, which RoboDojo spawns without collision; a cube on a mat's support point drops ~5 mm to the table.
+    Plan from settled poses.
+
+## Batched verification API (`Twin.verify`, `Twin.load_from_estimate`)
+
+- Segment format agreed with the skills stream: `{"actions": [one RoboDojo joint action dict per env step,
+  both arms + grippers], "meta": ...}` (= `dojo.skills.executor.Executor.trajectory_json()["actions"]`).
+- `verify(world, candidates, perturb={"pos_mm", "yaw_deg", "labels"}, k, record_traj)`:
+  - `world` = {"layout", "robot"} or {"snapshot"};
+  - candidates x k samples run in batches of `num_envs` (sample 0 nominal);
+  - each outcome carries success / score / reward latches (the task's own checker), final object poses,
+    moved_mm, lifted, dropped (left the closed jaws of the arm that lifted it), fell, gripper_blocked,
+    held per arm (object moving rigidly with that TCP), final_robot, the echoed candidate keys, and the
+    per-step trajectory on request.
+- `load_from_estimate(layout, robot)`: if the object set is unchanged, it restores the post-reset snapshot,
+  writes the estimated poses, places the robot, settles 50 x 4 ms and re-arms RoboDojo's reward state.
+  **0.13 s vs 5-8 s** for a full RoboDojo reset; agrees with the full path to < 0.001 mm. A 1 cm-shifted
+  estimate settles 9.85 mm over.
+- Live check (`dojo/simlab/verify_check.py`, compute3, n=8):
+  - the recorded stack: success in the nominal and in the 2 mm / 1° perturbed sample, no drops;
+  - the same with open grippers: nothing lifted;
+  - the pick-only prefix: `held = {right: block_1}`;
+  - 6 rollouts of 264/264/98 steps in 23 s;
+  - the nominal is within 0.4-0.6 mm of the exact G2 replay over 264 contact steps (the fast-loaded and
+    restored start state differs by sub-µm, and contact amplifies it).
+- Fixed on the way: in batches, RoboDojo's `take_action_batch` must get only the still-running envs (a
+  succeeded env made its control queue assert).
+- Not supported yet: an estimate with an object already inside closed jaws. Chain from a snapshot instead.
+
+## Dev-eval harness (prepared, not run: needs a 5.1-capable RTX)
+
+`scripts/simlab/dev_eval.sh --task T --policy P [--eval-num N]` runs RoboDojo's own eval client
+(`src/eval_client/main.py`, unchanged: XPolicyLab ws policy server, step limits, success latch,
+`_result.json`, mp4s) with one substitution: `dojo/simlab/dev_eval.py` patches `SeedManager` to read
+`$SIMLAB_DEV_LAYOUTS/<task>/<id>.json` (our records; `_simlab` stripped; refuses Eval_Layout paths).
+A dev-eval score is therefore computed exactly as a leaderboard score, on layouts we own.
+- RoboDojo's result `layout_id` i = the i-th smallest dev id.
+- The policy must exist as `XPolicyLab/policy/<P>/` in the RoboDojo tree.
+- The script holds the GPU lock and writes results under `$OUT/<stamp>_<task>_<policy>/`.
+- The SeedManager patch is verified on compute3 (25 swap_blocks layouts listed and loaded without the meta key).
+- Ready to start the moment compute2 is back or a rented 5.1-capable GPU exists.
