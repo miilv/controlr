@@ -355,7 +355,10 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
         except (BudgetExceeded, EpisodeEnded) as e:
             return {"ok": False, "stage": "pick", "note": str(e)}
         for a, pp in plans.items():
-            if not sk._record(sk.verify_pick(pp, befores[a])).ok:
+            r = sk._record(sk.verify_pick(pp, befores[a]))
+            if r.ok and r.status == "loose":
+                sk._record(sk.regrasp(a))          # put it back down; the next round re-picks it
+            elif not r.ok:
                 sk.ex.run({a: sk.plan_home(a, gripper=OPEN)}, name="reset")
         sk.refresh()
         phase, place_r = [], None
