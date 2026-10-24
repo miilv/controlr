@@ -43,12 +43,36 @@ def build_background(frames: list[np.ndarray]) -> np.ndarray:
     return np.median(st, axis=0).astype(np.uint8)
 
 
+def masked_median(frames: list[np.ndarray], masks: list[np.ndarray], fallback: np.ndarray,
+                  min_count: int = 3) -> tuple[np.ndarray, np.ndarray]:
+    """Per-pixel median over frames where the pixel is not masked (e.g. covered by the robot). Returns the
+    image and a uint8 mask of pixels seen unmasked in fewer than ``min_count`` frames (they keep
+    ``fallback`` and should be treated as unknown). Chunked over rows to bound memory."""
+    st = np.stack(frames)
+    ms = np.stack(masks).astype(bool)
+    out = fallback.copy()
+    unseen = ((~ms).sum(0) < min_count).astype(np.uint8)
+    for r0 in range(0, st.shape[1], 60):
+        a = st[:, r0:r0 + 60].astype(np.float32)
+        a[np.repeat(ms[:, r0:r0 + 60, :, None], 3, axis=3)] = np.nan
+        with np.errstate(all="ignore"):
+            import warnings
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                med = np.nanmedian(a, axis=0)
+        ok = np.isfinite(med).all(axis=-1)
+        blk = out[r0:r0 + 60]
+        blk[ok] = np.clip(med[ok], 0, 255).astype(np.uint8)
+    return out, unseen
+
+
 def load_backgrounds(root: Path | None = None) -> dict[str, np.ndarray]:
     root = root or bg_root()
     if root is None:
         return {}
     out = {}
-    for c in CAMS:
+    for c in CAMS + ("cam_head_clean",):
         p = root / f"{c}.png"
         if p.exists():
             out[c] = cv2.cvtColor(cv2.imread(str(p)), cv2.COLOR_BGR2RGB)
@@ -113,7 +137,7 @@ def is_home(state: dict, tol: float = 0.02) -> dict[str, bool]:
 
 def segment_views(images: dict[str, np.ndarray], cams: dict[str, Camera], state: dict,
                   bgs: dict[str, np.ndarray], thr: float = 18.0, robot_dilate: int = 3,
-                  home_state: dict | None = None, shadow: bool = True) -> dict[str, ViewMasks]:
+                  home_state: dict | None = None, shadow: bool = True, warp_thr_mult: float = 1.6) -> dict[str, ViewMasks]:
     """Foreground/known masks for every camera."""
     home = is_home(state)
     home_state = home_state or {"left_arm_joint_state": HOME, "right_arm_joint_state": HOME,
@@ -126,15 +150,24 @@ def segment_views(images: dict[str, np.ndarray], cams: dict[str, Camera], state:
         known = np.ones((cam.h, cam.w), np.uint8)
         arm = "left" if "left" in name else ("right" if "right" in name else None)
         bg = None
+        warped = False
         if name == "cam_head" and name in bgs:
             bg = bgs[name]
-            if not all(home.values()):  # the home-pose robot is baked into the head background
-                known &= 1 - robot_mask(cam, home_state, dilate_px=robot_dilate)
+            if not all(home.values()):
+                if "cam_head_clean" in bgs:  # robot-free head background (masked median over moved frames)
+                    bg = bgs["cam_head_clean"]
+                    if "cam_head_clean_unseen" in bgs:  # always under the robot in the source frames
+                        known &= 1 - bgs["cam_head_clean_unseen"]
+                else:  # the home-pose robot is baked into the head background
+                    known &= 1 - robot_mask(cam, home_state, dilate_px=robot_dilate)
         elif arm is not None and home[arm] and name in bgs:
             bg = bgs[name]
         elif "cam_head" in bgs:
-            bg, valid = table_homography_bg(bgs["cam_head"], head_cam, cam)
-            hb = robot_mask(head_cam, home_state, dilate_px=robot_dilate)
+            warped = True
+            clean = "cam_head_clean" in bgs
+            bg, valid = table_homography_bg(bgs["cam_head_clean" if clean else "cam_head"], head_cam, cam)
+            hb = (bgs.get("cam_head_clean_unseen", np.zeros((head_cam.h, head_cam.w), np.uint8)) if clean
+                  else robot_mask(head_cam, home_state, dilate_px=robot_dilate))
             # pixels whose table point is hidden by the home robot in the head background are unknown
             h, w = cam.h, cam.w
             vv, uu = np.mgrid[0:h, 0:w]
@@ -149,17 +182,50 @@ def segment_views(images: dict[str, np.ndarray], cams: dict[str, Camera], state:
             known[:] = 0
         else:
             dist = color_distance(img, bg)
-            fg = (dist > thr).astype(np.uint8)
+            if warped:  # a background resampled from the 3 mm/px head view: blurrier grain, looser threshold
+                dist = cv2.GaussianBlur(dist, (0, 0), 2.0)
+            fg = (dist > (thr * warp_thr_mult if warped else thr)).astype(np.uint8)
             if shadow:
                 sh = shadow_like(img, bg)
                 fg &= 1 - sh
                 known &= 1 - sh
-            fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+            k = 7 if warped else 3
+            fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((k, k), np.uint8))
             fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
         known &= 1 - rob
         fg &= known
         out[name] = ViewMasks(cam, img, fg, known, dist.astype(np.float32), rob)
     return out
+
+
+def segment_virtual(img: np.ndarray, cam: Camera, bgs: dict[str, np.ndarray], thr: float = 18.0,
+                    robot_dilate: int = 3, shadow: bool = True, state: dict | None = None) -> ViewMasks:
+    """A view from an arbitrary camera pose (e.g. a requested wrist look): background warped from the head
+    background through the table plane; the robot (if ``state`` is given) and off-table pixels unknown."""
+    head_cam = head_camera()
+    home_state = {"left_arm_joint_state": HOME, "right_arm_joint_state": HOME,
+                  "left_ee_joint_state": [1.0], "right_ee_joint_state": [1.0]}
+    bg, valid = table_homography_bg(bgs["cam_head"], head_cam, cam)
+    hb = robot_mask(head_cam, home_state, dilate_px=robot_dilate)
+    h, w = cam.h, cam.w
+    vv, uu = np.mgrid[0:h, 0:w]
+    X = cam.ray_plane(np.c_[uu.ravel() + 0.5, vv.ravel() + 0.5], TABLE_Z)
+    huv, _ = head_cam.project(np.nan_to_num(X))
+    hu = np.clip(huv[:, 0].astype(int), 0, head_cam.w - 1)
+    hv = np.clip(huv[:, 1].astype(int), 0, head_cam.h - 1)
+    known = valid & (1 - hb[hv, hu].reshape(h, w))
+    rob = robot_mask(cam, state, dilate_px=robot_dilate) if state is not None else np.zeros((h, w), np.uint8)
+    dist = color_distance(img, bg)
+    fg = (dist > thr).astype(np.uint8)
+    if shadow:
+        sh = shadow_like(img, bg)
+        fg &= 1 - sh
+        known &= 1 - sh
+    fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    known = (known & (1 - rob)).astype(np.uint8)
+    fg &= known
+    return ViewMasks(cam, img, fg, known, dist.astype(np.float32), rob)
 
 
 def main(argv=None):

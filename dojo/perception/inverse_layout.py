@@ -40,7 +40,7 @@ from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
 from .render import Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex
-from .segment import ViewMasks, load_backgrounds, segment_views
+from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 
 MIN_BLOB_PX = {"cam_head": 25, "cam_left_wrist": 150, "cam_right_wrist": 150}
 
@@ -715,7 +715,7 @@ def _conflicts(h: Hypothesis, others) -> bool:
                for c in others)
 
 
-def _scene_select(cands, need, views, existing=(), min_gain: float = 0.0):
+def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
     """Explain-away selection: repeatedly add the hypothesis that most increases (new foreground covered -
     new background covered - penalty x own area), summed over views and normalised by each view's
     foreground, until every group has its objects or nothing gains. Returns (chosen, total score)."""
@@ -724,7 +724,6 @@ def _scene_select(cands, need, views, existing=(), min_gain: float = 0.0):
     for c in existing:
         for name, (roi, m) in _hyp_masks(c, views).items():
             U[name][roi] |= m
-    nF = {name: max(int((v.fg & v.known).sum()), 200) for name, v in views.items()}
     masks = {id(h): _hyp_masks(h, views) for h in cands}
     chosen, total = [], 0.0
     while any(n > 0 for n in need.values()):
@@ -732,19 +731,30 @@ def _scene_select(cands, need, views, existing=(), min_gain: float = 0.0):
         for h in cands:
             if need.get(h.label_group, 0) <= 0 or h in chosen or _conflicts(h, list(existing) + chosen):
                 continue
-            lam = float(h.per_view.get("penalty", 0.0))
-            sc = 0.0
+            fracs = []
             for name, (roi, m) in masks[id(h)].items():
                 v = views[name]
                 k = v.known[roi]
                 f = v.fg[roi]
+                area = int((m & k).sum())
+                if area < 10:
+                    continue
                 new = m & (1 - U[name][roi]) & k
                 fg_new = int((new & f).sum())
                 bg_new = int(new.sum()) - fg_new
-                sc += (fg_new - bg_new - lam * int((m & k).sum())) / nF[name]
+                fracs.append((fg_new - bg_new) / area)
+            if not fracs:
+                continue
+            # net newly-explained fraction of the object's own visible silhouette (scale-free: a large, near
+            # projection does not win by pixel count), minus the hypothesis' fit cost (silhouette + colour +
+            # texture), which also penalises a small object fitted inside a larger object's blob
+            gain = float(np.mean(fracs))
+            if gain <= min_gain:  # explains too little new foreground: not a candidate now
+                continue
+            sc = gain - float(h.loss)
             if best is None or sc > best[0]:
                 best = (sc, h)
-        if best is None or best[0] <= min_gain:
+        if best is None:
             break
         sc, h = best
         chosen.append(h)
@@ -799,14 +809,84 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
             continue
         # the incumbent is re-scored under the same conditions (others removed from the foreground)
         best = h0 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
+        scored = [h0]
         for t in trials:
             t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters)
+            scored.append(t2)
             if t2.loss < best.loss - 0.01:
                 best = t2
         if best is not h0:
             best.per_view["polished"] = True
-            out[i] = best
+        alts = sorted((t for t in scored if t is not best), key=lambda t: t.loss)
+        if alts:
+            a = alts[0]
+            best.per_view["alternative"] = {"key": a.key, "tag": a.tag, "x": a.x, "y": a.y, "yaw": a.yaw,
+                                            "margin": round(float(a.loss - best.loss), 4)}
+        out[i] = best
     return out
+
+
+ARM_BASES = {"left": np.array([-0.3, -0.45, 0.765]), "right": np.array([0.3, -0.45, 0.765])}
+
+
+def look_at_camera(eye: np.ndarray, target: np.ndarray, K: np.ndarray, w: int = 640, h: int = 480) -> Camera:
+    """An OpenCV-axes camera at ``eye`` looking at ``target`` with image 'down' toward world -z."""
+    z = target - eye
+    z = z / np.linalg.norm(z)
+    x = np.cross(z, np.array([0, 0, 1.0]))
+    if np.linalg.norm(x) < 1e-6:
+        x = np.array([1.0, 0, 0])
+    x = x / np.linalg.norm(x)
+    y = np.cross(z, x)
+    T = np.eye(4)
+    T[:3, :3] = np.c_[x, y, z]
+    T[:3, 3] = eye
+    return Camera("virtual", K, T, w, h)
+
+
+def view_request(best: Hypothesis, alt: dict, dist: float = 0.16, elev_deg: float = 55.0, n_az: int = 12,
+                 reach: float = 0.55) -> dict | None:
+    """The reachable wrist viewpoint that best separates two hypotheses (flip / identity): the max over a
+    ring of viewpoints around the object of (1 - silhouette IoU) + mean |textured render difference|."""
+    from .cameras import WRIST, intrinsics
+
+    K = intrinsics(WRIST["focal_length"], WRIST["horizontal_aperture"])
+    sm_b, T_b = best.sm(), best.T()
+    try:
+        sm_a = next(s_ for s_ in shape_models(alt["key"]) if s_.tag == alt["tag"])
+    except StopIteration:
+        return None
+    T_a = sm_a.pose(alt["x"], alt["y"], alt["yaw"])
+    c = T_b[:3, 3] + np.array([0, 0, sm_b.height / 2 - (T_b[2, 3] - TABLE_Z)])
+    arm = "left" if c[0] < 0 else "right"
+    g, r = gl(), tex()
+    best_v = None
+    for az in np.linspace(0, 2 * np.pi, n_az, endpoint=False):
+        e = np.deg2rad(elev_deg)
+        eye = c + dist * np.array([np.cos(e) * np.cos(az), np.cos(e) * np.sin(az), np.sin(e)])
+        if np.linalg.norm(eye - (ARM_BASES[arm] + [0, 0, 0.1])) > reach:
+            continue
+        cam = look_at_camera(eye, c, K)
+        if g is None:
+            continue
+        m1 = g.render(cam, [(sm_b.key, sm_b.asset.V, sm_b.asset.F, T_b)])
+        m2 = g.render(cam, [(sm_a.key, sm_a.asset.V, sm_a.asset.F, T_a)])
+        u = (m1 | m2).sum()
+        if u == 0:
+            continue
+        d = 1 - (m1 & m2).sum() / u
+        if r is not None:
+            c1, _ = r.render(cam, sm_b.key, T_b)
+            c2, _ = r.render(cam, sm_a.key, T_a)
+            mm = (m1 & m2).astype(bool)
+            if mm.sum() > 50:
+                d += float(np.abs(c1[mm].astype(float) - c2[mm].astype(float)).mean() / 255.0)
+        if best_v is None or d > best_v[0]:
+            best_v = (d, cam)
+    if best_v is None:
+        return None
+    return {"arm": arm, "T_world_cam_cv": np.round(best_v[1].T_wc, 5).tolist(), "look_at": np.round(c, 4).tolist(),
+            "discriminability": round(float(best_v[0]), 3)}
 
 
 def _options(g: dict, geom_groups: dict) -> list[set] | None:
@@ -862,6 +942,8 @@ class EstimatorConfig:
     quick_iters: int = 30
     polish: bool = True
     polish_candidates: int = 4
+    ambiguity_margin: float = 0.05
+    view_requests: bool = True
 
 
 def _views_subset(views, cfg):
@@ -870,7 +952,8 @@ def _views_subset(views, cfg):
 
 def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction: str = "",
              bgs: dict | None = None, cfg: EstimatorConfig | None = None,
-             extra_frames: list[tuple[dict, dict]] | None = None) -> dict:
+             extra_frames: list[tuple[dict, dict]] | None = None,
+             extra_views: list[tuple[str, Camera, np.ndarray]] | None = None) -> dict:
     """``extra_frames``: [(images, state)] of later frames of the same episode with the objects assumed
     static (arms moved): their views join the render-and-compare loss as ``<cam>@<k>``. Proposals come
     from the first frame's head view."""
@@ -883,6 +966,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     for k, (imgs_k, state_k) in enumerate(extra_frames or [], start=1):
         vk = _views_subset(segment_views(imgs_k, cameras_from_state(state_k), state_k, bgs, thr=cfg.fg_thr), cfg)
         views.update({f"{name}@{k}": v for name, v in vk.items()})
+    for name, cam_v, img_v in extra_views or []:
+        views[name] = segment_virtual(img_v, cam_v, bgs, thr=cfg.fg_thr)
     t_seg = time.time() - t0
     head_blobs = blobs(views["cam_head"], "cam_head")
     groups = label_groups(task)
@@ -1018,6 +1103,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             h.per_view["label"] = lab
         for lab in g["labels"][len(members):]:
             record.setdefault("_missing", []).append(lab)
+            record.setdefault("_not_found", []).append({"label": lab, "candidates": g["candidates"][:20],
+                                                        "confidence": 0.0, "reason": "no foreground explained"})
     for g, h in placed:
         typ = g["type"]
         cat = h.key.split("/")[1]
@@ -1035,6 +1122,11 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             conf = float(np.clip(1 - h.per_view.get("sil_loss", h.loss), 0, 1))
             if h.per_view.get("occluded"):
                 conf = min(conf, 0.2)
+        alt = h.per_view.get("alternative")
+        ambiguous = bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
+        review = None
+        if ambiguous and alt is not None and cfg.view_requests and h.tag != "fixed":
+            review = view_request(h, alt)
         rec = {"category": cat, "category_idx": idx, "label": lab, "default_pos": pos, "default_ori": quat,
                "scale": [1.0, 1.0, 1.0],
                "_perception": {"place_tag": h.tag, "residual": round(float(h.per_view.get("sil_loss", h.loss)), 4),
@@ -1043,6 +1135,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "n_views": sum(1 for k in h.per_view if k.startswith("cam_")),
                                "appearance": round(h.appearance, 3), "yaw": round(float(h.yaw), 4),
                                "occluded": bool(h.per_view.get("occluded", False)),
+                               "ambiguous": ambiguous, "alternative": alt, "review": review,
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group")}}
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)

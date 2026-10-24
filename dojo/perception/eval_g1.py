@@ -28,8 +28,10 @@ TOLERANCE = {
     "push_T": (7, 7, "T within 7 mm / 7 deg of the pad"),
     "build_tower": (23, 5, "block3 on block7 within 23 mm; all upright <= 5 deg, aligned <= 20 deg"),
     "stack_bowls": (40, 7, "nested xy <= 40 mm; lowest bowl <= 7 deg"),
-    "put_bottles_into_dustbin": (None, None, "bottle on the dustbin bottom; graspability is the real need"),
-    "pack_objects_into_box_random": (None, 45, "point in box_bottom bbox; front axis <= 60 deg, long axis <= 45 deg"),
+    # no positional checker tolerance: 15 mm is an ASSUMED grasp tolerance (53-80 mm bottles in the X5's
+    # 88 mm stroke; thin pack items), stated as such in reports
+    "put_bottles_into_dustbin": (15, None, "checker: bottle on the dustbin bottom; 15 mm = assumed grasp tolerance"),
+    "pack_objects_into_box_random": (15, 45, "point in box_bottom bbox; long axis <= 45 deg; 15 mm = assumed grasp tolerance"),
 }
 
 
@@ -77,6 +79,18 @@ def yaw_err_deg(q_pred, q_gt, sym: int) -> float:
     return float(abs(np.degrees(a)))
 
 
+def footprint_axes(key: str, q_gt) -> np.ndarray:
+    """Unit major horizontal axis of the GT-posed object's footprint (PCA of its xy vertices). A top grasp
+    closes the jaw across the minor axis: error along the minor axis is absorbed by the jaw, error along
+    the major axis passes through (simlab G2a: about 1:1)."""
+    from .render import load_asset
+
+    V = load_asset(key).V @ quat_wxyz_to_R(q_gt).T
+    P = V[:, :2] - V[:, :2].mean(0)
+    w, U = np.linalg.eigh(P.T @ P)
+    return U[:, int(np.argmax(w))]
+
+
 def flatten_pred(rec: dict) -> list[dict]:
     out = []
     for typ in ("Rigid", "Geometry", "Articulation", "Dynamic"):
@@ -86,31 +100,11 @@ def flatten_pred(rec: dict) -> list[dict]:
     return out
 
 
-def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False) -> dict:
-    """Estimate frame k of an episode (with ``fuse``: frame 0 plus frames 1..k as extra views) and score it
-    against frame k's GT."""
-    from . import d0
-    from .inverse_layout import EstimatorConfig, estimate, label_groups
+def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict], int, int]:
+    """Per-object errors of a layout record against DEV-ONLY ground truth (Hungarian on xy within each
+    interchangeable label group)."""
+    from .inverse_layout import label_groups
 
-    ep = Path(ep)
-    obs = d0.load_obs(ep, k)
-    cfg = EstimatorConfig(use_wrists=use_wrists, **(cfg_kw or {}))
-    t0 = time.time()
-    try:
-        if fuse and k > 0:
-            o0 = d0.load_obs(ep, 0)
-            extra = [(d0.load_obs(ep, j)["images"], d0.load_obs(ep, j)["state"]) for j in range(1, k + 1)]
-            rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], cfg=cfg, extra_frames=extra)
-        else:
-            rec = estimate(obs["images"], obs["state"], obs["task"], obs["instruction"], cfg=cfg)
-        err = None
-    except Exception as e:  # keep the eval going; report
-        import traceback
-
-        rec, err = {}, f"{type(e).__name__}: {e} | {traceback.format_exc()[-600:]}"
-    runtime = time.time() - t0
-    gt = d0.load_gt(ep, k)  # DEV-ONLY, after the estimate
-    task = obs["task"]
     groups = label_groups(task)
     lab2group = {lab: gi for gi, g in enumerate(groups) for lab in g["labels"]}
     gts = [o for o in gt["objects"] if o.get("label") in lab2group and not o.get("clutter") and o.get("pos") is not None]
@@ -130,28 +124,113 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
                 sym = gt_world_symmetry(gkey, o["quat"])
             except Exception:
                 sym = 1
-            row = {"task": task, "episode": ep.name, "frame": k, "label": o["label"], "category": o["category"],
-                   "gt_idx": o["category_idx"], "gt_pos": o["pos"], "sym": sym, "wrists": use_wrists, "fuse": fuse}
+            row = {"task": task, **meta, "label": o["label"], "category": o["category"],
+                   "gt_idx": o["category_idx"], "gt_pos": o["pos"], "sym": sym}
             if oi in matched:
                 p = P[matched[oi]]
+                pp = p.get("_perception", {})
                 dp = np.asarray(p["default_pos"]) - np.asarray(o["pos"])
+                ax = footprint_axes(gkey, o["quat"])
                 row.update({
                     "found": True, "pred_idx": p["category_idx"], "id_ok": p["category_idx"] == o["category_idx"],
                     "t_err_mm": float(np.linalg.norm(dp) * 1000), "xy_err_mm": float(np.linalg.norm(dp[:2]) * 1000),
+                    "major_err_mm": float(abs(dp[:2] @ ax) * 1000),
+                    "minor_err_mm": float(abs(dp[:2] @ np.array([-ax[1], ax[0]])) * 1000),
+                    "occluded": bool(pp.get("occluded", False)), "ambiguous": bool(pp.get("ambiguous", False)),
+                    "has_review": pp.get("review") is not None,
                     "z_err_mm": float(dp[2] * 1000),
                     "rot_err_deg": rot_err_deg(p["default_ori"], o["quat"], sym),
                     "yaw_err_deg": yaw_err_deg(p["default_ori"], o["quat"], sym),
-                    "residual": p.get("_perception", {}).get("residual"),
-                    "confidence": p.get("_perception", {}).get("confidence"),
-                    "place_tag": p.get("_perception", {}).get("place_tag"),
-                    "per_view_iou": p.get("_perception", {}).get("per_view_iou"),
+                    "residual": pp.get("residual"), "confidence": pp.get("confidence"),
+                    "place_tag": pp.get("place_tag"), "per_view_iou": pp.get("per_view_iou"),
+                    "margin": (pp.get("alternative") or {}).get("margin"),
                 })
             else:
                 row.update({"found": False, "id_ok": False})
             rows.append(row)
+    return rows, len(gts), len(preds)
+
+
+_BG_CACHE: dict = {}
+
+
+def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
+    """2-fold backgrounds: built only from the OTHER half of the D0 episodes (fold = hash of the id), never
+    from the evaluated episode. ``cam_<x>``: per-pixel median of frame 0 (home pose). ``cam_head_clean``:
+    robot-free head background, the median over frames 0-3 with each frame's FK robot mask excluded.
+    Observations and proprio only."""
+    import zlib
+
+    import cv2
+
+    from . import d0
+    from .cameras import head_camera
+    from .render import robot_mask
+    from .segment import CAMS, build_background, masked_median
+
+    fold = zlib.crc32(ep.name.encode()) % 2
+    root = ep.parent.parent
+    key = (str(root), fold)
+    if key in _BG_CACHE:
+        return _BG_CACHE[key]
+    others = [e for e in d0.episodes(root) if zlib.crc32(e.name.encode()) % 2 != fold]
+    rng = np.random.default_rng(fold)
+    sel = [others[i] for i in sorted(rng.choice(len(others), min(max_n, len(others)), replace=False))]
+    out = {}
+    for cam in CAMS:
+        fr = [cv2.cvtColor(cv2.imread(str(e / f"frame_0_{cam}.png")), cv2.COLOR_BGR2RGB) for e in sel
+              if (e / f"frame_0_{cam}.png").exists()]
+        if fr:
+            out[cam] = build_background(fr)
+    if "cam_head" in out:
+        frames, masks = [], []
+        hc = head_camera()
+        pool = [(e, k) for e in others for k in d0.frames(e)]
+        for i in rng.permutation(len(pool))[:n_clean]:
+            e, k = pool[i]
+            p = e / f"frame_{k}_cam_head.png"
+            if not p.exists():
+                continue
+            st = d0.load_obs(e, k)["state"]
+            frames.append(cv2.cvtColor(cv2.imread(str(p)), cv2.COLOR_BGR2RGB))
+            masks.append(robot_mask(hc, st, dilate_px=4))
+        if frames:
+            out["cam_head_clean"], out["cam_head_clean_unseen"] = masked_median(frames, masks, out["cam_head"])
+    _BG_CACHE[key] = out
+    return out
+
+
+def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False,
+                   bg_loo: bool = False) -> dict:
+    """Estimate frame k of an episode (with ``fuse``: frame 0 plus frames 1..k as extra views) and score it
+    against frame k's GT."""
+    from . import d0
+    from .inverse_layout import EstimatorConfig, estimate
+
+    ep = Path(ep)
+    obs = d0.load_obs(ep, k)
+    cfg = EstimatorConfig(use_wrists=use_wrists, **(cfg_kw or {}))
+    bgs = fold_backgrounds(ep) if bg_loo else None
+    t0 = time.time()
+    try:
+        if fuse and k > 0:
+            o0 = d0.load_obs(ep, 0)
+            extra = [(d0.load_obs(ep, j)["images"], d0.load_obs(ep, j)["state"]) for j in range(1, k + 1)]
+            rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=extra)
+        else:
+            rec = estimate(obs["images"], obs["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg)
+        err = None
+    except Exception as e:  # keep the eval going; report
+        import traceback
+
+        rec, err = {}, f"{type(e).__name__}: {e} | {traceback.format_exc()[-600:]}"
+    runtime = time.time() - t0
+    gt = d0.load_gt(ep, k)  # DEV-ONLY, after the estimate
+    task = obs["task"]
+    rows, n_gt, n_pred = score_record(rec, gt, task, {"episode": ep.name, "frame": k, "wrists": use_wrists, "fuse": fuse})
     return {"frame": {"task": task, "episode": ep.name, "frame": k, "runtime_s": runtime, "error": err,
                       "timings": rec.get("_perception", {}).get("timings"), "missing": rec.get("_missing", []),
-                      "n_gt": len(gts), "n_pred": len(preds), "wrists": use_wrists, "fuse": fuse},
+                      "n_gt": n_gt, "n_pred": n_pred, "wrists": use_wrists, "fuse": fuse},
             "objects": rows}
 
 
@@ -177,10 +256,17 @@ def summarize(rows: list[dict], frames: list[dict]) -> dict:
              "t_med_mm": float(np.nanmedian(t)), "t_p90_mm": float(np.nanpercentile(t, 90)),
              "rot_med_deg": float(np.nanmedian(ro)), "rot_p90_deg": float(np.nanpercentile(ro, 90)),
              "tol_mm": tol[0], "tol_deg": tol[1]}
+        mj = np.array([r["major_err_mm"] for r in f]) if f else np.array([np.nan])
+        d["major_med_mm"] = float(np.nanmedian(mj))
+        d["major_p90_mm"] = float(np.nanpercentile(mj, 90))
+        d["occluded"] = sum(1 for r in f if r.get("occluded"))
+        d["ambiguous"] = sum(1 for r in f if r.get("ambiguous"))
         if tol[0]:
             d["within_tol_t"] = float(np.mean([r.get("found") and r["xy_err_mm"] <= tol[0] for r in rs]))
         if tol[1]:
             d["within_tol_rot"] = float(np.mean([r.get("found") and r["rot_err_deg"] <= tol[1] for r in rs]))
+        d["within_tol"] = float(np.mean([bool(r.get("found")) and (not tol[0] or r["xy_err_mm"] <= tol[0])
+                                         and (not tol[1] or r["rot_err_deg"] <= tol[1]) for r in rs]))
         out[f"{task}|{cat}|frame{k}|wrists={wr}|fuse={fu}"] = d
     rt = [f["runtime_s"] for f in frames if not f.get("error")]
     out["_runtime"] = {"median_s": float(np.median(rt)) if rt else None, "p90_s": float(np.percentile(rt, 90)) if rt else None,
@@ -189,16 +275,16 @@ def summarize(rows: list[dict], frames: list[dict]) -> dict:
 
 
 def to_markdown(summary: dict) -> str:
-    lines = ["| task | class | frame | wrists | fused | n | found | id acc | xy med / p90 (mm) | 3-D med (mm) | rot med / p90 (deg) | tol | within tol (t / rot) |",
+    lines = ["| task | class | frame | wrists | fused | n | found | id acc | xy med / p90 (mm) | major-axis med / p90 (mm) | rot med / p90 (deg) | tol | within tol (t / rot / both) |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for k, d in summary.items():
         if k.startswith("_"):
             continue
         task, cat, fr, wr, fu = k.split("|")
         tol = f"{d['tol_mm'] or '-'} mm / {d['tol_deg'] or '-'} deg"
-        wt = f"{d.get('within_tol_t', float('nan')):.2f} / {d.get('within_tol_rot', float('nan')):.2f}"
+        wt = f"{d.get('within_tol_t', float('nan')):.2f} / {d.get('within_tol_rot', float('nan')):.2f} / {d.get('within_tol', float('nan')):.2f}"
         lines.append(f"| {task} | {cat} | {fr[5:]} | {wr[7:]} | {fu[5:]} | {d['n']} | {d['found']} | {d['id_acc']:.2f} | "
-                     f"{d['xy_med_mm']:.1f} / {d['xy_p90_mm']:.1f} | {d['t_med_mm']:.1f} | {d['rot_med_deg']:.1f} / {d['rot_p90_deg']:.1f} | {tol} | {wt} |")
+                     f"{d['xy_med_mm']:.1f} / {d['xy_p90_mm']:.1f} | {d['major_med_mm']:.1f} / {d['major_p90_mm']:.1f} | {d['rot_med_deg']:.1f} / {d['rot_p90_deg']:.1f} | {tol} | {wt} |")
     r = summary.get("_runtime", {})
     lines.append(f"\nruntime per frame: median {r.get('median_s')} s, p90 {r.get('p90_s')} s over {r.get('n_frames')} frames ({r.get('n_errors')} errors)")
     return "\n".join(lines)
@@ -215,6 +301,7 @@ def main(argv=None):
     ap.add_argument("--no-wrists", action="store_true")
     ap.add_argument("--both", action="store_true", help="run with and without wrists")
     ap.add_argument("--fuse", action="store_true", help="frames > 0: fuse frames 0..k")
+    ap.add_argument("--bg-loo", action="store_true", help="2-fold median backgrounds from the other half of the D0 episodes")
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
@@ -229,7 +316,7 @@ def main(argv=None):
             for k in a.frames:
                 if (ep / f"frame_{k}.json").exists():
                     for wr in ([True, False] if a.both else [not a.no_wrists]):
-                        jobs.append((str(ep), k, wr, None, a.fuse))
+                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo))
     print(f"{len(jobs)} frames", flush=True)
     rows, frames = [], []
     with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, open(a.out / "frames.jsonl", "w") as ff:
