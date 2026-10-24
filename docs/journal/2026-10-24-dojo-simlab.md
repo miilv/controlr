@@ -192,3 +192,55 @@ Pitfalls found on the way:
 Speed: states ~6 s / layout, rendering ~2 s / layout (4 frames x 3 cams). Visually the proxy matches the
 genuine 5.1 frames of the same layout taken on compute2 (head view, wrist views, arm occlusion).
 First slice (stack_blocks + push_T x 10) at 20:04 UTC; READY touched; full 6 x 25 running.
+
+### D0 proxy: final
+
+`compute3:~/dojo-data/d0/`: 6 tasks x 25 layouts x 4 frames x 3 cameras = 1800 PNGs + 600 frame JSONs
+(598 MB), READY touched 20:35 UTC.
+- RoboDojo's own stability check rejected 0 generated layouts for 5 tasks, and 9 of 34 for
+  put_bottles_into_dustbin: tall bottles spawned under the home-pose grippers. RoboDojo's placement engine
+  does not know the robot. Generator v2 (`ROBOT_KEEPOUT`: gripper footprint to the fingertips + 3 cm,
+  objects taller than 8 cm) changes 23 of 34 put_bottles layouts, 1 of 25 pack_objects and 0 for the
+  block/bowl tasks. D0 was made with v1; records are self-contained, so it stays valid.
+- Scripted moves: most layouts 3 of 3, some 2 of 3 (cuRobo miss, `move.ok=false`).
+
+## Incident note: compute3 RAM exhaustion (20:33-20:45 UTC)
+
+4 perception `eval_g1` workers (~28 GB RSS) + a long-running 7.5 GB `opencode` drove compute3 to 57/62 GB
+RAM, 7/7 GB swap, load 134; ssh timed out. The lead killed the workers and capped perception at
+12 GB / 8 cores. Our rule since then: GPU jobs under `flock ~/dojo-gpu.lock`, and benches inside
+`systemd-run --user --scope -p MemoryMax=20G -p CPUQuota=1200%`, started only when MemAvailable > 25 GB
+and load < 20 (`scripts/simlab/twin_bench.sh`).
+
+## 5. Twin API (`dojo/simlab/twin.py`) and throughput (compute3 5090, physics-only, PhysX on CPU as RoboDojo configures it)
+
+API: `Twin(task, num_envs).load(layouts) / snapshot() / restore(s) / step(actions) / render(cams) /
+reward() / score() / gt()`. Snapshot = rigid poses + velocities, articulation joints, robot joint
+pos / vel / targets, control-manager targets, reward latches and func-parser state, episode counters.
+`scripts/simlab/twin_bench.sh` (stack_blocks, our layouts 100500+, 100 env steps of a joint wiggle,
+one 20 GB / 12-core scope; machine otherwise quiet, load < 20):
+
+| setup | env-steps/s total | per env | x real time per env | CPU cores used | RSS | new layout load | restore + 40 steps | 40-step candidates/s |
+|---|---|---|---|---|---|---|---|---|
+| 1 process, n=1 | 31.3 | 31.3 | 1.25 | 2.2 | 2.8 GB | 3.1 s (2.3 s without sim close) | 1.27 s | 0.78 |
+| 1 process, n=4 | 63.6 | 15.9 | 0.64 | 1.6 | 2.8 GB | 5.5 s | 2.33 s | 1.72 |
+| 1 process, n=8 | 82.3 | 10.3 | 0.41 | 1.4 | 2.9 GB | 7.7 s | 4.06 s | 1.97 |
+| 1 process, n=16 | 113.7 | 7.1 | 0.28 | 1.3 | 3.0 GB | 12.1 s | 5.83 s | 2.74 |
+| 2 processes x n=1 | 45.7 | 22.8 | 0.91 | 1.8 each | 2.8 GB each | 4.4 s | 1.76 s | 1.1 (sum) |
+| 4 processes x n=1 | 54.8 | 13.7 | 0.55 | 1.5 each | 2.8 GB each | 6.0 s | 2.6 s | 1.5 (sum) |
+
+- One env step = 40 ms of sim (10 x 4 ms substeps). Under the perception overload the same n=1 bench gave
+  13 env-steps/s: the twin is sensitive to machine load.
+- **Not CPU-bound**: ≤ 2.2 cores per process, and separate processes scale worse than batching in one
+  process (4 x n=1 = 55 vs 1 x n=4 = 64). The serial per-step cost is the Python / Kit loop plus a shared
+  GPU-side resource (PhysX GPU features are on via `overwrite_gpu_setting(1)`). Batching (n=16) is the
+  efficient path; a dedicated box would run one n=16 process per GPU (~114 env-steps/s each). More
+  processes per GPU were not measured beyond 4 x n=1.
+- **Snapshot / restore are free**: 0.7-12 ms snapshot, 1.5-15 ms restore (n = 1..16).
+- **Restore fidelity under contact**: snapshot at step 120 of the G2 `stack` run (block in the gripper),
+  roll 50 steps, restore, roll again: max object divergence 0.00013 mm. Not bitwise: PhysX contact
+  warm-start caches are not part of the snapshot.
+- **Verify-before-execute budget**: per candidate segment of 40 env steps, 1.3 s alone or 16 candidates
+  in 5.8 s batched. A fresh layout from perception loads in 3.1 s (n=1).
+- Rendering is not measured on compute3 (no 5.1 RTX); on compute2 (4090) a full RoboDojo reset with
+  rendering was 7-17 s per layout, and render cost per camera is still to be measured there.
