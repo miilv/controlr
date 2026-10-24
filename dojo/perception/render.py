@@ -233,10 +233,78 @@ def robot_items(state: dict, id_base: int = 1000) -> list[dict]:
 
 
 def robot_mask(cam: Camera, state: dict, dilate_px: int = 0) -> np.ndarray:
-    """Silhouette of both arms in a camera, from FK (CPU path)."""
-    m = np.zeros((cam.h, cam.w), np.uint8)
-    for it in robot_items(state):
-        silhouette(cam, transform(it["V"], it["T"]), it["F"], out=m)
+    """Silhouette of both arms in a camera, from FK (GL if available, else CPU)."""
+    g = gl()
+    if g is not None:
+        m = g.render(cam, [(it["key"], it["V"], it["F"], it["T"]) for it in robot_items(state)])
+    else:
+        m = np.zeros((cam.h, cam.w), np.uint8)
+        for it in robot_items(state):
+            silhouette(cam, transform(it["V"], it["T"]), it["F"], out=m)
     if dilate_px > 0:
         m = cv2.dilate(m, np.ones((2 * dilate_px + 1, 2 * dilate_px + 1), np.uint8))
     return m
+
+
+# --------------------------------------------------------------------------------------------
+# GL silhouettes (exact, full-resolution meshes, ~1 ms per render incl. readback)
+# --------------------------------------------------------------------------------------------
+
+class GLSilhouettes:
+    """A persistent offscreen scene: one node per mesh key, toggled visible per call. Process-local."""
+
+    def __init__(self, w: int = 640, h: int = 480):
+        pr = _pyrender()
+        self.pr = pr
+        self.r = pr.OffscreenRenderer(w, h)
+        self.w, self.h = w, h
+        self.scene = pr.Scene(bg_color=[0, 0, 0, 0])
+        self.cam = pr.IntrinsicsCamera(300, 300, 320, 240, znear=0.005, zfar=10.0)
+        self.cam_node = self.scene.add(self.cam, pose=np.eye(4))
+        self.nodes: dict[str, object] = {}
+
+    def _node(self, key: str, V: np.ndarray, F: np.ndarray):
+        n = self.nodes.get(key)
+        if n is None:
+            import trimesh
+
+            m = self.pr.Mesh.from_trimesh(trimesh.Trimesh(V, F, process=False), smooth=False)
+            m.is_visible = False
+            n = self.scene.add(m, pose=np.eye(4))
+            self.nodes[key] = n
+        return n
+
+    def render(self, cam: Camera, items: list[tuple[str, np.ndarray, np.ndarray, np.ndarray]], depth: bool = False):
+        """items: [(key, V_local, F, T_world)]. Returns the union mask (uint8) or the depth map."""
+        if (cam.w, cam.h) != (self.w, self.h):
+            self.r.viewport_width, self.r.viewport_height = cam.w, cam.h
+            self.w, self.h = cam.w, cam.h
+        self.cam.fx, self.cam.fy, self.cam.cx, self.cam.cy = cam.K[0, 0], cam.K[1, 1], cam.K[0, 2], cam.K[1, 2]
+        self.scene.set_pose(self.cam_node, cam.T_wc_usd())
+        vis = []
+        for key, V, F, T in items:
+            n = self._node(key, V, F)
+            n.mesh.is_visible = True
+            self.scene.set_pose(n, T)
+            vis.append(n)
+        d = self.r.render(self.scene, flags=self.pr.RenderFlags.DEPTH_ONLY)
+        for n in vis:
+            n.mesh.is_visible = False
+        return d if depth else (d > 0).astype(np.uint8)
+
+
+_GL = None
+
+
+def gl() -> GLSilhouettes | None:
+    """Process-wide GL silhouette renderer, or None when disabled (DOJO_GL=0) or unavailable."""
+    global _GL
+    if _GL is None:
+        if os.environ.get("DOJO_GL", "1") == "0":
+            _GL = False
+        else:
+            try:
+                _GL = GLSilhouettes()
+            except Exception:  # no EGL / no GPU: fall back to the CPU paths
+                _GL = False
+    return _GL or None

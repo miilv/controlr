@@ -39,7 +39,7 @@ from scipy.optimize import linear_sum_assignment, minimize
 from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
-from .render import Asset, catalog_root, load_asset, silhouette
+from .render import Asset, catalog_root, gl, load_asset, silhouette
 from .segment import ViewMasks, load_backgrounds, segment_views
 
 MIN_BLOB_PX = {"cam_head": 25, "cam_left_wrist": 150, "cam_right_wrist": 150}
@@ -75,6 +75,13 @@ class ShapeModel:
         return T
 
     def sil(self, cam: Camera, T: np.ndarray, out=None) -> np.ndarray:
+        g = gl()
+        if g is not None:
+            m = g.render(cam, [(self.key, self.asset.V, self.asset.F, T)])
+            if out is not None:
+                out |= m
+                return out
+            return m
         if self.convex and self.hull_V is not None:
             m = np.zeros((cam.h, cam.w), np.uint8) if out is None else out
             uv, z = cam.project(self.hull_V @ T[:3, :3].T + T[:3, 3])
@@ -108,6 +115,8 @@ def shape_models(key: str) -> tuple[ShapeModel, ...]:
     hull_V = None
     convex = False
     try:
+        if gl() is not None:
+            raise RuntimeError("GL silhouettes: no hull needed")
         import trimesh
 
         tm = trimesh.Trimesh(a.V, a.F, process=False)
@@ -205,7 +214,7 @@ def multi_view_loss(sm, T, views, others=None, min_vis=0.3, min_px=12):
         iou, vis, n_s = r
         if vis < min_vis or n_s < min_px:
             continue
-        w = VIEW_W.get(name, 1.0) * vis
+        w = VIEW_W.get(name.split("@")[0], 1.0) * vis
         tot += w * (1 - iou)
         wsum += w
         per[name] = round(float(iou), 4)
@@ -285,7 +294,7 @@ def coarse_fit(sm: ShapeModel, blob: Blob, views: dict[str, ViewMasks], yaw_step
         Rz = Rotation.from_euler("z", yaw).as_matrix()
         c_off = (Rz @ sm.R0 @ Vc)[:2]  # vertex-centroid offset from the origin in xy
         x, y = X0[0] - c_off[0], X0[1] - c_off[1]
-        for it in range(2):  # re-centre: move so the silhouette centroid lands on the blob centroid
+        for it in range(1):  # re-centre: move so the silhouette centroid lands on the blob centroid
             T = sm.pose(x, y, yaw)
             s = sm.sil(cam, T)
             sy, sx = np.nonzero(s)
@@ -302,7 +311,28 @@ def coarse_fit(sm: ShapeModel, blob: Blob, views: dict[str, ViewMasks], yaw_step
         union = int(((s | bm) & k).sum())
         res.append((x, y, float(yaw), 1 - inter / max(union, 1)))
     res.sort(key=lambda r: r[3])
-    return res[:3]
+    return _diverse(res, period, k=3, min_sep=np.deg2rad(25), slack=0.15)
+
+
+def _diverse(res, period, k=3, min_sep=0.4, slack=0.15):
+    """Best k yaw candidates at least ``min_sep`` apart (mod period) within ``slack`` of the best loss,
+    plus the 180-degree flip of the best when the period is a full turn (near-symmetric silhouettes)."""
+    if not res:
+        return res
+    out = []
+    for r in res:
+        if r[3] > res[0][3] + slack:
+            break
+        if all(abs((r[2] - o[2] + period / 2) % period - period / 2) >= min_sep for o in out):
+            out.append(r)
+        if len(out) >= k:
+            break
+    if period > np.pi * 1.5:
+        b = res[0]
+        flip = (b[2] + np.pi) % period
+        if all(abs((flip - o[2] + period / 2) % period - period / 2) >= min_sep for o in out):
+            out.append((b[0], b[1], float(flip), b[3]))
+    return out
 
 
 def refine(sm: ShapeModel, x, y, yaw, views, others=None, xy_step=0.006, yaw_step=0.12, maxiter=120,
@@ -415,30 +445,71 @@ def _union_masks(chosen, views, skip=None):
     return out
 
 
+def _blob_color(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    m = mask.astype(bool)
+    return img[m].astype(float).mean(0) / 255.0 if m.any() else np.full(3, 0.5)
+
+
+def _touches_unknown(b: Blob, v: ViewMasks) -> bool:
+    d = cv2.dilate(b.mask, np.ones((7, 7), np.uint8))
+    return bool((d & (1 - v.known)).any())
+
+
+def _app(obs_rgb, keys) -> float:
+    if obs_rgb is None:
+        return 0.5
+    return min(appearance_distance(obs_rgb, np.asarray(load_asset(k).info["mean_color"])) for k in keys)
+
+
 def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=None, blob_offset=0):
-    hyps: list[Hypothesis] = []
+    """Coarse + fine hypotheses per blob. Candidates per (group, blob) are prefiltered by silhouette area and
+    blob colour; the best ``refine_per_blob`` coarse fits (silhouette + appearance) are refined in all views."""
+    head = views["cam_head"]
+    per_blob: dict[tuple, list[Hypothesis]] = {}
     for gi, g, prior in pending:
-        for gk, sms in shapes_by_group[gi].items():
-            sm = sms[0]
-            for bi, b in enumerate(blob_list):
-                if prior["fixed_xy"] is not None:
-                    X = views["cam_head"].cam.ray_plane(b.centroid[None, :], TABLE_Z + sm.height / 2)[0]
-                    if not np.isfinite(X).all() or np.hypot(X[0] - prior["fixed_xy"][0], X[1] - prior["fixed_xy"][1]) > 0.08:
-                        continue
+        geoms = list(shapes_by_group[gi].values())
+        for bi, b in enumerate(blob_list):
+            bcol = _blob_color(head.img, b.mask)
+            occl = _touches_unknown(b, head)
+            scored = []
+            for sms in geoms:
+                sm = sms[0]
+                X = head.cam.ray_plane(b.centroid[None, :], TABLE_Z + sm.height / 2)[0]
+                if not np.isfinite(X).all():
+                    continue
+                if prior["fixed_xy"] is not None and np.hypot(X[0] - prior["fixed_xy"][0], X[1] - prior["fixed_xy"][1]) > 0.08:
+                    continue
+                a_pred = int(sm.sil(head.cam, sm.pose(X[0], X[1], 0.0)).sum())
+                ratio = b.area / max(a_pred, 1)
+                if ratio > 3.0 or (ratio < 0.3 and not occl):
+                    continue
+                scored.append((abs(np.log(max(ratio, 1e-3))) * 0.5 + cfg.appearance_weight * _app(bcol, [s.key for s in sms]), sms))
+            scored.sort(key=lambda t: t[0])
+            for _, sms in scored[: cfg.max_candidates_per_blob]:
+                sm = sms[0]
+                keys = [s.key for s in sms]
                 yr = (0.0, 0.0) if prior["yaw_fixed"] else None
-                for x, y, yaw, l in coarse_fit(sm, b, views, cfg.yaw_step_deg, yr)[:1]:
-                    h = Hypothesis(gi, sm.key, sm.tag, x, y, yaw, l, blob=bi + blob_offset)
-                    h.per_view = {"geom_group": [s.key for s in sms]}
-                    hyps.append(h)
+                for x, y, yaw, l in coarse_fit(sm, b, views, cfg.yaw_step_deg, yr):
+                    h = Hypothesis(gi, sm.key, sm.tag, x, y, yaw, l + cfg.appearance_weight * _app(bcol, keys),
+                                   blob=bi + blob_offset)
+                    h.per_view = {"geom_group": keys}
+                    per_blob.setdefault((gi, bi), []).append(h)
     refined = []
-    for h in hyps:
-        if h.loss > 0.85:
-            continue
-        yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
-        x, y, yaw, loss, per = refine(h.sm(), h.x, h.y, h.yaw, views, others, maxiter=cfg.refine_iters, fix_yaw=yaw_fixed)
-        h2 = Hypothesis(h.label_group, h.key, h.tag, x, y, yaw, loss, per, h.blob)
-        h2.per_view["geom_group"] = h.per_view["geom_group"]
-        refined.append(h2)
+    for (gi, bi), hs in per_blob.items():
+        hs.sort(key=lambda h: h.loss)
+        for h in hs[: cfg.refine_per_blob]:
+            if h.loss > 0.95:
+                continue
+            yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
+            sm = h.sm()
+            x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=cfg.refine_iters, fix_yaw=yaw_fixed)
+            col, _ = observed_color(sm, sm.pose(x, y, yaw), views)
+            app = _app(col, h.per_view["geom_group"])
+            h2 = Hypothesis(h.label_group, h.key, h.tag, x, y, yaw, loss + cfg.appearance_weight * app, per, h.blob)
+            h2.per_view["geom_group"] = h.per_view["geom_group"]
+            h2.per_view["sil_loss"] = round(float(loss), 4)
+            h2.appearance = app
+            refined.append(h2)
     return refined
 
 
@@ -506,12 +577,14 @@ def _assign_constrained(refined, need, pending, blob_list, views, existing=(), b
 @dataclass
 class EstimatorConfig:
     use_wrists: bool = True
-    yaw_step_deg: float = 6.0
+    yaw_step_deg: float = 10.0
     refine_iters: int = 120
     joint_rounds: int = 1
     fg_thr: float = 18.0
     max_blob_candidates: int = 6
-    appearance_weight: float = 0.15
+    appearance_weight: float = 0.3
+    max_candidates_per_blob: int = 4
+    refine_per_blob: int = 3
 
 
 def _views_subset(views, cfg):
@@ -519,13 +592,20 @@ def _views_subset(views, cfg):
 
 
 def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction: str = "",
-             bgs: dict | None = None, cfg: EstimatorConfig | None = None) -> dict:
+             bgs: dict | None = None, cfg: EstimatorConfig | None = None,
+             extra_frames: list[tuple[dict, dict]] | None = None) -> dict:
+    """``extra_frames``: [(images, state)] of later frames of the same episode with the objects assumed
+    static (arms moved): their views join the render-and-compare loss as ``<cam>@<k>``. Proposals come
+    from the first frame's head view."""
     cfg = cfg or EstimatorConfig()
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
     cams = cameras_from_state(state)
     views_all = segment_views(images, cams, state, bgs, thr=cfg.fg_thr)
     views = _views_subset(views_all, cfg)
+    for k, (imgs_k, state_k) in enumerate(extra_frames or [], start=1):
+        vk = _views_subset(segment_views(imgs_k, cameras_from_state(state_k), state_k, bgs, thr=cfg.fg_thr), cfg)
+        views.update({f"{name}@{k}": v for name, v in vk.items()})
     t_seg = time.time() - t0
     head_blobs = blobs(views["cam_head"], "cam_head")
     groups = label_groups(task)
@@ -589,8 +669,11 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
             x, y, yaw, loss, per = refine(h.sm(), h.x, h.y, h.yaw, views, others, xy_step=0.003, yaw_step=0.05,
                                           maxiter=cfg.refine_iters, fix_yaw=yaw_fixed)
-            if loss <= h.loss + 0.02:
-                h.x, h.y, h.yaw, h.loss = x, y, yaw, loss
+            sil0 = h.per_view.get("sil_loss", h.loss)
+            if loss <= sil0 + 0.02:
+                h.loss = h.loss - sil0 + loss
+                h.x, h.y, h.yaw = x, y, yaw
+                h.per_view["sil_loss"] = round(float(loss), 4)
                 h.per_view.update(per)
     timings["joint_s"] = round(time.time() - t3, 3)
 
@@ -648,11 +731,13 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             pos = T[:3, 3].tolist()
             quat = R_to_quat_wxyz(T[:3, :3]).tolist()
             lab = h.per_view.get("label")
-            conf = float(np.clip(1 - h.loss, 0, 1))
+            conf = float(np.clip(1 - h.per_view.get("sil_loss", h.loss), 0, 1))
         rec = {"category": cat, "category_idx": idx, "label": lab, "default_pos": pos, "default_ori": quat,
                "scale": [1.0, 1.0, 1.0],
-               "_perception": {"place_tag": h.tag, "residual": round(float(h.loss), 4), "confidence": round(conf, 3),
+               "_perception": {"place_tag": h.tag, "residual": round(float(h.per_view.get("sil_loss", h.loss)), 4),
+                               "cost": round(float(h.loss), 4), "confidence": round(conf, 3),
                                "per_view_iou": {k: v for k, v in h.per_view.items() if k.startswith("cam_")},
+                               "n_views": sum(1 for k in h.per_view if k.startswith("cam_")),
                                "appearance": round(h.appearance, 3), "yaw": round(float(h.yaw), 4),
                                "geom_group": h.per_view.get("geom_group")}}
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)

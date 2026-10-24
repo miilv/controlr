@@ -64,7 +64,9 @@ def flatten_pred(rec: dict) -> list[dict]:
     return out
 
 
-def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None) -> dict:
+def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False) -> dict:
+    """Estimate frame k of an episode (with ``fuse``: frame 0 plus frames 1..k as extra views) and score it
+    against frame k's GT."""
     from . import d0
     from .inverse_layout import EstimatorConfig, estimate, label_groups
     from .render import load_asset
@@ -74,7 +76,12 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
     cfg = EstimatorConfig(use_wrists=use_wrists, **(cfg_kw or {}))
     t0 = time.time()
     try:
-        rec = estimate(obs["images"], obs["state"], obs["task"], obs["instruction"], cfg=cfg)
+        if fuse and k > 0:
+            o0 = d0.load_obs(ep, 0)
+            extra = [(d0.load_obs(ep, j)["images"], d0.load_obs(ep, j)["state"]) for j in range(1, k + 1)]
+            rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], cfg=cfg, extra_frames=extra)
+        else:
+            rec = estimate(obs["images"], obs["state"], obs["task"], obs["instruction"], cfg=cfg)
         err = None
     except Exception as e:  # keep the eval going; report
         import traceback
@@ -103,7 +110,7 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
             except Exception:
                 sym = 1
             row = {"task": task, "episode": ep.name, "frame": k, "label": o["label"], "category": o["category"],
-                   "gt_idx": o["category_idx"], "gt_pos": o["pos"], "sym": sym, "wrists": use_wrists}
+                   "gt_idx": o["category_idx"], "gt_pos": o["pos"], "sym": sym, "wrists": use_wrists, "fuse": fuse}
             if oi in matched:
                 p = P[matched[oi]]
                 dp = np.asarray(p["default_pos"]) - np.asarray(o["pos"])
@@ -123,7 +130,7 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
             rows.append(row)
     return {"frame": {"task": task, "episode": ep.name, "frame": k, "runtime_s": runtime, "error": err,
                       "timings": rec.get("_perception", {}).get("timings"), "missing": rec.get("_missing", []),
-                      "n_gt": len(gts), "n_pred": len(preds), "wrists": use_wrists},
+                      "n_gt": len(gts), "n_pred": len(preds), "wrists": use_wrists, "fuse": fuse},
             "objects": rows}
 
 
@@ -137,8 +144,8 @@ def summarize(rows: list[dict], frames: list[dict]) -> dict:
     out = {}
     by = defaultdict(list)
     for r in rows:
-        by[(r["task"], r["category"], r.get("frame"), r.get("wrists"))].append(r)
-    for (task, cat, k, wr), rs in sorted(by.items(), key=lambda x: str(x[0])):
+        by[(r["task"], r["category"], r.get("frame"), r.get("wrists"), r.get("fuse", False))].append(r)
+    for (task, cat, k, wr, fu), rs in sorted(by.items(), key=lambda x: str(x[0])):
         f = [r for r in rs if r.get("found")]
         t = np.array([r["t_err_mm"] for r in f]) if f else np.array([np.nan])
         xy = np.array([r["xy_err_mm"] for r in f]) if f else np.array([np.nan])
@@ -153,7 +160,7 @@ def summarize(rows: list[dict], frames: list[dict]) -> dict:
             d["within_tol_t"] = float(np.mean([r.get("found") and r["xy_err_mm"] <= tol[0] for r in rs]))
         if tol[1]:
             d["within_tol_rot"] = float(np.mean([r.get("found") and r["rot_err_deg"] <= tol[1] for r in rs]))
-        out[f"{task}|{cat}|frame{k}|wrists={wr}"] = d
+        out[f"{task}|{cat}|frame{k}|wrists={wr}|fuse={fu}"] = d
     rt = [f["runtime_s"] for f in frames if not f.get("error")]
     out["_runtime"] = {"median_s": float(np.median(rt)) if rt else None, "p90_s": float(np.percentile(rt, 90)) if rt else None,
                        "n_frames": len(frames), "n_errors": sum(1 for f in frames if f.get("error"))}
@@ -161,15 +168,15 @@ def summarize(rows: list[dict], frames: list[dict]) -> dict:
 
 
 def to_markdown(summary: dict) -> str:
-    lines = ["| task | class | frame | wrists | n | found | id acc | xy med / p90 (mm) | 3-D med (mm) | rot med / p90 (deg) | tol | within tol (t / rot) |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    lines = ["| task | class | frame | wrists | fused | n | found | id acc | xy med / p90 (mm) | 3-D med (mm) | rot med / p90 (deg) | tol | within tol (t / rot) |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for k, d in summary.items():
         if k.startswith("_"):
             continue
-        task, cat, fr, wr = k.split("|")
+        task, cat, fr, wr, fu = k.split("|")
         tol = f"{d['tol_mm'] or '-'} mm / {d['tol_deg'] or '-'} deg"
         wt = f"{d.get('within_tol_t', float('nan')):.2f} / {d.get('within_tol_rot', float('nan')):.2f}"
-        lines.append(f"| {task} | {cat} | {fr[5:]} | {wr[7:]} | {d['n']} | {d['found']} | {d['id_acc']:.2f} | "
+        lines.append(f"| {task} | {cat} | {fr[5:]} | {wr[7:]} | {fu[5:]} | {d['n']} | {d['found']} | {d['id_acc']:.2f} | "
                      f"{d['xy_med_mm']:.1f} / {d['xy_p90_mm']:.1f} | {d['t_med_mm']:.1f} | {d['rot_med_deg']:.1f} / {d['rot_p90_deg']:.1f} | {tol} | {wt} |")
     r = summary.get("_runtime", {})
     lines.append(f"\nruntime per frame: median {r.get('median_s')} s, p90 {r.get('p90_s')} s over {r.get('n_frames')} frames ({r.get('n_errors')} errors)")
@@ -186,6 +193,7 @@ def main(argv=None):
     ap.add_argument("--episodes", type=int, default=0, help="max episodes per task (0 = all)")
     ap.add_argument("--no-wrists", action="store_true")
     ap.add_argument("--both", action="store_true", help="run with and without wrists")
+    ap.add_argument("--fuse", action="store_true", help="frames > 0: fuse frames 0..k")
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
@@ -200,7 +208,7 @@ def main(argv=None):
             for k in a.frames:
                 if (ep / f"frame_{k}.json").exists():
                     for wr in ([True, False] if a.both else [not a.no_wrists]):
-                        jobs.append((str(ep), k, wr))
+                        jobs.append((str(ep), k, wr, None, a.fuse))
     print(f"{len(jobs)} frames", flush=True)
     rows, frames = [], []
     with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, open(a.out / "frames.jsonl", "w") as ff:
