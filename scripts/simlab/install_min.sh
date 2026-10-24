@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Minimal RoboDojo for simlab G2b on a second machine (compute3): the software stack of
-# scripts/robodojo/install.sh plus ONLY the assets the G2 tasks need (push_T, stack_blocks:
-# robots, one room, the background, sensors, the table/ground materials, blocks, T, pad,
-# camera stand), as a sparse git-lfs checkout (~1 GB instead of ~41 GB). No pip cache.
+# Minimal RoboDojo on a second machine (compute3): the software stack of scripts/robodojo/install.sh
+# plus ONLY the assets the G2 and D0 tasks need (robots, one room, the background, sensors, the
+# table/ground materials, the objects of push_T, stack_blocks, build_tower, stack_bowls,
+# put_bottles_into_dustbin, pack_objects_into_box[_random], all Clutter), as a sparse git-lfs
+# checkout (~6.5 GB instead of ~41 GB). No pip cache. ~29.5 GB in total.
 #
 #   RD_HOME=~/dojo-robodojo bash scripts/simlab/install_min.sh [software|assets|pin <sha>|check]...
 #   (default: software assets check)
@@ -16,7 +17,13 @@ SPARSE=(
   /Assets/Robots/ /Assets/Room/Simple_Room_nolight/ /Assets/Background/brown_photostudio_02_4k.hdr /Assets/Sensor/
   /Assets/Material/material_0122/ /Assets/Material/material_0564/
   /Assets/Object/RoboDojo/Rigid/block/ /Assets/Object/RoboDojo/Rigid/t/ /Assets/Object/RoboDojo/Geometry/t_cushion/
-  /Assets/Object/RoboDojo/Geometry/camera_stand/ /Assets/Object/RoboDojo/Clutter/clutter.yml
+  /Assets/Object/RoboDojo/Geometry/camera_stand/
+  # the other D0 tasks (build_tower uses blocks; stack_bowls; put_bottles_into_dustbin; pack_objects_into_box[_random])
+  /Assets/Object/RoboDojo/Rigid/bowl/ /Assets/Object/RoboDojo/Rigid/bottle/ /Assets/Object/RoboDojo/Geometry/dustbin/
+  /Assets/Object/RoboDojo/Rigid/car/ /Assets/Object/RoboDojo/Rigid/electric_toothbrush/ /Assets/Object/RoboDojo/Rigid/hammer/
+  /Assets/Object/RoboDojo/Rigid/shoe/ /Assets/Object/RoboDojo/Rigid/box/
+  # every clutter object of the _random configs (3.8 GB)
+  /Assets/Object/RoboDojo/Clutter/
 )
 
 step_software() { bash "$HERE/scripts/robodojo/install.sh" conda clone deps isaacsim isaaclab curobo; }
