@@ -43,7 +43,13 @@ def save_frame(run: RoboDojoRunner, d: Path, k: int, move: dict) -> None:
     o = run.obs()
     for cam, img in o["images"].items():
         save_png(img, d / f"frame_{k}_{cam}.png")
-    rec = {"frame": k, "obs": obs_record(o, k), "gt": run.gt(), "move": move}
+    ob = obs_record(o, k)
+    if run.physics_only:        # images come later from an external renderer (render_d0_proxy.py)
+        ob["images"] = {cam: f"frame_{k}_{cam}.png" for cam in ("cam_head", "cam_left_wrist", "cam_right_wrist")}
+        ob["image_shape"] = {}
+    rec = {"frame": k, "obs": ob, "gt": run.gt(), "move": move,
+           "meta": {"renderer": None if run.physics_only else "isaac-5.1 (RoboDojo native)",
+                    "physics": "isaac-5.1 physics-only" if run.physics_only else "isaac-5.1"}}
     (d / f"frame_{k}.json").write_text(json.dumps(jsonable(rec)))
 
 
@@ -120,6 +126,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--n", type=int, default=25)
     ap.add_argument("--start", type=int, default=paths.SEED_BASE)
     ap.add_argument("--out", default=str(D0))
+    ap.add_argument("--physics-only", action="store_true",
+                    help="no renderer: states + stage.usd + cameras.json for render_d0_proxy.py")
     a = ap.parse_args(argv)
     out = Path(a.out) / a.task
     paths.assert_not_eval(out)
@@ -127,7 +135,8 @@ def main(argv: list[str] | None = None) -> None:
     lay_dir = paths.LAYOUTS / a.task
     lay_dir.mkdir(parents=True, exist_ok=True)
     t0 = time.perf_counter()
-    run = RoboDojoRunner(a.task, workdir=str(paths.DATA / "simlab" / "work" / f"d0_{a.task}"))
+    run = RoboDojoRunner(a.task, workdir=str(paths.DATA / "simlab" / "work" / f"d0_{a.task}"),
+                         physics_only=a.physics_only)
     print(f"[d0] {a.task}: boot {time.perf_counter() - t0:.1f}s", flush=True)
     index, seed, made = [], a.start, 0
     while made < a.n and seed < a.start + 3 * a.n:
@@ -152,6 +161,9 @@ def main(argv: list[str] | None = None) -> None:
         d.mkdir(parents=True, exist_ok=True)
         (d / "layout.json").write_text(json.dumps(lay, indent=1))
         settle = settle_report(lay, run.objects_gt())
+        if a.physics_only:
+            run.export_stage(d / "stage.usd")
+            (d / "cameras.json").write_text(json.dumps(run.camera_spec(), indent=1))
         save_frame(run, d, 0, {"name": "initial"})
         moves = scripted_moves(run, d, s)
         made += 1
