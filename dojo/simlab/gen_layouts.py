@@ -35,6 +35,14 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
+GENERATOR = "simlab/v2"
+# Home-pose gripper footprint of both ARX arms (link6..fingers xy at reset, from GT) + 3 cm. At home the
+# fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
+# RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
+# failed RoboDojo's stability check).
+ROBOT_KEEPOUT = [(-0.42, -0.40, -0.18, -0.13), (0.18, -0.40, 0.42, -0.13)]     # (x0, y0, x1, y1), env frame
+ROBOT_KEEPOUT_TOP = 0.08
+
 SAMPLING_DEFAULTS = {"group": None, "xlim": None, "ylim": None, "zlim": None, "qpos": [1, 0, 0, 0],
                      "rotate_deg": 0, "rotate_rand": False, "relative_plane": "Table", "place_tag": None,
                      "margin": 0.01, "check_mode": "bbox", "need_check_stable": True}
@@ -42,6 +50,20 @@ SAMPLING_DEFAULTS = {"group": None, "xlim": None, "ylim": None, "zlim": None, "q
 
 class LayoutError(RuntimeError):
     pass
+
+
+def hits_robot(meta: dict, pose, polygon, plane: str) -> bool:
+    """A placed object is taller than ROBOT_KEEPOUT_TOP and its footprint overlaps a home gripper."""
+    if plane != "table" or polygon is None:
+        return False
+    from shapely.geometry import box
+    if not any(polygon.intersects(box(*b)) for b in ROBOT_KEEPOUT):
+        return False
+    from dojo.simlab.motion import quat_to_mat
+    v = np.asarray(meta["geometry"]["oriented_bbox"]["vertices"], float).reshape(-1, 3)
+    top = float((v @ quat_to_mat(pose[3:] / np.linalg.norm(pose[3:])).T)[:, 2].max() + pose[2])
+    from dojo.simlab.layout import TABLE_TOP_Z
+    return top - TABLE_TOP_Z > ROBOT_KEEPOUT_TOP
 
 
 def load_yaml(p: Path) -> dict:
@@ -208,7 +230,7 @@ def place_task_objects(groups: dict[str, list], gens: dict, rng: random.Random, 
                 plane = str(prm["relative_plane"]).split("/")[0].lower()
                 gen = gens["ground" if plane == "ground" else "table"]
                 label = labels[k] if k < len(labels) else f"{cat}{k}"
-                ok, pose, _ = gen.add_model_from_config(
+                ok, pose, poly = gen.add_model_from_config(
                     config=meta, place_tag=prm["place_tag"], rotate_rand=bool(prm["rotate_rand"]),
                     rotate_deg=prm["rotate_deg"], margin=float(prm["margin"] or 0.0), max_attempts=200,
                     name=label, allowed_region=region(prm["xlim"], prm["ylim"]),
@@ -216,6 +238,8 @@ def place_task_objects(groups: dict[str, list], gens: dict, rng: random.Random, 
                     cluttered=False, check_mode=prm["check_mode"])
                 if not ok:
                     raise LayoutError(f"could not place {label} ({cat}/{idx})")
+                if hits_robot(meta, pose, poly, plane):
+                    raise LayoutError(f"{label} ({cat}/{idx}) under a home-pose gripper")
                 phys = {k2: v for k2, v in (meta.get("physics") or {}).items() if k2 in ("mass", "friction")}
                 phys["type"] = obj_type.lower()
                 inst = {"category": cat, "category_idx": int(idx)}
@@ -249,11 +273,11 @@ def place_clutter(clutter_cfg: list, gens: dict, rng: random.Random, layout: dic
             meta = metadata("Rigid", cat, idx, clutter=True)
             if meta is None or not usd_exists("Rigid", cat, idx, clutter=True):
                 continue
-            ok, pose, _ = gen.add_model_from_config(
+            ok, pose, poly = gen.add_model_from_config(
                 config=meta, rotate_rand=bool(block.get("rotate_rand", True)), rotate_deg=block.get("rotate_deg", 30),
                 margin=float(block.get("margin", 0.015)), max_attempts=50, name=f"clutter_{cat}",
                 allowed_region=region(block["xlim"], block["ylim"]), cluttered=True, check_mode="bbox")
-            if not ok:
+            if not ok or hits_robot(meta, pose, poly, plane):
                 continue
             used.add(cat)
             phys = {k: v for k, v in (meta.get("physics") or {}).items() if k in ("mass", "friction")}
@@ -299,7 +323,7 @@ def generate(task: str, seed: int, max_tries: int = 20) -> dict:
         errs = validate(layout)
         if errs:
             raise LayoutError(f"generated an invalid record: {errs[:5]}")
-        layout["_simlab"] = {"task": task, "id": seed, "seed": seed, "attempt": attempt, "generator": "simlab/v1",
+        layout["_simlab"] = {"task": task, "id": seed, "seed": seed, "attempt": attempt, "generator": GENERATOR,
                              "n_clutter": n_clutter, "clutter_wanted": want}
         return layout
     raise LayoutError(f"{task} seed {seed}: no valid layout in {max_tries} tries ({last})")
