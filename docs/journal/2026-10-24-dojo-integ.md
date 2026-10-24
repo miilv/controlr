@@ -62,6 +62,17 @@ one scope (24G / 14 cores with twin or perception, else 16G / 12), services stop
   backgrounds / colour map are 2-fold over D0. The driver passes `dev_calib_fold = crc32(layout id) % 2`, so
   the policy uses the fold built from the OTHER half (never from the evaluated layout).
 
-## 3. Results
+## 3. Results (PROXY eval: Isaac 5.1 physics-only RoboDojo episodes + Isaac 6.0 frames; not the official renderer)
 
-(pending: first runs queued on the GPU lock)
+Layouts: our dev layouts 100000–100009 per task (`~/dojo-data/simlab/layouts/<task>/`). Runs:
+`compute3:~/dojo-data/integ/runs/<name>/` (`<task>_<mode>_verify-<v>_{episodes.jsonl,summary.json}`, per-episode
+report + executed actions gz). Tables: `python -m dojo.runtime.report <run dirs>`.
+
+### 3.1 Mode A (state = gt), verify off
+
+| task | n | success | score | steps med / max (lim) | looks | wall s / episode (sim / obs / planning) | failures |
+|---|---|---|---|---|---|---|---|
+| stack_blocks | 10 | 9/10 | 91.5 | 164 / 267 (550) | 0 | 8.4 (6.6 / 1.2 / 0.7) | grasp_slip 1 (100009: rose 21 of 80 mm; the same seed fails in skills' G3) |
+
+stack_blocks used skills b3e8a10 (per-task program module, before the one-system planner). Scope peak 10.1 GB,
+2.3 cores average, 157 s for the job including boot.
