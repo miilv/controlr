@@ -34,22 +34,44 @@ TOLERANCE = {
 
 
 def rot_err_deg(q_pred, q_gt, sym: int) -> float:
+    """Rotation error modulo the placed shape's symmetry about the WORLD vertical axis through the object
+    origin (order ``sym``; 36 = continuous: only the tilt counts)."""
     Rp, Rg = quat_wxyz_to_R(q_pred), quat_wxyz_to_R(q_gt)
     if sym >= 36:
-        zp, zg = Rp[:, 2], Rg[:, 2]
-        return float(np.degrees(np.arccos(np.clip(zp @ zg, -1, 1))))
+        # continuous about world z: compare the GT with the prediction re-yawed to the best heading
+        best = 180.0
+        for a in np.linspace(0, 2 * np.pi, 361)[:-1]:
+            d = Rotation.from_matrix((Rotation.from_euler("z", a).as_matrix() @ Rp).T @ Rg).magnitude()
+            best = min(best, float(np.degrees(d)))
+        return best
     best = 180.0
     for k in range(max(1, sym)):
         Rk = Rotation.from_euler("z", 2 * np.pi * k / max(1, sym)).as_matrix()
-        d = Rotation.from_matrix((Rp @ Rk).T @ Rg).magnitude()
+        d = Rotation.from_matrix((Rk @ Rp).T @ Rg).magnitude()
         best = min(best, float(np.degrees(d)))
     return best
 
 
+def gt_world_symmetry(key: str, q_gt) -> int:
+    """Symmetry order of the GT pose's placement: the shape model whose resting up-direction is closest."""
+    from .inverse_layout import shape_models
+
+    Rg = quat_wxyz_to_R(q_gt)
+    up_gt = Rg.T @ np.array([0, 0, 1.0])
+    best = None
+    for sm in shape_models(key):
+        up = sm.R0.T @ np.array([0, 0, 1.0])
+        d = float(up @ up_gt)
+        if best is None or d > best[0]:
+            best = (d, sm.sym)
+    return best[1] if best else 1
+
+
 def yaw_err_deg(q_pred, q_gt, sym: int) -> float:
-    """Heading error about world z of the asset's local x axis, modulo the symmetry period."""
+    """Heading error about world z, modulo the symmetry period (from the relative rotation's yaw)."""
     Rp, Rg = quat_wxyz_to_R(q_pred), quat_wxyz_to_R(q_gt)
-    a = np.arctan2(Rp[1, 0], Rp[0, 0]) - np.arctan2(Rg[1, 0], Rg[0, 0])
+    Rr = Rp @ Rg.T
+    a = np.arctan2(Rr[1, 0], Rr[0, 0])
     period = 2 * np.pi / max(1, min(sym, 36)) if sym < 36 else 2 * np.pi
     a = (a + period / 2) % period - period / 2
     return float(abs(np.degrees(a)))
@@ -69,7 +91,6 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
     against frame k's GT."""
     from . import d0
     from .inverse_layout import EstimatorConfig, estimate, label_groups
-    from .render import load_asset
 
     ep = Path(ep)
     obs = d0.load_obs(ep, k)
@@ -106,7 +127,7 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
         for oi, o in enumerate(G):
             gkey = f"{o['type']}/{o['category']}/{o['category_idx']:05d}"
             try:
-                sym = int(load_asset(gkey).info.get("symmetry", {}).get("z_order", 1))
+                sym = gt_world_symmetry(gkey, o["quat"])
             except Exception:
                 sym = 1
             row = {"task": task, "episode": ep.name, "frame": k, "label": o["label"], "category": o["category"],

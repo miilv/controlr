@@ -122,3 +122,32 @@ def test_rotation_errors_respect_symmetry():
     assert yaw_err_deg(q5, q0, sym=4) == pytest.approx(5, abs=1e-6)
     tilt = cameras.R_to_quat_wxyz(cameras.euler_xyz_deg([10, 0, 0]))
     assert rot_err_deg(tilt, q0, sym=36) == pytest.approx(10, abs=1e-6)
+
+
+def test_world_z_symmetry_of_placed_shapes():
+    from dojo.perception.inverse_layout import world_z_symmetry
+
+    # a 4 x 2 x 1 box centred at the origin: 2-fold about z; a cube: 4-fold; a prism with an
+    # equilateral cross-section lying on a side face: 2-fold about the vertical
+    import itertools
+
+    def box(a, b, c):
+        V = np.array(list(itertools.product([-a, a], [-b, b], [-c, c])), dtype=float)
+        F = np.array([[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1],
+                      [2, 3, 7], [2, 7, 6], [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]])
+        return V, F
+
+    assert world_z_symmetry(*box(0.04, 0.02, 0.01)) == 2
+    assert world_z_symmetry(*box(0.02, 0.02, 0.02)) == 4
+    tri = np.array([[0.0, 0.025], [0.0216506, -0.0125], [-0.0216506, -0.0125]])  # equilateral, centroid at 0
+    F = np.array([[0, 1, 2], [3, 5, 4], [0, 3, 4], [0, 4, 1], [1, 4, 5], [1, 5, 2], [2, 5, 3], [2, 3, 0]])
+    standing = np.array([[t[0], t[1], z] for z in (0.0, 0.046) for t in tri])
+    assert world_z_symmetry(standing, F) == 3
+    iso = np.array([[t[0] * 1.4, t[1], z] for z in (0.0, 0.046) for t in tri])  # isosceles (RoboDojo block 3)
+    assert world_z_symmetry(iso, F) == 1
+    lying = np.array([[x, t[0], t[1] + 0.0125] for x in (-0.023, 0.023) for t in tri])  # apex up
+    assert world_z_symmetry(lying, F) == 2
+    # a T (bar + stem) has no rotational symmetry
+    bar, stem = box(0.04, 0.01, 0.0075), box(0.01, 0.02, 0.0075)
+    V = np.concatenate([bar[0] + [0, 0.02, 0], stem[0] + [0, -0.01, 0]])
+    assert world_z_symmetry(V, np.concatenate([bar[1], stem[1] + 8])) == 1

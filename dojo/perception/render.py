@@ -115,6 +115,15 @@ def _pyrender():
     os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
     import pyrender  # noqa: WPS433
 
+    if not getattr(pyrender.renderer.Renderer, "_dojo_patched", False):
+        # pyrender sorts every mesh node (hidden ones too) by depth on each render; our scenes keep many
+        # hidden nodes, and depth/seg passes need no ordering. Visible nodes only (keeps blending order
+        # irrelevant: our meshes are opaque).
+        def _visible_mesh_nodes(self, scene):
+            return [n for n in scene.mesh_nodes if n.mesh.is_visible]
+
+        pyrender.renderer.Renderer._sorted_mesh_nodes = _visible_mesh_nodes
+        pyrender.renderer.Renderer._dojo_patched = True
     return pyrender
 
 
@@ -227,7 +236,7 @@ def robot_items(state: dict, id_base: int = 1000) -> list[dict]:
         poses = model.fk_world(arm, q, g)
         for li, (link, (V, F)) in enumerate(meshes.items()):
             if link in poses:
-                items.append({"id": id_base + 100 * ai + li, "key": f"robot:{link}", "V": V, "F": F, "T": poses[link],
+                items.append({"id": id_base + 100 * ai + li, "key": f"robot:{arm}:{link}", "V": V, "F": F, "T": poses[link],
                               "link": link, "arm": arm})
     return items
 
@@ -294,10 +303,11 @@ class GLSilhouettes:
 
 
 _GL = None
+_GL_ROI: dict = {}
 
 
 def gl() -> GLSilhouettes | None:
-    """Process-wide GL silhouette renderer, or None when disabled (DOJO_GL=0) or unavailable."""
+    """Process-wide full-frame GL silhouette renderer, or None when disabled (DOJO_GL=0) or unavailable."""
     global _GL
     if _GL is None:
         if os.environ.get("DOJO_GL", "1") == "0":
@@ -308,3 +318,83 @@ def gl() -> GLSilhouettes | None:
             except Exception:  # no EGL / no GPU: fall back to the CPU paths
                 _GL = False
     return _GL or None
+
+
+def gl_roi(size: int) -> GLSilhouettes | None:
+    """A second GL context with a fixed size x size viewport for region-of-interest renders (a cropped and
+    scaled camera): a fixed viewport avoids framebuffer reallocation, and the readback is tiny."""
+    if gl() is None:
+        return None
+    r = _GL_ROI.get(size)
+    if r is None:
+        r = _GL_ROI[size] = GLSilhouettes(size, size)
+    return r
+
+
+def crop_camera(cam: Camera, x0: float, y0: float, x1: float, y1: float, size: int) -> Camera:
+    """The camera whose size x size image is the region [x0, x1) x [y0, y1) of ``cam``'s image, resampled."""
+    sx, sy = size / (x1 - x0), size / (y1 - y0)
+    K = cam.K.copy()
+    K[0, 0] *= sx
+    K[1, 1] *= sy
+    K[0, 2] = (K[0, 2] - x0) * sx
+    K[1, 2] = (K[1, 2] - y0) * sy
+    return Camera(cam.name, K, cam.T_wc, size, size, meta={"crop": (x0, y0, x1, y1)})
+
+
+class TexturedRenderer:
+    """Persistent textured scene (catalogue GLBs) with a camera-mounted light; one object per call."""
+
+    def __init__(self, w: int = 640, h: int = 480):
+        pr = _pyrender()
+        self.pr = pr
+        self.r = pr.OffscreenRenderer(w, h)
+        self.w, self.h = w, h
+        self.scene = pr.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.55] * 3)
+        self.cam = pr.IntrinsicsCamera(300, 300, 320, 240, znear=0.005, zfar=10.0)
+        self.cam_node = self.scene.add(self.cam, pose=np.eye(4))
+        self.light_node = self.scene.add(pr.DirectionalLight(color=np.ones(3), intensity=2.0), pose=np.eye(4))
+        self.nodes: dict[str, list] = {}
+
+    def _nodes(self, key: str):
+        ns = self.nodes.get(key)
+        if ns is None:
+            import trimesh
+
+            sc = trimesh.load(catalog_root() / key / "visual.glb", force="scene")
+            ns = []
+            for g in sc.dump():
+                m = self.pr.Mesh.from_trimesh(g, smooth=False)
+                m.is_visible = False
+                ns.append(self.scene.add(m, pose=np.eye(4)))
+            self.nodes[key] = ns
+        return ns
+
+    def render(self, cam: Camera, key: str, T: np.ndarray):
+        if (cam.w, cam.h) != (self.w, self.h):
+            self.r.viewport_width, self.r.viewport_height = cam.w, cam.h
+            self.w, self.h = cam.w, cam.h
+        self.cam.fx, self.cam.fy, self.cam.cx, self.cam.cy = cam.K[0, 0], cam.K[1, 1], cam.K[0, 2], cam.K[1, 2]
+        self.scene.set_pose(self.cam_node, cam.T_wc_usd())
+        self.scene.set_pose(self.light_node, cam.T_wc_usd())
+        ns = self._nodes(key)
+        for n in ns:
+            n.mesh.is_visible = True
+            self.scene.set_pose(n, T)
+        col, d = self.r.render(self.scene)
+        for n in ns:
+            n.mesh.is_visible = False
+        return col, d
+
+
+_TEX = None
+
+
+def tex() -> TexturedRenderer | None:
+    global _TEX
+    if _TEX is None:
+        try:
+            _TEX = TexturedRenderer() if os.environ.get("DOJO_GL", "1") != "0" else False
+        except Exception:
+            _TEX = False
+    return _TEX or None
