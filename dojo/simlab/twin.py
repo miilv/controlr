@@ -394,14 +394,23 @@ class Twin:
         self.env.sim.scene.write_data_to_sim()
 
     def verify(self, world: dict, candidates: list, perturb: dict | None = None, k: int = 1,
-               record_traj: bool = False, seed: int = 0, keep: tuple | None = None) -> list[dict]:
+               record_traj: bool = False, seed: int = 0, keep=None) -> list[dict]:
         """Roll every candidate segment (x ``k`` perturbed samples; sample 0 nominal) from ``world`` in
         batches of ``num_envs`` and score each with the task's own checker. See the module docstring of
         the segment format; ``world`` = {"layout", "robot"?} or {"snapshot"} (a ``broadcast_snapshot``
-        starts every env from that one state). ``keep=(candidate, sample)``: the end state of that rollout
-        is kept as a broadcast snapshot in ``self.kept`` (chain the next segment from it, e.g. a place after
-        a verified grasp); its outcome gets ``"kept": True``."""
-        self.kept = None
+        starts every env from that one state). ``keep``: (candidate, sample), a list of such pairs, or
+        "nominal" (every (candidate, 0)): those rollouts' end states are kept as broadcast snapshots in
+        ``self.kept[(c, s)]`` (chain the next segment from the chosen one, e.g. a place after a verified
+        grasp); their outcomes get ``"kept": True``."""
+        self.kept = {}
+        if keep == "nominal":
+            keep_set = {(ci, 0) for ci in range(len(candidates))}
+        elif keep is None:
+            keep_set = set()
+        elif len(keep) == 2 and all(isinstance(v, (int, np.integer)) for v in keep):
+            keep_set = {tuple(int(v) for v in keep)}
+        else:
+            keep_set = {tuple(int(v) for v in kv) for kv in keep}
         from dojo.simlab.motion import Trajectory
         if "snapshot" in world:
             base = world["snapshot"]
@@ -487,8 +496,8 @@ class Twin:
                                            res["gripper_blocked"])
                 if isinstance(candidates[ci], dict):
                     res.update({k2: v for k2, v in candidates[ci].items() if k2 not in ("actions",)})
-                if keep is not None and (ci, si) == tuple(keep):
-                    self.kept = self.broadcast_snapshot(e)
+                if (ci, si) in keep_set:
+                    self.kept[(ci, si)] = self.broadcast_snapshot(e)
                     res["kept"] = True
                 if record_traj:
                     res["traj"] = trajs[e]
