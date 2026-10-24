@@ -12,7 +12,7 @@
 are not part of the snapshot, so a restored rollout is close to, not bitwise equal to, the
 original (``bench`` measures the gap). ``load`` is the exact path (full RoboDojo reset).
 
-Bench (compute2):  scripts/simlab/rdpy.sh -m dojo.simlab.twin --task stack_blocks --num-envs 1 4 8
+Bench:  scripts/simlab/rdpy.sh -m dojo.simlab.twin --task stack_blocks --num-envs 4 [--physics-only]
 """
 
 from __future__ import annotations
@@ -32,9 +32,12 @@ ARMS = ("left", "right")
 
 
 class Twin:
-    def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, workdir: str | None = None):
+    def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, workdir: str | None = None,
+                 physics_only: bool = False, need_planner: bool = True):
         self.run = RoboDojoRunner(task, num_envs=num_envs, device_id=device_id,
-                                  workdir=workdir or str(paths.DATA / "simlab" / "work" / f"twin_{task}_{num_envs}"))
+                                  workdir=workdir or str(paths.DATA / "simlab" / "work" / f"twin_{task}_{num_envs}"),
+                                  physics_only=physics_only, need_planner=need_planner)
+        self.physics_only = physics_only
         self.env = self.run.env
         self.num_envs = self.run.num_envs
 
@@ -175,13 +178,13 @@ def _wiggle(tw: Twin, k: int) -> list[dict]:
     return acts
 
 
-def bench(task: str, num_envs: int, n_steps: int, out: Path) -> dict:
+def bench(task: str, num_envs: int, n_steps: int, out: Path, physics_only: bool = False) -> dict:
     from dojo.simlab.gen_layouts import generate
     t0 = time.perf_counter()
-    tw = Twin(task, num_envs=num_envs)
+    tw = Twin(task, num_envs=num_envs, physics_only=physics_only, need_planner=False)
     boot = time.perf_counter() - t0
     lays = [generate(task, paths.SEED_BASE + 500 + i) for i in range(tw.num_envs)]
-    res = {"task": task, "num_envs": tw.num_envs, "boot_s": boot, "loads": []}
+    res = {"task": task, "num_envs": tw.num_envs, "boot_s": boot, "loads": [], "physics_only": physics_only}
     for rep in range(2):
         info = tw.load(lays)
         res["loads"].append({"close_s": info["close_s"], "reset_s": info["reset_s"], "stable": info["per_env_ok"]})
@@ -195,12 +198,13 @@ def bench(task: str, num_envs: int, n_steps: int, out: Path) -> dict:
                     "batch_steps_per_s": n_steps / dt, "sim_realtime_factor": n_steps * 0.04 / dt}
     # render: all three cameras of all envs, as get_obs does it
     times = []
-    for _ in range(10):
+    for _ in range(0 if physics_only else 10):
         t2 = time.perf_counter()
         tw.render()
         times.append(time.perf_counter() - t2)
-    res["render"] = {"obs_all_cams_s_median": float(np.median(times)), "n_cams": 3 * tw.num_envs,
-                     "per_camera_s": float(np.median(times)) / (3 * tw.num_envs)}
+    med = float(np.median(times)) if times else float("nan")
+    res["render"] = {"obs_all_cams_s_median": med, "n_cams": 0 if physics_only else 3 * tw.num_envs,
+                     "per_camera_s": med / (3 * tw.num_envs) if times else None}
     # snapshot / restore cost and fidelity: run 40 steps, restore, run them again, compare poses
     tw.step(_hold_actions(tw))
     t3 = time.perf_counter()
@@ -242,8 +246,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--num-envs", type=int, default=1)
     ap.add_argument("--steps", type=int, default=100)
     ap.add_argument("--out", default=str(paths.DATA / "simlab" / "twin_bench"))
+    ap.add_argument("--physics-only", action="store_true")
     a = ap.parse_args(argv)
-    bench(a.task, a.num_envs, a.steps, Path(a.out))
+    bench(a.task, a.num_envs, a.steps, Path(a.out), physics_only=a.physics_only)
 
 
 if __name__ == "__main__":
