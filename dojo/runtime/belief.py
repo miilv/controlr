@@ -183,8 +183,8 @@ class RuntimeProvider:
         nom = next((o for o in info["outcomes"] if o.candidate == idx and o.sample == 0), None)
         if nom is None:
             return
-        acts = info["actions"][idx] if info.get("actions") else []
-        self.pred = {"objects": nom.objects, "n_start": self.bridge.n_executed, "n_actions": len(acts),
+        from .verifier import chosen_len
+        self.pred = {"objects": nom.objects, "n_start": self.bridge.n_executed, "n_actions": chosen_len(info, idx),
                      "kind": info.get("kind"), "label": info.get("label"), "extra": getattr(nom, "extra", {})}
 
     def _advance(self, st: dict) -> None:

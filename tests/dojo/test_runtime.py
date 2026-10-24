@@ -314,7 +314,8 @@ class FakeTwinClient:
             self.load_from_estimate(world["layout"], world.get("robot"))
         base = self.snaps[world["snapshot_id"]] if "snapshot_id" in world else self.base
         self.verifies.append({"from": "snapshot" if "snapshot_id" in world else "estimate",
-                              "n": [len(c["actions"]) for c in candidates], "labels": (perturb or {}).get("labels")})
+                              "n": [len(c["actions"]) for c in candidates], "labels": (perturb or {}).get("labels"),
+                              "prefix": [c["meta"]["prefix"] for c in candidates]})
         out = []
         for ci, c in enumerate(candidates):
             for si in range(k):
@@ -368,6 +369,7 @@ def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
     for vv in tc.verifies:
         if vv["from"] == "snapshot":
             assert vv["labels"] is not None and len(vv["labels"]) == 2       # the held block is not perturbed
+            assert max(vv["prefix"]) <= 20, vv         # only what ran after the kept pick (a park), not the pick itself
     assert len(tc.snaps) <= 3                                                  # unused snapshots are dropped
     assert rep["provider"]["adopted"] >= 4
 

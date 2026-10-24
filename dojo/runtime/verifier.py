@@ -56,8 +56,7 @@ class BundleVerifier:
         self.kept = {}
         if self.chain is not None and self.chain.get("sid") not in (None, sid):
             self._drop(self.chain["sid"])
-        acts = info.get("actions") or []
-        n_len = len(acts[idx]) if idx < len(acts) else 0
+        n_len = chosen_len(info, idx)
         self.chain = {"sid": sid, "n": self.bridge.n_executed + n_len} if sid is not None else None
 
     def _drop(self, sid) -> None:
@@ -105,6 +104,15 @@ class BundleVerifier:
         self.stats["steps"] += max((len(c["actions"]) for c in cands), default=0)
         self.stats["wall_s"] += time.perf_counter() - t0
         return res
+
+
+def chosen_len(info: dict, idx: int) -> int:
+    """Env steps of the executed candidate. skills passes ``actions`` = the chosen candidate's action list
+    (one dict per step); a list of per-candidate lists is accepted too."""
+    a = info.get("actions") or []
+    if a and isinstance(a[0], dict):
+        return len(a)
+    return len(a[idx]) if idx < len(a) else 0
 
 
 def _jsonable(a: dict) -> dict:
