@@ -182,6 +182,24 @@ def main(argv=None) -> None:
                     if not set_world_pose(stage, cache, lp[ln], pose[:3] + org, pose[3:]):
                         missing.append(lp[ln])
             rep.orchestrator.step(rt_subframes=a.subframes, delta_time=0.0, pause_timeline=False)
+            # camera GT from the prims actually rendered (wrist cameras follow the link poses)
+            cache = UsdGeom.XformCache()
+            cam_gt = {}
+            for name in CAMS:
+                c = cams[name]
+                parent = c["mount"] or "/World/envs/env_0"
+                m = cache.GetLocalToWorldTransform(stage.GetPrimAtPath(f"{parent}/SimlabCam_{name}/{name}"))
+                T = np.array(m, float).T                     # USD row-vector -> column convention
+                T[:3, 3] -= org
+                W, H = c["resolution"]
+                fx = W * float(c["focal_length"]) / float(c["horizontal_aperture"])
+                cam_gt[name] = {"K": [[fx, 0.0, W / 2.0], [0.0, fx, H / 2.0], [0.0, 0.0, 1.0]],
+                                "T_world_cam_usd": T.tolist(),
+                                "T_world_cam_cv": (T @ np.diag([1.0, -1.0, -1.0, 1.0])).tolist(),
+                                "width": W, "height": H,
+                                "fy_if_vertical_aperture_honoured": H * float(c["focal_length"])
+                                / float(c["vertical_aperture"])}
+            gt["cameras"] = cam_gt
             shapes = {}
             for name in CAMS:
                 rgb = np.asarray(anns[name].get_data())[..., :3].astype(np.uint8)
