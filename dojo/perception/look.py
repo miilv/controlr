@@ -110,3 +110,52 @@ def fuse(frames: list[dict], task: str, bgs: dict | None = None, cfg=None) -> di
     f0 = frames[0]
     extra = [(f["images"], f["state"]) for f in frames[1:]]
     return estimate(f0["images"], f0["state"], task, f0.get("instruction", ""), bgs=bgs, cfg=cfg, extra_frames=extra)
+
+
+def export_look_poses(root, out, tasks=None, commit: str = "") -> dict:
+    """Frame-0 estimate + look_plan for every D0 layout -> JSON for simlab to render post-look frames.
+    Uses the 2-fold backgrounds/colour map like the evaluation (no GT is read)."""
+    import json
+    import os
+    import zlib
+    from pathlib import Path
+
+    from . import d0
+    from .eval_g1 import fold_backgrounds
+    from .inverse_layout import EstimatorConfig
+
+    root, out = Path(root), Path(out)
+    cal = os.environ.get("DOJO_COLOR_CALIB")
+    cal = json.loads(Path(cal).read_text()) if cal and Path(cal).exists() else None
+    res = {"version": 1, "source": f"dojo.perception.look_plan @ {commit}", "estimated_from": "frame_0", "layouts": {}}
+    tnames = tasks or sorted(p.name for p in root.iterdir() if p.is_dir() and p.name != "logs")
+    for t in tnames:
+        for ep in d0.episodes(root, t):
+            obs = d0.load_obs(ep, 0)
+            kw = {"color_M": cal[f"fold{zlib.crc32(ep.name.encode()) % 2}"]} if cal else {}
+            rec = estimate(obs["images"], obs["state"], t, obs["instruction"], bgs=fold_backgrounds(ep), cfg=EstimatorConfig(**kw))
+            plan = look_plan(obs, rec)
+            res["layouts"][f"{t}/{ep.name}"] = {"parallel": True, "looks": [
+                {"arm": p["arm"], "flange_pose": p["flange_pose"], "T_world_cam_cv": p["T_world_cam_cv"],
+                 "look_at": p["target"], "purpose": p["purpose"], "label": p["label"]} for p in plan],
+                "est_steps": look_cost_steps(plan)}
+            print(t, ep.name, [(p["arm"], p["purpose"], p["label"]) for p in plan], flush=True)
+            out.write_text(json.dumps(res, indent=1))  # incremental
+    return res
+
+
+if __name__ == "__main__":
+    import argparse
+    import os
+    import subprocess
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--d0", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--tasks", nargs="*")
+    a = ap.parse_args()
+    try:
+        commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+    except Exception:
+        commit = ""
+    export_look_poses(a.d0, a.out, a.tasks, commit or os.environ.get("DOJO_COMMIT", ""))
