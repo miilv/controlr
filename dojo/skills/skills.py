@@ -32,6 +32,7 @@ CLOSED = 0.0
 CLOSE_STEPS = 4
 OPEN_STEPS = 2
 FINGER_SPEED = 0.008          # m per env step per finger, measured in the twin (g3 probe: 0.15 of the 0..1 range)
+LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
 
 def close_steps(open_gap: float, width: float) -> int:
@@ -288,8 +289,38 @@ class Skills:
                                f"object rose {dz*1000:.0f} mm (planned {lift_planned*1000:.0f}), in-hand drift {drift*1000:.0f} mm")
         box = HeldBox(T_rel, o.asset.center, o.asset.extents / 2)
         self.held[pp.arm] = Held(pp.label, T_rel, box, pp.grasp)
-        return SkillResult(True, "pick", "ok", pp.steps, pp.arm, exp, meas,
-                           f"{pp.grasp.method} {pp.grasp.note}, in-hand drift {drift*1000:.1f} mm")
+        r = SkillResult(True, "pick", "ok", pp.steps, pp.arm, exp, meas,
+                        f"{pp.grasp.method} {pp.grasp.note}, in-hand drift {drift*1000:.1f} mm")
+        if drift > LOOSE_DRIFT:
+            r.status = "loose"
+            r.note += " (loose)"
+        return r
+
+    def regrasp(self, arm: str) -> SkillResult:
+        """A loose grasp (the object shifted or turned in the pads while lifting; it slid out mid-carry
+        in the twin): lower the object straight down to its support, open, back off, so the next pick
+        plans a fresh grasp from its measured pose."""
+        h = self.held[arm]
+        if h is None:
+            return SkillResult(False, "regrasp", "logic", 0, arm, note="nothing held")
+        o = self.world.obj(h.label)
+        T_tcp = self.kin.tcp(arm, self.ex.q[arm])
+        T_dn = T_tcp.copy()
+        T_dn[2, 3] -= max(0.0, o.bottom_z - TABLE_Z - 0.006)
+        dn = self.motion.line(arm, self.ex.q[arm], T_dn, SLOW, "regrasp_down", gripper=CLOSED, check=False)
+        q_dn = dn.q_end if dn.segments else self.ex.q[arm]
+        T_up = self.kin.tcp(arm, q_dn)
+        T_up[2, 3] += 0.06
+        up = self.motion.line(arm, q_dn, T_up, MEDIUM, "regrasp_up", gripper=OPEN, check=False)
+        p = ArmPlan(arm, self.ex.q[arm].copy(), self.ex.g[arm]).move(dn).hold(1).grip(OPEN, OPEN_STEPS).hold(1)
+        p.move(up)
+        try:
+            self.ex.run({arm: p}, name=f"regrasp {h.label}")
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return SkillResult(False, "regrasp", "step_budget", 0, arm, note=str(e))
+        self.held[arm] = None
+        self.refresh()
+        return SkillResult(True, "regrasp", "ok", p.steps, arm, note=f"{h.label} put down to re-grasp")
 
     # ------------------------------------------------------------------ place
     def plan_place(self, arm: str, T_obj_target, yaw_sym: int = 1, release_gap: float = 0.003, pre_h: float = 0.06,
@@ -669,6 +700,11 @@ class Skills:
                 except (BudgetExceeded, EpisodeEnded) as e:
                     return fail("step_budget" if isinstance(e, BudgetExceeded) else "ended", job.arm, str(e))
                 r = self._record(self.verify_pick(pp, before))
+                for _ in range(2):
+                    if not (r.ok and r.status == "loose"):
+                        break
+                    self._record(self.regrasp(pp.arm))
+                    r = self._record(self.pick(job.label, job.arm if not job.any_arm else None))
                 if not r.ok:
                     try:
                         self.ex.run({pp.arm: self.plan_home(pp.arm, gripper=OPEN)}, name="reset arm")

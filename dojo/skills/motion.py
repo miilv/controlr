@@ -202,8 +202,8 @@ class Collision:
         obs = self.obstacles(ignore) if obstacles is None else obstacles
         if obs:
             pts = np.vstack([links, palm, fingers])
-            if held is not None:
-                pts = np.vstack([pts, held.corners_w(self.kin.tcp_from_flange(Tf), shrink=0.002)])
+            if held is not None:          # a held object may sit a few mm off its model: inflate it
+                pts = np.vstack([pts, held.corners_w(self.kin.tcp_from_flange(Tf), shrink=-0.005)])
             for c, R, h, lab in obs:
                 loc = (pts - c) @ R
                 inside = np.all(np.abs(loc) <= h, axis=1)
@@ -285,7 +285,7 @@ class Motion:
             obs = self.coll.obstacles(ignore)
             start_touch = self.coll.touching(arm, q0, gripper, ignore, held)
             obs_far = [o for o in obs if o[3] not in start_touch]
-            n = max(2, math.ceil(float(np.abs(q1 - q0).max()) / 0.08))
+            n = max(2, math.ceil(float(np.abs(q1 - q0).max()) / (0.04 if held is not None else 0.08)))
             for t in np.linspace(0, 1, n + 1)[1:]:
                 ok, why = self.coll.check(arm, q0 + t * (q1 - q0), gripper, ignore=ignore, held=held,
                                           obstacles=obs_far if t <= 0.3 else obs, table=table)

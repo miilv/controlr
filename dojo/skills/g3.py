@@ -21,6 +21,7 @@ import argparse
 import gzip
 import json
 import math
+import os
 import time
 import traceback
 from pathlib import Path
@@ -71,7 +72,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     t0 = time.perf_counter()
     info = run.load(layout)
     t_load = time.perf_counter() - t0
-    rec = {"task": task, "seed": seed, "load_s": round(t_load, 2), "stable": bool(info["stable"])}
+    rec = {"task": task, "seed": seed, "load_s": round(t_load, 2), "stable": bool(info["stable"]),
+           "layout_file": (layout.get("_simlab") or {}).get("layout_file")}
     if not info["stable"]:
         rec.update({"success": False, "score": 0.0, "category": "unstable_layout"})
         return rec
@@ -159,14 +161,28 @@ def cmd_run(a) -> None:
                          physics_only=True, need_planner=False)
     rows = []
     summ_p = out / f"{a.task}_episodes.jsonl"
+    tdir = paths.LAYOUTS / a.task
+    # simlab's pre-settled records (<id>.settled.json) when its settled_index.json exists (team rule:
+    # report on settled layouts); SIMLAB_DEV_LAYOUT_SUFFIX overrides ("" = raw records)
+    suffix = os.environ.get("SIMLAB_DEV_LAYOUT_SUFFIX")
+    if suffix is None:
+        suffix = ".settled" if (tdir / "settled_index.json").exists() else ""
+    settled_index = json.loads((tdir / "settled_index.json").read_text()) if (tdir / "settled_index.json").exists() else {}
     for seed in parse_seeds(a.seeds):
-        lp = paths.LAYOUTS / a.task / f"{seed}.json"
+        lp = tdir / f"{seed}{suffix}.json"
+        if suffix and settled_index.get(str(seed), {}).get("status", "ok") != "ok":
+            print(f"[g3] {a.task} {seed}: settled record not ok ({settled_index[str(seed)].get('status')}), skipped",
+                  flush=True)
+            continue
+        if not lp.exists():
+            lp = tdir / f"{seed}.json"
         paths.assert_not_eval(lp)
         if not lp.exists():
             print(f"[g3] missing layout {lp}", flush=True)
             continue
         lay = json.loads(lp.read_text())
         lay.setdefault("_simlab", {})["seed"] = seed
+        lay["_simlab"]["layout_file"] = lp.name
         logs = []
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
                           verify_k=a.verify)
@@ -328,6 +344,23 @@ def cmd_probe(a) -> None:
     run.close()
 
 
+def cmd_report(a) -> None:
+    """Table of every run's summary under ``--root`` (CPU only, no Isaac)."""
+    root = Path(a.root)
+    rows = []
+    for f in sorted(root.glob("*/*_summary.json")):
+        d = json.loads(f.read_text())
+        v = d.get("verify") or {}
+        rows.append((f.parent.name, d["task"], f"{d['success']}/{d['n']}", d.get("unstable", 0),
+                     f"{d.get('steps_median')}/{d.get('step_lim')}", d.get("steps_max"), d.get("wall_s_median"),
+                     ",".join(f"{k}:{n}" for k, n in sorted((d.get("categories") or {}).items())),
+                     (f"{v.get('first_ok', 0)}+{v.get('later_ok', 0)}/{v.get('segments', 0)}" if v else "")))
+    hdr = ("run", "task", "success", "unstable", "steps med/lim", "max", "wall s", "failures", "verify ok first+later/seg")
+    print(" | ".join(hdr))
+    for r in rows:
+        print(" | ".join(str(x) for x in r))
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -341,8 +374,10 @@ def main(argv=None) -> None:
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")
+    q = sub.add_parser("report")
+    q.add_argument("--root", default=os.path.expanduser("~/dojo-data/skills/g3"))
     a = ap.parse_args(argv)
-    {"run": cmd_run, "probe": cmd_probe}[a.cmd](a)
+    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report}[a.cmd](a)
 
 
 if __name__ == "__main__":
