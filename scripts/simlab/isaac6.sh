@@ -9,12 +9,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 if [[ "${SIMLAB_GPU:-1}" != 0 ]]; then        # SIMLAB_GPU=0: a parent already holds the lock
   LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
   exec 9>>"$LOCK"
-  for i in $(seq 1440); do
-    flock -n 9 && break
-    [[ $((i % 10)) -eq 1 ]] && echo "[isaac6] GPU lock $LOCK held by: $(tr '\n' ' ' < "$LOCK"), waiting..." >&2
-    sleep 30
-  done
-  flock -n 9 || { echo "[isaac6] gave up waiting for $LOCK" >&2; exit 75; }
+  if ! flock -n 9; then        # blocking wait: woken on release (30 s polling lost to back-to-back jobs)
+    echo "[isaac6] GPU lock $LOCK held by: $(head -c 200 "$LOCK"), waiting..." >&2
+    flock -w "${SIMLAB_LOCK_WAIT_S:-43200}" 9 || { echo "[isaac6] gave up waiting for $LOCK" >&2; exit 75; }
+  fi
   printf 'pid=%s stream=simlab start=%s cmd=isaac6 %s\n' "$$" "$(date -u +%FT%TZ)" "$*" > "$LOCK"
 fi
 export CARB_APP_PATH="$SIM_ROOT/kit" ISAAC_PATH="$SIM_ROOT" EXP_PATH="$SIM_ROOT/apps" OMNI_KIT_ACCEPT_EULA=YES
