@@ -13,10 +13,60 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
+from pathlib import Path
+
+import yaml
 
 from dojo.simlab import paths
-from dojo.simlab.gen_layouts import available_indices, load_yaml, metadata, usd_exists
+from dojo.simlab import gen_layouts as G
 from dojo.simlab.layout import OBJECT_TYPES
+
+load_yaml = G.load_yaml
+available_indices, metadata, usd_exists = G.available_indices, G.metadata, G.usd_exists
+
+
+class GitTree:
+    """The asset set as published (HF dataset git tree, e.g. a pointer-only clone), instead of the
+    files on disk: lets a sparse install answer "is it in the public Assets?"."""
+
+    def __init__(self, repo: Path):
+        self.repo = repo
+        out = subprocess.run(["git", "-C", str(repo), "ls-tree", "-r", "--name-only", "HEAD", "--",
+                              "Assets/Object/RoboDojo"], capture_output=True, text=True, check=True).stdout
+        self.files = set(out.split())
+        if any("Eval_Layout" in f for f in self.files):
+            raise RuntimeError("tree listing must not include eval data")
+
+    def _dir(self, obj_type, category, clutter):
+        return f"Assets/Object/RoboDojo/{'Clutter' if clutter else obj_type}/{category}"
+
+    def available_indices(self, obj_type, category, clutter=False):
+        pre = self._dir(obj_type, category, clutter) + "/"
+        return sorted({int(f[len(pre):].split("/")[0]) for f in self.files
+                       if f.startswith(pre) and f[len(pre):].split("/")[0].isdigit()})
+
+    def usd_exists(self, obj_type, category, idx, clutter=False):
+        d = f"{self._dir(obj_type, category, clutter)}/{idx:05d}"
+        return f"{d}/object.usdz" in self.files or f"{d}/object.usd" in self.files
+
+    def metadata(self, obj_type, category, idx, clutter=False):
+        f = f"{self._dir(obj_type, category, clutter)}/{idx:05d}/metadata.json"
+        if f not in self.files:
+            return None
+        txt = subprocess.run(["git", "-C", str(self.repo), "show", f"HEAD:{f}"], capture_output=True,
+                             text=True).stdout
+        if txt.startswith("version https://git-lfs"):
+            return {"_lfs_pointer": True, "active": {"place": {"?": 1}}, "geometry": {"oriented_bbox": 1}}
+        return json.loads(txt)
+
+    def clutter_yml(self):
+        txt = subprocess.run(["git", "-C", str(self.repo), "show", "HEAD:Assets/Object/RoboDojo/Clutter/clutter.yml"],
+                             capture_output=True, text=True, check=True).stdout
+        d = yaml.safe_load(txt)
+        if not isinstance(d, dict):          # an LFS pointer: use the checked-out copy
+            d = load_yaml(self.repo / "Assets/Object/RoboDojo/Clutter/clutter.yml")
+        return d
 
 
 def pools(task: str) -> dict[tuple[str, str], set[int]]:
@@ -47,7 +97,14 @@ def check_one(t: str, cat: str, i: int, clutter: bool = False) -> str | None:
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", default=None)
+    ap.add_argument("--git-tree", default=None, help="check against this HF git clone's tree, not the disk")
     a = ap.parse_args(argv)
+    global available_indices, metadata, usd_exists
+    tree = None
+    if a.git_tree:
+        tree = GitTree(Path(a.git_tree))
+        available_indices, metadata, usd_exists = tree.available_indices, tree.metadata, tree.usd_exists
+        G.available_indices = tree.available_indices          # pools() resolves index-less entries here
     tasks = sorted(p.stem for p in paths.TASK_CONFIGS.glob("*.yml") if not p.stem.startswith("_"))
     report: dict = {"tasks": {}, "clutter": {}}
     n_ok = n_bad = 0
@@ -68,7 +125,7 @@ def main(argv: list[str] | None = None) -> None:
             entry["held_out"] = {f"{t}/{c}": sorted(idx - std.get((t, c), set())) for (t, c), idx in pl.items()
                                  if idx - std.get((t, c), set())}
         report["tasks"][task] = entry
-    yml = load_yaml(paths.OBJECTS / "Clutter" / "clutter.yml")["Clutter"]
+    yml = (tree.clutter_yml() if tree else load_yaml(paths.OBJECTS / "Clutter" / "clutter.yml"))["Clutter"]
     c_ok, c_bad = 0, {}
     for cat, idx in yml.items():
         for i in idx:
