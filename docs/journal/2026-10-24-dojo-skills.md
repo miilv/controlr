@@ -87,6 +87,9 @@ data `compute3:~/dojo-data/skills/g3/<run>/`):
 | stack_blocks | v1 | 11/25 | 88 (550) | false aborts on the base site, arm collision, in-hand slip |
 | stack_blocks | v2 | **23/25** | 168 / 198 (550) | 2 grasp slips at far reach (fixed after: reach-aware arm choice) |
 | stack_bowls | v1 / v2 | 0/25, 1/8 | — | a rim pinch tips the bowl 20-43 deg as it lifts |
+| swap_blocks | v1 chunk 1 / chunk 2 | 8/10, **10/10** | 271 / 349 (700) | a cube turned in the pads and slid out mid-carry (chunk 2 with loose-grasp regrasp) |
+| press_by_number | v1 chunk 1 / chunk 2 | 0/10, **10/10** | 158 / 214 (700) | the idle arm hovering 12 mm from the pressing arm blocked the middle button (chunk 2 with the clearance fix) |
+| put_bottles_into_dustbin | v2 / v3 | 0/7, 0/15 (3-5 unstable loads) | 231-523 (700) | lying bottles gripped above the axis; handover spots; retries |
 
 (Further rows appended at the end of the session.)
 
@@ -106,7 +109,14 @@ data `compute3:~/dojo-data/skills/g3/<run>/`):
    - Lying cylinders were gripped below the axis and popped out. Fix: close at mid height.
    - Handover spots were not checked for the helper's place. Fix: both plans must pass.
    - The same failed pick was retried with no variation. Fix: at most 2 tries per object.
-6. **Planning.**
+6. **Arm-arm blocking at buttons.** The idle arm, hovering over the next button, sat 12 mm from the
+   pressing arm. The middle button's presses registered 0 of N, and the hovering arm was pushed into
+   its own button (an extra press fails the episode). Fix: before every press the idle arm must be at
+   least 14 cm from the pressing arm's whole path, otherwise it parks.
+7. **Loose grasps.** A cube turned 9 deg in the pads while closing (asset friction 0.3). It passed the
+   pick check with 22 mm in-hand drift and slid out mid-carry. Fix: more than 8 mm of drift after the
+   lift means put it back down and re-pick (good grasps show under 1 mm).
+8. **Planning.**
    - Start configurations already inside the collision margin blocked every move. Fix: objects
      touching at the start are ignored for the first part of the move.
    - The finger model was too fat. Fix: it follows the mesh taper.
