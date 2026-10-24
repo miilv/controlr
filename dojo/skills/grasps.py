@@ -110,6 +110,9 @@ def top_grasps(obj: ObjectState, kin: X5Kin, arm: str, tilts=(0.0, 25.0, 40.0), 
     bottom = obj.bottom_z if support_z is None else support_z
     tip_z = max(bottom + TIP_TABLE_CLEAR, top - depth)
     tcp_z = tip_z + TIP_BEYOND_TCP
+    # close at the object's mid height when the fingertips can go that deep: the widest section of a
+    # lying cylinder is its axis, and pads below it squeeze the cylinder up and out (twin, bottles)
+    tcp_z = max(tcp_z, min(float(c[2]), top - 0.005))
     base = kin.base(arm)[:3, 3]
     for k in range(3):
         if k == ku or ext[k] > max_width:

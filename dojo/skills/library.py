@@ -286,27 +286,23 @@ def plan_drop(sk: Skills, arm: str, xy, z_tcp: float = 0.93) -> ArmPlan | SkillR
     return best[1]
 
 
-def free_spot(sk: Skills, label: str, arm: str, near_xy=(0.0, -0.15), clearance: float = 0.02) -> tuple | None:
-    """A table spot near ``near_xy`` clear of other objects where ``arm`` can pick ``label``."""
+def free_spots(sk: Skills, label: str, near_xy=(0.0, -0.15), clearance: float = 0.02) -> list[tuple]:
+    """Table spots near ``near_xy`` clear of the other objects (for putting ``label`` down)."""
     w = sk.world
     o = w.obj(label)
     r_self = float(np.linalg.norm(o.asset.extents[:2])) / 2
-    cands = [(near_xy[0] + dx, near_xy[1] + dy) for dx in (0.0, -0.06, 0.06, -0.12, 0.12)
-             for dy in (0.0, -0.08, 0.08, -0.14)]
-    for xy in cands:
-        if not (TABLE_X[0] + 0.1 < xy[0] < TABLE_X[1] - 0.1 and -0.33 < xy[1] < 0.05):
-            continue
-        clear = True
-        for other in w.task_objects():
-            if other.label == label or other.obj_type == "Geometry":
+    out = []
+    for dx in (0.0, -0.06, 0.06, -0.12, 0.12):
+        for dy in (0.0, -0.08, 0.08, -0.14):
+            xy = (near_xy[0] + dx, near_xy[1] + dy)
+            if not (TABLE_X[0] + 0.1 < xy[0] < TABLE_X[1] - 0.1 and -0.33 < xy[1] < 0.05):
                 continue
-            r_o = float(np.linalg.norm(other.asset.extents[:2])) / 2
-            if np.linalg.norm(other.center_w[:2] - np.asarray(xy)) < r_self + r_o + clearance:
-                clear = False
-                break
-        if clear and sk.can_pick_at(label, arm, xy):
-            return xy
-    return None
+            clear = all(np.linalg.norm(other.center_w[:2] - np.asarray(xy)) >=
+                        r_self + float(np.linalg.norm(other.asset.extents[:2])) / 2 + clearance
+                        for other in w.task_objects() if other.label != label and other.obj_type != "Geometry")
+            if clear:
+                out.append(xy)
+    return out
 
 
 def _table_pose_keep(sk: Skills, label: str, xy) -> np.ndarray:
@@ -327,11 +323,14 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
     if not drops:
         return {"ok": False, "stage": "plan", "note": "no drop point off the table"}
     done: list[str] = []
+    tries: dict[str, int] = {}
     for _ in range(3 * len(objects)):
         if len(done) == len(objects):
             break
         w = sk.refresh()
-        todo = [l for l in objects if l not in done]
+        todo = [l for l in objects if l not in done and tries.get(l, 0) < 2]
+        if not todo:
+            break
         d_cands = sorted((l for l in todo if sk.can_pick(l, dropper)),
                          key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - c[:2])))
         h_cands = [l for l in todo if l not in d_cands and sk.can_pick(l, helper)]
@@ -349,6 +348,8 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
         if not plans:
             return {"ok": False, "stage": "plan pick", "note": f"{d_cands[:1]} / {h_cands[:1]}"}
         befores = {a: w.obj(l).pos.copy() for a, l in picks.items()}
+        for l in picks.values():
+            tries[l] = tries.get(l, 0) + 1
         try:
             sk.parallel([p.plan for p in plans.values()], name="pick")
         except (BudgetExceeded, EpisodeEnded) as e:
@@ -370,15 +371,14 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
             phase.append(pd)
         if sk.held[helper] is not None:
             lab = sk.held[helper].label
-            spot = free_spot(sk, lab, dropper, near_xy=(-0.1 if dropper == "left" else 0.1, -0.15))
-            if spot is None:
+            for spot in free_spots(sk, lab, near_xy=(-0.1 if dropper == "left" else 0.1, -0.15)):
+                pl = sk.plan_place(helper, _table_pose_keep(sk, lab, spot), yaw_sym=8, release_gap=0.004)
+                if isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot):
+                    place_r = pl
+                    phase.append(pl.plan)
+                    break
+            if place_r is None:
                 return {"ok": False, "stage": "handover spot", "note": lab}
-            pl = sk.plan_place(helper, _table_pose_keep(sk, lab, spot), yaw_sym=8, release_gap=0.004)
-            if isinstance(pl, PlacePlan):
-                place_r = pl
-                phase.append(pl.plan)
-            else:
-                sk._record(pl)
         if not phase:
             continue
         try:
