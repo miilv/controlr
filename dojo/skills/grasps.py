@@ -108,11 +108,11 @@ def top_grasps(obj: ObjectState, kin: X5Kin, arm: str, tilts=(0.0, 25.0, 40.0), 
     c = obj.center_w
     top = obj.top_z
     bottom = obj.bottom_z if support_z is None else support_z
-    tip_z = max(bottom + TIP_TABLE_CLEAR, top - depth)
-    tcp_z = tip_z + TIP_BEYOND_TCP
-    # close at the object's mid height when the fingertips can go that deep: the widest section of a
-    # lying cylinder is its axis, and pads below it squeeze the cylinder up and out (twin, bottles)
-    tcp_z = max(tcp_z, min(float(c[2]), top - 0.005))
+    # TCP at the object's mid height (the widest section of a lying cylinder is its axis: pads above
+    # it squeeze the cylinder out, twin 2026-10-24), but fingertips >= 4 mm above the support and the
+    # palm (61 mm above the TCP) clear of the top
+    tcp_z = max(bottom + TIP_TABLE_CLEAR + TIP_BEYOND_TCP, min(float(c[2]), top - 0.005), top - 0.055)
+    del depth
     base = kin.base(arm)[:3, 3]
     for k in range(3):
         if k == ku or ext[k] > max_width:
@@ -356,7 +356,10 @@ def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **k
         elif cat == "bottle":
             ku, _ = up_axis(obj)
             long_k = int(np.argmax(obj.asset.extents))
-            g = side_grasps(obj, kin, arm) + top_grasps(obj, kin, arm) if ku == long_k else top_grasps(obj, kin, arm)
+            if ku == long_k:      # standing: the bbox width is not the neck's, so side grasps only
+                g = side_grasps(obj, kin, arm)
+            else:
+                g = top_grasps(obj, kin, arm)
         else:
             g = top_grasps(obj, kin, arm)
             if not g:
