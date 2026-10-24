@@ -149,7 +149,11 @@ def _objects_from_rows_nodb(rows):
 
 class Skills:
     def __init__(self, env, provider, kin: X5Kin | None = None, reserve: int = 30, log=None, verifier=None,
-                 verify_k: int = 2, n_cands: int = 6):
+                 verify_k: int = 2, n_cands: int = 6, remeasure: bool = True, on_verified=None):
+        """``verifier``: a ``verify.TwinBackend`` (None = single plan). ``remeasure``: re-read the held
+        object's pose before a place descent (off when the world provider cannot measure held
+        objects). ``on_verified(info)``: called after each verified choice with
+        {"idx", "passes", "outcomes", "actions", "kind", "label"} (also kept in ``last_verified``)."""
         self.env = env
         self.provider = provider
         self.kin = kin or X5Kin()
@@ -163,6 +167,9 @@ class Skills:
         self.verifier = verifier
         self.verify_k = verify_k
         self.n_cands = n_cands
+        self.remeasure = remeasure
+        self.on_verified = on_verified
+        self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
 
     # ------------------------------------------------------------------ world
@@ -372,7 +379,7 @@ class Skills:
         arm's compiled per-step (q, g) list, run in the same env steps throughout."""
         other = list(other or [])
         try:
-            if remeasure and getattr(pp, "approach", None) is not None:
+            if remeasure and self.remeasure and getattr(pp, "approach", None) is not None:
                 a1 = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0).move(pp.approach, "approach").hold(1, "still")
                 c1 = a1.compile()[0]
                 lists = {pp.arm: c1}
@@ -507,7 +514,7 @@ class Skills:
             return _others_still(o, before, {pl.label, *moving})
         return j
 
-    def verify_choose(self, cands: list[dict], judges: list, held=()) -> tuple[int | None, list]:
+    def verify_choose(self, cands: list[dict], judges: list, held=(), kind: str = "", label: str = "") -> tuple[int | None, list]:
         """Roll candidate segments (per-arm (q, g) lists) in the twin; the first one whose every
         sample passes its judge wins (else the one with the most passing samples)."""
         acts = [self.ex.actions_for(c) for c in cands]
@@ -518,13 +525,20 @@ class Skills:
                 passes[o.candidate] += 1
         self.vstats["segments"] += 1
         self.vstats["candidates"] += len(cands)
+        chosen = None
         for i, n in enumerate(passes):
             if n == self.verify_k:
                 self.vstats["first_ok" if i == 0 else "later_ok"] += 1
-                return i, passes
-        self.vstats["none_ok"] += 1
-        best = int(np.argmax(passes)) if max(passes) > 0 else None
-        return best, passes
+                chosen = i
+                break
+        if chosen is None:
+            self.vstats["none_ok"] += 1
+            chosen = int(np.argmax(passes)) if max(passes) > 0 else None
+        self.last_verified = {"idx": chosen, "passes": passes, "outcomes": outs,
+                              "actions": acts[0 if chosen is None else chosen], "kind": kind, "label": label}
+        if self.on_verified is not None:
+            self.on_verified(self.last_verified)
+        return chosen, passes
 
     def _verified_pick(self, job) -> SkillResult:
         held = tuple(h.label for h in self.held.values() if h)
@@ -535,7 +549,7 @@ class Skills:
         cands = cands[:self.n_cands]
         before = self._at_rest(exclude=held)
         idx, passes = self.verify_choose([{c.arm: c.plan.compile()[0]} for c in cands],
-                                         [self.judge_pick(c, before) for c in cands], held)
+                                         [self.judge_pick(c, before) for c in cands], held, kind="pick", label=job.label)
         pp = cands[0 if idx is None else idx]
         self.log(f"[verify] pick {job.label}: passes {passes} -> candidate {idx}")
         b = self.world.obj(job.label).pos.copy()
@@ -576,7 +590,8 @@ class Skills:
             else:
                 judges.append(jp)
             cands.append(c)
-        idx, passes = self.verify_choose(cands, judges, held=tuple({job.label, *held_other}))
+        idx, passes = self.verify_choose(cands, judges, held=tuple({job.label, *held_other}), kind="place",
+                                         label=job.label)
         i = 0 if idx is None else idx
         pl, c = variants[i], cands[i]
         self.log(f"[verify] place {job.label}: passes {passes} -> candidate {idx}")

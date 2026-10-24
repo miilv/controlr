@@ -76,10 +76,10 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
     sim_time = [0.0]
     verifier = None
     if verify_k:
-        from dojo.skills.verify import TwinVerifier
-        verifier = TwinVerifier(run, list(range(1, run.num_envs)), seed=seed)
+        from dojo.skills.verify import InProcessTwin
+        verifier = InProcessTwin(run, list(range(1, run.num_envs)), seed=seed)
     sk = Skills(env, prov, reserve=getattr(program, "RESERVE", 30), log=log, verifier=verifier,
-                verify_k=verify_k or 2)
+                verify_k=verify_k or 2, n_cands=4)
     frames = []
     if trace:
         labels = [o.label for o in sk.world.task_objects() if o.obj_type != "Geometry"]
