@@ -232,3 +232,19 @@ def test_planner_reads_roles_from_words_and_objects():
     assert p.skill == "stack_objects" and p.args["nest"] and len(p.args["objects"]) == 3
     p = plan("Build a tower using the wooden blocks and wooden boards.", _world("", cubes))
     assert p.skill == "build_tower"
+
+
+def test_tower_roles_from_geometry():
+    from dojo.skills.library import tower_roles
+    pieces = [_obj("long", "block", 0, (0.0, -0.2, 0.775), (0.187, 0.033, 0.01)),
+              _obj("short", "block", 4, (0.0, -0.3, 0.775), (0.122, 0.033, 0.01))]
+    pieces += [_obj(f"p{i}", "block", 2, (x, -0.1, 0.784), (0.019, 0.031, 0.019))
+               for i, x in enumerate((-0.3, -0.2, 0.2, 0.3))]
+    pieces += [_obj("thin", "block", 1, (-0.4, -0.08, 0.772), (0.048, 0.025, 0.007)),
+               _obj("roof", "block", 3, (0.4, -0.12, 0.777), (0.03, 0.019, 0.023))]
+    w = _world("Build a tower using the wooden blocks and wooden boards.", pieces)
+    sk = type("S", (), {"world": w})()
+    r = tower_roles(sk, [o.label for o in pieces])
+    assert r["boards"] == ["long", "short"]
+    assert sorted(r["pillars"]) == ["p0", "p1", "p2", "p3"]
+    assert r["toppers"] == ["thin", "roof"]
