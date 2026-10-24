@@ -508,7 +508,9 @@ def swap_on_mats(sk: Skills, objects: list[str], mats: list[str], button: str | 
     for lab, mat in ((a, empty), (b, ma), (a, mb)):
         xy = w.obj(mat).pos[:2].copy()
         arm = "left" if xy[0] + w.obj(lab).pos[0] < 0 else "right"
-        job = Job(lab, arm, lambda s, lab=lab, xy=xy: table_rest(s, lab, xy, sym=z_symmetry(s.world.obj(lab))),
+        # the mats collide when something is put on them: rest the object on the mat's top
+        job = Job(lab, arm, lambda s, lab=lab, xy=xy, mat=mat: rest_pose(s, lab, xy, max(TABLE_Z, s.world.obj(mat).top_z),
+                                                                         sym=z_symmetry(s.world.obj(lab))),
                   yaw_sym=z_symmetry(w.obj(lab)), tol_xy=0.012, bank=False, prefetch=False, any_arm=True)
         r = sk.run_jobs([job], bank_after=False)
         if not r.ok:
