@@ -449,7 +449,13 @@ class RoboDojoRunner:
         for otype in OBJECT_TYPES:
             for rec in lm.object_records_by_type[otype].layout_records_by_env[env_idx]:
                 name = rec["inst_name"]
-                pos, quat = lm.get_instance_pose(env_idx=env_idx, inst_name=name)
+                pq = lm.get_instance_pose(env_idx=env_idx, inst_name=name)
+                if pq is None:                     # RoboDojo only resolves rigid/articulation/garment/geometry
+                    try:
+                        pq = lm.get_scene_object(env_idx, name).get_local_pose()
+                    except Exception:  # noqa: BLE001 (fluids: particles, no single pose)
+                        pq = (None, None)
+                pos, quat = pq
                 row = {"inst_name": name, "prim_path": rec.get("prim_path"), "type": otype,
                        "category": lm.decode_inst_name(name)[0],
                        "category_idx": int(rec.get("category_idx", -1)), "label": rec.get("label"),
