@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -282,10 +283,14 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     xr, yr = _ranges(prm["xlim"] or [0, 0])[0], _ranges(prm["ylim"] or [0, 0])[0]
     if max_off is not None:
         max_off = max(0.0, max_off - radius)
-    for _ in range(100):
-        off = np.array([rng.uniform(*xr), rng.uniform(*yr), 0.0])
-        if max_off is not None and np.linalg.norm(off[:2]) > max_off:
-            continue
+    for _ in range(400):
+        if max_off is not None:                 # uniform on the support disk (inside the config box)
+            r, th = max_off * math.sqrt(rng.random()), rng.uniform(0.0, 2 * math.pi)
+            off = np.array([r * math.cos(th), r * math.sin(th), 0.0])
+            if not (xr[0] - 1e-9 <= off[0] <= xr[1] + 1e-9 and yr[0] - 1e-9 <= off[1] <= yr[1] + 1e-9):
+                continue
+        else:
+            off = np.array([rng.uniform(*xr), rng.uniform(*yr), 0.0])
         q = ref_q
         if prm["rotate_rand"]:
             rd = prm["rotate_deg"] or 0
@@ -299,7 +304,7 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
             c_frame = np.asarray(places[tag]["projection_circle"]["center"], float)
             pose = gens["ground"]._placement_to_origin(np.r_[ref_pos + off, q], c_frame)
         sib = siblings.setdefault(plabel, [])
-        if all(np.linalg.norm(pose[:2] - xy) > radius + r + 0.005 for xy, r in sib):
+        if all(np.linalg.norm(pose[:2] - xy) > radius + r + 0.002 for xy, r in sib):
             sib.append((pose[:2].copy(), radius))
             used.add(plabel)
             return pose, plabel
