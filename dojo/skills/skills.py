@@ -108,13 +108,13 @@ class Job:
 class GTProvider:
     """WorldState from the dev-only ground truth of the env (twin or KinematicEnv)."""
 
-    def __init__(self, env, assets: AssetDB | None, task: str, instruction: str = "", mesh_labels: tuple = (),
+    def __init__(self, env, assets: AssetDB | None, task: str = "", instruction: str = "", meshes: bool = True,
                  include_clutter: bool = True):
         self.env = env
         self.assets = assets
         self.task = task
         self.instruction = instruction
-        self.mesh_labels = tuple(mesh_labels)
+        self.meshes = meshes
         self.include_clutter = include_clutter
         self.home_q = None
         self.notes: dict = {}
@@ -129,7 +129,7 @@ class GTProvider:
             objs = _objects_from_rows_nodb(rows)
         else:
             objs = objects_from_gt(rows, self.assets, step=self.env.steps_used, include_clutter=self.include_clutter,
-                                   mesh_labels=self.mesh_labels)
+                                   meshes=self.meshes)
         return WorldState(task=self.task, instruction=self.instruction, objects=objs, arms=arms, home_q=self.home_q,
                           step=int(self.env.steps_used), step_lim=int(self.env.step_lim), notes=self.notes)
 
@@ -474,7 +474,7 @@ class Skills:
     def can_pick_at(self, label: str, arm: str, xy, method: str = "auto") -> bool:
         """Grasp feasibility from home if ``label`` rested level on the table at ``xy``."""
         from dojo.skills.geometry import R_to_quat
-        from dojo.skills.programs.common import current_R, half_height, level_R
+        from dojo.skills.targets import current_R, half_height, level_R
         o = self.world.obj(label)
         saved = (o.pos.copy(), o.quat.copy())
         R = level_R(current_R(self, label))

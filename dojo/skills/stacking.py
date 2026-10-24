@@ -15,7 +15,7 @@ from typing import Callable
 import numpy as np
 
 from dojo.skills.kinematics import ARMS
-from dojo.skills.programs.common import table_rest
+from dojo.skills.targets import table_rest
 from dojo.skills.skills import Job, Skills
 
 MID_SITES = ((0.0, -0.17), (0.0, -0.12), (0.0, -0.22), (-0.06, -0.17), (0.06, -0.17))

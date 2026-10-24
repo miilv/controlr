@@ -146,7 +146,7 @@ def top_grasps(obj: ObjectState, kin: X5Kin, arm: str, tilts=(0.0, 25.0, 40.0), 
 
 
 def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pitches=(0.0, 20.0, 35.0),
-                n_heading: int = 7, max_width: float = MAX_WIDTH) -> list[Grasp]:
+                n_heading: int = 9, max_width: float = MAX_WIDTH, spread_deg: float = 90.0) -> list[Grasp]:
     """Horizontal-ish approach at a fraction of the object's height (upright objects)."""
     ku, _ = up_axis(obj)
     ext = obj.asset.extents
@@ -161,7 +161,7 @@ def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pit
     h0 = math.atan2(c[1] - base[1], c[0] - base[0])
     for frac in heights:
         z = lo + frac * (hi - lo)
-        for dh in np.linspace(-math.radians(60), math.radians(60), n_heading):
+        for dh in np.linspace(-math.radians(spread_deg), math.radians(spread_deg), n_heading):
             head = h0 + dh
             for pitch in pitches:
                 pr = math.radians(pitch)
@@ -171,7 +171,7 @@ def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pit
                 p = np.array([c[0], c[1], z])
                 for flip in (1.0, -1.0):
                     out.append(Grasp("side", T_from(p, _frame(appr, flip * closing)), width,
-                                     score=abs(dh) / math.radians(60) * 0.5 + pitch / 70.0 + abs(frac - 0.5),
+                                     score=abs(dh) / math.radians(spread_deg) * 0.5 + pitch / 70.0 + abs(frac - 0.5),
                                      note=f"h {frac:.2f} head {math.degrees(head):.0f} pitch {pitch:.0f}"))
     return out
 

@@ -1,4 +1,4 @@
-"""WorldState: what the skills and expert programs know about the scene.
+"""WorldState: what the skills and the planner know about the scene.
 
 The same fields come from two sources:
 
@@ -214,7 +214,7 @@ def arms_from_proprio(st: dict, holding: dict | None = None) -> dict[str, ArmSta
 
 
 def objects_from_gt(rows: list[dict], assets: AssetDB, step: int = 0, include_clutter: bool = True,
-                    mesh_labels: tuple = ()) -> dict[str, ObjectState]:
+                    meshes: bool = True) -> dict[str, ObjectState]:
     """``RoboDojoRunner.objects_gt()`` rows -> ObjectState per label (clutter keyed by inst name)."""
     out = {}
     for r in rows:
@@ -227,7 +227,7 @@ def objects_from_gt(rows: list[dict], assets: AssetDB, step: int = 0, include_cl
             pass
         try:
             info = assets.get(r["type"], r["category"], r["category_idx"], clutter=bool(r.get("clutter")),
-                              mesh=label in mesh_labels)
+                              mesh=meshes and not r.get("clutter"))
         except (FileNotFoundError, OSError, KeyError):
             info = AssetInfo(key=f"{r['type']}/{r['category']}/{r['category_idx']}", bbox_min=np.full(3, -0.02),
                              bbox_max=np.full(3, 0.02))
