@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v5"
+GENERATOR = "simlab/v6"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -284,8 +284,7 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     if ext:                                      # an egg on its side is longer than its projection circle
         radius = max(radius, 0.5 * float(max(ext)))
     xr, yr = _ranges(prm["xlim"] or [0, 0])[0], _ranges(prm["ylim"] or [0, 0])[0]
-    if max_off is not None:
-        max_off = max(0.0, max_off - radius)
+    # the support radius bounds the placement point (footprints are kept apart separately below)
     for _ in range(400):
         if max_off is not None:                 # uniform on the support disk (inside the config box)
             r, th = max_off * math.sqrt(rng.random()), rng.uniform(0.0, 2 * math.pi)
