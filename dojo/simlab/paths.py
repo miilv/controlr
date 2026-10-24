@@ -24,7 +24,8 @@ SEED_BASE = 100_000
 
 
 def assert_not_eval(path: str | os.PathLike) -> None:
-    p = Path(path).resolve()
-    ev = EVAL_LAYOUT_DIR.resolve() if EVAL_LAYOUT_DIR.exists() else EVAL_LAYOUT_DIR
+    # realpath never raises on unreadable parents (CI runs as non-root, RD_HOME is under /root)
+    p = Path(os.path.realpath(path))
+    ev = Path(os.path.realpath(EVAL_LAYOUT_DIR))
     if p == ev or ev in p.parents or "Eval_Layout" in p.parts:
         raise PermissionError(f"refusing to touch eval data: {p}")
