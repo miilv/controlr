@@ -446,7 +446,8 @@ class RoboDojoRunner:
             for rec in lm.object_records_by_type[otype].layout_records_by_env[env_idx]:
                 name = rec["inst_name"]
                 pos, quat = lm.get_instance_pose(env_idx=env_idx, inst_name=name)
-                row = {"inst_name": name, "type": otype, "category": lm.decode_inst_name(name)[0],
+                row = {"inst_name": name, "prim_path": rec.get("prim_path"), "type": otype,
+                       "category": lm.decode_inst_name(name)[0],
                        "category_idx": int(rec.get("category_idx", -1)), "label": rec.get("label"),
                        "clutter": rec.get("type") == "cluttered",
                        "pos": _np(pos).reshape(-1)[:3].tolist() if pos is not None else None,
@@ -511,6 +512,11 @@ class RoboDojoRunner:
                 p[:3] -= org
                 links[ln] = p.tolist()
             rec["links"] = links
+            try:
+                paths_ = list(key.root_physx_view.link_paths[env_idx])
+                rec["link_prims"] = {p.rsplit("/", 1)[-1]: p for p in paths_}
+            except Exception:  # noqa: BLE001
+                pass
             out[arm] = rec
         return out
 
@@ -564,10 +570,50 @@ class RoboDojoRunner:
         g = {"objects": self.objects_gt(env_idx), "cameras": self.cameras_gt(env_idx),
              "robot": self.robot_gt(env_idx), "reward": self.reward(env_idx), "score": self.score(env_idx),
              "layout_seed": int(self.seeds[env_idx]),
+             "env_origin": _np(self.env.scene_manager.env_origins[env_idx]).reshape(-1)[:3].tolist(),
              "sim_time_steps": int(self.env.take_action_cnt[env_idx])}
         if self._contact_sub is not None:
             g["contacts"] = self.contacts_gt()
         return g
+
+    def camera_spec(self, env_idx: int = 0) -> dict:
+        """The three RoboDojo cameras as built by ``CameraManager``: an Xform (at ``mount`` link, or the
+        env root) with local pose ``pos`` + ``ori_euler_deg`` (RoboDojo ``utils.rotations.euler_angles_to_quat``,
+        intrinsic XYZ, i.e. R = Rx Ry Rz) holding a pinhole USD camera at identity, with the
+        template's focal length / apertures / clipping. Works without a renderer."""
+        from omegaconf import OmegaConf
+
+        from env_cfg.camera import template as T
+        # = camera_manager.REAL_MAP (that module is stubbed in physics-only mode)
+        REAL_MAP = {"Gemini_345Lg": T.GEMINI_345LG, "third_view": T.THIRD_VIEW, "d435": T.D435,
+                    "large_d435": T.LARGE_D435}
+        cfg = OmegaConf.to_container(self.env.camera_config, resolve=True)
+        root = f"/World/envs/env_{env_idx}"
+        out = {}
+        for name, c in cfg.items():
+            if not isinstance(c, dict) or "camera" not in c:
+                continue
+            cam = c["camera"]
+            tpl = dict(REAL_MAP.get(cam.get("type"), {}))
+            out[name] = {"type": cam.get("type"), "mesh": cam.get("mesh"),
+                         "mount": f"{root}/{cam['mount_link']}" if cam.get("mount_link") else None,
+                         "pos": list(cam.get("pos") or [0, 0, 1]), "ori_euler_deg": list(cam.get("ori") or [0, 0, 0]),
+                         "resolution": list(tpl.get("resolution", (640, 480))),
+                         "focal_length": tpl.get("focal_length"), "horizontal_aperture": tpl.get("horizontal_aperture"),
+                         "vertical_aperture": tpl.get("vertical_aperture"),
+                         "clipping_range": list(tpl.get("clipping_range", (0.01, 10.0)))}
+        return out
+
+    def export_stage(self, path: str | Path) -> Path:
+        """Write the current USD stage (room, table, ground, dome light, robots, objects; asset
+        references stay absolute) for an external renderer. Poses on prims are the authored ones;
+        live physics poses are in ``gt()``."""
+        import omni.usd
+        path = Path(path)
+        paths.assert_not_eval(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        omni.usd.get_context().get_stage().Export(str(path))
+        return path
 
     def close(self) -> None:
         try:
