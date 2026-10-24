@@ -22,6 +22,10 @@ SPARSE=(
   /Assets/Object/RoboDojo/Rigid/bowl/ /Assets/Object/RoboDojo/Rigid/bottle/ /Assets/Object/RoboDojo/Geometry/dustbin/
   /Assets/Object/RoboDojo/Rigid/car/ /Assets/Object/RoboDojo/Rigid/electric_toothbrush/ /Assets/Object/RoboDojo/Rigid/hammer/
   /Assets/Object/RoboDojo/Rigid/shoe/ /Assets/Object/RoboDojo/Rigid/box/
+  # skills stream: swap_blocks + press_by_number (everything their configs reference)
+  /Assets/Object/RoboDojo/Articulation/SpringButton/00002/ /Assets/Object/RoboDojo/Articulation/SpringButton/00003/
+  /Assets/Object/RoboDojo/Rigid/cube/00003/ /Assets/Object/RoboDojo/Geometry/cube_cushion/00001/
+  /Assets/Object/RoboDojo/Geometry/number_card/
   # every clutter object of the _random configs (3.8 GB)
   /Assets/Object/RoboDojo/Clutter/
 )
