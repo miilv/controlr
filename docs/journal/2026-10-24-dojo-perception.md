@@ -53,3 +53,74 @@ the textures re-embedded in GLB; 4 min with 14 workers).
   D0 GT camera matrices follows when D0 is available.
 - **SAM3** is gated: `facebook/sam3` answers "requires approval" for our HF account. Not blocking: the
   static-background + silhouette pipeline does not need it; SAM2.1 (open) is the fallback for clutter.
+- **Pixel check against real Isaac frames** (simlab's stack_blocks test layouts, layout pose = GT within
+  0.04 mm settle drift): catalogue silhouettes at the layout poses land on the rendered blocks in the head
+  and wrist views (head at 2x zoom: edge to edge). So the asset frame, scale, camera constants and FK are
+  consistent end to end.
+
+## 3. Pipeline v0 (`inverse_layout.py`) — on synthetic scenes while D0 is blocked
+
+compute2 went offline (~21:50, dropped off the tailnet) before D0 existed; Isaac 5.1 does not render on
+compute3's 5090. Work moved to compute3: code in `~/dojo-perception`, the D0-subset catalogue (110 assets,
+2.5 GB) in `~/dojo-perception-data/catalog`, built from a sparse git-lfs fetch of only the D0 asset dirs
+(`hf_assets`, 2.1 GB; `Assets/Eval_Layout` excluded by the sparse pattern).
+
+**Synthetic scenes** (`synth.py`): layouts sampled from each task's config (labels, select mode, xlim/ylim,
+yaw, place tags), objects rested on the table, catalogue GLBs rendered by pyrender over a real home-pose
+background (simlab's frame with its blocks inpainted), robot as occluder. Lighting/shadows are not Isaac's:
+these numbers are a geometry upper bound and a regression harness, **not G1**. 12 layouts per task.
+
+What the pipeline does now (`estimate()`):
+- static-background foreground; shadow-like pixels (darker, same chromaticity) → *unknown*, not background;
+  robot (FK, dilated) → unknown; wrist views after a move get a background warped from the head background
+  through the table plane;
+- proposals = head blobs; per blob the best K (group, shape) by area ratio + colour; yaw grid (10°)
+  re-centred on the blob, diverse starts + the 180° flip;
+- fine pose: Nelder-Mead over (x, y, yaw) on a soft-IoU loss in all views, each view's region of interest
+  rendered into a fixed 128 px viewport (GL, cropped camera); z from table contact;
+- cost = silhouette loss + 0.3 × Lab colour distance + 0.4 × texture (1 − NCC of a textured render);
+- **scene-level explain-away selection** (new foreground covered − new background covered − penalty × own
+  area, normalised per view), with the config's constraints (`hierarchical` one category, `same`);
+  residual re-proposal for merged blobs; occluded fallback (low confidence) for objects hidden by the robot;
+- polish: per chosen object, the 180° flip and up to 4 other shapes of its label group, re-scored fairly;
+  joint refinement on the union of the other objects.
+
+Bugs found on the way, each worth recording:
+- `cv2.fillPoly` with many triangles fills even-odd: overlapping triangles cancel. Fill each triangle
+  (`fillConvexPoly`) or use GL.
+- pyrender with PyOpenGL 3.1.0 (its pin) fails on texture upload under Python 3.12: install
+  `pyopengl==3.1.9` over it.
+- GL node cache keyed by link name only: both arms shared nodes, so the left arm vanished from robot masks
+  (head mask 47 % of the CPU one, left wrist 0 %). Keys now include the arm.
+- Symmetry must be computed **in the placed orientation about the world vertical through the origin**:
+  build_tower's block 3 is an isosceles prism (asset frame: no symmetry) lying on a face → 2-fold, so its
+  "180° errors" were metric artefacts. Log-chromaticity colour distance explodes for saturated colours (the
+  red T got a 0.6 penalty and was never selected); replaced by a bounded Lab distance.
+- Hypotheses compared under different conditions (with/without the other objects removed from the
+  foreground) bias the choice: the polish step re-scores the incumbent the same way.
+
+Synthetic results, frame 0, with wrists (runs `~/dojo-perception-data/g1/synth_v6` and `synth_v7`; 12 layouts per task):
+
+| task | class | n | found | id acc | xy med / p90 (mm) | rot med / p90 (deg) |
+|---|---|---|---|---|---|---|
+| stack_blocks | block | 36 | 28 | 0.78 | 0.5 / 0.9 | 0 / 0 |
+| push_T | T | 12 | 10 | 0.83 | 0.6 / 0.8 | 0.3 / 0.6 |
+| push_T | pad | 12 | 12 | 1.00 | 0.6 / 0.8 | 0.2 / 0.5 |
+| build_tower | block | 96 | 96 | 1.00 | 0.7 / 2.8 | 0.1 / 1.3 |
+| stack_bowls | bowl | 36 | 36 | 1.00 | 1.1 / 1.6 | 0 / 0 |
+| put_bottles | bottle | 48 | 45 | 0.83 | 1.4 / 35.7 | 0.2 / 2.7 |
+| pack_objects_random | box | 12 | 12 | 1.00 | 2.6 / 4.0 | 0.4 / 0.6 |
+| pack_objects_random | car | 12 | 12 | 0.92 | 1.0 / 14.0 | 0.2 / 164.8 |
+| pack_objects_random | toothbrush | 12 | 10 | 0.67 | 1.6 / 229.5 | 0.2 / 172.9 |
+| pack_objects_random | hammer | 12 | 11 | 0.92 | 1.1 / 15.2 | 0.7 / 34.1 |
+| pack_objects_random | shoe | 12 | 10 | 0.42 | 2.3 / 12.2 | 1.4 / 7.1 |
+
+Misses, by cause: the synthetic brown blocks are invisible on the brown table in pyrender lighting
+(stack_blocks 8/36; a real risk for wooden blocks, to check on Isaac frames); objects under a gripper in the
+head view and outside both home wrist views (2 Ts) — the post-motion frames' job. Remaining error classes:
+toothbrush/car 180° flips (thin, weakly textured), shoe identity (10 similar shoes), a bottle tail.
+
+Runtime per frame (4 parallel workers on compute3 at load average 8–10, shared): median 1 s push_T /
+0.7 s stack_blocks / 2–4 s bowls and build_tower / 14 s bottles / 22 s pack_objects. The pack frame alone
+in one process: 9.7 s. Renders cost 0.3 ms each in a 128 px viewport (a 476k-face shoe included); the
+rest is Python and the number of hypotheses.
