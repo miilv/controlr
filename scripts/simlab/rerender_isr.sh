@@ -10,7 +10,8 @@ COORD=/home/anywherevla/data2/bench/COORDINATION.md
 export RD_HOME=/home/anywherevla/data2/controlr-robodojo DOJO_DATA="$ILIA/dojo-data"
 export HOME="$ILIA/home" XDG_CACHE_HOME="$ILIA/home/.cache" XDG_DATA_HOME="$ILIA/home/.local/share"   # home partition is full
 export SIMLAB_MIN_FREE_MB=11000 OMP_NUM_THREADS=4
-mkdir -p "$HOME" "$DOJO_DATA" "$ILIA/d0_51/logs"
+export SIMLAB_KIT_ARGS="--portable-root $ILIA/kitroot"   # Kit's data/logs/cache outside Misha's install
+mkdir -p "$HOME" "$DOJO_DATA" "$ILIA/d0_51/logs" "$ILIA/kitroot"
 gpu_free() {   # no other compute app on the GPU, or Misha's explicit go-ahead
   [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | tr -d ' ')" ]] && return 0
   grep -q "GPU free for Ilia" "$COORD" 2>/dev/null && return 0
