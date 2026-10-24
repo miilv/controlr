@@ -242,7 +242,14 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
 
     ep = Path(ep)
     obs = d0.load_obs(ep, k)
-    cfg = EstimatorConfig(use_wrists=use_wrists, **(cfg_kw or {}))
+    kw = dict(cfg_kw or {})
+    import os
+    import zlib
+
+    cal = os.environ.get("DOJO_COLOR_CALIB")
+    if cal and Path(cal).exists() and "color_M" not in kw:  # the map fitted on the OTHER fold
+        kw["color_M"] = json.loads(Path(cal).read_text())[f"fold{zlib.crc32(ep.name.encode()) % 2}"]
+    cfg = EstimatorConfig(use_wrists=use_wrists, **kw)
     bgs = fold_backgrounds(ep) if bg_loo else None
     t0 = time.time()
     try:

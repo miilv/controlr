@@ -613,10 +613,21 @@ def _touches_unknown(b: Blob, v: ViewMasks) -> bool:
     return bool((d & (1 - v.known)).any())
 
 
+_COLOR_M: list | None = None  # offline colour calibration (color_calib.py), set per estimate() call
+
+
+def ref_color(key: str) -> np.ndarray:
+    """The catalogue's mean texture colour of an asset, mapped to the renderer's look when calibrated."""
+    c = np.asarray(load_asset(key).info["mean_color"], dtype=float)
+    if _COLOR_M is not None:
+        return np.clip(np.r_[c, 1.0] @ np.asarray(_COLOR_M), 0.0, 1.0)
+    return c
+
+
 def _app(obs_rgb, keys) -> float:
     if obs_rgb is None:
         return 0.5
-    return min(appearance_distance(obs_rgb, np.asarray(load_asset(k).info["mean_color"])) for k in keys)
+    return min(appearance_distance(obs_rgb, ref_color(k)) for k in keys)
 
 
 def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=None, blob_offset=0):
@@ -944,6 +955,7 @@ class EstimatorConfig:
     polish_candidates: int = 4
     ambiguity_margin: float = 0.05
     view_requests: bool = True
+    color_M: list | None = None  # 4x3 affine map catalogue colour -> observed (color_calib.py)
 
 
 def _views_subset(views, cfg):
@@ -957,7 +969,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     """``extra_frames``: [(images, state)] of later frames of the same episode with the objects assumed
     static (arms moved): their views join the render-and-compare loss as ``<cam>@<k>``. Proposals come
     from the first frame's head view."""
+    global _COLOR_M
     cfg = cfg or EstimatorConfig()
+    _COLOR_M = cfg.color_M
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
     cams = cameras_from_state(state)
@@ -1076,7 +1090,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         geom_keys = chosen[members[0]].per_view.get("geom_group", [chosen[members[0]].key])
         if len(geom_keys) <= 1:
             continue
-        refs = {k: np.asarray(load_asset(k).info["mean_color"]) for k in geom_keys}
+        refs = {k: ref_color(k) for k in geom_keys}
         mode = g["select_mode"].get("mode", "unique")
         C = np.array([[appearance_distance(obs_cols[i], refs[k]) if obs_cols[i] is not None else 1.0 for k in geom_keys]
                       for i in members])
