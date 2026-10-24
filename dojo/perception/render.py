@@ -495,6 +495,17 @@ class ColorMeshRenderer:
 
 
 _TEX = None
+_TEX_ROI: dict = {}
+
+
+def tex_roi(size: int):
+    """Per-face-colour renderer with a fixed size x size viewport (ROI crops), process-wide."""
+    if gl() is None:
+        return None
+    r = _TEX_ROI.get(size)
+    if r is None:
+        r = _TEX_ROI[size] = ColorMeshRenderer(size, size)
+    return r
 
 
 def tex():

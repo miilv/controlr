@@ -39,7 +39,7 @@ from scipy.optimize import linear_sum_assignment, minimize
 from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
-from .render import Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex
+from .render import Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 
 MIN_BLOB_PX = {"cam_head": 25, "cam_left_wrist": 150, "cam_right_wrist": 150}
@@ -266,6 +266,7 @@ class RoiView:
     known: np.ndarray
     crop: tuple
     native_area: float
+    gray: np.ndarray | None = None
 
 
 def _crop_pad(a: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> np.ndarray:
@@ -303,8 +304,35 @@ def make_roi_views(sm: ShapeModel, T: np.ndarray, views: dict[str, ViewMasks], o
         interp = cv2.INTER_AREA if (x1 - x0) > size else cv2.INTER_LINEAR
         fgr = cv2.resize(fg.astype(np.float32), (size, size), interpolation=interp)
         knr = cv2.resize(kn.astype(np.float32), (size, size), interpolation=interp)
-        out.append(RoiView(name, crop_camera(v.cam, x0, y0, x1, y1, size), fgr, knr, (x0, y0, x1, y1), bw * bh))
+        gr = cv2.resize(_crop_pad(cv2.cvtColor(v.img, cv2.COLOR_RGB2GRAY), x0, y0, x1, y1).astype(np.float32), (size, size),
+                        interpolation=interp)
+        out.append(RoiView(name, crop_camera(v.cam, x0, y0, x1, y1, size), fgr, knr, (x0, y0, x1, y1), bw * bh, gr))
     return out
+
+
+def roi_color_cost(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_px: int = 40) -> float | None:
+    """(1 - NCC)/2 of the per-face-colour render vs the observed grey levels inside the rendered silhouette
+    (known foreground), pooled over ROI views. Used inside the refinement so position and orientation are
+    fitted to texture, not only to the outline."""
+    r = tex_roi(ROI_S)
+    if r is None:
+        return None
+    acc, n_tot = 0.0, 0
+    for rv in rvs:
+        if rv.gray is None:
+            continue
+        col, d = r.render(rv.cam, sm.key, T)
+        m = (d > 0) & (rv.known > 0.5) & (rv.fg > 0.5)
+        n = int(m.sum())
+        if n < min_px:
+            continue
+        a = cv2.cvtColor(col, cv2.COLOR_RGB2GRAY)[m].astype(float)
+        b = rv.gray[m].astype(float)
+        if a.std() < 3 or b.std() < 3:
+            continue
+        acc += n * float(((a - a.mean()) * (b - b.mean())).mean() / (a.std() * b.std()))
+        n_tot += n
+    return None if n_tot == 0 else (1 - acc / n_tot) / 2
 
 
 def roi_loss(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_vis: float = 0.3):
@@ -458,13 +486,19 @@ def _diverse(res, period, k=3, min_sep=0.4, slack=0.15):
 
 
 def refine(sm: ShapeModel, x, y, yaw, views, others=None, xy_step=0.006, yaw_step=0.12, maxiter=120,
-           fix_yaw=False):
-    """Nelder-Mead over (x, y[, yaw]) on the ROI soft-IoU loss; the ROIs are fixed at the start pose."""
+           fix_yaw=False, color_w: float = 0.0):
+    """Nelder-Mead over (x, y[, yaw]) on the ROI soft-IoU loss (+ color_w x texture cost when > 0); the
+    ROIs are fixed at the start pose. The returned loss is the silhouette part."""
     rvs = make_roi_views(sm, sm.pose(x, y, yaw), views, others)
 
     def f(p):
         yy = yaw if fix_yaw else p[2]
-        return roi_loss(sm, sm.pose(p[0], p[1], yy), rvs)[0]
+        T = sm.pose(p[0], p[1], yy)
+        l = roi_loss(sm, T, rvs)[0]
+        if color_w > 0:
+            c = roi_color_cost(sm, T, rvs)
+            l += color_w * (0.25 if c is None else c)
+        return l
 
     x0 = np.array([x, y] if fix_yaw else [x, y, yaw])
     simplex = [x0]
@@ -809,10 +843,11 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
     return refined
 
 
-def _score_hyp(h: Hypothesis, views, others, cfg, groups, iters) -> Hypothesis:
+def _score_hyp(h: Hypothesis, views, others, cfg, groups, iters, color: bool = False) -> Hypothesis:
     yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
     sm = h.sm()
-    x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed)
+    cw = cfg.refine_color_weight if (color and sm.asset.info.get("n_textured_parts", 0) > 0) else 0.0
+    x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed, color_w=cw)
     T = sm.pose(x, y, yaw)
     col, _ = observed_color(sm, T, views)
     app = _app(col, h.per_view["geom_group"])
@@ -940,10 +975,10 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         if not trials:
             continue
         # the incumbent is re-scored under the same conditions (others removed from the foreground)
-        best = h0 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
+        best = h0 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters, color=True)
         scored = [h0]
         for t in trials:
-            t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters)
+            t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
             if not region_ok(g, t2.x, t2.y, t2.yaw, t2.sm().yaw_period):
                 continue
             scored.append(t2)
@@ -1085,6 +1120,7 @@ class EstimatorConfig:
     polish: bool = True
     polish_candidates: int = 4
     paired_tex_weight: float = 0.8
+    refine_color_weight: float = 0.5
     paired_tex_margin: float = 0.04
     ambiguity_margin: float = 0.05
     rival_margin: float = 0.1
