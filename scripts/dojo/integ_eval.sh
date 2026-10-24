@@ -65,7 +65,13 @@ systemd-run --user --scope -q -p MemoryMax=$MEM -p CPUQuota=$CPU bash -c '
       && { [[ -z "$perc" ]] || [[ -f "$DOJO_PERCEPTION_READY" ]]; } && break
     sleep 2
   done
-  "$HERE/scripts/simlab/rdpy.sh" -u -m dojo.runtime.eval --out "$OUT" "$@" 2>&1 | tee "$OUT/integ_eval.log" | grep -a "^\[integ\]"
+  ok=1
+  [[ -f "$SIMLAB_RENDER_READY" ]] || { echo "[integ] render service not ready: see render_service.log"; ok=0; }
+  [[ -z "$twin" || -f "$SIMLAB_TWIN_READY" ]] || { echo "[integ] twin service not ready: see twin_service.log"; ok=0; }
+  [[ -z "$perc" || -f "$DOJO_PERCEPTION_READY" ]] || { echo "[integ] perception service not ready: see perception_service.log"; ok=0; }
+  if [[ "$ok" == 1 ]]; then
+    "$HERE/scripts/simlab/rdpy.sh" -u -m dojo.runtime.eval --out "$OUT" "$@" 2>&1 | tee "$OUT/integ_eval.log" | grep -a "^\[integ\]"
+  fi
   python3 - <<PY
 import os
 from multiprocessing.connection import Client
