@@ -5,7 +5,7 @@
 starts from
 
 * the provider's last at-rest checkpoint (estimate of every task object + proprio), through
-  ``load_from_estimate``; or
+  ``load_from_estimate`` (inside the service's ``verify``); or
 * while an object is in the jaws (``load_from_estimate`` cannot put it there): the twin's own end state
   of the candidate that was executed last (``keep="nominal"`` snapshots, broadcast to every env).
 
@@ -43,7 +43,7 @@ class BundleVerifier:
         self.chain: dict | None = None          # {"sid", "n"}: twin end state of the executed candidate
         self._last_n0 = None
         self._last_cands: list = []
-        self.stats = {"calls": 0, "rollouts": 0, "steps": 0, "wall_s": 0.0, "load_s": 0.0, "prefix_steps": 0,
+        self.stats = {"calls": 0, "rollouts": 0, "steps": 0, "wall_s": 0.0, "prefix_steps": 0,
                       "from_snapshot": 0, "from_estimate": 0, "errors": 0}
 
     # skills hook (wired by the policy next to the provider's)
@@ -87,12 +87,6 @@ class BundleVerifier:
         perturb = {"pos_mm": self.perturb_mm, "yaw_deg": self.perturb_deg, "labels": at_rest}
         cands = [{"actions": [_jsonable(a) for a in prefix + list(c)], "meta": {"i": i, "prefix": len(prefix)}}
                  for i, c in enumerate(candidates)]
-        if kind == "estimate":
-            tl = time.perf_counter()
-            r = self.tc.load_from_estimate(world["layout"], world["robot"])
-            self.stats["load_s"] += time.perf_counter() - tl
-            if not r.get("stable", True):
-                self.log("[verify] twin: estimate unstable after settle")
         outs = self.tc.verify(world, cands, perturb=perturb, k=k, keep="nominal")
         self.kept = {int(o["candidate"]): int(o["snapshot_id"]) for o in outs if o.get("snapshot_id") is not None}
         res = []

@@ -308,6 +308,8 @@ class FakeTwinClient:
         return {"fast": True, "stable": True}
 
     def verify(self, world, candidates, perturb=None, k=1, record_traj=False, seed=0, keep=None):
+        if "layout" in world:                       # the real service loads the estimate inside verify
+            self.load_from_estimate(world["layout"], world.get("robot"))
         base = self.snaps[world["snapshot_id"]] if "snapshot_id" in world else self.base
         self.verifies.append({"from": "snapshot" if "snapshot_id" in world else "estimate",
                               "n": [len(c["actions"]) for c in candidates], "labels": (perturb or {}).get("labels")})
