@@ -423,13 +423,23 @@ def press_sequence(sk: Skills, presses: list[tuple[str, int]]) -> dict:
         if n <= 0:
             continue
         top = button_top(sk, lab)
-        arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - top[:2])))
+        arm = min(ARMS, key=lambda a: (round(float(np.linalg.norm(sk.kin.base(a)[:2, 3] - top[:2])), 2),
+                                       float(np.linalg.norm(sk.tcp(a)[:2, 3] - top[:2]))))
         p = sk.plan_press(arm, top, n, depth=CAP_DEPTH, clearance=CAP_CLEAR, hold_down=1, hold_up=2)
         if isinstance(p, SkillResult):
             arm = "right" if arm == "left" else "left"
             p = sk.plan_press(arm, top, n, depth=CAP_DEPTH, clearance=CAP_CLEAR, hold_down=1, hold_up=2)
             if isinstance(p, SkillResult):
                 return {"ok": False, "stage": f"plan press {lab}", "result": p}
+        other = "right" if arm == "left" else "left"
+        # the idle arm must be clear of the pressing arm's whole path (twin: an arm hovering over the
+        # next button blocked a press next to it and was itself pushed into its button = extra press)
+        static = ArmPlan(other, sk.ex.q[other].copy(), sk.ex.g[other])
+        if not sk.clear_of(p, static, min_dist=0.14):
+            try:
+                sk.ex.run({other: sk.plan_home(other)}, name=f"clear {other}")
+            except (BudgetExceeded, EpisodeEnded) as e:
+                return {"ok": False, "stage": f"clear {other}", "note": str(e)}
         plans = [p]
         nxt = next(((l, k) for l, k in presses[i + 1:] if k > 0), None)
         if nxt is not None:
@@ -437,7 +447,7 @@ def press_sequence(sk: Skills, presses: list[tuple[str, int]]) -> dict:
             a2 = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - t2[:2])))
             if a2 != arm:
                 hov = _hover(sk, a2, t2)
-                if hov is not None and sk.clear_of(p, hov):
+                if hov is not None and sk.clear_of(p, hov, min_dist=0.14):
                     plans.append(hov)
         try:
             sk.parallel(plans, name=f"press {lab} x{n}")
@@ -458,6 +468,11 @@ def _hover(sk: Skills, arm: str, top) -> ArmPlan | None:
 def press_once(sk: Skills, button: str) -> SkillResult:
     top = button_top(sk, button)
     arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.tcp(a)[:2, 3] - top[:2])))
+    other = "right" if arm == "left" else "left"
+    p = sk.plan_press(arm, top, 1, depth=CAP_DEPTH, clearance=CAP_CLEAR, hold_down=1, hold_up=2)
+    if not isinstance(p, SkillResult) and not sk.clear_of(p, ArmPlan(other, sk.ex.q[other].copy(), sk.ex.g[other]),
+                                                          min_dist=0.14):
+        sk.ex.run({other: sk.plan_home(other)}, name=f"clear {other}")
     r = sk.press(arm, top, 1, depth=CAP_DEPTH, clearance=CAP_CLEAR, hold_down=1, hold_up=2)
     if not r.ok:
         r = sk.press("right" if arm == "left" else "left", top, 1, depth=CAP_DEPTH, clearance=CAP_CLEAR,
