@@ -233,12 +233,13 @@ def compare(a: dict, b: dict) -> dict:
                 continue
             dm = float(np.linalg.norm(np.subtract(pa[:3], pb[:3]))) * 1000
             dd = quat_angle_deg(pa[3:], pb[3:])
-            if first_diff is None and (dm > 0 or dd > 0):
+            if first_diff is None and pa != pb:
                 first_diff = fa[k]["step"]
             max_mm, max_deg = max(max_mm, dm), max(max_deg, dd)
             if k == n - 1:
                 per_obj_final[lab] = {"mm": round(dm, 4), "deg": round(dd, 4)}
-    return {"steps_compared": n, "len_a": len(fa), "len_b": len(fb), "bitwise_equal": max_mm == 0 and max_deg == 0,
+    exact = len(fa) == len(fb) and all(x["objects"] == y["objects"] for x, y in zip(fa, fb))
+    return {"steps_compared": n, "len_a": len(fa), "len_b": len(fb), "bitwise_equal": exact,
             "first_diff_step": first_diff, "max_mm": round(max_mm, 4), "max_deg": round(max_deg, 4),
             "final": per_obj_final, "reward_a": a.get("reward"), "reward_b": b.get("reward"),
             "score_a": a.get("score"), "score_b": b.get("score")}
