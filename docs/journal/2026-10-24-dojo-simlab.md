@@ -298,3 +298,53 @@ A dev-eval score is therefore computed exactly as a leaderboard score, on layout
 - The script holds the GPU lock and writes results under `$OUT/<stamp>_<task>_<policy>/`.
 - The SeedManager patch is verified on compute3 (25 swap_blocks layouts listed and loaded without the meta key).
 - Ready to start the moment compute2 is back or a rented 5.1-capable GPU exists.
+
+## Proxy dev-eval on compute3 (render on demand)
+
+`scripts/simlab/proxy_eval.sh --task T --layouts ... --policy module:Class|replay:TRAJ` (README: "Proxy dev-eval
+with your own policy"). Marked "proxy" everywhere; `dev_eval.sh` (RoboDojo's eval client, 5.1 rendering) stays the reference.
+- Physics: `ProxyEpisode` = physics-only 5.1 RoboDojo EvalEnv (its reset, `take_action` accounting, `step_lim`,
+  `run_reward` / `get_score` latches).
+- Rendering: on demand from a warm Isaac 6.0 `render_service.py` (`ProxyRenderer`, shared with D0) over
+  authenticated localhost, only when the policy asks (`next(obs)` per segment).
+- Images cross as raw bytes: Isaac 6.0's numpy-2 pickles do not load on RoboDojo's numpy 1.26.
+- Resources: both processes in one scope (MemoryMax 16G, 12 cores), one GPU lock.
+- Smoke (stack_blocks 110007, replay policy): success, score 100, 263/550 steps, 22 observations,
+  **0.12 s per observation (3 cameras)**, episode 11 s + 12 s reset + 3 s stage load.
+
+## 9 more tasks: assets + layouts (generator v3/v4)
+
+- Sizing against the published tree: +1.64 GB for insert_key, make_kong, store_tools_in_toolbox,
+  plug_in_charger, fill_egg_holder, pick_from_conveyor_by_image, fill_pen_holder, organize_table and
+  pour_by_language (install ~30.7 GB). **Nothing they reference is missing from the public tree.** The
+  conveyor photo's `map.json` had to be added explicitly. Extra paths go in `~/dojo-robodojo/sparse_extra.txt`.
+- Generator v3:
+  - groups in the config's key order, fixed-pose groups first (organize_table pins a cube_cushion where
+    the drawer would otherwise land);
+  - soft robot keep-out, dropped after half the attempts (fill_egg_holder and organize_table pin objects
+    under the grippers);
+  - Table-less scenes (conveyor);
+  - offsets in world axes from a parent's support centre or origin, with `zlim` + `qpos` (conveyor photo,
+    basket, the fluid inside its bottle);
+  - several children per support with non-overlapping footprints;
+  - `label_map` (the photo that shows the target).
+- v4: children of a single support disk stay on it (eggs in the basket).
+- v3/v4 shift the random stream, so stored v1/v2 records of the earlier tasks are not reproduced by
+  `generate()`. The files are the reference, and their `_simlab.generator` says which version wrote them.
+
+Load + settle (physics-only RoboDojo, 25 layouts each):
+
+| task | RoboDojo-stable | max task-object drift | notes |
+|---|---|---|---|
+| insert_key | 25/25 | 0.0 mm | |
+| make_kong | 25/25 | 0.9 mm | Franka opponent robot config |
+| store_tools_in_toolbox | 25/25 | 1.4 mm | |
+| plug_in_charger | 25/25 | 0.5 mm | |
+| fill_pen_holder | 25/25 | 3.7 mm | |
+| organize_table | 23/25 | 52 mm (garage) | most layouts need the keep-out off |
+| fill_egg_holder | **5/25** | 69 mm (eggs) | the egg basket is Geometry, which RoboDojo spawns without collision: eggs fall to the table and roll. Needs pre-settled records |
+| pick_from_conveyor_by_image | pending | | first run crashed in our GT code (Dynamic/Fluid pose), fixed; rerun queued behind the skills stream's GPU job |
+| pour_by_language | pending | | same |
+
+Next for the generator: two-pass "pre-settled" records (generate, settle in the twin, write the settled poses
+back, re-check), which is also what RoboDojo's own records most likely contain for teleop-sourced tasks.
