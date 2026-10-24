@@ -1090,6 +1090,10 @@ class EstimatorConfig:
     rival_margin: float = 0.1
     view_requests: bool = True
     color_M: list | None = None  # 4x3 affine map catalogue colour -> observed (color_calib.py)
+    # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
+    # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
+    color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
+                          "stack_bowls_random")
 
 
 def _views_subset(views, cfg):
@@ -1105,7 +1109,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     from the first frame's head view."""
     global _COLOR_M
     cfg = cfg or EstimatorConfig()
-    _COLOR_M = cfg.color_M
+    _COLOR_M = cfg.color_M if task in cfg.color_tasks else None
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
     cams = cameras_from_state(state)
