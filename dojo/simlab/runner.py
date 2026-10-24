@@ -1,0 +1,529 @@
+"""Headless RoboDojo runner: one task env in-process, loaded from OUR layout records.
+
+Runs inside RoboDojo's conda python (Isaac Sim 5.1 + IsaacLab) with ``RD_ROOT`` and
+``RD_ROOT/XPolicyLab`` importable (``scripts/simlab/rdpy.sh`` sets that up). The env is
+RoboDojo's own ``EvalEnv`` (``src/eval_client/eval_env.py``) built the way
+``src/eval_client/main.py`` builds it, with exactly two substitutions:
+
+* ``SeedManager`` -> ``DictSeedManager``: layouts come from a dict we fill, never from
+  ``Assets/Eval_Layout`` (the directory is not listed or opened);
+* ``WsModelClient`` -> a no-op: there is no policy server; we drive ``take_action`` ourselves.
+
+Everything else (reset sequence, settle + stability check, action interpolation, step
+accounting, reward latching, is_episode_end) is RoboDojo's code path, so episodes here behave
+like eval episodes.
+
+Two strictly separated read paths:
+
+* ``obs()``: the official policy contract, what ``TASK_ENV.get_obs()`` gives a policy:
+  3 RGB 480x640 (cam_head, cam_left_wrist, cam_right_wrist), ``{left,right}_arm_joint_state``
+  (6), ``{left,right}_ee_pose`` (flange link, 7: xyz + wxyz, env frame),
+  ``{left,right}_ee_joint_state`` (commanded gripper opening 0..1), instruction.
+* ``gt()``: DEV-ONLY ground truth: every object's pose/velocity, articulation joints, camera
+  K and extrinsics, measured gripper joints, finger contacts, reward/score state.
+"""
+
+from __future__ import annotations
+
+import argparse
+import copy
+import json
+import os
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from dojo.simlab import paths
+from dojo.simlab.layout import OBJECT_TYPES, iter_objects, quat_angle_deg
+
+ARMS = ("left", "right")
+CAMERAS = ("cam_head", "cam_left_wrist", "cam_right_wrist")
+CV_FROM_USD = np.diag([1.0, -1.0, -1.0, 1.0])      # USD camera (-z forward, y up) -> OpenCV
+KIT_ENABLE_EXTS = ("isaacsim.replicator.behavior", "isaacsim.sensors.camera")
+
+_APP = None
+
+
+def _np(x: Any) -> np.ndarray:
+    if hasattr(x, "detach"):
+        x = x.detach().cpu().numpy()
+    return np.asarray(x, dtype=np.float64)
+
+
+def jsonable(x: Any) -> Any:
+    if isinstance(x, dict):
+        return {str(k): jsonable(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [jsonable(v) for v in x]
+    if hasattr(x, "detach"):
+        x = x.detach().cpu().numpy()
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    if isinstance(x, (np.floating,)):
+        return float(x)
+    if isinstance(x, (np.integer,)):
+        return int(x)
+    if isinstance(x, (np.bool_,)):
+        return bool(x)
+    return x
+
+
+def launch_app(headless: bool = True, device_id: int = 0):
+    """Start Kit once per process, with the eval client's flags (headless, cameras, the two
+    sensor extensions, zero-delay render sync)."""
+    global _APP
+    if _APP is not None:
+        return _APP
+    for p in (str(paths.RD_ROOT), str(paths.RD_ROOT / "XPolicyLab")):
+        if p not in sys.path:
+            sys.path.insert(0, p)
+    os.environ.setdefault("OMNI_KIT_ACCEPT_EULA", "YES")
+    from isaaclab.app import AppLauncher
+    ap = argparse.ArgumentParser()
+    AppLauncher.add_app_launcher_args(ap)
+    argv = ["--enable_cameras", "--kit_args", " ".join(f"--enable {e}" for e in KIT_ENABLE_EXTS)]
+    if headless:
+        argv.append("--headless")
+    args = ap.parse_args(argv)
+    from env.camera_manager.capture.render_sync import add_zero_delay_kit_args
+    add_zero_delay_kit_args(args)
+    _APP = AppLauncher(args).app
+    return _APP
+
+
+class _NoPolicyClient:
+    def __init__(self, *a, **k):
+        pass
+
+    def call(self, *a, **k):
+        return None
+
+    def close(self):
+        pass
+
+
+class DictSeedManager:
+    """SeedManager stand-in: layout id -> record, from memory. Never touches Eval_Layout."""
+
+    def __init__(self, config):
+        self.config = config
+        self.num_envs = int(config["num_envs"])
+        self.task_name = str(config["task_name"])
+        self.config_name = str(config["config_name"])
+        self.layouts: dict[int, dict] = {}
+        self.seed_info: dict[int, dict] = {}
+        self.seed_list: list[int] = []
+        self.idx = self.st_idx = self.ed_idx = 0
+        self.type = "dev"
+
+    def init_eval(self, completed_layout_ids=None, abandoned_layout_ids=None):
+        return None
+
+    def get_seeds(self, max_count=None):
+        return None
+
+    def get_seed_scene_info(self, seed: int) -> dict:
+        if int(seed) not in self.layouts:
+            raise KeyError(f"layout {seed} not loaded into DictSeedManager")
+        return copy.deepcopy(self.layouts[int(seed)])
+
+    def eval_step(self):
+        pass
+
+
+def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_type: str = "arx_x5"):
+    """``src/eval_client/main.py::main`` config assembly, minus the policy server."""
+    from omegaconf import OmegaConf
+
+    from env.global_configs import BENCHMARK, ENV_CONFIG_PATH, ROOT_DIR
+    from utils.load_file import load_yaml
+    from utils.pipeline_utils import process_config, process_randomization, resolve_random_task_num_envs
+
+    task_registry = __import__(f"task.{BENCHMARK}.task_registry", fromlist=["task_config_path"])
+    eval_cfg = load_yaml(os.path.join(ENV_CONFIG_PATH, eval_cfg_type + ".yml"))
+    eval_cfg.update({"task_name": task, "num_envs": num_envs, "device_id": device_id, "eval_batch": num_envs > 1,
+                     "policy_name": "simlab", "additional_info": "simlab", "seed": 0,
+                     "physx_monitor_enabled": False})
+    deploy_cfg = {"policy_name": "simlab", "port": 0, "host": "localhost", "protocol": "ws",
+                  "policy_server_url": "ws://localhost:0", "evaluation_id": "simlab", "trial_id": "simlab",
+                  "action_case_id": "simlab", "repeat_index": None}
+    cfgp = lambda kind: os.path.join(ENV_CONFIG_PATH, kind, eval_cfg["config"][kind] + ".yml")  # noqa: E731
+    env_cfg = OmegaConf.create({
+        "sim": load_yaml(cfgp("sim")), "scene": load_yaml(cfgp("scene")), "camera": load_yaml(cfgp("camera")),
+        "robot": load_yaml(cfgp("robot")),
+        "task_env": load_yaml(task_registry.task_config_path(os.path.join(ROOT_DIR, "task", BENCHMARK, "config"),
+                                                             task)),
+        "eval_cfg": eval_cfg, "deploy_cfg": deploy_cfg})
+    n = resolve_random_task_num_envs(task, num_envs, env_cfg.sim)
+    eval_cfg["num_envs"] = n
+    OmegaConf.update(env_cfg, "sim.scene.num_envs", n, force_add=True)
+    OmegaConf.update(env_cfg, "eval_cfg.num_envs", n, force_add=True)
+    env_cfg = process_randomization(env_cfg)
+    env_cfg, _ = process_config(env_cfg, task_name=task)
+    OmegaConf.update(env_cfg, "camera.default_frequency", eval_cfg["observation"].get("collect_freq", 0),
+                     force_add=True)
+    env_cfg.sim.seed = [0 for _ in range(n)]
+    return env_cfg
+
+
+class RoboDojoRunner:
+    """One RoboDojo task env (``num_envs`` parallel copies) driven from our layout records."""
+
+    def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, headless: bool = True,
+                 video_dir: str | None = None, workdir: str | None = None):
+        self.task = task
+        self.app = launch_app(headless=headless, device_id=device_id)
+        # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
+        wd = Path(workdir or (paths.DATA / "simlab" / "work"))
+        paths.assert_not_eval(wd)
+        wd.mkdir(parents=True, exist_ok=True)
+        os.chdir(wd)
+        os.environ.setdefault("ROBODOJO_RUN_ID", time.strftime("%Y-%m-%d_%H-%M-%S"))
+        import src.eval_client.eval_env as ee
+        ee.SeedManager = DictSeedManager
+        ee.WsModelClient = _NoPolicyClient
+        self.env_cfg = build_env_cfg(task, num_envs=num_envs, device_id=device_id)
+        self.num_envs = int(self.env_cfg.sim.scene.num_envs)
+        self.env = ee.create_eval_env(self.env_cfg, self.app)
+        if not video_dir:
+            self.env._stream_vision = lambda env_idx, frame: None     # no mp4 streaming on get_obs
+        self.layouts: list[dict] = [{} for _ in range(self.num_envs)]
+        self.seeds: list[int] = [0] * self.num_envs
+        self.timing: dict[str, float] = {}
+        self._contact_sub = None
+        self._contacts: dict[str, set] = {}
+
+    # ------------------------------------------------------------------ loading
+    def load(self, layouts: dict | list[dict], seeds: list[int] | None = None, fresh: bool = True) -> dict:
+        """Reset the env into ``layouts`` (one record per env). ``fresh`` closes the sim first, as
+        RoboDojo's eval loop does between batches (needed when the object SET changes on GPU
+        physics; RoboDojo's sim config runs PhysX on CPU, where respawning is enough)."""
+        from utils.cluttered_generator import UnStableError
+
+        if isinstance(layouts, dict):
+            layouts = [layouts] * self.num_envs
+        if len(layouts) != self.num_envs:
+            raise ValueError(f"{len(layouts)} layouts for {self.num_envs} envs")
+        if seeds is None:
+            seeds = [int((l.get("_simlab") or {}).get("seed", paths.SEED_BASE)) for l in layouts]
+        # distinct keys per env even if two envs share a seed
+        keys = [s * 100 + i for i, s in enumerate(seeds)] if len(set(seeds)) < len(seeds) else list(seeds)
+        sm = self.env.seed_manager
+        sm.layouts.clear()
+        for k, lay in zip(keys, layouts):
+            sm.layouts[k] = {kk: v for kk, v in lay.items() if not kk.startswith("_")}
+        self.layouts = [copy.deepcopy(l) for l in layouts]
+        self.seeds = list(seeds)
+        t0 = time.perf_counter()
+        if fresh and self.env.sim is not None:
+            self.env.close()
+        t1 = time.perf_counter()
+        stable = True
+        try:
+            self.env.reset(seed=keys)
+        except UnStableError:
+            stable = False
+        t2 = time.perf_counter()
+        if stable:
+            self.env.run_reward()
+            if hasattr(self.env, "get_score"):
+                self.env.get_score()
+        self.timing.update({"close_s": t1 - t0, "reset_s": t2 - t1})
+        self._contact_sub = None
+        return {"stable": stable and all(self.env.success), "per_env_ok": list(map(bool, self.env.success)),
+                "close_s": t1 - t0, "reset_s": t2 - t1,
+                "instruction": [self.env.obs_manager.instruction[i] for i in range(self.num_envs)]}
+
+    # ------------------------------------------------------------------ official observation
+    def obs(self, env_idx: int = 0) -> dict:
+        """Exactly the policy contract (``EvalEnv.get_obs`` minus mp4 streaming)."""
+        return self.obs_batch([env_idx])[0]
+
+    def obs_batch(self, env_idx_list: list[int] | None = None) -> list[dict]:
+        env = self.env
+        env_idx_list = list(range(self.num_envs)) if env_idx_list is None else env_idx_list
+        env.obs_manager.render_for_capture()
+        data = env.obs_manager.get_obs(env_idx_list=env_idx_list)
+        out = []
+        for i in env_idx_list:
+            raw = data[i]
+            st = raw.get("state") or {}
+            out.append({
+                "images": {n: np.ascontiguousarray(np.asarray(v["color"])[..., :3]).astype(np.uint8)
+                           for n, v in (raw.get("vision") or {}).items()},
+                "state": {k: _np(v).reshape(-1) for k, v in st.items()},
+                "instruction": raw.get("instruction"),
+            })
+        return out
+
+    # ------------------------------------------------------------------ actions
+    def hold_action(self, env_idx: int = 0) -> dict:
+        """The action that keeps every arm and gripper at its current commanded target."""
+        prev = self.env.robot_manager.control_manager.prev_control[env_idx]
+        st = self.obs_state(env_idx)
+        act = {}
+        for arm in ARMS:
+            act[f"{arm}_arm_joint_state"] = np.asarray(st[f"{arm}_arm_joint_state"], np.float32)
+            act[f"{arm}_ee_joint_state"] = np.asarray(st[f"{arm}_ee_joint_state"][:1], np.float32)
+        del prev
+        return act
+
+    def obs_state(self, env_idx: int = 0) -> dict:
+        """Proprio part of the official obs without rendering cameras (cheap)."""
+        rm = self.env.robot_manager
+        out = {}
+        for robot in rm.robot_list:
+            if robot.type != "target":
+                continue
+            arm = robot.arm_name.split("_")[0]
+            out[f"{arm}_arm_joint_state"] = _np(rm.get_joint(robot, [env_idx])[env_idx])
+            out[f"{arm}_ee_pose"] = _np(rm.get_real_endpose(robot, [env_idx])[env_idx])
+            key = rm.process_name(robot.gripper_name)
+            pos = rm.control_manager.prev_control[env_idx][key]["position"]
+            val = float(pos[0])
+            sc = robot.gripper_scale
+            val = (val - sc[0]) / (sc[1] - sc[0]) if robot.gripper_move["sign"] == 1 else (sc[1] - val) / (sc[1] - sc[0])
+            out[f"{arm}_ee_joint_state"] = np.array([val])
+        return out
+
+    def step(self, action: dict | list[dict]) -> list[bool]:
+        """One counted env step (RoboDojo ``take_action``: 4 physics substeps of 4 ms at 25 Hz,
+        joint-space interpolation). ``action`` is one dict (env 0 / all envs) or one per env.
+        Returns the per-env end flags."""
+        env = self.env
+        if isinstance(action, dict):
+            action = [action] * self.num_envs
+        if self.num_envs == 1:
+            env.take_action(action[0])
+        else:
+            env.take_action_batch(action, env_idx_list=list(range(self.num_envs)))
+        if self._contact_sub is not None:
+            pass
+        return list(map(bool, env.end_flag))
+
+    # ------------------------------------------------------------------ dev-only ground truth
+    def reward(self, env_idx: int = 0) -> dict:
+        env, rm = self.env, self.env.reward_manager
+        return {"success": bool(env.success[env_idx]) and bool(env.end_flag[env_idx]),
+                "success_flag": bool(env.success[env_idx]), "ended": bool(env.end_flag[env_idx]),
+                "stages_left": len(rm.check_list[env_idx]), "final_left": len(rm.final_check_list[env_idx]),
+                "queries": [[int(q[1]), int(q[2])] for q in rm.query_list[env_idx]],
+                "steps_used": int(env.take_action_cnt[env_idx]), "step_lim": int(env.step_lim)}
+
+    def score(self, env_idx: int = 0) -> float:
+        """Episode score as RoboDojo would book it now: 1.0 on success, else process score/100."""
+        env = self.env
+        if env.success[env_idx] and env.end_flag[env_idx]:
+            return 1.0
+        if not hasattr(env, "get_score"):
+            return 0.0
+        return float(env.reward_manager.get_score()[env_idx]) / 100.0
+
+    def objects_gt(self, env_idx: int = 0) -> list[dict]:
+        lm = self.env.scene_manager.layout_manager
+        rows = []
+        for otype in OBJECT_TYPES:
+            for rec in lm.object_records_by_type[otype].layout_records_by_env[env_idx]:
+                name = rec["inst_name"]
+                pos, quat = lm.get_instance_pose(env_idx=env_idx, inst_name=name)
+                row = {"inst_name": name, "type": otype, "category": lm.decode_inst_name(name)[0],
+                       "category_idx": int(rec.get("category_idx", -1)), "label": rec.get("label"),
+                       "clutter": rec.get("type") == "cluttered",
+                       "pos": _np(pos).reshape(-1)[:3].tolist() if pos is not None else None,
+                       "quat": _np(quat).reshape(-1)[:4].tolist() if quat is not None else None,
+                       "layout_pos": list(rec["default_pos"]), "layout_quat": list(rec["default_ori"])}
+                obj = lm.get_scene_object(env_idx, name)
+                if otype in ("Rigid", "Dynamic"):
+                    try:
+                        row["lin_vel"] = _np(obj.get_linear_velocity()).reshape(-1).tolist()
+                        row["ang_vel"] = _np(obj.get_angular_velocity()).reshape(-1).tolist()
+                    except Exception:  # noqa: BLE001
+                        pass
+                if otype == "Articulation":
+                    try:
+                        row["joint_pos"] = _np(obj.get_joint_positions()).reshape(-1).tolist()
+                        row["joint_names"] = list(obj.dof_names)
+                    except Exception as e:  # noqa: BLE001
+                        row["joint_error"] = str(e)
+                rows.append(row)
+        return rows
+
+    def cameras_gt(self, env_idx: int = 0) -> dict:
+        cm = self.env.camera_manager
+        out = {}
+        for i, name in enumerate(cm.camera_names[env_idx]):
+            T = _np(cm.get_camera_extrinsics(i, env_idx))
+            T_rel = T.copy()
+            T_rel[:3, 3] -= _np(self.env.scene_manager.env_origins[env_idx]).reshape(-1)[:3]
+            out[name] = {"K": _np(cm.get_camera_intrinsics(i, env_idx)).tolist(),
+                         "T_world_cam_usd": T_rel.tolist(), "T_world_cam_cv": (T_rel @ CV_FROM_USD).tolist(),
+                         "width": 640, "height": 480}
+        return out
+
+    def robot_gt(self, env_idx: int = 0) -> dict:
+        rm = self.env.robot_manager
+        out = {}
+        for robot in rm.robot_list:
+            key = rm.robot_key[rm.robot_list.index(robot)]
+            arm = robot.arm_name.split("_")[0] if robot.type == "target" else robot.robot_name
+            jp = _np(key.data.joint_pos[env_idx])
+            jv = _np(key.data.joint_vel[env_idx])
+            rec = {"type": robot.type, "joint_names": list(key.joint_names), "joint_pos": jp.tolist(),
+                   "joint_vel": jv.tolist(), "flange": _np(rm.get_real_endpose(robot, [env_idx])[env_idx]).tolist()}
+            if getattr(robot, "ee_type", None) == "gripper":
+                gi = list(robot.gripper_joint_indices)
+                rec["gripper_joint_pos"] = jp[gi].tolist()
+                rec["gripper_scale"] = list(map(float, robot.gripper_scale))
+                g = jp[gi][0]
+                sc = robot.gripper_scale
+                rec["gripper_open_measured"] = float((g - sc[0]) / (sc[1] - sc[0]) if robot.gripper_move["sign"] == 1
+                                                     else (sc[1] - g) / (sc[1] - sc[0]))
+                pk = rm.process_name(robot.gripper_name)
+                prev = rm.control_manager.prev_control[env_idx].get(pk)
+                if prev is not None:
+                    c = float(prev["position"][0])
+                    rec["gripper_open_cmd"] = float((c - sc[0]) / (sc[1] - sc[0]) if robot.gripper_move["sign"] == 1
+                                                    else (sc[1] - c) / (sc[1] - sc[0]))
+            links = {}
+            pose_w = _np(key.data.body_link_pose_w[env_idx])
+            org = _np(self.env.scene_manager.env_origins[env_idx]).reshape(-1)[:3]
+            for li, ln in enumerate(key.body_names):
+                p = pose_w[li].copy()
+                p[:3] -= org
+                links[ln] = p.tolist()
+            rec["links"] = links
+            out[arm] = rec
+        return out
+
+    # contacts: PhysX contact report on the gripper finger links (dev only)
+    def enable_contacts(self) -> list[str]:
+        """Subscribe to PhysX contact reports for every robot link whose name looks like a finger
+        or gripper pad. Returns the prim paths watched."""
+        import omni.physx
+        from pxr import PhysxSchema
+        rm = self.env.robot_manager
+        stage = self.env.scene_manager.stage
+        watched = []
+        for robot in rm.robot_list:
+            key = rm.robot_key[rm.robot_list.index(robot)]
+            try:
+                link_paths = list(key.root_physx_view.link_paths[0])
+            except Exception:  # noqa: BLE001
+                link_paths = []
+            for lp in link_paths:
+                leaf = lp.rsplit("/", 1)[-1].lower()
+                if any(t in leaf for t in ("finger", "gripper", "link7", "link8", "pad")):
+                    prim = stage.GetPrimAtPath(lp)
+                    if prim and prim.IsValid():
+                        api = PhysxSchema.PhysxContactReportAPI.Apply(prim)
+                        api.CreateThresholdAttr().Set(0.0)
+                        watched.append(lp)
+        self._contacts = {}
+
+        def on_report(headers, data):
+            from pxr import PhysicsSchemaTools
+            for h in headers:
+                a0 = str(PhysicsSchemaTools.intToSdfPath(h.actor0))
+                a1 = str(PhysicsSchemaTools.intToSdfPath(h.actor1))
+                self._contacts.setdefault(a0, set()).add(a1)
+                self._contacts.setdefault(a1, set()).add(a0)
+
+        self._contact_sub = omni.physx.get_physx_simulation_interface().subscribe_contact_report_events(on_report)
+        self._watched = watched
+        return watched
+
+    def contacts_gt(self, clear: bool = True) -> dict:
+        out = {}
+        for lp in getattr(self, "_watched", []):
+            out[lp] = sorted(self._contacts.get(lp, set()))
+        if clear:
+            self._contacts = {}
+        return out
+
+    def gt(self, env_idx: int = 0) -> dict:
+        """DEV-ONLY ground truth. Never feed to an eval-time policy."""
+        g = {"objects": self.objects_gt(env_idx), "cameras": self.cameras_gt(env_idx),
+             "robot": self.robot_gt(env_idx), "reward": self.reward(env_idx), "score": self.score(env_idx),
+             "layout_seed": int(self.seeds[env_idx]),
+             "sim_time_steps": int(self.env.take_action_cnt[env_idx])}
+        if self._contact_sub is not None:
+            g["contacts"] = self.contacts_gt()
+        return g
+
+    def close(self) -> None:
+        try:
+            self.env.close()
+        finally:
+            if self.app is not None:
+                self.app.close()
+
+
+def settle_report(layout: dict, gt_objects: list[dict]) -> dict:
+    """How far each object moved from its record pose during RoboDojo's settle (mm, deg)."""
+    rows = []
+    for o in gt_objects:
+        if o["pos"] is None:
+            continue
+        d = float(np.linalg.norm(np.subtract(o["pos"], o["layout_pos"]))) * 1000
+        a = quat_angle_deg(o["quat"], o["layout_quat"])
+        rows.append({"inst": o["inst_name"], "label": o["label"], "clutter": o["clutter"], "type": o["type"],
+                     "drift_mm": round(d, 2), "drift_deg": round(a, 2)})
+    task_rows = [r for r in rows if not r["clutter"] and r["type"] != "Geometry"]
+    return {"objects": rows,
+            "max_task_drift_mm": max((r["drift_mm"] for r in task_rows), default=0.0),
+            "max_task_drift_deg": max((r["drift_deg"] for r in task_rows), default=0.0),
+            "max_clutter_drift_mm": max((r["drift_mm"] for r in rows if r["clutter"]), default=0.0),
+            "fell_off": [r["inst"] for r in rows if r["drift_mm"] > 100]}
+
+
+def save_png(img: np.ndarray, path: Path) -> None:
+    from PIL import Image
+    Image.fromarray(np.asarray(img, np.uint8)).save(path)
+
+
+def main(argv: list[str] | None = None) -> None:
+    ap = argparse.ArgumentParser(description="Load our layouts into RoboDojo; dump obs + GT; check settle.")
+    ap.add_argument("--task", required=True)
+    ap.add_argument("--layouts", nargs="+", required=True, help="layout JSON files")
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--images", action="store_true", help="also save the 3 camera PNGs per layout")
+    a = ap.parse_args(argv)
+    out = Path(a.out)
+    paths.assert_not_eval(out)
+    out.mkdir(parents=True, exist_ok=True)
+    t0 = time.perf_counter()
+    run = RoboDojoRunner(a.task, workdir=str(out / "work"))
+    t_boot = time.perf_counter() - t0
+    summary = []
+    for lp in a.layouts:
+        paths.assert_not_eval(lp)
+        lay = json.loads(Path(lp).read_text())
+        info = run.load(lay)
+        rec = {"layout": lp, **{k: v for k, v in info.items()}}
+        if info["stable"]:
+            g = run.gt()
+            rec["settle"] = settle_report(lay, g["objects"])
+            rec["reward"] = g["reward"]
+            rec["score"] = g["score"]
+            if a.images:
+                o = run.obs()
+                stem = Path(lp).stem
+                for cam, img in o["images"].items():
+                    save_png(img, out / f"{stem}_{cam}.png")
+                rec["shapes"] = {c: list(i.shape) for c, i in o["images"].items()}
+        summary.append(rec)
+        s = rec.get("settle", {})
+        print(f"[simlab] {Path(lp).name}: stable={info['stable']} reset={info['reset_s']:.1f}s "
+              f"close={info['close_s']:.1f}s task_drift={s.get('max_task_drift_mm')}mm/"
+              f"{s.get('max_task_drift_deg')}deg clutter_drift={s.get('max_clutter_drift_mm')}mm "
+              f"fell={s.get('fell_off')}", flush=True)
+    (out / "settle_summary.json").write_text(json.dumps(jsonable({"task": a.task, "boot_s": t_boot,
+                                                                   "layouts": summary}), indent=1))
+    run.close()
+
+
+if __name__ == "__main__":
+    main()
