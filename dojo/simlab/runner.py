@@ -194,7 +194,10 @@ def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = F
         # ENABLE_CAMERAS env check never fires (int compared with `is False`): set the arg.
         args.enable_cameras = False
     else:
-        argv = ["--enable_cameras", "--kit_args", " ".join(f"--enable {e}" for e in KIT_ENABLE_EXTS)]
+        kit = " ".join(f"--enable {e}" for e in KIT_ENABLE_EXTS)
+        if os.environ.get("SIMLAB_KIT_ARGS"):          # e.g. --portable-root <dir>: keep Kit's data out of a shared install
+            kit += " " + os.environ["SIMLAB_KIT_ARGS"]
+        argv = ["--enable_cameras", "--kit_args=" + kit]
         if headless:
             argv.append("--headless")
         args = ap.parse_args(argv)
