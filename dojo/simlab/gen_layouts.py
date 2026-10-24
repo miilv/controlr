@@ -36,11 +36,11 @@ if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
 GENERATOR = "simlab/v2"
-# Home-pose gripper footprint of both ARX arms (link6..fingers xy at reset, from GT) + 3 cm. At home the
+# Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
 # failed RoboDojo's stability check).
-ROBOT_KEEPOUT = [(-0.42, -0.40, -0.18, -0.13), (0.18, -0.40, 0.42, -0.13)]     # (x0, y0, x1, y1), env frame
+ROBOT_KEEPOUT = [(-0.42, -0.40, -0.18, -0.17), (0.18, -0.40, 0.42, -0.17)]     # (x0, y0, x1, y1), env frame
 ROBOT_KEEPOUT_TOP = 0.08
 
 SAMPLING_DEFAULTS = {"group": None, "xlim": None, "ylim": None, "zlim": None, "qpos": [1, 0, 0, 0],
