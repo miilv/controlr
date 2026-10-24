@@ -125,6 +125,7 @@ class RuntimePolicy:
     def reset(self, info: dict) -> None:
         if self.bridge is not None:
             self.bridge.cancel()
+        self._live = None
         self.info, dropped = sanitize_info(info)
         self.log_task = self.info.get("task")            # logging only (never a decision input)
         self.fold = int(self.info.get("dev_calib_fold", 0))
@@ -160,6 +161,21 @@ class RuntimePolicy:
         self.report["timings"].update({"worker_s": round(b.t_worker, 2), "observations": b.n_flush + 1,
                                        "episode_wall_s": round(time.perf_counter() - self.t0, 2)})
         self.report["log"] = self.log_lines[-120:]
+        live = getattr(self, "_live", None)          # the worker may be parked in observe() (episode ended)
+        if live:
+            vt = dict(live["vtot"])
+            sk = live.get("sk")
+            if sk is not None:
+                for k, v in sk.vstats.items():
+                    vt[k] = vt.get(k, 0) + v
+            self.report["history"] = [h for s_ in live["sks"] for h in _hist(s_)]
+            ver = live.get("verifier")
+            self.report["verify"] = ({**vt, **ver.stats} if ver is not None else
+                                     ("off (stub: single plan, no twin)" if self.cfg.verify == "off" else
+                                      "unavailable (see events)"))
+            self.report["provider"] = dict(live["prov"].stats)
+            if self._pc is not None:
+                self.report["perception_calls"] = list(getattr(self._pc, "calls", [])[-200:])
 
     # ------------------------------------------------------------------ the episode (worker thread)
     def _episode(self):
@@ -210,11 +226,18 @@ class RuntimePolicy:
                 verifier.on_verified(info)
 
         vtot: dict = {}
+        self._live = {"vtot": vtot, "prov": prov, "verifier": verifier, "sk": None, "sks": []}
 
         def make_skills(prev=None):
             if prev is not None:
                 for k, v in prev.vstats.items():
                     vtot[k] = vtot.get(k, 0) + v
+            new = _mk()
+            self._live["sk"] = new
+            self._live["sks"].append(new)
+            return new
+
+        def _mk():
             return Skills(b, prov, kin=kin, reserve=cfg.reserve, log=self.log, verifier=verifier,
                           verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks)
 
@@ -245,12 +268,12 @@ class RuntimePolicy:
                 w.notes["params"] = dict(d.params)
                 try:
                     res = library.SKILLS[d.skill](sk, **d.params) or {}
+                    self.report["result"] = _short(res)              # before finish(): success may end it there
                     if res.get("ok"):
                         f = sk.finish()
                         res = {**res, "finish": f.status}
                 except Divergence as e:
                     events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
-                    self.report["history"] += _hist(sk)
                     sk = make_skills(sk)
                     continue
                 except KeyError as e:                    # a label the program needs is not in the WorldState
@@ -259,16 +282,13 @@ class RuntimePolicy:
                 events.append({"kind": "program_done", "ok": bool(res.get("ok")), "stage": res.get("stage"),
                                "status": last.status if (last is not None and not res.get("ok")) else "ok",
                                "step": b.steps_used})
-                result = {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v)[:300])
-                          for k, v in res.items()}
-                self.report["history"] += _hist(sk)
+                result = _short(res)
+                self.report["result"] = result
                 if res.get("ok"):
                     break
-                sk.history = []
                 sk = make_skills(sk)
             if not (result or {}).get("ok"):
                 sk.finish()                              # bank whatever tier was reached
-                self.report["history"] += _hist(sk)
             for _ in range(cfg.final_hold):
                 sk.ex.hold(1, use_reserve=True)
         except EpisodeEnded as e:
@@ -279,14 +299,8 @@ class RuntimePolicy:
                 raise
             events.append({"kind": "budget", "note": str(e)})
         finally:
-            self.report["result"] = result
-            for k, v in sk.vstats.items():
-                vtot[k] = vtot.get(k, 0) + v
-            self.report["verify"] = ({**vtot, **(verifier.stats if verifier else {})} if cfg.verify == "bundle"
-                                     else "off (stub: single plan, no twin)")
-            self.report["provider"] = {k: v for k, v in prov.stats.items()}
-            if self._pc is not None:
-                self.report["perception_calls"] = list(getattr(self._pc, "calls", [])[-200:])
+            if result is not None:
+                self.report["result"] = result
         return result
 
     # ------------------------------------------------------------------ helpers

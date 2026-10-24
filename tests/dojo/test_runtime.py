@@ -55,8 +55,9 @@ class FakeEpisode:
                 "step_lim": self.env.step_lim, "renderer": "fake"}
 
 
-def run_episode(policy, ep, mode, max_calls=2000):
-    """proxy_eval.run_eval's loop (+ the integ driver's dev GT hook in mode gt)."""
+def run_episode(policy, ep, mode, max_calls=2000, success_fn=None):
+    """proxy_eval.run_eval's loop (+ the integ driver's dev GT hook in mode gt). ``success_fn(env)``: end the
+    episode at that step, as RoboDojo does on success (the policy is not called again)."""
     policy.reset(ep.info())
     for _ in range(max_calls):
         obs = ep.observe()
@@ -66,7 +67,7 @@ def run_episode(policy, ep, mode, max_calls=2000):
         if d.get("done"):
             return policy.episode_report()
         for a in d["actions"]:
-            if ep.env.step(a):
+            if ep.env.step(a) or (success_fn is not None and success_fn(ep.env)):
                 return policy.episode_report()
     raise AssertionError("episode did not finish")
 
@@ -382,3 +383,23 @@ def test_pose_errors_match_interchangeable_labels():
     e = pose_errors(est, gt)
     assert e["block_0"]["est_label"] == "block_1" and e["block_0"]["xy_mm"] == 2.0 and e["block_0"]["id_ok"]
     assert e["block_1"]["xy_mm"] == 1.0 and e["block_1"]["shape_ok"]
+
+
+def test_report_survives_success_ending_the_episode(monkeypatch):
+    """RoboDojo ends the episode the step the stack is complete and both arms are home: the worker is then
+    parked inside finish(); stats, history and result must still reach the report."""
+    import dojo.runtime.estimate as E
+    monkeypatch.setattr(E, "estimate_to_layout", lambda scene, objs: {"Rigid": {"block": [
+        {"label": o["label"], "category_idx": o["category_idx"], "default_pos": o["pos"], "default_ori": o["quat"]}
+        for o in objs]}})
+    env = _env()
+    pol = RuntimePolicy(RuntimeConfig(mode="gt", verify="bundle", n_cands=2, verify_k=1), assets=FakeAssets(),
+                        twin_client=FakeTwinClient())
+
+    def success(e):
+        return _stacked(e) and all(np.abs(e.q[a]).max() < 0.05 for a in ("left", "right"))
+    rep = run_episode(pol, FakeEpisode(env), "gt", success_fn=success)
+    assert _stacked(env) and rep["error"] is None
+    assert isinstance(rep["verify"], dict) and rep["verify"]["segments"] >= 4 and rep["verify"]["calls"] >= 4
+    assert rep["provider"]["refresh"] > 0 and len(rep["history"]) >= 4
+    assert rep["result"] and rep["result"]["ok"]
