@@ -137,9 +137,40 @@ class ReplayPolicy:
         return {"actions": [{k: np.asarray(v, np.float32) for k, v in a.items()} for a in acts]}
 
 
+class VerifyReplayPolicy(ReplayPolicy):
+    """Dev demo of the bundle (``proxy_eval.sh --bundle``): at reset, load the layout record into the twin
+    service and verify the whole recorded plan (nominal + k-1 perturbed samples) before replaying it.
+    Reads ``info["layout_file"]`` (dev only: there is no layout file at eval time; a real policy passes
+    its perception estimate instead)."""
+
+    def __init__(self, traj_path: str, k: int = 4):
+        super().__init__(traj_path)
+        self.k, self.tc, self.verify_report = int(k), None, None
+
+    def reset(self, info: dict) -> None:
+        super().reset(info)
+        from dojo.simlab.twin_service import TwinClient
+        self.tc = self.tc or TwinClient()
+        lay = json.loads(Path(info["layout_file"]).read_text())
+        t0 = time.perf_counter()
+        r = self.tc.load_from_estimate(lay)
+        t1 = time.perf_counter()
+        outs = self.tc.verify({"layout": lay}, [{"actions": self.actions, "meta": {"name": "recorded_plan"}}],
+                              perturb={"pos_mm": 2.0, "yaw_deg": 1.0}, k=self.k)
+        t2 = time.perf_counter()
+        self.verify_report = {"load_s": t1 - t0, "load_fast": r.get("fast"), "verify_s": t2 - t1, "rollouts": len(outs),
+                              "steps": len(self.actions), "success": [o["success"] for o in outs],
+                              "score": [o["score"] for o in outs]}
+        print(f"[proxy_eval] twin verify: {len(outs)} rollouts x {len(self.actions)} steps in {t2 - t1:.1f}s "
+              f"(load {t1 - t0:.1f}s fast={r.get('fast')}): success {self.verify_report['success']}", flush=True)
+
+
 def load_policy(spec: str):
     if spec.startswith("replay:"):
         return ReplayPolicy(spec.split(":", 1)[1])
+    if spec.startswith("verifyreplay:"):
+        parts = spec.split(":")
+        return VerifyReplayPolicy(parts[1], *(parts[2:3] or []))
     mod, cls = spec.split(":")
     return getattr(importlib.import_module(mod), cls)()
 
@@ -156,6 +187,7 @@ def run_eval(task: str, layout_files: list[str], policy, out: Path) -> dict:
         if not info["stable"]:
             details[i] = {"layout": lf, "unstable": True}
             continue
+        info["layout_file"] = str(lf)          # dev only (our layouts); absent at eval time
         policy.reset(info)
         t0 = time.perf_counter()
         ended, obs_s = False, []
@@ -174,6 +206,8 @@ def run_eval(task: str, layout_files: list[str], policy, out: Path) -> dict:
         res.update({"layout": lf, "layout_id": info.get("layout_id"), "wall_s": time.perf_counter() - t0,
                     "reset_s": info["reset_s"], "render_stage_s": info["render_stage_s"],
                     "observe_s_median": float(np.median(obs_s)) if obs_s else None})
+        if getattr(policy, "verify_report", None):
+            res["twin_verify"] = policy.verify_report
         details[i] = res
         print(f"[proxy_eval] {task} {Path(lf).stem}: success={res['success']} score={res['score']:.2f} "
               f"steps={res['steps_used']}/{res['step_lim']} obs={res['observations']} "
@@ -194,7 +228,7 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True)
     ap.add_argument("--layouts", nargs="+", required=True)
-    ap.add_argument("--policy", required=True, help="replay:<traj.json> or module:Class")
+    ap.add_argument("--policy", required=True, help="replay:<traj.json>, verifyreplay:<traj.json>[:k] or module:Class")
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
     r = run_eval(a.task, a.layouts, load_policy(a.policy), Path(a.out))
