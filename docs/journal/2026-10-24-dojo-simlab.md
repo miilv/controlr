@@ -348,3 +348,65 @@ Load + settle (physics-only RoboDojo, 25 layouts each):
 
 Next for the generator: two-pass "pre-settled" records (generate, settle in the twin, write the settled poses
 back, re-check), which is also what RoboDojo's own records most likely contain for teleop-sourced tasks.
+
+## Bundle mode (proxy_eval.sh --bundle): episode env + render service + twin service as ONE GPU job
+
+`scripts/simlab/proxy_eval.sh --bundle [--twin-envs N<=16]` runs three processes under one GPU lock in one
+systemd scope (MemoryMax 24G, CPUQuota 1400%):
+- the proxy episode env (physics-only 5.1, RoboDojo accounting);
+- the Isaac 6.0 render service;
+- `dojo/simlab/twin_service.py`: a physics-only `Twin` the policy calls via `TwinClient`
+  (`load_from_estimate`, `verify`, `snapshot`, `drop_snapshot`).
+
+The scope's own cgroup gives `memory.peak` and `cpu.stat`, written to `bundle_stats.json`. The script
+refuses to start below 25 GB MemAvailable (after waiting 10 min).
+
+API agreed with the integration stream (a6f1babb2544f270c, feat/dojo-integ):
+- `verify(..., keep=(c, s) | [(c, s), ...] | "nominal")` gives each kept rollout a `snapshot_id`.
+- `verify({"snapshot_id": sid}, ...)` broadcasts that ONE env's state into every env. Objects AND reward
+  state (`func_parser.pre_state`) are mapped by (type, category, index, label, clutter), because RoboDojo's
+  instance names carry a global counter and differ between envs. This is how a place segment is verified
+  after a grasp, since `load_from_estimate` cannot put an object in closed jaws.
+- `info["layout_file"]` (the true record) is only passed with `--dev-layout-info`.
+- TwinClient: one thread per client.
+
+Live (stack_blocks 110007, demo policy `verifyreplay`, twin 8 envs):
+- the episode succeeds, render 0.12-0.13 s per observation;
+- the twin verifies the 264-step plan in 4 rollouts (nominal + 3 at 2 mm / 1°) in 25.6 s, all successful;
+- chain: the 67-step pick with keep gives `held = {right: block_1}`; the rest of the plan from the broadcast
+  snapshot succeeds 4/4 under perturbation;
+- **scope peak 10.6-11.7 GB** (incl. page cache), 1.9 cores on average, 101 s wall.
+
+## GPU lock fairness
+
+The skills stream's back-to-back g3 runs re-took `~/dojo-gpu.lock` at every release, while my wrappers
+polled `flock -n` every 30 s. Team policy since 22:10 (lead):
+- blocking `flock -w`;
+- ≤ 30 min per hold;
+- 90 s yield after releasing before re-taking.
+
+All `scripts/simlab/*.sh` follow it (`SIMLAB_LOCK_WAIT_S`, `SIMLAB_LOCK_YIELD_S`).
+
+## Pre-settled records (`presettle.py`, `presettle_all.sh` -> `layouts/<task>/<id>.settled.json`)
+
+- **Pass 1**: RoboDojo reset + settle + 1 s more. Drop the layout if a task object moved > 1 mm / 1° in the
+  last 0.4 s, or fell below the table. Otherwise write the rest poses of all Rigid / Dynamic /
+  Articulation objects back into a copy.
+- **Pass 2**: fresh reset of the settled record; it must pass RoboDojo's stability check with ≤ 5 mm drift.
+- Originals are kept. `_simlab.settled` records the provenance (generator version, settler, drifts), and
+  `settled_index.json` the per-id status.
+- `dev_eval` / `settle_check` can use settled records (`SIMLAB_DEV_LAYOUT_SUFFIX=.settled`, `SETTLED=1`).
+- Pitfall: PhysX velocity readouts are noise on resting contacts (blocks that moved 0.02 mm report 3 mm/s
+  and 0.13 rad/s). Rest is judged by displacement; the first, velocity-based run wrongly dropped all of
+  build_tower.
+- Eggs (generator v5/v6): an egg lying on its side is 6.3 cm long, but its projection circle is only
+  2.9 cm, and its placement point sits 2 cm off its origin. Footprints were too small and compared at the
+  origins, so eggs interpenetrated and were ejected 1-2 m. Fixed: footprint = max(projection radius,
+  half the longest bbox extent), compared at placement points; the support radius bounds the placement point.
+- fill_egg_holder (v6): **11/25 settled records kept**. In 13, eggs roll off the table (floor, z = 0.066)
+  or are still moving; 1 drifts 7 mm in pass 2. Consistent with the egg basket having no collision in
+  RoboDojo (Geometry). If the eval basket does collide, our dev layouts here are pessimistic.
+- pick_from_conveyor_by_image: 25/25 pass RoboDojo's check. Items ride the belt ~21 cm during settle
+  (expected). The basket moves 1.7 m, so my reading of its `zlim` offset relative to the conveyor is wrong:
+  conveyor layouts stay experimental.
+- pour_by_language: 25/25 stable, ≤ 0.4 mm.
