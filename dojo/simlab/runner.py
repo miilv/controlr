@@ -416,7 +416,11 @@ class RoboDojoRunner:
         if self.num_envs == 1:
             env.take_action(action[0])
         else:
-            env.take_action_batch(action, env_idx_list=list(range(self.num_envs)))
+            # like RoboDojo's own batch policies: only envs still running (ended / step-limited ones
+            # are skipped inside take_action_batch, and its control queue wants matching lists)
+            idx = [i for i in range(self.num_envs) if not env.end_flag[i] and env.take_action_cnt[i] < env.step_lim]
+            if idx:
+                env.take_action_batch([action[i] for i in idx], env_idx_list=idx)
         if self._contact_sub is not None:
             pass
         return list(map(bool, env.end_flag))
