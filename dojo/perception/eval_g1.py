@@ -159,6 +159,7 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
     from the evaluated episode. ``cam_<x>``: per-pixel median of frame 0 (home pose). ``cam_head_clean``:
     robot-free head background, the median over frames 0-3 with each frame's FK robot mask excluded.
     Observations and proprio only."""
+    import os
     import zlib
 
     import cv2
@@ -173,6 +174,16 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
     key = (str(root), fold)
     if key in _BG_CACHE:
         return _BG_CACHE[key]
+    pre = os.environ.get("DOJO_BG_FOLDS")  # precomputed by --build-bg-folds: no per-worker median
+    if pre and (Path(pre) / f"fold{fold}" / "cam_head.png").exists():
+        from .segment import load_backgrounds
+
+        out = load_backgrounds(Path(pre) / f"fold{fold}")
+        m = Path(pre) / f"fold{fold}" / "cam_head_clean_unseen.png"
+        if m.exists():
+            out["cam_head_clean_unseen"] = (cv2.imread(str(m), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
+        _BG_CACHE[key] = out
+        return out
     others = [e for e in d0.episodes(root) if zlib.crc32(e.name.encode()) % 2 != fold]
     rng = np.random.default_rng(fold)
     sel = [others[i] for i in sorted(rng.choice(len(others), min(max_n, len(others)), replace=False))]
@@ -198,6 +209,28 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
             out["cam_head_clean"], out["cam_head_clean_unseen"] = masked_median(frames, masks, out["cam_head"])
     _BG_CACHE[key] = out
     return out
+
+
+def build_bg_folds(root: Path, out: Path) -> None:
+    """Write both folds' backgrounds (PNG) once, for workers to load (``DOJO_BG_FOLDS``)."""
+    import zlib
+
+    import cv2
+
+    from . import d0
+
+    eps = d0.episodes(root)
+    for fold in (0, 1):
+        ep = next(e for e in eps if zlib.crc32(e.name.encode()) % 2 == fold)
+        bg = fold_backgrounds(ep)
+        d = out / f"fold{fold}"
+        d.mkdir(parents=True, exist_ok=True)
+        for k, v in bg.items():
+            if k.endswith("_unseen"):
+                cv2.imwrite(str(d / f"{k}.png"), (v * 255).astype(np.uint8))
+            else:
+                cv2.imwrite(str(d / f"{k}.png"), cv2.cvtColor(v, cv2.COLOR_RGB2BGR))
+        print("fold", fold, sorted(bg))
 
 
 def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False,
@@ -295,6 +328,7 @@ def main(argv=None):
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--build-bg-folds", action="store_true", help="write fold backgrounds to --out and exit")
     ap.add_argument("--tasks", nargs="*")
     ap.add_argument("--frames", nargs="*", type=int, default=[0])
     ap.add_argument("--episodes", type=int, default=0, help="max episodes per task (0 = all)")
@@ -305,6 +339,9 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
+    if a.build_bg_folds:
+        build_bg_folds(d0.d0_root(), a.out)
+        return
     jobs = []
     root = d0.d0_root()
     tasks = a.tasks or sorted(p.name for p in root.iterdir() if p.is_dir())

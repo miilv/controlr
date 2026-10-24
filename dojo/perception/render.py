@@ -19,6 +19,10 @@ import numpy as np
 
 from .cameras import Camera
 
+GL_MAX_FACES = int(os.environ.get("DOJO_GL_MAX_FACES", "100000000"))  # decimation measurably hurt identity
+TEX_MAX_PX = int(os.environ.get("DOJO_TEX_MAX_PX", "512"))
+TEX_CACHE = 6
+
 CATALOG_DIRS = (
     os.environ.get("DOJO_CATALOG", ""),
     "/root/dojo-data/perception/catalog",
@@ -66,6 +70,14 @@ class Asset:
             self.Vs, self.Fs = cluster_decimate(self.V, self.F, cell)
         else:
             self.Vs, self.Fs = self.V, self.F
+        # GL mesh: at most GL_MAX_FACES faces (vertex clustering, cell grown from ext/300 until it fits);
+        # silhouettes move by at most cell/2*sqrt(3) (about 1 mm for a 25 cm bottle)
+        self.Vg, self.Fg = self.V, self.F
+        c = ext / 300.0
+        while len(self.Fg) > GL_MAX_FACES:
+            self.Vg, self.Fg = cluster_decimate(self.V, self.F, c)
+            c *= 1.4
+        self.gl_cell = 0.0 if self.Fg is self.F else c / 1.4
 
     @property
     def extents(self):
@@ -277,7 +289,9 @@ class GLSilhouettes:
         if n is None:
             import trimesh
 
-            m = self.pr.Mesh.from_trimesh(trimesh.Trimesh(V, F, process=False), smooth=False)
+            # smooth=True keeps vertices shared (flat shading would unweld every face: ~3x the memory);
+            # normals are irrelevant for depth / silhouettes
+            m = self.pr.Mesh.from_trimesh(trimesh.Trimesh(V, F, process=False), smooth=True)
             m.is_visible = False
             n = self.scene.add(m, pose=np.eye(4))
             self.nodes[key] = n
@@ -357,17 +371,29 @@ class TexturedRenderer:
         self.nodes: dict[str, list] = {}
 
     def _nodes(self, key: str):
-        ns = self.nodes.get(key)
+        ns = self.nodes.pop(key, None)
         if ns is None:
             import trimesh
+            from PIL import Image
 
             sc = trimesh.load(catalog_root() / key / "visual.glb", force="scene")
             ns = []
             for g in sc.dump():
+                mat = getattr(g.visual, "material", None)
+                for attr in ("baseColorTexture", "image"):
+                    img = getattr(mat, attr, None) if mat is not None else None
+                    if img is not None and max(img.size) > TEX_MAX_PX:  # bound RAM: textures to <= 512 px
+                        f = TEX_MAX_PX / max(img.size)
+                        setattr(mat, attr, img.resize((max(1, int(img.size[0] * f)), max(1, int(img.size[1] * f))),
+                                                      Image.BILINEAR))
                 m = self.pr.Mesh.from_trimesh(g, smooth=False)
                 m.is_visible = False
                 ns.append(self.scene.add(m, pose=np.eye(4)))
-            self.nodes[key] = ns
+            while len(self.nodes) >= TEX_CACHE:  # LRU: drop the oldest asset (GL buffers freed next render)
+                old = next(iter(self.nodes))
+                for n in self.nodes.pop(old):
+                    self.scene.remove_node(n)
+        self.nodes[key] = ns  # (re)insert as most recent
         return ns
 
     def render(self, cam: Camera, key: str, T: np.ndarray):

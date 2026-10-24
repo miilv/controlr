@@ -77,7 +77,7 @@ class ShapeModel:
     def sil(self, cam: Camera, T: np.ndarray, out=None) -> np.ndarray:
         g = gl()
         if g is not None:
-            m = g.render(cam, [(self.key, self.asset.V, self.asset.F, T)])
+            m = g.render(cam, [(self.key, self.asset.Vg, self.asset.Fg, T)])
             if out is not None:
                 out |= m
                 return out
@@ -313,7 +313,7 @@ def roi_loss(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_vis: float =
     tot, wsum, per = 0.0, 0.0, {}
     for rv in rvs:
         if g is not None:
-            s = g.render(rv.cam, [(sm.key, sm.asset.V, sm.asset.F, T)]).astype(np.float32)
+            s = g.render(rv.cam, [(sm.key, sm.asset.Vg, sm.asset.Fg, T)]).astype(np.float32)
         else:
             s = sm.sil(rv.cam, T).astype(np.float32)
         n_s = float(s.sum())
@@ -411,7 +411,7 @@ def coarse_fit(sm: ShapeModel, blob: Blob, views: dict[str, ViewMasks], yaw_step
 
     def render(T):
         if g is not None:
-            return g.render(rcam, [(sm.key, sm.asset.V, sm.asset.F, T)]).astype(np.float32)
+            return g.render(rcam, [(sm.key, sm.asset.Vg, sm.asset.Fg, T)]).astype(np.float32)
         return sm.sil(rcam, T).astype(np.float32)
 
     sxs, sys_ = S / (x1 - x0), S / (y1 - y0)
@@ -869,8 +869,8 @@ def view_request(best: Hypothesis, alt: dict, dist: float = 0.16, elev_deg: floa
         cam = look_at_camera(eye, c, K)
         if g is None:
             continue
-        m1 = g.render(cam, [(sm_b.key, sm_b.asset.V, sm_b.asset.F, T_b)])
-        m2 = g.render(cam, [(sm_a.key, sm_a.asset.V, sm_a.asset.F, T_a)])
+        m1 = g.render(cam, [(sm_b.key, sm_b.asset.Vg, sm_b.asset.Fg, T_b)])
+        m2 = g.render(cam, [(sm_a.key, sm_a.asset.Vg, sm_a.asset.Fg, T_a)])
         u = (m1 | m2).sum()
         if u == 0:
             continue
