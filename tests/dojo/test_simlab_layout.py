@@ -109,6 +109,15 @@ def test_resample_and_step_count_respect_step_limit():
     assert w.shape == (8, 6) and w[-1] == pytest.approx(path[-1])
 
 
+def test_trajectory_json_round_trip_is_bit_exact():
+    rng = np.random.default_rng(0)
+    q = rng.uniform(-3, 3, 6).astype(np.float32)
+    t = M.Trajectory(actions=[{"left_arm_joint_state": q}])
+    import json
+    u = M.Trajectory.from_json(json.loads(json.dumps(t.to_json())))
+    assert u.actions[0]["left_arm_joint_state"].tobytes() == q.tobytes()
+
+
 def test_trajectory_json_round_trip():
     t = M.Trajectory(actions=[{"left_arm_joint_state": np.arange(6, dtype=np.float32),
                                "left_ee_joint_state": np.array([1.0], np.float32)}], segments=[{"name": "x"}])
