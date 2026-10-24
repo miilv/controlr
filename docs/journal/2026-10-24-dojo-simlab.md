@@ -192,3 +192,159 @@ Pitfalls found on the way:
 Speed: states ~6 s / layout, rendering ~2 s / layout (4 frames x 3 cams). Visually the proxy matches the
 genuine 5.1 frames of the same layout taken on compute2 (head view, wrist views, arm occlusion).
 First slice (stack_blocks + push_T x 10) at 20:04 UTC; READY touched; full 6 x 25 running.
+
+### D0 proxy: final
+
+`compute3:~/dojo-data/d0/`: 6 tasks x 25 layouts x 4 frames x 3 cameras = 1800 PNGs + 600 frame JSONs
+(598 MB), READY touched 20:35 UTC.
+- RoboDojo's own stability check rejected 0 generated layouts for 5 tasks, and 9 of 34 for
+  put_bottles_into_dustbin: tall bottles spawned under the home-pose grippers. RoboDojo's placement engine
+  does not know the robot. Generator v2 (`ROBOT_KEEPOUT`: gripper footprint to the fingertips + 3 cm,
+  objects taller than 8 cm) changes 23 of 34 put_bottles layouts, 1 of 25 pack_objects and 0 for the
+  block/bowl tasks. D0 was made with v1; records are self-contained, so it stays valid.
+- Scripted moves: most layouts 3 of 3, some 2 of 3 (cuRobo miss, `move.ok=false`).
+
+## Incident note: compute3 RAM exhaustion (20:33-20:45 UTC)
+
+4 perception `eval_g1` workers (~28 GB RSS) + a long-running 7.5 GB `opencode` drove compute3 to 57/62 GB
+RAM, 7/7 GB swap, load 134; ssh timed out. The lead killed the workers and capped perception at
+12 GB / 8 cores. Our rule since then: GPU jobs under `flock ~/dojo-gpu.lock`, and benches inside
+`systemd-run --user --scope -p MemoryMax=20G -p CPUQuota=1200%`, started only when MemAvailable > 25 GB
+and load < 20 (`scripts/simlab/twin_bench.sh`).
+
+## 5. Twin API (`dojo/simlab/twin.py`) and throughput (compute3 5090, physics-only, PhysX on CPU as RoboDojo configures it)
+
+API: `Twin(task, num_envs).load(layouts) / snapshot() / restore(s) / step(actions) / render(cams) /
+reward() / score() / gt()`. Snapshot = rigid poses + velocities, articulation joints, robot joint
+pos / vel / targets, control-manager targets, reward latches and func-parser state, episode counters.
+`scripts/simlab/twin_bench.sh` (stack_blocks, our layouts 100500+, 100 env steps of a joint wiggle,
+one 20 GB / 12-core scope; machine otherwise quiet, load < 20):
+
+| setup | env-steps/s total | per env | x real time per env | CPU cores used | RSS | new layout load | restore + 40 steps | 40-step candidates/s |
+|---|---|---|---|---|---|---|---|---|
+| 1 process, n=1 | 31.3 | 31.3 | 1.25 | 2.2 | 2.8 GB | 3.1 s (2.3 s without sim close) | 1.27 s | 0.78 |
+| 1 process, n=4 | 63.6 | 15.9 | 0.64 | 1.6 | 2.8 GB | 5.5 s | 2.33 s | 1.72 |
+| 1 process, n=8 | 82.3 | 10.3 | 0.41 | 1.4 | 2.9 GB | 7.7 s | 4.06 s | 1.97 |
+| 1 process, n=16 | 113.7 | 7.1 | 0.28 | 1.3 | 3.0 GB | 12.1 s | 5.83 s | 2.74 |
+| 2 processes x n=1 | 45.7 | 22.8 | 0.91 | 1.8 each | 2.8 GB each | 4.4 s | 1.76 s | 1.1 (sum) |
+| 4 processes x n=1 | 54.8 | 13.7 | 0.55 | 1.5 each | 2.8 GB each | 6.0 s | 2.6 s | 1.5 (sum) |
+
+- One env step = 40 ms of sim (10 x 4 ms substeps). Under the perception overload the same n=1 bench gave
+  13 env-steps/s: the twin is sensitive to machine load.
+- **Not CPU-bound**: ≤ 2.2 cores per process, and separate processes scale worse than batching in one
+  process (4 x n=1 = 55 vs 1 x n=4 = 64). The serial per-step cost is the Python / Kit loop plus a shared
+  GPU-side resource (PhysX GPU features are on via `overwrite_gpu_setting(1)`). Batching (n=16) is the
+  efficient path; a dedicated box would run one n=16 process per GPU (~114 env-steps/s each). More
+  processes per GPU were not measured beyond 4 x n=1.
+- **Snapshot / restore are free**: 0.7-12 ms snapshot, 1.5-15 ms restore (n = 1..16).
+- **Restore fidelity under contact**: snapshot at step 120 of the G2 `stack` run (block in the gripper),
+  roll 50 steps, restore, roll again: max object divergence 0.00013 mm. Not bitwise: PhysX contact
+  warm-start caches are not part of the snapshot.
+- **Verify-before-execute budget**: per candidate segment of 40 env steps, 1.3 s alone or 16 candidates
+  in 5.8 s batched. A fresh layout from perception loads in 3.1 s (n=1).
+- Rendering is not measured on compute3 (no 5.1 RTX); on compute2 (4090) a full RoboDojo reset with
+  rendering was 7-17 s per layout, and render cost per camera is still to be measured there.
+
+## Skills request: swap_blocks + press_by_number
+
+- Assets added to the compute3 sparse install: SpringButton 00002/00003, cube 00003, cube_cushion 00001,
+  number_card 00001-00009 (install 29 GB).
+- Generator: objects can rest on other objects (`relative_plane: [mat0, mat1, mat2]`). Each cube goes on a
+  distinct mat's `passive.support` point (child rest frame from `active.place`, ±30° yaw). The record keeps
+  the chosen mat label, because swap_blocks' reward reads it back to find the empty mat. The full metadata
+  `physics` dict is now kept (SpringButton `reset_drive`).
+- 25 + 25 layouts (`~/dojo-data/simlab/layouts/{swap_blocks,press_by_number}/1000xx.json`) all pass
+  RoboDojo's stability check.
+  - press_by_number: zero settle drift.
+  - swap_blocks: the cubes move ≤ 5.75 mm / ≤ 14° (median 3-5°) during settle, because the mats are Geometry
+    objects, which RoboDojo spawns without collision; a cube on a mat's support point drops ~5 mm to the table.
+    Plan from settled poses.
+
+## Batched verification API (`Twin.verify`, `Twin.load_from_estimate`)
+
+- Segment format agreed with the skills stream: `{"actions": [one RoboDojo joint action dict per env step,
+  both arms + grippers], "meta": ...}` (= `dojo.skills.executor.Executor.trajectory_json()["actions"]`).
+- `verify(world, candidates, perturb={"pos_mm", "yaw_deg", "labels"}, k, record_traj)`:
+  - `world` = {"layout", "robot"} or {"snapshot"};
+  - candidates x k samples run in batches of `num_envs` (sample 0 nominal);
+  - each outcome carries success / score / reward latches (the task's own checker), final object poses,
+    moved_mm, lifted, dropped (left the closed jaws of the arm that lifted it), fell, gripper_blocked,
+    held per arm (object moving rigidly with that TCP), final_robot, the echoed candidate keys, and the
+    per-step trajectory on request.
+- `load_from_estimate(layout, robot)`: if the object set is unchanged, it restores the post-reset snapshot,
+  writes the estimated poses, places the robot, settles 50 x 4 ms and re-arms RoboDojo's reward state.
+  **0.13 s vs 5-8 s** for a full RoboDojo reset; agrees with the full path to < 0.001 mm. A 1 cm-shifted
+  estimate settles 9.85 mm over.
+- Live check (`dojo/simlab/verify_check.py`, compute3, n=8):
+  - the recorded stack: success in the nominal and in the 2 mm / 1° perturbed sample, no drops;
+  - the same with open grippers: nothing lifted;
+  - the pick-only prefix: `held = {right: block_1}`;
+  - 6 rollouts of 264/264/98 steps in 23 s;
+  - the nominal is within 0.4-0.6 mm of the exact G2 replay over 264 contact steps (the fast-loaded and
+    restored start state differs by sub-µm, and contact amplifies it).
+- Fixed on the way: in batches, RoboDojo's `take_action_batch` must get only the still-running envs (a
+  succeeded env made its control queue assert).
+- Not supported yet: an estimate with an object already inside closed jaws. Chain from a snapshot instead.
+
+## Dev-eval harness (prepared, not run: needs a 5.1-capable RTX)
+
+`scripts/simlab/dev_eval.sh --task T --policy P [--eval-num N]` runs RoboDojo's own eval client
+(`src/eval_client/main.py`, unchanged: XPolicyLab ws policy server, step limits, success latch,
+`_result.json`, mp4s) with one substitution: `dojo/simlab/dev_eval.py` patches `SeedManager` to read
+`$SIMLAB_DEV_LAYOUTS/<task>/<id>.json` (our records; `_simlab` stripped; refuses Eval_Layout paths).
+A dev-eval score is therefore computed exactly as a leaderboard score, on layouts we own.
+- RoboDojo's result `layout_id` i = the i-th smallest dev id.
+- The policy must exist as `XPolicyLab/policy/<P>/` in the RoboDojo tree.
+- The script holds the GPU lock and writes results under `$OUT/<stamp>_<task>_<policy>/`.
+- The SeedManager patch is verified on compute3 (25 swap_blocks layouts listed and loaded without the meta key).
+- Ready to start the moment compute2 is back or a rented 5.1-capable GPU exists.
+
+## Proxy dev-eval on compute3 (render on demand)
+
+`scripts/simlab/proxy_eval.sh --task T --layouts ... --policy module:Class|replay:TRAJ` (README: "Proxy dev-eval
+with your own policy"). Marked "proxy" everywhere; `dev_eval.sh` (RoboDojo's eval client, 5.1 rendering) stays the reference.
+- Physics: `ProxyEpisode` = physics-only 5.1 RoboDojo EvalEnv (its reset, `take_action` accounting, `step_lim`,
+  `run_reward` / `get_score` latches).
+- Rendering: on demand from a warm Isaac 6.0 `render_service.py` (`ProxyRenderer`, shared with D0) over
+  authenticated localhost, only when the policy asks (`next(obs)` per segment).
+- Images cross as raw bytes: Isaac 6.0's numpy-2 pickles do not load on RoboDojo's numpy 1.26.
+- Resources: both processes in one scope (MemoryMax 16G, 12 cores), one GPU lock.
+- Smoke (stack_blocks 110007, replay policy): success, score 100, 263/550 steps, 22 observations,
+  **0.12 s per observation (3 cameras)**, episode 11 s + 12 s reset + 3 s stage load.
+
+## 9 more tasks: assets + layouts (generator v3/v4)
+
+- Sizing against the published tree: +1.64 GB for insert_key, make_kong, store_tools_in_toolbox,
+  plug_in_charger, fill_egg_holder, pick_from_conveyor_by_image, fill_pen_holder, organize_table and
+  pour_by_language (install ~30.7 GB). **Nothing they reference is missing from the public tree.** The
+  conveyor photo's `map.json` had to be added explicitly. Extra paths go in `~/dojo-robodojo/sparse_extra.txt`.
+- Generator v3:
+  - groups in the config's key order, fixed-pose groups first (organize_table pins a cube_cushion where
+    the drawer would otherwise land);
+  - soft robot keep-out, dropped after half the attempts (fill_egg_holder and organize_table pin objects
+    under the grippers);
+  - Table-less scenes (conveyor);
+  - offsets in world axes from a parent's support centre or origin, with `zlim` + `qpos` (conveyor photo,
+    basket, the fluid inside its bottle);
+  - several children per support with non-overlapping footprints;
+  - `label_map` (the photo that shows the target).
+- v4: children of a single support disk stay on it (eggs in the basket).
+- v3/v4 shift the random stream, so stored v1/v2 records of the earlier tasks are not reproduced by
+  `generate()`. The files are the reference, and their `_simlab.generator` says which version wrote them.
+
+Load + settle (physics-only RoboDojo, 25 layouts each):
+
+| task | RoboDojo-stable | max task-object drift | notes |
+|---|---|---|---|
+| insert_key | 25/25 | 0.0 mm | |
+| make_kong | 25/25 | 0.9 mm | Franka opponent robot config |
+| store_tools_in_toolbox | 25/25 | 1.4 mm | |
+| plug_in_charger | 25/25 | 0.5 mm | |
+| fill_pen_holder | 25/25 | 3.7 mm | |
+| organize_table | 23/25 | 52 mm (garage) | most layouts need the keep-out off |
+| fill_egg_holder | **5/25** | 69 mm (eggs) | the egg basket is Geometry, which RoboDojo spawns without collision: eggs fall to the table and roll. Needs pre-settled records |
+| pick_from_conveyor_by_image | pending | | first run crashed in our GT code (Dynamic/Fluid pose), fixed; rerun queued behind the skills stream's GPU job |
+| pour_by_language | pending | | same |
+
+Next for the generator: two-pass "pre-settled" records (generate, settle in the twin, write the settled poses
+back, re-check), which is also what RoboDojo's own records most likely contain for teleop-sourced tasks.

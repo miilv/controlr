@@ -18,3 +18,50 @@ Shared machine conventions:
 - compute3 (5090 32 GB, shared with others): `~/dojo-*`.
 - Before starting Isaac or a large model, check free VRAM with `nvidia-smi`; never touch other people's processes;
   stop what you started.
+
+## simlab quick reference
+
+Run everything through `scripts/simlab/rdpy.sh` (RoboDojo's conda python + the team GPU lock). Use
+`physics_only=True` / `--physics-only` on compute3, where Isaac Sim 5.1's RTX does not start.
+
+| What | Entry point |
+|---|---|
+| layout schema, perturbation | `dojo/simlab/layout.py` |
+| new dev layouts (seeds >= 100000) | `-m dojo.simlab.gen_layouts --task T --n 25` |
+| load layouts, official obs vs dev-only GT | `dojo.simlab.runner.RoboDojoRunner` |
+| twin: load / snapshot / restore / step / verify / load_from_estimate | `dojo.simlab.twin.Twin` |
+| scripted motion, replayable action lists | `dojo/simlab/motion.py` |
+| D0 dataset | `scripts/simlab/d0_all.sh` (compute2), `scripts/simlab/d0_proxy.sh` (compute3: Isaac 6.0 renders) |
+| G2 determinism / sensitivity | `scripts/simlab/g2_all.sh OUT [--physics-only]` |
+| twin throughput | `scripts/simlab/twin_bench.sh` |
+| RoboDojo's eval client on dev layouts (official, needs 5.1 rendering) | `scripts/simlab/dev_eval.sh --task T --policy P` |
+| PROXY dev-eval on compute3 (5.1 physics + 6.0 render on demand) | `scripts/simlab/proxy_eval.sh --task T --layouts ... --policy module:Class` |
+| minimal RoboDojo on another GPU | `scripts/simlab/install_min.sh` |
+
+### Proxy dev-eval with your own policy (compute3)
+
+```python
+# mypkg/mypolicy.py, importable from the repo root (scripts add it to PYTHONPATH)
+class MyPolicy:
+    def reset(self, info):        # {"task", "layout_id", "instruction", "step_lim", ...}
+        ...
+    def next(self, obs):          # obs: images {cam_head, cam_left_wrist, cam_right_wrist: 480x640x3 uint8},
+        ...                       #      state (official joints / flange poses / grippers), instruction,
+                                  #      steps_used, step_lim
+        return {"actions": [{"left_arm_joint_state": [6], "left_ee_joint_state": [g],
+                             "right_arm_joint_state": [6], "right_ee_joint_state": [g]}, ...]}
+        # or {"done": True}; one observation is rendered per next() call (~0.12 s)
+```
+
+```bash
+ssh compute3 'cd ~/dojo-simlab && scripts/simlab/proxy_eval.sh --task stack_blocks \
+    --layouts $(ls ~/dojo-data/simlab/layouts/stack_blocks/1000*.json | head -10) --policy mypkg.mypolicy:MyPolicy'
+# -> ~/dojo-data/simlab/proxy_eval/<stamp>/_result.json (RoboDojo-style, marked "proxy")
+```
+
+Every episode goes through RoboDojo's own reset, `take_action` step accounting, `step_lim` and reward
+latches; only the frames come from Isaac 6.0 (RoboDojo's stage, cameras and render settings). Episodes
+are serial. Open: a policy that also wants `Twin.verify` needs a second twin env; one process holds one Kit
+app / task env, and the one-GPU-job rule allows one such process per machine, so this is not wired yet.
+
+Findings and numbers: [docs/journal/2026-10-24-dojo-simlab.md](../docs/journal/2026-10-24-dojo-simlab.md).
