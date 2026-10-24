@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import os
 import time
 from pathlib import Path
 
@@ -178,25 +179,81 @@ def _wiggle(tw: Twin, k: int) -> list[dict]:
     return acts
 
 
-def bench(task: str, num_envs: int, n_steps: int, out: Path, physics_only: bool = False) -> dict:
+def _cpu_s() -> float:
+    import resource
+    r = resource.getrusage(resource.RUSAGE_SELF)          # all threads of this process
+    return r.ru_utime + r.ru_stime
+
+
+def _max_rss_gb() -> float:
+    import resource
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6
+
+
+def _obj_poses(tw: Twin, env_idx: int = 0) -> dict:
+    return {o["inst_name"]: o["pos"] + o["quat"] for o in tw.run.objects_gt(env_idx) if o["pos"] is not None}
+
+
+def contact_restore_fidelity(tw: Twin, g2_dir: Path, split: int = 120, seg: int = 50) -> dict:
+    """Snapshot in the middle of the recorded G2 ``stack`` run (block in the gripper), roll ``seg``
+    steps, restore, roll the same steps again: does restore reproduce a contact-rich segment?"""
+    from dojo.simlab.motion import Trajectory
+    lay = json.loads((g2_dir / "stack_layout.json").read_text())
+    traj = Trajectory.from_json(json.loads((g2_dir / "stack_traj.json").read_text()))
+    tw.load(lay)
+    for act in traj.actions[:split]:
+        tw.step(act)
+    t0 = time.perf_counter()
+    s = tw.snapshot()
+    t_snap = time.perf_counter() - t0
+    a = []
+    for act in traj.actions[split:split + seg]:
+        tw.step(act)
+        a.append(_obj_poses(tw))
+    t1 = time.perf_counter()
+    tw.restore(s)
+    t_rest = time.perf_counter() - t1
+    b = []
+    t2 = time.perf_counter()
+    for act in traj.actions[split:split + seg]:
+        tw.step(act)
+        b.append(_obj_poses(tw))
+    t_seg = time.perf_counter() - t2
+    dmax, first = 0.0, None
+    for k, (fa, fb) in enumerate(zip(a, b)):
+        for n, pa in fa.items():
+            d = float(np.linalg.norm(np.subtract(pa[:3], fb[n][:3]))) * 1000
+            if d > 0 and first is None:
+                first = k
+            dmax = max(dmax, d)
+    return {"split_step": split, "segment_steps": seg, "snapshot_s": t_snap, "restore_s": t_rest,
+            "segment_rollout_s": t_seg, "max_obj_divergence_mm": dmax, "first_divergent_step": first,
+            "bitwise": a == b}
+
+
+def bench(task: str, num_envs: int, n_steps: int, out: Path, physics_only: bool = False,
+          g2_dir: Path | None = None) -> dict:
     from dojo.simlab.gen_layouts import generate
     t0 = time.perf_counter()
     tw = Twin(task, num_envs=num_envs, physics_only=physics_only, need_planner=False)
     boot = time.perf_counter() - t0
     lays = [generate(task, paths.SEED_BASE + 500 + i) for i in range(tw.num_envs)]
-    res = {"task": task, "num_envs": tw.num_envs, "boot_s": boot, "loads": [], "physics_only": physics_only}
-    for rep in range(2):
-        info = tw.load(lays)
-        res["loads"].append({"close_s": info["close_s"], "reset_s": info["reset_s"], "stable": info["per_env_ok"]})
-    # steps/s with a small joint wiggle (contacts-free), all envs stepped together
+    lays2 = [generate(task, paths.SEED_BASE + 600 + i) for i in range(tw.num_envs)]
+    res = {"task": task, "num_envs": tw.num_envs, "boot_s": boot, "physics_only": physics_only}
+    info = tw.load(lays)
+    res["load_first"] = {"close_s": info["close_s"], "reset_s": info["reset_s"], "stable": info["per_env_ok"]}
+    info = tw.load(lays2)                               # a NEW layout (what an inverse-layout update costs)
+    res["load_new_layout"] = {"close_s": info["close_s"], "reset_s": info["reset_s"], "stable": info["per_env_ok"]}
+    info = tw.load(lays2, fresh=False)                  # same object set, no sim close (CPU physics respawns)
+    res["load_no_close"] = {"reset_s": info["reset_s"], "stable": info["per_env_ok"]}
     tw.step(_hold_actions(tw))
-    t1 = time.perf_counter()
+    c0, t1 = _cpu_s(), time.perf_counter()
     for k in range(n_steps):
         tw.step(_wiggle(tw, k))
-    dt = time.perf_counter() - t1
+    dt, dc = time.perf_counter() - t1, _cpu_s() - c0
     res["steps"] = {"n": n_steps, "wall_s": dt, "env_steps_per_s": n_steps * tw.num_envs / dt,
-                    "batch_steps_per_s": n_steps / dt, "sim_realtime_factor": n_steps * 0.04 / dt}
-    # render: all three cameras of all envs, as get_obs does it
+                    "per_env_steps_per_s": n_steps / dt, "sim_realtime_factor_per_env": n_steps * 0.04 / dt,
+                    "cpu_cores_used": dc / dt}
     times = []
     for _ in range(0 if physics_only else 10):
         t2 = time.perf_counter()
@@ -205,37 +262,36 @@ def bench(task: str, num_envs: int, n_steps: int, out: Path, physics_only: bool 
     med = float(np.median(times)) if times else float("nan")
     res["render"] = {"obs_all_cams_s_median": med, "n_cams": 0 if physics_only else 3 * tw.num_envs,
                      "per_camera_s": med / (3 * tw.num_envs) if times else None}
-    # snapshot / restore cost and fidelity: run 40 steps, restore, run them again, compare poses
-    tw.step(_hold_actions(tw))
-    t3 = time.perf_counter()
+    # verify-before-execute unit: snapshot once, then (restore + 40-step segment) per candidate
     s = tw.snapshot()
-    t_snap = time.perf_counter() - t3
-    traj_a = []
-    for k in range(40):
-        tw.step(_wiggle(tw, k))
-        traj_a.append(tw.run.objects_gt(0))
-    t4 = time.perf_counter()
-    tw.restore(s)
-    t_rest = time.perf_counter() - t4
-    traj_b = []
-    for k in range(40):
-        tw.step(_wiggle(tw, k))
-        traj_b.append(tw.run.objects_gt(0))
-    dmax = 0.0
-    for fa, fb in zip(traj_a, traj_b):
-        for oa, ob in zip(fa, fb):
-            if oa["pos"] is not None and ob["pos"] is not None:
-                dmax = max(dmax, float(np.linalg.norm(np.subtract(oa["pos"], ob["pos"]))) * 1000)
-    qa = tw.run.robot_gt(0)
-    res["snapshot"] = {"snapshot_s": t_snap, "restore_s": t_rest, "replay_after_restore_max_obj_mm": dmax,
-                       "robot_q_after": {a: qa[a]["joint_pos"][:6] for a in ARMS}}
+    seg = []
+    for rep_ in range(3):
+        t3 = time.perf_counter()
+        tw.restore(s)
+        t4 = time.perf_counter()
+        for k in range(40):
+            tw.step(_wiggle(tw, k))
+        seg.append({"restore_s": t4 - t3, "rollout40_s": time.perf_counter() - t4})
+    t5 = time.perf_counter()
+    tw.snapshot()
+    res["segment"] = {"snapshot_s": time.perf_counter() - t5, "runs": seg,
+                      "restore_plus_40_steps_s": float(np.median([r["restore_s"] + r["rollout40_s"] for r in seg])),
+                      "candidates_per_s": tw.num_envs / float(np.median([r["restore_s"] + r["rollout40_s"]
+                                                                         for r in seg]))}
+    if g2_dir is not None and tw.num_envs == 1 and task == "stack_blocks":
+        res["contact_restore"] = contact_restore_fidelity(tw, Path(g2_dir))
+    res["max_rss_gb"] = _max_rss_gb()
     out.mkdir(parents=True, exist_ok=True)
-    (out / f"bench_{task}_n{tw.num_envs}.json").write_text(json.dumps(jsonable(res), indent=1))
-    print(f"[twin] {task} n={tw.num_envs}: boot {boot:.1f}s, load {res['loads'][-1]['reset_s']:.1f}s "
-          f"(+close {res['loads'][-1]['close_s']:.1f}s), {res['steps']['env_steps_per_s']:.1f} env-steps/s "
-          f"(x{res['steps']['sim_realtime_factor']:.2f} real time), obs {res['render']['obs_all_cams_s_median']*1000:.0f} ms "
-          f"for {res['render']['n_cams']} cams, snapshot {t_snap*1000:.0f} ms, restore {t_rest*1000:.0f} ms, "
-          f"restore replay gap {dmax:.3f} mm", flush=True)
+    tag = os.environ.get("SIMLAB_BENCH_TAG", "")
+    (out / f"bench_{task}_n{tw.num_envs}{tag}.json").write_text(json.dumps(jsonable(res), indent=1))
+    cr = res.get("contact_restore", {})
+    print(f"[twin] {task} n={tw.num_envs}{tag}: boot {boot:.1f}s, new layout {res['load_new_layout']['reset_s'] + res['load_new_layout']['close_s']:.1f}s"
+          f" (no-close {res['load_no_close']['reset_s']:.1f}s), {res['steps']['env_steps_per_s']:.1f} env-steps/s total, "
+          f"{res['steps']['per_env_steps_per_s']:.1f}/env, {res['steps']['cpu_cores_used']:.1f} cores, "
+          f"restore+40 steps {res['segment']['restore_plus_40_steps_s']:.2f}s, snapshot {res['segment']['snapshot_s']*1000:.0f} ms, "
+          f"rss {res['max_rss_gb']:.1f} GB"
+          + (f", contact restore max {cr['max_obj_divergence_mm']:.4f} mm bitwise={cr['bitwise']}" if cr else ""),
+          flush=True)
     tw.close()
     return res
 
@@ -247,8 +303,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--steps", type=int, default=100)
     ap.add_argument("--out", default=str(paths.DATA / "simlab" / "twin_bench"))
     ap.add_argument("--physics-only", action="store_true")
+    ap.add_argument("--g2-dir", default=None, help="G2 record dir (stack_*.json) for the contact-restore check")
     a = ap.parse_args(argv)
-    bench(a.task, a.num_envs, a.steps, Path(a.out), physics_only=a.physics_only)
+    bench(a.task, a.num_envs, a.steps, Path(a.out), physics_only=a.physics_only,
+          g2_dir=Path(a.g2_dir) if a.g2_dir else None)
 
 
 if __name__ == "__main__":
