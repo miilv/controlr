@@ -71,9 +71,110 @@ def jsonable(x: Any) -> Any:
     return x
 
 
-def launch_app(headless: bool = True, device_id: int = 0):
-    """Start Kit once per process, with the eval client's flags (headless, cameras, the two
-    sensor extensions, zero-delay render sync)."""
+PHYSICS_ONLY_SETTINGS = ("--/app/extensions/fsWatcherEnabled=0",)
+
+
+def physics_only_experience(out_dir: Path) -> Path:
+    """IsaacLab's ``isaaclab.python.headless.kit`` without the RTX renderer, MDL and UI deps, with
+    ``${app}`` paths made absolute. Kit then never loads ``librtx.scenedb`` (which segfaults at
+    startup with Isaac Sim 5.1 on driver 595 + RTX 5090, compute3)."""
+    il = paths.RD_ROOT / "third_party" / "IsaacLab"
+    src = (il / "apps" / "isaaclab.python.headless.kit").read_text()
+    out = []
+    for line in src.splitlines():
+        t = line.strip()
+        if t.startswith('"omni.kit.usd.mdl"') or t.startswith('"omni.usd.metrics.assembler.ui"'):
+            continue
+        if t.startswith("renderer.enabled"):
+            line = 'renderer.enabled = ""'
+        line = line.replace('"${app}/../source"', f'"{il / "source"}"').replace('"${app}",', f'"{il / "apps"}",')
+        out.append(line)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p = out_dir / "simlab.physics.kit"
+    p.write_text("\n".join(out) + "\n")
+    return p
+
+
+def install_camera_stubs() -> None:
+    """Physics-only mode: replace RoboDojo's camera / capture / render-sync modules and the one
+    replicator helper it uses (MDL material creation) before anything imports them. Every RoboDojo camera is a bare ``pinhole`` Xform without collision, so the physics
+    scene is unchanged; observations simply have no ``vision`` entries."""
+    import types
+
+    class CameraManager:
+        def __init__(self, num_envs, camera_config, device, seeds_per_env=None):
+            self.num_envs, self.num_cams = num_envs, 0
+            self.camera_names = [[] for _ in range(num_envs)]
+            self.cameras_xform = [[] for _ in range(num_envs)]
+
+        def update_env_seeds(self, seeds):
+            pass
+
+        def initialize(self, sim):
+            self.sim = sim
+
+        def post_init(self):
+            pass
+
+        def reset(self):
+            pass
+
+        def destroy(self):
+            pass
+
+    class TiledCaptureManager:
+        def __init__(self, *a, **k):
+            pass
+
+        def initialize(self, sim):
+            pass
+
+        def step(self, env_ids=None, cam_ids=None):
+            return []
+
+        def reset(self, *a, **k):
+            pass
+
+        def destroy(self):
+            pass
+
+    def create_mdl_material(mtl_url: str, mtl_name: str, mtl_path: str):
+        """USD-only stand-in for isaacsim.replicator.behavior's helper (which needs the MDL/RTX
+        stack): a Material with an MDL shader prim, as CreateMdlMaterialPrim authors it."""
+        import omni.usd
+        from pxr import UsdShade
+        stage = omni.usd.get_context().get_stage()
+        mtl = UsdShade.Material.Define(stage, mtl_path)
+        sh = UsdShade.Shader.Define(stage, mtl_path + "/Shader")
+        sh.SetSourceAsset(mtl_url, "mdl")
+        sh.SetSourceAssetSubIdentifier(mtl_name, "mdl")
+        mtl.CreateSurfaceOutput("mdl").ConnectToSource(sh.ConnectableAPI(), "out")
+        return mtl
+
+    for pkg in ("isaacsim.replicator", "isaacsim.replicator.behavior", "isaacsim.replicator.behavior.utils"):
+        if pkg not in sys.modules:
+            m = types.ModuleType(pkg)
+            m.__path__ = []
+            sys.modules[pkg] = m
+    su = types.ModuleType("isaacsim.replicator.behavior.utils.scene_utils")
+    su.create_mdl_material = create_mdl_material
+    sys.modules[su.__name__] = su
+
+    cm = types.ModuleType("env.camera_manager.camera_manager")
+    cm.CameraManager = CameraManager
+    tc = types.ModuleType("env.camera_manager.capture.tiled_capture_manager")
+    tc.TiledCaptureManager = TiledCaptureManager
+    rs = types.ModuleType("env.camera_manager.capture.render_sync")
+    rs.wait_for_latest_cameras = lambda *a, **k: None
+    rs.add_zero_delay_kit_args = lambda args: None
+    rs.zero_delay_active = lambda: False
+    sys.modules.update({cm.__name__: cm, tc.__name__: tc, rs.__name__: rs})
+
+
+def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = False):
+    """Start Kit once per process. Default: the eval client's flags (headless, cameras, the two
+    sensor extensions, zero-delay render sync). ``physics_only``: no renderer at all (see
+    ``physics_only_experience``); observations then carry no images."""
     global _APP
     if _APP is not None:
         return _APP
@@ -84,12 +185,21 @@ def launch_app(headless: bool = True, device_id: int = 0):
     from isaaclab.app import AppLauncher
     ap = argparse.ArgumentParser()
     AppLauncher.add_app_launcher_args(ap)
-    argv = ["--enable_cameras", "--kit_args", " ".join(f"--enable {e}" for e in KIT_ENABLE_EXTS)]
-    if headless:
-        argv.append("--headless")
-    args = ap.parse_args(argv)
-    from env.camera_manager.capture.render_sync import add_zero_delay_kit_args
-    add_zero_delay_kit_args(args)
+    if physics_only:
+        install_camera_stubs()
+        kit = physics_only_experience(paths.DATA / "simlab" / "kit")
+        argv = ["--headless", "--experience", str(kit), "--kit_args=" + " ".join(PHYSICS_ONLY_SETTINGS)]
+        args = ap.parse_args(argv)
+        # RoboDojo's IsaacLab fork defaults enable_cameras=True (offscreen rendering) and its
+        # ENABLE_CAMERAS env check never fires (int compared with `is False`): set the arg.
+        args.enable_cameras = False
+    else:
+        argv = ["--enable_cameras", "--kit_args", " ".join(f"--enable {e}" for e in KIT_ENABLE_EXTS)]
+        if headless:
+            argv.append("--headless")
+        args = ap.parse_args(argv)
+        from env.camera_manager.capture.render_sync import add_zero_delay_kit_args
+        add_zero_delay_kit_args(args)
     _APP = AppLauncher(args).app
     return _APP
 
@@ -178,9 +288,11 @@ class RoboDojoRunner:
     """One RoboDojo task env (``num_envs`` parallel copies) driven from our layout records."""
 
     def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, headless: bool = True,
-                 video_dir: str | None = None, workdir: str | None = None, need_planner: bool = True):
+                 video_dir: str | None = None, workdir: str | None = None, need_planner: bool = True,
+                 physics_only: bool = False):
         self.task = task
-        self.app = launch_app(headless=headless, device_id=device_id)
+        self.physics_only = physics_only
+        self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only)
         # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
         wd = Path(workdir or (paths.DATA / "simlab" / "work"))
         paths.assert_not_eval(wd)
@@ -494,12 +606,13 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--layouts", nargs="+", required=True, help="layout JSON files")
     ap.add_argument("--out", required=True)
     ap.add_argument("--images", action="store_true", help="also save the 3 camera PNGs per layout")
+    ap.add_argument("--physics-only", action="store_true", help="no renderer (no images)")
     a = ap.parse_args(argv)
     out = Path(a.out)
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)
     t0 = time.perf_counter()
-    run = RoboDojoRunner(a.task, workdir=str(out / "work"))
+    run = RoboDojoRunner(a.task, workdir=str(out / "work"), physics_only=a.physics_only)
     t_boot = time.perf_counter() - t0
     summary = []
     for lp in a.layouts:
@@ -512,7 +625,7 @@ def main(argv: list[str] | None = None) -> None:
             rec["settle"] = settle_report(lay, g["objects"])
             rec["reward"] = g["reward"]
             rec["score"] = g["score"]
-            if a.images:
+            if a.images and not a.physics_only:
                 o = run.obs()
                 stem = Path(lp).stem
                 for cam, img in o["images"].items():
