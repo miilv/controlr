@@ -151,3 +151,20 @@ def test_world_z_symmetry_of_placed_shapes():
     bar, stem = box(0.04, 0.01, 0.0075), box(0.01, 0.02, 0.0075)
     V = np.concatenate([bar[0] + [0, 0.02, 0], stem[0] + [0, -0.01, 0]])
     assert world_z_symmetry(V, np.concatenate([bar[1], stem[1] + 8])) == 1
+
+
+def test_flange_for_camera_inverts_the_wrist_mount():
+    try:
+        model = X5Model.default()
+    except FileNotFoundError:
+        pytest.skip("X5A.urdf not available")
+    from dojo.perception.cameras import pose_to_T
+    from dojo.perception.look import flange_for_camera
+
+    rng = np.random.default_rng(1)
+    for arm in ("left", "right"):
+        q = rng.uniform(-1, 1, 6)
+        cam = cameras.wrist_camera(arm, q, model)
+        T6 = model.fk_world(arm, q)["link6"]
+        Tf = pose_to_T(*np.split(flange_for_camera(cam.T_wc), [3]))
+        assert np.abs(Tf - T6).max() < 1e-9

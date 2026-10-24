@@ -77,7 +77,7 @@ class ShapeModel:
     def sil(self, cam: Camera, T: np.ndarray, out=None) -> np.ndarray:
         g = gl()
         if g is not None:
-            m = g.render(cam, [(self.key, self.asset.V, self.asset.F, T)])
+            m = g.render(cam, [(self.key, self.asset.Vg, self.asset.Fg, T)])
             if out is not None:
                 out |= m
                 return out
@@ -140,7 +140,7 @@ def world_z_symmetry(Vr: np.ndarray, F: np.ndarray, orders=(2, 3, 4, 6, 8), tol:
     return best
 
 
-@lru_cache(maxsize=1024)
+@lru_cache(maxsize=48)  # holds Asset references: keep it as small as load_asset's cache
 def shape_models(key: str) -> tuple[ShapeModel, ...]:
     a = load_asset(key)
     frames = a.info.get("place") or {}
@@ -313,7 +313,7 @@ def roi_loss(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_vis: float =
     tot, wsum, per = 0.0, 0.0, {}
     for rv in rvs:
         if g is not None:
-            s = g.render(rv.cam, [(sm.key, sm.asset.V, sm.asset.F, T)]).astype(np.float32)
+            s = g.render(rv.cam, [(sm.key, sm.asset.Vg, sm.asset.Fg, T)]).astype(np.float32)
         else:
             s = sm.sil(rv.cam, T).astype(np.float32)
         n_s = float(s.sum())
@@ -411,7 +411,7 @@ def coarse_fit(sm: ShapeModel, blob: Blob, views: dict[str, ViewMasks], yaw_step
 
     def render(T):
         if g is not None:
-            return g.render(rcam, [(sm.key, sm.asset.V, sm.asset.F, T)]).astype(np.float32)
+            return g.render(rcam, [(sm.key, sm.asset.Vg, sm.asset.Fg, T)]).astype(np.float32)
         return sm.sil(rcam, T).astype(np.float32)
 
     sxs, sys_ = S / (x1 - x0), S / (y1 - y0)
@@ -561,9 +561,69 @@ def label_groups(task: str) -> list[dict]:
     for lab, d in labels.items():
         k = (d["type"], tuple(d["candidates"]))
         g = groups.setdefault(k, {"type": d["type"], "candidates": d["candidates"], "labels": [], "placement": d["placement"],
-                                  "select_mode": d["select_mode"], "categories": d["categories"]})
+                                  "select_mode": d["select_mode"], "categories": d["categories"], "regions": []})
         g["labels"].append(lab)
+        for cat in d["categories"] or [{}]:
+            g["regions"].append(_region({**d["placement"], **(cat.get("override") or {})}))
     return list(groups.values())
+
+
+def _ranges(lim) -> list[tuple[float, float]] | None:
+    if lim is None:
+        return None
+    if isinstance(lim[0], (list, tuple)):
+        return [(float(a), float(b)) for a, b in lim]
+    return [(float(lim[0]), float(lim[1]))]
+
+
+def _region(p: dict) -> dict:
+    """Where the generator may put a label (RoboDojo task config, public): xy ranges of the placement point
+    and the yaw range about world z relative to the place frame (scalar d -> [-d, d]; [a, b]; 360 -> any).
+    Checked on D0 GT: every settled pose lies inside."""
+    if not p.get("rotate_rand", False):
+        yaw = (0.0, 0.0)
+    else:
+        rd = p.get("rotate_deg", 0) or 0
+        if isinstance(rd, (list, tuple)):
+            yaw = (float(np.deg2rad(rd[0])), float(np.deg2rad(rd[1])))
+        else:
+            yaw = None if float(rd) >= 180 else (-float(np.deg2rad(rd)), float(np.deg2rad(rd)))
+    return {"x": _ranges(p.get("xlim")), "y": _ranges(p.get("ylim")), "yaw": yaw}
+
+
+XY_MARGIN = 0.04
+YAW_MARGIN = np.deg2rad(15)
+
+
+def region_ok(g: dict, x: float, y: float, yaw: float | None = None, period: float = 2 * np.pi) -> bool:
+    """Is (x, y[, yaw]) inside any of the group's generator regions (with settle margins)?"""
+    regs = g.get("regions") or []
+    if not regs:
+        return True
+    for r in regs:
+        if r["x"] and not any(a - XY_MARGIN <= x <= b + XY_MARGIN for a, b in r["x"]):
+            continue
+        if r["y"] and not any(a - XY_MARGIN <= y <= b + XY_MARGIN for a, b in r["y"]):
+            continue
+        if yaw is not None and r["yaw"] is not None and (r["yaw"][1] - r["yaw"][0]) + 2 * YAW_MARGIN < period:
+            lo, hi = r["yaw"][0] - YAW_MARGIN, r["yaw"][1] + YAW_MARGIN
+            d = (yaw - lo) % period
+            if d > hi - lo:
+                continue
+        return True
+    return False
+
+
+def yaw_range(g: dict, period: float) -> tuple[float, float] | None:
+    """Union yaw range of the group's regions (with margin), or None when unconstrained within a period."""
+    regs = g.get("regions") or []
+    if not regs or any(r["yaw"] is None for r in regs):
+        return None
+    lo = min(r["yaw"][0] for r in regs) - YAW_MARGIN
+    hi = max(r["yaw"][1] for r in regs) + YAW_MARGIN
+    if hi - lo >= period:
+        return None
+    return (lo, hi)
 
 
 def _placement_prior(g: dict) -> dict:
@@ -613,10 +673,21 @@ def _touches_unknown(b: Blob, v: ViewMasks) -> bool:
     return bool((d & (1 - v.known)).any())
 
 
+_COLOR_M: list | None = None  # offline colour calibration (color_calib.py), set per estimate() call
+
+
+def ref_color(key: str) -> np.ndarray:
+    """The catalogue's mean texture colour of an asset, mapped to the renderer's look when calibrated."""
+    c = np.asarray(load_asset(key).info["mean_color"], dtype=float)
+    if _COLOR_M is not None:
+        return np.clip(np.r_[c, 1.0] @ np.asarray(_COLOR_M), 0.0, 1.0)
+    return c
+
+
 def _app(obs_rgb, keys) -> float:
     if obs_rgb is None:
         return 0.5
-    return min(appearance_distance(obs_rgb, np.asarray(load_asset(k).info["mean_color"])) for k in keys)
+    return min(appearance_distance(obs_rgb, ref_color(k)) for k in keys)
 
 
 def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=None, blob_offset=0):
@@ -638,6 +709,8 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
                     continue
                 if prior["fixed_xy"] is not None and np.hypot(X[0] - prior["fixed_xy"][0], X[1] - prior["fixed_xy"][1]) > 0.08:
                     continue
+                if not region_ok(g, X[0], X[1]):  # outside where the generator can put this label
+                    continue
                 a_pred = int(sm.sil(head.cam, sm.pose(X[0], X[1], 0.0)).sum())
                 ratio = b.area / max(a_pred, 1)
                 if ratio > 3.0 or (ratio < 0.3 and not occl):
@@ -654,7 +727,8 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
         for _, gi, prior, sms in kept:
             sm = sms[0]
             keys = [s_.key for s_ in sms]
-            yr = (0.0, 0.0) if prior["yaw_fixed"] else None
+            g_ = groups[gi]
+            yr = (0.0, 0.0) if prior["yaw_fixed"] else yaw_range(g_, sm.yaw_period)
             for x, y, yaw, l in coarse_fit(sm, b, views, cfg.yaw_step_deg, yr):
                 h = Hypothesis(gi, sm.key, sm.tag, x, y, yaw, l + cfg.appearance_weight * _app(bcol, keys),
                                blob=bi + blob_offset)
@@ -672,7 +746,9 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
             if len(kept) >= cfg.refine_per_blob:
                 break
         for h in kept:
-            refined.append(_score_hyp(h, views, others, cfg, groups, cfg.quick_iters))
+            h2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
+            if region_ok(groups[h2.label_group], h2.x, h2.y, h2.yaw, h2.sm().yaw_period):
+                refined.append(h2)
     return refined
 
 
@@ -778,7 +854,8 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         g, prior = prior_by_g[h.label_group]
         others = _union_masks(out, views, skip=i)
         trials = []
-        if not prior["yaw_fixed"] and h.sm().yaw_period > 1.5 * np.pi:
+        if (not prior["yaw_fixed"] and h.sm().yaw_period > 1.5 * np.pi
+                and region_ok(g, h.x, h.y, (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
             f = Hypothesis(h.label_group, h.key, h.tag, h.x, h.y, (h.yaw + np.pi) % (2 * np.pi), h.loss, blob=h.blob)
             f.per_view = {"geom_group": h.per_view["geom_group"]}
             trials.append(f)
@@ -812,6 +889,8 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         scored = [h0]
         for t in trials:
             t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters)
+            if not region_ok(g, t2.x, t2.y, t2.yaw, t2.sm().yaw_period):
+                continue
             scored.append(t2)
             if t2.loss < best.loss - 0.01:
                 best = t2
@@ -869,8 +948,8 @@ def view_request(best: Hypothesis, alt: dict, dist: float = 0.16, elev_deg: floa
         cam = look_at_camera(eye, c, K)
         if g is None:
             continue
-        m1 = g.render(cam, [(sm_b.key, sm_b.asset.V, sm_b.asset.F, T_b)])
-        m2 = g.render(cam, [(sm_a.key, sm_a.asset.V, sm_a.asset.F, T_a)])
+        m1 = g.render(cam, [(sm_b.key, sm_b.asset.Vg, sm_b.asset.Fg, T_b)])
+        m2 = g.render(cam, [(sm_a.key, sm_a.asset.Vg, sm_a.asset.Fg, T_a)])
         u = (m1 | m2).sum()
         if u == 0:
             continue
@@ -943,7 +1022,9 @@ class EstimatorConfig:
     polish: bool = True
     polish_candidates: int = 4
     ambiguity_margin: float = 0.05
+    rival_margin: float = 0.1
     view_requests: bool = True
+    color_M: list | None = None  # 4x3 affine map catalogue colour -> observed (color_calib.py)
 
 
 def _views_subset(views, cfg):
@@ -957,7 +1038,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     """``extra_frames``: [(images, state)] of later frames of the same episode with the objects assumed
     static (arms moved): their views join the render-and-compare loss as ``<cam>@<k>``. Proposals come
     from the first frame's head view."""
+    global _COLOR_M
     cfg = cfg or EstimatorConfig()
+    _COLOR_M = cfg.color_M
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
     cams = cameras_from_state(state)
@@ -1076,7 +1159,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         geom_keys = chosen[members[0]].per_view.get("geom_group", [chosen[members[0]].key])
         if len(geom_keys) <= 1:
             continue
-        refs = {k: np.asarray(load_asset(k).info["mean_color"]) for k in geom_keys}
+        refs = {k: ref_color(k) for k in geom_keys}
         mode = g["select_mode"].get("mode", "unique")
         C = np.array([[appearance_distance(obs_cols[i], refs[k]) if obs_cols[i] is not None else 1.0 for k in geom_keys]
                       for i in members])
@@ -1123,7 +1206,15 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             if h.per_view.get("occluded"):
                 conf = min(conf, 0.2)
         alt = h.per_view.get("alternative")
-        ambiguous = bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
+        rival = None
+        if h.tag != "fixed":  # another label's hypothesis explains the same spot almost as well
+            for c in pool:
+                if (c.label_group != h.label_group and (c.blob == h.blob or np.hypot(c.x - h.x, c.y - h.y) < 0.05)
+                        and c.loss < h.loss + cfg.rival_margin):
+                    rival = {"label": groups[c.label_group]["labels"][0], "key": c.key, "margin": round(float(c.loss - h.loss), 4)}
+                    break
+        ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
+                     or rival is not None)
         review = None
         if ambiguous and alt is not None and cfg.view_requests and h.tag != "fixed":
             review = view_request(h, alt)
@@ -1135,7 +1226,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "n_views": sum(1 for k in h.per_view if k.startswith("cam_")),
                                "appearance": round(h.appearance, 3), "yaw": round(float(h.yaw), 4),
                                "occluded": bool(h.per_view.get("occluded", False)),
-                               "ambiguous": ambiguous, "alternative": alt, "review": review,
+                               "ambiguous": ambiguous, "alternative": alt, "label_rival": rival, "review": review,
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group")}}
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)
