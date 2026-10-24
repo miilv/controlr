@@ -68,8 +68,11 @@ class Trajectory:
     segments: list[dict] = field(default_factory=list)
 
     def to_json(self) -> dict:
-        return {"actions": [{k: np.asarray(v, float).round(9).tolist() for k, v in a.items()} for a in self.actions],
-                "segments": self.segments}
+        # exact: float32 -> float64 is lossless and JSON floats round-trip, so a replay sends the
+        # very same bits (rounding to 9 decimals moved some commands by 1 ulp and the contact
+        # phase amplified it to 0.4 mm)
+        return {"actions": [{k: np.asarray(v, np.float32).astype(np.float64).tolist() for k, v in a.items()}
+                            for a in self.actions], "segments": self.segments}
 
     @staticmethod
     def from_json(d: dict) -> "Trajectory":
