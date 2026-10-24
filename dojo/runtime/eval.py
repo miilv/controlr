@@ -99,7 +99,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
     for lf in layout_files:
         if (time.perf_counter() - t_all) / 60 > max_minutes:
             rows.append({"layout": lf, "skipped": "time budget of this job"})
-            print(f"[integ] {tag}: time budget reached, skipping {Path(lf).name}", flush=True)
+            print(f"\n[integ] {tag}: time budget reached, skipping {Path(lf).name}", flush=True)
             continue
         paths.assert_not_eval(lf)
         lay = json.loads(Path(lf).read_text())
@@ -155,12 +155,12 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         with gzip.open(out / f"{tag}_{lid}_actions.json.gz", "wt") as f:
             json.dump({"actions": [{k: np.asarray(x, np.float64).tolist() for k, x in a.items()}
                                    for a in pol.bridge.executed]}, f)
-        print(f"[integ] {tag} {lid}: success={row['success']} score={row['score']:.2f} "
+        print(f"\n[integ] {tag} {lid}: success={row['success']} score={row['score']:.2f} "
               f"steps={row['steps_used']}/{row['step_lim']} looks={row['n_looks']} wall={row['wall_s']}s "
               f"(sim {row['sim_s']} obs {row['observe_s']} worker {row['worker_s']}) cat={cat} {why[:120]}", flush=True)
     summ = summarize(rows, task, cfg)
     (out / f"{tag}_summary.json").write_text(json.dumps(jsonable(summ), indent=1, default=str))
-    print(f"[integ] SUMMARY {json.dumps(jsonable(summ), default=str)}", flush=True)
+    print(f"\n[integ] SUMMARY {json.dumps(jsonable(summ), default=str)}", flush=True)
     rc.close()
     return summ
 
