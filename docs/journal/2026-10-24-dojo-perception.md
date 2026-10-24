@@ -179,3 +179,44 @@ vertices; GL mesh decimation was tried and rejected (bottle identity 0.82 → 0.
 on pack (70–100 s/frame), so 64. Policy: every run under `systemd-run --user --scope -p MemoryMax=…`, ≤ 2
 workers (1 for pack/bottles at 6 GB), start only with ≥ 25 GB available, `nice`. Also: `pkill -f` over ssh
 killed my own session again — kill by PID.
+
+### Final G1 table (D0-proxy, current code: placement prior + label-rival flags)
+
+Runs `new_f0_a/b` (frame 0, head + home wrists) and `full_fused_a/b` (frame 0 fused with D0's two scripted
+wrist looks = the look macro). Within tolerance (both translation and rotation where the task has one):
+
+| task | class | n | frame 0 | fused@2 | post-look proxy | xy med (mm), fused | notes |
+|---|---|---|---|---|---|---|---|
+| push_T | T (7 mm / 7°) | 25 | 0.84 | 0.96 | 0.96 | 0.8 (p90 1.3), rot p90 0.3° | |
+| push_T | pad | 25 | 0.80 | 0.72 | 0.80 | 0.8 | failures sit under the home grippers; all flagged |
+| stack_blocks | block (15 mm) | 75 | 0.83 | 0.87 | 0.83 | 0.9 (p90 9.5) | identity 0.73 → 0.81 with the colour map |
+| stack_bowls | bowl (40 mm / 7°) | 75 | 0.88 | 1.00 | 0.99 | 3.4 | identity 0.71–0.77 (8 similar bowls, "same" mode) |
+| build_tower | block (23 mm / 5°) | 200 | 0.81 | 0.91 | 0.88 | 0.7 (p90 3.0), rot p90 1.1° | gross 39 → 21 (prior) → 3 (fused) |
+| put_bottles | bottle (15 mm assumed) | 100 | 0.78 | 0.85 | 0.84 | 2.1 | identity 0.81–0.83 |
+| put_bottles | dustbin (config pose) | 25 | 1.00 | 1.00 | 1.00 | 0.0 | fixed by the config |
+| pack_random | box | 25 | 0.92 | 0.72 | 0.76 | 3.1 | fusion HURTS: moved arms occlude the big box |
+| pack_random | car / toothbrush / hammer / shoe | 25 each | 0.56 / 0.60 / 0.84 / 0.52 | 0.64 / 0.72 / 0.88 / 0.72 | 0.68 / 0.72 / 0.88 / 0.68 | 1–5 | 180° flips (car, toothbrush); shoe identity 0.40 (10 shoes) |
+
+Post-look proxy = objects flagged at frame 0 (ambiguous / occluded / review / not found / confidence < 0.7)
+take their fused@2 estimate, the rest keep frame 0: **0.79 → 0.85 over 625 objects; 17 (2.7 %) remain
+gross and unflagged**. A true measurement needs Isaac renders at `look_plan` poses (D0's looks were aimed
+by simlab, not at the flagged objects).
+
+Flags vs out-of-tolerance at frame 0 (129 of 625 out of tolerance): default flags recall 0.57 / precision
+0.70 (17 % of objects flagged); + confidence < 0.7: recall 0.80 / precision 0.53 (31 % flagged).
+
+Runtime per frame (shared compute3, nice, capped): frame 0 median 1.5–6 s for blocks/T/bowls/tower,
+~8 s bottles, ~12 s pack; fused (9 views) 6 s median for the first four, 23 s (p90 75 s) bottles/pack.
+Peak RSS per process ≤ 3.5 GB frame 0, up to 6.1 GB fused pack.
+
+## Next bottlenecks
+
+1. Thin near-symmetric objects (car, toothbrush) flip 180°; shoe identity (10 similar shoes): needs a
+   higher-resolution texture/edge term on wrist crops, or looks chosen by `look_plan` (not D0's scripted
+   ones). Shoe/car/toothbrush are where pack loses most.
+2. Fusion is not robust to views where the moved arms cover large objects (pack box 0.92 → 0.72): weight
+   views by their known fraction per object, or drop a view whose residual is far above the others.
+3. Objects under the home grippers (pads, some pillars): the look macro should target them by default.
+4. Runtime of fused pack/bottles (23–75 s): fewer hypotheses per blob once the prior is on, and a cheaper
+   identity sweep.
+5. Recalibrate on genuine Isaac 5.1 frames (compute2): backgrounds, colour map, thresholds.

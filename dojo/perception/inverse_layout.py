@@ -545,6 +545,63 @@ def texture_cost(sm: ShapeModel, T: np.ndarray, views: dict[str, ViewMasks], key
     return (1 - acc / wsum) / 2
 
 
+def paired_texture(smA: ShapeModel, TA: np.ndarray, smB: ShapeModel, TB: np.ndarray, views, others=None,
+                   min_px: int = 60) -> tuple[float, float] | None:
+    """(1 - NCC)/2 of two textured hypotheses against the image on the SAME pixels: the union of both
+    silhouettes within known foreground (other objects removed), grey levels, pooled over views. Independent
+    per-hypothesis scores use different pixel sets and are not comparable (a flipped car scored better)."""
+    r = tex()
+    if r is None:
+        return None
+    accA = accB = 0.0
+    n_tot = 0
+    for name, v in views.items():
+        rois = [_bbox_roi(v.cam, sm.bbox_world(T), 3) for sm, T in ((smA, TA), (smB, TB))]
+        if any(x is None for x in rois):
+            continue
+        y0 = min(rois[0][0].start, rois[1][0].start)
+        y1 = max(rois[0][0].stop, rois[1][0].stop)
+        x0 = min(rois[0][1].start, rois[1][1].start)
+        x1 = max(rois[0][1].stop, rois[1][1].stop)
+        roi = (slice(y0, y1), slice(x0, x1))
+        cA, dA = r.render(v.cam, smA.key, TA)
+        cB, dB = r.render(v.cam, smB.key, TB)
+        m = ((dA[roi] > 0) | (dB[roi] > 0)).astype(np.uint8) & v.known[roi] & v.fg[roi]
+        if others is not None and others.get(name) is not None:
+            m &= 1 - others[name][roi]
+        m = cv2.erode(m, np.ones((3, 3), np.uint8))
+        n = int(m.sum())
+        if n < min_px:
+            continue
+        b = cv2.cvtColor(v.img[roi], cv2.COLOR_RGB2GRAY)[m > 0].astype(float)
+        if b.std() < 3:
+            continue
+        for which, c in (("A", cA), ("B", cB)):
+            a = cv2.cvtColor(c[roi], cv2.COLOR_RGB2GRAY)[m > 0].astype(float)
+            ncc = 0.0 if a.std() < 1e-6 else float(((a - a.mean()) * (b - b.mean())).mean() / (a.std() * b.std()))
+            if which == "A":
+                accA += n * ncc
+            else:
+                accB += n * ncc
+        n_tot += n
+    if n_tot == 0:
+        return None
+    return (1 - accA / n_tot) / 2, (1 - accB / n_tot) / 2
+
+
+def flip_about_centroid(h: "Hypothesis") -> "Hypothesis":
+    """The 180-degree yaw flip of a hypothesis about its silhouette's centre (the asset origin can be
+    off-centre, and a flip about it would also move the footprint)."""
+    sm = h.sm()
+    T = h.T()
+    c = (T[:3, :3] @ sm.asset.V.mean(0))[:2] + T[:2, 3]
+    o = 2 * c - T[:2, 3]
+    f = Hypothesis(h.label_group, h.key, h.tag, float(o[0]), float(o[1]), float((h.yaw + np.pi) % (2 * np.pi)), h.loss,
+                   blob=h.blob)
+    f.per_view = {"geom_group": h.per_view["geom_group"]}
+    return f
+
+
 # --------------------------------------------------------------------------------------------
 # Main estimator
 # --------------------------------------------------------------------------------------------
@@ -856,9 +913,7 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         trials = []
         if (not prior["yaw_fixed"] and h.sm().yaw_period > 1.5 * np.pi
                 and region_ok(g, h.x, h.y, (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
-            f = Hypothesis(h.label_group, h.key, h.tag, h.x, h.y, (h.yaw + np.pi) % (2 * np.pi), h.loss, blob=h.blob)
-            f.per_view = {"geom_group": h.per_view["geom_group"]}
-            trials.append(f)
+            trials.append(flip_about_centroid(h))
         if _options(g, _geometry_groups(g, prior)) is None:
             s_h = h.sm().sil(head.cam, h.T())
             m = cv2.dilate(s_h, np.ones((5, 5), np.uint8)) & head.fg & (1 - others["cam_head"])
@@ -892,7 +947,15 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
             if not region_ok(g, t2.x, t2.y, t2.yaw, t2.sm().yaw_period):
                 continue
             scored.append(t2)
-            if t2.loss < best.loss - 0.01:
+            # paired texture on shared pixels decides when it is informative; else the combined cost
+            pt = paired_texture(best.sm(), best.T(), t2.sm(), t2.T(), views, others) if cfg.texture_weight > 0 else None
+            if pt is not None and abs(pt[0] - pt[1]) > cfg.paired_tex_margin:
+                cb = best.per_view["sil_loss"] + cfg.appearance_weight * best.appearance + cfg.paired_tex_weight * pt[0]
+                ct = t2.per_view["sil_loss"] + cfg.appearance_weight * t2.appearance + cfg.paired_tex_weight * pt[1]
+                t2.per_view["paired_tex"] = [round(pt[0], 4), round(pt[1], 4)]
+                if ct < cb - 0.01:
+                    best = t2
+            elif t2.loss < best.loss - 0.01:
                 best = t2
         if best is not h0:
             best.per_view["polished"] = True
@@ -1021,6 +1084,8 @@ class EstimatorConfig:
     quick_iters: int = 30
     polish: bool = True
     polish_candidates: int = 4
+    paired_tex_weight: float = 0.8
+    paired_tex_margin: float = 0.04
     ambiguity_margin: float = 0.05
     rival_margin: float = 0.1
     view_requests: bool = True
