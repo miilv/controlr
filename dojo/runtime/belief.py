@@ -138,7 +138,7 @@ class KinematicBelief:
 
 class RuntimeProvider:
     def __init__(self, bridge, task: str, instruction: str, mode: str, assets=None, kin: X5Kin | None = None,
-                 mesh_labels=(), gt_source=None, checker=None, div_iou: float = 0.35, div_min_vis: float = 0.5,
+                 mesh_labels=(), gt_source=None, checker=None, div_iou: float = 0.2, div_min_vis: float = 0.5,
                  replan_on_divergence: bool = True, log=None):
         self.bridge = bridge
         self.task, self.instruction, self.mode = task, instruction, mode

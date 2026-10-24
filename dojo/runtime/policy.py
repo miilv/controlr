@@ -53,7 +53,7 @@ class RuntimeConfig:
     max_looks: int = 2
     look_min_budget: float = 0.6        # look only while steps_left >= this fraction of step_lim
     resync: bool = True
-    div_iou: float = 0.35
+    div_iou: float = 0.2                 # head IoU at the predicted pose (D0: true poses 0.42-0.94, 5 cm off ~0)
     replan_on_divergence: bool = True
     max_attempts: int = 2
     max_replans: int = 2
