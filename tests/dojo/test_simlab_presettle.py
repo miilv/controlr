@@ -16,7 +16,7 @@ def record():
 def live_rows(lay, dz=0.0, v=0.0):
     rows = []
     for t, cat, inst in P.iter_objects(lay):
-        rows.append({"type": t, "category": cat, "category_idx": inst["category_idx"], "label": inst.get("label"),
+        rows.append({"inst_name": f"{cat}_{inst.get('label')}_{len(rows)}", "type": t, "category": cat, "category_idx": inst["category_idx"], "label": inst.get("label"),
                      "clutter": inst.get("type") == "cluttered",
                      "pos": [inst["default_pos"][0], inst["default_pos"][1], inst["default_pos"][2] + dz],
                      "quat": [1.0, 0.0, 0.0, 0.0], "layout_pos": inst["default_pos"], "layout_quat": inst["default_ori"],
@@ -35,10 +35,10 @@ def test_write_back_moves_every_movable_object_and_keeps_the_original():
 
 def test_rest_and_fall_checks():
     lay = record()
-    assert P.at_rest(live_rows(lay), True, 0.005, 0.05)[0]
-    ok, why = P.at_rest(live_rows(lay, v=0.02), True, 0.005, 0.05)
+    assert P.at_rest(live_rows(lay), live_rows(lay, v=0.02), True)[0]          # velocity noise is ignored
+    ok, why = P.at_rest(live_rows(lay), live_rows(lay, dz=-0.003), True)
     assert not ok and "moving" in why[0]
-    ok, why = P.at_rest(live_rows(lay, dz=-0.2), True, 0.005, 0.05)
+    ok, why = P.at_rest(live_rows(lay, dz=-0.2), live_rows(lay, dz=-0.2), True)
     assert not ok and "fell" in why[0]
 
 

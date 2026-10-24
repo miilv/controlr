@@ -52,8 +52,9 @@ class TwinClient:
                            "settle_steps": settle_steps})["result"]
 
     def verify(self, world: dict, candidates: list, perturb: dict | None = None, k: int = 1,
-               record_traj: bool = False, seed: int = 0, keep: tuple | None = None) -> list[dict]:
-        """``keep=(candidate, sample)``: that rollout's outcome carries ``snapshot_id`` of its end state;
+               record_traj: bool = False, seed: int = 0, keep=None) -> list[dict]:
+        """``keep=(candidate, sample)`` | [(c, s), ...] | "nominal" (every (c, 0)): each kept rollout's outcome
+        carries its own ``snapshot_id`` (drop the unused ones with ``drop_snapshot``);
         ``verify({"snapshot_id": sid}, ...)`` then starts EVERY env from it (chain through a grasp)."""
         return self._call({"op": "verify", "world": world, "candidates": candidates, "perturb": perturb, "k": k,
                            "record_traj": record_traj, "seed": seed, "keep": keep})["outcomes"]
@@ -110,12 +111,11 @@ def serve(task: str, num_envs: int, port: int, authkey: bytes, ready: str | None
                         outs = tw.verify(world, req["candidates"], perturb=req.get("perturb"), k=int(req.get("k", 1)),
                                          record_traj=bool(req.get("record_traj")), seed=int(req.get("seed", 0)),
                                          keep=req.get("keep"))
-                        if tw.kept is not None:
-                            sid = max(snaps, default=0) + 1
-                            snaps[sid] = tw.kept
-                            for o in outs:
-                                if o.get("kept"):
-                                    o["snapshot_id"] = sid
+                        for o in outs:                     # one snapshot per kept rollout
+                            if o.get("kept"):
+                                sid = max(snaps, default=0) + 1
+                                snaps[sid] = tw.kept[(o["candidate"], o["sample"])]
+                                o["snapshot_id"] = sid
                         stats["verify_s"] += time.perf_counter() - t0
                         stats["rollouts"] += len(outs)
                         conn.send({"ok": True, "outcomes": outs, "s": time.perf_counter() - t0})

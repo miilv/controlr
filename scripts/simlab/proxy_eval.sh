@@ -31,7 +31,7 @@ for i in $(seq 30); do
   echo "[proxy_eval] MemAvailable ${avail} GB, waiting..." >&2; sleep 20
 done
 LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"; exec 9>>"$LOCK"
-until flock -n 9; do echo "[proxy_eval] waiting for $LOCK: $(head -c 120 "$LOCK")" >&2; sleep 30; done
+flock -n 9 || { echo "[proxy_eval] waiting for $LOCK: $(head -c 120 "$LOCK")" >&2; flock -w "${SIMLAB_LOCK_WAIT_S:-43200}" 9 || exit 75; }
 printf 'pid=%s stream=simlab start=%s cmd=proxy_eval bundle=%s %s\n' "$$" "$(date -u +%FT%TZ)" "$BUNDLE" "${args[*]}" > "$LOCK"
 key() { python3 -c 'import secrets; print(secrets.token_hex(16))'; }
 port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }

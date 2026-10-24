@@ -145,7 +145,7 @@ class VerifyReplayPolicy(ReplayPolicy):
 
     def __init__(self, traj_path: str, k: int = 4):
         super().__init__(traj_path)
-        self.k, self.tc, self.verify_report = int(k), None, None
+        self.n_samples, self.tc, self.verify_report = int(k), None, None
 
     def reset(self, info: dict) -> None:
         super().reset(info)
@@ -158,7 +158,7 @@ class VerifyReplayPolicy(ReplayPolicy):
         r = self.tc.load_from_estimate(lay)
         t1 = time.perf_counter()
         outs = self.tc.verify({"layout": lay}, [{"actions": self.actions, "meta": {"name": "recorded_plan"}}],
-                              perturb={"pos_mm": 2.0, "yaw_deg": 1.0}, k=self.k)
+                              perturb={"pos_mm": 2.0, "yaw_deg": 1.0}, k=self.n_samples)
         t2 = time.perf_counter()
         self.verify_report = {"load_s": t1 - t0, "load_fast": r.get("fast"), "verify_s": t2 - t1, "rollouts": len(outs),
                               "steps": len(self.actions), "success": [o["success"] for o in outs],
@@ -175,7 +175,7 @@ class VerifyReplayPolicy(ReplayPolicy):
             o1 = self.tc.verify({"layout": lay}, [{"actions": self.actions[:n_pick]}], keep=(0, 0))
             sid = next(o["snapshot_id"] for o in o1 if o.get("kept"))
             o2 = self.tc.verify({"snapshot_id": sid}, [{"actions": self.actions[n_pick:]}],
-                                perturb={"pos_mm": 2.0, "yaw_deg": 1.0, "labels": ["block_0", "block_2"]}, k=self.k)
+                                perturb={"pos_mm": 2.0, "yaw_deg": 1.0, "labels": ["block_0", "block_2"]}, k=self.n_samples)
             self.verify_report["chain"] = {"pick_steps": n_pick, "held_after_pick": o1[0]["held"],
                                            "rest_success": [o["success"] for o in o2], "s": time.perf_counter() - t3}
             print(f"[proxy_eval] twin chain: pick {n_pick} steps held={o1[0]['held']} -> rest from snapshot "

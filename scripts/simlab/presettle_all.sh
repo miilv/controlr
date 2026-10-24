@@ -11,5 +11,6 @@ for t in "${tasks[@]}"; do
   systemd-run --user --scope -q -p MemoryMax=20G -p CPUQuota=1200% "$HERE/scripts/simlab/rdpy.sh" -m dojo.simlab.presettle \
       --task "$t" > "$LOG/$t.log" 2>&1
   echo "$(date -u +%T) $t rc=$? $(tr '\r' '\n' < "$LOG/$t.log" | grep -a 'settled records' | tail -1)" >> "$LOG/progress.txt"
+  sleep "${SIMLAB_LOCK_YIELD_S:-90}"   # team lock policy: yield before re-taking the GPU lock
 done
 echo DONE >> "$LOG/progress.txt"

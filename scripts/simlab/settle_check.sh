@@ -13,4 +13,5 @@ for t in "$@"; do
       --task "$t" --layouts $(ls "$DOJO_DATA"/simlab/layouts/"$t"/*.json | grep -E "$pat" | sort) \
       --out "$DOJO_DATA/simlab/$sub/$t" --physics-only > "$DOJO_DATA/simlab/${sub}_$t.log" 2>&1
   echo "$(date -u +%T) $t rc=$?" >> "$DOJO_DATA/simlab/$sub/progress.txt"
+  sleep "${SIMLAB_LOCK_YIELD_S:-90}"   # team lock policy: yield before re-taking the GPU lock
 done
