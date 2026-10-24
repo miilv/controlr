@@ -410,3 +410,36 @@ All `scripts/simlab/*.sh` follow it (`SIMLAB_LOCK_WAIT_S`, `SIMLAB_LOCK_YIELD_S`
   (expected). The basket moves 1.7 m, so my reading of its `zlim` offset relative to the conveyor is wrong:
   conveyor layouts stay experimental.
 - pour_by_language: 25/25 stable, ≤ 0.4 mm.
+
+## Look-pose frames for perception (frame_L1, compute3)
+
+`dojo/simlab/look_render.py` + `scripts/simlab/looks_proxy.sh`, format agreed with perception
+(a3ded2d4b142fe196): `~/dojo-perception-data/looks/look_poses_v1.json` -> `d0/<task>/<id>/frame_L1_<cam>.png`
++ `frame_L1.json` (D0 schema, `meta.renderer = isaac-6.0 (proxy for 5.1)`).
+- Start state = frame_0: the same `layout.json` through RoboDojo's own reset; bit-exact on the same GPU.
+- Both arms are planned (cuRobo) and moved in parallel; an arm without a look stays home.
+- Fallbacks: exact, then roll about the optical axis (30° steps), then 18 cm / 45° backoff around `look_at`.
+- Success is judged on the achieved camera, via the flange->camera mount measured from D0 GT.
+- build_tower (22 layouts, 34 arm looks): all reached (23 exact, 11 rolled), camera error median 0.02 cm,
+  max 1.3 cm, median 21 env steps.
+- Bug: Kit's app close ends the process, so summaries must be written before `run.close()`.
+
+## Genuine Isaac 5.1 on Misha's 4090 (isr-lab), prepared and waiting
+
+- `dojo/simlab/rerender_d0.py` replays each D0 layout's exact action list from `layout.json` with the FULL 5.1
+  renderer and saves frames at the same segment boundaries (`meta.renderer = isaac-5.1`).
+- `compare_to_source`: object / joint differences from compute3's GT for the same frame. That is G2b on D0
+  data, 5090 physics-only vs 4090 rendered.
+- Objects are matched by (type, category, index, label, clutter): RoboDojo instance names carry a
+  per-process counter.
+- `scripts/simlab/rerender_isr.sh` follows Misha's rules:
+  - uses his RoboDojo install read-only (same commit f57e163, all assets);
+  - writes only under `~/data2/ilia`; HOME/XDG and Kit's `--portable-root` (via `SIMLAB_KIT_ARGS`) are
+    redirected there, because his home partition is full;
+  - everything nice, one task process at a time;
+  - starts only when no other compute app is on the GPU or he writes "GPU free for Ilia";
+  - appends start/finish lines to `~/data2/bench/COORDINATION.md`.
+- **Incident (23:04Z)**: the first wait check grepped "GPU free for Ilia" and matched OUR OWN coordination
+  line, which quotes the phrase. My run started while his eval was on the GPU. I stopped it within ~1 min,
+  before it allocated anything on the GPU (only his process was ever listed), and logged a correction line
+  in COORDINATION.md. The check now ignores "Ilia side" lines.
