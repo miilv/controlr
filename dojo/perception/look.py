@@ -128,9 +128,15 @@ def export_look_poses(root, out, tasks=None, commit: str = "") -> dict:
     cal = os.environ.get("DOJO_COLOR_CALIB")
     cal = json.loads(Path(cal).read_text()) if cal and Path(cal).exists() else None
     res = {"version": 1, "source": f"dojo.perception.look_plan @ {commit}", "estimated_from": "frame_0", "layouts": {}}
+    if out.exists():  # resume: keep layouts already planned (their commit is recorded per layout)
+        old = json.loads(out.read_text())
+        res["layouts"] = old.get("layouts", {})
+        res["source"] = old.get("source", res["source"]) + f"; resumed @ {commit}"
     tnames = tasks or sorted(p.name for p in root.iterdir() if p.is_dir() and p.name != "logs")
     for t in tnames:
         for ep in d0.episodes(root, t):
+            if f"{t}/{ep.name}" in res["layouts"]:
+                continue
             obs = d0.load_obs(ep, 0)
             kw = {"color_M": cal[f"fold{zlib.crc32(ep.name.encode()) % 2}"]} if cal else {}
             rec = estimate(obs["images"], obs["state"], t, obs["instruction"], bgs=fold_backgrounds(ep), cfg=EstimatorConfig(**kw))
@@ -138,7 +144,7 @@ def export_look_poses(root, out, tasks=None, commit: str = "") -> dict:
             res["layouts"][f"{t}/{ep.name}"] = {"parallel": True, "looks": [
                 {"arm": p["arm"], "flange_pose": p["flange_pose"], "T_world_cam_cv": p["T_world_cam_cv"],
                  "look_at": p["target"], "purpose": p["purpose"], "label": p["label"]} for p in plan],
-                "est_steps": look_cost_steps(plan)}
+                "est_steps": look_cost_steps(plan), "commit": commit}
             print(t, ep.name, [(p["arm"], p["purpose"], p["label"]) for p in plan], flush=True)
             out.write_text(json.dumps(res, indent=1))  # incremental
     return res

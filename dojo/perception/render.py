@@ -22,6 +22,7 @@ from .cameras import Camera
 GL_MAX_FACES = int(os.environ.get("DOJO_GL_MAX_FACES", "100000000"))  # decimation measurably hurt identity
 TEX_MAX_PX = int(os.environ.get("DOJO_TEX_MAX_PX", "512"))
 TEX_CACHE = 4
+COLOR_MAX_FACES = 40000
 GL_NODE_CACHE = 64  # LRU over object meshes; a smaller cache thrashes on pack (22 candidates): 70-100 s/frame
 
 CATALOG_DIRS = (
@@ -420,14 +421,94 @@ class TexturedRenderer:
         return col, d
 
 
+def cluster_decimate_keep(V: np.ndarray, F: np.ndarray, cell: float):
+    """Vertex clustering that also returns the original index of every kept face (to carry face data)."""
+    q = np.floor(V / cell).astype(np.int64)
+    _, inv, counts = np.unique(q, axis=0, return_inverse=True, return_counts=True)
+    inv = inv.reshape(-1)
+    nV = np.zeros((counts.size, 3))
+    np.add.at(nV, inv, V)
+    nV /= counts[:, None]
+    nF = inv[F]
+    ok = (nF[:, 0] != nF[:, 1]) & (nF[:, 1] != nF[:, 2]) & (nF[:, 0] != nF[:, 2])
+    return nV, nF[ok], np.nonzero(ok)[0]
+
+
+class ColorMeshRenderer:
+    """Per-face-colour meshes (catalogue face colours = texture sampled at each face), vertex-clustered to
+    <= COLOR_MAX_FACES faces, rendered unlit. Memory: a few MB per asset (the UV-textured GLBs of shoes and
+    cars are hundreds of MB), so the cache never thrashes; same interface as TexturedRenderer.render."""
+
+    def __init__(self, w: int = 640, h: int = 480):
+        pr = _pyrender()
+        self.pr = pr
+        self.r = pr.OffscreenRenderer(w, h)
+        self.w, self.h = w, h
+        self.scene = pr.Scene(bg_color=[0, 0, 0, 0], ambient_light=[1.0] * 3)
+        self.cam = pr.IntrinsicsCamera(300, 300, 320, 240, znear=0.005, zfar=10.0)
+        self.cam_node = self.scene.add(self.cam, pose=np.eye(4))
+        self.nodes: dict[str, object] = {}
+
+    def _node(self, key: str):
+        n = self.nodes.pop(key, None)
+        if n is None:
+            import trimesh
+
+            g = np.load(catalog_root() / key / "geom.npz")
+            V, F = g["vertices"].astype(float), g["faces"].astype(np.int64)
+            C = g["colors"] if "colors" in g else np.full((len(F), 3), 160, np.uint8)
+            idx = np.arange(len(F))
+            if len(F) > COLOR_MAX_FACES:
+                ext = float(np.ptp(V, axis=0).max())
+                c = ext / 300.0
+                while True:
+                    V2, F2, idx = cluster_decimate_keep(V, F, c)
+                    if len(F2) <= COLOR_MAX_FACES:
+                        break
+                    c *= 1.3
+                V, F = V2, F2
+            C = C[idx]
+            corners = V[F].reshape(-1, 3)
+            tm = trimesh.Trimesh(corners, np.arange(len(corners)).reshape(-1, 3), process=False)
+            tm.visual.vertex_colors = np.c_[np.repeat(C, 3, axis=0), np.full(len(corners), 255, np.uint8)]
+            m = self.pr.Mesh.from_trimesh(tm, smooth=False)
+            m.is_visible = False
+            n = self.scene.add(m, pose=np.eye(4))
+            while len(self.nodes) >= GL_NODE_CACHE:
+                old = next(iter(self.nodes))
+                self.scene.remove_node(self.nodes.pop(old))
+        self.nodes[key] = n
+        return n
+
+    def render(self, cam: Camera, key: str, T: np.ndarray):
+        if (cam.w, cam.h) != (self.w, self.h):
+            self.r.viewport_width, self.r.viewport_height = cam.w, cam.h
+            self.w, self.h = cam.w, cam.h
+        self.cam.fx, self.cam.fy, self.cam.cx, self.cam.cy = cam.K[0, 0], cam.K[1, 1], cam.K[0, 2], cam.K[1, 2]
+        self.scene.set_pose(self.cam_node, cam.T_wc_usd())
+        n = self._node(key)
+        n.mesh.is_visible = True
+        self.scene.set_pose(n, T)
+        col, d = self.r.render(self.scene, flags=self.pr.RenderFlags.FLAT)
+        n.mesh.is_visible = False
+        return col, d
+
+
 _TEX = None
 
 
-def tex() -> TexturedRenderer | None:
+def tex():
+    """Renderer for the texture term: per-face-colour meshes by default (DOJO_TEX_MODE=glb for the
+    UV-textured GLBs, which cost far more memory on shoes/cars)."""
     global _TEX
     if _TEX is None:
         try:
-            _TEX = TexturedRenderer() if os.environ.get("DOJO_GL", "1") != "0" else False
+            if os.environ.get("DOJO_GL", "1") == "0":
+                _TEX = False
+            elif os.environ.get("DOJO_TEX_MODE", "facecolor") == "glb":
+                _TEX = TexturedRenderer()
+            else:
+                _TEX = ColorMeshRenderer()
         except Exception:
             _TEX = False
     return _TEX or None
