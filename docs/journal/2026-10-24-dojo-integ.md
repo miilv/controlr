@@ -84,6 +84,14 @@ Mode A, verify = bundle (twin process, 8 envs, 4 candidates × 2 samples, ±2 mm
 Scope peak 11.7 GB (episode env + render service + twin). This run predates the reporting fix, so its
 per-segment verify counters were not recorded (the episode ends on success inside `finish()`).
 
+**These bundle runs (and `A_tower_bundle_1a`, 5/5) had broken place verification.** skills' `on_verified`
+passes the chosen candidate's own action list; I indexed it as a list of candidates, so the chain base sat 4
+steps into the pick and every place rollout replayed most of the pick from the post-pick snapshot (jaws
+opening). Visible in the tower stats: all 9 place segments per episode `none_ok`, twin-vs-GT prediction error
+~134 mm (the length of the fixed board moves). skills then runs candidate 0, i.e. the single plan, so the
+successes stand but only the picks were vetted. Fixed (`verifier.chosen_len`; the fake-twin test fails on
+the old indexing); reruns `A_stack_bundle_2`, `A_tower_bundle_2a` / `_1b`.
+
 stack_blocks used skills b3e8a10 (per-task program module, before the one-system planner); build_tower used
 the planner + library (`planner.plan(instruction, world)` → `library.build_tower(pieces)`). Scope peak 10.1 GB,
 2.3 cores average, 157 s for the job including boot.
