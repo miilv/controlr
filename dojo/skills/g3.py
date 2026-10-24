@@ -344,6 +344,23 @@ def cmd_probe(a) -> None:
     run.close()
 
 
+def cmd_report(a) -> None:
+    """Table of every run's summary under ``--root`` (CPU only, no Isaac)."""
+    root = Path(a.root)
+    rows = []
+    for f in sorted(root.glob("*/*_summary.json")):
+        d = json.loads(f.read_text())
+        v = d.get("verify") or {}
+        rows.append((f.parent.name, d["task"], f"{d['success']}/{d['n']}", d.get("unstable", 0),
+                     f"{d.get('steps_median')}/{d.get('step_lim')}", d.get("steps_max"), d.get("wall_s_median"),
+                     ",".join(f"{k}:{n}" for k, n in sorted((d.get("categories") or {}).items())),
+                     (f"{v.get('first_ok', 0)}+{v.get('later_ok', 0)}/{v.get('segments', 0)}" if v else "")))
+    hdr = ("run", "task", "success", "unstable", "steps med/lim", "max", "wall s", "failures", "verify ok first+later/seg")
+    print(" | ".join(hdr))
+    for r in rows:
+        print(" | ".join(str(x) for x in r))
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -357,8 +374,10 @@ def main(argv=None) -> None:
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")
+    q = sub.add_parser("report")
+    q.add_argument("--root", default=os.path.expanduser("~/dojo-data/skills/g3"))
     a = ap.parse_args(argv)
-    {"run": cmd_run, "probe": cmd_probe}[a.cmd](a)
+    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report}[a.cmd](a)
 
 
 if __name__ == "__main__":
