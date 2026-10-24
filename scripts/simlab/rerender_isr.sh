@@ -14,7 +14,7 @@ export SIMLAB_KIT_ARGS="--portable-root $ILIA/kitroot"   # Kit's data/logs/cache
 mkdir -p "$HOME" "$DOJO_DATA" "$ILIA/d0_51/logs" "$ILIA/kitroot"
 gpu_free() {   # no other compute app on the GPU, or Misha's explicit go-ahead
   [[ -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | tr -d ' ')" ]] && return 0
-  grep -q "GPU free for Ilia" "$COORD" 2>/dev/null && return 0
+  grep -v "Ilia side" "$COORD" 2>/dev/null | grep -q "GPU free for Ilia" && return 0   # not our own lines (they quote it)
   return 1
 }
 echo "[$(date -u +%FT%H:%MZ)] Ilia side: waiting for the GPU (one Isaac 5.1 instance, nice, <=4 procs, ~/data2/ilia only) to render D0 layouts: $*" >> "$COORD"
