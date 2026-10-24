@@ -413,6 +413,28 @@ def convert_asset(asset_dir: str, out_dir: str, with_stable: bool = True) -> dic
             "metadata_extents": info["metadata_extents"]}
 
 
+def write_lowres(asset_out: Path, max_px: int = 512) -> bool:
+    """``visual_lo.glb``: the visual GLB with base-colour textures downscaled to <= max_px (fast to load, small
+    in RAM; used by the textured render-and-compare term, where 512 px made no measurable difference)."""
+    import trimesh
+    from PIL import Image
+
+    src = asset_out / "visual.glb"
+    dst = asset_out / "visual_lo.glb"
+    if not src.exists():
+        return False
+    sc = trimesh.load(src, force="scene")
+    for g in sc.geometry.values():
+        mat = getattr(g.visual, "material", None)
+        for attr in ("baseColorTexture", "image"):
+            img = getattr(mat, attr, None) if mat is not None else None
+            if img is not None and max(img.size) > max_px:
+                f = max_px / max(img.size)
+                setattr(mat, attr, img.resize((max(1, int(img.size[0] * f)), max(1, int(img.size[1] * f))), Image.BILINEAR))
+    sc.export(dst)
+    return True
+
+
 def list_assets(objects_root: Path, only: list[str] | None = None):
     """(type, category, index, dir) for every asset dir under Object/RoboDojo/<Type>/<cat>/<idx>."""
     out = []
@@ -484,9 +506,16 @@ def main(argv=None):
     b.add_argument("--force", action="store_true")
     i = sub.add_parser("index")
     i.add_argument("--out", type=Path, required=True)
+    lo = sub.add_parser("lowres")
+    lo.add_argument("--out", type=Path, required=True)
     a = ap.parse_args(argv)
     if a.cmd == "build":
         build(a.assets, a.out, a.only, a.workers, a.force)
+    elif a.cmd == "lowres":
+        n = 0
+        for info in sorted(a.out.glob("*/*/*/info.json")):
+            n += write_lowres(info.parent)
+        print(f"visual_lo.glb written for {n} assets")
     else:
         write_index(a.out)
 

@@ -21,7 +21,7 @@ from .cameras import Camera
 
 GL_MAX_FACES = int(os.environ.get("DOJO_GL_MAX_FACES", "100000000"))  # decimation measurably hurt identity
 TEX_MAX_PX = int(os.environ.get("DOJO_TEX_MAX_PX", "512"))
-TEX_CACHE = 6
+TEX_CACHE = 4
 GL_NODE_CACHE = 64  # LRU over object meshes; a smaller cache thrashes on pack (22 candidates): 70-100 s/frame
 
 CATALOG_DIRS = (
@@ -382,7 +382,8 @@ class TexturedRenderer:
             import trimesh
             from PIL import Image
 
-            sc = trimesh.load(catalog_root() / key / "visual.glb", force="scene")
+            d = catalog_root() / key
+            sc = trimesh.load(d / ("visual_lo.glb" if (d / "visual_lo.glb").exists() else "visual.glb"), force="scene")
             ns = []
             for g in sc.dump():
                 mat = getattr(g.visual, "material", None)
