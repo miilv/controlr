@@ -22,6 +22,7 @@ MID_SITES = ((0.0, -0.17), (0.0, -0.12), (0.0, -0.22), (-0.06, -0.17), (0.06, -0
 
 
 COMFORT_REACH = 0.42          # horizontal distance from the arm base beyond which grasps get tilted / extended
+MAX_REACH = 0.52              # no stack plan may need a pick farther than this
 
 
 def _assign(order, cand, reach=None) -> list[str]:
@@ -61,23 +62,27 @@ def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, ya
         if all(cand[l] for l in others):
             for order in itertools.permutations(others):
                 arms = _assign(order, cand, reach)
+                if any(reach[(l, a)] > MAX_REACH for l, a in zip(order, arms)):
+                    continue
                 cost = sum(float(np.linalg.norm(w.obj(l).center_w[:2] - site)) for l in others)
                 cost += sum(max(0.0, reach[(l, a)] - COMFORT_REACH) * 3 for l, a in zip(order, arms))
                 cost += 0.15 * sum(a == b for a, b in zip(arms[:-1], arms[1:]))
                 if best is None or cost < best[0]:
                     best = (cost, base, None, list(zip(order, arms)))
-    if best is None:
-        for xy in mid_sites:
-            cand = {l: arms_for(l, xy) for l in labels}
-            if not all(cand[l] for l in labels):
+    # a shared site in the middle always competes (an existing base far to one side forces the
+    # other arm into 0.5-0.6 m tilted picks that stall mid-lift: twin, stack_blocks v3)
+    for xy in mid_sites:
+        cand = {l: arms_for(l, xy) for l in labels}
+        if not all(cand[l] for l in labels):
+            continue
+        for order in itertools.permutations(labels):
+            arms = _assign(order, cand, reach)
+            if any(reach[(l, a)] > MAX_REACH for l, a in zip(order, arms)):
                 continue
-            for order in itertools.permutations(labels):
-                arms = _assign(order, cand, reach)
-                cost = sum(float(np.linalg.norm(w.obj(l).center_w[:2] - np.asarray(xy))) for l in labels) + 0.3
-                cost += sum(max(0.0, reach[(l, a)] - COMFORT_REACH) * 3 for l, a in zip(order, arms))
-                if best is None or cost < best[0]:
-                    best = (cost, None, xy, list(zip(order, arms)))
-            break
+            cost = sum(float(np.linalg.norm(w.obj(l).center_w[:2] - np.asarray(xy))) for l in labels) + 0.3
+            cost += sum(max(0.0, reach[(l, a)] - COMFORT_REACH) * 3 for l, a in zip(order, arms))
+            if best is None or cost < best[0]:
+                best = (cost, None, xy, list(zip(order, arms)))
     if best is None:
         return []
     _, base, xy, seq = best
