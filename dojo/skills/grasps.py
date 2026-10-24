@@ -29,7 +29,8 @@ from dojo.skills.kinematics import TIP_BEYOND_TCP, X5Kin
 from dojo.skills.world import ObjectState
 
 MAX_GAP = 0.088               # pad gap fully open
-CLEAR = 0.008                 # min pad clearance each side when approaching
+CLEAR = 0.008                 # pad clearance each side when approaching (less for wide objects)
+MAX_WIDTH = MAX_GAP - 0.004   # widest graspable section (2 mm per side)
 PAD_DEPTH = 0.030             # how much of the object the pads cover from the top (top grasp)
 TIP_TABLE_CLEAR = 0.004       # fingertip above the support surface
 
@@ -97,7 +98,7 @@ def up_axis(obj: ObjectState) -> tuple[int, float]:
 
 
 def top_grasps(obj: ObjectState, kin: X5Kin, arm: str, tilts=(0.0, 25.0, 40.0), along: tuple = (0.0,),
-               max_width: float = MAX_GAP - 2 * CLEAR, depth: float = PAD_DEPTH, support_z: float | None = None) -> list[Grasp]:
+               max_width: float = MAX_WIDTH, depth: float = PAD_DEPTH, support_z: float | None = None) -> list[Grasp]:
     """Top-down (and tilted) grasps closing on a horizontal object axis."""
     out = []
     ku, _ = up_axis(obj)
@@ -137,13 +138,15 @@ def top_grasps(obj: ObjectState, kin: X5Kin, arm: str, tilts=(0.0, 25.0, 40.0), 
                     if tilt > 0:
                         # keep the fingertips' lowest point at tip_z: raise by the pad's tilt sweep
                         pt[2] += 0.010 * math.sin(t)
-                    out.append(Grasp("top", T_from(pt, Rg), float(ext[k]), score=tilt / 40.0 + 0.05 * abs(s_along),
+                    out.append(Grasp("top", T_from(pt, Rg), float(ext[k]),
+                                     score=tilt / 40.0 + 0.05 * abs(s_along) + (0.5 if ext[k] > 0.072 else 0.0)
+                                     + 0.2 * float(ext[k]) / 0.07,
                                      note=f"axis {k} tilt {tilt:.0f}"))
     return out
 
 
 def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pitches=(0.0, 20.0, 35.0),
-                n_heading: int = 7, max_width: float = MAX_GAP - 2 * CLEAR) -> list[Grasp]:
+                n_heading: int = 7, max_width: float = MAX_WIDTH) -> list[Grasp]:
     """Horizontal-ish approach at a fraction of the object's height (upright objects)."""
     ku, _ = up_axis(obj)
     ext = obj.asset.extents
@@ -203,7 +206,7 @@ def rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, wall: float 
     return out
 
 
-def mesh_antipodal(obj: ObjectState, n_samples: int = 200, max_width: float = MAX_GAP - 2 * CLEAR,
+def mesh_antipodal(obj: ObjectState, n_samples: int = 200, max_width: float = MAX_WIDTH,
                    rng_seed: int = 0) -> list[tuple[np.ndarray, np.ndarray, float]]:
     """Antipodal point pairs on the mesh (object frame): (midpoint, closing axis, width)."""
     if obj.asset.mesh is None:

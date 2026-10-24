@@ -57,7 +57,8 @@ def classify(res: dict, reward: dict, history: list[dict]) -> str | None:
     return "logic"
 
 
-def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, log=print, trace: bool = False) -> dict:
+def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, log=print, trace: bool = False,
+                verify_k: int = 0) -> dict:
     from dojo.skills.env import RunnerEnv
     from dojo.skills.skills import GTProvider, Skills
 
@@ -73,7 +74,12 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
     prov = GTProvider(env, assets, task, instruction=env.instruction, mesh_labels=getattr(program, "MESH_LABELS", ()))
     t1 = time.perf_counter()
     sim_time = [0.0]
-    sk = Skills(env, prov, reserve=getattr(program, "RESERVE", 30), log=log)
+    verifier = None
+    if verify_k:
+        from dojo.skills.verify import TwinVerifier
+        verifier = TwinVerifier(run, list(range(1, run.num_envs)), seed=seed)
+    sk = Skills(env, prov, reserve=getattr(program, "RESERVE", 30), log=log, verifier=verifier,
+                verify_k=verify_k or 2)
     frames = []
     if trace:
         labels = [o.label for o in sk.world.task_objects() if o.obj_type != "Geometry"]
@@ -124,6 +130,8 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
                 "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
                                   for o in sk.refresh().task_objects()}})
     rec["category"] = classify(res_j, reward, hist)
+    if verifier is not None:
+        rec["verify"] = {**sk.vstats, **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in verifier.stats.items()}}
     out_dir.mkdir(parents=True, exist_ok=True)
     with gzip.open(out_dir / f"{task}_{seed}_actions.json.gz", "wt") as f:
         json.dump(sk.ex.trajectory_json(), f)
@@ -144,7 +152,8 @@ def cmd_run(a) -> None:
     out.mkdir(parents=True, exist_ok=True)
     program = programs.get(a.task)
     assets = AssetDB(paths.OBJECTS)
-    run = RoboDojoRunner(a.task, workdir=str(out / "work"), physics_only=True, need_planner=False)
+    run = RoboDojoRunner(a.task, num_envs=1 + (a.twins if a.verify else 0), workdir=str(out / "work"),
+                         physics_only=True, need_planner=False)
     rows = []
     summ_p = out / f"{a.task}_episodes.jsonl"
     for seed in parse_seeds(a.seeds):
@@ -156,7 +165,8 @@ def cmd_run(a) -> None:
         lay = json.loads(lp.read_text())
         lay.setdefault("_simlab", {})["seed"] = seed
         logs = []
-        rec = run_episode(run, a.task, lay, assets, program, out, log=lambda m: logs.append(m), trace=a.trace)
+        rec = run_episode(run, a.task, lay, assets, program, out, log=lambda m: logs.append(m), trace=a.trace,
+                          verify_k=a.verify)
         rec["log"] = logs[-60:]
         rows.append(rec)
         with summ_p.open("a") as f:
@@ -179,7 +189,10 @@ def write_summary(out: Path, task: str, rows: list[dict]) -> dict:
             cats[c] = cats.get(c, 0) + 1
     steps = [r["steps"] for r in ok if "steps" in r]
     s_steps = [r["steps"] for r in ok if r.get("success")]
+    vs = [r["verify"] for r in ok if r.get("verify")]
     summ = {"task": task, "n": n, "unstable": len(rows) - n, "success": succ,
+            "verify": ({k: sum(v.get(k, 0) for v in vs) for k in ("segments", "first_ok", "later_ok", "none_ok",
+                                                                  "candidates", "rollouts")} if vs else None),
             "success_rate": round(succ / n, 3) if n else None,
             "mean_score": round(float(np.mean([r["score"] for r in ok])), 3) if n else None,
             "steps_median": int(np.median(steps)) if steps else None, "steps_max": max(steps) if steps else None,
@@ -316,6 +329,8 @@ def main(argv=None) -> None:
     r.add_argument("--seeds", default="100000-100024")
     r.add_argument("--out", required=True)
     r.add_argument("--trace", action="store_true", help="record task-object poses every env step (dev)")
+    r.add_argument("--verify", type=int, default=0, help="plan + verify: samples per candidate (0 = single plan)")
+    r.add_argument("--twins", type=int, default=8, help="twin envs for --verify (same process as the episode)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")

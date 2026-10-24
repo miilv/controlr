@@ -100,6 +100,8 @@ class Job:
     park_other: bool = True
     any_arm: bool = False
     exclusive: bool = False       # no concurrent pick by the other arm while this one places
+    tol_z: float = 0.02
+    alt_targets: list = field(default_factory=list)   # tried in order when the target cannot be planned
 
 
 class GTProvider:
@@ -146,7 +148,8 @@ def _objects_from_rows_nodb(rows):
 
 
 class Skills:
-    def __init__(self, env, provider, kin: X5Kin | None = None, reserve: int = 30, log=None):
+    def __init__(self, env, provider, kin: X5Kin | None = None, reserve: int = 30, log=None, verifier=None,
+                 verify_k: int = 2, n_cands: int = 6):
         self.env = env
         self.provider = provider
         self.kin = kin or X5Kin()
@@ -157,6 +160,10 @@ class Skills:
         self.held: dict[str, Held | None] = {a: None for a in ARMS}
         self.history: list[SkillResult] = []
         self.log = log or (lambda *a, **k: None)
+        self.verifier = verifier
+        self.verify_k = verify_k
+        self.n_cands = n_cands
+        self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
 
     # ------------------------------------------------------------------ world
     def refresh(self) -> WorldState:
@@ -176,11 +183,11 @@ class Skills:
     def plan_pick(self, label: str, arm: str | None = None, method: str = "auto", lift: float = 0.08,
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
                   lift_to_z: float | None = None, approach_rad: float = FAST, descend_rad: float = SLOW,
-                  open_g: float | None = None, settle: int = 2) -> PickPlan | SkillResult:
+                  open_g: float | None = None, settle: int = 2, return_all: bool = False):
         w = self.world
         obj = w.obj(label)
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
-        best, notes = None, []
+        best, notes, allf = None, [], []
         for a in arms:
             q0 = (q_start or {}).get(a, self.ex.q[a])
             cands = G.candidates(obj, self.kin, a, method, **(grasp_kw or {}))
@@ -223,15 +230,18 @@ class Skills:
                 p.grip(go, 0, "open_for_grasp").move(to_pre, "approach").move(down, "descend").hold(settle, "settle")
                 from dojo.skills.kinematics import grip_to_gap
                 p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").move(up, "lift")
-                cost = p.steps + 15 * g.score
+                cost = p.steps + 30 * g.score
                 feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label)))
                 if len(feas) >= keep:
                     break
             if feas:
                 feas.sort(key=lambda x: x[0])
+                allf.extend(feas)
                 if best is None or feas[0][0] < best[0]:
                     best = feas[0]
             notes.append(f"{a}: {len(feas)} feasible of {min(len(cands), max_eval)} (ik {n_ik}, collision {n_coll})")
+        if return_all and allf:
+            return [p for _, p in sorted(allf, key=lambda x: x[0])]
         if best is None:
             status = "ik_fail" if all("collision 0" in n or "no grasp" in n for n in notes) else "collision"
             return SkillResult(False, "pick", status, 0, arm, note="; ".join(notes))
@@ -277,7 +287,7 @@ class Skills:
     def plan_place(self, arm: str, T_obj_target, yaw_sym: int = 1, release_gap: float = 0.003, pre_h: float = 0.06,
                    retreat: float = 0.05, ignore=(), q_start=None, approach_rad: float = CARRY,
                    descend_rad: float = SLOW, open_g: float = OPEN, settle: int = 2, open_steps: int = OPEN_STEPS,
-                   extra_yaws=(), pre_open_hold: int = 1, ease: int = 3) -> PlacePlan | SkillResult:
+                   extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins)."""
         h = self.held[arm]
@@ -294,6 +304,7 @@ class Skills:
             T[:3, :3] = rot_z(dyaw) @ T_obj_target[:3, :3]
             T[:3, 3] = cw - T[:3, :3] @ o.asset.center
             cands.append((abs(dyaw), T))
+        allp = []
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold)
@@ -313,10 +324,14 @@ class Skills:
                 continue
             p = ArmPlan(arm, np.asarray(q0, float), self.ex.g[arm]).move(to_pre, "approach")
             p.ops.extend(tail.ops)
+            cand = PlacePlan(arm, p, T_obj, p.steps, h.label)
+            cand.approach = to_pre
+            cand.tail_kw = tail_kw
+            allp.append(cand)
             if best is None or p.steps < best.steps:
-                best = PlacePlan(arm, p, T_obj, p.steps, h.label)
-                best.approach = to_pre
-                best.tail_kw = tail_kw
+                best = cand
+        if return_all and allp:
+            return sorted(allp, key=lambda c: c.steps)
         if best is None:
             st = "ik_fail" if any("unreachable" in n or "ik_fail" in n for n in notes) else "collision"
             return SkillResult(False, "place", st, 0, arm, note="; ".join(notes[:4]))
@@ -350,7 +365,8 @@ class Skills:
         return self._record(self.run_place(pp, tol_xy, tol_tilt, tol_yaw))
 
     def run_place(self, pp: PlacePlan, tol_xy: float = 0.01, tol_tilt: float = 6.0, tol_yaw: float | None = None,
-                  other: list | None = None, other_arm: str | None = None, remeasure: bool = True) -> SkillResult:
+                  other: list | None = None, other_arm: str | None = None, remeasure: bool = True,
+                  tol_z: float = 0.02) -> SkillResult:
         """Execute a place: approach (+1 still step), re-measure the object in the hand, re-plan the
         descent for the measured in-hand pose, descend, release, back out. ``other`` = the other
         arm's compiled per-step (q, g) list, run in the same env steps throughout."""
@@ -396,11 +412,11 @@ class Skills:
             self.held[pp.arm] = None
             return SkillResult(False, "place", "ended", pp.steps, pp.arm, note=str(e))
         self.held[pp.arm] = None
-        r = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw)
+        r = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
         r.note = (r.note + "; " + note_rm).strip("; ")
         return r
 
-    def verify_place(self, pp: PlacePlan, tol_xy=0.01, tol_tilt=6.0, tol_yaw=None) -> SkillResult:
+    def verify_place(self, pp: PlacePlan, tol_xy=0.01, tol_tilt=6.0, tol_yaw=None, tol_z: float = 0.02) -> SkillResult:
         w = self.refresh()
         o = w.obj(pp.label)
         exp_c = pp.T_obj_target[:3, :3] @ o.asset.center + pp.T_obj_target[:3, 3]
@@ -411,7 +427,7 @@ class Skills:
         meas = {pp.label: T_to_pose7(o.T).tolist()}
         note = (f"xy err {dxy*1000:.1f} mm, dz {dz*1000:+.1f} mm (centre {o.center_w[2]:.4f} vs {exp_c[2]:.4f}), "
                 f"rel tilt {tilt:.1f} deg")
-        ok = dxy <= tol_xy and abs(dz) < 0.02 and tilt <= tol_tilt
+        ok = dxy <= tol_xy and abs(dz) < tol_z and tilt <= tol_tilt
         return SkillResult(ok, "place", "ok" if ok else "place_miss", pp.steps, pp.arm, exp, meas, note)
 
     # ------------------------------------------------------------------ reach
@@ -435,6 +451,148 @@ class Skills:
             pp = self.plan_pick(label, arm, method, q_start={arm: self.world.home_q[arm]}, keep=1)
             cache[key] = isinstance(pp, PickPlan)
         return cache[key]
+
+    def can_pick_at(self, label: str, arm: str, xy, method: str = "auto") -> bool:
+        """Grasp feasibility from home if ``label`` rested level on the table at ``xy``."""
+        from dojo.skills.geometry import R_to_quat
+        from dojo.skills.programs.common import current_R, half_height, level_R
+        o = self.world.obj(label)
+        saved = (o.pos.copy(), o.quat.copy())
+        R = level_R(current_R(self, label))
+        c = np.array([xy[0], xy[1], TABLE_Z + half_height(o, R)])
+        o.pos, o.quat = c - R @ o.asset.center, R_to_quat(R)
+        try:
+            pp = self.plan_pick(label, arm, method, q_start={arm: self.world.home_q[arm]}, keep=1)
+        finally:
+            o.pos, o.quat = saved
+        return isinstance(pp, PickPlan)
+
+    # ------------------------------------------------------------------ plan + verify
+    def _at_rest(self, exclude=()) -> dict:
+        return {o.label: o.pos.copy() for o in self.world.task_objects()
+                if o.obj_type != "Geometry" and o.label not in exclude}
+
+    def judge_pick(self, pp: "PickPlan", before: dict, moving=()):
+        z0 = self.world.obj(pp.label).pos[2]
+        lift = float(self.kin.tcp(pp.arm, pp.plan.q_end)[2, 3] - pp.grasp.T[2, 3])
+
+        def j(o) -> bool:
+            if o.failed or pp.label not in o.objects:
+                return False
+            pos = o.objects[pp.label][0]
+            if pos[2] - z0 < 0.6 * max(lift, 0.02):
+                return False
+            exp = (self.kin.tcp(pp.arm, o.q[pp.arm]) @ pp.T_tcp_obj)[:3, 3]
+            if np.linalg.norm(pos - exp) > 0.015:
+                return False
+            return _others_still(o, before, {pp.label, *moving})
+        return j
+
+    def judge_place(self, pl: "PlacePlan", before: dict, tol_xy: float, tol_tilt: float, tol_z: float, moving=()):
+        o0 = self.world.obj(pl.label)
+        exp_c = pl.T_obj_target[:3, :3] @ o0.asset.center + pl.T_obj_target[:3, 3]
+
+        def j(o) -> bool:
+            if o.failed or pl.label not in o.objects:
+                return False
+            p, q = o.objects[pl.label]
+            from dojo.skills.geometry import quat_to_R
+            R = quat_to_R(q)
+            c = R @ o0.asset.center + p
+            if np.linalg.norm(c[:2] - exp_c[:2]) > 0.7 * tol_xy or abs(c[2] - exp_c[2]) > tol_z:
+                return False
+            tilt = math.degrees(math.acos(min(1.0, abs(float((R.T @ pl.T_obj_target[:3, :3])[2, 2])))))
+            if tilt > tol_tilt:
+                return False
+            return _others_still(o, before, {pl.label, *moving})
+        return j
+
+    def verify_choose(self, cands: list[dict], judges: list, held=()) -> tuple[int | None, list]:
+        """Roll candidate segments (per-arm (q, g) lists) in the twin; the first one whose every
+        sample passes its judge wins (else the one with the most passing samples)."""
+        acts = [self.ex.actions_for(c) for c in cands]
+        outs = self.verifier.rollout(acts, k=self.verify_k, held_labels=tuple(held))
+        passes = [0] * len(cands)
+        for o in outs:
+            if judges[o.candidate](o):
+                passes[o.candidate] += 1
+        self.vstats["segments"] += 1
+        self.vstats["candidates"] += len(cands)
+        for i, n in enumerate(passes):
+            if n == self.verify_k:
+                self.vstats["first_ok" if i == 0 else "later_ok"] += 1
+                return i, passes
+        self.vstats["none_ok"] += 1
+        best = int(np.argmax(passes)) if max(passes) > 0 else None
+        return best, passes
+
+    def _verified_pick(self, job) -> SkillResult:
+        held = tuple(h.label for h in self.held.values() if h)
+        cands = self.plan_pick(job.label, None if job.any_arm else job.arm, job.method, return_all=True, keep=4,
+                               **job.pick_kw)
+        if not isinstance(cands, list):
+            return cands
+        cands = cands[:self.n_cands]
+        before = self._at_rest(exclude=held)
+        idx, passes = self.verify_choose([{c.arm: c.plan.compile()[0]} for c in cands],
+                                         [self.judge_pick(c, before) for c in cands], held)
+        pp = cands[0 if idx is None else idx]
+        self.log(f"[verify] pick {job.label}: passes {passes} -> candidate {idx}")
+        b = self.world.obj(job.label).pos.copy()
+        try:
+            self.ex.run_actions(self.ex.actions_for({pp.arm: pp.plan.compile()[0]}), name=f"pick {job.label} (verified)")
+        except BudgetExceeded as e:
+            return SkillResult(False, "pick", "step_budget", 0, pp.arm, note=str(e))
+        except EpisodeEnded as e:
+            return SkillResult(False, "pick", "ended", pp.steps, pp.arm, note=str(e))
+        job.arm = pp.arm
+        r = self.verify_pick(pp, b)
+        r.note += f"; verify passes {passes}"
+        return r
+
+    def _verified_place(self, job, T, ign, nxt_pick=None) -> tuple[SkillResult, "SkillResult | None"]:
+        held_other = tuple(h.label for a, h in self.held.items() if h and a != job.arm)
+        variants = []
+        for kw in ({}, {"pre_h": 0.04, "descend_rad": 0.03}, {"release_gap": 0.006, "settle": 3}):
+            pk = dict(job.place_kw)
+            pk.update(kw)
+            r = self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, return_all=True, **pk)
+            if isinstance(r, list):
+                variants.extend(r[:2])
+        if not variants:
+            return self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw), None
+        variants = variants[:self.n_cands]
+        moving = {nxt_pick.label} if nxt_pick is not None else set()
+        before = self._at_rest(exclude=set(held_other) | {job.label})
+        cands, judges = [], []
+        other = "right" if job.arm == "left" else "left"
+        for pl in variants:
+            c = {pl.arm: pl.plan.compile()[0]}
+            jp = self.judge_place(pl, before, job.tol_xy, job.tol_tilt, job.tol_z, moving)
+            if nxt_pick is not None and self.clear_of(pl.plan, nxt_pick.plan):
+                c[other] = nxt_pick.plan.compile()[0]
+                jk = self.judge_pick(nxt_pick, before, moving={job.label})
+                judges.append(lambda o, jp=jp, jk=jk: jp(o) and jk(o))
+            else:
+                judges.append(jp)
+            cands.append(c)
+        idx, passes = self.verify_choose(cands, judges, held=tuple({job.label, *held_other}))
+        i = 0 if idx is None else idx
+        pl, c = variants[i], cands[i]
+        self.log(f"[verify] place {job.label}: passes {passes} -> candidate {idx}")
+        b_side = self.world.obj(nxt_pick.label).pos.copy() if (nxt_pick is not None and other in c) else None
+        try:
+            self.ex.run_actions(self.ex.actions_for(c), name=f"place {job.label} (verified)")
+        except BudgetExceeded as e:
+            return SkillResult(False, "place", "step_budget", 0, job.arm, note=str(e)), None
+        except EpisodeEnded as e:
+            self.held[job.arm] = None
+            return SkillResult(False, "place", "ended", pl.steps, job.arm, note=str(e)), None
+        self.held[job.arm] = None
+        r = self.verify_place(pl, job.tol_xy, job.tol_tilt, None, job.tol_z)
+        r.note += f"; verify passes {passes}"
+        side = self.verify_pick(nxt_pick, b_side) if b_side is not None else None
+        return r, side
 
     # ------------------------------------------------------------------ job pipeline
     def run_jobs(self, jobs: list["Job"], bank_after: bool = True) -> SkillResult:
@@ -461,6 +619,19 @@ class Skills:
 
         for i, job in enumerate(jobs):
             self.refresh()
+            if not holds(job) and self.verifier is not None:
+                r = self._record(self._verified_pick(job))
+                if not r.ok:
+                    if r.status in ("step_budget", "ended"):
+                        return fail(r.status, job.arm, r.note)
+                    try:
+                        self.ex.run({job.arm: self.plan_home(job.arm, gripper=OPEN)}, name="reset arm")
+                    except (BudgetExceeded, EpisodeEnded) as e:
+                        return fail("step_budget", job.arm, str(e))
+                    self.refresh()
+                    r = self._record(self._verified_pick(job))
+                    if not r.ok:
+                        return fail(r.status, job.arm, f"pick {job.label}: {r.note}")
             if not holds(job):
                 pp = plan_pick_job(job)
                 if not isinstance(pp, PickPlan):
@@ -494,9 +665,30 @@ class Skills:
                         return fail("step_budget" if isinstance(e, BudgetExceeded) else "ended", other, str(e))
             ign = job.ignore(self) if callable(job.ignore) else tuple(job.ignore)
             pl = self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw)
+            for alt in job.alt_targets:
+                if isinstance(pl, PlacePlan):
+                    break
+                pl = self.plan_place(job.arm, alt(self), yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw)
             if not isinstance(pl, PlacePlan):
                 return fail(pl.status, job.arm, f"place {job.label}: {pl.note}")
             nxt = jobs[i + 1] if i + 1 < len(jobs) else None
+            if self.verifier is not None:
+                pn = None
+                if (nxt is not None and nxt.arm == other and self.held[other] is None and nxt.prefetch
+                        and not job.exclusive):
+                    pn = plan_pick_job(nxt)
+                    pn = pn if isinstance(pn, PickPlan) and pn.arm == other else None
+                r, side = self._verified_place(job, T, ign, pn)
+                self._record(r)
+                if side is not None:
+                    self._record(side)
+                if r.status in ("step_budget", "ended"):
+                    return fail(r.status, job.arm, r.note)
+                if not r.ok and job.required:
+                    return fail(r.status, job.arm, f"place {job.label}: {r.note}")
+                if bank_after and job.bank:
+                    self.bank()
+                continue
             side_pick, other_list = None, None
             if (nxt is not None and nxt.arm == other and self.held[other] is None and nxt.prefetch
                     and not job.exclusive):
@@ -505,7 +697,7 @@ class Skills:
                     side_pick = (pn, self.world.obj(nxt.label).pos.copy())
                     other_list = pn.plan.compile()[0]
             r = self._record(self.run_place(pl, job.tol_xy, job.tol_tilt, other=other_list,
-                                            other_arm=other if other_list else None))
+                                            other_arm=other if other_list else None, tol_z=job.tol_z))
             if r.status in ("step_budget", "ended"):
                 return fail(r.status, job.arm, r.note)
             if side_pick is not None:
@@ -736,6 +928,15 @@ class Skills:
             return self._record(SkillResult(False, "handover", r.status, r.steps, from_arm, note=r.note))
         r2 = self.pick(label, to_arm)
         return self._record(SkillResult(r2.ok, "handover", r2.status, r.steps + r2.steps, to_arm, note=r2.note))
+
+
+def _others_still(o, before: dict, skip: set, tol: float = 0.006) -> bool:
+    for lab, p0 in before.items():
+        if lab in skip or lab not in o.objects:
+            continue
+        if float(np.linalg.norm(o.objects[lab][0] - p0)) > tol:
+            return False
+    return True
 
 
 def upright_tilt(o) -> float:

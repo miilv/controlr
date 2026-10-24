@@ -47,8 +47,10 @@ class RunnerEnv:
         return int(self.r.env.take_action_cnt[self.i])
 
     def step(self, action: dict) -> bool:
+        """One counted env step for THIS env only (other envs, e.g. twin copies, hold still)."""
         act = {k: np.asarray(v, np.float32) for k, v in action.items()}
-        return bool(self.r.step(act)[self.i])
+        self.r.env.take_action_batch([act], env_idx_list=[self.i])
+        return bool(self.r.env.end_flag[self.i])
 
     def proprio(self) -> dict:
         return self.r.obs_state(self.i)
@@ -170,6 +172,15 @@ class KinematicEnv:
         hz = float(np.abs(R @ np.diag(o["half"])).sum(axis=1)[2])
         support = TABLE_Z
         h_self = np.abs(R @ np.diag(o["half"])).sum(axis=1)
+        if not (-0.70 <= o["pos"][0] <= 0.70 and -0.60 <= o["pos"][1] <= 0.50):     # off the table
+            support = 0.05
+            for g in self.objects:
+                if g.get("type") == "Geometry":
+                    hg = np.abs(quat_to_R(g["quat"]) @ np.diag(g["half"])).sum(axis=1)
+                    if abs(g["pos"][0] - o["pos"][0]) < hg[0] and abs(g["pos"][1] - o["pos"][1]) < hg[1]:
+                        support = g["pos"][2] - hg[2] + 0.01         # a container: its bottom
+            o["pos"] = np.array([o["pos"][0], o["pos"][1], support + hz])
+            return
         for other in self.objects:
             if other["label"] == label or other.get("type") == "Geometry":
                 continue
@@ -195,3 +206,25 @@ def kinematic_from_world(world, **kw) -> KinematicEnv:
 
 def angle_deg(a, b) -> float:
     return math.degrees(math.acos(min(1.0, abs(float(np.dot(a, b))))))
+
+
+class KinematicVerifier:
+    """Plan + verify stand-in for tests: candidates roll on deep copies of a KinematicEnv."""
+
+    def __init__(self, env: KinematicEnv):
+        self.env = env
+        self.stats = {"calls": 0, "rollouts": 0}
+
+    def rollout(self, candidates, k: int = 1, held_labels=(), src: int = 0):
+        from dojo.skills.verify import Outcome
+        out = []
+        for ci, acts in enumerate(candidates):
+            for s in range(k):
+                e = copy.deepcopy(self.env)
+                for a in acts:
+                    e.step(a)
+                objs = {o["label"]: (np.asarray(o["pos"], float), np.asarray(o["quat"], float)) for o in e.objects}
+                out.append(Outcome(ci, s, objs, {a: e.q[a].copy() for a in ARMS}, False, False, 0.0, e.ended))
+        self.stats["calls"] += 1
+        self.stats["rollouts"] += len(candidates) * k
+        return out

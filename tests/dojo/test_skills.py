@@ -177,3 +177,16 @@ def test_quat_roundtrip():
     R = quat_to_R(R_to_quat(rot_z(1.0) @ down_R(0.3)))
     assert np.allclose(R, rot_z(1.0) @ down_R(0.3), atol=1e-9)
     assert math.isclose(np.linalg.det(R), 1.0, rel_tol=1e-9)
+
+
+def test_verify_mode_picks_a_passing_candidate():
+    from dojo.skills.env import KinematicVerifier
+    from dojo.skills.programs import stack_blocks
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (0.25, -0.2, 0.78)])
+    sk = Skills(env, GTProvider(env, None, "stack_blocks"), verifier=KinematicVerifier(env), verify_k=1, n_cands=3)
+    res = stack_blocks.run(sk)
+    assert res["ok"], res
+    assert sk.vstats["segments"] >= 3 and sk.vstats["none_ok"] == 0
+    p = sorted((np.asarray(o["pos"]) for o in env.objects), key=lambda v: v[2])
+    for a, b in zip(p[:-1], p[1:]):
+        assert np.linalg.norm(a[:2] - b[:2]) < 0.005

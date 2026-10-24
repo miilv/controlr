@@ -233,6 +233,36 @@ class Executor:
                                       "steps": n})
         return n
 
+    def actions_for(self, lists: dict[str, list]) -> list[dict]:
+        """The exact action dicts ``run_lists`` would send for these per-step (q, g) lists."""
+        q = {a: self.q[a].copy() for a in ARMS}
+        g = dict(self.g)
+        n = max((len(v) for v in lists.values()), default=0)
+        out = []
+        for i in range(n):
+            for a, v in lists.items():
+                if i < len(v):
+                    q[a] = np.asarray(v[i][0], float)
+                    g[a] = float(v[i][1])
+            act = {}
+            for a in ARMS:
+                act[f"{a}_arm_joint_state"] = np.asarray(q[a], np.float32)
+                act[f"{a}_ee_joint_state"] = np.asarray([g[a]], np.float32)
+            out.append(act)
+        return out
+
+    def run_actions(self, actions: list[dict], name: str = "", use_reserve: bool = False) -> int:
+        """Send exact action dicts (e.g. a verified segment); the commanded state follows them."""
+        self._budget(len(actions), use_reserve)
+        for act in actions:
+            for a in ARMS:
+                self.q[a] = np.asarray(act[f"{a}_arm_joint_state"], float)
+                self.g[a] = float(np.asarray(act[f"{a}_ee_joint_state"]).reshape(-1)[0])
+            self._step()
+        if self.record and actions:
+            self.log.segments.append({"name": name, "kind": "actions", "steps": len(actions)})
+        return len(actions)
+
     def grip(self, values: dict[str, float], steps: int = 3, name: str = "grip", use_reserve: bool = False) -> int:
         self._budget(steps, use_reserve)
         for a, v in values.items():

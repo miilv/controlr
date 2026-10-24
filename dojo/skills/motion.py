@@ -289,25 +289,36 @@ class Motion:
         mv = self.joint(arm, q0, r.q, step_rad, name, gripper, ignore, held, check, ease=ease)
         if mv.ok or not check:
             return mv
-        # via a safe height
+        # via a safe height (try a few)
         T0 = self.kin.tcp(arm, q0)
-        z = safe_z if safe_z is not None else max(T0[2, 3], T_goal[2, 3]) + 0.06
+        base_z = max(T0[2, 3], T_goal[2, 3])
+        heights = [safe_z] if safe_z is not None else [base_z + 0.06, base_z + 0.03, base_z + 0.10]
+        last = mv.note
+        for z in heights:
+            out = self._via(arm, q0, T0, np.asarray(T_goal, float), z, step_rad, name, gripper, ignore, held, check,
+                            ease)
+            if out.ok:
+                return out
+            last = out.note
+        return MoveResult("collision", arm, [], T0, note=f"{mv.note}; via failed: {last}")
+
+    def _via(self, arm, q0, T0, T_goal, z, step_rad, name, gripper, ignore, held, check, ease) -> MoveResult:
         up = T0.copy()
         up[2, 3] = max(z, T0[2, 3])
-        above = np.asarray(T_goal, float).copy()
+        above = T_goal.copy()
         above[2, 3] = max(z, T_goal[2, 3])
         m1 = self.line(arm, q0, up, step_rad=MEDIUM, name=name + "_up", gripper=gripper, ignore=ignore, held=held)
         if not m1.ok:
-            return MoveResult("collision", arm, [], T0, note=f"{mv.note}; lift failed: {m1.note}")
+            return MoveResult("collision", arm, [], T0, note=f"lift: {m1.note}")
         r2 = self.kin.ik(arm, above, m1.q_end)
         if not r2.ok:
-            return MoveResult("ik_fail", arm, [], T0, note=f"{mv.note}; via-pose unreachable")
+            return MoveResult("ik_fail", arm, [], T0, note=f"via-pose z={z:.3f} unreachable")
         m2 = self.joint(arm, m1.q_end, r2.q, step_rad, name + "_across", gripper, ignore, held, check, ease=ease)
         if not m2.ok:
             m2 = self.line(arm, m1.q_end, above, step_rad=step_rad, name=name + "_across", gripper=gripper,
                            ignore=ignore, held=held, max_step_m=0.04)
             if not m2.ok:
-                return MoveResult("collision", arm, [], T0, note=f"{mv.note}; across failed: {m2.note}")
+                return MoveResult("collision", arm, [], T0, note=f"across: {m2.note}")
         out = m1.then(m2)
         if above[2, 3] - T_goal[2, 3] > 1e-4:
             out = out.then(self.line(arm, m2.q_end, T_goal, step_rad=MEDIUM, name=name + "_down", gripper=gripper,
