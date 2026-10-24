@@ -35,7 +35,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v3"
+GENERATOR = "simlab/v4"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -267,17 +267,25 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     pmeta = metadata(ptype, parent["category"], int(parent["category_idx"])) or {}
     supports = (pmeta.get("passive") or {}).get("support") or {}
     ppos, pq = np.asarray(parent["default_pos"], float), np.asarray(parent["default_ori"], float)
+    max_off = None
     if supports:
-        centre = np.asarray(supports[skey if skey in supports else next(iter(supports))]["center"][0], float)
+        sup = supports[skey if skey in supports else next(iter(supports))]
+        centre = np.asarray(sup["center"][0], float)
         ref_pos, ref_q = ppos + _qrot(pq, centre[:3]), _qmul(pq, centre[3:])
+        if len(sup["center"]) == 1 and sup.get("radius"):
+            max_off = float(sup["radius"][0])     # one support disk (egg_basket): stay on it
     else:
         ref_pos, ref_q = ppos, pq
     places = (meta.get("active") or {}).get("place") or {}
     tag = prm["place_tag"] or (next(iter(places)) if places else None)
     radius = float(places[tag]["projection_circle"]["radius"]) if tag else 0.03
     xr, yr = _ranges(prm["xlim"] or [0, 0])[0], _ranges(prm["ylim"] or [0, 0])[0]
+    if max_off is not None:
+        max_off = max(0.0, max_off - radius)
     for _ in range(100):
         off = np.array([rng.uniform(*xr), rng.uniform(*yr), 0.0])
+        if max_off is not None and np.linalg.norm(off[:2]) > max_off:
+            continue
         q = ref_q
         if prm["rotate_rand"]:
             rd = prm["rotate_deg"] or 0
