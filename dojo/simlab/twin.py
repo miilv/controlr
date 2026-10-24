@@ -135,7 +135,7 @@ class Twin:
             rwm = env.reward_manager
             fp = rwm.func_parser
             snap["envs"][i] = {
-                "objects": objs,
+                "objects": objs, "keys": self._name_keys(i),
                 "prev_control": copy.deepcopy(rm.control_manager.prev_control[i]),
                 "counters": {"take_action_cnt": int(env.take_action_cnt[i]), "success": bool(env.success[i]),
                              "end_flag": bool(env.end_flag[i])},
@@ -149,7 +149,78 @@ class Twin:
         snap["gated_score"] = copy.deepcopy(env.reward_manager._gated_score_lst)
         return snap
 
+    def _name_keys(self, env_idx: int) -> dict:
+        """inst_name -> (type, category, index, label, clutter): RoboDojo's instance names carry a global
+        counter and differ between envs, the keys do not."""
+        lm = self.env.scene_manager.layout_manager
+        out = {}
+        for otype in ("Rigid", "Dynamic", "Articulation", "Geometry", "Garment", "Fluid"):
+            for rec in lm.object_records_by_type[otype].layout_records_by_env[env_idx]:
+                out[rec["inst_name"]] = self._object_key(rec, otype, lm.decode_inst_name(rec["inst_name"])[0])
+        return out
+
+    def broadcast_snapshot(self, env_idx: int) -> dict:
+        """Snapshot of ONE env, restorable into every env (``restore`` maps objects and reward state by
+        object key). Used for chaining verification through a grasp."""
+        s = self.snapshot([env_idx])
+        s["broadcast_src"] = env_idx
+        return s
+
+    def _restore_broadcast(self, snap: dict) -> None:
+        import torch
+        env, rm = self.env, self.env.robot_manager
+        src = int(snap["broadcast_src"])
+        e = snap["envs"][src]
+        n = self.num_envs
+        eid = None
+        for key, r in zip(rm.robot_key, snap["robot"]):
+            eid = torch.arange(n, dtype=torch.long, device=key.data.joint_pos.device)
+            key.write_joint_state_to_sim(r["q"][src].repeat(n, 1), r["qd"][src].repeat(n, 1), env_ids=eid)
+            key.set_joint_position_target(r["target"][src].repeat(n, 1), env_ids=eid)
+        for i in range(n):
+            dst = {}
+            for name, k in self._name_keys(i).items():
+                dst.setdefault(k, []).append(name)
+            rename = {}
+            for name_src, k in e["keys"].items():
+                if dst.get(k):
+                    rename[name_src] = dst[k].pop(0)
+            live = {name: obj for _, name, obj in self._objects(i)}
+            for name_src, rec in e["objects"].items():
+                obj = live.get(rename.get(name_src))
+                if obj is None:
+                    continue
+                obj.set_local_pose(translation=rec["pos"], orientation=rec["quat"])
+                if "v" in rec:
+                    obj.set_linear_velocity(torch.tensor(rec["v"], dtype=torch.float32))
+                    obj.set_angular_velocity(torch.tensor(rec["w"], dtype=torch.float32))
+                if "joints" in rec:
+                    try:
+                        obj.set_current_joint_positions(rec["joints"])
+                    except Exception:  # noqa: BLE001
+                        pass
+            rm.control_manager.prev_control[i] = copy.deepcopy(e["prev_control"])
+            c = e["counters"]
+            env.take_action_cnt[i], env.success[i], env.end_flag[i] = c["take_action_cnt"], c["success"], c["end_flag"]
+            rwm = env.reward_manager
+            for k2, v in e["reward"].items():
+                getattr(rwm, k2)[i] = copy.deepcopy(v)
+            for k2, v in e["func_parser"].items():           # keyed by inst_name where it is per object
+                v = copy.deepcopy(v)
+                if isinstance(v, dict):
+                    v = {rename.get(kk, kk): vv for kk, vv in v.items()}
+                getattr(rwm.func_parser, k2)[i] = v
+        gs = snap.get("gated_score")
+        env.reward_manager._gated_score_lst = None if gs is None else [copy.deepcopy(gs[src]) for _ in range(n)]
+        env.sim.scene.write_data_to_sim()
+
     def restore(self, snap: dict, settle_steps: int = 0) -> None:
+        """Back to ``snap``: env by env, or (``broadcast_snapshot``) one env's state into every env."""
+        if snap.get("broadcast_src") is not None:
+            self._restore_broadcast(snap)
+            for _ in range(settle_steps):
+                self.env.sim_step(render=False)
+            return
         import torch
         env = self.env
         rm = env.robot_manager
@@ -323,10 +394,14 @@ class Twin:
         self.env.sim.scene.write_data_to_sim()
 
     def verify(self, world: dict, candidates: list, perturb: dict | None = None, k: int = 1,
-               record_traj: bool = False, seed: int = 0) -> list[dict]:
+               record_traj: bool = False, seed: int = 0, keep: tuple | None = None) -> list[dict]:
         """Roll every candidate segment (x ``k`` perturbed samples; sample 0 nominal) from ``world`` in
         batches of ``num_envs`` and score each with the task's own checker. See the module docstring of
-        the segment format; ``world`` = {"layout", "robot"?} or {"snapshot"}."""
+        the segment format; ``world`` = {"layout", "robot"?} or {"snapshot"} (a ``broadcast_snapshot``
+        starts every env from that one state). ``keep=(candidate, sample)``: the end state of that rollout
+        is kept as a broadcast snapshot in ``self.kept`` (chain the next segment from it, e.g. a place after
+        a verified grasp); its outcome gets ``"kept": True``."""
+        self.kept = None
         from dojo.simlab.motion import Trajectory
         if "snapshot" in world:
             base = world["snapshot"]
@@ -412,6 +487,9 @@ class Twin:
                                            res["gripper_blocked"])
                 if isinstance(candidates[ci], dict):
                     res.update({k2: v for k2, v in candidates[ci].items() if k2 not in ("actions",)})
+                if keep is not None and (ci, si) == tuple(keep):
+                    self.kept = self.broadcast_snapshot(e)
+                    res["kept"] = True
                 if record_traj:
                     res["traj"] = trajs[e]
                 out.append(res)
