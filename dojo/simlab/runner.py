@@ -134,8 +134,10 @@ class DictSeedManager:
         pass
 
 
-def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_type: str = "arx_x5"):
-    """``src/eval_client/main.py::main`` config assembly, minus the policy server."""
+def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_type: str = "arx_x5",
+                  need_planner: bool = True):
+    """``src/eval_client/main.py::main`` config assembly, minus the policy server. ``need_planner=False``
+    skips RoboDojo's cuRobo planners (replay-only runs; physics is unaffected)."""
     from omegaconf import OmegaConf
 
     from env.global_configs import BENCHMARK, ENV_CONFIG_PATH, ROOT_DIR
@@ -166,6 +168,9 @@ def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_typ
     OmegaConf.update(env_cfg, "camera.default_frequency", eval_cfg["observation"].get("collect_freq", 0),
                      force_add=True)
     env_cfg.sim.seed = [0 for _ in range(n)]
+    if not need_planner:
+        for rc in env_cfg.robot.robots:
+            rc["need_planner"] = False
     return env_cfg
 
 
@@ -173,7 +178,7 @@ class RoboDojoRunner:
     """One RoboDojo task env (``num_envs`` parallel copies) driven from our layout records."""
 
     def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, headless: bool = True,
-                 video_dir: str | None = None, workdir: str | None = None):
+                 video_dir: str | None = None, workdir: str | None = None, need_planner: bool = True):
         self.task = task
         self.app = launch_app(headless=headless, device_id=device_id)
         # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
@@ -185,7 +190,7 @@ class RoboDojoRunner:
         import src.eval_client.eval_env as ee
         ee.SeedManager = DictSeedManager
         ee.WsModelClient = _NoPolicyClient
-        self.env_cfg = build_env_cfg(task, num_envs=num_envs, device_id=device_id)
+        self.env_cfg = build_env_cfg(task, num_envs=num_envs, device_id=device_id, need_planner=need_planner)
         self.num_envs = int(self.env_cfg.sim.scene.num_envs)
         self.env = ee.create_eval_env(self.env_cfg, self.app)
         if not video_dir:
