@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v4"
+GENERATOR = "simlab/v5"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -280,6 +280,9 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     places = (meta.get("active") or {}).get("place") or {}
     tag = prm["place_tag"] or (next(iter(places)) if places else None)
     radius = float(places[tag]["projection_circle"]["radius"]) if tag else 0.03
+    ext = ((meta.get("geometry") or {}).get("oriented_bbox") or {}).get("extents")
+    if ext:                                      # an egg on its side is longer than its projection circle
+        radius = max(radius, 0.5 * float(max(ext)))
     xr, yr = _ranges(prm["xlim"] or [0, 0])[0], _ranges(prm["ylim"] or [0, 0])[0]
     if max_off is not None:
         max_off = max(0.0, max_off - radius)
@@ -304,8 +307,9 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
             c_frame = np.asarray(places[tag]["projection_circle"]["center"], float)
             pose = gens["ground"]._placement_to_origin(np.r_[ref_pos + off, q], c_frame)
         sib = siblings.setdefault(plabel, [])
-        if all(np.linalg.norm(pose[:2] - xy) > radius + r + 0.002 for xy, r in sib):
-            sib.append((pose[:2].copy(), radius))
+        foot = (ref_pos + off)[:2] if prm["zlim"] is None else pose[:2]   # footprint centre = placement point
+        if all(np.linalg.norm(foot - xy) > radius + r + 0.002 for xy, r in sib):
+            sib.append((np.asarray(foot, float).copy(), radius))
             used.add(plabel)
             return pose, plabel
     raise LayoutError(f"no room for a child of {plabel}")
