@@ -13,7 +13,7 @@ from dojo.runtime.bridge import Bridge
 from dojo.runtime.estimate import est_objects, estimate_to_layout, flagged, objects_from_gt_rows
 from dojo.runtime.firewall import DEV_GT_KEY, FirewallError, check_obs, sanitize_info
 from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
-from dojo.runtime.supervisor import SKILLS, parse_instruction
+from dojo.runtime.supervisor import VOCABULARIES, perception_vocabulary
 from dojo.skills.env import KinematicEnv
 from dojo.skills.kinematics import X5Kin
 from dojo.skills.world import AssetInfo
@@ -165,23 +165,23 @@ def test_runtime_sources_never_read_gt_or_env_internals():
 
 # ------------------------------------------------------------------ instruction-only decisions
 INSTR = {
-    "stack_three_textured_blocks": STACK,
-    "build_tower_blocks_boards": "Build a tower using the wooden blocks and wooden boards.",
-    "stack_three_bowls": "Stack the three bowls together.",
-    "bottles_into_dustbin": "Pick up the bottles and throw them into the dustbin, using handover when needed.",
-    "swap_blocks_via_empty_mat": "Swap the two blocks using the empty mat, pressing the button after each move.",
-    "press_buttons_by_number_cards": "Press the two red buttons the required number of times according to the number "
-                                     "cards, then press the blue button to confirm.",
+    "stack_blocks": STACK,
+    "build_tower": "Build a tower using the wooden blocks and wooden boards.",
+    "stack_bowls": "Stack the three bowls together.",
+    "put_bottles_into_dustbin": "Pick up the bottles and throw them into the dustbin, using handover when needed.",
+    "swap_blocks": "Swap the two blocks using the empty mat, pressing the button after each move.",
+    "press_by_number": "Press the two red buttons the required number of times according to the number "
+                       "cards, then press the blue button to confirm.",
+    "push_T": "Push the T-shaped block to align it precisely with the gray T-shaped pad.",
 }
 
 
-def test_instruction_selects_the_skill():
-    assert {s.name for s in SKILLS} == set(INSTR)
+def test_instruction_selects_the_perception_vocabulary():
     for name, text in INSTR.items():
-        assert parse_instruction(text).name == name
-    for other in ("stack the blocks from bottom to top in the order of red, green, and blue, then reset the robot arm.",
-                  "Push the T-shaped block to align it precisely with the gray T-shaped pad.", ""):
-        assert parse_instruction(other) is None
+        assert perception_vocabulary(text).name == name
+    assert perception_vocabulary("stack the blocks from bottom to top in the order of red, green, and blue, "
+                                 "then reset the robot arm.") is None
+    assert perception_vocabulary("") is None
 
 
 def test_decisions_never_read_the_task_name():
@@ -189,11 +189,12 @@ def test_decisions_never_read_the_task_name():
     env = _env()
     pol = RuntimePolicy(RuntimeConfig(mode="gt"), assets=FakeAssets())
     rep = run_episode(pol, FakeEpisode(env, task="push_T"), "gt")
-    assert rep["skill"] == "stack_three_textured_blocks" and _stacked(env)
+    assert rep["skill"] == "stack_objects" and rep["vocabulary"] == "stack_blocks" and _stacked(env)
     env2 = _env(instruction="Push the T-shaped block to align it precisely with the gray T-shaped pad.")
     pol2 = RuntimePolicy(RuntimeConfig(mode="gt"), assets=FakeAssets())
     rep2 = run_episode(pol2, FakeEpisode(env2, task="stack_blocks"), "gt")
-    assert rep2["skill"] is None and env2.steps_used == 0
+    assert rep2["skill"] is None and rep2["decisions"][0]["action"] == "finish"
+    assert all(np.abs(env2.q[a]).max() < 0.02 for a in ("left", "right"))
     for name in ("policy.py", "supervisor.py", "belief.py", "verifier.py"):
         for ln in (RUNTIME / name).read_text().splitlines():
             if re.search(r"""info(\.get\(|\[)["']task["']""", ln):
@@ -235,12 +236,12 @@ def test_kinematic_belief_follows_jaws_and_drops_on_support():
     env = _env([(-0.30, -0.15, 0.78), (-0.20, -0.15, 0.78), (0.3, -0.2, 0.78)])
     objs = objects_from_gt_rows(env.gt_objects(), None)
     kb = KinematicBelief(objs, X5Kin(), env.proprio())
-    from dojo.skills.programs import stack_blocks
+    from dojo.skills import planner
     from dojo.skills.skills import GTProvider, Skills
-    sk = Skills(env, GTProvider(env, None, "stack_blocks"))
+    sk = Skills(env, GTProvider(env, None, "", instruction=STACK))
     n0 = 0
     ex_log = sk.ex.log
-    stack_blocks.run(sk)
+    assert planner.solve(sk)["ok"]
     for a in ex_log.actions[n0:]:
         kb.step(a)
     truth = {o["label"]: np.asarray(o["pos"]) for o in env.objects}

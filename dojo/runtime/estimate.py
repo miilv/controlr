@@ -41,14 +41,14 @@ def _asset(assets: AssetDB | None, typ: str, cat: str, idx: int, mesh: bool) -> 
     return AssetInfo(key=f"{typ}/{cat}/{int(idx):05d}", bbox_min=np.full(3, -0.02), bbox_max=np.full(3, 0.02))
 
 
-def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, mesh_labels=()) -> dict[str, ObjectState]:
+def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, meshes: bool = True) -> dict[str, ObjectState]:
     out = {}
     for typ, cat, r in iter_records(record):
         lab = r.get("label")
         if not lab:
             continue
         p = r.get("_perception") or {}
-        info = _asset(assets, typ, cat, int(r["category_idx"]), mesh=lab in mesh_labels)
+        info = _asset(assets, typ, cat, int(r["category_idx"]), mesh=meshes)
         out[lab] = ObjectState(label=lab, obj_type=typ, category=cat, idx=int(r["category_idx"]),
                                pos=np.asarray(r["default_pos"], float), quat=np.asarray(r["default_ori"], float),
                                asset=info, clutter=False, source="perception",
@@ -56,7 +56,7 @@ def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, mes
     return out
 
 
-def objects_from_gt_rows(rows: list[dict], assets: AssetDB | None, step: int = 0, mesh_labels=()) -> dict[str, ObjectState]:
+def objects_from_gt_rows(rows: list[dict], assets: AssetDB | None, step: int = 0, meshes: bool = True) -> dict[str, ObjectState]:
     """DEV ONLY (mode gt)."""
     if assets is None:
         out = {}
@@ -71,7 +71,7 @@ def objects_from_gt_rows(rows: list[dict], assets: AssetDB | None, step: int = 0
                                    np.asarray(r["pos"], float), np.asarray(r["quat"], float), info,
                                    clutter=bool(r.get("clutter", False)), source="gt", t=step)
         return out
-    return objects_from_gt(rows, assets, step=step, include_clutter=True, mesh_labels=tuple(mesh_labels))
+    return objects_from_gt(rows, assets, step=step, include_clutter=True, meshes=meshes)
 
 
 def est_objects(objects: dict[str, ObjectState]) -> list[dict]:

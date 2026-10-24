@@ -138,12 +138,11 @@ class KinematicBelief:
 
 class RuntimeProvider:
     def __init__(self, bridge, task: str, instruction: str, mode: str, assets=None, kin: X5Kin | None = None,
-                 mesh_labels=(), gt_source=None, checker=None, div_iou: float = 0.2, div_min_vis: float = 0.5,
+                 gt_source=None, checker=None, div_iou: float = 0.2, div_min_vis: float = 0.5,
                  replan_on_divergence: bool = True, log=None):
         self.bridge = bridge
         self.task, self.instruction, self.mode = task, instruction, mode
         self.assets, self.kin = assets, kin or X5Kin()
-        self.mesh_labels = tuple(mesh_labels)
         self.gt_source = gt_source              # mode gt only: () -> GT rows of the latest observation
         self.checker = checker                  # mode perception: (obs, objects) -> {label: check}, (obs) -> record
         self.div_iou, self.div_min_vis = div_iou, div_min_vis
@@ -166,13 +165,13 @@ class RuntimeProvider:
         self._checkpoint(st)
 
     def init_from_record(self, record: dict) -> None:
-        self.init_objects(objects_from_record(record, self.assets, self.bridge.steps_used, self.mesh_labels))
+        self.init_objects(objects_from_record(record, self.assets, self.bridge.steps_used))
 
     def init_from_gt(self) -> None:
         self.init_objects(self._gt_objects())
 
     def _gt_objects(self) -> dict[str, ObjectState]:
-        return objects_from_gt_rows(self.gt_source(), self.assets, self.bridge.steps_used, self.mesh_labels)
+        return objects_from_gt_rows(self.gt_source(), self.assets, self.bridge.steps_used)
 
     # ------------------------------------------------------------------ predictions
     def on_verified(self, info: dict) -> None:
@@ -220,7 +219,7 @@ class RuntimeProvider:
             return ev
         self.stats["divergence"] += 1
         rec = self.checker.estimate(obs)
-        est = objects_from_record(rec, self.assets, self.bridge.steps_used, self.mesh_labels)
+        est = objects_from_record(rec, self.assets, self.bridge.steps_used)
         upd = {}
         for lab in bad:
             e = est.get(lab)

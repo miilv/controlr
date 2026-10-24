@@ -8,8 +8,9 @@ Per episode, in a worker thread behind ``Bridge`` (the env is only stepped by th
    checked) -> observe -> both arms home -> ``fuse`` of the first frame and the look frame. Costs env steps.
    Mode ``gt`` (dev-only upper bound): GT rows the driver captured with the observation, no looks.
 2. WorldState from the layout record (skills schema), via ``RuntimeProvider``.
-3. Supervisor (``supervisor.RuleSupervisor``): instruction + WorldState + events -> the skill (expert
-   program) from the one fixed library, chosen from the INSTRUCTION only.
+3. Supervisor (``supervisor.RuleSupervisor``): instruction + WorldState + events -> a skill of the one
+   fixed library (``dojo.skills.library``) with arguments, via ``dojo.skills.planner.plan`` (instruction
+   words + what the objects are), never the task id.
 4. Plan + 5. verify + 6. execute: the program's skills plan each segment; with ``verify="bundle"`` the
    candidates roll in the bundle's twin process loaded from OUR estimate (``BundleVerifier``) and the
    first robust one runs. ``verify="off"`` = single plan (flag in every result).
@@ -29,7 +30,6 @@ import os
 import time
 import zlib
 from dataclasses import asdict, dataclass, field
-from importlib import import_module
 
 import numpy as np
 
@@ -37,7 +37,7 @@ from .belief import Divergence, RuntimeProvider
 from .bridge import Bridge
 from .estimate import est_objects, flagged
 from .firewall import DEV_GT_KEY, check_obs, sanitize_info
-from .supervisor import RuleSupervisor, parse_instruction
+from .supervisor import RuleSupervisor, perception_vocabulary
 
 
 @dataclass
@@ -58,6 +58,7 @@ class RuntimeConfig:
     max_attempts: int = 2
     max_replans: int = 2
     final_hold: int = 3
+    reserve: int = 30                   # env steps kept for finish()
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -165,20 +166,21 @@ class RuntimePolicy:
         from dojo.skills.kinematics import X5Kin
         from dojo.skills.skills import Skills
 
+        from dojo.skills import library
+
         cfg, b = self.cfg, self.bridge
         obs0 = b.observe()
         instruction = obs0["instruction"]
-        skill = parse_instruction(instruction)
-        self.report["skill"] = skill.name if skill else None
-        if skill is None:
-            self.log(f"[runtime] no library skill for {instruction!r}: finish")
-            return {"ok": False, "stage": "no_skill"}
-        prog = import_module(skill.program)
+        vocab = perception_vocabulary(instruction)
+        self.report["vocabulary"] = vocab.name if vocab else None
+        if cfg.mode == "perception" and vocab is None:
+            self.log(f"[runtime] no perception vocabulary for {instruction!r}: finish")
+            return {"ok": False, "stage": "no_vocabulary"}
+        scene = vocab.name if vocab else ""
         kin = X5Kin()
         events = self.report["events"]
-        checker = _Checker(self.perception(), skill.vocabulary, self.fold) if cfg.mode == "perception" else None
-        prov = RuntimeProvider(b, skill.vocabulary, instruction, cfg.mode, self.assets(), kin,
-                               mesh_labels=getattr(prog, "MESH_LABELS", ()), gt_source=lambda: self.dev_gt,
+        checker = _Checker(self.perception(), scene, self.fold) if cfg.mode == "perception" else None
+        prov = RuntimeProvider(b, scene, instruction, cfg.mode, self.assets(), kin, gt_source=lambda: self.dev_gt,
                                checker=checker if cfg.resync else None, div_iou=cfg.div_iou,
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
@@ -186,7 +188,7 @@ class RuntimePolicy:
         if cfg.mode == "gt":
             prov.init_from_gt()
         else:
-            rec = self.perception().estimate([obs0], skill.vocabulary, self.fold)
+            rec = self.perception().estimate([obs0], scene, self.fold)
             self.report["records"]["initial"] = _slim(rec)
             prov.init_from_record(rec)
         self.report["timings"]["perceive_s"] = round(time.perf_counter() - t, 2)
@@ -195,11 +197,11 @@ class RuntimePolicy:
             from .verifier import BundleVerifier
             tc = self.twin()
             tw_task = tc.info().get("task")
-            if tw_task != skill.vocabulary:
-                events.append({"kind": "verify_unavailable", "reason": f"twin runs {tw_task!r}, skill wants "
-                                                                        f"{skill.vocabulary!r}"})
+            if tw_task != scene:
+                events.append({"kind": "verify_unavailable", "reason": f"twin runs {tw_task!r}, the instruction "
+                                                                        f"names scene {scene!r}"})
             else:
-                verifier = BundleVerifier(tc, skill.vocabulary, prov, b, cfg.perturb_mm, cfg.perturb_deg, log=self.log)
+                verifier = BundleVerifier(tc, scene, prov, b, cfg.perturb_mm, cfg.perturb_deg, log=self.log)
 
         def hooks(info):
             prov.on_verified(info)
@@ -212,13 +214,13 @@ class RuntimePolicy:
             if prev is not None:
                 for k, v in prev.vstats.items():
                     vtot[k] = vtot.get(k, 0) + v
-            return Skills(b, prov, kin=kin, reserve=getattr(prog, "RESERVE", 30), log=self.log, verifier=verifier,
+            return Skills(b, prov, kin=kin, reserve=cfg.reserve, log=self.log, verifier=verifier,
                           verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks)
 
         sk = make_skills()
         if cfg.mode == "perception" and cfg.look:
             t = time.perf_counter()
-            rec = self._look(sk, obs0, rec, skill, kin)
+            rec = self._look(sk, obs0, rec, scene, kin)
             self.report["timings"]["look_s"] = round(time.perf_counter() - t, 2)
             if rec is not None:
                 self.report["records"]["fused"] = _slim(rec)
@@ -233,13 +235,18 @@ class RuntimePolicy:
             while True:
                 w = sk.refresh()
                 d = self.supervisor.decide(instruction, w, events)
-                self.report["decisions"].append({"action": d.action, "skill": d.skill.name if d.skill else None,
+                self.report["decisions"].append({"action": d.action, "skill": d.skill, "params": _short(d.params),
                                                  "reason": d.reason, "step": w.step})
+                if d.skill and self.report.get("skill") is None:
+                    self.report["skill"] = d.skill
                 if d.action == "finish":
                     break
                 w.notes["params"] = dict(d.params)
                 try:
-                    res = prog.run(sk) or {}
+                    res = library.SKILLS[d.skill](sk, **d.params) or {}
+                    if res.get("ok"):
+                        f = sk.finish()
+                        res = {**res, "finish": f.status}
                 except Divergence as e:
                     events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
                     self.report["history"] += _hist(sk)
@@ -282,7 +289,7 @@ class RuntimePolicy:
         return result
 
     # ------------------------------------------------------------------ helpers
-    def _look(self, sk, obs0: dict, rec0: dict, skill, kin) -> dict | None:
+    def _look(self, sk, obs0: dict, rec0: dict, scene: str, kin) -> dict | None:
         """Look macro. Returns the fused record, or None when no look was taken."""
         from dojo.skills.geometry import pose7_to_T
         from dojo.skills.motion import FAST
@@ -312,12 +319,16 @@ class RuntimePolicy:
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
         self.report["look_steps"] = b.steps_used - n0
-        return self.perception().estimate([obs0, obs1], skill.vocabulary, self.fold)
+        return self.perception().estimate([obs0, obs1], scene, self.fold)
 
 
 def _hist(sk) -> list[dict]:
     return [{"skill": h.skill, "ok": h.ok, "status": h.status, "steps": h.steps, "arm": h.arm, "note": h.note[:240]}
             for h in sk.history]
+
+
+def _short(params: dict) -> dict:
+    return {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v)[:200]) for k, v in params.items()}
 
 
 def _slim(rec: dict) -> dict:
