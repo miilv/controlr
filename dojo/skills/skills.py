@@ -348,11 +348,19 @@ class Skills:
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold)
+        # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
+        # target is inside the base bowl: 4 cm above it the two boxes still overlap)
+        sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
         best, notes = None, []
         for _, T_obj in sorted(cands, key=lambda x: x[0]):
             T_tcp = T_obj @ inv_T(h.T_tcp_obj)
             T_pre = T_tcp.copy()
-            T_pre[2, 3] += release_gap + pre_h
+            lift = pre_h
+            if sup_top is not None:
+                corners = (T_obj[:3, :3] @ (np.array([[x, y, z] for x in (0, 1) for y in (0, 1) for z in (0, 1)])
+                                             * o.asset.extents + o.asset.bbox_min).T).T + T_obj[:3, 3]
+                lift = max(pre_h, sup_top + 0.015 - float(corners[:, 2].min()))
+            T_pre[2, 3] += release_gap + lift
             to_pre = self.motion.to_pose(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                                          ignore=(h.label,), ease=ease)
             if not to_pre.ok:
