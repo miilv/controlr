@@ -163,6 +163,23 @@ class VerifyReplayPolicy(ReplayPolicy):
         self.verify_report = {"load_s": t1 - t0, "load_fast": r.get("fast"), "verify_s": t2 - t1, "rollouts": len(outs),
                               "steps": len(self.actions), "success": [o["success"] for o in outs],
                               "score": [o["score"] for o in outs]}
+        # chain through a grasp: verify the pick prefix (keep its end state), then the rest from it in all envs
+        n_pick, acc = None, 0
+        for sg in self.segments:
+            acc += int(sg["steps"])
+            if str(sg.get("name", "")).startswith("lift_"):
+                n_pick = acc
+                break
+        if n_pick:
+            t3 = time.perf_counter()
+            o1 = self.tc.verify({"layout": lay}, [{"actions": self.actions[:n_pick]}], keep=(0, 0))
+            sid = next(o["snapshot_id"] for o in o1 if o.get("kept"))
+            o2 = self.tc.verify({"snapshot_id": sid}, [{"actions": self.actions[n_pick:]}],
+                                perturb={"pos_mm": 2.0, "yaw_deg": 1.0, "labels": ["block_0", "block_2"]}, k=self.k)
+            self.verify_report["chain"] = {"pick_steps": n_pick, "held_after_pick": o1[0]["held"],
+                                           "rest_success": [o["success"] for o in o2], "s": time.perf_counter() - t3}
+            print(f"[proxy_eval] twin chain: pick {n_pick} steps held={o1[0]['held']} -> rest from snapshot "
+                  f"{sid}: success {[o['success'] for o in o2]}", flush=True)
         print(f"[proxy_eval] twin verify: {len(outs)} rollouts x {len(self.actions)} steps in {t2 - t1:.1f}s "
               f"(load {t1 - t0:.1f}s fast={r.get('fast')}): success {self.verify_report['success']}", flush=True)
 
