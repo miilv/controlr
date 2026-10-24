@@ -73,6 +73,8 @@ report + executed actions gz). Tables: `python -m dojo.runtime.report <run dirs>
 | task | n | success | score | steps med / max (lim) | looks | wall s / episode (sim / obs / planning) | failures |
 |---|---|---|---|---|---|---|---|
 | stack_blocks | 10 | 9/10 | 91.5 | 164 / 267 (550) | 0 | 8.4 (6.6 / 1.2 / 0.7) | grasp_slip 1 (100009: rose 21 of 80 mm; the same seed fails in skills' G3) |
+| build_tower | 10 | 10/10 | 100 | 511 / 535 (1050) | 0 | 29.1 (24.6 / 3.4 / 1.0) | – |
 
-stack_blocks used skills b3e8a10 (per-task program module, before the one-system planner). Scope peak 10.1 GB,
+stack_blocks used skills b3e8a10 (per-task program module, before the one-system planner); build_tower used
+the planner + library (`planner.plan(instruction, world)` → `library.build_tower(pieces)`). Scope peak 10.1 GB,
 2.3 cores average, 157 s for the job including boot.
