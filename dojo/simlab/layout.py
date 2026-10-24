@@ -87,18 +87,20 @@ def fixtures_from_scene(scene_cfg: dict) -> dict:
     """Room/Table/Ground/Background exactly as the eval records carry them (scene default.yml,
     randomisation off)."""
     room = scene_cfg["Room"]
-    table = scene_cfg["Table"]
     ground = copy.deepcopy(scene_cfg["Ground"])
     ground.setdefault("materials", {})["random"] = False
     bg = scene_cfg["Background"]
-    return {
+    out = {
         "Room": {"default": room["default"], "default_pos": list(room["default_pos"]),
                  "default_rot": list(room.get("default_ori", [1.0, 0.0, 0.0, 0.0])), "scale": list(room["scale"])},
-        "Table": {"default": table["default"], "scale": list(table["scale"]),
-                  "default_pos": list(table["default_pos"]), "default_ori": list(table["default_ori"])},
         "Ground": ground,
         "Background": {"intensity": bg["intensity"], "category_name": bg["default"]},
     }
+    if "Table" in scene_cfg:                  # the conveyor scene has none
+        table = scene_cfg["Table"]
+        out["Table"] = {"default": table["default"], "scale": list(table["scale"]),
+                        "default_pos": list(table["default_pos"]), "default_ori": list(table["default_ori"])}
+    return out
 
 
 # --------------------------------------------------------------------------- access
@@ -135,7 +137,7 @@ def find(layout: dict, label: str) -> dict:
 def validate(layout: dict) -> list[str]:
     """Schema problems (empty list = loadable by RoboDojo's LayoutManager)."""
     errs = []
-    for k in FIXTURE_KEYS:
+    for k in ("Room", "Ground", "Background"):    # Table: only in table scenes
         if k not in layout:
             errs.append(f"missing fixture {k}")
     labels = set()
