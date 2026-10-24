@@ -83,10 +83,10 @@ def stack_objects(sk: Skills, objects: list[str], nest: bool = False) -> dict:
         geo = bowl_geometry(o0)
         h = float(o0.asset.extents[2])
         top_h = TABLE_Z + h + 2 * (geo["nest_dz"] + 0.004) + 0.06
-        jobs = plan_stack(sk, objects, top_h, _nested_in, yaw_sym=8, tol_xy=0.03, pick_method="rim")
+        jobs = plan_stack(sk, objects, top_h, _nested_in, yaw_sym=8, tol_xy=0.03, pick_method="wall")
         for j in jobs:
-            # a rim pinch holds the weight torque only statically: lift and carry gently
-            j.pick_kw = {"grasp_kw": {"wall": geo["wall"]}, "lift": 0.09, "lift_rad": 0.05, "descend_rad": 0.05}
+            # wall pinch (pads flat on both wall faces); lift and carry gently
+            j.pick_kw = {"lift": 0.09, "lift_rad": 0.05, "descend_rad": 0.05}
             j.tol_tilt, j.tol_z = 40.0, 0.05
             j.place_kw = {"release_gap": 0.0, "pre_h": 0.04, "approach_rad": 0.06, "ease": 5, "keep_tilt": True,
                           "descend_rad": 0.04}
