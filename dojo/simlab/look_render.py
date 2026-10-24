@@ -185,6 +185,8 @@ def run_task(task: str, looks: dict, d0: Path, cam_tol_cm: float, axis_tol_deg: 
                         "arms": {a: {k: r.get(k) for k in ("ok", "attempt", "cam_err_cm", "axis_err_deg")}
                                  for a, r in arms.items()}, "s": round(time.perf_counter() - t0, 1)})
         print(f"[looks] {key}: {summary[-1]['arms']} steps={summary[-1]['env_steps']} ({summary[-1]['s']}s)", flush=True)
+        # written as we go: Kit's app close ends the process before main() could write it
+        Path(d0, task, "looks_L1_summary.json").write_text(json.dumps(summary, indent=1))
     run.close()
     return summary
 
@@ -199,8 +201,7 @@ def main(argv=None) -> None:
     ap.add_argument("--axis-tol-deg", type=float, default=10.0)
     a = ap.parse_args(argv)
     looks = json.loads(Path(a.looks).read_text())
-    summ = run_task(a.task, looks, Path(a.d0), a.cam_tol_cm, a.axis_tol_deg, a.ids)
-    Path(a.d0, a.task, "looks_L1_summary.json").write_text(json.dumps(summ, indent=1))
+    run_task(a.task, looks, Path(a.d0), a.cam_tol_cm, a.axis_tol_deg, a.ids)
 
 
 if __name__ == "__main__":
