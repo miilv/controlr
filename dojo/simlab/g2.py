@@ -271,13 +271,15 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--tag", default="new_process")
     ap.add_argument("--no-perturb", action="store_true")
     ap.add_argument("--no-planner", action="store_true", help="replay only: skip cuRobo setup")
+    ap.add_argument("--physics-only", action="store_true", help="no renderer (Kit without RTX; no images)")
     a = ap.parse_args(argv)
     out = Path(a.out)
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)
     run = RoboDojoRunner(SCENARIOS[a.scenario], workdir=str(paths.DATA / "simlab" / "work" / f"g2_{a.scenario}"),
-                         need_planner=not a.no_planner)
-    res: dict = {"env": env_info(), "scenario": a.scenario, "task": SCENARIOS[a.scenario]}
+                         need_planner=not a.no_planner, physics_only=a.physics_only)
+    res: dict = {"env": env_info(), "scenario": a.scenario, "task": SCENARIOS[a.scenario],
+                 "physics_only": a.physics_only}
     if a.mode == "record":
         lay, ref = find_layout(run, a.scenario, a.start, a.tries)
         (out / f"{a.scenario}_layout.json").write_text(json.dumps(lay, indent=1))
