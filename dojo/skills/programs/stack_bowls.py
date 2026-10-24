@@ -69,10 +69,13 @@ def run(sk: Skills) -> dict:
     if not jobs:
         return {"ok": False, "stage": "plan", "note": "no reachable stack site"}
     for j in jobs:
-        j.pick_kw = {"grasp_kw": grasp_kw, "lift": 0.10}
-        j.tol_tilt = 20.0
+        # a rim pinch holds the bowl's weight torque only statically: lift and carry gently
+        j.pick_kw = {"grasp_kw": grasp_kw, "lift": 0.09, "lift_rad": 0.05, "descend_rad": 0.05}
+        j.tol_tilt = 40.0
+        j.tol_xy = 0.03
         j.tol_z = 0.05
-        j.place_kw = {"release_gap": 0.0, "pre_h": 0.05}
+        j.place_kw = {"release_gap": 0.0, "pre_h": 0.04, "approach_rad": 0.06, "ease": 5, "keep_tilt": True,
+                      "descend_rad": 0.04}
     sk.log(f"[stack_bowls] geometry {geo}; jobs: {[(j.label, j.arm) for j in jobs]}")
     r = sk.run_jobs(jobs)
     if not r.ok:

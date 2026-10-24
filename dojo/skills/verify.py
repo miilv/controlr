@@ -173,10 +173,17 @@ class InProcessTwin:
             envs = self.twins[:len(batch)]
             self.broadcast(snap, envs, [s > 0 for _, s in batch], held_labels)
             n = max(len(candidates[ci]) for ci, _ in batch)
+            lim = int(self.env.step_lim)
             for t in range(n):
-                acts = [candidates[ci][min(t, len(candidates[ci]) - 1)] for ci, _ in batch]
-                acts = [{kk: np.asarray(v, np.float32) for kk, v in a.items()} for a in acts]
-                self.env.take_action_batch(acts, env_idx_list=envs)
+                # only twins still running: RoboDojo skips ended envs inside take_action_batch, which
+                # would misalign its control push
+                live = [(e, ci) for (ci, _), e in zip(batch, envs)
+                        if not self.env.end_flag[e] and int(self.env.take_action_cnt[e]) < lim]
+                if not live:
+                    break
+                acts = [{kk: np.asarray(v, np.float32) for kk, v in candidates[ci][min(t, len(candidates[ci]) - 1)].items()}
+                        for _, ci in live]
+                self.env.take_action_batch(acts, env_idx_list=[e for e, _ in live])
             self.stats["steps"] += n
             for (ci, s), e in zip(batch, envs):
                 objs = {o["label"]: (np.asarray(o["pos"], float), np.asarray(o["quat"], float))

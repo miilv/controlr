@@ -176,8 +176,8 @@ def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pit
     return out
 
 
-def rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, wall: float = 0.006, depth: float = 0.018,
-               tilts=(0.0, 25.0)) -> list[Grasp]:
+def rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, wall: float = 0.006, depth: float = 0.024,
+               tilts=(0.0, 15.0, 25.0)) -> list[Grasp]:
     """Bowl rim: pads straddle the wall at the rim, closing radially, approach from above."""
     ext = obj.asset.extents
     r_out = float(min(ext[0], ext[1])) / 2
