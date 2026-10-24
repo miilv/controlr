@@ -12,6 +12,18 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# dojo/perception: asset catalogue, camera model, inverse layout (remote machines only)
+perception = [
+  "usd-core>=24.5",
+  "trimesh>=4.4",
+  "scipy>=1.11",
+  "opencv-python-headless>=4.9",
+  "pyrender>=0.1.45",
+  "networkx>=3",
+  "shapely>=2",
+  "rtree>=1.2",
+  "yourdfpy>=0.0.56",
+]
 
 [project.scripts]
 controlr = "controlr.cli:main"
