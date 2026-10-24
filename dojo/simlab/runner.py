@@ -344,8 +344,7 @@ class RoboDojoRunner:
                         pass
                 if otype == "Articulation":
                     try:
-                        row["joint_pos"] = _np(obj.get_joint_positions()).reshape(-1).tolist()
-                        row["joint_names"] = list(obj.dof_names)
+                        row["joint_pos"] = _np(obj.get_current_joint_positions()).reshape(-1).tolist()
                     except Exception as e:  # noqa: BLE001
                         row["joint_error"] = str(e)
                 rows.append(row)
