@@ -206,7 +206,12 @@ class RuntimePolicy:
             if verifier is not None:
                 verifier.on_verified(info)
 
-        def make_skills():
+        vtot: dict = {}
+
+        def make_skills(prev=None):
+            if prev is not None:
+                for k, v in prev.vstats.items():
+                    vtot[k] = vtot.get(k, 0) + v
             return Skills(b, prov, kin=kin, reserve=getattr(prog, "RESERVE", 30), log=self.log, verifier=verifier,
                           verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks)
 
@@ -238,7 +243,7 @@ class RuntimePolicy:
                 except Divergence as e:
                     events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
                     self.report["history"] += _hist(sk)
-                    sk = make_skills()
+                    sk = make_skills(sk)
                     continue
                 except KeyError as e:                    # a label the program needs is not in the WorldState
                     res = {"ok": False, "stage": "world", "error": f"missing object {e}"}
@@ -252,7 +257,7 @@ class RuntimePolicy:
                 if res.get("ok"):
                     break
                 sk.history = []
-                sk = make_skills()
+                sk = make_skills(sk)
             if not (result or {}).get("ok"):
                 sk.finish()                              # bank whatever tier was reached
                 self.report["history"] += _hist(sk)
@@ -267,11 +272,13 @@ class RuntimePolicy:
             events.append({"kind": "budget", "note": str(e)})
         finally:
             self.report["result"] = result
-            self.report["verify"] = ({**sk.vstats, **(verifier.stats if verifier else {})} if cfg.verify == "bundle"
+            for k, v in sk.vstats.items():
+                vtot[k] = vtot.get(k, 0) + v
+            self.report["verify"] = ({**vtot, **(verifier.stats if verifier else {})} if cfg.verify == "bundle"
                                      else "off (stub: single plan, no twin)")
             self.report["provider"] = {k: v for k, v in prov.stats.items()}
             if self._pc is not None:
-                self.report["perception_calls"] = list(self._pc.calls[-200:])
+                self.report["perception_calls"] = list(getattr(self._pc, "calls", [])[-200:])
         return result
 
     # ------------------------------------------------------------------ helpers

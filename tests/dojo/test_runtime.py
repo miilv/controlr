@@ -279,3 +279,90 @@ def test_est_objects_skip_clutter():
              "quat": [1, 0, 0, 0], "clutter": True}]
     objs = objects_from_gt_rows(rows, None)
     assert [o["label"] for o in est_objects(objs)] == ["a"]
+
+
+# ------------------------------------------------------------------ bundle verifier against a fake twin service
+class FakeTwinClient:
+    """twin_service.TwinClient stand-in: rollouts on copies of a kinematic env built from the estimate."""
+
+    def __init__(self, task="stack_blocks", half=0.015):
+        self.task, self.half = task, half
+        self.snaps, self.base, self.loads, self.verifies = {}, None, [], []
+
+    def info(self):
+        return {"task": self.task}
+
+    def _env_from(self, layout, robot):
+        rows = [{"label": r["label"], "category": c, "category_idx": r["category_idx"], "pos": r["default_pos"],
+                 "quat": r["default_ori"], "half": [self.half] * 3} for c, lst in (layout.get("Rigid") or {}).items()
+                for r in lst]
+        env = KinematicEnv(rows, step_lim=10_000)
+        for a in ("left", "right"):
+            env.q[a] = np.asarray(robot[f"{a}_q"], float)
+            env.g[a] = float(robot[f"{a}_grip"])
+        return env
+
+    def load_from_estimate(self, layout, robot=None, settle_steps=50):
+        self.loads.append(layout)
+        self.base = self._env_from(layout, robot)
+        return {"fast": True, "stable": True}
+
+    def verify(self, world, candidates, perturb=None, k=1, record_traj=False, seed=0, keep=None):
+        base = self.snaps[world["snapshot_id"]] if "snapshot_id" in world else self.base
+        self.verifies.append({"from": "snapshot" if "snapshot_id" in world else "estimate",
+                              "n": [len(c["actions"]) for c in candidates], "labels": (perturb or {}).get("labels")})
+        out = []
+        for ci, c in enumerate(candidates):
+            for si in range(k):
+                e = copy.deepcopy(base)
+                for a in c["actions"]:
+                    e.step(a)
+                o = {"candidate": ci, "sample": si, "success": False, "score": 0.0, "ended": False,
+                     "reward": {"success": False, "success_flag": True, "ended": False, "steps_used": 0, "step_lim": 1000},
+                     "final_objects": {r["label"]: list(r["pos"]) + list(r["quat"]) for r in e.gt_objects()},
+                     "final_robot": {f"{a}_q": e.q[a].tolist() for a in ("left", "right")}}
+                if keep == "nominal" and si == 0:
+                    sid = max(self.snaps, default=0) + 1
+                    self.snaps[sid] = e
+                    o["snapshot_id"] = sid
+                out.append(o)
+        return out
+
+    def drop_snapshot(self, sid):
+        self.snaps.pop(int(sid), None)
+
+
+@pytest.mark.parametrize("mode", ["gt", "perception"])
+def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
+    import dojo.runtime.estimate as E
+    monkeypatch.setattr(E, "estimate_to_layout", lambda scene, objs: {"Rigid": {"block": [
+        {"label": o["label"], "category_idx": o["category_idx"], "default_pos": o["pos"], "default_ori": o["quat"]}
+        for o in objs]}})
+    env = _env()
+    tc = FakeTwinClient()
+
+    class FakePerception:
+        def estimate(self, frames, vocabulary, fold):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for o in env.objects]}}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+    pol = RuntimePolicy(RuntimeConfig(mode=mode, verify="bundle", n_cands=2, verify_k=2), assets=FakeAssets(),
+                        twin_client=tc, perception_client=FakePerception())
+    rep = run_episode(pol, FakeEpisode(env), mode)
+    assert rep["error"] is None, rep["error"]
+    assert _stacked(env)
+    v = rep["verify"]
+    assert v["segments"] >= 4 and v["calls"] == v["segments"], v
+    assert v["from_snapshot"] >= 2 and v["from_estimate"] >= 2, v          # places chain from the kept pick
+    for vv in tc.verifies:
+        if vv["from"] == "snapshot":
+            assert vv["labels"] is not None and len(vv["labels"]) == 2       # the held block is not perturbed
+    assert len(tc.snaps) <= 3                                                  # unused snapshots are dropped
+    assert rep["provider"]["adopted"] >= 4

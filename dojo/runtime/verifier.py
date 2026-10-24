@@ -25,12 +25,12 @@ import numpy as np
 from dojo.skills.kinematics import ARMS
 from dojo.skills.verify import Outcome
 
-from .estimate import estimate_to_layout
+from . import estimate as _est
 
 
 class BundleVerifier:
     def __init__(self, client, task_scene: str, provider, bridge, perturb_mm: float = 2.0, perturb_deg: float = 1.0,
-                 layout_fn=estimate_to_layout, log=None, max_prefix: int = 400):
+                 layout_fn=None, log=None, max_prefix: int = 400):
         self.tc = client
         self.scene = task_scene
         self.provider = provider
@@ -71,7 +71,7 @@ class BundleVerifier:
         if held and self.chain is not None and self.chain.get("sid") is not None and self.chain["n"] <= self.bridge.n_executed:
             return {"snapshot_id": int(self.chain["sid"])}, self.chain["n"], "snapshot"
         cp = self.provider.checkpoint
-        lay = self.layout_fn(self.scene, cp["objects"])
+        lay = (self.layout_fn or _est.estimate_to_layout)(self.scene, cp["objects"])
         return {"layout": lay, "robot": cp["robot"]}, cp["n"], "estimate"
 
     def rollout(self, candidates: list[list[dict]], k: int = 2, held_labels: tuple = (), src: int = 0) -> list[Outcome]:
