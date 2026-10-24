@@ -55,7 +55,7 @@ def failures(rows: list[dict]) -> str:
 
 
 def perception_table(rows: list[dict]) -> str:
-    errs, first, ids, n, nf = [], [], [], 0, 0
+    errs, first, ids, shapes, n, nf = [], [], [], [], 0, 0
     for r in rows:
         for lab, v in (r.get("perception") or {}).items():
             n += 1
@@ -64,13 +64,14 @@ def perception_table(rows: list[dict]) -> str:
                 continue
             errs.append(v["xy_mm"])
             ids.append(v["id_ok"])
+            shapes.append(v.get("shape_ok", True))
             if "xy_mm_first" in v:
                 first.append(v["xy_mm_first"])
     if not n:
         return ""
     e = np.asarray(errs)
     s = (f"objects {n}, not found {nf}, xy med {np.median(e):.1f} mm, p90 {np.percentile(e, 90):.1f} mm, "
-         f"> 20 mm {int((e > 20).sum())}, identity {np.mean(ids):.2f}")
+         f"> 20 mm {int((e > 20).sum())}, identity {np.mean(ids):.2f}, shape {np.mean(shapes):.2f}")
     if first:
         s += f"; before looks: xy med {np.median(first):.1f} p90 {np.percentile(first, 90):.1f} mm"
     return s

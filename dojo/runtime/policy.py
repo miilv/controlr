@@ -53,7 +53,8 @@ class RuntimeConfig:
     max_looks: int = 2
     look_min_budget: float = 0.6        # look only while steps_left >= this fraction of step_lim
     resync: bool = True
-    div_iou: float = 0.2                 # head IoU at the predicted pose (D0: true poses 0.42-0.94, 5 cm off ~0)
+    div_iou: float = 0.2                 # fallback without z-buffer: head IoU at the predicted pose
+    div_prec: float = 0.4                # predicted front-most head pixels that are foreground, below = divergence
     replan_on_divergence: bool = True
     max_attempts: int = 2
     max_replans: int = 2
@@ -181,7 +182,7 @@ class RuntimePolicy:
         events = self.report["events"]
         checker = _Checker(self.perception(), scene, self.fold) if cfg.mode == "perception" else None
         prov = RuntimeProvider(b, scene, instruction, cfg.mode, self.assets(), kin, gt_source=lambda: self.dev_gt,
-                               checker=checker if cfg.resync else None, div_iou=cfg.div_iou,
+                               checker=checker if cfg.resync else None, div_iou=cfg.div_iou, div_prec=cfg.div_prec,
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
         t = time.perf_counter()
@@ -304,13 +305,24 @@ class RuntimePolicy:
         plan = self.perception().look_plan(obs0, rec0, cfg.max_looks)
         moves = {}
         for lk in plan:
-            arm = lk["arm"]
-            T_tcp = kin.tcp_from_flange(pose7_to_T(np.asarray(lk["flange_pose"], float)))
-            mv = sk.motion.to_pose(arm, sk.ex.q[arm], T_tcp, FAST, "look", gripper=sk.ex.g[arm])
-            entry = {"arm": arm, "purpose": lk.get("purpose"), "label": lk.get("label"), "status": mv.status,
-                     "steps": mv.steps}
-            if mv.ok:
-                moves[arm] = mv
+            tries = [(lk["arm"], lk["flange_pose"], "plan")]
+            for arm in [lk["arm"]] + [a for a in ("left", "right") if a != lk["arm"]]:
+                if arm in moves:
+                    continue
+                tries += [(arm, p["flange_pose"], f"d{p['dist']}/e{p['elev']}")
+                          for p in self.perception().look_poses(lk["target"], arm)]
+            entry = {"purpose": lk.get("purpose"), "label": lk.get("label"), "status": "ik_fail", "tried": 0}
+            for arm, fp, how in tries:
+                if arm in moves:
+                    continue
+                entry["tried"] += 1
+                T_tcp = kin.tcp_from_flange(pose7_to_T(np.asarray(fp, float)))
+                mv = sk.motion.to_pose(arm, sk.ex.q[arm], T_tcp, FAST, "look", gripper=sk.ex.g[arm])
+                if mv.ok:
+                    moves[arm] = mv
+                    entry.update({"arm": arm, "status": "ok", "pose": how, "steps": mv.steps})
+                    break
+                entry["last"] = mv.status
             self.report["looks"].append(entry)
         if not moves:
             return None

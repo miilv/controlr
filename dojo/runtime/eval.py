@@ -46,7 +46,8 @@ def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -
     if rep.get("error"):
         return "error", rep["error"].splitlines()[0][:200]
     if mode == "perception" and perc:
-        bad = {k: v for k, v in perc.items() if not v.get("found") or v.get("xy_mm", 0) > GROSS_XY_MM}
+        bad = {k: v for k, v in perc.items()
+               if not v.get("found") or v.get("xy_mm", 0) > GROSS_XY_MM or not v.get("shape_ok", True)}
         if bad:
             return "perception_gross", json.dumps(bad)[:300]
     fail = next((h for h in rep.get("history", []) if not h["ok"] and h["status"] not in ("ok", "skipped")), None)
@@ -72,14 +73,15 @@ def perception_eval(rep: dict, gt_rows: list[dict], assets) -> dict | None:
     rec = recs.get("fused") or recs.get("initial")
     if not rec:
         return None
-    est = objects_from_record(rec, assets)
-    gt = {k: o for k, o in objects_from_gt_rows(gt_rows, assets).items() if not o.clutter and k != "camera_stand"}
+    est = objects_from_record(rec, assets, meshes=False)
+    gt = {k: o for k, o in objects_from_gt_rows(gt_rows, assets, meshes=False).items()
+          if not o.clutter and k != "camera_stand"}
     gt = {k: o for k, o in gt.items() if any(k == r.get("label") for t in ("Rigid", "Geometry", "Articulation")
                                              for lst in (rec.get(t) or {}).values() for r in lst)
           or o.obj_type != "Geometry"}
     out = pose_errors(est, gt)
     if recs.get("fused") and recs.get("initial"):
-        first = pose_errors(objects_from_record(recs["initial"], assets), gt)
+        first = pose_errors(objects_from_record(recs["initial"], assets, meshes=False), gt)
         for k, v in out.items():
             if k in first and first[k].get("found"):
                 v["xy_mm_first"] = first[k]["xy_mm"]

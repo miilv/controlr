@@ -11,8 +11,8 @@ from the official proprio. Objects come from one of two sources:
     - otherwise ``KinematicBelief``: an object follows the jaws that closed on it and, when they open,
       drops onto the highest support under its footprint;
   At a resync checkpoint (right after an object was released) the predicted state is rendered against
-  the new frames (perception service ``check``: silhouette IoU per object); an object whose prediction
-  is not explained by the frames is a divergence: the table-level objects are re-estimated, and
+  the new frames (perception service ``check``: per object, the fraction of the pixels where it is predicted
+  front-most that are observed foreground); an object whose prediction the frames do not show is a divergence: the table-level objects are re-estimated, and
   ``Divergence`` asks the policy to re-plan from the corrected state.
 
 The provider also keeps the last at-rest checkpoint (estimate + robot + executed-action index) so the
@@ -139,6 +139,7 @@ class KinematicBelief:
 class RuntimeProvider:
     def __init__(self, bridge, task: str, instruction: str, mode: str, assets=None, kin: X5Kin | None = None,
                  gt_source=None, checker=None, div_iou: float = 0.2, div_min_vis: float = 0.5,
+                 div_prec: float = 0.4, div_min_px: int = 40,
                  replan_on_divergence: bool = True, log=None):
         self.bridge = bridge
         self.task, self.instruction, self.mode = task, instruction, mode
@@ -146,6 +147,7 @@ class RuntimeProvider:
         self.gt_source = gt_source              # mode gt only: () -> GT rows of the latest observation
         self.checker = checker                  # mode perception: (obs, objects) -> {label: check}, (obs) -> record
         self.div_iou, self.div_min_vis = div_iou, div_min_vis
+        self.div_prec, self.div_min_px = div_prec, div_min_px
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
         self.home_q = None
@@ -210,7 +212,10 @@ class RuntimeProvider:
         bad = {}
         for lab, c in chk.items():
             head = c.get("head") or {}
-            if head and head.get("vis", 0) >= self.div_min_vis and head.get("iou", 1.0) < self.div_iou:
+            if head.get("prec") is not None:            # z-buffered: predicted front-most pixels vs foreground
+                if head.get("n_vis", 0) >= self.div_min_px and head["prec"] < self.div_prec:
+                    bad[lab] = c
+            elif head and head.get("vis", 0) >= self.div_min_vis and head.get("iou", 1.0) < self.div_iou:
                 bad[lab] = c
         ev = {"kind": "resync", "step": self.bridge.steps_used, "check": {k: c.get("head") for k, c in chk.items()},
               "diverged": sorted(bad)}

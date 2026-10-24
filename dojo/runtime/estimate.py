@@ -162,22 +162,56 @@ def robot_from_state(state: dict) -> dict:
             "right_grip": float(np.asarray(state["right_ee_joint_state"]).reshape(-1)[0])}
 
 
+def _assign(C: np.ndarray) -> list[tuple[int, int]]:
+    """Minimum-cost one-to-one assignment (exact for up to 8 per side, greedy beyond)."""
+    import itertools
+    n, m = C.shape
+    if min(n, m) == 0:
+        return []
+    if max(n, m) <= 8:
+        if n <= m:
+            best = min(itertools.permutations(range(m), n), key=lambda p: sum(C[i, j] for i, j in enumerate(p)))
+            return list(enumerate(best))
+        best = min(itertools.permutations(range(n), m), key=lambda p: sum(C[i, j] for j, i in enumerate(p)))
+        return [(i, j) for j, i in enumerate(best)]
+    out, ur, uc = [], set(), set()
+    for i, j in sorted(np.ndindex(n, m), key=lambda ij: C[ij]):
+        if i not in ur and j not in uc:
+            out.append((i, j))
+            ur.add(i)
+            uc.add(j)
+    return out
+
+
 def pose_errors(est: dict[str, ObjectState], gt: dict[str, ObjectState]) -> dict:
-    """DEV-ONLY scorer: per label xy error (mm), yaw error (deg, mod 90 for 4-fold blocks is NOT applied
-    here: raw), identity match."""
+    """DEV-ONLY scorer. Labels of same-category objects are interchangeable for the skills (roles come from
+    geometry and position), so estimates are matched to GT objects per category by position (Hungarian on
+    centre xy distance). Per GT label: matched estimate, xy / z error (mm), raw yaw error (deg; symmetric
+    objects not folded), identity (same asset) of the matched pair."""
     out = {}
-    for lab, g in gt.items():
-        if g.clutter or g.obj_type == "Geometry" and lab == "camera_stand":
-            continue
-        e = est.get(lab)
-        if e is None:
-            out[lab] = {"found": False}
-            continue
-        dxy = float(np.linalg.norm(e.center_w[:2] - g.center_w[:2])) * 1000
-        dz = float(e.center_w[2] - g.center_w[2]) * 1000
-        dyaw = float(np.degrees(abs((e.yaw() - g.yaw() + np.pi) % (2 * np.pi) - np.pi)))
-        out[lab] = {"found": True, "xy_mm": round(dxy, 1), "z_mm": round(dz, 1), "yaw_deg": round(dyaw, 1),
-                    "id_ok": (e.category, e.idx) == (g.category, g.idx), "confidence": round(e.confidence, 3)}
+    gts = {k: g for k, g in gt.items() if not g.clutter and k != "camera_stand"}
+    cats = sorted({g.category for g in gts.values()} | {e.category for e in est.values()})
+    for cat in cats:
+        gl = [k for k, g in gts.items() if g.category == cat]
+        el = [k for k, e in est.items() if e.category == cat]
+        pairs = {}
+        if gl and el:
+            C = np.array([[float(np.linalg.norm(est[e].center_w[:2] - gts[g].center_w[:2])) for e in el] for g in gl])
+            for r, c in _assign(C):
+                pairs[gl[r]] = el[c]
+        for lab in gl:
+            g = gts[lab]
+            if lab not in pairs:
+                out[lab] = {"found": False}
+                continue
+            e = est[pairs[lab]]
+            dxy = float(np.linalg.norm(e.center_w[:2] - g.center_w[:2])) * 1000
+            dz = float(e.center_w[2] - g.center_w[2]) * 1000
+            dyaw = float(np.degrees(abs((e.yaw() - g.yaw() + np.pi) % (2 * np.pi) - np.pi)))
+            out[lab] = {"found": True, "est_label": pairs[lab], "xy_mm": round(dxy, 1), "z_mm": round(dz, 1),
+                        "yaw_deg": round(dyaw, 1), "id_ok": (e.category, e.idx) == (g.category, g.idx),
+                        "shape_ok": bool(np.abs(np.sort(e.asset.extents) - np.sort(g.asset.extents)).max() < 0.01),
+                        "confidence": round(e.confidence, 3)}
     return out
 
 

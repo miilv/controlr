@@ -9,6 +9,7 @@ Ops (request dicts):
     {"op": "estimate", "frames": [frame, ...], "vocabulary": str, "fold": int}   -> {"record": json}
         one frame = inverse layout; several = ``look.fuse`` (first frame + later views, objects static)
     {"op": "look_plan", "frame": frame, "record": dict, "max_looks": 2}            -> {"plan": [...]}
+    {"op": "look_poses", "target": xyz, "arm": str, "variants": [(dist, elev)]}    -> {"poses": [...]}
     {"op": "check", "frame": frame, "objects": [{label, key, pos, quat}], "fold"}  -> {"check": {label: ...}}
         silhouette IoU of each object at the GIVEN pose with the observed foreground (the other objects'
         silhouettes removed), per view; "head" = cam_head (iou, vis, n_px)
@@ -89,66 +90,29 @@ class PerceptionClient:
         return json.loads(self._call({"op": "look_plan", "frame": encode_frame(frame),
                                       "record": json.dumps(record, default=_default), "max_looks": max_looks})["plan"])
 
-    def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
-        return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
-                                      "fold": int(fold)})["check"])
+    def look_poses(self, target, arm: str, variants=None) -> list[dict]:
+        """Alternative wrist-camera poses looking at ``target`` from ``arm``'s side (distance, elevation)."""
+        return json.loads(self._call({"op": "look_poses", "target": [float(v) for v in target], "arm": arm,
+                                      "variants": variants})["poses"])
 
-    def close(self, stop_service: bool = False) -> None:
-        try:
-            if stop_service:
-                self._call({"op": "close"})
-            self.conn.close()
-        except Exception:  # noqa: BLE001
-            pass
-
-
-# ----------------------------------------------------------------------------- service side
-class _Perception:
-    def __init__(self):
-        self._bgs: dict = {}
-        self._cal = None
-        cal = os.environ.get("DOJO_COLOR_CALIB")
-        if cal and Path(cal).exists():
-            self._cal = json.loads(Path(cal).read_text())
-
-    def bgs(self, fold: int) -> dict:
-        if fold not in self._bgs:
-            import cv2
-
-            from dojo.perception.segment import load_backgrounds
-            d = Path(os.environ["DOJO_BG_FOLDS"]) / f"fold{int(fold)}"
-            out = load_backgrounds(d)
-            m = d / "cam_head_clean_unseen.png"
-            if m.exists():
-                out["cam_head_clean_unseen"] = (cv2.imread(str(m), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
-            if "cam_head" not in out:
-                raise FileNotFoundError(f"no backgrounds in {d}")
-            self._bgs[fold] = out
-        return self._bgs[fold]
-
-    def cfg(self, fold: int):
-        from dojo.perception.inverse_layout import EstimatorConfig
-        kw = {}
-        if self._cal and f"fold{int(fold)}" in self._cal:
-            kw["color_M"] = self._cal[f"fold{int(fold)}"]
-        return EstimatorConfig(use_wrists=True, **kw)
-
-    def estimate(self, frames: list[dict], vocabulary: str, fold: int) -> dict:
-        from dojo.perception.inverse_layout import estimate
-        from dojo.perception.look import fuse
-        fr = [decode_frame(f) for f in frames]
-        if len(fr) == 1:
-            return estimate(fr[0]["images"], fr[0]["state"], vocabulary, fr[0]["instruction"], bgs=self.bgs(fold),
-                            cfg=self.cfg(fold))
-        return fuse(fr, vocabulary, bgs=self.bgs(fold), cfg=self.cfg(fold))
-
-    def look_plan(self, frame: dict, record: dict, max_looks: int) -> list:
-        from dojo.perception.look import look_plan
-        return look_plan(decode_frame(frame), record, max_looks=max_looks)
+    def look_poses(self, target, arm: str, variants=None) -> list[dict]:
+        from dojo.perception.cameras import T_to_pose
+        from dojo.perception.look import default_look, flange_for_camera
+        variants = variants or [(0.14, 55), (0.18, 55), (0.18, 70), (0.22, 65), (0.14, 75), (0.26, 75)]
+        out = []
+        for dist, elev in variants:
+            T = default_look(np.asarray(target, float), arm, dist=float(dist), elev_deg=float(elev))
+            out.append({"arm": arm, "dist": dist, "elev": elev, "flange_pose": np.round(flange_for_camera(T), 5).tolist(),
+                        "T_world_cam_cv": np.round(T, 5).tolist()})
+        return out
 
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
+        """Per object and view: ``prec`` = fraction of the pixels where the object is predicted FRONT-MOST
+        (z-buffer over all given objects; robot / unknown pixels excluded) that are observed foreground,
+        ``n_vis`` = those pixels; plus the plain silhouette IoU (others removed) as ``iou``."""
         from dojo.perception.cameras import cameras_from_state, pose_to_T
         from dojo.perception.inverse_layout import shape_models, view_iou
+        from dojo.perception.render import gl
         from dojo.perception.segment import segment_views
         f = decode_frame(frame)
         cfg = self.cfg(fold)
@@ -160,24 +124,41 @@ class _Perception:
             except Exception:  # noqa: BLE001 (asset not in the catalogue)
                 sms.append(None)
             Ts.append(pose_to_T(np.asarray(o["pos"], float), np.asarray(o["quat"], float)))
-        sil = {name: [None if sm is None else sm.sil(v.cam, T) for sm, T in zip(sms, Ts)] for name, v in views.items()}
-        out = {}
-        for i, o in enumerate(objects):
-            if sms[i] is None:
-                out[o["label"]] = {"error": "no catalogue asset"}
-                continue
-            per = {}
-            for name, v in views.items():
+        g = gl()
+        out = {o["label"]: {"per_view": {}} for o in objects}
+        for name, v in views.items():
+            sil = [None if sm is None else sm.sil(v.cam, T) for sm, T in zip(sms, Ts)]
+            depth = None
+            if g is not None:
+                depth = [None if sm is None else g.render(v.cam, [(sm.key, sm.asset.Vg, sm.asset.Fg, T)], depth=True)
+                         for sm, T in zip(sms, Ts)]
+                stack = np.stack([np.where(d > 0, d, np.inf) if d is not None else np.full(v.fg.shape, np.inf)
+                                  for d in depth])
+                front = np.argmin(stack, axis=0)
+                any_obj = np.isfinite(stack).any(axis=0)
+            for i, o in enumerate(objects):
+                if sms[i] is None:
+                    out[o["label"]]["error"] = "no catalogue asset"
+                    continue
+                rest = [s for j, s in enumerate(sil) if j != i and s is not None]
                 others = None
-                rest = [s for j, s in enumerate(sil[name]) if j != i and s is not None]
                 if rest:
                     others = np.zeros_like(rest[0])
                     for s in rest:
                         others |= s
                 r = view_iou(sms[i], Ts[i], v, others)
+                e = {}
                 if r is not None:
-                    per[name] = {"iou": round(float(r[0]), 4), "vis": round(float(r[1]), 4), "n_px": int(r[2])}
-            out[o["label"]] = {"per_view": per, "head": per.get("cam_head")}
+                    e.update({"iou": round(float(r[0]), 4), "vis": round(float(r[1]), 4), "n_px": int(r[2])})
+                if depth is not None:
+                    vis_i = (any_obj & (front == i)).astype(np.uint8) & v.known
+                    n = int(vis_i.sum())
+                    e["n_vis"] = n
+                    e["prec"] = round(float((vis_i & v.fg).sum() / n), 4) if n else None
+                if e:
+                    out[o["label"]]["per_view"][name] = e
+        for lab, d in out.items():
+            d["head"] = d["per_view"].get("cam_head")
         return out
 
 
@@ -208,6 +189,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "look_plan":
                         plan = p.look_plan(req["frame"], json.loads(req["record"]), int(req.get("max_looks", 2)))
                         conn.send({"ok": True, "plan": json.dumps(plan, default=_default)})
+                    elif op == "look_poses":
+                        poses = p.look_poses(req["target"], req["arm"], req.get("variants"))
+                        conn.send({"ok": True, "poses": json.dumps(poses, default=_default)})
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
                         conn.send({"ok": True, "check": json.dumps(chk, default=_default)})

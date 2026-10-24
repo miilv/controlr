@@ -369,3 +369,16 @@ def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
             assert vv["labels"] is not None and len(vv["labels"]) == 2       # the held block is not perturbed
     assert len(tc.snaps) <= 3                                                  # unused snapshots are dropped
     assert rep["provider"]["adopted"] >= 4
+
+
+def test_pose_errors_match_interchangeable_labels():
+    from dojo.runtime.estimate import pose_errors
+    gt = objects_from_gt_rows([{"label": f"block_{i}", "category": "block", "category_idx": i, "pos": p, "quat": [1, 0, 0, 0]}
+                               for i, p in enumerate([(0.1, -0.1, 0.78), (0.3, -0.2, 0.78)])], None)
+    est = objects_from_gt_rows([{"label": "block_0", "category": "block", "category_idx": 1, "pos": (0.301, -0.2, 0.78),
+                                 "quat": [1, 0, 0, 0]},
+                                {"label": "block_1", "category": "block", "category_idx": 0, "pos": (0.1, -0.102, 0.78),
+                                 "quat": [1, 0, 0, 0]}], None)
+    e = pose_errors(est, gt)
+    assert e["block_0"]["est_label"] == "block_1" and e["block_0"]["xy_mm"] == 2.0 and e["block_0"]["id_ok"]
+    assert e["block_1"]["xy_mm"] == 1.0 and e["block_1"]["shape_ok"]
