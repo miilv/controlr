@@ -78,3 +78,26 @@ report + executed actions gz). Tables: `python -m dojo.runtime.report <run dirs>
 stack_blocks used skills b3e8a10 (per-task program module, before the one-system planner); build_tower used
 the planner + library (`planner.plan(instruction, world)` → `library.build_tower(pieces)`). Scope peak 10.1 GB,
 2.3 cores average, 157 s for the job including boot.
+
+### 3.2 Mode B (state = perception), verify off: first run and what it exposed
+
+`B_stack_off_1` (stack_blocks × 10): **6/10, score 64.5**, steps median 161 / max 210 of 550, wall 20 s / episode
+median (perception + checks 12 s of it), 0 looks taken. Scope peak 10.0 GB with the perception service.
+Failures: 3 marked perception_gross, 1 grasp_slip (100009, same as mode A). The run exposed three defects
+in the integration layer, all fixed for the rerun:
+
+- **False divergences on correct stacks.** The resync check scored each object by silhouette IoU with the
+  other objects' full silhouettes removed; inside a 3-stack the middle block lost most of its pixels to its
+  neighbours (head IoU 0.015 on a stack that was in fact correct: the episode succeeded). Offline replay of
+  the executed actions through the belief reproduced the true final stack, so the belief was right and the
+  check was wrong. Now: the predicted scene is z-buffered (per-object GL depth) and each object is scored
+  on the pixels where it is predicted front-most (robot / unknown pixels excluded): precision = fraction of
+  those pixels that are foreground; divergence if < 0.4 over ≥ 40 px.
+- **Looks never happened.** `look_plan`'s camera pose for an occluded block was IK-infeasible and there was
+  no fallback. Now each look tries the planned pose, then 6 (distance, elevation) variants from the same
+  arm, then from the other arm (`look_poses` op), collision-checked.
+- **The perception scorer compared by label.** stack_blocks labels are interchangeable (the planner assigns
+  roles from geometry and position), so a label permutation read as a 700 mm error ("perception_gross" in
+  3 failures is therefore not trustworthy for this run). Now estimates are matched to GT per category by
+  position (assignment on centre xy), with identity (same asset) and shape (same extents ±10 mm) reported
+  for the matched pair; gross = not found, > 20 mm, or wrong shape.
