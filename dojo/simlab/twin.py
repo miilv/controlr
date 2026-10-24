@@ -32,6 +32,36 @@ from dojo.simlab.runner import RoboDojoRunner, _np, jsonable
 ARMS = ("left", "right")
 
 
+HELD_WINDOW = 10          # env steps (0.4 s) used to decide which object moves with which TCP
+
+
+def held_objects(hist, grip_cmd: dict, blocked: dict, near_m: float = 0.06, rigid_mm: float = 5.0) -> dict:
+    """Per arm, the label of the object held at the end of a rollout, else None. Held = the gripper is
+    commanded closed (< 0.5) or blocked, the object is within ``near_m`` of the TCP, and over the last
+    window it moved rigidly with the TCP (displacement equal within ``rigid_mm``). When the TCP did not
+    move in the window, the closest object within ``near_m`` counts."""
+    out = {}
+    if not hist:
+        return {arm: None for arm in grip_cmd}
+    (tcp0, obj0), (tcp1, obj1) = hist[0], hist[-1]
+    for arm in grip_cmd:
+        if not (grip_cmd[arm] < 0.5 or blocked.get(arm)):
+            out[arm] = None
+            continue
+        best, best_d = None, near_m
+        d_tcp = tcp1[arm] - tcp0[arm]
+        for lab, p1 in obj1.items():
+            dist = float(np.linalg.norm(p1 - tcp1[arm]))
+            if dist > best_d:
+                continue
+            d_obj = p1 - obj0.get(lab, p1)
+            if np.linalg.norm(d_tcp) > 0.005 and np.linalg.norm(d_obj - d_tcp) * 1000 > rigid_mm:
+                continue
+            best, best_d = lab, dist
+        out[arm] = best
+    return out
+
+
 class Twin:
     def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, workdir: str | None = None,
                  physics_only: bool = False, need_planner: bool = True):
@@ -156,6 +186,236 @@ class Twin:
         env.sim.scene.write_data_to_sim()
         for _ in range(settle_steps):
             env.sim_step(render=False)
+
+    # ------------------------------------------------------------------ world states from estimates
+    def _object_key(self, rec: dict, otype: str, cat: str) -> tuple:
+        return (otype, cat, int(rec.get("category_idx", -1)), rec.get("label"), rec.get("type") == "cluttered")
+
+    def _layout_signature(self, layout: dict) -> list:
+        from dojo.simlab.layout import iter_objects
+        return sorted(self._object_key(inst, t, cat) for t, cat, inst in iter_objects(layout))
+
+    def set_robot(self, env_idx: int, robot: dict) -> None:
+        """Put both arms at ``{left_q, right_q, left_grip, right_grip}`` (joint state, drive targets and
+        RoboDojo's control-manager targets), velocities zero."""
+        import torch
+        rm = self.env.robot_manager
+        for robot_obj, key in zip(rm.robot_list, rm.robot_key):
+            if robot_obj.type != "target":
+                continue
+            arm = robot_obj.arm_name.split("_")[0]
+            q = key.data.joint_pos[env_idx].clone()
+            if robot.get(f"{arm}_q") is not None:
+                q[list(robot_obj.arm_joint_indices)] = torch.tensor(robot[f"{arm}_q"], dtype=q.dtype)
+            g = robot.get(f"{arm}_grip")
+            if g is not None and robot_obj.ee_type == "gripper":
+                sc, mv = robot_obj.gripper_scale, robot_obj.gripper_move
+                val = g * (sc[1] - sc[0]) + sc[0] if mv["sign"] == 1 else (1 - g) * (sc[1] - sc[0]) + sc[0]
+                gi = list(robot_obj.gripper_joint_indices)
+                q[gi[0]] = float(val)
+                if len(gi) > 1:
+                    q[gi[1]] = float(val * mv["mimic"][1] + mv["mimic"][2])
+            eid = torch.tensor([env_idx], dtype=torch.long, device=q.device)
+            key.write_joint_state_to_sim(q.unsqueeze(0), torch.zeros_like(q).unsqueeze(0), env_ids=eid)
+            key.set_joint_position_target(q.unsqueeze(0), env_ids=eid)
+            prev = rm.control_manager.prev_control[env_idx]
+            ak = rm.process_name(robot_obj.arm_name)
+            if ak in prev:
+                prev[ak]["position"] = q[list(robot_obj.arm_joint_indices)].tolist()
+            gk = rm.process_name(robot_obj.gripper_name)
+            if gk in prev and g is not None:
+                prev[gk]["position"] = q[list(robot_obj.gripper_joint_indices)].tolist()
+        self.env.sim.scene.write_data_to_sim()
+
+    def set_object_poses(self, env_idx: int, layout: dict) -> int:
+        """Write every object's record pose (``default_pos/ori``) onto the live object of the same
+        (type, category, index, label) in env ``env_idx``; velocities zero. Returns objects written."""
+        import torch
+
+        from dojo.simlab.layout import iter_objects
+        lm = self.env.scene_manager.layout_manager
+        live = {}
+        for otype in ("Rigid", "Dynamic", "Articulation"):
+            for rec in lm.object_records_by_type[otype].layout_records_by_env[env_idx]:
+                cat = lm.decode_inst_name(rec["inst_name"])[0]
+                live.setdefault(self._object_key(rec, otype, cat), []).append(rec["inst_name"])
+        n = 0
+        for t, cat, inst in iter_objects(layout):
+            if t not in ("Rigid", "Dynamic", "Articulation"):
+                continue
+            names = live.get(self._object_key(inst, t, cat))
+            if not names:
+                continue
+            obj = lm.get_scene_object(env_idx, names.pop(0))
+            obj.set_local_pose(translation=np.asarray(inst["default_pos"], float),
+                               orientation=np.asarray(inst["default_ori"], float))
+            try:
+                obj.set_linear_velocity(torch.zeros(3))
+                obj.set_angular_velocity(torch.zeros(3))
+            except Exception:  # noqa: BLE001 (articulations)
+                pass
+            n += 1
+        self.env.sim.scene.write_data_to_sim()
+        return n
+
+    def _rearm_reward(self) -> None:
+        """RoboDojo's post-reset bookkeeping (latches, initial poses for is_lift/is_moved, counters)."""
+        env = self.env
+        for i in range(self.num_envs):
+            env.success[i], env.end_flag[i], env.take_action_cnt[i] = True, False, 0
+        env.reward_manager.reset()
+        env.robot_manager.set_origin_endpose()
+        env.reward_manager.init_state()
+        env.run_reward()
+        if hasattr(env, "get_score"):
+            env.get_score()
+
+    def load_from_estimate(self, layout: dict, robot: dict | None = None, settle_steps: int = 50) -> dict:
+        """World state from an estimate (inverse layout + proprio) in every env. If the object set equals
+        the loaded one, the open sim is reused: restore the post-reset snapshot, write the estimated poses,
+        place the robot, settle ``settle_steps`` physics steps (4 ms each, no env steps counted) and re-arm
+        RoboDojo's reward state. Otherwise a full RoboDojo reset (``load``)."""
+        t0 = time.perf_counter()
+        sig = self._layout_signature(layout)
+        fast = getattr(self, "_sig", None) == sig and getattr(self, "_home", None) is not None
+        if not fast:
+            info = self.load([layout] * self.num_envs)
+            self._sig, self._home = sig, self.snapshot()
+        else:
+            self.restore(self._home)
+            info = {"stable": True}
+        for i in range(self.num_envs):
+            if fast:
+                self.set_object_poses(i, layout)
+            if robot:
+                self.set_robot(i, robot)
+        if fast or robot:
+            for _ in range(settle_steps):
+                self.env.sim_step(render=False)
+            self._rearm_reward()
+        return {"fast": fast, "stable": bool(info.get("stable", True)), "s": time.perf_counter() - t0}
+
+    # ------------------------------------------------------------------ batched verification
+    def _task_labels(self, env_idx: int = 0) -> dict:
+        return {o["label"]: o for o in self.run.objects_gt(env_idx) if o["label"] and not o["clutter"]
+                and o["type"] in ("Rigid", "Dynamic", "Articulation")}
+
+    def _perturb_env(self, env_idx: int, perturb: dict, rng: np.random.Generator) -> None:
+        import torch
+
+        from dojo.simlab.layout import quat_mul, quat_z
+        labels = perturb.get("labels")
+        lm = self.env.scene_manager.layout_manager
+        for lab, o in self._task_labels(env_idx).items():
+            if labels and lab not in labels:
+                continue
+            obj = lm.get_scene_object(env_idx, o["inst_name"])
+            pos, q = obj.get_local_pose()
+            pos, q = _np(pos).copy(), _np(q).copy()
+            pos[:2] += rng.normal(0.0, perturb.get("pos_mm", 0.0) / 1000.0, 2)
+            q = quat_mul(quat_z(rng.normal(0.0, perturb.get("yaw_deg", 0.0))), q)
+            obj.set_local_pose(translation=pos, orientation=q / np.linalg.norm(q))
+            try:
+                obj.set_linear_velocity(torch.zeros(3))
+                obj.set_angular_velocity(torch.zeros(3))
+            except Exception:  # noqa: BLE001
+                pass
+        self.env.sim.scene.write_data_to_sim()
+
+    def verify(self, world: dict, candidates: list, perturb: dict | None = None, k: int = 1,
+               record_traj: bool = False, seed: int = 0) -> list[dict]:
+        """Roll every candidate segment (x ``k`` perturbed samples; sample 0 nominal) from ``world`` in
+        batches of ``num_envs`` and score each with the task's own checker. See the module docstring of
+        the segment format; ``world`` = {"layout", "robot"?} or {"snapshot"}."""
+        from dojo.simlab.motion import Trajectory
+        if "snapshot" in world:
+            base = world["snapshot"]
+        else:
+            self.load_from_estimate(world["layout"], world.get("robot"))
+            base = self.snapshot()
+        acts = []
+        for c in candidates:
+            a = c.get("actions") if isinstance(c, dict) else c
+            acts.append(Trajectory.from_json({"actions": a}).actions if a and isinstance(a[0]["left_arm_joint_state"], list)
+                        else a)
+        jobs = [(ci, si) for ci in range(len(candidates)) for si in range(max(1, k))]
+        out: list[dict] = []
+        rng = np.random.default_rng(seed)
+        for b0 in range(0, len(jobs), self.num_envs):
+            batch = jobs[b0:b0 + self.num_envs]
+            self.restore(base)
+            if perturb:
+                for e, (_, si) in enumerate(batch):
+                    if si > 0:
+                        self._perturb_env(e, perturb, rng)
+            from collections import deque
+
+            from dojo.simlab.motion import tcp_of
+            start = [self._task_labels(e) for e in range(self.num_envs)]
+            hist = [deque(maxlen=HELD_WINDOW) for _ in batch]   # (tcp per arm, object positions) per step
+            holder = [{} for _ in batch]             # label -> arm that lifted it with closed jaws
+            slipped = [set() for _ in batch]
+            trajs = [[] for _ in batch]
+            n_max = max(len(acts[ci]) for ci, _ in batch)
+            for t in range(n_max):
+                step_acts = []
+                for e in range(self.num_envs):
+                    if e < len(batch):
+                        a = acts[batch[e][0]]
+                        step_acts.append(a[min(t, len(a) - 1)])
+                    else:
+                        step_acts.append(acts[batch[0][0]][min(t, len(acts[batch[0][0]]) - 1)])
+                self.step(step_acts)
+                for e in range(len(batch)):
+                    cur = self._task_labels(e)
+                    st = self.run.obs_state(e)
+                    hist[e].append(({arm: tcp_of(st[f"{arm}_ee_pose"]) for arm in ARMS},
+                                    {lab: np.asarray(o["pos"], float) for lab, o in cur.items()}))
+                    tcp, _ = hist[e][-1]
+                    for arm in ARMS:
+                        arm_closed = float(st[f"{arm}_ee_joint_state"][0]) < 0.5
+                        for lab, o in cur.items():
+                            z0 = start[e][lab]["pos"][2] if lab in start[e] else o["pos"][2]
+                            near = float(np.linalg.norm(np.asarray(o["pos"]) - tcp[arm])) < 0.06
+                            if arm_closed and near and o["pos"][2] - z0 > 0.01:
+                                holder[e][lab] = arm
+                            elif holder[e].get(lab) == arm:
+                                if not arm_closed:
+                                    holder[e].pop(lab)          # released on purpose
+                                elif float(np.linalg.norm(np.asarray(o["pos"]) - tcp[arm])) > 0.04:
+                                    slipped[e].add(lab)         # left the closed jaws
+                                    holder[e].pop(lab)
+                    if record_traj:
+                        trajs[e].append({lab: o["pos"] + o["quat"] for lab, o in cur.items()})
+            rob = None
+            for e, (ci, si) in enumerate(batch):
+                cur = self._task_labels(e)
+                rob = self.run.robot_gt(e)
+                z0 = {lab: o["pos"][2] for lab, o in start[e].items()}
+                lifted = [lab for lab, o in cur.items() if o["pos"][2] - z0.get(lab, o["pos"][2]) > 0.01]
+                dropped = sorted(slipped[e])
+                rew = self.reward(e)
+                res = {"candidate": ci, "sample": si, "steps": len(acts[ci]), "ended": rew["ended"],
+                       "success": rew["success"], "score": self.score(e), "reward": rew,
+                       "final_objects": {lab: o["pos"] + o["quat"] for lab, o in cur.items()},
+                       "moved_mm": {lab: float(np.linalg.norm(np.subtract(o["pos"], start[e][lab]["pos"]))) * 1000
+                                    for lab, o in cur.items() if lab in start[e]},
+                       "lifted": lifted, "dropped": dropped,      # dropped = left the closed jaws of the arm that lifted it
+                       "fell": [lab for lab, o in cur.items() if o["pos"][2] < 0.7],
+                       "gripper_blocked": {arm: bool(r.get("gripper_open_measured", 1.0) >
+                                                     r.get("gripper_open_cmd", 1.0) + 0.05)
+                                           for arm, r in rob.items() if "gripper_open_cmd" in r}}
+                st = self.run.obs_state(e)
+                res["final_robot"] = {f"{arm}_q": np.asarray(st[f"{arm}_arm_joint_state"], float).tolist() for arm in ARMS}
+                res["final_robot"].update({f"{arm}_grip_cmd": float(st[f"{arm}_ee_joint_state"][0]) for arm in ARMS})
+                res["held"] = held_objects(hist[e], {arm: float(st[f"{arm}_ee_joint_state"][0]) for arm in ARMS},
+                                           res["gripper_blocked"])
+                if isinstance(candidates[ci], dict):
+                    res.update({k2: v for k2, v in candidates[ci].items() if k2 not in ("actions",)})
+                if record_traj:
+                    res["traj"] = trajs[e]
+                out.append(res)
+        return out
 
     def close(self) -> None:
         self.run.close()
