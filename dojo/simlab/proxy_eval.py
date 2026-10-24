@@ -151,6 +151,8 @@ class VerifyReplayPolicy(ReplayPolicy):
         super().reset(info)
         from dojo.simlab.twin_service import TwinClient
         self.tc = self.tc or TwinClient()
+        if "layout_file" not in info:
+            raise RuntimeError("VerifyReplayPolicy is a dev demo: run with --dev-layout-info")
         lay = json.loads(Path(info["layout_file"]).read_text())
         t0 = time.perf_counter()
         r = self.tc.load_from_estimate(lay)
@@ -175,7 +177,7 @@ def load_policy(spec: str):
     return getattr(importlib.import_module(mod), cls)()
 
 
-def run_eval(task: str, layout_files: list[str], policy, out: Path) -> dict:
+def run_eval(task: str, layout_files: list[str], policy, out: Path, dev_layout_info: bool = False) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     rc = RenderClient()
     ep = ProxyEpisode(task, rc, out)
@@ -187,7 +189,8 @@ def run_eval(task: str, layout_files: list[str], policy, out: Path) -> dict:
         if not info["stable"]:
             details[i] = {"layout": lf, "unstable": True}
             continue
-        info["layout_file"] = str(lf)          # dev only (our layouts); absent at eval time
+        if dev_layout_info:                    # dev only (our layouts with GT); never at eval time
+            info["layout_file"] = str(lf)
         policy.reset(info)
         t0 = time.perf_counter()
         ended, obs_s = False, []
@@ -230,8 +233,10 @@ def main(argv=None) -> None:
     ap.add_argument("--layouts", nargs="+", required=True)
     ap.add_argument("--policy", required=True, help="replay:<traj.json>, verifyreplay:<traj.json>[:k] or module:Class")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--dev-layout-info", action="store_true",
+                    help="DEV ONLY: pass info['layout_file'] (the true layout record) to the policy")
     a = ap.parse_args(argv)
-    r = run_eval(a.task, a.layouts, load_policy(a.policy), Path(a.out))
+    r = run_eval(a.task, a.layouts, load_policy(a.policy), Path(a.out), dev_layout_info=a.dev_layout_info)
     print(f"[proxy_eval] {a.task}: success_rate {r['success_rate']:.2f} score {r['score']:.1f} over {r['eval_time']} "
           f"episodes; render median {r['render_s_median']:.2f}s ({PROXY_TAG})", flush=True)
 
