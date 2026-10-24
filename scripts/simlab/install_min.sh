@@ -45,6 +45,8 @@ step_assets() {
       https://huggingface.co/datasets/RoboDojo-Benchmark/RoboDojo hf_git
   cd hf_git
   git sparse-checkout init --no-cone
+  # $RD_HOME/sparse_extra.txt: one /Assets/... path per line (e.g. generated per task by the sizing step)
+  if [[ -f "$RD_HOME/sparse_extra.txt" ]]; then mapfile -t EXTRA < <(grep -v '^\s*$' "$RD_HOME/sparse_extra.txt"); SPARSE+=("${EXTRA[@]}"); fi
   printf '%s\n' "${SPARSE[@]}" > .git/info/sparse-checkout
   GIT_LFS_SKIP_SMUDGE=1 git checkout -q main
   local inc; inc="$(printf '%s**,' "${SPARSE[@]#/}")"; inc="${inc//.hdr\*\*/.hdr}"; inc="${inc//.yml\*\*/.yml}"
