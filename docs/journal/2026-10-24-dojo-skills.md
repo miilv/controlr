@@ -116,7 +116,14 @@ data `compute3:~/dojo-data/skills/g3/<run>/`):
 7. **Loose grasps.** A cube turned 9 deg in the pads while closing (asset friction 0.3). It passed the
    pick check with 22 mm in-hand drift and slid out mid-carry. Fix: more than 8 mm of drift after the
    lift means put it back down and re-pick (good grasps show under 1 mm).
-8. **Planning.**
+8. **One-sided stack sites.** With an existing base far to one side, only one arm reaches the stack,
+   so it fetched blocks 0.59 m away with 40 deg tilted grasps that stalled mid-lift (the block was held
+   with 1 mm drift but rose 22 of 80 mm). Fix: a shared middle site always competes on cost, and no
+   stack plan may need a pick beyond 0.52 m.
+9. **Bowls, after the wall-normal pinch.** The grasp now holds (2.9-5.2 mm in-hand drift, against
+   50-118 mm with the lip pinch). The failures became planning ones: the pre-place pose 4 cm above
+   a nested target still overlapped the base bowl. Fix: the pre-place height clears the support's top.
+10. **Planning.**
    - Start configurations already inside the collision margin blocked every move. Fix: objects
      touching at the start are ignored for the first part of the move.
    - The finger model was too fat. Fix: it follows the mesh taper.
