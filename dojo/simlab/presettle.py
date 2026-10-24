@@ -6,8 +6,8 @@ For every stored dev layout ``layouts/<task>/<id>.json`` (kept unchanged) this w
 settle (+ ``extra_steps`` physics steps), and ``_simlab.settled`` with the provenance. Layouts are dropped
 (no file; status in ``settled_index.json``) when
 
-* pass 1: a task object is still moving after the extra steps (|v| > ``v_tol`` or |w| > ``w_tol``) or fell
-  below the table, or
+* pass 1: a task object still moves after the extra steps (> 1 mm or 1 deg over the last ``rest_window``
+  physics steps = 0.4 s; velocity readouts are noise on resting contacts) or fell below the table, or
 * pass 2: the settled record, loaded with a fresh RoboDojo reset, fails RoboDojo's stability check or moves
   more than ``drift_tol_mm``.
 
@@ -68,15 +68,21 @@ def write_back(layout: dict, live: list[dict]) -> tuple[dict, int]:
     return out, n
 
 
-def at_rest(live: list[dict], table: bool, v_tol: float, w_tol: float) -> tuple[bool, list[str]]:
+def at_rest(before: list[dict], after: list[dict], table: bool, tol_mm: float = 1.0,
+            tol_deg: float = 1.0) -> tuple[bool, list[str]]:
+    """Task objects moved < ``tol_mm`` / ``tol_deg`` between two samples (velocity readouts are useless here:
+    PhysX reports mm/s and 0.1 rad/s on blocks resting still), and none fell below the table."""
+    prev = {o["inst_name"]: o for o in before}
     bad = []
-    for o in live:
+    for o in after:
         if o["type"] not in ("Rigid", "Dynamic") or o["clutter"] or o["pos"] is None:
             continue
-        v = float(np.linalg.norm(o.get("lin_vel") or [0, 0, 0]))
-        w = float(np.linalg.norm(o.get("ang_vel") or [0, 0, 0]))
-        if v > v_tol or w > w_tol:
-            bad.append(f"{o['label']} moving v={v * 1000:.1f}mm/s w={w:.2f}rad/s")
+        p = prev.get(o["inst_name"])
+        if p is not None and p["pos"] is not None:
+            mm = float(np.linalg.norm(np.subtract(o["pos"], p["pos"]))) * 1000
+            deg = quat_angle_deg(o["quat"], p["quat"])
+            if mm > tol_mm or deg > tol_deg:
+                bad.append(f"{o['label']} still moving ({mm:.2f} mm, {deg:.2f} deg in the rest window)")
         if table and o["pos"][2] < TABLE_TOP_Z - 0.05:
             bad.append(f"{o['label']} fell (z={o['pos'][2]:.3f})")
     return not bad, bad
@@ -92,8 +98,8 @@ def drift(live: list[dict]) -> tuple[float, float]:
     return mm, deg
 
 
-def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250, v_tol: float = 0.005,
-                   w_tol: float = 0.05, drift_tol_mm: float = 5.0, ids: list[int] | None = None) -> dict:
+def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250, rest_window: int = 100,
+                   drift_tol_mm: float = 5.0, ids: list[int] | None = None) -> dict:
     from dojo.simlab.runner import RoboDojoRunner, jsonable
     files = [p for p in layout_files(task) if not ids or int(p.stem) in ids]
     run = RoboDojoRunner(task, physics_only=physics_only, need_planner=False,
@@ -106,11 +112,14 @@ def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250,
         rec: dict = {"from": f.name}
         info = run.load(lay)
         rec["pass1_robodojo_stable"] = bool(info["stable"])
-        for _ in range(extra_steps):
+        for _ in range(extra_steps - rest_window):
+            run.env.sim_step(render=False)
+        before = run.objects_gt()
+        for _ in range(rest_window):
             run.env.sim_step(render=False)
         live = run.objects_gt()
         rec["pass1_drift_mm"], rec["pass1_drift_deg"] = (round(v, 2) for v in drift(live))
-        ok, why = at_rest(live, "Table" in lay, v_tol, w_tol)
+        ok, why = at_rest(before, live, "Table" in lay)
         out = f.with_name(f"{f.stem}.settled.json")
         if not ok:
             rec.update({"status": "dropped: not at rest", "why": why})
