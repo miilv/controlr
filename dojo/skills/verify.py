@@ -1,4 +1,18 @@
-"""Plan + verify inside ONE RoboDojo process: env 0 runs the episode, envs 1..K are twin copies.
+"""Plan + verify: candidate segments are rolled in a twin before one is executed.
+
+``TwinBackend`` is the seam: ``rollout(candidates, k, held_labels, src) -> list[Outcome]``. The skills
+(candidate generation, judges, selection: ``Skills.verify_choose``) do not care where the twin lives:
+
+* ``InProcessTwin`` (this module, DEV-ONLY, G3): env 0 of the same RoboDojo process runs the
+  episode, envs 1..K are twin copies seeded with env 0's TRUE internal state;
+* production: a separate twin process loaded from OUR estimate (perception's layout record +
+  proprio) via simlab's ``load_from_estimate`` (integration's ``TwinClient``); it never sees the
+  eval env.
+
+Judges only read an ``Outcome`` (object poses and robot joints simulated by the twin), which both
+backends provide.
+
+InProcessTwin details: env 0's full state
 
 Before a segment runs on env 0, env 0's full state (robot joints, velocities and targets, every
 object's pose and velocity, the controller's last command, RoboDojo's reward latches and step
@@ -6,7 +20,7 @@ counter) is broadcast into the twin envs, optionally with object pose noise, and
 segments are rolled there in one batch (``take_action_batch`` on the twin envs only). Env 0 is
 not stepped while the twins run; its robot holds its last command (the eval env is paused between
 actions as well). The first candidate whose every sample passes the skill's judge is executed on
-env 0 exactly as verified.
+env 0 exactly as verified. This copies privileged simulator state and is a dev tool only.
 
 The state copy follows simlab's ``Twin.snapshot/restore`` (dojo/simlab/twin.py), per env index;
 restored rollouts are close to, not bitwise equal to, a straight run (PhysX contact caches are not
@@ -18,6 +32,7 @@ from __future__ import annotations
 import copy
 import time
 from dataclasses import dataclass, field
+from typing import Protocol
 
 import numpy as np
 
@@ -42,7 +57,18 @@ class Outcome:
     extra: dict = field(default_factory=dict)
 
 
-class TwinVerifier:
+class TwinBackend(Protocol):
+    """Where candidate segments are simulated. ``candidates``: one list of official action dicts per
+    candidate; ``k`` samples each (sample 0 nominal, the rest with pose noise); ``held_labels``: objects
+    in the grippers (not perturbed); ``src``: which state to start from (backend-specific)."""
+
+    def rollout(self, candidates: list[list[dict]], k: int = 2, held_labels: tuple = (), src: int = 0) -> list[Outcome]:
+        ...
+
+
+class InProcessTwin:
+    """DEV-ONLY TwinBackend: twin envs 1..K in the episode's own process, seeded with env 0's TRUE state."""
+
     def __init__(self, runner, twin_envs: list[int], perturb_mm: float = 1.5, perturb_deg: float = 1.0,
                  seed: int = 0, log=None):
         self.r = runner
@@ -167,3 +193,6 @@ class TwinVerifier:
         self.stats["rollouts"] += len(jobs)
         self.stats["wall_s"] += dt
         return out
+
+
+TwinVerifier = InProcessTwin       # old name
