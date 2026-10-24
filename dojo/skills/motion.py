@@ -28,10 +28,15 @@ from dojo.skills.geometry import T_from, angle_between_R, slerp_R
 from dojo.skills.kinematics import TABLE_Z, X5Kin, down_R, tilted_R
 from dojo.skills.world import ObjectState, WorldState, table_contains_xy
 
-# step sizes (rad per env step, max over joints); defaults, measured in the twin (g3 --probe-steps)
-FAST = 0.16
+# step sizes (rad per env step, max over joints). Twin probe (g3 probe, 2026-10-24): landing error right
+# after the last step 1 / 2 / 3-5 mm at 0.05 / 0.12 / 0.2 rad per step, < 1 mm one step later, 0.1-0.4 mm
+# two steps later; 10 cm vertical lines deviate <= 0.16 mm in xy at any step size. So: fast in free
+# space, slow only for the last centimetres before contact, then 1-2 settle steps.
+FAST = 0.18
+CARRY = 0.14                  # transit while holding an object (with ease)
 MEDIUM = 0.10
 SLOW = 0.05
+EASE = 2
 LINE_STEP_M = 0.02
 LINE_STEP_DEG = 8.0
 MAX_WAYPOINT_JUMP = 0.6        # rad between consecutive line waypoints = branch flip
@@ -42,9 +47,10 @@ class Segment:
     q: np.ndarray                 # (K, 6) joint waypoints, q[0] = start
     step_rad: float
     name: str = ""
+    ease: int = 0                 # ramp steps at each end (trapezoidal speed profile)
 
     def n_steps(self) -> int:
-        return segment_steps(self.q, self.step_rad)
+        return len(segment_targets(self.q, self.step_rad, self.ease))
 
 
 @dataclass
@@ -81,25 +87,54 @@ class MoveResult:
                           other.alternatives)
 
 
-def segment_steps(q: np.ndarray, step_rad: float) -> int:
+def segment_steps(q: np.ndarray, step_rad: float, ease: int = 0) -> int:
+    return len(segment_targets(q, step_rad, ease))
+
+
+def segment_targets(q: np.ndarray, step_rad: float, ease: int = 0) -> list[np.ndarray]:
+    """Per-env-step joint targets (excluding the start), no joint moving more than ``step_rad``
+    in one step. ``ease`` > 0: the per-step advance ramps up over the first ``ease`` steps and down
+    over the last ones (a held object slides in the pads on an abrupt 1.5 m/s stop; twin trace
+    2026-10-24), measured along the path in the max-joint norm."""
     q = np.asarray(q, float)
     if len(q) < 2:
-        return 0
+        return []
     d = np.abs(np.diff(q, axis=0)).max(axis=1)
-    return int(sum(max(1, math.ceil(x / step_rad - 1e-9)) for x in d if x > 1e-9))
-
-
-def segment_targets(q: np.ndarray, step_rad: float) -> list[np.ndarray]:
-    """Per-env-step joint targets (excluding the start) with |dq| <= step_rad per step."""
-    q = np.asarray(q, float)
+    keep = np.r_[True, d > 1e-9]
+    q, d = q[keep], d[d > 1e-9]
+    if len(q) < 2:
+        return []
+    if ease <= 0:
+        out = []
+        for a, b, di in zip(q[:-1], q[1:], d):
+            n = max(1, math.ceil(di / step_rad - 1e-9))
+            for i in range(1, n + 1):
+                out.append(a + (b - a) * i / n)
+        return out
+    s_cum = np.r_[0.0, np.cumsum(d)]
+    total = float(s_cum[-1])
+    ramp = [step_rad * (k + 1) / (ease + 1) for k in range(ease)]
+    # trapezoid: ramp up, cruise, ramp down (shrink the ramps for short moves)
+    up = []
+    acc = 0.0
+    for r in ramp:
+        if 2 * (acc + r) > total:
+            break
+        up.append(r)
+        acc += r
+    cruise = total - 2 * acc
+    n_c = max(0, math.ceil(cruise / step_rad - 1e-9))
+    incs = up + ([cruise / n_c] * n_c if n_c else []) + up[::-1]
+    if not incs:
+        incs = [total]
     out = []
-    for a, b in zip(q[:-1], q[1:]):
-        d = float(np.abs(b - a).max())
-        if d <= 1e-9:
-            continue
-        n = max(1, math.ceil(d / step_rad - 1e-9))
-        for i in range(1, n + 1):
-            out.append(a + (b - a) * i / n)
+    s = 0.0
+    for inc in incs:
+        s = min(total, s + inc)
+        j = min(int(np.searchsorted(s_cum, s, side="right")) - 1, len(d) - 1)
+        t = (s - s_cum[j]) / d[j]
+        out.append(q[j] + (q[j + 1] - q[j]) * min(1.0, t))
+    out[-1] = q[-1].copy()
     return out
 
 
@@ -228,7 +263,8 @@ class Motion:
 
     # ---- joint-space move
     def joint(self, arm: str, q0, q1, step_rad: float = FAST, name: str = "joint", gripper: float = 1.0,
-              ignore=(), held: HeldBox | None = None, check: bool = True, table: bool = True) -> MoveResult:
+              ignore=(), held: HeldBox | None = None, check: bool = True, table: bool = True,
+              ease: int = EASE) -> MoveResult:
         q0, q1 = np.asarray(q0, float), np.asarray(q1, float)
         if check:
             obs = self.coll.obstacles(ignore)
@@ -239,17 +275,18 @@ class Motion:
                 if not ok:
                     return MoveResult("collision", arm, [], self.kin.tcp(arm, q0), note=f"joint move at t={t:.2f}: {why}")
         T = self.kin.tcp(arm, q1)
-        return MoveResult("reached", arm, [Segment(np.stack([q0, q1]), step_rad, name)], T)
+        return MoveResult("reached", arm, [Segment(np.stack([q0, q1]), step_rad, name, ease)], T)
 
     def to_pose(self, arm: str, q0, T_goal, step_rad: float = FAST, name: str = "move", gripper: float = 1.0,
-                ignore=(), held: HeldBox | None = None, check: bool = True, safe_z: float | None = None) -> MoveResult:
+                ignore=(), held: HeldBox | None = None, check: bool = True, safe_z: float | None = None,
+                ease: int = EASE) -> MoveResult:
         """Free-space move to a TCP pose: a straight joint move to the closest IK solution if it is
         collision-free; otherwise up to ``safe_z`` (line), across in joint space, down (line)."""
         r = self.kin.ik(arm, T_goal, q0)
         if not r.ok:
             return MoveResult("ik_fail", arm, [], self.kin.tcp(arm, q0), r.pos_err, r.rot_err,
                               f"target unreachable ({r.note})", self.alternatives(arm, q0, T_goal))
-        mv = self.joint(arm, q0, r.q, step_rad, name, gripper, ignore, held, check)
+        mv = self.joint(arm, q0, r.q, step_rad, name, gripper, ignore, held, check, ease=ease)
         if mv.ok or not check:
             return mv
         # via a safe height
@@ -265,7 +302,7 @@ class Motion:
         r2 = self.kin.ik(arm, above, m1.q_end)
         if not r2.ok:
             return MoveResult("ik_fail", arm, [], T0, note=f"{mv.note}; via-pose unreachable")
-        m2 = self.joint(arm, m1.q_end, r2.q, step_rad, name + "_across", gripper, ignore, held, check)
+        m2 = self.joint(arm, m1.q_end, r2.q, step_rad, name + "_across", gripper, ignore, held, check, ease=ease)
         if not m2.ok:
             m2 = self.line(arm, m1.q_end, above, step_rad=step_rad, name=name + "_across", gripper=gripper,
                            ignore=ignore, held=held, max_step_m=0.04)
@@ -323,7 +360,10 @@ def merge_steps(per_arm: dict[str, list[np.ndarray]], hold: dict[str, np.ndarray
 
 
 def min_arm_distance(kin: X5Kin, qL, qR) -> float:
-    pl = np.vstack([kin.link_points("left", qL), kin.palm_points(kin.flange("left", qL))])
-    pr = np.vstack([kin.link_points("right", qR), kin.palm_points(kin.flange("right", qR))])
+    """Closest pair of sampled points (chain, palm, fingers) of the two arms. The links are ~7-8 cm
+    thick, so a clearance threshold must be >= ~0.10 m."""
+    fl, fr = kin.flange("left", qL), kin.flange("right", qR)
+    pl = np.vstack([kin.link_points("left", qL), kin.palm_points(fl), kin.finger_points(fl)])
+    pr = np.vstack([kin.link_points("right", qR), kin.palm_points(fr), kin.finger_points(fr)])
     d = np.linalg.norm(pl[:, None, :] - pr[None, :, :], axis=2)
     return float(d.min())

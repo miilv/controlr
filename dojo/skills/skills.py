@@ -24,13 +24,19 @@ from dojo.skills import grasps as G
 from dojo.skills.executor import ArmPlan, BudgetExceeded, EpisodeEnded, Executor
 from dojo.skills.geometry import T_from, T_to_pose7, inv_T, rot_z, tilt_deg
 from dojo.skills.kinematics import ARMS, TABLE_Z, X5Kin, gap_to_grip
-from dojo.skills.motion import FAST, MEDIUM, SLOW, Collision, HeldBox, Motion, MoveResult, min_arm_distance
+from dojo.skills.motion import CARRY, FAST, MEDIUM, SLOW, Collision, HeldBox, Motion, MoveResult, min_arm_distance
 from dojo.skills.world import AssetDB, WorldState, arms_from_proprio, objects_from_gt
 
 OPEN = 1.0
 CLOSED = 0.0
 CLOSE_STEPS = 4
-OPEN_STEPS = 3
+OPEN_STEPS = 2
+FINGER_SPEED = 0.008          # m per env step per finger, measured in the twin (g3 probe: 0.15 of the 0..1 range)
+
+
+def close_steps(open_gap: float, width: float) -> int:
+    """Env steps for the pads to travel from ``open_gap`` to the object (+1 to build the squeeze)."""
+    return max(2, math.ceil(max(0.0, open_gap - width) / 2 / FINGER_SPEED) + 1)
 
 
 @dataclass
@@ -93,6 +99,7 @@ class Job:
     prefetch: bool = True
     park_other: bool = True
     any_arm: bool = False
+    exclusive: bool = False       # no concurrent pick by the other arm while this one places
 
 
 class GTProvider:
@@ -214,7 +221,8 @@ class Skills:
                     continue
                 p = ArmPlan(a, np.asarray(q0, float), self.ex.g[a])
                 p.grip(go, 0, "open_for_grasp").move(to_pre, "approach").move(down, "descend").hold(settle, "settle")
-                p.grip(CLOSED, CLOSE_STEPS, "close").hold(1, "squeeze").move(up, "lift")
+                from dojo.skills.kinematics import grip_to_gap
+                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").move(up, "lift")
                 cost = p.steps + 15 * g.score
                 feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label)))
                 if len(feas) >= keep:
@@ -267,9 +275,11 @@ class Skills:
 
     # ------------------------------------------------------------------ place
     def plan_place(self, arm: str, T_obj_target, yaw_sym: int = 1, release_gap: float = 0.003, pre_h: float = 0.06,
-                   retreat: float = 0.05, ignore=(), q_start=None, approach_rad: float = FAST,
+                   retreat: float = 0.05, ignore=(), q_start=None, approach_rad: float = CARRY,
                    descend_rad: float = SLOW, open_g: float = OPEN, settle: int = 2, open_steps: int = OPEN_STEPS,
-                   extra_yaws=(), pre_open_hold: int = 1) -> PlacePlan | SkillResult:
+                   extra_yaws=(), pre_open_hold: int = 1, ease: int = 3) -> PlacePlan | SkillResult:
+        """Approach above the target, descend in a straight line, settle, open, back out.
+        ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins)."""
         h = self.held[arm]
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -280,46 +290,57 @@ class Skills:
         yaws = [2 * math.pi * k / max(1, yaw_sym) for k in range(max(1, yaw_sym))] + list(extra_yaws)
         cw = T_obj_target[:3, :3] @ o.asset.center + T_obj_target[:3, 3]       # rotate about the bbox centre
         for dyaw in yaws:
-            Rz = rot_z(dyaw)
             T = T_obj_target.copy()
-            T[:3, :3] = Rz @ T_obj_target[:3, :3]
+            T[:3, :3] = rot_z(dyaw) @ T_obj_target[:3, :3]
             T[:3, 3] = cw - T[:3, :3] @ o.asset.center
             cands.append((abs(dyaw), T))
-        ign = tuple(set(ignore) | {h.label})
+        tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
+                       descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
+                       pre_open_hold=pre_open_hold)
         best, notes = None, []
         for _, T_obj in sorted(cands, key=lambda x: x[0]):
             T_tcp = T_obj @ inv_T(h.T_tcp_obj)
-            T_rel = T_tcp.copy()
-            T_rel[2, 3] += release_gap
-            T_pre = T_rel.copy()
-            T_pre[2, 3] += pre_h
+            T_pre = T_tcp.copy()
+            T_pre[2, 3] += release_gap + pre_h
             to_pre = self.motion.to_pose(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
-                                         ignore=(h.label,))
+                                         ignore=(h.label,), ease=ease)
             if not to_pre.ok:
                 notes.append(f"approach: {to_pre.note}")
                 continue
-            down = self.motion.line(arm, to_pre.q_end, T_rel, descend_rad, "place_descend", gripper=CLOSED,
-                                    held=h.box, ignore=ign)
-            if not down.ok:
-                notes.append(f"descend: {down.note}")
+            tail = self._place_tail(arm, to_pre.q_end, T_obj, h, **tail_kw)
+            if isinstance(tail, str):
+                notes.append(tail)
                 continue
-            T_up = T_rel.copy()
-            T_up[:3, 3] -= T_rel[:3, 0] * retreat          # back out along the approach axis
-            if T_rel[2, 0] > -0.5:
-                T_up[2, 3] += 0.02
-            up = self.motion.line(arm, down.q_end, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ign)
-            if not up.ok:
-                notes.append(f"retreat: {up.note}")
-                continue
-            p = ArmPlan(arm, np.asarray(q0, float), self.ex.g[arm])
-            p.move(to_pre, "approach").move(down, "descend").hold(settle, "settle")
-            p.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
+            p = ArmPlan(arm, np.asarray(q0, float), self.ex.g[arm]).move(to_pre, "approach")
+            p.ops.extend(tail.ops)
             if best is None or p.steps < best.steps:
                 best = PlacePlan(arm, p, T_obj, p.steps, h.label)
+                best.approach = to_pre
+                best.tail_kw = tail_kw
         if best is None:
             st = "ik_fail" if any("unreachable" in n or "ik_fail" in n for n in notes) else "collision"
             return SkillResult(False, "place", st, 0, arm, note="; ".join(notes[:4]))
         return best
+
+    def _place_tail(self, arm, q_pre, T_obj, h: "Held", release_gap, retreat, ignore, descend_rad, open_g, settle,
+                    open_steps, pre_open_hold) -> ArmPlan | str:
+        T_rel = T_obj @ inv_T(h.T_tcp_obj)
+        T_rel[2, 3] += release_gap
+        down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
+                                ignore=ignore)
+        if not down.ok:
+            return f"descend: {down.note}"
+        T_up = T_rel.copy()
+        T_up[:3, 3] -= T_rel[:3, 0] * retreat          # back out along the approach axis
+        if T_rel[2, 0] > -0.5:
+            T_up[2, 3] += 0.02
+        up = self.motion.line(arm, down.q_end, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
+        if not up.ok:
+            return f"retreat: {up.note}"
+        t = ArmPlan(arm, np.asarray(q_pre, float), CLOSED)
+        t.move(down, "descend").hold(settle, "settle")
+        t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
+        return t
 
     def place(self, arm: str, T_obj_target, tol_xy: float = 0.01, tol_tilt: float = 6.0, tol_yaw: float | None = None,
               **kw) -> SkillResult:
@@ -328,16 +349,56 @@ class Skills:
             return self._record(pp)
         return self._record(self.run_place(pp, tol_xy, tol_tilt, tol_yaw))
 
-    def run_place(self, pp: PlacePlan, tol_xy: float = 0.01, tol_tilt: float = 6.0, tol_yaw: float | None = None) -> SkillResult:
+    def run_place(self, pp: PlacePlan, tol_xy: float = 0.01, tol_tilt: float = 6.0, tol_yaw: float | None = None,
+                  other: list | None = None, other_arm: str | None = None, remeasure: bool = True) -> SkillResult:
+        """Execute a place: approach (+1 still step), re-measure the object in the hand, re-plan the
+        descent for the measured in-hand pose, descend, release, back out. ``other`` = the other
+        arm's compiled per-step (q, g) list, run in the same env steps throughout."""
+        other = list(other or [])
         try:
-            self.ex.run({pp.arm: pp.plan}, name=f"place {pp.label}")
+            if remeasure and getattr(pp, "approach", None) is not None:
+                a1 = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0).move(pp.approach, "approach").hold(1, "still")
+                c1 = a1.compile()[0]
+                lists = {pp.arm: c1}
+                if other_arm:
+                    lists[other_arm] = other[:len(c1)]
+                self.ex.run_lists(lists, name=f"place {pp.label} approach")
+                rest_other = other[len(c1):]
+                w = self.refresh()
+                h = self.held[pp.arm]
+                o = w.obj(pp.label)
+                T_rel_meas = inv_T(self.kin.tcp(pp.arm, w.arms[pp.arm].q)) @ o.T
+                shift = float(np.linalg.norm(T_rel_meas[:3, 3] - h.T_tcp_obj[:3, 3]))
+                h2 = Held(h.label, T_rel_meas, HeldBox(T_rel_meas, o.asset.center, o.asset.extents / 2), h.grasp)
+                tail = self._place_tail(pp.arm, self.ex.q[pp.arm], pp.T_obj_target, h2, **pp.tail_kw)
+                if isinstance(tail, str):
+                    tail = self._place_tail(pp.arm, self.ex.q[pp.arm], pp.T_obj_target, h, **pp.tail_kw)
+                    note_rm = f"in-hand shift {shift*1000:.1f} mm (re-plan failed: {tail if isinstance(tail, str) else ''})"
+                else:
+                    self.held[pp.arm] = h2
+                    note_rm = f"in-hand shift {shift*1000:.1f} mm, re-planned"
+                if isinstance(tail, str):
+                    return SkillResult(False, "place", "collision", self.ex.steps_used, pp.arm, note=tail)
+                c2 = tail.compile()[0]
+                lists = {pp.arm: c2}
+                if other_arm:
+                    lists[other_arm] = rest_other
+                self.ex.run_lists(lists, name=f"place {pp.label} tail")
+            else:
+                note_rm = ""
+                lists = {pp.arm: pp.plan.compile()[0]}
+                if other_arm:
+                    lists[other_arm] = other
+                self.ex.run_lists(lists, name=f"place {pp.label}")
         except BudgetExceeded as e:
             return SkillResult(False, "place", "step_budget", 0, pp.arm, note=str(e))
         except EpisodeEnded as e:
             self.held[pp.arm] = None
             return SkillResult(False, "place", "ended", pp.steps, pp.arm, note=str(e))
         self.held[pp.arm] = None
-        return self.verify_place(pp, tol_xy, tol_tilt, tol_yaw)
+        r = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw)
+        r.note = (r.note + "; " + note_rm).strip("; ")
+        return r
 
     def verify_place(self, pp: PlacePlan, tol_xy=0.01, tol_tilt=6.0, tol_yaw=None) -> SkillResult:
         w = self.refresh()
@@ -378,79 +439,98 @@ class Skills:
     # ------------------------------------------------------------------ job pipeline
     def run_jobs(self, jobs: list["Job"], bank_after: bool = True) -> SkillResult:
         """Pick-and-place jobs in order, two arms pipelined: while one arm places job k, the other
-        picks job k+1 (if it is the other arm's). Each job's target is computed when its place is
-        planned (from the refreshed world), so it can depend on earlier placements."""
+        picks job k+1 (when it is the other arm's). A job's target is computed right before its place
+        is planned (from the refreshed world), so it can depend on earlier placements."""
         n0 = self.ex.steps_used
-        i = 0
-        while i < len(jobs):
-            job = jobs[i]
+
+        def fail(status, arm, note):
+            return self._record(SkillResult(False, "jobs", status, self.ex.steps_used - n0, arm, note=note))
+
+        def holds(job):
+            h = self.held.get(job.arm)
+            return h is not None and h.label == job.label
+
+        def plan_pick_job(job):
+            pp = self.plan_pick(job.label, job.arm, job.method, **job.pick_kw)
+            if not isinstance(pp, PickPlan) and job.any_arm:
+                pp2 = self.plan_pick(job.label, None, job.method, **job.pick_kw)
+                if isinstance(pp2, PickPlan):
+                    job.arm = pp2.arm
+                    return pp2
+            return pp
+
+        for i, job in enumerate(jobs):
             self.refresh()
-            if self.held[job.arm] is None or self.held[job.arm].label != job.label:
-                nxt = jobs[i + 1] if i + 1 < len(jobs) else None
-                pp = self.plan_pick(job.label, job.arm, job.method, **job.pick_kw)
+            if not holds(job):
+                pp = plan_pick_job(job)
                 if not isinstance(pp, PickPlan):
-                    pp2 = self.plan_pick(job.label, None, job.method, **job.pick_kw) if job.any_arm else pp
-                    if not isinstance(pp2, PickPlan):
-                        return self._record(SkillResult(False, "jobs", pp.status, self.ex.steps_used - n0, job.arm,
-                                                        note=f"pick {job.label}: {pp.note}"))
-                    pp = pp2
-                    for j in jobs[i:]:
-                        if j.arm == job.arm and j is not job:
-                            break
-                    job.arm = pp.arm
-                plans, picks = [pp.plan], [pp]
-                if (nxt is not None and nxt.arm != job.arm and self.held[nxt.arm] is None and nxt.prefetch):
-                    pn = self.plan_pick(nxt.label, nxt.arm, nxt.method, **nxt.pick_kw)
-                    if isinstance(pn, PickPlan):
-                        plans.append(pn.plan)
-                        picks.append(pn)
-                befores = {p.label: self.world.obj(p.label).pos.copy() for p in picks}
+                    return fail(pp.status, job.arm, f"pick {job.label}: {pp.note}")
+                before = self.world.obj(job.label).pos.copy()
                 try:
-                    self.parallel(plans, name=f"pick {[p.label for p in picks]}")
+                    self.parallel([pp.plan], name=f"pick {job.label}")
                 except (BudgetExceeded, EpisodeEnded) as e:
-                    return self._record(SkillResult(False, "jobs", "step_budget" if isinstance(e, BudgetExceeded)
-                                                    else "ended", self.ex.steps_used - n0, job.arm, note=str(e)))
-                for p in picks:
-                    r = self._record(self.verify_pick(p, befores[p.label]))
-                    if not r.ok and p.label == job.label:
-                        # one retry from the current state
-                        self.ex.run({p.arm: self.plan_home(p.arm, gripper=OPEN)}, name="reset arm")
-                        r = self.pick(job.label, p.arm if not job.any_arm else None)
-                        if not r.ok:
-                            return self._record(SkillResult(False, "jobs", r.status, self.ex.steps_used - n0, p.arm,
-                                                            note=f"pick {job.label}: {r.note}"))
-                        job.arm = r.arm
-            # place job i; the other arm parks (if idle) or picks job i+1 (if prefetching failed)
+                    return fail("step_budget" if isinstance(e, BudgetExceeded) else "ended", job.arm, str(e))
+                r = self._record(self.verify_pick(pp, before))
+                if not r.ok:
+                    try:
+                        self.ex.run({pp.arm: self.plan_home(pp.arm, gripper=OPEN)}, name="reset arm")
+                    except (BudgetExceeded, EpisodeEnded) as e:
+                        return fail("step_budget", job.arm, str(e))
+                    r = self.pick(job.label, job.arm if not job.any_arm else None)
+                    if not r.ok:
+                        return fail(r.status, job.arm, f"pick {job.label}: {r.note}")
+                    job.arm = r.arm
+            # place job i; meanwhile the other arm picks job i+1. An idle other arm near the target
+            # parks first (sequenced, not concurrent).
             self.refresh()
-            T = job.target(self)
-            pl = self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=job.ignore(self) if callable(job.ignore)
-                                 else tuple(job.ignore), **job.place_kw)
-            if not isinstance(pl, PlacePlan):
-                return self._record(SkillResult(False, "jobs", pl.status, self.ex.steps_used - n0, job.arm,
-                                                note=f"place {job.label}: {pl.note}"))
             other = "right" if job.arm == "left" else "left"
-            plans = [pl.plan]
+            T = job.target(self)
             if self.held[other] is None and job.park_other:
                 T_o = self.kin.tcp(other, self.ex.q[other])
-                if float(np.linalg.norm(T_o[:2, 3] - T[:2, 3])) < 0.25 or T_o[2, 3] < 0.86:
-                    plans.append(self.plan_home(other))
-            try:
-                self.parallel(plans, name=f"place {job.label}")
-            except (BudgetExceeded, EpisodeEnded) as e:
-                return self._record(SkillResult(False, "jobs", "step_budget" if isinstance(e, BudgetExceeded)
-                                                else "ended", self.ex.steps_used - n0, job.arm, note=str(e)))
-            self.held[job.arm] = None
-            r = self._record(self.verify_place(pl, job.tol_xy, job.tol_tilt))
+                if float(np.linalg.norm(T_o[:2, 3] - T[:2, 3])) < 0.30 or T_o[2, 3] < 0.86:
+                    try:
+                        self.ex.run({other: self.plan_home(other)}, name=f"park {other}")
+                    except (BudgetExceeded, EpisodeEnded) as e:
+                        return fail("step_budget" if isinstance(e, BudgetExceeded) else "ended", other, str(e))
+            ign = job.ignore(self) if callable(job.ignore) else tuple(job.ignore)
+            pl = self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw)
+            if not isinstance(pl, PlacePlan):
+                return fail(pl.status, job.arm, f"place {job.label}: {pl.note}")
+            nxt = jobs[i + 1] if i + 1 < len(jobs) else None
+            side_pick, other_list = None, None
+            if (nxt is not None and nxt.arm == other and self.held[other] is None and nxt.prefetch
+                    and not job.exclusive):
+                pn = plan_pick_job(nxt)
+                if isinstance(pn, PickPlan) and pn.arm == other and self.clear_of(pl.plan, pn.plan):
+                    side_pick = (pn, self.world.obj(nxt.label).pos.copy())
+                    other_list = pn.plan.compile()[0]
+            r = self._record(self.run_place(pl, job.tol_xy, job.tol_tilt, other=other_list,
+                                            other_arm=other if other_list else None))
+            if r.status in ("step_budget", "ended"):
+                return fail(r.status, job.arm, r.note)
+            if side_pick is not None:
+                self._record(self.verify_pick(*side_pick))          # failure: job i+1 re-picks
             if not r.ok and job.required:
-                return self._record(SkillResult(False, "jobs", r.status, self.ex.steps_used - n0, job.arm,
-                                                note=f"place {job.label}: {r.note}"))
+                return fail(r.status, job.arm, f"place {job.label}: {r.note}")
             if bank_after and job.bank:
                 self.bank()
-            i += 1
         return self._record(SkillResult(True, "jobs", "ok", self.ex.steps_used - n0))
 
     # ------------------------------------------------------------------ parallel
-    def parallel(self, plans: list[ArmPlan], min_dist: float = 0.06, name: str = "parallel") -> dict:
+    def clear_of(self, a: ArmPlan, b: ArmPlan, min_dist: float = 0.12) -> bool:
+        """Do two arm plans keep the arms >= ``min_dist`` apart (sampled chain, palm, finger points)
+        at every step of their merged schedule (both planned paths, not just current poses)?"""
+        ca, cb = a.compile()[0], b.compile()[0]
+        n = max(len(ca), len(cb))
+        for i in range(n):
+            qa = ca[min(i, len(ca) - 1)][0] if ca else a.q0
+            qb = cb[min(i, len(cb) - 1)][0] if cb else b.q0
+            ql, qr = (qa, qb) if a.arm == "left" else (qb, qa)
+            if min_arm_distance(self.kin, ql, qr) < min_dist:
+                return False
+        return True
+
+    def parallel(self, plans: list[ArmPlan], min_dist: float = 0.12, name: str = "parallel") -> dict:
         """Run two arm plans in the same env steps if their merged schedules keep the arms apart;
         otherwise one after the other."""
         if len(plans) == 2:
@@ -504,9 +584,8 @@ class Skills:
         if busy:
             return self._record(SkillResult(True, "bank", "skipped", 0, note=f"{busy} holding"))
         need = {a: OPEN for a in ARMS if self.ex.g[a] < OPEN - 1e-6}
-        if not need:
-            n = self.ex.hold(1, use_reserve=True)
-            return self._record(SkillResult(True, "bank", "ok", n))
+        if not need:                      # both commanded open: the fingers finish opening during the next moves
+            return self._record(SkillResult(True, "bank", "ok", 0))
         try:
             n = self.ex.grip({a: OPEN for a in ARMS}, steps, "bank", use_reserve=True)
         except (BudgetExceeded, EpisodeEnded) as e:

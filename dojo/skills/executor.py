@@ -74,7 +74,7 @@ class ArmPlan:
                     path = np.asarray(s.q, float)
                     if np.abs(path[0] - q).max() > 1e-6:
                         path = np.vstack([q, path])
-                    for t in segment_targets(path, s.step_rad):
+                    for t in segment_targets(path, s.step_rad, getattr(s, "ease", 0)):
                         out.append((t, g))
                     q = path[-1]
             elif kind == "grip":
@@ -171,7 +171,7 @@ class Executor:
                 path = np.asarray(s.q, float)
                 if np.abs(path[0] - q).max() > 1e-6:      # start from where the arm is commanded
                     path = np.vstack([q, path])
-                tg.extend(segment_targets(path, s.step_rad))
+                tg.extend(segment_targets(path, s.step_rad, getattr(s, "ease", 0)))
                 q = path[-1]
             per_arm[a] = tg
         steps = merge_steps(per_arm, self.q)
@@ -217,6 +217,21 @@ class Executor:
             self.log.segments.append({"name": name, "kind": "plan", "arms": {a: len(v) for a, v in comp.items()},
                                       "steps": n})
         return {"steps": n, "per_arm": {a: len(v) for a, v in comp.items()}}
+
+    def run_lists(self, lists: dict[str, list], name: str = "", use_reserve: bool = False) -> int:
+        """Execute already-compiled per-step (q, g) lists concurrently."""
+        n = max((len(v) for v in lists.values()), default=0)
+        self._budget(n, use_reserve)
+        for i in range(n):
+            for a, v in lists.items():
+                if i < len(v):
+                    self.q[a] = np.asarray(v[i][0], float)
+                    self.g[a] = float(v[i][1])
+            self._step()
+        if self.record and n:
+            self.log.segments.append({"name": name, "kind": "lists", "arms": {a: len(v) for a, v in lists.items()},
+                                      "steps": n})
+        return n
 
     def grip(self, values: dict[str, float], steps: int = 3, name: str = "grip", use_reserve: bool = False) -> int:
         self._budget(steps, use_reserve)

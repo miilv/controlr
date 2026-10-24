@@ -57,7 +57,7 @@ class Grasp:
         return P
 
     def open_gap(self) -> float:
-        return min(MAX_GAP, self.width + 2 * CLEAR + 0.01)
+        return min(MAX_GAP, self.width + 2 * CLEAR + 0.006)
 
 
 def _frame(approach, closing) -> np.ndarray:

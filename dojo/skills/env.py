@@ -169,13 +169,16 @@ class KinematicEnv:
         R = quat_to_R(o["quat"])
         hz = float(np.abs(R @ np.diag(o["half"])).sum(axis=1)[2])
         support = TABLE_Z
+        h_self = np.abs(R @ np.diag(o["half"])).sum(axis=1)
         for other in self.objects:
             if other["label"] == label or other.get("type") == "Geometry":
                 continue
             Ro = quat_to_R(other["quat"])
             ho = np.abs(Ro @ np.diag(other["half"])).sum(axis=1)
-            if (abs(other["pos"][0] - o["pos"][0]) < ho[0] and abs(other["pos"][1] - o["pos"][1]) < ho[1]
-                    and other["pos"][2] < o["pos"][2]):
+            # xy footprints (axis-aligned bounds) overlap and the other one is below
+            if (abs(other["pos"][0] - o["pos"][0]) < ho[0] + h_self[0] - 1e-3
+                    and abs(other["pos"][1] - o["pos"][1]) < ho[1] + h_self[1] - 1e-3
+                    and other["pos"][2] + ho[2] <= o["pos"][2] - hz + 0.01):
                 support = max(support, other["pos"][2] + ho[2])
         o["pos"] = np.array([o["pos"][0], o["pos"][1], support + hz])
 

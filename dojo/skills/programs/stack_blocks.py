@@ -121,7 +121,8 @@ def plan_jobs(sk: Skills) -> list[Job]:
     below = base
     for k, (l, a) in enumerate(seq):
         if below is None:
-            jobs.append(Job(l, a, at_site(l, xy), yaw_sym=4, tol_xy=0.006, bank=False))
+            # the site itself is arbitrary: any placement near it is fine
+            jobs.append(Job(l, a, at_site(l, xy), yaw_sym=4, tol_xy=0.05, bank=False, required=False))
         else:
             jobs.append(Job(l, a, on_top_of(below, l), yaw_sym=4, ignore=(below,), tol_xy=0.008))
         below = l

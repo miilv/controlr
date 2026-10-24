@@ -244,13 +244,18 @@ class X5Kin:
         return np.vstack([self.palm_points(T_flange), self.finger_points(T_flange, gripper)])
 
     def finger_points(self, T_flange, gripper: float = 1.0) -> np.ndarray:
+        """Finger surface samples in world. From the link7/8 meshes: the finger tapers from a 37 mm
+        block at its root (flange x 0.072-0.107) to 13 mm (x 0.107-0.127) to 3 mm at the tip
+        (x 0.127-0.158); its inner face is at y = q + 0.4 mm (q = finger joint)."""
         qf = min(max(GRIP_SCALE[0] + gripper * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0), FINGER_MAX)
+        zones = ((0.075, 0.105, 0.0378, 0.028), (0.107, 0.126, 0.0134, 0.015), (0.128, 0.1576, 0.0034, 0.009))
         loc = []
         for s in (1, -1):
-            for x in (0.087, 0.12, 0.1576):
-                for yo in (0.0004, 0.0378):
-                    for z in (-0.01, 0.01):
-                        loc.append((x, s * (qf + yo), z))
+            for x0, x1, yo, zh in zones:
+                for x in (x0, x1):
+                    for y in (0.0004, yo):
+                        for z in (-zh, zh):
+                            loc.append((x, s * (qf + y), z))
         loc = np.asarray(loc)
         return (np.asarray(T_flange)[:3, :3] @ loc.T).T + np.asarray(T_flange)[:3, 3]
 

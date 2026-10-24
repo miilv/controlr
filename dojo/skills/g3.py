@@ -57,7 +57,7 @@ def classify(res: dict, reward: dict, history: list[dict]) -> str | None:
     return "logic"
 
 
-def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, log=print) -> dict:
+def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, log=print, trace: bool = False) -> dict:
     from dojo.skills.env import RunnerEnv
     from dojo.skills.skills import GTProvider, Skills
 
@@ -74,6 +74,17 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
     t1 = time.perf_counter()
     sim_time = [0.0]
     sk = Skills(env, prov, reserve=getattr(program, "RESERVE", 30), log=log)
+    frames = []
+    if trace:
+        labels = [o.label for o in sk.world.task_objects() if o.obj_type != "Geometry"]
+
+        def on_step(ex):
+            rows = {r["label"]: r for r in env.gt_objects() if r.get("label") in labels}
+            frames.append({"step": ex.steps_used, "q": {a: np.round(ex.q[a], 4).tolist() for a in ("left", "right")},
+                           "g": dict(ex.g), "obj": {k: np.round(np.r_[v["pos"], v["quat"]], 4).tolist()
+                                                     for k, v in rows.items()},
+                           "seg": ex.log.segments[-1]["name"] if ex.log.segments else ""})
+        sk.ex.on_step = on_step
     # time spent inside env.step (simulation) vs everything else (planning)
     _step = env.step
 
@@ -116,6 +127,9 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
     out_dir.mkdir(parents=True, exist_ok=True)
     with gzip.open(out_dir / f"{task}_{seed}_actions.json.gz", "wt") as f:
         json.dump(sk.ex.trajectory_json(), f)
+    if trace:
+        with gzip.open(out_dir / f"{task}_{seed}_trace.json.gz", "wt") as f:
+            json.dump({"frames": frames, "skills": hist}, f)
     return rec
 
 
@@ -142,7 +156,7 @@ def cmd_run(a) -> None:
         lay = json.loads(lp.read_text())
         lay.setdefault("_simlab", {})["seed"] = seed
         logs = []
-        rec = run_episode(run, a.task, lay, assets, program, out, log=lambda m: logs.append(m))
+        rec = run_episode(run, a.task, lay, assets, program, out, log=lambda m: logs.append(m), trace=a.trace)
         rec["log"] = logs[-60:]
         rows.append(rec)
         with summ_p.open("a") as f:
@@ -301,6 +315,7 @@ def main(argv=None) -> None:
     r.add_argument("--task", required=True)
     r.add_argument("--seeds", default="100000-100024")
     r.add_argument("--out", required=True)
+    r.add_argument("--trace", action="store_true", help="record task-object poses every env step (dev)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")
