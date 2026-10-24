@@ -52,9 +52,11 @@ class TwinClient:
                            "settle_steps": settle_steps})["result"]
 
     def verify(self, world: dict, candidates: list, perturb: dict | None = None, k: int = 1,
-               record_traj: bool = False, seed: int = 0) -> list[dict]:
+               record_traj: bool = False, seed: int = 0, keep: tuple | None = None) -> list[dict]:
+        """``keep=(candidate, sample)``: that rollout's outcome carries ``snapshot_id`` of its end state;
+        ``verify({"snapshot_id": sid}, ...)`` then starts EVERY env from it (chain through a grasp)."""
         return self._call({"op": "verify", "world": world, "candidates": candidates, "perturb": perturb, "k": k,
-                           "record_traj": record_traj, "seed": seed})["outcomes"]
+                           "record_traj": record_traj, "seed": seed, "keep": keep})["outcomes"]
 
     def snapshot(self) -> int:
         return self._call({"op": "snapshot"})["snapshot_id"]
@@ -106,7 +108,14 @@ def serve(task: str, num_envs: int, port: int, authkey: bytes, ready: str | None
                         if "snapshot_id" in world:
                             world = {"snapshot": snaps[int(world["snapshot_id"])]}
                         outs = tw.verify(world, req["candidates"], perturb=req.get("perturb"), k=int(req.get("k", 1)),
-                                         record_traj=bool(req.get("record_traj")), seed=int(req.get("seed", 0)))
+                                         record_traj=bool(req.get("record_traj")), seed=int(req.get("seed", 0)),
+                                         keep=req.get("keep"))
+                        if tw.kept is not None:
+                            sid = max(snaps, default=0) + 1
+                            snaps[sid] = tw.kept
+                            for o in outs:
+                                if o.get("kept"):
+                                    o["snapshot_id"] = sid
                         stats["verify_s"] += time.perf_counter() - t0
                         stats["rollouts"] += len(outs)
                         conn.send({"ok": True, "outcomes": outs, "s": time.perf_counter() - t0})

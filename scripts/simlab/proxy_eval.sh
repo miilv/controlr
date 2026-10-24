@@ -2,7 +2,8 @@
 # PROXY dev-eval on compute3 (physics-only Isaac 5.1 episodes + warm Isaac 6.0 render service).
 # The official harness is scripts/simlab/dev_eval.sh (needs a 5.1-rendering GPU).
 #   scripts/simlab/proxy_eval.sh --task T --layouts L1.json [L2.json ...] --policy replay:TRAJ|module:Class
-#        [--bundle [--twin-envs N]] [--out DIR]
+#        [--bundle [--twin-envs N]] [--dev-layout-info] [--out DIR]
+# --dev-layout-info (passed through to proxy_eval.py): DEV ONLY, gives the policy info["layout_file"].
 # Default: episode env + render service in ONE scope (16G, 12 cores). --bundle adds a twin service
 # (physics-only Twin, N <= 16 envs, default 8; the policy talks to it via dojo.simlab.twin_service.TwinClient)
 # and the scope becomes 24G / 14 cores. Either way: ONE GPU job (one lock), services stopped on exit,
@@ -22,6 +23,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 mkdir -p "$OUT"
+# shared machine: start only with >= 25 GB available (wait up to 10 min, then refuse)
+for i in $(seq 30); do
+  avail=$(awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo)
+  [[ "$avail" -ge "${SIMLAB_MIN_AVAIL_GB:-25}" ]] && break
+  [[ "$i" -eq 30 ]] && { echo "[proxy_eval] MemAvailable ${avail} GB < ${SIMLAB_MIN_AVAIL_GB:-25} GB: refusing to start" >&2; exit 75; }
+  echo "[proxy_eval] MemAvailable ${avail} GB, waiting..." >&2; sleep 20
+done
 LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"; exec 9>>"$LOCK"
 until flock -n 9; do echo "[proxy_eval] waiting for $LOCK: $(head -c 120 "$LOCK")" >&2; sleep 30; done
 printf 'pid=%s stream=simlab start=%s cmd=proxy_eval bundle=%s %s\n' "$$" "$(date -u +%FT%TZ)" "$BUNDLE" "${args[*]}" > "$LOCK"
