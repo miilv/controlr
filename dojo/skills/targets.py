@@ -1,4 +1,4 @@
-"""Target-pose helpers shared by the expert programs."""
+"""Target-pose helpers shared by the library skills."""
 
 from __future__ import annotations
 

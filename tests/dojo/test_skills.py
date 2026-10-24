@@ -137,20 +137,20 @@ def test_merge_steps_holds_finished_arm():
 
 
 def _blocks_env(positions, half=0.015, step_lim=550):
-    rows = [{"label": f"block_{i}", "category": "block", "category_idx": 5, "pos": p, "quat": [1, 0, 0, 0],
+    rows = [{"label": f"obj{i}", "category": "block", "category_idx": 5, "pos": p, "quat": [1, 0, 0, 0],
              "half": [half] * 3} for i, p in enumerate(positions)]
-    return KinematicEnv(rows, step_lim=step_lim)
+    return KinematicEnv(rows, step_lim=step_lim, instruction="Stack the three blocks with different textures.")
 
 
 @pytest.mark.parametrize("positions", [
     [(0.412, -0.09, 0.78), (-0.26, -0.189, 0.78), (-0.344, -0.1, 0.78)],   # far apart: shared site
     [(-0.358, -0.206, 0.78), (-0.449, -0.092, 0.78), (-0.3, -0.165, 0.78)],  # all on the left
 ])
-def test_stack_blocks_program_on_kinematic_env(positions):
-    from dojo.skills.programs import stack_blocks
+def test_stack_blocks_through_the_planner(positions):
+    from dojo.skills import planner
     env = _blocks_env(positions)
-    sk = Skills(env, GTProvider(env, None, "stack_blocks"))
-    res = stack_blocks.run(sk)
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction))
+    res = planner.solve(sk)
     assert res["ok"], res
     p = sorted((np.asarray(o["pos"]) for o in env.objects), key=lambda v: v[2])
     for a, b in zip(p[:-1], p[1:]):
@@ -180,13 +180,55 @@ def test_quat_roundtrip():
 
 
 def test_verify_mode_picks_a_passing_candidate():
+    from dojo.skills import planner
     from dojo.skills.env import KinematicVerifier
-    from dojo.skills.programs import stack_blocks
     env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (0.25, -0.2, 0.78)])
-    sk = Skills(env, GTProvider(env, None, "stack_blocks"), verifier=KinematicVerifier(env), verify_k=1, n_cands=3)
-    res = stack_blocks.run(sk)
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction), verifier=KinematicVerifier(env),
+                verify_k=1, n_cands=3)
+    res = planner.solve(sk)
     assert res["ok"], res
     assert sk.vstats["segments"] >= 3 and sk.vstats["none_ok"] == 0
     p = sorted((np.asarray(o["pos"]) for o in env.objects), key=lambda v: v[2])
     for a, b in zip(p[:-1], p[1:]):
         assert np.linalg.norm(a[:2] - b[:2]) < 0.005
+
+
+def _obj(label, cat, idx, xyz, half, typ="Rigid", key=None):
+    from dojo.skills.world import AssetInfo, ObjectState
+    info = AssetInfo(key=key or f"{typ}/{cat}/{idx:05d}", bbox_min=-np.asarray(half, float), bbox_max=np.asarray(half, float))
+    return ObjectState(label, typ, cat, idx, np.asarray(xyz, float), np.array([1.0, 0, 0, 0]), info)
+
+
+def _world(instruction, objs):
+    from dojo.skills.world import WorldState
+    return WorldState("", instruction, {o.label: o for o in objs}, {}, {})
+
+
+def test_planner_reads_roles_from_words_and_objects():
+    from dojo.skills.planner import plan
+    # press_by_number-like scene: two same-kind buttons counted by the nearest card, the odd one confirms
+    objs = [_obj("b_a", "SpringButton", 2, (-0.15, -0.17, 0.765), (0.03, 0.03, 0.015), "Articulation"),
+            _obj("b_b", "SpringButton", 2, (0.0, -0.17, 0.765), (0.03, 0.03, 0.015), "Articulation"),
+            _obj("b_c", "SpringButton", 3, (0.15, -0.17, 0.765), (0.03, 0.03, 0.015), "Articulation"),
+            _obj("c1", "number_card", 7, (-0.15, -0.05, 0.8), (0.05, 0.05, 0.003), "Geometry"),
+            _obj("c2", "number_card", 3, (0.0, -0.05, 0.8), (0.05, 0.05, 0.003), "Geometry")]
+    p = plan("Press the two red buttons the required number of times according to the number cards, "
+             "then press the blue button to confirm.", _world("", objs))
+    assert p.skill == "press_sequence" and p.args["presses"] == [("b_a", 7), ("b_c", 1), ("b_b", 3), ("b_c", 1)]
+    # swap via the empty mat
+    mats = [_obj(f"m{i}", "cube_cushion", 1, (x, -0.2, 0.7675), (0.04, 0.04, 0.0025), "Geometry")
+            for i, x in enumerate((-0.115, 0.0, 0.115))]
+    cubes = [_obj("u", "cube", 3, (-0.115, -0.2, 0.7825), (0.0175,) * 3), _obj("v", "cube", 3, (0.115, -0.2, 0.7825), (0.0175,) * 3)]
+    btn = _obj("bt", "SpringButton", 2, (0.0, -0.3, 0.765), (0.03, 0.03, 0.015), "Articulation")
+    p = plan("Swap the two blocks using the empty mat, pressing the button after each move.", _world("", mats + cubes + [btn]))
+    assert p.skill == "swap_on_mats" and sorted(p.args["objects"]) == ["u", "v"] and p.args["button"] == "bt"
+    assert p.args["press_after_each"]
+    # containers and stacks
+    p = plan("Pick up the bottles and throw them into the dustbin, using handover when needed.",
+             _world("", [_obj("x", "bottle", 0, (0, -0.1, 0.8), (0.03, 0.03, 0.1)),
+                         _obj("d", "dustbin", 0, (-0.63, -0.1, 0.4), (0.23, 0.23, 0.32), "Geometry")]))
+    assert p.skill == "put_into" and p.args == {"objects": ["x"], "container": "d"}
+    p = plan("Stack the three bowls together.", _world("", [_obj(f"w{i}", "bowl", 9, (0.1 * i, -0.1, 0.79), (0.06, 0.06, 0.025)) for i in range(3)]))
+    assert p.skill == "stack_objects" and p.args["nest"] and len(p.args["objects"]) == 3
+    p = plan("Build a tower using the wooden blocks and wooden boards.", _world("", cubes))
+    assert p.skill == "build_tower"

@@ -110,6 +110,9 @@ def top_grasps(obj: ObjectState, kin: X5Kin, arm: str, tilts=(0.0, 25.0, 40.0), 
     bottom = obj.bottom_z if support_z is None else support_z
     tip_z = max(bottom + TIP_TABLE_CLEAR, top - depth)
     tcp_z = tip_z + TIP_BEYOND_TCP
+    # close at the object's mid height when the fingertips can go that deep: the widest section of a
+    # lying cylinder is its axis, and pads below it squeeze the cylinder up and out (twin, bottles)
+    tcp_z = max(tcp_z, min(float(c[2]), top - 0.005))
     base = kin.base(arm)[:3, 3]
     for k in range(3):
         if k == ku or ext[k] > max_width:
@@ -146,7 +149,7 @@ def top_grasps(obj: ObjectState, kin: X5Kin, arm: str, tilts=(0.0, 25.0, 40.0), 
 
 
 def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pitches=(0.0, 20.0, 35.0),
-                n_heading: int = 7, max_width: float = MAX_WIDTH) -> list[Grasp]:
+                n_heading: int = 9, max_width: float = MAX_WIDTH, spread_deg: float = 90.0) -> list[Grasp]:
     """Horizontal-ish approach at a fraction of the object's height (upright objects)."""
     ku, _ = up_axis(obj)
     ext = obj.asset.extents
@@ -161,7 +164,7 @@ def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pit
     h0 = math.atan2(c[1] - base[1], c[0] - base[0])
     for frac in heights:
         z = lo + frac * (hi - lo)
-        for dh in np.linspace(-math.radians(60), math.radians(60), n_heading):
+        for dh in np.linspace(-math.radians(spread_deg), math.radians(spread_deg), n_heading):
             head = h0 + dh
             for pitch in pitches:
                 pr = math.radians(pitch)
@@ -171,13 +174,13 @@ def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pit
                 p = np.array([c[0], c[1], z])
                 for flip in (1.0, -1.0):
                     out.append(Grasp("side", T_from(p, _frame(appr, flip * closing)), width,
-                                     score=abs(dh) / math.radians(60) * 0.5 + pitch / 70.0 + abs(frac - 0.5),
+                                     score=abs(dh) / math.radians(spread_deg) * 0.5 + pitch / 70.0 + abs(frac - 0.5),
                                      note=f"h {frac:.2f} head {math.degrees(head):.0f} pitch {pitch:.0f}"))
     return out
 
 
-def rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, wall: float = 0.006, depth: float = 0.018,
-               tilts=(0.0, 25.0)) -> list[Grasp]:
+def rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, wall: float = 0.006, depth: float = 0.024,
+               tilts=(0.0, 15.0, 25.0)) -> list[Grasp]:
     """Bowl rim: pads straddle the wall at the rim, closing radially, approach from above."""
     ext = obj.asset.extents
     r_out = float(min(ext[0], ext[1])) / 2
@@ -203,6 +206,62 @@ def rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, wall: float 
                 out.append(Grasp("rim", T_from(p, Rg), wall, pre_dist=0.06,
                                  score=ang / math.pi + tilt / 50.0, note=f"phi {math.degrees(phi):.0f} tilt {tilt:.0f}"))
         del tang
+    return out
+
+
+def wall_profile(obj: ObjectState, depth: float, band: float = 0.0015) -> tuple[float, float] | None:
+    """(inner radius, outer radius) of a round container's wall ``depth`` below its rim (object frame,
+    about the vertical through the bbox centre), from the mesh."""
+    if obj.asset.mesh is None:
+        return None
+    V = obj.asset.mesh[0]
+    c = obj.asset.center
+    top = float(V[:, 2].max())
+    m = np.abs(V[:, 2] - (top - depth)) < band
+    if m.sum() < 8:
+        return None
+    r = np.hypot(V[m, 0] - c[0], V[m, 1] - c[1])
+    return float(r.min()), float(r.max())
+
+
+def wall_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, depths=(0.012, 0.02, 0.028),
+                max_width: float = 0.03) -> list[Grasp]:
+    """Pinch a round container's wall below the rim: one pad inside, one outside, the closing axis
+    along the wall normal (radial, tilted by the wall slope) and the approach running down along the
+    wall, so both pads lie flat on the wall faces and the container cannot pivot about the tangent
+    (a lip pinch tips the bowl 20-40 deg as soon as it lifts: twin traces 2026-10-24)."""
+    if obj.asset.mesh is None:
+        return []
+    out = []
+    R, top_w = obj.R, obj.top_z
+    c_w = obj.center_w
+    base = kin.base(arm)[:3, 3]
+    h0 = math.atan2(base[1] - c_w[1], base[0] - c_w[0])
+    for d in depths:
+        p0, p1, p2 = wall_profile(obj, d), wall_profile(obj, d - 0.005), wall_profile(obj, d + 0.005)
+        if p0 is None or p1 is None or p2 is None:
+            continue
+        r_in, r_out = p0
+        t = r_out - r_in
+        if t > max_width or t <= 0:
+            continue
+        r_mid = (r_in + r_out) / 2
+        dr_dz = ((p1[0] + p1[1]) / 2 - (p2[0] + p2[1]) / 2) / 0.010      # radius grows going up
+        beta = math.atan(max(0.0, dr_dz))
+        for i in range(n):
+            phi = h0 + 2 * math.pi * i / n
+            u = np.array([math.cos(phi), math.sin(phi), 0.0])
+            pt = c_w + u * r_mid
+            pt[2] = top_w - d
+            appr = -(math.sin(beta) * u + math.cos(beta) * np.array([0.0, 0.0, 1.0]))
+            normal = math.cos(beta) * u - math.sin(beta) * np.array([0.0, 0.0, 1.0])
+            ang = abs(((phi - h0) + math.pi) % (2 * math.pi) - math.pi)
+            for flip in (1.0, -1.0):
+                out.append(Grasp("wall", T_from(pt, _frame(appr, flip * normal)), float(t), pre_dist=0.06,
+                                 score=ang / math.pi + 0.3 * abs(d - 0.02) / 0.01,
+                                 note=f"phi {math.degrees(phi):.0f} depth {d*1000:.0f}mm wall {t*1000:.1f}mm "
+                                      f"slope {math.degrees(beta):.0f}"))
+    del R
     return out
 
 
@@ -286,12 +345,14 @@ def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **k
         g = side_grasps(obj, kin, arm, **kw)
     elif method == "rim":
         g = rim_grasps(obj, kin, arm, **kw)
+    elif method == "wall":
+        g = wall_grasps(obj, kin, arm, **kw) or rim_grasps(obj, kin, arm)
     elif method == "antipodal":
         g = antipodal_grasps(obj, kin, arm, **kw)
     else:
         cat = obj.category
         if cat == "bowl":
-            g = rim_grasps(obj, kin, arm)
+            g = wall_grasps(obj, kin, arm) or rim_grasps(obj, kin, arm)
         elif cat == "bottle":
             ku, _ = up_axis(obj)
             long_k = int(np.argmax(obj.asset.extents))

@@ -175,6 +175,17 @@ class Collision:
             out.append((c, R, h, o.label))
         return out
 
+    def touching(self, arm: str, q, gripper: float = 1.0, ignore=(), held: HeldBox | None = None) -> set:
+        """Objects the arm already overlaps (within margin) at ``q``: a move away from them must be allowed."""
+        out = set()
+        obs = self.obstacles(ignore)
+        while True:
+            ok, why = self.check(arm, q, gripper, ignore=tuple(set(ignore) | out), held=held, table=False,
+                                 obstacles=[o for o in obs if o[3] not in out])
+            if ok or not why.startswith("hits "):
+                return out
+            out.add(why[5:])
+
     def check(self, arm: str, q, gripper: float = 1.0, ignore=(), held: HeldBox | None = None,
               obstacles=None, table: bool = True) -> tuple[bool, str]:
         fr = self.kin.frames(arm, q)
@@ -228,6 +239,8 @@ class Motion:
         n = max(1, math.ceil(dist / max_step_m), math.ceil(ang / max_step_deg))
         qs = [q0]
         obs = self.coll.obstacles(ignore) if check else []
+        start_touch = self.coll.touching(arm, q0, gripper, ignore, held) if check else set()
+        obs_far = [o for o in obs if o[3] not in start_touch]
         q = q0
         for i in range(1, n + 1):
             t = i / n
@@ -242,7 +255,9 @@ class Motion:
             if float(np.abs(r.q - q).max()) > MAX_WAYPOINT_JUMP:
                 return self._partial(arm, qs, step_rad, name, "ik_fail", f"branch flip at waypoint {i}/{n}", T_goal)
             if check:
-                ok, why = self.coll.check(arm, r.q, gripper, ignore=ignore, held=held, obstacles=obs, table=table)
+                near_start = t * dist < 0.05 and t * ang < 20
+                ok, why = self.coll.check(arm, r.q, gripper, ignore=ignore, held=held,
+                                          obstacles=obs_far if near_start else obs, table=table)
                 if not ok:
                     return self._partial(arm, qs, step_rad, name, "collision", f"waypoint {i}/{n}: {why}", T_goal)
             q = r.q
@@ -268,10 +283,12 @@ class Motion:
         q0, q1 = np.asarray(q0, float), np.asarray(q1, float)
         if check:
             obs = self.coll.obstacles(ignore)
+            start_touch = self.coll.touching(arm, q0, gripper, ignore, held)
+            obs_far = [o for o in obs if o[3] not in start_touch]
             n = max(2, math.ceil(float(np.abs(q1 - q0).max()) / 0.08))
             for t in np.linspace(0, 1, n + 1)[1:]:
-                ok, why = self.coll.check(arm, q0 + t * (q1 - q0), gripper, ignore=ignore, held=held, obstacles=obs,
-                                          table=table)
+                ok, why = self.coll.check(arm, q0 + t * (q1 - q0), gripper, ignore=ignore, held=held,
+                                          obstacles=obs_far if t <= 0.3 else obs, table=table)
                 if not ok:
                     return MoveResult("collision", arm, [], self.kin.tcp(arm, q0), note=f"joint move at t={t:.2f}: {why}")
         T = self.kin.tcp(arm, q1)

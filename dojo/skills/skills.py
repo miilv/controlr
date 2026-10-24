@@ -79,6 +79,7 @@ class PlacePlan:
     T_obj_target: np.ndarray
     steps: int
     label: str
+    keep_tilt: bool = False
 
 
 @dataclass
@@ -107,13 +108,13 @@ class Job:
 class GTProvider:
     """WorldState from the dev-only ground truth of the env (twin or KinematicEnv)."""
 
-    def __init__(self, env, assets: AssetDB | None, task: str, instruction: str = "", mesh_labels: tuple = (),
+    def __init__(self, env, assets: AssetDB | None, task: str = "", instruction: str = "", meshes: bool = True,
                  include_clutter: bool = True):
         self.env = env
         self.assets = assets
         self.task = task
         self.instruction = instruction
-        self.mesh_labels = tuple(mesh_labels)
+        self.meshes = meshes
         self.include_clutter = include_clutter
         self.home_q = None
         self.notes: dict = {}
@@ -128,7 +129,7 @@ class GTProvider:
             objs = _objects_from_rows_nodb(rows)
         else:
             objs = objects_from_gt(rows, self.assets, step=self.env.steps_used, include_clutter=self.include_clutter,
-                                   mesh_labels=self.mesh_labels)
+                                   meshes=self.meshes)
         return WorldState(task=self.task, instruction=self.instruction, objects=objs, arms=arms, home_q=self.home_q,
                           step=int(self.env.steps_used), step_lim=int(self.env.step_lim), notes=self.notes)
 
@@ -190,7 +191,7 @@ class Skills:
     def plan_pick(self, label: str, arm: str | None = None, method: str = "auto", lift: float = 0.08,
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
                   lift_to_z: float | None = None, approach_rad: float = FAST, descend_rad: float = SLOW,
-                  open_g: float | None = None, settle: int = 2, return_all: bool = False):
+                  open_g: float | None = None, settle: int = 2, return_all: bool = False, lift_rad: float = MEDIUM):
         w = self.world
         obj = w.obj(label)
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
@@ -227,7 +228,7 @@ class Skills:
                 box = HeldBox(T_tcp_obj, obj.asset.center, obj.asset.extents / 2)
                 T_lift = g.T.copy()
                 T_lift[2, 3] = max(g.T[2, 3] + lift, lift_to_z or 0.0)
-                up = self.motion.line(a, down.q_end, T_lift, MEDIUM, "pick_lift", gripper=CLOSED, ignore=(label,),
+                up = self.motion.line(a, down.q_end, T_lift, lift_rad, "pick_lift", gripper=CLOSED, ignore=(label,),
                                       held=box)
                 if not up.ok:
                     n_coll += up.status == "collision"
@@ -294,7 +295,8 @@ class Skills:
     def plan_place(self, arm: str, T_obj_target, yaw_sym: int = 1, release_gap: float = 0.003, pre_h: float = 0.06,
                    retreat: float = 0.05, ignore=(), q_start=None, approach_rad: float = CARRY,
                    descend_rad: float = SLOW, open_g: float = OPEN, settle: int = 2, open_steps: int = OPEN_STEPS,
-                   extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False):
+                   extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
+                   keep_tilt: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins)."""
         h = self.held[arm]
@@ -331,7 +333,7 @@ class Skills:
                 continue
             p = ArmPlan(arm, np.asarray(q0, float), self.ex.g[arm]).move(to_pre, "approach")
             p.ops.extend(tail.ops)
-            cand = PlacePlan(arm, p, T_obj, p.steps, h.label)
+            cand = PlacePlan(arm, p, T_obj, p.steps, h.label, keep_tilt=keep_tilt)
             cand.approach = to_pre
             cand.tail_kw = tail_kw
             allp.append(cand)
@@ -394,6 +396,16 @@ class Skills:
                 shift = float(np.linalg.norm(T_rel_meas[:3, 3] - h.T_tcp_obj[:3, 3]))
                 h2 = Held(h.label, T_rel_meas, HeldBox(T_rel_meas, o.asset.center, o.asset.extents / 2), h.grasp)
                 tail = self._place_tail(pp.arm, self.ex.q[pp.arm], pp.T_obj_target, h2, **pp.tail_kw)
+                if isinstance(tail, str) and pp.keep_tilt:
+                    # the object hangs tilted in the hand: put its bbox centre on the target centre with the
+                    # orientation it has now (for loose upright tolerances, e.g. upper bowls <= 45 deg)
+                    T_now = self.kin.tcp(pp.arm, self.ex.q[pp.arm]) @ T_rel_meas
+                    c_t = pp.T_obj_target[:3, :3] @ o.asset.center + pp.T_obj_target[:3, 3]
+                    T_keep = T_now.copy()
+                    T_keep[:3, 3] = c_t - T_now[:3, :3] @ o.asset.center
+                    tail = self._place_tail(pp.arm, self.ex.q[pp.arm], T_keep, h2, **pp.tail_kw)
+                    if not isinstance(tail, str):
+                        pp.T_obj_target = T_keep
                 if isinstance(tail, str):
                     tail = self._place_tail(pp.arm, self.ex.q[pp.arm], pp.T_obj_target, h, **pp.tail_kw)
                     note_rm = f"in-hand shift {shift*1000:.1f} mm (re-plan failed: {tail if isinstance(tail, str) else ''})"
@@ -462,7 +474,7 @@ class Skills:
     def can_pick_at(self, label: str, arm: str, xy, method: str = "auto") -> bool:
         """Grasp feasibility from home if ``label`` rested level on the table at ``xy``."""
         from dojo.skills.geometry import R_to_quat
-        from dojo.skills.programs.common import current_R, half_height, level_R
+        from dojo.skills.targets import current_R, half_height, level_R
         o = self.world.obj(label)
         saved = (o.pos.copy(), o.quat.copy())
         R = level_R(current_R(self, label))

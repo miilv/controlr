@@ -1,4 +1,7 @@
-"""G3: expert programs with the TRUE state, in the physics-only twin, on our own dev layouts.
+"""G3: the expert skills with the TRUE state, in the physics-only twin, on our own dev layouts.
+
+Every episode runs the same entry point, ``planner.solve`` (instruction + WorldState -> skill); the
+task name only picks the layouts and labels the results.
 
     scripts/skills/g3.sh run   --task stack_blocks --seeds 100000-100024 --out ~/dojo-data/skills/g3/<run>
     scripts/skills/g3.sh probe --out ~/dojo-data/skills/probe        # FK vs obs, step size vs landing error,
@@ -57,8 +60,10 @@ def classify(res: dict, reward: dict, history: list[dict]) -> str | None:
     return "logic"
 
 
-def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, log=print, trace: bool = False,
+def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
                 verify_k: int = 0) -> dict:
+    """``task`` is bookkeeping only: the episode runs ``planner.solve`` from the instruction + world."""
+    from dojo.skills import planner
     from dojo.skills.env import RunnerEnv
     from dojo.skills.skills import GTProvider, Skills
 
@@ -71,14 +76,14 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
         rec.update({"success": False, "score": 0.0, "category": "unstable_layout"})
         return rec
     env = RunnerEnv(run)
-    prov = GTProvider(env, assets, task, instruction=env.instruction, mesh_labels=getattr(program, "MESH_LABELS", ()))
+    prov = GTProvider(env, assets, instruction=env.instruction)
     t1 = time.perf_counter()
     sim_time = [0.0]
     verifier = None
     if verify_k:
         from dojo.skills.verify import InProcessTwin
         verifier = InProcessTwin(run, list(range(1, run.num_envs)), seed=seed)
-    sk = Skills(env, prov, reserve=getattr(program, "RESERVE", 30), log=log, verifier=verifier,
+    sk = Skills(env, prov, reserve=30, log=log, verifier=verifier,
                 verify_k=verify_k or 2, n_cands=4)
     frames = []
     if trace:
@@ -103,7 +108,7 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
     env.step = timed_step
     res = {}
     try:
-        res = program.run(sk) or {}
+        res = planner.solve(sk) or {}
     except Exception as e:  # noqa: BLE001
         from dojo.skills.executor import EpisodeEnded
         if isinstance(e, EpisodeEnded):
@@ -121,8 +126,8 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
     wall = time.perf_counter() - t1
     reward = env.reward()
     score = env.score()
-    hist = [{"skill": h.skill, "ok": h.ok, "status": h.status, "steps": h.steps, "arm": h.arm, "note": h.note[:300]}
-            for h in sk.history]
+    hist = [{"skill": h.skill, "ok": bool(h.ok), "status": str(h.status), "steps": int(h.steps), "arm": h.arm,
+             "note": str(h.note)[:300]} for h in sk.history]
     res_j = {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v)[:500]) for k, v in res.items()}
     rec.update({"success": bool(reward["success"]), "score": float(score), "steps": int(reward["steps_used"]),
                 "step_lim": int(reward["step_lim"]), "wall_s": round(wall, 1), "sim_s": round(sim_time[0], 1),
@@ -137,20 +142,18 @@ def run_episode(run, task: str, layout: dict, assets, program, out_dir: Path, lo
         json.dump(sk.ex.trajectory_json(), f)
     if trace:
         with gzip.open(out_dir / f"{task}_{seed}_trace.json.gz", "wt") as f:
-            json.dump({"frames": frames, "skills": hist}, f)
+            json.dump({"frames": frames, "skills": hist}, f, default=lambda x: x.item() if hasattr(x, "item") else str(x))
     return rec
 
 
 def cmd_run(a) -> None:
     from dojo.simlab import paths
     from dojo.simlab.runner import RoboDojoRunner
-    from dojo.skills import programs
     from dojo.skills.world import AssetDB
 
     out = Path(a.out)
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)
-    program = programs.get(a.task)
     assets = AssetDB(paths.OBJECTS)
     run = RoboDojoRunner(a.task, num_envs=1 + (a.twins if a.verify else 0), workdir=str(out / "work"),
                          physics_only=True, need_planner=False)
@@ -165,7 +168,7 @@ def cmd_run(a) -> None:
         lay = json.loads(lp.read_text())
         lay.setdefault("_simlab", {})["seed"] = seed
         logs = []
-        rec = run_episode(run, a.task, lay, assets, program, out, log=lambda m: logs.append(m), trace=a.trace,
+        rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
                           verify_k=a.verify)
         rec["log"] = logs[-60:]
         rows.append(rec)
@@ -174,7 +177,11 @@ def cmd_run(a) -> None:
         print(f"[g3] {a.task} {seed}: success={rec.get('success')} score={rec.get('score')} "
               f"steps={rec.get('steps')}/{rec.get('step_lim')} wall={rec.get('wall_s')}s cat={rec.get('category')} "
               f"res={str(rec.get('result'))[:160]}", flush=True)
-    write_summary(out, a.task, rows)
+    allrows = {}
+    for line in summ_p.read_text().splitlines():
+        r = json.loads(line)
+        allrows[r["seed"]] = r
+    write_summary(out, a.task, [allrows[k] for k in sorted(allrows)])
     run.close()
 
 
