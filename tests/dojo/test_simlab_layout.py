@@ -59,7 +59,9 @@ def test_valid_record_passes_and_errors_are_specific():
     assert any("duplicate label block_0" in e for e in errs)
     assert any("physics.type" in e for e in errs)
     assert any("clutter_idx" in e for e in errs)
-    assert any("Table" in e for e in errs)
+    assert not any("Table" in e for e in errs)          # Table is optional (conveyor scene)
+    del bad["Room"]
+    assert any("Room" in e for e in L.validate(bad))
 
 
 def test_object_table_and_clutter_flag():

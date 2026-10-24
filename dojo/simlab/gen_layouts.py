@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -35,6 +36,14 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
+GENERATOR = "simlab/v4"
+# Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
+# fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
+# RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
+# failed RoboDojo's stability check).
+ROBOT_KEEPOUT = [(-0.42, -0.40, -0.18, -0.17), (0.18, -0.40, 0.42, -0.17)]     # (x0, y0, x1, y1), env frame
+ROBOT_KEEPOUT_TOP = 0.08
+
 SAMPLING_DEFAULTS = {"group": None, "xlim": None, "ylim": None, "zlim": None, "qpos": [1, 0, 0, 0],
                      "rotate_deg": 0, "rotate_rand": False, "relative_plane": "Table", "place_tag": None,
                      "margin": 0.01, "check_mode": "bbox", "need_check_stable": True}
@@ -42,6 +51,23 @@ SAMPLING_DEFAULTS = {"group": None, "xlim": None, "ylim": None, "zlim": None, "q
 
 class LayoutError(RuntimeError):
     pass
+
+
+_KEEPOUT_ON = [True]          # generate() turns it off for its last attempts (fixed poses under a gripper)
+
+
+def hits_robot(meta: dict, pose, polygon, plane: str) -> bool:
+    """A placed object is taller than ROBOT_KEEPOUT_TOP and its footprint overlaps a home gripper."""
+    if not _KEEPOUT_ON[0] or plane != "table" or polygon is None:
+        return False
+    from shapely.geometry import box
+    if not any(polygon.intersects(box(*b)) for b in ROBOT_KEEPOUT):
+        return False
+    from dojo.simlab.motion import quat_to_mat
+    v = np.asarray(meta["geometry"]["oriented_bbox"]["vertices"], float).reshape(-1, 3)
+    top = float((v @ quat_to_mat(pose[3:] / np.linalg.norm(pose[3:])).T)[:, 2].max() + pose[2])
+    from dojo.simlab.layout import TABLE_TOP_Z
+    return top - TABLE_TOP_Z > ROBOT_KEEPOUT_TOP
 
 
 def load_yaml(p: Path) -> dict:
@@ -61,11 +87,13 @@ def scene_config(task: str) -> dict:
 
 
 def merged_object_groups(task: str) -> dict[str, list]:
-    """Task object groups per type, with the scene's own groups appended (camera_stand), as
+    """Task object groups per type in the task config's own key order (organize_table places its
+    Geometry drawer before the Rigid objects), with the scene's groups appended (camera_stand), as
     ``LayoutManager.process_config`` merges them."""
     tcfg, scfg = task_config(task), scene_config(task)
+    order = [k for k in tcfg if k in OBJECT_TYPES] + [t for t in OBJECT_TYPES if t not in tcfg]
     out: dict[str, list] = {}
-    for t in OBJECT_TYPES:
+    for t in order:
         groups = list(tcfg.get(t) or [])
         groups += list(scfg.get(t) or [])
         if groups:
@@ -128,13 +156,15 @@ def make_generators(scene_cfg: dict, env_spacing: float = 7.0) -> dict:
     """One ClutteredGenerator per support plane, set up as ``LayoutManager.cluttered_generator_init``."""
     from shapely.geometry import box
     from utils.cluttered_generator import ClutteredGenerator
-    t = scene_cfg["Table"]
-    pos, sc = t["default_pos"], t["scale"]
-    size = [-sc[0] / 2, -sc[1] / 2, sc[0] / 2, sc[1] / 2]
-    table_h = pos[2] + sc[2] / 2
-    g_table = ClutteredGenerator()
-    g_table.reset(box(size[0] + 0.05 + pos[0], size[1] + 0.05 + pos[1], size[2] - 0.05 + pos[0],
-                      size[3] - 0.05 + pos[1]), frame=np.array([0.0, 0.0, table_h, 1.0, 0.0, 0.0, 0.0]))
+    g_table = None
+    if "Table" in scene_cfg:                 # the conveyor scene has no table
+        t = scene_cfg["Table"]
+        pos, sc = t["default_pos"], t["scale"]
+        size = [-sc[0] / 2, -sc[1] / 2, sc[0] / 2, sc[1] / 2]
+        table_h = pos[2] + sc[2] / 2
+        g_table = ClutteredGenerator()
+        g_table.reset(box(size[0] + 0.05 + pos[0], size[1] + 0.05 + pos[1], size[2] - 0.05 + pos[0],
+                          size[3] - 0.05 + pos[1]), frame=np.array([0.0, 0.0, table_h, 1.0, 0.0, 0.0, 0.0]))
     gr = scene_cfg["Ground"]
     gpos = gr.get("default_pos", [0, 0, 0])
     gsize = [-env_spacing / 2, -env_spacing / 2, env_spacing / 2, env_spacing / 2]
@@ -142,7 +172,7 @@ def make_generators(scene_cfg: dict, env_spacing: float = 7.0) -> dict:
     g_ground.reset(box(gsize[0] + 0.05 + gpos[0], gsize[1] + 0.05 + gpos[1], gsize[2] - 0.05 + gpos[0],
                        gsize[3] - 0.05 + gpos[1]),
                    frame=np.array([0.0, 0.0, gr.get("thickness", 0.1) / 2, 1.0, 0.0, 0.0, 0.0]))
-    return {"table": g_table, "ground": g_ground}
+    return {"table": g_table if g_table is not None else g_ground, "ground": g_ground}
 
 
 # --------------------------------------------------------------------------- selection
@@ -192,40 +222,194 @@ def select_instances(obj_type: str, group: dict, rng: random.Random) -> list[tup
 
 
 # --------------------------------------------------------------------------- placement
+FIXTURE_PLANES = ("table", "ground")
+
+
+def on_object(plane) -> bool:
+    """``relative_plane`` names other objects (labels, e.g. swap_blocks' ["mat0", "mat1", "mat2"])."""
+    if isinstance(plane, (list, tuple)):
+        return True
+    return str(plane).split("/")[0].lower() not in FIXTURE_PLANES
+
+
+def _qmul(a, b):
+    from dojo.simlab.layout import quat_mul
+    return quat_mul(a, b)
+
+
+def _qrot(q, v):
+    from dojo.simlab.motion import quat_to_mat
+    return quat_to_mat(np.asarray(q, float) / np.linalg.norm(q)) @ np.asarray(v, float)
+
+
+def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.Random, gens: dict,
+                    siblings: dict):
+    """Pose of an object placed relative to another object (``relative_plane`` = label, list of labels,
+    or "label/support_key"). Returns (pose[7], parent_label).
+
+    * list of labels (swap_blocks' mats): pick a parent not used yet;
+    * the parent's ``passive.support`` point (first centre of the given / first key) is the reference;
+      without one, the parent's origin;
+    * x/y offsets from xlim/ylim are in world axes around that reference; with ``zlim`` the height is
+      reference + zlim and the orientation the parent's x ``qpos`` (e.g. the conveyor's photo, a fluid
+      inside its bottle), otherwise the child rests on the support point (its ``active.place`` frame);
+    * ``rotate_rand`` turns about world z; children of one parent keep their footprints apart.
+    """
+    from dojo.simlab.layout import find, quat_z
+    multi = isinstance(prm["relative_plane"], (list, tuple))
+    cands = list(prm["relative_plane"]) if multi else [prm["relative_plane"]]
+    free = [c for c in cands if not (multi and str(c).split("/")[0] in used)]
+    if not free:
+        raise LayoutError(f"no free support among {cands}")
+    pick = str(rng.choice(free))
+    plabel, _, skey = pick.partition("/")
+    parent = find(layout, plabel)
+    ptype = next(t for t in OBJECT_TYPES for c, insts in (layout.get(t) or {}).items() if parent in insts)
+    pmeta = metadata(ptype, parent["category"], int(parent["category_idx"])) or {}
+    supports = (pmeta.get("passive") or {}).get("support") or {}
+    ppos, pq = np.asarray(parent["default_pos"], float), np.asarray(parent["default_ori"], float)
+    max_off = None
+    if supports:
+        sup = supports[skey if skey in supports else next(iter(supports))]
+        centre = np.asarray(sup["center"][0], float)
+        ref_pos, ref_q = ppos + _qrot(pq, centre[:3]), _qmul(pq, centre[3:])
+        if len(sup["center"]) == 1 and sup.get("radius"):
+            max_off = float(sup["radius"][0])     # one support disk (egg_basket): stay on it
+    else:
+        ref_pos, ref_q = ppos, pq
+    places = (meta.get("active") or {}).get("place") or {}
+    tag = prm["place_tag"] or (next(iter(places)) if places else None)
+    radius = float(places[tag]["projection_circle"]["radius"]) if tag else 0.03
+    xr, yr = _ranges(prm["xlim"] or [0, 0])[0], _ranges(prm["ylim"] or [0, 0])[0]
+    if max_off is not None:
+        max_off = max(0.0, max_off - radius)
+    for _ in range(400):
+        if max_off is not None:                 # uniform on the support disk (inside the config box)
+            r, th = max_off * math.sqrt(rng.random()), rng.uniform(0.0, 2 * math.pi)
+            off = np.array([r * math.cos(th), r * math.sin(th), 0.0])
+            if not (xr[0] - 1e-9 <= off[0] <= xr[1] + 1e-9 and yr[0] - 1e-9 <= off[1] <= yr[1] + 1e-9):
+                continue
+        else:
+            off = np.array([rng.uniform(*xr), rng.uniform(*yr), 0.0])
+        q = ref_q
+        if prm["rotate_rand"]:
+            rd = prm["rotate_deg"] or 0
+            lo, hi = (-abs(rd), abs(rd)) if np.isscalar(rd) else (min(rd), max(rd))
+            q = _qmul(quat_z(rng.uniform(lo, hi)), q)
+        if prm["zlim"] is not None:
+            z0, z1 = _ranges(prm["zlim"])[0]
+            qq = _qmul(q, prm["qpos"]) if prm["qpos"] is not None else q
+            pose = np.r_[ref_pos + off + [0.0, 0.0, rng.uniform(z0, z1)], qq]
+        else:
+            c_frame = np.asarray(places[tag]["projection_circle"]["center"], float)
+            pose = gens["ground"]._placement_to_origin(np.r_[ref_pos + off, q], c_frame)
+        sib = siblings.setdefault(plabel, [])
+        if all(np.linalg.norm(pose[:2] - xy) > radius + r + 0.002 for xy, r in sib):
+            sib.append((pose[:2].copy(), radius))
+            used.add(plabel)
+            return pose, plabel
+    raise LayoutError(f"no room for a child of {plabel}")
+
+
+def _is_fixed(group: dict) -> bool:
+    c = group.get("common") or {}
+    xr, yr = _ranges(c.get("xlim")), _ranges(c.get("ylim"))
+    return len(xr) == 1 and len(yr) == 1 and xr[0][0] == xr[0][1] and yr[0][0] == yr[0][1]
+
+
+def _deps(group: dict) -> set:
+    rp = (group.get("common") or {}).get("relative_plane", "Table")
+    deps = set()
+    if on_object(rp):
+        deps |= {str(c).split("/")[0] for c in (rp if isinstance(rp, (list, tuple)) else [rp])}
+    sm = group.get("select_mode") or {}
+    if sm.get("mode") == "label_map":
+        deps.add(sm["key_label"])
+    return deps
+
+
+def label_map_instances(obj_type: str, group: dict, layout: dict) -> list[tuple[dict, int]]:
+    """``select_mode: label_map``: the instance listed for the key object in ``<category>/map.json``
+    (e.g. the photo that shows pick_from_conveyor_by_image's target)."""
+    from dojo.simlab.layout import find
+    sm = group["select_mode"]
+    key_obj = find(layout, sm["key_label"])
+    entry = group["category"][0]
+    with open(paths.OBJECTS / obj_type / entry["name"] / "map.json", encoding="utf-8") as f:
+        mp = json.load(f)
+    idx = int(mp[f"{key_obj['category']}/{int(key_obj['category_idx']):05d}"])
+    return [(entry, idx)] * _count(sm.get("nums", 1), random.Random(0))
+
+
 def place_task_objects(groups: dict[str, list], gens: dict, rng: random.Random, layout: dict) -> None:
-    for obj_type, glist in groups.items():
-        for group in glist:
-            common = dict(group.get("common") or {})
-            labels = list((group.get("select_mode") or {}).get("label") or [])
-            for k, (entry, idx) in enumerate(select_instances(obj_type, group, rng)):
-                prm = dict(SAMPLING_DEFAULTS)
-                prm.update(common)
-                prm.update({key: v for key, v in entry.items() if key not in ("name", "index")})
-                cat = entry["name"]
-                meta = metadata(obj_type, cat, idx)
-                if meta is None or not usd_exists(obj_type, cat, idx):
-                    raise LayoutError(f"missing asset {obj_type}/{cat}/{idx:05d}")
-                plane = str(prm["relative_plane"]).split("/")[0].lower()
-                gen = gens["ground" if plane == "ground" else "table"]
-                label = labels[k] if k < len(labels) else f"{cat}{k}"
-                ok, pose, _ = gen.add_model_from_config(
-                    config=meta, place_tag=prm["place_tag"], rotate_rand=bool(prm["rotate_rand"]),
-                    rotate_deg=prm["rotate_deg"], margin=float(prm["margin"] or 0.0), max_attempts=200,
-                    name=label, allowed_region=region(prm["xlim"], prm["ylim"]),
-                    zlim=prm["zlim"], qpos=prm["qpos"] if prm["zlim"] is not None else None,
-                    cluttered=False, check_mode=prm["check_mode"])
-                if not ok:
-                    raise LayoutError(f"could not place {label} ({cat}/{idx})")
-                phys = {k2: v for k2, v in (meta.get("physics") or {}).items() if k2 in ("mass", "friction")}
+    # groups go in config order, each once everything it refers to (parent objects, label_map keys)
+    # has been placed
+    pending = [(t, g) for t, gl in groups.items() for g in gl]
+    ordered, placed = [], set()
+    while pending:
+        ready = [(t, g) for t, g in pending if _deps(g) <= placed]
+        if not ready:
+            raise LayoutError(f"unresolvable placement dependencies: {[sorted(_deps(g)) for _, g in pending]}")
+        # fixed-pose groups first (zero-area region): a random object placed earlier must not take the
+        # spot the config pins (organize_table: drawer vs the pinned cube_cushion)
+        fixed = [(t, g) for t, g in ready if _is_fixed(g)]
+        t, g = (fixed or ready)[0]
+        pending.remove((t, g))
+        ordered.append((t, g))
+        placed |= set((g.get("select_mode") or {}).get("label") or [])
+    used_supports: set = set()
+    siblings: dict = {}
+    for obj_type, group in ordered:
+        common = dict(group.get("common") or {})
+        labels = list((group.get("select_mode") or {}).get("label") or [])
+        sm_mode = (group.get("select_mode") or {}).get("mode")
+        insts = (label_map_instances(obj_type, group, layout) if sm_mode == "label_map"
+                 else select_instances(obj_type, group, rng))
+        for k, (entry, idx) in enumerate(insts):
+            prm = dict(SAMPLING_DEFAULTS)
+            prm.update(common)
+            prm.update({key: v for key, v in entry.items() if key not in ("name", "index")})
+            cat = entry["name"]
+            meta = metadata(obj_type, cat, idx)
+            if meta is None or not usd_exists(obj_type, cat, idx):
+                raise LayoutError(f"missing asset {obj_type}/{cat}/{idx:05d}")
+            label = labels[k] if k < len(labels) else f"{cat}{k}"
+            if on_object(prm["relative_plane"]):
+                pose, parent_label = place_on_object(prm, meta, layout, used_supports, rng, gens, siblings)
+                phys = dict(meta.get("physics") or {})
                 phys["type"] = obj_type.lower()
                 inst = {"category": cat, "category_idx": int(idx)}
                 for f in ("group", "xlim", "ylim", "zlim", "qpos", "rotate_deg", "rotate_rand", "relative_plane",
                           "place_tag", "margin", "check_mode", "need_check_stable"):
                     inst[f] = copy.deepcopy(prm[f])
+                inst["relative_plane"] = parent_label     # RoboDojo rewards read it back as a label
                 inst.update({"label": label, "default_pos": [float(v) for v in pose[:3]],
                              "default_ori": [float(v) for v in pose[3:] / np.linalg.norm(pose[3:])],
                              "scale": [1.0, 1.0, 1.0], "physics": phys, "visual": {}})
                 layout.setdefault(obj_type, {}).setdefault(cat, []).append(inst)
+                continue
+            plane = str(prm["relative_plane"]).split("/")[0].lower()
+            gen = gens["ground" if plane == "ground" else "table"]
+            ok, pose, poly = gen.add_model_from_config(
+                config=meta, place_tag=prm["place_tag"], rotate_rand=bool(prm["rotate_rand"]),
+                rotate_deg=prm["rotate_deg"], margin=float(prm["margin"] or 0.0), max_attempts=200,
+                name=label, allowed_region=region(prm["xlim"], prm["ylim"]),
+                zlim=prm["zlim"], qpos=prm["qpos"] if prm["zlim"] is not None else None,
+                cluttered=False, check_mode=prm["check_mode"])
+            if not ok:
+                raise LayoutError(f"could not place {label} ({cat}/{idx})")
+            if hits_robot(meta, pose, poly, plane):
+                raise LayoutError(f"{label} ({cat}/{idx}) under a home-pose gripper")
+            phys = dict(meta.get("physics") or {})          # e.g. SpringButton's reset_drive
+            phys["type"] = obj_type.lower()
+            inst = {"category": cat, "category_idx": int(idx)}
+            for f in ("group", "xlim", "ylim", "zlim", "qpos", "rotate_deg", "rotate_rand", "relative_plane",
+                      "place_tag", "margin", "check_mode", "need_check_stable"):
+                inst[f] = copy.deepcopy(prm[f])
+            inst.update({"label": label, "default_pos": [float(v) for v in pose[:3]],
+                         "default_ori": [float(v) for v in pose[3:] / np.linalg.norm(pose[3:])],
+                         "scale": [1.0, 1.0, 1.0], "physics": phys, "visual": {}})
+            layout.setdefault(obj_type, {}).setdefault(cat, []).append(inst)
 
 
 def place_clutter(clutter_cfg: list, gens: dict, rng: random.Random, layout: dict, exclude: set[str]) -> int:
@@ -249,11 +433,11 @@ def place_clutter(clutter_cfg: list, gens: dict, rng: random.Random, layout: dic
             meta = metadata("Rigid", cat, idx, clutter=True)
             if meta is None or not usd_exists("Rigid", cat, idx, clutter=True):
                 continue
-            ok, pose, _ = gen.add_model_from_config(
+            ok, pose, poly = gen.add_model_from_config(
                 config=meta, rotate_rand=bool(block.get("rotate_rand", True)), rotate_deg=block.get("rotate_deg", 30),
                 margin=float(block.get("margin", 0.015)), max_attempts=50, name=f"clutter_{cat}",
                 allowed_region=region(block["xlim"], block["ylim"]), cluttered=True, check_mode="bbox")
-            if not ok:
+            if not ok or hits_robot(meta, pose, poly, plane):
                 continue
             used.add(cat)
             phys = {k: v for k, v in (meta.get("physics") or {}).items() if k in ("mass", "friction")}
@@ -269,7 +453,7 @@ def place_clutter(clutter_cfg: list, gens: dict, rng: random.Random, layout: dic
     return placed
 
 
-def generate(task: str, seed: int, max_tries: int = 20) -> dict:
+def generate(task: str, seed: int, max_tries: int = 40) -> dict:
     """One layout record for ``task`` (seed >= SEED_BASE). Deterministic in ``seed``."""
     if seed < paths.SEED_BASE:
         raise ValueError(f"our layout seeds start at {paths.SEED_BASE}")
@@ -278,6 +462,9 @@ def generate(task: str, seed: int, max_tries: int = 20) -> dict:
     task_cats = {e["name"] for gl in groups.values() for g in gl for e in g["category"]}
     last = None
     for attempt in range(max_tries):
+        # the keep-out is soft: some configs fix objects under the home-pose grippers on purpose
+        # (fill_egg_holder's egg_basket, organize_table's alarm); then the second half drops it
+        _KEEPOUT_ON[0] = attempt < max_tries // 2
         sub = seed * 1000 + attempt
         np.random.seed(sub % (2**32))
         rng = random.Random(sub)
@@ -299,8 +486,9 @@ def generate(task: str, seed: int, max_tries: int = 20) -> dict:
         errs = validate(layout)
         if errs:
             raise LayoutError(f"generated an invalid record: {errs[:5]}")
-        layout["_simlab"] = {"task": task, "id": seed, "seed": seed, "attempt": attempt, "generator": "simlab/v1",
-                             "n_clutter": n_clutter, "clutter_wanted": want}
+        layout["_simlab"] = {"task": task, "id": seed, "seed": seed, "attempt": attempt, "generator": GENERATOR,
+                             "n_clutter": n_clutter, "clutter_wanted": want,
+                             "robot_keepout": _KEEPOUT_ON[0]}
         return layout
     raise LayoutError(f"{task} seed {seed}: no valid layout in {max_tries} tries ({last})")
 

@@ -124,3 +124,58 @@ Runtime per frame (4 parallel workers on compute3 at load average 8–10, shared
 0.7 s stack_blocks / 2–4 s bowls and build_tower / 14 s bottles / 22 s pack_objects. The pack frame alone
 in one process: 9.7 s. Renders cost 0.3 ms each in a 128 px viewport (a 476k-face shoe included); the
 rest is Python and the number of hypotheses.
+
+Active re-view on synthetic scenes (`review_exp.py`): the estimator flags ambiguous objects and requests
+the wrist pose that best separates the alternatives; rendering that view and re-estimating fixed little
+(toothbrush rot > 20°: 4 → 3 of 12, identity 0.67 → 0.75; hammer 2 → 1; shoe identity 0.42 → 0.50).
+
+## 4. G1 on D0-proxy (simlab, compute3)
+
+D0-proxy: our layouts settled by RoboDojo/Isaac 5.1 physics, rendered by Isaac 6.0 RTX with RoboDojo's
+stage, cameras and quality settings (`~/dojo-data/d0`, 25 layouts × 6 tasks × 4 frames). Treated as close to
+the eval look, not identical; recalibrate on genuine 5.1 frames when compute2 is back.
+
+**Camera model vs `gt.cameras`** (validation only): head from the published config with square pixels:
+0.00 mm / 0.000°, K identical (the template's vertical aperture would imply fy 336.5; the renderer draws
+square pixels). Wrists from URDF FK + robot-config mount: median 0.07 mm / 0.017°, max 0.19 mm. FK link6 vs
+the observed flange: 0.06 mm. No calibration term.
+
+**Protocol.** Backgrounds are 2-fold: per-pixel medians over the *other* half of the episodes (any task),
+frame 0 for the home pose, and a robot-free head background = median over frames 0–3 with each frame's FK
+robot mask excluded. The colour map (below) is 2-fold too. GT is read only by the scorer. Tolerances from
+the anatomy report; bottles/pack have no positional checker tolerance, 15 mm is an assumed grasp tolerance.
+Failure classes: identity (pose in tolerance, wrong asset), overshoot (tol < err ≤ 2 tol), gross, missed.
+
+Fixes the real frames forced:
+- the home-pose robot baked into the head background hid objects under the home grippers in every derived
+  view → robot-free head background (masked median) + "never seen" pixels as unknown;
+- close-up wrist backgrounds warped from the 3 mm/px head view are blurry → blurred distance, 1.6× threshold;
+- the explain-away gain counted pixels, so near, large false blobs beat good fits of far objects →
+  scale-free score (net explained fraction of the object's own silhouette − fit cost, accept if > 0.2);
+- build_tower label swaps between similar-sized shapes → the generator's placement prior per label (xy
+  ranges + yaw range from the public task config; scalar `rotate_deg` d = [−d, d], checked on D0 GT, which
+  lies inside every range): xy p90 160 → 12.7 mm, rot p90 15.6° → 6.1°, gross 39 → 21 of 200;
+- block identity under Isaac's tone mapping → offline colour calibration (`color_calib.py`): an affine
+  map catalogue mean colour → observed, fitted on the other fold (613 objects; roughly 0.8 × + 0.2:
+  brighter, less saturated). Nearest-of-5 block identity at GT poses: 84–90 % → 100 % on both held-out folds.
+
+Frame 0, before the placement prior (run `full_f0`; pack partial), within tolerance (head only / + wrists):
+T 0.76 / 0.84, pad 0.80 / 0.80, stack_blocks 0.76 / 0.83, bowls 0.91 / 0.88, build_tower 0.72 / 0.79,
+bottles 0.70 / 0.79, dustbin (config pose) 1.00. Wrists help identity most (blocks 0.63 → 0.73, bottles
+0.73 → 0.82). Fusing the post-motion frames 0..2 (D0's two scripted wrist looks): T 0.84 → 0.96 (xy p90
+17.9 → 1.2 mm, rot p90 14° → 0.6°), blocks 0.83 → 0.87.
+
+**Flags vs errors** (frame 0, wrists, all tasks): of the out-of-tolerance objects the estimator flagged
+(ambiguous / occluded / review / not found) 36 % at precision 0.68; adding confidence < 0.7 → recall 0.70,
+precision 0.60. Confidently wrong = label swaps between similar shapes; the placement prior removes many,
+the label-rival flag targets the rest.
+
+**Memory incident (compute3, ~23:35).** 4 eval workers held ~28 GB RSS; the machine reached RAM 57/62 GB,
+swap full, load 134; the coordinator killed them. Measured afterwards: RSS per process is flat at ~3.4 GB
+over consecutive pack frames (three EGL contexts + resident meshes; no leak); the textured-render cache
+(full-resolution textures) and per-worker background medians were the avoidable parts. Now: backgrounds
+precomputed once (`--build-bg-folds`), textures ≤ 512 px (no accuracy change), GL meshes keep shared
+vertices; GL mesh decimation was tried and rejected (bottle identity 0.82 → 0.64); a 12-mesh LRU thrashed
+on pack (70–100 s/frame), so 64. Policy: every run under `systemd-run --user --scope -p MemoryMax=…`, ≤ 2
+workers (1 for pack/bottles at 6 GB), start only with ≥ 25 GB available, `nice`. Also: `pkill -f` over ssh
+killed my own session again — kill by PID.

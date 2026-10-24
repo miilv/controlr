@@ -159,6 +159,7 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
     from the evaluated episode. ``cam_<x>``: per-pixel median of frame 0 (home pose). ``cam_head_clean``:
     robot-free head background, the median over frames 0-3 with each frame's FK robot mask excluded.
     Observations and proprio only."""
+    import os
     import zlib
 
     import cv2
@@ -173,6 +174,16 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
     key = (str(root), fold)
     if key in _BG_CACHE:
         return _BG_CACHE[key]
+    pre = os.environ.get("DOJO_BG_FOLDS")  # precomputed by --build-bg-folds: no per-worker median
+    if pre and (Path(pre) / f"fold{fold}" / "cam_head.png").exists():
+        from .segment import load_backgrounds
+
+        out = load_backgrounds(Path(pre) / f"fold{fold}")
+        m = Path(pre) / f"fold{fold}" / "cam_head_clean_unseen.png"
+        if m.exists():
+            out["cam_head_clean_unseen"] = (cv2.imread(str(m), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
+        _BG_CACHE[key] = out
+        return out
     others = [e for e in d0.episodes(root) if zlib.crc32(e.name.encode()) % 2 != fold]
     rng = np.random.default_rng(fold)
     sel = [others[i] for i in sorted(rng.choice(len(others), min(max_n, len(others)), replace=False))]
@@ -200,6 +211,28 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
     return out
 
 
+def build_bg_folds(root: Path, out: Path) -> None:
+    """Write both folds' backgrounds (PNG) once, for workers to load (``DOJO_BG_FOLDS``)."""
+    import zlib
+
+    import cv2
+
+    from . import d0
+
+    eps = d0.episodes(root)
+    for fold in (0, 1):
+        ep = next(e for e in eps if zlib.crc32(e.name.encode()) % 2 == fold)
+        bg = fold_backgrounds(ep)
+        d = out / f"fold{fold}"
+        d.mkdir(parents=True, exist_ok=True)
+        for k, v in bg.items():
+            if k.endswith("_unseen"):
+                cv2.imwrite(str(d / f"{k}.png"), (v * 255).astype(np.uint8))
+            else:
+                cv2.imwrite(str(d / f"{k}.png"), cv2.cvtColor(v, cv2.COLOR_RGB2BGR))
+        print("fold", fold, sorted(bg))
+
+
 def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False,
                    bg_loo: bool = False) -> dict:
     """Estimate frame k of an episode (with ``fuse``: frame 0 plus frames 1..k as extra views) and score it
@@ -209,7 +242,14 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
 
     ep = Path(ep)
     obs = d0.load_obs(ep, k)
-    cfg = EstimatorConfig(use_wrists=use_wrists, **(cfg_kw or {}))
+    kw = dict(cfg_kw or {})
+    import os
+    import zlib
+
+    cal = os.environ.get("DOJO_COLOR_CALIB")
+    if cal and Path(cal).exists() and "color_M" not in kw:  # the map fitted on the OTHER fold
+        kw["color_M"] = json.loads(Path(cal).read_text())[f"fold{zlib.crc32(ep.name.encode()) % 2}"]
+    cfg = EstimatorConfig(use_wrists=use_wrists, **kw)
     bgs = fold_backgrounds(ep) if bg_loo else None
     t0 = time.time()
     try:
@@ -228,7 +268,10 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
     gt = d0.load_gt(ep, k)  # DEV-ONLY, after the estimate
     task = obs["task"]
     rows, n_gt, n_pred = score_record(rec, gt, task, {"episode": ep.name, "frame": k, "wrists": use_wrists, "fuse": fuse})
-    return {"frame": {"task": task, "episode": ep.name, "frame": k, "runtime_s": runtime, "error": err,
+    import resource
+
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    return {"frame": {"task": task, "episode": ep.name, "frame": k, "runtime_s": runtime, "error": err, "peak_rss_mb": round(peak),
                       "timings": rec.get("_perception", {}).get("timings"), "missing": rec.get("_missing", []),
                       "n_gt": n_gt, "n_pred": n_pred, "wrists": use_wrists, "fuse": fuse},
             "objects": rows}
@@ -236,6 +279,30 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
 
 def _job(args):
     return evaluate_frame(*args)
+
+
+def failure_class(r: dict, tol) -> str:
+    """ok | missed | gross (>15 mm or rot > 2x tol) | overshoot (tol < err <= 2x tol) | identity (pose
+    within tolerance, wrong asset). Translation tolerance defaults to 15 mm when the task has none."""
+    t_tol = tol[0] or 15.0
+    r_tol = tol[1]
+    if not r.get("found"):
+        return "missed"
+    xy, rot = r["xy_err_mm"], r["rot_err_deg"]
+    if xy > max(15.0, 2 * t_tol) or (r_tol and rot > 2 * r_tol):
+        return "gross"
+    if xy > t_tol or (r_tol and rot > r_tol):
+        return "overshoot"
+    if not r.get("id_ok"):
+        return "identity"
+    return "ok"
+
+
+def failure_breakdown(rs: list[dict], tol) -> dict:
+    from collections import Counter
+
+    c = Counter(failure_class(r, tol) for r in rs)
+    return {k: c.get(k, 0) for k in ("ok", "identity", "overshoot", "gross", "missed")}
 
 
 def summarize(rows: list[dict], frames: list[dict]) -> dict:
@@ -267,6 +334,7 @@ def summarize(rows: list[dict], frames: list[dict]) -> dict:
             d["within_tol_rot"] = float(np.mean([r.get("found") and r["rot_err_deg"] <= tol[1] for r in rs]))
         d["within_tol"] = float(np.mean([bool(r.get("found")) and (not tol[0] or r["xy_err_mm"] <= tol[0])
                                          and (not tol[1] or r["rot_err_deg"] <= tol[1]) for r in rs]))
+        d["breakdown"] = failure_breakdown(rs, tol)
         out[f"{task}|{cat}|frame{k}|wrists={wr}|fuse={fu}"] = d
     rt = [f["runtime_s"] for f in frames if not f.get("error")]
     out["_runtime"] = {"median_s": float(np.median(rt)) if rt else None, "p90_s": float(np.percentile(rt, 90)) if rt else None,
@@ -275,8 +343,8 @@ def summarize(rows: list[dict], frames: list[dict]) -> dict:
 
 
 def to_markdown(summary: dict) -> str:
-    lines = ["| task | class | frame | wrists | fused | n | found | id acc | xy med / p90 (mm) | major-axis med / p90 (mm) | rot med / p90 (deg) | tol | within tol (t / rot / both) |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    lines = ["| task | class | frame | wrists | fused | n | found | id acc | xy med / p90 (mm) | major-axis med / p90 (mm) | rot med / p90 (deg) | tol | within tol (t / rot / both) | ok / id / over / gross / missed |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for k, d in summary.items():
         if k.startswith("_"):
             continue
@@ -284,7 +352,8 @@ def to_markdown(summary: dict) -> str:
         tol = f"{d['tol_mm'] or '-'} mm / {d['tol_deg'] or '-'} deg"
         wt = f"{d.get('within_tol_t', float('nan')):.2f} / {d.get('within_tol_rot', float('nan')):.2f} / {d.get('within_tol', float('nan')):.2f}"
         lines.append(f"| {task} | {cat} | {fr[5:]} | {wr[7:]} | {fu[5:]} | {d['n']} | {d['found']} | {d['id_acc']:.2f} | "
-                     f"{d['xy_med_mm']:.1f} / {d['xy_p90_mm']:.1f} | {d['major_med_mm']:.1f} / {d['major_p90_mm']:.1f} | {d['rot_med_deg']:.1f} / {d['rot_p90_deg']:.1f} | {tol} | {wt} |")
+                     f"{d['xy_med_mm']:.1f} / {d['xy_p90_mm']:.1f} | {d['major_med_mm']:.1f} / {d['major_p90_mm']:.1f} | {d['rot_med_deg']:.1f} / {d['rot_p90_deg']:.1f} | {tol} | {wt} | "
+                     + " / ".join(str(d.get("breakdown", {}).get(k, "")) for k in ("ok", "identity", "overshoot", "gross", "missed")) + " |")
     r = summary.get("_runtime", {})
     lines.append(f"\nruntime per frame: median {r.get('median_s')} s, p90 {r.get('p90_s')} s over {r.get('n_frames')} frames ({r.get('n_errors')} errors)")
     return "\n".join(lines)
@@ -295,6 +364,8 @@ def main(argv=None):
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--build-bg-folds", action="store_true", help="write fold backgrounds to --out and exit")
+    ap.add_argument("--resummarize", action="store_true", help="recompute summary.md from --out's jsonl files")
     ap.add_argument("--tasks", nargs="*")
     ap.add_argument("--frames", nargs="*", type=int, default=[0])
     ap.add_argument("--episodes", type=int, default=0, help="max episodes per task (0 = all)")
@@ -305,6 +376,17 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
+    if a.build_bg_folds:
+        build_bg_folds(d0.d0_root(), a.out)
+        return
+    if a.resummarize:
+        rows = [json.loads(x) for x in open(a.out / "objects.jsonl")]
+        frames = [json.loads(x) for x in open(a.out / "frames.jsonl")]
+        s_ = summarize(rows, frames)
+        (a.out / "summary.json").write_text(json.dumps(s_, indent=1))
+        (a.out / "summary.md").write_text(to_markdown(s_))
+        print(to_markdown(s_))
+        return
     jobs = []
     root = d0.d0_root()
     tasks = a.tasks or sorted(p.name for p in root.iterdir() if p.is_dir())

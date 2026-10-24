@@ -6,15 +6,17 @@
 set -euo pipefail
 SIM_ROOT="${ISAAC_SIM_ROOT:-/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
-exec 9>>"$LOCK"
-for i in $(seq 1440); do
-  flock -n 9 && break
-  [[ $((i % 10)) -eq 1 ]] && echo "[isaac6] GPU lock $LOCK held by: $(tr '\n' ' ' < "$LOCK"), waiting..." >&2
-  sleep 30
-done
-flock -n 9 || { echo "[isaac6] gave up waiting for $LOCK" >&2; exit 75; }
-printf 'pid=%s stream=simlab start=%s cmd=isaac6 %s\n' "$$" "$(date -u +%FT%TZ)" "$*" > "$LOCK"
+if [[ "${SIMLAB_GPU:-1}" != 0 ]]; then        # SIMLAB_GPU=0: a parent already holds the lock
+  LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
+  exec 9>>"$LOCK"
+  for i in $(seq 1440); do
+    flock -n 9 && break
+    [[ $((i % 10)) -eq 1 ]] && echo "[isaac6] GPU lock $LOCK held by: $(tr '\n' ' ' < "$LOCK"), waiting..." >&2
+    sleep 30
+  done
+  flock -n 9 || { echo "[isaac6] gave up waiting for $LOCK" >&2; exit 75; }
+  printf 'pid=%s stream=simlab start=%s cmd=isaac6 %s\n' "$$" "$(date -u +%FT%TZ)" "$*" > "$LOCK"
+fi
 export CARB_APP_PATH="$SIM_ROOT/kit" ISAAC_PATH="$SIM_ROOT" EXP_PATH="$SIM_ROOT/apps" OMNI_KIT_ACCEPT_EULA=YES
 set +u
 source "$SIM_ROOT/setup_python_env.sh"
