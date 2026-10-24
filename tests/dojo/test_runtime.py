@@ -403,3 +403,34 @@ def test_report_survives_success_ending_the_episode(monkeypatch):
     assert isinstance(rep["verify"], dict) and rep["verify"]["segments"] >= 4 and rep["verify"]["calls"] >= 4
     assert rep["provider"]["refresh"] > 0 and len(rep["history"]) >= 4
     assert rep["result"] and rep["result"]["ok"]
+
+
+def test_perception_service_serves_its_ops(monkeypatch):
+    """The service process: both classes exist, every client op is served, plain types only."""
+    import secrets
+    import threading
+    from multiprocessing.connection import Listener
+
+    import dojo.runtime.perception_service as ps
+    for op in ("estimate", "look_plan", "look_poses", "check"):
+        assert callable(getattr(ps._Perception, op)) and callable(getattr(ps.PerceptionClient, op))
+    calls = []
+    for op in ("estimate", "look_plan", "look_poses", "check"):
+        monkeypatch.setattr(ps._Perception, op, lambda self, *a, _op=op, **k: calls.append(_op) or
+                            ({} if _op in ("estimate", "check") else []))
+    key = secrets.token_bytes(16)
+    lst = Listener(("127.0.0.1", 0), authkey=key)
+    port = lst.address[1]
+    lst.close()
+    th = threading.Thread(target=ps.serve, args=(port, key), daemon=True)
+    th.start()
+    pc = ps.PerceptionClient(port, key, timeout_s=10)
+    obs = {"images": {"cam_head": np.zeros((4, 4, 3), np.uint8)}, "state": {"x": np.zeros(2)}, "instruction": "i"}
+    assert pc.estimate([obs], "stack_blocks", 0) == {}
+    assert pc.look_plan(obs, {"Rigid": {}}) == []
+    assert pc.look_poses([0, 0, 0.8], "left") == []
+    assert pc.check(obs, [], 1) == {}
+    assert calls == ["estimate", "look_plan", "look_poses", "check"]
+    pc.close(stop_service=True)
+    th.join(5)
+    assert not th.is_alive()

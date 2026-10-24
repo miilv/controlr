@@ -11,8 +11,9 @@ Ops (request dicts):
     {"op": "look_plan", "frame": frame, "record": dict, "max_looks": 2}            -> {"plan": [...]}
     {"op": "look_poses", "target": xyz, "arm": str, "variants": [(dist, elev)]}    -> {"poses": [...]}
     {"op": "check", "frame": frame, "objects": [{label, key, pos, quat}], "fold"}  -> {"check": {label: ...}}
-        silhouette IoU of each object at the GIVEN pose with the observed foreground (the other objects'
-        silhouettes removed), per view; "head" = cam_head (iou, vis, n_px)
+        per object at the GIVEN pose and per view: ``prec`` = fraction of the pixels where it is predicted
+        front-most (z-buffer over the given objects) that are observed foreground, ``n_vis``; plus the plain
+        silhouette IoU (others removed); "head" = cam_head
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -94,6 +95,63 @@ class PerceptionClient:
         """Alternative wrist-camera poses looking at ``target`` from ``arm``'s side (distance, elevation)."""
         return json.loads(self._call({"op": "look_poses", "target": [float(v) for v in target], "arm": arm,
                                       "variants": variants})["poses"])
+
+    def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
+        return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
+                                      "fold": int(fold)})["check"])
+
+    def close(self, stop_service: bool = False) -> None:
+        try:
+            if stop_service:
+                self._call({"op": "close"})
+            self.conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+# ----------------------------------------------------------------------------- service side
+class _Perception:
+    def __init__(self):
+        self._bgs: dict = {}
+        self._cal = None
+        cal = os.environ.get("DOJO_COLOR_CALIB")
+        if cal and Path(cal).exists():
+            self._cal = json.loads(Path(cal).read_text())
+
+    def bgs(self, fold: int) -> dict:
+        if fold not in self._bgs:
+            import cv2
+
+            from dojo.perception.segment import load_backgrounds
+            d = Path(os.environ["DOJO_BG_FOLDS"]) / f"fold{int(fold)}"
+            out = load_backgrounds(d)
+            m = d / "cam_head_clean_unseen.png"
+            if m.exists():
+                out["cam_head_clean_unseen"] = (cv2.imread(str(m), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
+            if "cam_head" not in out:
+                raise FileNotFoundError(f"no backgrounds in {d}")
+            self._bgs[fold] = out
+        return self._bgs[fold]
+
+    def cfg(self, fold: int):
+        from dojo.perception.inverse_layout import EstimatorConfig
+        kw = {}
+        if self._cal and f"fold{int(fold)}" in self._cal:
+            kw["color_M"] = self._cal[f"fold{int(fold)}"]
+        return EstimatorConfig(use_wrists=True, **kw)
+
+    def estimate(self, frames: list[dict], vocabulary: str, fold: int) -> dict:
+        from dojo.perception.inverse_layout import estimate
+        from dojo.perception.look import fuse
+        fr = [decode_frame(f) for f in frames]
+        if len(fr) == 1:
+            return estimate(fr[0]["images"], fr[0]["state"], vocabulary, fr[0]["instruction"], bgs=self.bgs(fold),
+                            cfg=self.cfg(fold))
+        return fuse(fr, vocabulary, bgs=self.bgs(fold), cfg=self.cfg(fold))
+
+    def look_plan(self, frame: dict, record: dict, max_looks: int) -> list:
+        from dojo.perception.look import look_plan
+        return look_plan(decode_frame(frame), record, max_looks=max_looks)
 
     def look_poses(self, target, arm: str, variants=None) -> list[dict]:
         from dojo.perception.cameras import T_to_pose
