@@ -96,7 +96,15 @@ data `compute3:~/dojo-data/skills/g3/<run>/`):
 | stack_bowls | v3 (wall pinch) | 0/10 | — | the grasp now holds (2.9-5.2 mm); planning: pre-place / carry over the base bowl |
 | put_bottles_into_dustbin | v4 chunk 1 / 2 | 1/7, 0/8 (2 unstable per 10) | 196-424 (700) | dropper misses, standing handovers tip over, bottles knocked off |
 
-(Plan + verify rows below when the runs finish.)
+Plan + verify (dev-only in-process twin: env 0 = episode, 8 twin envs, 4 candidates x 2 samples, 1.5 mm /
+1 deg object noise; `g3 run --verify 2 --twins 8`):
+
+| task | seeds | success | verified segments (first candidate ok) | extra wall per episode |
+|---|---|---|---|---|
+| stack_blocks | 100000-100004 | **5/5** | 24 (24) | ~10 s (28-48 rollouts); 0 extra env steps |
+
+With the current code these seeds also pass single-plan; the same-code single-plan rerun (v4, all 25) is queued.
+The twin does reject candidates: one place rolled [2, 2, 0, 0], with two descent variants failing.
 
 ## 5. Failure taxonomy (what the traces showed)
 
