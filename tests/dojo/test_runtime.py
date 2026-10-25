@@ -641,3 +641,13 @@ def test_refine_not_ok_off_prior_asks_for_a_rehover():
     out = pol._refine_hook(prov, None, "block_0", "right", "pick")
     assert "rehover" in out and abs(float(out["rehover"][0][0]) - x0 - 0.02) < 1e-9
     assert float(prov.belief.objects["block_0"].pos[0]) == x0          # the belief waits for the second look
+
+
+def test_report_arm_table_counts_rescued_and_lost():
+    from dojo.runtime.report import arm_table
+    a = [{"task": "t", "layout_id": i, "success": s, "score": 1.0 if s else 0.15, "category": None if s else "x"}
+         for i, s in ((1, True), (2, False), (3, True))]
+    b = [{"task": "t", "layout_id": i, "success": s, "score": 1.0 if s else 0.15, "category": None if s else "plan"}
+         for i, s in ((1, True), (2, True), (3, False))]
+    t = arm_table({"base": a, "refine": b})
+    assert "| t | 3 | 2 | 2 |" in t and "| 1 [2] | 1 3: plan |" in t

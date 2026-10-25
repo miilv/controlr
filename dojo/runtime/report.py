@@ -96,10 +96,42 @@ def gap_table(rows: list[dict]) -> str:
     return "\n".join(out)
 
 
+def arm_table(arms: dict[str, list[dict]]) -> str:
+    """Two arms (e.g. refine off / on) on the same layouts: totals plus the paired counts. ``rescued`` = failed
+    in the first arm, succeeded in the second; ``lost`` = the reverse."""
+    (na, ra), (nb, rb) = list(arms.items())[:2]
+    out = [f"| task | paired n | {na} succ | {nb} succ | {na} score | {nb} score | rescued by {nb} | lost by {nb} |",
+           "|---|---|---|---|---|---|---|---|"]
+    for task in sorted({r["task"] for r in ra + rb}):
+        A = {r["layout_id"]: r for r in ra if r["task"] == task}
+        B = {r["layout_id"]: r for r in rb if r["task"] == task}
+        ids = sorted(set(A) & set(B))
+        if not ids:
+            continue
+        resc = [i for i in ids if not A[i]["success"] and B[i]["success"]]
+        lost = [i for i in ids if A[i]["success"] and not B[i]["success"]]
+        lost_s = ", ".join(f"{i}: {B[i].get('category')}" for i in lost)
+        out.append(f"| {task} | {len(ids)} | {sum(A[i]['success'] for i in ids)} | {sum(B[i]['success'] for i in ids)} | "
+                   f"{np.mean([A[i]['score'] for i in ids]) * 100:.1f} | {np.mean([B[i]['score'] for i in ids]) * 100:.1f} | "
+                   f"{len(resc)} {resc if resc else ''} | {len(lost)} {lost_s} |")
+    return "\n".join(out)
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("dirs", nargs="+")
+    ap.add_argument("dirs", nargs="*")
+    ap.add_argument("--arm", action="append", default=[], help="NAME:DIR[,DIR...] (give two for a paired table)")
     a = ap.parse_args(argv)
+    if a.arm:
+        arms = {spec.split(":", 1)[0]: load(spec.split(":", 1)[1].split(",")) for spec in a.arm}
+        print(arm_table(arms))
+        print()
+        for name, rows in arms.items():
+            print(f"[{name}]")
+            print(table(rows))
+            print()
+        if not a.dirs:
+            return
     rows = load(a.dirs)
     print(table(rows))
     print()
