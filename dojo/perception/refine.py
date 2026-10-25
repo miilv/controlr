@@ -15,6 +15,9 @@
   (kept: stacked targets keep their height). (x, y, yaw) are refined by Nelder-Mead from a few starts
   (prior, +-15 mm, the 180-degree flip when the shape is not symmetric); the lowest silhouette loss wins.
 - ``others``: [(key, pose7)] of nearby known objects; their pixels are removed from the foreground.
+- ``held``: (key, pose7) or a list of them: objects in the gripper (at a place hover the carried block is
+  between the camera and the support): masked as occluders. Without it, place-time refines of the support
+  mostly fail (integration: 15/44 ok, IoU ~0.24).
 - ``refine_identity(obj_ids, ...)``: the same for several candidate assets (shape swaps such as
   build_tower's board / prism / pillar): the lowest residual wins, with a margin.
 - Returns also ``iou``, ``visible_frac`` (share of the silhouette not under the robot / out of view),
@@ -24,6 +27,7 @@ from __future__ import annotations
 
 import time
 
+import cv2
 import numpy as np
 
 from .cameras import TABLE_Z, R_to_quat_wxyz, pose_to_T, wrist_camera
@@ -101,7 +105,7 @@ def _shape_for(key: str, R: np.ndarray, tag: str | None):
 
 def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
            tag: str | None = None, bgs: dict | None = None, others: list | None = None, iters: int = 60,
-           xy_starts: float = 0.015, seg: str = "local") -> dict:
+           xy_starts: float = 0.015, seg: str = "local", held=None) -> dict:
     t0 = time.time()
     bgs = _backgrounds(bgs) if seg != "local" else bgs
     cam = wrist_camera(arm, np.asarray(proprio[f"{arm}_arm_joint_state"], dtype=float))
@@ -113,6 +117,12 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         a = load_asset(obj_id)
         sil = silhouette(cam, transform(a.Vs, T_prior), a.Fs)
         rob = robot_mask(cam, proprio, dilate_px=3)
+        # a held object (e.g. the block carried to a place) sits between the camera and the target: treat its
+        # silhouette as an occluder, so it neither trains the table colour model nor counts as foreground
+        for hk, hp in ([held] if held and isinstance(held[0], str) else (held or [])):
+            ha = load_asset(hk)
+            hm = silhouette(cam, transform(ha.Vs, pose_to_T(hp[:3], hp[3:])), ha.Fs)
+            rob |= cv2.dilate(hm, np.ones((9, 9), np.uint8))
         fgm, kn = local_foreground(wrist_frame, cam, sil, rob)
         v = ViewMasks(cam, wrist_frame, fgm, kn, np.zeros(fgm.shape, np.float32), rob)
     else:
