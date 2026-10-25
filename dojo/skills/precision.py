@@ -533,7 +533,7 @@ def holder_of(sk: Skills, label: str) -> str | None:
 DISC_SQUEEZE = 4              # still steps after the close before a disc is lifted (twin: lifted at once, it stayed)
 DISC_LIFT_RAD = 0.03          # rad/step of a disc's lift out of its holder (twin: at 0.10 it stayed in the holder 5/5,
                               # at 0.03 and 0.01 it came out 3/3)
-DISC_PLACE_KW = {"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 3, "servo": True,
+DISC_PLACE_KW = {"pre_h": 0.04, "pre_clear": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 3, "servo": True,
                  "fingers_out": True, "probe": False, "hover_clear": 0.006, "seat_tol": 0.05}
 
 
@@ -559,7 +559,7 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
     hm = height_map(w.obj(rec))
     if hm is not None:
         sk.coll.heightmaps[rec] = hm
-    place_kw = {**DISC_PLACE_KW, "servo_ref": rec}
+    place_kw = {**DISC_PLACE_KW, "servo_ref": rec, "sym_axis": k}
 
     def grasps(a):
         oo = sk.world.obj(obj)
@@ -578,7 +578,10 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
         sk.log(f"[disc] {obj}: direct, {direct[0].arm} ({direct[0].grasp.note})")
     # the insertion leg (re-planned from the coin as it is now: in its holder, or lying flat after the relay)
     old_fm = sk.coll.finger_margin
-    sk.coll.finger_margin = 0.0 if abs(float(sk.refresh().obj(obj).R[2, k])) > 0.9 else old_fm
+    flat = abs(float(sk.refresh().obj(obj).R[2, k])) > 0.9
+    sk.coll.finger_margin = 0.0 if flat else old_fm
+    if flat:                                         # a pinch off the table lifts at the usual rate
+        tkw = {**tkw, "pick_kw": {"squeeze": DISC_SQUEEZE}}
     try:
         res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.02, tol_tilt=30.0, tol_z=0.06, ignore=(rec,),
                              place_kw=place_kw, air_handover=False, transfer_kw=tkw)

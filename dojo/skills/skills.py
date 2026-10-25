@@ -477,7 +477,7 @@ class Skills:
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
-                   fingers_out: bool = False, pre_clear: float = 0.015):
+                   fingers_out: bool = False, pre_clear: float = 0.015, sym_axis: int | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -490,7 +490,8 @@ class Skills:
         ``pre_clear``: the pre-place holds the object's lowest corner this far over the highest ignored support.
         ``fingers_out``: the fingertips stay 3 mm above the receptacle's (``servo_ref`` / first ignored object's) top:
         the object is let go there and drops the rest of the way (a bread slice into a toaster slot narrower than the
-        open fingers)."""
+        open fingers). ``sym_axis``: the object is the same turned about this axis of its own (a disc about its normal):
+        the servo tail takes the turn of the target nearest to the object's measured pose (a coin spun in a rim pinch)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -511,6 +512,8 @@ class Skills:
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
                        servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok),
                        probe=bool(probe), hover_clear=float(hover_clear), fingers_out=bool(fingers_out))
+        if sym_axis is not None:
+            tail_kw["sym_axis"] = int(sym_axis)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -553,7 +556,7 @@ class Skills:
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
-                    hover_clear: float = 0.003, fingers_out: bool = False) -> ArmPlan | str:
+                    hover_clear: float = 0.003, fingers_out: bool = False, sym_axis: int | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -592,7 +595,13 @@ class Skills:
             T_up[2, 3] += 0.02
         up = self.motion.line(arm, q_last, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
         if not up.ok:
-            return f"retreat: {up.note}"
+            # straight up instead (a hand pointing sideways over a slot: backing out along its approach left the reach)
+            T_up = T_last.copy()
+            T_up[2, 3] += 0.04
+            up2 = self.motion.line(arm, q_last, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
+            if not up2.ok:
+                return f"retreat: {up.note}"
+            up = up2
         t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
         return t
 
@@ -717,6 +726,9 @@ class Skills:
         rec = next((l for l in ((kw.get("servo_ref"),) + tuple(kw.get("grip_only") or ())) if l in self.world.objects),
                    None)
         o = self.world.obj(label)
+        if kw.get("sym_axis") is not None:
+            # the target turned about the object's symmetry axis to the measured pose (a coin may spin in the pads)
+            T_obj = self._nearest_spin(T_obj, self.refresh().obj(label), int(kw["sym_axis"]))
         hover = 0.004
         if rec is not None and o.asset.mesh is not None:
             V = o.asset.mesh[0] @ T_obj[:3, :3].T + T_obj[:3, 3]
@@ -802,6 +814,25 @@ class Skills:
             p.move(up, "retreat")
         self.ex.run({arm: p}, name=f"place {label} release")
         return note
+
+    @staticmethod
+    def _nearest_spin(T_obj, o, k: int, n: int = 72) -> np.ndarray:
+        """``T_obj`` turned about the object's axis ``k`` through its bbox centre to the turn closest to ``o``'s pose."""
+        from dojo.skills.geometry import angle_between_R, axis_angle_R
+        c = o.asset.center
+        ax = np.zeros(3)
+        ax[k] = 1.0
+        best, bd = np.asarray(T_obj, float), 1e9
+        for i in range(n):
+            Rk = axis_angle_R(ax, 2 * math.pi * i / n)
+            Tl = np.eye(4)
+            Tl[:3, :3] = Rk
+            Tl[:3, 3] = c - Rk @ c
+            T = np.asarray(T_obj, float) @ Tl
+            d = angle_between_R(T[:3, :3], o.R)
+            if d < bd:
+                best, bd = T, d
+        return best
 
     def verify_place(self, pp: PlacePlan, tol_xy=0.01, tol_tilt=6.0, tol_yaw=None, tol_z: float = 0.02) -> SkillResult:
         w = self.refresh()
