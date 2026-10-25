@@ -250,7 +250,7 @@ class Skills:
                 pre_d = 0.13 if (self.refine is not None and float(obj.asset.extents.max()) > 0.12) else None
                 # an irregular object's bbox is no obstacle model for its own pick (a figurine's slice grasp sits
                 # inside its bbox; the slice generator keeps the finger corridors free of its mesh)
-                own = (label,) if g.method == "slice" else ()
+                own = (label,) if g.method in ("slice", "antipodal") else ()
                 to_pre = self.motion.to_pose(a, q0, g.pre(pre_d), approach_rad, "pick_approach", gripper=go, ignore=own)
                 if not to_pre.ok and pre_d is None:
                     # a tall object's top grasp: the default pre-grasp is out of reach (figurine, 19 cm)

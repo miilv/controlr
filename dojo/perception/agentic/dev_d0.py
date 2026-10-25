@@ -186,6 +186,85 @@ def cmd_seq(a):
             print(d.name, len(b1["objects"]), len(pr["objects"]), len(objs), [x["event"] for x in ev if x["event"] != "carried"][:6], flush=True)
 
 
+def enhance(img, how: str):
+    """Contrast variants for zoom crops: 'clahe' (CLAHE on Lab L, clip 2, 8x8 tiles), 'gamma' (0.6 on all channels)."""
+    import cv2
+
+    if how == "clahe":
+        lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+        lab[..., 0] = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(lab[..., 0])
+        return cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+    if how == "gamma":
+        return (255.0 * (img / 255.0) ** 0.6).astype(np.uint8)
+    return img
+
+
+def cmd_contrast(a):
+    """DEV ONLY (GT poses): does CLAHE / gamma on a zoom-sized crop make objects, dark ones above all, stand out more?
+    Per visible object (head + home wrists, D0 frame 0): CNR = |L_obj - L_ring| / std(L_ring) and boundary SNR = mean
+    Sobel magnitude on the silhouette contour / in the ring, for raw, clahe, gamma."""
+    import cv2
+
+    from .. import d0
+    from ..cameras import cameras_from_state, pose_to_T
+    from ..render import load_asset, robot_mask, silhouette, transform
+
+    root = d0.d0_root()
+    rows = []
+    for task in a.tasks:
+        for ep in d0.episodes(root, task)[: a.episodes]:
+            obs, gt = d0.load_obs(ep, 0), d0.load_gt(ep, 0)
+            cams = cameras_from_state(obs["state"])
+            objs = [o for o in gt["objects"] if o.get("label") and not o.get("clutter") and o.get("pos") is not None]
+            for cn, cam in cams.items():
+                img = obs["images"].get(cn)
+                if img is None:
+                    continue
+                rm = robot_mask(cam, obs["state"], dilate_px=2)
+                sils = {}
+                for o in objs:
+                    key = f"{o['type']}/{o['category']}/{o['category_idx']:05d}"
+                    try:
+                        A = load_asset(key)
+                    except Exception:
+                        continue
+                    sils[o["label"]] = silhouette(cam, transform(A.Vs, pose_to_T(o["pos"], o["quat"])), A.Fs)
+                allm = np.zeros(img.shape[:2], np.uint8)
+                for m in sils.values():
+                    allm |= m
+                for lab, m in sils.items():
+                    m = (m > 0) & (rm == 0)
+                    if m.sum() < 30:
+                        continue
+                    ys, xs = np.nonzero(m)
+                    cx, cy, half = int(xs.mean()), int(ys.mean()), 40
+                    x0, y0, x1, y1 = max(cx - half, 0), max(cy - half, 0), min(cx + half, img.shape[1]), min(cy + half, img.shape[0])
+                    mm = m[y0:y1, x0:x1].astype(np.uint8)
+                    ring = cv2.dilate(mm, np.ones((9, 9), np.uint8)) & (~cv2.dilate(mm, np.ones((3, 3), np.uint8)) & 1)
+                    ring &= (allm[y0:y1, x0:x1] == 0) & (rm[y0:y1, x0:x1] == 0)
+                    edge = cv2.dilate(mm, np.ones((3, 3), np.uint8)) - cv2.erode(mm, np.ones((3, 3), np.uint8))
+                    if ring.sum() < 30 or edge.sum() < 10:
+                        continue
+                    r = {"task": task, "ep": ep.name, "cam": cn, "label": lab, "px": int(mm.sum())}
+                    for how in ("raw", "clahe", "gamma"):
+                        crop = enhance(img[y0:y1, x0:x1].copy(), how)
+                        L = cv2.cvtColor(crop, cv2.COLOR_RGB2LAB)[..., 0].astype(float)
+                        g = np.hypot(cv2.Sobel(L, cv2.CV_64F, 1, 0), cv2.Sobel(L, cv2.CV_64F, 0, 1))
+                        lo, lr = L[mm > 0].mean(), L[ring > 0]
+                        r[f"L_{how}"] = round(float(lo), 1)
+                        r[f"cnr_{how}"] = round(float(abs(lo - lr.mean()) / (lr.std() + 1e-6)), 3)
+                        r[f"bsnr_{how}"] = round(float(g[edge > 0].mean() / (g[ring > 0].mean() + 1e-6)), 3)
+                    rows.append(r)
+    Path(a.out).write_text("".join(json.dumps(r) + "\n" for r in rows))
+    import statistics as st
+
+    for grp, sel in (("dark (L_raw < 60)", [r for r in rows if r["L_raw"] < 60]), ("other", [r for r in rows if r["L_raw"] >= 60])):
+        if not sel:
+            continue
+        print(grp, "n", len(sel), " ".join(f"{m}_{h} med {st.median(r[f'{m}_{h}'] for r in sel):.2f}"
+                                              for m in ("cnr", "bsnr") for h in ("raw", "clahe", "gamma")))
+
+
 # ------------------------------------------------------------------------------------------------ scoring (DEV ONLY)
 
 def _cls_of(o: dict, gt_classes: set, b1_cat: dict) -> str | None:
@@ -328,6 +407,10 @@ def main(argv=None):
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
     p.add_argument("--only", nargs="*")
     p.add_argument("--force", action="store_true")
+    p = sp.add_parser("contrast")
+    p.add_argument("--tasks", nargs="+", default=["stack_blocks", "push_T", "build_tower", "stack_bowls", "put_bottles_into_dustbin"])
+    p.add_argument("--episodes", type=int, default=25)
+    p.add_argument("--out", required=True)
     p = sp.add_parser("score")
     p.add_argument("--cases", required=True)
     p.add_argument("--tags", required=True)
@@ -335,7 +418,7 @@ def main(argv=None):
     p.add_argument("--csv")
     p.add_argument("--jsonl")
     a = ap.parse_args(argv)
-    {"cases": cmd_cases, "b1": cmd_b1, "run": cmd_run, "refine": cmd_refine, "seq": cmd_seq, "score": cmd_score}[a.cmd](a)
+    {"cases": cmd_cases, "b1": cmd_b1, "run": cmd_run, "refine": cmd_refine, "seq": cmd_seq, "contrast": cmd_contrast, "score": cmd_score}[a.cmd](a)
 
 
 if __name__ == "__main__":

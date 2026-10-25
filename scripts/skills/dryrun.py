@@ -52,6 +52,8 @@ def main(argv=None) -> None:
     ap.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
     ap.add_argument("--trace-poses", default=None, help="a g3 failure trace (.json.gz): start from its first frame's "
                     "object poses (the twin's settled state)")
+    ap.add_argument("--trace-step", type=int, default=0, help="with --trace-poses: the first frame at or after this "
+                    "env step (-1: the last frame)")
     ap.add_argument("--objects-root", default=None, help="asset metadata root (default RoboDojo's)")
     ap.add_argument("--catalog", default=None, help="mesh catalogue (default DOJO_CATALOG / perception's)")
     a = ap.parse_args(argv)
@@ -60,7 +62,8 @@ def main(argv=None) -> None:
     rows = rows_from_layout(lay, assets)
     if a.trace_poses:
         import gzip
-        fr0 = json.load(gzip.open(a.trace_poses, "rt"))["frames"][0]["obj"]
+        frs = json.load(gzip.open(a.trace_poses, "rt"))["frames"]
+        fr0 = (frs[-1] if a.trace_step < 0 else next((f for f in frs if f["step"] >= a.trace_step), frs[-1]))["obj"]
         for r in rows:
             if r["label"] in fr0:
                 v = fr0[r["label"]]

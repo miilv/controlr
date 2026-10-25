@@ -211,6 +211,9 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
         frames, masks = [], []
         hc = head_camera()
         pool = [(e, k) for e in others for k in d0.frames(e)]
+        # the scan pose's frames (arms parked, ``frame_S1``) show the table under the home grippers: without them the
+        # clean background has no data there and the head view treats that zone as unknown
+        pool += [(e, "S1") for e in others if (e / "frame_S1.json").exists() and (e / "frame_S1_cam_head.png").exists()]
         for i in rng.permutation(len(pool))[:n_clean]:
             e, k = pool[i]
             p = e / f"frame_{k}_cam_head.png"
@@ -248,7 +251,8 @@ def build_bg_folds(root: Path, out: Path) -> None:
 
 
 def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False,
-                   bg_loo: bool = False, look: bool = False, look_frame: str = "L1", fuse_mode: str = "full") -> dict:
+                   bg_loo: bool = False, look: bool = False, look_frame: str = "L1", fuse_mode: str = "full",
+                   look_primary: bool = False) -> dict:
     """Estimate frame k of an episode (with ``fuse``: frame 0 plus frames 1..k as extra views) and score it
     against frame k's GT."""
     from . import d0
@@ -279,7 +283,9 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
             if (ep / f"frame_{lf}.json").exists() and all((ep / f"frame_{lf}_{c}.png").exists() for c in d0.CAMS):
                 oL = d0.load_obs(ep, lf)
                 ex = [(oL["images"], oL["state"])]
-            look_used = bool(ex)
+                if look_primary:  # the look frame is the primary view (the scan pose's unoccluded head view), frame 0 extra
+                    o0, ex = oL, [(o0["images"], o0["state"])] if fuse_mode != "single" else []
+            look_used = bool(ex) or look_primary
             if fuse_mode == "full":
                 rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=ex)
             else:
@@ -410,7 +416,8 @@ def main(argv=None):
     ap.add_argument("--bg-loo", action="store_true", help="2-fold median backgrounds from the other half of the D0 episodes")
     ap.add_argument("--look", action="store_true", help="frame 0 + simlab's frame_L1 (renders at our look poses)")
     ap.add_argument("--look-frame", default="L1", help="L1 (look_poses_v1) or L2 (v2; falls back to L1 where unchanged)")
-    ap.add_argument("--fuse-mode", default="full", choices=["full", "conservative"], help="--look: how frames are fused")
+    ap.add_argument("--fuse-mode", default="full", choices=["full", "conservative", "single"], help="--look: how frames are fused (single: --look-primary alone)")
+    ap.add_argument("--look-primary", action="store_true", help="--look: the look frame is the primary view, frame 0 an extra one")
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
@@ -436,7 +443,7 @@ def main(argv=None):
             for k in a.frames:
                 if (ep / f"frame_{k}.json").exists():
                     for wr in ([True, False] if a.both else [not a.no_wrists]):
-                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo, a.look, a.look_frame, a.fuse_mode))
+                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo, a.look, a.look_frame, a.fuse_mode, a.look_primary))
     print(f"{len(jobs)} frames", flush=True)
     rows, frames = [], []
     with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, open(a.out / "frames.jsonl", "w") as ff:

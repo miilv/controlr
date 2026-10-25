@@ -210,6 +210,26 @@ H2 adds 0.1-25 s per call (GL). B1 itself takes 1-10 s (pack up to 3 min on the 
   on risk.
 
 
+### 3.5 Recommended full-seed config (accepted 2026-10-25)
+
+`AGENTIC_MODEL=claude/claude-sonnet-5-5` (omniroute, router-default thinking as measured), `AGENTIC_GATE=budget`,
+`AGENTIC_MAX_PER_EPISODE=3`, `AGENTIC_GATE_THR=0.2`, tracker on (`AGENTIC_TRACK=auto`), `AGENTIC_HELD=b1_then_agent`,
+`AGENTIC_REFINE=1`, `AGENTIC_KEEP_UNMENTIONED=1`. The three agentic calls are frame 0 (full scene), one after the scan
+/ looks, and one on risk.
+
+| config | agentic calls / episode | LLM calls / episode | LLM calls / seed (2,100) | expected gross at planning (per object) | wall / episode |
+|---|---|---|---|---|---|
+| B1 only (J1b) | 0 | 0.33 (held asks go to an operator today) | — | 12.3 % (D0 frame 0, all tasks); hard set 23.5 % | — |
+| always (agent on every perceive call) | ~10 | ~30 | ~63k | unmeasured after frame 0 | +6 min |
+| budget, max 2 | ~1.7 | ~5.4 | ~11k | hard set 10.8 % at frame 0 (est. ~6-7 % on all D0) | +1-2 min |
+| **budget, max 3 (recommended)** | ~2.4 | ~7.5 | **~16k** | as max 2 at frame 0; the extra call targets the stack/push residuals behind the grippers (unmeasured) | +1.5-2.5 min |
+
+How the columns were built:
+- LLM calls: 3 per agentic call (Sonnet median) plus about 0.33 held_look agent calls per episode (J1b's ask rate).
+- Escalation: assumed about 70 %, because B1 records still flag most scenes at threshold 0.2.
+- Tokens: about 46k prompt per agentic call, so about 0.35 B prompt tokens per seed at max 3.
+- Wall time: the simulator is paused, so no env steps are spent.
+
 ## 4. Other options (estimated where not measured)
 
 ### 4.1 Active perception
@@ -233,7 +253,35 @@ H2 adds 0.1-25 s per call (GL). B1 itself takes 1-10 s (pack up to 3 min on the 
 - **Risk.** The step budget on 200-step tasks; moving at t = 0 while a scripted arm moves is a failure in 3 tasks (the
   anatomy report).
 
-### 4.2 Consistency / tracking (persistent object state)
+### 4.2 Consistency / tracking (persistent object state), measured
+`dojo/perception/tracker.py`. It is wired into the budget path: the agent's frame-0 answer seeds it, and B1-gated
+calls update it.
+
+Rules:
+- only touched objects move (a TCP within 8 cm, or a closed gripper within 5 cm);
+- a reading within 4 mm keeps the tracked pose;
+- a far move pairs with an unpaired reading of the same category (conservation);
+- unseen untouched objects are carried with an age; unseen touched ones go to `last_seen`;
+- a floating reading has its confidence halved.
+
+Re-read test on our D0: 24 hard scenes (82 objects), frames 0 -> 1 -> 2 -> 3, where the objects are static and the
+arms move (frame 3: both TCPs over the table, occluding):
+
+| frame | B1 alone: within tol / gross | B1 + prior (J1b merge_prior) | B1 + tracker |
+|---|---|---|---|
+| 0 | 53 / 18 | 53 / 18 | 53 / 18 |
+| 1 (left wrist look) | 58 / 20 | 58 / 20 | 56 / 20 |
+| 2 (right wrist look) | 61 / 20 | 60 / 20 | 59 / 19 |
+| 3 (arms over the table) | 34 / 38 | 35 / 37 | **61 / 12** |
+
+- **Under occlusion the tracker keeps the scene.** Gross errors drop from 38 to 12, below frame 0.
+- **On clean frames it costs 1-2 within-tolerance objects.** Those are frame-0 errors it locks in, when a better
+  re-read of an untouched object is not confident enough (< 0.8) to move it.
+
+The remaining design note: the tracker makes one agentic frame-0 answer last the whole episode. Below is the original
+estimate, kept for reference.
+
+#### (estimate before the measurement)
 - **What it fixes.** 3 of J1's 5 failures were re-reads of objects that had not moved: the card digit under the
   hovering arm, the pad under occlusion, the stack base under a held block. J1b's `merge_prior` / static-fixture /
   held-jaw rules fixed them (13/15).
@@ -273,6 +321,13 @@ H2 adds 0.1-25 s per call (GL). B1 itself takes 1-10 s (pack up to 3 min on the 
   - Cost: 3-4 engineering days + about 12 GPU-hours. That needs tomorrow's big-disk boxes; compute3's disk is at
     95-99 %.
   - Risk: layout-distribution mismatch on `_random` held-out instances.
+- **Contrast normalisation for dark objects (measured offline, dev GT silhouettes, D0 frame 0, 357 object views,
+  zoom-sized 80 px crops).**
+  - Dark objects already stand out on the table: CNR 23.6 vs 6.0 for the rest; boundary SNR 9.9 vs 8.3.
+  - Gamma 0.6 raises dark objects to CNR 39.9 / boundary SNR 15.6, but lowers the rest (CNR 6.0 -> 5.0).
+  - CLAHE lowers every object's contrast (dark CNR 23.6 -> 9.8) by amplifying the wood grain.
+  - No live test. Gamma stays a candidate only for held_look wrist crops, where a dark block between dark finger pads
+    is the hard case. We have no held frames yet; Bridge-isr will supply genuine ones.
 - **Depth.**
   - Mono depth is relative only (REAL_RSI), and HexaShell measured triangulation +8.7 pp over Depth Anything V2.
   - Head + wrist stereo is what the agent's `locate` already does: ray gaps of 1-8 mm when the views see the same
