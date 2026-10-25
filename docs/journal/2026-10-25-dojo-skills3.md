@@ -100,6 +100,14 @@ Store_tools v3 (0b6250f: + drop_ok, parking the idle arm, narrow opening), 10000
 drop (in-hand shift 180-300 mm), 4/4. The wrench was lost on the carry 3/3; the pliers slid 5/5. Stalled after three
 iterations: the carry loses the hammer and the wrench whatever the grasp point.
 
+Fill_pen v2 (ab3bf5d: 8 mm hover + a corrected second hover, no probing): first pens still blocked at the hover
+("+114 mm after the descent"). The trace shows the pen centred over the holder (3 mm off its axis), its tip about 6 mm
+below the rim. It stops there, the elbow joint lags its command by 0.19 rad, and the pen pushes the holder 25 mm
+across the table. The holder's collider is a convex decomposition of a 453-vertex mesh (`/World/collision`): the
+collider's opening is evidently narrower than the visual cup's 30 mm radius, so the visual-mesh fit aims into a wall.
+Stalled after two iterations. Next: fit against the collision mesh, or the decomposition's hulls, instead of the visual
+mesh.
+
 ## 4. Failure taxonomy (what the traces with measured joints showed)
 
 1. **The arm's practical envelope is smaller than the IK's.** Two cases. (a) Places 0.66-0.67 m from the arm's base: the measured TCP stopped about 30 mm above the commanded one, at the strip, and probing could not help (plug v1 7/10). (b) A place with the wrist on j6's ±3.14 stop (and j4 at 1.7) stalled the same way (plug v2 1/5). Filters: `PLACE_REACH` 0.60 m and `wrist_safe` (j4 ≤ 1.6, |j6| ≤ 3.0) on transfer and handover places. A far target then goes through a relay to the other arm.
