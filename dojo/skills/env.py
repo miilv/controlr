@@ -137,7 +137,8 @@ class KinematicEnv:
             g_new = float(np.clip(np.asarray(action[f"{a}_ee_joint_state"]).reshape(-1)[0], 0, 1))
             T_tcp = self.kin.tcp(a, self.q[a])
             # a grasp happens when the fingers close (open -> closed), not whenever closed fingers touch
-            if g_new < 0.5 and self.g[a] >= g_new + 0.15 and a not in self.attached:
+            # (a closing step below half open; narrow grasps open to 0.37 and close in 4 steps of < 0.15)
+            if g_new < 0.5 and self.g[a] > g_new + 1e-6 and a not in self.attached:
                 lab = self._object_at(T_tcp[:3, 3])
                 if lab is not None:
                     o = self._obj(lab)
@@ -166,7 +167,7 @@ class KinematicEnv:
         for a in ARMS:
             T = self.kin.tcp(a, self.q[a])
             now[a] = T[:3, 3] + T[:3, 0] * 0.0126
-            if self.g[a] > 0.5 or a in self.attached or a not in tips:
+            if self.g[a] > 0.1 or a in self.attached or a not in tips:     # closed (pushing) fingers only
                 continue
             v = now[a] - tips[a]
             v[2] = 0.0
