@@ -47,6 +47,7 @@ OPEN, CLOSE = 0.04, -0.01   # finger joint targets (gripper_scale); closing stop
 MAX_WIDTH = 0.077           # widest graspable width across the fingers (2 x 0.04 open, 1.5 mm per side)
 GRASP_DEPTH = 0.02          # grasp point below the object's top (finger pads are ~2 cm)
 HOME_STEP_RAD = 0.004       # per 4 ms sub-step for joint-space moves (1 rad/s)
+STRAIGHT = [1, 1, 1, 1, 1, 0]  # cuRobo pose-cost hold: orientation + x/y fixed, free along the hand z (vertical)
 
 
 def demo_dir() -> Path:
@@ -134,13 +135,26 @@ class DemoPlanner:
             raise RuntimeError("support arm has no planner: RoboDojoRunner(..., support_planner=True)")
         self.q0 = np.asarray(rm.get_joint(self.robot, env_idx_list=[0])[0], float).reshape(-1)
         self.segments: list[list[dict]] = []
+        self.log: list[dict] = []
+        self.last_yaw: float | None = None
         self.q = self.q0.copy()
         self.fingers = OPEN
 
-    def plan_to(self, tcp_xyz, yaw: float, name: str) -> bool:
-        for y in (yaw, yaw + math.pi, yaw + 0.2, yaw - 0.2, yaw + math.pi + 0.2, yaw + math.pi - 0.2):
+    def plan_to(self, tcp_xyz, yaw: float, name: str, straight: bool = False) -> bool:
+        """Plan the hand to ``tcp_xyz`` (top-down, fingers along ``yaw`` or yaw + pi). ``straight``: a vertical
+        line from the current pose (cuRobo pose-cost hold on orientation and x/y), else free space."""
+        pair = [yaw, yaw + math.pi]
+        if straight and self.last_yaw is not None:      # keep the hand as it is: no turn on a vertical line
+            pair.sort(key=lambda y: abs(math.remainder(y - self.last_yaw, 2 * math.pi)))
+        tries = [(y, STRAIGHT if straight else None) for y in pair]
+        if straight:
+            tries += [(y, None) for y in pair]
+        else:
+            tries += [(y, None) for y in (yaw + 0.2, yaw - 0.2, yaw + math.pi + 0.2, yaw + math.pi - 0.2)]
+        for y, hold in tries:
             res = self.planner.plan_path(self.q.copy(), hand_pose(tcp_xyz, y),
-                                         real_robot_pose=copy.deepcopy(self.robot.entity_origin_pose))
+                                         real_robot_pose=copy.deepcopy(self.robot.entity_origin_pose),
+                                         constraint_pose=hold)
             if str(res.get("status")) != "Success" or res.get("position") is None:
                 continue
             p, v = res["position"], res.get("velocity")
@@ -151,10 +165,13 @@ class DemoPlanner:
                 continue
             self.segments.append([step_rec(p[i], v[i], self.fingers) for i in range(len(p))])
             self.q = p[-1].copy()
+            self.last_yaw = y
+            self.log.append({"name": name, "steps": len(p), "straight": hold is not None,
+                             "yaw_deg": round(math.degrees(y), 1)})
             return True
         return False
 
-    def grip(self, target: float, steps: int = 60, hold: int = 40) -> None:
+    def grip(self, target: float, steps: int = 100, hold: int = 100) -> None:
         f0 = self.fingers
         seg = [step_rec(self.q, np.zeros_like(self.q), f0 + (target - f0) * (i + 1) / steps) for i in range(steps)]
         seg += [step_rec(self.q, np.zeros_like(self.q), target)] * hold
@@ -209,26 +226,27 @@ def plan_demo(run, seed: int) -> tuple[dict | None, dict]:
         steps = [((*g["xy"], g["top"] + 0.08), g["yaw"], f"pre aim{i}"),
                  ((*g["xy"], grasp_z), g["yaw"], f"grasp aim{i}")]
         for xyz, yaw, name in steps:
-            if not dp.plan_to(xyz, yaw, name):
+            if not dp.plan_to(xyz, yaw, name, straight=name.startswith("grasp")):
                 return None, {**info, "status": f"no plan: {name}"}
         dp.grip(CLOSE)
         lift = (*g["xy"], carry_z)
-        if not dp.plan_to(lift, g["yaw"], f"lift aim{i}"):
+        if not dp.plan_to(lift, g["yaw"], f"lift aim{i}", straight=True):
             return None, {**info, "status": f"no plan: lift aim{i}"}
         if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"over basket1 with aim{i}"):
             return None, {**info, "status": f"no plan: over basket1 with aim{i}"}
         below_tcp = grasp_z - g["bottom"]                # object bottom under the TCP while carried
         release_z = b_top + below_tcp + 0.015            # bottom 1.5 cm above the rim: placed, not dropped
-        if release_z < carry_z - 0.01 and not dp.plan_to((*b_xy, release_z), g["yaw"], f"lower aim{i}"):
+        if release_z < carry_z - 0.01 and not dp.plan_to((*b_xy, release_z), g["yaw"], f"lower aim{i}",
+                                                         straight=True):
             return None, {**info, "status": f"no plan: lower aim{i}"}
         dp.grip(OPEN, steps=40, hold=60)
-        if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"clear basket1 after aim{i}"):
+        if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"clear basket1 after aim{i}", straight=True):
             return None, {**info, "status": f"no plan: clear basket1 after aim{i}"}
     dp.home()
     data = {"joint_path": dp.segments, "target_label": [f"t{i}" for i in order],
             "aim_label": [f"aim{i}" for i in order], "target_place_tag": [None] * 5,
             "_simlab": {"generator": "simlab/demo_gen v1", "seed": seed, "order": order}}
-    return data, {**info, "status": "planned", "substeps": dp.n_steps()}
+    return data, {**info, "status": "planned", "substeps": dp.n_steps(), "segments": dp.log}
 
 
 def validate(run, layout: dict, n_substeps: int, margin_env_steps: int = 60) -> dict:
