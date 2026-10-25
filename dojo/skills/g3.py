@@ -151,7 +151,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     out_dir.mkdir(parents=True, exist_ok=True)
     with gzip.open(out_dir / f"{task}_{seed}_actions.json.gz", "wt") as f:
         json.dump(sk.ex.trajectory_json(), f)
-    if trace:
+    if trace and not rec.get("success"):              # traces only for failed episodes (shared disk)
         with gzip.open(out_dir / f"{task}_{seed}_trace.json.gz", "wt") as f:
             json.dump({"frames": frames, "skills": hist}, f, default=lambda x: x.item() if hasattr(x, "item") else str(x))
     return rec
