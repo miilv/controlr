@@ -17,6 +17,7 @@ import numpy as np
 
 from dojo.skills.executor import BudgetExceeded, EpisodeEnded
 from dojo.skills.skills import OPEN, SkillResult, Skills
+from dojo.skills.kinematics import ARMS, TABLE_Z
 from dojo.skills.targets import rest_pose
 
 # ============================================================================ board games
@@ -261,6 +262,74 @@ def inside_xy(o, c, z_margin: float = 0.0) -> bool:
     return bool(mn[0] <= P[0] <= mx[0] and mn[1] <= P[1] <= mx[1] and P[2] > mn[2] - z_margin)
 
 
+def drop_spots(sk: Skills, container: str, label: str, n: int = 9, margin: float = 0.025) -> list[np.ndarray]:
+    """Points over an open container's floor (world xy), the ones farthest from what is already inside first."""
+    w = sk.world
+    c = w.obj(container)
+    o = w.obj(label)
+    r_obj = 0.5 * float(np.max(o.asset.extents[:2]))
+    mn, mx = c.asset.bbox_min, c.asset.bbox_max
+    pts = []
+    for fx in np.linspace(0.25, 0.75, 3):
+        for fy in np.linspace(0.25, 0.75, 3):
+            loc = np.array([mn[0] + fx * (mx[0] - mn[0]), mn[1] + fy * (mx[1] - mn[1]), 0.0])
+            # keep the object's footprint inside the walls
+            loc[0] = float(np.clip(loc[0], mn[0] + margin + r_obj, mx[0] - margin - r_obj)) if mx[0] - mn[0] > 2 * (margin + r_obj) else (mn[0] + mx[0]) / 2
+            loc[1] = float(np.clip(loc[1], mn[1] + margin + r_obj, mx[1] - margin - r_obj)) if mx[1] - mn[1] > 2 * (margin + r_obj) else (mn[1] + mx[1]) / 2
+            pts.append((c.R @ loc + c.pos)[:2])
+    inside = [m for m in w.task_objects() if m.label not in (label, container) and m.obj_type == "Rigid"
+              and inside_xy(m, c)]
+    ctr = c.center_w[:2]
+    return sorted(pts, key=lambda p: (-min([float(np.linalg.norm(p - m.pos[:2])) for m in inside] + [1.0]) // 0.03,
+                                      float(np.linalg.norm(p - ctr))))[:n]
+
+
+def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillResult:
+    """Put one object into an open container on the table: carried level (as it lies) over a free spot of the
+    container's floor and let go with its bottom just above the rim, so it drops in; planned with its pick, one arm at
+    a time. When neither arm can, the other arm first moves it to a free table spot between the arms
+    (``relay_xy``, default the midpoint between the object and the container) and the container's arm takes it."""
+    from dojo.skills.library import free_spots
+    w = sk.refresh()
+    c = w.obj(container)
+    rim = float(c.top_z)
+    o = w.obj(label)
+    sym = 4 if abs(float(o.asset.extents[0] - o.asset.extents[1])) < 0.004 else 2
+    near = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - c.center_w[:2])))
+
+    def transfer(arms):
+        targets = [rest_pose(sk, label, p, rim + 0.012, sym=sym) for p in drop_spots(sk, container, label)]
+        for a in arms:
+            plans = sk.plan_transfer(label, targets, arms=[a], ignore=(container,), yaw_sym=sym,
+                                     box_tilts=(0.0, 25.0, 40.0, -25.0), place_kw={"pre_h": 0.04})
+            if not isinstance(plans, SkillResult):
+                return sk.run_transfer(*plans, tol_xy=0.05, tol_tilt=45.0, tol_z=0.08)
+        return plans
+    r = transfer(near)
+    if not isinstance(r, SkillResult) or r.ok or r.status not in ("ik_fail", "collision"):
+        return r
+    # relay through a table spot both arms reach
+    mid = np.asarray(relay_xy if relay_xy is not None else (o.pos[:2] + c.center_w[:2]) / 2, float)
+    mid[1] = min(float(mid[1]), -0.12)
+    spots = free_spots(sk, label, near_xy=tuple(mid))
+    if not spots:
+        return r
+    giver = near[1]
+    plans = sk.plan_transfer(label, [rest_pose(sk, label, p, TABLE_Z, sym=sym) for p in spots[:4]], arms=[giver],
+                             yaw_sym=sym, box_tilts=(0.0, 25.0, 40.0, -25.0))
+    if isinstance(plans, SkillResult):
+        return plans
+    rr = sk.run_transfer(*plans, tol_xy=0.03, tol_tilt=30.0)
+    sk.bank()
+    try:
+        sk.ex.run({giver: sk.plan_home(giver, gripper=OPEN)}, name=f"park {giver}")
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return SkillResult(False, "put_in_open", "step_budget", 0, giver, note=str(e))
+    sk.held[giver] = None
+    sk.log(f"[put_in_open] {label} relayed by {giver} to {np.round(spots[0], 3).tolist()} ({rr.status})")
+    return transfer(near[:1])
+
+
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
                        after_last: int = 80, max_wait: int = 1400, tries: int = 2) -> dict:
     """A scripted demonstrator puts objects into ``demo_container`` one at a time: hold still at home while it works,
@@ -320,14 +389,13 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         twin = cands[0]
         ok = False
         for attempt in range(tries):
-            from dojo.skills.library import put_into
-            r = put_into(sk, [twin], container)
+            r = put_in_open(sk, twin, container)
             sk.bank()
             w = sk.refresh()
             if inside_xy(w.obj(twin), w.obj(container)):
                 ok = True
                 break
-            sk.log(f"[imitate] {twin} not in {container} after try {attempt + 1}: {str(r.get('note') or r.get('stage'))[:120]}")
+            sk.log(f"[imitate] {twin} not in {container} after try {attempt + 1}: {str(r.note)[:160]}")
             if any(sk.held.values()):
                 sk.home(gripper=OPEN)
                 sk.held = {a: None for a in sk.held}
