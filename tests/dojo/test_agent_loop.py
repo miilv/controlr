@@ -151,3 +151,10 @@ def test_models_cycle_by_episode_counter():
                       client=object(), assets=FakeAssets())
     assert [pol.episode_config(k).model for k in range(4)] == ["a", "b", "a", "b"]
     assert pol.episode_config(1).extra_body == {"x": 1} and pol.episode_config(1).models == []
+
+
+def test_tool_call_code_is_taken():
+    from dojo.agent.loop import tool_code
+    assert tool_code([{"name": "python", "arguments": '{"code": "print(1)"}'}]) == "print(1)\n"
+    assert tool_code([{"name": "other", "arguments": "{}"}]) is None
+    assert tool_code([]) is None
