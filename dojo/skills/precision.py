@@ -691,6 +691,48 @@ def inside_bbox(o, c, margin: float = 0.0) -> bool:
 
 EACH_PLACE_KW = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
                  "release": True, "servo": True, "seat_tol": 0.008}
+EACH_HOLES = 4                # free holes tried per object (best first)
+EACH_PAD_BAND = 0.010         # m: along a long object's axis the pads cover this much each side of the TCP ...
+EACH_SECTION_VAR = 0.0015     # ... where its section radius may vary this much (no grasp on a lip, a cap, a taper:
+                              # twin, a tube held at its flange slid 5 mm and fell beside the rack)
+
+
+def radius_profile(o, step: float = 0.002) -> tuple[int, np.ndarray, np.ndarray]:
+    """(long axis k, positions along k, max section radius about the bbox axis) of a long object, from its mesh."""
+    k = int(np.argmax(o.asset.extents))
+    n = np.zeros(3)
+    n[k] = 1.0
+    c = o.asset.center
+    ss = np.arange(float(o.asset.bbox_min[k]) + step / 2, float(o.asset.bbox_max[k]), step)
+    rr = []
+    for s_ in ss:
+        P_ = section_points(o.asset.mesh, n, float(s_))
+        rr.append(float(np.max(np.linalg.norm(np.delete(P_ - c, k, axis=1), axis=1))) if len(P_) else np.nan)
+    return k, ss, np.asarray(rr)
+
+
+def uniform_section_grasps(sk: Skills, o, arm: str, tilts=(0.0, 25.0, -25.0, 40.0, -40.0)) -> list[G.Grasp]:
+    """Box grasps of a long object whose pads sit on a stretch of near-constant section (``EACH_SECTION_VAR`` over
+    ``EACH_PAD_BAND`` each side of the TCP along its long axis)."""
+    gs = G.box_grasps(o, sk.kin, arm, tilts=tuple(tilts))
+    if o.asset.mesh is None:
+        return gs
+    key = ("rprof", o.asset.key)
+    prof = sk._hq_cache.get(key)
+    if prof is None:
+        prof = radius_profile(o)
+        sk._hq_cache[key] = prof
+    k, ss, rr = prof
+    out = []
+    for g in gs:
+        s_ = float((inv_T(o.T) @ np.r_[g.T[:3, 3], 1.0])[k])
+        m = np.abs(ss - s_) <= EACH_PAD_BAND
+        band = rr[m]
+        if len(band) and np.all(np.isfinite(band)) and float(band.max() - band.min()) <= EACH_SECTION_VAR:
+            out.append(g)
+    return out
+
+
 EACH_SPREAD = 0.06            # m: holes at least this far from a filled one first (open fingers next to a filled hole)
 
 
@@ -778,20 +820,31 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
             free.append(((dmin < EACH_SPREAD), side, tag, T, r))
         free.sort(key=lambda x: (x[0], x[1]))
         res = None
-        for spread_bad, _, tag, T, r in free[:4]:
+        pk = {**EACH_PLACE_KW, "grip_only": (receptacle,)}
+        tkw = {"grasps": lambda a, lab=lab: uniform_section_grasps(sk, sk.world.obj(lab), a)}
+        cands = []
+        for spread_bad, _, tag, T, r in free[:EACH_HOLES]:
             p = T[:3, 3]
             fl = hole_floor(rec, p[:2], r)
             d = depth if depth is not None else (min(0.8 * L, float(p[2]) - fl) if fl is not None else 0.5 * L)
-            tg = upright_targets(o, p, fl, d)
-            if not tg:
+            tg = upright_targets(o, p, fl, d, n_yaw=8)
+            if tg:
+                cands.append((tag, d, tg))
+        # a one-arm plan into any of the best holes first; a relay only when none has one
+        for tag, d, tg in cands:
+            plan = sk.plan_transfer(lab, tg, ignore=(receptacle,), place_kw=pk, **tkw)
+            if isinstance(plan, SkillResult):
+                sk.log(f"[insert_each] {lab} -> {tag}: no one-arm plan ({plan.note[:120]})")
                 continue
-            sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: {len(tg)} upright poses, {d*1000:.0f} mm in")
-            pk = {**EACH_PLACE_KW, "grip_only": (receptacle,)}
+            sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: {plan[0].arm} ({plan[0].grasp.note}), {d*1000:.0f} mm in")
+            from dojo.skills.library import _run_leg
+            res = _run_leg(sk, lab, tg, 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
+            break
+        if res is None and cands:
+            tag, d, tg = cands[0]
+            sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: relay")
             res = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.008, tol_tilt=20.0, tol_z=0.03, ignore=(receptacle,),
-                                 place_kw=pk, air_handover=False,
-                                 transfer_kw={"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0)})
-            if res.ok or res.status in ("step_budget", "ended", "place_miss", "grasp_slip"):
-                break
+                                 place_kw=pk, air_handover=False, transfer_kw=tkw)
         for a in ARMS:
             if sk.held[a] is not None:
                 sk._record(sk.regrasp(a))
