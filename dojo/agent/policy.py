@@ -7,9 +7,9 @@ the manual, the instruction, the scene (neutral ids) and the head frame, and ans
 (skills, primitives, perception, verify inside the skills). The same model, manual and procedure for every task;
 ``info["task"]`` is never read (RuntimePolicy keeps it for logs only).
 
-Config: ``AgentConfig`` fields as JSON in ``$DOJO_AGENT`` (``model``, ``extra_body``, ``max_calls``, ...); the
-runtime's own config in ``$DOJO_RUNTIME`` / ``--config``. Logs per episode under ``$DOJO_AGENT_LOG`` (default
-``./agent_logs``): transcript (images by sha), calls with usage, cells.
+Config: ``AgentConfig`` fields in the runtime config's ``extra.agent`` (``--config '{"extra":{"agent":{...}}}'``)
+or as JSON in ``$DOJO_AGENT`` (``model``, ``extra_body``, ``max_calls``, ...). Logs per episode under
+``$DOJO_AGENT_LOG`` (default ``$OUT/agent``, the eval run dir): transcript (images by sha), calls with usage, cells.
 """
 
 from __future__ import annotations
@@ -67,9 +67,14 @@ class AgentPolicy(RuntimePolicy):
     def __init__(self, cfg: RuntimeConfig | None = None, agent_cfg: AgentConfig | None = None, client=None,
                  log_root: str | Path | None = None, **kw):
         super().__init__(cfg, program=self._program, **kw)
-        self.agent_cfg = agent_cfg or AgentConfig(**json.loads(os.environ.get("DOJO_AGENT", "{}") or "{}"))
+        # agent config: explicit > RuntimeConfig.extra["agent"] (``--config '{"extra":{"agent":{...}}}'``, what a
+        # queue job can carry) > $DOJO_AGENT
+        extra = (getattr(self.cfg, "extra", None) or {}).get("agent")
+        self.agent_cfg = agent_cfg or AgentConfig(**(extra if extra is not None else
+                                                     json.loads(os.environ.get("DOJO_AGENT", "{}") or "{}")))
         self._client = client
-        self.log_root = Path(log_root or os.environ.get("DOJO_AGENT_LOG", "agent_logs"))
+        default_root = (Path(os.environ["OUT"]) / "agent") if os.environ.get("OUT") else Path("agent_logs")
+        self.log_root = Path(log_root or os.environ.get("DOJO_AGENT_LOG") or default_root)
         self.n_episodes = 0
 
     def client(self):

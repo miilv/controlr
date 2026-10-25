@@ -43,8 +43,8 @@ class AgentConfig:
     first_image_px: int = 640
     jpeg_quality: int = 80
     max_images_per_turn: int = 3
-    manual: str = "manual_v1"
-    appendix: str = "agent_v1"
+    manual: str = "manual_v2"
+    appendix: str = "agent_v2"
     timeout_s: float = 600.0
 
 
