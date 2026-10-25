@@ -301,7 +301,7 @@ def symmetry_guess(vertices: np.ndarray, n_test=(2, 3, 4, 6, 8, 12, 36)) -> dict
     return {"z_order": best, "chamfer_rel": scores, "xy_center": c[:2].tolist()}
 
 
-def convert_asset(asset_dir: str, out_dir: str, with_stable: bool = True) -> dict:
+def convert_asset(asset_dir: str, out_dir: str, with_stable: bool = True, glb: bool = True) -> dict:
     import trimesh
     from PIL import Image
 
@@ -344,7 +344,8 @@ def convert_asset(asset_dir: str, out_dir: str, with_stable: bool = True) -> dic
             m = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
             m.visual.face_colors = np.c_[(cols * 255).astype(np.uint8), np.full(T, 255, np.uint8)]
         scene.add_geometry(m, node_name=f"part{i}", geom_name=f"part{i}")
-    scene.export(out_dir / "visual.glb")
+    if glb:  # geometry-only catalogues (glb=False) are enough for the estimator (face-colour texture term)
+        scene.export(out_dir / "visual.glb")
 
     corners = np.concatenate(all_corners)
     cols = np.concatenate(all_cols)
@@ -454,10 +455,13 @@ def list_assets(objects_root: Path, only: list[str] | None = None):
     return out
 
 
-def build(assets: Path, out: Path, only=None, workers=8, force=False):
+def build(assets: Path, out: Path, only=None, workers=8, force=False, glb: bool = True, keys: list | None = None):
     objects_root = assets / "Object" / "RoboDojo"
     todo = []
+    want = set(keys) if keys else None
     for t, cat, idx, d in list_assets(objects_root, only):
+        if want is not None and f"{t}/{cat}/{idx:05d}" not in want:
+            continue
         od = out / t / cat / f"{idx:05d}"
         if not force and (od / "info.json").exists():
             continue
@@ -465,7 +469,7 @@ def build(assets: Path, out: Path, only=None, workers=8, force=False):
     print(f"{len(todo)} assets to convert", flush=True)
     results = []
     with ProcessPoolExecutor(max_workers=workers) as ex:
-        futs = {ex.submit(convert_asset, a, o): a for a, o in todo}
+        futs = {ex.submit(convert_asset, a, o, True, glb): a for a, o in todo}
         for i, f in enumerate(as_completed(futs)):
             try:
                 r = f.result()
@@ -504,13 +508,16 @@ def main(argv=None):
     b.add_argument("--only", nargs="*")
     b.add_argument("--workers", type=int, default=8)
     b.add_argument("--force", action="store_true")
+    b.add_argument("--no-glb", action="store_true", help="geometry + info only (no visual.glb)")
+    b.add_argument("--keys-json", type=Path, default=None, help="JSON list of Type/category/idx keys to build")
     i = sub.add_parser("index")
     i.add_argument("--out", type=Path, required=True)
     lo = sub.add_parser("lowres")
     lo.add_argument("--out", type=Path, required=True)
     a = ap.parse_args(argv)
     if a.cmd == "build":
-        build(a.assets, a.out, a.only, a.workers, a.force)
+        keys = json.loads(a.keys_json.read_text()) if a.keys_json else None
+        build(a.assets, a.out, a.only, a.workers, a.force, glb=not a.no_glb, keys=keys)
     elif a.cmd == "lowres":
         n = 0
         for info in sorted(a.out.glob("*/*/*/info.json")):
