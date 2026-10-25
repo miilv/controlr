@@ -175,3 +175,19 @@ def test_colour_order_from_instruction():
 
     s = "stack the blocks from bottom to top in the order of cyan, red, and orange, then reset the robot arm."
     assert colour_order(s) == ["cyan", "red", "orange"]
+
+
+def test_region_seeds_only_for_compact_fixed_yaw_regions():
+    from dojo.perception.inverse_layout import _region, _seed_region, region_ok
+
+    prior = {"fixed_xy": None}
+    # organize_table's drawer: x range, y pinned, no random yaw -> a 5-point seed line
+    drawer = {"regions": [_region({"xlim": [-0.45, -0.25], "ylim": [0.15, 0.15]})]}
+    xs, ys, yaw0 = _seed_region(drawer, prior)
+    assert len(xs) == 5 and np.allclose(ys, [0.15]) and yaw0 == 0.0
+    assert region_ok(drawer, -0.36, 0.153) and not region_ok(drawer, -0.36, 0.099 - 0.05)
+    # a wide region (the whole table half) or a free yaw gets no seeds
+    wide = {"regions": [_region({"xlim": [-0.45, 0.0], "ylim": [-0.3, 0.05]})]}
+    assert _seed_region(wide, prior) is None
+    spun = {"regions": [_region({"xlim": [-0.05, 0.05], "ylim": [-0.2, -0.15], "rotate_rand": True, "rotate_deg": 45})]}
+    assert _seed_region(spun, prior) is None

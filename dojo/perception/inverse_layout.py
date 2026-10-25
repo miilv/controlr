@@ -62,6 +62,7 @@ class ShapeModel:
     sym: int  # rotational symmetry order about world z in this orientation (36 = continuous)
     convex: bool
     hull_V: np.ndarray | None = None
+    centre_local: np.ndarray | None = None  # generator placement centre in the asset frame (xlim/ylim apply to it)
 
     @property
     def yaw_period(self) -> float:
@@ -181,8 +182,37 @@ def shape_models(key: str) -> tuple[ShapeModel, ...]:
         zmin = float(Vr[:, 2].min())
         height = float(Vr[:, 2].max() - zmin)
         sym = world_z_symmetry(Vr, a.F)
-        out.append(ShapeModel(key, tag, a, R0, zmin, height, sym, convex, hull_V))
+        out.append(ShapeModel(key, tag, a, R0, zmin, height, sym, convex, hull_V,
+                              centre_local=np.asarray(fr["center"][:3], dtype=float)))
     return tuple(out)
+
+
+_FIXED_POSE_SHAPES: dict[tuple[str, str], ShapeModel] = {}
+
+
+def fixed_pose_shape(key: str, zlim, qpos) -> ShapeModel:
+    """The generator's fixed-pose path (a config ``zlim``, e.g. store_tools_in_toolbox's toolbox): the origin
+    sits at table + z with orientation ``qpos`` (wxyz; identity when absent) before the optional yaw, and
+    xlim/ylim constrain the origin itself (cluttered_generator.add_model_with_fixed_pose)."""
+    z = float(np.mean(zlim))
+    q = [float(v) for v in (qpos if qpos is not None else [1, 0, 0, 0])]
+    tag = "zq:%.4f:%s" % (z, ",".join("%.4f" % v for v in q))
+    sm = _FIXED_POSE_SHAPES.get((key, tag))
+    if sm is None:
+        a = load_asset(key)
+        R0 = quat_wxyz_to_R(q)
+        Vr = a.V @ R0.T
+        sm = ShapeModel(key, tag, a, R0, -z, float(Vr[:, 2].max() - Vr[:, 2].min()), world_z_symmetry(Vr, a.F),
+                        False, None, centre_local=np.zeros(3))
+        _FIXED_POSE_SHAPES[(key, tag)] = sm
+    return sm
+
+
+def shape_by_tag(key: str, tag: str) -> ShapeModel:
+    sm = _FIXED_POSE_SHAPES.get((key, tag))
+    if sm is not None:
+        return sm
+    return next(s for s in shape_models(key) if s.tag == tag)
 
 
 # --------------------------------------------------------------------------------------------
@@ -405,7 +435,7 @@ class Hypothesis:
     appearance: float = 0.0
 
     def sm(self) -> ShapeModel:
-        return next(s for s in shape_models(self.key) if s.tag == self.tag)
+        return shape_by_tag(self.key, self.tag)
 
     def T(self) -> np.ndarray:
         return self.sm().pose(self.x, self.y, self.yaw, float(self.per_view.get("z_off", 0.0)))
@@ -489,15 +519,18 @@ def _diverse(res, period, k=3, min_sep=0.4, slack=0.15):
 
 
 def refine(sm: ShapeModel, x, y, yaw, views, others=None, xy_step=0.006, yaw_step=0.12, maxiter=120,
-           fix_yaw=False, color_w: float = 0.0):
+           fix_yaw=False, color_w: float = 0.0, bounds=None):
     """Nelder-Mead over (x, y[, yaw]) on the ROI soft-IoU loss (+ color_w x texture cost when > 0); the
-    ROIs are fixed at the start pose. The returned loss is the silhouette part."""
+    ROIs are fixed at the start pose. ``bounds`` = (xlo, xhi, ylo, yhi) of the origin: leaving them costs
+    BOUND_PENALTY per metre (a compact generator region). The returned loss is the silhouette part."""
     rvs = make_roi_views(sm, sm.pose(x, y, yaw), views, others)
 
     def f(p):
         yy = yaw if fix_yaw else p[2]
         T = sm.pose(p[0], p[1], yy)
         l = roi_loss(sm, T, rvs)[0]
+        if bounds is not None:
+            l += BOUND_PENALTY * (max(0.0, bounds[0] - p[0], p[0] - bounds[1]) + max(0.0, bounds[2] - p[1], p[1] - bounds[3]))
         if color_w > 0:
             c = roi_color_cost(sm, T, rvs)
             l += color_w * (0.25 if c is None else c)
@@ -737,6 +770,104 @@ XY_MARGIN = 0.04
 YAW_MARGIN = np.deg2rad(15)
 
 
+def _bbox_centre_local(sm) -> np.ndarray:
+    """The generator's placement centre in the asset frame (place frame centre; bbox centre as fallback)."""
+    if sm.centre_local is not None:
+        return sm.centre_local
+    V = sm.asset.V
+    return (V.min(0) + V.max(0)) / 2
+
+
+def _centre_xy(h) -> tuple[float, float]:
+    """World xy of the generator's placement centre (the place frame's projection-circle centre): xlim/ylim
+    constrain it, and it can sit centimetres from the asset origin (organize_table's drawer: 5 cm) and from
+    the vertex centroid (monitor 00000: 7 cm). Fixed-pose shapes (zlim): the origin."""
+    T = h.T()
+    c = T[:3, :3] @ _bbox_centre_local(h.sm()) + T[:3, 3]
+    return float(c[0]), float(c[1])
+
+
+SEED_MAX_SPAN = 0.25  # region seeding only for compact generator regions (m, per axis)
+SEED_STEP = 0.05
+SEED_MAX_YAW = np.deg2rad(40)
+
+
+def _seed_region(g: dict, prior: dict):
+    """(xs, ys, yaw0) seed grid of a compact, single generator region with a fixed / narrow yaw, else None."""
+    regs = g.get("regions") or []
+    if len(regs) != 1 or prior["fixed_xy"] is not None:
+        return None
+    r = regs[0]
+    if not r["x"] or not r["y"] or len(r["x"]) != 1 or len(r["y"]) != 1 or r["yaw"] is None:
+        return None
+    (x0, x1), (y0, y1) = r["x"][0], r["y"][0]
+    if x1 - x0 > SEED_MAX_SPAN or y1 - y0 > SEED_MAX_SPAN or r["yaw"][1] - r["yaw"][0] > SEED_MAX_YAW:
+        return None
+    xs = np.linspace(x0, x1, max(1, int(np.ceil((x1 - x0) / SEED_STEP)) + 1))
+    ys = np.linspace(y0, y1, max(1, int(np.ceil((y1 - y0) / SEED_STEP)) + 1))
+    return xs, ys, (r["yaw"][0] + r["yaw"][1]) / 2
+
+
+def _region_seeds(blob_list, pending, shapes_by_group, views, cfg, groups, others=None, blob_offset=0):
+    """Hypotheses seeded inside compact generator regions (fixed / narrow yaw), independent of blob
+    centroids: a label merged into a bigger blob (keyboard touching a figure) or cut by the image border
+    (a monitor at the table's back) gets a centroid-based start far from its true place. Seeds are scored
+    by the ROI loss as they are; the best ``SEED_REFINE`` per geometry get the quick refinement."""
+    head = views["cam_head"]
+    out = []
+    for gi, g, prior in pending:
+        sr = _seed_region(g, prior)
+        if sr is None:
+            continue
+        xs, ys, yaw0 = sr
+        for sms in shapes_by_group[gi].values():
+            sm = sms[0]
+            keys = [s_.key for s_ in sms]
+            c_off = (sm.pose(0.0, 0.0, yaw0)[:3, :3] @ _bbox_centre_local(sm))[:2]
+            seeds = []
+            for cx in xs:
+                for cy in ys:
+                    x, y = cx - c_off[0], cy - c_off[1]
+                    T = sm.pose(x, y, yaw0)
+                    rvs = make_roi_views(sm, T, views, others)
+                    if not rvs:
+                        continue
+                    seeds.append((roi_loss(sm, T, rvs)[0], x, y))
+            seeds.sort(key=lambda t: t[0])
+            for l, x, y in seeds[:SEED_REFINE]:
+                if l > 0.95:
+                    continue
+                s_h = sm.sil(head.cam, sm.pose(x, y, yaw0))
+                ov = [int((b.mask & s_h).sum()) for b in blob_list]
+                bi = int(np.argmax(ov)) + blob_offset if ov and max(ov) > 0 else -1
+                h = Hypothesis(gi, sm.key, sm.tag, x, y, yaw0, l, blob=bi)
+                h.per_view = {"geom_group": keys}
+                h2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
+                h2.per_view["seeded"] = True
+                cx, cy = _centre_xy(h2)
+                if region_ok(groups[h2.label_group], cx, cy, h2.yaw, sm.yaw_period):
+                    out.append(h2)
+    return out
+
+
+SEED_REFINE = 2
+SEED_BOUND_MARGIN = 0.01
+BOUND_PENALTY = 20.0
+
+
+def origin_bounds(g: dict, sm, yaw: float):
+    """Origin (xlo, xhi, ylo, yhi) keeping the bbox centre inside a compact generator region (+ margin), or
+    None for groups without one. Refinement inside a cluttered ROI otherwise drifts big objects onto
+    neighbouring foreground (organize_table's drawer: 25 cm from its slot)."""
+    sr = _seed_region(g, _placement_prior(g))
+    if sr is None:
+        return None
+    xs, ys, _ = sr
+    c_off = (sm.pose(0.0, 0.0, yaw)[:3, :3] @ _bbox_centre_local(sm))[:2]
+    m = SEED_BOUND_MARGIN
+    return (xs[0] - m - c_off[0], xs[-1] + m - c_off[0], ys[0] - m - c_off[1], ys[-1] + m - c_off[1])
+
+
 def region_ok(g: dict, x: float, y: float, yaw: float | None = None, period: float = 2 * np.pi) -> bool:
     """Is (x, y[, yaw]) inside any of the group's generator regions (with settle margins)?"""
     regs = g.get("regions") or []
@@ -785,8 +916,9 @@ def _geometry_groups(g: dict, prior: dict) -> dict[tuple, list[ShapeModel]]:
     """Candidate shapes of a label group, merged when geometry is identical (same extents, faces, tag):
     those are fitted once, identity comes from appearance."""
     by_geom: dict[tuple, list[ShapeModel]] = {}
+    fixed = prior.get("zlim") is not None and prior["relative_plane"] == "Table"
     for key in g["candidates"]:
-        for sm in shape_models(key):
+        for sm in ([fixed_pose_shape(key, prior["zlim"], g["placement"].get("qpos"))] if fixed else shape_models(key)):
             if prior["place_tag"] and sm.tag != prior["place_tag"]:
                 continue
             gk = (tuple(np.round(sm.asset.extents, 3)), sm.asset.info["n_faces"], sm.tag)
@@ -889,7 +1021,8 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
                 break
         for h in kept:
             h2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
-            if region_ok(groups[h2.label_group], h2.x, h2.y, h2.yaw, h2.sm().yaw_period):
+            cx, cy = _centre_xy(h2)
+            if region_ok(groups[h2.label_group], cx, cy, h2.yaw, h2.sm().yaw_period):
                 refined.append(h2)
     return refined
 
@@ -898,7 +1031,8 @@ def _score_hyp(h: Hypothesis, views, others, cfg, groups, iters, color: bool = F
     yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
     sm = h.sm()
     cw = cfg.refine_color_weight if (color and sm.asset.info.get("n_textured_parts", 0) > 0) else 0.0
-    x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed, color_w=cw)
+    x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed, color_w=cw,
+                                  bounds=origin_bounds(groups[h.label_group], sm, h.yaw))
     T = sm.pose(x, y, yaw)
     col, _ = observed_color(sm, T, views)
     app = _app(col, h.per_view["geom_group"])
@@ -984,6 +1118,71 @@ def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
     return chosen, total - sum(max(0, n) for n in need.values()) * 0.05
 
 
+def _centroid_xy(sm: ShapeModel, x: float, y: float, yaw: float) -> np.ndarray:
+    T = sm.pose(x, y, yaw)
+    return (T[:3, :3] @ sm.asset.V.mean(0) + T[:3, 3])[:2]
+
+
+def _place_like(h: Hypothesis, target_xy: np.ndarray, yaws, views, others, cfg, groups) -> Hypothesis | None:
+    """``h``'s shape re-fitted with its vertex centroid at ``target_xy`` (best of the start yaws; also shifted
+    by a quarter length both ways along its long axis: the swapped shapes differ in length)."""
+    sm = h.sm()
+    best = None
+    starts = []
+    for yaw in yaws:
+        c = _centroid_xy(sm, 0.0, 0.0, yaw)
+        R = sm.pose(0.0, 0.0, yaw)[:3, :3]
+        Vw = (sm.asset.V - sm.asset.V.mean(0)) @ R.T
+        ev = np.linalg.eigh(np.cov(Vw[:, :2].T))[1][:, -1]
+        L = float(np.ptp(Vw[:, :2] @ ev))
+        for k in (0, -1, 1):
+            starts.append((target_xy - c + k * 0.25 * L * ev, yaw))
+    for xy, yaw in starts:
+        t = Hypothesis(h.label_group, h.key, h.tag, float(xy[0]), float(xy[1]), float(yaw), h.loss, blob=h.blob)
+        t.per_view = {"geom_group": h.per_view["geom_group"]}
+        t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters)
+        cx, cy = _centre_xy(t2)
+        if not region_ok(groups[t2.label_group], cx, cy, t2.yaw, sm.yaw_period):
+            continue
+        if best is None or t2.loss < best.loss:
+            best = t2
+    return best
+
+
+def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.02) -> list[Hypothesis]:
+    """Cross-label identity: two chosen objects of different label groups whose generator regions admit each
+    other's place (store_tools' hammer and wrench share a region) trade places when the swapped fits cost
+    less in total. Incumbents are re-scored under the same conditions (others, iterations)."""
+    out = list(chosen)
+    for i in range(len(out)):
+        for j in range(i + 1, len(out)):
+            a, b = out[i], out[j]
+            if (a.label_group == b.label_group or "fixed" in (a.tag, b.tag) or a.per_view.get("slot")
+                    or b.per_view.get("slot") or a.per_view.get("occluded") or b.per_view.get("occluded")):
+                continue
+            ca, cb = _centroid_xy(a.sm(), a.x, a.y, a.yaw), _centroid_xy(b.sm(), b.x, b.y, b.yaw)
+            ga, gb = groups[a.label_group], groups[b.label_group]
+            if not (region_ok(ga, *cb) and region_ok(gb, *ca)):
+                continue
+            others = _union_masks([h for k, h in enumerate(out) if k not in (i, j)], views)
+            ya = [a.yaw] if _placement_prior(ga)["yaw_fixed"] else [a.yaw, b.yaw, b.yaw + np.pi, a.yaw + np.pi]
+            yb = [b.yaw] if _placement_prior(gb)["yaw_fixed"] else [b.yaw, a.yaw, a.yaw + np.pi, b.yaw + np.pi]
+            a0 = _score_hyp(a, views, others, cfg, groups, cfg.quick_iters)
+            b0 = _score_hyp(b, views, others, cfg, groups, cfg.quick_iters)
+            a1 = _place_like(a, cb, ya, views, others, cfg, groups)
+            b1 = _place_like(b, ca, yb, views, others, cfg, groups)
+            if a1 is None or b1 is None:
+                continue
+            if a1.loss + b1.loss < a0.loss + b0.loss - margin:
+                for new, old in ((a1, a), (b1, b)):
+                    for k_, v_ in old.per_view.items():
+                        if k_ not in new.per_view and not k_.startswith("cam"):
+                            new.per_view[k_] = v_
+                    new.per_view["swapped"] = True
+                out[i], out[j] = a1, b1
+    return out
+
+
 def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypothesis]:
     """Per chosen object: re-fit the other candidate shapes of its label group at its location (identity) and
     its 180-degree flip, keeping the lowest combined cost (silhouette + colour + texture). Groups under a
@@ -998,7 +1197,7 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         others = _union_masks(out, views, skip=i)
         trials = []
         if (not prior["yaw_fixed"] and h.sm().yaw_period > 1.5 * np.pi
-                and region_ok(g, h.x, h.y, (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
+                and region_ok(g, *_centre_xy(h), (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
             trials.append(flip_about_centroid(h))
         if _options(g, _geometry_groups(g, prior)) is None:
             s_h = h.sm().sil(head.cam, h.T())
@@ -1030,7 +1229,7 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         scored = [h0]
         for t in trials:
             t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
-            if not region_ok(g, t2.x, t2.y, t2.yaw, t2.sm().yaw_period):
+            if not region_ok(g, *_centre_xy(t2), t2.yaw, t2.sm().yaw_period):
                 continue
             scored.append(t2)
             # paired texture on shared pixels decides when it is informative; else the combined cost
@@ -1086,7 +1285,7 @@ def view_request(best: Hypothesis, alt: dict, dist: float = 0.16, elev_deg: floa
     K = intrinsics(WRIST["focal_length"], WRIST["horizontal_aperture"])
     sm_b, T_b = best.sm(), best.T()
     try:
-        sm_a = next(s_ for s_ in shape_models(alt["key"]) if s_.tag == alt["tag"])
+        sm_a = shape_by_tag(alt["key"], alt["tag"])
     except StopIteration:
         return None
     T_a = sm_a.pose(alt["x"], alt["y"], alt["yaw"])
@@ -1174,6 +1373,7 @@ class EstimatorConfig:
     refine_per_group: int = 3
     quick_iters: int = 30
     polish: bool = True
+    swap_pairs: bool = True  # cross-label place swaps for labels sharing a generator region (_swap_pairs)
     polish_candidates: int = 4
     paired_tex_weight: float = 0.8
     refine_color_weight: float = 0.5
@@ -1187,6 +1387,7 @@ class EstimatorConfig:
     # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
     # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
     use_slots: bool = True  # labels pinned to config slots start there (make_kong tiles, tower base)
+    region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 
@@ -1290,6 +1491,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     shapes_by_group = {gi: _geometry_groups(g, prior) for gi, g, prior in pending}
     need0 = {gi: len(g["labels"]) for gi, g, _ in pending}
     refined = _propose(head_blobs, pending, shapes_by_group, views, cfg, groups)
+    if cfg.region_seeds:  # only groups the blob proposals left short (seeds can win by hiding in unknown pixels)
+        short = [(gi, g, p) for gi, g, p in pending
+                 if len({h.blob for h in refined if h.label_group == gi}) < len(g["labels"])]
+        refined += _region_seeds(head_blobs, short, shapes_by_group, views, cfg, groups)
     chosen = _assign_constrained(refined, need0, pending, head_blobs, views)
     pool = list(refined)
     head = views["cam_head"]
@@ -1336,6 +1541,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     t3 = time.time()
     if cfg.polish:
         chosen = _polish(chosen, views, cfg, groups, pending)
+    if cfg.swap_pairs:
+        chosen = _swap_pairs(chosen, views, cfg, groups)
     timings["polish_s"] = round(time.time() - t3, 3)
 
     # ---- joint refinement on the union of the others
@@ -1347,7 +1554,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             others = _union_masks(chosen, views, skip=i)
             yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
             x, y, yaw, loss, per = refine(h.sm(), h.x, h.y, h.yaw, views, others, xy_step=0.003, yaw_step=0.05,
-                                          maxiter=cfg.refine_iters, fix_yaw=yaw_fixed)
+                                          maxiter=cfg.refine_iters, fix_yaw=yaw_fixed,
+                                          bounds=origin_bounds(groups[h.label_group], h.sm(), h.yaw))
             sil0 = h.per_view.get("sil_loss", h.loss)
             if loss <= sil0 + 0.02:
                 h.loss = h.loss - sil0 + loss
