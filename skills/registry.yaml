@@ -489,7 +489,7 @@ entries:
       partner's top. Both grippers are opened after each pair. Pair the parts first (e.g. by colour).
     args:
       pairs: "[[id, id]], required; [movable part, fixed partner] pairs"
-      depth: "float m = 0.0105; how far below the partner's top the part's bottom ends"
+      depth: "float m = 0.010; how far below the partner's top the part's bottom ends"
       sign: "float = -1.0; turn direction, -1 = clockwise from above (tightens a right-hand thread)"
     selects_on:
       words: [tighten, screw, fasten, nut, bolt, same colour]
