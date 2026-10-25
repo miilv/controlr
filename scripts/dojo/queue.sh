@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Ordered job queue for integ evals on compute3 (one runner; jobs strictly in file order):
-#   scripts/dojo/queue.sh add NAME --task T --mode M --verify V --layouts ...   # append a job
+#   scripts/dojo/queue.sh add NAME --task T --mode M --verify V [--repo ~/other-checkout] --layouts ...  # append
 #   scripts/dojo/queue.sh start                                                 # start the runner (detached)
 #   scripts/dojo/queue.sh list
+#   scripts/dojo/queue.sh restart                                               # new runner (after a deploy)
 # Queue file: $DOJO_DATA/integ/queue.txt (one "NAME ARGS..." per line; edit to reorder). Each job runs
 # scripts/dojo/integ_eval.sh (GPU lock, one scope, 90 s yield after the release). Keep a job <= 5 episodes
 # (team rule: <= 30 min per lock hold, bundle boot included).
@@ -18,5 +19,9 @@ case "${1:-}" in
     cd "$HERE"
     setsid nohup bash scripts/dojo/queue_runner.sh >> "$D/queue_runner.log" 2>&1 < /dev/null &
     echo "runner started pid $!" ;;
-  *) echo "usage: queue.sh add|start|list" >&2; exit 2 ;;
+  restart)
+    # replace the runner (e.g. after a deploy); the job it is running continues, the new runner waits for it
+    for p in $(pgrep -u "$(id -u)" -f "bash scripts/dojo/queue_runner.sh"); do kill "$p"; done
+    sleep 1; exec "$0" start ;;
+  *) echo "usage: queue.sh add|start|list|restart" >&2; exit 2 ;;
 esac

@@ -36,15 +36,15 @@ from .firewall import DEV_GT_KEY
 from .policy import RuntimeConfig, RuntimePolicy
 
 GROSS_XY_MM = 20.0
-TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "not_home", "divergence", "error",
-            "other")
+TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "belief_mismatch", "not_home",
+            "divergence", "error", "other")
 
 
 def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -> tuple[str | None, str]:
     if res.get("success"):
         return None, ""
-    if rep.get("error"):
-        return "error", rep["error"].splitlines()[0][:200]
+    if rep.get("error") or rep.get("error_handled"):
+        return "error", (rep.get("error") or rep["error_handled"]).splitlines()[0][:200]
     if mode == "perception" and perc:
         bad = {k: v for k, v in perc.items()
                if not v.get("found") or v.get("xy_mm", 0) > GROSS_XY_MM or not v.get("shape_ok", True)}
@@ -62,6 +62,10 @@ def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -
         return "plan", f"{fail['skill']} {fail['status']}: {fail['note'][:160]}"
     if any(e.get("kind") == "divergence" for e in rep.get("events", [])):
         return "divergence", ""
+    if mode == "perception" and (rep.get("result") or {}).get("ok"):
+        # the skill finished on the BELIEF (predicted poses) but the checker disagrees: an estimate error that
+        # neither verification nor resync caught
+        return "belief_mismatch", f"stages_left {reward.get('stages_left')}"
     if reward.get("stages_left", 0) == 1:
         return "not_home", ""
     return "other", str(rep.get("result"))[:200]
@@ -89,13 +93,23 @@ def perception_eval(rep: dict, gt_rows: list[dict], assets) -> dict | None:
     return out
 
 
-def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_minutes: float = 25.0) -> dict:
+def load_policy_factory(spec: str | None):
+    """``module:Class`` (called as ``Class(cfg)``); default ``RuntimePolicy``."""
+    if not spec:
+        return RuntimePolicy
+    import importlib
+    mod, cls = spec.split(":")
+    return getattr(importlib.import_module(mod), cls)
+
+
+def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_minutes: float = 25.0,
+        policy_factory=None) -> dict:
     from dojo.skills.world import AssetDB
     out.mkdir(parents=True, exist_ok=True)
     tag = f"{task}_{cfg.mode}_verify-{cfg.verify}"
     rc = RenderClient()
     ep = ProxyEpisode(task, rc, out)
-    pol = RuntimePolicy(cfg)
+    pol = (policy_factory or RuntimePolicy)(cfg)
     assets = AssetDB(paths.OBJECTS)
     rows, t_all = [], time.perf_counter()
     for lf in layout_files:
@@ -148,10 +162,19 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                "category": cat, "why": why, "reward": reward,
                "verify_stats": v if isinstance(v, dict) else v, "provider": rep.get("provider"),
                "perception": perc, "events": rep.get("events", [])[-30:], "decisions": rep.get("decisions"),
-               "history": rep.get("history", [])[-40:], "result": rep.get("result"), "info_dropped": rep.get("info_dropped")}
+               "history": rep.get("history", [])[-40:], "result": rep.get("result"), "info_dropped": rep.get("info_dropped"),
+               "agent": rep.get("agent"), "policy": type(pol).__module__ + ":" + type(pol).__name__}
         rows.append(row)
         with (out / f"{tag}_episodes.jsonl").open("a") as f:
             f.write(json.dumps(jsonable(row), default=str) + "\n")
+        frames = rep.pop("look_frames", None)
+        if frames:
+            fd = out / f"{tag}_{lid}_look_frames"
+            fd.mkdir(exist_ok=True)
+            for ftag, fr in frames.items():
+                for cam, png in fr["png"].items():
+                    (fd / f"{ftag}_{cam}.png").write_bytes(png)
+                (fd / f"{ftag}_state.json").write_text(json.dumps(fr["state"]))
         with gzip.open(out / f"{tag}_{lid}_report.json.gz", "wt") as f:
             json.dump(jsonable(rep), f, default=str)
         with gzip.open(out / f"{tag}_{lid}_actions.json.gz", "wt") as f:
@@ -197,9 +220,10 @@ def main(argv=None) -> None:
     ap.add_argument("--verify", choices=("off", "bundle"), default="off")
     ap.add_argument("--config", default="{}", help="extra RuntimeConfig fields as JSON")
     ap.add_argument("--max-minutes", type=float, default=25.0)
+    ap.add_argument("--policy", default=None, help="module:Class, called as Class(cfg) (default RuntimePolicy)")
     a = ap.parse_args(argv)
     cfg = RuntimeConfig(**{**json.loads(a.config), "mode": a.mode, "verify": a.verify})
-    run(a.task, a.layouts, cfg, Path(a.out), a.max_minutes)
+    run(a.task, a.layouts, cfg, Path(a.out), a.max_minutes, policy_factory=load_policy_factory(a.policy))
 
 
 if __name__ == "__main__":
