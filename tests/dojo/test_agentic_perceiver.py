@@ -254,3 +254,55 @@ def test_unmentioned_b1_objects_are_kept_at_half_confidence():
     out, n = j1.add_unmentioned(objs, _b1())
     assert n == 1 and out[1]["label"] == "block_1" and out[1]["confidence"] == pytest.approx(0.15)
     assert "flags" not in out[1]
+    # the agent moved block_1 under a new label and reports both blocks: no duplicate comes back
+    moved = objs + [{"label": "cube left", "category": "block", "pos": [-0.26, -0.15, 0.78]}]
+    assert j1.add_unmentioned(moved, _b1())[1] == 0
+    # same label = mentioned, even far away
+    assert j1.add_unmentioned([{"label": "block_1", "pos": [0.3, 0.0, 0.78]}], _b1())[1] == 1
+
+
+def _rec():
+    return {"task": None, "instruction": "Stack the three blocks.",
+            "Rigid": {"block": [
+                {"category": "block", "category_idx": 7, "label": "block_0", "default_pos": [0.05, -0.12, 0.7825],
+                 "default_ori": [1, 0, 0, 0], "scale": [1, 1, 1], "_perception": {"confidence": 0.9, "residual": 0.1}},
+                {"category": "block", "category_idx": 10, "label": "block_1", "default_pos": [-0.2, -0.1, 0.7825],
+                 "default_ori": [1, 0, 0, 0], "scale": [1, 1, 1],
+                 "_perception": {"confidence": 0.2, "residual": 0.7, "occluded": True, "hidden_frac": 0.5}}]},
+            "_not_found": [{"label": "block_2", "candidates": ["Rigid/block/00013"], "confidence": 0.0}]}
+
+
+def test_record_merge_moves_finds_and_keeps():
+    pytest.importorskip("scipy")
+    from dojo.perception.agentic import record
+
+    objs = [{"label": "block_0", "asset": "Rigid/block/00007", "pos": [0.05, -0.12, 0.7825], "quat": [1, 0, 0, 0], "source": "head"},
+            {"label": "white cube", "category": "block", "pos": [-0.23, -0.14, 0.7825], "confidence": 0.7, "source": "head"},
+            {"label": "cube near edge", "category": "block", "pos": [0.40, -0.05, 0.7825], "confidence": 0.6, "source": "head"}]
+    new, log = record.merge_into_record(_rec(), objs)
+    labs = {r["label"]: r for r in new["Rigid"]["block"]}
+    assert labs["block_0"]["default_pos"] == [0.05, -0.12, 0.7825] and "source" not in labs["block_0"]["_perception"]
+    assert labs["block_1"]["default_pos"] == [-0.23, -0.14, 0.7825] and labs["block_1"]["_perception"]["source"] == "agent"
+    assert labs["block_1"]["_perception"]["b1_pos"] == [-0.2, -0.1, 0.7825]
+    assert labs["block_2"]["default_pos"] == [0.40, -0.05, 0.7825] and labs["block_2"]["category_idx"] == 13
+    assert new["_not_found"] == [] and {x["action"] for x in log} == {"moved", "found"}
+    ok, why = record.needs_agent(_rec())
+    assert ok and why.startswith("not_found")
+
+
+def test_agentic_estimate_on_a_b1_record(tmp_path):
+    pytest.importorskip("scipy")
+    from dojo.perception.agentic import record
+
+    fc = FakeChat([json.dumps({"answer": {"objects": [{"keep": 0}, {"label": "block", "pos": [-0.23, -0.14, 0.7825]},
+                                                      {"label": "block", "pos": [0.40, -0.05, 0.7825]}]}})])
+    st = {"left_ee_pose": FLANGE["left"], "right_ee_pose": FLANGE["right"], "left_ee_joint_state": [1.0], "right_ee_joint_state": [1.0]}
+    import unittest.mock as um
+
+    with um.patch.object(record, "_calib_from_state", lambda s: _calib()):
+        new = record.agentic_estimate(_frames(), st, "stack_blocks", "Stack the three blocks.", bgs={}, b1_record=_rec(),
+                                      chat=fc, model="fake", refine=False, log_dir=str(tmp_path))
+    ag = new["_perception"]["agentic"]
+    assert ag["result"] == "agent" and ag["calls"] == 1
+    labs = {r["label"]: r for r in new["Rigid"]["block"]}
+    assert labs["block_1"]["default_pos"][0] == -0.23 and labs["block_2"]["default_pos"][0] == 0.40

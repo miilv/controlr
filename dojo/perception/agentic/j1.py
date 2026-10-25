@@ -268,16 +268,38 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
     return objs, looks, probs
 
 
+def _cat_of(o: dict) -> str | None:
+    a = str(o.get("asset") or "").split("/")
+    return a[1] if len(a) == 3 else o.get("category")
+
+
 def add_unmentioned(objects: list[dict], b1: dict | None, radius_m: float = 0.03) -> tuple[list[dict], int]:
-    """B1 objects the agent neither kept nor replaced (no agent object within ``radius_m``) stay in the output at half
-    confidence: on our D0 hard set the agents left out objects they could not confirm, and most of those were right."""
+    """B1 objects the agent neither kept nor replaced stay in the output at half confidence: on our D0 hard set the
+    agents left out objects they could not confirm, and most of those were right. A B1 object counts as mentioned when
+    an agent object carries its label or lies within ``radius_m``; and none is re-added once the agent already reports
+    as many objects of that category as B1 did (a moved object must not come back as a duplicate)."""
     import math
 
     out, n = list(objects), 0
-    for o in (b1 or {}).get("objects") or []:
+    labels = {str(x.get("label")) for x in objects}
+    b1o = (b1 or {}).get("objects") or []
+    want = {}
+    for o in b1o:
+        want[_cat_of(o)] = want.get(_cat_of(o), 0) + 1
+    have = {}
+    for x in objects:  # the agent's objects per category (free-text ones: the nearest B1 object's category)
+        c = _cat_of(x)
+        if c not in want and b1o:
+            c = _cat_of(min(b1o, key=lambda o: math.hypot(o["pos"][0] - x["pos"][0], o["pos"][1] - x["pos"][1])))
+        have[c] = have.get(c, 0) + 1
+    for o in b1o:
+        c = _cat_of(o)
+        if str(o.get("label")) in labels or have.get(c, 0) >= want.get(c, 0):
+            continue
         if all(math.hypot(o["pos"][0] - x["pos"][0], o["pos"][1] - x["pos"][1]) > radius_m for x in out):
             out.append(dict({k: v for k, v in o.items() if k in OBJ_FIELDS + ("source",)},
                             confidence=round(0.5 * float(o.get("confidence", 0.5)), 3)))
+            have[c] = have.get(c, 0) + 1
             n += 1
     return out, n
 
@@ -396,7 +418,7 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
                 from ..segment import load_backgrounds
                 from .seed_refine import seeded_refine
 
-                bgs = _b1._BG.get("bg")
+                bgs = kw.get("bgs") or _b1._BG.get("bg")
                 if bgs is None:
                     bgs = _b1._BG["bg"] = load_backgrounds()
                 state, _ = _b1._state(flange, grip_cmd or {}, joints, kw.get("gripper"))
@@ -422,6 +444,10 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
            "last_seen": list((b1 or {}).get("last_seen") or []), "t_ms": t_ms, "version": VERSION, "notes": notes[:1500]}
     if b1 is not None and b1.get("gl"):
         out["gl"] = b1["gl"]
+    if kw.get("return_stats"):  # in-process callers (record.agentic_estimate); never sent over J1
+        out["_agent"] = {"result": src, "gate": why, "turns": st["turns"], "calls": st["calls"], "stop": st["stop"],
+                         "agent_s": st["wall_s"], "tokens": st["tokens"], "refine": ref_info, "problems": probs,
+                         "system_md5": p["system_md5"], "model": cfg["model"], "ws": str(ws)}
     _log_call(cfg["log_dir"], {"t": time.time(), "fn": "perceive", "ws": str(ws), "model": cfg["model"], "result": src,
                                "turns": st["turns"], "calls": st["calls"], "commands": st["commands"], "stop": st["stop"],
                                "tokens": st["tokens"], "call_s": st["call_s"], "agent_s": st["wall_s"], "b1_s": round(t_b1 - t0, 2),
