@@ -134,6 +134,15 @@ def piece_order(w, free: list[str], cxy, mid_x: float) -> list[str]:
     return sorted(free, key=lambda l: -abs(float(w.obj(l).pos[0]) - mid_x))
 
 
+def centred_grasps(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.0)) -> list:
+    """Box + usual grasps through the object's centre only: a round piece held off its centre is pinched on a chord
+    and turns out of the pads on the carry (twin: a disc held 13 mm off centre fell 21 cm short of its cell)."""
+    from dojo.skills import grasps as G
+    o = sk.world.obj(label)
+    cands = G.box_grasps(o, sk.kin, arm, tilts=tuple(tilts)) + G.candidates(o, sk.kin, arm)
+    return [g for g in cands if not re.search(r"off [+-]?[1-9]", g.note)]
+
+
 def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(), tol_xy: float = 0.008, tag: str = "",
                 tries: int = 2) -> dict:
     """Put one of ``candidates`` (the first one some arm can move there; flat, any yaw) level at ``xy`` with its
@@ -152,7 +161,8 @@ def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(
             for arm in (arm_pref, "right" if arm_pref == "left" else "left"):
                 for pre_h in (0.035, 0.015):
                     plans = sk.plan_transfer(piece, [T], arms=[arm], ignore=ignore, yaw_sym=sym,
-                                             box_tilts=(0.0, 25.0, 40.0, -25.0), place_kw={"pre_h": pre_h})
+                                             grasps=lambda a, piece=piece: centred_grasps(sk, piece, a),
+                                             place_kw={"pre_h": pre_h})
                     if not isinstance(plans, SkillResult):
                         break
                 if not isinstance(plans, SkillResult):
