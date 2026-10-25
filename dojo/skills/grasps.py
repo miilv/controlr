@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from dojo.skills.geometry import T_from
-from dojo.skills.kinematics import TABLE_Z, TIP_BEYOND_TCP, X5Kin
+from dojo.skills.kinematics import TABLE_Z, TIP_BEYOND_TCP, X5Kin, gap_to_grip
 from dojo.skills.world import ObjectState
 
 MAX_GAP = 0.088               # pad gap fully open
@@ -397,6 +397,13 @@ def mesh_com(asset) -> np.ndarray:
     return ((a + b + c) / 3 * ar[:, None]).sum(0) / max(float(ar.sum()), 1e-12)
 
 
+def com_off(obj: ObjectState) -> float:
+    """How far (m) the centre of mass sits from the bbox centre (0 without a mesh)."""
+    if obj.asset.mesh is None:
+        return 0.0
+    return float(np.linalg.norm(mesh_com(obj.asset) - obj.asset.center))
+
+
 def grasp_lever(obj: ObjectState, T_grasp: np.ndarray, centre=None) -> float:
     """Distance (m) from the object's centre of mass to the closing axis through the pads' contact centre
     (``centre``, world; default the TCP): the arm of the gravity torque that turns the object about the
@@ -492,6 +499,7 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
         a_, b_, c_ = Vm[Fm[:, 0]], Vm[Fm[:, 1]], Vm[Fm[:, 2]]
         ar = np.linalg.norm(np.cross(b_ - a_, c_ - a_), axis=1)
         com_w = R @ (((a_ + b_ + c_) / 3 * ar[:, None]).sum(0) / max(float(ar.sum()), 1e-12)) + obj.pos
+    uneven = irregular or com_off(obj) > 0.008       # a wrench: box-like slices, its centre of mass 16 mm off
     out = []
     for k in range(3):                                   # closing axis
         if ext[k] > max_width or (axes_ok is not None and k not in axes_ok):
@@ -511,12 +519,22 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
                     offs += [room, -room]
                     if irregular and room > 0.016:      # quarter points too (a key's shaft below its bow,
                         offs += [room / 2, -room / 2]   # clear of the other hand's fingers on the bow)
+                n_base = len(offs)
+                if uneven and room > 0.03:
+                    # stations every 6 mm within 4 cm of the centre of mass along the long axis (a hammer's or a
+                    # wrench's handle next to its centre of mass, not its head; pliers at their joint)
+                    c_m = float((mesh_com(obj.asset) - obj.asset.center)[m])
+                    offs += [o_ for o_ in (c_m + 0.006 * i for i in range(-7, 8))
+                             if abs(o_) <= room and min(abs(o_ - b_) for b_ in offs[:n_base]) > 0.002]
                 for tilt in tilts:
                     t = math.radians(tilt)
                     appr_b = -s * (math.cos(t) * eye[j] + math.sin(t) * eye[m])
                     if float((R @ appr_b)[2]) > max_up:
                         continue
-                    for off in offs:
+                    from_top = float((R @ appr_b)[2]) < -0.5 and abs(tilt) < 30
+                    for oi, off in enumerate(offs):
+                        if oi >= n_base and not from_top:
+                            continue
                         pb = p_b + eye[m] * off
                         for flip in (1.0, -1.0):
                             Tg = T_c @ T_from(pb, _frame(appr_b, flip * eye[k]))
@@ -525,8 +543,11 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
                             # 2.5 mm: a thin lying object (pliers, 24 mm) is then squeezed about its middle,
                             # not above it (twin: squeezed 5 mm high, the pliers popped out)
                             floor = max(obj.bottom_z, TABLE_Z) + 0.0025
-                            low = (Tg[2, 3] + min(0.0, float(Tg[2, 0])) * TIP_BEYOND_TCP
-                                   - 0.009 * abs(float(Tg[2, 2])) - 0.004 * abs(float(Tg[2, 1])))
+                            # the fingers' lowest point from the same model the collision check uses (the
+                            # analytic estimate sat 1 mm low on a slightly tilted hammer: every box grasp of a
+                            # thin lying tool failed the 2 mm table margin, only slices were left)
+                            g_open = gap_to_grip(min(MAX_GAP, float(ext[k]) + 2 * CLEAR + 0.006))
+                            low = float(kin.finger_points(kin.flange_from_tcp(Tg), g_open)[:, 2].min())
                             need = floor - low
                             if need > 0:
                                 if obj.top_z - floor < 0.004:
