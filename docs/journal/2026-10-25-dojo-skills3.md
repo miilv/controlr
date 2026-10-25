@@ -108,6 +108,11 @@ collider's opening is evidently narrower than the visual cup's 30 mm radius, so 
 Stalled after two iterations. Next: fit against the collision mesh, or the decomposition's hulls, instead of the visual
 mesh.
 
+Light lane (4 slots, `~/dojo-gpu-light{,2,3,4}.lock`; one g3 process is ~2.9 GB RSS):
+- insert_key parked (68ea915, lift + return): 6/6 banked the 15 % rung, 0.15; 57 steps median.
+- stack_blocks_by_language v1 (68ea915; the colour-ordered stack rule + `stack_objects(ordered=True)`): **10/10**,
+  185 / 221 steps of 550. 10 layouts in one process in about 3 minutes.
+
 ## 4. Failure taxonomy (what the traces with measured joints showed)
 
 1. **The arm's practical envelope is smaller than the IK's.** Two cases. (a) Places 0.66-0.67 m from the arm's base: the measured TCP stopped about 30 mm above the commanded one, at the strip, and probing could not help (plug v1 7/10). (b) A place with the wrist on j6's ±3.14 stop (and j4 at 1.7) stalled the same way (plug v2 1/5). Filters: `PLACE_REACH` 0.60 m and `wrist_safe` (j4 ≤ 1.6, |j6| ≤ 3.0) on transfer and handover places. A far target then goes through a relay to the other arm.
