@@ -346,14 +346,16 @@ class Robo:
             raise ValueError(f"the {arm} arm holds nothing")
         return h
 
-    def place(self, arm, xyz, yaw=None, release=True) -> Result:
+    def place(self, arm, xyz, yaw=None, release=True, over=()) -> Result:
         from dojo.skills.targets import rest_pose
         sk = self.ctx.sk()
         h = self._held(self._arm(arm))
         x, y, z = (float(v) for v in xyz)
         yaw_r = None if yaw is None else math.radians(float(yaw))
         T = rest_pose(sk, h.label, (x, y), z, yaw_r)
-        return self._wrap("place", lambda: sk.place(arm, T, tol_tilt=10.0), contact=True, arm=arm)
+        ign = tuple(self._label(o) for o in ((over,) if isinstance(over, str) else over))
+        return self._wrap("place", lambda: sk.place(arm, T, tol_tilt=10.0, ignore=ign, release=bool(release)),
+                          contact=True, arm=arm)
 
     def place_on(self, arm, support_id, dx=0.0, dy=0.0, yaw=None) -> Result:
         from dojo.skills.targets import on_top

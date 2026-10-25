@@ -111,6 +111,16 @@ available; the object's pose in the estimate is updated after each contact)
   episode. Call it exactly once, at the end."""
 
 
+# v3: robo.place can put an object OVER others (a cup over a block): they are not collision-checked
+API_DOC_V3 = API_DOC.replace(
+    "- `robo.place(arm, xyz, yaw=None, release=True) -> Result`: set the held object down with its bottom centre at\n"
+    "  `xyz` (x, y, z of the surface it lands on), turned to `yaw` (deg) when given.",
+    "- `robo.place(arm, xyz, yaw=None, release=True, over=()) -> Result`: set the held object down with its bottom\n"
+    "  centre at `xyz` (x, y, z of the surface it lands on), turned to `yaw` (deg) when given; `over`: ids of objects\n"
+    "  the placed object may enclose (a cup put upside down over a block): they are not collision-checked.")
+assert API_DOC_V3 != API_DOC
+
+
 def skill_docs(version: int = 1) -> dict[str, tuple[str, str]]:
     """v2+: documents the arguments the deployed library actually has (``stack_objects(ordered=...)`` only when
     the library's signature has it), so the manual never promises an argument the code lacks."""
@@ -139,7 +149,7 @@ def skills_section(version: int = 1) -> str:
 def render_manual(version: str = "manual_v1") -> str:
     tpl = (PROMPTS / f"{version}.md").read_text()
     v = int(version.rsplit("_v", 1)[1]) if "_v" in version else 1
-    return tpl.replace("{skills}", skills_section(v)).replace("{api}", API_DOC)
+    return tpl.replace("{skills}", skills_section(v)).replace("{api}", API_DOC_V3 if v >= 3 else API_DOC)
 
 
 __all__ = ["SKILL_DOCS", "API_DOC", "render_manual", "skills_section"]

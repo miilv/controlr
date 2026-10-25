@@ -43,8 +43,8 @@ class AgentConfig:
     first_image_px: int = 640
     jpeg_quality: int = 80
     max_images_per_turn: int = 3
-    manual: str = "manual_v2"
-    appendix: str = "agent_v2"
+    manual: str = "manual_v3"           # v2's conventions + robo.place(over=...)
+    appendix: str = "agent_v3"
     timeout_s: float = 600.0
 
 
