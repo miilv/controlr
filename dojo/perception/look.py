@@ -142,7 +142,8 @@ def look_cost_steps(plan: list[dict], parallel: bool = True) -> int:
 
 
 def fuse(frames: list[dict], task: str, bgs: dict | None = None, cfg=None, prior_record: dict | None = None,
-         mode: str = "conservative", accept_drop: float = 0.02, extra_slack: float = 0.01) -> dict:
+         mode: str = "conservative", accept_drop: float = 0.02, extra_slack: float = 0.01,
+         big_move: float = 0.005, good_fit: float = 0.35) -> dict:
     """Fuse later frames (looks; objects assumed static) into a frame-0 estimate.
     ``frames``: [{"images": {cam: RGB}, "state": {...}, "instruction": str}, ...].
 
@@ -213,7 +214,11 @@ def fuse(frames: list[dict], task: str, bgs: dict | None = None, cfg=None, prior
             e1 = roi_loss(zsm, T1, ex_rvs)[0]
             info.update({"loss0": round(l0, 4), "loss1": round(l1, 4), "extra0": round(e0, 4), "extra1": round(e1, 4),
                          "moved_mm": round(float(np.hypot(*(T1[:2, 3] - T0[:2, 3])) * 1000), 1)})
-            if l1 < l0 - accept_drop and e1 <= e0 + extra_slack and e1 < 0.6:
+            moved = float(np.hypot(*(T1[:2, 3] - T0[:2, 3])))
+            # a large move must be backed by a look view that actually fits well (D0 stack_blocks 100003: a
+            # 9 mm move toward a mediocre look-view fit, IoU 0.54, made a correct block wrong)
+            if (l1 < l0 - accept_drop and e1 <= e0 + extra_slack and e1 < 0.6
+                    and (moved <= big_move or e1 < good_fit)):
                 info["accepted"] = True
                 r["default_pos"] = T1[:3, 3].tolist()
                 r["default_ori"] = R_to_quat_wxyz(T1[:3, :3]).tolist()
