@@ -1313,6 +1313,17 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         ring = cv2.dilate(s_h, np.ones((2 * r_px + 1, 2 * r_px + 1), np.uint8)) & (1 - s_h)
         resid_near[id(h)] = float((resid & ring).sum() / n_s)
 
+    # unexplained foreground blobs (head view) -> world xy on the table: candidates for objects not found
+    unexplained = []
+    n_u, lab_u, st_u, cen_u = cv2.connectedComponentsWithStats(resid, connectivity=8)
+    for j in np.argsort(-st_u[1:, cv2.CC_STAT_AREA])[:8] + 1:
+        a_px = int(st_u[j, cv2.CC_STAT_AREA])
+        if a_px < MIN_BLOB_PX["cam_head"]:
+            continue
+        X = head.cam.ray_plane(cen_u[j][None, :], TABLE_Z + 0.02)[0]
+        if np.isfinite(X).all():
+            unexplained.append({"xy": [round(float(X[0]), 4), round(float(X[1]), 4)], "area_px": a_px})
+
     # ---- records
     for gi, g, _ in pending:
         members = [h for h in chosen if h.label_group == gi]
@@ -1377,5 +1388,5 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)
     timings["total_s"] = round(time.time() - t0, 3)
     record["_perception"] = {"version": "v0", "timings": timings, "n_head_blobs": len(head_blobs),
-                             "views": list(views)}
+                             "views": list(views), "unexplained": unexplained}
     return record
