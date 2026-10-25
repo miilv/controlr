@@ -196,3 +196,23 @@ resync check nor the skills' place check (both read predictions in mode B) caugh
   (build_tower: 5 classes, stack_blocks: 3 sizes). A pose is accepted when perception's `ok` holds and the shift
   is ≤ 30 mm; a different asset only when `identity_ok`. `RuntimeConfig.refine` (default off; mode gt: no-op).
 - Paired runs, identical code, refine off vs on: `B_stack_bundle_{base,refine}_{a,b}`, then build_tower.
+
+### 4.1 First paired refine run (stack_blocks, mode B + verify, identical code)
+
+| arm | n | success | score | steps med / max | wall s / ep | lost |
+|---|---|---|---|---|---|---|
+| refine off (`B_stack_bundle_base_{a,b}`) | 10 | 8/10 | 83.0 | 193 / 206 | 37 | 100000 belief_mismatch, 100002 perception_gross |
+| refine on (`B_stack_bundle_refine_{a,b}`) | 10 | 8/10 | 83.0 | 209 / 232 | 48 | 100002 belief_mismatch, 100005 perception_gross |
+
+- Refine recovered 100000 (a 10.5 mm correction of the support block at the place hover).
+- 100002: the block estimated ~20 mm off sits off-centre in the wrist view at its hover; refine "not ok"
+  (iou 0.12), prior kept, wrong grasp. → re-hover hint (skills `736e9e3`): when the fit is not ok but found
+  the object > 10 mm from the prior with iou > 0.05, hover over the found spot and refine once more.
+- 100005 is fusion noise, not refine: the same ~27 mm frame-0 error in both arms; the then-default FULL fuse
+  (re-assignment) moved it to 4.8 mm in one arm and 41.6 mm in the other. perception's conservative fuse
+  (`c3ae9aa`, frame-0 record passed as `prior_record`) keeps frame 0's objects and accepts a move only when the
+  look view fits well (0 regressions > 5 mm on D0).
+- With the new perception code (more flags) the baseline also changed per layout vs `B_stack_bundle_1`
+  (100000 and 100002 newly lost, 100004 newly won): look + full fuse was moving good estimates (reported to
+  perception with examples: 100000 block 5.7 → 19.7 mm, 100003 0.1 → 12.7 mm).
+- Second pair (`*_base2` / `*_refine2`): conservative fuse + re-hover, look frames saved as PNG.
