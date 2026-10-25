@@ -286,3 +286,42 @@ def test_offsets_live_in_the_support_frame(monkeypatch):
              check_mode="none", place_tag="up")
     pose, _ = G.place_on_object(p, child, lay, set(), random.Random(0), {"ground": Ground()}, {})
     assert pose[:3] == pytest.approx([0.035, -0.007, 0.8 + 0.035 + 0.02], abs=1e-9)   # x offset lifts the slice
+
+
+def test_solve_equation_semantics(monkeypatch):
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    monkeypatch.setattr(G, "available_indices", lambda t, c, clutter=False: list(range(50)))
+
+    def grp(label, x=0.0, plane="Table", cats=("number",)):
+        return {"common": {"xlim": [x, x], "ylim": [0.0, 0.0], "relative_plane": plane},
+                "category": [{"name": c} for c in cats], "select_mode": {"mode": "allow_duplicate", "nums": 1,
+                                                                         "label": [label]}}
+    groups = {"Rigid": [grp("t0", plane="mat0"), grp("t1", plane="mat1", cats=G.EQ_OPS), grp("t2", plane="mat2"),
+                        grp("t4", plane="mat4"), grp("equal", plane="mat3", cats=("equal",))],
+              "Geometry": [grp(f"mat{i}", x=-0.17 + 0.085 * i, cats=("cube_cushion",)) for i in range(5)]}
+    seen_two_digit = False
+    for s in range(60):
+        out, meta = G.equation_groups(groups, random.Random(s))
+        labs = {g["select_mode"]["label"][0]: g for gl in out.values() for g in gl}
+        a, op, b, ans = meta["operands"][0], meta["operator"], meta["operands"][1], meta["result"]
+        assert {"plus": a + b, "minus": a - b, "multiplication": a * b, "division": a // b if b else None}[op] == ans
+        slots = {0: a, 1: op, 2: b}
+        if ans >= 10:
+            seen_two_digit = True
+            slots.update({4: ans // 10, 5: ans % 10})
+            assert "mat5" in labs and labs["mat5"]["common"]["xlim"][0] == pytest.approx(-0.17 + 0.085 * 5)
+            assert "t5" not in labs or labs["t5"]["common"]["relative_plane"] == "mat5"
+        else:
+            slots[4] = ans
+        present = {k for k in slots if f"t{k}" in labs}
+        assert set(slots) - present == {meta["missing_slot"]}            # exactly one slot left for the policy
+        for k in present:
+            cat = labs[f"t{k}"]["category"]
+            if isinstance(slots[k], int):
+                assert cat[0]["name"] == "number" and cat[0]["index"][0] % 10 == slots[k]
+            else:
+                assert cat == [{"name": slots[k]}]
+    assert seen_two_digit

@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v12"
+GENERATOR = "simlab/v13"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -602,6 +602,64 @@ def place_clutter(clutter_cfg: list, gens: dict, rng: random.Random, layout: dic
     return placed
 
 
+EQ_OPS = ("plus", "minus", "multiplication", "division")
+
+
+def equation_groups(groups: dict[str, list], rng: random.Random) -> tuple[dict[str, list], dict]:
+    """solve_equation's task semantics, which the config alone does not carry. RoboDojo's reward needs a legal
+    ``a op b = answer`` on the mats, with exactly one of t0/t1/t2/t4(/t5) missing (the policy fills it). Without
+    that, ``find_missing_list`` returns a list and ``run_reward`` crashes. Same convention as the public
+    PhysicalRSI sampler:
+    - a uniform legal single-digit equation;
+    - mat5 + t5 for a two-digit answer;
+    - a uniform missing slot;
+    - digit tiles drawn among the ``number`` assets with index % 10 == digit."""
+    eqs = []
+    for a in range(10):
+        for b in range(10):
+            vals = {"plus": a + b, "minus": a - b, "multiplication": a * b}
+            if b and a % b == 0:
+                vals["division"] = a // b
+            eqs += [(a, op, b, v) for op, v in vals.items() if v >= 0]
+    a, op, b, ans = rng.choice(eqs)
+    values: dict = {0: a, 1: op, 2: b, 4: ans}
+    out = {t: [copy.deepcopy(g) for g in gl] for t, gl in groups.items()}
+    by_label = {lab: (t, g) for t, gl in out.items() for g in gl for lab in ((g.get("select_mode") or {}).get("label") or [])}
+    if ans >= 10:
+        values[4], values[5] = divmod(ans, 10)
+        tm, m4 = by_label["mat4"]
+        m3 = by_label["mat3"][1]
+        step = m4["common"]["xlim"][0] - m3["common"]["xlim"][0]
+        m5 = copy.deepcopy(m4)
+        m5["select_mode"]["label"] = ["mat5"]
+        m5["common"]["xlim"] = [v + step for v in m4["common"]["xlim"]]
+        out[tm].append(m5)
+        tt, t4 = by_label["t4"]
+        t5 = copy.deepcopy(t4)
+        t5["select_mode"]["label"] = ["t5"]
+        t5["common"]["relative_plane"] = "mat5"
+        out[tt].append(t5)
+    missing = rng.choice(sorted(values))
+    for t, gl in out.items():
+        keep = []
+        for g in gl:
+            labs = (g.get("select_mode") or {}).get("label") or []
+            lab = labs[0] if len(labs) == 1 else None
+            if lab is not None and lab[0] == "t" and lab[1:].isdigit():
+                k = int(lab[1:])
+                if k == missing:
+                    continue
+                v = values[k]
+                if isinstance(v, int):
+                    idx = [i for i in available_indices(t, "number") if i % 10 == v]
+                    g["category"] = [{"name": "number", "index": [rng.choice(idx)]}]
+                else:
+                    g["category"] = [{"name": v}]
+            keep.append(g)
+        out[t] = keep
+    return out, {"operands": [a, b], "operator": op, "result": ans, "missing_slot": missing}
+
+
 def generate(task: str, seed: int, max_tries: int = 40) -> dict:
     """One layout record for ``task`` (seed >= SEED_BASE). Deterministic in ``seed``."""
     if seed < paths.SEED_BASE:
@@ -622,8 +680,12 @@ def generate(task: str, seed: int, max_tries: int = 40) -> dict:
             x0, y0, x1, y1 = a
             gens["table"].add_box_prohibited_area(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
         layout: dict = {}
+        task_meta = None
         try:
-            place_task_objects(groups, gens, rng, layout)
+            tgroups = groups
+            if task.removesuffix("_random") == "solve_equation":
+                tgroups, task_meta = equation_groups(groups, rng)
+            place_task_objects(tgroups, gens, rng, layout)
             n_clutter = place_clutter(tcfg.get("Clutter") or [], gens, rng, layout, exclude=task_cats)
         except LayoutError as e:
             last = e
@@ -637,7 +699,7 @@ def generate(task: str, seed: int, max_tries: int = 40) -> dict:
             raise LayoutError(f"generated an invalid record: {errs[:5]}")
         layout["_simlab"] = {"task": task, "id": seed, "seed": seed, "attempt": attempt, "generator": GENERATOR,
                              "n_clutter": n_clutter, "clutter_wanted": want,
-                             "robot_keepout": _KEEPOUT_ON[0]}
+                             "robot_keepout": _KEEPOUT_ON[0], **({"task_semantics": task_meta} if task_meta else {})}
         return layout
     raise LayoutError(f"{task} seed {seed}: no valid layout in {max_tries} tries ({last})")
 
