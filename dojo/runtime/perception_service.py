@@ -19,6 +19,13 @@ Ops (request dicts):
     {"op": "watch", "frame0": frame, "frame": frame, "vocabulary": str}            -> {"watch": json}
         what the scene's own actors changed while the robot waits (``dojo.perception.task_state``; make_kong:
         the push tile the opponent knocked over): {"supported", "knocked": [label], "detail"}
+    {"op": "agentic_estimate", "frame": frame, "vocabulary": str, "fold": int, "b1_record": json|None}
+                                                                                   -> {"record": json}
+        perception R&D's agentic perceiver (``dojo.perception.agentic.record``): B1 (= op estimate on this frame,
+        unless ``b1_record``), one fresh LLM agent with B1 as the hint, render-and-compare from its points; usage in
+        record["_perception"]["agentic"]. Env: AGENTIC_ENV_FILE (OMNIROUTE_* only), AGENTIC_MODEL, AGENTIC_MAX_TURNS,
+        AGENTIC_REFINE; transcripts under DOJO_AGENTIC_LOG
+    {"op": "needs_agent", "record": json}                                          -> {"needs": bool, "why": str}
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -126,6 +133,15 @@ class PerceptionClient:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
                                       "fold": int(fold)})["check"])
 
+    def agentic_estimate(self, frame: dict, vocabulary: str, fold: int, b1_record: dict | None = None) -> dict:
+        r = self._call({"op": "agentic_estimate", "frame": encode_frame(frame), "vocabulary": vocabulary, "fold": int(fold),
+                        "b1_record": None if b1_record is None else json.dumps(b1_record, default=_default)})
+        return json.loads(r["record"])
+
+    def needs_agent(self, record: dict) -> tuple[bool, str]:
+        r = self._call({"op": "needs_agent", "record": json.dumps(record, default=_default)})
+        return bool(r["needs"]), str(r["why"])
+
     def watch(self, frame0: dict, frame: dict, vocabulary: str) -> dict:
         def head_only(f):                       # the reads compare head views only: send just that image
             return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
@@ -213,6 +229,18 @@ class _Perception:
         r = kong_discard(decode_frame(frame0)["images"]["cam_head"], decode_frame(frame)["images"]["cam_head"])
         return {"supported": True, "knocked": [r["knocked"]] if r.get("knocked") and r.get("confident") else [],
                 "detail": r}
+
+    def agentic_estimate(self, frame: dict, vocabulary: str, fold: int, b1_record: dict | None = None) -> dict:
+        """The agentic perceiver on one frame; B1 = this service's own ``estimate`` (the b1 arm's path) unless given."""
+        from dojo.perception.agentic.record import agentic_estimate
+        if b1_record is None:
+            b1_record = self.estimate([frame], vocabulary, fold)
+        fr = decode_frame(frame)
+        self._n_agentic = getattr(self, "_n_agentic", 0) + 1
+        log = os.environ.get("DOJO_AGENTIC_LOG")
+        log_dir = str(Path(log) / f"call_{self._n_agentic:03d}") if log else None
+        return agentic_estimate(fr["images"], fr["state"], vocabulary, fr["instruction"], bgs=self.bgs(fold),
+                                cfg=self.cfg(fold), b1_record=b1_record, log_dir=log_dir)
 
     def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
                  fuse_mode: str | None = None) -> dict:
@@ -469,6 +497,14 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
                         conn.send({"ok": True, "check": json.dumps(chk, default=_default)})
+                    elif op == "agentic_estimate":
+                        b1 = json.loads(req["b1_record"]) if req.get("b1_record") else None
+                        rec = p.agentic_estimate(req["frame"], req["vocabulary"], int(req.get("fold", 0)), b1)
+                        conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "needs_agent":
+                        from dojo.perception.agentic.record import needs_agent
+                        needs, why = needs_agent(json.loads(req["record"]))
+                        conn.send({"ok": True, "needs": bool(needs), "why": str(why)})
                     elif op == "watch":
                         w = p.watch(req["frame0"], req["frame"], req["vocabulary"])
                         conn.send({"ok": True, "watch": json.dumps(w, default=_default)})

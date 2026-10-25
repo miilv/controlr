@@ -174,7 +174,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                "verify_stats": v if isinstance(v, dict) else v, "provider": rep.get("provider"),
                "perception": perc, "events": rep.get("events", [])[-30:], "decisions": rep.get("decisions"),
                "history": rep.get("history", [])[-40:], "result": rep.get("result"), "info_dropped": rep.get("info_dropped"),
-               "agent": rep.get("agent"), "policy": type(pol).__module__ + ":" + type(pol).__name__, "code": code}
+               "agent": rep.get("agent"), "agentic": rep.get("agentic"), "policy": type(pol).__module__ + ":" + type(pol).__name__, "code": code}
         rows.append(row)
         with (out / f"{tag}_episodes.jsonl").open("a") as f:
             f.write(json.dumps(jsonable(row), default=str) + "\n")
