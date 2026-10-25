@@ -454,7 +454,7 @@ def spin_about_axis(o, T_obj, k: int, n: int = 12) -> list[np.ndarray]:
     return out
 
 
-def edge_grasps(sk: Skills, o, arm: str, floor_z: float, tilts=(0.0, 25.0, -25.0, 40.0, -40.0),
+def edge_grasps(sk: Skills, o, arm: str, floor_z: float, tilts=(0.0, 12.0, -12.0, 20.0, -20.0, 28.0, -28.0),
                 min_cover: float = 0.005) -> list[G.Grasp]:
     """Grasps of a disc standing on its edge (a coin in a holder) by its upper rim: the pads on its two faces, the
     approach in the disc's plane from above (tilted in that plane by ``tilts``), as deep as the fingers may go with
@@ -480,12 +480,12 @@ def edge_grasps(sk: Skills, o, arm: str, floor_z: float, tilts=(0.0, 25.0, -25.0
         for flip in (1.0, -1.0):
             R = G._frame(appr, flip * n)
             best = None
-            for s_ in np.arange(r + 0.004, r - 0.013, -0.0005):      # TCP this far from the centre, against the approach
+            for s_ in np.arange(r + 0.012, r - 0.013, -0.0005):      # TCP this far from the centre, against the approach
                 T = T_from(c - appr * s_, R)
                 low = float(sk.kin.finger_points(sk.kin.flange_from_tcp(T), g_open)[:, 2].min())
                 if low >= floor_z:
                     best = (s_, T)
-                else:
+                elif best is not None:
                     break
             if best is None:
                 continue
@@ -550,6 +550,8 @@ def holder_of(sk: Skills, label: str) -> str | None:
     return None
 
 
+DISC_OUT = 0.03               # m: a disc's lift out of its holder before the carry (8 cm straight up left the reach of
+                              # an arm 0.52 m out)
 DISC_LIFT = 0.10              # m: a disc no arm can insert is still lifted this far from its holder and set back
 DISC_TABLE_RELAY = False      # the table relay (laid flat, pinched by the other arm) is off: a pinched coin hangs from
                               # the pads' line, and a hand pointing sideways keeps its 37 mm finger roots over the
@@ -590,7 +592,8 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
         if abs(float(oo.R[2, k])) > 0.9:
             return pinch_grasps(sk, oo, a)
         return edge_grasps(sk, oo, a, floor + 0.003)
-    tkw = {"grasps": grasps, "screen_fingers_out": True, "pick_kw": {"squeeze": DISC_SQUEEZE, "lift_rad": DISC_LIFT_RAD}}
+    tkw = {"grasps": grasps, "screen_fingers_out": True, "lift": DISC_OUT,
+           "pick_kw": {"squeeze": DISC_SQUEEZE, "lift_rad": DISC_LIFT_RAD}}
     sk.log(f"[disc] {obj} -> {rec}: {len(tg)} targets, holder {hold}")
     direct = sk.plan_transfer(obj, tg, ignore=(rec,), place_kw=place_kw, **tkw)
     if isinstance(direct, SkillResult) and not DISC_TABLE_RELAY:
@@ -733,6 +736,18 @@ def uniform_section_grasps(sk: Skills, o, arm: str, tilts=(0.0, 25.0, -25.0, 40.
     return out
 
 
+EACH_OVER = 0.07              # m: a filled hole this close to the line from the carrying arm's base to a hole is "in
+                              # the way"
+
+
+def _seg_dist(p, a, b) -> float:
+    """Distance (xy) from point ``p`` to the segment ``a``-``b``."""
+    p, a, b = (np.asarray(v, float)[:2] for v in (p, a, b))
+    ab = b - a
+    t = float(np.clip((p - a) @ ab / max(float(ab @ ab), 1e-12), 0.0, 1.0))
+    return float(np.linalg.norm(p - (a + t * ab)))
+
+
 EACH_SPREAD = 0.06            # m: holes at least this far from a filled one first (open fingers next to a filled hole)
 
 
@@ -811,14 +826,20 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
         L = float(np.max(o.asset.extents))
         filled = [np.asarray(v, float) for v in st["filled"].values()]
         free = []
+        picker = min(ARMS, key=lambda a_: float(np.linalg.norm(sk.kin.base(a_)[:2, 3] - o.center_w[:2])))
+        base = sk.kin.base(picker)[:2, 3]
         for tag, T, r in holes:
             p = T[:3, 3]
             if any(float(np.linalg.norm(p[:2] - f[:2])) < r for f in filled):
                 continue
             dmin = min([float(np.linalg.norm(p[:2] - f[:2])) for f in filled] or [1.0])
             side = float(np.linalg.norm(p[:2] - o.center_w[:2]))
-            free.append(((dmin < EACH_SPREAD), side, tag, T, r))
-        free.sort(key=lambda x: (x[0], x[1]))
+            # the arm carrying it in must not reach over an object already standing in a hole (twin: a hand passing
+            # over a filled hole was held 34 mm off its command, the tube landed on the rack)
+            over = any(_seg_dist(f[:2], base, p[:2]) < EACH_OVER for f in filled)
+            free.append(((dmin < EACH_SPREAD), over, side, tag, T, r))
+        free.sort(key=lambda x: (x[0], x[1], x[2]))
+        free = [x[:1] + x[2:] for x in free]
         res = None
         pk = {**EACH_PLACE_KW, "grip_only": (receptacle,)}
         tkw = {"grasps": lambda a, lab=lab: uniform_section_grasps(sk, sk.world.obj(lab), a)}

@@ -258,6 +258,10 @@ class Skills:
                     # a tall object's top grasp: the default pre-grasp is out of reach (figurine, 19 cm)
                     to_pre = self.motion.to_pose(a, q0, g.pre(0.035), approach_rad, "pick_approach", gripper=go,
                                                  ignore=own)
+                    if not to_pre.ok:
+                        # at the edge of reach (a coin 0.52 m out): a 2 cm pre-grasp still plans
+                        to_pre = self.motion.to_pose(a, q0, g.pre(0.02), approach_rad, "pick_approach", gripper=go,
+                                                     ignore=own)
                 if not to_pre.ok:
                     n_coll += to_pre.status == "collision"
                     n_ik += to_pre.status == "ik_fail"
@@ -792,6 +796,12 @@ class Skills:
         ob = go(T_obj, min(rate, 0.02), "servo_insert", settle=3)
         err = float(ob.pos[2] - T_obj[2, 3])
         note = f"servo: hover {hover*1000:.0f} mm, after the descent {err*1000:+.1f} mm"
+        w_ = self.refresh()
+        lag = float(np.linalg.norm(self.kin.tcp(arm, w_.arms[arm].q)[:3, 3] - self.kin.tcp(arm, self.ex.q[arm])[:3, 3]))
+        if lag > 0.02 and err > seat_tol:
+            # the arm is held off its command (it pushes on something): probing would drag the object around
+            kw = {**kw, "probe": False}
+            note += f", the arm held {lag*1000:.0f} mm off its command: no probing"
         probes = [(r * math.cos(2 * math.pi * k / n_dir), r * math.sin(2 * math.pi * k / n_dir))
                   for r in radii for k in range(n_dir)] if kw.get("probe", True) else []
         n = 0
