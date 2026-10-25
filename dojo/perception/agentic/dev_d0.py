@@ -115,6 +115,35 @@ def cmd_run(a):
         print(d.name, tag, len(out["objects"]), "objects", out["_dev_wall_s"], "s |", out.get("notes", "")[:220], flush=True)
 
 
+def cmd_refine(a):
+    """H2 offline: B1's render-and-compare seeded by the agent's answer (agent_<tag>.json -> agent_<tag>_ref.json)."""
+    import os
+    import zlib
+
+    from .. import j1_adapter
+    from ..segment import load_backgrounds
+    from .seed_refine import seeded_refine
+
+    for d in _cases(a):
+        f = d / f"agent_{a.tag}.json"
+        g = d / f"agent_{a.tag}_ref.json"
+        if not f.exists() or (g.exists() and not a.force):
+            continue
+        inp = _inputs(d)
+        fold = zlib.crc32(inp["episode"].encode()) % 2
+        bgs = load_backgrounds(Path(a.bg_folds) / f"fold{fold}")
+        out = json.loads(f.read_text())
+        b1 = json.loads((d / "b1.json").read_text())
+        images = j1_adapter._load_frames(inp["frames"])
+        state, _ = j1_adapter._state(inp["flange"], inp["grip_cmd"], inp["joints"])
+        cams = j1_adapter._cameras(inp["calib"])
+        t0 = time.time()
+        objs, infos = seeded_refine(images, state, cams, inp["task"], out["objects"], b1["objects"], bgs)
+        out = dict(out, objects=objs, refine_info=infos, refine_s=round(time.time() - t0, 2))
+        g.write_text(json.dumps(out, default=str))
+        print(d.name, a.tag, f"{sum(i['accepted'] for i in infos)}/{len(infos)} refined", out["refine_s"], "s", flush=True)
+
+
 # ------------------------------------------------------------------------------------------------ scoring (DEV ONLY)
 
 def _cls_of(o: dict, gt_classes: set, b1_cat: dict) -> str | None:
@@ -246,6 +275,12 @@ def main(argv=None):
     p.add_argument("--log-dir")
     p.add_argument("--only", nargs="*")
     p.add_argument("--force", action="store_true")
+    p = sp.add_parser("refine")
+    p.add_argument("--cases", required=True)
+    p.add_argument("--tag", required=True)
+    p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
+    p.add_argument("--only", nargs="*")
+    p.add_argument("--force", action="store_true")
     p = sp.add_parser("score")
     p.add_argument("--cases", required=True)
     p.add_argument("--tags", required=True)
@@ -253,7 +288,7 @@ def main(argv=None):
     p.add_argument("--csv")
     p.add_argument("--jsonl")
     a = ap.parse_args(argv)
-    {"cases": cmd_cases, "b1": cmd_b1, "run": cmd_run, "score": cmd_score}[a.cmd](a)
+    {"cases": cmd_cases, "b1": cmd_b1, "run": cmd_run, "refine": cmd_refine, "score": cmd_score}[a.cmd](a)
 
 
 if __name__ == "__main__":
