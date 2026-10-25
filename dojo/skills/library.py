@@ -1798,7 +1798,7 @@ def joint_stroke(o, J: dict, ratio: float) -> float:
 PRESS_TILTS = (25.0, 35.0, 15.0, 0.0)   # deg from vertical, leaning away from the body the part sticks out of
 
 
-def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: float = 0.008, clearance: float = 0.025,
+def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: float = 0.015, clearance: float = 0.025,
                 arms=None) -> SkillResult:
     """Push the part a functional point rides on (a lever on a prismatic joint) down to ``ratio`` of its range:
     closed fingertips on the top of the part's protrusion out of the body (the link's points outside the base
@@ -1834,6 +1834,10 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: flo
                 hi[k] = min(hi[k], float(body["bbox_min"][k]))
     c_loc = (lo + hi) / 2
     c_loc[2] = hi[2]
+    if body is not None and g > 0.004:
+        # near the part's far end (the fingertip is 6.8 mm thick): twin, a toaster's lever pressed 11 mm out from the
+        # body stopped at 35 mm of its 75 mm travel, pressed at its end it went 41 mm (the check needs 40.4)
+        c_loc[k] = (hi[k] - 0.0045) if sgn > 0 else (lo[k] + 0.0045)
     p_tip = o.R @ c_loc + o.pos
     bc = o.R @ (((body["bbox_min"] + body["bbox_max"]) / 2) if body is not None else o.asset.center) + o.pos
     away = np.r_[p_tip[:2] - bc[:2], 0.0]
