@@ -168,7 +168,7 @@ def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict]
 _BG_CACHE: dict = {}
 
 
-def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
+def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80, use_all: bool = False) -> dict:
     """2-fold backgrounds: built only from the OTHER half of the D0 episodes (fold = hash of the id), never
     from the evaluated episode. ``cam_<x>``: per-pixel median of frame 0 (home pose). ``cam_head_clean``:
     robot-free head background, the median over frames 0-3 with each frame's FK robot mask excluded.
@@ -183,13 +183,13 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
     from .render import robot_mask
     from .segment import CAMS, build_background, masked_median
 
-    fold = zlib.crc32(ep.name.encode()) % 2
+    fold = zlib.crc32(ep.name.encode()) % 2 if not use_all else "all"
     root = ep.parent.parent
     key = (str(root), fold)
     if key in _BG_CACHE:
         return _BG_CACHE[key]
     pre = os.environ.get("DOJO_BG_FOLDS")  # precomputed by --build-bg-folds: no per-worker median
-    if pre and (Path(pre) / f"fold{fold}" / "cam_head.png").exists():
+    if pre and not use_all and (Path(pre) / f"fold{fold}" / "cam_head.png").exists():
         from .segment import load_backgrounds
 
         out = load_backgrounds(Path(pre) / f"fold{fold}")
@@ -198,8 +198,8 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
             out["cam_head_clean_unseen"] = (cv2.imread(str(m), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
         _BG_CACHE[key] = out
         return out
-    others = [e for e in d0.episodes(root) if zlib.crc32(e.name.encode()) % 2 != fold]
-    rng = np.random.default_rng(fold)
+    others = [e for e in d0.episodes(root) if use_all or zlib.crc32(e.name.encode()) % 2 != fold]
+    rng = np.random.default_rng(2 if use_all else fold)
     sel = [others[i] for i in sorted(rng.choice(len(others), min(max_n, len(others)), replace=False))]
     out = {}
     for cam in CAMS:
@@ -237,10 +237,10 @@ def build_bg_folds(root: Path, out: Path) -> None:
     from . import d0
 
     eps = d0.episodes(root)
-    for fold in (0, 1):
-        ep = next(e for e in eps if zlib.crc32(e.name.encode()) % 2 == fold)
-        bg = fold_backgrounds(ep)
-        d = out / f"fold{fold}"
+    for fold in (0, 1, "all"):  # "all": every episode, the production background (no held-out half needed at run time)
+        ep = next(e for e in eps if fold == "all" or zlib.crc32(e.name.encode()) % 2 == fold)
+        bg = fold_backgrounds(ep, use_all=fold == "all", n_clean=160 if fold == "all" else 80)
+        d = out / (f"fold{fold}" if fold != "all" else "all")
         d.mkdir(parents=True, exist_ok=True)
         for k, v in bg.items():
             if k.endswith("_unseen"):

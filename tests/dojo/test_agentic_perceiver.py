@@ -363,3 +363,39 @@ def test_urllib_chat_reads_a_non_streamed_body(monkeypatch):
     r = UrllibChat(timeout_s=10)("claude-sonnet-5-5", [{"role": "user", "content": "x"}], max_tokens=10)
     srv.shutdown()
     assert r.text == '{"held": "no"}' and r.prompt_tokens == 7
+
+
+def test_extra_observation_is_attached_and_locatable(tmp_path):
+    cal2 = _calib()
+    fc = FakeChat([json.dumps({"commands": ["locate cam=cam_head px=[320,240] z=0.78 calib=calib_scan.json",
+                                            "project pts=[[0,0,0.78]] img=1 calib=calib_scan.json"]}),
+                   json.dumps({"answer": {"objects": [{"keep": 0}]}})])
+    out = j1.perceive_impl(_frames(), _calib(), FLANGE, {}, "x", None, b1=_b1(), chat=fc, model="fake", refine=False,
+                           extra_obs=[{"tag": "scan", "frames": _frames(), "calib": cal2, "flange": FLANGE}], log_dir=str(tmp_path))
+    assert "result=agent" in out["notes"]
+    sysmsg = fc.sent[0][0]["content"]
+    assert sysmsg.startswith("# Runner preamble (agentic perceiver, RoboDojo, v2")
+    first = fc.sent[0][1]["content"]
+    assert any("Observation 'scan'" in p.get("text", "") for p in first) and sum(p["type"] == "image_url" for p in first) == 4
+    tool_turn = fc.sent[1][-1]["content"]
+    texts = "\n".join(p.get("text", "") for p in tool_turn)
+    assert '"xyz"' in texts and "image project_cam_head_scan.png:" in texts
+
+
+def test_snap_keeps_b1_pose_where_b1_is_confident():
+    b1 = _b1()
+    b1["objects"][0]["residual"] = 0.05  # confident
+    agent = [{"label": "block", "category": "block", "pos": [0.053, -0.118, 0.78], "confidence": 0.8},   # 3.6 mm off B1's
+             {"label": "block", "category": "block", "pos": [-0.21, -0.11, 0.78], "confidence": 0.8}]  # 14 mm off a risky one
+    out, n = j1.snap_to_b1(agent, b1, thr=0.2)
+    assert n == 1 and out[0]["pos"] == [0.05, -0.12, 0.7825] and out[0]["asset"] == "Rigid/block/00007"
+    assert out[1]["pos"] == [-0.21, -0.11, 0.78]  # B1's reading is risky and 14 mm away: the agent's point stays
+    near = [{"label": "block", "category": "block", "pos": [-0.205, -0.104, 0.78]}]  # within 1 cm: they agree, B1's fit wins
+    assert j1.snap_to_b1(near, b1)[0][0]["pos"] == [-0.2, -0.1, 0.7825]
+    far = [{"label": "block", "category": "block", "pos": [0.10, -0.12, 0.78]}]  # a 5 cm correction: the agent's
+    assert j1.snap_to_b1(far, b1)[1] == 0
+
+
+def test_free_text_category_maps_to_the_hint_vocabulary():
+    objs, _, _ = j1.answer_to_output({"objects": [{"label": "board_long", "category": "board", "pos": [0.3, 0.05, 0.775]}]}, _b1())
+    assert objs[0]["category"] == "block" and objs[0]["agent_category"] == "board"  # one kind in the hint: that kind

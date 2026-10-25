@@ -67,3 +67,19 @@ def test_scan_pose_constants_mirror_and_steps():
     # the eye sits behind and above its arm's corner of the table, outside the object region
     (x0, x1), (y0, y1) = scan.OBJECT_REGION
     assert el[1] < y0 and el[2] > 1.0
+
+
+def test_scan_fill_from_frame0_takes_only_unexplained_readings(monkeypatch):
+    from dojo.perception import scan
+
+    monkeypatch.setattr(scan, "_groups_by_label", lambda task: {"t": 0, "target_t": 1, "b0": 2, "b1": 2})
+    rec = {"Rigid": {"t": [{"label": "t", "default_pos": [0.1, -0.1, 0.77]}],
+                     "block": [{"label": "b0", "default_pos": [0.2, 0.0, 0.78]}]},
+           "_not_found": [{"label": "target_t"}, {"label": "b1"}]}
+    rec0 = {"Geometry": {"t_cushion": [{"label": "target_t", "default_pos": [-0.4, -0.2, 0.766], "_perception": {"confidence": 0.7}}]},
+            "Rigid": {"block": [{"label": "b0", "default_pos": [0.201, 0.0, 0.78]},          # the same block: not a fill
+                                {"label": "b1", "default_pos": [-0.3, -0.05, 0.78], "_perception": {"confidence": 0.6}}]}}
+    out, filled = scan.fill_from_frame0(rec, rec0, "push_T")
+    assert sorted(filled) == ["b1", "target_t"] and out["_not_found"] == []
+    assert out["Geometry"]["t_cushion"][0]["_perception"]["source"] == "frame0_fill"
+    assert [r["default_pos"][0] for r in out["Rigid"]["block"]] == [0.2, -0.3]

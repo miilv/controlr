@@ -20,6 +20,8 @@ Worker environment (on top of j1_adapter.install_env):
                       a B1 object's calibrated risk >= AGENTIC_GATE_THR (flag_model.json); else B1 with the prior)
   AGENTIC_KEEP_UNMENTIONED  1 (default): B1 objects the agent did not mention (none of its objects within 3 cm) stay,
                       at half confidence
+  AGENTIC_SNAP        1 (default): agent objects within 2 cm of a confident B1 object (risk < AGENTIC_GATE_THR) of the
+                      same kind take B1's pose (agent: identity / labels / missing objects; B1: metric pose)
   AGENTIC_REFINE      1 (default): B1's render-and-compare refines the agent's new / moved objects (seed_refine.py)
   AGENTIC_TRACK       auto (default: on with gate=budget) | 1 | 0: the episode tracker (dojo.perception.tracker) over the
                       B1-gated calls, initialised from the agent's answer
@@ -126,6 +128,7 @@ def _cfg(kw: dict) -> dict:
             "gate": kw.get("gate") or os.environ.get("AGENTIC_GATE", "always"),
             "refine": str(kw.get("refine", os.environ.get("AGENTIC_REFINE", "1"))) not in ("0", "false", "False"),
             "keep_unmentioned": str(kw.get("keep_unmentioned", os.environ.get("AGENTIC_KEEP_UNMENTIONED", "1"))) not in ("0", "false", "False"),
+            "snap": str(kw.get("snap", os.environ.get("AGENTIC_SNAP", "1"))) not in ("0", "false", "False"),
             "max_per_episode": int(kw.get("max_per_episode") or os.environ.get("AGENTIC_MAX_PER_EPISODE", 2)),
             "track": str(kw.get("track", os.environ.get("AGENTIC_TRACK", "auto"))),
             "gate_thr": float(kw.get("gate_thr") or os.environ.get("AGENTIC_GATE_THR", 0.2)),
@@ -198,7 +201,30 @@ def hint_text(b1: dict | None, calib: dict, title: str) -> str:
     return "\n".join(lines)
 
 
-def _first_message(ws: Path, have: list[str], calib, flange, grip_cmd, instruction, want, b1, prior) -> list[dict]:
+def _save_extra_obs(ws: Path, extra_obs) -> list[tuple[str, list[str], dict]]:
+    """Additional observations of the same scene: frames -> <cam>_<tag>.png, calibration -> calib_<tag>.json."""
+    from PIL import Image
+    import numpy as np
+
+    from .tools_rd import write_calib
+
+    out = []
+    for ob in extra_obs or []:
+        tag = str(ob["tag"])
+        have = []
+        for c in CAMS:
+            v = (ob.get("frames") or {}).get(c)
+            if v is None:
+                continue
+            im = Image.open(v).convert("RGB") if isinstance(v, (str, Path)) else Image.fromarray(np.ascontiguousarray(np.asarray(v, dtype=np.uint8)[..., :3]))
+            im.save(ws / f"{c}_{tag}.png")
+            have.append(c)
+        write_calib(ws / f"calib_{tag}.json", ob["calib"], ob.get("flange"))
+        out.append((tag, have, ob))
+    return out
+
+
+def _first_message(ws: Path, have: list[str], calib, flange, grip_cmd, instruction, want, b1, prior, extras=()) -> list[dict]:
     from .llm import image_part
 
     g = ", ".join(f"{a} {grip_cmd[a]}" for a in sorted(grip_cmd or {}))
@@ -214,6 +240,14 @@ def _first_message(ws: Path, have: list[str], calib, flange, grip_cmd, instructi
     for c in have:
         parts.append({"type": "text", "text": f"{c}.png:"})
         parts.append(image_part((ws / f"{c}.png").read_bytes()))
+    for tag, hv, ob in extras:
+        fl = "; ".join(f"{a} {_fmt([float(x) for x in ob['flange'][a]])}" for a in sorted(ob.get("flange") or {}))
+        parts.append({"type": "text", "text": f"Observation '{tag}' of the same scene ({ob.get('note', 'the arms moved; the objects did not')}). "
+                                              f"Measured flange poses: {fl or 'unknown'}. Calibration: calib_{tag}.json. Frames: "
+                                              + ", ".join(f"{c}_{tag}.png" for c in hv)})
+        for c in hv:
+            parts.append({"type": "text", "text": f"{c}_{tag}.png:"})
+            parts.append(image_part((ws / f"{c}_{tag}.png").read_bytes()))
     parts.append({"type": "text", "text": "Reply with ONE JSON object, starting with '{' (plain text, no markup)."})
     return parts
 
@@ -258,6 +292,9 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
         if "label" not in o or "pos" not in o:
             probs.append(f"objects[{i}]: needs label and pos")
             continue
+        known = {b.get("category") for b in b1o if b.get("category")}
+        if o.get("category") and known and o["category"] not in known and not o.get("asset"):
+            o["agent_category"] = o.pop("category")  # free text ("board"): the hint's vocabulary decides the kind
         if not o.get("category") and not o.get("asset") and b1o:  # the hint object it names (or sits on) gives its kind
             import math
 
@@ -268,6 +305,8 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
                 o["category"] = src.get("category")
                 if src.get("asset"):
                     o["asset"] = src["asset"]
+            elif len(known) == 1:  # one kind in the scene's vocabulary: that kind, identity left to H2
+                o["category"] = next(iter(known))
         o.setdefault("confidence", 0.8)
         objs.append(o)
     for i, n in enumerate(ans.get("needs_look") or []):
@@ -284,6 +323,43 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
 def _cat_of(o: dict) -> str | None:
     a = str(o.get("asset") or "").split("/")
     return a[1] if len(a) == 3 else o.get("category")
+
+
+def snap_to_b1(objects: list[dict], b1: dict | None, thr: float = 0.2, radius_m: float = 0.02,
+               trust_b1_identity: bool = True, agree_m: float = 0.01) -> tuple[list[dict], int]:
+    """The agent decides WHAT is where; B1 keeps the metric pose where it is confident. An agent object within
+    ``radius_m`` of a B1 object of the same category whose calibrated risk is below ``thr`` takes B1's pose and asset
+    (``trust_b1_identity``; else only when the agent does not name another asset); the agent's label stays. Within
+    ``agree_m`` the agent agrees with B1 whatever B1's risk: B1's fitted pose is the better metric estimate (the
+    agent's own points are head-plane hits; tower boards are right but read at confidence 0.36). Agent objects farther away
+    (a correction), on risky B1 objects, or with another asset keep the agent's reading (H2 refines them).
+    Bridge-isr's first 5.1 episode: the merged agent points were 2.1 mm median vs B1's 0.4 mm on a clean scene."""
+    import math
+
+    b1o = (b1 or {}).get("objects") or []
+    out, n, used = [], 0, set()
+    for o in objects:
+        best = None
+        for j, b in enumerate(b1o):
+            if j in used or _cat_of(b) != _cat_of(o):
+                continue
+            if o.get("asset") and b.get("asset") and o["asset"] != b["asset"] and not trust_b1_identity:
+                continue
+            d = math.hypot(b["pos"][0] - o["pos"][0], b["pos"][1] - o["pos"][1])
+            if d <= radius_m and (best is None or d < best[0]):
+                best = (d, j, b)
+        if best is not None and (best[0] <= agree_m or risk(best[2]) < thr):
+            b = best[2]
+            used.add(best[1])
+            if best[0] > 1e-6 or o.get("quat") != b.get("quat"):
+                n += 1
+            q = dict(o)
+            q.update({k: b[k] for k in ("pos", "quat", "asset", "size", "top_z", "category") if b.get(k) is not None})
+            q["source"] = b.get("source", "head")
+            out.append(q)
+        else:
+            out.append(o)
+    return out, n
 
 
 def add_unmentioned(objects: list[dict], b1: dict | None, radius_m: float = 0.03) -> tuple[list[dict], int]:
@@ -422,14 +498,20 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
                                    "gate": why, "calls": 0, "b1_s": round(t_b1 - t0, 2)})
         return out
     _EPISODE["agent_calls"] += 1
-    first = _first_message(ws, have, calib, flange, grip_cmd or {}, instruction, want, b1, prior)
-    st = run_agent(chat or _chat(), cfg["model"], system_prompt("robodojo"), first, RoboDojoTools(ws),
+    extras = _save_extra_obs(ws, kw.get("extra_obs"))
+    kind = "robodojo_multi" if extras else "robodojo"
+    first = _first_message(ws, have, calib, flange, grip_cmd or {}, instruction, want, b1, prior, extras)
+    st = run_agent(chat or _chat(), cfg["model"], system_prompt(kind), first, RoboDojoTools(ws),
                    max_turns=cfg["max_turns"], extra_body=cfg["extra_body"], log_dir=ws)
     probs = []
     ref_info = None
     if st["answer"] is not None:
         objects, looks, probs = answer_to_output(st["answer"], b1)
         src = "agent"
+        if cfg["snap"] and b1 is not None:
+            objects, n_snap = snap_to_b1(objects, b1, thr=cfg["gate_thr"])
+            if n_snap:
+                probs.append(f"snapped_to_b1={n_snap}")
         if cfg["keep_unmentioned"] and b1 is not None:
             objects, n_kept = add_unmentioned(objects, b1)
             if n_kept:
@@ -461,7 +543,7 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
     t_ms = round(1000 * (time.time() - t0), 1)
     for o in objects:
         o.setdefault("t_ms", t_ms)
-    p = pin("robodojo", cfg["model"])
+    p = pin(kind, cfg["model"])
     notes = (f"{VERSION} model={cfg['model']} system_md5={p['system_md5']} protocol_md5={p['protocol_md5']} result={src} "
              f"gate={why} turns={st['turns']} calls={st['calls']} commands={st['commands']} stop={st['stop']} "
              f"agent_s={st['wall_s']} b1_s={round(t_b1 - t0, 1)}" + (f" b1_error={b1_err}" if b1_err else "")

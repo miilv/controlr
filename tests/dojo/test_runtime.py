@@ -1389,3 +1389,259 @@ def test_episode_with_held_look_checks_every_grasp_once():
     n_picks = sum(1 for h in rep["history"] if h["skill"] == "pick")
     assert n_picks >= 2 and len(hl) == len(pc.held) == n_picks and all(e["held"] for e in hl)   # one check per grasp
     assert [a["tag"] for a in rep["agentic"]] == ["held"] * n_picks and sum(a["calls"] for a in rep["agentic"]) == n_picks
+
+
+@pytest.mark.parametrize("mode, needs, step_lim, ran", [("always", False, 550, True), ("trigger", True, 550, True),
+                                                       ("trigger", False, 550, False), ("trigger", True, 200, False)])
+def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs, step_lim, ran):
+    env = _env(step_lim=step_lim)
+    scan_q = {"left": [-0.9523, -0.24314, 1.28768, -1.77756, -0.63467, -0.14824],
+              "right": [0.94768, -0.24334, 1.28759, -1.77684, 0.63018, 0.14684]}
+
+    class ScanPerception:
+        def __init__(self):
+            self.calls = []
+
+        def _rec(self):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]}}
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return self._rec()
+
+        def scan_looks(self):
+            return [{"arm": a, "joints": q, "steps_out": 36} for a, q in scan_q.items()]
+
+        def scan_trigger(self, record):
+            self.calls.append("trigger")
+            return needs, "hidden:['block_1']" if needs else "frame0_clear", False
+
+        def estimate_scan(self, frame, frame0, vocabulary, fold, rec0=None):
+            self.calls.append(("scan", [round(float(v), 3) for v in frame["state"]["left_arm_joint_state"]]))
+            return self._rec()
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+    pc = ScanPerception()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan=mode), assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    ev = next(e for e in rep["events"] if e["kind"] == "scan")
+    assert ev["ran"] == ran and (mode == "always") == ("trigger" not in pc.calls)
+    if mode == "trigger":                                            # both step gates logged per episode
+        assert ev["frac_ok"] and ev["min_step_lim_ok"] == (step_lim >= 300)
+    if ran:
+        scans = [c for c in pc.calls if isinstance(c, tuple)]
+        assert len(scans) == 1 and np.allclose(scans[0][1], scan_q["left"], atol=1e-3)      # observed at the scan pose
+        assert ev["steps_used"] == ev["steps"] and 10 <= ev["steps"] <= 40 and rep["look_steps"] >= ev["steps"]
+        assert "scan" in rep["records"]
+        assert _stacked(env)                                         # the skills started from the scan pose
+    else:
+        assert not any(isinstance(c, tuple) for c in pc.calls)
+
+
+def test_scan_trigger_rule_on_a_frame0_record():
+    from dojo.runtime.perception_service import _Perception
+    base = {"category": "block", "category_idx": 5, "default_pos": [0.1, -0.1, 0.78], "default_ori": [1, 0, 0, 0]}
+    clear = {"Rigid": {"block": [dict(base, label="block_0", _perception={"confidence": 0.95, "residual": 0.05})]}}
+    assert _Perception.scan_trigger({**clear, "_not_found": [{"label": "block_1"}]}) == \
+        {"needs": True, "why": "not_found:['block_1']", "not_found": True}
+    hidden = {"Rigid": {"block": [dict(base, label="block_0",
+                                       _perception={"confidence": 0.95, "residual": 0.05, "hidden_frac": 0.3})]}}
+    r = _Perception.scan_trigger(hidden)
+    assert r["needs"] and r["why"].startswith("hidden") and not r["not_found"]
+
+
+FIX = Path(__file__).resolve().parents[1] / "fixtures"
+
+
+def _vocab_rates(monkeypatch, data, **kw):
+    import json as _json
+
+    from dojo.runtime import vocab
+    monkeypatch.setattr(vocab, "catalog_path", lambda: str(FIX / "catalog_task_label_categories.json"))
+    ok = n = 0
+    for task, ins in _json.loads((FIX / data).read_text())["instructions"].items():
+        for i in ins:
+            n += 1
+            v = perception_vocabulary(i, **kw)
+            ok += v is not None and v.name in (task, task.replace("_random", ""), task + "_random")
+    return ok, n
+
+
+def test_vocabulary_fallback_names_the_candidate_set_from_the_objects(monkeypatch):
+    """The table is the fast path; the catalogue fallback (objects the instruction names) covers what it misses. All
+    public templates and the paraphrase set resolve with both; the fallback alone gets most."""
+    assert _vocab_rates(monkeypatch, "robodojo_instructions.json") == (55, 55)
+    assert _vocab_rates(monkeypatch, "instruction_paraphrases.json") == (44, 44)
+    ok, n = _vocab_rates(monkeypatch, "robodojo_instructions.json", table=False)
+    assert ok >= 51, (ok, n)
+    ok, n = _vocab_rates(monkeypatch, "instruction_paraphrases.json", table=False)
+    assert ok >= 43, (ok, n)
+    v = perception_vocabulary("Put the charger into the socket.")
+    assert v.name == "plug_in_charger" and v.source == "catalog"
+    assert perception_vocabulary("Wave hello.") is None                      # names no catalogue object
+
+
+def test_lane_vocabularies_match_their_templates():
+    import json as _json
+    fx = _json.loads((FIX / "robodojo_instructions.json").read_text())["instructions"]
+    lane = ["fold_clothes", "hang_mugs", "make_toast", "store_laptop_and_headphones", "sweep_blocks", "build_tower",
+            "deposit_coin", "fasten_screws", "insert_key", "insert_tubes", "play_Xylophone", "plug_in_charger",
+            "fill_egg_holder", "fill_pen_holder", "make_kong", "organize_table", "play_stacking_toy", "play_tic_tac_toe",
+            "imitate_sorting_sequence", "match_and_pick_from_conveyor", "pick_from_conveyor_by_image",
+            "store_tools_in_toolbox", "stack_blocks", "press_by_number", "swap_blocks", "stack_blocks_by_language"]
+    for t in lane:
+        v = perception_vocabulary(fx[t][0], fallback=False)
+        assert v is not None and v.name == t and v.source == "table", (t, v)
+
+
+@pytest.mark.parametrize("via, far_m, accepted", [("full_fuse", 0.25, False), ("full_fuse", 0.05, True),
+                                                  ("refine", 0.25, True)])
+def test_lost_object_search_rejects_a_far_fuse_find(via, far_m, accepted):
+    from types import SimpleNamespace
+
+    from dojo.runtime.belief import LostObject, RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", search_lost=True), assets=FakeAssets())
+    pol.reset(FakeEpisode(env).info())
+    pol.bridge = b
+    o = prov.belief.objects["block_1"]
+    p0 = o.pos.copy()
+    found = [p0[0] + far_m, p0[1], p0[2]]
+
+    def fake_search(sk, obs0, rec, scene, kin, seed=None, min_budget=None):
+        pol.report.setdefault("search", []).append({"via": via, "found": ["block_1"]})
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_1", "default_pos": found,
+                                     "default_ori": [1, 0, 0, 0]}]}, "_not_found": []}
+    pol._search = fake_search
+    ctx = SimpleNamespace(prov=prov, sk=None, bridge=b, scene="stack_blocks", kin=None)
+    ok = pol._search_lost(ctx, LostObject("block_1", o.pos, o.quat, o.asset.key))
+    assert ok == accepted
+    assert np.allclose(prov.belief.objects["block_1"].pos, found if accepted else p0)
+    assert any(e["kind"] == "lost_fuse_rejected" for e in pol.report["events"]) == (not accepted)
+
+
+def test_ambiguous_instruction_picks_the_candidate_set_that_explains_the_scene(monkeypatch):
+    """'Cover the blocks ...': the table says cover_blocks, the catalogue fallback says build_tower (it names only
+    "blocks"). Frame 0 is estimated with both; cover_blocks' set finds all its objects, build_tower's does not."""
+    from dojo.runtime import vocab
+    from dojo.runtime.supervisor import vocabulary_candidates
+    monkeypatch.setattr(vocab, "catalog_path", lambda: str(FIX / "catalog_task_label_categories.json"))
+    text = ("Cover the blocks from left to right, remember their colors, then uncover them in the order: red, green, "
+            "and blue.")
+    names = [v.name for v in vocabulary_candidates(text)]
+    assert names[0] == "cover_blocks" and "build_tower" in names and len(names) <= 3
+    assert [v.name for v in vocabulary_candidates("Plug the charger into the power strip.")] == ["plug_in_charger"]
+    env = _env()
+
+    class TwoSets:
+        def __init__(self):
+            self.vocabs = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            self.vocabs.append(vocabulary)
+            recs = [{"category": "block", "category_idx": 5, "label": f"block_{i}", "default_pos": list(p),
+                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]
+            if vocabulary == "cover_blocks":
+                return {"Rigid": {"block": recs}}
+            return {"Rigid": {"block": recs[:1]}, "_not_found": [{"label": f"block{i}"} for i in range(1, 8)]}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+    pc = TwoSets()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=pc)
+    pol.reset({"instruction": text, "step_lim": 550})
+    pol.bridge.obs, pol.bridge.fresh = FakeEpisode(env).observe(), True
+    v, rec = pol._explain_vocabulary(vocabulary_candidates(text), {"instruction": text})
+    assert v.name == "cover_blocks" and len(rec["Rigid"]["block"]) == 3
+    ev = pol.report["events"][-1]
+    assert ev["kind"] == "vocab_explain" and ev["chosen"] == "cover_blocks" and len(ev["candidates"]) == len(names)
+
+
+def test_vocabulary_fallback_treats_an_unreadable_catalogue_as_unavailable(monkeypatch):
+    """CI runners: /root exists but is unreadable, so the catalogue probe raises PermissionError; the table still
+    answers and the fallback is simply off."""
+    from pathlib import Path as _P
+
+    from dojo.runtime import vocab
+    from dojo.runtime.supervisor import vocabulary_candidates
+    vocab._load.cache_clear()
+
+    def denied(self):
+        raise PermissionError(13, "Permission denied", str(self))
+    monkeypatch.setattr(_P, "is_file", denied)
+    monkeypatch.delenv("DOJO_CATALOG", raising=False)
+    assert vocab.catalog_path() is None
+    assert perception_vocabulary(STACK).name == "stack_blocks"
+    assert perception_vocabulary("Put the charger into the socket.") is None
+    assert [v.name for v in vocabulary_candidates(STACK)] == ["stack_blocks"]
+    monkeypatch.undo()
+    monkeypatch.setattr(vocab, "catalog_path", lambda: "/root/no/tasks.json")
+    monkeypatch.setattr(vocab, "_load", lambda p: (_ for _ in ()).throw(PermissionError(13, "denied")))
+    assert vocab.catalog_vocabulary("Put the charger into the socket.")[0] is None
+
+
+@pytest.mark.parametrize("needs", [True, False])
+def test_agentic_with_scan_is_one_call_with_the_scan_as_second_observation(needs):
+    env = _env()
+    scan_q = {"left": [-0.9523, -0.24314, 1.28768, -1.77756, -0.63467, -0.14824],
+              "right": [0.94768, -0.24334, 1.28759, -1.77684, 0.63018, 0.14684]}
+
+    class P:
+        def __init__(self):
+            self.ag = []
+
+        def _rec(self, tag):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]}, "_tag": tag}
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return self._rec("b1")
+
+        def scan_looks(self):
+            return [{"arm": a, "joints": q, "steps_out": 12} for a, q in scan_q.items()]
+
+        def scan_trigger(self, record):
+            return needs, "hidden" if needs else "clear", False
+
+        def estimate_scan(self, frame, frame0, vocabulary, fold, rec0=None):
+            return self._rec("scan")
+
+        def agentic_estimate(self, frame, vocabulary, fold, b1_record=None, extra_frame=None):
+            self.ag.append((b1_record.get("_tag"), extra_frame is not None and np.allclose(
+                extra_frame["state"]["left_arm_joint_state"], scan_q["left"], atol=1e-3)))
+            r = self._rec("agentic")
+            r["_perception"] = {"agentic": {"result": "agent", "calls": 3}}
+            return r
+
+        def needs_agent(self, record):
+            return False, "b1_confident"
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+    pc = P()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan="trigger", agentic="budget", agentic_max=3),
+                        assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None and _stacked(env)
+    assert pc.ag == ([("scan", True)] if needs else [("b1", False)])     # ONE call: frame 0 (+ the scan when it ran)
+    assert rep["agentic"][0]["tag"] == "frame0" and rep["agentic"][0]["with_scan"] == needs

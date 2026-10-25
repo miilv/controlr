@@ -140,6 +140,110 @@ def design() -> list[dict]:
     return res
 
 
+def looks() -> list[dict]:
+    """The scan as a look request per arm (runtime look macros / J1 needs_look): flange pose (link6, world, wxyz),
+    joints, the wrist camera pose it gives, and its target."""
+    p = frozen()
+    return [{"arm": a, "cam": f"cam_{a}_wrist", "reason": "scan", "purpose": "scan", "label": None,
+             "flange_pose": p[a]["flange_pose"], "joints": p[a]["joints"], "T_world_cam": p[a]["T_world_cam"],
+             "target": [float(v) for v in eye_target(a)[1]], "steps_out": p["steps_out"]} for a in ("left", "right")]
+
+
+def _groups_by_label(task: str) -> dict:
+    from .inverse_layout import label_groups
+
+    return {lab: gi for gi, g in enumerate(label_groups(task)) for lab in g["labels"]}
+
+
+def fill_from_frame0(rec: dict, rec0: dict, task: str, same_m: float = 0.03) -> tuple[dict, list[str]]:
+    """Labels the scan-primary estimate did not find take frame 0's reading of the same label group, when that
+    reading is not already one of the scan estimate's objects (> ``same_m`` from all of them). Flat grey pads were
+    the case on D0: found from the home head view, missed from the scan view's farther wrists."""
+    import copy
+
+    out = copy.deepcopy(rec)
+    g_of = _groups_by_label(task)
+    have = []
+    for typ in ("Rigid", "Geometry", "Articulation"):
+        for cat, lst in (out.get(typ) or {}).items():
+            for r in lst:
+                have.append((g_of.get(r["label"]), r["default_pos"]))
+    filled = []
+    for nf in list(out.get("_not_found") or []):
+        g = g_of.get(nf["label"])
+        best = None
+        for typ in ("Rigid", "Geometry", "Articulation"):
+            for cat, lst in (rec0.get(typ) or {}).items():
+                for r in lst:
+                    if g_of.get(r["label"]) != g:
+                        continue
+                    if any(hg == g and math.hypot(hp[0] - r["default_pos"][0], hp[1] - r["default_pos"][1]) <= same_m
+                           for hg, hp in have):
+                        continue
+                    c = float((r.get("_perception") or {}).get("confidence", 0.5))
+                    if best is None or c > best[0]:
+                        best = (c, typ, cat, r)
+        if best is None:
+            continue
+        _, typ, cat, r = best
+        e = copy.deepcopy(r)
+        e["label"] = nf["label"]
+        e.setdefault("_perception", {})["source"] = "frame0_fill"
+        out.setdefault(typ, {}).setdefault(cat, []).append(e)
+        have.append((g, e["default_pos"]))
+        out["_not_found"] = [x for x in out["_not_found"] if x["label"] != nf["label"]]
+        filled.append(nf["label"])
+    return out, filled
+
+
+def estimate_with_scan(scan: dict, frame0: dict, task: str, instruction: str = "", bgs=None, cfg=None,
+                       rec0: dict | None = None) -> dict:
+    """The scan frame as the primary view (its head view is unoccluded), frame 0 as extra views, then the frame-0
+    fill. ``scan`` / ``frame0`` = {"images": {cam: RGB}, "state": {...}}. ``bgs`` must be a scan-aware background
+    (clean head background built with scan frames), else the zone under the home grippers stays "unseen"."""
+    from .inverse_layout import estimate
+
+    rec = estimate(scan["images"], scan["state"], task, instruction, bgs=bgs, cfg=cfg,
+                   extra_frames=[(frame0["images"], frame0["state"])])
+    if rec.get("_not_found"):
+        if rec0 is None:
+            rec0 = estimate(frame0["images"], frame0["state"], task, instruction, bgs=bgs, cfg=cfg)
+        rec, filled = fill_from_frame0(rec, rec0, task)
+        rec.setdefault("_perception", {})["frame0_fill"] = filled
+    rec.setdefault("_perception", {})["scan_primary"] = True
+    return rec
+
+
+def patch_background(base_dir: str, scan_dir: str, out_dir: str) -> dict:
+    """A scan-aware background for another renderer (genuine 5.1 frames) without scan renders of it: copy ``base_dir``
+    (e.g. bg_folds_51/fold0) and fill its clean head background's unseen pixels (under the home grippers) from the
+    scan-aware ``scan_dir`` background, colour-mapped by a per-channel affine fit on the pixels both have seen."""
+    import shutil
+    from pathlib import Path
+
+    import cv2
+
+    b, sd, o = Path(base_dir), Path(scan_dir), Path(out_dir)
+    o.mkdir(parents=True, exist_ok=True)
+    for f in b.glob("*.png"):
+        shutil.copy(f, o / f.name)
+    base = cv2.imread(str(b / "cam_head_clean.png")).astype(float)
+    scan = cv2.imread(str(sd / "cam_head_clean.png")).astype(float)
+    u_b = cv2.imread(str(b / "cam_head_clean_unseen.png"), cv2.IMREAD_GRAYSCALE) > 0
+    u_s = cv2.imread(str(sd / "cam_head_clean_unseen.png"), cv2.IMREAD_GRAYSCALE) > 0
+    both = ~u_b & ~u_s
+    fill = u_b & ~u_s
+    fit = []
+    for ch in range(3):
+        A = np.c_[scan[both, ch], np.ones(int(both.sum()))]
+        coef, *_ = np.linalg.lstsq(A, base[both, ch], rcond=None)
+        fit.append(coef.tolist())
+        base[fill, ch] = np.clip(scan[fill, ch] * coef[0] + coef[1], 0, 255)
+    cv2.imwrite(str(o / "cam_head_clean.png"), base.astype(np.uint8))
+    cv2.imwrite(str(o / "cam_head_clean_unseen.png"), ((u_b & u_s) * 255).astype(np.uint8))
+    return {"filled_px": int(fill.sum()), "still_unseen_px": int((u_b & u_s).sum()), "affine_bgr": fit}
+
+
 def export_looks(root: str, out: str, tasks: list[str]) -> dict:
     """simlab look_render input (look_poses format) with the same scan pose pair for every layout of ``tasks``."""
     from pathlib import Path
