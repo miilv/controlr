@@ -269,6 +269,11 @@ class Skills:
                 box = held_box(obj, T_tcp_obj)
                 T_lift = g.T.copy()
                 T_lift[2, 3] = max(g.T[2, 3] + lift, lift_to_z or 0.0)
+                if g.narrow:
+                    # a slice between neighbours comes out along its own plane (twin: slices leaning 5 deg in their
+                    # rack; a vertical lift closes the 13 mm gap to the next one by 9 mm over 10 cm)
+                    u = up_in_plane(obj)
+                    T_lift[:3, 3] = g.T[:3, 3] + u * (float(T_lift[2, 3] - g.T[2, 3]) / max(float(u[2]), 0.5))
                 up = self.motion.line(a, down.q_end, T_lift, lift_rad, "pick_lift", gripper=CLOSED, ignore=(label,),
                                       held=box)
                 if not up.ok:
@@ -470,7 +475,7 @@ class Skills:
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
-                   fingers_out: bool = False):
+                   fingers_out: bool = False, pre_clear: float = 0.015):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -480,6 +485,7 @@ class Skills:
         ``servo``: run the tail closed loop on the measured object (``_servo_tail``: sag-corrected descent,
         depth check, probing around the target, then turn / release); planned like the open-loop tail;
         ``servo_ref``: the receptacle (default the first ``grip_only`` object) whose top sets the hover.
+        ``pre_clear``: the pre-place holds the object's lowest corner this far over the highest ignored support.
         ``fingers_out``: the fingertips stay 3 mm above the receptacle's (``servo_ref`` / first ignored object's) top:
         the object is let go there and drops the rest of the way (a bread slice into a toaster slot narrower than the
         open fingers)."""
@@ -514,7 +520,7 @@ class Skills:
             if sup_top is not None:
                 corners = (T_obj[:3, :3] @ (np.array([[x, y, z] for x in (0, 1) for y in (0, 1) for z in (0, 1)])
                                              * o.asset.extents + o.asset.bbox_min).T).T + T_obj[:3, 3]
-                lift = max(pre_h, sup_top + 0.015 - float(corners[:, 2].min()))
+                lift = max(pre_h, sup_top + pre_clear - float(corners[:, 2].min()))
             T_pre[2, 3] += release_gap + lift
             to_pre = self.motion.to_pose(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                                          ignore=(h.label,), ease=ease)
@@ -906,22 +912,20 @@ class Skills:
                         hq = 0.5 * self._hq_cache[k]
                     else:
                         hq = 0.0
+                    if lift_to_pre:
+                        # the lift to the pre-place height must be in reach (a 25-deg top grasp of a slice 0.45 m
+                        # out does not reach 1.05 m; the 40-deg one does)
+                        T_l = g.T.copy()
+                        T_l[2, 3] = max(g.T[2, 3] + lift, self._pre_place_z(obj, g, T_obj, ignore, place_kw))
+                        if not self.kin.ik(a, T_l, r.q, n_random=0).ok:
+                            continue
                     screened.append((g.score + hq + 0.05 * (ti // max(1, yaw_sym)), a, g, T_obj))
             notes.append(f"{a}: {n_g}/{len(cands)} grasps reachable, {n_p} grasp-place pairs")
         screened.sort(key=lambda x: x[0])
         for _, a, g, T_obj in screened[:max_full]:
             kw_p = dict(pick_kw)
             if lift_to_pre and "lift_to_z" not in kw_p:
-                # the pre-place TCP height for this grasp (plan_place: the object's lowest corner 15 mm over the
-                # highest ignored support, at least pre_h above the target)
-                T_tcp_t = T_obj @ inv_T(inv_T(g.T) @ obj.T)
-                corners = (T_obj[:3, :3] @ (np.array([[x, y, z] for x in (0, 1) for y in (0, 1) for z in (0, 1)])
-                                            * obj.asset.extents + obj.asset.bbox_min).T).T + T_obj[:3, 3]
-                sup = max((w.obj(l).top_z for l in ignore if l in w.objects), default=None)
-                up = float(place_kw.get("pre_h", 0.06))
-                if sup is not None:
-                    up = max(up, sup + 0.015 - float(corners[:, 2].min()))
-                kw_p["lift_to_z"] = float(T_tcp_t[2, 3]) + up + 0.01
+                kw_p["lift_to_z"] = self._pre_place_z(obj, g, T_obj, ignore, place_kw)
             pp = self.plan_pick(label, a, grasps=[g], lift=lift, keep=1, q_start=q_start, **kw_p)
             if not isinstance(pp, PickPlan):
                 notes.append(f"pick {g.note}: {pp.note[:70]}")
@@ -934,6 +938,18 @@ class Skills:
             notes.append(f"place {g.note}: {pl.note[:70]}")
         return SkillResult(False, "transfer", "ik_fail" if not screened else "collision", 0, None,
                            note="; ".join(notes[:6]))
+
+    def _pre_place_z(self, obj, g, T_obj, ignore, place_kw) -> float:
+        """The pre-place TCP height of a grasp for a target (as ``plan_place`` puts it: the object's lowest corner 15 mm
+        over the highest ignored support, at least ``pre_h`` above the target), + 1 cm."""
+        T_tcp_t = T_obj @ inv_T(inv_T(g.T) @ obj.T)
+        corners = (T_obj[:3, :3] @ (np.array([[x, y, z] for x in (0, 1) for y in (0, 1) for z in (0, 1)])
+                                    * obj.asset.extents + obj.asset.bbox_min).T).T + T_obj[:3, 3]
+        sup = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
+        up = float((place_kw or {}).get("pre_h", 0.06))
+        if sup is not None:
+            up = max(up, sup + float((place_kw or {}).get("pre_clear", 0.015)) - float(corners[:, 2].min()))
+        return float(T_tcp_t[2, 3]) + up + 0.01
 
     def run_transfer(self, pp: PickPlan, pl: PlacePlan, tol_xy: float = 0.01, tol_tilt: float = 6.0,
                      tol_z: float = 0.02) -> SkillResult:
@@ -1635,6 +1651,14 @@ def _others_still(o, before: dict, skip: set, tol: float = 0.006) -> bool:
         if float(np.linalg.norm(o.objects[lab][0] - p0)) > tol:
             return False
     return True
+
+
+def up_in_plane(o) -> np.ndarray:
+    """The world direction of the object's body axis closest to world up (signed up): a slab's in-plane up."""
+    R = o.R
+    k = int(np.argmax(np.abs(R[2, :])))
+    u = R[:, k] * (1.0 if R[2, k] >= 0 else -1.0)
+    return u / np.linalg.norm(u)
 
 
 def upright_tilt(o) -> float:
