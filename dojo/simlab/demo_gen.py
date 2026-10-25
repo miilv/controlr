@@ -46,8 +46,10 @@ HAND_TCP = 0.102            # panda_hand -> grasp point along the hand z (robot_
 OPEN, CLOSE = 0.04, -0.01   # finger joint targets (gripper_scale); closing stops on the object
 MAX_WIDTH = 0.077           # widest graspable width across the fingers (2 x 0.04 open, 1.5 mm per side)
 GRASP_DEPTH = 0.03          # grasp point below the object's top (at most 60 % of its height)
-CARRY_SLOW = 2.0            # time stretch of the planned paths while an object is held
+CARRY_SLOW = 2.0            # > 1: the segment carries an object (slower pace, DQ_CARRY)
+DQ_FREE, DQ_CARRY = 0.006, 0.004   # rad per 4 ms sub-step (RoboDojo's own demos: median 0.002, peak 0.008)
 HOME_STEP_RAD = 0.004       # per 4 ms sub-step for joint-space moves (1 rad/s)
+MAX_DEMO_ENV_STEPS = 600    # the demo must leave the policy most of the 1600-step episode
 ORDER_TRIES = 4             # the seed's order, then other seeded orders (a transport can knock a later object)
 CARRY_CLEARANCE = 0.08
 STRAIGHT = [1, 1, 1, 1, 1, 0]  # cuRobo pose-cost hold: orientation + x/y fixed, free along the hand z (vertical)
@@ -120,6 +122,21 @@ def hand_pose(tcp_xyz, yaw: float) -> np.ndarray:
     return np.concatenate([np.asarray(tcp_xyz, float) + [0.0, 0.0, HAND_TCP], hand_quat(yaw)])
 
 
+def retime(path: np.ndarray, dq_max: float, min_n: int = 40) -> tuple[np.ndarray, np.ndarray]:
+    """Resample a joint path to RoboDojo's own demo pace: at most ``dq_max`` rad per 4 ms sub-step on any
+    joint (its make_kong / tic-tac-toe demos peak at 0.008), at least ``min_n`` sub-steps; smoothstep
+    timing (zero velocity at both ends). Returns (positions, velocities in rad/s)."""
+    path = np.asarray(path, float)
+    travel = float(np.abs(np.diff(path, axis=0)).sum(axis=0).max()) if len(path) > 1 else 0.0
+    n = max(min_n, math.ceil(1.5 * travel / dq_max))            # smoothstep peaks at 1.5x the mean speed
+    u = np.linspace(0.0, 1.0, n + 1)[1:]
+    u = u * u * (3.0 - 2.0 * u)
+    src = np.linspace(0.0, 1.0, len(path)) if len(path) > 1 else np.zeros(1)
+    p = np.stack([np.interp(u, src, path[:, j]) for j in range(path.shape[1])], axis=1)
+    v = np.diff(np.vstack([path[:1], p]), axis=0) / 0.004
+    return p, v
+
+
 def step_rec(q, dq, fingers) -> dict:
     return {f"{ARM}_joint_state": {"position": [float(v) for v in q], "velocity": [float(v) for v in dq]},
             f"{EE}_joint_state": {"position": [float(fingers)] * 2, "velocity": [0.0, 0.0]}}
@@ -166,11 +183,7 @@ class DemoPlanner:
                  np.asarray(v.detach().cpu().numpy() if hasattr(v, "detach") else v, float).reshape(p.shape))
             if not len(p):
                 continue
-            if slow > 1.0:                               # carrying: less acceleration, less slip
-                n = round(len(p) * slow)
-                src, dst = np.linspace(0.0, 1.0, len(p)), np.linspace(0.0, 1.0, n)
-                p = np.stack([np.interp(dst, src, p[:, j]) for j in range(p.shape[1])], axis=1)
-                v = np.stack([np.interp(dst, src, v[:, j]) for j in range(v.shape[1])], axis=1) / slow
+            p, v = retime(p, DQ_CARRY if slow > 1.0 else DQ_FREE)
             self.segments.append([step_rec(p[i], v[i], self.fingers) for i in range(len(p))])
             self.q = p[-1].copy()
             self.last_yaw = y
@@ -179,7 +192,7 @@ class DemoPlanner:
             return True
         return False
 
-    def grip(self, target: float, steps: int = 100, hold: int = 100) -> None:
+    def grip(self, target: float, steps: int = 60, hold: int = 40) -> None:
         self.log.append({"name": "close" if target < self.fingers else "open", "steps": steps + hold})
         f0 = self.fingers
         seg = [step_rec(self.q, np.zeros_like(self.q), f0 + (target - f0) * (i + 1) / steps) for i in range(steps)]
@@ -254,13 +267,15 @@ def plan_demo(run, seed: int, order: list[int] | None = None) -> tuple[dict | No
         if release_z < carry_z - 0.01 and not dp.plan_to((*b_xy, release_z), g["yaw"], f"lower aim{i}",
                                                          straight=True, slow=CARRY_SLOW):
             return None, {**info, "status": f"no plan: lower aim{i}"}
-        dp.grip(OPEN, steps=40, hold=60)
+        dp.grip(OPEN, steps=40, hold=30)
         if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"clear basket1 after aim{i}", straight=True):
             return None, {**info, "status": f"no plan: clear basket1 after aim{i}"}
     dp.home()
     data = {"joint_path": dp.segments, "target_label": [f"t{i}" for i in order],
             "aim_label": [f"aim{i}" for i in order], "target_place_tag": [None] * 5,
             "_simlab": {"generator": "simlab/demo_gen v1", "seed": seed, "order": order}}
+    if dp.n_steps() / 10 > MAX_DEMO_ENV_STEPS:
+        return None, {**info, "status": f"too long: {dp.n_steps() / 10:.0f} env steps", "segments": dp.log}
     return data, {**info, "status": "planned", "substeps": dp.n_steps(), "segments": dp.log}
 
 
