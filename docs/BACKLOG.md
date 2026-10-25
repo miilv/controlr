@@ -62,6 +62,14 @@
 - [ ] **The planner should always write "packet heading h, grasp yaw = h ± 90"** — when it does, models hit it exactly.
 - [x] ~~**`no-think/claude/claude-sonnet-5-5`** in an episode~~ — `no-think/` still thinks for Sonnet 5.5; `reasoning_effort: low` is the working switch (journal/2026-10-03-thinking-controls.md); the episode-level comparison is the effort experiment above.
 
+- [x] ~~**dojo agent: the scene must list functional frames** (pegs, slots, press tags) for `stack_on_pegs` /
+  `slots_and_press`~~ — scene v3 (`AgentConfig.scene_version=3`) lists the asset's named support / functional frames.
+- [ ] **dojo agent: perception is the bottleneck in mode B** (Phase 2, 2026-10-25): stack_bowls 0/6 and build_tower
+  100000 0/3 were perception_gross for every model; put_bottles 0/6 were put_into drop misses / pick collisions
+  (verify off). The model choice did not change these outcomes ([report](experiments/2026-10-25-agent-e2e.md)).
+- [ ] **dojo agent: align_blocks' set square has no grasp** (skills: 0 feasible / no top candidates); Astra solved
+  one layout by sweeping the blocks with a fingertip `move_to` line. A tool-push skill would make it a skill task.
+
 ## P2 — harness and infrastructure
 
 - [x] ~~**Turn latency, harness side:** execute on the STATUS word with the note + usage read in the background; keep-alive 120 s~~ — `llm.overlap_tail` (default on), `KEEPALIVE_S` (journal/2026-10-04-turn-latency.md)
@@ -87,6 +95,26 @@
 - [ ] **CI for Isaac tests** — a self-hosted runner on compute3 or a nightly run; manual for now.
 - [ ] **Skill `.claude/skills/run-experiment`**: the EXPERIMENTS.md protocol as a skill (config → budget → run → report → videos → index).
 
+- [ ] **First real run of `scripts/bootstrap_gpu_box.sh` / `bootstrap_fleet.sh`** on the new 4090 / 5090s: record the
+  per-step wall times, the copy speeds (HF, compute3 relay, box-to-box direct vs relayed) and the smoke results in the
+  journal, and add the hosts to ENVIRONMENT.md. Isaac Sim 5.1 RTX on a 5090 with driver 580 has never been tried: with
+  role auto a failed `smoke_render` turns the box into `physics` by itself (RUNBOOK-new-gpu-box §7). Never run end to end:
+  the robodojo step, the Isaac smokes, the isaac6 copy (31 GB) and `smoke_proxy_eval`, the fallback to physics.
+- [ ] **CLAUDE.md rule 5 still says `.env` lives only locally and on compute3.** The owner approved `~/controlr/.env`
+  (OMNIROUTE_* only, mode 600) on our own GPU boxes, and the bootstrap writes it (ENVIRONMENT.md says so); the rule's
+  text is the owner's to update.
+- [ ] **Isaac Sim 6.0 render proxy without compute3:** physics boxes copy compute3's `6.0.0-rc.59` build (31 GB, the
+  one the proxy calibration was fitted on). If compute3 is gone, `isaacsim==6.0.x` from pypi.nvidia.com (cp312) is the
+  fallback, but `scripts/simlab/isaac6.sh` expects the standalone layout, and the render would have to be re-checked
+  against genuine 5.1 frames (perception calibration).
+- [ ] **Fleet: the box-to-box key** (`bootstrap_fleet.sh --p2p direct`) is removed after a run. Streams that want to sync
+  data between boxes later need a deliberate, documented key (or the relay through the local box).
+- [ ] **5.1-rendering boxes and the 6.0-proxy calibration:** `integ_eval.sh` defaults to `bg_folds` / `color_calib.json`
+  (fitted on the 6.0 proxy); on a box that renders genuine 5.1 frames it should take `bg_folds_51` / `color_calib_51.json`.
+- [ ] **One default for RD_HOME / DOJO_DATA:** `rdpy.sh`, `dev_eval.sh` and `dojo/simlab/paths.py` default to compute2's
+  `/root/controlr-robodojo`, `/root/dojo-data`, while `proxy_eval.sh` / `integ_eval.sh` use `~/dojo-*`. New boxes need
+  `source ~/dojo-env.sh` (or the `/root/controlr-robodojo` link as root) until the defaults agree.
+
 ## P3 — next directions
 
 - [x] ~~**RoboDojo:** wrap controlr as an XPolicyLab policy server~~ — done: `controlr robodojo-serve` + the shim, both arms ([ROBODOJO.md](ROBODOJO.md)).
@@ -95,6 +123,20 @@
 - [ ] **Sonnet `reasoning_effort: low` writes its reasoning as prose in the reply** (51 vs 18 words median on RoboDojo) despite the manual's "no prose" — 2.2× faster turns anyway.
 - [ ] **RoboDojo: `episode.end_on_fail: false` A/B** — the model declares FAIL with 7–25 env steps left (enough for one more grasp cycle); see [tool-direction](experiments/2026-10-05-robodojo-tool-direction.md).
 - [ ] **RoboDojo: the env-step budget binds** (pilot: every failure ran out of `general_pickup`'s 200 steps during re-grasps; [report](experiments/2026-10-04-robodojo-pilot.md)). Levers: `max_chunk > 1`, coarser approach moves, `reasoning_effort: low` for latency.
+- [ ] **dojo runtime: one perception vocabulary per instruction, including `_random`.** `stack_blocks` and `stack_blocks_random` (and the other G tasks) share the instruction, so the instruction-matched candidate set must be the union of the std and held-out instances (`dojo/runtime/supervisor.py` VOCABULARIES); today it is the std set only.
+- [ ] **dojo runtime: mode perception needs catalogue assets for every task the planner serves.** compute3's perception catalogue holds the D0 tasks only; swap_blocks / press_by_number (mats, buttons, cards) cannot run in mode perception until their assets are converted.
+- [x] ~~**dojo bridge: the official-client path needs robot-harness's `joint_steps` verb**~~: robot-harness PR #9 (J2 server + shim `harness_strict_j2` + `bin/robot-start-j2`); verified offline by `tests/dojo/test_bridge_rh.py`. The Isaac path runs first on our GPUs.
+- [x] ~~**dojo bridge: robot-harness's launchers hard-code isr-lab paths**~~: the J2 starter / launcher read `HARNESS_ENV` (robot-harness PR #9); BRIDGE-RUNBOOK §2.
+- [ ] **dojo bridge: two instruction routers for perception.** `j1_adapter.infer_task` (the server's `perceive` route) knows 6 tasks; the runtime's `supervisor.perception_vocabulary` knows more. One function should serve both.
+- [ ] **dojo runtime: the twin service is started per task by the launcher** (`--task`). A submission must start / load it from the instruction-matched scene; the policy already refuses to verify when the twin's task differs from that scene. Done for the official-client path: `dojo.bridge.twin` spawns it for the instruction's scene (`perception_vocabulary`); the proxy launcher still takes `--task`.
+- [x] ~~**dojo skills: the perception catalogue lacks the skills2 tasks' meshes**~~: it has them. The files are md5-identical to `skills2/catalog`, and G3 has read perception's catalogue all along. The skills3 tasks' new assets (coin, coin stand, piggy bank, stacking toy, toaster, bread, bread shelf) are in `compute3:~/dojo-data/skills3/catalog` (`DOJO_CATALOG`); perception should add them.
+- [ ] **dojo skills: thin irregular tools still slip out** (store_tools). Two causes are fixed. First, every box grasp of a thin lying tool failed the table margin (the fingertip estimate sat 1 mm low; now taken from the finger model). Second, there were no grasps near the centre of mass (now stations every 6 mm). The hammer at its CoM lifts with 11-13 mm drift and is now carried on. Still open: the pliers' outline is rounded everywhere, so the patch is <= 0.08 at the joint. Try the handles' outer faces, or collider-based grasps; the colliders are convex decompositions of `/root/collision/model`, not the visual mesh.
+- [ ] **dojo skills: planning time on irregular meshes**. Done: meshes are clustered under 12k faces, hold quality is cached per grasp in the object frame, and the relay search is capped at 150 s (one store_tools episode had spent 21 min). Open: IK per (arm, grasp) is recomputed for every relay leg.
+- [ ] **dojo skills: insert_key's handover giver.** The key's round bow (a cylinder collider) lifts reliably but turns about the closing axis on the carry to the handover pose. The 5 mm shaft slips at the lift. Candidates: hand the key over with less turn (an intermediate orientation), or have the giver hold the bow while the taker takes the shaft's flat faces.
+- [ ] **dojo skills: fill_pen_holder, the collider's opening is not the visual cup's** (parked at 0.08). The holder's collider is a convex decomposition of a 453-vertex `/World/collision` mesh. Pens centred within 3 mm of the axis jam about 6 mm into the opening and push the holder across the table, while the fit (visual mesh, 30 mm inner radius) says they clear. Fit against the collision mesh, or the decomposition's hulls, and re-run.
+- [ ] **dojo skills: parked tasks** (lead, 2026-10-25). insert_key: lift + return banks 15; the in-air handover lost the key on the carry 0/31. store_tools: keep v2 (0.20); the pliers slip, and the hammer and wrench are lost on the carry. fill_pen: see above. Revisit after the Generalization tasks.
+- [ ] **dojo skills: deposit_coin.** The coin bank's `slot_opening` frames now give the target, but the coin (21 mm, 1 mm thick) starts out of the inserting arm's reach. The as-is relay lays it flat, and two grippers cannot share it in the air. It needs a relay that keeps it on its edge (back into a stand-like holder, or leaned against something).
+- [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
 - [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).
 - [x] ~~**A real arm**~~ — SO-101 with a wrist camera: `robot.backend: so101` ([SO101.md](SO101.md)); first motion and live runs pending.

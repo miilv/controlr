@@ -12,6 +12,16 @@ rsync -az --delete \
   --exclude __pycache__ --exclude '*.egg-info' --exclude .pytest_cache --exclude .env \
   "$ROOT/" "$HOST:$REMOTE_DIR/"
 
+# what was deployed (per-episode provenance: dojo.runtime.eval copies it into every result row)
+if git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1; then
+  c() { git -C "$ROOT" log -1 --format=%h -- "$@" 2>/dev/null; }
+  printf '{"head":"%s","branch":"%s","dirty":%s,"skills":"%s","perception":"%s","simlab":"%s","runtime":"%s","deployed":"%s"}\n' \
+    "$(git -C "$ROOT" rev-parse --short HEAD)" "$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)" \
+    "$( [ -n "$(git -C "$ROOT" status --porcelain -- dojo scripts)" ] && echo true || echo false)" \
+    "$(c dojo/skills)" "$(c dojo/perception)" "$(c dojo/simlab)" "$(c dojo/runtime)" "$(date -u +%FT%TZ)" \
+    | ssh "$HOST" "cat > $REMOTE_DIR/.deployed.json"
+fi
+
 if [ -f "$ROOT/.env" ] && ! ssh "$HOST" test -f "$REMOTE_DIR/.env"; then
   scp -q "$ROOT/.env" "$HOST:$REMOTE_DIR/.env"
   ssh "$HOST" chmod 600 "$REMOTE_DIR/.env"

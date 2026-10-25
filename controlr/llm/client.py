@@ -91,6 +91,9 @@ class LLMResult:
     # addition: decision-head record (llm.backend=decisions): reduced steps, grip, status and the
     # raw probabilities per question; None for chat routes
     decisions: dict | None = None
+    # addition: function tool calls, when the request declared ``tools`` (assembled from the stream's
+    # ``delta.tool_calls`` fragments): [{"id", "name", "arguments"}] with arguments as the raw JSON string
+    tool_calls: list = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +207,7 @@ class StreamState:
     error: str | None = None
     error_status: int | None = None
     n_chunks: int = 0
+    tool_calls: dict = field(default_factory=dict)      # index -> {"id", "name", "arguments"}
 
     def feed(self, chunk: dict) -> tuple[str, str]:
         """Apply one decoded chunk; return (content_delta, reasoning_delta)."""
@@ -227,6 +231,14 @@ class StreamState:
             content += _delta_text(delta.get("content"))
             for key in ("reasoning_content", "reasoning", "thinking"):
                 reasoning += _delta_text(delta.get(key))
+            for tc in delta.get("tool_calls") or []:
+                if not isinstance(tc, dict):
+                    continue
+                cur = self.tool_calls.setdefault(int(tc.get("index", 0) or 0), {"id": None, "name": "", "arguments": ""})
+                cur["id"] = tc.get("id") or cur["id"]
+                fn = tc.get("function") or {}
+                cur["name"] += fn.get("name") or ""
+                cur["arguments"] += fn.get("arguments") or ""
             if choice.get("finish_reason"):
                 self.finish_reason = choice["finish_reason"]
         self.text += content
@@ -490,7 +502,7 @@ class LLMClient:
             st.text, st.reasoning = frozen
             st.error = None          # anything after the stop point is irrelevant
 
-        if st.error and not st.text:
+        if st.error and not st.text and not st.tool_calls:
             es = st.error_status
             if es is None or es in RETRY_STATUS or es >= 500:
                 raise _Retryable(st.error, es or status)
@@ -499,4 +511,5 @@ class LLMClient:
             timings=Timings(ttft, t_complete, t_end, ttft_any=ttft_any, t_headers=t_headers),
             stopped_early=stopped, finish_reason=st.finish_reason,
             error=st.error, http_status=status, attempts=1, reasoning_text=st.reasoning,
-            headers=headers, truncated=stopped and not line_done)
+            headers=headers, truncated=stopped and not line_done,
+            tool_calls=[st.tool_calls[k] for k in sorted(st.tool_calls)])

@@ -56,6 +56,7 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | a new Isaac task | `robot/isaac/tasks.py` (+ server if new objects are needed) | `test_isaac_tasks` (no GPU) + scripted expert in the isaac tests; look at the frames (`docs/img/`) |
 | a new backend (real UR3 etc.) | `robot/<backend>.py`, factory in `robot/__init__.py` | the `robot/base.py` contract; mock tests as the template |
 | RoboDojo (shim, frames, two-arm grammar) | `robot/robodojo/`, `protocol/grammar.py` (`_parse_arm_line`), `prompts/system_v1.md` | `test_robodojo` (shim vs a fake `TASK_ENV`, a whole episode over a real connection); then `scripts/robodojo/run.sh --fake-llm` on compute2 ([ROBODOJO.md](ROBODOJO.md)) |
+| dojo behind the official RoboDojo client (robot-harness's strict server) | `dojo/bridge/` (client, `contract.py` firewall, `RobotServerBackend`, driver), `scripts/dojo/bridge_episode.sh` | `test_bridge` (a fake strict server over a real socket: firewall, `joint_steps`, runtime / agent / twin episodes); `scripts/dojo/bridge_episode.sh --fake`; then a practice episode on a 5.1-rendering GPU ([BRIDGE-RUNBOOK.md](BRIDGE-RUNBOOK.md)) |
 | decision head (questions, reduction, state) — tune with `scripts/decisions_probe.py` (one call per scene) and `scripts/decisions_perception.py` (image relations per camera) before episodes | `llm/decisions.py`, `prompts/decisions_vN.yaml` (+ `config.DecisionsConfig`) | `test_llm_decisions`; image format / that the model sees the frame: `CONTROLR_LIVE=1 pytest tests/test_llm_decisions_live.py -s` (4 calls) |
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
@@ -104,6 +105,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   text and then repeat empty `<invoke>` / `<parameter>` blocks until `max_tokens` (40 s lost per turn). The agentic
   perceiver parses the first non-empty `<parameter>` as the reply and stops such a stream early
   (`dojo.perception.agentic.llm.degenerate`). `dva/gemini-*` answer 401 (no provider credentials); `auto/gemini` works.
+- **Codex-served GPT-6 (`cx/gpt-6-astra-*`, `cx/gpt-6.1-sol`) answers "write a code cell" as a call of a `python`
+  tool.** Without a declared tool omniroute drops the call: the stream has only `reasoning_content`, `finish_reason:
+  stop`, ~100 completion tokens and empty text (2026-10-25: 24 of 30 agent replies lost). Declare a `python(code)`
+  function tool (`dojo.agent.loop.PYTHON_TOOL`); `LLMClient` assembles streamed `tool_calls` into `LLMResult.tool_calls`.
+  JSON-only prompts (Phase 1 grounding) are unaffected. Sonnet on `claude/` sometimes writes the same call as
+  `<invoke name="python"><parameter name="code">` markup in the text; `dojo.agent.loop.extract_code` accepts both.
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
   Very small frames (224 px) also make `low` think ([journal](journal/2026-10-04-sonnet-latency.md)).
@@ -141,6 +148,14 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **`pkill -f <pattern>` over ssh kills the ssh session's own shell** (its command line contains
   the pattern). Find PIDs with `pgrep -af`, then `kill <pid>`; a client killed without `close()`
   leaves its Isaac server running — kill that PID too.
+- **Shell under `set -eo pipefail`** (all our step scripts): `cmd | grep -q x` fails when grep exits early (the writer
+  gets SIGPIPE), and `find | xargs grep -l` returns 123 when some file does NOT match — both kill a `set -e` step on
+  the good path. Count with `grep -c`, or turn pipefail off in that one substitution. `find -size -1k` matches only
+  EMPTY files (sizes round up to whole KiB): use bytes (`-size -400c`). `{ cat a; cat b 2>/dev/null; } | sort` fails
+  too when `b` does not exist yet (a first run): `cat b 2>/dev/null || true`. Test steps for real (the bootstrap's ssh
+  shim runs them in sandbox HOMEs, `tests/test_bootstrap_fleet.py`; journal 2026-10-25-dojo-infra), not only as dry runs.
+- **Never rewrite `~/.ssh/authorized_keys` through a temp file** (`grep -v x f > t; cat t > f`): if grep fails, `t` is
+  empty and the box locks you out. Append, and remove with `sed -i '/marker$/d'` (it replaces the file atomically).
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
 
