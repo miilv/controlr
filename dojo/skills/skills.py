@@ -38,7 +38,7 @@ PLACE_REACH = 0.60            # m, TCP from the arm's base in the plane: farther
                               # a relay (twin: places 0.66-0.67 m out, the arm across the table, stalled 30 mm above
                               # the target with the commanded pose 33 mm lower, plug 7/10; a figurine's stand is 0.57)
 TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0.02 cost 52 of insert_key's 300 steps)
-SCREEN_IK_BUDGET = 2500       # place IKs per arm in a transfer screen (a figurine x 81 stand poses: 9k IKs, 3 min)
+SCREEN_IK_BUDGET = 6000       # place IKs per arm in a transfer screen (a figurine x 81 stand poses: 9k IKs, 3 min)
 UNEVEN_CARRY = 0.09           # rad/step, carries of uneven objects (tools, figurines, pens) instead of CARRY 0.14
 LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is carried on rather than redone
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
