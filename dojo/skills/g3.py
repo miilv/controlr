@@ -93,7 +93,10 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
 
         def on_step(ex):
             rows = {r["label"]: r for r in env.gt_objects() if r.get("label") in labels}
+            st = env.proprio()
             frames.append({"step": ex.steps_used, "q": {a: np.round(ex.q[a], 4).tolist() for a in ("left", "right")},
+                           "qm": {a: np.round(np.asarray(st[f"{a}_arm_joint_state"], float).reshape(-1)[:6], 4).tolist()
+                                  for a in ("left", "right")},
                            "g": dict(ex.g), "obj": {k: np.round(np.r_[v["pos"], v["quat"]], 4).tolist()
                                                      for k, v in rows.items()},
                            "seg": ex.log.segments[-1]["name"] if ex.log.segments else ""})
