@@ -707,6 +707,68 @@ def fixed_slot_labels(task: str) -> dict:
     return out
 
 
+def joints_world(key: str, T: np.ndarray) -> list[dict] | None:
+    """The catalogue's articulation joints (catalog.articulation_info) placed by pose T: anchor, axis and the
+    moving body's top centre (``press_point``) in the world, at the rest state the drive holds (target clipped
+    to the limits; SpringButton: cap raised to its upper limit)."""
+    art = load_asset(key).info.get("articulation")
+    if not art:
+        return None
+    out = []
+    for j in art["joints"]:
+        if not j.get("axis"):
+            continue
+        ax = T[:3, :3] @ np.asarray(j["axis"], float)
+        q = j.get("drive_target", 0.0)
+        if j.get("limits"):
+            q = float(np.clip(q, *j["limits"]))
+        d = {"name": j["name"], "type": j["type"], "axis": np.round(ax, 5).tolist(), "limits": j.get("limits"),
+             "rest_q": round(q, 6)}
+        if j.get("anchor"):
+            d["anchor"] = np.round(T[:3, :3] @ np.asarray(j["anchor"], float) + T[:3, 3], 5).tolist()
+        if j.get("press_point"):
+            pp = np.asarray(j["press_point"], float) + (np.asarray(j["axis"], float) * q if "Prismatic" in j["type"] else 0)
+            d["press_point"] = np.round(T[:3, :3] @ pp + T[:3, 3], 5).tolist()
+        out.append(d)
+    return out or None
+
+
+def _slot_shape(key: str, placement: dict, tag: str | None) -> ShapeModel:
+    """The shape a slot label rests in: the fixed-pose shape for a ``zlim`` placement, else the tagged frame."""
+    if placement.get("zlim") is not None:
+        return fixed_pose_shape(key, placement["zlim"], placement.get("qpos"))
+    return ([s_ for s_ in shape_models(key) if not tag or s_.tag == tag] or list(shape_models(key)))[0]
+
+
+def _slot_identity(h: "Hypothesis", g: dict, placement: dict, tag: str | None, views, cfg) -> "Hypothesis":
+    """Which candidate sits in a slot (press_by_number's cards: digit 1-9 on identical boards): each
+    candidate at the slot pose, silhouette loss when the geometry differs + texture NCC + colour; the runner-up
+    goes to ``alternative`` with its margin."""
+    ext0 = h.sm().asset.extents
+    scored = []
+    for k in g["candidates"]:
+        sm_k = _slot_shape(k, placement, tag)
+        T = sm_k.pose(h.x, h.y, h.yaw)
+        same = np.allclose(sm_k.asset.extents, ext0, atol=2e-3)
+        sil = float(h.per_view.get("sil_loss", 0.5))
+        if not same:
+            rvs = make_roi_views(sm_k, T, views)
+            sil = roi_loss(sm_k, T, rvs)[0] if rvs else 1.0
+        tx = texture_cost(sm_k, T, views, k)
+        col, _ = observed_color(sm_k, T, views)
+        app = _app(col, [k])
+        scored.append((sil + cfg.texture_weight * (0.25 if tx is None else tx) + cfg.appearance_weight * app, k, sm_k, tx))
+    scored.sort(key=lambda t: t[0])
+    best, k, sm_k, tx = scored[0]
+    out = Hypothesis(h.label_group, k, sm_k.tag, h.x, h.y, h.yaw, h.loss, dict(h.per_view), h.blob)
+    out.per_view["texture"] = None if tx is None else round(float(tx), 4)
+    if len(scored) > 1:
+        b2 = scored[1]
+        out.per_view["alternative"] = {"key": b2[1], "tag": b2[2].tag, "x": h.x, "y": h.y, "yaw": h.yaw,
+                                       "margin": round(float(b2[0] - best), 4)}
+    return out
+
+
 def restrict_by_instruction(groups: list[dict], instruction: str) -> list[dict]:
     """Candidates named by the instruction (general_pickup: "Pick up the {target} by 10 cm."): keep the
     candidates whose category name or catalogue captions occur in the instruction; unchanged if none match."""
@@ -1128,6 +1190,8 @@ def _centroid_xy(sm: ShapeModel, x: float, y: float, yaw: float) -> np.ndarray:
 
 
 SWAP_REFINE = 2
+SWAP_MAX_FOOTPRINT_RATIO = 3.0
+SWAP_MIN_SIL_LOSS = 0.25
 
 
 def _place_like(h: Hypothesis, target_xy: np.ndarray, yaws, views, others, cfg, groups) -> Hypothesis | None:
@@ -1177,6 +1241,11 @@ def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.
             if (sa.key == sb.key or (np.allclose(sa.asset.extents, sb.asset.extents, atol=2e-3)
                                      and sa.asset.info.get("n_faces") == sb.asset.info.get("n_faces"))):
                 continue  # same geometry: which label goes where is appearance (identity step), not a refit
+            fa, fb = (float(np.prod(np.sort(sm_.asset.extents)[1:])) for sm_ in (sa, sb))
+            if max(fa, fb) > SWAP_MAX_FOOTPRINT_RATIO * min(fa, fb):
+                continue  # footprints too different to be confused (pack's box vs toothbrush)
+            if max(a.per_view.get("sil_loss", a.loss), b.per_view.get("sil_loss", b.loss)) < SWAP_MIN_SIL_LOSS:
+                continue  # both fit well where they are
             ca, cb = _centroid_xy(a.sm(), a.x, a.y, a.yaw), _centroid_xy(b.sm(), b.x, b.y, b.yaw)
             ga, gb = groups[a.label_group], groups[b.label_group]
             if not (region_ok(ga, *cb) and region_ok(gb, *ca)):
@@ -1404,6 +1473,7 @@ class EstimatorConfig:
     # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
     # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
     use_slots: bool = True  # labels pinned to config slots start there (make_kong tiles, tower base)
+    slot_identity_max: int = 12  # slot labels with 2..N candidates get a per-candidate identity check
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
@@ -1454,14 +1524,15 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             for lab in mine:
                 x, y, tag = slots[lab]
                 key0 = g["candidates"][0]
-                sms = [s_ for s_ in shape_models(key0) if not tag or s_.tag == tag] or list(shape_models(key0))
-                sm = sms[0]
+                sm = _slot_shape(key0, task_map()[task]["labels"][lab]["placement"], tag)
                 xr, yr, yawr, loss, per = refine(sm, x, y, 0.0, views, maxiter=40, xy_step=0.003, yaw_step=0.03,
                                                  fix_yaw=True)
                 if np.hypot(xr - x, yr - y) > 0.02:  # settling moves a few mm; a big jump is a wrong fit
                     xr, yr, loss, per = x, y, 0.5, {}
                 h = Hypothesis(gi, key0, sm.tag, xr, yr, 0.0, loss, per)
                 h.per_view.update({"geom_group": [k for k in g["candidates"]], "slot": True, "sil_loss": round(float(loss), 4)})
+                if 1 < len(g["candidates"]) <= cfg.slot_identity_max:
+                    h = _slot_identity(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
                 slot_placed.append((g, h, lab))
             g["labels"] = [lab for lab in g["labels"] if lab not in mine]
         # labels the config stacks on another (relative_plane "<label>/...", zero offset): on top of it
@@ -1713,6 +1784,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "fg_resid_near": round(fg_near, 3),
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group")}}
+        if typ == "Articulation" and h.tag != "fixed":
+            jw = joints_world(h.key, h.T())
+            if jw:
+                rec["_perception"]["joints"] = jw
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)
     timings["total_s"] = round(time.time() - t0, 3)
     record["_perception"] = {"version": "v0", "timings": timings, "n_head_blobs": len(head_blobs),

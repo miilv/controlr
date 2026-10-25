@@ -401,6 +401,7 @@ def convert_asset(asset_dir: str, out_dir: str, with_stable: bool = True, glb: b
         "symmetry": symmetry_guess(welded.vertices),
         **meta,
     }
+    info.update(annotations(asset_dir, usd, md))
     desc = asset_dir / "description.json"
     if desc.exists():
         try:
@@ -499,6 +500,125 @@ def write_index(out: Path):
     print(f"index: {len(index)} assets", flush=True)
 
 
+# Per-category attributes a checker reads that the geometry does not carry. number_card: the decal of
+# Geometry/number_card/0000<i> shows the digit i (checked on the decal textures of all nine cards).
+CATEGORY_ATTRIBUTES = {"number_card": lambda idx: {"digit": int(idx)}}
+
+
+def _gf_to_np(M) -> np.ndarray:
+    """Gf row-vector 4x4 -> column-vector numpy (p' = T @ p)."""
+    return np.array([[M[r][c] for c in range(4)] for r in range(4)], dtype=float).T
+
+
+def articulation_info(usd_path: Path) -> dict | None:
+    """Joints of an articulated asset in the asset (default prim) frame, metres: type, bodies, anchor, axis,
+    limits, drive target, and the moving body's bbox (its top centre is where a press lands)."""
+    from pxr import Usd, UsdGeom, UsdPhysics
+
+    st = Usd.Stage.Open(str(usd_path))
+    mpu = float(UsdGeom.GetStageMetersPerUnit(st) or 1.0)
+    root = st.GetDefaultPrim()
+    xc = UsdGeom.XformCache()
+    W_root_inv = np.linalg.inv(_gf_to_np(xc.GetLocalToWorldTransform(root)))
+    bc = UsdGeom.BBoxCache(Usd.TimeCode.Default(), [UsdGeom.Tokens.default_, UsdGeom.Tokens.render])
+
+    def in_root(prim) -> np.ndarray:
+        T = W_root_inv @ _gf_to_np(xc.GetLocalToWorldTransform(prim))
+        T[:3, 3] *= mpu
+        return T
+
+    joints = []
+    for prim in st.Traverse():
+        if not prim.IsA(UsdPhysics.Joint):
+            continue
+        j = UsdPhysics.Joint(prim)
+        b0 = [str(t) for t in j.GetBody0Rel().GetTargets()]
+        b1 = [str(t) for t in j.GetBody1Rel().GetTargets()]
+        d = {"name": prim.GetName(), "type": prim.GetTypeName().replace("Physics", ""), "body0": b0[0] if b0 else None,
+             "body1": b1[0] if b1 else None}
+        if d["body0"]:
+            T0 = in_root(st.GetPrimAtPath(d["body0"]))
+            p0 = np.array(j.GetLocalPos0Attr().Get() or (0, 0, 0), dtype=float)
+            q0 = j.GetLocalRot0Attr().Get()
+            R0 = quat_wxyz_to_R_np([q0.GetReal(), *q0.GetImaginary()]) if q0 is not None else np.eye(3)
+            S = np.linalg.norm(T0[:3, :3], axis=0)  # body scale applies to localPos
+            d["anchor"] = np.round(T0[:3, :3] @ p0 * mpu + T0[:3, 3], 6).tolist()
+            R_anchor = (T0[:3, :3] / S) @ R0
+        else:
+            R_anchor = np.eye(3)
+        ax_attr = prim.GetAttribute("physics:axis")
+        if ax_attr and ax_attr.Get():
+            e = {"X": [1, 0, 0], "Y": [0, 1, 0], "Z": [0, 0, 1]}[str(ax_attr.Get())]
+            d["axis"] = np.round(R_anchor @ np.array(e, float), 6).tolist()
+        lo, hi = prim.GetAttribute("physics:lowerLimit"), prim.GetAttribute("physics:upperLimit")
+        unit = mpu if "Prismatic" in d["type"] else 1.0  # prismatic limits in stage units, revolute in degrees
+        if lo and lo.Get() is not None and hi and hi.Get() is not None:
+            d["limits"] = [round(float(lo.Get()) * unit, 6), round(float(hi.Get()) * unit, 6)]
+        for kind in ("linear", "angular"):
+            tp = prim.GetAttribute(f"drive:{kind}:physics:targetPosition")
+            if tp and tp.Get() is not None:
+                d["drive_target"] = round(float(tp.Get()) * (mpu if kind == "linear" else 1.0), 6)
+                d["drive_stiffness"] = float(prim.GetAttribute(f"drive:{kind}:physics:stiffness").Get() or 0)
+        if d["body1"]:
+            r = bc.ComputeUntransformedBound(st.GetPrimAtPath(d["body1"])).ComputeAlignedRange()
+            T1 = in_root(st.GetPrimAtPath(d["body1"]))
+            lo3, hi3 = np.array(r.GetMin(), float), np.array(r.GetMax(), float)
+            C = np.array([[x, y, z] for x in (lo3[0], hi3[0]) for y in (lo3[1], hi3[1]) for z in (lo3[2], hi3[2])])
+            W = (C * mpu) @ T1[:3, :3].T + T1[:3, 3]  # body-local stage units -> asset frame, metres
+            d["body1_bbox"] = [np.round(W.min(0), 6).tolist(), np.round(W.max(0), 6).tolist()]
+            top = W.max(0)
+            d["press_point"] = np.round([(W[:, 0].min() + W[:, 0].max()) / 2, (W[:, 1].min() + W[:, 1].max()) / 2, top[2]], 6).tolist()
+        joints.append(d)
+    return {"joints": joints} if joints else None
+
+
+def quat_wxyz_to_R_np(q) -> np.ndarray:
+    w, x, y, z = (float(v) for v in q)
+    n = np.sqrt(w * w + x * x + y * y + z * z) or 1.0
+    w, x, y, z = w / n, x / n, y / n, z / n
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+
+
+def annotations(asset_dir: Path, usd: Path, md: dict) -> dict:
+    """Checker-relevant attributes: articulation joints (press / open axes), the metadata's functional frames,
+    per-category attributes (number_card digit)."""
+    out = {}
+    func = (md.get("passive") or {}).get("functional")
+    if func:
+        out["functional"] = func
+    if asset_dir.parent.parent.name == "Articulation":
+        try:
+            a = articulation_info(usd)
+            if a:
+                out["articulation"] = a
+        except Exception as e:  # a broken joint must not cost the asset its geometry
+            out["articulation_error"] = f"{type(e).__name__}: {e}"[:200]
+    f = CATEGORY_ATTRIBUTES.get(asset_dir.parent.name)
+    if f:
+        out["attributes"] = f(asset_dir.name)
+    return out
+
+
+def annotate(assets: Path, out: Path, keys: list[str]) -> int:
+    """Add ``annotations`` to already-converted assets' info.json (no re-conversion)."""
+    n = 0
+    for key in keys:
+        src, info_p = assets / "Object" / "RoboDojo" / key, out / key / "info.json"
+        usd = _asset_file(src)
+        if usd is None or not info_p.exists():
+            print("skip", key, flush=True)
+            continue
+        md_path = src / "metadata.json"
+        md = json.loads(md_path.read_text()) if md_path.exists() else {}
+        info = json.loads(info_p.read_text())
+        info.update(annotations(src, usd, md))
+        info_p.write_text(json.dumps(info, indent=1))
+        n += 1
+    return n
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -514,10 +634,16 @@ def main(argv=None):
     i.add_argument("--out", type=Path, required=True)
     lo = sub.add_parser("lowres")
     lo.add_argument("--out", type=Path, required=True)
+    an = sub.add_parser("annotate", help="add joints / functional frames / category attributes to info.json")
+    an.add_argument("--assets", type=Path, required=True)
+    an.add_argument("--out", type=Path, required=True)
+    an.add_argument("--keys-json", type=Path, required=True)
     a = ap.parse_args(argv)
     if a.cmd == "build":
         keys = json.loads(a.keys_json.read_text()) if a.keys_json else None
         build(a.assets, a.out, a.only, a.workers, a.force, glb=not a.no_glb, keys=keys)
+    elif a.cmd == "annotate":
+        print(f"annotated {annotate(a.assets, a.out, json.loads(a.keys_json.read_text()))} assets")
     elif a.cmd == "lowres":
         n = 0
         for info in sorted(a.out.glob("*/*/*/info.json")):
