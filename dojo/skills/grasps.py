@@ -398,6 +398,12 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
     eye = np.eye(3)
     from dojo.skills.motion import held_box
     irregular = held_box(obj, np.eye(4)).points is not None       # mesh-check every grasp of these
+    com_w = None
+    if irregular:      # grasp near the centre of mass (twin: pliers held 6 cm off it pivoted 30-40 mm in the pads)
+        Vm, Fm = obj.asset.mesh
+        a_, b_, c_ = Vm[Fm[:, 0]], Vm[Fm[:, 1]], Vm[Fm[:, 2]]
+        ar = np.linalg.norm(np.cross(b_ - a_, c_ - a_), axis=1)
+        com_w = R @ (((a_ + b_ + c_) / 3 * ar[:, None]).sum(0) / max(float(ar.sum()), 1e-12)) + obj.pos
     out = []
     for k in range(3):                                   # closing axis
         if ext[k] > max_width or (axes_ok is not None and k not in axes_ok):
@@ -443,7 +449,9 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
                             out.append(Grasp("box", Tg, float(ext[k]) if w_real != w_real else float(w_real), pre_dist=0.06,
                                              clear_w=float(ext[k]) if irregular else 0.0,
                                              score=0.6 * (1.0 - down) + 0.1 * abs(off) / max(room, 1e-3)
-                                             + 0.2 * float(ext[k]) / 0.07 + abs(tilt) / 100.0,
+                                             + 0.2 * float(ext[k]) / 0.07 + abs(tilt) / 100.0
+                                             + (3.0 * float(np.linalg.norm(Tg[:2, 3] - com_w[:2])) / float(ext.max())
+                                                if com_w is not None else 0.0),
                                              note=f"close {k} approach {'+' if s > 0 else '-'}{j} tilt {tilt:+.0f} "
                                                   f"off {off*1000:+.0f}mm"))
     return out
