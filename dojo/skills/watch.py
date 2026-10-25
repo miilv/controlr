@@ -107,11 +107,13 @@ class ArrivalOrder:
 
 
 def watch(sk, region: dict, prior: dict | None = None) -> dict:
-    """The provider's watch read (perception at eval, GT in G3)."""
+    """The provider's watch read (perception at eval, GT in G3). A provider without one: the same read computed from
+    its refreshed world (the runtime's belief, with whatever its watcher wrote into it)."""
     f = getattr(sk.provider, "watch_read", None)
-    if f is None:
-        raise RuntimeError("the world provider has no watch_read")
-    return f(region, prior)
+    if f is not None:
+        return f(region, prior)
+    w = sk.refresh()
+    return gt_watch_read(w.objects, region, prior, step=int(w.step))
 
 
 __all__ = ["gt_watch_read", "ArrivalOrder", "watch", "usable", "region_cells"]
