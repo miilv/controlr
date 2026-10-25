@@ -411,3 +411,101 @@ entries:
     measured: none
     stats: []
     notes: "skills-4 first version"
+
+  - name: strike_in_order
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Pick a striking tool (a mallet, a stick) by its handle, well away from its working end, and strike the listed
+      target points of an instrument one after another with that end: over each target a quick stroke down until the
+      working end touches the surface, then back up about 7 cm before the next. Pass the targets in the order to
+      strike them (e.g. sorted left to right). One tool orientation serves every target; its pose in the hand is re-read
+      after each strike. The tool stays in the hand at the end.
+    args:
+      tool: "id, required; the striking tool"
+      instrument: "id, required; the object whose points are struck"
+      points: "[frame], required; the instrument's target point frames, in strike order"
+      work_tag: "frame = None; the tool's working point (default: its striking point)"
+      arm: "str = None; force one arm"
+    selects_on:
+      words: [strike, hit, tap, beat, play, keys, from left to right]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: tool, fields: [pos, quat, size]}
+        - {what: instrument, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.precision:strike_in_order"
+    measured: none
+    stats: []
+    notes: "skills-5 first version"
+
+  - name: insert_each
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Insert several objects of one kind, one by one, leading end first and upright, into free holes of one
+      receptacle (holes from the receptacle's asset support frames): the hole farthest from the filled ones first,
+      re-oriented in the hand (lying -> standing) or relayed between the arms, a guided descent into the hole's
+      mouth, let go. Both grippers are opened after each object (partial credit per object).
+    args:
+      objects: "[id], required; the objects to insert"
+      receptacle: "id, required; the object with the holes"
+      depth: "float m = None; how far the leading end goes in (default: to the floor)"
+    selects_on:
+      words: [insert, into the rack, one by one, holes]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+        - {what: receptacle, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.precision:insert_each"
+    measured: none
+    stats: []
+    notes: "skills-5 first version"
+
+  - name: screw_on
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Screw each movable threaded part onto its fixed partner (pairs = [[nut, bolt], ...]): the part is put on the
+      partner's top, upright and on its axis, let go so it seats on the thread, then turned down the thread in wrist
+      sweeps with re-grips (clockwise from above), following the pitch down, until it sits about 1 cm below the
+      partner's top. Both grippers are opened after each pair. Pair the parts first (e.g. by colour).
+    args:
+      pairs: "[[id, id]], required; [movable part, fixed partner] pairs"
+      depth: "float m = 0.0105; how far below the partner's top the part's bottom ends"
+      sign: "float = -1.0; turn direction, -1 = clockwise from above (tightens a right-hand thread)"
+    selects_on:
+      words: [tighten, screw, fasten, nut, bolt, same colour]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each pair, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.precision:screw_on"
+    measured: none
+    stats: []
+    notes: "skills-5 first version"
