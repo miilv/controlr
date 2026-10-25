@@ -1900,10 +1900,63 @@ SLOT_PLACE_KW = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle
 SLOT_TRANSFER_KW = {"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True}
 
 
+_OPENINGS: dict = {}
+
+
+def slot_openings(c, tags: list[str]) -> dict:
+    """Each slot tag's physical opening in the container's mesh (``insertion.openings``), world frame: (centre,
+    along, across, floor z). A tag's frames outline the region the slot is judged in; when they are irregular
+    (several assets' corner frames outline both slots, or are out of order), the opening inside that region is the
+    target. Openings go to the tags with the fewest candidates first, one opening per tag; a tag without one keeps
+    its frames' centre."""
+    from dojo.skills.insertion import openings
+    if c.asset.mesh is None:
+        return {}
+    key = c.asset.key
+    if key not in _OPENINGS:
+        _OPENINGS[key] = [op for op in openings(*c.asset.mesh) if op["width"] < 0.06 and op["length"] > 0.05]
+    ops = _OPENINGS[key]
+    cand = {}
+    for t in tags:
+        fr = functional_frames(c, t)
+        if len(fr) < 3:
+            continue
+        P = np.array([F[:3, 3] for F in fr])[:, :2]
+        ctr = P.mean(0)
+        ang = np.arctan2(P[:, 1] - ctr[1], P[:, 0] - ctr[0])
+        poly = P[np.argsort(ang)]
+        cand[t] = [i for i, op in enumerate(ops) if _in_poly(op["center"], poly)]
+    used, out = set(), {}
+    for t in sorted(cand, key=lambda t: len(cand[t])):
+        free = [i for i in cand[t] if i not in used]
+        if not free:
+            continue
+        i = free[0]
+        used.add(i)
+        op = ops[i]
+        a3 = c.R @ np.r_[op["along"], 0.0]
+        a3[2] = 0.0
+        a3 /= np.linalg.norm(a3)
+        out[t] = (c.R @ np.r_[op["center"], op["floor"]] + c.pos, a3, np.array([-a3[1], a3[0], 0.0]),
+                  float((c.R @ np.r_[op["center"], op["floor"]] + c.pos)[2]))
+    return out
+
+
+def _in_poly(p, poly) -> bool:
+    inside = False
+    n = len(poly)
+    for i in range(n):
+        (x1, y1), (x2, y2) = poly[i], poly[(i + 1) % n]
+        if (y1 > p[1]) != (y2 > p[1]) and p[0] < x1 + (p[1] - y1) * (x2 - x1) / (y2 - y1):
+            inside = not inside
+    return inside
+
+
 def slot_target(sk: Skills, label: str, container: str, tag: str) -> np.ndarray | None:
     """The object standing on an edge in the slot: thinnest axis across it, longest along it, bottom 2 mm over its
-    floor."""
-    sf = slot_frame(sk.world.obj(container), tag)
+    floor (the slot's opening in the mesh when there is one, else the frames' centre)."""
+    c = sk.world.obj(container)
+    sf = slot_openings(c, [t for t in (c.asset.functional or {}) if "slot" in t.lower()]).get(tag) or slot_frame(c, tag)
     if sf is None:
         return None
     ctr, along, across, floor = sf
