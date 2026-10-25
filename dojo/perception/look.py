@@ -141,12 +141,92 @@ def look_cost_steps(plan: list[dict], parallel: bool = True) -> int:
     return 2 * STEPS_PER_LOOK_MOVE * (1 if parallel else len(plan))
 
 
-def fuse(frames: list[dict], task: str, bgs: dict | None = None, cfg=None) -> dict:
-    """Estimate from the first frame with later frames as extra views (objects assumed static).
-    ``frames``: [{"images": {cam: RGB}, "state": {...}, "instruction": str}, ...]."""
+def fuse(frames: list[dict], task: str, bgs: dict | None = None, cfg=None, prior_record: dict | None = None,
+         mode: str = "conservative", accept_drop: float = 0.02, extra_slack: float = 0.01,
+         big_move: float = 0.005, good_fit: float = 0.35) -> dict:
+    """Fuse later frames (looks; objects assumed static) into a frame-0 estimate.
+    ``frames``: [{"images": {cam: RGB}, "state": {...}, "instruction": str}, ...].
+
+    ``mode="conservative"`` (default): keep the frame-0 record's objects, identities and assignment
+    (``prior_record``, else estimated from frames[0]); refine each object locally from its frame-0 pose over
+    all views and accept the new pose only if the total residual drops by > ``accept_drop`` AND the later
+    frames' views alone do not get worse (+ ``extra_slack``). Objects the looks do not see keep frame 0.
+    ``mode="full"``: re-run the whole estimate with the extra views (re-selection included; integration saw
+    it move well-placed blocks by 12-14 mm)."""
+    import copy
+
+    from .cameras import R_to_quat_wxyz, cameras_from_state, pose_to_T
+    from .inverse_layout import EstimatorConfig, _views_subset, make_roi_views, refine as nm_refine, roi_loss
+    from .refine import _shape_for, _ZShift
+    from .segment import load_backgrounds, segment_views
+
     f0 = frames[0]
     extra = [(f["images"], f["state"]) for f in frames[1:]]
-    return estimate(f0["images"], f0["state"], task, f0.get("instruction", ""), bgs=bgs, cfg=cfg, extra_frames=extra)
+    if mode == "full":
+        return estimate(f0["images"], f0["state"], task, f0.get("instruction", ""), bgs=bgs, cfg=cfg, extra_frames=extra)
+    cfg = cfg or EstimatorConfig()
+    bgs = bgs if bgs is not None else load_backgrounds()
+    rec0 = prior_record or estimate(f0["images"], f0["state"], task, f0.get("instruction", ""), bgs=bgs, cfg=cfg)
+    rec = copy.deepcopy(rec0)
+    if not extra:
+        return rec
+    views = _views_subset(segment_views(f0["images"], cameras_from_state(f0["state"]), f0["state"], bgs, thr=cfg.fg_thr), cfg)
+    for k, (imgs_k, st_k) in enumerate(extra, start=1):
+        vk = _views_subset(segment_views(imgs_k, cameras_from_state(st_k), st_k, bgs, thr=cfg.fg_thr), cfg)
+        views.update({f"{name}@{k}": v for name, v in vk.items()})
+    entries = []
+    for typ in ("Rigid", "Geometry", "Articulation"):
+        for cat, lst in (rec.get(typ) or {}).items():
+            for r in lst:
+                if r.get("_perception", {}).get("place_tag") == "fixed":
+                    continue
+                key = f"{typ}/{cat}/{int(r['category_idx']):05d}"
+                T0 = pose_to_T(r["default_pos"], r["default_ori"])
+                sm = _shape_for(key, T0[:3, :3], r.get("_perception", {}).get("place_tag"))
+                entries.append((r, key, sm, T0))
+
+    def union_others(skip):
+        out = {}
+        for name, v in views.items():
+            m = np.zeros((v.cam.h, v.cam.w), np.uint8)
+            for r2, _, sm2, T2 in entries:
+                if r2 is not skip:
+                    m |= sm2.sil(v.cam, T2)
+            out[name] = m
+        return out
+
+    for r, key, sm, T0 in entries:
+        others = union_others(r)
+        Rz = T0[:3, :3] @ sm.R0.T
+        yaw0 = float(np.arctan2(Rz[1, 0], Rz[0, 0]))
+        z_off = float(T0[2, 3] - (sm.pose(0, 0, 0)[2, 3]))
+        zsm = _ZShift(sm, z_off)
+        rvs = make_roi_views(zsm, T0, views, others)
+        ex_rvs = [rv for rv in rvs if "@" in rv.name]
+        info = {"accepted": False, "extra_views": [rv.name for rv in ex_rvs]}
+        if ex_rvs:
+            l0 = roi_loss(zsm, T0, rvs)[0]
+            e0 = roi_loss(zsm, T0, ex_rvs)[0]
+            x1, y1, yaw1, _, _ = nm_refine(zsm, T0[0, 3], T0[1, 3], yaw0, views, others, xy_step=0.004, yaw_step=0.06,
+                                           maxiter=cfg.refine_iters, fix_yaw=(sm.yaw_period < 0.2))
+            T1 = zsm.pose(x1, y1, yaw1)
+            l1 = roi_loss(zsm, T1, rvs)[0]
+            e1 = roi_loss(zsm, T1, ex_rvs)[0]
+            info.update({"loss0": round(l0, 4), "loss1": round(l1, 4), "extra0": round(e0, 4), "extra1": round(e1, 4),
+                         "moved_mm": round(float(np.hypot(*(T1[:2, 3] - T0[:2, 3])) * 1000), 1)})
+            moved = float(np.hypot(*(T1[:2, 3] - T0[:2, 3])))
+            # a large move must be backed by a look view that actually fits well (D0 stack_blocks 100003: a
+            # 9 mm move toward a mediocre look-view fit, IoU 0.54, made a correct block wrong)
+            if (l1 < l0 - accept_drop and e1 <= e0 + extra_slack and e1 < 0.6
+                    and (moved <= big_move or e1 < good_fit)):
+                info["accepted"] = True
+                r["default_pos"] = T1[:3, 3].tolist()
+                r["default_ori"] = R_to_quat_wxyz(T1[:3, :3]).tolist()
+                p = r.setdefault("_perception", {})
+                p["confidence"] = round(float(max(p.get("confidence", 0.0), 1 - e1)), 3)
+        r.setdefault("_perception", {})["fused"] = info
+    rec.setdefault("_perception", {})["fused_mode"] = "conservative"
+    return rec
 
 
 def export_look_poses(root, out, tasks=None, commit: str = "") -> dict:

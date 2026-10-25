@@ -234,7 +234,7 @@ def build_bg_folds(root: Path, out: Path) -> None:
 
 
 def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False,
-                   bg_loo: bool = False, look: bool = False, look_frame: str = "L1") -> dict:
+                   bg_loo: bool = False, look: bool = False, look_frame: str = "L1", fuse_mode: str = "full") -> dict:
     """Estimate frame k of an episode (with ``fuse``: frame 0 plus frames 1..k as extra views) and score it
     against frame k's GT."""
     from . import d0
@@ -266,7 +266,13 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
                 oL = d0.load_obs(ep, lf)
                 ex = [(oL["images"], oL["state"])]
             look_used = bool(ex)
-            rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=ex)
+            if fuse_mode == "full":
+                rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=ex)
+            else:
+                from .look import fuse as look_fuse
+
+                fr = [o0] + ([{"images": ex[0][0], "state": ex[0][1]}] if ex else [])
+                rec = look_fuse(fr, obs["task"], bgs=bgs, cfg=cfg, mode="conservative")
         elif fuse and k > 0:
             o0 = d0.load_obs(ep, 0)
             extra = [(d0.load_obs(ep, j)["images"], d0.load_obs(ep, j)["state"]) for j in range(1, k + 1)]
@@ -390,6 +396,7 @@ def main(argv=None):
     ap.add_argument("--bg-loo", action="store_true", help="2-fold median backgrounds from the other half of the D0 episodes")
     ap.add_argument("--look", action="store_true", help="frame 0 + simlab's frame_L1 (renders at our look poses)")
     ap.add_argument("--look-frame", default="L1", help="L1 (look_poses_v1) or L2 (v2; falls back to L1 where unchanged)")
+    ap.add_argument("--fuse-mode", default="full", choices=["full", "conservative"], help="--look: how frames are fused")
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
@@ -415,7 +422,7 @@ def main(argv=None):
             for k in a.frames:
                 if (ep / f"frame_{k}.json").exists():
                     for wr in ([True, False] if a.both else [not a.no_wrists]):
-                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo, a.look, a.look_frame))
+                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo, a.look, a.look_frame, a.fuse_mode))
     print(f"{len(jobs)} frames", flush=True)
     rows, frames = [], []
     with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, open(a.out / "frames.jsonl", "w") as ff:
