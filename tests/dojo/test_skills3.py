@@ -130,3 +130,49 @@ def test_plan_stack_ordered_keeps_the_list_order():
     assert jobs
     placed = [j.label for j in jobs]
     assert placed[-2:] == ["blue", "red"] and "green" not in placed[-2:]
+
+
+def test_planner_toaster_two_breads_one_per_slot_then_the_lever():
+    from dojo.skills.planner import plan
+    from tests.dojo.test_skills2 import _world
+    breads = [_obj(f"bread_{i}", "bread", 0, (-0.2 + 0.03 * i, -0.1, 0.8), (0.05, 0.05, 0.008)) for i in range(4)]
+    toaster = _obj("toaster", "toaster", 0, (0.2, -0.08, 0.84), (0.1, 0.06, 0.08), "Articulation",
+                   functional={"toast_slot1": {"frame": [[-0.078, -0.041, -0.051, 1, 0, 0, 0], [0.072, -0.011, -0.051, 1, 0, 0, 0]]},
+                               "toast_slot2": {"frame": [[-0.078, 0.014, -0.051, 1, 0, 0, 0], [0.072, 0.039, -0.051, 1, 0, 0, 0]]}})
+    toaster.asset.active_functional = {"toast_botton": {"parent_joint": "joint_1", "frame": [[0.002, 0.004, -0.001, 1, 0, 0, 0]]}}
+    p = plan("Pick up two slices of bread, place them into the toaster, and press the lever down.",
+             _world(breads + [toaster]))
+    assert p.skill == "slots_and_press"
+    assert len(p.args["objects"]) == 2 and p.args["container"] == "toaster"
+    assert sorted(p.args["slots"]) == ["toast_slot1", "toast_slot2"] and p.args["press_tag"] == "toast_botton"
+
+
+def test_planner_pieces_onto_pegs_by_group_size_and_peg_height():
+    from dojo.skills.planner import plan
+    from tests.dojo.test_skills2 import _world
+    base = _obj("base", "stack_base", 0, (0, -0.2, 0.765), (0.13, 0.03, 0.03), "Geometry")
+    base.asset.support = {f"pole/{i}": [(np.array([-0.096 + 0.065 * i, 0, z, 1, 0, 0, 0]), 0.005)]
+                          for i, z in enumerate((0.063, 0.053, 0.043, 0.028))}
+    pieces = []
+    for idx, n in ((0, 4), (1, 3), (2, 2), (3, 1)):
+        pieces += [_obj(f"p{idx}{j}", "stackingblocks", idx, (0.1 * j - 0.2, -0.1 - 0.03 * idx, 0.77), (0.03, 0.03, 0.0065))
+                   for j in range(n)]
+    p = plan("Place all stacking toy pieces onto the correct pegs.", _world(pieces + [base]))
+    assert p.skill == "stack_on_pegs" and p.args["base"] == "base"
+    assert [len(g) for g in p.args["groups"]] == [4, 3, 2, 1]
+    assert p.args["pegs"] == ["pole/0", "pole/1", "pole/2", "pole/3"]
+
+
+def test_planner_stack_in_colour_order():
+    from dojo.skills.planner import plan
+    from tests.dojo.test_skills2 import _world
+    cols = {"r": (255, 0, 0), "g": (0, 255, 0), "b": (0, 0, 255)}
+    objs = []
+    for i, (lab, rgb) in enumerate(cols.items()):
+        o = _obj(lab, "cube", i + 1, (0.1 * i, -0.2, 0.78), (0.0175, 0.0175, 0.0175))
+        o.asset.rgb = np.asarray(rgb, float)
+        objs.append(o)
+    p = plan("stack the blocks from bottom to top in the order of green, blue, and red, then reset the robot arm.",
+             _world(objs))
+    assert p.skill == "stack_objects" and p.args["ordered"] is True
+    assert p.args["objects"] == ["g", "b", "r"]
