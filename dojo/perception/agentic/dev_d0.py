@@ -186,12 +186,22 @@ def cmd_refine(a):
             continue
         inp = _inputs(d)
         fold = zlib.crc32(inp["episode"].encode()) % 2
-        bgs = load_backgrounds(Path(a.bg_folds) / f"fold{fold}")
         out = json.loads(f.read_text())
-        b1 = json.loads((d / "b1.json").read_text())
-        images = j1_adapter._load_frames(inp["frames"])
-        state, _ = j1_adapter._state(inp["flange"], inp["grip_cmd"], inp["joints"])
-        cams = j1_adapter._cameras(inp["calib"])
+        if a.scan_root:  # refine in the scan frame, with the scan-aware background of the scan root
+            from ..eval_g1 import fold_backgrounds
+
+            si = json.loads((d / "scan_inputs.json").read_text())
+            bgs = fold_backgrounds(Path(a.scan_root) / inp["task"] / inp["episode"])
+            b1 = json.loads((d / "b1_scan.json").read_text())
+            images = j1_adapter._load_frames({c: str(d / f"{c}_scan.png") for c in CAMS})
+            state, _ = j1_adapter._state(si["flange"], si["grip_cmd"], si["joints"])
+            cams = j1_adapter._cameras(si["calib"])
+        else:
+            bgs = load_backgrounds(Path(a.bg_folds) / f"fold{fold}")
+            b1 = json.loads((d / "b1.json").read_text())
+            images = j1_adapter._load_frames(inp["frames"])
+            state, _ = j1_adapter._state(inp["flange"], inp["grip_cmd"], inp["joints"])
+            cams = j1_adapter._cameras(inp["calib"])
         t0 = time.time()
         objs, infos = seeded_refine(images, state, cams, inp["task"], out["objects"], b1["objects"], bgs)
         out = dict(out, objects=objs, refine_info=infos, refine_s=round(time.time() - t0, 2))
@@ -464,6 +474,7 @@ def main(argv=None):
     p = sp.add_parser("refine")
     p.add_argument("--cases", required=True)
     p.add_argument("--tag", required=True)
+    p.add_argument("--scan-root", default=None, help="refine in the scan frame (scan_inputs.json, b1_scan.json)")
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
     p.add_argument("--only", nargs="*")
     p.add_argument("--force", action="store_true")
