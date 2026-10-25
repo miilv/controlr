@@ -46,8 +46,9 @@ Report with all numbers: [../experiments/2026-10-25-perception-options.md](../ex
 **Numbers** (report §3)
 
 - Sonnet 5.5 with the B1 hint, B1's unmentioned objects kept, and H2, on 28 hard D0 scenes (102 objects):
-  gross 24 -> 11 (13 fixed / 0 broken), within tolerance 63 -> 67, 3 LLM calls and 35 s per call.
-- Sol: 17 gross, 7 fixed / 0 broken. Astra-medium: 16 gross, 10 / 2, within tolerance 69. auto/gemini (12 scenes):
+  gross 24 -> 11 (13 fixed / 0 broken), within tolerance 63 -> 66, 3 LLM calls and 35 s per call
+  (duplicate-safe merge).
+- Sol: 19 gross, 7 fixed / 2 broken. Astra-medium: 18 gross, 10 / 4, within tolerance 66. auto/gemini (12 scenes):
   13 -> 6, but 150 s per call.
 - The 6 push_T gross errors left are invisible at frame 0.
 - Spend: about 486 LLM calls, 6.0 M prompt tokens.

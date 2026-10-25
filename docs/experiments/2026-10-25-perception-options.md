@@ -11,8 +11,8 @@ allowed; no operator). All numbers here are on OUR data (D0 dev layouts, integra
 1. **The frozen agentic perceiver works as a finder, not as a pose estimator.** Setup: Sonnet 5.5, B1 as the hint,
    B1's render-and-compare from the agent's points, and B1's objects that the agent did not mention kept. On 28 hard D0
    scenes (102 objects):
-   - gross errors 24 -> 11, with 13 objects fixed and 0 broken; not found 10 -> 1;
-   - within tolerance 63 -> 67;
+   - gross errors 24 -> 11, with 13 objects fixed and 0 broken; not found 10 -> 2;
+   - within tolerance 63 -> 66;
    - cost: 3 LLM calls and 35 s median per perceive call.
 
    Two things do not work:
@@ -23,8 +23,8 @@ allowed; no operator). All numbers here are on OUR data (D0 dev layouts, integra
    calls). After it comes an **episode-level tracking filter**, so that one agentic full-scene answer at frame 0 is
    enough (<= 2 agentic calls per episode).
 3. **Model choice: Sonnet 5.5.**
-   - GPT-6.1 Sol: fixed 7 / broke 0, 54 s, 5 calls.
-   - Astra-medium: fixed 10 / broke 2; it often answers in 1 call without looking.
+   - GPT-6.1 Sol: fixed 7 / broke 2, 54 s, 5 calls.
+   - Astra-medium: fixed 10 / broke 4; it often answers in 1 call without looking.
    - auto/gemini: fixed 7 / broke 0 on 12 scenes, but 150 s and 89k prompt tokens per call; dva/gemini is 401.
 4. **B1's flags are not a usable gate as they are.** They fire on 65 % of objects. A calibrated model on B1's own
    outputs flags 25 % at recall 0.77, and is the gate's trigger (`AGENTIC_GATE=budget`).
@@ -140,19 +140,24 @@ Per scene ("any object at risk"), at threshold 0.4: 61 % of scenes are flagged, 
 | arm | scenes | within tol (B1 -> arm) | gross (B1 -> arm) | not found | xy p90 mm (B1 / arm) | gross fixed / broken |
 |---|---|---|---|---|---|---|
 | Sonnet 5.5, agent answer only | 28 | 63 -> 61 | 24 -> 13 | 10 -> 5 | 33.7 / 23.3 | 13 / 2 |
-| Sonnet 5.5, + B1's unmentioned objects | 28 | 63 -> 63 | 24 -> 11 | 10 -> 1 | 33.7 / 26.5 | 13 / 0 |
-| **Sonnet 5.5, + H2 refine** | 28 | **63 -> 67** | **24 -> 11** | 10 -> 1 | 33.7 / 26.1 | **13 / 0** |
-| GPT-6.1 Sol, + unmentioned + H2 | 28 | 63 -> 66 | 24 -> 17 | 10 -> 6 | 33.7 / 28.6 | 7 / 0 |
-| GPT-6 Astra-medium, + unmentioned + H2 | 28 | 63 -> 69 | 24 -> 16 | 10 -> 6 | 33.7 / 27.5 | 10 / 2 |
+| Sonnet 5.5, + B1's unmentioned objects (duplicate-safe) | 28 | 63 -> 61 | 24 -> 12 | 10 -> 2 | 33.7 / 27.6 | 13 / 1 |
+| **Sonnet 5.5, + H2 refine** | 28 | **63 -> 66** | **24 -> 11** | 10 -> 2 | 33.7 / 26.0 | **13 / 0** |
+| GPT-6.1 Sol, + unmentioned + H2 | 28 | 63 -> 64 | 24 -> 19 | 10 -> 7 | 33.7 / 32.2 | 7 / 2 |
+| GPT-6 Astra-medium, + unmentioned + H2 | 28 | 63 -> 66 | 24 -> 18 | 10 -> 7 | 33.7 / 30.1 | 10 / 4 |
 | auto/gemini, + unmentioned (no H2 run) | 12 | 29 -> 24 | 13 -> 6 | 8 -> 2 | 26.8 / 23.6 | 7 / 0 |
 | no B1 hint (agent alone, push_T only; Sonnet / Sol / Astra) | 4 / 2 / 8 | 6->1 / 3->0 / 10->0 | 1->2 / 0->1 / 4->9 | | | 0 / 5 (Astra) |
+
+Correction, same day: the first merge re-added a B1 object even when the agent had *moved* it under a new label. That
+left a duplicate, which the per-class Hungarian scorer silently rewarded. The rule now counts a B1 object as mentioned
+when the agent uses its label, or when the agent already reports as many objects of that category. All "unmentioned"
+rows above use the corrected rule; the first version read Sonnet within tolerance 67, Sol 66 and Astra 69.
 
 Per task, Sonnet + H2:
 
 | task | n | within tol | gross |
 |---|---|---|---|
 | build_tower | 32 | 19 -> 20 | 9 -> 0 |
-| pack | 20 | 10 -> 10 | 6 -> 2 |
+| pack | 20 | 10 -> 9 | 6 -> 2 |
 | stack_blocks | 30 | 22 -> 25 | 3 -> 3 |
 | push_T | 20 | 12 -> 12 | 6 -> 6 |
 
@@ -278,7 +283,7 @@ H2 adds 0.1-25 s per call (GL). B1 itself takes 1-10 s (pack up to 3 min on the 
 
 | rank | option | measured / estimated gain | cost per episode | engineering | risk |
 |---|---|---|---|---|---|
-| 1 | **Agentic perceiver (Sonnet 5.5) at frame 0 + H2 + B1 tracking, budget gate** | measured: gross 24 -> 11 of 102 hard objects (13 fixed / 0 broken), not found 10 -> 1; tower gross 9 -> 0 | 3-7 LLM calls, 35-80 s, 0 steps | runner done (this branch); gate + tracking hookup 1 day | latency vs J1_TIMEOUT_S (set 300); rare fixes in our data: n = 28 scenes; agent yaw is coarse, so H2 is required |
+| 1 | **Agentic perceiver (Sonnet 5.5) at frame 0 + H2 + B1 tracking, budget gate** | measured: gross 24 -> 11 of 102 hard objects (13 fixed / 0 broken), not found 10 -> 2; tower gross 9 -> 0 | 3-7 LLM calls, 35-80 s, 0 steps | runner done (this branch); gate + tracking hookup 1 day | latency vs J1_TIMEOUT_S (set 300); rare fixes in our data: n = 28 scenes; agent yaw is coarse, so H2 is required |
 | 2 | **Park-the-arms scan pose (active perception)** | est. +3-5 pp of objects; targets the residual: objects no frame-0 view sees (6/11 remaining gross in §3) | 30-40 steps, 0 calls | 0.5 day | 200-step tasks; tasks where a scripted arm moves at t = 0 |
 | 3 | **Episode tracking filter** (only the touched object moves, confident re-reads only, last good pose with age) | protects every later call; J1's 3/5 re-read failures were this class | 0 | 1-1.5 days | needs J1-style episodes to measure |
 | 4 | **Calibrated flags** (done: `flag_model.json`) | 25 % flagged at recall 0.77 vs 65 % today | 0 | done; refit when B1 changes | fitted on 6 D0 tasks only |
