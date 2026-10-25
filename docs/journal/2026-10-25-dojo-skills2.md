@@ -122,8 +122,13 @@ episode record carries the deployed commit (`scripts/skills/deploy_skills2.sh` -
 | make_kong | v2 (max_pick_tilt) | 100000-24 (corrected copies) | **25/25** | 1.00 | 368 / 370 (600) | - |
 | make_kong | v3 (af73787..bcb0600) | 100000-24 (simlab v7 official) | **25/25** | 1.00 | 370 / 370 (600) | - |
 | store_tools_in_toolbox | v1 (907647f) | 100000-04 | 0/5 | 0.10 | 219 / 283 (900) | grasp_slip 4 (flat tools squeezed out of the pads), place_miss 1 |
+| store_tools_in_toolbox | v2 (2db5fac: mesh-checked grasps, wider opening, tips 2.5 mm) | 100000-04 | 0/5 | **0.25** (tape measure 5/5) | 156 / 292 (900) | pliers / hammer / wrench now lift but pivot in the pads (CoM far from the grasp: 30-40 mm drift, the pick check calls it a slip) |
+| store_tools_in_toolbox | v3 (39ae0fb: + grasps ranked by distance to the CoM, finish always) | 100000-04 | 0/5 | 0.25 | 270 / 299 (900) | unchanged: tape measure 5/5; pliers / hammer / wrench grasp_slip 3, ik_fail 2; planning 158 s median |
 | fill_pen_holder | v1 (907647f) | 100000 (stopped: superseded) | 0/1 | 0 | 159 (1100) | an oil pen packed 2 mm from the wall jammed 50 mm down; the retreat pulled it out and tipped the holder |
+| fill_pen_holder | v2 (2db5fac / 0cc980d: centred first pen, 6 mm packing) | 100000-04 | 0/5 | 0.08 (1 pen in, 4/5 episodes) | 112-533 (1100) | the next pens land on the rim / tilted 24-46 deg (xy 28-50 mm off: the pen tips hit the first pen or the rim); 100004: the holder could not be moved (no collision-free transfer), nothing went in |
 | organize_table | v1 (18bbd61) | 100000-04 | 0/5 | 0.35 | 252-487 (1000) | mouse 5/5 on its pad; alarm on the drawer slipped / tilted in the tilted grasp; figurine: no plan next to the drawer; keyboard push: no stroke plan / no motion |
+| plug_in_charger | v1 (6d1cdf8: insert frames) | 100000-04 | 0/5 | 0 (binary) | 70-203 (400) | 2/5 (100001, 100004) ended upright (0.4 / 4.1 deg) over an outlet, 13-17 mm DEEPER than modelled: the strip's collider lets the blades in. The skill's own check called it a miss, `solve` then skipped `finish`, and the arms never went home. The other 3: tilted 31-90 deg after release, or a grasp slip. Fix 39ae0fb (finish always); v2 queued (10 seeds) |
+| plug_in_charger | v2 (39ae0fb: + finish always) | 100000-09 | **2/10** | 0.20 | 93-205 (400) | 8 place_miss: the charger topples 31-88 deg after the release (blades not engaged; xy 9-60 mm off the outlet), 1 upright but 9 mm off |
 | insert_key | v1 (bc04994) | the 14 settled of 100000-24 | 0/11 so far | 0.15 (all banked the lift) | 48-229 (300) | in-air handover executed (drift 0.1 mm) but: taker approach IK at execution 4, key turned in the taker's grasp then re-plan failed 3, collision with the lock 1, step budget 1 |
 
 ## 4. Failure taxonomy
@@ -148,6 +153,14 @@ episode record carries the deployed commit (`scripts/skills/deploy_skills2.sh` -
    axis, or did not move it (223 mm left after 14 strokes).
 
 ## 5. Interfaces
+
+- `planner.solve` now calls `finish()` after a failed skill too (39ae0fb): home + grippers open whatever the
+  skill's own verdict (told integration).
+- `Skills(max_rehovers=1)`: refine re-hover hints followed up to N times (integration's interface; merged
+  origin/feat/dojo-skills 736e9e3 / 31c8cd9 into this branch at dfba100; feat/dojo-skills is retired, skills
+  live on feat/dojo-skills2).
+- `scripts/skills/deploy_skills2.sh` (clean tree -> `.deployed_commit`); g3 episodes and summaries carry the
+  commit; traces only for failed episodes.
 
 - `Skills.plan_transfer(label, targets, ...)` -> (PickPlan, PlacePlan) | SkillResult; `run_transfer`.
 - `library.place_oriented(sk, label, targets, yaw_sym, ...)`: the relay-chain entry point every
