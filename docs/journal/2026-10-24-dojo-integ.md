@@ -182,3 +182,17 @@ p90 4.5 mm (before looks 8.9 mm), 1 piece not found, identity / shape 0.96. Pair
 target IN THE BELIEF, but RoboDojo's checker stopped at the base tier, i.e. an estimate error that neither the
 resync check nor the skills' place check (both read predictions in mode B) caught. New category
 `belief_mismatch` for that case (mode B, skill done, checker disagrees).
+
+## 4. Pre-contact refine (lead's decision) — wiring
+
+- skills (`34857ac`): `Skills(refine=fn)`, `fn(sk, label, arm, kind)` at every pick hover (label = the object)
+  and place approach (label = the support / reference object); fn only observes; skills then refreshes and
+  re-plans the descent. Verified picks / places are split at the hover: the hover runs unverified, only the
+  tails (descent + close + lift / descent + release + retreat) are verified. My verifier needs no change (it
+  replays everything executed since its base state in front of each candidate).
+- perception (`7c73492`, `cc37143`): `refine(key, wrist_rgb, proprio, prior7, arm, others)` and
+  `refine_identity([keys], ...)`. The runtime's service op `refine` calls them on the hovering arm's wrist frame
+  with the other task objects as occluders; pick hovers check identity over the vocabulary's distinct shapes
+  (build_tower: 5 classes, stack_blocks: 3 sizes). A pose is accepted when perception's `ok` holds and the shift
+  is ≤ 30 mm; a different asset only when `identity_ok`. `RuntimeConfig.refine` (default off; mode gt: no-op).
+- Paired runs, identical code, refine off vs on: `B_stack_bundle_{base,refine}_{a,b}`, then build_tower.
