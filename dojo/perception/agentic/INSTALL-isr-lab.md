@@ -21,6 +21,9 @@ export AGENTIC_MODEL=claude/claude-sonnet-5-5                # pinned per measur
 export AGENTIC_MAX_TURNS=8
 export AGENTIC_B1=1                                          # B1 output as the hint, and the fallback if the agent fails
 export AGENTIC_HELD=b1_then_agent                            # B1 held_look; the agent only when B1 conf < 0.5 or dark_risk
+export AGENTIC_GATE=always                                   # measurement: the agent on every call; budget = first call + <= 1 more
+export AGENTIC_REFINE=1                                      # B1's render-and-compare from the agent's points (needs GL like B1)
+export AGENTIC_KEEP_UNMENTIONED=1                            # B1 objects the agent did not mention stay at half confidence
 export AGENTIC_LOG_DIR=$A/run/<run-name>                     # per-call workspace, transcript.jsonl, calls.jsonl
 export AGENTIC_WORKER_LOG=$A/run/agentic_worker.log
 export AGENTIC_ENV_FILE=<file with OMNIROUTE_BASE_URL and OMNIROUTE_API_KEY>   # NOT installed: the key is the operator's

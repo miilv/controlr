@@ -64,7 +64,7 @@ def _candidates_all(o: dict, b1_objs: list[dict], task: str | None) -> list[str]
 
 def seeded_refine(images: dict, state: dict, cams: dict, task: str | None, objects: list[dict], b1_objs: list[dict],
                   bgs: dict, same_mm: float = 8.0, max_shift_mm: float = 40.0, max_loss: float = 0.5,
-                  n_yaw: int = 8, orient_loss: float = 0.75, orient_shift_mm: float = 15.0) -> tuple[list[dict], list[dict]]:
+                  n_yaw: int = 8, orient_loss: float = 0.75, orient_shift_mm: float = 15.0, shift_frac: float = 0.45) -> tuple[list[dict], list[dict]]:
     """-> (objects with refined poses where accepted, per-object info)."""
     from ..cameras import R_to_quat_wxyz, pose_to_T
     from ..inverse_layout import EstimatorConfig, _views_subset, refine as nm_refine, shape_models
@@ -146,7 +146,12 @@ def seeded_refine(images: dict, state: dict, cams: dict, task: str | None, objec
             c = T[:3, :3] @ ((sm.asset.V.min(0) + sm.asset.V.max(0)) / 2) + T[:3, 3]
             shift = math.hypot(c[0] - x0, c[1] - y0) * 1000
             info.update(loss=round(float(loss), 3), key=key, shift_mm=round(shift, 1))
-            if loss < max_loss and shift < max_shift_mm:
+            V0 = sm.asset.V @ sm.R0.T
+            foot = float(min(np.ptp(V0[:, 0]), np.ptp(V0[:, 1])))
+            cap = min(max_shift_mm, shift_frac * foot * 1000)  # a block may move ~half its width, a board more
+            near = [j for j, o2 in enumerate(out) if j != i and math.hypot(c[0] - o2["pos"][0], c[1] - o2["pos"][1]) * 1000 < shift]
+            info.update(cap_mm=round(cap, 1), neighbour=bool(near))
+            if loss < max_loss and shift < cap and not near:
                 V = sm.asset.V @ sm.R0.T
                 o.update(pos=[round(float(v), 5) for v in T[:3, 3]], quat=[round(float(v), 6) for v in R_to_quat_wxyz(T[:3, :3])],
                          asset=key, category=key.split("/")[1], size=np.round(V.max(0) - V.min(0), 4).tolist(),
@@ -154,7 +159,7 @@ def seeded_refine(images: dict, state: dict, cams: dict, task: str | None, objec
                          confidence=round(float(max(0.05, min(0.99, 1 - loss))), 3), source="refined")
                 shapes[i] = (sm, T)
                 info["accepted"] = True
-            elif loss < orient_loss and shift < orient_shift_mm and not o.get("quat"):
+            elif loss < orient_loss and shift < min(orient_shift_mm, cap) and not near and not o.get("quat"):
                 # a poor fit that agrees with the agent's point: take its shape and yaw, keep the agent's xy
                 c_off = T[:3, :3] @ ((sm.asset.V.min(0) + sm.asset.V.max(0)) / 2)
                 T2 = sm.pose(x0 - c_off[0], y0 - c_off[1], yy)
