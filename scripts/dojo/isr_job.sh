@@ -13,7 +13,15 @@ COORD=/home/anywherevla/data2/coord
 LOCK="$COORD/gpu.lock" OWNER="$COORD/gpu.owner" RESERVE="$COORD/gpu.reserve" INBOX="$COORD/inbox/ilia"
 CLOG=/home/anywherevla/data2/bench/COORDINATION.md RUN=/home/anywherevla/data2/ilia/run
 WHO="${ISR_WHO:-ilia bridge-isr}"
-[[ $# -ge 3 ]] || { echo "usage: isr_job.sh NAME ETA_MIN cmd..." >&2; exit 2; }
+if [[ "${1:-}" == --pin ]]; then
+  ( cd /home/anywherevla/data2/bench && md5sum bin/robot-start-j2 harness/robodojo_start_j2.sh harness/robodojo_launch_j2.sh \
+      harness/robodojo_server_j2.py harness/robodojo_server_j1.py harness/robodojo_server.py \
+      harness/rd_shim_strict_v2/deploy.py harness/rd_shim_strict_v2/model.py harness/rd_shim_strict/deploy.py \
+      harness/rd_shim/deploy.py harness/j1_perceiver_host.py harness/strict_calib.py ) \
+    > "${ISR_BENCH_PIN:-/home/anywherevla/data2/ilia/bridge/bench_md5.txt}" && cat "${ISR_BENCH_PIN:-/home/anywherevla/data2/ilia/bridge/bench_md5.txt}"
+  exit $?
+fi
+[[ $# -ge 3 ]] || { echo "usage: isr_job.sh NAME ETA_MIN cmd... | isr_job.sh --pin" >&2; exit 2; }
 NAME="$1" ETA="$2"; shift 2
 export DOJO_ILIA=1
 mkdir -p "$RUN"
@@ -32,7 +40,22 @@ gate() {
   reserved && { echo "[isr_job] gpu.reserve covers now: $(tr '\n' ' ' < "$RESERVE" | head -c 200) (not starting $NAME)" >&2; return 76; }
   return 0
 }
+# pre-flight: Mikhail's launchers we run must be the ones we tested (md5 list made once by `isr_job.sh --pin`), and
+# his gpu.lock-taking starter (harness/robodojo_gpu_lock.sh, not synced tonight) must not have appeared: a starter
+# that takes gpu.lock itself would refuse (exit 75) under our hold. Any change: rc 78, nothing runs.
+BENCH_SRC=/home/anywherevla/data2/bench PIN="${ISR_BENCH_PIN:-/home/anywherevla/data2/ilia/bridge/bench_md5.txt}"
+PINNED=(bin/robot-start-j2 harness/robodojo_start_j2.sh harness/robodojo_launch_j2.sh harness/robodojo_server_j2.py
+        harness/robodojo_server_j1.py harness/robodojo_server.py harness/rd_shim_strict_v2/deploy.py
+        harness/rd_shim_strict_v2/model.py harness/rd_shim_strict/deploy.py harness/rd_shim/deploy.py
+        harness/j1_perceiver_host.py harness/strict_calib.py)
+preflight() {
+  [[ -e "$BENCH_SRC/harness/robodojo_gpu_lock.sh" ]] && { echo "[isr_job] $BENCH_SRC/harness/robodojo_gpu_lock.sh appeared (gpu.lock-taking starters synced): not running" >&2; return 78; }
+  [[ -s "$PIN" ]] || { echo "[isr_job] no md5 pin $PIN (make it with isr_job.sh --pin)" >&2; return 78; }
+  ( cd "$BENCH_SRC" && md5sum -c --quiet "$PIN" >&2 ) || { echo "[isr_job] Mikhail's launchers changed since the pin: not running" >&2; return 78; }
+  return 0
+}
 gate || exit 76
+if [[ "${ISR_SKIP_PREFLIGHT:-0}" != 1 ]]; then preflight || exit 78; fi
 exec 7>>"$LOCK"
 if ! flock -n 7; then
   echo "[isr_job] coord gpu.lock held; owner: $(tr '\n' ' ' < "$OWNER" | head -c 200); waiting..." >&2

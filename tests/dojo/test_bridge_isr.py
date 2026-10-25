@@ -77,7 +77,7 @@ def _fake_coord(tmp_path):
 
 def test_isr_job_owner_log_and_gates(tmp_path):
     j = _fake_coord(tmp_path)
-    env = dict(os.environ, ISR_YIELD_S="0")
+    env = dict(os.environ, ISR_YIELD_S="0", ISR_SKIP_PREFLIGHT="1")
     r = subprocess.run(["bash", str(j), "t1", "5", "bash", "-c", f"cat {tmp_path}/coord/gpu.owner; exit 3"],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 3 and "who: ilia bridge-isr" in r.stdout and "what: t1" in r.stdout
@@ -256,3 +256,11 @@ def test_runtime_eval_gate_skips_the_remaining_layouts(tmp_path, monkeypatch):
     summ = EV.run("stack_blocks", lays, EV.RuntimeConfig(mode="gt", verify="off"), tmp_path / "o",
                   policy_factory=Gated, renderer="isaac51")
     assert calls == [100000] and summ["n"] == 1 and summ["skipped"] == 2
+
+
+def test_isr_job_preflight_refuses_without_or_against_the_pin(tmp_path):
+    j = _fake_coord(tmp_path)
+    env = dict(os.environ, ISR_YIELD_S="0", ISR_BENCH_PIN=str(tmp_path / "missing_pin.txt"))
+    r = subprocess.run(["bash", str(j), "t1", "5", "true"], env=env, capture_output=True, text=True)
+    assert r.returncode == 78
+    assert not (tmp_path / "C.md").exists() or "START t1" not in (tmp_path / "C.md").read_text()
