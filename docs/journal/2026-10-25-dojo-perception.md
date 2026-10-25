@@ -195,3 +195,38 @@ With refine() at every hover the grasp-time error is refine's, so the runtime ke
 Trimmed `~/dojo-perception-data` 6.1 → 1.9 GB (machine at 99 %): source USD copy (simlab's
 `~/dojo-robodojo/hf_git` has the assets), full-resolution `visual.glb` (face-colour meshes and
 `visual_lo.glb` remain), synthetic episodes. No new write > 1 GB without asking.
+
+## CORRECTION: overall totals (625 objects)
+My hand-summed "all" rows above were wrong (per-class numbers were right). Recomputed by script:
+frame 0 (6.0 proxy) **0.791** (not 0.82); v1 look + full fuse 0.841; v2 look + full fuse 0.844; v2 look +
+conservative fuse **0.820** (so conservative fuse gains +0.03 over frame 0 with 6 regressions, not "no gain").
+The earlier "0.82 → 0.84" post-look line reads 0.79 → 0.84.
+
+## Genuine Isaac 5.1 frames (simlab, isr-lab 4090; same states as the 6.0 proxy, bitwise for frame 0)
+- Images: 5.1 renders are uniformly brighter (Lab L +5 to +8), chroma nearly identical (|Δa,b| ≈ 1).
+- Camera model vs 5.1 `gt.cameras`: head exact; wrists 0.06–0.08 mm median, 0.017°; FK link6 0.03–0.06 mm.
+- G1 frame 0 (within tolerance; 6.0 proxy / 5.1 with the 6.0 calibration / 5.1 recalibrated):
+  blocks 0.83/0.81/0.80, T 0.84/0.84/0.80, pad 0.80/0.80/0.80, tower 0.81/0.85/0.82, bowls 0.88/0.89/0.89,
+  bottles 0.76/0.78/0.79, pack box .92/.88/.92, car .56/.60/.52, toothbrush .60/.76/.72, hammer .88/.92/.92,
+  shoe .52/.52/.48. Overall 0.79 / 0.81 / 0.80: the proxy is faithful; recalibrating on 5.1 is not needed
+  (within noise either way). One outlier: shoe xy median 7.6 → 21 mm on 5.1 (identity 0.40).
+- refine() on genuine 5.1 wrist frames (priors ±20 mm / ±10°; ok + centred): within 5 mm blocks 0.91, T 1.00,
+  tower 1.00, bowls 0.98, bottles 0.91, pack 0.98; median 0.5–1.4 mm; 0.21–0.34 s per call.
+
+## Extension to 11 more tasks (skills-2's six + memory/open five)
+- Candidate vocabulary: 175 assets; 167 newly catalogued geometry-only (`catalog build --no-glb --keys-json`,
+  +0.6 GB). Task map rebuilt against simlab's full asset tree (make_kong had 0 candidates against the
+  D0-only subset).
+- What the checkers need beyond poses:
+  - make_kong: no glyph identity. The push tiles mahjong5_0..8_0 are `same_index_as_label` with triples
+    mahjong0..3, so the triple to expose is the one whose push tile the Franka knocks over
+    (`task_state.kong_discard`). Tiles sit at config-pinned slots (now placed there and refined locally);
+    face up/down = the place tag (mahjong frames: up / down / straight_front / straight_back).
+  - stack_blocks_by_language: colour words = cube base colours (RoboDojo's own map 1 blue, 2 green, 3 red,
+    7 yellow, 8 orange, 9 cyan); `language.relabel_by_colour_order`.
+  - general_pickup: the instruction's target restricts the 85 candidates (`restrict_by_instruction`).
+  - cover_blocks: one fixed cube per colour label; swap_T: initial yaw ≤ 3°; store_tools ≤ 10°;
+    insert_key / plug_in_charger: refine at the hover; fill_pen_holder: tip direction.
+  - Texture-critical categories (mahjong, digits) use real textured GLBs (25 MB) in render-and-compare.
+- Data: simlab renders 10 settled layouts per task, frames 0 + 1, ≤ 300 MB (`~/dojo-data/d0_ext`);
+  `ext_pipeline.sh` runs G1 frame 0 + refine per task as each lands.

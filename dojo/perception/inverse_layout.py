@@ -39,7 +39,7 @@ from scipy.optimize import linear_sum_assignment, minimize
 from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
-from .render import Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_roi
+from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 
 MIN_BLOB_PX = {"cam_head": 25, "cam_left_wrist": 150, "cam_right_wrist": 150}
@@ -556,7 +556,7 @@ def texture_cost(sm: ShapeModel, T: np.ndarray, views: dict[str, ViewMasks], key
     """(1 - NCC) / 2 between a textured render of the object and the observed pixels inside its visible,
     eroded silhouette, pooled over views (pixel-weighted). Lighting-robust to gain and offset. None when
     the object is untextured/uniform or not visible enough."""
-    r = tex()
+    r = tex_for(key or sm.key)
     if r is None:
         return None
     acc, wsum = 0.0, 0
@@ -646,6 +646,54 @@ def flip_about_centroid(h: "Hypothesis") -> "Hypothesis":
 @lru_cache(maxsize=1)
 def task_map() -> dict:
     return json.loads((catalog_root() / "tasks.json").read_text())
+
+
+def fixed_slot_labels(task: str) -> dict:
+    """Labels the config pins to a table slot: point xlim/ylim (a list of points = one per label of the entry,
+    in label order), no random yaw, relative to the Table. {label: (x, y, place_tag)}. make_kong's tiles,
+    build_tower's base boards."""
+    out = {}
+    for lab, d in task_map()[task]["labels"].items():
+        p = d["placement"]
+        if p.get("rotate_rand", False) or p.get("relative_plane", "Table") != "Table":
+            continue
+        xl, yl = p.get("xlim"), p.get("ylim")
+        if not (isinstance(yl, list) and len(yl) == 2 and not isinstance(yl[0], list) and yl[0] == yl[1]):
+            continue
+        labels = d["select_mode"].get("label") or [lab]
+        i = labels.index(lab) if lab in labels else 0
+        if isinstance(xl, list) and xl and isinstance(xl[0], list):
+            if len(xl) == len(labels) and all(a == b for a, b in xl):
+                out[lab] = (float(xl[i][0]), float(yl[0]), p.get("place_tag"))
+        elif isinstance(xl, list) and len(xl) == 2 and xl[0] == xl[1]:
+            out[lab] = (float(xl[0]), float(yl[0]), p.get("place_tag"))
+    return out
+
+
+def restrict_by_instruction(groups: list[dict], instruction: str) -> list[dict]:
+    """Candidates named by the instruction (general_pickup: "Pick up the {target} by 10 cm."): keep the
+    candidates whose category name or catalogue captions occur in the instruction; unchanged if none match."""
+    import copy
+
+    text = " " + instruction.lower().replace("_", " ") + " "
+    out = copy.deepcopy(groups)
+    for g in out:
+        if len(g["candidates"]) < 10:
+            continue
+        keep = []
+        for k in g["candidates"]:
+            cat = k.split("/")[1]
+            names = [cat.replace("_", " ")]
+            try:
+                names += [n.lower() for n in load_asset(k).info.get("names", [])]
+            except Exception:
+                pass
+            if any(f" {n} " in text for n in names if n):
+                keep.append(k)
+        if keep:
+            g["candidates"] = keep
+            g["categories"] = [c for c in g["categories"] if any(k.split("/")[1] == c["name"] for k in keep)] or g["categories"]
+    return out
 
 
 def label_groups(task: str) -> list[dict]:
@@ -1138,6 +1186,7 @@ class EstimatorConfig:
     color_M: list | None = None  # 4x3 affine map catalogue colour -> observed (color_calib.py)
     # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
     # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
+    use_slots: bool = True  # labels pinned to config slots start there (make_kong tiles, tower base)
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 
@@ -1169,10 +1218,35 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     t_seg = time.time() - t0
     head_blobs = blobs(views["cam_head"], "cam_head")
     groups = label_groups(task)
+    if instruction:
+        groups = restrict_by_instruction(groups, instruction)
 
     placed: list[tuple[dict, Hypothesis]] = []
     record: dict = {"task": task, "instruction": instruction}
     timings = {"segment_s": round(t_seg, 3)}
+
+    # ---- labels pinned to table slots by the config: start at the slot (place frame, yaw 0), refine locally
+    slots = fixed_slot_labels(task) if cfg.use_slots else {}
+    slot_placed = []
+    if slots:
+        for gi, g in enumerate(groups):
+            mine = [lab for lab in g["labels"] if lab in slots]
+            if not mine:
+                continue
+            for lab in mine:
+                x, y, tag = slots[lab]
+                key0 = g["candidates"][0]
+                sms = [s_ for s_ in shape_models(key0) if not tag or s_.tag == tag] or list(shape_models(key0))
+                sm = sms[0]
+                xr, yr, yawr, loss, per = refine(sm, x, y, 0.0, views, maxiter=40, xy_step=0.003, yaw_step=0.03,
+                                                 fix_yaw=True)
+                if np.hypot(xr - x, yr - y) > 0.02:  # settling moves a few mm; a big jump is a wrong fit
+                    xr, yr, loss, per = x, y, 0.5, {}
+                h = Hypothesis(gi, key0, sm.tag, xr, yr, 0.0, loss, per)
+                h.per_view.update({"geom_group": [k for k in g["candidates"]], "slot": True, "sil_loss": round(float(loss), 4)})
+                slot_placed.append((g, h, lab))
+            g["labels"] = [lab for lab in g["labels"] if lab not in mine]
+        groups = [g for g in groups if g["labels"]]
 
     # ---- fixed-pose geometry (e.g. a ground-standing dustbin): place at the config pose, flagged
     pending = []
@@ -1276,8 +1350,13 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             continue
         refs = {k: ref_color(k) for k in geom_keys}
         mode = g["select_mode"].get("mode", "unique")
-        C = np.array([[appearance_distance(obs_cols[i], refs[k]) if obs_cols[i] is not None else 1.0 for k in geom_keys]
-                      for i in members])
+        if all(k.split("/")[1] in TEXTURE_CRITICAL for k in geom_keys):
+            # glyph identity (mahjong tiles, digit cards): textured render-and-compare per candidate
+            C = np.array([[(lambda t_: 1.0 if t_ is None else t_)(texture_cost(chosen[i].sm(), chosen[i].T(), views, k, min_px=20))
+                           for k in geom_keys] for i in members])
+        else:
+            C = np.array([[appearance_distance(obs_cols[i], refs[k]) if obs_cols[i] is not None else 1.0 for k in geom_keys]
+                          for i in members])
         if mode == "same":
             k = geom_keys[int(np.argmin(C.sum(0)))]
             for i in members:
@@ -1334,6 +1413,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             record.setdefault("_missing", []).append(lab)
             record.setdefault("_not_found", []).append({"label": lab, "candidates": g["candidates"][:20],
                                                         "confidence": 0.0, "reason": "no foreground explained"})
+    for g, h, lab in slot_placed:
+        h.per_view["label"] = lab
+        placed.append((g, h))
     for g, h in placed:
         typ = g["type"]
         cat = h.key.split("/")[1]
