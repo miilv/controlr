@@ -76,6 +76,9 @@ def load_backgrounds(root: Path | None = None) -> dict[str, np.ndarray]:
         p = root / f"{c}.png"
         if p.exists():
             out[c] = cv2.cvtColor(cv2.imread(str(p)), cv2.COLOR_BGR2RGB)
+    p = root / "cam_head_clean_unseen.png"
+    if p.exists():
+        out["cam_head_clean_unseen"] = (cv2.imread(str(p), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
     return out
 
 
