@@ -246,17 +246,17 @@ def main(argv=None) -> None:
         if not run.load(lay)["stable"]:
             index[str(seed)] = {"status": "reset unstable"}
             continue
-        if a.probe:
+        if a.probe:                                   # the facts this module relies on, once, then plan as usual
             dp = DemoPlanner(run)
             rm = run.env.robot_manager
             print("[demo] probe", json.dumps(jsonable({
                 "robot": dp.robot.robot_name, "arm_name": dp.robot.arm_name, "q0": dp.q0,
-                "origin": dp.robot.entity_origin_pose, "planner_dt": getattr(dp.planner, "dt", None),
+                "origin": list(dp.robot.entity_origin_pose), "planner_dt": getattr(dp.planner, "dt", None),
                 "fingers": rm.get_end_effector_real_val(dp.robot, env_idx_list=[0])[0],
                 "collect_interval": run.env.obs_manager.collect_interval,
-                "objects": {o["label"]: o["pos"] for o in run.objects_gt() if o.get("label") and not o.get("clutter")}})),
-                flush=True)
-            break
+                "objects": {o["label"]: o["pos"] for o in run.objects_gt() if o.get("label") and not o.get("clutter")}}),
+                default=str), flush=True)
+            a.probe = False
         data, info = plan_demo(run, seed)
         rec = {"from": f.name, **info}
         if data is not None:
