@@ -1,6 +1,7 @@
 # Runbook: when something breaks
 
 Machines and paths — [ENVIRONMENT.md](ENVIRONMENT.md). Past cases — [incidents/](incidents/).
+A new GPU box (RoboDojo + perception in ~1 h, one command) — [RUNBOOK-new-gpu-box.md](RUNBOOK-new-gpu-box.md).
 compute3 is a shared machine: read-only by default, ours is only `~/controlr*`.
 
 ## 1. compute3: no GPU (`nvidia-smi` can't reach the driver)
