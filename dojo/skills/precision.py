@@ -147,6 +147,7 @@ def _align_R(a, b) -> np.ndarray:
 # ============================================================================ strike_in_order
 
 LOW_TIP = 0.0006              # m: fingertips over the table for a pick of a part lying on it (a coin, a fallen handle)
+PINCH_OFFSET = 0.0065         # m: a flat disc is pinched this far off its centre (it hangs below the pads, on edge)
 STRIKE_PRESS = 0.0015         # the working end is commanded this far into the surface (a light touch)
 STRIKE_LIFT = 0.07            # between strikes the working end's lowest point rises this far above the surface
 STRIKE_DOWN_RAD = 0.06        # rad/step of the stroke down (a strike, not a press)
@@ -496,9 +497,13 @@ def edge_grasps(sk: Skills, o, arm: str, floor_z: float, tilts=(0.0, 25.0, -25.0
     return out
 
 
-def pinch_grasps(sk: Skills, o, arm: str, tip_clear: float = 0.0006, n_dir: int = 6) -> list[G.Grasp]:
+def pinch_grasps(sk: Skills, o, arm: str, tip_clear: float = LOW_TIP, n_dir: int = 6,
+                 offsets=(PINCH_OFFSET, -PINCH_OFFSET)) -> list[G.Grasp]:
     """Grasps of a disc lying flat (a coin on the table): straight down, the pads closing across a diameter with
-    the fingertips ``tip_clear`` above the table (the disc is thinner than the usual fingertip clearance)."""
+    the fingertips ``tip_clear`` above the table (the disc is thinner than the usual fingertip clearance), the hand
+    ``offsets`` (m) off the centre along the pads' width: turned on edge, the disc then hangs below the pads' line
+    (its centre of mass under the two rim contacts) and reaches further below the fingers (twin: pinched at its
+    centre a coin went 2 mm into the slot and fell over on the bank, 3/3)."""
     k = disc_axis(o)
     if k is None:
         return []
@@ -508,12 +513,26 @@ def pinch_grasps(sk: Skills, o, arm: str, tip_clear: float = 0.0006, n_dir: int 
     c = o.center_w
     width = float(np.delete(o.asset.extents, k).max())
     out = []
+    from dojo.skills.kinematics import down_R
     for i in range(n_dir):
         yaw = math.pi * i / n_dir
-        from dojo.skills.kinematics import down_R
-        T = T_from(np.array([c[0], c[1], max(TABLE_Z, o.bottom_z) + tip_clear + 0.0126]), down_R(yaw))
-        out.append(G.Grasp("pinch", T, width, pre_dist=0.05, score=0.01 * i, note=f"pinch yaw {math.degrees(yaw):.0f}"))
+        R = down_R(yaw)
+        for e in offsets:
+            p = np.array([c[0], c[1], max(TABLE_Z, o.bottom_z) + tip_clear + 0.0126]) + R[:, 2] * e
+            out.append(G.Grasp("pinch", T_from(p, R), width, pre_dist=0.05, score=0.01 * i,
+                               note=f"pinch yaw {math.degrees(yaw):.0f} off {e*1000:+.1f} mm"))
     return out
+
+
+def disc_hangs(o):
+    """``pair_ok`` for ``plan_transfer``: the disc's centre at least 4 mm below the TCP at the place (it hangs under the
+    pads' line, so most of it is below the fingers)."""
+    def ok(g, T_tcp_obj, T_obj, T_tcp) -> bool:
+        if g.method != "pinch":
+            return True
+        c = T_obj[:3, :3] @ o.asset.center + T_obj[:3, 3]
+        return float(c[2]) < float(T_tcp[2, 3]) - 0.004
+    return ok
 
 
 def holder_of(sk: Skills, label: str) -> str | None:
@@ -581,7 +600,7 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
     flat = abs(float(sk.refresh().obj(obj).R[2, k])) > 0.9
     sk.coll.finger_margin = 0.0 if flat else old_fm
     if flat:                                         # a pinch off the table lifts at the usual rate
-        tkw = {**tkw, "pick_kw": {"squeeze": DISC_SQUEEZE}}
+        tkw = {**tkw, "pick_kw": {"squeeze": DISC_SQUEEZE}, "pair_ok": disc_hangs(sk.world.obj(obj))}
     try:
         res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.02, tol_tilt=30.0, tol_z=0.06, ignore=(rec,),
                              place_kw=place_kw, air_handover=False, transfer_kw=tkw)

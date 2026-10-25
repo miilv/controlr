@@ -852,7 +852,7 @@ class Skills:
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
                       q_start: dict | None = None, max_pick_tilt: float = 50.0, box_tilts=(0.0, 25.0, -25.0),
-                      lift_to_pre: bool = False, screen_fingers_out: bool = False):
+                      lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
@@ -867,6 +867,7 @@ class Skills:
         a toaster 12 cm taller: the 8 cm lift's joint move to the pre-place cut through the toaster).
         ``screen_fingers_out``: screen each place at the pose ``place_kw["fingers_out"]`` lets go from (the TCP raised
         until the fingertips clear the receptacle's top; a coin dropped into a slot from a grasp at its middle).
+        ``pair_ok(grasp, T_tcp_obj, T_obj, T_tcp) -> bool``: an extra test of each screened grasp-place pair.
         Returns (PickPlan, PlacePlan) or a SkillResult."""
         w = self.world
         obj = w.obj(label)
@@ -935,6 +936,8 @@ class Skills:
                     if screen_fingers_out and fo_ref is not None:
                         T_tcp[2, 3] += self.tips_raise(T_tcp, fo_ref + 0.003)
                     if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > PLACE_REACH:
+                        continue
+                    if pair_ok is not None and not pair_ok(g, T_tcp_obj, T_obj, T_tcp):
                         continue
                     n_ik += 1
                     r2 = self.kin.ik(a, T_tcp, w.home_q[a], n_random=0)
