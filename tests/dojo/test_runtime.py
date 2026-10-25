@@ -539,7 +539,7 @@ def test_refine_hook_updates_the_belief_only_when_accepted():
         def __init__(self, ok):
             self.ok, self.calls = ok, []
 
-        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None):
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
             self.calls.append([o["label"] for o in objects])
             p = list(objects[0]["pos"])
             p[0] += 0.005
@@ -579,7 +579,7 @@ def test_refine_runs_at_every_hover_in_an_episode():
                                          "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}}
                                         for o in env.objects]}}
 
-        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None):
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
             assert arm in ("left", "right")
             self.n += 1
             o = objects[0]
@@ -626,7 +626,7 @@ def test_refine_not_ok_off_prior_asks_for_a_rehover():
     env = _env()
 
     class OffCentre:
-        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None):
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
             o = objects[0]
             return {o["label"]: {"ok": False, "pos": [o["pos"][0] + 0.02, o["pos"][1], o["pos"][2]], "quat": o["quat"],
                                  "shift_mm": 20.0, "iou": 0.2}}
@@ -666,3 +666,29 @@ def test_twin_error_falls_back_to_single_plan_and_still_finishes(monkeypatch):
     rep = run_episode(pol, FakeEpisode(env), "gt")
     assert rep["error"] is None and _stacked(env)
     assert rep["verify"]["errors"] == 1 and rep["verify"]["calls"] == 0
+
+
+def test_place_refine_passes_the_held_object_and_rehovers_higher():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    seen = {}
+
+    class HeldAware:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            seen["held"], seen["labels"], seen["idv"] = held, [o["label"] for o in objects], identity_vocabulary
+            o = objects[0]
+            return {o["label"]: {"ok": False, "pos": None, "quat": None, "iou": 0.1}}
+
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=HeldAware())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.belief.attached["left"] = ("block_2", np.eye(4))
+
+    class Sk:
+        refine_ctx = {"kind": "place", "label": "block_0", "arm": "left", "held": ("Rigid/block/00005", [0, 0, 0.9, 1, 0, 0, 0])}
+    out = pol._refine_hook(prov, Sk(), "block_0", "left", "place")
+    assert seen["held"][0] == "Rigid/block/00005" and seen["labels"] == ["block_0", "block_1"] and seen["idv"] is None
+    assert out["rehover_dz"] == 0.03 and np.allclose(out["rehover"][0], prov.belief.objects["block_0"].pos)

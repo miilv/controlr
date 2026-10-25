@@ -66,6 +66,7 @@ class RuntimeConfig:
     refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
+    rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -340,11 +341,15 @@ class RuntimePolicy:
         o = prov.belief.objects.get(label) if prov.belief else None
         if o is None or label in prov.belief.held_labels():
             return None
-        others = [x for x in prov.belief.movable() if x.label != label]
+        ctx = getattr(sk, "refine_ctx", None) or {}
+        held = ctx.get("held")                          # (key, pose7) of the object in this arm's jaws (place)
+        held_label = next((lab for a, (lab, _) in prov.belief.attached.items() if a == arm), None) if prov.belief else None
+        others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [o] + others]
         idv = prov.task if (self.cfg.refine_identity and kind == "pick") else None
-        res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv)
+        res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv,
+                                       held=held)
         r = res.get(label) or {}
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
               **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why")}}
@@ -355,7 +360,14 @@ class RuntimePolicy:
             if (r.get("pos") is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
                     and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm):
                 ev["rehover"] = True
-                return {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float))}
+                hint = {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float))}
+                if kind == "place":
+                    hint["rehover_dz"] = self.cfg.rehover_place_dz
+                return hint
+            if kind == "place" and held is not None and self.cfg.rehover_place_dz > 0:
+                # the support may be hidden behind the carried object: look again from higher up, same pose
+                ev["rehover"] = "higher"
+                return {"rehover": (o.pos.copy(), o.quat.copy()), "rehover_dz": self.cfg.rehover_place_dz}
             return None
         new_id = r.get("obj_id")
         if new_id and new_id != o.asset.key and r.get("identity_ok"):
