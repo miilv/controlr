@@ -1758,9 +1758,12 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
             q = o.asset.place.get("up")
             R = rot_z(b.yaw()) @ (quat_to_R(np.asarray(q, float)) if q is not None else level_R(o.R))
             tg = [rest_with_R(sk, lab, top_w[:2], R, z_bottom=float(top_w[2]) + drop)]
+            # 40-deg top grasps and a lift to the pre-place height (twin, skills3: a far peg had 0 grasp-place pairs
+            # for 3-4 of 10 pieces per layout; the same reach limit as a toaster's far slot)
             r = place_oriented(sk, lab, tg, yaw_sym=4, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08, ignore=(base,),
                                place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                         "servo": True, "servo_ref": base})
+                                         "servo": True, "servo_ref": base},
+                               transfer_kw={"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True})
             (done if r.ok else failed).append(lab)
             for a in ARMS:
                 if sk.held[a] is not None:
