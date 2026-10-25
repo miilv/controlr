@@ -44,6 +44,14 @@ class Divergence(Exception):
         self.detail = detail
 
 
+class LostObject(Exception):
+    """A pick-hover refine could not find the object anywhere near its belief pose: search for it before picking."""
+
+    def __init__(self, label: str, pos, quat, key: str):
+        super().__init__(f"{label} not found near its belief pose")
+        self.label, self.pos, self.quat, self.key = label, np.asarray(pos, float), np.asarray(quat, float), key
+
+
 class KinematicBelief:
     def __init__(self, objects: dict[str, ObjectState], kin: X5Kin, state: dict, attach_margin: float = 0.015):
         self.kin = kin
@@ -339,4 +347,4 @@ class RuntimeProvider:
                           notes=self.notes)
 
 
-__all__ = ["RuntimeProvider", "KinematicBelief", "Divergence"]
+__all__ = ["RuntimeProvider", "KinematicBelief", "Divergence", "LostObject"]

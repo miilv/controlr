@@ -921,3 +921,60 @@ def test_divergence_update_matches_by_position_not_label():
     prov.resync(b.obs)
     assert abs(float(prov.belief.objects["block_1"].pos[0]) - 0.12) < 1e-9          # moved by its own 20 mm
     assert abs(float(prov.belief.objects["block_2"].pos[0]) - 0.30) < 1e-9          # untouched
+
+
+def test_failed_pick_refine_triggers_a_local_search():
+    """block_1's estimate is 35 mm off; at its pick hover refine finds nothing (iou 0.05, no suggestion): the
+    policy treats it as lost, searches around its belief pose with a wrist look, refits it there and re-plans."""
+    env = _env()
+    true1 = next(o for o in env.objects if o["label"] == "block_1")
+
+    class LostOnce:
+        def __init__(self):
+            self.pick_calls = 0
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None, fuse_mode=None):
+            recs = []
+            for o in env.objects:
+                p = list(o["pos"])
+                if o["label"] == "block_1":
+                    p[0] += 0.035
+                recs.append({"category": "block", "category_idx": 5, "label": o["label"], "default_pos": p,
+                             "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}})
+            return {"Rigid": {"block": recs}}
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            if o["label"] == "block_1" and max_shift_m < 0.1:          # a hover refine (not the search's 10 cm fit)
+                self.pick_calls += 1
+                if abs(o["pos"][0] - true1["pos"][0]) > 0.02:
+                    return {"block_1": {"ok": False, "pos": None, "quat": None, "iou": 0.05}}
+            if max_shift_m >= 0.1:                                       # the search fit at the region
+                return {o["label"]: {"ok": True, "pos": list(true1["pos"]), "quat": [1, 0, 0, 0], "shift_mm": 35.0,
+                                     "iou": 0.9}}
+            return {o["label"]: {"ok": True, "pos": list(o["pos"]), "quat": o["quat"], "shift_mm": 0.0, "iou": 0.9}}
+
+        def search_regions(self, frame, record, vocabulary):
+            return []
+
+        def look_poses(self, target, arm, variants=None):
+            from dojo.skills.geometry import T_from, T_to_pose7
+            from dojo.skills.kinematics import down_R
+            x = -0.25 if arm == "left" else 0.25
+            return [{"arm": arm, "dist": 0.18, "elev": 70,
+                     "flange_pose": T_to_pose7(X5Kin().flange_from_tcp(T_from((x, -0.15, 0.90), down_R(0.0)))).tolist()}]
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"prec": 1.0, "n_vis": 500, "n_px": 600}} for o in objects}
+
+        def look_plan(self, *a, **k):
+            return []
+
+    pc = LostOnce()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True, search_lost=True, rehover_when_far=False),
+                        assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    ls = [e for e in rep["events"] if e["kind"] == "lost_search"]
+    assert ls and ls[0]["label"] == "block_1" and ls[0]["found"], rep["events"][-6:]
+    assert _stacked(env)
