@@ -384,6 +384,15 @@ class RuntimePolicy:
         if not r.get("ok"):
             # perception found the object away from the prior but could not fit it well from this hover (it sits
             # off-centre in the wrist view): ask skills to hover over that spot and refine once more
+            if r.get("suggest_xy") is not None and (r.get("suggest_shift_mm") or 0) > self.cfg.rehover_min_shift_mm:
+                # perception's in-frame search: "the object is probably that way" (a direction, not a pose)
+                p = o.pos.copy()
+                p[:2] = np.asarray(r["suggest_xy"], float)[:2]
+                ev["rehover"] = "suggest"
+                hint = {"rehover": (p, o.quat.copy())}
+                if kind == "place":
+                    hint["rehover_dz"] = self.cfg.rehover_place_dz
+                return hint
             if (r.get("pos") is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
                     and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm):
                 ev["rehover"] = True
@@ -437,7 +446,12 @@ class RuntimePolicy:
             arms = [reg["arm"]] if reg.get("arm") in ("left", "right") else []
             arms += [a for a in ("left", "right") if a not in arms]
             mv, used = None, None
-            for arm in arms:
+            if reg.get("flange_pose") is not None and reg.get("arm") in ("left", "right"):
+                T_tcp = kin.tcp_from_flange(pose7_to_T(np.asarray(reg["flange_pose"], float)))
+                m = sk.motion.to_pose(reg["arm"], sk.ex.q[reg["arm"]], T_tcp, FAST, "search", gripper=sk.ex.g[reg["arm"]])
+                if m.ok:
+                    mv, used = m, reg["arm"]
+            for arm in ([] if mv is not None else arms):
                 for p in self.perception().look_poses(reg["target"], arm):
                     T_tcp = kin.tcp_from_flange(pose7_to_T(np.asarray(p["flange_pose"], float)))
                     m = sk.motion.to_pose(arm, sk.ex.q[arm], T_tcp, FAST, "search", gripper=sk.ex.g[arm])
@@ -446,7 +460,8 @@ class RuntimePolicy:
                         break
                 if mv is not None:
                     break
-            entry = {"target": reg.get("target"), "why": reg.get("why"), "arm": used, "ok": mv is not None}
+            entry = {"target": reg.get("target"), "why": reg.get("why"), "for": reg.get("for"), "arm": used,
+                     "ok": mv is not None}
             if mv is None:
                 log.append(entry)
                 continue

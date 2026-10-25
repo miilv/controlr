@@ -166,12 +166,21 @@ class _Perception:
     def search_regions(self, frame: dict, record: dict, vocabulary: str) -> list[dict]:
         """perception's ``search_regions`` when it exists; else the table regions the home grippers hide from the
         head camera, then the missing labels' placement-prior region centres (public task config)."""
+        from dojo.perception import inverse_layout as IL
         try:
             from dojo.perception.look import search_regions as p_search
         except ImportError:
             p_search = None
         if p_search is not None:
-            return p_search(decode_frame(frame), record, vocabulary)
+            expected: dict = {}
+            for g in IL.label_groups(vocabulary):
+                cats = {k.split("/")[1] for k in g.get("candidates") or []}
+                if len(cats) == 1 and g.get("type", "Rigid") != "Geometry":
+                    c = cats.pop()
+                    expected[c] = expected.get(c, 0) + len(g.get("labels") or [])
+            regs = p_search(record, expected=expected or None)
+            return [{"target": r["center"], "arm": r.get("arm"), "why": r.get("kind"), "for": r.get("for"),
+                     "flange_pose": r.get("flange_pose")} for r in regs]
         from dojo.perception import inverse_layout as IL
         from dojo.perception.look import HIDDEN_UNDER_GRIPPERS
         out = [{"target": np.round(v, 4).tolist(), "arm": a, "why": "under the home gripper"}
@@ -268,7 +277,10 @@ class _Perception:
             pose = np.asarray(r.get("pose"), float) if r.get("pose") is not None else None
             shift = None if pose is None else float(np.hypot(*(pose[:2] - np.asarray(o["pos"][:2], float))))
             ok = bool(r.get("ok")) and pose is not None and shift <= max_shift_m
+            sug = r.get("suggest_xy")
             return {o["label"]: {"ok": ok, "pos": None if pose is None else pose[:3].tolist(),
+                                 "suggest_xy": sug, "suggest_shift_mm": r.get("suggest_shift_mm"),
+                                 "searched": r.get("searched"),
                                  "quat": None if pose is None else pose[3:7].tolist(),
                                  "shift_mm": None if shift is None else round(shift * 1000, 1),
                                  "iou": r.get("iou"), "visible_frac": r.get("visible_frac"),
