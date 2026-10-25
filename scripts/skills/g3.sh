@@ -9,6 +9,7 @@
 # - runs RoboDojo's python inside a systemd user scope: MemoryMax=10G, CPUQuota=600%.
 # Physics-only light lane (no render service; parallel to the shared lane):
 #   DOJO_GPU_LOCK=~/dojo-gpu-light.lock G3_MIN_MEM_GB=20 G3_MEMORY_MAX=8G G3_ABORT_MEM_GB=8 (abort below 8 GB)
+#   two slots: DOJO_GPU_LOCKS="$HOME/dojo-gpu-light.lock $HOME/dojo-gpu-light2.lock" (a job takes a free one)
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export RD_HOME="${RD_HOME:-$HOME/dojo-robodojo}" DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
@@ -22,10 +23,26 @@ for i in $(seq 360); do
   sleep 20
 done
 [[ "$(avail)" -ge "$MIN_GB" ]] || { echo "[g3.sh] not enough memory, giving up" >&2; exit 75; }
-LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
-exec 9>>"$LOCK"
-echo "[g3.sh] waiting for $LOCK (held by: $(tr '\n' ' ' < "$LOCK" | cut -c1-120))" >&2
-flock -w "${G3_LOCK_WAIT_S:-14400}" 9 || { echo "[g3.sh] gave up waiting for $LOCK" >&2; exit 75; }
+LOCKS="${DOJO_GPU_LOCKS:-${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}}"   # several lock files = slots: take a free one
+if [[ "$LOCKS" == *" "* ]]; then
+  t0=$(date +%s); LOCK=""
+  while [[ -z "$LOCK" ]]; do
+    for L in $LOCKS; do
+      exec 9>>"$L"
+      if flock -n 9; then LOCK="$L"; break; fi
+      exec 9>&-
+    done
+    [[ -n "$LOCK" ]] && break
+    (( $(date +%s) - t0 > ${G3_LOCK_WAIT_S:-14400} )) && { echo "[g3.sh] gave up waiting for $LOCKS" >&2; exit 75; }
+    sleep 15
+  done
+  echo "[g3.sh] took $LOCK" >&2
+else
+  LOCK="$LOCKS"
+  exec 9>>"$LOCK"
+  echo "[g3.sh] waiting for $LOCK (held by: $(tr '\n' ' ' < "$LOCK" | cut -c1-120))" >&2
+  flock -w "${G3_LOCK_WAIT_S:-14400}" 9 || { echo "[g3.sh] gave up waiting for $LOCK" >&2; exit 75; }
+fi
 printf 'pid=%s stream=%s start=%s cmd=g3 %s\n' "$$" "${DOJO_STREAM:-skills}" "$(date -u +%FT%TZ)" "$*" > "$LOCK"
 [[ "$(avail)" -ge "$MIN_GB" ]] || { echo "[g3.sh] memory dropped below $MIN_GB GB while waiting for the lock" >&2; exit 75; }
 export SIMLAB_GPU=0 SIMLAB_MIN_FREE_MB=0      # the lock is held here
