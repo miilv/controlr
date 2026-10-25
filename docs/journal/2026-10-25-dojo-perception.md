@@ -134,3 +134,19 @@ pack / push_T / bottles pending (`~/dojo-perception-data/after_l2.sh` runs each 
 settled records equal D0 frame-0 GT; their frame0 images match D0's, mean |Δ| 0.7). First 5 stack_blocks
 episodes (100000–100004, hard layouts): conservative fuse 0 objects worse / 0 better than frame 0; the old
 full fuse raised xy p90 17.2 → 20.6 mm. Look variants: "plan" 12 objects, "d0.18/e70" fallback 3, no harm.
+
+## v1 vs v2 look plans, all tasks (full-fuse scoring, simlab frame_L1 / frame_L2)
+| task / class | n | frame 0 | v1 | v2 |
+|---|---|---|---|---|
+| build_tower | 200 | 0.81 | 0.87 | 0.89 |
+| push_T T | 25 | 0.84 | 0.92 | 0.96 |
+| push_T pad | 25 | 0.80 | 0.80 | 0.76 |
+| stack_blocks | 75 | 0.83 | 0.87 | 0.85 |
+| stack_bowls | 75 | 0.88 | 0.91 | 0.92 |
+| put_bottles | 100 | 0.76 | 0.77 | 0.84 |
+| pack box / car / toothbrush / hammer / shoe | 25 each | 0.92/0.56/0.60/0.88/0.52 | 0.80/0.72/0.72/0.88/0.80 | 0.76/0.60/0.72/0.88/0.64 |
+| all | 625 | 0.82 | 0.84 | 0.84 |
+v2 (partly-hidden first, clearance-aware azimuths) helps bottles (+0.07), T, tower, bowls; it costs pack's
+car and shoe (which v1 reviewed for flips) and the pad. Net equal: the targeting should be per need
+(flip review for thin pack items, partly-hidden for blocks/pads). Conservative-fuse evals on v2 queued
+(`cons_l2.sh`), since that is what the runtime uses.
