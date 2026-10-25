@@ -433,6 +433,15 @@ def cmd_checks(a) -> None:
                 except Exception as e:  # noqa: BLE001
                     lines.append(f"fp {o.get('label')} {typ} {tag}: error {e}")
     for o in run.objects_gt(0):
+        if o.get("clutter"):
+            continue
+        try:
+            bb = np.asarray(lm.get_instance_bbox_vertices(inst_name=o["inst_name"], env_idx=0), float).reshape(-1, 3)
+            lines.append(f"bbox {o.get('label')} (object frame, as the checker reads it) {np.round(bb.min(0), 4).tolist()} "
+                         f"{np.round(bb.max(0), 4).tolist()}")
+        except Exception as e:  # noqa: BLE001
+            lines.append(f"bbox {o.get('label')}: {e}")
+    for o in run.objects_gt(0):
         if not o.get("clutter"):
             lines.append(f"obj {o.get('label')} pos {np.round(o['pos'], 4).tolist() if o.get('pos') else None} "
                          f"quat {np.round(o['quat'], 4).tolist() if o.get('quat') else None} joints {o.get('joint_pos')}")
