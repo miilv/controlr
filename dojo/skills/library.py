@@ -997,7 +997,7 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
 
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
-                   max_spots: int = 3, relay_near=(0.0, -0.28)) -> SkillResult:
+                   max_spots: int = 3, relay_near=(0.0, -0.28), air_handover: bool = True) -> SkillResult:
     """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
     the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
     through free table spots, the shortest that plans end to end:
@@ -1074,6 +1074,9 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     if float(np.max(o.asset.extents)) > HANDOVER_MAX_EXTENT:
         notes.append(f"no in-air handover for a {float(np.max(o.asset.extents))*1000:.0f} mm object")
         return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
+    if not air_handover:
+        notes.append("in-air handover not attempted")
+        return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
     h = plan_air_handover(sk, label, targets, yaw_sym, ignore, place_kw)
     if isinstance(h, dict):
         sk.log(f"[place_oriented] {label}: in-air handover {h['giver']} ({h['pick'].grasp.note}) -> {h['taker']} "
@@ -1087,6 +1090,38 @@ def _support_raw(o, tag: str) -> list:
     """Raw support frames (pose7) of ``tag`` from the asset (``AssetInfo.support`` keeps world-free pose7s)."""
     return [np.r_[np.asarray(c[:7], float)] if len(c) >= 7 else np.r_[np.asarray(c[:3], float), 1.0, 0, 0, 0]
             for c, _r in o.asset.support.get(tag, [])]
+
+
+INSERT_AIR_HANDOVER = True     # insertions that only plan through an in-air handover: attempt it (else lift + return)
+
+
+def lift_and_return(sk: Skills, label: str, lift: float = 0.08) -> SkillResult:
+    """Pick ``label`` with its most reliable grasp, lift it ``lift`` (a lift is the first rung of several ladders),
+    set it back down where it was, let go and back off."""
+    from dojo.skills import grasps as G
+    w = sk.refresh()
+    o = w.obj(label)
+    best = None
+    for arm in ARMS:
+        picks = sk.plan_pick(label, arm, return_all=True, keep=8, lift=lift, max_eval=80,
+                             grasps=G_box_and_usual(sk, o, arm))
+        if not isinstance(picks, list):
+            continue
+        for pp in picks:
+            G.pad_contact(o, pp.grasp.T)
+            if float(getattr(G.pad_contact, "depth", 0.0)) < 0.006:
+                continue
+            key = G.lift_hold(o, pp.grasp.T) + pp.steps / 100.0
+            if best is None or key < best[0]:
+                best = (key, pp)
+    if best is None:
+        return sk._record(SkillResult(False, "lift", "ik_fail", 0, None, note=f"no reliable pick of {label}"))
+    pp = best[1]
+    r = sk._record(sk.run_pick(pp))
+    if not r.ok:
+        return r
+    sk._record(sk.regrasp(pp.arm))           # straight back down onto the table, open, back off
+    return SkillResult(True, "lift", "ok", r.steps, pp.arm, note=f"{label} lifted {lift*1000:.0f} mm and set back")
 
 
 def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001,
@@ -1152,8 +1187,10 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
             place_kw = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
                         "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True}
             res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
-                                 place_kw=place_kw)
+                                 place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
             if not res.ok and res.status != "ended":
+                if "in-air handover not attempted" in res.note:
+                    lift_and_return(sk, obj)
                 return {"ok": False, "stage": f"insert {obj}", "result": res}
             return {"ok": True, "stage": "inserted"}
     fits = []
@@ -1199,8 +1236,10 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
     place_kw = {"pre_h": 0.02, "descend_rad": 0.025, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
                 "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True}
     res = place_oriented(sk, obj, targets, yaw_sym=ysym, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
-                         place_kw=place_kw)
+                         place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
     if not res.ok and res.status != "ended":
+        if "in-air handover not attempted" in res.note:
+            lift_and_return(sk, obj)
         return {"ok": False, "stage": f"insert {obj}", "result": res}
     return {"ok": True, "stage": "inserted"}
 
