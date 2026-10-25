@@ -260,3 +260,34 @@ Paired: refine rescued 2 (100004, 100015), lost 2 (100019, 100024: belief_mismat
   d0.18 / e70 fallback.
 - Next: base fix-up (the 4 layouts), refine arm rerun with held masking (`refine4`), mode A on the same 25,
   then the build_tower pair.
+
+## 6. Closed loop per object (lead's decision) and the 25-layout stack pair
+
+Implemented in the runtime (`RuntimeConfig.search / post_place / max_rehovers / rehover_when_far`, refine with the
+carried object masked):
+1. **Search**: objects still missing after the looks → perception's `search_regions(record, expected)` (expected
+   counts from the instruction-matched vocabulary) → a wrist over each region (its own look pose first). The twin
+   is never loaded with a missing object (verification off for that episode); if the search fails the partial
+   task is still planned and banked (lead's decision: partial credit beats 0).
+2. **Hover → refine → re-hover** up to 2 times: when refine is OK but found the object > 10 mm off (re-centre),
+   or not OK with perception's `suggest_xy` > 10 mm away, or (place) not OK at all (re-hover 3 cm higher).
+   skills2 owns `max_rehovers` (`0cc980d`, same interface; my temporary local patch dropped).
+3. **Post-place**: right after each release the provider refines the released object from the releasing arm's
+   wrist (it is at its retreat pose above it) and writes the measured pose into the belief; skills' place check
+   then sees the real offset (place_miss → re-plan; the resumable stack redoes only that block) and the next
+   twin load starts from it.
+4. **Banking**: `bank()` after each verified place, `finish()` on every exit path.
+
+Paired, 25 settled layouts, mode B + verify (control: refine off, with the 4 crash layouts rerun after the fix):
+
+| arm | success | score | steps med / max (550) | wall s / ep | failures |
+|---|---|---|---|---|---|
+| control (`B_stack_bundle_base3_*` + `_fix`) | 16/25 | 68.2 | 177 / 209 | 34 | perception_gross 9 |
+| closed loop (`B_stack_bundle_closed_*`) | 17/25 | 71.6 | 222 / 335 | 53 | perception_gross 7, verify_reject 1 |
+
+Rescued by the closed loop 3 (100002, 100004, 100015), lost 2 (100010: place 29 mm off and every candidate
+rejected; 100024: a block never found). Of the 7 perception_gross, 5 are a block never found although the search
+visited the right region (each missed block lies inside a `hidden_by_gripper` region): the re-estimate used the
+full fuse, whose proposals come only from frame 0's head view, where these blocks were never visible. Fix: at each
+region fit the missing label by wrist `refine()` (candidate at the found blocks' size, region centre prior, 10 cm
+search), full fuse as fallback. Not yet measured on the GPU.
