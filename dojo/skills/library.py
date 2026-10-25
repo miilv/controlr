@@ -664,6 +664,7 @@ def _grippers_apart(sk: Skills, a1: str, q1, g1: float, a2: str, q2, g2: float, 
     return float(np.min(np.linalg.norm(L1[:, None] - L2[None], axis=2))) >= min_links
 
 
+RELAY_PLAN_S = 150.0           # wall-time cap of the relay-chain search (twin: 21 min planning one hammer's relays)
 HANDOVER_CARRY = 0.07          # rad/step: the giver's carry into the handover pose (twin, 0.14: a key held on
                                # its round bow turned 50 deg in the pads during the carry and fell, 6 of 6)
 HANDOVER_PLAN_S = 40.0         # wall-time cap of the handover search once a solution is known (x3 without)
@@ -1011,7 +1012,12 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
         chains += [[("as_is", s1), ("target", s2)] for s1 in spots for s2 in spots
                    if float(np.linalg.norm(np.subtract(s1, s2))) > 0.09]
     notes, cache = [r.note[:120]], {}
+    import time as _time
+    t0 = _time.perf_counter()
     for chain in chains:
+        if _time.perf_counter() - t0 > RELAY_PLAN_S:
+            notes.append(f"relay search stopped after {RELAY_PLAN_S:.0f} s")
+            break
         legs, at, ok = [], None, True
         for kind, sp in chain:
             key = (kind, tuple(sp), None if at is None else tuple(np.round(at[:3, 3], 4)))

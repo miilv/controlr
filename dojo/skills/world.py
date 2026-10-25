@@ -98,7 +98,7 @@ class AssetDB:
         return info
 
 
-MAX_FACES = 30000             # meshes above this are clustered (tools, figurines, mice: 0.1-1.2 M faces; every
+MAX_FACES = 12000             # meshes above this are clustered (tools, figurines, mice: 0.1-1.2 M faces; every
 DECIMATE_CELL = 0.0015        # grasp ray cast and fit is O(faces)); precision parts (keys, plugs, strips) are below
 
 

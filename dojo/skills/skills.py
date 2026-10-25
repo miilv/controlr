@@ -189,6 +189,7 @@ class Skills:
         # labels the wrist refine must not be asked about (perception: tiles in a dense row fit their neighbours;
         # their layout slots are better than a refine there); a place carrying one of them is skipped too
         self.no_refine: set = set()
+        self._hq_cache: dict = {}
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
 
@@ -788,7 +789,6 @@ class Skills:
         # (twin: pliers squeezed across their diverging handles, a hammer across its head, slid out; the
         # handle at the centre of mass holds)
         irregular = held_box(obj, np.eye(4)).points is not None or G.com_off(obj) > 0.008
-        hq_cache: dict = {}
         for a in arms:
             q0 = (q_start or {}).get(a, self.ex.q[a])
             if callable(grasps):
@@ -826,10 +826,12 @@ class Skills:
                         continue
                     n_p += 1
                     if irregular:
-                        k = id(g)
-                        if k not in hq_cache:
-                            hq_cache[k] = G.hold_quality(obj, g.T)
-                        hq = 0.5 * hq_cache[k]
+                        # hold quality depends on the grasp in the object frame only: cached across calls (relay
+                        # legs re-plan the same object at other poses; twin: 21 min of planning for one hammer)
+                        k = (obj.asset.key,) + tuple(np.round((inv_T(obj.T) @ g.T)[:3, :].ravel(), 3))
+                        if k not in self._hq_cache:
+                            self._hq_cache[k] = G.hold_quality(obj, g.T)
+                        hq = 0.5 * self._hq_cache[k]
                     else:
                         hq = 0.0
                     screened.append((g.score + hq + 0.05 * (ti // max(1, yaw_sym)), a, g, T_obj))
