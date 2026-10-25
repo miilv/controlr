@@ -468,7 +468,11 @@ def lift_hold(obj: ObjectState, T_grasp: np.ndarray) -> float:
     if centre is None:
         return 9.0
     depth = getattr(pad_contact, "depth", 0.0)
-    return grasp_lever(obj, T_grasp, centre) / 0.01 + max(0.0, 0.008 - depth) / 0.002 * 0.5
+    # contact at the pad's edge holds nothing (twin: a key gripped where its shaft meets the bow, the bow
+    # touching the pads' edges only, stayed on the table 6/6)
+    edge = abs(float((np.asarray(centre) - T_grasp[:3, 3]) @ T_grasp[:3, 2]))
+    return (grasp_lever(obj, T_grasp, centre) / 0.01 + max(0.0, 0.008 - depth) / 0.002 * 0.5
+            + max(0.0, edge - 0.003) / 0.002 * 0.5)
 
 
 def contact_patch(obj: ObjectState, T_grasp: np.ndarray, **kw) -> float:
