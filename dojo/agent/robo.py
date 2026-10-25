@@ -41,6 +41,17 @@ class Result:
     def __bool__(self) -> bool:
         return self.ok
 
+    def __getitem__(self, k):            # the manual calls a skill's result a dict: r["ok"] works too
+        if k in ("ok", "status", "note", "steps", "arm"):
+            return getattr(self, k)
+        return self.extra[k]
+
+    def get(self, k, default=None):
+        try:
+            return self[k]
+        except KeyError:
+            return default
+
     def __repr__(self) -> str:
         x = "".join(f", {k}={v!r}" for k, v in self.extra.items())
         return (f"Result(ok={self.ok}, status={self.status!r}, steps={self.steps}"
