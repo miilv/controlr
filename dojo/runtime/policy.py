@@ -570,7 +570,7 @@ class RuntimePolicy:
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
               "prior7": [round(float(v), 4) for v in np.r_[o.pos, o.quat]],
               **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why",
-                                       "suggest_xy", "suggest_shift_mm")}}
+                                       "suggest_xy", "suggest_shift_mm", "fit_shift_mm", "p_why")}}
         if r.get("pos") is not None:
             ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         self.report["events"].append(ev)
@@ -600,6 +600,11 @@ class RuntimePolicy:
             o.pos, o.quat = pend                        # the second look did not confirm: back to the prior
             ev["why"] = (ev.get("why") or "") + " (large correction not confirmed, prior kept)"
             return None
+        if not r.get("ok") and str(r.get("p_why") or "").startswith("truncated"):
+            # the object is larger than the wrist view (a tower board): perception keeps the prior and no re-hover or
+            # search can do better from here
+            ev["why"] = (ev.get("why") or "") + " (truncated: prior kept, no re-hover)"
+            return None
         if (not r.get("ok") and kind == "pick" and self.cfg.search_lost and (r.get("iou") or 0) < self.cfg.lost_iou
                 and (r.get("suggest_xy") is None or (r.get("suggest_shift_mm") or 0) < 5.0)
                 and label not in getattr(self, "_lost_searched", set())):
@@ -626,10 +631,14 @@ class RuntimePolicy:
                 if kind == "place":
                     hint["rehover_dz"] = self.cfg.rehover_place_dz
                 return hint
-            if (r.get("pos") is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
-                    and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm and not on_neighbour(r["pos"])):
+            # the found-off fit: perception >= #36 sends it as fit_pos (pos = the prior), earlier versions as pos
+            fpos, fquat = ((r.get("fit_pos"), r.get("fit_quat")) if r.get("fit_pos") is not None
+                           else (r.get("pos"), r.get("quat")))
+            fshift = r.get("fit_shift_mm") if r.get("fit_pos") is not None else r.get("shift_mm")
+            if (fpos is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
+                    and (fshift or 0) > self.cfg.rehover_min_shift_mm and not on_neighbour(fpos)):
                 ev["rehover"] = True
-                hint = {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float))}
+                hint = {"rehover": (np.asarray(fpos, float), np.asarray(fquat, float))}
                 if kind == "place":
                     hint["rehover_dz"] = self.cfg.rehover_place_dz
                 return hint

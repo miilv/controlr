@@ -1768,3 +1768,39 @@ def test_refine_flip_keeps_the_prior_orientation():
     o = prov.belief.objects["block_1"]
     assert out and np.allclose(o.quat, q0) and abs(float(o.pos[0]) - x0 - 0.004) < 1e-9
     assert "prior orientation kept" in pol.report["events"][-1]["why"]
+
+
+@pytest.mark.parametrize("api", ["old", "new"])
+def test_not_ok_refine_rehovers_over_the_fit_with_either_perception_api(api):
+    """perception #36: a not-ok refine sends the prior as the pose and the raw fit as fit_pose; the runtime re-hovers
+    over the fit either way, and a truncated object (larger than the wrist view) keeps its prior without re-hover."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class R:
+        def __init__(self, why=None):
+            self.why = why
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            fit = [o["pos"][0] + 0.02, o["pos"][1], o["pos"][2]]
+            r = {"ok": False, "iou": 0.3, "p_why": self.why}
+            if api == "new":
+                r.update(pos=list(o["pos"]), quat=o["quat"], shift_mm=0.0, fit_pos=fit, fit_quat=o["quat"], fit_shift_mm=20.0)
+            else:
+                r.update(pos=fit, quat=o["quat"], shift_mm=20.0)
+            return {o["label"]: r}
+
+    def hook(pc):
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=pc)
+        pol.reset(FakeEpisode(env).info())
+        b = pol.bridge
+        b.obs, b.fresh = FakeEpisode(env).observe(), True
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        x0 = float(prov.belief.objects["block_1"].pos[0])
+        return pol._refine_hook(prov, None, "block_1", "left", "pick"), x0, pol
+    out, x0, _ = hook(R())
+    assert out and abs(float(out["rehover"][0][0]) - (x0 + 0.02)) < 1e-9
+    out, _, pol = hook(R("truncated"))
+    assert out is None and "truncated" in pol.report["events"][-1]["why"]

@@ -452,7 +452,14 @@ class _Perception:
             shift = None if pose is None else float(np.hypot(*(pose[:2] - np.asarray(o["pos"][:2], float))))
             ok = bool(r.get("ok")) and pose is not None and shift <= max_shift_m
             sug = r.get("suggest_xy")
+            # perception >= #36: a not-ok refine returns the PRIOR as "pose" and the raw fit as "fit_pose"
+            fit = np.asarray(r["fit_pose"], float) if r.get("fit_pose") is not None else (None if ok else pose)
+            fit_shift = None if fit is None else float(np.hypot(*(fit[:2] - np.asarray(o["pos"][:2], float))))
             return {o["label"]: {"ok": ok, "pos": None if pose is None else pose[:3].tolist(),
+                                 "fit_pos": None if fit is None else fit[:3].tolist(),
+                                 "fit_quat": None if fit is None else fit[3:7].tolist(),
+                                 "fit_shift_mm": None if fit_shift is None else round(fit_shift * 1000, 1),
+                                 "p_why": r.get("why"), "truncated_frac": r.get("truncated_frac"),
                                  "suggest_xy": sug, "suggest_shift_mm": r.get("suggest_shift_mm"),
                                  "searched": r.get("searched"),
                                  "quat": None if pose is None else pose[3:7].tolist(),
