@@ -1,0 +1,27 @@
+{
+ "version": "flagmodel-1",
+ "fitted_on": "D0 frame 0, 6 tasks x 25 layouts, B1 @ cb5c3a4 (d0_j1b_f0), found objects; target = pose outside the task tolerance",
+ "features": [
+  "bias",
+  "1-confidence",
+  "residual",
+  "hidden_frac",
+  "fg_resid_near",
+  "occluded",
+  "ambiguous",
+  "multi_view",
+  "margin<0.05"
+ ],
+ "weights": [
+  -3.8286,
+  1.4451,
+  1.7293,
+  1.9807,
+  -0.622,
+  0.5552,
+  1.5293,
+  -0.5753,
+  1.6646
+ ],
+ "threshold": 0.3
+}
