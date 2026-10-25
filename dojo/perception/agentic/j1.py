@@ -528,7 +528,7 @@ def held_look_impl(frames, calib, flange, grip_cmd, arm=None, stage=None, chat=N
             held = str(d["held"]).lower() in ("yes", "true")
             note = str(d.get("note", ""))[:300]
             break
-        msgs = msgs + [{"role": "assistant", "content": r.text or ""},
+        msgs = msgs + [{"role": "assistant", "content": (r.text or "").strip() or "(empty reply)"},
                        {"role": "user", "content": [{"type": "text", "text": 'Reply with exactly {"held": "yes" | "no", "note": "..."}.'}]}]
     t_ms = round(1000 * (time.time() - t0), 1)
     if held is None:

@@ -31,6 +31,15 @@ export AGENTIC_ENV_FILE=<file with OMNIROUTE_BASE_URL and OMNIROUTE_API_KEY>   #
 Every perceive reply's `notes` carries the model, `system_md5`, `protocol_md5`, turns, calls and the result source
 (`agent` | `b1_fallback`). `calls.jsonl` has the tokens and per-call seconds.
 
+### Direct Anthropic key instead of omniroute
+The runner is OpenAI-compatible only: it POSTs `<OMNIROUTE_BASE_URL>/chat/completions` with `Authorization: Bearer`,
+`stream` + `stream_options.include_usage` and base64 `image_url` parts, sends AGENTIC_MODEL verbatim as `model`, and adds
+no cache markers or extra headers. So Anthropic's OpenAI-compatible endpoint works as is:
+`OMNIROUTE_BASE_URL=https://api.anthropic.com/v1`, `OMNIROUTE_API_KEY=<the operator's key>`,
+`AGENTIC_MODEL=claude-sonnet-5-5`. Our dev numbers came from omniroute's `claude/` route, where Sonnet thought on
+some turns (up to ~5k reasoning tokens per turn). On the direct endpoint thinking stays off unless
+`AGENTIC_EXTRA_BODY='{"thinking": {"type": "enabled", "budget_tokens": 3000}}'` (max_tokens per turn is 6000).
+
 ## LIBERO (picks.json per capture)
 ```bash
 cd $A/controlr-agentic && LIBERO_PY=$B/.venv-liberopro/bin/python LIBERO_HARNESS=$B/harness AGENTIC_ENV_FILE=... \

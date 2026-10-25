@@ -309,6 +309,7 @@ def test_agentic_estimate_on_a_b1_record(tmp_path):
 
 
 def test_budget_gate_tracks_the_agent_scene(tmp_path):
+    pytest.importorskip("scipy")  # the tracker's TCP uses the camera module (perception extra)
     first = FakeChat([json.dumps({"answer": {"objects": [{"keep": 0}, {"label": "block_1", "pos": [-0.23, -0.14, 0.7825],
                                                                        "confidence": 0.9}]}})])
     calm = {"objects": [dict(_b1()["objects"][0], flags={}), dict(_b1()["objects"][1], pos=[-0.2, -0.1, 0.7825], confidence=0.85,
@@ -325,3 +326,40 @@ def test_budget_gate_tracks_the_agent_scene(tmp_path):
     b = next(o for o in out2["objects"] if o["label"] == "block_1")
     assert b["pos"][0] == -0.23 and "implausible_move" in out2["notes"]  # untouched: the agent's pose stands
     assert len(out2["objects"]) == 2
+
+
+def test_empty_reply_never_becomes_an_empty_assistant_turn(tmp_path):
+    fc = FakeChat(["", json.dumps({"answer": {"objects": [{"keep": 0}]}})])
+    out = j1.perceive_impl(_frames(), _calib(), FLANGE, {}, "x", None, b1=_b1(), chat=fc, model="claude-sonnet-5-5",
+                           refine=False, keep_unmentioned=False, log_dir=str(tmp_path))
+    assert "result=agent" in out["notes"]
+    assert all(m["content"] for m in fc.sent[1] if m["role"] == "assistant")
+    assert fc.sent[0][0]["role"] == "system" and not any("cache_control" in json.dumps(m) for m in fc.sent[1])
+
+
+def test_urllib_chat_reads_a_non_streamed_body(monkeypatch):
+    import http.server
+    import threading
+
+    from dojo.perception.agentic.llm import UrllibChat
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"choices": [{"message": {"content": '{"held": "no"}'}, "finish_reason": "stop"}],
+                                         "usage": {"prompt_tokens": 7, "completion_tokens": 3}}).encode())
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    monkeypatch.setenv("OMNIROUTE_BASE_URL", f"http://127.0.0.1:{srv.server_port}/v1")
+    monkeypatch.setenv("OMNIROUTE_API_KEY", "test-not-a-key")
+    monkeypatch.delenv("AGENTIC_ENV_FILE", raising=False)
+    r = UrllibChat(timeout_s=10)("claude-sonnet-5-5", [{"role": "user", "content": "x"}], max_tokens=10)
+    srv.shutdown()
+    assert r.text == '{"held": "no"}' and r.prompt_tokens == 7

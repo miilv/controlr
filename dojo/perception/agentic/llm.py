@@ -79,10 +79,14 @@ class UrllibChat:
             text, usage, finish = [], {}, None
             try:
                 with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+                    seen_sse, other = False, []
                     for raw in resp:
                         line = raw.decode("utf-8", "replace").strip()
                         if not line.startswith("data:"):
+                            if not seen_sse and line:
+                                other.append(line)
                             continue
+                        seen_sse = True
                         payload = line[5:].strip()
                         if payload == "[DONE]":
                             break
@@ -98,6 +102,14 @@ class UrllibChat:
                             finish = c.get("finish_reason") or finish
                         if degenerate("".join(text)):
                             break
+                    if not seen_sse and other:  # a server that answered without SSE: one JSON body
+                        try:
+                            body = json.loads("\n".join(other))
+                            ch = (body.get("choices") or [{}])[0]
+                            text = [((ch.get("message") or {}).get("content")) or ""]
+                            usage, finish = body.get("usage") or {}, ch.get("finish_reason")
+                        except Exception:
+                            pass
                 u = usage or {}
                 det = u.get("completion_tokens_details") or {}
                 pdet = u.get("prompt_tokens_details") or {}
@@ -107,7 +119,7 @@ class UrllibChat:
                                  cache_read_tokens=int(pdet.get("cached_tokens") or 0), request_bytes=len(data), finish_reason=finish)
             except urllib.error.HTTPError as e:
                 err = f"HTTP {e.code}: {e.read()[:300].decode('utf-8', 'replace')}"
-                if e.code not in (408, 429, 500, 502, 503, 504):
+                if e.code not in (408, 429, 500, 502, 503, 504, 529):  # 529: Anthropic "overloaded"
                     break
             except Exception as e:  # network / timeout
                 err = f"{type(e).__name__}: {e}"
