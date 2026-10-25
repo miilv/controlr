@@ -1,4 +1,5 @@
-"""scripts/bootstrap_gpu_box.sh + scripts/infra/: dry runs, the preflight's driver gate, pins, the replay policy.
+"""scripts/bootstrap_gpu_box.sh + scripts/infra/: dry runs, the preflight's driver / role gate, the basic probe, secrets,
+pins, dojo-box.json, the replay policy.
 
 No network, no GPU, no ssh: the dry run executes nothing; the preflight runs locally against a stub nvidia-smi."""
 
@@ -34,8 +35,8 @@ def dry(*args):
 
 def test_dry_run_prints_every_step_and_the_pins():
     out = dry("--role", "full")
-    for step in ("preflight", "conventions", "code", "catalog_post", "smoke_perception", "assets_post", "smoke_twin",
-                 "smoke_render", "smoke_dev_eval", "ready"):
+    for step in ("preflight", "conventions", "secrets", "code", "catalog_post", "smoke_perception", "smoke_bridge",
+                 "assets_post", "smoke_twin", "smoke_render", "smoke_dev_eval", "ready"):
         assert f"### {step}" in out, step
     pins = (PINS / "robodojo_commit.txt").read_text().split()
     shas = [s.lstrip("+- ") for s in pins if re.fullmatch(r"[+ -]?[0-9a-f]{40}", s)]
@@ -50,8 +51,11 @@ def test_dry_run_prints_every_step_and_the_pins():
     assert "-m dojo.simlab.runner --task stack_blocks" in out and "--images" in out
     assert "dojo.perception.eval_g1" in out and "PYOPENGL_PLATFORM=egl" in out
     assert "update_embodiment_config_path.py" in out      # curobo.yml regeneration
-    assert "dojo-gpu.lock" in out
+    assert "dojo-gpu.lock" in out and "dojo-gpu-light4.lock" in out    # heavy + four light-lane slots
+    assert "box_json.py > ~/dojo-box.json" in out
+    assert "bridge_episode.sh --id fk-smoke --fake --policy dojo.runtime.policy:RuntimePolicy" in out
     assert "ssh testbox-dry" in out and "ssh compute3" in out
+    assert "isaac6" not in out.split("### preflight")[1].split("### ready")[0].replace("isaac6.sh", "")  # role full: no 6.0
 
 
 def test_dry_run_touches_nothing(tmp_path):
@@ -62,10 +66,40 @@ def test_dry_run_touches_nothing(tmp_path):
     assert not any("testbox-dry" in str(p) for p in after)
 
 
-def test_physics_role_skips_the_render_smokes():
+def test_physics_role_skips_the_render_smokes_and_adds_isaac6():
     out = dry("--role", "physics")
     assert "### smoke_render" not in out and "### smoke_dev_eval" not in out
-    assert "### smoke_twin" in out and "### smoke_perception" in out
+    assert "### smoke_twin" in out and "### smoke_perception" in out and "### smoke_proxy_eval" in out
+    # compute3's Isaac Sim 6.0 build, without its shader caches, then a VERSION + python check
+    assert "cd /home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0 && find . -path ./kit/cache -prune" in out
+    assert "6.0.0-rc.59+release.41464.5f2772bc.gl" in out
+    assert "ISAAC_SIM_ROOT=~/dojo-isaac6/isaac-sim-6.0" in out and "scripts/simlab/proxy_eval.sh --task stack_blocks" in out
+
+
+def test_auto_role_dry_run_and_with_isaac6():
+    out = dry()                                           # default --role auto: the dry run shows full
+    assert "role auto: the preflight decides" in out and "### smoke_render" in out
+    out = dry("--role", "full", "--with-isaac6")
+    assert "### smoke_render" in out and "### smoke_proxy_eval" in out and "# isaac6" in out
+
+
+def test_basic_probe_runs_only_the_four_commands():
+    out = dry("--only", "preflight", "--probe", "basic")
+    line = next(x for x in out.splitlines() if x.strip().startswith("+ ssh testbox-dry"))
+    remote = line.split("'", 1)[1].rsplit("'", 1)[0]
+    assert {c.split()[0] for c in remote.split(";")} == {"nvidia-smi", "echo", "df", "free", "nproc"}
+    assert "bash -s" not in out and "curl" not in out    # nothing streamed, no network probes
+
+
+def test_secrets_dry_run_names_keys_never_values(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text("OMNIROUTE_BASE_URL=https://x.invalid/v1\nOMNIROUTE_API_KEY=sk-SECRET-1234\n"
+                   "ANTHROPIC_AUTH_TOKEN=decoy-SECRET\nexport OMNIROUTE_EXTRA='also SECRET'\n")
+    out = dry("--env-file", str(env))
+    assert "SECRET" not in out and "x.invalid" not in out
+    assert "keys: OMNIROUTE_API_KEY OMNIROUTE_BASE_URL OMNIROUTE_EXTRA" in out and "ANTHROPIC" not in out
+    assert "chmod 600 controlr/.env.new" in out
+    assert "### secrets" not in dry("--no-secrets")
 
 
 def test_assets_all_never_fetches_eval_data():
@@ -104,15 +138,19 @@ esac
     s.chmod(0o755)
 
 
-@pytest.mark.parametrize("driver, role, level", [("595.91.07", "full", "FAIL"), ("580.178.04", "full", "PASS"),
-                                                  ("570.86.10", "full", "PASS"), ("595.91.07", "physics", "WARN")])
-def test_preflight_driver_gate(tmp_path, driver, role, level):
+@pytest.mark.parametrize("driver, role, level, picked", [
+    ("595.91.07", "full", "FAIL", "full"), ("580.178.04", "full", "PASS", "full"), ("570.86.10", "full", "PASS", "full"),
+    ("595.91.07", "physics", "WARN", "physics"), ("580.178.04", "auto", "PASS", "full"),
+    ("595.91.07", "auto", "WARN", "physics")])
+def test_preflight_driver_gate(tmp_path, driver, role, level, picked):
     stub_nvidia_smi(tmp_path / "bin", driver)
     r = run(["bash", str(LIB), "preflight"], cwd=tmp_path,
             env={"PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}", "ROLE": role, "PREFLIGHT_NET": "0",
                  "HOME": str(tmp_path), "MIN_DISK_GB": "1"})
-    line = next(x for x in r.stdout.splitlines() if " driver " in f" {x} ")
+    line = next(x for x in r.stdout.splitlines() if re.match(r"(PASS|WARN|FAIL)\s+driver\s", x))
     assert line.startswith(level), r.stdout
+    assert f"@ role {picked}" in r.stdout.splitlines() and "@ driver " + driver in r.stdout
+    assert "sudo -n" not in LIB.read_text()             # the preflight never tries privileges
     if level == "FAIL":
         assert r.returncode == 1 and "NO-GO" in r.stdout
     assert "GPU" in r.stdout and not (tmp_path / "dojo-bootstrap").exists()      # read-only
@@ -184,7 +222,36 @@ def test_replay_deploy_marks_unfinished_episode_failed():
     assert env.take_action_cnt == [3] and env.success == [False] and env.end_flag == [True]
 
 
-@pytest.mark.skipif(shutil.which("shellcheck") is None, reason="shellcheck not installed")
+def test_box_json_capabilities_follow_the_smokes(tmp_path):
+    st = tmp_path / "box" / "state"
+    st.mkdir(parents=True)
+    for s, rc, res in (("smoke_twin", 0, "boot 15 s"), ("smoke_proxy_eval", 0, "success 1.0"),
+                       ("smoke_render", 0, "skipped (role physics)"), ("smoke_perception", 1, "T 9 mm [FAILED]")):
+        (st / f"{s}.rc").write_text(f"{rc}\n")
+        (st / f"{s}.result").write_text(res + "\n")
+    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"], "BOXJ_ROLE": "physics", "BOXJ_BOX": str(tmp_path / "box"),
+           "BOXJ_LOCKS": "dojo-gpu-light.lock dojo-gpu-light2.lock", "BOXJ_SB": "-p MemoryMax=24G -p CPUQuota=1400%",
+           "BOXJ_MIN": "25", "BOXJ_I6": "/x/isaac-sim-6.0", "BOXJ_SCOPES": "1", "BOXJ_ROOT": str(tmp_path)}
+    r = subprocess.run(["python3", str(ROOT / "scripts" / "infra" / "box_json.py")], capture_output=True, text=True,
+                       env=env, timeout=60)
+    assert r.returncode == 0, r.stderr
+    d = json.loads(r.stdout)
+    assert d["schema"] == "dojo-box/1" and d["role"] == "physics"
+    c = d["capabilities"]
+    assert c["isaac51_physics"] and c["isaac60_render"] and c["systemd_scopes"]
+    assert not c["isaac51_render"] and not c["official_dev_eval"] and not c["perception_egl"] and not c["llm_env"]
+    assert d["scopes"]["bundle"] == {"MemoryMax": "24G", "CPUQuota": "1400%"} and len(d["locks"]["light"]) == 2
+    assert d["paths"]["isaac_sim_6"] == "/x/isaac-sim-6.0"
+
+
+def shellcheck_cmd():
+    if shutil.which("shellcheck"):
+        return ["shellcheck"]
+    return None
+
+
+@pytest.mark.skipif(shellcheck_cmd() is None, reason="shellcheck not installed (uvx --from shellcheck-py shellcheck)")
 def test_shellcheck_clean():
-    r = run(["shellcheck", "-x", str(DRIVER), str(LIB)])
+    r = run([*shellcheck_cmd(), "-x", str(DRIVER), str(LIB), str(ROOT / "scripts" / "bootstrap_fleet.sh"),
+             str(ROOT / "scripts" / "infra" / "dev" / "ssh")])
     assert r.returncode == 0, r.stdout
