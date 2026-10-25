@@ -77,3 +77,16 @@ benchmark-aware manual; Apache-2.0, adapted, not copied).
 - Asset captions can be wrong (red cube captioned gray) or missing (hoe: only the description "yellow ice axe").
 - `gen_instruction` descriptions pick a random asset description. "Pick up the yellow ice axe" names a `hoe`, so
   the scene must show descriptions, not only categories.
+
+## 4. Phase 2 results
+
+Report: [agent-e2e](../experiments/2026-10-25-agent-e2e.md).
+
+- **Mode B, verify off, 6 tasks × 2 layouts:** Sonnet 5.5 5/12, Astra-high 5/12, Sol 6.1 4/12. Every model made
+  the same skill-or-code choice in every episode; the failures came from perception and skills.
+- **press_by_number in mode A** with the v2 convention: 6/6.
+- **cx/ GPT-6 empty replies:** an undeclared `python` tool call was dropped by the router. Fixed with a declared
+  tool and `LLMResult.tool_calls`.
+- **Perception before / after de21b05:** the general_pickup estimate went from 501 s to seconds.
+- **Batching:** one bundle job per task ran every model arm (`AgentConfig.models`); the lead allowed up to 50 min.
+- **Spend:** Phase 1 1,140 calls; Phase 2 ~430.
