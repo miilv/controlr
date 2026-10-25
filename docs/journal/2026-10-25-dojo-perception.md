@@ -25,3 +25,21 @@
   ~40 % of the memory: pack RSS 3.5 → 1.5 GB); + colour map 0.52/0.64/0.80/0.40 (hurts); + paired
   texture: no change. → face-colour meshes are the default; the colour map is applied only to block/bowl
   tasks; paired texture stays (harmless).
+- Colour-aware refinement (texture NCC of per-face-colour ROI renders inside Nelder-Mead, polish step):
+  pack frame 0 hammer 0.84 → 0.88, car/shoe unchanged, toothbrush 0.60; +50 % runtime. Kept, not the fix.
+
+## True post-look, pack_objects_random (one look at our `look_plan` poses, 25/25 layouts)
+simlab: 41/49 arm looks within 2 cm / 10° of the request (27 exact, 14 rolled), 8 ended 2–5.8 cm off but
+moved; the estimator uses the achieved pose (FK on the observed joints), so all are valid views.
+
+| class | frame 0 | + look | note |
+|---|---|---|---|
+| car | 0.56 | 0.72 | |
+| toothbrush | 0.60 | 0.80 | rot p90 175° → 51° |
+| shoe | 0.52 | 0.80 | gross 9 → 4; 9 pose-ok / identity-wrong remain |
+| hammer | 0.88 | 0.84 | |
+| box | 0.92 | 0.76 | the moved arms cover the big box in the look frame's head view |
+
+The look macro is the fix for flips and most of the shoe problem; the box regression is the view-robustness
+issue (next: gate extra-frame views by how much of the object they actually see).
+Pitfall: simlab writes `frame_L1.json` before the PNGs — the eval now requires the PNGs (`look_used`).

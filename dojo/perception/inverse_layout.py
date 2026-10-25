@@ -253,6 +253,9 @@ def multi_view_loss(sm, T, views, others=None, min_vis=0.3, min_px=12):
 
 
 ROI_S = 128
+# A view from a later frame (name "<cam>@k") counts for an object only if this fraction of its silhouette is
+# known there: moved arms often cover large objects (pack box 0.92 -> 0.76 with the look frame otherwise)
+EXTRA_MIN_VIS = 0.6
 
 
 @dataclass
@@ -349,7 +352,7 @@ def roi_loss(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_vis: float =
             continue
         sk = s * rv.known
         vis = float(sk.sum()) / n_s
-        if vis < min_vis:
+        if vis < (EXTRA_MIN_VIS if "@" in rv.name else min_vis):  # extra frames: only views that see it well
             continue
         inter = float((sk * rv.fg).sum())
         union = float(((s + rv.fg - s * rv.fg) * rv.known).sum())
@@ -905,7 +908,7 @@ def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
                 k = v.known[roi]
                 f = v.fg[roi]
                 area = int((m & k).sum())
-                if area < 10:
+                if area < 10 or ("@" in name and area < EXTRA_MIN_VIS * int(m.sum())):
                     continue
                 new = m & (1 - U[name][roi]) & k
                 fg_new = int((new & f).sum())
