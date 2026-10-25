@@ -127,48 +127,47 @@ def standing_targets(o, xy, z_bottom: float, tilts=(0.0, 20.0, 35.0), spins=(0.0
 # ---- objects inside a round container: grasps whose fingers stay inside its wall
 
 
-def wall_profile(c, band: float = 0.005) -> dict | None:
-    """A round open container's inner wall from its mesh (object frame): axis centre (x, y), floor z, rim z and the
-    inner radius per height band. None for a mesh that is not bowl-like."""
+def wall_profile(c, bin_r: float = 0.004) -> dict | None:
+    """A round open container's inner surface as a radial height field (object frame): axis centre (x, y), and per
+    radius bin the highest mesh point (the floor near the axis, the wall further out, the rim at the edge). None for a
+    mesh that is not bowl-like (no floor well below the rim)."""
     if c.asset.mesh is None:
         return None
     V = np.asarray(c.asset.mesh[0], float)
     ctr = (V[:, :2].min(0) + V[:, :2].max(0)) / 2
     r = np.linalg.norm(V[:, :2] - ctr, axis=1)
     r_out = float(r.max())
-    z0, z1 = float(V[:, 2].min()), float(V[:, 2].max())
-    zs = np.arange(z0, z1 + band, band)
-    prof = []
-    floor = None
-    for a in zs:
-        m = (V[:, 2] >= a) & (V[:, 2] < a + band)
-        if not m.any():
-            continue
-        rin = float(r[m].min())
-        if rin < 0.5 * r_out:
-            floor = a + band                                   # floor vertices near the axis
-            continue
-        prof.append((float(a), rin))
-    if floor is None or len(prof) < 3:
+    rim = float(V[:, 2].max())
+    nb = int(math.ceil(r_out / bin_r)) + 1
+    surf = np.full(nb, -np.inf)
+    idx = np.minimum((r / bin_r).astype(int), nb - 1)
+    np.maximum.at(surf, idx, V[:, 2])
+    for i in range(1, nb):                              # empty bins: the inner neighbour's height
+        if not np.isfinite(surf[i]):
+            surf[i] = surf[i - 1]
+    if not np.isfinite(surf[0]) or rim - float(surf[0]) < 0.02:
         return None
-    return {"center": ctr, "floor": float(floor), "rim": z1, "bands": prof, "r_out": r_out}
+    return {"center": ctr, "rim": rim, "r_out": r_out, "bin": bin_r, "surf": surf, "floor": float(surf[0])}
 
 
-def inside_wall(c, prof: dict, pts_w: np.ndarray, margin: float = 0.006) -> bool:
-    """Do world points stay inside the container's wall (or above its rim / outside its footprint)?"""
+def wall_clearance(c, prof: dict, pts_w: np.ndarray) -> float:
+    """Smallest height (m) of world points above the container's inner surface (negative: inside its material)."""
     P = (np.asarray(pts_w, float) - c.pos) @ c.R
     r = np.linalg.norm(P[:, :2] - prof["center"], axis=1)
-    zs = np.array([b[0] for b in prof["bands"]])
-    rins = np.array([b[1] for b in prof["bands"]])
+    out = np.inf
     for p, rp in zip(P, r):
-        if p[2] > prof["rim"] + 0.004 or rp > prof["r_out"] + 0.01:
+        if rp > prof["r_out"] + 0.004:
             continue
-        if p[2] < prof["floor"] + 0.002:                  # the floor
-            return False
-        i = int(np.clip(np.searchsorted(zs, p[2]) - 1, 0, len(zs) - 1))
-        if rp > rins[i] - margin:
-            return False
-    return True
+        i = min(int(rp / prof["bin"]), len(prof["surf"]) - 1)
+        lo = max(0, i - 1)
+        s = float(prof["surf"][lo:i + 2].max())          # the bin and its neighbours (finger width)
+        out = min(out, float(p[2]) - s)
+    return out
+
+
+def inside_wall(c, prof: dict, pts_w: np.ndarray, margin: float = 0.003) -> bool:
+    """Do world points stay above the container's inner surface (inside its wall, over its floor) by ``margin``?"""
+    return wall_clearance(c, prof, pts_w) >= margin
 
 
 def round_grasps(o, kin, arm, rolls=(0.0, 12.0, -12.0, 25.0, -25.0, 40.0, -40.0),
@@ -233,15 +232,23 @@ def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.
     prof = wall_profile(c) if c is not None else None
     if prof is None:
         return cands
+    import dataclasses
     out = []
     for g in cands:
         go = gap_to_grip(g.open_gap())
+        # raise a grasp whose fingers dip into the floor by up to 6 mm (the pads still cover the widest section)
+        cl = wall_clearance(c, prof, sk.kin.finger_points(sk.kin.flange_from_tcp(g.T), go))
+        if cl < 0.003:
+            if 0.003 - cl > 0.006:
+                continue
+            T = g.T.copy()
+            T[2, 3] += 0.003 - cl + 0.0005
+            g = dataclasses.replace(g, T=T, note=g.note + " raised")
         ok = True
         for d in (0.0, 0.03, 0.06):
             T = g.T.copy()
             T[:3, 3] -= g.approach * d
-            pts = sk.kin.finger_points(sk.kin.flange_from_tcp(T), go)
-            if not inside_wall(c, prof, pts):
+            if not inside_wall(c, prof, sk.kin.finger_points(sk.kin.flange_from_tcp(T), go)):
                 ok = False
                 break
         if ok:
