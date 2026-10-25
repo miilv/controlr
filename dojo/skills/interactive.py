@@ -245,4 +245,93 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             return {"ok": True, "stage": "ended"}
 
 
-__all__ = ["play_board_game", "board_cells", "grid_lines", "board_state", "choose_cell"]
+
+
+
+# ============================================================================ copying a demonstration
+
+
+def inside_xy(o, c, z_margin: float = 0.0) -> bool:
+    """The checker's containment: the object's root inside the container's bbox footprint, above its bottom."""
+    P = (np.asarray(o.pos, float) - c.pos) @ c.R
+    mn, mx = c.asset.bbox_min, c.asset.bbox_max
+    return bool(mn[0] <= P[0] <= mx[0] and mn[1] <= P[1] <= mx[1] and P[2] > mn[2] - z_margin)
+
+
+def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
+                       after_last: int = 80, max_wait: int = 1400, tries: int = 2) -> dict:
+    """A scripted demonstrator puts objects into ``demo_container`` one at a time: hold still at home while it works,
+    record the order in which objects arrive there (an object counts once it has rested inside for ``quiet`` steps),
+    and when the scene has been still for ``after_last`` steps after the last arrival (its arm is back home), put the
+    matching object of each (same asset identity, not in either container) into ``container`` in that order, banking
+    after each. An object that cannot be put in stops the sequence (a later one would be out of order)."""
+    w = sk.refresh()
+    C, D = w.obj(container), w.obj(demo_container)
+    st = w.notes.setdefault("imitate", {"order": [], "done": []})
+    movers = [l for l in objects if l in w.objects and l not in (container, demo_container)]
+    # the demonstrated set: objects whose asset identity appears twice (one for each side)
+    keys: dict = {}
+    for l in movers:
+        keys.setdefault(w.obj(l).asset.key, []).append(l)
+    expect = sum(1 for v in keys.values() if len(v) >= 2)
+    sk.log(f"[imitate] {len(movers)} objects, {expect} identities appear twice; watching {demo_container}")
+    if len(st["order"]) < expect:
+        t0 = w.step
+        prev = {l: w.obj(l).pos.copy() for l in movers}
+        inside_for = {l: 0 for l in movers}
+        last_move = last_entry = w.step
+        while True:
+            try:
+                sk.ex.hold(1)
+            except (EpisodeEnded, BudgetExceeded) as e:
+                return {"ok": False, "stage": "watch", "note": str(e)}
+            w = sk.refresh()
+            D = w.obj(demo_container)
+            for l in movers:
+                o = w.obj(l)
+                if float(np.linalg.norm(o.pos - prev[l])) > 5e-4:
+                    last_move = w.step
+                prev[l] = o.pos.copy()
+                if l in st["order"]:
+                    continue
+                inside_for[l] = inside_for[l] + 1 if inside_xy(o, D) else 0
+                if inside_for[l] >= quiet:
+                    st["order"].append(l)
+                    last_entry = w.step
+                    sk.log(f"[imitate] step {w.step}: {l} ({o.asset.key}) arrived, #{len(st['order'])}")
+            if len(st["order"]) >= expect and w.step - last_entry >= after_last and w.step - last_move >= quiet:
+                break
+            if w.step - t0 > max_wait:
+                sk.log(f"[imitate] stopped watching after {w.step - t0} steps, {len(st['order'])} seen")
+                break
+    # copy: the twin of each demonstrated object, in order
+    for i, l in enumerate(st["order"]):
+        if i < len(st["done"]):
+            continue
+        w = sk.refresh()
+        key = w.obj(l).asset.key
+        cands = [m for m in keys.get(key, []) if m != l and m not in st["done"] and m not in st["order"]
+                 and not inside_xy(w.obj(m), w.obj(container)) and not inside_xy(w.obj(m), w.obj(demo_container))]
+        if not cands:
+            return {"ok": False, "stage": f"match {l}", "note": f"no free object like {key}"}
+        twin = cands[0]
+        ok = False
+        for attempt in range(tries):
+            from dojo.skills.library import put_into
+            r = put_into(sk, [twin], container)
+            sk.bank()
+            w = sk.refresh()
+            if inside_xy(w.obj(twin), w.obj(container)):
+                ok = True
+                break
+            sk.log(f"[imitate] {twin} not in {container} after try {attempt + 1}: {str(r.get('note') or r.get('stage'))[:120]}")
+            if any(sk.held.values()):
+                sk.home(gripper=OPEN)
+                sk.held = {a: None for a in sk.held}
+        if not ok:
+            return {"ok": False, "stage": f"put {twin}", "note": f"done {st['done']}"}
+        st["done"].append(twin)
+        sk.log(f"[imitate] {twin} in {container} (#{len(st['done'])}, like {l})")
+    return {"ok": len(st["done"]) == expect, "stage": "copied", "note": f"{len(st['done'])}/{expect}"}
+
+__all__ = ["play_board_game", "board_cells", "grid_lines", "board_state", "choose_cell", "copy_demonstration", "inside_xy"]

@@ -182,6 +182,21 @@ def plan(instruction: str, world: WorldState) -> Plan:
             return Plan("play_board_game", {"board": b.label, "pieces": own, "opponent_pieces": opp},
                         f"{len(own)} own pieces vs {len(opp)} on {b.label}'s cells")
 
+    # --- copy a demonstrated order: two containers of one kind (ours = the one nearer the robot), the objects whose
+    # identity appears twice (one set for the demonstrator, one for us)
+    if re.search(r"\border\b|\bsequence\b", text) and re.search(r"observe|watch|remember|imitate|same order", text):
+        robot = np.array([0.0, -0.45])
+        by_kind: dict = {}
+        for o in objs:
+            if o.obj_type in ("Geometry", "Rigid") and not o.clutter and any(w in o.category.lower() for w in CONTAINER_WORDS):
+                by_kind.setdefault(o.asset.key.split("/")[1], []).append(o)
+        pairs = [v for v in by_kind.values() if len(v) >= 2]
+        if pairs:
+            cs = sorted(pairs[0], key=lambda o: float(np.linalg.norm(o.pos[:2] - robot)))
+            movers = [o.label for o in objs if o.obj_type == "Rigid" and not o.clutter and o.label not in (cs[0].label, cs[1].label)]
+            return Plan("copy_demonstration", {"container": cs[0].label, "demo_container": cs[1].label, "objects": movers},
+                        f"watch {cs[1].label}, copy into {cs[0].label}")
+
     # --- objects into a holder whose lid is hinged, then close the lid: the holder is the articulated object with a
     # revolute joint, the objects the named rigid category
     if re.search(r"\blid\b", text) and re.search(r"\bclose\b|\bshut\b", text):

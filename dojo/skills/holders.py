@@ -322,6 +322,8 @@ def swing_closed(sk: Skills, label: str, tag: str | None = None, ratio: float = 
         o = w.obj(label)
         cur = joint_angle(o, J)
         rr = (cur - lo) / (hi - lo)
+        sk.log(f"[lid] {label} {jn}: measured {None if o.joints is None else np.round(np.ravel(o.joints), 4).tolist()}, "
+               f"range {lo}..{hi}, angle {cur:.1f}, ratio {rr:.2f}")
         if rr >= ratio:
             return sk._record(SkillResult(True, "swing_closed", "ok", 0, None, note=f"lid at {rr:.2f}"))
         to_go = (lo + ratio * (hi - lo) - cur)
