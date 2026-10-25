@@ -164,3 +164,17 @@ car and shoe (which v1 reviewed for flips) and the pad. Net equal: the targeting
   visible 1.0): the carried block sits between the wrist camera and the support and pollutes the local
   table colour model and the foreground → `refine(..., held=(key, pose7))` masks it as an occluder.
 - Success so far: refine3 15/20, base3 16/25 (pairs incomplete).
+
+## Runtime configuration (v2 looks + conservative fuse) vs full fuse, all tasks
+| task / class | n | frame 0 | v2 full | v2 conservative | worse > 5 mm full / cons | better > 5 mm full / cons |
+|---|---|---|---|---|---|---|
+| build_tower | 200 | 0.81 | 0.89 | 0.86 | 2 / 2 | 13 / 8 |
+| push_T T | 25 | 0.84 | 0.96 | 0.92 | 1 / 0 | 2 / 1 |
+| push_T pad | 25 | 0.80 | 0.76 | 0.80 | 1 / 0 | 2 / 0 |
+| stack_blocks | 75 | 0.83 | 0.85 | 0.84 | 7 / 1 | 12 / 2 |
+| stack_bowls | 75 | 0.88 | 0.92 | 0.89 | 4 / 2 | 12 / 2 |
+| put_bottles | 100 | 0.76 | 0.84 | 0.78 | 8 / 0 | 18 / 3 |
+| pack box / car / toothbrush / hammer / shoe | 25 each | .92/.56/.60/.88/.52 | .76/.60/.72/.88/.64 | .92/.60/.60/.88/.60 | 17 / 1 | 25 / 7 |
+| all | 625 | 0.82 | 0.84 | 0.82 | 40 / 6 | 84 / 23 |
+Full fuse gains more on average and regresses 40 objects; conservative regresses 6 (1 %) and improves 23.
+With refine() at every hover the grasp-time error is refine's, so the runtime keeps conservative fuse.
