@@ -1835,9 +1835,9 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: flo
     c_loc = (lo + hi) / 2
     c_loc[2] = hi[2]
     if body is not None and g > 0.004:
-        # near the part's far end (the fingertip is 6.8 mm thick): twin, a toaster's lever pressed 11 mm out from the
+        # at the part's far end (1.5 mm in): twin, a toaster's lever pressed 11 mm out from the
         # body stopped at 35 mm of its 75 mm travel, pressed at its end it went 41 mm (the check needs 40.4)
-        c_loc[k] = (hi[k] - 0.0045) if sgn > 0 else (lo[k] + 0.0045)
+        c_loc[k] = (hi[k] - 0.0015) if sgn > 0 else (lo[k] + 0.0015)
     p_tip = o.R @ c_loc + o.pos
     bc = o.R @ (((body["bbox_min"] + body["bbox_max"]) / 2) if body is not None else o.asset.center) + o.pos
     away = np.r_[p_tip[:2] - bc[:2], 0.0]
