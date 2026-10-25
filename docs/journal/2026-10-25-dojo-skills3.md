@@ -60,8 +60,8 @@ record carries the deployed commit.
 | plug_in_charger | **v3 (c834032 x5 / cc626ee x20; same code for this task) + wrist_safe** | **all 25 settled** | **22/25** | **0.88** | 156 / 237 (400) | 100002: no relay planned, the in-air handover fallback dropped the charger. 100008: the relay's last leg re-planned with the held charger dipping below the table on the carry (collision). 100013: seated 5 mm high after 2 probes on the untilted grasp, toppled at release |
 | store_tools | v1 (a84cccd), stopped at the 30-min hold | 100000-01 | 0/2 | 0.25 (tape measure) | 264-277 (900) | The hammer held at its CoM station lifted with 11-13 mm drift, was judged loose and put down twice (now carried on for >= 2 cm tolerances). The wrench held at its end slid out. The pliers' slice grasp slid out. One episode spent 1269 s planning relays (now under 12k faces, a hold-quality cache, relay search capped at 150 s; 27 s locally) |
 
-Store_tools v2 (000e5be: planning-time caps, loose grasps carried on, uneven carries 0.09 rad/step), 100000-04: 0/5, mean
-0.15. Steps 163-312 of 900; planning 56-205 s. The tape measure went in 3/5 (a 4th landed 20 mm high on another tool).
+Store_tools v2 (000e5be: planning-time caps, loose grasps carried on, uneven carries 0.09 rad/step), 100000-09: **0/10,
+mean 0.20** (two episodes 0.5, three 0.25, five 0). Steps 163-409 of 900; planning 56-93 s (one 423 s). The tape measure went in 3/5 (a 4th landed 20 mm high on another tool).
 - Pliers: slice grasp across the outline slid out, 5/5.
 - Hammer: CoM station, lifted 13-15 mm loose. The re-planned descent for that in-hand pose went below the table, so the
   place was refused (3).
