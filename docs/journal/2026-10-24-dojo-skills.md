@@ -101,9 +101,13 @@ Plan + verify (dev-only in-process twin: env 0 = episode, 8 twin envs, 4 candida
 
 | task | seeds | success | verified segments (first candidate ok) | extra wall per episode |
 |---|---|---|---|---|
-| stack_blocks | 100000-100004 | **5/5** | 24 (24) | ~10 s (28-48 rollouts); 0 extra env steps |
+| stack_blocks | 100000-100009 | **10/10** | 48 (48) | ~10 s (28-48 rollouts); 0 extra env steps |
+| build_tower (settled layouts) | 100000-100003 | **4/4** | 54 (54) | ~56 s (104-112 rollouts); 454-472 steps vs 490-540 single plan |
 
-With the current code these seeds also pass single-plan; the same-code single-plan rerun (v4, all 25) is queued.
+With the current code these seeds also pass single-plan, so for these two tasks the verify-vs-single gap is
+0 once the fixes are in. The twin's value shows where the single plan has open failure modes (integration:
+mode-A stack 100009 slips without verify and succeeds with it). The first build_tower verify run crashed:
+RoboDojo instance names differ between envs when an asset repeats, so the in-process twin now maps by label.
 The twin does reject candidates: one place rolled [2, 2, 0, 0], with two descent variants failing.
 
 ## 5. Failure taxonomy (what the traces showed)
