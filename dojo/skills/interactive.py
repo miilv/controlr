@@ -492,7 +492,10 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
             if best is not None and best[1] <= t:
                 break
             with _object_at(o, o.pos + v3 * t):
-                cands = [g for g in G.candidates(o, sk.kin, a, "top") if -float(g.T[2, 0]) > 0.9]
+                cands = G.candidates(o, sk.kin, a, "top")
+                if not cands:                                   # wider than the hand on top: slices / antipodal
+                    cands = G.slice_grasps(o, sk.kin, a) + G.antipodal_grasps(o, sk.kin, a)
+                cands = [g for g in cands if -float(g.T[2, 0]) > 0.75]
             for g in sorted(cands, key=lambda g: g.score)[:6]:
                 go = gap_to_grip(g.open_gap())
                 T_g = g.T                                       # at contact time t
@@ -510,20 +513,8 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
                     T = T_g.copy()
                     T[:3, 3] += v3 * (n_close + k) + np.array([0, 0, lift * k / 6])
                     samples.append(("lift", T))
-                q = sk.world.home_q[a]
-                qs = []
-                ok = True
-                for kind, T in samples:
-                    r = sk.kin.ik(a, T, q, n_random=0)
-                    if not r.ok or np.abs(r.q - q).max() > (0.35 if not qs else 0.25):
-                        if not qs and r.ok:
-                            pass
-                        else:
-                            ok = False
-                            break
-                    q = r.q
-                    qs.append((kind, r.q))
-                if not ok:
+                qs = _track_ik(sk, a, samples, sk.world.home_q[a])
+                if qs is None:
                     continue
                 c_ok, why = sk.coll.check(a, qs[0][1], go, ignore=tuple(ignore) + (label,))
                 if not c_ok:
@@ -538,10 +529,8 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
                 for seg in mv.segments:
                     for qq in segment_targets(seg.q, seg.step_rad, seg.ease):
                         lst.append((qq, go))
-                track = []
-                for kind, qq in qs:
-                    track.append((qq, go if kind == "open" else 0.0))
-                best = (a, t, lst, track, g)
+                track = [(qq, go if kind == "open" else 0.0) for kind, qq in qs]
+                best = (a, t, lst, track, g, samples, go)
                 break
         if best is not None:
             break
@@ -549,6 +538,20 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
 
 
 FAST_RAD = 0.16
+
+
+def _track_ik(sk: Skills, a: str, samples: list, q0) -> list | None:
+    """IK along tracking samples [(kind, T)], each seeded by the previous; None if a sample is unreachable or the
+    joints jump (the arm follows at most ~0.25 rad per step)."""
+    q = np.asarray(q0, float)
+    qs = []
+    for kind, T in samples:
+        r = sk.kin.ik(a, T, q, n_random=0 if qs else 2)
+        if not r.ok or (qs and np.abs(r.q - q).max() > 0.25):
+            return None
+        q = r.q
+        qs.append((kind, r.q))
+    return qs
 
 
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.16, ignore=(), arms=None) -> SkillResult:
@@ -559,16 +562,30 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.16, ig
     plan = plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms)
     if plan is None:
         return SkillResult(False, "belt_pick", "ik_fail", 0, None, note=f"no intercept for {label}")
-    a, t, app, track, g = plan
+    a, t, app, track, g, samples, go = plan
     n_desc_start = t - 8                                   # the descent's first sample is at contact - n_desc
     wait = max(0, n_desc_start - len(app))
     sk.log(f"[belt] {label}: {a} intercept at +{t} steps ({g.note}), wait {wait}, approach {len(app)}")
+    t_plan = sk.ex.steps_used
+    p_plan = w.obj(label).pos.copy()
     try:
         if wait:
             sk.ex.hold(wait)
         sk.ex.run_lists({a: app}, name="belt approach")
-        # re-measure and re-plan the tracked part from the observed pose (the belt keeps moving)
+        # re-read the object and shift the tracked part by the prediction error (the belt keeps moving)
         w = sk.refresh()
+        err = w.obj(label).pos - (p_plan + np.r_[v, 0.0] * (sk.ex.steps_used - t_plan))
+        err[2] = 0.0
+        if 0.002 < float(np.linalg.norm(err)) < 0.05:
+            shifted = []
+            for kind, T in samples:
+                T2 = T.copy()
+                T2[:3, 3] += err
+                shifted.append((kind, T2))
+            qs = _track_ik(sk, a, shifted, sk.ex.q[a])
+            if qs is not None:
+                track = [(qq, go if kind == "open" else 0.0) for kind, qq in qs]
+                sk.log(f"[belt] re-read: shifted the track by {np.round(err * 1000, 1).tolist()} mm")
         sk.ex.run_lists({a: track}, name=f"belt pick {label}")
         sk.ex.hold(2)
     except BudgetExceeded as e:
