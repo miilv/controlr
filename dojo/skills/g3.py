@@ -1,0 +1,384 @@
+"""G3: the expert skills with the TRUE state, in the physics-only twin, on our own dev layouts.
+
+Every episode runs the same entry point, ``planner.solve`` (instruction + WorldState -> skill); the
+task name only picks the layouts and labels the results.
+
+    scripts/skills/g3.sh run   --task stack_blocks --seeds 100000-100024 --out ~/dojo-data/skills/g3/<run>
+    scripts/skills/g3.sh probe --out ~/dojo-data/skills/probe        # FK vs obs, step size vs landing error,
+                                                                   # gripper timing, cuRobo vs own IK steps
+
+Per episode: success (RoboDojo's own checker), score (1.0 or the banked ladder tier), env steps
+used vs step_lim, wall time (planning + sim), the program's result, every skill result, and a
+failure category: grasp_slip | ik_fail | collision | place_miss | step_budget | logic | not_home |
+unstable_layout | error. Actions are saved (gzip JSON) so any episode replays bit-exactly.
+
+Layouts: ``$DOJO_DATA/simlab/layouts/<task>/<seed>.json`` (ours, seeds >= 100000). Never Eval_Layout.
+"""
+
+from __future__ import annotations
+
+import argparse
+import gzip
+import json
+import math
+import os
+import time
+import traceback
+from pathlib import Path
+
+import numpy as np
+
+CATEGORIES = ("grasp_slip", "ik_fail", "collision", "place_miss", "step_budget", "logic", "not_home",
+              "unstable_layout", "error")
+
+
+def parse_seeds(s: str) -> list[int]:
+    out = []
+    for part in s.split(","):
+        if "-" in part:
+            a, b = part.split("-")
+            out.extend(range(int(a), int(b) + 1))
+        elif part:
+            out.append(int(part))
+    return out
+
+
+def classify(res: dict, reward: dict, history: list[dict]) -> str | None:
+    if reward.get("success"):
+        return None
+    for h in history:
+        if not h["ok"] and h["status"] not in ("ok", "skipped"):
+            st = h["status"]
+            if st == "ended":
+                return "step_budget" if reward.get("steps_used", 0) >= reward.get("step_lim", 1) else "logic"
+            return st if st in CATEGORIES else "logic"
+    if res.get("error"):
+        return "error"
+    if reward.get("steps_used", 0) >= reward.get("step_lim", 1):
+        return "step_budget"
+    if reward.get("stages_left", 1) == 1:
+        return "not_home"            # every stage but the last (task + home) was met; often just home
+    return "logic"
+
+
+def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
+                verify_k: int = 0) -> dict:
+    """``task`` is bookkeeping only: the episode runs ``planner.solve`` from the instruction + world."""
+    from dojo.skills import planner
+    from dojo.skills.env import RunnerEnv
+    from dojo.skills.skills import GTProvider, Skills
+
+    seed = int((layout.get("_simlab") or {}).get("seed", 0))
+    t0 = time.perf_counter()
+    info = run.load(layout)
+    t_load = time.perf_counter() - t0
+    rec = {"task": task, "seed": seed, "load_s": round(t_load, 2), "stable": bool(info["stable"]),
+           "layout_file": (layout.get("_simlab") or {}).get("layout_file")}
+    if not info["stable"]:
+        rec.update({"success": False, "score": 0.0, "category": "unstable_layout"})
+        return rec
+    env = RunnerEnv(run)
+    prov = GTProvider(env, assets, instruction=env.instruction)
+    t1 = time.perf_counter()
+    sim_time = [0.0]
+    verifier = None
+    if verify_k:
+        from dojo.skills.verify import InProcessTwin
+        verifier = InProcessTwin(run, list(range(1, run.num_envs)), seed=seed)
+    sk = Skills(env, prov, reserve=30, log=log, verifier=verifier,
+                verify_k=verify_k or 2, n_cands=4)
+    frames = []
+    if trace:
+        labels = [o.label for o in sk.world.task_objects() if o.obj_type != "Geometry"]
+
+        def on_step(ex):
+            rows = {r["label"]: r for r in env.gt_objects() if r.get("label") in labels}
+            frames.append({"step": ex.steps_used, "q": {a: np.round(ex.q[a], 4).tolist() for a in ("left", "right")},
+                           "g": dict(ex.g), "obj": {k: np.round(np.r_[v["pos"], v["quat"]], 4).tolist()
+                                                     for k, v in rows.items()},
+                           "seg": ex.log.segments[-1]["name"] if ex.log.segments else ""})
+        sk.ex.on_step = on_step
+    # time spent inside env.step (simulation) vs everything else (planning)
+    _step = env.step
+
+    def timed_step(a):
+        ts = time.perf_counter()
+        try:
+            return _step(a)
+        finally:
+            sim_time[0] += time.perf_counter() - ts
+    env.step = timed_step
+    res = {}
+    try:
+        res = planner.solve(sk) or {}
+    except Exception as e:  # noqa: BLE001
+        from dojo.skills.executor import EpisodeEnded
+        if isinstance(e, EpisodeEnded):
+            res = {"ok": True, "stage": "ended", "note": str(e)}
+        else:
+            res = {"ok": False, "stage": "exception", "error": f"{type(e).__name__}: {e}",
+                   "trace": traceback.format_exc()[-2000:]}
+    # let the checker see a few still steps at home (success ends the episode by itself)
+    try:
+        if not sk.ex.ended:
+            for _ in range(3):
+                sk.ex.hold(1, use_reserve=True)
+    except Exception:  # noqa: BLE001
+        pass
+    wall = time.perf_counter() - t1
+    reward = env.reward()
+    score = env.score()
+    hist = [{"skill": h.skill, "ok": bool(h.ok), "status": str(h.status), "steps": int(h.steps), "arm": h.arm,
+             "note": str(h.note)[:300]} for h in sk.history]
+    res_j = {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v)[:500]) for k, v in res.items()}
+    rec.update({"success": bool(reward["success"]), "score": float(score), "steps": int(reward["steps_used"]),
+                "step_lim": int(reward["step_lim"]), "wall_s": round(wall, 1), "sim_s": round(sim_time[0], 1),
+                "plan_s": round(wall - sim_time[0], 1), "result": res_j, "reward": reward, "skills": hist,
+                "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
+                                  for o in sk.refresh().task_objects()}})
+    rec["category"] = classify(res_j, reward, hist)
+    if verifier is not None:
+        rec["verify"] = {**sk.vstats, **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in verifier.stats.items()}}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with gzip.open(out_dir / f"{task}_{seed}_actions.json.gz", "wt") as f:
+        json.dump(sk.ex.trajectory_json(), f)
+    if trace:
+        with gzip.open(out_dir / f"{task}_{seed}_trace.json.gz", "wt") as f:
+            json.dump({"frames": frames, "skills": hist}, f, default=lambda x: x.item() if hasattr(x, "item") else str(x))
+    return rec
+
+
+def cmd_run(a) -> None:
+    from dojo.simlab import paths
+    from dojo.simlab.runner import RoboDojoRunner
+    from dojo.skills.world import AssetDB
+
+    out = Path(a.out)
+    paths.assert_not_eval(out)
+    out.mkdir(parents=True, exist_ok=True)
+    assets = AssetDB(paths.OBJECTS)
+    run = RoboDojoRunner(a.task, num_envs=1 + (a.twins if a.verify else 0), workdir=str(out / "work"),
+                         physics_only=True, need_planner=False)
+    rows = []
+    summ_p = out / f"{a.task}_episodes.jsonl"
+    tdir = paths.LAYOUTS / a.task
+    # simlab's pre-settled records (<id>.settled.json) when its settled_index.json exists (team rule:
+    # report on settled layouts); SIMLAB_DEV_LAYOUT_SUFFIX overrides ("" = raw records)
+    suffix = os.environ.get("SIMLAB_DEV_LAYOUT_SUFFIX")
+    if suffix is None:
+        suffix = ".settled" if (tdir / "settled_index.json").exists() else ""
+    settled_index = json.loads((tdir / "settled_index.json").read_text()) if (tdir / "settled_index.json").exists() else {}
+    for seed in parse_seeds(a.seeds):
+        lp = tdir / f"{seed}{suffix}.json"
+        if suffix and settled_index.get(str(seed), {}).get("status", "ok") != "ok":
+            print(f"[g3] {a.task} {seed}: settled record not ok ({settled_index[str(seed)].get('status')}), skipped",
+                  flush=True)
+            continue
+        if not lp.exists():
+            lp = tdir / f"{seed}.json"
+        paths.assert_not_eval(lp)
+        if not lp.exists():
+            print(f"[g3] missing layout {lp}", flush=True)
+            continue
+        lay = json.loads(lp.read_text())
+        lay.setdefault("_simlab", {})["seed"] = seed
+        lay["_simlab"]["layout_file"] = lp.name
+        logs = []
+        rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
+                          verify_k=a.verify)
+        rec["log"] = logs[-60:]
+        rows.append(rec)
+        with summ_p.open("a") as f:
+            f.write(json.dumps(rec, default=str) + "\n")
+        print(f"[g3] {a.task} {seed}: success={rec.get('success')} score={rec.get('score')} "
+              f"steps={rec.get('steps')}/{rec.get('step_lim')} wall={rec.get('wall_s')}s cat={rec.get('category')} "
+              f"res={str(rec.get('result'))[:160]}", flush=True)
+    allrows = {}
+    for line in summ_p.read_text().splitlines():
+        r = json.loads(line)
+        allrows[r["seed"]] = r
+    write_summary(out, a.task, [allrows[k] for k in sorted(allrows)])
+    run.close()
+
+
+def write_summary(out: Path, task: str, rows: list[dict]) -> dict:
+    ok = [r for r in rows if r.get("stable")]
+    n = len(ok)
+    succ = sum(1 for r in ok if r.get("success"))
+    cats: dict[str, int] = {}
+    for r in ok:
+        c = r.get("category")
+        if c:
+            cats[c] = cats.get(c, 0) + 1
+    steps = [r["steps"] for r in ok if "steps" in r]
+    s_steps = [r["steps"] for r in ok if r.get("success")]
+    vs = [r["verify"] for r in ok if r.get("verify")]
+    summ = {"task": task, "n": n, "unstable": len(rows) - n, "success": succ,
+            "verify": ({k: sum(v.get(k, 0) for v in vs) for k in ("segments", "first_ok", "later_ok", "none_ok",
+                                                                  "candidates", "rollouts")} if vs else None),
+            "success_rate": round(succ / n, 3) if n else None,
+            "mean_score": round(float(np.mean([r["score"] for r in ok])), 3) if n else None,
+            "steps_median": int(np.median(steps)) if steps else None, "steps_max": max(steps) if steps else None,
+            "success_steps_median": int(np.median(s_steps)) if s_steps else None,
+            "step_lim": ok[0]["step_lim"] if ok and "step_lim" in ok[0] else None,
+            "wall_s_median": round(float(np.median([r["wall_s"] for r in ok if "wall_s" in r])), 1) if n else None,
+            "plan_s_median": round(float(np.median([r["plan_s"] for r in ok if "plan_s" in r])), 1) if n else None,
+            "categories": cats, "failed_seeds": [r["seed"] for r in ok if not r.get("success")]}
+    (out / f"{task}_summary.json").write_text(json.dumps(summ, indent=1))
+    print(f"[g3] SUMMARY {json.dumps(summ)}", flush=True)
+    return summ
+
+
+# --------------------------------------------------------------------------- probes
+def cmd_probe(a) -> None:
+    """FK vs obs, landing error vs step size, gripper timing; optionally cuRobo vs own-IK steps."""
+    from dojo.simlab import paths
+    from dojo.simlab.runner import RoboDojoRunner
+    from dojo.skills.env import RunnerEnv
+    from dojo.skills.executor import Executor
+    from dojo.skills.geometry import T_from, pose7_to_T
+    from dojo.skills.kinematics import X5Kin, down_R
+    from dojo.skills.motion import Motion, Segment, segment_targets
+
+    out = Path(a.out)
+    paths.assert_not_eval(out)
+    out.mkdir(parents=True, exist_ok=True)
+    task = "stack_blocks"
+    run = RoboDojoRunner(task, workdir=str(out / "work"), physics_only=True, need_planner=bool(a.curobo))
+    lay = json.loads((paths.LAYOUTS / task / "100000.json").read_text())
+    kin = X5Kin()
+    mot = Motion(kin)
+    res: dict = {"fk": [], "landing": [], "gripper": [], "curobo": []}
+    run.load(lay)
+    env = RunnerEnv(run)
+    run.env.step_lim = 100000             # probes are not episodes
+    # 1. FK vs official ee_pose over random reachable configurations
+    rng = np.random.default_rng(0)
+    ex = Executor(env, record=False)
+    targets = [(-0.25, -0.15, 0.85), (0.25, -0.1, 0.82), (-0.1, -0.25, 0.9), (0.15, -0.3, 0.8), (-0.35, -0.05, 0.84)]
+    for xyz in targets:
+        for arm in ("left", "right"):
+            if (arm == "left") != (xyz[0] < 0.05):
+                continue
+            T = T_from(xyz, down_R(float(rng.uniform(-1.5, 1.5))))
+            r = kin.ik(arm, T, ex.q[arm])
+            if not r.ok:
+                continue
+            for step_rad in (0.05, 0.08, 0.12, 0.16, 0.2):
+                # go home-ish first, then a joint move of the same path at this step size
+                home = ex.home_q[arm]
+                ex.execute({arm: [Segment(np.stack([ex.q[arm], home]), 0.16)]})
+                ex.settle(tol=0.002, max_steps=15)
+                path = np.stack([home, r.q])
+                n = len(segment_targets(path, step_rad))
+                ex.execute({arm: [Segment(path, step_rad)]})
+                errs = []
+                for k in range(6):
+                    st = env.proprio()
+                    qm = np.asarray(st[f"{arm}_arm_joint_state"], float)
+                    Tm = kin.tcp(arm, qm)
+                    errs.append({"after_extra_steps": k, "joint_err_rad": float(np.abs(qm - r.q).max()),
+                                 "tcp_err_mm": float(np.linalg.norm(Tm[:3, 3] - T[:3, 3]) * 1000)})
+                    ex.hold(1)
+                fl = pose7_to_T(env.proprio()[f"{arm}_ee_pose"])
+                fk = kin.flange(arm, np.asarray(env.proprio()[f"{arm}_arm_joint_state"], float))
+                res["fk"].append(float(np.linalg.norm(fl[:3, 3] - fk[:3, 3]) * 1000))
+                res["landing"].append({"arm": arm, "xyz": xyz, "step_rad": step_rad, "steps": n,
+                                       "travel_rad": float(np.abs(r.q - home).max()), "errs": errs})
+                print(f"[probe] {arm} {xyz} step_rad={step_rad} steps={n} tcp err after 0/1/2/5 extra: "
+                      f"{errs[0]['tcp_err_mm']:.2f}/{errs[1]['tcp_err_mm']:.2f}/{errs[2]['tcp_err_mm']:.2f}/"
+                      f"{errs[5]['tcp_err_mm']:.2f} mm", flush=True)
+    # 2. straight line descent at different step sizes (Cartesian tracking)
+    for step_rad in (0.03, 0.05, 0.08, 0.12):
+        arm = "left"
+        T0 = T_from((-0.25, -0.15, 0.90), down_R(0.0))
+        T1 = T_from((-0.25, -0.15, 0.80), down_R(0.0))
+        m0 = mot.to_pose(arm, ex.q[arm], T0, 0.16, check=False)
+        ex.execute({arm: m0})
+        ex.settle(tol=0.002, max_steps=15)
+        ln = mot.line(arm, ex.q[arm], T1, step_rad, check=False)
+        devs = []
+
+        def on_step(e, arm=arm):
+            qm = np.asarray(env.proprio()[f"{arm}_arm_joint_state"], float)
+            p = kin.tcp(arm, qm)[:3, 3]
+            devs.append(float(np.linalg.norm(p[:2] - T1[:2, 3]) * 1000))
+        ex.on_step = on_step
+        ex.execute({arm: ln})
+        ex.on_step = None
+        qm = np.asarray(env.proprio()[f"{arm}_arm_joint_state"], float)
+        endz = float((kin.tcp(arm, qm)[2, 3] - 0.80) * 1000)
+        res["landing"].append({"line": True, "step_rad": step_rad, "steps": ln.steps, "max_xy_dev_mm": max(devs),
+                               "end_z_err_mm": endz})
+        print(f"[probe] line 10 cm down step_rad={step_rad}: steps={ln.steps} max xy dev {max(devs):.2f} mm, "
+              f"end z err {endz:.2f} mm", flush=True)
+    # 3. gripper timing (measured fingers, dev-only)
+    for target in (0.0, 1.0, 0.0, 0.5, 1.0):
+        seq = []
+        ex.g["left"] = target
+        for k in range(6):
+            ex.hold(1)
+            seq.append(env.measured_gripper()["left"])
+        res["gripper"].append({"target": target, "measured": seq})
+        print(f"[probe] gripper -> {target}: {[round(x, 3) for x in seq]}", flush=True)
+    # 4. cuRobo vs own IK (env steps for the same TCP targets, same step size)
+    if a.curobo:
+        from dojo.simlab.motion import Mover
+        mv = Mover(run, step_rad=0.16)
+        for xyz in targets:
+            arm = "left" if xyz[0] < 0.05 else "right"
+            T = T_from(xyz, down_R(0.4))
+            Tf = kin.flange_from_tcp(T)
+            from dojo.skills.geometry import T_to_pose7
+            p = mv.plan(arm, T_to_pose7(Tf))
+            r = kin.ik(arm, T, ex.home_q[arm])
+            own = len(segment_targets(np.stack([ex.home_q[arm], r.q]), 0.16)) if r.ok else None
+            cu = len(segment_targets(np.vstack([ex.home_q[arm], p]), 0.16)) if p is not None else None
+            cu_travel = float(np.abs(np.diff(np.vstack([ex.home_q[arm], p]), axis=0)).sum(0).max()) if p is not None else None
+            res["curobo"].append({"xyz": xyz, "arm": arm, "own_steps": own, "curobo_steps": cu,
+                                  "own_travel": float(np.abs(r.q - ex.home_q[arm]).max()) if r.ok else None,
+                                  "curobo_travel": cu_travel})
+            print(f"[probe] curobo vs own {arm} {xyz}: own {own} steps, curobo {cu} steps", flush=True)
+    (out / "probe.json").write_text(json.dumps(res, indent=1, default=float))
+    print(f"[probe] FK vs obs flange: max {max(res['fk']):.3f} mm over {len(res['fk'])}", flush=True)
+    run.close()
+
+
+def cmd_report(a) -> None:
+    """Table of every run's summary under ``--root`` (CPU only, no Isaac)."""
+    root = Path(a.root)
+    rows = []
+    for f in sorted(root.glob("*/*_summary.json")):
+        d = json.loads(f.read_text())
+        v = d.get("verify") or {}
+        rows.append((f.parent.name, d["task"], f"{d['success']}/{d['n']}", d.get("unstable", 0),
+                     f"{d.get('steps_median')}/{d.get('step_lim')}", d.get("steps_max"), d.get("wall_s_median"),
+                     ",".join(f"{k}:{n}" for k, n in sorted((d.get("categories") or {}).items())),
+                     (f"{v.get('first_ok', 0)}+{v.get('later_ok', 0)}/{v.get('segments', 0)}" if v else "")))
+    hdr = ("run", "task", "success", "unstable", "steps med/lim", "max", "wall s", "failures", "verify ok first+later/seg")
+    print(" | ".join(hdr))
+    for r in rows:
+        print(" | ".join(str(x) for x in r))
+
+
+def main(argv=None) -> None:
+    ap = argparse.ArgumentParser()
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    r = sub.add_parser("run")
+    r.add_argument("--task", required=True)
+    r.add_argument("--seeds", default="100000-100024")
+    r.add_argument("--out", required=True)
+    r.add_argument("--trace", action="store_true", help="record task-object poses every env step (dev)")
+    r.add_argument("--verify", type=int, default=0, help="plan + verify: samples per candidate (0 = single plan)")
+    r.add_argument("--twins", type=int, default=8, help="twin envs for --verify (same process as the episode)")
+    p = sub.add_parser("probe")
+    p.add_argument("--out", required=True)
+    p.add_argument("--curobo", action="store_true")
+    q = sub.add_parser("report")
+    q.add_argument("--root", default=os.path.expanduser("~/dojo-data/skills/g3"))
+    a = ap.parse_args(argv)
+    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report}[a.cmd](a)
+
+
+if __name__ == "__main__":
+    main()
