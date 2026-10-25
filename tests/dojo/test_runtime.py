@@ -174,6 +174,10 @@ INSTR = {
     "press_by_number": "Press the two red buttons the required number of times according to the number "
                        "cards, then press the blue button to confirm.",
     "push_T": "Push the T-shaped block to align it precisely with the gray T-shaped pad.",
+    "cover_blocks": "Cover the blocks from left to right, remember their colors, then uncover them in the order: red, "
+                    "green, and blue.",
+    "general_pickup": "Pick up the toy car by 10 cm.",
+    "align_blocks": "Use the set square to push the three blocks into a straight, aligned row, then reset the robot arm.",
 }
 
 
@@ -867,3 +871,23 @@ def test_large_borderline_correction_needs_a_confirming_second_refine():
             assert abs(x1 - (x0 + 0.042)) < 1e-9
         else:
             assert x1 == x0
+
+
+def test_program_seam_runs_on_the_episode_context():
+    """RuntimePolicy(program=fn): fn(ctx) replaces the supervisor loop; setup and the finishing tail stay."""
+    env = _env()
+    seen = {}
+
+    def program(ctx):
+        seen.update(instruction=ctx.instruction, scene=ctx.scene, labels=sorted(ctx.sk.world.objects))
+        res = ctx.library.SKILLS["stack_objects"](ctx.sk, objects=["block_0", "block_1", "block_2"])
+        if res.get("ok"):
+            ctx.sk.finish()                       # like the supervisor loop: a successful program finishes itself
+        return {"ok": bool(res.get("ok")), "stage": "agent"}
+
+    pol = RuntimePolicy(RuntimeConfig(mode="gt"), assets=FakeAssets(), program=program)
+    rep = run_episode(pol, FakeEpisode(env), "gt")
+    assert rep["error"] is None, rep["error"]
+    assert seen == {"instruction": STACK, "scene": "stack_blocks", "labels": ["block_0", "block_1", "block_2"]}
+    assert _stacked(env) and rep["result"]["stage"] == "agent"
+    assert all(np.abs(env.q[a]).max() < 0.05 for a in ("left", "right"))

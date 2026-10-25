@@ -106,9 +106,11 @@ class _Checker:
 
 class RuntimePolicy:
     def __init__(self, cfg: RuntimeConfig | None = None, assets=None, twin_client=None, perception_client=None,
-                 supervisor=None):
+                 supervisor=None, program=None):
         """``supervisor``: any object with ``decide(instruction, world, events) -> supervisor.Decision`` (the hook
-        the LLM supervisor will implement); default ``RuleSupervisor``."""
+        the LLM supervisor will implement); default ``RuleSupervisor``. ``program``: ``program(ctx) -> result dict``
+        runs INSTEAD of the supervisor loop on the episode context (``_setup``); the tail (finish if not ok,
+        still steps, error handling, report) is the same."""
         self.cfg = cfg or RuntimeConfig.from_env()
         if self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle"):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -119,6 +121,7 @@ class RuntimePolicy:
         self.dev_gt = None
         self.report: dict = {}
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
+        self.program = program
         self.log_lines: list[str] = []
 
     # ------------------------------------------------------------------ lazy services
@@ -203,21 +206,22 @@ class RuntimePolicy:
                 self.report["perception_calls"] = list(getattr(self._pc, "calls", [])[-200:])
 
     # ------------------------------------------------------------------ the episode (worker thread)
-    def _episode(self):
-        from dojo.skills.executor import EpisodeEnded
+    def _setup(self, obs0: dict):
+        """Everything before the decide/execute loop: perceive, looks, search, provider, verifier, the Skills
+        factory. Returns the episode context, or None when the episode cannot start (no vocabulary)."""
         from dojo.skills.kinematics import X5Kin
         from dojo.skills.skills import Skills
 
         from dojo.skills import library
 
         cfg, b = self.cfg, self.bridge
-        obs0 = b.observe()
         instruction = obs0["instruction"]
         vocab = perception_vocabulary(instruction)
         self.report["vocabulary"] = vocab.name if vocab else None
         if cfg.mode == "perception" and vocab is None:
             self.log(f"[runtime] no perception vocabulary for {instruction!r}: finish")
-            return {"ok": False, "stage": "no_vocabulary"}
+            self.report["result"] = {"ok": False, "stage": "no_vocabulary"}
+            return None
         scene = vocab.name if vocab else ""
         kin = X5Kin()
         events = self.report["events"]
@@ -308,39 +312,33 @@ class RuntimePolicy:
             if verifier is not None:                    # the twin would run the task's checker on a partial scene
                 verifier.disabled = f"estimate lacks {nf}"
                 events.append({"kind": "verify_unavailable", "reason": verifier.disabled})
+        live = self._live
+
+        class _Ctx:
+            """The episode context a program (the supervisor loop, or the agent layer's LLM loop) runs on."""
+            sk = property(lambda _s: live["sk"])        # the current Skills instance (make_skills replaces it)
+
+        ctx = _Ctx()
+        ctx.instruction, ctx.scene, ctx.vocab, ctx.prov, ctx.verifier = instruction, scene, vocab, prov, verifier
+        ctx.events, ctx.make_skills, ctx.kin, ctx.bridge, ctx.report = events, make_skills, kin, b, self.report
+        ctx.perception = self.perception if cfg.mode == "perception" else None
+        ctx.fold, ctx.cfg, ctx.library, ctx.obs0 = self.fold, cfg, library, obs0
+        ctx.refine = lambda label, arm, kind="pick": self._refine_hook(prov, live["sk"], label, arm, kind)
+        ctx.search = lambda record=None: self._search(live["sk"], obs0, record or self._last_record, scene, kin)
+        return ctx
+
+    def _episode(self):
+        from dojo.skills.executor import EpisodeEnded
+        cfg, b = self.cfg, self.bridge
+        obs0 = b.observe()
+        ctx = self._setup(obs0)
+        if ctx is None:
+            return self.report.get("result")
+        events = ctx.events
         result = None
         try:
-            while True:
-                w = sk.refresh()
-                d = self.supervisor.decide(instruction, w, events)
-                self.report["decisions"].append({"action": d.action, "skill": d.skill, "params": _short(d.params),
-                                                 "reason": d.reason, "step": w.step})
-                if d.skill and self.report.get("skill") is None:
-                    self.report["skill"] = d.skill
-                if d.action == "finish":
-                    break
-                w.notes["params"] = dict(d.params)
-                try:
-                    res = library.SKILLS[d.skill](sk, **d.params) or {}
-                    self.report["result"] = _short(res)              # before finish(): success may end it there
-                    if res.get("ok"):
-                        f = sk.finish()
-                        res = {**res, "finish": f.status}
-                except Divergence as e:
-                    events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
-                    sk = make_skills(sk)
-                    continue
-                except KeyError as e:                    # a label the program needs is not in the WorldState
-                    res = {"ok": False, "stage": "world", "error": f"missing object {e}"}
-                last = next((h for h in reversed(sk.history) if not h.ok), None)
-                events.append({"kind": "program_done", "ok": bool(res.get("ok")), "stage": res.get("stage"),
-                               "status": last.status if (last is not None and not res.get("ok")) else "ok",
-                               "step": b.steps_used})
-                result = _short(res)
-                self.report["result"] = result
-                if res.get("ok"):
-                    break
-                sk = make_skills(sk)
+            result = (self.program or self._supervise)(ctx)
+            sk = ctx.sk
             if not (result or {}).get("ok"):
                 sk.finish()                              # bank whatever tier was reached
             for _ in range(cfg.final_hold):
@@ -356,12 +354,51 @@ class RuntimePolicy:
                 self.report["error_handled"] = f"{type(e).__name__}: {e}\n{traceback.format_exc()[-2500:]}"
                 events.append({"kind": "error", "note": f"{type(e).__name__}: {str(e)[:200]}"})
                 try:
-                    sk.finish()
+                    ctx.sk.finish()
                 except Exception:  # noqa: BLE001
                     pass
         finally:
             if result is not None:
                 self.report["result"] = result
+        return result
+
+    def _supervise(self, ctx) -> dict | None:
+        """The default program: supervisor decide -> library skill -> finish on success, re-plan on divergence,
+        retry on failure (bounded by the supervisor)."""
+        b, events, instruction, library = ctx.bridge, ctx.events, ctx.instruction, ctx.library
+        make_skills, sk = ctx.make_skills, ctx.sk
+        result = None
+        while True:
+            w = sk.refresh()
+            d = self.supervisor.decide(instruction, w, events)
+            self.report["decisions"].append({"action": d.action, "skill": d.skill, "params": _short(d.params),
+                                             "reason": d.reason, "step": w.step})
+            if d.skill and self.report.get("skill") is None:
+                self.report["skill"] = d.skill
+            if d.action == "finish":
+                break
+            w.notes["params"] = dict(d.params)
+            try:
+                res = library.SKILLS[d.skill](sk, **d.params) or {}
+                self.report["result"] = _short(res)              # before finish(): success may end it there
+                if res.get("ok"):
+                    f = sk.finish()
+                    res = {**res, "finish": f.status}
+            except Divergence as e:
+                events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
+                sk = make_skills(sk)
+                continue
+            except KeyError as e:                    # a label the program needs is not in the WorldState
+                res = {"ok": False, "stage": "world", "error": f"missing object {e}"}
+            last = next((h for h in reversed(sk.history) if not h.ok), None)
+            events.append({"kind": "program_done", "ok": bool(res.get("ok")), "stage": res.get("stage"),
+                           "status": last.status if (last is not None and not res.get("ok")) else "ok",
+                           "step": b.steps_used})
+            result = _short(res)
+            self.report["result"] = result
+            if res.get("ok"):
+                break
+            sk = make_skills(sk)
         return result
 
     # ------------------------------------------------------------------ helpers
