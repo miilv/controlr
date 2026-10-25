@@ -476,3 +476,29 @@ frame_L1 (v1) for all 6 D0 tasks, 123 layouts:
 Median camera error 0.01 cm. The off-target ones moved but ended 2-6 cm away (cuRobo end tolerance + tracking);
 perception uses FK on the observed joints, so they stay. frame_L2 (v2, unchanged layouts skipped):
 stack_blocks 17 and stack_bowls 18 done, the other 4 tasks queued.
+
+## Generator v7: select_mode identity rules (reported by skills-2)
+
+Scan of all 54 task configs. Select modes in use:
+- allow_duplicate, same, unique, hierarchical, label_map, same_index_as_label, same_as_label, linked_count;
+- keys: same_label, allow_global_same, key_label, label_prefix, linked_label_prefix;
+- group key `dynamic_layout`;
+- top-level typo `Prohibited_Area` (imitate_sorting_sequence).
+
+v1-v6 silently ignored `same_index_as_label`, `same_as_label` and `allow_global_same`. That broke make_kong: discards matching no triple, mahjong9 not completing the pair. v7 implements them inside selection, so placement uses the right asset:
+- `same` + `allow_global_same: False`: a tile not used by other such groups nor already placed (fixed-pose groups, like make_kong's discards, are placed first);
+- `unique`: distinct from every (category, index) already in the layout;
+- `same_index_as_label` / `same_as_label`: copy the labelled object, which becomes a placement dependency.
+
+`label_prefix`, `linked_count`, `linked_label_prefix` and `dynamic_layout` (arrange_largest_number, classify_objects[_by_language], solve_equation, sweep_blocks) RAISE now; none of our dev tasks uses them.
+
+Also fixed: pinned [0,0] offsets on a support (a tile stacked on a tile) broke under the v4 disk sampler.
+
+Results:
+- Every stored record was checked against its config: only make_kong violated (all 25).
+- make_kong regenerated, 25/25 rule-correct, 25/25 settled; the old set is in `layouts_v6_bak/`.
+- fasten_screws added (nut/bolt assets +13 MB): 25/25 correct, 25/25 settled.
+
+## Look frames v2 (frame_L2): done
+
+123 layouts (identical-to-v1 skipped), 183/200 arm looks within 2 cm / 10°.
