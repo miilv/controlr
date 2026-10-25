@@ -44,6 +44,7 @@ class Grasp:
     score: float = 0.0            # lower is better (preference before the step cost)
     note: str = ""
     lift_dir: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 1.0]))
+    clear_w: float = 0.0          # open at least this wide (an irregular object's collider can exceed its mesh slice)
 
     @property
     def approach(self) -> np.ndarray:
@@ -58,7 +59,7 @@ class Grasp:
         return P
 
     def open_gap(self) -> float:
-        return min(MAX_GAP, self.width + 2 * CLEAR + 0.006)
+        return min(MAX_GAP, max(self.width, self.clear_w) + 2 * CLEAR + 0.006)
 
 
 def _frame(approach, closing) -> np.ndarray:
@@ -338,6 +339,44 @@ def antipodal_grasps(obj: ObjectState, kin: X5Kin, arm: str, n_samples: int = 20
     return out
 
 
+def mesh_width_at(obj: ObjectState, T_grasp: np.ndarray, reach: float = 0.05, depths=(0.0, 0.006),
+                  max_normal_deg: float = 32.0) -> float | None:
+    """The object's real width between the pads of a grasp (rays along the closing axis from both sides
+    towards the TCP, at the TCP and a little deeper along the approach). None when either side misses
+    (the grasp would close on a gap: between a pliers' handles) or when a contact face is not square to
+    the closing axis (a rounded handle squeezed above its widest line pops out: twin, store_tools)."""
+    if obj.asset.mesh is None:
+        return float("nan")
+    V, F = obj.asset.mesh
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    Rt, pt = obj.R.T, obj.pos
+    y = T_grasp[:3, 1]
+    y_l = Rt @ y
+    cos_max = math.cos(math.radians(max_normal_deg))
+    widths = []
+    for dd in depths:
+        p = T_grasp[:3, 3] + T_grasp[:3, 0] * dd
+        hits = []
+        for sgn in (1.0, -1.0):
+            o_w = p + sgn * y * reach
+            o_l, d_l = Rt @ (o_w - pt), Rt @ (-sgn * y)
+            h = _ray_mesh(o_l, d_l, a, b, c)
+            if h is None or h[0] > reach + 0.001:
+                hits.append(None)
+                continue
+            fi = h[1]
+            n = np.cross(b[fi] - a[fi], c[fi] - a[fi])
+            n /= max(np.linalg.norm(n), 1e-12)
+            hits.append(h[0] if abs(float(n @ y_l)) >= cos_max else None)
+        if None in hits:
+            continue
+        widths.append(2 * reach - hits[0] - hits[1])
+    if not widths:
+        return None
+    w = max(widths)
+    return w if w > 0.002 else None
+
+
 def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WIDTH, depth: float = 0.016,
                edge: float = 0.012, max_up: float = 0.35, ends: bool = True,
                tilts: tuple = (0.0, 25.0, -25.0)) -> list[Grasp]:
@@ -357,6 +396,8 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
     R = obj.R
     T_c = T_from(obj.center_w, R)
     eye = np.eye(3)
+    from dojo.skills.motion import held_box
+    irregular = held_box(obj, np.eye(4)).points is not None       # mesh-check every grasp of these
     out = []
     for k in range(3):                                   # closing axis
         if ext[k] > max_width or (axes_ok is not None and k not in axes_ok):
@@ -383,7 +424,9 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
                             Tg = T_c @ T_from(pb, _frame(appr_b, flip * eye[k]))
                             # fingertips >= 5 mm above the object's support: raise the TCP (the pads still
                             # cover the object from there up; thin parts, < 4 mm left, are skipped)
-                            floor = max(obj.bottom_z, TABLE_Z) + TIP_TABLE_CLEAR + 0.001
+                            # 2.5 mm: a thin lying object (pliers, 24 mm) is then squeezed about its middle,
+                            # not above it (twin: squeezed 5 mm high, the pliers popped out)
+                            floor = max(obj.bottom_z, TABLE_Z) + 0.0025
                             low = (Tg[2, 3] + min(0.0, float(Tg[2, 0])) * TIP_BEYOND_TCP
                                    - 0.009 * abs(float(Tg[2, 2])) - 0.004 * abs(float(Tg[2, 1])))
                             need = floor - low
@@ -392,7 +435,11 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
                                     continue
                                 Tg[2, 3] += need
                             down = -float(Tg[2, 0])
-                            out.append(Grasp("box", Tg, float(ext[k]), pre_dist=0.06,
+                            w_real = mesh_width_at(obj, Tg) if irregular else float("nan")
+                            if w_real is None or (w_real == w_real and w_real > max_width):
+                                continue
+                            out.append(Grasp("box", Tg, float(ext[k]) if w_real != w_real else float(w_real), pre_dist=0.06,
+                                             clear_w=float(ext[k]) if irregular else 0.0,
                                              score=0.6 * (1.0 - down) + 0.1 * abs(off) / max(room, 1e-3)
                                              + 0.2 * float(ext[k]) / 0.07 + abs(tilt) / 100.0,
                                              note=f"close {k} approach {'+' if s > 0 else '-'}{j} tilt {tilt:+.0f} "

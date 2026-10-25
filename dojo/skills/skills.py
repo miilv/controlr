@@ -591,7 +591,8 @@ class Skills:
                 cands = list(grasps)
             else:
                 cands = G.box_grasps(obj, self.kin, a) + G.candidates(obj, self.kin, a)
-            # place poses this arm reaches at all (the grasp only changes the wrist)
+                if held_box(obj, np.eye(4)).points is not None:          # irregular: real slices too
+                    cands += G.slice_grasps(obj, self.kin, a)
             n_g = n_p = 0
             min_down = math.cos(math.radians(max_pick_tilt))
             for g in cands:

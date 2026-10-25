@@ -151,7 +151,7 @@ def test_box_grasps_keep_fingertips_above_the_table():
     assert down
     for g in down:
         tip = g.T[:3, 3] + g.T[:3, 0] * 0.0126
-        assert tip[2] >= TABLE_Z + 0.004
+        assert tip[2] >= TABLE_Z + 0.0024
 
 
 # ----------------------------------------------------------------------------------------- skills on the kinematic env
