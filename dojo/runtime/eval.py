@@ -36,8 +36,8 @@ from .firewall import DEV_GT_KEY
 from .policy import RuntimeConfig, RuntimePolicy
 
 GROSS_XY_MM = 20.0
-TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "not_home", "divergence", "error",
-            "other")
+TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "belief_mismatch", "not_home",
+            "divergence", "error", "other")
 
 
 def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -> tuple[str | None, str]:
@@ -62,6 +62,10 @@ def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -
         return "plan", f"{fail['skill']} {fail['status']}: {fail['note'][:160]}"
     if any(e.get("kind") == "divergence" for e in rep.get("events", [])):
         return "divergence", ""
+    if mode == "perception" and (rep.get("result") or {}).get("ok"):
+        # the skill finished on the BELIEF (predicted poses) but the checker disagrees: an estimate error that
+        # neither verification nor resync caught
+        return "belief_mismatch", f"stages_left {reward.get('stages_left')}"
     if reward.get("stages_left", 0) == 1:
         return "not_home", ""
     return "other", str(rep.get("result"))[:200]

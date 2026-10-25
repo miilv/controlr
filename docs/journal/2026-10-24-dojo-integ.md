@@ -169,3 +169,16 @@ The two lost layouts are the same in both verify settings: one block estimated 2
 confidence 0.76–0.82, unflagged (100006 took no look). The twin cannot catch it (it is loaded with the same
 wrong pose), and the resync check passes because the stack is offset, not missing. Levers: a perception
 flag for "best fit leaves foreground residual next to the object", and an in-hand re-view after the lift.
+
+`B_tower_off_2a/b` (build_tower × 10, perception, verify off, with the conservative re-plan): **7/10, score 75.0**
+(v1: 1/10, 20), steps median 523 / max 553 of 1050, 13 looks, 34 s / episode. Estimate: xy median 0.7 mm,
+p90 4.5 mm (before looks 8.9 mm), 1 piece not found, identity / shape 0.96. Paired with mode A (10/10, 100):
+
+| task | verify | paired n | A score | B score | gap | lost in B |
+|---|---|---|---|---|---|---|
+| build_tower | off | 10 | 100.0 | 75.0 | **+25.0** | 100003, 100005: topper ↔ pillar / prism shape swap; 100004: belief_mismatch |
+
+100004 was booked "not_home" by the first taxonomy: the skill finished with every piece within 0.3 mm of its
+target IN THE BELIEF, but RoboDojo's checker stopped at the base tier, i.e. an estimate error that neither the
+resync check nor the skills' place check (both read predictions in mode B) caught. New category
+`belief_mismatch` for that case (mode B, skill done, checker disagrees).
