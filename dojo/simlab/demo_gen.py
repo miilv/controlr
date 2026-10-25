@@ -169,7 +169,7 @@ class DemoPlanner:
         """Plan the hand to ``tcp_xyz`` (top-down, fingers along ``yaw`` or yaw + pi). ``straight``: a vertical
         line from the current pose (cuRobo pose-cost hold on orientation and x/y), else free space."""
         pair = [yaw, yaw + math.pi]
-        if straight and self.last_yaw is not None:      # keep the hand as it is: no turn on a vertical line
+        if self.last_yaw is not None:     # the parallel gripper is symmetric: turn the wrist the short way
             pair.sort(key=lambda y: abs(math.remainder(y - self.last_yaw, 2 * math.pi)))
         tries = [(y, STRAIGHT if straight else None) for y in pair]
         if straight:
