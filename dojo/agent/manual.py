@@ -56,6 +56,17 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "keyhole, opening), with a slow guided descent; then, if turn_deg != 0, turns it about the insertion axis "
         "before letting go (turning a key in its lock: turn_deg = -60). List only the intended receptacle(s): the "
         "fixture obj starts in usually fits it too."),
+    "stack_on_pegs": (
+        "stack_on_pegs(groups: [[id, ...], ...], base: id, pegs: [frame, ...])",
+        "Threads pieces onto the pegs/poles of a base: group i (identical pieces) goes onto peg pegs[i] (a peg "
+        "frame of the base, as listed for it in the scene), one piece at a time, flat and centred, released just "
+        "above the peg top so it slides down. Banks after each piece. For 'put the rings/pieces on the poles'."),
+    "slots_and_press": (
+        "slots_and_press(objects: [id, ...], container: id, slots: [frame, ...], press_tag: frame | null = null)",
+        "Stands one object in each named slot of the container (slot frames as listed for it in the scene), "
+        "thinnest axis across the slot, lowered to the slot floor; then, if press_tag is given (a lever or button "
+        "on the container), presses it down. Pass only as many objects as the instruction asks for "
+        "(e.g. 'two slices' -> 2). For 'put X into the toaster and press'."),
     "place_in_slots": (
         "place_in_slots(objects: [id, ...], container: id)",
         "Puts each object into the compartment of the container that is shaped for it (a slot named after the "
@@ -71,7 +82,7 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "or into support without lifting it. Steps are independent (any order); grippers opened after each. Use "
         "for an instruction that lists several put-X-on-Y / push-X-into-Y goals."),
 }
-SKILL_DOCS_VERSION = 1
+SKILL_DOCS_VERSION = 2  # 2: + stack_on_pegs, slots_and_press (skills-3)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',
@@ -150,10 +161,17 @@ def skills_section(version: int = 1) -> str:
     return "\n".join(out)
 
 
-def render_manual(version: str = "manual_v1") -> str:
+def render_manual(version: str = "manual_v1", skills=None) -> str:
+    """``skills``: registry entries (``dojo.agent.registry``) to document instead of ``SKILL_DOCS`` (J2: the
+    registry is the versioned source of the skill list; strict runs pass only contract-only entries)."""
     tpl = (PROMPTS / f"{version}.md").read_text()
     v = int(version.rsplit("_v", 1)[1]) if "_v" in version else 1
-    return tpl.replace("{skills}", skills_section(v)).replace("{api}", API_DOC_V3 if v >= 3 else API_DOC)
+    if skills is not None:
+        from dojo.agent.registry import render
+        section = render(skills)
+    else:
+        section = skills_section(v)
+    return tpl.replace("{skills}", section).replace("{api}", API_DOC_V3 if v >= 3 else API_DOC)
 
 
 __all__ = ["SKILL_DOCS", "API_DOC", "render_manual", "skills_section"]

@@ -56,6 +56,7 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | a new Isaac task | `robot/isaac/tasks.py` (+ server if new objects are needed) | `test_isaac_tasks` (no GPU) + scripted expert in the isaac tests; look at the frames (`docs/img/`) |
 | a new backend (real UR3 etc.) | `robot/<backend>.py`, factory in `robot/__init__.py` | the `robot/base.py` contract; mock tests as the template |
 | RoboDojo (shim, frames, two-arm grammar) | `robot/robodojo/`, `protocol/grammar.py` (`_parse_arm_line`), `prompts/system_v1.md` | `test_robodojo` (shim vs a fake `TASK_ENV`, a whole episode over a real connection); then `scripts/robodojo/run.sh --fake-llm` on compute2 ([ROBODOJO.md](ROBODOJO.md)) |
+| dojo behind the official RoboDojo client (robot-harness's strict server) | `dojo/bridge/` (client, `contract.py` firewall, `RobotServerBackend`, driver), `scripts/dojo/bridge_episode.sh` | `test_bridge` (a fake strict server over a real socket: firewall, `joint_steps`, runtime / agent / twin episodes); `scripts/dojo/bridge_episode.sh --fake`; then a practice episode on a 5.1-rendering GPU ([BRIDGE-RUNBOOK.md](BRIDGE-RUNBOOK.md)) |
 | decision head (questions, reduction, state) — tune with `scripts/decisions_probe.py` (one call per scene) and `scripts/decisions_perception.py` (image relations per camera) before episodes | `llm/decisions.py`, `prompts/decisions_vN.yaml` (+ `config.DecisionsConfig`) | `test_llm_decisions`; image format / that the model sees the frame: `CONTROLR_LIVE=1 pytest tests/test_llm_decisions_live.py -s` (4 calls) |
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
@@ -99,6 +100,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   place the start around the aim point with a random sign per axis; always read the accuracy on the
   minority class. The decision head locates only VISIBLE, concretely named things ("the red ball"):
   "the point 50 mm above the box rim" stays at chance (journal 2026-10-07-decision-head-tuning).
+- **Codex-served GPT-6 (`cx/gpt-6-astra-*`, `cx/gpt-6.1-sol`) answers "write a code cell" as a call of a `python`
+  tool.** Without a declared tool omniroute drops the call: the stream has only `reasoning_content`, `finish_reason:
+  stop`, ~100 completion tokens and empty text (2026-10-25: 24 of 30 agent replies lost). Declare a `python(code)`
+  function tool (`dojo.agent.loop.PYTHON_TOOL`); `LLMClient` assembles streamed `tool_calls` into `LLMResult.tool_calls`.
+  JSON-only prompts (Phase 1 grounding) are unaffected. Sonnet on `claude/` sometimes writes the same call as
+  `<invoke name="python"><parameter name="code">` markup in the text; `dojo.agent.loop.extract_code` accepts both.
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
   Very small frames (224 px) also make `low` think ([journal](journal/2026-10-04-sonnet-latency.md)).

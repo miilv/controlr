@@ -9,7 +9,7 @@ tasks=("$@"); [[ ${#tasks[@]} -gt 0 ]] || mapfile -t tasks < <(ls "$L")
 for t in "${tasks[@]}"; do
   ls "$L/$t"/*.json 2>/dev/null | grep -qE '/[0-9]+\.json$' || continue
   systemd-run --user --scope -q -p MemoryMax=20G -p CPUQuota=1200% "$HERE/scripts/simlab/rdpy.sh" -m dojo.simlab.presettle \
-      --task "$t" > "$LOG/$t.log" 2>&1
+      --task "$t" ${SIMLAB_PRESETTLE_ARGS:-} > "$LOG/$t.log" 2>&1
   echo "$(date -u +%T) $t rc=$? $(tr '\r' '\n' < "$LOG/$t.log" | grep -a 'settled records' | tail -1)" >> "$LOG/progress.txt"
   sleep "${SIMLAB_LOCK_YIELD_S:-90}"   # team lock policy: yield before re-taking the GPU lock
 done

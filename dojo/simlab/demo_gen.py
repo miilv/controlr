@@ -50,12 +50,13 @@ MIN_PAD_Z = 0.016           # pad centre above the object's bottom: the planner'
                             # (RoboDojo passes table_height 0.74, the top is 0.765), so lower tips stall
 # rad per 4 ms sub-step (RoboDojo's own demos: median 0.002, peak 0.008). Free moves fast; near and with the
 # object slow (fast descents left the hand lagging above the object when the fingers closed).
-DQ_FREE, DQ_CARRY, DQ_NEAR = 0.008, 0.004, 0.002
-SETTLE = 50                 # sub-steps holding still before the fingers close
+DQ_FREE, DQ_CARRY, DQ_NEAR = 0.008, 0.005, 0.003
+SETTLE = 30                 # sub-steps holding still before the fingers close
 HOME_STEP_RAD = 0.004       # per 4 ms sub-step for joint-space moves (1 rad/s)
 MAX_DEMO_ENV_STEPS = 900    # leaves the policy >= 700 of the 1600 env steps (RoboDojo-paced demos: ~575)
 ORDER_TRIES = 4             # the seed's order, then other seeded orders (a transport can knock a later object)
-CARRY_CLEARANCE = 0.08
+CARRY_CLEARANCE = 0.04     # above the tallest aim (short vertical moves: the Franka at full reach is slow)
+PRE_HEIGHT = 0.05
 STRAIGHT = [1, 1, 1, 1, 1, 0]  # cuRobo pose-cost hold: orientation + x/y fixed, free along the hand z (vertical)
 
 
@@ -255,7 +256,7 @@ def plan_demo(run, seed: int, order: list[int] | None = None) -> tuple[dict | No
             return None, {**info, "status": f"aim{i} ({o['category']}) {100 * g['width']:.1f} cm wider than the gripper"}
         grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.6 * h), g["bottom"] + MIN_PAD_Z)
         carry_z = max(b_top, tallest - origin[2]) + h + CARRY_CLEARANCE   # the carried object clears everything
-        steps = [((*g["xy"], g["top"] + 0.08), g["yaw"], f"pre aim{i}"),
+        steps = [((*g["xy"], g["top"] + PRE_HEIGHT), g["yaw"], f"pre aim{i}"),
                  ((*g["xy"], grasp_z), g["yaw"], f"grasp aim{i}")]
         for xyz, yaw, name in steps:
             if not dp.plan_to(xyz, yaw, name, straight=name.startswith("grasp"),

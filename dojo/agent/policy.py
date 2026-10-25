@@ -21,6 +21,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from dojo.agent.loop import AgentConfig, AgentLoop
+from dojo.agent.manual import SKILL_DOCS_VERSION
 from dojo.agent.robo import CellLimits, Robo
 from dojo.agent.scene import assign_ids, scene_text
 from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
@@ -117,14 +118,21 @@ class AgentPolicy(RuntimePolicy):
         world = ctx.sk().refresh()
         ids = assign_ids(world)
         objects_root = getattr(ctx.assets, "root", None)
-        text, ids = scene_text(world, ids, objects_root=objects_root)
+        text, ids = scene_text(world, ids, objects_root=objects_root, version=acfg.scene_version)
         robo = Robo(ctx, ids, objects_root=objects_root,
                     limits=CellLimits(acfg.max_cell_steps, acfg.max_cell_contacts), auto_frames=acfg.auto_frames)
+        from dojo.agent.loop import registry_skills
+        reg_entries = registry_skills(acfg)
+        if reg_entries is not None:
+            robo.skills = {e.name: e for e in reg_entries}
         stamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
         log_dir = self.log_root / f"{stamp}_ep{self.n_episodes:03d}"
         loop = AgentLoop(acfg, self.client(), robo, log_dir=log_dir, log=self.log)
         rep = {"model": acfg.model, "extra_body": acfg.extra_body, "log_dir": str(log_dir), "outcome": None,
-               "usage": {}, "cells": 0, "skills_called": [], "code_commit": _deployed_commit()}
+               "usage": {}, "cells": 0, "skills_called": [], "code_commit": _deployed_commit(),
+               "manual": acfg.manual, "appendix": acfg.appendix, "skill_docs_version": SKILL_DOCS_VERSION,
+               "registry": acfg.registry or None, "strict": acfg.strict,
+               "skills_prompted": sorted(robo.skills) if robo.skills is not None else None}
         self.report["agent"] = rep
 
         def live(lp):                     # the main thread may close the report while the worker is parked

@@ -134,6 +134,26 @@ def parse_steps(text: str, objs) -> list[tuple[str, str, str]]:
     return [("push" if v in ("push", "slide") else "place", a.label, b.label) for v, a, b in res if a and b]
 
 
+NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+           "a": 1, "an": 1}
+
+
+def obj_colour(o) -> str | None:
+    """Perception's colour name when present, else the asset catalogue's mean colour."""
+    from dojo.skills.world import colour_name
+    c = getattr(o, "colour", None)
+    return c if c else colour_name(getattr(o.asset, "rgb", None))
+
+
+def _joint_tags(o) -> list[str]:
+    """Functional tags of an articulated object that sit on a moving joint (a toaster's lever)."""
+    out = []
+    for tag, v in list((o.asset.active_functional or {}).items()) + list((o.asset.functional or {}).items()):
+        if isinstance(v, dict) and v.get("parent_joint") and v.get("parent_joint") != "FixedJoint" and tag not in out:
+            out.append(tag)
+    return out
+
+
 def plan(instruction: str, world: WorldState) -> Plan:
     text = (instruction or "").lower()
     cats = _by_category(world)
@@ -149,6 +169,62 @@ def plan(instruction: str, world: WorldState) -> Plan:
             c = max(rig, key=lambda c: len(cats[c]))
             return Plan("declare_kong", {"tiles": [o.label for o in cats[c] if o.obj_type == "Rigid"]},
                         f"{len(cats[c])} {c} tiles")
+
+    # --- pieces onto pegs: identical pieces form a group; the bigger group goes on the taller peg
+    if re.search(r"\bpegs?\b|\bpoles?\b", text):
+        for b in objs:
+            pegs = [t for t in b.asset.support if re.search(r"pole|peg", t.lower())]
+            if len(pegs) < 2:
+                continue
+            groups: dict = {}
+            for o in objs:
+                if o.obj_type == "Rigid" and not o.clutter and o.label != b.label:
+                    groups.setdefault(o.asset.key, []).append(o.label)
+            if not groups:
+                continue
+            tall = sorted(pegs, key=lambda t: -float(b.asset.support[t][0][0][2]))
+            gl = sorted(groups.values(), key=lambda g: (-len(g), g[0]))
+            pairs = list(zip(gl, tall))
+            return Plan("stack_on_pegs", {"groups": [g for g, _ in pairs], "base": b.label, "pegs": [t for _, t in pairs]},
+                        f"{len(pairs)} groups by size onto {b.label}'s pegs by height")
+
+    # --- N objects into a container's slots, one each, then press its lever / button
+    if "press" in text and re.search(r"\b(into|in)\b", text):
+        for c in objs:
+            slots = [t for t in c.asset.functional if "slot" in t.lower()]
+            joints = _joint_tags(c)
+            if not slots:
+                continue
+            noun_cats = [k for k in named if k != c.category.lower()]
+            movers = [o for k in noun_cats for o in cats[k] if o.obj_type == "Rigid" and not o.clutter]
+            if not movers:
+                continue
+            m = re.search(r"\b(" + "|".join(NUMBERS) + r"|\d+)\s+(?:slices?\s+of\s+|pieces?\s+of\s+)?[a-z_]+", text)
+            n = int(m.group(1)) if m and m.group(1).isdigit() else NUMBERS.get(m.group(1), len(slots)) if m else len(slots)
+            n = max(1, min(n, len(slots), len(movers)))
+            movers = sorted(movers, key=lambda o: float(np.linalg.norm(o.center_w[:2] - c.center_w[:2])))[:n]
+            press = joints[0] if joints and ("lever" in text or "button" in text or "press" in text) else None
+            return Plan("slots_and_press", {"objects": [o.label for o in movers], "container": c.label,
+                                            "slots": slots[:n], "press_tag": press},
+                        f"{n} of {noun_cats} one per slot of {c.label}, then press {press}")
+
+    # --- stack in a named order of colours, bottom to top
+    if "stack" in text and "order" in text:
+        cols = re.findall(r"\b(red|green|blue|yellow|orange|cyan|purple|pink|white|black|brown|gr[ae]y)\b", text)
+        if len(cols) >= 2:
+            rigid = [o for o in objs if o.obj_type == "Rigid" and not o.clutter]
+            seq = []
+            for cname in cols:
+                hit = [o for o in rigid if obj_colour(o) == cname and o.label not in seq]
+                if len(hit) != 1:
+                    seq = []
+                    break
+                seq.append(hit[0].label)
+            if seq:
+                if "bottom" in text and "top" in text and text.index("top") < text.index("bottom"):
+                    seq = seq[::-1]                                  # "from top to bottom"
+                return Plan("stack_objects", {"objects": seq, "nest": False, "ordered": True},
+                            f"ordered by colour {cols}")
 
     # --- several "place the X on the Y" / "push the X into the Y" clauses: arrange them all
     steps = parse_steps(text, objs)

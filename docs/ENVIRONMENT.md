@@ -23,6 +23,9 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `CONTROLR_ROBODOJO_HOST` / `_PORT` / `_AUTHKEY` | compute2 (`scripts/robodojo/run.sh`) | where `controlr robodojo-serve` listens for the RoboDojo shim, and their shared secret (a random one per run) |
 | `CONTROLR_ROBODOJO_READY_FILE` | compute2 | readiness flag of `robodojo-serve` (set by `run.sh`) |
 | `RD_HOME` | compute2 | RoboDojo install dir for `scripts/robodojo/*.sh` (default `/root/controlr-robodojo`) |
+| `BENCH` | the GPU box of a bridge run (`scripts/dojo/bridge_episode.sh`, `python -m dojo.bridge.driver --bench`) | robot-harness's install dir; the strict server's socket is `$BENCH/run/<id>.sock` (default isr-lab's `/home/anywherevla/data2/bench`; [BRIDGE-RUNBOOK.md](BRIDGE-RUNBOOK.md)) |
+| `ROBOT_START` | same | robot-harness start script for the strict server with `joint_steps` (default `$BENCH/bin/robot-start-j2`) |
+| `BRIDGE_LOCK_WAIT_S` | same | how long `bridge_episode.sh` waits for `~/dojo-gpu.lock` (`DOJO_GPU_LOCK`; default 3600 s) |
 
 ## Machines
 
