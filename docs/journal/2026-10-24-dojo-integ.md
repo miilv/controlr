@@ -301,3 +301,14 @@ the blocks with good fits (iou 0.65–0.72, perception ok) but `refine_max_shift
 (34.9 / 59.2 mm), and post-place refines that saw 34–39 mm offsets were discarded the same way. The closed2 arm
 sets the cap to 70 mm (perception's in-frame search range; perception's own `ok` requires iou ≥ 0.6), post-place
 uses the same cap. closed2 = closed + search by wrist refine + 70 mm cap.
+
+## 7. Shared lock queue with the agent layer; program seam
+
+- The agent layer (feat/dojo-agent) drives the runtime through `RuntimePolicy(program=fn)`: `_setup(obs0) -> ctx`
+  (perceive, looks, search, provider, verifier, Skills factory) → `fn(ctx)` instead of the supervisor loop → the
+  same tail. `dojo.runtime.eval --policy module:Class`; episode rows carry `agent` / `policy`.
+- Lead's lock order: one agent Phase-2 job (~3 episodes) alternating with one of mine. My runner owns the single
+  ordered queue (`~/dojo-data/integ/queue.txt`); agent lines carry `--repo /home/physicalai/dojo-agent` and run that
+  checkout's `integ_eval.sh`. `queue.sh restart` replaces the runner after a deploy (waits for the in-flight job).
+- Code versions in the closed2 stack arm: chunk a on the pre-seam code, chunks b–e on the seam refactor
+  (behaviour-preserving; same tests). No other change in between.
