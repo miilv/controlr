@@ -70,3 +70,35 @@ Pitfall: simlab writes `frame_L1.json` before the PNGs — the eval now requires
   change the outcome. Shoe identity is deprioritised.
 - Identity matters where the checker reads the asset index or its order: sort_nesting_dolls_by_size (index
   % 5 = size order), stack_blocks_by_language (labels ↔ colour words), classify_objects (categories).
+
+## True post-look table (v1 plans, simlab `frame_L1`, Isaac 6.0 proxy; same code per row)
+
+| task / class | n | frame 0 | + one look | note |
+|---|---|---|---|---|
+| build_tower | 200 | 0.81 | 0.87 | gross 21 → 12, rot p90 6.1 → 1.8° |
+| push_T T | 25 | 0.84 | 0.92 | only 10 layouts had a planned look |
+| push_T pad | 25 | 0.80 | 0.80 | |
+| stack_blocks | 75 | 0.83 | 0.87 | |
+| stack_bowls | 75 | 0.88 | 0.91 | |
+| put_bottles bottle | 100 | 0.76 | 0.77 | ≤ 2 looks for 4 bottles |
+| pack box / car / toothbrush / hammer / shoe | 25 each | 0.92 / 0.56 / 0.60 / 0.88 / 0.52 | 0.80 / 0.72 / 0.72 / 0.88 / 0.80 | with the visibility gate |
+| **all** | 625 | **0.82** | **0.84** | |
+
+Looks: 123 layouts; 174 of 185 arm looks within 2 cm / 10° of the request (median camera error 0.01 cm).
+
+## refine(): single-object wrist refinement (pre-grasp hover)
+`dojo/perception/refine.py`: `refine(obj_id, wrist_rgb, proprio, prior_pose, arm) -> {pose, residual, ok, ...}`.
+- The warped head background fails at wrist range (view-dependent table sheen → large false foreground);
+  a table colour model sampled from a ring around the prior's projection in the same frame (k-means in
+  Lab) fixes it: no background images needed.
+- D0 wrist views (D0 scripted looks + our L1), priors = GT perturbed by ±20 mm / ±10°, 197 cases:
+  0.29 s median (p90 0.40 s); xy 15.4 → 1.0 mm median, 76 % within 5 mm; when `ok` and the object is near
+  the image centre (hover): 97 % within 5 mm, p90 2.7 mm, rot median 0.2°. push_T 0.7 mm, build_tower 0.5,
+  blocks 0.8, pack 1.5 (medians). Announced to integration and skills.
+
+## Unexplained foreground near a fit
+Head-view foreground left unexplained within 5 cm of a fit (> 15 % of the object's own area) marks it
+ambiguous and scales its confidence. Integration's two misses: stack_blocks 100004 (17.6 mm off) now has
+fg-residual 0.37 → confidence 0.35, flagged; 100006 (21.7 mm) is 44 % hidden by the robot → flagged.
+stack_blocks frame 0: recall on out-of-tolerance 12/13 (was 15/22 with conf < 0 on blocks+bowls), at the
+price of precision 0.27 (60 % of blocks flagged); with refine() at every hover, a flag costs little.
