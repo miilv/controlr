@@ -23,6 +23,11 @@ from multiprocessing.connection import Client, Listener
 from pathlib import Path
 
 
+class TwinIncompleteWorld(RuntimeError):
+    """The world sent to the twin lacks objects the task's checks need (``twin.IncompleteWorld``): the service
+    is fine; verify without the twin, or add the missing objects (e.g. at their last known pose)."""
+
+
 class TwinClient:
     def __init__(self, port: int | None = None, authkey: bytes | None = None, timeout_s: float = 600.0):
         port = port or int(os.environ["SIMLAB_TWIN_PORT"])
@@ -41,6 +46,8 @@ class TwinClient:
         self.conn.send(req)
         res = self.conn.recv()
         if not res.get("ok"):
+            if res.get("error_type") == "IncompleteWorld":
+                raise TwinIncompleteWorld(f"twin service: {res.get('error')}")
             raise RuntimeError(f"twin service: {res.get('error')}\n{res.get('trace', '')}")
         return res
 
@@ -133,7 +140,8 @@ def serve(task: str, num_envs: int, port: int, authkey: bytes, ready: str | None
                     else:
                         conn.send({"ok": False, "error": f"unknown op {op!r}"})
                 except Exception as e:  # noqa: BLE001 (report, keep serving)
-                    conn.send({"ok": False, "error": f"{type(e).__name__}: {e}", "trace": traceback.format_exc()})
+                    conn.send({"ok": False, "error": f"{type(e).__name__}: {e}", "error_type": type(e).__name__,
+                               "trace": traceback.format_exc()})
             conn.close()
     print(f"[twin_service] stats {stats}", flush=True)
     tw.close()

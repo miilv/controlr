@@ -32,6 +32,19 @@ TOLERANCE = {
     # 88 mm stroke; thin pack items), stated as such in reports
     "put_bottles_into_dustbin": (15, None, "checker: bottle on the dustbin bottom; 15 mm = assumed grasp tolerance"),
     "pack_objects_into_box_random": (15, 45, "point in box_bottom bbox; long axis <= 45 deg; 15 mm = assumed grasp tolerance"),
+    # extension tasks (anatomy report); "assumed" = no positional checker tolerance, grasp-level assumption
+    "swap_T": (20, 3, "each T at the other's initial xy <= 20 mm and initial orientation <= 3 deg"),
+    "align_blocks": (8, 8, "block centres within 8 mm of one line, faces within 8 deg"),
+    "store_tools_in_toolbox": (50, 10, "tool centre <= 50 mm from its slot, orientation <= 10 deg"),
+    "insert_key": (7, 7, "key xy <= 7 mm, axis <= 7 deg (insertion)"),
+    "press_by_number": (10, None, "button press point <= 10 mm (cap radius 30 mm); card digit = identity"),
+    "plug_in_charger": (7, 10, "inside the socket footprint (7 mm assumed), charger y-axis <= 10 deg"),
+    "cover_blocks": (15, None, "covering cups / cube positions (15 mm assumed)"),
+    "stack_blocks_by_language": (17.5, None, "ordered stack xy <= 17.5 mm"),
+    "make_kong": (15, 30, "wall tile stood within 15 mm; tiles face-up <= 30 deg"),
+    "fill_pen_holder": (15, None, "pens within 35 mm of the holder axis; 15 mm assumed for the grasp"),
+    "organize_table": (20, 45, "items 20-45 mm of targets, mouse y-axis <= 45 deg"),
+    "general_pickup": (15, None, "target lifted 10 cm; 15 mm assumed grasp tolerance"),
 }
 
 
@@ -115,7 +128,8 @@ def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict]
         P = [p for p in preds if lab2group[p["label"]] == gi]
         if not G:
             continue
-        C = np.array([[np.hypot(p["default_pos"][0] - o["pos"][0], p["default_pos"][1] - o["pos"][1]) for p in P] for o in G]) if P else np.zeros((len(G), 0))
+        # 3-D distance: stacked objects share xy (make_kong's face-down tiles)
+        C = np.array([[float(np.linalg.norm(np.asarray(p["default_pos"]) - np.asarray(o["pos"]))) for p in P] for o in G]) if P else np.zeros((len(G), 0))
         r_idx, c_idx = linear_sum_assignment(C) if P else ([], [])
         matched = dict(zip(r_idx, c_idx))
         for oi, o in enumerate(G):
@@ -234,7 +248,7 @@ def build_bg_folds(root: Path, out: Path) -> None:
 
 
 def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False,
-                   bg_loo: bool = False, look: bool = False, look_frame: str = "L1") -> dict:
+                   bg_loo: bool = False, look: bool = False, look_frame: str = "L1", fuse_mode: str = "full") -> dict:
     """Estimate frame k of an episode (with ``fuse``: frame 0 plus frames 1..k as extra views) and score it
     against frame k's GT."""
     from . import d0
@@ -266,7 +280,13 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
                 oL = d0.load_obs(ep, lf)
                 ex = [(oL["images"], oL["state"])]
             look_used = bool(ex)
-            rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=ex)
+            if fuse_mode == "full":
+                rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=ex)
+            else:
+                from .look import fuse as look_fuse
+
+                fr = [o0] + ([{"images": ex[0][0], "state": ex[0][1]}] if ex else [])
+                rec = look_fuse(fr, obs["task"], bgs=bgs, cfg=cfg, mode="conservative")
         elif fuse and k > 0:
             o0 = d0.load_obs(ep, 0)
             extra = [(d0.load_obs(ep, j)["images"], d0.load_obs(ep, j)["state"]) for j in range(1, k + 1)]
@@ -390,6 +410,7 @@ def main(argv=None):
     ap.add_argument("--bg-loo", action="store_true", help="2-fold median backgrounds from the other half of the D0 episodes")
     ap.add_argument("--look", action="store_true", help="frame 0 + simlab's frame_L1 (renders at our look poses)")
     ap.add_argument("--look-frame", default="L1", help="L1 (look_poses_v1) or L2 (v2; falls back to L1 where unchanged)")
+    ap.add_argument("--fuse-mode", default="full", choices=["full", "conservative"], help="--look: how frames are fused")
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
@@ -415,7 +436,7 @@ def main(argv=None):
             for k in a.frames:
                 if (ep / f"frame_{k}.json").exists():
                     for wr in ([True, False] if a.both else [not a.no_wrists]):
-                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo, a.look, a.look_frame))
+                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo, a.look, a.look_frame, a.fuse_mode))
     print(f"{len(jobs)} frames", flush=True)
     rows, frames = [], []
     with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, open(a.out / "frames.jsonl", "w") as ff:

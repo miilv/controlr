@@ -1,0 +1,3271 @@
+# J2 skill registry: one entry per skill, read by one LLM chooser for both runtimes (issue #5).
+# Schema and rules: docs/REGISTRY.md. Validate: python3 harness/registry.py
+# Only name + args + doc reach the chooser (harness/registry.py chooser_docs). doc and args must not name benchmark
+# tasks, layouts, seeds or task ids (rule P4). measured / stats are for people: counts copied from results/ledger.jsonl
+# (1-based line numbers), skills/<name>/stats.json, SKILL-NOTES.md, SKILL.md and results/*.md.
+# Adapter for other runtimes: import an entry's run() and pass harness/robot_client_v2.Robot(server_id), the socket
+# client (v1 robot_client.py is frozen in md5 lists), or call the server verb `skill name=<dir> args={...}`.
+schema: j2-registry/1
+entries:
+
+  # ---- misha side, RoboDojo, contract_only (selectable in strict runs) ----
+
+  - name: lift_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Raise an object one arm already holds until the TCP is `by` m above a reference height (default: its height now).
+      Moves straight up, else pulled 6 or 12 cm toward the arm's base when IK refuses. Precondition: that arm's gripper is
+      commanded closed and its last held_look said yes. Asks held_look again after the move.
+      Verified = still held by the wrist look and the TCP rose >= by. Pass reserve=0 when no return home follows.
+    args:
+      arm: "left | right | auto = auto (the closed arm whose last look said held)"
+      by: "float m = 0.10; required rise"
+      obj: "str = None; leave None in strict runs (object mode needs privileged poses)"
+      z_ref: "float m = None"
+      margin: "float m = 0.03; extra rise"
+      tcp_ref: "float m = None (TCP height now)"
+      reserve: "int env steps = None (server default 20)"
+    selects_on:
+      words: [lift, raise, higher]
+      needs_categories: []
+    inputs:
+      source: none
+      objects: []
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/lift_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: general_pickup, success: 4, n: 5}, via: pick_up_rgb_strict}
+    stats: []
+    notes: "reads obs objects only when a privileged server provides them (obj given); the strict server never does"
+
+  - name: pick_up_rgb_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Pick up one object at a located grasp point and lift it `by` m (default: "by N cm" parsed from the instruction, else 0.10).
+      point = [x, y, z] of the object's top; yaw_deg = tool yaw (jaws close along world x at 0). Tries both arms and tilt
+      variants by free IK; mode="side" grasps from the front for tops wider than the jaw.
+      held_look after the close: "no" re-opens and returns at once so you can re-locate and call again; then lift_strict.
+      Verified = gripper closed, last wrist look held, TCP rose >= by.
+    args:
+      point: "[x, y, z] m, required; grasp point (object top) located from pixels"
+      yaw_deg: "float deg = 0.0; top-down tool yaw"
+      grasp_z: "float m = None (from point z)"
+      by: "float m = None (instruction, else 0.10)"
+      margin: "float = 0.03"
+      pick_lift: "float = 0.06"
+      arm: "left | right | auto = auto"
+      pres: "= (0.10, 0.06)"
+      final_reserve: "int env steps = 0"
+      min_left: "int = 25"
+      mode: "top | side = top"
+      side_z: "float = 0.815"
+      approach: "float = 0.1"
+      stop_short: "float = 0.01"
+    selects_on:
+      words: [pick up, lift, raise, by cm]
+      needs_categories: [object]
+    inputs:
+      source: args
+      objects:
+        - {what: object, fields: [pos, top_z, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look, instruction]
+    backend: robot_server
+    entry: "skills/pick_up_rgb_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: general_pickup, success: 4, n: 5}, via: direct}
+    stats:
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: general_pickup, seed: 1, layouts: 0-4, tier: B-strict, version: v1 (md5 31d34e79), n: 5, success: 4}
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: general_pickup, seed: 0, layouts: '9', tier: B-strict, version: 'v1 (practice, no code change after)', n: 1, success: 1, infra_reruns: 1}
+
+  - name: place_on_rgb_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put a located block on top of another located block or on a table point, one stage per call; re-locate after every stage.
+      stage=plan: blocks=[{name, c: [x, y], top_z, yaw, size}] -> base block, order and arms by free IK (0 env steps).
+      stage=pick: arm, block, clear_top_z -> top-down grasp, held_look after the close and after the lift; returns bottom_off.
+      stage=place: arm, base={c, top_z, yaw} (table point: top_z 0.765), bottom_off -> hover, lower, open, lift clear.
+      Precondition for place: the pick's last look said held. Placement is checked by your re-look.
+    args:
+      stage: "plan | pick | place, required"
+      blocks: "list[{name, c: [x, y], top_z, yaw, size}], required (stage plan)"
+      arm: "left | right (| auto for pick), required (stage pick, place)"
+      block: "{name, c: [x, y], top_z, yaw, size}, required (stage pick)"
+      clear_top_z: "float m = None; highest support the carry must clear (stage pick)"
+      support_z: "float m = 0.765 (table); what the block stands on (stage pick)"
+      pre: "float = 0.1 (stage pick)"
+      min_lift: "float = 0.08 (stage pick)"
+      base: "{c: [x, y], top_z, yaw}, required; block or table point (stage place)"
+      bottom_off: "float m, required; from the pick reply (stage place)"
+      release_dz: "float = 0.004 (stage place)"
+      hover_dz: "float = 0.05 (stage place)"
+      clear_dz: "float = 0.05 (stage place)"
+      yaw_mod: "float = 90.0 (stage place)"
+    selects_on:
+      words: [stack, on top of, put on, place on]
+      needs_categories: [block]
+    inputs:
+      source: args
+      objects:
+        - {what: block, fields: [pos, top_z, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/place_on_rgb_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: stack_blocks, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: stack_blocks, seed: 1, layouts: 0-4, tier: B-strict, version: v1 (md5 e1f62c1d), n: 5, success: 5, by_hand: 1}
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: stack_blocks, seed: 0, layouts: '9', tier: B-strict, version: v1 (practice), n: 1, success: 1, by_hand: 1}
+    notes: "reuses place_on's free-IK planning helpers on synthetic records; never reads obs objects"
+
+  - name: planar_drag_rgb_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Slide a flat object along the table to a target pose (xy + yaw) with closed fingers, never lifting it.
+      t_pose and pad_pose = [x, y, yaw] of the same object-frame point and heading on the object and on its target; t_top = the
+      object's located top height. stage=plan: single-arm or relay plan by free IK (0 env steps). stage=drag: one grasp, drag,
+      release and 5 cm lift per call (legs=1); held_look after the close ("no" = open and return).
+      Re-locate after every leg and call again to correct or to finish a relay. Reply errors are belief-side, not measurements.
+    args:
+      t_pose: "[x, y, yaw_deg], required; located object pose"
+      pad_pose: "[x, y, yaw_deg], required; target pose"
+      t_top: "float m, required; located top height"
+      stage: "plan | drag = drag"
+      pad_z: "float = 0.767"
+      legs: "int = 1"
+      home: "bool = False"
+      arm: "= None"
+      hover_z: "float = 0.83"
+      grasp_yaw_offsets: "= (90,)"
+      "**kw": "passed to the drag core (chunk_m, speed, fine_tol_m, ...)"
+    selects_on:
+      words: [push, slide, drag, align, move to the target]
+      needs_categories: [T, T pad]
+    inputs:
+      source: args
+      objects:
+        - {what: flat object, fields: [pos, quat, top_z]}
+        - {what: target pad, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/planar_drag_rgb_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: push_T, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: push_T, seed: 1, layouts: 0-4, tier: B-strict, version: v1 (md5 7e2c71e1), n: 5, success: 5}
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: push_T, seed: 0, layouts: '9', tier: B-strict, version: v1 (practice), n: 1, success: 1}
+    notes: "runs planar_drag v1 behind a belief robot; its grasp test is patched to the held_look answer"
+
+  - name: pour_rgb_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Pick a located cup by its side, pour its loose contents into a located container, set the cup back upright where it
+      was, and return both arms home. cup = {xy, R (rim radius), h}; vase = {xy, top (rim z), r (opening radius)}.
+      Runs the whole tilt profile `phis` (the belief cannot see the contents leave). held_look after the close: "no" leaves
+      the belief cup on the table, so the skill reports a failed grasp and homes. verified is None: check cup and container
+      in a re-look.
+    args:
+      cup: "{xy: [x, y], R: m, h: m}, required"
+      vase: "{xy: [x, y], top: m, r: m}, required"
+      n_balls: "int = 7; belief contents"
+      phis: "list[deg] = (0, 40, 65, 80, 88, 94, 100, 106, 112); roll profile"
+      "**kw": "passed to the pour core (arm, pitches, yaws, ...)"
+    selects_on:
+      words: [pour, empty into, tip]
+      needs_categories: [cup, vase, ball]
+    inputs:
+      source: args
+      objects:
+        - {what: cup, fields: [pos, radius, height]}
+        - {what: vase, fields: [pos, top_z, radius]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/pour_rgb_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: pour_balls_into_vase, success: 3, n: 5}, via: direct}
+    stats:
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: pour_balls_into_vase, seed: 1, layouts: 0-4, tier: B-strict, version: v1 (md5 9d08df35), n: 5, success: 3}
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: pour_balls_into_vase, seed: 0, layouts: '9', tier: B-strict, version: v1 (practice), n: 1, success: 1}
+    notes: "runs pour v1.1 behind a belief robot; finger fields of its logs are null under the strict server and scrubbed"
+
+  - name: press_button_rgb_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Press three located spring buttons with closed fingers in a counted sequence, then return home.
+      buttons = {red0: [x, y, cap_top_z], red1: [...], blue: [...]}; counts = [n0, n1], the digits shown above red0 / red1.
+      order="rule": red0 x n0, blue, red1 x n1, blue. order="instruction": red0 x n0, red1 x n1, blue.
+      Each press is checked from TCP depth; a clear miss is re-pressed once, an uncertain press never. Needs a strict server.
+    args:
+      buttons: "{red0: [x, y, cap_top_z], red1: [...], blue: [...]}, required"
+      counts: "[n0, n1] int, required"
+      order: "rule | instruction = rule"
+      cap_h: "float m = 0.0309"
+      up_dz: "float = 0.034"
+      push_dz: "float = 0.006"
+      yaw_deg: "int = 90"
+      speed: "str = \"slow\""
+      retries: "int = 1"
+      home: "bool = True"
+    selects_on:
+      words: [press, button, times, number]
+      needs_categories: [button red, button blue, number card]
+    inputs:
+      source: args
+      objects:
+        - {what: button, fields: [pos, top_z, colour]}
+        - {what: number card, fields: [value]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/press_button_rgb_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: press_by_number, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: press_by_number, seed: 1, layouts: 0-4, tier: B-strict, version: v1 (md5 f91a7d03), n: 5, success: 5}
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: press_by_number, seed: 0, layouts: '9', tier: B-strict, version: v1 (practice), n: 1, success: 1}
+    notes: "order=rule is a checker prior read from the public task code (disclose when used); the closed-fingers check is the command alone (no finger measurement)"
+
+  - name: swap_poses_rgb_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Exchange the table poses of two located flat objects, one stage per call; re-look between stages.
+      stage=pick: arm, g = [x, y] grasp point, yaw (heading), top_z, target = [x, y, yaw] it will go to, optional park
+      = [x, y, z] -> grasp, lift to carry_z, held_look. Returns tool_yaw, rel_yaw, gz.
+      stage=place: arm, target, rel_yaw, obj_yaw, gz -> staged carry, lower, open, retreat, optional home.
+      stage=pre then stage=grasp split the pick so a wrist look can refine the pose. Placement is checked by your re-look.
+    args:
+      stage: "pick | place | pre | grasp, required"
+      arm: "left | right, required"
+      g: "[x, y], required; grasp point on the object (stage pick, pre, grasp)"
+      yaw: "float deg, required; object heading (stage pick, pre, grasp)"
+      top_z: "float m, required; located top height (stage pick, pre, grasp)"
+      target: "[x, y, yaw], where the object goes (stage pick, pre: optional; place: required)"
+      park: "[x, y, z] = None; park pose after the lift (stage pick, pre, grasp)"
+      offsets: "= (90, 0) (stage pick, pre)"
+      carry_z: "float = 0.86 (stage pick, place, pre, grasp)"
+      grasp_dz: "float = 0.004 (stage pick, pre, grasp)"
+      rel_yaw: "float deg, required; from the pick reply (stage place, grasp)"
+      obj_yaw: "float deg, required; heading now (stage place)"
+      gz: "float m, required; TCP height at the close, from the pick reply (stage place)"
+      release_dz: "float = 0.003 (stage place)"
+      retreat: "float = 0.05 (stage place)"
+      home: "= None | [right] | [left, right]; return_home after the place (stage place)"
+    selects_on:
+      words: [swap, exchange, trade places]
+      needs_categories: [T]
+    inputs:
+      source: args
+      objects:
+        - {what: flat object, fields: [pos, quat, top_z]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/swap_poses_rgb_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: swap_T, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: swap_T, seed: 1, layouts: 0-4, tier: B-strict, version: v1 (md5 5552f9e0), n: 5, success: 5}
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: swap_T, seed: 0, layouts: '9', tier: B-strict, version: v1 (practice), n: 1, success: 1}
+    notes: "reuses swap_poses' variant check and staged carry; never reads obs objects"
+
+  - name: put_into_bin_rgb_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put located objects into located containers, one stage per call (re-look after each): one container for all, or
+      groups -> containers. objects = [{name, kind standing|lying, c, top_z, h, len, wid, yaw}]; containers = [{name,
+      lo: [x0, y0, z_floor], hi: [x1, y1, z_rim]}]. stage=plan (0 env steps): arms, container map, direct or relay per object.
+      stage=direct: arm, obj, container -> pick and drop. stage=relay: arm, obj -> set it down where both arms reach.
+      held_look after each close and after the lift. Finish with the server's return_home.
+    args:
+      stage: "plan | direct | relay, required"
+      objects: "list[{name, kind: standing|lying, c: [x, y], top_z, h, len, wid, yaw}] = None"
+      containers: "list[{name, lo: [x0, y0, z_floor], hi: [x1, y1, z_rim]}] = None"
+      obj: "str = None; object name (direct, relay)"
+      container: "str = None; container name (direct)"
+      arm: "left | right = None (direct, relay)"
+      groups: "{group: [object names]} = None; one container per group (plan)"
+      neck_depth: "float = 0.045"
+      lift: "float = 0.08"
+      max_picks: "int = 2"
+      attach_xy: "float = 0.05"
+    selects_on:
+      words: [put into, throw away, sort, into the bin, into the basket]
+      needs_categories: [bottle, basket, dustbin, object]
+    inputs:
+      source: args
+      objects:
+        - {what: object, fields: [pos, top_z, size, quat]}
+        - {what: container, fields: [lo, hi]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/put_into_bin_rgb_strict/skill_robodojo.py:run"
+    measured: none
+    stats: []
+    notes: "not validated in a full episode by its author; the v2 variant carries the measured basket rows"
+
+  - name: put_into_bin_rgb_strict_v2
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put located objects into located containers stage by stage, with rim-aware drops (every corner of the held object
+      inside the rim), edge- and wall-aware picks and a budget-aware finish. Records as put_into_bin_rgb_strict, plus optional
+      table = {x: [left, right], y: [near, far]}. Stages: plan, direct (arm, obj, container[, final]), relay, nudge (push an
+      object 6 cm off a container wall), survey (arms to a high pose so the head camera sees under them), home, check.
+      final=True refuses a stage that leaves no room for the cheapest home. held_look after each close and after the lift.
+    args:
+      stage: "plan | direct | relay | nudge | survey | home | check, required"
+      objects: "list[{name, kind: standing|lying, c: [x, y], top_z, h, len, wid, yaw}] = None"
+      containers: "list[{name, lo: [x0, y0, z_floor], hi: [x1, y1, z_rim]}] = None"
+      obj: "str = None; object name (direct, relay)"
+      container: "str = None; container name (direct)"
+      arm: "left | right = None (direct, relay)"
+      groups: "{group: [object names]} = None; one container per group (plan)"
+      table: "{x: [left, right], y: [near, far]} = None"
+      arms: "list = None; arms for survey / home"
+      final: "bool = False; refuse a stage that leaves no room for the cheapest home"
+      lift: "float = 0.08"
+      max_picks: "int = 2"
+      attach_xy: "float = 0.05"
+      margin: "float = 0.02"
+      clear: "float = 0.025"
+      d: "float = 0.06"
+      mode: "str = \"auto\""
+      margin_m: "float = 0.04"
+      margin_deg: "float = 7.0"
+      ignore_walls: "= None"
+      edge: "= None"
+      poses: "= None"
+      avoid: "= None"
+    selects_on:
+      words: [put into, throw away, sort, into the bin, into the basket]
+      needs_categories: [bottle, basket, dustbin, object]
+    inputs:
+      source: args
+      objects:
+        - {what: object, fields: [pos, top_z, size, quat]}
+        - {what: container, fields: [lo, hi]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/put_into_bin_rgb_strict_v2/skill_robodojo.py:run"
+    default: true
+    measured:
+      - {line: 11, tier: B_camera, success: 4, n: 5, part: {task: classify_objects, success: 4, n: 5}, via: direct}
+      - {line: 12, tier: B_camera, success: 2, n: 5, part: {task: put_bottles_into_dustbin, success: 2, n: 5}, via: direct}
+    stats:
+      - {src: results/ROBODOJO-BASKET-r1.md, bench: robodojo, cell: classify_objects, seed: 0, layouts: 0-4, tier: B-strict, version: v1 (md5 fe34d4a0), n: 5, success: 4}
+      - {src: results/ROBODOJO-BASKET-r1.md, bench: robodojo, cell: put_bottles_into_dustbin, seed: 0, layouts: 0-4, tier: B-strict, version: v1 (md5 fe34d4a0), n: 5, success: 2}
+    notes: "refuses a privileged server; home stage = return_home_budget"
+
+  - name: return_home_budget
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Finish an episode with both arms inside the home tolerance (0.15 m per axis, 20 deg) at the least env-step cost.
+      mode="auto": the exact return_home if it fits in the steps left, else cheaper near-home moves; "full" / "near" force
+      one; dry=True only reports the costs. Opens a closed gripper first. Reads proprioception and 0-step dry runs only.
+    args:
+      mode: "str = \"auto\""
+      home_q: "= None"
+      home_flange: "= None"
+      margin_m: "float = 0.04"
+      margin_deg: "float = 7.0"
+      dry: "bool = False"
+      arms: "= None"
+    selects_on:
+      words: [return home, back to the start, finish]
+      needs_categories: []
+    inputs:
+      source: none
+      objects: []
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik]
+    backend: robot_server
+    entry: "skills/return_home_budget/skill_robodojo.py:run"
+    measured:
+      - {line: 11, tier: B_camera, success: 4, n: 5, part: {task: classify_objects, success: 4, n: 5}, via: put_into_bin_rgb_strict_v2}
+      - {line: 12, tier: B_camera, success: 2, n: 5, part: {task: put_bottles_into_dustbin, success: 2, n: 5}, via: put_into_bin_rgb_strict_v2}
+    stats: []
+    notes: "not a _strict copy, but reads only contract fields, so it is selectable in strict runs"
+
+  # ---- misha side, RoboDojo, not contract_only (never selected in strict runs) ----
+
+  - name: lift
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Raise an object one arm already holds until it is `by` m above a reference height: its root with privileged poses
+      (obj given), else the TCP. Moves straight up, else pulled toward the arm's base when IK refuses.
+      Precondition: gripper commanded closed with the fingers stopped > 3 mm apart (measured finger joints).
+      Verified = still held and the rise >= by. Pass reserve=0 when no return home follows.
+    args:
+      arm: "str = \"auto\""
+      by: "float = 0.1"
+      obj: "= None"
+      z_ref: "= None"
+      margin: "float = 0.03"
+      tcp_ref: "= None"
+      reserve: "= None"
+    selects_on:
+      words: [lift, raise, higher]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: held object, fields: [pos]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas]
+    backend: robot_server
+    entry: "skills/lift/skill_robodojo.py:run"
+    measured:
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: general_pickup, success: 5, n: 5}, via: pick_up_rgb}
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: general_pickup, success: 1, n: 1}, via: pick_up}
+    stats:
+      - {src: stats.json, bench: robodojo, cell: general_pickup, seed: 0, layouts: '0-9 (v3) + 2,8 (rerun)', tier: A, version: inside pick_up v3, n: 10, success: 10, unit: calls}
+    notes: "finger joints are not in the strict contract; use lift_strict there"
+
+  - name: pick
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Grasp one object with one arm from privileged mesh-cloud grasp candidates and lift it `lift` m. Tries ranked grasps x
+      arms x top-down / tilted orientations x pregrasp heights, executing the first pair that passes free IK.
+      obj = instance name or label (default "target"). Re-opens and blacklists the grasp after a miss (attempts).
+      Verified = fingers stopped on something (measured finger joints) and the object rose >= 3 cm.
+    args:
+      obj: "str = \"target\""
+      arm: "str = \"auto\""
+      lift: "float = 0.15"
+      attempts: "int = 3"
+      pres: "= (0.10, 0.06)"
+      min_left: "int = 30"
+    selects_on:
+      words: [pick, grasp, pick up]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/pick/skill_robodojo.py:run"
+    measured:
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: general_pickup, success: 1, n: 1}, via: pick_up}
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: stack_blocks, success: 1, n: 1}, via: run/gen2_rd_place_on.py (planner macro)}
+    stats:
+      - {src: stats.json, bench: robodojo, cell: general_pickup, seed: 0, layouts: 0-4, tier: A, version: rd v1 (oracle grasps), n: 5, success: 5}
+      - {src: stats.json, bench: robodojo, cell: general_pickup, seed: 0, layouts: 5-19, tier: A, version: rd v1 (oracle grasps), n: 15, success: 15}
+    notes: "skills/pick also holds a LIBERO variant (skill.py), registered as pick_libero; the server verb name is pick on both"
+
+  - name: pick_up
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Pick up the object the instruction names and raise it `by` m above its start height (default: "by N cm" from the
+      instruction, else 0.10). Grounds obj from the instruction words against privileged object names, then pick + lift;
+      picks again if a lift loses the object and >= 40 steps remain. Verified = held and the object root rose >= by.
+      final_reserve=0 by default (no return home after the lift).
+    args:
+      obj: "= None"
+      by: "= None"
+      margin: "float = 0.03"
+      pick_lift: "float = 0.06"
+      attempts: "int = 3"
+      rounds: "int = 2"
+      arm: "str = \"auto\""
+      final_reserve: "int = 0"
+    selects_on:
+      words: [pick up, lift, raise, by cm]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps, instruction]
+    backend: robot_server
+    entry: "skills/pick_up/skill_robodojo.py:run"
+    measured:
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: general_pickup, success: 1, n: 1}, via: direct}
+    stats:
+      - {src: stats.json, bench: robodojo, cell: general_pickup, seed: 0, layouts: '0,1,3,4,5,6,7,9', tier: A, version: v3, n: 8, success: 8, infra_excluded: 2}
+      - {src: stats.json, bench: robodojo, cell: general_pickup, seed: 0, layouts: '2,8', tier: A, version: v3 (rerun of INFRA layouts), n: 2, success: 2}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: general_pickup, seed: 1, layouts: 0-4, tier: A, version: v3 (md5 c4bbdfd1), n: 5, success: 4}
+
+  - name: pick_up_rgb
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Pick up one object at a located grasp point and lift it `by` m (default: "by N cm" from the instruction, else 0.10).
+      point = [x, y, z] of the object's top; yaw_deg = tool yaw; mode="side" grasps from the front for wide tops.
+      If the fingers close on nothing (measured finger joints <= 3 mm) it re-opens and returns at once; then lift (TCP mode).
+      Verified = fingers stopped on something and the TCP rose >= by.
+    args:
+      point: "[x, y, z] m, required; grasp point (object top) located from pixels"
+      yaw_deg: "float deg = 0.0; top-down tool yaw"
+      grasp_z: "= None"
+      by: "float m = None (instruction, else 0.10)"
+      margin: "float = 0.03"
+      pick_lift: "float = 0.06"
+      arm: "left | right | auto = auto"
+      pres: "= (0.10, 0.06)"
+      final_reserve: "int env steps = 0"
+      min_left: "int = 25"
+      mode: "top | side = top"
+      side_z: "float = 0.815"
+      approach: "float = 0.1"
+      stop_short: "float = 0.01"
+    selects_on:
+      words: [pick up, lift, raise, by cm]
+      needs_categories: [object]
+    inputs:
+      source: args
+      objects:
+        - {what: object, fields: [pos, top_z, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, finger_meas, instruction]
+    backend: robot_server
+    entry: "skills/pick_up_rgb/skill_robodojo.py:run"
+    measured:
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: general_pickup, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: stats.json, bench: robodojo, cell: general_pickup, seed: 0, layouts: 0-9, tier: B, version: 'v1 L0-5, v2 (side mode) L6-9', n: 10, success: 10}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: general_pickup, seed: 1, layouts: 0-4, tier: B, version: md5 25701491 (current file), n: 5, success: 5}
+    notes: "held check uses measured finger joints (not in the strict contract)"
+
+  - name: place_on
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put one object on top of a base object (or a table point [x, y]) using privileged poses and check that it settled;
+      with no obj, stack every object of one category and return both arms home. Picks with `pick` unless obj is already held,
+      measures the in-hand offset, turns by the base-relative yaw (mod yaw_mod), lowers slowly, opens, lifts clear.
+      Verified = settle check: xy within xy_tol of the base, z within z_tol, tilt < 10 deg, base moved < 5 mm.
+    args:
+      obj: "= None"
+      base: "= None"
+      arm: "str = \"auto\""
+      category: "= None"
+      objs: "= None"
+      hover_dz: "float = 0.05"
+      release_dz: "float = 0.002"
+      clear_dz: "float = 0.05"
+      yaw_mod: "float = 90.0"
+      xy_tol: "float = 0.01"
+      z_tol: "float = 0.01"
+      settle_steps: "int = 2"
+      pick_lift: "float = 0.08"
+      home: "= None"
+      retries: "int = 1"
+    selects_on:
+      words: [stack, on top of, put on, place on]
+      needs_categories: [block]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: block, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/place_on/skill_robodojo.py:run"
+    measured: none
+    stats:
+      - {src: stats.json, bench: robodojo, cell: stack_blocks, seed: 0, layouts: '0', tier: A, version: v1 dev (tune 1; no code change after), n: 1, success: 1}
+      - {src: stats.json, bench: robodojo, cell: stack_blocks, seed: 0, layouts: 0-4, tier: A, version: v1, n: 5, success: 5}
+      - {src: stats.json, bench: robodojo, cell: stack_blocks, seed: 0, layouts: 5-9, tier: A, version: v1, n: 5, success: 5}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: stack_blocks, seed: 1, layouts: 0-4, tier: A, version: v1 (md5 3be7e34a), n: 5, success: 5}
+
+  - name: place_on_rgb
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put a located block on top of another located block or on a table point, one stage per call; re-locate after every stage.
+      stage=plan: blocks=[{name, c: [x, y], top_z, yaw, size}] -> base block, order and arms by free IK (0 env steps).
+      stage=pick: arm, block, clear_top_z -> top-down grasp; held = measured finger joints > 3 mm; returns bottom_off.
+      stage=place: arm, base={c, top_z, yaw} (table point: top_z 0.765), bottom_off -> hover, lower, open, lift clear.
+    args:
+      stage: "plan | pick | place, required"
+      blocks: "list[{name, c: [x, y], top_z, yaw, size}], required (stage plan)"
+      arm: "left | right (| auto for pick), required (stage pick, place)"
+      block: "{name, c: [x, y], top_z, yaw, size}, required (stage pick)"
+      clear_top_z: "float m = None; highest support the carry must clear (stage pick)"
+      support_z: "float m = 0.765 (table); what the block stands on (stage pick)"
+      pre: "float = 0.1 (stage pick)"
+      min_lift: "float = 0.08 (stage pick)"
+      base: "{c: [x, y], top_z, yaw}, required; block or table point (stage place)"
+      bottom_off: "float m, required; from the pick reply (stage place)"
+      release_dz: "float = 0.004 (stage place)"
+      hover_dz: "float = 0.05 (stage place)"
+      clear_dz: "float = 0.05 (stage place)"
+      yaw_mod: "float = 90.0 (stage place)"
+    selects_on:
+      words: [stack, on top of, put on, place on]
+      needs_categories: [block]
+    inputs:
+      source: args
+      objects:
+        - {what: block, fields: [pos, top_z, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, finger_meas]
+    backend: robot_server
+    entry: "skills/place_on_rgb/skill_robodojo.py:run"
+    measured:
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: stack_blocks, success: 5, n: 5}, via: direct}
+      - {line: 13, tier: B_camera, success: 5, n: 5, part: {task: swap_blocks, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: stack_blocks, seed: 0, layouts: 0-4, tier: B, version: v1, n: 5, success: 5}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: stack_blocks, seed: 1, layouts: 0-4, tier: B, version: v1 (md5 f765b451), n: 5, success: 5}
+      - {src: results/RESULTS-rgb-next3.md, bench: robodojo, cell: swap_blocks, seed: 0, layouts: 0-4, tier: B, version: v1, n: 5, success: 5}
+    notes: "held check uses measured finger joints (not in the strict contract)"
+
+  - name: planar_drag
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Drag a flat object along the table to a target pose (xy + yaw) with a closed gripper, never lifting it, closed-loop on
+      its privileged pose; then return both arms home. obj / target = instance names or labels (default: the pair X /
+      target_X); target_pose = [x, y, yaw_deg] overrides the target object. Plans one arm or a table relay by free IK;
+      fine corrections and re-grasps until in tolerance. Verified = final pose within xy_tol / yaw_tol, never rose > 8 mm,
+      both arms home.
+    args:
+      obj: "= None"
+      target: "= None"
+      target_pose: "= None"
+      arm: "= None"
+      grasp_yaw_offsets: "= (90,)"
+      hover_z: "float = 0.83"
+      speed: "str = \"normal\""
+      chunk_m: "float = 0.15"
+      chunk_deg: "float = 75.0"
+      fine_tol_m: "float = 0.0015"
+      fine_tol_deg: "float = 0.8"
+      max_fine: "int = 3"
+      release_tol_m: "float = 0.004"
+      release_tol_deg: "float = 3.0"
+      max_legs: "int = 4"
+      min_steps_leg: "int = 110"
+      clear_dz: "float = 0.05"
+      lift_fix_m: "float = 0.003"
+      xy_tol: "float = 0.005"
+      yaw_tol: "float = 5.0"
+      home: "bool = True"
+    selects_on:
+      words: [push, slide, drag, align]
+      needs_categories: [T, T pad]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: flat object, fields: [pos, quat]}
+        - {what: target pad, fields: [pos, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/planar_drag/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: push_T, success: 5, n: 5}, via: planar_drag_rgb_strict}
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: push_T, success: 5, n: 5}, via: planar_drag_rgb}
+    stats:
+      - {src: stats.json, bench: robodojo, cell: push_T, seed: 0, layouts: '0', tier: A, version: v1 dev tune 1 (no code change after), n: 1, success: 1}
+      - {src: stats.json, bench: robodojo, cell: push_T, seed: 0, layouts: 0-4, tier: A, version: v1, n: 5, success: 5}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: push_T, seed: 1, layouts: 0-4, tier: A, version: v1 (md5 387874c6), n: 5, success: 5}
+
+  - name: planar_drag_rgb
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Slide a flat object along the table to a target pose (xy + yaw) with closed fingers, never lifting it.
+      t_pose and pad_pose = [x, y, yaw] of the same object-frame point and heading; t_top = located top height.
+      stage=plan: plan by free IK (0 env steps). stage=drag: one grasp, drag, release and 5 cm lift per call (legs=1); the
+      grasp test reads measured finger joints. Re-locate after every leg. Reply errors are belief-side, not measurements.
+    args:
+      t_pose: "[x, y, yaw_deg], required"
+      pad_pose: "[x, y, yaw_deg], required"
+      t_top: "float m, required"
+      stage: "plan | drag = drag"
+      pad_z: "float = 0.767"
+      legs: "int = 1"
+      home: "bool = False"
+      arm: "= None"
+      hover_z: "float = 0.83"
+      grasp_yaw_offsets: "= (90,)"
+      "**kw": "passed to the drag core (chunk_m, speed, ...)"
+    selects_on:
+      words: [push, slide, drag, align]
+      needs_categories: [T, T pad]
+    inputs:
+      source: args
+      objects:
+        - {what: flat object, fields: [pos, quat, top_z]}
+        - {what: target pad, fields: [pos, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, finger_meas]
+    backend: robot_server
+    entry: "skills/planar_drag_rgb/skill_robodojo.py:run"
+    measured:
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: push_T, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: push_T, seed: 0, layouts: 0-4, tier: B, version: v1, n: 5, success: 5}
+      - {src: SKILL.md, bench: robodojo, cell: push_T, seed: 0, layouts: '9', tier: B, version: v1 (practice), n: 1, success: 1}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: push_T, seed: 1, layouts: 0-4, tier: B, version: v1 (md5 f6ccb34c), n: 5, success: 5}
+    notes: "belief attach and grasp test use measured finger joints (not in the strict contract)"
+
+  - name: pour
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Pour the loose contents of a hand-held container (balls in a cup) into a target container using privileged poses,
+      set it back upright where it was, and return both arms home. container / target = labels or categories (defaults cup /
+      vase). Plans arm, heading, pitch and pour side by free IK first; diametric side pinch; rolls with the spout over the
+      opening and stops when empty or on in-hand slip. Verified = every ball inside the target footprint, container tilt
+      <= 15 deg, both arms home.
+    args:
+      container: "= None"
+      target: "= None"
+      arm: "str = \"auto\""
+      pinch_h: "float = 0.04"
+      pinch_dy: "float = 0.0"
+      pitches: "= (-20, -30, -10)"
+      yaws: "= (0, 15, -15, 30, -30)"
+      sides: "str = \"auto\""
+      axis_mode: "str = \"tool\""
+      pre_dz: "float = 0.06"
+      lift_clear: "float = 0.03"
+      phis: "= (0, 40, 65, 80, 88, 94, 100, 106, 112, 118, 124, 130)"
+      hold_from: "int = 88"
+      hold_steps: "int = 4"
+      lip_clear: "float = 0.01"
+      body_clear: "float = 0.012"
+      spout_back: "float = 0.012"
+      slip_deg: "float = 14.0"
+      slip_m: "float = 0.012"
+      settle: "int = 8"
+      set_dz: "float = 0.004"
+      min_return_steps: "int = 110"
+      home: "bool = True"
+    selects_on:
+      words: [pour, empty into, tip]
+      needs_categories: [cup, vase, ball]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: cup, fields: [pos, size]}
+        - {what: vase, fields: [pos, size]}
+        - {what: ball, fields: [pos]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/pour/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: pour_balls_into_vase, success: 3, n: 5}, via: pour_rgb_strict}
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: pour_balls_into_vase, success: 4, n: 5}, via: pour_rgb}
+    stats:
+      - {src: stats.json, bench: robodojo, cell: pour_balls_into_vase, seed: 0, layouts: '0', tier: A, version: 'v1.1 dev tune 2 (frozen after, unchanged)', n: 1, success: 1}
+      - {src: stats.json, bench: robodojo, cell: pour_balls_into_vase, seed: 0, layouts: 1-4, tier: A, version: v1.1 frozen (md5 1e81bb80), n: 4, success: 2}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: pour_balls_into_vase, seed: 1, layouts: 0-4, tier: A, version: v1.1 (md5 1e81bb80), n: 5, success: 5}
+
+  - name: pour_rgb
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Pick a located cup by its side, pour its loose contents into a located container, set the cup back upright and return
+      both arms home. cup = {xy, R (rim radius), h}; vase = {xy, top (rim z), r (opening radius)}. Runs the whole tilt
+      profile `phis`; the cup follows the hand once the measured finger joints show a grasp. verified is None: re-look.
+    args:
+      cup: "{xy: [x, y], R: m, h: m}, required"
+      vase: "{xy: [x, y], top: m, r: m}, required"
+      n_balls: "int = 7"
+      phis: "list[deg] = (0, 40, 65, 80, 88, 94, 100, 106, 112)"
+      "**kw": "passed to the pour core"
+    selects_on:
+      words: [pour, empty into, tip]
+      needs_categories: [cup, vase, ball]
+    inputs:
+      source: args
+      objects:
+        - {what: cup, fields: [pos, radius, height]}
+        - {what: vase, fields: [pos, top_z, radius]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, finger_meas]
+    backend: robot_server
+    entry: "skills/pour_rgb/skill_robodojo.py:run"
+    measured:
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: pour_balls_into_vase, success: 4, n: 5}, via: direct}
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: pour_balls_into_vase, seed: 0, layouts: 0-4, tier: B, version: v1, n: 5, success: 2}
+      - {src: results/RESULTS-rgb-press-push-pour.md, bench: robodojo, cell: pour_balls_into_vase, seed: 0, layouts: '9', tier: B, version: v1 (practice), n: 1, success: 1}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: pour_balls_into_vase, seed: 1, layouts: 0-4, tier: B, version: v1 (md5 0dc8077a), n: 5, success: 4}
+    notes: "belief attach uses measured finger joints (not in the strict contract)"
+
+  - name: press_button
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Press spring buttons with closed fingers, top-down, checking each press from TCP depth (button poses from privileged obs).
+      Single: button, n. Sequence: sequence = [[button, n], ...], then home. Counts: counts = [n0, n1] presses
+      button0 x n0, confirm, button1 x n1, confirm, then home. The counts are the caller's to read from the images.
+      A clear miss is re-pressed once, an uncertain press never.
+    args:
+      button: "= None"
+      n: "int = 1"
+      arm: "str = \"auto\""
+      sequence: "= None"
+      counts: "= None"
+      confirm: "str = \"button2\""
+      reds: "= (\"button0\", \"button1\")"
+      home: "= None"
+      up_dz: "float = 0.034"
+      push_dz: "float = 0.006"
+      yaw_deg: "int = 90"
+      speed: "str = \"slow\""
+      retries: "int = 1"
+    selects_on:
+      words: [press, button, times, number]
+      needs_categories: [button, number card]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: button, fields: [pos]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas]
+    backend: robot_server
+    entry: "skills/press_button/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: press_by_number, success: 5, n: 5}, via: press_button_rgb_strict}
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: press_by_number, success: 5, n: 5}, via: press_button_rgb}
+      - {line: 13, tier: B_camera, success: 5, n: 5, part: {task: swap_blocks, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: stats.json, bench: robodojo, cell: press_by_number, seed: 0, layouts: '0', tier: A, version: v1 dev (tune 1; no change after), n: 1, success: 1}
+      - {src: stats.json, bench: robodojo, cell: press_by_number, seed: 0, layouts: 1-4, tier: A, version: v1, n: 4, success: 4}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: press_by_number, seed: 1, layouts: 0-4, tier: A, version: v1 (md5 43ff5eac), n: 5, success: 5}
+      - {src: results/RESULTS-rgb-next3.md, bench: robodojo, cell: swap_blocks, seed: 0, layouts: 0-4, tier: B, version: 'v1 single mode at located [x, y]', n: 15, success: 15, unit: calls}
+    notes: "the counts mode order is a checker prior read from the public task code"
+
+  - name: press_button_rgb
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Press three located spring buttons with closed fingers in a counted sequence, then return home.
+      buttons = {red0: [x, y, cap_top_z], red1: [...], blue: [...]}; counts = [n0, n1], the digits shown above red0 / red1.
+      order="rule": red0 x n0, blue, red1 x n1, blue. order="instruction": red0 x n0, red1 x n1, blue.
+      Refuses a privileged server. The closed-fingers check reads the measured finger gap.
+    args:
+      buttons: "{red0: [x, y, cap_top_z], red1: [...], blue: [...]}, required"
+      counts: "[n0, n1] int, required"
+      order: "rule | instruction = rule"
+      cap_h: "float m = 0.0309"
+      up_dz: "float = 0.034"
+      push_dz: "float = 0.006"
+      yaw_deg: "int = 90"
+      speed: "str = \"slow\""
+      retries: "int = 1"
+      home: "bool = True"
+    selects_on:
+      words: [press, button, times, number]
+      needs_categories: [button red, button blue, number card]
+    inputs:
+      source: args
+      objects:
+        - {what: button, fields: [pos, top_z, colour]}
+        - {what: number card, fields: [value]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, finger_meas]
+    backend: robot_server
+    entry: "skills/press_button_rgb/skill_robodojo.py:run"
+    measured:
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: press_by_number, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: press_by_number, seed: 0, layouts: 0-4, tier: B, version: v1, n: 5, success: 5}
+      - {src: SKILL.md, bench: robodojo, cell: press_by_number, seed: 0, layouts: '9', tier: B, version: v1 (practice), n: 1, success: 1}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: press_by_number, seed: 1, layouts: 0-4, tier: B, version: v1 (md5 a37cc230), n: 5, success: 5}
+    notes: "order=rule is a checker prior read from the public task code; finger gap check is not in the strict contract"
+
+  - name: put_into_bin
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put every object of one category into a container using privileged poses and grasps; objects the container-side arm
+      cannot pick are handed over through a table relay spot. category = category or label prefix; container = label or name.
+      Nearest objects first, a second pass retries misses, then return_home. Verified = every object inside the container
+      footprint and both arms home.
+    args:
+      category: "str = \"bottle\""
+      container: "str = \"dustbin\""
+      lift: "float = 0.08"
+      neck_depth: "float = 0.045"
+      max_picks: "int = 2"
+      reserve: "int = 38"
+      home: "bool = True"
+    selects_on:
+      words: [put into, throw away, into the bin]
+      needs_categories: [bottle, dustbin]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size]}
+        - {what: container, fields: [lo, hi]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/put_into_bin/skill_robodojo.py:run"
+    measured: none
+    stats:
+      - {src: stats.json, bench: robodojo, cell: put_bottles_into_dustbin, seed: 0, layouts: 0-4, tier: A, version: v3 (current), n: 5, success: 2}
+
+  - name: put_into_bin_rgb
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put located objects into located containers, one stage per call (re-look after each): one container for all, or
+      groups -> containers. objects = [{name, kind standing|lying, c, top_z, h, len, wid, yaw}]; containers = [{name, lo, hi}].
+      stage=plan (0 env steps), stage=direct (arm, obj, container), stage=relay (arm, obj). Held checks read measured finger
+      joints. Finish with the server's return_home.
+    args:
+      stage: "plan | direct | relay, required"
+      objects: "list[{name, kind: standing|lying, c: [x, y], top_z, h, len, wid, yaw}] = None"
+      containers: "list[{name, lo: [x0, y0, z_floor], hi: [x1, y1, z_rim]}] = None"
+      obj: "str = None; object name (direct, relay)"
+      container: "str = None; container name (direct)"
+      arm: "left | right = None (direct, relay)"
+      groups: "{group: [object names]} = None; one container per group (plan)"
+      neck_depth: "float = 0.045"
+      lift: "float = 0.08"
+      max_picks: "int = 2"
+      attach_xy: "float = 0.05"
+    selects_on:
+      words: [put into, throw away, sort, into the bin, into the basket]
+      needs_categories: [bottle, basket, dustbin, object]
+    inputs:
+      source: args
+      objects:
+        - {what: object, fields: [pos, top_z, size, quat]}
+        - {what: container, fields: [lo, hi]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, finger_meas]
+    backend: robot_server
+    entry: "skills/put_into_bin_rgb/skill_robodojo.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: put_bottles_into_dustbin, seed: 0, layouts: 0-4, tier: B, version: v4 (md5 dea73930), n: 5, success: 3}
+      - {src: SKILL.md, bench: robodojo, cell: classify_objects, seed: 0, layouts: 0-4, tier: B, version: v4 (md5 dea73930), n: 5, success: 1}
+    notes: "belief attach and held test use measured finger joints (not in the strict contract)"
+
+  - name: classify_into_bins
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Sort objects of several categories into the same number of containers, one category per container (any one-to-one
+      map), using privileged poses and grasps. prefixes = the categories' label prefixes; containers = container labels.
+      Plans with free IK to minimise relays; direct picks first, then relays, then return_home of both arms.
+    args:
+      prefixes: "= (\"cat0\", \"cat1\", \"cat2\")"
+      containers: "= (\"basket0\", \"basket1\", \"basket2\")"
+      reserve: "int = 38"
+      neck_depth: "float = 0.045"
+      lift: "float = 0.08"
+      max_picks: "int = 2"
+      home: "bool = True"
+    selects_on:
+      words: [sort, by category, into the baskets]
+      needs_categories: [basket, object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size, category]}
+        - {what: container, fields: [lo, hi]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/classify_into_bins/skill_robodojo.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: classify_objects, seed: 0, layouts: '9', tier: A, version: v1 (practice; unchanged after), n: 1, success: 0}
+      - {src: results/RESULTS-rgb-next3.md, bench: robodojo, cell: classify_objects, seed: 0, layouts: 0-4, tier: A, version: v1, n: 5, success: 1}
+
+  - name: rim_pick
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Rim-pinch a bowl wider than the 85 mm jaw using privileged poses. obj only: pinch and lift (the hand stays closed).
+      obj + base: nest it into the base bowl (or set it down at a table point [x, y]), lowering until the hanging bowl levels.
+      No obj: nest every bowl of the category into one stack and return both arms home.
+    args:
+      obj: "= None"
+      base: "= None"
+      arm: "str = \"auto\""
+      category: "str = \"bowl\""
+      objs: "= None"
+      depth: "float = 0.012"
+      inset: "float = 0.003"
+      tilt_rel: "float = 6.0"
+      home: "= None"
+      retries: "int = 1"
+    selects_on:
+      words: [stack, nest, bowl]
+      needs_categories: [bowl]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: bowl, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/rim_pick/skill_robodojo.py:run"
+    measured: none
+    stats:
+      - {src: stats.json, bench: robodojo, cell: stack_bowls, seed: 0, layouts: '0', tier: A, version: v1 dev run 2 (code frozen after), n: 1, success: 1}
+      - {src: stats.json, bench: robodojo, cell: stack_bowls, seed: 0, layouts: 1-4, tier: A, version: v1 (md5 b821d9d6), n: 4, success: 1}
+
+  - name: swap_poses
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Swap the table poses (xy + yaw) of two flat objects with both arms using privileged poses, then return both arms home.
+      a / b = instance names or labels (default: the only two movable objects sharing a category). One arm parks the first
+      object, the other places the second at the first's original pose, then the first is placed.
+      Verified = both within xy_tol / yaw_tol of the swapped targets, both grasps detected, both arms home.
+    args:
+      a: "= None"
+      b: "= None"
+      grasp_yaw_offsets: "= (90, 0)"
+      park_z: "float = 0.9"
+      carry_z: "float = 0.86"
+      fine: "bool = True"
+      xy_tol: "float = 0.01"
+      yaw_tol: "float = 1.5"
+    selects_on:
+      words: [swap, exchange, trade places]
+      needs_categories: [T]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: flat object, fields: [pos, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/swap_poses/skill.py:run"
+    measured:
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: swap_T, success: 1, n: 1}, via: direct}
+    stats:
+      - {src: stats.json, bench: robodojo, cell: swap_T, seed: 0, layouts: 0-9, tier: A, version: v2, n: 10, success: 10}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: swap_T, seed: 1, layouts: 0-4, tier: A, version: v2 (md5 e2f1520a), n: 5, success: 5}
+    notes: "RoboDojo skill in a skill.py file (the RoboDojo server falls back to skill.py)"
+
+  - name: swap_poses_rgb
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Exchange the table poses of two located flat objects, one stage per call; re-look between stages.
+      stage=pick: arm, g = [x, y], yaw, top_z, target = [x, y, yaw], optional park -> grasp, lift to carry_z, held check
+      (measured finger joints). stage=place: arm, target, rel_yaw, obj_yaw, gz -> staged carry, lower, open, retreat.
+      stage=pre then stage=grasp split the pick so a wrist look can refine the pose.
+    args:
+      stage: "pick | place | pre | grasp, required"
+      arm: "left | right, required"
+      g: "[x, y], required; grasp point on the object (stage pick, pre, grasp)"
+      yaw: "float deg, required; object heading (stage pick, pre, grasp)"
+      top_z: "float m, required; located top height (stage pick, pre, grasp)"
+      target: "[x, y, yaw], where the object goes (stage pick, pre: optional; place: required)"
+      park: "[x, y, z] = None; park pose after the lift (stage pick, pre, grasp)"
+      offsets: "= (90, 0) (stage pick, pre)"
+      carry_z: "float = 0.86 (stage pick, place, pre, grasp)"
+      grasp_dz: "float = 0.004 (stage pick, pre, grasp)"
+      rel_yaw: "float deg, required; from the pick reply (stage place, grasp)"
+      obj_yaw: "float deg, required; heading now (stage place)"
+      gz: "float m, required; TCP height at the close, from the pick reply (stage place)"
+      release_dz: "float = 0.003 (stage place)"
+      retreat: "float = 0.05 (stage place)"
+      home: "= None | [right] | [left, right]; return_home after the place (stage place)"
+    selects_on:
+      words: [swap, exchange, trade places]
+      needs_categories: [T]
+    inputs:
+      source: args
+      objects:
+        - {what: flat object, fields: [pos, quat, top_z]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, finger_meas]
+    backend: robot_server
+    entry: "skills/swap_poses_rgb/skill_robodojo.py:run"
+    measured:
+      - {line: 10, tier: B_camera, success: 29, n: 30, part: {task: swap_T, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: swap_T, seed: 0, layouts: 0-4, tier: B, version: v1, n: 5, success: 5}
+      - {src: results/RESULTS-rgb-heldout-seed1.md, bench: robodojo, cell: swap_T, seed: 1, layouts: 0-4, tier: B, version: v1 (md5 5b9580fe), n: 5, success: 5}
+    notes: "held check uses measured finger joints (not in the strict contract)"
+
+  - name: swap_via_empty
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Exchange two blocks standing on two of three mats through the empty third mat, pressing a button after each move
+      (exactly 3 presses), using privileged poses; ends with both arms home. blocks = the two block labels, mats = the three
+      mat labels, button = the button label. Composes place_on, press_button and return_home.
+    args:
+      blocks: "= (\"target0\", \"target1\")"
+      mats: "= (\"mat0\", \"mat1\", \"mat2\")"
+      button: "str = \"button0\""
+      retries: "int = 1"
+      home: "bool = True"
+    selects_on:
+      words: [swap, empty mat, press after each]
+      needs_categories: [block, mat, button]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: block, fields: [pos, quat]}
+        - {what: mat, fields: [pos]}
+        - {what: button, fields: [pos]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, privileged_poses, finger_meas, mesh_grasps]
+    backend: robot_server
+    entry: "skills/swap_via_empty/skill_robodojo.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: swap_blocks, seed: 0, layouts: '9', tier: A, version: v1 (practice; unchanged after), n: 1, success: 1}
+      - {src: results/RESULTS-rgb-next3.md, bench: robodojo, cell: swap_blocks, seed: 0, layouts: 0-4, tier: A, version: v1, n: 5, success: 4}
+
+  - name: return_home
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Both arms back to their start pose with grippers open, then check each arm is within 0.15 m per axis and 20 deg of
+      its start and both fingers are >= 80 % open. open=False keeps the grippers; arms = a subset.
+    args:
+      open: "bool = True"
+      arms: "= None"
+    selects_on:
+      words: [return home, back to the start]
+      needs_categories: []
+    inputs:
+      source: none
+      objects: []
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, finger_meas]
+    backend: robot_server
+    entry: "skills/return_home/skill.py:run"
+    measured: none
+    stats:
+      - {src: stats.json, bench: robodojo, cell: general_pickup, seed: 0, layouts: '1', tier: A, version: dev episode (not a scored batch), n: 1, success: 1, unit: calls}
+    notes: "RoboDojo skill in a skill.py file; the open check reads the measured finger gap"
+
+  - name: dual_grip
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Command both grippers in the same env steps: left / right = "open" | "close" | 0..1 (1 = open). Experimental.
+      Works only inside the server process (the skill verb), not through the socket client.
+    args:
+      left: "str = \"close\""
+      right: "str = \"close\""
+      wait_steps: "= None"
+    selects_on:
+      words: [both hands, together]
+      needs_categories: []
+    inputs:
+      source: none
+      objects: []
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [server_internals]
+    backend: robot_server
+    entry: "skills/dual_grip/skill_robodojo.py:run"
+    measured:
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: fold_clothes, success: 1, n: 1}, via: direct}
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: put_bottles_into_dustbin, success: 0, n: 1}, via: direct}
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: fold_clothes, seed: 0, layouts: '0', tier: A, version: experimental, n: 1, success: 1}
+    notes: "unsure for strict: reads nothing, but calls the server object (robot._s) directly, so the strict server's held_look reset in its gripper verb is skipped; marked false"
+
+  - name: dual_move
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Move both arms in one time-synchronised joint-space move. left / right = {pos: [x, y, z]} or {dpos: [dx, dy, dz]},
+      optional yaw_deg / pitch_deg / roll_deg / quat (none = keep orientation), speed, max_dev. Experimental.
+      Works only inside the server process (the skill verb), not through the socket client.
+    args:
+      left: "= None"
+      right: "= None"
+      speed: "str = \"normal\""
+      max_dev: "= None"
+      ramp: "int = 2"
+      reserve: "= None"
+      max_steps: "= None"
+      dry_run: "bool = False"
+      tol: "float = 0.01"
+      rot_tol_deg: "float = 5.0"
+    selects_on:
+      words: [both arms, together]
+      needs_categories: []
+    inputs:
+      source: none
+      objects: []
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [flange, server_internals]
+    backend: robot_server
+    entry: "skills/dual_move/skill_robodojo.py:run"
+    measured:
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: fold_clothes, success: 1, n: 1}, via: direct}
+      - {line: 14, tier: A_gt, success: 12, n: 14, part: {task: put_bottles_into_dustbin, success: 0, n: 1}, via: direct}
+    stats:
+      - {src: SKILL.md, bench: robodojo, cell: fold_clothes, seed: 0, layouts: '0', tier: A, version: experimental, n: 1, success: 1}
+      - {src: SKILL.md, bench: robodojo, cell: fold_clothes, seed: 0, layouts: '0', tier: A, version: experimental, n: 6, success: 6, unit: calls}
+    notes: "unsure for strict: reads only TCP and flange, but bypasses the move_to verb via robot._s; never run on the strict server; marked false"
+
+  # ---- misha side, LIBERO-PRO skills ----
+
+  - name: close_drawer
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Push an open cabinet drawer shut with closed fingers along the drawer axis until its joint estimate (from the drawer's
+      region site) reads closed. drawer = region name or level, cabinet = cabinet name (optional when unambiguous).
+    args:
+      drawer: "= None"
+      cabinet: "= None"
+      push_speed: "float = 0.5"
+      chunk: "int = 25"
+      target_q: "float = 0.009"
+      done_q: "float = 0.002"
+      max_push_steps: "int = 200"
+      approach_dz: "float = 0.06"
+      standoff: "float = 0.03"
+      tilt_deg: "float = 45.0"
+      push_dz: "float = 0.0"
+      tip_off: "float = 0.012"
+      stage_dz: "float = 0.08"
+      hover_ok: "float = 0.04"
+      retreat: "bool = True"
+    selects_on:
+      words: [close, drawer, shut]
+      needs_categories: [cabinet]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: cabinet, fields: [pos, quat]}
+        - {what: drawer region, fields: [pos, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/close_drawer/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'close-drawer tasks: 10_task t3 (after lay_in_drawer) + 10_swap t3 (dispatch_v3_close)', success: 20, n: 20}, via: dispatch_v6}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t3, episodes: 1-10, tier: A, version: v6, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t3, episodes: 1-10, tier: A, version: v6, n: 10, success: 2, within_budget: 2}
+
+  - name: handle_grasp
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Pinch an object by its handle (moka pot, frying pan) top-down across the handle and lift it, using privileged poses and
+      a handle model from the public asset. obj = object name; target (optional) informs the grasp.
+      Verified = finger gap matches the handle, object rose > 3 cm, gripper still touching it.
+    args:
+      obj: "required"
+      retries: "int = 1"
+      lift: "float = 0.1"
+      pre_dz: "float = 0.08"
+      close_steps: "int = 15"
+      lift_speed: "float = 0.3"
+      handle: "= None"
+      dz: "float = 0.0"
+      target: "= None"
+    selects_on:
+      words: [pick, handle, pot, pan]
+      needs_categories: [moka pot, frying pan]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object with a handle, fields: [pos, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/handle_grasp/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'handle-layer tasks: 10_task t2, t8, 10_swap t2, t8', success: 29, n: 40}, via: dispatch_v6}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t2 (pan), episodes: 1-10, tier: A, version: v1, n: 10, success: 9, within_budget: 9}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t8 (left moka pot), episodes: 1-10, tier: A, version: v1, n: 10, success: 0, within_budget: 0}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t2 (moka pot + turn on), episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t8 (both moka pots), episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t2, episodes: 11-49 (dev init states), tier: A, version: v1, n: 39, within_budget: 24}
+
+  - name: handle_grasp_v2
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      handle_grasp plus a rim fallback for the frying pan when the hand is blocked over the handle: split descent to detect
+      the block early, then a rim pinch from the clearest of 16 directions away from the handle. Same args and verification.
+    args:
+      obj: "required"
+      target: "= None"
+      lift: "float = 0.1"
+      pre_dz: "float = 0.08"
+      close_steps: "int = 15"
+      lift_speed: "float = 0.3"
+      handle: "= None"
+      dz: "float = 0.0"
+    selects_on:
+      words: [pick, handle, pan]
+      needs_categories: [frying pan]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object with a handle, fields: [pos, quat]}
+        - {what: neighbours, fields: [size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/handle_grasp_v2/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t2, episodes: 13-14 (dev init states), tier: A, version: experimental, n: 2, within_budget: 0}
+    notes: "experimental per its dispatcher page"
+
+  - name: handle_place
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Carry an object held by its handle (after handle_grasp) onto a target and release it; may yaw the object so the hand
+      stays reachable; optional side-by-side slots for several objects on one region (n_slots, occupied).
+      obj, target = object or region name. Verified = place's relation check and the gripper released.
+    args:
+      obj: "required"
+      target: "required"
+      face: "str = \"auto\""
+      n_slots: "int = 1"
+      occupied: "= None"
+      spacing: "= None"
+      reach_max: "float = 0.76"
+      max_turn_deg: "float = 120.0"
+      place_clear: "float = 0.01"
+      carry_speed: "float = 0.4"
+      open_steps: "int = 10"
+      corridor_from_object: "bool = False"
+    selects_on:
+      words: [put on, place on, stove]
+      needs_categories: [moka pot, frying pan]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: held object, fields: [pos, quat]}
+        - {what: target, fields: [pos, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/handle_place/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'handle-layer tasks: 10_task t2, t8, 10_swap t2, t8', success: 29, n: 40}, via: dispatch_v6}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t2 (pan), episodes: 1-10, tier: A, version: v1, n: 10, success: 9, within_budget: 9}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t8 (left moka pot), episodes: 1-10, tier: A, version: v1, n: 10, success: 0, within_budget: 0}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t2 (moka pot + turn on), episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t8 (both moka pots), episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+
+  - name: instructed_multi_rgbd
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Execute one clause of a multi-clause pick-and-place instruction ("put the A on the left B and put the C on the right
+      B") from a perceived RGB-D world model. world_path = world JSON from the depth locator (VLM-labelled objects);
+      clause = index; choice / target_choice = the instances you judged by eye (a disagreement stops before moving).
+      Runs a tier-A transport chain (default transport_v6) against a perceived-world proxy. verified is belief-side.
+    args:
+      world_path: "= None"
+      world: "= None"
+      clause: "int = 0"
+      choice: "= None"
+      target_choice: "= None"
+      instruction: "= None"
+      dry_run: "bool = False"
+      chain: "str = \"transport_v6\""
+      chain_args: "= None"
+    selects_on:
+      words: [put, and put, left, right]
+      needs_categories: [object]
+    inputs:
+      source: world_file
+      objects:
+        - {what: every named object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, object_args, depth, finger_meas]
+    backend: robot_server
+    entry: "skills/instructed_multi_rgbd/skill.py:run"
+    measured:
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: direct}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: direct}
+    stats:
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_task t4, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_swap t4, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+    notes: "camera-only (RGB-D + K/T), but the RoboDojo strict contract has no depth; LIBERO only"
+
+  - name: instructed_pick_place
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Read the instruction from the server, ground "pick the <object> [relation] and place it on / in the <target>" to
+      privileged object and region names (between, not between, next to, on, in a layer, table centre), then run
+      pick_and_place. No args needed; dry_run=True only grounds.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+      retries: "int = 1"
+    selects_on:
+      words: [pick, place it on, between, next to]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/instructed_pick_place/skill.py:run"
+    measured: none
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t0, episodes: 1-10, tier: A, version: v2, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_task t0, episodes: 1-10, tier: A, version: v2, n: 10, success: 10, within_budget: 9}
+
+  - name: instructed_pick_place_rgbd
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Instructed pick-and-place from a perceived RGB-D world model: grounds the instruction over VLM-labelled, depth-located
+      objects with the same relation rules as the privileged version, then runs a tier-A transport chain (default
+      transport_clear) against a perceived-world proxy. world_path = world JSON from the spatial depth locator;
+      choice = the instance you judged by eye (a disagreement stops before moving). verified is belief-side.
+    args:
+      world_path: "= None"
+      world: "= None"
+      choice: "= None"
+      instruction: "= None"
+      dry_run: "bool = False"
+      chain: "str = \"transport_clear\""
+      chain_args: "= None"
+    selects_on:
+      words: [pick, place it on, between, next to]
+      needs_categories: [object]
+    inputs:
+      source: world_file
+      objects:
+        - {what: every named object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, object_args, depth, finger_meas]
+    backend: robot_server
+    entry: "skills/instructed_pick_place_rgbd/skill.py:run"
+    measured:
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows, 12 tasks: spatial_task t0-3, goal_task t2,t6, spatial_swap t0-3, goal_swap t6,t8', success: 118, n: 120}, via: direct}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows, 14 tasks: line-8 set + spatial_task t4, goal_task t8', success: 138, n: 140}, via: direct}
+    stats:
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_spatial_task t0-4, episodes: 1-10, tier: B, n: 50, success: 50, within_budget: 50}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_task t2, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_task t6, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_task t8, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_spatial_swap t0, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_spatial_swap t1, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_spatial_swap t2, episodes: 1-10, tier: B, n: 10, success: 9, within_budget: 8}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_spatial_swap t3, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_swap t6, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_swap t8, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+    notes: "camera-only (RGB-D + K/T), but the RoboDojo strict contract has no depth; LIBERO only"
+
+  - name: lay_in_drawer
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Put an object too tall to stand in an open drawer into it lying down across the drawer, so the drawer can close over it.
+      obj, drawer = region name. Grasps near the top, tilts 40 deg in the air, pivots on the bottom rim, opens and backs off.
+      Verified = tilt > 70 deg, inside the drawer box, below the compartment ceiling, released.
+    args:
+      obj: "required"
+      drawer: "required"
+      theta_rel_deg: "float = 40.0"
+      air_dz: "float = 0.072"
+      release_dz: "float = -0.002"
+      grasp_depth: "float = 0.03"
+      close_steps: "int = 12"
+      open_steps: "int = 3"
+      back_m: "float = 0.04"
+      retries: "int = 1"
+      dry_run: "bool = False"
+    selects_on:
+      words: [put in the drawer, lay]
+      needs_categories: [bottle, cabinet]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size]}
+        - {what: drawer region, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/lay_in_drawer/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'libero_10_task t3 (bottle in the bottom drawer, close it)', success: 10, n: 10}, via: dispatch_v6}
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_10_task t3, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+
+  - name: microwave_put_close
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Put a mug into the microwave by its handle and close the door (privileged poses, asset geometry priors).
+      obj = mug name; microwave / handle optional; stop_after = a stage name to stop early. The door counts as closed when its
+      estimate reads > -0.004 rad.
+    args:
+      obj: "required"
+      microwave: "= None"
+      handle: "= None"
+      stop_after: "= None"
+      tilt_deg: "float = 45.0"
+      push_in: "float = 0.015"
+      door_r: "float = 0.11"
+      door_z: "float = 0.11"
+      door_chunk_deg: "float = 25.0"
+      carry_margin: "float = 0.04"
+      close_done: "float = -0.004"
+      push_max_wrap_deg: "float = 100.0"
+    selects_on:
+      words: [microwave, put in, close it]
+      needs_categories: [mug, microwave]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: mug, fields: [pos, quat]}
+        - {what: microwave, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/microwave_put_close/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'microwave tasks: 10_task t9, 10_swap t9', success: 20, n: 20}, via: dispatch_v6}
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_10_task t9, episodes: 1-10, tier: A, version: v2, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_10_swap t9, episodes: 1-10, tier: A, version: v2, n: 10, success: 10, within_budget: 10}
+
+  - name: open_drawer
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Open one cabinet drawer by a friction pull: closed fingers tilted 45 deg pressed into the handle bar, then pulled along
+      the drawer axis (privileged cabinet pose and drawer sites). drawer = region name or level, cabinet optional;
+      target_open = opening in m. Verified by the drawer joint estimate.
+    args:
+      drawer: "= None"
+      cabinet: "= None"
+      tilt_deg: "float = 45.0"
+      press: "float = 0.025"
+      pull_speed: "float = 0.15"
+      chunk: "int = 15"
+      target_open: "float = 0.155"
+      max_pull_steps: "int = 260"
+      retries: "int = 1"
+    selects_on:
+      words: [open, drawer]
+      needs_categories: [cabinet]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: cabinet, fields: [pos, quat]}
+        - {what: drawer region, fields: [pos]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/open_drawer/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'open_drawer_rgbd rows, chain open_drawer: goal_task t0, goal_swap t0', success: 19, n: 20}, via: open_drawer_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'open_drawer_rgbd rows, chain open_drawer: goal_task t0, goal_swap t0', success: 19, n: 20}, via: open_drawer_rgbd}
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_goal_task t0, episodes: 1-30, tier: A, version: v1, n: 30, success: 30, within_budget: 30}
+      - {src: stats.json, bench: libero, cell: libero_goal t0 (middle drawer), episodes: 0-9, tier: A, version: v2, n: 10, success: 10, within_budget: 10}
+
+  - name: open_drawer_put_inside
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Open one cabinet drawer by a horizontal handle grasp, then put an object inside it (privileged poses); obj / drawer
+      from args or grounded from the instruction. only_open=True stops after opening. Composes pick and place; the drop
+      point comes from the drawer's region site.
+    args:
+      obj: "= None"
+      drawer: "= None"
+      cabinet: "= None"
+      instruction: "= None"
+      pull_dist: "float = 0.17"
+      retries: "int = 1"
+      pull_speed: "float = 0.5"
+      only_open: "bool = False"
+    selects_on:
+      words: [open, drawer, put inside]
+      needs_categories: [cabinet, object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: cabinet, fields: [pos, quat]}
+        - {what: object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/open_drawer_put_inside/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: open_drawer_put_inside_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: open_drawer_put_inside_rgbd}
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_goal_task t3, episodes: 1-10, tier: A, version: v3, n: 10, success: 10, within_budget: 9}
+      - {src: stats.json, bench: liberopro, cell: libero_goal_task t3, episodes: 11-30, tier: A, version: v3, n: 20, success: 20, within_budget: 17}
+
+  - name: open_drawer_put_inside_fast
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      open_drawer_put_inside with its final place served by place_fast (faster carry). Same args, passed through.
+    args:
+      "**kw": "passed to open_drawer_put_inside (obj, drawer, cabinet, instruction, only_open, ...)"
+    selects_on:
+      words: [open, drawer, put inside]
+      needs_categories: [cabinet, object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: cabinet, fields: [pos, quat]}
+        - {what: object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/open_drawer_put_inside_fast/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: open_drawer_put_inside_rgbd on goal_task t3 (chain open_drawer_put_inside_fast), success: 9, n: 10}, via: open_drawer_put_inside_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: open_drawer_put_inside_rgbd on goal_task t3 (chain open_drawer_put_inside_fast), success: 9, n: 10}, via: open_drawer_put_inside_rgbd}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_swap t3, episodes: 1-10, tier: A, version: dispatch_v3 run, n: 10, success: 10, within_budget: 1}
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_task t3, episodes: 1-10, tier: A, version: dispatch_v3 run, n: 10, success: 10, within_budget: 9}
+
+  - name: open_drawer_put_inside_quick
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      open_drawer_put_inside with a faster motion schedule (looser pass tolerances, faster pull, shorter dwell) and its
+      final place served by place_fast; same geometry and verification. Same args.
+    args:
+      obj: "= None"
+      drawer: "= None"
+      cabinet: "= None"
+      instruction: "= None"
+      pull_dist: "float = 0.17"
+      retries: "int = 1"
+      pull_speed: "= PULL_SPEED"
+      only_open: "bool = False"
+    selects_on:
+      words: [open, drawer, put inside]
+      needs_categories: [cabinet, object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: cabinet, fields: [pos, quat]}
+        - {what: object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/open_drawer_put_inside_quick/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'drawer put-inside tasks: goal_task t3, goal_swap t3', success: 19, n: 20}, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: open_drawer_put_inside_rgbd on goal_swap t3 (chain open_drawer_put_inside_quick), success: 10, n: 10}, via: open_drawer_put_inside_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: open_drawer_put_inside_rgbd on goal_swap t3 (chain open_drawer_put_inside_quick), success: 10, n: 10}, via: open_drawer_put_inside_rgbd}
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_goal_swap t3, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_goal_task t3, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 9}
+
+  - name: open_drawer_put_inside_rgbd
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Open a drawer and put an object inside from a perceived RGB-D cabinet model, in two calls: phase="open" (handle grasp
+      and pull; the opening is then measured from a fresh depth render), then phase="put" with the updated world file.
+      world_path = world JSON from the drawer depth locator; chain = the tier-A skill run against the proxy.
+    args:
+      world_path: "= None"
+      world: "= None"
+      phase: "str = \"open\""
+      chain: "str = \"open_drawer_put_inside_fast\""
+      measure_log: "bool = False"
+    selects_on:
+      words: [open, drawer, put inside]
+      needs_categories: [cabinet, object]
+    inputs:
+      source: world_file
+      objects:
+        - {what: cabinet and handle, fields: [pos, quat]}
+        - {what: object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, object_args, depth, finger_meas]
+    backend: robot_server
+    entry: "skills/open_drawer_put_inside_rgbd/skill.py:run"
+    measured:
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: direct}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: direct}
+    stats:
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_task t3, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 9}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_swap t3, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+    notes: "camera-only (RGB-D + K/T), but the RoboDojo strict contract has no depth; LIBERO only"
+
+  - name: open_drawer_rgbd
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Open a drawer by the friction pull from a perceived RGB-D cabinet model; the drawer state is a hand-displacement belief
+      while engaged and a depth measurement after release. world_path = world JSON from the drawer depth locator;
+      chain = tier-A skill (default open_drawer), chain_args passed to it. verified = the depth-measured opening.
+    args:
+      world_path: "= None"
+      world: "= None"
+      chain: "str = \"open_drawer\""
+      chain_args: "= None"
+      measure_log: "bool = True"
+    selects_on:
+      words: [open, drawer]
+      needs_categories: [cabinet]
+    inputs:
+      source: world_file
+      objects:
+        - {what: cabinet and handle, fields: [pos, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, object_args, depth, finger_meas]
+    backend: robot_server
+    entry: "skills/open_drawer_rgbd/skill.py:run"
+    measured:
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'open_drawer_rgbd rows, chain open_drawer: goal_task t0, goal_swap t0', success: 19, n: 20}, via: direct}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'open_drawer_rgbd rows, chain open_drawer: goal_task t0, goal_swap t0', success: 19, n: 20}, via: direct}
+    stats:
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_task t0, episodes: 1-10, tier: B, n: 10, success: 9, within_budget: 9}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_goal_swap t0, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+    notes: "camera-only (RGB-D + K/T), but the RoboDojo strict contract has no depth; LIBERO only"
+
+  - name: pick_libero
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Top-down grasp of one object and lift (privileged geometry): enclose across the narrow side, or a rim pinch for wide
+      objects. obj = object name. retries re-plan after a miss.
+      Verified = the object rose > 3 cm and the gripper touches it or the finger gap is > 4 mm.
+    args:
+      obj: "required"
+      retries: "int = 1"
+      lift: "float = 0.12"
+      pre_dz: "float = 0.1"
+      close_steps: "int = 15"
+      rim_depth: "float = 0.018"
+    selects_on:
+      words: [pick, grasp]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/pick/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows, 14 tasks: object_task t0-3, object_swap t0-3, 10_task t0,t1,t5, 10_swap t0(run 1),t1,t5', success: 126, n: 140}, via: put_in_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows, 12 tasks: spatial_task t0-3, goal_task t2,t6, spatial_swap t0-3, goal_swap t6,t8', success: 118, n: 120}, via: instructed_pick_place_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: open_drawer_put_inside_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows, 16 tasks: line-8 set + object_task t4, 10_task t7', success: 146, n: 160}, via: put_in_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows, 14 tasks: line-8 set + spatial_task t4, goal_task t8', success: 138, n: 140}, via: instructed_pick_place_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: open_drawer_put_inside_rgbd}
+    stats:
+      - {src: stats.json, bench: libero, cell: libero_spatial t0, episodes: 0-9, tier: A, version: v3, n: 10, success: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t0, episodes: 1-10, tier: A, version: v3, n: 10, success: 10}
+    notes: "the LIBERO variant in skills/pick (skill.py); call it as skill name=pick on a LIBERO server"
+
+  - name: pick_and_place
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Pick an object, then place it on / in a target, through the server's skill verb (pick then place).
+      obj, target as in place; offset shifts the release.
+    args:
+      obj: "required"
+      target: "required"
+      retries: "int = 1"
+      offset: "= None"
+    selects_on:
+      words: [pick, place, put]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size]}
+        - {what: target, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/pick_and_place/skill.py:run"
+    measured: none
+    stats:
+      - {src: stats.json, bench: libero, cell: libero_spatial t0, episodes: 0-9, tier: A, version: v3, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t0, episodes: 1-10, tier: A, version: v3, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_task t0, episodes: 1-2, tier: A, version: fixed-json args, n: 2, success: 2, within_budget: 2}
+
+  - name: place
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Carry the held object over a target and release it. target = an object name (on it), a region site (in a contain
+      region, on a cook region or top side), or a world point [x, y] / [x, y, z_bottom]. offset shifts the release.
+      Verified by the relation check on privileged poses and site geometry.
+    args:
+      obj: "required"
+      target: "required"
+      offset: "= None"
+      place_clear: "float = 0.01"
+      in_clear: "float = 0.05"
+      carry_speed: "float = 0.45"
+      open_steps: "int = 10"
+    selects_on:
+      words: [place, put on, put in]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: held object, fields: [pos, size]}
+        - {what: target, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/place/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows, 14 tasks: object_task t0-3, object_swap t0-3, 10_task t0,t1,t5, 10_swap t0(run 1),t1,t5', success: 126, n: 140}, via: put_in_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows, 12 tasks: spatial_task t0-3, goal_task t2,t6, spatial_swap t0-3, goal_swap t6,t8', success: 118, n: 120}, via: instructed_pick_place_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: open_drawer_put_inside_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows, 16 tasks: line-8 set + object_task t4, 10_task t7', success: 146, n: 160}, via: put_in_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows, 14 tasks: line-8 set + spatial_task t4, goal_task t8', success: 138, n: 140}, via: instructed_pick_place_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: open_drawer_put_inside_rgbd}
+    stats:
+      - {src: stats.json, bench: libero, cell: libero_spatial t0, episodes: 0-9, tier: A, version: v3, n: 10, success: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t0, episodes: 1-10, tier: A, version: v3, n: 10, success: 10}
+
+  - name: place_fast
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      place with a fast transport profile: path-aware carry height over every object and fixture, lowering while travelling,
+      only the final 2 cm slow, shorter release. Same targets, release heights and verification as place.
+    args:
+      obj: "required"
+      target: "required"
+      offset: "= None"
+      place_clear: "float = 0.01"
+      in_clear: "float = 0.05"
+      carry_speed: "float = 0.45"
+      open_steps: "int = 8"
+      lower_speed: "= None"
+      final_dz: "float = 0.02"
+      final_speed: "str = \"slow\""
+      margin_z: "float = 0.03"
+      margin_xy: "float = 0.02"
+      spacing: "float = 0.08"
+      wp_tol: "float = 0.025"
+      retreat: "float = 0.06"
+      hold_steps: "int = 5"
+      free_spot: "float = 0.03"
+    selects_on:
+      words: [place, put on, put in]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: held object, fields: [pos, size]}
+        - {what: target, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/place_fast/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows, 14 tasks: object_task t0-3, object_swap t0-3, 10_task t0,t1,t5, 10_swap t0(run 1),t1,t5', success: 126, n: 140}, via: put_in_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows, 12 tasks: spatial_task t0-3, goal_task t2,t6, spatial_swap t0-3, goal_swap t6,t8', success: 118, n: 120}, via: instructed_pick_place_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: open_drawer_put_inside_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows, 16 tasks: line-8 set + object_task t4, 10_task t7', success: 146, n: 160}, via: put_in_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows, 14 tasks: line-8 set + spatial_task t4, goal_task t8', success: 138, n: 140}, via: instructed_pick_place_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'open_drawer_put_inside_rgbd rows: goal_task t3 (chain open_drawer_put_inside_fast), goal_swap t3 (chain open_drawer_put_inside_quick)', success: 19, n: 20}, via: open_drawer_put_inside_rgbd}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: 20 spatial tasks + 7 over-budget tasks (270 ep), episodes: 1-10, tier: A, version: dispatch_v3 (transport_fast v3), n: 270, success: 261, within_budget: 247}
+      - {src: SKILL.md, bench: liberopro, cell: 20 spatial tasks + 7 over-budget tasks (270 ep), episodes: 1-10, tier: A, version: dispatch_v3_1 (transport_fast v3.1), n: 270, success: 264, within_budget: 249}
+      - {src: SKILL.md, bench: liberopro, cell: libero_object_task t0-9, episodes: 1-10, tier: A, version: dispatch_v3, n: 100, success: 100, within_budget: 100}
+
+  - name: push_to
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Push an object along the table so its origin moves to target = [x, y], with closed fingers at mid-height, in two legs
+      with a fresh look between. Aborts with failure="approach_failed" before pushing if the start pose is missed by > 2 cm.
+      Verified = origin within 3 cm of the target.
+    args:
+      obj: "required"
+      target: "required"
+      speed: "float = 0.3"
+    selects_on:
+      words: [push, to the front of, to the left of]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/push_to/skill.py:run"
+    measured: none
+    stats: []
+
+  - name: push_to_v3
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Push an object so its origin reaches target = [x, y]: closed-loop chunks that stop within stop_tol, an inside-rim push
+      for wide flat objects when the start behind them is blocked, and a target moved off any fixture it would overlap.
+      Returns the target used. mode = auto | behind | inside.
+    args:
+      obj: "required"
+      target: "required"
+      speed: "float = 0.3"
+      stop_tol: "float = 0.01"
+      chunk: "float = 0.06"
+      max_chunks: "int = 10"
+      mode: "str = \"auto\""
+      clear_fixtures: "bool = True"
+      max_steps: "= None"
+      clear_movables: "bool = True"
+      axis: "str = \"along\""
+      finish: "str = \"open\""
+      lean: "bool = False"
+    selects_on:
+      words: [push, to the front of, to the left of]
+      needs_categories: [object, plate]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size]}
+        - {what: fixtures, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/push_to_v3/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_task t5 (cream cheese), episodes: 1-10, tier: A, version: v3, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_swap t5 (plate), episodes: 1-10, tier: A, version: v3, n: 10, success: 0, within_budget: 0}
+
+  - name: push_to_v4
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Move an object along the table so it ends at rest at target = [x, y] beside a fixture: push_to_v3's closed-loop push,
+      or for wide flat objects whose push start is blocked, clear the footprint, rim-pick, carry and drop-flip it onto the
+      target. Verified = origin within 2 cm of the (fixture-cleared) target and tilt < 10 deg.
+    args:
+      obj: "required"
+      target: "required"
+      speed: "float = 0.3"
+      stop_tol: "float = 0.01"
+      max_steps: "= None"
+      carry: "str = \"auto\""
+      rim_depth: "float = 0.008"
+      carry_speed: "float = 0.5"
+      clear_movables: "bool = True"
+      carry_z: "float = 1.11"
+      release_gap: "float = 0.012"
+    selects_on:
+      words: [push, to the front of, beside]
+      needs_categories: [object, plate]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size]}
+        - {what: fixtures, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/push_to_v4/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'push tasks: goal_task t5, goal_swap t5', success: 20, n: 20}, via: dispatch_v6}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_swap t5 (plate), episodes: 1-10, tier: A, version: it3, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_task t5 (cream cheese), episodes: 1-10, tier: A, version: it3, n: 10, success: 10, within_budget: 10}
+
+  - name: put_in
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Pick one object and drop it inside a container's contain region (privileged poses); obj / container from args or
+      grounded from the instruction words. Composes pick and place; final in-region check.
+    args:
+      obj: "= None"
+      container: "= None"
+      instruction: "= None"
+      retries: "int = 1"
+      pick_retries: "int = 1"
+    selects_on:
+      words: [put in, basket]
+      needs_categories: [object, basket]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, size]}
+        - {what: container, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/put_in/skill.py:run"
+    measured: none
+    stats:
+      - {src: stats.json, bench: libero, cell: libero_object t0, episodes: 0-9, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_object_swap t0, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_object_lan t0, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_object_task t0, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_object_object t0, episodes: 1-10, tier: A, version: v1, n: 10, success: 0, within_budget: 0}
+      - {src: stats.json, bench: libero, cell: libero_object t1-9, episodes: 0-2, tier: A, version: v1, n: 27, success: 26, within_budget: 23}
+
+  - name: put_in_rgbd
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Put one object inside a container from a perceived RGB-D world model (located target and container boxes, depth
+      obstacle cells), running a tier-A transport chain (default transport_clear) against a perceived-world proxy.
+      world_path / world from the depth locator; obj / container default to the world's target / container. verified is
+      belief-side.
+    args:
+      world: "= None"
+      world_path: "= None"
+      obj: "= None"
+      container: "= None"
+      chain: "str = \"transport_clear\""
+      chain_args: "= None"
+    selects_on:
+      words: [put in, basket]
+      needs_categories: [object, basket]
+    inputs:
+      source: world_file
+      objects:
+        - {what: object, fields: [pos, size, quat]}
+        - {what: container, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, object_args, depth, finger_meas]
+    backend: robot_server
+    entry: "skills/put_in_rgbd/skill.py:run"
+    measured:
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows, 14 tasks: object_task t0-3, object_swap t0-3, 10_task t0,t1,t5, 10_swap t0(run 1),t1,t5', success: 126, n: 140}, via: direct}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows, 16 tasks: line-8 set + object_task t4, 10_task t7', success: 146, n: 160}, via: direct}
+    stats:
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_object_task t0-4, episodes: 1-10, tier: B, n: 50, success: 50, within_budget: 50}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_object_swap t0, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_object_swap t1, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_object_swap t2, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_object_swap t3, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_task t0, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 9}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_task t1, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_task t5, episodes: 1-10, tier: B, n: 10, success: 7, within_budget: 7}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_task t7, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_swap t0, episodes: 1-10, tier: B, version: run 1, n: 10, success: 4, within_budget: 2}
+      - {src: results/RESULTS-liberopro-rgbd-long-run2.md, bench: liberopro, cell: libero_10_swap t0, episodes: 1-10, tier: B, version: run 2 (table-depth fix), n: 10, success: 6, within_budget: 3}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_swap t1, episodes: 1-10, tier: B, n: 10, success: 9, within_budget: 8}
+      - {src: results/RESULTS-liberopro-rgbd-seventh.md, bench: liberopro, cell: libero_10_swap t5, episodes: 1-10, tier: B, n: 10, success: 10, within_budget: 10}
+      - {src: results/RESULTS-liberopro-rgbd-long-run2.md, bench: liberopro, cell: libero_object_task t0 (regression), episodes: 1-5, tier: B, version: run 2 helper, n: 5, success: 5, within_budget: 5}
+    notes: "camera-only (RGB-D + K/T), but the RoboDojo strict contract has no depth; LIBERO only"
+
+  - name: transport_fast
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Pick and place in one call with a fast transport profile (privileged poses): path-aware approach, lower pre-grasp
+      hover, short lift; place via place_fast. obj, target as in place; rim_depth for rim pinches; blocked_skip / descend_max set the fallback when a fast descent stalls.
+    args:
+      obj: "required"
+      target: "required"
+      rim_depth: "float = 0.018"
+      retries: "int = 1"
+      close_steps: "int = 12"
+      lift: "float = 0.07"
+      approach_speed: "float = 0.8"
+      blocked_skip: "str = \"all\""
+      descend_max: "int = 60"
+      "**kw": "passed through"
+    selects_on:
+      words: [pick, place, put]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, quat, size]}
+        - {what: target, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/transport_fast/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: 20 spatial tasks + 7 over-budget tasks (270 ep), episodes: 1-10, tier: A, version: v3.1, n: 270, success: 264, within_budget: 249}
+      - {src: SKILL.md, bench: liberopro, cell: libero_object_task t0-9, episodes: 1-10, tier: A, version: v3, n: 100, success: 100, within_budget: 100}
+
+  - name: transport_clear
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      transport_fast with a reach-aware grasp near the robot base: the rim pinch moves to the far side and the lift moves
+      outward when the grasp is closer than the reach floor. obj, target as in place; rim_depth for rim pinches; blocked_skip / descend_max set the fallback when a fast descent stalls.
+    args:
+      obj: "required"
+      target: "required"
+      rim_depth: "float = 0.018"
+      retries: "int = 1"
+      close_steps: "int = 12"
+      lift: "float = 0.07"
+      approach_speed: "float = 0.8"
+      blocked_skip: "str = \"all\""
+      descend_max: "int = 60"
+      r_min: "= R_MIN"
+      out_dxy: "= OUT_DXY"
+      "**kw": "passed through"
+    selects_on:
+      words: [pick, place, put]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, quat, size]}
+        - {what: target, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/transport_clear/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows, 14 tasks: object_task t0-3, object_swap t0-3, 10_task t0,t1,t5, 10_swap t0(run 1),t1,t5', success: 126, n: 140}, via: put_in_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows, 12 tasks: spatial_task t0-3, goal_task t2,t6, spatial_swap t0-3, goal_swap t6,t8', success: 118, n: 120}, via: instructed_pick_place_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows, 16 tasks: line-8 set + object_task t4, 10_task t7', success: 146, n: 160}, via: put_in_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows, 14 tasks: line-8 set + spatial_task t4, goal_task t8', success: 138, n: 140}, via: instructed_pick_place_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t3, episodes: 1-10, tier: A, version: v1, n: 10, success: 9, within_budget: 9}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t4, episodes: 1-10, tier: A, version: v1, n: 10, success: 9, within_budget: 7}
+      - {src: stats.json, bench: liberopro, cell: libero_10_task t0, episodes: 1-10, tier: A, version: v1, n: 10, success: 9, within_budget: 9}
+      - {src: stats.json, bench: liberopro, cell: libero_10_task t2, episodes: 1-10, tier: A, version: v1, n: 10, success: 9, within_budget: 9}
+      - {src: stats.json, bench: liberopro, cell: libero_10_task t6, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_10_swap t0, episodes: 1-10, tier: A, version: v1, n: 10, success: 8, within_budget: 8}
+      - {src: stats.json, bench: liberopro, cell: libero_10_swap t1, episodes: 1-10, tier: A, version: v1, n: 10, success: 9, within_budget: 9}
+      - {src: stats.json, bench: liberopro, cell: libero_10_swap t4, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_10_swap t6, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+
+  - name: transport_overhang
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      transport_clear with a fixture-aware destination when another fixture overhangs the target surface region: searches the
+      release point and rim side jointly so object and hand clear the overhang. obj, target as in place; rim_depth for rim pinches; blocked_skip / descend_max set the fallback when a fast descent stalls.
+    args:
+      obj: "required"
+      target: "required"
+      rim_depth: "float = 0.018"
+      retries: "int = 1"
+      close_steps: "int = 12"
+      lift: "float = 0.07"
+      approach_speed: "float = 0.8"
+      blocked_skip: "str = \"all\""
+      descend_max: "int = 60"
+      r_min: "= TC.R_MIN"
+      out_dxy: "= TC.OUT_DXY"
+      inflate: "float = 0.0"
+      "**kw": "passed through"
+    selects_on:
+      words: [pick, place, put on]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, quat, size]}
+        - {what: target, fields: [pos, size]}
+        - {what: fixtures, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/transport_overhang/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows with chain transport_v6, 12 tasks (all but object_task t0,t1)', success: 106, n: 120}, via: put_in_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows with chain transport_v6, 10 tasks (all but spatial_task t0,t1)', success: 98, n: 100}, via: instructed_pick_place_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows with chain transport_v6, 14 tasks (all but object_task t0,t1)', success: 126, n: 140}, via: put_in_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows with chain transport_v6, 12 tasks (all but spatial_task t0,t1)', success: 118, n: 120}, via: instructed_pick_place_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_goal_swap t1, episodes: 1-10, tier: A, version: v3, n: 10, success: 9, within_budget: 9}
+      - {src: stats.json, bench: liberopro, cell: 'libero_goal_task t1 + libero_goal_swap t4,t9 (identity)', episodes: 1-10, tier: A, version: v3, n: 30, success: 30, within_budget: 30}
+
+  - name: transport_beside
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      transport_overhang with a fixture-aware place for on-object targets standing beside a tall fixture: shifts the release
+      so the wrist and the held object clear the fixture, else raises the release slightly. obj, target as in place; rim_depth for rim pinches; blocked_skip / descend_max set the fallback when a fast descent stalls.
+    args:
+      obj: "required"
+      target: "required"
+      rim_depth: "float = 0.018"
+      retries: "int = 1"
+      close_steps: "int = 12"
+      lift: "float = 0.07"
+      approach_speed: "float = 0.8"
+      blocked_skip: "str = \"all\""
+      descend_max: "int = 60"
+      r_min: "= TC.R_MIN"
+      out_dxy: "= TC.OUT_DXY"
+      inflate: "float = 0.0"
+      d_max: "= D_MAX"
+      "**kw": "passed through"
+    selects_on:
+      words: [pick, place, put on]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, quat, size]}
+        - {what: target, fields: [pos, size]}
+        - {what: fixtures, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/transport_beside/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'beside tasks via transport_v6: spatial_swap t1,t3,t4, goal_swap t6,t8', success: 49, n: 50}, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows with chain transport_v6, 12 tasks (all but object_task t0,t1)', success: 106, n: 120}, via: put_in_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows with chain transport_v6, 10 tasks (all but spatial_task t0,t1)', success: 98, n: 100}, via: instructed_pick_place_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows with chain transport_v6, 14 tasks (all but object_task t0,t1)', success: 126, n: 140}, via: put_in_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows with chain transport_v6, 12 tasks (all but spatial_task t0,t1)', success: 118, n: 120}, via: instructed_pick_place_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+    stats:
+      - {src: stats.json, bench: liberopro, cell: libero_goal_swap t6, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_goal_swap t8, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t1, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t3, episodes: 1-10, tier: A, version: v1, n: 10, success: 10, within_budget: 10}
+      - {src: stats.json, bench: liberopro, cell: libero_spatial_swap t4, episodes: 1-10, tier: A, version: v1, n: 10, success: 9, within_budget: 9}
+
+  - name: transport_replan
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      transport_overhang with a grasp re-plan instead of a blind retry: a hand-housing pre-check re-plans blocked enclose
+      grasps, and a failed first attempt excludes that plan. obj, target as in place; rim_depth for rim pinches; blocked_skip / descend_max set the fallback when a fast descent stalls.
+    args:
+      obj: "required"
+      target: "required"
+      rim_depth: "float = 0.018"
+      retries: "int = 1"
+      close_steps: "int = 12"
+      lift: "float = 0.07"
+      approach_speed: "float = 0.8"
+      blocked_skip: "str = \"all\""
+      descend_max: "int = 60"
+      r_min: "= TC.R_MIN"
+      out_dxy: "= TC.OUT_DXY"
+      inflate: "float = 0.0"
+      precheck: "bool = True"
+      pen_trigger: "= PEN_TRIGGER"
+      stress_exclude_k: "= None"
+      "**kw": "passed through"
+    selects_on:
+      words: [pick, place, put]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, quat, size]}
+        - {what: target, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/transport_replan/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, part: {what: 'replan tasks via transport_v6: goal_swap t1, 10_task t0, 10_swap t0,t1', success: 37, n: 40}, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows with chain transport_v6, 12 tasks (all but object_task t0,t1)', success: 106, n: 120}, via: put_in_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows with chain transport_v6, 10 tasks (all but spatial_task t0,t1)', success: 98, n: 100}, via: instructed_pick_place_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows with chain transport_v6, 14 tasks (all but object_task t0,t1)', success: 126, n: 140}, via: put_in_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows with chain transport_v6, 12 tasks (all but spatial_task t0,t1)', success: 118, n: 120}, via: instructed_pick_place_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_swap t1, episodes: 1-10, tier: A, version: v2, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t0, episodes: 1-10, tier: A, version: v2, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t0, episodes: 1-10, tier: A, version: v2, n: 10, success: 8, within_budget: 8}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t1, episodes: 1-10, tier: A, version: v2, n: 10, success: 9, within_budget: 9}
+
+  - name: transport_v6
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      The current transport composition: transport_replan's grasp re-plan wrapped around transport_beside's fixture-aware
+      place. obj, target as in place; **kw passed to transport_replan (blocked_skip, descend_max, rim_depth, ...).
+    args:
+      obj: "required"
+      target: "required"
+      "**kw": "passed through"
+    selects_on:
+      words: [pick, place, put]
+      needs_categories: [object]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: object, fields: [pos, quat, size]}
+        - {what: target, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/transport_v6/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'put_in_rgbd rows with chain transport_v6, 12 tasks (all but object_task t0,t1)', success: 106, n: 120}, via: put_in_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_pick_place_rgbd rows with chain transport_v6, 10 tasks (all but spatial_task t0,t1)', success: 98, n: 100}, via: instructed_pick_place_rgbd}
+      - {line: 8, tier: B_camera, success: 302, n: 320, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'put_in_rgbd rows with chain transport_v6, 14 tasks (all but object_task t0,t1)', success: 126, n: 140}, via: put_in_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_pick_place_rgbd rows with chain transport_v6, 12 tasks (all but spatial_task t0,t1)', success: 118, n: 120}, via: instructed_pick_place_rgbd}
+      - {line: 15, tier: B_camera, success: 342, n: 360, part: {what: 'instructed_multi_rgbd rows, chain transport_v6: 10_task t4, 10_swap t4', success: 20, n: 20}, via: instructed_multi_rgbd}
+    stats:
+      - {src: results/RESULTS-liberopro-skills-v6.md, bench: liberopro, cell: 'beside tasks: spatial_swap t1,t3,t4, goal_swap t6,t8', episodes: 1-10, tier: A, n: 50, success: 49, within_budget: 49}
+      - {src: results/RESULTS-liberopro-skills-v6.md, bench: liberopro, cell: 'replan tasks: goal_swap t1, 10_task t0, 10_swap t0,t1', episodes: 1-10, tier: A, n: 40, success: 37, within_budget: 37}
+
+  - name: turn_knob
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Grip the stove knob (fixed offset in the stove frame, privileged stove pose) with closed fingers and twist the wrist:
+      direction="off" = -45 deg, "on" = +50 deg, or deg explicit. Cannot verify (no knob joint in obs): verified is always
+      False; the grader decides.
+    args:
+      direction: "str = \"off\""
+      deg: "= None"
+      stove: "= None"
+      close_steps: "int = 15"
+    selects_on:
+      words: [turn on, turn off, stove, knob]
+      needs_categories: [stove]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: stove, fields: [pos, quat]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/turn_knob/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: dispatch_v6}
+    stats: []
+
+  # ---- misha side, LIBERO-PRO whole-instruction dispatchers ----
+
+  - name: dispatch
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Rule-based dispatcher v2 (no LLM): classifies the instruction (drawer open / put inside, knob, push, both,
+      multi-clause, single pick-and-place) and runs pick, place, put_in, open_drawer*, turn_knob or push_to with privileged grounding.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch/skill.py:run"
+    measured: none
+    stats:
+      - {src: results/RESULTS-liberopro-skills.md, bench: liberopro, cell: libero_pro T+S 8 cells t0-9, episodes: 1-10, tier: A, version: dispatch v2, n: 800, success: 671, within_budget: 587}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v2's routing with faster chains: pick + place and put_in become one transport_fast call; drawer
+      put-inside uses open_drawer_put_inside_fast.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: 20 spatial tasks + 7 over-budget tasks (270 ep), episodes: 1-10, tier: A, version: v3, n: 270, success: 261, within_budget: 247}
+      - {src: SKILL.md, bench: liberopro, cell: libero_object_task t0-9, episodes: 1-10, tier: A, version: v3, n: 100, success: 100, within_budget: 100}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3_1
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v3 with a stall fallback: every transport_fast call keeps the slow descent when the fast one stalls
+      (blocked_skip enclose, descend_max 90).
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3_1/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: 20 spatial tasks + 7 over-budget tasks (270 ep), episodes: 1-10, tier: A, version: v3.1, n: 270, success: 264, within_budget: 249}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3_2
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v3_full plus the microwave chain ("put X in the microwave and close it" -> microwave_put_close).
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3_2/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t9 + libero_10_swap t9 (microwave), episodes: 1-10, tier: A, version: microwave_put_close v2, n: 20, success: 20, within_budget: 20}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t0-9, episodes: 1-10, tier: A, n: 100, within_budget: 76}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t0-9, episodes: 1-10, tier: A, n: 100, within_budget: 93}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3_clear
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v3_full with every transport_fast call served by transport_clear (reach-aware grasp near the base).
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3_clear/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: 'spatial_swap t3,t4; 10_task t0,t2,t6; 10_swap t0,t1,t4,t6 (90 ep)', episodes: 1-10, tier: A, version: transport_clear v1, n: 90, success: 83, within_budget: 81}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3_close
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      The "... and close it" layer over a base dispatcher (default v2): put X in the drawer, then close_drawer;
+      every other instruction goes to the base unchanged. base = another dispatcher module name.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+      base: "= None"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3_close/skill.py:run"
+    measured: none
+    stats:
+      - {src: skills/close_drawer/SKILL.md, bench: liberopro, cell: libero_10_swap t3, episodes: 1-10, tier: A, version: close_drawer v6, n: 10, success: 10, within_budget: 10}
+      - {src: skills/close_drawer/SKILL.md, bench: liberopro, cell: libero_10_task t3, episodes: 1-10, tier: A, version: close_drawer v6, n: 10, success: 2, within_budget: 2}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3_full
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Merged v3 dispatcher: v3.1 fast transport, the handle layer (moka pot / pan -> handle_grasp + handle_place)
+      and the drawer close layer.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3_full/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_pro T+S 8 cells t0-9, episodes: 1-10, tier: A, version: v3-full, n: 800, success: 729, within_budget: 712}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3_handle
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Handle layer over a base dispatcher (default v2): moka pot / frying pan go to handle_grasp + handle_place;
+      every other route is the base's. base = another dispatcher module name.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+      base: "= None"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3_handle/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t2 (pan), episodes: 1-10, tier: A, version: handle v1, n: 10, success: 9, within_budget: 9}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t8 (left moka pot), episodes: 1-10, tier: A, version: handle v1, n: 10, success: 0, within_budget: 0}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t2 (moka pot + turn on), episodes: 1-10, tier: A, version: handle v1, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_swap t8 (both moka pots), episodes: 1-10, tier: A, version: handle v1, n: 10, success: 10, within_budget: 10}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3_handle2
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Experimental handle layer with handle_grasp_v2 (rim fallback) and handle_place corridor_from_object=True.
+      base = another dispatcher module name.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+      base: "= None"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3_handle2/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t2, episodes: 13-14 (dev init states), tier: A, version: 'experimental, not scored', n: 2, within_budget: 0}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v3_push
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v3_full with the push goal class served by push_to_v3.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v3_push/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_task t5 (cream cheese push), episodes: 1-10, tier: A, version: push_to_v3, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_swap t5 (plate push), episodes: 1-10, tier: A, version: push_to_v3, n: 10, success: 0, within_budget: 0}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v4
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v3_full plus microwave_put_close and transport_clear for every transport call.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v4/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_pro T+S 8 cells t0-9, episodes: 1-10, tier: A, version: v4, n: 800, success: 753, within_budget: 740}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v4_drawer
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v4 with drawer put-inside served by open_drawer_put_inside_quick.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v4_drawer/skill.py:run"
+    measured: none
+    stats:
+      - {src: skills/open_drawer_put_inside_quick/SKILL.md, bench: liberopro, cell: libero_goal_swap t3, episodes: 1-10, tier: A, version: open_drawer_put_inside_quick v1, n: 10, success: 10, within_budget: 10}
+      - {src: skills/open_drawer_put_inside_quick/SKILL.md, bench: liberopro, cell: libero_goal_task t3, episodes: 1-10, tier: A, version: open_drawer_put_inside_quick v1, n: 10, success: 10, within_budget: 9}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v4_overhang
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v4 with every transport call served by transport_overhang.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v4_overhang/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_swap t1 (bowl on the stove), episodes: 1-10, tier: A, version: transport_overhang v3, n: 10, success: 9, within_budget: 9}
+      - {src: SKILL.md, bench: liberopro, cell: 'libero_goal_task t1 + libero_goal_swap t4,t9 (identity)', episodes: 1-10, tier: A, version: transport_overhang v3, n: 30, success: 30, within_budget: 30}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v4_push
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v4 with the push goal class served by push_to_v3.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v4_push/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_task t5 (cream cheese), episodes: 1-10, tier: A, version: push_to_v3, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_swap t5 (plate), episodes: 1-10, tier: A, version: push_to_v3, n: 10, success: 0, within_budget: 0}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v4_push4
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v4 with the push goal class served by push_to_v4 (edge-based target beside the fixture).
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v4_push4/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_swap t5 (plate), episodes: 1-10, tier: A, version: push_to_v4 it3, n: 10, success: 10, within_budget: 10}
+      - {src: SKILL.md, bench: liberopro, cell: libero_goal_task t5 (cream cheese), episodes: 1-10, tier: A, version: push_to_v4 it3, n: 10, success: 10, within_budget: 10}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v5
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v4 plus push_to_v4, transport_overhang for transport and open_drawer_put_inside_quick for drawer
+      put-inside.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v5/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_pro T+S 8 cells t0-9, episodes: 1-10, tier: A, version: v5, n: 800, success: 774, within_budget: 770}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v5_beside
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v5 with transport_beside for every transport call.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v5_beside/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: 'spatial_swap t1,t3,t4 + goal_swap t6,t8 (50 ep)', episodes: 1-10, tier: A, version: transport_beside v1, n: 50, success: 49, within_budget: 49}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v5_lay
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v5 plus a lay-down chain for drawer-and-close instructions whose object is too tall to stand in
+      the drawer (lay_in_drawer, then close_drawer).
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v5_lay/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_10_task t3 (bottle in drawer and close), episodes: 1-10, tier: A, version: lay_in_drawer v1, n: 10, success: 10, within_budget: 10}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v5_replan
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v5 with transport_replan for every transport call.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v5_replan/skill.py:run"
+    measured: none
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: 'goal_swap t1, 10_task t0, 10_swap t0,t1 (40 ep)', episodes: 1-10, tier: A, version: transport_replan v2, n: 40, success: 37, within_budget: 37}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  - name: dispatch_v6
+    side: misha
+    benchmark: libero_pro
+    doc: |
+      Dispatcher v5 plus the lay-down drawer chain and transport_v6 (grasp re-plan around the fixture-aware place)
+      for every transport call. The current headline dispatcher.
+      Whole-instruction policy: select it as the entire plan, not as a step. instruction defaults to the server's;
+      dry_run=True returns the plan only.
+    args:
+      instruction: "= None"
+      dry_run: "bool = False"
+    selects_on:
+      words: [whole instruction]
+      needs_categories: []
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: every named object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, instruction, privileged_poses, contacts, finger_meas]
+    backend: robot_server
+    entry: "skills/dispatch_v6/skill.py:run"
+    measured:
+      - {line: 7, tier: A_gt, success: 784, n: 800, via: direct}
+    stats:
+      - {src: SKILL.md, bench: liberopro, cell: libero_pro T+S 8 cells t0-9, episodes: 1-10, tier: A, version: v6, n: 800, success: 785, within_budget: 784}
+    notes: "thin wrapper; the logic is a harness/dispatch*.py module loaded from $BENCH"
+
+  # ---- ilia side: added by J4 import ----

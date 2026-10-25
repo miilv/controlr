@@ -443,3 +443,289 @@ All `scripts/simlab/*.sh` follow it (`SIMLAB_LOCK_WAIT_S`, `SIMLAB_LOCK_YIELD_S`
   line, which quotes the phrase. My run started while his eval was on the GPU. I stopped it within ~1 min,
   before it allocated anything on the GPU (only his process was ever listed), and logged a correction line
   in COORDINATION.md. The check now ignores "Ilia side" lines.
+
+### Pre-settled records: final (2026-10-25 03:00 UTC)
+
+`layouts/<task>/<id>.settled.json` for **376 of 434** dev layouts (17 tasks):
+
+| task | kept | dropped because |
+|---|---|---|
+| build_tower, fill_pen_holder, make_kong, pack_objects_into_box_random, plug_in_charger, pour_by_language, press_by_number, push_T, stack_blocks, stack_bowls, store_tools_in_toolbox, swap_blocks | 25/25 each | |
+| put_bottles_into_dustbin | 28/34 | 6 bottles still rolling |
+| organize_table | 23/25 | 2 settled records unstable |
+| insert_key | 14/25 | the key stands on its 1 cm edge: pass 1 balances, the re-load topples it (up to 29 mm) |
+| fill_egg_holder | 11/25 | eggs roll off the table (the basket has no collision in RoboDojo) |
+| pick_from_conveyor_by_image | 0/25 | the belt keeps the items moving: "at rest" never applies; use the originals |
+
+Pass-2 drift of the kept records: ≤ 0.01 mm for most tasks, ≤ 5 mm overall (swap_blocks 3.6 mm, organize_table 4.6 mm,
+insert_key 4.9 mm).
+
+### Look frames: v1 complete, v2 in progress
+
+frame_L1 (v1) for all 6 D0 tasks, 123 layouts:
+
+| task | layouts | arm looks within 2 cm / 10° |
+|---|---|---|
+| build_tower | 22 | 34/34 |
+| pack_objects | 25 | 41/49 |
+| push_T | 10 | 10/11 |
+| put_bottles | 24 | 37/38 |
+| stack_blocks | 23 | 32/33 |
+| stack_bowls | 19 | 20/20 |
+
+Median camera error 0.01 cm. The off-target ones moved but ended 2-6 cm away (cuRobo end tolerance + tracking);
+perception uses FK on the observed joints, so they stay. frame_L2 (v2, unchanged layouts skipped):
+stack_blocks 17 and stack_bowls 18 done, the other 4 tasks queued.
+
+## Generator v7: select_mode identity rules (reported by skills-2)
+
+Scan of all 54 task configs. Select modes in use:
+- allow_duplicate, same, unique, hierarchical, label_map, same_index_as_label, same_as_label, linked_count;
+- keys: same_label, allow_global_same, key_label, label_prefix, linked_label_prefix;
+- group key `dynamic_layout`;
+- top-level typo `Prohibited_Area` (imitate_sorting_sequence).
+
+v1-v6 silently ignored `same_index_as_label`, `same_as_label` and `allow_global_same`. That broke make_kong: discards matching no triple, mahjong9 not completing the pair. v7 implements them inside selection, so placement uses the right asset:
+- `same` + `allow_global_same: False`: a tile not used by other such groups nor already placed (fixed-pose groups, like make_kong's discards, are placed first);
+- `unique`: distinct from every (category, index) already in the layout;
+- `same_index_as_label` / `same_as_label`: copy the labelled object, which becomes a placement dependency.
+
+`label_prefix`, `linked_count`, `linked_label_prefix` and `dynamic_layout` (arrange_largest_number, classify_objects[_by_language], solve_equation, sweep_blocks) RAISE now; none of our dev tasks uses them.
+
+Also fixed: pinned [0,0] offsets on a support (a tile stacked on a tile) broke under the v4 disk sampler.
+
+Results:
+- Every stored record was checked against its config: only make_kong violated (all 25).
+- make_kong regenerated, 25/25 rule-correct, 25/25 settled; the old set is in `layouts_v6_bak/`.
+- fasten_screws added (nut/bolt assets +13 MB): 25/25 correct, 25/25 settled.
+
+## Look frames v2 (frame_L2): done
+
+123 layouts (identical-to-v1 skipped), 183/200 arm looks within 2 cm / 10°.
+
+## Genuine Isaac 5.1 D0 on isr-lab: done (2026-10-25)
+
+All 150 D0 layouts were replayed on Misha's 4090 with the full 5.1 renderer: 6 tasks x 25 layouts x 4 frames
+x 3 cameras. The output is in `compute3:~/dojo-data/d0_51/` (647 MB), with the same file layout as `d0/`,
+`meta.renderer = isaac-5.1`, and `compare_to_source` in every frame JSON. That field compares against compute3's
+GT (5090, physics-only) for the same frame. It mixes two factors, the machine and the render mode; G2b below
+separates them.
+
+| task | frame 0: objects exactly equal | frame 0 max mm | frame 3 obj mm (med / max) | frame 3 joints max rad |
+|---|---|---|---|---|
+| push_T | 25/25 | 0 | 0 / 0 | 0.0007 |
+| stack_blocks | 25/25 | 0 | 0 / 0 | 0.028 |
+| build_tower | 19/25 | 0.001 | 0 / 0.87 | 0.001 |
+| stack_bowls | 14/25 | 0.0005 | 0 / 0.0005 | 0.001 |
+| pack_objects_into_box_random | 0/25 | 0.005 | 0.0003 / 7.6 | 0.0005 |
+| put_bottles_into_dustbin | 0/25 | 1.43 | 0.023 / 43.7 | 0 |
+
+- Max over all objects, clutter included.
+- The large maxima come from single objects: bottles roll and topple; a pack item gets nudged by an arm. Medians
+  stay at the micrometre level.
+
+## G2b: cross-machine replay under contact (isr-lab 4090 vs compute3 5090)
+
+Setup:
+- The compute3 G2 records (G2a: physics-only, RTX 5090 / i9-14900KF / driver 595) were replayed bit-exactly
+  on isr-lab (RTX 4090 / i9-13900KF / driver 580). Both CPUs are Raptor Lake without AVX-512, and PhysX runs on
+  the CPU in RoboDojo's config.
+- Two modes, both inside one GPU_GO window: the full rendered 5.1 Kit, and physics-only.
+- Each run is the nominal replay plus the 10 G2a perturbations: dx and dy of 0.5 / 1 / 2 / 5 mm, yaw of
+  0.5 / 2 deg. Every replay is compared with compute3's result for the same perturbation.
+- Per-step divergence = max over task objects of the position difference, at every env step (25 Hz).
+- Tool: `g2.py replay --perturb`, driver `scripts/simlab/rerender_isr2.sh`.
+- Results: `compute3:~/dojo-data/simlab/g2b_isr/` (`*_replay_isr4090_{rendered,physics}.json` with
+  `per_step_max_mm`, plus `summary.jsonl` and logs).
+
+| scenario, 4090 mode | steps | first diff (step) | first > 0.01 mm | max mm (deg) | final mm | score 4090 / 5090 | perturbed finals vs 5090, med / max mm | success agree |
+|---|---|---|---|---|---|---|---|---|
+| push, rendered | 117 | 54 | 59 | 0.145 (0.83) | 0.140 | 0 / 0 | 0.019 / 0.284 | 10/10 (all False) |
+| push, physics-only | 117 | 54 | 59 | 0.145 (0.83) | 0.140 | 0 / 0 | 0.019 / 0.284 | 10/10 |
+| pick_place, rendered | 131 | 43 | never | 0.0007 | 0.0005 | 0 / 0 | 0.002 / 0.062 | 10/10 (all False) |
+| pick_place, physics-only | 131 | 43 | never | 0.0005 | 0.0004 | 0 / 0 | 0.006 / 0.127 | 10/10 |
+| stack, rendered | 264 | 51 | 93 | 0.884 (0.28) | 0.845 | 1 / 1 | 0.213 / 0.790 | 10/10 (all True) |
+| stack, physics-only | 264 | 51 | 91 | 0.662 (1.76) | 0.640 | 1 / 1 | 0.466 / 0.884 | 10/10 |
+
+Same 4090, rendered vs physics-only:
+- push: bitwise equal;
+- pick_place: first diff at step 43, max 0.0008 mm;
+- stack: first diff at step 51, max 1.31 mm, final 1.27 mm.
+
+Findings:
+- **Divergence starts at contact onset.** Before it, replays are bitwise equal across machines and across render modes.
+  - push: the first diff (step 54) is the first step the T moves.
+  - pick_place / stack: the first diff (43 / 51) is when the fingers close on the block, a few steps before
+    it moves more than 0.1 mm (53 / 60).
+  - The difference stays below 0.001 mm through the grasp. It grows only during sliding contact
+    (push, from step 59) or place and release (stack, from step 90).
+- **The machine and the render mode are separate sources of the same size.** On stack, rendered vs
+  physics-only on ONE 4090 (1.31 mm) is larger than 4090 vs 5090 (0.66-0.88 mm).
+  - Why rendering changes the physics is unknown. It changes the scene (cameras, render products), which
+    may change PhysX's contact ordering. Not investigated.
+  - Push, without a grasp, is unaffected by render mode.
+- **The noise floor is at or below a 0.5-1 mm initial-pose error.** Spread of the 5090 perturbations around the
+  nominal: push 0.3-19 mm, pick_place 0.07-4.4 mm, stack 0.1-4.5 mm. Cross-machine noise does not move a
+  perturbed replay across push's bifurcation: dx 1 mm lands 19 mm from the nominal on both machines, and the
+  two agree to 0.28 mm.
+- Success agrees 33/33 per mode. Only stack is informative (11 True); push and pick_place are False everywhere.
+  pick_place's script places a block, which does not complete stack_blocks.
+- **Implication for the twin and the eval.** A physics-only twin cannot bitwise-predict the rendered 5.1
+  eval, even on the same GPU. Expect about 1 mm of drift after a grasp-place. `Twin.verify` with
+  `perturb.pos_mm` >= 1 already covers this. A plan that only works inside a 1 mm window is fragile anyway.
+
+## Generators v8 / v9 and full coverage (in progress)
+
+- **v8**:
+  - `label_prefix` gives `prefix[gi]_{ii}` for a multi-entry prefix list, else `prefix_{k}`.
+  - `linked_count` + `linked_label_prefix` + `dynamic_layout`: x_symmetric_line, x = c + (i - (n-1)/2) * spacing,
+    with one y per row. The source group is pre-selected and the mats are placed first.
+  - hierarchical entries without `group` are their own group.
+  - These rules RAISED in v7.
+- **v9**: relative placement on an object draws among multi-range xlim / ylim. v8 used only the first range,
+  so match_and_pick_from_conveyor failed with "no room for a child of conveyor": its three conveyor slots
+  are three x ranges.
+  - A config scan finds no other task with a multi-range placement relative to a non-Table object, so
+    records generated under v8 are unaffected.
+- **Assets** for every remaining task, plain and `_random`: +<= 7.3 GB, install 37 GB (cap 45). compute3's `/` is
+  at 99% (26 GB free, shared machine).
+- `scripts/simlab/coverage.sh 25 <tasks...>` runs per task, in the lead's priority order: generate (CPU,
+  `SIMLAB_GPU=0`), then pre-settle (GPU lock, then a 90 s yield).
+  - Pre-settle runs 7-10 s per layout. Most of a task's wall time is waiting for the lock.
+  - So far: cover_blocks 25/25, swap_T 25/25.
+
+## Disk freeze and cleanup (lead's policy, 2026-10-25)
+
+- compute3's `/` is at 99%. The RoboDojo install is frozen at 37 GB; no new assets without the lead's OK.
+- check_assets passes for all 54 task configs: 650 task-object instances, 192/193 clutter assets. No task is
+  blocked by assets.
+- Upstream gaps that more downloads cannot fix:
+  - Rigid/broom_shovel 1 and 4 are unpublished;
+  - Rigid/hammer/7 has no active.place annotation;
+  - fluids have no place annotations (they are placed by zlim).
+- Cleanup:
+  - compute3: layouts_v3/v4/v6_bak, the 79 MB tests dir, proxy-eval PNGs, stale Kit work dirs, conda's package cache.
+    Bootsweep and settle-check logs are now one tar.gz. Our scratch: 134 MB.
+  - isr-lab: d0_51 (verified file-for-file against compute3), d0_src and the Kit/HOME caches.
+    That frees 3.2 GB on Misha's data2, which was at 98%. We now use 224 MB there.
+
+## Generators v10 / v11 (dry run of every remaining task, 5 layouts each, CPU only)
+
+Five tasks failed under v9. All 32 generate under v11.
+
+- **v10**:
+  - `unique` is per object type. pour_liquid_into_cup's Fluid wuliangye/0 is the liquid inside the Rigid
+    wuliangye/0 bottle, not a second copy of it.
+  - One pinned axis on a support disk is now sampled correctly. Before, store_laptop's laptop on its stand,
+    with y pinned and x free, could never be sampled.
+- **v11, sibling footprints**: kept apart per support (the `relative_plane` string), with RoboDojo's check_mode
+  semantics from `ClusteredGenerator.add_polygon`:
+  - `bbox`: contained and no collision;
+  - `none`: no containment check, collisions still checked;
+  - `enforce`: no checks.
+  make_toast's four bread slots are four supports, 2.5 cm apart.
+- **v11, fluids**: a zlim child of a parent without supports (a fluid) is placed from the container's local
+  bbox top, the convention of the public PhysicalRSI sampler in XPolicyLab (`parent_local_bbox_top_center`).
+  - **Bug in existing records**: pour_by_language's wine had sat 10 cm under the table top (z 0.665) since v2.
+  - Pre-settle never checks fluids, so nothing flagged it.
+  - Under v11 the wine centre is at 0.823, inside the bottle. pour_by_language is regenerated and re-settled.
+
+## Asset firewall and the imitate_sorting_sequence demo landmine
+
+- RoboDojo plays imitate_sorting_sequence's support arm from
+  `Assets/Traj/RoboDojo/imitate_sorting_sequence/<eval_seed>/<seed>.pkl`.
+  - There are 3 x 65 such files, paired with the EVAL layouts.
+  - Their `target_label` is the order the policy must reproduce.
+- make_kong (`<push rank>.pkl`) and play_tic_tac_toe (`<i>_<j>.pkl`) Traj files are generic.
+- No other task reads per-seed files. Their opponents and conveyors are procedural, seeded from the layout seed.
+- The `Assets/Traj` listing was read by name only, never opened.
+- `paths.install_asset_firewall()`:
+  - A permanent audit hook in every RoboDojoRunner process and in dev_eval.
+  - open / listdir / scandir / glob / copy of Eval_Layout or a non-generic Traj path raises PermissionError,
+    whoever calls (RoboDojo's own code included).
+  - Live on compute3: Kit and the env start normally under it.
+- Our runs never need those files:
+  - The imitate demo goes to `~/dojo-data/simlab/traj/<task>/<seed>.pkl` (our `demo_gen`).
+  - When that file is missing, a no-demo stub is used: seed-fixed labels, an empty trajectory.
+  - The route goes through `utils.load_file.load_pkl`, patched before the task modules import it.
+  - Non-dev seeds are refused.
+  - Why imitate's first pre-settle was 0/25: `run_reward` read the eval-paired path for our seed and the
+    file was missing.
+- `tests/dojo/test_simlab_firewall.py`:
+  - static: no dojo/ string constant builds such a path, except membership guards;
+  - subprocess: the hook blocks open, Path.read_text, listdir, scandir, glob and copyfile, and lets the generic
+    make_kong demo through;
+  - routing: eval-paired demos are stubbed or refused, never opened.
+- `runner.load` now also queries the support-arm trajectory right after the reset, as EvalEnv.run_eval does.
+  make_kong / tic-tac-toe support arms used to start one env step late in our runs.
+
+## Twin: incomplete estimates (integration's stack bundle errors)
+
+- 4 of 25 stack_blocks bundle episodes ended in `twin service: TypeError: 'NoneType' object is not subscriptable`.
+- Cause: perception missed block_2, so the estimate sent to `verify` held two blocks. The twin loaded it, and
+  RoboDojo's `is_stacked` looked up block_2, got a None pose, and crashed mid-rollout.
+- Fix: `Twin.load_from_estimate` raises `IncompleteWorld` when labels the task config guarantees are missing.
+  - The required set is `gen_layouts.required_labels`. It covers task groups only: scene fixtures such as
+    camera_stand are not looked up by rewards, and estimates omit them.
+  - The service maps it to `TwinIncompleteWorld` on the client side.
+  - The integration stream is told to catch it, and either verify without the twin or re-add the object at
+    its last known pose.
+
+## d0_ext (perception request): D0-style frames 0-1 for 11 more tasks
+
+- `scripts/simlab/d0_ext.sh 10 <tasks>` writes `~/dojo-data/d0_ext/<task>/<id>/`.
+- `make_d0 --settled --max-frame 1` replays pre-settled records instead of generating; LAYOUTS is not written.
+- `<task>/index.json` appears only after the render, because perception's watcher keys on it.
+- The driver stops at 300 MB.
+
+## Generator v12: relative offsets in the support frame
+
+- make_toast v11 records failed pre-settle 9/9: the slices fell, drifting 11-23 mm and 30-60 deg.
+- Cause: the bread_shelf's four slot supports carry an Ry(90 deg) frame, so the slices stand up. The config's
+  `xlim: [-0.02, -0.02]` is an offset in that frame, i.e. a 2 cm lift inside the slot. We applied it in world x,
+  which moved every slice 2 cm sideways into the slot wall.
+- v12 applies xlim / ylim / zlim of relative placements in the support frame. That is RoboDojo's convention,
+  also used by the public PhysicalRSI sampler. Parents without supports (fluids) still use world axes.
+- Tasks generated before v12 keep the world-axis convention. Their support frames are untilted and their offsets
+  are 0-2 cm, so at most a small yaw-rotation difference in the offset direction. Not regenerated.
+
+## imitate_sorting_sequence demos (`demo_gen`): state
+
+The RoboDojo pkl format and replay work: RoboDojo's own playback runs our pkl through the routed loader.
+
+Validation outcomes so far (settled or raw records, 6-10 layouts per try):
+- First try, slow cuRobo timing: 2 of 5 layouts validated. 4 of the 5 aims were in basket1 on most layouts.
+- The last object was never released on several layouts. The demo ran ~1700 env steps, and the
+  1600-step episode limit cut it before the final release.
+- Pace calibration, measured on RoboDojo's generic make_kong / tic-tac-toe demos (allowed by the firewall):
+  ~100-substep segments, joint steps <= 0.008 rad per 4 ms substep (median 0.002). That works out to
+  ~115 env steps per pick-and-place.
+- Retiming to that pace with a cap of 900 env steps made grasps worse: the hand lagged above the object
+  when the fingers closed.
+- Current setting: fast free moves (0.008), slow near the object (0.002 descent / lift / lower), carrying at
+  0.004, 50-substep settle before closing, pads >= 1.6 cm above the object bottom.
+  - The pad floor exists because RoboDojo gives the Franka planner `table_height` 0.74 while the table top is
+    0.765, so planned fingertips can end up in the table.
+- Up to 3 seeded orders per layout: a transport can knock a later object.
+- Chunks of 3 layouts per GPU-lock hold. An unchunked 10-layout run held the lock 41 min, past the team's
+  30 min rule; I stopped it.
+
+## Queue fairness
+
+- Several simlab drivers (coverage, d0_ext, demos) used to wait on the team lock at once. flock wakes waiters at
+  random, so we took more than our share.
+- rdpy.sh / isaac6.sh now first take a simlab-only queue lock, `~/dojo-data/simlab/.queue.lock`. This is
+  automatic for the ~/dojo-simlab deploy only. At most one simlab job waits on the team lock.
+- Pitfall: never SIGSTOP a waiting rdpy.sh. It holds the queue lock while it waits, so stopping it blocks every
+  simlab job. Stop drivers between jobs instead.
+
+## isr-lab: coordination protocol
+
+- `scripts/simlab/isr_gpu.sh` implements the robot-harness coord protocol. Each job:
+  - waits while `gpu.reserve` covers now or an optional `SIMLAB_ISR_BLACKOUT` window applies;
+  - takes `flock ~/data2/coord/gpu.lock`;
+  - writes `gpu.owner` (side, pid, start, ETA, what) and clears it on release;
+  - runs under `timeout 2h`;
+  - logs START/DONE in COORDINATION.md;
+  - yields 90 s afterwards.
+- rerender_isr.sh and rerender_isr2.sh use it. GPU_GO_ILIA is retired.

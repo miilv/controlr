@@ -84,10 +84,20 @@ class PerceptionClient:
             raise RuntimeError(f"perception service: {res.get('error')}\n{res.get('trace', '')}")
         return res
 
-    def estimate(self, frames: list[dict], vocabulary: str, fold: int) -> dict:
+    def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
+                 fuse_mode: str | None = None) -> dict:
+        """One frame: inverse layout. Several: ``look.fuse`` (first frame + later views); ``prior_record`` = the
+        first frame's record (perception's conservative fuse keeps its objects and identities); ``fuse_mode``
+        "full" re-runs the whole estimate with the extra views (finds objects frame 0 missed)."""
         r = self._call({"op": "estimate", "frames": [encode_frame(f) for f in frames], "vocabulary": vocabulary,
-                        "fold": int(fold)})
+                        "fold": int(fold), "fuse_mode": fuse_mode,
+                        "prior_record": None if prior_record is None else json.dumps(prior_record, default=_default)})
         return json.loads(r["record"])
+
+    def search_regions(self, frame: dict, record: dict, vocabulary: str) -> list[dict]:
+        """Where to look for the record's missing objects: [{"target": xyz, "arm": str|None, "why": str}]."""
+        return json.loads(self._call({"op": "search_regions", "frame": encode_frame(frame), "vocabulary": vocabulary,
+                                      "record": json.dumps(record, default=_default)})["regions"])
 
     def look_plan(self, frame: dict, record: dict, max_looks: int = 2) -> list[dict]:
         return json.loads(self._call({"op": "look_plan", "frame": encode_frame(frame),
@@ -98,11 +108,16 @@ class PerceptionClient:
         return json.loads(self._call({"op": "look_poses", "target": [float(v) for v in target], "arm": arm,
                                       "variants": variants})["poses"])
 
-    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None) -> dict:
+    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None,
+               identity_vocabulary: str | None = None, held=None) -> dict:
         """Pre-contact refine of ``objects[0]`` from ``arm``'s wrist view (perception's ``refine()``); the other
-        objects are occluders. Returns {label: {"ok", "pos", "quat", "shift_mm", ...}}."""
+        objects are occluders, ``held`` = (key, pose7) of the object in the jaws (masked: at a place hover it sits
+        between the camera and the support). With ``identity_vocabulary``: ``refine_identity`` over that
+        vocabulary's distinct shapes. Returns {label: {"ok", "pos", "quat", "shift_mm", "obj_id", ...}}."""
         return json.loads(self._call({"op": "refine", "frame": encode_frame(frame), "objects": objects, "fold": int(fold),
-                                      "max_shift_m": float(max_shift_m), "arm": arm})["refine"])
+                                      "max_shift_m": float(max_shift_m), "arm": arm,
+                                      "identity_vocabulary": identity_vocabulary,
+                                      "held": None if held is None else [held[0], [float(v) for v in held[1]]]})["refine"])
 
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
@@ -148,14 +163,55 @@ class _Perception:
             kw["color_M"] = self._cal[f"fold{int(fold)}"]
         return EstimatorConfig(use_wrists=True, **kw)
 
-    def estimate(self, frames: list[dict], vocabulary: str, fold: int) -> dict:
+    def search_regions(self, frame: dict, record: dict, vocabulary: str) -> list[dict]:
+        """perception's ``search_regions`` when it exists; else the table regions the home grippers hide from the
+        head camera, then the missing labels' placement-prior region centres (public task config)."""
+        from dojo.perception import inverse_layout as IL
+        try:
+            from dojo.perception.look import search_regions as p_search
+        except ImportError:
+            p_search = None
+        if p_search is not None:
+            expected: dict = {}
+            for g in IL.label_groups(vocabulary):
+                cats = {k.split("/")[1] for k in g.get("candidates") or []}
+                if len(cats) == 1 and g.get("type", "Rigid") != "Geometry":
+                    c = cats.pop()
+                    expected[c] = expected.get(c, 0) + len(g.get("labels") or [])
+            regs = p_search(record, expected=expected or None)
+            return [{"target": r["center"], "arm": r.get("arm"), "why": r.get("kind"), "for": r.get("for"),
+                     "flange_pose": r.get("flange_pose")} for r in regs]
+        from dojo.perception import inverse_layout as IL
+        from dojo.perception.look import HIDDEN_UNDER_GRIPPERS
+        out = [{"target": np.round(v, 4).tolist(), "arm": a, "why": "under the home gripper"}
+               for a, v in HIDDEN_UNDER_GRIPPERS.items()]
+        missing = {x.get("label") for x in record.get("_not_found") or []}
+        for g in IL.label_groups(vocabulary):
+            if not missing & set(g.get("labels") or []):
+                continue
+            pr = IL._placement_prior(g)
+            if pr.get("fixed_xy") is not None:
+                out.append({"target": [float(pr["fixed_xy"][0]), float(pr["fixed_xy"][1]), 0.765], "arm": None,
+                            "why": "config pose"})
+        return out
+
+    def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
+                 fuse_mode: str | None = None) -> dict:
+        import inspect
+
         from dojo.perception.inverse_layout import estimate
         from dojo.perception.look import fuse
         fr = [decode_frame(f) for f in frames]
         if len(fr) == 1:
             return estimate(fr[0]["images"], fr[0]["state"], vocabulary, fr[0]["instruction"], bgs=self.bgs(fold),
                             cfg=self.cfg(fold))
-        return fuse(fr, vocabulary, bgs=self.bgs(fold), cfg=self.cfg(fold))
+        kw = {}
+        params = inspect.signature(fuse).parameters
+        if prior_record is not None and "prior_record" in params:
+            kw["prior_record"] = prior_record
+        if fuse_mode and "mode" in params:
+            kw["mode"] = fuse_mode
+        return fuse(fr, vocabulary, bgs=self.bgs(fold), cfg=self.cfg(fold), **kw)
 
     def look_plan(self, frame: dict, record: dict, max_looks: int) -> list:
         from dojo.perception.look import look_plan
@@ -171,7 +227,30 @@ class _Perception:
                         "T_world_cam_cv": np.round(T, 5).tolist()})
         return out
 
-    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None) -> dict:
+    def shape_classes(self, vocabulary: str, current: str) -> list[str]:
+        """One catalogue key per distinct shape (sorted bbox extents within 3 mm) among the vocabulary's
+        candidates; ``current`` represents its own class."""
+        from dojo.perception import inverse_layout as IL
+        keys = []
+        for g in IL.label_groups(vocabulary):
+            keys += [k for k in g["candidates"] if k not in keys]
+        if current not in keys:
+            keys.insert(0, current)
+
+        def ext(k):
+            sm = IL.shape_models(k)[0]
+            V = sm.asset.V
+            return np.sort(V.max(0) - V.min(0))
+        reps, seen = [current], [ext(current)]
+        for k in keys:
+            e = ext(k)
+            if all(np.abs(e - x).max() > 0.003 for x in seen):
+                reps.append(k)
+                seen.append(e)
+        return reps
+
+    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None,
+               identity_vocabulary: str | list | None = None, held=None) -> dict:
         """``objects[0]`` re-measured from ``arm``'s wrist frame by perception's ``dojo.perception.refine.refine``
         (accepted when its ``ok`` holds and the shift stays below ``max_shift_m``); without that module, the
         local fit below on every view."""
@@ -183,16 +262,34 @@ class _Perception:
             f = decode_frame(frame)
             o = objects[0]
             others = [(x["key"], list(x["pos"]) + list(x["quat"])) for x in objects[1:]]
-            r = p_refine(o["key"], f["images"][f"cam_{arm}_wrist"], f["state"], list(o["pos"]) + list(o["quat"]),
-                         arm=arm, others=others or None)
+            kw = {}
+            if held:
+                import inspect
+                if "held" in inspect.signature(p_refine).parameters:
+                    kw["held"] = (held[0], list(held[1]))
+            img, prior = f["images"][f"cam_{arm}_wrist"], list(o["pos"]) + list(o["quat"])
+            if isinstance(identity_vocabulary, (list, tuple)):      # explicit candidate keys (target_ranking top-k)
+                cands = [o["key"]] + [k for k in identity_vocabulary if k != o["key"]]
+            else:
+                cands = self.shape_classes(identity_vocabulary, o["key"]) if identity_vocabulary else [o["key"]]
+            if len(cands) > 1:
+                from dojo.perception.refine import refine_identity
+                r = refine_identity(cands, img, f["state"], prior, arm=arm, others=others or None, **kw)
+            else:
+                r = p_refine(o["key"], img, f["state"], prior, arm=arm, others=others or None, **kw)
             pose = np.asarray(r.get("pose"), float) if r.get("pose") is not None else None
             shift = None if pose is None else float(np.hypot(*(pose[:2] - np.asarray(o["pos"][:2], float))))
             ok = bool(r.get("ok")) and pose is not None and shift <= max_shift_m
+            sug = r.get("suggest_xy")
             return {o["label"]: {"ok": ok, "pos": None if pose is None else pose[:3].tolist(),
+                                 "suggest_xy": sug, "suggest_shift_mm": r.get("suggest_shift_mm"),
+                                 "searched": r.get("searched"),
                                  "quat": None if pose is None else pose[3:7].tolist(),
                                  "shift_mm": None if shift is None else round(shift * 1000, 1),
                                  "iou": r.get("iou"), "visible_frac": r.get("visible_frac"),
                                  "turned_deg": r.get("turned_deg"), "time_s": r.get("time_s"), "via": "perception.refine",
+                                 "obj_id": r.get("obj_id", o["key"]), "identity_ok": r.get("identity_ok"),
+                                 "identity_margin": r.get("identity_margin"), "n_candidates": len(cands),
                                  "why": None if ok else ("perception not ok" if not r.get("ok") else "shift too large")}}
         return self._refine_local(frame, objects, fold, max_shift_m)
 
@@ -333,17 +430,22 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     if op == "info":
                         conn.send({"ok": True, "info": stats})
                     elif op == "estimate":
-                        rec = p.estimate(req["frames"], req["vocabulary"], int(req.get("fold", 0)))
+                        pr = json.loads(req["prior_record"]) if req.get("prior_record") else None
+                        rec = p.estimate(req["frames"], req["vocabulary"], int(req.get("fold", 0)), pr, req.get("fuse_mode"))
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
                     elif op == "look_plan":
                         plan = p.look_plan(req["frame"], json.loads(req["record"]), int(req.get("max_looks", 2)))
                         conn.send({"ok": True, "plan": json.dumps(plan, default=_default)})
+                    elif op == "search_regions":
+                        regs = p.search_regions(req["frame"], json.loads(req["record"]), req["vocabulary"])
+                        conn.send({"ok": True, "regions": json.dumps(regs, default=_default)})
                     elif op == "look_poses":
                         poses = p.look_poses(req["target"], req["arm"], req.get("variants"))
                         conn.send({"ok": True, "poses": json.dumps(poses, default=_default)})
                     elif op == "refine":
                         ref = p.refine(req["frame"], req["objects"], int(req.get("fold", 0)),
-                                       float(req.get("max_shift_m", 0.03)), req.get("arm"))
+                                       float(req.get("max_shift_m", 0.03)), req.get("arm"), req.get("identity_vocabulary"),
+                                       req.get("held"))
                         conn.send({"ok": True, "refine": json.dumps(ref, default=_default)})
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))

@@ -168,3 +168,49 @@ def test_flange_for_camera_inverts_the_wrist_mount():
         T6 = model.fk_world(arm, q)["link6"]
         Tf = pose_to_T(*np.split(flange_for_camera(cam.T_wc), [3]))
         assert np.abs(Tf - T6).max() < 1e-9
+
+
+def test_colour_order_from_instruction():
+    from dojo.perception.language import colour_order
+
+    s = "stack the blocks from bottom to top in the order of cyan, red, and orange, then reset the robot arm."
+    assert colour_order(s) == ["cyan", "red", "orange"]
+
+
+def test_region_seeds_only_for_compact_fixed_yaw_regions():
+    from dojo.perception.inverse_layout import _region, _seed_region, region_ok
+
+    prior = {"fixed_xy": None}
+    # organize_table's drawer: x range, y pinned, no random yaw -> a 5-point seed line
+    drawer = {"regions": [_region({"xlim": [-0.45, -0.25], "ylim": [0.15, 0.15]})]}
+    xs, ys, yaw0 = _seed_region(drawer, prior)
+    assert len(xs) == 5 and np.allclose(ys, [0.15]) and yaw0 == 0.0
+    assert region_ok(drawer, -0.36, 0.153) and not region_ok(drawer, -0.36, 0.099 - 0.05)
+    # a wide region (the whole table half) or a free yaw gets no seeds
+    wide = {"regions": [_region({"xlim": [-0.45, 0.0], "ylim": [-0.3, 0.05]})]}
+    assert _seed_region(wide, prior) is None
+    spun = {"regions": [_region({"xlim": [-0.05, 0.05], "ylim": [-0.2, -0.15], "rotate_rand": True, "rotate_deg": 45})]}
+    assert _seed_region(spun, prior) is None
+
+
+def test_j1_adapter_task_inference_and_wire_format():
+    from dojo.perception import j1_adapter as j
+
+    assert j.infer_task("Press the two red buttons the required number of times according to the number cards, "
+                        "then press the blue button to confirm.") == "press_by_number"
+    assert j.infer_task("Push the T-shaped block to align it precisely with the gray T-shaped pad.") == "push_T"
+    assert j.infer_task("Pick up the two T-shaped blocks, swap their positions, and place them back with the "
+                        "correct orientations.") == "swap_T"
+    assert j.infer_task("Stack the three blocks with different textures.") == "stack_blocks"
+    assert j.infer_task("Pick up the bell by 10 cm.") == "general_pickup"
+    a = np.arange(12, dtype=np.uint8).reshape(2, 2, 3)
+    back = j._dec(j._enc({"img": a, "x": [np.float32(1.5), "s"]}))
+    assert back["img"].dtype == np.uint8 and (back["img"] == a).all() and back["x"] == [1.5, "s"]
+
+
+def test_target_phrase_from_general_pickup_instruction():
+    from dojo.perception.inverse_layout import _tokens, target_phrase
+
+    assert target_phrase("Pick up the yellow ice axe by 10 cm.") == "yellow ice axe"
+    assert target_phrase("Stack the three blocks.") is None
+    assert _tokens("Pick up the carved wooden elephant by 10 cm") == {"carved", "wooden", "elephant"}

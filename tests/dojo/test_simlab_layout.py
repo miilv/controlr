@@ -154,3 +154,135 @@ def test_sampler_helpers():
     with pytest.raises(G.LayoutError):
         G.select_instances("Rigid", {"category": [{"name": "b", "index": [0]}],
                                      "select_mode": {"mode": "unique", "nums": 2}}, rng)
+
+
+def test_identity_rules_make_kong_like():
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    rng, state, lay = random.Random(3), {}, {"Rigid": {"mahjong": []}}
+
+    def add(label, idx):
+        lay["Rigid"]["mahjong"].append({"category": "mahjong", "category_idx": idx, "label": label,
+                                        "default_pos": [0, 0, 0.78], "default_ori": [1, 0, 0, 0]})
+    cat = [{"name": "mahjong", "index": list(range(6))}]
+    triples = []
+    for k in range(5):                                  # four triples + a pair, all different tiles
+        sel = G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same", "nums": 3,
+                                                                           "allow_global_same": False}}, rng, lay, state)
+        assert len({i for _, i in sel}) == 1
+        triples.append(sel[0][1])
+        add(f"m{k}_0", sel[0][1])
+    assert len(set(triples)) == 5
+    copy = G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same_index_as_label",
+                                                                        "same_label": "m2_0", "nums": 1}}, rng, lay)
+    assert copy[0][1] == triples[2]
+    disc = G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "unique", "nums": 1}}, rng, lay)
+    assert disc[0][1] not in triples                   # a discard never matches a hand tile
+    with pytest.raises(G.LayoutError):                  # no 7th distinct tile among 6
+        G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same", "nums": 3,
+                                                                     "allow_global_same": False}}, rng, lay, state)
+        G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same", "nums": 3,
+                                                                     "allow_global_same": False}}, rng, lay, state)
+    with pytest.raises(G.LayoutError):                  # linked_count is placed by place_task_objects
+        G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "linked_count"}}, rng, lay)
+    h = G.select_instances("Rigid", {"category": [{"name": "watch", "index": [1, 2]}, {"name": "car", "index": [3]},
+                                                  {"name": "pen", "index": [4, 5]}],
+                                     "select_mode": {"mode": "hierarchical", "select_category_nums": [3, 3],
+                                                     "select_instance_nums": [1, 1], "label_prefix": ["cat0", "cat1", "cat2"]}},
+                           rng, lay)
+    assert sorted(e["_label"] for e, _ in h) == ["cat0_0", "cat1_0", "cat2_0"]   # one category per prefix
+    g = G.select_instances("Rigid", {"category": [{"name": "number", "index": list(range(10)), "group": "t0"}],
+                                     "select_mode": {"mode": "hierarchical", "select_instance_nums": [4, 4],
+                                                     "label_prefix": ["digit"]}}, rng, lay)
+    assert [e["_label"] for e, _ in g] == ["digit_0", "digit_1", "digit_2", "digit_3"]
+
+
+def test_unique_is_scoped_per_object_type():
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    lay = {"Rigid": {"wuliangye": [{"category": "wuliangye", "category_idx": 0, "label": "bottle",
+                                    "default_pos": [0, 0, 0.78], "default_ori": [1, 0, 0, 0]}]}}
+    grp = {"category": [{"name": "wuliangye", "index": [0]}], "select_mode": {"mode": "unique", "nums": [1]}}
+    assert G.select_instances("Fluid", grp, random.Random(0), lay)[0][1] == 0   # the liquid inside the bottle
+    with pytest.raises(G.LayoutError):
+        G.select_instances("Rigid", grp, random.Random(0), lay)
+
+
+def test_relative_placement_pinned_axis_and_check_mode_none(monkeypatch):
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    q0 = [1.0, 0.0, 0.0, 0.0]
+    metas = {("Geometry", "shelf"): {"passive": {"support": {
+                 f"shelf/{k}": {"center": [[0.035 - 0.025 * k, 0.0, 0.035] + q0], "radius": [0.05]} for k in range(4)}}},
+             ("Geometry", "stand"): {"passive": {"support": {"stand/0": {"center": [[0.0, 0.0, 0.03] + q0],
+                                                                          "radius": [0.15]}}}}}
+    child = {"active": {"place": {"up": {"projection_circle": {"radius": 0.07, "center": [0.0, 0.0, 0.0] + q0}}}}}
+    monkeypatch.setattr(G, "metadata", lambda t, c, i, clutter=False: metas.get((t, c)))
+
+    class Ground:
+        def _placement_to_origin(self, pose, c_frame):
+            return pose
+    gens = {"ground": Ground()}
+    lay = {"Geometry": {c: [{"category": c, "category_idx": 0, "label": c, "default_pos": [0.0, 0.0, 0.765],
+                             "default_ori": q0}] for c in ("shelf", "stand")}}
+
+    def prm(**kw):
+        return dict(G.SAMPLING_DEFAULTS, **kw)
+    sib, used = {}, set()
+    for k in range(4):                                  # four bread slices 2.5 cm apart (make_toast)
+        p = prm(relative_plane=f"shelf/shelf/{k}", xlim=[-0.02, -0.02], ylim=[-0.007, -0.007], check_mode="none",
+                place_tag="up")
+        pose, parent = G.place_on_object(p, child, lay, used, random.Random(k), gens, sib)
+        assert parent == "shelf" and pose[0] == pytest.approx(0.035 - 0.025 * k - 0.02)
+    with pytest.raises(G.LayoutError):                  # two pinned children on ONE support do not fit
+        for _ in range(2):
+            G.place_on_object(prm(relative_plane="shelf/shelf/0", xlim=[-0.02, -0.02], ylim=[-0.007, -0.007],
+                                  check_mode="none", place_tag="up"), child, lay, set(), random.Random(0), gens, sib)
+    p = prm(relative_plane="stand/stand/0", xlim=[-0.05, 0.05], ylim=[-0.08, -0.08], zlim=[0.02, 0.02],
+            check_mode="none")                          # the laptop: one axis pinned on a support disk
+    pose, _ = G.place_on_object(p, child, lay, set(), random.Random(0), gens, {})
+    assert pose[1] == pytest.approx(-0.08) and -0.05 <= pose[0] <= 0.05 and pose[2] == pytest.approx(0.765 + 0.05)
+
+
+def test_zlim_child_of_a_support_less_parent_starts_at_its_bbox_top(monkeypatch):
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    box = [[x, y, z] for x in (-0.03, 0.03) for y in (-0.03, 0.03) for z in (-0.06, 0.158)]
+    monkeypatch.setattr(G, "metadata", lambda t, c, i, clutter=False:
+                        {"geometry": {"oriented_bbox": {"vertices": box}}} if c == "wuliangye" and t == "Rigid" else None)
+    lay = {"Rigid": {"wuliangye": [{"category": "wuliangye", "category_idx": 0, "label": "bottle",
+                                    "default_pos": [0.2, 0.0, 0.825], "default_ori": [1.0, 0.0, 0.0, 0.0]}]}}
+    p = dict(G.SAMPLING_DEFAULTS, relative_plane="bottle", xlim=[0.0, 0.0], ylim=[0.0, 0.0], zlim=[-0.133, -0.133],
+             check_mode="enforce")
+    pose, _ = G.place_on_object(p, {}, lay, set(), random.Random(0), {}, {})
+    assert pose[:3] == pytest.approx([0.2, 0.0, 0.825 + 0.158 - 0.133])   # inside the bottle, above the table
+
+
+def test_offsets_live_in_the_support_frame(monkeypatch):
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    ry90 = [math.cos(math.pi / 4), 0.0, math.sin(math.pi / 4), 0.0]             # make_toast's slot frames
+    metas = {("Geometry", "shelf"): {"passive": {"support": {"shelf/0": {"center": [[0.035, 0.0, 0.035] + ry90],
+                                                                         "radius": [0.05]}}}}}
+    monkeypatch.setattr(G, "metadata", lambda t, c, i, clutter=False: metas.get((t, c)))
+
+    class Ground:
+        def _placement_to_origin(self, pose, c_frame):
+            return pose
+    lay = {"Geometry": {"shelf": [{"category": "shelf", "category_idx": 0, "label": "shelf",
+                                   "default_pos": [0.0, 0.0, 0.8], "default_ori": [1.0, 0.0, 0.0, 0.0]}]}}
+    child = {"active": {"place": {"up": {"projection_circle": {"radius": 0.07, "center": [0, 0, 0, 1, 0, 0, 0]}}}}}
+    p = dict(G.SAMPLING_DEFAULTS, relative_plane="shelf/shelf/0", xlim=[-0.02, -0.02], ylim=[-0.007, -0.007],
+             check_mode="none", place_tag="up")
+    pose, _ = G.place_on_object(p, child, lay, set(), random.Random(0), {"ground": Ground()}, {})
+    assert pose[:3] == pytest.approx([0.035, -0.007, 0.8 + 0.035 + 0.02], abs=1e-9)   # x offset lifts the slice

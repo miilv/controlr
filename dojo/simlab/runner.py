@@ -248,9 +248,10 @@ class DictSeedManager:
 
 
 def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_type: str = "arx_x5",
-                  need_planner: bool = True):
+                  need_planner: bool = True, support_planner: bool = False):
     """``src/eval_client/main.py::main`` config assembly, minus the policy server. ``need_planner=False``
-    skips RoboDojo's cuRobo planners (replay-only runs; physics is unaffected)."""
+    skips RoboDojo's cuRobo planners (replay-only runs; physics is unaffected). ``support_planner`` also
+    builds one for the support arm (RoboDojo ships it planner-less; ``demo_gen`` plans its demonstrations)."""
     from omegaconf import OmegaConf
 
     from env.global_configs import BENCHMARK, ENV_CONFIG_PATH, ROOT_DIR
@@ -284,7 +285,70 @@ def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_typ
     if not need_planner:
         for rc in env_cfg.robot.robots:
             rc["need_planner"] = False
+    elif support_planner:
+        for rc in env_cfg.robot.robots:
+            if rc.get("type") == "support":
+                rc["need_planner"] = True
     return env_cfg
+
+
+DEMO_TASKS = ("imitate_sorting_sequence",)
+
+
+def dev_demo(task: str, key: int) -> dict:
+    """The support-arm demonstration for OUR layout ``key`` (seed, or seed * 100 + env when envs share one).
+
+    RoboDojo reads it from ``Assets/Traj/<bench>/<task>/<eval_seed>/<seed>.pkl``: files paired with the EVAL
+    layouts (``target_label`` is the order the policy must reproduce). We never read those. A dev demo
+    comes from ``DATA/simlab/traj/<task>/<seed>.pkl`` (same format), else a no-demo stub: labels in a
+    seed-fixed order and an empty trajectory. The support arm then stays home, so RoboDojo's post-demo check
+    flags the env unstable as soon as an episode steps. That is fine for pre-settling.
+    """
+    import pickle
+    seed = key // 100 if key >= 100 * paths.SEED_BASE else key
+    if seed < paths.SEED_BASE:
+        raise RuntimeError(f"{task}: seed {seed} is not a dev seed; eval-paired demos are off limits")
+    f = paths.DATA / "simlab" / "traj" / task / f"{seed}.pkl"
+    if f.exists():
+        with open(f, "rb") as fh:
+            return pickle.load(fh)
+    order = demo_order(seed)
+    return {"joint_path": [], "target_label": [f"t{i}" for i in order], "aim_label": [f"aim{i}" for i in order],
+            "target_place_tag": [None] * 5, "_simlab_no_demo": True}
+
+
+def demo_order(seed: int, n: int = 5) -> list[int]:
+    """The sorting order of a dev layout's demonstration (seed-fixed; ``demo_gen`` plans this order)."""
+    import random as _random
+    order = list(range(n))
+    _random.Random(seed).shuffle(order)
+    return order
+
+
+def _routed_load_pkl(orig):
+    def load_pkl(path):
+        p = Path(str(path))
+        if paths.eval_asset_violation(p) and "Traj" in p.parts:
+            task = next((t for t in DEMO_TASKS if t in p.parts), None)
+            if task is None:
+                raise PermissionError(f"eval-paired demo with no dev route: {p}")
+            return dev_demo(task, int(p.stem))
+        return orig(path)
+    load_pkl._simlab_routed = True
+    return load_pkl
+
+
+def install_dev_demo_loader() -> int:
+    """Route RoboDojo's ``load_pkl`` of eval-paired Traj demos to ``dev_demo``: the shared
+    ``utils.load_file.load_pkl`` (task modules imported later bind it) and any task module already imported."""
+    import utils.load_file as lf
+    n = 0
+    for m in [lf] + [m for name, m in list(sys.modules.items()) if ".tasks." in name or name.startswith("tasks.")]:
+        f = getattr(m, "load_pkl", None)
+        if f is not None and not getattr(f, "_simlab_routed", False):
+            m.load_pkl = _routed_load_pkl(f)
+            n += 1
+    return n
 
 
 class RoboDojoRunner:
@@ -292,9 +356,10 @@ class RoboDojoRunner:
 
     def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, headless: bool = True,
                  video_dir: str | None = None, workdir: str | None = None, need_planner: bool = True,
-                 physics_only: bool = False):
+                 physics_only: bool = False, support_planner: bool = False):
         self.task = task
         self.physics_only = physics_only
+        paths.install_asset_firewall()                 # no Eval_Layout, no eval-paired Traj, from here on
         self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only)
         # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
         wd = Path(workdir or (paths.DATA / "simlab" / "work"))
@@ -305,9 +370,12 @@ class RoboDojoRunner:
         import src.eval_client.eval_env as ee
         ee.SeedManager = DictSeedManager
         ee.WsModelClient = _NoPolicyClient
-        self.env_cfg = build_env_cfg(task, num_envs=num_envs, device_id=device_id, need_planner=need_planner)
+        self.env_cfg = build_env_cfg(task, num_envs=num_envs, device_id=device_id, need_planner=need_planner,
+                                     support_planner=support_planner)
         self.num_envs = int(self.env_cfg.sim.scene.num_envs)
+        install_dev_demo_loader()                      # imitate_sorting_sequence: our demos, never the eval ones
         self.env = ee.create_eval_env(self.env_cfg, self.app)
+        install_dev_demo_loader()                      # task modules imported by create_eval_env
         if not video_dir:
             self.env._stream_vision = lambda env_idx, frame: None     # no mp4 streaming on get_obs
         self.layouts: list[dict] = [{} for _ in range(self.num_envs)]
@@ -351,6 +419,9 @@ class RoboDojoRunner:
             self.env.run_reward()
             if hasattr(self.env, "get_score"):
                 self.env.get_score()
+            if getattr(self.env, "interact", False) and hasattr(self.env, "query_support_arm_traj"):
+                for i in range(self.num_envs):          # as EvalEnv.run_eval: the support arm starts at step 1
+                    self.env.query_support_arm_traj(env_idx=i)
         self.timing.update({"close_s": t1 - t0, "reset_s": t2 - t1})
         self._contact_sub = None
         return {"stable": stable and all(self.env.success), "per_env_ok": list(map(bool, self.env.success)),

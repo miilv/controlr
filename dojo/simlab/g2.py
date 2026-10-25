@@ -226,7 +226,9 @@ def compare(a: dict, b: dict) -> dict:
     n = min(len(fa), len(fb))
     max_mm, max_deg, first_diff = 0.0, 0.0, None
     per_obj_final = {}
+    per_step = []
     for k in range(n):
+        step_mm = 0.0
         for lab, pa in fa[k]["objects"].items():
             pb = fb[k]["objects"].get(lab)
             if pb is None:
@@ -236,12 +238,14 @@ def compare(a: dict, b: dict) -> dict:
             if first_diff is None and pa != pb:
                 first_diff = fa[k]["step"]
             max_mm, max_deg = max(max_mm, dm), max(max_deg, dd)
+            step_mm = max(step_mm, dm)
             if k == n - 1:
                 per_obj_final[lab] = {"mm": round(dm, 4), "deg": round(dd, 4)}
+        per_step.append(round(step_mm, 5))
     exact = len(fa) == len(fb) and all(x["objects"] == y["objects"] for x, y in zip(fa, fb))
     return {"steps_compared": n, "len_a": len(fa), "len_b": len(fb), "bitwise_equal": exact,
             "first_diff_step": first_diff, "max_mm": round(max_mm, 4), "max_deg": round(max_deg, 4),
-            "final": per_obj_final, "reward_a": a.get("reward"), "reward_b": b.get("reward"),
+            "final": per_obj_final, "per_step_max_mm": per_step, "reward_a": a.get("reward"), "reward_b": b.get("reward"),
             "score_a": a.get("score"), "score_b": b.get("score")}
 
 
@@ -273,6 +277,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--no-perturb", action="store_true")
     ap.add_argument("--no-planner", action="store_true", help="replay only: skip cuRobo setup")
     ap.add_argument("--physics-only", action="store_true", help="no renderer (Kit without RTX; no images)")
+    ap.add_argument("--perturb", action="store_true", help="replay mode: also replay the perturbation set and "
+                    "compare final poses / scores with the record's")
     a = ap.parse_args(argv)
     out = Path(a.out)
     paths.assert_not_eval(out)
@@ -317,7 +323,26 @@ def main(argv: list[str] | None = None) -> None:
             ref = json.loads(ref_p.read_text())
             res["cmp_vs_replay1"] = compare(ref["replay1"], rep)
             print(f"[g2] {a.scenario} {a.tag}: vs replay1 {res['cmp_vs_replay1']['max_mm']} mm "
-                  f"bitwise={res['cmp_vs_replay1']['bitwise_equal']} score {rep.get('score')}", flush=True)
+                  f"bitwise={res['cmp_vs_replay1']['bitwise_equal']} first diff step "
+                  f"{res['cmp_vs_replay1']['first_diff_step']} score {rep.get('score')} (ref {ref['replay1'].get('score')})",
+                  flush=True)
+            if a.perturb and ref.get("perturb"):
+                res["perturb"] = {}
+                lab = MOVED[a.scenario]
+                for kind, v in PERTURBATIONS:
+                    key = f"{kind}_{v}"
+                    dx = (v / 1000, 0.0, 0.0) if kind == "dx" else (0.0, v / 1000, 0.0) if kind == "dy" else (0, 0, 0)
+                    rp = run_once(run, perturb(lay, lab, dxyz=dx, dyaw_deg=v if kind == "yaw" else 0.0), traj, a.scenario)
+                    fa = (ref["perturb"].get(key) or {}).get("frames_final") or {}
+                    fb = rp["frames"][-1] if rp.get("frames") else {}
+                    d = {o: round(float(np.linalg.norm(np.subtract(fa["objects"][o][:3], fb["objects"][o][:3]))) * 1000, 4)
+                         for o in (fa.get("objects") or {}) if o in (fb.get("objects") or {})}
+                    res["perturb"][key] = {"final_vs_ref_mm": d, "score": rp.get("score"),
+                                           "score_ref": ref["perturb"].get(key, {}).get("score"),
+                                           "success": (rp.get("reward") or {}).get("success"),
+                                           "success_ref": (ref["perturb"].get(key, {}).get("reward") or {}).get("success")}
+                    print(f"[g2] {a.scenario} {a.tag} {key}: final vs ref {max(d.values()) if d else None} mm, "
+                          f"success {res['perturb'][key]['success']} (ref {res['perturb'][key]['success_ref']})", flush=True)
         (out / f"{a.scenario}_replay_{a.tag}.json").write_text(json.dumps(jsonable(res)))
     run.close()
 

@@ -32,11 +32,14 @@ from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
-from .belief import Divergence, RuntimeProvider
+from .belief import Divergence, LostObject, RuntimeProvider
 from .bridge import Bridge
 from .estimate import flagged
 from .firewall import check_obs, sanitize_info
 from .supervisor import RuleSupervisor, perception_vocabulary
+
+
+IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
 
 
 @dataclass
@@ -51,6 +54,8 @@ class RuntimeConfig:
     look_conf: float = 0.7
     max_looks: int = 2
     look_min_budget: float = 0.6        # look only while steps_left >= this fraction of step_lim
+    look_merge: str = "all"             # all: the fused record replaces frame 0 | flagged: only flagged objects
+    save_look_frames: bool = False      # dev: keep frame 0 and the look frame (PNG) for perception's analysis
     resync: bool = True
     div_iou: float = 0.2                 # fallback without z-buffer: head IoU at the predicted pose
     div_prec: float = 0.4                # predicted front-most head pixels that are foreground, below = divergence
@@ -60,7 +65,22 @@ class RuntimeConfig:
     final_hold: int = 3
     reserve: int = 30                   # env steps kept for finish()
     refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
-    refine_max_shift_m: float = 0.03
+    refine_max_shift_m: float = 0.03    # accept a refined pose at most this far from the prior (perception searches 7 cm)
+    refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
+    rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
+    rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
+    rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
+    max_rehovers: int = 1               # re-hover + refine retries per pick / place (skills honours max_rehovers)
+    big_shift_mm: float = 30.0          # refine corrections above this need (perception's advice):
+    big_shift_min_iou: float = 0.7      # ... iou >= this, else a confirming second refine from the found pose,
+    confirm_shift_mm: float = 10.0      # ... which must move < this
+    neighbour_mm: float = 25.0          # ... and must not land within this of another known object
+    rehover_when_far: bool = True       # also re-hover after an OK refine that moved the object > rehover_min_shift_mm
+    post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
+    search: bool = False                # objects still missing after the looks: wrist search over regions
+    search_max_regions: int = 4
+    search_lost: bool = False           # a pick refine with iou < lost_iou and no usable suggestion -> search around it
+    lost_iou: float = 0.2
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -71,8 +91,9 @@ class RuntimeConfig:
 class _Checker:
     """Resync adapter: the provider's ``checker`` over the perception service."""
 
-    def __init__(self, pc, vocabulary: str, fold: int):
+    def __init__(self, pc, vocabulary: str, fold: int, max_shift_m: float = 0.03):
         self.pc, self.vocabulary, self.fold = pc, vocabulary, fold
+        self.max_shift_m = max_shift_m
 
     def check(self, obs: dict, objects) -> dict:
         objs = [{"label": o.label, "key": o.asset.key, "pos": [float(v) for v in o.pos],
@@ -82,12 +103,19 @@ class _Checker:
     def estimate(self, obs: dict) -> dict:
         return self.pc.estimate([obs], self.vocabulary, self.fold)
 
+    def refine(self, obs: dict, obj, others, arm: str, held=None) -> dict:
+        objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
+                for x in [obj] + list(others)]
+        return (self.pc.refine(obs, objs, self.fold, self.max_shift_m, arm=arm, held=held) or {}).get(obj.label)
+
 
 class RuntimePolicy:
     def __init__(self, cfg: RuntimeConfig | None = None, assets=None, twin_client=None, perception_client=None,
-                 supervisor=None):
+                 supervisor=None, program=None):
         """``supervisor``: any object with ``decide(instruction, world, events) -> supervisor.Decision`` (the hook
-        the LLM supervisor will implement); default ``RuleSupervisor``."""
+        the LLM supervisor will implement); default ``RuleSupervisor``. ``program``: ``program(ctx) -> result dict``
+        runs INSTEAD of the supervisor loop on the episode context (``_setup``); the tail (finish if not ok,
+        still steps, error handling, report) is the same."""
         self.cfg = cfg or RuntimeConfig.from_env()
         if self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle"):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -98,6 +126,7 @@ class RuntimePolicy:
         self.dev_gt = None
         self.report: dict = {}
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
+        self.program = program
         self.log_lines: list[str] = []
 
     # ------------------------------------------------------------------ lazy services
@@ -134,6 +163,7 @@ class RuntimePolicy:
         self.log_task = self.info.get("task")            # logging only (never a decision input)
         self.fold = int(self.info.get("dev_calib_fold", 0))
         self.bridge = Bridge()
+        self._lost_searched = set()
         self.dev_gt = None
         self.log_lines = []
         self.t0 = time.perf_counter()
@@ -174,7 +204,7 @@ class RuntimePolicy:
                     vt[k] = vt.get(k, 0) + v
             self.report["history"] = [h for s_ in live["sks"] for h in _hist(s_)]
             ver = live.get("verifier")
-            self.report["verify"] = ({**vt, **ver.stats} if ver is not None else
+            self.report["verify"] = ({**vt, **ver.stats, "disabled": ver.disabled} if ver is not None else
                                      ("off (stub: single plan, no twin)" if self.cfg.verify == "off" else
                                       "unavailable (see events)"))
             self.report["provider"] = dict(live["prov"].stats)
@@ -182,35 +212,39 @@ class RuntimePolicy:
                 self.report["perception_calls"] = list(getattr(self._pc, "calls", [])[-200:])
 
     # ------------------------------------------------------------------ the episode (worker thread)
-    def _episode(self):
-        from dojo.skills.executor import EpisodeEnded
+    def _setup(self, obs0: dict):
+        """Everything before the decide/execute loop: perceive, looks, search, provider, verifier, the Skills
+        factory. Returns the episode context, or None when the episode cannot start (no vocabulary)."""
         from dojo.skills.kinematics import X5Kin
         from dojo.skills.skills import Skills
 
         from dojo.skills import library
 
         cfg, b = self.cfg, self.bridge
-        obs0 = b.observe()
         instruction = obs0["instruction"]
         vocab = perception_vocabulary(instruction)
         self.report["vocabulary"] = vocab.name if vocab else None
         if cfg.mode == "perception" and vocab is None:
             self.log(f"[runtime] no perception vocabulary for {instruction!r}: finish")
-            return {"ok": False, "stage": "no_vocabulary"}
+            self.report["result"] = {"ok": False, "stage": "no_vocabulary"}
+            return None
         scene = vocab.name if vocab else ""
         kin = X5Kin()
         events = self.report["events"]
-        checker = _Checker(self.perception(), scene, self.fold) if cfg.mode == "perception" else None
+        checker = (_Checker(self.perception(), scene, self.fold, cfg.refine_max_shift_m) if cfg.mode == "perception"
+                   else None)
         prov = RuntimeProvider(b, scene, instruction, cfg.mode, self.assets(), kin, gt_source=lambda: self.dev_gt,
                                checker=checker if cfg.resync else None, div_iou=cfg.div_iou, div_prec=cfg.div_prec,
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
+        prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
         t = time.perf_counter()
         if cfg.mode == "gt":
             prov.init_from_gt()
         else:
             rec = self.perception().estimate([obs0], scene, self.fold)
             self.report["records"]["initial"] = _slim(rec)
+            self._last_record = rec
             prov.init_from_record(rec)
         self.report["timings"]["perceive_s"] = round(time.perf_counter() - t, 2)
         verifier = None
@@ -247,11 +281,14 @@ class RuntimePolicy:
             skills_kw["refine"] = lambda sk_, label, arm, kind: self._refine_hook(prov, sk_, label, arm, kind)
         elif cfg.refine:
             events.append({"kind": "refine_unavailable", "reason": "mode gt" if cfg.mode == "gt" else "skills has no hook"})
+        max_rehovers = cfg.max_rehovers
 
         def _mk():
-            return Skills(b, prov, kin=kin, reserve=cfg.reserve, log=self.log, verifier=verifier,
-                          verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks,
-                          **skills_kw)
+            sk_ = Skills(b, prov, kin=kin, reserve=cfg.reserve, log=self.log, verifier=verifier,
+                         verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks,
+                         **skills_kw)
+            sk_.max_rehovers = max_rehovers
+            return sk_
 
         sk = make_skills()
         if cfg.mode == "perception" and cfg.look:
@@ -260,83 +297,358 @@ class RuntimePolicy:
             self.report["timings"]["look_s"] = round(time.perf_counter() - t, 2)
             if rec is not None:
                 self.report["records"]["fused"] = _slim(rec)
+                self._last_record = rec
                 prov.init_from_record(rec)
                 sk = make_skills()
-        nf = [x.get("label") for x in (self.report["records"].get("fused") or self.report["records"].get("initial")
-                                        or {}).get("_not_found") or []]
+            rec = None
+        if cfg.mode == "perception" and cfg.search:
+            cur = rec if rec is not None else None
+            base = cur or self._last_record
+            t = time.perf_counter()
+            srec = self._search(sk, obs0, base, scene, kin)
+            self.report["timings"]["search_s"] = round(time.perf_counter() - t, 2)
+            if srec is not None:
+                self.report["records"]["searched"] = _slim(srec)
+                prov.init_from_record(srec)
+                sk = make_skills()
+        nf = [x.get("label") for x in (self.report["records"].get("searched") or self.report["records"].get("fused")
+                                        or self.report["records"].get("initial") or {}).get("_not_found") or []]
         if nf:
             events.append({"kind": "perception_missing", "labels": nf})
+            if verifier is not None:                    # the twin would run the task's checker on a partial scene
+                verifier.disabled = f"estimate lacks {nf}"
+                events.append({"kind": "verify_unavailable", "reason": verifier.disabled})
+        live = self._live
+
+        class _Ctx:
+            """The episode context a program (the supervisor loop, or the agent layer's LLM loop) runs on."""
+            sk = property(lambda _s: live["sk"])        # the current Skills instance (make_skills replaces it)
+
+        ctx = _Ctx()
+        ctx.instruction, ctx.scene, ctx.vocab, ctx.prov, ctx.verifier = instruction, scene, vocab, prov, verifier
+        ctx.events, ctx.make_skills, ctx.kin, ctx.bridge, ctx.report = events, make_skills, kin, b, self.report
+        ctx.perception = self.perception if cfg.mode == "perception" else None
+        ctx.fold, ctx.cfg, ctx.library, ctx.obs0 = self.fold, cfg, library, obs0
+        ctx.refine = lambda label, arm, kind="pick": self._refine_hook(prov, live["sk"], label, arm, kind)
+        ctx.search = lambda record=None: self._search(live["sk"], obs0, record or self._last_record, scene, kin)
+        return ctx
+
+    def _episode(self):
+        from dojo.skills.executor import EpisodeEnded
+        cfg, b = self.cfg, self.bridge
+        obs0 = b.observe()
+        ctx = self._setup(obs0)
+        if ctx is None:
+            return self.report.get("result")
+        events = ctx.events
         result = None
         try:
-            while True:
-                w = sk.refresh()
-                d = self.supervisor.decide(instruction, w, events)
-                self.report["decisions"].append({"action": d.action, "skill": d.skill, "params": _short(d.params),
-                                                 "reason": d.reason, "step": w.step})
-                if d.skill and self.report.get("skill") is None:
-                    self.report["skill"] = d.skill
-                if d.action == "finish":
-                    break
-                w.notes["params"] = dict(d.params)
-                try:
-                    res = library.SKILLS[d.skill](sk, **d.params) or {}
-                    self.report["result"] = _short(res)              # before finish(): success may end it there
-                    if res.get("ok"):
-                        f = sk.finish()
-                        res = {**res, "finish": f.status}
-                except Divergence as e:
-                    events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
-                    sk = make_skills(sk)
-                    continue
-                except KeyError as e:                    # a label the program needs is not in the WorldState
-                    res = {"ok": False, "stage": "world", "error": f"missing object {e}"}
-                last = next((h for h in reversed(sk.history) if not h.ok), None)
-                events.append({"kind": "program_done", "ok": bool(res.get("ok")), "stage": res.get("stage"),
-                               "status": last.status if (last is not None and not res.get("ok")) else "ok",
-                               "step": b.steps_used})
-                result = _short(res)
-                self.report["result"] = result
-                if res.get("ok"):
-                    break
-                sk = make_skills(sk)
+            result = (self.program or self._supervise)(ctx)
+            sk = ctx.sk
             if not (result or {}).get("ok"):
                 sk.finish()                              # bank whatever tier was reached
             for _ in range(cfg.final_hold):
                 sk.ex.hold(1, use_reserve=True)
         except EpisodeEnded as e:
             events.append({"kind": "ended", "note": str(e)})
-        except Exception as e:  # noqa: BLE001 (budget etc.: keep the report)
+        except Exception as e:  # noqa: BLE001 (keep the report; bank what was reached)
             from dojo.skills.executor import BudgetExceeded
-            if not isinstance(e, BudgetExceeded):
-                raise
-            events.append({"kind": "budget", "note": str(e)})
+            if isinstance(e, BudgetExceeded):
+                events.append({"kind": "budget", "note": str(e)})
+            else:
+                import traceback
+                self.report["error_handled"] = f"{type(e).__name__}: {e}\n{traceback.format_exc()[-2500:]}"
+                events.append({"kind": "error", "note": f"{type(e).__name__}: {str(e)[:200]}"})
+                try:
+                    ctx.sk.finish()
+                except Exception:  # noqa: BLE001
+                    pass
         finally:
             if result is not None:
                 self.report["result"] = result
+        return result
+
+    def _supervise(self, ctx) -> dict | None:
+        """The default program: supervisor decide -> library skill -> finish on success, re-plan on divergence,
+        retry on failure (bounded by the supervisor)."""
+        b, events, instruction, library = ctx.bridge, ctx.events, ctx.instruction, ctx.library
+        make_skills, sk = ctx.make_skills, ctx.sk
+        result = None
+        while True:
+            w = sk.refresh()
+            d = self.supervisor.decide(instruction, w, events)
+            self.report["decisions"].append({"action": d.action, "skill": d.skill, "params": _short(d.params),
+                                             "reason": d.reason, "step": w.step})
+            if d.skill and self.report.get("skill") is None:
+                self.report["skill"] = d.skill
+            if d.action == "finish":
+                break
+            w.notes["params"] = dict(d.params)
+            try:
+                res = library.SKILLS[d.skill](sk, **d.params) or {}
+                self.report["result"] = _short(res)              # before finish(): success may end it there
+                if res.get("ok"):
+                    f = sk.finish()
+                    res = {**res, "finish": f.status}
+            except Divergence as e:
+                events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
+                sk = make_skills(sk)
+                continue
+            except LostObject as e:
+                found = self._search_lost(ctx, e)
+                events.append({"kind": "lost_search", "label": e.label, "found": found, "step": b.steps_used})
+                sk = make_skills(sk)
+                continue
+            except KeyError as e:                    # a label the program needs is not in the WorldState
+                res = {"ok": False, "stage": "world", "error": f"missing object {e}"}
+            last = next((h for h in reversed(sk.history) if not h.ok), None)
+            events.append({"kind": "program_done", "ok": bool(res.get("ok")), "stage": res.get("stage"),
+                           "status": last.status if (last is not None and not res.get("ok")) else "ok",
+                           "step": b.steps_used})
+            result = _short(res)
+            self.report["result"] = result
+            if res.get("ok"):
+                break
+            sk = make_skills(sk)
         return result
 
     # ------------------------------------------------------------------ helpers
     def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
         """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
         ``label`` locally on the new views (perception service ``refine``), write accepted poses into the belief.
-        Returns {label: (pos, quat)} of what changed; never steps the env."""
+        Returns {label: (pos, quat)} of what changed, or {"rehover": (pos, quat)} when the fit was not ok but
+        found the object off the prior (skills hovers there and calls once more); never steps the env."""
         obs = self.bridge.observe()
         o = prov.belief.objects.get(label) if prov.belief else None
         if o is None or label in prov.belief.held_labels():
             return None
-        others = [x for x in prov.belief.movable() if x.label != label]
+        ctx = getattr(sk, "refine_ctx", None) or {}
+        held = ctx.get("held")                          # (key, pose7) of the object in this arm's jaws (place)
+        held_label = next((lab for a, (lab, _) in prov.belief.attached.items() if a == arm), None) if prov.belief else None
+        others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [o] + others]
-        res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm)
+        idv = None
+        if self.cfg.refine_identity and kind == "pick":
+            # perception's instruction-ranked candidates for this label (general_pickup's target), else the
+            # vocabulary's distinct shapes (85 classes for a target-category vocabulary: slow and noisy)
+            rank = (((getattr(self, "_last_record", None) or {}).get("_perception") or {}).get("target_ranking")
+                    or {}).get(label)
+            idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else prov.task
+        res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv,
+                                       held=held)
         r = res.get(label) or {}
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
-              **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why")}}
+              "prior7": [round(float(v), 4) for v in np.r_[o.pos, o.quat]],
+              **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why",
+                                       "suggest_xy", "suggest_shift_mm")}}
+        if r.get("pos") is not None:
+            ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         self.report["events"].append(ev)
-        if not r.get("ok"):
+        pend = self._pending_far.pop(label, None) if hasattr(self, "_pending_far") else None
+        if r.get("ok") and (r.get("shift_mm") or 0) > self.cfg.big_shift_mm and pend is None:
+            # a large correction is also how a refine can lock onto a neighbour: check it before believing it
+            near = [x.label for x in others
+                    if float(np.linalg.norm(np.asarray(r["pos"][:2], float) - x.center_w[:2])) < self.cfg.neighbour_mm / 1000]
+            if near:
+                ev.update({"ok": False, "why": f"refined pose on a neighbour {near}"})
+                return None
+            if (r.get("iou") or 0) < self.cfg.big_shift_min_iou:
+                # borderline fit: hover over the found pose and refine once more; accept only if that one agrees
+                self._pending_far = getattr(self, "_pending_far", {})
+                self._pending_far[label] = (o.pos.copy(), o.quat.copy())
+                o.pos, o.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
+                ev["rehover"] = "confirm"
+                hint = {"rehover": (o.pos.copy(), o.quat.copy())}
+                if kind == "place":
+                    hint["rehover_dz"] = self.cfg.rehover_place_dz
+                return hint
+        if pend is not None and not (r.get("ok") and (r.get("shift_mm") or 0) < self.cfg.confirm_shift_mm):
+            o.pos, o.quat = pend                        # the second look did not confirm: back to the prior
+            ev["why"] = (ev.get("why") or "") + " (large correction not confirmed, prior kept)"
             return None
+        if (not r.get("ok") and kind == "pick" and self.cfg.search_lost and (r.get("iou") or 0) < self.cfg.lost_iou
+                and (r.get("suggest_xy") is None or (r.get("suggest_shift_mm") or 0) < 5.0)
+                and label not in getattr(self, "_lost_searched", set())):
+            self._lost_searched = getattr(self, "_lost_searched", set()) | {label}
+            ev["lost"] = True
+            raise LostObject(label, o.pos, o.quat, o.asset.key)
+        if not r.get("ok"):
+            # perception found the object away from the prior but could not fit it well from this hover (it sits
+            # off-centre in the wrist view): ask skills to hover over that spot and refine once more
+            if r.get("suggest_xy") is not None and (r.get("suggest_shift_mm") or 0) > self.cfg.rehover_min_shift_mm:
+                # perception's in-frame search: "the object is probably that way" (a direction, not a pose)
+                p = o.pos.copy()
+                p[:2] = np.asarray(r["suggest_xy"], float)[:2]
+                ev["rehover"] = "suggest"
+                hint = {"rehover": (p, o.quat.copy())}
+                if kind == "place":
+                    hint["rehover_dz"] = self.cfg.rehover_place_dz
+                return hint
+            if (r.get("pos") is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
+                    and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm):
+                ev["rehover"] = True
+                hint = {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float))}
+                if kind == "place":
+                    hint["rehover_dz"] = self.cfg.rehover_place_dz
+                return hint
+            if kind == "place" and held is not None and self.cfg.rehover_place_dz > 0:
+                # the support may be hidden behind the carried object: look again from higher up, same pose
+                ev["rehover"] = "higher"
+                return {"rehover": (o.pos.copy(), o.quat.copy()), "rehover_dz": self.cfg.rehover_place_dz}
+            return None
+        far = (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm
+        new_id = r.get("obj_id")
+        if new_id and new_id != o.asset.key and r.get("identity_ok"):
+            typ, cat, idx = new_id.split("/")
+            from .estimate import _asset
+            ev.update({"identity_from": o.asset.key, "identity_to": new_id})
+            o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
+            prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
         o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
+        if far and self.cfg.rehover_when_far:
+            # found well off the prior: hover over the new spot (object centred in the wrist view) and refine again
+            ev["rehover"] = "recentre"
+            hint = {"rehover": (o.pos.copy(), o.quat.copy())}
+            if kind == "place":
+                hint["rehover_dz"] = self.cfg.rehover_place_dz
+            return hint
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _search_lost(self, ctx, e) -> bool:
+        """The object of a failed pick refine, treated as not found locally: a wrist search seeded at its belief
+        pose (then perception's regions), refine there, write the found pose into the belief."""
+        from .estimate import est_objects, iter_records
+        prov = ctx.prov
+        known = [o for o in est_objects(prov.belief.objects) if o["label"] != e.label]
+        rec = {"_not_found": [{"label": e.label, "candidates": [e.key]}]}
+        for o in known:
+            rec.setdefault(o["type"], {}).setdefault(o["category"], []).append(
+                {"category": o["category"], "category_idx": o["category_idx"], "label": o["label"], "default_pos": o["pos"],
+                 "default_ori": o["quat"], "_perception": {"confidence": 0.9}})
+        seed = {"target": [float(e.pos[0]), float(e.pos[1]), 0.765], "arm": None, "why": "lost_at_belief"}
+        out = self._search(ctx.sk, ctx.bridge.observe(), rec, ctx.scene, ctx.kin, seed=seed, min_budget=0.3)
+        if out is None or any(x.get("label") == e.label for x in out.get("_not_found") or []):
+            return False
+        for _t, _c, r in iter_records(out):
+            if r.get("label") == e.label:
+                o = prov.belief.objects[e.label]
+                o.pos, o.quat, o.source = np.asarray(r["default_pos"], float), np.asarray(r["default_ori"], float), "perception"
+                return True
+        return False
+
+    def _search(self, sk, obs0: dict, rec: dict, scene: str, kin, seed: dict | None = None,
+                min_budget: float | None = None) -> dict | None:
+        """Objects still missing after the looks: move a wrist over each search region (perception's
+        ``search_regions``), observe, re-estimate with that view (full fuse) and add objects found far from every
+        known one under the missing labels. Returns the updated record, or None if nothing was missing."""
+        from dojo.skills.geometry import pose7_to_T
+        from dojo.skills.motion import FAST
+
+        from .estimate import add_found
+        cfg, b = self.cfg, self.bridge
+        if not (rec or {}).get("_not_found"):
+            return None
+        regions = ([seed] if seed else []) + self.perception().search_regions(b.observe(), rec, scene)
+        regions = regions[:cfg.search_max_regions]
+        log = self.report.setdefault("search", [])
+        for reg in regions:
+            if not rec.get("_not_found"):
+                break
+            if b.steps_used > b.step_lim * (1 - (cfg.look_min_budget if min_budget is None else min_budget)):
+                log.append({"skipped": "budget"})
+                break
+            arms = [reg["arm"]] if reg.get("arm") in ("left", "right") else []
+            arms += [a for a in ("left", "right") if a not in arms]
+            mv, used = None, None
+            if reg.get("flange_pose") is not None and reg.get("arm") in ("left", "right"):
+                T_tcp = kin.tcp_from_flange(pose7_to_T(np.asarray(reg["flange_pose"], float)))
+                m = sk.motion.to_pose(reg["arm"], sk.ex.q[reg["arm"]], T_tcp, FAST, "search", gripper=sk.ex.g[reg["arm"]])
+                if m.ok:
+                    mv, used = m, reg["arm"]
+            for arm in ([] if mv is not None else arms):
+                for p in self.perception().look_poses(reg["target"], arm):
+                    T_tcp = kin.tcp_from_flange(pose7_to_T(np.asarray(p["flange_pose"], float)))
+                    m = sk.motion.to_pose(arm, sk.ex.q[arm], T_tcp, FAST, "search", gripper=sk.ex.g[arm])
+                    if m.ok:
+                        mv, used = m, arm
+                        break
+                if mv is not None:
+                    break
+            entry = {"target": reg.get("target"), "why": reg.get("why"), "for": reg.get("for"), "arm": used,
+                     "ok": mv is not None}
+            if mv is None:
+                log.append(entry)
+                continue
+            n0 = b.steps_used
+            sk.ex.execute({used: mv}, name="search")
+            obs_s = b.observe()
+            # the wrist now looks at the region: fit each missing label there (perception's refine searches
+            # around the prior in the wrist frame); frame 0's head view never proposed these objects
+            rec, found = self._search_refine(rec, reg, obs_s, used)
+            if not found:
+                rec_s = self.perception().estimate([obs0, obs_s], scene, self.fold, fuse_mode="full")
+                rec, found = add_found(rec, rec_s)
+                entry["via"] = "full_fuse"
+            else:
+                entry["via"] = "refine"
+            sk.ex.run({used: sk.plan_home(used)}, name="search_home")
+            entry.update({"steps": b.steps_used - n0, "found": found})
+            log.append(entry)
+        return rec
+
+    def _search_refine(self, rec: dict, reg: dict, obs: dict, arm: str) -> tuple[dict, list[str]]:
+        """Fit the record's missing labels at a search region from the wrist frame: prior = region centre at
+        resting height, asset = the label's candidate with the found same-category objects' size (a layout uses
+        one size group). Accepted when perception's refine is ok within 10 cm of the centre."""
+        import copy as _copy
+
+        from .estimate import iter_records
+        known = [(c, r) for _t, c, r in iter_records(rec)]
+        found = []
+        for nf in list(rec.get("_not_found") or []):
+            lab = nf.get("label")
+            cands = nf.get("candidates") or []
+            if not cands:
+                continue
+            ref = next(((c, r) for c, r in known if any(f"/{c}/" in k for k in cands)), None)
+            if ref is not None:
+                c_ref, r_ref = ref
+                ext_ref = self.assets().get("Rigid", c_ref, int(r_ref["category_idx"])).extents
+                same = [k for k in cands if np.abs(np.sort(self.assets().get(*k.split("/")[:2], int(k.split("/")[2])).extents)
+                                                   - np.sort(ext_ref)).max() < 0.003]
+                key = same[0] if same else cands[0]
+                z = float(r_ref["default_pos"][2])
+            else:
+                key = cands[0]
+                info = self.assets().get(*key.split("/")[:2], int(key.split("/")[2]))
+                z = 0.765 - float(info.bbox_min[2])
+            typ, cat, idx = key.split("/")
+            prior = {"label": lab, "key": key, "pos": [float(reg["target"][0]), float(reg["target"][1]), z],
+                     "quat": [1.0, 0.0, 0.0, 0.0]}
+            others = [{"label": r["label"], "key": f"Rigid/{c}/{int(r['category_idx']):05d}",
+                       "pos": [float(v) for v in r["default_pos"]], "quat": [float(v) for v in r["default_ori"]]}
+                      for c, r in known]
+            try:
+                res = (self.perception().refine(obs, [prior] + others, self.fold, 0.10, arm=arm) or {}).get(lab) or {}
+            except Exception as e:  # noqa: BLE001 (no refine available: the full-fuse fallback runs)
+                res = {"ok": False, "why": f"{type(e).__name__}: {e}"[:200]}
+            ev = {"kind": "search_refine", "label": lab, "key": key, "arm": arm, "region": reg.get("why"),
+                  **{k: res.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "why")}}
+            self.report["events"].append(ev)
+            if not res.get("ok"):
+                continue
+            entry = {"category": cat, "category_idx": int(idx), "label": lab, "default_pos": res["pos"],
+                     "default_ori": res["quat"], "scale": [1.0, 1.0, 1.0],
+                     "_perception": {"confidence": float(res.get("iou") or 0.6), "found_by_search": True,
+                                     "place_tag": None}}
+            rec = _copy.deepcopy(rec)
+            rec.setdefault(typ, {}).setdefault(cat, []).append(entry)
+            rec["_not_found"] = [x for x in rec.get("_not_found") or [] if x.get("label") != lab]
+            known.append((cat, entry))
+            found.append(lab)
+        return rec, found
 
     def _look(self, sk, obs0: dict, rec0: dict, scene: str, kin) -> dict | None:
         """Look macro. Returns the fused record, or None when no look was taken."""
@@ -379,7 +691,18 @@ class RuntimePolicy:
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
         self.report["look_steps"] = b.steps_used - n0
-        return self.perception().estimate([obs0, obs1], scene, self.fold)
+        if cfg.save_look_frames:
+            import cv2
+            self.report["look_frames"] = {
+                tag: {"state": {k: np.asarray(v, float).tolist() for k, v in o["state"].items()},
+                      "png": {c: cv2.imencode(".png", cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR))[1].tobytes()
+                              for c, im in o["images"].items()}}
+                for tag, o in (("frame0", obs0), ("look", obs1))}
+        rec1 = self.perception().estimate([obs0, obs1], scene, self.fold, prior_record=rec0)
+        if cfg.look_merge == "flagged":
+            from .estimate import merge_looked
+            return merge_looked(rec0, rec1, [f["label"] for f in fl if f.get("label")])
+        return rec1
 
 
 def _hist(sk) -> list[dict]:

@@ -169,3 +169,191 @@ The two lost layouts are the same in both verify settings: one block estimated 2
 confidence 0.76–0.82, unflagged (100006 took no look). The twin cannot catch it (it is loaded with the same
 wrong pose), and the resync check passes because the stack is offset, not missing. Levers: a perception
 flag for "best fit leaves foreground residual next to the object", and an in-hand re-view after the lift.
+
+`B_tower_off_2a/b` (build_tower × 10, perception, verify off, with the conservative re-plan): **7/10, score 75.0**
+(v1: 1/10, 20), steps median 523 / max 553 of 1050, 13 looks, 34 s / episode. Estimate: xy median 0.7 mm,
+p90 4.5 mm (before looks 8.9 mm), 1 piece not found, identity / shape 0.96. Paired with mode A (10/10, 100):
+
+| task | verify | paired n | A score | B score | gap | lost in B |
+|---|---|---|---|---|---|---|
+| build_tower | off | 10 | 100.0 | 75.0 | **+25.0** | 100003, 100005: topper ↔ pillar / prism shape swap; 100004: belief_mismatch |
+
+100004 was booked "not_home" by the first taxonomy: the skill finished with every piece within 0.3 mm of its
+target IN THE BELIEF, but RoboDojo's checker stopped at the base tier, i.e. an estimate error that neither the
+resync check nor the skills' place check (both read predictions in mode B) caught. New category
+`belief_mismatch` for that case (mode B, skill done, checker disagrees).
+
+## 4. Pre-contact refine (lead's decision) — wiring
+
+- skills (`34857ac`): `Skills(refine=fn)`, `fn(sk, label, arm, kind)` at every pick hover (label = the object)
+  and place approach (label = the support / reference object); fn only observes; skills then refreshes and
+  re-plans the descent. Verified picks / places are split at the hover: the hover runs unverified, only the
+  tails (descent + close + lift / descent + release + retreat) are verified. My verifier needs no change (it
+  replays everything executed since its base state in front of each candidate).
+- perception (`7c73492`, `cc37143`): `refine(key, wrist_rgb, proprio, prior7, arm, others)` and
+  `refine_identity([keys], ...)`. The runtime's service op `refine` calls them on the hovering arm's wrist frame
+  with the other task objects as occluders; pick hovers check identity over the vocabulary's distinct shapes
+  (build_tower: 5 classes, stack_blocks: 3 sizes). A pose is accepted when perception's `ok` holds and the shift
+  is ≤ 30 mm; a different asset only when `identity_ok`. `RuntimeConfig.refine` (default off; mode gt: no-op).
+- Paired runs, identical code, refine off vs on: `B_stack_bundle_{base,refine}_{a,b}`, then build_tower.
+
+### 4.1 First paired refine run (stack_blocks, mode B + verify, identical code)
+
+| arm | n | success | score | steps med / max | wall s / ep | lost |
+|---|---|---|---|---|---|---|
+| refine off (`B_stack_bundle_base_{a,b}`) | 10 | 8/10 | 83.0 | 193 / 206 | 37 | 100000 belief_mismatch, 100002 perception_gross |
+| refine on (`B_stack_bundle_refine_{a,b}`) | 10 | 8/10 | 83.0 | 209 / 232 | 48 | 100002 belief_mismatch, 100005 perception_gross |
+
+- Refine recovered 100000 (a 10.5 mm correction of the support block at the place hover).
+- 100002: the block estimated ~20 mm off sits off-centre in the wrist view at its hover; refine "not ok"
+  (iou 0.12), prior kept, wrong grasp. → re-hover hint (skills `736e9e3`): when the fit is not ok but found
+  the object > 10 mm from the prior with iou > 0.05, hover over the found spot and refine once more.
+- 100005 is fusion noise, not refine: the same ~27 mm frame-0 error in both arms; the then-default FULL fuse
+  (re-assignment) moved it to 4.8 mm in one arm and 41.6 mm in the other. perception's conservative fuse
+  (`c3ae9aa`, frame-0 record passed as `prior_record`) keeps frame 0's objects and accepts a move only when the
+  look view fits well (0 regressions > 5 mm on D0).
+- With the new perception code (more flags) the baseline also changed per layout vs `B_stack_bundle_1`
+  (100000 and 100002 newly lost, 100004 newly won): look + full fuse was moving good estimates (reported to
+  perception with examples: 100000 block 5.7 → 19.7 mm, 100003 0.1 → 12.7 mm).
+- Second pair (`*_base2` / `*_refine2`): conservative fuse + re-hover, look frames saved as PNG.
+
+## 5. Where the gap is (n = 10, before the 25-layout pairs)
+
+| task | mode A (GT) + verify | mode B (perception) + verify | gap | what B loses |
+|---|---|---|---|---|
+| stack_blocks | 100.0 (10/10) | 83.0 (8/10) | 17 | one block 20–25 mm off at planning, unflagged (looks did not fix it) |
+| build_tower | 100.0 (10/10, verify) / 100 (verify off) | 75.0 (7/10, verify off) | 25 | topper ↔ pillar / prism shape swaps; one undetected pose error (belief_mismatch) |
+
+Not losses any more: grasp slips (verify vets each pick in the twin; 100009 is a slip only without verify),
+destructive re-plans (fixed in the runtime), false divergences (fixed), twin chain through grasps (fixed).
+
+Costs per episode (mode B + verify): stack_blocks 34–48 s wall (verify 26 s, refine +11 s), 180–230 of 550
+steps; build_tower ~120 s with verify, ~520 of 1050 steps. Bundle scope peak ≤ 11.7 GB (4 processes).
+
+Open:
+- 25-layout paired runs (refine off / on, plus mode A on the same settled records) for both tasks: running.
+- Mode B has no in-hand measurement: skills' slip / loose-grasp checks read predictions (the twin's or the
+  kinematic belief's). A wrist re-view after the lift would restore them.
+- The twin is loaded with the same (possibly wrong) estimate, so verification cannot catch estimate errors;
+  only refine / resync can. Perturbation (±2 mm, 1°) is smaller than mode B's p90 error (5–8 mm).
+- stack_bowls / put_bottles / swap / press runs are queued after the pairs (mode B only where perception's
+  catalogue has the assets).
+
+### 4.2 25-layout paired run (stack_blocks, settled records 100000–100024, mode B + verify, identical code)
+
+| arm | n | success | score | steps med / max | wall s / ep | failures |
+|---|---|---|---|---|---|---|
+| refine off (`B_stack_bundle_base3_{a..e}`) | 25 | 16/25 | 67.0 | 177 / 209 | 34 | perception_gross 5, error 4 |
+| refine on (`B_stack_bundle_refine3_{a..e}`) | 25 | 16/25 | 66.4 | 206 / 254 | 48 | perception_gross 3, belief_mismatch 2, error 4 |
+
+Paired: refine rescued 2 (100004, 100015), lost 2 (100019, 100024: belief_mismatch).
+
+- The 4 errors (100018, 100020–22, both arms) were mine: perception missed a block, the twin was loaded
+  without it, RoboDojo's `is_stacked` raised inside the twin and the policy died without banking. Fixed:
+  verification is skipped when the estimate lacks task objects, a twin error falls back to the single plan
+  for the episode, and any unexpected error still runs `finish()`.
+- Place refines were mostly not ok (perception's count on our reports: 15/44; picks 49/55 ok, shift median
+  1.5 mm): the carried block hides the support. perception `d822c45` / skills `31c8cd9`: the held object is
+  passed as an occluder (`held=(key, pose7)`); a still-failing place refine re-hovers 3 cm higher.
+- perception's offline check on our saved look frames (`integ_looks.py`): conservative fuse vs frame 0, within
+  15 mm 0.85 → 0.87, p90 19.3 → 15.0 mm; 0 / 81 regressions after planned looks, 1 / 40 after the
+  d0.18 / e70 fallback.
+- Next: base fix-up (the 4 layouts), refine arm rerun with held masking (`refine4`), mode A on the same 25,
+  then the build_tower pair.
+
+## 6. Closed loop per object (lead's decision) and the 25-layout stack pair
+
+Implemented in the runtime (`RuntimeConfig.search / post_place / max_rehovers / rehover_when_far`, refine with the
+carried object masked):
+1. **Search**: objects still missing after the looks → perception's `search_regions(record, expected)` (expected
+   counts from the instruction-matched vocabulary) → a wrist over each region (its own look pose first). The twin
+   is never loaded with a missing object (verification off for that episode); if the search fails the partial
+   task is still planned and banked (lead's decision: partial credit beats 0).
+2. **Hover → refine → re-hover** up to 2 times: when refine is OK but found the object > 10 mm off (re-centre),
+   or not OK with perception's `suggest_xy` > 10 mm away, or (place) not OK at all (re-hover 3 cm higher).
+   skills2 owns `max_rehovers` (`0cc980d`, same interface; my temporary local patch dropped).
+3. **Post-place**: right after each release the provider refines the released object from the releasing arm's
+   wrist (it is at its retreat pose above it) and writes the measured pose into the belief; skills' place check
+   then sees the real offset (place_miss → re-plan; the resumable stack redoes only that block) and the next
+   twin load starts from it.
+4. **Banking**: `bank()` after each verified place, `finish()` on every exit path.
+
+Paired, 25 settled layouts, mode B + verify (control: refine off, with the 4 crash layouts rerun after the fix):
+
+| arm | success | score | steps med / max (550) | wall s / ep | failures |
+|---|---|---|---|---|---|
+| control (`B_stack_bundle_base3_*` + `_fix`) | 16/25 | 68.2 | 177 / 209 | 34 | perception_gross 9 |
+| closed loop (`B_stack_bundle_closed_*`) | 17/25 | 71.6 | 222 / 335 | 53 | perception_gross 7, verify_reject 1 |
+
+Rescued by the closed loop 3 (100002, 100004, 100015), lost 2 (100010: place 29 mm off and every candidate
+rejected; 100024: a block never found). Of the 7 perception_gross, 5 are a block never found although the search
+visited the right region (each missed block lies inside a `hidden_by_gripper` region): the re-estimate used the
+full fuse, whose proposals come only from frame 0's head view, where these blocks were never visible. Fix: at each
+region fit the missing label by wrist `refine()` (candidate at the found blocks' size, region centre prior, 10 cm
+search), full fuse as fallback. Not yet measured on the GPU.
+
+Mode A + verify on the same 25 settled layouts (`A_stack_bundle3_*`): **25/25, score 100**, steps median 169 /
+max 219, 32 s / episode. **stack_blocks gap = 28.4 points** (closed loop 71.6); all 8 lost episodes are
+perception-side except 100010 (verify_reject).
+
+The two "27–31 mm off at planning" cases (100005, 100020) were my gate, not perception: refine at the hover found
+the blocks with good fits (iou 0.65–0.72, perception ok) but `refine_max_shift_m` (30 mm) rejected the corrections
+(34.9 / 59.2 mm), and post-place refines that saw 34–39 mm offsets were discarded the same way. The closed2 arm
+sets the cap to 70 mm (perception's in-frame search range; perception's own `ok` requires iou ≥ 0.6), post-place
+uses the same cap. closed2 = closed + search by wrist refine + 70 mm cap.
+
+## 7. Shared lock queue with the agent layer; program seam
+
+- The agent layer (feat/dojo-agent) drives the runtime through `RuntimePolicy(program=fn)`: `_setup(obs0) -> ctx`
+  (perceive, looks, search, provider, verifier, Skills factory) → `fn(ctx)` instead of the supervisor loop → the
+  same tail. `dojo.runtime.eval --policy module:Class`; episode rows carry `agent` / `policy`.
+- Lead's lock order: one agent Phase-2 job (~3 episodes) alternating with one of mine. My runner owns the single
+  ordered queue (`~/dojo-data/integ/queue.txt`); agent lines carry `--repo /home/physicalai/dojo-agent` and run that
+  checkout's `integ_eval.sh`. `queue.sh restart` replaces the runner after a deploy (waits for the in-flight job).
+- Code versions in the closed2 stack arm: chunk a on the pre-seam code, chunks b–e on the seam refactor
+  (behaviour-preserving; same tests). No other change in between.
+
+### 6.1 closed2: search by wrist refine + 70 mm cap (stack_blocks, 25 settled layouts, mode B + verify)
+
+| arm | success | score | steps med / max | wall s / ep | failures |
+|---|---|---|---|---|---|
+| control (refine off) | 16/25 | 68.2 | 177 / 209 | 34 | perception_gross 9 |
+| closed | 17/25 | 71.6 | 222 / 335 | 53 | perception_gross 7, verify_reject 1 |
+| **closed2** | **20/25** | **81.8** | 234 / 401 | 54 | perception_gross 3, verify_reject 1, divergence 1 |
+| mode A (GT) | 25/25 | 100.0 | 169 / 219 | 32 | – |
+
+Paired: closed2 vs control rescued 7 (100002, 100004, 100005, 100015, 100018, 100021, 100022), lost 3 (100012, 100017,
+100024); vs closed rescued 5, lost 2. **Gap to mode A: 18.2 points** (was 28.4). Estimate at planning: xy median
+1.2 mm, p90 11.7 mm. perception scored the pick refines of closed2 a–d against GT: ok 36/38 with refined error median
+0.3 mm (p90 1.3, max 5.8; prior median 1.2, p90 9.5, max 26); the 2 not-ok (iou 0.07, priors 27 / 37 mm off) were
+right to reject.
+
+Remaining: 100014 / 100020 (block 31–37 mm off, pick refine not ok, `suggest_xy` = prior: needs a search look for a
+found-but-misplaced object), 100024 (never found even by the search), 100017 (place 20 mm off, no candidate passed),
+100012 (divergence: after a good post-place wrist measurement the head check re-estimated by LABEL and moved the block
+252 mm onto another block; fixed: wrist-measured objects are not re-checked, re-estimates are matched by position,
+jumps > 150 mm ignored; deployed for the tower runs). Code: chunk a on the pre-seam code, b–e on the seam refactor.
+
+### 6.2 Next: lost-object search, tower trio, ledger
+
+- `RuntimeConfig.search_lost` (default off): a pick-hover refine with iou < 0.2 and no usable `suggest_xy` raises
+  `LostObject`; the supervisor runs a wrist search seeded at the belief pose (then perception's regions), refits by
+  refine (10 cm), writes the pose into the belief and re-plans; once per object per episode. Measured first on the
+  5 failing closed2 layouts (`B_stack_bundle_closed3_fail5`), after the tower base / closed arms (lead's order).
+- Code versions: tower base3 / closed arms run from `~/dojo-integ` (cb0ac66 merge); the fail5 check, mode-A tower and
+  the leftovers from a second checkout `~/dojo-integ-next` via the queue's `--repo` (so no barrier is needed).
+- Ledger: robot-harness PR #6 (tier `proxy` for proxy-eval results, per the lead).
+
+## 8. Status at hand-off (2026-10-25 13:05 UTC)
+
+| task | mode A (GT) + verify | mode B (perception) + verify, best arm | gap | n |
+|---|---|---|---|---|
+| stack_blocks | 100.0 (25/25) | 81.8 (20/25, closed2) | 18.2 | 25 settled |
+| build_tower | 100.0 (10/10) | 75.0 (7/10, verify off, before refine) | 25.0 | 10 |
+
+Unattended on compute3 (`~/dojo-data/integ/queue.txt`, runner `scripts/dojo/queue_runner.sh`, 1:1 with the agent
+layer's AGB jobs): build_tower base3 (refine off) ×25 and closed (closed2 config) ×25 from `~/dojo-integ`; then
+`B_stack_bundle_closed3_fail5` (search_lost on the 5 failing closed2 layouts), mode-A tower ×25, A stack verify-off
+controls, stack_bowls / put_bottles (A and B), swap_blocks / press_by_number (A) from `~/dojo-integ-next`.
+Read results with `python -m dojo.runtime.report --arm base:<dirs> --arm closed:<dirs>` (paired rescued / lost) or
+`python -m dojo.runtime.report <dirs>` (totals, gap table, failures, perception errors).
