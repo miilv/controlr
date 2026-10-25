@@ -38,9 +38,11 @@ thread runs the program behind `Bridge`: steps are buffered, an observation flus
 Perception needs another python (numpy 2 + EGL), so it runs as a 4th process in the bundle scope
 (`perception_service.py`, raw bytes + JSON over authenticated localhost).
 
-Launch: `scripts/dojo/launch.sh NAME --task T --mode gt|perception --verify off|bundle --layouts ...`
-(detached) → `scripts/dojo/integ_eval.sh`: MemAvailable ≥ 25 GB, blocking `flock -w` on `~/dojo-gpu.lock`,
-one scope (24G / 14 cores with twin or perception, else 16G / 12), services stopped on exit, 90 s yield.
+Launch: `scripts/dojo/queue.sh add NAME --task T --mode gt|perception --verify off|bundle --layouts ...` then
+`queue.sh start`: one runner takes jobs strictly in file order (≤ 5 episodes per job, the lead's lock rule)
+→ `scripts/dojo/integ_eval.sh`: MemAvailable ≥ 25 GB, blocking `flock -w` on `~/dojo-gpu.lock`, one scope
+(24G / 14 cores with twin or perception, else 16G / 12), the driver is skipped if a service never became
+ready, services stopped on exit, 90 s yield after the release.
 
 ## 2. Rules applied
 
@@ -130,3 +132,10 @@ lifts the placed board) → "place block0: descend: collision: hits block7". Fix
 when ≥ 30 % of its silhouette is visible; a failed check leads to a re-plan only when the re-estimate puts
 the object ≥ 15 mm from the belief (else `divergence_unconfirmed`, continue). Asked skills for resumable
 library skills (skip jobs whose target relation already holds).
+
+`B_stack_off_3` (stack_blocks × 10, perception, verify off, with the resync / look / scorer fixes): **7/10,
+score 74.5** (mode A, same layouts: 9/10, 91.5), steps median 165 / max 201 of 550, wall 11 s / episode
+(perception + checks 3 s). Looks on 7 of 10 episodes (1–2 looks, 12–27 steps; the planned pose was often
+IK-infeasible, a variant from the same or the other arm worked). Estimate at planning: xy median 1.6 mm,
+p90 8.0 mm (before looks p90 20.6 mm), identity 0.80, no shape errors. Failures: 100004 / 100006 one block
+20–25 mm off (perception_gross), 100009 the same grasp slip as mode A without verify.
