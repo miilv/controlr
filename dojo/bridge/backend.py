@@ -25,6 +25,8 @@ Strict mode (default): the server's ``info`` must be strict tier B, every reply 
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import time
 from pathlib import Path
@@ -42,6 +44,12 @@ def read_png(path: str) -> np.ndarray:
     from PIL import Image
     with Image.open(path) as im:
         return np.asarray(im.convert("RGB"), np.uint8).copy()
+
+
+def actions_md5(actions: list[dict]) -> str:
+    """robot-harness's ``actions_md5`` of a ``joint_steps`` list (robodojo_server_j2.actions_md5): what the server
+    logs in episode.jsonl, so an executed chunk can be matched against what our twin verified."""
+    return hashlib.md5(json.dumps(actions, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def action_json(a: dict) -> dict:
@@ -80,8 +88,11 @@ class RobotServerBackend:
         self.fresh = False
         self.n_obs = 0
         self.stats = {"obs": 0, "obs_s": 0.0, "png_s": 0.0, "joint_steps_calls": 0, "joint_steps": 0, "exec_s": 0.0,
-                      "perceive": 0, "held_look": 0, "frames_kept": 0}
+                      "perceive": 0, "held_look": 0, "frames_kept": 0, "grip_change_while_moving": {},
+                      "tracking_max_rad": 0.0}
+        self.chunks: list[dict] = []        # per joint_steps call: first step, size, executed, actions_md5
         self.c.on_request = self._before_foreign_verb
+        self.c.on_reply = self._facts
         self._internal = False
 
     # ------------------------------------------------------------------ plumbing
@@ -138,7 +149,7 @@ class RobotServerBackend:
     def reset(self, timeout_s: float = 600.0) -> dict:
         """Take the next RoboDojo episode. Returns the episode info the runtime gets (instruction, step_lim only)."""
         rep = self._call("reset", timeout=float(timeout_s))
-        self.pending, self.executed, self.ended = [], [], False
+        self.pending, self.executed, self.ended, self.chunks = [], [], False, []
         self.instruction = rep.get("instruction")
         self._step_lim = int(rep.get("step_budget") or 0)
         self._steps = int(rep.get("step", 0))
@@ -241,13 +252,23 @@ class RobotServerBackend:
         sent = 0
         for i in range(0, len(acts), self.chunk):
             part = [action_json(a) for a in acts[i:i + self.chunk]]
+            md5 = actions_md5(part)
             rep = self._call(JOINT_STEPS, actions=part, reserve=0)
-            ran = int(rep.get("steps", 0))
+            self.stats["joint_steps_calls"] += 1
+            if rep.get("refused"):                    # the whole chunk was refused at 0 env steps
+                raise ServerError(JOINT_STEPS, {"error": f"refused: {rep.get('refused')} at entry {rep.get('index')}",
+                                                "hint": rep.get("hint"), "refused": rep.get("refused")})
+            if rep.get("actions_md5") not in (None, md5):
+                raise ServerError(JOINT_STEPS, {"error": f"actions_md5 {rep.get('actions_md5')} != sent {md5}",
+                                                "hint": "the server did not receive what we sent"})
+            ran = int(rep.get("executed", rep.get("steps", 0)))
             self.executed.extend(acts[i:i + ran])
             sent += ran
-            self.stats["joint_steps_calls"] += 1
-            if rep.get("refused"):
-                raise ServerError(JOINT_STEPS, {"error": f"refused: {rep.get('refused')}", "hint": rep.get("hint")})
+            self.chunks.append({"step0": self._steps - int(rep.get("steps", 0)), "n": len(part), "ran": ran, "md5": md5})
+            for arm, k in (rep.get("grip_change_while_moving") or {}).items():
+                self.stats["grip_change_while_moving"][arm] = self.stats["grip_change_while_moving"].get(arm, 0) + int(k)
+            for arm, e in (rep.get("tracking_max_rad") or {}).items():
+                self.stats["tracking_max_rad"] = max(self.stats["tracking_max_rad"], float(e))
             if self.ended or ran < len(part):
                 break
         self.stats["joint_steps"] += sent
@@ -304,4 +325,4 @@ class RobotServerBackend:
         return {"arm": arm, "held": bool(rep.get("held")), "confidence": rep.get("confidence"), "source": rep.get("source")}
 
 
-__all__ = ["RobotServerBackend", "ACTION_KEYS", "JOINT_STEPS", "action_json", "read_png"]
+__all__ = ["RobotServerBackend", "ACTION_KEYS", "JOINT_STEPS", "action_json", "actions_md5", "read_png"]

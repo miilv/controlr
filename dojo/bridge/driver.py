@@ -98,6 +98,7 @@ def run_episode(policy, backend: RobotServerBackend, twin_factory=None, reset_ti
            "wall_s": round(time.perf_counter() - t0, 1), "policy_s": round(t_policy, 1), "exec_s": round(t_exec, 1),
            "observe_s": round(t_obs, 1), "twin_start_s": twin_s, "backend": dict(backend.stats),
            "server_calls": backend.c.n_calls, "server_wall_s": round(backend.c.wall_s, 1), "events": events,
+           "joint_steps_chunks": list(backend.chunks),
            "policy_error": rep.get("error"), "policy_error_handled": (rep.get("error_handled") or "")[:400] or None,
            "policy": type(policy).__module__ + ":" + type(policy).__name__}
     return {"summary": out, "report": rep, "executed": list(backend.executed)}
