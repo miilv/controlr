@@ -94,6 +94,17 @@ opening). Visible in the tower stats: all 9 place segments per episode `none_ok`
 successes stand but only the picks were vetted. Fixed (`verifier.chosen_len`; the fake-twin test fails on
 the old indexing); reruns `A_stack_bundle_2`, `A_tower_bundle_2a` / `_1b`.
 
+Mode A, verify = bundle, with the fix (`A_stack_bundle_2a/b`, `A_tower_bundle_2a` + `_1b`; skills d70fef9 / dda3503):
+
+| task | n | success | score | steps med / max (lim) | wall s / episode (verify) | verified segments / episode | rejected candidates | twin prediction vs GT, max per segment |
+|---|---|---|---|---|---|---|---|---|
+| stack_blocks | 10 | 10/10 | 100 | 159 / 194 (550) | 33 (26) | 4–6 | 1 segment chose candidate 2 | 0.1–3.5 mm |
+| build_tower | 10 | 10/10 | 100 | 480 / 505 (1050) | 122 (94) | 13–14 | 0 | 0.02–3.4 mm |
+
+Scope peak 9.4–11.6 GB, 1.7–2.0 cores average. The twin (load_from_estimate of the true state + keep/broadcast
+chain through grasps) predicts the episode env's post-segment object poses to ≤ 3.5 mm: with the true state,
+the twin↔eval gap on the same GPU is small, as simlab's G2 promised.
+
 stack_blocks used skills b3e8a10 (per-task program module, before the one-system planner); build_tower used
 the planner + library (`planner.plan(instruction, world)` → `library.build_tower(pieces)`). Scope peak 10.1 GB,
 2.3 cores average, 157 s for the job including boot.
