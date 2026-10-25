@@ -166,6 +166,9 @@ def cmd_run(a) -> None:
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)
     assets = AssetDB(paths.OBJECTS)
+    # the deployed code version (written next to the code by the deploy step: `git rev-parse HEAD`)
+    cf = Path(__file__).resolve().parents[2] / ".deployed_commit"
+    code = {"dir": str(cf.parent), "commit": cf.read_text().strip() if cf.exists() else None}
     run = RoboDojoRunner(a.task, num_envs=1 + (a.twins if a.verify else 0), workdir=str(out / "work"),
                          physics_only=True, need_planner=False)
     rows = []
@@ -197,6 +200,7 @@ def cmd_run(a) -> None:
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
                           verify_k=a.verify)
         rec["log"] = logs[-60:]
+        rec["code"] = code
         rows.append(rec)
         with summ_p.open("a") as f:
             f.write(json.dumps(rec, default=str) + "\n")
@@ -207,7 +211,9 @@ def cmd_run(a) -> None:
     for line in summ_p.read_text().splitlines():
         r = json.loads(line)
         allrows[r["seed"]] = r
-    write_summary(out, a.task, [allrows[k] for k in sorted(allrows)])
+    summ = write_summary(out, a.task, [allrows[k] for k in sorted(allrows)])
+    summ["code_commits"] = sorted({str((r.get("code") or {}).get("commit")) for r in allrows.values()})
+    (out / f"{a.task}_summary.json").write_text(json.dumps(summ, indent=1))
     run.close()
 
 
