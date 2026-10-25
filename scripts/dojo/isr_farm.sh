@@ -26,6 +26,8 @@ if [[ "${1:-}" == --check ]]; then
 fi
 mkdir -p "$B/run" "$R/RoboDojo/eval_result" "$R/RoboDojo/XPolicyLab/policy"
 for e in harness bin skills tools; do [[ -e "$SRC_BENCH/$e" ]] && link "$SRC_BENCH/$e" "$B/$e"; done
+# the lock-aware starters append START / DONE to $BENCH/COORDINATION.md: the shared log, append-only
+link "$SRC_BENCH/COORDINATION.md" "$B/COORDINATION.md"
 for e in miniconda3 policy_venv robodojo_commit.txt; do link "$SRC_RD/$e" "$R/$e"; done
 for p in "$SRC_RD/RoboDojo/"* "$SRC_RD/RoboDojo/".[!.]*; do
   [[ -e "$p" ]] || continue
