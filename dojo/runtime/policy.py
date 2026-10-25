@@ -81,6 +81,23 @@ class RuntimeConfig:
     search_max_regions: int = 4
     search_lost: bool = False           # a pick refine with iou < lost_iou and no usable suggestion -> search around it
     lost_iou: float = 0.2
+    # PLACE refines contradicting a confident belief need a confirming view (off = the closed2 behaviour):
+    # applied directly only when shift <= place_cap_mm, visible >= place_min_vis and the support was not measured by
+    # our own post-place refine; else ONE re-hover place_confirm_dz higher over the found pose, refit from the prior,
+    # applied only if both fits agree within place_agree_mm. Shifts < place_noise_mm needing a look are dropped.
+    place_confirm: bool = False
+    place_cap_mm: float = 12.0
+    place_min_vis: float = 0.9
+    place_agree_mm: float = 5.0
+    place_confirm_dz: float = 0.05
+    place_noise_mm: float = 3.0
+    # bundle verify on every pick / place segment ("all") or only risky ones ("risky": places, a pick after a
+    # pick refine that was not ok / not confirmed, a repeated pick of the same object)
+    verify_select: str = "all"
+    # mode perception: while nothing is held, ask perception every watch_every steps what the scene's own actors
+    # changed (service op "watch"; make_kong: the opponent's discard); two equal reads update the belief
+    watch: bool = False
+    watch_every: int = 4
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -117,7 +134,8 @@ class RuntimePolicy:
         runs INSTEAD of the supervisor loop on the episode context (``_setup``); the tail (finish if not ok,
         still steps, error handling, report) is the same."""
         self.cfg = cfg or RuntimeConfig.from_env()
-        if self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle"):
+        if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
+                or self.cfg.verify_select not in ("all", "risky")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -164,6 +182,7 @@ class RuntimePolicy:
         self.fold = int(self.info.get("dev_calib_fold", 0))
         self.bridge = Bridge()
         self._lost_searched = set()
+        self._pending_far, self._place_pending, self._vsel_seen = {}, {}, {}
         self.dev_gt = None
         self.log_lines = []
         self.t0 = time.perf_counter()
@@ -238,6 +257,8 @@ class RuntimePolicy:
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
         prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
+        if cfg.watch and cfg.mode == "perception":
+            prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()
         if cfg.mode == "gt":
             prov.init_from_gt()
@@ -288,6 +309,8 @@ class RuntimePolicy:
                          verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks,
                          **skills_kw)
             sk_.max_rehovers = max_rehovers
+            if verifier is not None and cfg.verify_select == "risky":
+                self._gate_verify(sk_)
             return sk_
 
         sk = make_skills()
@@ -447,6 +470,10 @@ class RuntimePolicy:
         if r.get("pos") is not None:
             ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         self.report["events"].append(ev)
+        if kind == "place" and self.cfg.place_confirm:
+            handled, out = self._place_refine(prov, o, r, ev, others, arm)
+            if handled:
+                return out
         pend = self._pending_far.pop(label, None) if hasattr(self, "_pending_far") else None
         if r.get("ok") and (r.get("shift_mm") or 0) > self.cfg.big_shift_mm and pend is None:
             # a large correction is also how a refine can lock onto a neighbour: check it before believing it
@@ -517,6 +544,139 @@ class RuntimePolicy:
                 hint["rehover_dz"] = self.cfg.rehover_place_dz
             return hint
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _make_watcher(self, prov, obs0: dict, scene: str):
+        """The provider's watcher: perception's ``watch`` (frame 0 vs now) until it reports a change twice in a row
+        (or says the vocabulary has no watch read); a knocked-over object is laid face up in the belief."""
+        b, events, st = self.bridge, self.report["events"], {"on": True, "last": None, "prev": None}
+
+        def watch(obs: dict) -> None:
+            if not st["on"] or (st["last"] is not None and b.steps_used - st["last"] < self.cfg.watch_every):
+                return
+            st["last"] = b.steps_used
+            try:
+                w = self.perception().watch(obs0, obs, scene)
+            except Exception as e:  # noqa: BLE001 (an optional read: the episode goes on without it)
+                st["on"] = False
+                events.append({"kind": "watch_error", "note": f"{type(e).__name__}: {str(e)[:160]}"})
+                return
+            if not w.get("supported"):
+                st["on"] = False
+                return
+            k = tuple(w.get("knocked") or ())
+            if k and k == st["prev"]:
+                laid = [lab for lab in k if self._lay_face_up(prov, lab)]
+                events.append({"kind": "watch", "knocked": list(k), "laid": laid, "step": b.steps_used,
+                               "detail": w.get("detail")})
+                st["on"] = False
+            st["prev"] = k or None
+        return watch
+
+    @staticmethod
+    def _lay_face_up(prov, label: str) -> bool:
+        """Belief: ``label`` now lies in its asset's face-up place pose where it stood (bbox bottom kept)."""
+        o = prov.belief.objects.get(label) if prov.belief else None
+        q = None if o is None else o.asset.place.get("up")
+        if q is None:
+            return False
+        z0 = float(o.aabb()[0][2])
+        o.quat = np.asarray(q, float)
+        o.pos = o.pos + np.array([0.0, 0.0, z0 - float(o.aabb()[0][2])])
+        o.source = "perception"
+        return True
+
+    def _risky_segment(self, kind: str, label: str) -> str | None:
+        """``verify_select="risky"``: why this segment is verified (None = it runs unverified). Every non-pick
+        segment (places, insertions) is risky; a pick only when it repeats a pick of the same object in this
+        episode, or when the last pick refine of the object was not ok / not confirmed / found it lost."""
+        if kind != "pick":
+            return kind or "segment"
+        n = self._vsel_seen.get(label, 0)
+        self._vsel_seen[label] = n + 1
+        if n:
+            return "repick"
+        last = next((e for e in reversed(self.report["events"])
+                     if e.get("kind") == "refine" and e.get("for") == "pick" and e.get("label") == label), None)
+        if last is not None and (not last.get("ok") or last.get("lost") or "not confirmed" in (last.get("why") or "")):
+            return "refine_failed"
+        return None
+
+    def _gate_verify(self, sk) -> None:
+        """Wrap ``sk.verify_choose``: a segment that is not risky runs candidate 0 unverified (as with verify off:
+        the kinematic predictor carries the belief, the twin chain restarts from the next at-rest checkpoint)."""
+        orig = sk.verify_choose
+        sk.vstats.setdefault("skipped", 0)
+
+        def gated(cands, judges, held=(), kind: str = "", label: str = ""):
+            why = self._risky_segment(kind, label)
+            self.report["events"].append({"kind": "verify_select", "segment": kind, "label": label,
+                                          "verify": why is not None, "why": why, "step": self.bridge.steps_used})
+            if why is not None:
+                return orig(cands, judges, held, kind, label)
+            sk.vstats["skipped"] += 1
+            info = {"idx": 0, "passes": ["skipped"], "outcomes": [], "actions": sk.ex.actions_for(cands[0]),
+                    "kind": kind, "label": label, "skipped": True}
+            sk.last_verified = info
+            if sk.on_verified is not None:
+                sk.on_verified(info)
+            return 0, ["skipped"]
+
+        sk.verify_choose = gated
+
+    def _measured_after_place(self, label: str) -> bool:
+        """Did our own post-place wrist refine measure ``label`` (ok) since it was last picked?"""
+        for e in reversed(self.report["events"]):
+            if e.get("label") != label:
+                continue
+            if e.get("kind") == "refine" and e.get("for") == "pick":
+                return False
+            if e.get("kind") == "post_place":
+                return bool(e.get("ok"))
+        return False
+
+    def _place_refine(self, prov, o, r: dict, ev: dict, others, arm: str) -> tuple[bool, dict | None]:
+        """PLACE refine under ``cfg.place_confirm`` (a refine that contradicts a confident belief needs a confirming
+        better view). Returns (handled, hook value); not handled = the general refine logic runs (a first-view fit
+        that is not ok: its re-hover hints). The belief keeps the prior until a correction is applied."""
+        cfg, label = self.cfg, o.label
+        pend = self._place_pending.pop(label, None)
+        if pend is not None and (pend["arm"] != arm or self.bridge.steps_used - pend["step"] > 120):
+            pend = None                                 # a stale request from another place
+        if pend is not None:                            # this is the confirming view
+            agree = None
+            if r.get("ok") and r.get("pos") is not None:
+                agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
+            ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
+            if agree is not None and agree <= cfg.place_agree_mm:
+                o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+                prov.stats["refined"] = prov.stats.get("refined", 0) + 1
+                prov.stats["place_confirmed"] = prov.stats.get("place_confirmed", 0) + 1
+                ev["applied"] = True
+                return True, {label: (o.pos.copy(), o.quat.copy())}
+            prov.stats["place_unconfirmed"] = prov.stats.get("place_unconfirmed", 0) + 1
+            ev.update({"applied": False, "why": (ev.get("why") or "") + " (place correction not confirmed, belief kept)"})
+            return True, None
+        if not r.get("ok") or r.get("pos") is None:
+            return False, None
+        shift, vis = float(r.get("shift_mm") or 0), float(r.get("visible_frac") or 0)
+        measured = self._measured_after_place(label)
+        reasons = [w for w, c in (("shift", shift > cfg.place_cap_mm), ("partial_view", vis < cfg.place_min_vis),
+                                  ("measured_support", measured)) if c]
+        if not reasons:
+            return False, None                          # small shift, full view, not our measurement: as before
+        if shift < cfg.place_noise_mm:
+            ev.update({"place_confirm": "below_noise", "applied": False, "confirm_needed": reasons})
+            return True, None
+        near = [x.label for x in others
+                if float(np.linalg.norm(np.asarray(r["pos"][:2], float) - x.center_w[:2])) < cfg.neighbour_mm / 1000]
+        if near:
+            ev.update({"ok": False, "applied": False, "why": f"refined pose on a neighbour {near}"})
+            return True, None
+        self._place_pending[label] = {"pos": np.asarray(r["pos"], float), "step": self.bridge.steps_used, "arm": arm}
+        ev.update({"place_confirm": "first", "confirm_needed": reasons, "applied": False, "rehover": "place_confirm"})
+        prov.stats["place_confirm_looks"] = prov.stats.get("place_confirm_looks", 0) + 1
+        return True, {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float)),
+                      "rehover_dz": cfg.place_confirm_dz}
 
     def _held_refine(self, prov, sk, label: str, arm: str, obs: dict) -> dict | None:
         """skills' kind "held" (right after the lift of a re-orienting pick): measure the object in ``arm``'s jaws

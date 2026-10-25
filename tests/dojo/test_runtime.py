@@ -178,6 +178,10 @@ INSTR = {
                     "green, and blue.",
     "general_pickup": "Pick up the toy car by 10 cm.",
     "align_blocks": "Use the set square to push the three blocks into a straight, aligned row, then reset the robot arm.",
+    "stack_blocks_by_language": "stack the blocks from bottom to top in the order of cyan, yellow, and green, then reset "
+                                "the robot arm.",
+    "plug_in_charger": "Plug the charger into the power strip.",
+    "make_kong": "Wait for the opponent to discard a tile, then declare a kong with the matching tiles.",
 }
 
 
@@ -185,7 +189,9 @@ def test_instruction_selects_the_perception_vocabulary():
     for name, text in INSTR.items():
         assert perception_vocabulary(text).name == name
     assert perception_vocabulary("stack the blocks from bottom to top in the order of red, green, and blue, "
-                                 "then reset the robot arm.") is None
+                                 "then reset the robot arm.").name == "stack_blocks_by_language"
+    assert perception_vocabulary("Cover the blocks from left to right, remember their colors, then uncover them in the "
+                                 "order: red, green, and blue.").name == "cover_blocks"
     assert perception_vocabulary("") is None
 
 
@@ -1035,3 +1041,171 @@ def test_deployed_code_reads_the_deploy_stamp(tmp_path, monkeypatch):
     (tmp_path / ".deployed.json").write_text(_json.dumps(stamp))
     monkeypatch.setattr(EV, "__file__", str(fake))
     assert EV.deployed_code() == stamp
+
+
+def _place_setup(cfg, pc, env):
+    from dojo.runtime.belief import RuntimeProvider
+    pol = RuntimePolicy(cfg, assets=FakeAssets(), perception_client=pc)
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.events = pol.report["events"]
+    return pol, prov
+
+
+class _PlaceSeq:
+    """Place refines answering a scripted list of (dx mm, visible fraction); records each call's prior."""
+
+    def __init__(self, answers):
+        self.answers, self.priors = list(answers), []
+
+    def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+        o = objects[0]
+        self.priors.append(list(o["pos"]))
+        dx, vis, base = self.answers.pop(0)
+        x = (base if base is not None else o["pos"][0]) + dx / 1000
+        return {o["label"]: {"ok": True, "pos": [x, o["pos"][1], o["pos"][2]], "quat": o["quat"],
+                             "shift_mm": abs(x - o["pos"][0]) * 1000, "iou": 0.85, "visible_frac": vis}}
+
+
+class _PlaceSk:
+    refine_ctx = {"kind": "place", "label": "block_0", "arm": "left", "held": None}
+
+
+def test_place_confirm_applies_a_big_place_correction_only_when_a_second_view_agrees():
+    env = _env()
+    cfg = RuntimeConfig(mode="perception", refine=True, refine_max_shift_m=0.07, place_confirm=True)
+    for second_dx, agrees in ((3.0, True), (20.0, False)):
+        pc = _PlaceSeq([(25.0, 1.0, None)])
+        pol, prov = _place_setup(cfg, pc, env)
+        x0 = float(prov.belief.objects["block_0"].pos[0])
+        x_true = x0 + 0.025
+        pc.answers.append((second_dx, 1.0, x_true))                       # the second fit, relative to the first
+        h = pol._refine_hook(prov, _PlaceSk(), "block_0", "left", "place")
+        assert "rehover" in h and h["rehover_dz"] == cfg.place_confirm_dz
+        assert np.isclose(h["rehover"][0][0], x_true)                      # hover over the found pose
+        assert float(prov.belief.objects["block_0"].pos[0]) == x0           # not applied before the second view
+        assert pol.report["events"][-1]["confirm_needed"] == ["shift"]
+        out = pol._refine_hook(prov, _PlaceSk(), "block_0", "left", "place")
+        assert np.isclose(pc.priors[1][0], x0)                              # the second fit starts from the prior
+        x1 = float(prov.belief.objects["block_0"].pos[0])
+        if agrees:
+            assert out and np.isclose(x1, x_true + 0.003) and prov.stats["place_confirmed"] == 1
+        else:
+            assert out is None and x1 == x0 and prov.stats["place_unconfirmed"] == 1
+
+
+def test_place_confirm_small_full_view_shift_applies_partial_view_or_our_measurement_needs_a_look():
+    env = _env()
+    cfg = RuntimeConfig(mode="perception", refine=True, refine_max_shift_m=0.07, place_confirm=True,
+                        rehover_when_far=False)
+    # small shift, full view: applied at once (the closed2 behaviour)
+    pol, prov = _place_setup(cfg, _PlaceSeq([(6.0, 1.0, None)]), env)
+    x0 = float(prov.belief.objects["block_0"].pos[0])
+    out = pol._refine_hook(prov, _PlaceSk(), "block_0", "left", "place")
+    assert "block_0" in out and np.isclose(float(prov.belief.objects["block_0"].pos[0]), x0 + 0.006)
+    # the same shift seen on a partial view: a confirming look
+    pol, prov = _place_setup(cfg, _PlaceSeq([(6.0, 0.6, None)]), env)
+    out = pol._refine_hook(prov, _PlaceSk(), "block_0", "left", "place")
+    assert "rehover" in out and pol.report["events"][-1]["confirm_needed"] == ["partial_view"]
+    # a support our own post-place refine measured: a confirming look even in full view
+    pol, prov = _place_setup(cfg, _PlaceSeq([(6.0, 1.0, None)]), env)
+    pol.report["events"].append({"kind": "post_place", "label": "block_0", "ok": True})
+    out = pol._refine_hook(prov, _PlaceSk(), "block_0", "left", "place")
+    assert "rehover" in out and pol.report["events"][-1]["confirm_needed"] == ["measured_support"]
+    # ... unless it was picked since
+    pol, prov = _place_setup(cfg, _PlaceSeq([(6.0, 1.0, None)]), env)
+    pol.report["events"] += [{"kind": "post_place", "label": "block_0", "ok": True},
+                             {"kind": "refine", "for": "pick", "label": "block_0", "ok": True}]
+    out = pol._refine_hook(prov, _PlaceSk(), "block_0", "left", "place")
+    assert "block_0" in out
+    # below the noise floor on a partial view: dropped, no look
+    pol, prov = _place_setup(cfg, _PlaceSeq([(2.0, 0.6, None)]), env)
+    out = pol._refine_hook(prov, _PlaceSk(), "block_0", "left", "place")
+    assert out is None and float(prov.belief.objects["block_0"].pos[0]) == x0
+    # off (default): the same partial-view shift is applied as before
+    pol, prov = _place_setup(RuntimeConfig(mode="perception", refine=True, rehover_when_far=False),
+                             _PlaceSeq([(6.0, 0.6, None)]), env)
+    out = pol._refine_hook(prov, _PlaceSk(), "block_0", "left", "place")
+    assert "block_0" in out
+
+
+def test_verify_select_risky_verifies_places_and_skips_plain_picks(monkeypatch):
+    import dojo.runtime.estimate as E
+    monkeypatch.setattr(E, "estimate_to_layout", lambda scene, objs: {"Rigid": {"block": [
+        {"label": o["label"], "category_idx": o["category_idx"], "default_pos": o["pos"], "default_ori": o["quat"]}
+        for o in objs]}})
+    env = _env()
+    tc = FakeTwinClient()
+    pol = RuntimePolicy(RuntimeConfig(mode="gt", verify="bundle", n_cands=2, verify_k=2, verify_select="risky"),
+                        assets=FakeAssets(), twin_client=tc)
+    rep = run_episode(pol, FakeEpisode(env), "gt")
+    assert rep["error"] is None, rep["error"]
+    assert _stacked(env)
+    v = rep["verify"]
+    sel = [e for e in rep["events"] if e["kind"] == "verify_select"]
+    picks = [e for e in sel if e["segment"] == "pick"]
+    places = [e for e in sel if e["segment"] == "place"]
+    assert picks and places and not any(e["verify"] for e in picks) and all(e["verify"] for e in places)
+    assert v["skipped"] == len(picks) and v["calls"] == len(places), v
+    assert v["from_snapshot"] == 0                    # no kept pick to chain from: places load the checkpoint
+    assert all(vv["from"] == "estimate" for vv in tc.verifies)
+
+
+def test_verify_select_risky_marks_picks_after_a_failed_refine_or_a_repeat():
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="bundle", verify_select="risky"))
+    pol.reset({"instruction": STACK, "step_lim": 550})
+    assert pol._risky_segment("place", "block_0") == "place"
+    assert pol._risky_segment("pick", "block_1") is None
+    assert pol._risky_segment("pick", "block_1") == "repick"
+    pol.report["events"].append({"kind": "refine", "for": "pick", "label": "block_2", "ok": False})
+    assert pol._risky_segment("pick", "block_2") == "refine_failed"
+    pol.report["events"].append({"kind": "refine", "for": "pick", "label": "block_0", "ok": True,
+                                 "why": " (large correction not confirmed, prior kept)"})
+    assert pol._risky_segment("pick", "block_0") == "refine_failed"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(verify_select="some"))
+
+
+def test_watch_lays_the_knocked_tile_face_up_after_two_equal_reads():
+    from dojo.skills.library import face_up, is_standing
+    env = _env()
+
+    class Watch:
+        def __init__(self, reads, supported=True):
+            self.reads, self.supported, self.n = list(reads), supported, 0
+
+        def watch(self, frame0, frame, vocabulary):
+            self.n += 1
+            return {"supported": self.supported, "knocked": self.reads.pop(0) if self.reads else []}
+
+    up = [np.cos(np.pi / 4), np.sin(np.pi / 4), 0.0, 0.0]            # place "up": 90 deg about x (the face points up)
+    tile = AssetInfo(key="Rigid/mahjong/00005", bbox_min=np.array([-0.012, -0.008, 0.0]),
+                     bbox_max=np.array([0.012, 0.008, 0.034]), place={"up": np.asarray(up)})
+    pc = Watch([[], ["block_0"], ["block_0"], ["block_0"]])
+    cfg = RuntimeConfig(mode="perception", watch=True, watch_every=0)
+    pol, prov = _place_setup(cfg, pc, env)
+    o = prov.belief.objects["block_0"]
+    o.asset = tile
+    z_bottom = float(o.aabb()[0][2])
+    assert is_standing(o) and not face_up(o)
+    w = pol._make_watcher(prov, pol.bridge.obs, "make_kong")
+    obs = pol.bridge.obs
+    w(obs)
+    w(obs)
+    assert not face_up(o)                                             # one read is not enough
+    w(obs)
+    assert face_up(o) and abs(float(o.aabb()[0][2]) - z_bottom) < 1e-9   # lies where it stood
+    ev = [e for e in pol.report["events"] if e["kind"] == "watch"]
+    assert ev and ev[0]["laid"] == ["block_0"]
+    w(obs)
+    assert pc.n == 3                                                  # done: no more calls
+    # a vocabulary without a watch read: one call, then never again
+    pc2 = Watch([], supported=False)
+    pol2, prov2 = _place_setup(cfg, pc2, env)
+    w2 = pol2._make_watcher(prov2, pol2.bridge.obs, "stack_blocks")
+    w2(obs)
+    w2(obs)
+    assert pc2.n == 1
