@@ -677,3 +677,55 @@ Five tasks failed under v9. All 32 generate under v11.
 - `make_d0 --settled --max-frame 1` replays pre-settled records instead of generating; LAYOUTS is not written.
 - `<task>/index.json` appears only after the render, because perception's watcher keys on it.
 - The driver stops at 300 MB.
+
+## Generator v12: relative offsets in the support frame
+
+- make_toast v11 records failed pre-settle 9/9: the slices fell, drifting 11-23 mm and 30-60 deg.
+- Cause: the bread_shelf's four slot supports carry an Ry(90 deg) frame, so the slices stand up. The config's
+  `xlim: [-0.02, -0.02]` is an offset in that frame, i.e. a 2 cm lift inside the slot. We applied it in world x,
+  which moved every slice 2 cm sideways into the slot wall.
+- v12 applies xlim / ylim / zlim of relative placements in the support frame. That is RoboDojo's convention,
+  also used by the public PhysicalRSI sampler. Parents without supports (fluids) still use world axes.
+- Tasks generated before v12 keep the world-axis convention. Their support frames are untilted and their offsets
+  are 0-2 cm, so at most a small yaw-rotation difference in the offset direction. Not regenerated.
+
+## imitate_sorting_sequence demos (`demo_gen`): state
+
+The RoboDojo pkl format and replay work: RoboDojo's own playback runs our pkl through the routed loader.
+
+Validation outcomes so far (settled or raw records, 6-10 layouts per try):
+- First try, slow cuRobo timing: 2 of 5 layouts validated. 4 of the 5 aims were in basket1 on most layouts.
+- The last object was never released on several layouts. The demo ran ~1700 env steps, and the
+  1600-step episode limit cut it before the final release.
+- Pace calibration, measured on RoboDojo's generic make_kong / tic-tac-toe demos (allowed by the firewall):
+  ~100-substep segments, joint steps <= 0.008 rad per 4 ms substep (median 0.002). That works out to
+  ~115 env steps per pick-and-place.
+- Retiming to that pace with a cap of 900 env steps made grasps worse: the hand lagged above the object
+  when the fingers closed.
+- Current setting: fast free moves (0.008), slow near the object (0.002 descent / lift / lower), carrying at
+  0.004, 50-substep settle before closing, pads >= 1.6 cm above the object bottom.
+  - The pad floor exists because RoboDojo gives the Franka planner `table_height` 0.74 while the table top is
+    0.765, so planned fingertips can end up in the table.
+- Up to 3 seeded orders per layout: a transport can knock a later object.
+- Chunks of 3 layouts per GPU-lock hold. An unchunked 10-layout run held the lock 41 min, past the team's
+  30 min rule; I stopped it.
+
+## Queue fairness
+
+- Several simlab drivers (coverage, d0_ext, demos) used to wait on the team lock at once. flock wakes waiters at
+  random, so we took more than our share.
+- rdpy.sh / isaac6.sh now first take a simlab-only queue lock, `~/dojo-data/simlab/.queue.lock`. This is
+  automatic for the ~/dojo-simlab deploy only. At most one simlab job waits on the team lock.
+- Pitfall: never SIGSTOP a waiting rdpy.sh. It holds the queue lock while it waits, so stopping it blocks every
+  simlab job. Stop drivers between jobs instead.
+
+## isr-lab: coordination protocol
+
+- `scripts/simlab/isr_gpu.sh` implements the robot-harness coord protocol. Each job:
+  - waits while `gpu.reserve` covers now or an optional `SIMLAB_ISR_BLACKOUT` window applies;
+  - takes `flock ~/data2/coord/gpu.lock`;
+  - writes `gpu.owner` (side, pid, start, ETA, what) and clears it on release;
+  - runs under `timeout 2h`;
+  - logs START/DONE in COORDINATION.md;
+  - yields 90 s afterwards.
+- rerender_isr.sh and rerender_isr2.sh use it. GPU_GO_ILIA is retired.
