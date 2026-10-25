@@ -38,6 +38,7 @@ PLACE_REACH = 0.60            # m, TCP from the arm's base in the plane: farther
                               # a relay (twin: places 0.66-0.67 m out, the arm across the table, stalled 30 mm above
                               # the target with the commanded pose 33 mm lower, plug 7/10; a figurine's stand is 0.57)
 TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0.02 cost 52 of insert_key's 300 steps)
+UNEVEN_CARRY = 0.09           # rad/step, carries of uneven objects (tools, figurines, pens) instead of CARRY 0.14
 LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is carried on rather than redone
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
@@ -789,6 +790,10 @@ class Skills:
         # (twin: pliers squeezed across their diverging handles, a hammer across its head, slid out; the
         # handle at the centre of mass holds)
         irregular = held_box(obj, np.eye(4)).points is not None or G.com_off(obj) > 0.008
+        if irregular and "approach_rad" not in place_kw:
+            # uneven objects swing in the pads on fast carries (twin: a wrench held 6 mm off its centre of mass,
+            # 4 mm drift after the lift, fell out on the way to its slot)
+            place_kw["approach_rad"] = UNEVEN_CARRY
         for a in arms:
             q0 = (q_start or {}).get(a, self.ex.q[a])
             if callable(grasps):
