@@ -729,3 +729,98 @@ Validation outcomes so far (settled or raw records, 6-10 layouts per try):
   - logs START/DONE in COORDINATION.md;
   - yields 90 s afterwards.
 - rerender_isr.sh and rerender_isr2.sh use it. GPU_GO_ILIA is retired.
+
+## Generator v13: solve_equation semantics; make_toast records; presettle v2
+
+- **solve_equation** (v11 records, 0/25): RoboDojo's `run_reward` crashed on every record. Its config places
+  t0/t1/t2/t4 with arbitrary tiles. The task code needs a legal `a op b = answer` on the mats with exactly one
+  slot missing; otherwise `find_missing_list` returns a list and `env_infos["missing_list"]` raises.
+  v13 adds the task semantics, following the public PhysicalRSI sampler:
+  - a uniform legal single-digit equation;
+  - mat5 / t5 for a two-digit answer;
+  - a uniform missing slot;
+  - digit tiles drawn by `index % 10 == digit`.
+  The draw is recorded in `_simlab.task_semantics`. 25 records regenerated and queued for pre-settle.
+- **make_toast**: no pre-settled records. Under v12 RoboDojo loads all 25 raw records as stable, and the slices
+  drop ~17 mm into their slots during the reset.
+  - A written-back settled record moves ~7 mm again on every reload (2-4 re-settle passes tried) or a slice falls.
+  - make_toast_random: 16/25 settled.
+  - Use the raw records; skills-3 is told.
+- **presettle v2**:
+  - articulations are not written back (they keep their generated pose);
+  - `--extra-passes` re-settles marginal rests;
+  - the 3 largest pass-2 movers are recorded per layout.
+- **match_and_pick_from_conveyor** joins pick_from_conveyor_by_image at 0/25 settled: the belt moves. Use the
+  raw records.
+- **d0_ext press_by_number** (perception): frame 1 hovers the left wrist 10 cm over button0, pitched 85 deg.
+  Perception scored refine at that hover 10/10 within 5 mm.
+
+## Coverage table (interim, 2026-10-25 ~14:30 UTC)
+
+Still running on compute3, in order (one simlab job on the team lock at a time):
+- solve_equation v13 pre-settle;
+- imitate demos (`scripts/simlab/demo_all.sh`, chunks of 3; 3 validated so far: 100002, 100004, 100010);
+- then, via `~/dojo-data/simlab/coverage/DEMO_DONE`, the 18 Generalization leftovers. All 18 generate under v13
+  (dry run).
+- d0_ext continues in parallel.
+
+Refresh with `python3 ~/dojo-data/simlab/coverage/covtable.py`.
+
+| task | assets | dev layouts | generator | pre-settled | notes |
+|---|---|---|---|---|---|
+| align_blocks | ok | 25 | v9 | 25/25 |  |
+| arrange_largest_number | ok | 0 | - | 0/- |  |
+| arrange_largest_number_random | ok | 0 | - | 0/- |  |
+| build_tower | ok | 25 | v1 | 25/25 |  |
+| classify_objects | ok | 25 | v11 | 25/25 |  |
+| classify_objects_by_language | ok | 25 | v11 | 24/25 |  |
+| cover_blocks | ok | 25 | v8 | 25/25 |  |
+| deposit_coin | ok | 25 | v11 | 25/25 |  |
+| fasten_screws | ok | 25 | v7 | 25/25 |  |
+| fill_egg_holder | ok | 25 | v6 | 11/25 | egg basket has no collision: eggs drop to the table (RoboDojo's own asset) |
+| fill_pen_holder | ok | 25 | v2 | 25/25 |  |
+| fold_clothes | ok | 0 | - | 0/- |  |
+| fold_clothes_random | ok | 0 | - | 0/- |  |
+| general_pickup | ok | 25 | v10 | 25/25 |  |
+| hang_mugs | ok | 0 | - | 0/- |  |
+| hang_mugs_random | ok | 0 | - | 0/- |  |
+| imitate_sorting_sequence | ok | 25 | v9 | 25/25 | 3 validated support-arm demos; without one an episode stubs the demo |
+| insert_key | ok | 25 | v2 | 14/25 |  |
+| insert_tubes | ok | 25 | v12 | 25/25 |  |
+| make_kong | ok | 25 | v7 | 25/25 |  |
+| make_toast | ok | 25 | v12 | 0/25 | presettle v2 (articulations keep generated pose) |
+| make_toast_random | ok | 25 | v12 | 16/25 |  |
+| match_and_pick_from_conveyor | ok | 25 | v11 | 0/25 |  |
+| organize_table | ok | 25 | v3 | 23/25 |  |
+| pack_objects_into_box | ok | 0 | - | 0/- |  |
+| pack_objects_into_box_random | ok | 25 | v1 | 25/25 |  |
+| pick_from_conveyor_by_image | ok | 25 | v2 | 0/25 | moving belt: objects never come to rest; use the raw records |
+| play_Xylophone | ok | 25 | v11 | 25/25 |  |
+| play_stacking_toy | ok | 25 | v11 | 25/25 |  |
+| play_tic_tac_toe | ok | 25 | v11 | 25/25 |  |
+| plug_in_charger | ok | 25 | v2 | 25/25 |  |
+| pour_balls_into_vase | ok | 25 | v11 | 24/25 |  |
+| pour_by_language | ok | 25 | v11 | 25/25 |  |
+| pour_liquid_into_cup | ok | 0 | - | 0/- |  |
+| pour_liquid_into_cup_random | ok | 0 | - | 0/- |  |
+| press_by_number | ok | 25 | v2 | 25/25 |  |
+| push_T | ok | 25 | v1 | 25/25 |  |
+| push_T_random | ok | 0 | - | 0/- |  |
+| put_bottles_into_dustbin | ok | 34 | v1 | 28/34 |  |
+| solve_equation | ok | 25 | v13 | 0/25 |  |
+| sort_nesting_dolls_by_size | ok | 0 | - | 0/- |  |
+| sort_nesting_dolls_by_size_random | ok | 0 | - | 0/- |  |
+| stack_blocks | ok | 25 | v1 | 25/25 |  |
+| stack_blocks_by_language | ok | 25 | v11 | 25/25 |  |
+| stack_blocks_random | ok | 0 | - | 0/- |  |
+| stack_bowls | ok | 25 | v1 | 25/25 |  |
+| stack_bowls_random | ok | 0 | - | 0/- |  |
+| store_laptop_and_headphones | ok | 0 | - | 0/- |  |
+| store_laptop_and_headphones_random | ok | 0 | - | 0/- |  |
+| store_tools_in_toolbox | ok | 25 | v2 | 25/25 |  |
+| swap_T | ok | 25 | v8 | 25/25 |  |
+| swap_blocks | ok | 25 | v2 | 25/25 |  |
+| sweep_blocks | ok except Rigid/broom_shovel ['1', '4'] | 0 | - | 0/- | broom_shovel 1, 4 unpublished (others drawn) |
+| sweep_blocks_random | ok except Rigid/broom_shovel ['1', '4'] | 0 | - | 0/- | broom_shovel 1, 4 unpublished (others drawn) |
+
+54 tasks; 36 with dev layouts; 29 with >= 20 pre-settled records
