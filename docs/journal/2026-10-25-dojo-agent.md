@@ -90,3 +90,15 @@ Report: [agent-e2e](../experiments/2026-10-25-agent-e2e.md).
 - **Perception before / after de21b05:** the general_pickup estimate went from 501 s to seconds.
 - **Batching:** one bundle job per task ran every model arm (`AgentConfig.models`); the lead allowed up to 50 min.
 - **Spend:** Phase 1 1,140 calls; Phase 2 ~430.
+
+## 5. Defaults changed (owner's decision, after Phase 2)
+
+- `AgentConfig.model`: `cx/gpt-6-astra-high` -> **`cx/gpt-6.1-sol`**, because of the OpenAI subscription budget.
+  Sonnet 5.5 stays an alternative arm. Every episode row records the model (`agent.model`).
+- `AgentConfig.manual`: `manual_v3` -> **`manual_v4`**: v3 plus rule 2.7, "Hold what must be held". A lift-and-hold
+  goal stays satisfied only while holding, so do not call `finish()` or open the gripper until the end state is
+  reached, then go home. The "pick up by N cm" pattern now asks for a margin. This is the fix for Phase 2's
+  `pick(lift=0.10); finish()` early release (general_pickup 100001, Astra and Sol). v3 is unchanged, so earlier
+  runs stay reproducible.
+- J2 is in PR #21: `skills/registry.yaml` + `dojo/agent/registry.py`, with `AgentConfig.registry / strict /
+  scene_version`; scene v3 adds the named frames for `stack_on_pegs` / `slots_and_press`.

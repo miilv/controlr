@@ -33,7 +33,7 @@ INVOKE_RE = re.compile(r'<parameter name="code">\s*\n?(.*?)</parameter>', re.S)
 
 @dataclass
 class AgentConfig:
-    model: str = "cx/gpt-6-astra-high"
+    model: str = "cx/gpt-6.1-sol"       # owner's decision 2026-10-25 (subscription budget); Sonnet 5.5 = alternative arm
     extra_body: dict = field(default_factory=dict)
     max_tokens: int = 16000
     max_calls: int = 30
@@ -45,7 +45,7 @@ class AgentConfig:
     first_image_px: int = 640
     jpeg_quality: int = 80
     max_images_per_turn: int = 3
-    manual: str = "manual_v3"           # v2's conventions + robo.place(over=...)
+    manual: str = "manual_v4"           # v3 + "hold what must be held" (the pick(lift) + finish() early release)
     appendix: str = "agent_v4"          # v3 + "a call of the python tool" as a cell
     timeout_s: float = 600.0
     # experiment batching (one bundle job for several model arms): episode k runs models[k % len(models)]
