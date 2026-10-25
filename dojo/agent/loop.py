@@ -46,11 +46,15 @@ class AgentConfig:
     jpeg_quality: int = 80
     max_images_per_turn: int = 3
     manual: str = "manual_v3"           # v2's conventions + robo.place(over=...)
-    appendix: str = "agent_v3"
+    appendix: str = "agent_v4"          # v3 + "a call of the python tool" as a cell
     timeout_s: float = 600.0
     # experiment batching (one bundle job for several model arms): episode k runs models[k % len(models)]
     # ({"model": ..., "extra_body": {...}}); empty = always ``model``. Chosen by the episode counter only.
     models: list = field(default_factory=list)
+    # declare a ``python(code)`` function tool: Codex-served GPT-6 models answer a code cell as a tool call and
+    # the router drops undeclared calls (empty replies, 2026-10-25); the call's code is stored in the transcript
+    # as a fenced block, so the transcript stays plain text either way
+    python_tool: bool = True
 
 
 def system_text(cfg: AgentConfig) -> str:
@@ -68,6 +72,28 @@ def _resize(rgb: np.ndarray, px: int) -> np.ndarray:
         return rgb
     return np.asarray(Image.fromarray(np.asarray(rgb, np.uint8)).resize((int(round(w * s)), int(round(h * s))),
                                                                         Image.BILINEAR))
+
+
+PYTHON_TOOL = {"type": "function", "function": {
+    "name": "python", "description": "Run one code cell in the persistent session (robo, finish, np, math).",
+    "parameters": {"type": "object", "properties": {"code": {"type": "string", "description": "Python source"}},
+                   "required": ["code"]}}}
+
+
+def tool_code(tool_calls: list) -> str | None:
+    """The code of the first ``python`` tool call (arguments JSON ``{"code": ...}``; raw text as a fallback)."""
+    for tc in tool_calls or []:
+        if (tc.get("name") or "python") != "python":
+            continue
+        args = tc.get("arguments") or ""
+        try:
+            v = json.loads(args)
+            code = v.get("code") if isinstance(v, dict) else None
+        except ValueError:
+            code = args
+        if code:
+            return code if code.endswith("\n") else code + "\n"
+    return None
 
 
 def extract_code(text: str) -> str | None:
@@ -138,10 +164,19 @@ class AgentLoop:
         nudges, outcome = 0, "max_calls"
         for i in range(cfg.max_calls):
             msgs = apply_cache_markers(tr.to_messages(), style)
-            res = self.client.complete(cfg.model, msgs, max_tokens=cfg.max_tokens, extra_body=cfg.extra_body or None,
+            extra = dict(cfg.extra_body or {})
+            if cfg.python_tool:
+                extra["tools"] = [PYTHON_TOOL]
+            res = self.client.complete(cfg.model, msgs, max_tokens=cfg.max_tokens, extra_body=extra or None,
                                        timeout_s=cfg.timeout_s)
+            tcode = tool_code(getattr(res, "tool_calls", None) or [])
+            if tcode is not None:               # store the tool call as a fenced cell (plain-text transcript)
+                res.text = ((res.text or "").rstrip() + "\n\n" if (res.text or "").strip() else "") + \
+                    f"```python\n{tcode}```"
+                res.error = None
             rec = call_record(res, cfg.model)
             rec["i"] = i
+            rec["tool_call"] = tcode is not None
             self.calls.append(rec)
             if self.on_call is not None:
                 self.on_call(self)
@@ -151,7 +186,8 @@ class AgentLoop:
                     outcome = "llm_error"
                     break
                 tr.add_assistant(res.text or "")
-                tr.add_user(["(no reply received; send the next cell)"])
+                tr.add_user(["(your previous reply arrived empty: no text and no tool call; nothing ran. Send the "
+                             "next cell.)"])
                 continue
             tr.add_assistant(res.text)
             code = extract_code(res.text)
