@@ -61,8 +61,30 @@ def classify(res: dict, reward: dict, history: list[dict]) -> str | None:
     return "logic"
 
 
+class OffsetBeliefProvider:
+    """Dev hook for a mode-B-like run in G3: the GT world, except that ``offsets`` {label: (dx, dy)} shift an object's
+    pose while it is NOT held (the belief at grasp time is off, as perception's can be; once held, the object is seen
+    where it really is, but a ``remeasure=False`` Skills keeps the in-hand transform it planned)."""
+
+    def __init__(self, base, offsets: dict):
+        self.base = base
+        self.offsets = {k: np.asarray(v, float) for k, v in offsets.items()}
+
+    def __getattr__(self, name):
+        return getattr(self.base, name)
+
+    def refresh(self, holding: dict | None = None):
+        w = self.base.refresh(holding)
+        held = set((holding or {}).values())
+        for lab, d in self.offsets.items():
+            if lab in w.objects and lab not in held:
+                o = w.objects[lab]
+                o.pos = o.pos + np.r_[d[:2], 0.0]
+        return w
+
+
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
-                verify_k: int = 0) -> dict:
+                verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False) -> dict:
     """``task`` is bookkeeping only: the episode runs ``planner.solve`` from the instruction + world."""
     from dojo.skills import planner
     from dojo.skills.env import RunnerEnv
@@ -79,14 +101,18 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
         return rec
     env = RunnerEnv(run)
     prov = GTProvider(env, assets, instruction=env.instruction)
+    if belief_offsets:
+        prov = OffsetBeliefProvider(prov, belief_offsets)
     t1 = time.perf_counter()
     sim_time = [0.0]
     verifier = None
     if verify_k:
         from dojo.skills.verify import InProcessTwin
         verifier = InProcessTwin(run, list(range(1, run.num_envs)), seed=seed)
+    # mode_b: as the runtime's perception mode (no in-hand re-measure; a refine hook that observes nothing)
     sk = Skills(env, prov, reserve=30, log=log, verifier=verifier,
-                verify_k=verify_k or 2, n_cands=4)
+                verify_k=verify_k or 2, n_cands=4, remeasure=not mode_b,
+                refine=(lambda sk_, label, arm, kind: None) if mode_b else None)
     frames = []
     if trace:
         labels = [o.label for o in sk.world.task_objects() if o.obj_type != "Geometry"]
@@ -200,8 +226,14 @@ def cmd_run(a) -> None:
         lay.setdefault("_simlab", {})["seed"] = seed
         lay["_simlab"]["layout_file"] = lp.name
         logs = []
+        offs = {}
+        for spec in a.belief_offset or []:
+            lab, vals = spec.split(":")
+            offs[lab] = [float(x) for x in vals.split(",")]
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
-                          verify_k=a.verify)
+                          verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b)
+        if offs or a.mode_b:
+            rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b)}
         rec["log"] = logs[-60:]
         rec["code"] = code
         rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
@@ -560,6 +592,9 @@ def main(argv=None) -> None:
     r.add_argument("--verify", type=int, default=0, help="plan + verify: samples per candidate (0 = single plan)")
     r.add_argument("--twins", type=int, default=8, help="twin envs for --verify (same process as the episode)")
     r.add_argument("--layouts", default=None, help="layout dir (default $DOJO_DATA/simlab/layouts/<task>)")
+    r.add_argument("--belief-offset", action="append", default=[],
+                   help="LABEL:dx,dy (m): the object's pose is believed this far off until it is held (dev)")
+    r.add_argument("--mode-b", action="store_true", help="no in-hand re-measure, a refine hook that sees nothing (dev)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")

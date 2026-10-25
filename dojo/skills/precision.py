@@ -655,7 +655,7 @@ DISC_AIR_HANDOVER = True      # cross-arm discs: the giver holds it by the rim, 
                               # top rim from above, shifted away from the giver's pads
 DISC_AIR_POINTS = ((0.0, -0.24, 0.95), (0.0, -0.28, 0.93), (0.0, -0.20, 0.97), (0.0, -0.30, 0.90))
 DISC_TAKER_SHIFT = 0.008      # m: the taker's pads this far off the disc's centre line, away from the giver's
-DISC_TAKER_COVER = 0.009      # m of the disc between the taker's pads
+DISC_TAKER_COVER = 0.010      # m of the disc between the taker's pads
 DISC_CARRY = 0.07             # rad/step of the giver's carry to the handover pose
 
 
@@ -741,6 +741,10 @@ def run_disc_handover(sk: Skills, h: dict) -> SkillResult:
     r = sk._record(sk.run_pick(h["pick"]))
     if not r.ok:
         return r
+    if r.status == "loose":
+        # turned in the giver's pads (twin: 22 mm off after the lift, the taker could not reach it): put it back
+        sk._record(sk.regrasp(giver))
+        return SkillResult(False, "handover", "grasp_slip", r.steps, giver, note=f"giver's grasp loose ({r.note[-40:]})")
     try:
         box = held_box(sk.world.obj(obj), h["pick"].T_tcp_obj)
         mv = sk.motion.joint(giver, sk.ex.q[giver], h["q_g"], DISC_CARRY, "handover_carry", gripper=CLOSED, held=box,
@@ -767,7 +771,7 @@ def run_disc_handover(sk: Skills, h: dict) -> SkillResult:
         if not dn.ok:
             return sk._record(SkillResult(False, "handover", "ik_fail", 0, taker, note=f"taker descent {dn.status}"))
         sk.ex.run({taker: ArmPlan(taker, sk.ex.q[taker].copy(), sk.ex.g[taker]).grip(g_open, 2).move(go).move(dn)
-                   .grip(CLOSED, 4, "close").hold(DISC_SQUEEZE, "squeeze")}, name=f"handover {obj} take")
+                   .grip(CLOSED, 4, "close").hold(DISC_SQUEEZE + 2, "squeeze")}, name=f"handover {obj} take")
         # the giver lets go and backs off along its approach
         Tg = sk.kin.tcp(giver, sk.ex.q[giver])
         T_back = Tg.copy()
@@ -793,8 +797,9 @@ def run_disc_handover(sk: Skills, h: dict) -> SkillResult:
     sk.held[taker] = Held(obj, T_rel, held_box(o, T_rel))
     sk._record(SkillResult(True, "handover", "ok", 0, taker, note=f"{giver} -> {taker}"))
     best = None
+    kw = {**h["place_kw"], "approach_rad": DISC_CARRY}     # a slow carry (twin: a coin taken by its rim fell out at 0.14)
     for T_obj in h["tg"]:
-        pl = sk.plan_place(taker, T_obj, ignore=(h["rec"],), **h["place_kw"])
+        pl = sk.plan_place(taker, T_obj, ignore=(h["rec"],), **kw)
         if not isinstance(pl, SkillResult):
             best = pl
             break
@@ -1014,16 +1019,18 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
             tg = upright_targets(o, p, fl, d, n_yaw=8)
             if tg:
                 cands.append((tag, d, tg))
-        # a one-arm plan into any of the best holes first; a relay only when none has one
-        for tag, d, tg in cands:
-            plan = sk.plan_transfer(lab, tg, ignore=(receptacle,), place_kw=pk, **tkw)
-            if isinstance(plan, SkillResult):
-                sk.log(f"[insert_each] {lab} -> {tag}: no one-arm plan ({plan.note[:120]})")
-                continue
+        # a one-arm plan into any of the best holes (one screen over all of them, the better holes first); a relay
+        # only when none has one
+        tg_all = [T for _, _, tg in cands for T in tg]
+        plan = sk.plan_transfer(lab, tg_all, ignore=(receptacle,), place_kw=pk, **tkw) if tg_all else None
+        if plan is not None and not isinstance(plan, SkillResult):
+            T_sel = plan[1].T_obj_target
+            tag, d, tg = min(cands, key=lambda c: min(float(np.linalg.norm(T[:3, 3] - T_sel[:3, 3])) for T in c[2]))
             sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: {plan[0].arm} ({plan[0].grasp.note}), {d*1000:.0f} mm in")
             from dojo.skills.library import _run_leg
-            res = _run_leg(sk, lab, tg, 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
-            break
+            res = _run_leg(sk, lab, [T_sel], 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
+        elif plan is not None:
+            sk.log(f"[insert_each] {lab}: no one-arm plan into {[c[0] for c in cands]} ({plan.note[:160]})")
         if res is None and cands:
             tag, d, tg = cands[0]
             sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: relay")

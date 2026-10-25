@@ -41,6 +41,7 @@ TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0
 SCREEN_IK_BUDGET = 6000       # place IKs per arm in a transfer screen (a figurine x 81 stand poses: 9k IKs, 3 min)
 UNEVEN_CARRY = 0.09           # rad/step, carries of uneven objects (tools, figurines, pens) instead of CARRY 0.14
 LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is carried on rather than redone
+GUARD_LAG = 0.004             # m: measured-vs-commanded TCP gap that stops a guarded descent (contact)
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
 
@@ -677,6 +678,15 @@ class Skills:
                     if mv.segments:
                         tail.move(mv, "retreat")
                     note_rm += "; dropped over the target (descent blocked)"
+                if isinstance(tail, str) and (pp.tail_kw or {}).get("servo") and not other_arm:
+                    # an insertion whose final waypoints the collision model refuses (an in-hand pose predicted, not
+                    # measured, in mode B: "palm at table" at the plug's last waypoint): go down slowly, unchecked, and
+                    # stop where the arm meets resistance, then let go (the arm's own lag is the contact sensor)
+                    g = self._guarded_tail(pp.arm, pp.T_obj_target, h2, pp.tail_kw)
+                    self.held[pp.arm] = None
+                    v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
+                    v.note = (v.note + f"; descent refused ({tail[:80]}), guarded: {g}").strip("; ")
+                    return v
                 if isinstance(tail, str):
                     return SkillResult(False, "place", "collision", self.ex.steps_used, pp.arm, note=tail)
                 c2 = tail.compile()[0]
@@ -723,6 +733,44 @@ class Skills:
             return 0.0
         zw = o.pos[2] + o.R[2, 2] * Z[fin]                       # the surface's world z (an upright receptacle)
         return float(max(0.0, np.max(zw + clear - P[inb][fin][:, 2])))
+
+    def _guarded_tail(self, arm: str, T_obj, h: "Held", kw: dict, lag_stop: float = GUARD_LAG, rate: float = 0.02,
+                      step_m: float = 0.003) -> str:
+        """Descend to ``T_obj`` (the held object's target) in short unchecked steps, stopping as soon as the measured TCP
+        lags its command by more than ``lag_stop`` (contact: the plug's blades on the strip, a palm on the table); then
+        let go and back off upwards. No object measurement needed (proprio only). Returns a note."""
+        from dojo.skills.motion import Segment
+        T_goal = np.asarray(T_obj, float) @ inv_T(h.T_tcp_obj)
+        T_goal[2, 3] += float(kw.get("release_gap", 0.0))
+        mv = self.motion.line(arm, self.ex.q[arm], T_goal, rate, "guarded_descend", gripper=CLOSED, check=False,
+                              max_step_m=step_m, max_step_deg=2.0)
+        n, lag = 0, 0.0
+        if mv.segments:
+            qs = np.asarray(mv.segments[-1].q)
+            for q in qs[1:]:
+                try:
+                    self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(
+                        [Segment(np.stack([self.ex.q[arm], q]), rate, "guarded")]).hold(1)}, name="guarded descent")
+                except (BudgetExceeded, EpisodeEnded):
+                    break
+                n += 1
+                w = self.refresh()
+                lag = float(np.linalg.norm(self.kin.tcp(arm, w.arms[arm].q)[:3, 3] - self.kin.tcp(arm, self.ex.q[arm])[:3, 3]))
+                if lag > lag_stop:
+                    break
+        Tq = self.kin.tcp(arm, self.ex.q[arm])
+        T_up = Tq.copy()
+        T_up[2, 3] += 0.04
+        up = self.motion.line(arm, self.ex.q[arm], T_up, MEDIUM, "place_retreat", gripper=OPEN, check=False)
+        p = ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).grip(float(kw.get("open_g", OPEN)), OPEN_STEPS, "release").hold(2)
+        if up.segments:
+            p.move(up, "retreat")
+        try:
+            self.ex.run({arm: p}, name="guarded release")
+        except (BudgetExceeded, EpisodeEnded):
+            pass
+        rest = float(np.linalg.norm(Tq[:3, 3] - T_goal[:3, 3]))
+        return f"{n} steps down, stopped {rest*1000:.1f} mm short (lag {lag*1000:.1f} mm)"
 
     def tips_raise(self, T_tcp, z_min: float, gripper: float = CLOSED) -> float:
         """How far (m, >= 0) the TCP pose must rise for the lowest finger point to be at or above ``z_min``."""
