@@ -908,6 +908,15 @@ class Skills:
         kw = dict(getattr(pl, "transfer_kw", {}) or {})
         pl2 = self.plan_place(pp.arm, pl.T_obj_target, yaw_sym=1, **kw)
         use = pl2 if isinstance(pl2, PlacePlan) else pl
+        # the idle arm must be clear of the carry including the held object's reach (twin: a wrench carried
+        # past the other hand, left open over a failed pick, was knocked out and flung off the table)
+        other = "right" if pp.arm == "left" else "left"
+        if self.held.get(other) is None:
+            ext = float(np.max(self.world.obj(pp.label).asset.extents))
+            try:
+                self._park_if_blocking(use.plan, min_dist=0.12 + 0.5 * ext)
+            except (BudgetExceeded, EpisodeEnded):
+                pass
         ign = kw.get("ignore") or ()
         ref = next((l for l in ign if l in self.world.objects), None)
         return self._record(self.run_place(use, tol_xy, tol_tilt, tol_z=tol_z, ref_label=ref))
