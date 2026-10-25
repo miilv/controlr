@@ -322,7 +322,9 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
     if not holes:
         return {"ok": False, "stage": "holes", "note": f"no holes found in {holder}"}
     hinge_w = H.R @ np.asarray(lj[1].get("origin", H.asset.center), float) + H.pos if lj else H.center_w
-    holes.sort(key=lambda h: float(np.linalg.norm(h["center"] - hinge_w[:2])))
+    # the holes farthest from the lid's hinge first: the open lid stands behind the back holes and blocks most carries
+    # to them (dry runs: front holes plan, back ones rarely)
+    holes.sort(key=lambda h: -float(np.linalg.norm(h["center"] - hinge_w[:2])))
     st = w.notes.setdefault("fill_holes", {"done": []})
     sk.log(f"[holes] {holder}: {len(holes)} holes r {[round(h['radius'] * 1000) for h in holes]} mm, "
            f"top {holes[0]['top']:.3f} floor {holes[0]['floor']:.3f}; lid {lj[0] if lj else None}")
@@ -339,14 +341,21 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
             if not free:
                 return {"ok": False, "stage": "holes", "note": "no free hole left"}
             o = w.obj(lab)
-            targets = []
-            for h in free[:2]:
-                targets += standing_targets(o, h["center"], h["top"] - 0.010)
-            plans = sk.plan_transfer(lab, targets, ignore=ignore, yaw_sym=8,
-                                     grasps=lambda a, lab=lab: grasps_inside(sk, lab, a),
-                                     place_kw={"servo": True, "servo_ref": holder, "ref_top": holes[0]["top"] + 0.006,
-                                               "fingers_out": True, "probe": False, "hover_clear": 0.008,
-                                               "descend_rad": 0.03, "pre_h": 0.05})
+            plans = SkillResult(False, "transfer", "ik_fail", 0, None, note="no hole")
+            arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2])))
+            for h in free:                                    # one hole and one arm at a time (screen budget, full plans)
+                targets = standing_targets(o, h["center"], h["top"] - 0.010)
+                for a in arms:
+                    plans = sk.plan_transfer(lab, targets, arms=[a], ignore=ignore, yaw_sym=8,
+                                             grasps=lambda a, lab=lab: grasps_inside(sk, lab, a),
+                                             place_kw={"servo": True, "servo_ref": holder,
+                                                       "ref_top": holes[0]["top"] + 0.006, "fingers_out": True,
+                                                       "probe": False, "hover_clear": 0.008, "descend_rad": 0.03,
+                                                       "pre_h": 0.05})
+                    if not isinstance(plans, SkillResult):
+                        break
+                if not isinstance(plans, SkillResult):
+                    break
             if isinstance(plans, SkillResult):
                 sk.log(f"[holes] {lab}: no transfer ({plans.note[:200]})")
                 if attempt == tries - 1 or not _to_table(sk, lab, H):
