@@ -238,3 +238,25 @@ Open:
   only refine / resync can. Perturbation (±2 mm, 1°) is smaller than mode B's p90 error (5–8 mm).
 - stack_bowls / put_bottles / swap / press runs are queued after the pairs (mode B only where perception's
   catalogue has the assets).
+
+### 4.2 25-layout paired run (stack_blocks, settled records 100000–100024, mode B + verify, identical code)
+
+| arm | n | success | score | steps med / max | wall s / ep | failures |
+|---|---|---|---|---|---|---|
+| refine off (`B_stack_bundle_base3_{a..e}`) | 25 | 16/25 | 67.0 | 177 / 209 | 34 | perception_gross 5, error 4 |
+| refine on (`B_stack_bundle_refine3_{a..e}`) | 25 | 16/25 | 66.4 | 206 / 254 | 48 | perception_gross 3, belief_mismatch 2, error 4 |
+
+Paired: refine rescued 2 (100004, 100015), lost 2 (100019, 100024: belief_mismatch).
+
+- The 4 errors (100018, 100020–22, both arms) were mine: perception missed a block, the twin was loaded
+  without it, RoboDojo's `is_stacked` raised inside the twin and the policy died without banking. Fixed:
+  verification is skipped when the estimate lacks task objects, a twin error falls back to the single plan
+  for the episode, and any unexpected error still runs `finish()`.
+- Place refines were mostly not ok (perception's count on our reports: 15/44; picks 49/55 ok, shift median
+  1.5 mm): the carried block hides the support. perception `d822c45` / skills `31c8cd9`: the held object is
+  passed as an occluder (`held=(key, pose7)`); a still-failing place refine re-hovers 3 cm higher.
+- perception's offline check on our saved look frames (`integ_looks.py`): conservative fuse vs frame 0, within
+  15 mm 0.85 → 0.87, p90 19.3 → 15.0 mm; 0 / 81 regressions after planned looks, 1 / 40 after the
+  d0.18 / e70 fallback.
+- Next: base fix-up (the 4 layouts), refine arm rerun with held masking (`refine4`), mode A on the same 25,
+  then the build_tower pair.
