@@ -697,7 +697,7 @@ class Skills:
         hover = 0.004
         if rec is not None and o.asset.mesh is not None:
             V = o.asset.mesh[0] @ T_obj[:3, :3].T + T_obj[:3, 3]
-            hover = max(0.004, self.world.obj(rec).top_z - float(V[:, 2].min()) + 0.003)
+            hover = max(0.004, self.world.obj(rec).top_z - float(V[:, 2].min()) + 0.008)
 
         def go(T_goal, step_rad, name, settle=2):
             for _ in range(3):              # a long line that stops short (IK) is resumed from where it got to
@@ -718,7 +718,11 @@ class Skills:
             T = np.asarray(T, float).copy()
             T[2, 3] += dz
             return T
-        go(above(T_obj, hover), rate, "servo_hover")
+        ob = go(above(T_obj, hover), rate, "servo_hover")
+        # a second, corrected hover at the same height when the first left the object off in xy (sag changes
+        # with the pose; twin: a pen's tip came down on the holder's rim and stayed there)
+        if float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3])) > 0.002:
+            go(above(T_obj, hover), rate, "servo_hover2")
         ob = go(T_obj, min(rate, 0.02), "servo_insert", settle=3)
         err = float(ob.pos[2] - T_obj[2, 3])
         note = f"servo: hover {hover*1000:.0f} mm, after the descent {err*1000:+.1f} mm"
