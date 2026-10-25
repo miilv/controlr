@@ -237,7 +237,14 @@ class Skills:
                 # with a wrist refine, objects longer than ~12 cm need the look from 12-15 cm to fit the
                 # frame (perception); the hover is the pre-grasp
                 pre_d = 0.13 if (self.refine is not None and float(obj.asset.extents.max()) > 0.12) else None
-                to_pre = self.motion.to_pose(a, q0, g.pre(pre_d), approach_rad, "pick_approach", gripper=go)
+                # an irregular object's bbox is no obstacle model for its own pick (a figurine's slice grasp sits
+                # inside its bbox; the slice generator keeps the finger corridors free of its mesh)
+                own = (label,) if g.method == "slice" else ()
+                to_pre = self.motion.to_pose(a, q0, g.pre(pre_d), approach_rad, "pick_approach", gripper=go, ignore=own)
+                if not to_pre.ok and pre_d is None:
+                    # a tall object's top grasp: the default pre-grasp is out of reach (figurine, 19 cm)
+                    to_pre = self.motion.to_pose(a, q0, g.pre(0.035), approach_rad, "pick_approach", gripper=go,
+                                                 ignore=own)
                 if not to_pre.ok:
                     n_coll += to_pre.status == "collision"
                     n_ik += to_pre.status == "ik_fail"
