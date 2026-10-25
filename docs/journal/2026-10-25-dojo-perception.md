@@ -116,3 +116,7 @@ stack_blocks full 7 / 8 → conservative 1 / 4; build_tower full 5 / 14 → 1 / 
 stack_blocks 0.83 → 0.87 (full) / 0.88 (conservative); build_tower 0.81 → 0.87 (full) / 0.84
 (conservative: re-assignment fixed some swaps but also caused the regressions). Remaining conservative
 regressions: stack_blocks 100003 block_0 (0.4 → 9.7 mm, also integration's case), build_tower 100018 block3.
+- Tightened: a move > 5 mm also needs a good look-view fit (residual < 0.35). The 100003 regression was a
+  9 mm move toward a mediocre look-view fit (IoU 0.54). D0 L1: **0 regressions > 5 mm** on stack_blocks and
+  build_tower (improvements 2 and 7); within tolerance stack_blocks 0.85, build_tower 0.84 (vs frame 0
+  0.83 / 0.81). Safety over gain: a wrong move after a look is worse than no move.
