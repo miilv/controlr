@@ -21,6 +21,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from dojo.agent.loop import AgentConfig, AgentLoop
+from dojo.agent.manual import SKILL_DOCS_VERSION
 from dojo.agent.robo import CellLimits, Robo
 from dojo.agent.scene import assign_ids, scene_text
 from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
@@ -124,7 +125,8 @@ class AgentPolicy(RuntimePolicy):
         log_dir = self.log_root / f"{stamp}_ep{self.n_episodes:03d}"
         loop = AgentLoop(acfg, self.client(), robo, log_dir=log_dir, log=self.log)
         rep = {"model": acfg.model, "extra_body": acfg.extra_body, "log_dir": str(log_dir), "outcome": None,
-               "usage": {}, "cells": 0, "skills_called": [], "code_commit": _deployed_commit()}
+               "usage": {}, "cells": 0, "skills_called": [], "code_commit": _deployed_commit(),
+               "manual": acfg.manual, "appendix": acfg.appendix, "skill_docs_version": SKILL_DOCS_VERSION}
         self.report["agent"] = rep
 
         def live(lp):                     # the main thread may close the report while the worker is parked
