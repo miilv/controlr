@@ -7,6 +7,7 @@ Design: [../docs/design/robodojo-v2.md](../docs/design/robodojo-v2.md). Evidence
 | `dojo/simlab/` | simlab | Dev-layout generator, headless RoboDojo runner, GT dumps (dev only), `Twin` API, determinism tests |
 | `dojo/perception/` | perception | Asset catalogue (meshes, stable poses), inverse layout: RGB + proprio → layout record, accuracy eval |
 | `dojo/skills/` | skills | WorldState, own-IK motion layer, grasps, skills, a generic skill library behind one planner entry point (`planner.solve`: instruction + WorldState -> skill), plan + verify (`TwinBackend`), G3 harness (`g3.py`, `scripts/skills/g3*.sh`) |
+| `dojo/runtime/` | integration | The one proxy_eval policy (`RuntimePolicy`): perceive (+ look macro) → WorldState → supervisor (instruction-only) → skills with twin verify (bundle) → resync → finish; firewall; eval driver `scripts/dojo/integ_eval.sh` / `launch.sh` (modes gt / perception) |
 | `baselines/pyrua/` | pyrua | PyRUA-Lean reproduction on our infra (the floor) |
 
 Hard rule (the only one): at eval time the policy uses only the official observation contract. Never read
