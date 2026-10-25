@@ -212,14 +212,17 @@ def plan(instruction: str, world: WorldState) -> Plan:
     if re.search(r"\bhang\b", text):
         for rk in objs:
             tags = [t for t, v in (rk.asset.functional or {}).items()
-                    if re.search(r"hook|support_point|hang", t.lower()) and len((v or {}).get("frame") or []) >= 2]
+                    if re.search(r"hook|support_point|hang|cradle", t.lower()) and (v or {}).get("frame")]
             if not tags:
                 continue
+            # what is hung: rigid objects with one active functional point (a handle; a headband's bridge)
             movers = [o for o in objs if o.obj_type == "Rigid" and not o.clutter and o.label != rk.label
-                      and any("handle" in t.lower() for t in (o.asset.active_functional or {}))]
+                      and (any("handle" in t.lower() for t in (o.asset.active_functional or {}))
+                           or len(o.asset.active_functional or {}) == 1)]
             movers = [o for o in movers if o.category.lower() in named] or movers
             if movers:
-                handle = next(t for t in movers[0].asset.active_functional if "handle" in t.lower())
+                af = list(movers[0].asset.active_functional)
+                handle = next((t for t in af if "handle" in t.lower()), af[0])
                 return Plan("hang_on_hooks", {"objects": [o.label for o in movers], "rack": rk.label,
                                               "hook_tag": tags[0], "handle_tag": handle},
                             f"{len(movers)} by their {handle} on {rk.label}'s {tags[0]}")
