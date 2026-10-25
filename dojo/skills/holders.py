@@ -243,6 +243,8 @@ def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.
     prof = wall_profile(c) if c is not None else None
     if prof is None:
         return cands
+    # in a container: also opened only 4 mm per side (the finger roots stay 7 mm further in)
+    cands = cands + [G.narrowed(g) for g in cands if g.method in ("round", "ends")]
     import dataclasses
     out = []
     for g in cands:
