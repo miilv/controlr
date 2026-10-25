@@ -1850,6 +1850,19 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "fg_resid_near": round(fg_near, 3),
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group")}}
+        if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
+            # next-best places elsewhere, so a look can check them when this one is doubtful
+            alts = []
+            for c in sorted((c for c in pool if c.label_group == h.label_group), key=lambda c: c.loss):
+                if np.hypot(c.x - h.x, c.y - h.y) < 0.05 or any(np.hypot(c.x - a.x, c.y - a.y) < 0.05 for a in alts):
+                    continue
+                alts.append(c)
+                if len(alts) >= 3:
+                    break
+            if alts:
+                rec["_perception"]["other_places"] = [
+                    {"xy": [round(float(c.x), 4), round(float(c.y), 4)], "key": c.key, "cost": round(float(c.loss), 4),
+                     "margin": round(float(c.loss - h.loss), 4)} for c in alts]
         if typ == "Articulation" and h.tag != "fixed":
             jw = joints_world(h.key, h.T())
             if jw:

@@ -256,6 +256,9 @@ def _state(flange, grip_cmd, joints=None, gripper=None) -> tuple[dict, dict]:
     """An observation-like state for the robot self-mask: measured joints, else IK on the measured flange."""
     state, info = {}, {}
     for arm in ("left", "right"):
+        if (not joints or joints.get(arm) is None) and arm not in (flange or {}):
+            info[arm] = "absent"  # e.g. held_look with only the asking arm: no mask for the other arm
+            continue
         if joints and joints.get(arm) is not None:
             q = [float(v) for v in joints[arm]][:6]
             info[arm] = "measured_joints"
@@ -268,7 +271,8 @@ def _state(flange, grip_cmd, joints=None, gripper=None) -> tuple[dict, dict]:
         g = gripper.get(arm) if gripper else None
         state[f"{arm}_arm_joint_state"] = q
         state[f"{arm}_ee_joint_state"] = [_grip01(g if g is not None else grip_cmd.get(arm, 1.0))]
-        state[f"{arm}_ee_pose"] = [float(v) for v in flange[arm]]
+        if arm in (flange or {}):
+            state[f"{arm}_ee_pose"] = [float(v) for v in flange[arm]]
     return state, info
 
 
@@ -408,6 +412,8 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
                      "place_tag": p.get("place_tag"), "residual": p.get("residual"),
                      "colour": _colour_name(info.get("mean_color")),
                      "names": info.get("names", []), "colors": info.get("colors_text", [])}
+                if p.get("other_places"):
+                    o["other_places"] = p["other_places"]
                 if p.get("alternative"):
                     a = p["alternative"]
                     o["alternative"] = {"asset": a.get("key"), "margin": a.get("margin")}
@@ -470,7 +476,7 @@ def _refine_from_prior(objects, prior, images, state, cams):
     by_label = {o["label"]: o for o in objects}
     for arm in ("left", "right"):
         c = f"cam_{arm}_wrist"
-        if c not in images or c not in cams:
+        if c not in images or c not in cams or f"{arm}_ee_pose" not in state:
             continue
         if np.linalg.norm(np.asarray(state[f"{arm}_ee_pose"][:3]) - HOME_FLANGE[arm]) < 0.05:
             continue  # wrist at home: its view is already in the estimate
@@ -523,7 +529,8 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
     for arm in ("left", "right"):
         c = f"cam_{arm}_wrist"
         g = _grip01((gripper or {}).get(arm, (grip_cmd or {}).get(arm, 1.0)))
-        if c not in images or c not in cams or g > 0.5 or "link7" not in meshes or "link8" not in meshes:
+        if (c not in images or c not in cams or g > 0.5 or "link7" not in meshes or "link8" not in meshes
+                or f"{arm}_arm_joint_state" not in state):
             continue
         cam = cams[c]
         L = model.fk_world(arm, state[f"{arm}_arm_joint_state"], 0.0)  # jaws fully closed
