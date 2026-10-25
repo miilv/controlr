@@ -652,7 +652,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
     (a lying key: gripped from its top face, inserted from the other side). Returns a dict of plan parts
     or a SkillResult."""
     from dojo.skills.kinematics import gap_to_grip
-    from dojo.skills.motion import HeldBox
+    from dojo.skills.motion import held_box
     from dojo.skills.skills import Held
     w = sk.world
     o = w.obj(label)
@@ -675,7 +675,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
             notes.append(f"{g_arm} pick: {picks.note[:80]}")
             continue
         for pp in picks[:4]:
-            box_g = HeldBox(pp.T_tcp_obj, o.asset.center, o.asset.extents / 2)
+            box_g = held_box(o, pp.T_tcp_obj)
             for H in HANDOVER_POINTS:
                 for T_t in tg[:max(1, yaw_sym)]:
                     for j in range(n_yaw):
@@ -702,7 +702,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                             if not rpre.ok or not _grippers_apart(sk, g_arm, rg.q, CLOSED, t_arm, rpre.q, g_open):
                                 continue
                             T_to = inv_T(gt.T) @ T_H
-                            box_t = HeldBox(T_to, o.asset.center, o.asset.extents / 2)
+                            box_t = held_box(o, T_to)
                             for T_obj in tg:
                                 Tp = T_obj @ inv_T(T_to)
                                 rp = sk.kin.ik(t_arm, Tp, w.home_q[t_arm], n_random=0)
@@ -775,11 +775,11 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
     sk.held[g_arm] = None
     w = sk.refresh()
     o = w.obj(label)
-    from dojo.skills.motion import HeldBox
+    from dojo.skills.motion import held_box
     from dojo.skills.skills import Held
     T_rel = inv_T(sk.kin.tcp(t_arm, w.arms[t_arm].q)) @ o.T
     drift = float(np.linalg.norm(T_rel[:3, 3] - inv_T(g2.T)[:3, :3] @ (o.T[:3, 3] - g2.T[:3, 3])))
-    sk.held[t_arm] = Held(label, T_rel, HeldBox(T_rel, o.asset.center, o.asset.extents / 2), g2)
+    sk.held[t_arm] = Held(label, T_rel, held_box(o, T_rel), g2)
     sk._record(SkillResult(True, "handover", "ok", 0, t_arm, note=f"{label} {g_arm} -> {t_arm}, drift {drift*1000:.1f} mm"))
     sk.ex.run({g_arm: sk.plan_home(g_arm)}, name="giver home")
     pl = h["place"]

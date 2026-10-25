@@ -24,7 +24,8 @@ from dojo.skills import grasps as G
 from dojo.skills.executor import ArmPlan, BudgetExceeded, EpisodeEnded, Executor
 from dojo.skills.geometry import T_from, T_to_pose7, inv_T, rot_z, tilt_deg
 from dojo.skills.kinematics import ARMS, TABLE_Z, X5Kin, gap_to_grip
-from dojo.skills.motion import CARRY, FAST, MEDIUM, SLOW, Collision, HeldBox, Motion, MoveResult, min_arm_distance
+from dojo.skills.motion import (CARRY, FAST, MEDIUM, SLOW, Collision, HeldBox, Motion, MoveResult, held_box,
+                                min_arm_distance)
 from dojo.skills.world import AssetDB, WorldState, arms_from_proprio, objects_from_gt
 
 OPEN = 1.0
@@ -236,7 +237,7 @@ class Skills:
                     n_ik += down.status != "collision"
                     continue
                 T_tcp_obj = inv_T(g.T) @ obj.T
-                box = HeldBox(T_tcp_obj, obj.asset.center, obj.asset.extents / 2)
+                box = held_box(obj, T_tcp_obj)
                 T_lift = g.T.copy()
                 T_lift[2, 3] = max(g.T[2, 3] + lift, lift_to_z or 0.0)
                 up = self.motion.line(a, down.q_end, T_lift, lift_rad, "pick_lift", gripper=CLOSED, ignore=(label,),
@@ -324,7 +325,7 @@ class Skills:
             self.held[pp.arm] = None
             return SkillResult(False, "pick", "grasp_slip", pp.steps, pp.arm, exp, meas,
                                f"object rose {dz*1000:.0f} mm (planned {lift_planned*1000:.0f}), in-hand drift {drift*1000:.0f} mm")
-        box = HeldBox(T_rel, o.asset.center, o.asset.extents / 2)
+        box = held_box(o, T_rel)
         self.held[pp.arm] = Held(pp.label, T_rel, box, pp.grasp)
         r = SkillResult(True, "pick", "ok", pp.steps, pp.arm, exp, meas,
                         f"{pp.grasp.method} {pp.grasp.note}, in-hand drift {drift*1000:.1f} mm")
@@ -497,7 +498,7 @@ class Skills:
                 T_rel_meas = (inv_T(self.kin.tcp(pp.arm, w.arms[pp.arm].q)) @ o.T if self.remeasure
                               else h.T_tcp_obj)
                 shift = float(np.linalg.norm(T_rel_meas[:3, 3] - h.T_tcp_obj[:3, 3]))
-                h2 = Held(h.label, T_rel_meas, HeldBox(T_rel_meas, o.asset.center, o.asset.extents / 2), h.grasp)
+                h2 = Held(h.label, T_rel_meas, held_box(o, T_rel_meas), h.grasp)
                 tail = self._place_tail(pp.arm, self.ex.q[pp.arm], pp.T_obj_target, h2, **pp.tail_kw)
                 if isinstance(tail, str) and pp.keep_tilt:
                     # the object hangs tilted in the hand: put its bbox centre on the target centre with the
@@ -604,7 +605,7 @@ class Skills:
                     continue
                 n_g += 1
                 T_tcp_obj = inv_T(g.T) @ obj.T
-                box = HeldBox(T_tcp_obj, obj.asset.center, obj.asset.extents / 2)
+                box = held_box(obj, T_tcp_obj)
                 for ti, T_obj in enumerate(tg):
                     T_tcp = T_obj @ inv_T(T_tcp_obj)
                     r2 = self.kin.ik(a, T_tcp, w.home_q[a], n_random=0)
@@ -622,7 +623,7 @@ class Skills:
             if not isinstance(pp, PickPlan):
                 notes.append(f"pick {g.note}: {pp.note[:70]}")
                 continue
-            held = Held(label, pp.T_tcp_obj, HeldBox(pp.T_tcp_obj, obj.asset.center, obj.asset.extents / 2), g)
+            held = Held(label, pp.T_tcp_obj, held_box(obj, pp.T_tcp_obj), g)
             pl = self.plan_place(a, T_obj, yaw_sym=1, ignore=ignore, q_start=pp.plan.q_end, held=held, **place_kw)
             if isinstance(pl, PlacePlan):
                 pl.transfer_kw = {"ignore": tuple(ignore), **place_kw}

@@ -141,10 +141,16 @@ def segment_targets(q: np.ndarray, step_rad: float, ease: int = 0) -> list[np.nd
 # --------------------------------------------------------------------------- collision model
 @dataclass
 class HeldBox:
-    """A held object as an OBB in the TCP frame (for sweep checks)."""
+    """A held object as an OBB in the TCP frame (for sweep checks); ``points`` (object frame): sparse mesh
+    points used instead of the inflated box against obstacles when the shape fills its box poorly."""
     T_tcp_obj: np.ndarray         # object root pose in the TCP frame
     center: np.ndarray            # bbox centre, object frame
     half: np.ndarray
+    points: np.ndarray | None = None
+
+    def points_w(self, T_tcp: np.ndarray) -> np.ndarray:
+        T = T_tcp @ self.T_tcp_obj
+        return (T[:3, :3] @ self.points.T).T + T[:3, 3]
 
     def corners_w(self, T_tcp: np.ndarray, shrink: float = 0.0) -> np.ndarray:
         T = T_tcp @ self.T_tcp_obj
@@ -205,7 +211,9 @@ class Collision:
         if obs:
             pts = np.vstack([links, palm, fingers])
             if held is not None:          # a held object may sit a few mm off its model: inflate it
-                pts = np.vstack([pts, held.corners_w(self.kin.tcp_from_flange(Tf), shrink=-0.005)])
+                T_tcp = self.kin.tcp_from_flange(Tf)
+                pts = np.vstack([pts, held.points_w(T_tcp) if held.points is not None
+                                 else held.corners_w(T_tcp, shrink=-0.005)])
             for c, R, h, lab in obs:
                 loc = (pts - c) @ R
                 inside = np.all(np.abs(loc) <= h, axis=1)
@@ -371,6 +379,28 @@ class Motion:
     # ---- helpers
     def down(self, xyz, yaw: float) -> np.ndarray:
         return T_from(xyz, down_R(yaw))
+
+
+def held_box(o, T_tcp_obj) -> HeldBox:
+    """``HeldBox`` for object ``o`` held at ``T_tcp_obj``; irregular meshes (horizontal slices filling
+    under 60 % of the bbox footprint on average: figurines, tools, keys) carry sparse mesh points."""
+    hb = HeldBox(np.asarray(T_tcp_obj, float), o.asset.center, o.asset.extents / 2)
+    mesh = getattr(o.asset, "mesh", None)
+    if mesh is None or len(mesh[0]) < 60:
+        return hb
+    V = np.asarray(mesh[0], float)
+    ext = np.maximum(V.max(0) - V.min(0), 1e-6)
+    k = 2                                        # slices across the body z axis
+    fills = []
+    for z in np.linspace(V[:, k].min(), V[:, k].max(), 7)[1:-1]:
+        m = np.abs(V[:, k] - z) < 0.06 * ext[k]
+        if m.sum() >= 4:
+            o2 = [i for i in range(3) if i != k]
+            a = np.prod(V[m][:, o2].max(0) - V[m][:, o2].min(0))
+            fills.append(a / (ext[o2[0]] * ext[o2[1]]))
+    if fills and float(np.mean(fills)) < 0.6:
+        hb.points = V[:: max(1, len(V) // 400)].copy()
+    return hb
 
 
 def merge_steps(per_arm: dict[str, list[np.ndarray]], hold: dict[str, np.ndarray]) -> list[dict[str, np.ndarray]]:
