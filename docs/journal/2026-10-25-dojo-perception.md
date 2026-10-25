@@ -178,3 +178,20 @@ car and shoe (which v1 reviewed for flips) and the pad. Net equal: the targeting
 | all | 625 | 0.82 | 0.84 | 0.82 | 40 / 6 | 84 / 23 |
 Full fuse gains more on average and regresses 40 objects; conservative regresses 6 (1 %) and improves 23.
 With refine() at every hover the grasp-time error is refine's, so the runtime keeps conservative fuse.
+
+## search_regions() and refine() displacement (coordinator: blocks not found / 20-36 mm off in integration)
+- `look.search_regions(record, expected)`: unexplained head-view foreground (now in
+  `_perception.unexplained`: world xy + area), the home-gripper regions ((±0.39, −0.215), r 9 cm), low-score
+  objects; each with a clearance-aware wrist look pose. D0 stack_blocks: 6/6 frame-0-missing blocks lie in a
+  returned region (all under the home grippers).
+- `refine()` when not ok: grid search ±7 cm around the prior (silhouette IoU vs frame-wide foreground, mild
+  distance penalty), then refine from the best cell. Priors 30–60 mm off (92 D0 wrist views): ok 24 → 42
+  (median 0.7 mm, 83 % within 5 mm); for the rest, `suggest_xy` is a weak hint (40 mm from truth vs 47 for
+  the prior). A first blob-based search was worse than the prior (77 mm) and was replaced.
+- Pitfall: `grep "[d]ojo.perception"` matches `dojo-perception-data/...` (the dot is a wildcard): my 5.1
+  pipeline waited on itself for 50 minutes. Patterns now escape the dot and list the module names.
+
+## compute3 disk
+Trimmed `~/dojo-perception-data` 6.1 → 1.9 GB (machine at 99 %): source USD copy (simlab's
+`~/dojo-robodojo/hf_git` has the assets), full-resolution `visual.glb` (face-colour meshes and
+`visual_lo.glb` remain), synthetic episodes. No new write > 1 GB without asking.
