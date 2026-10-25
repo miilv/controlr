@@ -205,6 +205,17 @@ def round_grasps(o, kin, arm, rolls=(0.0, 12.0, -12.0, 25.0, -25.0, 40.0, -40.0)
                 out.append(G.Grasp("round", T_from(c, Rg), width,
                                    score=abs(tilt) / 40.0 + abs(roll) / 60.0 + 0.2 * width / 0.07,
                                    note=f"roll {roll:.0f} tilt {tilt:.0f}"))
+    # end to end (pads on the two tips): free when neighbours touch its sides; it cannot stand the object up, but it
+    # gets it out of a crowded container
+    L = float(ext[k])
+    if L <= G.MAX_WIDTH and abs(float(ax[2])) < 0.5:
+        a_dn = np.array([0.0, 0.0, -1.0]) - ax * float(-ax[2])
+        a_dn = a_dn / np.linalg.norm(a_dn)
+        for tilt in (0.0, 20.0, -20.0):
+            appr = _rot(ax, math.radians(tilt)) @ a_dn
+            for flip in (1.0, -1.0):
+                Rg = G._frame(appr, flip * ax)
+                out.append(G.Grasp("ends", T_from(c, Rg), L, score=0.6 + abs(tilt) / 40.0, note=f"ends tilt {tilt:.0f}"))
     return out
 
 
@@ -269,13 +280,35 @@ def _hole_free(w, hole: dict, others: list[str], skip: str) -> bool:
     return True
 
 
+def _to_table(sk: Skills, lab: str, H) -> bool:
+    """Relay: move ``lab`` (as it lies, any grasp that fits where it is) to a free table spot near the holder, where
+    every grasp is free for the stand-up place."""
+    from dojo.skills.kinematics import TABLE_Z
+    from dojo.skills.library import free_spots
+    from dojo.skills.targets import rest_pose
+    o = sk.world.obj(lab)
+    side = 1.0 if float(o.pos[0]) > float(H.pos[0]) else -1.0
+    spots = free_spots(sk, lab, near_xy=(float(H.pos[0]) + side * 0.14, -0.27))
+    if not spots:
+        return False
+    targets = [rest_pose(sk, lab, p, TABLE_Z) for p in spots[:6]]
+    plans = sk.plan_transfer(lab, targets, yaw_sym=2, grasps=lambda a: grasps_inside(sk, lab, a))
+    if isinstance(plans, SkillResult):
+        sk.log(f"[holes] {lab}: no move to the table either ({plans.note[:160]})")
+        return False
+    r = sk.run_transfer(*plans, tol_xy=0.03, tol_tilt=30.0)
+    sk.bank()
+    sk.log(f"[holes] {lab} moved to the table ({r.status})")
+    return r.status not in ("ended", "step_budget")
+
+
 def in_hole(o, hole: dict) -> bool:
     return bool(float(np.linalg.norm(o.pos[:2] - hole["center"])) < hole["radius"] - 0.004
                 and o.bottom_z < hole["top"] - 0.01)
 
 
 def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None = None, close: bool = True,
-               tries: int = 2) -> dict:
+               tries: int = 3) -> dict:
     """Stand each object upright over a free hole of ``holder``'s body and let it drop in (the fingertips stay above
     the body), back holes first (nearest the lid hinge); bank after each. Then, with ``close``, swing the lid shut
     (``swing_closed``). Objects lying in a round container are grasped inside its wall."""
@@ -316,7 +349,9 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
                                                "descend_rad": 0.03, "pre_h": 0.05})
             if isinstance(plans, SkillResult):
                 sk.log(f"[holes] {lab}: no transfer ({plans.note[:200]})")
-                break
+                if attempt == tries - 1 or not _to_table(sk, lab, H):
+                    break
+                continue
             r = sk.run_transfer(*plans, tol_xy=0.02, tol_tilt=40.0, tol_z=0.06)
             if r.status == "ended":
                 return {"ok": False, "stage": "ended"}
@@ -336,7 +371,8 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
         if not ok:
             failed.append(lab)
     res = {"ok": not failed, "stage": "holes", "note": f"in: {st['done']}, failed: {failed}"}
-    if close and lj is not None:
+    # the lid only counts with every object in (the checker's last stage); a half-filled holder keeps its open lid
+    if close and lj is not None and not failed:
         r = swing_closed(sk, holder, lid_tag)
         res["lid"] = r.note
         if not r.ok:
