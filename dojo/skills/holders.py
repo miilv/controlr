@@ -163,10 +163,50 @@ def inside_wall(c, prof: dict, pts_w: np.ndarray, margin: float = 0.006) -> bool
     for p, rp in zip(P, r):
         if p[2] > prof["rim"] + 0.004 or rp > prof["r_out"] + 0.01:
             continue
+        if p[2] < prof["floor"] + 0.002:                  # the floor
+            return False
         i = int(np.clip(np.searchsorted(zs, p[2]) - 1, 0, len(zs) - 1))
-        if p[2] >= prof["floor"] - 0.002 and rp > rins[i] - margin:
+        if rp > rins[i] - margin:
             return False
     return True
+
+
+def round_grasps(o, kin, arm, rolls=(0.0, 12.0, -12.0, 25.0, -25.0, 40.0, -40.0),
+                 tilts=(0.0, 25.0, -25.0, 40.0, -40.0)) -> list:
+    """Grasps of an object with a round cross-section about its long axis (an egg, a can lying down): the pads close
+    through the long axis at its middle, the closing direction rolled about the long axis by ``rolls`` (deg from
+    horizontal: the fingers clear a wall next to it), the approach tilted about the closing axis by ``tilts`` (it turns
+    the long axis up when the object is stood in a place)."""
+    ext = o.asset.extents
+    k = int(np.argmax(ext))
+    short = [i for i in range(3) if i != k]
+    if abs(float(ext[short[0]] - ext[short[1]])) > 0.1 * float(max(ext[short])):
+        return []
+    width = float(max(ext[short]))
+    if width > G.MAX_WIDTH:
+        return []
+    ax = o.R[:, k]
+    ax = ax / np.linalg.norm(ax)
+    c = o.center_w
+    h = np.cross(ax, [0.0, 0.0, 1.0])                   # horizontal, across the long axis
+    if np.linalg.norm(h) < 0.3:
+        return []                                       # standing on its end: not this generator
+    h = h / np.linalg.norm(h)
+    out = []
+    for roll in rolls:
+        cl = _rot(ax, math.radians(roll)) @ h
+        a0 = np.cross(cl, ax)
+        a0 = a0 if a0[2] < 0 else -a0                   # approach from above
+        for tilt in tilts:
+            appr = _rot(cl, math.radians(tilt)) @ a0
+            if appr[2] > -0.35:
+                continue
+            for flip in (1.0, -1.0):
+                Rg = G._frame(appr, flip * cl)
+                out.append(G.Grasp("round", T_from(c, Rg), width,
+                                   score=abs(tilt) / 40.0 + abs(roll) / 60.0 + 0.2 * width / 0.07,
+                                   note=f"roll {roll:.0f} tilt {tilt:.0f}"))
+    return out
 
 
 def container_of(sk: Skills, label: str):
@@ -188,7 +228,7 @@ def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.
     """Box + usual grasps of ``label``; when it lies inside a round container, only those whose open fingers stay
     inside the wall at the grasp and on the way in."""
     o = sk.world.obj(label)
-    cands = G.box_grasps(o, sk.kin, arm, tilts=tuple(tilts)) + G.candidates(o, sk.kin, arm)
+    cands = round_grasps(o, sk.kin, arm) + G.box_grasps(o, sk.kin, arm, tilts=tuple(tilts)) + G.candidates(o, sk.kin, arm)
     c = container_of(sk, label)
     prof = wall_profile(c) if c is not None else None
     if prof is None:
