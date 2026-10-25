@@ -1645,3 +1645,59 @@ def test_agentic_with_scan_is_one_call_with_the_scan_as_second_observation(needs
     assert rep["error"] is None and _stacked(env)
     assert pc.ag == ([("scan", True)] if needs else [("b1", False)])     # ONE call: frame 0 (+ the scan when it ran)
     assert rep["agentic"][0]["tag"] == "frame0" and rep["agentic"][0]["with_scan"] == needs
+
+
+def test_actors_moving_compares_with_the_frame_a_window_back():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    assert prov.actors_moving() is None                                   # no reader: the skill holds a fixed time
+    pairs = []
+
+    def reader(a, b_):
+        pairs.append((a["steps_used"], b_["steps_used"]))
+        return {"moving": b_["steps_used"] < 20}                          # the scripted arm stops at step 20
+    prov.motion_reader = reader
+    out = []
+    for step in range(0, 40):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        out.append(prov.actors_moving())
+    assert out[0] is True                                                 # nothing to compare with yet
+    assert all(pairs[k][1] - pairs[k][0] == min(12, pairs[k][1]) for k in range(len(pairs)))   # 12-step window
+    assert out[19] is True and out[25] is False
+
+
+def test_belt_tracking_fits_the_velocity_and_moves_the_belief():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    x0 = float(prov.belief.objects["block_0"].pos[0])
+    v = 0.004                                                             # 4 mm / step along x
+    rng = np.random.default_rng(1)
+
+    def reader(obs):
+        s_ = obs["steps_used"]
+        recs = []
+        for o in env.objects:
+            p = list(o["pos"])
+            if o["label"] == "block_0":
+                p[0] = x0 + v * s_ + float(rng.normal(0, 0.0005))
+            recs.append({"category": "block", "category_idx": 5, "label": o["label"], "default_pos": p,
+                         "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}})
+        return {"Rigid": {"block": recs}}
+    prov.track_reader = reader
+    for step in range(0, 44):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    assert abs(float(prov.belt_velocity()[0]) - v) < 2e-4 and abs(float(prov.belt_velocity()[1])) < 2e-4
+    assert abs(float(prov.belief.objects["block_0"].pos[0]) - (x0 + v * 43)) < 0.002     # the fit, at this step
+    assert float(np.linalg.norm(prov.velocity.get("block_1", np.zeros(2)))) < 3e-4       # the others are at rest
+    assert prov.stats["track_reads"] == 11                                              # every 4th step
