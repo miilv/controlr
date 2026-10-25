@@ -88,7 +88,8 @@ def render_episode(objs, bgs, renderer: SceneRenderer, root: Path):
         for i, o in enumerate(objs):
             d = root / o["key"]
             g = np.load(d / "geom.npz")
-            items.append({"id": 10 + i, "key": o["key"], "V": g["vertices"], "F": g["faces"], "T": o["T"], "glb": d / "visual.glb"})
+            glb = d / "visual.glb" if (d / "visual.glb").exists() else d / "visual_lo.glb"
+            items.append({"id": 10 + i, "key": o["key"], "V": g["vertices"], "F": g["faces"], "T": o["T"], "glb": glb})
         _, ids, col = renderer.render(cam, items, rgb=True, ambient=0.5)
         img = bgs[name].copy()
         m = ids >= 10

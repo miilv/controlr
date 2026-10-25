@@ -24,7 +24,7 @@ from .cameras import TABLE_Z, T_to_pose, wrist_mount_in_link
 from .inverse_layout import ARM_BASES, estimate, look_at_camera
 
 # table regions the home-pose grippers hide from the head camera (from the D0 failure analysis)
-HIDDEN_UNDER_GRIPPERS = {"left": np.array([-0.36, -0.21, TABLE_Z]), "right": np.array([0.36, -0.21, TABLE_Z])}
+HIDDEN_UNDER_GRIPPERS = {"left": np.array([-0.39, -0.215, TABLE_Z]), "right": np.array([0.39, -0.215, TABLE_Z])}
 STEPS_PER_LOOK_MOVE = 25
 
 
@@ -132,6 +132,67 @@ def look_plan(obs: dict, record: dict, max_looks: int = 2) -> list[dict]:
         if len(plan) >= max_looks:
             break
     return plan
+
+
+def search_regions(record: dict, expected: dict | None = None, low_conf: float = 0.5, max_regions: int = 6) -> list[dict]:
+    """Where to look for objects that are expected but not found, or found with a low score.
+
+    ``expected``: {category: count} (e.g. {"block": 3}); missing = expected minus found per category, plus the
+    record's ``_not_found`` labels. Candidate regions, most promising first:
+      1. unexplained foreground blobs in the head view (``_perception.unexplained``: world xy, area);
+      2. the table regions the home-pose grippers hide from the head camera;
+      3. each low-score object (confidence < ``low_conf``) at its estimate.
+    Each entry: {"kind", "center": [x, y, z], "radius", "for": [labels / categories], "arm", "T_world_cam_cv",
+    "flange_pose"}; looks keep the arm clear of the other objects. Empty when nothing is missing or doubtful."""
+    from .render import load_asset
+
+    found = {}
+    objs = []
+    for typ in ("Rigid", "Geometry", "Articulation"):
+        for cat, lst in (record.get(typ) or {}).items():
+            for r in lst:
+                found[cat] = found.get(cat, 0) + 1
+                if r.get("_perception", {}).get("place_tag") != "fixed":
+                    objs.append((typ, cat, r))
+    missing = [x["label"] for x in record.get("_not_found", [])]
+    for cat, n in (expected or {}).items():
+        missing += [cat] * max(0, n - found.get(cat, 0) - sum(1 for m in missing if m.startswith(cat)))
+    low = [(typ, cat, r) for typ, cat, r in objs if r.get("_perception", {}).get("confidence", 1.0) < low_conf]
+    if not missing and not low:
+        return []
+
+    def obstacles(c):
+        out = []
+        for typ, cat, r in objs:
+            pos = np.asarray(r["default_pos"], dtype=float)
+            if np.hypot(*(pos[:2] - c[:2])) < 0.03:
+                continue
+            try:
+                rad = 0.5 * float(np.linalg.norm(load_asset(f"{typ}/{cat}/{int(r['category_idx']):05d}").extents[:2]))
+            except Exception:
+                rad = 0.04
+            out.append((pos, rad))
+        return out
+
+    cands = []
+    if missing:
+        for u in record.get("_perception", {}).get("unexplained", []):
+            c = np.array([u["xy"][0], u["xy"][1], TABLE_Z])
+            if any(np.hypot(*(np.asarray(r["default_pos"])[:2] - c[:2])) < 0.03 for _, _, r in objs):
+                continue
+            cands.append((0, -u["area_px"], "unexplained_foreground", c, 0.05, missing))
+        for arm, c in HIDDEN_UNDER_GRIPPERS.items():
+            cands.append((1, 0, "hidden_by_gripper", np.asarray(c, dtype=float), 0.09, missing))
+    for typ, cat, r in low:
+        cands.append((2, r.get("_perception", {}).get("confidence", 0.0), "low_score", np.asarray(r["default_pos"], dtype=float),
+                      0.04, [r.get("label") or cat]))
+    out = []
+    for _, _, kind, c, rad, who in sorted(cands, key=lambda t: (t[0], t[1]))[:max_regions]:
+        arm = "left" if c[0] < 0 else "right"
+        T = default_look(c, arm, obstacles=obstacles(c))
+        out.append({"kind": kind, "center": np.round(c, 4).tolist(), "radius": rad, "for": list(who), "arm": arm,
+                    "T_world_cam_cv": np.round(T, 5).tolist(), "flange_pose": np.round(flange_for_camera(T), 5).tolist()})
+    return out
 
 
 def look_cost_steps(plan: list[dict], parallel: bool = True) -> int:

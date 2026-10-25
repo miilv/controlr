@@ -92,6 +92,26 @@ def local_foreground(img: np.ndarray, cam, sil: np.ndarray, robot: np.ndarray, g
     return fg, known
 
 
+def frame_foreground(img: np.ndarray, robot: np.ndarray, k: int = 6, thr: float = 3.0, n_samples: int = 6000) -> np.ndarray:
+    """Foreground over the whole frame: a table/room colour model (k-means in Lab) from random non-robot pixels
+    (objects are a small share of a wrist view), then pixels far from every cluster."""
+    lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB).astype(np.float32)
+    lab[..., 0] *= 0.5
+    pool = lab[robot == 0]
+    if len(pool) < 100:
+        return np.zeros(robot.shape, np.uint8)
+    samples = pool[np.random.default_rng(0).choice(len(pool), min(n_samples, len(pool)), replace=False)]
+    crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.5)
+    _, labels, centers = cv2.kmeans(samples, k, None, crit, 2, cv2.KMEANS_PP_CENTERS)
+    labels = labels.ravel()
+    spread = np.array([max(np.sqrt(((samples[labels == i] - centers[i]) ** 2).sum(1)).mean(), 3.0)
+                       if (labels == i).any() else 3.0 for i in range(len(centers))])
+    d = np.min(np.stack([np.sqrt(((lab - centers[i]) ** 2).sum(-1)) / spread[i] for i in range(len(centers))]), axis=0)
+    f = ((d > thr) & (robot == 0)).astype(np.uint8)
+    f = cv2.morphologyEx(f, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    return cv2.morphologyEx(f, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+
+
 def _shape_for(key: str, R: np.ndarray, tag: str | None):
     """The place frame whose resting up-direction matches the prior rotation best (or the given tag)."""
     sms = shape_models(key)
@@ -105,7 +125,7 @@ def _shape_for(key: str, R: np.ndarray, tag: str | None):
 
 def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
            tag: str | None = None, bgs: dict | None = None, others: list | None = None, iters: int = 60,
-           xy_starts: float = 0.015, seg: str = "local", held=None) -> dict:
+           xy_starts: float = 0.015, seg: str = "local", held=None, search: bool = True) -> dict:
     t0 = time.time()
     bgs = _backgrounds(bgs) if seg != "local" else bgs
     cam = wrist_camera(arm, np.asarray(proprio[f"{arm}_arm_joint_state"], dtype=float))
@@ -167,10 +187,80 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         vis = float((s & v.known).sum() / max(s.sum(), 1))
     iou = float(next(iter(per.values()), 0.0)) if per else 0.0
     d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
-    return {"pose": np.r_[T[:3, 3], R_to_quat_wxyz(T[:3, :3])].tolist(), "residual": round(float(loss), 4),
+    ok = bool(iou >= 0.6 and vis >= 0.5)
+    searched = None
+    if not ok and search and seg == "local":
+        searched = _wide_search(obj_id, sm, z_off, wrist_frame, cam, proprio, rob, T0, iters)
+        if searched is not None and searched.get("ok"):
+            x, y, yaw, loss, per, iou, vis = (searched[k] for k in ("x", "y", "yaw", "loss", "per", "iou", "vis"))
+            T = pose_T(x, y, yaw)
+            ok = True
+            d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
+    out = {"pose": np.r_[T[:3, 3], R_to_quat_wxyz(T[:3, :3])].tolist(), "residual": round(float(loss), 4),
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
-            "ok": bool(iou >= 0.6 and vis >= 0.5), "time_s": round(time.time() - t0, 3), "camera": cam.name}
+            "ok": ok, "time_s": round(time.time() - t0, 3), "camera": cam.name}
+    if searched is not None:  # where the target's best match in the wrist frame is (re-hover there if not ok)
+        out["searched"] = True
+        out["suggest_xy"] = searched["suggest_xy"]
+        out["suggest_shift_mm"] = round(float(np.hypot(searched["suggest_xy"][0] - T0[0, 3],
+                                                       searched["suggest_xy"][1] - T0[1, 3]) * 1000), 1)
+        out["suggest_score"] = searched["score"]
+    return out
+
+
+def _wide_search(obj_id, sm, z_off, img, cam, proprio, rob, T0, iters):
+    """Whole-frame search for the target when the local refine fails: table colours from the full frame
+    (k-means, robot excluded), foreground blobs scored by expected size and colour, best blob's ray on the
+    plane at the object's mid-height -> suggested xy; a refine from there may succeed (then ``ok``)."""
+    from .render import load_asset, robot_mask, silhouette, transform
+
+    if rob is None:
+        rob = robot_mask(cam, proprio, dilate_px=3)
+    a = load_asset(obj_id)
+    sil0 = silhouette(cam, transform(a.Vs, T0), a.Fs)
+    exp_area = max(int(sil0.sum()), 30)
+    fg = frame_foreground(img, rob)
+    # grid over +-7 cm around the prior at the prior's yaw: silhouette IoU with the frame foreground, minus a
+    # mild distance penalty (neighbours of the same look are the usual confusion)
+    Rz = T0[:3, :3] @ sm.R0.T
+    yaw0 = float(np.arctan2(Rz[1, 0], Rz[0, 0]))
+    best = None
+    for dx in np.arange(-0.07, 0.0701, 0.01):
+        for dy in np.arange(-0.07, 0.0701, 0.01):
+            Tg = sm.pose(T0[0, 3] + dx, T0[1, 3] + dy, yaw0)
+            Tg[2, 3] += z_off
+            s_g = sm.sil(cam, Tg)
+            n_s = int(s_g.sum())
+            if n_s < 0.25 * exp_area:
+                continue
+            known = s_g & (1 - rob)
+            if known.sum() < 0.5 * n_s:
+                continue
+            inter = int((known & fg).sum())
+            union = int(((s_g | fg) & (1 - rob) & cv2.dilate(s_g, np.ones((25, 25), np.uint8))).sum())
+            score = inter / max(union, 1) - 1.0 * float(np.hypot(dx, dy))
+            if best is None or score > best[0]:
+                best = (score, (T0[0, 3] + dx, T0[1, 3] + dy))
+    if best is None:
+        return None
+    X = np.array([best[1][0], best[1][1]])
+    res = {"suggest_xy": [round(float(X[0]), 4), round(float(X[1]), 4)], "score": round(float(best[0]), 3)}
+    T1 = sm.pose(X[0], X[1], yaw0)
+    T1[2, 3] += z_off
+    sil1 = silhouette(cam, transform(a.Vs, T1), a.Fs)
+    fg1, kn1 = local_foreground(img, cam, sil1, rob)
+    from .segment import ViewMasks
+
+    v = ViewMasks(cam, img, fg1, kn1, np.zeros(fg1.shape, np.float32), rob)
+    x, y, yaw, loss, per = nm_refine(_ZShift(sm, z_off), X[0], X[1], yaw0, {cam.name: v}, maxiter=iters, xy_step=0.004, yaw_step=0.08)
+    T2 = sm.pose(x, y, yaw)
+    T2[2, 3] += z_off
+    s2 = sm.sil(cam, T2)
+    vis = float((s2 & kn1).sum() / max(s2.sum(), 1))
+    iou = float(next(iter(per.values()), 0.0)) if per else 0.0
+    res.update({"x": x, "y": y, "yaw": yaw, "loss": loss, "per": per, "iou": iou, "vis": vis, "ok": bool(iou >= 0.6 and vis >= 0.5)})
+    return res
 
 
 def refine_identity(obj_ids: list[str], wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
