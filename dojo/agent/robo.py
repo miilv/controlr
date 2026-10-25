@@ -221,8 +221,19 @@ class Robo:
         return text
 
     # ------------------------------------------------------------------ perception and state
+    def _refresh(self):
+        """sk.refresh() (the provider may run a resync check and raise Divergence: re-plan with a fresh Skills)."""
+        from dojo.runtime.belief import Divergence
+        try:
+            return self.ctx.sk().refresh()
+        except Divergence as e:
+            self.ctx.events.append({"kind": "divergence_replan", "labels": list(getattr(e, "labels", []) or [])})
+            self.ctx.new_skills()
+            self.log.append("(the scene no longer matched the estimate: it was re-measured)")
+            return self.ctx.sk().refresh()
+
     def scene(self) -> dict:
-        w = self.ctx.sk().refresh()
+        w = self._refresh()
         self._sync_ids(w)
         held = {s.holding: a for a, s in w.arms.items() if s.holding}
         out = {}
@@ -246,8 +257,8 @@ class Robo:
         return s[oid]
 
     def state(self) -> State:
+        w = self._refresh()
         sk = self.ctx.sk()
-        w = sk.refresh()
 
         def view(a):
             T = sk.tcp(a)
