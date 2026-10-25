@@ -47,6 +47,8 @@ OPEN, CLOSE = 0.04, -0.01   # finger joint targets (gripper_scale); closing stop
 MAX_WIDTH = 0.077           # widest graspable width across the fingers (2 x 0.04 open, 1.5 mm per side)
 GRASP_DEPTH = 0.02          # grasp point below the object's top (finger pads are ~2 cm)
 HOME_STEP_RAD = 0.004       # per 4 ms sub-step for joint-space moves (1 rad/s)
+ORDER_TRIES = 4             # the seed's order, then other seeded orders (a transport can knock a later object)
+CARRY_CLEARANCE = 0.08
 STRAIGHT = [1, 1, 1, 1, 1, 0]  # cuRobo pose-cost hold: orientation + x/y fixed, free along the hand z (vertical)
 
 
@@ -188,12 +190,16 @@ class DemoPlanner:
         return sum(len(s) for s in self.segments)
 
 
-def plan_demo(run, seed: int) -> tuple[dict | None, dict]:
-    """Plan the demo on the env's current (reset) state. Returns (pkl data or None, info)."""
+def plan_demo(run, seed: int, order: list[int] | None = None) -> tuple[dict | None, dict]:
+    """Plan the demo on the env's current (reset) state, in ``order`` (default: ``demo_order(seed)``).
+    Returns (pkl data or None, info)."""
     from dojo.simlab.gen_layouts import metadata
     from dojo.simlab.runner import demo_order
-    order = demo_order(seed)
+    order = list(order) if order is not None else demo_order(seed)
     rows = {o["label"]: o for o in run.objects_gt() if o.get("label") and not o.get("clutter")}
+    tallest = max(float(world_vertices(metadata(o["type"], o["category"], int(o["category_idx"])),
+                                       np.asarray(o["pos"], float), o["quat"])[:, 2].max())
+                  for lab, o in rows.items() if lab.startswith("aim"))
     origin = np.asarray(run.gt().get("env_origin") or [0.0, 0.0, 0.0], float)[:3]
 
     def local(o):
@@ -222,7 +228,7 @@ def plan_demo(run, seed: int) -> tuple[dict | None, dict]:
         if g.get("too_wide"):
             return None, {**info, "status": f"aim{i} ({o['category']}) {100 * g['width']:.1f} cm wider than the gripper"}
         grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.5 * h), g["bottom"] + 0.01)
-        carry_z = max(b_top, g["top"]) + h + 0.06
+        carry_z = max(b_top, tallest - origin[2]) + h + CARRY_CLEARANCE   # the carried object clears everything
         steps = [((*g["xy"], g["top"] + 0.08), g["yaw"], f"pre aim{i}"),
                  ((*g["xy"], grasp_z), g["yaw"], f"grasp aim{i}")]
         for xyz, yaw, name in steps:
@@ -290,7 +296,7 @@ def validate(run, layout: dict, n_substeps: int, margin_env_steps: int = 60) -> 
 
 def main(argv=None) -> None:
     from dojo.simlab.presettle import layout_files
-    from dojo.simlab.runner import RoboDojoRunner, jsonable
+    from dojo.simlab.runner import RoboDojoRunner, demo_order, jsonable
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", default=TASK)
     ap.add_argument("--ids", nargs="*", type=int, default=None)
@@ -329,15 +335,27 @@ def main(argv=None) -> None:
                 "objects": {o["label"]: o["pos"] for o in run.objects_gt() if o.get("label") and not o.get("clutter")}}),
                 default=str), flush=True)
             a.probe = False
-        data, info = plan_demo(run, seed)
-        rec = {"from": f.name, **info}
-        if data is not None:
-            pk.write_bytes(pickle.dumps(data, protocol=4))
-            v = validate(run, lay, info["substeps"])
-            rec["validation"] = v
-            rec["status"] = "ok" if v["ok"] else "dropped: validation"
-            if not v["ok"]:
+        attempts = []
+        for k in range(ORDER_TRIES):
+            if k:
                 pk.unlink(missing_ok=True)
+                if not run.load(lay)["stable"]:          # plan on a clean reset again
+                    break
+            order = demo_order(seed) if k == 0 else demo_order(seed * 31 + k)
+            data, info = plan_demo(run, seed, order)
+            rec = {"from": f.name, "attempt": k, **info}
+            if data is not None:
+                pk.write_bytes(pickle.dumps(data, protocol=4))
+                v = validate(run, lay, info["substeps"])
+                rec["validation"] = v
+                rec["status"] = "ok" if v["ok"] else "dropped: validation"
+                if not v["ok"]:
+                    pk.unlink(missing_ok=True)
+            attempts.append({"order": order, "status": rec["status"],
+                             "in_basket1": (rec.get("validation") or {}).get("aim_in_basket1")})
+            if rec["status"] == "ok":
+                break
+        rec["attempts"] = attempts
         rec["s"] = round(time.perf_counter() - t0, 1)
         index[str(seed)] = rec
         index_p.write_text(json.dumps(jsonable(index), indent=1))
