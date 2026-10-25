@@ -75,6 +75,9 @@ def perception_errors(rec: dict, truth: list[dict]) -> dict:
     for cat in sorted({t["category"] for t in truth}):
         T = [t for t in truth if t["category"] == cat]
         E = [e for e in est if e["category"] == cat]
+        # identity is assessed only where the estimate names assets: a category whose estimates all carry one index
+        # while the truth has several (make_kong's tiles: grouped by label, not by face) is position-only
+        judge_id = not (len({e["idx"] for e in E}) == 1 and len({t["idx"] for t in T}) > 1)
         if E:
             C = np.array([[np.linalg.norm(t["pos"][:2] - e["pos"][:2]) for e in E] for t in T])
             ti, ei = linear_sum_assignment(C)
@@ -88,7 +91,7 @@ def perception_errors(rec: dict, truth: list[dict]) -> dict:
                 continue
             e = E[pairs[i]]
             err = float(np.linalg.norm(t["pos"] - e["pos"]) * 1000)
-            ident = t["idx"] is None or e["idx"] is None or int(t["idx"]) == int(e["idx"])
+            ident = (not judge_id) or t["idx"] is None or e["idx"] is None or int(t["idx"]) == int(e["idx"])
             g = err > GROSS_MM or not ident
             gross += int(g)
             rows.append({"label": t["label"], "found": True, "err_mm": round(err, 1), "identity_ok": ident, "gross": g})
@@ -145,6 +148,31 @@ def row(rid: str, bench: Path, runs: Path) -> dict:
     return out
 
 
+def _triggers(r: dict) -> str:
+    n: dict[str, int] = {}
+    for c in r.get("agentic_calls") or []:
+        t = c.get("tag") or "?"
+        n[t] = n.get(t, 0) + int(c.get("calls") or 0)
+    return ", ".join(f"{k} {v}" for k, v in n.items()) or "-"
+
+
+def markdown(rows: list[dict]) -> str:
+    out = ["| run | task | policy | perception | success / score | steps | wall s | perception gross at planning "
+           "(err med / max mm) | verify used | agent calls | agentic calls by trigger |",
+           "|---|---|---|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        pi = r.get("perception_initial") or {}
+        vs = r.get("verify_stats") or {}
+        used = "no (disabled)" if vs.get("disabled") else ("yes" if vs.get("calls") else "no")
+        ag = r.get("agent") or {}
+        pol = r["policy"] + (" + agentic" if r.get("agentic_mode") == "budget" else "")
+        sc = "-" if r.get("score") is None else f"{'yes' if r.get('success') else 'no'} / {100 * float(r['score']):.0f}"
+        out.append(f"| {r['id']} | {r['task']} | {pol} | {r['perception']} | {sc} | {r['steps']}/{r['step_lim']} | "
+                   f"{r['wall_s']} | {pi.get('gross')}/{pi.get('n_true')} ({pi.get('err_mm_med')} / {pi.get('err_mm_max')}) | "
+                   f"{used} | {ag.get('calls') or 0} | {_triggers(r)} |")
+    return "\n".join(out)
+
+
 def main(argv=None) -> None:
     ilia = Path("/home/anywherevla/data2/ilia")
     ap = argparse.ArgumentParser()
@@ -152,8 +180,12 @@ def main(argv=None) -> None:
     ap.add_argument("--bench", default=str(ilia / "bench"))
     ap.add_argument("--runs", default=str(ilia / "dojo-data" / "bridge" / "runs"))
     ap.add_argument("--jsonl", default=None)
+    ap.add_argument("--md", action="store_true", help="a markdown table instead of the one-line summaries")
     a = ap.parse_args(argv)
     rows = [row(i, Path(a.bench), Path(a.runs)) for i in a.ids]
+    if a.md:
+        print(markdown(rows))
+        return
     if a.jsonl:
         with open(a.jsonl, "a") as f:
             for r in rows:

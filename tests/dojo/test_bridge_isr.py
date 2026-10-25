@@ -125,3 +125,14 @@ def test_twin_requests_are_numpy_free_across_interpreters():
     assert b"numpy" not in blob and "numpy" not in str(list(pickletools.genops(blob)))
     assert out["world"]["robot"]["left_q"] == [0.0] * 6 and out["k"] == 2 and isinstance(out["k"], int)
     assert out["world"]["layout"]["Rigid"]["block"][0]["default_pos"] == [0.1, 0.2, 0.78]
+
+
+def test_summary_identity_is_position_only_when_estimates_name_no_assets():
+    pytest.importorskip("scipy")
+    hello = {"objects": [{"type": "Rigid", "inst": f"mahjong_{k}_{i}", "label": f"mahjong{i}", "category": "mahjong"}
+                         for i, k in enumerate((17, 30))],
+             "objects_pos": {"mahjong_17_0": [0.0, 0.0, 0.78], "mahjong_30_1": [0.1, 0.0, 0.78]}}
+    rec = {"Rigid": {"mahjong": [{"category": "mahjong", "category_idx": 0, "label": f"mahjong{i}",
+                                  "default_pos": [0.1 * i, 0.0, 0.78]} for i in range(2)]}}
+    e = isr_summary.perception_errors(rec, isr_summary.truth_objects(hello))
+    assert e["gross"] == 0

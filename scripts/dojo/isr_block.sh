@@ -17,6 +17,15 @@ if [[ "${ISR_IN_JOB:-0}" != 1 ]]; then
 fi
 COORD=/home/anywherevla/data2/coord
 OUT="$DOJO_DATA/bridge/runs"; ROWS="$DOJO_DATA/bridge/rows.jsonl"; PY="$HERE/.venv/bin/python"
+# Isaac's texture cache under OUR shim HOME grows by ~0.1-0.4 GB per new task's assets (1.6 -> 2.3 GB over 5 tasks):
+# below ISR_PRUNE_BELOW_GB free, drop it between episodes (no Kit process of ours runs then; it regrows on demand)
+prune_cache() {
+  local free_gb; free_gb=$(df -BG --output=avail /home/anywherevla/data2 | tail -1 | tr -dc 0-9)
+  if (( free_gb < ${ISR_PRUNE_BELOW_GB:-8} )) && [[ -d "$HOME/.cache/ov/texturecache" ]]; then
+    echo "[block] ${free_gb} GB free: dropping our Kit texture cache ($(du -sh "$HOME/.cache/ov/texturecache" | cut -f1))"
+    rm -rf "$HOME/.cache/ov/texturecache"
+  fi
+}
 gate() {
   local m; m="$(find "$COORD/inbox/ilia" -maxdepth 1 -type f 2>/dev/null | head -1)"
   [[ -z "$m" ]] || { echo "[block] unprocessed inbox message $m: stopping the block" >&2; return 76; }
@@ -31,6 +40,7 @@ while read -r line; do
   read -r -a f <<< "$line"
   ID="${f[0]}" TASK="${f[1]}"; ARGS=("${f[@]:2}")
   for x in "${ARGS[@]}"; do case "$x" in --seed|--layout|--fake) echo "[block] $x is fixed (practice s0 L9)" >&2; exit 2 ;; esac; done
+  prune_cache
   gate || { rc=$?; break; }
   mkdir -p "$OUT/$ID"
   echo "[block] $(date -u +%T) $ID $TASK ${ARGS[*]}"
