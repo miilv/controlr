@@ -6,6 +6,21 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **refine() reports ok for a wrong fit, 20-63 mm off.** 10 of 291 cases in the D0 wrist validation
+  (`dojo/perception/val_refine.py`, priors ±20 mm, `WITH_OTHERS=1`), IoU 0.62-0.86, mostly an identical
+  pillar / block nearby:
+  - build_tower 100003 f1 block1, 100004 L1 block1, 100007 L1 block1, 100009 L1 block2, 100018 f1 + f2 block1,
+    100022 L1 block6;
+  - stack_blocks 100002 f2 block_2, 100015 L1 block_1, 100017 f2 block_2.
+  
+  Candidate fix: score the prior's own position against the best fit (prefer the prior unless the fit gains
+  clearly), or require the neighbour guard against all same-shape objects of the belief. This is the next tower risk
+  after the scan.
+- [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
+  objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
+  cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
+  x = -0.43 that no reader found in D0 100024. A perception-side `look_plan` request
+  (docs/experiments/2026-10-25-scan-pose.md).
 - [ ] **Decision head, first light** (`configs/sim_waffle_yaw_luna_dec.yaml`, journal/2026-10-07-luna-decisions.md):
   (1) ~~image format probe~~ done: `parts` is seen, `field` is not (journal/2026-10-07-luna-decisions.md);
   drop `field` or make its live test expect blindness; (2) one mock episode
