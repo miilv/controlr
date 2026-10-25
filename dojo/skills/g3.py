@@ -204,6 +204,7 @@ def cmd_run(a) -> None:
                           verify_k=a.verify)
         rec["log"] = logs[-60:]
         rec["code"] = code
+        rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
         rows.append(rec)
         with summ_p.open("a") as f:
             f.write(json.dumps(rec, default=str) + "\n")
@@ -216,6 +217,7 @@ def cmd_run(a) -> None:
         allrows[r["seed"]] = r
     summ = write_summary(out, a.task, [allrows[k] for k in sorted(allrows)])
     summ["code_commits"] = sorted({str((r.get("code") or {}).get("commit")) for r in allrows.values()})
+    summ["usd_sync_links"] = sorted({bool(r.get("usd_sync_links", False)) for r in allrows.values()})
     (out / f"{a.task}_summary.json").write_text(json.dumps(summ, indent=1))
     run.close()
 
@@ -409,6 +411,20 @@ def cmd_checks(a) -> None:
     info = run.load(lay)
     for _ in range(a.settle if info["stable"] else 0):          # an unstable load has no control state to hold
         run.step(run.hold_action())
+    if a.move and info["stable"]:
+        # move objects after the load (physics state, not the record): does what the checker reads follow them?
+        lm0 = run.env.scene_manager.layout_manager
+        for spec in a.move:
+            lab, vals = spec.split(":")
+            v = [float(x) for x in vals.split(",")]
+            name = lm0.get_instance_name(label=lab, env_idx=0)
+            obj = lm0.get_scene_object(env_idx=0, inst_name=name)
+            org = np.asarray(run.env.scene_manager.env_origins[0].cpu() if hasattr(run.env.scene_manager.env_origins[0],
+                                                                                      "cpu") else
+                             run.env.scene_manager.env_origins[0], float).reshape(-1)[:3]
+            obj.set_world_pose(position=np.asarray(v[:3]) + org, orientation=np.asarray(v[3:7]))
+        for _ in range(max(1, a.settle)):
+            run.step(run.hold_action())
     rm = run.env.reward_manager
     lines = [f"stable {info['stable']}; reward {run.reward()}; score {run.score()}"]
     for i, stage in enumerate(rm.check_list[0]):
@@ -427,10 +443,12 @@ def cmd_checks(a) -> None:
             inst = lm.get_scene_object(env_idx=0, inst_name=o["inst_name"])
             links = sorted({(v or {}).get("base_link") for typ in ("passive", "active")
                             for v in ((meta.get(typ) or {}).get("functional") or {}).values()} - {None})
+            from dojo.simlab.runner import physics_link_pose
             for ln in links:
                 try:
-                    lines.append(f"link {o.get('label')} {ln} USD world pose {np.round(inst.get_link_pose(ln), 4).tolist()}"
-                                 f" (instance pose {np.round(o['pos'], 4).tolist()})")
+                    lines.append(f"link {o.get('label')} {ln} get_link_pose {np.round(inst.get_link_pose(ln), 4).tolist()}"
+                                 f" physics {None if (pp := physics_link_pose(inst, ln)) is None else np.round(pp, 4).tolist()}"
+                                 f" (instance pose {np.round(o['pos'], 4).tolist()}; usd_sync_links {run.usd_sync_links})")
                 except Exception as e:  # noqa: BLE001
                     lines.append(f"link {o.get('label')} {ln}: {e}")
         for typ in ("passive", "active"):
@@ -499,6 +517,7 @@ def main(argv=None) -> None:
     c.add_argument("--out", required=True)
     c.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
     c.add_argument("--settle", type=int, default=5)
+    c.add_argument("--move", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz, applied after the load")
     q = sub.add_parser("report")
     q.add_argument("--root", default=os.path.expanduser("~/dojo-data/skills/g3"))
     a = ap.parse_args(argv)
