@@ -22,7 +22,32 @@ twin. The episode entry point is always `planner.solve` (instruction words + obj
 
 ## 2. G3 numbers (GT state, physics-only twin)
 
-RESULTS_TABLE
+Board scale = mean score x 100. Steps are median / max (limit). Rand = `_random`. "sync" = `SIMLAB_USD_SYNC_LINKS=1`
+(section 3); without it the twin cannot score rand toasters at all.
+
+| task | run (commit) | layouts | success | mean | steps | failures | board ref |
+|---|---|---|---|---|---|---|---|
+| make_toast | v1 (7157173) | 100000-04 raw | 0/5 | 0.15 | 171 / 193 (1400) | ik_fail 5: no grasp between slices | PyRUA 26, best 62 |
+| make_toast | v3 (ba2749b) | 100000-09 raw | 0/10 | 0.45 | 300 / 365 | both slices in 8/10; the lever stopped at 35 mm | |
+| make_toast | v5 (639d3c8) | 100000-09 raw | 7/10 | 0.80 | 295 / 360 | toaster 0's lever did not move 4.5 mm in from its end | |
+| make_toast | **v6 (b49f311)** | **all 25 raw** | **19/25** | **0.80** | 295 / 399 | ik_fail 5 (the second slice: carry over the first, far pre-place), place_miss 1 | |
+| make_toast | v7 (e65d9f6: far slot first, 1.5 cm fallback) | all 25 raw | 18/25 | 0.78 | 302 / 385 | ik_fail 3, place_miss 3, not_home 1 | |
+| make_toast | v8b (5887754: + per-link collision boxes) | all 25 raw | running | | | | |
+| make_toast_random | v4 (e65d9f6), twin checker | 16 settled | 0/16 | 0.00 | 308 / 368 | the slot fps are untransformed (section 3) | PyRUA 17, best 38 |
+| make_toast_random | v4, `phys_slots.py` | first 9 settled | 4/9 phys. | 0.58 phys. | | toaster 00002's lever reaches ~70 % of its range | |
+| make_toast_random | **sync v5 (5887754)** | **16 settled** | **9/16** | **0.77** | 306 / 361 | toaster 00002 episodes stop at the 50 tier (lever 0.69-0.74), not_home 4, place_miss 2, ik_fail 1. `phys_slots` agrees on 13/14 | |
+| hang_mugs | v1 (5c13b9f) | 100000-04 settled | 1/5 | 0.34 | 290 / 327 (800) | wall pinches slid in the 90-deg carry | PyRUA 27, best 74.2 |
+| hang_mugs | **v2 (5c1abe4)** | **100000-09 settled** | **2/10** | **0.36** | 324 / 392 | place_miss 7 (low hooks 4/10, top 8/8), not_home 1 | |
+| hang_mugs | v3 (6b07c79: top hooks first, thin walls only) | 100000-04 | 0/5 | 0.27 | 275 / 355 | worse; reverted | |
+| hang_mugs | v4 (bcbe853 = v2 + hung boxes shrink) | 100010-16 | 1/7 | 0.29 | 343 / 464 | place_miss 5, grasp_slip 1 (running to 100019) | |
+| hang_mugs_random | v3 (6b07c79) | 110000-04 raw (ours) | 0/5 | 0.09 | 131 / 296 | after the first mug no plan (its box covers the 14 cm rack) | PyRUA 28.4 |
+| hang_mugs_random | v4 (bcbe853) | 110000-04 raw | 0/5 | 0.17 | 245 / 258 | grasp_slip 2, not_home 2, place_miss 1 (running to 110009) | |
+| store_laptop (headset half) | v1 (5c1abe4), sync v2 (5887754) | 100000-09 settled | 0/10, 0/10 | 0.00 | 3 / 129 (800) | no plan 7 (the open laptop and the reach to the stand), grasp_slip 2, place_miss 1. Parked | PyRUA 3.2, best 57.1 |
+| play_stacking_toy | skills3 v2 (68ea915) | 100000-04 | 0/5 | 0.44 | 516-801 (1200) | far pegs: 0 grasp-place pairs for 3-4 pieces | PyRUA 78.2 |
+| play_stacking_toy | v3 (ebfa97f: 40-deg grasps + lift) | 100000 so far | 0/1 | 0.10 | 635 | 7/10 placed, 3 failed; running to 100004 | |
+
+Not built: sweep_blocks (the lead ruled out the pick-into-pan route; a real broom sweep is low weight and was not
+started) and fold_clothes (no cloth state in the skills layer). Both parked.
 
 ## 3. Landmines found
 
