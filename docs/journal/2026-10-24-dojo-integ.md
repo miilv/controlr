@@ -150,3 +150,22 @@ score 74.5** (mode A, same layouts: 9/10, 91.5), steps median 165 / max 201 of 5
 IK-infeasible, a variant from the same or the other arm worked). Estimate at planning: xy median 1.6 mm,
 p90 8.0 mm (before looks p90 20.6 mm), identity 0.80, no shape errors. Failures: 100004 / 100006 one block
 20–25 mm off (perception_gross), 100009 the same grasp slip as mode A without verify.
+
+### 3.3 Mode B + verify = bundle, and the A/B gap
+
+`B_stack_bundle_1a/b` (stack_blocks × 10, perception, twin loaded with OUR estimate): **8/10, score 83.0**,
+steps median 181 / max 214 of 550 (looks included), 7 looks, 34 s / episode (verify 26 s); 0 rejected
+candidates, a later candidate chosen in 3 of 48 segments. Estimate at planning: xy median 2.1 mm, p90 7.2 mm
+(before looks p90 22.7 mm), identity 0.80, no shape errors.
+
+Paired with mode A + bundle on the same layouts (`python -m dojo.runtime.report <dirs>`):
+
+| task | verify | paired n | A score | B score | gap | A succ | B succ | lost in B |
+|---|---|---|---|---|---|---|---|---|
+| stack_blocks | bundle | 10 | 100.0 | 83.0 | **+17.0** | 10 | 8 | 100004, 100006: perception_gross |
+| stack_blocks | off | 10 | 91.5 | 74.5 | +17.0 | 9 | 7 | 100004, 100006: perception_gross (100009 slips in both) |
+
+The two lost layouts are the same in both verify settings: one block estimated 20–25 mm off with
+confidence 0.76–0.82, unflagged (100006 took no look). The twin cannot catch it (it is loaded with the same
+wrong pose), and the resync check passes because the stack is offset, not missing. Levers: a perception
+flag for "best fit leaves foreground residual next to the object", and an in-hand re-view after the lift.
