@@ -314,3 +314,15 @@ def test_refine_rehover_hint_moves_hover_and_looks_again():
     for l in labels:                                   # exactly two looks per picked object, the arm moved between
         looks = [c for c in picks if c[1] == l]
         assert len(looks) == 2 and looks[1][2] > looks[0][2]
+
+
+def test_refine_ctx_carries_held_object_at_place():
+    from dojo.skills import planner
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (-0.2, -0.25, 0.78)])
+    ctx = []
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction), remeasure=False,
+                refine=lambda sk, label, arm, kind: ctx.append(dict(sk.refine_ctx)))
+    assert planner.solve(sk)["ok"]
+    places = [c for c in ctx if c["kind"] == "place"]
+    assert places and all(c["held"] is not None and len(c["held"][1]) == 7 for c in places)
+    assert all(c["held"] is None for c in ctx if c["kind"] == "pick")

@@ -176,6 +176,7 @@ class Skills:
         self.remeasure = remeasure
         self.on_verified = on_verified
         self.refine = refine
+        self.refine_ctx: dict = {}
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
 
@@ -271,17 +272,32 @@ class Skills:
             return self._record(pp)
         return self._record(self.run_pick(pp))
 
+    def held_pose7(self, arm: str) -> tuple[str, list] | None:
+        """(asset key, world pose7) of what ``arm`` holds, from the in-hand estimate (commanded TCP @
+        in-hand transform), e.g. for perception to mask it as an occluder; None if empty."""
+        h = self.held.get(arm)
+        if h is None or h.label not in self.world.objects:
+            return None
+        T = self.kin.tcp(arm, self.ex.q[arm]) @ h.T_tcp_obj
+        return self.world.obj(h.label).asset.key, T_to_pose7(T).tolist()
+
     def _refine(self, label, arm: str, kind: str):
-        """Call the refine hook, then refresh. Returns a re-hover hint (pos, quat) if the hook gave one:
-        ``{"rehover": (pos, quat)}`` as return value or ``world.notes["rehover"]``."""
+        """Call the refine hook, then refresh. Before the call ``self.refine_ctx`` holds {"kind",
+        "label", "arm", "held": (asset key, pose7) | None} (at a place the carried object sits between
+        the wrist camera and the support). Returns a re-hover hint if the hook gave one:
+        ``{"rehover": (pos, quat)[, "rehover_dz": m]}`` as return value or ``world.notes["rehover"]``."""
         if self.refine is None:
             return None
+        self.refine_ctx = {"kind": kind, "label": label, "arm": arm, "held": self.held_pose7(arm)}
         out = self.refine(self, label, arm, kind)
-        hint = out.get("rehover") if isinstance(out, dict) else None
-        if hint is None:
-            hint = self.world.notes.pop("rehover", None)
-        else:
+        hint, dz = None, 0.0
+        if isinstance(out, dict) and out.get("rehover") is not None:
+            hint, dz = out["rehover"], float(out.get("rehover_dz", 0.0))
             self.world.notes.pop("rehover", None)
+        else:
+            hint = self.world.notes.pop("rehover", None)
+            dz = float(self.world.notes.pop("rehover_dz", 0.0))
+        self._rehover_dz = dz
         self.refresh()
         return hint
 
@@ -319,7 +335,8 @@ class Skills:
                 return False
             T = retarget() @ inv_T(h.T_tcp_obj)
             cur = self.kin.tcp(arm, self.ex.q[arm])
-            T[2, 3] = max(cur[2, 3], T[2, 3] + 0.03)
+            # optionally higher, so the wrist camera sees past the held object onto the support
+            T[2, 3] = max(cur[2, 3], T[2, 3] + 0.03) + max(0.0, min(0.08, getattr(self, "_rehover_dz", 0.0)))
             mv = self.motion.to_pose(arm, self.ex.q[arm], T, CARRY, "place_rehover", gripper=CLOSED, held=h.box,
                                      ignore=(h.label,), ease=3)
             if not mv.ok:
