@@ -298,8 +298,8 @@ def free_spots(sk: Skills, label: str, near_xy=(0.0, -0.15), clearance: float = 
     o = w.obj(label)
     r_self = float(np.linalg.norm(o.asset.extents[:2])) / 2
     out = []
-    for dx in (0.0, -0.06, 0.06, -0.12, 0.12):
-        for dy in (0.0, -0.08, 0.08, -0.14):
+    for dx in (0.0, -0.05, 0.05, -0.1, 0.1, -0.15, 0.15):
+        for dy in (0.0, -0.06, 0.06, -0.12, 0.12, -0.18):
             xy = (near_xy[0] + dx, near_xy[1] + dy)
             if not (TABLE_X[0] + 0.1 < xy[0] < TABLE_X[1] - 0.1 and -0.33 < xy[1] < 0.05):
                 continue
@@ -337,27 +337,39 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
         todo = [l for l in objects if l not in done and tries.get(l, 0) < 2]
         if not todo:
             break
-        d_cands = sorted((l for l in todo if sk.can_pick(l, dropper)),
+        def reach(l, a):
+            return float(np.linalg.norm(w.obj(l).center_w[:2] - sk.kin.base(a)[:2, 3]))
+        # the dropper takes what it reaches comfortably; the rest goes through a handover
+        d_cands = sorted((l for l in todo if reach(l, dropper) <= MAX_PICK_REACH and sk.can_pick(l, dropper)),
                          key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - c[:2])))
-        h_cands = [l for l in todo if l not in d_cands and sk.can_pick(l, helper)]
+        h_cands = sorted((l for l in todo if l not in d_cands and sk.can_pick(l, helper)),
+                         key=lambda l: reach(l, helper))
         if not d_cands and not h_cands:
             return {"ok": False, "stage": "plan", "note": f"no arm can pick {todo}"}
         plans, picks = {}, {}
-        if d_cands:
-            pp = sk.plan_pick(d_cands[0], dropper, lift=0.12)
+        for l in d_cands:
+            pp = sk.plan_pick(l, dropper, lift=0.12)
             if isinstance(pp, PickPlan):
-                plans[dropper], picks[dropper] = pp, d_cands[0]
-        if h_cands:
-            pr = sk.plan_pick(h_cands[0], helper, lift=0.08)
+                plans[dropper], picks[dropper] = pp, l
+                break
+        # the helper takes the next object nobody else is picking (also ones the dropper failed to plan)
+        for l in h_cands + [x for x in d_cands if x != picks.get(dropper)]:
+            if l == picks.get(dropper):
+                continue
+            pr = sk.plan_pick(l, helper, lift=0.08)
             if isinstance(pr, PickPlan):
-                plans[helper], picks[helper] = pr, h_cands[0]
+                plans[helper], picks[helper] = pr, l
+                break
         if not plans:
             return {"ok": False, "stage": "plan pick", "note": f"{d_cands[:1]} / {h_cands[:1]}"}
         befores = {a: w.obj(l).pos.copy() for a, l in picks.items()}
         for l in picks.values():
             tries[l] = tries.get(l, 0) + 1
         try:
-            sk.parallel([p.plan for p in plans.values()], name="pick")
+            if sk.refine is None:
+                sk.parallel([p.plan for p in plans.values()], name="pick")
+            else:                          # each pick hovers, refines from the wrist, then descends
+                plans = {a: sk.execute_pick(p) for a, p in plans.items()}
         except (BudgetExceeded, EpisodeEnded) as e:
             return {"ok": False, "stage": "pick", "note": str(e)}
         for a, pp in plans.items():
@@ -380,7 +392,7 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
             phase.append(pd)
         if sk.held[helper] is not None:
             lab = sk.held[helper].label
-            for spot in free_spots(sk, lab, near_xy=(-0.1 if dropper == "left" else 0.1, -0.15)):
+            for spot in free_spots(sk, lab, near_xy=(-0.05 if dropper == "left" else 0.05, -0.15)):
                 pl = sk.plan_place(helper, _table_pose_keep(sk, lab, spot), yaw_sym=8, release_gap=0.004)
                 if isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot):
                     place_r = pl
@@ -414,6 +426,8 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
 
 
 # ============================================================================ buttons
+
+MAX_PICK_REACH = 0.52         # horizontal reach from the arm base for a dependable grasp
 
 CAP_DEPTH = 0.008             # SpringButton: 10 mm cap travel, the checker counts < 5 mm as pressed
 CAP_CLEAR = 0.017

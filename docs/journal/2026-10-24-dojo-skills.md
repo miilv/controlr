@@ -90,8 +90,21 @@ data `compute3:~/dojo-data/skills/g3/<run>/`):
 | swap_blocks | v1 chunk 1 / chunk 2 | 8/10, **10/10** | 271 / 349 (700) | a cube turned in the pads and slid out mid-carry (chunk 2 with loose-grasp regrasp) |
 | press_by_number | v1 chunk 1 / chunk 2 | 0/10, **10/10** | 158 / 214 (700) | the idle arm hovering 12 mm from the pressing arm blocked the middle button (chunk 2 with the clearance fix) |
 | put_bottles_into_dustbin | v2 / v3 | 0/7, 0/15 (3-5 unstable loads) | 231-523 (700) | lying bottles gripped above the axis; handover spots; retries |
+| stack_blocks | v3 (chunks 1 / 2 / 3 on successive fixes) | 8/10, 8/10, 5/5 = 21/25 | 160 / 199 (550) | far-reach stalls, then an idle arm blocking a pick |
+| press_by_number | v2 chunk 1 | **10/10** (20/20 with v1 chunk 2) | 134-214 (700) | — |
+| swap_blocks | v1 all | 21/25 (mixed code; chunk 2 10/10) | 271 / 400 (700) | knocked neighbour, table-level place target |
+| stack_bowls | v3 (wall pinch) | 0/10 | — | the grasp now holds (2.9-5.2 mm); planning: pre-place / carry over the base bowl |
+| put_bottles_into_dustbin | v4 chunk 1 / 2 | 1/7, 0/8 (2 unstable per 10) | 196-424 (700) | dropper misses, standing handovers tip over, bottles knocked off |
 
-(Further rows appended at the end of the session.)
+Plan + verify (dev-only in-process twin: env 0 = episode, 8 twin envs, 4 candidates x 2 samples, 1.5 mm /
+1 deg object noise; `g3 run --verify 2 --twins 8`):
+
+| task | seeds | success | verified segments (first candidate ok) | extra wall per episode |
+|---|---|---|---|---|
+| stack_blocks | 100000-100004 | **5/5** | 24 (24) | ~10 s (28-48 rollouts); 0 extra env steps |
+
+With the current code these seeds also pass single-plan; the same-code single-plan rerun (v4, all 25) is queued.
+The twin does reject candidates: one place rolled [2, 2, 0, 0], with two descent variants failing.
 
 ## 5. Failure taxonomy (what the traces showed)
 
@@ -135,3 +148,44 @@ data `compute3:~/dojo-data/skills/g3/<run>/`):
 - Since the lead's fairness ruling, the wrapper uses a blocking `flock -w`, and sweeps run in chunks
   of at most 10 layouts with 90 s between lock holds.
 - One Isaac process at a time. Nothing else on compute3 was touched.
+
+## 7. Interfaces other streams use
+
+- **integration** (`dojo/runtime/`):
+  - `planner.solve(sk)` or `planner.plan()` with `library.SKILLS[name](sk, **args)`;
+  - `Skills(env, provider, verifier=TwinBackend, verify_k, n_cands, remeasure, on_verified, refine)`;
+  - `sk.last_verified`, `sk.history` (SkillResult status = the failure taxonomy);
+  - `world.notes`, one dict per episode, carries the progress of swap / press across re-plans.
+- **perception**: `refine(sk, label, arm, kind)` runs at the hover of every pick and place, before the
+  descent. GT mode passes None. Mode B has no in-hand measurement (`remeasure=False`), so the regrasp
+  safety net needs a wrist re-view after the lift.
+- **simlab**: `TwinBackend.rollout`. The production backend is the bundle twin loaded from our
+  estimate. `g3` runs on simlab's `<id>.settled.json` wherever `settled_index.json` exists.
+
+## 8. Adding the next skill (handoff)
+
+1. Read the task's checker (`task/RoboDojo/tasks/<task>.py` on compute3) and its config.
+2. Write a generic skill in `library.py` that takes roles as arguments; reuse `run_jobs` (pick-place
+   with pipelining, resumable), `press_sequence`, `put_into` and `stacking.plan_stack`.
+3. Add a rule in `planner.plan` that maps instruction words plus object categories / geometry to that
+   skill. No task names.
+4. Test on the kinematic env through `planner.solve` (the dry-run script pattern: layout JSON +
+   asset metadata -> `KinematicEnv`), then G3: `scripts/skills/g3_chunks.sh <task> 100000 100024
+   ~/dojo-data/skills/g3/<run> --trace`. Read failures with the per-step trace (`--trace`), and
+   `python -m dojo.skills.g3 report` prints the table.
+
+Lead's next list, by points: make_kong, insert_key (15 % for lifting the key 5 cm, no gripper gate),
+fill_pen_holder, organize_table (25 per item, latched), plug_in_charger, store_tools_in_toolbox (the
+ladder ignores orientation). Assets and settled layouts exist on compute3 for all of them.
+
+## 9. Next bottlenecks
+
+- **stack_bowls.** The wall pinch holds the bowl; the carry and pre-place over the base bowl are
+  out of reach or collide. Options: a lower carry with the base chosen in the middle, or a two-arm
+  opposite-rim lift.
+- **put_bottles.** Standing bottles handed over through the table tip over on release (use an
+  in-air handover, or lay them down); the dropper sometimes misses its grasp.
+- **Mode B (perception).** No in-hand measurement, so loose grasps go unseen. The wrist refine at
+  the hover is in; a re-view after the lift is next.
+- **Clean same-code reruns.** Several runs above mix code versions across chunks (fixes landed
+  mid-sweep); v4 / v2 reruns are queued.

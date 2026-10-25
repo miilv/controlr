@@ -97,7 +97,9 @@ class InProcessTwin:
         objs = {}
         for otype, name, label, obj in self._objects(src):
             t, q = obj.get_local_pose()
-            rec = {"type": otype, "label": label, "pos": _np(t).copy(), "quat": _np(q).copy()}
+            # keyed by LABEL: RoboDojo's instance names differ between envs when an asset repeats
+            # (build_tower: 'block_0_13' in one env is another name in the next)
+            rec = {"type": otype, "label": label, "inst": name, "pos": _np(t).copy(), "quat": _np(q).copy()}
             try:
                 rec["v"] = _np(obj.get_linear_velocity()).copy()
                 rec["w"] = _np(obj.get_angular_velocity()).copy()
@@ -108,7 +110,7 @@ class InProcessTwin:
                     rec["joints"] = _np(obj.get_current_joint_positions()).copy()
                 except Exception:  # noqa: BLE001
                     pass
-            objs[name] = rec
+            objs[label or name] = rec
         rwm = env.reward_manager
         return {"robots": robots, "objects": objs,
                 "prev_control": copy.deepcopy(rm.control_manager.prev_control[src]),
@@ -126,10 +128,13 @@ class InProcessTwin:
             key.write_joint_state_to_sim(r["q"].unsqueeze(0).repeat(n, 1), r["qd"].unsqueeze(0).repeat(n, 1), env_ids=eid)
             key.set_joint_position_target(r["target"].unsqueeze(0).repeat(n, 1), env_ids=eid)
         for j, e in enumerate(envs):
-            live = {name: obj for _, name, _, obj in self._objects(e)}
+            live, inst_of = {}, {}
+            for _, name, label, obj in self._objects(e):
+                live[label or name] = obj
+                inst_of[label or name] = name
             noisy = bool(perturb and perturb[j])
-            for name, rec in snap["objects"].items():
-                obj = live.get(name)
+            for key_, rec in snap["objects"].items():
+                obj = live.get(key_)
                 if obj is None:
                     continue
                 pos, quat = rec["pos"].copy(), rec["quat"].copy()
@@ -156,8 +161,12 @@ class InProcessTwin:
             rwm = env.reward_manager
             for k, v in snap["reward"].items():
                 getattr(rwm, k)[e] = copy.deepcopy(v)
+            src_inst = {rec["inst"]: k for k, rec in snap["objects"].items()}       # env-0 name -> label
             for k, v in snap["parser"].items():
-                getattr(rwm.func_parser, k)[e] = copy.deepcopy(v)
+                v = copy.deepcopy(v)
+                if k == "pre_state" and isinstance(v, dict):                   # keyed by instance name
+                    v = {inst_of.get(src_inst.get(n, n), n): val for n, val in v.items()}
+                getattr(rwm.func_parser, k)[e] = v
         env.sim.scene.write_data_to_sim()
 
     # ------------------------------------------------------------------ rollouts

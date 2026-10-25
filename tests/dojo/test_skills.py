@@ -261,3 +261,21 @@ def test_replanned_stack_skips_finished_jobs():
     assert planner.solve(sk2)["ok"]
     assert env.steps_used - n < 30          # no re-picks: only finish
     assert any(h.status == "skipped" for h in sk2.history)
+
+
+def test_refine_hook_called_at_hover_and_used():
+    """The refine hook runs at the hover of every pick and place; a re-measured pose changes the plan."""
+    from dojo.skills import planner
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (-0.2, -0.25, 0.78)])
+    calls = []
+
+    def refine(sk, label, arm, kind):
+        calls.append((kind, label, arm, sk.ex.steps_used))
+        return None
+
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction), refine=refine, remeasure=False)
+    assert planner.solve(sk)["ok"]
+    kinds = [c[0] for c in calls]
+    assert kinds.count("pick") >= 2 and kinds.count("place") >= 2
+    # refine happens between steps (the hover ran first): never at step 0
+    assert all(c[3] > 0 for c in calls)

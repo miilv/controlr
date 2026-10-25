@@ -151,11 +151,15 @@ def _objects_from_rows_nodb(rows):
 
 class Skills:
     def __init__(self, env, provider, kin: X5Kin | None = None, reserve: int = 30, log=None, verifier=None,
-                 verify_k: int = 2, n_cands: int = 6, remeasure: bool = True, on_verified=None):
+                 verify_k: int = 2, n_cands: int = 6, remeasure: bool = True, on_verified=None, refine=None):
         """``verifier``: a ``verify.TwinBackend`` (None = single plan). ``remeasure``: re-read the held
         object's pose before a place descent (off when the world provider cannot measure held
         objects). ``on_verified(info)``: called after each verified choice with
-        {"idx", "passes", "outcomes", "actions", "kind", "label"} (also kept in ``last_verified``)."""
+        {"idx", "passes", "outcomes", "actions", "kind", "label"} (also kept in ``last_verified``).
+        ``refine(sk, label, arm, kind) -> {label: (pos, quat)} | None``: pre-contact wrist refine, called
+        at the hover (kind "pick": label = the object to grasp; kind "place": label = the support /
+        reference object or None) before the descent is planned; it only observes (no env steps); the
+        skill then calls ``refresh()`` and re-plans the descent. None (GT mode) = no refine."""
         self.env = env
         self.provider = provider
         self.kin = kin or X5Kin()
@@ -171,6 +175,7 @@ class Skills:
         self.n_cands = n_cands
         self.remeasure = remeasure
         self.on_verified = on_verified
+        self.refine = refine
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
 
@@ -263,10 +268,37 @@ class Skills:
             return self._record(pp)
         return self._record(self.run_pick(pp))
 
+    def _refine(self, label, arm: str, kind: str) -> None:
+        if self.refine is None:
+            return
+        self.refine(self, label, arm, kind)
+        self.refresh()
+
+    def execute_pick(self, pp: PickPlan, method: str = "auto", **plan_kw) -> PickPlan:
+        """Run a pick plan. With a refine hook: hover (approach) first, refine the object's pose from
+        the wrist, then re-plan and run the descent / close / lift from the refined pose. Returns the
+        plan that was actually executed (for verify_pick)."""
+        if self.refine is None:
+            self.parallel([pp.plan], name=f"pick {pp.label}")
+            return pp
+        hover = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0)
+        hover.ops = [op for op in pp.plan.ops[:2]]            # open-for-grasp + approach to the pre-grasp
+        self.parallel([hover], name=f"pick {pp.label} hover")
+        self._refine(pp.label, pp.arm, "pick")
+        pp2 = self.plan_pick(pp.label, pp.arm, method, q_start={pp.arm: self.ex.q[pp.arm]}, **plan_kw)
+        if not isinstance(pp2, PickPlan):
+            pp2 = pp                                          # keep the original descent
+            rest = ArmPlan(pp.arm, self.ex.q[pp.arm].copy(), self.ex.g[pp.arm])
+            rest.ops = pp.plan.ops[2:]
+            self.ex.run({pp.arm: rest}, name=f"pick {pp.label} descent")
+            return pp2
+        self.ex.run({pp2.arm: pp2.plan}, name=f"pick {pp.label} refined")
+        return pp2
+
     def run_pick(self, pp: PickPlan) -> SkillResult:
         before = self.world.obj(pp.label).pos.copy()
         try:
-            self.parallel([pp.plan], name=f"pick {pp.label}")
+            pp = self.execute_pick(pp)
         except BudgetExceeded as e:
             return SkillResult(False, "pick", "step_budget", 0, pp.arm, note=str(e))
         except EpisodeEnded as e:
@@ -414,13 +446,14 @@ class Skills:
 
     def run_place(self, pp: PlacePlan, tol_xy: float = 0.01, tol_tilt: float = 6.0, tol_yaw: float | None = None,
                   other: list | None = None, other_arm: str | None = None, remeasure: bool = True,
-                  tol_z: float = 0.02) -> SkillResult:
+                  tol_z: float = 0.02, retarget=None, ref_label: str | None = None) -> SkillResult:
         """Execute a place: approach (+1 still step), re-measure the object in the hand, re-plan the
         descent for the measured in-hand pose, descend, release, back out. ``other`` = the other
         arm's compiled per-step (q, g) list, run in the same env steps throughout."""
         other = list(other or [])
         try:
-            if remeasure and self.remeasure and getattr(pp, "approach", None) is not None:
+            if (remeasure and (self.remeasure or self.refine is not None)
+                    and getattr(pp, "approach", None) is not None):
                 a1 = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0).move(pp.approach, "approach").hold(1, "still")
                 c1 = a1.compile()[0]
                 lists = {pp.arm: c1}
@@ -428,10 +461,14 @@ class Skills:
                     lists[other_arm] = other[:len(c1)]
                 self.ex.run_lists(lists, name=f"place {pp.label} approach")
                 rest_other = other[len(c1):]
+                self._refine(ref_label, pp.arm, "place")
                 w = self.refresh()
+                if retarget is not None and self.refine is not None:
+                    pp.T_obj_target = retarget()                   # the support was re-measured
                 h = self.held[pp.arm]
                 o = w.obj(pp.label)
-                T_rel_meas = inv_T(self.kin.tcp(pp.arm, w.arms[pp.arm].q)) @ o.T
+                T_rel_meas = (inv_T(self.kin.tcp(pp.arm, w.arms[pp.arm].q)) @ o.T if self.remeasure
+                              else h.T_tcp_obj)
                 shift = float(np.linalg.norm(T_rel_meas[:3, 3] - h.T_tcp_obj[:3, 3]))
                 h2 = Held(h.label, T_rel_meas, HeldBox(T_rel_meas, o.asset.center, o.asset.extents / 2), h.grasp)
                 tail = self._place_tail(pp.arm, self.ex.q[pp.arm], pp.T_obj_target, h2, **pp.tail_kw)
@@ -611,6 +648,7 @@ class Skills:
         if not isinstance(cands, list):
             return cands
         cands = cands[:self.n_cands]
+        self._park_if_blocking(cands[0].plan)
         before = self._at_rest(exclude=held)
         idx, passes = self.verify_choose([{c.arm: c.plan.compile()[0]} for c in cands],
                                          [self.judge_pick(c, before) for c in cands], held, kind="pick", label=job.label)
@@ -640,6 +678,8 @@ class Skills:
         if not variants:
             return self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw), None
         variants = variants[:self.n_cands]
+        if nxt_pick is None:
+            self._park_if_blocking(variants[0].plan)
         moving = {nxt_pick.label} if nxt_pick is not None else set()
         before = self._at_rest(exclude=set(held_other) | {job.label})
         cands, judges = [], []
@@ -721,7 +761,7 @@ class Skills:
                     return fail(pp.status, job.arm, f"pick {job.label}: {pp.note}")
                 before = self.world.obj(job.label).pos.copy()
                 try:
-                    self.parallel([pp.plan], name=f"pick {job.label}")
+                    pp = self.execute_pick(pp, job.method, **job.pick_kw)
                 except (BudgetExceeded, EpisodeEnded) as e:
                     return fail("step_budget" if isinstance(e, BudgetExceeded) else "ended", job.arm, str(e))
                 r = self._record(self.verify_pick(pp, before))
@@ -779,13 +819,15 @@ class Skills:
                 continue
             side_pick, other_list = None, None
             if (nxt is not None and nxt.arm == other and self.held[other] is None and nxt.prefetch
-                    and not job.exclusive):
+                    and not job.exclusive and self.refine is None):
                 pn = plan_pick_job(nxt)
                 if isinstance(pn, PickPlan) and pn.arm == other and self.clear_of(pl.plan, pn.plan):
                     side_pick = (pn, self.world.obj(nxt.label).pos.copy())
                     other_list = pn.plan.compile()[0]
+            ref = next((l for l in ign if l in self.world.objects), None)
             r = self._record(self.run_place(pl, job.tol_xy, job.tol_tilt, other=other_list,
-                                            other_arm=other if other_list else None, tol_z=job.tol_z))
+                                            other_arm=other if other_list else None, tol_z=job.tol_z,
+                                            retarget=lambda job=job: job.target(self), ref_label=ref))
             if r.status in ("step_budget", "ended"):
                 return fail(r.status, job.arm, r.note)
             if side_pick is not None:
@@ -797,6 +839,12 @@ class Skills:
         return self._record(SkillResult(True, "jobs", "ok", self.ex.steps_used - n0))
 
     # ------------------------------------------------------------------ parallel
+    def _park_if_blocking(self, plan: ArmPlan, min_dist: float = 0.12) -> None:
+        other = "right" if plan.arm == "left" else "left"
+        if self.held.get(other) is None and not self.clear_of(
+                plan, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
+            self.ex.run({other: self.plan_home(other)}, name=f"park {other}")
+
     def clear_of(self, a: ArmPlan, b: ArmPlan, min_dist: float = 0.12) -> bool:
         """Do two arm plans keep the arms >= ``min_dist`` apart (sampled chain, palm, finger points)
         at every step of their merged schedule (both planned paths, not just current poses)?"""
