@@ -59,7 +59,7 @@ record carries the deployed commit.
 | insert_key | parked: lift + return (68ea915) | 6 settled | 0/6 | 0.15 | 57 / 62 (300) | skills2 0.15; PyRUA 0, best 48. The in-air handover, v1-v5: 0/31, 0.00-0.15 |
 | store_tools_in_toolbox | v2 (000e5be) | 100000-09 | 0/10 | 0.20 | 302 / 409 (900) | skills2 0.25 on 5; PyRUA 15.5 |
 | fill_pen_holder | v2 (ab3bf5d) | 100000-04 | 0/5 | 0.08 | 492 / 554 (1100) | skills2 0.08; PyRUA 23.5 |
-| organize_table | v2 (68ea915) | the 8 settled of 100000-08 | 0/8 | ~0.43 | 264 / 332 (1000) | skills2 0.35; PyRUA 25 |
+| organize_table | v2 (68ea915) | the 8 settled of 100000-08 | 0/8 | 0.41 | 264 / 332 (1000) | skills2 0.35; PyRUA 25 |
 | make_kong | regression check (0b6250f) | 100000-04 | 5/5 | 1.00 | 379 (600) | skills2 25/25 |
 | stack_blocks_by_language | v1, new rule (68ea915) | 100000-09 | **10/10** | 1.00 | 185 / 221 (550) | PyRUA 100 |
 | play_stacking_toy | v1, new skill (68ea915) | first of 100000-05 | 0/1 | 0.30 | 801 (1200) | PyRUA 78.2 |
