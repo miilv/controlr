@@ -13,6 +13,7 @@ centre at 25 cm, tilted 25 deg (arms occlude the head view). A move the planner 
 retried with less tilt, then skipped (``move.ok`` false: the frame then equals the previous one).
 
     scripts/simlab/rdpy.sh -m dojo.simlab.make_d0 --task stack_blocks --n 25
+    scripts/simlab/d0_ext.sh 10 make_kong ...     (pre-settled records, frames 0-1 -> ~/dojo-data/d0_ext)
 """
 
 from __future__ import annotations
@@ -71,7 +72,7 @@ def tilted(home_quat, deg: float) -> np.ndarray:
     return best[1]
 
 
-def scripted_moves(run: RoboDojoRunner, d: Path, seed: int) -> list[dict]:
+def scripted_moves(run: RoboDojoRunner, d: Path, seed: int, max_frame: int = 3) -> list[dict]:
     from dojo.simlab.motion import Mover, quat_to_mat
     rng = random.Random(seed)
     mv = Mover(run)
@@ -101,11 +102,17 @@ def scripted_moves(run: RoboDojoRunner, d: Path, seed: int) -> list[dict]:
     m1 = try_move("left", left_c[:3], "left_look_at_object")
     log.append(m1)
     save_frame(run, d, 1, m1)
+    if max_frame < 2:
+        (d / "trajectory.json").write_text(json.dumps(mv.traj.to_json()))
+        return log
     used = {m1.get("target_inst")}
     m2 = try_move("right", [o for o in right_c if o["inst_name"] not in used][:3] or right_c[:3],
                   "right_look_at_object")
     log.append(m2)
     save_frame(run, d, 2, m2)
+    if max_frame < 3:
+        (d / "trajectory.json").write_text(json.dumps(mv.traj.to_json()))
+        return log
     cx, cy = rng.uniform(-0.05, 0.05), rng.uniform(-0.15, -0.05)
     tz = TABLE_TOP_Z + 0.25
     tgt = {"left": np.array([cx - 0.09, cy, tz]), "right": np.array([cx + 0.09, cy, tz])}
@@ -128,6 +135,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", default=str(D0))
     ap.add_argument("--physics-only", action="store_true",
                     help="no renderer: states + stage.usd + cameras.json for render_d0_proxy.py")
+    ap.add_argument("--settled", action="store_true",
+                    help="use the stored pre-settled records (<id>.settled.json, ids from --start) instead of "
+                         "generating; LAYOUTS is not written")
+    ap.add_argument("--max-frame", type=int, default=3, choices=(1, 2, 3), help="last frame (moves 1..K)")
+    ap.add_argument("--index-name", default="index.json")
     a = ap.parse_args(argv)
     out = Path(a.out) / a.task
     paths.assert_not_eval(out)
@@ -142,16 +154,23 @@ def main(argv: list[str] | None = None) -> None:
     while made < a.n and seed < a.start + 3 * a.n:
         s, seed = seed, seed + 1
         d = out / str(s)
-        if (d / "frame_3.json").exists():
+        if (d / f"frame_{a.max_frame}.json").exists():
             made += 1
             index.append({"id": s, "status": "ok", "cached": True})
             continue
-        try:
-            lay = generate(a.task, s)
-        except LayoutError as e:
-            index.append({"id": s, "status": f"gen_fail: {e}"})
-            continue
-        (lay_dir / f"{s}.json").write_text(json.dumps(lay, indent=1))
+        if a.settled:
+            sp = lay_dir / f"{s}.settled.json"
+            if not sp.exists():
+                index.append({"id": s, "status": "no settled record"})
+                continue
+            lay = json.loads(sp.read_text())
+        else:
+            try:
+                lay = generate(a.task, s)
+            except LayoutError as e:
+                index.append({"id": s, "status": f"gen_fail: {e}"})
+                continue
+            (lay_dir / f"{s}.json").write_text(json.dumps(lay, indent=1))
         t1 = time.perf_counter()
         info = run.load(lay)
         if not info["stable"]:
@@ -165,7 +184,7 @@ def main(argv: list[str] | None = None) -> None:
             run.export_stage(d / "stage.usd")
             (d / "cameras.json").write_text(json.dumps(run.camera_spec(), indent=1))
         save_frame(run, d, 0, {"name": "initial"})
-        moves = scripted_moves(run, d, s)
+        moves = scripted_moves(run, d, s, a.max_frame)
         made += 1
         index.append({"id": s, "status": "ok", "instruction": info["instruction"][0], "moves_ok":
                       [bool(m["ok"] if isinstance(m["ok"], bool) else all(m["ok"].values())) for m in moves],
@@ -174,8 +193,8 @@ def main(argv: list[str] | None = None) -> None:
                       "total_s": round(time.perf_counter() - t1, 1)})
         print(f"[d0] {a.task} {s}: ok moves={index[-1]['moves_ok']} load={index[-1]['load_s']}s "
               f"total={index[-1]['total_s']}s", flush=True)
-        (out / "index.json").write_text(json.dumps(index, indent=1))
-    (out / "index.json").write_text(json.dumps(index, indent=1))
+        (out / a.index_name).write_text(json.dumps(index, indent=1))
+    (out / a.index_name).write_text(json.dumps(index, indent=1))
     print(f"[d0] {a.task}: {made} layouts in {time.perf_counter() - t0:.0f}s", flush=True)
     run.close()
 
