@@ -217,7 +217,13 @@ def plan_demo(run, seed: int) -> tuple[dict | None, dict]:
             return None, {**info, "status": f"no plan: lift aim{i}"}
         if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"over basket1 with aim{i}"):
             return None, {**info, "status": f"no plan: over basket1 with aim{i}"}
+        below_tcp = grasp_z - g["bottom"]                # object bottom under the TCP while carried
+        release_z = b_top + below_tcp + 0.015            # bottom 1.5 cm above the rim: placed, not dropped
+        if release_z < carry_z - 0.01 and not dp.plan_to((*b_xy, release_z), g["yaw"], f"lower aim{i}"):
+            return None, {**info, "status": f"no plan: lower aim{i}"}
         dp.grip(OPEN, steps=40, hold=60)
+        if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"clear basket1 after aim{i}"):
+            return None, {**info, "status": f"no plan: clear basket1 after aim{i}"}
     dp.home()
     data = {"joint_path": dp.segments, "target_label": [f"t{i}" for i in order],
             "aim_label": [f"aim{i}" for i in order], "target_place_tag": [None] * 5,
@@ -237,17 +243,29 @@ def validate(run, layout: dict, n_substeps: int, margin_env_steps: int = 60) -> 
     hold = run.hold_action(0)
     n = math.ceil(n_substeps / 10) + margin_env_steps
     ended_at = None
+    aims = [f"aim{i}" for i in range(5)]
+    z0 = {o["label"]: float(o["pos"][2]) for o in run.objects_gt() if o.get("label") in aims}
+    zmax = dict(z0)
     for k in range(n):
         if run.step(hold)[0]:
             ended_at = k + 1
             break
+        if k % 5 == 0:
+            for o in run.objects_gt():
+                if o.get("label") in zmax and o["pos"] is not None:
+                    zmax[o["label"]] = max(zmax[o["label"]], float(o["pos"][2]))
     rm = env.reward_manager
     in_b = [float(rm.call_func_parser(rm.is_A_in_B(label_A=f"aim{i}", label_B="basket1"), 0)) for i in range(5)]
+    fin = {o["label"]: o["pos"] for o in run.objects_gt() if o.get("label") in aims + ["basket1"]}
+    b1 = np.asarray(fin.get("basket1"), float)
+    final = {lab: {"lifted_cm": round(100 * (zmax[lab] - z0[lab]), 1),
+                   "from_basket1_cm": [round(100 * float(v), 1) for v in np.asarray(fin[lab], float) - b1]}
+             for lab in aims if lab in fin and lab in z0}
     t1 = {o["label"]: np.asarray(o["pos"], float) for o in run.objects_gt() if o.get("label") in t0}
     moved = {lab: round(float(np.linalg.norm(t1[lab] - p)) * 1000, 1) for lab, p in t0.items() if lab in t1}
     unstable = 0 in getattr(env, "unstable_envs", set())
     ok = (not unstable) and all(v >= 0.5 for v in in_b) and max(moved.values(), default=0.0) < 5.0
-    return {"ok": bool(ok), "unstable": bool(unstable), "aim_in_basket1": in_b, "t_moved_mm": moved,
+    return {"ok": bool(ok), "unstable": bool(unstable), "aim_in_basket1": in_b, "t_moved_mm": moved, "aims": final,
             "env_steps": n if ended_at is None else ended_at, "ended_early": ended_at is not None,
             "support_checked": bool(getattr(env, "support_checked", [False])[0])}
 
