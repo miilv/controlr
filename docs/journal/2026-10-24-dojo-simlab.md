@@ -502,3 +502,94 @@ Results:
 ## Look frames v2 (frame_L2): done
 
 123 layouts (identical-to-v1 skipped), 183/200 arm looks within 2 cm / 10°.
+
+## Genuine Isaac 5.1 D0 on isr-lab: done (2026-10-25)
+
+All 150 D0 layouts were replayed on Misha's 4090 with the full 5.1 renderer: 6 tasks x 25 layouts x 4 frames
+x 3 cameras. The output is in `compute3:~/dojo-data/d0_51/` (647 MB), with the same file layout as `d0/`,
+`meta.renderer = isaac-5.1`, and `compare_to_source` in every frame JSON. That field compares against compute3's
+GT (5090, physics-only) for the same frame. It mixes two factors, the machine and the render mode; G2b below
+separates them.
+
+| task | frame 0: objects exactly equal | frame 0 max mm | frame 3 obj mm (med / max) | frame 3 joints max rad |
+|---|---|---|---|---|
+| push_T | 25/25 | 0 | 0 / 0 | 0.0007 |
+| stack_blocks | 25/25 | 0 | 0 / 0 | 0.028 |
+| build_tower | 19/25 | 0.001 | 0 / 0.87 | 0.001 |
+| stack_bowls | 14/25 | 0.0005 | 0 / 0.0005 | 0.001 |
+| pack_objects_into_box_random | 0/25 | 0.005 | 0.0003 / 7.6 | 0.0005 |
+| put_bottles_into_dustbin | 0/25 | 1.43 | 0.023 / 43.7 | 0 |
+
+- Max over all objects, clutter included.
+- The large maxima come from single objects: bottles roll and topple; a pack item gets nudged by an arm. Medians
+  stay at the micrometre level.
+
+## G2b: cross-machine replay under contact (isr-lab 4090 vs compute3 5090)
+
+Setup:
+- The compute3 G2 records (G2a: physics-only, RTX 5090 / i9-14900KF / driver 595) were replayed bit-exactly
+  on isr-lab (RTX 4090 / i9-13900KF / driver 580). Both CPUs are Raptor Lake without AVX-512, and PhysX runs on
+  the CPU in RoboDojo's config.
+- Two modes, both inside one GPU_GO window: the full rendered 5.1 Kit, and physics-only.
+- Each run is the nominal replay plus the 10 G2a perturbations: dx and dy of 0.5 / 1 / 2 / 5 mm, yaw of
+  0.5 / 2 deg. Every replay is compared with compute3's result for the same perturbation.
+- Per-step divergence = max over task objects of the position difference, at every env step (25 Hz).
+- Tool: `g2.py replay --perturb`, driver `scripts/simlab/rerender_isr2.sh`.
+- Results: `compute3:~/dojo-data/simlab/g2b_isr/` (`*_replay_isr4090_{rendered,physics}.json` with
+  `per_step_max_mm`, plus `summary.jsonl` and logs).
+
+| scenario, 4090 mode | steps | first diff (step) | first > 0.01 mm | max mm (deg) | final mm | score 4090 / 5090 | perturbed finals vs 5090, med / max mm | success agree |
+|---|---|---|---|---|---|---|---|---|
+| push, rendered | 117 | 54 | 59 | 0.145 (0.83) | 0.140 | 0 / 0 | 0.019 / 0.284 | 10/10 (all False) |
+| push, physics-only | 117 | 54 | 59 | 0.145 (0.83) | 0.140 | 0 / 0 | 0.019 / 0.284 | 10/10 |
+| pick_place, rendered | 131 | 43 | never | 0.0007 | 0.0005 | 0 / 0 | 0.002 / 0.062 | 10/10 (all False) |
+| pick_place, physics-only | 131 | 43 | never | 0.0005 | 0.0004 | 0 / 0 | 0.006 / 0.127 | 10/10 |
+| stack, rendered | 264 | 51 | 93 | 0.884 (0.28) | 0.845 | 1 / 1 | 0.213 / 0.790 | 10/10 (all True) |
+| stack, physics-only | 264 | 51 | 91 | 0.662 (1.76) | 0.640 | 1 / 1 | 0.466 / 0.884 | 10/10 |
+
+Same 4090, rendered vs physics-only:
+- push: bitwise equal;
+- pick_place: first diff at step 43, max 0.0008 mm;
+- stack: first diff at step 51, max 1.31 mm, final 1.27 mm.
+
+Findings:
+- **Divergence starts at contact onset.** Before it, replays are bitwise equal across machines and across render modes.
+  - push: the first diff (step 54) is the first step the T moves.
+  - pick_place / stack: the first diff (43 / 51) is when the fingers close on the block, a few steps before
+    it moves more than 0.1 mm (53 / 60).
+  - The difference stays below 0.001 mm through the grasp. It grows only during sliding contact
+    (push, from step 59) or place and release (stack, from step 90).
+- **The machine and the render mode are separate sources of the same size.** On stack, rendered vs
+  physics-only on ONE 4090 (1.31 mm) is larger than 4090 vs 5090 (0.66-0.88 mm).
+  - Why rendering changes the physics is unknown. It changes the scene (cameras, render products), which
+    may change PhysX's contact ordering. Not investigated.
+  - Push, without a grasp, is unaffected by render mode.
+- **The noise floor is at or below a 0.5-1 mm initial-pose error.** Spread of the 5090 perturbations around the
+  nominal: push 0.3-19 mm, pick_place 0.07-4.4 mm, stack 0.1-4.5 mm. Cross-machine noise does not move a
+  perturbed replay across push's bifurcation: dx 1 mm lands 19 mm from the nominal on both machines, and the
+  two agree to 0.28 mm.
+- Success agrees 33/33. Only stack is informative (11 True); push and pick_place are False everywhere.
+  pick_place's script places a block, which does not complete stack_blocks.
+- **Implication for the twin and the eval.** A physics-only twin cannot bitwise-predict the rendered 5.1
+  eval, even on the same GPU. Expect about 1 mm of drift after a grasp-place. `Twin.verify` with
+  `perturb.pos_mm` >= 1 already covers this. A plan that only works inside a 1 mm window is fragile anyway.
+
+## Generators v8 / v9 and full coverage (in progress)
+
+- **v8**:
+  - `label_prefix` gives `prefix[gi]_{ii}` for a multi-entry prefix list, else `prefix_{k}`.
+  - `linked_count` + `linked_label_prefix` + `dynamic_layout`: x_symmetric_line, x = c + (i - (n-1)/2) * spacing,
+    with one y per row. The source group is pre-selected and the mats are placed first.
+  - hierarchical entries without `group` are their own group.
+  - These rules RAISED in v7.
+- **v9**: relative placement on an object draws among multi-range xlim / ylim. v8 used only the first range,
+  so match_and_pick_from_conveyor failed with "no room for a child of conveyor": its three conveyor slots
+  are three x ranges.
+  - A config scan finds no other task with a multi-range placement relative to a non-Table object, so
+    records generated under v8 are unaffected.
+- **Assets** for every remaining task, plain and `_random`: +<= 7.3 GB, install 37 GB (cap 45). compute3's `/` is
+  at 99% (26 GB free, shared machine).
+- `scripts/simlab/coverage.sh 25 <tasks...>` runs per task, in the lead's priority order: generate (CPU,
+  `SIMLAB_GPU=0`), then pre-settle (GPU lock, then a 90 s yield).
+  - Pre-settle runs 7-10 s per layout. Most of a task's wall time is waiting for the lock.
+  - So far: cover_blocks 25/25, swap_T 25/25.
