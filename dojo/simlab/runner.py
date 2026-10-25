@@ -314,24 +314,30 @@ def dev_demo(task: str, key: int) -> dict:
             "target_place_tag": [None] * 5, "_simlab_no_demo": True}
 
 
-def install_dev_demo_loader(task: str) -> bool:
-    """Route the task module's ``load_pkl`` for Traj demos to ``dev_demo`` (see there)."""
-    base = task.removesuffix("_random")
-    if base not in DEMO_TASKS:
-        return False
-    mods = [m for n, m in list(sys.modules.items()) if n.endswith(f"tasks.{base}") and hasattr(m, "load_pkl")]
-    if not mods:
-        raise RuntimeError(f"{task}: task module with load_pkl not found")
-    for m in mods:
-        orig = m.load_pkl
+def _routed_load_pkl(orig):
+    def load_pkl(path):
+        p = Path(str(path))
+        if paths.eval_asset_violation(p) and "Traj" in p.parts:
+            task = next((t for t in DEMO_TASKS if t in p.parts), None)
+            if task is None:
+                raise PermissionError(f"eval-paired demo with no dev route: {p}")
+            return dev_demo(task, int(p.stem))
+        return orig(path)
+    load_pkl._simlab_routed = True
+    return load_pkl
 
-        def load_pkl(path, _orig=orig):
-            parts = Path(str(path)).parts
-            if "Traj" in parts and base in parts:
-                return dev_demo(base, int(Path(str(path)).stem))
-            return _orig(path)
-        m.load_pkl = load_pkl
-    return True
+
+def install_dev_demo_loader() -> int:
+    """Route RoboDojo's ``load_pkl`` of eval-paired Traj demos to ``dev_demo``: the shared
+    ``utils.load_file.load_pkl`` (task modules imported later bind it) and any task module already imported."""
+    import utils.load_file as lf
+    n = 0
+    for m in [lf] + [m for name, m in list(sys.modules.items()) if ".tasks." in name or name.startswith("tasks.")]:
+        f = getattr(m, "load_pkl", None)
+        if f is not None and not getattr(f, "_simlab_routed", False):
+            m.load_pkl = _routed_load_pkl(f)
+            n += 1
+    return n
 
 
 class RoboDojoRunner:
@@ -342,6 +348,7 @@ class RoboDojoRunner:
                  physics_only: bool = False):
         self.task = task
         self.physics_only = physics_only
+        paths.install_asset_firewall()                 # no Eval_Layout, no eval-paired Traj, from here on
         self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only)
         # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
         wd = Path(workdir or (paths.DATA / "simlab" / "work"))
@@ -354,8 +361,9 @@ class RoboDojoRunner:
         ee.WsModelClient = _NoPolicyClient
         self.env_cfg = build_env_cfg(task, num_envs=num_envs, device_id=device_id, need_planner=need_planner)
         self.num_envs = int(self.env_cfg.sim.scene.num_envs)
+        install_dev_demo_loader()                      # imitate_sorting_sequence: our demos, never the eval ones
         self.env = ee.create_eval_env(self.env_cfg, self.app)
-        self.dev_demo = install_dev_demo_loader(task)   # imitate_sorting_sequence: never the eval-paired demos
+        install_dev_demo_loader()                      # task modules imported by create_eval_env
         if not video_dir:
             self.env._stream_vision = lambda env_idx, frame: None     # no mp4 streaming on get_obs
         self.layouts: list[dict] = [{} for _ in range(self.num_envs)]

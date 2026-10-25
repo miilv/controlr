@@ -59,7 +59,11 @@ def main() -> None:
     for p in (str(rd), str(rd / "XPolicyLab")):
         if p not in sys.path:
             sys.path.insert(0, p)
+    from dojo.simlab import paths
+    from dojo.simlab.runner import install_dev_demo_loader
+    paths.install_asset_firewall()
     patch_seed_manager(os.environ["SIMLAB_DEV_LAYOUTS"])
+    install_dev_demo_loader()                     # before main.py imports the task modules
     main_py = rd / "src" / "eval_client" / "main.py"
     sys.argv = [str(main_py)] + sys.argv[1:]
     runpy.run_path(str(main_py), run_name="__main__")
