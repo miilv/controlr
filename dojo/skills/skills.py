@@ -447,7 +447,7 @@ class Skills:
                    descend_rad: float = SLOW, open_g: float = OPEN, settle: int = 2, open_steps: int = OPEN_STEPS,
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
-                   pre_settle: int = 1, grip_only=(), servo: bool = False):
+                   pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -455,7 +455,8 @@ class Skills:
         its lock) before letting go; ``release=False`` keeps holding (no open, no retreat).
         ``pre_settle``: still steps at the pre-place pose before the in-hand re-measure (precision).
         ``servo``: run the tail closed loop on the measured object (``_servo_tail``: sag-corrected descent,
-        depth check, probing around the target, then turn / release); planned like the open-loop tail."""
+        depth check, probing around the target, then turn / release); planned like the open-loop tail;
+        ``servo_ref``: the receptacle (default the first ``grip_only`` object) whose top sets the hover."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -474,7 +475,7 @@ class Skills:
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
-                       servo=bool(servo))
+                       servo=bool(servo), servo_ref=servo_ref)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -515,7 +516,7 @@ class Skills:
 
     def _place_tail(self, arm, q_pre, T_obj, h: "Held", release_gap, retreat, ignore, descend_rad, open_g, settle,
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
-                    grip_only=(), servo: bool = False) -> ArmPlan | str:
+                    grip_only=(), servo: bool = False, servo_ref: str | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
@@ -655,7 +656,8 @@ class Skills:
         arm, label, kw = pp.arm, pp.label, pp.tail_kw
         T_obj = np.asarray(pp.T_obj_target, float)
         rate = float(kw.get("descend_rad", SLOW))
-        rec = next((l for l in (kw.get("grip_only") or ()) if l in self.world.objects), None)
+        rec = next((l for l in ((kw.get("servo_ref"),) + tuple(kw.get("grip_only") or ())) if l in self.world.objects),
+                   None)
         o = self.world.obj(label)
         hover = 0.004
         if rec is not None and o.asset.mesh is not None:
@@ -771,6 +773,11 @@ class Skills:
                 tg.append(Tk)
         ign = tuple(set(ignore) | {label})
         screened, notes = [], []
+        # irregular objects (tools, figurines): how well a grasp holds while the hand turns counts in the ranking
+        # (twin: pliers squeezed across their diverging handles, a hammer across its head, slid out; the
+        # handle at the centre of mass holds)
+        irregular = held_box(obj, np.eye(4)).points is not None or G.com_off(obj) > 0.008
+        hq_cache: dict = {}
         for a in arms:
             q0 = (q_start or {}).get(a, self.ex.q[a])
             if callable(grasps):
@@ -805,7 +812,14 @@ class Skills:
                     if not ok:
                         continue
                     n_p += 1
-                    screened.append((g.score + 0.05 * (ti // max(1, yaw_sym)), a, g, T_obj))
+                    if irregular:
+                        k = id(g)
+                        if k not in hq_cache:
+                            hq_cache[k] = G.hold_quality(obj, g.T)
+                        hq = 0.5 * hq_cache[k]
+                    else:
+                        hq = 0.0
+                    screened.append((g.score + hq + 0.05 * (ti // max(1, yaw_sym)), a, g, T_obj))
             notes.append(f"{a}: {n_g}/{len(cands)} grasps reachable, {n_p} grasp-place pairs")
         screened.sort(key=lambda x: x[0])
         for _, a, g, T_obj in screened[:max_full]:
