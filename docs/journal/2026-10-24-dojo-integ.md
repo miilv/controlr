@@ -333,3 +333,13 @@ found-but-misplaced object), 100024 (never found even by the search), 100017 (pl
 100012 (divergence: after a good post-place wrist measurement the head check re-estimated by LABEL and moved the block
 252 mm onto another block; fixed: wrist-measured objects are not re-checked, re-estimates are matched by position,
 jumps > 150 mm ignored; deployed for the tower runs). Code: chunk a on the pre-seam code, b–e on the seam refactor.
+
+### 6.2 Next: lost-object search, tower trio, ledger
+
+- `RuntimeConfig.search_lost` (default off): a pick-hover refine with iou < 0.2 and no usable `suggest_xy` raises
+  `LostObject`; the supervisor runs a wrist search seeded at the belief pose (then perception's regions), refits by
+  refine (10 cm), writes the pose into the belief and re-plans; once per object per episode. Measured first on the
+  5 failing closed2 layouts (`B_stack_bundle_closed3_fail5`), after the tower base / closed arms (lead's order).
+- Code versions: tower base3 / closed arms run from `~/dojo-integ` (cb0ac66 merge); the fail5 check, mode-A tower and
+  the leftovers from a second checkout `~/dojo-integ-next` via the queue's `--repo` (so no barrier is needed).
+- Ledger: robot-harness PR #6 (tier `proxy` for proxy-eval results, per the lead).
