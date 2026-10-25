@@ -539,7 +539,7 @@ def test_refine_hook_updates_the_belief_only_when_accepted():
         def __init__(self, ok):
             self.ok, self.calls = ok, []
 
-        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None):
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None):
             self.calls.append([o["label"] for o in objects])
             p = list(objects[0]["pos"])
             p[0] += 0.005
@@ -579,7 +579,7 @@ def test_refine_runs_at_every_hover_in_an_episode():
                                          "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}}
                                         for o in env.objects]}}
 
-        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None):
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None):
             assert arm in ("left", "right")
             self.n += 1
             o = objects[0]

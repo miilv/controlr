@@ -61,6 +61,7 @@ class RuntimeConfig:
     reserve: int = 30                   # env steps kept for finish()
     refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
     refine_max_shift_m: float = 0.03
+    refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -327,13 +328,21 @@ class RuntimePolicy:
         others = [x for x in prov.belief.movable() if x.label != label]
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [o] + others]
-        res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm)
+        idv = prov.task if (self.cfg.refine_identity and kind == "pick") else None
+        res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv)
         r = res.get(label) or {}
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
               **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why")}}
         self.report["events"].append(ev)
         if not r.get("ok"):
             return None
+        new_id = r.get("obj_id")
+        if new_id and new_id != o.asset.key and r.get("identity_ok"):
+            typ, cat, idx = new_id.split("/")
+            from .estimate import _asset
+            ev.update({"identity_from": o.asset.key, "identity_to": new_id})
+            o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
+            prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
         o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
         return {label: (o.pos.copy(), o.quat.copy())}

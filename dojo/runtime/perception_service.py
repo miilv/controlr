@@ -98,11 +98,14 @@ class PerceptionClient:
         return json.loads(self._call({"op": "look_poses", "target": [float(v) for v in target], "arm": arm,
                                       "variants": variants})["poses"])
 
-    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None) -> dict:
+    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None,
+               identity_vocabulary: str | None = None) -> dict:
         """Pre-contact refine of ``objects[0]`` from ``arm``'s wrist view (perception's ``refine()``); the other
-        objects are occluders. Returns {label: {"ok", "pos", "quat", "shift_mm", ...}}."""
+        objects are occluders. With ``identity_vocabulary``: ``refine_identity`` over that vocabulary's distinct
+        shapes. Returns {label: {"ok", "pos", "quat", "shift_mm", "obj_id", "identity_ok", ...}}."""
         return json.loads(self._call({"op": "refine", "frame": encode_frame(frame), "objects": objects, "fold": int(fold),
-                                      "max_shift_m": float(max_shift_m), "arm": arm})["refine"])
+                                      "max_shift_m": float(max_shift_m), "arm": arm,
+                                      "identity_vocabulary": identity_vocabulary})["refine"])
 
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
@@ -171,7 +174,30 @@ class _Perception:
                         "T_world_cam_cv": np.round(T, 5).tolist()})
         return out
 
-    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None) -> dict:
+    def shape_classes(self, vocabulary: str, current: str) -> list[str]:
+        """One catalogue key per distinct shape (sorted bbox extents within 3 mm) among the vocabulary's
+        candidates; ``current`` represents its own class."""
+        from dojo.perception import inverse_layout as IL
+        keys = []
+        for g in IL.label_groups(vocabulary):
+            keys += [k for k in g["candidates"] if k not in keys]
+        if current not in keys:
+            keys.insert(0, current)
+
+        def ext(k):
+            sm = IL.shape_models(k)[0]
+            V = sm.asset.V
+            return np.sort(V.max(0) - V.min(0))
+        reps, seen = [current], [ext(current)]
+        for k in keys:
+            e = ext(k)
+            if all(np.abs(e - x).max() > 0.003 for x in seen):
+                reps.append(k)
+                seen.append(e)
+        return reps
+
+    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None,
+               identity_vocabulary: str | None = None) -> dict:
         """``objects[0]`` re-measured from ``arm``'s wrist frame by perception's ``dojo.perception.refine.refine``
         (accepted when its ``ok`` holds and the shift stays below ``max_shift_m``); without that module, the
         local fit below on every view."""
@@ -183,8 +209,13 @@ class _Perception:
             f = decode_frame(frame)
             o = objects[0]
             others = [(x["key"], list(x["pos"]) + list(x["quat"])) for x in objects[1:]]
-            r = p_refine(o["key"], f["images"][f"cam_{arm}_wrist"], f["state"], list(o["pos"]) + list(o["quat"]),
-                         arm=arm, others=others or None)
+            img, prior = f["images"][f"cam_{arm}_wrist"], list(o["pos"]) + list(o["quat"])
+            cands = self.shape_classes(identity_vocabulary, o["key"]) if identity_vocabulary else [o["key"]]
+            if len(cands) > 1:
+                from dojo.perception.refine import refine_identity
+                r = refine_identity(cands, img, f["state"], prior, arm=arm, others=others or None)
+            else:
+                r = p_refine(o["key"], img, f["state"], prior, arm=arm, others=others or None)
             pose = np.asarray(r.get("pose"), float) if r.get("pose") is not None else None
             shift = None if pose is None else float(np.hypot(*(pose[:2] - np.asarray(o["pos"][:2], float))))
             ok = bool(r.get("ok")) and pose is not None and shift <= max_shift_m
@@ -193,6 +224,8 @@ class _Perception:
                                  "shift_mm": None if shift is None else round(shift * 1000, 1),
                                  "iou": r.get("iou"), "visible_frac": r.get("visible_frac"),
                                  "turned_deg": r.get("turned_deg"), "time_s": r.get("time_s"), "via": "perception.refine",
+                                 "obj_id": r.get("obj_id", o["key"]), "identity_ok": r.get("identity_ok"),
+                                 "identity_margin": r.get("identity_margin"), "n_candidates": len(cands),
                                  "why": None if ok else ("perception not ok" if not r.get("ok") else "shift too large")}}
         return self._refine_local(frame, objects, fold, max_shift_m)
 
@@ -343,7 +376,7 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         conn.send({"ok": True, "poses": json.dumps(poses, default=_default)})
                     elif op == "refine":
                         ref = p.refine(req["frame"], req["objects"], int(req.get("fold", 0)),
-                                       float(req.get("max_shift_m", 0.03)), req.get("arm"))
+                                       float(req.get("max_shift_m", 0.03)), req.get("arm"), req.get("identity_vocabulary"))
                         conn.send({"ok": True, "refine": json.dumps(ref, default=_default)})
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
