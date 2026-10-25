@@ -460,3 +460,13 @@ def test_unconfirmed_divergence_does_not_replan():
     kinds = [e["kind"] for e in rep["events"]]
     assert "divergence_unconfirmed" in kinds and "divergence_replan" not in kinds, kinds
     assert _stacked(env) and rep["result"]["ok"]
+
+
+def test_report_gap_table_pairs_layouts():
+    from dojo.runtime.report import gap_table
+    rows = [{"task": "t", "verify": "off", "mode": "gt", "layout_id": i, "score": 1.0, "success": True} for i in (1, 2)]
+    rows += [{"task": "t", "verify": "off", "mode": "perception", "layout_id": 1, "score": 0.15, "success": False,
+              "category": "perception_gross"},
+             {"task": "t", "verify": "off", "mode": "perception", "layout_id": 3, "score": 1.0, "success": True}]
+    t = gap_table(rows)
+    assert "| t | off | 1 | 100.0 | 15.0 | +85.0 | 1 | 0 | 1: perception_gross |" in t

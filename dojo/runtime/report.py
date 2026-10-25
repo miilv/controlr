@@ -77,12 +77,33 @@ def perception_table(rows: list[dict]) -> str:
     return s
 
 
+def gap_table(rows: list[dict]) -> str:
+    """Mode gt vs mode perception on the SAME layouts (per task x verify): the perception gap."""
+    out = ["| task | verify | paired n | A score | B score | gap | A succ | B succ | lost in B (layout: B category) |",
+           "|---|---|---|---|---|---|---|---|---|"]
+    keys = sorted({(r["task"], r["verify"]) for r in rows})
+    for task, ver in keys:
+        A = {r["layout_id"]: r for r in rows if (r["task"], r["verify"], r["mode"]) == (task, ver, "gt")}
+        B = {r["layout_id"]: r for r in rows if (r["task"], r["verify"], r["mode"]) == (task, ver, "perception")}
+        ids = sorted(set(A) & set(B))
+        if not ids:
+            continue
+        sa = np.mean([A[i]["score"] for i in ids]) * 100
+        sb = np.mean([B[i]["score"] for i in ids]) * 100
+        lost = [f"{i}: {B[i].get('category')}" for i in ids if A[i]["success"] and not B[i]["success"]]
+        out.append(f"| {task} | {ver} | {len(ids)} | {sa:.1f} | {sb:.1f} | {sa - sb:+.1f} | "
+                   f"{sum(A[i]['success'] for i in ids)} | {sum(B[i]['success'] for i in ids)} | {'; '.join(lost) or '-'} |")
+    return "\n".join(out)
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("dirs", nargs="+")
     a = ap.parse_args(argv)
     rows = load(a.dirs)
     print(table(rows))
+    print()
+    print(gap_table(rows))
     print()
     print(failures(rows))
     for mode in ("perception",):
