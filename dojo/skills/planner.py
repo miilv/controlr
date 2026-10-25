@@ -162,6 +162,26 @@ def plan(instruction: str, world: WorldState) -> Plan:
     buttons = [o for o in objs if "button" in o.category.lower()]
     flat_geo = [o for o in objs if o.obj_type == "Geometry" and float(o.asset.extents[2]) < 0.012]
 
+    # --- a turn-based game on a board's cells (support frames "cell...") against a scripted opponent: two kinds of
+    # identical pieces, ours are the kind nearer the robot
+    if re.search(r"tic.?tac.?toe|\bplay\b", text):
+        for b in objs:
+            if sum(1 for t in b.asset.support if t.lower().startswith("cell")) < 4:
+                continue
+            groups: dict = {}
+            for o in objs:
+                if o.obj_type == "Rigid" and not o.clutter and o.label != b.label:
+                    groups.setdefault(o.asset.key, []).append(o)
+            groups = {k: v for k, v in groups.items() if len(v) >= 2}
+            if len(groups) < 2:
+                continue
+            robot = np.array([0.0, -0.45])
+            order = sorted(groups, key=lambda k: float(np.mean([np.linalg.norm(o.pos[:2] - robot) for o in groups[k]])))
+            own = [o.label for o in sorted(groups[order[0]], key=lambda o: o.pos[0])]
+            opp = [o.label for k in order[1:] for o in groups[k]]
+            return Plan("play_board_game", {"board": b.label, "pieces": own, "opponent_pieces": opp},
+                        f"{len(own)} own pieces vs {len(opp)} on {b.label}'s cells")
+
     # --- mahjong: declare a kong with the tiles (the most numerous rigid category)
     if "kong" in text:
         rig = [c for c, v in cats.items() if sum(o.obj_type == "Rigid" for o in v) >= 4]
