@@ -815,6 +815,13 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
         # ``grasps.lift_hold`` (lever + contact depth; twin: a key's 5 mm shaft slid out at the lift or in the
         # carry 6/6, its bow lifted 13/13)
         hq_g = {id(pp): G.lift_hold(o, pp.grasp.T) for pp in picks}
+        depth = {}
+        for pp in picks:
+            G.pad_contact(o, pp.grasp.T)
+            depth[id(pp)] = float(getattr(G.pad_contact, "depth", 0.0))
+        # a pick that must survive the turn into the handover pose needs >= 6 mm of contact along the approach
+        # (twin: the key's 5 mm shaft / tooth grasps slid out at the lift or on the carry, 13/13)
+        picks = [pp for pp in picks if depth[id(pp)] >= 0.006] or picks
         picks = sorted(picks, key=lambda pp: hq_g[id(pp)] + pp.steps / 100.0)
         seen, uniq = set(), []
         for pp in picks:                                     # one per grasp (the two finger flips plan alike)
@@ -838,7 +845,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                             continue
                         opts = _take_options(sk, label, T_H, g_arm, rg.q, g_hold, t_arm, w.home_q[t_arm], tg,
                                              ignore, place_kw, max_n=1, cache=caches.setdefault(t_arm, {}),
-                                             min_d=0.005)
+                                             min_d=0.004)
                         for op in opts:
                             gt = op["gt"]
                             held_t = Held(label, op["T_to"], held_box(o, op["T_to"]), gt)
@@ -935,7 +942,7 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
         g_hold = gap_to_grip(h["pick"].grasp.width)
         opts = _take_options(sk, label, o.T, g_arm, sk.ex.q[g_arm], g_hold, t_arm, sk.ex.q[t_arm], [h["target"]],
                              (h["place"].transfer_kw or {}).get("ignore", ()), getattr(h["place"], "tail_kw", None),
-                             first=gt_obj, max_n=6, min_d=0.003)     # planned with 5 mm, the object moves a little
+                             first=gt_obj, max_n=6, min_d=0.003)     # planned with 4 mm, the object moves a little
         take = None
         for op in opts:
             g2 = op["gt"]
