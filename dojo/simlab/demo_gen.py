@@ -167,7 +167,7 @@ class DemoPlanner:
             if not len(p):
                 continue
             if slow > 1.0:                               # carrying: less acceleration, less slip
-                n = int(round(len(p) * slow))
+                n = round(len(p) * slow)
                 src, dst = np.linspace(0.0, 1.0, len(p)), np.linspace(0.0, 1.0, n)
                 p = np.stack([np.interp(dst, src, p[:, j]) for j in range(p.shape[1])], axis=1)
                 v = np.stack([np.interp(dst, src, v[:, j]) for j in range(v.shape[1])], axis=1) / slow
