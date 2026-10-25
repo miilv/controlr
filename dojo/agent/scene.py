@@ -36,10 +36,19 @@ KIND = {"Rigid": "movable", "Geometry": "fixed", "Articulation": "articulated", 
 def _caption(objects_root: str, key: str) -> dict:
     p = Path(objects_root) / key / "description.json"
     try:
-        cap = json.loads(p.read_text()).get("caption") or {}
+        d = json.loads(p.read_text())
     except (OSError, ValueError):
         return {}
-    return {k: (v[0] if isinstance(v, list) and v else v) for k, v in cap.items() if k in ("name", "color", "material")}
+    cap = d.get("caption") or {}
+    out = {k: (v[0] if isinstance(v, list) and v else v) for k, v in cap.items() if k in ("name", "color", "material")}
+    names = cap.get("name")
+    out["names"] = [str(n) for n in names] if isinstance(names, list) else ([str(names)] if names else [])
+    if not out["names"]:            # no caption: a short description is the asset's name ("yellow ice axe")
+        desc = d.get("description")
+        desc = [desc] if isinstance(desc, str) else (desc if isinstance(desc, list) else [])
+        if 0 < len(desc) <= 4 and all(isinstance(x, str) and len(x) <= 40 for x in desc):
+            out["names"] = list(desc)
+    return out
 
 
 def catalog_roots() -> list[Path]:
@@ -124,11 +133,15 @@ def _fmt(v: float, nd: int = 2) -> str:
     return f"{v:+.{nd}f}"
 
 
-def object_line(o: ObjectState, oid: str, objects_root=None) -> str:
+def object_line(o: ObjectState, oid: str, objects_root=None, all_names: bool = True) -> str:
+    """``all_names``: every caption name of the asset (``"hoe" / "ice axe" / ...``; instructions name objects by
+    any of their descriptions), else only the first one when it differs from the category (scene v1)."""
     ext = np.asarray(o.asset.extents, float) * 100
     cap = caption(o, objects_root)
     desc = []
-    if cap.get("name") and cap["name"] != o.category.replace("_", " "):
+    if all_names and cap.get("names"):
+        desc.append("names " + " / ".join(f'"{n}"' for n in cap["names"][:4]))
+    elif cap.get("name") and cap["name"] != o.category.replace("_", " "):
         desc.append(f'"{cap["name"]}"')
     if cap.get("color"):
         desc.append(f"colour {cap['color']}")
@@ -149,13 +162,14 @@ def _natural(s: str):
 
 
 def scene_text(world: WorldState, ids: SceneIds | None = None, objects_root=None, step_lim: int | None = None,
-               max_objects: int = 60) -> tuple[str, SceneIds]:
+               max_objects: int = 60, version: int = 2) -> tuple[str, SceneIds]:
+    """``version`` 1: the first caption name only (Phase 1 run 1); 2: all caption names."""
     ids = ids or assign_ids(world)
     lines = ["SCENE (world frame, metres: x to the robot's right, y away from the robot, z up; table top z 0.765;"
              " arm bases left (-0.30, -0.45), right (+0.30, -0.45); positions are object centres, yaw/tilt in deg)"]
     objs = sorted(visible_objects(world), key=lambda o: _natural(ids.oid(o.label) or o.label))
     for o in objs[:max_objects]:
-        lines.append(object_line(o, ids.oid(o.label), objects_root))
+        lines.append(object_line(o, ids.oid(o.label), objects_root, all_names=version >= 2))
     if len(objs) > max_objects:
         lines.append(f"- ... {len(objs) - max_objects} more objects not listed")
     arms = []

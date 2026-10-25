@@ -111,16 +111,35 @@ available; the object's pose in the estimate is updated after each contact)
   episode. Call it exactly once, at the end."""
 
 
-def skills_section() -> str:
+def skill_docs(version: int = 1) -> dict[str, tuple[str, str]]:
+    """v2+: documents the arguments the deployed library actually has (``stack_objects(ordered=...)`` only when
+    the library's signature has it), so the manual never promises an argument the code lacks."""
+    docs = dict(SKILL_DOCS)
+    if version >= 2:
+        import inspect
+
+        from dojo.skills import library
+        if "ordered" in inspect.signature(library.stack_objects).parameters:
+            docs["stack_objects"] = (
+                "stack_objects(objects: [id, ...], nest: bool = false, ordered: bool = false)",
+                "Stacks the listed objects into ONE pile on top of one another; with nest=true nests concave objects "
+                "(bowls, cups) inside one another instead. With ordered=false the skill chooses the base, the order "
+                "and the site; with ordered=true objects[0] is the base and the others go on in list order. Only "
+                "for piles on the table (not onto pegs, poles or fixtures).")
+    return docs
+
+
+def skills_section(version: int = 1) -> str:
     out = []
-    for name, (sig, doc) in SKILL_DOCS.items():
+    for name, (sig, doc) in skill_docs(version).items():
         out.append(f"- `{sig}`\n  {doc}")
     return "\n".join(out)
 
 
 def render_manual(version: str = "manual_v1") -> str:
     tpl = (PROMPTS / f"{version}.md").read_text()
-    return tpl.replace("{skills}", skills_section()).replace("{api}", API_DOC)
+    v = int(version.rsplit("_v", 1)[1]) if "_v" in version else 1
+    return tpl.replace("{skills}", skills_section(v)).replace("{api}", API_DOC)
 
 
 __all__ = ["SKILL_DOCS", "API_DOC", "render_manual", "skills_section"]

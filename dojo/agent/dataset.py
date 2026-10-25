@@ -141,7 +141,7 @@ def pick_layouts(task: str, roots: list[Path], n: int) -> list[Path]:
     return []
 
 
-def build_item(task: str, lay_path: Path, rd_root: Path, assets: AssetDB) -> dict:
+def build_item(task: str, lay_path: Path, rd_root: Path, assets: AssetDB, scene_version: int = 2) -> dict:
     lay = json.loads(lay_path.read_text())
     src = (rd_root / "task" / "RoboDojo" / "tasks" / f"{task}.py").read_text()
     lid = int(lay_path.name.split(".")[0])
@@ -151,7 +151,7 @@ def build_item(task: str, lay_path: Path, rd_root: Path, assets: AssetDB) -> dic
     from dojo.skills.world import ArmState
     arms = {a: ArmState(q=np.zeros(6), flange=np.zeros(7), gripper=1.0) for a in ("left", "right")}
     world = WorldState(task="", instruction=instr, objects=objs, arms=arms, home_q={}, step=0, step_lim=lim)
-    text, ids = scene_text(world, objects_root=assets.root)
+    text, ids = scene_text(world, objects_root=assets.root, version=scene_version)
     try:
         p = planner.plan(instr, world)
         plan = {"skill": p.skill, "args": ids.map_args(_jsonable(p.args), to="id"), "why": p.why}
@@ -183,6 +183,7 @@ def main(argv=None) -> None:
     ap.add_argument("--per-config", type=int, default=3)
     ap.add_argument("--tasks", nargs="*", default=None)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--scene-version", type=int, default=2, help="1: first caption name only (run 1); 2: all names")
     a = ap.parse_args(argv)
     rd_root = Path(os.environ.get("RD_ROOT", str(Path(os.environ.get("RD_HOME", "~/dojo-robodojo")).expanduser() / "RoboDojo")))
     tasks = a.tasks or sorted(p.stem for p in (rd_root / "task" / "RoboDojo" / "config").glob("*.yml")
@@ -199,7 +200,7 @@ def main(argv=None) -> None:
                 print(f"[dataset] {task}: no layouts", flush=True)
                 continue
             for lp in files:
-                it = build_item(task, lp, rd_root, assets)
+                it = build_item(task, lp, rd_root, assets, a.scene_version)
                 f.write(json.dumps(it) + "\n")
                 n += 1
                 print(f"[dataset] {it['id']} {it['planner']['skill']}: {it['instruction'][:90]}", flush=True)

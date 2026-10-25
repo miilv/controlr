@@ -9,6 +9,9 @@ scene id plays which role; the agent never sees them.
   ``has`` (the list contains these ids and nothing outside ``allowed``).
 * ``kind: code``: no single call does it (the planner's answer, if any, is recorded as ``planner_wrong``).
   ``plan`` is the gold plan; ``need`` = ids the answer's ``objects`` / plan must name (grounding of the target).
+  ``alt``: skill answers that are ALSO right (a documented skill does the whole goal; added after review of the
+  first run where the manual's own wording makes the skill a valid reading: insert_tubes -> fill_container,
+  whose doc names tubes; arrange_largest_number -> arrange with the right digit -> mat mapping).
 
 Where the rule-based planner's output disagrees with these rules it is wrong against the checker, not the rule
 (e.g. ``stack_objects`` does not keep an order, so it cannot do stack_blocks_by_language).
@@ -130,8 +133,12 @@ def _gold(t: str, it: dict) -> dict:
         return _code("1. pick the set square (triangular prism); 2. push the three blocks with its long edge into one "
                      "straight row without lifting them; 3. finish (200 steps only).")
     if t == "arrange_largest_number":
-        return _code("1. read each digit tile; 2. sort descending; 3. place the largest on the leftmost pad mat, "
-                     "and so on, upright and readable; bank after each; 4. finish.")
+        g = _code("1. read each digit tile; 2. sort descending; 3. place the largest on the leftmost pad mat, "
+                  "and so on, upright and readable; bank after each; 4. finish.")
+        digits = sorted(_ids(it, _lab("digit")), key=lambda i: -(it["objects"][i]["idx"] % 10))
+        mats = sorted(_ids(it, _lab("mat_")), key=lambda i: int(it["objects"][i]["label"].split("_")[1]))
+        g["alt"] = [_skill("arrange", steps={"op": "set", "value": [["place", d, m] for d, m in zip(digits, mats)]})]
+        return g
     if t == "fasten_screws":
         return _code("1. pair each screw with the nut of the same colour; 2. pick each screw/nut and screw it on "
                      "(insert, then turn); 3. finish.")
@@ -148,8 +155,11 @@ def _gold(t: str, it: dict) -> dict:
         return _code("1. hold still and watch the scripted arm put objects into its basket; record the order; "
                      "2. put the matching objects into our basket in the same order; 3. finish.")
     if t == "insert_tubes":
-        return _code("1. insert each of the three tubes upright into a free rack hole, one by one, banking after "
-                     "each (insert_into per tube); 2. finish.")
+        g = _code("1. insert each of the three tubes upright into a free rack hole, one by one, banking after "
+                  "each (insert_into per tube); 2. finish.")
+        g["alt"] = [_skill("fill_container", objects={"op": "set", "value": _ids(it, _lab("tube"))},
+                           container={"op": "eq", "value": _id(it, "slot")})]
+        return g
     if t == "match_and_pick_from_conveyor":
         return _code("1. watch the conveyor and record the first object; 2. wait until the same object comes "
                      "again; 3. pick it and lift it >= 10 cm.")

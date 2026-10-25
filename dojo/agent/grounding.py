@@ -36,8 +36,8 @@ ARMS = {
 MAX_TOKENS = 16000
 
 
-def system_prompt() -> str:
-    return render_manual("manual_v1") + (Path(__file__).with_name("prompts") / "grounding_v1.md").read_text()
+def system_prompt(manual: str = "manual_v1", appendix: str = "grounding_v1") -> str:
+    return render_manual(manual) + (Path(__file__).with_name("prompts") / f"{appendix}.md").read_text()
 
 
 def user_turn(item: dict, run_id: str) -> str:
@@ -64,7 +64,8 @@ def parse_answer(text: str) -> dict | None:
 
 # ------------------------------------------------------------------ run
 
-def run(dataset: Path, arms: list[str], out: Path, limit: int | None, workers: int, only: list[str] | None) -> None:
+def run(dataset: Path, arms: list[str], out: Path, limit: int | None, workers: int, only: list[str] | None,
+        manual: str = "manual_v1", appendix: str = "grounding_v1") -> None:
     items = [json.loads(l) for l in dataset.read_text().splitlines() if l.strip()]
     if only:
         items = [it for it in items if it["task"] in only or it["id"] in only]
@@ -78,9 +79,10 @@ def run(dataset: Path, arms: list[str], out: Path, limit: int | None, workers: i
             r = json.loads(l)
             if r.get("call", {}).get("ok"):
                 done.add((r["arm"], r["id"]))
-    sys_text = system_prompt()
+    sys_text = system_prompt(manual, appendix)
     (out / "system_prompt.md").write_text(sys_text)
     meta = {"dataset": str(dataset), "arms": {a: ARMS[a] for a in arms}, "n_items": len(items),
+            "manual": manual, "appendix": appendix,
             "max_tokens": MAX_TOKENS, "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     (out / "meta.json").write_text(json.dumps(meta, indent=1))
     lock = threading.Lock()
@@ -153,11 +155,19 @@ def judge(answer: dict | None, gold: dict) -> dict:
             out["args_ok"] = False
         out["full_ok"] = bool(out["args_ok"])
     else:
-        out["decision_ok"] = is_code
+        alt_ok = skill is not None and any(skill == g["skill"] and all(_cmp(sp, (a.get("args") or {}).get(k))
+                                                                     for k, sp in g["args"].items())
+                                           for g in gold.get("alt", []))
+        out["decision_ok"] = is_code or alt_ok
+        out["alt_ok"] = alt_ok
         if gold.get("need"):
             named = set(map(str, a.get("objects") or [])) | set(re.findall(r"[a-z_]+_\d+", str(a.get("plan", ""))))
             out["need_ok"] = set(gold["need"]) <= named
-        out["full_ok"] = is_code and out["need_ok"] is not False
+        out["full_ok"] = (is_code and out["need_ok"] is not False) or alt_ok
+    # what a wrong answer costs: a skill call that will not satisfy the checker fails the task (harmful); code
+    # where one skill would do costs calls but can still succeed (missed)
+    out["harmful"] = skill is not None and not out["full_ok"]
+    out["missed_skill"] = gold["kind"] == "skill" and is_code
     if is_code and gold.get("home"):
         out["plan_home"] = bool(re.search(r"\bhome|finish|reset", str(a.get("plan", "")), re.I))
     return out
@@ -216,7 +226,9 @@ def score(run_dir: Path, dataset: Path | None, md: bool) -> dict:
                "args": _pct([j["args_ok"] for j in sk]),
                "args_given_skill": _pct([j["args_ok"] for j in sk if j["skill_ok"]]),
                "code_recall": _pct([j["decision_ok"] for j in co]),
-               "false_skill": _pct([j["answer_kind"] == "skill" for j in co]),
+               "false_skill": _pct([j["answer_kind"] == "skill" and not j.get("alt_ok") for j in co]),
+               "harmful": _pct([j["harmful"] for j in js]),
+               "missed_skill": _pct([j["missed_skill"] for j in sk]),
                "target_grounding": _pct([j["need_ok"] for j in co]),
                "plan_home": _pct([j.get("plan_home") for j in co]),
                "parse_fail": sum(not j["parsed"] for j in js),
@@ -239,17 +251,17 @@ def score(run_dir: Path, dataset: Path | None, md: bool) -> dict:
 
 def to_markdown(res: dict) -> str:
     f = lambda p: "–" if p[1] == 0 else f"{p[0]:.0f}% ({p[1]})"  # noqa: E731
-    lines = ["| arm | full correct | decision | skill choice | args (all skill items) | args, right skill | "
-             "code recall | wrong skill on code items | target grounding | lat p50 / p90 s | in / cached / out / "
-             "reasoning tokens (mean) | calls (err) |",
+    lines = ["| arm | full correct | harmful (skill that fails the checker) | decision | skill choice | args, right "
+             "skill | missed skill (code instead) | wrong skill on code items | target grounding | lat p50 / p90 s | "
+             "in / cached / out / reasoning tokens (mean) | calls (err) |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in res["rows"]:
         lat = f"{r['lat_p50']:.1f} / {r['lat_p90']:.1f}" if "lat_p50" in r else "–"
         tok = ("–" if r["prompt_tokens_mean"] is None else
                f"{r['prompt_tokens_mean']:.0f} / {r['cached_tokens_mean'] or 0:.0f} / {r['completion_tokens_mean']:.0f} / "
                f"{r['reasoning_tokens_mean'] or 0:.0f}")
-        lines.append(f"| {r['arm']} | {f(r['full'])} | {f(r['decision'])} | {f(r['skill_choice'])} | {f(r['args'])} | "
-                     f"{f(r['args_given_skill'])} | {f(r['code_recall'])} | {f(r['false_skill'])} | "
+        lines.append(f"| {r['arm']} | {f(r['full'])} | {f(r['harmful'])} | {f(r['decision'])} | {f(r['skill_choice'])} | "
+                     f"{f(r['args_given_skill'])} | {f(r['missed_skill'])} | {f(r['false_skill'])} | "
                      f"{f(r['target_grounding'])} | {lat} | {tok} | {r['calls']} ({r['errors']}) |")
     return "\n".join(lines)
 
@@ -264,13 +276,15 @@ def main(argv=None) -> None:
     r.add_argument("--limit", type=int, default=None)
     r.add_argument("--workers", type=int, default=6)
     r.add_argument("--only", nargs="*", default=None, help="task names or item ids")
+    r.add_argument("--manual", default="manual_v1")
+    r.add_argument("--appendix", default="grounding_v1")
     s = sub.add_parser("score")
     s.add_argument("run_dir")
     s.add_argument("--dataset", default=None)
     s.add_argument("--md", action="store_true")
     a = ap.parse_args(argv)
     if a.cmd == "run":
-        run(Path(a.dataset), a.arms.split(","), Path(a.out), a.limit, a.workers, a.only)
+        run(Path(a.dataset), a.arms.split(","), Path(a.out), a.limit, a.workers, a.only, a.manual, a.appendix)
     else:
         score(Path(a.run_dir), Path(a.dataset) if a.dataset else None, a.md)
 
