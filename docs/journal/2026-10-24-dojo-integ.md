@@ -312,3 +312,24 @@ uses the same cap. closed2 = closed + search by wrist refine + 70 mm cap.
   checkout's `integ_eval.sh`. `queue.sh restart` replaces the runner after a deploy (waits for the in-flight job).
 - Code versions in the closed2 stack arm: chunk a on the pre-seam code, chunks b–e on the seam refactor
   (behaviour-preserving; same tests). No other change in between.
+
+### 6.1 closed2: search by wrist refine + 70 mm cap (stack_blocks, 25 settled layouts, mode B + verify)
+
+| arm | success | score | steps med / max | wall s / ep | failures |
+|---|---|---|---|---|---|
+| control (refine off) | 16/25 | 68.2 | 177 / 209 | 34 | perception_gross 9 |
+| closed | 17/25 | 71.6 | 222 / 335 | 53 | perception_gross 7, verify_reject 1 |
+| **closed2** | **20/25** | **81.8** | 234 / 401 | 54 | perception_gross 3, verify_reject 1, divergence 1 |
+| mode A (GT) | 25/25 | 100.0 | 169 / 219 | 32 | – |
+
+Paired: closed2 vs control rescued 7 (100002, 100004, 100005, 100015, 100018, 100021, 100022), lost 3 (100012, 100017,
+100024); vs closed rescued 5, lost 2. **Gap to mode A: 18.2 points** (was 28.4). Estimate at planning: xy median
+1.2 mm, p90 11.7 mm. perception scored the pick refines of closed2 a–d against GT: ok 36/38 with refined error median
+0.3 mm (p90 1.3, max 5.8; prior median 1.2, p90 9.5, max 26); the 2 not-ok (iou 0.07, priors 27 / 37 mm off) were
+right to reject.
+
+Remaining: 100014 / 100020 (block 31–37 mm off, pick refine not ok, `suggest_xy` = prior: needs a search look for a
+found-but-misplaced object), 100024 (never found even by the search), 100017 (place 20 mm off, no candidate passed),
+100012 (divergence: after a good post-place wrist measurement the head check re-estimated by LABEL and moved the block
+252 mm onto another block; fixed: wrist-measured objects are not re-checked, re-estimates are matched by position,
+jumps > 150 mm ignored; deployed for the tower runs). Code: chunk a on the pre-seam code, b–e on the seam refactor.
