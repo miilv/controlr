@@ -22,6 +22,8 @@ Shared machine conventions:
 - compute3 (5090 32 GB, shared with others): `~/dojo-*`.
 - Before starting Isaac or a large model, check free VRAM with `nvidia-smi`; never touch other people's processes;
   stop what you started.
+- A new GPU box: `scripts/bootstrap_gpu_box.sh HOST` sets all of this up (compute3's layout, `~/dojo-gpu.lock`,
+  `~/dojo-env.sh`); see [../docs/RUNBOOK-new-gpu-box.md](../docs/RUNBOOK-new-gpu-box.md).
 
 ## simlab quick reference
 

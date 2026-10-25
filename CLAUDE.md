@@ -38,6 +38,7 @@ uv run controlr run -c configs/mock.yaml --fake-llm   # dry run of the whole pip
 scripts/deploy.sh
 scripts/remote_run.sh run -c configs/sim_waffle_yaw.yaml --seeds 0,1,2,3
 ssh compute3 'cd ~/controlr && CONTROLR_ISAAC=1 .venv/bin/python -m pytest -q tests/'   # ~20 min
+scripts/bootstrap_gpu_box.sh HOST [--dry-run]   # a new GPU box for the dojo streams (docs/RUNBOOK-new-gpu-box.md)
 
 # analysis
 uv run controlr report runs/<run_dir> [--csv out.csv]

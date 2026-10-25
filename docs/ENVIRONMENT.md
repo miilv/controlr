@@ -26,6 +26,10 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `BENCH` | the GPU box of a bridge run (`scripts/dojo/bridge_episode.sh`, `python -m dojo.bridge.driver --bench`) | robot-harness's install dir; the strict server's socket is `$BENCH/run/<id>.sock` (default isr-lab's `/home/anywherevla/data2/bench`; [BRIDGE-RUNBOOK.md](BRIDGE-RUNBOOK.md)) |
 | `ROBOT_START` | same | robot-harness start script for the strict server with `joint_steps` (default `$BENCH/bin/robot-start-j2`) |
 | `BRIDGE_LOCK_WAIT_S` | same | how long `bridge_episode.sh` waits for `~/dojo-gpu.lock` (`DOJO_GPU_LOCK`; default 3600 s) |
+| `BOOT_DATA_DIRS` / `BOOT_CATALOG_DIRS` | local (`scripts/bootstrap_gpu_box.sh`) | optional: which dirs the data / catalog relays copy from compute3 (space-separated, relative to the homes); default = the full set ([RUNBOOK-new-gpu-box](RUNBOOK-new-gpu-box.md)) |
+| `ASSETS_PINS` | same | optional: another RoboDojo Asset list than `scripts/infra/pins/robodojo_assets.txt` (partial installs, tests) |
+| `BOX_DRIVER_OK` / `PREFLIGHT_NET` | same (preflight) | driver majors accepted for Isaac Sim 5.1 rendering (default `570 580`); `PREFLIGHT_NET=0` skips the network probes (unit tests) |
+| `DOJO_REPLAY_TRAJ` | a 5.1 box (`dev_eval.sh --policy dojo_replay`) | trajectory JSON the XPolicyLab policy `dojo_replay` replays (bootstrap smoke) |
 
 ## Machines
 
@@ -36,6 +40,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `compute2` (`isr-lab-4`, root) | Ubuntu 22.04, RTX 4090 24 GB, 32 cores, 62 GB RAM | RoboDojo (its own Isaac Sim 5.1 pip install in `/root/controlr-robodojo`, [ROBODOJO.md](ROBODOJO.md)) | shared lab machine (other teams' docker images and a `vlm-api` service run there); only `/root/controlr*` |
 | SO-101 rig (`sp@192.168.1.22`, LAN; reached via `ssh mac`) | Ubuntu 24.04 laptop, i7-1370P, no NVIDIA GPU; SO-101 follower on `/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0` (LeRobot id `follower_v1`), wrist camera `/dev/v4l/by-id/usb-WebCamera_WebCamera_2502131600-video-index0`; LeRobot 0.4.2 in conda env `lerobot` | `scripts/so101_server.sh` from `~/controlr-so101` ([SO101.md](SO101.md)); controlr runs elsewhere (the rig cannot reach the router) | the owner's personal machine: only `~/controlr-so101` and `~/.so101_authkey`; no installs; another agent (Codex) may use the arm — one serial client at a time |
 | `nuc` | NUC at the real rig (PHANTOM deployment) | future real-UR3 backend | don't touch without a task |
+| new GPU boxes (RTX 4090, RTX 5090) | set up by `scripts/bootstrap_gpu_box.sh HOST` ([RUNBOOK-new-gpu-box](RUNBOOK-new-gpu-box.md)) | dojo streams: RoboDojo 5.1 (rendering with driver 570/580), perception, twin | compute3's conventions (`~/dojo-*`, `~/dojo-gpu.lock`, `source ~/dojo-env.sh`); add the host here once it is known |
 
 ## Paths
 

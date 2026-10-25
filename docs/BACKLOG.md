@@ -95,6 +95,15 @@
 - [ ] **CI for Isaac tests** — a self-hosted runner on compute3 or a nightly run; manual for now.
 - [ ] **Skill `.claude/skills/run-experiment`**: the EXPERIMENTS.md protocol as a skill (config → budget → run → report → videos → index).
 
+- [ ] **First real run of `scripts/bootstrap_gpu_box.sh`** on the new 4090 / 5090: record the per-step wall times and smoke
+  results in the journal, and add the hosts to ENVIRONMENT.md. Isaac Sim 5.1 RTX on a 5090 with driver 580 has never been
+  tried: if `smoke_render` segfaults, the box is `--role physics` (RUNBOOK-new-gpu-box §6).
+- [ ] **5.1-rendering boxes and the 6.0-proxy calibration:** `integ_eval.sh` defaults to `bg_folds` / `color_calib.json`
+  (fitted on the 6.0 proxy); on a box that renders genuine 5.1 frames it should take `bg_folds_51` / `color_calib_51.json`.
+- [ ] **One default for RD_HOME / DOJO_DATA:** `rdpy.sh`, `dev_eval.sh` and `dojo/simlab/paths.py` default to compute2's
+  `/root/controlr-robodojo`, `/root/dojo-data`, while `proxy_eval.sh` / `integ_eval.sh` use `~/dojo-*`. New boxes need
+  `source ~/dojo-env.sh` (or the `/root/controlr-robodojo` link as root) until the defaults agree.
+
 ## P3 — next directions
 
 - [x] ~~**RoboDojo:** wrap controlr as an XPolicyLab policy server~~ — done: `controlr robodojo-serve` + the shim, both arms ([ROBODOJO.md](ROBODOJO.md)).

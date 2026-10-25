@@ -143,6 +143,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **`pkill -f <pattern>` over ssh kills the ssh session's own shell** (its command line contains
   the pattern). Find PIDs with `pgrep -af`, then `kill <pid>`; a client killed without `close()`
   leaves its Isaac server running — kill that PID too.
+- **Shell under `set -eo pipefail`** (all our step scripts): `cmd | grep -q x` fails when grep exits early (the writer
+  gets SIGPIPE), and `find | xargs grep -l` returns 123 when some file does NOT match — both kill a `set -e` step on
+  the good path. Count with `grep -c`, or turn pipefail off in that one substitution. `find -size -1k` matches only
+  EMPTY files (sizes round up to whole KiB): use bytes (`-size -400c`). Test steps for real (the bootstrap's ssh shim
+  runs them in a sandbox HOME, journal 2026-10-25-dojo-infra), not only as dry runs.
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
 
