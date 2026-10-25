@@ -287,6 +287,53 @@ def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_typ
     return env_cfg
 
 
+DEMO_TASKS = ("imitate_sorting_sequence",)
+
+
+def dev_demo(task: str, key: int) -> dict:
+    """The support-arm demonstration for OUR layout ``key`` (seed, or seed * 100 + env when envs share one).
+
+    RoboDojo reads it from ``Assets/Traj/<bench>/<task>/<eval_seed>/<seed>.pkl``: files paired with the EVAL
+    layouts (``target_label`` is the order the policy must reproduce). We never read those. A dev demo
+    comes from ``DATA/simlab/traj/<task>/<seed>.pkl`` (same format), else a no-demo stub: labels in a
+    seed-fixed order and an empty trajectory. The support arm then stays home, so RoboDojo's post-demo check
+    flags the env unstable as soon as an episode steps. That is fine for pre-settling.
+    """
+    import pickle
+    import random as _random
+    seed = key // 100 if key >= 100 * paths.SEED_BASE else key
+    if seed < paths.SEED_BASE:
+        raise RuntimeError(f"{task}: seed {seed} is not a dev seed; eval-paired demos are off limits")
+    f = paths.DATA / "simlab" / "traj" / task / f"{seed}.pkl"
+    if f.exists():
+        with open(f, "rb") as fh:
+            return pickle.load(fh)
+    order = list(range(5))
+    _random.Random(seed).shuffle(order)
+    return {"joint_path": [], "target_label": [f"t{i}" for i in order], "aim_label": [f"aim{i}" for i in order],
+            "target_place_tag": [None] * 5, "_simlab_no_demo": True}
+
+
+def install_dev_demo_loader(task: str) -> bool:
+    """Route the task module's ``load_pkl`` for Traj demos to ``dev_demo`` (see there)."""
+    base = task.removesuffix("_random")
+    if base not in DEMO_TASKS:
+        return False
+    mods = [m for n, m in list(sys.modules.items()) if n.endswith(f"tasks.{base}") and hasattr(m, "load_pkl")]
+    if not mods:
+        raise RuntimeError(f"{task}: task module with load_pkl not found")
+    for m in mods:
+        orig = m.load_pkl
+
+        def load_pkl(path, _orig=orig):
+            parts = Path(str(path)).parts
+            if "Traj" in parts and base in parts:
+                return dev_demo(base, int(Path(str(path)).stem))
+            return _orig(path)
+        m.load_pkl = load_pkl
+    return True
+
+
 class RoboDojoRunner:
     """One RoboDojo task env (``num_envs`` parallel copies) driven from our layout records."""
 
@@ -308,6 +355,7 @@ class RoboDojoRunner:
         self.env_cfg = build_env_cfg(task, num_envs=num_envs, device_id=device_id, need_planner=need_planner)
         self.num_envs = int(self.env_cfg.sim.scene.num_envs)
         self.env = ee.create_eval_env(self.env_cfg, self.app)
+        self.dev_demo = install_dev_demo_loader(task)   # imitate_sorting_sequence: never the eval-paired demos
         if not video_dir:
             self.env._stream_vision = lambda env_idx, frame: None     # no mp4 streaming on get_obs
         self.layouts: list[dict] = [{} for _ in range(self.num_envs)]
