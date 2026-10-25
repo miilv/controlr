@@ -562,3 +562,39 @@ def test_refine_hook_updates_the_belief_only_when_accepted():
         else:
             assert out is None and x1 == x0
         assert pol.report["events"][-1]["kind"] == "refine"
+
+
+def test_refine_runs_at_every_hover_in_an_episode():
+    """Mode perception + refine: skills calls the hook at each pick / place hover; accepted re-fits move the
+    belief (here: the fake perception corrects a 6 mm initial error), the stack still completes."""
+    env = _env()
+
+    class RefinePerception:
+        def __init__(self):
+            self.n = 0
+
+        def estimate(self, frames, vocabulary, fold):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": [o["pos"][0] + 0.006, o["pos"][1], o["pos"][2]],
+                                         "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}}
+                                        for o in env.objects]}}
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03):
+            self.n += 1
+            o = objects[0]
+            true = next(r for r in env.objects if r["label"] == o["label"])
+            return {o["label"]: {"ok": True, "pos": list(true["pos"]), "quat": list(true["quat"]), "shift_mm": 6.0}}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"prec": 1.0, "n_vis": 500, "n_px": 600}} for o in objects}
+
+        def look_plan(self, *a, **k):
+            return []
+
+    pc = RefinePerception()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    kinds = [(e.get("for"), e.get("ok")) for e in rep["events"] if e["kind"] == "refine"]
+    assert ("pick", True) in kinds and len(kinds) >= 3, kinds
+    assert _stacked(env)
