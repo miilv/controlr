@@ -114,3 +114,30 @@ def test_runtime_policy_without_program_is_unchanged():
     env = _env()
     rep = run_episode(RuntimePolicy(RuntimeConfig(mode="gt", verify="off"), assets=FakeAssets()), FakeEpisode(env), "gt")
     assert rep["error"] is None and _stacked(env)
+
+
+def test_place_over_encloses_without_collision(tmp_path):
+    """A cup put upside down over a block: place(..., over=[block]) skips the block's collision check."""
+    from dojo.skills.env import KinematicEnv
+
+    def model(messages):
+        n = sum(1 for m in messages if m["role"] == "assistant")
+        if n == 0:
+            return ("```python\ns = robo.scene()\nb = s['block_0']\nr = robo.pick('cup_0', arm='left')\nprint(r)\n"
+                    "r2 = robo.place('left', (b.center[0], b.center[1], 0.765), over=['block_0'])\nprint(r2)\n```")
+        return "```python\nfinish()\n```"
+    rows = [{"label": "blk", "category": "block", "category_idx": 1, "pos": (-0.15, -0.12, 0.78), "quat": [1, 0, 0, 0],
+             "half": [0.0125] * 3},
+            {"label": "cup", "category": "cup", "category_idx": 1, "pos": (-0.25, -0.22, 0.80), "quat": [1, 0, 0, 0],
+             "half": [0.035, 0.035, 0.035]}]
+    env = KinematicEnv(rows, step_lim=600, instruction="Cover the block with the cup.")
+    pol = AgentPolicy(RuntimeConfig(mode="gt", verify="off"), agent_cfg=AgentConfig(model="fake", max_calls=3),
+                      client=FakeLLM(model), assets=FakeAssets(), log_root=tmp_path)
+    rep = run_episode(pol, FakeEpisode(env), "gt")
+    assert rep["error"] is None, rep["error"]
+    cells = [json.loads(l) for l in next(tmp_path.glob("*/cells.jsonl")).read_text().splitlines()]
+    # planned and executed (no collision refusal); the kinematic env drops the released cup onto the block's top
+    # (it does not know cups are hollow), so only xy is checked here
+    assert cells[0]["receipts"][1].startswith("place: Result(") and "collision" not in cells[0]["receipts"][1]
+    cup = next(o for o in env.objects if o["label"] == "cup")
+    assert np.linalg.norm(np.asarray(cup["pos"][:2]) - np.array([-0.15, -0.12])) < 0.01
