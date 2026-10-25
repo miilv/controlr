@@ -2256,3 +2256,7 @@ SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into"
           "insert_into": insert_into, "place_in_slots": place_in_slots,
           "fill_container": fill_container, "arrange": arrange, "stack_on_pegs": stack_on_pegs,
           "slots_and_press": slots_and_press, "hang_on_hooks": hang_on_hooks}
+
+from dojo.skills import precision as _precision  # noqa: E402  (skills-5; imports this module)
+
+SKILLS.update(_precision.SKILLS)

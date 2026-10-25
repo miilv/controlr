@@ -154,6 +154,28 @@ def _joint_tags(o) -> list[str]:
     return out
 
 
+def strike_points(o) -> list[str]:
+    """An instrument's numbered strike targets: passive functional tags like ``hit_3`` / ``key_3`` / ``note_3``."""
+    tags = [t for t in (o.asset.functional or {}) if re.fullmatch(r"(hit|strike|key|note|beat)[_-]?\d+", t.lower())]
+    return sorted(tags, key=lambda t: int(re.search(r"\d+$", t).group()))
+
+
+def order_points(o, tags: list[str], text: str) -> list[str]:
+    """Order target tags as the words say: "left to right" = world +x (the robot's left arm is at -x), "right to
+    left" the reverse, "front to back" / "back to front" along world y; otherwise their own numbering."""
+    from dojo.skills.precision import frame_points_w
+    pos = {t: (frame_points_w(o, t).mean(0) if len(frame_points_w(o, t)) else o.pos) for t in tags}
+    if re.search(r"left\s+to\s+(the\s+)?right", text):
+        return sorted(tags, key=lambda t: float(pos[t][0]))
+    if re.search(r"right\s+to\s+(the\s+)?left", text):
+        return sorted(tags, key=lambda t: -float(pos[t][0]))
+    if re.search(r"front\s+to\s+(the\s+)?back", text):
+        return sorted(tags, key=lambda t: float(pos[t][1]))
+    if re.search(r"back\s+to\s+(the\s+)?front", text):
+        return sorted(tags, key=lambda t: -float(pos[t][1]))
+    return list(tags)
+
+
 def plan(instruction: str, world: WorldState) -> Plan:
     text = (instruction or "").lower()
     cats = _by_category(world)
@@ -169,6 +191,18 @@ def plan(instruction: str, world: WorldState) -> Plan:
             c = max(rig, key=lambda c: len(cats[c]))
             return Plan("declare_kong", {"tiles": [o.label for o in cats[c] if o.obj_type == "Rigid"]},
                         f"{len(cats[c])} {c} tiles")
+
+    # --- strike an instrument's numbered target points with a tool, in the order the words give
+    if re.search(r"\b(strike|hit|tap|beat|play)\b", text):
+        tools = [o for o in objs if o.obj_type == "Rigid" and not o.clutter
+                 and any(re.search(r"beat|hit|strike", t.lower()) for t in (o.asset.active_functional or {}))]
+        for ins in objs:
+            pts = strike_points(ins)
+            if len(pts) >= 2 and tools:
+                tool = next((t for t in tools if t.category.lower() in named), tools[0])
+                return Plan("strike_in_order", {"tool": tool.label, "instrument": ins.label,
+                                                "points": order_points(ins, pts, text)},
+                            f"{len(pts)} points of {ins.label} with {tool.label}")
 
     # --- pieces onto pegs: identical pieces form a group; the bigger group goes on the taller peg
     if re.search(r"\bpegs?\b|\bpoles?\b", text):
