@@ -43,3 +43,8 @@ moved; the estimator uses the achieved pose (FK on the observed joints), so all 
 The look macro is the fix for flips and most of the shoe problem; the box regression is the view-robustness
 issue (next: gate extra-frame views by how much of the object they actually see).
 Pitfall: simlab writes `frame_L1.json` before the PNGs — the eval now requires the PNGs (`look_used`).
+- Visibility gate for extra-frame views (≥ 60 % of the object's silhouette known): pack + look box 0.76 →
+  0.80, hammer 0.84 → 0.88, toothbrush 0.80 → 0.72, car/shoe unchanged: neutral at n = 25 (one object per
+  0.04). Kept as the principled choice.
+- Pending: `--look` on push_T, put_bottles, stack_blocks, stack_bowls once simlab's renders land
+  (`~/dojo-perception-data/l1_ready.sh` reports completeness).
