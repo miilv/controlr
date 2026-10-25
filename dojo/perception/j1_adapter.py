@@ -446,6 +446,7 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
     for o in objects:
         o.setdefault("t_ms", t_ms)
     return {"objects": objects, "regions": regions, "needs_look": needs, "want_match": _want_match(want, objects),
+            "contained": rec.get("_contained", []),
             "task": task, "t_ms": t_ms, "t_estimate_ms": round(1000 * (t_est - t0), 1),
             "unexplained_fg": rec.get("_perception", {}).get("unexplained", []),
             "robot_state": ik, "gl": _gl_mode(), "version": VERSION}

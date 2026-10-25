@@ -741,6 +741,9 @@ def joints_world(key: str, T: np.ndarray) -> list[dict] | None:
     return out or None
 
 
+CONTAINER_CATEGORIES = {"cup", "bowl", "box", "basket", "vase", "drawer", "toolbox", "pen_holder", "plate", "tray"}
+
+
 def _slot_shape(key: str, placement: dict, tag: str | None) -> ShapeModel:
     """The shape a slot label rests in: the fixed-pose shape for a ``zlim`` placement, else the tagged frame."""
     if placement.get("zlim") is not None:
@@ -1609,6 +1612,17 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 stacked.append(lab)
             g["labels"] = [lab for lab in g["labels"] if lab not in stacked]
         groups = [g for g in groups if g["labels"]]
+
+    # ---- labels the config puts inside / on another label's object (pour_balls_into_vase: the balls in the
+    # cup): not searched for (mostly hidden, and they would read as missing); reported as contained
+    task_labels = task_map()[task]["labels"]
+    for g in groups:
+        base = str(g["placement"].get("relative_plane", "Table")).split("/")[0]
+        base_cats = {k.split("/")[1] for k in task_labels.get(base, {}).get("candidates", [])}
+        if base in task_labels and base not in g["labels"] and base_cats & CONTAINER_CATEGORIES:
+            record.setdefault("_contained", []).extend({"label": lab, "in": base} for lab in g["labels"])
+            g["labels"] = []
+    groups = [g for g in groups if g["labels"]]
 
     # ---- fixed-pose geometry (e.g. a ground-standing dustbin): place at the config pose, flagged
     pending = []
