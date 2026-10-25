@@ -84,13 +84,20 @@ class PerceptionClient:
             raise RuntimeError(f"perception service: {res.get('error')}\n{res.get('trace', '')}")
         return res
 
-    def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None) -> dict:
+    def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
+                 fuse_mode: str | None = None) -> dict:
         """One frame: inverse layout. Several: ``look.fuse`` (first frame + later views); ``prior_record`` = the
-        first frame's record (perception's conservative fuse keeps its objects and identities)."""
+        first frame's record (perception's conservative fuse keeps its objects and identities); ``fuse_mode``
+        "full" re-runs the whole estimate with the extra views (finds objects frame 0 missed)."""
         r = self._call({"op": "estimate", "frames": [encode_frame(f) for f in frames], "vocabulary": vocabulary,
-                        "fold": int(fold),
+                        "fold": int(fold), "fuse_mode": fuse_mode,
                         "prior_record": None if prior_record is None else json.dumps(prior_record, default=_default)})
         return json.loads(r["record"])
+
+    def search_regions(self, frame: dict, record: dict, vocabulary: str) -> list[dict]:
+        """Where to look for the record's missing objects: [{"target": xyz, "arm": str|None, "why": str}]."""
+        return json.loads(self._call({"op": "search_regions", "frame": encode_frame(frame), "vocabulary": vocabulary,
+                                      "record": json.dumps(record, default=_default)})["regions"])
 
     def look_plan(self, frame: dict, record: dict, max_looks: int = 2) -> list[dict]:
         return json.loads(self._call({"op": "look_plan", "frame": encode_frame(frame),
@@ -156,7 +163,31 @@ class _Perception:
             kw["color_M"] = self._cal[f"fold{int(fold)}"]
         return EstimatorConfig(use_wrists=True, **kw)
 
-    def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None) -> dict:
+    def search_regions(self, frame: dict, record: dict, vocabulary: str) -> list[dict]:
+        """perception's ``search_regions`` when it exists; else the table regions the home grippers hide from the
+        head camera, then the missing labels' placement-prior region centres (public task config)."""
+        try:
+            from dojo.perception.look import search_regions as p_search
+        except ImportError:
+            p_search = None
+        if p_search is not None:
+            return p_search(decode_frame(frame), record, vocabulary)
+        from dojo.perception import inverse_layout as IL
+        from dojo.perception.look import HIDDEN_UNDER_GRIPPERS
+        out = [{"target": np.round(v, 4).tolist(), "arm": a, "why": "under the home gripper"}
+               for a, v in HIDDEN_UNDER_GRIPPERS.items()]
+        missing = {x.get("label") for x in record.get("_not_found") or []}
+        for g in IL.label_groups(vocabulary):
+            if not missing & set(g.get("labels") or []):
+                continue
+            pr = IL._placement_prior(g)
+            if pr.get("fixed_xy") is not None:
+                out.append({"target": [float(pr["fixed_xy"][0]), float(pr["fixed_xy"][1]), 0.765], "arm": None,
+                            "why": "config pose"})
+        return out
+
+    def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
+                 fuse_mode: str | None = None) -> dict:
         import inspect
 
         from dojo.perception.inverse_layout import estimate
@@ -166,8 +197,11 @@ class _Perception:
             return estimate(fr[0]["images"], fr[0]["state"], vocabulary, fr[0]["instruction"], bgs=self.bgs(fold),
                             cfg=self.cfg(fold))
         kw = {}
-        if prior_record is not None and "prior_record" in inspect.signature(fuse).parameters:
+        params = inspect.signature(fuse).parameters
+        if prior_record is not None and "prior_record" in params:
             kw["prior_record"] = prior_record
+        if fuse_mode and "mode" in params:
+            kw["mode"] = fuse_mode
         return fuse(fr, vocabulary, bgs=self.bgs(fold), cfg=self.cfg(fold), **kw)
 
     def look_plan(self, frame: dict, record: dict, max_looks: int) -> list:
@@ -382,11 +416,14 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         conn.send({"ok": True, "info": stats})
                     elif op == "estimate":
                         pr = json.loads(req["prior_record"]) if req.get("prior_record") else None
-                        rec = p.estimate(req["frames"], req["vocabulary"], int(req.get("fold", 0)), pr)
+                        rec = p.estimate(req["frames"], req["vocabulary"], int(req.get("fold", 0)), pr, req.get("fuse_mode"))
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
                     elif op == "look_plan":
                         plan = p.look_plan(req["frame"], json.loads(req["record"]), int(req.get("max_looks", 2)))
                         conn.send({"ok": True, "plan": json.dumps(plan, default=_default)})
+                    elif op == "search_regions":
+                        regs = p.search_regions(req["frame"], json.loads(req["record"]), req["vocabulary"])
+                        conn.send({"ok": True, "regions": json.dumps(regs, default=_default)})
                     elif op == "look_poses":
                         poses = p.look_poses(req["target"], req["arm"], req.get("variants"))
                         conn.send({"ok": True, "poses": json.dumps(poses, default=_default)})

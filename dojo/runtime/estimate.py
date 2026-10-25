@@ -120,6 +120,35 @@ def merge_looked(rec0: dict, rec1: dict, flagged_labels) -> dict:
     return out
 
 
+def add_found(rec0: dict, rec1: dict, min_sep_m: float = 0.03) -> tuple[dict, list[str]]:
+    """Objects of ``rec1`` (an estimate including a search frame) that are farther than ``min_sep_m`` from every
+    same-category object of ``rec0`` are new finds: they take ``rec0``'s missing labels (``_not_found``) of their
+    category's label group, in order. Returns (merged record, labels found)."""
+    import copy as _copy
+    out = _copy.deepcopy(rec0)
+    missing = [x.get("label") for x in (rec0.get("_not_found") or [])]
+    have = [(c, np.asarray(r["default_pos"], float)) for _t, c, r in iter_records(rec0)]
+    found = []
+    for t, c, r in iter_records(rec1):
+        if not missing:
+            break
+        p = np.asarray(r["default_pos"], float)
+        if any(c == c0 and float(np.linalg.norm(p[:2] - p0[:2])) < min_sep_m for c0, p0 in have):
+            continue
+        cands = [m for m in missing if any(m in (x.get("label"),) and c in str(x.get("candidates")) for x in
+                                           rec0.get("_not_found") or [])] or missing
+        lab = cands[0]
+        new = _copy.deepcopy(r)
+        new["label"] = lab
+        new.setdefault("_perception", {})["found_by_search"] = True
+        out.setdefault(t, {}).setdefault(c, []).append(new)
+        have.append((c, p))
+        missing.remove(lab)
+        found.append(lab)
+    out["_not_found"] = [x for x in (out.get("_not_found") or []) if x.get("label") not in found]
+    return out, found
+
+
 def flagged(record: dict, conf_thr: float = 0.7) -> list[dict]:
     """Records the look macro should look at: ambiguous / occluded / review / confidence < thr, plus not found."""
     out = []

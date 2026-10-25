@@ -303,18 +303,19 @@ class Skills:
 
     def _refine_hover(self, label, arm: str, kind: str, rehover=None) -> None:
         """Refine at the hover; if perception could not fit but saw the object elsewhere (hint), move
-        the hover over the hinted pose and refine once more (max one retry). ``rehover()`` moves the arm
+        the hover over the hinted pose and refine again (up to ``self.max_rehovers`` retries, default 1). ``rehover()`` moves the arm
         (plans from the world, where the hint has been written) and returns whether it moved."""
         hint = self._refine(label, arm, kind)
-        if hint is None or rehover is None or label is None or label not in self.world.objects:
-            return
-        o = self.world.obj(label)
-        o.pos, o.quat = np.asarray(hint[0], float).copy(), np.asarray(hint[1], float).copy()
-        self.log(f"[refine] {kind} {label}: re-hover over the hinted pose {np.round(o.pos, 3).tolist()}")
-        if rehover():
-            self._refine(label, arm, kind)          # second and last look; a further hint is ignored
-        else:
-            self.refresh()
+        for i in range(max(1, int(getattr(self, "max_rehovers", 1)))):
+            if hint is None or rehover is None or label is None or label not in self.world.objects:
+                return
+            o = self.world.obj(label)
+            o.pos, o.quat = np.asarray(hint[0], float).copy(), np.asarray(hint[1], float).copy()
+            self.log(f"[refine] {kind} {label}: re-hover {i + 1} over the hinted pose {np.round(o.pos, 3).tolist()}")
+            if not rehover():
+                self.refresh()
+                return
+            hint = self._refine(label, arm, kind)   # after the last allowed re-hover a further hint is ignored
 
     def _pick_rehover(self, label: str, arm: str, method: str, plan_kw: dict):
         def f() -> bool:

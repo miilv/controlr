@@ -91,6 +91,7 @@ PY
   python3 -c "import json,sys; c0,c1,t0,t1,pk=map(float,sys.argv[1:6]); json.dump({\"mem_peak_gb\": pk/1e9, \"cpu_cores_avg\": (c1-c0)/1e6/(t1-t0), \"wall_s\": t1-t0, \"mode\": sys.argv[6], \"verify\": sys.argv[7]}, open(sys.argv[8], \"w\"), indent=1)" $cpu0 $cpu1 $t0 $t1 $peak "$MODE" "$VERIFY" "$OUT/scope_stats.json"
   cat "$OUT/scope_stats.json"
 ' _ "${args[@]}"
+rm -f "$OUT/stage_current.usd"; rm -rf "$OUT/work"          # scratch (37 MB stage export per job; disk is shared)
 echo "[integ] results: $OUT"
 exec 9>&-
 sleep "${INTEG_YIELD_S:-90}"

@@ -53,6 +53,7 @@ class KinematicBelief:
         self.attached: dict[str, tuple[str, np.ndarray]] = {}
         self.margin = attach_margin
         self.released: list[str] = []          # labels released since the last ``pop_released``
+        self.released_by: dict[str, str] = {}   # label -> arm that released it (last release)
 
     def movable(self):
         return [o for o in self.objects.values() if o.obj_type != "Geometry" and not o.clutter]
@@ -101,6 +102,7 @@ class KinematicBelief:
                 lab, _ = self.attached.pop(a)
                 self._drop(lab)
                 self.released.append(lab)
+                self.released_by[lab] = a
             self.g[a] = g_new
             if a in self.attached:
                 lab, T_rel = self.attached[a]
@@ -148,6 +150,8 @@ class RuntimeProvider:
         self.div_iou, self.div_min_vis = div_iou, div_min_vis
         self.div_prec, self.div_min_px, self.div_min_frac = div_prec, div_min_px, div_min_frac
         self.confirm_mm = confirm_mm
+        self.post_place_refine = False          # set by the policy (RuntimeConfig.post_place)
+        self.post_place_min_mm = 2.0
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
         self.home_q = None
@@ -204,9 +208,42 @@ class RuntimeProvider:
                            "n": self.bridge.n_executed, "step": self.bridge.steps_used}
 
     # ------------------------------------------------------------------ resync
-    def resync(self, obs: dict) -> dict:
-        """Render-compare the predicted state against the frames; on divergence re-estimate and raise."""
+    def post_place(self, obs: dict, released: list[str]) -> list[dict]:
+        """Right after a release the arm is at its retreat pose above the placed object: re-measure that object
+        from the releasing arm's wrist view (perception refine from the predicted pose, stacked height kept) and
+        write the measured pose into the belief, so the place check and the next twin load see where it is."""
+        out = []
+        if self.checker is None or not hasattr(self.checker, "refine"):
+            return out
+        for lab in released:
+            o = self.belief.objects.get(lab)
+            arm = self.belief.released_by.get(lab)
+            if o is None or arm is None:
+                continue
+            others = [x for x in self.belief.movable() if x.label != lab]
+            held = None
+            for a2, (hl, _) in self.belief.attached.items():
+                ho = self.belief.objects[hl]
+                held = (ho.asset.key, [float(v) for v in np.r_[ho.pos, ho.quat]])
+            r = self.checker.refine(obs, o, others, arm, held) or {}
+            ev = {"kind": "post_place", "label": lab, "arm": arm, "step": self.bridge.steps_used,
+                  **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "why")}}
+            if r.get("ok") and (r.get("shift_mm") or 0) >= self.post_place_min_mm:
+                ev["from"] = np.round(o.pos, 4).tolist()
+                o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+                ev["to"] = np.round(o.pos, 4).tolist()
+                self.stats["post_place_moved"] = self.stats.get("post_place_moved", 0) + 1
+            self.stats["post_place"] = self.stats.get("post_place", 0) + 1
+            self.events.append(ev)
+            out.append(ev)
+        return out
+
+    def resync(self, obs: dict, released: list[str] | None = None) -> dict:
+        """Post-place wrist refine of what was just released, then render-compare the predicted state against
+        the frames; on a confirmed divergence re-estimate and raise."""
         self.stats["resync"] += 1
+        if released and self.post_place_refine:
+            self.post_place(obs, released)
         objs = [o for o in self.belief.movable()]
         chk = self.checker.check(obs, objs)
         bad = {}
@@ -273,7 +310,7 @@ class RuntimeProvider:
                     self.belief.objects[l].pos, self.belief.objects[l].quat = o.pos.copy(), o.quat.copy()
         else:
             if released and self.checker is not None and not self.belief.held_labels():
-                self.resync(obs)
+                self.resync(obs, released)
             objects = {k: copy.deepcopy(v) for k, v in self.belief.objects.items()}
         if not self.belief.held_labels() and not any((holding or {}).values()):
             self._checkpoint(st)

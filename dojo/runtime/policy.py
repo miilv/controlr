@@ -67,6 +67,11 @@ class RuntimeConfig:
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
+    max_rehovers: int = 1               # re-hover + refine retries per pick / place (skills honours max_rehovers)
+    rehover_when_far: bool = True       # also re-hover after an OK refine that moved the object > rehover_min_shift_mm
+    post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
+    search: bool = False                # objects still missing after the looks: wrist search over regions
+    search_max_regions: int = 4
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -87,6 +92,11 @@ class _Checker:
 
     def estimate(self, obs: dict) -> dict:
         return self.pc.estimate([obs], self.vocabulary, self.fold)
+
+    def refine(self, obs: dict, obj, others, arm: str, held=None) -> dict:
+        objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
+                for x in [obj] + list(others)]
+        return (self.pc.refine(obs, objs, self.fold, 0.03, arm=arm, held=held) or {}).get(obj.label)
 
 
 class RuntimePolicy:
@@ -211,12 +221,14 @@ class RuntimePolicy:
                                checker=checker if cfg.resync else None, div_iou=cfg.div_iou, div_prec=cfg.div_prec,
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
+        prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
         t = time.perf_counter()
         if cfg.mode == "gt":
             prov.init_from_gt()
         else:
             rec = self.perception().estimate([obs0], scene, self.fold)
             self.report["records"]["initial"] = _slim(rec)
+            self._last_record = rec
             prov.init_from_record(rec)
         self.report["timings"]["perceive_s"] = round(time.perf_counter() - t, 2)
         verifier = None
@@ -253,11 +265,14 @@ class RuntimePolicy:
             skills_kw["refine"] = lambda sk_, label, arm, kind: self._refine_hook(prov, sk_, label, arm, kind)
         elif cfg.refine:
             events.append({"kind": "refine_unavailable", "reason": "mode gt" if cfg.mode == "gt" else "skills has no hook"})
+        max_rehovers = cfg.max_rehovers
 
         def _mk():
-            return Skills(b, prov, kin=kin, reserve=cfg.reserve, log=self.log, verifier=verifier,
-                          verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks,
-                          **skills_kw)
+            sk_ = Skills(b, prov, kin=kin, reserve=cfg.reserve, log=self.log, verifier=verifier,
+                         verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks,
+                         **skills_kw)
+            sk_.max_rehovers = max_rehovers
+            return sk_
 
         sk = make_skills()
         if cfg.mode == "perception" and cfg.look:
@@ -266,10 +281,22 @@ class RuntimePolicy:
             self.report["timings"]["look_s"] = round(time.perf_counter() - t, 2)
             if rec is not None:
                 self.report["records"]["fused"] = _slim(rec)
+                self._last_record = rec
                 prov.init_from_record(rec)
                 sk = make_skills()
-        nf = [x.get("label") for x in (self.report["records"].get("fused") or self.report["records"].get("initial")
-                                        or {}).get("_not_found") or []]
+            rec = None
+        if cfg.mode == "perception" and cfg.search:
+            cur = rec if rec is not None else None
+            base = cur or self._last_record
+            t = time.perf_counter()
+            srec = self._search(sk, obs0, base, scene, kin)
+            self.report["timings"]["search_s"] = round(time.perf_counter() - t, 2)
+            if srec is not None:
+                self.report["records"]["searched"] = _slim(srec)
+                prov.init_from_record(srec)
+                sk = make_skills()
+        nf = [x.get("label") for x in (self.report["records"].get("searched") or self.report["records"].get("fused")
+                                        or self.report["records"].get("initial") or {}).get("_not_found") or []]
         if nf:
             events.append({"kind": "perception_missing", "labels": nf})
             if verifier is not None:                    # the twin would run the task's checker on a partial scene
@@ -369,6 +396,7 @@ class RuntimePolicy:
                 ev["rehover"] = "higher"
                 return {"rehover": (o.pos.copy(), o.quat.copy()), "rehover_dz": self.cfg.rehover_place_dz}
             return None
+        far = (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm
         new_id = r.get("obj_id")
         if new_id and new_id != o.asset.key and r.get("identity_ok"):
             typ, cat, idx = new_id.split("/")
@@ -378,7 +406,59 @@ class RuntimePolicy:
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
         o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
+        if far and self.cfg.rehover_when_far:
+            # found well off the prior: hover over the new spot (object centred in the wrist view) and refine again
+            ev["rehover"] = "recentre"
+            hint = {"rehover": (o.pos.copy(), o.quat.copy())}
+            if kind == "place":
+                hint["rehover_dz"] = self.cfg.rehover_place_dz
+            return hint
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _search(self, sk, obs0: dict, rec: dict, scene: str, kin) -> dict | None:
+        """Objects still missing after the looks: move a wrist over each search region (perception's
+        ``search_regions``), observe, re-estimate with that view (full fuse) and add objects found far from every
+        known one under the missing labels. Returns the updated record, or None if nothing was missing."""
+        from dojo.skills.geometry import pose7_to_T
+        from dojo.skills.motion import FAST
+
+        from .estimate import add_found
+        cfg, b = self.cfg, self.bridge
+        if not (rec or {}).get("_not_found"):
+            return None
+        regions = self.perception().search_regions(b.observe(), rec, scene)[:cfg.search_max_regions]
+        log = self.report.setdefault("search", [])
+        for reg in regions:
+            if not rec.get("_not_found"):
+                break
+            if b.steps_used > b.step_lim * (1 - cfg.look_min_budget):
+                log.append({"skipped": "budget"})
+                break
+            arms = [reg["arm"]] if reg.get("arm") in ("left", "right") else []
+            arms += [a for a in ("left", "right") if a not in arms]
+            mv, used = None, None
+            for arm in arms:
+                for p in self.perception().look_poses(reg["target"], arm):
+                    T_tcp = kin.tcp_from_flange(pose7_to_T(np.asarray(p["flange_pose"], float)))
+                    m = sk.motion.to_pose(arm, sk.ex.q[arm], T_tcp, FAST, "search", gripper=sk.ex.g[arm])
+                    if m.ok:
+                        mv, used = m, arm
+                        break
+                if mv is not None:
+                    break
+            entry = {"target": reg.get("target"), "why": reg.get("why"), "arm": used, "ok": mv is not None}
+            if mv is None:
+                log.append(entry)
+                continue
+            n0 = b.steps_used
+            sk.ex.execute({used: mv}, name="search")
+            obs_s = b.observe()
+            sk.ex.run({used: sk.plan_home(used)}, name="search_home")
+            rec_s = self.perception().estimate([obs0, obs_s], scene, self.fold, fuse_mode="full")
+            rec, found = add_found(rec, rec_s)
+            entry.update({"steps": b.steps_used - n0, "found": found})
+            log.append(entry)
+        return rec
 
     def _look(self, sk, obs0: dict, rec0: dict, scene: str, kin) -> dict | None:
         """Look macro. Returns the fused record, or None when no look was taken."""

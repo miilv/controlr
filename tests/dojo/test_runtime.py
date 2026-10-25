@@ -692,3 +692,98 @@ def test_place_refine_passes_the_held_object_and_rehovers_higher():
     out = pol._refine_hook(prov, Sk(), "block_0", "left", "place")
     assert seen["held"][0] == "Rigid/block/00005" and seen["labels"] == ["block_0", "block_1"] and seen["idv"] is None
     assert out["rehover_dz"] == 0.03 and np.allclose(out["rehover"][0], prov.belief.objects["block_0"].pos)
+
+
+def test_add_found_assigns_missing_labels_to_new_objects_only():
+    from dojo.runtime.estimate import add_found
+    r0 = {"Rigid": {"block": [{"label": "block_0", "category": "block", "category_idx": 1, "default_pos": [0.1, -0.1, 0.78],
+                               "default_ori": [1, 0, 0, 0]}]},
+          "_not_found": [{"label": "block_1", "candidates": ["Rigid/block/00001"]}]}
+    r1 = {"Rigid": {"block": [{"label": "block_1", "category": "block", "category_idx": 1, "default_pos": [0.102, -0.1, 0.78],
+                               "default_ori": [1, 0, 0, 0]},
+                              {"label": "block_0", "category": "block", "category_idx": 2, "default_pos": [-0.3, -0.2, 0.78],
+                               "default_ori": [1, 0, 0, 0]}]}}
+    m, found = add_found(r0, r1)
+    by = {r["label"]: r for r in m["Rigid"]["block"]}
+    assert found == ["block_1"] and by["block_1"]["default_pos"] == [-0.3, -0.2, 0.78] and not m["_not_found"]
+    assert by["block_0"]["default_pos"] == [0.1, -0.1, 0.78]
+
+
+def test_search_finds_a_missing_block_before_planning():
+    """Frame 0 misses block_2 (and the look does not find it); the search moves a wrist over a region, the
+    re-estimate with that view finds it, the episode plans with all three blocks and stacks them."""
+    env = _env()
+
+    class Hidden:
+        def __init__(self):
+            self.searched = 0
+
+        def _rec(self, labels):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for o in env.objects if o["label"] in labels]},
+                    "_not_found": [{"label": l, "candidates": ["Rigid/block/00005"]}
+                                   for l in ("block_0", "block_1", "block_2") if l not in labels]}
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None, fuse_mode=None):
+            if fuse_mode == "full":
+                self.searched += 1
+                return self._rec({"block_0", "block_1", "block_2"})
+            return self._rec({"block_0", "block_1"})
+
+        def look_plan(self, *a, **k):
+            return []
+
+        def search_regions(self, frame, record, vocabulary):
+            return [{"target": [0.3, -0.2, 0.78], "arm": "right", "why": "test"}]
+
+        def look_poses(self, target, arm, variants=None):
+            from dojo.skills.geometry import T_from, T_to_pose7
+            from dojo.skills.kinematics import down_R
+            x = -0.25 if arm == "left" else 0.25
+            return [{"arm": arm, "dist": 0.18, "elev": 70,
+                     "flange_pose": T_to_pose7(X5Kin().flange_from_tcp(T_from((x, -0.15, 0.90), down_R(0.0)))).tolist()}]
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"prec": 1.0, "n_vis": 500, "n_px": 600}} for o in objects}
+
+    pc = Hidden()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", search=True), assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    assert pc.searched == 1 and rep["search"][0]["found"] == ["block_2"]
+    assert not any(e["kind"] == "perception_missing" for e in rep["events"]) and _stacked(env)
+
+
+def test_post_place_refine_writes_the_measured_pose():
+    """After a release, the placed block is re-measured from the releasing arm's wrist and the belief moves."""
+    env = _env()
+
+    class Measuring:
+        calls = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None, fuse_mode=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for o in env.objects]}}
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            true = next(r for r in env.objects if r["label"] == o["label"])
+            self.calls.append((o["label"], arm))
+            return {o["label"]: {"ok": True, "pos": [true["pos"][0] + 0.004, true["pos"][1], true["pos"][2]],
+                                 "quat": list(true["quat"]), "shift_mm": 4.0}}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"prec": 1.0, "n_vis": 500, "n_px": 600}} for o in objects}
+
+        def look_plan(self, *a, **k):
+            return []
+
+    pc = Measuring()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", post_place=True, rehover_when_far=False), assets=FakeAssets(),
+                        perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    pp = [e for e in rep["events"] if e["kind"] == "post_place"]
+    assert len(pp) >= 2 and all(e["ok"] and e.get("to") for e in pp), pp
+    assert rep["provider"]["post_place_moved"] >= 2
