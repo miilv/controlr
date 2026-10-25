@@ -34,9 +34,9 @@ CLOSE_STEPS = 4
 OPEN_STEPS = 2
 FINGER_SPEED = 0.008          # m per env step per finger, measured in the twin (g3 probe: 0.15 of the 0..1 range)
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)   # of a place's turn, tried in order (the wrist's reach ends first)
-PLACE_REACH = 0.56            # m, TCP from the arm's base in the plane: farther places are left to the other arm /
+PLACE_REACH = 0.60            # m, TCP from the arm's base in the plane: farther places are left to the other arm /
                               # a relay (twin: places 0.66-0.67 m out, the arm across the table, stalled 30 mm above
-                              # the target with the commanded pose 33 mm lower, plug 7/10)
+                              # the target with the commanded pose 33 mm lower, plug 7/10; a figurine's stand is 0.57)
 TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0.02 cost 52 of insert_key's 300 steps)
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
