@@ -356,3 +356,20 @@ The earlier "0.82 → 0.84" post-look line reads 0.79 → 0.84.
   - `catalog precompute` writes `sil.npz` + `shape_cache.json` per asset (all 288 assets, +29 MB). Cold
     load for the 85 drops from 33 s to 2.4 s, with outputs bit-identical.
   - `refine_identity` screens more than 6 candidates with a short fit and fully refines the best 6.
+- J1 confirmations for Misha's side (pinned 868fc4a, all tested):
+  - The card digit is at `objects[i].attributes.digit`. The cards are config-pinned: top edge z 0.8444,
+    face tilted 50° toward the head camera.
+  - held_look ignores `arm` / `stage`. It works with one wrist frame, but the pinned code needs both
+    arms' flange (one arm only raised KeyError 'left'). Fixed on the branch (de21b05), not re-pinned.
+  - needs_look `flange_pose` is the link6 pose in the world frame, [x, y, z, qw, qx, qy, qz]. TCP is
+    150.1 mm along flange +x, converted on their side.
+- Second-block tasks, on their seed-0 L9 practice frames (GL, compute3):
+  - pour_balls_into_vase (cup 00006 and vases 00000–00004 now catalogued): cup and vase found
+    (confidence 0.83 / 0.97). The seven balls sit in the cup, so they are now reported as `contained`
+    instead of "not found". 17 s cold, 1.8 s warm.
+  - general_pickup ("white corkscrew tool"): the target merges with the book in the head view.
+    - Wrist-view proposals and merged blobs cut into object-sized pieces (instruction-ranked single-label
+      groups only, so D0 is untouched) still end on the wrong object at confidence 0.08–0.07, so a look
+      is requested.
+    - Open: the corkscrew's fit stays poor even where it stands alone in the left wrist view. Check its
+      resting pose / place frame against simlab renders when general_pickup lands.
