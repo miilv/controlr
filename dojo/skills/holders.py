@@ -234,7 +234,12 @@ def container_of(sk: Skills, label: str):
     return best
 
 
-def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.0, -40.0)) -> list:
+WALL_MARGIN = -0.008   # m; finger samples may touch a container's wall / rim by this much (the samples are the finger's
+                      # bounding corners: the 38 x 56 mm root block meets a basket's rim before the finger does)
+
+
+def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.0, -40.0),
+                  margin: float = WALL_MARGIN) -> list:
     """Box + usual grasps of ``label``; when it lies inside a round container, only those whose open fingers stay
     inside the wall at the grasp and on the way in."""
     o = sk.world.obj(label)
@@ -251,17 +256,17 @@ def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.
         go = gap_to_grip(g.open_gap())
         # raise a grasp whose fingers dip into the floor by up to 6 mm (the pads still cover the widest section)
         cl = wall_clearance(c, prof, sk.kin.finger_points(sk.kin.flange_from_tcp(g.T), go))
-        if cl < 0.003:
-            if 0.003 - cl > 0.006:
+        if cl < margin:
+            if margin - cl > 0.006:
                 continue
             T = g.T.copy()
-            T[2, 3] += 0.003 - cl + 0.0005
+            T[2, 3] += margin - cl + 0.0005
             g = dataclasses.replace(g, T=T, note=g.note + " raised")
         ok = True
         for d in (0.0, 0.03, 0.06):
             T = g.T.copy()
             T[:3, 3] -= g.approach * d
-            if not inside_wall(c, prof, sk.kin.finger_points(sk.kin.flange_from_tcp(T), go)):
+            if not inside_wall(c, prof, sk.kin.finger_points(sk.kin.flange_from_tcp(T), go), margin=margin):
                 ok = False
                 break
         if ok:
@@ -320,6 +325,8 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
     body = lj[3] if lj else None
     if lj:
         sk.coll.slab_links.add(holder)
+    for l in objects:                     # identical objects touch in their container: their boxes without a margin
+        sk.coll.margin_of.setdefault(l, 0.0)
     holes = body_holes(H, body)
     if not holes:
         return {"ok": False, "stage": "holes", "note": f"no holes found in {holder}"}
