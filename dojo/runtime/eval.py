@@ -156,6 +156,14 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         rows.append(row)
         with (out / f"{tag}_episodes.jsonl").open("a") as f:
             f.write(json.dumps(jsonable(row), default=str) + "\n")
+        frames = rep.pop("look_frames", None)
+        if frames:
+            fd = out / f"{tag}_{lid}_look_frames"
+            fd.mkdir(exist_ok=True)
+            for ftag, fr in frames.items():
+                for cam, png in fr["png"].items():
+                    (fd / f"{ftag}_{cam}.png").write_bytes(png)
+                (fd / f"{ftag}_state.json").write_text(json.dumps(fr["state"]))
         with gzip.open(out / f"{tag}_{lid}_report.json.gz", "wt") as f:
             json.dump(jsonable(rep), f, default=str)
         with gzip.open(out / f"{tag}_{lid}_actions.json.gz", "wt") as f:

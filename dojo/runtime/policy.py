@@ -52,6 +52,7 @@ class RuntimeConfig:
     max_looks: int = 2
     look_min_budget: float = 0.6        # look only while steps_left >= this fraction of step_lim
     look_merge: str = "all"             # all: the fused record replaces frame 0 | flagged: only flagged objects
+    save_look_frames: bool = False      # dev: keep frame 0 and the look frame (PNG) for perception's analysis
     resync: bool = True
     div_iou: float = 0.2                 # fallback without z-buffer: head IoU at the predicted pose
     div_prec: float = 0.4                # predicted front-most head pixels that are foreground, below = divergence
@@ -389,6 +390,13 @@ class RuntimePolicy:
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
         self.report["look_steps"] = b.steps_used - n0
+        if cfg.save_look_frames:
+            import cv2
+            self.report["look_frames"] = {
+                tag: {"state": {k: np.asarray(v, float).tolist() for k, v in o["state"].items()},
+                      "png": {c: cv2.imencode(".png", cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR))[1].tobytes()
+                              for c, im in o["images"].items()}}
+                for tag, o in (("frame0", obs0), ("look", obs1))}
         rec1 = self.perception().estimate([obs0, obs1], scene, self.fold, prior_record=rec0)
         if cfg.look_merge == "flagged":
             from .estimate import merge_looked
