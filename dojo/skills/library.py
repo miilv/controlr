@@ -884,7 +884,9 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
 
 def G_box_and_usual(sk: Skills, o, arm: str) -> list:
     from dojo.skills import grasps as G
-    return G.box_grasps(o, sk.kin, arm) + G.candidates(o, sk.kin, arm)
+    gs = G.box_grasps(o, sk.kin, arm) + G.candidates(o, sk.kin, arm)
+    # thin objects between neighbours (slices in a rack): also opened only 4 mm per side
+    return gs + [G.narrowed(g) for g in gs if float(g.width) < 0.03]
 
 
 def _path_apart(sk: Skills, mv, arm: str, other: str, q_other, g: float, g_other: float, min_d: float = 0.006) -> bool:
@@ -2005,22 +2007,37 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
     pool = [l for l in objects if l in w.objects] + spares
     place_kw = {**SLOT_PLACE_KW, "servo_ref": container}
     done, failed, left = [], [], [t for t in slots[:len(objects)] if functional_frames(c, t)]
+    # the slot farthest from the objects first: a later carry then never passes over a filled slot (twin: the second
+    # slice's approach cut through the first one standing in the near slot)
+    src = np.mean([w.obj(l).center_w[:2] for l in pool], axis=0) if pool else c.center_w[:2]
+    so = slot_openings(c, [t for t in (c.asset.functional or {}) if "slot" in t.lower()])
+
+    def _slot_xy(t):
+        sf = so.get(t) or slot_frame(c, t)
+        return np.asarray(sf[0][:2], float) if sf else c.center_w[:2]
+    left.sort(key=lambda t: -float(np.linalg.norm(_slot_xy(t) - src)))
     while left and pool:
         sk.refresh()
         found = None
-        for lab in pool:
-            for tag in left:
-                tg = slot_target(sk, lab, container, tag)
-                r = sk.plan_transfer(lab, [tg], yaw_sym=2, ignore=(container,), place_kw=place_kw, **SLOT_TRANSFER_KW)
-                if not isinstance(r, SkillResult):
-                    found = (lab, tag, tg, r)
+        # a 3 cm clearance over the container first, 1.5 cm when that pre-place is out of reach (a slot at the far
+        # side of a tall appliance)
+        for pc in (0.03, 0.015):
+            kw = {**place_kw, "pre_clear": pc}
+            for lab in pool:
+                for tag in left:
+                    tg = slot_target(sk, lab, container, tag)
+                    r = sk.plan_transfer(lab, [tg], yaw_sym=2, ignore=(container,), place_kw=kw, **SLOT_TRANSFER_KW)
+                    if not isinstance(r, SkillResult):
+                        found = (lab, tag, tg, r, kw)
+                        break
+                if found:
                     break
             if found:
                 break
         if found:
-            lab, tag, tg, plan = found
-            sk.log(f"[slots] {lab} -> {tag}: direct, {plan[0].arm} ({plan[0].grasp.note})")
-            r = _run_leg(sk, lab, [tg], 2, (container,), place_kw, first=plan, tol=(0.015, 20.0, 0.06),
+            lab, tag, tg, plan, kw = found
+            sk.log(f"[slots] {lab} -> {tag}: direct, {plan[0].arm} ({plan[0].grasp.note}), pre_clear {kw['pre_clear']}")
+            r = _run_leg(sk, lab, [tg], 2, (container,), kw, first=plan, tol=(0.015, 20.0, 0.06),
                          transfer_kw=SLOT_TRANSFER_KW)
         else:
             lab, tag = pool[0], left[0]
