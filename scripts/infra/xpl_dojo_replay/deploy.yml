@@ -1,0 +1,15 @@
+# XPolicyLab policy "dojo_replay": replays a recorded joint trajectory (simlab motion.Trajectory JSON,
+# e.g. ~/dojo-data/simlab/g2_c3b/stack_traj.json) through RoboDojo's official eval client. Bootstrap smoke
+# test of scripts/simlab/dev_eval.sh (scripts/bootstrap_gpu_box.sh); the file comes from $DOJO_REPLAY_TRAJ.
+policy_name: dojo_replay
+protocol: ws
+host: localhost
+port: null
+bench_name: null
+task_name: null
+ckpt_name: null
+env_cfg_type: null
+seed: null
+action_type: joint
+gpu_id: null
+eval_batch: false

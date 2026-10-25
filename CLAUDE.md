@@ -38,6 +38,7 @@ uv run controlr run -c configs/mock.yaml --fake-llm   # dry run of the whole pip
 scripts/deploy.sh
 scripts/remote_run.sh run -c configs/sim_waffle_yaw.yaml --seeds 0,1,2,3
 ssh compute3 'cd ~/controlr && CONTROLR_ISAAC=1 .venv/bin/python -m pytest -q tests/'   # ~20 min
+scripts/bootstrap_gpu_box.sh HOST [--dry-run]   # a new GPU box for the dojo streams (docs/RUNBOOK-new-gpu-box.md)
 
 # analysis
 uv run controlr report runs/<run_dir> [--csv out.csv]
@@ -68,7 +69,8 @@ uv run controlr bench-cache --model claude/claude-sonnet-5-5 --turns 20   # ⚠�
    Isaac server when done. `apt` / drivers / reboot — only on explicit request
    ([RUNBOOK](docs/RUNBOOK.md)). PHANTOM (`~/phantom-icra-2027` on compute3,
    `~/skoltech/research` locally) is **never modified** — import it or copy with attribution.
-5. **Secrets:** `.env` lives only locally and in `~/controlr/.env` on compute3 — not in dev
+5. **Secrets:** `.env` lives only locally, in `~/controlr/.env` on compute3 and on our own GPU
+   boxes provisioned by `scripts/bootstrap_gpu_box.sh` (`OMNIROUTE_*` only, mode 600) — not in dev
    copies, git, `runs/` or logs. New variable → `.env.example` +
    [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).
 6. **Cache invariants:** the transcript is append-only, history is never edited; an image is

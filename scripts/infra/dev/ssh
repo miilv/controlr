@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Test shim for scripts/bootstrap_gpu_box.sh without a GPU box: `ssh [opts] fake<name> CMD` runs CMD locally with
+# HOME=$BOOT_SANDBOX/<host> (default /tmp/boot-sandbox); every other host goes to the real ssh (e.g. compute3, the
+# read-only relay source). Steps that need no GPU run for real (conventions, code, venv, assets with a small
+# ASSETS_PINS list, data / catalog relays, catalog_post, the perception smoke with PERCEPTION_GL_VENDOR=Mesa):
+#   PATH=$PWD/scripts/infra/dev:$PATH ASSETS_PINS=/tmp/mini.txt BOOT_DATA_DIRS="dojo-data/simlab/g2_c3b" \
+#     scripts/bootstrap_gpu_box.sh fakebox --only conventions,code,venv,assets,data
+# Remove the sandbox afterwards (rm -rf /tmp/boot-sandbox): a venv + uv caches are ~2 GB.
+args=("$@"); i=0
+while [[ $i -lt ${#args[@]} ]]; do
+  case "${args[$i]}" in -o|-i|-p|-F|-l|-S) i=$((i + 2)) ;; -*) i=$((i + 1)) ;; *) break ;; esac
+done
+host="${args[$i]:-}"
+if [[ "$host" == fake* ]]; then
+  h="${BOOT_SANDBOX:-/tmp/boot-sandbox}/$host"; mkdir -p "$h"; cd "$h" || exit 1
+  export HOME="$h"
+  exec bash -c "${args[*]:$((i + 1))}"
+fi
+self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PATH="$(tr ':' '\n' <<< "$PATH" | grep -vxF "$self" | paste -sd: -)" exec ssh "$@"
