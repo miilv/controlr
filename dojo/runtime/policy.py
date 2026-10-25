@@ -179,7 +179,7 @@ class RuntimePolicy:
                     vt[k] = vt.get(k, 0) + v
             self.report["history"] = [h for s_ in live["sks"] for h in _hist(s_)]
             ver = live.get("verifier")
-            self.report["verify"] = ({**vt, **ver.stats} if ver is not None else
+            self.report["verify"] = ({**vt, **ver.stats, "disabled": ver.disabled} if ver is not None else
                                      ("off (stub: single plan, no twin)" if self.cfg.verify == "off" else
                                       "unavailable (see events)"))
             self.report["provider"] = dict(live["prov"].stats)
@@ -271,6 +271,9 @@ class RuntimePolicy:
                                         or {}).get("_not_found") or []]
         if nf:
             events.append({"kind": "perception_missing", "labels": nf})
+            if verifier is not None:                    # the twin would run the task's checker on a partial scene
+                verifier.disabled = f"estimate lacks {nf}"
+                events.append({"kind": "verify_unavailable", "reason": verifier.disabled})
         result = None
         try:
             while True:
@@ -310,11 +313,18 @@ class RuntimePolicy:
                 sk.ex.hold(1, use_reserve=True)
         except EpisodeEnded as e:
             events.append({"kind": "ended", "note": str(e)})
-        except Exception as e:  # noqa: BLE001 (budget etc.: keep the report)
+        except Exception as e:  # noqa: BLE001 (keep the report; bank what was reached)
             from dojo.skills.executor import BudgetExceeded
-            if not isinstance(e, BudgetExceeded):
-                raise
-            events.append({"kind": "budget", "note": str(e)})
+            if isinstance(e, BudgetExceeded):
+                events.append({"kind": "budget", "note": str(e)})
+            else:
+                import traceback
+                self.report["error_handled"] = f"{type(e).__name__}: {e}\n{traceback.format_exc()[-2500:]}"
+                events.append({"kind": "error", "note": f"{type(e).__name__}: {str(e)[:200]}"})
+                try:
+                    sk.finish()
+                except Exception:  # noqa: BLE001
+                    pass
         finally:
             if result is not None:
                 self.report["result"] = result

@@ -43,8 +43,8 @@ TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget",
 def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -> tuple[str | None, str]:
     if res.get("success"):
         return None, ""
-    if rep.get("error"):
-        return "error", rep["error"].splitlines()[0][:200]
+    if rep.get("error") or rep.get("error_handled"):
+        return "error", (rep.get("error") or rep["error_handled"]).splitlines()[0][:200]
     if mode == "perception" and perc:
         bad = {k: v for k, v in perc.items()
                if not v.get("found") or v.get("xy_mm", 0) > GROSS_XY_MM or not v.get("shape_ok", True)}

@@ -651,3 +651,18 @@ def test_report_arm_table_counts_rescued_and_lost():
          for i, s in ((1, True), (2, True), (3, False))]
     t = arm_table({"base": a, "refine": b})
     assert "| t | 3 | 2 | 2 |" in t and "| 1 [2] | 1 3: plan |" in t
+
+
+def test_twin_error_falls_back_to_single_plan_and_still_finishes(monkeypatch):
+    import dojo.runtime.estimate as E
+    monkeypatch.setattr(E, "estimate_to_layout", lambda scene, objs: {"Rigid": {}})
+    env = _env()
+
+    class BrokenTwin(FakeTwinClient):
+        def verify(self, *a, **k):
+            raise RuntimeError("twin service: TypeError: 'NoneType' object is not subscriptable")
+
+    pol = RuntimePolicy(RuntimeConfig(mode="gt", verify="bundle"), assets=FakeAssets(), twin_client=BrokenTwin())
+    rep = run_episode(pol, FakeEpisode(env), "gt")
+    assert rep["error"] is None and _stacked(env)
+    assert rep["verify"]["errors"] == 1 and rep["verify"]["calls"] == 0
