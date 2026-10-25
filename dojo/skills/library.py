@@ -76,8 +76,9 @@ def z_symmetry(o) -> int:
     return 4 if abs(e[0] - e[1]) < 2e-3 else 2
 
 
-def stack_objects(sk: Skills, objects: list[str], nest: bool = False) -> dict:
-    """Stack ``objects`` (any order) on one another, or nest them (bowls, cups) when ``nest``."""
+def stack_objects(sk: Skills, objects: list[str], nest: bool = False, ordered: bool = False) -> dict:
+    """Stack ``objects`` on one another, or nest them (bowls, cups) when ``nest``. Any order (the cheapest base
+    and sequence), or ``ordered``: objects[0] is the base and the rest go on in list order (bottom to top)."""
     w = sk.refresh()
     objects = [l for l in objects if l in w.objects]
     o0 = w.obj(objects[0])
@@ -85,7 +86,7 @@ def stack_objects(sk: Skills, objects: list[str], nest: bool = False) -> dict:
         geo = bowl_geometry(o0)
         h = float(o0.asset.extents[2])
         top_h = TABLE_Z + h + 2 * (geo["nest_dz"] + 0.004) + 0.06
-        jobs = plan_stack(sk, objects, top_h, _nested_in, yaw_sym=8, tol_xy=0.03, pick_method="wall")
+        jobs = plan_stack(sk, objects, top_h, _nested_in, yaw_sym=8, tol_xy=0.03, pick_method="wall", ordered=ordered)
         for j in jobs:
             # wall pinch (pads flat on both wall faces); lift and carry gently
             j.pick_kw = {"lift": 0.09, "lift_rad": 0.05, "descend_rad": 0.05}
@@ -95,7 +96,7 @@ def stack_objects(sk: Skills, objects: list[str], nest: bool = False) -> dict:
     else:
         sym = z_symmetry(o0)
         top_h = TABLE_Z + sum(float(w.obj(l).asset.extents[2]) for l in objects) + 0.06
-        jobs = plan_stack(sk, objects, top_h, _on_top_of(sym), yaw_sym=sym, tol_xy=0.008)
+        jobs = plan_stack(sk, objects, top_h, _on_top_of(sym), yaw_sym=sym, tol_xy=0.008, ordered=ordered)
     if not jobs:
         return {"ok": False, "stage": "plan", "note": "no reachable stack site"}
     sk.log(f"[stack_objects] nest={nest} jobs: {[(j.label, j.arm) for j in jobs]}")
@@ -1058,6 +1059,15 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
     from dojo.skills.insertion import fit_insertion
     w = sk.refresh()
     o = w.obj(obj)
+    # "insert X into Y" never means where X already is (a coin in its holder fits the holder too)
+    def holds(r):
+        c = w.obj(r)
+        mn, mx = c.aabb()
+        p = o.center_w
+        return bool(np.all(p[:2] >= mn[:2] - 0.005) and np.all(p[:2] <= mx[:2] + 0.005) and mn[2] - 0.01 <= p[2] <= mx[2] + 0.01)
+    rest = [r for r in receptacles if r in w.objects and r != obj and not holds(r)]
+    if rest:
+        receptacles = rest
     # 1. the assets say where it goes: the object's active "insert" frame on a receptacle's support /
     #    functional frames (a charger's plug point on the power strip's outlets)
     ins = functional_frames(o, "insert", active=True)
@@ -1349,14 +1359,32 @@ def on_targets(sk: Skills, label: str, support: str) -> list[np.ndarray]:
     return out
 
 
-def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.05, max_iter: int = 14) -> SkillResult:
-    """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time: closed fingertips
-    against the middle of the face opposite the motion (no torque about the centre), at most ``seg`` per
-    stroke, the world re-read after each stroke."""
+def _face_height(o, u: np.ndarray, band: float = 0.012, half_w: float = 0.03) -> float | None:
+    """Height (m, above the object's bottom) of the face that a push along world direction ``u`` (2-D) meets:
+    the highest mesh point within ``band`` of the trailing face, near the face's middle. A keyboard's front
+    edge is 5 mm tall where its bbox says 22 (twin: fingertips 11 mm up rode over it, 14 strokes, no motion)."""
+    if o.asset.mesh is None:
+        return None
+    W = o.asset.mesh[0] @ o.R.T + o.pos
+    c = o.center_w[:2]
+    along = (W[:, :2] - c) @ u
+    across = (W[:, :2] - c) @ np.array([-u[1], u[0]])
+    m = (along < along.min() + band) & (np.abs(across) < half_w)
+    if m.sum() < 3:
+        return None
+    return float(W[m, 2].max() - W[:, 2].min())
+
+
+def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.08, max_iter: int = 10) -> SkillResult:
+    """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time (the one with the most
+    left to go first, the other when that one has no stroke): closed fingertips against the middle of the
+    face opposite the motion (no torque about the centre) at half the height of that face (from the mesh),
+    at most ``seg`` per stroke, the world re-read after each stroke."""
     from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
     n0 = sk.ex.steps_used
     target_xy = np.asarray(target_xy, float)
     last = None
+    stuck = 0
     for it in range(max_iter):
         w = sk.refresh()
         o = w.obj(label)
@@ -1371,47 +1399,60 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
             if np.linalg.norm(a) > 0.5:
                 a /= np.linalg.norm(a)
                 axes.append((abs(float(a[:2] @ d)), k, a))
-        comp, k, a = max(axes, key=lambda x: x[0])
-        u = a[:2] * np.sign(float(a[:2] @ d))
-        step = min(seg, comp + 0.003)
-        half_u = float(np.abs(o.R.T @ np.r_[u, 0.0]) @ (o.asset.extents / 2))
-        h = min(0.012, 0.5 * float(o.top_z - o.bottom_z))
-        z = o.bottom_z + h + TIP_BEYOND_TCP
-        yaw = math.atan2(u[1], u[0]) + math.pi / 2               # the fingers' broad face across the push
-        start = o.center_w[:2] - u * (half_u + 0.02)
-        end = o.center_w[:2] - u * (half_u - step)
-        arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - start)))
-        plan = None
-        for arm in arms:
-            for yw in (yaw, yaw + math.pi):
-                T_s = T_from([start[0], start[1], z], down_R(yw))
-                T_ab = T_s.copy()
-                T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
-                T_e = T_from([end[0], end[1], z], down_R(yw))
-                T_up = T_e.copy()
-                T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
-                m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=CLOSED, ignore=(label,))
-                if not m1.ok:
-                    continue
-                m2 = sk.motion.line(arm, m1.q_end, T_s, MEDIUM, "push_down", gripper=CLOSED, ignore=(label,))
-                m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, T_e, 0.04, "push", gripper=CLOSED,
-                                    ignore=(label,), max_step_m=0.01)
-                if not (m2.ok and m3.ok):
-                    continue
-                m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "push_up", gripper=CLOSED, check=False)
-                plan = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3)
-                plan.move(m4)
-                break
+        axes.sort(key=lambda x: -x[0])
+        plan, why = None, []
+        for comp, k, a in axes:
+            if comp < tol / 2:
+                continue
+            u = a[:2] * np.sign(float(a[:2] @ d))
+            step = min(seg, comp + 0.003)
+            half_u = float(np.abs(o.R.T @ np.r_[u, 0.0]) @ (o.asset.extents / 2))
+            fh = _face_height(o, u)
+            hgt = float(o.top_z - o.bottom_z) if fh is None else fh
+            h = max(0.0035, min(0.012, 0.5 * hgt))
+            z = o.bottom_z + h + TIP_BEYOND_TCP
+            yaw = math.atan2(u[1], u[0]) + math.pi / 2               # the fingers' broad face across the push
+            start = o.center_w[:2] - u * (half_u + 0.02)
+            end = o.center_w[:2] - u * (half_u - step)
+            arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - start)))
+            for arm in arms:
+                for yw in (yaw, yaw + math.pi):
+                    T_s = T_from([start[0], start[1], z], down_R(yw))
+                    T_ab = T_s.copy()
+                    T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+                    T_e = T_from([end[0], end[1], z], down_R(yw))
+                    T_up = T_e.copy()
+                    T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+                    m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=CLOSED, ignore=(label,))
+                    if not m1.ok:
+                        continue
+                    m2 = sk.motion.line(arm, m1.q_end, T_s, MEDIUM, "push_down", gripper=CLOSED, ignore=(label,))
+                    m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, T_e, 0.04, "push", gripper=CLOSED,
+                                        ignore=(label,), max_step_m=0.01)
+                    if not (m2.ok and m3.ok):
+                        continue
+                    m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "push_up", gripper=CLOSED, check=False)
+                    plan = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3)
+                    plan.move(m4)
+                    break
+                if plan is not None:
+                    break
             if plan is not None:
                 break
+            why.append(f"axis {k}")
         if plan is None:
             return sk._record(SkillResult(False, "push", "ik_fail", sk.ex.steps_used - n0, None,
-                                          note=f"{label}: no push stroke along axis {k}"))
+                                          note=f"{label}: no push stroke along {', '.join(why) or 'any axis'}"))
         last = plan.arm
+        before = o.center_w[:2].copy()
         try:
             sk.parallel([plan], name=f"push {label} {it}")
         except (BudgetExceeded, EpisodeEnded) as e:
             return sk._record(SkillResult(False, "push", "step_budget", sk.ex.steps_used - n0, last, note=str(e)))
+        moved = float(np.linalg.norm(sk.refresh().obj(label).center_w[:2] - before))
+        stuck = stuck + 1 if moved < 0.003 else 0
+        if stuck >= 2:
+            break
     w = sk.refresh()
     dist = float(np.linalg.norm(target_xy - w.obj(label).center_w[:2]))
     return sk._record(SkillResult(dist <= tol, "push", "ok" if dist <= tol else "place_miss",
