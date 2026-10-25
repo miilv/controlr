@@ -591,7 +591,8 @@ def rests_stably(o, R, margin: float = 0.25) -> bool:
     return bool(np.all(np.abs(cw[:2] - mid) <= half * (1 - margin)) and np.all(half > 0.004) and wide)
 
 
-def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, at=None):
+def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, at=None,
+              transfer_kw=None):
     """``plan_transfer`` with the object virtually at pose ``at`` (4x4; None = where it is now; both arms
     then start from home)."""
     o = sk.world.obj(label)
@@ -600,18 +601,20 @@ def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), pl
         o.pos, o.quat = np.asarray(at, float)[:3, 3].copy(), R_to_quat(np.asarray(at, float)[:3, :3])
     try:
         return sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw,
-                                q_start={a: sk.world.home_q[a] for a in ARMS} if at is not None else None)
+                                q_start={a: sk.world.home_q[a] for a in ARMS} if at is not None else None,
+                                **(transfer_kw or {}))
     finally:
         o.pos, o.quat = saved
 
 
 def _run_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, first=None,
-             tol=(0.03, 10.0, 0.03), tries: int = 2) -> SkillResult:
+             tol=(0.03, 10.0, 0.03), tries: int = 2, transfer_kw=None) -> SkillResult:
     """Plan (or take ``first``) and run one transfer; a loose grasp is put down and the leg re-planned."""
     r = None
     for t in range(tries):
         plan = first if (t == 0 and first is not None) else sk.plan_transfer(label, targets, yaw_sym=yaw_sym,
-                                                                             ignore=ignore, place_kw=place_kw)
+                                                                             ignore=ignore, place_kw=place_kw,
+                                                                             **(transfer_kw or {}))
         if isinstance(plan, SkillResult):
             return sk._record(plan)
         r = sk.run_transfer(*plan, tol_xy=tol[0], tol_tilt=tol[1], tol_z=tol[2])
@@ -665,7 +668,8 @@ def _grippers_apart(sk: Skills, a1: str, q1, g1: float, a2: str, q2, g2: float, 
     return float(np.min(np.linalg.norm(L1[:, None] - L2[None], axis=2))) >= min_links
 
 
-RELAY_PLAN_S = 150.0           # wall-time cap of the relay-chain search (twin: 21 min planning one hammer's relays)
+HANDOVER_MAX_EXTENT = 0.16     # m, largest bbox side of an object handed over in the air
+RELAY_PLAN_S = 100.0           # wall-time cap of the relay-chain search (twin: 21 min planning one hammer's relays)
 HANDOVER_CARRY = 0.07          # rad/step: the giver's carry into the handover pose (twin, 0.14: a key held on
                                # its round bow turned 50 deg in the pads during the carry and fell, 6 of 6)
 HANDOVER_PLAN_S = 40.0         # wall-time cap of the handover search once a solution is known (x3 without)
@@ -814,6 +818,13 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
         # ``grasps.lift_hold`` (lever + contact depth; twin: a key's 5 mm shaft slid out at the lift or in the
         # carry 6/6, its bow lifted 13/13)
         hq_g = {id(pp): G.lift_hold(o, pp.grasp.T) for pp in picks}
+        depth = {}
+        for pp in picks:
+            G.pad_contact(o, pp.grasp.T)
+            depth[id(pp)] = float(getattr(G.pad_contact, "depth", 0.0))
+        # a pick that must survive the turn into the handover pose needs >= 6 mm of contact along the approach
+        # (twin: the key's 5 mm shaft / tooth grasps slid out at the lift or on the carry, 13/13)
+        picks = [pp for pp in picks if depth[id(pp)] >= 0.006] or picks
         picks = sorted(picks, key=lambda pp: hq_g[id(pp)] + pp.steps / 100.0)
         seen, uniq = set(), []
         for pp in picks:                                     # one per grasp (the two finger flips plan alike)
@@ -822,7 +833,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                 uniq.append(pp)
         picks = uniq
         for pp in picks[:8]:
-            if (sols and _time.perf_counter() - t0 > HANDOVER_PLAN_S) or _time.perf_counter() - t0 > 3 * HANDOVER_PLAN_S:
+            if (sols and _time.perf_counter() - t0 > HANDOVER_PLAN_S) or _time.perf_counter() - t0 > 2 * HANDOVER_PLAN_S:
                 break
             box_g = held_box(o, pp.T_tcp_obj)
             g_hold = gap_to_grip(pp.grasp.width)            # the giver's fingers rest on the object's faces
@@ -837,7 +848,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                             continue
                         opts = _take_options(sk, label, T_H, g_arm, rg.q, g_hold, t_arm, w.home_q[t_arm], tg,
                                              ignore, place_kw, max_n=1, cache=caches.setdefault(t_arm, {}),
-                                             min_d=0.005)
+                                             min_d=0.004)
                         for op in opts:
                             gt = op["gt"]
                             held_t = Held(label, op["T_to"], held_box(o, op["T_to"]), gt)
@@ -934,7 +945,7 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
         g_hold = gap_to_grip(h["pick"].grasp.width)
         opts = _take_options(sk, label, o.T, g_arm, sk.ex.q[g_arm], g_hold, t_arm, sk.ex.q[t_arm], [h["target"]],
                              (h["place"].transfer_kw or {}).get("ignore", ()), getattr(h["place"], "tail_kw", None),
-                             first=gt_obj, max_n=6, min_d=0.003)     # planned with 5 mm, the object moves a little
+                             first=gt_obj, max_n=6, min_d=0.003)     # planned with 4 mm, the object moves a little
         take = None
         for op in opts:
             g2 = op["gt"]
@@ -989,7 +1000,8 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
 
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
-                   max_spots: int = 3, relay_near=(0.0, -0.28)) -> SkillResult:
+                   max_spots: int = 3, relay_near=(0.0, -0.28), air_handover: bool = True,
+                   transfer_kw: dict | None = None) -> SkillResult:
     """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
     the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
     through free table spots, the shortest that plans end to end:
@@ -1002,13 +1014,15 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
       the open, then carried top-down into a tight slot).
 
     Every leg picks its arm; all legs are planned before the first moves, and each later leg is
-    re-planned from the world as it is then (same intermediate pose)."""
+    re-planned from the world as it is then (same intermediate pose). ``transfer_kw``: extra ``plan_transfer``
+    arguments for every leg (grasp tilts, lift height)."""
     sk.refresh()
     tight = (tol_xy, tol_tilt, tol_z)
-    r = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
+    tkw = dict(transfer_kw or {})
+    r = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw, **tkw)
     if not isinstance(r, SkillResult):
         sk.log(f"[place_oriented] {label}: direct, {r[0].arm} ({r[0].grasp.note})")
-        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, first=r, tol=tight)
+        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, first=r, tol=tight, transfer_kw=tkw)
     sk.log(f"[place_oriented] {label}: no direct transfer ({r.note[:240]}); relay")
     o = sk.world.obj(label)
     Rs = [np.asarray(T, float)[:3, :3] for T in targets]
@@ -1016,11 +1030,15 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03)[:max_spots]
     stable = all(rests_stably(o, R) for R in Rs)
     chains = []
+    # as it is only when it stands by itself (a slice standing in a rack, 12 mm thick under a centre of mass 58 mm up,
+    # does not)
+    as_is_ok = rests_stably(o, R_now)
     for sp in spots:
         if stable:
             chains.append([("target", sp)])
-        chains.append([("as_is", sp)])
-    if stable:
+        if as_is_ok:
+            chains.append([("as_is", sp)])
+    if stable and as_is_ok:
         chains += [[("as_is", s1), ("target", s2)] for s1 in spots for s2 in spots
                    if float(np.linalg.norm(np.subtract(s1, s2))) > 0.09]
     notes, cache = [r.note[:120]], {}
@@ -1036,7 +1054,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
             if key not in cache:
                 mids, ys = (([rest_with_R(sk, label, sp, R) for R in Rs], yaw_sym) if kind == "target"
                             else ([rest_with_R(sk, label, sp, R_now)], 4))
-                cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at))
+                cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at, transfer_kw=tkw))
             mids, ys, rl = cache[key]
             if isinstance(rl, SkillResult):
                 notes.append(f"{kind} {np.round(sp, 2).tolist()}: {rl.note[:90]}")
@@ -1046,7 +1064,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
             at = rl[1].T_obj_target
         if not ok:
             continue
-        rf = _plan_leg(sk, label, targets, yaw_sym, ignore, place_kw, at=at)
+        rf = _plan_leg(sk, label, targets, yaw_sym, ignore, place_kw, at=at, transfer_kw=tkw)
         if isinstance(rf, SkillResult):
             notes.append(f"chain {[k for k, _ in chain]} last leg: {rf.note[:90]}")
             continue
@@ -1055,12 +1073,20 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
             + f" -> target {rf[0].arm} ({rf[0].grasp.note})")
         for i, (kind, sp, rl) in enumerate(legs):
             tgt = [rl[1].T_obj_target]
-            res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None)
+            res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None, transfer_kw=tkw)
             if not res.ok and res.status in ("step_budget", "ended", "grasp_slip", "ik_fail", "collision", "logic"):
                 return res
             sk.bank()
             sk.refresh()
-        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight)
+        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight, transfer_kw=tkw)
+    # in-air handovers are for small objects (a key, a plug): two grippers around a 19-cm figurine never plan,
+    # and the search costs minutes
+    if float(np.max(o.asset.extents)) > HANDOVER_MAX_EXTENT:
+        notes.append(f"no in-air handover for a {float(np.max(o.asset.extents))*1000:.0f} mm object")
+        return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
+    if not air_handover:
+        notes.append("in-air handover not attempted")
+        return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
     h = plan_air_handover(sk, label, targets, yaw_sym, ignore, place_kw)
     if isinstance(h, dict):
         sk.log(f"[place_oriented] {label}: in-air handover {h['giver']} ({h['pick'].grasp.note}) -> {h['taker']} "
@@ -1074,6 +1100,39 @@ def _support_raw(o, tag: str) -> list:
     """Raw support frames (pose7) of ``tag`` from the asset (``AssetInfo.support`` keeps world-free pose7s)."""
     return [np.r_[np.asarray(c[:7], float)] if len(c) >= 7 else np.r_[np.asarray(c[:3], float), 1.0, 0, 0, 0]
             for c, _r in o.asset.support.get(tag, [])]
+
+
+INSERT_AIR_HANDOVER = False    # insertions that only plan through an in-air handover: lift + return instead (G3: the
+                               # handover lost the key on the carry in 5 versions, 0/34; the lift banks the 15 % rung)
+
+
+def lift_and_return(sk: Skills, label: str, lift: float = 0.08) -> SkillResult:
+    """Pick ``label`` with its most reliable grasp, lift it ``lift`` (a lift is the first rung of several ladders),
+    set it back down where it was, let go and back off."""
+    from dojo.skills import grasps as G
+    w = sk.refresh()
+    o = w.obj(label)
+    best = None
+    for arm in ARMS:
+        picks = sk.plan_pick(label, arm, return_all=True, keep=8, lift=lift, max_eval=80,
+                             grasps=G_box_and_usual(sk, o, arm))
+        if not isinstance(picks, list):
+            continue
+        for pp in picks:
+            G.pad_contact(o, pp.grasp.T)
+            if float(getattr(G.pad_contact, "depth", 0.0)) < 0.006:
+                continue
+            key = G.lift_hold(o, pp.grasp.T) + pp.steps / 100.0
+            if best is None or key < best[0]:
+                best = (key, pp)
+    if best is None:
+        return sk._record(SkillResult(False, "lift", "ik_fail", 0, None, note=f"no reliable pick of {label}"))
+    pp = best[1]
+    r = sk._record(sk.run_pick(pp))
+    if not r.ok:
+        return r
+    sk._record(sk.regrasp(pp.arm))           # straight back down onto the table, open, back off
+    return SkillResult(True, "lift", "ok", r.steps, pp.arm, note=f"{label} lifted {lift*1000:.0f} mm and set back")
 
 
 def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001,
@@ -1139,8 +1198,10 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
             place_kw = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
                         "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True}
             res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
-                                 place_kw=place_kw)
+                                 place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
             if not res.ok and res.status != "ended":
+                if "in-air handover not attempted" in res.note:
+                    lift_and_return(sk, obj)
                 return {"ok": False, "stage": f"insert {obj}", "result": res}
             return {"ok": True, "stage": "inserted"}
     fits = []
@@ -1186,8 +1247,10 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
     place_kw = {"pre_h": 0.02, "descend_rad": 0.025, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
                 "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True}
     res = place_oriented(sk, obj, targets, yaw_sym=ysym, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
-                         place_kw=place_kw)
+                         place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
     if not res.ok and res.status != "ended":
+        if "in-air handover not attempted" in res.note:
+            lift_and_return(sk, obj)
         return {"ok": False, "stage": f"insert {obj}", "result": res}
     return {"ok": True, "stage": "inserted"}
 
@@ -1240,7 +1303,7 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
         sk.log(f"[slots] {lab}: {len(tg)} slot poses")
         # the objects already in their slots are ignored for the place (their boxes overlap the next slot's)
         r = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03,
-                           ignore=(container, *done), place_kw={"pre_h": 0.04, "release_gap": 0.004})
+                           ignore=(container, *done), place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
         (done if r.ok else failed).append(lab)
         if r.status in ("step_budget", "ended"):
             break
@@ -1325,7 +1388,8 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
         r = place_oriented(sk, lab, [T], yaw_sym=4, tol_xy=0.03, tol_tilt=30.0, tol_z=0.05,
                            ignore=(container, *st["inside"]),
                            place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                     "servo": True, "servo_ref": container, "seat_tol": 0.02})
+                                     "servo": True, "servo_ref": container, "seat_tol": 0.02, "probe": False,
+                                     "hover_clear": 0.008})
         sk.refresh()
         if _inside_opening(sk, lab, container):
             st["inside"].append(lab)
@@ -1382,7 +1446,9 @@ def on_targets(sk: Skills, label: str, support: str) -> list[np.ndarray]:
     # headings: the support's (and its quarter turns), then the object's own (its grasp keeps its tilt
     # towards the arm), then the diagonals
     yo = _up_yaw(o)
-    yaws = [yb + k * math.pi / 2 for k in range(4)] + [yo] + [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
+    yaws = [yb + k * math.pi / 2 for k in range(4)] + [yo]
+    if len(pts) <= 3:          # few positions: the diagonals too (on a small stand 9 x 9 poses cost minutes of IK)
+        yaws += [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
     out = []
     for p in pts:
         for y in yaws:
@@ -1402,6 +1468,8 @@ def _face_height(o, u: np.ndarray, band: float = 0.012, half_w: float = 0.03) ->
     along = (W[:, :2] - c) @ u
     across = (W[:, :2] - c) @ np.array([-u[1], u[0]])
     m = (along < along.min() + band) & (np.abs(across) < half_w)
+    if m.sum() < 3:                                 # a coarse mesh: the whole trailing band
+        m = along < along.min() + band
     if m.sum() < 3:
         return None
     return float(W[m, 2].max() - W[:, 2].min())
@@ -1703,40 +1771,266 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
     return {"ok": True, "stage": "pegs"}
 
 
+def joint_part(o, tag: str):
+    """The moving part a functional point rides on: (link points in the object frame, joint dict) from the
+    asset's ``links.json`` (``AssetInfo.links`` / ``joints``), or None. The metadata names the link
+    (``base_link``) and the joint (``parent_joint``); the point's frame itself need not sit on the link (a
+    toaster's lever frame at the toaster's centre, the lever a bar on its side)."""
+    raw = (o.asset.functional or {}).get(tag) or (o.asset.active_functional or {}).get(tag) or {}
+    link, jn = raw.get("base_link"), raw.get("parent_joint")
+    jn = jn[0] if isinstance(jn, list) and jn else jn
+    if not o.asset.links or link not in o.asset.links:
+        return None
+    J = (o.asset.joints or {}).get(jn)
+    return o.asset.links[link]["points"], J
+
+
+def joint_stroke(o, J: dict, ratio: float) -> float:
+    """Travel (m or rad) from the joint's position (measured when the state has it, else the asset's rest
+    position) to ``ratio`` of its range."""
+    lo, hi = J.get("lower"), J.get("upper")
+    if lo is None or hi is None or hi <= lo:
+        return 0.0
+    pos = float(J.get("position") or 0.0)
+    return lo + ratio * (hi - lo) - pos
+
+
+PRESS_TILTS = (25.0, 35.0, 15.0, 0.0)   # deg from vertical, leaning away from the body the part sticks out of
+
+
+def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: float = 0.015, clearance: float = 0.025,
+                arms=None) -> SkillResult:
+    """Push the part a functional point rides on (a lever on a prismatic joint) down to ``ratio`` of its range:
+    closed fingertips on the top of the part's protrusion out of the body (the link's points outside the base
+    link's box), the hand leaning away from the body so the wider finger above the tip stays clear of it, then a
+    vertical stroke of the joint's remaining travel + ``over``, and back up (the part keeps its position when its
+    drive has no stiffness). A part already at ``ratio`` is not touched."""
+    w = sk.refresh()
+    o = w.obj(label)
+    jp = joint_part(o, tag)
+    if jp is None or jp[1] is None or jp[1].get("type") != "prismatic":
+        return sk._record(SkillResult(False, "press_joint", "logic", 0, None, note=f"{label}/{tag}: no prismatic part"))
+    P, J = jp
+    axis_w = o.R @ np.asarray(J["axis"], float)
+    if axis_w[2] > -0.7:
+        return sk._record(SkillResult(False, "press_joint", "logic", 0, None,
+                                      note=f"{label}/{tag}: joint axis {np.round(axis_w, 2).tolist()} is not a press"))
+    stroke = joint_stroke(o, J, ratio)
+    if stroke <= 0.002:
+        return sk._record(SkillResult(True, "press_joint", "ok", 0, None, note=f"{tag} already at {ratio:.2f}"))
+    body = (o.asset.links or {}).get(J.get("body0") or "base")
+    lo, hi = P.min(0), P.max(0)
+    if body is not None:
+        # the part's box beyond the body's box along the horizontal (object-frame x / y) side it sticks out of
+        # most (a lever 22 mm out of a toaster's side): press the middle of that part's top
+        gains = [(float(hi[k] - body["bbox_max"][k]), k, 1) for k in (0, 1)] + \
+                [(float(body["bbox_min"][k] - lo[k]), k, -1) for k in (0, 1)]
+        g, k, sgn = max(gains)
+        if g > 0.004:
+            lo, hi = lo.copy(), hi.copy()
+            if sgn > 0:
+                lo[k] = max(lo[k], float(body["bbox_max"][k]))
+            else:
+                hi[k] = min(hi[k], float(body["bbox_min"][k]))
+    c_loc = (lo + hi) / 2
+    c_loc[2] = hi[2]
+    if body is not None and g > 0.004:
+        # at the part's far end (1.5 mm in): twin, a toaster's lever pressed 11 mm out from the
+        # body stopped at 35 mm of its 75 mm travel, pressed at its end it went 41 mm (the check needs 40.4)
+        c_loc[k] = (hi[k] - 0.0015) if sgn > 0 else (lo[k] + 0.0015)
+    p_tip = o.R @ c_loc + o.pos
+    bc = o.R @ (((body["bbox_min"] + body["bbox_max"]) / 2) if body is not None else o.asset.center) + o.pos
+    away = np.r_[p_tip[:2] - bc[:2], 0.0]
+    away = away / (np.linalg.norm(away) or 1.0)
+    depth = stroke * float(-axis_w[2]) + over
+    heading = math.atan2(-away[1], -away[0])             # the approach leans towards the body: the hand stays out
+    arms = list(arms) if arms else sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - p_tip[:2])))
+    notes = []
+    for a in arms:
+        q0 = sk.ex.q[a]
+        for tilt in PRESS_TILTS:
+            for yaw in (math.atan2(away[1], away[0]), math.atan2(away[0], -away[1])):
+                Rg = tilted_R(yaw, 90.0 - tilt, heading) if tilt else down_R(yaw)
+                x = Rg[:, 0]
+                T_up = T_from(p_tip + [0, 0, clearance] - x * TIP_BEYOND_TCP, Rg)
+                T_dn = T_from(p_tip - [0, 0, depth] - x * TIP_BEYOND_TCP, Rg)
+                # come down onto the part from above the body (twin: a joint move straight to the press start hooked
+                # the fingers on the toaster's top edge, 7 cm short, and the stroke went nowhere)
+                T_hi = T_up.copy()
+                T_hi[2, 3] += max(0.0, o.top_z + 0.04 - float(p_tip[2] + clearance))
+                to_hi = sk.motion.to_pose(a, q0, T_hi, FAST, "press_approach", gripper=CLOSED)
+                if not to_hi.ok:
+                    notes.append(f"{a} tilt {tilt:.0f}: approach {to_hi.status}")
+                    continue
+                to_up = sk.motion.line(a, to_hi.q_end, T_up, MEDIUM, "press_lower", gripper=CLOSED, ignore=(label,))
+                if not to_up.ok:
+                    notes.append(f"{a} tilt {tilt:.0f}: lowering {to_up.status}")
+                    continue
+                down = sk.motion.line(a, to_up.q_end, T_dn, 0.03, "press_down", gripper=CLOSED, check=False)
+                back = sk.motion.line(a, down.q_end if down.ok else to_up.q_end, T_up, MEDIUM, "press_up",
+                                      gripper=CLOSED, check=False)
+                if not (down.ok and back.ok):
+                    notes.append(f"{a} tilt {tilt:.0f}: stroke unreachable")
+                    continue
+                pl = ArmPlan(a, np.asarray(q0, float), sk.ex.g[a]).grip(CLOSED, 0, "close_for_press")
+                pl.move(to_hi, "press_approach").move(to_up, "press_lower").hold(3, "press_settle")
+                pl.move(down, "press_down").hold(4, "press_hold").move(back, "press_up")
+                other = "right" if a == "left" else "left"
+                if not sk.clear_of(pl, ArmPlan(other, sk.ex.q[other].copy(), sk.ex.g[other]), min_dist=0.12):
+                    try:
+                        sk.ex.run({other: sk.plan_home(other)}, name=f"clear {other}")
+                    except (BudgetExceeded, EpisodeEnded) as e:
+                        return sk._record(SkillResult(False, "press_joint", "step_budget", 0, other, note=str(e)))
+                try:
+                    r = sk.ex.run({a: pl}, name=f"press {label}/{tag}")
+                except BudgetExceeded as e:
+                    return sk._record(SkillResult(False, "press_joint", "step_budget", 0, a, note=str(e)))
+                except EpisodeEnded as e:
+                    return sk._record(SkillResult(False, "press_joint", "ended", pl.steps, a, note=str(e)))
+                o2 = sk.refresh().obj(label)
+                js = "" if o2.joints is None else f", joints {np.round(o2.joints, 4).tolist()}"
+                return sk._record(SkillResult(True, "press_joint", "ok", r["steps"], a,
+                                              note=f"{tag}: {depth*1000:.0f} mm down, tilt {tilt:.0f}{js}"))
+    return sk._record(SkillResult(False, "press_joint", "ik_fail", 0, None, note="; ".join(notes[:6])))
+
+
+def slot_frame(c, tag: str):
+    """(centre, along, across, floor z) of a slot given as a functional point whose frames are its corners."""
+    fr = functional_frames(c, tag)
+    if len(fr) < 3:
+        return None
+    P = np.array([(c.T @ F)[:3, 3] for F in fr])
+    ctr = P.mean(0)
+    _, _, Vt = np.linalg.svd(P[:, :2] - ctr[:2], full_matrices=False)
+    along = np.r_[Vt[0], 0.0]
+    across = np.r_[-Vt[0][1], Vt[0][0], 0.0]
+    return ctr, along, across, float(np.median(P[:, 2]))
+
+
+SLOT_PLACE_KW = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "servo": True,
+                 "fingers_out": True, "probe": False, "pre_clear": 0.03}
+SLOT_TRANSFER_KW = {"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True}
+
+
+_OPENINGS: dict = {}
+
+
+def slot_openings(c, tags: list[str]) -> dict:
+    """Each slot tag's physical opening in the container's mesh (``insertion.openings``), world frame: (centre,
+    along, across, floor z). A tag's frames outline the region the slot is judged in; when they are irregular
+    (several assets' corner frames outline both slots, or are out of order), the opening inside that region is the
+    target. Openings go to the tags with the fewest candidates first, one opening per tag; a tag without one keeps
+    its frames' centre."""
+    from dojo.skills.insertion import openings
+    if c.asset.mesh is None:
+        return {}
+    key = c.asset.key
+    if key not in _OPENINGS:
+        _OPENINGS[key] = [op for op in openings(*c.asset.mesh) if op["width"] < 0.06 and op["length"] > 0.05]
+    ops = _OPENINGS[key]
+    cand = {}
+    for t in tags:
+        fr = functional_frames(c, t)
+        if len(fr) < 3:
+            continue
+        P = np.array([F[:3, 3] for F in fr])[:, :2]
+        ctr = P.mean(0)
+        ang = np.arctan2(P[:, 1] - ctr[1], P[:, 0] - ctr[0])
+        poly = P[np.argsort(ang)]
+        cand[t] = [i for i, op in enumerate(ops) if _in_poly(op["center"], poly)]
+    used, out = set(), {}
+    for t in sorted(cand, key=lambda t: len(cand[t])):
+        free = [i for i in cand[t] if i not in used]
+        if not free:
+            continue
+        i = free[0]
+        used.add(i)
+        op = ops[i]
+        a3 = c.R @ np.r_[op["along"], 0.0]
+        a3[2] = 0.0
+        a3 /= np.linalg.norm(a3)
+        out[t] = (c.R @ np.r_[op["center"], op["floor"]] + c.pos, a3, np.array([-a3[1], a3[0], 0.0]),
+                  float((c.R @ np.r_[op["center"], op["floor"]] + c.pos)[2]))
+    return out
+
+
+def _in_poly(p, poly) -> bool:
+    inside = False
+    n = len(poly)
+    for i in range(n):
+        (x1, y1), (x2, y2) = poly[i], poly[(i + 1) % n]
+        if (y1 > p[1]) != (y2 > p[1]) and p[0] < x1 + (p[1] - y1) * (x2 - x1) / (y2 - y1):
+            inside = not inside
+    return inside
+
+
+def slot_target(sk: Skills, label: str, container: str, tag: str) -> np.ndarray | None:
+    """The object standing on an edge in the slot: thinnest axis across it, longest along it, bottom 2 mm over its
+    floor (the slot's opening in the mesh when there is one, else the frames' centre)."""
+    c = sk.world.obj(container)
+    sf = slot_openings(c, [t for t in (c.asset.functional or {}) if "slot" in t.lower()]).get(tag) or slot_frame(c, tag)
+    if sf is None:
+        return None
+    ctr, along, across, floor = sf
+    ext = sk.world.obj(label).asset.extents
+    k_thin, k_long = int(np.argmin(ext)), int(np.argmax(ext))
+    k_up = 3 - k_thin - k_long
+    R = np.zeros((3, 3))
+    R[:, k_thin], R[:, k_long] = across, along
+    R[:, k_up] = np.cross(R[:, (k_up + 1) % 3], R[:, (k_up + 2) % 3])
+    return rest_with_R(sk, label, ctr[:2], R, z_bottom=floor + 0.002)
+
+
 def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[str], press_tag: str | None = None,
-                    press_depth: float = 0.05) -> dict:
+                    press_depth: float = 0.05, sibling_margin: float = 0.003) -> dict:
     """One object into each named slot of ``container`` (a functional point whose frames are the slot's
     footprint corners, container frame), standing on an edge: the object's thinnest axis across the slot,
-    its longest along it, lowered to the slot floor (closed loop); grippers open after each. Then, with
-    ``press_tag`` (a functional point on a moving joint: a toaster's lever), press it ``press_depth`` down.
-    Untested in the twin (no dev layouts for a toaster yet)."""
+    its longest along it, its bottom at the slot's floor. Closed loop over the slot; the fingers stay above
+    the container's top and the object drops the rest of the way (slots narrower than the open fingers);
+    grippers open after each. Identical objects are interchangeable: each round takes the first (object, slot)
+    pair with a one-arm plan, the given objects first, then identical others nearest the container; otherwise
+    relays for the first pair. Identical objects side by side (a rack of slices) get ``sibling_margin``
+    instead of the collision margin, so the fingers fit between them. Then, with ``press_tag`` (a functional
+    point on a moving joint: a lever), push that part down (``press_joint``; ``press_depth`` when its geometry
+    is unknown)."""
     w = sk.refresh()
     c = w.obj(container)
     sk.coll.include.add(container)
-    done, failed = [], []
-    for lab, tag in zip(objects, slots):
-        fr = functional_frames(c, tag)
-        if not fr or lab not in w.objects:
-            failed.append(lab)
-            continue
-        P = np.array([(c.T @ F)[:3, 3] for F in fr])
-        ctr = P.mean(0)
-        d = P[:, :2] - ctr[:2]
-        _, _, Vt = np.linalg.svd(d, full_matrices=False)
-        along = np.r_[Vt[0], 0.0]
-        across = np.r_[-Vt[0][1], Vt[0][0], 0.0]
-        o = sk.world.obj(lab)
-        ext = o.asset.extents
-        k_thin, k_long = int(np.argmin(ext)), int(np.argmax(ext))
-        k_up = 3 - k_thin - k_long
-        R = np.zeros((3, 3))
-        R[:, k_thin], R[:, k_long] = across, along
-        R[:, k_up] = np.cross(R[:, (k_up + 1) % 3], R[:, (k_up + 2) % 3])
-        tg = [rest_with_R(sk, lab, ctr[:2], R, z_bottom=float(P[:, 2].min()) + 0.002)]
-        r = place_oriented(sk, lab, tg, yaw_sym=2, tol_xy=0.015, tol_tilt=20.0, tol_z=0.05, ignore=(container,),
-                           place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                     "servo": True, "servo_ref": container})
+    keys = {w.obj(l).asset.key for l in objects if l in w.objects}
+    for l, o in w.objects.items():
+        if o.asset.key in keys:
+            sk.coll.margin_of[l] = sibling_margin
+    spares = sorted([l for l, o in w.objects.items() if o.asset.key in keys and l not in objects and not o.clutter],
+                    key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - c.center_w[:2])))
+    pool = [l for l in objects if l in w.objects] + spares
+    place_kw = {**SLOT_PLACE_KW, "servo_ref": container}
+    done, failed, left = [], [], [t for t in slots[:len(objects)] if functional_frames(c, t)]
+    while left and pool:
+        sk.refresh()
+        found = None
+        for lab in pool:
+            for tag in left:
+                tg = slot_target(sk, lab, container, tag)
+                r = sk.plan_transfer(lab, [tg], yaw_sym=2, ignore=(container,), place_kw=place_kw, **SLOT_TRANSFER_KW)
+                if not isinstance(r, SkillResult):
+                    found = (lab, tag, tg, r)
+                    break
+            if found:
+                break
+        if found:
+            lab, tag, tg, plan = found
+            sk.log(f"[slots] {lab} -> {tag}: direct, {plan[0].arm} ({plan[0].grasp.note})")
+            r = _run_leg(sk, lab, [tg], 2, (container,), place_kw, first=plan, tol=(0.015, 20.0, 0.06),
+                         transfer_kw=SLOT_TRANSFER_KW)
+        else:
+            lab, tag = pool[0], left[0]
+            tg = slot_target(sk, lab, container, tag)
+            r = place_oriented(sk, lab, [tg], yaw_sym=2, tol_xy=0.015, tol_tilt=20.0, tol_z=0.06, ignore=(container,),
+                               place_kw=place_kw, transfer_kw=SLOT_TRANSFER_KW)
+        pool.remove(lab)
         (done if r.ok else failed).append(lab)
+        if r.ok or r.status not in ("ik_fail", "collision", "logic"):
+            left.remove(tag)          # something went into (or onto) it; a plan failure leaves it for the next object
         for a in ARMS:
             if sk.held[a] is not None:
                 sk._record(sk.regrasp(a))
@@ -1744,20 +2038,164 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
         if r.status in ("step_budget", "ended"):
             return {"ok": False, "stage": f"slot {tag}", "result": r}
     if press_tag:
-        fr = functional_frames(c, press_tag, active=True) or functional_frames(c, press_tag)
-        if fr:
-            top = (sk.refresh().obj(container).T @ fr[0])[:3, 3]
-            arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - top[:2])))
-            r = sk.press(arm, top, n=1, depth=press_depth)
-            if not r.ok:
-                failed.append(press_tag)
-    if failed:
-        return {"ok": False, "stage": "slots", "note": f"done {done}, failed {failed}"}
+        r = press_joint(sk, container, press_tag)
+        if not r.ok and r.status == "logic":
+            fr = functional_frames(c, press_tag, active=True) or functional_frames(c, press_tag)
+            if fr:
+                top = (sk.refresh().obj(container).T @ fr[0])[:3, 3]
+                arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - top[:2])))
+                r = sk.press(arm, top, n=1, depth=press_depth)
+        if not r.ok:
+            failed.append(press_tag)
+    if failed or left:
+        return {"ok": False, "stage": "slots", "note": f"done {done}, failed {failed}, empty {left}"}
     return {"ok": True, "stage": "slots and press"}
+
+
+# ============================================================================ hang on hooks
+
+def handle_hole(o, T_h: np.ndarray, slab: float = 0.004) -> float:
+    """How far (m) inside a handle frame's origin (along its -z, into the object) the handle's hole centre lies: the
+    largest gap in the mesh along that line within the handle's plane (a mug's handle frame sits on the outside of
+    its bar). 8 mm when the mesh says nothing."""
+    from dojo.skills.insertion import _surface_samples
+    if o.asset.mesh is None:
+        return 0.008
+    P = _surface_samples(*o.asset.mesh, step=0.001)
+    L = (P - T_h[:3, 3]) @ T_h[:3, :3]
+    z = np.sort(L[(np.abs(L[:, 0]) < slab) & (np.abs(L[:, 1]) < slab) & (L[:, 2] < 0.002) & (L[:, 2] > -0.04)][:, 2])
+    if len(z) < 4:
+        return 0.008
+    gaps = np.diff(z)
+    i = int(np.argmax(gaps))
+    if gaps[i] < 0.004:
+        return 0.008
+    return float(-(z[i] + z[i + 1]) / 2)
+
+
+def hook_frames(rack, tag: str) -> list[tuple[int, np.ndarray, float]]:
+    """(index, world frame, arm length beyond the frame) of a rack's hook frames whose orientation matches its first
+    hook's (z within 60 deg, x within 60 deg either way: the rack's reference hook orientation); the arm length from
+    the rack mesh along the frame's x."""
+    fr = functional_frames(rack, tag)
+    out = []
+    V = rack.asset.mesh[0] if rack.asset.mesh is not None else None
+    for i, F in enumerate(fr):
+        if i and (float(F[:3, 2] @ fr[0][:3, 2]) < 0.5 or abs(float(F[:3, 0] @ fr[0][:3, 0])) < 0.5):
+            continue
+        tip = 0.03
+        if V is not None:
+            L = (V - F[:3, 3]) @ F[:3, :3]
+            near = L[np.hypot(L[:, 1], L[:, 2]) < 0.008]
+            if len(near):
+                tip = float(max(0.0, near[:, 0].max()))
+        out.append((i, rack.T @ F, tip))
+    return out
+
+
+def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
+    """Hang each object by its handle on one of the rack's hooks. The handle frame (on the outside of the handle's
+    bar) goes onto the hook frame, raised by the handle's hole depth so the hook's arm runs through the hole; hooks
+    oriented like the rack's first one. Each object is carried, re-oriented, to just beyond the hook's tip (hole on
+    the arm's line), slid along the arm onto it, lowered 6 mm and let go; grippers open after each (per-object
+    credit). Objects and hooks are paired by the first one-arm plan found."""
+    w = sk.refresh()
+    rk = w.obj(rack)
+    hooks = hook_frames(rk, hook_tag)
+    used, done, failed = set(), [], []
+    pool = [l for l in objects if l in w.objects]
+    for _round in range(len(pool)):
+        w = sk.refresh()
+        found = None
+        for lab in pool:
+            o = w.obj(lab)
+            hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
+            for hi, H, tip in hooks:
+                if hi in used:
+                    continue
+                for Th in hs[:2]:
+                    dz = handle_hole(o, Th)
+                    Ht = H.copy()
+                    Ht[:3, 3] += H[:3, 2] * dz
+                    T_obj = Ht @ inv_T(Th)
+                    out = tip + 0.012 + float(o.asset.extents[1]) * 0.0 + 0.008
+                    T_pre = T_obj.copy()
+                    T_pre[:3, 3] += H[:3, 0] * out
+                    grasps = (lambda a, o=o: G_hang(sk, o, a))
+                    r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=grasps,
+                                         place_kw={"pre_h": 0.03, "release": False, "approach_rad": 0.09})
+                    if not isinstance(r, SkillResult):
+                        found = (lab, hi, H, T_obj, T_pre, r)
+                        break
+                if found:
+                    break
+            if found:
+                break
+        if not found:
+            sk.log(f"[hang] no plan for {pool} on hooks {[h[0] for h in hooks if h[0] not in used]}")
+            failed += pool
+            break
+        lab, hi, H, T_obj, T_pre, (pp, pl) = found
+        sk.log(f"[hang] {lab} -> hook {hi}: {pp.arm} ({pp.grasp.note})")
+        pool.remove(lab)
+        used.add(hi)
+        r = sk.run_transfer(pp, pl, tol_xy=0.03, tol_tilt=25.0, tol_z=0.05)
+        arm = pp.arm
+        if sk.held[arm] is None:
+            failed.append(lab)
+            sk.bank()
+            if r.status in ("step_budget", "ended"):
+                return {"ok": False, "stage": f"hang {lab}", "result": r}
+            continue
+        try:
+            # slide along the hook's arm (measured grasp), lower onto it, let go, back out along the approach
+            w = sk.refresh()
+            T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ w.obj(lab).T
+            T_on = T_obj @ inv_T(T_rel)
+            mv = sk.motion.line(arm, sk.ex.q[arm], T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
+            T_dn = T_on.copy()
+            T_dn[2, 3] -= 0.006
+            dn = sk.motion.line(arm, mv.q_end if mv.segments else sk.ex.q[arm], T_dn, 0.03, "hang_lower",
+                                gripper=CLOSED, check=False)
+            T_back = T_dn.copy()
+            T_back[:3, 3] -= T_dn[:3, 0] * 0.06
+            T_back[2, 3] += 0.01
+            q_dn = dn.q_end if dn.segments else (mv.q_end if mv.segments else sk.ex.q[arm])
+            bk = sk.motion.line(arm, q_dn, T_back, MEDIUM, "hang_retreat", gripper=OPEN, check=False)
+            plan = ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED)
+            if mv.segments:
+                plan.move(mv, "slide")
+            if dn.segments:
+                plan.move(dn, "lower")
+            plan.hold(2, "settle").grip(OPEN, 3, "release").hold(2, "let_go")
+            if bk.segments:
+                plan.move(bk, "retreat")
+            sk.ex.run({arm: plan}, name=f"hang {lab}")
+            sk.held[arm] = None
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return {"ok": False, "stage": f"hang {lab}", "note": str(e)}
+        o2 = sk.refresh().obj(lab)
+        hs = functional_frames(o2, handle_tag, active=True)
+        hp = (o2.T @ hs[0])[:3, 3] if hs else o2.pos
+        d = float(np.linalg.norm(hp - H[:3, 3]))
+        ok = d < 0.045 and hp[2] > H[2, 3] - 0.03
+        sk._record(SkillResult(ok, "hang", "ok" if ok else "place_miss", 0, arm,
+                               note=f"{lab} handle {d*1000:.0f} mm from hook {hi}, z {hp[2]:.3f}"))
+        (done if ok else failed).append(lab)
+        sk.bank()
+    if failed:
+        return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
+    return {"ok": True, "stage": "hang"}
+
+
+def G_hang(sk: Skills, o, arm: str) -> list:
+    """Grasp candidates for carrying a cup-like object re-oriented: across its body (box) and pinching its wall."""
+    from dojo.skills import grasps as G
+    return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.008, 0.014, 0.02))
 
 
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
           "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,
           "insert_into": insert_into, "place_in_slots": place_in_slots,
           "fill_container": fill_container, "arrange": arrange, "stack_on_pegs": stack_on_pegs,
-          "slots_and_press": slots_and_press}
+          "slots_and_press": slots_and_press, "hang_on_hooks": hang_on_hooks}

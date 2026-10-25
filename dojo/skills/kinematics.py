@@ -186,7 +186,24 @@ class X5Kin:
     def ik(self, arm: str, T_target, q_current, seeds: list | None = None, rng_seed: int = 0,
            n_random: int = 4, accept_local: float = 1e9, **kw) -> IKResult:
         """Best of several DLS runs: current joints, wrist ±pi, home, a few fixed random seeds.
-        Picks the valid solution closest to ``q_current`` (weighted)."""
+        Picks the valid solution closest to ``q_current`` (weighted). Deterministic, so identical calls are
+        memoised (relay legs and handover searches re-screen the same grasps: planning is 80-95 % of G3 wall)."""
+        if seeds is None and not kw:
+            key = (arm, np.round(np.asarray(T_target, float)[:3, :], 6).tobytes(),
+                   np.round(np.asarray(q_current, float), 6).tobytes(), rng_seed, n_random, accept_local)
+            cache = self.__dict__.setdefault("_ik_cache", {})
+            hit = cache.get(key)
+            if hit is not None:
+                return IKResult(hit.ok, None if hit.q is None else hit.q.copy(), hit.pos_err, hit.rot_err, hit.note)
+            r = self._ik(arm, T_target, q_current, None, rng_seed, n_random, accept_local)
+            if len(cache) > 300000:
+                cache.clear()
+            cache[key] = IKResult(r.ok, None if r.q is None else r.q.copy(), r.pos_err, r.rot_err, r.note)
+            return r
+        return self._ik(arm, T_target, q_current, seeds, rng_seed, n_random, accept_local, **kw)
+
+    def _ik(self, arm: str, T_target, q_current, seeds: list | None = None, rng_seed: int = 0,
+            n_random: int = 4, accept_local: float = 1e9, **kw) -> IKResult:
         qc = np.asarray(q_current, float)
         Tt = np.asarray(T_target, float)
         shoulder = (self._base[arm] @ self._joint_T[0] @ self._joint_T[1])[:3, 3]

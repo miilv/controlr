@@ -40,6 +40,9 @@ VOCABULARIES: tuple[Vocabulary, ...] = (
     Vocabulary("cover_blocks", (r"\bcover the blocks\b", r"\buncover\b")),
     Vocabulary("general_pickup", (r"^\s*pick up the\b", r"\bby 10 ?cm\b")),
     Vocabulary("align_blocks", (r"\bset square\b", r"\bpush\b", r"\baligned row\b")),
+    Vocabulary("stack_blocks_by_language", (r"\bstack\b", r"\bblocks\b", r"\bin the order of\b")),
+    Vocabulary("plug_in_charger", (r"\bplug\b", r"\bcharger\b", r"\bpower strip\b")),
+    Vocabulary("make_kong", (r"\bdeclare a kong\b", r"\btiles?\b")),
 )
 
 

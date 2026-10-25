@@ -16,6 +16,9 @@ Ops (request dicts):
         per object at the GIVEN pose and per view: ``prec`` = fraction of the pixels where it is predicted
         front-most (z-buffer over the given objects) that are observed foreground, ``n_vis``; plus the plain
         silhouette IoU (others removed); "head" = cam_head
+    {"op": "watch", "frame0": frame, "frame": frame, "vocabulary": str}            -> {"watch": json}
+        what the scene's own actors changed while the robot waits (``dojo.perception.task_state``; make_kong:
+        the push tile the opponent knocked over): {"supported", "knocked": [label], "detail"}
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -123,6 +126,12 @@ class PerceptionClient:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
                                       "fold": int(fold)})["check"])
 
+    def watch(self, frame0: dict, frame: dict, vocabulary: str) -> dict:
+        def head_only(f):                       # the reads compare head views only: send just that image
+            return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
+        return json.loads(self._call({"op": "watch", "frame0": head_only(frame0), "frame": head_only(frame),
+                                      "vocabulary": vocabulary})["watch"])
+
     def close(self, stop_service: bool = False) -> None:
         try:
             if stop_service:
@@ -194,6 +203,16 @@ class _Perception:
                 out.append({"target": [float(pr["fixed_xy"][0]), float(pr["fixed_xy"][1]), 0.765], "arm": None,
                             "why": "config pose"})
         return out
+
+    def watch(self, frame0: dict, frame: dict, vocabulary: str) -> dict:
+        """State changes made by the scene's own actors (no robot contact), per vocabulary. make_kong: which push
+        tile the opponent knocked over (head view at the four tile slots, frame 0 vs now)."""
+        if vocabulary != "make_kong":
+            return {"supported": False, "knocked": []}
+        from dojo.perception.task_state import kong_discard
+        r = kong_discard(decode_frame(frame0)["images"]["cam_head"], decode_frame(frame)["images"]["cam_head"])
+        return {"supported": True, "knocked": [r["knocked"]] if r.get("knocked") and r.get("confident") else [],
+                "detail": r}
 
     def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
                  fuse_mode: str | None = None) -> dict:
@@ -450,6 +469,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
                         conn.send({"ok": True, "check": json.dumps(chk, default=_default)})
+                    elif op == "watch":
+                        w = p.watch(req["frame0"], req["frame"], req["vocabulary"])
+                        conn.send({"ok": True, "watch": json.dumps(w, default=_default)})
                     elif op == "close":
                         conn.send({"ok": True})
                         stop = True

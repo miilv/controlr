@@ -320,3 +320,53 @@ def refine_insertion(peg, hole, T_obj, half: float = 0.003, res: float = 0.0001,
     T_new = np.linalg.inv(T_hw) @ T_new_loc
     return T_new, {"inside": key[0], "clearance": key[1], "shift_mm": (round(dx * 1000, 2), round(dy * 1000, 2)),
                    "yaw_deg": yd, "lowered_mm": round(-dz * 1000, 1), "floor": floor, "top": top}
+
+
+def openings(V, F, min_depth: float = 0.04, res: float = 0.002, min_cells: int = 40) -> list[dict]:
+    """The openings of a receptacle seen from above (object frame, metres): connected regions of a depth map whose
+    first mesh hit lies more than ``min_depth`` below the top, each with its centre (xy), long axis, extents along /
+    across it, and floor z (median hit inside). A toaster's two slots; a rack's gaps."""
+    V = np.asarray(V, float)
+    xs = np.arange(V[:, 0].min(), V[:, 0].max() + res, res)
+    ys = np.arange(V[:, 1].min(), V[:, 1].max() + res, res)
+    top = float(V[:, 2].max())
+    Z = _ray_down_grid(V, F, xs, ys, top + 0.01)
+    deep = Z < top - min_depth
+    lab = np.zeros(deep.shape, int)
+    n = 0
+    for i, j in zip(*np.nonzero(deep)):
+        if lab[i, j]:
+            continue
+        n += 1
+        st = [(i, j)]
+        lab[i, j] = n
+        while st:
+            a, b = st.pop()
+            for da, db in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                u, v = a + da, b + db
+                if 0 <= u < deep.shape[0] and 0 <= v < deep.shape[1] and deep[u, v] and not lab[u, v]:
+                    lab[u, v] = n
+                    st.append((u, v))
+    out = []
+    for k in range(1, n + 1):
+        m = lab == k
+        if m.sum() < min_cells:
+            continue
+        iy, ix = np.nonzero(m)
+        if ix.min() == 0 or iy.min() == 0 or ix.max() == len(xs) - 1 or iy.max() == len(ys) - 1:
+            continue                                     # open to the side: not a hole
+        zf = Z[m]
+        zf = zf[np.isfinite(zf)]
+        if not len(zf):
+            continue                                     # a through hole
+        P = np.c_[xs[ix], ys[iy]]
+        c = P.mean(0)
+        _, _, Vt = np.linalg.svd(P - c, full_matrices=False)
+        along = Vt[0]
+        across = np.array([-along[1], along[0]])
+        pa, pc = (P - c) @ along, (P - c) @ across
+        c = c + along * (pa.max() + pa.min()) / 2 + across * (pc.max() + pc.min()) / 2
+        out.append({"center": c, "along": along, "length": float(pa.max() - pa.min() + res),
+                    "width": float(pc.max() - pc.min() + res), "floor": float(np.median(zf)), "top": top,
+                    "cells": int(m.sum())})
+    return out

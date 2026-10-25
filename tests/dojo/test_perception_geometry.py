@@ -214,3 +214,105 @@ def test_target_phrase_from_general_pickup_instruction():
     assert target_phrase("Pick up the yellow ice axe by 10 cm.") == "yellow ice axe"
     assert target_phrase("Stack the three blocks.") is None
     assert _tokens("Pick up the carved wooden elephant by 10 cm") == {"carved", "wooden", "elephant"}
+
+
+def test_j1_labels_follow_the_prior_by_position():
+    from dojo.perception.j1_adapter import _carry_static, stabilize_labels  # noqa: F401
+
+    prior = [{"label": "block_0", "pos": [-0.14, -0.03, 0.78]}, {"label": "block_1", "pos": [0.26, -0.14, 0.78]},
+             {"label": "block_2", "pos": [0.37, -0.15, 0.78]},
+             {"label": "target_t", "asset": "Geometry/t_cushion/00000", "pos": [-0.31, -0.11, 0.765], "confidence": 0.9}]
+    # a later call: same blocks, labels permuted by the estimator, one block moved 3 cm
+    cur = [{"label": "block_0", "pos": [0.37, -0.15, 0.78]}, {"label": "block_1", "pos": [-0.14, -0.03, 0.78]},
+           {"label": "block_2", "pos": [0.29, -0.13, 0.78]}]
+    changed = stabilize_labels(cur, prior, label_sets=[["block_0", "block_1", "block_2"]])
+    assert [o["label"] for o in cur] == ["block_2", "block_0", "block_1"]
+    assert changed == {"block_0": "block_2", "block_1": "block_0", "block_2": "block_1"}
+    out = _carry_static(cur, prior)  # the pad hidden under the T keeps its prior pose
+    assert out[-1]["label"] == "target_t" and out[-1]["source"] == "prior"
+
+
+def test_j1_refine_result_goes_to_the_object_at_that_place():
+    from dojo.perception.j1_adapter import match_refined
+
+    a = {"label": "block_0", "category": "block", "pos": [0.26, -0.14, 0.78]}
+    b = {"label": "block_1", "category": "block", "pos": [-0.14, -0.03, 0.78]}
+    prior_a = {"label": "block_1", "category": "block", "pos": [0.261, -0.143, 0.78]}  # prior label differs
+    o, why = match_refined([a, b], prior_a, [0.2605, -0.1425, 0.78])
+    assert o is a and why is None
+    c = {"label": "block_2", "category": "block", "pos": [0.27, -0.14, 0.78]}
+    o, why = match_refined([a, c], prior_a, [0.268, -0.140, 0.78])  # lands on block_2 -> rejected
+    assert o is None and why == "lands on another object"
+
+
+def test_support_under_an_object_is_not_its_occluder():
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    def shape(key, ext):
+        V = np.array([[x, y, z] for x in (-ext[0] / 2, ext[0] / 2) for y in (-ext[1] / 2, ext[1] / 2) for z in (0.0, ext[2])])
+        a = SimpleNamespace(V=V, F=np.zeros((0, 3), int), extents=np.asarray(ext), info={})
+        sm = il.ShapeModel(key, "test", a, np.eye(3), 0.0, ext[2], 1, True, None, centre_local=np.zeros(3))
+        il._FIXED_POSE_SHAPES[(key, "test")] = sm
+        return sm
+
+    shape("Geometry/pad/t", (0.084, 0.068, 0.0001))
+    shape("Rigid/t/t", (0.08, 0.06, 0.015))
+    pad = il.Hypothesis(0, "Geometry/pad/t", "test", -0.31, -0.11, 0.0, 0.1)
+    t_on_pad = il.Hypothesis(1, "Rigid/t/t", "test", -0.309, -0.111, 0.0, 0.1, {"z_off": 0.0001})
+    assert il._supports(pad, t_on_pad) and not il._supports(t_on_pad, pad)
+    far = il.Hypothesis(1, "Rigid/t/t", "test", 0.2, -0.111, 0.0, 0.1)
+    assert not il._supports(pad, far)
+
+
+def test_j1_merge_prior_rules():
+    from dojo.perception.j1_adapter import merge_prior
+
+    prior = [
+        {"label": "target_t", "category": "t_cushion", "asset": "Geometry/t_cushion/00000", "pos": [-0.107, -0.224, 0.765],
+         "quat": [1, 0, 0, 0], "confidence": 0.71},
+        {"label": "num0", "category": "number_card", "asset": "Geometry/number_card/00005", "pos": [-0.15, -0.05, 0.805],
+         "quat": [0, 0, 0.42, -0.91], "confidence": 0.86, "attributes": {"digit": 5},
+         "alternative": {"asset": "Geometry/number_card/00006", "margin": 0.053}},
+        {"label": "block_1", "category": "block", "asset": "Rigid/block/00006", "pos": [0.216, -0.078, 0.78],
+         "quat": [1, 0, 0, 0], "confidence": 0.72},
+        {"label": "block_2", "category": "block", "asset": "Rigid/block/00009", "pos": [0.319, -0.058, 0.78],
+         "quat": [1, 0, 0, 0], "confidence": 0.95},
+    ]
+    cur = [
+        # J1 push L3 call 2: the pad 54 mm off at 0.20 after the look
+        {"label": "target_t", "category": "t_cushion", "asset": "Geometry/t_cushion/00000", "pos": [-0.138, -0.268, 0.765],
+         "quat": [1, 0, 0, 0], "confidence": 0.20},
+        # press L4 call 2: the card read 1 at margin 0.003
+        {"label": "num0", "category": "number_card", "asset": "Geometry/number_card/00001", "pos": [-0.149, -0.056, 0.805],
+         "quat": [0, 0, 0.42, -0.91], "confidence": 0.60, "attributes": {"digit": 1},
+         "alternative": {"asset": "Geometry/number_card/00004", "margin": 0.003}},
+        # the base re-read under a hovering arm: degraded, 19 mm off
+        {"label": "block_1", "category": "block", "asset": "Rigid/block/00007", "pos": [0.219, -0.059, 0.78],
+         "quat": [1, 0, 0, 0], "confidence": 0.20},
+    ]
+    out, last_seen = merge_prior(cur, prior)
+    by = {o["label"]: o for o in out}
+    assert by["target_t"]["pos"] == prior[0]["pos"] and by["target_t"]["source"] == "prior"
+    assert by["num0"]["attributes"]["digit"] == 5
+    assert by["block_1"]["pos"] == prior[2]["pos"] and by["block_1"]["source"] == "prior"
+    assert [x["label"] for x in last_seen] == ["block_2"]  # picked or moved: listed, not carried
+    assert "block_2" not in by
+
+
+def test_tower_shape_stacks_copies_straight_up():
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    h = 0.035
+    V = np.array([[x, y, z] for x in (-h / 2, h / 2) for y in (-h / 2, h / 2) for z in (-h / 2, h / 2)])
+    F = np.array([[0, 1, 2]])
+    a = SimpleNamespace(V=V, F=F, Vg=V, Fg=F, info={}, dir=None, extents=np.full(3, h))
+    sm = il.ShapeModel("Rigid/block/test", "up", a, np.eye(3), -h / 2, h, 4, True, None, centre_local=np.zeros(3))
+    t = il.tower_shape(sm, 3)
+    T = t.pose(0.1, -0.1, 0.0)
+    z = (t.asset.V @ T[:3, :3].T + T[:3, 3])[:, 2]
+    assert abs(z.min() - il.TABLE_Z) < 1e-9 and abs(z.max() - (il.TABLE_Z + 3 * h)) < 1e-9
+    assert len(t.asset.Vg) == 3 * len(V) and t.height == 3 * h

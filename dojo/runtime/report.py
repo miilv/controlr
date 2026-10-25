@@ -26,8 +26,9 @@ def load(dirs: list[str]) -> list[dict]:
 
 def table(rows: list[dict]) -> str:
     keys = sorted({(r["task"], r["mode"], r["verify"]) for r in rows})
-    out = ["| task | mode | verify | n | success | score | steps med / max (lim) | looks | wall s med | worker s med | failures |",
-           "|---|---|---|---|---|---|---|---|---|---|---|"]
+    out = ["| task | mode | verify | n | success | score | steps med / max (lim) | looks | wall s med | worker s med | "
+           "verify s med | verified / skipped seg. med | failures |",
+           "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for k in keys:
         rs = [r for r in rows if (r["task"], r["mode"], r["verify"]) == k]
         n = len(rs)
@@ -41,8 +42,15 @@ def table(rows: list[dict]) -> str:
                    f"{int(np.median(steps))} / {max(steps)} ({rs[0]['step_lim']}) | {sum(r.get('n_looks', 0) for r in rs)} | "
                    f"{np.median([r['wall_s'] for r in rs]):.0f} | "
                    f"{np.median([r['worker_s'] or 0 for r in rs]):.0f} | "
+                   f"{_vmed(rs, 'wall_s', '.0f')} | {_vmed(rs, 'calls', '.0f')} / {_vmed(rs, 'skipped', '.0f')} | "
                    f"{', '.join(f'{c} {v}' for c, v in sorted(cats.items())) or '-'} |")
     return "\n".join(out)
+
+
+def _vmed(rows: list[dict], key: str, fmt: str) -> str:
+    """Median of a per-episode verify stat (``verify_stats[key]``); '-' when no episode has it."""
+    v = [r["verify_stats"].get(key) or 0 for r in rows if isinstance(r.get("verify_stats"), dict)]
+    return format(float(np.median(v)), fmt) if v else "-"
 
 
 def failures(rows: list[dict]) -> str:

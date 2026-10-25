@@ -160,6 +160,7 @@ class RuntimeProvider:
         self.confirm_mm = confirm_mm
         self.max_jump_mm = 150.0                # a re-estimate farther than this from the belief is not believed
         self.post_place_refine = False          # set by the policy (RuntimeConfig.post_place)
+        self.watcher = None                     # mode perception: (obs) -> None, may update at-rest objects (watch)
         self.post_place_min_mm = 2.0
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
@@ -339,6 +340,8 @@ class RuntimeProvider:
         else:
             if released and self.checker is not None and not self.belief.held_labels():
                 self.resync(obs, released)
+            if self.watcher is not None and not self.belief.held_labels():
+                self.watcher(obs)
             objects = {k: copy.deepcopy(v) for k, v in self.belief.objects.items()}
         if not self.belief.held_labels() and not any((holding or {}).values()):
             self._checkpoint(st)

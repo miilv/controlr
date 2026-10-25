@@ -373,3 +373,70 @@ The earlier "0.82 → 0.84" post-look line reads 0.79 → 0.84.
       is requested.
     - Open: the corkscrew's fit stays poor even where it stands alone in the left wrist view. Check its
       resting pose / place frame against simlab renders when general_pickup lands.
+
+## J1 adapter behaviours found by Misha's side (fixed on the branch, J1 keeps 868fc4a)
+I reproduced them on their seed-0 L9 practice runs, using the step observations with the server's
+calib only.
+- **Refine pose under the wrong label.** The close-up refine wrote its pose to the current object carrying
+  the prior's label. stack_blocks step 30 had two blocks at the same spot.
+  - Now `match_refined` gives the result to the current object of the same category nearest the prior
+    pose (within 4 cm).
+  - A refined pose within 15 mm of another same-category object is rejected (`refine_rejected`).
+- **Labels permute between calls.**
+  - estimate assigns interchangeable labels in a fixed spatial order (x, then y).
+  - With `prior`, the adapter's `stabilize_labels` keeps the prior's labels by position (Hungarian within
+    a label group, ≤ 8 cm).
+  - Practice stack_blocks steps 0–99: block_0..2 keep their labels; before, they changed at every step.
+- **T on the pad read ~1 cm off.**
+  - Mechanism: in joint refinement the pad's silhouette was taken out of the T's foreground, and that
+    removed the T's own pixels.
+  - Measured on step 104, with the T pushed onto the pad, from the pad pose:
+    - started on the pad: the T drifted 6 mm;
+    - started 14 mm off: it ended 39 mm off at a degenerate yaw;
+    - with supports kept: 0.8 mm both times (truth 0.6–0.9 mm).
+  - `_union_masks(target=h)` now leaves out objects lying under h (top ≤ h's bottom + 4 mm, footprints
+    overlapping).
+  - Also, static fixtures (Geometry) that the current view misses keep their prior pose with
+    `source: "prior"`. The pad under the T used to disappear from the output.
+- Integration's runtime re-keys estimates by position (`_match_by_position`, `merge_looked`), so it is not
+  affected, except merge_looked's `_not_found` fill by label (told them).
+- D0 regression (650 objects, frame 0): 0.805 → 0.806 (push_T +1, a T at 14° → 0.2°); 0 lost.
+- Open: the stacked tower at the end of stack_blocks reads as a single block (steps 152 and 211). The
+  estimator has no stacked-object proposals at runtime; frame 0 never needed them.
+
+## J1 result (B1 15/20) → root causes and fixes for J1b
+- **Replays.** Every logged perceive() call of the five failed episodes and the practice T frame was
+  replayed on isr-lab through Mesa's llvmpipe EGL device (software GL, no GPU). 868fc4a reproduces the
+  logged GPU outputs bit-identically, so the replays are exact and `J1_GL=mesa` is a usable CPU mode.
+- **Cause → fix:**
+  - **press L4** (digit 1, truth 5). Call 2 came after a left-wrist look at the other card; the hovering
+    arm covered num0 in the head view and it re-read as 1 at margin 0.003. Call 1 had read 5 at 0.053.
+    - Fix (`merge_prior`): the identity with the larger margin wins, and static fixtures keep their prior
+      pose when the new reading is less confident.
+  - **push L3** (pad 54 mm off at 0.20 after our look; pre-look 0.71). Fixed by the same static-fixture
+    rule, matched by label wherever the pad reads.
+  - **practice T 15 mm.**
+    - The T sits under the hovering arm: head view alone 16 mm off, left wrist alone 0.5 mm.
+    - New `_refine_in_looks`: a close-up refine() in every moved, open-gripper wrist view, seeded by the
+      current estimate. Replay: about 1 mm.
+  - **stack L0 / L1** (base re-read 18–20 mm off with a block held above it).
+    - The fingers, commanded closed, were rendered fully closed, so the real open fingers and the held
+      block read as foreground. The block became a phantom on the table and dragged the base fit.
+    - `render._closed_jaw_items`: with the jaws commanded closed, mask the whole finger travel and a
+      6.5 cm box between the fingertips. Replay: phantoms gone; the base under the arm reads not_found
+      instead of 19 mm off.
+    - With `prior`, a degraded reading (≤ 0.3) within 3 cm of a confident prior keeps the prior pose.
+      Missing movables go to `last_seen` and are not carried (carrying them produced stale objects in
+      replays).
+  - **stack L3.** The relay pick closed on nothing; held_look said "no" correctly, and the driver has no
+    retry path. The two blocks at 0.242 were the refine label bug fixed in 8a0a449.
+- **Finished stack read as one block.**
+  - Plain "one more on top" proposals never fire: the lone block absorbs the tower's silhouette.
+  - New `_tower_proposals`: a chosen block of a group still short is re-fitted as a straight tower of 2..k
+    copies (`tower_shape`). It is accepted only on a clear win (loss < 0.12 and < 0.4 × the single
+    block's). A block half behind a finger also "fits better" as a tower (stack L3, 0.32 → 0.16), hence
+    the bars.
+  - On top of that, block-on-block proposals (`_stack_proposals`, z from the support's fit).
+  - Practice stack step 211 now reads two blocks stacked (z 0.7825 / 0.8176); there are no false towers
+    in the J1 replays.
+- **Ask for Misha's driver:** pass `prior` on every call. Fixes 1, 2 and the stack base need it.

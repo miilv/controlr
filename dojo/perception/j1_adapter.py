@@ -24,8 +24,9 @@ Output: ``{"objects": [{label, category, asset, pos, quat, size, confidence, sou
 and Nelder-Mead runs are deterministic).
 
 Worker environment (all under the install dir, see ``install_env``): DOJO_CATALOG, DOJO_X5_DIR, DOJO_BG,
-DOJO_COLOR_CALIB. GL silhouettes use EGL on the GPU when ``J1_GL=egl`` (default); ``J1_GL=cpu`` forces the
-CPU fallback (slower).
+DOJO_COLOR_CALIB. GL silhouettes use EGL on the GPU with ``J1_GL=egl`` (default); ``J1_GL=mesa`` runs the
+same GL path on the CPU through Mesa's llvmpipe EGL device (no GPU; outputs identical to the GPU path on the J1
+replays, 1-9 s per call); ``J1_GL=cpu`` is the non-GL fallback (cannot read card digits).
 """
 from __future__ import annotations
 
@@ -124,10 +125,16 @@ def install_env() -> dict:
         "MKL_NUM_THREADS": os.environ.get("J1_THREADS", "4"),
         "DOJO_ILIA": "1",
     })
-    if os.environ.get("J1_GL", "egl") == "cpu":
+    mode = os.environ.get("J1_GL", "egl")
+    if mode == "cpu":
         env["DOJO_GL"] = "0"
     else:
         env.setdefault("PYOPENGL_PLATFORM", "egl")
+    if mode == "mesa":  # the same GL path on the CPU (Mesa llvmpipe through EGL): no GPU, bit-identical
+        # to the GPU outputs on every J1 call replayed (isr-lab, 2026-10-25)
+        env["__EGL_VENDOR_LIBRARY_FILENAMES"] = os.environ.get("J1_MESA_EGL_JSON", "/usr/share/glvnd/egl_vendor.d/50_mesa.json")
+        env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+        env["EGL_DEVICE_ID"] = os.environ.get("J1_MESA_EGL_DEVICE", "1")
     return env
 
 
@@ -436,9 +443,16 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
                     hull = cv2.convexHull(np.round(W[:, :2] * 1e4).astype(np.int32)).reshape(-1, 2) / 1e4
                     regions.append({"label": r["label"], "category": cat, "polygon_xy": np.round(hull, 4).tolist(),
                                     "z_top": round(float(W[:, 2].max()), 4)})
-    # close-up refinement of prior objects a moved wrist camera looks at
+    relabel, last_seen = {}, []
     if prior and prior.get("objects"):
-        objects = _refine_from_prior(objects, prior, images, state, cams)
+        # labels of interchangeable objects follow the prior by position (the same block keeps its label from
+        # call to call), static fixtures the current view misses come from the prior, and objects a moved
+        # wrist camera looks at get a close-up refinement
+        relabel = stabilize_labels(objects, prior["objects"], task)
+        objects, last_seen = merge_prior(objects, prior["objects"], state)
+    # objects a moved (open-gripper) wrist camera looks at: close-up refinement in that view, seeded by the
+    # current estimate (the head view under a hovering arm biased the T 15 mm; the wrist alone: 0.5 mm)
+    objects = _refine_in_looks(objects, images, state, cams)
     needs = []
     try:
         for lp in look_plan({"state": state}, rec):
@@ -448,11 +462,14 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
         needs.append({"cam": None, "reason": f"look_plan failed: {type(e).__name__}"})
     for nf in rec.get("_not_found", []):
         needs.append({"cam": None, "reason": "not_found", "label": nf["label"]})
+    for n in needs:
+        if n.get("label") in relabel:
+            n["label"] = relabel[n["label"]]
     t_ms = round(1000 * (time.time() - t0), 1)
     for o in objects:
         o.setdefault("t_ms", t_ms)
     return {"objects": objects, "regions": regions, "needs_look": needs, "want_match": _want_match(want, objects),
-            "contained": rec.get("_contained", []),
+            "contained": rec.get("_contained", []), "last_seen": last_seen,
             "task": task, "t_ms": t_ms, "t_estimate_ms": round(1000 * (t_est - t0), 1),
             "unexplained_fg": rec.get("_perception", {}).get("unexplained", []),
             "robot_state": ik, "gl": _gl_mode(), "version": VERSION}
@@ -468,18 +485,161 @@ def _gl_mode() -> str:
 HOME_FLANGE = {"left": (-0.2995, -0.3523, 0.9215), "right": (0.3005, -0.3523, 0.9215)}
 
 
+def stabilize_labels(objects: list[dict], prior_objects: list[dict], task: str | None = None, max_dist: float = 0.08,
+                     label_sets: list[list[str]] | None = None) -> dict:
+    """Give interchangeable objects (one label group: same candidate set, e.g. stack_blocks' block_0..2) the
+    labels of the prior objects they sit at: Hungarian on xy distance within the group, pairs within
+    ``max_dist`` keep the prior's label, the rest take the group's leftover labels in a fixed order. Edits
+    ``objects`` in place; returns {old label: new label} for the labels that changed."""
+    import numpy as np
+    from scipy.optimize import linear_sum_assignment
+
+    from .inverse_layout import label_groups
+
+    changed = {}
+    for labs in (label_sets if label_sets is not None else [list(g["labels"]) for g in label_groups(task)]):
+        labs = list(labs)
+        if len(labs) < 2:
+            continue
+        cur = [o for o in objects if o["label"] in labs]
+        pri = [p for p in prior_objects if p.get("label") in labs]
+        if not cur or not pri:
+            continue
+        C = np.array([[np.hypot(o["pos"][0] - p["pos"][0], o["pos"][1] - p["pos"][1]) for p in pri] for o in cur])
+        rows, cols = linear_sum_assignment(C)
+        new = {}
+        for i, k in zip(rows, cols):
+            if C[i, k] <= max_dist:
+                new[i] = pri[k]["label"]
+        left = [lab for lab in labs if lab not in new.values()]
+        for i in range(len(cur)):
+            if i not in new:
+                new[i] = left.pop(0)
+        for i, o in enumerate(cur):
+            if o["label"] != new[i]:
+                changed[o["label"]] = new[i]
+        for i, o in enumerate(cur):
+            o["label"] = new[i]
+    return changed
+
+
+PRIOR_MATCH_M = 0.03  # a current and a prior object of one category this close are the same object
+GRIP_NEAR_M = 0.08  # a prior object this close (xy) to a closed gripper may be the one it holds
+
+
+def merge_prior(objects: list[dict], prior_objects: list[dict], state: dict | None = None) -> list[dict]:
+    """What the previous call knew, where the current view is worse:
+    - static fixtures (Geometry: push_T's pad, the number cards) keep the prior pose when the current reading
+      is less confident, wherever it reads, and are carried over when missing (J1 push L3: after the look the
+      pad read 54 mm off at 0.20; the prior had it at 0.71);
+    - a movable object read at confidence <= 0.3 within 3 cm of a prior reading >= 0.3 more confident keeps the
+      prior pose (the same object at the same place: the untouched base re-read 19 mm off at 0.20 under a
+      hovering arm);
+    - identity: a current object whose asset differs from its prior's keeps the reading with the larger
+      runner-up margin (press L4: the card read 5 at margin 0.053, then 1 at 0.003);
+    - a movable prior object without a current reading within 3 cm is NOT carried (it may have been picked or
+      moved); the current reading is marked ``new_reading`` and the prior pose is listed in ``last_seen`` by
+      the caller.
+    Reverted / carried entries get ``source: "prior"``. Returns (objects, last_seen)."""
+    import numpy as np
+
+    used = set()
+    last_seen = []
+    for p in prior_objects:
+        static = str(p.get("asset", "")).startswith("Geometry/")
+        cand = [o for o in objects if o.get("category") == p.get("category") and id(o) not in used
+                and (np.hypot(o["pos"][0] - p["pos"][0], o["pos"][1] - p["pos"][1]) <= PRIOR_MATCH_M
+                     or (static and o.get("label") == p.get("label")))]  # a fixture keeps its label wherever it reads
+        cand.sort(key=lambda o: (o.get("label") != p.get("label"), np.hypot(o["pos"][0] - p["pos"][0], o["pos"][1] - p["pos"][1])))
+        pc = float(p.get("confidence", 0.5))
+        if cand:
+            o = cand[0]
+            used.add(id(o))
+            oc = float(o.get("confidence", 0.5))
+            if (static and oc < pc) or (not static and oc <= 0.3 and pc >= oc + 0.3):
+                o.update({"pos": list(p["pos"]), "quat": list(p["quat"]), "source": "prior",
+                          "confidence": round(0.9 * pc, 3), "kept_prior": {"current_conf": oc}})
+            if p.get("asset") and o.get("asset") != p["asset"]:
+                m_cur = (o.get("alternative") or {}).get("margin")
+                m_pri = (p.get("alternative") or {}).get("margin")
+                if m_pri is not None and (m_cur is None or m_pri > m_cur):
+                    o["identity_from_prior"] = {"current": o.get("asset"), "current_margin": m_cur, "prior_margin": m_pri}
+                    for k in ("asset", "attributes", "alternative", "size", "colour", "names", "colors"):
+                        if k in p:
+                            o[k] = p[k]
+        elif static:
+            q = dict(p)
+            q["source"] = "prior"
+            q["confidence"] = round(0.9 * pc, 3)
+            objects.append(q)
+        else:  # in the normal object schema: the prior object as it was, source "prior"
+            q = {k: v for k, v in p.items() if k not in ("refine", "refine_rejected", "kept_prior", "new_reading")}
+            q["source"] = "prior"
+            last_seen.append(q)
+    for o in objects:
+        if id(o) not in used and o.get("source") != "prior" and not str(o.get("asset", "")).startswith("Geometry/"):
+            o["new_reading"] = True  # no prior object of its kind within 3 cm: moved, newly seen, or spurious
+    return objects, last_seen
+
+
+def _carry_static(objects: list[dict], prior_objects: list[dict]) -> list[dict]:
+    """Static fixtures (Geometry: push_T's pad, a toolbox) the current view misses — the T now covers the
+    pad, an arm hides it — keep their prior pose, ``source: "prior"``."""
+    have = {o["label"] for o in objects}
+    for p in prior_objects:
+        if p.get("label") not in have and str(p.get("asset", "")).startswith("Geometry/"):
+            q = dict(p)
+            q["source"] = "prior"
+            q["confidence"] = round(0.9 * float(p.get("confidence", 0.5)), 3)
+            objects.append(q)
+    return objects
+
+
+REFINE_MATCH_M = 0.04  # a prior object and a current object of the same category within this are the same thing
+COLLIDE_M = 0.015  # a refined pose this close to another object of the same category is a mix-up: rejected
+
+
+def match_refined(objects: list[dict], prior_obj: dict, pose, used=()) -> tuple[dict | None, str | None]:
+    """The current object a refinement seeded at ``prior_obj`` belongs to: same category, not prior-carried,
+    within ``REFINE_MATCH_M`` of the prior pose (nearest to the refined pose). None when nothing is there, or
+    when the refined pose lands within ``COLLIDE_M`` of another object of that category."""
+    import numpy as np
+
+    same = [o for o in objects if o["category"] == prior_obj["category"] and o.get("source") != "prior"]
+    cand = [o for o in same if id(o) not in used
+            and np.hypot(o["pos"][0] - prior_obj["pos"][0], o["pos"][1] - prior_obj["pos"][1]) <= REFINE_MATCH_M]
+    if not cand:
+        return None, None
+    o = min(cand, key=lambda o: np.hypot(o["pos"][0] - pose[0], o["pos"][1] - pose[1]))
+    if any(x is not o and np.hypot(x["pos"][0] - pose[0], x["pos"][1] - pose[1]) < COLLIDE_M for x in same):
+        return None, "lands on another object"
+    return o, None
+
+
+def _refine_in_looks(objects, images, state, cams):
+    """``_refine_from_prior`` seeded by this call's own objects."""
+    return _refine_from_prior(objects, {"objects": [dict(o) for o in objects if o.get("source") != "prior"]}, images,
+                              state, cams)
+
+
 def _refine_from_prior(objects, prior, images, state, cams):
+    """Close-up refinement in a moved wrist view. The prior pose seeds the fit; the result goes to the CURRENT
+    object at that place (same category, nearest within ``REFINE_MATCH_M``), never by label: labels of
+    interchangeable objects are not identities (868fc4a wrote block_0's refined pose into block_1)."""
     import numpy as np
 
     from .refine import refine
 
-    by_label = {o["label"]: o for o in objects}
+    used = set()
     for arm in ("left", "right"):
         c = f"cam_{arm}_wrist"
         if c not in images or c not in cams or f"{arm}_ee_pose" not in state:
             continue
         if np.linalg.norm(np.asarray(state[f"{arm}_ee_pose"][:3]) - HOME_FLANGE[arm]) < 0.05:
             continue  # wrist at home: its view is already in the estimate
+        g = state.get(f"{arm}_ee_joint_state")
+        if g is not None and float(np.ravel(g)[0]) < 0.5:
+            continue  # jaws closed: the view is the held object
         cam = cams[c]
         for po in prior["objects"]:
             uv, z = cam.project(np.asarray([po["pos"]], float))
@@ -492,10 +652,15 @@ def _refine_from_prior(objects, prior, images, state, cams):
             except Exception:
                 continue
             if out.get("ok"):
-                o = by_label.get(po["label"])
-                if o is None:
-                    continue
                 pose = out["pose"]
+                o, why = match_refined(objects, po, pose, used)
+                if o is None:
+                    if why:
+                        po_cur = next((x for x in objects if x.get("label") == po.get("label")), None)
+                        if po_cur is not None:
+                            po_cur.setdefault("refine_rejected", []).append({"camera": c, "why": why})
+                    continue
+                used.add(id(o))
                 o.update({"pos": [round(float(v), 5) for v in pose[:3]], "quat": [round(float(v), 6) for v in pose[3:7]],
                           "source": "refined", "confidence": round(max(o["confidence"], float(out.get("iou", 0.0))), 3),
                           "refine": {"camera": c, "iou": out.get("iou"), "moved_mm": out.get("moved_mm"),
