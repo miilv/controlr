@@ -197,14 +197,16 @@ class Skills:
     def plan_pick(self, label: str, arm: str | None = None, method: str = "auto", lift: float = 0.08,
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
                   lift_to_z: float | None = None, approach_rad: float = FAST, descend_rad: float = SLOW,
-                  open_g: float | None = None, settle: int = 2, return_all: bool = False, lift_rad: float = MEDIUM):
+                  open_g: float | None = None, settle: int = 2, return_all: bool = False, lift_rad: float = MEDIUM,
+                  grasps: list | None = None):
+        """``grasps``: explicit candidates (world TCP poses) instead of the method's generator."""
         w = self.world
         obj = w.obj(label)
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
         best, notes, allf = None, [], []
         for a in arms:
             q0 = (q_start or {}).get(a, self.ex.q[a])
-            cands = G.candidates(obj, self.kin, a, method, **(grasp_kw or {}))
+            cands = list(grasps) if grasps is not None else G.candidates(obj, self.kin, a, method, **(grasp_kw or {}))
             if not cands:
                 notes.append(f"{a}: no grasp candidates ({method})")
                 continue
@@ -362,10 +364,11 @@ class Skills:
                    retreat: float = 0.05, ignore=(), q_start=None, approach_rad: float = CARRY,
                    descend_rad: float = SLOW, open_g: float = OPEN, settle: int = 2, open_steps: int = OPEN_STEPS,
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
-                   keep_tilt: bool = False):
+                   keep_tilt: bool = False, held: "Held | None" = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
-        ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins)."""
-        h = self.held[arm]
+        ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
+        ``held``: plan for this grasp instead of the current one (a place planned with its pick)."""
+        h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
         q0 = self.ex.q[arm] if q_start is None else q_start
@@ -527,6 +530,154 @@ class Skills:
                 f"rel tilt {tilt:.1f} deg")
         ok = dxy <= tol_xy and abs(dz) < tol_z and tilt <= tol_tilt
         return SkillResult(ok, "place", "ok" if ok else "place_miss", pp.steps, pp.arm, exp, meas, note)
+
+    # ------------------------------------------------------------------ re-orienting transfer
+    def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
+                      place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 10, grasps=None,
+                      q_start: dict | None = None):
+        """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
+        preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
+        standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
+        pair, every approach) plus the category's usual candidates. A screen (IK + collision at the grasp
+        and at the place) ranks the pairs; the best ``max_full`` are planned in full (pick, then the place
+        from the lift's end). ``yaw_sym``: each target is also tried turned by 2 pi k / yaw_sym about the
+        vertical through its bbox centre. Returns (PickPlan, PlacePlan) or a SkillResult."""
+        w = self.world
+        obj = w.obj(label)
+        place_kw = dict(place_kw or {})
+        pick_kw = dict(pick_kw or {})
+        arms = list(arms) if arms else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
+        tg = []
+        for T in targets:
+            T = np.asarray(T, float)
+            c = T[:3, :3] @ obj.asset.center + T[:3, 3]
+            for k in range(max(1, yaw_sym)):
+                Tk = T.copy()
+                Tk[:3, :3] = rot_z(2 * math.pi * k / max(1, yaw_sym)) @ T[:3, :3]
+                Tk[:3, 3] = c - Tk[:3, :3] @ obj.asset.center
+                tg.append(Tk)
+        ign = tuple(set(ignore) | {label})
+        screened, notes = [], []
+        for a in arms:
+            q0 = (q_start or {}).get(a, self.ex.q[a])
+            if callable(grasps):
+                cands = grasps(a)
+            elif grasps is not None:
+                cands = list(grasps)
+            else:
+                cands = G.box_grasps(obj, self.kin, a) + G.candidates(obj, self.kin, a)
+            # place poses this arm reaches at all (the grasp only changes the wrist)
+            n_g = n_p = 0
+            for g in cands:
+                r = self.kin.ik(a, g.T, q0, n_random=0)
+                if not r.ok:
+                    continue
+                ok, _ = self.coll.check(a, r.q, gap_to_grip(g.open_gap()), ignore=(label,))
+                if not ok:
+                    continue
+                n_g += 1
+                T_tcp_obj = inv_T(g.T) @ obj.T
+                box = HeldBox(T_tcp_obj, obj.asset.center, obj.asset.extents / 2)
+                for ti, T_obj in enumerate(tg):
+                    T_tcp = T_obj @ inv_T(T_tcp_obj)
+                    r2 = self.kin.ik(a, T_tcp, w.home_q[a], n_random=0)
+                    if not r2.ok:
+                        continue
+                    ok, _ = self.coll.check(a, r2.q, CLOSED, ignore=ign, held=box)
+                    if not ok:
+                        continue
+                    n_p += 1
+                    screened.append((g.score + 0.05 * (ti // max(1, yaw_sym)), a, g, T_obj))
+            notes.append(f"{a}: {n_g}/{len(cands)} grasps reachable, {n_p} grasp-place pairs")
+        screened.sort(key=lambda x: x[0])
+        for _, a, g, T_obj in screened[:max_full]:
+            pp = self.plan_pick(label, a, grasps=[g], lift=lift, keep=1, q_start=q_start, **pick_kw)
+            if not isinstance(pp, PickPlan):
+                notes.append(f"pick {g.note}: {pp.note[:70]}")
+                continue
+            held = Held(label, pp.T_tcp_obj, HeldBox(pp.T_tcp_obj, obj.asset.center, obj.asset.extents / 2), g)
+            pl = self.plan_place(a, T_obj, yaw_sym=1, ignore=ignore, q_start=pp.plan.q_end, held=held, **place_kw)
+            if isinstance(pl, PlacePlan):
+                pl.transfer_kw = {"ignore": tuple(ignore), **place_kw}
+                return pp, pl
+            notes.append(f"place {g.note}: {pl.note[:70]}")
+        return SkillResult(False, "transfer", "ik_fail" if not screened else "collision", 0, None,
+                           note="; ".join(notes[:6]))
+
+    def run_transfer(self, pp: PickPlan, pl: PlacePlan, tol_xy: float = 0.01, tol_tilt: float = 6.0,
+                     tol_z: float = 0.02) -> SkillResult:
+        """Execute a planned transfer: pick, check the grasp, re-plan the place for the measured in-hand
+        pose (same target; the nominal plan when the re-plan fails, ``run_place`` re-measures at the
+        approach anyway), place."""
+        r = self._record(self.run_pick(pp))
+        if not r.ok:
+            return r
+        self.refresh()
+        kw = dict(getattr(pl, "transfer_kw", {}) or {})
+        pl2 = self.plan_place(pp.arm, pl.T_obj_target, yaw_sym=1, **kw)
+        use = pl2 if isinstance(pl2, PlacePlan) else pl
+        ign = kw.get("ignore") or ()
+        ref = next((l for l in ign if l in self.world.objects), None)
+        return self._record(self.run_place(use, tol_xy, tol_tilt, tol_z=tol_z, ref_label=ref))
+
+    # ------------------------------------------------------------------ topple
+    def plan_topple(self, label: str, up_axis: int, sign: float = 1.0, arm: str | None = None, q_start=None,
+                    below_top: float = 0.012, standoff: float = 0.016, over: float = 0.012,
+                    push_rad: float = 0.025, open_after: bool = True) -> ArmPlan | SkillResult:
+        """Tip a standing object over so that its body axis ``sign * e[up_axis]`` (now horizontal) ends up
+        pointing up: closed fingertips straight down ``below_top`` under the top on that side, then a slow
+        horizontal push the other way until the fingertips are ``over`` past the far face (beyond the
+        tipping point; gravity does the rest), then up and clear. The closing axis runs along the push, so
+        the fingers' 18 mm face meets the object."""
+        from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
+        o = self.world.obj(label)
+        n = o.R[:, up_axis] * sign
+        n = np.array([n[0], n[1], 0.0])
+        if np.linalg.norm(n) < 0.5:
+            return SkillResult(False, "topple", "logic", 0, arm, note=f"{label}: axis {up_axis} is not horizontal")
+        n /= np.linalg.norm(n)
+        d = -n
+        half_n = float(np.abs(o.R.T @ n) @ (o.asset.extents / 2))
+        c = o.center_w
+        z_tcp = o.top_z - below_top + TIP_BEYOND_TCP
+        yaw = math.atan2(d[1], d[0])
+        p0 = c[:2] + n[:2] * (half_n + standoff)
+        p1 = c[:2] - n[:2] * (half_n + over)
+        T_s = T_from([p0[0], p0[1], z_tcp], down_R(yaw))
+        T_ab = T_s.copy()
+        T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+        T_e = T_from([p1[0], p1[1], z_tcp], down_R(yaw))
+        T_up = T_e.copy()
+        T_up[2, 3] = o.top_z + 0.04 + TIP_BEYOND_TCP
+        arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - c[:2])))
+        notes = []
+        for a in arms:
+            q0 = self.ex.q[a] if q_start is None else q_start
+            for yw in (yaw, yaw + math.pi):
+                Rd = down_R(yw)
+                T_ab[:3, :3] = T_s[:3, :3] = T_e[:3, :3] = T_up[:3, :3] = Rd
+                m1 = self.motion.to_pose(a, q0, T_ab, FAST, "topple_above", gripper=CLOSED, ignore=(label,))
+                if not m1.ok:
+                    notes.append(f"{a}: above {m1.note[:60]}")
+                    continue
+                m2 = self.motion.line(a, m1.q_end, T_s, MEDIUM, "topple_down", gripper=CLOSED, ignore=(label,))
+                if not m2.ok:
+                    notes.append(f"{a}: down {m2.note[:60]}")
+                    continue
+                m3 = self.motion.line(a, m2.q_end, T_e, push_rad, "topple_push", gripper=CLOSED, ignore=(label,),
+                                      max_step_m=0.01)
+                if not m3.ok:
+                    notes.append(f"{a}: push {m3.note[:60]}")
+                    continue
+                m4 = self.motion.line(a, m3.q_end, T_up, MEDIUM, "topple_up", gripper=CLOSED, check=False)
+                p = ArmPlan(a, np.asarray(q0, float), self.ex.g[a]).grip(CLOSED, 0, "close_for_push")
+                p.move(m1, "topple_above").move(m2, "topple_down").move(m3, "topple_push").hold(1, "topple_wait")
+                p.move(m4, "topple_up")
+                if open_after:
+                    p.grip(OPEN, 1, "open_after_push")
+                return p
+        return SkillResult(False, "topple", "collision" if any("hits" in n_ for n_ in notes) else "ik_fail", 0, arm,
+                           note="; ".join(notes[:4]))
 
     # ------------------------------------------------------------------ reach
     def reach_down(self, arm: str, xyz, yaws=(0.0, math.pi / 4, math.pi / 2, 3 * math.pi / 4), tilts=(0.0, 30.0)) -> bool:

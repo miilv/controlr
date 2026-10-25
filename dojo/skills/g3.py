@@ -126,6 +126,15 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     except Exception:  # noqa: BLE001
         pass
     wall = time.perf_counter() - t1
+    # RoboDojo drops episodes whose scripted opponent misfired (make_kong: the discard did not fall)
+    if 0 in (getattr(run.env, "unstable_envs", None) or set()):
+        rec.update({"stable": False, "success": False, "score": 0.0, "category": "unstable_layout",
+                    "steps": int(env.steps_used), "note": "env marked unstable during the episode"})
+        try:
+            run.env.unstable_envs.discard(0)
+        except Exception:  # noqa: BLE001
+            pass
+        return rec
     reward = env.reward()
     score = env.score()
     hist = [{"skill": h.skill, "ok": bool(h.ok), "status": str(h.status), "steps": int(h.steps), "arm": h.arm,
@@ -161,7 +170,8 @@ def cmd_run(a) -> None:
                          physics_only=True, need_planner=False)
     rows = []
     summ_p = out / f"{a.task}_episodes.jsonl"
-    tdir = paths.LAYOUTS / a.task
+    tdir = Path(a.layouts) if a.layouts else paths.LAYOUTS / a.task
+    paths.assert_not_eval(tdir)
     # simlab's pre-settled records (<id>.settled.json) when its settled_index.json exists (team rule:
     # report on settled layouts); SIMLAB_DEV_LAYOUT_SUFFIX overrides ("" = raw records)
     suffix = os.environ.get("SIMLAB_DEV_LAYOUT_SUFFIX")
@@ -371,6 +381,7 @@ def main(argv=None) -> None:
     r.add_argument("--trace", action="store_true", help="record task-object poses every env step (dev)")
     r.add_argument("--verify", type=int, default=0, help="plan + verify: samples per candidate (0 = single plan)")
     r.add_argument("--twins", type=int, default=8, help="twin envs for --verify (same process as the episode)")
+    r.add_argument("--layouts", default=None, help="layout dir (default $DOJO_DATA/simlab/layouts/<task>)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")

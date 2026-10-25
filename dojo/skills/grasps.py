@@ -338,6 +338,58 @@ def antipodal_grasps(obj: ObjectState, kin: X5Kin, arm: str, n_samples: int = 20
     return out
 
 
+def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WIDTH, depth: float = 0.016,
+               edge: float = 0.012, max_up: float = 0.35, ends: bool = True,
+               tilts: tuple = (0.0, 25.0, -25.0)) -> list[Grasp]:
+    """Grasps on every pair of opposed bbox faces narrower than the open gripper (antipodal on the mesh
+    when one is known), approached along each of the other two body axes from either side: the pads sit
+    ``depth`` inside the entry face (or at the centre of thinner sections), centred or shifted towards
+    either end of the third axis, the approach also turned by ``tilts`` (deg) about the closing axis (the
+    X5 rarely points its gripper exactly horizontal low over the table; 20-40 deg down it reaches).
+    Approaches pointing up by more than ``max_up`` (from below) are dropped.
+
+    A grasp fixes the object's orientation in the hand, so a re-orienting place (lying -> standing,
+    tip down, upright) is planned with its pick (``Skills.plan_transfer``); this set covers the
+    grasps those places need (e.g. the end of a lying tile, held so that it stands when the wrist
+    turns 90 deg)."""
+    ext = obj.asset.extents
+    axes_ok = antipodal_axes(obj)
+    R = obj.R
+    T_c = T_from(obj.center_w, R)
+    eye = np.eye(3)
+    out = []
+    for k in range(3):                                   # closing axis
+        if ext[k] > max_width or (axes_ok is not None and k not in axes_ok):
+            continue
+        for j in range(3):                               # approach axis
+            if j == k:
+                continue
+            m = 3 - j - k
+            for s in (1.0, -1.0):                        # enter through the +s face, approach along -s
+                d = min(float(ext[j]) / 2, depth)
+                p_b = s * eye[j] * (float(ext[j]) / 2 - d)
+                offs = [0.0]
+                room = float(ext[m]) / 2 - edge
+                if ends and room > 0.008:
+                    offs += [room, -room]
+                for tilt in tilts:
+                    t = math.radians(tilt)
+                    appr_b = -s * (math.cos(t) * eye[j] + math.sin(t) * eye[m])
+                    if float((R @ appr_b)[2]) > max_up:
+                        continue
+                    for off in offs:
+                        pb = p_b + eye[m] * off
+                        for flip in (1.0, -1.0):
+                            Tg = T_c @ T_from(pb, _frame(appr_b, flip * eye[k]))
+                            down = -float(Tg[2, 0])
+                            out.append(Grasp("box", Tg, float(ext[k]), pre_dist=0.06,
+                                             score=0.6 * (1.0 - down) + 0.1 * abs(off) / max(room, 1e-3)
+                                             + 0.2 * float(ext[k]) / 0.07 + abs(tilt) / 100.0,
+                                             note=f"close {k} approach {'+' if s > 0 else '-'}{j} tilt {tilt:+.0f} "
+                                                  f"off {off*1000:+.0f}mm"))
+    return out
+
+
 def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **kw) -> list[Grasp]:
     if method == "top":
         g = top_grasps(obj, kin, arm, **kw)
@@ -349,6 +401,8 @@ def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **k
         g = wall_grasps(obj, kin, arm, **kw) or rim_grasps(obj, kin, arm)
     elif method == "antipodal":
         g = antipodal_grasps(obj, kin, arm, **kw)
+    elif method == "box":
+        g = box_grasps(obj, kin, arm, **kw)
     else:
         cat = obj.category
         if cat == "bowl":

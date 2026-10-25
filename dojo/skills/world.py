@@ -58,12 +58,13 @@ class AssetDB:
             rd = os.environ.get("RD_ROOT") or str(Path(os.environ.get("RD_HOME", "/root/controlr-robodojo")) / "RoboDojo")
             objects_root = Path(rd) / "Assets" / "Object" / "RoboDojo"
         self.root = Path(objects_root)
-        if catalog_root is None:
-            for c in (os.environ.get("DOJO_CATALOG", ""), "~/dojo-perception-data/catalog", "/root/dojo-data/perception/catalog"):
-                if c and Path(os.path.expanduser(c)).is_dir():
-                    catalog_root = os.path.expanduser(c)
-                    break
-        self.catalog = Path(catalog_root) if catalog_root else None
+        # mesh catalogues, searched in order: DOJO_CATALOG (os.pathsep-separated list), then perception's
+        roots = ([catalog_root] if isinstance(catalog_root, (str, Path)) else list(catalog_root or []))
+        if not roots:
+            env = [c for c in os.environ.get("DOJO_CATALOG", "").split(os.pathsep) if c]
+            roots = env + ["~/dojo-perception-data/catalog", "/root/dojo-data/perception/catalog"]
+        self.catalogs = [Path(os.path.expanduser(str(c))) for c in roots if _is_dir(os.path.expanduser(str(c)))]
+        self.catalog = self.catalogs[0] if self.catalogs else None
         self._cache: dict[str, AssetInfo] = {}
 
     def get(self, obj_type: str, category: str, idx: int, clutter: bool = False, mesh: bool = False) -> AssetInfo:
@@ -73,13 +74,22 @@ class AssetDB:
         p = self.root / key / "metadata.json"
         m = json.loads(p.read_text())
         info = asset_from_metadata(key, m)
-        if mesh and self.catalog is not None:
-            g = self.catalog / key / "geom.npz"
-            if g.exists():
-                z = np.load(g)
-                info.mesh = (np.asarray(z["vertices"], float), np.asarray(z["faces"], int))
+        if mesh:
+            for cat_root in self.catalogs:
+                g = cat_root / key / "geom.npz"
+                if g.exists():
+                    z = np.load(g)
+                    info.mesh = (np.asarray(z["vertices"], float), np.asarray(z["faces"], int))
+                    break
         self._cache[key] = info
         return info
+
+
+def _is_dir(p: str) -> bool:
+    try:
+        return Path(p).is_dir()
+    except OSError:                 # e.g. /root/... seen by a non-root user
+        return False
 
 
 def asset_from_metadata(key: str, m: dict) -> AssetInfo:

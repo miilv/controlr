@@ -21,7 +21,7 @@ import math
 import numpy as np
 
 from dojo.skills.executor import ArmPlan, BudgetExceeded, EpisodeEnded
-from dojo.skills.geometry import T_from
+from dojo.skills.geometry import R_to_quat, T_from
 from dojo.skills.kinematics import ARMS, TABLE_Z, TIP_BEYOND_TCP, down_R, tilted_R
 from dojo.skills.motion import CARRY, FAST, MEDIUM
 from dojo.skills.targets import current_R, half_height, level_R, on_top, rest_pose, table_rest
@@ -555,5 +555,211 @@ def swap_on_mats(sk: Skills, objects: list[str], mats: list[str], button: str | 
     return {"ok": True, "stage": "swapped"}
 
 
+# ============================================================================ re-orienting moves
+
+def rest_with_R(sk: Skills, label: str, xy, R, z_bottom: float = TABLE_Z) -> np.ndarray:
+    """Object pose with orientation ``R``, bbox centre over ``xy``, bbox bottom at ``z_bottom``."""
+    o = sk.world.obj(label)
+    c = np.array([xy[0], xy[1], z_bottom + half_height(o, R)])
+    return T_from(c - R @ o.asset.center, R)
+
+
+def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
+                   tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
+                   max_spots: int = 4, relay_near=(0.0, -0.28)) -> SkillResult:
+    """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
+    the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay through a
+    free table spot, either re-orient first (put it down there in the target orientation, then a
+    translation) or translate first (put it down there as it is now, e.g. when its only free grasp is
+    along its length, then the re-orienting transfer from the open spot). Leg 1 is done by whichever arm
+    plans it, leg 2 by the other arm (it reaches the target). Both legs are planned before the first
+    moves."""
+    sk.refresh()
+    r = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
+    if not isinstance(r, SkillResult):
+        sk.log(f"[place_oriented] {label}: direct, {r[0].arm} ({r[0].grasp.note})")
+        return sk.run_transfer(*r, tol_xy=tol_xy, tol_tilt=tol_tilt, tol_z=tol_z)
+    sk.log(f"[place_oriented] {label}: no direct transfer ({r.note[:240]}); relay")
+    o = sk.world.obj(label)
+    Rs = [np.asarray(T, float)[:3, :3] for T in targets]
+    notes = [r.note[:120]]
+    R_now = level_R(o.R)
+    options = [(spot, kind) for spot in free_spots(sk, label, near_xy=relay_near, clearance=0.03)[:max_spots]
+               for kind in ("target", "as_is")]
+    for spot, kind in options:
+        if kind == "target":
+            mids, ysym = [rest_with_R(sk, label, spot, R) for R in Rs], yaw_sym
+        else:
+            mids, ysym = [rest_with_R(sk, label, spot, R_now)], 4
+        r1 = sk.plan_transfer(label, mids, yaw_sym=ysym)
+        if isinstance(r1, SkillResult):
+            notes.append(f"spot {np.round(spot, 2).tolist()} {kind} leg 1: {r1.note[:100]}")
+            continue
+        a2 = "right" if r1[0].arm == "left" else "left"
+        T_mid = r1[1].T_obj_target
+        saved = (o.pos.copy(), o.quat.copy())
+        o.pos, o.quat = T_mid[:3, 3].copy(), R_to_quat(T_mid[:3, :3])
+        try:
+            r2 = sk.plan_transfer(label, targets, arms=[a2], yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw,
+                                  q_start={a2: sk.world.home_q[a2]})
+        finally:
+            o.pos, o.quat = saved
+        if isinstance(r2, SkillResult):
+            notes.append(f"spot {np.round(spot, 2).tolist()} {kind} leg 2: {r2.note[:100]}")
+            continue
+        sk.log(f"[place_oriented] {label}: relay ({kind}) at {np.round(spot, 3).tolist()}: {r1[0].arm} "
+               f"({r1[0].grasp.note}) then {a2} ({r2[0].grasp.note})")
+        res1 = sk.run_transfer(*r1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.03)
+        if not res1.ok and res1.status in ("step_budget", "ended", "grasp_slip"):
+            return res1
+        sk.bank()
+        sk.refresh()
+        r2 = sk.plan_transfer(label, targets, arms=[a2], yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
+        if isinstance(r2, SkillResult):
+            r2 = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
+        if isinstance(r2, SkillResult):
+            return sk._record(r2)
+        return sk.run_transfer(*r2, tol_xy=tol_xy, tol_tilt=tol_tilt, tol_z=tol_z)
+    return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:5])))
+
+
+def up_body_axis(o) -> np.ndarray:
+    """The body axis that points up in the asset's ``up`` place pose (its face, for a tile)."""
+    q = o.asset.place.get("up")
+    if q is None:
+        return np.array([0.0, 0.0, 1.0])
+    from dojo.skills.geometry import quat_to_R
+    return quat_to_R(np.asarray(q, float)).T @ np.array([0.0, 0.0, 1.0])
+
+
+def face_up(o, tol_deg: float = 30.0) -> bool:
+    return float((o.R @ up_body_axis(o))[2]) > math.cos(math.radians(tol_deg))
+
+
+def face_down(o, tol_deg: float = 30.0) -> bool:
+    return float((o.R @ up_body_axis(o))[2]) < -math.cos(math.radians(tol_deg))
+
+
+def is_standing(o, tol_deg: float = 20.0) -> bool:
+    """The longest body axis is vertical."""
+    k = int(np.argmax(o.asset.extents))
+    return abs(float(o.R[2, k])) > math.cos(math.radians(tol_deg))
+
+
+def topple(sk: Skills, label: str, axis_body, arm: str | None = None, tries: int = 2) -> SkillResult:
+    """Tip ``label`` over so that ``axis_body`` (a body unit axis) points up; checked after it falls."""
+    ax = np.asarray(axis_body, float)
+    k = int(np.argmax(np.abs(ax)))
+    sign = float(np.sign(ax[k]))
+    for t in range(tries):
+        sk.refresh()
+        p = sk.plan_topple(label, k, sign, arm=arm, over=0.012 + 0.012 * t, below_top=0.012 + 0.004 * t)
+        if isinstance(p, SkillResult):
+            return sk._record(p)
+        try:
+            sk.parallel([p], name=f"topple {label}")
+            sk.ex.settle(tol=0.02, max_steps=4)
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return sk._record(SkillResult(False, "topple", "step_budget" if isinstance(e, BudgetExceeded) else "ended",
+                                          0, p.arm, note=str(e)))
+        w = sk.refresh()
+        o = w.obj(label)
+        up = float((o.R @ ax)[2])
+        if up > math.cos(math.radians(30.0)):
+            return sk._record(SkillResult(True, "topple", "ok", p.steps, p.arm,
+                                          note=f"{label} axis up within {math.degrees(math.acos(min(1.0, up))):.0f} deg"))
+        sk.log(f"[topple] {label}: axis at {math.degrees(math.acos(max(-1.0, min(1.0, up)))):.0f} deg from up, retry")
+    return sk._record(SkillResult(False, "topple", "place_miss", 0, arm, note=f"{label} did not tip over"))
+
+
+def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int = 260, shift: float = 0.006) -> dict:
+    """Mahjong kong. Hold still until the opponent has discarded (a tile that lies face up) and its arm has
+    had time to return (``min_wait`` steps from the start: the opponent's scripted motion is ~60 env steps;
+    moving while it moves fails the episode). The three hand tiles with the discard's identity are tipped
+    face up, one push each, the rest of the hand left standing. Then a tile is drawn from the wall (the top
+    of a face-down stack, preferring the one that completes a hand pair) and stood at the free end of the
+    hand row (+x), re-oriented in the hand or relayed through a free spot. Roles from geometry (standing /
+    face up / face down, rows) and asset identity only."""
+    w = sk.refresh()
+    st = w.notes.setdefault("kong", {"t0": int(w.step)})
+    tiles = [l for l in tiles if l in w.objects]
+    robot = np.array([0.0, -0.45])
+    if st.get("discard") is None:
+        prev = {l: w.obj(l).pos.copy() for l in tiles}
+        quiet = 0
+        while True:
+            ups = [l for l in tiles if face_up(w.obj(l))]
+            moved = max(float(np.linalg.norm(w.obj(l).pos - prev[l])) for l in tiles)
+            quiet = quiet + 1 if moved < 5e-4 else 0
+            if ups and quiet >= 3 and w.step - st["t0"] >= min_wait:
+                st["discard"] = max(ups, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - robot)))
+                break
+            if w.step - st["t0"] > max_wait:
+                return {"ok": False, "stage": "wait", "note": f"no discard after {w.step - st['t0']} steps"}
+            prev = {l: w.obj(l).pos.copy() for l in tiles}
+            try:
+                sk.ex.hold(1)
+            except (BudgetExceeded, EpisodeEnded) as e:
+                return {"ok": False, "stage": "wait", "note": str(e)}
+            w = sk.refresh()
+        sk.log(f"[kong] discard {st['discard']} ({w.obj(st['discard']).asset.key}) seen at step {w.step}")
+    d = w.obj(st["discard"])
+    if st.get("hand") is None:
+        standing = [l for l in tiles if is_standing(w.obj(l))]
+        near = min(standing, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - robot)))
+        y_row = float(w.obj(near).pos[1])
+        hand = sorted([l for l in standing if abs(float(w.obj(l).pos[1]) - y_row) < 0.03], key=lambda l: w.obj(l).pos[0])
+        match = [l for l in hand if w.obj(l).asset.key == d.asset.key]
+        st["hand"], st["match"] = hand, match
+        sk.log(f"[kong] hand {len(hand)} tiles, matching {match}")
+    hand, match = st["hand"], st["match"]
+    if len(match) < 3:
+        return {"ok": False, "stage": "roles", "note": f"{len(match)} hand tiles match {d.asset.key}"}
+    match = match[:3]
+    # 1. the three matching tiles face up (pushed over, away from the robot side they face)
+    cx = float(np.mean([w.obj(l).pos[0] for l in match]))
+    arm = min(ARMS, key=lambda a: abs(float(sk.kin.base(a)[0, 3]) - cx))
+    for l in sorted(match, key=lambda l: abs(float(w.obj(l).pos[0]) - float(sk.kin.base(arm)[0, 3]))):
+        if face_up(sk.world.obj(l)):
+            continue
+        r = topple(sk, l, up_body_axis(sk.world.obj(l)), arm=arm)
+        if not r.ok:
+            return {"ok": False, "stage": f"topple {l}", "result": r}
+    w = sk.refresh()
+    knocked = [l for l in hand if l not in match and not is_standing(w.obj(l), tol_deg=7.0)]
+    if knocked:
+        sk.log(f"[kong] hand tiles knocked: {knocked}")
+    sk.bank()
+    # 2. draw a wall tile: the top of a face-down stack, the one that completes a hand pair first
+    lying = [l for l in tiles if face_down(w.obj(l)) and l not in match]
+
+    def on_stack(l):
+        o = w.obj(l)
+        return any(m != l and float(np.linalg.norm(w.obj(m).pos[:2] - o.pos[:2])) < 0.02
+                   and w.obj(m).top_z <= o.bottom_z + 0.006 for m in lying)
+    tops = [l for l in lying if on_stack(l)] or lying
+    if not tops:
+        return {"ok": False, "stage": "draw", "note": "no wall tile"}
+    keys = [w.obj(l).asset.key for l in hand if l not in match]
+    y_row = float(np.mean([w.obj(l).pos[1] for l in hand]))
+    draw = min(tops, key=lambda l: (keys.count(w.obj(l).asset.key) != 2, w.obj(l).asset.key not in keys,
+                                    abs(float(w.obj(l).pos[1]) - y_row)))
+    # 3. stand it at the free (+x) end of the hand row, next to the last tile, like the row's tiles
+    end = max((l for l in hand if is_standing(w.obj(l))), key=lambda l: w.obj(l).pos[0])
+    xs = sorted(float(w.obj(l).pos[0]) for l in hand)
+    pitch = float(np.median(np.diff(xs))) if len(xs) > 1 else float(w.obj(end).asset.extents[0]) + 0.002
+    e = w.obj(end)
+    xy = (float(e.center_w[0]) + pitch + shift, float(e.center_w[1]))
+    st["draw"], st["target_xy"] = draw, xy
+    sk.log(f"[kong] draw {draw} -> stand at {np.round(xy, 3).tolist()} (pitch {pitch*1000:.0f} mm)")
+    targets = [rest_with_R(sk, draw, xy, e.R)]
+    res = place_oriented(sk, draw, targets, yaw_sym=4, tol_xy=0.012, tol_tilt=7.0,
+                         place_kw={"pre_h": 0.03, "descend_rad": 0.04, "release_gap": 0.002})
+    if not res.ok:
+        return {"ok": False, "stage": f"stand {draw}", "result": res}
+    sk.bank()
+    return {"ok": True, "stage": "kong"}
+
+
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
-          "swap_on_mats": swap_on_mats, "press_sequence": press_sequence}
+          "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong}

@@ -71,6 +71,14 @@ def plan(instruction: str, world: WorldState) -> Plan:
     buttons = [o for o in objs if "button" in o.category.lower()]
     flat_geo = [o for o in objs if o.obj_type == "Geometry" and float(o.asset.extents[2]) < 0.012]
 
+    # --- mahjong: declare a kong with the tiles (the most numerous rigid category)
+    if "kong" in text:
+        rig = [c for c, v in cats.items() if sum(o.obj_type == "Rigid" for o in v) >= 4]
+        if rig:
+            c = max(rig, key=lambda c: len(cats[c]))
+            return Plan("declare_kong", {"tiles": [o.label for o in cats[c] if o.obj_type == "Rigid"]},
+                        f"{len(cats[c])} {c} tiles")
+
     # --- buttons pressed a number of times given by cards, each followed by a confirm press
     if "press" in text and buttons and ("number" in text or "times" in text):
         cards = [o for o in objs if card_digit(o) is not None]
