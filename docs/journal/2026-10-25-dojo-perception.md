@@ -212,3 +212,21 @@ The earlier "0.82 → 0.84" post-look line reads 0.79 → 0.84.
   (within noise either way). One outlier: shoe xy median 7.6 → 21 mm on 5.1 (identity 0.40).
 - refine() on genuine 5.1 wrist frames (priors ±20 mm / ±10°; ok + centred): within 5 mm blocks 0.91, T 1.00,
   tower 1.00, bowls 0.98, bottles 0.91, pack 0.98; median 0.5–1.4 mm; 0.21–0.34 s per call.
+
+## Extension to 11 more tasks (skills-2's six + memory/open five)
+- Candidate vocabulary: 175 assets; 167 newly catalogued geometry-only (`catalog build --no-glb --keys-json`,
+  +0.6 GB). Task map rebuilt against simlab's full asset tree (make_kong had 0 candidates against the
+  D0-only subset).
+- What the checkers need beyond poses:
+  - make_kong: no glyph identity. The push tiles mahjong5_0..8_0 are `same_index_as_label` with triples
+    mahjong0..3, so the triple to expose is the one whose push tile the Franka knocks over
+    (`task_state.kong_discard`). Tiles sit at config-pinned slots (now placed there and refined locally);
+    face up/down = the place tag (mahjong frames: up / down / straight_front / straight_back).
+  - stack_blocks_by_language: colour words = cube base colours (RoboDojo's own map 1 blue, 2 green, 3 red,
+    7 yellow, 8 orange, 9 cyan); `language.relabel_by_colour_order`.
+  - general_pickup: the instruction's target restricts the 85 candidates (`restrict_by_instruction`).
+  - cover_blocks: one fixed cube per colour label; swap_T: initial yaw ≤ 3°; store_tools ≤ 10°;
+    insert_key / plug_in_charger: refine at the hover; fill_pen_holder: tip direction.
+  - Texture-critical categories (mahjong, digits) use real textured GLBs (25 MB) in render-and-compare.
+- Data: simlab renders 10 settled layouts per task, frames 0 + 1, ≤ 300 MB (`~/dojo-data/d0_ext`);
+  `ext_pipeline.sh` runs G1 frame 0 + refine per task as each lands.
