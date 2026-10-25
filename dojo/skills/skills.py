@@ -221,8 +221,10 @@ class Skills:
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
                   lift_to_z: float | None = None, approach_rad: float = FAST, descend_rad: float = SLOW,
                   open_g: float | None = None, settle: int = 2, return_all: bool = False, lift_rad: float = MEDIUM,
-                  grasps: list | None = None):
-        """``grasps``: explicit candidates (world TCP poses) instead of the method's generator."""
+                  grasps: list | None = None, squeeze: int = 0):
+        """``grasps``: explicit candidates (world TCP poses) instead of the method's generator. ``squeeze``: still
+        steps with the gripper closing before the lift (a 2 mm coin between the pads: lifted right after the close
+        it stayed in its holder, 3/3; four more steps and it came out, 3/3)."""
         w = self.world
         obj = w.obj(label)
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
@@ -283,7 +285,7 @@ class Skills:
                 p = ArmPlan(a, np.asarray(q0, float), self.ex.g[a])
                 p.grip(go, 0, "open_for_grasp").move(to_pre, "approach").move(down, "descend").hold(settle, "settle")
                 from dojo.skills.kinematics import grip_to_gap
-                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").move(up, "lift")
+                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").hold(squeeze, "squeeze").move(up, "lift")
                 cost = p.steps + 30 * g.score
                 feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label)))
                 if len(feas) >= keep:

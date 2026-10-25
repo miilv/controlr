@@ -146,6 +146,7 @@ def _align_R(a, b) -> np.ndarray:
 
 # ============================================================================ strike_in_order
 
+LOW_TIP = 0.0006              # m: fingertips over the table for a pick of a part lying on it (a coin, a fallen handle)
 STRIKE_PRESS = 0.0015         # the working end is commanded this far into the surface (a light touch)
 STRIKE_LIFT = 0.07            # between strikes the working end's lowest point rises this far above the surface
 STRIKE_DOWN_RAD = 0.06        # rad/step of the stroke down (a strike, not a press)
@@ -213,16 +214,22 @@ def handle_grasps(sk: Skills, o, arm: str, work_loc, dists=(0.13, 0.15, 0.11, 0.
             for flip in (1.0, -1.0):
                 R = G._frame(appr, flip * closing)
                 T = T_from(p_w, R)
-                # fingertips >= 2.5 mm over the table: raise the TCP (the pads still cover a handle a few mm thick)
+                # fingertips >= 2.5 mm over the table: raise the TCP (the pads still cover a handle a few mm thick);
+                # a handle lying on the table (its tool fell off its stand): fingertips 0.6 mm over the table, the
+                # pads still cover its whole section (``LOW_TIP``; the pick is planned with no fingertip margin)
                 g_open = G.gap_to_grip(min(G.MAX_GAP, width + 2 * G.CLEAR + 0.006))
                 low = float(sk.kin.finger_points(sk.kin.flange_from_tcp(T), g_open)[:, 2].min())
                 need = TABLE_Z + 0.0025 - low
+                tag = ""
                 if need > 0:
                     if need > 0.4 * width + 0.002:
-                        continue
+                        if float(p_w[2]) - TABLE_Z > 0.6 * width + 0.004:
+                            continue
+                        need = TABLE_Z + LOW_TIP - low
+                        tag = " low"
                     T[2, 3] += need
-                out.append(G.Grasp("handle", T, width, pre_dist=0.06, score=0.1 * rank + abs(tilt) / 100.0,
-                                   note=f"handle {d*1000:.0f} mm from the working end, tilt {tilt:+.0f}"))
+                out.append(G.Grasp("handle", T, width, pre_dist=0.06, score=0.1 * rank + abs(tilt) / 100.0 + (0.3 if tag else 0),
+                                   note=f"handle {d*1000:.0f} mm from the working end, tilt {tilt:+.0f}{tag}"))
     return out
 
 
@@ -329,9 +336,14 @@ def strike_in_order(sk: Skills, tool: str, instrument: str, points: list[str], w
     # the arm: a pick that leaves one tool orientation striking every target (planned with the pick's grasp)
     choice, notes = None, []
     arms = [arm] if arm else list(ARMS)
+    fm = sk.coll.finger_margin
     for a in arms:
         cands = handle_grasps(sk, to, a, work_loc)
-        picks = sk.plan_pick(tool, a, grasps=cands, lift=0.06, keep=6, max_eval=60, return_all=True)
+        sk.coll.finger_margin = 0.0 if any(g.note.endswith("low") for g in cands) else fm
+        try:
+            picks = sk.plan_pick(tool, a, grasps=cands, lift=0.06, keep=6, max_eval=60, return_all=True)
+        finally:
+            sk.coll.finger_margin = fm
         if not isinstance(picks, list) or not picks:
             notes.append(f"{a}: no pick ({getattr(picks, 'note', '')[:120]})")
             continue
@@ -518,6 +530,7 @@ def holder_of(sk: Skills, label: str) -> str | None:
     return None
 
 
+DISC_SQUEEZE = 4              # still steps after the close before a disc is lifted (twin: lifted at once, it stayed)
 DISC_PLACE_KW = {"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 3, "servo": True,
                  "fingers_out": True, "probe": False, "hover_clear": 0.006, "seat_tol": 0.05}
 
@@ -551,7 +564,7 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
         if abs(float(oo.R[2, k])) > 0.9:
             return pinch_grasps(sk, oo, a)
         return edge_grasps(sk, oo, a, floor + 0.003)
-    tkw = {"grasps": grasps, "screen_fingers_out": True}
+    tkw = {"grasps": grasps, "screen_fingers_out": True, "pick_kw": {"squeeze": DISC_SQUEEZE}}
     sk.log(f"[disc] {obj} -> {rec}: {len(tg)} targets, holder {hold}")
     direct = sk.plan_transfer(obj, tg, ignore=(rec,), place_kw=place_kw, **tkw)
     if isinstance(direct, SkillResult):
