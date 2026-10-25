@@ -98,13 +98,18 @@ functional points. Mesh catalogue for the six tasks' assets (85): `compute3:~/do
   arm that reaches the stand (left, 0.57 m) passes over the drawer's corner; in the collision model the
   garage's box keeps 2.5 mm from the drawer. G3: section 3.
 
-### plug_in_charger (step_lim 400, binary): not attempted in G3
+### plug_in_charger (step_lim 400, binary)
 
-- The charger has two flat blades, 1.5 mm x 6.5 mm, 12 mm apart; the socket's outlets are 1.5 mm slots
-  (pairs 6 mm apart, slanted pairs). `fit_insertion` finds no pose with positive clearance even at
-  0.25 mm resolution, the socket is a dynamic Rigid (its collision shape for 1.5 mm slots is unknown,
-  likely a convex decomposition), and the task is binary. Judged infeasible for a scripted skill
-  without a contact model of the slots; no partial credit to bank.
+- First judged infeasible from the visual meshes: two flat 1.5 x 6.5 mm blades 12 mm apart vs outlets of
+  two slanted 1.5 mm slots ~13 mm apart (+ an earth slot), 19 mm deep; `fit_insertion` finds no pose with
+  positive clearance even at 0.25 mm. The lead pushed back (HexaShell 32, REAL_RSI 22, PyRUA 16).
+- The assets say where it goes: the charger's active `insert` frame (14 mm from its root towards the
+  blades, -90 deg about x) and the strip's three outlet frames (`support socket/0..2`, two headings
+  each). Matching them puts the blade tips at the strip's floor (21.6 mm deep, >= 15 required).
+  `insert_into` now tries these frames first (then the mesh fit, then a blind press 16 mm below the
+  receptacle's top). REAL_RSI's controller (XPolicyLab PR #198, Apache-2.0, read only) also works from six
+  socket frames and an in-air handoff. Kinematic dry run 94 / 400 steps; G3 queued (`plug_v1`), the
+  twin decides whether the strip's collider lets the blades in.
 
 ## 3. G3 numbers (GT state, physics-only twin, settled dev layouts)
 
@@ -119,6 +124,7 @@ episode record carries the deployed commit (`scripts/skills/deploy_skills2.sh` -
 | store_tools_in_toolbox | v1 (907647f) | 100000-04 | 0/5 | 0.10 | 219 / 283 (900) | grasp_slip 4 (flat tools squeezed out of the pads), place_miss 1 |
 | fill_pen_holder | v1 (907647f) | 100000 (stopped: superseded) | 0/1 | 0 | 159 (1100) | an oil pen packed 2 mm from the wall jammed 50 mm down; the retreat pulled it out and tipped the holder |
 | organize_table | v1 (18bbd61) | 100000-04 | 0/5 | 0.35 | 252-487 (1000) | mouse 5/5 on its pad; alarm on the drawer slipped / tilted in the tilted grasp; figurine: no plan next to the drawer; keyboard push: no stroke plan / no motion |
+| insert_key | v1 (bc04994) | the 14 settled of 100000-24 | 0/11 so far | 0.15 (all banked the lift) | 48-229 (300) | in-air handover executed (drift 0.1 mm) but: taker approach IK at execution 4, key turned in the taker's grasp then re-plan failed 3, collision with the lock 1, step budget 1 |
 
 ## 4. Failure taxonomy
 
