@@ -40,6 +40,7 @@ class AssetInfo:
     functional: dict = field(default_factory=dict)  # passive functional points (tag -> raw)
     active_functional: dict = field(default_factory=dict)  # active functional points (tag -> raw)
     mesh: tuple | None = None                       # (vertices (N,3), faces (M,3)) when a catalogue is present
+    irregular: bool | None = None                   # fills its box poorly (set at load for decimated meshes)
 
     @property
     def extents(self) -> np.ndarray:
@@ -80,10 +81,39 @@ class AssetDB:
                 g = cat_root / key / "geom.npz"
                 if g.exists():
                     z = np.load(g)
-                    info.mesh = (np.asarray(z["vertices"], float), np.asarray(z["faces"], int))
+                    V, F = np.asarray(z["vertices"], float), np.asarray(z["faces"], int)
+                    if len(F) > MAX_FACES:
+                        from dojo.skills.motion import mesh_irregular
+                        info.irregular = mesh_irregular(V)       # on the full mesh (clustering moves the slices)
+                    cell = DECIMATE_CELL
+                    while len(F) > MAX_FACES and cell < 0.01:
+                        V, F = decimate(V, F, cell)
+                        cell *= 1.6
+                    info.mesh = (V, F)
                     break
         self._cache[key] = info
         return info
+
+
+MAX_FACES = 30000             # meshes above this are clustered (tools, figurines, mice: 0.1-1.2 M faces; every
+DECIMATE_CELL = 0.0015        # grasp ray cast and fit is O(faces)); precision parts (keys, plugs, strips) are below
+
+
+def decimate(V: np.ndarray, F: np.ndarray, cell: float) -> tuple[np.ndarray, np.ndarray]:
+    """Vertex clustering on a ``cell`` grid: vertices in a cell merge into their mean, collapsed and duplicate
+    faces are dropped. Keeps the shape within ~``cell`` (enough for grasps and contact patches)."""
+    key = np.floor((V - V.min(0)) / cell).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True)
+    inv = inv.reshape(-1)
+    n = int(inv.max()) + 1
+    cnt = np.bincount(inv, minlength=n).astype(float)
+    V2 = np.stack([np.bincount(inv, weights=V[:, k], minlength=n) for k in range(3)], axis=1) / cnt[:, None]
+    F2 = inv[F]
+    ok = (F2[:, 0] != F2[:, 1]) & (F2[:, 1] != F2[:, 2]) & (F2[:, 0] != F2[:, 2])
+    F2 = F2[ok]
+    F2 = np.unique(np.sort(F2, axis=1), axis=0, return_index=True)[1]
+    F2 = inv[F][ok][np.sort(F2)]
+    return V2, F2
 
 
 def _is_dir(p: str) -> bool:
