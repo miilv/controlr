@@ -28,6 +28,7 @@ GT is never read here. The evaluation lives in ``eval_g1.py``.
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -531,15 +532,15 @@ def _diverse(res, period, k=3, min_sep=0.4, slack=0.15):
 
 
 def refine(sm: ShapeModel, x, y, yaw, views, others=None, xy_step=0.006, yaw_step=0.12, maxiter=120,
-           fix_yaw=False, color_w: float = 0.0, bounds=None):
+           fix_yaw=False, color_w: float = 0.0, bounds=None, z_off: float = 0.0):
     """Nelder-Mead over (x, y[, yaw]) on the ROI soft-IoU loss (+ color_w x texture cost when > 0); the
     ROIs are fixed at the start pose. ``bounds`` = (xlo, xhi, ylo, yhi) of the origin: leaving them costs
     BOUND_PENALTY per metre (a compact generator region). The returned loss is the silhouette part."""
-    rvs = make_roi_views(sm, sm.pose(x, y, yaw), views, others)
+    rvs = make_roi_views(sm, sm.pose(x, y, yaw, z_off), views, others)
 
     def f(p):
         yy = yaw if fix_yaw else p[2]
-        T = sm.pose(p[0], p[1], yy)
+        T = sm.pose(p[0], p[1], yy, z_off)
         l = roi_loss(sm, T, rvs)[0]
         if bounds is not None:
             l += BOUND_PENALTY * (max(0.0, bounds[0] - p[0], p[0] - bounds[1]) + max(0.0, bounds[2] - p[1], p[1] - bounds[3]))
@@ -559,7 +560,7 @@ def refine(sm: ShapeModel, x, y, yaw, views, others=None, xy_step=0.006, yaw_ste
                  options={"initial_simplex": np.array(simplex), "maxiter": maxiter, "xatol": 2e-4, "fatol": 1e-4})
     p = r.x
     yy = yaw if fix_yaw else float(p[2])
-    loss, per = roi_loss(sm, sm.pose(p[0], p[1], yy), rvs)
+    loss, per = roi_loss(sm, sm.pose(p[0], p[1], yy, z_off), rvs)
     return float(p[0]), float(p[1]), yy, loss, per
 
 
@@ -1204,9 +1205,10 @@ def _score_hyp(h: Hypothesis, views, others, cfg, groups, iters, color: bool = F
     yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
     sm = h.sm()
     cw = cfg.refine_color_weight if (color and sm.asset.info.get("n_textured_parts", 0) > 0) else 0.0
+    z_off = float(h.per_view.get("z_off", 0.0))
     x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed, color_w=cw,
-                                  bounds=origin_bounds(groups[h.label_group], sm, h.yaw))
-    T = sm.pose(x, y, yaw)
+                                  bounds=origin_bounds(groups[h.label_group], sm, h.yaw), z_off=z_off)
+    T = sm.pose(x, y, yaw, z_off)
     col, _ = observed_color(sm, T, views)
     app = _app(col, h.per_view["geom_group"])
     tx = None
@@ -1216,6 +1218,9 @@ def _score_hyp(h: Hypothesis, views, others, cfg, groups, iters, color: bool = F
     pen = cfg.appearance_weight * app + cfg.texture_weight * (0.25 if tx is None else tx)
     h2 = Hypothesis(h.label_group, h.key, h.tag, x, y, yaw, loss + pen, per, h.blob)
     h2.per_view["geom_group"] = h.per_view["geom_group"]
+    if z_off:
+        h2.per_view["z_off"] = z_off
+        h2.per_view["stacked_on"] = h.per_view.get("stacked_on")
     h2.per_view["sil_loss"] = round(float(loss), 4)
     h2.per_view["penalty"] = round(float(pen), 4)
     h2.per_view["texture"] = None if tx is None else round(float(tx), 4)
@@ -1333,6 +1338,113 @@ def _place_like(h: Hypothesis, target_xy: np.ndarray, yaws, views, others, cfg, 
     return best
 
 
+TOWER_MAX_LOSS = 0.12
+TOWER_RATIO = 0.4
+
+
+def tower_shape(sm: ShapeModel, k: int) -> ShapeModel:
+    """``k`` copies of ``sm`` stacked straight up (same footprint and yaw): one silhouette for a tower."""
+    key = f"tower{k}:{sm.key}"
+    hit = _FIXED_POSE_SHAPES.get((key, sm.tag))
+    if hit is not None:
+        return hit
+    from types import SimpleNamespace
+
+    a = sm.asset
+    up = sm.R0.T @ np.array([0.0, 0.0, sm.height])  # one block's height, in the asset frame
+    Vs = [a.V + i * up for i in range(k)]
+    F = np.concatenate([a.F + i * len(a.V) for i in range(k)])
+    Vg = [a.Vg + i * up for i in range(k)]
+    Fg = np.concatenate([a.Fg + i * len(a.Vg) for i in range(k)])
+    V = np.concatenate(Vs)
+    asset = SimpleNamespace(V=V, F=F, Vs=V, Fs=F, Vg=np.concatenate(Vg), Fg=Fg, info=dict(a.info), key=key,
+                            extents=np.ptp(V, axis=0), dir=a.dir)
+    t = ShapeModel(key, sm.tag, asset, sm.R0, sm.zmin, k * sm.height, sm.sym, False, None, centre_local=sm.centre_local)
+    _FIXED_POSE_SHAPES[(key, sm.tag)] = t
+    return t
+
+
+def _tower_proposals(chosen, need, pending, views, cfg, groups, margin: float = 0.05) -> list[Hypothesis]:
+    """A group short of objects may have them stacked on one it found: a finished tower read as a single block
+    (the block absorbs the whole tower silhouette, so 'one more on top' never fits). Each chosen object of such
+    a group is re-fitted as a straight tower of 2..1+need copies of itself; a tower that explains the views
+    better by ``margin`` replaces it with one hypothesis per level (z from the levels below)."""
+    out = list(chosen)
+    for gi, g, prior in pending:
+        if need.get(gi, 0) <= 0 or g["type"] != "Rigid":
+            continue
+        for c in [h for h in out if h.label_group == gi and not h.per_view.get("z_off") and not h.per_view.get("slot")
+                  and h.tag != "fixed"]:
+            if need.get(gi, 0) <= 0:
+                break
+            sm = c.sm()
+            if sm.height > 0.08 or sm.height < 0.01:
+                continue  # towers of flat or tall things are not this task
+            others = _union_masks([h for h in out if h is not c], views, target=c)
+            x1, y1, yaw1, l1, _ = refine(sm, c.x, c.y, c.yaw, views, others, maxiter=cfg.quick_iters, xy_step=0.004,
+                                         yaw_step=0.08)
+            best = (l1, 1, x1, y1, yaw1)
+            for k in range(2, 2 + min(need[gi], cfg.stack_levels)):
+                ts = tower_shape(sm, k)
+                xk, yk, yawk, lk, _ = refine(ts, c.x, c.y, c.yaw, views, others, maxiter=cfg.quick_iters, xy_step=0.004,
+                                             yaw_step=0.08)
+                # a clear win only: the tower fits well and far better than the lone block (a block half behind a
+                # finger also 'fits better' as a tower: J1 stack L3, 0.32 -> 0.16)
+                if lk < best[0] - margin and lk < TOWER_MAX_LOSS and lk < TOWER_RATIO * l1:
+                    best = (lk, k, xk, yk, yawk)
+            if os.environ.get("DOJO_DEBUG_STACK"):
+                print("tower check", c.key, "single %.3f" % l1, "best k", best[1], "loss %.3f" % best[0])
+            if best[1] == 1:
+                continue
+            _, k, x, y, yaw = best
+            out.remove(c)
+            for i in range(k):
+                h = Hypothesis(gi, c.key, c.tag, x, y, yaw, float(best[0]), dict(c.per_view), c.blob)
+                h.per_view["z_off"] = float(i * sm.height)
+                h.per_view["tower"] = {"levels": k, "level": i}
+                h.per_view["sil_loss"] = round(float(best[0]), 4)
+                out.append(h)
+            need[gi] -= k - 1
+    return out
+
+
+def _stack_proposals(chosen, short, shapes_by_group, views, cfg, groups) -> list[Hypothesis]:
+    """Hypotheses for objects resting on top of chosen ones: each short group's shapes, centred on the support's
+    top face at its yaw (+ a yaw grid within the shape's period), then the quick refinement at that height."""
+    out = []
+    for c in chosen:
+        if c.tag == "fixed" or c.per_view.get("slot"):
+            continue
+        sc = c.sm()
+        top = _z_range(c)[1]
+        if top - TABLE_Z > 0.25:
+            continue
+        Tc = c.T()
+        cxy = (Tc[:3, :3] @ sc.asset.V.mean(0) + Tc[:3, 3])[:2]
+        for gi, g, prior in short:
+            for sms in shapes_by_group[gi].values():
+                sm = sms[0]
+                if sm.asset.extents[:2].max() > 1.6 * sc.asset.extents[:2].max():
+                    continue  # much wider than its support: not stacked on it
+                period = sm.yaw_period
+                best = None
+                for dyaw in np.arange(0.0, period, min(period, np.deg2rad(30))):
+                    yaw = c.yaw + dyaw
+                    off = _centroid_xy(sm, 0.0, 0.0, yaw)
+                    h = Hypothesis(gi, sm.key, sm.tag, float(cxy[0] - off[0]), float(cxy[1] - off[1]), float(yaw), 1.0,
+                                   blob=c.blob)
+                    h.per_view = {"geom_group": [s_.key for s_ in sms], "z_off": float(top - TABLE_Z), "stacked_on": c.key}
+                    others = _union_masks([x for x in chosen if x is not c], views, target=h)
+                    h2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
+                    if np.hypot(h2.x - h.x, h2.y - h.y) > 0.6 * sc.asset.extents[:2].max():
+                        continue  # slid off its support: not a stacked object
+                    if best is None or h2.loss < best.loss:
+                        best = h2
+                if best is not None:
+                    out.append(best)
+    return out
+
+
 def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.02) -> list[Hypothesis]:
     """Cross-label identity: two chosen objects of different label groups whose generator regions admit each
     other's place (store_tools' hammer and wrench share a region) trade places when the swapped fits cost
@@ -1342,7 +1454,8 @@ def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.
         for j in range(i + 1, len(out)):
             a, b = out[i], out[j]
             if (a.label_group == b.label_group or "fixed" in (a.tag, b.tag) or a.per_view.get("slot")
-                    or b.per_view.get("slot") or a.per_view.get("occluded") or b.per_view.get("occluded")):
+                    or b.per_view.get("slot") or a.per_view.get("occluded") or b.per_view.get("occluded")
+                    or a.per_view.get("z_off") or b.per_view.get("z_off")):
                 continue
             sa, sb = a.sm(), b.sm()
             if (sa.key == sb.key or (np.allclose(sa.asset.extents, sb.asset.extents, atol=2e-3)
@@ -1386,8 +1499,8 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
     prior_by_g = {gi: (g, p) for gi, g, p in pending}
     out = list(chosen)
     for i, h in enumerate(out):
-        if h.per_view.get("occluded") or h.label_group not in prior_by_g:
-            continue
+        if h.per_view.get("occluded") or h.label_group not in prior_by_g or h.per_view.get("z_off"):
+            continue  # stacked objects keep their fit (the trials below are table-resting)
         g, prior = prior_by_g[h.label_group]
         others = _union_masks(out, views, skip=i, target=out[i])
         trials = []
@@ -1583,6 +1696,9 @@ class EstimatorConfig:
     # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
     use_slots: bool = True  # labels pinned to config slots start there (make_kong tiles, tower base)
     slot_identity_max: int = 12  # slot labels with 2..N candidates get a per-candidate identity check
+    stack_proposals: bool = True  # groups still short look for objects resting on chosen ones (_stack_proposals)
+    stack_levels: int = 2
+    stack_max_loss: float = 0.5
     wrist_proposals: bool = True  # single-target groups with a poor head fit also propose from wrist blobs
     wrist_fallback_loss: float = 0.6
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
@@ -1746,6 +1862,31 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             h.per_view["occluded"] = True
             chosen.append(h)
             need[h.label_group] -= 1
+    # stacked objects: a group still short may have objects on top of chosen ones (a finished tower read as one
+    # block). Candidates sit on a chosen object's top (z from its fit), yaw-gridded, fitted in xy/yaw with the
+    # support kept in their foreground; selected by the same explain-away rule, up to cfg.stack_levels high.
+    if cfg.stack_proposals:
+        chosen = _tower_proposals(chosen, need, pending, views, cfg, groups)
+        for _level in range(cfg.stack_levels):
+            short = [(gi, g, p) for gi, g, p in pending if need.get(gi, 0) > 0 and g["type"] == "Rigid"]
+            if not short:
+                break
+            stacked = _stack_proposals(chosen, short, shapes_by_group, views, cfg, groups)
+            # a block on top shows few new pixels in the head view (the tower's silhouette already covers most):
+            # a low gain bar, the fit-quality bar below does the filtering
+            add = _scene_select(stacked, {gi: need[gi] for gi, _, _ in short}, views, existing=chosen, min_gain=0.05)[0] if stacked else []
+            if os.environ.get("DOJO_DEBUG_STACK"):
+                print("stack level", _level, "need", {gi: need[gi] for gi, _, _ in short}, "cands",
+                      [(round(h.x, 3), round(h.y, 3), round(h.per_view.get("z_off", 0), 3), round(h.loss, 3),
+                        h.per_view.get("sil_loss"), {k: v for k, v in h.per_view.items() if k.startswith("cam")}) for h in stacked],
+                      "selected", len(add))
+            add = [h for h in add if h.per_view.get("sil_loss", h.loss) < cfg.stack_max_loss]
+            if not add:
+                break
+            pool += stacked
+            for h in add:
+                chosen.append(h)
+                need[h.label_group] -= 1
     timings["propose_assign_s"] = round(time.time() - t1, 3)
 
     # ---- polish: identity among the label group's shapes + 180-degree flips, per chosen object
@@ -1795,7 +1936,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
             x, y, yaw, loss, per = refine(h.sm(), h.x, h.y, h.yaw, views, others, xy_step=0.003, yaw_step=0.05,
                                           maxiter=cfg.refine_iters, fix_yaw=yaw_fixed,
-                                          bounds=origin_bounds(groups[h.label_group], h.sm(), h.yaw))
+                                          bounds=origin_bounds(groups[h.label_group], h.sm(), h.yaw),
+                                          z_off=float(h.per_view.get("z_off", 0.0)))
             sil0 = h.per_view.get("sil_loss", h.loss)
             if loss <= sil0 + 0.02:
                 h.loss = h.loss - sil0 + loss

@@ -257,6 +257,48 @@ def robot_items(state: dict, id_base: int = 1000) -> list[dict]:
             if link in poses:
                 items.append({"id": id_base + 100 * ai + li, "key": f"robot:{arm}:{link}", "V": V, "F": F, "T": poses[link],
                               "link": link, "arm": arm})
+        if g is not None and g < 0.5 and "link7" in meshes and "link8" in meshes:
+            items += _closed_jaw_items(model, meshes, arm, q, id_base + 100 * ai + 60)
+    return items
+
+
+HELD_BOX = 0.065  # side of the cube masked between closed jaws (holds a 40 mm block in any orientation)
+
+
+@lru_cache(maxsize=1)
+def _box_mesh(side: float):
+    h = side / 2
+    V = np.array([[x, y, z] for x in (-h, h) for y in (-h, h) for z in (-h, h)], dtype=float)
+    F = np.array([[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1], [2, 3, 7], [2, 7, 6],
+                  [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]], dtype=np.int64)
+    return V, F
+
+
+def _closed_jaw_items(model, meshes, arm: str, q, id0: int) -> list[dict]:
+    """A gripper commanded closed (strict tier: no finger measurement) has its fingers somewhere along their
+    travel, stopped by whatever it holds: mask the fingers over the whole travel and a cube between the
+    fingertips (the held object). Otherwise the real fingers and the carried block read as foreground: the
+    block was fitted as a phantom on the table and dragged the fit of the block under it (J1 stack L0/L1)."""
+    items = []
+    for k, gv in enumerate((0.25, 0.5, 0.75, 1.0)):
+        P = model.fk_world(arm, q, gv)
+        for j, link in enumerate(("link7", "link8")):
+            V, F = meshes[link]
+            items.append({"id": id0 + 2 * k + j, "key": f"robot:{arm}:{link}:sweep{k}", "V": V, "F": F, "T": P[link],
+                          "link": "jaw_sweep", "arm": arm})
+    P0 = model.fk_world(arm, q, 0.0)
+    T6 = P0["link6"]
+    W = [meshes[k][0] @ P0[k][:3, :3].T + P0[k][:3, 3] for k in ("link7", "link8")]
+    tool = np.mean(np.concatenate(W), axis=0) - T6[:3, 3]
+    tool /= np.linalg.norm(tool)
+    tips = []
+    for Wf in W:  # the finger pads: the outer 3 cm of each finger
+        d = (Wf - T6[:3, 3]) @ tool
+        tips.append(Wf[d > d.max() - 0.03].mean(0))
+    T = T6.copy()
+    T[:3, 3] = (tips[0] + tips[1]) / 2
+    V, F = _box_mesh(HELD_BOX)
+    items.append({"id": id0 + 20, "key": f"robot:{arm}:held_box", "V": V, "F": F, "T": T, "link": "held_box", "arm": arm})
     return items
 
 
