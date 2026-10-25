@@ -193,36 +193,57 @@ class FakeStrictServer:
         return out
 
     def cmd_joint_steps(self, a):
+        """robot-harness's contract (HARNESS-CONTRACT.md 1.1, robodojo_server_j2 + rd_shim_strict_v2): refusal codes
+        keys / shape / non_finite / gripper_range / jump / budget / too_long / empty, with ``index``; executed replies
+        carry executed / requested / actions_md5 / tracking / grip_change_while_moving / max_step_dq / eef."""
+        import hashlib
         self._need_env()
         if not self.has_joint_steps:
             raise _Err("unknown command 'joint_steps'", "")
         acts = a.get("actions")
         if not isinstance(acts, list) or not acts:
-            raise _Err("joint_steps needs actions=[{4 joint-mode keys}, ...]", "")
-        max_dq = float(a.get("max_dq", MAX_JOINT_STEP)) + 1e-6
+            raise _Err("joint_steps needs actions = a non-empty list (one entry per env step)", "")
+        md5 = hashlib.md5(json.dumps(acts, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        cap = min(float(a.get("max_dq", MAX_JOINT_STEP)), MAX_JOINT_STEP)
         reserve = int(a.get("reserve", self.reserve))
+        base = {"requested": len(acts), "actions_md5": md5, "max_dq": cap, "reserve": reserve}
+        if len(acts) > 2000:
+            return self._refused("too_long", f"{len(acts)} entries > 2000", None, base)
         prev = {x: np.asarray(self.hold_q[x], float) for x in ARMS}
+        prev_g = {x: float(self.hold_g[x]) for x in ARMS}
+        gmove = {x: 0 for x in ARMS}
+        maxdq = {x: 0.0 for x in ARMS}
         parsed = []
         for i, act in enumerate(acts):
-            if set(act) != set(ACTION_KEYS):
-                return self._refused(f"action {i}: keys {sorted(act)}")
-            p = {k: np.asarray(act[k], float).reshape(-1) for k in ACTION_KEYS}
-            if any(not np.all(np.isfinite(v)) for v in p.values()):
-                return self._refused(f"action {i}: non-finite")
+            if not isinstance(act, dict) or set(act) != set(ACTION_KEYS):
+                return self._refused("keys", f"entry {i}: keys {sorted(act) if isinstance(act, dict) else act!r}", i, base)
+            p = {}
             for x in ARMS:
-                q, g = p[f"{x}_arm_joint_state"], p[f"{x}_ee_joint_state"]
-                if q.size != 6 or g.size != 1 or not 0.0 <= g[0] <= 1.0:
-                    return self._refused(f"action {i}: {x} q[{q.size}] g {g.tolist()}")
+                for k, n in ((f"{x}_arm_joint_state", 6), (f"{x}_ee_joint_state", 1)):
+                    v = act[k]
+                    if not isinstance(v, list) or len(v) != n or not all(isinstance(e, (int, float)) and not isinstance(e, bool)
+                                                                           for e in v):
+                        return self._refused("shape", f"entry {i}: {k}", i, base)
+                    if not all(math.isfinite(e) for e in v):
+                        return self._refused("non_finite", f"entry {i}: {k}", i, base)
+                    p[k] = np.asarray(v, float)
+                q, g = p[f"{x}_arm_joint_state"], float(p[f"{x}_ee_joint_state"][0])
+                if not 0.0 <= g <= 1.0:
+                    return self._refused("gripper_range", f"entry {i}: {x} gripper {g}", i, base)
                 dq = float(np.abs(q - prev[x]).max())
-                if dq > max_dq:
-                    return self._refused(f"action {i}: {x} joint jump {dq:.3f} rad > max_dq {max_dq:.3f}")
-                prev[x] = q
+                if dq > cap + 1e-6:
+                    return self._refused("jump", f"entry {i}: {x} joint jump {dq:.4f} rad > max_dq {cap}", i, base)
+                maxdq[x] = max(maxdq[x], dq)
+                if g != prev_g[x] and dq > 1e-9:
+                    gmove[x] += 1
+                prev[x], prev_g[x] = q, g
             parsed.append(p)
         left = self.env.step_lim - self.env.steps_used
         if len(parsed) > left - reserve:
-            return self._refused("budget", hint=f"needs {len(parsed)} steps, {left} left, reserve {reserve}")
+            return self._refused("budget", f"needs {len(parsed)} steps, {left} left, reserve {reserve}", None, base)
         n0 = self.env.steps_used
         ended = self._ended()
+        k = 0
         for p in parsed:
             if ended:
                 break
@@ -230,13 +251,16 @@ class FakeStrictServer:
                 self.hold_q[x] = p[f"{x}_arm_joint_state"]
                 self.hold_g[x] = float(p[f"{x}_ee_joint_state"][0])
             ended = self._step(self._hold_action())
+            k += 1
         eef = self._eef()
-        track = {x: round(float(np.abs(np.asarray(eef[x]["q"]) - self.hold_q[x]).max()), 4) for x in ARMS}
-        return {"steps": self.env.steps_used - n0, "refused": None, "tracking_rad": track,
-                "eef": {x: {k: eef[x][k] for k in ("q", "flange", "grip_cmd")} for x in ARMS}}
+        track = {x: round(float(np.abs(np.asarray(eef[x]["q"]) - self.hold_q[x]).max()), 5) for x in ARMS}
+        return {**base, "steps": self.env.steps_used - n0, "executed": k, "refused": None, "tracking_rad": track,
+                "tracking_max_rad": track, "grip_change_while_moving": gmove,
+                "max_step_dq": {x: round(v, 5) for x, v in maxdq.items()},
+                "eef": {x: {kk: eef[x][kk] for kk in ("q", "flange", "grip_cmd")} for x in ARMS}}
 
-    def _refused(self, why, hint=""):
-        return {"steps": 0, "refused": why, "hint": hint}
+    def _refused(self, code, hint="", index=None, base=None):
+        return {**(base or {}), "steps": 0, "executed": 0, "refused": code, "hint": hint, "index": index}
 
     def cmd_hold(self, a):
         self._need_env()

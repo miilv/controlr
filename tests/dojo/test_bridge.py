@@ -153,11 +153,13 @@ def test_joint_steps_run_verbatim_and_refuse_before_stepping(bench):
         assert srv.hold_g[arm] == pytest.approx(0.4, abs=1e-7)
     jump = dict(acts[-1])
     jump["left_arm_joint_state"] = jump["left_arm_joint_state"] + np.float32(0.35)
-    with pytest.raises(ServerError, match="joint jump"):
+    with pytest.raises(ServerError, match="refused: jump at entry 0"):
         be.execute([jump])
     assert envs[0].steps_used == 10                        # refused at 0 steps
     rep = be.c.call("joint_steps", actions=[action_json(acts[-1])] * (envs[0].step_lim - 15), reserve=10)
     assert rep["ok"] and rep["refused"] == "budget" and rep["steps"] == 0 and envs[0].steps_used == 10
+    assert len(be.chunks) == 1 and be.chunks[0]["n"] == 10 and len(be.chunks[0]["md5"]) == 32   # md5 checked vs the reply
+    assert sum(be.stats["grip_change_while_moving"].values()) == 2                     # i = 6: both grippers change while moving
     r = be.execute([acts[-1]] * (envs[0].step_lim + 50))  # past the limit: runs to the limit, the episode ends
     assert r["ended"] and envs[0].steps_used == envs[0].step_lim == be.steps_used
     with pytest.raises(ValueError):

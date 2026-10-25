@@ -61,8 +61,9 @@ def unix_request(path: str, req: dict, timeout: float = 1800.0) -> dict:
 
 class RobotServerClient:
     """Verbs of one robot server. ``call`` returns the raw reply (robot_client_v2 semantics, never raises);
-    ``ok`` raises ``ServerError`` on ``ok: false``. ``on_request(verb)`` runs before every request (the backend
-    uses it to flush buffered joint steps before a foreign skill moves the robot)."""
+    ``ok`` raises ``ServerError`` on ``ok: false``. ``on_request(verb)`` runs before every request and
+    ``on_reply(reply)`` after it (the backend flushes buffered joint steps before a foreign skill moves the robot, and
+    keeps its step counter / episode-end flag current from every reply, its own or a foreign skill's)."""
 
     def __init__(self, server_id: str | None = None, sock: str | None = None, bench: str | None = None,
                  timeout: float = 1800.0, transport=None, log=None):
@@ -72,7 +73,8 @@ class RobotServerClient:
         self.sock = sock or (sock_path(server_id, bench) if server_id else None)
         self.timeout = timeout
         self._transport = transport
-        self.on_request = None
+        self.on_request = None              # on_request(verb) before every request, on_reply(reply) after every reply
+        self.on_reply = None
         self._log = log                     # _log(dict) per request: verb, ok, wall, step ("log" is a server verb)
         self.n_calls = 0
         self.wall_s = 0.0
@@ -83,6 +85,8 @@ class RobotServerClient:
         dt = time.perf_counter() - t0
         self.n_calls += 1
         self.wall_s += dt
+        if self.on_reply is not None:
+            self.on_reply(rep)
         if self._log is not None:
             self._log({"verb": req.get("cmd"), "ok": bool(rep.get("ok")), "wall_s": round(dt, 4), "step": rep.get("step"),
                       "error": rep.get("error") if not rep.get("ok") else None})
