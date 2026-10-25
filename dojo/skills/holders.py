@@ -79,6 +79,8 @@ def body_holes(o, body_link: str | None, min_depth: float = 0.02) -> list[dict]:
         mx = np.asarray(o.asset.links[body_link]["bbox_max"], float)
         keep = np.all(V[F][:, :, 2] <= mx[2] + 0.0005, axis=1)
         F = np.asarray(F)[keep]
+        used, inv = np.unique(F, return_inverse=True)
+        V, F = V[used], inv.reshape(F.shape)
     ops = openings(V, F, min_depth=min_depth, res=0.002, min_cells=60)
     out = []
     for op in ops:
