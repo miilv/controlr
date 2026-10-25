@@ -831,3 +831,39 @@ def test_search_refine_fits_the_missing_block_at_the_region():
     assert rep["search"][0]["found"] == ["block_2"] and rep["search"][0]["via"] == "refine"
     assert pc.refined[0][:2] == ("block_2", "Rigid/block/00005") and pc.refined[0][2] == 0.10
     assert _stacked(env)
+
+
+def test_large_borderline_correction_needs_a_confirming_second_refine():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class Seq:
+        def __init__(self, second_shift):
+            self.n, self.second = 0, second_shift
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            self.n += 1
+            if self.n == 1:
+                return {o["label"]: {"ok": True, "pos": [o["pos"][0] + 0.04, o["pos"][1], o["pos"][2]], "quat": o["quat"],
+                                     "shift_mm": 40.0, "iou": 0.65}}
+            return {o["label"]: {"ok": True, "pos": [o["pos"][0] + self.second / 1000, o["pos"][1], o["pos"][2]],
+                                 "quat": o["quat"], "shift_mm": self.second, "iou": 0.9}}
+
+    for second, accepted in ((2.0, True), (25.0, False)):
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True, refine_max_shift_m=0.07), assets=FakeAssets(),
+                            perception_client=Seq(second))
+        pol.reset(FakeEpisode(env).info())
+        b = pol.bridge
+        b.obs, b.fresh = FakeEpisode(env).observe(), True
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        x0 = float(prov.belief.objects["block_1"].pos[0])
+        h1 = pol._refine_hook(prov, None, "block_1", "left", "pick")
+        assert "rehover" in h1 and pol.report["events"][-1]["rehover"] == "confirm"
+        pol._refine_hook(prov, None, "block_1", "left", "pick")
+        x1 = float(prov.belief.objects["block_1"].pos[0])
+        if accepted:
+            assert abs(x1 - (x0 + 0.042)) < 1e-9
+        else:
+            assert x1 == x0

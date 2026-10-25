@@ -68,6 +68,10 @@ class RuntimeConfig:
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
     max_rehovers: int = 1               # re-hover + refine retries per pick / place (skills honours max_rehovers)
+    big_shift_mm: float = 30.0          # refine corrections above this need (perception's advice):
+    big_shift_min_iou: float = 0.7      # ... iou >= this, else a confirming second refine from the found pose,
+    confirm_shift_mm: float = 10.0      # ... which must move < this
+    neighbour_mm: float = 25.0          # ... and must not land within this of another known object
     rehover_when_far: bool = True       # also re-hover after an OK refine that moved the object > rehover_min_shift_mm
     post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
     search: bool = False                # objects still missing after the looks: wrist search over regions
@@ -381,8 +385,34 @@ class RuntimePolicy:
                                        held=held)
         r = res.get(label) or {}
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
-              **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why")}}
+              "prior7": [round(float(v), 4) for v in np.r_[o.pos, o.quat]],
+              **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why",
+                                       "suggest_xy", "suggest_shift_mm")}}
+        if r.get("pos") is not None:
+            ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         self.report["events"].append(ev)
+        pend = self._pending_far.pop(label, None) if hasattr(self, "_pending_far") else None
+        if r.get("ok") and (r.get("shift_mm") or 0) > self.cfg.big_shift_mm and pend is None:
+            # a large correction is also how a refine can lock onto a neighbour: check it before believing it
+            near = [x.label for x in others
+                    if float(np.linalg.norm(np.asarray(r["pos"][:2], float) - x.center_w[:2])) < self.cfg.neighbour_mm / 1000]
+            if near:
+                ev.update({"ok": False, "why": f"refined pose on a neighbour {near}"})
+                return None
+            if (r.get("iou") or 0) < self.cfg.big_shift_min_iou:
+                # borderline fit: hover over the found pose and refine once more; accept only if that one agrees
+                self._pending_far = getattr(self, "_pending_far", {})
+                self._pending_far[label] = (o.pos.copy(), o.quat.copy())
+                o.pos, o.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
+                ev["rehover"] = "confirm"
+                hint = {"rehover": (o.pos.copy(), o.quat.copy())}
+                if kind == "place":
+                    hint["rehover_dz"] = self.cfg.rehover_place_dz
+                return hint
+        if pend is not None and not (r.get("ok") and (r.get("shift_mm") or 0) < self.cfg.confirm_shift_mm):
+            o.pos, o.quat = pend                        # the second look did not confirm: back to the prior
+            ev["why"] = (ev.get("why") or "") + " (large correction not confirmed, prior kept)"
+            return None
         if not r.get("ok"):
             # perception found the object away from the prior but could not fit it well from this hover (it sits
             # off-centre in the wrist view): ask skills to hover over that spot and refine once more
