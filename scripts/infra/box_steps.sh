@@ -2,17 +2,22 @@
 # Remote half of scripts/bootstrap_gpu_box.sh. Runs ON the GPU box: the driver streams it for the preflight
 # (nothing is written to the box) and pushes it to ~/dojo-bootstrap/lib/ for every other step.
 #
-#   box_steps.sh preflight                 read-only checks -> PASS/WARN/FAIL lines + GO / NO-GO (exit 0 / 1)
+#   box_steps.sh preflight                 read-only checks -> PASS/WARN/FAIL lines, "@ key value" facts, GO / NO-GO (exit 0 / 1)
 #   box_steps.sh run STEP                  run one step; marker state/STEP.done (fingerprint) on success
 #   box_steps.sh status STEP...            done | running | failed | todo, one line per step
 #   box_steps.sh poll STEP...              status + the last line of each step's log (for the driver)
 #   box_steps.sh steps                     the step names
 #   box_steps.sh venv DIR                  DIR/.venv with the perception extras (for a stream's deploy dir)
+#   box_steps.sh boxjson                   (re)write ~/dojo-box.json: role, specs, capabilities, locks, scopes, smokes
 #
-# Config: env vars, or $BOX/config.env written by the driver (ROLE, ASSETS, CODE_SHA, MIN_DISK_GB).
-# DRY_RUN=1: print every command instead of running it; every "is it done already?" check answers no.
+# Config: env vars, or $BOX/config.env written by the driver (ROLE, ASSETS, CODE_SHA, MIN_DISK_GB, PREFIX, BOX_ALIAS,
+# ROLE_REASON). DRY_RUN=1: print every command instead of running it; every "is it done already?" check answers no.
+# Roles: full = Isaac Sim 5.1 renders here (driver 570/580): official dev_eval, the bridge, 5.1 frames;
+#        physics = like compute3: 5.1 physics-only (twin, G3) + an Isaac Sim 6.0 render install (proxy_eval);
+#        auto (preflight only) = full on driver 570/580, else physics.
 # Layout on the box (compute3 conventions, dojo/README.md): ~/dojo-robodojo (RoboDojo + Isaac Sim 5.1, read-only
-# for streams), ~/controlr (main), ~/dojo-data/<stream>/, ~/dojo-perception-data/, ~/dojo-gpu.lock.
+# for streams), ~/dojo-isaac6 (Isaac Sim 6.0, role physics), ~/controlr (main), ~/dojo-data/<stream>/,
+# ~/dojo-perception-data/, ~/dojo-gpu.lock + ~/dojo-gpu-light{,2,3,4}.lock, ~/dojo-env.sh, ~/dojo-box.json.
 set -uo pipefail
 
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo .)"
@@ -20,7 +25,9 @@ DRY="${DRY_RUN:-0}"
 BOX="${BOX:-$HOME/dojo-bootstrap}"
 # shellcheck source=/dev/null
 [[ "$DRY" != 1 && -f "$BOX/config.env" ]] && source "$BOX/config.env"
-ROLE="${ROLE:-full}"                       # full: Isaac Sim 5.1 renders here; physics: physics-only box
+ROLE="${ROLE:-full}"                       # full | physics (| auto: the preflight picks one from the driver)
+ROLE_REASON="${ROLE_REASON:-}"             # why this role (the driver writes it: "driver 580", "5.1 render smoke failed", ...)
+BOX_ALIAS="${BOX_ALIAS:-}"                 # the ssh name the driver used for this box
 ASSETS="${ASSETS:-needed}"                 # needed: pins/robodojo_assets.txt (13.5 GB); all: every Asset but eval data (40.6 GB)
 MIN_DISK_GB="${MIN_DISK_GB:-300}"
 PREFIX="${PREFIX:-}"                       # big disk elsewhere: ~/dojo-{robodojo,data,perception-data} become symlinks into it
@@ -31,6 +38,9 @@ CONDA="$RD_HOME/miniconda3"
 ENVP="$CONDA/envs/robodojo"
 RDPY="$ENVP/bin/python"
 HFG="$RD_HOME/hf_git"
+ISAAC6_HOME="${ISAAC6_HOME:-$HOME/dojo-isaac6}"
+ISAAC6="$ISAAC6_HOME/isaac-sim-6.0"                  # role physics: compute3's Isaac Sim 6.0 build, copied (scripts/simlab/isaac6.sh)
+ISAAC6_VERSION="6.0.0-rc.59+release.41464.5f2772bc.gl"   # compute3's isaac-sim-6.0/VERSION (the proxy-render calibration was fit on it)
 CODE="${CODE_DIR:-$HOME/controlr}"
 VENV="$CODE/.venv"
 DATA="${DOJO_DATA:-$HOME/dojo-data}"
@@ -45,9 +55,17 @@ UV_VERSION=0.12.1                                     # compute3's uv
 GIT_LFS_VERSION=3.4.1                                 # compute3's git-lfs (only if the box has none)
 DRIVER_OK="${BOX_DRIVER_OK:-570 580}"                 # Isaac Sim 5.1 RTX: 580 renders (isr-lab 4090), 595 segfaults
 STEPS=(conventions code venv robodojo assets assets_post catalog_post smoke_twin smoke_render smoke_dev_eval
-       smoke_perception ready)
+       smoke_proxy_eval smoke_perception smoke_bridge ready)
+LIGHT_LOCKS=(dojo-gpu-light.lock dojo-gpu-light2.lock dojo-gpu-light3.lock dojo-gpu-light4.lock)   # physics-only light lane slots
+# systemd-run --user --scope settings of the team (dojo/README.md, proxy_eval.sh, g3.sh); exported by ~/dojo-env.sh
+SCOPE_BUNDLE="-p MemoryMax=24G -p CPUQuota=1400%"     # proxy_eval --bundle / integ_eval / a bridge episode: ONE GPU job
+SCOPE_PROXY="-p MemoryMax=16G -p CPUQuota=1200%"      # proxy_eval without --bundle (episode env + 6.0 render service)
+SCOPE_BATCH="-p MemoryMax=20G -p CPUQuota=1200%"      # presettle / d0_ext / looks / demos / settle_check
+SCOPE_G3="-p MemoryMax=10G -p CPUQuota=600%"          # g3 on the heavy lane
+SCOPE_LIGHT="-p MemoryMax=8G -p CPUQuota=600%"        # one light-lane slot (physics-only, no render service)
+MIN_AVAIL_GB=25                                       # start a heavy job only with >= 25 GB MemAvailable (light lane: 20)
 export PATH="$HOME/.local/bin:$PATH" UV_PYTHON_PREFERENCE=only-managed GIT_TERMINAL_PROMPT=0
-export RD_HOME DOJO_DATA="$DATA" OMNI_KIT_ACCEPT_EULA=YES
+export RD_HOME DOJO_DATA="$DATA" OMNI_KIT_ACCEPT_EULA=YES ISAAC_SIM_ROOT="$ISAAC6"
 
 # --------------------------------------------------------------------------------------------- helpers
 ts() { date -u +%H:%M:%S; }
@@ -77,7 +95,7 @@ rd_commit() { head -1 "$PINS/robodojo_commit.txt" | tr -d ' +'; }
 note() { [[ "$DRY" == 1 ]] && return 0; mkdir -p "$BOX/state"; echo "$*" > "$BOX/state/$CUR.result"; log "RESULT $*"; }
 
 # fingerprints: a step is done when its marker holds the current one (a pin / commit change re-runs it)
-fp_conventions() { echo "v1 $ROLE ${PREFIX:-home}"; }
+fp_conventions() { echo "v2 $ROLE ${PREFIX:-home}"; }
 fp_code() { echo "$CODE_SHA"; }
 fp_venv() { echo "py3.12 $(hash12 "$PINS/controlr-venv.txt")"; }
 fp_robodojo() { echo "$(hash12 "$PINS/robodojo_commit.txt") uv$UV_VERSION"; }
@@ -87,11 +105,14 @@ fp_catalog_post() { echo "always"; }
 fp_smoke_twin() { echo "$CODE_SHA $(fp_assets_post)"; }
 fp_smoke_render() { fp_smoke_twin; }
 fp_smoke_dev_eval() { fp_smoke_twin; }
+fp_smoke_proxy_eval() { echo "$(fp_smoke_twin) $ISAAC6_VERSION"; }
+fp_smoke_bridge() { echo "$CODE_SHA $(fp_venv)"; }
 fp_smoke_perception() { echo "$CODE_SHA $(fp_venv)"; }
 fp_ready() { echo "always"; }
 
 # --------------------------------------------------------------------------------------------- preflight
-# Read-only: nvidia-smi, df, free, /proc, command -v, curl HEADs. Writes nothing on the box.
+# Read-only: nvidia-smi, df, /proc, command -v, ldconfig -p, systemctl --user show-environment, curl HEADs.
+# Writes nothing on the box. "@ key value" lines are facts for the driver (role, GPU, driver, disk, RAM, CPU).
 PF_FAIL=0 PF_WARN=0
 pf() {  # LEVEL CHECK DETAIL
   printf '%-5s %-14s %s\n' "$1" "$2" "$3"
@@ -114,8 +135,8 @@ preflight() {
     return 0
   fi
   echo "preflight $(hostname) $(date -u +%FT%TZ) role=$ROLE (read-only)"
-  # GPU + driver
-  local gpu name drv vram used major
+  # GPU + driver -> the role (auto: full where Isaac Sim 5.1 RTX renders, physics elsewhere)
+  local gpu name drv vram used major eff="$ROLE"
   if ! gpu="$(nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv,noheader,nounits 2>&1 | sed -n 1p)" \
       || [[ -z "$gpu" || "$gpu" == *"failed"* || "$gpu" == *"No devices"* ]]; then
     pf FAIL gpu "nvidia-smi: ${gpu:-no output}"
@@ -123,12 +144,15 @@ preflight() {
     IFS=',' read -r name drv vram used <<< "$gpu"
     name="${name# }"; drv="${drv// /}"; vram="${vram// /}"; used="${used// /}"; major="${drv%%.*}"
     pf PASS gpu "$name, $((vram / 1024)) GB VRAM ($(nvidia-smi -L 2>/dev/null | wc -l) GPU)"
+    echo "@ gpu $name"; echo "@ vram_mib $vram"; echo "@ driver $drv"
     if [[ " $DRIVER_OK " == *" $major "* ]]; then
-      pf PASS driver "$drv (Isaac Sim 5.1 RTX tested on 580)"
+      [[ "$ROLE" == auto ]] && eff=full
+      pf PASS driver "$drv (Isaac Sim 5.1 RTX tested on 580)$( [[ "$ROLE" == auto ]] && echo ": role auto -> full")"
     elif [[ "$ROLE" == full ]]; then
-      pf FAIL driver "$drv: Isaac Sim 5.1 RTX needs driver ${DRIVER_OK// / or }; 595 segfaults in librtx.scenedb at boot (compute3). Ask for 580, or --role physics"
+      pf FAIL driver "$drv: Isaac Sim 5.1 RTX needs driver ${DRIVER_OK// / or }; 595 segfaults in librtx.scenedb at boot (compute3). Ask for 580, or --role physics / auto"
     else
-      pf WARN driver "$drv: not ${DRIVER_OK// / or }, so no 5.1 rendering; --role physics is fine"
+      [[ "$ROLE" == auto ]] && eff=physics
+      pf WARN driver "$drv: not ${DRIVER_OK// / or }, so no 5.1 rendering$( [[ "$ROLE" == auto ]] && echo ": role auto -> physics") (5.1 physics-only + Isaac Sim 6.0 render, like compute3)"
     fi
     if [[ "$vram" -lt 12000 ]]; then pf FAIL vram "${vram} MiB < 12 GB"
     elif [[ "$vram" -lt 20000 ]]; then pf WARN vram "${vram} MiB < 20 GB (bundle = episode env + twin + render)"
@@ -142,6 +166,7 @@ preflight() {
   if [[ -n "$PREFIX" && ! ( -d "$PREFIX" && -w "$PREFIX" ) ]]; then pf FAIL disk "--prefix $PREFIX is not a writable directory"
   else
     avail="$(df -BG --output=avail "$root" 2>/dev/null | tail -1 | tr -dc 0-9)"
+    echo "@ disk_gb ${avail:-0}"
     if [[ -z "$avail" ]]; then pf FAIL disk "df failed on $root"
     elif [[ "$avail" -lt "$MIN_DISK_GB" ]]; then pf FAIL disk "${avail} GB free on $(df --output=target "$root" | tail -1) < ${MIN_DISK_GB} GB$( [[ -z "$PREFIX" ]] && echo " (a bigger mount? --prefix DIR)")"
     else pf PASS disk "${avail} GB free on $(df --output=target "$root" | tail -1)"; fi
@@ -154,10 +179,12 @@ preflight() {
   local mem_t mem_a cpus model
   mem_t=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1048576 ))
   mem_a=$(( $(awk '/MemAvailable/ {print $2}' /proc/meminfo) / 1048576 ))
+  echo "@ ram_gb $mem_t"
   if [[ "$mem_t" -lt 30 ]]; then pf FAIL ram "${mem_t} GB < 32 GB"
   elif [[ "$mem_a" -lt 25 || "$mem_t" -lt 60 ]]; then pf WARN ram "${mem_t} GB total, ${mem_a} GB available (bundle scopes want 24 GB, jobs start at >= 25 GB available)"
   else pf PASS ram "${mem_t} GB total, ${mem_a} GB available"; fi
   cpus="$(nproc)"; model="$(lscpu 2>/dev/null | sed -n 's/^Model name:[[:space:]]*//p' | head -1)"
+  echo "@ cpus $cpus"
   if [[ "$cpus" -lt 12 ]]; then pf WARN cpu "$cpus threads ($model) < 14 (the bundle scope's quota)"
   else pf PASS cpu "$cpus threads ($model)"; fi
   # OS
@@ -186,8 +213,8 @@ preflight() {
   local icd=""
   for f in /usr/share/vulkan/icd.d/nvidia_icd.json /etc/vulkan/icd.d/nvidia_icd.json; do [[ -f "$f" ]] && icd="$f"; done
   if [[ -n "$icd" ]]; then pf PASS vulkan "$icd"
-  elif [[ "$ROLE" == full ]]; then pf FAIL vulkan "no NVIDIA Vulkan ICD (container without graphics capability?): Kit RTX will not start"
-  else pf WARN vulkan "no NVIDIA Vulkan ICD"; fi
+  elif [[ "$eff" == full ]]; then pf FAIL vulkan "no NVIDIA Vulkan ICD (container without graphics capability?): Kit RTX will not start"
+  else pf WARN vulkan "no NVIDIA Vulkan ICD: the Isaac Sim 6.0 render service (proxy_eval) will not start either; twin / G3 are fine"; fi
   # (no `grep -q` after a pipe here: under pipefail the writer gets SIGPIPE and the check fails)
   if [[ "$(PATH="$PATH:/sbin:/usr/sbin" ldconfig -p 2>/dev/null | grep -c libEGL_nvidia)" -gt 0 ]]; then pf PASS egl "libEGL_nvidia present (perception GL)"
   else pf WARN egl "no libEGL_nvidia: perception falls back to the slow CPU path (no card digits)"; fi
@@ -211,17 +238,18 @@ preflight() {
   elif [[ "${PREFLIGHT_NET:-1}" != 0 ]]; then pf PASS network "huggingface, pypi.nvidia, pytorch, github, anaconda, astral"; fi
   # resumable state
   [[ -d "$RD_HOME" || -d "$BOX" ]] && pf INFO resume "existing $( [[ -d "$RD_HOME" ]] && echo "$RD_HOME ") $( [[ -d "$BOX" ]] && echo "$BOX") (steps skip what is done)"
-  if sudo -n true 2>/dev/null; then pf INFO sudo "passwordless sudo"; else pf INFO sudo "no passwordless sudo (bootstrap needs none)"; fi
+  [[ "$eff" == auto ]] && eff=physics          # no GPU / driver read: never claim 5.1 rendering
+  echo "@ role $eff"
   echo
   if [[ "$PF_FAIL" -eq 0 ]]; then echo "GO ($PF_WARN warnings)"; return 0; fi
   echo "NO-GO ($PF_FAIL failed, $PF_WARN warnings)"; return 1
 }
 
 # --------------------------------------------------------------------------------------------- steps
-step_conventions() {   # dojo/README.md machine conventions: dirs, the team GPU lock, env file, uv policy
+step_conventions() {   # dojo/README.md machine conventions: dirs, GPU locks, env file, scopes, uv policy, ~/dojo-box.json
   if [[ -n "$PREFIX" ]]; then   # the big directories live on --prefix, under the usual names in $HOME
     local d
-    for d in dojo-robodojo dojo-data dojo-perception-data; do
+    for d in dojo-robodojo dojo-data dojo-perception-data dojo-isaac6; do
       x mkdir -p "$PREFIX/$d"
       if is test -L "$HOME/$d" && [[ "$(readlink -f "$HOME/$d")" == "$(readlink -f "$PREFIX/$d")" ]]; then continue; fi
       is test -e "$HOME/$d" && die "$HOME/$d exists and is not a link to $PREFIX/$d: move it there first"
@@ -229,8 +257,10 @@ step_conventions() {   # dojo/README.md machine conventions: dirs, the team GPU 
     done
   fi
   ensure_uv
-  x mkdir -p "$DATA"/{simlab,perception,skills,integ,agent,infra} "$PERC" "$BOX/state" "$BOX/logs"
-  x touch "$HOME/dojo-gpu.lock" "$DATA/simlab/.queue.lock"
+  x mkdir -p "$DATA"/{simlab,perception,skills,integ,agent,bridge,infra} "$PERC" "$BOX/state" "$BOX/logs"
+  # the team's GPU locks: ONE heavy job (Isaac with rendering, a bundle, a model) holds ~/dojo-gpu.lock; up to four
+  # physics-only light jobs (g3 light lane, twin probes) hold one ~/dojo-gpu-light*.lock slot each
+  x touch "$HOME/dojo-gpu.lock" "${LIGHT_LOCKS[@]/#/$HOME/}" "$DATA/simlab/.queue.lock"
   # uv must never pick a system interpreter (Ubuntu 22.04's python3.11 is 3.11.0rc1: SAM3 / torch.jit segfault)
   if ! is grep -qs 'python-preference' "$HOME/.config/uv/uv.toml"; then
     x mkdir -p "$HOME/.config/uv"
@@ -240,19 +270,42 @@ step_conventions() {   # dojo/README.md machine conventions: dirs, the team GPU 
   if [[ "$HOME" == /root || "$DRY" == 1 ]] && ! is test -e /root/controlr-robodojo; then
     x ln -s dojo-robodojo /root/controlr-robodojo       # the compute2 default RD_HOME of rdpy.sh / dev_eval.sh / paths.py
   fi
-  local envf="$HOME/dojo-env.sh"
-  if [[ "$DRY" == 1 ]]; then echo "    + cat > $envf   # RD_HOME RD_ROOT DOJO_DATA DOJO_GPU_LOCK DOJO_CATALOG DOJO_X5_DIR ..."
+  # systemd-run --user scopes outlive the ssh session only with lingering (proxy_eval.sh / integ_eval.sh / g3.sh need them)
+  if ! is test -e "/var/lib/systemd/linger/$(id -un)"; then
+    dnote "only when lingering is off; no sudo: works where polkit allows it, else a WARN (loginctl enable-linger as admin)"
+    xs "loginctl enable-linger $(id -un) 2>/dev/null || echo 'WARN: loginctl enable-linger failed: scopes need an open session (ask an admin)'"
+  fi
+  local envf="$HOME/dojo-env.sh" i6line
+  if [[ "$ROLE" == physics ]]; then
+    i6line="export ISAAC_SIM_ROOT=\"$ISAAC6\"    # Isaac Sim 6.0 (compute3's build): scripts/simlab/isaac6.sh, proxy_eval.sh's render service"
+  else
+    i6line="# ISAAC_SIM_ROOT: no Isaac Sim 6.0 here (role full renders with 5.1; dev_eval.sh is the reference)"
+  fi
+  if [[ "$DRY" == 1 ]]; then echo "    + cat > $envf   # DOJO_BOX_ROLE RD_HOME RD_ROOT DOJO_DATA DOJO_GPU_LOCK DOJO_GPU_LIGHT_LOCKS DOJO_SCOPE_* ISAAC_SIM_ROOT DOJO_CATALOG ..."
   else
     cat > "$envf" <<EOF
-# dojo GPU box environment (scripts/bootstrap_gpu_box.sh). Source it before running repo scripts here:
+# dojo GPU box environment (scripts/bootstrap_gpu_box.sh, role $ROLE). Source it before running repo scripts here:
 #   source ~/dojo-env.sh && cd ~/dojo-<stream> && scripts/simlab/rdpy.sh -m ...
+export DOJO_BOX_ROLE="$ROLE"              # full: Isaac Sim 5.1 renders; physics: 5.1 physics-only + Isaac Sim 6.0 render (~/dojo-box.json)
 export RD_HOME="$RD_HOME"                 # RoboDojo + Isaac Sim 5.1 (read-only for streams)
 export RD_ROOT="$SRC"
 export DOJO_DATA="$DATA"                  # data: \$DOJO_DATA/<stream>/
-export DOJO_GPU_LOCK="$HOME/dojo-gpu.lock"   # ONE GPU-heavy job per machine (flock; rdpy.sh / dev_eval.sh / proxy_eval.sh take it)
 export DOJO_PERCEPTION_DATA="$PERC"
 export DOJO_CATALOG="$PERC/catalog"       # perception catalogue (skills also: \$DOJO_DATA/skills2/catalog, skills3/catalog)
 export DOJO_X5_DIR="$PERC/catalog/robot/x5"
+$i6line
+# GPU locks (flock): ONE heavy GPU job per machine holds DOJO_GPU_LOCK (rdpy.sh / isaac6.sh / dev_eval.sh /
+# proxy_eval.sh / integ_eval.sh / bridge_episode.sh take it); <= 30 min per hold, 90 s yield before re-taking.
+# Light lane: up to 4 physics-only jobs, one slot each: DOJO_GPU_LOCKS="\$DOJO_GPU_LIGHT_LOCKS" scripts/skills/g3.sh ...
+export DOJO_GPU_LOCK="$HOME/dojo-gpu.lock"
+export DOJO_GPU_LIGHT_LOCKS="${LIGHT_LOCKS[*]/#/$HOME/}"
+# systemd-run --user --scope -q \$DOJO_SCOPE_BUNDLE <cmd>   (start a heavy job only with >= \$DOJO_MIN_AVAIL_GB GB MemAvailable)
+export DOJO_SCOPE_BUNDLE="$SCOPE_BUNDLE"
+export DOJO_SCOPE_PROXY="$SCOPE_PROXY"
+export DOJO_SCOPE_BATCH="$SCOPE_BATCH"
+export DOJO_SCOPE_G3="$SCOPE_G3"
+export DOJO_SCOPE_LIGHT="$SCOPE_LIGHT"
+export DOJO_MIN_AVAIL_GB=$MIN_AVAIL_GB
 # genuine Isaac 5.1 calibration (5.1-rendering box), per run:
 #   DOJO_D0=\$DOJO_DATA/d0_51 DOJO_BG_FOLDS=\$DOJO_PERCEPTION_DATA/bg_folds_51 DOJO_COLOR_CALIB=\$DOJO_CATALOG/color_calib_51.json
 export UV_PYTHON_PREFERENCE=only-managed
@@ -261,24 +314,44 @@ export PATH="\$HOME/.local/bin:\$PATH"
 EOF
     log "wrote $envf"
   fi
+  local use
+  if [[ "$ROLE" == full ]]; then use="Isaac Sim 5.1 renders here: official dev_eval.sh, the bridge (BRIDGE-RUNBOOK), 5.1 frames, twin, G3, perception."
+  else use="5.1 physics-only (twin, G3, RoboDojoRunner(physics_only=True)) + Isaac Sim 6.0 render ($ISAAC6): proxy_eval.sh, perception. NO official dev_eval / bridge here."; fi
   if [[ "$DRY" == 1 ]]; then echo "    + cat > ~/DOJO_BOX.md   # the conventions below"
   else
     cat > "$HOME/DOJO_BOX.md" <<EOF
 # This box: dojo GPU box (role $ROLE), set up by controlr scripts/bootstrap_gpu_box.sh
 
-- \`source ~/dojo-env.sh\` first (RD_HOME, DOJO_DATA, DOJO_GPU_LOCK, catalogue paths).
+- \`source ~/dojo-env.sh\` first (RD_HOME, DOJO_DATA, GPU locks, scope settings, catalogue paths). Machine facts,
+  capabilities and smoke results: \`~/dojo-box.json\` (pick boxes by it); install summary: \`$RD_HOME/READY\`.
+- Role $ROLE: $use
 - RoboDojo (Isaac Sim 5.1 + IsaacLab + cuRobo + XPolicyLab, pinned like compute3): \`$RD_HOME\` -- read-only for streams.
-  Run through \`scripts/simlab/rdpy.sh\` (conda python + the GPU lock). Status: \`$RD_HOME/READY\`.
-- Code: \`~/controlr\` = main at deploy time (\`.deployed_commit\`); streams deploy to \`~/dojo-<stream>\`.
+  Run through \`scripts/simlab/rdpy.sh\` (conda python + the GPU lock).
+- Code: \`~/controlr\` = main at deploy time (\`.deployed_commit\`; \`.env\` = OMNIROUTE_* only, mode 600); streams deploy to \`~/dojo-<stream>\`.
 - Data: \`~/dojo-data/<stream>/\` (dev layouts \`simlab/layouts\`, D0 \`d0\` / \`d0_51\`), perception: \`~/dojo-perception-data\`.
-- ONE GPU-heavy job per machine: every Isaac / model job holds \`flock ~/dojo-gpu.lock\` (rdpy.sh, isaac6.sh, dev_eval.sh,
-  proxy_eval.sh, integ_eval.sh do it; the file holds "pid stream start cmd"). Keep a hold <= 30 min, yield 90 s between jobs.
+- GPU locks: ONE heavy job per machine holds \`flock ~/dojo-gpu.lock\` (rdpy.sh, isaac6.sh, dev_eval.sh, proxy_eval.sh,
+  integ_eval.sh, bridge_episode.sh do it; the file holds "pid stream start cmd"). Keep a hold <= 30 min, yield 90 s.
+  Light lane: up to 4 physics-only jobs, one of \`~/dojo-gpu-light{,2,3,4}.lock\` each (\`DOJO_GPU_LOCKS="\$DOJO_GPU_LIGHT_LOCKS"\`).
 - Check \`nvidia-smi\` before starting Isaac or a model; never touch other people's processes (kill by PID, never pkill -f
   over ssh); stop what you started.
-- Big jobs in a scope: \`systemd-run --user --scope -p MemoryMax=24G -p CPUQuota=1400% ...\`; start only with >= 25 GB available.
+- Big jobs in a scope: \`systemd-run --user --scope -q \$DOJO_SCOPE_BUNDLE ...\` (24G / 1400%; proxy 16G / 1200%; batch 20G /
+  1200%; g3 10G / 600%; light 8G / 600%); start only with >= $MIN_AVAIL_GB GB MemAvailable.
 - Eval data firewall: never read \`Assets/Eval_Layout/**\` or eval-paired \`Assets/Traj\` (they are not even downloaded here).
 EOF
   fi
+  box_json || log "WARN: ~/dojo-box.json not written now (the ready step writes it again)"
+}
+
+box_json() {   # ~/dojo-box.json: what agents read to pick a box (role, specs, capabilities from the smokes, locks, scopes)
+  if [[ "$DRY" == 1 ]]; then echo "    + python3 $LIBX/box_json.py > ~/dojo-box.json   # schema dojo-box/1: role, GPU, driver, CPU, RAM, disk, capabilities, locks, scopes, smokes"; return 0; fi
+  local scopes=0
+  systemd-run --user --scope -q true >/dev/null 2>&1 && scopes=1
+  BOXJ_ROLE="$ROLE" BOXJ_REASON="$ROLE_REASON" BOXJ_ALIAS="$BOX_ALIAS" BOXJ_SCOPES="$scopes" BOXJ_BOX="$BOX" \
+  BOXJ_RD="$RD_HOME" BOXJ_CODE="$CODE" BOXJ_DATA="$DATA" BOXJ_PERC="$PERC" BOXJ_I6="$ISAAC6" BOXJ_I6V="$ISAAC6_VERSION" \
+  BOXJ_LOCKS="${LIGHT_LOCKS[*]}" BOXJ_SB="$SCOPE_BUNDLE" BOXJ_SP="$SCOPE_PROXY" BOXJ_SBA="$SCOPE_BATCH" BOXJ_SG="$SCOPE_G3" \
+  BOXJ_SL="$SCOPE_LIGHT" BOXJ_MIN="$MIN_AVAIL_GB" BOXJ_SHA="$CODE_SHA" BOXJ_RDC="$(rd_commit)" BOXJ_HF="$HF_REV" \
+  BOXJ_ASSETS="$ASSETS" BOXJ_ROOT="${PREFIX:-$HOME}" python3 "$LIB/box_json.py" > "$HOME/dojo-box.json.new" \
+    && mv "$HOME/dojo-box.json.new" "$HOME/dojo-box.json" && log "wrote ~/dojo-box.json"
 }
 
 step_code() {   # the driver extracted \`git archive <ref>\` into $BOX/code.new; install it as ~/controlr
@@ -401,13 +474,28 @@ step_assets() {   # RoboDojo HF Assets at the pinned revision: sparse git-lfs (b
   else
     xs "grep -v '^\s*\(#\|\$\)' ${ASSETS_PINS:-$LIBX/pins/robodojo_assets.txt} > $list"
   fi
-  if ! is test -d "$HFG/.git"; then
+  # a tree copied from a fleet peer or compute3 (bootstrap_gpu_box.sh fetch): no applied list yet (compute3's own
+  # checkout), so take its sparse list minus eval data; the pointer check below proves the content is there
+  if is test -d "$HFG/Assets" && is test -f "$HFG/.git/info/sparse-checkout" && ! is test -f "$applied" \
+      && [[ "$(git -C "$HFG" rev-parse HEAD 2>/dev/null)" == "$HF_REV" ]]; then
+    grep -v -e Eval_Layout -e imitate_sorting_sequence "$HFG/.git/info/sparse-checkout" > "$applied"
+    log "assets: existing checkout at the pin (copied): its sparse list counts as applied ($(grep -c . "$applied") paths)"
+  fi
+  local missing=1
+  if is test -f "$applied" && [[ "$(git -C "$HFG" rev-parse HEAD 2>/dev/null)" == "$HF_REV" ]] \
+      && [[ -z "$(comm -13 <(sort "$applied") <(sort "$list"))" ]]; then
+    missing=0; log "assets: every pinned path is applied at $HF_REV (fetched before or copied from a peer): no git / HF calls"
+  fi
+  dnote "the git / git-lfs part below runs only when some pinned path is not applied yet at $HF_REV"
+  if [[ "$missing" == 1 ]] && ! is test -d "$HFG/.git"; then
     x env GIT_LFS_SKIP_SMUDGE=1 git clone -q --depth 1 --no-checkout "$HF_URL" "$HFG"
     x git -C "$HFG" lfs install --local
   fi
-  x git -C "$HFG" sparse-checkout init --no-cone
+  [[ "$missing" == 1 ]] && x git -C "$HFG" sparse-checkout init --no-cone
+  # (a copied index carries the peer's stat data: every git command below re-hashes through the LFS clean filter once)
   x cp "$list" "$HFG/.git/info/sparse-checkout"
-  if ! is test "$(git -C "$HFG" rev-parse HEAD 2>/dev/null)" = "$HF_REV" || ! is test -d "$HFG/Assets"; then
+  if [[ "$missing" == 0 ]]; then :
+  elif ! is test "$(git -C "$HFG" rev-parse HEAD 2>/dev/null)" = "$HF_REV" || ! is test -d "$HFG/Assets"; then
     x env GIT_LFS_SKIP_SMUDGE=1 git -C "$HFG" checkout -q main
     if [[ "$DRY" != 1 && "$(git -C "$HFG" rev-parse HEAD 2>/dev/null)" != "$HF_REV" ]]; then
       log "HF main moved past the pin $HF_REV: fetching the pinned revision"
@@ -415,7 +503,7 @@ step_assets() {   # RoboDojo HF Assets at the pinned revision: sparse git-lfs (b
       x env GIT_LFS_SKIP_SMUDGE=1 git -C "$HFG" checkout -q --detach "$HF_REV"
     fi
   fi
-  x env GIT_LFS_SKIP_SMUDGE=1 git -C "$HFG" sparse-checkout reapply
+  [[ "$missing" == 1 ]] && x env GIT_LFS_SKIP_SMUDGE=1 git -C "$HFG" sparse-checkout reapply
   # only patterns not pulled yet (LFS objects are dropped after each pull, so a full re-pull would re-download)
   if is test -f "$applied"; then xs "comm -13 <(sort $applied) <(sort $list) > $new"; else x cp "$list" "$new"; fi
   if is test ! -s "$new"; then log "assets: nothing new to pull"
@@ -437,12 +525,14 @@ step_assets() {   # RoboDojo HF Assets at the pinned revision: sparse git-lfs (b
   if [[ "$DRY" != 1 ]]; then
     # (pipefail off: grep -l exits 1 on the files that are NOT pointers, which is the good case)
     local ptr; ptr="$(set +o pipefail; find "$HFG/Assets" -type f -size -400c -print0 | xargs -0 -r grep -l -m1 '^version https://git-lfs.github.com/spec' 2>/dev/null | wc -l)"
-    [[ "$ptr" -eq 0 ]] || die "$ptr LFS pointer files left (download incomplete): re-run the assets step"
+    if [[ "$ptr" -ne 0 ]]; then   # the applied list lied (an interrupted pull, a partial copy): the re-run pulls every pattern
+      rm -f "$applied"; die "$ptr LFS pointer files left (download incomplete): re-run the assets step"
+    fi
     [[ ! -e "$HFG/Assets/Eval_Layout" && ! -e "$HFG/Assets/Traj/RoboDojo/imitate_sorting_sequence" ]] \
       || die "eval data in the checkout: check $list"
   fi
   x rm -rf "$HFG/.git/lfs/objects"   # stored once (the working tree), like compute3
-  x cp "$list" "$applied"
+  xs "{ cat $list; cat $applied 2>/dev/null || true; } | sort -u > $applied.new && mv $applied.new $applied"   # what a peer copy may carry beyond our list stays known
   xs "du -sh $HFG/Assets"
 }
 
@@ -575,23 +665,65 @@ sys.exit(0 if ok else 1)
 PY
 }
 
+step_smoke_proxy_eval() {   # PROXY dev-eval like compute3: physics-only 5.1 episode + the Isaac Sim 6.0 render service, replay policy
+  local out="$SMOKE/proxy_eval" lay="$DATA/simlab/g2_c3b/stack_layout.json" traj="$DATA/simlab/g2_c3b/stack_traj.json"
+  if [[ "$DRY" != 1 ]] && ! test -x "$ISAAC6/kit/python/bin/python3"; then
+    [[ "$ROLE" == physics ]] && die "no Isaac Sim 6.0 at $ISAAC6 (the isaac6 fetch)"
+    log "no Isaac Sim 6.0 here (role $ROLE): skipped"; note "skipped (no Isaac Sim 6.0)"; return 0
+  fi
+  x rm -rf "$out"; x mkdir -p "$out"
+  # proxy_eval.sh: MemAvailable >= 25 GB, the heavy GPU lock, one systemd --user scope (16G / 1200%) for both processes
+  logrun "$out/run.log" '^\[proxy_eval\]|Error|error:|refusing|Segmentation' \
+    "cd $CODE && ISAAC_SIM_ROOT=$ISAAC6 RD_HOME=$RD_HOME DOJO_DATA=$DATA timeout 2700 scripts/simlab/proxy_eval.sh --task stack_blocks --layouts $lay --policy replay:$traj --out $out"
+  [[ "$DRY" == 1 ]] && return 0
+  check_py "$out/_result.json" <<'PY'
+import json, sys
+r = json.load(open(sys.argv[1]))
+d = next(iter(r.get("details", {}).values()), {})
+print(f"RESULT smoke_proxy_eval: episodes {r.get('eval_time')}, success_rate {r.get('success_rate')}, "
+      f"steps {d.get('steps_used')}/{d.get('step_lim')}, render {r.get('render_s_median') or float('nan'):.2f} s/obs "
+      f"(compute3: success, 263/550 steps, 0.12 s/obs)")
+if r.get("success_rate") != 1.0:
+    print("WARN: the proxy ran but the replay did not succeed: compare with G2b (contact divergence) before trusting this box")
+sys.exit(0 if r.get("eval_time") == 1 and (r.get("render_s_median") or 0) > 0 else 1)
+PY
+}
+
+step_smoke_bridge() {   # CPU: the bridge's launcher path on the fake strict server (BRIDGE-RUNBOOK §3): RuntimePolicy, 0 LLM calls
+  local out="$SMOKE/bridge" id="fk-smoke"
+  x rm -rf "$out"; x mkdir -p "$out/bench" "$out/out"
+  logrun "$out/run.log" '^\[bridge|Traceback|Error' \
+    "cd $CODE && BENCH=$out/bench timeout 900 scripts/dojo/bridge_episode.sh --id $id --fake --policy dojo.runtime.policy:RuntimePolicy --perception server --verify off --out $out/out"
+  [[ "$DRY" == 1 ]] && return 0
+  check_py "$out/out/$id/bridge.json" <<'PY'
+import json, sys
+s = json.load(open(sys.argv[1]))
+print(f"RESULT smoke_bridge: end={s.get('end')} steps={s.get('steps_used')}/{s.get('step_lim')} ended={s.get('ended')} "
+      f"(fake strict server; a CPU check of our side: the strict episode needs role full + robot-harness)")
+sys.exit(0 if s.get("end") in ("ended", "policy_done") else 1)
+PY
+}
+
 step_ready() {   # READY note for the streams (like compute3's ~/dojo-robodojo/READY)
-  if [[ "$DRY" == 1 ]]; then echo "    + cat > $RD_HOME/READY   # GPU, driver, role, pins, smoke results"; return 0; fi
+  if [[ "$DRY" == 1 ]]; then echo "    + cat > $RD_HOME/READY   # GPU, driver, role, pins, smoke results"; box_json; return 0; fi
   local gpu; gpu="$(nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null | head -1 || true)"
   {
     echo "RoboDojo install for the dojo streams on $(hostname) ($gpu). Written $(date -u +%FT%TZ) by scripts/bootstrap_gpu_box.sh."
-    echo "role       : $ROLE ($( [[ "$ROLE" == full ]] && echo "Isaac Sim 5.1 renders here: dev_eval.sh / official harness" || echo "PHYSICS-ONLY: RoboDojoRunner(..., physics_only=True)"))"
+    echo "role       : $ROLE ($( [[ "$ROLE" == full ]] && echo "Isaac Sim 5.1 renders here: dev_eval.sh / official harness / bridge" || echo "PHYSICS-ONLY 5.1 (RoboDojoRunner(..., physics_only=True)) + Isaac Sim 6.0 render: proxy_eval.sh"))${ROLE_REASON:+; $ROLE_REASON}"
     echo "env python : $RDPY ($("$RDPY" -V 2>&1); Isaac Sim 5.1.0, IsaacLab, cuRobo, torch 2.7 cu128)"
     echo "RoboDojo   : $SRC (commit $(rd_commit), submodules as compute3); Assets -> hf_git/Assets ($ASSETS, $(du -sh "$HFG/Assets" 2>/dev/null | cut -f1), HF $HF_REV)"
     echo "controlr   : $CODE @ $(cat "$CODE/.deployed_commit" 2>/dev/null) (venv: perception extras, uv-managed CPython)"
+    [[ "$ROLE" == physics ]] && echo "isaac 6.0  : $ISAAC6 ($(cat "$ISAAC6/VERSION" 2>/dev/null || echo missing); ISAAC_SIM_ROOT in ~/dojo-env.sh)"
     echo "run with   : source ~/dojo-env.sh; ~/dojo-<stream>/scripts/simlab/rdpy.sh -m <module> ...   (GPU lock ~/dojo-gpu.lock)"
     local s
-    for s in smoke_twin smoke_render smoke_dev_eval smoke_perception; do
+    for s in smoke_twin smoke_render smoke_dev_eval smoke_proxy_eval smoke_perception smoke_bridge; do
       echo "$(printf '%-17s' "$s"): $(cat "$BOX/state/$s.result" 2>/dev/null || echo "not run")"
     done
-    echo "read-only for streams; conventions: ~/DOJO_BOX.md"
+    echo "read-only for streams; conventions: ~/DOJO_BOX.md; machine facts + capabilities: ~/dojo-box.json"
   } > "$RD_HOME/READY"
   cat "$RD_HOME/READY"
+  box_json
+  python3 -c 'import json, os; c = json.load(open(os.path.expanduser("~/dojo-box.json")))["capabilities"]; print("capabilities:", ", ".join(k for k, v in c.items() if v) or "none")' 
 }
 
 # --------------------------------------------------------------------------------------------- dispatch
@@ -632,7 +764,8 @@ case "$cmd" in
           echo "$s $(status_of "$s") $(cat "$BOX/state/$s.secs" 2>/dev/null || echo -) ${last}"
         done ;;
   steps) echo "${STEPS[*]}" ;;
+  boxjson) CUR=boxjson; box_json && cat "$HOME/dojo-box.json" ;;
   venv) make_venv "$(cd "${1:?checkout dir}" && pwd)" ;;   # a stream's deploy dir (scripts/deploy.sh builds no perception extras)
   fn) f="${1:?function}"; shift; CUR="$f"; "$f" "$@" ;;     # debugging: one internal function (e.g. rd_clone_pinned)
-  *) echo "usage: box_steps.sh preflight | run STEP | status STEP... | poll STEP... | steps | venv DIR" >&2; exit 2 ;;
+  *) echo "usage: box_steps.sh preflight | run STEP | status STEP... | poll STEP... | steps | venv DIR | boxjson" >&2; exit 2 ;;
 esac
