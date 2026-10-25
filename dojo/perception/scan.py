@@ -214,6 +214,36 @@ def estimate_with_scan(scan: dict, frame0: dict, task: str, instruction: str = "
     return rec
 
 
+def patch_background(base_dir: str, scan_dir: str, out_dir: str) -> dict:
+    """A scan-aware background for another renderer (genuine 5.1 frames) without scan renders of it: copy ``base_dir``
+    (e.g. bg_folds_51/fold0) and fill its clean head background's unseen pixels (under the home grippers) from the
+    scan-aware ``scan_dir`` background, colour-mapped by a per-channel affine fit on the pixels both have seen."""
+    import shutil
+    from pathlib import Path
+
+    import cv2
+
+    b, sd, o = Path(base_dir), Path(scan_dir), Path(out_dir)
+    o.mkdir(parents=True, exist_ok=True)
+    for f in b.glob("*.png"):
+        shutil.copy(f, o / f.name)
+    base = cv2.imread(str(b / "cam_head_clean.png")).astype(float)
+    scan = cv2.imread(str(sd / "cam_head_clean.png")).astype(float)
+    u_b = cv2.imread(str(b / "cam_head_clean_unseen.png"), cv2.IMREAD_GRAYSCALE) > 0
+    u_s = cv2.imread(str(sd / "cam_head_clean_unseen.png"), cv2.IMREAD_GRAYSCALE) > 0
+    both = ~u_b & ~u_s
+    fill = u_b & ~u_s
+    fit = []
+    for ch in range(3):
+        A = np.c_[scan[both, ch], np.ones(int(both.sum()))]
+        coef, *_ = np.linalg.lstsq(A, base[both, ch], rcond=None)
+        fit.append(coef.tolist())
+        base[fill, ch] = np.clip(scan[fill, ch] * coef[0] + coef[1], 0, 255)
+    cv2.imwrite(str(o / "cam_head_clean.png"), base.astype(np.uint8))
+    cv2.imwrite(str(o / "cam_head_clean_unseen.png"), ((u_b & u_s) * 255).astype(np.uint8))
+    return {"filled_px": int(fill.sum()), "still_unseen_px": int((u_b & u_s).sum()), "affine_bgr": fit}
+
+
 def export_looks(root: str, out: str, tasks: list[str]) -> dict:
     """simlab look_render input (look_poses format) with the same scan pose pair for every layout of ``tasks``."""
     from pathlib import Path
