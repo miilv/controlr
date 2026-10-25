@@ -65,6 +65,18 @@ def _box(lo, hi):
     return V, F
 
 
+def test_usd_sync_links_defaults_on_in_physics_only(monkeypatch):
+    # the official rendered kit writes physics to USD; the physics-only twin must read link poses from physics
+    monkeypatch.delenv("SIMLAB_USD_SYNC_LINKS", raising=False)
+    assert R.resolve_usd_sync_links(None, physics_only=True) is True
+    assert R.resolve_usd_sync_links(None, physics_only=False) is False
+    monkeypatch.setenv("SIMLAB_USD_SYNC_LINKS", "0")
+    assert R.resolve_usd_sync_links(None, physics_only=True) is False
+    monkeypatch.setenv("SIMLAB_USD_SYNC_LINKS", "1")
+    assert R.resolve_usd_sync_links(None, physics_only=False) is True
+    assert R.resolve_usd_sync_links(False, physics_only=True) is False
+
+
 def test_openings_finds_two_slots_and_their_floor():
     from dojo.skills.insertion import openings
     parts = [_box((-0.1, -0.06, 0.0), (0.1, 0.06, 0.03)),                          # floor block
