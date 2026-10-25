@@ -292,6 +292,9 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
         if "label" not in o or "pos" not in o:
             probs.append(f"objects[{i}]: needs label and pos")
             continue
+        known = {b.get("category") for b in b1o if b.get("category")}
+        if o.get("category") and known and o["category"] not in known and not o.get("asset"):
+            o["agent_category"] = o.pop("category")  # free text ("board"): the hint's vocabulary decides the kind
         if not o.get("category") and not o.get("asset") and b1o:  # the hint object it names (or sits on) gives its kind
             import math
 
@@ -302,6 +305,8 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
                 o["category"] = src.get("category")
                 if src.get("asset"):
                     o["asset"] = src["asset"]
+            elif len(known) == 1:  # one kind in the scene's vocabulary: that kind, identity left to H2
+                o["category"] = next(iter(known))
         o.setdefault("confidence", 0.8)
         objs.append(o)
     for i, n in enumerate(ans.get("needs_look") or []):
@@ -320,10 +325,13 @@ def _cat_of(o: dict) -> str | None:
     return a[1] if len(a) == 3 else o.get("category")
 
 
-def snap_to_b1(objects: list[dict], b1: dict | None, thr: float = 0.2, radius_m: float = 0.02) -> tuple[list[dict], int]:
+def snap_to_b1(objects: list[dict], b1: dict | None, thr: float = 0.2, radius_m: float = 0.02,
+               trust_b1_identity: bool = True, agree_m: float = 0.01) -> tuple[list[dict], int]:
     """The agent decides WHAT is where; B1 keeps the metric pose where it is confident. An agent object within
-    ``radius_m`` of a B1 object of the same category, whose calibrated risk is below ``thr`` and whose asset the agent
-    does not contradict, takes B1's pose (and asset, size, top_z); the agent's label stays. Agent objects farther away
+    ``radius_m`` of a B1 object of the same category whose calibrated risk is below ``thr`` takes B1's pose and asset
+    (``trust_b1_identity``; else only when the agent does not name another asset); the agent's label stays. Within
+    ``agree_m`` the agent agrees with B1 whatever B1's risk: B1's fitted pose is the better metric estimate (the
+    agent's own points are head-plane hits; tower boards are right but read at confidence 0.36). Agent objects farther away
     (a correction), on risky B1 objects, or with another asset keep the agent's reading (H2 refines them).
     Bridge-isr's first 5.1 episode: the merged agent points were 2.1 mm median vs B1's 0.4 mm on a clean scene."""
     import math
@@ -335,12 +343,12 @@ def snap_to_b1(objects: list[dict], b1: dict | None, thr: float = 0.2, radius_m:
         for j, b in enumerate(b1o):
             if j in used or _cat_of(b) != _cat_of(o):
                 continue
-            if o.get("asset") and b.get("asset") and o["asset"] != b["asset"]:
+            if o.get("asset") and b.get("asset") and o["asset"] != b["asset"] and not trust_b1_identity:
                 continue
             d = math.hypot(b["pos"][0] - o["pos"][0], b["pos"][1] - o["pos"][1])
             if d <= radius_m and (best is None or d < best[0]):
                 best = (d, j, b)
-        if best is not None and risk(best[2]) < thr:
+        if best is not None and (best[0] <= agree_m or risk(best[2]) < thr):
             b = best[2]
             used.add(best[1])
             if best[0] > 1e-6 or o.get("quat") != b.get("quat"):
