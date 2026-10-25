@@ -98,10 +98,11 @@ class PerceptionClient:
         return json.loads(self._call({"op": "look_poses", "target": [float(v) for v in target], "arm": arm,
                                       "variants": variants})["poses"])
 
-    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03) -> dict:
-        """Local render-and-compare refinement of the given objects (x, y, yaw) on this frame's views."""
+    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None) -> dict:
+        """Pre-contact refine of ``objects[0]`` from ``arm``'s wrist view (perception's ``refine()``); the other
+        objects are occluders. Returns {label: {"ok", "pos", "quat", "shift_mm", ...}}."""
         return json.loads(self._call({"op": "refine", "frame": encode_frame(frame), "objects": objects, "fold": int(fold),
-                                      "max_shift_m": float(max_shift_m)})["refine"])
+                                      "max_shift_m": float(max_shift_m), "arm": arm})["refine"])
 
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
@@ -170,7 +171,32 @@ class _Perception:
                         "T_world_cam_cv": np.round(T, 5).tolist()})
         return out
 
-    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03) -> dict:
+    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None) -> dict:
+        """``objects[0]`` re-measured from ``arm``'s wrist frame by perception's ``dojo.perception.refine.refine``
+        (accepted when its ``ok`` holds and the shift stays below ``max_shift_m``); without that module, the
+        local fit below on every view."""
+        try:
+            from dojo.perception.refine import refine as p_refine
+        except ImportError:
+            p_refine = None
+        if p_refine is not None and arm in ("left", "right") and objects:
+            f = decode_frame(frame)
+            o = objects[0]
+            others = [(x["key"], list(x["pos"]) + list(x["quat"])) for x in objects[1:]]
+            r = p_refine(o["key"], f["images"][f"cam_{arm}_wrist"], f["state"], list(o["pos"]) + list(o["quat"]),
+                         arm=arm, others=others or None)
+            pose = np.asarray(r.get("pose"), float) if r.get("pose") is not None else None
+            shift = None if pose is None else float(np.hypot(*(pose[:2] - np.asarray(o["pos"][:2], float))))
+            ok = bool(r.get("ok")) and pose is not None and shift <= max_shift_m
+            return {o["label"]: {"ok": ok, "pos": None if pose is None else pose[:3].tolist(),
+                                 "quat": None if pose is None else pose[3:7].tolist(),
+                                 "shift_mm": None if shift is None else round(shift * 1000, 1),
+                                 "iou": r.get("iou"), "visible_frac": r.get("visible_frac"),
+                                 "turned_deg": r.get("turned_deg"), "time_s": r.get("time_s"), "via": "perception.refine",
+                                 "why": None if ok else ("perception not ok" if not r.get("ok") else "shift too large")}}
+        return self._refine_local(frame, objects, fold, max_shift_m)
+
+    def _refine_local(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03) -> dict:
         """Re-fit each given object's (x, y, yaw) locally from its current pose on this frame's views (the wrist
         view at a hover sees it from ~15 cm). Uses perception's own ``refine()`` when it exists, else
         ``inverse_layout.refine`` (table-resting objects; elevated ones are left alone). Accepted only if the
@@ -317,7 +343,7 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         conn.send({"ok": True, "poses": json.dumps(poses, default=_default)})
                     elif op == "refine":
                         ref = p.refine(req["frame"], req["objects"], int(req.get("fold", 0)),
-                                       float(req.get("max_shift_m", 0.03)))
+                                       float(req.get("max_shift_m", 0.03)), req.get("arm"))
                         conn.send({"ok": True, "refine": json.dumps(ref, default=_default)})
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))

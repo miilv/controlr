@@ -327,10 +327,10 @@ class RuntimePolicy:
         others = [x for x in prov.belief.movable() if x.label != label]
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [o] + others]
-        res = self.perception().refine(obs, objs[:1] + objs[1:], self.fold, self.cfg.refine_max_shift_m)
+        res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm)
         r = res.get(label) or {}
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
-              **{k: r.get(k) for k in ("ok", "shift_mm", "dyaw_deg", "loss0", "loss", "why")}}
+              **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why")}}
         self.report["events"].append(ev)
         if not r.get("ok"):
             return None
