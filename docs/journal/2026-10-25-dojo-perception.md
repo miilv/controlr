@@ -400,5 +400,6 @@ calib only.
     `source: "prior"`. The pad under the T used to disappear from the output.
 - Integration's runtime re-keys estimates by position (`_match_by_position`, `merge_looked`), so it is not
   affected, except merge_looked's `_not_found` fill by label (told them).
+- D0 regression (650 objects, frame 0): 0.805 → 0.806 (push_T +1, a T at 14° → 0.2°); 0 lost.
 - Open: the stacked tower at the end of stack_blocks reads as a single block (steps 152 and 211). The
   estimator has no stacked-object proposals at runtime; frame 0 never needed them.
