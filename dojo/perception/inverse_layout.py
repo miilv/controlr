@@ -209,9 +209,13 @@ def fixed_pose_shape(key: str, zlim, qpos) -> ShapeModel:
 
 
 def shape_by_tag(key: str, tag: str) -> ShapeModel:
+    """A shape model by place tag; fixed-pose tags ("zq:<z>:<qw,qx,qy,qz>") are rebuilt from the tag."""
     sm = _FIXED_POSE_SHAPES.get((key, tag))
     if sm is not None:
         return sm
+    if tag.startswith("zq:"):
+        _, z, q = tag.split(":")
+        return fixed_pose_shape(key, [float(z)], [float(v) for v in q.split(",")])
     return next(s for s in shape_models(key) if s.tag == tag)
 
 
@@ -1123,9 +1127,13 @@ def _centroid_xy(sm: ShapeModel, x: float, y: float, yaw: float) -> np.ndarray:
     return (T[:3, :3] @ sm.asset.V.mean(0) + T[:3, 3])[:2]
 
 
+SWAP_REFINE = 2
+
+
 def _place_like(h: Hypothesis, target_xy: np.ndarray, yaws, views, others, cfg, groups) -> Hypothesis | None:
-    """``h``'s shape re-fitted with its vertex centroid at ``target_xy`` (best of the start yaws; also shifted
-    by a quarter length both ways along its long axis: the swapped shapes differ in length)."""
+    """``h``'s shape re-fitted with its vertex centroid at ``target_xy``: start yaws x shifts of a quarter
+    length both ways along its long axis (the swapped shapes differ in length), screened by the unrefined
+    ROI loss; the best ``SWAP_REFINE`` get the quick refinement."""
     sm = h.sm()
     best = None
     starts = []
@@ -1136,8 +1144,13 @@ def _place_like(h: Hypothesis, target_xy: np.ndarray, yaws, views, others, cfg, 
         ev = np.linalg.eigh(np.cov(Vw[:, :2].T))[1][:, -1]
         L = float(np.ptp(Vw[:, :2] @ ev))
         for k in (0, -1, 1):
-            starts.append((target_xy - c + k * 0.25 * L * ev, yaw))
-    for xy, yaw in starts:
+            xy = target_xy - c + k * 0.25 * L * ev
+            T = sm.pose(float(xy[0]), float(xy[1]), float(yaw))
+            rvs = make_roi_views(sm, T, views, others)
+            if rvs:
+                starts.append((roi_loss(sm, T, rvs)[0], xy, yaw))
+    starts.sort(key=lambda t: t[0])
+    for _, xy, yaw in starts[:SWAP_REFINE]:
         t = Hypothesis(h.label_group, h.key, h.tag, float(xy[0]), float(xy[1]), float(yaw), h.loss, blob=h.blob)
         t.per_view = {"geom_group": h.per_view["geom_group"]}
         t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters)
@@ -1160,6 +1173,10 @@ def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.
             if (a.label_group == b.label_group or "fixed" in (a.tag, b.tag) or a.per_view.get("slot")
                     or b.per_view.get("slot") or a.per_view.get("occluded") or b.per_view.get("occluded")):
                 continue
+            sa, sb = a.sm(), b.sm()
+            if (sa.key == sb.key or (np.allclose(sa.asset.extents, sb.asset.extents, atol=2e-3)
+                                     and sa.asset.info.get("n_faces") == sb.asset.info.get("n_faces"))):
+                continue  # same geometry: which label goes where is appearance (identity step), not a refit
             ca, cb = _centroid_xy(a.sm(), a.x, a.y, a.yaw), _centroid_xy(b.sm(), b.x, b.y, b.yaw)
             ga, gb = groups[a.label_group], groups[b.label_group]
             if not (region_ok(ga, *cb) and region_ok(gb, *ca)):

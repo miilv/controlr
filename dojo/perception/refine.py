@@ -32,7 +32,7 @@ import cv2
 import numpy as np
 
 from .cameras import TABLE_Z, R_to_quat_wxyz, pose_to_T, wrist_camera
-from .inverse_layout import make_roi_views, refine as nm_refine, shape_models
+from .inverse_layout import make_roi_views, refine as nm_refine, shape_by_tag, shape_models
 from .segment import load_backgrounds, segment_virtual
 
 _BGS = None
@@ -117,9 +117,10 @@ def _shape_for(key: str, R: np.ndarray, tag: str | None):
     """The place frame whose resting up-direction matches the prior rotation best (or the given tag)."""
     sms = shape_models(key)
     if tag:
-        m = [s for s in sms if s.tag == tag]
-        if m:
-            return m[0]
+        try:
+            return shape_by_tag(key, tag)  # includes fixed-pose (zlim / qpos) shapes estimate() created
+        except StopIteration:
+            pass
     up = R.T @ np.array([0, 0, 1.0])
     return max(sms, key=lambda s: float((s.R0.T @ np.array([0, 0, 1.0])) @ up))
 
