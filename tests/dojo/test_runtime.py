@@ -1209,3 +1209,56 @@ def test_watch_lays_the_knocked_tile_face_up_after_two_equal_reads():
     w2(obs)
     w2(obs)
     assert pc2.n == 1
+
+
+@pytest.mark.parametrize("needs", [False, True])
+def test_agentic_budget_estimates_at_frame0_and_once_more_only_when_perception_asks(needs):
+    env = _env()
+
+    class AgenticPerception:
+        def __init__(self):
+            self.calls = []
+
+        def _rec(self, dx=0.0, tag="b1"):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": [p[0] + dx, p[1], p[2]], "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]},
+                    "_perception": {"agentic": {"result": "agent", "calls": 3, "tokens": 9000, "agent_s": 30.0,
+                                                "model": "fake", "merge": [{"label": "block_0"}]}}, "_tag": tag}
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            self.calls.append("estimate")
+            return self._rec()
+
+        def agentic_estimate(self, frame, vocabulary, fold, b1_record=None):
+            self.calls.append(("agentic", b1_record is not None))
+            return self._rec(tag="agentic")
+
+        def needs_agent(self, record):
+            self.calls.append(("needs", record.get("_tag")))
+            return needs, "not_found:['x']" if needs else "b1_confident"
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+    pc = AgenticPerception()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", agentic="budget"), assets=FakeAssets(),
+                        perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    assert _stacked(env)
+    assert pc.calls[0] == ("agentic", False)                          # frame 0: agentic (B1 inside the service)
+    assert ("needs", "agentic") in pc.calls
+    n_ag = sum(1 for c in pc.calls if isinstance(c, tuple) and c[0] == "agentic")
+    assert n_ag == (2 if needs else 1) and len(rep["agentic"]) == n_ag
+    assert rep["agentic"][0]["calls"] == 3 and rep["agentic"][0]["tokens"] == 9000
+    if needs:
+        assert pc.calls[pc.calls.index(("needs", "agentic")) + 1] == ("agentic", True)   # B1 hint = the current record
+    # off (default): no agentic op is ever called
+    pc2 = AgenticPerception()
+    rep2 = run_episode(RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(),
+                                     perception_client=pc2), FakeEpisode(_env()), "perception")
+    assert rep2["agentic"] == [] and not any(isinstance(c, tuple) for c in pc2.calls)

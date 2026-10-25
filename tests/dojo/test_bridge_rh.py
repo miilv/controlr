@@ -228,3 +228,22 @@ def test_runtime_episode_through_the_real_j2_stack(j2_stack):
             prev[x] = (q, g)
     assert be.stats["grip_change_while_moving"] == mine and sum(mine.values()) >= 3, (be.stats, mine)
     be.close()
+
+
+def test_joint_steps_smoke_through_the_real_j2_stack(j2_stack):
+    """The first-GPU-run smoke (runbook 4.0) through his real J2 server + shim: every phase is one accepted chunk at
+    0.18 rad/step, and each chunk keeps his tracking fields."""
+    from dojo.bridge.driver import run_episode
+    from dojo.bridge.smoke import JointStepsSmoke
+    T, sid = j2_stack
+    be = RobotServerBackend(RobotServerClient(sid, bench=str(T)), frames_dir=T / "frames")
+    be.connect()
+    be.wait_episode(60, 0.2)
+    pol = JointStepsSmoke()
+    res = run_episode(pol, be)
+    s, rep = res["summary"], res["report"]
+    assert s["end"] == "policy_done", s
+    assert len(be.chunks) == len(rep["phases"]) and all(ch["ran"] == ch["n"] for ch in be.chunks)
+    assert all(set(ch["tracking_max_rad"]) == {"left", "right"} for ch in be.chunks)
+    assert max(max(ch["max_step_dq"].values()) for ch in be.chunks) <= 0.18 + 1e-4
+    be.close()

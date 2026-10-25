@@ -307,3 +307,20 @@ def test_bridge_sources_never_read_gt_or_grader_state():
         code = re.sub(r'"""[\s\S]*?"""', "", code)            # docstrings may name what is forbidden
         hits = [m.group(0) for m in forbidden.finditer(code)]
         assert not hits, (name, hits)
+
+
+def test_joint_steps_smoke_runs_one_chunk_per_phase_and_keeps_the_tracking(bench):
+    from dojo.bridge.smoke import JointStepsSmoke
+    srv, be, envs = serve(bench)
+    be.connect()
+    pol = JointStepsSmoke()
+    res = run_episode(pol, be)
+    s, rep = res["summary"], res["report"]
+    assert s["end"] == "policy_done", s
+    chunks = s["joint_steps_chunks"]
+    assert len(chunks) == len(rep["phases"]) == 1 + 2 * 2 * 2 + 2 * 2
+    assert all(c["ran"] == c["n"] and "tracking_max_rad" in c for c in chunks)
+    assert s["steps_used"] == sum(p["n"] for p in rep["phases"]) < 100
+    assert max(max(c["max_step_dq"].values()) for c in chunks) == pytest.approx(0.18, abs=1e-6)   # per arm, per chunk
+    assert _home(envs[0])                                             # out and back: the arms end where they began
+    srv.stop()

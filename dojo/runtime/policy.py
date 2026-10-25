@@ -98,6 +98,11 @@ class RuntimeConfig:
     # changed (service op "watch"; make_kong: the opponent's discard); two equal reads update the belief
     watch: bool = False
     watch_every: int = 4
+    # mode perception: perception R&D's agentic perceiver (LLM calls via omniroute, in the perception service).
+    # "budget": the first estimate is agentic; after the looks / search one more agentic estimate when perception's
+    # needs_agent(record) says so; at most agentic_max calls per episode. "off": B1 only
+    agentic: str = "off"
+    agentic_max: int = 2
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -135,7 +140,7 @@ class RuntimePolicy:
         still steps, error handling, report) is the same."""
         self.cfg = cfg or RuntimeConfig.from_env()
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
-                or self.cfg.verify_select not in ("all", "risky")):
+                or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -186,7 +191,7 @@ class RuntimePolicy:
         self.dev_gt = None
         self.log_lines = []
         self.t0 = time.perf_counter()
-        self.report = {"config": asdict(self.cfg), "info_dropped": dropped, "skill": None, "looks": [],
+        self.report = {"config": asdict(self.cfg), "info_dropped": dropped, "skill": None, "looks": [], "agentic": [],
                        "events": [], "records": {}, "decisions": [], "history": [], "verify": None,
                        "result": None, "error": None, "timings": {}}
 
@@ -262,6 +267,11 @@ class RuntimePolicy:
         t = time.perf_counter()
         if cfg.mode == "gt":
             prov.init_from_gt()
+        elif cfg.agentic == "budget":
+            rec = self._agentic(obs0, scene, None, "frame0")
+            self.report["records"]["initial"] = _slim(rec)
+            self._last_record = rec
+            prov.init_from_record(rec)
         else:
             rec = self.perception().estimate([obs0], scene, self.fold)
             self.report["records"]["initial"] = _slim(rec)
@@ -334,8 +344,24 @@ class RuntimePolicy:
                 self.report["records"]["searched"] = _slim(srec)
                 prov.init_from_record(srec)
                 sk = make_skills()
-        nf = [x.get("label") for x in (self.report["records"].get("searched") or self.report["records"].get("fused")
-                                        or self.report["records"].get("initial") or {}).get("_not_found") or []]
+                self._last_record = srec
+        if cfg.mode == "perception" and cfg.agentic == "budget" and len(self.report["agentic"]) < cfg.agentic_max:
+            cur = self._last_record
+            try:
+                needs, why = self.perception().needs_agent(cur)
+            except Exception as e:  # noqa: BLE001 (the gate is optional: go on with B1)
+                needs, why = False, f"needs_agent error {type(e).__name__}: {str(e)[:120]}"
+            events.append({"kind": "agentic_gate", "needs": needs, "why": why, "step": b.steps_used})
+            if needs:
+                rec2 = self._agentic(b.observe(), scene, cur, "after_looks")
+                if rec2 is not cur:
+                    self.report["records"]["agentic2"] = _slim(rec2)
+                    self._last_record = rec2
+                    prov.init_from_record(rec2)
+                    sk = make_skills()
+        recs = self.report["records"]
+        nf = [x.get("label") for x in (recs.get("agentic2") or recs.get("searched") or recs.get("fused")
+                                        or recs.get("initial") or {}).get("_not_found") or []]
         if nf:
             events.append({"kind": "perception_missing", "labels": nf})
             if verifier is not None:                    # the twin would run the task's checker on a partial scene
@@ -544,6 +570,23 @@ class RuntimePolicy:
                 hint["rehover_dz"] = self.cfg.rehover_place_dz
             return hint
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _agentic(self, obs: dict, scene: str, b1: dict | None, tag: str) -> dict:
+        """One agentic estimate (perception service). Usage goes to report["agentic"]; on an error the B1 record is
+        kept (``b1``, else a plain estimate of this frame)."""
+        t = time.perf_counter()
+        try:
+            rec = self.perception().agentic_estimate(obs, scene, self.fold, b1_record=b1)
+        except Exception as e:  # noqa: BLE001 (B1 is the fallback)
+            self.report["agentic"].append({"tag": tag, "error": f"{type(e).__name__}: {str(e)[:200]}",
+                                           "s": round(time.perf_counter() - t, 1)})
+            return b1 if b1 is not None else self.perception().estimate([obs], scene, self.fold)
+        st = ((rec.get("_perception") or {}).get("agentic") or {})
+        self.report["agentic"].append({"tag": tag, "s": round(time.perf_counter() - t, 1),
+                                       **{k: st.get(k) for k in ("result", "calls", "tokens", "agent_s", "model",
+                                                                  "system_md5")},
+                                       "merged": len(st.get("merge") or [])})
+        return rec
 
     def _make_watcher(self, prov, obs0: dict, scene: str):
         """The provider's watcher: perception's ``watch`` (frame 0 vs now) until it reports a change twice in a row
