@@ -120,3 +120,17 @@ regressions: stack_blocks 100003 block_0 (0.4 → 9.7 mm, also integration's cas
   9 mm move toward a mediocre look-view fit (IoU 0.54). D0 L1: **0 regressions > 5 mm** on stack_blocks and
   build_tower (improvements 2 and 7); within tolerance stack_blocks 0.85, build_tower 0.84 (vs frame 0
   0.83 / 0.81). Safety over gain: a wrong move after a look is worse than no move.
+
+## v2 look plans (frame_L2) vs v1, partial (same full-fuse scoring as the v1 table)
+| task | frame 0 | v1 look | v2 look |
+|---|---|---|---|
+| build_tower | 0.81 | 0.87 | 0.89 (xy p90 6.0 → 5.1 mm) |
+| stack_bowls | 0.88 | 0.91 | 0.92 |
+| stack_blocks | 0.83 | 0.87 | 0.85 (± 1–2 blocks) |
+pack / push_T / bottles pending (`~/dojo-perception-data/after_l2.sh` runs each as simlab finishes).
+
+## Integration's saved look frames
+`integ_looks.py` re-estimates from integration's frame0/look PNGs + state, fuses, scores vs D0 GT (their
+settled records equal D0 frame-0 GT; their frame0 images match D0's, mean |Δ| 0.7). First 5 stack_blocks
+episodes (100000–100004, hard layouts): conservative fuse 0 objects worse / 0 better than frame 0; the old
+full fuse raised xy p90 17.2 → 20.6 mm. Look variants: "plan" 12 objects, "d0.18/e70" fallback 3, no harm.
