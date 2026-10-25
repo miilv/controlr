@@ -220,7 +220,10 @@ class Skills:
                 if not ok:
                     n_coll += 1
                     continue
-                to_pre = self.motion.to_pose(a, q0, g.pre(), approach_rad, "pick_approach", gripper=go)
+                # with a wrist refine, objects longer than ~12 cm need the look from 12-15 cm to fit the
+                # frame (perception); the hover is the pre-grasp
+                pre_d = 0.13 if (self.refine is not None and float(obj.asset.extents.max()) > 0.12) else None
+                to_pre = self.motion.to_pose(a, q0, g.pre(pre_d), approach_rad, "pick_approach", gripper=go)
                 if not to_pre.ok:
                     n_coll += to_pre.status == "collision"
                     n_ik += to_pre.status == "ik_fail"
@@ -649,6 +652,26 @@ class Skills:
             return cands
         cands = cands[:self.n_cands]
         self._park_if_blocking(cands[0].plan)
+        if self.refine is not None:
+            # hover unverified, refine from the wrist, then plan and verify only the tail
+            c0 = cands[0]
+            hover = ArmPlan(c0.arm, c0.plan.q0, c0.plan.g0)
+            hover.ops = list(c0.plan.ops[:2])
+            try:
+                self.ex.run({c0.arm: hover}, name=f"pick {job.label} hover")
+            except (BudgetExceeded, EpisodeEnded) as e:
+                return SkillResult(False, "pick", "step_budget" if isinstance(e, BudgetExceeded) else "ended", 0,
+                                   c0.arm, note=str(e))
+            self._refine(job.label, c0.arm, "pick")
+            tails = self.plan_pick(job.label, c0.arm, job.method, q_start={c0.arm: self.ex.q[c0.arm]},
+                                   return_all=True, keep=4, **job.pick_kw)
+            if isinstance(tails, list) and tails:
+                cands = tails[:self.n_cands]
+            else:                                   # fall back to the original plan minus its hover
+                rest = ArmPlan(c0.arm, self.ex.q[c0.arm].copy(), self.ex.g[c0.arm])
+                rest.ops = list(c0.plan.ops[2:])
+                c0.plan = rest
+                cands = [c0]
         before = self._at_rest(exclude=held)
         idx, passes = self.verify_choose([{c.arm: c.plan.compile()[0]} for c in cands],
                                          [self.judge_pick(c, before) for c in cands], held, kind="pick", label=job.label)
@@ -668,6 +691,20 @@ class Skills:
 
     def _verified_place(self, job, T, ign, nxt_pick=None) -> tuple[SkillResult, "SkillResult | None"]:
         held_other = tuple(h.label for a, h in self.held.items() if h and a != job.arm)
+        if self.refine is not None:
+            nxt_pick = None                          # each pick gets its own hover + refine
+            first = self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw)
+            if isinstance(first, PlacePlan) and getattr(first, "approach", None) is not None:
+                self._park_if_blocking(first.plan)
+                hover = ArmPlan(job.arm, first.plan.q0, first.plan.g0).move(first.approach, "approach").hold(1, "still")
+                try:
+                    self.ex.run({job.arm: hover}, name=f"place {job.label} hover")
+                except (BudgetExceeded, EpisodeEnded) as e:
+                    return SkillResult(False, "place", "step_budget" if isinstance(e, BudgetExceeded) else "ended",
+                                       0, job.arm, note=str(e)), None
+                ref = next((l for l in ign if l in self.world.objects), None)
+                self._refine(ref, job.arm, "place")
+                T = job.target(self)                 # from the refreshed (refined) world
         variants = []
         for kw in ({}, {"pre_h": 0.04, "descend_rad": 0.03}, {"release_gap": 0.006, "settle": 3}):
             pk = dict(job.place_kw)
