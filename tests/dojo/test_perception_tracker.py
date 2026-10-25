@@ -83,3 +83,37 @@ def test_scan_fill_from_frame0_takes_only_unexplained_readings(monkeypatch):
     assert sorted(filled) == ["b1", "target_t"] and out["_not_found"] == []
     assert out["Geometry"]["t_cushion"][0]["_perception"]["source"] == "frame0_fill"
     assert [r["default_pos"][0] for r in out["Rigid"]["block"]] == [0.2, -0.3]
+
+
+def test_index_structure_ties_config_groups(monkeypatch):
+    from dojo.perception import inverse_layout as IL
+
+    cands = [f"Rigid/mahjong/{i:05d}" for i in range(42)]
+    labels = {"m0_0": {"select_mode": {"mode": "same", "label": ["m0_0", "m0_1"]}, "candidates": cands},
+              "m0_1": {"select_mode": {"mode": "same", "label": ["m0_0", "m0_1"]}, "candidates": cands},
+              "m1_0": {"select_mode": {"mode": "same", "label": ["m1_0"]}, "candidates": cands},
+              "m5_0": {"select_mode": {"mode": "same_index_as_label", "same_label": "m0_0"}, "candidates": cands},
+              "m6_0": {"select_mode": {"mode": "same_index_as_label", "same_label": "m1_0"}, "candidates": cands},
+              "other0": {"select_mode": {"mode": "unique", "label": ["other0"]}, "candidates": cands},
+              "bowl": {"select_mode": {"mode": "same", "label": ["bowl"]}, "candidates": cands[:3]}}
+    monkeypatch.setattr(IL, "task_map", lambda: {"t": {"labels": labels}})
+    rec = {"Rigid": {"mahjong": [{"label": k, "category_idx": 0, "_perception": {"slot": True}}
+                                 for k in ("m0_0", "m0_1", "m1_0", "m5_0", "m6_0", "other0")],
+                     "bowl": [{"label": "bowl", "category_idx": 2}]}}
+    IL.index_structure(rec, "t")
+    idx = {r["label"]: r["category_idx"] for r in rec["Rigid"]["mahjong"]}
+    assert idx["m0_0"] == idx["m0_1"] == idx["m5_0"] and idx["m1_0"] == idx["m6_0"] and idx["m0_0"] != idx["m1_0"]
+    assert idx["other0"] not in (idx["m0_0"], idx["m1_0"])
+    assert rec["Rigid"]["bowl"][0]["category_idx"] == 2  # readable identity untouched
+
+
+def test_truncated_frac_counts_vertices_outside_the_view():
+    import numpy as np
+
+    from dojo.perception import cameras, refine
+
+    cam = cameras.head_camera()
+    inside = np.array([[0.0, -0.1, 0.78], [0.05, -0.1, 0.78]])
+    outside = np.array([[3.0, -0.1, 0.78], [0.0, -0.1, 2.0]])  # far right; above (behind) the camera
+    assert refine.truncated_frac(cam, inside) == 0.0
+    assert refine.truncated_frac(cam, np.r_[inside, outside]) == 0.5
