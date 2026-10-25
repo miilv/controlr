@@ -903,8 +903,17 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
     held = sk.held[g_arm]
     try:
         Tg = h["T_H"] @ inv_T(held.T_tcp_obj)
-        mv = sk.motion.to_pose(g_arm, sk.ex.q[g_arm], Tg, HANDOVER_CARRY, "handover_carry", gripper=CLOSED,
-                               held=held.box, ignore=(label,), ease=4)
+        # a straight line with the orientation slerped: the object turns monotonically the short way (a joint
+        # move can swing it through tip-up on the way, the centre of mass over the pads: a key held on its bow
+        # turned in the pads and fell, 6/6 + 1/1 at 0.07 rad/step)
+        mv = sk.motion.line(g_arm, sk.ex.q[g_arm], Tg, HANDOVER_CARRY, "handover_carry", gripper=CLOSED,
+                            held=held.box, ignore=(label,), max_step_deg=4.0)
+        if mv.ok:
+            for seg in mv.segments:
+                seg.ease = 4
+        if not mv.ok:
+            mv = sk.motion.to_pose(g_arm, sk.ex.q[g_arm], Tg, HANDOVER_CARRY, "handover_carry", gripper=CLOSED,
+                                   held=held.box, ignore=(label,), ease=4)
         if not mv.ok:
             mv = sk.motion.to_pose(g_arm, sk.ex.q[g_arm], h["T_H"] @ inv_T(h["pick"].T_tcp_obj), HANDOVER_CARRY,
                                    "handover_carry", gripper=CLOSED, check=False, ease=4)
