@@ -134,9 +134,14 @@ def _dist_inside(mask: np.ndarray, res: float) -> np.ndarray:
 
 
 def fit_insertion(peg, hole, res: float = 0.0004, yaw_step_deg: float = 3.0, margin_top: float = 0.003,
-                  max_open: float = 0.06) -> HoleFit | None:
+                  max_open: float = 0.06, others=(), others_pad: float = 0.002, pack: bool = False,
+                  min_clear: float = 0.002, others_band: float = 0.03) -> HoleFit | None:
     """Best insertion pose of ``peg`` (ObjectState with a mesh) into ``hole`` (ObjectState with a mesh,
-    standing upright). None when the meshes are missing or nothing fits."""
+    standing upright). ``others``: objects already in the opening (their mesh points inside it, padded
+    by ``others_pad`` and within ``others_band`` of the top, are taken out of the free area: leaning objects
+    share the floor, the rim is what fills up). ``pack``: of the poses with at least ``min_clear``, the one
+    farthest from the opening's centre (against the wall, leaving room for the next object) instead of
+    the one with the most clearance. None when the meshes are missing or nothing fits."""
     if peg.asset.mesh is None or hole.asset.mesh is None:
         return None
     Vh, Fh = hole.asset.mesh
@@ -152,6 +157,25 @@ def fit_insertion(peg, hole, res: float = 0.0004, yaw_step_deg: float = 3.0, mar
     if opening.sum() < 4:
         return None
     floor = float(np.median(D[opening]))
+    T_hw = np.eye(4)
+    T_hw[:3, :3], T_hw[:3, 3] = hole.R.T, -hole.R.T @ hole.pos        # world -> receptacle frame
+    for oth in others:
+        if oth.asset.mesh is None:
+            continue
+        W = oth.asset.mesh[0] @ oth.R.T + oth.pos
+        L = W @ T_hw[:3, :3].T + T_hw[:3, 3]
+        L = L[(L[:, 2] > top - others_band) & (L[:, 2] < top + others_band)]
+        if not len(L):
+            continue
+        pad = int(math.ceil(others_pad / res))
+        ij = np.round((L[:, :2] - [xs[0], ys[0]]) / res).astype(int)
+        for dx in range(-pad, pad + 1):
+            for dy in range(-pad, pad + 1):
+                ii, jj = ij[:, 1] + dy, ij[:, 0] + dx
+                ok = (ii >= 0) & (ii < len(ys)) & (jj >= 0) & (jj < len(xs))
+                opening[ii[ok], jj[ok]] = False
+    if opening.sum() < 4:
+        return None
     depth = top - floor
     # the peg with its leading end down, the slab that enters
     k, sgn = insertion_axis(Vp)
@@ -161,6 +185,7 @@ def fit_insertion(peg, hole, res: float = 0.0004, yaw_step_deg: float = 3.0, mar
     slab = P[P[:, 2] <= tip + max(0.004, depth - 0.001)]
     dist = _dist_inside(opening, res)
     hole_idx = np.argwhere(opening)
+    ctr = hole_idx.mean(0)
 
     def score(yaw_deg, cand):
         Rz = rot_z(math.radians(yaw_deg))
@@ -174,26 +199,31 @@ def fit_insertion(peg, hole, res: float = 0.0004, yaw_step_deg: float = 3.0, mar
             ok = (ix >= 0) & (ix < len(xs)) & (iy >= 0) & (iy < len(ys))
             v = np.where(ok, dist[np.clip(iy, 0, len(ys) - 1), np.clip(ix, 0, len(xs) - 1)], 0.0)
             m = v.min(1)
-            j = int(np.argmax(m))
-            if out is None or m[j] > out[0]:
-                out = (float(m[j]), yaw_deg, int(tx[i + j]), int(ty[i + j]), cells)
+            if pack:
+                far = np.hypot(ty[i:i + 256] - ctr[0], tx[i:i + 256] - ctr[1]) * res
+                key = np.where(m >= min_clear, far + 1.0, m)          # feasible ones first, then farthest out
+            else:
+                key = m
+            j = int(np.argmax(key))
+            if out is None or key[j] > out[5]:
+                out = (float(m[j]), yaw_deg, int(tx[i + j]), int(ty[i + j]), cells, float(key[j]))
         return out
 
     # coarse yaw x coarse translations, then a fine pass around the best
     best = None
     for yaw_deg in np.arange(0.0, 360.0, 2 * yaw_step_deg):
         r = score(yaw_deg, hole_idx[::4])
-        if r and (best is None or r[0] > best[0]):
+        if r and (best is None or r[5] > best[5]):
             best = r
     if best is not None:
         y0 = best[1]
         for yaw_deg in np.arange(y0 - 2 * yaw_step_deg, y0 + 2 * yaw_step_deg + 1e-9, yaw_step_deg / 3):
             r = score(yaw_deg % 360.0, hole_idx)
-            if r and r[0] > best[0]:
+            if r and r[5] > best[5]:
                 best = r
     if best is None or best[0] <= 0.0:
         return None
-    clear, yaw_deg, ix, iy, cells = best
+    clear, yaw_deg, ix, iy, cells, _ = best
     root_local = np.array([xs[ix], ys[iy]])
     # floor under the footprint: the highest floor cell it covers (the leading end lands there)
     fx = np.clip(ix + cells[:, 0], 0, len(xs) - 1)

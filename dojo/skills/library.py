@@ -781,6 +781,90 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
     return {"ok": True, "stage": "all in slots"}
 
 
+def _inside_opening(sk: Skills, label: str, container: str, depth: float = 0.02) -> bool:
+    """Is ``label``'s lowest point inside ``container``'s footprint and ``depth`` below its top?"""
+    w = sk.world
+    o, c = w.obj(label), w.obj(container)
+    mn, mx = c.aabb()
+    p = o.world_bbox_corners()
+    low = p[np.argmin(p[:, 2])]
+    return bool(mn[0] <= low[0] <= mx[0] and mn[1] <= low[1] <= mx[1] and low[2] < c.top_z - depth)
+
+
+def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
+                   comfy: float = 0.42) -> dict:
+    """Put every object into ``container`` leading end first (``insertion.fit_insertion`` per object, the
+    ones already inside taken out of the free area), grippers open after each (partial credit per
+    object). A movable container out of comfortable reach of the arm that picks the objects is first
+    carried to a free spot both arms reach (the instruction's "hold the holder"); it stays upright."""
+    from dojo.skills.insertion import fit_insertion
+    w = sk.refresh()
+    objects = [l for l in objects if l in w.objects]
+    c = w.obj(container)
+    cen = np.mean([w.obj(l).center_w[:2] for l in objects], axis=0)
+    picker = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - cen)))
+    st = w.notes.setdefault("fill", {"inside": []})
+    if c.obj_type == "Rigid" and float(np.linalg.norm(sk.kin.base(picker)[:2, 3] - c.center_w[:2])) > comfy \
+            and not st.get("moved"):
+        near = (0.5 * float(cen[0]), -0.27)
+        spots = sorted(free_spots(sk, container, near_xy=near, clearance=0.04),
+                       key=lambda xy: float(np.linalg.norm(np.subtract(xy, near))))
+        for xy in spots[:4]:
+            T = rest_with_R(sk, container, xy, level_R(c.R))
+            r = _run_leg(sk, container, [T], 8, tol=(0.03, 10.0, 0.03))
+            if r.ok:
+                st["moved"] = True
+                sk.log(f"[fill] {container} moved to {np.round(xy, 3).tolist()}")
+                break
+            if r.status in ("step_budget", "ended", "grasp_slip"):
+                break
+        sk.bank()
+    sk.coll.include.add(container)
+    failed = []
+    for _ in range(len(objects)):
+        w = sk.refresh()
+        todo = [l for l in objects if l not in st["inside"] and l not in failed]
+        if not todo:
+            break
+        # the widest first (the slim ones fit the gaps left at the rim)
+        lab = max(todo, key=lambda l: float(np.prod(np.sort(w.obj(l).asset.extents)[:2])))
+        inside = [w.obj(l) for l in st["inside"]]
+        fit = None
+        # crowded opening: less padding, then the rim band only, then the objects inside ignored (they lean;
+        # the twin settles the newcomer between them)
+        for kw in ({"others_pad": 0.002, "min_clear": 0.002}, {"others_pad": 0.0, "min_clear": 0.0005},
+                   {"others_pad": 0.0, "min_clear": 0.0005, "others_band": 0.008}, {"others": ()}):
+            args = {"others": inside, "res": 0.001, "yaw_step_deg": 15.0, "pack": True, **kw}
+            fit = fit_insertion(w.obj(lab), w.obj(container), **args)
+            if fit is not None:
+                break
+        if fit is None:
+            failed.append(lab)
+            continue
+        T = fit.T_obj.copy()
+        T[2, 3] += drop
+        sk.log(f"[fill] {lab}: {fit.note}")
+        r = place_oriented(sk, lab, [T], yaw_sym=4, tol_xy=0.03, tol_tilt=30.0, tol_z=0.05,
+                           ignore=(container, *st["inside"]),
+                           place_kw={"pre_h": 0.02, "descend_rad": 0.05, "release_gap": 0.0, "settle": 1})
+        sk.refresh()
+        if _inside_opening(sk, lab, container):
+            st["inside"].append(lab)
+        else:
+            failed.append(lab)
+            sk.log(f"[fill] {lab} not inside ({r.status}: {r.note[:120]})")
+        if any(sk.held[a] is not None for a in ARMS):
+            for a in ARMS:
+                if sk.held[a] is not None:
+                    sk._record(sk.regrasp(a))
+        sk.bank()
+        if r.status in ("step_budget", "ended"):
+            break
+    if len(st["inside"]) < len(objects):
+        return {"ok": False, "stage": "fill", "note": f"inside {st['inside']}, failed {failed}"}
+    return {"ok": True, "stage": "filled"}
+
+
 def up_body_axis(o) -> np.ndarray:
     """The body axis that points up in the asset's ``up`` place pose (its face, for a tile)."""
     q = o.asset.place.get("up")
@@ -921,4 +1005,5 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
 
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
           "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,
-          "insert_into": insert_into, "place_in_slots": place_in_slots}
+          "insert_into": insert_into, "place_in_slots": place_in_slots,
+          "fill_container": fill_container}

@@ -139,6 +139,18 @@ def plan(instruction: str, world: WorldState) -> Plan:
         pieces = [o.label for o in objs if o.obj_type == "Rigid"]
         return Plan("build_tower", {"pieces": pieces}, "all rigid pieces")
 
+    # --- all <things> into a holder / cup ("place all pens into it"): leading end first, one by one
+    m = re.search(r"\ball\s+([a-z_]+)\s+(?:into|in)\b", text)
+    if m:
+        noun = _singular(m.group(1))
+        holders = [o for o in objs if any(w in o.category.lower() for w in ("holder", "cup", "rack", "vase"))
+                   and noun not in o.category.lower().split("_")[-1:]]
+        movers = [o.label for o in objs if o.obj_type == "Rigid" and noun in o.category.lower().split("_")
+                  and o not in holders]
+        if holders and movers:
+            return Plan("fill_container", {"objects": movers, "container": holders[0].label},
+                        f"{len(movers)} {noun}(s) into {holders[0].label}")
+
     # --- put things into a container
     m = re.search(r"\b(into|in)\s+the\s+([a-z_]+)", text)
     if m and ("put" in text or "throw" in text or "place" in text):
