@@ -414,12 +414,12 @@ def test_perception_service_serves_its_ops(monkeypatch):
     from multiprocessing.connection import Listener
 
     import dojo.runtime.perception_service as ps
-    for op in ("estimate", "look_plan", "look_poses", "check"):
+    for op in ("estimate", "look_plan", "look_poses", "check", "refine"):
         assert callable(getattr(ps._Perception, op)) and callable(getattr(ps.PerceptionClient, op))
     calls = []
-    for op in ("estimate", "look_plan", "look_poses", "check"):
+    for op in ("estimate", "look_plan", "look_poses", "check", "refine"):
         monkeypatch.setattr(ps._Perception, op, lambda self, *a, _op=op, **k: calls.append(_op) or
-                            ({} if _op in ("estimate", "check") else []))
+                            ({} if _op in ("estimate", "check", "refine") else []))
     key = secrets.token_bytes(16)
     lst = Listener(("127.0.0.1", 0), authkey=key)
     port = lst.address[1]
@@ -432,7 +432,8 @@ def test_perception_service_serves_its_ops(monkeypatch):
     assert pc.look_plan(obs, {"Rigid": {}}) == []
     assert pc.look_poses([0, 0, 0.8], "left") == []
     assert pc.check(obs, [], 1) == {}
-    assert calls == ["estimate", "look_plan", "look_poses", "check"]
+    assert pc.refine(obs, [], 1) == {}
+    assert calls == ["estimate", "look_plan", "look_poses", "check", "refine"]
     pc.close(stop_service=True)
     th.join(5)
     assert not th.is_alive()

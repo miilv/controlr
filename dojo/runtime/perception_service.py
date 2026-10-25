@@ -10,6 +10,8 @@ Ops (request dicts):
         one frame = inverse layout; several = ``look.fuse`` (first frame + later views, objects static)
     {"op": "look_plan", "frame": frame, "record": dict, "max_looks": 2}            -> {"plan": [...]}
     {"op": "look_poses", "target": xyz, "arm": str, "variants": [(dist, elev)]}    -> {"poses": [...]}
+    {"op": "refine", "frame": frame, "objects": [{label, key, pos, quat}], "fold"} -> {"refine": {label: ...}}
+        local (x, y, yaw) re-fit of each object from its given pose on this frame (pre-contact wrist refine)
     {"op": "check", "frame": frame, "objects": [{label, key, pos, quat}], "fold"}  -> {"check": {label: ...}}
         per object at the GIVEN pose and per view: ``prec`` = fraction of the pixels where it is predicted
         front-most (z-buffer over the given objects) that are observed foreground, ``n_vis``; plus the plain
@@ -96,6 +98,11 @@ class PerceptionClient:
         return json.loads(self._call({"op": "look_poses", "target": [float(v) for v in target], "arm": arm,
                                       "variants": variants})["poses"])
 
+    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03) -> dict:
+        """Local render-and-compare refinement of the given objects (x, y, yaw) on this frame's views."""
+        return json.loads(self._call({"op": "refine", "frame": encode_frame(frame), "objects": objects, "fold": int(fold),
+                                      "max_shift_m": float(max_shift_m)})["refine"])
+
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
                                       "fold": int(fold)})["check"])
@@ -161,6 +168,65 @@ class _Perception:
             T = default_look(np.asarray(target, float), arm, dist=float(dist), elev_deg=float(elev))
             out.append({"arm": arm, "dist": dist, "elev": elev, "flange_pose": np.round(flange_for_camera(T), 5).tolist(),
                         "T_world_cam_cv": np.round(T, 5).tolist()})
+        return out
+
+    def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03) -> dict:
+        """Re-fit each given object's (x, y, yaw) locally from its current pose on this frame's views (the wrist
+        view at a hover sees it from ~15 cm). Uses perception's own ``refine()`` when it exists, else
+        ``inverse_layout.refine`` (table-resting objects; elevated ones are left alone). Accepted only if the
+        loss drops and the shift stays below ``max_shift_m``."""
+        from dojo.perception import inverse_layout as IL
+        from dojo.perception.cameras import R_to_quat_wxyz, cameras_from_state, pose_to_T
+        from dojo.perception.segment import segment_views
+        f = decode_frame(frame)
+        cfg = self.cfg(fold)
+        views = segment_views(f["images"], cameras_from_state(f["state"]), f["state"], self.bgs(fold), thr=cfg.fg_thr)
+        out = {}
+        Ts = {o["label"]: pose_to_T(np.asarray(o["pos"], float), np.asarray(o["quat"], float)) for o in objects}
+        for o in objects:
+            lab = o["label"]
+            try:
+                cands = IL.shape_models(o["key"])
+            except Exception as e:  # noqa: BLE001
+                out[lab] = {"ok": False, "why": f"no shape model: {e}"}
+                continue
+            T = Ts[lab]
+            best = None
+            for sm in cands:                         # the place tag whose rest orientation matches, and its yaw
+                Rz = T[:3, :3] @ sm.R0.T
+                yaw = float(np.arctan2(Rz[1, 0], Rz[0, 0]))
+                err = float(np.linalg.norm(sm.pose(T[0, 3], T[1, 3], yaw)[:3, :3] - T[:3, :3]))
+                if best is None or err < best[0]:
+                    best = (err, sm, yaw)
+            err, sm, yaw = best
+            z_rest = sm.pose(T[0, 3], T[1, 3], yaw)[2, 3]
+            if err > 0.2 or abs(T[2, 3] - z_rest) > 0.01:
+                out[lab] = {"ok": False, "why": "not resting on the table in a known place frame"}
+                continue
+            others = {}
+            for name, v in views.items():
+                m = None
+                for o2 in objects:
+                    if o2["label"] == lab:
+                        continue
+                    try:
+                        s2 = IL.shape_models(o2["key"])[0].sil(v.cam, Ts[o2["label"]])
+                    except Exception:  # noqa: BLE001
+                        continue
+                    m = s2 if m is None else (m | s2)
+                if m is not None:
+                    others[name] = m
+            rvs = IL.make_roi_views(sm, T, views, others or None)
+            loss0 = IL.roi_loss(sm, T, rvs)[0] if rvs else 1.0
+            x, y, yw, loss, per = IL.refine(sm, T[0, 3], T[1, 3], yaw, views, others or None, xy_step=0.004,
+                                            yaw_step=0.06, maxiter=80)
+            T2 = sm.pose(x, y, yw)
+            shift = float(np.hypot(x - T[0, 3], y - T[1, 3]))
+            ok = bool(loss < loss0 - 1e-3 and shift <= max_shift_m)
+            out[lab] = {"ok": ok, "loss0": round(float(loss0), 4), "loss": round(float(loss), 4),
+                        "shift_mm": round(shift * 1000, 1), "dyaw_deg": round(float(np.degrees(yw - yaw)), 2),
+                        "pos": T2[:3, 3].tolist(), "quat": R_to_quat_wxyz(T2[:3, :3]).tolist(),
+                        "views": sorted(per) if isinstance(per, dict) else None}
         return out
 
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
@@ -249,6 +315,10 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "look_poses":
                         poses = p.look_poses(req["target"], req["arm"], req.get("variants"))
                         conn.send({"ok": True, "poses": json.dumps(poses, default=_default)})
+                    elif op == "refine":
+                        ref = p.refine(req["frame"], req["objects"], int(req.get("fold", 0)),
+                                       float(req.get("max_shift_m", 0.03)))
+                        conn.send({"ok": True, "refine": json.dumps(ref, default=_default)})
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
                         conn.send({"ok": True, "check": json.dumps(chk, default=_default)})

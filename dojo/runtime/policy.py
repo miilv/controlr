@@ -59,6 +59,8 @@ class RuntimeConfig:
     max_replans: int = 2
     final_hold: int = 3
     reserve: int = 30                   # env steps kept for finish()
+    refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
+    refine_max_shift_m: float = 0.03
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -239,9 +241,17 @@ class RuntimePolicy:
             self._live["sks"].append(new)
             return new
 
+        import inspect
+        skills_kw = {}
+        if cfg.refine and cfg.mode == "perception" and "refine" in inspect.signature(Skills.__init__).parameters:
+            skills_kw["refine"] = lambda sk_, label, arm, kind: self._refine_hook(prov, sk_, label, arm, kind)
+        elif cfg.refine:
+            events.append({"kind": "refine_unavailable", "reason": "mode gt" if cfg.mode == "gt" else "skills has no hook"})
+
         def _mk():
             return Skills(b, prov, kin=kin, reserve=cfg.reserve, log=self.log, verifier=verifier,
-                          verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks)
+                          verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks,
+                          **skills_kw)
 
         sk = make_skills()
         if cfg.mode == "perception" and cfg.look:
@@ -306,6 +316,28 @@ class RuntimePolicy:
         return result
 
     # ------------------------------------------------------------------ helpers
+    def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
+        """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
+        ``label`` locally on the new views (perception service ``refine``), write accepted poses into the belief.
+        Returns {label: (pos, quat)} of what changed; never steps the env."""
+        obs = self.bridge.observe()
+        o = prov.belief.objects.get(label) if prov.belief else None
+        if o is None or label in prov.belief.held_labels():
+            return None
+        others = [x for x in prov.belief.movable() if x.label != label]
+        objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
+                for x in [o] + others]
+        res = self.perception().refine(obs, objs[:1] + objs[1:], self.fold, self.cfg.refine_max_shift_m)
+        r = res.get(label) or {}
+        ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
+              **{k: r.get(k) for k in ("ok", "shift_mm", "dyaw_deg", "loss0", "loss", "why")}}
+        self.report["events"].append(ev)
+        if not r.get("ok"):
+            return None
+        o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+        prov.stats["refined"] = prov.stats.get("refined", 0) + 1
+        return {label: (o.pos.copy(), o.quat.copy())}
+
     def _look(self, sk, obs0: dict, rec0: dict, scene: str, kin) -> dict | None:
         """Look macro. Returns the fused record, or None when no look was taken."""
         from dojo.skills.geometry import pose7_to_T
