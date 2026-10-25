@@ -1798,7 +1798,7 @@ def joint_stroke(o, J: dict, ratio: float) -> float:
 PRESS_TILTS = (25.0, 35.0, 15.0, 0.0)   # deg from vertical, leaning away from the body the part sticks out of
 
 
-def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.92, over: float = 0.003, clearance: float = 0.025,
+def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: float = 0.008, clearance: float = 0.025,
                 arms=None) -> SkillResult:
     """Push the part a functional point rides on (a lever on a prismatic joint) down to ``ratio`` of its range:
     closed fingertips on the top of the part's protrusion out of the body (the link's points outside the base
@@ -1819,18 +1819,25 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.92, over: flo
     if stroke <= 0.002:
         return sk._record(SkillResult(True, "press_joint", "ok", 0, None, note=f"{tag} already at {ratio:.2f}"))
     body = (o.asset.links or {}).get(J.get("body0") or "base")
-    out = P
+    lo, hi = P.min(0), P.max(0)
     if body is not None:
-        inside = np.all((P >= body["bbox_min"] - 0.001) & (P <= body["bbox_max"] + 0.001), axis=1)
-        if (~inside).sum() >= 5:
-            out = P[~inside]
-    Pw = out @ o.R.T + o.pos
-    top = float(Pw[:, 2].max())
-    c = (Pw[:, :2].min(0) + Pw[:, :2].max(0)) / 2
+        # the part's box beyond the body's box along the horizontal (object-frame x / y) side it sticks out of
+        # most (a lever 22 mm out of a toaster's side): press the middle of that part's top
+        gains = [(float(hi[k] - body["bbox_max"][k]), k, 1) for k in (0, 1)] + \
+                [(float(body["bbox_min"][k] - lo[k]), k, -1) for k in (0, 1)]
+        g, k, sgn = max(gains)
+        if g > 0.004:
+            lo, hi = lo.copy(), hi.copy()
+            if sgn > 0:
+                lo[k] = max(lo[k], float(body["bbox_max"][k]))
+            else:
+                hi[k] = min(hi[k], float(body["bbox_min"][k]))
+    c_loc = (lo + hi) / 2
+    c_loc[2] = hi[2]
+    p_tip = o.R @ c_loc + o.pos
     bc = o.R @ (((body["bbox_min"] + body["bbox_max"]) / 2) if body is not None else o.asset.center) + o.pos
-    away = np.r_[c - bc[:2], 0.0]
+    away = np.r_[p_tip[:2] - bc[:2], 0.0]
     away = away / (np.linalg.norm(away) or 1.0)
-    p_tip = np.array([c[0], c[1], top])
     depth = stroke * float(-axis_w[2]) + over
     heading = math.atan2(-away[1], -away[0])             # the approach leans towards the body: the hand stays out
     arms = list(arms) if arms else sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - p_tip[:2])))
@@ -1847,14 +1854,15 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.92, over: flo
                 if not to_up.ok:
                     notes.append(f"{a} tilt {tilt:.0f}: approach {to_up.status}")
                     continue
-                down = sk.motion.line(a, to_up.q_end, T_dn, SLOW, "press_down", gripper=CLOSED, check=False)
+                down = sk.motion.line(a, to_up.q_end, T_dn, 0.03, "press_down", gripper=CLOSED, check=False)
                 back = sk.motion.line(a, down.q_end if down.ok else to_up.q_end, T_up, MEDIUM, "press_up",
                                       gripper=CLOSED, check=False)
                 if not (down.ok and back.ok):
                     notes.append(f"{a} tilt {tilt:.0f}: stroke unreachable")
                     continue
                 pl = ArmPlan(a, np.asarray(q0, float), sk.ex.g[a]).grip(CLOSED, 0, "close_for_press")
-                pl.move(to_up, "press_approach").move(down, "press_down").hold(3, "press_hold").move(back, "press_up")
+                pl.move(to_up, "press_approach").hold(4, "press_settle").move(down, "press_down").hold(4, "press_hold")
+                pl.move(back, "press_up")
                 other = "right" if a == "left" else "left"
                 if not sk.clear_of(pl, ArmPlan(other, sk.ex.q[other].copy(), sk.ex.g[other]), min_dist=0.12):
                     try:
@@ -1887,16 +1895,39 @@ def slot_frame(c, tag: str):
     return ctr, along, across, float(np.median(P[:, 2]))
 
 
+SLOT_PLACE_KW = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "servo": True,
+                 "fingers_out": True, "probe": False, "pre_clear": 0.03}
+SLOT_TRANSFER_KW = {"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True}
+
+
+def slot_target(sk: Skills, label: str, container: str, tag: str) -> np.ndarray | None:
+    """The object standing on an edge in the slot: thinnest axis across it, longest along it, bottom 2 mm over its
+    floor."""
+    sf = slot_frame(sk.world.obj(container), tag)
+    if sf is None:
+        return None
+    ctr, along, across, floor = sf
+    ext = sk.world.obj(label).asset.extents
+    k_thin, k_long = int(np.argmin(ext)), int(np.argmax(ext))
+    k_up = 3 - k_thin - k_long
+    R = np.zeros((3, 3))
+    R[:, k_thin], R[:, k_long] = across, along
+    R[:, k_up] = np.cross(R[:, (k_up + 1) % 3], R[:, (k_up + 2) % 3])
+    return rest_with_R(sk, label, ctr[:2], R, z_bottom=floor + 0.002)
+
+
 def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[str], press_tag: str | None = None,
                     press_depth: float = 0.05, sibling_margin: float = 0.003) -> dict:
     """One object into each named slot of ``container`` (a functional point whose frames are the slot's
     footprint corners, container frame), standing on an edge: the object's thinnest axis across the slot,
     its longest along it, its bottom at the slot's floor. Closed loop over the slot; the fingers stay above
     the container's top and the object drops the rest of the way (slots narrower than the open fingers);
-    grippers open after each. Identical objects side by side (a rack of slices) get ``sibling_margin`` instead
-    of the collision margin, so the fingers fit between them. Then, with ``press_tag`` (a functional point on
-    a moving joint: a lever), push that part down (``press_joint``; ``press_depth`` when its geometry is
-    unknown)."""
+    grippers open after each. Identical objects are interchangeable: each round takes the first (object, slot)
+    pair with a one-arm plan, the given objects first, then identical others nearest the container; otherwise
+    relays for the first pair. Identical objects side by side (a rack of slices) get ``sibling_margin``
+    instead of the collision margin, so the fingers fit between them. Then, with ``press_tag`` (a functional
+    point on a moving joint: a lever), push that part down (``press_joint``; ``press_depth`` when its geometry
+    is unknown)."""
     w = sk.refresh()
     c = w.obj(container)
     sk.coll.include.add(container)
@@ -1904,26 +1935,37 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
     for l, o in w.objects.items():
         if o.asset.key in keys:
             sk.coll.margin_of[l] = sibling_margin
-    done, failed = [], []
-    for lab, tag in zip(objects, slots):
-        sf = slot_frame(c, tag)
-        if sf is None or lab not in w.objects:
-            failed.append(lab)
-            continue
-        ctr, along, across, floor = sf
-        o = sk.world.obj(lab)
-        ext = o.asset.extents
-        k_thin, k_long = int(np.argmin(ext)), int(np.argmax(ext))
-        k_up = 3 - k_thin - k_long
-        R = np.zeros((3, 3))
-        R[:, k_thin], R[:, k_long] = across, along
-        R[:, k_up] = np.cross(R[:, (k_up + 1) % 3], R[:, (k_up + 2) % 3])
-        tg = [rest_with_R(sk, lab, ctr[:2], R, z_bottom=floor + 0.002)]
-        r = place_oriented(sk, lab, tg, yaw_sym=2, tol_xy=0.015, tol_tilt=20.0, tol_z=0.06, ignore=(container,),
-                           place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                     "servo": True, "servo_ref": container, "fingers_out": True, "probe": False},
-                           transfer_kw={"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True})
+    spares = sorted([l for l, o in w.objects.items() if o.asset.key in keys and l not in objects and not o.clutter],
+                    key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - c.center_w[:2])))
+    pool = [l for l in objects if l in w.objects] + spares
+    place_kw = {**SLOT_PLACE_KW, "servo_ref": container}
+    done, failed, left = [], [], [t for t in slots[:len(objects)] if functional_frames(c, t)]
+    while left and pool:
+        sk.refresh()
+        found = None
+        for lab in pool:
+            for tag in left:
+                tg = slot_target(sk, lab, container, tag)
+                r = sk.plan_transfer(lab, [tg], yaw_sym=2, ignore=(container,), place_kw=place_kw, **SLOT_TRANSFER_KW)
+                if not isinstance(r, SkillResult):
+                    found = (lab, tag, tg, r)
+                    break
+            if found:
+                break
+        if found:
+            lab, tag, tg, plan = found
+            sk.log(f"[slots] {lab} -> {tag}: direct, {plan[0].arm} ({plan[0].grasp.note})")
+            r = _run_leg(sk, lab, [tg], 2, (container,), place_kw, first=plan, tol=(0.015, 20.0, 0.06),
+                         transfer_kw=SLOT_TRANSFER_KW)
+        else:
+            lab, tag = pool[0], left[0]
+            tg = slot_target(sk, lab, container, tag)
+            r = place_oriented(sk, lab, [tg], yaw_sym=2, tol_xy=0.015, tol_tilt=20.0, tol_z=0.06, ignore=(container,),
+                               place_kw=place_kw, transfer_kw=SLOT_TRANSFER_KW)
+        pool.remove(lab)
         (done if r.ok else failed).append(lab)
+        if r.ok or r.status not in ("ik_fail", "collision", "logic"):
+            left.remove(tag)          # something went into (or onto) it; a plan failure leaves it for the next object
         for a in ARMS:
             if sk.held[a] is not None:
                 sk._record(sk.regrasp(a))
@@ -1940,8 +1982,8 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
                 r = sk.press(arm, top, n=1, depth=press_depth)
         if not r.ok:
             failed.append(press_tag)
-    if failed:
-        return {"ok": False, "stage": "slots", "note": f"done {done}, failed {failed}"}
+    if failed or left:
+        return {"ok": False, "stage": "slots", "note": f"done {done}, failed {failed}, empty {left}"}
     return {"ok": True, "stage": "slots and press"}
 
 
