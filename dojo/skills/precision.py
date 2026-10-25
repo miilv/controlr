@@ -642,4 +642,131 @@ def inside_bbox(o, c, margin: float = 0.0) -> bool:
     return bool(np.all(loc >= c.asset.bbox_min - margin) and np.all(loc <= c.asset.bbox_max + margin))
 
 
-SKILLS = {"strike_in_order": strike_in_order}
+# ============================================================================ insert_each
+
+EACH_PLACE_KW = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
+                 "release": True, "servo": True, "seat_tol": 0.008}
+EACH_SPREAD = 0.06            # m: holes at least this far from a filled one first (open fingers next to a filled hole)
+
+
+def hole_frames(rec) -> list[tuple[str, np.ndarray, float]]:
+    """A receptacle's holes from its asset: passive support frames (tag, world 4x4, radius), the frame at the hole's
+    mouth (a test-tube rack's ``.../k`` support points)."""
+    out = []
+    for tag, lst in (rec.asset.support or {}).items():
+        for c, r in lst:
+            c = np.asarray(c, float)
+            q = c[3:7] if len(c) >= 7 else np.array([1.0, 0, 0, 0])
+            out.append((tag, rec.T @ T_from(c[:3], quat=q / np.linalg.norm(q)), float(r)))
+    return out
+
+
+def hole_floor(rec, xy, r: float) -> float | None:
+    """World z of the floor of a hole of radius ``r`` at world ``xy`` (the lowest of 5 rays near its centre)."""
+    zs = [surface_z(rec, np.asarray(xy, float) + d) for d in
+          (np.zeros(2), np.array([0.3 * r, 0]), np.array([-0.3 * r, 0]), np.array([0, 0.3 * r]), np.array([0, -0.3 * r]))]
+    zs = [z for z in zs if z is not None]
+    return min(zs) if zs else None
+
+
+def upright_targets(o, p_mouth, floor_z: float | None, depth: float, n_yaw: int = 12) -> list[np.ndarray]:
+    """Object poses with its leading end (``insertion.insertion_axis``: the narrow end of its long axis) straight
+    down over ``p_mouth`` (world), the end ``depth`` below the mouth (not below ``floor_z``), turned about the
+    vertical in ``n_yaw`` steps."""
+    from dojo.skills.insertion import R_axis_down, insertion_axis
+    from dojo.skills.geometry import rot_z
+    V = np.asarray(o.asset.mesh[0], float) if o.asset.mesh is not None else None
+    if V is None:
+        return []
+    k, sg = insertion_axis(V)
+    R0 = R_axis_down(k, sg)
+    out = []
+    for i in range(n_yaw):
+        R = rot_z(2 * math.pi * i / n_yaw) @ R0
+        W = V @ R.T
+        tip = W[W[:, 2] <= W[:, 2].min() + 0.003]
+        c_tip = tip.mean(0)
+        z_end = float(p_mouth[2]) - depth
+        if floor_z is not None:
+            z_end = max(z_end, floor_z + 0.001)
+        pos = np.array([p_mouth[0] - c_tip[0], p_mouth[1] - c_tip[1], z_end - float(W[:, 2].min())])
+        out.append(T_from(pos, R))
+    return out
+
+
+def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | None = None) -> dict:
+    """Insert every object, one by one, leading end first and upright, into a free hole of ``receptacle`` (holes from
+    its asset's support frames, ``hole_frames``): the hole farthest from the filled ones first (``EACH_SPREAD``) and on
+    the object's side, the object re-oriented in the hand (lying -> standing) or relayed, a closed-loop descent into
+    the hole's mouth (``EACH_PLACE_KW``: sag-corrected, depth check, probing), let go, both grippers opened after each
+    (partial credit per object). ``depth``: how far the leading end goes below the mouth (default: to the floor, at
+    most 0.8 of the object's length)."""
+    from dojo.skills.library import place_oriented
+    w = sk.refresh()
+    rec = w.obj(receptacle)
+    holes = hole_frames(rec)
+    if not holes:
+        return {"ok": False, "stage": "holes", "note": f"{receptacle} has no hole frames"}
+    sk.coll.include.add(receptacle)
+    hm = height_map(rec)
+    if hm is not None:
+        sk.coll.heightmaps[receptacle] = hm
+    st = w.notes.setdefault("insert_each", {"filled": {}, "done": []})
+    failed = []
+    for _ in range(len(objects)):
+        w = sk.refresh()
+        todo = [l for l in objects if l in w.objects and l not in st["done"] and l not in failed]
+        if not todo:
+            break
+        # the object nearest to the receptacle first (shortest carries; the far ones keep their room)
+        lab = min(todo, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - rec.center_w[:2])))
+        o = w.obj(lab)
+        L = float(np.max(o.asset.extents))
+        filled = [np.asarray(v, float) for v in st["filled"].values()]
+        free = []
+        for tag, T, r in holes:
+            p = T[:3, 3]
+            if any(float(np.linalg.norm(p[:2] - f[:2])) < r for f in filled):
+                continue
+            dmin = min([float(np.linalg.norm(p[:2] - f[:2])) for f in filled] or [1.0])
+            side = float(np.linalg.norm(p[:2] - o.center_w[:2]))
+            free.append(((dmin < EACH_SPREAD), side, tag, T, r))
+        free.sort(key=lambda x: (x[0], x[1]))
+        res = None
+        for spread_bad, _, tag, T, r in free[:4]:
+            p = T[:3, 3]
+            fl = hole_floor(rec, p[:2], r)
+            d = depth if depth is not None else (min(0.8 * L, float(p[2]) - fl) if fl is not None else 0.5 * L)
+            tg = upright_targets(o, p, fl, d)
+            if not tg:
+                continue
+            sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: {len(tg)} upright poses, {d*1000:.0f} mm in")
+            pk = {**EACH_PLACE_KW, "grip_only": (receptacle,)}
+            res = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.008, tol_tilt=20.0, tol_z=0.03, ignore=(receptacle,),
+                                 place_kw=pk, air_handover=False,
+                                 transfer_kw={"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0)})
+            if res.ok or res.status in ("step_budget", "ended", "place_miss", "grasp_slip"):
+                break
+        for a in ARMS:
+            if sk.held[a] is not None:
+                sk._record(sk.regrasp(a))
+        sk.bank()
+        w = sk.refresh()
+        o = w.obj(lab)
+        ins = [p for _, T, r in holes for p in [T[:3, 3]] if float(np.linalg.norm(o.pos[:2] - p[:2])) < r + 0.004]
+        up = abs(float((o.R @ _unit(np.eye(3)[int(np.argmax(o.asset.extents))]))[2])) > math.cos(math.radians(30))
+        if ins and up:
+            st["done"].append(lab)
+            st["filled"][lab] = ins[0].tolist()
+        else:
+            failed.append(lab)
+            sk.log(f"[insert_each] {lab} not in a hole ({None if res is None else res.status}: "
+                   f"{'' if res is None else res.note[:120]})")
+        if res is not None and res.status in ("step_budget", "ended"):
+            break
+    if len(st["done"]) < len(objects):
+        return {"ok": False, "stage": "insert_each", "note": f"in: {st['done']}, failed: {failed}"}
+    return {"ok": True, "stage": "all inserted"}
+
+
+SKILLS = {"strike_in_order": strike_in_order, "insert_each": insert_each}

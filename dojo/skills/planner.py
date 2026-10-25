@@ -296,6 +296,22 @@ def plan(instruction: str, world: WorldState) -> Plan:
                 return Plan("place_in_slots", {"objects": movers, "container": c.label},
                             f"{len(movers)} objects into {c.label}'s slots")
 
+    # --- insert several objects of one kind into a receptacle with as many holes ("insert the three tubes into the rack")
+    if "insert" in text:
+        words = {_singular(w_) for w_ in re.findall(r"[a-z]+", text)} - {"the", "a", "an", "into", "in", "one", "by"}
+        kinds: dict = {}
+        for o in objs:
+            if o.obj_type == "Rigid" and not o.clutter and (set(_singular(t) for t in o.category.lower().split("_")) & words):
+                kinds.setdefault(o.category, []).append(o)
+        many = max(kinds.values(), key=len) if kinds else []
+        if len(many) >= 2:
+            recs = [o for o in objs if o.obj_type != "Rigid" and not o.clutter
+                    and sum(len(v) for v in (o.asset.support or {}).values()) >= len(many)]
+            if recs:
+                rec = min(recs, key=lambda o: float(np.linalg.norm(o.center_w[:2])))
+                return Plan("insert_each", {"objects": [o.label for o in many], "receptacle": rec.label},
+                            f"{len(many)} {many[0].category} into the holes of {rec.label}")
+
     # --- insert / plug a named object into another one (which one: the best mesh fit)
     if ("insert" in text or "plug" in text) and named:
         pegs = [o for c in named for o in cats[c] if o.obj_type == "Rigid"]
