@@ -101,6 +101,32 @@ def merged_object_groups(task: str) -> dict[str, list]:
     return out
 
 
+def required_labels(task: str) -> set[str]:
+    """Labels every layout of ``task`` carries, i.e. what RoboDojo's reward may look up. Per object group:
+    the first (minimum count) entries of ``select_mode.label``. Hierarchical groups give min(category nums)
+    x min(instance nums); groups labelled only through ``label_prefix`` / linked counts are skipped. This is
+    a lower bound, used to refuse incomplete worlds (``Twin.load_from_estimate``). Task-config groups only:
+    the scene's own fixtures (camera_stand) are not looked up by rewards, and estimates may leave them out."""
+    def lo(n):
+        return int(n[0]) if isinstance(n, (list, tuple)) else int(n)
+    out: set[str] = set()
+    tcfg = task_config(task)
+    for groups in (tcfg.get(t) or [] for t in OBJECT_TYPES):
+        for g in groups:
+            sm = g.get("select_mode") or {}
+            labels = list(sm.get("label") or [])
+            if not labels:
+                continue
+            if sm.get("mode") == "hierarchical":
+                n = lo(sm.get("select_category_nums", [1])) * lo(sm.get("select_instance_nums", [1]))
+            elif sm.get("mode") == "linked_count":
+                continue
+            else:
+                n = lo(sm.get("nums", 1))
+            out |= set(labels[:n])
+    return out
+
+
 def available_indices(obj_type: str, category: str, clutter: bool = False) -> list[int]:
     d = paths.OBJECTS / ("Clutter" if clutter else obj_type) / category
     if not d.is_dir():
