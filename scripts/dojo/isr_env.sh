@@ -1,11 +1,14 @@
 # isr-lab (Mikhail's 4090 box, anywherevla@100.64.0.2; the Unix user is SHARED with his agents): the environment of
 # every bridge process of ours. Source it, then run through scripts/dojo/isr_job.sh (the coord GPU lock).
 #   source ~/data2/ilia/bridge/controlr/scripts/dojo/isr_env.sh
-# Writes only under ~/data2/ilia. Mikhail's install (BENCH = robot-harness, RD_HOME = RoboDojo + Isaac 5.1 +
-# policy_venv) is used read-only, through his launchers (bin/robot-start-j2 sources HARNESS_ENV).
+# Writes only under ~/data2/ilia. Mikhail's installs (~/data2/bench = robot-harness, ~/data2/controlr-robodojo =
+# RoboDojo + Isaac 5.1 + policy_venv) are read-only for us: BENCH and RD_HOME point at our symlink farms over them
+# (scripts/dojo/isr_farm.sh), so his unmodified launchers (bin/robot-start-j2 sources HARNESS_ENV) write the strict
+# server's run dir, the shim copy and the eval client's result into our tree only.
 ILIA=/home/anywherevla/data2/ilia
 export DOJO_ILIA=1                                   # marks every process of ours (scripts/simlab/ilia_stop.sh)
-export BENCH=/home/anywherevla/data2/bench RD_HOME=/home/anywherevla/data2/controlr-robodojo
+export BENCH="$ILIA/bench" RD_HOME="$ILIA/rdhome"
+export PYTHONDONTWRITEBYTECODE=1                     # imports through the farms never write __pycache__ into his trees
 export CR="${CR:-$ILIA/bridge/controlr}"
 # robot-harness launchers: BENCH / RD_HOME from our own env file; the eval client's HOME (Kit caches) in our tree
 export HARNESS_ENV="$CR/scripts/dojo/isr_harness_env.sh" HARNESS_SHIM_HOME="$ILIA/home"
@@ -24,5 +27,10 @@ export DOJO_CATALOG="$DOJO_PERCEPTION_DATA/catalog" DOJO_X5_DIR="$DOJO_PERCEPTIO
   DOJO_BG_FOLDS="$DOJO_PERCEPTION_DATA/bg_folds_51" DOJO_COLOR_CALIB="$DOJO_PERCEPTION_DATA/catalog/color_calib_51.json"
 # omniroute keys (OMNIROUTE_* only, mode 600, owner-approved): the agent (llmio) and the agentic perceiver
 export DOJO_AGENT_DOTENV="$ILIA/.env" AGENTIC_ENV_FILE="$ILIA/.env"
-export OMP_NUM_THREADS=4 OMNI_KIT_ACCEPT_EULA=YES PYOPENGL_PLATFORM=egl
+# the box hard-resets under all-core load (robot-harness AGENTS.md rule 6): thread pools capped, twin with 4 envs
+export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 NUMEXPR_NUM_THREADS=4 NUMBA_NUM_THREADS=4 \
+  J1_PERCEIVER_THREADS=4 OMNI_KIT_ACCEPT_EULA=YES PYOPENGL_PLATFORM=egl
+# the twin's checker reads articulation link poses from physics, as the official rendered env's USD does
+# (probe 2026-10-26: updateToUsd is on with the renderer, off in the physics-only kit)
+export SIMLAB_USD_SYNC_LINKS=1
 mkdir -p "$HOME" "$TMPDIR" "$DOJO_DATA/bridge/runs" "$ILIA/run" "$ILIA/kitroot"
