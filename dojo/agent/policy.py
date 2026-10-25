@@ -76,6 +76,7 @@ class AgentPolicy(RuntimePolicy):
         default_root = (Path(os.environ["OUT"]) / "agent") if os.environ.get("OUT") else Path("agent_logs")
         self.log_root = Path(log_root or os.environ.get("DOJO_AGENT_LOG") or default_root)
         self.n_episodes = 0
+        self.n_resets = 0
 
     def client(self):
         if self._client is None:
@@ -83,9 +84,25 @@ class AgentPolicy(RuntimePolicy):
             self._client = make_client(timeout_s=self.agent_cfg.timeout_s, max_retries=3)
         return self._client
 
+    def episode_config(self, k: int) -> AgentConfig:
+        """Episode k's agent config: ``models`` cycles by the episode counter (an experiment arm, never a
+        decision input: no task / layout / instruction is read)."""
+        from dataclasses import replace
+        arms = self.agent_cfg.models
+        if not arms:
+            return self.agent_cfg
+        arm = arms[k % len(arms)]
+        return replace(self.agent_cfg, model=arm["model"], extra_body=dict(arm.get("extra_body") or {}), models=[])
+
+    def reset(self, info: dict) -> None:
+        super().reset(info)
+        # the arm is fixed at reset (every episode the driver starts counts, even one whose setup fails)
+        self._episode_cfg = self.episode_config(self.n_resets)
+        self.n_resets += 1
+
     def _program(self, c) -> dict:
+        acfg = getattr(self, "_episode_cfg", None) or self.episode_config(0)
         self.n_episodes += 1
-        acfg = self.agent_cfg
         ctx = _AgentCtx(c, self.assets())
         world = ctx.sk().refresh()
         ids = assign_ids(world)

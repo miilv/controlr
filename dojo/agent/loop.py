@@ -48,6 +48,9 @@ class AgentConfig:
     manual: str = "manual_v3"           # v2's conventions + robo.place(over=...)
     appendix: str = "agent_v3"
     timeout_s: float = 600.0
+    # experiment batching (one bundle job for several model arms): episode k runs models[k % len(models)]
+    # ({"model": ..., "extra_body": {...}}); empty = always ``model``. Chosen by the episode counter only.
+    models: list = field(default_factory=list)
 
 
 def system_text(cfg: AgentConfig) -> str:

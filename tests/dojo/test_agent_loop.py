@@ -143,3 +143,11 @@ def test_place_over_encloses_without_collision(tmp_path):
     assert cells[0]["receipts"][1].startswith("place: Result(") and "collision" not in cells[0]["receipts"][1]
     cup = next(o for o in env.objects if o["label"] == "cup")
     assert np.linalg.norm(np.asarray(cup["pos"][:2]) - np.array([-0.15, -0.12])) < 0.01
+
+
+def test_models_cycle_by_episode_counter():
+    pol = AgentPolicy(RuntimeConfig(mode="gt", verify="off"),
+                      agent_cfg=AgentConfig(models=[{"model": "a"}, {"model": "b", "extra_body": {"x": 1}}]),
+                      client=object(), assets=FakeAssets())
+    assert [pol.episode_config(k).model for k in range(4)] == ["a", "b", "a", "b"]
+    assert pol.episode_config(1).extra_body == {"x": 1} and pol.episode_config(1).models == []
