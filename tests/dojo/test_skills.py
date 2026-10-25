@@ -326,3 +326,23 @@ def test_refine_ctx_carries_held_object_at_place():
     places = [c for c in ctx if c["kind"] == "place"]
     assert places and all(c["held"] is not None and len(c["held"][1]) == 7 for c in places)
     assert all(c["held"] is None for c in ctx if c["kind"] == "pick")
+
+
+def test_refine_follows_up_to_max_rehovers_hints():
+    """max_rehovers=2: refine -> hint -> re-hover -> refine -> hint -> re-hover -> refine -> proceed."""
+    from dojo.skills import planner
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (-0.2, -0.25, 0.78)])
+    calls = []
+
+    def refine(sk, label, arm, kind):
+        calls.append((kind, label))
+        n = sum(1 for k, l in calls if k == "pick" and l == label)
+        if kind == "pick" and n <= 2:                       # two hints per pick, then a plain fit
+            o = sk.world.obj(label)
+            return {"rehover": (o.pos.copy(), o.quat.copy())}
+        return None
+
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction), refine=refine, remeasure=False, max_rehovers=2)
+    assert planner.solve(sk)["ok"]
+    picks = [l for k, l in calls if k == "pick"]
+    assert all(picks.count(l) == 3 for l in set(picks))

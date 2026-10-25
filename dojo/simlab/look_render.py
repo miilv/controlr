@@ -124,12 +124,15 @@ def candidates(look: dict, mount) -> list[tuple[str, np.ndarray, np.ndarray]]:
     return out
 
 
-def run_task(task: str, looks: dict, d0: Path, cam_tol_cm: float, axis_tol_deg: float, ids=None) -> list[dict]:
+def run_task(task: str, looks: dict, d0: Path, cam_tol_cm: float, axis_tol_deg: float, ids=None,
+             frame: str = "L1", skip_same_as: dict | None = None) -> list[dict]:
     from dojo.simlab.make_d0 import obs_record
     from dojo.simlab.runner import RoboDojoRunner, jsonable
     mount = mount_from_frames(d0 / task)
+    same = lambda k, v: (skip_same_as is not None                        # noqa: E731
+                         and (skip_same_as.get("layouts", {}).get(k) or {}).get("looks") == v.get("looks"))
     todo = sorted((k, v) for k, v in looks["layouts"].items() if k.split("/")[0] == task and v.get("looks")
-                  and (not ids or int(k.split("/")[1]) in ids))
+                  and (not ids or int(k.split("/")[1]) in ids) and not same(k, v))
     run = RoboDojoRunner(task, physics_only=True, workdir=str(paths.DATA / "simlab" / "work" / f"looks_{task}"))
     summary = []
     for key, spec in todo:
@@ -169,15 +172,15 @@ def run_task(task: str, looks: dict, d0: Path, cam_tol_cm: float, axis_tol_deg: 
                         "axis_err_vs_request_deg": round(cam_error(T_ach, req["T_world_cam_cv"])[1], 2)})
             rec["ok"] = bool(err_cm <= cam_tol_cm and err_deg <= axis_tol_deg)
         o = run.obs()
-        ob = obs_record(o, "L1")
-        ob["images"] = {cam: f"frame_L1_{cam}.png" for cam in ("cam_head", "cam_left_wrist", "cam_right_wrist")}
+        ob = obs_record(o, frame)
+        ob["images"] = {cam: f"frame_{frame}_{cam}.png" for cam in ("cam_head", "cam_left_wrist", "cam_right_wrist")}
         ob["image_shape"] = {}
-        out = {"frame": "L1", "obs": ob, "gt": run.gt(),
+        out = {"frame": frame, "obs": ob, "gt": run.gt(),
                "move": {"name": "look", "arms": arms, "env_steps": len(mv.traj.actions) - n0,
                         "requested": spec["looks"]},
                "meta": {"renderer": None, "physics": "isaac-5.1 physics-only", "look_source": looks.get("source"),
                         "starts_from": "frame_0 (same layout record, same RoboDojo reset)"}}
-        (d / "frame_L1.json").write_text(json.dumps(jsonable(out)))
+        (d / f"frame_{frame}.json").write_text(json.dumps(jsonable(out)))
         run.export_stage(d / "stage.usd")
         if not (d / "cameras.json").exists():
             (d / "cameras.json").write_text(json.dumps(run.camera_spec(), indent=1))
@@ -185,6 +188,8 @@ def run_task(task: str, looks: dict, d0: Path, cam_tol_cm: float, axis_tol_deg: 
                         "arms": {a: {k: r.get(k) for k in ("ok", "attempt", "cam_err_cm", "axis_err_deg")}
                                  for a, r in arms.items()}, "s": round(time.perf_counter() - t0, 1)})
         print(f"[looks] {key}: {summary[-1]['arms']} steps={summary[-1]['env_steps']} ({summary[-1]['s']}s)", flush=True)
+        # written as we go: Kit's app close ends the process before main() could write it
+        Path(d0, task, f"looks_{frame}_summary.json").write_text(json.dumps(summary, indent=1))
     run.close()
     return summary
 
@@ -197,10 +202,12 @@ def main(argv=None) -> None:
     ap.add_argument("--ids", nargs="*", type=int, default=None)
     ap.add_argument("--cam-tol-cm", type=float, default=2.0)
     ap.add_argument("--axis-tol-deg", type=float, default=10.0)
+    ap.add_argument("--frame", default="L1", help="frame tag: frame_<tag>.json / frame_<tag>_<cam>.png")
+    ap.add_argument("--skip-same-as", default=None, help="skip layouts whose looks equal this look file's")
     a = ap.parse_args(argv)
     looks = json.loads(Path(a.looks).read_text())
-    summ = run_task(a.task, looks, Path(a.d0), a.cam_tol_cm, a.axis_tol_deg, a.ids)
-    Path(a.d0, a.task, "looks_L1_summary.json").write_text(json.dumps(summ, indent=1))
+    prev = json.loads(Path(a.skip_same_as).read_text()) if a.skip_same_as else None
+    run_task(a.task, looks, Path(a.d0), a.cam_tol_cm, a.axis_tol_deg, a.ids, frame=a.frame, skip_same_as=prev)
 
 
 if __name__ == "__main__":

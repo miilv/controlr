@@ -21,10 +21,12 @@ import math
 import numpy as np
 
 from dojo.skills.executor import ArmPlan, BudgetExceeded, EpisodeEnded
-from dojo.skills.geometry import T_from
+from dojo.skills.geometry import R_to_quat, T_from, inv_T
 from dojo.skills.kinematics import ARMS, TABLE_Z, TIP_BEYOND_TCP, down_R, tilted_R
-from dojo.skills.motion import CARRY, FAST, MEDIUM
+from dojo.skills.motion import CARRY, FAST, MEDIUM, SLOW
 from dojo.skills.targets import current_R, half_height, level_R, on_top, rest_pose, table_rest
+from dojo.skills.geometry import rot_z
+from dojo.skills.executor import ArmPlan as _ArmPlan  # noqa: F401
 from dojo.skills.stacking import plan_stack
 from dojo.skills.skills import CLOSED, OPEN, Job, PickPlan, PlacePlan, SkillResult, Skills
 from dojo.skills.world import TABLE_X, TABLE_Y
@@ -555,5 +557,858 @@ def swap_on_mats(sk: Skills, objects: list[str], mats: list[str], button: str | 
     return {"ok": True, "stage": "swapped"}
 
 
+# ============================================================================ re-orienting moves
+
+def rest_with_R(sk: Skills, label: str, xy, R, z_bottom: float = TABLE_Z) -> np.ndarray:
+    """Object pose with orientation ``R``, bbox centre over ``xy``, bbox bottom at ``z_bottom``."""
+    o = sk.world.obj(label)
+    c = np.array([xy[0], xy[1], z_bottom + half_height(o, R)])
+    return T_from(c - R @ o.asset.center, R)
+
+
+def rests_stably(o, R, margin: float = 0.25) -> bool:
+    """Would ``o`` stand on the table in orientation ``R``? The centre of mass (area-weighted mesh centroid,
+    else the bbox centre) must project inside the bbox of its lowest points (within 1.5 mm of the bottom),
+    shrunk by ``margin`` of its half-size: a key on its tip, no; a mahjong tile on its end, yes."""
+    if o.asset.mesh is None:
+        ext = np.abs(R) @ o.asset.extents
+        return float(ext[2]) <= 2.5 * float(min(ext[0], ext[1]))
+    V, F = o.asset.mesh
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    area = np.linalg.norm(np.cross(b - a, c - a), axis=1)
+    com = ((a + b + c) / 3 * area[:, None]).sum(0) / max(float(area.sum()), 1e-12)
+    W = V @ R.T
+    cw = R @ com
+    low = W[W[:, 2] < W[:, 2].min() + 0.0015]
+    lo, hi = low[:, :2].min(0), low[:, :2].max(0)
+    mid, half = (lo + hi) / 2, (hi - lo) / 2
+    return bool(np.all(np.abs(cw[:2] - mid) <= half * (1 - margin)) and np.all(half > 0.004))
+
+
+def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, at=None):
+    """``plan_transfer`` with the object virtually at pose ``at`` (4x4; None = where it is now; both arms
+    then start from home)."""
+    o = sk.world.obj(label)
+    saved = (o.pos.copy(), o.quat.copy())
+    if at is not None:
+        o.pos, o.quat = np.asarray(at, float)[:3, 3].copy(), R_to_quat(np.asarray(at, float)[:3, :3])
+    try:
+        return sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw,
+                                q_start={a: sk.world.home_q[a] for a in ARMS} if at is not None else None)
+    finally:
+        o.pos, o.quat = saved
+
+
+def _run_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, first=None,
+             tol=(0.03, 10.0, 0.03), tries: int = 2) -> SkillResult:
+    """Plan (or take ``first``) and run one transfer; a loose grasp is put down and the leg re-planned."""
+    r = None
+    for t in range(tries):
+        plan = first if (t == 0 and first is not None) else sk.plan_transfer(label, targets, yaw_sym=yaw_sym,
+                                                                             ignore=ignore, place_kw=place_kw)
+        if isinstance(plan, SkillResult):
+            return sk._record(plan)
+        r = sk.run_transfer(*plan, tol_xy=tol[0], tol_tilt=tol[1], tol_z=tol[2])
+        if r.status != "loose":
+            return r
+        sk.refresh()
+    return r
+
+
+HANDOVER_POINTS = ((0.0, -0.24, 0.95), (0.0, -0.30, 0.92), (0.0, -0.20, 1.00))
+
+
+def _dense_fingers(kin, T_flange, gripper: float) -> np.ndarray:
+    """Finger volumes sampled on a grid (the corner samples of ``finger_points`` miss crossing fingers)."""
+    from dojo.skills.kinematics import FINGER_MAX, GRIP_SCALE
+    qf = min(max(GRIP_SCALE[0] + gripper * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0), FINGER_MAX)
+    loc = []
+    for x0, x1, yo, zh in ((0.075, 0.105, 0.0378, 0.028), (0.107, 0.126, 0.0134, 0.015), (0.128, 0.1576, 0.0034, 0.009)):
+        for x in np.linspace(x0, x1, 4):
+            for y in np.linspace(0.0004, yo, 3):
+                for z in np.linspace(-zh, zh, 4):
+                    loc += [(x, qf + y, z), (x, -(qf + y), z)]
+    loc = np.asarray(loc)
+    return (np.asarray(T_flange)[:3, :3] @ loc.T).T + np.asarray(T_flange)[:3, 3]
+
+
+def _grippers_apart(sk: Skills, a1: str, q1, g1: float, a2: str, q2, g2: float, min_d: float = 0.004,
+                    min_links: float = 0.06) -> bool:
+    k = sk.kin
+    F1, F2 = k.flange(a1, q1), k.flange(a2, q2)
+    P1 = np.vstack([k.palm_points(F1), _dense_fingers(k, F1, g1)])
+    P2 = np.vstack([k.palm_points(F2), _dense_fingers(k, F2, g2)])
+    if float(np.min(np.linalg.norm(P1[:, None] - P2[None], axis=2))) < min_d:
+        return False
+    L1, L2 = k.link_points(a1, q1), k.link_points(a2, q2)
+    return float(np.min(np.linalg.norm(L1[:, None] - L2[None], axis=2))) >= min_links
+
+
+def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, ignore=(), place_kw=None,
+                      n_yaw: int = 6):
+    """Hand the object over in the air: the giver picks it and holds it between the arms in a final
+    orientation (turned about the vertical), the taker grips it with a grasp that also fits the final
+    place, both grippers kept apart. For objects whose only grasps from the table cannot reach the place
+    (a lying key: gripped from its top face, inserted from the other side). Returns a dict of plan parts
+    or a SkillResult."""
+    from dojo.skills.kinematics import gap_to_grip
+    from dojo.skills.motion import held_box
+    from dojo.skills.skills import Held
+    w = sk.world
+    o = w.obj(label)
+    tg = []
+    for T in targets:
+        T = np.asarray(T, float)
+        c = T[:3, :3] @ o.asset.center + T[:3, 3]
+        for k in range(max(1, yaw_sym)):
+            Tk = T.copy()
+            Tk[:3, :3] = rot_z(2 * math.pi * k / max(1, yaw_sym)) @ T[:3, :3]
+            Tk[:3, 3] = c - Tk[:3, :3] @ o.asset.center
+            tg.append(Tk)
+    ign = tuple(set(ignore) | {label})
+    notes = []
+    for g_arm in sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2]))):
+        t_arm = "right" if g_arm == "left" else "left"
+        picks = sk.plan_pick(label, g_arm, return_all=True, keep=6, lift=0.10,
+                             grasps=G_box_and_usual(sk, o, g_arm))
+        if not isinstance(picks, list):
+            notes.append(f"{g_arm} pick: {picks.note[:80]}")
+            continue
+        for pp in picks[:4]:
+            box_g = held_box(o, pp.T_tcp_obj)
+            g_hold = gap_to_grip(pp.grasp.width)            # the giver's fingers rest on the object's faces
+            for H in HANDOVER_POINTS:
+                for T_t in tg[:max(1, yaw_sym)]:
+                    for j in range(n_yaw):
+                        R_H = rot_z(2 * math.pi * j / n_yaw) @ T_t[:3, :3]
+                        T_H = T_from(np.asarray(H) - R_H @ o.asset.center, R_H)
+                        Tg = T_H @ inv_T(pp.T_tcp_obj)
+                        rg = sk.kin.ik(g_arm, Tg, pp.plan.q_end, n_random=0)
+                        if not rg.ok:
+                            continue
+                        saved = (o.pos.copy(), o.quat.copy())
+                        o.pos, o.quat = T_H[:3, 3].copy(), R_to_quat(R_H)
+                        try:
+                            cands = G_box_and_usual(sk, o, t_arm)
+                        finally:
+                            o.pos, o.quat = saved
+                        for gt in cands:
+                            rt = sk.kin.ik(t_arm, gt.T, w.home_q[t_arm], n_random=0)
+                            if not rt.ok:
+                                continue
+                            g_open = gap_to_grip(gt.open_gap())
+                            g_take = gap_to_grip(gt.width)           # the taker's fingers once closed on it
+                            if not (_grippers_apart(sk, g_arm, rg.q, g_hold, t_arm, rt.q, g_open)
+                                    and _grippers_apart(sk, g_arm, rg.q, g_hold, t_arm, rt.q, g_take)):
+                                continue
+                            rpre = sk.kin.ik(t_arm, gt.pre(0.06), w.home_q[t_arm], n_random=0)
+                            if not rpre.ok or not _grippers_apart(sk, g_arm, rg.q, g_hold, t_arm, rpre.q, g_open):
+                                continue
+                            T_to = inv_T(gt.T) @ T_H
+                            box_t = held_box(o, T_to)
+                            for T_obj in tg:
+                                Tp = T_obj @ inv_T(T_to)
+                                rp = sk.kin.ik(t_arm, Tp, w.home_q[t_arm], n_random=0)
+                                if not rp.ok:
+                                    continue
+                                ok, _ = sk.coll.check(t_arm, rp.q, CLOSED, ignore=ign, held=box_t,
+                                                      grip_only=tuple((place_kw or {}).get("grip_only", ())))
+                                if not ok:
+                                    continue
+                                held_t = Held(label, T_to, box_t, gt)
+                                pl = sk.plan_place(t_arm, T_obj, yaw_sym=1, ignore=ignore, q_start=rt.q, held=held_t,
+                                                   **dict(place_kw or {}))
+                                if not isinstance(pl, PlacePlan):
+                                    continue
+                                pl.transfer_kw = {"ignore": tuple(ignore), **dict(place_kw or {})}
+                                return {"giver": g_arm, "taker": t_arm, "pick": pp, "T_H": T_H, "q_give": rg.q,
+                                        "box_g": box_g, "grasp_t": gt, "T_H_grasp": inv_T(T_H) @ gt.T, "place": pl,
+                                        "target": T_obj}
+            notes.append(f"{g_arm} pick {pp.grasp.note}: no handover pose")
+    return SkillResult(False, "handover", "ik_fail", 0, None, note="; ".join(notes[:4]))
+
+
+def G_box_and_usual(sk: Skills, o, arm: str) -> list:
+    from dojo.skills import grasps as G
+    return G.box_grasps(o, sk.kin, arm) + G.candidates(o, sk.kin, arm)
+
+
+def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult:
+    """Execute ``plan_air_handover``: pick, carry to the handover pose, the taker approaches and closes, the
+    giver opens and backs off, then the taker's place (re-planned for the measured in-hand pose)."""
+    from dojo.skills.kinematics import grip_to_gap, gap_to_grip
+    from dojo.skills.skills import close_steps, OPEN_STEPS
+    g_arm, t_arm, label = h["giver"], h["taker"], h["pick"].label
+    r = sk._record(sk.run_pick(h["pick"]))
+    if not r.ok:
+        return r
+    held = sk.held[g_arm]
+    try:
+        Tg = h["T_H"] @ inv_T(held.T_tcp_obj)
+        mv = sk.motion.to_pose(g_arm, sk.ex.q[g_arm], Tg, CARRY, "handover_carry", gripper=CLOSED, held=held.box,
+                               ignore=(label,), ease=3)
+        if not mv.ok:
+            mv = sk.motion.to_pose(g_arm, sk.ex.q[g_arm], h["T_H"] @ inv_T(h["pick"].T_tcp_obj), CARRY,
+                                   "handover_carry", gripper=CLOSED, check=False, ease=3)
+        sk.ex.run({g_arm: ArmPlan(g_arm, sk.ex.q[g_arm].copy(), CLOSED).move(mv).hold(3)}, name="handover carry")
+        w = sk.refresh()
+        o = w.obj(label)
+        gT = o.T @ h["T_H_grasp"]                          # the taker's grasp on the object as it is now
+        from dojo.skills.grasps import Grasp
+        gt = h["grasp_t"]
+        g2 = Grasp(gt.method, gT, gt.width, gt.pre_dist, gt.score, gt.note)
+        g_open = gap_to_grip(g2.open_gap())
+        to_pre = sk.motion.to_pose(t_arm, sk.ex.q[t_arm], g2.pre(0.06), FAST, "take_approach", gripper=g_open,
+                                   ignore=(label,))
+        if not to_pre.ok:
+            return sk._record(SkillResult(False, "handover", to_pre.status, 0, t_arm, note=to_pre.note[:120]))
+        down = sk.motion.line(t_arm, to_pre.q_end, g2.T, SLOW, "take_in", gripper=g_open, check=False)
+        p = ArmPlan(t_arm, sk.ex.q[t_arm].copy(), sk.ex.g[t_arm]).grip(g_open, 0).move(to_pre).move(down).hold(2)
+        p.grip(CLOSED, close_steps(grip_to_gap(g_open), g2.width), "take_close").hold(2)
+        sk.ex.run({t_arm: p}, name="handover take")
+        # the giver lets go and backs off along its approach
+        Tq = sk.kin.tcp(g_arm, sk.ex.q[g_arm])
+        T_back = Tq.copy()
+        T_back[:3, 3] -= Tq[:3, 0] * 0.07
+        back = sk.motion.line(g_arm, sk.ex.q[g_arm], T_back, MEDIUM, "give_back", gripper=OPEN, check=False)
+        sk.ex.run({g_arm: ArmPlan(g_arm, sk.ex.q[g_arm].copy(), CLOSED).grip(OPEN, OPEN_STEPS + 1).move(back)},
+                  name="handover release")
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return sk._record(SkillResult(False, "handover", "step_budget" if isinstance(e, BudgetExceeded) else "ended",
+                                      0, t_arm, note=str(e)))
+    sk.held[g_arm] = None
+    w = sk.refresh()
+    o = w.obj(label)
+    from dojo.skills.motion import held_box
+    from dojo.skills.skills import Held
+    T_rel = inv_T(sk.kin.tcp(t_arm, w.arms[t_arm].q)) @ o.T
+    drift = float(np.linalg.norm(T_rel[:3, 3] - inv_T(g2.T)[:3, :3] @ (o.T[:3, 3] - g2.T[:3, 3])))
+    sk.held[t_arm] = Held(label, T_rel, held_box(o, T_rel), g2)
+    sk._record(SkillResult(True, "handover", "ok", 0, t_arm, note=f"{label} {g_arm} -> {t_arm}, drift {drift*1000:.1f} mm"))
+    sk.ex.run({g_arm: sk.plan_home(g_arm)}, name="giver home")
+    pl = h["place"]
+    kw = dict(getattr(pl, "transfer_kw", {}) or {})
+    pl2 = sk.plan_place(t_arm, h["target"], yaw_sym=1, **kw)
+    use = pl2 if isinstance(pl2, PlacePlan) else pl
+    ref = next((l for l in (kw.get("ignore") or ()) if l in sk.world.objects), None)
+    return sk._record(sk.run_place(use, tol[0], tol[1], tol_z=tol[2], ref_label=ref))
+
+
+def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
+                   tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
+                   max_spots: int = 3, relay_near=(0.0, -0.28)) -> SkillResult:
+    """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
+    the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
+    through free table spots, the shortest that plans end to end:
+
+    * re-orient first: stand it on a spot in the target orientation (when that rests stably), then a
+      translation to the target;
+    * translate first: put it on a spot as it is (e.g. its only free grasp is along its length), then the
+      re-orienting transfer from the open spot;
+    * translate, re-orient onto a second spot, translate (a lying tile freed from its stack, stood up in
+      the open, then carried top-down into a tight slot).
+
+    Every leg picks its arm; all legs are planned before the first moves, and each later leg is
+    re-planned from the world as it is then (same intermediate pose)."""
+    sk.refresh()
+    tight = (tol_xy, tol_tilt, tol_z)
+    r = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
+    if not isinstance(r, SkillResult):
+        sk.log(f"[place_oriented] {label}: direct, {r[0].arm} ({r[0].grasp.note})")
+        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, first=r, tol=tight)
+    sk.log(f"[place_oriented] {label}: no direct transfer ({r.note[:240]}); relay")
+    o = sk.world.obj(label)
+    Rs = [np.asarray(T, float)[:3, :3] for T in targets]
+    R_now = level_R(o.R)
+    spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03)[:max_spots]
+    stable = all(rests_stably(o, R) for R in Rs)
+    chains = []
+    for sp in spots:
+        if stable:
+            chains.append([("target", sp)])
+        chains.append([("as_is", sp)])
+    if stable:
+        chains += [[("as_is", s1), ("target", s2)] for s1 in spots for s2 in spots
+                   if float(np.linalg.norm(np.subtract(s1, s2))) > 0.09]
+    notes, cache = [r.note[:120]], {}
+    for chain in chains:
+        legs, at, ok = [], None, True
+        for kind, sp in chain:
+            key = (kind, tuple(sp), None if at is None else tuple(np.round(at[:3, 3], 4)))
+            if key not in cache:
+                mids, ys = (([rest_with_R(sk, label, sp, R) for R in Rs], yaw_sym) if kind == "target"
+                            else ([rest_with_R(sk, label, sp, R_now)], 4))
+                cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at))
+            mids, ys, rl = cache[key]
+            if isinstance(rl, SkillResult):
+                notes.append(f"{kind} {np.round(sp, 2).tolist()}: {rl.note[:90]}")
+                ok = False
+                break
+            legs.append((kind, sp, rl))
+            at = rl[1].T_obj_target
+        if not ok:
+            continue
+        rf = _plan_leg(sk, label, targets, yaw_sym, ignore, place_kw, at=at)
+        if isinstance(rf, SkillResult):
+            notes.append(f"chain {[k for k, _ in chain]} last leg: {rf.note[:90]}")
+            continue
+        sk.log(f"[place_oriented] {label}: relay " + " -> ".join(
+            f"{k}@{np.round(sp, 2).tolist()} {rl[0].arm} ({rl[0].grasp.note})" for k, sp, rl in legs)
+            + f" -> target {rf[0].arm} ({rf[0].grasp.note})")
+        for i, (kind, sp, rl) in enumerate(legs):
+            tgt = [rl[1].T_obj_target]
+            res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None)
+            if not res.ok and res.status in ("step_budget", "ended", "grasp_slip", "ik_fail", "collision", "logic"):
+                return res
+            sk.bank()
+            sk.refresh()
+        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight)
+    h = plan_air_handover(sk, label, targets, yaw_sym, ignore, place_kw)
+    if isinstance(h, dict):
+        sk.log(f"[place_oriented] {label}: in-air handover {h['giver']} ({h['pick'].grasp.note}) -> {h['taker']} "
+               f"({h['grasp_t'].note}) at {np.round(h['T_H'][:3, 3], 3).tolist()}")
+        return run_air_handover(sk, h, tol=tight)
+    notes.append(h.note[:150])
+    return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
+
+
+def _support_raw(o, tag: str) -> list:
+    """Raw support frames (pose7) of ``tag`` from the asset (``AssetInfo.support`` keeps world-free pose7s)."""
+    return [np.r_[np.asarray(c[:7], float)] if len(c) >= 7 else np.r_[np.asarray(c[:3], float), 1.0, 0, 0, 0]
+            for c, _r in o.asset.support.get(tag, [])]
+
+
+def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001,
+                blind_depth: float = 0.016) -> dict:
+    """Insert ``obj`` into whichever of ``receptacles`` its mesh fits best (``insertion.fit_insertion``:
+    leading end, yaw and offset with the largest clearance, depth to the floor), then, when asked, turn
+    it about the insertion axis by ``turn_deg`` (a key in its lock) before letting go. Re-oriented in the
+    hand or relayed between the arms (``place_oriented``): a slow straight descent from 15 mm above the
+    opening after a still pre-place pose and an in-hand re-measure; ``press`` = how far past the floor
+    contact the descent is commanded."""
+    from dojo.skills.insertion import fit_insertion
+    w = sk.refresh()
+    o = w.obj(obj)
+    # 1. the assets say where it goes: the object's active "insert" frame on a receptacle's support /
+    #    functional frames (a charger's plug point on the power strip's outlets)
+    ins = functional_frames(o, "insert", active=True)
+    if ins:
+        tg, rec = [], None
+        for r in receptacles:
+            if r == obj or r not in w.objects:
+                continue
+            c = w.obj(r)
+            frames = [T_from(np.asarray(f[0][:3], float), quat=np.asarray(f[0][3:7], float) / np.linalg.norm(f[0][3:7]))
+                      for tag in c.asset.support for f in [[x] for x in _support_raw(c, tag)]]
+            for Ts in frames:
+                for Ti in ins:
+                    tg.append(c.T @ Ts @ inv_T(Ti))
+            if tg:
+                rec = r
+                break
+        if tg:
+            sk.log(f"[insert] {obj} -> {rec}: {len(tg)} insert-frame poses from the assets")
+            w.notes["insert"] = {"receptacle": rec, "fit": "functional frames"}
+            sk.coll.include.add(rec)
+            for T in tg:
+                T[2, 3] -= press
+            place_kw = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
+                        "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,)}
+            res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
+                                 place_kw=place_kw)
+            if not res.ok and res.status != "ended":
+                return {"ok": False, "stage": f"insert {obj}", "result": res}
+            return {"ok": True, "stage": "inserted"}
+    fits = []
+    for r in receptacles:
+        if r == obj or r not in w.objects:
+            continue
+        f = fit_insertion(o, w.obj(r))
+        if f is not None:
+            fits.append((f.clearance, r, f))
+    if fits:
+        _, rec, fit = max(fits, key=lambda x: x[0])
+        sk.log(f"[insert] {obj} -> {rec}: {fit.note}")
+        w.notes["insert"] = {"receptacle": rec, "fit": fit.note}
+        T = fit.T_obj.copy()
+        T[2, 3] -= press
+        targets, ysym = [T], 1
+    else:
+        # no clearance anywhere in the meshes (a plug's 1.5 mm blades, slots of the same width): press it in
+        # leading end first over the receptacle's centre, turned like it, ``blind_depth`` below its top (the
+        # collider decides; the twin's contact geometry is not the visual mesh)
+        from dojo.skills.insertion import R_axis_down, insertion_axis
+        if o.asset.mesh is None:
+            return {"ok": False, "stage": "fit", "note": f"{obj} fits none of {receptacles}"}
+        cands = [w.obj(r) for r in receptacles
+                 if r in w.objects and r != obj and float(w.obj(r).asset.extents[2]) > 0.01]
+        if not cands:
+            return {"ok": False, "stage": "fit", "note": f"{obj} fits none of {receptacles}"}
+        recv = min(cands, key=lambda c: float(np.linalg.norm(c.asset.extents)))
+        rec = recv.label
+        k, sg = insertion_axis(o.asset.mesh[0])
+        R0 = R_axis_down(k, sg)
+        V = o.asset.mesh[0] @ R0.T
+        tip = float(V[:, 2].min())
+        R = rot_z(recv.yaw()) @ R0
+        c = recv.center_w
+        root_xy = c[:2] - (R @ o.asset.center)[:2]            # the object's bbox centre over the receptacle's
+        p = np.array([root_xy[0], root_xy[1], recv.top_z - blind_depth - tip])
+        T = T_from(p, R)
+        targets, ysym = [T], 4
+        sk.log(f"[insert] {obj} -> {rec}: no mesh fit, blind press {blind_depth*1000:.0f} mm below the top")
+        w.notes["insert"] = {"receptacle": rec, "fit": "blind"}
+    sk.coll.include.add(rec)
+    place_kw = {"pre_h": 0.02, "descend_rad": 0.025, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
+                "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,)}
+    res = place_oriented(sk, obj, targets, yaw_sym=ysym, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
+                         place_kw=place_kw)
+    if not res.ok and res.status != "ended":
+        return {"ok": False, "stage": f"insert {obj}", "result": res}
+    return {"ok": True, "stage": "inserted"}
+
+
+def functional_frames(o, tag: str, active: bool = False) -> list[np.ndarray]:
+    """A functional point's frames (4x4, object frame) from the asset metadata (pose7: xyz + wxyz)."""
+    raw = (o.asset.active_functional if active else o.asset.functional).get(tag) or {}
+    out = []
+    for f in raw.get("frame") or []:
+        f = np.asarray(f, float)
+        out.append(T_from(f[:3], quat=f[3:7] / np.linalg.norm(f[3:7])))
+    return out
+
+
+def slot_targets(sk: Skills, label: str, container: str) -> list[np.ndarray]:
+    """Object poses that put ``label`` into the container's slot named after its category
+    (``<category>_slot`` passive functional frame): each of the object's active functional points
+    (``center``, ``center_flip``, ...) on the slot frame, position and orientation."""
+    w = sk.world
+    o, c = w.obj(label), w.obj(container)
+    cat = o.category.lower()
+    slots = [t for t in c.asset.functional if cat in t.lower()]
+    pts = [functional_frames(o, t, active=True) for t in o.asset.active_functional] or [[np.eye(4)]]
+    out = []
+    for t in slots:
+        for Ts in functional_frames(c, t):
+            for group in pts:
+                for Tp in group:
+                    out.append(c.T @ Ts @ inv_T(Tp))
+    return out
+
+
+def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
+    """Put every object into its matching slot of ``container`` (``slot_targets``), the nearest first,
+    re-oriented as the slot frame says; grippers open after each (partial credit is per object)."""
+    w = sk.refresh()
+    sk.coll.include.add(container)
+    todo = [l for l in objects if l in w.objects and slot_targets(sk, l, container)]
+    if not todo:
+        return {"ok": False, "stage": "roles", "note": f"no slot in {container} matches {objects}"}
+    done, failed = [], []
+    c = w.obj(container).center_w
+    for _ in range(len(todo)):
+        w = sk.refresh()
+        rest = [l for l in todo if l not in done and l not in failed]
+        if not rest:
+            break
+        lab = min(rest, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - c[:2])))
+        tg = slot_targets(sk, lab, container)
+        sk.log(f"[slots] {lab}: {len(tg)} slot poses")
+        # the objects already in their slots are ignored for the place (their boxes overlap the next slot's)
+        r = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03,
+                           ignore=(container, *done), place_kw={"pre_h": 0.04, "release_gap": 0.004})
+        (done if r.ok else failed).append(lab)
+        if r.status in ("step_budget", "ended"):
+            break
+        if any(sk.held[a] is not None for a in ARMS):
+            for a in ARMS:
+                if sk.held[a] is not None:
+                    sk._record(sk.regrasp(a))
+        sk.bank()
+    if failed or len(done) < len(todo):
+        return {"ok": False, "stage": "slots", "note": f"in: {done}, failed: {failed}"}
+    return {"ok": True, "stage": "all in slots"}
+
+
+def _inside_opening(sk: Skills, label: str, container: str, depth: float = 0.02) -> bool:
+    """Is ``label``'s lowest point inside ``container``'s footprint and ``depth`` below its top?"""
+    w = sk.world
+    o, c = w.obj(label), w.obj(container)
+    mn, mx = c.aabb()
+    p = o.world_bbox_corners()
+    low = p[np.argmin(p[:, 2])]
+    return bool(mn[0] <= low[0] <= mx[0] and mn[1] <= low[1] <= mx[1] and low[2] < c.top_z - depth)
+
+
+def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
+                   comfy: float = 0.42) -> dict:
+    """Put every object into ``container`` leading end first (``insertion.fit_insertion`` per object, the
+    ones already inside taken out of the free area), grippers open after each (partial credit per
+    object). A movable container out of comfortable reach of the arm that picks the objects is first
+    carried to a free spot both arms reach (the instruction's "hold the holder"); it stays upright."""
+    from dojo.skills.insertion import fit_insertion
+    w = sk.refresh()
+    objects = [l for l in objects if l in w.objects]
+    c = w.obj(container)
+    cen = np.mean([w.obj(l).center_w[:2] for l in objects], axis=0)
+    picker = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - cen)))
+    st = w.notes.setdefault("fill", {"inside": []})
+    if c.obj_type == "Rigid" and float(np.linalg.norm(sk.kin.base(picker)[:2, 3] - c.center_w[:2])) > comfy \
+            and not st.get("moved"):
+        near = (0.5 * float(cen[0]), -0.27)
+        spots = sorted(free_spots(sk, container, near_xy=near, clearance=0.04),
+                       key=lambda xy: float(np.linalg.norm(np.subtract(xy, near))))
+        for xy in spots[:4]:
+            T = rest_with_R(sk, container, xy, level_R(c.R))
+            r = _run_leg(sk, container, [T], 8, tol=(0.03, 10.0, 0.03))
+            if r.ok:
+                st["moved"] = True
+                sk.log(f"[fill] {container} moved to {np.round(xy, 3).tolist()}")
+                break
+            if r.status in ("step_budget", "ended", "grasp_slip"):
+                break
+        sk.bank()
+    sk.coll.include.add(container)
+    failed = []
+    for _ in range(len(objects)):
+        w = sk.refresh()
+        todo = [l for l in objects if l not in st["inside"] and l not in failed]
+        if not todo:
+            break
+        # the widest first (the slim ones fit the gaps left at the rim)
+        lab = max(todo, key=lambda l: float(np.prod(np.sort(w.obj(l).asset.extents)[:2])))
+        inside = [w.obj(l) for l in st["inside"]]
+        fit = None
+        # crowded opening: less padding, then the rim band only, then the objects inside ignored (they lean;
+        # the twin settles the newcomer between them)
+        # the first one in the middle; then packed against the wall with >= 6 mm to it (twin: an oil pen
+        # packed 2 mm from the wall jammed 50 mm down), relaxing when the opening is crowded
+        tries = ([{"pack": False}] if not inside else []) + [
+            {"others_pad": 0.002, "min_clear": 0.006}, {"others_pad": 0.002, "min_clear": 0.003},
+            {"others_pad": 0.0, "min_clear": 0.0015}, {"others_pad": 0.0, "min_clear": 0.0015, "others_band": 0.008},
+            {"others": ()}]
+        for kw in tries:
+            args = {"others": inside, "res": 0.001, "yaw_step_deg": 15.0, "pack": True, **kw}
+            fit = fit_insertion(w.obj(lab), w.obj(container), **args)
+            if fit is not None:
+                break
+        if fit is None:
+            failed.append(lab)
+            continue
+        T = fit.T_obj.copy()
+        T[2, 3] += drop
+        sk.log(f"[fill] {lab}: {fit.note}")
+        r = place_oriented(sk, lab, [T], yaw_sym=4, tol_xy=0.03, tol_tilt=30.0, tol_z=0.05,
+                           ignore=(container, *st["inside"]),
+                           place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2})
+        sk.refresh()
+        if _inside_opening(sk, lab, container):
+            st["inside"].append(lab)
+        else:
+            failed.append(lab)
+            sk.log(f"[fill] {lab} not inside ({r.status}: {r.note[:120]})")
+        if any(sk.held[a] is not None for a in ARMS):
+            for a in ARMS:
+                if sk.held[a] is not None:
+                    sk._record(sk.regrasp(a))
+        sk.bank()
+        if r.status in ("step_budget", "ended"):
+            break
+    if len(st["inside"]) < len(objects):
+        return {"ok": False, "stage": "fill", "note": f"inside {st['inside']}, failed {failed}"}
+    return {"ok": True, "stage": "filled"}
+
+
+def _up_yaw(o) -> float:
+    """Heading of the object's body x axis relative to its asset ``up`` pose (0 = as authored)."""
+    q = o.asset.place.get("up")
+    from dojo.skills.geometry import quat_to_R
+    R_up = quat_to_R(np.asarray(q, float)) if q is not None else np.eye(3)
+    Rrel = o.R @ R_up.T
+    return float(math.atan2(Rrel[1, 0], Rrel[0, 0]))
+
+
+def on_targets(sk: Skills, label: str, support: str) -> list[np.ndarray]:
+    """Poses that put ``label`` upright (its ``up`` pose) on ``support``'s top, turned like the support
+    (both in their authored frames): the centre first, then points towards each arm's base down to the
+    top's edge (minus the object's footprint), each with the support's heading first, then the others."""
+    from dojo.skills.geometry import quat_to_R
+    w = sk.world
+    o, b = w.obj(label), w.obj(support)
+    q = o.asset.place.get("up")
+    R_up = quat_to_R(np.asarray(q, float)) if q is not None else level_R(o.R)
+    yb = _up_yaw(b)
+    mn, mx = b.aabb()
+    margin = float(np.linalg.norm(o.asset.extents[:2])) / 2 * 0.8
+    c = b.center_w[:2]
+    pts = [c]
+    for a in ARMS:
+        d = sk.kin.base(a)[:2, 3] - c
+        d /= np.linalg.norm(d)
+        # how far the top extends from the centre in that direction
+        lim = min((mx[i] - c[i]) / d[i] if d[i] > 0 else (mn[i] - c[i]) / d[i] if d[i] < 0 else 9.0 for i in (0, 1))
+        for f in (0.4, 0.7, 1.0):
+            r = f * max(0.0, lim - margin)
+            if r > 0.01:
+                pts.append(c + d * r)
+    if len(pts) == 1:          # a support smaller than the object (a stand): small offsets around its centre
+        for k in range(8):
+            pts.append(c + 0.012 * np.array([math.cos(k * math.pi / 4), math.sin(k * math.pi / 4)]))
+    # headings: the support's (and its quarter turns), then the object's own (its grasp keeps its tilt
+    # towards the arm), then the diagonals
+    yo = _up_yaw(o)
+    yaws = [yb + k * math.pi / 2 for k in range(4)] + [yo] + [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
+    out = []
+    for p in pts:
+        for y in yaws:
+            R = rot_z(y) @ R_up
+            out.append(rest_with_R(sk, label, p, R, z_bottom=max(b.top_z, TABLE_Z)))
+    return out
+
+
+def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.05, max_iter: int = 14) -> SkillResult:
+    """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time: closed fingertips
+    against the middle of the face opposite the motion (no torque about the centre), at most ``seg`` per
+    stroke, the world re-read after each stroke."""
+    from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
+    n0 = sk.ex.steps_used
+    target_xy = np.asarray(target_xy, float)
+    last = None
+    for it in range(max_iter):
+        w = sk.refresh()
+        o = w.obj(label)
+        d = target_xy - o.center_w[:2]
+        if float(np.linalg.norm(d)) <= tol:
+            return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
+                                          note=f"within {np.linalg.norm(d)*1000:.0f} mm after {it} strokes"))
+        axes = []
+        for k in range(2):
+            a = o.R[:, k].copy()
+            a[2] = 0.0
+            if np.linalg.norm(a) > 0.5:
+                a /= np.linalg.norm(a)
+                axes.append((abs(float(a[:2] @ d)), k, a))
+        comp, k, a = max(axes, key=lambda x: x[0])
+        u = a[:2] * np.sign(float(a[:2] @ d))
+        step = min(seg, comp + 0.003)
+        half_u = float(np.abs(o.R.T @ np.r_[u, 0.0]) @ (o.asset.extents / 2))
+        h = min(0.012, 0.5 * float(o.top_z - o.bottom_z))
+        z = o.bottom_z + h + TIP_BEYOND_TCP
+        yaw = math.atan2(u[1], u[0]) + math.pi / 2               # the fingers' broad face across the push
+        start = o.center_w[:2] - u * (half_u + 0.02)
+        end = o.center_w[:2] - u * (half_u - step)
+        arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - start)))
+        plan = None
+        for arm in arms:
+            for yw in (yaw, yaw + math.pi):
+                T_s = T_from([start[0], start[1], z], down_R(yw))
+                T_ab = T_s.copy()
+                T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+                T_e = T_from([end[0], end[1], z], down_R(yw))
+                T_up = T_e.copy()
+                T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+                m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=CLOSED, ignore=(label,))
+                if not m1.ok:
+                    continue
+                m2 = sk.motion.line(arm, m1.q_end, T_s, MEDIUM, "push_down", gripper=CLOSED, ignore=(label,))
+                m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, T_e, 0.04, "push", gripper=CLOSED,
+                                    ignore=(label,), max_step_m=0.01)
+                if not (m2.ok and m3.ok):
+                    continue
+                m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "push_up", gripper=CLOSED, check=False)
+                plan = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3)
+                plan.move(m4)
+                break
+            if plan is not None:
+                break
+        if plan is None:
+            return sk._record(SkillResult(False, "push", "ik_fail", sk.ex.steps_used - n0, None,
+                                          note=f"{label}: no push stroke along axis {k}"))
+        last = plan.arm
+        try:
+            sk.parallel([plan], name=f"push {label} {it}")
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return sk._record(SkillResult(False, "push", "step_budget", sk.ex.steps_used - n0, last, note=str(e)))
+    w = sk.refresh()
+    dist = float(np.linalg.norm(target_xy - w.obj(label).center_w[:2]))
+    return sk._record(SkillResult(dist <= tol, "push", "ok" if dist <= tol else "place_miss",
+                                  sk.ex.steps_used - n0, last, note=f"{dist*1000:.0f} mm left"))
+
+
+def arrange(sk: Skills, steps: list) -> dict:
+    """Do each (verb, object, support) of the instruction: "place"/"put" = upright on the support's top
+    (``on_targets``), "push" = slide it (too wide to grasp) over the support; the grasps first, nearest the
+    arms first, the pushes last (they sweep the table). Grippers open after each step (per-item credit)."""
+    w = sk.refresh()
+    st = w.notes.setdefault("arrange", {"done": []})
+    places = [s for s in steps if s[0] != "push"]
+    pushes = [s for s in steps if s[0] == "push"]
+    places.sort(key=lambda s: min(float(np.linalg.norm(sk.kin.base(a)[:2, 3] - w.obj(s[1]).center_w[:2])) for a in ARMS))
+    failed = []
+    for verb, obj, sup in places + pushes:
+        if obj in st["done"]:
+            continue
+        sk.refresh()
+        if verb == "push":
+            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2])
+        else:
+            sk.coll.include.add(sup)
+            tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05
+            r = place_oriented(sk, obj, on_targets(sk, obj, sup), yaw_sym=1, tol_xy=0.03, tol_tilt=10.0,
+                               tol_z=0.03, ignore=(sup,), place_kw={"pre_h": 0.015 if tall else 0.04})
+        (st["done"] if r.ok else failed).append(obj)
+        sk.log(f"[arrange] {verb} {obj} -> {sup}: {r.status} {r.note[:120]}")
+        if any(sk.held[a] is not None for a in ARMS):
+            for a in ARMS:
+                if sk.held[a] is not None:
+                    sk._record(sk.regrasp(a))
+        sk.bank()
+        if r.status in ("step_budget", "ended"):
+            break
+    if failed:
+        return {"ok": False, "stage": "arrange", "note": f"done {st['done']}, failed {failed}"}
+    return {"ok": True, "stage": "arranged"}
+
+
+def up_body_axis(o) -> np.ndarray:
+    """The body axis that points up in the asset's ``up`` place pose (its face, for a tile)."""
+    q = o.asset.place.get("up")
+    if q is None:
+        return np.array([0.0, 0.0, 1.0])
+    from dojo.skills.geometry import quat_to_R
+    return quat_to_R(np.asarray(q, float)).T @ np.array([0.0, 0.0, 1.0])
+
+
+def face_up(o, tol_deg: float = 30.0) -> bool:
+    return float((o.R @ up_body_axis(o))[2]) > math.cos(math.radians(tol_deg))
+
+
+def face_down(o, tol_deg: float = 30.0) -> bool:
+    return float((o.R @ up_body_axis(o))[2]) < -math.cos(math.radians(tol_deg))
+
+
+def is_standing(o, tol_deg: float = 20.0) -> bool:
+    """The longest body axis is vertical."""
+    k = int(np.argmax(o.asset.extents))
+    return abs(float(o.R[2, k])) > math.cos(math.radians(tol_deg))
+
+
+def topple(sk: Skills, label: str, axis_body, arm: str | None = None, tries: int = 2) -> SkillResult:
+    """Tip ``label`` over so that ``axis_body`` (a body unit axis) points up; checked after it falls."""
+    ax = np.asarray(axis_body, float)
+    k = int(np.argmax(np.abs(ax)))
+    sign = float(np.sign(ax[k]))
+    for t in range(tries):
+        sk.refresh()
+        p = sk.plan_topple(label, k, sign, arm=arm, over=0.012 + 0.012 * t, below_top=0.012 + 0.004 * t)
+        if isinstance(p, SkillResult):
+            return sk._record(p)
+        try:
+            sk.parallel([p], name=f"topple {label}")
+            sk.ex.settle(tol=0.02, max_steps=4)
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return sk._record(SkillResult(False, "topple", "step_budget" if isinstance(e, BudgetExceeded) else "ended",
+                                          0, p.arm, note=str(e)))
+        w = sk.refresh()
+        o = w.obj(label)
+        up = float((o.R @ ax)[2])
+        if up > math.cos(math.radians(30.0)):
+            return sk._record(SkillResult(True, "topple", "ok", p.steps, p.arm,
+                                          note=f"{label} axis up within {math.degrees(math.acos(min(1.0, up))):.0f} deg"))
+        sk.log(f"[topple] {label}: axis at {math.degrees(math.acos(max(-1.0, min(1.0, up)))):.0f} deg from up, retry")
+    return sk._record(SkillResult(False, "topple", "place_miss", 0, arm, note=f"{label} did not tip over"))
+
+
+def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int = 260, shift: float = 0.006) -> dict:
+    """Mahjong kong. Hold still until the opponent has discarded (a tile that lies face up) and its arm has
+    had time to return (``min_wait`` steps from the start: the opponent's scripted motion is ~60 env steps;
+    moving while it moves fails the episode). The three hand tiles with the discard's identity are tipped
+    face up, one push each, the rest of the hand left standing. Then a tile is drawn from the wall (the top
+    of a face-down stack, preferring the one that completes a hand pair) and stood at the free end of the
+    hand row (+x), re-oriented in the hand or relayed through a free spot. Roles from geometry (standing /
+    face up / face down, rows) and asset identity only."""
+    w = sk.refresh()
+    st = w.notes.setdefault("kong", {"t0": int(w.step)})
+    tiles = [l for l in tiles if l in w.objects]
+    robot = np.array([0.0, -0.45])
+    if st.get("discard") is None:
+        prev = {l: w.obj(l).pos.copy() for l in tiles}
+        quiet = 0
+        while True:
+            ups = [l for l in tiles if face_up(w.obj(l))]
+            moved = max(float(np.linalg.norm(w.obj(l).pos - prev[l])) for l in tiles)
+            quiet = quiet + 1 if moved < 5e-4 else 0
+            if ups and quiet >= 3 and w.step - st["t0"] >= min_wait:
+                st["discard"] = max(ups, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - robot)))
+                break
+            if w.step - st["t0"] > max_wait:
+                return {"ok": False, "stage": "wait", "note": f"no discard after {w.step - st['t0']} steps"}
+            prev = {l: w.obj(l).pos.copy() for l in tiles}
+            try:
+                sk.ex.hold(1)
+            except (BudgetExceeded, EpisodeEnded) as e:
+                return {"ok": False, "stage": "wait", "note": str(e)}
+            w = sk.refresh()
+        sk.log(f"[kong] discard {st['discard']} ({w.obj(st['discard']).asset.key}) seen at step {w.step}")
+    d = w.obj(st["discard"])
+    if st.get("hand") is None:
+        standing = [l for l in tiles if is_standing(w.obj(l))]
+        near = min(standing, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - robot)))
+        y_row = float(w.obj(near).pos[1])
+        hand = sorted([l for l in standing if abs(float(w.obj(l).pos[1]) - y_row) < 0.03], key=lambda l: w.obj(l).pos[0])
+        match = [l for l in hand if w.obj(l).asset.key == d.asset.key]
+        st["hand"], st["match"] = hand, match
+        sk.log(f"[kong] hand {len(hand)} tiles, matching {match}")
+    hand, match = st["hand"], st["match"]
+    if len(match) < 3:
+        return {"ok": False, "stage": "roles", "note": f"{len(match)} hand tiles match {d.asset.key}"}
+    match = match[:3]
+    # 1. the three matching tiles face up (pushed over, away from the robot side they face)
+    cx = float(np.mean([w.obj(l).pos[0] for l in match]))
+    arm = min(ARMS, key=lambda a: abs(float(sk.kin.base(a)[0, 3]) - cx))
+    for l in sorted(match, key=lambda l: abs(float(w.obj(l).pos[0]) - float(sk.kin.base(arm)[0, 3]))):
+        if face_up(sk.world.obj(l)):
+            continue
+        r = topple(sk, l, up_body_axis(sk.world.obj(l)), arm=arm)
+        if not r.ok:
+            return {"ok": False, "stage": f"topple {l}", "result": r}
+    w = sk.refresh()
+    knocked = [l for l in hand if l not in match and not is_standing(w.obj(l), tol_deg=7.0)]
+    if knocked:
+        sk.log(f"[kong] hand tiles knocked: {knocked}")
+    sk.bank()
+    # 2. draw a wall tile: the top of a face-down stack, the one that completes a hand pair first
+    lying = [l for l in tiles if face_down(w.obj(l)) and l not in match]
+
+    def on_stack(l):
+        o = w.obj(l)
+        return any(m != l and float(np.linalg.norm(w.obj(m).pos[:2] - o.pos[:2])) < 0.02
+                   and w.obj(m).top_z <= o.bottom_z + 0.006 for m in lying)
+    tops = [l for l in lying if on_stack(l)] or lying
+    if not tops:
+        return {"ok": False, "stage": "draw", "note": "no wall tile"}
+    keys = [w.obj(l).asset.key for l in hand if l not in match]
+    y_row = float(np.mean([w.obj(l).pos[1] for l in hand]))
+    draw = min(tops, key=lambda l: (keys.count(w.obj(l).asset.key) != 2, w.obj(l).asset.key not in keys,
+                                    abs(float(w.obj(l).pos[1]) - y_row)))
+    # 3. stand it at the free (+x) end of the hand row, next to the last tile, like the row's tiles
+    end = max((l for l in hand if is_standing(w.obj(l))), key=lambda l: w.obj(l).pos[0])
+    xs = sorted(float(w.obj(l).pos[0]) for l in hand)
+    pitch = float(np.median(np.diff(xs))) if len(xs) > 1 else float(w.obj(end).asset.extents[0]) + 0.002
+    e = w.obj(end)
+    xy = (float(e.center_w[0]) + pitch + shift, float(e.center_w[1]))
+    st["draw"], st["target_xy"] = draw, xy
+    sk.log(f"[kong] draw {draw} -> stand at {np.round(xy, 3).tolist()} (pitch {pitch*1000:.0f} mm)")
+    targets = [rest_with_R(sk, draw, xy, e.R)]
+    res = place_oriented(sk, draw, targets, yaw_sym=4, tol_xy=0.012, tol_tilt=7.0,
+                         place_kw={"pre_h": 0.03, "descend_rad": 0.04, "release_gap": 0.002})
+    if not res.ok:
+        return {"ok": False, "stage": f"stand {draw}", "result": res}
+    sk.bank()
+    return {"ok": True, "stage": "kong"}
+
+
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
-          "swap_on_mats": swap_on_mats, "press_sequence": press_sequence}
+          "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,
+          "insert_into": insert_into, "place_in_slots": place_in_slots,
+          "fill_container": fill_container, "arrange": arrange}
