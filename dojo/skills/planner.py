@@ -115,12 +115,15 @@ def parse_steps(text: str, objs) -> list[tuple[str, str, str]]:
         if ob is not None:
             used.add(ob.label)
         res.append([verb, oa, ob])
-    for r in res:
-        if r[1] is None:
-            left = [o for o in movers if o.label not in used]
-            if len(left) >= 1:
-                r[1] = left[0]
-                used.add(left[0].label)
+    # elimination only when it is unambiguous: as many unnamed movers as movable objects no clause names
+    # (so "put red objects into the left basket" style instructions are not read as arrangements)
+    unnamed = [r for r in res if r[1] is None]
+    left = [o for o in movers if o.label not in used]
+    if unnamed and len(unnamed) != len(left):
+        return []
+    for r, o in zip(unnamed, left):
+        r[1] = o
+        used.add(o.label)
     for r in res:
         if r[2] is None:
             left = sorted([o for o in fixed if o.label not in used and o.obj_type != "Rigid"],
