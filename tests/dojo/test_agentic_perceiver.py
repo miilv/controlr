@@ -191,3 +191,38 @@ def test_libero_cell_fake_helpers(tmp_path, monkeypatch):
     saved = json.loads((tmp_path / "picks.json").read_text())
     assert saved["target"]["name"] == "alphabet_soup" and saved["robot_base"] == [0, 0, 0.9] and saved["eef"] == [0.1, 0.0, 1.1]
     assert prompt.system_prompt("libero").startswith("# Runner preamble (agentic perceiver, LIBERO, v1)")
+
+
+def test_urllib_chat_streams_sse(monkeypatch):
+    import http.server
+    import threading
+
+    from dojo.perception.agentic.llm import UrllibChat
+
+    seen = {}
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            n = int(self.headers["Content-Length"])
+            seen["body"] = json.loads(self.rfile.read(n))
+            seen["auth"] = self.headers["Authorization"]
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.end_headers()
+            for ch in ({"choices": [{"delta": {"content": '{"answer": '}}]}, {"choices": [{"delta": {"content": '{"objects": []}}'}, "finish_reason": "stop"}]},
+                       {"choices": [], "usage": {"prompt_tokens": 11, "completion_tokens": 5}}):
+                self.wfile.write(b"data: " + json.dumps(ch).encode() + b"\n\n")
+            self.wfile.write(b"data: [DONE]\n\n")
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    monkeypatch.setenv("OMNIROUTE_BASE_URL", f"http://127.0.0.1:{srv.server_port}/v1")
+    monkeypatch.setenv("OMNIROUTE_API_KEY", "test-not-a-key")
+    monkeypatch.delenv("AGENTIC_ENV_FILE", raising=False)
+    r = UrllibChat(timeout_s=10)("m", [{"role": "user", "content": "x"}], max_tokens=10)
+    srv.shutdown()
+    assert r.text == '{"answer": {"objects": []}}' and r.prompt_tokens == 11 and r.completion_tokens == 5 and r.error is None
+    assert seen["body"]["stream"] is True and seen["auth"] == "Bearer test-not-a-key"

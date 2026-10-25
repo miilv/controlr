@@ -97,9 +97,9 @@ _N = [0]
 def _chat():
     global _CHAT
     if _CHAT is None:
-        from .llm import OmniChat
+        from .llm import make_chat
 
-        _CHAT = OmniChat()
+        _CHAT = make_chat()
     return _CHAT
 
 

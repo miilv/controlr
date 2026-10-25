@@ -134,7 +134,7 @@ def summarize_locate(d: dict) -> str:
 
 def perceive_cell(cap: str, instruction: str, cell: str = "object_task", out: str | None = None, reply: dict | None = None,
                   model: str | None = None, max_turns: int | None = None, chat=None, log_dir: str | None = None) -> dict:
-    from .llm import OmniChat, image_part
+    from .llm import image_part, make_chat
     from .prompt import pin, system_prompt
     from .runner import run_agent
 
@@ -156,7 +156,7 @@ def perceive_cell(cap: str, instruction: str, cell: str = "object_task", out: st
         if (ws / n).exists():
             parts += [{"type": "text", "text": f"{n}:"}, image_part(_fit((ws / n).read_bytes()))]
     t0 = time.time()
-    st = run_agent(chat or OmniChat(), model, system_prompt("libero"), parts, tools, max_turns=max_turns,
+    st = run_agent(chat or make_chat(), model, system_prompt("libero"), parts, tools, max_turns=max_turns,
                    extra_body=json.loads(eb) if eb else None, log_dir=ws)
     picks = (st["answer"] or {}).get("picks")
     if isinstance(picks, dict):
