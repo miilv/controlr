@@ -250,7 +250,7 @@ class _Perception:
         return reps
 
     def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None,
-               identity_vocabulary: str | None = None, held=None) -> dict:
+               identity_vocabulary: str | list | None = None, held=None) -> dict:
         """``objects[0]`` re-measured from ``arm``'s wrist frame by perception's ``dojo.perception.refine.refine``
         (accepted when its ``ok`` holds and the shift stays below ``max_shift_m``); without that module, the
         local fit below on every view."""
@@ -268,7 +268,10 @@ class _Perception:
                 if "held" in inspect.signature(p_refine).parameters:
                     kw["held"] = (held[0], list(held[1]))
             img, prior = f["images"][f"cam_{arm}_wrist"], list(o["pos"]) + list(o["quat"])
-            cands = self.shape_classes(identity_vocabulary, o["key"]) if identity_vocabulary else [o["key"]]
+            if isinstance(identity_vocabulary, (list, tuple)):      # explicit candidate keys (target_ranking top-k)
+                cands = [o["key"]] + [k for k in identity_vocabulary if k != o["key"]]
+            else:
+                cands = self.shape_classes(identity_vocabulary, o["key"]) if identity_vocabulary else [o["key"]]
             if len(cands) > 1:
                 from dojo.perception.refine import refine_identity
                 r = refine_identity(cands, img, f["state"], prior, arm=arm, others=others or None, **kw)

@@ -28,6 +28,7 @@ GT is never read here. The evaluation lives in ``eval_g1.py``.
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -62,6 +63,7 @@ class ShapeModel:
     sym: int  # rotational symmetry order about world z in this orientation (36 = continuous)
     convex: bool
     hull_V: np.ndarray | None = None
+    centre_local: np.ndarray | None = None  # generator placement centre in the asset frame (xlim/ylim apply to it)
 
     @property
     def yaw_period(self) -> float:
@@ -175,14 +177,54 @@ def shape_models(key: str) -> tuple[ShapeModel, ...]:
         convex = min(ratios) > 0.97
     except Exception:
         pass
+    cached = {}
+    cp = a.dir / "shape_cache.json"
+    if cp.exists():  # catalog precompute: symmetry per place frame (the slow part of a cold load)
+        try:
+            cached = json.loads(cp.read_text()).get("sym", {})
+        except Exception:
+            cached = {}
     for tag, fr in items:
         R0 = _place_R0(fr)
         Vr = a.V @ R0.T
         zmin = float(Vr[:, 2].min())
         height = float(Vr[:, 2].max() - zmin)
-        sym = world_z_symmetry(Vr, a.F)
-        out.append(ShapeModel(key, tag, a, R0, zmin, height, sym, convex, hull_V))
+        sym = int(cached[tag]) if tag in cached else world_z_symmetry(Vr, a.F)
+        out.append(ShapeModel(key, tag, a, R0, zmin, height, sym, convex, hull_V,
+                              centre_local=np.asarray(fr["center"][:3], dtype=float)))
     return tuple(out)
+
+
+_FIXED_POSE_SHAPES: dict[tuple[str, str], ShapeModel] = {}
+
+
+def fixed_pose_shape(key: str, zlim, qpos) -> ShapeModel:
+    """The generator's fixed-pose path (a config ``zlim``, e.g. store_tools_in_toolbox's toolbox): the origin
+    sits at table + z with orientation ``qpos`` (wxyz; identity when absent) before the optional yaw, and
+    xlim/ylim constrain the origin itself (cluttered_generator.add_model_with_fixed_pose)."""
+    z = float(np.mean(zlim))
+    q = [float(v) for v in (qpos if qpos is not None else [1, 0, 0, 0])]
+    tag = "zq:%.4f:%s" % (z, ",".join("%.4f" % v for v in q))
+    sm = _FIXED_POSE_SHAPES.get((key, tag))
+    if sm is None:
+        a = load_asset(key)
+        R0 = quat_wxyz_to_R(q)
+        Vr = a.V @ R0.T
+        sm = ShapeModel(key, tag, a, R0, -z, float(Vr[:, 2].max() - Vr[:, 2].min()), world_z_symmetry(Vr, a.F),
+                        False, None, centre_local=np.zeros(3))
+        _FIXED_POSE_SHAPES[(key, tag)] = sm
+    return sm
+
+
+def shape_by_tag(key: str, tag: str) -> ShapeModel:
+    """A shape model by place tag; fixed-pose tags ("zq:<z>:<qw,qx,qy,qz>") are rebuilt from the tag."""
+    sm = _FIXED_POSE_SHAPES.get((key, tag))
+    if sm is not None:
+        return sm
+    if tag.startswith("zq:"):
+        _, z, q = tag.split(":")
+        return fixed_pose_shape(key, [float(z)], [float(v) for v in q.split(",")])
+    return next(s for s in shape_models(key) if s.tag == tag)
 
 
 # --------------------------------------------------------------------------------------------
@@ -405,7 +447,7 @@ class Hypothesis:
     appearance: float = 0.0
 
     def sm(self) -> ShapeModel:
-        return next(s for s in shape_models(self.key) if s.tag == self.tag)
+        return shape_by_tag(self.key, self.tag)
 
     def T(self) -> np.ndarray:
         return self.sm().pose(self.x, self.y, self.yaw, float(self.per_view.get("z_off", 0.0)))
@@ -489,15 +531,18 @@ def _diverse(res, period, k=3, min_sep=0.4, slack=0.15):
 
 
 def refine(sm: ShapeModel, x, y, yaw, views, others=None, xy_step=0.006, yaw_step=0.12, maxiter=120,
-           fix_yaw=False, color_w: float = 0.0):
+           fix_yaw=False, color_w: float = 0.0, bounds=None):
     """Nelder-Mead over (x, y[, yaw]) on the ROI soft-IoU loss (+ color_w x texture cost when > 0); the
-    ROIs are fixed at the start pose. The returned loss is the silhouette part."""
+    ROIs are fixed at the start pose. ``bounds`` = (xlo, xhi, ylo, yhi) of the origin: leaving them costs
+    BOUND_PENALTY per metre (a compact generator region). The returned loss is the silhouette part."""
     rvs = make_roi_views(sm, sm.pose(x, y, yaw), views, others)
 
     def f(p):
         yy = yaw if fix_yaw else p[2]
         T = sm.pose(p[0], p[1], yy)
         l = roi_loss(sm, T, rvs)[0]
+        if bounds is not None:
+            l += BOUND_PENALTY * (max(0.0, bounds[0] - p[0], p[0] - bounds[1]) + max(0.0, bounds[2] - p[1], p[1] - bounds[3]))
         if color_w > 0:
             c = roi_color_cost(sm, T, rvs)
             l += color_w * (0.25 if c is None else c)
@@ -670,26 +715,132 @@ def fixed_slot_labels(task: str) -> dict:
     return out
 
 
+def joints_world(key: str, T: np.ndarray) -> list[dict] | None:
+    """The catalogue's articulation joints (catalog.articulation_info) placed by pose T: anchor, axis and the
+    moving body's top centre (``press_point``) in the world, at the rest state the drive holds (target clipped
+    to the limits; SpringButton: cap raised to its upper limit)."""
+    art = load_asset(key).info.get("articulation")
+    if not art:
+        return None
+    out = []
+    for j in art["joints"]:
+        if not j.get("axis"):
+            continue
+        ax = T[:3, :3] @ np.asarray(j["axis"], float)
+        q = j.get("drive_target", 0.0)
+        if j.get("limits"):
+            q = float(np.clip(q, *j["limits"]))
+        d = {"name": j["name"], "type": j["type"], "axis": np.round(ax, 5).tolist(), "limits": j.get("limits"),
+             "rest_q": round(q, 6)}
+        if j.get("anchor"):
+            d["anchor"] = np.round(T[:3, :3] @ np.asarray(j["anchor"], float) + T[:3, 3], 5).tolist()
+        if j.get("press_point"):
+            pp = np.asarray(j["press_point"], float) + (np.asarray(j["axis"], float) * q if "Prismatic" in j["type"] else 0)
+            d["press_point"] = np.round(T[:3, :3] @ pp + T[:3, 3], 5).tolist()
+        out.append(d)
+    return out or None
+
+
+CONTAINER_CATEGORIES = {"cup", "bowl", "box", "basket", "vase", "drawer", "toolbox", "pen_holder", "plate", "tray"}
+
+
+def _slot_shape(key: str, placement: dict, tag: str | None) -> ShapeModel:
+    """The shape a slot label rests in: the fixed-pose shape for a ``zlim`` placement, else the tagged frame."""
+    if placement.get("zlim") is not None:
+        return fixed_pose_shape(key, placement["zlim"], placement.get("qpos"))
+    return ([s_ for s_ in shape_models(key) if not tag or s_.tag == tag] or list(shape_models(key)))[0]
+
+
+def _slot_identity(h: "Hypothesis", g: dict, placement: dict, tag: str | None, views, cfg) -> "Hypothesis":
+    """Which candidate sits in a slot (press_by_number's cards: digit 1-9 on identical boards): each
+    candidate at the slot pose, silhouette loss when the geometry differs + texture NCC + colour; the runner-up
+    goes to ``alternative`` with its margin."""
+    ext0 = h.sm().asset.extents
+    scored = []
+    for k in g["candidates"]:
+        sm_k = _slot_shape(k, placement, tag)
+        T = sm_k.pose(h.x, h.y, h.yaw)
+        same = np.allclose(sm_k.asset.extents, ext0, atol=2e-3)
+        sil = float(h.per_view.get("sil_loss", 0.5))
+        if not same:
+            rvs = make_roi_views(sm_k, T, views)
+            sil = roi_loss(sm_k, T, rvs)[0] if rvs else 1.0
+        tx = texture_cost(sm_k, T, views, k)
+        col, _ = observed_color(sm_k, T, views)
+        app = _app(col, [k])
+        scored.append((sil + cfg.texture_weight * (0.25 if tx is None else tx) + cfg.appearance_weight * app, k, sm_k, tx))
+    scored.sort(key=lambda t: t[0])
+    best, k, sm_k, tx = scored[0]
+    out = Hypothesis(h.label_group, k, sm_k.tag, h.x, h.y, h.yaw, h.loss, dict(h.per_view), h.blob)
+    out.per_view["texture"] = None if tx is None else round(float(tx), 4)
+    if len(scored) > 1:
+        b2 = scored[1]
+        out.per_view["alternative"] = {"key": b2[1], "tag": b2[2].tag, "x": h.x, "y": h.y, "yaw": h.yaw,
+                                       "margin": round(float(b2[0] - best), 4)}
+    return out
+
+
+@lru_cache(maxsize=4096)
+def asset_info(key: str) -> dict:
+    """info.json alone (no geometry): captions, description, extents."""
+    return json.loads((catalog_root() / key / "info.json").read_text())
+
+
+_STOP = {"the", "a", "an", "of", "by", "to", "and", "with", "up", "pick", "cm", "10"}
+
+
+def _tokens(s: str) -> set:
+    return {t for t in re.findall(r"[a-z0-9]+", s.lower()) if t not in _STOP}
+
+
+def target_phrase(instruction: str) -> str | None:
+    m = re.search(r"pick up the (.+?) by \d+ ?cm", instruction.lower())
+    return m.group(1).strip() if m else None
+
+
+def rank_candidates(candidates: list[str], phrase: str) -> list[tuple[float, str]]:
+    """Candidates scored against a target phrase: 1.0 for the asset's own description / caption name
+    (general_pickup draws the phrase from description.json), else the token overlap (Jaccard) with the
+    description, captions, colours and category name."""
+    toks = _tokens(phrase)
+    out = []
+    for k in candidates:
+        try:
+            info = asset_info(k)
+        except Exception:
+            info = {}
+        cat = k.split("/")[1].replace("_", " ")
+        names = [str(n).lower() for n in (info.get("names_all") or info.get("names") or [])]
+        desc = str(info.get("description", "")).lower()
+        if phrase == desc or phrase in names or phrase == cat:
+            out.append((1.0, k))
+            continue
+        words = _tokens(" ".join([desc, cat] + names + [str(c) for c in (info.get("colors_all") or info.get("colors_text") or [])]))
+        out.append((len(toks & words) / max(1, len(toks)), k))  # share of the phrase's words covered
+    return sorted(out, key=lambda t: -t[0])
+
+
+TARGET_TOPK = 4
+
+
 def restrict_by_instruction(groups: list[dict], instruction: str) -> list[dict]:
-    """Candidates named by the instruction (general_pickup: "Pick up the {target} by 10 cm."): keep the
-    candidates whose category name or catalogue captions occur in the instruction; unchanged if none match."""
+    """Candidates named by the instruction (general_pickup: "Pick up the {target} by 10 cm."). An exact match
+    with an asset's description / caption keeps only those assets; otherwise the ``TARGET_TOPK`` best token
+    matches stay (the agent can tell them apart with a look); no overlap at all keeps every candidate.
+    The ranking goes to ``g["target_ranking"]``."""
     import copy
 
-    text = " " + instruction.lower().replace("_", " ") + " "
+    phrase = target_phrase(instruction)
     out = copy.deepcopy(groups)
+    if not phrase:
+        return out
     for g in out:
         if len(g["candidates"]) < 10:
             continue
-        keep = []
-        for k in g["candidates"]:
-            cat = k.split("/")[1]
-            names = [cat.replace("_", " ")]
-            try:
-                names += [n.lower() for n in load_asset(k).info.get("names", [])]
-            except Exception:
-                pass
-            if any(f" {n} " in text for n in names if n):
-                keep.append(k)
+        ranked = rank_candidates(g["candidates"], phrase)
+        g["target_ranking"] = [(round(sc, 3), k) for sc, k in ranked[:8]]
+        exact = [k for sc, k in ranked if sc >= 1.0]
+        keep = exact or [k for sc, k in ranked[:TARGET_TOPK] if sc > 0]
         if keep:
             g["candidates"] = keep
             g["categories"] = [c for c in g["categories"] if any(k.split("/")[1] == c["name"] for k in keep)] or g["categories"]
@@ -735,6 +886,104 @@ def _region(p: dict) -> dict:
 
 XY_MARGIN = 0.04
 YAW_MARGIN = np.deg2rad(15)
+
+
+def _bbox_centre_local(sm) -> np.ndarray:
+    """The generator's placement centre in the asset frame (place frame centre; bbox centre as fallback)."""
+    if sm.centre_local is not None:
+        return sm.centre_local
+    V = sm.asset.V
+    return (V.min(0) + V.max(0)) / 2
+
+
+def _centre_xy(h) -> tuple[float, float]:
+    """World xy of the generator's placement centre (the place frame's projection-circle centre): xlim/ylim
+    constrain it, and it can sit centimetres from the asset origin (organize_table's drawer: 5 cm) and from
+    the vertex centroid (monitor 00000: 7 cm). Fixed-pose shapes (zlim): the origin."""
+    T = h.T()
+    c = T[:3, :3] @ _bbox_centre_local(h.sm()) + T[:3, 3]
+    return float(c[0]), float(c[1])
+
+
+SEED_MAX_SPAN = 0.25  # region seeding only for compact generator regions (m, per axis)
+SEED_STEP = 0.05
+SEED_MAX_YAW = np.deg2rad(40)
+
+
+def _seed_region(g: dict, prior: dict):
+    """(xs, ys, yaw0) seed grid of a compact, single generator region with a fixed / narrow yaw, else None."""
+    regs = g.get("regions") or []
+    if len(regs) != 1 or prior["fixed_xy"] is not None:
+        return None
+    r = regs[0]
+    if not r["x"] or not r["y"] or len(r["x"]) != 1 or len(r["y"]) != 1 or r["yaw"] is None:
+        return None
+    (x0, x1), (y0, y1) = r["x"][0], r["y"][0]
+    if x1 - x0 > SEED_MAX_SPAN or y1 - y0 > SEED_MAX_SPAN or r["yaw"][1] - r["yaw"][0] > SEED_MAX_YAW:
+        return None
+    xs = np.linspace(x0, x1, max(1, int(np.ceil((x1 - x0) / SEED_STEP)) + 1))
+    ys = np.linspace(y0, y1, max(1, int(np.ceil((y1 - y0) / SEED_STEP)) + 1))
+    return xs, ys, (r["yaw"][0] + r["yaw"][1]) / 2
+
+
+def _region_seeds(blob_list, pending, shapes_by_group, views, cfg, groups, others=None, blob_offset=0):
+    """Hypotheses seeded inside compact generator regions (fixed / narrow yaw), independent of blob
+    centroids: a label merged into a bigger blob (keyboard touching a figure) or cut by the image border
+    (a monitor at the table's back) gets a centroid-based start far from its true place. Seeds are scored
+    by the ROI loss as they are; the best ``SEED_REFINE`` per geometry get the quick refinement."""
+    head = views["cam_head"]
+    out = []
+    for gi, g, prior in pending:
+        sr = _seed_region(g, prior)
+        if sr is None:
+            continue
+        xs, ys, yaw0 = sr
+        for sms in shapes_by_group[gi].values():
+            sm = sms[0]
+            keys = [s_.key for s_ in sms]
+            c_off = (sm.pose(0.0, 0.0, yaw0)[:3, :3] @ _bbox_centre_local(sm))[:2]
+            seeds = []
+            for cx in xs:
+                for cy in ys:
+                    x, y = cx - c_off[0], cy - c_off[1]
+                    T = sm.pose(x, y, yaw0)
+                    rvs = make_roi_views(sm, T, views, others)
+                    if not rvs:
+                        continue
+                    seeds.append((roi_loss(sm, T, rvs)[0], x, y))
+            seeds.sort(key=lambda t: t[0])
+            for l, x, y in seeds[:SEED_REFINE]:
+                if l > 0.95:
+                    continue
+                s_h = sm.sil(head.cam, sm.pose(x, y, yaw0))
+                ov = [int((b.mask & s_h).sum()) for b in blob_list]
+                bi = int(np.argmax(ov)) + blob_offset if ov and max(ov) > 0 else -1
+                h = Hypothesis(gi, sm.key, sm.tag, x, y, yaw0, l, blob=bi)
+                h.per_view = {"geom_group": keys}
+                h2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
+                h2.per_view["seeded"] = True
+                cx, cy = _centre_xy(h2)
+                if region_ok(groups[h2.label_group], cx, cy, h2.yaw, sm.yaw_period):
+                    out.append(h2)
+    return out
+
+
+SEED_REFINE = 2
+SEED_BOUND_MARGIN = 0.01
+BOUND_PENALTY = 20.0
+
+
+def origin_bounds(g: dict, sm, yaw: float):
+    """Origin (xlo, xhi, ylo, yhi) keeping the bbox centre inside a compact generator region (+ margin), or
+    None for groups without one. Refinement inside a cluttered ROI otherwise drifts big objects onto
+    neighbouring foreground (organize_table's drawer: 25 cm from its slot)."""
+    sr = _seed_region(g, _placement_prior(g))
+    if sr is None:
+        return None
+    xs, ys, _ = sr
+    c_off = (sm.pose(0.0, 0.0, yaw)[:3, :3] @ _bbox_centre_local(sm))[:2]
+    m = SEED_BOUND_MARGIN
+    return (xs[0] - m - c_off[0], xs[-1] + m - c_off[0], ys[0] - m - c_off[1], ys[-1] + m - c_off[1])
 
 
 def region_ok(g: dict, x: float, y: float, yaw: float | None = None, period: float = 2 * np.pi) -> bool:
@@ -785,8 +1034,9 @@ def _geometry_groups(g: dict, prior: dict) -> dict[tuple, list[ShapeModel]]:
     """Candidate shapes of a label group, merged when geometry is identical (same extents, faces, tag):
     those are fitted once, identity comes from appearance."""
     by_geom: dict[tuple, list[ShapeModel]] = {}
+    fixed = prior.get("zlim") is not None and prior["relative_plane"] == "Table"
     for key in g["candidates"]:
-        for sm in shape_models(key):
+        for sm in ([fixed_pose_shape(key, prior["zlim"], g["placement"].get("qpos"))] if fixed else shape_models(key)):
             if prior["place_tag"] and sm.tag != prior["place_tag"]:
                 continue
             gk = (tuple(np.round(sm.asset.extents, 3)), sm.asset.info["n_faces"], sm.tag)
@@ -889,7 +1139,8 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
                 break
         for h in kept:
             h2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
-            if region_ok(groups[h2.label_group], h2.x, h2.y, h2.yaw, h2.sm().yaw_period):
+            cx, cy = _centre_xy(h2)
+            if region_ok(groups[h2.label_group], cx, cy, h2.yaw, h2.sm().yaw_period):
                 refined.append(h2)
     return refined
 
@@ -898,7 +1149,8 @@ def _score_hyp(h: Hypothesis, views, others, cfg, groups, iters, color: bool = F
     yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
     sm = h.sm()
     cw = cfg.refine_color_weight if (color and sm.asset.info.get("n_textured_parts", 0) > 0) else 0.0
-    x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed, color_w=cw)
+    x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed, color_w=cw,
+                                  bounds=origin_bounds(groups[h.label_group], sm, h.yaw))
     T = sm.pose(x, y, yaw)
     col, _ = observed_color(sm, T, views)
     app = _app(col, h.per_view["geom_group"])
@@ -984,6 +1236,93 @@ def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
     return chosen, total - sum(max(0, n) for n in need.values()) * 0.05
 
 
+def _centroid_xy(sm: ShapeModel, x: float, y: float, yaw: float) -> np.ndarray:
+    T = sm.pose(x, y, yaw)
+    return (T[:3, :3] @ sm.asset.V.mean(0) + T[:3, 3])[:2]
+
+
+SWAP_REFINE = 2
+SWAP_MAX_FOOTPRINT_RATIO = 3.0
+SWAP_MIN_SIL_LOSS = 0.25
+
+
+def _place_like(h: Hypothesis, target_xy: np.ndarray, yaws, views, others, cfg, groups) -> Hypothesis | None:
+    """``h``'s shape re-fitted with its vertex centroid at ``target_xy``: start yaws x shifts of a quarter
+    length both ways along its long axis (the swapped shapes differ in length), screened by the unrefined
+    ROI loss; the best ``SWAP_REFINE`` get the quick refinement."""
+    sm = h.sm()
+    best = None
+    starts = []
+    for yaw in yaws:
+        c = _centroid_xy(sm, 0.0, 0.0, yaw)
+        R = sm.pose(0.0, 0.0, yaw)[:3, :3]
+        Vw = (sm.asset.V - sm.asset.V.mean(0)) @ R.T
+        ev = np.linalg.eigh(np.cov(Vw[:, :2].T))[1][:, -1]
+        L = float(np.ptp(Vw[:, :2] @ ev))
+        for k in (0, -1, 1):
+            xy = target_xy - c + k * 0.25 * L * ev
+            T = sm.pose(float(xy[0]), float(xy[1]), float(yaw))
+            rvs = make_roi_views(sm, T, views, others)
+            if rvs:
+                starts.append((roi_loss(sm, T, rvs)[0], xy, yaw))
+    starts.sort(key=lambda t: t[0])
+    for _, xy, yaw in starts[:SWAP_REFINE]:
+        t = Hypothesis(h.label_group, h.key, h.tag, float(xy[0]), float(xy[1]), float(yaw), h.loss, blob=h.blob)
+        t.per_view = {"geom_group": h.per_view["geom_group"]}
+        t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters)
+        cx, cy = _centre_xy(t2)
+        if not region_ok(groups[t2.label_group], cx, cy, t2.yaw, sm.yaw_period):
+            continue
+        if best is None or t2.loss < best.loss:
+            best = t2
+    return best
+
+
+def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.02) -> list[Hypothesis]:
+    """Cross-label identity: two chosen objects of different label groups whose generator regions admit each
+    other's place (store_tools' hammer and wrench share a region) trade places when the swapped fits cost
+    less in total. Incumbents are re-scored under the same conditions (others, iterations)."""
+    out = list(chosen)
+    for i in range(len(out)):
+        for j in range(i + 1, len(out)):
+            a, b = out[i], out[j]
+            if (a.label_group == b.label_group or "fixed" in (a.tag, b.tag) or a.per_view.get("slot")
+                    or b.per_view.get("slot") or a.per_view.get("occluded") or b.per_view.get("occluded")):
+                continue
+            sa, sb = a.sm(), b.sm()
+            if (sa.key == sb.key or (np.allclose(sa.asset.extents, sb.asset.extents, atol=2e-3)
+                                     and sa.asset.info.get("n_faces") == sb.asset.info.get("n_faces"))):
+                continue  # same geometry: which label goes where is appearance (identity step), not a refit
+            fa, fb = (float(np.prod(np.sort(sm_.asset.extents)[1:])) for sm_ in (sa, sb))
+            if max(fa, fb) > SWAP_MAX_FOOTPRINT_RATIO * min(fa, fb):
+                continue  # footprints too different to be confused (pack's box vs toothbrush)
+            if max(a.per_view.get("sil_loss", a.loss), b.per_view.get("sil_loss", b.loss)) < SWAP_MIN_SIL_LOSS:
+                continue  # both fit well where they are
+            ca, cb = _centroid_xy(a.sm(), a.x, a.y, a.yaw), _centroid_xy(b.sm(), b.x, b.y, b.yaw)
+            ga, gb = groups[a.label_group], groups[b.label_group]
+            if not (region_ok(ga, *cb) and region_ok(gb, *ca)):
+                continue
+            others = _union_masks([h for k, h in enumerate(out) if k not in (i, j)], views)
+            ya = [a.yaw] if _placement_prior(ga)["yaw_fixed"] else [a.yaw, b.yaw, b.yaw + np.pi, a.yaw + np.pi]
+            yb = [b.yaw] if _placement_prior(gb)["yaw_fixed"] else [b.yaw, a.yaw, a.yaw + np.pi, b.yaw + np.pi]
+            a0 = _score_hyp(a, views, others, cfg, groups, cfg.quick_iters)
+            b0 = _score_hyp(b, views, others, cfg, groups, cfg.quick_iters)
+            a1 = _place_like(a, cb, ya, views, others, cfg, groups)
+            b1 = _place_like(b, ca, yb, views, others, cfg, groups)
+            if a1 is None or b1 is None:
+                continue
+            # both must fit better at the other's place, and the pair by a margin (one big gain hiding a worse
+            # partner swapped build_tower's blocks)
+            if a1.loss < a0.loss and b1.loss < b0.loss and a1.loss + b1.loss < a0.loss + b0.loss - margin:
+                for new, old in ((a1, a), (b1, b)):
+                    for k_, v_ in old.per_view.items():
+                        if k_ not in new.per_view and not k_.startswith("cam"):
+                            new.per_view[k_] = v_
+                    new.per_view["swapped"] = True
+                out[i], out[j] = a1, b1
+    return out
+
+
 def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypothesis]:
     """Per chosen object: re-fit the other candidate shapes of its label group at its location (identity) and
     its 180-degree flip, keeping the lowest combined cost (silhouette + colour + texture). Groups under a
@@ -998,7 +1337,7 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         others = _union_masks(out, views, skip=i)
         trials = []
         if (not prior["yaw_fixed"] and h.sm().yaw_period > 1.5 * np.pi
-                and region_ok(g, h.x, h.y, (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
+                and region_ok(g, *_centre_xy(h), (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
             trials.append(flip_about_centroid(h))
         if _options(g, _geometry_groups(g, prior)) is None:
             s_h = h.sm().sil(head.cam, h.T())
@@ -1030,7 +1369,7 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         scored = [h0]
         for t in trials:
             t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
-            if not region_ok(g, t2.x, t2.y, t2.yaw, t2.sm().yaw_period):
+            if not region_ok(g, *_centre_xy(t2), t2.yaw, t2.sm().yaw_period):
                 continue
             scored.append(t2)
             # paired texture on shared pixels decides when it is informative; else the combined cost
@@ -1086,7 +1425,7 @@ def view_request(best: Hypothesis, alt: dict, dist: float = 0.16, elev_deg: floa
     K = intrinsics(WRIST["focal_length"], WRIST["horizontal_aperture"])
     sm_b, T_b = best.sm(), best.T()
     try:
-        sm_a = next(s_ for s_ in shape_models(alt["key"]) if s_.tag == alt["tag"])
+        sm_a = shape_by_tag(alt["key"], alt["tag"])
     except StopIteration:
         return None
     T_a = sm_a.pose(alt["x"], alt["y"], alt["yaw"])
@@ -1174,6 +1513,7 @@ class EstimatorConfig:
     refine_per_group: int = 3
     quick_iters: int = 30
     polish: bool = True
+    swap_pairs: bool = True  # cross-label place swaps for labels sharing a generator region (_swap_pairs)
     polish_candidates: int = 4
     paired_tex_weight: float = 0.8
     refine_color_weight: float = 0.5
@@ -1187,6 +1527,8 @@ class EstimatorConfig:
     # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
     # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
     use_slots: bool = True  # labels pinned to config slots start there (make_kong tiles, tower base)
+    slot_identity_max: int = 12  # slot labels with 2..N candidates get a per-candidate identity check
+    region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 
@@ -1198,7 +1540,8 @@ def _views_subset(views, cfg):
 def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction: str = "",
              bgs: dict | None = None, cfg: EstimatorConfig | None = None,
              extra_frames: list[tuple[dict, dict]] | None = None,
-             extra_views: list[tuple[str, Camera, np.ndarray]] | None = None) -> dict:
+             extra_views: list[tuple[str, Camera, np.ndarray]] | None = None,
+             cams: dict[str, Camera] | None = None) -> dict:
     """``extra_frames``: [(images, state)] of later frames of the same episode with the objects assumed
     static (arms moved): their views join the render-and-compare loss as ``<cam>@<k>``. Proposals come
     from the first frame's head view."""
@@ -1207,7 +1550,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     _COLOR_M = cfg.color_M if task in cfg.color_tasks else None
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
-    cams = cameras_from_state(state)
+    cams = cams or cameras_from_state(state)  # given cameras: a caller's own calibration (J1 harness)
     views_all = segment_views(images, cams, state, bgs, thr=cfg.fg_thr)
     views = _views_subset(views_all, cfg)
     for k, (imgs_k, state_k) in enumerate(extra_frames or [], start=1):
@@ -1236,14 +1579,15 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             for lab in mine:
                 x, y, tag = slots[lab]
                 key0 = g["candidates"][0]
-                sms = [s_ for s_ in shape_models(key0) if not tag or s_.tag == tag] or list(shape_models(key0))
-                sm = sms[0]
+                sm = _slot_shape(key0, task_map()[task]["labels"][lab]["placement"], tag)
                 xr, yr, yawr, loss, per = refine(sm, x, y, 0.0, views, maxiter=40, xy_step=0.003, yaw_step=0.03,
                                                  fix_yaw=True)
                 if np.hypot(xr - x, yr - y) > 0.02:  # settling moves a few mm; a big jump is a wrong fit
                     xr, yr, loss, per = x, y, 0.5, {}
                 h = Hypothesis(gi, key0, sm.tag, xr, yr, 0.0, loss, per)
                 h.per_view.update({"geom_group": [k for k in g["candidates"]], "slot": True, "sil_loss": round(float(loss), 4)})
+                if 1 < len(g["candidates"]) <= cfg.slot_identity_max:
+                    h = _slot_identity(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
                 slot_placed.append((g, h, lab))
             g["labels"] = [lab for lab in g["labels"] if lab not in mine]
         # labels the config stacks on another (relative_plane "<label>/...", zero offset): on top of it
@@ -1269,6 +1613,17 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             g["labels"] = [lab for lab in g["labels"] if lab not in stacked]
         groups = [g for g in groups if g["labels"]]
 
+    # ---- labels the config puts inside / on another label's object (pour_balls_into_vase: the balls in the
+    # cup): not searched for (mostly hidden, and they would read as missing); reported as contained
+    task_labels = task_map()[task]["labels"]
+    for g in groups:
+        base = str(g["placement"].get("relative_plane", "Table")).split("/")[0]
+        base_cats = {k.split("/")[1] for k in task_labels.get(base, {}).get("candidates", [])}
+        if base in task_labels and base not in g["labels"] and base_cats & CONTAINER_CATEGORIES:
+            record.setdefault("_contained", []).extend({"label": lab, "in": base} for lab in g["labels"])
+            g["labels"] = []
+    groups = [g for g in groups if g["labels"]]
+
     # ---- fixed-pose geometry (e.g. a ground-standing dustbin): place at the config pose, flagged
     pending = []
     for gi, g in enumerate(groups):
@@ -1290,6 +1645,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     shapes_by_group = {gi: _geometry_groups(g, prior) for gi, g, prior in pending}
     need0 = {gi: len(g["labels"]) for gi, g, _ in pending}
     refined = _propose(head_blobs, pending, shapes_by_group, views, cfg, groups)
+    if cfg.region_seeds:  # only groups the blob proposals left short (seeds can win by hiding in unknown pixels)
+        short = [(gi, g, p) for gi, g, p in pending
+                 if len({h.blob for h in refined if h.label_group == gi}) < len(g["labels"])]
+        refined += _region_seeds(head_blobs, short, shapes_by_group, views, cfg, groups)
     chosen = _assign_constrained(refined, need0, pending, head_blobs, views)
     pool = list(refined)
     head = views["cam_head"]
@@ -1336,6 +1695,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     t3 = time.time()
     if cfg.polish:
         chosen = _polish(chosen, views, cfg, groups, pending)
+    if cfg.swap_pairs:
+        chosen = _swap_pairs(chosen, views, cfg, groups)
     timings["polish_s"] = round(time.time() - t3, 3)
 
     # ---- joint refinement on the union of the others
@@ -1347,7 +1708,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             others = _union_masks(chosen, views, skip=i)
             yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
             x, y, yaw, loss, per = refine(h.sm(), h.x, h.y, h.yaw, views, others, xy_step=0.003, yaw_step=0.05,
-                                          maxiter=cfg.refine_iters, fix_yaw=yaw_fixed)
+                                          maxiter=cfg.refine_iters, fix_yaw=yaw_fixed,
+                                          bounds=origin_bounds(groups[h.label_group], h.sm(), h.yaw))
             sil0 = h.per_view.get("sil_loss", h.loss)
             if loss <= sil0 + 0.02:
                 h.loss = h.loss - sil0 + loss
@@ -1488,8 +1850,28 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "fg_resid_near": round(fg_near, 3),
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group")}}
+        if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
+            # next-best places elsewhere, so a look can check them when this one is doubtful
+            alts = []
+            for c in sorted((c for c in pool if c.label_group == h.label_group), key=lambda c: c.loss):
+                if np.hypot(c.x - h.x, c.y - h.y) < 0.05 or any(np.hypot(c.x - a.x, c.y - a.y) < 0.05 for a in alts):
+                    continue
+                alts.append(c)
+                if len(alts) >= 3:
+                    break
+            if alts:
+                rec["_perception"]["other_places"] = [
+                    {"xy": [round(float(c.x), 4), round(float(c.y), 4)], "key": c.key, "cost": round(float(c.loss), 4),
+                     "margin": round(float(c.loss - h.loss), 4)} for c in alts]
+        if typ == "Articulation" and h.tag != "fixed":
+            jw = joints_world(h.key, h.T())
+            if jw:
+                rec["_perception"]["joints"] = jw
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)
     timings["total_s"] = round(time.time() - t0, 3)
     record["_perception"] = {"version": "v0", "timings": timings, "n_head_blobs": len(head_blobs),
                              "views": list(views), "unexplained": unexplained}
+    ranking = {lab: g["target_ranking"] for g in groups if g.get("target_ranking") for lab in g["labels"]}
+    if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
+        record["_perception"]["target_ranking"] = ranking
     return record

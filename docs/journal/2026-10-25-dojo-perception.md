@@ -237,3 +237,122 @@ The earlier "0.82 → 0.84" post-look line reads 0.79 → 0.84.
     there (slots are exact), but pass the neighbours if refining tiles.
   - fill_pen_holder: within tolerance pens 0.95 / oil pens 1.00 / holder 1.00; pen rot p90 26° (tip flips);
     refine ok+centred 89 % within 5 mm.
+- organize_table: drawer, keyboard and monitor were never found. Three causes:
+  - Merged / truncated blobs. The keyboard and the drawer merge with the figure into one head blob, and
+    the image's top edge cuts the monitor, so the blob-centroid start lands outside their regions.
+    Fix: groups whose generator region is compact (≤ 25 cm per axis, yaw fixed or ≤ 40°) get proposals
+    seeded on a 5 cm grid inside the region, but only when blob proposals left the group short. Seeding
+    always let a seed beat the right blob fit by hiding in a view's unknown pixels (mousemat 4 → 36 mm).
+  - Refinement drift. Inside a cluttered ROI the drawer slid 25 cm onto the figure's foreground (the
+    loss there is lower than at GT: 0.45 vs 0.60). Fix: refinement for those groups is bounded to the
+    region + 1 cm (`origin_bounds`, penalty 20/m).
+  - Region reference point. xlim/ylim constrain the place frame's projection-circle centre, not the
+    origin. The drawer's centre is 5 cm from its origin; monitor 00000's is 7 cm from its vertex
+    centroid. Region checks now use that centre (`_centre_xy`).
+  - Dev (10 layouts, before the swap/fixed-pose commit): drawer 0 → 10/10 within tolerance (xy median
+    9.9 mm), monitor 0 → 10/10 (1 identity), keyboard 0 → 8/10, mousemat 10/10, cube_cushion and frame
+    10/10. Still failing: alarm 1/10 (the left home gripper hides it in most layouts, hidden_frac
+    0.2–0.7, confidence ≤ 0.5), garage 2/10 (five figurines, wrong figure plus 50–200 mm, confidence
+    ≤ 0.34), mouse 7/10 (two under the right gripper). These are look-macro cases. The checker's garage
+    tolerance depends on the figure index (2–4.5 cm), so the figure's identity matters.
+- store_tools_in_toolbox:
+  - The toolbox was 90° off in all 10 layouts. A config `zlim` takes the generator's fixed-pose path
+    (`add_model_with_fixed_pose`): the origin goes to table + z with orientation `qpos`, and xlim/ylim
+    constrain the origin. These now get their own shape (`fixed_pose_shape`; tag `zq:<z>:<q>` is
+    rebuilt by `shape_by_tag`, also used in `refine()`). Toolbox: 1.5–2.9 mm, 0.0°.
+  - Hammer and wrench share one region and swapped places in 2–3 of 10 layouts (≈ 130 mm). New
+    `_swap_pairs`: two chosen objects of different labels, each region admitting the other's place, try
+    trading places. The trial fit is centroid-aligned, ±¼ length along the long axis, and the incumbents
+    are re-scored under the same others and iterations. Accept when the total cost drops by 0.02. On
+    layout 100001 the hammer goes 131 → 4.7 mm and the wrench 117 → 1.4 mm.
+  - Two guards came from the D0 regression check. First, both refits must improve, not just their sum:
+    on the sum alone, build_tower swapped differently shaped blocks in 4 layouts (7 blocks lost, 95–820
+    mm). Second, a swap is skipped for identical geometry (that is identity, decided by appearance), for
+    footprints more than 3× apart, and when both objects already fit well (silhouette loss < 0.25).
+    Without these, pack took 61 s per frame instead of 46 and build_tower 13 s instead of 3.
+- press_by_number (coordinator request, mode B):
+  - Catalogue: Articulation/SpringButton 00002 (red) and 00003 (blue), Geometry/number_card 00001–00009
+    (`catalog build` + `lowres` + the new `catalog annotate`; +240 MB, most of it the cards'
+    full-resolution decals). `annotate` adds three things to info.json:
+    - the articulation joints in the asset frame. Button: prismatic, axis +z, anchor (0, 0, 30.7 mm),
+      limits −5.04…+5.0 mm, drive target +6 mm (the spring holds the cap at its upper limit). The cap
+      bbox spans 12.7–35.7 mm at q = 0, so its top sits at 40.7 mm at rest.
+    - the metadata's functional frames (`press` on E_button_01_13).
+    - category attributes: number_card digit = asset index. I checked this on all nine decal textures.
+  - Checker: press button0 `digit(num0)` times and button1 `digit(num1)` times; the blue button2
+    confirms each. A press means the joint goes below ratio 0.5 (cap ≥ 5 mm down from rest), a release
+    above 0.9. So perception owes the two digits and the three press points.
+  - Layout: every label is config-pinned. The cards use the fixed-pose path (z = table + 4 cm, tilted by
+    qpos); simlab's settled records confirm z 0.805 and the qpos orientation. Slot labels now use that
+    shape, and a slot with 2–12 candidates gets a per-candidate identity check: silhouette (when the
+    geometry differs) + texture NCC + colour, with the runner-up and its margin kept as `alternative`.
+    Articulation records carry `_perception.joints` in the world: axis, limits, rest q, and the press
+    point (cap top centre at rest).
+  - Dev G1 (10 simlab layouts, frame 0): buttons 30/30 within 10 mm (xy median 0.6 mm), card digits 20/20
+    correct, refine() at the button0 hover 10/10 within 5 mm (median 0.2 mm). Digits need GL (texture
+    NCC); on the seed-0 L9 practice frame the runner-up digits trail by 0.043–0.048, so the record asks for a
+    review look.
+- D0 regression check of everything above (6 tasks × 25 layouts, frame 0, per-object within tolerance vs
+  the reference runs of the same frames): 0.802 → 0.805 (build_tower 0.820 → 0.825, bottles 0.808 → 0.816,
+  the rest unchanged); 2 objects gained, 0 lost. The first version of the swap lost 7 build_tower blocks;
+  hence the guards.
+- Extension table v2 (current code, simlab's 10 dev layouts per task, frame 0; refine on frames 1–2):
+
+| task | class | n | within tol | xy med / p90 (mm) | note |
+|---|---|---|---|---|---|
+| press_by_number | SpringButton | 30 | 1.00 | 0.6 / 1.6 | refine at the button hover 10/10 ≤ 5 mm |
+| | number_card | 20 | 1.00 | 1.2 / 1.6 | digit 20/20 |
+| make_kong | mahjong | 220 | 1.00 | 0.3 / 9.0 | glyph identity not needed (id 0.02) |
+| fill_pen_holder | oil_pen / pen / holder | 20 / 20 / 10 | 1.00 / 0.95 / 1.00 | 2.5 / 2.9 / 1.2 | pen 00000 rests rolled 26° about its own axis (yaw error 1–3°) |
+| organize_table | drawer / monitor / keyboard | 10 each | 1.00 / 1.00 / 0.80 | 8.0 / 7.5 / 2.2 | were 0/10 |
+| | mousemat / cube_cushion / frame | 10 each | 1.00 | 1–7 | |
+| | mouse / garage / alarm | 10 each | 0.70 / 0.30 / 0.10 | | under the home grippers / wrong figurine: look-macro cases |
+| store_tools_in_toolbox | toolbox | 10 | 1.00 | 2.7 / 3.1 | was 0.00 (90° off) |
+| | hammer / wrench / pliers / tape | 10 each | 0.90 / 0.90 / 1.00 / 1.00 | 2–6 | swaps fixed |
+
+  insert_key, plug_in_charger, cover_blocks, swap_T, align_blocks, general_pickup and
+  stack_blocks_by_language are still waiting for simlab's renders; simlab paused that queue for the
+  skills-3 layouts. `ext_pipeline2.sh` picks each task up when it lands.
+
+## J1: our perceiver behind robot-harness's strict server (robot-harness issue #3)
+- `dojo/perception/j1_adapter.py` exposes `perceive(frames, calib, flange, grip_cmd, instruction,
+  want=None, **kw)` and `held_look(...)`. The caller needs only the stdlib and numpy. A persistent worker in
+  our own venv does the work, and arrays travel as (dtype, shape, bytes) pickles.
+  - The caller's calibration drives the cameras (`estimate(cams=...)`).
+  - The robot self-mask uses measured joints when given, else IK on the measured flange (0.0 mm on the
+    practice frames).
+  - The task is inferred from the instruction.
+  - `size` is the resting-frame extent.
+  - Geometry footprints come back as `regions` and look_plan as `needs_look`.
+  - Free-text wants are matched to labels with colour words taken from the catalogue mean colour (the block
+    captions say "smartwatch").
+- Installed on isr-lab under `~/data2/ilia/j1/`, pinned to 868fc4a:
+  - `controlr-j1/` (git archive + COMMIT), with its venv (py3.11, 404 MB)
+  - `catalog/` (the four tasks' assets, 42 MB), `bg/`, `color_calib.json`
+  - `J1_PERCEIVER=dojo.perception.j1_adapter:perceive`, `J1_PERCEIVER_PATH=~/data2/ilia/j1/controlr-j1`
+- The CPU path (`J1_GL=cpu`) is bit-identical between compute3 and isr-lab, but it cannot read card digits
+  (texture compare needs GL) and has not been validated. The GL path needs the GPU, so on isr-lab it runs
+  only inside a locked window.
+- Dry run on their seed-0 layout-9 practice observations (step 0 + calib0.json only), with GL on compute3:
+  - stack_blocks, 3.0 s per call
+  - push_T, 1.2 s
+  - press_by_number, 7.2 s: digits 5 and 2, which matches the image
+  - swap_T, 0.9 s
+- `held_look` looks where the fingertips would be if the jaws had closed on nothing (FK at gripper 0). An
+  empty grasp shows dark grey pads there; a real one shows the object. On their 7 operator-answered grasps
+  (cube ×4, red and blue T, cup) it said held 7/7, ~10 ms each. Negatives are untested (no such frames). A
+  black object would read as empty, so it is flagged `dark_risk`.
+
+## general_pickup (agent-layer episodes: wrong target, 157 s refine)
+- general_pickup's description.json holds only `{"description": "yellow ice axe"}`, so the catalogue had
+  no names for any of the 85 candidates and the instruction restriction failed.
+  - `annotate` now stores the description and the full caption lists.
+  - `restrict_by_instruction` ranks candidates: an exact description match keeps only that asset (all 85
+    map back to themselves), else the top 4 by word coverage. The ranking goes to
+    `_perception.target_ranking`.
+- Speed:
+  - restrict_by_instruction used to load all 85 meshes per call through a 48-entry LRU; it now reads
+    info.json only.
+  - `catalog precompute` writes `sil.npz` + `shape_cache.json` per asset (all 288 assets, +29 MB). Cold
+    load for the 85 drops from 33 s to 2.4 s, with outputs bit-identical.
+  - `refine_identity` screens more than 6 candidates with a short fit and fully refines the best 6.
