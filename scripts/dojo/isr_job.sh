@@ -84,4 +84,40 @@ clog "START $NAME (pid $$, gpu.lock held, ETA ${ETA} min)"
 taskset -c "${ISR_CPUS:-0-11}" nice -n 10 timeout "${ISR_MAX_S:-5400}" "$@" &
 CHILD=$!
 echo "$CHILD" > "$RUN/$NAME.pid"
+# load watchdog (lead's rule for isr-lab): every ISR_WD_POLL_S (3 s), the 1-min load and the CPU% of OUR job's process
+# tree; either above its limit (ISR_LOAD_MAX 12, ISR_CPU_MAX 1200) for more than ISR_WD_HOLD_S (30 s) -> TERM then
+# KILL every descendant of the job that carries DOJO_ILIA=1, logged in $RUN/$NAME.watchdog (rc of the job: 143/137)
+tree() {   # descendants of $1 (pids), from one ps snapshot
+  ps -eo pid=,ppid= | awk -v r="$1" '{p[$1]=$2} END {n=1; s[r]=1; while (n) {n=0; for (k in p) if (!(k in s) && (p[k] in s)) {s[k]=1; n=1}} for (k in s) if (k!=r) print k}'
+}
+watchdog() {
+  local over=0 t0 load cpu
+  while kill -0 "$CHILD" 2>/dev/null; do
+    load=$(cut -d' ' -f1 /proc/loadavg)
+    cpu=$(ps -o pcpu= -p "$CHILD" $(tree "$CHILD") 2>/dev/null | awk '{s+=$1} END {printf "%d", s}')
+    if awk -v l="$load" -v c="$cpu" -v L="${ISR_LOAD_MAX:-12}" -v C="${ISR_CPU_MAX:-1200}" 'BEGIN {exit !(l > L || c > C)}'; then
+      (( over == 0 )) && t0=$(date +%s)
+      over=1
+      if (( $(date +%s) - t0 > ${ISR_WD_HOLD_S:-30} )); then
+        : > "$RUN/$NAME.wdstop"                      # the main shell waits for this stop sequence to finish
+        echo "$(date -u +%FT%TZ) load $load cpu% $cpu over the limit > ${ISR_WD_HOLD_S:-30} s: stopping our tree" >> "$RUN/$NAME.watchdog"
+        clog "WATCHDOG $NAME: load $load / cpu% $cpu over the limit for > ${ISR_WD_HOLD_S:-30} s, our process tree stopped"
+        local pids; pids=$(tree "$CHILD")
+        for q in $pids; do grep -qz '^DOJO_ILIA=1$' "/proc/$q/environ" 2>/dev/null && kill -TERM "$q" 2>/dev/null; done
+        kill -TERM "$CHILD" 2>/dev/null; sleep 10
+        for q in $pids; do [[ -d /proc/$q ]] && grep -qz '^DOJO_ILIA=1$' "/proc/$q/environ" 2>/dev/null && kill -KILL "$q" 2>/dev/null; done
+        rm -f "$RUN/$NAME.wdstop"
+        return
+      fi
+    else
+      over=0
+    fi
+    sleep "${ISR_WD_POLL_S:-3}"
+  done
+}
+watchdog &
+WD=$!
 wait "$CHILD"
+rc=$?
+if [[ -e "$RUN/$NAME.wdstop" ]]; then wait "$WD"; else kill "$WD" 2>/dev/null; fi
+exit "$rc"

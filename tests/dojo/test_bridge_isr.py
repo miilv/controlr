@@ -264,3 +264,14 @@ def test_isr_job_preflight_refuses_without_or_against_the_pin(tmp_path):
     r = subprocess.run(["bash", str(j), "t1", "5", "true"], env=env, capture_output=True, text=True)
     assert r.returncode == 78
     assert not (tmp_path / "C.md").exists() or "START t1" not in (tmp_path / "C.md").read_text()
+
+
+def test_isr_job_watchdog_stops_a_runaway_tree(tmp_path):
+    j = _fake_coord(tmp_path)
+    env = dict(os.environ, ISR_YIELD_S="0", ISR_SKIP_PREFLIGHT="1", ISR_CPU_MAX="-1", ISR_WD_HOLD_S="1",
+               ISR_WD_POLL_S="0.5", DOJO_ILIA="1")
+    r = subprocess.run(["bash", str(j), "wd", "5", "bash", "-c", "sleep 60 & wait"], env=env, capture_output=True,
+                       text=True, timeout=40)
+    assert r.returncode != 0
+    assert "over the limit" in (tmp_path / "run" / "wd.watchdog").read_text()
+    assert "WATCHDOG wd" in (tmp_path / "C.md").read_text() and "DONE wd" in (tmp_path / "C.md").read_text()
