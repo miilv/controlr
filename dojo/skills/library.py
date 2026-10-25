@@ -1246,7 +1246,7 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
         sk.log(f"[slots] {lab}: {len(tg)} slot poses")
         # the objects already in their slots are ignored for the place (their boxes overlap the next slot's)
         r = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03,
-                           ignore=(container, *done), place_kw={"pre_h": 0.04, "release_gap": 0.004})
+                           ignore=(container, *done), place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
         (done if r.ok else failed).append(lab)
         if r.status in ("step_budget", "ended"):
             break

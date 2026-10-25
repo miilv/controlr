@@ -469,7 +469,7 @@ class Skills:
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
-                   seat_tol: float = 0.004):
+                   seat_tol: float = 0.004, drop_ok: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -497,7 +497,7 @@ class Skills:
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
-                       servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol))
+                       servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok))
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -539,7 +539,7 @@ class Skills:
     def _place_tail(self, arm, q_pre, T_obj, h: "Held", release_gap, retreat, ignore, descend_rad, open_g, settle,
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
-                    seat_tol: float = 0.004) -> ArmPlan | str:
+                    seat_tol: float = 0.004, drop_ok: bool = False) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
@@ -635,6 +635,16 @@ class Skills:
                 else:
                     self.held[pp.arm] = h2
                     note_rm = f"in-hand shift {shift*1000:.1f} mm, re-planned"
+                if isinstance(tail, str) and (pp.tail_kw or {}).get("drop_ok"):
+                    # a tolerant place (a tool anywhere near its slot scores): the object hangs too low in the hand
+                    # for the descent; let go here, over the target (twin: a hammer held 13 mm loose)
+                    up = self.kin.tcp(pp.arm, self.ex.q[pp.arm]).copy()
+                    up[2, 3] += 0.04
+                    mv = self.motion.line(pp.arm, self.ex.q[pp.arm], up, MEDIUM, "drop_retreat", gripper=OPEN, check=False)
+                    tail = ArmPlan(pp.arm, self.ex.q[pp.arm].copy(), CLOSED).grip(OPEN, OPEN_STEPS, "drop").hold(2)
+                    if mv.segments:
+                        tail.move(mv, "retreat")
+                    note_rm += "; dropped over the target (descent blocked)"
                 if isinstance(tail, str):
                     return SkillResult(False, "place", "collision", self.ex.steps_used, pp.arm, note=tail)
                 c2 = tail.compile()[0]
