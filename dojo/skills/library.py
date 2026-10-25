@@ -29,7 +29,7 @@ from dojo.skills.targets import current_R, half_height, level_R, on_top, rest_po
 from dojo.skills.geometry import rot_z
 from dojo.skills.executor import ArmPlan as _ArmPlan  # noqa: F401
 from dojo.skills.stacking import plan_stack
-from dojo.skills.skills import CLOSED, OPEN, PLACE_REACH, Job, PickPlan, PlacePlan, SkillResult, Skills
+from dojo.skills.skills import CLOSED, OPEN, PLACE_REACH, Job, PickPlan, PlacePlan, SkillResult, Skills, wrist_safe
 from dojo.skills.world import TABLE_X, TABLE_Y
 
 # ============================================================================ stack_objects
@@ -739,7 +739,7 @@ def _take_options(sk: Skills, label: str, T_H, g_arm: str, q_give, g_hold: float
                     if float(np.linalg.norm(T_tp[:2, 3] - sk.kin.base(t_arm)[:2, 3])) > PLACE_REACH:
                         continue
                     rp = sk.kin.ik(t_arm, T_tp, sk.world.home_q[t_arm], n_random=0)
-                    if not rp.ok:
+                    if not rp.ok or not wrist_safe(rp.q):
                         continue
                     ok, _ = sk.coll.check(t_arm, rp.q, CLOSED, ignore=ign, held=box_t,
                                           grip_only=tuple((place_kw or {}).get("grip_only", ())))

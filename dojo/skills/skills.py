@@ -43,6 +43,13 @@ LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is 
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
 
+def wrist_safe(q) -> bool:
+    """Away from the wrist's limits (twin: a place with j4 1.7 and j6 at its 3.14 stop stalled 10 mm above the
+    outlet while the command went 30 mm lower; the same place with a 25-deg tilted grasp went in, 4/4)."""
+    q = np.asarray(q, float)
+    return bool(abs(float(q[3])) <= 1.6 and abs(float(q[5])) <= 3.0)
+
+
 def close_steps(open_gap: float, width: float) -> int:
     """Env steps for the pads to travel from ``open_gap`` to the object (+1 to build the squeeze)."""
     return max(2, math.ceil(max(0.0, open_gap - width) / 2 / FINGER_SPEED) + 1)
@@ -823,7 +830,7 @@ class Skills:
                     if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > PLACE_REACH:
                         continue
                     r2 = self.kin.ik(a, T_tcp, w.home_q[a], n_random=0)
-                    if not r2.ok:
+                    if not r2.ok or not wrist_safe(r2.q):
                         continue
                     ok, _ = self.coll.check(a, r2.q, CLOSED, ignore=ign, held=box,
                                             grip_only=tuple(place_kw.get("grip_only", ())))
