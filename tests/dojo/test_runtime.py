@@ -1709,3 +1709,23 @@ def test_twin_is_started_for_the_scene_the_policy_chose():
     pol._twin_factory = lambda scene: started.append(scene) or FakeTwinClient(task=scene)
     assert pol.twin("cover_blocks").info()["task"] == "cover_blocks" and started == ["cover_blocks"]
     assert pol.twin("build_tower").info()["task"] == "cover_blocks" and started == ["cover_blocks"]   # once
+
+
+def test_refine_suggestion_onto_a_neighbour_is_not_followed():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    other = next(o for o in env.objects if o["label"] == "block_2")
+
+    class Suggest:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            return {o["label"]: {"ok": False, "pos": list(other["pos"]), "quat": [1, 0, 0, 0], "iou": 0.9,
+                                 "shift_mm": 90.0, "suggest_xy": list(other["pos"][:2]), "suggest_shift_mm": 90.0}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=Suggest())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    assert pol._refine_hook(prov, None, "block_1", "left", "pick") is None
+    assert "neighbour" in pol.report["events"][-1]["why"]

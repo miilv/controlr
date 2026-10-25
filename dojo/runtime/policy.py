@@ -605,8 +605,16 @@ class RuntimePolicy:
         if not r.get("ok"):
             # perception found the object away from the prior but could not fit it well from this hover (it sits
             # off-centre in the wrist view): ask skills to hover over that spot and refine once more
+            def on_neighbour(xy) -> list:
+                return [x.label for x in others
+                        if float(np.linalg.norm(np.asarray(xy, float)[:2] - x.center_w[:2])) < self.cfg.neighbour_mm / 1000]
             if r.get("suggest_xy") is not None and (r.get("suggest_shift_mm") or 0) > self.cfg.rehover_min_shift_mm:
-                # perception's in-frame search: "the object is probably that way" (a direction, not a pose)
+                # perception's in-frame search: "the object is probably that way" (a direction, not a pose). A spot on
+                # another known object is that object (s0L9 tower on 5.1: a 99 mm suggestion onto a placed block)
+                near = on_neighbour(r["suggest_xy"])
+                if near:
+                    ev["why"] = (ev.get("why") or "") + f" (suggestion on a neighbour {near}: no re-hover)"
+                    return None
                 p = o.pos.copy()
                 p[:2] = np.asarray(r["suggest_xy"], float)[:2]
                 ev["rehover"] = "suggest"
@@ -615,7 +623,7 @@ class RuntimePolicy:
                     hint["rehover_dz"] = self.cfg.rehover_place_dz
                 return hint
             if (r.get("pos") is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
-                    and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm):
+                    and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm and not on_neighbour(r["pos"])):
                 ev["rehover"] = True
                 hint = {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float))}
                 if kind == "place":
