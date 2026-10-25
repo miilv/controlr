@@ -38,6 +38,7 @@ PLACE_REACH = 0.60            # m, TCP from the arm's base in the plane: farther
                               # a relay (twin: places 0.66-0.67 m out, the arm across the table, stalled 30 mm above
                               # the target with the commanded pose 33 mm lower, plug 7/10; a figurine's stand is 0.57)
 TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0.02 cost 52 of insert_key's 300 steps)
+SCREEN_IK_BUDGET = 2500       # place IKs per arm in a transfer screen (a figurine x 81 stand poses: 9k IKs, 3 min)
 UNEVEN_CARRY = 0.09           # rad/step, carries of uneven objects (tools, figurines, pens) instead of CARRY 0.14
 LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is carried on rather than redone
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
@@ -816,7 +817,12 @@ class Skills:
                     cands += G.slice_grasps(obj, self.kin, a)
             n_g = n_p = 0
             min_down = math.cos(math.radians(max_pick_tilt))
+            n_ik = 0
+            cands = sorted(cands, key=lambda g: g.score)            # the IK budget goes to the best grasps first
             for g in cands:
+                if n_ik > SCREEN_IK_BUDGET:
+                    notes.append(f"{a}: screen stopped after {n_ik} place IKs")
+                    break
                 if -float(g.T[2, 0]) < min_down:
                     continue
                 r = self.kin.ik(a, g.T, q0, n_random=0)
@@ -832,6 +838,7 @@ class Skills:
                     T_tcp = T_obj @ inv_T(T_tcp_obj)
                     if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > PLACE_REACH:
                         continue
+                    n_ik += 1
                     r2 = self.kin.ik(a, T_tcp, w.home_q[a], n_random=0)
                     if not r2.ok or not wrist_safe(r2.q):
                         continue
