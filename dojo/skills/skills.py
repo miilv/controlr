@@ -271,11 +271,63 @@ class Skills:
             return self._record(pp)
         return self._record(self.run_pick(pp))
 
-    def _refine(self, label, arm: str, kind: str) -> None:
+    def _refine(self, label, arm: str, kind: str):
+        """Call the refine hook, then refresh. Returns a re-hover hint (pos, quat) if the hook gave one:
+        ``{"rehover": (pos, quat)}`` as return value or ``world.notes["rehover"]``."""
         if self.refine is None:
-            return
-        self.refine(self, label, arm, kind)
+            return None
+        out = self.refine(self, label, arm, kind)
+        hint = out.get("rehover") if isinstance(out, dict) else None
+        if hint is None:
+            hint = self.world.notes.pop("rehover", None)
+        else:
+            self.world.notes.pop("rehover", None)
         self.refresh()
+        return hint
+
+    def _refine_hover(self, label, arm: str, kind: str, rehover=None) -> None:
+        """Refine at the hover; if perception could not fit but saw the object elsewhere (hint), move
+        the hover over the hinted pose and refine once more (max one retry). ``rehover()`` moves the arm
+        (plans from the world, where the hint has been written) and returns whether it moved."""
+        hint = self._refine(label, arm, kind)
+        if hint is None or rehover is None or label is None or label not in self.world.objects:
+            return
+        o = self.world.obj(label)
+        o.pos, o.quat = np.asarray(hint[0], float).copy(), np.asarray(hint[1], float).copy()
+        self.log(f"[refine] {kind} {label}: re-hover over the hinted pose {np.round(o.pos, 3).tolist()}")
+        if rehover():
+            self._refine(label, arm, kind)          # second and last look; a further hint is ignored
+        else:
+            self.refresh()
+
+    def _pick_rehover(self, label: str, arm: str, method: str, plan_kw: dict):
+        def f() -> bool:
+            kw = {k: v for k, v in plan_kw.items() if k not in ("keep", "q_start", "return_all")}
+            ph = self.plan_pick(label, arm, method, q_start={arm: self.ex.q[arm]}, keep=1, **kw)
+            if not isinstance(ph, PickPlan):
+                return False
+            hov = ArmPlan(arm, self.ex.q[arm].copy(), self.ex.g[arm])
+            hov.ops = list(ph.plan.ops[:2])
+            self.ex.run({arm: hov}, name=f"pick {label} re-hover")
+            return True
+        return f
+
+    def _place_rehover(self, arm: str, retarget):
+        def f() -> bool:
+            h = self.held[arm]
+            if h is None or retarget is None:
+                return False
+            T = retarget() @ inv_T(h.T_tcp_obj)
+            cur = self.kin.tcp(arm, self.ex.q[arm])
+            T[2, 3] = max(cur[2, 3], T[2, 3] + 0.03)
+            mv = self.motion.to_pose(arm, self.ex.q[arm], T, CARRY, "place_rehover", gripper=CLOSED, held=h.box,
+                                     ignore=(h.label,), ease=3)
+            if not mv.ok:
+                return False
+            self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), self.ex.g[arm]).move(mv).hold(1)},
+                        name="place re-hover")
+            return True
+        return f
 
     def execute_pick(self, pp: PickPlan, method: str = "auto", **plan_kw) -> PickPlan:
         """Run a pick plan. With a refine hook: hover (approach) first, refine the object's pose from
@@ -287,7 +339,7 @@ class Skills:
         hover = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0)
         hover.ops = [op for op in pp.plan.ops[:2]]            # open-for-grasp + approach to the pre-grasp
         self.parallel([hover], name=f"pick {pp.label} hover")
-        self._refine(pp.label, pp.arm, "pick")
+        self._refine_hover(pp.label, pp.arm, "pick", self._pick_rehover(pp.label, pp.arm, method, plan_kw))
         pp2 = self.plan_pick(pp.label, pp.arm, method, q_start={pp.arm: self.ex.q[pp.arm]}, **plan_kw)
         if not isinstance(pp2, PickPlan):
             pp2 = pp                                          # keep the original descent
@@ -464,7 +516,7 @@ class Skills:
                     lists[other_arm] = other[:len(c1)]
                 self.ex.run_lists(lists, name=f"place {pp.label} approach")
                 rest_other = other[len(c1):]
-                self._refine(ref_label, pp.arm, "place")
+                self._refine_hover(ref_label, pp.arm, "place", self._place_rehover(pp.arm, retarget))
                 w = self.refresh()
                 if retarget is not None and self.refine is not None:
                     pp.T_obj_target = retarget()                   # the support was re-measured
@@ -662,7 +714,7 @@ class Skills:
             except (BudgetExceeded, EpisodeEnded) as e:
                 return SkillResult(False, "pick", "step_budget" if isinstance(e, BudgetExceeded) else "ended", 0,
                                    c0.arm, note=str(e))
-            self._refine(job.label, c0.arm, "pick")
+            self._refine_hover(job.label, c0.arm, "pick", self._pick_rehover(job.label, c0.arm, job.method, job.pick_kw))
             tails = self.plan_pick(job.label, c0.arm, job.method, q_start={c0.arm: self.ex.q[c0.arm]},
                                    return_all=True, keep=4, **job.pick_kw)
             if isinstance(tails, list) and tails:
@@ -703,7 +755,7 @@ class Skills:
                     return SkillResult(False, "place", "step_budget" if isinstance(e, BudgetExceeded) else "ended",
                                        0, job.arm, note=str(e)), None
                 ref = next((l for l in ign if l in self.world.objects), None)
-                self._refine(ref, job.arm, "place")
+                self._refine_hover(ref, job.arm, "place", self._place_rehover(job.arm, lambda: job.target(self)))
                 T = job.target(self)                 # from the refreshed (refined) world
         variants = []
         for kw in ({}, {"pre_h": 0.04, "descend_rad": 0.03}, {"release_gap": 0.006, "settle": 3}):
