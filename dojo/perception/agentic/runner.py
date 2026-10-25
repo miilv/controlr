@@ -75,7 +75,8 @@ def run_agent(chat, model: str, system: str, first_user: list[dict], tools, *, m
                     stats["stop"] = "llm_error"
                     break
                 continue
-            messages.append({"role": "assistant", "content": r.text})
+            # never an empty assistant turn: Anthropic's endpoint rejects one (omniroute tolerated it)
+            messages.append({"role": "assistant", "content": r.text if r.text.strip() else "(empty reply)"})
             d = parse_reply(r.text)
             last = turn == max_turns - 2
             if d is None:
