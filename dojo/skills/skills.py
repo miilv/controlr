@@ -469,7 +469,7 @@ class Skills:
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
-                   seat_tol: float = 0.004, drop_ok: bool = False):
+                   seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -497,7 +497,8 @@ class Skills:
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
-                       servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok))
+                       servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok),
+                       probe=bool(probe))
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -539,7 +540,7 @@ class Skills:
     def _place_tail(self, arm, q_pre, T_obj, h: "Held", release_gap, retreat, ignore, descend_rad, open_g, settle,
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
-                    seat_tol: float = 0.004, drop_ok: bool = False) -> ArmPlan | str:
+                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
@@ -699,15 +700,18 @@ class Skills:
             hover = max(0.004, self.world.obj(rec).top_z - float(V[:, 2].min()) + 0.003)
 
         def go(T_goal, step_rad, name, settle=2):
-            w = self.refresh()
-            ob = w.obj(label)
-            T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ ob.T
-            T_tcp = self._sag(arm, w) @ T_goal @ inv_T(T_rel)
-            mv = self.motion.line(arm, self.ex.q[arm], T_tcp, step_rad, name, gripper=CLOSED, check=False,
-                                  max_step_deg=4.0)
-            if mv.segments:
-                self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(mv, name).hold(settle, "settle")},
-                            name=f"place {label} {name}")
+            for _ in range(3):              # a long line that stops short (IK) is resumed from where it got to
+                w = self.refresh()
+                ob = w.obj(label)
+                T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ ob.T
+                T_tcp = self._sag(arm, w) @ T_goal @ inv_T(T_rel)
+                mv = self.motion.line(arm, self.ex.q[arm], T_tcp, step_rad, name, gripper=CLOSED, check=False,
+                                      max_step_deg=4.0, max_step_m=0.01)
+                if mv.segments:
+                    self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(mv, name).hold(settle, "settle")},
+                                name=f"place {label} {name}")
+                if mv.ok or not mv.segments or len(mv.segments[-1].q) < 2:
+                    break
             return self.refresh().obj(label)
 
         def above(T, dz):
@@ -719,7 +723,7 @@ class Skills:
         err = float(ob.pos[2] - T_obj[2, 3])
         note = f"servo: hover {hover*1000:.0f} mm, after the descent {err*1000:+.1f} mm"
         probes = [(r * math.cos(2 * math.pi * k / n_dir), r * math.sin(2 * math.pi * k / n_dir))
-                  for r in radii for k in range(n_dir)]
+                  for r in radii for k in range(n_dir)] if kw.get("probe", True) else []
         n = 0
         while err > seat_tol and probes and self.ex.steps_left - self.ex.reserve > min_left:
             dx, dy = probes.pop(0)
