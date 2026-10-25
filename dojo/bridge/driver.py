@@ -144,6 +144,7 @@ def main(argv=None) -> None:
     cfg = RuntimeConfig(**{**cfg_d, "mode": "perception", "verify": verify})
     out_dir = Path(a.out) / a.server_id
     out_dir.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("DOJO_AGENT_LOG", str(out_dir / "agent"))      # AgentPolicy's transcript / calls / cells
     calls = (out_dir / "calls.jsonl").open("a")
     client = RobotServerClient(a.server_id, sock=a.sock, bench=a.bench,
                                log=lambda r: calls.write(json.dumps(r) + "\n"))
