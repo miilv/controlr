@@ -113,3 +113,20 @@ def test_planner_still_routes_insert_and_plug():
     p = plan("Pick up the key, hand it over to the other hand, insert it into the keyhole, then turn it.",
              _world([key, slot]))
     assert p.skill == "insert_into" and p.args["obj"] == "key" and p.args["turn_deg"] == -60.0
+
+
+def test_plan_stack_ordered_keeps_the_list_order():
+    """ordered=True: objects[0] is the base (it stays), the rest go on in list order."""
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.skills import GTProvider, Skills
+    from dojo.skills.stacking import plan_stack
+    from dojo.skills.library import _on_top_of
+    rows = [{"label": l, "type": "Rigid", "category": "cube", "category_idx": 0, "pos": p, "quat": [1, 0, 0, 0],
+             "half": [0.02, 0.02, 0.02], "center": [0, 0, 0]}
+            for l, p in (("red", [0.15, -0.2, 0.785]), ("green", [-0.1, -0.15, 0.785]), ("blue", [0.05, -0.25, 0.785]))]
+    env = KinematicEnv(rows, step_lim=500)
+    sk = Skills(env, GTProvider(env, None))
+    jobs = plan_stack(sk, ["green", "blue", "red"], 0.9, _on_top_of(4), yaw_sym=4, ordered=True)
+    assert jobs
+    placed = [j.label for j in jobs]
+    assert placed[-2:] == ["blue", "red"] and "green" not in placed[-2:]
