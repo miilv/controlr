@@ -108,6 +108,18 @@ class CellLimits:
     max_contacts: int = 4             # contact actions per cell before a checkpoint
 
 
+def _alternatives(alts) -> list[dict]:
+    """IK's reachable alternatives as the model can use them: what changes + the grasp point it would reach."""
+    out = []
+    for a in alts[:3]:
+        T = np.asarray(a.get("T")) if a.get("T") is not None else None
+        d = {"change": str(a.get("note", ""))}
+        if T is not None and T.shape == (4, 4):
+            d["xyz"] = tuple(round(float(v), 3) for v in T[:3, 3])
+        out.append(d)
+    return out
+
+
 class Robo:
     def __init__(self, ctx, ids: SceneIds, objects_root=None, limits: CellLimits | None = None, auto_frames: bool = True,
                  frame_camera: str = "cam_head"):
@@ -146,7 +158,8 @@ class Robo:
 
     def _done(self, name: str, r: Result, contact: bool) -> Result:
         self.n_actions += 1
-        self.log.append(f"{name}: {r!r}")
+        line = f"{name}: {r!r}"
+        self.log.append(line if len(line) <= 500 else line[:500] + " ...")
         if contact:
             self._cell_contacts += 1
             if self.auto_frames:
@@ -412,7 +425,7 @@ class Robo:
                   if path == "line" else sk.motion.to_pose(arm, q0, T, FAST, "move_to", gripper=g, **kw))
             if not mv.ok:
                 return Result(False, mv.status, mv.note[:200], arm=arm,
-                              extra={"alternatives": mv.alternatives[:3]} if mv.alternatives else {})
+                              extra={"alternatives": _alternatives(mv.alternatives)} if mv.alternatives else {})
             sk.ex.run({arm: ArmPlan(arm, q0, g).move(mv, "move_to")}, name="move_to")
             return Result(True, "ok", arm=arm, extra={"dist_err_mm": round(mv.pos_err * 1000, 1)})
         return self._wrap("move_to", go, contact=False, arm=arm)
