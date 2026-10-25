@@ -2128,6 +2128,9 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
     hooks_by = {h[0]: h for h in hooks}
+    # the highest hooks first (twin, 6 layouts: the top hooks took 8/8 mugs, the low ones under them 4/10: the carry to
+    # a low hook passes under the upper arms, which the box collision model does not see)
+    hooks = sorted(hooks, key=lambda h: -float(h[1][2, 3]))
     used, done, failed, retried = set(), [], [], set()
     pool = [l for l in objects if l in w.objects]
     for _round in range(2 * len(pool)):
@@ -2239,7 +2242,7 @@ def G_hang(sk: Skills, o, arm: str) -> list:
     if held_box(o, np.eye(4)).points is not None:          # irregular (a headset): its real slices
         return G.box_grasps(o, sk.kin, arm) + G.slice_grasps(o, sk.kin, arm) + G.antipodal_grasps(o, sk.kin, arm)
     # deep wall pinches only (twin: an 8 mm deep pinch slid 46 mm in the hand while the mug turned 90 deg)
-    return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032))
+    return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032), max_width=0.01)
 
 
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
