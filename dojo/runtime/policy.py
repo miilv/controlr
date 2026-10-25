@@ -62,7 +62,7 @@ class RuntimeConfig:
     final_hold: int = 3
     reserve: int = 30                   # env steps kept for finish()
     refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
-    refine_max_shift_m: float = 0.03
+    refine_max_shift_m: float = 0.03    # accept a refined pose at most this far from the prior (perception searches 7 cm)
     refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
@@ -82,8 +82,9 @@ class RuntimeConfig:
 class _Checker:
     """Resync adapter: the provider's ``checker`` over the perception service."""
 
-    def __init__(self, pc, vocabulary: str, fold: int):
+    def __init__(self, pc, vocabulary: str, fold: int, max_shift_m: float = 0.03):
         self.pc, self.vocabulary, self.fold = pc, vocabulary, fold
+        self.max_shift_m = max_shift_m
 
     def check(self, obs: dict, objects) -> dict:
         objs = [{"label": o.label, "key": o.asset.key, "pos": [float(v) for v in o.pos],
@@ -96,7 +97,7 @@ class _Checker:
     def refine(self, obs: dict, obj, others, arm: str, held=None) -> dict:
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [obj] + list(others)]
-        return (self.pc.refine(obs, objs, self.fold, 0.03, arm=arm, held=held) or {}).get(obj.label)
+        return (self.pc.refine(obs, objs, self.fold, self.max_shift_m, arm=arm, held=held) or {}).get(obj.label)
 
 
 class RuntimePolicy:
@@ -216,7 +217,8 @@ class RuntimePolicy:
         scene = vocab.name if vocab else ""
         kin = X5Kin()
         events = self.report["events"]
-        checker = _Checker(self.perception(), scene, self.fold) if cfg.mode == "perception" else None
+        checker = (_Checker(self.perception(), scene, self.fold, cfg.refine_max_shift_m) if cfg.mode == "perception"
+                   else None)
         prov = RuntimeProvider(b, scene, instruction, cfg.mode, self.assets(), kin, gt_source=lambda: self.dev_gt,
                                checker=checker if cfg.resync else None, div_iou=cfg.div_iou, div_prec=cfg.div_prec,
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
