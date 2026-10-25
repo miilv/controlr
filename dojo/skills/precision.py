@@ -814,4 +814,182 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
     return {"ok": True, "stage": "all inserted"}
 
 
-SKILLS = {"strike_in_order": strike_in_order, "insert_each": insert_each}
+# ============================================================================ screw_on
+
+SCREW_PITCH = 0.003           # m per turn, first guess (a 24 mm thread's coarse pitch); re-measured after each sweep
+SCREW_RATE = 0.15             # rad/step of the wrist while turning a nut (twin: 0.08 and 0.15 both went down 2.2 mm per
+                              # 270 deg sweep)
+SCREW_SWEEPS_DEG = (300.0, 270.0, 240.0, 180.0, 120.0)
+SCREW_DEPTH = 0.0105          # m: a nut is turned until its bottom is this far below the bolt's top
+SCREW_MAX_SWEEPS = 8
+
+
+def n_fold(o) -> int:
+    """Rotational symmetry about the vertical of a prism-like part from its footprint: a hexagon's across-corners /
+    across-flats ratio is 1.155 (6), a square's 1.0 (4), else 2."""
+    a, b = sorted(np.asarray(o.asset.extents[:2], float))
+    r = b / max(a, 1e-6)
+    if abs(r - 2 / math.sqrt(3)) < 0.03:
+        return 6
+    if abs(r - 1.0) < 0.03:
+        return 4
+    return 2
+
+
+def _flat_yaw(o) -> float:
+    """World yaw of the axis across a prism's narrower footprint extent (across the flats of a hex nut)."""
+    k = int(np.argmin(o.asset.extents[:2]))
+    ax = o.R[:, k]
+    return math.atan2(float(ax[1]), float(ax[0]))
+
+
+def plan_sweep(sk: Skills, a: str, nut, pitch: float, sign: float):
+    """The longest wrist sweep that turns ``nut`` about its axis by ``sign`` (-1 = clockwise from above) while
+    following the thread down: the pads across a pair of flats (any of the ``n_fold`` turns), TCP at the nut's mid
+    height. Returns (T_grasp, [q per step], sweep rad) or None."""
+    from dojo.skills.geometry import rot_z
+    from dojo.skills.kinematics import down_R
+    nf = n_fold(nut)
+    yaw0 = _flat_yaw(nut)
+    c = nut.center_w
+    best = None
+    for sweep in SCREW_SWEEPS_DEG:
+        th_tot = math.radians(sweep)
+        n = max(2, int(math.ceil(th_tot / SCREW_RATE)))
+        for k in range(nf):
+            psi = yaw0 + 2 * math.pi * k / nf
+            T = T_from(np.array([c[0], c[1], c[2]]), down_R(psi))
+            r = sk.kin.ik(a, T, sk.ex.q[a], n_random=2)
+            if not r.ok:
+                continue
+            q, qs = r.q.copy(), []
+            for j in range(1, n + 1):
+                th = th_tot * j / n
+                Tj = T.copy()
+                Tj[:3, :3] = rot_z(sign * th) @ T[:3, :3]
+                Tj[2, 3] -= pitch * th / (2 * math.pi)
+                rr = sk.kin.solve(a, Tj, q)
+                if not rr.ok or float(np.abs(rr.q - q).max()) > 0.5:
+                    break
+                q = rr.q
+                qs.append(q)
+            if len(qs) == n:
+                cost = float(np.abs(r.q - sk.ex.q[a]).max())
+                if best is None or cost < best[0]:
+                    best = (cost, T, r.q, qs, th_tot)
+        if best is not None:
+            return best[1], best[2], best[3], best[4]
+    return None
+
+
+def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sign: float = -1.0) -> dict:
+    """Screw each movable threaded part onto its fixed partner (``pairs`` = [[nut, bolt], ...]): the nut is put on the
+    bolt's top, upright and on its axis (re-oriented / relayed as needed, ``place_oriented``), let go so it seats on
+    the thread start, then turned down the thread in wrist sweeps (``plan_sweep``: the pads across its flats, the
+    hand following the pitch down, ``SCREW_RATE``), let go and re-gripped between sweeps, until its bottom is
+    ``depth`` below the bolt's top. ``sign`` -1 = clockwise from above (a right-hand thread tightens). The pitch is
+    re-measured from the nut's descent after every sweep. Both grippers are opened after each pair (partial credit
+    per pair)."""
+    from dojo.skills.library import place_oriented
+    from dojo.skills.kinematics import gap_to_grip
+    done, failed = [], []
+    st = sk.refresh().notes.setdefault("screw_on", {"done": []})
+    for nut, bolt in pairs:
+        if nut in st["done"]:
+            continue
+        w = sk.refresh()
+        o, b = w.obj(nut), w.obj(bolt)
+        # 1. on the bolt's top: upright, centred on its axis, bottom 1 mm over the top
+        R = o.R
+        from dojo.skills.targets import level_R
+        Rl = level_R(R)
+        c_b = b.center_w
+        h = float(np.abs(Rl[2, :]) @ (o.asset.extents / 2))
+        p_c = np.array([c_b[0], c_b[1], b.top_z + 0.001 + h])
+        T = T_from(p_c - Rl @ o.asset.center, Rl)
+        pk = {"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 2, "servo": True,
+              "servo_ref": bolt, "seat_tol": 0.02, "probe": False}
+        res = place_oriented(sk, nut, [T], yaw_sym=n_fold(o), tol_xy=0.004, tol_tilt=8.0, tol_z=0.02, ignore=(bolt,),
+                             place_kw=pk, air_handover=False)
+        for a in ARMS:
+            if sk.held[a] is not None:
+                sk._record(sk.regrasp(a))
+        w = sk.refresh()
+        o, b = w.obj(nut), w.obj(bolt)
+        off = float(np.linalg.norm(o.center_w[:2] - b.center_w[:2]))
+        if off > 0.004 or o.bottom_z > b.top_z + 0.004:
+            failed.append(nut)
+            sk.log(f"[screw] {nut} not on {bolt} ({off*1000:.1f} mm off, {res.status}: {res.note[:100]})")
+            if res.status in ("step_budget", "ended"):
+                break
+            continue
+        # 2. sweeps down the thread
+        arm = min(ARMS, key=lambda a_: float(np.linalg.norm(sk.kin.base(a_)[:2, 3] - b.center_w[:2])))
+        other = "right" if arm == "left" else "left"
+        if sk.held[other] is None:
+            try:
+                sk.ex.run({other: sk.plan_home(other)}, name=f"clear {other}")
+            except (BudgetExceeded, EpisodeEnded):
+                pass
+        pitch = SCREW_PITCH
+        n_sw = 0
+        g_open = gap_to_grip(min(G.MAX_GAP, float(np.min(o.asset.extents[:2])) + 0.022))
+        while n_sw < SCREW_MAX_SWEEPS:
+            w = sk.refresh()
+            o, b = w.obj(nut), w.obj(bolt)
+            down = b.top_z - o.bottom_z
+            if down >= depth:
+                break
+            sw = plan_sweep(sk, arm, o, pitch, sign)
+            if sw is None:
+                sk.log(f"[screw] {nut}: no sweep for {arm}")
+                break
+            T, q_g, qs, th = sw
+            T_hi = T.copy()
+            T_hi[2, 3] += 0.008
+            r_hi = sk.kin.ik(arm, T_hi, q_g, n_random=0)
+            go = sk.motion.joint(arm, sk.ex.q[arm], r_hi.q if r_hi.ok else q_g, FAST, "screw_over", gripper=g_open,
+                                 check=False)
+            dn = sk.motion.line(arm, go.q_end, T, 0.05, "screw_down", gripper=g_open, check=False)
+            pl = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(g_open, 2, "open").move(go, "over").move(dn, "down")
+            pl.grip(CLOSED, 4, "close").hold(2, "squeeze")
+            from dojo.skills.motion import Segment
+            pl.move([Segment(np.vstack([dn.q_end if dn.segments else q_g] + qs), SCREW_RATE, "turn")], "turn")
+            T_end = sk.kin.tcp(arm, qs[-1])
+            T_up = T_end.copy()
+            T_up[2, 3] += 0.006
+            up = sk.motion.line(arm, qs[-1], T_up, MEDIUM, "screw_up", gripper=g_open, check=False)
+            pl.grip(g_open, 2, "let_go").move(up, "up")
+            z0 = o.pos[2]
+            try:
+                sk.ex.run({arm: pl}, name=f"screw {nut}")
+            except BudgetExceeded as e:
+                sk._record(SkillResult(False, "screw", "step_budget", 0, arm, note=str(e)))
+                break
+            except EpisodeEnded as e:
+                sk._record(SkillResult(True, "screw", "ended", pl.steps, arm, note=str(e)))
+                return {"ok": True, "stage": "ended"}
+            n_sw += 1
+            o2 = sk.refresh().obj(nut)
+            dz = float(z0 - o2.pos[2])
+            if dz > 0.0003:
+                pitch = float(np.clip(dz * 2 * math.pi / th, 0.0005, 0.006))
+            sk._record(SkillResult(True, "screw", "ok", pl.steps, arm,
+                                   note=f"{nut}: sweep {n_sw} {math.degrees(th):.0f} deg, down {dz*1000:.1f} mm, "
+                                        f"{(b.top_z - o2.bottom_z)*1000:.1f} mm below the top, pitch {pitch*1000:.2f}"))
+        sk.bank()
+        w = sk.refresh()
+        o, b = w.obj(nut), w.obj(bolt)
+        if b.top_z - o.bottom_z >= depth - 0.001:
+            st["done"].append(nut)
+            done.append(nut)
+        else:
+            failed.append(nut)
+        if sk.ex.steps_left - sk.ex.reserve < 40:
+            break
+    if len(done) + len(st["done"]) - len(done) < len(pairs) and failed:
+        return {"ok": False, "stage": "screw_on", "note": f"done {st['done']}, failed {failed}"}
+    return {"ok": len(st["done"]) >= len(pairs), "stage": "screwed", "note": f"done {st['done']}"}
+
+
+SKILLS = {"strike_in_order": strike_in_order, "insert_each": insert_each, "screw_on": screw_on}

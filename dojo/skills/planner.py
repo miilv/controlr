@@ -296,6 +296,29 @@ def plan(instruction: str, world: WorldState) -> Plan:
                 return Plan("place_in_slots", {"objects": movers, "container": c.label},
                             f"{len(movers)} objects into {c.label}'s slots")
 
+    # --- screw / tighten movable threaded parts onto fixed ones, paired by colour when the words say so
+    if re.search(r"\b(tighten|screw|screws|fasten)\b", text):
+        movers = [o for o in objs if o.obj_type == "Rigid" and not o.clutter]
+        fixed = [o for o in objs if o.obj_type != "Rigid" and not o.clutter and o.category != movers[0].category] if movers else []
+        kinds: dict = {}
+        for o in fixed:
+            kinds.setdefault(o.category, []).append(o)
+        partners = max(kinds.values(), key=len) if kinds else []
+        if movers and len(partners) >= len(movers):
+            by_colour = bool(re.search(r"colou?r", text))
+            pairs, free = [], list(partners)
+            for m_ in movers:
+                if by_colour and getattr(m_.asset, "rgb", None) is not None:
+                    pick = min(free, key=lambda f: float(np.linalg.norm(np.asarray(f.asset.rgb if f.asset.rgb is not None
+                                                                                   else [1e3] * 3, float)
+                                                                        - np.asarray(m_.asset.rgb, float))))
+                else:
+                    pick = min(free, key=lambda f: float(np.linalg.norm(f.center_w[:2] - m_.center_w[:2])))
+                free.remove(pick)
+                pairs.append([m_.label, pick.label])
+            return Plan("screw_on", {"pairs": pairs}, f"{len(pairs)} {movers[0].category} onto {partners[0].category}"
+                        + (" by colour" if by_colour else ""))
+
     # --- insert several objects of one kind into a receptacle with as many holes ("insert the three tubes into the rack")
     if "insert" in text:
         words = {_singular(w_) for w_ in re.findall(r"[a-z]+", text)} - {"the", "a", "an", "into", "in", "one", "by"}
