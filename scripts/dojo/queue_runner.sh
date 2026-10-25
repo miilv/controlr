@@ -5,6 +5,8 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 D="${DOJO_DATA:-$HOME/dojo-data}/integ"; Q="$D/queue.txt"; RUNS="$D/runs"
 cd "$HERE"
+# a restarted runner first lets an in-flight job of ours finish (its integ_eval.sh includes the 90 s yield)
+while pgrep -u "$(id -u)" -f "^bash scripts/dojo/integ_eval.sh --out $RUNS/" >/dev/null; do sleep 15; done
 while true; do
   line=$(flock "$Q.lock" bash -c 'head -1 "$1"; sed -i 1d "$1"' _ "$Q")
   [[ -z "$line" ]] && break
