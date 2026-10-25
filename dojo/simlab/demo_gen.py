@@ -180,6 +180,7 @@ class DemoPlanner:
         return False
 
     def grip(self, target: float, steps: int = 100, hold: int = 100) -> None:
+        self.log.append({"name": "close" if target < self.fingers else "open", "steps": steps + hold})
         f0 = self.fingers
         seg = [step_rec(self.q, np.zeros_like(self.q), f0 + (target - f0) * (i + 1) / steps) for i in range(steps)]
         seg += [step_rec(self.q, np.zeros_like(self.q), target)] * hold
@@ -188,6 +189,7 @@ class DemoPlanner:
 
     def home(self) -> None:
         n = max(1, math.ceil(float(np.abs(self.q0 - self.q).max()) / HOME_STEP_RAD))
+        self.log.append({"name": "home", "steps": n})
         path = [self.q + (self.q0 - self.q) * (i + 1) / n for i in range(n)]
         self.segments.append([step_rec(q, np.zeros_like(q), self.fingers) for q in path])
         self.q = self.q0.copy()
@@ -277,14 +279,21 @@ def validate(run, layout: dict, n_substeps: int, margin_env_steps: int = 60) -> 
     aims = [f"aim{i}" for i in range(5)]
     z0 = {o["label"]: float(o["pos"][2]) for o in run.objects_gt() if o.get("label") in aims}
     zmax = dict(z0)
+    rm_ = env.robot_manager
+    sup = rm_.get_robot_by_arm_name(ARM)
+    trace = {"step": [], "fingers": [], **{lab: [] for lab in aims}}    # every 5 env steps (diagnostics)
     for k in range(n):
         if run.step(hold)[0]:
             ended_at = k + 1
             break
         if k % 5 == 0:
+            trace["step"].append(k + 1)
+            trace["fingers"].append(round(float(np.asarray(rm_.get_end_effector_real_val(sup, env_idx_list=[0])[0],
+                                                           float).reshape(-1)[0]), 4))
             for o in run.objects_gt():
                 if o.get("label") in zmax and o["pos"] is not None:
                     zmax[o["label"]] = max(zmax[o["label"]], float(o["pos"][2]))
+                    trace[o["label"]].append(round(float(o["pos"][2]), 3))
     rm = env.reward_manager
     in_b = [float(rm.call_func_parser(rm.is_A_in_B(label_A=f"aim{i}", label_B="basket1"), 0)) for i in range(5)]
     fin = {o["label"]: o["pos"] for o in run.objects_gt() if o.get("label") in aims + ["basket1"]}
@@ -297,6 +306,7 @@ def validate(run, layout: dict, n_substeps: int, margin_env_steps: int = 60) -> 
     unstable = 0 in getattr(env, "unstable_envs", set())
     ok = (not unstable) and all(v >= 0.5 for v in in_b) and max(moved.values(), default=0.0) < 5.0
     return {"ok": bool(ok), "unstable": bool(unstable), "aim_in_basket1": in_b, "t_moved_mm": moved, "aims": final,
+            **({} if ok else {"trace": trace}),
             "env_steps": n if ended_at is None else ended_at, "ended_early": ended_at is not None,
             "support_checked": bool(getattr(env, "support_checked", [False])[0])}
 
@@ -309,6 +319,7 @@ def main(argv=None) -> None:
     ap.add_argument("--ids", nargs="*", type=int, default=None)
     ap.add_argument("--probe", action="store_true", help="print the support arm / planner facts and stop")
     ap.add_argument("--raw", action="store_true", help="use <id>.json instead of the pre-settled <id>.settled.json")
+    ap.add_argument("--tries", type=int, default=ORDER_TRIES, help="orders to try per layout")
     a = ap.parse_args(argv)
     if a.task != TASK:
         raise SystemExit(f"demos are implemented for {TASK} only")
@@ -343,7 +354,7 @@ def main(argv=None) -> None:
                 default=str), flush=True)
             a.probe = False
         attempts = []
-        for k in range(ORDER_TRIES):
+        for k in range(a.tries):
             if k:
                 pk.unlink(missing_ok=True)
                 if not run.load(lay)["stable"]:          # plan on a clean reset again
