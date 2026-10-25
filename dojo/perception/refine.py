@@ -14,7 +14,8 @@
 - The prior is decomposed into the asset's resting place frame + yaw about world z + a height offset
   (kept: stacked targets keep their height). (x, y, yaw) are refined by Nelder-Mead from a few starts
   (prior, +-15 mm, the 180-degree flip when the shape is not symmetric); the lowest silhouette loss wins.
-- ``others``: [(key, pose7)] of nearby known objects; their pixels are removed from the foreground.
+- ``others``: [(key, pose7)] of nearby known objects; their pixels are removed from the foreground, and a
+  result within 0.7 x footprint of one of them is reported not-ok (``why`` = "neighbour:<key>").
 - ``held``: (key, pose7) or a list of them: objects in the gripper (at a place hover the carried block is
   between the camera and the support): masked as occluders. Without it, place-time refines of the support
   mostly fail (integration: 15/44 ok, IoU ~0.24).
@@ -200,6 +201,19 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
             "ok": ok, "time_s": round(time.time() - t0, 3), "camera": cam.name}
+    if others and out["ok"]:  # landed on a known neighbour: not this object (a large shift can grab one)
+        from .render import load_asset
+
+        fp = float(np.min(load_asset(obj_id).extents[:2]))
+        for k2, p2 in others:
+            try:
+                fp2 = float(np.min(load_asset(k2).extents[:2]))
+            except Exception:
+                fp2 = fp
+            if np.hypot(out["pose"][0] - p2[0], out["pose"][1] - p2[1]) < 0.7 * min(fp, fp2):
+                out["ok"] = False
+                out["why"] = f"neighbour:{k2}"
+                break
     if searched is not None:  # where the target's best match in the wrist frame is (re-hover there if not ok)
         out["searched"] = True
         out["suggest_xy"] = searched["suggest_xy"]
