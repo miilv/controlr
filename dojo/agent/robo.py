@@ -132,6 +132,7 @@ class Robo:
         self.images: list[tuple[str, np.ndarray]] = []     # (label, rgb) queued for the current cell's result
         self.log: list[str] = []                            # one line per action (the cell's action receipt)
         self.finished: dict | None = None
+        self.skills: dict | None = None             # name -> registry entry when the run uses the registry
         self.n_actions = 0
         self._cell_step0 = 0
         self._cell_contacts = 0
@@ -463,8 +464,15 @@ class Robo:
 
     def skill(self, name: str, **args) -> Result:
         from dojo.skills import library as L
-        if name not in L.SKILLS:
-            raise ValueError(f"unknown skill {name!r}; skills: {sorted(L.SKILLS)}")
+        if self.skills is not None:              # registry run: only the prompted entries are callable
+            if name not in self.skills:
+                raise ValueError(f"unknown skill {name!r}; skills: {sorted(self.skills)}")
+            from dojo.agent.registry import resolve
+            fn = resolve(self.skills[name])
+        else:
+            if name not in L.SKILLS:
+                raise ValueError(f"unknown skill {name!r}; skills: {sorted(L.SKILLS)}")
+            fn = L.SKILLS[name]
         sk = self.ctx.sk()
         mapped = self.ids.map_args(args, to="label")
         if name == "press_sequence" and "presses" in mapped:
@@ -472,7 +480,7 @@ class Robo:
         if name == "arrange" and "steps" in mapped:
             mapped["steps"] = [tuple(s) for s in mapped["steps"]]
         self.ctx.events.append({"kind": "agent_skill", "skill": name, "args": args})
-        return self._wrap(f"skill {name}", lambda: L.SKILLS[name](sk, **mapped), contact=True)
+        return self._wrap(f"skill {name}", lambda: fn(sk, **mapped), contact=True)
 
     # ------------------------------------------------------------------ end
     def finish(self, status: str = "done", summary: str = "") -> None:

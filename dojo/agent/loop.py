@@ -55,13 +55,28 @@ class AgentConfig:
     # the router drops undeclared calls (empty replies, 2026-10-25); the call's code is stored in the transcript
     # as a fenced block, so the transcript stays plain text either way
     python_tool: bool = True
+    # J2: build the skill list from the shared registry ("" = SKILL_DOCS; "default" = skills/registry.yaml; or a
+    # path); strict = only contract-only entries reach the prompt (and robo.skill)
+    registry: str = ""
+    strict: bool = False
+    scene_version: int = 2              # 3 = + named support / functional frames (needed by stack_on_pegs, slots_and_press)
+
+
+def registry_skills(cfg: AgentConfig):
+    """The registry entries this config prompts (None = no registry: SKILL_DOCS). The dojo runtime calls only the
+    ``dojo_skills`` backend; strict keeps contract-only entries."""
+    if not cfg.registry:
+        return None
+    from dojo.agent import registry as R
+    reg = R.load(None if cfg.registry == "default" else cfg.registry)
+    return reg.select(strict=cfg.strict, backends=("dojo_skills",))
 
 
 def system_text(cfg: AgentConfig) -> str:
     app = (Path(__file__).with_name("prompts") / f"{cfg.appendix}.md").read_text()
     app = (app.replace("{max_cell_steps}", str(cfg.max_cell_steps))
            .replace("{max_cell_contacts}", str(cfg.max_cell_contacts)).replace("{max_calls}", str(cfg.max_calls)))
-    return render_manual(cfg.manual) + app
+    return render_manual(cfg.manual, skills=registry_skills(cfg)) + app
 
 
 def _resize(rgb: np.ndarray, px: int) -> np.ndarray:

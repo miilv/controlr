@@ -161,10 +161,17 @@ def skills_section(version: int = 1) -> str:
     return "\n".join(out)
 
 
-def render_manual(version: str = "manual_v1") -> str:
+def render_manual(version: str = "manual_v1", skills=None) -> str:
+    """``skills``: registry entries (``dojo.agent.registry``) to document instead of ``SKILL_DOCS`` (J2: the
+    registry is the versioned source of the skill list; strict runs pass only contract-only entries)."""
     tpl = (PROMPTS / f"{version}.md").read_text()
     v = int(version.rsplit("_v", 1)[1]) if "_v" in version else 1
-    return tpl.replace("{skills}", skills_section(v)).replace("{api}", API_DOC_V3 if v >= 3 else API_DOC)
+    if skills is not None:
+        from dojo.agent.registry import render
+        section = render(skills)
+    else:
+        section = skills_section(v)
+    return tpl.replace("{skills}", section).replace("{api}", API_DOC_V3 if v >= 3 else API_DOC)
 
 
 __all__ = ["SKILL_DOCS", "API_DOC", "render_manual", "skills_section"]
