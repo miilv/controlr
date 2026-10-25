@@ -139,7 +139,7 @@ class KinematicBelief:
 class RuntimeProvider:
     def __init__(self, bridge, task: str, instruction: str, mode: str, assets=None, kin: X5Kin | None = None,
                  gt_source=None, checker=None, div_iou: float = 0.2, div_min_vis: float = 0.5,
-                 div_prec: float = 0.4, div_min_px: int = 40,
+                 div_prec: float = 0.4, div_min_px: int = 40, div_min_frac: float = 0.3, confirm_mm: float = 15.0,
                  replan_on_divergence: bool = True, log=None):
         self.bridge = bridge
         self.task, self.instruction, self.mode = task, instruction, mode
@@ -147,7 +147,8 @@ class RuntimeProvider:
         self.gt_source = gt_source              # mode gt only: () -> GT rows of the latest observation
         self.checker = checker                  # mode perception: (obs, objects) -> {label: check}, (obs) -> record
         self.div_iou, self.div_min_vis = div_iou, div_min_vis
-        self.div_prec, self.div_min_px = div_prec, div_min_px
+        self.div_prec, self.div_min_px, self.div_min_frac = div_prec, div_min_px, div_min_frac
+        self.confirm_mm = confirm_mm
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
         self.home_q = None
@@ -213,7 +214,8 @@ class RuntimeProvider:
         for lab, c in chk.items():
             head = c.get("head") or {}
             if head.get("prec") is not None:            # z-buffered: predicted front-most pixels vs foreground
-                if head.get("n_vis", 0) >= self.div_min_px and head["prec"] < self.div_prec:
+                need = max(self.div_min_px, self.div_min_frac * head.get("n_px", 0))   # judge only what is visible
+                if head.get("n_vis", 0) >= need and head["prec"] < self.div_prec:
                     bad[lab] = c
             elif head and head.get("vis", 0) >= self.div_min_vis and head.get("iou", 1.0) < self.div_iou:
                 bad[lab] = c
@@ -222,7 +224,7 @@ class RuntimeProvider:
         self.events.append(ev)
         if not bad:
             return ev
-        self.stats["divergence"] += 1
+        self.stats["checks_failed"] = self.stats.get("checks_failed", 0) + 1
         rec = self.checker.estimate(obs)
         est = objects_from_record(rec, self.assets, self.bridge.steps_used)
         upd = {}
@@ -230,9 +232,19 @@ class RuntimeProvider:
             e = est.get(lab)
             if e is not None and e.confidence >= 0.5 and lab not in self.belief.held_labels():
                 o = self.belief.objects[lab]
-                upd[lab] = {"from": np.round(o.pos, 4).tolist(), "to": np.round(e.pos, 4).tolist()}
+                d_mm = float(np.linalg.norm(e.center_w[:2] - o.center_w[:2])) * 1000
+                if d_mm < self.confirm_mm:
+                    continue
+                upd[lab] = {"from": np.round(o.pos, 4).tolist(), "to": np.round(e.pos, 4).tolist(), "mm": round(d_mm, 1)}
                 o.pos, o.quat, o.source, o.confidence = e.pos.copy(), e.quat.copy(), "perception", e.confidence
         ev["updated"] = upd
+        if not upd:
+            # the frames disagree but the re-estimate does not place the object elsewhere: keep the belief and
+            # go on (re-planning a half-built structure from scratch is worse than a doubtful check)
+            self.events.append({"kind": "divergence_unconfirmed", "step": self.bridge.steps_used, "labels": sorted(bad)})
+            self.log(f"[runtime] unconfirmed divergence {sorted(bad)}: continue")
+            return ev
+        self.stats["divergence"] += 1
         self.events.append({"kind": "divergence", "step": self.bridge.steps_used, "labels": sorted(bad), "updated": upd})
         self.log(f"[runtime] divergence {sorted(bad)} updated {sorted(upd)}")
         if self.replan:

@@ -436,3 +436,27 @@ def test_perception_service_serves_its_ops(monkeypatch):
     pc.close(stop_service=True)
     th.join(5)
     assert not th.is_alive()
+
+
+def test_unconfirmed_divergence_does_not_replan():
+    """A resync check that fails while the re-estimate puts the object where the belief has it: log, go on."""
+    env = _env()
+
+    class DoubtfulPerception:
+        def estimate(self, frames, vocabulary, fold):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for o in env.objects]}}
+
+        def check(self, frame, objects, fold):            # always claims block_0 is not where predicted
+            return {o["label"]: {"head": {"prec": 0.0 if o["label"] == "block_0" else 1.0, "n_vis": 500, "n_px": 600}}
+                    for o in objects}
+
+        def look_plan(self, *a, **k):
+            return []
+
+    pol = RuntimePolicy(RuntimeConfig(mode="perception"), assets=FakeAssets(), perception_client=DoubtfulPerception())
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    kinds = [e["kind"] for e in rep["events"]]
+    assert "divergence_unconfirmed" in kinds and "divergence_replan" not in kinds, kinds
+    assert _stacked(env) and rep["result"]["ok"]
