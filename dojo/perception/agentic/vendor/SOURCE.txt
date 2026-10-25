@@ -1,0 +1,1 @@
+# Vendored byte-identical from github.com/msannikov03/robot-harness @ e135a60 (owner: Mikhail Sannikov's side; D-C6). Do not edit: verify with md5sum -c MANIFEST.md5

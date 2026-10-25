@@ -1,0 +1,17 @@
+c12d7875c205dc8bdd2720a123821e70  ./PERCEIVER-PROTOCOL.md
+721541ff4dde0216afc2408b74e3b225  ./j1_schema.py
+015055898148a40342cdf9e93a1b2bb2  ./libero/grid.py
+3f61c5ae84340bca041e8b6752377948  ./robodojo/btn.py
+99759354f533142e3935da2267afa5bd  ./robodojo/cube.py
+0f0648a17e4fba5be039c1413610bcb6  ./robodojo/cubez.py
+62c7167d454298752b47ccb27e88b309  ./robodojo/geom.py
+f6cda051aaf3cb8b8071a7d7510a6ad6  ./robodojo/line2v.py
+37e6cd24ff1a712c8482f1b664743fbe  ./robodojo/mosaic.py
+3fad3463dc18b9f95b53f27787f01337  ./robodojo/ph.py
+cfb8499c257810f79a327daeddd491bf  ./robodojo/rim.py
+12c26d1aa76c64fb37148d283ee62f36  ./robodojo/sil.py
+cd7736e374fe02e727bd816eca3cd6a9  ./robodojo/tp.py
+4f4ab399c4affc85806035c7a6669474  ./robodojo/tpose.py
+d9db78783776fefbefa6c6825b5ac6e1  ./robodojo/tri2.py
+b3d46349e9618f7d7c6d9960419968f4  ./robodojo/vcheck.py
+c5eb1f649779c62d054fe8c6a10c6964  ./robodojo/zoom.py
