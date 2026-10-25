@@ -219,18 +219,45 @@ def rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, wall: float 
     return out
 
 
+def ring_center(obj: ObjectState, depth: float = 0.004, band: float = 0.003) -> np.ndarray:
+    """Object-frame xy of a round container's axis: a circle fit to the mesh ring ``depth`` below its top, points
+    off the circle (a mug's handle) dropped. The bbox centre when there is no mesh or ring."""
+    c = np.asarray(obj.asset.center[:2], float)
+    if obj.asset.mesh is None:
+        return c
+    V = obj.asset.mesh[0]
+    top = float(V[:, 2].max())
+    P = V[np.abs(V[:, 2] - (top - depth)) < band][:, :2]
+    if len(P) < 12:
+        return c
+    keep = np.ones(len(P), bool)
+    for _ in range(3):
+        Q = P[keep]
+        A = np.c_[2 * Q, np.ones(len(Q))]
+        sol, *_ = np.linalg.lstsq(A, (Q ** 2).sum(1), rcond=None)
+        ctr = sol[:2]
+        r = np.linalg.norm(P - ctr, axis=1)
+        med = float(np.median(r[keep]))
+        new = np.abs(r - med) < max(0.004, 0.08 * med)
+        if new.sum() < 12 or (new == keep).all():
+            break
+        keep = new
+    return ctr
+
+
 def wall_profile(obj: ObjectState, depth: float, band: float = 0.0015) -> tuple[float, float] | None:
     """(inner radius, outer radius) of a round container's wall ``depth`` below its rim (object frame,
-    about the vertical through the bbox centre), from the mesh."""
+    about its axis: ``ring_center``), from the mesh; points beyond the wall (a mug's handle) are dropped."""
     if obj.asset.mesh is None:
         return None
     V = obj.asset.mesh[0]
-    c = obj.asset.center
+    c = ring_center(obj)
     top = float(V[:, 2].max())
     m = np.abs(V[:, 2] - (top - depth)) < band
     if m.sum() < 8:
         return None
     r = np.hypot(V[m, 0] - c[0], V[m, 1] - c[1])
+    r = r[r < float(np.percentile(r, 50)) * 1.15 + 0.002]
     return float(r.min()), float(r.max())
 
 
@@ -244,7 +271,8 @@ def wall_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, depths=(0.0
         return []
     out = []
     R, top_w = obj.R, obj.top_z
-    c_w = obj.center_w
+    cr = ring_center(obj)
+    c_w = R @ np.array([cr[0], cr[1], float(obj.asset.center[2])]) + obj.pos
     base = kin.base(arm)[:3, 3]
     h0 = math.atan2(base[1] - c_w[1], base[0] - c_w[0])
     for d in depths:

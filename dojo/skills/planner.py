@@ -208,6 +208,22 @@ def plan(instruction: str, world: WorldState) -> Plan:
                                             "slots": slots[:n], "press_tag": press},
                         f"{n} of {noun_cats} one per slot of {c.label}, then press {press}")
 
+    # --- hang objects by their handles on a rack's hooks (a fixture with several hook / support-point frames)
+    if re.search(r"\bhang\b", text):
+        for rk in objs:
+            tags = [t for t, v in (rk.asset.functional or {}).items()
+                    if re.search(r"hook|support_point|hang", t.lower()) and len((v or {}).get("frame") or []) >= 2]
+            if not tags:
+                continue
+            movers = [o for o in objs if o.obj_type == "Rigid" and not o.clutter and o.label != rk.label
+                      and any("handle" in t.lower() for t in (o.asset.active_functional or {}))]
+            movers = [o for o in movers if o.category.lower() in named] or movers
+            if movers:
+                handle = next(t for t in movers[0].asset.active_functional if "handle" in t.lower())
+                return Plan("hang_on_hooks", {"objects": [o.label for o in movers], "rack": rk.label,
+                                              "hook_tag": tags[0], "handle_tag": handle},
+                            f"{len(movers)} by their {handle} on {rk.label}'s {tags[0]}")
+
     # --- stack in a named order of colours, bottom to top
     if "stack" in text and "order" in text:
         cols = re.findall(r"\b(red|green|blue|yellow|orange|cyan|purple|pink|white|black|brown|gr[ae]y)\b", text)

@@ -67,6 +67,11 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "thinnest axis across the slot, lowered to the slot floor; then, if press_tag is given (a lever or button "
         "on the container), presses it down. Pass only as many objects as the instruction asks for "
         "(e.g. 'two slices' -> 2). For 'put X into the toaster and press'."),
+    "hang_on_hooks": (
+        "hang_on_hooks(objects: [id, ...], rack: id, hook_tag: frame, handle_tag: frame = 'handle')",
+        "Hangs each object by its handle on one of the rack's hooks (hook frames as listed for the rack in the "
+        "scene): carried re-oriented to just beyond a hook's tip, slid along the hook through the handle, let go. "
+        "Banks after each object. For 'hang the X on the Y'."),
     "place_in_slots": (
         "place_in_slots(objects: [id, ...], container: id)",
         "Puts each object into the compartment of the container that is shaped for it (a slot named after the "
@@ -82,7 +87,7 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "or into support without lifting it. Steps are independent (any order); grippers opened after each. Use "
         "for an instruction that lists several put-X-on-Y / push-X-into-Y goals."),
 }
-SKILL_DOCS_VERSION = 2  # 2: + stack_on_pegs, slots_and_press (skills-3)
+SKILL_DOCS_VERSION = 3  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

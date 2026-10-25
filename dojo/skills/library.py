@@ -1835,9 +1835,9 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: flo
     c_loc = (lo + hi) / 2
     c_loc[2] = hi[2]
     if body is not None and g > 0.004:
-        # near the part's far end (the fingertip is 6.8 mm thick): twin, a toaster's lever pressed 11 mm out from the
+        # at the part's far end (1.5 mm in): twin, a toaster's lever pressed 11 mm out from the
         # body stopped at 35 mm of its 75 mm travel, pressed at its end it went 41 mm (the check needs 40.4)
-        c_loc[k] = (hi[k] - 0.0045) if sgn > 0 else (lo[k] + 0.0045)
+        c_loc[k] = (hi[k] - 0.0015) if sgn > 0 else (lo[k] + 0.0015)
     p_tip = o.R @ c_loc + o.pos
     bc = o.R @ (((body["bbox_min"] + body["bbox_max"]) / 2) if body is not None else o.asset.center) + o.pos
     away = np.r_[p_tip[:2] - bc[:2], 0.0]
@@ -2052,8 +2052,150 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
     return {"ok": True, "stage": "slots and press"}
 
 
+# ============================================================================ hang on hooks
+
+def handle_hole(o, T_h: np.ndarray, slab: float = 0.004) -> float:
+    """How far (m) inside a handle frame's origin (along its -z, into the object) the handle's hole centre lies: the
+    largest gap in the mesh along that line within the handle's plane (a mug's handle frame sits on the outside of
+    its bar). 8 mm when the mesh says nothing."""
+    from dojo.skills.insertion import _surface_samples
+    if o.asset.mesh is None:
+        return 0.008
+    P = _surface_samples(*o.asset.mesh, step=0.001)
+    L = (P - T_h[:3, 3]) @ T_h[:3, :3]
+    z = np.sort(L[(np.abs(L[:, 0]) < slab) & (np.abs(L[:, 1]) < slab) & (L[:, 2] < 0.002) & (L[:, 2] > -0.04)][:, 2])
+    if len(z) < 4:
+        return 0.008
+    gaps = np.diff(z)
+    i = int(np.argmax(gaps))
+    if gaps[i] < 0.004:
+        return 0.008
+    return float(-(z[i] + z[i + 1]) / 2)
+
+
+def hook_frames(rack, tag: str) -> list[tuple[int, np.ndarray, float]]:
+    """(index, world frame, arm length beyond the frame) of a rack's hook frames whose orientation matches its first
+    hook's (z within 60 deg, x within 60 deg either way: the rack's reference hook orientation); the arm length from
+    the rack mesh along the frame's x."""
+    fr = functional_frames(rack, tag)
+    out = []
+    V = rack.asset.mesh[0] if rack.asset.mesh is not None else None
+    for i, F in enumerate(fr):
+        if i and (float(F[:3, 2] @ fr[0][:3, 2]) < 0.5 or abs(float(F[:3, 0] @ fr[0][:3, 0])) < 0.5):
+            continue
+        tip = 0.03
+        if V is not None:
+            L = (V - F[:3, 3]) @ F[:3, :3]
+            near = L[np.hypot(L[:, 1], L[:, 2]) < 0.008]
+            if len(near):
+                tip = float(max(0.0, near[:, 0].max()))
+        out.append((i, rack.T @ F, tip))
+    return out
+
+
+def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
+    """Hang each object by its handle on one of the rack's hooks. The handle frame (on the outside of the handle's
+    bar) goes onto the hook frame, raised by the handle's hole depth so the hook's arm runs through the hole; hooks
+    oriented like the rack's first one. Each object is carried, re-oriented, to just beyond the hook's tip (hole on
+    the arm's line), slid along the arm onto it, lowered 6 mm and let go; grippers open after each (per-object
+    credit). Objects and hooks are paired by the first one-arm plan found."""
+    w = sk.refresh()
+    rk = w.obj(rack)
+    hooks = hook_frames(rk, hook_tag)
+    used, done, failed = set(), [], []
+    pool = [l for l in objects if l in w.objects]
+    for _round in range(len(pool)):
+        w = sk.refresh()
+        found = None
+        for lab in pool:
+            o = w.obj(lab)
+            hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
+            for hi, H, tip in hooks:
+                if hi in used:
+                    continue
+                for Th in hs[:2]:
+                    dz = handle_hole(o, Th)
+                    Ht = H.copy()
+                    Ht[:3, 3] += H[:3, 2] * dz
+                    T_obj = Ht @ inv_T(Th)
+                    out = tip + 0.012 + float(o.asset.extents[1]) * 0.0 + 0.008
+                    T_pre = T_obj.copy()
+                    T_pre[:3, 3] += H[:3, 0] * out
+                    grasps = (lambda a, o=o: G_hang(sk, o, a))
+                    r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=grasps,
+                                         place_kw={"pre_h": 0.03, "release": False, "approach_rad": 0.09})
+                    if not isinstance(r, SkillResult):
+                        found = (lab, hi, H, T_obj, T_pre, r)
+                        break
+                if found:
+                    break
+            if found:
+                break
+        if not found:
+            sk.log(f"[hang] no plan for {pool} on hooks {[h[0] for h in hooks if h[0] not in used]}")
+            failed += pool
+            break
+        lab, hi, H, T_obj, T_pre, (pp, pl) = found
+        sk.log(f"[hang] {lab} -> hook {hi}: {pp.arm} ({pp.grasp.note})")
+        pool.remove(lab)
+        used.add(hi)
+        r = sk.run_transfer(pp, pl, tol_xy=0.03, tol_tilt=25.0, tol_z=0.05)
+        arm = pp.arm
+        if sk.held[arm] is None:
+            failed.append(lab)
+            sk.bank()
+            if r.status in ("step_budget", "ended"):
+                return {"ok": False, "stage": f"hang {lab}", "result": r}
+            continue
+        try:
+            # slide along the hook's arm (measured grasp), lower onto it, let go, back out along the approach
+            w = sk.refresh()
+            T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ w.obj(lab).T
+            T_on = T_obj @ inv_T(T_rel)
+            mv = sk.motion.line(arm, sk.ex.q[arm], T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
+            T_dn = T_on.copy()
+            T_dn[2, 3] -= 0.006
+            dn = sk.motion.line(arm, mv.q_end if mv.segments else sk.ex.q[arm], T_dn, 0.03, "hang_lower",
+                                gripper=CLOSED, check=False)
+            T_back = T_dn.copy()
+            T_back[:3, 3] -= T_dn[:3, 0] * 0.06
+            T_back[2, 3] += 0.01
+            q_dn = dn.q_end if dn.segments else (mv.q_end if mv.segments else sk.ex.q[arm])
+            bk = sk.motion.line(arm, q_dn, T_back, MEDIUM, "hang_retreat", gripper=OPEN, check=False)
+            plan = ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED)
+            if mv.segments:
+                plan.move(mv, "slide")
+            if dn.segments:
+                plan.move(dn, "lower")
+            plan.hold(2, "settle").grip(OPEN, 3, "release").hold(2, "let_go")
+            if bk.segments:
+                plan.move(bk, "retreat")
+            sk.ex.run({arm: plan}, name=f"hang {lab}")
+            sk.held[arm] = None
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return {"ok": False, "stage": f"hang {lab}", "note": str(e)}
+        o2 = sk.refresh().obj(lab)
+        hs = functional_frames(o2, handle_tag, active=True)
+        hp = (o2.T @ hs[0])[:3, 3] if hs else o2.pos
+        d = float(np.linalg.norm(hp - H[:3, 3]))
+        ok = d < 0.045 and hp[2] > H[2, 3] - 0.03
+        sk._record(SkillResult(ok, "hang", "ok" if ok else "place_miss", 0, arm,
+                               note=f"{lab} handle {d*1000:.0f} mm from hook {hi}, z {hp[2]:.3f}"))
+        (done if ok else failed).append(lab)
+        sk.bank()
+    if failed:
+        return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
+    return {"ok": True, "stage": "hang"}
+
+
+def G_hang(sk: Skills, o, arm: str) -> list:
+    """Grasp candidates for carrying a cup-like object re-oriented: across its body (box) and pinching its wall."""
+    from dojo.skills import grasps as G
+    return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.008, 0.014, 0.02))
+
+
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
           "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,
           "insert_into": insert_into, "place_in_slots": place_in_slots,
           "fill_container": fill_container, "arrange": arrange, "stack_on_pegs": stack_on_pegs,
-          "slots_and_press": slots_and_press}
+          "slots_and_press": slots_and_press, "hang_on_hooks": hang_on_hooks}
