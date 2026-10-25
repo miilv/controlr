@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v6"
+GENERATOR = "simlab/v7"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -182,13 +182,44 @@ def _count(n, rng: random.Random) -> int:
     return int(n)
 
 
-def select_instances(obj_type: str, group: dict, rng: random.Random) -> list[tuple[dict, int]]:
-    """(category entry, asset index) per instance, following ``select_mode``."""
+UNSUPPORTED_SELECT = ("label_prefix", "linked_count", "linked_label_prefix")
+
+
+def _layout_assets(layout: dict) -> set:
+    from dojo.simlab.layout import iter_objects
+    return {(cat, int(inst["category_idx"])) for _, cat, inst in iter_objects(layout or {})}
+
+
+def select_instances(obj_type: str, group: dict, rng: random.Random, layout: dict | None = None,
+                     state: dict | None = None) -> list[tuple[dict, int]]:
+    """(category entry, asset index) per instance, following ``select_mode`` (identity rules need the
+    layout placed so far):
+
+    * ``unique``: distinct instances, also distinct from every (category, index) already in the layout
+      (make_kong: the discards must not match a hand triple);
+    * ``same`` (+ ``allow_global_same: False``: an index no other such group used);
+    * ``same_index_as_label`` / ``same_as_label`` + ``same_label``: the labelled object's index (and category);
+    * ``hierarchical``, ``allow_duplicate``; ``label_map`` is handled by the caller.
+    Modes / keys not implemented raise instead of being silently ignored."""
+    sm = group.get("select_mode") or {}
+    bad = [k for k in UNSUPPORTED_SELECT if k in sm] + (["dynamic_layout"] if "dynamic_layout" in group else [])
+    if sm.get("mode") == "linked_count" or bad:
+        raise NotImplementedError(f"select_mode features not implemented: {bad or sm.get('mode')}")
+    state = state if state is not None else {}
+    if sm.get("mode") in ("same_index_as_label", "same_as_label"):
+        from dojo.simlab.layout import find
+        ref = find(layout, sm["same_label"])
+        names = [e["name"] for e in group["category"]]
+        if sm["mode"] == "same_as_label":
+            entry = next((e for e in group["category"] if e["name"] == ref["category"]), {"name": ref["category"]})
+        else:
+            entry = group["category"][0] if ref["category"] not in names else \
+                next(e for e in group["category"] if e["name"] == ref["category"])
+        return [(entry, int(ref["category_idx"]))] * _count(sm.get("nums", 1), rng)
     entries = []
     for e in group["category"]:
         idx = list(e.get("index") if e.get("index") is not None else available_indices(obj_type, e["name"]))
         entries.append((e, [int(i) for i in idx]))
-    sm = group.get("select_mode") or {}
     mode = sm.get("mode", "allow_duplicate")
     if mode == "hierarchical":
         n_cat = _count(sm.get("select_category_nums", [1, 1]), rng)
@@ -207,9 +238,17 @@ def select_instances(obj_type: str, group: dict, rng: random.Random) -> list[tup
     n = _count(sm.get("nums", 1), rng)
     pool = [(e, i) for e, idx in entries for i in idx]
     if mode == "same":
+        if sm.get("allow_global_same", True) is False:
+            used = state.setdefault("same_used", set()) | _layout_assets(layout)   # also tiles placed earlier
+            pool = [(e, i) for e, i in pool if (e["name"], i) not in used]
+            if not pool:
+                raise LayoutError(f"allow_global_same: no free index for {sm.get('label')}")
+            pick = rng.choice(pool)
+            state["same_used"].add((pick[0]["name"], pick[1]))
+            return [pick] * n
         return [rng.choice(pool)] * n
     if mode == "unique":
-        out, seen = [], set()
+        out, seen = [], set(_layout_assets(layout))
         for e, i in rng.sample(pool, len(pool)):
             if (e["name"], i) in seen:
                 continue
@@ -286,7 +325,9 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     xr, yr = _ranges(prm["xlim"] or [0, 0])[0], _ranges(prm["ylim"] or [0, 0])[0]
     # the support radius bounds the placement point (footprints are kept apart separately below)
     for _ in range(400):
-        if max_off is not None:                 # uniform on the support disk (inside the config box)
+        if xr[0] == xr[1] and yr[0] == yr[1]:   # a pinned offset (make_kong: a tile stacked on a tile)
+            off = np.array([xr[0], yr[0], 0.0])
+        elif max_off is not None:               # uniform on the support disk (inside the config box)
             r, th = max_off * math.sqrt(rng.random()), rng.uniform(0.0, 2 * math.pi)
             off = np.array([r * math.cos(th), r * math.sin(th), 0.0])
             if not (xr[0] - 1e-9 <= off[0] <= xr[1] + 1e-9 and yr[0] - 1e-9 <= off[1] <= yr[1] + 1e-9):
@@ -328,6 +369,8 @@ def _deps(group: dict) -> set:
     sm = group.get("select_mode") or {}
     if sm.get("mode") == "label_map":
         deps.add(sm["key_label"])
+    if sm.get("mode") in ("same_index_as_label", "same_as_label"):
+        deps.add(sm["same_label"])
     return deps
 
 
@@ -362,12 +405,13 @@ def place_task_objects(groups: dict[str, list], gens: dict, rng: random.Random, 
         placed |= set((g.get("select_mode") or {}).get("label") or [])
     used_supports: set = set()
     siblings: dict = {}
+    sel_state: dict = {}
     for obj_type, group in ordered:
         common = dict(group.get("common") or {})
         labels = list((group.get("select_mode") or {}).get("label") or [])
         sm_mode = (group.get("select_mode") or {}).get("mode")
         insts = (label_map_instances(obj_type, group, layout) if sm_mode == "label_map"
-                 else select_instances(obj_type, group, rng))
+                 else select_instances(obj_type, group, rng, layout, sel_state))
         for k, (entry, idx) in enumerate(insts):
             prm = dict(SAMPLING_DEFAULTS)
             prm.update(common)
@@ -472,7 +516,7 @@ def generate(task: str, seed: int, max_tries: int = 40) -> dict:
         np.random.seed(sub % (2**32))
         rng = random.Random(sub)
         gens = make_generators(scfg)
-        for a in tcfg.get("ProhibitedArea") or []:
+        for a in (tcfg.get("ProhibitedArea") or []) + (tcfg.get("Prohibited_Area") or []):   # one config has the typo
             x0, y0, x1, y1 = a
             gens["table"].add_box_prohibited_area(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
         layout: dict = {}

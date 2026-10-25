@@ -154,3 +154,36 @@ def test_sampler_helpers():
     with pytest.raises(G.LayoutError):
         G.select_instances("Rigid", {"category": [{"name": "b", "index": [0]}],
                                      "select_mode": {"mode": "unique", "nums": 2}}, rng)
+
+
+def test_identity_rules_make_kong_like():
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    rng, state, lay = random.Random(3), {}, {"Rigid": {"mahjong": []}}
+
+    def add(label, idx):
+        lay["Rigid"]["mahjong"].append({"category": "mahjong", "category_idx": idx, "label": label,
+                                        "default_pos": [0, 0, 0.78], "default_ori": [1, 0, 0, 0]})
+    cat = [{"name": "mahjong", "index": list(range(6))}]
+    triples = []
+    for k in range(5):                                  # four triples + a pair, all different tiles
+        sel = G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same", "nums": 3,
+                                                                           "allow_global_same": False}}, rng, lay, state)
+        assert len({i for _, i in sel}) == 1
+        triples.append(sel[0][1])
+        add(f"m{k}_0", sel[0][1])
+    assert len(set(triples)) == 5
+    copy = G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same_index_as_label",
+                                                                        "same_label": "m2_0", "nums": 1}}, rng, lay)
+    assert copy[0][1] == triples[2]
+    disc = G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "unique", "nums": 1}}, rng, lay)
+    assert disc[0][1] not in triples                   # a discard never matches a hand tile
+    with pytest.raises(G.LayoutError):                  # no 7th distinct tile among 6
+        G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same", "nums": 3,
+                                                                     "allow_global_same": False}}, rng, lay, state)
+        G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same", "nums": 3,
+                                                                     "allow_global_same": False}}, rng, lay, state)
+    with pytest.raises(NotImplementedError):
+        G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "linked_count"}}, rng, lay)
