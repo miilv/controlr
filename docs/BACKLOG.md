@@ -6,6 +6,11 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
+  objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
+  cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
+  x = -0.43 that no reader found in D0 100024. A perception-side `look_plan` request
+  (docs/experiments/2026-10-25-scan-pose.md).
 - [ ] **Decision head, first light** (`configs/sim_waffle_yaw_luna_dec.yaml`, journal/2026-10-07-luna-decisions.md):
   (1) ~~image format probe~~ done: `parts` is seen, `field` is not (journal/2026-10-07-luna-decisions.md);
   drop `field` or make its live test expect blindness; (2) one mock episode
