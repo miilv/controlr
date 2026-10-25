@@ -230,3 +230,10 @@ The earlier "0.82 → 0.84" post-look line reads 0.79 → 0.84.
   - Texture-critical categories (mahjong, digits) use real textured GLBs (25 MB) in render-and-compare.
 - Data: simlab renders 10 settled layouts per task, frames 0 + 1, ≤ 300 MB (`~/dojo-data/d0_ext`);
   `ext_pipeline.sh` runs G1 frame 0 + refine per task as each lands.
+- First extension results (D0-ext, 10 layouts each):
+  - make_kong: tiles from config slots + stacked placement: 220/220 found, all within tolerance, xy median
+    0.3 mm, stacked tiles 0.7 mm. `kong_discard`: 10/10 correct and confident (knocked slot scores 58–68 vs
+    ≤ 17). Wrist refine in the dense tile row fails without `others` (neighbours 4.6 cm apart): not needed
+    there (slots are exact), but pass the neighbours if refining tiles.
+  - fill_pen_holder: within tolerance pens 0.95 / oil pens 1.00 / holder 1.00; pen rot p90 26° (tip flips);
+    refine ok+centred 89 % within 5 mm.

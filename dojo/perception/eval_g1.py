@@ -127,7 +127,8 @@ def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict]
         P = [p for p in preds if lab2group[p["label"]] == gi]
         if not G:
             continue
-        C = np.array([[np.hypot(p["default_pos"][0] - o["pos"][0], p["default_pos"][1] - o["pos"][1]) for p in P] for o in G]) if P else np.zeros((len(G), 0))
+        # 3-D distance: stacked objects share xy (make_kong's face-down tiles)
+        C = np.array([[float(np.linalg.norm(np.asarray(p["default_pos"]) - np.asarray(o["pos"]))) for p in P] for o in G]) if P else np.zeros((len(G), 0))
         r_idx, c_idx = linear_sum_assignment(C) if P else ([], [])
         matched = dict(zip(r_idx, c_idx))
         for oi, o in enumerate(G):
