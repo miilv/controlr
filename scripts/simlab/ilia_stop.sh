@@ -3,7 +3,7 @@
 # /proc/<pid>/environ contains DOJO_ILIA=1 (and their children). Never by name pattern.
 set -uo pipefail
 RUN=/home/anywherevla/data2/ilia/run
-ours() { tr '\0' '\n' < "/proc/$1/environ" 2>/dev/null | grep -qx 'DOJO_ILIA=1'; }
+ours() { grep -qz '^DOJO_ILIA=1$' "/proc/$1/environ" 2>/dev/null; }   # match only, never print the env
 for f in "$RUN"/*.pid; do
   [[ -f "$f" ]] || continue
   p=$(cat "$f")
