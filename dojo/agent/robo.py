@@ -334,11 +334,12 @@ class Robo:
         return [i for i in new if category is None or i.rsplit("_", 1)[0] == category]
 
     # ------------------------------------------------------------------ manipulation
-    def pick(self, oid, arm=None, method="auto") -> Result:
+    def pick(self, oid, arm=None, method="auto", lift=0.08) -> Result:
         label = self._label(oid)
         sk = self.ctx.sk()
         a = arm if arm in ARMS else None
-        return self._wrap("pick", lambda: sk.pick(label, a, method), contact=True, arm=a)
+        lift = float(min(max(lift, 0.02), 0.25))
+        return self._wrap("pick", lambda: sk.pick(label, a, method, lift=lift), contact=True, arm=a)
 
     def _held(self, arm):
         h = self.ctx.sk().held.get(arm)

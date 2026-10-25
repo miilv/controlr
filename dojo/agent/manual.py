@@ -118,7 +118,11 @@ API_DOC_V3 = API_DOC.replace(
     "- `robo.place(arm, xyz, yaw=None, release=True, over=()) -> Result`: set the held object down with its bottom\n"
     "  centre at `xyz` (x, y, z of the surface it lands on), turned to `yaw` (deg) when given; `over`: ids of objects\n"
     "  the placed object may enclose (a cup put upside down over a block): they are not collision-checked.")
-assert API_DOC_V3 != API_DOC
+API_DOC_V3 = API_DOC_V3.replace(
+    "- `robo.pick(id, arm=None, method='auto') -> Result`: grasp and lift ~8 cm (`method`: 'top', 'side', 'rim').",
+    "- `robo.pick(id, arm=None, method='auto', lift=0.08) -> Result`: grasp and lift by `lift` metres (`method`:\n"
+    "  'top', 'side', 'rim').")
+assert API_DOC_V3 != API_DOC and "lift=0.08" in API_DOC_V3
 
 
 def skill_docs(version: int = 1) -> dict[str, tuple[str, str]]:
