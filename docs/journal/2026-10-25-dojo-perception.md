@@ -150,3 +150,8 @@ v2 (partly-hidden first, clearance-aware azimuths) helps bottles (+0.07), T, tow
 car and shoe (which v1 reviewed for flips) and the pad. Net equal: the targeting should be per need
 (flip review for thin pack items, partly-hidden for blocks/pads). Conservative-fuse evals on v2 queued
 (`cons_l2.sh`), since that is what the runtime uses.
+
+## Backlog
+- v3 = per-class look objective (flip/identity review for thin textured items such as pack's car/shoe;
+  partly-hidden coverage for blocks/pads). Not now: v1 vs v2 swings are within noise at n = 25 per class,
+  and with refine() at every hover the grasp-time error is refine's (~1 mm).
