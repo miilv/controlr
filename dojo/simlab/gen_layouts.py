@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v9"
+GENERATOR = "simlab/v10"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -185,9 +185,11 @@ def _count(n, rng: random.Random) -> int:
 UNSUPPORTED_SELECT: tuple = ()          # every select_mode feature of the 54 configs is implemented (v8)
 
 
-def _layout_assets(layout: dict) -> set:
+def _layout_assets(layout: dict, obj_type: str) -> set:
+    """(category, index) of the ``obj_type`` objects placed so far. Per type: a Fluid ``wuliangye/0`` is the
+    liquid inside the Rigid ``wuliangye/0`` bottle (pour_liquid_into_cup), not a second copy of it."""
     from dojo.simlab.layout import iter_objects
-    return {(cat, int(inst["category_idx"])) for _, cat, inst in iter_objects(layout or {})}
+    return {(cat, int(inst["category_idx"])) for t, cat, inst in iter_objects(layout or {}) if t == obj_type}
 
 
 def select_instances(obj_type: str, group: dict, rng: random.Random, layout: dict | None = None,
@@ -195,7 +197,8 @@ def select_instances(obj_type: str, group: dict, rng: random.Random, layout: dic
     """(category entry, asset index) per instance, following ``select_mode`` (identity rules need the
     layout placed so far):
 
-    * ``unique``: distinct instances, also distinct from every (category, index) already in the layout
+    * ``unique``: distinct instances, also distinct from every (category, index) of the same type already in
+      the layout
       (make_kong: the discards must not match a hand triple);
     * ``same`` (+ ``allow_global_same: False``: an index no other such group used);
     * ``same_index_as_label`` / ``same_as_label`` + ``same_label``: the labelled object's index (and category);
@@ -248,16 +251,16 @@ def select_instances(obj_type: str, group: dict, rng: random.Random, layout: dic
     pool = [(e, i) for e, idx in entries for i in idx]
     if mode == "same":
         if sm.get("allow_global_same", True) is False:
-            used = state.setdefault("same_used", set()) | _layout_assets(layout)   # also tiles placed earlier
-            pool = [(e, i) for e, i in pool if (e["name"], i) not in used]
+            used = state.setdefault("same_used", {}).setdefault(obj_type, set()) | _layout_assets(layout, obj_type)
+            pool = [(e, i) for e, i in pool if (e["name"], i) not in used]          # also tiles placed earlier
             if not pool:
                 raise LayoutError(f"allow_global_same: no free index for {sm.get('label')}")
             pick = rng.choice(pool)
-            state["same_used"].add((pick[0]["name"], pick[1]))
+            state["same_used"][obj_type].add((pick[0]["name"], pick[1]))
             return [pick] * n
         return [rng.choice(pool)] * n
     if mode == "unique":
-        out, seen = [], set(_layout_assets(layout))
+        out, seen = [], set(_layout_assets(layout, obj_type))
         for e, i in rng.sample(pool, len(pool)):
             if (e["name"], i) in seen:
                 continue
@@ -301,7 +304,8 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     * x/y offsets from xlim/ylim are in world axes around that reference; with ``zlim`` the height is
       reference + zlim and the orientation the parent's x ``qpos`` (e.g. the conveyor's photo, a fluid
       inside its bottle), otherwise the child rests on the support point (its ``active.place`` frame);
-    * ``rotate_rand`` turns about world z; children of one parent keep their footprints apart.
+    * ``rotate_rand`` turns about world z; children of one parent keep their footprints apart, unless
+      ``check_mode: none`` (make_toast's bread slices, 2.5 cm apart in the shelf's slots).
     """
     from dojo.simlab.layout import find, quat_z
     multi = isinstance(prm["relative_plane"], (list, tuple))
@@ -337,6 +341,11 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
         xr, yr = rng.choice(xrs), rng.choice(yrs)
         if xr[0] == xr[1] and yr[0] == yr[1]:   # a pinned offset (make_kong: a tile stacked on a tile)
             off = np.array([xr[0], yr[0], 0.0])
+        elif max_off is not None and (xr[0] == xr[1] or yr[0] == yr[1]):   # one axis pinned (laptop on its stand)
+            off = np.array([rng.uniform(*xr), rng.uniform(*yr), 0.0])
+            pin = abs(xr[0]) if xr[0] == xr[1] else abs(yr[0])
+            if np.hypot(off[0], off[1]) > max_off and pin <= max_off:
+                continue                        # off the disk (a pin outside it is the config's call)
         elif max_off is not None:               # uniform on the support disk (inside the config box)
             r, th = max_off * math.sqrt(rng.random()), rng.uniform(0.0, 2 * math.pi)
             off = np.array([r * math.cos(th), r * math.sin(th), 0.0])
@@ -358,7 +367,7 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
             pose = gens["ground"]._placement_to_origin(np.r_[ref_pos + off, q], c_frame)
         sib = siblings.setdefault(plabel, [])
         foot = (ref_pos + off)[:2] if prm["zlim"] is None else pose[:2]   # footprint centre = placement point
-        if all(np.linalg.norm(foot - xy) > radius + r + 0.002 for xy, r in sib):
+        if prm["check_mode"] == "none" or all(np.linalg.norm(foot - xy) > radius + r + 0.002 for xy, r in sib):
             sib.append((np.asarray(foot, float).copy(), radius))
             used.add(plabel)
             return pose, plabel

@@ -197,3 +197,55 @@ def test_identity_rules_make_kong_like():
                                      "select_mode": {"mode": "hierarchical", "select_instance_nums": [4, 4],
                                                      "label_prefix": ["digit"]}}, rng, lay)
     assert [e["_label"] for e, _ in g] == ["digit_0", "digit_1", "digit_2", "digit_3"]
+
+
+def test_unique_is_scoped_per_object_type():
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    lay = {"Rigid": {"wuliangye": [{"category": "wuliangye", "category_idx": 0, "label": "bottle",
+                                    "default_pos": [0, 0, 0.78], "default_ori": [1, 0, 0, 0]}]}}
+    grp = {"category": [{"name": "wuliangye", "index": [0]}], "select_mode": {"mode": "unique", "nums": [1]}}
+    assert G.select_instances("Fluid", grp, random.Random(0), lay)[0][1] == 0   # the liquid inside the bottle
+    with pytest.raises(G.LayoutError):
+        G.select_instances("Rigid", grp, random.Random(0), lay)
+
+
+def test_relative_placement_pinned_axis_and_check_mode_none(monkeypatch):
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    q0 = [1.0, 0.0, 0.0, 0.0]
+    metas = {("Geometry", "shelf"): {"passive": {"support": {
+                 f"shelf/{k}": {"center": [[0.035 - 0.025 * k, 0.0, 0.035] + q0], "radius": [0.05]} for k in range(4)}}},
+             ("Geometry", "stand"): {"passive": {"support": {"stand/0": {"center": [[0.0, 0.0, 0.03] + q0],
+                                                                          "radius": [0.15]}}}}}
+    child = {"active": {"place": {"up": {"projection_circle": {"radius": 0.07, "center": [0.0, 0.0, 0.0] + q0}}}}}
+    monkeypatch.setattr(G, "metadata", lambda t, c, i, clutter=False: metas.get((t, c)))
+
+    class Ground:
+        def _placement_to_origin(self, pose, c_frame):
+            return pose
+    gens = {"ground": Ground()}
+    lay = {"Geometry": {c: [{"category": c, "category_idx": 0, "label": c, "default_pos": [0.0, 0.0, 0.765],
+                             "default_ori": q0}] for c in ("shelf", "stand")}}
+
+    def prm(**kw):
+        return dict(G.SAMPLING_DEFAULTS, **kw)
+    sib, used = {}, set()
+    for k in range(4):                                  # four bread slices 2.5 cm apart (make_toast)
+        p = prm(relative_plane=f"shelf/shelf/{k}", xlim=[-0.02, -0.02], ylim=[-0.007, -0.007], check_mode="none",
+                place_tag="up")
+        pose, parent = G.place_on_object(p, child, lay, used, random.Random(k), gens, sib)
+        assert parent == "shelf" and pose[0] == pytest.approx(0.035 - 0.025 * k - 0.02)
+    with pytest.raises(G.LayoutError):                  # the same slices with footprint checks do not fit
+        sib2 = {}
+        for k in range(2):
+            G.place_on_object(prm(relative_plane=f"shelf/shelf/{k}", xlim=[-0.02, -0.02], ylim=[-0.007, -0.007],
+                                  place_tag="up"), child, lay, set(), random.Random(k), gens, sib2)
+    p = prm(relative_plane="stand/stand/0", xlim=[-0.05, 0.05], ylim=[-0.08, -0.08], zlim=[0.02, 0.02],
+            check_mode="none")                          # the laptop: one axis pinned on a support disk
+    pose, _ = G.place_on_object(p, child, lay, set(), random.Random(0), gens, {})
+    assert pose[1] == pytest.approx(-0.08) and -0.05 <= pose[0] <= 0.05 and pose[2] == pytest.approx(0.765 + 0.05)
