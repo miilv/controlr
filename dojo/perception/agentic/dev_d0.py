@@ -108,7 +108,7 @@ def cmd_run(a):
         out = perceive_impl(inp["frames"], inp["calib"], inp["flange"], inp["grip_cmd"], inp["instruction"], inp["want"],
                             joints=inp["joints"], b1=b1, use_b1=not a.no_hint and b1 is not None, model=a.model,
                             max_turns=a.max_turns, log_dir=str(Path(a.log_dir or (Path(a.cases) / "_logs")) / tag),
-                            fallback="none" if a.no_hint else "b1",
+                            fallback="none" if a.no_hint else "b1", refine=False,  # H2 runs offline: dev_d0 refine
                             extra_body=json.loads(a.extra_body) if a.extra_body else None)
         out["_dev_wall_s"] = round(time.time() - t0, 2)
         f.write_text(json.dumps(out, default=str))
@@ -141,7 +141,8 @@ def cmd_refine(a):
         objs, infos = seeded_refine(images, state, cams, inp["task"], out["objects"], b1["objects"], bgs)
         out = dict(out, objects=objs, refine_info=infos, refine_s=round(time.time() - t0, 2))
         g.write_text(json.dumps(out, default=str))
-        print(d.name, a.tag, f"{sum(i['accepted'] for i in infos)}/{len(infos)} refined", out["refine_s"], "s", flush=True)
+        print(d.name, a.tag, f"{sum(i['accepted'] is True for i in infos)}+{sum(i['accepted'] == 'orientation_only' for i in infos)}/{len(infos)} refined",
+              out["refine_s"], "s", flush=True)
 
 
 # ------------------------------------------------------------------------------------------------ scoring (DEV ONLY)

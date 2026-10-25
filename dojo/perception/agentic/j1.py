@@ -15,6 +15,12 @@ Worker environment (on top of j1_adapter.install_env):
   AGENTIC_B1          1 (default): run B1 (j1_adapter) first and pass its output as the hint; 0: no hint
   AGENTIC_FALLBACK    b1 (default): if the agent gives no answer, return B1's output; none: return no objects
   AGENTIC_LOG_DIR     per-call workspaces + transcripts + calls.jsonl (default <J1_ILIA_HOME>/run/agentic)
+  AGENTIC_GATE        always (default: the agent on every call) | budget (the agent on the episode's first call, i.e.
+                      prior is None, and at most AGENTIC_MAX_PER_EPISODE - 1 more times when B1 misses a wanted object or
+                      a B1 object's calibrated risk >= AGENTIC_GATE_THR (flag_model.json); else B1 with the prior)
+  AGENTIC_KEEP_UNMENTIONED  1 (default): B1 objects the agent did not mention (none of its objects within 3 cm) stay,
+                      at half confidence
+  AGENTIC_REFINE      1 (default): B1's render-and-compare refines the agent's new / moved objects (seed_refine.py)
   AGENTIC_HELD        held_look source: b1_then_agent (default: B1's answer unless its confidence < 0.5 or dark_risk,
                       then one agent call), agent (always the agent), b1 (never the agent)
   AGENTIC_ENV_FILE    .env with OMNIROUTE_BASE_URL / OMNIROUTE_API_KEY (else the environment)
@@ -115,6 +121,11 @@ def _cfg(kw: dict) -> dict:
             "max_turns": int(kw.get("max_turns") or os.environ.get("AGENTIC_MAX_TURNS", 8)),
             "b1": str(kw.get("use_b1", os.environ.get("AGENTIC_B1", "1"))) not in ("0", "false", "False"),
             "fallback": kw.get("fallback") or os.environ.get("AGENTIC_FALLBACK", "b1"),
+            "gate": kw.get("gate") or os.environ.get("AGENTIC_GATE", "always"),
+            "refine": str(kw.get("refine", os.environ.get("AGENTIC_REFINE", "1"))) not in ("0", "false", "False"),
+            "keep_unmentioned": str(kw.get("keep_unmentioned", os.environ.get("AGENTIC_KEEP_UNMENTIONED", "1"))) not in ("0", "false", "False"),
+            "max_per_episode": int(kw.get("max_per_episode") or os.environ.get("AGENTIC_MAX_PER_EPISODE", 2)),
+            "gate_thr": float(kw.get("gate_thr") or os.environ.get("AGENTIC_GATE_THR", 0.2)),
             "log_dir": Path(kw.get("log_dir") or os.environ.get("AGENTIC_LOG_DIR", str(home / "run" / "agentic")))}
 
 
@@ -257,6 +268,20 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
     return objs, looks, probs
 
 
+def add_unmentioned(objects: list[dict], b1: dict | None, radius_m: float = 0.03) -> tuple[list[dict], int]:
+    """B1 objects the agent neither kept nor replaced (no agent object within ``radius_m``) stay in the output at half
+    confidence: on our D0 hard set the agents left out objects they could not confirm, and most of those were right."""
+    import math
+
+    out, n = list(objects), 0
+    for o in (b1 or {}).get("objects") or []:
+        if all(math.hypot(o["pos"][0] - x["pos"][0], o["pos"][1] - x["pos"][1]) > radius_m for x in out):
+            out.append(dict({k: v for k, v in o.items() if k in OBJ_FIELDS + ("source",)},
+                            confidence=round(0.5 * float(o.get("confidence", 0.5)), 3)))
+            n += 1
+    return out, n
+
+
 def _validate(out: dict) -> tuple[dict, dict]:
     sys.path.insert(0, str(Path(__file__).resolve().parent / "vendor"))
     try:
@@ -273,6 +298,49 @@ def _log_call(log_dir: Path, row: dict) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
     with open(log_dir / "calls.jsonl", "a") as f:
         f.write(json.dumps(row) + "\n")
+
+
+_EPISODE = {"agent_calls": 0}
+
+
+def risk(o: dict, model: dict | None = None) -> float:
+    """Calibrated probability that a B1 object's pose is outside the task tolerance (flag_model.json, fitted on our D0)."""
+    import json
+    import math
+
+    if model is None:
+        model = json.loads((Path(__file__).resolve().parent / "flag_model.json").read_text())
+    fl = o.get("flags") or {}
+    conf = o.get("confidence")
+    alt = o.get("alternative") or {}
+    x = [1.0, 1 - (conf if conf is not None else 0.0), o.get("residual") if o.get("residual") is not None else 1.0,
+         fl.get("hidden_frac") or 0.0, fl.get("fg_resid_near") or 0.0, float(bool(fl.get("occluded"))),
+         float(bool(fl.get("ambiguous"))), float(o.get("source") in ("fused", "refined")),
+         float(alt.get("margin") is not None and alt["margin"] < 0.05)]
+    z = sum(a * b for a, b in zip(model["weights"], x))
+    return 1 / (1 + math.exp(-z))
+
+
+def gate_decision(b1: dict | None, want, prior, cfg: dict) -> tuple[bool, str]:
+    """AGENTIC_GATE=budget: the agent at the episode's first call (prior is None) and at most once more, when B1 misses a
+    wanted object or a B1 object's calibrated risk >= the threshold; else B1 with the prior (it tracks the agent's scene)."""
+    if cfg["gate"] == "always":
+        return True, "always"
+    if prior is None:
+        _EPISODE["agent_calls"] = 0
+        return True, "first_call"
+    if _EPISODE["agent_calls"] >= cfg["max_per_episode"]:
+        return False, "episode_budget_spent"
+    if b1 is None:
+        return True, "no_b1"
+    wm = b1.get("want_match") or {}
+    missing = [w for w, lab in wm.items() if lab is None]
+    if missing:
+        return True, f"missing:{missing}"
+    hi = [(o.get("label"), round(risk(o), 2)) for o in b1.get("objects") or [] if risk(o) >= cfg["gate_thr"]]
+    if hi:
+        return True, f"risk:{hi[:4]}"
+    return False, "b1_confident"
 
 
 def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joints=None, prior=None, b1=None, chat=None,
@@ -302,13 +370,42 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
 
         (ws / "b1.json").write_text(json.dumps(b1, default=str))
     t_b1 = time.time()
+    use_agent, why = gate_decision(b1, want, prior, cfg)
+    if not use_agent and b1 is not None:
+        out = dict(b1)
+        out.pop("task", None)
+        out["notes"] = f"{VERSION} result=b1_gated gate={why} agent_calls_this_episode={_EPISODE['agent_calls']}"
+        _log_call(cfg["log_dir"], {"t": time.time(), "fn": "perceive", "ws": str(ws), "model": cfg["model"], "result": "b1_gated",
+                                   "gate": why, "calls": 0, "b1_s": round(t_b1 - t0, 2)})
+        return out
+    _EPISODE["agent_calls"] += 1
     first = _first_message(ws, have, calib, flange, grip_cmd or {}, instruction, want, b1, prior)
     st = run_agent(chat or _chat(), cfg["model"], system_prompt("robodojo"), first, RoboDojoTools(ws),
                    max_turns=cfg["max_turns"], extra_body=cfg["extra_body"], log_dir=ws)
     probs = []
+    ref_info = None
     if st["answer"] is not None:
         objects, looks, probs = answer_to_output(st["answer"], b1)
         src = "agent"
+        if cfg["keep_unmentioned"] and b1 is not None:
+            objects, n_kept = add_unmentioned(objects, b1)
+            if n_kept:
+                probs.append(f"b1_unmentioned_kept={n_kept}")
+        if cfg["refine"] and b1 is not None and objects:
+            try:  # H2: B1's render-and-compare from the agent's points (new / moved / orientation-less objects)
+                from ..segment import load_backgrounds
+                from .seed_refine import seeded_refine
+
+                bgs = _b1._BG.get("bg")
+                if bgs is None:
+                    bgs = _b1._BG["bg"] = load_backgrounds()
+                state, _ = _b1._state(flange, grip_cmd or {}, joints, kw.get("gripper"))
+                objects, ref_info = seeded_refine(_b1._load_frames(frames), state, _b1._cameras(calib),
+                                                  kw.get("task") or b1.get("task") or _b1.infer_task(instruction), objects,
+                                                  b1.get("objects") or [], bgs)
+                src = "agent+refine"
+            except Exception as e:
+                probs.append(f"refine: {type(e).__name__}: {e}")
     elif cfg["fallback"] == "b1" and b1 is not None:
         objects, looks, src = list(b1.get("objects") or []), list(b1.get("needs_look") or []), "b1_fallback"
     else:
@@ -318,7 +415,7 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
         o.setdefault("t_ms", t_ms)
     p = pin("robodojo", cfg["model"])
     notes = (f"{VERSION} model={cfg['model']} system_md5={p['system_md5']} protocol_md5={p['protocol_md5']} result={src} "
-             f"turns={st['turns']} calls={st['calls']} commands={st['commands']} stop={st['stop']} "
+             f"gate={why} turns={st['turns']} calls={st['calls']} commands={st['commands']} stop={st['stop']} "
              f"agent_s={st['wall_s']} b1_s={round(t_b1 - t0, 1)}" + (f" b1_error={b1_err}" if b1_err else "")
              + (f" problems={probs}" if probs else ""))
     out = {"objects": objects, "regions": list((b1 or {}).get("regions") or []), "needs_look": looks,
@@ -328,7 +425,7 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
     _log_call(cfg["log_dir"], {"t": time.time(), "fn": "perceive", "ws": str(ws), "model": cfg["model"], "result": src,
                                "turns": st["turns"], "calls": st["calls"], "commands": st["commands"], "stop": st["stop"],
                                "tokens": st["tokens"], "call_s": st["call_s"], "agent_s": st["wall_s"], "b1_s": round(t_b1 - t0, 2),
-                               "t_ms": t_ms, "problems": probs, "errors": st["errors"], "pin": {k: v for k, v in p.items() if k != "vendor"}})
+                               "t_ms": t_ms, "problems": probs, "errors": st["errors"], "refine": ref_info, "pin": {k: v for k, v in p.items() if k != "vendor"}})
     return out
 
 

@@ -99,6 +99,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   place the start around the aim point with a random sign per axis; always read the accuracy on the
   minority class. The decision head locates only VISIBLE, concretely named things ("the red ball"):
   "the point 50 mm above the box rim" stays at chance (journal 2026-10-07-decision-head-tuning).
+- **Sonnet 5.5 on `claude/` turns a "commands" prompt into call markup.** Asked for `{"commands": [...]}` JSON with tools
+  described in the system prompt, it can write `<invoke name=...><parameter name="commands">[...]</parameter>` in the
+  text and then repeat empty `<invoke>` / `<parameter>` blocks until `max_tokens` (40 s lost per turn). The agentic
+  perceiver parses the first non-empty `<parameter>` as the reply and stops such a stream early
+  (`dojo.perception.agentic.llm.degenerate`). `dva/gemini-*` answer 401 (no provider credentials); `auto/gemini` works.
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
   Very small frames (224 px) also make `low` think ([journal](journal/2026-10-04-sonnet-latency.md)).

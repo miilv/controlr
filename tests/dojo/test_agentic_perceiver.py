@@ -107,7 +107,7 @@ def test_perceive_impl_fake_session_validates(tmp_path):
     ]
     fc = FakeChat(replies)
     out = j1.perceive_impl(_frames(), _calib(), FLANGE, {"left": 1.0, "right": 1.0}, "Stack the three blocks.", ["block"],
-                           b1=_b1(), chat=fc, model="fake", log_dir=str(tmp_path))
+                           b1=_b1(), chat=fc, model="fake", refine=False, log_dir=str(tmp_path))
     assert len(fc.sent) == 2
     first = fc.sent[0][1]["content"]
     assert "Hint (B1" in first[0]["text"] and "[1] label='block_1'" in first[0]["text"] and "hidden 0.40" in first[0]["text"]
@@ -227,3 +227,30 @@ def test_urllib_chat_streams_sse(monkeypatch):
     srv.shutdown()
     assert r.text == '{"answer": {"objects": []}}' and r.prompt_tokens == 11 and r.completion_tokens == 5 and r.error is None
     assert seen["body"]["stream"] is True and seen["auth"] == "Bearer test-not-a-key"
+
+
+def test_budget_gate(tmp_path):
+    b1 = _b1()
+    b1["want_match"] = {"block": "block_0"}
+    risky = j1.risk(b1["objects"][1])
+    assert 0 <= j1.risk(b1["objects"][0]) < risky <= 1
+    cfg = {"gate": "budget", "max_per_episode": 2, "gate_thr": 0.2}
+    assert j1.gate_decision(b1, ["block"], None, cfg) == (True, "first_call")
+    j1._EPISODE["agent_calls"] = 1
+    use, why = j1.gate_decision(b1, ["block"], {"objects": []}, cfg)
+    assert use == (risky >= 0.2) and why.startswith("risk" if use else "b1_confident")
+    j1._EPISODE["agent_calls"] = 2
+    assert j1.gate_decision(b1, ["block"], {"objects": []}, cfg) == (False, "episode_budget_spent")
+    calm = {"objects": [b1["objects"][0]], "want_match": {"block": "block_0"}}
+    j1._EPISODE["agent_calls"] = 1
+    assert j1.gate_decision(calm, ["block"], {"objects": []}, cfg) == (False, "b1_confident")
+    out = j1.perceive_impl(_frames(), _calib(), FLANGE, {"left": 1.0}, "Stack the three blocks.", ["block"], prior={"objects": []},
+                           b1=calm, chat=FakeChat([]), model="fake", gate="budget", log_dir=str(tmp_path))
+    assert "result=b1_gated" in out["notes"] and out["objects"][0]["label"] == "block_0"
+
+
+def test_unmentioned_b1_objects_are_kept_at_half_confidence():
+    objs = [{"label": "block", "pos": [0.051, -0.121, 0.78], "confidence": 0.8}]
+    out, n = j1.add_unmentioned(objs, _b1())
+    assert n == 1 and out[1]["label"] == "block_1" and out[1]["confidence"] == pytest.approx(0.15)
+    assert "flags" not in out[1]

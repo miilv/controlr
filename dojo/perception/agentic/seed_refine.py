@@ -19,9 +19,31 @@ def _cat(o: dict) -> str | None:
     return a[1] if len(a) == 3 else o.get("category")
 
 
-def _candidates(o: dict, b1_objs: list[dict], task: str | None) -> list[str]:
+def _extents(key: str):
+    from ..render import load_asset
+
+    try:
+        return sorted(load_asset(key).info["extents"])
+    except Exception:
+        return None
+
+
+def _candidates(o: dict, b1_objs: list[dict], task: str | None, k_max: int = 3) -> list[str]:
     if o.get("asset"):
         return [o["asset"]]
+    keys = _candidates_all(o, b1_objs, task)
+    size = o.get("size")
+    if size and len(size) == 3 and len(keys) > k_max:  # the agent's measured size ranks the shapes
+        sz = sorted(float(v) for v in size)
+
+        def d(k):
+            e = _extents(k)
+            return 9.0 if e is None else sum(abs(a - b) / max(b, 1e-3) for a, b in zip(sz, e))
+        keys = sorted(keys, key=d)
+    return keys[:k_max]
+
+
+def _candidates_all(o: dict, b1_objs: list[dict], task: str | None) -> list[str]:
     cat = _cat(o)
     lab = str(o.get("label") or "")
     keys = []
@@ -37,12 +59,12 @@ def _candidates(o: dict, b1_objs: list[dict], task: str | None) -> list[str]:
                 if (cat and c == cat) or (lab and (lab in g["labels"] or c in lab.lower())):
                     if k not in keys:
                         keys.append(k)
-    return keys[:6]
+    return keys
 
 
 def seeded_refine(images: dict, state: dict, cams: dict, task: str | None, objects: list[dict], b1_objs: list[dict],
-                  bgs: dict, same_mm: float = 8.0, max_shift_mm: float = 40.0, max_loss: float = 0.45,
-                  n_yaw: int = 8) -> tuple[list[dict], list[dict]]:
+                  bgs: dict, same_mm: float = 8.0, max_shift_mm: float = 40.0, max_loss: float = 0.5,
+                  n_yaw: int = 8, orient_loss: float = 0.75, orient_shift_mm: float = 15.0) -> tuple[list[dict], list[dict]]:
     """-> (objects with refined poses where accepted, per-object info)."""
     from ..cameras import R_to_quat_wxyz, pose_to_T
     from ..inverse_layout import EstimatorConfig, _views_subset, refine as nm_refine, shape_models
@@ -53,10 +75,12 @@ def seeded_refine(images: dict, state: dict, cams: dict, task: str | None, objec
     out, infos = [dict(o) for o in objects], []
 
     def todo(o):
-        if not o.get("quat"):
-            return True
+        """New or moved by the agent: no B1 object (any label) within same_mm. Orientation-less objects that sit on
+        a B1 object take that object's asset and pose (the agent re-labelled it, it did not move it)."""
         for b in b1_objs:
-            if _cat(b) == _cat(o) and math.hypot(b["pos"][0] - o["pos"][0], b["pos"][1] - o["pos"][1]) * 1000 <= same_mm:
+            if math.hypot(b["pos"][0] - o["pos"][0], b["pos"][1] - o["pos"][1]) * 1000 <= same_mm:
+                if not o.get("quat") and b.get("quat"):
+                    o.update({k: b[k] for k in ("pos", "quat", "asset", "size", "top_z") if b.get(k) is not None})
                 return False
         return True
 
@@ -130,5 +154,15 @@ def seeded_refine(images: dict, state: dict, cams: dict, task: str | None, objec
                          confidence=round(float(max(0.05, min(0.99, 1 - loss))), 3), source="refined")
                 shapes[i] = (sm, T)
                 info["accepted"] = True
+            elif loss < orient_loss and shift < orient_shift_mm and not o.get("quat"):
+                # a poor fit that agrees with the agent's point: take its shape and yaw, keep the agent's xy
+                c_off = T[:3, :3] @ ((sm.asset.V.min(0) + sm.asset.V.max(0)) / 2)
+                T2 = sm.pose(x0 - c_off[0], y0 - c_off[1], yy)
+                V = sm.asset.V @ sm.R0.T
+                o.update(pos=[round(float(v), 5) for v in T2[:3, 3]], quat=[round(float(v), 6) for v in R_to_quat_wxyz(T2[:3, :3])],
+                         asset=key, category=key.split("/")[1], size=np.round(V.max(0) - V.min(0), 4).tolist(),
+                         confidence=round(float(min(0.5, 1 - loss)), 3), source="refined")
+                shapes[i] = (sm, T2)
+                info["accepted"] = "orientation_only"
         infos.append(info)
     return out, infos
