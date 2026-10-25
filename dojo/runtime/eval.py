@@ -102,6 +102,16 @@ def load_policy_factory(spec: str | None):
     return getattr(importlib.import_module(mod), cls)
 
 
+def deployed_code() -> dict | None:
+    """``.deployed.json`` written by scripts/deploy.sh in this checkout (head, skills / perception / simlab /
+    runtime commits), or None (e.g. a local run)."""
+    p = Path(__file__).resolve().parents[2] / ".deployed.json"
+    try:
+        return json.loads(p.read_text())
+    except (OSError, ValueError):
+        return None
+
+
 def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_minutes: float = 25.0,
         policy_factory=None) -> dict:
     from dojo.skills.world import AssetDB
@@ -112,6 +122,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
     pol = (policy_factory or RuntimePolicy)(cfg)
     assets = AssetDB(paths.OBJECTS)
     rows, t_all = [], time.perf_counter()
+    code = deployed_code()
     for lf in layout_files:
         if (time.perf_counter() - t_all) / 60 > max_minutes:
             rows.append({"layout": lf, "skipped": "time budget of this job"})
@@ -163,7 +174,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                "verify_stats": v if isinstance(v, dict) else v, "provider": rep.get("provider"),
                "perception": perc, "events": rep.get("events", [])[-30:], "decisions": rep.get("decisions"),
                "history": rep.get("history", [])[-40:], "result": rep.get("result"), "info_dropped": rep.get("info_dropped"),
-               "agent": rep.get("agent"), "policy": type(pol).__module__ + ":" + type(pol).__name__}
+               "agent": rep.get("agent"), "policy": type(pol).__module__ + ":" + type(pol).__name__, "code": code}
         rows.append(row)
         with (out / f"{tag}_episodes.jsonl").open("a") as f:
             f.write(json.dumps(jsonable(row), default=str) + "\n")

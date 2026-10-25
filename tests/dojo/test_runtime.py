@@ -1023,3 +1023,15 @@ def test_held_refine_measures_the_in_hand_object_and_reanchors_the_grasp():
     assert np.allclose(out["block_1"][1], flipped)
     prov.belief.sync_robot(b.obs["state"])                     # a refresh keeps the measured in-hand pose
     assert abs(abs(float(np.dot(prov.belief.objects["block_1"].quat, flipped))) - 1.0) < 1e-6
+
+
+def test_deployed_code_reads_the_deploy_stamp(tmp_path, monkeypatch):
+    import json as _json
+
+    import dojo.runtime.eval as EV
+    stamp = {"head": "abc1234", "skills": "def5678"}
+    fake = tmp_path / "dojo" / "runtime" / "eval.py"
+    fake.parent.mkdir(parents=True)
+    (tmp_path / ".deployed.json").write_text(_json.dumps(stamp))
+    monkeypatch.setattr(EV, "__file__", str(fake))
+    assert EV.deployed_code() == stamp
