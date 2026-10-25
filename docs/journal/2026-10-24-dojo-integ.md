@@ -301,3 +301,59 @@ the blocks with good fits (iou 0.65–0.72, perception ok) but `refine_max_shift
 (34.9 / 59.2 mm), and post-place refines that saw 34–39 mm offsets were discarded the same way. The closed2 arm
 sets the cap to 70 mm (perception's in-frame search range; perception's own `ok` requires iou ≥ 0.6), post-place
 uses the same cap. closed2 = closed + search by wrist refine + 70 mm cap.
+
+## 7. Shared lock queue with the agent layer; program seam
+
+- The agent layer (feat/dojo-agent) drives the runtime through `RuntimePolicy(program=fn)`: `_setup(obs0) -> ctx`
+  (perceive, looks, search, provider, verifier, Skills factory) → `fn(ctx)` instead of the supervisor loop → the
+  same tail. `dojo.runtime.eval --policy module:Class`; episode rows carry `agent` / `policy`.
+- Lead's lock order: one agent Phase-2 job (~3 episodes) alternating with one of mine. My runner owns the single
+  ordered queue (`~/dojo-data/integ/queue.txt`); agent lines carry `--repo /home/physicalai/dojo-agent` and run that
+  checkout's `integ_eval.sh`. `queue.sh restart` replaces the runner after a deploy (waits for the in-flight job).
+- Code versions in the closed2 stack arm: chunk a on the pre-seam code, chunks b–e on the seam refactor
+  (behaviour-preserving; same tests). No other change in between.
+
+### 6.1 closed2: search by wrist refine + 70 mm cap (stack_blocks, 25 settled layouts, mode B + verify)
+
+| arm | success | score | steps med / max | wall s / ep | failures |
+|---|---|---|---|---|---|
+| control (refine off) | 16/25 | 68.2 | 177 / 209 | 34 | perception_gross 9 |
+| closed | 17/25 | 71.6 | 222 / 335 | 53 | perception_gross 7, verify_reject 1 |
+| **closed2** | **20/25** | **81.8** | 234 / 401 | 54 | perception_gross 3, verify_reject 1, divergence 1 |
+| mode A (GT) | 25/25 | 100.0 | 169 / 219 | 32 | – |
+
+Paired: closed2 vs control rescued 7 (100002, 100004, 100005, 100015, 100018, 100021, 100022), lost 3 (100012, 100017,
+100024); vs closed rescued 5, lost 2. **Gap to mode A: 18.2 points** (was 28.4). Estimate at planning: xy median
+1.2 mm, p90 11.7 mm. perception scored the pick refines of closed2 a–d against GT: ok 36/38 with refined error median
+0.3 mm (p90 1.3, max 5.8; prior median 1.2, p90 9.5, max 26); the 2 not-ok (iou 0.07, priors 27 / 37 mm off) were
+right to reject.
+
+Remaining: 100014 / 100020 (block 31–37 mm off, pick refine not ok, `suggest_xy` = prior: needs a search look for a
+found-but-misplaced object), 100024 (never found even by the search), 100017 (place 20 mm off, no candidate passed),
+100012 (divergence: after a good post-place wrist measurement the head check re-estimated by LABEL and moved the block
+252 mm onto another block; fixed: wrist-measured objects are not re-checked, re-estimates are matched by position,
+jumps > 150 mm ignored; deployed for the tower runs). Code: chunk a on the pre-seam code, b–e on the seam refactor.
+
+### 6.2 Next: lost-object search, tower trio, ledger
+
+- `RuntimeConfig.search_lost` (default off): a pick-hover refine with iou < 0.2 and no usable `suggest_xy` raises
+  `LostObject`; the supervisor runs a wrist search seeded at the belief pose (then perception's regions), refits by
+  refine (10 cm), writes the pose into the belief and re-plans; once per object per episode. Measured first on the
+  5 failing closed2 layouts (`B_stack_bundle_closed3_fail5`), after the tower base / closed arms (lead's order).
+- Code versions: tower base3 / closed arms run from `~/dojo-integ` (cb0ac66 merge); the fail5 check, mode-A tower and
+  the leftovers from a second checkout `~/dojo-integ-next` via the queue's `--repo` (so no barrier is needed).
+- Ledger: robot-harness PR #6 (tier `proxy` for proxy-eval results, per the lead).
+
+## 8. Status at hand-off (2026-10-25 13:05 UTC)
+
+| task | mode A (GT) + verify | mode B (perception) + verify, best arm | gap | n |
+|---|---|---|---|---|
+| stack_blocks | 100.0 (25/25) | 81.8 (20/25, closed2) | 18.2 | 25 settled |
+| build_tower | 100.0 (10/10) | 75.0 (7/10, verify off, before refine) | 25.0 | 10 |
+
+Unattended on compute3 (`~/dojo-data/integ/queue.txt`, runner `scripts/dojo/queue_runner.sh`, 1:1 with the agent
+layer's AGB jobs): build_tower base3 (refine off) ×25 and closed (closed2 config) ×25 from `~/dojo-integ`; then
+`B_stack_bundle_closed3_fail5` (search_lost on the 5 failing closed2 layouts), mode-A tower ×25, A stack verify-off
+controls, stack_bowls / put_bottles (A and B), swap_blocks / press_by_number (A) from `~/dojo-integ-next`.
+Read results with `python -m dojo.runtime.report --arm base:<dirs> --arm closed:<dirs>` (paired rescued / lost) or
+`python -m dojo.runtime.report <dirs>` (totals, gap table, failures, perception errors).

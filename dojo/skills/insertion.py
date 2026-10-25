@@ -242,3 +242,81 @@ def fit_insertion(peg, hole, res: float = 0.0004, yaw_step_deg: float = 3.0, mar
                    float(hole.pos[2] + top), float(depth), R0,
                    note=f"axis {'+' if sgn > 0 else '-'}{k} yaw {yaw_deg:.0f} clearance {clear*1000:.2f} mm "
                         f"depth {depth*1000:.0f} mm root {np.round(root_local*1000, 1).tolist()} mm")
+
+
+def refine_insertion(peg, hole, T_obj, half: float = 0.003, res: float = 0.0001, yaws_deg=(-3, -2, -1, 0, 1, 2, 3),
+                     lead: float = 0.003, margin_top: float = 0.003, press_floor: bool = True):
+    """Fine local fit of an insertion pose that is already close (an asset's insert frame on a receptacle's
+    outlet frame): the peg's leading end (its surface within ``lead`` of the lowest point, at pose
+    ``T_obj``) against the receptacle's holes (depth map at ``res``, cells more than ``margin_top`` below the
+    local top), over xy offsets within ``half`` and small yaws about the vertical through the leading end's
+    centre. Best = the most footprint points over holes, then the largest wall clearance, then the smallest
+    shift (a charger's 0.8 mm blades into 1.0 mm slots: the outlet frames sit 0.5-1 mm off the slot pairs;
+    twin, the plugs that went in sat 1 mm off the frame). ``press_floor``: the pose is also lowered until the
+    leading end meets the floor under the footprint (the frames put the blade tips at the outlet surface; the
+    checker wants them >= 15 mm below the strip's top). Returns (T_obj, info dict) or None."""
+    if peg.asset.mesh is None or hole.asset.mesh is None:
+        return None
+    T_obj = np.asarray(T_obj, float)
+    Vh, Fh = hole.asset.mesh
+    Vp, Fp = peg.asset.mesh
+    T_hw = np.eye(4)
+    T_hw[:3, :3], T_hw[:3, 3] = hole.R.T, -hole.R.T @ hole.pos            # world -> receptacle frame
+    T_loc = T_hw @ T_obj                                                   # peg pose in the receptacle frame
+    P = _surface_samples(Vp, Fp, step=0.0003) @ T_loc[:3, :3].T + T_loc[:3, 3]
+    tip = float(P[:, 2].min())
+    foot = P[P[:, 2] <= tip + lead]
+    c = foot[:, :2].mean(0)
+    ext = float(np.abs(foot[:, :2] - c).max()) + half + 0.002
+    xs = np.arange(c[0] - ext, c[0] + ext + 1e-9, res)
+    ys = np.arange(c[1] - ext, c[1] + ext + 1e-9, res)
+    near = np.all(np.abs(Vh[Fh].mean(1)[:, :2] - c) < ext + 0.01, axis=1)
+    D = _ray_down_grid(Vh, Fh[near], xs, ys, float(Vh[:, 2].max()) + 0.01)
+    fin = np.isfinite(D)
+    if not fin.any():
+        return None
+    top = float(D[fin].max())
+    hole_m = (~fin) | (D < top - margin_top)
+    dist = _dist_inside(hole_m, res)
+    best = None
+    shifts = np.arange(-half, half + 1e-9, res)
+    for yd in yaws_deg:
+        Rz = rot_z(math.radians(yd))
+        Q = (foot[:, :2] - c) @ Rz[:2, :2].T + c
+        for dx in shifts:
+            ix = np.round((Q[:, 0] + dx - xs[0]) / res).astype(int)
+            okx = (ix >= 0) & (ix < len(xs))
+            for dy in shifts:
+                iy = np.round((Q[:, 1] + dy - ys[0]) / res).astype(int)
+                ok = okx & (iy >= 0) & (iy < len(ys))
+                if not ok.all():
+                    continue
+                inside = hole_m[iy, ix]
+                frac = float(inside.mean())
+                clr = float(dist[iy, ix].min()) if inside.all() else 0.0
+                key = (round(frac, 3), clr, -math.hypot(dx, dy) - 1e-4 * abs(yd))
+                if best is None or key > best[0]:
+                    best = (key, yd, dx, dy, iy, ix)
+    if best is None:
+        return None
+    key, yd, dx, dy, iy, ix = best
+    Rz = np.eye(4)
+    Rz[:3, :3] = rot_z(math.radians(yd))
+    Tc = np.eye(4)
+    Tc[:2, 3] = c
+    Tsh = np.eye(4)
+    Tsh[:2, 3] = (dx, dy)
+    T_new_loc = Tsh @ Tc @ Rz @ np.linalg.inv(Tc) @ T_loc                   # turn about the footprint centre, shift
+    fl = D[iy, ix]
+    fl = fl[np.isfinite(fl)]
+    floor = float(fl.max()) if len(fl) else None
+    dz = 0.0
+    if press_floor and floor is not None and key[0] >= 0.999:
+        # leading end down onto the floor, but no deeper than most of the object's own height (a coin goes
+        # into a bank's slot and drops; the bank's floor is 9 cm further down)
+        h_obj = float(P[:, 2].max() - tip)
+        dz = max(floor - tip, -0.8 * h_obj)
+        T_new_loc[2, 3] += dz
+    T_new = np.linalg.inv(T_hw) @ T_new_loc
+    return T_new, {"inside": key[0], "clearance": key[1], "shift_mm": (round(dx * 1000, 2), round(dy * 1000, 2)),
+                   "yaw_deg": yd, "lowered_mm": round(-dz * 1000, 1), "floor": floor, "top": top}

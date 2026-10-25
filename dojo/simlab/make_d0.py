@@ -72,7 +72,24 @@ def tilted(home_quat, deg: float) -> np.ndarray:
     return best[1]
 
 
-def scripted_moves(run: RoboDojoRunner, d: Path, seed: int, max_frame: int = 3) -> list[dict]:
+def hover_move(mv, run: RoboDojoRunner, label: str, hover: float) -> dict:
+    """Frame 1 for refine tests: a wrist ~``hover`` m above object ``label``, tool axis (near) straight down,
+    whichever arm reaches (left first); falls back to a 50 deg look from 14 cm."""
+    o = next((r for r in run.objects_gt() if r.get("label") == label and r["pos"] is not None), None)
+    if o is None:
+        return {"name": f"hover_{label}", "ok": False, "why": "label not in the scene"}
+    for arm in ("left", "right"):
+        for pitch in (85, 70, 55):
+            q = tilted(mv.home_flange[arm][3:], pitch)
+            tcp = np.asarray(o["pos"], float) + [0.0, 0.0, hover]
+            if mv.tcp({arm: tcp}, quat={arm: q}, name=f"hover_{label}").get(arm):
+                return {"name": f"hover_{label}", "arm": arm, "target_label": label, "target_inst": o["inst_name"],
+                        "tcp_target": tcp.tolist(), "pitch_deg": pitch, "hover_m": hover, "ok": True}
+    return {"name": f"hover_{label}", "ok": False, "why": "unreachable"}
+
+
+def scripted_moves(run: RoboDojoRunner, d: Path, seed: int, max_frame: int = 3, look_label: str | None = None,
+                   hover: float = 0.10) -> list[dict]:
     from dojo.simlab.motion import Mover, quat_to_mat
     rng = random.Random(seed)
     mv = Mover(run)
@@ -99,7 +116,10 @@ def scripted_moves(run: RoboDojoRunner, d: Path, seed: int, max_frame: int = 3) 
 
     left_c = sorted(objs, key=lambda o: o["pos"][0])            # world -x is the robot's left
     right_c = sorted(objs, key=lambda o: -o["pos"][0])
-    m1 = try_move("left", left_c[:3], "left_look_at_object")
+    m1 = hover_move(mv, run, look_label, hover) if look_label else {"ok": False}
+    if not m1["ok"]:
+        m1 = {**try_move("left", left_c[:3], "left_look_at_object"),
+              **({"hover_failed": look_label} if look_label else {})}
     log.append(m1)
     save_frame(run, d, 1, m1)
     if max_frame < 2:
@@ -140,6 +160,8 @@ def main(argv: list[str] | None = None) -> None:
                          "generating; LAYOUTS is not written")
     ap.add_argument("--max-frame", type=int, default=3, choices=(1, 2, 3), help="last frame (moves 1..K)")
     ap.add_argument("--index-name", default="index.json")
+    ap.add_argument("--look-label", default=None, help="frame 1 = a wrist hovering over this object (refine tests)")
+    ap.add_argument("--hover-cm", type=float, default=10.0)
     a = ap.parse_args(argv)
     out = Path(a.out) / a.task
     paths.assert_not_eval(out)
@@ -184,7 +206,7 @@ def main(argv: list[str] | None = None) -> None:
             run.export_stage(d / "stage.usd")
             (d / "cameras.json").write_text(json.dumps(run.camera_spec(), indent=1))
         save_frame(run, d, 0, {"name": "initial"})
-        moves = scripted_moves(run, d, s, a.max_frame)
+        moves = scripted_moves(run, d, s, a.max_frame, a.look_label, a.hover_cm / 100)
         made += 1
         index.append({"id": s, "status": "ok", "instruction": info["instruction"][0], "moves_ok":
                       [bool(m["ok"] if isinstance(m["ok"], bool) else all(m["ok"].values())) for m in moves],

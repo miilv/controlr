@@ -131,6 +131,12 @@ episode record carries the deployed commit (`scripts/skills/deploy_skills2.sh` -
 | plug_in_charger | v2 (39ae0fb: + finish always) | 100000-09 | **2/10** | 0.20 | 93-205 (400) | 8 place_miss: the charger topples 31-88 deg after the release (blades not engaged; xy 9-60 mm off the outlet), 1 upright but 9 mm off |
 | insert_key | v1 (bc04994) | the 14 settled of 100000-24 | 0/11 so far | 0.15 (all banked the lift) | 48-229 (300) | in-air handover executed (drift 0.1 mm) but: taker approach IK at execution 4, key turned in the taker's grasp then re-plan failed 3, collision with the lock 1, step budget 1 |
 
+| insert_key | v2 (39ae0fb: gripper clears the lock, handover checks both fingers on the key) | first 6 of the 14 settled (rest still queued) | 0/6 | 0.15 | 60-80 (300) | the stricter handover now fails earlier: the taker's approach to its grasp is unreachable at execution (ik_fail 4) or hits the giver / lock (collision 2) |
+
+Summary for the board (G3, GT state): make_kong 25/25 (PyRUA 0); plug_in_charger 2/10 (PyRUA 16, best 32);
+store_tools 0.25 mean (PyRUA 15.5); organize_table 0.35 (PyRUA 25); fill_pen_holder 0.08 (PyRUA 23.5);
+insert_key 0.15 = the lift credit (PyRUA 0).
+
 ## 4. Failure taxonomy
 
 1. **Squeeze-out of thin lying objects** (store_tools: pliers, hammer, wrench; 4/5 episodes). The pads
@@ -151,6 +157,15 @@ episode record carries the deployed commit (`scripts/skills/deploy_skills2.sh` -
    during the long carry.
 5. **Pushing a wide flat object** (organize keyboard): single-contact strokes found no IK for the long
    axis, or did not move it (223 mm left after 14 strokes).
+6. **In-air handover execution** (insert_key): planned from home with nominal poses; at execution the
+   key sits a few mm / degrees off in the giver and the taker's approach IK fails or meets the giver.
+   Next: re-run the taker screen on the measured pose (all candidates, not the planned one), and
+   verify the taker's grasp before the giver lets go.
+7. **Released plug topples** (plug_in_charger 8/10): the blades do not engage when the charger lands
+   9-60 mm off the outlet; slower final descent, a re-measure over the outlet, and a hold-check before
+   the release are the next levers.
+8. **Pens over the rim** (fill_pen): after the first pen, the next ones land on it / the rim (tilted
+   24-46 deg); the occupancy model of leaning pens is too optimistic.
 
 ## 5. Interfaces
 

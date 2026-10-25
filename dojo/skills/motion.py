@@ -222,7 +222,10 @@ class Collision:
                 if inside.any():
                     return False, f"hits {lab}"
         if grip_only and self.world is not None:
-            pts = np.vstack([links, palm, fingers])
+            # dense hand samples: the corner samples straddle a narrow receptacle (a power strip 37 mm wide
+            # passed between them while the palm sat 6 mm into it; twin: the hand stopped 8 mm above the
+            # outlet, 7/10)
+            pts = np.vstack([links, palm, fingers, dense_hand(self.kin, Tf, gripper)])
             for lab in grip_only:
                 if lab not in self.world.objects:
                     continue
@@ -399,6 +402,33 @@ def held_box(o, T_tcp_obj) -> HeldBox:
     if mesh is None or len(mesh[0]) < 60:
         return hb
     V = np.asarray(mesh[0], float)
+    irr = getattr(o.asset, "irregular", None)      # decided on the full mesh when it was loaded (AssetDB)
+    if irr is None:
+        irr = mesh_irregular(V)
+    if irr:
+        hb.points = V[:: max(1, len(V) // 400)].copy()
+    return hb
+
+
+def dense_hand(kin: X5Kin, T_flange, gripper: float) -> np.ndarray:
+    """Palm / finger-rail box and fingers sampled on grids (world points)."""
+    from dojo.skills.kinematics import FINGER_MAX, GRIP_SCALE
+    qf = min(max(GRIP_SCALE[0] + gripper * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0), FINGER_MAX)
+    loc = [(x, y, z) for x in np.linspace(0.0, 0.084, 5) for y in np.linspace(-0.08, 0.08, 9)
+           for z in np.linspace(-0.03, 0.03, 5)]
+    for x0, x1, yo, zh in ((0.075, 0.105, 0.0378, 0.028), (0.107, 0.126, 0.0134, 0.015), (0.128, 0.1576, 0.0034, 0.009)):
+        for x in np.linspace(x0, x1, 4):
+            for y in np.linspace(0.0004, yo, 3):
+                for z in np.linspace(-zh, zh, 5):
+                    loc += [(x, qf + y, z), (x, -(qf + y), z)]
+    loc = np.asarray(loc)
+    return (np.asarray(T_flange)[:3, :3] @ loc.T).T + np.asarray(T_flange)[:3, 3]
+
+
+def mesh_irregular(V: np.ndarray) -> bool:
+    """Does the shape fill its box poorly? Horizontal slices across the body z axis cover under 60 % of the
+    bbox footprint on average (figurines, tools, keys)."""
+    V = np.asarray(V, float)
     ext = np.maximum(V.max(0) - V.min(0), 1e-6)
     k = 2                                        # slices across the body z axis
     fills = []
@@ -408,9 +438,7 @@ def held_box(o, T_tcp_obj) -> HeldBox:
             o2 = [i for i in range(3) if i != k]
             a = np.prod(V[m][:, o2].max(0) - V[m][:, o2].min(0))
             fills.append(a / (ext[o2[0]] * ext[o2[1]]))
-    if fills and float(np.mean(fills)) < 0.6:
-        hb.points = V[:: max(1, len(V) // 400)].copy()
-    return hb
+    return bool(fills and float(np.mean(fills)) < 0.6)
 
 
 def merge_steps(per_arm: dict[str, list[np.ndarray]], hold: dict[str, np.ndarray]) -> list[dict[str, np.ndarray]]:

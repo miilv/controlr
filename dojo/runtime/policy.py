@@ -32,7 +32,7 @@ from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
-from .belief import Divergence, RuntimeProvider
+from .belief import Divergence, LostObject, RuntimeProvider
 from .bridge import Bridge
 from .estimate import flagged
 from .firewall import check_obs, sanitize_info
@@ -79,6 +79,8 @@ class RuntimeConfig:
     post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
     search: bool = False                # objects still missing after the looks: wrist search over regions
     search_max_regions: int = 4
+    search_lost: bool = False           # a pick refine with iou < lost_iou and no usable suggestion -> search around it
+    lost_iou: float = 0.2
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -161,6 +163,7 @@ class RuntimePolicy:
         self.log_task = self.info.get("task")            # logging only (never a decision input)
         self.fold = int(self.info.get("dev_calib_fold", 0))
         self.bridge = Bridge()
+        self._lost_searched = set()
         self.dev_gt = None
         self.log_lines = []
         self.t0 = time.perf_counter()
@@ -391,6 +394,11 @@ class RuntimePolicy:
                 events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
                 sk = make_skills(sk)
                 continue
+            except LostObject as e:
+                found = self._search_lost(ctx, e)
+                events.append({"kind": "lost_search", "label": e.label, "found": found, "step": b.steps_used})
+                sk = make_skills(sk)
+                continue
             except KeyError as e:                    # a label the program needs is not in the WorldState
                 res = {"ok": False, "stage": "world", "error": f"missing object {e}"}
             last = next((h for h in reversed(sk.history) if not h.ok), None)
@@ -459,6 +467,12 @@ class RuntimePolicy:
             o.pos, o.quat = pend                        # the second look did not confirm: back to the prior
             ev["why"] = (ev.get("why") or "") + " (large correction not confirmed, prior kept)"
             return None
+        if (not r.get("ok") and kind == "pick" and self.cfg.search_lost and (r.get("iou") or 0) < self.cfg.lost_iou
+                and (r.get("suggest_xy") is None or (r.get("suggest_shift_mm") or 0) < 5.0)
+                and label not in getattr(self, "_lost_searched", set())):
+            self._lost_searched = getattr(self, "_lost_searched", set()) | {label}
+            ev["lost"] = True
+            raise LostObject(label, o.pos, o.quat, o.asset.key)
         if not r.get("ok"):
             # perception found the object away from the prior but could not fit it well from this hover (it sits
             # off-centre in the wrist view): ask skills to hover over that spot and refine once more
@@ -502,7 +516,30 @@ class RuntimePolicy:
             return hint
         return {label: (o.pos.copy(), o.quat.copy())}
 
-    def _search(self, sk, obs0: dict, rec: dict, scene: str, kin) -> dict | None:
+    def _search_lost(self, ctx, e) -> bool:
+        """The object of a failed pick refine, treated as not found locally: a wrist search seeded at its belief
+        pose (then perception's regions), refine there, write the found pose into the belief."""
+        from .estimate import est_objects, iter_records
+        prov = ctx.prov
+        known = [o for o in est_objects(prov.belief.objects) if o["label"] != e.label]
+        rec = {"_not_found": [{"label": e.label, "candidates": [e.key]}]}
+        for o in known:
+            rec.setdefault(o["type"], {}).setdefault(o["category"], []).append(
+                {"category": o["category"], "category_idx": o["category_idx"], "label": o["label"], "default_pos": o["pos"],
+                 "default_ori": o["quat"], "_perception": {"confidence": 0.9}})
+        seed = {"target": [float(e.pos[0]), float(e.pos[1]), 0.765], "arm": None, "why": "lost_at_belief"}
+        out = self._search(ctx.sk, ctx.bridge.observe(), rec, ctx.scene, ctx.kin, seed=seed, min_budget=0.3)
+        if out is None or any(x.get("label") == e.label for x in out.get("_not_found") or []):
+            return False
+        for _t, _c, r in iter_records(out):
+            if r.get("label") == e.label:
+                o = prov.belief.objects[e.label]
+                o.pos, o.quat, o.source = np.asarray(r["default_pos"], float), np.asarray(r["default_ori"], float), "perception"
+                return True
+        return False
+
+    def _search(self, sk, obs0: dict, rec: dict, scene: str, kin, seed: dict | None = None,
+                min_budget: float | None = None) -> dict | None:
         """Objects still missing after the looks: move a wrist over each search region (perception's
         ``search_regions``), observe, re-estimate with that view (full fuse) and add objects found far from every
         known one under the missing labels. Returns the updated record, or None if nothing was missing."""
@@ -513,12 +550,13 @@ class RuntimePolicy:
         cfg, b = self.cfg, self.bridge
         if not (rec or {}).get("_not_found"):
             return None
-        regions = self.perception().search_regions(b.observe(), rec, scene)[:cfg.search_max_regions]
+        regions = ([seed] if seed else []) + self.perception().search_regions(b.observe(), rec, scene)
+        regions = regions[:cfg.search_max_regions]
         log = self.report.setdefault("search", [])
         for reg in regions:
             if not rec.get("_not_found"):
                 break
-            if b.steps_used > b.step_lim * (1 - cfg.look_min_budget):
+            if b.steps_used > b.step_lim * (1 - (cfg.look_min_budget if min_budget is None else min_budget)):
                 log.append({"skipped": "budget"})
                 break
             arms = [reg["arm"]] if reg.get("arm") in ("left", "right") else []
