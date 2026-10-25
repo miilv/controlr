@@ -1,4 +1,6 @@
-"""Prune the strict server's observation PNGs of a CLOSED bridge episode in OUR bench run dir (isr-lab disk budget).
+"""Prune the observation PNGs of a CLOSED bridge episode (isr-lab disk budget): the strict server's own
+``<bench>/run/<id>/obs/`` and our driver's ``<runs>/<id>/frames/`` (the server writes there for us; run with
+``--keep-frames 1`` and prune afterwards to keep the frames perception used).
 
     .venv/bin/python scripts/dojo/isr_prune.py ID [ID ...] [--bench ~/data2/ilia/bench] [--runs ~/data2/ilia/dojo-data/bridge/runs]
         [--every 20] [--dry-run]
@@ -80,17 +82,16 @@ def main(argv=None) -> None:
                     used_steps(json.loads(line), steps)
                 except json.JSONDecodeError:
                     pass
-        obs = rd / "obs"
-        if not obs.is_dir():
-            print(f"[prune] {rid}: no obs dir")
-            continue
-        kept, drop = plan(obs, steps, a.every)
-        freed = sum(p.stat().st_size for p in drop)
-        if not a.dry_run:
-            for p in drop:
-                p.unlink()
-        print(f"[prune] {rid}: kept {len(kept)} PNGs, {'would drop' if a.dry_run else 'dropped'} {len(drop)} "
-              f"({freed / 1e6:.1f} MB); perception steps referenced: {len(steps)}")
+        for obs in (rd / "obs", Path(a.runs) / rid / "frames"):
+            if not obs.is_dir():
+                continue
+            kept, drop = plan(obs, steps, a.every)
+            freed = sum(p.stat().st_size for p in drop)
+            if not a.dry_run:
+                for p in drop:
+                    p.unlink()
+            print(f"[prune] {rid} {obs.name}/: kept {len(kept)} PNGs, {'would drop' if a.dry_run else 'dropped'} "
+                  f"{len(drop)} ({freed / 1e6:.1f} MB); perception steps referenced: {len(steps)}")
 
 
 if __name__ == "__main__":
