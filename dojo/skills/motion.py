@@ -185,9 +185,12 @@ class Collision:
             m = self.margin_of.get(o.label, self.obj_margin)
             links = getattr(o.asset, "links", None)
             if links and len(links) > 1:
-                # an articulated object as one box per link (an open laptop's bbox is mostly air around its lid)
+                # an articulated object as one box per link (an open laptop's bbox is mostly air around its lid);
+                # "label#link" in ``ignore`` drops one link (an egg carton's body while the lid stays an obstacle)
                 R = o.R
-                for lk in links.values():
+                for name, lk in links.items():
+                    if f"{o.label}#{name}" in ignore:
+                        continue
                     c = (np.asarray(lk["bbox_min"]) + np.asarray(lk["bbox_max"])) / 2
                     h = (np.asarray(lk["bbox_max"]) - np.asarray(lk["bbox_min"])) / 2 + m
                     out.append((R @ c + o.pos, R, h, o.label))

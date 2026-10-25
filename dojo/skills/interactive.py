@@ -86,7 +86,7 @@ def choose_cell(occ: dict, lines: list, n_cells: int, cost=None, skip=()) -> int
     centre = lines[1][1]                                # middle of the middle row
     if centre in empty:
         return centre
-    corners = [ln[0] for ln in lines[:3]] + [ln[2] for ln in lines[:3]]
+    corners = [lines[0][0], lines[0][2], lines[2][0], lines[2][2]]
     opposite = {lines[0][0]: lines[2][2], lines[0][2]: lines[2][0], lines[2][0]: lines[0][2], lines[2][2]: lines[0][0]}
     opp_corner = [opposite[c] for c in corners if side.get(c) == "opp" and opposite[c] in empty]
     if opp_corner:
@@ -114,7 +114,8 @@ def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(
             sk.refresh()
             T = rest_pose(sk, piece, xy, z_bottom + 0.001, sym=sym)
             plans = sk.plan_transfer(piece, [T], arms=[arm_pref, "right" if arm_pref == "left" else "left"],
-                                     ignore=ignore, yaw_sym=sym, box_tilts=(0.0, 25.0, 40.0, -25.0))
+                                     ignore=ignore, yaw_sym=sym, box_tilts=(0.0, 25.0, 40.0, -25.0),
+                                     place_kw={"pre_h": 0.035})
             if isinstance(plans, SkillResult):
                 sk.log(f"[game] {piece} -> {tag}: no transfer ({plans.note[:160]})")
                 break
