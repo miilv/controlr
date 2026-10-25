@@ -39,7 +39,7 @@ from scipy.optimize import linear_sum_assignment, minimize
 from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
-from .render import Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_roi
+from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 
 MIN_BLOB_PX = {"cam_head": 25, "cam_left_wrist": 150, "cam_right_wrist": 150}
@@ -556,7 +556,7 @@ def texture_cost(sm: ShapeModel, T: np.ndarray, views: dict[str, ViewMasks], key
     """(1 - NCC) / 2 between a textured render of the object and the observed pixels inside its visible,
     eroded silhouette, pooled over views (pixel-weighted). Lighting-robust to gain and offset. None when
     the object is untextured/uniform or not visible enough."""
-    r = tex()
+    r = tex_for(key or sm.key)
     if r is None:
         return None
     acc, wsum = 0.0, 0
@@ -646,6 +646,32 @@ def flip_about_centroid(h: "Hypothesis") -> "Hypothesis":
 @lru_cache(maxsize=1)
 def task_map() -> dict:
     return json.loads((catalog_root() / "tasks.json").read_text())
+
+
+def restrict_by_instruction(groups: list[dict], instruction: str) -> list[dict]:
+    """Candidates named by the instruction (general_pickup: "Pick up the {target} by 10 cm."): keep the
+    candidates whose category name or catalogue captions occur in the instruction; unchanged if none match."""
+    import copy
+
+    text = " " + instruction.lower().replace("_", " ") + " "
+    out = copy.deepcopy(groups)
+    for g in out:
+        if len(g["candidates"]) < 10:
+            continue
+        keep = []
+        for k in g["candidates"]:
+            cat = k.split("/")[1]
+            names = [cat.replace("_", " ")]
+            try:
+                names += [n.lower() for n in load_asset(k).info.get("names", [])]
+            except Exception:
+                pass
+            if any(f" {n} " in text for n in names if n):
+                keep.append(k)
+        if keep:
+            g["candidates"] = keep
+            g["categories"] = [c for c in g["categories"] if any(k.split("/")[1] == c["name"] for k in keep)] or g["categories"]
+    return out
 
 
 def label_groups(task: str) -> list[dict]:
@@ -1169,6 +1195,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     t_seg = time.time() - t0
     head_blobs = blobs(views["cam_head"], "cam_head")
     groups = label_groups(task)
+    if instruction:
+        groups = restrict_by_instruction(groups, instruction)
 
     placed: list[tuple[dict, Hypothesis]] = []
     record: dict = {"task": task, "instruction": instruction}
@@ -1276,8 +1304,13 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             continue
         refs = {k: ref_color(k) for k in geom_keys}
         mode = g["select_mode"].get("mode", "unique")
-        C = np.array([[appearance_distance(obs_cols[i], refs[k]) if obs_cols[i] is not None else 1.0 for k in geom_keys]
-                      for i in members])
+        if all(k.split("/")[1] in TEXTURE_CRITICAL for k in geom_keys):
+            # glyph identity (mahjong tiles, digit cards): textured render-and-compare per candidate
+            C = np.array([[(lambda t_: 1.0 if t_ is None else t_)(texture_cost(chosen[i].sm(), chosen[i].T(), views, k, min_px=20))
+                           for k in geom_keys] for i in members])
+        else:
+            C = np.array([[appearance_distance(obs_cols[i], refs[k]) if obs_cols[i] is not None else 1.0 for k in geom_keys]
+                          for i in members])
         if mode == "same":
             k = geom_keys[int(np.argmin(C.sum(0)))]
             for i in members:

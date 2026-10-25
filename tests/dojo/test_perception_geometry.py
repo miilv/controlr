@@ -168,3 +168,10 @@ def test_flange_for_camera_inverts_the_wrist_mount():
         T6 = model.fk_world(arm, q)["link6"]
         Tf = pose_to_T(*np.split(flange_for_camera(cam.T_wc), [3]))
         assert np.abs(Tf - T6).max() < 1e-9
+
+
+def test_colour_order_from_instruction():
+    from dojo.perception.language import colour_order
+
+    s = "stack the blocks from bottom to top in the order of cyan, red, and orange, then reset the robot arm."
+    assert colour_order(s) == ["cyan", "red", "orange"]

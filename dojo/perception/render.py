@@ -508,6 +508,22 @@ def tex_roi(size: int):
     return r
 
 
+TEXTURE_CRITICAL = {"mahjong", "number", "number_card"}  # identity lives in a printed glyph / digit
+_TEX_GLB = None
+
+
+def tex_for(key: str):
+    """Texture renderer for an asset: the UV-textured low-res GLB for texture-critical categories (a glyph
+    is a texture, not geometry: per-face colours lose it), else the per-face-colour renderer."""
+    global _TEX_GLB
+    cat = key.split("/")[1] if "/" in key else key
+    if cat in TEXTURE_CRITICAL and (catalog_root() / key / "visual_lo.glb").exists() and gl() is not None:
+        if _TEX_GLB is None:
+            _TEX_GLB = TexturedRenderer()
+        return _TEX_GLB
+    return tex()
+
+
 def tex():
     """Renderer for the texture term: per-face-colour meshes by default (DOJO_TEX_MODE=glb for the
     UV-textured GLBs, which cost far more memory on shoes/cars)."""
