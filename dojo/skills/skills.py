@@ -555,7 +555,7 @@ class Skills:
 
     # ------------------------------------------------------------------ re-orienting transfer
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
-                      place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 10, grasps=None,
+                      place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
                       q_start: dict | None = None, max_pick_tilt: float = 50.0):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->

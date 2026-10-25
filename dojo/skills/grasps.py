@@ -412,7 +412,7 @@ def slice_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_
     zmin, zmax = float(V[:, 2].min()), float(V[:, 2].max())
     floor = max(zmin, TABLE_Z) + TIP_TABLE_CLEAR + 0.001
     out = []
-    for h in np.linspace(zmax - 0.012, max(floor + TIP_BEYOND_TCP, zmin + 0.4 * (zmax - zmin)), levels):
+    for h in np.linspace(zmax - 0.012, max(floor + TIP_BEYOND_TCP, zmin + 0.25 * (zmax - zmin)), levels):
         slab = V[np.abs(V[:, 2] - h) < band]
         if len(slab) < 6:
             continue
