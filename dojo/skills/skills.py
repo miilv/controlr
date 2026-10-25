@@ -611,6 +611,7 @@ class Skills:
         if not isinstance(cands, list):
             return cands
         cands = cands[:self.n_cands]
+        self._park_if_blocking(cands[0].plan)
         before = self._at_rest(exclude=held)
         idx, passes = self.verify_choose([{c.arm: c.plan.compile()[0]} for c in cands],
                                          [self.judge_pick(c, before) for c in cands], held, kind="pick", label=job.label)
@@ -640,6 +641,8 @@ class Skills:
         if not variants:
             return self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw), None
         variants = variants[:self.n_cands]
+        if nxt_pick is None:
+            self._park_if_blocking(variants[0].plan)
         moving = {nxt_pick.label} if nxt_pick is not None else set()
         before = self._at_rest(exclude=set(held_other) | {job.label})
         cands, judges = [], []
@@ -797,6 +800,12 @@ class Skills:
         return self._record(SkillResult(True, "jobs", "ok", self.ex.steps_used - n0))
 
     # ------------------------------------------------------------------ parallel
+    def _park_if_blocking(self, plan: ArmPlan, min_dist: float = 0.12) -> None:
+        other = "right" if plan.arm == "left" else "left"
+        if self.held.get(other) is None and not self.clear_of(
+                plan, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
+            self.ex.run({other: self.plan_home(other)}, name=f"park {other}")
+
     def clear_of(self, a: ArmPlan, b: ArmPlan, min_dist: float = 0.12) -> bool:
         """Do two arm plans keep the arms >= ``min_dist`` apart (sampled chain, palm, finger points)
         at every step of their merged schedule (both planned paths, not just current poses)?"""
