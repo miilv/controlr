@@ -50,12 +50,21 @@ def main(argv=None) -> None:
     ap.add_argument("--instruction", required=True)
     ap.add_argument("--step-lim", type=int, default=1000)
     ap.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
+    ap.add_argument("--trace-poses", default=None, help="a g3 failure trace (.json.gz): start from its first frame's "
+                    "object poses (the twin's settled state)")
     ap.add_argument("--objects-root", default=None, help="asset metadata root (default RoboDojo's)")
     ap.add_argument("--catalog", default=None, help="mesh catalogue (default DOJO_CATALOG / perception's)")
     a = ap.parse_args(argv)
     lay = json.loads(Path(a.layout).read_text())
     assets = AssetDB(a.objects_root, a.catalog)
     rows = rows_from_layout(lay, assets)
+    if a.trace_poses:
+        import gzip
+        fr0 = json.load(gzip.open(a.trace_poses, "rt"))["frames"][0]["obj"]
+        for r in rows:
+            if r["label"] in fr0:
+                v = fr0[r["label"]]
+                r["pos"], r["quat"] = np.asarray(v[:3], float), np.asarray(v[3:7], float)
     for spec in a.pose:
         lab, vals = spec.split(":")
         v = [float(x) for x in vals.split(",")]
