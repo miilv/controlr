@@ -483,7 +483,7 @@ write_summary() {   # runs/bootstrap/<host>/summary.tsv (+ --summary FILE): what
   [[ -n "$SUMMARY" ]] && cp "$f" "$SUMMARY"
   return 0
 }
-# shellcheck disable=SC2329  # the EXIT trap calls it
+# shellcheck disable=SC2317,SC2329  # the EXIT trap calls it (SC2317 on shellcheck < 0.11)
 on_exit() {
   local s
   for s in "${!FPID[@]}"; do kill "${FPID[$s]}" 2>/dev/null; done
