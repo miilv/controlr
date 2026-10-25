@@ -468,12 +468,71 @@ class RuntimePolicy:
             n0 = b.steps_used
             sk.ex.execute({used: mv}, name="search")
             obs_s = b.observe()
+            # the wrist now looks at the region: fit each missing label there (perception's refine searches
+            # around the prior in the wrist frame); frame 0's head view never proposed these objects
+            rec, found = self._search_refine(rec, reg, obs_s, used)
+            if not found:
+                rec_s = self.perception().estimate([obs0, obs_s], scene, self.fold, fuse_mode="full")
+                rec, found = add_found(rec, rec_s)
+                entry["via"] = "full_fuse"
+            else:
+                entry["via"] = "refine"
             sk.ex.run({used: sk.plan_home(used)}, name="search_home")
-            rec_s = self.perception().estimate([obs0, obs_s], scene, self.fold, fuse_mode="full")
-            rec, found = add_found(rec, rec_s)
             entry.update({"steps": b.steps_used - n0, "found": found})
             log.append(entry)
         return rec
+
+    def _search_refine(self, rec: dict, reg: dict, obs: dict, arm: str) -> tuple[dict, list[str]]:
+        """Fit the record's missing labels at a search region from the wrist frame: prior = region centre at
+        resting height, asset = the label's candidate with the found same-category objects' size (a layout uses
+        one size group). Accepted when perception's refine is ok within 10 cm of the centre."""
+        import copy as _copy
+
+        from .estimate import iter_records
+        known = [(c, r) for _t, c, r in iter_records(rec)]
+        found = []
+        for nf in list(rec.get("_not_found") or []):
+            lab = nf.get("label")
+            cands = nf.get("candidates") or []
+            if not cands:
+                continue
+            ref = next(((c, r) for c, r in known if any(f"/{c}/" in k for k in cands)), None)
+            if ref is not None:
+                c_ref, r_ref = ref
+                ext_ref = self.assets().get("Rigid", c_ref, int(r_ref["category_idx"])).extents
+                same = [k for k in cands if np.abs(np.sort(self.assets().get(*k.split("/")[:2], int(k.split("/")[2])).extents)
+                                                   - np.sort(ext_ref)).max() < 0.003]
+                key = same[0] if same else cands[0]
+                z = float(r_ref["default_pos"][2])
+            else:
+                key = cands[0]
+                info = self.assets().get(*key.split("/")[:2], int(key.split("/")[2]))
+                z = 0.765 - float(info.bbox_min[2])
+            typ, cat, idx = key.split("/")
+            prior = {"label": lab, "key": key, "pos": [float(reg["target"][0]), float(reg["target"][1]), z],
+                     "quat": [1.0, 0.0, 0.0, 0.0]}
+            others = [{"label": r["label"], "key": f"Rigid/{c}/{int(r['category_idx']):05d}",
+                       "pos": [float(v) for v in r["default_pos"]], "quat": [float(v) for v in r["default_ori"]]}
+                      for c, r in known]
+            try:
+                res = (self.perception().refine(obs, [prior] + others, self.fold, 0.10, arm=arm) or {}).get(lab) or {}
+            except Exception as e:  # noqa: BLE001 (no refine available: the full-fuse fallback runs)
+                res = {"ok": False, "why": f"{type(e).__name__}: {e}"[:200]}
+            ev = {"kind": "search_refine", "label": lab, "key": key, "arm": arm, "region": reg.get("why"),
+                  **{k: res.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "why")}}
+            self.report["events"].append(ev)
+            if not res.get("ok"):
+                continue
+            entry = {"category": cat, "category_idx": int(idx), "label": lab, "default_pos": res["pos"],
+                     "default_ori": res["quat"], "scale": [1.0, 1.0, 1.0],
+                     "_perception": {"confidence": float(res.get("iou") or 0.6), "found_by_search": True,
+                                     "place_tag": None}}
+            rec = _copy.deepcopy(rec)
+            rec.setdefault(typ, {}).setdefault(cat, []).append(entry)
+            rec["_not_found"] = [x for x in rec.get("_not_found") or [] if x.get("label") != lab]
+            known.append((cat, entry))
+            found.append(lab)
+        return rec, found
 
     def _look(self, sk, obs0: dict, rec0: dict, scene: str, kin) -> dict | None:
         """Look macro. Returns the fused record, or None when no look was taken."""

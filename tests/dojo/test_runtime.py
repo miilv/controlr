@@ -787,3 +787,47 @@ def test_post_place_refine_writes_the_measured_pose():
     pp = [e for e in rep["events"] if e["kind"] == "post_place"]
     assert len(pp) >= 2 and all(e["ok"] and e.get("to") for e in pp), pp
     assert rep["provider"]["post_place_moved"] >= 2
+
+
+def test_search_refine_fits_the_missing_block_at_the_region():
+    env = _env()
+    true2 = next(o for o in env.objects if o["label"] == "block_2")
+
+    class WristFinds:
+        refined = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None, fuse_mode=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for o in env.objects if o["label"] != "block_2"]},
+                    "_not_found": [{"label": "block_2", "candidates": ["Rigid/block/00005", "Rigid/block/00006"]}]}
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            self.refined.append((o["label"], o["key"], max_shift_m))
+            if o["label"] == "block_2":
+                return {"block_2": {"ok": True, "pos": list(true2["pos"]), "quat": [1, 0, 0, 0], "shift_mm": 40.0, "iou": 0.9}}
+            return {o["label"]: {"ok": True, "pos": list(o["pos"]), "quat": o["quat"], "shift_mm": 0.0}}
+
+        def look_plan(self, *a, **k):
+            return []
+
+        def search_regions(self, frame, record, vocabulary):
+            return [{"target": [true2["pos"][0] - 0.03, true2["pos"][1], 0.78], "arm": "right", "why": "hidden_by_gripper"}]
+
+        def look_poses(self, target, arm, variants=None):
+            from dojo.skills.geometry import T_from, T_to_pose7
+            from dojo.skills.kinematics import down_R
+            return [{"arm": arm, "dist": 0.18, "elev": 70,
+                     "flange_pose": T_to_pose7(X5Kin().flange_from_tcp(T_from((0.25, -0.15, 0.90), down_R(0.0)))).tolist()}]
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"prec": 1.0, "n_vis": 500, "n_px": 600}} for o in objects}
+
+    pc = WristFinds()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", search=True), assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    assert rep["search"][0]["found"] == ["block_2"] and rep["search"][0]["via"] == "refine"
+    assert pc.refined[0][:2] == ("block_2", "Rigid/block/00005") and pc.refined[0][2] == 0.10
+    assert _stacked(env)
