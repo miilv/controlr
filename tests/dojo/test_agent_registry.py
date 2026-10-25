@@ -32,6 +32,7 @@ def test_ilia_registry_loads_and_matches_the_library():
         assert set(e.raw["args"]) <= known, (e.name, set(e.raw["args"]) - known)
         required = {p.name for p in params if p.default is inspect.Parameter.empty}
         assert required <= set(e.raw["args"]), (e.name, required - set(e.raw["args"]))
+        assert "catalog_mesh" in e.raw["obs_needs"]["reads"]
         assert e.derived_contract_only is True and e.contract_only        # contract_only derived from reads
 
 

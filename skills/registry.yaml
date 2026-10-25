@@ -5,7 +5,8 @@
 # Only name + args + doc reach the chooser. doc and args must not name benchmark tasks, layouts, seeds or task ids
 # (rule P4). measured holds robot-harness ledger pointers only (none for this side yet); our numbers are in stats,
 # with the journal / experiment report they come from. Object arguments are scene ids: the dojo runtime maps each id
-# to its perception estimate (pose, size, catalogue identity), so they read as `object_args`.
+# to its perception estimate (pose, size, catalogue identity); grasps come from that identity's public catalogue mesh
+# at the perceived pose: the `catalog_mesh` reads token (contract; not the privileged `mesh_grasps`).
 schema: j2-registry/1
 entries:
 
@@ -35,7 +36,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:stack_objects"
     measured: none
@@ -43,7 +44,7 @@ entries:
       - {src: docs/journal/2026-10-24-dojo-integ.md, bench: robodojo, cell: stack_blocks, tier: A, verify: bundle, n: 10, success: 10}
       - {src: docs/journal/2026-10-24-dojo-integ.md, bench: robodojo, cell: stack_blocks, tier: B, verify: bundle, version: closed loop, n: 25, success: 17}
       - {src: docs/experiments/2026-10-25-agent-e2e.md, bench: robodojo, cell: stack_bowls, tier: B, verify: "off", version: nest, n: 6, success: 0}
-    notes: "grasps from the catalogue mesh of the perceived asset identity (public asset files) at the perceived pose; no privileged poses"
+    notes: "catalog_mesh: grasps from the public catalogue mesh of the perceived asset identity at the perceived pose; no privileged poses"
 
   - name: tower_from_boards
     side: ilia
@@ -66,7 +67,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:build_tower"
     measured: none
@@ -99,7 +100,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:put_into"
     measured: none
@@ -129,7 +130,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: false
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:press_sequence"
     measured: none
@@ -161,7 +162,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:swap_on_mats"
     measured: none
@@ -188,7 +189,7 @@ entries:
       held_look: false
       refine: false
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:declare_kong"
     measured: none
@@ -221,7 +222,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:insert_into"
     measured: none
@@ -251,7 +252,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:place_in_slots"
     measured: none
@@ -281,7 +282,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:fill_container"
     measured: none
@@ -310,7 +311,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: true
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:arrange"
     measured: none
@@ -341,7 +342,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: false
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:stack_on_pegs"
     measured: none
@@ -373,7 +374,7 @@ entries:
       held_look: false
       refine: true
       twin_verify: false
-      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+      reads: [joints, flange, grip_cmd, steps, free_ik, catalog_mesh]
     backend: dojo_skills
     entry: "dojo.skills.library:slots_and_press"
     measured: none

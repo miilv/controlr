@@ -38,7 +38,10 @@ BACKENDS = ("robot_server", "dojo_skills")
 HELD = ("wrist", "operator", False)
 TIERS = ("A_gt", "B_camera", "official")
 REQUIRED = ("name", "side", "benchmark", "doc", "args", "obs_needs", "backend", "entry", "measured")
-CONTRACT_READS = {"joints", "flange", "grip_cmd", "instruction", "steps", "free_ik", "held_look", "object_args"}
+# catalog_mesh: grasps / geometry from the PUBLIC asset mesh of the PERCEIVED identity at the PERCEIVED pose (contract;
+# mesh_grasps = privileged pose or identity, non-contract). Agreed with Mikhail's side 2026-10-25.
+CONTRACT_READS = {"joints", "flange", "grip_cmd", "instruction", "steps", "free_ik", "held_look", "object_args",
+                  "catalog_mesh"}
 NON_CONTRACT_READS = {"privileged_poses", "mesh_grasps", "contacts", "finger_meas", "depth", "server_internals"}
 # the RoboDojo task table (harness/registry.LANES_TASKS); doc / args naming one, underscored or spaced, is P4
 TASKS = (
