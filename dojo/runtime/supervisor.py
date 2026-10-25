@@ -37,6 +37,9 @@ VOCABULARIES: tuple[Vocabulary, ...] = (
     Vocabulary("press_by_number", (r"\bpress\b", r"\bred buttons\b", r"\bnumber cards\b", r"\bblue button\b")),
     Vocabulary("push_T", (r"\bpush\b", r"\bT-shaped\b", r"\bpad\b")),
     Vocabulary("pack_objects_into_box_random", (r"\bobjects into the box\b", r"\bfront sides?\b")),
+    Vocabulary("cover_blocks", (r"\bcover the blocks\b", r"\buncover\b")),
+    Vocabulary("general_pickup", (r"^\s*pick up the\b", r"\bby 10 ?cm\b")),
+    Vocabulary("align_blocks", (r"\bset square\b", r"\bpush\b", r"\baligned row\b")),
 )
 
 

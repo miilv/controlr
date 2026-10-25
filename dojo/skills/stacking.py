@@ -45,8 +45,10 @@ def _assign(order, cand, reach=None) -> list[str]:
 
 def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, yaw_sym: int,
                tol_xy: float = 0.008, pick_method: str = "auto", place_kw: dict | None = None,
-               mid_sites=MID_SITES) -> list[Job]:
-    """``on_top(below, label) -> target fn``; ``top_h``: TCP height of the last pre-place pose."""
+               mid_sites=MID_SITES, ordered: bool = False) -> list[Job]:
+    """``on_top(below, label) -> target fn``; ``top_h``: TCP height of the last pre-place pose. ``ordered``:
+    ``labels`` is the stack bottom to top (labels[0] the base, where it stands or carried to a shared site;
+    the rest on in list order) instead of the cheapest base and permutation."""
     w = sk.world
 
     def arms_for(label, site_xy) -> list[str]:
@@ -55,22 +57,24 @@ def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, ya
 
     reach = {(l, a): float(np.linalg.norm(w.obj(l).center_w[:2] - sk.kin.base(a)[:2, 3])) for l in labels for a in ARMS}
     chain = existing_chain(w, labels)
+    if ordered and chain != labels[:len(chain)]:
+        chain = []                                   # a stack in another order is not a start
     if len(chain) >= 2:
         # resume a partial stack (re-planned episode): keep it, add the rest on top
         rest = [l for l in labels if l not in chain]
         site = w.obj(chain[0]).center_w[:2]
         seq = [(l, min(ARMS, key=lambda a, l=l: reach[(l, a)])) for l in chain[1:]]
-        for l in sorted(rest, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - site))):
+        for l in (rest if ordered else sorted(rest, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - site)))):
             opts = arms_for(l, site) or list(ARMS)
             seq.append((l, min(opts, key=lambda a, l=l: reach[(l, a)])))
         return _jobs(chain[0], None, seq, on_top, yaw_sym, tol_xy, pick_method, place_kw, mid_sites)
     best = None
-    for base in labels:
+    for base in (labels[:1] if ordered else labels):
         site = w.obj(base).center_w[:2]
         others = [l for l in labels if l != base]
         cand = {l: arms_for(l, site) for l in others}
         if all(cand[l] for l in others):
-            for order in itertools.permutations(others):
+            for order in ([tuple(others)] if ordered else itertools.permutations(others)):
                 arms = _assign(order, cand, reach)
                 if any(reach[(l, a)] > MAX_REACH for l, a in zip(order, arms)):
                     continue
@@ -85,7 +89,7 @@ def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, ya
         cand = {l: arms_for(l, xy) for l in labels}
         if not all(cand[l] for l in labels):
             continue
-        for order in itertools.permutations(labels):
+        for order in ([tuple(labels)] if ordered else itertools.permutations(labels)):
             arms = _assign(order, cand, reach)
             if any(reach[(l, a)] > MAX_REACH for l, a in zip(order, arms)):
                 continue

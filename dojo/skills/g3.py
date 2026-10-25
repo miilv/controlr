@@ -93,7 +93,10 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
 
         def on_step(ex):
             rows = {r["label"]: r for r in env.gt_objects() if r.get("label") in labels}
+            st = env.proprio()
             frames.append({"step": ex.steps_used, "q": {a: np.round(ex.q[a], 4).tolist() for a in ("left", "right")},
+                           "qm": {a: np.round(np.asarray(st[f"{a}_arm_joint_state"], float).reshape(-1)[:6], 4).tolist()
+                                  for a in ("left", "right")},
                            "g": dict(ex.g), "obj": {k: np.round(np.r_[v["pos"], v["quat"]], 4).tolist()
                                                      for k, v in rows.items()},
                            "seg": ex.log.segments[-1]["name"] if ex.log.segments else ""})
@@ -126,6 +129,15 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     except Exception:  # noqa: BLE001
         pass
     wall = time.perf_counter() - t1
+    # RoboDojo drops episodes whose scripted opponent misfired (make_kong: the discard did not fall)
+    if 0 in (getattr(run.env, "unstable_envs", None) or set()):
+        rec.update({"stable": False, "success": False, "score": 0.0, "category": "unstable_layout",
+                    "steps": int(env.steps_used), "note": "env marked unstable during the episode"})
+        try:
+            run.env.unstable_envs.discard(0)
+        except Exception:  # noqa: BLE001
+            pass
+        return rec
     reward = env.reward()
     score = env.score()
     hist = [{"skill": h.skill, "ok": bool(h.ok), "status": str(h.status), "steps": int(h.steps), "arm": h.arm,
@@ -142,7 +154,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     out_dir.mkdir(parents=True, exist_ok=True)
     with gzip.open(out_dir / f"{task}_{seed}_actions.json.gz", "wt") as f:
         json.dump(sk.ex.trajectory_json(), f)
-    if trace:
+    if trace and not rec.get("success"):              # traces only for failed episodes (shared disk)
         with gzip.open(out_dir / f"{task}_{seed}_trace.json.gz", "wt") as f:
             json.dump({"frames": frames, "skills": hist}, f, default=lambda x: x.item() if hasattr(x, "item") else str(x))
     return rec
@@ -157,11 +169,15 @@ def cmd_run(a) -> None:
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)
     assets = AssetDB(paths.OBJECTS)
+    # the deployed code version (written next to the code by the deploy step: `git rev-parse HEAD`)
+    cf = Path(__file__).resolve().parents[2] / ".deployed_commit"
+    code = {"dir": str(cf.parent), "commit": cf.read_text().strip() if cf.exists() else None}
     run = RoboDojoRunner(a.task, num_envs=1 + (a.twins if a.verify else 0), workdir=str(out / "work"),
                          physics_only=True, need_planner=False)
     rows = []
     summ_p = out / f"{a.task}_episodes.jsonl"
-    tdir = paths.LAYOUTS / a.task
+    tdir = Path(a.layouts) if a.layouts else paths.LAYOUTS / a.task
+    paths.assert_not_eval(tdir)
     # simlab's pre-settled records (<id>.settled.json) when its settled_index.json exists (team rule:
     # report on settled layouts); SIMLAB_DEV_LAYOUT_SUFFIX overrides ("" = raw records)
     suffix = os.environ.get("SIMLAB_DEV_LAYOUT_SUFFIX")
@@ -187,6 +203,7 @@ def cmd_run(a) -> None:
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
                           verify_k=a.verify)
         rec["log"] = logs[-60:]
+        rec["code"] = code
         rows.append(rec)
         with summ_p.open("a") as f:
             f.write(json.dumps(rec, default=str) + "\n")
@@ -197,7 +214,9 @@ def cmd_run(a) -> None:
     for line in summ_p.read_text().splitlines():
         r = json.loads(line)
         allrows[r["seed"]] = r
-    write_summary(out, a.task, [allrows[k] for k in sorted(allrows)])
+    summ = write_summary(out, a.task, [allrows[k] for k in sorted(allrows)])
+    summ["code_commits"] = sorted({str((r.get("code") or {}).get("commit")) for r in allrows.values()})
+    (out / f"{a.task}_summary.json").write_text(json.dumps(summ, indent=1))
     run.close()
 
 
@@ -371,6 +390,7 @@ def main(argv=None) -> None:
     r.add_argument("--trace", action="store_true", help="record task-object poses every env step (dev)")
     r.add_argument("--verify", type=int, default=0, help="plan + verify: samples per candidate (0 = single plan)")
     r.add_argument("--twins", type=int, default=8, help="twin envs for --verify (same process as the episode)")
+    r.add_argument("--layouts", default=None, help="layout dir (default $DOJO_DATA/simlab/layouts/<task>)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")

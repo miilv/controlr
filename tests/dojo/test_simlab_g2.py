@@ -24,6 +24,7 @@ def test_first_difference_max_and_final():
     assert c["max_mm"] == pytest.approx(2.0)
     assert c["final"]["block_1"]["mm"] == pytest.approx(2.0)
     assert c["final"]["block_0"]["mm"] == 0
+    assert c["per_step_max_mm"] == pytest.approx([0, 0, 1.0, 2.0])
 
 
 def test_unequal_lengths_compare_the_common_prefix():

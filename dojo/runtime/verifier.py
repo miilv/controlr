@@ -39,6 +39,7 @@ class BundleVerifier:
         self.layout_fn = layout_fn
         self.log = log or (lambda *a, **k: None)
         self.max_prefix = max_prefix
+        self.disabled: str | None = None        # reason verification is off for the rest of the episode
         self.kept: dict[int, int] = {}          # candidate -> snapshot id (last rollout, nominal samples)
         self.chain: dict | None = None          # {"sid", "n"}: twin end state of the executed candidate
         self._last_n0 = None
@@ -74,6 +75,19 @@ class BundleVerifier:
         return {"layout": lay, "robot": cp["robot"]}, cp["n"], "estimate"
 
     def rollout(self, candidates: list[list[dict]], k: int = 2, held_labels: tuple = (), src: int = 0) -> list[Outcome]:
+        """On a twin error: log it, disable verification for the rest of the episode and return no outcomes
+        (skills then runs candidate 0, i.e. the single plan)."""
+        if self.disabled:
+            return []
+        try:
+            return self._rollout(candidates, k, held_labels)
+        except Exception as e:  # noqa: BLE001 (the episode must go on)
+            self.stats["errors"] += 1
+            self.disabled = f"{type(e).__name__}: {str(e).splitlines()[0][:200]}"
+            self.log(f"[verify] twin error, verification off for this episode: {self.disabled}")
+            return []
+
+    def _rollout(self, candidates: list[list[dict]], k: int = 2, held_labels: tuple = ()) -> list[Outcome]:
         t0 = time.perf_counter()
         held = tuple(held_labels) or self.provider.belief.held_labels()
         world, n_base, kind = self._base(held)

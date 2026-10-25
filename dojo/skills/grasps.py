@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from dojo.skills.geometry import T_from
-from dojo.skills.kinematics import TIP_BEYOND_TCP, X5Kin
+from dojo.skills.kinematics import TABLE_Z, TIP_BEYOND_TCP, X5Kin, gap_to_grip
 from dojo.skills.world import ObjectState
 
 MAX_GAP = 0.088               # pad gap fully open
@@ -44,6 +44,7 @@ class Grasp:
     score: float = 0.0            # lower is better (preference before the step cost)
     note: str = ""
     lift_dir: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 1.0]))
+    clear_w: float = 0.0          # open at least this wide (an irregular object's collider can exceed its mesh slice)
 
     @property
     def approach(self) -> np.ndarray:
@@ -58,7 +59,7 @@ class Grasp:
         return P
 
     def open_gap(self) -> float:
-        return min(MAX_GAP, self.width + 2 * CLEAR + 0.006)
+        return min(MAX_GAP, max(self.width, self.clear_w) + 2 * CLEAR + 0.006)
 
 
 def _frame(approach, closing) -> np.ndarray:
@@ -338,6 +339,302 @@ def antipodal_grasps(obj: ObjectState, kin: X5Kin, arm: str, n_samples: int = 20
     return out
 
 
+def mesh_width_at(obj: ObjectState, T_grasp: np.ndarray, reach: float = 0.05, depths=(0.0, 0.006, 0.011),
+                  max_normal_deg: float = 32.0) -> float | None:
+    """The object's real width between the pads of a grasp (rays along the closing axis from both sides
+    towards the TCP, at the TCP and a little deeper along the approach). None when either side misses
+    (the grasp would close on a gap: between a pliers' handles) or when a contact face is not square to
+    the closing axis (a rounded handle squeezed above its widest line pops out: twin, store_tools)."""
+    if obj.asset.mesh is None:
+        return float("nan")
+    V, F = obj.asset.mesh
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    Rt, pt = obj.R.T, obj.pos
+    y = T_grasp[:3, 1]
+    y_l = Rt @ y
+    cos_max = math.cos(math.radians(max_normal_deg))
+    widths = []
+    for dd in depths:
+        p = T_grasp[:3, 3] + T_grasp[:3, 0] * dd
+        hits = []
+        for sgn in (1.0, -1.0):
+            o_w = p + sgn * y * reach
+            o_l, d_l = Rt @ (o_w - pt), Rt @ (-sgn * y)
+            h = _ray_mesh(o_l, d_l, a, b, c)
+            if h is None or h[0] > reach + 0.001:
+                hits.append(None)
+                continue
+            fi = h[1]
+            n = np.cross(b[fi] - a[fi], c[fi] - a[fi])
+            n /= max(np.linalg.norm(n), 1e-12)
+            hits.append(h[0] if abs(float(n @ y_l)) >= cos_max else None)
+        if None in hits:
+            continue
+        widths.append(2 * reach - hits[0] - hits[1])
+    if not widths:
+        return None
+    w = max(widths)
+    return w if w > 0.002 else None
+
+
+def mesh_com(asset) -> np.ndarray:
+    """Centre of mass in the object frame: the volume centroid of a closed mesh (PhysX takes the mass
+    properties from the colliders at uniform density), else the area-weighted surface centroid, else the
+    bbox centre. A key: volume centroid at the bow / shaft junction (z -11 mm), surface centroid 5 mm lower."""
+    mesh = getattr(asset, "mesh", None)
+    if mesh is None:
+        return np.asarray(asset.center, float)
+    V, F = mesh
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    vol = np.einsum("ij,ij->i", a, np.cross(b, c)) / 6.0
+    tot = float(vol.sum())
+    ext = np.maximum(V.max(0) - V.min(0), 1e-6)
+    if tot > 0.02 * float(np.prod(ext)):
+        com = ((a + b + c) / 4.0 * vol[:, None]).sum(0) / tot
+        if np.all(com >= V.min(0) - 1e-4) and np.all(com <= V.max(0) + 1e-4):
+            return com
+    ar = np.linalg.norm(np.cross(b - a, c - a), axis=1)
+    return ((a + b + c) / 3 * ar[:, None]).sum(0) / max(float(ar.sum()), 1e-12)
+
+
+def com_off(obj: ObjectState) -> float:
+    """How far (m) the centre of mass sits from the bbox centre (0 without a mesh)."""
+    if obj.asset.mesh is None:
+        return 0.0
+    return float(np.linalg.norm(mesh_com(obj.asset) - obj.asset.center))
+
+
+def grasp_lever(obj: ObjectState, T_grasp: np.ndarray, centre=None) -> float:
+    """Distance (m) from the object's centre of mass to the closing axis through the pads' contact centre
+    (``centre``, world; default the TCP): the arm of the gravity torque that turns the object about the
+    pads (a key held on its bow 9 mm off it swung 50 deg in the pads during a carry, twin)."""
+    com_w = obj.R @ mesh_com(obj.asset) + obj.pos
+    p = T_grasp[:3, 3] if centre is None else np.asarray(centre, float)
+    d = com_w - p
+    y = T_grasp[:3, 1]
+    return float(np.linalg.norm(d - y * float(d @ y)))
+
+
+def pad_contact(obj: ObjectState, T_grasp: np.ndarray, half_w: float = 0.008, x_range=(-0.008, 0.012),
+                n: int = 5, tol: float = 0.0012, reach: float = 0.05, max_normal_deg: float = 32.0):
+    """Where the pads touch the object once they close at ``T_grasp``: rays along the closing axis from both
+    sides on an n x n grid over the pad (along the approach, across the finger); a side's contacts are its
+    hits within ``tol`` of its outermost hit, on faces square to the closing axis. Returns (patch, centre):
+    the smaller side's contact bbox as a fraction of the pad grid (flat faces, a key's bow from its sides,
+    score high; a cylinder squeezed across its diameter, the bow from its rim, or an edge, low: the pads
+    hold a line and the object turns about the closing axis) and the contacts' centre (world), or (0, None)."""
+    if obj.asset.mesh is None:
+        return 1.0, T_grasp[:3, 3].copy()
+    V, F = obj.asset.mesh
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    Rt, pt = obj.R.T, obj.pos
+    x, y, z = T_grasp[:3, 0], T_grasp[:3, 1], T_grasp[:3, 2]
+    cos_max = math.cos(math.radians(max_normal_deg))
+    dx, dz = (x_range[1] - x_range[0]) / (n - 1), 2 * half_w / (n - 1)
+    side = {1.0: [], -1.0: []}
+    for xi in np.linspace(x_range[0], x_range[1], n):
+        for zi in np.linspace(-half_w, half_w, n):
+            p = T_grasp[:3, 3] + x * xi + z * zi
+            for sgn in (1.0, -1.0):
+                h = _ray_mesh(Rt @ (p + sgn * y * reach - pt), Rt @ (-sgn * y), a, b, c)
+                if h is None or h[0] > 2 * reach:
+                    continue
+                nrm = np.cross(b[h[1]] - a[h[1]], c[h[1]] - a[h[1]])
+                nrm /= max(float(np.linalg.norm(nrm)), 1e-12)
+                if abs(float(nrm @ (Rt @ y))) < cos_max:
+                    continue
+                side[sgn].append((reach - h[0], xi, zi))
+    full = (x_range[1] - x_range[0] + dx) * (2 * half_w + dz)
+    areas, cpts = [], []
+    for sgn in (1.0, -1.0):
+        h = side[sgn]
+        if not h:
+            return 0.0, None
+        top = max(t for t, _, _ in h)
+        pts = np.array([(xi, zi) for t, xi, zi in h if t >= top - tol])
+        ext = pts.max(0) - pts.min(0)
+        areas.append((ext[0] + dx) * (ext[1] + dz))
+        cpts.append(pts)
+    m = np.vstack(cpts).mean(0)
+    pad_contact.depth = float(min(np.ptp(c[:, 0]) for c in cpts)) + dx      # contact extent along the approach
+    return float(min(areas) / full), T_grasp[:3, 3] + x * m[0] + z * m[1]
+
+
+def lift_hold(obj: ObjectState, T_grasp: np.ndarray) -> float:
+    """Lower is better, for a pick that must then turn the object about the closing axis (an in-air handover's
+    giver): the gravity lever (per cm) plus a penalty for contact under 8 mm deep along the approach (twin: a
+    key's 4.8 mm shaft slid out at the lift or in the carry, 6/6; its 9.4 mm bow lifted, 13/13)."""
+    patch, centre = pad_contact(obj, T_grasp)
+    if centre is None:
+        return 9.0
+    depth = getattr(pad_contact, "depth", 0.0)
+    # contact at the pad's edge holds nothing (twin: a key gripped where its shaft meets the bow, the bow
+    # touching the pads' edges only, stayed on the table 6/6)
+    edge = abs(float((np.asarray(centre) - T_grasp[:3, 3]) @ T_grasp[:3, 2]))
+    return (grasp_lever(obj, T_grasp, centre) / 0.01 + max(0.0, 0.008 - depth) / 0.002 * 0.5
+            + max(0.0, edge - 0.003) / 0.002 * 0.5)
+
+
+def contact_patch(obj: ObjectState, T_grasp: np.ndarray, **kw) -> float:
+    return pad_contact(obj, T_grasp, **kw)[0]
+
+
+def hold_quality(obj: ObjectState, T_grasp: np.ndarray) -> float:
+    """Lower is better: the gravity lever about the pads (per cm) plus the missing contact patch. Ranks
+    grasps that must hold the object while the hand turns (in-air handovers, re-orienting carries)."""
+    patch, centre = pad_contact(obj, T_grasp)
+    if centre is None:
+        return 9.0
+    return grasp_lever(obj, T_grasp, centre) / 0.01 + 2.0 * (1.0 - min(1.0, patch / 0.5))
+
+
+def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WIDTH, depth: float = 0.016,
+               edge: float = 0.012, max_up: float = 0.35, ends: bool = True,
+               tilts: tuple = (0.0, 25.0, -25.0)) -> list[Grasp]:
+    """Grasps on every pair of opposed bbox faces narrower than the open gripper (antipodal on the mesh
+    when one is known), approached along each of the other two body axes from either side: the pads sit
+    ``depth`` inside the entry face (or at the centre of thinner sections), centred or shifted towards
+    either end of the third axis, the approach also turned by ``tilts`` (deg) about the closing axis (the
+    X5 rarely points its gripper exactly horizontal low over the table; 20-40 deg down it reaches).
+    Approaches pointing up by more than ``max_up`` (from below) are dropped.
+
+    A grasp fixes the object's orientation in the hand, so a re-orienting place (lying -> standing,
+    tip down, upright) is planned with its pick (``Skills.plan_transfer``); this set covers the
+    grasps those places need (e.g. the end of a lying tile, held so that it stands when the wrist
+    turns 90 deg)."""
+    ext = obj.asset.extents
+    axes_ok = antipodal_axes(obj)
+    R = obj.R
+    T_c = T_from(obj.center_w, R)
+    eye = np.eye(3)
+    from dojo.skills.motion import held_box
+    irregular = held_box(obj, np.eye(4)).points is not None       # mesh-check every grasp of these
+    com_w = None
+    if irregular:      # grasp near the centre of mass (twin: pliers held 6 cm off it pivoted 30-40 mm in the pads)
+        Vm, Fm = obj.asset.mesh
+        a_, b_, c_ = Vm[Fm[:, 0]], Vm[Fm[:, 1]], Vm[Fm[:, 2]]
+        ar = np.linalg.norm(np.cross(b_ - a_, c_ - a_), axis=1)
+        com_w = R @ (((a_ + b_ + c_) / 3 * ar[:, None]).sum(0) / max(float(ar.sum()), 1e-12)) + obj.pos
+    uneven = irregular or com_off(obj) > 0.008       # a wrench: box-like slices, its centre of mass 16 mm off
+    out = []
+    for k in range(3):                                   # closing axis
+        if ext[k] > max_width or (axes_ok is not None and k not in axes_ok):
+            continue
+        for j in range(3):                               # approach axis
+            if j == k:
+                continue
+            m = 3 - j - k
+            for s, d in [(sg, dd) for sg in (1.0, -1.0) for dd in
+                         ((min(float(ext[j]) / 2, depth),) + ((depth / 2,) if float(ext[j]) / 2 > depth else ()))]:
+                # enter through the +s face, approach along -s; pads d inside it (also half as deep: a key's
+                # bow held near its top keeps the fingertips over the lock)
+                p_b = s * eye[j] * (float(ext[j]) / 2 - d)
+                offs = [0.0]
+                room = float(ext[m]) / 2 - edge
+                if ends and room > 0.008:
+                    offs += [room, -room]
+                    if irregular and room > 0.016:      # quarter points too (a key's shaft below its bow,
+                        offs += [room / 2, -room / 2]   # clear of the other hand's fingers on the bow)
+                n_base = len(offs)
+                if uneven and room > 0.03:
+                    # stations every 6 mm within 4 cm of the centre of mass along the long axis (a hammer's or a
+                    # wrench's handle next to its centre of mass, not its head; pliers at their joint)
+                    c_m = float((mesh_com(obj.asset) - obj.asset.center)[m])
+                    offs += [o_ for o_ in (c_m + 0.006 * i for i in range(-7, 8))
+                             if abs(o_) <= room and min(abs(o_ - b_) for b_ in offs[:n_base]) > 0.002]
+                for tilt in tilts:
+                    t = math.radians(tilt)
+                    appr_b = -s * (math.cos(t) * eye[j] + math.sin(t) * eye[m])
+                    if float((R @ appr_b)[2]) > max_up:
+                        continue
+                    from_top = float((R @ appr_b)[2]) < -0.5 and abs(tilt) < 30
+                    for oi, off in enumerate(offs):
+                        if oi >= n_base and not from_top:
+                            continue
+                        pb = p_b + eye[m] * off
+                        for flip in (1.0, -1.0):
+                            Tg = T_c @ T_from(pb, _frame(appr_b, flip * eye[k]))
+                            # fingertips >= 5 mm above the object's support: raise the TCP (the pads still
+                            # cover the object from there up; thin parts, < 4 mm left, are skipped)
+                            # 2.5 mm: a thin lying object (pliers, 24 mm) is then squeezed about its middle,
+                            # not above it (twin: squeezed 5 mm high, the pliers popped out)
+                            floor = max(obj.bottom_z, TABLE_Z) + 0.0025
+                            # the fingers' lowest point from the same model the collision check uses (the
+                            # analytic estimate sat 1 mm low on a slightly tilted hammer: every box grasp of a
+                            # thin lying tool failed the 2 mm table margin, only slices were left)
+                            g_open = gap_to_grip(min(MAX_GAP, float(ext[k]) + 2 * CLEAR + 0.006))
+                            low = float(kin.finger_points(kin.flange_from_tcp(Tg), g_open)[:, 2].min())
+                            need = floor - low
+                            if need > 0:
+                                if obj.top_z - floor < 0.004:
+                                    continue
+                                Tg[2, 3] += need
+                            down = -float(Tg[2, 0])
+                            w_real = mesh_width_at(obj, Tg) if irregular else float("nan")
+                            if w_real is None or (w_real == w_real and w_real > max_width):
+                                continue
+                            out.append(Grasp("box", Tg, float(ext[k]) if w_real != w_real else float(w_real), pre_dist=0.06,
+                                             clear_w=float(ext[k]) if irregular else 0.0,
+                                             score=0.6 * (1.0 - down) + 0.1 * abs(off) / max(room, 1e-3)
+                                             + 0.2 * float(ext[k]) / 0.07 + abs(tilt) / 100.0
+                                             + (3.0 * float(np.linalg.norm(Tg[:2, 3] - com_w[:2])) / float(ext.max())
+                                                if com_w is not None else 0.0),
+                                             note=f"close {k} approach {'+' if s > 0 else '-'}{j} tilt {tilt:+.0f} "
+                                                  f"off {off*1000:+.0f}mm"))
+    return out
+
+
+def slice_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WIDTH - 0.004, n_dir: int = 8,
+                 band: float = 0.008, levels: int = 4, tilts=(0.0, 25.0, 40.0)) -> list[Grasp]:
+    """Top-down grasps on horizontal slices of an irregular mesh (a figurine whose bbox is wider than the
+    gripper but whose body is not): for each height and closing direction, the slice's width along that
+    direction must fit, and the open fingers' path down to it must be free of the object's own points
+    (no wider part above it in the finger corridor)."""
+    if obj.asset.mesh is None:
+        return []
+    V = obj.asset.mesh[0] @ obj.R.T + obj.pos                 # world points
+    zmin, zmax = float(V[:, 2].min()), float(V[:, 2].max())
+    floor = max(zmin, TABLE_Z) + TIP_TABLE_CLEAR + 0.001
+    out = []
+    for h in np.linspace(zmax - 0.012, max(floor + TIP_BEYOND_TCP, zmin + 0.25 * (zmax - zmin)), levels):
+        slab = V[np.abs(V[:, 2] - h) < band]
+        if len(slab) < 6:
+            continue
+        cxy = (slab[:, :2].min(0) + slab[:, :2].max(0)) / 2
+        for k in range(n_dir):
+            th = math.pi * k / n_dir
+            u = np.array([math.cos(th), math.sin(th)])
+            v = np.array([-u[1], u[0]])
+            pu, pv = (slab[:, :2] - cxy) @ u, (slab[:, :2] - cxy) @ v
+            w = float(pu.max() - pu.min())
+            if w > max_width or w < 0.006:
+                continue
+            mid_u = float(pu.max() + pu.min()) / 2
+            mid_v = float(pv.max() + pv.min()) / 2
+            c = cxy + u * mid_u + v * mid_v
+            tcp_z = max(h, floor + TIP_BEYOND_TCP)
+            # the open fingers' corridors (outside the slice along u, +-12 mm along v) down to the pads
+            gap = min(MAX_GAP, w + 2 * CLEAR + 0.006)
+            P = V[V[:, 2] > tcp_z - TIP_BEYOND_TCP]
+            qu, qv = (P[:, :2] - c) @ u, (P[:, :2] - c) @ v
+            in_fing = (np.abs(qu) > gap / 2 - 0.001) & (np.abs(qu) < gap / 2 + 0.014) & (np.abs(qv) < 0.012)
+            if in_fing.any():
+                continue
+            closing = np.array([u[0], u[1], 0.0])
+            perp = np.array([-u[1], u[0], 0.0])
+            base = kin.base(arm)[:3, 3]
+            sgn = 1.0 if float(perp[:2] @ (c - base[:2])) >= 0 else -1.0
+            for tilt in tilts:                         # tilted away from the arm: reaches further / higher
+                t = math.radians(tilt)
+                appr = np.array([0.0, 0.0, -math.cos(t)]) + sgn * perp * math.sin(t)
+                Rg = _frame(appr, closing)
+                out.append(Grasp("slice", T_from([c[0], c[1], tcp_z + 0.010 * math.sin(t)], Rg), w,
+                                 score=0.3 * (zmax - h) / max(zmax - zmin, 1e-3) + 0.3 * w / 0.08 + tilt / 100.0,
+                                 note=f"slice z {h - zmin:.3f} dir {math.degrees(th):.0f} w {w*1000:.0f}mm "
+                                      f"tilt {tilt:.0f}"))
+    return out
+
+
 def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **kw) -> list[Grasp]:
     if method == "top":
         g = top_grasps(obj, kin, arm, **kw)
@@ -349,6 +646,8 @@ def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **k
         g = wall_grasps(obj, kin, arm, **kw) or rim_grasps(obj, kin, arm)
     elif method == "antipodal":
         g = antipodal_grasps(obj, kin, arm, **kw)
+    elif method == "box":
+        g = box_grasps(obj, kin, arm, **kw)
     else:
         cat = obj.category
         if cat == "bowl":
@@ -363,5 +662,5 @@ def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **k
         else:
             g = top_grasps(obj, kin, arm)
             if not g:
-                g = antipodal_grasps(obj, kin, arm)
+                g = slice_grasps(obj, kin, arm) or antipodal_grasps(obj, kin, arm)
     return sorted(g, key=lambda x: x.score)

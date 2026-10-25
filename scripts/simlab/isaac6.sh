@@ -8,6 +8,12 @@ SIM_ROOT="${ISAAC_SIM_ROOT:-/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0}
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 if [[ "${SIMLAB_GPU:-1}" != 0 ]]; then        # SIMLAB_GPU=0: a parent already holds the lock
   LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
+  # Fairness: our several drivers (coverage, d0_ext, demos) queue on a simlab-only lock first, so at most
+  # ONE simlab job waits on the team lock at a time (flock wakes waiters at random). Default: on for the
+  # simlab deploy dir only; other streams calling these scripts are unaffected.
+  QL="${SIMLAB_QUEUE_LOCK:-auto}"
+  if [[ "$QL" == auto ]]; then [[ "$HERE" == */dojo-simlab ]] && QL="${DOJO_DATA:-$HOME/dojo-data}/simlab/.queue.lock" || QL=""; fi
+  if [[ -n "$QL" ]]; then exec 8>>"$QL"; flock -w "${SIMLAB_LOCK_WAIT_S:-43200}" 8 || exit 75; fi
   exec 9>>"$LOCK"
   if ! flock -n 9; then        # blocking wait: woken on release (30 s polling lost to back-to-back jobs)
     echo "[isaac6] GPU lock $LOCK held by: $(head -c 200 "$LOCK"), waiting..." >&2

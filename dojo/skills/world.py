@@ -38,7 +38,10 @@ class AssetInfo:
     place: dict = field(default_factory=dict)       # tag -> orientation quat (wxyz) the generator uses
     support: dict = field(default_factory=dict)     # tag -> list of (local pose7, radius)
     functional: dict = field(default_factory=dict)  # passive functional points (tag -> raw)
+    active_functional: dict = field(default_factory=dict)  # active functional points (tag -> raw)
     mesh: tuple | None = None                       # (vertices (N,3), faces (M,3)) when a catalogue is present
+    irregular: bool | None = None                   # fills its box poorly (set at load for decimated meshes)
+    rgb: np.ndarray | None = None                   # mean face colour 0..255 (catalogue), for "the red block"
 
     @property
     def extents(self) -> np.ndarray:
@@ -58,12 +61,13 @@ class AssetDB:
             rd = os.environ.get("RD_ROOT") or str(Path(os.environ.get("RD_HOME", "/root/controlr-robodojo")) / "RoboDojo")
             objects_root = Path(rd) / "Assets" / "Object" / "RoboDojo"
         self.root = Path(objects_root)
-        if catalog_root is None:
-            for c in (os.environ.get("DOJO_CATALOG", ""), "~/dojo-perception-data/catalog", "/root/dojo-data/perception/catalog"):
-                if c and Path(os.path.expanduser(c)).is_dir():
-                    catalog_root = os.path.expanduser(c)
-                    break
-        self.catalog = Path(catalog_root) if catalog_root else None
+        # mesh catalogues, searched in order: DOJO_CATALOG (os.pathsep-separated list), then perception's
+        roots = ([catalog_root] if isinstance(catalog_root, (str, Path)) else list(catalog_root or []))
+        if not roots:
+            env = [c for c in os.environ.get("DOJO_CATALOG", "").split(os.pathsep) if c]
+            roots = env + ["~/dojo-perception-data/catalog", "/root/dojo-data/perception/catalog"]
+        self.catalogs = [Path(os.path.expanduser(str(c))) for c in roots if _is_dir(os.path.expanduser(str(c)))]
+        self.catalog = self.catalogs[0] if self.catalogs else None
         self._cache: dict[str, AssetInfo] = {}
 
     def get(self, obj_type: str, category: str, idx: int, clutter: bool = False, mesh: bool = False) -> AssetInfo:
@@ -73,13 +77,67 @@ class AssetDB:
         p = self.root / key / "metadata.json"
         m = json.loads(p.read_text())
         info = asset_from_metadata(key, m)
-        if mesh and self.catalog is not None:
-            g = self.catalog / key / "geom.npz"
-            if g.exists():
-                z = np.load(g)
-                info.mesh = (np.asarray(z["vertices"], float), np.asarray(z["faces"], int))
+        if mesh:
+            for cat_root in self.catalogs:
+                g = cat_root / key / "geom.npz"
+                if g.exists():
+                    z = np.load(g)
+                    V, F = np.asarray(z["vertices"], float), np.asarray(z["faces"], int)
+                    if len(F) > MAX_FACES:
+                        from dojo.skills.motion import mesh_irregular
+                        info.irregular = mesh_irregular(V)       # on the full mesh (clustering moves the slices)
+                    cell = DECIMATE_CELL
+                    while len(F) > MAX_FACES and cell < 0.01:
+                        V, F = decimate(V, F, cell)
+                        cell *= 1.6
+                    info.mesh = (V, F)
+                    if "colors" in z.files and len(z["colors"]):
+                        info.rgb = np.asarray(z["colors"], float).reshape(-1, np.asarray(z["colors"]).shape[-1])[:, :3].mean(0)
+                    break
         self._cache[key] = info
         return info
+
+
+MAX_FACES = 12000             # meshes above this are clustered (tools, figurines, mice: 0.1-1.2 M faces; every
+DECIMATE_CELL = 0.0015        # grasp ray cast and fit is O(faces)); precision parts (keys, plugs, strips) are below
+
+
+COLOURS = {"red": (230, 30, 30), "green": (30, 200, 40), "blue": (30, 40, 230), "yellow": (240, 230, 30),
+           "orange": (250, 110, 0), "cyan": (20, 230, 230), "purple": (140, 40, 200), "pink": (250, 140, 190),
+           "white": (240, 240, 240), "black": (20, 20, 20), "brown": (130, 80, 40), "grey": (128, 128, 128),
+           "gray": (128, 128, 128)}
+
+
+def colour_name(rgb) -> str | None:
+    """The nearest basic colour name of an RGB (0..255) triple."""
+    if rgb is None:
+        return None
+    c = np.asarray(rgb, float)[:3]
+    return min(COLOURS, key=lambda k: float(np.linalg.norm(c - np.asarray(COLOURS[k], float))))
+
+
+def decimate(V: np.ndarray, F: np.ndarray, cell: float) -> tuple[np.ndarray, np.ndarray]:
+    """Vertex clustering on a ``cell`` grid: vertices in a cell merge into their mean, collapsed and duplicate
+    faces are dropped. Keeps the shape within ~``cell`` (enough for grasps and contact patches)."""
+    key = np.floor((V - V.min(0)) / cell).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True)
+    inv = inv.reshape(-1)
+    n = int(inv.max()) + 1
+    cnt = np.bincount(inv, minlength=n).astype(float)
+    V2 = np.stack([np.bincount(inv, weights=V[:, k], minlength=n) for k in range(3)], axis=1) / cnt[:, None]
+    F2 = inv[F]
+    ok = (F2[:, 0] != F2[:, 1]) & (F2[:, 1] != F2[:, 2]) & (F2[:, 0] != F2[:, 2])
+    F2 = F2[ok]
+    F2 = np.unique(np.sort(F2, axis=1), axis=0, return_index=True)[1]
+    F2 = inv[F][ok][np.sort(F2)]
+    return V2, F2
+
+
+def _is_dir(p: str) -> bool:
+    try:
+        return Path(p).is_dir()
+    except OSError:                 # e.g. /root/... seen by a non-root user
+        return False
 
 
 def asset_from_metadata(key: str, m: dict) -> AssetInfo:
@@ -93,7 +151,8 @@ def asset_from_metadata(key: str, m: dict) -> AssetInfo:
         rs = v.get("radius") or []
         support[k] = [(np.asarray(c, float), float(r)) for c, r in zip(cs, rs)]
     return AssetInfo(key=key, bbox_min=verts.min(0), bbox_max=verts.max(0), mass=(m.get("physics") or {}).get("mass"),
-                     place=place, support=support, functional=dict(pas.get("functional") or {}))
+                     place=place, support=support, functional=dict(pas.get("functional") or {}),
+                     active_functional=dict(act.get("functional") or {}))
 
 
 @dataclass

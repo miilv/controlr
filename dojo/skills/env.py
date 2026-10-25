@@ -89,6 +89,7 @@ class KinematicEnv:
             o["pos"] = np.asarray(o["pos"], float)
             o["quat"] = np.asarray(o["quat"], float)
             o["half"] = np.asarray(o.get("half", np.full(3, 0.02)), float)
+            o["center"] = np.asarray(o.get("center", np.zeros(3)), float)      # bbox centre, object frame
             o.setdefault("type", "Rigid")
             o.setdefault("clutter", False)
             o.setdefault("inst_name", o["label"])
@@ -115,6 +116,7 @@ class KinematicEnv:
         for o in self.objects:
             r = dict(o)
             r["half"] = np.asarray(o["half"]).tolist()
+            r["center"] = np.asarray(o["center"]).tolist()
             r["pos"] = np.asarray(o["pos"]).tolist()
             r["quat"] = np.asarray(o["quat"]).tolist()
             rows.append(r)
@@ -134,7 +136,8 @@ class KinematicEnv:
             self.q[a] = self.q[a] + np.clip(d, -MAX_JOINT_STEP, MAX_JOINT_STEP)
             g_new = float(np.clip(np.asarray(action[f"{a}_ee_joint_state"]).reshape(-1)[0], 0, 1))
             T_tcp = self.kin.tcp(a, self.q[a])
-            if g_new < 0.5 and a not in self.attached:
+            # a grasp happens when the fingers close (open -> closed), not whenever closed fingers touch
+            if g_new < 0.5 and self.g[a] >= g_new + 0.15 and a not in self.attached:
                 lab = self._object_at(T_tcp[:3, 3])
                 if lab is not None:
                     o = self._obj(lab)
@@ -149,17 +152,57 @@ class KinematicEnv:
                 o = self._obj(lab)
                 o["pos"] = T[:3, 3].copy()
                 o["quat"] = T_to_pose7(T)[3:]
+        self._push_over()
         self.log.append({"step": self._steps, "attached": {a: v[0] for a, v in self.attached.items()}})
         if self._steps >= self.step_lim:
             self.ended = True
         return self.ended
+
+    def _push_over(self) -> None:
+        """Minimal tipping model: a closed fingertip moving horizontally into the upper part of a standing
+        free object (longest axis vertical) tips it 90 deg about its far bottom edge."""
+        tips = getattr(self, "_tips", {})
+        now = {}
+        for a in ARMS:
+            T = self.kin.tcp(a, self.q[a])
+            now[a] = T[:3, 3] + T[:3, 0] * 0.0126
+            if self.g[a] > 0.5 or a in self.attached or a not in tips:
+                continue
+            v = now[a] - tips[a]
+            v[2] = 0.0
+            if np.linalg.norm(v) < 1e-4:
+                continue
+            u = v / np.linalg.norm(v)
+            held = {lab for lab, _ in self.attached.values()}
+            for o in self.objects:
+                if o.get("type") != "Rigid" or o["label"] in held:
+                    continue
+                R = quat_to_R(o["quat"])
+                k = int(np.argmax(o["half"]))
+                if abs(R[2, k]) < 0.94:
+                    continue
+                c = o["pos"] + R @ o["center"]
+                loc = R.T @ (now[a] - c)
+                h = np.abs(R @ np.diag(o["half"])).sum(axis=1)
+                if not (np.all(np.abs(loc) <= o["half"] + 0.002) and now[a][2] > c[2] + 0.2 * h[2]):
+                    continue
+                axis = np.cross([0.0, 0.0, 1.0], u)                  # tip about the far bottom edge
+                ext_u = float(np.abs(R.T @ u) @ o["half"])
+                pivot = c + u * ext_u - np.array([0.0, 0.0, h[2]])
+                from dojo.skills.geometry import axis_angle_R
+                Rr = axis_angle_R(axis, math.pi / 2)
+                c2 = pivot + Rr @ (c - pivot)
+                R2 = Rr @ R
+                o["quat"] = T_to_pose7(T_from(np.zeros(3), R2))[3:]
+                o["pos"] = c2 - R2 @ o["center"]
+        self._tips = now
 
     def _object_at(self, p) -> str | None:
         best, bd = None, 1e9
         for o in self.objects:
             if o.get("type") == "Geometry":
                 continue
-            loc = quat_to_R(o["quat"]).T @ (p - o["pos"])
+            loc = quat_to_R(o["quat"]).T @ (p - o["pos"]) - o["center"]
             if np.all(np.abs(loc) <= o["half"] + self.attach_radius):
                 d = float(np.linalg.norm(loc))
                 if d < bd:
@@ -169,6 +212,15 @@ class KinematicEnv:
     def _drop(self, label: str) -> None:
         o = self._obj(label)
         R = quat_to_R(o["quat"])
+        off = R @ o["center"]                    # root -> bbox centre (world)
+        o["pos"] = o["pos"] + off
+        try:
+            self._drop_centre(o, R)
+        finally:
+            o["pos"] = o["pos"] - off
+
+    def _drop_centre(self, o: dict, R) -> None:
+        label = o["label"]
         hz = float(np.abs(R @ np.diag(o["half"])).sum(axis=1)[2])
         support = TABLE_Z
         h_self = np.abs(R @ np.diag(o["half"])).sum(axis=1)
@@ -186,11 +238,12 @@ class KinematicEnv:
                 continue
             Ro = quat_to_R(other["quat"])
             ho = np.abs(Ro @ np.diag(other["half"])).sum(axis=1)
+            oc = other["pos"] + Ro @ other["center"]
             # xy footprints (axis-aligned bounds) overlap and the other one is below
-            if (abs(other["pos"][0] - o["pos"][0]) < ho[0] + h_self[0] - 1e-3
-                    and abs(other["pos"][1] - o["pos"][1]) < ho[1] + h_self[1] - 1e-3
-                    and other["pos"][2] + ho[2] <= o["pos"][2] - hz + 0.01):
-                support = max(support, other["pos"][2] + ho[2])
+            if (abs(oc[0] - o["pos"][0]) < ho[0] + h_self[0] - 1e-3
+                    and abs(oc[1] - o["pos"][1]) < ho[1] + h_self[1] - 1e-3
+                    and oc[2] + ho[2] <= o["pos"][2] - hz + 0.01):
+                support = max(support, oc[2] + ho[2])
         o["pos"] = np.array([o["pos"][0], o["pos"][1], support + hz])
 
 

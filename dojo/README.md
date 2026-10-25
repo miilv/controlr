@@ -6,8 +6,9 @@ Design: [../docs/design/robodojo-v2.md](../docs/design/robodojo-v2.md). Evidence
 |---|---|---|
 | `dojo/simlab/` | simlab | Dev-layout generator, headless RoboDojo runner, GT dumps (dev only), `Twin` API, determinism tests |
 | `dojo/perception/` | perception | Asset catalogue (meshes, stable poses), inverse layout: RGB + proprio → layout record, accuracy eval |
-| `dojo/skills/` | skills | WorldState, own-IK motion layer, grasps, skills, a generic skill library behind one planner entry point (`planner.solve`: instruction + WorldState -> skill), plan + verify (`TwinBackend`), G3 harness (`g3.py`, `scripts/skills/g3*.sh`) |
+| `dojo/skills/` | skills, skills2, skills3 | WorldState, own-IK motion layer, grasps (top / side / rim / wall / box / slice; hold quality from the pad contact patch and the CoM lever, CoM stations), skills incl. re-orienting transfers (`plan_transfer`), relay chains and in-air handovers (`library.place_oriented`), topple, mesh peg-in-hole fit (`insertion.py`, + a sub-mm local fit of asset insert frames), a closed-loop insertion tail (`Skills._servo_tail`: sag-corrected, depth check, probing), place reach / wrist-limit filters, a generic skill library behind one planner entry point (`planner.solve`: instruction + WorldState -> skill), plan + verify (`TwinBackend`), G3 harness (`g3.py`, `scripts/skills/g3*.sh`, `deploy_skills3.sh`), kinematic dry runs (`scripts/skills/dryrun.py`) |
 | `dojo/runtime/` | integration | The one proxy_eval policy (`RuntimePolicy`): perceive (+ look macro) → WorldState → supervisor (instruction-only) → skills with twin verify (bundle) → resync → finish; firewall; eval driver `scripts/dojo/integ_eval.sh` / `launch.sh` (modes gt / perception) |
+| `dojo/agent/` | agent | The hybrid LLM agent: manual (checker conventions by instruction pattern, skill docs, `robo` API; `prompts/manual_vN.md`), scene with neutral ids (`scene.py`, never checker labels), bounded persistent cell session, `robo` API over Skills / library / perception, cached append-only transcript loop, `AgentPolicy` on RuntimePolicy's `program=` seam (`--policy dojo.agent.policy:AgentPolicy`, agent config in `--config '{"extra":{"agent":{...}}}'`); Phase 1 grounding benchmark (`dataset.py`, `gold.py`, `grounding.py`), e2e summary (`e2e_report.py`) |
 | `baselines/pyrua/` | pyrua | PyRUA-Lean reproduction on our infra (the floor) |
 
 Hard rule (the only one): at eval time the policy uses only the official observation contract. Never read
@@ -26,6 +27,16 @@ Shared machine conventions:
 Run everything through `scripts/simlab/rdpy.sh` (RoboDojo's conda python + the team GPU lock). Use
 `physics_only=True` / `--physics-only` on compute3, where Isaac Sim 5.1's RTX does not start.
 
+**Asset firewall.** `Assets/Eval_Layout/` and every `Assets/Traj/` file except the generic make_kong /
+play_tic_tac_toe demos are eval data.
+- imitate_sorting_sequence's `Traj/<bench>/<task>/<eval_seed>/<seed>.pkl` files are paired with the eval
+  layouts, and their `target_label` is the answer.
+- Every `RoboDojoRunner` process (and `dev_eval`) installs `paths.install_asset_firewall()`. That is a
+  permanent audit hook: open, list, glob or copy of those paths raises `PermissionError`, whoever calls.
+- The imitate demo is routed to our own `~/dojo-data/simlab/traj/<task>/<seed>.pkl` (`demo_gen`), or a
+  no-demo stub.
+- `tests/dojo/test_simlab_firewall.py` fails on any dojo/ code that builds such a path.
+
 | What | Entry point |
 |---|---|
 | layout schema, perturbation | `dojo/simlab/layout.py` |
@@ -35,6 +46,9 @@ Run everything through `scripts/simlab/rdpy.sh` (RoboDojo's conda python + the t
 | twin: load / snapshot / restore / step / verify / load_from_estimate | `dojo.simlab.twin.Twin` |
 | scripted motion, replayable action lists | `dojo/simlab/motion.py` |
 | D0 dataset | `scripts/simlab/d0_all.sh` (compute2), `scripts/simlab/d0_proxy.sh` (compute3: Isaac 6.0 renders) |
+| D0-style frames 0-1 from pre-settled records, more tasks | `scripts/simlab/d0_ext.sh N task ...` (-> `~/dojo-data/d0_ext`) |
+| support-arm demos for imitate_sorting_sequence dev layouts | `-m dojo.simlab.demo_gen [--ids ...]` (-> `~/dojo-data/simlab/traj/`) |
+| generate + pre-settle many tasks in order | `scripts/simlab/coverage.sh N task ...` |
 | G2 determinism / sensitivity | `scripts/simlab/g2_all.sh OUT [--physics-only]` |
 | twin throughput | `scripts/simlab/twin_bench.sh` |
 | RoboDojo's eval client on dev layouts (official, needs 5.1 rendering) | `scripts/simlab/dev_eval.sh --task T --policy P` |

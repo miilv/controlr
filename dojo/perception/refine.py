@@ -14,7 +14,11 @@
 - The prior is decomposed into the asset's resting place frame + yaw about world z + a height offset
   (kept: stacked targets keep their height). (x, y, yaw) are refined by Nelder-Mead from a few starts
   (prior, +-15 mm, the 180-degree flip when the shape is not symmetric); the lowest silhouette loss wins.
-- ``others``: [(key, pose7)] of nearby known objects; their pixels are removed from the foreground.
+- ``others``: [(key, pose7)] of nearby known objects; their pixels are removed from the foreground, and a
+  result within 0.7 x footprint of one of them is reported not-ok (``why`` = "neighbour:<key>").
+- ``held``: (key, pose7) or a list of them: objects in the gripper (at a place hover the carried block is
+  between the camera and the support): masked as occluders. Without it, place-time refines of the support
+  mostly fail (integration: 15/44 ok, IoU ~0.24).
 - ``refine_identity(obj_ids, ...)``: the same for several candidate assets (shape swaps such as
   build_tower's board / prism / pillar): the lowest residual wins, with a margin.
 - Returns also ``iou``, ``visible_frac`` (share of the silhouette not under the robot / out of view),
@@ -24,10 +28,11 @@ from __future__ import annotations
 
 import time
 
+import cv2
 import numpy as np
 
 from .cameras import TABLE_Z, R_to_quat_wxyz, pose_to_T, wrist_camera
-from .inverse_layout import make_roi_views, refine as nm_refine, shape_models
+from .inverse_layout import make_roi_views, refine as nm_refine, shape_by_tag, shape_models
 from .segment import load_backgrounds, segment_virtual
 
 _BGS = None
@@ -88,20 +93,41 @@ def local_foreground(img: np.ndarray, cam, sil: np.ndarray, robot: np.ndarray, g
     return fg, known
 
 
+def frame_foreground(img: np.ndarray, robot: np.ndarray, k: int = 6, thr: float = 3.0, n_samples: int = 6000) -> np.ndarray:
+    """Foreground over the whole frame: a table/room colour model (k-means in Lab) from random non-robot pixels
+    (objects are a small share of a wrist view), then pixels far from every cluster."""
+    lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB).astype(np.float32)
+    lab[..., 0] *= 0.5
+    pool = lab[robot == 0]
+    if len(pool) < 100:
+        return np.zeros(robot.shape, np.uint8)
+    samples = pool[np.random.default_rng(0).choice(len(pool), min(n_samples, len(pool)), replace=False)]
+    crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.5)
+    _, labels, centers = cv2.kmeans(samples, k, None, crit, 2, cv2.KMEANS_PP_CENTERS)
+    labels = labels.ravel()
+    spread = np.array([max(np.sqrt(((samples[labels == i] - centers[i]) ** 2).sum(1)).mean(), 3.0)
+                       if (labels == i).any() else 3.0 for i in range(len(centers))])
+    d = np.min(np.stack([np.sqrt(((lab - centers[i]) ** 2).sum(-1)) / spread[i] for i in range(len(centers))]), axis=0)
+    f = ((d > thr) & (robot == 0)).astype(np.uint8)
+    f = cv2.morphologyEx(f, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    return cv2.morphologyEx(f, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+
+
 def _shape_for(key: str, R: np.ndarray, tag: str | None):
     """The place frame whose resting up-direction matches the prior rotation best (or the given tag)."""
     sms = shape_models(key)
     if tag:
-        m = [s for s in sms if s.tag == tag]
-        if m:
-            return m[0]
+        try:
+            return shape_by_tag(key, tag)  # includes fixed-pose (zlim / qpos) shapes estimate() created
+        except StopIteration:
+            pass
     up = R.T @ np.array([0, 0, 1.0])
     return max(sms, key=lambda s: float((s.R0.T @ np.array([0, 0, 1.0])) @ up))
 
 
 def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
            tag: str | None = None, bgs: dict | None = None, others: list | None = None, iters: int = 60,
-           xy_starts: float = 0.015, seg: str = "local") -> dict:
+           xy_starts: float = 0.015, seg: str = "local", held=None, search: bool = True) -> dict:
     t0 = time.time()
     bgs = _backgrounds(bgs) if seg != "local" else bgs
     cam = wrist_camera(arm, np.asarray(proprio[f"{arm}_arm_joint_state"], dtype=float))
@@ -113,6 +139,12 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         a = load_asset(obj_id)
         sil = silhouette(cam, transform(a.Vs, T_prior), a.Fs)
         rob = robot_mask(cam, proprio, dilate_px=3)
+        # a held object (e.g. the block carried to a place) sits between the camera and the target: treat its
+        # silhouette as an occluder, so it neither trains the table colour model nor counts as foreground
+        for hk, hp in ([held] if held and isinstance(held[0], str) else (held or [])):
+            ha = load_asset(hk)
+            hm = silhouette(cam, transform(ha.Vs, pose_to_T(hp[:3], hp[3:])), ha.Fs)
+            rob |= cv2.dilate(hm, np.ones((9, 9), np.uint8))
         fgm, kn = local_foreground(wrist_frame, cam, sil, rob)
         v = ViewMasks(cam, wrist_frame, fgm, kn, np.zeros(fgm.shape, np.float32), rob)
     else:
@@ -137,7 +169,7 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         return T
 
     starts = [(T0[0, 3], T0[1, 3], yaw0)]
-    for dx, dy in ((xy_starts, 0), (-xy_starts, 0), (0, xy_starts), (0, -xy_starts)):
+    for dx, dy in (((xy_starts, 0), (-xy_starts, 0), (0, xy_starts), (0, -xy_starts)) if xy_starts > 0 else ()):
         starts.append((T0[0, 3] + dx, T0[1, 3] + dy, yaw0))
     if sm.yaw_period > 1.5 * np.pi:
         starts.append((T0[0, 3], T0[1, 3], yaw0 + np.pi))
@@ -157,19 +189,107 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         vis = float((s & v.known).sum() / max(s.sum(), 1))
     iou = float(next(iter(per.values()), 0.0)) if per else 0.0
     d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
-    return {"pose": np.r_[T[:3, 3], R_to_quat_wxyz(T[:3, :3])].tolist(), "residual": round(float(loss), 4),
+    ok = bool(iou >= 0.6 and vis >= 0.5)
+    searched = None
+    if not ok and search and seg == "local":
+        searched = _wide_search(obj_id, sm, z_off, wrist_frame, cam, proprio, rob, T0, iters)
+        if searched is not None and searched.get("ok"):
+            x, y, yaw, loss, per, iou, vis = (searched[k] for k in ("x", "y", "yaw", "loss", "per", "iou", "vis"))
+            T = pose_T(x, y, yaw)
+            ok = True
+            d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
+    out = {"pose": np.r_[T[:3, 3], R_to_quat_wxyz(T[:3, :3])].tolist(), "residual": round(float(loss), 4),
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
-            "ok": bool(iou >= 0.6 and vis >= 0.5), "time_s": round(time.time() - t0, 3), "camera": cam.name}
+            "ok": ok, "time_s": round(time.time() - t0, 3), "camera": cam.name}
+    if others and out["ok"]:  # landed on a known neighbour: not this object (a large shift can grab one)
+        from .render import load_asset
+
+        fp = float(np.min(load_asset(obj_id).extents[:2]))
+        for k2, p2 in others:
+            try:
+                fp2 = float(np.min(load_asset(k2).extents[:2]))
+            except Exception:
+                fp2 = fp
+            if np.hypot(out["pose"][0] - p2[0], out["pose"][1] - p2[1]) < 0.7 * min(fp, fp2):
+                out["ok"] = False
+                out["why"] = f"neighbour:{k2}"
+                break
+    if searched is not None:  # where the target's best match in the wrist frame is (re-hover there if not ok)
+        out["searched"] = True
+        out["suggest_xy"] = searched["suggest_xy"]
+        out["suggest_shift_mm"] = round(float(np.hypot(searched["suggest_xy"][0] - T0[0, 3],
+                                                       searched["suggest_xy"][1] - T0[1, 3]) * 1000), 1)
+        out["suggest_score"] = searched["score"]
+    return out
+
+
+def _wide_search(obj_id, sm, z_off, img, cam, proprio, rob, T0, iters):
+    """Whole-frame search for the target when the local refine fails: table colours from the full frame
+    (k-means, robot excluded), foreground blobs scored by expected size and colour, best blob's ray on the
+    plane at the object's mid-height -> suggested xy; a refine from there may succeed (then ``ok``)."""
+    from .render import load_asset, robot_mask, silhouette, transform
+
+    if rob is None:
+        rob = robot_mask(cam, proprio, dilate_px=3)
+    a = load_asset(obj_id)
+    sil0 = silhouette(cam, transform(a.Vs, T0), a.Fs)
+    exp_area = max(int(sil0.sum()), 30)
+    fg = frame_foreground(img, rob)
+    # grid over +-7 cm around the prior at the prior's yaw: silhouette IoU with the frame foreground, minus a
+    # mild distance penalty (neighbours of the same look are the usual confusion)
+    Rz = T0[:3, :3] @ sm.R0.T
+    yaw0 = float(np.arctan2(Rz[1, 0], Rz[0, 0]))
+    best = None
+    for dx in np.arange(-0.07, 0.0701, 0.01):
+        for dy in np.arange(-0.07, 0.0701, 0.01):
+            Tg = sm.pose(T0[0, 3] + dx, T0[1, 3] + dy, yaw0)
+            Tg[2, 3] += z_off
+            s_g = sm.sil(cam, Tg)
+            n_s = int(s_g.sum())
+            if n_s < 0.25 * exp_area:
+                continue
+            known = s_g & (1 - rob)
+            if known.sum() < 0.5 * n_s:
+                continue
+            inter = int((known & fg).sum())
+            union = int(((s_g | fg) & (1 - rob) & cv2.dilate(s_g, np.ones((25, 25), np.uint8))).sum())
+            score = inter / max(union, 1) - 1.0 * float(np.hypot(dx, dy))
+            if best is None or score > best[0]:
+                best = (score, (T0[0, 3] + dx, T0[1, 3] + dy))
+    if best is None:
+        return None
+    X = np.array([best[1][0], best[1][1]])
+    res = {"suggest_xy": [round(float(X[0]), 4), round(float(X[1]), 4)], "score": round(float(best[0]), 3)}
+    T1 = sm.pose(X[0], X[1], yaw0)
+    T1[2, 3] += z_off
+    sil1 = silhouette(cam, transform(a.Vs, T1), a.Fs)
+    fg1, kn1 = local_foreground(img, cam, sil1, rob)
+    from .segment import ViewMasks
+
+    v = ViewMasks(cam, img, fg1, kn1, np.zeros(fg1.shape, np.float32), rob)
+    x, y, yaw, loss, per = nm_refine(_ZShift(sm, z_off), X[0], X[1], yaw0, {cam.name: v}, maxiter=iters, xy_step=0.004, yaw_step=0.08)
+    T2 = sm.pose(x, y, yaw)
+    T2[2, 3] += z_off
+    s2 = sm.sil(cam, T2)
+    vis = float((s2 & kn1).sum() / max(s2.sum(), 1))
+    iou = float(next(iter(per.values()), 0.0)) if per else 0.0
+    res.update({"x": x, "y": y, "yaw": yaw, "loss": loss, "per": per, "iou": iou, "vis": vis, "ok": bool(iou >= 0.6 and vis >= 0.5)})
+    return res
 
 
 def refine_identity(obj_ids: list[str], wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
-                    margin: float = 0.05, **kw) -> dict:
+                    margin: float = 0.05, max_full: int = 6, **kw) -> dict:
     """Identity check at the hover: ``refine`` every candidate asset at the prior (e.g. the label group's
     candidates, or the record's ``label_rival``) and keep the lowest residual. Adds ``obj_id``,
     ``identity_scores`` {id: residual} and ``identity_margin`` (runner-up minus best residual);
     ``identity_ok`` is false when the margin is below ``margin`` (look again or keep the prior identity)."""
-    outs = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **kw) for k in dict.fromkeys(obj_ids)}
+    ids = list(dict.fromkeys(obj_ids))
+    if len(ids) > max_full:  # screen with a short single-start fit, then the full refine on the best few
+        quick = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **{**kw, "iters": 15, "xy_starts": 0.0,
+                                                                            "search": False}) for k in ids}
+        ids = [k for k, _ in sorted(quick.items(), key=lambda kv: kv[1]["residual"])[:max_full]]
+    outs = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **kw) for k in ids}
     ranked = sorted(outs.items(), key=lambda kv: kv[1]["residual"])
     best_id, best = ranked[0]
     m = (ranked[1][1]["residual"] - best["residual"]) if len(ranked) > 1 else 1.0

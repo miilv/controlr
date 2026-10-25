@@ -1,7 +1,7 @@
 """Pre-settled layout records: generate -> settle in RoboDojo (physics-only) -> write the settled poses back.
 
 For every stored dev layout ``layouts/<task>/<id>.json`` (kept unchanged) this writes
-``layouts/<task>/<id>.settled.json``: the same record with every Rigid / Dynamic / Articulation object's
+``layouts/<task>/<id>.settled.json``: the same record with every Rigid / Dynamic object's
 ``default_pos`` / ``default_ori`` replaced by where it actually came to rest after RoboDojo's own reset +
 settle (+ ``extra_steps`` physics steps), and ``_simlab.settled`` with the provenance. Layouts are dropped
 (no file; status in ``settled_index.json``) when
@@ -32,8 +32,11 @@ import numpy as np
 from dojo.simlab import paths
 from dojo.simlab.layout import TABLE_TOP_Z, iter_objects, quat_angle_deg
 
-SETTLER = "simlab/presettle v1"
-MOVABLE = ("Rigid", "Dynamic", "Articulation")
+SETTLER = "simlab/presettle v2"   # v2: articulations not written back; optional re-settle passes
+# Articulations keep their generated pose (v2): RoboDojo reports some of them (make_toast's toasters 0/1) with a
+# constant ~7 mm root offset from the record's default_pos, so writing the reported pose back moved them 7 mm on
+# every reload and failed pass 2 (24/24). They are fixtures that do not settle anyway.
+MOVABLE = ("Rigid", "Dynamic")
 ID_RE = re.compile(r"^\d+\.json$")
 
 
@@ -88,18 +91,26 @@ def at_rest(before: list[dict], after: list[dict], table: bool, tol_mm: float = 
     return not bad, bad
 
 
-def drift(live: list[dict]) -> tuple[float, float]:
+def drift(live: list[dict], top: list | None = None) -> tuple[float, float]:
+    """Max task-object displacement from the record (mm, deg); ``top`` collects the 3 largest (label, mm, type)."""
     mm = deg = 0.0
+    rows = []
     for o in live:
-        if o["type"] not in MOVABLE or o["clutter"] or o["pos"] is None:
+        if o["clutter"] or o["pos"] is None or o.get("layout_pos") is None:
             continue
-        mm = max(mm, float(np.linalg.norm(np.subtract(o["pos"], o["layout_pos"]))) * 1000)
+        d = float(np.linalg.norm(np.subtract(o["pos"], o["layout_pos"]))) * 1000
+        rows.append((o.get("label"), round(d, 2), o["type"]))
+        if o["type"] not in MOVABLE:
+            continue
+        mm = max(mm, d)
         deg = max(deg, quat_angle_deg(o["quat"], o["layout_quat"]))
+    if top is not None:
+        top.extend(sorted(rows, key=lambda r: -r[1])[:3])
     return mm, deg
 
 
 def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250, rest_window: int = 100,
-                   drift_tol_mm: float = 5.0, ids: list[int] | None = None) -> dict:
+                   drift_tol_mm: float = 5.0, ids: list[int] | None = None, extra_passes: int = 0) -> dict:
     from dojo.simlab.runner import RoboDojoRunner, jsonable
     files = [p for p in layout_files(task) if not ids or int(p.stem) in ids]
     run = RoboDojoRunner(task, physics_only=physics_only, need_planner=False,
@@ -126,17 +137,25 @@ def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250,
             out.unlink(missing_ok=True)
         else:
             settled, n = write_back(lay, live)
-            info2 = run.load(settled)
-            live2 = run.objects_gt() if info2["stable"] else []
-            d2 = drift(live2) if live2 else (float("nan"), float("nan"))
+            for k in range(max(1, extra_passes + 1)):   # pass 2 (+ re-settle passes for marginal rests)
+                info2 = run.load(settled)
+                live2 = run.objects_gt()
+                top2: list = []
+                d2 = drift(live2, top2) if info2["stable"] else (float("nan"), float("nan"))
+                if not info2["stable"]:
+                    drift(live2, top2)
+                if not info2["stable"] or d2[0] <= drift_tol_mm or k == extra_passes:
+                    break
+                settled, n = write_back(settled, live2)   # leaning bread slices re-settle ~7 mm once
+            rec["pass2_top"] = top2
             rec.update({"objects_written": n, "pass2_robodojo_stable": bool(info2["stable"]),
-                        "pass2_drift_mm": round(d2[0], 3), "pass2_drift_deg": round(d2[1], 3)})
+                        "pass2_drift_mm": round(d2[0], 3), "pass2_drift_deg": round(d2[1], 3), "passes": 2 + k})
             if info2["stable"] and d2[0] <= drift_tol_mm:
                 meta = dict(settled.get("_simlab") or {})
                 meta["settled"] = {"settler": SETTLER, "from": f.name, "generator": meta.get("generator"),
                                    "physics": "isaac-5.1 physics-only" if physics_only else "isaac-5.1",
                                    "extra_steps": extra_steps, **{k: rec[k] for k in (
-                                       "pass1_robodojo_stable", "pass1_drift_mm", "pass2_drift_mm")}}
+                                       "pass1_robodojo_stable", "pass1_drift_mm", "pass2_drift_mm", "passes")}}
                 settled["_simlab"] = meta
                 out.write_text(json.dumps(jsonable(settled), indent=1))
                 rec["status"] = "ok"
@@ -160,8 +179,11 @@ def main(argv=None) -> None:
     ap.add_argument("--ids", nargs="*", type=int, default=None)
     ap.add_argument("--extra-steps", type=int, default=250)
     ap.add_argument("--rendered", action="store_true", help="use the full (rendering) env, e.g. on compute2")
+    ap.add_argument("--extra-passes", type=int, default=0,
+                    help="re-settle passes: write the pass-k poses back and reload again (marginal rests)")
     a = ap.parse_args(argv)
-    presettle_task(a.task, physics_only=not a.rendered, extra_steps=a.extra_steps, ids=a.ids)
+    presettle_task(a.task, physics_only=not a.rendered, extra_steps=a.extra_steps, ids=a.ids,
+                   extra_passes=a.extra_passes)
 
 
 if __name__ == "__main__":

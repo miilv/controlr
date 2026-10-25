@@ -62,6 +62,16 @@ def held_objects(hist, grip_cmd: dict, blocked: dict, near_m: float = 0.06, rigi
     return out
 
 
+class IncompleteWorld(ValueError):
+    """An estimated world lacks objects the task's reward refers to (perception missed them)."""
+
+
+def missing_labels(layout: dict, required: set[str]) -> list[str]:
+    from dojo.simlab.layout import iter_objects
+    present = {inst.get("label") for _, _, inst in iter_objects(layout)}
+    return sorted(required - present)
+
+
 class Twin:
     def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, workdir: str | None = None,
                  physics_only: bool = False, need_planner: bool = True):
@@ -69,8 +79,11 @@ class Twin:
                                   workdir=workdir or str(paths.DATA / "simlab" / "work" / f"twin_{task}_{num_envs}"),
                                   physics_only=physics_only, need_planner=need_planner)
         self.physics_only = physics_only
+        self.task = task
         self.env = self.run.env
         self.num_envs = self.run.num_envs
+        from dojo.simlab.gen_layouts import required_labels
+        self.required = required_labels(task)
 
     # ------------------------------------------------------------------ episode
     def load(self, layouts, fresh: bool = True) -> dict:
@@ -347,6 +360,10 @@ class Twin:
         place the robot, settle ``settle_steps`` physics steps (4 ms each, no env steps counted) and re-arm
         RoboDojo's reward state. Otherwise a full RoboDojo reset (``load``)."""
         t0 = time.perf_counter()
+        missing = missing_labels(layout, self.required)
+        if missing:            # RoboDojo's reward would look them up and crash mid-rollout (None poses)
+            raise IncompleteWorld(f"{self.task}: the world lacks {missing}, which the task's checks need; "
+                                  "add them (e.g. last known pose) or skip verification")
         sig = self._layout_signature(layout)
         fast = getattr(self, "_sig", None) == sig and getattr(self, "_home", None) is not None
         if not fast:
