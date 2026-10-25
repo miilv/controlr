@@ -20,6 +20,8 @@ Worker environment (on top of j1_adapter.install_env):
                       a B1 object's calibrated risk >= AGENTIC_GATE_THR (flag_model.json); else B1 with the prior)
   AGENTIC_KEEP_UNMENTIONED  1 (default): B1 objects the agent did not mention (none of its objects within 3 cm) stay,
                       at half confidence
+  AGENTIC_SNAP        1 (default): agent objects within 2 cm of a confident B1 object (risk < AGENTIC_GATE_THR) of the
+                      same kind take B1's pose (agent: identity / labels / missing objects; B1: metric pose)
   AGENTIC_REFINE      1 (default): B1's render-and-compare refines the agent's new / moved objects (seed_refine.py)
   AGENTIC_TRACK       auto (default: on with gate=budget) | 1 | 0: the episode tracker (dojo.perception.tracker) over the
                       B1-gated calls, initialised from the agent's answer
@@ -126,6 +128,7 @@ def _cfg(kw: dict) -> dict:
             "gate": kw.get("gate") or os.environ.get("AGENTIC_GATE", "always"),
             "refine": str(kw.get("refine", os.environ.get("AGENTIC_REFINE", "1"))) not in ("0", "false", "False"),
             "keep_unmentioned": str(kw.get("keep_unmentioned", os.environ.get("AGENTIC_KEEP_UNMENTIONED", "1"))) not in ("0", "false", "False"),
+            "snap": str(kw.get("snap", os.environ.get("AGENTIC_SNAP", "1"))) not in ("0", "false", "False"),
             "max_per_episode": int(kw.get("max_per_episode") or os.environ.get("AGENTIC_MAX_PER_EPISODE", 2)),
             "track": str(kw.get("track", os.environ.get("AGENTIC_TRACK", "auto"))),
             "gate_thr": float(kw.get("gate_thr") or os.environ.get("AGENTIC_GATE_THR", 0.2)),
@@ -317,6 +320,40 @@ def _cat_of(o: dict) -> str | None:
     return a[1] if len(a) == 3 else o.get("category")
 
 
+def snap_to_b1(objects: list[dict], b1: dict | None, thr: float = 0.2, radius_m: float = 0.02) -> tuple[list[dict], int]:
+    """The agent decides WHAT is where; B1 keeps the metric pose where it is confident. An agent object within
+    ``radius_m`` of a B1 object of the same category, whose calibrated risk is below ``thr`` and whose asset the agent
+    does not contradict, takes B1's pose (and asset, size, top_z); the agent's label stays. Agent objects farther away
+    (a correction), on risky B1 objects, or with another asset keep the agent's reading (H2 refines them).
+    Bridge-isr's first 5.1 episode: the merged agent points were 2.1 mm median vs B1's 0.4 mm on a clean scene."""
+    import math
+
+    b1o = (b1 or {}).get("objects") or []
+    out, n, used = [], 0, set()
+    for o in objects:
+        best = None
+        for j, b in enumerate(b1o):
+            if j in used or _cat_of(b) != _cat_of(o):
+                continue
+            if o.get("asset") and b.get("asset") and o["asset"] != b["asset"]:
+                continue
+            d = math.hypot(b["pos"][0] - o["pos"][0], b["pos"][1] - o["pos"][1])
+            if d <= radius_m and (best is None or d < best[0]):
+                best = (d, j, b)
+        if best is not None and risk(best[2]) < thr:
+            b = best[2]
+            used.add(best[1])
+            if best[0] > 1e-6 or o.get("quat") != b.get("quat"):
+                n += 1
+            q = dict(o)
+            q.update({k: b[k] for k in ("pos", "quat", "asset", "size", "top_z", "category") if b.get(k) is not None})
+            q["source"] = b.get("source", "head")
+            out.append(q)
+        else:
+            out.append(o)
+    return out, n
+
+
 def add_unmentioned(objects: list[dict], b1: dict | None, radius_m: float = 0.03) -> tuple[list[dict], int]:
     """B1 objects the agent neither kept nor replaced stay in the output at half confidence: on our D0 hard set the
     agents left out objects they could not confirm, and most of those were right. A B1 object counts as mentioned when
@@ -463,6 +500,10 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
     if st["answer"] is not None:
         objects, looks, probs = answer_to_output(st["answer"], b1)
         src = "agent"
+        if cfg["snap"] and b1 is not None:
+            objects, n_snap = snap_to_b1(objects, b1, thr=cfg["gate_thr"])
+            if n_snap:
+                probs.append(f"snapped_to_b1={n_snap}")
         if cfg["keep_unmentioned"] and b1 is not None:
             objects, n_kept = add_unmentioned(objects, b1)
             if n_kept:

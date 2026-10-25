@@ -380,3 +380,15 @@ def test_extra_observation_is_attached_and_locatable(tmp_path):
     tool_turn = fc.sent[1][-1]["content"]
     texts = "\n".join(p.get("text", "") for p in tool_turn)
     assert '"xyz"' in texts and "image project_cam_head_scan.png:" in texts
+
+
+def test_snap_keeps_b1_pose_where_b1_is_confident():
+    b1 = _b1()
+    b1["objects"][0]["residual"] = 0.05  # confident
+    agent = [{"label": "block", "category": "block", "pos": [0.053, -0.118, 0.78], "confidence": 0.8},   # 3.6 mm off B1's
+             {"label": "block", "category": "block", "pos": [-0.205, -0.104, 0.78], "confidence": 0.8}]  # B1's risky one
+    out, n = j1.snap_to_b1(agent, b1, thr=0.2)
+    assert n == 1 and out[0]["pos"] == [0.05, -0.12, 0.7825] and out[0]["asset"] == "Rigid/block/00007"
+    assert out[1]["pos"] == [-0.205, -0.104, 0.78]  # B1's reading is risky: the agent's point stays
+    far = [{"label": "block", "category": "block", "pos": [0.10, -0.12, 0.78]}]  # a 5 cm correction: the agent's
+    assert j1.snap_to_b1(far, b1)[1] == 0
