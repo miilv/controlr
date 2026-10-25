@@ -32,6 +32,18 @@ TOLERANCE = {
     # 88 mm stroke; thin pack items), stated as such in reports
     "put_bottles_into_dustbin": (15, None, "checker: bottle on the dustbin bottom; 15 mm = assumed grasp tolerance"),
     "pack_objects_into_box_random": (15, 45, "point in box_bottom bbox; long axis <= 45 deg; 15 mm = assumed grasp tolerance"),
+    # extension tasks (anatomy report); "assumed" = no positional checker tolerance, grasp-level assumption
+    "swap_T": (20, 3, "each T at the other's initial xy <= 20 mm and initial orientation <= 3 deg"),
+    "align_blocks": (8, 8, "block centres within 8 mm of one line, faces within 8 deg"),
+    "store_tools_in_toolbox": (50, 10, "tool centre <= 50 mm from its slot, orientation <= 10 deg"),
+    "insert_key": (7, 7, "key xy <= 7 mm, axis <= 7 deg (insertion)"),
+    "plug_in_charger": (7, 10, "inside the socket footprint (7 mm assumed), charger y-axis <= 10 deg"),
+    "cover_blocks": (15, None, "covering cups / cube positions (15 mm assumed)"),
+    "stack_blocks_by_language": (17.5, None, "ordered stack xy <= 17.5 mm"),
+    "make_kong": (15, 30, "wall tile stood within 15 mm; tiles face-up <= 30 deg"),
+    "fill_pen_holder": (15, None, "pens within 35 mm of the holder axis; 15 mm assumed for the grasp"),
+    "organize_table": (20, 45, "items 20-45 mm of targets, mouse y-axis <= 45 deg"),
+    "general_pickup": (15, None, "target lifted 10 cm; 15 mm assumed grasp tolerance"),
 }
 
 
