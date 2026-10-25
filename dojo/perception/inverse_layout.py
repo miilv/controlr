@@ -1259,7 +1259,9 @@ def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.
             b1 = _place_like(b, ca, yb, views, others, cfg, groups)
             if a1 is None or b1 is None:
                 continue
-            if a1.loss + b1.loss < a0.loss + b0.loss - margin:
+            # both must fit better at the other's place, and the pair by a margin (one big gain hiding a worse
+            # partner swapped build_tower's blocks)
+            if a1.loss < a0.loss and b1.loss < b0.loss and a1.loss + b1.loss < a0.loss + b0.loss - margin:
                 for new, old in ((a1, a), (b1, b)):
                     for k_, v_ in old.per_view.items():
                         if k_ not in new.per_view and not k_.startswith("cam"):
