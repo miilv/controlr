@@ -99,8 +99,9 @@ class RuntimeConfig:
     watch: bool = False
     watch_every: int = 4
     # mode perception: perception R&D's agentic perceiver (LLM calls via omniroute, in the perception service).
-    # "budget": the first estimate is agentic; after the looks / search one more agentic estimate when perception's
-    # needs_agent(record) says so; at most agentic_max calls per episode. "off": B1 only
+    # "budget": the first estimate is agentic; then, while fewer than agentic_max estimates ran, perception's
+    # needs_agent(record) decides once after the looks / search and at each re-estimate after a confirmed divergence
+    # (trigger "risk"). "off": B1 only
     agentic: str = "off"
     agentic_max: int = 2
     extra: dict = field(default_factory=dict)
@@ -123,7 +124,9 @@ class _Checker:
         return self.pc.check(obs, objs, self.fold)
 
     def estimate(self, obs: dict) -> dict:
-        return self.pc.estimate([obs], self.vocabulary, self.fold)
+        rec = self.pc.estimate([obs], self.vocabulary, self.fold)
+        hook = getattr(self, "agentic_hook", None)          # agentic="budget": a risky re-estimate may go agentic
+        return hook(obs, rec) if hook is not None else rec
 
     def refine(self, obs: dict, obj, others, arm: str, held=None) -> dict:
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
@@ -262,6 +265,8 @@ class RuntimePolicy:
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
         prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
+        if checker is not None and cfg.agentic == "budget":
+            checker.agentic_hook = lambda obs, rec: self._agentic_gate(obs, scene, rec, "risk")
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()
@@ -345,20 +350,14 @@ class RuntimePolicy:
                 prov.init_from_record(srec)
                 sk = make_skills()
                 self._last_record = srec
-        if cfg.mode == "perception" and cfg.agentic == "budget" and len(self.report["agentic"]) < cfg.agentic_max:
+        if cfg.mode == "perception" and cfg.agentic == "budget":
             cur = self._last_record
-            try:
-                needs, why = self.perception().needs_agent(cur)
-            except Exception as e:  # noqa: BLE001 (the gate is optional: go on with B1)
-                needs, why = False, f"needs_agent error {type(e).__name__}: {str(e)[:120]}"
-            events.append({"kind": "agentic_gate", "needs": needs, "why": why, "step": b.steps_used})
-            if needs:
-                rec2 = self._agentic(b.observe(), scene, cur, "after_looks")
-                if rec2 is not cur:
-                    self.report["records"]["agentic2"] = _slim(rec2)
-                    self._last_record = rec2
-                    prov.init_from_record(rec2)
-                    sk = make_skills()
+            rec2 = self._agentic_gate(b.observe(), scene, cur, "after_looks")
+            if rec2 is not cur:
+                self.report["records"]["agentic2"] = _slim(rec2)
+                self._last_record = rec2
+                prov.init_from_record(rec2)
+                sk = make_skills()
         recs = self.report["records"]
         nf = [x.get("label") for x in (recs.get("agentic2") or recs.get("searched") or recs.get("fused")
                                         or recs.get("initial") or {}).get("_not_found") or []]
@@ -570,6 +569,22 @@ class RuntimePolicy:
                 hint["rehover_dz"] = self.cfg.rehover_place_dz
             return hint
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _agentic_gate(self, obs: dict, scene: str, rec: dict, trigger: str) -> dict:
+        """perception's ``needs_agent(rec)`` while the episode's budget lasts (``agentic_max`` estimates, frame 0
+        included): agentic estimate of this frame with ``rec`` as the B1 hint, else ``rec`` itself. ``trigger``:
+        after_looks (once, after the looks / search) or risk (a re-estimate at a confirmed divergence)."""
+        if len(self.report["agentic"]) >= self.cfg.agentic_max:
+            self.report["events"].append({"kind": "agentic_gate", "trigger": trigger, "needs": None, "why": "budget spent",
+                                          "step": self.bridge.steps_used})
+            return rec
+        try:
+            needs, why = self.perception().needs_agent(rec)
+        except Exception as e:  # noqa: BLE001 (the gate is optional: go on with B1)
+            needs, why = False, f"needs_agent error {type(e).__name__}: {str(e)[:120]}"
+        self.report["events"].append({"kind": "agentic_gate", "trigger": trigger, "needs": needs, "why": why,
+                                      "step": self.bridge.steps_used})
+        return self._agentic(obs, scene, rec, trigger) if needs else rec
 
     def _agentic(self, obs: dict, scene: str, b1: dict | None, tag: str) -> dict:
         """One agentic estimate (perception service). Usage goes to report["agentic"]; on an error the B1 record is

@@ -1262,3 +1262,35 @@ def test_agentic_budget_estimates_at_frame0_and_once_more_only_when_perception_a
     rep2 = run_episode(RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(),
                                      perception_client=pc2), FakeEpisode(_env()), "perception")
     assert rep2["agentic"] == [] and not any(isinstance(c, tuple) for c in pc2.calls)
+
+
+def test_agentic_risk_trigger_on_reestimate_respects_the_budget():
+    from dojo.runtime.policy import _Checker
+
+    class PC:
+        def __init__(self):
+            self.n_ag = 0
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return {"_tag": "b1"}
+
+        def needs_agent(self, record):
+            return True, "risk:[('block_0', 0.4)]"
+
+        def agentic_estimate(self, frame, vocabulary, fold, b1_record=None):
+            self.n_ag += 1
+            assert b1_record == {"_tag": "b1"}                          # the B1 re-estimate is the hint
+            return {"_tag": "agentic", "_perception": {"agentic": {"result": "agent", "calls": 2}}}
+
+    pc = PC()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", agentic="budget", agentic_max=3), perception_client=pc)
+    pol.reset({"instruction": STACK, "step_lim": 550})
+    pol.bridge.obs, pol.bridge.fresh = FakeEpisode(_env()).observe(), True
+    pol.report["agentic"] = [{"tag": "frame0"}, {"tag": "after_looks"}]       # two of three already spent
+    ch = _Checker(pc, "stack_blocks", 0)
+    ch.agentic_hook = lambda obs, rec: pol._agentic_gate(obs, "stack_blocks", rec, "risk")
+    assert ch.estimate({})["_tag"] == "agentic" and pc.n_ag == 1
+    assert ch.estimate({})["_tag"] == "b1" and pc.n_ag == 1                 # budget spent: B1 stays
+    gates = [e for e in pol.report["events"] if e["kind"] == "agentic_gate"]
+    assert [g["trigger"] for g in gates] == ["risk", "risk"] and gates[-1]["why"] == "budget spent"
+    assert [a["tag"] for a in pol.report["agentic"]] == ["frame0", "after_looks", "risk"]
