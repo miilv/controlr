@@ -23,11 +23,10 @@ measures the twin's prediction error against GT in mode gt (a dev metric, never 
 from __future__ import annotations
 
 import copy
-import math
 
 import numpy as np
 
-from dojo.skills.geometry import T_from, T_to_pose7, inv_T
+from dojo.skills.geometry import T_to_pose7, inv_T
 from dojo.skills.kinematics import ARMS, TABLE_Z, X5Kin
 from dojo.skills.world import ObjectState, WorldState, arms_from_proprio, table_contains_xy
 
@@ -281,10 +280,6 @@ class RuntimeProvider:
         return WorldState(task=self.task, instruction=self.instruction, objects=objects, arms=arms,
                           home_q=self.home_q, step=int(obs["steps_used"]), step_lim=int(obs["step_lim"]),
                           notes=self.notes)
-
-
-def angle_deg(qa, qb) -> float:
-    return math.degrees(2 * math.acos(min(1.0, abs(float(np.dot(qa, qb))))))
 
 
 __all__ = ["RuntimeProvider", "KinematicBelief", "Divergence"]

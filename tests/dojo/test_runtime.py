@@ -13,7 +13,7 @@ from dojo.runtime.bridge import Bridge
 from dojo.runtime.estimate import est_objects, estimate_to_layout, flagged, objects_from_gt_rows
 from dojo.runtime.firewall import DEV_GT_KEY, FirewallError, check_obs, sanitize_info
 from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
-from dojo.runtime.supervisor import VOCABULARIES, perception_vocabulary
+from dojo.runtime.supervisor import perception_vocabulary
 from dojo.skills.env import KinematicEnv
 from dojo.skills.kinematics import X5Kin
 from dojo.skills.world import AssetInfo

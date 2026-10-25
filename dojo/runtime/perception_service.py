@@ -154,7 +154,6 @@ class _Perception:
         return look_plan(decode_frame(frame), record, max_looks=max_looks)
 
     def look_poses(self, target, arm: str, variants=None) -> list[dict]:
-        from dojo.perception.cameras import T_to_pose
         from dojo.perception.look import default_look, flange_for_camera
         variants = variants or [(0.14, 55), (0.18, 55), (0.18, 70), (0.22, 65), (0.14, 75), (0.26, 75)]
         out = []

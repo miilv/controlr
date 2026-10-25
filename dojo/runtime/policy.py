@@ -28,15 +28,14 @@ from __future__ import annotations
 import json
 import os
 import time
-import zlib
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
 from .belief import Divergence, RuntimeProvider
 from .bridge import Bridge
-from .estimate import est_objects, flagged
-from .firewall import DEV_GT_KEY, check_obs, sanitize_info
+from .estimate import flagged
+from .firewall import check_obs, sanitize_info
 from .supervisor import RuleSupervisor, perception_vocabulary
 
 
