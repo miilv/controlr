@@ -563,7 +563,7 @@ class Skills:
             ref = next((l for l in ((servo_ref,) + tuple(grip_only) + tuple(ignore)) if l and l != h.label
                         and l in self.world.objects), None)
             if ref is not None:
-                T_rel[2, 3] += self.tips_raise(T_rel, self.world.obj(ref).top_z + 0.003)
+                T_rel[2, 3] += self.fingers_raise(T_rel, ref)
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
                                 ignore=ignore, grip_only=grip_only)
         if not down.ok:
@@ -697,6 +697,29 @@ class Skills:
         r.note = (r.note + "; " + note_rm).strip("; ")
         return r
 
+    def fingers_raise(self, T_tcp, ref: str, clear: float = 0.003, gripper: float = CLOSED) -> float:
+        """How far (m, >= 0) the TCP must rise for the fingers to be ``clear`` above receptacle ``ref``: above its top
+        (``tips_raise``), or, when ``coll.heightmaps`` has ``ref``, above its surface under each finger point (a
+        hand pointing sideways over a coin bank's slot: its finger roots hang 28 mm low, beside the bank's back)."""
+        o = self.world.obj(ref)
+        hm = self.coll.heightmaps.get(ref)
+        if hm is None:
+            return self.tips_raise(T_tcp, o.top_z + clear, gripper)
+        from dojo.skills.motion import finger_samples
+        P = finger_samples(self.kin, self.kin.flange_from_tcp(np.asarray(T_tcp, float)), gripper)
+        loc = (P - o.pos) @ o.R
+        ix = ((loc[:, 0] - hm["x0"]) / hm["cell"]).astype(int)
+        iy = ((loc[:, 1] - hm["y0"]) / hm["cell"]).astype(int)
+        inb = (ix >= 0) & (iy >= 0) & (ix < hm["Z"].shape[1]) & (iy < hm["Z"].shape[0])
+        if not inb.any():
+            return 0.0
+        Z = hm["Z"][iy[inb], ix[inb]]
+        fin = np.isfinite(Z)
+        if not fin.any():
+            return 0.0
+        zw = o.pos[2] + o.R[2, 2] * Z[fin]                       # the surface's world z (an upright receptacle)
+        return float(max(0.0, np.max(zw + clear - P[inb][fin][:, 2])))
+
     def tips_raise(self, T_tcp, z_min: float, gripper: float = CLOSED) -> float:
         """How far (m, >= 0) the TCP pose must rise for the lowest finger point to be at or above ``z_min``."""
         low = float(self.kin.finger_points(self.kin.flange_from_tcp(np.asarray(T_tcp, float)), gripper)[:, 2].min())
@@ -762,7 +785,7 @@ class Skills:
             # let go with the fingertips above the receptacle: raise the target by what the measured grasp needs
             w = self.refresh()
             T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ w.obj(label).T
-            dz = self.tips_raise(T_obj @ inv_T(T_rel), self.world.obj(rec).top_z + 0.003)
+            dz = self.fingers_raise(T_obj @ inv_T(T_rel), rec)
             T_obj = above(T_obj, dz)
             if dz > 0:
                 kw = {**kw, "probe": False}
@@ -888,7 +911,7 @@ class Skills:
         if screen_fingers_out and place_kw.get("fingers_out"):
             ref = next((l for l in ((place_kw.get("servo_ref"),) + tuple(place_kw.get("grip_only") or ()) + tuple(ignore))
                         if l and l in w.objects), None)
-            fo_ref = w.obj(ref).top_z if ref is not None else None
+            fo_ref = ref
         screened, notes = [], []
         # irregular objects (tools, figurines): how well a grasp holds while the hand turns counts in the ranking
         # (twin: pliers squeezed across their diverging handles, a hammer across its head, slid out; the
@@ -934,7 +957,7 @@ class Skills:
                 for ti, T_obj in enumerate(tg):
                     T_tcp = T_obj @ inv_T(T_tcp_obj)
                     if screen_fingers_out and fo_ref is not None:
-                        T_tcp[2, 3] += self.tips_raise(T_tcp, fo_ref + 0.003)
+                        T_tcp[2, 3] += self.fingers_raise(T_tcp, fo_ref)
                     if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > PLACE_REACH:
                         continue
                     if pair_ok is not None and not pair_ok(g, T_tcp_obj, T_obj, T_tcp):

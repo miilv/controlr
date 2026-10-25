@@ -147,7 +147,8 @@ def _align_R(a, b) -> np.ndarray:
 # ============================================================================ strike_in_order
 
 LOW_TIP = 0.0006              # m: fingertips over the table for a pick of a part lying on it (a coin, a fallen handle)
-PINCH_OFFSET = 0.0065         # m: a flat disc is pinched this far off its centre (it hangs below the pads, on edge)
+PINCH_OFFSET = 0.004          # m: a flat disc is pinched this far off its centre (it hangs below the pads, on edge;
+                              # twin: 6.5 mm off, the contacts near the pads' edge, 2/5 slid out at the lift)
 STRIKE_PRESS = 0.0015         # the working end is commanded this far into the surface (a light touch)
 STRIKE_LIFT = 0.07            # between strikes the working end's lowest point rises this far above the surface
 STRIKE_DOWN_RAD = 0.06        # rad/step of the stroke down (a strike, not a press)
@@ -525,13 +526,13 @@ def pinch_grasps(sk: Skills, o, arm: str, tip_clear: float = LOW_TIP, n_dir: int
 
 
 def disc_hangs(o):
-    """``pair_ok`` for ``plan_transfer``: the disc's centre at least 4 mm below the TCP at the place (it hangs under the
+    """``pair_ok`` for ``plan_transfer``: the disc's centre below the TCP at the place (it hangs under the
     pads' line, so most of it is below the fingers)."""
     def ok(g, T_tcp_obj, T_obj, T_tcp) -> bool:
         if g.method != "pinch":
             return True
         c = T_obj[:3, :3] @ o.asset.center + T_obj[:3, 3]
-        return float(c[2]) < float(T_tcp[2, 3]) - 0.004
+        return float(c[2]) < float(T_tcp[2, 3]) - 0.5 * PINCH_OFFSET
     return ok
 
 
@@ -549,6 +550,10 @@ def holder_of(sk: Skills, label: str) -> str | None:
     return None
 
 
+DISC_LIFT = 0.10              # m: a disc no arm can insert is still lifted this far from its holder and set back
+DISC_TABLE_RELAY = False      # the table relay (laid flat, pinched by the other arm) is off: a pinched coin hangs from
+                              # the pads' line, and a hand pointing sideways keeps its 37 mm finger roots over the
+                              # bank's back, so the coin stays 7 mm above the slot (twin 0/7, it fell on the bank)
 DISC_SQUEEZE = 4              # still steps after the close before a disc is lifted (twin: lifted at once, it stayed)
 DISC_LIFT_RAD = 0.03          # rad/step of a disc's lift out of its holder (twin: at 0.10 it stayed in the holder 5/5,
                               # at 0.03 and 0.01 it came out 3/3)
@@ -588,6 +593,10 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
     tkw = {"grasps": grasps, "screen_fingers_out": True, "pick_kw": {"squeeze": DISC_SQUEEZE, "lift_rad": DISC_LIFT_RAD}}
     sk.log(f"[disc] {obj} -> {rec}: {len(tg)} targets, holder {hold}")
     direct = sk.plan_transfer(obj, tg, ignore=(rec,), place_kw=place_kw, **tkw)
+    if isinstance(direct, SkillResult) and not DISC_TABLE_RELAY:
+        sk.log(f"[disc] no one-arm plan ({direct.note[:200]}); lift it from its holder and set it back")
+        r = disc_lift_and_return(sk, obj, floor, tkw)
+        return {"ok": False, "stage": f"insert {obj}: no arm reaches both ends", "result": r}
     if isinstance(direct, SkillResult):
         sk.log(f"[disc] no one-arm plan ({direct.note[:200]}); table relay")
         r1 = disc_lay_flat(sk, obj, rec, hold, floor, tkw)
@@ -610,6 +619,23 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
     if inside_bbox(w.obj(obj), w.obj(rec)):
         return {"ok": True, "stage": "inserted", "result": res}
     return {"ok": False, "stage": f"insert {obj}", "result": res}
+
+
+def disc_lift_and_return(sk: Skills, obj: str, floor: float, tkw: dict, lift: float = DISC_LIFT) -> SkillResult:
+    """Take a disc from its holder by the rim (``edge_grasps``), lift it ``lift``, lower it straight back and let go."""
+    k = disc_axis(sk.world.obj(obj))
+    best = None
+    for a in ARMS:
+        gs = edge_grasps(sk, sk.world.obj(obj), a, floor + 0.003)
+        pp = sk.plan_pick(obj, a, grasps=gs, lift=lift, squeeze=DISC_SQUEEZE, lift_rad=DISC_LIFT_RAD)
+        if not isinstance(pp, SkillResult) and (best is None or pp.steps < best.steps):
+            best = pp
+    if best is None:
+        return sk._record(SkillResult(False, "lift", "ik_fail", 0, None, note=f"no rim grasp of {obj} (axis {k})"))
+    r = sk._record(sk.run_pick(best))
+    if r.ok:
+        sk._record(sk.regrasp(best.arm))
+    return r
 
 
 DISC_LEAN = 25.0              # deg: a disc let go on its edge leans this much, so it falls flat to a known side

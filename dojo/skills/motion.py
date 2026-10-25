@@ -412,6 +412,20 @@ class Motion:
         return T_from(xyz, down_R(yaw))
 
 
+def finger_samples(kin: X5Kin, T_flange, gripper: float) -> np.ndarray:
+    """Both fingers sampled on grids (world points; ``dense_hand``'s finger part)."""
+    from dojo.skills.kinematics import FINGER_MAX, GRIP_SCALE
+    qf = min(max(GRIP_SCALE[0] + gripper * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0), FINGER_MAX)
+    loc = []
+    for x0, x1, yo, zh in ((0.075, 0.105, 0.0378, 0.028), (0.107, 0.126, 0.0134, 0.015), (0.128, 0.1576, 0.0034, 0.009)):
+        for x in np.linspace(x0, x1, 4):
+            for y in (0.0004, yo):
+                for z in np.linspace(-zh, zh, 5):
+                    loc += [(x, qf + y, z), (x, -(qf + y), z)]
+    loc = np.asarray(loc)
+    return (np.asarray(T_flange)[:3, :3] @ loc.T).T + np.asarray(T_flange)[:3, 3]
+
+
 def below_height_map(hm: dict, loc: np.ndarray, margin: float) -> np.ndarray:
     """Points (OBB-local: object frame minus the bbox centre) at or below the object's top surface + ``margin``
     (``hm``: {"x0", "y0", "cell", "Z" (ny, nx) object-frame top z, -inf where empty, "center"})."""
