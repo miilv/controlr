@@ -306,3 +306,22 @@ def test_agentic_estimate_on_a_b1_record(tmp_path):
     assert ag["result"] == "agent" and ag["calls"] == 1
     labs = {r["label"]: r for r in new["Rigid"]["block"]}
     assert labs["block_1"]["default_pos"][0] == -0.23 and labs["block_2"]["default_pos"][0] == 0.40
+
+
+def test_budget_gate_tracks_the_agent_scene(tmp_path):
+    first = FakeChat([json.dumps({"answer": {"objects": [{"keep": 0}, {"label": "block_1", "pos": [-0.23, -0.14, 0.7825],
+                                                                       "confidence": 0.9}]}})])
+    calm = {"objects": [dict(_b1()["objects"][0], flags={}), dict(_b1()["objects"][1], pos=[-0.2, -0.1, 0.7825], confidence=0.85,
+                                                                  flags={})], "want_match": {"block": "block_0"}}
+    calm["objects"][1]["residual"] = 0.05
+    calm["objects"][0]["residual"] = 0.05
+    out1 = j1.perceive_impl(_frames(), _calib(), FLANGE, {"left": 1.0}, "Stack.", ["block"], prior=None, b1=_b1(), chat=first,
+                            model="fake", gate="budget", refine=False, log_dir=str(tmp_path))
+    assert "result=agent" in out1["notes"]
+    # second call: B1 re-reads block_1 at its old (wrong) place 50 mm away, a bit less confident, no gripper near it
+    out2 = j1.perceive_impl(_frames(), _calib(), FLANGE, {"left": 1.0}, "Stack.", ["block"], prior=out1, b1=calm,
+                            chat=FakeChat([]), model="fake", gate="budget", gate_thr=0.99, log_dir=str(tmp_path))
+    assert "result=b1_gated" in out2["notes"]
+    b = next(o for o in out2["objects"] if o["label"] == "block_1")
+    assert b["pos"][0] == -0.23 and "implausible_move" in out2["notes"]  # untouched: the agent's pose stands
+    assert len(out2["objects"]) == 2

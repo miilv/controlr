@@ -21,6 +21,8 @@ Worker environment (on top of j1_adapter.install_env):
   AGENTIC_KEEP_UNMENTIONED  1 (default): B1 objects the agent did not mention (none of its objects within 3 cm) stay,
                       at half confidence
   AGENTIC_REFINE      1 (default): B1's render-and-compare refines the agent's new / moved objects (seed_refine.py)
+  AGENTIC_TRACK       auto (default: on with gate=budget) | 1 | 0: the episode tracker (dojo.perception.tracker) over the
+                      B1-gated calls, initialised from the agent's answer
   AGENTIC_HELD        held_look source: b1_then_agent (default: B1's answer unless its confidence < 0.5 or dark_risk,
                       then one agent call), agent (always the agent), b1 (never the agent)
   AGENTIC_ENV_FILE    .env with OMNIROUTE_BASE_URL / OMNIROUTE_API_KEY (else the environment)
@@ -125,6 +127,7 @@ def _cfg(kw: dict) -> dict:
             "refine": str(kw.get("refine", os.environ.get("AGENTIC_REFINE", "1"))) not in ("0", "false", "False"),
             "keep_unmentioned": str(kw.get("keep_unmentioned", os.environ.get("AGENTIC_KEEP_UNMENTIONED", "1"))) not in ("0", "false", "False"),
             "max_per_episode": int(kw.get("max_per_episode") or os.environ.get("AGENTIC_MAX_PER_EPISODE", 2)),
+            "track": str(kw.get("track", os.environ.get("AGENTIC_TRACK", "auto"))),
             "gate_thr": float(kw.get("gate_thr") or os.environ.get("AGENTIC_GATE_THR", 0.2)),
             "log_dir": Path(kw.get("log_dir") or os.environ.get("AGENTIC_LOG_DIR", str(home / "run" / "agentic")))}
 
@@ -255,6 +258,16 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
         if "label" not in o or "pos" not in o:
             probs.append(f"objects[{i}]: needs label and pos")
             continue
+        if not o.get("category") and not o.get("asset") and b1o:  # the hint object it names (or sits on) gives its kind
+            import math
+
+            same = [b for b in b1o if b.get("label") == o["label"]]
+            near = sorted(b1o, key=lambda b: math.hypot(b["pos"][0] - o["pos"][0], b["pos"][1] - o["pos"][1]))
+            src = same[0] if same else (near[0] if math.hypot(near[0]["pos"][0] - o["pos"][0], near[0]["pos"][1] - o["pos"][1]) < 0.05 else None)
+            if src is not None:
+                o["category"] = src.get("category")
+                if src.get("asset"):
+                    o["asset"] = src["asset"]
         o.setdefault("confidence", 0.8)
         objs.append(o)
     for i, n in enumerate(ans.get("needs_look") or []):
@@ -393,10 +406,18 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
         (ws / "b1.json").write_text(json.dumps(b1, default=str))
     t_b1 = time.time()
     use_agent, why = gate_decision(b1, want, prior, cfg)
+    track = cfg["track"] == "1" or (cfg["track"] == "auto" and cfg["gate"] == "budget")
+    if prior is None:
+        _EPISODE["tracker"] = None
     if not use_agent and b1 is not None:
         out = dict(b1)
         out.pop("task", None)
-        out["notes"] = f"{VERSION} result=b1_gated gate={why} agent_calls_this_episode={_EPISODE['agent_calls']}"
+        tev = ""
+        if track and _EPISODE.get("tracker") is not None:  # B1 tracks the agent's scene: only touched objects move
+            objs, last, ev = _EPISODE["tracker"].update(list(b1.get("objects") or []), flange, grip_cmd)
+            out["objects"], out["last_seen"] = objs, list(b1.get("last_seen") or []) + last
+            tev = " track=" + ",".join(sorted({e["event"] for e in ev if e["event"] not in ("carried",)}))[:200]
+        out["notes"] = f"{VERSION} result=b1_gated gate={why} agent_calls_this_episode={_EPISODE['agent_calls']}{tev}"
         _log_call(cfg["log_dir"], {"t": time.time(), "fn": "perceive", "ws": str(ws), "model": cfg["model"], "result": "b1_gated",
                                    "gate": why, "calls": 0, "b1_s": round(t_b1 - t0, 2)})
         return out
@@ -432,6 +453,11 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
         objects, looks, src = list(b1.get("objects") or []), list(b1.get("needs_look") or []), "b1_fallback"
     else:
         objects, looks, src = [], [], "none"
+    if track:  # the agent's answer is the episode's state from here on (B1 tracks it)
+        from ..tracker import Tracker
+
+        _EPISODE["tracker"] = Tracker()
+        _EPISODE["tracker"].update(objects, flange, grip_cmd)
     t_ms = round(1000 * (time.time() - t0), 1)
     for o in objects:
         o.setdefault("t_ms", t_ms)

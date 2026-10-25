@@ -145,6 +145,47 @@ def cmd_refine(a):
               out["refine_s"], "s", flush=True)
 
 
+def cmd_seq(a):
+    """Re-read robustness: D0 frames 0..3 of a layout (arms move, objects static). Per frame: B1 alone (b1.json),
+    B1 with the previous call as ``prior`` (J1b's merge_prior: agent_prior.json), and the episode tracker over B1 alone
+    (agent_track.json). Case dirs <task>__<ep>__f<k> must exist for k = 0..3 (``cases --frame k``)."""
+    import zlib
+
+    from .. import j1_adapter
+    from ..segment import load_backgrounds
+    from ..tracker import Tracker
+
+    cal = __import__("os").environ.get("DOJO_COLOR_CALIB")
+    eps = sorted({p.name.rsplit("__f", 1)[0] for p in Path(a.cases).iterdir() if (p / "inputs.json").exists()})
+    if a.only:
+        eps = [e for e in eps if any(s in e for s in a.only)]
+    for e in eps:
+        dirs = [Path(a.cases) / f"{e}__f{k}" for k in range(4)]
+        if not all((d / "inputs.json").exists() for d in dirs):
+            continue
+        if (dirs[-1] / "agent_track.json").exists() and not a.force:
+            continue
+        inp0 = json.loads((dirs[0] / "inputs.json").read_text())
+        fold = zlib.crc32(inp0["episode"].encode()) % 2
+        j1_adapter._BG["bg"] = load_backgrounds(Path(a.bg_folds) / f"fold{fold}")
+        if cal and Path(cal).exists():
+            j1_adapter._COLOR_M = json.loads(Path(cal).read_text())[f"fold{fold}"]
+        prior, tr = None, Tracker()
+        for d in dirs:
+            inp = _inputs(d)
+            kw = dict(joints=inp["joints"], task=inp["task"])
+            b1 = j1_adapter._perceive_impl(inp["frames"], inp["calib"], inp["flange"], inp["grip_cmd"], inp["instruction"],
+                                           inp["want"], **kw)
+            pr = j1_adapter._perceive_impl(inp["frames"], inp["calib"], inp["flange"], inp["grip_cmd"], inp["instruction"],
+                                           inp["want"], prior=prior, **kw) if prior is not None else b1
+            prior = pr
+            objs, last, ev = tr.update(b1["objects"], inp["flange"], inp["grip_cmd"])
+            (d / "b1.json").write_text(json.dumps(b1, default=str))
+            (d / "agent_prior.json").write_text(json.dumps(pr, default=str))
+            (d / "agent_track.json").write_text(json.dumps({"objects": objs, "last_seen": last, "events": ev}, default=str))
+            print(d.name, len(b1["objects"]), len(pr["objects"]), len(objs), [x["event"] for x in ev if x["event"] != "carried"][:6], flush=True)
+
+
 # ------------------------------------------------------------------------------------------------ scoring (DEV ONLY)
 
 def _cls_of(o: dict, gt_classes: set, b1_cat: dict) -> str | None:
@@ -282,6 +323,11 @@ def main(argv=None):
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
     p.add_argument("--only", nargs="*")
     p.add_argument("--force", action="store_true")
+    p = sp.add_parser("seq")
+    p.add_argument("--cases", required=True)
+    p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
+    p.add_argument("--only", nargs="*")
+    p.add_argument("--force", action="store_true")
     p = sp.add_parser("score")
     p.add_argument("--cases", required=True)
     p.add_argument("--tags", required=True)
@@ -289,7 +335,7 @@ def main(argv=None):
     p.add_argument("--csv")
     p.add_argument("--jsonl")
     a = ap.parse_args(argv)
-    {"cases": cmd_cases, "b1": cmd_b1, "run": cmd_run, "refine": cmd_refine, "score": cmd_score}[a.cmd](a)
+    {"cases": cmd_cases, "b1": cmd_b1, "run": cmd_run, "refine": cmd_refine, "seq": cmd_seq, "score": cmd_score}[a.cmd](a)
 
 
 if __name__ == "__main__":
