@@ -28,7 +28,7 @@ from dojo.skills.targets import current_R, half_height, level_R, on_top, rest_po
 from dojo.skills.geometry import rot_z
 from dojo.skills.executor import ArmPlan as _ArmPlan  # noqa: F401
 from dojo.skills.stacking import plan_stack
-from dojo.skills.skills import CLOSED, OPEN, Job, PickPlan, PlacePlan, SkillResult, Skills
+from dojo.skills.skills import CLOSED, OPEN, PLACE_REACH, Job, PickPlan, PlacePlan, SkillResult, Skills
 from dojo.skills.world import TABLE_X, TABLE_Y
 
 # ============================================================================ stack_objects
@@ -583,7 +583,11 @@ def rests_stably(o, R, margin: float = 0.25) -> bool:
     low = W[W[:, 2] < W[:, 2].min() + 0.0015]
     lo, hi = low[:, :2].min(0), low[:, :2].max(0)
     mid, half = (lo + hi) / 2, (hi - lo) / 2
-    return bool(np.all(np.abs(cw[:2] - mid) <= half * (1 - margin)) and np.all(half > 0.004))
+    # and wide enough for the height of the centre of mass: a charger on its two blades (13 x 8 mm under a
+    # centre of mass 35 mm up) passed the footprint test and toppled when let go (twin, plug relay 3/3)
+    h_com = float(cw[2] - W[:, 2].min())
+    wide = float(np.min(half)) * (1 - margin) >= 0.2 * max(h_com, 1e-3)
+    return bool(np.all(np.abs(cw[:2] - mid) <= half * (1 - margin)) and np.all(half > 0.004) and wide)
 
 
 def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, at=None):
@@ -729,7 +733,10 @@ def _take_options(sk: Skills, label: str, T_H, g_arm: str, q_give, g_hold: float
                 cache[key] = None
                 box_t = held_box(o, T_to)
                 for T_obj in tg:
-                    rp = sk.kin.ik(t_arm, T_obj @ inv_T(T_to), sk.world.home_q[t_arm], n_random=0)
+                    T_tp = T_obj @ inv_T(T_to)
+                    if float(np.linalg.norm(T_tp[:2, 3] - sk.kin.base(t_arm)[:2, 3])) > PLACE_REACH:
+                        continue
+                    rp = sk.kin.ik(t_arm, T_tp, sk.world.home_q[t_arm], n_random=0)
                     if not rp.ok:
                         continue
                     ok, _ = sk.coll.check(t_arm, rp.q, CLOSED, ignore=ign, held=box_t,
