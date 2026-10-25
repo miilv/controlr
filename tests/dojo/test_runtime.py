@@ -470,3 +470,44 @@ def test_report_gap_table_pairs_layouts():
              {"task": "t", "verify": "off", "mode": "perception", "layout_id": 3, "score": 1.0, "success": True}]
     t = gap_table(rows)
     assert "| t | off | 1 | 100.0 | 15.0 | +85.0 | 1 | 0 | 1: perception_gross |" in t
+
+
+def test_look_macro_falls_back_and_fuses():
+    """A flagged object triggers the look: the planned camera pose is unreachable, a variant works, the arm
+    goes there, the frame after the move is fused with the first one, then both arms return home."""
+    from dojo.skills.geometry import T_to_pose7
+    from dojo.skills.kinematics import down_R
+    from dojo.skills.geometry import T_from
+    env = _env()
+    kin = X5Kin()
+    reachable = T_to_pose7(kin.flange_from_tcp(T_from((-0.25, -0.15, 0.90), down_R(0.0)))).tolist()
+
+    class LookingPerception:
+        calls = []
+
+        def estimate(self, frames, vocabulary, fold):
+            self.calls.append(len(frames))
+            conf = 0.5 if len(frames) == 1 else 0.9
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": conf}} for o in env.objects]}}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return [{"arm": "left", "purpose": "low_confidence", "label": "block_1", "target": [-0.26, -0.19, 0.78],
+                     "flange_pose": [5.0, 5.0, 5.0, 1, 0, 0, 0]}]                       # unreachable
+
+        def look_poses(self, target, arm, variants=None):
+            return [{"arm": arm, "dist": 0.14, "elev": 55, "flange_pose": [9.0, 9.0, 9.0, 1, 0, 0, 0]},
+                    {"arm": arm, "dist": 0.18, "elev": 70, "flange_pose": reachable}]
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"prec": 1.0, "n_vis": 500, "n_px": 600}} for o in objects}
+
+    pc = LookingPerception()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception"), assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    lk = rep["looks"][0]
+    assert lk["status"] == "ok" and lk["arm"] == "left" and lk["pose"] == "d0.18/e70" and lk["tried"] == 3
+    assert pc.calls[:2] == [1, 2] and rep["records"].get("fused") and rep["look_steps"] > 0
+    assert _stacked(env)
