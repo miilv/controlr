@@ -222,7 +222,10 @@ class Collision:
                 if inside.any():
                     return False, f"hits {lab}"
         if grip_only and self.world is not None:
-            pts = np.vstack([links, palm, fingers])
+            # dense hand samples: the corner samples straddle a narrow receptacle (a power strip 37 mm wide
+            # passed between them while the palm sat 6 mm into it; twin: the hand stopped 8 mm above the
+            # outlet, 7/10)
+            pts = np.vstack([links, palm, fingers, dense_hand(self.kin, Tf, gripper)])
             for lab in grip_only:
                 if lab not in self.world.objects:
                     continue
@@ -405,6 +408,21 @@ def held_box(o, T_tcp_obj) -> HeldBox:
     if irr:
         hb.points = V[:: max(1, len(V) // 400)].copy()
     return hb
+
+
+def dense_hand(kin: X5Kin, T_flange, gripper: float) -> np.ndarray:
+    """Palm / finger-rail box and fingers sampled on grids (world points)."""
+    from dojo.skills.kinematics import FINGER_MAX, GRIP_SCALE
+    qf = min(max(GRIP_SCALE[0] + gripper * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0), FINGER_MAX)
+    loc = [(x, y, z) for x in np.linspace(0.0, 0.084, 5) for y in np.linspace(-0.08, 0.08, 9)
+           for z in np.linspace(-0.03, 0.03, 5)]
+    for x0, x1, yo, zh in ((0.075, 0.105, 0.0378, 0.028), (0.107, 0.126, 0.0134, 0.015), (0.128, 0.1576, 0.0034, 0.009)):
+        for x in np.linspace(x0, x1, 4):
+            for y in np.linspace(0.0004, yo, 3):
+                for z in np.linspace(-zh, zh, 5):
+                    loc += [(x, qf + y, z), (x, -(qf + y), z)]
+    loc = np.asarray(loc)
+    return (np.asarray(T_flange)[:3, :3] @ loc.T).T + np.asarray(T_flange)[:3, 3]
 
 
 def mesh_irregular(V: np.ndarray) -> bool:
