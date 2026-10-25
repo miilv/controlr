@@ -868,6 +868,12 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
 
 
+def _support_raw(o, tag: str) -> list:
+    """Raw support frames (pose7) of ``tag`` from the asset (``AssetInfo.support`` keeps world-free pose7s)."""
+    return [np.r_[np.asarray(c[:7], float)] if len(c) >= 7 else np.r_[np.asarray(c[:3], float), 1.0, 0, 0, 0]
+            for c, _r in o.asset.support.get(tag, [])]
+
+
 def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001,
                 blind_depth: float = 0.016) -> dict:
     """Insert ``obj`` into whichever of ``receptacles`` its mesh fits best (``insertion.fit_insertion``:
@@ -879,6 +885,36 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
     from dojo.skills.insertion import fit_insertion
     w = sk.refresh()
     o = w.obj(obj)
+    # 1. the assets say where it goes: the object's active "insert" frame on a receptacle's support /
+    #    functional frames (a charger's plug point on the power strip's outlets)
+    ins = functional_frames(o, "insert", active=True)
+    if ins:
+        tg, rec = [], None
+        for r in receptacles:
+            if r == obj or r not in w.objects:
+                continue
+            c = w.obj(r)
+            frames = [T_from(np.asarray(f[0][:3], float), quat=np.asarray(f[0][3:7], float) / np.linalg.norm(f[0][3:7]))
+                      for tag in c.asset.support for f in [[x] for x in _support_raw(c, tag)]]
+            for Ts in frames:
+                for Ti in ins:
+                    tg.append(c.T @ Ts @ inv_T(Ti))
+            if tg:
+                rec = r
+                break
+        if tg:
+            sk.log(f"[insert] {obj} -> {rec}: {len(tg)} insert-frame poses from the assets")
+            w.notes["insert"] = {"receptacle": rec, "fit": "functional frames"}
+            sk.coll.include.add(rec)
+            for T in tg:
+                T[2, 3] -= press
+            place_kw = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
+                        "turn": math.radians(turn_deg), "release": True}
+            res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
+                                 place_kw=place_kw)
+            if not res.ok and res.status != "ended":
+                return {"ok": False, "stage": f"insert {obj}", "result": res}
+            return {"ok": True, "stage": "inserted"}
     fits = []
     for r in receptacles:
         if r == obj or r not in w.objects:
