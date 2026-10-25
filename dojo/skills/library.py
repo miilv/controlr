@@ -1850,9 +1850,17 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: flo
                 x = Rg[:, 0]
                 T_up = T_from(p_tip + [0, 0, clearance] - x * TIP_BEYOND_TCP, Rg)
                 T_dn = T_from(p_tip - [0, 0, depth] - x * TIP_BEYOND_TCP, Rg)
-                to_up = sk.motion.to_pose(a, q0, T_up, FAST, "press_approach", gripper=CLOSED, ignore=(label,))
+                # come down onto the part from above the body (twin: a joint move straight to the press start hooked
+                # the fingers on the toaster's top edge, 7 cm short, and the stroke went nowhere)
+                T_hi = T_up.copy()
+                T_hi[2, 3] += max(0.0, o.top_z + 0.04 - float(p_tip[2] + clearance))
+                to_hi = sk.motion.to_pose(a, q0, T_hi, FAST, "press_approach", gripper=CLOSED)
+                if not to_hi.ok:
+                    notes.append(f"{a} tilt {tilt:.0f}: approach {to_hi.status}")
+                    continue
+                to_up = sk.motion.line(a, to_hi.q_end, T_up, MEDIUM, "press_lower", gripper=CLOSED, ignore=(label,))
                 if not to_up.ok:
-                    notes.append(f"{a} tilt {tilt:.0f}: approach {to_up.status}")
+                    notes.append(f"{a} tilt {tilt:.0f}: lowering {to_up.status}")
                     continue
                 down = sk.motion.line(a, to_up.q_end, T_dn, 0.03, "press_down", gripper=CLOSED, check=False)
                 back = sk.motion.line(a, down.q_end if down.ok else to_up.q_end, T_up, MEDIUM, "press_up",
@@ -1861,8 +1869,8 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: flo
                     notes.append(f"{a} tilt {tilt:.0f}: stroke unreachable")
                     continue
                 pl = ArmPlan(a, np.asarray(q0, float), sk.ex.g[a]).grip(CLOSED, 0, "close_for_press")
-                pl.move(to_up, "press_approach").hold(4, "press_settle").move(down, "press_down").hold(4, "press_hold")
-                pl.move(back, "press_up")
+                pl.move(to_hi, "press_approach").move(to_up, "press_lower").hold(3, "press_settle")
+                pl.move(down, "press_down").hold(4, "press_hold").move(back, "press_up")
                 other = "right" if a == "left" else "left"
                 if not sk.clear_of(pl, ArmPlan(other, sk.ex.q[other].copy(), sk.ex.g[other]), min_dist=0.12):
                     try:
