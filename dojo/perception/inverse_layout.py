@@ -28,6 +28,7 @@ GT is never read here. The evaluation lives in ``eval_g1.py``.
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -176,12 +177,19 @@ def shape_models(key: str) -> tuple[ShapeModel, ...]:
         convex = min(ratios) > 0.97
     except Exception:
         pass
+    cached = {}
+    cp = a.dir / "shape_cache.json"
+    if cp.exists():  # catalog precompute: symmetry per place frame (the slow part of a cold load)
+        try:
+            cached = json.loads(cp.read_text()).get("sym", {})
+        except Exception:
+            cached = {}
     for tag, fr in items:
         R0 = _place_R0(fr)
         Vr = a.V @ R0.T
         zmin = float(Vr[:, 2].min())
         height = float(Vr[:, 2].max() - zmin)
-        sym = world_z_symmetry(Vr, a.F)
+        sym = int(cached[tag]) if tag in cached else world_z_symmetry(Vr, a.F)
         out.append(ShapeModel(key, tag, a, R0, zmin, height, sym, convex, hull_V,
                               centre_local=np.asarray(fr["center"][:3], dtype=float)))
     return tuple(out)
@@ -769,26 +777,67 @@ def _slot_identity(h: "Hypothesis", g: dict, placement: dict, tag: str | None, v
     return out
 
 
+@lru_cache(maxsize=4096)
+def asset_info(key: str) -> dict:
+    """info.json alone (no geometry): captions, description, extents."""
+    return json.loads((catalog_root() / key / "info.json").read_text())
+
+
+_STOP = {"the", "a", "an", "of", "by", "to", "and", "with", "up", "pick", "cm", "10"}
+
+
+def _tokens(s: str) -> set:
+    return {t for t in re.findall(r"[a-z0-9]+", s.lower()) if t not in _STOP}
+
+
+def target_phrase(instruction: str) -> str | None:
+    m = re.search(r"pick up the (.+?) by \d+ ?cm", instruction.lower())
+    return m.group(1).strip() if m else None
+
+
+def rank_candidates(candidates: list[str], phrase: str) -> list[tuple[float, str]]:
+    """Candidates scored against a target phrase: 1.0 for the asset's own description / caption name
+    (general_pickup draws the phrase from description.json), else the token overlap (Jaccard) with the
+    description, captions, colours and category name."""
+    toks = _tokens(phrase)
+    out = []
+    for k in candidates:
+        try:
+            info = asset_info(k)
+        except Exception:
+            info = {}
+        cat = k.split("/")[1].replace("_", " ")
+        names = [str(n).lower() for n in (info.get("names_all") or info.get("names") or [])]
+        desc = str(info.get("description", "")).lower()
+        if phrase == desc or phrase in names or phrase == cat:
+            out.append((1.0, k))
+            continue
+        words = _tokens(" ".join([desc, cat] + names + [str(c) for c in (info.get("colors_all") or info.get("colors_text") or [])]))
+        out.append((len(toks & words) / max(1, len(toks)), k))  # share of the phrase's words covered
+    return sorted(out, key=lambda t: -t[0])
+
+
+TARGET_TOPK = 4
+
+
 def restrict_by_instruction(groups: list[dict], instruction: str) -> list[dict]:
-    """Candidates named by the instruction (general_pickup: "Pick up the {target} by 10 cm."): keep the
-    candidates whose category name or catalogue captions occur in the instruction; unchanged if none match."""
+    """Candidates named by the instruction (general_pickup: "Pick up the {target} by 10 cm."). An exact match
+    with an asset's description / caption keeps only those assets; otherwise the ``TARGET_TOPK`` best token
+    matches stay (the agent can tell them apart with a look); no overlap at all keeps every candidate.
+    The ranking goes to ``g["target_ranking"]``."""
     import copy
 
-    text = " " + instruction.lower().replace("_", " ") + " "
+    phrase = target_phrase(instruction)
     out = copy.deepcopy(groups)
+    if not phrase:
+        return out
     for g in out:
         if len(g["candidates"]) < 10:
             continue
-        keep = []
-        for k in g["candidates"]:
-            cat = k.split("/")[1]
-            names = [cat.replace("_", " ")]
-            try:
-                names += [n.lower() for n in load_asset(k).info.get("names", [])]
-            except Exception:
-                pass
-            if any(f" {n} " in text for n in names if n):
-                keep.append(k)
+        ranked = rank_candidates(g["candidates"], phrase)
+        g["target_ranking"] = [(round(sc, 3), k) for sc, k in ranked[:8]]
+        exact = [k for sc, k in ranked if sc >= 1.0]
+        keep = exact or [k for sc, k in ranked[:TARGET_TOPK] if sc > 0]
         if keep:
             g["candidates"] = keep
             g["categories"] = [c for c in g["categories"] if any(k.split("/")[1] == c["name"] for k in keep)] or g["categories"]
@@ -1795,4 +1844,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     timings["total_s"] = round(time.time() - t0, 3)
     record["_perception"] = {"version": "v0", "timings": timings, "n_head_blobs": len(head_blobs),
                              "views": list(views), "unexplained": unexplained}
+    ranking = {lab: g["target_ranking"] for g in groups if g.get("target_ranking") for lab in g["labels"]}
+    if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
+        record["_perception"]["target_ranking"] = ranking
     return record

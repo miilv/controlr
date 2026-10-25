@@ -206,3 +206,11 @@ def test_j1_adapter_task_inference_and_wire_format():
     a = np.arange(12, dtype=np.uint8).reshape(2, 2, 3)
     back = j._dec(j._enc({"img": a, "x": [np.float32(1.5), "s"]}))
     assert back["img"].dtype == np.uint8 and (back["img"] == a).all() and back["x"] == [1.5, "s"]
+
+
+def test_target_phrase_from_general_pickup_instruction():
+    from dojo.perception.inverse_layout import _tokens, target_phrase
+
+    assert target_phrase("Pick up the yellow ice axe by 10 cm.") == "yellow ice axe"
+    assert target_phrase("Stack the three blocks.") is None
+    assert _tokens("Pick up the carved wooden elephant by 10 cm") == {"carved", "wooden", "elephant"}

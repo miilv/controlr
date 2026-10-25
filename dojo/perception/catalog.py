@@ -598,7 +598,44 @@ def annotations(asset_dir: Path, usd: Path, md: dict) -> dict:
     f = CATEGORY_ATTRIBUTES.get(asset_dir.parent.name)
     if f:
         out["attributes"] = f(asset_dir.name)
+    desc = asset_dir / "description.json"
+    if desc.exists():  # two formats: {"caption": {name, color, ...}} or {"description": "yellow ice axe"}
+        try:
+            d = json.loads(desc.read_text())
+            if d.get("description"):
+                out["description"] = str(d["description"])
+            cap = d.get("caption") or {}
+            if cap.get("name"):
+                out["names_all"] = [str(n) for n in cap["name"]]
+            if cap.get("color"):
+                out["colors_all"] = [str(n) for n in cap["color"]]
+        except Exception:
+            pass
     return out
+
+
+def precompute(out: Path, keys: list[str]) -> int:
+    """Runtime caches next to each asset: ``sil.npz`` (the decimated silhouette mesh render.Asset would build)
+    and ``shape_cache.json`` (rotational symmetry per place frame). Cold loads drop from ~0.4 s to ~0.05 s per
+    asset (general_pickup: 85 candidates)."""
+    os.environ.setdefault("DOJO_CATALOG", str(out))
+    from .inverse_layout import _place_R0, world_z_symmetry
+    from .render import Asset
+
+    n = 0
+    for key in keys:
+        d = out / key
+        if not (d / "geom.npz").exists():
+            continue
+        a = Asset(key, root=out, use_cache=False)
+        if a.Fs is not a.F:
+            np.savez_compressed(d / "sil.npz", vertices=a.Vs, faces=a.Fs,  # exact: results stay bit-identical
+                                cell=np.float32(a.sil_cell))
+        frames = a.info.get("place") or {"default": {"center": [0, 0, 0, 1, 0, 0, 0]}}
+        sym = {tag: int(world_z_symmetry(a.V @ _place_R0(fr).T, a.F)) for tag, fr in frames.items()}
+        (d / "shape_cache.json").write_text(json.dumps({"sym": sym, "n_faces": int(len(a.F))}))
+        n += 1
+    return n
 
 
 def annotate(assets: Path, out: Path, keys: list[str]) -> int:
@@ -638,10 +675,17 @@ def main(argv=None):
     an.add_argument("--assets", type=Path, required=True)
     an.add_argument("--out", type=Path, required=True)
     an.add_argument("--keys-json", type=Path, required=True)
+    pc = sub.add_parser("precompute", help="runtime caches: sil.npz + shape_cache.json per asset")
+    pc.add_argument("--out", type=Path, required=True)
+    pc.add_argument("--keys-json", type=Path, default=None, help="default: every asset in the catalogue")
     a = ap.parse_args(argv)
     if a.cmd == "build":
         keys = json.loads(a.keys_json.read_text()) if a.keys_json else None
         build(a.assets, a.out, a.only, a.workers, a.force, glb=not a.no_glb, keys=keys)
+    elif a.cmd == "precompute":
+        keys = (json.loads(a.keys_json.read_text()) if a.keys_json else
+                ["/".join(p.parts[-4:-1]) for p in sorted(a.out.glob("*/*/*/geom.npz"))])
+        print(f"precomputed {precompute(a.out, keys)} assets")
     elif a.cmd == "annotate":
         print(f"annotated {annotate(a.assets, a.out, json.loads(a.keys_json.read_text()))} assets")
     elif a.cmd == "lowres":
