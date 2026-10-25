@@ -7,7 +7,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TASK="$1"; A="$2"; B="$3"; OUT="$4"; shift 4
 CHUNK="${G3_CHUNK:-10}"; PAUSE="${G3_PAUSE_S:-90}"
-LOGD="${DOJO_DATA:-$HOME/dojo-data}/skills/logs"; mkdir -p "$LOGD"
+LOGD="${G3_LOGD:-${DOJO_DATA:-$HOME/dojo-data}/skills/logs}"; mkdir -p "$LOGD"
 s="$A"
 while [[ "$s" -le "$B" ]]; do
   e=$(( s + CHUNK - 1 )); [[ "$e" -gt "$B" ]] && e="$B"

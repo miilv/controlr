@@ -21,7 +21,7 @@ LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
 exec 9>>"$LOCK"
 echo "[g3.sh] waiting for $LOCK (held by: $(tr '\n' ' ' < "$LOCK" | cut -c1-120))" >&2
 flock -w "${G3_LOCK_WAIT_S:-14400}" 9 || { echo "[g3.sh] gave up waiting for $LOCK" >&2; exit 75; }
-printf 'pid=%s stream=skills start=%s cmd=g3 %s\n' "$$" "$(date -u +%FT%TZ)" "$*" > "$LOCK"
+printf 'pid=%s stream=%s start=%s cmd=g3 %s\n' "$$" "${DOJO_STREAM:-skills}" "$(date -u +%FT%TZ)" "$*" > "$LOCK"
 [[ "$(avail)" -ge 25 ]] || { echo "[g3.sh] memory dropped below 25 GB while waiting for the lock" >&2; exit 75; }
 export SIMLAB_GPU=0 SIMLAB_MIN_FREE_MB=0      # the lock is held here
 if ! systemd-run --user --scope -q true 2>/dev/null; then

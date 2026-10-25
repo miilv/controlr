@@ -199,6 +199,11 @@ class X5Kin:
             cand.append(q)
         cand.append(np.zeros(6))
         cand.append(np.array([0.0, 1.2, 1.0, -0.5, 0.0, 0.0]))
+        # the base turned towards the target, arm reaching out (far / high targets converge from here)
+        pb = np.linalg.inv(self._base[arm]) @ np.r_[Tt[:3, 3], 1.0]
+        th = float(np.clip(math.atan2(pb[1], pb[0]), self.limits[0, 0], self.limits[0, 1]))
+        cand.append(np.array([th, 1.2, 1.0, -0.5, 0.0, 0.0]))
+        cand.append(np.array([th, 1.6, 1.4, -0.3, 0.0, 0.0]))
         if seeds:
             cand.extend(np.asarray(s, float) for s in seeds)
         rng = np.random.default_rng(rng_seed)

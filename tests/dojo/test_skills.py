@@ -292,3 +292,57 @@ def test_refine_with_verify_splits_hover_and_tail():
     assert planner.solve(sk)["ok"]
     assert [k for k, _ in seen].count("pick") >= 2 and [k for k, _ in seen].count("place") >= 2
     assert verified and all(n > 0 for _, n in verified)
+
+
+def test_refine_rehover_hint_moves_hover_and_looks_again():
+    """A not-ok refine with a hint: the arm re-hovers over the hinted pose and refine runs once more."""
+    from dojo.skills import planner
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (-0.2, -0.25, 0.78)])
+    calls = []
+
+    def refine(sk, label, arm, kind):
+        calls.append((kind, label, sk.ex.steps_used))
+        if kind == "pick" and len([c for c in calls if c[0] == "pick" and c[1] == label]) == 1:
+            o = sk.world.obj(label)
+            return {"rehover": (o.pos + np.array([0.02, 0.0, 0.0]), o.quat)}     # "seen 20 mm away"
+        return None
+
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction), refine=refine, remeasure=False)
+    assert planner.solve(sk)["ok"]
+    picks = [c for c in calls if c[0] == "pick"]
+    labels = {c[1] for c in picks}
+    for l in labels:                                   # exactly two looks per picked object, the arm moved between
+        looks = [c for c in picks if c[1] == l]
+        assert len(looks) == 2 and looks[1][2] > looks[0][2]
+
+
+def test_refine_ctx_carries_held_object_at_place():
+    from dojo.skills import planner
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (-0.2, -0.25, 0.78)])
+    ctx = []
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction), remeasure=False,
+                refine=lambda sk, label, arm, kind: ctx.append(dict(sk.refine_ctx)))
+    assert planner.solve(sk)["ok"]
+    places = [c for c in ctx if c["kind"] == "place"]
+    assert places and all(c["held"] is not None and len(c["held"][1]) == 7 for c in places)
+    assert all(c["held"] is None for c in ctx if c["kind"] == "pick")
+
+
+def test_refine_follows_up_to_max_rehovers_hints():
+    """max_rehovers=2: refine -> hint -> re-hover -> refine -> hint -> re-hover -> refine -> proceed."""
+    from dojo.skills import planner
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (-0.2, -0.25, 0.78)])
+    calls = []
+
+    def refine(sk, label, arm, kind):
+        calls.append((kind, label))
+        n = sum(1 for k, l in calls if k == "pick" and l == label)
+        if kind == "pick" and n <= 2:                       # two hints per pick, then a plain fit
+            o = sk.world.obj(label)
+            return {"rehover": (o.pos.copy(), o.quat.copy())}
+        return None
+
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction), refine=refine, remeasure=False, max_rehovers=2)
+    assert planner.solve(sk)["ok"]
+    picks = [l for k, l in calls if k == "pick"]
+    assert all(picks.count(l) == 3 for l in set(picks))
