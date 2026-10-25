@@ -443,3 +443,36 @@ All `scripts/simlab/*.sh` follow it (`SIMLAB_LOCK_WAIT_S`, `SIMLAB_LOCK_YIELD_S`
   line, which quotes the phrase. My run started while his eval was on the GPU. I stopped it within ~1 min,
   before it allocated anything on the GPU (only his process was ever listed), and logged a correction line
   in COORDINATION.md. The check now ignores "Ilia side" lines.
+
+### Pre-settled records: final (2026-10-25 03:00 UTC)
+
+`layouts/<task>/<id>.settled.json` for **376 of 434** dev layouts (17 tasks):
+
+| task | kept | dropped because |
+|---|---|---|
+| build_tower, fill_pen_holder, make_kong, pack_objects_into_box_random, plug_in_charger, pour_by_language, press_by_number, push_T, stack_blocks, stack_bowls, store_tools_in_toolbox, swap_blocks | 25/25 each | |
+| put_bottles_into_dustbin | 28/34 | 6 bottles still rolling |
+| organize_table | 23/25 | 2 settled records unstable |
+| insert_key | 14/25 | the key stands on its 1 cm edge: pass 1 balances, the re-load topples it (up to 29 mm) |
+| fill_egg_holder | 11/25 | eggs roll off the table (the basket has no collision in RoboDojo) |
+| pick_from_conveyor_by_image | 0/25 | the belt keeps the items moving: "at rest" never applies; use the originals |
+
+Pass-2 drift of the kept records: ≤ 0.01 mm for most tasks, ≤ 5 mm overall (swap_blocks 3.6 mm, organize_table 4.6 mm,
+insert_key 4.9 mm).
+
+### Look frames: v1 complete, v2 in progress
+
+frame_L1 (v1) for all 6 D0 tasks, 123 layouts:
+
+| task | layouts | arm looks within 2 cm / 10° |
+|---|---|---|
+| build_tower | 22 | 34/34 |
+| pack_objects | 25 | 41/49 |
+| push_T | 10 | 10/11 |
+| put_bottles | 24 | 37/38 |
+| stack_blocks | 23 | 32/33 |
+| stack_bowls | 19 | 20/20 |
+
+Median camera error 0.01 cm. The off-target ones moved but ended 2-6 cm away (cuRobo end tolerance + tracking);
+perception uses FK on the observed joints, so they stay. frame_L2 (v2, unchanged layouts skipped):
+stack_blocks 17 and stack_bowls 18 done, the other 4 tasks queued.
