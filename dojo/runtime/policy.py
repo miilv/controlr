@@ -269,6 +269,7 @@ class RuntimePolicy:
         instruction = obs0["instruction"]
         vocab = perception_vocabulary(instruction)
         self.report["vocabulary"] = vocab.name if vocab else None
+        self.report["vocabulary_source"] = vocab.source if vocab else None
         if cfg.mode == "perception" and vocab is None:
             self.log(f"[runtime] no perception vocabulary for {instruction!r}: finish")
             self.report["result"] = {"ok": False, "stage": "no_vocabulary"}

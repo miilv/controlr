@@ -1455,3 +1455,47 @@ def test_scan_trigger_rule_on_a_frame0_record():
                                        _perception={"confidence": 0.95, "residual": 0.05, "hidden_frac": 0.3})]}}
     r = _Perception.scan_trigger(hidden)
     assert r["needs"] and r["why"].startswith("hidden") and not r["not_found"]
+
+
+FIX = Path(__file__).resolve().parents[1] / "fixtures"
+
+
+def _vocab_rates(monkeypatch, data, **kw):
+    import json as _json
+
+    from dojo.runtime import vocab
+    monkeypatch.setattr(vocab, "catalog_path", lambda: str(FIX / "catalog_task_label_categories.json"))
+    ok = n = 0
+    for task, ins in _json.loads((FIX / data).read_text())["instructions"].items():
+        for i in ins:
+            n += 1
+            v = perception_vocabulary(i, **kw)
+            ok += v is not None and v.name in (task, task.replace("_random", ""), task + "_random")
+    return ok, n
+
+
+def test_vocabulary_fallback_names_the_candidate_set_from_the_objects(monkeypatch):
+    """The table is the fast path; the catalogue fallback (objects the instruction names) covers what it misses. All
+    public templates and the paraphrase set resolve with both; the fallback alone gets most."""
+    assert _vocab_rates(monkeypatch, "robodojo_instructions.json") == (55, 55)
+    assert _vocab_rates(monkeypatch, "instruction_paraphrases.json") == (44, 44)
+    ok, n = _vocab_rates(monkeypatch, "robodojo_instructions.json", table=False)
+    assert ok >= 51, (ok, n)
+    ok, n = _vocab_rates(monkeypatch, "instruction_paraphrases.json", table=False)
+    assert ok >= 43, (ok, n)
+    v = perception_vocabulary("Put the charger into the socket.")
+    assert v.name == "plug_in_charger" and v.source == "catalog"
+    assert perception_vocabulary("Wave hello.") is None                      # names no catalogue object
+
+
+def test_lane_vocabularies_match_their_templates():
+    import json as _json
+    fx = _json.loads((FIX / "robodojo_instructions.json").read_text())["instructions"]
+    lane = ["fold_clothes", "hang_mugs", "make_toast", "store_laptop_and_headphones", "sweep_blocks", "build_tower",
+            "deposit_coin", "fasten_screws", "insert_key", "insert_tubes", "play_Xylophone", "plug_in_charger",
+            "fill_egg_holder", "fill_pen_holder", "make_kong", "organize_table", "play_stacking_toy", "play_tic_tac_toe",
+            "imitate_sorting_sequence", "match_and_pick_from_conveyor", "pick_from_conveyor_by_image",
+            "store_tools_in_toolbox", "stack_blocks", "press_by_number", "swap_blocks", "stack_blocks_by_language"]
+    for t in lane:
+        v = perception_vocabulary(fx[t][0], fallback=False)
+        assert v is not None and v.name == t and v.source == "table", (t, v)
