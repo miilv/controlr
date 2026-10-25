@@ -309,6 +309,7 @@ def test_agentic_estimate_on_a_b1_record(tmp_path):
 
 
 def test_budget_gate_tracks_the_agent_scene(tmp_path):
+    pytest.importorskip("scipy")  # the tracker's TCP uses the camera module (perception extra)
     first = FakeChat([json.dumps({"answer": {"objects": [{"keep": 0}, {"label": "block_1", "pos": [-0.23, -0.14, 0.7825],
                                                                        "confidence": 0.9}]}})])
     calm = {"objects": [dict(_b1()["objects"][0], flags={}), dict(_b1()["objects"][1], pos=[-0.2, -0.1, 0.7825], confidence=0.85,
