@@ -408,7 +408,7 @@ class Hypothesis:
         return next(s for s in shape_models(self.key) if s.tag == self.tag)
 
     def T(self) -> np.ndarray:
-        return self.sm().pose(self.x, self.y, self.yaw)
+        return self.sm().pose(self.x, self.y, self.yaw, float(self.per_view.get("z_off", 0.0)))
 
 
 def coarse_fit(sm: ShapeModel, blob: Blob, views: dict[str, ViewMasks], yaw_step_deg: float = 10.0,
@@ -1246,6 +1246,27 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 h.per_view.update({"geom_group": [k for k in g["candidates"]], "slot": True, "sil_loss": round(float(loss), 4)})
                 slot_placed.append((g, h, lab))
             g["labels"] = [lab for lab in g["labels"] if lab not in mine]
+        # labels the config stacks on another (relative_plane "<label>/...", zero offset): on top of it
+        placed_by_label = {lab: h for _, h, lab in slot_placed}
+        for gi, g in enumerate(groups):
+            stacked = []
+            for lab in list(g["labels"]):
+                p_ = task_map()[task]["labels"][lab]["placement"]
+                base = str(p_.get("relative_plane", "Table")).split("/")[0]
+                if base not in placed_by_label or p_.get("xlim") not in ([0.0, 0.0], [0, 0]):
+                    continue
+                hb = placed_by_label[base]
+                Tb = hb.T()
+                top = float((hb.sm().asset.V @ Tb[:3, :3].T + Tb[:3, 3])[:, 2].max())
+                tag = p_.get("place_tag")
+                sms = [s_ for s_ in shape_models(g["candidates"][0]) if not tag or s_.tag == tag] or list(shape_models(g["candidates"][0]))
+                sm = sms[0]
+                h = Hypothesis(gi, g["candidates"][0], sm.tag, hb.x, hb.y, 0.0, 0.5)
+                h.per_view.update({"geom_group": list(g["candidates"]), "slot": True, "stacked_on": base, "sil_loss": 0.5,
+                                   "z_off": top - TABLE_Z})
+                slot_placed.append((g, h, lab))
+                stacked.append(lab)
+            g["labels"] = [lab for lab in g["labels"] if lab not in stacked]
         groups = [g for g in groups if g["labels"]]
 
     # ---- fixed-pose geometry (e.g. a ground-standing dustbin): place at the config pose, flagged
