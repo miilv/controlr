@@ -60,3 +60,12 @@ def test_step_format_matches_robodojo_reader():
 def test_demo_order_is_seed_fixed_permutation():
     assert demo_order(100003) == demo_order(100003) and sorted(demo_order(100003)) == list(range(5))
     assert len({tuple(demo_order(s)) for s in range(100000, 100025)}) > 10
+
+
+def test_retime_paces_like_robodojo_demos():
+    path = np.linspace(np.zeros(7), np.r_[0.6, np.zeros(6)], 300)        # cuRobo's slow 300-step path
+    p, v = D.retime(path, 0.006)
+    dq = np.abs(np.diff(np.vstack([path[:1], p]), axis=0)).max()
+    assert dq <= 0.006 + 1e-4 and len(p) < 300
+    assert p[-1] == pytest.approx(path[-1]) and abs(v[0, 0]) < abs(v[len(v) // 2, 0])   # eases in
+    assert len(D.retime(path[:2] * 0.0, 0.006)[0]) == 40                 # a no-move segment keeps a minimum

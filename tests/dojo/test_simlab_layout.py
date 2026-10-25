@@ -264,3 +264,25 @@ def test_zlim_child_of_a_support_less_parent_starts_at_its_bbox_top(monkeypatch)
              check_mode="enforce")
     pose, _ = G.place_on_object(p, {}, lay, set(), random.Random(0), {}, {})
     assert pose[:3] == pytest.approx([0.2, 0.0, 0.825 + 0.158 - 0.133])   # inside the bottle, above the table
+
+
+def test_offsets_live_in_the_support_frame(monkeypatch):
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    ry90 = [math.cos(math.pi / 4), 0.0, math.sin(math.pi / 4), 0.0]             # make_toast's slot frames
+    metas = {("Geometry", "shelf"): {"passive": {"support": {"shelf/0": {"center": [[0.035, 0.0, 0.035] + ry90],
+                                                                         "radius": [0.05]}}}}}
+    monkeypatch.setattr(G, "metadata", lambda t, c, i, clutter=False: metas.get((t, c)))
+
+    class Ground:
+        def _placement_to_origin(self, pose, c_frame):
+            return pose
+    lay = {"Geometry": {"shelf": [{"category": "shelf", "category_idx": 0, "label": "shelf",
+                                   "default_pos": [0.0, 0.0, 0.8], "default_ori": [1.0, 0.0, 0.0, 0.0]}]}}
+    child = {"active": {"place": {"up": {"projection_circle": {"radius": 0.07, "center": [0, 0, 0, 1, 0, 0, 0]}}}}}
+    p = dict(G.SAMPLING_DEFAULTS, relative_plane="shelf/shelf/0", xlim=[-0.02, -0.02], ylim=[-0.007, -0.007],
+             check_mode="none", place_tag="up")
+    pose, _ = G.place_on_object(p, child, lay, set(), random.Random(0), {"ground": Ground()}, {})
+    assert pose[:3] == pytest.approx([0.035, -0.007, 0.8 + 0.035 + 0.02], abs=1e-9)   # x offset lifts the slice

@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v11"
+GENERATOR = "simlab/v12"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -327,9 +327,10 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     * list of labels (swap_blocks' mats): pick a parent not used yet;
     * the parent's ``passive.support`` point (first centre of the given / first key) is the reference;
       without one, the parent's origin;
-    * x/y offsets from xlim/ylim are in world axes around that reference; with ``zlim`` the height is
-      reference + zlim and the orientation the parent's x ``qpos`` (e.g. the conveyor's photo, a fluid
-      inside its bottle), otherwise the child rests on the support point (its ``active.place`` frame);
+    * x/y offsets from xlim/ylim (and z from ``zlim``) are in the support frame (v12; world axes around the
+      reference for parents without supports); with ``zlim`` the orientation is the parent's x ``qpos``
+      (e.g. the conveyor's photo, a fluid inside its bottle), otherwise the child rests on the support point
+      (its ``active.place`` frame);
     * a ``zlim`` child of a parent without supports (a fluid in its bottle) is placed from the parent's
       local bbox top centre;
     * ``rotate_rand`` turns about world z; children of one support (``relative_plane`` string) keep their
@@ -393,15 +394,19 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
             rd = prm["rotate_deg"] or 0
             lo, hi = (-abs(rd), abs(rd)) if np.isscalar(rd) else (min(rd), max(rd))
             q = _qmul(quat_z(rng.uniform(lo, hi)), q)
+        zoff = rng.uniform(*_ranges(prm["zlim"])[0]) if prm["zlim"] is not None else 0.0
+        # offsets live in the support frame (v12; RoboDojo / PhysicalRSI convention): make_toast's slot frames
+        # stand the slices up (Ry 90), so its xlim -0.02 lifts a slice in its slot. Parents without supports:
+        # world axes around the reference.
+        off_w = _qrot(ref_q, off + [0.0, 0.0, zoff]) if supports else off + [0.0, 0.0, zoff]
         if prm["zlim"] is not None:
-            z0, z1 = _ranges(prm["zlim"])[0]
             qq = _qmul(q, prm["qpos"]) if prm["qpos"] is not None else q
-            pose = np.r_[ref_pos + off + [0.0, 0.0, rng.uniform(z0, z1)], qq]
+            pose = np.r_[ref_pos + off_w, qq]
         else:
             c_frame = np.asarray(places[tag]["projection_circle"]["center"], float)
-            pose = gens["ground"]._placement_to_origin(np.r_[ref_pos + off, q], c_frame)
+            pose = gens["ground"]._placement_to_origin(np.r_[ref_pos + off_w, q], c_frame)
         sib = siblings.setdefault(pick, [])     # per support, like RoboDojo's per-plane generators
-        foot = (ref_pos + off)[:2] if prm["zlim"] is None else pose[:2]   # footprint centre = placement point
+        foot = (ref_pos + off_w)[:2] if prm["zlim"] is None else pose[:2]   # footprint centre = placement point
         if prm["check_mode"] == "enforce" or all(np.linalg.norm(foot - xy) > radius + r + 0.002 for xy, r in sib):
             sib.append((np.asarray(foot, float).copy(), radius))
             used.add(plabel)

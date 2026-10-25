@@ -45,8 +45,17 @@ ARM, EE = "support_arm0", "support_ee0"
 HAND_TCP = 0.102            # panda_hand -> grasp point along the hand z (robot_config gripper_bias)
 OPEN, CLOSE = 0.04, -0.01   # finger joint targets (gripper_scale); closing stops on the object
 MAX_WIDTH = 0.077           # widest graspable width across the fingers (2 x 0.04 open, 1.5 mm per side)
-GRASP_DEPTH = 0.02          # grasp point below the object's top (finger pads are ~2 cm)
+GRASP_DEPTH = 0.03          # grasp point below the object's top (at most 60 % of its height)
+MIN_PAD_Z = 0.016           # pad centre above the object's bottom: the planner's table sits 2.5 cm low
+                            # (RoboDojo passes table_height 0.74, the top is 0.765), so lower tips stall
+# rad per 4 ms sub-step (RoboDojo's own demos: median 0.002, peak 0.008). Free moves fast; near and with the
+# object slow (fast descents left the hand lagging above the object when the fingers closed).
+DQ_FREE, DQ_CARRY, DQ_NEAR = 0.008, 0.004, 0.002
+SETTLE = 50                 # sub-steps holding still before the fingers close
 HOME_STEP_RAD = 0.004       # per 4 ms sub-step for joint-space moves (1 rad/s)
+MAX_DEMO_ENV_STEPS = 900    # leaves the policy >= 700 of the 1600 env steps (RoboDojo-paced demos: ~575)
+ORDER_TRIES = 4             # the seed's order, then other seeded orders (a transport can knock a later object)
+CARRY_CLEARANCE = 0.08
 STRAIGHT = [1, 1, 1, 1, 1, 0]  # cuRobo pose-cost hold: orientation + x/y fixed, free along the hand z (vertical)
 
 
@@ -117,6 +126,21 @@ def hand_pose(tcp_xyz, yaw: float) -> np.ndarray:
     return np.concatenate([np.asarray(tcp_xyz, float) + [0.0, 0.0, HAND_TCP], hand_quat(yaw)])
 
 
+def retime(path: np.ndarray, dq_max: float, min_n: int = 40) -> tuple[np.ndarray, np.ndarray]:
+    """Resample a joint path to RoboDojo's own demo pace: at most ``dq_max`` rad per 4 ms sub-step on any
+    joint (its make_kong / tic-tac-toe demos peak at 0.008), at least ``min_n`` sub-steps; smoothstep
+    timing (zero velocity at both ends). Returns (positions, velocities in rad/s)."""
+    path = np.asarray(path, float)
+    travel = float((path.max(axis=0) - path.min(axis=0)).max()) if len(path) > 1 else 0.0   # cuRobo jitter-free
+    n = max(min_n, math.ceil(1.5 * travel / dq_max))            # smoothstep peaks at 1.5x the mean speed
+    u = np.linspace(0.0, 1.0, n + 1)[1:]
+    u = u * u * (3.0 - 2.0 * u)
+    src = np.linspace(0.0, 1.0, len(path)) if len(path) > 1 else np.zeros(1)
+    p = np.stack([np.interp(u, src, path[:, j]) for j in range(path.shape[1])], axis=1)
+    v = np.diff(np.vstack([path[:1], p]), axis=0) / 0.004
+    return p, v
+
+
 def step_rec(q, dq, fingers) -> dict:
     return {f"{ARM}_joint_state": {"position": [float(v) for v in q], "velocity": [float(v) for v in dq]},
             f"{EE}_joint_state": {"position": [float(fingers)] * 2, "velocity": [0.0, 0.0]}}
@@ -140,7 +164,7 @@ class DemoPlanner:
         self.q = self.q0.copy()
         self.fingers = OPEN
 
-    def plan_to(self, tcp_xyz, yaw: float, name: str, straight: bool = False) -> bool:
+    def plan_to(self, tcp_xyz, yaw: float, name: str, straight: bool = False, dq: float = DQ_FREE) -> bool:
         """Plan the hand to ``tcp_xyz`` (top-down, fingers along ``yaw`` or yaw + pi). ``straight``: a vertical
         line from the current pose (cuRobo pose-cost hold on orientation and x/y), else free space."""
         pair = [yaw, yaw + math.pi]
@@ -163,6 +187,7 @@ class DemoPlanner:
                  np.asarray(v.detach().cpu().numpy() if hasattr(v, "detach") else v, float).reshape(p.shape))
             if not len(p):
                 continue
+            p, v = retime(p, dq)
             self.segments.append([step_rec(p[i], v[i], self.fingers) for i in range(len(p))])
             self.q = p[-1].copy()
             self.last_yaw = y
@@ -171,15 +196,18 @@ class DemoPlanner:
             return True
         return False
 
-    def grip(self, target: float, steps: int = 100, hold: int = 100) -> None:
+    def grip(self, target: float, steps: int = 100, hold: int = 50, settle: int = 0) -> None:
+        self.log.append({"name": "close" if target < self.fingers else "open", "steps": settle + steps + hold})
         f0 = self.fingers
-        seg = [step_rec(self.q, np.zeros_like(self.q), f0 + (target - f0) * (i + 1) / steps) for i in range(steps)]
+        seg = [step_rec(self.q, np.zeros_like(self.q), f0)] * settle
+        seg += [step_rec(self.q, np.zeros_like(self.q), f0 + (target - f0) * (i + 1) / steps) for i in range(steps)]
         seg += [step_rec(self.q, np.zeros_like(self.q), target)] * hold
         self.segments.append(seg)
         self.fingers = target
 
     def home(self) -> None:
         n = max(1, math.ceil(float(np.abs(self.q0 - self.q).max()) / HOME_STEP_RAD))
+        self.log.append({"name": "home", "steps": n})
         path = [self.q + (self.q0 - self.q) * (i + 1) / n for i in range(n)]
         self.segments.append([step_rec(q, np.zeros_like(q), self.fingers) for q in path])
         self.q = self.q0.copy()
@@ -188,12 +216,16 @@ class DemoPlanner:
         return sum(len(s) for s in self.segments)
 
 
-def plan_demo(run, seed: int) -> tuple[dict | None, dict]:
-    """Plan the demo on the env's current (reset) state. Returns (pkl data or None, info)."""
+def plan_demo(run, seed: int, order: list[int] | None = None) -> tuple[dict | None, dict]:
+    """Plan the demo on the env's current (reset) state, in ``order`` (default: ``demo_order(seed)``).
+    Returns (pkl data or None, info)."""
     from dojo.simlab.gen_layouts import metadata
     from dojo.simlab.runner import demo_order
-    order = demo_order(seed)
+    order = list(order) if order is not None else demo_order(seed)
     rows = {o["label"]: o for o in run.objects_gt() if o.get("label") and not o.get("clutter")}
+    tallest = max(float(world_vertices(metadata(o["type"], o["category"], int(o["category_idx"])),
+                                       np.asarray(o["pos"], float), o["quat"])[:, 2].max())
+                  for lab, o in rows.items() if lab.startswith("aim"))
     origin = np.asarray(run.gt().get("env_origin") or [0.0, 0.0, 0.0], float)[:3]
 
     def local(o):
@@ -221,31 +253,34 @@ def plan_demo(run, seed: int) -> tuple[dict | None, dict]:
                                       "width_cm": round(100 * g["width"], 1), "height_cm": round(100 * h, 1)}
         if g.get("too_wide"):
             return None, {**info, "status": f"aim{i} ({o['category']}) {100 * g['width']:.1f} cm wider than the gripper"}
-        grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.5 * h), g["bottom"] + 0.01)
-        carry_z = max(b_top, g["top"]) + h + 0.06
+        grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.6 * h), g["bottom"] + MIN_PAD_Z)
+        carry_z = max(b_top, tallest - origin[2]) + h + CARRY_CLEARANCE   # the carried object clears everything
         steps = [((*g["xy"], g["top"] + 0.08), g["yaw"], f"pre aim{i}"),
                  ((*g["xy"], grasp_z), g["yaw"], f"grasp aim{i}")]
         for xyz, yaw, name in steps:
-            if not dp.plan_to(xyz, yaw, name, straight=name.startswith("grasp")):
+            if not dp.plan_to(xyz, yaw, name, straight=name.startswith("grasp"),
+                              dq=DQ_NEAR if name.startswith("grasp") else DQ_FREE):
                 return None, {**info, "status": f"no plan: {name}"}
-        dp.grip(CLOSE)
+        dp.grip(CLOSE, settle=SETTLE)
         lift = (*g["xy"], carry_z)
-        if not dp.plan_to(lift, g["yaw"], f"lift aim{i}", straight=True):
+        if not dp.plan_to(lift, g["yaw"], f"lift aim{i}", straight=True, dq=DQ_NEAR):
             return None, {**info, "status": f"no plan: lift aim{i}"}
-        if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"over basket1 with aim{i}"):
+        if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"over basket1 with aim{i}", dq=DQ_CARRY):
             return None, {**info, "status": f"no plan: over basket1 with aim{i}"}
         below_tcp = grasp_z - g["bottom"]                # object bottom under the TCP while carried
         release_z = b_top + below_tcp + 0.015            # bottom 1.5 cm above the rim: placed, not dropped
         if release_z < carry_z - 0.01 and not dp.plan_to((*b_xy, release_z), g["yaw"], f"lower aim{i}",
-                                                         straight=True):
+                                                         straight=True, dq=DQ_NEAR):
             return None, {**info, "status": f"no plan: lower aim{i}"}
-        dp.grip(OPEN, steps=40, hold=60)
+        dp.grip(OPEN, steps=40, hold=30)
         if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"clear basket1 after aim{i}", straight=True):
             return None, {**info, "status": f"no plan: clear basket1 after aim{i}"}
     dp.home()
     data = {"joint_path": dp.segments, "target_label": [f"t{i}" for i in order],
             "aim_label": [f"aim{i}" for i in order], "target_place_tag": [None] * 5,
             "_simlab": {"generator": "simlab/demo_gen v1", "seed": seed, "order": order}}
+    if dp.n_steps() / 10 > MAX_DEMO_ENV_STEPS:
+        return None, {**info, "status": f"too long: {dp.n_steps() / 10:.0f} env steps", "segments": dp.log}
     return data, {**info, "status": "planned", "substeps": dp.n_steps(), "segments": dp.log}
 
 
@@ -264,14 +299,21 @@ def validate(run, layout: dict, n_substeps: int, margin_env_steps: int = 60) -> 
     aims = [f"aim{i}" for i in range(5)]
     z0 = {o["label"]: float(o["pos"][2]) for o in run.objects_gt() if o.get("label") in aims}
     zmax = dict(z0)
+    rm_ = env.robot_manager
+    sup = rm_.get_robot_by_arm_name(ARM)
+    trace = {"step": [], "fingers": [], **{lab: [] for lab in aims}}    # every 5 env steps (diagnostics)
     for k in range(n):
         if run.step(hold)[0]:
             ended_at = k + 1
             break
         if k % 5 == 0:
+            trace["step"].append(k + 1)
+            trace["fingers"].append(round(float(np.asarray(rm_.get_end_effector_real_val(sup, env_idx_list=[0])[0],
+                                                           float).reshape(-1)[0]), 4))
             for o in run.objects_gt():
                 if o.get("label") in zmax and o["pos"] is not None:
                     zmax[o["label"]] = max(zmax[o["label"]], float(o["pos"][2]))
+                    trace[o["label"]].append(round(float(o["pos"][2]), 3))
     rm = env.reward_manager
     in_b = [float(rm.call_func_parser(rm.is_A_in_B(label_A=f"aim{i}", label_B="basket1"), 0)) for i in range(5)]
     fin = {o["label"]: o["pos"] for o in run.objects_gt() if o.get("label") in aims + ["basket1"]}
@@ -284,18 +326,20 @@ def validate(run, layout: dict, n_substeps: int, margin_env_steps: int = 60) -> 
     unstable = 0 in getattr(env, "unstable_envs", set())
     ok = (not unstable) and all(v >= 0.5 for v in in_b) and max(moved.values(), default=0.0) < 5.0
     return {"ok": bool(ok), "unstable": bool(unstable), "aim_in_basket1": in_b, "t_moved_mm": moved, "aims": final,
+            **({} if ok else {"trace": trace}),
             "env_steps": n if ended_at is None else ended_at, "ended_early": ended_at is not None,
             "support_checked": bool(getattr(env, "support_checked", [False])[0])}
 
 
 def main(argv=None) -> None:
     from dojo.simlab.presettle import layout_files
-    from dojo.simlab.runner import RoboDojoRunner, jsonable
+    from dojo.simlab.runner import RoboDojoRunner, demo_order, jsonable
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", default=TASK)
     ap.add_argument("--ids", nargs="*", type=int, default=None)
     ap.add_argument("--probe", action="store_true", help="print the support arm / planner facts and stop")
     ap.add_argument("--raw", action="store_true", help="use <id>.json instead of the pre-settled <id>.settled.json")
+    ap.add_argument("--tries", type=int, default=ORDER_TRIES, help="orders to try per layout")
     a = ap.parse_args(argv)
     if a.task != TASK:
         raise SystemExit(f"demos are implemented for {TASK} only")
@@ -329,15 +373,27 @@ def main(argv=None) -> None:
                 "objects": {o["label"]: o["pos"] for o in run.objects_gt() if o.get("label") and not o.get("clutter")}}),
                 default=str), flush=True)
             a.probe = False
-        data, info = plan_demo(run, seed)
-        rec = {"from": f.name, **info}
-        if data is not None:
-            pk.write_bytes(pickle.dumps(data, protocol=4))
-            v = validate(run, lay, info["substeps"])
-            rec["validation"] = v
-            rec["status"] = "ok" if v["ok"] else "dropped: validation"
-            if not v["ok"]:
+        attempts = []
+        for k in range(a.tries):
+            if k:
                 pk.unlink(missing_ok=True)
+                if not run.load(lay)["stable"]:          # plan on a clean reset again
+                    break
+            order = demo_order(seed) if k == 0 else demo_order(seed * 31 + k)
+            data, info = plan_demo(run, seed, order)
+            rec = {"from": f.name, "attempt": k, **info}
+            if data is not None:
+                pk.write_bytes(pickle.dumps(data, protocol=4))
+                v = validate(run, lay, info["substeps"])
+                rec["validation"] = v
+                rec["status"] = "ok" if v["ok"] else "dropped: validation"
+                if not v["ok"]:
+                    pk.unlink(missing_ok=True)
+            attempts.append({"order": order, "status": rec["status"],
+                             "in_basket1": (rec.get("validation") or {}).get("aim_in_basket1")})
+            if rec["status"] == "ok":
+                break
+        rec["attempts"] = attempts
         rec["s"] = round(time.perf_counter() - t0, 1)
         index[str(seed)] = rec
         index_p.write_text(json.dumps(jsonable(index), indent=1))
