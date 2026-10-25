@@ -89,6 +89,16 @@ Organize v1 (000e5be), first chunk, 100000-02: 0/3; scores 0.5, 0.5, 0.25.
   on either axis (the keyboard's front edge 0.18-0.2 m from the arm bases).
 - Figurine: no grasp-place pair next to the drawer, 3/3.
 
+Organize v1 complete (000e5be, the 8 settled of 100000-07): **0/8, mean 0.28** (skills2 0.35 on 5).
+- The mouse goes in 8/8; the alarm 1/8; the keyboard 1/8.
+- The figurine planned in 2/8 (slice grasp, tilted), but slid out at the lift.
+- The keyboard push mostly finds no stroke: the front edge is too close to the arm bases for a low push pose.
+
+Store_tools v3 (0b6250f: + drop_ok, parking the idle arm, narrow opening), 100000-04 (stopped: no gain): **0/5, mean
+0.15**. The tape measure went in 3/5. The hammer, carried on loose (13-15 mm), had fallen out during the carry before the
+drop (in-hand shift 180-300 mm), 4/4. The wrench was lost on the carry 3/3; the pliers slid 5/5. Stalled after three
+iterations: the carry loses the hammer and the wrench whatever the grasp point.
+
 ## 4. Failure taxonomy (what the traces with measured joints showed)
 
 1. **The arm's practical envelope is smaller than the IK's.** Two cases. (a) Places 0.66-0.67 m from the arm's base: the measured TCP stopped about 30 mm above the commanded one, at the strip, and probing could not help (plug v1 7/10). (b) A place with the wrist on j6's ±3.14 stop (and j4 at 1.7) stalled the same way (plug v2 1/5). Filters: `PLACE_REACH` 0.60 m and `wrist_safe` (j4 ≤ 1.6, |j6| ≤ 3.0) on transfer and handover places. A far target then goes through a relay to the other arm.
