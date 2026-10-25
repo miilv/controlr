@@ -60,6 +60,16 @@ record carries the deployed commit.
 | plug_in_charger | **v3 (c834032 x5 / cc626ee x20; same code for this task) + wrist_safe** | **all 25 settled** | **22/25** | **0.88** | 156 / 237 (400) | 100002: no relay planned, the in-air handover fallback dropped the charger. 100008: the relay's last leg re-planned with the held charger dipping below the table on the carry (collision). 100013: seated 5 mm high after 2 probes on the untilted grasp, toppled at release |
 | store_tools | v1 (a84cccd), stopped at the 30-min hold | 100000-01 | 0/2 | 0.25 (tape measure) | 264-277 (900) | The hammer held at its CoM station lifted with 11-13 mm drift, was judged loose and put down twice (now carried on for >= 2 cm tolerances). The wrench held at its end slid out. The pliers' slice grasp slid out. One episode spent 1269 s planning relays (now under 12k faces, a hold-quality cache, relay search capped at 150 s; 27 s locally) |
 
+Store_tools v2 (000e5be: planning-time caps, loose grasps carried on, uneven carries 0.09 rad/step), 100000-04: 0/5, mean
+0.15. Steps 163-312 of 900; planning 56-205 s. The tape measure went in 3/5 (a 4th landed 20 mm high on another tool).
+- Pliers: slice grasp across the outline slid out, 5/5.
+- Hammer: CoM station, lifted 13-15 mm loose. The re-planned descent for that in-hand pose went below the table, so the
+  place was refused (3).
+- Wrench: lifted with 4-5 mm drift, then lost on the carry (3). In 100001 it was knocked out by the other hand, which
+  was left open above the failed pliers pick, and flung off the table.
+- Fixes queued as store_tools v3 (57530c6): `drop_ok` (let go over the slot when the descent is blocked; the ladder only
+  needs the tool near its slot) and parking the idle arm out of the carry's reach including the held object.
+
 ## 4. Failure taxonomy (what the traces with measured joints showed)
 
 1. **The arm's practical envelope is smaller than the IK's.** Two cases. (a) Places 0.66-0.67 m from the arm's base: the measured TCP stopped about 30 mm above the commanded one, at the strip, and probing could not help (plug v1 7/10). (b) A place with the wrist on j6's ±3.14 stop (and j4 at 1.7) stalled the same way (plug v2 1/5). Filters: `PLACE_REACH` 0.60 m and `wrist_safe` (j4 ≤ 1.6, |j6| ≤ 3.0) on transfer and handover places. A far target then goes through a relay to the other arm.
