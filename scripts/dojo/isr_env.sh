@@ -19,6 +19,9 @@ export HOME="$ILIA/home" XDG_CACHE_HOME="$ILIA/home/.cache" XDG_DATA_HOME="$ILIA
 # --hold-gpu-lock). It is ours; the shared ~/data2/coord/gpu.lock is held AROUND it by isr_job.sh, so nothing of ours
 # ever writes into the coord lock file.
 export DOJO_GPU_LOCK="$ILIA/home/dojo-gpu.lock"
+# robot-harness's lock-aware starters (harness/launch_lock.py, not synced to ~/data2/bench yet) go ahead in "delegated
+# mode" when gpu.owner's pid (isr_job.sh) is their ancestor; these make it explicit and name our side on their lines
+export ROBOT_GPU_SIDE=ilia ROBOT_GPU_LOCK_HELD=1
 export DOJO_DATA="$ILIA/dojo-data" SIMLAB_KIT_ARGS="--portable-root $ILIA/kitroot"
 # perception: the task-scoped catalogue subset (no visual.glb) and the 5.1-built background / colour sets (genuine
 # 5.1 frames here; journal 2026-10-25-dojo-perception)
