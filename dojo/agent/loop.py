@@ -160,6 +160,7 @@ class AgentLoop:
                 tr.add_user(["Your reply had no ```python``` block. Reply with one code cell; call finish() to end."])
                 continue
             nudges = 0
+            self._write_logs()              # the reply is on disk before the cell runs (an env end can cut it)
             self.robo.begin_cell()
             t0 = time.perf_counter()
             cr = session.run(code)

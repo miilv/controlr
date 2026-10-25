@@ -69,12 +69,18 @@ def first_decision(row: dict) -> str:
     import re
     d = (row.get("agent") or {}).get("log_dir")
     f = Path(d) / "cells.jsonl" if d else None
-    if f is None or not f.exists():
+    code = None
+    if f is not None and f.exists():
+        lines = f.read_text().splitlines()
+        if lines:
+            code = json.loads(lines[0]).get("code", "")
+    if code is None and d and (Path(d) / "messages.jsonl").exists():      # the env ended during the first cell
+        from dojo.agent.loop import extract_code
+        msgs = [json.loads(l) for l in (Path(d) / "messages.jsonl").read_text().splitlines()]
+        code = next((extract_code(m["content"]) for m in msgs if m["role"] == "assistant"
+                     and extract_code(m["content"])), None)
+    if code is None:
         return "?"
-    lines = f.read_text().splitlines()
-    if not lines:
-        return "none"
-    code = json.loads(lines[0]).get("code", "")
     m = re.search(r"robo\.skill\(\s*['\"]([a-z_]+)['\"]", code)
     return f"skill {m.group(1)}" if m else "code"
 
