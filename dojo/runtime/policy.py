@@ -419,6 +419,8 @@ class RuntimePolicy:
         Returns {label: (pos, quat)} of what changed, or {"rehover": (pos, quat)} when the fit was not ok but
         found the object off the prior (skills hovers there and calls once more); never steps the env."""
         obs = self.bridge.observe()
+        if kind == "held":
+            return self._held_refine(prov, sk, label, arm, obs)
         o = prov.belief.objects.get(label) if prov.belief else None
         if o is None or label in prov.belief.held_labels():
             return None
@@ -514,6 +516,39 @@ class RuntimePolicy:
             if kind == "place":
                 hint["rehover_dz"] = self.cfg.rehover_place_dz
             return hint
+        return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _held_refine(self, prov, sk, label: str, arm: str, obs: dict) -> dict | None:
+        """skills' kind "held" (right after the lift of a re-orienting pick): measure the object in ``arm``'s jaws
+        from that arm's wrist (one view; robot and fingers masked by FK), prior = the in-hand estimate
+        (``sk.refine_ctx["held"]``). An accepted pose also re-anchors the belief's in-hand transform, so the next
+        refresh keeps it. Returns {label: (pos, quat)} or None (the skill keeps its plan)."""
+        from dojo.skills.geometry import T_from
+        o = prov.belief.objects.get(label) if prov.belief else None
+        if o is None:
+            return None
+        ctx = getattr(sk, "refine_ctx", None) or {}
+        h = ctx.get("held")
+        prior = np.asarray(h[1], float) if h else np.r_[o.pos, o.quat]
+        others = [x for x in prov.belief.movable() if x.label != label]
+        objs = [{"label": label, "key": o.asset.key, "pos": [float(v) for v in prior[:3]], "quat": [float(v) for v in prior[3:7]]}]
+        objs += [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
+                 for x in others]
+        r = (self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm) or {}).get(label) or {}
+        ev = {"kind": "refine", "label": label, "arm": arm, "for": "held", "step": self.bridge.steps_used,
+              "prior7": [round(float(v), 4) for v in prior],
+              **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "why")}}
+        if r.get("pos") is not None:
+            ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
+        self.report["events"].append(ev)
+        if not r.get("ok"):
+            return None
+        o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+        if arm in prov.belief.attached and prov.belief.attached[arm][0] == label:
+            from dojo.skills.geometry import inv_T
+            T_tcp = prov.belief.kin.tcp(arm, prov.belief.q[arm])
+            prov.belief.attached[arm] = (label, inv_T(T_tcp) @ T_from(o.pos, quat=o.quat))
+        prov.stats["held_refined"] = prov.stats.get("held_refined", 0) + 1
         return {label: (o.pos.copy(), o.quat.copy())}
 
     def _search_lost(self, ctx, e) -> bool:

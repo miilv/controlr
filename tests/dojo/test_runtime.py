@@ -988,3 +988,38 @@ def test_merge_looked_does_not_add_a_held_object_under_a_missing_label():
                                "default_ori": [1, 0, 0, 0]}]}}            # the same physical block, other label
     m = merge_looked(r0, r1, [])
     assert [r["label"] for r in m["Rigid"]["block"]] == ["block_0"] and m["_not_found"]
+
+
+def test_held_refine_measures_the_in_hand_object_and_reanchors_the_grasp():
+    """kind "held": the object in the jaws is measured from that wrist; a flipped pose sticks across refreshes."""
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.skills.geometry import T_from
+    env = _env()
+    flipped = [0.0, 0.0, 0.0, 1.0]                       # 180 deg about z (wxyz)
+
+    class InHand:
+        seen = {}
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            self.seen.update(label=objects[0]["label"], prior=objects[0]["pos"], arm=arm, held=held)
+            o = objects[0]
+            return {o["label"]: {"ok": True, "pos": list(o["pos"]), "quat": flipped, "shift_mm": 0.5, "turned_deg": 180.0}}
+
+    pc = InHand()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=pc)
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    prov.belief.attached["left"] = ("block_1", np.linalg.inv(prov.belief.kin.tcp("left", prov.belief.q["left"])) @ o.T)
+
+    class Sk:
+        refine_ctx = {"kind": "held", "label": "block_1", "arm": "left",
+                      "held": ("Rigid/block/00005", list(o.pos) + [1.0, 0.0, 0.0, 0.0])}
+    out = pol._refine_hook(prov, Sk(), "block_1", "left", "held")
+    assert pc.seen["label"] == "block_1" and pc.seen["arm"] == "left" and pc.seen["held"] is None
+    assert np.allclose(out["block_1"][1], flipped)
+    prov.belief.sync_robot(b.obs["state"])                     # a refresh keeps the measured in-hand pose
+    assert abs(abs(float(np.dot(prov.belief.objects["block_1"].quat, flipped))) - 1.0) < 1e-6
