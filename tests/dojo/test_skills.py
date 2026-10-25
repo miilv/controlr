@@ -279,3 +279,16 @@ def test_refine_hook_called_at_hover_and_used():
     assert kinds.count("pick") >= 2 and kinds.count("place") >= 2
     # refine happens between steps (the hover ran first): never at step 0
     assert all(c[3] > 0 for c in calls)
+
+
+def test_refine_with_verify_splits_hover_and_tail():
+    from dojo.skills import planner
+    from dojo.skills.env import KinematicVerifier
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (-0.2, -0.25, 0.78)])
+    seen, verified = [], []
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction), verifier=KinematicVerifier(env), verify_k=1,
+                n_cands=2, refine=lambda sk, label, arm, kind: seen.append((kind, sk.ex.steps_used)),
+                on_verified=lambda info: verified.append((info["kind"], len(info["actions"]))))
+    assert planner.solve(sk)["ok"]
+    assert [k for k, _ in seen].count("pick") >= 2 and [k for k, _ in seen].count("place") >= 2
+    assert verified and all(n > 0 for _, n in verified)
