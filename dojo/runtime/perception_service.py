@@ -36,6 +36,10 @@ Ops (request dicts):
         head background in DOJO_BG_FOLDS)
     {"op": "held_look", "frame": frame, "arm": str, "mode": "b1"|"b1_then_agent"}  -> {"held_look": json}
         perception's held check on the arm's wrist frame: {held, confidence, dark_risk, source, calls}
+    {"op": "motion", "frame_a": frame, "frame_b": frame, "thr": 12.0, "min_px": 150}  -> {"motion": json}
+        did anything but OUR arms change between two head views: Lab difference outside the union of both frames' FK
+        robot masks (a scripted opponent / demonstrator arm, its gripper, objects it moves): {moving, changed_px,
+        visible_px}; moving None when too little of the view is visible
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -150,6 +154,12 @@ class PerceptionClient:
         if extra_frame is not None:
             req["extra_frame"] = encode_frame(extra_frame)
         return json.loads(self._call(req)["record"])
+
+    def motion(self, frame_a: dict, frame_b: dict, thr: float = 12.0, min_px: int = 150) -> dict:
+        def head_only(f):
+            return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
+        return json.loads(self._call({"op": "motion", "frame_a": head_only(frame_a), "frame_b": head_only(frame_b),
+                                      "thr": float(thr), "min_px": int(min_px)})["motion"])
 
     def scan_looks(self) -> list[dict]:
         return json.loads(self._call({"op": "scan_looks"})["looks"])
@@ -281,6 +291,29 @@ class _Perception:
         log_dir = str(Path(log) / f"call_{self._n_agentic:03d}") if log else None
         return agentic_estimate(fr["images"], fr["state"], vocabulary, fr["instruction"], bgs=self.bgs(fold),
                                 cfg=self.cfg(fold), b1_record=b1_record, log_dir=log_dir, **kw)
+
+    @staticmethod
+    def motion(frame_a: dict, frame_b: dict, thr: float = 12.0, min_px: int = 150, dilate_px: int = 6) -> dict:
+        """Scene change outside OUR arms between two head frames (contract frames; our arms masked by FK at each
+        frame's measured joints, dilated). A changed pixel: Lab distance > ``thr`` (L halved). moving: > ``min_px``
+        changed pixels; None when less than 20 % of the view is unmasked."""
+        import cv2
+
+        from dojo.perception.cameras import head_camera
+        from dojo.perception.render import robot_mask
+        fa, fb = decode_frame(frame_a), decode_frame(frame_b)
+        cam = head_camera()
+        m = np.maximum(robot_mask(cam, fa["state"], dilate_px), robot_mask(cam, fb["state"], dilate_px)) > 0
+        a = cv2.cvtColor(np.ascontiguousarray(fa["images"]["cam_head"]), cv2.COLOR_RGB2LAB).astype(np.float32)
+        b = cv2.cvtColor(np.ascontiguousarray(fb["images"]["cam_head"]), cv2.COLOR_RGB2LAB).astype(np.float32)
+        d = a - b
+        d[..., 0] *= 0.5
+        dist = np.sqrt((d ** 2).sum(-1))
+        vis = ~m
+        changed = int(((dist > thr) & vis).sum())
+        n_vis = int(vis.sum())
+        moving = None if n_vis < 0.2 * vis.size else bool(changed > min_px)
+        return {"moving": moving, "changed_px": changed, "visible_px": n_vis}
 
     @staticmethod
     def scan_trigger(record: dict, hidden_thr: float = 0.2, risk_thr: float = 0.5) -> dict:
@@ -593,6 +626,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         rec = p.agentic_estimate(req["frame"], req["vocabulary"], int(req.get("fold", 0)), b1,
                                                  req.get("extra_frame"))
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "motion":
+                        mo = p.motion(req["frame_a"], req["frame_b"], float(req.get("thr", 12.0)), int(req.get("min_px", 150)))
+                        conn.send({"ok": True, "motion": json.dumps(mo, default=_default)})
                     elif op == "scan_looks":
                         from dojo.perception.scan import looks
                         conn.send({"ok": True, "looks": json.dumps(looks(), default=_default)})

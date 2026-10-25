@@ -170,6 +170,17 @@ class RuntimeProvider:
         self.touched: set[str] = set()          # labels the robot moved since their last good reading (tracker)
         self.held_checker = None                # mode perception: (obs, arm, label) -> {"held": bool|None, ...}
         self.held_min_lift_m = 0.04
+        self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
+        self.actor_window = 12                  # actors_moving compares with the frame this many steps back
+        self._head_hist: list = []              # (step, obs) for actors_moving
+        self.track_reader = None                # (obs) -> record: B1 re-read for moving objects (belt tracking)
+        self.track_every = 4
+        self.track_window = 40
+        self.track_min_speed = 3e-4             # m / step: slower is "at rest"
+        self._tracks: dict = {}                 # label -> [(step, xy)] reads
+        self._track_last = None
+        self.velocity: dict = {}                # label -> np.array([vx, vy]) m / step (fitted)
+        self._fit: dict = {}                    # label -> (step of the fit's origin, xy there)
         self._held_checked: dict = {}           # arm -> label already checked for the current grasp
         self.post_place_min_mm = 2.0
         self.replan = replan_on_divergence
@@ -266,6 +277,97 @@ class RuntimeProvider:
             self.events.append(ev)
             out.append(ev)
         return out
+
+    # ------------------------------------------------------------------ watch reads (scripted actors, belts)
+    def actors_moving(self) -> bool | None:
+        """Did anything but our arms move: the current head frame vs the one ``actor_window`` steps back (a window
+        longer than a scripted arm's pauses, e.g. ~10 steps while its gripper closes, so a pause reads as motion).
+        None when this provider cannot tell (no reader, too little of the view visible); skills then hold a fixed
+        time. Call once per env step while waiting."""
+        if self.motion_reader is None:
+            return None
+        obs = self.bridge.observe()
+        step = int(obs["steps_used"])
+        self._head_hist = [(s_, o) for s_, o in self._head_hist if s_ >= step - self.actor_window] + [(step, obs)]
+        ref = self._head_hist[0]
+        if ref[0] >= step:
+            return True                                 # nothing to compare with yet: not at rest
+        try:
+            r = self.motion_reader(ref[1], obs) or {}
+        except Exception as e:  # noqa: BLE001 (an optional read)
+            self.events.append({"kind": "motion_error", "note": f"{type(e).__name__}: {str(e)[:120]}"})
+            return None
+        self.stats["motion_reads"] = self.stats.get("motion_reads", 0) + 1
+        return r.get("moving")
+
+    def belt_velocity(self) -> np.ndarray:
+        """Median fitted velocity (m / step, world xy) of the objects tracked as moving; zeros when none."""
+        v = [vv for vv in self.velocity.values() if float(np.linalg.norm(vv)) > self.track_min_speed]
+        return np.median(np.array(v), axis=0) if v else np.zeros(2)
+
+    def _track(self, obs: dict) -> None:
+        """Belt tracking: a B1 re-read every ``track_every`` steps; reads are matched to belief objects by category and
+        predicted position; per object a line is fitted over the last ``track_window`` steps; a moving, not-held object's
+        belief pose is the fit at the current step (no read latency: the sim waits for the read)."""
+        step = int(obs["steps_used"])
+        if self._track_last is not None and step - self._track_last < self.track_every:
+            self._predict(step)
+            return
+        self._track_last = step
+        try:
+            rec = self.track_reader(obs)
+        except Exception as e:  # noqa: BLE001
+            self.events.append({"kind": "track_error", "note": f"{type(e).__name__}: {str(e)[:120]}"})
+            return
+        est = objects_from_record(rec, self.assets, step)
+        held = set(self.belief.held_labels())
+        from .estimate import _assign
+        for cat in {o.category for o in est.values()}:
+            bl = [o for o in self.belief.movable() if o.category == cat and o.label not in held]
+            el = [e for e in est.values() if e.category == cat]
+            if not el:
+                continue
+            if bl:
+                pred = [self._predicted_xy(o, step) for o in bl]
+                C = np.array([[float(np.linalg.norm(e.pos[:2] - p)) for e in el] for p in pred])
+                pairs = [(i, j) for i, j in _assign(C) if C[i, j] < 0.08]
+            else:
+                pairs = []
+            used = {j for _, j in pairs}
+            for i, j in pairs:
+                self._tracks.setdefault(bl[i].label, []).append((step, el[j].pos[:2].copy()))
+            for j, e in enumerate(el):                  # an object that came into view (e.g. onto the belt)
+                if j not in used and e.label not in self.belief.objects and e.confidence >= 0.5:
+                    self.belief.objects[e.label] = e
+                    self._tracks[e.label] = [(step, e.pos[:2].copy())]
+                    self.events.append({"kind": "track_new", "label": e.label, "step": step})
+        for lab, tr in self._tracks.items():
+            tr[:] = [(s_, p) for s_, p in tr if s_ >= step - self.track_window]
+            if len(tr) >= 3 and tr[-1][0] - tr[0][0] >= 8:
+                t = np.array([s_ for s_, _ in tr], float)
+                P = np.array([p for _, p in tr])
+                A = np.c_[t - t[-1], np.ones(len(t))]
+                coef, *_ = np.linalg.lstsq(A, P, rcond=None)
+                self.velocity[lab] = coef[0]
+                self._fit[lab] = (float(t[-1]), coef[1])
+        self._predict(step)
+        self.stats["track_reads"] = self.stats.get("track_reads", 0) + 1
+
+    def _predicted_xy(self, o, step: int) -> np.ndarray:
+        f = self._fit.get(o.label)
+        v = self.velocity.get(o.label)
+        if f is None or v is None:
+            return o.pos[:2].copy()
+        return f[1] + v * (step - f[0])
+
+    def _predict(self, step: int) -> None:
+        held = set(self.belief.held_labels())
+        for lab, v in self.velocity.items():
+            o = self.belief.objects.get(lab)
+            if o is None or lab in held or float(np.linalg.norm(v)) <= self.track_min_speed:
+                continue
+            o.pos = np.r_[self._predicted_xy(o, step), o.pos[2]]
+            o.source = "tracked"
 
     def _held_check(self, obs: dict) -> None:
         """Once per grasp, when the arm holding ``label`` has lifted ``held_min_lift_m`` above the closing pose:
@@ -395,6 +497,8 @@ class RuntimeProvider:
         else:
             if self.held_checker is not None:
                 self._held_check(obs)
+            if self.track_reader is not None:
+                self._track(obs)
             if released and self.checker is not None and not self.belief.held_labels():
                 self.resync(obs, released)
             if self.watcher is not None and not self.belief.held_labels():
