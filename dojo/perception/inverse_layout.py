@@ -1007,6 +1007,10 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
 
 
 ARM_BASES = {"left": np.array([-0.3, -0.45, 0.765]), "right": np.array([0.3, -0.45, 0.765])}
+# table regions hidden from the head camera by the home-pose grippers (D0: pads and blocks there were the
+# confidently-wrong cases); objects within HOME_HIDE_RADIUS are flagged for a look
+HOME_HIDDEN_XY = ((-0.36, -0.21), (0.36, -0.21))
+HOME_HIDE_RADIUS = 0.08
 
 
 def look_at_camera(eye: np.ndarray, target: np.ndarray, K: np.ndarray, w: int = 640, h: int = 480) -> Camera:
@@ -1127,6 +1131,7 @@ class EstimatorConfig:
     paired_tex_margin: float = 0.04
     ambiguity_margin: float = 0.05
     rival_margin: float = 0.1
+    hidden_frac_flag: float = 0.1
     view_requests: bool = True
     color_M: list | None = None  # 4x3 affine map catalogue colour -> observed (color_calib.py)
     # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
@@ -1321,8 +1326,14 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                         and c.loss < h.loss + cfg.rival_margin):
                     rival = {"label": groups[c.label_group]["labels"][0], "key": c.key, "margin": round(float(c.loss - h.loss), 4)}
                     break
+        hidden = 0.0
+        if h.tag != "fixed":  # fraction of the head-view silhouette under the robot: confidence is overstated
+            s_h = h.sm().sil(head.cam, h.T())  # when only the visible part is fitted
+            if s_h.any():
+                hidden = float((s_h & head.robot).sum() / s_h.sum())
+        near_home = h.tag != "fixed" and any(np.hypot(h.x - c[0], h.y - c[1]) < HOME_HIDE_RADIUS for c in HOME_HIDDEN_XY)
         ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
-                     or rival is not None)
+                     or rival is not None or hidden > cfg.hidden_frac_flag or near_home)
         review = None
         if ambiguous and alt is not None and cfg.view_requests and h.tag != "fixed":
             review = view_request(h, alt)
@@ -1335,6 +1346,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "appearance": round(h.appearance, 3), "yaw": round(float(h.yaw), 4),
                                "occluded": bool(h.per_view.get("occluded", False)),
                                "ambiguous": ambiguous, "alternative": alt, "label_rival": rival, "review": review,
+                               "hidden_frac": round(hidden, 3), "near_home_grippers": bool(near_home),
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group")}}
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)
