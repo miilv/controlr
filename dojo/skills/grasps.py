@@ -406,8 +406,10 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
             if j == k:
                 continue
             m = 3 - j - k
-            for s in (1.0, -1.0):                        # enter through the +s face, approach along -s
-                d = min(float(ext[j]) / 2, depth)
+            for s, d in [(sg, dd) for sg in (1.0, -1.0) for dd in
+                         ((min(float(ext[j]) / 2, depth),) + ((depth / 2,) if float(ext[j]) / 2 > depth else ()))]:
+                # enter through the +s face, approach along -s; pads d inside it (also half as deep: a key's
+                # bow held near its top keeps the fingertips over the lock)
                 p_b = s * eye[j] * (float(ext[j]) / 2 - d)
                 offs = [0.0]
                 room = float(ext[m]) / 2 - edge

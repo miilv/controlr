@@ -676,6 +676,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
             continue
         for pp in picks[:4]:
             box_g = held_box(o, pp.T_tcp_obj)
+            g_hold = gap_to_grip(pp.grasp.width)            # the giver's fingers rest on the object's faces
             for H in HANDOVER_POINTS:
                 for T_t in tg[:max(1, yaw_sym)]:
                     for j in range(n_yaw):
@@ -696,10 +697,12 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                             if not rt.ok:
                                 continue
                             g_open = gap_to_grip(gt.open_gap())
-                            if not _grippers_apart(sk, g_arm, rg.q, CLOSED, t_arm, rt.q, g_open):
+                            g_take = gap_to_grip(gt.width)           # the taker's fingers once closed on it
+                            if not (_grippers_apart(sk, g_arm, rg.q, g_hold, t_arm, rt.q, g_open)
+                                    and _grippers_apart(sk, g_arm, rg.q, g_hold, t_arm, rt.q, g_take)):
                                 continue
                             rpre = sk.kin.ik(t_arm, gt.pre(0.06), w.home_q[t_arm], n_random=0)
-                            if not rpre.ok or not _grippers_apart(sk, g_arm, rg.q, CLOSED, t_arm, rpre.q, g_open):
+                            if not rpre.ok or not _grippers_apart(sk, g_arm, rg.q, g_hold, t_arm, rpre.q, g_open):
                                 continue
                             T_to = inv_T(gt.T) @ T_H
                             box_t = held_box(o, T_to)
@@ -708,7 +711,8 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                                 rp = sk.kin.ik(t_arm, Tp, w.home_q[t_arm], n_random=0)
                                 if not rp.ok:
                                     continue
-                                ok, _ = sk.coll.check(t_arm, rp.q, CLOSED, ignore=ign, held=box_t)
+                                ok, _ = sk.coll.check(t_arm, rp.q, CLOSED, ignore=ign, held=box_t,
+                                                      grip_only=tuple((place_kw or {}).get("grip_only", ())))
                                 if not ok:
                                     continue
                                 held_t = Held(label, T_to, box_t, gt)
@@ -909,7 +913,7 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
             for T in tg:
                 T[2, 3] -= press
             place_kw = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
-                        "turn": math.radians(turn_deg), "release": True}
+                        "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,)}
             res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                                  place_kw=place_kw)
             if not res.ok and res.status != "ended":
@@ -956,7 +960,7 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
         w.notes["insert"] = {"receptacle": rec, "fit": "blind"}
     sk.coll.include.add(rec)
     place_kw = {"pre_h": 0.02, "descend_rad": 0.025, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
-                "turn": math.radians(turn_deg), "release": True}
+                "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,)}
     res = place_oriented(sk, obj, targets, yaw_sym=ysym, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                          place_kw=place_kw)
     if not res.ok and res.status != "ended":

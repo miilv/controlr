@@ -195,7 +195,9 @@ class Collision:
             out.add(why[5:])
 
     def check(self, arm: str, q, gripper: float = 1.0, ignore=(), held: HeldBox | None = None,
-              obstacles=None, table: bool = True) -> tuple[bool, str]:
+              obstacles=None, table: bool = True, grip_only=()) -> tuple[bool, str]:
+        """``grip_only``: objects the held object may enter but the arm and gripper may not (a lock's
+        block while its key goes in)."""
         fr = self.kin.frames(arm, q)
         Tf = fr[-1]
         fingers = self.kin.finger_points(Tf, gripper)
@@ -219,6 +221,14 @@ class Collision:
                 inside = np.all(np.abs(loc) <= h, axis=1)
                 if inside.any():
                     return False, f"hits {lab}"
+        if grip_only and self.world is not None:
+            pts = np.vstack([links, palm, fingers])
+            for lab in grip_only:
+                if lab not in self.world.objects:
+                    continue
+                c, R, h = self.world.objects[lab].obb(self.obj_margin * 0.5)
+                if np.all(np.abs((pts - c) @ R) <= h, axis=1).any():
+                    return False, f"gripper hits {lab}"
         if held is not None and table:
             hc = held.corners_w(self.kin.tcp_from_flange(Tf), shrink=0.002)
             for p in hc:
@@ -240,7 +250,7 @@ class Motion:
     # ---- straight Cartesian line
     def line(self, arm: str, q0, T_goal, step_rad: float = SLOW, name: str = "line", gripper: float = 1.0,
              ignore=(), held: HeldBox | None = None, check: bool = True, table: bool = True,
-             max_step_m: float = LINE_STEP_M, max_step_deg: float = LINE_STEP_DEG) -> MoveResult:
+             max_step_m: float = LINE_STEP_M, max_step_deg: float = LINE_STEP_DEG, grip_only=()) -> MoveResult:
         q0 = np.asarray(q0, float)
         T0 = self.kin.tcp(arm, q0)
         T_goal = np.asarray(T_goal, float)
@@ -267,7 +277,7 @@ class Motion:
             if check:
                 near_start = t * dist < 0.05 and t * ang < 20
                 ok, why = self.coll.check(arm, r.q, gripper, ignore=ignore, held=held,
-                                          obstacles=obs_far if near_start else obs, table=table)
+                                          obstacles=obs_far if near_start else obs, table=table, grip_only=grip_only)
                 if not ok:
                     return self._partial(arm, qs, step_rad, name, "collision", f"waypoint {i}/{n}: {why}", T_goal)
             q = r.q

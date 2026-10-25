@@ -366,7 +366,7 @@ class Skills:
                    descend_rad: float = SLOW, open_g: float = OPEN, settle: int = 2, open_steps: int = OPEN_STEPS,
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
-                   pre_settle: int = 1):
+                   pre_settle: int = 1, grip_only=()):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -390,7 +390,7 @@ class Skills:
         allp = []
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
-                       pre_open_hold=pre_open_hold, turn=turn, release=release)
+                       pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only))
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -430,11 +430,12 @@ class Skills:
         return best
 
     def _place_tail(self, arm, q_pre, T_obj, h: "Held", release_gap, retreat, ignore, descend_rad, open_g, settle,
-                    open_steps, pre_open_hold, turn: float = 0.0, release: bool = True) -> ArmPlan | str:
+                    open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
+                    grip_only=()) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
-                                ignore=ignore)
+                                ignore=ignore, grip_only=grip_only)
         if not down.ok:
             return f"descend: {down.note}"
         t = ArmPlan(arm, np.asarray(q_pre, float), CLOSED)
@@ -612,7 +613,8 @@ class Skills:
                     r2 = self.kin.ik(a, T_tcp, w.home_q[a], n_random=0)
                     if not r2.ok:
                         continue
-                    ok, _ = self.coll.check(a, r2.q, CLOSED, ignore=ign, held=box)
+                    ok, _ = self.coll.check(a, r2.q, CLOSED, ignore=ign, held=box,
+                                            grip_only=tuple(place_kw.get("grip_only", ())))
                     if not ok:
                         continue
                     n_p += 1
