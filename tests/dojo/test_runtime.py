@@ -1701,3 +1701,11 @@ def test_belt_tracking_fits_the_velocity_and_moves_the_belief():
     assert abs(float(prov.belief.objects["block_0"].pos[0]) - (x0 + v * 43)) < 0.002     # the fit, at this step
     assert float(np.linalg.norm(prov.velocity.get("block_1", np.zeros(2)))) < 3e-4       # the others are at rest
     assert prov.stats["track_reads"] == 11                                              # every 4th step
+
+
+def test_twin_is_started_for_the_scene_the_policy_chose():
+    started = []
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="bundle"))
+    pol._twin_factory = lambda scene: started.append(scene) or FakeTwinClient(task=scene)
+    assert pol.twin("cover_blocks").info()["task"] == "cover_blocks" and started == ["cover_blocks"]
+    assert pol.twin("build_tower").info()["task"] == "cover_blocks" and started == ["cover_blocks"]   # once

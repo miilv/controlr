@@ -190,10 +190,16 @@ class RuntimePolicy:
             self._assets = AssetDB(paths.OBJECTS)
         return self._assets
 
-    def twin(self):
+    def twin(self, scene: str | None = None):
+        """The twin client. A host that sets ``_twin_factory(scene) -> client`` (the bridge driver) gets the twin started
+        for the scene the episode actually uses (after the vocabulary choice); else the bundle's running service."""
         if self._tc is None:
-            from dojo.simlab.twin_service import TwinClient
-            self._tc = TwinClient()
+            f = getattr(self, "_twin_factory", None)
+            if f is not None and scene:
+                self._tc = f(scene)
+            else:
+                from dojo.simlab.twin_service import TwinClient
+                self._tc = TwinClient()
         return self._tc
 
     def perception(self):
@@ -323,7 +329,7 @@ class RuntimePolicy:
         verifier = None
         if cfg.verify == "bundle":
             from .verifier import BundleVerifier
-            tc = self.twin()
+            tc = self.twin(scene)
             tw_task = tc.info().get("task")
             if tw_task != scene:
                 events.append({"kind": "verify_unavailable", "reason": f"twin runs {tw_task!r}, the instruction "
