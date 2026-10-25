@@ -22,8 +22,17 @@ Shared machine conventions:
 - compute3 (5090 32 GB, shared with others): `~/dojo-*`.
 - Before starting Isaac or a large model, check free VRAM with `nvidia-smi`; never touch other people's processes;
   stop what you started.
-- A new GPU box: `scripts/bootstrap_gpu_box.sh HOST` sets all of this up (compute3's layout, `~/dojo-gpu.lock`,
-  `~/dojo-env.sh`); see [../docs/RUNBOOK-new-gpu-box.md](../docs/RUNBOOK-new-gpu-box.md).
+- GPU locks: ONE heavy GPU job per machine holds `~/dojo-gpu.lock` (Isaac with rendering, a bundle, a model;
+  ≤ 30 min per hold, 90 s yield). Up to four physics-only light jobs hold one of `~/dojo-gpu-light{,2,3,4}.lock`
+  each (g3's light lane: `DOJO_GPU_LOCKS="$DOJO_GPU_LIGHT_LOCKS"`).
+- Scopes: big jobs run in `systemd-run --user --scope -q -p MemoryMax=... -p CPUQuota=...`: bundle 24G / 1400%,
+  proxy 16G / 1200%, batch 20G / 1200%, g3 10G / 600%, light 8G / 600% (`$DOJO_SCOPE_*` in `~/dojo-env.sh`); start
+  only with ≥ 25 GB MemAvailable.
+- New GPU boxes: `scripts/bootstrap_gpu_box.sh HOST` (one) or `scripts/bootstrap_fleet.sh HOST...` (several,
+  peer-to-peer) sets all of this up: compute3's layout, the locks, `~/dojo-env.sh`, and `~/dojo-box.json` (role
+  `full` = 5.1 renders, official dev_eval + bridge; `physics` = 5.1 physics-only + Isaac 6.0 render for proxy_eval;
+  capabilities from the smokes). Pick boxes by `~/dojo-box.json`; see
+  [../docs/RUNBOOK-new-gpu-box.md](../docs/RUNBOOK-new-gpu-box.md).
 
 ## simlab quick reference
 
