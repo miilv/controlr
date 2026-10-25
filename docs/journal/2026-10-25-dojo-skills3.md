@@ -81,6 +81,14 @@ Fill_pen v1 (000e5be: servo tail with probes, 4 mm seat tolerance raised to 2 cm
 - Fix (e544a41, queued as fill_pen v2): pens hover 8 mm above the holder, a second corrected hover when the first is
   > 2 mm off in xy, no probing, and a servo descent that stops short (IK) is resumed. The plug keeps its 3 mm hover.
 
+Organize v1 (000e5be), first chunk, 100000-02: 0/3; scores 0.5, 0.5, 0.25.
+- The mouse goes in 3/3.
+- Alarm: on the drawer 1/3. 1/3 grasp_slip (rose 23 mm). In 1/3 the transfer screen's 2500-IK budget ran out before
+  its feasible pairs (budget raised to 6000 in later commits).
+- Keyboard: pushed into the frame 1/3 ("within 10 mm after 4 strokes", the face-height push). 2/3 had no stroke plan
+  on either axis (the keyboard's front edge 0.18-0.2 m from the arm bases).
+- Figurine: no grasp-place pair next to the drawer, 3/3.
+
 ## 4. Failure taxonomy (what the traces with measured joints showed)
 
 1. **The arm's practical envelope is smaller than the IK's.** Two cases. (a) Places 0.66-0.67 m from the arm's base: the measured TCP stopped about 30 mm above the commanded one, at the strip, and probing could not help (plug v1 7/10). (b) A place with the wrist on j6's ±3.14 stop (and j4 at 1.7) stalled the same way (plug v2 1/5). Filters: `PLACE_REACH` 0.60 m and `wrist_safe` (j4 ≤ 1.6, |j6| ≤ 3.0) on transfer and handover places. A far target then goes through a relay to the other arm.
