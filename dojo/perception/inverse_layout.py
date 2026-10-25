@@ -1011,6 +1011,7 @@ ARM_BASES = {"left": np.array([-0.3, -0.45, 0.765]), "right": np.array([0.3, -0.
 # confidently-wrong cases); objects within HOME_HIDE_RADIUS are flagged for a look
 HOME_HIDDEN_XY = ((-0.36, -0.21), (0.36, -0.21))
 HOME_HIDE_RADIUS = 0.08
+FG_RESID_RADIUS = 0.05  # metres around a fit within which unexplained foreground counts against it
 
 
 def look_at_camera(eye: np.ndarray, target: np.ndarray, K: np.ndarray, w: int = 640, h: int = 480) -> Camera:
@@ -1132,6 +1133,7 @@ class EstimatorConfig:
     ambiguity_margin: float = 0.05
     rival_margin: float = 0.1
     hidden_frac_flag: float = 0.1
+    fg_resid_flag: float = 0.15
     view_requests: bool = True
     color_M: list | None = None  # 4x3 affine map catalogue colour -> observed (color_calib.py)
     # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
@@ -1291,6 +1293,26 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             chosen[i].appearance = float(C[row].min())
     timings["identity_s"] = round(time.time() - t4, 3)
 
+    # ---- unexplained foreground near each fit (head view): an object fitted to part of a blob, or a neighbour
+    # shifted onto it, leaves foreground uncovered right next to it
+    resid_near = {}
+    expl_all = np.zeros_like(head.fg)
+    for h in chosen:
+        h.sm().sil(head.cam, h.T(), out=expl_all)
+    resid = head.fg & (1 - cv2.dilate(expl_all, np.ones((5, 5), np.uint8)))
+    for h in chosen:
+        if h.per_view.get("occluded"):
+            continue
+        T = h.T()
+        s_h = h.sm().sil(head.cam, T)
+        n_s = int(s_h.sum())
+        if n_s == 0:
+            continue
+        _, z = head.cam.project(T[:3, 3][None])
+        r_px = int(np.clip(head.cam.K[0, 0] * FG_RESID_RADIUS / max(float(z[0]), 0.1), 3, 60))
+        ring = cv2.dilate(s_h, np.ones((2 * r_px + 1, 2 * r_px + 1), np.uint8)) & (1 - s_h)
+        resid_near[id(h)] = float((resid & ring).sum() / n_s)
+
     # ---- records
     for gi, g, _ in pending:
         members = [h for h in chosen if h.label_group == gi]
@@ -1318,6 +1340,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             conf = float(np.clip(1 - h.per_view.get("sil_loss", h.loss), 0, 1))
             if h.per_view.get("occluded"):
                 conf = min(conf, 0.2)
+            conf *= 1.0 - min(resid_near.get(id(h), 0.0), 0.5)  # unexplained foreground next to the fit
         alt = h.per_view.get("alternative")
         rival = None
         if h.tag != "fixed":  # another label's hypothesis explains the same spot almost as well
@@ -1332,8 +1355,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             if s_h.any():
                 hidden = float((s_h & head.robot).sum() / s_h.sum())
         near_home = h.tag != "fixed" and any(np.hypot(h.x - c[0], h.y - c[1]) < HOME_HIDE_RADIUS for c in HOME_HIDDEN_XY)
+        fg_near = resid_near.get(id(h), 0.0)
         ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
-                     or rival is not None or hidden > cfg.hidden_frac_flag or near_home)
+                     or rival is not None or hidden > cfg.hidden_frac_flag or near_home or fg_near > cfg.fg_resid_flag)
         review = None
         if ambiguous and alt is not None and cfg.view_requests and h.tag != "fixed":
             review = view_request(h, alt)
@@ -1347,6 +1371,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "occluded": bool(h.per_view.get("occluded", False)),
                                "ambiguous": ambiguous, "alternative": alt, "label_rival": rival, "review": review,
                                "hidden_frac": round(hidden, 3), "near_home_grippers": bool(near_home),
+                               "fg_resid_near": round(fg_near, 3),
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group")}}
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)
