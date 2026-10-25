@@ -1,0 +1,218 @@
+{
+ "align_blocks": {
+  "score": 76,
+  "successRate": 76
+ },
+ "arrange_largest_number": {
+  "score": 83.8,
+  "successRate": 80
+ },
+ "arrange_largest_number_random": {
+  "score": 76.4,
+  "successRate": 68
+ },
+ "build_tower": {
+  "score": 23.2,
+  "successRate": 4
+ },
+ "classify_objects": {
+  "score": 97.1,
+  "successRate": 96
+ },
+ "classify_objects_by_language": {
+  "score": 94.6,
+  "successRate": 92
+ },
+ "cover_blocks": {
+  "score": 100,
+  "successRate": 100
+ },
+ "deposit_coin": {
+  "score": 44,
+  "successRate": 40
+ },
+ "fasten_screws": {
+  "score": 80.6,
+  "successRate": 68
+ },
+ "fill_egg_holder": {
+  "score": 21.2,
+  "successRate": 6
+ },
+ "fill_pen_holder": {
+  "score": 23.5,
+  "successRate": 8
+ },
+ "fold_clothes": {
+  "score": 58.4,
+  "successRate": 52
+ },
+ "fold_clothes_random": {
+  "score": 60,
+  "successRate": 52
+ },
+ "general_pickup": {
+  "score": 86,
+  "successRate": 86
+ },
+ "hang_mugs": {
+  "score": 27,
+  "successRate": 4
+ },
+ "hang_mugs_random": {
+  "score": 28.4,
+  "successRate": 20
+ },
+ "imitate_sorting_sequence": {
+  "score": 92.4,
+  "successRate": 92
+ },
+ "insert_key": {
+  "score": 0,
+  "successRate": 0
+ },
+ "insert_tubes": {
+  "score": 66.4,
+  "successRate": 50
+ },
+ "make_kong": {
+  "score": 0,
+  "successRate": 0
+ },
+ "make_toast": {
+  "score": 26,
+  "successRate": 16
+ },
+ "make_toast_random": {
+  "score": 17,
+  "successRate": 12
+ },
+ "match_and_pick_from_conveyor": {
+  "score": 86,
+  "successRate": 86
+ },
+ "organize_table": {
+  "score": 25,
+  "successRate": 4
+ },
+ "pack_objects_into_box": {
+  "score": 52.8,
+  "successRate": 40
+ },
+ "pack_objects_into_box_random": {
+  "score": 39.2,
+  "successRate": 20
+ },
+ "pick_from_conveyor_by_image": {
+  "score": 22,
+  "successRate": 22
+ },
+ "play_Xylophone": {
+  "score": 62,
+  "successRate": 62
+ },
+ "play_stacking_toy": {
+  "score": 78.2,
+  "successRate": 54
+ },
+ "play_tic_tac_toe": {
+  "score": 97.2,
+  "successRate": 94
+ },
+ "plug_in_charger": {
+  "score": 16,
+  "successRate": 16
+ },
+ "pour_balls_into_vase": {
+  "score": 66,
+  "successRate": 66
+ },
+ "pour_by_language": {
+  "score": 18.4,
+  "successRate": 18
+ },
+ "pour_liquid_into_cup": {
+  "score": 4,
+  "successRate": 4
+ },
+ "pour_liquid_into_cup_random": {
+  "score": 4,
+  "successRate": 4
+ },
+ "press_by_number": {
+  "score": 0,
+  "successRate": 0
+ },
+ "push_T": {
+  "score": 80,
+  "successRate": 80
+ },
+ "push_T_random": {
+  "score": 92,
+  "successRate": 92
+ },
+ "put_bottles_into_dustbin": {
+  "score": 92.2,
+  "successRate": 88
+ },
+ "solve_equation": {
+  "score": 72,
+  "successRate": 72
+ },
+ "sort_nesting_dolls_by_size": {
+  "score": 84,
+  "successRate": 84
+ },
+ "sort_nesting_dolls_by_size_random": {
+  "score": 56,
+  "successRate": 56
+ },
+ "stack_blocks": {
+  "score": 100,
+  "successRate": 100
+ },
+ "stack_blocks_by_language": {
+  "score": 100,
+  "successRate": 100
+ },
+ "stack_blocks_random": {
+  "score": 100,
+  "successRate": 100
+ },
+ "stack_bowls": {
+  "score": 82.4,
+  "successRate": 80
+ },
+ "stack_bowls_random": {
+  "score": 65.4,
+  "successRate": 60
+ },
+ "store_laptop_and_headphones": {
+  "score": 3.2,
+  "successRate": 0
+ },
+ "store_laptop_and_headphones_random": {
+  "score": 6.4,
+  "successRate": 0
+ },
+ "store_tools_in_toolbox": {
+  "score": 15.5,
+  "successRate": 0
+ },
+ "swap_T": {
+  "score": 92,
+  "successRate": 92
+ },
+ "swap_blocks": {
+  "score": 40,
+  "successRate": 40
+ },
+ "sweep_blocks": {
+  "score": 4,
+  "successRate": 4
+ },
+ "sweep_blocks_random": {
+  "score": 8,
+  "successRate": 8
+ }
+}
