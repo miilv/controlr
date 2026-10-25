@@ -477,18 +477,6 @@ def belt_velocity(sk: Skills, labels: list[str], steps: int = 4) -> np.ndarray:
     return np.median(np.array(d), axis=0) if d else np.zeros(2)
 
 
-def _object_at(o, pos):
-    class _Ctx:
-        def __enter__(self):
-            self.saved = o.pos.copy()
-            o.pos = np.asarray(pos, float).copy()
-            return o
-
-        def __exit__(self, *a):
-            o.pos = self.saved
-    return _Ctx()
-
-
 def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max: int = 600, n_desc: int = 8,
                    n_close: int = 5, h_pre: float = 0.06, lift: float = 0.16, arms=None, ignore=()):
     """A grasp of an object riding the belt: for each arm, the earliest step ``t`` (from now, >= ``t_min``) at which a
@@ -502,16 +490,23 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
     v3 = np.r_[v, 0.0]
     best = None
     arms = list(arms) if arms else list(ARMS)
+    import dataclasses
+    # grasps in the object's frame, once per arm (a pure translation along the belt keeps them valid)
+    rel = {}
+    for a in arms:
+        cands = G.candidates(o, sk.kin, a, "top")
+        if not cands:                                           # wider than the hand on top: slices / antipodal
+            cands = G.slice_grasps(o, sk.kin, a) + G.antipodal_grasps(o, sk.kin, a)
+        cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.75], key=lambda g: g.score)[:6]
+        rel[a] = [(g, g.T[:3, 3] - o.pos) for g in cands]
     for t in range(t_min, t_max, 6):
         for a in arms:
             if best is not None and best[1] <= t:
                 break
-            with _object_at(o, o.pos + v3 * t):
-                cands = G.candidates(o, sk.kin, a, "top")
-                if not cands:                                   # wider than the hand on top: slices / antipodal
-                    cands = G.slice_grasps(o, sk.kin, a) + G.antipodal_grasps(o, sk.kin, a)
-                cands = [g for g in cands if -float(g.T[2, 0]) > 0.75]
-            for g in sorted(cands, key=lambda g: g.score)[:6]:
+            for g0, off in rel[a]:
+                T = g0.T.copy()
+                T[:3, 3] = o.pos + v3 * t + off
+                g = dataclasses.replace(g0, T=T)
                 go = gap_to_grip(g.open_gap())
                 T_g = g.T                                       # at contact time t
                 # tracking samples: descent (n_desc steps ending at t), close (n_close), lift (6 steps)
@@ -535,7 +530,15 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
                 qs = _track_ik(sk, a, samples, sk.world.home_q[a])
                 if qs is None:
                     continue
-                c_ok, why = sk.coll.check(a, qs[0][1], go, ignore=tuple(ignore) + (label,))
+                # everything on the belt rides along: check against the objects where they will be at the descent
+                moving = [m for m in w.task_objects() if m.obj_type == "Rigid" and m.label != label]
+                for m in moving:
+                    m.pos = m.pos + v3 * (t - n_desc)
+                try:
+                    c_ok, why = sk.coll.check(a, qs[0][1], go, ignore=tuple(ignore) + (label,))
+                finally:
+                    for m in moving:
+                        m.pos = m.pos - v3 * (t - n_desc)
                 if not c_ok:
                     continue
                 # the approach from the current joints to the first sample
