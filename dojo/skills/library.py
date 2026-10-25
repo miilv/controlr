@@ -366,7 +366,10 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
         for l in picks.values():
             tries[l] = tries.get(l, 0) + 1
         try:
-            sk.parallel([p.plan for p in plans.values()], name="pick")
+            if sk.refine is None:
+                sk.parallel([p.plan for p in plans.values()], name="pick")
+            else:                          # each pick hovers, refines from the wrist, then descends
+                plans = {a: sk.execute_pick(p) for a, p in plans.items()}
         except (BudgetExceeded, EpisodeEnded) as e:
             return {"ok": False, "stage": "pick", "note": str(e)}
         for a, pp in plans.items():
