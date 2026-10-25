@@ -109,12 +109,17 @@ def merge_looked(rec0: dict, rec1: dict, flagged_labels) -> dict:
         r["label"] = lab
         r.setdefault("_perception", {})["merged_from_look"] = True
     have = {r.get("label") for _, _, r in iter_records(out)}
+    held = [(c, np.asarray(r["default_pos"], float)) for _, c, r in iter_records(out)]
     for nf in list(out.get("_not_found") or []):
         lab = nf.get("label")
         for i, (t, c, f) in enumerate(fused):
+            p = np.asarray(f["default_pos"], float)
+            if any(c == c0 and float(np.linalg.norm(p[:2] - p0[:2])) < 0.03 for c0, p0 in held):
+                continue                    # an object we already hold under another label (labels permute)
             if f.get("label") == lab and lab not in have and i not in used:
                 out.setdefault(t, {}).setdefault(c, []).append(_copy.deepcopy(f))
                 out["_not_found"] = [x for x in out["_not_found"] if x.get("label") != lab]
+                held.append((c, p))
                 used.add(i)
                 break
     return out

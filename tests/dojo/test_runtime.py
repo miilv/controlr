@@ -978,3 +978,13 @@ def test_failed_pick_refine_triggers_a_local_search():
     ls = [e for e in rep["events"] if e["kind"] == "lost_search"]
     assert ls and ls[0]["label"] == "block_1" and ls[0]["found"], rep["events"][-6:]
     assert _stacked(env)
+
+
+def test_merge_looked_does_not_add_a_held_object_under_a_missing_label():
+    from dojo.runtime.estimate import merge_looked
+    r0 = {"Rigid": {"block": [{"label": "block_0", "category": "block", "category_idx": 1, "default_pos": [0.1, -0.1, 0.78],
+                               "default_ori": [1, 0, 0, 0]}]}, "_not_found": [{"label": "block_1"}]}
+    r1 = {"Rigid": {"block": [{"label": "block_1", "category": "block", "category_idx": 1, "default_pos": [0.101, -0.1, 0.78],
+                               "default_ori": [1, 0, 0, 0]}]}}            # the same physical block, other label
+    m = merge_looked(r0, r1, [])
+    assert [r["label"] for r in m["Rigid"]["block"]] == ["block_0"] and m["_not_found"]
