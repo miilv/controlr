@@ -531,6 +531,8 @@ def holder_of(sk: Skills, label: str) -> str | None:
 
 
 DISC_SQUEEZE = 4              # still steps after the close before a disc is lifted (twin: lifted at once, it stayed)
+DISC_LIFT_RAD = 0.03          # rad/step of a disc's lift out of its holder (twin: at 0.10 it stayed in the holder 5/5,
+                              # at 0.03 and 0.01 it came out 3/3)
 DISC_PLACE_KW = {"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 3, "servo": True,
                  "fingers_out": True, "probe": False, "hover_clear": 0.006, "seat_tol": 0.05}
 
@@ -564,7 +566,7 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
         if abs(float(oo.R[2, k])) > 0.9:
             return pinch_grasps(sk, oo, a)
         return edge_grasps(sk, oo, a, floor + 0.003)
-    tkw = {"grasps": grasps, "screen_fingers_out": True, "pick_kw": {"squeeze": DISC_SQUEEZE}}
+    tkw = {"grasps": grasps, "screen_fingers_out": True, "pick_kw": {"squeeze": DISC_SQUEEZE, "lift_rad": DISC_LIFT_RAD}}
     sk.log(f"[disc] {obj} -> {rec}: {len(tg)} targets, holder {hold}")
     direct = sk.plan_transfer(obj, tg, ignore=(rec,), place_kw=place_kw, **tkw)
     if isinstance(direct, SkillResult):
