@@ -137,7 +137,7 @@ def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict]
                     "major_err_mm": float(abs(dp[:2] @ ax) * 1000),
                     "minor_err_mm": float(abs(dp[:2] @ np.array([-ax[1], ax[0]])) * 1000),
                     "occluded": bool(pp.get("occluded", False)), "ambiguous": bool(pp.get("ambiguous", False)),
-                    "has_review": pp.get("review") is not None,
+                    "has_review": pp.get("review") is not None, "fg_resid_near": pp.get("fg_resid_near"), "hidden_frac": pp.get("hidden_frac"),
                     "z_err_mm": float(dp[2] * 1000),
                     "rot_err_deg": rot_err_deg(p["default_ori"], o["quat"], sym),
                     "yaw_err_deg": yaw_err_deg(p["default_ori"], o["quat"], sym),
@@ -234,7 +234,7 @@ def build_bg_folds(root: Path, out: Path) -> None:
 
 
 def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None = None, fuse: bool = False,
-                   bg_loo: bool = False) -> dict:
+                   bg_loo: bool = False, look: bool = False, look_frame: str = "L1") -> dict:
     """Estimate frame k of an episode (with ``fuse``: frame 0 plus frames 1..k as extra views) and score it
     against frame k's GT."""
     from . import d0
@@ -249,11 +249,25 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
     cal = os.environ.get("DOJO_COLOR_CALIB")
     if cal and Path(cal).exists() and "color_M" not in kw:  # the map fitted on the OTHER fold
         kw["color_M"] = json.loads(Path(cal).read_text())[f"fold{zlib.crc32(ep.name.encode()) % 2}"]
+    kw.update(json.loads(os.environ.get("DOJO_CFG", "{}")))  # ablations: estimator config overrides
     cfg = EstimatorConfig(use_wrists=use_wrists, **kw)
     bgs = fold_backgrounds(ep) if bg_loo else None
+    look_used = False
     t0 = time.time()
     try:
-        if fuse and k > 0:
+        if look:  # frame 0 fused with simlab's render at our look_plan poses (frame_L1), scored on frame-0 GT
+            o0 = d0.load_obs(ep, 0)
+            ex = []
+            # only a complete render counts (simlab writes frame_L1.json before the PNGs)
+            lf = look_frame
+            if not (ep / f"frame_{lf}.json").exists() and lf != "L1":
+                lf = "L1"  # simlab skips L2 where the v2 plan equals v1's
+            if (ep / f"frame_{lf}.json").exists() and all((ep / f"frame_{lf}_{c}.png").exists() for c in d0.CAMS):
+                oL = d0.load_obs(ep, lf)
+                ex = [(oL["images"], oL["state"])]
+            look_used = bool(ex)
+            rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=ex)
+        elif fuse and k > 0:
             o0 = d0.load_obs(ep, 0)
             extra = [(d0.load_obs(ep, j)["images"], d0.load_obs(ep, j)["state"]) for j in range(1, k + 1)]
             rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=extra)
@@ -267,13 +281,14 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
     runtime = time.time() - t0
     gt = d0.load_gt(ep, k)  # DEV-ONLY, after the estimate
     task = obs["task"]
-    rows, n_gt, n_pred = score_record(rec, gt, task, {"episode": ep.name, "frame": k, "wrists": use_wrists, "fuse": fuse})
+    rows, n_gt, n_pred = score_record(rec, gt, task, {"episode": ep.name, "frame": k, "wrists": use_wrists,
+                                                      "fuse": "look" if look else fuse, "look_used": look_used})
     import resource
 
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
     return {"frame": {"task": task, "episode": ep.name, "frame": k, "runtime_s": runtime, "error": err, "peak_rss_mb": round(peak),
                       "timings": rec.get("_perception", {}).get("timings"), "missing": rec.get("_missing", []),
-                      "n_gt": n_gt, "n_pred": n_pred, "wrists": use_wrists, "fuse": fuse},
+                      "n_gt": n_gt, "n_pred": n_pred, "wrists": use_wrists, "fuse": fuse, "look_used": look_used},
             "objects": rows}
 
 
@@ -373,6 +388,8 @@ def main(argv=None):
     ap.add_argument("--both", action="store_true", help="run with and without wrists")
     ap.add_argument("--fuse", action="store_true", help="frames > 0: fuse frames 0..k")
     ap.add_argument("--bg-loo", action="store_true", help="2-fold median backgrounds from the other half of the D0 episodes")
+    ap.add_argument("--look", action="store_true", help="frame 0 + simlab's frame_L1 (renders at our look poses)")
+    ap.add_argument("--look-frame", default="L1", help="L1 (look_poses_v1) or L2 (v2; falls back to L1 where unchanged)")
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
@@ -398,7 +415,7 @@ def main(argv=None):
             for k in a.frames:
                 if (ep / f"frame_{k}.json").exists():
                     for wr in ([True, False] if a.both else [not a.no_wrists]):
-                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo))
+                        jobs.append((str(ep), k, wr, None, a.fuse, a.bg_loo, a.look, a.look_frame))
     print(f"{len(jobs)} frames", flush=True)
     rows, frames = [], []
     with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, open(a.out / "frames.jsonl", "w") as ff:

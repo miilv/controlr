@@ -8,6 +8,7 @@ mkdir -p "$OUT/logs"
 for sc in pick_place stack push; do
   "$HERE/scripts/simlab/rdpy.sh" -m dojo.simlab.g2 record --scenario "$sc" --out "$OUT" "$@" > "$OUT/logs/${sc}_record.log" 2>&1
   echo "$(date -u +%T) $sc record rc=$?" >> "$OUT/logs/progress.txt"
+  sleep "${SIMLAB_LOCK_YIELD_S:-90}"   # team lock policy: yield before re-taking the GPU lock
   "$HERE/scripts/simlab/rdpy.sh" -m dojo.simlab.g2 replay --scenario "$sc" --out "$OUT" --tag new_process --no-planner "$@" > "$OUT/logs/${sc}_replay.log" 2>&1
   echo "$(date -u +%T) $sc replay rc=$?" >> "$OUT/logs/progress.txt"
 done

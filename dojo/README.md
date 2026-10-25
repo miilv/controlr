@@ -6,6 +6,8 @@ Design: [../docs/design/robodojo-v2.md](../docs/design/robodojo-v2.md). Evidence
 |---|---|---|
 | `dojo/simlab/` | simlab | Dev-layout generator, headless RoboDojo runner, GT dumps (dev only), `Twin` API, determinism tests |
 | `dojo/perception/` | perception | Asset catalogue (meshes, stable poses), inverse layout: RGB + proprio → layout record, accuracy eval |
+| `dojo/skills/` | skills | WorldState, own-IK motion layer, grasps, skills, a generic skill library behind one planner entry point (`planner.solve`: instruction + WorldState -> skill), plan + verify (`TwinBackend`), G3 harness (`g3.py`, `scripts/skills/g3*.sh`) |
+| `dojo/runtime/` | integration | The one proxy_eval policy (`RuntimePolicy`): perceive (+ look macro) → WorldState → supervisor (instruction-only) → skills with twin verify (bundle) → resync → finish; firewall; eval driver `scripts/dojo/integ_eval.sh` / `launch.sh` (modes gt / perception) |
 | `baselines/pyrua/` | pyrua | PyRUA-Lean reproduction on our infra (the floor) |
 
 Hard rule (the only one): at eval time the policy uses only the official observation contract. Never read
@@ -28,6 +30,7 @@ Run everything through `scripts/simlab/rdpy.sh` (RoboDojo's conda python + the t
 |---|---|
 | layout schema, perturbation | `dojo/simlab/layout.py` |
 | new dev layouts (seeds >= 100000) | `-m dojo.simlab.gen_layouts --task T --n 25` |
+| pre-settled records `<id>.settled.json` (prefer these) | `scripts/simlab/presettle_all.sh [task ...]` (`-m dojo.simlab.presettle --task T`) |
 | load layouts, official obs vs dev-only GT | `dojo.simlab.runner.RoboDojoRunner` |
 | twin: load / snapshot / restore / step / verify / load_from_estimate | `dojo.simlab.twin.Twin` |
 | scripted motion, replayable action lists | `dojo/simlab/motion.py` |
@@ -35,7 +38,8 @@ Run everything through `scripts/simlab/rdpy.sh` (RoboDojo's conda python + the t
 | G2 determinism / sensitivity | `scripts/simlab/g2_all.sh OUT [--physics-only]` |
 | twin throughput | `scripts/simlab/twin_bench.sh` |
 | RoboDojo's eval client on dev layouts (official, needs 5.1 rendering) | `scripts/simlab/dev_eval.sh --task T --policy P` |
-| PROXY dev-eval on compute3 (5.1 physics + 6.0 render on demand) | `scripts/simlab/proxy_eval.sh --task T --layouts ... --policy module:Class` |
+| PROXY dev-eval on compute3 (5.1 physics + 6.0 render on demand) | `scripts/simlab/proxy_eval.sh --task T --layouts ... --policy module:Class [--bundle]` |
+| twin as a service for a policy (inside `--bundle`) | `dojo.simlab.twin_service.TwinClient` |
 | minimal RoboDojo on another GPU | `scripts/simlab/install_min.sh` |
 
 ### Proxy dev-eval with your own policy (compute3)
@@ -61,7 +65,22 @@ ssh compute3 'cd ~/dojo-simlab && scripts/simlab/proxy_eval.sh --task stack_bloc
 
 Every episode goes through RoboDojo's own reset, `take_action` step accounting, `step_lim` and reward
 latches; only the frames come from Isaac 6.0 (RoboDojo's stage, cameras and render settings). Episodes
-are serial. Open: a policy that also wants `Twin.verify` needs a second twin env; one process holds one Kit
-app / task env, and the one-GPU-job rule allows one such process per machine, so this is not wired yet.
+are serial.
+
+`--bundle [--twin-envs N]` adds a twin service (physics-only `Twin`, N <= 16, default 8) for the same task;
+the whole bundle (episode env + render service + twin) is ONE GPU job: one lock, one scope (24 GB / 14 cores).
+Inside the policy:
+
+```python
+from dojo.simlab.twin_service import TwinClient
+tc = TwinClient()                                  # env vars set by the bundle
+tc.load_from_estimate(layout_estimate, robot={"left_q": q_l, "right_q": q_r, "left_grip": 1.0, "right_grip": 1.0})
+outs = tc.verify({"layout": layout_estimate, "robot": {...}}, [{"actions": seg, "meta": {...}}, ...],
+                 perturb={"pos_mm": 2.0, "yaw_deg": 1.0}, k=4)    # outcome fields: see Twin.verify
+```
+
+`dojo.simlab.proxy_eval:VerifyReplayPolicy` (spec `verifyreplay:TRAJ.json[:k]`) is a dev demo of the
+bundle. `info["layout_file"]` exists only in dev runs; a real policy passes its perception estimate.
+Layout lists: prefer `<id>.settled.json` (objects at the poses RoboDojo's settle gives them).
 
 Findings and numbers: [docs/journal/2026-10-24-dojo-simlab.md](../docs/journal/2026-10-24-dojo-simlab.md).

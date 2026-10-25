@@ -35,7 +35,8 @@ def episodes(root: Path | None = None, task: str | None = None) -> list[Path]:
 
 
 def frames(ep: Path) -> list[int]:
-    return sorted(int(p.stem.split("_")[1]) for p in ep.glob("frame_*.json"))
+    """Numbered frames (0..3); named extra frames such as ``frame_L1`` (simlab's look renders) excluded."""
+    return sorted(int(p.stem.split("_")[1]) for p in ep.glob("frame_*.json") if p.stem.split("_")[1].isdigit())
 
 
 def _read_rgb(p: Path) -> np.ndarray:
