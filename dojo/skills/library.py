@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import re
 
 import numpy as np
 
@@ -1086,7 +1087,8 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
         receptacles = rest
     # 1. the assets say where it goes: the object's active "insert" frame on a receptacle's support /
     #    functional frames (a charger's plug point on the power strip's outlets)
-    ins = functional_frames(o, "insert", active=True)
+    ins = [F for tag in o.asset.active_functional if "insert" in tag.lower()
+           for F in functional_frames(o, tag, active=True)]
     if ins:
         tg, rec = [], None
         for r in receptacles:
@@ -1095,6 +1097,9 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
             c = w.obj(r)
             frames = [T_from(np.asarray(f[0][:3], float), quat=np.asarray(f[0][3:7], float) / np.linalg.norm(f[0][3:7]))
                       for tag in c.asset.support for f in [[x] for x in _support_raw(c, tag)]]
+            # openings named as such (a coin bank's "slot_opening")
+            frames += [F for tag in c.asset.functional if re.search(r"slot|opening|insert", tag.lower())
+                       for F in functional_frames(c, tag)]
             for Ts in frames:
                 for Ti in ins:
                     tg.append(c.T @ Ts @ inv_T(Ti))

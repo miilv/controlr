@@ -312,7 +312,10 @@ def refine_insertion(peg, hole, T_obj, half: float = 0.003, res: float = 0.0001,
     floor = float(fl.max()) if len(fl) else None
     dz = 0.0
     if press_floor and floor is not None and key[0] >= 0.999:
-        dz = floor - tip                                                   # leading end down onto the floor
+        # leading end down onto the floor, but no deeper than most of the object's own height (a coin goes
+        # into a bank's slot and drops; the bank's floor is 9 cm further down)
+        h_obj = float(P[:, 2].max() - tip)
+        dz = max(floor - tip, -0.8 * h_obj)
         T_new_loc[2, 3] += dz
     T_new = np.linalg.inv(T_hw) @ T_new_loc
     return T_new, {"inside": key[0], "clearance": key[1], "shift_mm": (round(dx * 1000, 2), round(dy * 1000, 2)),
