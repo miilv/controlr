@@ -70,7 +70,9 @@ if [[ "$PERC" == local ]]; then
   key() { python3 -c 'import secrets; print(secrets.token_hex(16))'; }
   port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
   export DOJO_PERCEPTION_AUTHKEY="$(key)" DOJO_PERCEPTION_PORT="$(port)" DOJO_PERCEPTION_READY="$OUT/$ID/perception.ready"
-  ( cd "$HERE" && DOJO_ILIA=1 PYOPENGL_PLATFORM=egl nice "$PY" -u -m dojo.runtime.perception_service ) \
+  # exec: $! is the service's own PID, so the cleanup trap stops it (with a plain subshell it killed only the bash
+  # and the service lived on, holding fd 9 = the session lock: the next episode waited on it, isr-lab 2026-10-26)
+  ( cd "$HERE" && DOJO_ILIA=1 PYOPENGL_PLATFORM=egl exec nice "$PY" -u -m dojo.runtime.perception_service 9>&- ) \
     > "$OUT/$ID/perception_service.log" 2>&1 &
   PIDS+=($!)
   for _ in $(seq 150); do [[ -f "$DOJO_PERCEPTION_READY" ]] && break; sleep 2; done
