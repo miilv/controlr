@@ -407,7 +407,7 @@ def cmd_checks(a) -> None:
                     r["default_pos"], r["default_ori"] = v[:3], v[3:7]
     run = RoboDojoRunner(a.task, num_envs=1, workdir=str(out / "work"), physics_only=True, need_planner=False)
     info = run.load(lay)
-    for _ in range(a.settle):
+    for _ in range(a.settle if info["stable"] else 0):          # an unstable load has no control state to hold
         run.step(run.hold_action())
     rm = run.env.reward_manager
     lines = [f"stable {info['stable']}; reward {run.reward()}; score {run.score()}"]
