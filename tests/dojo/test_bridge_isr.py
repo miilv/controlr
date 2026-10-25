@@ -103,3 +103,25 @@ def test_perception_extra_carries_robodojo_generator_deps():
     extra = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["optional-dependencies"]["perception"]
     names = {d.split(">")[0].split("=")[0].split("<")[0].strip().lower() for d in extra}
     assert {"tqdm", "transforms3d", "shapely", "rtree", "scipy"} <= names
+
+
+def test_twin_requests_are_numpy_free_across_interpreters():
+    """Behind the bridge the twin client runs in our venv (numpy 2.x) and the service in RoboDojo's python (numpy
+    1.26): a request must unpickle without numpy (isr-lab 2026-10-26: "No module named 'numpy._core'")."""
+    import pickle
+    import pickletools
+
+    import numpy as np
+
+    from dojo.simlab.twin_service import plain
+
+    req = {"op": "verify", "world": {"layout": {"Rigid": {"block": [{"default_pos": np.array([0.1, 0.2, 0.78]),
+                                                                       "scale": (np.float64(1.0),) * 3}]}},
+                                     "robot": {"left_q": np.zeros(6, np.float32), "left_grip": np.float32(1.0)}},
+           "candidates": [{"actions": [{"left_arm_joint_state": np.ones(6)}], "meta": {"i": np.int64(0)}}],
+           "k": np.int32(2)}
+    out = plain(req)
+    blob = pickle.dumps(out)
+    assert b"numpy" not in blob and "numpy" not in str(list(pickletools.genops(blob)))
+    assert out["world"]["robot"]["left_q"] == [0.0] * 6 and out["k"] == 2 and isinstance(out["k"], int)
+    assert out["world"]["layout"]["Rigid"]["block"][0]["default_pos"] == [0.1, 0.2, 0.78]
