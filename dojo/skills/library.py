@@ -868,7 +868,8 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
 
 
-def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001) -> dict:
+def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001,
+                blind_depth: float = 0.016) -> dict:
     """Insert ``obj`` into whichever of ``receptacles`` its mesh fits best (``insertion.fit_insertion``:
     leading end, yaw and offset with the largest clearance, depth to the floor), then, when asked, turn
     it about the insertion axis by ``turn_deg`` (a key in its lock) before letting go. Re-oriented in the
@@ -885,17 +886,42 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
         f = fit_insertion(o, w.obj(r))
         if f is not None:
             fits.append((f.clearance, r, f))
-    if not fits:
-        return {"ok": False, "stage": "fit", "note": f"{obj} fits none of {receptacles}"}
-    _, rec, fit = max(fits, key=lambda x: x[0])
-    sk.log(f"[insert] {obj} -> {rec}: {fit.note}")
-    w.notes["insert"] = {"receptacle": rec, "fit": fit.note}
+    if fits:
+        _, rec, fit = max(fits, key=lambda x: x[0])
+        sk.log(f"[insert] {obj} -> {rec}: {fit.note}")
+        w.notes["insert"] = {"receptacle": rec, "fit": fit.note}
+        T = fit.T_obj.copy()
+        T[2, 3] -= press
+        targets, ysym = [T], 1
+    else:
+        # no clearance anywhere in the meshes (a plug's 1.5 mm blades, slots of the same width): press it in
+        # leading end first over the receptacle's centre, turned like it, ``blind_depth`` below its top (the
+        # collider decides; the twin's contact geometry is not the visual mesh)
+        from dojo.skills.insertion import R_axis_down, insertion_axis
+        if o.asset.mesh is None:
+            return {"ok": False, "stage": "fit", "note": f"{obj} fits none of {receptacles}"}
+        cands = [w.obj(r) for r in receptacles
+                 if r in w.objects and r != obj and float(w.obj(r).asset.extents[2]) > 0.01]
+        if not cands:
+            return {"ok": False, "stage": "fit", "note": f"{obj} fits none of {receptacles}"}
+        recv = min(cands, key=lambda c: float(np.linalg.norm(c.asset.extents)))
+        rec = recv.label
+        k, sg = insertion_axis(o.asset.mesh[0])
+        R0 = R_axis_down(k, sg)
+        V = o.asset.mesh[0] @ R0.T
+        tip = float(V[:, 2].min())
+        R = rot_z(recv.yaw()) @ R0
+        c = recv.center_w
+        root_xy = c[:2] - (R @ o.asset.center)[:2]            # the object's bbox centre over the receptacle's
+        p = np.array([root_xy[0], root_xy[1], recv.top_z - blind_depth - tip])
+        T = T_from(p, R)
+        targets, ysym = [T], 4
+        sk.log(f"[insert] {obj} -> {rec}: no mesh fit, blind press {blind_depth*1000:.0f} mm below the top")
+        w.notes["insert"] = {"receptacle": rec, "fit": "blind"}
     sk.coll.include.add(rec)
-    T = fit.T_obj.copy()
-    T[2, 3] -= press
     place_kw = {"pre_h": 0.02, "descend_rad": 0.025, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
                 "turn": math.radians(turn_deg), "release": True}
-    res = place_oriented(sk, obj, [T], yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
+    res = place_oriented(sk, obj, targets, yaw_sym=ysym, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                          place_kw=place_kw)
     if not res.ok and res.status != "ended":
         return {"ok": False, "stage": f"insert {obj}", "result": res}
