@@ -152,7 +152,8 @@ def _objects_from_rows_nodb(rows):
 
 class Skills:
     def __init__(self, env, provider, kin: X5Kin | None = None, reserve: int = 30, log=None, verifier=None,
-                 verify_k: int = 2, n_cands: int = 6, remeasure: bool = True, on_verified=None, refine=None):
+                 verify_k: int = 2, n_cands: int = 6, remeasure: bool = True, on_verified=None, refine=None,
+                 max_rehovers: int = 1):
         """``verifier``: a ``verify.TwinBackend`` (None = single plan). ``remeasure``: re-read the held
         object's pose before a place descent (off when the world provider cannot measure held
         objects). ``on_verified(info)``: called after each verified choice with
@@ -177,6 +178,7 @@ class Skills:
         self.remeasure = remeasure
         self.on_verified = on_verified
         self.refine = refine
+        self.max_rehovers = int(max_rehovers)       # re-hover hints followed per pick / place (refine hook)
         self.refine_ctx: dict = {}
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
@@ -306,18 +308,20 @@ class Skills:
 
     def _refine_hover(self, label, arm: str, kind: str, rehover=None) -> None:
         """Refine at the hover; if perception could not fit but saw the object elsewhere (hint), move
-        the hover over the hinted pose and refine once more (max one retry). ``rehover()`` moves the arm
-        (plans from the world, where the hint has been written) and returns whether it moved."""
+        the hover over the hinted pose and refine again (up to ``self.max_rehovers`` retries, default 1).
+        ``rehover()`` moves the arm (plans from the world, where the hint has been written) and returns
+        whether it moved."""
         hint = self._refine(label, arm, kind)
-        if hint is None or rehover is None or label is None or label not in self.world.objects:
-            return
-        o = self.world.obj(label)
-        o.pos, o.quat = np.asarray(hint[0], float).copy(), np.asarray(hint[1], float).copy()
-        self.log(f"[refine] {kind} {label}: re-hover over the hinted pose {np.round(o.pos, 3).tolist()}")
-        if rehover():
-            self._refine(label, arm, kind)          # second and last look; a further hint is ignored
-        else:
-            self.refresh()
+        for i in range(max(1, int(getattr(self, "max_rehovers", 1)))):
+            if hint is None or rehover is None or label is None or label not in self.world.objects:
+                return
+            o = self.world.obj(label)
+            o.pos, o.quat = np.asarray(hint[0], float).copy(), np.asarray(hint[1], float).copy()
+            self.log(f"[refine] {kind} {label}: re-hover {i + 1} over the hinted pose {np.round(o.pos, 3).tolist()}")
+            if not rehover():
+                self.refresh()
+                return
+            hint = self._refine(label, arm, kind)   # after the last allowed re-hover a further hint is ignored
 
     def _pick_rehover(self, label: str, arm: str, method: str, plan_kw: dict):
         def f() -> bool:
