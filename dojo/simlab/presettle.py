@@ -1,7 +1,7 @@
 """Pre-settled layout records: generate -> settle in RoboDojo (physics-only) -> write the settled poses back.
 
 For every stored dev layout ``layouts/<task>/<id>.json`` (kept unchanged) this writes
-``layouts/<task>/<id>.settled.json``: the same record with every Rigid / Dynamic / Articulation object's
+``layouts/<task>/<id>.settled.json``: the same record with every Rigid / Dynamic object's
 ``default_pos`` / ``default_ori`` replaced by where it actually came to rest after RoboDojo's own reset +
 settle (+ ``extra_steps`` physics steps), and ``_simlab.settled`` with the provenance. Layouts are dropped
 (no file; status in ``settled_index.json``) when
@@ -32,8 +32,11 @@ import numpy as np
 from dojo.simlab import paths
 from dojo.simlab.layout import TABLE_TOP_Z, iter_objects, quat_angle_deg
 
-SETTLER = "simlab/presettle v1"
-MOVABLE = ("Rigid", "Dynamic", "Articulation")
+SETTLER = "simlab/presettle v2"
+# Articulations keep their generated pose (v2): RoboDojo reports some of them (make_toast's toasters 0/1) with a
+# constant ~7 mm root offset from the record's default_pos, so writing the reported pose back moved them 7 mm on
+# every reload and failed pass 2 (24/24). They are fixtures that do not settle anyway.
+MOVABLE = ("Rigid", "Dynamic")
 ID_RE = re.compile(r"^\d+\.json$")
 
 
@@ -88,13 +91,21 @@ def at_rest(before: list[dict], after: list[dict], table: bool, tol_mm: float = 
     return not bad, bad
 
 
-def drift(live: list[dict]) -> tuple[float, float]:
+def drift(live: list[dict], top: list | None = None) -> tuple[float, float]:
+    """Max task-object displacement from the record (mm, deg); ``top`` collects the 3 largest (label, mm, type)."""
     mm = deg = 0.0
+    rows = []
     for o in live:
-        if o["type"] not in MOVABLE or o["clutter"] or o["pos"] is None:
+        if o["clutter"] or o["pos"] is None or o.get("layout_pos") is None:
             continue
-        mm = max(mm, float(np.linalg.norm(np.subtract(o["pos"], o["layout_pos"]))) * 1000)
+        d = float(np.linalg.norm(np.subtract(o["pos"], o["layout_pos"]))) * 1000
+        rows.append((o.get("label"), round(d, 2), o["type"]))
+        if o["type"] not in MOVABLE:
+            continue
+        mm = max(mm, d)
         deg = max(deg, quat_angle_deg(o["quat"], o["layout_quat"]))
+    if top is not None:
+        top.extend(sorted(rows, key=lambda r: -r[1])[:3])
     return mm, deg
 
 
@@ -127,8 +138,12 @@ def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250,
         else:
             settled, n = write_back(lay, live)
             info2 = run.load(settled)
-            live2 = run.objects_gt() if info2["stable"] else []
-            d2 = drift(live2) if live2 else (float("nan"), float("nan"))
+            live2 = run.objects_gt()
+            top2: list = []
+            d2 = drift(live2, top2) if info2["stable"] else (float("nan"), float("nan"))
+            if not info2["stable"]:
+                drift(live2, top2)
+            rec["pass2_top"] = top2
             rec.update({"objects_written": n, "pass2_robodojo_stable": bool(info2["stable"]),
                         "pass2_drift_mm": round(d2[0], 3), "pass2_drift_deg": round(d2[1], 3)})
             if info2["stable"] and d2[0] <= drift_tol_mm:
