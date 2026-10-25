@@ -191,3 +191,18 @@ def test_region_seeds_only_for_compact_fixed_yaw_regions():
     assert _seed_region(wide, prior) is None
     spun = {"regions": [_region({"xlim": [-0.05, 0.05], "ylim": [-0.2, -0.15], "rotate_rand": True, "rotate_deg": 45})]}
     assert _seed_region(spun, prior) is None
+
+
+def test_j1_adapter_task_inference_and_wire_format():
+    from dojo.perception import j1_adapter as j
+
+    assert j.infer_task("Press the two red buttons the required number of times according to the number cards, "
+                        "then press the blue button to confirm.") == "press_by_number"
+    assert j.infer_task("Push the T-shaped block to align it precisely with the gray T-shaped pad.") == "push_T"
+    assert j.infer_task("Pick up the two T-shaped blocks, swap their positions, and place them back with the "
+                        "correct orientations.") == "swap_T"
+    assert j.infer_task("Stack the three blocks with different textures.") == "stack_blocks"
+    assert j.infer_task("Pick up the bell by 10 cm.") == "general_pickup"
+    a = np.arange(12, dtype=np.uint8).reshape(2, 2, 3)
+    back = j._dec(j._enc({"img": a, "x": [np.float32(1.5), "s"]}))
+    assert back["img"].dtype == np.uint8 and (back["img"] == a).all() and back["x"] == [1.5, "s"]

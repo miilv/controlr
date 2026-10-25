@@ -154,8 +154,14 @@ def _call(fn: str, kwargs: dict) -> dict:
     return out
 
 
+def _abs_frames(frames: dict) -> dict:
+    """PNG paths made absolute: the worker runs in the checkout, not the caller's cwd."""
+    return {c: (os.path.abspath(v) if isinstance(v, (str, Path)) else v) for c, v in frames.items()}
+
+
 def perceive(frames, calib, flange, grip_cmd, instruction, want=None, **kw) -> dict:
     """Scene layout from the official observation. See the module docstring for inputs and output."""
+    frames = _abs_frames(frames)
     if os.environ.get("J1_INPROC") == "1":
         return _perceive_impl(frames, calib, flange, grip_cmd, instruction, want, **kw)
     return _call("perceive", dict(frames=frames, calib=calib, flange=flange, grip_cmd=grip_cmd,
@@ -165,6 +171,7 @@ def perceive(frames, calib, flange, grip_cmd, instruction, want=None, **kw) -> d
 def held_look(frames, calib, flange, grip_cmd, **kw) -> dict:
     """Is an object between the fingers? {left|right: {held, confidence, fg_frac}, held, confidence} for the
     arm(s) whose gripper is commanded closed, from the wrist image alone."""
+    frames = _abs_frames(frames)
     if os.environ.get("J1_INPROC") == "1":
         return _held_look_impl(frames, calib, flange, grip_cmd, **kw)
     return _call("held_look", dict(frames=frames, calib=calib, flange=flange, grip_cmd=grip_cmd, **kw))
@@ -441,10 +448,16 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
     return {"objects": objects, "regions": regions, "needs_look": needs, "want_match": _want_match(want, objects),
             "task": task, "t_ms": t_ms, "t_estimate_ms": round(1000 * (t_est - t0), 1),
             "unexplained_fg": rec.get("_perception", {}).get("unexplained", []),
-            "robot_state": ik, "version": VERSION}
+            "robot_state": ik, "gl": _gl_mode(), "version": VERSION}
 
 
 _BG: dict = {}
+
+
+def _gl_mode() -> str:
+    from .render import gl
+
+    return "egl" if gl() is not None else "cpu"
 HOME_FLANGE = {"left": (-0.2995, -0.3523, 0.9215), "right": (0.3005, -0.3523, 0.9215)}
 
 
@@ -483,15 +496,20 @@ def _refine_from_prior(objects, prior, images, state, cams):
     return objects
 
 
+HELD_DARK_L = 70  # OpenCV Lab L (0..255): the X5 finger pads render near-black (L ~20-40)
+HELD_PAD_CHROMA = 12  # and grey (Lab chroma); a dark blue / red T is dark but saturated
+
+
 def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, **_ignored) -> dict:
-    """Object between the fingers, from the wrist image: the gap between the fingertips (FK at the measured /
-    commanded opening, hull of both tips' outer 3 cm projected into the wrist camera, the robot's own pixels
-    removed) vs the frame's own table colours. held when > 35 % of the gap's visible pixels are foreground."""
+    """Object between the fingers, from the wrist image alone (strict tier: no finger measurement). Where the
+    fingertips would be if the jaws had closed on nothing (FK at gripper 0, outer 3 cm of both fingers,
+    projected into the wrist camera), the image shows the dark finger pads when the grasp is empty and the
+    object when the jaws stopped on it. held when most of that region is not pad-dark. A dark object
+    (black block) reads as empty: confidence is low near the threshold, and ``dark_risk`` flags it."""
     import cv2
     import numpy as np
 
-    from .refine import frame_foreground
-    from .render import robot_link_meshes, robot_mask
+    from .render import robot_link_meshes
     from .robot_model import X5Model
 
     t0 = time.time()
@@ -499,38 +517,41 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
     state, _ = _state(flange, grip_cmd or {}, joints, gripper)
     cams = _cameras(calib)
     model = X5Model.default()
+    meshes = robot_link_meshes()
     out = {}
     for arm in ("left", "right"):
         c = f"cam_{arm}_wrist"
         g = _grip01((gripper or {}).get(arm, (grip_cmd or {}).get(arm, 1.0)))
-        if c not in images or c not in cams or g > 0.5:
+        if c not in images or c not in cams or g > 0.5 or "link7" not in meshes or "link8" not in meshes:
             continue
         cam = cams[c]
-        L = model.fk_world(arm, state[f"{arm}_arm_joint_state"], g)
-        meshes = robot_link_meshes()
-        if "link7" not in meshes or "link8" not in meshes:
-            continue
+        L = model.fk_world(arm, state[f"{arm}_arm_joint_state"], 0.0)  # jaws fully closed
         W = [meshes[k][0] @ L[k][:3, :3].T + L[k][:3, 3] for k in ("link7", "link8")]
         tool = np.mean(np.concatenate(W), axis=0) - L["link6"][:3, 3]
-        tool /= np.linalg.norm(tool)  # flange -> fingers: the tool axis
-        pts = []
-        for Wf in W:  # the outer 3 cm of each finger: the gap is the hull of both tips minus the fingers
+        tool /= np.linalg.norm(tool)
+        P = []
+        for Wf in W:
             d = (Wf - L["link6"][:3, 3]) @ tool
-            pts.append(Wf[d > d.max() - 0.03])
-        uv, z = cam.project(np.concatenate(pts))
-        if (z <= 0.01).any():
+            P.append(Wf[d > d.max() - 0.03])
+        uv, z = cam.project(np.concatenate(P))
+        ok = z > 0.01
+        if ok.sum() < 3:
             continue
-        m = np.zeros((cam.h, cam.w), np.uint8)
-        cv2.fillConvexPoly(m, cv2.convexHull(np.round(uv).astype(np.int32)), 1)
-        rob = robot_mask(cam, state, dilate_px=2)
-        vis = (m > 0) & (rob == 0)
-        if vis.sum() < 30:
-            out[arm] = {"held": None, "confidence": 0.0, "why": "gap hidden by the gripper"}
+        reg = np.zeros((cam.h, cam.w), np.uint8)
+        cv2.fillConvexPoly(reg, cv2.convexHull(np.round(uv[ok]).astype(np.int32)), 1)
+        reg = cv2.erode(reg, np.ones((5, 5), np.uint8))
+        if reg.sum() < 50:
+            out[arm] = {"held": None, "confidence": 0.0, "why": "fingertip region not visible"}
             continue
-        fg = frame_foreground(images[c], rob)
-        frac = float(fg[vis].mean())
-        held = frac > 0.35
-        out[arm] = {"held": held, "confidence": round(min(1.0, abs(frac - 0.35) / 0.35), 3), "fg_frac": round(frac, 3)}
+        lab = cv2.cvtColor(images[c], cv2.COLOR_RGB2LAB)[reg > 0].astype(float)
+        Lc, chroma = lab[:, 0], np.hypot(lab[:, 1] - 128, lab[:, 2] - 128)
+        pad = (Lc < HELD_DARK_L) & (chroma < HELD_PAD_CHROMA)  # dark and grey: the finger pads
+        frac = float((~pad).mean())
+        held = frac > 0.5
+        conf = min(1.0, abs(frac - 0.5) / 0.4)
+        dark_risk = bool(not held and np.median(Lc) > 0.5 * HELD_DARK_L)  # a black object reads as pads
+        out[arm] = {"held": held, "confidence": round(min(conf, 0.3) if dark_risk else conf, 3), "fg_frac": round(frac, 3),
+                    "region_px": int(reg.sum()), "dark_risk": dark_risk}
     arms = [v for v in out.values() if v.get("held") is not None]
     res = {**out, "t_ms": round(1000 * (time.time() - t0), 1), "version": VERSION}
     if arms:
