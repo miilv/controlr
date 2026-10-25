@@ -320,34 +320,48 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
 
     def transfer(arms):
         targets = [rest_pose(sk, label, p, rim + 0.012, sym=sym) for p in drop_spots(sk, container, label)]
+        plans = SkillResult(False, "put_in_open", "ik_fail", 0, None, note="no arm")
         for a in arms:
-            plans = sk.plan_transfer(label, targets, arms=[a], ignore=(container,), yaw_sym=sym,
-                                     box_tilts=(0.0, 25.0, 40.0, -25.0), place_kw={"pre_h": 0.04})
-            if not isinstance(plans, SkillResult):
-                return sk.run_transfer(*plans, tol_xy=0.05, tol_tilt=45.0, tol_z=0.08)
+            for pre_h in (0.04, 0.02):
+                plans = sk.plan_transfer(label, targets, arms=[a], ignore=(container,), yaw_sym=sym,
+                                         box_tilts=(0.0, 25.0, 40.0, -25.0), place_kw={"pre_h": pre_h})
+                if not isinstance(plans, SkillResult):
+                    return sk.run_transfer(*plans, tol_xy=0.05, tol_tilt=45.0, tol_z=0.08)
         return plans
     r = transfer(near)
     if not isinstance(r, SkillResult) or r.ok or r.status not in ("ik_fail", "collision"):
         return r
-    # relay through a table spot both arms reach
+    # relay: the other arm puts it down on a table spot both arms reach, the container's arm takes it from there
+    giver = near[1]
     mid = np.asarray(relay_xy if relay_xy is not None else (o.pos[:2] + c.center_w[:2]) / 2, float)
-    mid[1] = min(float(mid[1]), -0.12)
-    spots = free_spots(sk, label, near_xy=tuple(mid))
+    spots = []
+    for p in [mid, (0.0, -0.2), (-0.05, -0.15), (0.05, -0.2), (0.0, -0.28)]:
+        for q in free_spots(sk, label, near_xy=(float(p[0]), min(float(p[1]), -0.12))):
+            if all(np.linalg.norm(np.asarray(q) - np.asarray(x)) > 0.02 for x in spots):
+                spots.append(q)
     if not spots:
         return r
-    giver = near[1]
-    plans = sk.plan_transfer(label, [rest_pose(sk, label, p, TABLE_Z, sym=sym) for p in spots[:4]], arms=[giver],
-                             yaw_sym=sym, box_tilts=(0.0, 25.0, 40.0, -25.0))
-    if isinstance(plans, SkillResult):
+    rr = None
+    for chunk in (spots[:4], spots[4:10]):
+        if not chunk:
+            continue
+        for pre_h in (0.06, 0.03):
+            plans = sk.plan_transfer(label, [rest_pose(sk, label, p, TABLE_Z, sym=sym) for p in chunk], arms=[giver],
+                                     yaw_sym=sym, box_tilts=(0.0, 25.0, 40.0, -25.0), place_kw={"pre_h": pre_h})
+            if not isinstance(plans, SkillResult):
+                rr = sk.run_transfer(*plans, tol_xy=0.03, tol_tilt=30.0)
+                break
+        if rr is not None:
+            break
+    if rr is None:
         return plans
-    rr = sk.run_transfer(*plans, tol_xy=0.03, tol_tilt=30.0)
     sk.bank()
     try:
         sk.ex.run({giver: sk.plan_home(giver, gripper=OPEN)}, name=f"park {giver}")
     except (BudgetExceeded, EpisodeEnded) as e:
         return SkillResult(False, "put_in_open", "step_budget", 0, giver, note=str(e))
     sk.held[giver] = None
-    sk.log(f"[put_in_open] {label} relayed by {giver} to {np.round(spots[0], 3).tolist()} ({rr.status})")
+    sk.log(f"[put_in_open] {label} relayed by {giver} ({rr.status})")
     return transfer(near[:1])
 
 
