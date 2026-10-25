@@ -118,3 +118,15 @@ in the integration layer, all fixed for the rerun:
   3 failures is therefore not trustworthy for this run). Now estimates are matched to GT per category by
   position (assignment on centre xy), with identity (same asset) and shape (same extents ±10 mm) reported
   for the matched pair; gross = not found, > 20 mm, or wrong shape.
+
+`B_tower_off_1` (build_tower × 10, perception, verify off, integ code before the fixes below): **1/10, score 20**,
+steps median 389 of 1050, 13 looks taken over 10 episodes, wall 32 s / episode. Perception at the planning
+estimate (fused after looks; dev scorer): 80 pieces, 3 not found, xy median 0.8 mm / p90 4.6 mm (before looks
+p90 10.1 mm), identity 0.94, shape 0.94 (topper ↔ pillar / prism swaps). Failures: 4 perception_gross
+(100002, 100003, 100008: a topper estimated as a pillar or prism; 100005: two pillars not found even after 2
+looks), 5 plan, all the same chain: a resync check flags a pillar that is mostly hidden under the board (47
+visible px), the policy re-plans, and `library.build_tower` restarts the tower from scratch (re-parks block7,
+lifts the placed board) → "place block0: descend: collision: hits block7". Fixes: an object is judged only
+when ≥ 30 % of its silhouette is visible; a failed check leads to a re-plan only when the re-estimate puts
+the object ≥ 15 mm from the belief (else `divergence_unconfirmed`, continue). Asked skills for resumable
+library skills (skip jobs whose target relation already holds).
