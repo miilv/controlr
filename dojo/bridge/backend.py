@@ -10,8 +10,8 @@ Two faces over one server connection (``client.RobotServerClient``):
   ``{arm}_ee_joint_state`` [1], both arms every step, from ``dojo.skills.executor``) are buffered and flushed
   through the ``joint_steps`` verb, one RoboDojo ``take_action`` per entry, verbatim (no re-timing, no IK, no
   gripper ramp on the server), so what the twin verified is what runs. ``joint_steps`` is the one verb this needs
-  beyond the strict server's frozen set: proposed to robot-harness (issue text in ``docs/BRIDGE-RUNBOOK.md``); a
-  server without it is refused at ``connect()`` unless ``allow_no_joint_steps`` (observation-only use).
+  beyond the strict server's frozen set: requested in robot-harness issue #8 (contract in ``docs/BRIDGE-RUNBOOK.md``
+  §9); a server without it is refused at ``connect()`` unless ``allow_no_joint_steps`` (observation-only use).
   ``reserve=0`` on every call: the runtime keeps its own fixed reserve for ``finish()`` (``RuntimeConfig.reserve``,
   the same for every episode, never chosen by task).
 
@@ -123,7 +123,7 @@ class RobotServerBackend:
         self.commands = tuple(info.get("commands") or ())
         if JOINT_STEPS not in self.commands and not self.allow_no_joint_steps:
             raise ServerError("info", {"error": f"server has no `{JOINT_STEPS}` verb (commands {list(self.commands)})",
-                                       "hint": "our skills emit per-step joint actions; see docs/BRIDGE-RUNBOOK.md §verb"})
+                                       "hint": "our skills emit per-step joint actions: robot-harness issue #8, docs/BRIDGE-RUNBOOK.md §9"})
         return info
 
     def wait_episode(self, timeout_s: float = 900.0, poll_s: float = 3.0) -> None:
