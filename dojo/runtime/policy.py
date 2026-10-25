@@ -36,7 +36,7 @@ from .belief import Divergence, LostObject, RuntimeProvider
 from .bridge import Bridge
 from .estimate import flagged
 from .firewall import check_obs, sanitize_info
-from .supervisor import RuleSupervisor, perception_vocabulary
+from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candidates
 
 
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
@@ -107,6 +107,9 @@ class RuntimeConfig:
     # (trigger "risk"). "off": B1 only
     agentic: str = "off"
     agentic_max: int = 2
+    # mode perception: when the instruction is ambiguous (table and catalogue fallback disagree, or the fallback's
+    # runner-up is close), estimate frame 0 with each candidate set and keep the one that explains the scene best
+    vocab_explain: bool = True
     # mode perception: perception's episode tracker on B1 re-reads (look fuse, divergence re-estimate): only objects
     # the robot moved since their last good reading take a re-read pose. auto = on iff agentic == "budget"
     tracker: str = "auto"
@@ -271,6 +274,11 @@ class RuntimePolicy:
         cfg, b = self.cfg, self.bridge
         instruction = obs0["instruction"]
         vocab = perception_vocabulary(instruction)
+        rec_b1 = None                                   # the chosen set's frame-0 B1 estimate (explain-away)
+        if cfg.mode == "perception" and cfg.vocab_explain:
+            cands = vocabulary_candidates(instruction)
+            if len(cands) > 1:
+                vocab, rec_b1 = self._explain_vocabulary(cands, obs0)
         self.report["vocabulary"] = vocab.name if vocab else None
         self.report["vocabulary_source"] = vocab.source if vocab else None
         if cfg.mode == "perception" and vocab is None:
@@ -299,12 +307,12 @@ class RuntimePolicy:
         if cfg.mode == "gt":
             prov.init_from_gt()
         elif cfg.agentic == "budget":
-            rec = self._agentic(obs0, scene, None, "frame0")
+            rec = self._agentic(obs0, scene, rec_b1, "frame0")
             self.report["records"]["initial"] = _slim(rec)
             self._last_record = rec
             prov.init_from_record(rec)
         else:
-            rec = self.perception().estimate([obs0], scene, self.fold)
+            rec = rec_b1 if rec_b1 is not None else self.perception().estimate([obs0], scene, self.fold)
             self.report["records"]["initial"] = _slim(rec)
             self._last_record = rec
             prov.init_from_record(rec)
@@ -610,6 +618,31 @@ class RuntimePolicy:
                 hint["rehover_dz"] = self.cfg.rehover_place_dz
             return hint
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _explain_vocabulary(self, cands: list, obs0: dict):
+        """Set-level explain-away: B1 on frame 0 with each candidate set; the set whose estimate explains the scene
+        best (found-label share x mean confidence) wins. Returns (vocabulary, its record)."""
+        from .estimate import iter_records
+        scored = []
+        for v in cands:
+            try:
+                rec = self.perception().estimate([obs0], v.name, self.fold)
+            except Exception as e:  # noqa: BLE001 (a candidate the service cannot estimate is out)
+                scored.append({"name": v.name, "source": v.source, "error": f"{type(e).__name__}: {str(e)[:120]}"})
+                continue
+            confs = [float((r.get("_perception") or {}).get("confidence", 0.5)) for _t, _c, r in iter_records(rec)]
+            n_nf = len(rec.get("_not_found") or [])
+            found = len(confs) / max(1, len(confs) + n_nf)
+            sc = found * (float(np.mean(confs)) if confs else 0.0)
+            scored.append({"name": v.name, "source": v.source, "found": round(found, 3), "conf": round(float(np.mean(confs)), 3)
+                           if confs else 0.0, "score": round(sc, 4), "_v": v, "_rec": rec})
+        ok = [x for x in scored if "score" in x]
+        best = max(ok, key=lambda x: x["score"]) if ok else None   # ties: the earlier candidate (the table's)
+        self.report["events"].append({"kind": "vocab_explain", "chosen": best["name"] if best else None,
+                                      "candidates": [{k: v for k, v in x.items() if not k.startswith("_")} for x in scored]})
+        if best is None:
+            return cands[0], None
+        return best["_v"], best["_rec"]
 
     def _scan(self, sk, obs0: dict, rec: dict, scene: str) -> dict | None:
         """The scan macro: gate (``cfg.scan``), both arms in parallel to perception's frozen scan joints with the

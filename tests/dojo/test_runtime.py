@@ -1529,3 +1529,44 @@ def test_lost_object_search_rejects_a_far_fuse_find(via, far_m, accepted):
     assert ok == accepted
     assert np.allclose(prov.belief.objects["block_1"].pos, found if accepted else p0)
     assert any(e["kind"] == "lost_fuse_rejected" for e in pol.report["events"]) == (not accepted)
+
+
+def test_ambiguous_instruction_picks_the_candidate_set_that_explains_the_scene(monkeypatch):
+    """'Cover the blocks ...': the table says cover_blocks, the catalogue fallback says build_tower (it names only
+    "blocks"). Frame 0 is estimated with both; cover_blocks' set finds all its objects, build_tower's does not."""
+    from dojo.runtime import vocab
+    from dojo.runtime.supervisor import vocabulary_candidates
+    monkeypatch.setattr(vocab, "catalog_path", lambda: str(FIX / "catalog_task_label_categories.json"))
+    text = ("Cover the blocks from left to right, remember their colors, then uncover them in the order: red, green, "
+            "and blue.")
+    names = [v.name for v in vocabulary_candidates(text)]
+    assert names[0] == "cover_blocks" and "build_tower" in names and len(names) <= 3
+    assert [v.name for v in vocabulary_candidates("Plug the charger into the power strip.")] == ["plug_in_charger"]
+    env = _env()
+
+    class TwoSets:
+        def __init__(self):
+            self.vocabs = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            self.vocabs.append(vocabulary)
+            recs = [{"category": "block", "category_idx": 5, "label": f"block_{i}", "default_pos": list(p),
+                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]
+            if vocabulary == "cover_blocks":
+                return {"Rigid": {"block": recs}}
+            return {"Rigid": {"block": recs[:1]}, "_not_found": [{"label": f"block{i}"} for i in range(1, 8)]}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+    pc = TwoSets()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=pc)
+    pol.reset({"instruction": text, "step_lim": 550})
+    pol.bridge.obs, pol.bridge.fresh = FakeEpisode(env).observe(), True
+    v, rec = pol._explain_vocabulary(vocabulary_candidates(text), {"instruction": text})
+    assert v.name == "cover_blocks" and len(rec["Rigid"]["block"]) == 3
+    ev = pol.report["events"][-1]
+    assert ev["kind"] == "vocab_explain" and ev["chosen"] == "cover_blocks" and len(ev["candidates"]) == len(names)

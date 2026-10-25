@@ -83,6 +83,35 @@ def perception_vocabulary(instruction: str, fallback: bool = True, table: bool =
     return Vocabulary(name, (), (), source="catalog") if name else None
 
 
+def vocabulary_candidates(instruction: str, margin: float = 0.15, max_k: int = 3) -> list[Vocabulary]:
+    """Candidate sets for set-level explain-away (the runtime estimates frame 0 with each and keeps the one that
+    explains the scene best). One entry when the table and the catalogue fallback agree, or the fallback has a clear
+    winner; else the table's set plus the fallback's top / close runners-up (within ``margin`` of its top score).
+    A ``_random`` twin of a listed std set is dropped (same instruction; the std set is the convention)."""
+    from .vocab import _load, catalog_path, score_sets
+    text = " ".join(str(instruction or "").split())
+    table = perception_vocabulary(text, fallback=False)
+    p = catalog_path()
+    ranked = score_sets(text, _load(p)) if p else []
+    ranked = [r for r in ranked if r[0] >= 1.0]
+    out = [table] if table is not None else []
+    if not ranked:
+        return out
+    if table is not None and ranked[0][1] == table.name:
+        return out
+    top = ranked[0][0]
+    for sc, name, _ in ranked:
+        if sc < (1 - margin) * top and out:
+            break
+        names = {v.name for v in out}
+        if name in names or (name.endswith("_random") and name[: -len("_random")] in names):
+            continue
+        out.append(Vocabulary(name, (), (), source="catalog"))
+        if len(out) >= max_k:
+            break
+    return out
+
+
 @dataclass
 class Decision:
     action: str               # "run" | "finish"
@@ -128,4 +157,4 @@ class RuleSupervisor:
         return Decision("run", p.skill, dict(p.args), f"{why}: {p.why}")
 
 
-__all__ = ["Vocabulary", "VOCABULARIES", "perception_vocabulary", "Decision", "RuleSupervisor"]
+__all__ = ["Vocabulary", "VOCABULARIES", "perception_vocabulary", "vocabulary_candidates", "Decision", "RuleSupervisor"]
