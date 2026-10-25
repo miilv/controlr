@@ -2266,6 +2266,7 @@ SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into"
           "slots_and_press": slots_and_press, "hang_on_hooks": hang_on_hooks}
 
 # skills that interleave observation with action (scripted opponents, demonstrations, conveyors): skills-6
+from dojo.skills.holders import fill_holes  # noqa: E402
 from dojo.skills.interactive import play_board_game  # noqa: E402
 
-SKILLS.update({"play_board_game": play_board_game})
+SKILLS.update({"play_board_game": play_board_game, "fill_holes": fill_holes})

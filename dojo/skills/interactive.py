@@ -101,6 +101,18 @@ def _still(prev: dict, w, labels, tol: float = 5e-4) -> bool:
     return all(float(np.linalg.norm(w.obj(l).pos - prev[l])) < tol for l in labels if l in prev and l in w.objects)
 
 
+def piece_order(w, free: list[str], cxy, mid_x: float) -> list[str]:
+    """Which free piece to use for a cell: the outermost one on the cell's side first (a cell left of the board's
+    middle takes the leftmost piece), so the central pieces, which both arms reach anywhere, are left for the last
+    cells (twin: the last piece far right, the last cell far left back: no grasp held at that reach)."""
+    dx = float(cxy[0]) - mid_x
+    if dx < -0.02:
+        return sorted(free, key=lambda l: float(w.obj(l).pos[0]))
+    if dx > 0.02:
+        return sorted(free, key=lambda l: -float(w.obj(l).pos[0]))
+    return sorted(free, key=lambda l: -abs(float(w.obj(l).pos[0]) - mid_x))
+
+
 def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(), tol_xy: float = 0.008, tag: str = "",
                 tries: int = 2) -> dict:
     """Put one of ``candidates`` (the first one some arm can move there; flat, any yaw) level at ``xy`` with its
@@ -210,8 +222,8 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             if k is None:
                 return {"ok": False, "stage": "no placeable cell", "note": f"tried {sorted(tried)}"}
             cxy = cells[k][1][:2]
-            r = place_piece(sk, sorted(free_pieces, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - cxy))),
-                            cxy, top, ignore=(board,), tol_xy=tol_xy, tag=cells[k][0])
+            r = place_piece(sk, piece_order(w, free_pieces, cxy, float(b.center_w[0])), cxy, top, ignore=(board,),
+                            tol_xy=tol_xy, tag=cells[k][0])
             if r.get("stage") == "ended":
                 return {"ok": True, "stage": "ended"}
             if r["ok"]:

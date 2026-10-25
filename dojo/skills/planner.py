@@ -182,6 +182,20 @@ def plan(instruction: str, world: WorldState) -> Plan:
             return Plan("play_board_game", {"board": b.label, "pieces": own, "opponent_pieces": opp},
                         f"{len(own)} own pieces vs {len(opp)} on {b.label}'s cells")
 
+    # --- objects into a holder whose lid is hinged, then close the lid: the holder is the articulated object with a
+    # revolute joint, the objects the named rigid category
+    if re.search(r"\blid\b", text) and re.search(r"\bclose\b|\bshut\b", text):
+        holders = [o for o in objs if o.obj_type == "Articulation"
+                   and any((j or {}).get("type") == "revolute" for j in (o.asset.joints or {}).values())]
+        if holders:
+            h = holders[0]
+            movers = [o.label for c in named for o in cats[c] if o.obj_type == "Rigid" and not o.clutter
+                      and o.label != h.label]
+            tag = next((t for t in _joint_tags(h)), None)
+            if movers:
+                return Plan("fill_holes", {"objects": movers, "holder": h.label, "lid_tag": tag},
+                            f"{len(movers)} objects into {h.label}'s holes, then close its lid ({tag})")
+
     # --- mahjong: declare a kong with the tiles (the most numerous rigid category)
     if "kong" in text:
         rig = [c for c, v in cats.items() if sum(o.obj_type == "Rigid" for o in v) >= 4]
