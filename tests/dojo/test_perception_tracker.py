@@ -117,3 +117,19 @@ def test_truncated_frac_counts_vertices_outside_the_view():
     outside = np.array([[3.0, -0.1, 0.78], [0.0, -0.1, 2.0]])  # far right; above (behind) the camera
     assert refine.truncated_frac(cam, inside) == 0.0
     assert refine.truncated_frac(cam, np.r_[inside, outside]) == 0.5
+
+
+def test_watch_arrival_order_and_polygon():
+    import numpy as np
+
+    from dojo.perception.watch import ArrivalOrder, inside_polygon
+
+    poly = np.array([[0, 0], [0.3, 0], [0.3, 0.2], [0, 0.2]])
+    assert inside_polygon((0.1, 0.1), poly) and not inside_polygon((0.4, 0.1), poly)
+    ao = ArrivalOrder(n_consecutive=2, expected=2)
+    seq = [[], ["a"], ["a"], ["a"], ["a", "b"], ["a", "b"], ["a", "b"]]
+    occl = [False, False, True, False, False, False, False]  # an occluded read does not count
+    out = None
+    for inside, oc in zip(seq, occl):
+        out = ao.update({"inside": [{"asset": k} for k in inside], "occluded": oc})
+    assert out["order"] == ["a", "b"] and out["done"] is True

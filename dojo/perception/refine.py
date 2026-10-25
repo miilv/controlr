@@ -222,6 +222,11 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
                 out["ok"] = False
                 out["why"] = f"neighbour:{k2}"
                 break
+    if not out["ok"]:
+        # a rejected fit never travels as the pose: on D0 wrist frames the rejected fits 40-110 mm away were mostly an
+        # identical neighbour (pillars, blocks) at IoU 0.7-0.96; a caller that skips ``ok`` would adopt it
+        out["fit_pose"], out["fit_moved_mm"] = out["pose"], out["moved_mm"]
+        out["pose"], out["moved_mm"], out["turned_deg"] = list(map(float, prior_pose)), 0.0, 0.0
     if searched is not None and others:  # a suggestion on a known neighbour is that neighbour, not this object
         from .render import load_asset
 
