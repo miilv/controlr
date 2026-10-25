@@ -8,7 +8,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 VENDOR = HERE / "vendor"
 PROMPTS = HERE / "prompts"
-PREAMBLES = {"robodojo": "runner_robodojo_v1.md", "held": "runner_held_v1.md", "libero": "runner_libero_v1.md"}
+PREAMBLES = {"robodojo": "runner_robodojo_v1.md", "robodojo_multi": "runner_robodojo_v2.md", "held": "runner_held_v1.md",
+             "libero": "runner_libero_v1.md"}
 
 
 def md5(p: Path) -> str:

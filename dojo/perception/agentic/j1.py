@@ -198,7 +198,30 @@ def hint_text(b1: dict | None, calib: dict, title: str) -> str:
     return "\n".join(lines)
 
 
-def _first_message(ws: Path, have: list[str], calib, flange, grip_cmd, instruction, want, b1, prior) -> list[dict]:
+def _save_extra_obs(ws: Path, extra_obs) -> list[tuple[str, list[str], dict]]:
+    """Additional observations of the same scene: frames -> <cam>_<tag>.png, calibration -> calib_<tag>.json."""
+    from PIL import Image
+    import numpy as np
+
+    from .tools_rd import write_calib
+
+    out = []
+    for ob in extra_obs or []:
+        tag = str(ob["tag"])
+        have = []
+        for c in CAMS:
+            v = (ob.get("frames") or {}).get(c)
+            if v is None:
+                continue
+            im = Image.open(v).convert("RGB") if isinstance(v, (str, Path)) else Image.fromarray(np.ascontiguousarray(np.asarray(v, dtype=np.uint8)[..., :3]))
+            im.save(ws / f"{c}_{tag}.png")
+            have.append(c)
+        write_calib(ws / f"calib_{tag}.json", ob["calib"], ob.get("flange"))
+        out.append((tag, have, ob))
+    return out
+
+
+def _first_message(ws: Path, have: list[str], calib, flange, grip_cmd, instruction, want, b1, prior, extras=()) -> list[dict]:
     from .llm import image_part
 
     g = ", ".join(f"{a} {grip_cmd[a]}" for a in sorted(grip_cmd or {}))
@@ -214,6 +237,14 @@ def _first_message(ws: Path, have: list[str], calib, flange, grip_cmd, instructi
     for c in have:
         parts.append({"type": "text", "text": f"{c}.png:"})
         parts.append(image_part((ws / f"{c}.png").read_bytes()))
+    for tag, hv, ob in extras:
+        fl = "; ".join(f"{a} {_fmt([float(x) for x in ob['flange'][a]])}" for a in sorted(ob.get("flange") or {}))
+        parts.append({"type": "text", "text": f"Observation '{tag}' of the same scene ({ob.get('note', 'the arms moved; the objects did not')}). "
+                                              f"Measured flange poses: {fl or 'unknown'}. Calibration: calib_{tag}.json. Frames: "
+                                              + ", ".join(f"{c}_{tag}.png" for c in hv)})
+        for c in hv:
+            parts.append({"type": "text", "text": f"{c}_{tag}.png:"})
+            parts.append(image_part((ws / f"{c}_{tag}.png").read_bytes()))
     parts.append({"type": "text", "text": "Reply with ONE JSON object, starting with '{' (plain text, no markup)."})
     return parts
 
@@ -422,8 +453,10 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
                                    "gate": why, "calls": 0, "b1_s": round(t_b1 - t0, 2)})
         return out
     _EPISODE["agent_calls"] += 1
-    first = _first_message(ws, have, calib, flange, grip_cmd or {}, instruction, want, b1, prior)
-    st = run_agent(chat or _chat(), cfg["model"], system_prompt("robodojo"), first, RoboDojoTools(ws),
+    extras = _save_extra_obs(ws, kw.get("extra_obs"))
+    kind = "robodojo_multi" if extras else "robodojo"
+    first = _first_message(ws, have, calib, flange, grip_cmd or {}, instruction, want, b1, prior, extras)
+    st = run_agent(chat or _chat(), cfg["model"], system_prompt(kind), first, RoboDojoTools(ws),
                    max_turns=cfg["max_turns"], extra_body=cfg["extra_body"], log_dir=ws)
     probs = []
     ref_info = None
@@ -461,7 +494,7 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
     t_ms = round(1000 * (time.time() - t0), 1)
     for o in objects:
         o.setdefault("t_ms", t_ms)
-    p = pin("robodojo", cfg["model"])
+    p = pin(kind, cfg["model"])
     notes = (f"{VERSION} model={cfg['model']} system_md5={p['system_md5']} protocol_md5={p['protocol_md5']} result={src} "
              f"gate={why} turns={st['turns']} calls={st['calls']} commands={st['commands']} stop={st['stop']} "
              f"agent_s={st['wall_s']} b1_s={round(t_b1 - t0, 1)}" + (f" b1_error={b1_err}" if b1_err else "")

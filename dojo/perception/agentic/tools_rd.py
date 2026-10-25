@@ -81,7 +81,7 @@ class RoboDojoTools:
         self.ws = Path(ws)
         self.calib_file = calib_file
         self.timeout_s = timeout_s
-        self.protected = {f"{c}.png" for c in CAMS}
+        self.protected = {f"{c}.png" for c in CAMS} | {p.name for p in self.ws.glob("cam_*_*.png")}
         self.n = 0
 
     # ---------------------------------------------------------------- dispatch
@@ -142,9 +142,12 @@ class RoboDojoTools:
             kv[k.strip()] = v.strip()
         return kv
 
-    def _calib(self, cam: str):
+    def _calib(self, cam: str, calib_file: str | None = None):
         g = _geom()
-        d = g.load(str(self.ws / self.calib_file))
+        cf = (calib_file or self.calib_file).rsplit("/", 1)[-1]
+        if not (self.ws / cf).exists():
+            raise ValueError(f"no calibration file {cf!r} in this call")
+        d = g.load(str(self.ws / cf))
         if cam not in d["calib"]:
             raise ValueError(f"no calibration for {cam!r} in this call (have {sorted(d['calib'])})")
         return g.calib(d, cam)
@@ -153,9 +156,9 @@ class RoboDojoTools:
         g = _geom()
         kv = self._kv(args)
         cam, px = kv.get("cam", "cam_head"), _vec(kv["px"])
-        K, T = self._calib(cam)
+        K, T = self._calib(cam, kv.get("calib"))
         if "cam2" in kv and "px2" in kv:
-            K2, T2 = self._calib(kv["cam2"])
+            K2, T2 = self._calib(kv["cam2"], kv.get("calib2", kv.get("calib")))
             p, gap = g.tri(K, T, px, K2, T2, _vec(kv["px2"]))
             return json.dumps({"xyz": [round(float(v), 4) for v in p], "ray_gap_mm": round(gap * 1000, 1),
                                "how": f"triangulated {cam} + {kv['cam2']}"}), []
@@ -168,17 +171,21 @@ class RoboDojoTools:
         kv = self._kv(args)
         pts = json.loads(kv["pts"])
         pts = [[float(v) for v in p] for p in pts]
-        d = g.load(str(self.ws / self.calib_file))
+        cf = kv.get("calib", self.calib_file).rsplit("/", 1)[-1]
+        if not (self.ws / cf).exists():
+            raise ValueError(f"no calibration file {cf!r} in this call")
+        d = g.load(str(self.ws / cf))
+        suffix = "" if cf == self.calib_file else "_" + cf[len("calib_"):-len(".json")] if cf.startswith("calib_") else ""
         out, imgs = {}, []
         for cam in d["calib"]:
             K, T = g.calib(d, cam)
             px = g.project(K, T, pts)
             out[cam] = [None if q is None or not (0 <= q[0] < W and 0 <= q[1] < H) else [round(q[0], 1), round(q[1], 1)]
                         for q in px]
-            if kv.get("img") in ("1", "true", "yes") and any(out[cam]) and (self.ws / f"{cam}.png").exists():
+            if kv.get("img") in ("1", "true", "yes") and any(out[cam]) and (self.ws / f"{cam}{suffix}.png").exists():
                 from PIL import Image, ImageDraw
 
-                im = Image.open(self.ws / f"{cam}.png").convert("RGB")
+                im = Image.open(self.ws / f"{cam}{suffix}.png").convert("RGB")
                 dr = ImageDraw.Draw(im)
                 for i, q in enumerate(out[cam]):
                     if q is None:
@@ -188,7 +195,7 @@ class RoboDojoTools:
                     dr.text((q[0] + 5, q[1] + 3), str(i), fill=(255, 255, 0))
                 b = io.BytesIO()
                 im.save(b, format="PNG")
-                imgs.append((f"project_{cam}.png", b.getvalue()))
+                imgs.append((f"project_{cam}{suffix}.png", b.getvalue()))
         return json.dumps(out), imgs
 
 

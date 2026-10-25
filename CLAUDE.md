@@ -69,9 +69,10 @@ uv run controlr bench-cache --model claude/claude-sonnet-5-5 --turns 20   # ⚠�
    Isaac server when done. `apt` / drivers / reboot — only on explicit request
    ([RUNBOOK](docs/RUNBOOK.md)). PHANTOM (`~/phantom-icra-2027` on compute3,
    `~/skoltech/research` locally) is **never modified** — import it or copy with attribution.
-5. **Secrets:** `.env` lives only locally, in `~/controlr/.env` on compute3 and on our own GPU
-   boxes provisioned by `scripts/bootstrap_gpu_box.sh` (`OMNIROUTE_*` only, mode 600) — not in dev
-   copies, git, `runs/` or logs. New variable → `.env.example` +
+5. **Secrets:** `.env` lives only locally, in `~/controlr/.env` on compute3, on our own GPU
+   boxes provisioned by `scripts/bootstrap_gpu_box.sh` and in `~/data2/ilia/.env` on isr-lab
+   (shared with Mikhail's side; `OMNIROUTE_*` only, mode 600) — not in dev copies, git, `runs/`
+   or logs. New variable → `.env.example` +
    [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).
 6. **Cache invariants:** the transcript is append-only, history is never edited; an image is
    encoded once and stored as bytes; feedback text is deterministic (fixed decimals);

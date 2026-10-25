@@ -182,7 +182,17 @@ class Collision:
         out = []
         extra = [self.world.objects[l] for l in self.include if l in self.world.objects and l not in ignore]
         for o in self.world.obstacles(exclude=set(ignore)) + [o for o in extra if o.obj_type == "Geometry"]:
-            c, R, h = o.obb(self.margin_of.get(o.label, self.obj_margin))
+            m = self.margin_of.get(o.label, self.obj_margin)
+            links = getattr(o.asset, "links", None)
+            if links and len(links) > 1:
+                # an articulated object as one box per link (an open laptop's bbox is mostly air around its lid)
+                R = o.R
+                for lk in links.values():
+                    c = (np.asarray(lk["bbox_min"]) + np.asarray(lk["bbox_max"])) / 2
+                    h = (np.asarray(lk["bbox_max"]) - np.asarray(lk["bbox_min"])) / 2 + m
+                    out.append((R @ c + o.pos, R, h, o.label))
+                continue
+            c, R, h = o.obb(m)
             out.append((c, R, h, o.label))
         return out
 

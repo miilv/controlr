@@ -101,6 +101,8 @@ def test_no_dojo_code_builds_eval_asset_paths():
         rel = f.relative_to(REPO).as_posix()
         if rel == "dojo/simlab/paths.py":
             continue
+        if rel.startswith("dojo/perception/agentic/vendor/"):
+            continue  # robot-harness files, byte-identical and md5-pinned: j1_schema's FORBIDDEN_VALUE regex *rejects* eval paths
         tree = ast.parse(f.read_text(encoding="utf-8"))
         for c, parent in _string_constants(tree):
             v = c.value

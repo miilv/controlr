@@ -247,6 +247,42 @@ class DictSeedManager:
         pass
 
 
+def physics_link_pose(art, link_name: str):
+    """[x, y, z, qw, qx, qy, qz] (world) of an articulation link from its physics view, or None."""
+    av = getattr(art, "_articulation_view", None)
+    pv = getattr(av, "_physics_view", None)
+    if av is None or pv is None:
+        return None
+    names = list(getattr(av, "body_names", None) or [])
+    if link_name not in names:
+        return None
+    T = pv.get_link_transforms()
+    if hasattr(T, "numpy") and not isinstance(T, np.ndarray):
+        try:
+            T = T.numpy()
+        except Exception:  # noqa: BLE001 (a torch tensor on cuda)
+            T = T.cpu().numpy()
+    T = np.asarray(T, dtype=np.float64).reshape(-1, len(names), 7)[0, names.index(link_name)]
+    return np.array([T[0], T[1], T[2], T[6], T[3], T[4], T[5]], dtype=np.float32)   # xyz + quat xyzw -> wxyz
+
+
+def install_physics_link_poses() -> None:
+    """``ArticulationObject.get_link_pose`` from physics (``usd_sync_links``); the USD read stays the fallback."""
+    from env.scene_manager.objects import articulation as A
+    if getattr(A.ArticulationObject.get_link_pose, "_simlab_physics", False):
+        return
+    usd = A.ArticulationObject.get_link_pose
+
+    def get_link_pose(self, link_name: str):
+        try:
+            p = physics_link_pose(self, link_name)
+        except Exception:  # noqa: BLE001
+            p = None
+        return p if p is not None else usd(self, link_name)
+    get_link_pose._simlab_physics = True
+    A.ArticulationObject.get_link_pose = get_link_pose
+
+
 def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_type: str = "arx_x5",
                   need_planner: bool = True, support_planner: bool = False):
     """``src/eval_client/main.py::main`` config assembly, minus the policy server. ``need_planner=False``
@@ -356,9 +392,16 @@ class RoboDojoRunner:
 
     def __init__(self, task: str, num_envs: int = 1, device_id: int = 0, headless: bool = True,
                  video_dir: str | None = None, workdir: str | None = None, need_planner: bool = True,
-                 physics_only: bool = False, support_planner: bool = False):
+                 physics_only: bool = False, support_planner: bool = False, usd_sync_links: bool | None = None):
         self.task = task
         self.physics_only = physics_only
+        # usd_sync_links (default OFF; env SIMLAB_USD_SYNC_LINKS=1): RoboDojo's checker reads articulation link poses
+        # from USD (ArticulationObject.get_link_pose), which physics never updates here (kit updateToUsd = false). Moved
+        # articulations (a laptop) then keep their spawn pose and joint-rooted ones (toasters 00002/00004) read
+        # identity. ON: get_link_pose answers from the articulation's physics view instead.
+        if usd_sync_links is None:
+            usd_sync_links = os.environ.get("SIMLAB_USD_SYNC_LINKS", "0") == "1"
+        self.usd_sync_links = bool(usd_sync_links)
         paths.install_asset_firewall()                 # no Eval_Layout, no eval-paired Traj, from here on
         self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only)
         # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
@@ -376,6 +419,8 @@ class RoboDojoRunner:
         install_dev_demo_loader()                      # imitate_sorting_sequence: our demos, never the eval ones
         self.env = ee.create_eval_env(self.env_cfg, self.app)
         install_dev_demo_loader()                      # task modules imported by create_eval_env
+        if self.usd_sync_links:
+            install_physics_link_poses()
         if not video_dir:
             self.env._stream_vision = lambda env_idx, frame: None     # no mp4 streaming on get_obs
         self.layouts: list[dict] = [{} for _ in range(self.num_envs)]

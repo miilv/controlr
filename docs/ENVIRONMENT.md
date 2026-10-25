@@ -7,7 +7,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | Variable | Needed where | What |
 |---|---|---|
 | `OMNIROUTE_BASE_URL` | anywhere with live calls | OpenAI-compatible router (`.../v1`) |
-| `OMNIROUTE_API_KEY` | same | router key; only in `.env` locally, `~/controlr/.env` on compute3, and `~/controlr/.env` on our own GPU boxes (owner-approved: `scripts/bootstrap_gpu_box.sh` copies the `OMNIROUTE_*` lines only, mode 600, values never printed or logged) |
+| `OMNIROUTE_API_KEY` | same | router key; only in `.env` locally, `~/controlr/.env` on compute3, `~/data2/ilia/.env` on isr-lab (owner-approved, Mikhail's side may use it; point `DOJO_AGENT_DOTENV` / `AGENTIC_ENV_FILE` at it) and `~/controlr/.env` on our own GPU boxes (owner-approved: `scripts/bootstrap_gpu_box.sh` copies the `OMNIROUTE_*` lines only, mode 600, values never printed or logged) |
 | `OPENROUTER_API_KEY` | live runs with `llm.backend=decisions` | OpenRouter key for the Decisions API (`decisions.api_key_env`; omniroute has no decisions route); same storage rules as the router key |
 | `CONTROLR_ISAAC_AUTHKEY` | compute3 | shared secret client↔Isaac server; unset → the client generates one per launch (fallback `controlr-isaac-dev` is for a dev box only) |
 | `CONTROLR_SO101_AUTHKEY` | the SO-101 rig and the controlr process driving it | shared secret client↔so101 server ([SO101.md](SO101.md)); on the rig in `~/.so101_authkey` (0600); fallback `controlr-so101-dev` is for a dev box only |

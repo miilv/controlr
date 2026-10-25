@@ -51,6 +51,20 @@ def cmd_cases(a):
                "want": WANT.get(task)}
         (d / "inputs.json").write_text(json.dumps(inp))
         (d / "gt.json").write_text(json.dumps(fr["gt"]["objects"]))  # DEV ONLY: read by the scorer, never by perceive
+        if a.scan_root:  # the scan-pose observation of the same layout (frame_S1 of our D0 copy)
+            sd = Path(a.scan_root) / task / str(ep)
+            if (sd / "frame_S1.json").exists():
+                fs = json.loads((sd / "frame_S1.json").read_text())
+                sts = {k: np.asarray(v, float) for k, v in fs["obs"]["state"].items()}
+                cs = cameras_from_state(sts)
+                for c in CAMS:
+                    shutil.copy(sd / f"frame_S1_{c}.png", d / f"{c}_scan.png")
+                (d / "scan_inputs.json").write_text(json.dumps({
+                    "calib": {c: {"K": cs[c].K.tolist(), "T_world_cam": cs[c].T_wc.tolist()} for c in CAMS if c in cs},
+                    "flange": {arm: [float(v) for v in fs["obs"]["state"][f"{arm}_ee_pose"]] for arm in ("left", "right")},
+                    "joints": {arm: [float(v) for v in fs["obs"]["state"][f"{arm}_arm_joint_state"]] for arm in ("left", "right")},
+                    "grip_cmd": {arm: float(fs["obs"]["state"][f"{arm}_ee_joint_state"][0]) for arm in ("left", "right")},
+                    "state": fs["obs"]["state"]}))
         print(d)
 
 
@@ -94,6 +108,39 @@ def cmd_b1(a):
         print(d.name, len(out["objects"]), "objects", out["_dev_wall_s"], "s", flush=True)
 
 
+def cmd_b1scan(a):
+    """Scan-primary B1 (``scan.estimate_with_scan``) with the scan-aware 2-fold backgrounds of the scan root ->
+    b1_scan.json (J1 object form, the agent's hint)."""
+    from ..d0 import load_obs
+    from ..eval_g1 import fold_backgrounds
+    from ..inverse_layout import EstimatorConfig
+    from ..scan import estimate_with_scan
+    from .record import record_objects
+
+    import os
+    import zlib
+
+    cal = os.environ.get("DOJO_COLOR_CALIB")
+    for d in _cases(a):
+        if not (d / "scan_inputs.json").exists() or ((d / "b1_scan.json").exists() and not a.force):
+            continue
+        inp = json.loads((d / "inputs.json").read_text())
+        ep = Path(a.scan_root) / inp["task"] / inp["episode"]
+        fold = zlib.crc32(inp["episode"].encode()) % 2
+        kw = {"color_M": json.loads(Path(cal).read_text())[f"fold{fold}"]} if cal and Path(cal).exists() else {}
+        cfg = EstimatorConfig(**kw)
+        bgs = fold_backgrounds(ep)
+        o0, oS = load_obs(ep, 0), load_obs(ep, "S1")
+        t0 = time.time()
+        rec = estimate_with_scan({"images": oS["images"], "state": oS["state"]}, {"images": o0["images"], "state": o0["state"]},
+                                 inp["task"], inp["instruction"], bgs=bgs, cfg=cfg)
+        out = {"objects": record_objects(rec), "needs_look": [], "regions": [], "task": inp["task"],
+               "frame0_fill": rec.get("_perception", {}).get("frame0_fill"), "_dev_wall_s": round(time.time() - t0, 2),
+               "_record": rec}
+        (d / "b1_scan.json").write_text(json.dumps(out, default=str))
+        print(d.name, len(out["objects"]), "objects", out["_dev_wall_s"], "s fill", out["frame0_fill"], flush=True)
+
+
 def cmd_run(a):
     from .j1 import perceive_impl
 
@@ -103,12 +150,20 @@ def cmd_run(a):
         if f.exists() and not a.force:
             continue
         inp = _inputs(d)
-        b1 = json.loads((d / "b1.json").read_text()) if (d / "b1.json").exists() and not a.no_hint else None
+        hint = "b1_scan.json" if a.scan else "b1.json"
+        b1 = json.loads((d / hint).read_text()) if (d / hint).exists() and not a.no_hint else None
+        extra = None
+        if a.scan:
+            if not (d / "scan_inputs.json").exists():
+                continue
+            si = json.loads((d / "scan_inputs.json").read_text())
+            extra = [{"tag": "scan", "frames": {c: str(d / f"{c}_scan.png") for c in CAMS}, "calib": si["calib"],
+                      "flange": si["flange"], "note": "the arms moved to the fixed scan pose; the objects did not"}]
         t0 = time.time()
         out = perceive_impl(inp["frames"], inp["calib"], inp["flange"], inp["grip_cmd"], inp["instruction"], inp["want"],
                             joints=inp["joints"], b1=b1, use_b1=not a.no_hint and b1 is not None, model=a.model,
                             max_turns=a.max_turns, log_dir=str(Path(a.log_dir or (Path(a.cases) / "_logs")) / tag),
-                            fallback="none" if a.no_hint else "b1", refine=False,  # H2 runs offline: dev_d0 refine
+                            fallback="none" if a.no_hint else "b1", refine=False, extra_obs=extra,  # H2: dev_d0 refine
                             extra_body=json.loads(a.extra_body) if a.extra_body else None)
         out["_dev_wall_s"] = round(time.time() - t0, 2)
         f.write_text(json.dumps(out, default=str))
@@ -186,6 +241,85 @@ def cmd_seq(a):
             print(d.name, len(b1["objects"]), len(pr["objects"]), len(objs), [x["event"] for x in ev if x["event"] != "carried"][:6], flush=True)
 
 
+def enhance(img, how: str):
+    """Contrast variants for zoom crops: 'clahe' (CLAHE on Lab L, clip 2, 8x8 tiles), 'gamma' (0.6 on all channels)."""
+    import cv2
+
+    if how == "clahe":
+        lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+        lab[..., 0] = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(lab[..., 0])
+        return cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+    if how == "gamma":
+        return (255.0 * (img / 255.0) ** 0.6).astype(np.uint8)
+    return img
+
+
+def cmd_contrast(a):
+    """DEV ONLY (GT poses): does CLAHE / gamma on a zoom-sized crop make objects, dark ones above all, stand out more?
+    Per visible object (head + home wrists, D0 frame 0): CNR = |L_obj - L_ring| / std(L_ring) and boundary SNR = mean
+    Sobel magnitude on the silhouette contour / in the ring, for raw, clahe, gamma."""
+    import cv2
+
+    from .. import d0
+    from ..cameras import cameras_from_state, pose_to_T
+    from ..render import load_asset, robot_mask, silhouette, transform
+
+    root = d0.d0_root()
+    rows = []
+    for task in a.tasks:
+        for ep in d0.episodes(root, task)[: a.episodes]:
+            obs, gt = d0.load_obs(ep, 0), d0.load_gt(ep, 0)
+            cams = cameras_from_state(obs["state"])
+            objs = [o for o in gt["objects"] if o.get("label") and not o.get("clutter") and o.get("pos") is not None]
+            for cn, cam in cams.items():
+                img = obs["images"].get(cn)
+                if img is None:
+                    continue
+                rm = robot_mask(cam, obs["state"], dilate_px=2)
+                sils = {}
+                for o in objs:
+                    key = f"{o['type']}/{o['category']}/{o['category_idx']:05d}"
+                    try:
+                        A = load_asset(key)
+                    except Exception:
+                        continue
+                    sils[o["label"]] = silhouette(cam, transform(A.Vs, pose_to_T(o["pos"], o["quat"])), A.Fs)
+                allm = np.zeros(img.shape[:2], np.uint8)
+                for m in sils.values():
+                    allm |= m
+                for lab, m in sils.items():
+                    m = (m > 0) & (rm == 0)
+                    if m.sum() < 30:
+                        continue
+                    ys, xs = np.nonzero(m)
+                    cx, cy, half = int(xs.mean()), int(ys.mean()), 40
+                    x0, y0, x1, y1 = max(cx - half, 0), max(cy - half, 0), min(cx + half, img.shape[1]), min(cy + half, img.shape[0])
+                    mm = m[y0:y1, x0:x1].astype(np.uint8)
+                    ring = cv2.dilate(mm, np.ones((9, 9), np.uint8)) & (~cv2.dilate(mm, np.ones((3, 3), np.uint8)) & 1)
+                    ring &= (allm[y0:y1, x0:x1] == 0) & (rm[y0:y1, x0:x1] == 0)
+                    edge = cv2.dilate(mm, np.ones((3, 3), np.uint8)) - cv2.erode(mm, np.ones((3, 3), np.uint8))
+                    if ring.sum() < 30 or edge.sum() < 10:
+                        continue
+                    r = {"task": task, "ep": ep.name, "cam": cn, "label": lab, "px": int(mm.sum())}
+                    for how in ("raw", "clahe", "gamma"):
+                        crop = enhance(img[y0:y1, x0:x1].copy(), how)
+                        L = cv2.cvtColor(crop, cv2.COLOR_RGB2LAB)[..., 0].astype(float)
+                        g = np.hypot(cv2.Sobel(L, cv2.CV_64F, 1, 0), cv2.Sobel(L, cv2.CV_64F, 0, 1))
+                        lo, lr = L[mm > 0].mean(), L[ring > 0]
+                        r[f"L_{how}"] = round(float(lo), 1)
+                        r[f"cnr_{how}"] = round(float(abs(lo - lr.mean()) / (lr.std() + 1e-6)), 3)
+                        r[f"bsnr_{how}"] = round(float(g[edge > 0].mean() / (g[ring > 0].mean() + 1e-6)), 3)
+                    rows.append(r)
+    Path(a.out).write_text("".join(json.dumps(r) + "\n" for r in rows))
+    import statistics as st
+
+    for grp, sel in (("dark (L_raw < 60)", [r for r in rows if r["L_raw"] < 60]), ("other", [r for r in rows if r["L_raw"] >= 60])):
+        if not sel:
+            continue
+        print(grp, "n", len(sel), " ".join(f"{m}_{h} med {st.median(r[f'{m}_{h}'] for r in sel):.2f}"
+                                              for m in ("cnr", "bsnr") for h in ("raw", "clahe", "gamma")))
+
+
 # ------------------------------------------------------------------------------------------------ scoring (DEV ONLY)
 
 def _cls_of(o: dict, gt_classes: set, b1_cat: dict) -> str | None:
@@ -225,11 +359,14 @@ def score_case(d: Path, tag: str) -> list[dict]:
     task = inp["task"]
     labs = {lab for g in label_groups(task) for lab in g["labels"]}
     gts = [o for o in json.loads((d / "gt.json").read_text()) if o.get("label") in labs and not o.get("clutter")]
-    f = d / ("b1.json" if tag == "b1" else f"agent_{tag}.json")
+    f = d / ({"b1": "b1.json", "b1_scan": "b1_scan.json"}.get(tag) or f"agent_{tag}.json")
     if not f.exists():
         return []
     out = json.loads(f.read_text())
     b1 = json.loads((d / "b1.json").read_text()) if (d / "b1.json").exists() else {"objects": []}
+    if tag != "b1" and (d / "b1_scan.json").exists():  # labels the scan hint introduced map through it too
+        for o in json.loads((d / "b1_scan.json").read_text()).get("objects", []):
+            b1.setdefault("objects", []).append(o)
     b1_cat = {o["label"]: o.get("category") for o in b1.get("objects", [])}
     classes = {o["category"] for o in gts}
     preds = [o for o in out.get("objects", []) if o.get("pos") is not None]
@@ -302,9 +439,15 @@ def main(argv=None):
     p.add_argument("--out", required=True)
     p.add_argument("--d0", default=str(Path.home() / "dojo-data" / "d0"))
     p.add_argument("--frame", default="0")
+    p.add_argument("--scan-root", default=None, help="our D0 copy with frame_S1 (scan pose) renders")
     p = sp.add_parser("b1")
     p.add_argument("--cases", required=True)
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
+    p.add_argument("--only", nargs="*")
+    p.add_argument("--force", action="store_true")
+    p = sp.add_parser("b1scan")
+    p.add_argument("--cases", required=True)
+    p.add_argument("--scan-root", required=True)
     p.add_argument("--only", nargs="*")
     p.add_argument("--force", action="store_true")
     p = sp.add_parser("run")
@@ -312,6 +455,7 @@ def main(argv=None):
     p.add_argument("--model", required=True)
     p.add_argument("--tag")
     p.add_argument("--no-hint", action="store_true")
+    p.add_argument("--scan", action="store_true", help="add the scan observation; hint = b1_scan.json")
     p.add_argument("--max-turns", type=int, default=8)
     p.add_argument("--extra-body")
     p.add_argument("--log-dir")
@@ -328,6 +472,10 @@ def main(argv=None):
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
     p.add_argument("--only", nargs="*")
     p.add_argument("--force", action="store_true")
+    p = sp.add_parser("contrast")
+    p.add_argument("--tasks", nargs="+", default=["stack_blocks", "push_T", "build_tower", "stack_bowls", "put_bottles_into_dustbin"])
+    p.add_argument("--episodes", type=int, default=25)
+    p.add_argument("--out", required=True)
     p = sp.add_parser("score")
     p.add_argument("--cases", required=True)
     p.add_argument("--tags", required=True)
@@ -335,7 +483,7 @@ def main(argv=None):
     p.add_argument("--csv")
     p.add_argument("--jsonl")
     a = ap.parse_args(argv)
-    {"cases": cmd_cases, "b1": cmd_b1, "run": cmd_run, "refine": cmd_refine, "seq": cmd_seq, "score": cmd_score}[a.cmd](a)
+    {"cases": cmd_cases, "b1": cmd_b1, "b1scan": cmd_b1scan, "run": cmd_run, "refine": cmd_refine, "seq": cmd_seq, "contrast": cmd_contrast, "score": cmd_score}[a.cmd](a)
 
 
 if __name__ == "__main__":
