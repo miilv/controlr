@@ -423,6 +423,16 @@ def cmd_checks(a) -> None:
         if o.get("clutter") or o.get("type") not in ("Articulation", "Geometry"):
             continue
         meta = lm.get_instance_metadata(inst_name=o["inst_name"], env_idx=0) or {}
+        if o.get("type") == "Articulation":
+            inst = lm.get_scene_object(env_idx=0, inst_name=o["inst_name"])
+            links = sorted({(v or {}).get("base_link") for typ in ("passive", "active")
+                            for v in ((meta.get(typ) or {}).get("functional") or {}).values()} - {None})
+            for ln in links:
+                try:
+                    lines.append(f"link {o.get('label')} {ln} USD world pose {np.round(inst.get_link_pose(ln), 4).tolist()}"
+                                 f" (instance pose {np.round(o['pos'], 4).tolist()})")
+                except Exception as e:  # noqa: BLE001
+                    lines.append(f"link {o.get('label')} {ln}: {e}")
         for typ in ("passive", "active"):
             for tag in ((meta.get(typ) or {}).get("functional") or {}):
                 try:
