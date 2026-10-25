@@ -54,6 +54,16 @@ def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, ya
                 and sk.can_pick(label, a, pick_method)]
 
     reach = {(l, a): float(np.linalg.norm(w.obj(l).center_w[:2] - sk.kin.base(a)[:2, 3])) for l in labels for a in ARMS}
+    chain = existing_chain(w, labels)
+    if len(chain) >= 2:
+        # resume a partial stack (re-planned episode): keep it, add the rest on top
+        rest = [l for l in labels if l not in chain]
+        site = w.obj(chain[0]).center_w[:2]
+        seq = [(l, min(ARMS, key=lambda a, l=l: reach[(l, a)])) for l in chain[1:]]
+        for l in sorted(rest, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - site))):
+            opts = arms_for(l, site) or list(ARMS)
+            seq.append((l, min(opts, key=lambda a, l=l: reach[(l, a)])))
+        return _jobs(chain[0], None, seq, on_top, yaw_sym, tol_xy, pick_method, place_kw, mid_sites)
     best = None
     for base in labels:
         site = w.obj(base).center_w[:2]
@@ -86,6 +96,33 @@ def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, ya
     if best is None:
         return []
     _, base, xy, seq = best
+    return _jobs(base, xy, seq, on_top, yaw_sym, tol_xy, pick_method, place_kw, mid_sites)
+
+
+def existing_chain(w, labels: list[str]) -> list[str]:
+    """The longest bottom-up chain of ``labels`` already resting on one another (bottom on the table)."""
+    def on(a, b) -> bool:          # a rests on b
+        oa, ob = w.obj(a), w.obj(b)
+        r = 0.5 * float(min(min(oa.asset.extents[:2]), min(ob.asset.extents[:2])))
+        return (float(np.linalg.norm(oa.center_w[:2] - ob.center_w[:2])) < r
+                and -float(ob.asset.extents[2]) - 0.005 < oa.bottom_z - ob.top_z < 0.01   # on top, or nested inside
+                and oa.center_w[2] > ob.center_w[2] + 0.005)
+    best = []
+    for b in labels:
+        if w.obj(b).bottom_z > 0.765 + 0.01:
+            continue
+        ch = [b]
+        while True:
+            nxt = [l for l in labels if l not in ch and on(l, ch[-1])]
+            if not nxt:
+                break
+            ch.append(nxt[0])
+        if len(ch) > len(best):
+            best = ch
+    return best
+
+
+def _jobs(base, xy, seq, on_top, yaw_sym, tol_xy, pick_method, place_kw, mid_sites) -> list[Job]:
     jobs, below = [], base
     stacked = [base] if base else []
     for l, a in seq:

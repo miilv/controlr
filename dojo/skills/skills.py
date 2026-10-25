@@ -510,6 +510,19 @@ class Skills:
             cache[key] = isinstance(pp, PickPlan)
         return cache[key]
 
+    def already_there(self, job: "Job") -> bool:
+        """Does the job's object already rest at the job's target (within the job's tolerances)?"""
+        try:
+            T = job.target(self)
+        except Exception:  # noqa: BLE001 - a target that cannot be computed now is not reached
+            return False
+        o = self.world.obj(job.label)
+        c_t = T[:3, :3] @ o.asset.center + T[:3, 3]
+        if float(np.linalg.norm(o.center_w[:2] - c_t[:2])) > job.tol_xy or abs(float(o.center_w[2] - c_t[2])) > min(job.tol_z, 0.01):
+            return False
+        tilt = math.degrees(math.acos(min(1.0, abs(float((o.R.T @ T[:3, :3])[2, 2])))))
+        return tilt <= job.tol_tilt
+
     def can_pick_at(self, label: str, arm: str, xy, method: str = "auto") -> bool:
         """Grasp feasibility from home if ``label`` rested level on the table at ``xy``."""
         from dojo.skills.geometry import R_to_quat
@@ -685,6 +698,10 @@ class Skills:
 
         for i, job in enumerate(jobs):
             self.refresh()
+            if not holds(job) and self.already_there(job):
+                # re-planned episodes (resync / retry) continue instead of undoing finished work
+                self._record(SkillResult(True, "jobs", "skipped", 0, job.arm, note=f"{job.label} already at its target"))
+                continue
             if not holds(job) and self.verifier is not None:
                 r = self._record(self._verified_pick(job))
                 if not r.ok:
