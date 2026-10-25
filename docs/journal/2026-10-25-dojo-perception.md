@@ -48,3 +48,25 @@ Pitfall: simlab writes `frame_L1.json` before the PNGs — the eval now requires
   0.04). Kept as the principled choice.
 - Pending: `--look` on push_T, put_bottles, stack_blocks, stack_bowls once simlab's renders land
   (`~/dojo-perception-data/l1_ready.sh` reports completeness).
+
+## Look targeting (coordinator round 2)
+- Integration's mode-B stack_blocks failures, what the estimator said at frame 0:
+  - 100004: the block at (−0.209, −0.219) was 14.7 mm off at confidence 0.63 → flagged (conf < 0.7), and
+    `look_plan` v1 already looked at it;
+  - 100006: the block at (−0.337, −0.247), partly under the home left gripper, was 21.7 mm off at
+    confidence 0.77 → NOT flagged (the visible part fits well; confidence is overstated). v1 still looked at
+    it as low-confidence (< 0.8); fused D0 frames bring it to 0.1 mm.
+- Now: each record carries `hidden_frac` (share of the head-view silhouette under the current robot mask)
+  and `near_home_grippers` (within 8 cm of (∓0.36, −0.21)); either marks the object ambiguous, and
+  `look_plan` gives such objects top priority ("partly_hidden"). Look azimuths (±60° around the arm's side)
+  are chosen to keep the arm segment clear of other objects' footprints, large ones first.
+- `look_poses_v2.json` with this targeting (resumable export; the 4 GB cap OOM-killed it once on bottles,
+  6 GB is enough).
+
+## Which checkers care about asset identity
+- pack_objects: the checker reads each item's `active.checkpoint` functional point / frame axes; shoes have
+  no `checkpoint` (only `place`), so their own frame is used, and near-duplicate shoes (10/11 identical
+  geometry and colour, 8/9 nearly) share the convention: a wrong near-duplicate at the right pose does not
+  change the outcome. Shoe identity is deprioritised.
+- Identity matters where the checker reads the asset index or its order: sort_nesting_dolls_by_size (index
+  % 5 = size order), stack_blocks_by_language (labels ↔ colour words), classify_objects (categories).
