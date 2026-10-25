@@ -373,3 +373,32 @@ The earlier "0.82 → 0.84" post-look line reads 0.79 → 0.84.
       is requested.
     - Open: the corkscrew's fit stays poor even where it stands alone in the left wrist view. Check its
       resting pose / place frame against simlab renders when general_pickup lands.
+
+## J1 adapter behaviours found by Misha's side (fixed on the branch, J1 keeps 868fc4a)
+I reproduced them on their seed-0 L9 practice runs, using the step observations with the server's
+calib only.
+- **Refine pose under the wrong label.** The close-up refine wrote its pose to the current object carrying
+  the prior's label. stack_blocks step 30 had two blocks at the same spot.
+  - Now `match_refined` gives the result to the current object of the same category nearest the prior
+    pose (within 4 cm).
+  - A refined pose within 15 mm of another same-category object is rejected (`refine_rejected`).
+- **Labels permute between calls.**
+  - estimate assigns interchangeable labels in a fixed spatial order (x, then y).
+  - With `prior`, the adapter's `stabilize_labels` keeps the prior's labels by position (Hungarian within
+    a label group, ≤ 8 cm).
+  - Practice stack_blocks steps 0–99: block_0..2 keep their labels; before, they changed at every step.
+- **T on the pad read ~1 cm off.**
+  - Mechanism: in joint refinement the pad's silhouette was taken out of the T's foreground, and that
+    removed the T's own pixels.
+  - Measured on step 104, with the T pushed onto the pad, from the pad pose:
+    - started on the pad: the T drifted 6 mm;
+    - started 14 mm off: it ended 39 mm off at a degenerate yaw;
+    - with supports kept: 0.8 mm both times (truth 0.6–0.9 mm).
+  - `_union_masks(target=h)` now leaves out objects lying under h (top ≤ h's bottom + 4 mm, footprints
+    overlapping).
+  - Also, static fixtures (Geometry) that the current view misses keep their prior pose with
+    `source: "prior"`. The pad under the T used to disappear from the output.
+- Integration's runtime re-keys estimates by position (`_match_by_position`, `merge_looked`), so it is not
+  affected, except merge_looked's `_not_found` fill by label (told them).
+- Open: the stacked tower at the end of stack_blocks reads as a single block (steps 152 and 211). The
+  estimator has no stacked-object proposals at runtime; frame 0 never needed them.

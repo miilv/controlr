@@ -1046,12 +1046,29 @@ def _geometry_groups(g: dict, prior: dict) -> dict[tuple, list[ShapeModel]]:
     return by_geom
 
 
-def _union_masks(chosen, views, skip=None):
+def _z_range(h) -> tuple[float, float]:
+    T = h.T()
+    z = h.sm().asset.V @ T[2, :3] + T[2, 3]
+    return float(z.min()), float(z.max())
+
+
+def _supports(c, h, tol: float = 0.004) -> bool:
+    """``c`` lies under ``h`` (its top at or below h's bottom, footprints overlapping): a flat pad under the
+    T, a plate under a block. Its silhouette is behind h, so it must not hide h's own foreground."""
+    if np.hypot(c.x - h.x, c.y - h.y) > 0.5 * (np.linalg.norm(c.sm().asset.extents[:2]) + np.linalg.norm(h.sm().asset.extents[:2])):
+        return False
+    return _z_range(c)[1] <= _z_range(h)[0] + tol
+
+
+def _union_masks(chosen, views, skip=None, target=None):
+    """Union silhouette of the chosen objects per view (their pixels are taken out of the observed foreground
+    while fitting another object). With ``target``: objects that support it (lie under it) are left out —
+    removing a pad's silhouette under a T removed the T's own pixels and pulled its fit ~1 cm off the pad."""
     out = {}
     for name, v in views.items():
         m = np.zeros((v.cam.h, v.cam.w), np.uint8)
         for j, c in enumerate(chosen):
-            if j != skip:
+            if j != skip and (target is None or not _supports(c, target)):
                 c.sm().sil(v.cam, c.T(), out=m)
         out[name] = m
     return out
@@ -1372,7 +1389,7 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         if h.per_view.get("occluded") or h.label_group not in prior_by_g:
             continue
         g, prior = prior_by_g[h.label_group]
-        others = _union_masks(out, views, skip=i)
+        others = _union_masks(out, views, skip=i, target=out[i])
         trials = []
         if (not prior["yaw_fixed"] and h.sm().yaw_period > 1.5 * np.pi
                 and region_ok(g, *_centre_xy(h), (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
@@ -1774,7 +1791,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         for i, h in enumerate(chosen):
             if h.per_view.get("occluded"):
                 continue
-            others = _union_masks(chosen, views, skip=i)
+            others = _union_masks(chosen, views, skip=i, target=h)
             yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
             x, y, yaw, loss, per = refine(h.sm(), h.x, h.y, h.yaw, views, others, xy_step=0.003, yaw_step=0.05,
                                           maxiter=cfg.refine_iters, fix_yaw=yaw_fixed,
@@ -1857,7 +1874,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
 
     # ---- records
     for gi, g, _ in pending:
-        members = [h for h in chosen if h.label_group == gi]
+        # interchangeable labels go to objects in a fixed spatial order (x, then y): the selection order
+        # varies between calls, and the same block must not change label from one call to the next
+        members = sorted((h for h in chosen if h.label_group == gi), key=lambda h: (round(h.x, 2), round(h.y, 2)))
         for lab, h in zip(g["labels"], members):
             placed.append((g, h))
             h.per_view["label"] = lab
