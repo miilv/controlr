@@ -1488,7 +1488,8 @@ def _views_subset(views, cfg):
 def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction: str = "",
              bgs: dict | None = None, cfg: EstimatorConfig | None = None,
              extra_frames: list[tuple[dict, dict]] | None = None,
-             extra_views: list[tuple[str, Camera, np.ndarray]] | None = None) -> dict:
+             extra_views: list[tuple[str, Camera, np.ndarray]] | None = None,
+             cams: dict[str, Camera] | None = None) -> dict:
     """``extra_frames``: [(images, state)] of later frames of the same episode with the objects assumed
     static (arms moved): their views join the render-and-compare loss as ``<cam>@<k>``. Proposals come
     from the first frame's head view."""
@@ -1497,7 +1498,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     _COLOR_M = cfg.color_M if task in cfg.color_tasks else None
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
-    cams = cameras_from_state(state)
+    cams = cams or cameras_from_state(state)  # given cameras: a caller's own calibration (J1 harness)
     views_all = segment_views(images, cams, state, bgs, thr=cfg.fg_thr)
     views = _views_subset(views_all, cfg)
     for k, (imgs_k, state_k) in enumerate(extra_frames or [], start=1):
