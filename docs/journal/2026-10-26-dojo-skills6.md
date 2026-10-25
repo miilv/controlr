@@ -1,0 +1,76 @@
+# 2026-10-26: dojo skills6: a scripted opponent, a demonstration, a conveyor, an egg carton
+
+Stream: skills6. Branch `feat/dojo-skills6` (from skills4 f349671, rebased on main after #28 and again after #33). Code:
+`dojo/skills/interactive.py` (observation-driven skills), `dojo/skills/watch.py` (watch reads), `dojo/skills/holders.py`
+(holes + hinged lid), planner rules in `dojo/skills/planner.py`. Tests: `tests/dojo/test_skills6.py`.
+
+Runs: `~/dojo-skills6` (commit-stamped copy, `scripts/skills/deploy_skills6.sh`), light lanes through `g3_light.sh` with
+`DOJO_STREAM=skills6`, at most two lanes at once. Data: `compute3:~/dojo-data/skills6/g3/<run>_<commit>/`. Catalogue for the
+five tasks' 60 assets, built with perception's builder, `--no-glb`, 225 MB: `compute3:~/dojo-data/skills6/catalog`. It
+includes `links.json` for the egg holder. Put it first in `DOJO_CATALOG`. Every G3 run has `SIMLAB_USD_SYNC_LINKS=1`, which
+is the lead's rule and since #29 the runner's default. G3 = TRUE state in the physics-only twin. The entry point is always
+`planner.solve`, chosen from instruction words plus objects. No task names, no LLM calls.
+
+Runs made before the second rebase carry the pre-rebase commit hashes. The skill code is the same as on the branch: main
+#29-#33 touched no file under `dojo/skills`.
+
+## 1. Board context and order of work
+
+Board scores (PyRUA-Lean / best entry; points to 100 in Average units):
+- play_tic_tac_toe (LH): 97.2 / 100, 0.07;
+- fill_egg_holder (LH): 21.2 / 21.2, 1.97;
+- imitate_sorting_sequence (M): 92.4 / 92.4, 0.25;
+- match_and_pick_from_conveyor (M): 86 / 92, 0.47;
+- pick_from_conveyor_by_image (O): 22 / 52, 1.95.
+
+The stack scored 0 on all five, so each one taken from 0 is worth its full score times the weight. Order by expected points
+per hour:
+1. tic-tac-toe: fast, and LH needed it;
+2. imitate;
+3. the conveyor match;
+4. the egg carton;
+5. the image conveyor, parked (section 5).
+
+## 2. What was built
+
+| piece | where | what |
+|---|---|---|
+| `play_board_game(board, pieces, opponent_pieces)` | `interactive.py` | The board is an object with support frames `cell/k`. "Ours" is the identical-piece kind nearer the robot, "theirs" the other kind. Our turn: tic-tac-toe rules (win, block, centre, the corner opposite theirs, corners, edges; ties by distance) choose the cell. The piece is the outermost free one on the cell's side, so the central pieces, which both arms reach, are left for the last cells. Pick and place are planned together (`plan_transfer`), one arm at a time, with a lower pre-place for far cells and centred grasps only. Then bank and send both arms home. Their turn: board watch reads every 2 steps until a new opponent piece is stable in a cell, then wait for the scripted arm to be at rest. |
+| `copy_demonstration(container, demo_container, objects)` | `interactive.py` | Two same-kind containers; ours is the nearer one. Hold still at home and read the demonstrator's container every 5 steps; `ArrivalOrder`: an identity arrives after 4 inside reads in a row. Once all identities that appear twice have arrived and the scripted arm is at rest, put each one's twin into our container in that order (`put_in_open`). If it does not go in, retry. A failure stops the sequence, because a later object would be out of order and the checker fails the episode. |
+| `put_in_open(label, container)` | `interactive.py` | For an open container on the table: carry the object level over a free floor spot and let go 12 mm above the rim. The spots are the ones farthest from what is already inside. Planned one arm and one pre-place at a time. Relay: the other arm puts the object on a table spot both arms reach, then the container's arm takes it. `put_into` only works with drop points off the table. |
+| `match_and_pick(objects, conveyor)` | `interactive.py` | Belt velocity is the median displacement of the objects over 4 steps (+4.0 mm/step in x). "First" = the object leading along the motion; target = the next object of the same identity. Intercept: the earliest step at which an arm can do a top grasp (else a slice or antipodal grasp), at most 40 deg from vertical, at the predicted pose. Candidate grasps are computed once in the object frame. Collisions are checked against the other objects where they will be. The plan has one IK target per env step: a descent tracking the belt (8 steps), the close (5), a lift-off with the belt, then 16 cm straight up. Wait, approach, re-read the target and shift the track by the prediction error, then judge the lift after the arm settles. |
+| `fill_holes(objects, holder, lid_tag)` | `holders.py` | Holes are the openings in a depth map of the body link's mesh (4 holes, r 24-25 mm, plate top 48 mm, floor 2 mm). Each egg is stood up (long axis 0/20/35 deg from vertical) over a free hole and released with the fingertips 3 mm above the body (`fingers_out` + `ref_top`), through the servo tail. Front holes first: the open lid stands behind the back ones. Grasps for round sections: closing through the long axis, rolled about it, tilted about the closing axis. End-to-end grasps take an egg out of a crowded basket onto the table. Objects inside a round container keep their fingers over its inner surface, a radial height field from the mesh. The lid (`swing_closed`): fingertips on the lid's trailing face, moved along the lid's arc about the hinge. Done only when every egg is in, because the lid counts only in the final stage. |
+| watch reads | `watch.py`, `GTProvider.watch_read` | The shape perception-R&D proposed (`kind: cells / container` -> `cells` / `inside` + `outside`, `stable_vs_prior`, `new`, `occluded`). G3 serves it from GT, so moving to eval is a provider swap. `ArrivalOrder` has the same API as perception's helper. |
+| scripted actors at rest | `GTProvider.actors_moving`, `RunnerEnv.actors_gt` (dev-only), `interactive.wait_actors_still` | Answers "did a scripted arm (one that is not ours) move since the last call?". G3 reads its GT joints, gripper included. "Still" = 12 consecutive still reads, at most 160 steps. A provider without the method makes the skill hold a fixed time: 60 steps for the game, 110 for the demonstration. |
+| shared, additive | `skills.py`, `motion.py` | `plan_place(..., ref_top=)`: the receptacle top for `fingers_out` and the servo hover, used when the object's bbox top is wrong (an open lid). `Collision`: `"label#link"` in `ignore` drops one link; `slab_links` (opt-in) models an articulated link as 2 cm slabs. Defaults unchanged. |
+
+Registry: four `j2-registry/1` entries with `obs_needs.notes` (section 6). SKILL_DOCS v4.
+
+## 3. G3 numbers
+
+(filled in below)
+
+## 4. Failure modes and what fixed them
+
+(filled in below)
+
+## 5. Parked
+
+(filled in below)
+
+## 6. obs_needs (for integration-2 / perception-R&D)
+
+Every skill reads through its provider, so moving from GT to perception swaps the provider, not the skill.
+
+| skill | read | region (how the skill knows it) | when / how often | returns to the skill | tolerated latency |
+|---|---|---|---|---|---|
+| play_board_game | (b) `watch_read` kind `cells` | The board's pose and asset from the step-0 estimate; cells from its `cell/k` frames; own / opponent = the two piece assets | Every 2 steps during the opponent's turn | Per cell: occupant (own / opponent / None), pos; `stable_vs_prior` | A new piece must be seen within ~10 steps of its release (its arm needs 33-43 steps to go home) |
+| play_board_game | (a) `actors_moving()` | The scripted arm (not ours) | Every step after its piece is stable, until 12 still reads (max 160) | bool (None = cannot tell -> hold 60) | 2-3 steps. Gripper motion must count as motion: arms pause ~10 steps while their gripper closes |
+| play_board_game | object estimates (`refresh`) | Our pieces, the board | At the start of our turn and after each placement (our piece within 10 mm of its cell, else re-placed) | Poses | Normal refine |
+| copy_demonstration | (b) `watch_read` kind `container` | The demonstrator's container (of two same-kind containers, the one farther from the robot, from the step-0 estimate); candidates = identities that appear twice | Every 5 steps from step 0 until the expected number has arrived and a read is stable | `inside` / `outside` [{asset, pos}]; an asset arrives after 4 inside reads in a row (`ArrivalOrder`) | Objects arrive >= 100 steps apart and only the order matters: any cadence up to ~20 steps |
+| copy_demonstration | (a) `actors_moving()` | The demonstrator's arm | After the last arrival, until 12 still reads | bool (None -> hold 110) | As above |
+| copy_demonstration | object estimates | Our twins (by identity), our container | Before each pick; inside-check after each drop | Poses, inside | Normal |
+| match_and_pick | (c) object tracks on the belt | Every object on the belt | Velocity from two reads 4 steps apart, at the start and before a retry; one target re-read at the end of the approach (~8 steps before contact) | Positions by identity, belt velocity | Target error < ~8 mm at contact: velocity good to ~0.03 mm/step over the <= 300-step prediction, or a fresh re-read <= 3 steps old (a known latency is shifted by v * latency) |
+| fill_holes | object estimates (static scene) | Eggs, holder, basket | At the start, after each drop ("in a hole": root within r_hole - 4 mm of the hole centre, bottom >= 10 mm below the hole top), lid angle before / after the swing | Poses, lid joint angle | Normal |
+
+The registry's `reads` tokens stay within the j2 vocabulary (`object_args`); the watch cadence is in each entry's `notes`.

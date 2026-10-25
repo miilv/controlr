@@ -190,6 +190,21 @@
 - [ ] **dojo skills: parked tasks** (lead, 2026-10-25). insert_key: lift + return banks 15; the in-air handover lost the key on the carry 0/31. store_tools: keep v2 (0.20); the pliers slip, and the hammer and wrench are lost on the carry. fill_pen: see above. Revisit after the Generalization tasks.
 - [x] ~~**dojo: make_toast_random's slot checks cannot pass in our twin.**~~ Resolved: the official rendered kit writes physics to USD (live link poses), and the physics-only runner now reads link poses from physics by default (`usd_sync_links`, journal 2026-10-25-usd-sync-default). RoboDojo's `get_functional_points` returns toaster 00002/00004's frames untransformed (object frame, z ≈ -0.03). Those assets lack ArticulationRootAPI, and `Articulation.get_link_pose` reads the USD xform. Skills place physically; score rand with `scripts/skills/phys_slots.py`. Behaviour in the official env is unknown upstream. Evidence: `g3 checks` (journal 2026-10-25-dojo-skills4 §3).
 - [ ] **dojo skills: store_laptop's laptop half (80) unexplained.** In our twin, the checker's `bottom` frame ends 78 mm above the table for any +y-up laptop, while the rack's bbox is 49 mm tall. The public demo's end pose is upright in the rack. Find what the official checker does differently before building the lid-close + stand skill. Headset half: `hang_on_hooks`.
+- [ ] **dojo runtime: watch reads for observation-driven skills** (skills-6, journal 2026-10-26-dojo-skills6 §6).
+  `play_board_game` and `copy_demonstration` call `provider.watch_read(region, prior)` (perception-R&D's dict shape:
+  `cells` / `container`) and `provider.actors_moving()` while they hold still. `match_and_pick` needs object tracks on
+  the belt. G3 answers all three from GT (`GTProvider`); `RuntimeProvider` has none of them yet. Without
+  `actors_moving` the skills hold a fixed 60 / 110 steps, tuned on our own demos.
+- [ ] **dojo skills: fill_egg_holder, eggs crowded in the basket have no grasp.** The X5 finger's root block (38 mm
+  thick, 56 mm wide, 40-70 mm above the TCP) meets the basket's rim or the neighbouring egg for every grasp of an egg
+  lying against the basket wall (dev layouts: ~31 of 44 eggs). Eggs on the table and the stand-up drop into the
+  holder's holes work. Next: roll / push an egg off the wall first, or a grasp model that may touch the rim.
+- [ ] **dojo simlab: pick_from_conveyor_by_image layouts put the basket inside the conveyor's body.** The generator
+  offsets `relative_plane: conveyor` from the first belt support: the basket's centre is 10 cm below the belt top,
+  its 22 cm body spans z 0.56-0.78 under a 0.69-0.77 belt, and it is ejected at load (simlab saw it move 1.7 m).
+  Until RoboDojo's reading of that placement is known, the task cannot be measured (skills-6 parked it).
+- [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
+  25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
 - [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and **fold_clothes** (parked: no cloth state in the skills layer).
 - [ ] **dojo skills: deposit_coin.** The coin bank's `slot_opening` frames now give the target, but the coin (21 mm, 1 mm thick) starts out of the inserting arm's reach. The as-is relay lays it flat, and two grippers cannot share it in the air. It needs a relay that keeps it on its edge (back into a stand-like holder, or leaned against something).
 - [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
