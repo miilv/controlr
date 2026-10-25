@@ -379,3 +379,35 @@ entries:
     measured: none
     stats: []
     notes: "untested in the twin (no dev records for a slotted appliance yet)"
+
+  - name: hang_on_hooks
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Hang each object by its handle on one of the rack's hooks (hook frames as listed for the rack in the scene):
+      carried re-oriented to just beyond a hook's tip, slid along the hook through the handle, let go. Banks after
+      each object.
+    args:
+      objects: "[id], required; the objects with handles"
+      rack: "id, required; the fixture with hooks"
+      hook_tag: "frame, required; the rack's hook frames"
+      handle_tag: "frame = handle; the objects' handle frame"
+    selects_on:
+      words: [hang, hooks, rack, by the handle]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+        - {what: rack, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.library:hang_on_hooks"
+    measured: none
+    stats: []
+    notes: "skills-4 first version"
