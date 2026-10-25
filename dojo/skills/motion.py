@@ -399,6 +399,18 @@ def held_box(o, T_tcp_obj) -> HeldBox:
     if mesh is None or len(mesh[0]) < 60:
         return hb
     V = np.asarray(mesh[0], float)
+    irr = getattr(o.asset, "irregular", None)      # decided on the full mesh when it was loaded (AssetDB)
+    if irr is None:
+        irr = mesh_irregular(V)
+    if irr:
+        hb.points = V[:: max(1, len(V) // 400)].copy()
+    return hb
+
+
+def mesh_irregular(V: np.ndarray) -> bool:
+    """Does the shape fill its box poorly? Horizontal slices across the body z axis cover under 60 % of the
+    bbox footprint on average (figurines, tools, keys)."""
+    V = np.asarray(V, float)
     ext = np.maximum(V.max(0) - V.min(0), 1e-6)
     k = 2                                        # slices across the body z axis
     fills = []
@@ -408,9 +420,7 @@ def held_box(o, T_tcp_obj) -> HeldBox:
             o2 = [i for i in range(3) if i != k]
             a = np.prod(V[m][:, o2].max(0) - V[m][:, o2].min(0))
             fills.append(a / (ext[o2[0]] * ext[o2[1]]))
-    if fills and float(np.mean(fills)) < 0.6:
-        hb.points = V[:: max(1, len(V) // 400)].copy()
-    return hb
+    return bool(fills and float(np.mean(fills)) < 0.6)
 
 
 def merge_steps(per_arm: dict[str, list[np.ndarray]], hold: dict[str, np.ndarray]) -> list[dict[str, np.ndarray]]:
