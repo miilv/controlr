@@ -264,7 +264,9 @@ class RobotServerBackend:
             ran = int(rep.get("executed", rep.get("steps", 0)))
             self.executed.extend(acts[i:i + ran])
             sent += ran
-            self.chunks.append({"step0": self._steps - int(rep.get("steps", 0)), "n": len(part), "ran": ran, "md5": md5})
+            self.chunks.append({"step0": self._steps - int(rep.get("steps", 0)), "n": len(part), "ran": ran, "md5": md5,
+                                **{k: rep.get(k) for k in ("tracking_rad", "tracking_max_rad", "start_tracking_rad",
+                                                           "max_step_dq", "grip_change_while_moving") if k in rep}})
             for arm, k in (rep.get("grip_change_while_moving") or {}).items():
                 self.stats["grip_change_while_moving"][arm] = self.stats["grip_change_while_moving"].get(arm, 0) + int(k)
             for arm, e in (rep.get("tracking_max_rad") or {}).items():
