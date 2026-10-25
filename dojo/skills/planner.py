@@ -260,7 +260,10 @@ def solve(sk) -> dict:
         f = sk.finish()
         return {"ok": False, "stage": "plan", "note": p.why, "finish": f.status}
     res = L.SKILLS[p.skill](sk, **p.args)
-    if not res.get("ok"):
-        return res
+    # finish either way: most checkers want both arms home and the grippers open, and a skill's own
+    # check can be stricter than the task's (twin, plug_in_charger: the charger went in 13-17 mm deeper
+    # than modelled, the skill called it a miss, the arms stayed out and the episode failed on "home")
     f = sk.finish()
+    if not res.get("ok"):
+        return {**res, "finish": f.status}
     return {**res, "ok": True, "stage": "done", "finish": f.status, "skill": p.skill}
