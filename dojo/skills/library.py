@@ -1015,8 +1015,13 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
         fit = None
         # crowded opening: less padding, then the rim band only, then the objects inside ignored (they lean;
         # the twin settles the newcomer between them)
-        for kw in ({"others_pad": 0.002, "min_clear": 0.002}, {"others_pad": 0.0, "min_clear": 0.0005},
-                   {"others_pad": 0.0, "min_clear": 0.0005, "others_band": 0.008}, {"others": ()}):
+        # the first one in the middle; then packed against the wall with >= 6 mm to it (twin: an oil pen
+        # packed 2 mm from the wall jammed 50 mm down), relaxing when the opening is crowded
+        tries = ([{"pack": False}] if not inside else []) + [
+            {"others_pad": 0.002, "min_clear": 0.006}, {"others_pad": 0.002, "min_clear": 0.003},
+            {"others_pad": 0.0, "min_clear": 0.0015}, {"others_pad": 0.0, "min_clear": 0.0015, "others_band": 0.008},
+            {"others": ()}]
+        for kw in tries:
             args = {"others": inside, "res": 0.001, "yaw_step_deg": 15.0, "pack": True, **kw}
             fit = fit_insertion(w.obj(lab), w.obj(container), **args)
             if fit is not None:
@@ -1029,7 +1034,7 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
         sk.log(f"[fill] {lab}: {fit.note}")
         r = place_oriented(sk, lab, [T], yaw_sym=4, tol_xy=0.03, tol_tilt=30.0, tol_z=0.05,
                            ignore=(container, *st["inside"]),
-                           place_kw={"pre_h": 0.02, "descend_rad": 0.05, "release_gap": 0.0, "settle": 1})
+                           place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2})
         sk.refresh()
         if _inside_opening(sk, lab, container):
             st["inside"].append(lab)
