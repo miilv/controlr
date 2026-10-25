@@ -2085,7 +2085,8 @@ def hook_frames(rack, tag: str) -> list[tuple[int, np.ndarray, float]]:
             continue
         tip = 0.03
         if V is not None:
-            L = (V - F[:3, 3]) @ F[:3, :3]
+            d = V - F[:3, 3]
+            L = d @ F[:3, :3]
             near = L[np.hypot(L[:, 1], L[:, 2]) < 0.008]
             if len(near):
                 tip = float(max(0.0, near[:, 0].max()))
@@ -2102,6 +2103,12 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     w = sk.refresh()
     rk = w.obj(rack)
     hooks = hook_frames(rk, hook_tag)
+    # a handle (a loop) is threaded over a hook's arm; any other point (a headband's bridge) is lowered onto its support
+    # from above and let go 2 cm over it (it settles; the point need only end within a few cm)
+    thread = "handle" in handle_tag.lower()
+    if not thread:
+        hooks = [(i, H, None) for i, H, _ in hooks]
+    hooks_by = {h[0]: h for h in hooks}
     used, done, failed = set(), [], []
     pool = [l for l in objects if l in w.objects]
     for _round in range(len(pool)):
@@ -2117,10 +2124,15 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                     dz = handle_hole(o, Th)
                     Ht = H.copy()
                     Ht[:3, 3] += H[:3, 2] * dz
+                    if tip is None:              # a cradle: the point itself goes onto it, from above
+                        dz = 0.0
+                        Ht = H.copy()
                     T_obj = Ht @ inv_T(Th)
-                    out = tip + 0.012 + float(o.asset.extents[1]) * 0.0 + 0.008
                     T_pre = T_obj.copy()
-                    T_pre[:3, 3] += H[:3, 0] * out
+                    if tip is None:
+                        T_pre[2, 3] += 0.03
+                    else:
+                        T_pre[:3, 3] += H[:3, 0] * (tip + 0.02)
                     grasps = (lambda a, o=o: G_hang(sk, o, a))
                     r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=grasps,
                                          place_kw={"pre_h": 0.03, "release": False, "approach_rad": 0.09})
@@ -2152,6 +2164,8 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             w = sk.refresh()
             T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ w.obj(lab).T
             T_on = T_obj @ inv_T(T_rel)
+            if hooks_by[hi][2] is None:
+                T_on[2, 3] += 0.02           # lowered onto a support from above: let go over it
             mv = sk.motion.line(arm, sk.ex.q[arm], T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
             T_dn = T_on.copy()
             T_dn[2, 3] -= 0.006
@@ -2189,8 +2203,12 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
 
 
 def G_hang(sk: Skills, o, arm: str) -> list:
-    """Grasp candidates for carrying a cup-like object re-oriented: across its body (box) and pinching its wall."""
+    """Grasp candidates for carrying an object re-oriented: across its body (box) and pinching its wall (cups), or
+    its mesh slices (irregular objects)."""
     from dojo.skills import grasps as G
+    from dojo.skills.motion import held_box
+    if held_box(o, np.eye(4)).points is not None:          # irregular (a headset): its real slices
+        return G.box_grasps(o, sk.kin, arm) + G.slice_grasps(o, sk.kin, arm) + G.antipodal_grasps(o, sk.kin, arm)
     return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.008, 0.014, 0.02))
 
 
