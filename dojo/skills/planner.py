@@ -63,6 +63,74 @@ def card_digit(o) -> int | None:
     return None
 
 
+def _phrase_score(phrase: str, cat: str) -> int:
+    """How well an instruction phrase names a category: 3 a word is the category (or a word of it),
+    2 one contains the other once spaces / underscores are dropped, 1 they share 5+ letters."""
+    words = {_singular(w) for w in re.findall(r"[a-z]+", phrase)}
+    toks = {_singular(t) for t in cat.lower().split("_")}
+    if cat.lower() in words or _singular(cat.lower()) in words or (words & toks and len(toks) == 1):
+        return 3
+    a, b = phrase.replace(" ", ""), cat.lower().replace("_", "")
+    if a and b and (a in b or b in a):
+        return 2
+    best = 0
+    for i in range(len(a)):
+        for j in range(i + 5, len(a) + 1):
+            if a[i:j] in b:
+                best = max(best, j - i)
+    return 1 if best >= 5 else 0
+
+
+def parse_steps(text: str, objs) -> list[tuple[str, str, str]]:
+    """'place the X on the Y, put the Z on the W, and push the V into the U' -> [(verb, X, Y), ...] with
+    objects resolved from the phrases (category names), the rest by elimination: an unnamed mover is the
+    one movable object no clause names, an unnamed support the flattest unnamed fixed object."""
+    clauses = re.split(r",\s*(?:and\s+|then\s+)?|\s+and\s+|\s+then\s+", text)
+    raw = []
+    for cl in clauses:
+        m = re.match(r"\s*(place|put|push|move|set|slide)\s+(?:the\s+)?(.+?)\s+(?:on|onto|into|in|to|inside)\s+"
+                     r"(?:the\s+)?(.+?)\s*\.?$", cl)
+        if m:
+            raw.append((m.group(1), m.group(2), m.group(3)))
+    if len(raw) < 2:
+        return []
+    used: set = set()
+
+    def resolve(phrase, pool):
+        sc = [(_phrase_score(phrase, o.category), o) for o in pool if o.label not in used]
+        sc = [x for x in sc if x[0] > 0]
+        if not sc:
+            return None
+        top = max(x[0] for x in sc)
+        best = [o for s_, o in sc if s_ == top]
+        return best[0] if len(best) == 1 else None
+    movers = [o for o in objs if o.obj_type == "Rigid" and not o.clutter]
+    fixed = [o for o in objs if not o.clutter]
+    res = []
+    for verb, a, b in raw:
+        oa = resolve(a, movers)
+        if oa is not None:
+            used.add(oa.label)
+        ob = resolve(b, [o for o in fixed if oa is None or o.label != oa.label])
+        if ob is not None:
+            used.add(ob.label)
+        res.append([verb, oa, ob])
+    for r in res:
+        if r[1] is None:
+            left = [o for o in movers if o.label not in used]
+            if len(left) >= 1:
+                r[1] = left[0]
+                used.add(left[0].label)
+    for r in res:
+        if r[2] is None:
+            left = sorted([o for o in fixed if o.label not in used and o.obj_type != "Rigid"],
+                          key=lambda o: float(o.asset.extents[2]))
+            if left:
+                r[2] = left[0]
+                used.add(left[0].label)
+    return [("push" if v in ("push", "slide") else "place", a.label, b.label) for v, a, b in res if a and b]
+
+
 def plan(instruction: str, world: WorldState) -> Plan:
     text = (instruction or "").lower()
     cats = _by_category(world)
@@ -78,6 +146,11 @@ def plan(instruction: str, world: WorldState) -> Plan:
             c = max(rig, key=lambda c: len(cats[c]))
             return Plan("declare_kong", {"tiles": [o.label for o in cats[c] if o.obj_type == "Rigid"]},
                         f"{len(cats[c])} {c} tiles")
+
+    # --- several "place the X on the Y" / "push the X into the Y" clauses: arrange them all
+    steps = parse_steps(text, objs)
+    if len(steps) >= 2:
+        return Plan("arrange", {"steps": steps}, f"{len(steps)} clauses")
 
     # --- each object into its matching position (a container with slots named after the objects)
     if ("matching" in text or "each" in text) and ("place" in text or "put" in text or "store" in text):

@@ -25,6 +25,8 @@ from dojo.skills.geometry import R_to_quat, T_from, inv_T
 from dojo.skills.kinematics import ARMS, TABLE_Z, TIP_BEYOND_TCP, down_R, tilted_R
 from dojo.skills.motion import CARRY, FAST, MEDIUM
 from dojo.skills.targets import current_R, half_height, level_R, on_top, rest_pose, table_rest
+from dojo.skills.geometry import rot_z
+from dojo.skills.executor import ArmPlan as _ArmPlan  # noqa: F401
 from dojo.skills.stacking import plan_stack
 from dojo.skills.skills import CLOSED, OPEN, Job, PickPlan, PlacePlan, SkillResult, Skills
 from dojo.skills.world import TABLE_X, TABLE_Y
@@ -865,6 +867,157 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
     return {"ok": True, "stage": "filled"}
 
 
+def _up_yaw(o) -> float:
+    """Heading of the object's body x axis relative to its asset ``up`` pose (0 = as authored)."""
+    q = o.asset.place.get("up")
+    from dojo.skills.geometry import quat_to_R
+    R_up = quat_to_R(np.asarray(q, float)) if q is not None else np.eye(3)
+    Rrel = o.R @ R_up.T
+    return float(math.atan2(Rrel[1, 0], Rrel[0, 0]))
+
+
+def on_targets(sk: Skills, label: str, support: str) -> list[np.ndarray]:
+    """Poses that put ``label`` upright (its ``up`` pose) on ``support``'s top, turned like the support
+    (both in their authored frames): the centre first, then points towards each arm's base down to the
+    top's edge (minus the object's footprint), each with the support's heading first, then the others."""
+    from dojo.skills.geometry import quat_to_R
+    w = sk.world
+    o, b = w.obj(label), w.obj(support)
+    q = o.asset.place.get("up")
+    R_up = quat_to_R(np.asarray(q, float)) if q is not None else level_R(o.R)
+    yb = _up_yaw(b)
+    mn, mx = b.aabb()
+    margin = float(np.linalg.norm(o.asset.extents[:2])) / 2 * 0.8
+    c = b.center_w[:2]
+    pts = [c]
+    for a in ARMS:
+        d = sk.kin.base(a)[:2, 3] - c
+        d /= np.linalg.norm(d)
+        # how far the top extends from the centre in that direction
+        lim = min((mx[i] - c[i]) / d[i] if d[i] > 0 else (mn[i] - c[i]) / d[i] if d[i] < 0 else 9.0 for i in (0, 1))
+        for f in (0.4, 0.7, 1.0):
+            r = f * max(0.0, lim - margin)
+            if r > 0.01:
+                pts.append(c + d * r)
+    if len(pts) == 1:          # a support smaller than the object (a stand): small offsets around its centre
+        for k in range(8):
+            pts.append(c + 0.012 * np.array([math.cos(k * math.pi / 4), math.sin(k * math.pi / 4)]))
+    # headings: the support's (and its quarter turns), then the object's own (its grasp keeps its tilt
+    # towards the arm), then the diagonals
+    yo = _up_yaw(o)
+    yaws = [yb + k * math.pi / 2 for k in range(4)] + [yo] + [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
+    out = []
+    for p in pts:
+        for y in yaws:
+            R = rot_z(y) @ R_up
+            out.append(rest_with_R(sk, label, p, R, z_bottom=max(b.top_z, TABLE_Z)))
+    return out
+
+
+def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.05, max_iter: int = 14) -> SkillResult:
+    """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time: closed fingertips
+    against the middle of the face opposite the motion (no torque about the centre), at most ``seg`` per
+    stroke, the world re-read after each stroke."""
+    from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
+    n0 = sk.ex.steps_used
+    target_xy = np.asarray(target_xy, float)
+    last = None
+    for it in range(max_iter):
+        w = sk.refresh()
+        o = w.obj(label)
+        d = target_xy - o.center_w[:2]
+        if float(np.linalg.norm(d)) <= tol:
+            return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
+                                          note=f"within {np.linalg.norm(d)*1000:.0f} mm after {it} strokes"))
+        axes = []
+        for k in range(2):
+            a = o.R[:, k].copy()
+            a[2] = 0.0
+            if np.linalg.norm(a) > 0.5:
+                a /= np.linalg.norm(a)
+                axes.append((abs(float(a[:2] @ d)), k, a))
+        comp, k, a = max(axes, key=lambda x: x[0])
+        u = a[:2] * np.sign(float(a[:2] @ d))
+        step = min(seg, comp + 0.003)
+        half_u = float(np.abs(o.R.T @ np.r_[u, 0.0]) @ (o.asset.extents / 2))
+        h = min(0.012, 0.5 * float(o.top_z - o.bottom_z))
+        z = o.bottom_z + h + TIP_BEYOND_TCP
+        yaw = math.atan2(u[1], u[0]) + math.pi / 2               # the fingers' broad face across the push
+        start = o.center_w[:2] - u * (half_u + 0.02)
+        end = o.center_w[:2] - u * (half_u - step)
+        arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - start)))
+        plan = None
+        for arm in arms:
+            for yw in (yaw, yaw + math.pi):
+                T_s = T_from([start[0], start[1], z], down_R(yw))
+                T_ab = T_s.copy()
+                T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+                T_e = T_from([end[0], end[1], z], down_R(yw))
+                T_up = T_e.copy()
+                T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+                m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=CLOSED, ignore=(label,))
+                if not m1.ok:
+                    continue
+                m2 = sk.motion.line(arm, m1.q_end, T_s, MEDIUM, "push_down", gripper=CLOSED, ignore=(label,))
+                m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, T_e, 0.04, "push", gripper=CLOSED,
+                                    ignore=(label,), max_step_m=0.01)
+                if not (m2.ok and m3.ok):
+                    continue
+                m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "push_up", gripper=CLOSED, check=False)
+                plan = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3)
+                plan.move(m4)
+                break
+            if plan is not None:
+                break
+        if plan is None:
+            return sk._record(SkillResult(False, "push", "ik_fail", sk.ex.steps_used - n0, None,
+                                          note=f"{label}: no push stroke along axis {k}"))
+        last = plan.arm
+        try:
+            sk.parallel([plan], name=f"push {label} {it}")
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return sk._record(SkillResult(False, "push", "step_budget", sk.ex.steps_used - n0, last, note=str(e)))
+    w = sk.refresh()
+    dist = float(np.linalg.norm(target_xy - w.obj(label).center_w[:2]))
+    return sk._record(SkillResult(dist <= tol, "push", "ok" if dist <= tol else "place_miss",
+                                  sk.ex.steps_used - n0, last, note=f"{dist*1000:.0f} mm left"))
+
+
+def arrange(sk: Skills, steps: list) -> dict:
+    """Do each (verb, object, support) of the instruction: "place"/"put" = upright on the support's top
+    (``on_targets``), "push" = slide it (too wide to grasp) over the support; the grasps first, nearest the
+    arms first, the pushes last (they sweep the table). Grippers open after each step (per-item credit)."""
+    w = sk.refresh()
+    st = w.notes.setdefault("arrange", {"done": []})
+    places = [s for s in steps if s[0] != "push"]
+    pushes = [s for s in steps if s[0] == "push"]
+    places.sort(key=lambda s: min(float(np.linalg.norm(sk.kin.base(a)[:2, 3] - w.obj(s[1]).center_w[:2])) for a in ARMS))
+    failed = []
+    for verb, obj, sup in places + pushes:
+        if obj in st["done"]:
+            continue
+        sk.refresh()
+        if verb == "push":
+            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2])
+        else:
+            sk.coll.include.add(sup)
+            tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05
+            r = place_oriented(sk, obj, on_targets(sk, obj, sup), yaw_sym=1, tol_xy=0.03, tol_tilt=10.0,
+                               tol_z=0.03, ignore=(sup,), place_kw={"pre_h": 0.015 if tall else 0.04})
+        (st["done"] if r.ok else failed).append(obj)
+        sk.log(f"[arrange] {verb} {obj} -> {sup}: {r.status} {r.note[:120]}")
+        if any(sk.held[a] is not None for a in ARMS):
+            for a in ARMS:
+                if sk.held[a] is not None:
+                    sk._record(sk.regrasp(a))
+        sk.bank()
+        if r.status in ("step_budget", "ended"):
+            break
+    if failed:
+        return {"ok": False, "stage": "arrange", "note": f"done {st['done']}, failed {failed}"}
+    return {"ok": True, "stage": "arranged"}
+
+
 def up_body_axis(o) -> np.ndarray:
     """The body axis that points up in the asset's ``up`` place pose (its face, for a tile)."""
     q = o.asset.place.get("up")
@@ -1006,4 +1159,4 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
           "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,
           "insert_into": insert_into, "place_in_slots": place_in_slots,
-          "fill_container": fill_container}
+          "fill_container": fill_container, "arrange": arrange}

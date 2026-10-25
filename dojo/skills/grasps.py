@@ -400,6 +400,57 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
     return out
 
 
+def slice_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WIDTH - 0.004, n_dir: int = 8,
+                 band: float = 0.008, levels: int = 4, tilts=(0.0, 25.0, 40.0)) -> list[Grasp]:
+    """Top-down grasps on horizontal slices of an irregular mesh (a figurine whose bbox is wider than the
+    gripper but whose body is not): for each height and closing direction, the slice's width along that
+    direction must fit, and the open fingers' path down to it must be free of the object's own points
+    (no wider part above it in the finger corridor)."""
+    if obj.asset.mesh is None:
+        return []
+    V = obj.asset.mesh[0] @ obj.R.T + obj.pos                 # world points
+    zmin, zmax = float(V[:, 2].min()), float(V[:, 2].max())
+    floor = max(zmin, TABLE_Z) + TIP_TABLE_CLEAR + 0.001
+    out = []
+    for h in np.linspace(zmax - 0.012, max(floor + TIP_BEYOND_TCP, zmin + 0.4 * (zmax - zmin)), levels):
+        slab = V[np.abs(V[:, 2] - h) < band]
+        if len(slab) < 6:
+            continue
+        cxy = (slab[:, :2].min(0) + slab[:, :2].max(0)) / 2
+        for k in range(n_dir):
+            th = math.pi * k / n_dir
+            u = np.array([math.cos(th), math.sin(th)])
+            v = np.array([-u[1], u[0]])
+            pu, pv = (slab[:, :2] - cxy) @ u, (slab[:, :2] - cxy) @ v
+            w = float(pu.max() - pu.min())
+            if w > max_width or w < 0.006:
+                continue
+            mid_u = float(pu.max() + pu.min()) / 2
+            mid_v = float(pv.max() + pv.min()) / 2
+            c = cxy + u * mid_u + v * mid_v
+            tcp_z = max(h, floor + TIP_BEYOND_TCP)
+            # the open fingers' corridors (outside the slice along u, +-12 mm along v) down to the pads
+            gap = min(MAX_GAP, w + 2 * CLEAR + 0.006)
+            P = V[V[:, 2] > tcp_z - TIP_BEYOND_TCP]
+            qu, qv = (P[:, :2] - c) @ u, (P[:, :2] - c) @ v
+            in_fing = (np.abs(qu) > gap / 2 - 0.001) & (np.abs(qu) < gap / 2 + 0.014) & (np.abs(qv) < 0.012)
+            if in_fing.any():
+                continue
+            closing = np.array([u[0], u[1], 0.0])
+            perp = np.array([-u[1], u[0], 0.0])
+            base = kin.base(arm)[:3, 3]
+            sgn = 1.0 if float(perp[:2] @ (c - base[:2])) >= 0 else -1.0
+            for tilt in tilts:                         # tilted away from the arm: reaches further / higher
+                t = math.radians(tilt)
+                appr = np.array([0.0, 0.0, -math.cos(t)]) + sgn * perp * math.sin(t)
+                Rg = _frame(appr, closing)
+                out.append(Grasp("slice", T_from([c[0], c[1], tcp_z + 0.010 * math.sin(t)], Rg), w,
+                                 score=0.3 * (zmax - h) / max(zmax - zmin, 1e-3) + 0.3 * w / 0.08 + tilt / 100.0,
+                                 note=f"slice z {h - zmin:.3f} dir {math.degrees(th):.0f} w {w*1000:.0f}mm "
+                                      f"tilt {tilt:.0f}"))
+    return out
+
+
 def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **kw) -> list[Grasp]:
     if method == "top":
         g = top_grasps(obj, kin, arm, **kw)
@@ -427,5 +478,5 @@ def candidates(obj: ObjectState, kin: X5Kin, arm: str, method: str = "auto", **k
         else:
             g = top_grasps(obj, kin, arm)
             if not g:
-                g = antipodal_grasps(obj, kin, arm)
+                g = slice_grasps(obj, kin, arm) or antipodal_grasps(obj, kin, arm)
     return sorted(g, key=lambda x: x.score)

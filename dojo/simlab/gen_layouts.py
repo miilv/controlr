@@ -415,92 +415,6 @@ def place_task_objects(groups: dict[str, list], gens: dict, rng: random.Random, 
             layout.setdefault(obj_type, {}).setdefault(cat, []).append(inst)
 
 
-def apply_identity_rules(groups: dict[str, list], layout: dict, seed: int) -> list[str]:
-    """``select_mode`` identity rules the per-group draw cannot express, applied once every group is placed
-    (positions untouched; its own rng, so placement draws are unchanged):
-
-    * ``allow_global_same: False`` on ``mode: same`` groups: no two such groups share an asset index
-      (make_kong: the four hand triples and the pair are four / five different tiles);
-    * ``mode: same_index_as_label`` + ``same_label: L``: the group's objects take L's asset index
-      (make_kong: each discard tile matches one triple, the drawn wall tile matches the pair;
-      fasten_screws: a nut matches its bolt).
-
-    Returns notes on what changed."""
-    from dojo.simlab.layout import find as _find
-
-    def find(lay, label):
-        try:
-            return _find(lay, label)
-        except KeyError:
-            return None
-
-    rng = random.Random(seed * 7919 + 17)
-    notes: list[str] = []
-    flat = [(t, g) for t, gl in groups.items() for g in gl]
-
-    def set_idx(obj_type: str, label: str, idx: int) -> None:
-        o = find(layout, label)
-        if o is None or int(o["category_idx"]) == int(idx):
-            return
-        meta = metadata(obj_type, o["category"], int(idx)) or {}
-        phys = dict(meta.get("physics") or {})
-        phys["type"] = obj_type.lower()
-        notes.append(f"{label}: {o['category']}/{int(o['category_idx'])} -> {int(idx)}")
-        o["category_idx"] = int(idx)
-        o["physics"] = phys
-
-    used: set = set()
-    for t, g in flat:
-        sm = g.get("select_mode") or {}
-        if sm.get("mode") != "same" or sm.get("allow_global_same", True):
-            continue
-        objs = [o for o in (find(layout, l) for l in sm.get("label") or []) if o is not None]
-        if not objs:
-            continue
-        cat, idx = objs[0]["category"], int(objs[0]["category_idx"])
-        if (cat, idx) in used:
-            pool = [i for e in g["category"] if e["name"] == cat
-                    for i in (e.get("index") if e.get("index") is not None else available_indices(t, cat))
-                    if (cat, int(i)) not in used]
-            if not pool:
-                raise LayoutError(f"allow_global_same: no free index for {sm.get('label')}")
-            idx = int(rng.choice(sorted(pool)))
-            for o in objs:
-                set_idx(t, o["label"], idx)
-        used.add((cat, idx))
-    for t, g in flat:
-        sm = g.get("select_mode") or {}
-        if sm.get("mode") != "same_index_as_label":
-            continue
-        ref = find(layout, sm["same_label"])
-        if ref is None:
-            raise LayoutError(f"same_index_as_label: {sm['same_label']} not placed")
-        for lab in sm.get("label") or []:
-            set_idx(t, lab, int(ref["category_idx"]))
-    return notes
-
-
-def relabel_dir(task: str, src: Path, out: Path) -> None:
-    """Copy ``src``'s records (raw ``<seed>.json``, ``<seed>.settled.json``, ``settled_index.json``) to ``out``
-    with :func:`apply_identity_rules` applied (records made before the rules existed; asset identity only,
-    so pre-settled poses stay valid when the swapped assets share one geometry, e.g. mahjong tiles)."""
-    import shutil
-    paths.assert_not_eval(src)
-    paths.assert_not_eval(out)
-    out.mkdir(parents=True, exist_ok=True)
-    groups = merged_object_groups(task)
-    for f in sorted(src.glob("*.json")):
-        if f.name == "settled_index.json":
-            shutil.copy(f, out / f.name)
-            continue
-        lay = json.loads(f.read_text())
-        seed = int((lay.get("_simlab") or {}).get("seed", f.name.split(".")[0]))
-        notes = apply_identity_rules(groups, lay, seed)
-        lay.setdefault("_simlab", {})["identity_rules"] = notes
-        (out / f.name).write_text(json.dumps(lay, indent=1))
-        print(f"{f.name}: {len(notes)} identities fixed", flush=True)
-
-
 def place_clutter(clutter_cfg: list, gens: dict, rng: random.Random, layout: dict, exclude: set[str]) -> int:
     placed = 0
     used: set[str] = set()
@@ -564,7 +478,6 @@ def generate(task: str, seed: int, max_tries: int = 40) -> dict:
         layout: dict = {}
         try:
             place_task_objects(groups, gens, rng, layout)
-            id_notes = apply_identity_rules(groups, layout, seed)
             n_clutter = place_clutter(tcfg.get("Clutter") or [], gens, rng, layout, exclude=task_cats)
         except LayoutError as e:
             last = e
@@ -578,7 +491,7 @@ def generate(task: str, seed: int, max_tries: int = 40) -> dict:
             raise LayoutError(f"generated an invalid record: {errs[:5]}")
         layout["_simlab"] = {"task": task, "id": seed, "seed": seed, "attempt": attempt, "generator": GENERATOR,
                              "n_clutter": n_clutter, "clutter_wanted": want,
-                             "robot_keepout": _KEEPOUT_ON[0], "identity_rules": id_notes}
+                             "robot_keepout": _KEEPOUT_ON[0]}
         return layout
     raise LayoutError(f"{task} seed {seed}: no valid layout in {max_tries} tries ({last})")
 
@@ -594,11 +507,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--n", type=int, default=25)
     ap.add_argument("--start", type=int, default=paths.SEED_BASE)
     ap.add_argument("--out", default=None, help="default /root/dojo-data/simlab/layouts/<task>")
-    ap.add_argument("--relabel", default=None, help="copy this dir's records to --out with the identity rules applied")
     a = ap.parse_args(argv)
-    if a.relabel:
-        relabel_dir(a.task, Path(a.relabel), Path(a.out))
-        return
     out = Path(a.out) if a.out else paths.LAYOUTS / a.task
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)
