@@ -175,6 +175,9 @@ class Collision:
         # per-object margins instead of obj_margin (identical slices side by side in a rack: 13 mm between two
         # bread slices, the fingertips need 3.4 mm + clearance there)
         self.margin_of: dict = {}
+        # label -> height map of its mesh (``precision.height_map``): a point inside that object's box only collides
+        # below its top surface there (a coin bank's rounded back; the box alone blocked the hand over its edge)
+        self.heightmaps: dict = {}
 
     def obstacles(self, ignore=()) -> list[tuple[np.ndarray, np.ndarray, np.ndarray, str]]:
         if self.world is None:
@@ -232,6 +235,8 @@ class Collision:
             for c, R, h, lab in obs:
                 loc = (pts - c) @ R
                 inside = np.all(np.abs(loc) <= h, axis=1)
+                if inside.any() and lab in self.heightmaps:
+                    inside &= below_height_map(self.heightmaps[lab], loc, self.margin_of.get(lab, self.obj_margin))
                 if inside.any():
                     return False, f"hits {lab}"
         if grip_only and self.world is not None:
@@ -405,6 +410,15 @@ class Motion:
     # ---- helpers
     def down(self, xyz, yaw: float) -> np.ndarray:
         return T_from(xyz, down_R(yaw))
+
+
+def below_height_map(hm: dict, loc: np.ndarray, margin: float) -> np.ndarray:
+    """Points (OBB-local: object frame minus the bbox centre) at or below the object's top surface + ``margin``
+    (``hm``: {"x0", "y0", "cell", "Z" (ny, nx) object-frame top z, -inf where empty, "center"})."""
+    p = loc + hm["center"]
+    ix = np.clip(((p[:, 0] - hm["x0"]) / hm["cell"]).astype(int), 0, hm["Z"].shape[1] - 1)
+    iy = np.clip(((p[:, 1] - hm["y0"]) / hm["cell"]).astype(int), 0, hm["Z"].shape[0] - 1)
+    return p[:, 2] <= hm["Z"][iy, ix] + margin
 
 
 def held_box(o, T_tcp_obj) -> HeldBox:

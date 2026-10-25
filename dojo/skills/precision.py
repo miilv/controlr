@@ -85,6 +85,46 @@ def section_points(mesh, n, s: float) -> np.ndarray:
     return np.vstack(out) if out else np.zeros((0, 3))
 
 
+_HM_CACHE: dict = {}
+
+
+def height_map(o, cell: float = 0.002) -> dict | None:
+    """Top-surface height map of an object's mesh in its own frame (max z of dense surface samples per ``cell``,
+    dilated by one cell), for ``Collision.heightmaps``. Cached per asset."""
+    if o.asset.mesh is None:
+        return None
+    key = (o.asset.key, cell)
+    if key in _HM_CACHE:
+        return _HM_CACHE[key]
+    V, F = np.asarray(o.asset.mesh[0], float), np.asarray(o.asset.mesh[1], int)
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    L = np.maximum(np.maximum(np.linalg.norm(b - a, axis=1), np.linalg.norm(c - a, axis=1)), np.linalg.norm(c - b, axis=1))
+    nseg = np.clip(np.ceil(L / (0.7 * cell)), 1, 24).astype(int)
+    pts = [V]
+    for n in np.unique(nseg):
+        m = nseg == n
+        u, v = np.meshgrid(np.linspace(0, 1, n + 1), np.linspace(0, 1, n + 1))
+        keep = (u + v) <= 1.0
+        u, v = u[keep], v[keep]
+        P = a[m][:, None, :] + u[None, :, None] * (b[m] - a[m])[:, None, :] + v[None, :, None] * (c[m] - a[m])[:, None, :]
+        pts.append(P.reshape(-1, 3))
+    P = np.vstack(pts)
+    x0, y0 = float(V[:, 0].min()) - cell, float(V[:, 1].min()) - cell
+    nx = int(math.ceil((float(V[:, 0].max()) + cell - x0) / cell)) + 1
+    ny = int(math.ceil((float(V[:, 1].max()) + cell - y0) / cell)) + 1
+    Z = np.full((ny, nx), -np.inf)
+    ix = ((P[:, 0] - x0) / cell).astype(int)
+    iy = ((P[:, 1] - y0) / cell).astype(int)
+    np.maximum.at(Z, (iy, ix), P[:, 2])
+    Zd = Z.copy()
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            Zd = np.maximum(Zd, np.roll(np.roll(Z, dy, 0), dx, 1))
+    hm = {"x0": x0, "y0": y0, "cell": cell, "Z": Zd, "center": np.asarray(o.asset.center, float)}
+    _HM_CACHE[key] = hm
+    return hm
+
+
 def _unit(v) -> np.ndarray:
     v = np.asarray(v, float)
     n = float(np.linalg.norm(v))
@@ -366,6 +406,222 @@ def _strike_one(sk: Skills, a: str, tool: str, T_tcp_tool, work_loc, head, p, zs
     except EpisodeEnded as e:
         return SkillResult(True, "strike", "ok", pl.steps, a, note=f"episode ended ({e})")
     return SkillResult(True, "strike", "ok", r["steps"], a, note=f"heading/pitch/roll {k[:3]}")
+
+
+# ============================================================================ thin discs into slots (insert_into)
+
+DISC_THIN = 0.005             # m: an object this thin with two equal other extents is a disc (a coin)
+
+
+def disc_axis(o) -> int | None:
+    """The normal axis (object frame index) of a thin disc: smallest extent < ``DISC_THIN`` and the other two
+    within 5 % of each other. None otherwise."""
+    ext = np.asarray(o.asset.extents, float)
+    k = int(np.argmin(ext))
+    a, b = np.delete(ext, k)
+    if ext[k] < DISC_THIN and abs(a - b) <= 0.05 * max(a, b):
+        return k
+    return None
+
+
+def spin_about_axis(o, T_obj, k: int, n: int = 12) -> list[np.ndarray]:
+    """``T_obj`` turned about the object's own axis ``k`` through its bbox centre in ``n`` steps (a disc is the same
+    disc at every turn about its normal; an insert frame fixes one of them)."""
+    c = o.asset.center
+    out = []
+    for i in range(n):
+        ax = np.zeros(3)
+        ax[k] = 1.0
+        Rk = axis_angle_R(ax, 2 * math.pi * i / n)
+        Tl = np.eye(4)
+        Tl[:3, :3] = Rk
+        Tl[:3, 3] = c - Rk @ c
+        out.append(np.asarray(T_obj, float) @ Tl)
+    return out
+
+
+def edge_grasps(sk: Skills, o, arm: str, floor_z: float, tilts=(0.0, 25.0, -25.0, 40.0, -40.0),
+                min_cover: float = 0.005) -> list[G.Grasp]:
+    """Grasps of a disc standing on its edge (a coin in a holder) by its upper rim: the pads on its two faces, the
+    approach in the disc's plane from above (tilted in that plane by ``tilts``), as deep as the fingers may go with
+    every finger point at or above ``floor_z`` (the holder's top + clearance); at least ``min_cover`` of the disc
+    between the pads."""
+    k = disc_axis(o)
+    if k is None:
+        return []
+    n = o.R[:, k]
+    up = np.array([0.0, 0.0, 1.0]) - n * float(n[2])
+    if np.linalg.norm(up) < 0.5:
+        return []                                     # lying flat: not on its edge
+    up = _unit(up)
+    side = np.cross(n, up)
+    r = float(np.delete(o.asset.extents, k).max()) / 2
+    c = o.center_w
+    width = float(o.asset.extents[k])
+    g_open = G.gap_to_grip(min(G.MAX_GAP, width + 2 * G.CLEAR + 0.006))
+    out = []
+    for tilt in tilts:
+        t = math.radians(tilt)
+        appr = -(math.cos(t) * up + math.sin(t) * side)
+        for flip in (1.0, -1.0):
+            R = G._frame(appr, flip * n)
+            best = None
+            for s_ in np.arange(r + 0.004, r - 0.013, -0.0005):      # TCP this far from the centre, against the approach
+                T = T_from(c - appr * s_, R)
+                low = float(sk.kin.finger_points(sk.kin.flange_from_tcp(T), g_open)[:, 2].min())
+                if low >= floor_z:
+                    best = (s_, T)
+                else:
+                    break
+            if best is None:
+                continue
+            s_, T = best
+            cover = r - s_ + 0.0126
+            if cover < min_cover:
+                continue
+            out.append(G.Grasp("edge", T, width, pre_dist=0.05, score=abs(tilt) / 100.0 - 10.0 * cover,
+                               note=f"edge tilt {tilt:+.0f} cover {cover*1000:.0f} mm"))
+    return out
+
+
+def pinch_grasps(sk: Skills, o, arm: str, tip_clear: float = 0.0006, n_dir: int = 6) -> list[G.Grasp]:
+    """Grasps of a disc lying flat (a coin on the table): straight down, the pads closing across a diameter with
+    the fingertips ``tip_clear`` above the table (the disc is thinner than the usual fingertip clearance)."""
+    k = disc_axis(o)
+    if k is None:
+        return []
+    nz = o.R[:, k]
+    if abs(float(nz[2])) < 0.9:
+        return []
+    c = o.center_w
+    width = float(np.delete(o.asset.extents, k).max())
+    out = []
+    for i in range(n_dir):
+        yaw = math.pi * i / n_dir
+        from dojo.skills.kinematics import down_R
+        T = T_from(np.array([c[0], c[1], max(TABLE_Z, o.bottom_z) + tip_clear + 0.0126]), down_R(yaw))
+        out.append(G.Grasp("pinch", T, width, pre_dist=0.05, score=0.01 * i, note=f"pinch yaw {math.degrees(yaw):.0f}"))
+    return out
+
+
+def holder_of(sk: Skills, label: str) -> str | None:
+    """The fixed object ``label`` stands in (its bbox centre inside the other's footprint, within its height)."""
+    w = sk.world
+    o = w.obj(label)
+    p = o.center_w
+    for r in w.objects.values():
+        if r.label == label or r.clutter or r.obj_type == "Rigid" or r.category == "camera_stand":
+            continue
+        mn, mx = r.aabb()
+        if np.all(p[:2] >= mn[:2] - 0.003) and np.all(p[:2] <= mx[:2] + 0.003) and mn[2] - 0.01 <= p[2] <= mx[2] + 0.02:
+            return r.label
+    return None
+
+
+DISC_PLACE_KW = {"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 3, "servo": True,
+                 "fingers_out": True, "probe": False, "hover_clear": 0.006, "seat_tol": 0.05}
+
+
+def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) -> dict:
+    """A thin disc (``disc_axis``) edge first into a slot of ``rec`` (``targets``: insert poses from the assets, the
+    disc's centre at or below the opening): picked by its upper rim with the fingers clear of what it stands in
+    (``edge_grasps``), carried with its plane along the slot, lowered with the fingertips just above the
+    receptacle's top and let go (it drops in; ``DISC_PLACE_KW``). Every turn of the disc about its normal is a
+    target. When no arm reaches both ends: a table relay (laid flat near the middle by one arm, picked flat with a
+    pinch by the other, ``pinch_grasps``)."""
+    from dojo.skills.library import place_oriented, free_spots
+    w = sk.refresh()
+    o = w.obj(obj)
+    k = disc_axis(o)
+    tg = [Tk for T in targets for Tk in spin_about_axis(o, T, k)]
+    hold = holder_of(sk, obj)
+    floor = max(TABLE_Z, o.bottom_z)
+    if hold is not None:
+        sk.coll.include.add(hold)
+        sk.coll.margin_of[hold] = 0.002
+        floor = max(floor, w.obj(hold).top_z)
+    sk.coll.include.add(rec)
+    hm = height_map(w.obj(rec))
+    if hm is not None:
+        sk.coll.heightmaps[rec] = hm
+    place_kw = {**DISC_PLACE_KW, "servo_ref": rec}
+
+    def grasps(a):
+        oo = sk.world.obj(obj)
+        if abs(float(oo.R[2, k])) > 0.9:
+            return pinch_grasps(sk, oo, a)
+        return edge_grasps(sk, oo, a, floor + 0.003)
+    tkw = {"grasps": grasps, "screen_fingers_out": True}
+    sk.log(f"[disc] {obj} -> {rec}: {len(tg)} targets, holder {hold}")
+    direct = sk.plan_transfer(obj, tg, ignore=(rec,), place_kw=place_kw, **tkw)
+    if isinstance(direct, SkillResult):
+        sk.log(f"[disc] no one-arm plan ({direct.note[:200]}); table relay")
+        r1 = disc_lay_flat(sk, obj, rec, hold, floor, tkw)
+        if not r1.ok:
+            return {"ok": False, "stage": f"relay {obj}", "result": r1}
+    else:
+        sk.log(f"[disc] {obj}: direct, {direct[0].arm} ({direct[0].grasp.note})")
+    # the insertion leg (re-planned from the coin as it is now: in its holder, or lying flat after the relay)
+    old_fm = sk.coll.finger_margin
+    sk.coll.finger_margin = 0.0 if abs(float(sk.refresh().obj(obj).R[2, k])) > 0.9 else old_fm
+    try:
+        res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.02, tol_tilt=30.0, tol_z=0.06, ignore=(rec,),
+                             place_kw=place_kw, air_handover=False, transfer_kw=tkw)
+    finally:
+        sk.coll.finger_margin = old_fm
+    w = sk.refresh()
+    if inside_bbox(w.obj(obj), w.obj(rec)):
+        return {"ok": True, "stage": "inserted", "result": res}
+    return {"ok": False, "stage": f"insert {obj}", "result": res}
+
+
+DISC_LEAN = 25.0              # deg: a disc let go on its edge leans this much, so it falls flat to a known side
+
+
+def disc_lay_flat(sk: Skills, obj: str, rec: str, hold: str | None, floor: float, tkw: dict) -> SkillResult:
+    """Relay leg of a disc that no arm can carry from its holder to its slot: the arm that reaches it takes it by
+    the rim (``edge_grasps``) and stands it on its edge, leaning ``DISC_LEAN``, on a free table spot between the
+    arms, and lets go: it falls flat, where the other arm can pinch it (``pinch_grasps``). Banks nothing."""
+    from dojo.skills.library import free_spots
+    w = sk.world
+    o = w.obj(obj)
+    k = disc_axis(o)
+    geo = [g for g in w.task_objects() if g.obj_type == "Geometry" and g.category != "camera_stand"]
+    spots = [xy for xy in free_spots(sk, obj, near_xy=(0.0, -0.22), clearance=0.03)
+             if all(float(np.linalg.norm(np.subtract(xy, g.center_w[:2]))) > 0.05 + float(np.max(g.asset.extents[:2])) / 2
+                    for g in geo)][:4]
+    n = o.R[:, k]
+    up = _unit(np.array([0.0, 0.0, 1.0]) - n * float(n[2]))
+    side = np.cross(n, up)
+    tg = []
+    for xy in spots:
+        for lean in (DISC_LEAN, -DISC_LEAN):
+            R = axis_angle_R(side, math.radians(lean)) @ o.R
+            for T in spin_about_axis(o, T_from(np.zeros(3), R), k, n=8):
+                Rr = T[:3, :3]
+                h = float(np.abs(Rr[2, :]) @ (o.asset.extents / 2))
+                c = np.array([xy[0], xy[1], TABLE_Z + 0.002 + h])
+                tg.append(T_from(c - Rr @ o.asset.center, Rr))
+    if not tg:
+        return sk._record(SkillResult(False, "relay", "ik_fail", 0, None, note="no free spot between the arms"))
+    kw = {"pre_h": 0.04, "release_gap": 0.0, "settle": 1, "descend_rad": 0.04}
+    r = sk.plan_transfer(obj, tg, place_kw=kw, **tkw)
+    if isinstance(r, SkillResult):
+        return sk._record(r)
+    sk.log(f"[disc] relay: {r[0].arm} lays {obj} down at {np.round(r[1].T_obj_target[:2, 3], 3).tolist()}")
+    res = sk.run_transfer(*r, tol_xy=0.05, tol_tilt=90.0, tol_z=0.05)
+    sk.bank()
+    o2 = sk.refresh().obj(obj)
+    flat = abs(float(o2.R[2, k])) > 0.9
+    return sk._record(SkillResult(flat, "relay", "ok" if flat else "place_miss", res.steps, r[0].arm,
+                                  note=f"{obj} {'lies flat' if flat else 'not flat'} at {np.round(o2.pos, 3).tolist()} "
+                                       f"({res.note[:80]})"))
+
+
+def inside_bbox(o, c, margin: float = 0.0) -> bool:
+    """Is ``o``'s bbox centre inside ``c``'s oriented bbox?"""
+    loc = c.R.T @ (o.center_w - c.pos)
+    return bool(np.all(loc >= c.asset.bbox_min - margin) and np.all(loc <= c.asset.bbox_max + margin))
 
 
 SKILLS = {"strike_in_order": strike_in_order}

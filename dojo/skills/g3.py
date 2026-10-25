@@ -480,6 +480,58 @@ def cmd_checks(a) -> None:
     run.close()
 
 
+def cmd_snippet(a) -> None:
+    """Dev probe: load one layout (``--pose`` overrides like ``checks``), build the episode's ``Skills`` on the twin
+    (GT provider, as ``run``), then exec a python file with ``sk``, ``env``, ``run``, ``np`` in scope (scripted picks,
+    contact tests). The layout's load-time stability check is reported, not enforced (a coin spawned flat moves)."""
+    from dojo.simlab import paths
+    from dojo.simlab.runner import RoboDojoRunner
+    from dojo.skills.env import RunnerEnv
+    from dojo.skills.skills import GTProvider, Skills
+    from dojo.skills.world import AssetDB
+
+    out = Path(a.out)
+    paths.assert_not_eval(out)
+    lp = Path(a.layout)
+    paths.assert_not_eval(lp)
+    lay = json.loads(lp.read_text())
+    poses = {}
+    for spec in a.pose or []:
+        lab, vals = spec.split(":")
+        poses[lab] = [float(x) for x in vals.split(",")]
+    for grp in lay.values():
+        if not isinstance(grp, dict):
+            continue
+        for recs in grp.values():
+            for r in recs if isinstance(recs, list) else []:
+                if isinstance(r, dict) and r.get("label") in poses:
+                    v = poses[r["label"]]
+                    r["default_pos"], r["default_ori"] = v[:3], v[3:7]
+    run = RoboDojoRunner(a.task, num_envs=1, workdir=str(out / "work"), physics_only=True, need_planner=False)
+    info = run.load(lay)
+    print(f"[snippet] stable {info['stable']}", flush=True)
+    run.env.step_lim = max(int(run.env.step_lim), int(a.step_lim))
+    for _ in range(a.settle):
+        run.step(run.hold_action())
+    assets = AssetDB(paths.OBJECTS)
+
+    def rebuild(layout=None):
+        """Reload the layout (or another record) and return a fresh Skills on it."""
+        if layout is not None:
+            run.load(layout)
+            run.env.step_lim = max(int(run.env.step_lim), int(a.step_lim))
+        e = RunnerEnv(run)
+        return Skills(e, GTProvider(e, assets, instruction=e.instruction), reserve=30, log=lambda m: print(m, flush=True))
+    sk = rebuild()
+    env = sk.env
+    try:
+        exec(compile(Path(a.code).read_text(), a.code, "exec"), {"sk": sk, "env": env, "run": run, "np": np,
+                                                                 "print": print, "lay": lay, "rebuild": rebuild})
+    except Exception:  # noqa: BLE001
+        traceback.print_exc()
+    run.close()
+
+
 def cmd_report(a) -> None:
     """Table of every run's summary under ``--root`` (CPU only, no Isaac)."""
     root = Path(a.root)
@@ -518,10 +570,19 @@ def main(argv=None) -> None:
     c.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
     c.add_argument("--settle", type=int, default=5)
     c.add_argument("--move", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz, applied after the load")
+    sn = sub.add_parser("snippet")
+    sn.add_argument("--task", required=True)
+    sn.add_argument("--layout", required=True)
+    sn.add_argument("--out", required=True)
+    sn.add_argument("--code", required=True)
+    sn.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
+    sn.add_argument("--settle", type=int, default=0)
+    sn.add_argument("--step-lim", type=int, default=2000)
     q = sub.add_parser("report")
     q.add_argument("--root", default=os.path.expanduser("~/dojo-data/skills/g3"))
     a = ap.parse_args(argv)
-    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report, "checks": cmd_checks}[a.cmd](a)
+    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report, "checks": cmd_checks,
+     "snippet": cmd_snippet}[a.cmd](a)
 
 
 if __name__ == "__main__":

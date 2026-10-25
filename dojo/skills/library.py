@@ -1194,6 +1194,10 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
                                                          f"{i['lowered_mm']} mm clear {i['clearance']*1000:.2f}"
                                                          for _, (_, i) in fine[:3]))
                 tg = [rf[0] for _, rf in fine]
+            from dojo.skills.precision import disc_axis, disc_into_slot
+            if disc_axis(o) is not None and not turn_deg:
+                # a thin disc (a coin): by its rim, edge first, let go over the slot (skills-5)
+                return disc_into_slot(sk, obj, rec, tg)
             sk.coll.include.add(rec)
             for T in tg:
                 T[2, 3] -= press

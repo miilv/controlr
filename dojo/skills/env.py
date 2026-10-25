@@ -213,12 +213,38 @@ class KinematicEnv:
     def _drop(self, label: str) -> None:
         o = self._obj(label)
         R = quat_to_R(o["quat"])
+        R = self._disc_falls_flat(o, R)
         off = R @ o["center"]                    # root -> bbox centre (world)
         o["pos"] = o["pos"] + off
         try:
             self._drop_centre(o, R)
         finally:
             o["pos"] = o["pos"] - off
+
+    def _disc_falls_flat(self, o: dict, R):
+        """A thin disc (a coin) let go on its edge falls flat towards its lean, about its lowest rim point."""
+        h = np.asarray(o["half"], float)
+        k = int(np.argmin(h))
+        a, b = np.delete(h, k)
+        n = R[:, k]
+        if not (h[k] < 0.0025 and abs(a - b) <= 0.05 * max(a, b)) or abs(float(n[2])) > 0.9:
+            return R
+        from dojo.skills.geometry import axis_angle_R
+        up = np.array([0.0, 0.0, 1.0]) - n * float(n[2])
+        up /= np.linalg.norm(up)
+        lean = np.array([up[0], up[1], 0.0])
+        if np.linalg.norm(lean) < 1e-6:
+            lean = np.array([n[0], n[1], 0.0])
+        lean /= np.linalg.norm(lean)
+        c = o["pos"] + R @ o["center"]
+        bottom = c - up * a
+        ax = np.cross(up, lean)
+        ang = math.acos(max(-1.0, min(1.0, float(up @ lean))))
+        R2 = axis_angle_R(ax / np.linalg.norm(ax), ang) @ R
+        c2 = np.array([bottom[0] + lean[0] * a, bottom[1] + lean[1] * a, c[2]])
+        o["quat"] = T_to_pose7(T_from(np.zeros(3), R2))[3:]
+        o["pos"] = c2 - R2 @ o["center"]
+        return R2
 
     def _drop_centre(self, o: dict, R) -> None:
         label = o["label"]

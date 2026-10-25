@@ -819,7 +819,7 @@ class Skills:
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
                       q_start: dict | None = None, max_pick_tilt: float = 50.0, box_tilts=(0.0, 25.0, -25.0),
-                      lift_to_pre: bool = False):
+                      lift_to_pre: bool = False, screen_fingers_out: bool = False):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
@@ -832,6 +832,8 @@ class Skills:
         of the box grasps (40: a top grasp that still reaches 1 m high at 0.54 m from the base, 0.32 m straight
         down). ``lift_to_pre``: lift the object at least to the pre-place height (a slice carried from its rack into
         a toaster 12 cm taller: the 8 cm lift's joint move to the pre-place cut through the toaster).
+        ``screen_fingers_out``: screen each place at the pose ``place_kw["fingers_out"]`` lets go from (the TCP raised
+        until the fingertips clear the receptacle's top; a coin dropped into a slot from a grasp at its middle).
         Returns (PickPlan, PlacePlan) or a SkillResult."""
         w = self.world
         obj = w.obj(label)
@@ -848,6 +850,11 @@ class Skills:
                 Tk[:3, 3] = c - Tk[:3, :3] @ obj.asset.center
                 tg.append(Tk)
         ign = tuple(set(ignore) | {label})
+        fo_ref = None
+        if screen_fingers_out and place_kw.get("fingers_out"):
+            ref = next((l for l in ((place_kw.get("servo_ref"),) + tuple(place_kw.get("grip_only") or ()) + tuple(ignore))
+                        if l and l in w.objects), None)
+            fo_ref = w.obj(ref).top_z if ref is not None else None
         screened, notes = [], []
         # irregular objects (tools, figurines): how well a grasp holds while the hand turns counts in the ranking
         # (twin: pliers squeezed across their diverging handles, a hammer across its head, slid out; the
@@ -892,6 +899,8 @@ class Skills:
                 box = held_box(obj, T_tcp_obj)
                 for ti, T_obj in enumerate(tg):
                     T_tcp = T_obj @ inv_T(T_tcp_obj)
+                    if screen_fingers_out and fo_ref is not None:
+                        T_tcp[2, 3] += self.tips_raise(T_tcp, fo_ref + 0.003)
                     if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > PLACE_REACH:
                         continue
                     n_ik += 1
