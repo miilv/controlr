@@ -529,3 +529,36 @@ def test_supervisor_hook_is_pluggable():
     rep = run_episode(pol, FakeEpisode(env), "gt")
     assert seen and seen[0][0] == STACK and seen[0][1] == ["block_0", "block_1", "block_2"]
     assert rep["decisions"][0]["reason"] == "hook says no" and not _stacked(env)
+
+
+def test_refine_hook_updates_the_belief_only_when_accepted():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class RefinePerception:
+        def __init__(self, ok):
+            self.ok, self.calls = ok, []
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03):
+            self.calls.append([o["label"] for o in objects])
+            p = list(objects[0]["pos"])
+            p[0] += 0.005
+            return {objects[0]["label"]: {"ok": self.ok, "pos": p, "quat": objects[0]["quat"], "shift_mm": 5.0}}
+
+    for ok in (True, False):
+        pc = RefinePerception(ok)
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=pc)
+        pol.reset(FakeEpisode(env).info())
+        b = pol.bridge
+        b.obs, b.fresh = FakeEpisode(env).observe(), True
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        x0 = float(prov.belief.objects["block_1"].pos[0])
+        out = pol._refine_hook(prov, None, "block_1", "left", "pick")
+        x1 = float(prov.belief.objects["block_1"].pos[0])
+        assert pc.calls[0][0] == "block_1" and len(pc.calls[0]) == 3          # the target first, others as occluders
+        if ok:
+            assert out and abs(x1 - x0 - 0.005) < 1e-9
+        else:
+            assert out is None and x1 == x0
+        assert pol.report["events"][-1]["kind"] == "refine"
