@@ -220,7 +220,10 @@ class Skills:
                 if not ok:
                     n_coll += 1
                     continue
-                to_pre = self.motion.to_pose(a, q0, g.pre(), approach_rad, "pick_approach", gripper=go)
+                # with a wrist refine, objects longer than ~12 cm need the look from 12-15 cm to fit the
+                # frame (perception); the hover is the pre-grasp
+                pre_d = 0.13 if (self.refine is not None and float(obj.asset.extents.max()) > 0.12) else None
+                to_pre = self.motion.to_pose(a, q0, g.pre(pre_d), approach_rad, "pick_approach", gripper=go)
                 if not to_pre.ok:
                     n_coll += to_pre.status == "collision"
                     n_ik += to_pre.status == "ik_fail"
