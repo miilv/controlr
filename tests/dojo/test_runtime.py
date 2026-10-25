@@ -599,3 +599,23 @@ def test_refine_runs_at_every_hover_in_an_episode():
     kinds = [(e.get("for"), e.get("ok")) for e in rep["events"] if e["kind"] == "refine"]
     assert ("pick", True) in kinds and len(kinds) >= 3, kinds
     assert _stacked(env)
+
+
+def test_merge_looked_keeps_unflagged_frame0():
+    from dojo.runtime.estimate import merge_looked
+    r0 = {"Rigid": {"block": [{"label": "block_0", "category": "block", "category_idx": 1, "default_pos": [0.1, -0.1, 0.78],
+                               "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}},
+                              {"label": "block_1", "category": "block", "category_idx": 2, "default_pos": [0.3, -0.2, 0.78],
+                               "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.4}}]},
+          "_not_found": [{"label": "block_2"}]}
+    r1 = {"Rigid": {"block": [{"label": "block_1", "category": "block", "category_idx": 1, "default_pos": [0.11, -0.1, 0.78],
+                               "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}},
+                              {"label": "block_0", "category": "block", "category_idx": 3, "default_pos": [0.305, -0.2, 0.78],
+                               "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.95}},
+                              {"label": "block_2", "category": "block", "category_idx": 4, "default_pos": [-0.3, -0.2, 0.78],
+                               "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}}]}}
+    m = merge_looked(r0, r1, ["block_1", "block_2"])
+    by = {r["label"]: r for r in m["Rigid"]["block"]}
+    assert by["block_0"]["default_pos"] == [0.1, -0.1, 0.78]                       # unflagged: frame 0 kept
+    assert by["block_1"]["default_pos"] == [0.305, -0.2, 0.78] and by["block_1"]["category_idx"] == 3   # matched by position
+    assert by["block_2"]["default_pos"] == [-0.3, -0.2, 0.78] and not m["_not_found"]

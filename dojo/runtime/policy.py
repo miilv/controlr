@@ -51,6 +51,7 @@ class RuntimeConfig:
     look_conf: float = 0.7
     max_looks: int = 2
     look_min_budget: float = 0.6        # look only while steps_left >= this fraction of step_lim
+    look_merge: str = "all"             # all: the fused record replaces frame 0 | flagged: only flagged objects
     resync: bool = True
     div_iou: float = 0.2                 # fallback without z-buffer: head IoU at the predicted pose
     div_prec: float = 0.4                # predicted front-most head pixels that are foreground, below = divergence
@@ -388,7 +389,11 @@ class RuntimePolicy:
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
         self.report["look_steps"] = b.steps_used - n0
-        return self.perception().estimate([obs0, obs1], scene, self.fold)
+        rec1 = self.perception().estimate([obs0, obs1], scene, self.fold)
+        if cfg.look_merge == "flagged":
+            from .estimate import merge_looked
+            return merge_looked(rec0, rec1, [f["label"] for f in fl if f.get("label")])
+        return rec1
 
 
 def _hist(sk) -> list[dict]:
