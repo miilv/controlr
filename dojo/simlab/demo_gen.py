@@ -46,6 +46,8 @@ HAND_TCP = 0.102            # panda_hand -> grasp point along the hand z (robot_
 OPEN, CLOSE = 0.04, -0.01   # finger joint targets (gripper_scale); closing stops on the object
 MAX_WIDTH = 0.077           # widest graspable width across the fingers (2 x 0.04 open, 1.5 mm per side)
 GRASP_DEPTH = 0.03          # grasp point below the object's top (at most 60 % of its height)
+MIN_PAD_Z = 0.016           # pad centre above the object's bottom: the planner's table sits 2.5 cm low
+                            # (RoboDojo passes table_height 0.74, the top is 0.765), so lower tips stall
 CARRY_SLOW = 2.0            # > 1: the segment carries an object (slower pace, DQ_CARRY)
 DQ_FREE, DQ_CARRY = 0.010, 0.006   # rad per 4 ms sub-step (RoboDojo's own demos: median 0.002, peak 0.008)
 HOME_STEP_RAD = 0.004       # per 4 ms sub-step for joint-space moves (1 rad/s)
@@ -248,7 +250,7 @@ def plan_demo(run, seed: int, order: list[int] | None = None) -> tuple[dict | No
                                       "width_cm": round(100 * g["width"], 1), "height_cm": round(100 * h, 1)}
         if g.get("too_wide"):
             return None, {**info, "status": f"aim{i} ({o['category']}) {100 * g['width']:.1f} cm wider than the gripper"}
-        grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.6 * h), g["bottom"] + 0.01)
+        grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.6 * h), g["bottom"] + MIN_PAD_Z)
         carry_z = max(b_top, tallest - origin[2]) + h + CARRY_CLEARANCE   # the carried object clears everything
         steps = [((*g["xy"], g["top"] + 0.08), g["yaw"], f"pre aim{i}"),
                  ((*g["xy"], grasp_z), g["yaw"], f"grasp aim{i}")]
