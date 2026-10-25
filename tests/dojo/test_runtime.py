@@ -619,3 +619,25 @@ def test_merge_looked_keeps_unflagged_frame0():
     assert by["block_0"]["default_pos"] == [0.1, -0.1, 0.78]                       # unflagged: frame 0 kept
     assert by["block_1"]["default_pos"] == [0.305, -0.2, 0.78] and by["block_1"]["category_idx"] == 3   # matched by position
     assert by["block_2"]["default_pos"] == [-0.3, -0.2, 0.78] and not m["_not_found"]
+
+
+def test_refine_not_ok_off_prior_asks_for_a_rehover():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class OffCentre:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None):
+            o = objects[0]
+            return {o["label"]: {"ok": False, "pos": [o["pos"][0] + 0.02, o["pos"][1], o["pos"][2]], "quat": o["quat"],
+                                 "shift_mm": 20.0, "iou": 0.2}}
+
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=OffCentre())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    x0 = float(prov.belief.objects["block_0"].pos[0])
+    out = pol._refine_hook(prov, None, "block_0", "right", "pick")
+    assert "rehover" in out and abs(float(out["rehover"][0][0]) - x0 - 0.02) < 1e-9
+    assert float(prov.belief.objects["block_0"].pos[0]) == x0          # the belief waits for the second look

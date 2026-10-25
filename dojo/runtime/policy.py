@@ -64,6 +64,8 @@ class RuntimeConfig:
     refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
     refine_max_shift_m: float = 0.03
     refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
+    rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
+    rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -322,7 +324,8 @@ class RuntimePolicy:
     def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
         """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
         ``label`` locally on the new views (perception service ``refine``), write accepted poses into the belief.
-        Returns {label: (pos, quat)} of what changed; never steps the env."""
+        Returns {label: (pos, quat)} of what changed, or {"rehover": (pos, quat)} when the fit was not ok but
+        found the object off the prior (skills hovers there and calls once more); never steps the env."""
         obs = self.bridge.observe()
         o = prov.belief.objects.get(label) if prov.belief else None
         if o is None or label in prov.belief.held_labels():
@@ -337,6 +340,12 @@ class RuntimePolicy:
               **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why")}}
         self.report["events"].append(ev)
         if not r.get("ok"):
+            # perception found the object away from the prior but could not fit it well from this hover (it sits
+            # off-centre in the wrist view): ask skills to hover over that spot and refine once more
+            if (r.get("pos") is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
+                    and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm):
+                ev["rehover"] = True
+                return {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float))}
             return None
         new_id = r.get("obj_id")
         if new_id and new_id != o.asset.key and r.get("identity_ok"):
