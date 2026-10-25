@@ -99,6 +99,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   place the start around the aim point with a random sign per axis; always read the accuracy on the
   minority class. The decision head locates only VISIBLE, concretely named things ("the red ball"):
   "the point 50 mm above the box rim" stays at chance (journal 2026-10-07-decision-head-tuning).
+- **Codex-served GPT-6 (`cx/gpt-6-astra-*`, `cx/gpt-6.1-sol`) answers "write a code cell" as a call of a `python`
+  tool.** Without a declared tool omniroute drops the call: the stream has only `reasoning_content`, `finish_reason:
+  stop`, ~100 completion tokens and empty text (2026-10-25: 24 of 30 agent replies lost). Declare a `python(code)`
+  function tool (`dojo.agent.loop.PYTHON_TOOL`); `LLMClient` assembles streamed `tool_calls` into `LLMResult.tool_calls`.
+  JSON-only prompts (Phase 1 grounding) are unaffected. Sonnet on `claude/` sometimes writes the same call as
+  `<invoke name="python"><parameter name="code">` markup in the text; `dojo.agent.loop.extract_code` accepts both.
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
   Very small frames (224 px) also make `low` think ([journal](journal/2026-10-04-sonnet-latency.md)).
