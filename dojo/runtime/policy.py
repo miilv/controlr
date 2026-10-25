@@ -83,7 +83,10 @@ class _Checker:
 
 
 class RuntimePolicy:
-    def __init__(self, cfg: RuntimeConfig | None = None, assets=None, twin_client=None, perception_client=None):
+    def __init__(self, cfg: RuntimeConfig | None = None, assets=None, twin_client=None, perception_client=None,
+                 supervisor=None):
+        """``supervisor``: any object with ``decide(instruction, world, events) -> supervisor.Decision`` (the hook
+        the LLM supervisor will implement); default ``RuleSupervisor``."""
         self.cfg = cfg or RuntimeConfig.from_env()
         if self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle"):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -93,7 +96,7 @@ class RuntimePolicy:
         self.bridge: Bridge | None = None
         self.dev_gt = None
         self.report: dict = {}
-        self.supervisor = RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
+        self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.log_lines: list[str] = []
 
     # ------------------------------------------------------------------ lazy services

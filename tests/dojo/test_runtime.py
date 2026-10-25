@@ -511,3 +511,20 @@ def test_look_macro_falls_back_and_fuses():
     assert lk["status"] == "ok" and lk["arm"] == "left" and lk["pose"] == "d0.18/e70" and lk["tried"] == 3
     assert pc.calls[:2] == [1, 2] and rep["records"].get("fused") and rep["look_steps"] > 0
     assert _stacked(env)
+
+
+def test_supervisor_hook_is_pluggable():
+    """A custom supervisor sees instruction + WorldState + events and decides; here it refuses to act."""
+    from dojo.runtime.supervisor import Decision
+    seen = []
+
+    class Hook:
+        def decide(self, instruction, world, events):
+            seen.append((instruction, sorted(world.objects), list(events)))
+            return Decision("finish", reason="hook says no")
+
+    env = _env()
+    pol = RuntimePolicy(RuntimeConfig(mode="gt"), assets=FakeAssets(), supervisor=Hook())
+    rep = run_episode(pol, FakeEpisode(env), "gt")
+    assert seen and seen[0][0] == STACK and seen[0][1] == ["block_0", "block_1", "block_2"]
+    assert rep["decisions"][0]["reason"] == "hook says no" and not _stacked(env)
