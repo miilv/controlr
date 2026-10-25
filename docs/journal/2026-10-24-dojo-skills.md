@@ -90,8 +90,13 @@ data `compute3:~/dojo-data/skills/g3/<run>/`):
 | swap_blocks | v1 chunk 1 / chunk 2 | 8/10, **10/10** | 271 / 349 (700) | a cube turned in the pads and slid out mid-carry (chunk 2 with loose-grasp regrasp) |
 | press_by_number | v1 chunk 1 / chunk 2 | 0/10, **10/10** | 158 / 214 (700) | the idle arm hovering 12 mm from the pressing arm blocked the middle button (chunk 2 with the clearance fix) |
 | put_bottles_into_dustbin | v2 / v3 | 0/7, 0/15 (3-5 unstable loads) | 231-523 (700) | lying bottles gripped above the axis; handover spots; retries |
+| stack_blocks | v3 (chunks 1 / 2 / 3 on successive fixes) | 8/10, 8/10, 5/5 = 21/25 | 160 / 199 (550) | far-reach stalls, then an idle arm blocking a pick |
+| press_by_number | v2 chunk 1 | **10/10** (20/20 with v1 chunk 2) | 134-214 (700) | — |
+| swap_blocks | v1 all | 21/25 (mixed code; chunk 2 10/10) | 271 / 400 (700) | knocked neighbour, table-level place target |
+| stack_bowls | v3 (wall pinch) | 0/10 | — | the grasp now holds (2.9-5.2 mm); planning: pre-place / carry over the base bowl |
+| put_bottles_into_dustbin | v4 chunk 1 / 2 | 1/7, 0/8 (2 unstable per 10) | 196-424 (700) | dropper misses, standing handovers tip over, bottles knocked off |
 
-(Further rows appended at the end of the session.)
+(Plan + verify rows below when the runs finish.)
 
 ## 5. Failure taxonomy (what the traces showed)
 
