@@ -44,7 +44,8 @@ TASK = "imitate_sorting_sequence"
 ARM, EE = "support_arm0", "support_ee0"
 HAND_TCP = 0.102            # panda_hand -> grasp point along the hand z (robot_config gripper_bias)
 OPEN, CLOSE = 0.04, -0.01   # finger joint targets (gripper_scale); closing stops on the object
-MAX_WIDTH = 0.074           # widest graspable footprint across the fingers (2 x 0.04 minus margin)
+MAX_WIDTH = 0.077           # widest graspable width across the fingers (2 x 0.04 open, 1.5 mm per side)
+GRASP_DEPTH = 0.02          # grasp point below the object's top (finger pads are ~2 cm)
 HOME_STEP_RAD = 0.004       # per 4 ms sub-step for joint-space moves (1 rad/s)
 
 
@@ -59,9 +60,37 @@ def world_vertices(meta: dict, pos, quat) -> np.ndarray:
     return v @ quat_to_mat(q / np.linalg.norm(q)).T + np.asarray(pos, float)
 
 
-def top_down_grasp(verts: np.ndarray, max_width: float = MAX_WIDTH) -> dict | None:
-    """Narrowest horizontal direction of the object's world bbox: fingers close along it. Returns the footprint
+def mesh_points(prim_path: str, origin) -> np.ndarray | None:
+    """World points of every mesh under ``prim_path`` on the live stage, minus the env origin (env frame)."""
+    try:
+        import omni.usd
+        from pxr import Usd, UsdGeom
+    except ImportError:
+        return None
+    stage = omni.usd.get_context().get_stage()
+    prim = stage.GetPrimAtPath(prim_path) if stage is not None and prim_path else None
+    if prim is None or not prim.IsValid():
+        return None
+    cache = UsdGeom.XformCache(Usd.TimeCode.Default())
+    out = []
+    for p in Usd.PrimRange(prim):
+        if p.IsA(UsdGeom.Mesh):
+            pts = UsdGeom.Mesh(p).GetPointsAttr().Get()
+            if not pts:
+                continue
+            m = np.asarray(cache.GetLocalToWorldTransform(p), float)      # row-vector convention
+            v = np.c_[np.asarray(pts, float), np.ones(len(pts))] @ m
+            out.append(v[:, :3])
+    return np.concatenate(out) - np.asarray(origin, float)[:3] if out else None
+
+
+def top_down_grasp(verts: np.ndarray, max_width: float = MAX_WIDTH, band: float | None = None) -> dict | None:
+    """Narrowest horizontal direction of the object (bbox corners or mesh points; with ``band``, only the points
+    within ``band`` of the top, where the fingers hold it): fingers close along it. Returns the footprint
     centre, the closing yaw, the width across the fingers, top and bottom z (None if too wide)."""
+    top_all, bottom_all = float(verts[:, 2].max()), float(verts[:, 2].min())
+    if band is not None:
+        verts = verts[verts[:, 2] >= top_all - band]
     best = None
     for deg in range(0, 180, 5):
         d = np.array([math.cos(math.radians(deg)), math.sin(math.radians(deg))])
@@ -71,8 +100,8 @@ def top_down_grasp(verts: np.ndarray, max_width: float = MAX_WIDTH) -> dict | No
         if best is None or w < best["width"]:
             c = d * (pd.max() + pd.min()) / 2 + e * (pe.max() + pe.min()) / 2
             best = {"width": w, "yaw": math.radians(deg), "xy": c, "length": float(pe.max() - pe.min())}
-    best["top"], best["bottom"] = float(verts[:, 2].max()), float(verts[:, 2].min())
-    return best if best["width"] <= max_width else None
+    best["top"], best["bottom"] = top_all, bottom_all
+    return best if best["width"] <= max_width else {**best, "too_wide": True}
 
 
 def hand_quat(yaw: float) -> np.ndarray:
@@ -161,14 +190,21 @@ def plan_demo(run, seed: int) -> tuple[dict | None, dict]:
     info: dict = {"order": order, "objects": {}}
     for i in order:
         o = rows[f"aim{i}"]
-        g = top_down_grasp(world_vertices(metadata(o["type"], o["category"], int(o["category_idx"])), local(o),
-                                          o["quat"]))
-        if g is None:
-            return None, {**info, "status": f"aim{i} ({o['category']}) wider than the gripper"}
+        pts = mesh_points(o.get("prim_path"), origin)
+        if pts is not None and len(pts) >= 8:          # the real shape: the top band the fingers hold
+            src = "mesh"
+            h_all = float(pts[:, 2].max() - pts[:, 2].min())
+            g = top_down_grasp(pts, band=min(GRASP_DEPTH + 0.01, 0.6 * h_all))
+        else:
+            src = "bbox"
+            g = top_down_grasp(world_vertices(metadata(o["type"], o["category"], int(o["category_idx"])), local(o),
+                                              o["quat"]))
         h = g["top"] - g["bottom"]
-        grasp_z = max(g["top"] - min(0.025, 0.5 * h), g["bottom"] + 0.01)
-        info["objects"][f"aim{i}"] = {"category": o["category"], "width_cm": round(100 * g["width"], 1),
-                                      "height_cm": round(100 * h, 1)}
+        info["objects"][f"aim{i}"] = {"category": o["category"], "idx": int(o["category_idx"]), "shape": src,
+                                      "width_cm": round(100 * g["width"], 1), "height_cm": round(100 * h, 1)}
+        if g.get("too_wide"):
+            return None, {**info, "status": f"aim{i} ({o['category']}) {100 * g['width']:.1f} cm wider than the gripper"}
+        grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.5 * h), g["bottom"] + 0.01)
         carry_z = max(b_top, g["top"]) + h + 0.06
         steps = [((*g["xy"], g["top"] + 0.08), g["yaw"], f"pre aim{i}"),
                  ((*g["xy"], grasp_z), g["yaw"], f"grasp aim{i}")]

@@ -26,8 +26,19 @@ def test_grasp_closes_across_the_narrow_side():
     assert abs(float(d @ narrow)) > 0.99
     assert g["xy"] == pytest.approx([0.2, 0.3], abs=1e-6)
     assert g["top"] == pytest.approx(0.815) and g["bottom"] == pytest.approx(0.765)
-    assert D.top_down_grasp(D.world_vertices({"geometry": {"oriented_bbox": {"vertices": box(0.2, 0.2, 0.2).tolist()}}},
-                                             [0, 0, 0.765], [1, 0, 0, 0])) is None   # wider than the fingers
+    wide = D.top_down_grasp(D.world_vertices({"geometry": {"oriented_bbox": {"vertices": box(0.2, 0.2, 0.2).tolist()}}},
+                                             [0, 0, 0.765], [1, 0, 0, 0]))
+    assert wide["too_wide"]                                        # wider than the fingers
+
+
+def test_grasp_band_uses_the_top_of_the_shape():
+    base = box(0.12, 0.10, 0.05)                                   # wide body ...
+    top = box(0.05, 0.03, 0.02) + [0.0, 0.0, 0.05]                 # ... with a narrow knob on top
+    pts = np.concatenate([base, top]) + [0.0, 0.0, 0.765]
+    assert D.top_down_grasp(pts)["too_wide"]
+    g = D.top_down_grasp(pts, band=0.015)
+    assert not g.get("too_wide") and g["width"] == pytest.approx(0.03, abs=0.002)
+    assert g["top"] == pytest.approx(0.835) and g["bottom"] == pytest.approx(0.765)
 
 
 def test_hand_points_down_with_fingers_along_yaw():
