@@ -64,6 +64,11 @@ BENCH=/tmp/rbfake scripts/dojo/bridge_episode.sh --id fk-1 --fake --policy dojo.
     --perception server --verify off --out /tmp/rbfake/out
 # -> "[bridge] fk-1: end=ended steps=172/550 ended=True ..." (the fake's latch: stacked + home), driver rc=0
 ```
+Our backend against robot-harness's REAL strict J1 server code. His files are copied into a temp `$BENCH`, never
+modified, and run with his offline mock shim; only `strict_calib.py` is stubbed:
+```bash
+CONTROLR_ROBOT_HARNESS=<robot-harness checkout> uv run pytest -q tests/dojo/test_bridge_rh.py
+```
 The agent on the fake server (live calls: about 1 per episode for the stack task; cx/gpt-6.1-sol by default):
 ```bash
 .venv/bin/python -m dojo.bridge.fake_server --id fk-2 --bench /tmp/rbfake &

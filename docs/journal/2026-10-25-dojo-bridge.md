@@ -48,6 +48,13 @@ call.
   - the full system: the server `perceive` route → twin loaded from those poses + proprio → AgentPolicy (FakeLLM)
     → library skill with twin verify on every segment → the latch ends the episode;
   - a static check that the bridge sources read no GT / eval files / grader verbs.
+- `tests/dojo/test_bridge_rh.py` (opt-in, `CONTROLR_ROBOT_HARNESS=<checkout>`): our backend against robot-harness's
+  REAL strict J1 server code.
+  - His server files and frozen offline mock shim are copied into a temp `$BENCH`; his repo is untouched. The J1
+    mock perceiver is used, and only `strict_calib.py` is stubbed (it reads RoboDojo's config at import).
+  - Passed first try on robot-harness `d279be1`: tier check, reset, obs → contract observation (and `check_obs`),
+    proprio, perceive → record, B1 held_look, hold, gripper, close.
+  - `joint_steps` is refused as expected. Once #8 lands (with a mock-shim op), the same test executes it.
 - Issue robot-harness #8 (posted by the lead): the `joint_steps` verb, plus a `robot-start-j2` start script.
 
 **Numbers (mock, kinematic env; not a benchmark):**
