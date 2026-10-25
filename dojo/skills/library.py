@@ -1637,7 +1637,98 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
     return {"ok": True, "stage": "kong"}
 
 
+# ============================================================================ pegs, slots + press
+
+def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str], drop: float = 0.003) -> dict:
+    """Thread pieces onto a base's pegs: group i (identical pieces) onto peg ``pegs[i]`` (a support frame of
+    ``base``), one at a time, flat (the piece's "up" pose), centred over the peg and released just above its
+    top: the piece slides down the peg (the peg keeps it co-axial). Closed-loop descent on the base; grippers
+    open after each piece (per-peg credit). Untested in the twin (no dev layouts for a stacking toy yet)."""
+    from dojo.skills.geometry import quat_to_R
+    w = sk.refresh()
+    b = w.obj(base)
+    sk.coll.include.add(base)
+    done, failed = [], []
+    for grp, tag in zip(groups, pegs):
+        c = np.asarray(_support_raw(b, tag)[0], float)
+        top_w = b.T @ np.r_[c[:3], 1.0]
+        for lab in grp:
+            if lab not in sk.world.objects:
+                continue
+            o = sk.world.obj(lab)
+            q = o.asset.place.get("up")
+            R = rot_z(b.yaw()) @ (quat_to_R(np.asarray(q, float)) if q is not None else level_R(o.R))
+            tg = [rest_with_R(sk, lab, top_w[:2], R, z_bottom=float(top_w[2]) + drop)]
+            r = place_oriented(sk, lab, tg, yaw_sym=4, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08, ignore=(base,),
+                               place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
+                                         "servo": True, "servo_ref": base})
+            (done if r.ok else failed).append(lab)
+            for a in ARMS:
+                if sk.held[a] is not None:
+                    sk._record(sk.regrasp(a))
+            sk.bank()
+            if r.status in ("step_budget", "ended"):
+                return {"ok": False, "stage": f"peg {tag}", "result": r}
+    if failed:
+        return {"ok": False, "stage": "pegs", "note": f"done {done}, failed {failed}"}
+    return {"ok": True, "stage": "pegs"}
+
+
+def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[str], press_tag: str | None = None,
+                    press_depth: float = 0.05) -> dict:
+    """One object into each named slot of ``container`` (a functional point whose frames are the slot's
+    footprint corners, container frame), standing on an edge: the object's thinnest axis across the slot,
+    its longest along it, lowered to the slot floor (closed loop); grippers open after each. Then, with
+    ``press_tag`` (a functional point on a moving joint: a toaster's lever), press it ``press_depth`` down.
+    Untested in the twin (no dev layouts for a toaster yet)."""
+    w = sk.refresh()
+    c = w.obj(container)
+    sk.coll.include.add(container)
+    done, failed = [], []
+    for lab, tag in zip(objects, slots):
+        fr = functional_frames(c, tag)
+        if not fr or lab not in w.objects:
+            failed.append(lab)
+            continue
+        P = np.array([(c.T @ F)[:3, 3] for F in fr])
+        ctr = P.mean(0)
+        d = P[:, :2] - ctr[:2]
+        _, _, Vt = np.linalg.svd(d, full_matrices=False)
+        along = np.r_[Vt[0], 0.0]
+        across = np.r_[-Vt[0][1], Vt[0][0], 0.0]
+        o = sk.world.obj(lab)
+        ext = o.asset.extents
+        k_thin, k_long = int(np.argmin(ext)), int(np.argmax(ext))
+        k_up = 3 - k_thin - k_long
+        R = np.zeros((3, 3))
+        R[:, k_thin], R[:, k_long] = across, along
+        R[:, k_up] = np.cross(R[:, (k_up + 1) % 3], R[:, (k_up + 2) % 3])
+        tg = [rest_with_R(sk, lab, ctr[:2], R, z_bottom=float(P[:, 2].min()) + 0.002)]
+        r = place_oriented(sk, lab, tg, yaw_sym=2, tol_xy=0.015, tol_tilt=20.0, tol_z=0.05, ignore=(container,),
+                           place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
+                                     "servo": True, "servo_ref": container})
+        (done if r.ok else failed).append(lab)
+        for a in ARMS:
+            if sk.held[a] is not None:
+                sk._record(sk.regrasp(a))
+        sk.bank()
+        if r.status in ("step_budget", "ended"):
+            return {"ok": False, "stage": f"slot {tag}", "result": r}
+    if press_tag:
+        fr = functional_frames(c, press_tag, active=True) or functional_frames(c, press_tag)
+        if fr:
+            top = (sk.refresh().obj(container).T @ fr[0])[:3, 3]
+            arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - top[:2])))
+            r = sk.press(arm, top, n=1, depth=press_depth)
+            if not r.ok:
+                failed.append(press_tag)
+    if failed:
+        return {"ok": False, "stage": "slots", "note": f"done {done}, failed {failed}"}
+    return {"ok": True, "stage": "slots and press"}
+
+
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
           "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,
           "insert_into": insert_into, "place_in_slots": place_in_slots,
-          "fill_container": fill_container, "arrange": arrange}
+          "fill_container": fill_container, "arrange": arrange, "stack_on_pegs": stack_on_pegs,
+          "slots_and_press": slots_and_press}
