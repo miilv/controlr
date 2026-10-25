@@ -211,6 +211,9 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80) -> dict:
         frames, masks = [], []
         hc = head_camera()
         pool = [(e, k) for e in others for k in d0.frames(e)]
+        # the scan pose's frames (arms parked, ``frame_S1``) show the table under the home grippers: without them the
+        # clean background has no data there and the head view treats that zone as unknown
+        pool += [(e, "S1") for e in others if (e / "frame_S1.json").exists() and (e / "frame_S1_cam_head.png").exists()]
         for i in rng.permutation(len(pool))[:n_clean]:
             e, k = pool[i]
             p = e / f"frame_{k}_cam_head.png"
