@@ -133,7 +133,16 @@ def _fmt(v: float, nd: int = 2) -> str:
     return f"{v:+.{nd}f}"
 
 
-def object_line(o: ObjectState, oid: str, objects_root=None, all_names: bool = True) -> str:
+def frame_tags(o: ObjectState, limit: int = 8) -> list[str]:
+    """The asset's named frames a skill can target (public metadata): support points (pegs, poles: the
+    ``pegs`` of ``stack_on_pegs``) and functional points (slots, levers, buttons: ``slots`` / ``press_tag`` of
+    ``slots_and_press``)."""
+    tags = [t for t in (o.asset.support or {}) if t not in ("up", "down", "top", "bottom")]
+    tags += [t for t in list(o.asset.functional or {}) + list(o.asset.active_functional or {}) if t not in tags]
+    return tags[:limit]
+
+
+def object_line(o: ObjectState, oid: str, objects_root=None, all_names: bool = True, frames: bool = False) -> str:
     """``all_names``: every caption name of the asset (``"hoe" / "ice axe" / ...``; instructions name objects by
     any of their descriptions), else only the first one when it differs from the category (scene v1)."""
     ext = np.asarray(o.asset.extents, float) * 100
@@ -147,6 +156,10 @@ def object_line(o: ObjectState, oid: str, objects_root=None, all_names: bool = T
         desc.append(f"colour {cap['color']}")
     if o.category in DIGIT_CATEGORIES:
         desc.append(f"shows {DIGIT_CATEGORIES[o.category](int(o.idx))}")
+    if frames:
+        fr = frame_tags(o)
+        if fr:
+            desc.append("frames " + ", ".join(fr))
     c = o.center_w
     tilt = o.tilt()
     pose = f"at ({_fmt(c[0])}, {_fmt(c[1])}, {c[2]:.2f})"
@@ -163,13 +176,14 @@ def _natural(s: str):
 
 def scene_text(world: WorldState, ids: SceneIds | None = None, objects_root=None, step_lim: int | None = None,
                max_objects: int = 60, version: int = 2) -> tuple[str, SceneIds]:
-    """``version`` 1: the first caption name only (Phase 1 run 1); 2: all caption names."""
+    """``version`` 1: the first caption name only (Phase 1 run 1); 2: all caption names; 3: + the asset's named
+    support / functional frames (J2: ``stack_on_pegs`` / ``slots_and_press`` take them as arguments)."""
     ids = ids or assign_ids(world)
     lines = ["SCENE (world frame, metres: x to the robot's right, y away from the robot, z up; table top z 0.765;"
              " arm bases left (-0.30, -0.45), right (+0.30, -0.45); positions are object centres, yaw/tilt in deg)"]
     objs = sorted(visible_objects(world), key=lambda o: _natural(ids.oid(o.label) or o.label))
     for o in objs[:max_objects]:
-        lines.append(object_line(o, ids.oid(o.label), objects_root, all_names=version >= 2))
+        lines.append(object_line(o, ids.oid(o.label), objects_root, all_names=version >= 2, frames=version >= 3))
     if len(objs) > max_objects:
         lines.append(f"- ... {len(objs) - max_objects} more objects not listed")
     arms = []
