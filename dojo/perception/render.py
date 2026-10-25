@@ -57,7 +57,7 @@ def cluster_decimate(V: np.ndarray, F: np.ndarray, cell: float = 0.002):
 class Asset:
     """Catalogue entry: geometry, decimated silhouette mesh, info."""
 
-    def __init__(self, key: str, root: Path | None = None, cell: float | None = None):
+    def __init__(self, key: str, root: Path | None = None, cell: float | None = None, use_cache: bool = True):
         root = root or catalog_root()
         self.key = key
         self.dir = root / key
@@ -66,8 +66,14 @@ class Asset:
         self.F = g["faces"].astype(np.int32)
         self.info = json.loads((self.dir / "info.json").read_text())
         ext = float(np.max(self.info["extents"]))
+        default_cell = cell is None
         cell = cell if cell is not None else float(np.clip(ext / 60.0, 0.0005, 0.004))
-        if len(self.F) > 3000:
+        self.sil_cell = cell
+        cache = self.dir / "sil.npz"
+        if len(self.F) > 3000 and default_cell and use_cache and cache.exists():  # catalog precompute
+            c = np.load(cache)
+            self.Vs, self.Fs = c["vertices"].astype(float), c["faces"].astype(np.int64)
+        elif len(self.F) > 3000:
             self.Vs, self.Fs = cluster_decimate(self.V, self.F, cell)
         else:
             self.Vs, self.Fs = self.V, self.F
@@ -506,6 +512,22 @@ def tex_roi(size: int):
     if r is None:
         r = _TEX_ROI[size] = ColorMeshRenderer(size, size)
     return r
+
+
+TEXTURE_CRITICAL = {"mahjong", "number", "number_card"}  # identity lives in a printed glyph / digit
+_TEX_GLB = None
+
+
+def tex_for(key: str):
+    """Texture renderer for an asset: the UV-textured low-res GLB for texture-critical categories (a glyph
+    is a texture, not geometry: per-face colours lose it), else the per-face-colour renderer."""
+    global _TEX_GLB
+    cat = key.split("/")[1] if "/" in key else key
+    if cat in TEXTURE_CRITICAL and (catalog_root() / key / "visual_lo.glb").exists() and gl() is not None:
+        if _TEX_GLB is None:
+            _TEX_GLB = TexturedRenderer()
+        return _TEX_GLB
+    return tex()
 
 
 def tex():

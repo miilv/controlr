@@ -28,7 +28,7 @@ def render_requested(gt_objects, cam: Camera, bg_head, ren: SceneRenderer, root:
         key = f"{o['type']}/{o['category']}/{o['category_idx']:05d}"
         g = np.load(root / key / "geom.npz")
         items.append({"id": 10 + i, "key": key, "V": g["vertices"], "F": g["faces"], "T": pose_to_T(o["pos"], o["quat"]),
-                      "glb": root / key / "visual.glb"})
+                      "glb": root / key / ("visual.glb" if (root / key / "visual.glb").exists() else "visual_lo.glb")})
     _, ids, col = ren.render(cam, items, rgb=True, ambient=0.5)
     img = bg.copy()
     m = ids >= 10
