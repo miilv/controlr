@@ -88,15 +88,18 @@ def section_points(mesh, n, s: float) -> np.ndarray:
 _HM_CACHE: dict = {}
 
 
-def height_map(o, cell: float = 0.002) -> dict | None:
-    """Top-surface height map of an object's mesh in its own frame (max z of dense surface samples per ``cell``,
-    dilated by one cell), for ``Collision.heightmaps``. Cached per asset."""
+def height_map(o, cell: float = 0.002, world: bool = False) -> dict | None:
+    """Top-surface height map of an object's mesh (max z of dense surface samples per ``cell``, dilated by one cell),
+    for ``Collision.heightmaps``: in its own frame (an upright receptacle; cached per asset), or with ``world`` along
+    the world's vertical for the object's current orientation (a tube standing in a rack: its own z is horizontal)."""
     if o.asset.mesh is None:
         return None
     key = (o.asset.key, cell)
-    if key in _HM_CACHE:
+    if not world and key in _HM_CACHE:
         return _HM_CACHE[key]
     V, F = np.asarray(o.asset.mesh[0], float), np.asarray(o.asset.mesh[1], int)
+    if world:
+        V = V @ o.R.T
     a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
     L = np.maximum(np.maximum(np.linalg.norm(b - a, axis=1), np.linalg.norm(c - a, axis=1)), np.linalg.norm(c - b, axis=1))
     nseg = np.clip(np.ceil(L / (0.7 * cell)), 1, 24).astype(int)
@@ -121,6 +124,9 @@ def height_map(o, cell: float = 0.002) -> dict | None:
         for dx in (-1, 0, 1):
             Zd = np.maximum(Zd, np.roll(np.roll(Z, dy, 0), dx, 1))
     hm = {"x0": x0, "y0": y0, "cell": cell, "Z": Zd, "center": np.asarray(o.asset.center, float)}
+    if world:
+        hm["R"] = np.asarray(o.R, float).copy()
+        return hm
     _HM_CACHE[key] = hm
     return hm
 
@@ -425,6 +431,8 @@ def _strike_one(sk: Skills, a: str, tool: str, T_tcp_tool, work_loc, head, p, zs
 # ============================================================================ thin discs into slots (insert_into)
 
 DISC_THIN = 0.005             # m: an object this thin with two equal other extents is a disc (a coin)
+DISC_MIN_COVER = 0.007        # m of a disc between the pads at least (twin: 6 mm rim grasps tilted 20 deg let the coin
+                              # fall out on the carry, 2/2)
 
 
 def disc_axis(o) -> int | None:
@@ -455,7 +463,7 @@ def spin_about_axis(o, T_obj, k: int, n: int = 12) -> list[np.ndarray]:
 
 
 def edge_grasps(sk: Skills, o, arm: str, floor_z: float, tilts=(0.0, 12.0, -12.0, 20.0, -20.0, 28.0, -28.0),
-                min_cover: float = 0.005) -> list[G.Grasp]:
+                min_cover: float = DISC_MIN_COVER) -> list[G.Grasp]:
     """Grasps of a disc standing on its edge (a coin in a holder) by its upper rim: the pads on its two faces, the
     approach in the disc's plane from above (tilted in that plane by ``tilts``), as deep as the fingers may go with
     every finger point at or above ``floor_z`` (the holder's top + clearance); at least ``min_cover`` of the disc
@@ -559,7 +567,7 @@ DISC_TABLE_RELAY = False      # the table relay (laid flat, pinched by the other
 DISC_SQUEEZE = 4              # still steps after the close before a disc is lifted (twin: lifted at once, it stayed)
 DISC_LIFT_RAD = 0.03          # rad/step of a disc's lift out of its holder (twin: at 0.10 it stayed in the holder 5/5,
                               # at 0.03 and 0.01 it came out 3/3)
-DISC_PLACE_KW = {"pre_h": 0.04, "pre_clear": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 3, "servo": True,
+DISC_PLACE_KW = {"pre_h": 0.04, "pre_clear": 0.03, "approach_rad": 0.09, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 3, "servo": True,
                  "fingers_out": True, "probe": False, "hover_clear": 0.006, "seat_tol": 0.05}
 
 
@@ -1049,7 +1057,7 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
             st["filled"][lab] = ins[0].tolist()
             # a standing neighbour's own shape, not its asset box, for the next ones (the box of a 28 mm tube is 42 mm
             # wide and 23 mm taller: 54 mm boxes 72 mm apart left no room for the hand)
-            hm_o = height_map(o)
+            hm_o = height_map(o, world=True)
             if hm_o is not None:
                 sk.coll.heightmaps[lab] = hm_o
                 sk.coll.margin_of[lab] = 0.003

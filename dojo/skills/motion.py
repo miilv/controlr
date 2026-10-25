@@ -430,6 +430,8 @@ def below_height_map(hm: dict, loc: np.ndarray, margin: float) -> np.ndarray:
     """Points (OBB-local: object frame minus the bbox centre) at or below the object's top surface + ``margin``
     (``hm``: {"x0", "y0", "cell", "Z" (ny, nx) object-frame top z, -inf where empty, "center"})."""
     p = loc + hm["center"]
+    if "R" in hm:                      # a world-vertical map: offsets from the object's root in world axes
+        p = p @ np.asarray(hm["R"], float).T
     ix = np.clip(((p[:, 0] - hm["x0"]) / hm["cell"]).astype(int), 0, hm["Z"].shape[1] - 1)
     iy = np.clip(((p[:, 1] - hm["y0"]) / hm["cell"]).astype(int), 0, hm["Z"].shape[0] - 1)
     return p[:, 2] <= hm["Z"][iy, ix] + margin
