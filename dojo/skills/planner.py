@@ -182,6 +182,13 @@ def plan(instruction: str, world: WorldState) -> Plan:
             return Plan("play_board_game", {"board": b.label, "pieces": own, "opponent_pieces": opp},
                         f"{len(own)} own pieces vs {len(opp)} on {b.label}'s cells")
 
+    # --- objects riding a conveyor: remember the first one, pick the next of the same identity when it comes
+    belts = [o for o in objs if o.obj_type == "Dynamic" or "conveyor" in o.category.lower()]
+    if belts and re.search(r"\bfirst\b|\bremember\b", text) and re.search(r"\bmatch|\bsame\b|\bagain\b", text):
+        movers = [o.label for o in objs if o.obj_type == "Rigid" and not o.clutter]
+        return Plan("match_and_pick", {"objects": movers, "conveyor": belts[0].label},
+                    f"{len(movers)} objects on {belts[0].label}")
+
     # --- copy a demonstrated order: two containers of one kind (ours = the one nearer the robot), the objects whose
     # identity appears twice (one set for the demonstrator, one for us)
     if re.search(r"\border\b|\bsequence\b", text) and re.search(r"observe|watch|remember|imitate|same order", text):

@@ -338,7 +338,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
     matching object of each (same asset identity, not in either container) into ``container`` in that order, banking
     after each. An object that cannot be put in stops the sequence (a later one would be out of order)."""
     w = sk.refresh()
-    C, D = w.obj(container), w.obj(demo_container)
+    D = w.obj(demo_container)
     st = w.notes.setdefault("imitate", {"order": [], "done": []})
     movers = [l for l in objects if l in w.objects and l not in (container, demo_container)]
     # the demonstrated set: objects whose asset identity appears twice (one for each side)
@@ -405,4 +405,190 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         sk.log(f"[imitate] {twin} in {container} (#{len(st['done'])}, like {l})")
     return {"ok": len(st["done"]) == expect, "stage": "copied", "note": f"{len(st['done'])}/{expect}"}
 
-__all__ = ["play_board_game", "board_cells", "grid_lines", "board_state", "choose_cell", "copy_demonstration", "inside_xy"]
+
+
+# ============================================================================ objects on a conveyor
+
+
+def belt_objects(w, exclude=()) -> list[str]:
+    return [o.label for o in w.task_objects() if o.obj_type == "Rigid" and o.label not in exclude]
+
+
+def belt_velocity(sk: Skills, labels: list[str], steps: int = 4) -> np.ndarray:
+    """The belt's velocity (m per env step, world xy) from what the objects do over ``steps`` still steps: the median
+    displacement of the objects that moved."""
+    w0 = sk.refresh()
+    p0 = {l: w0.obj(l).pos.copy() for l in labels if l in w0.objects}
+    sk.ex.hold(steps)
+    w1 = sk.refresh()
+    d = [(w1.obj(l).pos - p)[:2] / steps for l, p in p0.items() if l in w1.objects]
+    d = [x for x in d if np.linalg.norm(x) > 1e-4]
+    return np.median(np.array(d), axis=0) if d else np.zeros(2)
+
+
+def _object_at(o, pos):
+    class _Ctx:
+        def __enter__(self):
+            self.saved = o.pos.copy()
+            o.pos = np.asarray(pos, float).copy()
+            return o
+
+        def __exit__(self, *a):
+            o.pos = self.saved
+    return _Ctx()
+
+
+def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max: int = 600, n_desc: int = 8,
+                   n_close: int = 5, h_pre: float = 0.06, lift: float = 0.16, arms=None, ignore=()):
+    """A grasp of an object riding the belt: for each arm, the earliest step ``t`` (from now, >= ``t_min``) at which a
+    top grasp of the object's predicted pose is reachable with its pre-grasp and lift; the plan tracks the object
+    (TCP moving with the belt) through the descent and the close. Returns (arm, t_contact, per-step list from the
+    start of the approach, approach steps) or None."""
+    from dojo.skills import grasps as G
+    from dojo.skills.kinematics import gap_to_grip
+    w = sk.world
+    o = w.obj(label)
+    v3 = np.r_[v, 0.0]
+    best = None
+    arms = list(arms) if arms else list(ARMS)
+    for t in range(t_min, t_max, 6):
+        for a in arms:
+            if best is not None and best[1] <= t:
+                break
+            with _object_at(o, o.pos + v3 * t):
+                cands = [g for g in G.candidates(o, sk.kin, a, "top") if -float(g.T[2, 0]) > 0.9]
+            for g in sorted(cands, key=lambda g: g.score)[:6]:
+                go = gap_to_grip(g.open_gap())
+                T_g = g.T                                       # at contact time t
+                # tracking samples: descent (n_desc steps ending at t), close (n_close), lift (6 steps)
+                samples = []
+                for k in range(n_desc + 1):
+                    T = T_g.copy()
+                    T[:3, 3] += v3 * (k - n_desc) + np.array([0, 0, h_pre * (n_desc - k) / n_desc])
+                    samples.append(("open", T))
+                for k in range(1, n_close + 1):
+                    T = T_g.copy()
+                    T[:3, 3] += v3 * k
+                    samples.append(("close", T))
+                for k in range(1, 7):
+                    T = T_g.copy()
+                    T[:3, 3] += v3 * (n_close + k) + np.array([0, 0, lift * k / 6])
+                    samples.append(("lift", T))
+                q = sk.world.home_q[a]
+                qs = []
+                ok = True
+                for kind, T in samples:
+                    r = sk.kin.ik(a, T, q, n_random=0)
+                    if not r.ok or np.abs(r.q - q).max() > (0.35 if not qs else 0.25):
+                        if not qs and r.ok:
+                            pass
+                        else:
+                            ok = False
+                            break
+                    q = r.q
+                    qs.append((kind, r.q))
+                if not ok:
+                    continue
+                c_ok, why = sk.coll.check(a, qs[0][1], go, ignore=tuple(ignore) + (label,))
+                if not c_ok:
+                    continue
+                # the approach from the current joints to the first sample
+                mv = sk.motion.joint(a, sk.ex.q[a], qs[0][1], FAST_RAD, "belt_approach", gripper=go, check=False)
+                n_app = mv.n_steps() if hasattr(mv, "n_steps") else sum(s.n_steps() for s in mv.segments)
+                if n_app > t - n_desc:
+                    continue
+                lst = []
+                from dojo.skills.motion import segment_targets
+                for seg in mv.segments:
+                    for qq in segment_targets(seg.q, seg.step_rad, seg.ease):
+                        lst.append((qq, go))
+                track = []
+                for kind, qq in qs:
+                    track.append((qq, go if kind == "open" else 0.0))
+                best = (a, t, lst, track, g)
+                break
+        if best is not None:
+            break
+    return best
+
+
+FAST_RAD = 0.16
+
+
+def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.16, ignore=(), arms=None) -> SkillResult:
+    """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
+    approach, then the tracked descent / close / lift (one IK target per env step). Checked by the object's height."""
+    w = sk.refresh()
+    z0 = float(w.obj(label).pos[2])
+    plan = plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms)
+    if plan is None:
+        return SkillResult(False, "belt_pick", "ik_fail", 0, None, note=f"no intercept for {label}")
+    a, t, app, track, g = plan
+    n_desc_start = t - 8                                   # the descent's first sample is at contact - n_desc
+    wait = max(0, n_desc_start - len(app))
+    sk.log(f"[belt] {label}: {a} intercept at +{t} steps ({g.note}), wait {wait}, approach {len(app)}")
+    try:
+        if wait:
+            sk.ex.hold(wait)
+        sk.ex.run_lists({a: app}, name="belt approach")
+        # re-measure and re-plan the tracked part from the observed pose (the belt keeps moving)
+        w = sk.refresh()
+        sk.ex.run_lists({a: track}, name=f"belt pick {label}")
+        sk.ex.hold(2)
+    except BudgetExceeded as e:
+        return SkillResult(False, "belt_pick", "step_budget", 0, a, note=str(e))
+    except EpisodeEnded as e:
+        return SkillResult(True, "belt_pick", "ended", 0, a, note=str(e))
+    w = sk.refresh()
+    dz = float(w.obj(label).pos[2]) - z0
+    ok = dz > 0.6 * lift
+    if ok:
+        from dojo.skills.geometry import inv_T
+        from dojo.skills.motion import held_box
+        o = w.obj(label)
+        T_rel = inv_T(sk.kin.tcp(a, w.arms[a].q)) @ o.T
+        from dojo.skills.skills import Held
+        sk.held[a] = Held(label, T_rel, held_box(o, T_rel), g)
+    return sk._record(SkillResult(ok, "belt_pick", "ok" if ok else "grasp_slip", len(app) + len(track), a,
+                                  note=f"{label} rose {dz * 1000:.0f} mm"))
+
+
+def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, lift: float = 0.16,
+                   max_wait: int = 650) -> dict:
+    """Remember the first object on a moving belt (the one leading in the belt's direction), then pick the next object
+    of the same identity when it comes and lift it. Everything from observation: the belt velocity from the objects'
+    motion, identities from the perceived assets."""
+    w = sk.refresh()
+    st = w.notes.setdefault("belt", {})
+    labs = [l for l in objects if l in w.objects]
+    v = belt_velocity(sk, labs)
+    if float(np.linalg.norm(v)) < 1e-4:
+        return {"ok": False, "stage": "belt", "note": "nothing moves"}
+    u = v / np.linalg.norm(v)
+    w = sk.refresh()
+    if st.get("first") is None:
+        st["first"] = max(labs, key=lambda l: float(w.obj(l).pos[:2] @ u))
+    first = st["first"]
+    key = w.obj(first).asset.key
+    same = [l for l in labs if l != first and w.obj(l).asset.key == key]
+    sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
+    if not same:
+        return {"ok": False, "stage": "match", "note": f"no other {key}"}
+    target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
+    ign = (conveyor,) if conveyor else ()
+    for attempt in range(2):
+        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign)
+        if r.ok or r.status == "ended":
+            return {"ok": True, "stage": "picked", "note": r.note}
+        sk.log(f"[belt] pick {target}: {r.status} {r.note}")
+        try:
+            sk.home(gripper=OPEN)
+        except Exception:  # noqa: BLE001
+            pass
+        sk.held = {a: None for a in sk.held}
+        v = belt_velocity(sk, labs, steps=2)
+    return {"ok": False, "stage": "pick", "note": r.note}
+
+
+__all__ = ["play_board_game", "board_cells", "grid_lines", "board_state", "choose_cell", "copy_demonstration", "inside_xy",
+           "put_in_open", "match_and_pick", "pick_from_belt", "belt_velocity", "plan_intercept"]
