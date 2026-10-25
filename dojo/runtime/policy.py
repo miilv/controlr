@@ -81,6 +81,9 @@ class RuntimeConfig:
     search_max_regions: int = 4
     search_lost: bool = False           # a pick refine with iou < lost_iou and no usable suggestion -> search around it
     lost_iou: float = 0.2
+    lost_fuse_max_m: float = 0.10       # a lost object's search accepts a full-fuse find only this close to its belief
+                                        # (refine-confirmed finds anywhere); a far fuse "find" put a tower piece onto
+                                        # the build area (journal integ2 §5)
     # PLACE refines contradicting a confident belief need a confirming view (off = the closed2 behaviour):
     # applied directly only when shift <= place_cap_mm, visible >= place_min_vis and the support was not measured by
     # our own post-place refine; else ONE re-hover place_confirm_dz higher over the found pose, refit from the prior,
@@ -892,13 +895,21 @@ class RuntimePolicy:
                 {"category": o["category"], "category_idx": o["category_idx"], "label": o["label"], "default_pos": o["pos"],
                  "default_ori": o["quat"], "_perception": {"confidence": 0.9}})
         seed = {"target": [float(e.pos[0]), float(e.pos[1]), 0.765], "arm": None, "why": "lost_at_belief"}
+        n_log = len(self.report.get("search", []))
         out = self._search(ctx.sk, ctx.bridge.observe(), rec, ctx.scene, ctx.kin, seed=seed, min_budget=0.3)
         if out is None or any(x.get("label") == e.label for x in out.get("_not_found") or []):
             return False
+        via = [x.get("via") for x in self.report.get("search", [])[n_log:] if e.label in (x.get("found") or [])]
         for _t, _c, r in iter_records(out):
             if r.get("label") == e.label:
+                p = np.asarray(r["default_pos"], float)
+                far = float(np.linalg.norm(p[:2] - e.pos[:2]))
+                if "refine" not in via and far > self.cfg.lost_fuse_max_m:
+                    self.report["events"].append({"kind": "lost_fuse_rejected", "label": e.label, "far_m": round(far, 3),
+                                                  "via": via, "step": ctx.bridge.steps_used})
+                    return False
                 o = prov.belief.objects[e.label]
-                o.pos, o.quat, o.source = np.asarray(r["default_pos"], float), np.asarray(r["default_ori"], float), "perception"
+                o.pos, o.quat, o.source = p, np.asarray(r["default_ori"], float), "perception"
                 return True
         return False
 

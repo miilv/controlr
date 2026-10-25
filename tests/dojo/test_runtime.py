@@ -1499,3 +1499,33 @@ def test_lane_vocabularies_match_their_templates():
     for t in lane:
         v = perception_vocabulary(fx[t][0], fallback=False)
         assert v is not None and v.name == t and v.source == "table", (t, v)
+
+
+@pytest.mark.parametrize("via, far_m, accepted", [("full_fuse", 0.25, False), ("full_fuse", 0.05, True),
+                                                  ("refine", 0.25, True)])
+def test_lost_object_search_rejects_a_far_fuse_find(via, far_m, accepted):
+    from types import SimpleNamespace
+
+    from dojo.runtime.belief import LostObject, RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", search_lost=True), assets=FakeAssets())
+    pol.reset(FakeEpisode(env).info())
+    pol.bridge = b
+    o = prov.belief.objects["block_1"]
+    p0 = o.pos.copy()
+    found = [p0[0] + far_m, p0[1], p0[2]]
+
+    def fake_search(sk, obs0, rec, scene, kin, seed=None, min_budget=None):
+        pol.report.setdefault("search", []).append({"via": via, "found": ["block_1"]})
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_1", "default_pos": found,
+                                     "default_ori": [1, 0, 0, 0]}]}, "_not_found": []}
+    pol._search = fake_search
+    ctx = SimpleNamespace(prov=prov, sk=None, bridge=b, scene="stack_blocks", kin=None)
+    ok = pol._search_lost(ctx, LostObject("block_1", o.pos, o.quat, o.asset.key))
+    assert ok == accepted
+    assert np.allclose(prov.belief.objects["block_1"].pos, found if accepted else p0)
+    assert any(e["kind"] == "lost_fuse_rejected" for e in pol.report["events"]) == (not accepted)
