@@ -214,3 +214,35 @@ def test_body_holes_from_the_mesh():
     assert len(holes) == 1
     assert np.allclose(holes[0]["center"], (0.1, -0.2), atol=0.003)
     assert abs(holes[0]["top"] - (0.766 + 0.048)) < 1e-6 and abs(holes[0]["floor"] - (0.766 + 0.002)) < 0.002
+
+
+def test_gt_watch_read_shapes_and_arrival_order():
+    from dojo.skills.watch import ArrivalOrder, gt_watch_read, region_cells
+    w = _board_world()
+    region = {"kind": "cells", "board": region_cells(w.obj("board")),
+              "pieces": {"own": "Rigid/chessman/00000", "opponent": "Rigid/chessman/00001"}}
+    r0 = gt_watch_read(w.objects, region)
+    assert len(r0["cells"]) == 9 and not any(c["occupant"] for c in r0["cells"]) and not r0["stable_vs_prior"]
+    w.obj("theirs0").pos = np.array([-0.074, -0.001, 0.781])
+    r1 = gt_watch_read(w.objects, region, r0)
+    assert r1["new"] == [6] and r1["cells"][6]["occupant"] == "opponent" and not r1["stable_vs_prior"]
+    r2 = gt_watch_read(w.objects, region, r1)
+    assert r2["new"] == [] and r2["stable_vs_prior"]
+    # container reads -> arrival order
+    c = _obj("b1", "basket", 5, (0.35, 0.25, 0.805), (0.15, 0.1, 0.04), typ="Geometry")
+    a = _obj("a", "phone", 0, (0.0, 0.2, 0.78), (0.02, 0.02, 0.01))
+    b = _obj("b", "watch", 1, (0.1, 0.2, 0.78), (0.02, 0.02, 0.01))
+    objs = {o.label: o for o in (c, a, b)}
+    reg = {"kind": "container", "container": {"asset": c.asset.key, "pos": c.pos.tolist(), "quat": c.quat.tolist()},
+           "candidates": [a.asset.key, b.asset.key]}
+    ao = ArrivalOrder(n_consecutive=2, expected=2)
+    seq = [(None, None), ("b", None), ("b", None), ("b", "a"), ("b", "a")]
+    for first, second in seq:
+        for o in (a, b):
+            o.pos = np.array([0.0 if o is a else 0.1, 0.2, 0.78])
+        for lab in (first, second):
+            if lab:
+                objs[lab].pos = np.array([0.35, 0.25, 0.80])
+        res = ao.update(gt_watch_read(objs, reg))
+    assert res["order"] == [b.asset.key, a.asset.key] and res["done"]
+    assert ao.update({"occluded": True, "inside": []})["order"] == res["order"]          # occluded reads change nothing

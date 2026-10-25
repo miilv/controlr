@@ -152,6 +152,17 @@ class GTProvider:
             return True
         return any(k not in prev or float(np.abs(v - prev[k]).max()) > tol for k, v in cur.items())
 
+    def watch_read(self, region: dict, prior: dict | None = None) -> dict:
+        """Dev-only GT answer to perception's watch read (same dict shape, so G3 -> eval is a provider swap):
+        region {"kind": "cells", "board": {"asset", "pos", "quat"}, "pieces": {"own": key, "opponent": key}} ->
+        "cells": [{"k", "occupant", "conf", "pos"}]; {"kind": "container", "container": {...}, "candidates": [keys]} ->
+        "inside" / "outside": [{"asset", "pos", "conf"}]. Plus t_ms, visible_frac, occluded, stable_vs_prior, new."""
+        from dojo.skills.watch import gt_watch_read
+        rows = self.env.gt_objects()
+        objs = (_objects_from_rows_nodb(rows) if self.assets is None else
+                objects_from_gt(rows, self.assets, step=self.env.steps_used, include_clutter=False, meshes=False))
+        return gt_watch_read(objs, region, prior, step=int(self.env.steps_used))
+
     def refresh(self, holding: dict | None = None) -> WorldState:
         st = self.env.proprio()
         arms = arms_from_proprio(st, holding)

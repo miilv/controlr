@@ -19,6 +19,7 @@ from dojo.skills.executor import BudgetExceeded, EpisodeEnded
 from dojo.skills.skills import OPEN, SkillResult, Skills
 from dojo.skills.kinematics import ARMS, TABLE_Z
 from dojo.skills.targets import rest_pose
+from dojo.skills.watch import ArrivalOrder, region_cells, usable, watch
 
 # ============================================================================ board games
 
@@ -187,7 +188,7 @@ def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(
 
 
 def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: list[str], after_land: int = 60,
-                    max_wait: int = 200, quiet: int = 3, tol_xy: float = 0.008) -> dict:
+                    max_wait: int = 200, quiet: int = 2, tol_xy: float = 0.008) -> dict:
     """Turn-based placement game against a scripted opponent on a board's cells (support frames ``cell...``): on
     our turn put one of ``pieces`` on an empty cell (tic-tac-toe rules on a 3 x 3 board: win, block, centre,
     corners, edges), open both grippers, take both arms home; then hold still until a new opponent piece rests
@@ -205,25 +206,30 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
     def occupancy():
         return board_state(sk.world, board, cells, pieces, opponent_pieces)
 
-    def wait_opponent(n_opp0: int) -> str:
-        """Hold still at home until the opponent's next piece rests in a cell (+ ``after_land``)."""
+    own_key = w.obj(pieces[0]).asset.key if pieces else None
+    opp_key = w.obj(opponent_pieces[0]).asset.key if opponent_pieces else None
+    region = {"kind": "cells", "board": region_cells(b), "pieces": {"own": own_key, "opponent": opp_key}}
+
+    def wait_opponent(n_opp0: int, every: int = 2) -> str:
+        """Hold still at home, reading the board every ``every`` steps (a watch read: perception at eval, GT in G3),
+        until a new opponent piece sits in a cell for two stable reads; then until the opponent's arm is at rest."""
         t0 = sk.world.step
-        prev = {l: sk.world.obj(l).pos.copy() for l in opponent_pieces if l in sk.world.objects}
-        calm = 0
+        prior, stable = None, 0
         while True:
             try:
-                sk.ex.hold(1)
+                sk.ex.hold(every)
             except EpisodeEnded:
                 return "ended"
             except BudgetExceeded:
                 return "budget"
-            w2 = sk.refresh()
-            occ = occupancy()
-            n_opp = sum(1 for v in occ.values() if v[0] == "opp")
-            calm = calm + 1 if _still(prev, w2, opponent_pieces) else 0
-            prev = {l: w2.obj(l).pos.copy() for l in opponent_pieces if l in w2.objects}
-            if n_opp > n_opp0 and calm >= quiet:
-                sk.log(f"[game] opponent piece landed at step {w2.step} ({w2.step - t0} steps of waiting)")
+            read = watch(sk, region, prior)
+            if not usable(read):
+                continue
+            n_opp = sum(1 for c in read["cells"] if c["occupant"] == "opponent")
+            stable = stable + 1 if read["stable_vs_prior"] else 0
+            prior = read
+            if n_opp > n_opp0 and stable >= quiet:
+                sk.log(f"[game] opponent piece landed by step {sk.ex.steps_used} ({sk.ex.steps_used - t0} steps of waiting)")
                 try:
                     r = wait_actors_still(sk, fallback=after_land)
                     sk.log(f"[game] opponent's arm: {r} (step {sk.ex.steps_used})")
@@ -233,7 +239,7 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
                     return "budget"
                 sk.refresh()
                 return "moved"
-            if w2.step - t0 > max_wait:
+            if sk.ex.steps_used - t0 > max_wait:
                 return "timeout"
 
     while True:
@@ -376,10 +382,11 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
 
 
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
-                       after_last: int = 110, max_wait: int = 1400, tries: int = 2) -> dict:
+                       every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 2) -> dict:
     """A scripted demonstrator puts objects into ``demo_container`` one at a time: hold still at home while it works,
-    record the order in which objects arrive there (an object counts once it has rested inside for ``quiet`` steps),
-    and when the scene has been still for ``after_last`` steps after the last arrival (its arm is back home), put the
+    record the order in which objects arrive there (watch reads of the container every ``every`` steps; an object counts
+    once it is inside for ``quiet`` reads in a row), and when the demonstrator's arm is at rest (``wait_actors_still``,
+    ``after_last`` steps when the provider cannot tell), put the
     matching object of each (same asset identity, not in either container) into ``container`` in that order, banking
     after each. An object that cannot be put in stops the sequence (a later one would be out of order)."""
     w = sk.refresh()
@@ -392,43 +399,41 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         keys.setdefault(w.obj(l).asset.key, []).append(l)
     expect = sum(1 for v in keys.values() if len(v) >= 2)
     sk.log(f"[imitate] {len(movers)} objects, {expect} identities appear twice; watching {demo_container}")
+    region = {"kind": "container", "container": {"asset": D.asset.key, "pos": D.pos.tolist(), "quat": D.quat.tolist()},
+              "candidates": sorted({w.obj(l).asset.key for l in movers})}
     if len(st["order"]) < expect:
         t0 = w.step
-        prev = {l: w.obj(l).pos.copy() for l in movers}
-        inside_for = {l: 0 for l in movers}
-        last_move = w.step
+        ao = ArrivalOrder(n_consecutive=quiet, expected=expect)
+        prior, stable = None, 0
         while True:
             try:
-                sk.ex.hold(1)
+                sk.ex.hold(every)
             except (EpisodeEnded, BudgetExceeded) as e:
                 return {"ok": False, "stage": "watch", "note": str(e)}
-            w = sk.refresh()
-            D = w.obj(demo_container)
-            for l in movers:
-                o = w.obj(l)
-                if float(np.linalg.norm(o.pos - prev[l])) > 5e-4:
-                    last_move = w.step
-                prev[l] = o.pos.copy()
-                if l in st["order"]:
-                    continue
-                inside_for[l] = inside_for[l] + 1 if inside_xy(o, D) else 0
-                if inside_for[l] >= quiet:
-                    st["order"].append(l)
-                    sk.log(f"[imitate] step {w.step}: {l} ({o.asset.key}) arrived, #{len(st['order'])}")
-            if len(st["order"]) >= expect and w.step - last_move >= quiet:
+            read = watch(sk, region, prior)
+            if not usable(read):
+                continue
+            n0 = len(ao.order)
+            res = ao.update(read)
+            for key in res["order"][n0:]:
+                sk.log(f"[imitate] step {sk.ex.steps_used}: {key} arrived, #{res['order'].index(key) + 1}")
+            stable = stable + 1 if read["stable_vs_prior"] else 0
+            prior = read
+            st["order"] = res["order"]
+            if res["done"] and stable >= 1:
                 r = wait_actors_still(sk, fallback=after_last)
                 sk.log(f"[imitate] demonstrator's arm: {r} (step {sk.ex.steps_used})")
                 break
-            if w.step - t0 > max_wait:
-                sk.log(f"[imitate] stopped watching after {w.step - t0} steps, {len(st['order'])} seen")
+            if sk.ex.steps_used - t0 > max_wait:
+                sk.log(f"[imitate] stopped watching after {sk.ex.steps_used - t0} steps, {len(st['order'])} seen")
                 break
     # copy: the twin of each demonstrated object, in order
-    for i, l in enumerate(st["order"]):
+    for i, key in enumerate(st["order"]):
         if i < len(st["done"]):
             continue
         w = sk.refresh()
-        key = w.obj(l).asset.key
-        cands = [m for m in keys.get(key, []) if m != l and m not in st["done"] and m not in st["order"]
+        l = key
+        cands = [m for m in keys.get(key, []) if m not in st["done"]
                  and not inside_xy(w.obj(m), w.obj(container)) and not inside_xy(w.obj(m), w.obj(demo_container))]
         if not cands:
             return {"ok": False, "stage": f"match {l}", "note": f"no free object like {key}"}
