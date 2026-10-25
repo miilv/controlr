@@ -38,6 +38,7 @@ PLACE_REACH = 0.60            # m, TCP from the arm's base in the plane: farther
                               # a relay (twin: places 0.66-0.67 m out, the arm across the table, stalled 30 mm above
                               # the target with the commanded pose 33 mm lower, plug 7/10; a figurine's stand is 0.57)
 TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0.02 cost 52 of insert_key's 300 steps)
+LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is carried on rather than redone
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
 
@@ -858,9 +859,13 @@ class Skills:
             return r
         if r.status == "ok" and self.refine is not None:
             r = self._held_review(pp, r)
-        if r.status == "loose":            # turned / slid in the pads: put it down, the caller re-plans
+        if r.status == "loose" and (tol_xy < LOOSE_OK_TOL or "in-hand view" in r.note):
+            # turned / slid in the pads: put it down, the caller re-plans
             self._record(self.regrasp(pp.arm))
             return SkillResult(False, "transfer", "loose", r.steps, pp.arm, note=r.note)
+        # a loose grasp on a tolerant place (a tool within 2 cm of its slot) goes on: the place is re-planned for
+        # the measured in-hand pose (twin: a hammer held at its centre of mass with 12 mm drift was put down
+        # twice and never placed)
         self.refresh()
         kw = dict(getattr(pl, "transfer_kw", {}) or {})
         pl2 = self.plan_place(pp.arm, pl.T_obj_target, yaw_sym=1, **kw)
