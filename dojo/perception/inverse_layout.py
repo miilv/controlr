@@ -1088,6 +1088,25 @@ def _touches_unknown(b: Blob, v: ViewMasks) -> bool:
 _COLOR_M: list | None = None  # offline colour calibration (color_calib.py), set per estimate() call
 
 
+def _top_face_color_distance(sm: ShapeModel, x: float, y: float, z_off: float, views, ref: np.ndarray) -> float:
+    """Colour distance between the catalogue colour and the pixels at the object's top-face centre, median over the
+    views that see it unoccluded (a 5x5 patch each). 1.0 when no view sees it."""
+    T = sm.pose(x, y, 0.0, z_off)
+    V = sm.asset.V @ T[:3, :3].T + T[:3, 3]
+    c = np.array([float(V[:, 0].mean()), float(V[:, 1].mean()), float(V[:, 2].max()) - 0.003])
+    ds = []
+    for v in views.values():
+        uv, z = v.cam.project(c[None])
+        u, w = int(round(uv[0, 0])), int(round(uv[0, 1]))
+        if z[0] <= 0 or not (2 <= u < v.cam.w - 2 and 2 <= w < v.cam.h - 2):
+            continue
+        if not v.known[w, u]:
+            continue
+        patch = v.img[w - 2:w + 3, u - 2:u + 3].reshape(-1, 3).astype(float) / 255.0
+        ds.append(appearance_distance(np.median(patch, axis=0), ref))
+    return float(np.median(ds)) if ds else 1.0
+
+
 def ref_color(key: str) -> np.ndarray:
     """The catalogue's mean texture colour of an asset, mapped to the renderer's look when calibrated."""
     c = np.asarray(load_asset(key).info["mean_color"], dtype=float)
@@ -1765,19 +1784,57 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             g["labels"] = [lab for lab in g["labels"] if lab not in mine]
         # labels the config stacks on another (relative_plane "<label>/...", zero offset): on top of it
         placed_by_label = {lab: h for _, h, lab in slot_placed}
+        used_bases: set = set()
         for gi, g in enumerate(groups):
             stacked = []
             for lab in list(g["labels"]):
                 p_ = task_map()[task]["labels"][lab]["placement"]
-                base = str(p_.get("relative_plane", "Table")).split("/")[0]
-                if base not in placed_by_label or p_.get("xlim") not in ([0.0, 0.0], [0, 0]):
+                rp = p_.get("relative_plane", "Table")
+                if p_.get("xlim") not in ([0.0, 0.0], [0, 0]):
+                    continue
+                tag = p_.get("place_tag")
+                sms = [s_ for s_ in shape_models(g["candidates"][0]) if not tag or s_.tag == tag] or list(shape_models(g["candidates"][0]))
+                sm = sms[0]
+                if isinstance(rp, list):
+                    # on ONE of several bases (swap_blocks: a cube on one of three mats): fit it on every free base,
+                    # keep the best fit; an empty base fits badly
+                    best = None
+                    ref = ref_color(g["candidates"][0])
+                    for base in rp:
+                        if base not in placed_by_label or base in used_bases:
+                            continue
+                        hb = placed_by_label[base]
+                        Tb = hb.T()
+                        top = float((hb.sm().asset.V @ Tb[:3, :3].T + Tb[:3, 3])[:, 2].max())
+                        # silhouettes cannot tell a base with the object on it from an empty one (the base is foreground
+                        # too): the object's colour at its own top face decides (a red cube vs a beige mat)
+                        app = _top_face_color_distance(sm, hb.x, hb.y, top - TABLE_Z, views, ref)
+                        for yaw0 in np.linspace(0, sm.yaw_period, 4, endpoint=False):
+                            xr, yr, yawr, loss, per = refine(sm, hb.x, hb.y, float(yaw0), views, maxiter=60, xy_step=0.004,
+                                                             yaw_step=0.12, fix_yaw=sm.yaw_period < 0.2, z_off=top - TABLE_Z)
+                            if np.hypot(xr - hb.x, yr - hb.y) > 0.03:
+                                continue
+                            score = app + 0.1 * loss  # appearance decides between bases, the fit only breaks ties
+                            if best is None or score < best[0]:
+                                best = (score, base, xr, yr, yawr, top, per, loss, app)
+                    # the config puts every such label on one of the bases: take the base whose top shows the object's
+                    # colour best (appearance ranks; an empty base reads ~0.95 against a saturated catalogue colour)
+                    if best is None or best[8] > 0.9:
+                        continue
+                    _, base, xr, yr, yawr, top, per, loss, app = best
+                    used_bases.add(base)
+                    h = Hypothesis(gi, g["candidates"][0], sm.tag, xr, yr, yawr, loss, per)
+                    h.per_view.update({"geom_group": list(g["candidates"]), "slot": True, "stacked_on": base,
+                                       "sil_loss": round(float(loss), 4), "z_off": top - TABLE_Z})
+                    slot_placed.append((g, h, lab))
+                    stacked.append(lab)
+                    continue
+                base = str(rp).split("/")[0]
+                if base not in placed_by_label:
                     continue
                 hb = placed_by_label[base]
                 Tb = hb.T()
                 top = float((hb.sm().asset.V @ Tb[:3, :3].T + Tb[:3, 3])[:, 2].max())
-                tag = p_.get("place_tag")
-                sms = [s_ for s_ in shape_models(g["candidates"][0]) if not tag or s_.tag == tag] or list(shape_models(g["candidates"][0]))
-                sm = sms[0]
                 h = Hypothesis(gi, g["candidates"][0], sm.tag, hb.x, hb.y, 0.0, 0.5)
                 h.per_view.update({"geom_group": list(g["candidates"]), "slot": True, "stacked_on": base, "sil_loss": 0.5,
                                    "z_off": top - TABLE_Z})
@@ -2079,7 +2136,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "hidden_frac": round(hidden, 3), "near_home_grippers": bool(near_home),
                                "fg_resid_near": round(fg_near, 3),
                                "texture": h.per_view.get("texture"),
-                               "geom_group": h.per_view.get("geom_group")}}
+                               "geom_group": h.per_view.get("geom_group"), "slot": bool(h.per_view.get("slot", False))}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []
@@ -2104,4 +2161,65 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     ranking = {lab: g["target_ranking"] for g in groups if g.get("target_ranking") for lab in g["labels"]}
     if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
         record["_perception"]["target_ranking"] = ranking
+    index_structure(record, task)
+    return record
+
+
+IDENTITY_READ_MAX = 12  # _slot_identity reads the identity of slots with at most this many candidates
+
+
+def index_structure(record: dict, task: str) -> dict:
+    """Identity the config fixes but no view reads: labels tied to one asset index by the task config (select mode
+    ``same`` within a label list, ``same_index_as_label`` across lists; ``allow_global_same`` False = the lists differ)
+    whose candidates are too many to read (make_kong: 42 mahjong glyphs, ``_slot_identity`` reads <= 12). Each tied
+    group gets one index, a distinct one per group, so equality of ``category_idx`` follows the config (the kong
+    match: the discarded push tile mahjong(5+K)_0 matches triple K). The index itself is a placeholder; such entries
+    carry ``_perception.identity = "structural"``. Groups whose identity was read are left alone."""
+    labels = (task_map().get(task) or {}).get("labels") or {}
+    parent: dict[str, str] = {}
+
+    def root(a):
+        while parent.get(a, a) != a:
+            a = parent[a]
+        return a
+
+    for lab, d in labels.items():
+        sm = d.get("select_mode") or {}
+        parent.setdefault(lab, lab)
+        tied = []
+        if sm.get("mode") == "same":
+            tied = list(sm.get("label") or [])
+        elif sm.get("mode") == "same_index_as_label" and sm.get("same_label"):
+            tied = [sm["same_label"]]
+        for t in tied:
+            parent.setdefault(t, t)
+            ra, rb = root(lab), root(t)
+            if ra != rb:
+                parent[rb] = ra
+    groups: dict[str, list[str]] = {}
+    for lab in labels:
+        groups.setdefault(root(lab), []).append(lab)
+    entries = {}
+    for typ in ("Rigid", "Geometry", "Articulation"):
+        for lst in (record.get(typ) or {}).values():
+            for r in lst:
+                entries[r["label"]] = r
+    used: set[int] = set()
+    unread = [g for g in sorted(groups.values(), key=lambda g: sorted(g)[0])
+              if all(len(labels[lab].get("candidates") or []) > IDENTITY_READ_MAX for lab in g)]
+    if not any(len(g) >= 2 for g in unread):
+        return record
+    # tied groups first, then the untied unread labels (make_kong's other0..2): each its own index, so no stray tile
+    # equals a tied group's placeholder
+    for g in sorted(unread, key=lambda g: (len(g) < 2, sorted(g)[0])):
+        if not all((entries[lab].get("_perception") or {}).get("slot") for lab in g if lab in entries):
+            continue  # identity chosen by a fit among the candidates (not a config slot): keep it
+        cands = sorted({int(k.split("/")[-1]) for lab in g for k in labels[lab]["candidates"]})
+        idx = next((c for c in cands if c not in used), cands[0])
+        used.add(idx)
+        for lab in g:
+            r = entries.get(lab)
+            if r is not None:
+                r["category_idx"] = idx
+                r.setdefault("_perception", {})["identity"] = "structural"
     return record

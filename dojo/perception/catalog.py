@@ -588,6 +588,9 @@ def annotations(asset_dir: Path, usd: Path, md: dict) -> dict:
     func = (md.get("passive") or {}).get("functional")
     if func:
         out["functional"] = func
+    sup = (md.get("passive") or {}).get("support")
+    if sup:  # support frames (e.g. the tic-tac-toe board's cell/0..8: centre pose in the asset frame + radius)
+        out["support"] = sup
     if asset_dir.parent.parent.name == "Articulation":
         try:
             a = articulation_info(usd)
