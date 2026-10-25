@@ -1294,3 +1294,98 @@ def test_agentic_risk_trigger_on_reestimate_respects_the_budget():
     gates = [e for e in pol.report["events"] if e["kind"] == "agentic_gate"]
     assert [g["trigger"] for g in gates] == ["risk", "risk"] and gates[-1]["why"] == "budget spent"
     assert [a["tag"] for a in pol.report["agentic"]] == ["frame0", "after_looks", "risk"]
+
+
+@pytest.mark.parametrize("touched, conf, moves", [(False, 0.6, False), (False, 0.9, True), (True, 0.6, True)])
+def test_tracker_keeps_an_untouched_object_against_an_unsure_reread(touched, conf, moves):
+    """Divergence re-estimate through perception's tracker: an object the robot did not move keeps its belief pose
+    unless the re-read is confident (>= 0.8); one it moved takes the re-read."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env([(-0.30, -0.15, 0.78), (0.10, -0.10, 0.78), (0.30, -0.20, 0.78)])
+
+    class Moved:
+        def check(self, obs, objects):
+            return {o.label: {"head": {"prec": 0.0 if o.label == "block_1" else 1.0, "n_vis": 500, "n_px": 600}}
+                    for o in objects}
+
+        def estimate(self, obs):
+            return {"Rigid": {"block": [
+                {"category": "block", "category_idx": 5, "label": "block_1", "default_pos": [0.12, -0.10, 0.78],
+                 "default_ori": [1, 0, 0, 0], "_perception": {"confidence": conf}}]}}
+
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=Moved(), replan_on_divergence=False)
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.belief.objects["block_1"].confidence = 0.75
+    prov.tracker_on = True
+    if touched:
+        prov.touched.add("block_1")
+    prov.resync(b.obs)
+    x = float(prov.belief.objects["block_1"].pos[0])
+    assert (abs(x - 0.12) < 1e-9) == moves and (moves or abs(x - 0.10) < 1e-9)
+    if not moves:
+        assert any(e["kind"] == "tracker_kept" and e["labels"] == ["block_1"] for e in prov.events)
+
+
+def test_held_look_drops_an_empty_grasp_from_the_jaws():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    calls = []
+    prov.held_checker = lambda obs, arm, lab: calls.append((arm, lab)) or {"held": False, "confidence": 0.8, "source": "b1"}
+    bel = prov.belief
+    o = bel.objects["block_1"]
+    pose0 = np.r_[o.pos, o.quat].copy()
+    z0 = float(bel.kin.tcp("left", bel.q["left"])[2, 3])
+    bel.attached["left"] = ("block_1", np.eye(4))
+    bel.grasp_z["left"] = (z0 - 0.05, 1, pose0)                      # closed 5 cm below where the TCP is now
+    o.pos = o.pos + np.array([0.0, 0.0, 0.05])                      # the kinematic belief lifted it
+    prov._held_check(b.obs)
+    assert calls == [("left", "block_1")] and "left" not in bel.attached
+    assert np.allclose(bel.objects["block_1"].pos, pose0[:3], atol=1e-6)    # back where it was grasped
+    assert prov.events[-1]["kind"] == "held_look" and prov.events[-1]["dropped"]
+    prov._held_check(b.obs)
+    assert len(calls) == 1                                          # once per grasp
+    # a confident "held" keeps the grasp
+    bel.attached["left"] = ("block_1", np.eye(4))
+    bel.grasp_z["left"] = (z0 - 0.05, 2, pose0)
+    prov.held_checker = lambda obs, arm, lab: {"held": True, "confidence": 0.9}
+    prov._held_check(b.obs)
+    assert "left" in bel.attached
+
+
+def test_episode_with_held_look_checks_every_grasp_once():
+    env = _env()
+
+    class HeldPerception:
+        def __init__(self):
+            self.held = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]}}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+        def held_look(self, frame, arm, mode):
+            self.held.append((arm, mode))
+            return {"held": True, "confidence": 0.9, "calls": 1 if mode == "b1_then_agent" else 0, "source": "agent"}
+
+    pc = HeldPerception()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", held_look="b1_then_agent", tracker="on"),
+                        assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None and _stacked(env)
+    hl = [e for e in rep["events"] if e["kind"] == "held_look"]
+    n_picks = sum(1 for h in rep["history"] if h["skill"] == "pick")
+    assert n_picks >= 2 and len(hl) == len(pc.held) == n_picks and all(e["held"] for e in hl)   # one check per grasp
+    assert [a["tag"] for a in rep["agentic"]] == ["held"] * n_picks and sum(a["calls"] for a in rep["agentic"]) == n_picks

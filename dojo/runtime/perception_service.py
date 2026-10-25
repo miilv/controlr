@@ -26,6 +26,8 @@ Ops (request dicts):
         record["_perception"]["agentic"]. Env: AGENTIC_ENV_FILE (OMNIROUTE_* only), AGENTIC_MODEL, AGENTIC_MAX_TURNS,
         AGENTIC_REFINE; transcripts under DOJO_AGENTIC_LOG
     {"op": "needs_agent", "record": json}                                          -> {"needs": bool, "why": str}
+    {"op": "held_look", "frame": frame, "arm": str, "mode": "b1"|"b1_then_agent"}  -> {"held_look": json}
+        perception's held check on the arm's wrist frame: {held, confidence, dark_risk, source, calls}
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -138,6 +140,10 @@ class PerceptionClient:
                         "b1_record": None if b1_record is None else json.dumps(b1_record, default=_default)})
         return json.loads(r["record"])
 
+    def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
+        return json.loads(self._call({"op": "held_look", "frame": encode_frame(frame), "arm": arm,
+                                      "mode": mode})["held_look"])
+
     def needs_agent(self, record: dict) -> tuple[bool, str]:
         r = self._call({"op": "needs_agent", "record": json.dumps(record, default=_default)})
         return bool(r["needs"]), str(r["why"])
@@ -241,6 +247,34 @@ class _Perception:
         log_dir = str(Path(log) / f"call_{self._n_agentic:03d}") if log else None
         return agentic_estimate(fr["images"], fr["state"], vocabulary, fr["instruction"], bgs=self.bgs(fold),
                                 cfg=self.cfg(fold), b1_record=b1_record, log_dir=log_dir)
+
+    def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
+        """perception's held_look (``agentic.j1.held_look_impl``: B1 = the strict-tier fingertip-region read, then
+        the agent when B1 is unsure) on contract frames; calibration from the public config + measured joints."""
+        from dojo.perception.agentic import j1
+        from dojo.perception.agentic.record import _calib_from_state
+        fr = decode_frame(frame)
+        st = {k: np.asarray(v, float).reshape(-1) for k, v in fr["state"].items()}
+        flange = {a: st[f"{a}_ee_pose"].tolist() for a in ("left", "right") if f"{a}_ee_pose" in st}
+        grip = {a: float(st[f"{a}_ee_joint_state"][0]) for a in ("left", "right") if f"{a}_ee_joint_state" in st}
+        joints = {a: st[f"{a}_arm_joint_state"][:6].tolist() for a in ("left", "right") if f"{a}_arm_joint_state" in st}
+        n = [0]
+        base = None
+
+        def chat(*a, **k):
+            nonlocal base
+            base = base or j1._chat()
+            n[0] += 1
+            return base(*a, **k)
+        log = os.environ.get("DOJO_AGENTIC_LOG")
+        kw = {"log_dir": str(Path(log) / "held")} if log else {}
+        r = j1.held_look_impl(fr["images"], _calib_from_state(fr["state"]), flange, grip, arm=arm, stage="after_lift",
+                              chat=chat, joints=joints, held_mode=mode, **kw)
+        sub = r.get(arm) if isinstance(r.get(arm), dict) else {}
+        return {"held": r.get("held") if sub.get("held") is None else sub.get("held"),
+                "confidence": float(sub.get("confidence", r.get("confidence", 0.0)) or 0.0),
+                "dark_risk": bool(sub.get("dark_risk", False)), "calls": n[0],
+                "source": "agent" if n[0] else "b1", "note": str(r.get("note") or "")[:200]}
 
     def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
                  fuse_mode: str | None = None) -> dict:
@@ -501,6 +535,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         b1 = json.loads(req["b1_record"]) if req.get("b1_record") else None
                         rec = p.agentic_estimate(req["frame"], req["vocabulary"], int(req.get("fold", 0)), b1)
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "held_look":
+                        h = p.held_look(req["frame"], req["arm"], req.get("mode") or "b1_then_agent")
+                        conn.send({"ok": True, "held_look": json.dumps(h, default=_default)})
                     elif op == "needs_agent":
                         from dojo.perception.agentic.record import needs_agent
                         needs, why = needs_agent(json.loads(req["record"]))
