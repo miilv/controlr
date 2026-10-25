@@ -252,14 +252,17 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
     kw.update(json.loads(os.environ.get("DOJO_CFG", "{}")))  # ablations: estimator config overrides
     cfg = EstimatorConfig(use_wrists=use_wrists, **kw)
     bgs = fold_backgrounds(ep) if bg_loo else None
+    look_used = False
     t0 = time.time()
     try:
         if look:  # frame 0 fused with simlab's render at our look_plan poses (frame_L1), scored on frame-0 GT
             o0 = d0.load_obs(ep, 0)
             ex = []
-            if (ep / "frame_L1.json").exists():
+            # only a complete render counts (simlab writes frame_L1.json before the PNGs)
+            if (ep / "frame_L1.json").exists() and all((ep / f"frame_L1_{c}.png").exists() for c in d0.CAMS):
                 oL = d0.load_obs(ep, "L1")
                 ex = [(oL["images"], oL["state"])]
+            look_used = bool(ex)
             rec = estimate(o0["images"], o0["state"], obs["task"], obs["instruction"], bgs=bgs, cfg=cfg, extra_frames=ex)
         elif fuse and k > 0:
             o0 = d0.load_obs(ep, 0)
@@ -276,13 +279,13 @@ def evaluate_frame(ep: str, k: int, use_wrists: bool = True, cfg_kw: dict | None
     gt = d0.load_gt(ep, k)  # DEV-ONLY, after the estimate
     task = obs["task"]
     rows, n_gt, n_pred = score_record(rec, gt, task, {"episode": ep.name, "frame": k, "wrists": use_wrists,
-                                                      "fuse": "look" if look else fuse})
+                                                      "fuse": "look" if look else fuse, "look_used": look_used})
     import resource
 
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
     return {"frame": {"task": task, "episode": ep.name, "frame": k, "runtime_s": runtime, "error": err, "peak_rss_mb": round(peak),
                       "timings": rec.get("_perception", {}).get("timings"), "missing": rec.get("_missing", []),
-                      "n_gt": n_gt, "n_pred": n_pred, "wrists": use_wrists, "fuse": fuse},
+                      "n_gt": n_gt, "n_pred": n_pred, "wrists": use_wrists, "fuse": fuse, "look_used": look_used},
             "objects": rows}
 
 
