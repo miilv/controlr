@@ -37,8 +37,10 @@ The runner is OpenAI-compatible only: it POSTs `<OMNIROUTE_BASE_URL>/chat/comple
 no cache markers or extra headers. So Anthropic's OpenAI-compatible endpoint works as is:
 `OMNIROUTE_BASE_URL=https://api.anthropic.com/v1`, `OMNIROUTE_API_KEY=<the operator's key>`,
 `AGENTIC_MODEL=claude-sonnet-5-5`. Our dev numbers came from omniroute's `claude/` route, where Sonnet thought on
-some turns (up to ~5k reasoning tokens per turn). On the direct endpoint thinking stays off unless
-`AGENTIC_EXTRA_BODY='{"thinking": {"type": "enabled", "budget_tokens": 3000}}'` (max_tokens per turn is 6000).
+some turns (up to ~5k reasoning tokens per turn). On the direct endpoint use
+`AGENTIC_EXTRA_BODY='{"thinking": {"type": "adaptive"}}'` if thinking is wanted (`budget_tokens` returns HTTP 400 on the
+Claude 5 models). Adaptive thinking may already be the default there; the per-call usage fields (reasoning tokens in
+`calls.jsonl`) show whether it thought.
 
 ## LIBERO (picks.json per capture)
 ```bash
