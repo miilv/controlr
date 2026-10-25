@@ -93,7 +93,7 @@ def test_basic_probe_runs_only_the_four_commands():
 
 def test_secrets_dry_run_names_keys_never_values(tmp_path):
     env = tmp_path / ".env"
-    env.write_text("OMNIROUTE_BASE_URL=https://x.invalid/v1\nOMNIROUTE_API_KEY=sk-SECRET-1234\n"
+    env.write_text("OMNIROUTE_BASE_URL=https://x.invalid/v1\nOMNIROUTE_API_KEY=fake-SECRET-1234\n"
                    "ANTHROPIC_AUTH_TOKEN=decoy-SECRET\nexport OMNIROUTE_EXTRA='also SECRET'\n")
     out = dry("--env-file", str(env))
     assert "SECRET" not in out and "x.invalid" not in out
