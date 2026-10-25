@@ -39,6 +39,9 @@ from .firewall import check_obs, sanitize_info
 from .supervisor import RuleSupervisor, perception_vocabulary
 
 
+IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
+
+
 @dataclass
 class RuntimeConfig:
     mode: str = "gt"                    # gt (dev-only upper bound) | perception
@@ -417,7 +420,13 @@ class RuntimePolicy:
         others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [o] + others]
-        idv = prov.task if (self.cfg.refine_identity and kind == "pick") else None
+        idv = None
+        if self.cfg.refine_identity and kind == "pick":
+            # perception's instruction-ranked candidates for this label (general_pickup's target), else the
+            # vocabulary's distinct shapes (85 classes for a target-category vocabulary: slow and noisy)
+            rank = (((getattr(self, "_last_record", None) or {}).get("_perception") or {}).get("target_ranking")
+                    or {}).get(label)
+            idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else prov.task
         res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv,
                                        held=held)
         r = res.get(label) or {}

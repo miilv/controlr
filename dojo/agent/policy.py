@@ -26,6 +26,16 @@ from dojo.agent.scene import assign_ids, scene_text
 from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
 
 
+def _deployed_commit() -> str | None:
+    """The commit this checkout was deployed from (``.deployed_commit``, written at deploy): runs map to code,
+    including the perception version merged into it."""
+    f = Path(__file__).resolve().parents[2] / ".deployed_commit"
+    try:
+        return f.read_text().strip()[:40] or None
+    except OSError:
+        return None
+
+
 class _AgentCtx:
     """``robo``'s view of RuntimePolicy's episode context (feat/dojo-integ's program seam)."""
 
@@ -114,7 +124,7 @@ class AgentPolicy(RuntimePolicy):
         log_dir = self.log_root / f"{stamp}_ep{self.n_episodes:03d}"
         loop = AgentLoop(acfg, self.client(), robo, log_dir=log_dir, log=self.log)
         rep = {"model": acfg.model, "extra_body": acfg.extra_body, "log_dir": str(log_dir), "outcome": None,
-               "usage": {}, "cells": 0, "skills_called": []}
+               "usage": {}, "cells": 0, "skills_called": [], "code_commit": _deployed_commit()}
         self.report["agent"] = rep
 
         def live(lp):                     # the main thread may close the report while the worker is parked
