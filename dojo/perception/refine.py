@@ -159,6 +159,13 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
     views = {cam.name: v}
     T0 = pose_to_T(prior_pose[:3], prior_pose[3:])
     sm = _shape_for(obj_id, T0[:3, :3], tag)
+    trunc = truncated_frac(cam, sm.asset.V @ T0[:3, :3].T + T0[:3, 3])
+    if trunc > TRUNCATED_MAX:
+        # the object is larger than the wrist view (a 24-37 cm tower board under a 15 cm hover): a fit slides
+        # freely along the cut (5.1 build_tower: 83-122 mm "corrections" of the boards). Keep the prior.
+        return {"pose": list(map(float, prior_pose)), "residual": 1.0, "iou": 0.0, "visible_frac": round(1 - trunc, 3),
+                "place_tag": sm.tag, "moved_mm": 0.0, "turned_deg": 0.0, "ok": False, "why": "truncated",
+                "truncated_frac": round(trunc, 3), "time_s": round(time.time() - t0, 3), "camera": cam.name}
     Rz = T0[:3, :3] @ sm.R0.T
     yaw0 = float(np.arctan2(Rz[1, 0], Rz[0, 0]))
     z_off = float(T0[2, 3] - (TABLE_Z - sm.zmin))  # keep the prior's height (stacked targets)
@@ -215,6 +222,20 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
                 out["ok"] = False
                 out["why"] = f"neighbour:{k2}"
                 break
+    if not out["ok"]:
+        # a rejected fit never travels as the pose: on D0 wrist frames the rejected fits 40-110 mm away were mostly an
+        # identical neighbour (pillars, blocks) at IoU 0.7-0.96; a caller that skips ``ok`` would adopt it
+        out["fit_pose"], out["fit_moved_mm"] = out["pose"], out["moved_mm"]
+        out["pose"], out["moved_mm"], out["turned_deg"] = list(map(float, prior_pose)), 0.0, 0.0
+    if searched is not None and others:  # a suggestion on a known neighbour is that neighbour, not this object
+        from .render import load_asset
+
+        fp = float(np.min(load_asset(obj_id).extents[:2]))
+        for k2, p2 in others:
+            if np.hypot(searched["suggest_xy"][0] - p2[0], searched["suggest_xy"][1] - p2[1]) < 0.7 * fp:
+                out["suggest_dropped"] = f"neighbour:{k2}"
+                searched = None
+                break
     if searched is not None:  # where the target's best match in the wrist frame is (re-hover there if not ok)
         out["searched"] = True
         out["suggest_xy"] = searched["suggest_xy"]
@@ -222,6 +243,16 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
                                                        searched["suggest_xy"][1] - T0[1, 3]) * 1000), 1)
         out["suggest_score"] = searched["score"]
     return out
+
+
+TRUNCATED_MAX = 0.3  # more of the object outside the wrist image than this: translation along the cut is unobservable
+
+
+def truncated_frac(cam, V_world: np.ndarray) -> float:
+    """Share of the object's vertices that project outside the image (or behind the camera)."""
+    uv, z = cam.project(V_world)
+    inside = (z > 0.01) & (uv[:, 0] >= 0) & (uv[:, 0] < cam.w) & (uv[:, 1] >= 0) & (uv[:, 1] < cam.h)
+    return float(1.0 - inside.mean()) if len(uv) else 1.0
 
 
 def _wide_search(obj_id, sm, z_off, img, cam, proprio, rob, T0, iters):
