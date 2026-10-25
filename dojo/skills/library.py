@@ -2230,6 +2230,10 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         sk._record(SkillResult(ok, "hang", "ok" if ok else "place_miss", 0, arm,
                                note=f"{lab} handle {d*1000:.0f} mm from hook {hi}, z {hp[2]:.3f}"))
         (done if ok else failed).append(lab)
+        if ok:
+            # a hung object's box (bbox + margin, turned handle-up) covers most of a small rack: shrink it for the
+            # next plans (twin, a 14 cm rack: after the first mug no other mug had a plan)
+            sk.coll.margin_of[lab] = -0.01
         sk.bank()
     if failed:
         return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
