@@ -240,12 +240,27 @@ def test_relative_placement_pinned_axis_and_check_mode_none(monkeypatch):
                 place_tag="up")
         pose, parent = G.place_on_object(p, child, lay, used, random.Random(k), gens, sib)
         assert parent == "shelf" and pose[0] == pytest.approx(0.035 - 0.025 * k - 0.02)
-    with pytest.raises(G.LayoutError):                  # the same slices with footprint checks do not fit
-        sib2 = {}
-        for k in range(2):
-            G.place_on_object(prm(relative_plane=f"shelf/shelf/{k}", xlim=[-0.02, -0.02], ylim=[-0.007, -0.007],
-                                  place_tag="up"), child, lay, set(), random.Random(k), gens, sib2)
+    with pytest.raises(G.LayoutError):                  # two pinned children on ONE support do not fit
+        for _ in range(2):
+            G.place_on_object(prm(relative_plane="shelf/shelf/0", xlim=[-0.02, -0.02], ylim=[-0.007, -0.007],
+                                  check_mode="none", place_tag="up"), child, lay, set(), random.Random(0), gens, sib)
     p = prm(relative_plane="stand/stand/0", xlim=[-0.05, 0.05], ylim=[-0.08, -0.08], zlim=[0.02, 0.02],
             check_mode="none")                          # the laptop: one axis pinned on a support disk
     pose, _ = G.place_on_object(p, child, lay, set(), random.Random(0), gens, {})
     assert pose[1] == pytest.approx(-0.08) and -0.05 <= pose[0] <= 0.05 and pose[2] == pytest.approx(0.765 + 0.05)
+
+
+def test_zlim_child_of_a_support_less_parent_starts_at_its_bbox_top(monkeypatch):
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    box = [[x, y, z] for x in (-0.03, 0.03) for y in (-0.03, 0.03) for z in (-0.06, 0.158)]
+    monkeypatch.setattr(G, "metadata", lambda t, c, i, clutter=False:
+                        {"geometry": {"oriented_bbox": {"vertices": box}}} if c == "wuliangye" and t == "Rigid" else None)
+    lay = {"Rigid": {"wuliangye": [{"category": "wuliangye", "category_idx": 0, "label": "bottle",
+                                    "default_pos": [0.2, 0.0, 0.825], "default_ori": [1.0, 0.0, 0.0, 0.0]}]}}
+    p = dict(G.SAMPLING_DEFAULTS, relative_plane="bottle", xlim=[0.0, 0.0], ylim=[0.0, 0.0], zlim=[-0.133, -0.133],
+             check_mode="enforce")
+    pose, _ = G.place_on_object(p, {}, lay, set(), random.Random(0), {}, {})
+    assert pose[:3] == pytest.approx([0.2, 0.0, 0.825 + 0.158 - 0.133])   # inside the bottle, above the table

@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v10"
+GENERATOR = "simlab/v11"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -304,8 +304,11 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     * x/y offsets from xlim/ylim are in world axes around that reference; with ``zlim`` the height is
       reference + zlim and the orientation the parent's x ``qpos`` (e.g. the conveyor's photo, a fluid
       inside its bottle), otherwise the child rests on the support point (its ``active.place`` frame);
-    * ``rotate_rand`` turns about world z; children of one parent keep their footprints apart, unless
-      ``check_mode: none`` (make_toast's bread slices, 2.5 cm apart in the shelf's slots).
+    * a ``zlim`` child of a parent without supports (a fluid in its bottle) is placed from the parent's
+      local bbox top centre;
+    * ``rotate_rand`` turns about world z; children of one support (``relative_plane`` string) keep their
+      footprints apart unless ``check_mode: enforce`` (RoboDojo's semantics); make_toast's four bread slots
+      are four supports.
     """
     from dojo.simlab.layout import find, quat_z
     multi = isinstance(prm["relative_plane"], (list, tuple))
@@ -327,6 +330,12 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
         ref_pos, ref_q = ppos + _qrot(pq, centre[:3]), _qmul(pq, centre[3:])
         if len(sup["center"]) == 1 and sup.get("radius"):
             max_off = float(sup["radius"][0])     # one support disk (egg_basket): stay on it
+    elif prm["zlim"] is not None and (pmeta.get("geometry") or {}).get("oriented_bbox"):
+        # no support (a fluid in its bottle): zlim is from the parent's local bbox top centre, as in the
+        # public PhysicalRSI sampler ("parent_local_bbox_top_center"); from the origin it lands under the table
+        v = np.asarray(pmeta["geometry"]["oriented_bbox"]["vertices"], float)
+        top = np.array([(v[:, 0].min() + v[:, 0].max()) / 2, (v[:, 1].min() + v[:, 1].max()) / 2, v[:, 2].max()])
+        ref_pos, ref_q = ppos + _qrot(pq, top), pq
     else:
         ref_pos, ref_q = ppos, pq
     places = (meta.get("active") or {}).get("place") or {}
@@ -365,9 +374,9 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
         else:
             c_frame = np.asarray(places[tag]["projection_circle"]["center"], float)
             pose = gens["ground"]._placement_to_origin(np.r_[ref_pos + off, q], c_frame)
-        sib = siblings.setdefault(plabel, [])
+        sib = siblings.setdefault(pick, [])     # per support, like RoboDojo's per-plane generators
         foot = (ref_pos + off)[:2] if prm["zlim"] is None else pose[:2]   # footprint centre = placement point
-        if prm["check_mode"] == "none" or all(np.linalg.norm(foot - xy) > radius + r + 0.002 for xy, r in sib):
+        if prm["check_mode"] == "enforce" or all(np.linalg.norm(foot - xy) > radius + r + 0.002 for xy, r in sib):
             sib.append((np.asarray(foot, float).copy(), radius))
             used.add(plabel)
             return pose, plabel
