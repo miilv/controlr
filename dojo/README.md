@@ -26,6 +26,16 @@ Shared machine conventions:
 Run everything through `scripts/simlab/rdpy.sh` (RoboDojo's conda python + the team GPU lock). Use
 `physics_only=True` / `--physics-only` on compute3, where Isaac Sim 5.1's RTX does not start.
 
+**Asset firewall.** `Assets/Eval_Layout/` and every `Assets/Traj/` file except the generic make_kong /
+play_tic_tac_toe demos are eval data.
+- imitate_sorting_sequence's `Traj/<bench>/<task>/<eval_seed>/<seed>.pkl` files are paired with the eval
+  layouts, and their `target_label` is the answer.
+- Every `RoboDojoRunner` process (and `dev_eval`) installs `paths.install_asset_firewall()`. That is a
+  permanent audit hook: open, list, glob or copy of those paths raises `PermissionError`, whoever calls.
+- The imitate demo is routed to our own `~/dojo-data/simlab/traj/<task>/<seed>.pkl` (`demo_gen`), or a
+  no-demo stub.
+- `tests/dojo/test_simlab_firewall.py` fails on any dojo/ code that builds such a path.
+
 | What | Entry point |
 |---|---|
 | layout schema, perturbation | `dojo/simlab/layout.py` |
@@ -35,6 +45,9 @@ Run everything through `scripts/simlab/rdpy.sh` (RoboDojo's conda python + the t
 | twin: load / snapshot / restore / step / verify / load_from_estimate | `dojo.simlab.twin.Twin` |
 | scripted motion, replayable action lists | `dojo/simlab/motion.py` |
 | D0 dataset | `scripts/simlab/d0_all.sh` (compute2), `scripts/simlab/d0_proxy.sh` (compute3: Isaac 6.0 renders) |
+| D0-style frames 0-1 from pre-settled records, more tasks | `scripts/simlab/d0_ext.sh N task ...` (-> `~/dojo-data/d0_ext`) |
+| support-arm demos for imitate_sorting_sequence dev layouts | `-m dojo.simlab.demo_gen [--ids ...]` (-> `~/dojo-data/simlab/traj/`) |
+| generate + pre-settle many tasks in order | `scripts/simlab/coverage.sh N task ...` |
 | G2 determinism / sensitivity | `scripts/simlab/g2_all.sh OUT [--physics-only]` |
 | twin throughput | `scripts/simlab/twin_bench.sh` |
 | RoboDojo's eval client on dev layouts (official, needs 5.1 rendering) | `scripts/simlab/dev_eval.sh --task T --policy P` |

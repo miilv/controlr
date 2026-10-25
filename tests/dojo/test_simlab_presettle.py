@@ -1,4 +1,5 @@
 """Pre-settled records: write-back and rest checks (pure)."""
+import pytest
 
 from dojo.simlab import presettle as P
 
@@ -57,3 +58,25 @@ def test_layout_files_skip_settled(tmp_path):
     for n in ("100001.json", "100000.json", "100000.settled.json", "settled_index.json"):
         (d / n).write_text("{}")
     assert [p.name for p in P.layout_files("t", root=tmp_path)] == ["100000.json", "100001.json"]
+
+
+def test_dev_demo_never_touches_eval_paired_demos(tmp_path, monkeypatch):
+    import pickle
+
+    from dojo.simlab import paths
+    from dojo.simlab import runner as R
+    monkeypatch.setattr(paths, "DATA", tmp_path)
+    stub = R.dev_demo("imitate_sorting_sequence", paths.SEED_BASE + 3)
+    assert stub["_simlab_no_demo"] and stub["joint_path"] == []
+    assert sorted(stub["target_label"]) == [f"t{i}" for i in range(5)]
+    assert [x.replace("aim", "t") for x in stub["aim_label"]] == stub["target_label"]
+    assert R.dev_demo("imitate_sorting_sequence", (paths.SEED_BASE + 3) * 100 + 1) == stub   # shared-seed key
+    with pytest.raises(RuntimeError):
+        R.dev_demo("imitate_sorting_sequence", 7)                  # an eval seed
+    d = tmp_path / "simlab" / "traj" / "imitate_sorting_sequence"
+    d.mkdir(parents=True)
+    demo = {"joint_path": [[{"support_arm0_joint_state": {"position": [0.0] * 6, "velocity": [0.0] * 6}}]],
+            "target_label": ["t1", "t0", "t2", "t3", "t4"], "aim_label": ["aim1", "aim0", "aim2", "aim3", "aim4"],
+            "target_place_tag": [None] * 5}
+    (d / f"{paths.SEED_BASE + 3}.pkl").write_bytes(pickle.dumps(demo))
+    assert R.dev_demo("imitate_sorting_sequence", paths.SEED_BASE + 3) == demo
