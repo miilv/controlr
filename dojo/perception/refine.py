@@ -15,6 +15,8 @@
   (kept: stacked targets keep their height). (x, y, yaw) are refined by Nelder-Mead from a few starts
   (prior, +-15 mm, the 180-degree flip when the shape is not symmetric); the lowest silhouette loss wins.
 - ``others``: [(key, pose7)] of nearby known objects; their pixels are removed from the foreground.
+- ``refine_identity(obj_ids, ...)``: the same for several candidate assets (shape swaps such as
+  build_tower's board / prism / pillar): the lowest residual wins, with a margin.
 - Returns also ``iou``, ``visible_frac`` (share of the silhouette not under the robot / out of view),
   ``moved_mm`` / ``turned_deg`` vs the prior, ``ok`` (iou >= 0.6 and visible_frac >= 0.5), ``time_s``.
 """
@@ -159,6 +161,20 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
             "ok": bool(iou >= 0.6 and vis >= 0.5), "time_s": round(time.time() - t0, 3), "camera": cam.name}
+
+
+def refine_identity(obj_ids: list[str], wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
+                    margin: float = 0.05, **kw) -> dict:
+    """Identity check at the hover: ``refine`` every candidate asset at the prior (e.g. the label group's
+    candidates, or the record's ``label_rival``) and keep the lowest residual. Adds ``obj_id``,
+    ``identity_scores`` {id: residual} and ``identity_margin`` (runner-up minus best residual);
+    ``identity_ok`` is false when the margin is below ``margin`` (look again or keep the prior identity)."""
+    outs = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **kw) for k in dict.fromkeys(obj_ids)}
+    ranked = sorted(outs.items(), key=lambda kv: kv[1]["residual"])
+    best_id, best = ranked[0]
+    m = (ranked[1][1]["residual"] - best["residual"]) if len(ranked) > 1 else 1.0
+    return {**best, "obj_id": best_id, "identity_scores": {k: v["residual"] for k, v in outs.items()},
+            "identity_margin": round(float(m), 4), "identity_ok": bool(m >= margin and best["ok"])}
 
 
 class _ZShift:
