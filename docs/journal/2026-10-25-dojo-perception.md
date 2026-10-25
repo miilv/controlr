@@ -155,3 +155,12 @@ car and shoe (which v1 reviewed for flips) and the pad. Net equal: the targeting
 - v3 = per-class look objective (flip/identity review for thin textured items such as pack's car/shoe;
   partly-hidden coverage for blocks/pads). Not now: v1 vs v2 swings are within noise at n = 25 per class,
   and with refine() at every hover the grasp-time error is refine's (~1 mm).
+
+## Integration's paired stack_blocks runs (look frames saved)
+- integ_looks over base3 a–e + refine3 a–d (42 episodes with looks, 126 blocks): conservative fuse vs
+  frame 0 within 15 mm 0.85 → 0.87, xy p90 19.3 → 15.0 mm; worse > 5 mm: 0 of 81 after planned looks, 1 of
+  40 after the d0.18/e70 fallback; better > 5 mm: 4 and 3.
+- refine events (refine3): pick 49/55 ok (shift median 1.5 mm, p90 11.3); place only 15/44 ok (IoU ~0.24,
+  visible 1.0): the carried block sits between the wrist camera and the support and pollutes the local
+  table colour model and the foreground → `refine(..., held=(key, pose7))` masks it as an occluder.
+- Success so far: refine3 15/20, base3 16/25 (pairs incomplete).
