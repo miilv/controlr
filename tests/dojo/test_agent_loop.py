@@ -42,6 +42,8 @@ def test_checkpoint_and_finish_are_not_swallowed_by_the_models_except():
 def test_extract_code_takes_the_fenced_cell():
     assert extract_code("Plan.\n```python\nprint(1)\n```") == "print(1)\n"
     assert extract_code("no code") is None
+    assert extract_code('<invoke name="python">\n<parameter name="code">x = 1 &lt; 2\nprint(x)</parameter>\n</invoke>') \
+        == "x = 1 < 2\nprint(x)\n"
 
 
 def test_system_prompt_has_no_unfilled_placeholders():

@@ -27,6 +27,8 @@ from dojo.agent.robo import Robo
 from dojo.agent.session import Session
 
 CODE_RE = re.compile(r"```(?:python|py)?\s*\n(.*?)```", re.S)
+# Claude routes sometimes answer in tool-call markup instead of a fence (smoke 2026-10-25: 2 of 7 replies)
+INVOKE_RE = re.compile(r'<parameter name="code">\s*\n?(.*?)</parameter>', re.S)
 
 
 @dataclass
@@ -67,7 +69,13 @@ def _resize(rgb: np.ndarray, px: int) -> np.ndarray:
 
 def extract_code(text: str) -> str | None:
     m = CODE_RE.findall(text or "")
-    return m[-1] if m else None
+    if m:
+        return m[-1]
+    m = INVOKE_RE.findall(text or "")
+    if m:
+        import html
+        return html.unescape(m[-1]).rstrip() + "\n"
+    return None
 
 
 def format_result(cr, receipts: list[str], state_line: str) -> str:
