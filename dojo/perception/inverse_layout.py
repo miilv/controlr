@@ -648,6 +648,28 @@ def task_map() -> dict:
     return json.loads((catalog_root() / "tasks.json").read_text())
 
 
+def fixed_slot_labels(task: str) -> dict:
+    """Labels the config pins to a table slot: point xlim/ylim (a list of points = one per label of the entry,
+    in label order), no random yaw, relative to the Table. {label: (x, y, place_tag)}. make_kong's tiles,
+    build_tower's base boards."""
+    out = {}
+    for lab, d in task_map()[task]["labels"].items():
+        p = d["placement"]
+        if p.get("rotate_rand", False) or p.get("relative_plane", "Table") != "Table":
+            continue
+        xl, yl = p.get("xlim"), p.get("ylim")
+        if not (isinstance(yl, list) and len(yl) == 2 and not isinstance(yl[0], list) and yl[0] == yl[1]):
+            continue
+        labels = d["select_mode"].get("label") or [lab]
+        i = labels.index(lab) if lab in labels else 0
+        if isinstance(xl, list) and xl and isinstance(xl[0], list):
+            if len(xl) == len(labels) and all(a == b for a, b in xl):
+                out[lab] = (float(xl[i][0]), float(yl[0]), p.get("place_tag"))
+        elif isinstance(xl, list) and len(xl) == 2 and xl[0] == xl[1]:
+            out[lab] = (float(xl[0]), float(yl[0]), p.get("place_tag"))
+    return out
+
+
 def restrict_by_instruction(groups: list[dict], instruction: str) -> list[dict]:
     """Candidates named by the instruction (general_pickup: "Pick up the {target} by 10 cm."): keep the
     candidates whose category name or catalogue captions occur in the instruction; unchanged if none match."""
@@ -1164,6 +1186,7 @@ class EstimatorConfig:
     color_M: list | None = None  # 4x3 affine map catalogue colour -> observed (color_calib.py)
     # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
     # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
+    use_slots: bool = True  # labels pinned to config slots start there (make_kong tiles, tower base)
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 
@@ -1201,6 +1224,29 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     placed: list[tuple[dict, Hypothesis]] = []
     record: dict = {"task": task, "instruction": instruction}
     timings = {"segment_s": round(t_seg, 3)}
+
+    # ---- labels pinned to table slots by the config: start at the slot (place frame, yaw 0), refine locally
+    slots = fixed_slot_labels(task) if cfg.use_slots else {}
+    slot_placed = []
+    if slots:
+        for gi, g in enumerate(groups):
+            mine = [lab for lab in g["labels"] if lab in slots]
+            if not mine:
+                continue
+            for lab in mine:
+                x, y, tag = slots[lab]
+                key0 = g["candidates"][0]
+                sms = [s_ for s_ in shape_models(key0) if not tag or s_.tag == tag] or list(shape_models(key0))
+                sm = sms[0]
+                xr, yr, yawr, loss, per = refine(sm, x, y, 0.0, views, maxiter=40, xy_step=0.003, yaw_step=0.03,
+                                                 fix_yaw=True)
+                if np.hypot(xr - x, yr - y) > 0.02:  # settling moves a few mm; a big jump is a wrong fit
+                    xr, yr, loss, per = x, y, 0.5, {}
+                h = Hypothesis(gi, key0, sm.tag, xr, yr, 0.0, loss, per)
+                h.per_view.update({"geom_group": [k for k in g["candidates"]], "slot": True, "sil_loss": round(float(loss), 4)})
+                slot_placed.append((g, h, lab))
+            g["labels"] = [lab for lab in g["labels"] if lab not in mine]
+        groups = [g for g in groups if g["labels"]]
 
     # ---- fixed-pose geometry (e.g. a ground-standing dustbin): place at the config pose, flagged
     pending = []
@@ -1367,6 +1413,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             record.setdefault("_missing", []).append(lab)
             record.setdefault("_not_found", []).append({"label": lab, "candidates": g["candidates"][:20],
                                                         "confidence": 0.0, "reason": "no foreground explained"})
+    for g, h, lab in slot_placed:
+        h.per_view["label"] = lab
+        placed.append((g, h))
     for g, h in placed:
         typ = g["type"]
         cat = h.key.split("/")[1]
