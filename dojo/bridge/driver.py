@@ -65,17 +65,23 @@ def run_episode(policy, backend: RobotServerBackend, twin_factory=None, reset_ti
     instruction = ep["instruction"]
     scene = twin_scene(instruction)
     events = []
-    twin_s = None
+    twin = {"s": None, "scene": None}
     if getattr(policy.cfg, "verify", "off") == "bundle":
         if twin_factory is None:
             if not os.environ.get("SIMLAB_TWIN_PORT"):
                 raise RuntimeError("verify=bundle needs a twin: --twin spawn, or SIMLAB_TWIN_PORT/AUTHKEY of a running one")
-        elif scene is None:
-            events.append({"kind": "twin_unavailable", "reason": "no scene matches the instruction"})
         else:
-            t1 = time.perf_counter()
-            policy._tc = twin_factory(scene)
-            twin_s = round(time.perf_counter() - t1, 1)
+            # started lazily by the policy for the scene it chose (its vocabulary choice may differ from the plain
+            # instruction lookup on an ambiguous instruction); the sim waits meanwhile, as for any policy compute
+            def lazy(scene_):
+                t1 = time.perf_counter()
+                tc = twin_factory(scene_)
+                twin.update(s=round(time.perf_counter() - t1, 1), scene=scene_)
+                return tc
+            policy._twin_factory = lazy
+            if scene is None:
+                events.append({"kind": "twin_scene_unknown", "reason": "the instruction lookup names no scene; the "
+                                                                        "policy's choice decides"})
     policy.reset({"instruction": instruction, "step_lim": ep["step_lim"], "dev_calib_fold": int(calib_fold)})
     obs = backend.observe()
     end, n_next, t_policy, t_exec, t_obs = None, 0, 0.0, 0.0, 0.0
@@ -108,7 +114,7 @@ def run_episode(policy, backend: RobotServerBackend, twin_factory=None, reset_ti
     out = {"end": end, "instruction": instruction, "scene": scene, "step_lim": ep["step_lim"],
            "steps_used": backend.steps_used, "ended": backend.ended, "next_calls": n_next,
            "wall_s": round(time.perf_counter() - t0, 1), "policy_s": round(t_policy, 1), "exec_s": round(t_exec, 1),
-           "observe_s": round(t_obs, 1), "twin_start_s": twin_s, "backend": dict(backend.stats),
+           "observe_s": round(t_obs, 1), "twin_start_s": twin["s"], "twin_scene": twin["scene"], "backend": dict(backend.stats),
            "server_calls": backend.c.n_calls, "server_wall_s": round(backend.c.wall_s, 1), "events": events,
            "joint_steps_chunks": list(backend.chunks),
            "policy_error": rep.get("error"), "policy_error_handled": (rep.get("error_handled") or "")[:400] or None,

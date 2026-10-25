@@ -67,6 +67,10 @@ class RuntimeConfig:
     refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
     refine_max_shift_m: float = 0.03    # accept a refined pose at most this far from the prior (perception searches 7 cm)
     refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
+    refine_max_turn_deg: float = 90.0   # a pick / place refine turning the object more than this keeps the prior
+                                        # orientation (position only): a near-symmetric body fits flipped (5.1
+                                        # plug_in_charger: a 178 deg yaw flip -> "turned 180" regrasp loop); the
+                                        # in-hand (held) review still sees real flips
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
@@ -190,10 +194,16 @@ class RuntimePolicy:
             self._assets = AssetDB(paths.OBJECTS)
         return self._assets
 
-    def twin(self):
+    def twin(self, scene: str | None = None):
+        """The twin client. A host that sets ``_twin_factory(scene) -> client`` (the bridge driver) gets the twin started
+        for the scene the episode actually uses (after the vocabulary choice); else the bundle's running service."""
         if self._tc is None:
-            from dojo.simlab.twin_service import TwinClient
-            self._tc = TwinClient()
+            f = getattr(self, "_twin_factory", None)
+            if f is not None and scene:
+                self._tc = f(scene)
+            else:
+                from dojo.simlab.twin_service import TwinClient
+                self._tc = TwinClient()
         return self._tc
 
     def perception(self):
@@ -323,7 +333,7 @@ class RuntimePolicy:
         verifier = None
         if cfg.verify == "bundle":
             from .verifier import BundleVerifier
-            tc = self.twin()
+            tc = self.twin(scene)
             tw_task = tc.info().get("task")
             if tw_task != scene:
                 events.append({"kind": "verify_unavailable", "reason": f"twin runs {tw_task!r}, the instruction "
@@ -599,8 +609,16 @@ class RuntimePolicy:
         if not r.get("ok"):
             # perception found the object away from the prior but could not fit it well from this hover (it sits
             # off-centre in the wrist view): ask skills to hover over that spot and refine once more
+            def on_neighbour(xy) -> list:
+                return [x.label for x in others
+                        if float(np.linalg.norm(np.asarray(xy, float)[:2] - x.center_w[:2])) < self.cfg.neighbour_mm / 1000]
             if r.get("suggest_xy") is not None and (r.get("suggest_shift_mm") or 0) > self.cfg.rehover_min_shift_mm:
-                # perception's in-frame search: "the object is probably that way" (a direction, not a pose)
+                # perception's in-frame search: "the object is probably that way" (a direction, not a pose). A spot on
+                # another known object is that object (s0L9 tower on 5.1: a 99 mm suggestion onto a placed block)
+                near = on_neighbour(r["suggest_xy"])
+                if near:
+                    ev["why"] = (ev.get("why") or "") + f" (suggestion on a neighbour {near}: no re-hover)"
+                    return None
                 p = o.pos.copy()
                 p[:2] = np.asarray(r["suggest_xy"], float)[:2]
                 ev["rehover"] = "suggest"
@@ -609,7 +627,7 @@ class RuntimePolicy:
                     hint["rehover_dz"] = self.cfg.rehover_place_dz
                 return hint
             if (r.get("pos") is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
-                    and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm):
+                    and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm and not on_neighbour(r["pos"])):
                 ev["rehover"] = True
                 hint = {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float))}
                 if kind == "place":
@@ -628,7 +646,12 @@ class RuntimePolicy:
             ev.update({"identity_from": o.asset.key, "identity_to": new_id})
             o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
-        o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+        q_new = np.asarray(r["quat"], float)
+        if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg:
+            q_new = o.quat.copy()
+            ev["why"] = (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg: prior orientation kept)"
+            prov.stats["turn_kept"] = prov.stats.get("turn_kept", 0) + 1
+        o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
         prov.touched.discard(label)                     # a good reading (tracker)
         if far and self.cfg.rehover_when_far:
@@ -875,7 +898,9 @@ class RuntimePolicy:
                 agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
             ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
             if agree is not None and agree <= cfg.place_agree_mm:
-                o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+                q_new = (np.asarray(r["quat"], float) if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg
+                         else o.quat.copy())
+                o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
                 prov.stats["refined"] = prov.stats.get("refined", 0) + 1
                 prov.stats["place_confirmed"] = prov.stats.get("place_confirmed", 0) + 1
                 prov.touched.discard(label)
