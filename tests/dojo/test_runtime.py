@@ -122,7 +122,7 @@ def test_mode_perception_never_touches_gt(monkeypatch):
     class FakePerception:
         calls = []
 
-        def estimate(self, frames, vocabulary, fold):
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
             self.calls.append(("estimate", vocabulary, len(frames)))
             for f in frames:
                 assert set(f) <= {"images", "state", "instruction", "steps_used", "step_lim"}
@@ -347,7 +347,7 @@ def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
     tc = FakeTwinClient()
 
     class FakePerception:
-        def estimate(self, frames, vocabulary, fold):
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
             return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
                                          "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
                                          "_perception": {"confidence": 0.9}} for o in env.objects]}}
@@ -444,7 +444,7 @@ def test_unconfirmed_divergence_does_not_replan():
     env = _env()
 
     class DoubtfulPerception:
-        def estimate(self, frames, vocabulary, fold):
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
             return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
                                          "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
                                          "_perception": {"confidence": 0.9}} for o in env.objects]}}
@@ -486,7 +486,7 @@ def test_look_macro_falls_back_and_fuses():
     class LookingPerception:
         calls = []
 
-        def estimate(self, frames, vocabulary, fold):
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
             self.calls.append(len(frames))
             conf = 0.5 if len(frames) == 1 else 0.9
             return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
@@ -573,7 +573,7 @@ def test_refine_runs_at_every_hover_in_an_episode():
         def __init__(self):
             self.n = 0
 
-        def estimate(self, frames, vocabulary, fold):
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
             return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
                                          "default_pos": [o["pos"][0] + 0.006, o["pos"][1], o["pos"][2]],
                                          "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}}

@@ -84,9 +84,12 @@ class PerceptionClient:
             raise RuntimeError(f"perception service: {res.get('error')}\n{res.get('trace', '')}")
         return res
 
-    def estimate(self, frames: list[dict], vocabulary: str, fold: int) -> dict:
+    def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None) -> dict:
+        """One frame: inverse layout. Several: ``look.fuse`` (first frame + later views); ``prior_record`` = the
+        first frame's record (perception's conservative fuse keeps its objects and identities)."""
         r = self._call({"op": "estimate", "frames": [encode_frame(f) for f in frames], "vocabulary": vocabulary,
-                        "fold": int(fold)})
+                        "fold": int(fold),
+                        "prior_record": None if prior_record is None else json.dumps(prior_record, default=_default)})
         return json.loads(r["record"])
 
     def look_plan(self, frame: dict, record: dict, max_looks: int = 2) -> list[dict]:
@@ -151,14 +154,19 @@ class _Perception:
             kw["color_M"] = self._cal[f"fold{int(fold)}"]
         return EstimatorConfig(use_wrists=True, **kw)
 
-    def estimate(self, frames: list[dict], vocabulary: str, fold: int) -> dict:
+    def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None) -> dict:
+        import inspect
+
         from dojo.perception.inverse_layout import estimate
         from dojo.perception.look import fuse
         fr = [decode_frame(f) for f in frames]
         if len(fr) == 1:
             return estimate(fr[0]["images"], fr[0]["state"], vocabulary, fr[0]["instruction"], bgs=self.bgs(fold),
                             cfg=self.cfg(fold))
-        return fuse(fr, vocabulary, bgs=self.bgs(fold), cfg=self.cfg(fold))
+        kw = {}
+        if prior_record is not None and "prior_record" in inspect.signature(fuse).parameters:
+            kw["prior_record"] = prior_record
+        return fuse(fr, vocabulary, bgs=self.bgs(fold), cfg=self.cfg(fold), **kw)
 
     def look_plan(self, frame: dict, record: dict, max_looks: int) -> list:
         from dojo.perception.look import look_plan
@@ -366,7 +374,8 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     if op == "info":
                         conn.send({"ok": True, "info": stats})
                     elif op == "estimate":
-                        rec = p.estimate(req["frames"], req["vocabulary"], int(req.get("fold", 0)))
+                        pr = json.loads(req["prior_record"]) if req.get("prior_record") else None
+                        rec = p.estimate(req["frames"], req["vocabulary"], int(req.get("fold", 0)), pr)
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
                     elif op == "look_plan":
                         plan = p.look_plan(req["frame"], json.loads(req["record"]), int(req.get("max_looks", 2)))

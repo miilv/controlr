@@ -389,7 +389,7 @@ class RuntimePolicy:
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
         self.report["look_steps"] = b.steps_used - n0
-        rec1 = self.perception().estimate([obs0, obs1], scene, self.fold)
+        rec1 = self.perception().estimate([obs0, obs1], scene, self.fold, prior_record=rec0)
         if cfg.look_merge == "flagged":
             from .estimate import merge_looked
             return merge_looked(rec0, rec1, [f["label"] for f in fl if f.get("label")])
