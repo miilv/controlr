@@ -71,6 +71,16 @@ mean 0.20** (two episodes 0.5, three 0.25, five 0). Steps 163-409 of 900; planni
 - Fixes queued as store_tools v3 (57530c6): `drop_ok` (let go over the slot when the descent is blocked; the ladder only
   needs the tool near its slot) and parking the idle arm out of the carry's reach including the held object.
 
+Fill_pen v1 (000e5be: servo tail with probes, 4 mm seat tolerance raised to 2 cm), 100000-04 (stopped: superseded):
+**0/5, mean 0.04** (0, 0, 0.1, 0.1, 0); skills2 had 0.08. Steps 670-975 of 1100; planning 90-307 s.
+- The servo's first hover put the pen tip 3 mm above the bbox top. With the remaining xy error the tip came down on the
+  holder's rim, and the shoulder joint then lagged its command by 0.28 rad, pressing the pen on the rim. The descent
+  log reads "+114 mm after the descent" (the pen never moved), 3/5.
+- 4-18 probes then dragged the pen and knocked the holder or the first pen over.
+- Later pens: no grasp-place pair, or a relay chain that failed.
+- Fix (e544a41, queued as fill_pen v2): pens hover 8 mm above the holder, a second corrected hover when the first is
+  > 2 mm off in xy, no probing, and a servo descent that stops short (IK) is resumed. The plug keeps its 3 mm hover.
+
 ## 4. Failure taxonomy (what the traces with measured joints showed)
 
 1. **The arm's practical envelope is smaller than the IK's.** Two cases. (a) Places 0.66-0.67 m from the arm's base: the measured TCP stopped about 30 mm above the commanded one, at the strip, and probing could not help (plug v1 7/10). (b) A place with the wrist on j6's ±3.14 stop (and j4 at 1.7) stalled the same way (plug v2 1/5). Filters: `PLACE_REACH` 0.60 m and `wrist_safe` (j4 ≤ 1.6, |j6| ≤ 3.0) on transfer and handover places. A far target then goes through a relay to the other arm.
