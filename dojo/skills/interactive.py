@@ -125,12 +125,15 @@ def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(
         for attempt in range(tries):
             sk.refresh()
             T = rest_pose(sk, piece, xy, z_bottom + 0.001, sym=sym)
-            for pre_h in (0.035, 0.015):
-                # a far cell's pre-place 3.5 cm up can be out of reach where the cell itself is not (twin: the back
-                # corner cell from the right arm)
-                plans = sk.plan_transfer(piece, [T], arms=[arm_pref, "right" if arm_pref == "left" else "left"],
-                                         ignore=ignore, yaw_sym=sym, box_tilts=(0.0, 25.0, 40.0, -25.0),
-                                         place_kw={"pre_h": pre_h})
+            # one arm at a time: plan_transfer's full plans go to the best-scored screened pairs, and the arm that cannot
+            # finish them (a back corner cell straight ahead of its own shoulder) can take all of them; the other arm,
+            # reaching across, often can (twin: the right back corner from the right arm 0/5, from the left 5/5)
+            for arm in (arm_pref, "right" if arm_pref == "left" else "left"):
+                for pre_h in (0.035, 0.015):
+                    plans = sk.plan_transfer(piece, [T], arms=[arm], ignore=ignore, yaw_sym=sym,
+                                             box_tilts=(0.0, 25.0, 40.0, -25.0), place_kw={"pre_h": pre_h})
+                    if not isinstance(plans, SkillResult):
+                        break
                 if not isinstance(plans, SkillResult):
                     break
             if isinstance(plans, SkillResult):
