@@ -1436,7 +1436,9 @@ def on_targets(sk: Skills, label: str, support: str) -> list[np.ndarray]:
     # headings: the support's (and its quarter turns), then the object's own (its grasp keeps its tilt
     # towards the arm), then the diagonals
     yo = _up_yaw(o)
-    yaws = [yb + k * math.pi / 2 for k in range(4)] + [yo] + [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
+    yaws = [yb + k * math.pi / 2 for k in range(4)] + [yo]
+    if len(pts) <= 3:          # few positions: the diagonals too (on a small stand 9 x 9 poses cost minutes of IK)
+        yaws += [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
     out = []
     for p in pts:
         for y in yaws:
