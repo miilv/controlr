@@ -219,6 +219,11 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
     print(f"\n[integ] SUMMARY {json.dumps(jsonable(summ), default=str)}", flush=True)
     if rc is not None:
         rc.close()
+    if renderer == "isaac51":
+        try:                                        # Kit with RTX hangs at interpreter exit (a zenity dialog, no display)
+            ep.run.close()
+        except Exception as e:  # noqa: BLE001
+            print(f"[integ] runner close: {type(e).__name__}: {e}", flush=True)
     return summ
 
 
@@ -259,6 +264,11 @@ def main(argv=None) -> None:
     cfg = RuntimeConfig(**{**json.loads(a.config), "mode": a.mode, "verify": a.verify})
     run(a.task, a.layouts, cfg, Path(a.out), a.max_minutes, policy_factory=load_policy_factory(a.policy),
         renderer=a.renderer)
+    if a.renderer == "isaac51":                     # results are written; never wait on Kit's own shutdown
+        import sys
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(0)
 
 
 if __name__ == "__main__":

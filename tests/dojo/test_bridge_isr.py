@@ -160,6 +160,7 @@ def test_runtime_eval_isaac51_uses_the_rendered_episode_and_no_render_service(tm
         def __init__(self, task, workdir):
             made.append((task, Path(workdir)))
             self.run = FakeRun()
+            self.run.close = lambda: made.append("closed")
 
         def reset(self, layout):
             return {"stable": True, "task": "stack_blocks", "layout_id": 100000, "instruction": "x", "step_lim": 10,
@@ -197,7 +198,7 @@ def test_runtime_eval_isaac51_uses_the_rendered_episode_and_no_render_service(tm
     lay.write_text(json.dumps({"_simlab": {"id": 100000}}))
     cfg = EV.RuntimeConfig(mode="gt", verify="off")
     summ = EV.run("stack_blocks", [str(lay)], cfg, tmp_path / "out", policy_factory=Pol, renderer="isaac51")
-    assert made and made[0][0] == "stack_blocks"
+    assert made and made[0][0] == "stack_blocks" and made[-1] == "closed"   # the RTX app is closed by run()
     assert summ["renderer"] == "isaac51" and summ["proxy"] == RENDERED_TAG and summ["success"] == 1
     row = json.loads((tmp_path / "out" / "stack_blocks_gt_verify-off_episodes.jsonl").read_text().splitlines()[0])
     assert row["renderer"] == "isaac51"
@@ -210,7 +211,8 @@ def test_runtime_eval_gate_skips_the_remaining_layouts(tmp_path, monkeypatch):
 
     class Ep:
         def __init__(self, task, workdir):
-            self.run = type("R", (), {"objects_gt": lambda s, i: [], "reward": lambda s, i: {"success": True}})()
+            self.run = type("R", (), {"objects_gt": lambda s, i: [], "reward": lambda s, i: {"success": True},
+                                      "close": lambda s: None})()
 
         def reset(self, layout):
             calls.append(layout["_simlab"]["id"])
