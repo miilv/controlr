@@ -1338,7 +1338,8 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
         r = place_oriented(sk, lab, [T], yaw_sym=4, tol_xy=0.03, tol_tilt=30.0, tol_z=0.05,
                            ignore=(container, *st["inside"]),
                            place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                     "servo": True, "servo_ref": container, "seat_tol": 0.02, "probe": False})
+                                     "servo": True, "servo_ref": container, "seat_tol": 0.02, "probe": False,
+                                     "hover_clear": 0.008})
         sk.refresh()
         if _inside_opening(sk, lab, container):
             st["inside"].append(lab)

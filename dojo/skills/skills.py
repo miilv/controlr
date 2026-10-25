@@ -469,7 +469,7 @@ class Skills:
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
-                   seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True):
+                   seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -498,7 +498,7 @@ class Skills:
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
                        servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok),
-                       probe=bool(probe))
+                       probe=bool(probe), hover_clear=float(hover_clear))
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -540,7 +540,8 @@ class Skills:
     def _place_tail(self, arm, q_pre, T_obj, h: "Held", release_gap, retreat, ignore, descend_rad, open_g, settle,
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
-                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True) -> ArmPlan | str:
+                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
+                    hover_clear: float = 0.003) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
@@ -697,7 +698,7 @@ class Skills:
         hover = 0.004
         if rec is not None and o.asset.mesh is not None:
             V = o.asset.mesh[0] @ T_obj[:3, :3].T + T_obj[:3, 3]
-            hover = max(0.004, self.world.obj(rec).top_z - float(V[:, 2].min()) + 0.008)
+            hover = max(0.004, self.world.obj(rec).top_z - float(V[:, 2].min()) + float(kw.get("hover_clear", 0.003)))
 
         def go(T_goal, step_rad, name, settle=2):
             for _ in range(3):              # a long line that stops short (IK) is resumed from where it got to
@@ -721,7 +722,7 @@ class Skills:
         ob = go(above(T_obj, hover), rate, "servo_hover")
         # a second, corrected hover at the same height when the first left the object off in xy (sag changes
         # with the pose; twin: a pen's tip came down on the holder's rim and stayed there)
-        if float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3])) > 0.002:
+        if kw.get("hover_clear", 0.003) > 0.003 and float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3])) > 0.002:
             go(above(T_obj, hover), rate, "servo_hover2")
         ob = go(T_obj, min(rate, 0.02), "servo_insert", settle=3)
         err = float(ob.pos[2] - T_obj[2, 3])
