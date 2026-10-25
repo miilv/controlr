@@ -137,7 +137,7 @@ def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict]
                     "major_err_mm": float(abs(dp[:2] @ ax) * 1000),
                     "minor_err_mm": float(abs(dp[:2] @ np.array([-ax[1], ax[0]])) * 1000),
                     "occluded": bool(pp.get("occluded", False)), "ambiguous": bool(pp.get("ambiguous", False)),
-                    "has_review": pp.get("review") is not None,
+                    "has_review": pp.get("review") is not None, "fg_resid_near": pp.get("fg_resid_near"), "hidden_frac": pp.get("hidden_frac"),
                     "z_err_mm": float(dp[2] * 1000),
                     "rot_err_deg": rot_err_deg(p["default_ori"], o["quat"], sym),
                     "yaw_err_deg": yaw_err_deg(p["default_ori"], o["quat"], sym),
