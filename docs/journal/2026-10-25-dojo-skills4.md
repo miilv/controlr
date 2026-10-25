@@ -32,19 +32,29 @@ Board scale = mean score x 100. Steps are median / max (limit). Rand = `_random`
 | make_toast | v5 (639d3c8) | 100000-09 raw | 7/10 | 0.80 | 295 / 360 | toaster 0's lever did not move 4.5 mm in from its end | |
 | make_toast | **v6 (b49f311)** | **all 25 raw** | **19/25** | **0.80** | 295 / 399 | ik_fail 5 (the second slice: carry over the first, far pre-place), place_miss 1 | |
 | make_toast | v7 (e65d9f6: far slot first, 1.5 cm fallback) | all 25 raw | 18/25 | 0.78 | 302 / 385 | ik_fail 3, place_miss 3, not_home 1 | |
-| make_toast | v8b (5887754: + per-link collision boxes) | all 25 raw | running | | | | |
+| make_toast | v8b (5887754: + per-link collision boxes) | all 25 raw | 18/25 | 0.78 | 297 / 400 | ik_fail 3, place_miss 2, not_home 2 (v6-v8b: 18-19/25, the same within noise) | |
 | make_toast_random | v4 (e65d9f6), twin checker | 16 settled | 0/16 | 0.00 | 308 / 368 | the slot fps are untransformed (section 3) | PyRUA 17, best 38 |
 | make_toast_random | v4, `phys_slots.py` | first 9 settled | 4/9 phys. | 0.58 phys. | | toaster 00002's lever reaches ~70 % of its range | |
 | make_toast_random | **sync v5 (5887754)** | **16 settled** | **9/16** | **0.77** | 306 / 361 | toaster 00002 episodes stop at the 50 tier (lever 0.69-0.74), not_home 4, place_miss 2, ik_fail 1. `phys_slots` agrees on 13/14 | |
 | hang_mugs | v1 (5c13b9f) | 100000-04 settled | 1/5 | 0.34 | 290 / 327 (800) | wall pinches slid in the 90-deg carry | PyRUA 27, best 74.2 |
 | hang_mugs | **v2 (5c1abe4)** | **100000-09 settled** | **2/10** | **0.36** | 324 / 392 | place_miss 7 (low hooks 4/10, top 8/8), not_home 1 | |
 | hang_mugs | v3 (6b07c79: top hooks first, thin walls only) | 100000-04 | 0/5 | 0.27 | 275 / 355 | worse; reverted | |
-| hang_mugs | v4 (bcbe853 = v2 + hung boxes shrink) | 100010-16 | 1/7 | 0.29 | 343 / 464 | place_miss 5, grasp_slip 1 (running to 100019) | |
+| hang_mugs | v4 (bcbe853 = v2 + hung boxes shrink) | 100010-19 settled | 1/10 | 0.26 | 338 / 464 | place_miss 7, grasp_slip 1, not_home 1 | |
 | hang_mugs_random | v3 (6b07c79) | 110000-04 raw (ours) | 0/5 | 0.09 | 131 / 296 | after the first mug no plan (its box covers the 14 cm rack) | PyRUA 28.4 |
-| hang_mugs_random | v4 (bcbe853) | 110000-04 raw | 0/5 | 0.17 | 245 / 258 | grasp_slip 2, not_home 2, place_miss 1 (running to 110009) | |
+| hang_mugs_random | v4 (bcbe853) | 110000-09 raw | 0/10 | 0.20 | 249 / 320 | place_miss 4, not_home 4, grasp_slip 2 | |
 | store_laptop (headset half) | v1 (5c1abe4), sync v2 (5887754) | 100000-09 settled | 0/10, 0/10 | 0.00 | 3 / 129 (800) | no plan 7 (the open laptop and the reach to the stand), grasp_slip 2, place_miss 1. Parked | PyRUA 3.2, best 57.1 |
 | play_stacking_toy | skills3 v2 (68ea915) | 100000-04 | 0/5 | 0.44 | 516-801 (1200) | far pegs: 0 grasp-place pairs for 3-4 pieces | PyRUA 78.2 |
-| play_stacking_toy | v3 (ebfa97f: 40-deg grasps + lift) | 100000 so far | 0/1 | 0.10 | 635 | 7/10 placed, 3 failed; running to 100004 | |
+| play_stacking_toy | v3 (ebfa97f: 40-deg grasps + lift) | 100000-04 | 0/5 | 0.40 | 596 / 691 | ik_fail 3, grasp_slip 1, place_miss 1: no gain over skills3 | |
+
+Both ways where the flag matters (the lead: `usd_sync_links` stays OFF by default until Bridge-isr's probe on the
+official rendered setup settles it):
+
+- make_toast_random: OFF 0/16 (0.00) vs ON 9/16 (0.77), same commit family; the physical metric agrees with ON.
+- store_laptop: OFF 0/10 vs ON 0/10. The headset half never scored; the laptop half is not attempted.
+
+Throughput: 4 light lanes, ~3 GB each. make_toast ~45 s/episode; hang_mugs 4-5 min (planning 90-300 s); stacking toy
+8-11 min. One toast run (v8) crashed 5x at Isaac start (`libusd_sdf` Sdf_PathNode, Kit dumps in the shared RoboDojo
+Kit data dir, ~9 MB). The rerun (v8b, same code) was clean.
 
 Not built: sweep_blocks (the lead ruled out the pick-into-pan route; a real broom sweep is low weight and was not
 started) and fold_clothes (no cloth state in the skills layer). Both parked.
@@ -142,3 +152,14 @@ started) and fold_clothes (no cloth state in the skills layer). Both parked.
 - `Skills.plan_transfer(..., box_tilts=, lift_to_pre=)`, `place_oriented(..., transfer_kw=)`,
   `plan_place(..., fingers_out=, pre_clear=)`, `Skills.tips_raise`, `Collision.margin_of`, `AssetInfo.links/joints`.
 - `verify_choose` is unchanged (integration-2 wraps it).
+
+## 6. Next
+
+- make_toast: toaster 00002's lever (rand) stops at ~70 % of its 86 mm travel, so those episodes cap at 50. Find its
+  collider stop: press elsewhere, or push longer. The last 3-4 std failures are the second slice's plan (100007,
+  100010) and slips.
+- hang_mugs: the rack is Geometry, so the carry under its upper arms is unchecked. Give the collision model the rack's
+  arms (mesh clusters as boxes); low hooks fail 6/10.
+- store_laptop: the headset needs a hold that survives the carry, and the stand is at the edge of reach. The laptop
+  half waits for Bridge-isr's verdict on link poses and the `bottom`-vs-rack geometry.
+- sweep_blocks: a real broom sweep (two arms, the dustpan kept flat), low weight. fold_clothes: no cloth state.
