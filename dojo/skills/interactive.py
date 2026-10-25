@@ -16,7 +16,7 @@ import re
 import numpy as np
 
 from dojo.skills.executor import BudgetExceeded, EpisodeEnded
-from dojo.skills.skills import OPEN, Job, Skills
+from dojo.skills.skills import OPEN, SkillResult, Skills
 from dojo.skills.targets import rest_pose
 
 # ============================================================================ board games
@@ -68,10 +68,10 @@ def board_state(w, board: str, cells, pieces: list[str], opponent: list[str], to
     return occ
 
 
-def choose_cell(occ: dict, lines: list, n_cells: int, cost=None) -> int | None:
+def choose_cell(occ: dict, lines: list, n_cells: int, cost=None, skip=()) -> int | None:
     """Tic-tac-toe move for "own": win, block, centre, a corner opposite the opponent's, any corner, an edge;
     equal choices by ``cost(cell)``. Boards that are not 3 x 3: the cheapest empty cell."""
-    empty = [k for k in range(n_cells) if k not in occ]
+    empty = [k for k in range(n_cells) if k not in occ and k not in skip]
     if not empty:
         return None
     cost = cost or (lambda k: 0.0)
@@ -99,6 +99,39 @@ def choose_cell(occ: dict, lines: list, n_cells: int, cost=None) -> int | None:
 
 def _still(prev: dict, w, labels, tol: float = 5e-4) -> bool:
     return all(float(np.linalg.norm(w.obj(l).pos - prev[l])) < tol for l in labels if l in prev and l in w.objects)
+
+
+def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(), tol_xy: float = 0.008, tag: str = "",
+                tries: int = 2) -> dict:
+    """Put one of ``candidates`` (the first one some arm can move there; flat, any yaw) level at ``xy`` with its
+    bottom at ``z_bottom``: pick and place planned together (``plan_transfer``: a tilted top grasp reaches a far
+    cell where straight down does not), banked. Re-placed when it lands more than 10 mm off."""
+    for piece in candidates:
+        o = sk.world.obj(piece)
+        sym = 8 if float(np.ptp(o.asset.extents[:2])) < 0.003 else 2
+        arm_pref = "left" if (float(o.pos[0]) + float(xy[0])) / 2 < 0 else "right"
+        for attempt in range(tries):
+            sk.refresh()
+            T = rest_pose(sk, piece, xy, z_bottom + 0.001, sym=sym)
+            plans = sk.plan_transfer(piece, [T], arms=[arm_pref, "right" if arm_pref == "left" else "left"],
+                                     ignore=ignore, yaw_sym=sym, box_tilts=(0.0, 25.0, 40.0, -25.0))
+            if isinstance(plans, SkillResult):
+                sk.log(f"[game] {piece} -> {tag}: no transfer ({plans.note[:160]})")
+                break
+            r = sk.run_transfer(*plans, tol_xy=tol_xy)
+            if r.status == "ended":
+                return {"ok": True, "stage": "ended", "piece": piece}
+            sk.bank()
+            w = sk.refresh()
+            d = float(np.linalg.norm(w.obj(piece).pos[:2] - np.asarray(xy)))
+            if d <= 0.010 and abs(float(w.obj(piece).bottom_z) - z_bottom) < 0.006:
+                sk.log(f"[game] {piece} in {tag}, {d * 1000:.1f} mm off")
+                return {"ok": True, "stage": "placed", "piece": piece}
+            sk.log(f"[game] {piece} {d * 1000:.0f} mm from {tag} ({r.status}): again")
+            if any(sk.held.values()):
+                sk.home(gripper=OPEN)
+                sk.held = {a: None for a in sk.held}
+    return {"ok": False, "stage": f"place a piece on {tag}", "note": f"none of {candidates} placed"}
 
 
 def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: list[str], after_land: int = 48,
@@ -170,26 +203,23 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
         def cost(k):
             c = cells[k][1]
             return min(float(np.linalg.norm(w.obj(l).pos[:2] - c[:2])) for l in free_pieces)
-        k = choose_cell(occ, lines, len(cells), cost)
-        cxy = cells[k][1][:2]
-        piece = min(free_pieces, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - cxy)))
-        mid_x = (float(w.obj(piece).pos[0]) + float(cxy[0])) / 2
-        arm = "left" if mid_x < 0 else "right"
-        sk.log(f"[game] turn {st['turns'] + 1}: {piece} -> {cells[k][0]} ({np.round(cxy, 3).tolist()}) with {arm}")
-        sym = 8 if abs(float(np.ptp(w.obj(piece).asset.extents[:2]))) < 0.003 else 2
-        for attempt in range(2):
-            job = Job(piece, arm, lambda s, piece=piece, cxy=cxy: rest_pose(s, piece, cxy, top + 0.001, sym=sym),
-                      yaw_sym=sym, tol_xy=tol_xy, bank=True, prefetch=False, any_arm=True, ignore=(board,))
-            r = sk.run_jobs([job])
-            if r.status == "ended":
+        tried: set = set()
+        while True:
+            k = choose_cell(occ, lines, len(cells), cost, skip=tried)
+            if k is None:
+                return {"ok": False, "stage": "no placeable cell", "note": f"tried {sorted(tried)}"}
+            cxy = cells[k][1][:2]
+            r = place_piece(sk, sorted(free_pieces, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - cxy))),
+                            cxy, top, ignore=(board,), tol_xy=tol_xy, tag=cells[k][0])
+            if r.get("stage") == "ended":
                 return {"ok": True, "stage": "ended"}
-            w = sk.refresh()
-            d = float(np.linalg.norm(w.obj(piece).pos[:2] - cxy))
-            if d <= 0.010 and abs(float(w.obj(piece).pos[2]) - top) < 0.006:
+            if r["ok"]:
                 break
-            sk.log(f"[game] {piece} {d * 1000:.0f} mm from {cells[k][0]} ({r.status}): again")
-        else:
-            return {"ok": False, "stage": f"place {piece}", "result": r}
+            tried.add(k)
+            w = sk.refresh()
+            occ = occupancy()
+            free_pieces = [l for l in pieces if l in w.objects and all(v[1] != l for v in occ.values())]
+        piece = r["piece"]
         st["placed"].append((piece, cells[k][0]))
         st["turns"] += 1
         h = sk.home(gripper=OPEN)
