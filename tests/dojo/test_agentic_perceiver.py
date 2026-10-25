@@ -147,12 +147,13 @@ def test_answer_to_output_rejects_bad_entries():
 
 def test_held_look_fake(tmp_path):
     fc = FakeChat(['{"held": "yes", "note": "cube between the pads"}'])
-    out = j1.held_look_impl(_frames(), _calib(), FLANGE, {"left": 0.0, "right": 1.0}, chat=fc, model="fake", log_dir=str(tmp_path))
+    out = j1.held_look_impl(_frames(), _calib(), FLANGE, {"left": 0.0, "right": 1.0}, chat=fc, model="fake", held_mode="agent",
+                            log_dir=str(tmp_path))
     assert out["held"] is True and out["left"]["held"] is True and out["confidence"] > 0.5
     parts = fc.sent[0][1]["content"]
     assert "left gripper" in parts[0]["text"] and sum(p["type"] == "image_url" for p in parts) == 2
     fc = FakeChat(["maybe", "dunno"])
-    out = j1.held_look_impl(_frames(), _calib(), FLANGE, {"left": 0.0}, chat=fc, model="fake", log_dir=str(tmp_path))
+    out = j1.held_look_impl(_frames(), _calib(), FLANGE, {"left": 0.0}, chat=fc, model="fake", held_mode="agent", log_dir=str(tmp_path))
     assert out["held"] is False and out["confidence"] == 0.0
 
 

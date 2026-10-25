@@ -15,6 +15,8 @@ Worker environment (on top of j1_adapter.install_env):
   AGENTIC_B1          1 (default): run B1 (j1_adapter) first and pass its output as the hint; 0: no hint
   AGENTIC_FALLBACK    b1 (default): if the agent gives no answer, return B1's output; none: return no objects
   AGENTIC_LOG_DIR     per-call workspaces + transcripts + calls.jsonl (default <J1_ILIA_HOME>/run/agentic)
+  AGENTIC_HELD        held_look source: b1_then_agent (default: B1's answer unless its confidence < 0.5 or dark_risk,
+                      then one agent call), agent (always the agent), b1 (never the agent)
   AGENTIC_ENV_FILE    .env with OMNIROUTE_BASE_URL / OMNIROUTE_API_KEY (else the environment)
 """
 from __future__ import annotations
@@ -338,6 +340,22 @@ def held_look_impl(frames, calib, flange, grip_cmd, arm=None, stage=None, chat=N
 
     cfg = _cfg(kw)
     t0 = time.time()
+    mode = kw.get("held_mode") or os.environ.get("AGENTIC_HELD", "b1_then_agent")
+    if mode in ("b1", "b1_then_agent"):
+        try:
+            hb = _b1._held_look_impl(frames, calib, flange, grip_cmd, arm=arm, stage=stage,
+                                     **{k: v for k, v in kw.items() if k in ("joints", "gripper")})
+        except Exception as e:
+            hb = {"_error": f"{type(e).__name__}: {e}"}
+        a_ = arm or next((a for a in ("left", "right") if a in hb), None)
+        sub = hb.get(a_) if a_ else None
+        conf = (sub or hb).get("confidence", 0.0) if isinstance(sub or hb, dict) else 0.0
+        dark = bool((sub or {}).get("dark_risk")) if isinstance(sub, dict) else False
+        if mode == "b1" or ("_error" not in hb and conf >= 0.5 and not dark):
+            hb = dict(hb, note=(hb.get("note") or "") + " source=B1")
+            _log_call(cfg["log_dir"], {"t": time.time(), "fn": "held_look", "source": "b1", "arm": a_, "stage": stage,
+                                       "held": hb.get("held"), "confidence": conf, "calls": 0})
+            return hb
     if arm is None:  # the arm whose gripper is commanded closed
         closed = [a for a in ("left", "right") if a in (grip_cmd or {}) and _b1._grip01(grip_cmd[a]) < 0.5]
         arm = closed[0] if closed else "left"
