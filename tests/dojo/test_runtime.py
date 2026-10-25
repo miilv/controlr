@@ -891,3 +891,33 @@ def test_program_seam_runs_on_the_episode_context():
     assert seen == {"instruction": STACK, "scene": "stack_blocks", "labels": ["block_0", "block_1", "block_2"]}
     assert _stacked(env) and rep["result"]["stage"] == "agent"
     assert all(np.abs(env.q[a]).max() < 0.05 for a in ("left", "right"))
+
+
+def test_divergence_update_matches_by_position_not_label():
+    """A fresh estimate may give the interchangeable labels to other physical blocks: the provider re-keys it by
+    position, so a diverged block is not 'moved' onto another block's spot."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env([(-0.30, -0.15, 0.78), (0.10, -0.10, 0.78), (0.30, -0.20, 0.78)])
+
+    class Swapped:
+        def check(self, obs, objects):                 # the provider's checker interface (policy._Checker)
+            return {o.label: {"head": {"prec": 0.0 if o.label == "block_1" else 1.0, "n_vis": 500, "n_px": 600}}
+                    for o in objects}
+
+        def estimate(self, obs):
+            # labels permuted; block_1 really moved 20 mm in x
+            return {"Rigid": {"block": [
+                {"category": "block", "category_idx": 5, "label": "block_2", "default_pos": [0.12, -0.10, 0.78],
+                 "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}},
+                {"category": "block", "category_idx": 5, "label": "block_1", "default_pos": [0.30, -0.20, 0.78],
+                 "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}},
+                {"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [-0.30, -0.15, 0.78],
+                 "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}}]}}
+
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=Swapped(), replan_on_divergence=False)
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.resync(b.obs)
+    assert abs(float(prov.belief.objects["block_1"].pos[0]) - 0.12) < 1e-9          # moved by its own 20 mm
+    assert abs(float(prov.belief.objects["block_2"].pos[0]) - 0.30) < 1e-9          # untouched

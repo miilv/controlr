@@ -150,6 +150,7 @@ class RuntimeProvider:
         self.div_iou, self.div_min_vis = div_iou, div_min_vis
         self.div_prec, self.div_min_px, self.div_min_frac = div_prec, div_min_px, div_min_frac
         self.confirm_mm = confirm_mm
+        self.max_jump_mm = 150.0                # a re-estimate farther than this from the belief is not believed
         self.post_place_refine = False          # set by the policy (RuntimeConfig.post_place)
         self.post_place_min_mm = 2.0
         self.replan = replan_on_divergence
@@ -242,9 +243,10 @@ class RuntimeProvider:
         """Post-place wrist refine of what was just released, then render-compare the predicted state against
         the frames; on a confirmed divergence re-estimate and raise."""
         self.stats["resync"] += 1
+        measured = set()
         if released and self.post_place_refine:
-            self.post_place(obs, released)
-        objs = [o for o in self.belief.movable()]
+            measured = {e["label"] for e in self.post_place(obs, released) if e.get("ok")}
+        objs = [o for o in self.belief.movable() if o.label not in measured]   # the wrist just measured these
         chk = self.checker.check(obs, objs)
         bad = {}
         for lab, c in chk.items():
@@ -263,13 +265,15 @@ class RuntimeProvider:
         self.stats["checks_failed"] = self.stats.get("checks_failed", 0) + 1
         rec = self.checker.estimate(obs)
         est = objects_from_record(rec, self.assets, self.bridge.steps_used)
+        # labels of same-category objects are interchangeable in a fresh estimate: match by position
+        est = self._match_by_position(est)
         upd = {}
         for lab in bad:
             e = est.get(lab)
             if e is not None and e.confidence >= 0.5 and lab not in self.belief.held_labels():
                 o = self.belief.objects[lab]
                 d_mm = float(np.linalg.norm(e.center_w[:2] - o.center_w[:2])) * 1000
-                if d_mm < self.confirm_mm:
+                if d_mm < self.confirm_mm or d_mm > self.max_jump_mm:
                     continue
                 upd[lab] = {"from": np.round(o.pos, 4).tolist(), "to": np.round(e.pos, 4).tolist(), "mm": round(d_mm, 1)}
                 o.pos, o.quat, o.source, o.confidence = e.pos.copy(), e.quat.copy(), "perception", e.confidence
@@ -286,6 +290,22 @@ class RuntimeProvider:
         if self.replan:
             raise Divergence(sorted(bad), ev)
         return ev
+
+    def _match_by_position(self, est: dict) -> dict:
+        """Re-key a fresh estimate onto the belief's labels: per category, assign estimated objects to belief
+        objects by centre distance (one to one)."""
+        from .estimate import _assign
+        out = {}
+        cats = {o.category for o in self.belief.movable()}
+        for cat in cats:
+            bl = [o for o in self.belief.movable() if o.category == cat]
+            el = [e for e in est.values() if e.category == cat]
+            if not bl or not el:
+                continue
+            C = np.array([[float(np.linalg.norm(e.center_w[:2] - b.center_w[:2])) for e in el] for b in bl])
+            for i, j in _assign(C):
+                out[bl[i].label] = el[j]
+        return out
 
     # ------------------------------------------------------------------ skills provider
     def refresh(self, holding: dict | None = None) -> WorldState:
