@@ -1729,3 +1729,42 @@ def test_refine_suggestion_onto_a_neighbour_is_not_followed():
     prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
     assert pol._refine_hook(prov, None, "block_1", "left", "pick") is None
     assert "neighbour" in pol.report["events"][-1]["why"]
+
+
+def test_twin_state_copy_keeps_unpicklable_handles():
+    from dojo.simlab.twin import _safe_copy
+
+    class Stage:                                                       # like pxr.Usd.Stage: refuses (deep)copy
+        def __reduce_ex__(self, proto):
+            raise RuntimeError('Pickling of "pxr.Usd.Stage" instances is not enabled')
+    st = Stage()
+    v = {"pre_state": {"bowl0": [1.0, 2.0], "stage": st}, "list": [st, {"a": [3]}]}
+    c = _safe_copy(v)
+    assert c["pre_state"]["stage"] is st and c["list"][0] is st          # the handle is kept
+    assert c["pre_state"]["bowl0"] == [1.0, 2.0] and c["pre_state"]["bowl0"] is not v["pre_state"]["bowl0"]
+    assert c["list"][1]["a"] is not v["list"][1]["a"]                   # everything else is still a deep copy
+
+
+def test_refine_flip_keeps_the_prior_orientation():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class Flip:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            p = list(o["pos"])
+            p[0] += 0.004
+            return {o["label"]: {"ok": True, "pos": p, "quat": [0.0, 0.0, 0.0, 1.0], "shift_mm": 4.0, "iou": 0.97,
+                                 "turned_deg": 178.0}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=Flip())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    q0 = prov.belief.objects["block_1"].quat.copy()
+    x0 = float(prov.belief.objects["block_1"].pos[0])
+    out = pol._refine_hook(prov, None, "block_1", "left", "pick")
+    o = prov.belief.objects["block_1"]
+    assert out and np.allclose(o.quat, q0) and abs(float(o.pos[0]) - x0 - 0.004) < 1e-9
+    assert "prior orientation kept" in pol.report["events"][-1]["why"]

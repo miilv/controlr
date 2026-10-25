@@ -67,6 +67,10 @@ class RuntimeConfig:
     refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
     refine_max_shift_m: float = 0.03    # accept a refined pose at most this far from the prior (perception searches 7 cm)
     refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
+    refine_max_turn_deg: float = 90.0   # a pick / place refine turning the object more than this keeps the prior
+                                        # orientation (position only): a near-symmetric body fits flipped (5.1
+                                        # plug_in_charger: a 178 deg yaw flip -> "turned 180" regrasp loop); the
+                                        # in-hand (held) review still sees real flips
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
@@ -642,7 +646,12 @@ class RuntimePolicy:
             ev.update({"identity_from": o.asset.key, "identity_to": new_id})
             o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
-        o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+        q_new = np.asarray(r["quat"], float)
+        if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg:
+            q_new = o.quat.copy()
+            ev["why"] = (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg: prior orientation kept)"
+            prov.stats["turn_kept"] = prov.stats.get("turn_kept", 0) + 1
+        o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
         prov.touched.discard(label)                     # a good reading (tracker)
         if far and self.cfg.rehover_when_far:
@@ -889,7 +898,9 @@ class RuntimePolicy:
                 agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
             ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
             if agree is not None and agree <= cfg.place_agree_mm:
-                o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+                q_new = (np.asarray(r["quat"], float) if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg
+                         else o.quat.copy())
+                o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
                 prov.stats["refined"] = prov.stats.get("refined", 0) + 1
                 prov.stats["place_confirmed"] = prov.stats.get("place_confirmed", 0) + 1
                 prov.touched.discard(label)
