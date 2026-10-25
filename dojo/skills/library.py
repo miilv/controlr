@@ -1408,6 +1408,8 @@ def _face_height(o, u: np.ndarray, band: float = 0.012, half_w: float = 0.03) ->
     along = (W[:, :2] - c) @ u
     across = (W[:, :2] - c) @ np.array([-u[1], u[0]])
     m = (along < along.min() + band) & (np.abs(across) < half_w)
+    if m.sum() < 3:                                 # a coarse mesh: the whole trailing band
+        m = along < along.min() + band
     if m.sum() < 3:
         return None
     return float(W[m, 2].max() - W[:, 2].min())
