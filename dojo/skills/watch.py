@@ -71,10 +71,13 @@ def gt_watch_read(objs: dict, region: dict, prior: dict | None = None, step: int
         out["inside"], out["outside"] = inside, outside
         prev_in = {(d["asset"]) for d in (prior or {}).get("inside", [])}
         out["new"] = [d["asset"] for d in inside if d["asset"] not in prev_in]
-        prev_pos = {d["asset"]: d["pos"] for d in (prior or {}).get("inside", []) + (prior or {}).get("outside", [])}
-        out["stable_vs_prior"] = bool(prior) and all(
-            d["asset"] in prev_pos and float(np.linalg.norm(np.subtract(d["pos"], prev_pos[d["asset"]]))) < 5e-4
-            for d in inside + outside)
+        # stable: every item has a prior item of the same asset within 0.5 mm (identical twins share an asset key)
+        prev = (prior or {}).get("inside", []) + (prior or {}).get("outside", [])
+
+        def near(d):
+            return any(p["asset"] == d["asset"] and float(np.linalg.norm(np.subtract(d["pos"], p["pos"]))) < 5e-4
+                       for p in prev)
+        out["stable_vs_prior"] = bool(prior) and all(near(d) for d in inside + outside)
     out["t_ms"] = round((time.perf_counter() - t0) * 1000, 2)
     return out
 

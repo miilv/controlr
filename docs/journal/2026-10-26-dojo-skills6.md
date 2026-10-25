@@ -52,7 +52,44 @@ Registry: four `j2-registry/1` entries with `obs_needs.notes` (section 6). SKILL
 
 ## 4. Failure modes and what fixed them
 
-(filled in below)
+play_tic_tac_toe:
+1. Far back corners. Each arm reaches the back corner across the board (0.58 m) but not the one straight ahead of its own
+   shoulder: the pre-place IK fails. `plan_transfer` gives its 24 full plans to the best-scored screened pairs, and one
+   arm's pairs can take all 24, so the other arm never got a full plan.
+   - Fix: plan one arm at a time, with a 1.5 cm pre-place as fallback.
+   - The piece choice now keeps the central pieces for last. Before, the last piece (far right) had to reach the last
+     cell (far left back) and slipped at that reach.
+   - Before the fixes 2/4 episodes ended at 0.75 (ttt_v4); after, 5/5 (ttt_v6).
+2. A round piece held 13 mm off its centre (box grasp `off +13mm`) is pinched on a chord. It turned out of the pads on
+   the carry and landed 21 cm from its cell: 2 of ttt_v5's failures. Fix: centred grasps only.
+3. corner indexing bug in `choose_cell` (rows' ends instead of the board's corners): KeyError, ttt_v2.
+
+imitate_sorting_sequence:
+1. `put_into` only drops off the table edge ("no drop point off the table"), and both containers here stand on the
+   table. New `put_in_open` (imit_v1 -> v2).
+2. Objects far right (x 0.3-0.4): the right arm cannot reach basket0 at x -0.4, and the relay to a table spot found no
+   place either (the default pre-place too high). Now: more relay spots between the arms, pre-place fallbacks.
+
+match_and_pick_from_conveyor:
+1. The lift was judged 2 steps after the last command while the arm still lagged its command: "rose 35 mm", the arm
+   sent home, the object dropped. Now judged after the arm settles, and the lift is slower.
+2. Planning was 15 min on one episode: candidates for wide objects (slices / antipodal on 0.5 M-face meshes) were
+   recomputed for every intercept time. Now once, in the object frame.
+3. Objects wider than the hand at the top have no intercept within 40 deg of vertical (ice cream: 104 mm scoop over a
+   69 mm cone, 3 of 25 targets). The tall ones (a standing 15 cm bottle, a 24 cm figurine) had their 16 cm lift out of
+   reach: the lift is now 12.5 cm (the checker wants 10).
+
+fill_egg_holder:
+1. Eggs lying in the basket (about 31 of the 44 eggs in our settled layouts) were judged ungraspable: the finger's root
+   block (38 mm thick, 56 mm wide, 40-70 mm above the TCP) meets the basket's rim or wall, or the neighbouring egg.
+   - Grasp model: round-section grasps (rolled about the long axis), end-to-end grasps leaning up to 50 deg into the
+     basket, narrowed opening, siblings' boxes without a margin, the basket's inner surface as a radial height field,
+     and finger samples allowed 8 mm into it.
+   - Kinematically graspable eggs went from 7 to 22 of 44 (dev layouts, both arms).
+2. The open lid is a 4 cm shell standing behind the body with a lip on top. Its link box (with the lip) covered the
+   back holes, so no back-hole place planned. Now: link slabs (opt-in) and the front holes first.
+3. An egg's bbox top is the open lid (12 cm over the plate), so `fingers_out` raised the release far too high. Now
+   `ref_top` = the body's top.
 
 ## 5. Parked
 

@@ -246,3 +246,19 @@ def test_gt_watch_read_shapes_and_arrival_order():
         res = ao.update(gt_watch_read(objs, reg))
     assert res["order"] == [b.asset.key, a.asset.key] and res["done"]
     assert ao.update({"occluded": True, "inside": []})["order"] == res["order"]          # occluded reads change nothing
+
+
+def test_container_read_is_stable_with_identical_twins():
+    """Two objects of one asset (one demonstrated, one ours): a still scene must read as stable."""
+    from dojo.skills.watch import gt_watch_read
+    c = _obj("b1", "basket", 5, (0.35, 0.25, 0.805), (0.15, 0.1, 0.04), typ="Geometry")
+    a1 = _obj("a1", "phone", 0, (0.35, 0.25, 0.80), (0.02, 0.02, 0.01))
+    a2 = _obj("a2", "phone", 0, (-0.1, -0.1, 0.78), (0.02, 0.02, 0.01))
+    objs = {o.label: o for o in (c, a1, a2)}
+    reg = {"kind": "container", "container": {"asset": c.asset.key, "pos": c.pos.tolist(), "quat": c.quat.tolist()},
+           "candidates": [a1.asset.key]}
+    r0 = gt_watch_read(objs, reg)
+    r1 = gt_watch_read(objs, reg, r0)
+    assert r1["stable_vs_prior"] and len(r1["inside"]) == 1 and len(r1["outside"]) == 1
+    a2.pos = a2.pos + np.array([0.01, 0, 0])
+    assert not gt_watch_read(objs, reg, r1)["stable_vs_prior"]
