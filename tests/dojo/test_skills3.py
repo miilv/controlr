@@ -176,3 +176,23 @@ def test_planner_stack_in_colour_order():
              _world(objs))
     assert p.skill == "stack_objects" and p.args["ordered"] is True
     assert p.args["objects"] == ["g", "b", "r"]
+
+
+def test_rests_stably_needs_a_footprint_wide_for_the_com_height():
+    """A tall body on two thin blades (a charger standing on its prongs) does not rest; a low box does."""
+    from dojo.skills.library import rests_stably
+    body = _box_mesh((-0.021, 0.0, -0.0135), (0.021, 0.048, 0.0135))
+    blades = [_box_mesh((-0.0063, -0.015, -0.003), (-0.0055, 0.0, 0.003)),
+              _box_mesh((0.0055, -0.015, -0.003), (0.0063, 0.0, 0.003))]
+    plug = _obj("plug", "charger", 0, (0, -0.2, 0.8), (0.021, 0.032, 0.0135), mesh=_merge(body, *blades))
+    R_blades_down = np.array([[1.0, 0, 0], [0, 0, -1.0], [0, 1.0, 0]])     # body y -> world z
+    assert not rests_stably(plug, R_blades_down)
+    box = _obj("box", "block", 0, (0, -0.2, 0.8), (0.03, 0.03, 0.01), mesh=_box_mesh((-0.03, -0.03, -0.01), (0.03, 0.03, 0.01)))
+    assert rests_stably(box, np.eye(3))
+
+
+def test_wrist_safe():
+    from dojo.skills.skills import wrist_safe
+    assert wrist_safe([0, 1.2, 1.0, 0.5, 0.0, 1.0])
+    assert not wrist_safe([0, 1.2, 1.0, 1.7, 0.0, 1.0])
+    assert not wrist_safe([0, 1.2, 1.0, 0.5, 0.0, 3.14])
