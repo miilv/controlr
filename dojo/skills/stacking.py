@@ -22,6 +22,7 @@ MID_SITES = ((0.0, -0.17), (0.0, -0.12), (0.0, -0.22), (-0.06, -0.17), (0.06, -0
 
 
 COMFORT_REACH = 0.42          # horizontal distance from the arm base beyond which grasps get tilted / extended
+MAX_REACH = 0.52              # no stack plan may need a pick farther than this
 
 
 def _assign(order, cand, reach=None) -> list[str]:
@@ -53,6 +54,16 @@ def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, ya
                 and sk.can_pick(label, a, pick_method)]
 
     reach = {(l, a): float(np.linalg.norm(w.obj(l).center_w[:2] - sk.kin.base(a)[:2, 3])) for l in labels for a in ARMS}
+    chain = existing_chain(w, labels)
+    if len(chain) >= 2:
+        # resume a partial stack (re-planned episode): keep it, add the rest on top
+        rest = [l for l in labels if l not in chain]
+        site = w.obj(chain[0]).center_w[:2]
+        seq = [(l, min(ARMS, key=lambda a, l=l: reach[(l, a)])) for l in chain[1:]]
+        for l in sorted(rest, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - site))):
+            opts = arms_for(l, site) or list(ARMS)
+            seq.append((l, min(opts, key=lambda a, l=l: reach[(l, a)])))
+        return _jobs(chain[0], None, seq, on_top, yaw_sym, tol_xy, pick_method, place_kw, mid_sites)
     best = None
     for base in labels:
         site = w.obj(base).center_w[:2]
@@ -61,26 +72,57 @@ def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, ya
         if all(cand[l] for l in others):
             for order in itertools.permutations(others):
                 arms = _assign(order, cand, reach)
+                if any(reach[(l, a)] > MAX_REACH for l, a in zip(order, arms)):
+                    continue
                 cost = sum(float(np.linalg.norm(w.obj(l).center_w[:2] - site)) for l in others)
                 cost += sum(max(0.0, reach[(l, a)] - COMFORT_REACH) * 3 for l, a in zip(order, arms))
                 cost += 0.15 * sum(a == b for a, b in zip(arms[:-1], arms[1:]))
                 if best is None or cost < best[0]:
                     best = (cost, base, None, list(zip(order, arms)))
-    if best is None:
-        for xy in mid_sites:
-            cand = {l: arms_for(l, xy) for l in labels}
-            if not all(cand[l] for l in labels):
+    # a shared site in the middle always competes (an existing base far to one side forces the
+    # other arm into 0.5-0.6 m tilted picks that stall mid-lift: twin, stack_blocks v3)
+    for xy in mid_sites:
+        cand = {l: arms_for(l, xy) for l in labels}
+        if not all(cand[l] for l in labels):
+            continue
+        for order in itertools.permutations(labels):
+            arms = _assign(order, cand, reach)
+            if any(reach[(l, a)] > MAX_REACH for l, a in zip(order, arms)):
                 continue
-            for order in itertools.permutations(labels):
-                arms = _assign(order, cand, reach)
-                cost = sum(float(np.linalg.norm(w.obj(l).center_w[:2] - np.asarray(xy))) for l in labels) + 0.3
-                cost += sum(max(0.0, reach[(l, a)] - COMFORT_REACH) * 3 for l, a in zip(order, arms))
-                if best is None or cost < best[0]:
-                    best = (cost, None, xy, list(zip(order, arms)))
-            break
+            cost = sum(float(np.linalg.norm(w.obj(l).center_w[:2] - np.asarray(xy))) for l in labels) + 0.3
+            cost += sum(max(0.0, reach[(l, a)] - COMFORT_REACH) * 3 for l, a in zip(order, arms))
+            if best is None or cost < best[0]:
+                best = (cost, None, xy, list(zip(order, arms)))
     if best is None:
         return []
     _, base, xy, seq = best
+    return _jobs(base, xy, seq, on_top, yaw_sym, tol_xy, pick_method, place_kw, mid_sites)
+
+
+def existing_chain(w, labels: list[str]) -> list[str]:
+    """The longest bottom-up chain of ``labels`` already resting on one another (bottom on the table)."""
+    def on(a, b) -> bool:          # a rests on b
+        oa, ob = w.obj(a), w.obj(b)
+        r = 0.5 * float(min(min(oa.asset.extents[:2]), min(ob.asset.extents[:2])))
+        return (float(np.linalg.norm(oa.center_w[:2] - ob.center_w[:2])) < r
+                and -float(ob.asset.extents[2]) - 0.005 < oa.bottom_z - ob.top_z < 0.01   # on top, or nested inside
+                and oa.center_w[2] > ob.center_w[2] + 0.005)
+    best = []
+    for b in labels:
+        if w.obj(b).bottom_z > 0.765 + 0.01:
+            continue
+        ch = [b]
+        while True:
+            nxt = [l for l in labels if l not in ch and on(l, ch[-1])]
+            if not nxt:
+                break
+            ch.append(nxt[0])
+        if len(ch) > len(best):
+            best = ch
+    return best
+
+
+def _jobs(base, xy, seq, on_top, yaw_sym, tol_xy, pick_method, place_kw, mid_sites) -> list[Job]:
     jobs, below = [], base
     stacked = [base] if base else []
     for l, a in seq:

@@ -266,7 +266,7 @@ class Skills:
     def run_pick(self, pp: PickPlan) -> SkillResult:
         before = self.world.obj(pp.label).pos.copy()
         try:
-            self.ex.run({pp.arm: pp.plan}, name=f"pick {pp.label}")
+            self.parallel([pp.plan], name=f"pick {pp.label}")
         except BudgetExceeded as e:
             return SkillResult(False, "pick", "step_budget", 0, pp.arm, note=str(e))
         except EpisodeEnded as e:
@@ -348,11 +348,19 @@ class Skills:
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold)
+        # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
+        # target is inside the base bowl: 4 cm above it the two boxes still overlap)
+        sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
         best, notes = None, []
         for _, T_obj in sorted(cands, key=lambda x: x[0]):
             T_tcp = T_obj @ inv_T(h.T_tcp_obj)
             T_pre = T_tcp.copy()
-            T_pre[2, 3] += release_gap + pre_h
+            lift = pre_h
+            if sup_top is not None:
+                corners = (T_obj[:3, :3] @ (np.array([[x, y, z] for x in (0, 1) for y in (0, 1) for z in (0, 1)])
+                                             * o.asset.extents + o.asset.bbox_min).T).T + T_obj[:3, 3]
+                lift = max(pre_h, sup_top + 0.015 - float(corners[:, 2].min()))
+            T_pre[2, 3] += release_gap + lift
             to_pre = self.motion.to_pose(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                                          ignore=(h.label,), ease=ease)
             if not to_pre.ok:
@@ -501,6 +509,19 @@ class Skills:
             pp = self.plan_pick(label, arm, method, q_start={arm: self.world.home_q[arm]}, keep=1)
             cache[key] = isinstance(pp, PickPlan)
         return cache[key]
+
+    def already_there(self, job: "Job") -> bool:
+        """Does the job's object already rest at the job's target (within the job's tolerances)?"""
+        try:
+            T = job.target(self)
+        except Exception:  # noqa: BLE001 - a target that cannot be computed now is not reached
+            return False
+        o = self.world.obj(job.label)
+        c_t = T[:3, :3] @ o.asset.center + T[:3, 3]
+        if float(np.linalg.norm(o.center_w[:2] - c_t[:2])) > job.tol_xy or abs(float(o.center_w[2] - c_t[2])) > min(job.tol_z, 0.01):
+            return False
+        tilt = math.degrees(math.acos(min(1.0, abs(float((o.R.T @ T[:3, :3])[2, 2])))))
+        return tilt <= job.tol_tilt
 
     def can_pick_at(self, label: str, arm: str, xy, method: str = "auto") -> bool:
         """Grasp feasibility from home if ``label`` rested level on the table at ``xy``."""
@@ -677,6 +698,10 @@ class Skills:
 
         for i, job in enumerate(jobs):
             self.refresh()
+            if not holds(job) and self.already_there(job):
+                # re-planned episodes (resync / retry) continue instead of undoing finished work
+                self._record(SkillResult(True, "jobs", "skipped", 0, job.arm, note=f"{job.label} already at its target"))
+                continue
             if not holds(job) and self.verifier is not None:
                 r = self._record(self._verified_pick(job))
                 if not r.ok:
@@ -807,6 +832,13 @@ class Skills:
                 return {"steps": r1["steps"] + r2["steps"], "parallel": False, "min_dist": dmin}
             r = self.ex.run({a.arm: a, b.arm: b}, name=name)
             return {"steps": r["steps"], "parallel": True, "min_dist": dmin}
+        if len(plans) == 1:
+            # the idle arm must be clear of this arm's whole path (twin: an arm resting over the shared
+            # stack site blocked the other arm's pick; the pick missed by 7-10 cm, twice)
+            p = plans[0]
+            other = "right" if p.arm == "left" else "left"
+            if not self.clear_of(p, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
+                self.ex.run({other: self.plan_home(other)}, name=f"park {other}")
         r = self.ex.run({p.arm: p for p in plans}, name=name)
         return {"steps": r["steps"], "parallel": True}
 

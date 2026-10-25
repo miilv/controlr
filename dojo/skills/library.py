@@ -145,8 +145,12 @@ def build_tower(sk: Skills, pieces: list[str], pillar_dx: float = 0.09) -> dict:
     w = sk.world
     site = _tower_site(sk, boards)
     lower, upper = boards[0], boards[1]
-    left = sorted([p for p in pillars if w.obj(p).pos[0] < 0], key=lambda l: abs(w.obj(l).pos[0] - site[0] + pillar_dx))
-    right = sorted([p for p in pillars if w.obj(p).pos[0] >= 0], key=lambda l: abs(w.obj(l).pos[0] - site[0] - pillar_dx))
+    # pillars already up on a board are the upper ones (resumed episodes); then by distance to the site
+    up = {p: w.obj(p).bottom_z > TABLE_Z + 0.01 for p in pillars}
+    left = sorted([p for p in pillars if w.obj(p).pos[0] < 0],
+                  key=lambda l: (up[l], abs(w.obj(l).pos[0] - site[0] + pillar_dx)))
+    right = sorted([p for p in pillars if w.obj(p).pos[0] >= 0],
+                   key=lambda l: (up[l], abs(w.obj(l).pos[0] - site[0] - pillar_dx)))
     while len(left) < 2:
         left.append(right.pop())
     while len(right) < 2:
@@ -154,7 +158,9 @@ def build_tower(sk: Skills, pieces: list[str], pillar_dx: float = 0.09) -> dict:
     (l_low, l_up), (r_low, r_up) = left[:2], right[:2]
     jobs = []
     # anything lying on the site is parked out of the way first
-    blockers = [l for l in pieces if l not in (l_low, r_low) and np.linalg.norm(w.obj(l).pos[:2] - np.array(site)) < 0.08]
+    # pieces LYING on the table at the site are in the way (a board already up on pillars is not)
+    blockers = [l for l in pieces if l not in (l_low, r_low) and np.linalg.norm(w.obj(l).pos[:2] - np.array(site)) < 0.08
+                and w.obj(l).bottom_z < TABLE_Z + 0.01]
     for k, b in enumerate(blockers):
         park = (site[0], -0.08 + 0.08 * k)
         jobs.append(Job(b, "right", lambda s, b=b, park=park: table_rest(s, b, park, yaw=0.0), yaw_sym=2, tol_xy=0.03,
@@ -421,9 +427,15 @@ def button_top(sk: Skills, label: str) -> np.ndarray:
 def press_sequence(sk: Skills, presses: list[tuple[str, int]]) -> dict:
     """Press each (button, n) in order with a full press-and-release per count; the arm nearer each
     button presses; the other arm hovers over its next button meanwhile (no extra press)."""
-    sk.refresh()
+    w = sk.refresh()
+    # progress lives in the world notes: a re-planned episode must never press again (an extra press
+    # fails the episode, and press counts are not visible in the scene)
+    done = w.notes.setdefault("presses_done", 0)
     for i, (lab, n) in enumerate(presses):
+        if i < done:
+            continue
         if n <= 0:
+            w.notes["presses_done"] = i + 1
             continue
         top = button_top(sk, lab)
         arm = min(ARMS, key=lambda a: (round(float(np.linalg.norm(sk.kin.base(a)[:2, 3] - top[:2])), 2),
@@ -456,6 +468,7 @@ def press_sequence(sk: Skills, presses: list[tuple[str, int]]) -> dict:
             sk.parallel(plans, name=f"press {lab} x{n}")
         except (BudgetExceeded, EpisodeEnded) as e:
             return {"ok": False, "stage": f"press {lab}", "note": str(e)}
+        sk.world.notes["presses_done"] = i + 1
         sk._record(SkillResult(True, "press", "ok", p.steps, arm, note=f"{lab} x{n}"))
     return {"ok": True, "stage": "pressed"}
 
@@ -498,14 +511,18 @@ def swap_on_mats(sk: Skills, objects: list[str], mats: list[str], button: str | 
     def mat_of(l):
         return min(mats, key=lambda m: float(np.linalg.norm(w.obj(m).pos[:2] - w.obj(l).pos[:2])))
 
-    a, b = objects[:2]
-    ma, mb = mat_of(a), mat_of(b)
-    empty = next(m for m in mats if m not in (ma, mb))
-    if np.linalg.norm(w.obj(b).pos[:2] - w.obj(empty).pos[:2]) < np.linalg.norm(w.obj(a).pos[:2] - w.obj(empty).pos[:2]):
-        a, b, ma, mb = b, a, mb, ma
-    w.notes["swap"] = {a: ma, b: mb, "empty": empty}
-    sk.log(f"[swap_on_mats] {a}@{ma} {b}@{mb} empty {empty}")
-    for lab, mat in ((a, empty), (b, ma), (a, mb)):
+    st = w.notes.get("swap")
+    if st is None:                      # first call: remember the start (a re-plan continues from here)
+        a, b = objects[:2]
+        ma, mb = mat_of(a), mat_of(b)
+        empty = next(m for m in mats if m not in (ma, mb))
+        if np.linalg.norm(w.obj(b).pos[:2] - w.obj(empty).pos[:2]) < np.linalg.norm(w.obj(a).pos[:2] - w.obj(empty).pos[:2]):
+            a, b, ma, mb = b, a, mb, ma
+        st = w.notes["swap"] = {"moves": [(a, empty), (b, ma), (a, mb)], "done": 0}
+    sk.log(f"[swap_on_mats] moves {st['moves']} done {st['done']}")
+    for k, (lab, mat) in enumerate(st["moves"]):
+        if k < st["done"]:
+            continue
         xy = w.obj(mat).pos[:2].copy()
         arm = "left" if xy[0] + w.obj(lab).pos[0] < 0 else "right"
         # the mats collide when something is put on them: rest the object on the mat's top
@@ -520,6 +537,7 @@ def swap_on_mats(sk: Skills, objects: list[str], mats: list[str], button: str | 
             p = press_once(sk, button)
             if not p.ok:
                 return {"ok": False, "stage": "press", "result": p}
+        st["done"] = k + 1
     return {"ok": True, "stage": "swapped"}
 
 

@@ -248,3 +248,16 @@ def test_tower_roles_from_geometry():
     assert r["boards"] == ["long", "short"]
     assert sorted(r["pillars"]) == ["p0", "p1", "p2", "p3"]
     assert r["toppers"] == ["thin", "roof"]
+
+
+def test_replanned_stack_skips_finished_jobs():
+    """A second solve() on a finished stack does nothing but finish (resumable after a resync)."""
+    from dojo.skills import planner
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.33, -0.05, 0.78), (-0.2, -0.25, 0.78)])
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction))
+    assert planner.solve(sk)["ok"]
+    n = env.steps_used
+    sk2 = Skills(env, GTProvider(env, None, instruction=env.instruction))
+    assert planner.solve(sk2)["ok"]
+    assert env.steps_used - n < 30          # no re-picks: only finish
+    assert any(h.status == "skipped" for h in sk2.history)
