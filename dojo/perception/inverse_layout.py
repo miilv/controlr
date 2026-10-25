@@ -39,7 +39,7 @@ from scipy.optimize import linear_sum_assignment, minimize
 from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
-from .render import Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex
+from .render import Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 
 MIN_BLOB_PX = {"cam_head": 25, "cam_left_wrist": 150, "cam_right_wrist": 150}
@@ -253,6 +253,9 @@ def multi_view_loss(sm, T, views, others=None, min_vis=0.3, min_px=12):
 
 
 ROI_S = 128
+# A view from a later frame (name "<cam>@k") counts for an object only if this fraction of its silhouette is
+# known there: moved arms often cover large objects (pack box 0.92 -> 0.76 with the look frame otherwise)
+EXTRA_MIN_VIS = 0.6
 
 
 @dataclass
@@ -266,6 +269,7 @@ class RoiView:
     known: np.ndarray
     crop: tuple
     native_area: float
+    gray: np.ndarray | None = None
 
 
 def _crop_pad(a: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> np.ndarray:
@@ -303,8 +307,35 @@ def make_roi_views(sm: ShapeModel, T: np.ndarray, views: dict[str, ViewMasks], o
         interp = cv2.INTER_AREA if (x1 - x0) > size else cv2.INTER_LINEAR
         fgr = cv2.resize(fg.astype(np.float32), (size, size), interpolation=interp)
         knr = cv2.resize(kn.astype(np.float32), (size, size), interpolation=interp)
-        out.append(RoiView(name, crop_camera(v.cam, x0, y0, x1, y1, size), fgr, knr, (x0, y0, x1, y1), bw * bh))
+        gr = cv2.resize(_crop_pad(cv2.cvtColor(v.img, cv2.COLOR_RGB2GRAY), x0, y0, x1, y1).astype(np.float32), (size, size),
+                        interpolation=interp)
+        out.append(RoiView(name, crop_camera(v.cam, x0, y0, x1, y1, size), fgr, knr, (x0, y0, x1, y1), bw * bh, gr))
     return out
+
+
+def roi_color_cost(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_px: int = 40) -> float | None:
+    """(1 - NCC)/2 of the per-face-colour render vs the observed grey levels inside the rendered silhouette
+    (known foreground), pooled over ROI views. Used inside the refinement so position and orientation are
+    fitted to texture, not only to the outline."""
+    r = tex_roi(ROI_S)
+    if r is None:
+        return None
+    acc, n_tot = 0.0, 0
+    for rv in rvs:
+        if rv.gray is None:
+            continue
+        col, d = r.render(rv.cam, sm.key, T)
+        m = (d > 0) & (rv.known > 0.5) & (rv.fg > 0.5)
+        n = int(m.sum())
+        if n < min_px:
+            continue
+        a = cv2.cvtColor(col, cv2.COLOR_RGB2GRAY)[m].astype(float)
+        b = rv.gray[m].astype(float)
+        if a.std() < 3 or b.std() < 3:
+            continue
+        acc += n * float(((a - a.mean()) * (b - b.mean())).mean() / (a.std() * b.std()))
+        n_tot += n
+    return None if n_tot == 0 else (1 - acc / n_tot) / 2
 
 
 def roi_loss(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_vis: float = 0.3):
@@ -321,7 +352,7 @@ def roi_loss(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_vis: float =
             continue
         sk = s * rv.known
         vis = float(sk.sum()) / n_s
-        if vis < min_vis:
+        if vis < (EXTRA_MIN_VIS if "@" in rv.name else min_vis):  # extra frames: only views that see it well
             continue
         inter = float((sk * rv.fg).sum())
         union = float(((s + rv.fg - s * rv.fg) * rv.known).sum())
@@ -458,13 +489,19 @@ def _diverse(res, period, k=3, min_sep=0.4, slack=0.15):
 
 
 def refine(sm: ShapeModel, x, y, yaw, views, others=None, xy_step=0.006, yaw_step=0.12, maxiter=120,
-           fix_yaw=False):
-    """Nelder-Mead over (x, y[, yaw]) on the ROI soft-IoU loss; the ROIs are fixed at the start pose."""
+           fix_yaw=False, color_w: float = 0.0):
+    """Nelder-Mead over (x, y[, yaw]) on the ROI soft-IoU loss (+ color_w x texture cost when > 0); the
+    ROIs are fixed at the start pose. The returned loss is the silhouette part."""
     rvs = make_roi_views(sm, sm.pose(x, y, yaw), views, others)
 
     def f(p):
         yy = yaw if fix_yaw else p[2]
-        return roi_loss(sm, sm.pose(p[0], p[1], yy), rvs)[0]
+        T = sm.pose(p[0], p[1], yy)
+        l = roi_loss(sm, T, rvs)[0]
+        if color_w > 0:
+            c = roi_color_cost(sm, T, rvs)
+            l += color_w * (0.25 if c is None else c)
+        return l
 
     x0 = np.array([x, y] if fix_yaw else [x, y, yaw])
     simplex = [x0]
@@ -809,10 +846,11 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
     return refined
 
 
-def _score_hyp(h: Hypothesis, views, others, cfg, groups, iters) -> Hypothesis:
+def _score_hyp(h: Hypothesis, views, others, cfg, groups, iters, color: bool = False) -> Hypothesis:
     yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
     sm = h.sm()
-    x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed)
+    cw = cfg.refine_color_weight if (color and sm.asset.info.get("n_textured_parts", 0) > 0) else 0.0
+    x, y, yaw, loss, per = refine(sm, h.x, h.y, h.yaw, views, others, maxiter=iters, fix_yaw=yaw_fixed, color_w=cw)
     T = sm.pose(x, y, yaw)
     col, _ = observed_color(sm, T, views)
     app = _app(col, h.per_view["geom_group"])
@@ -870,7 +908,7 @@ def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
                 k = v.known[roi]
                 f = v.fg[roi]
                 area = int((m & k).sum())
-                if area < 10:
+                if area < 10 or ("@" in name and area < EXTRA_MIN_VIS * int(m.sum())):
                     continue
                 new = m & (1 - U[name][roi]) & k
                 fg_new = int((new & f).sum())
@@ -940,10 +978,10 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         if not trials:
             continue
         # the incumbent is re-scored under the same conditions (others removed from the foreground)
-        best = h0 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
+        best = h0 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters, color=True)
         scored = [h0]
         for t in trials:
-            t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters)
+            t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
             if not region_ok(g, t2.x, t2.y, t2.yaw, t2.sm().yaw_period):
                 continue
             scored.append(t2)
@@ -969,6 +1007,10 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
 
 
 ARM_BASES = {"left": np.array([-0.3, -0.45, 0.765]), "right": np.array([0.3, -0.45, 0.765])}
+# table regions hidden from the head camera by the home-pose grippers (D0: pads and blocks there were the
+# confidently-wrong cases); objects within HOME_HIDE_RADIUS are flagged for a look
+HOME_HIDDEN_XY = ((-0.36, -0.21), (0.36, -0.21))
+HOME_HIDE_RADIUS = 0.08
 
 
 def look_at_camera(eye: np.ndarray, target: np.ndarray, K: np.ndarray, w: int = 640, h: int = 480) -> Camera:
@@ -1085,11 +1127,17 @@ class EstimatorConfig:
     polish: bool = True
     polish_candidates: int = 4
     paired_tex_weight: float = 0.8
+    refine_color_weight: float = 0.5
     paired_tex_margin: float = 0.04
     ambiguity_margin: float = 0.05
     rival_margin: float = 0.1
+    hidden_frac_flag: float = 0.1
     view_requests: bool = True
     color_M: list | None = None  # 4x3 affine map catalogue colour -> observed (color_calib.py)
+    # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
+    # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
+    color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
+                          "stack_bowls_random")
 
 
 def _views_subset(views, cfg):
@@ -1105,7 +1153,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     from the first frame's head view."""
     global _COLOR_M
     cfg = cfg or EstimatorConfig()
-    _COLOR_M = cfg.color_M
+    _COLOR_M = cfg.color_M if task in cfg.color_tasks else None
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
     cams = cameras_from_state(state)
@@ -1278,8 +1326,14 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                         and c.loss < h.loss + cfg.rival_margin):
                     rival = {"label": groups[c.label_group]["labels"][0], "key": c.key, "margin": round(float(c.loss - h.loss), 4)}
                     break
+        hidden = 0.0
+        if h.tag != "fixed":  # fraction of the head-view silhouette under the robot: confidence is overstated
+            s_h = h.sm().sil(head.cam, h.T())  # when only the visible part is fitted
+            if s_h.any():
+                hidden = float((s_h & head.robot).sum() / s_h.sum())
+        near_home = h.tag != "fixed" and any(np.hypot(h.x - c[0], h.y - c[1]) < HOME_HIDE_RADIUS for c in HOME_HIDDEN_XY)
         ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
-                     or rival is not None)
+                     or rival is not None or hidden > cfg.hidden_frac_flag or near_home)
         review = None
         if ambiguous and alt is not None and cfg.view_requests and h.tag != "fixed":
             review = view_request(h, alt)
@@ -1292,6 +1346,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "appearance": round(h.appearance, 3), "yaw": round(float(h.yaw), 4),
                                "occluded": bool(h.per_view.get("occluded", False)),
                                "ambiguous": ambiguous, "alternative": alt, "label_rival": rival, "review": review,
+                               "hidden_frac": round(hidden, 3), "near_home_grippers": bool(near_home),
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group")}}
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)
