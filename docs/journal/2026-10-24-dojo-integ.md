@@ -216,3 +216,25 @@ resync check nor the skills' place check (both read predictions in mode B) caugh
   (100000 and 100002 newly lost, 100004 newly won): look + full fuse was moving good estimates (reported to
   perception with examples: 100000 block 5.7 → 19.7 mm, 100003 0.1 → 12.7 mm).
 - Second pair (`*_base2` / `*_refine2`): conservative fuse + re-hover, look frames saved as PNG.
+
+## 5. Where the gap is (n = 10, before the 25-layout pairs)
+
+| task | mode A (GT) + verify | mode B (perception) + verify | gap | what B loses |
+|---|---|---|---|---|
+| stack_blocks | 100.0 (10/10) | 83.0 (8/10) | 17 | one block 20–25 mm off at planning, unflagged (looks did not fix it) |
+| build_tower | 100.0 (10/10, verify) / 100 (verify off) | 75.0 (7/10, verify off) | 25 | topper ↔ pillar / prism shape swaps; one undetected pose error (belief_mismatch) |
+
+Not losses any more: grasp slips (verify vets each pick in the twin; 100009 is a slip only without verify),
+destructive re-plans (fixed in the runtime), false divergences (fixed), twin chain through grasps (fixed).
+
+Costs per episode (mode B + verify): stack_blocks 34–48 s wall (verify 26 s, refine +11 s), 180–230 of 550
+steps; build_tower ~120 s with verify, ~520 of 1050 steps. Bundle scope peak ≤ 11.7 GB (4 processes).
+
+Open:
+- 25-layout paired runs (refine off / on, plus mode A on the same settled records) for both tasks: running.
+- Mode B has no in-hand measurement: skills' slip / loose-grasp checks read predictions (the twin's or the
+  kinematic belief's). A wrist re-view after the lift would restore them.
+- The twin is loaded with the same (possibly wrong) estimate, so verification cannot catch estimate errors;
+  only refine / resync can. Perturbation (±2 mm, 1°) is smaller than mode B's p90 error (5–8 mm).
+- stack_bowls / put_bottles / swap / press runs are queued after the pairs (mode B only where perception's
+  catalogue has the assets).
