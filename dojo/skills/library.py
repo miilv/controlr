@@ -800,7 +800,10 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
         if not isinstance(picks, list):
             notes.append(f"{g_arm} pick: {picks.note[:80]}")
             continue
-        hq_g = {id(pp): G.hold_quality(o, pp.grasp.T) for pp in picks}
+        # the giver's pick must lift and then survive the turn into the handover pose: ranked by
+        # ``grasps.lift_hold`` (lever + contact depth; twin: a key's 5 mm shaft slid out at the lift or in the
+        # carry 6/6, its bow lifted 13/13)
+        hq_g = {id(pp): G.lift_hold(o, pp.grasp.T) for pp in picks}
         picks = sorted(picks, key=lambda pp: hq_g[id(pp)] + pp.steps / 100.0)
         seen, uniq = set(), []
         for pp in picks:                                     # one per grasp (the two finger flips plan alike)
@@ -834,7 +837,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                             pl.transfer_kw = {"ignore": tuple(ignore), **dict(place_kw or {})}
                             # the taker's grasp does the precision work (insertion, turn, contact): it weighs
                             # double; the giver's only has to survive a slow carry
-                            score = 0.5 * hq_g[id(pp)] + op["hq"] + (pp.steps + pl.steps) / 100.0
+                            score = hq_g[id(pp)] + op["hq"] + (pp.steps + pl.steps) / 100.0
                             sols.append((score, {"giver": g_arm, "taker": t_arm, "pick": pp, "T_H": T_H,
                                                  "q_give": rg.q, "box_g": box_g, "grasp_t": gt,
                                                  "T_H_grasp": inv_T(T_H) @ gt.T, "place": pl, "target": op["T_obj"],

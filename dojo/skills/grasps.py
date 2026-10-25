@@ -456,7 +456,19 @@ def pad_contact(obj: ObjectState, T_grasp: np.ndarray, half_w: float = 0.008, x_
         areas.append((ext[0] + dx) * (ext[1] + dz))
         cpts.append(pts)
     m = np.vstack(cpts).mean(0)
+    pad_contact.depth = float(min(np.ptp(c[:, 0]) for c in cpts)) + dx      # contact extent along the approach
     return float(min(areas) / full), T_grasp[:3, 3] + x * m[0] + z * m[1]
+
+
+def lift_hold(obj: ObjectState, T_grasp: np.ndarray) -> float:
+    """Lower is better, for a pick that must then turn the object about the closing axis (an in-air handover's
+    giver): the gravity lever (per cm) plus a penalty for contact under 8 mm deep along the approach (twin: a
+    key's 4.8 mm shaft slid out at the lift or in the carry, 6/6; its 9.4 mm bow lifted, 13/13)."""
+    patch, centre = pad_contact(obj, T_grasp)
+    if centre is None:
+        return 9.0
+    depth = getattr(pad_contact, "depth", 0.0)
+    return grasp_lever(obj, T_grasp, centre) / 0.01 + max(0.0, 0.008 - depth) / 0.002 * 0.5
 
 
 def contact_patch(obj: ObjectState, T_grasp: np.ndarray, **kw) -> float:
