@@ -50,9 +50,11 @@ def main(argv=None) -> None:
     ap.add_argument("--instruction", required=True)
     ap.add_argument("--step-lim", type=int, default=1000)
     ap.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
+    ap.add_argument("--objects-root", default=None, help="asset metadata root (default RoboDojo's)")
+    ap.add_argument("--catalog", default=None, help="mesh catalogue (default DOJO_CATALOG / perception's)")
     a = ap.parse_args(argv)
     lay = json.loads(Path(a.layout).read_text())
-    assets = AssetDB()
+    assets = AssetDB(a.objects_root, a.catalog)
     rows = rows_from_layout(lay, assets)
     for spec in a.pose:
         lab, vals = spec.split(":")

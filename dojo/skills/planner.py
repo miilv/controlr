@@ -79,6 +79,28 @@ def plan(instruction: str, world: WorldState) -> Plan:
             return Plan("declare_kong", {"tiles": [o.label for o in cats[c] if o.obj_type == "Rigid"]},
                         f"{len(cats[c])} {c} tiles")
 
+    # --- each object into its matching position (a container with slots named after the objects)
+    if ("matching" in text or "each" in text) and ("place" in text or "put" in text or "store" in text):
+        for c in objs:
+            slots = [t for t in c.asset.functional if t.lower().endswith("_slot")]
+            if not slots:
+                continue
+            movers = [o.label for o in objs if o.obj_type == "Rigid" and o.label != c.label
+                      and any(o.category.lower() in t.lower() for t in slots)]
+            if movers:
+                return Plan("place_in_slots", {"objects": movers, "container": c.label},
+                            f"{len(movers)} objects into {c.label}'s slots")
+
+    # --- insert / plug a named object into another one (which one: the best mesh fit)
+    if ("insert" in text or "plug" in text) and named:
+        pegs = [o for c in named for o in cats[c] if o.obj_type == "Rigid"]
+        if pegs:
+            peg = pegs[0]
+            recs = [o.label for o in objs if o.label != peg.label and not o.clutter]
+            turn = -60.0 if re.search(r"\bturn\b", text) else 0.0
+            return Plan("insert_into", {"obj": peg.label, "receptacles": recs, "turn_deg": turn},
+                        f"{peg.label} into the best fit, turn {turn:.0f}")
+
     # --- buttons pressed a number of times given by cards, each followed by a confirm press
     if "press" in text and buttons and ("number" in text or "times" in text):
         cards = [o for o in objs if card_digit(o) is not None]

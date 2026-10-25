@@ -38,6 +38,7 @@ class AssetInfo:
     place: dict = field(default_factory=dict)       # tag -> orientation quat (wxyz) the generator uses
     support: dict = field(default_factory=dict)     # tag -> list of (local pose7, radius)
     functional: dict = field(default_factory=dict)  # passive functional points (tag -> raw)
+    active_functional: dict = field(default_factory=dict)  # active functional points (tag -> raw)
     mesh: tuple | None = None                       # (vertices (N,3), faces (M,3)) when a catalogue is present
 
     @property
@@ -103,7 +104,8 @@ def asset_from_metadata(key: str, m: dict) -> AssetInfo:
         rs = v.get("radius") or []
         support[k] = [(np.asarray(c, float), float(r)) for c, r in zip(cs, rs)]
     return AssetInfo(key=key, bbox_min=verts.min(0), bbox_max=verts.max(0), mass=(m.get("physics") or {}).get("mass"),
-                     place=place, support=support, functional=dict(pas.get("functional") or {}))
+                     place=place, support=support, functional=dict(pas.get("functional") or {}),
+                     active_functional=dict(act.get("functional") or {}))
 
 
 @dataclass

@@ -364,10 +364,14 @@ class Skills:
                    retreat: float = 0.05, ignore=(), q_start=None, approach_rad: float = CARRY,
                    descend_rad: float = SLOW, open_g: float = OPEN, settle: int = 2, open_steps: int = OPEN_STEPS,
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
-                   keep_tilt: bool = False, held: "Held | None" = None):
+                   keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
+                   pre_settle: int = 1):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
-        ``held``: plan for this grasp instead of the current one (a place planned with its pick)."""
+        ``held``: plan for this grasp instead of the current one (a place planned with its pick).
+        ``turn`` (rad): after the descent, turn the object about the vertical through its root (a key in
+        its lock) before letting go; ``release=False`` keeps holding (no open, no retreat).
+        ``pre_settle``: still steps at the pre-place pose before the in-hand re-measure (precision)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -385,7 +389,7 @@ class Skills:
         allp = []
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
-                       pre_open_hold=pre_open_hold)
+                       pre_open_hold=pre_open_hold, turn=turn, release=release)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -413,6 +417,7 @@ class Skills:
             cand = PlacePlan(arm, p, T_obj, p.steps, h.label, keep_tilt=keep_tilt)
             cand.approach = to_pre
             cand.tail_kw = tail_kw
+            cand.pre_settle = pre_settle
             allp.append(cand)
             if best is None or p.steps < best.steps:
                 best = cand
@@ -424,22 +429,37 @@ class Skills:
         return best
 
     def _place_tail(self, arm, q_pre, T_obj, h: "Held", release_gap, retreat, ignore, descend_rad, open_g, settle,
-                    open_steps, pre_open_hold) -> ArmPlan | str:
+                    open_steps, pre_open_hold, turn: float = 0.0, release: bool = True) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
                                 ignore=ignore)
         if not down.ok:
             return f"descend: {down.note}"
-        T_up = T_rel.copy()
-        T_up[:3, 3] -= T_rel[:3, 0] * retreat          # back out along the approach axis
-        if T_rel[2, 0] > -0.5:
-            T_up[2, 3] += 0.02
-        up = self.motion.line(arm, down.q_end, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
-        if not up.ok:
-            return f"retreat: {up.note}"
         t = ArmPlan(arm, np.asarray(q_pre, float), CLOSED)
         t.move(down, "descend").hold(settle, "settle")
+        q_last, T_last = down.q_end, T_rel
+        if turn:
+            # turn the object about the vertical through its root; the TCP follows the grasp
+            T_t = np.asarray(T_obj, float).copy()
+            T_t[:3, :3] = rot_z(turn) @ T_t[:3, :3]
+            T_tcp_t = T_t @ inv_T(h.T_tcp_obj)
+            T_tcp_t[2, 3] += release_gap
+            tw = self.motion.line(arm, q_last, T_tcp_t, min(descend_rad, 0.04), "place_turn", gripper=CLOSED,
+                                  check=False, max_step_deg=4.0)
+            if not tw.ok:
+                return f"turn: {tw.note}"
+            t.move(tw, "turn").hold(settle, "turned")
+            q_last, T_last = tw.q_end, T_tcp_t
+        if not release:
+            return t
+        T_up = T_last.copy()
+        T_up[:3, 3] -= T_last[:3, 0] * retreat          # back out along the approach axis
+        if T_last[2, 0] > -0.5:
+            T_up[2, 3] += 0.02
+        up = self.motion.line(arm, q_last, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
+        if not up.ok:
+            return f"retreat: {up.note}"
         t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
         return t
 
@@ -460,7 +480,8 @@ class Skills:
         try:
             if (remeasure and (self.remeasure or self.refine is not None)
                     and getattr(pp, "approach", None) is not None):
-                a1 = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0).move(pp.approach, "approach").hold(1, "still")
+                a1 = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0).move(pp.approach, "approach").hold(
+                    int(getattr(pp, "pre_settle", 1)), "still")
                 c1 = a1.compile()[0]
                 lists = {pp.arm: c1}
                 if other_arm:
@@ -512,7 +533,8 @@ class Skills:
         except EpisodeEnded as e:
             self.held[pp.arm] = None
             return SkillResult(False, "place", "ended", pp.steps, pp.arm, note=str(e))
-        self.held[pp.arm] = None
+        if (getattr(pp, "tail_kw", None) or {}).get("release", True):
+            self.held[pp.arm] = None
         r = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
         r.note = (r.note + "; " + note_rm).strip("; ")
         return r
@@ -534,14 +556,16 @@ class Skills:
     # ------------------------------------------------------------------ re-orienting transfer
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 10, grasps=None,
-                      q_start: dict | None = None):
+                      q_start: dict | None = None, max_pick_tilt: float = 50.0):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
         pair, every approach) plus the category's usual candidates. A screen (IK + collision at the grasp
         and at the place) ranks the pairs; the best ``max_full`` are planned in full (pick, then the place
         from the lift's end). ``yaw_sym``: each target is also tried turned by 2 pi k / yaw_sym about the
-        vertical through its bbox centre. Returns (PickPlan, PlacePlan) or a SkillResult."""
+        vertical through its bbox centre. ``max_pick_tilt``: grasps whose pick approach is further from
+        straight down are not used (twin: an end-on grasp of a lying tile, 65 deg from vertical, shifted it
+        4 mm while closing and held it with 18 mm drift). Returns (PickPlan, PlacePlan) or a SkillResult."""
         w = self.world
         obj = w.obj(label)
         place_kw = dict(place_kw or {})
@@ -568,7 +592,10 @@ class Skills:
                 cands = G.box_grasps(obj, self.kin, a) + G.candidates(obj, self.kin, a)
             # place poses this arm reaches at all (the grasp only changes the wrist)
             n_g = n_p = 0
+            min_down = math.cos(math.radians(max_pick_tilt))
             for g in cands:
+                if -float(g.T[2, 0]) < min_down:
+                    continue
                 r = self.kin.ik(a, g.T, q0, n_random=0)
                 if not r.ok:
                     continue
@@ -612,6 +639,9 @@ class Skills:
         r = self._record(self.run_pick(pp))
         if not r.ok:
             return r
+        if r.status == "loose":            # turned / slid in the pads: put it down, the caller re-plans
+            self._record(self.regrasp(pp.arm))
+            return SkillResult(False, "transfer", "loose", r.steps, pp.arm, note=r.note)
         self.refresh()
         kw = dict(getattr(pl, "transfer_kw", {}) or {})
         pl2 = self.plan_place(pp.arm, pl.T_obj_target, yaw_sym=1, **kw)

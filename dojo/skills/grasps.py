@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from dojo.skills.geometry import T_from
-from dojo.skills.kinematics import TIP_BEYOND_TCP, X5Kin
+from dojo.skills.kinematics import TABLE_Z, TIP_BEYOND_TCP, X5Kin
 from dojo.skills.world import ObjectState
 
 MAX_GAP = 0.088               # pad gap fully open
@@ -381,6 +381,16 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
                         pb = p_b + eye[m] * off
                         for flip in (1.0, -1.0):
                             Tg = T_c @ T_from(pb, _frame(appr_b, flip * eye[k]))
+                            # fingertips >= 5 mm above the object's support: raise the TCP (the pads still
+                            # cover the object from there up; thin parts, < 4 mm left, are skipped)
+                            floor = max(obj.bottom_z, TABLE_Z) + TIP_TABLE_CLEAR + 0.001
+                            low = (Tg[2, 3] + min(0.0, float(Tg[2, 0])) * TIP_BEYOND_TCP
+                                   - 0.009 * abs(float(Tg[2, 2])) - 0.004 * abs(float(Tg[2, 1])))
+                            need = floor - low
+                            if need > 0:
+                                if obj.top_z - floor < 0.004:
+                                    continue
+                                Tg[2, 3] += need
                             down = -float(Tg[2, 0])
                             out.append(Grasp("box", Tg, float(ext[k]), pre_dist=0.06,
                                              score=0.6 * (1.0 - down) + 0.1 * abs(off) / max(room, 1e-3)

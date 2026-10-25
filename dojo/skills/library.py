@@ -21,7 +21,7 @@ import math
 import numpy as np
 
 from dojo.skills.executor import ArmPlan, BudgetExceeded, EpisodeEnded
-from dojo.skills.geometry import R_to_quat, T_from
+from dojo.skills.geometry import R_to_quat, T_from, inv_T
 from dojo.skills.kinematics import ARMS, TABLE_Z, TIP_BEYOND_TCP, down_R, tilted_R
 from dojo.skills.motion import CARRY, FAST, MEDIUM
 from dojo.skills.targets import current_R, half_height, level_R, on_top, rest_pose, table_rest
@@ -564,63 +564,221 @@ def rest_with_R(sk: Skills, label: str, xy, R, z_bottom: float = TABLE_Z) -> np.
     return T_from(c - R @ o.asset.center, R)
 
 
+def rests_stably(o, R, margin: float = 0.25) -> bool:
+    """Would ``o`` stand on the table in orientation ``R``? The centre of mass (area-weighted mesh centroid,
+    else the bbox centre) must project inside the bbox of its lowest points (within 1.5 mm of the bottom),
+    shrunk by ``margin`` of its half-size: a key on its tip, no; a mahjong tile on its end, yes."""
+    if o.asset.mesh is None:
+        ext = np.abs(R) @ o.asset.extents
+        return float(ext[2]) <= 2.5 * float(min(ext[0], ext[1]))
+    V, F = o.asset.mesh
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    area = np.linalg.norm(np.cross(b - a, c - a), axis=1)
+    com = ((a + b + c) / 3 * area[:, None]).sum(0) / max(float(area.sum()), 1e-12)
+    W = V @ R.T
+    cw = R @ com
+    low = W[W[:, 2] < W[:, 2].min() + 0.0015]
+    lo, hi = low[:, :2].min(0), low[:, :2].max(0)
+    mid, half = (lo + hi) / 2, (hi - lo) / 2
+    return bool(np.all(np.abs(cw[:2] - mid) <= half * (1 - margin)) and np.all(half > 0.004))
+
+
+def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, at=None):
+    """``plan_transfer`` with the object virtually at pose ``at`` (4x4; None = where it is now; both arms
+    then start from home)."""
+    o = sk.world.obj(label)
+    saved = (o.pos.copy(), o.quat.copy())
+    if at is not None:
+        o.pos, o.quat = np.asarray(at, float)[:3, 3].copy(), R_to_quat(np.asarray(at, float)[:3, :3])
+    try:
+        return sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw,
+                                q_start={a: sk.world.home_q[a] for a in ARMS} if at is not None else None)
+    finally:
+        o.pos, o.quat = saved
+
+
+def _run_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, first=None,
+             tol=(0.03, 10.0, 0.03), tries: int = 2) -> SkillResult:
+    """Plan (or take ``first``) and run one transfer; a loose grasp is put down and the leg re-planned."""
+    r = None
+    for t in range(tries):
+        plan = first if (t == 0 and first is not None) else sk.plan_transfer(label, targets, yaw_sym=yaw_sym,
+                                                                             ignore=ignore, place_kw=place_kw)
+        if isinstance(plan, SkillResult):
+            return sk._record(plan)
+        r = sk.run_transfer(*plan, tol_xy=tol[0], tol_tilt=tol[1], tol_z=tol[2])
+        if r.status != "loose":
+            return r
+        sk.refresh()
+    return r
+
+
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
-                   max_spots: int = 4, relay_near=(0.0, -0.28)) -> SkillResult:
+                   max_spots: int = 3, relay_near=(0.0, -0.28)) -> SkillResult:
     """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
-    the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay through a
-    free table spot, either re-orient first (put it down there in the target orientation, then a
-    translation) or translate first (put it down there as it is now, e.g. when its only free grasp is
-    along its length, then the re-orienting transfer from the open spot). Leg 1 is done by whichever arm
-    plans it, leg 2 by the other arm (it reaches the target). Both legs are planned before the first
-    moves."""
+    the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
+    through free table spots, the shortest that plans end to end:
+
+    * re-orient first: stand it on a spot in the target orientation (when that rests stably), then a
+      translation to the target;
+    * translate first: put it on a spot as it is (e.g. its only free grasp is along its length), then the
+      re-orienting transfer from the open spot;
+    * translate, re-orient onto a second spot, translate (a lying tile freed from its stack, stood up in
+      the open, then carried top-down into a tight slot).
+
+    Every leg picks its arm; all legs are planned before the first moves, and each later leg is
+    re-planned from the world as it is then (same intermediate pose)."""
     sk.refresh()
+    tight = (tol_xy, tol_tilt, tol_z)
     r = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
     if not isinstance(r, SkillResult):
         sk.log(f"[place_oriented] {label}: direct, {r[0].arm} ({r[0].grasp.note})")
-        return sk.run_transfer(*r, tol_xy=tol_xy, tol_tilt=tol_tilt, tol_z=tol_z)
+        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, first=r, tol=tight)
     sk.log(f"[place_oriented] {label}: no direct transfer ({r.note[:240]}); relay")
     o = sk.world.obj(label)
     Rs = [np.asarray(T, float)[:3, :3] for T in targets]
-    notes = [r.note[:120]]
     R_now = level_R(o.R)
-    options = [(spot, kind) for spot in free_spots(sk, label, near_xy=relay_near, clearance=0.03)[:max_spots]
-               for kind in ("target", "as_is")]
-    for spot, kind in options:
-        if kind == "target":
-            mids, ysym = [rest_with_R(sk, label, spot, R) for R in Rs], yaw_sym
-        else:
-            mids, ysym = [rest_with_R(sk, label, spot, R_now)], 4
-        r1 = sk.plan_transfer(label, mids, yaw_sym=ysym)
-        if isinstance(r1, SkillResult):
-            notes.append(f"spot {np.round(spot, 2).tolist()} {kind} leg 1: {r1.note[:100]}")
+    spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03)[:max_spots]
+    stable = all(rests_stably(o, R) for R in Rs)
+    chains = []
+    for sp in spots:
+        if stable:
+            chains.append([("target", sp)])
+        chains.append([("as_is", sp)])
+    if stable:
+        chains += [[("as_is", s1), ("target", s2)] for s1 in spots for s2 in spots
+                   if float(np.linalg.norm(np.subtract(s1, s2))) > 0.09]
+    notes, cache = [r.note[:120]], {}
+    for chain in chains:
+        legs, at, ok = [], None, True
+        for kind, sp in chain:
+            key = (kind, tuple(sp), None if at is None else tuple(np.round(at[:3, 3], 4)))
+            if key not in cache:
+                mids, ys = (([rest_with_R(sk, label, sp, R) for R in Rs], yaw_sym) if kind == "target"
+                            else ([rest_with_R(sk, label, sp, R_now)], 4))
+                cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at))
+            mids, ys, rl = cache[key]
+            if isinstance(rl, SkillResult):
+                notes.append(f"{kind} {np.round(sp, 2).tolist()}: {rl.note[:90]}")
+                ok = False
+                break
+            legs.append((kind, sp, rl))
+            at = rl[1].T_obj_target
+        if not ok:
             continue
-        a2 = "right" if r1[0].arm == "left" else "left"
-        T_mid = r1[1].T_obj_target
-        saved = (o.pos.copy(), o.quat.copy())
-        o.pos, o.quat = T_mid[:3, 3].copy(), R_to_quat(T_mid[:3, :3])
-        try:
-            r2 = sk.plan_transfer(label, targets, arms=[a2], yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw,
-                                  q_start={a2: sk.world.home_q[a2]})
-        finally:
-            o.pos, o.quat = saved
-        if isinstance(r2, SkillResult):
-            notes.append(f"spot {np.round(spot, 2).tolist()} {kind} leg 2: {r2.note[:100]}")
+        rf = _plan_leg(sk, label, targets, yaw_sym, ignore, place_kw, at=at)
+        if isinstance(rf, SkillResult):
+            notes.append(f"chain {[k for k, _ in chain]} last leg: {rf.note[:90]}")
             continue
-        sk.log(f"[place_oriented] {label}: relay ({kind}) at {np.round(spot, 3).tolist()}: {r1[0].arm} "
-               f"({r1[0].grasp.note}) then {a2} ({r2[0].grasp.note})")
-        res1 = sk.run_transfer(*r1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.03)
-        if not res1.ok and res1.status in ("step_budget", "ended", "grasp_slip"):
-            return res1
+        sk.log(f"[place_oriented] {label}: relay " + " -> ".join(
+            f"{k}@{np.round(sp, 2).tolist()} {rl[0].arm} ({rl[0].grasp.note})" for k, sp, rl in legs)
+            + f" -> target {rf[0].arm} ({rf[0].grasp.note})")
+        for i, (kind, sp, rl) in enumerate(legs):
+            tgt = [rl[1].T_obj_target]
+            res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None)
+            if not res.ok and res.status in ("step_budget", "ended", "grasp_slip", "ik_fail", "collision", "logic"):
+                return res
+            sk.bank()
+            sk.refresh()
+        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight)
+    return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
+
+
+def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001) -> dict:
+    """Insert ``obj`` into whichever of ``receptacles`` its mesh fits best (``insertion.fit_insertion``:
+    leading end, yaw and offset with the largest clearance, depth to the floor), then, when asked, turn
+    it about the insertion axis by ``turn_deg`` (a key in its lock) before letting go. Re-oriented in the
+    hand or relayed between the arms (``place_oriented``): a slow straight descent from 15 mm above the
+    opening after a still pre-place pose and an in-hand re-measure; ``press`` = how far past the floor
+    contact the descent is commanded."""
+    from dojo.skills.insertion import fit_insertion
+    w = sk.refresh()
+    o = w.obj(obj)
+    fits = []
+    for r in receptacles:
+        if r == obj or r not in w.objects:
+            continue
+        f = fit_insertion(o, w.obj(r))
+        if f is not None:
+            fits.append((f.clearance, r, f))
+    if not fits:
+        return {"ok": False, "stage": "fit", "note": f"{obj} fits none of {receptacles}"}
+    _, rec, fit = max(fits, key=lambda x: x[0])
+    sk.log(f"[insert] {obj} -> {rec}: {fit.note}")
+    w.notes["insert"] = {"receptacle": rec, "fit": fit.note}
+    sk.coll.include.add(rec)
+    T = fit.T_obj.copy()
+    T[2, 3] -= press
+    place_kw = {"pre_h": 0.02, "descend_rad": 0.025, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
+                "turn": math.radians(turn_deg), "release": True}
+    res = place_oriented(sk, obj, [T], yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
+                         place_kw=place_kw)
+    if not res.ok and res.status != "ended":
+        return {"ok": False, "stage": f"insert {obj}", "result": res}
+    return {"ok": True, "stage": "inserted"}
+
+
+def functional_frames(o, tag: str, active: bool = False) -> list[np.ndarray]:
+    """A functional point's frames (4x4, object frame) from the asset metadata (pose7: xyz + wxyz)."""
+    raw = (o.asset.active_functional if active else o.asset.functional).get(tag) or {}
+    out = []
+    for f in raw.get("frame") or []:
+        f = np.asarray(f, float)
+        out.append(T_from(f[:3], quat=f[3:7] / np.linalg.norm(f[3:7])))
+    return out
+
+
+def slot_targets(sk: Skills, label: str, container: str) -> list[np.ndarray]:
+    """Object poses that put ``label`` into the container's slot named after its category
+    (``<category>_slot`` passive functional frame): each of the object's active functional points
+    (``center``, ``center_flip``, ...) on the slot frame, position and orientation."""
+    w = sk.world
+    o, c = w.obj(label), w.obj(container)
+    cat = o.category.lower()
+    slots = [t for t in c.asset.functional if cat in t.lower()]
+    pts = [functional_frames(o, t, active=True) for t in o.asset.active_functional] or [[np.eye(4)]]
+    out = []
+    for t in slots:
+        for Ts in functional_frames(c, t):
+            for group in pts:
+                for Tp in group:
+                    out.append(c.T @ Ts @ inv_T(Tp))
+    return out
+
+
+def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
+    """Put every object into its matching slot of ``container`` (``slot_targets``), the nearest first,
+    re-oriented as the slot frame says; grippers open after each (partial credit is per object)."""
+    w = sk.refresh()
+    sk.coll.include.add(container)
+    todo = [l for l in objects if l in w.objects and slot_targets(sk, l, container)]
+    if not todo:
+        return {"ok": False, "stage": "roles", "note": f"no slot in {container} matches {objects}"}
+    done, failed = [], []
+    c = w.obj(container).center_w
+    for _ in range(len(todo)):
+        w = sk.refresh()
+        rest = [l for l in todo if l not in done and l not in failed]
+        if not rest:
+            break
+        lab = min(rest, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - c[:2])))
+        tg = slot_targets(sk, lab, container)
+        sk.log(f"[slots] {lab}: {len(tg)} slot poses")
+        # the objects already in their slots are ignored for the place (their boxes overlap the next slot's)
+        r = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03,
+                           ignore=(container, *done), place_kw={"pre_h": 0.04, "release_gap": 0.004})
+        (done if r.ok else failed).append(lab)
+        if r.status in ("step_budget", "ended"):
+            break
+        if any(sk.held[a] is not None for a in ARMS):
+            for a in ARMS:
+                if sk.held[a] is not None:
+                    sk._record(sk.regrasp(a))
         sk.bank()
-        sk.refresh()
-        r2 = sk.plan_transfer(label, targets, arms=[a2], yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
-        if isinstance(r2, SkillResult):
-            r2 = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
-        if isinstance(r2, SkillResult):
-            return sk._record(r2)
-        return sk.run_transfer(*r2, tol_xy=tol_xy, tol_tilt=tol_tilt, tol_z=tol_z)
-    return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:5])))
+    if failed or len(done) < len(todo):
+        return {"ok": False, "stage": "slots", "note": f"in: {done}, failed: {failed}"}
+    return {"ok": True, "stage": "all in slots"}
 
 
 def up_body_axis(o) -> np.ndarray:
@@ -762,4 +920,5 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
 
 
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
-          "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong}
+          "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,
+          "insert_into": insert_into, "place_in_slots": place_in_slots}
