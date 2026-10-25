@@ -55,3 +55,15 @@ def test_floating_reading_loses_confidence():
     up["pos"][2] = 0.85
     objs, _, ev = tr.update([blk("a", 0.0, -0.1), up], FAR, {})
     assert next(o for o in objs if o["label"] == "c")["confidence"] == pytest.approx(0.45)
+
+
+def test_scan_pose_constants_mirror_and_steps():
+    from dojo.perception import scan
+
+    el, tl = scan.eye_target("left")
+    er, tr_ = scan.eye_target("right")
+    assert el[0] == -er[0] and el[1:].tolist() == er[1:].tolist() and tl[0] == -tr_[0]
+    assert scan.steps_between([0] * 6, [0.0, -0.24, 1.29, -1.78, 0.63, 0.15]) == 12  # 1.78 rad at 0.16 rad/step
+    # the eye sits behind and above its arm's corner of the table, outside the object region
+    (x0, x1), (y0, y1) = scan.OBJECT_REGION
+    assert el[1] < y0 and el[2] > 1.0
