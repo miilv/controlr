@@ -21,6 +21,8 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import os
+import subprocess
 import time
 import zlib
 from pathlib import Path
@@ -28,7 +30,7 @@ from pathlib import Path
 import numpy as np
 
 from dojo.simlab import paths
-from dojo.simlab.proxy_eval import PROXY_TAG, ProxyEpisode, RenderClient
+from dojo.simlab.proxy_eval import PROXY_TAG, RENDERED_TAG, ProxyEpisode, RenderClient, RenderedEpisode
 from dojo.simlab.runner import jsonable
 
 from .estimate import objects_from_gt_rows, objects_from_record, pose_errors
@@ -113,20 +115,35 @@ def deployed_code() -> dict | None:
 
 
 def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_minutes: float = 25.0,
-        policy_factory=None) -> dict:
+        policy_factory=None, renderer: str = "isaac60") -> dict:
+    """``renderer``: ``isaac60`` = the proxy (physics-only 5.1 + the 6.0 render service, compute3); ``isaac51`` =
+    one 5.1 EvalEnv with RTX (``RenderedEpisode``; a box where 5.1 renders, e.g. isr-lab)."""
     from dojo.skills.world import AssetDB
     out.mkdir(parents=True, exist_ok=True)
     tag = f"{task}_{cfg.mode}_verify-{cfg.verify}"
-    rc = RenderClient()
-    ep = ProxyEpisode(task, rc, out)
+    if renderer == "isaac51":
+        rc, ep = None, RenderedEpisode(task, out)
+    else:
+        rc = RenderClient()
+        ep = ProxyEpisode(task, rc, out)
     pol = (policy_factory or RuntimePolicy)(cfg)
     assets = AssetDB(paths.OBJECTS)
     rows, t_all = [], time.perf_counter()
     code = deployed_code()
+    gate = os.environ.get("DOJO_EVAL_GATE")          # a command run before each episode (isr-lab: inbox / reserve / disk)
+    stop = None
     for lf in layout_files:
         if (time.perf_counter() - t_all) / 60 > max_minutes:
             rows.append({"layout": lf, "skipped": "time budget of this job"})
             print(f"\n[integ] {tag}: time budget reached, skipping {Path(lf).name}", flush=True)
+            continue
+        if gate and stop is None:
+            g = subprocess.run(gate, shell=True, capture_output=True, text=True)
+            if g.returncode != 0:
+                stop = (g.stdout + g.stderr).strip()[:200] or f"rc {g.returncode}"
+        if stop is not None:
+            rows.append({"layout": lf, "skipped": f"gate: {stop}"})
+            print(f"\n[integ] {tag}: gate refused, skipping {Path(lf).name}: {stop}", flush=True)
             continue
         paths.assert_not_eval(lf)
         lay = json.loads(Path(lf).read_text())
@@ -162,7 +179,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         cat, why = classify(res, reward, rep, perc, cfg.mode)
         wall = time.perf_counter() - t0
         v = rep.get("verify")
-        row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify,
+        row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "renderer": renderer,
                "success": bool(res["success"]), "score": float(res["score"]), "steps_used": int(res["steps_used"]),
                "step_lim": int(res["step_lim"]), "observations": int(res["observations"]), "wall_s": round(wall, 1),
                "sim_s": round(sim_s, 1), "observe_s": round(float(np.sum(obs_s)), 1),
@@ -195,9 +212,13 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
               f"steps={row['steps_used']}/{row['step_lim']} looks={row['n_looks']} wall={row['wall_s']}s "
               f"(sim {row['sim_s']} obs {row['observe_s']} worker {row['worker_s']}) cat={cat} {why[:120]}", flush=True)
     summ = summarize(rows, task, cfg)
+    if renderer == "isaac51":
+        summ["proxy"] = RENDERED_TAG
+        summ["renderer"] = renderer
     (out / f"{tag}_summary.json").write_text(json.dumps(jsonable(summ), indent=1, default=str))
     print(f"\n[integ] SUMMARY {json.dumps(jsonable(summ), default=str)}", flush=True)
-    rc.close()
+    if rc is not None:
+        rc.close()
     return summ
 
 
@@ -232,9 +253,12 @@ def main(argv=None) -> None:
     ap.add_argument("--config", default="{}", help="extra RuntimeConfig fields as JSON")
     ap.add_argument("--max-minutes", type=float, default=25.0)
     ap.add_argument("--policy", default=None, help="module:Class, called as Class(cfg) (default RuntimePolicy)")
+    ap.add_argument("--renderer", choices=("isaac60", "isaac51"), default="isaac60",
+                    help="isaac60: the proxy (6.0 render service); isaac51: one 5.1 EvalEnv with RTX (isr-lab)")
     a = ap.parse_args(argv)
     cfg = RuntimeConfig(**{**json.loads(a.config), "mode": a.mode, "verify": a.verify})
-    run(a.task, a.layouts, cfg, Path(a.out), a.max_minutes, policy_factory=load_policy_factory(a.policy))
+    run(a.task, a.layouts, cfg, Path(a.out), a.max_minutes, policy_factory=load_policy_factory(a.policy),
+        renderer=a.renderer)
 
 
 if __name__ == "__main__":

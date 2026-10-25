@@ -35,6 +35,8 @@ from dojo.simlab import paths
 from dojo.simlab.runner import RoboDojoRunner, jsonable
 
 PROXY_TAG = "proxy: isaac-5.1 physics-only + isaac-6.0 render on demand (not the official renderer)"
+RENDERED_TAG = ("dev eval: isaac-5.1 RoboDojo EvalEnv with RTX rendering (the eval client's app flags), our dev "
+                "layouts, no robot server / ws policy (not the official client)")
 
 
 class RenderClient:
@@ -107,6 +109,46 @@ class ProxyEpisode:
         rw = self.run.reward(0)
         return {"images": res["images"], "state": o["state"], "instruction": o["instruction"],
                 "steps_used": rw["steps_used"], "step_lim": rw["step_lim"], "renderer": res["renderer"]}
+
+    def step(self, action: dict) -> bool:
+        return bool(self.run.step(action)[0])
+
+    def result(self) -> dict:
+        rw = self.run.reward(0)
+        return {"success": rw["success"], "score": self.run.score(0), "steps_used": rw["steps_used"],
+                "step_lim": rw["step_lim"], "observations": self.n_obs}
+
+
+class RenderedEpisode:
+    """``ProxyEpisode``'s interface on a box where Isaac 5.1 renders (isr-lab): ONE RoboDojo EvalEnv with RTX,
+    launched with the official eval client's app flags (``runner.launch_app``), frames from its own cameras
+    (``RoboDojoRunner.obs``: ``render_for_capture`` + ``get_obs``), no 6.0 render service. The physics, reset,
+    step accounting and latches are the proxy's; only the frames differ (genuine 5.1)."""
+
+    renderer = "isaac-5.1"
+
+    def __init__(self, task: str, workdir: Path):
+        self.task = task
+        self.workdir = Path(workdir)
+        self.run = RoboDojoRunner(task, physics_only=False, need_planner=False, workdir=str(self.workdir / "work"))
+        self.n_obs = 0
+
+    def reset(self, layout: dict) -> dict:
+        t0 = time.perf_counter()
+        info = self.run.load(layout)
+        if not info["stable"]:
+            return {"stable": False}
+        self.n_obs = 0
+        return {"stable": True, "task": self.task, "layout_id": (layout.get("_simlab") or {}).get("id"),
+                "instruction": info["instruction"][0], "step_lim": int(self.run.env.step_lim),
+                "reset_s": time.perf_counter() - t0, "render_stage_s": 0.0}
+
+    def observe(self) -> dict:
+        o = self.run.obs(0)
+        self.n_obs += 1
+        rw = self.run.reward(0)
+        return {"images": o["images"], "state": o["state"], "instruction": o["instruction"],
+                "steps_used": rw["steps_used"], "step_lim": rw["step_lim"], "renderer": self.renderer}
 
     def step(self, action: dict) -> bool:
         return bool(self.run.step(action)[0])

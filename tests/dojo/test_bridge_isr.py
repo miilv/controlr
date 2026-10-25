@@ -136,3 +136,123 @@ def test_summary_identity_is_position_only_when_estimates_name_no_assets():
                                   "default_pos": [0.1 * i, 0.0, 0.78]} for i in range(2)]}}
     e = isr_summary.perception_errors(rec, isr_summary.truth_objects(hello))
     assert e["gross"] == 0
+
+
+def test_runtime_eval_isaac51_uses_the_rendered_episode_and_no_render_service(tmp_path, monkeypatch):
+    """``dojo.runtime.eval --renderer isaac51`` (isr-lab's rendered 5.1 dev eval): episodes come from
+    ``RenderedEpisode`` (one 5.1 EvalEnv with RTX); the 6.0 render client is never built; rows and the summary say
+    which renderer ran."""
+    import types
+
+    import dojo.runtime.eval as EV
+    from dojo.simlab.proxy_eval import RENDERED_TAG
+
+    made = []
+
+    class FakeRun:
+        def objects_gt(self, i):
+            return []
+
+        def reward(self, i):
+            return {"success": True, "ended": True, "steps_used": 3, "step_lim": 10}
+
+    class FakeRendered:
+        def __init__(self, task, workdir):
+            made.append((task, Path(workdir)))
+            self.run = FakeRun()
+
+        def reset(self, layout):
+            return {"stable": True, "task": "stack_blocks", "layout_id": 100000, "instruction": "x", "step_lim": 10,
+                    "reset_s": 0.0, "render_stage_s": 0.0}
+
+        def observe(self):
+            return {"images": {}, "state": {}, "instruction": "x", "steps_used": 0, "step_lim": 10,
+                    "renderer": "isaac-5.1"}
+
+        def step(self, a):
+            return False
+
+        def result(self):
+            return {"success": True, "score": 1.0, "steps_used": 3, "step_lim": 10, "observations": 1}
+
+    class Pol:
+        def __init__(self, cfg):
+            self.bridge = types.SimpleNamespace(executed=[])
+
+        def reset(self, info):
+            pass
+
+        def next(self, obs):
+            return {"done": True}
+
+        def episode_report(self):
+            return {"timings": {}, "looks": [], "events": []}
+
+    def no_render(*a, **k):
+        raise AssertionError("the 6.0 render client must not be built for isaac51")
+
+    monkeypatch.setattr(EV, "RenderedEpisode", FakeRendered)
+    monkeypatch.setattr(EV, "RenderClient", no_render)
+    lay = tmp_path / "100000.settled.json"
+    lay.write_text(json.dumps({"_simlab": {"id": 100000}}))
+    cfg = EV.RuntimeConfig(mode="gt", verify="off")
+    summ = EV.run("stack_blocks", [str(lay)], cfg, tmp_path / "out", policy_factory=Pol, renderer="isaac51")
+    assert made and made[0][0] == "stack_blocks"
+    assert summ["renderer"] == "isaac51" and summ["proxy"] == RENDERED_TAG and summ["success"] == 1
+    row = json.loads((tmp_path / "out" / "stack_blocks_gt_verify-off_episodes.jsonl").read_text().splitlines()[0])
+    assert row["renderer"] == "isaac51"
+
+
+def test_runtime_eval_gate_skips_the_remaining_layouts(tmp_path, monkeypatch):
+    import dojo.runtime.eval as EV
+
+    calls = []
+
+    class Ep:
+        def __init__(self, task, workdir):
+            self.run = type("R", (), {"objects_gt": lambda s, i: [], "reward": lambda s, i: {"success": True}})()
+
+        def reset(self, layout):
+            calls.append(layout["_simlab"]["id"])
+            return {"stable": True, "layout_id": layout["_simlab"]["id"], "instruction": "x", "step_lim": 10,
+                    "reset_s": 0.0}
+
+        def observe(self):
+            return {}
+
+        def step(self, a):
+            return False
+
+        def result(self):
+            return {"success": True, "score": 1.0, "steps_used": 1, "step_lim": 10, "observations": 1}
+
+    class Pol:
+        def __init__(self, cfg):
+            self.bridge = type("B", (), {"executed": []})()
+
+        def reset(self, info):
+            pass
+
+        def next(self, obs):
+            return {"done": True}
+
+        def episode_report(self):
+            return {"timings": {}}
+
+    monkeypatch.setattr(EV, "RenderedEpisode", Ep)
+    flag = tmp_path / "stop"
+    monkeypatch.setenv("DOJO_EVAL_GATE", f"test ! -e {flag} || {{ echo disk low; exit 77; }}")
+    lays = []
+    for i in range(3):
+        p = tmp_path / f"{100000 + i}.json"
+        p.write_text(json.dumps({"_simlab": {"id": 100000 + i}}))
+        lays.append(str(p))
+
+    class Gated(Pol):
+        def episode_report(self):
+            flag.touch()                                   # the gate refuses from the second episode on
+            return {"timings": {}}
+
+    summ = EV.run("stack_blocks", lays, EV.RuntimeConfig(mode="gt", verify="off"), tmp_path / "o",
+                  policy_factory=Gated, renderer="isaac51")
+    assert calls == [100000] and summ["n"] == 1 and summ["skipped"] == 2
