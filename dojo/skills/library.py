@@ -695,7 +695,8 @@ def _object_at(o, T):
 
 
 def _take_options(sk: Skills, label: str, T_H, g_arm: str, q_give, g_hold: float, t_arm: str, q_t0, tg: list,
-                  ignore=(), place_kw=None, first=None, max_n: int = 1, max_eval: int = 40, cache: dict | None = None):
+                  ignore=(), place_kw=None, first=None, max_n: int = 1, max_eval: int = 40, cache: dict | None = None,
+                  min_d: float = 0.004):
     """The taker's grasps on the object held by the giver at world pose ``T_H`` (the giver at joints
     ``q_give``, fingers at ``g_hold``): IK from ``q_t0``, both of the taker's finger states and its pre-grasp
     kept >= 4 mm from the giver's hand, and a final place in ``tg`` reachable with that grasp and
@@ -751,18 +752,18 @@ def _take_options(sk: Skills, label: str, T_H, g_arm: str, q_give, g_hold: float
                 continue
             # hands apart, from the grasp poses alone (no IK): open, closed, and at the pre-grasp
             F_t, F_pre = sk.kin.flange_from_tcp(gt.T), sk.kin.flange_from_tcp(gt.pre(0.06))
-            if (_min_dist(P_give, _hand_points(sk, F_t, g_open)) < 0.004
-                    or _min_dist(P_give, _hand_points(sk, F_t, g_take)) < 0.004
-                    or _min_dist(P_give, _hand_points(sk, F_pre, g_open)) < 0.004):
+            if (_min_dist(P_give, _hand_points(sk, F_t, g_open)) < min_d
+                    or _min_dist(P_give, _hand_points(sk, F_t, g_take)) < min_d
+                    or _min_dist(P_give, _hand_points(sk, F_pre, g_open)) < min_d):
                 continue
             n_eval += 1
             if n_eval > max_eval:
                 break
             rt = sk.kin.ik(t_arm, gt.T, q_t0, n_random=0)
-            if not rt.ok or not _grippers_apart(sk, g_arm, q_give, g_hold, t_arm, rt.q, g_open):
+            if not rt.ok or not _grippers_apart(sk, g_arm, q_give, g_hold, t_arm, rt.q, g_open, min_d=min_d):
                 continue
             rpre = sk.kin.ik(t_arm, gt.pre(0.06), q_t0, n_random=0)
-            if not rpre.ok or not _grippers_apart(sk, g_arm, q_give, g_hold, t_arm, rpre.q, g_open):
+            if not rpre.ok or not _grippers_apart(sk, g_arm, q_give, g_hold, t_arm, rpre.q, g_open, min_d=min_d):
                 continue
             k = ("hq",) + key
             if k not in cache:
@@ -835,7 +836,8 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                         if not rg.ok:
                             continue
                         opts = _take_options(sk, label, T_H, g_arm, rg.q, g_hold, t_arm, w.home_q[t_arm], tg,
-                                             ignore, place_kw, max_n=1, cache=caches.setdefault(t_arm, {}))
+                                             ignore, place_kw, max_n=1, cache=caches.setdefault(t_arm, {}),
+                                             min_d=0.005)
                         for op in opts:
                             gt = op["gt"]
                             held_t = Held(label, op["T_to"], held_box(o, op["T_to"]), gt)
@@ -932,7 +934,7 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
         g_hold = gap_to_grip(h["pick"].grasp.width)
         opts = _take_options(sk, label, o.T, g_arm, sk.ex.q[g_arm], g_hold, t_arm, sk.ex.q[t_arm], [h["target"]],
                              (h["place"].transfer_kw or {}).get("ignore", ()), getattr(h["place"], "tail_kw", None),
-                             first=gt_obj, max_n=6)
+                             first=gt_obj, max_n=6, min_d=0.003)     # planned with 5 mm, the object moves a little
         take = None
         for op in opts:
             g2 = op["gt"]
