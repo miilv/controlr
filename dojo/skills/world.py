@@ -42,6 +42,11 @@ class AssetInfo:
     mesh: tuple | None = None                       # (vertices (N,3), faces (M,3)) when a catalogue is present
     irregular: bool | None = None                   # fills its box poorly (set at load for decimated meshes)
     rgb: np.ndarray | None = None                   # mean face colour 0..255 (catalogue), for "the red block"
+    # articulated assets (catalogue links.json, scripts/skills/articulation_links.py): link name -> {"bbox_min",
+    # "bbox_max", "points" (N,3)} and joint name -> {"type", "body1", "axis", "origin", "lower", "upper",
+    # "position"}, all in the asset frame at the USD's authored state
+    links: dict | None = None
+    joints: dict | None = None
 
     @property
     def extents(self) -> np.ndarray:
@@ -77,10 +82,21 @@ class AssetDB:
         p = self.root / key / "metadata.json"
         m = json.loads(p.read_text())
         info = asset_from_metadata(key, m)
+        if obj_type == "Articulation" and not clutter:
+            for cat_root in self.catalogs:
+                lj = cat_root / key / "links.json"
+                if lj.exists():
+                    d = json.loads(lj.read_text())
+                    info.links = {k: {"bbox_min": np.asarray(v["bbox_min"], float),
+                                      "bbox_max": np.asarray(v["bbox_max"], float),
+                                      "points": np.asarray(v.get("points") or [v["bbox_min"], v["bbox_max"]], float)}
+                                  for k, v in (d.get("links") or {}).items()}
+                    info.joints = dict(d.get("joints") or {})
+                    break
         if mesh:
             for cat_root in self.catalogs:
                 g = cat_root / key / "geom.npz"
-                if g.exists():
+                if g.exists() and info.mesh is None:
                     z = np.load(g)
                     V, F = np.asarray(z["vertices"], float), np.asarray(z["faces"], int)
                     if len(F) > MAX_FACES:

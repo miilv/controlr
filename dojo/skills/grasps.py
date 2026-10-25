@@ -45,6 +45,7 @@ class Grasp:
     note: str = ""
     lift_dir: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 1.0]))
     clear_w: float = 0.0          # open at least this wide (an irregular object's collider can exceed its mesh slice)
+    narrow: bool = False          # open only 4 mm per side (a thin slice between neighbours)
 
     @property
     def approach(self) -> np.ndarray:
@@ -59,7 +60,15 @@ class Grasp:
         return P
 
     def open_gap(self) -> float:
+        if self.narrow:
+            return min(MAX_GAP, max(self.width, self.clear_w) + 0.008)
         return min(MAX_GAP, max(self.width, self.clear_w) + 2 * CLEAR + 0.006)
+
+
+def narrowed(g: "Grasp") -> "Grasp":
+    """The same grasp opened only 4 mm per side."""
+    import dataclasses
+    return dataclasses.replace(g, narrow=True)
 
 
 def _frame(approach, closing) -> np.ndarray:

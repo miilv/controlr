@@ -196,3 +196,17 @@ def test_wrist_safe():
     assert wrist_safe([0, 1.2, 1.0, 0.5, 0.0, 1.0])
     assert not wrist_safe([0, 1.2, 1.0, 1.7, 0.0, 1.0])
     assert not wrist_safe([0, 1.2, 1.0, 0.5, 0.0, 3.14])
+
+
+def test_push_contact_height_follows_the_trailing_face():
+    """A wedge 5 mm tall at its front edge, 22 mm at the back: a push towards +y meets the 5 mm front face."""
+    from dojo.skills.library import _face_height
+    V = np.array([[-0.15, -0.08, 0.0], [0.15, -0.08, 0.0], [-0.15, 0.08, 0.0], [0.15, 0.08, 0.0],
+                  [-0.15, -0.08, 0.005], [0.15, -0.08, 0.005], [-0.15, 0.08, 0.022], [0.15, 0.08, 0.022]])
+    F = np.array([[0, 1, 3], [0, 3, 2], [4, 7, 5], [4, 6, 7], [0, 4, 5], [0, 5, 1], [2, 3, 7], [2, 7, 6],
+                  [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]])
+    kb = _obj("kb", "keyboard", 0, (0.0, -0.18, 0.765), (0.15, 0.08, 0.011), mesh=(V, F))
+    h_front = _face_height(kb, np.array([0.0, 1.0]))
+    h_back = _face_height(kb, np.array([0.0, -1.0]))
+    assert h_front is not None and h_front < 0.008
+    assert h_back is not None and h_back > 0.018

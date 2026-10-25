@@ -172,6 +172,9 @@ class Collision:
         self.finger_margin = finger_margin
         self.obj_margin = obj_margin
         self.include: set = set()          # Geometry labels that are obstacles too (a keyhole block, a socket)
+        # per-object margins instead of obj_margin (identical slices side by side in a rack: 13 mm between two
+        # bread slices, the fingertips need 3.4 mm + clearance there)
+        self.margin_of: dict = {}
 
     def obstacles(self, ignore=()) -> list[tuple[np.ndarray, np.ndarray, np.ndarray, str]]:
         if self.world is None:
@@ -179,7 +182,7 @@ class Collision:
         out = []
         extra = [self.world.objects[l] for l in self.include if l in self.world.objects and l not in ignore]
         for o in self.world.obstacles(exclude=set(ignore)) + [o for o in extra if o.obj_type == "Geometry"]:
-            c, R, h = o.obb(self.obj_margin)
+            c, R, h = o.obb(self.margin_of.get(o.label, self.obj_margin))
             out.append((c, R, h, o.label))
         return out
 
