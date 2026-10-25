@@ -185,5 +185,15 @@ def test_identity_rules_make_kong_like():
                                                                      "allow_global_same": False}}, rng, lay, state)
         G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "same", "nums": 3,
                                                                      "allow_global_same": False}}, rng, lay, state)
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(G.LayoutError):                  # linked_count is placed by place_task_objects
         G.select_instances("Rigid", {"category": cat, "select_mode": {"mode": "linked_count"}}, rng, lay)
+    h = G.select_instances("Rigid", {"category": [{"name": "watch", "index": [1, 2]}, {"name": "car", "index": [3]},
+                                                  {"name": "pen", "index": [4, 5]}],
+                                     "select_mode": {"mode": "hierarchical", "select_category_nums": [3, 3],
+                                                     "select_instance_nums": [1, 1], "label_prefix": ["cat0", "cat1", "cat2"]}},
+                           rng, lay)
+    assert sorted(e["_label"] for e, _ in h) == ["cat0_0", "cat1_0", "cat2_0"]   # one category per prefix
+    g = G.select_instances("Rigid", {"category": [{"name": "number", "index": list(range(10)), "group": "t0"}],
+                                     "select_mode": {"mode": "hierarchical", "select_instance_nums": [4, 4],
+                                                     "label_prefix": ["digit"]}}, rng, lay)
+    assert [e["_label"] for e, _ in g] == ["digit_0", "digit_1", "digit_2", "digit_3"]

@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v7"
+GENERATOR = "simlab/v8"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -182,7 +182,7 @@ def _count(n, rng: random.Random) -> int:
     return int(n)
 
 
-UNSUPPORTED_SELECT = ("label_prefix", "linked_count", "linked_label_prefix")
+UNSUPPORTED_SELECT: tuple = ()          # every select_mode feature of the 54 configs is implemented (v8)
 
 
 def _layout_assets(layout: dict) -> set:
@@ -202,9 +202,11 @@ def select_instances(obj_type: str, group: dict, rng: random.Random, layout: dic
     * ``hierarchical``, ``allow_duplicate``; ``label_map`` is handled by the caller.
     Modes / keys not implemented raise instead of being silently ignored."""
     sm = group.get("select_mode") or {}
-    bad = [k for k in UNSUPPORTED_SELECT if k in sm] + (["dynamic_layout"] if "dynamic_layout" in group else [])
-    if sm.get("mode") == "linked_count" or bad:
-        raise NotImplementedError(f"select_mode features not implemented: {bad or sm.get('mode')}")
+    dl = group.get("dynamic_layout")
+    if dl and dl.get("type") != "x_symmetric_line":
+        raise NotImplementedError(f"dynamic_layout {dl.get('type')!r} not implemented")
+    if sm.get("mode") == "linked_count":
+        raise LayoutError("linked_count groups are placed by place_task_objects")
     state = state if state is not None else {}
     if sm.get("mode") in ("same_index_as_label", "same_as_label"):
         from dojo.simlab.layout import find
@@ -225,15 +227,22 @@ def select_instances(obj_type: str, group: dict, rng: random.Random, layout: dic
         n_cat = _count(sm.get("select_category_nums", [1, 1]), rng)
         n_inst = _count(sm.get("select_instance_nums", [1, 1]), rng)
         groups: dict[Any, list] = {}
-        for e, idx in entries:
-            groups.setdefault(e.get("group"), []).append((e, idx))
-        out = []
-        for g in rng.sample(sorted(groups, key=str), n_cat):
+        for j, (e, idx) in enumerate(entries):          # no "group" key: each category entry is a group
+            groups.setdefault(e.get("group", f"_entry{j}"), []).append((e, idx))
+        prefix = sm.get("label_prefix")
+        per_group = isinstance(prefix, list) and len(prefix) > 1
+        out, k = [], 0
+        for gi, g in enumerate(rng.sample(sorted(groups, key=str), n_cat)):
             pool = [(e, i) for e, idx in groups[g] for i in idx]
-            if sm.get("instance_sample_mode", "unique") == "unique":
-                out += rng.sample(pool, n_inst)
-            else:
-                out += [rng.choice(pool) for _ in range(n_inst)]
+            picks = rng.sample(pool, n_inst) if sm.get("instance_sample_mode", "unique") == "unique" \
+                else [rng.choice(pool) for _ in range(n_inst)]
+            for ii, (e, i) in enumerate(picks):
+                if prefix is not None:                      # labels the task code looks up by prefix
+                    lab = f"{prefix[gi]}_{ii}" if per_group else \
+                        f"{prefix[0] if isinstance(prefix, list) else prefix}_{k}"
+                    e = dict(e, _label=lab)
+                out.append((e, i))
+                k += 1
         return out
     n = _count(sm.get("nums", 1), rng)
     pool = [(e, i) for e, idx in entries for i in idx]
@@ -374,6 +383,26 @@ def _deps(group: dict) -> set:
     return deps
 
 
+def linked_instances(obj_type: str, group: dict, rng: random.Random, linked_n: dict) -> list[tuple[dict, int]]:
+    """``select_mode: linked_count``: one instance per object of the linked group, labelled
+    ``<label_prefix>_<i>``, at ``dynamic_layout`` positions (``x_symmetric_line``: x = center + (i - (n-1)/2) *
+    spacing, one y drawn from ylim for the whole row; i = 0 is the leftmost, world -x)."""
+    sm, dl = group["select_mode"], group.get("dynamic_layout") or {}
+    n = linked_n[id(group)]
+    prefix = sm.get("label_prefix")
+    prefix = prefix[0] if isinstance(prefix, list) else (prefix or "linked")
+    entry = group["category"][0]
+    idx_pool = entry.get("index") if entry.get("index") is not None else available_indices(obj_type, entry["name"])
+    yr = _ranges((group.get("common") or {}).get("ylim") or [0, 0])[0]
+    y = rng.uniform(*yr)
+    c, sp = float(dl.get("center", 0.0)), float(dl.get("spacing", 0.1))
+    out = []
+    for i in range(n):
+        e = dict(entry, _label=f"{prefix}_{i}", _fixed_xy=(c + (i - (n - 1) / 2) * sp, y))
+        out.append((e, int(idx_pool[0])))
+    return out
+
+
 def label_map_instances(obj_type: str, group: dict, layout: dict) -> list[tuple[dict, int]]:
     """``select_mode: label_map``: the instance listed for the key object in ``<category>/map.json``
     (e.g. the photo that shows pick_from_conveyor_by_image's target)."""
@@ -406,21 +435,44 @@ def place_task_objects(groups: dict[str, list], gens: dict, rng: random.Random, 
     used_supports: set = set()
     siblings: dict = {}
     sel_state: dict = {}
+    # linked_count (arrange_largest_number's mats, one per digit): select the linked group's instances first,
+    # then place the mats before the digits, so the digits avoid them
+    presel, linked_n = {}, {}
+    for t, g in list(ordered):
+        sm = g.get("select_mode") or {}
+        if sm.get("mode") != "linked_count":
+            continue
+        src = next(((t2, g2) for t2, g2 in ordered if (g2.get("select_mode") or {}).get("label_prefix") in
+                    (sm["linked_label_prefix"], [sm["linked_label_prefix"]])), None)
+        if src is None:
+            raise LayoutError(f"linked_count: no group with label_prefix {sm['linked_label_prefix']!r}")
+        presel[id(src[1])] = select_instances(src[0], src[1], rng, layout, sel_state)
+        linked_n[id(g)] = len(presel[id(src[1])])
+        ordered.remove((t, g))
+        ordered.insert(0, (t, g))
     for obj_type, group in ordered:
         common = dict(group.get("common") or {})
         labels = list((group.get("select_mode") or {}).get("label") or [])
         sm_mode = (group.get("select_mode") or {}).get("mode")
-        insts = (label_map_instances(obj_type, group, layout) if sm_mode == "label_map"
-                 else select_instances(obj_type, group, rng, layout, sel_state))
+        if id(group) in presel:
+            insts = presel.pop(id(group))
+        elif sm_mode == "linked_count":
+            insts = linked_instances(obj_type, group, rng, linked_n)
+        elif sm_mode == "label_map":
+            insts = label_map_instances(obj_type, group, layout)
+        else:
+            insts = select_instances(obj_type, group, rng, layout, sel_state)
         for k, (entry, idx) in enumerate(insts):
             prm = dict(SAMPLING_DEFAULTS)
             prm.update(common)
-            prm.update({key: v for key, v in entry.items() if key not in ("name", "index")})
+            prm.update({key: v for key, v in entry.items() if key not in ("name", "index", "_label", "_fixed_xy")})
             cat = entry["name"]
             meta = metadata(obj_type, cat, idx)
             if meta is None or not usd_exists(obj_type, cat, idx):
                 raise LayoutError(f"missing asset {obj_type}/{cat}/{idx:05d}")
-            label = labels[k] if k < len(labels) else f"{cat}{k}"
+            label = entry.get("_label") or (labels[k] if k < len(labels) else f"{cat}{k}")
+            if "_fixed_xy" in entry:                       # linked_count / dynamic_layout position
+                prm["xlim"], prm["ylim"] = [entry["_fixed_xy"][0]] * 2, [entry["_fixed_xy"][1]] * 2
             if on_object(prm["relative_plane"]):
                 pose, parent_label = place_on_object(prm, meta, layout, used_supports, rng, gens, siblings)
                 phys = dict(meta.get("physics") or {})
