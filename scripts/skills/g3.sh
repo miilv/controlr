@@ -40,6 +40,7 @@ fi
 systemd-run --user --scope -q -p MemoryMax="$MEMMAX" -p CPUQuota=600% \
   "$HERE/scripts/simlab/rdpy.sh" -u -m dojo.skills.g3 "$@" &
 child=$!
+trap 'kill -TERM "$child" 2>/dev/null; wait "$child"; exit 143' TERM INT
 while kill -0 "$child" 2>/dev/null; do
   if [[ "$(avail)" -lt "$ABORT_GB" ]]; then
     echo "[g3.sh] MemAvailable $(avail) GB < $ABORT_GB: aborting our job" >&2

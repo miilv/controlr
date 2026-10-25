@@ -1092,7 +1092,8 @@ def _support_raw(o, tag: str) -> list:
             for c, _r in o.asset.support.get(tag, [])]
 
 
-INSERT_AIR_HANDOVER = True     # insertions that only plan through an in-air handover: attempt it (else lift + return)
+INSERT_AIR_HANDOVER = False    # insertions that only plan through an in-air handover: lift + return instead (G3: the
+                               # handover lost the key on the carry in 5 versions, 0/34; the lift banks the 15 % rung)
 
 
 def lift_and_return(sk: Skills, label: str, lift: float = 0.08) -> SkillResult:
