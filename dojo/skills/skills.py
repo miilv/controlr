@@ -828,7 +828,11 @@ class Skills:
                 r = self.kin.ik(a, g.T, q0, n_random=0)
                 if not r.ok:
                     continue
-                ok, _ = self.coll.check(a, r.q, gap_to_grip(g.open_gap()), ignore=(label,))
+                ok, why = self.coll.check(a, r.q, gap_to_grip(g.open_gap()), ignore=(label,))
+                if not ok and why.startswith("hits ") and float(g.width) < 0.03:
+                    # a thin object between neighbours (bread slices in a shelf): open 4 mm per side only
+                    g = G.narrowed(g)
+                    ok, why = self.coll.check(a, r.q, gap_to_grip(g.open_gap()), ignore=(label,))
                 if not ok:
                     continue
                 n_g += 1
