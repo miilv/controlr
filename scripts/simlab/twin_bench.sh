@@ -23,7 +23,7 @@ wait_ok() {
 }
 LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
 exec 9>>"$LOCK"
-until flock -n 9; do sleep 30; done
+flock -w "${SIMLAB_LOCK_WAIT_S:-43200}" 9 || exit 75
 printf 'pid=%s stream=simlab start=%s cmd=twin_bench %s\n' "$$" "$(date -u +%FT%TZ)" "$TASK" > "$LOCK"
 export SIMLAB_GPU=0          # the lock is held here
 scoped() { systemd-run --user --scope -q -p MemoryMax=20G -p CPUQuota=1200% "$@"; }

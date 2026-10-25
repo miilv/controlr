@@ -3,6 +3,7 @@
 ``src/eval_client/main.py`` runs unchanged: policy server over XPolicyLab's ws protocol, step limits,
 success latching, ``_result.json``, mp4s. The only substitution is where layouts come from:
 ``SeedManager.init_eval`` / ``get_seed_scene_info`` read ``$SIMLAB_DEV_LAYOUTS/<task>/<id>.json``
+(``<id>.settled.json`` with ``SIMLAB_DEV_LAYOUT_SUFFIX=.settled``)
 (our records, ids sorted; ``--seed`` picks nothing) instead of ``Assets/Eval_Layout``, and our ``_simlab``
 key is stripped. So a dev-eval score is computed exactly like a leaderboard score, on layouts we own.
 
@@ -29,16 +30,18 @@ def patch_seed_manager(layout_root: str | os.PathLike) -> None:
 
     def init_eval(self, completed_layout_ids=None, abandoned_layout_ids=None):
         d = root / self.task_name
-        files = sorted((p for p in d.glob("*.json") if p.stem.isdigit()), key=lambda p: int(p.stem))
+        suffix = os.environ.get("SIMLAB_DEV_LAYOUT_SUFFIX", "")      # ".settled": pre-settled records
+        files = sorted((p for p in d.glob(f"*{suffix}.json") if p.name[: -len(f"{suffix}.json")].isdigit()),
+                       key=lambda p: int(p.name.split(".")[0]))
         if not files:
             raise FileNotFoundError(f"no dev layouts in {d}")
         self.eval_seed = self.config.get("seed", 0)
-        self.seed_info = {i: {"scene_layout": str(p), "layout_id": int(p.stem)} for i, p in enumerate(files)}
+        self.seed_info = {i: {"scene_layout": str(p), "layout_id": int(p.name.split(".")[0])} for i, p in enumerate(files)}
         excluded = {int(s) for s in (completed_layout_ids or [])} | {int(s) for s in (abandoned_layout_ids or [])}
         self.seed_list = [i for i in range(len(files)) if i not in excluded]
         self.st_idx, self.ed_idx, self.type, self.idx = 0, len(self.seed_list), "eval", 0
         self._current_batch_seeds = None
-        print(f"[dev_eval] {len(files)} dev layouts from {d} (ids {files[0].stem}..{files[-1].stem})", flush=True)
+        print(f"[dev_eval] {len(files)} dev layouts{suffix} from {d} ({files[0].name}..{files[-1].name})", flush=True)
 
     def get_seed_scene_info(self, seed):
         info = self.seed_info.get(seed)

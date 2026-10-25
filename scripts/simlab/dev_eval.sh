@@ -25,7 +25,7 @@ done
 [[ "$LAYOUTS" != *Eval_Layout* ]] || { echo "refusing eval layouts" >&2; exit 2; }
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"; RUN="$OUT/${STAMP}_${TASK}_${POLICY}"; mkdir -p "$RUN"
 LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"; exec 9>>"$LOCK"
-until flock -n 9; do echo "[dev_eval] waiting for $LOCK: $(cat "$LOCK")" >&2; sleep 30; done
+flock -n 9 || { echo "[dev_eval] waiting for $LOCK: $(cat "$LOCK")" >&2; flock -w "${SIMLAB_LOCK_WAIT_S:-43200}" 9 || exit 75; }
 printf 'pid=%s stream=simlab start=%s cmd=dev_eval %s %s\n' "$$" "$(date -u +%FT%TZ)" "$TASK" "$POLICY" > "$LOCK"
 free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
 WS_PORT="$(free_port)"; PIDS=()
