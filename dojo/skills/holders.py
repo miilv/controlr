@@ -211,7 +211,7 @@ def round_grasps(o, kin, arm, rolls=(0.0, 12.0, -12.0, 25.0, -25.0, 40.0, -40.0)
     if L <= G.MAX_WIDTH and abs(float(ax[2])) < 0.5:
         a_dn = np.array([0.0, 0.0, -1.0]) - ax * float(-ax[2])
         a_dn = a_dn / np.linalg.norm(a_dn)
-        for tilt in (0.0, 20.0, -20.0):
+        for tilt in (0.0, 20.0, -20.0, 35.0, -35.0, 50.0, -50.0):     # leaning in keeps the palm off a wall
             appr = _rot(ax, math.radians(tilt)) @ a_dn
             for flip in (1.0, -1.0):
                 Rg = G._frame(appr, flip * ax)
