@@ -64,6 +64,33 @@ def _count(xs):
     return c
 
 
+def first_decision(row: dict) -> str:
+    """'skill <name>' when the first cell calls robo.skill, else 'code' (from the episode's cells.jsonl)."""
+    import re
+    d = (row.get("agent") or {}).get("log_dir")
+    f = Path(d) / "cells.jsonl" if d else None
+    if f is None or not f.exists():
+        return "?"
+    lines = f.read_text().splitlines()
+    if not lines:
+        return "none"
+    code = json.loads(lines[0]).get("code", "")
+    m = re.search(r"robo\.skill\(\s*['\"]([a-z_]+)['\"]", code)
+    return f"skill {m.group(1)}" if m else "code"
+
+
+def episodes_md(rows: list[dict]) -> str:
+    out = ["| model | task | layout | success | score | calls | first cell | skills called | outcome | env steps | wall s |",
+           "|---|---|---|---|---|---|---|---|---|---|---|"]
+    for r in sorted(rows, key=lambda r: ((r.get("agent") or {}).get("model") or "", r["task"], r.get("layout_id"))):
+        ag = r.get("agent") or {}
+        out.append(f"| {ag.get('model')} | {r['task']} | {r.get('layout_id')} | {'yes' if r['success'] else 'no'} | "
+                   f"{r['score']:.0f} | {(ag.get('usage') or {}).get('calls')} | {first_decision(r)} | "
+                   f"{','.join(ag.get('skills_called') or []) or '-'} | {ag.get('outcome')} | {r.get('steps_used')} | "
+                   f"{r.get('wall_s')} |")
+    return "\n".join(out)
+
+
 def to_md(summary: list[dict]) -> str:
     lines = ["| model | task | n | success | score | LLM calls / ep | tokens in / cached / out / reasoning per ep | "
              "LLM s / ep | wall s / ep | env steps / ep | agent outcomes | skills called | failure categories |",
@@ -80,8 +107,13 @@ def main(argv=None) -> None:
     ap.add_argument("dirs", nargs="+")
     ap.add_argument("--md", action="store_true")
     ap.add_argument("--json", default=None)
+    ap.add_argument("--episodes", action="store_true")
     a = ap.parse_args(argv)
-    s = summarize(load([Path(d) for d in a.dirs]))
+    rows = load([Path(d) for d in a.dirs])
+    if a.episodes:
+        print(episodes_md(rows))
+        return
+    s = summarize(rows)
     if a.json:
         Path(a.json).write_text(json.dumps(s, indent=1))
     print(to_md(s) if a.md else json.dumps(s, indent=1))
