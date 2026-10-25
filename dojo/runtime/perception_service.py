@@ -26,6 +26,13 @@ Ops (request dicts):
         record["_perception"]["agentic"]. Env: AGENTIC_ENV_FILE (OMNIROUTE_* only), AGENTIC_MODEL, AGENTIC_MAX_TURNS,
         AGENTIC_REFINE; transcripts under DOJO_AGENTIC_LOG
     {"op": "needs_agent", "record": json}                                          -> {"needs": bool, "why": str}
+    {"op": "scan_looks"}                                                           -> {"looks": json}
+    {"op": "scan_trigger", "record": json}                                         -> {"needs", "why", "not_found"}
+    {"op": "estimate_scan", "frame": scan frame, "frame0": frame, "vocabulary", "fold", "rec0": json|None}
+                                                                                   -> {"record": json}
+        perception's scan pose (``dojo.perception.scan``): the frozen pose pair, the generic trigger (a not-found label,
+        hidden_frac >= 0.2, or calibrated risk >= 0.5 at frame 0) and the scan-primary estimate (needs a scan-aware
+        head background in DOJO_BG_FOLDS)
     {"op": "held_look", "frame": frame, "arm": str, "mode": "b1"|"b1_then_agent"}  -> {"held_look": json}
         perception's held check on the arm's wrist frame: {held, confidence, dark_risk, source, calls}
     {"op": "info"} / {"op": "close"}
@@ -140,6 +147,19 @@ class PerceptionClient:
                         "b1_record": None if b1_record is None else json.dumps(b1_record, default=_default)})
         return json.loads(r["record"])
 
+    def scan_looks(self) -> list[dict]:
+        return json.loads(self._call({"op": "scan_looks"})["looks"])
+
+    def scan_trigger(self, record: dict) -> tuple[bool, str, bool]:
+        r = self._call({"op": "scan_trigger", "record": json.dumps(record, default=_default)})
+        return bool(r["needs"]), str(r["why"]), bool(r["not_found"])
+
+    def estimate_scan(self, frame: dict, frame0: dict, vocabulary: str, fold: int, rec0: dict | None = None) -> dict:
+        r = self._call({"op": "estimate_scan", "frame": encode_frame(frame), "frame0": encode_frame(frame0),
+                        "vocabulary": vocabulary, "fold": int(fold),
+                        "rec0": None if rec0 is None else json.dumps(rec0, default=_default)})
+        return json.loads(r["record"])
+
     def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
         return json.loads(self._call({"op": "held_look", "frame": encode_frame(frame), "arm": arm,
                                       "mode": mode})["held_look"])
@@ -247,6 +267,29 @@ class _Perception:
         log_dir = str(Path(log) / f"call_{self._n_agentic:03d}") if log else None
         return agentic_estimate(fr["images"], fr["state"], vocabulary, fr["instruction"], bgs=self.bgs(fold),
                                 cfg=self.cfg(fold), b1_record=b1_record, log_dir=log_dir)
+
+    @staticmethod
+    def scan_trigger(record: dict, hidden_thr: float = 0.2, risk_thr: float = 0.5) -> dict:
+        """Scan iff frame 0 has a not-found label, an object with hidden_frac >= 0.2, or calibrated risk >= 0.5."""
+        nf = [x.get("label") for x in record.get("_not_found") or []]
+        if nf:
+            return {"needs": True, "why": f"not_found:{nf}", "not_found": True}
+        from dojo.perception.agentic.j1 import risk
+        from dojo.perception.agentic.record import record_objects
+        objs = record_objects(record)
+        hid = [o["label"] for o in objs if float((o.get("flags") or {}).get("hidden_frac") or 0) >= hidden_thr]
+        if hid:
+            return {"needs": True, "why": f"hidden:{hid[:4]}", "not_found": False}
+        hi = [(o["label"], round(risk(o), 2)) for o in objs if risk(o) >= risk_thr]
+        if hi:
+            return {"needs": True, "why": f"risk:{hi[:4]}", "not_found": False}
+        return {"needs": False, "why": "frame0_clear", "not_found": False}
+
+    def estimate_scan(self, frame: dict, frame0: dict, vocabulary: str, fold: int, rec0: dict | None = None) -> dict:
+        from dojo.perception.scan import estimate_with_scan
+        s, f0 = decode_frame(frame), decode_frame(frame0)
+        return estimate_with_scan({"images": s["images"], "state": s["state"]}, {"images": f0["images"], "state": f0["state"]},
+                                  vocabulary, s["instruction"], bgs=self.bgs(fold), cfg=self.cfg(fold), rec0=rec0)
 
     def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
         """perception's held_look (``agentic.j1.held_look_impl``: B1 = the strict-tier fingertip-region read, then
@@ -534,6 +577,15 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "agentic_estimate":
                         b1 = json.loads(req["b1_record"]) if req.get("b1_record") else None
                         rec = p.agentic_estimate(req["frame"], req["vocabulary"], int(req.get("fold", 0)), b1)
+                        conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "scan_looks":
+                        from dojo.perception.scan import looks
+                        conn.send({"ok": True, "looks": json.dumps(looks(), default=_default)})
+                    elif op == "scan_trigger":
+                        conn.send({"ok": True, **p.scan_trigger(json.loads(req["record"]))})
+                    elif op == "estimate_scan":
+                        r0 = json.loads(req["rec0"]) if req.get("rec0") else None
+                        rec = p.estimate_scan(req["frame"], req["frame0"], req["vocabulary"], int(req.get("fold", 0)), r0)
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
                     elif op == "held_look":
                         h = p.held_look(req["frame"], req["arm"], req.get("mode") or "b1_then_agent")

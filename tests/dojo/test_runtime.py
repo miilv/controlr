@@ -1389,3 +1389,67 @@ def test_episode_with_held_look_checks_every_grasp_once():
     n_picks = sum(1 for h in rep["history"] if h["skill"] == "pick")
     assert n_picks >= 2 and len(hl) == len(pc.held) == n_picks and all(e["held"] for e in hl)   # one check per grasp
     assert [a["tag"] for a in rep["agentic"]] == ["held"] * n_picks and sum(a["calls"] for a in rep["agentic"]) == n_picks
+
+
+@pytest.mark.parametrize("mode, needs, step_lim, ran", [("always", False, 550, True), ("trigger", True, 550, True),
+                                                       ("trigger", False, 550, False), ("trigger", True, 200, False)])
+def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs, step_lim, ran):
+    env = _env(step_lim=step_lim)
+    scan_q = {"left": [-0.9523, -0.24314, 1.28768, -1.77756, -0.63467, -0.14824],
+              "right": [0.94768, -0.24334, 1.28759, -1.77684, 0.63018, 0.14684]}
+
+    class ScanPerception:
+        def __init__(self):
+            self.calls = []
+
+        def _rec(self):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]}}
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return self._rec()
+
+        def scan_looks(self):
+            return [{"arm": a, "joints": q, "steps_out": 36} for a, q in scan_q.items()]
+
+        def scan_trigger(self, record):
+            self.calls.append("trigger")
+            return needs, "hidden:['block_1']" if needs else "frame0_clear", False
+
+        def estimate_scan(self, frame, frame0, vocabulary, fold, rec0=None):
+            self.calls.append(("scan", [round(float(v), 3) for v in frame["state"]["left_arm_joint_state"]]))
+            return self._rec()
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+    pc = ScanPerception()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan=mode), assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    ev = next(e for e in rep["events"] if e["kind"] == "scan")
+    assert ev["ran"] == ran and (mode == "always") == ("trigger" not in pc.calls)
+    if ran:
+        scans = [c for c in pc.calls if isinstance(c, tuple)]
+        assert len(scans) == 1 and np.allclose(scans[0][1], scan_q["left"], atol=1e-3)      # observed at the scan pose
+        assert ev["steps_used"] == ev["steps"] and 10 <= ev["steps"] <= 40 and rep["look_steps"] >= ev["steps"]
+        assert "scan" in rep["records"]
+        assert _stacked(env)                                         # the skills started from the scan pose
+    else:
+        assert not any(isinstance(c, tuple) for c in pc.calls)
+
+
+def test_scan_trigger_rule_on_a_frame0_record():
+    from dojo.runtime.perception_service import _Perception
+    base = {"category": "block", "category_idx": 5, "default_pos": [0.1, -0.1, 0.78], "default_ori": [1, 0, 0, 0]}
+    clear = {"Rigid": {"block": [dict(base, label="block_0", _perception={"confidence": 0.95, "residual": 0.05})]}}
+    assert _Perception.scan_trigger({**clear, "_not_found": [{"label": "block_1"}]}) == \
+        {"needs": True, "why": "not_found:['block_1']", "not_found": True}
+    hidden = {"Rigid": {"block": [dict(base, label="block_0",
+                                       _perception={"confidence": 0.95, "residual": 0.05, "hidden_frac": 0.3})]}}
+    r = _Perception.scan_trigger(hidden)
+    assert r["needs"] and r["why"].startswith("hidden") and not r["not_found"]

@@ -111,6 +111,15 @@ class RuntimeConfig:
     # off | b1 | b1_then_agent (B1 unless its confidence < 0.5 or dark_risk, then one agent call); a confident
     # "not held" takes the object out of the jaws in the belief
     held_look: str = "off"
+    # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
+    # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
+    # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
+    # a not-found label always scans) | always. The first skill starts from the scan pose
+    scan: str = "off"
+    scan_budget_frac: float = 0.12
+    scan_min_step_lim: int = 300
+    scan_step_rad: float = 0.16
+    scan_settle: int = 2                # hold steps at the scan pose before the observation
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -151,7 +160,8 @@ class RuntimePolicy:
         self.cfg = cfg or RuntimeConfig.from_env()
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
-                or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")):
+                or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
+                or self.cfg.scan not in ("off", "trigger", "always")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -341,6 +351,18 @@ class RuntimePolicy:
             return sk_
 
         sk = make_skills()
+        if cfg.mode == "perception" and cfg.scan != "off":
+            t = time.perf_counter()
+            srec = self._scan(sk, obs0, rec, scene)
+            self.report["timings"]["scan_s"] = round(time.perf_counter() - t, 2)
+            if srec is not None:
+                if prov.tracker_on:
+                    srec = self._track_record(prov, srec, "scan")
+                rec = srec
+                self.report["records"]["scan"] = _slim(srec)
+                self._last_record = srec
+                prov.init_from_record(srec)
+                sk = make_skills()
         if cfg.mode == "perception" and cfg.look:
             t = time.perf_counter()
             rec = self._look(sk, obs0, rec, scene, kin)
@@ -584,6 +606,40 @@ class RuntimePolicy:
                 hint["rehover_dz"] = self.cfg.rehover_place_dz
             return hint
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _scan(self, sk, obs0: dict, rec: dict, scene: str) -> dict | None:
+        """The scan macro: gate (``cfg.scan``), both arms in parallel to perception's frozen scan joints with the
+        grippers open (joint-space, <= ``scan_step_rad`` per step), observe, scan-primary estimate. The arms stay
+        there: the first skill plans from the scan pose. Returns the record, or None when the gate says no."""
+        import math
+
+        cfg, b, pc = self.cfg, self.bridge, self.perception()
+        looks = {lk["arm"]: lk for lk in pc.scan_looks()}
+        q0 = {a: np.asarray(sk.ex.q[a], float).copy() for a in ("left", "right")}
+        qt = {a: np.asarray(looks[a]["joints"], float) for a in ("left", "right")}
+        n = max(1, max(int(math.ceil(float(np.max(np.abs(qt[a] - q0[a]))) / cfg.scan_step_rad)) for a in qt))
+        ev = {"kind": "scan", "mode": cfg.scan, "steps": n + max(0, int(cfg.scan_settle)), "step": b.steps_used}
+        self.report["events"].append(ev)
+        if cfg.scan == "trigger":
+            needs, why, nf = pc.scan_trigger(rec)
+            budget_ok = b.step_lim >= cfg.scan_min_step_lim and ev["steps"] <= cfg.scan_budget_frac * b.step_lim
+            ev.update({"needs": needs, "why": why, "budget_ok": budget_ok})
+            if not needs or not (budget_ok or nf):
+                ev["ran"] = False
+                return None
+        acts = [{**{f"{a}_arm_joint_state": (q0[a] + (qt[a] - q0[a]) * (i + 1) / n).astype(np.float32) for a in qt},
+                 **{f"{a}_ee_joint_state": np.array([1.0], np.float32) for a in qt}} for i in range(n)]
+        acts += [acts[-1]] * max(0, int(cfg.scan_settle))
+        n0 = b.steps_used
+        sk.ex.run_actions(acts, name="scan")
+        obs_s = b.observe()
+        ev.update({"ran": True, "steps_used": b.steps_used - n0})
+        self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
+        try:
+            return pc.estimate_scan(obs_s, obs0, scene, self.fold, rec0=rec)
+        except Exception as e:  # noqa: BLE001 (keep the frame-0 record; the arms still start from the scan pose)
+            ev["error"] = f"{type(e).__name__}: {str(e)[:200]}"
+            return None
 
     def _track_record(self, prov, rec: dict, tag: str) -> dict:
         """A B1 re-read record through perception's tracker against the belief: labels whose re-read pose the
@@ -994,7 +1050,7 @@ class RuntimePolicy:
         sk.ex.execute(moves, name="look")
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
-        self.report["look_steps"] = b.steps_used - n0
+        self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
         if cfg.save_look_frames:
             import cv2
             self.report["look_frames"] = {
