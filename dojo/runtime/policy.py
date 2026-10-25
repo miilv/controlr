@@ -622,8 +622,11 @@ class RuntimePolicy:
         self.report["events"].append(ev)
         if cfg.scan == "trigger":
             needs, why, nf = pc.scan_trigger(rec)
-            budget_ok = b.step_lim >= cfg.scan_min_step_lim and ev["steps"] <= cfg.scan_budget_frac * b.step_lim
-            ev.update({"needs": needs, "why": why, "budget_ok": budget_ok})
+            frac_ok = ev["steps"] <= cfg.scan_budget_frac * b.step_lim
+            lim_ok = b.step_lim >= cfg.scan_min_step_lim
+            budget_ok = frac_ok and lim_ok
+            ev.update({"needs": needs, "why": why, "not_found": nf, "frac_ok": frac_ok, "min_step_lim_ok": lim_ok,
+                       "budget_ok": budget_ok, "step_lim": b.step_lim})
             if not needs or not (budget_ok or nf):
                 ev["ran"] = False
                 return None

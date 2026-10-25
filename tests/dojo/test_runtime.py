@@ -1433,6 +1433,8 @@ def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs,
     assert rep["error"] is None, rep["error"]
     ev = next(e for e in rep["events"] if e["kind"] == "scan")
     assert ev["ran"] == ran and (mode == "always") == ("trigger" not in pc.calls)
+    if mode == "trigger":                                            # both step gates logged per episode
+        assert ev["frac_ok"] and ev["min_step_lim_ok"] == (step_lim >= 300)
     if ran:
         scans = [c for c in pc.calls if isinstance(c, tuple)]
         assert len(scans) == 1 and np.allclose(scans[0][1], scan_q["left"], atol=1e-3)      # observed at the scan pose
