@@ -51,6 +51,20 @@ def cmd_cases(a):
                "want": WANT.get(task)}
         (d / "inputs.json").write_text(json.dumps(inp))
         (d / "gt.json").write_text(json.dumps(fr["gt"]["objects"]))  # DEV ONLY: read by the scorer, never by perceive
+        if a.scan_root:  # the scan-pose observation of the same layout (frame_S1 of our D0 copy)
+            sd = Path(a.scan_root) / task / str(ep)
+            if (sd / "frame_S1.json").exists():
+                fs = json.loads((sd / "frame_S1.json").read_text())
+                sts = {k: np.asarray(v, float) for k, v in fs["obs"]["state"].items()}
+                cs = cameras_from_state(sts)
+                for c in CAMS:
+                    shutil.copy(sd / f"frame_S1_{c}.png", d / f"{c}_scan.png")
+                (d / "scan_inputs.json").write_text(json.dumps({
+                    "calib": {c: {"K": cs[c].K.tolist(), "T_world_cam": cs[c].T_wc.tolist()} for c in CAMS if c in cs},
+                    "flange": {arm: [float(v) for v in fs["obs"]["state"][f"{arm}_ee_pose"]] for arm in ("left", "right")},
+                    "joints": {arm: [float(v) for v in fs["obs"]["state"][f"{arm}_arm_joint_state"]] for arm in ("left", "right")},
+                    "grip_cmd": {arm: float(fs["obs"]["state"][f"{arm}_ee_joint_state"][0]) for arm in ("left", "right")},
+                    "state": fs["obs"]["state"]}))
         print(d)
 
 
@@ -94,6 +108,39 @@ def cmd_b1(a):
         print(d.name, len(out["objects"]), "objects", out["_dev_wall_s"], "s", flush=True)
 
 
+def cmd_b1scan(a):
+    """Scan-primary B1 (``scan.estimate_with_scan``) with the scan-aware 2-fold backgrounds of the scan root ->
+    b1_scan.json (J1 object form, the agent's hint)."""
+    from ..d0 import load_obs
+    from ..eval_g1 import fold_backgrounds
+    from ..inverse_layout import EstimatorConfig
+    from ..scan import estimate_with_scan
+    from .record import record_objects
+
+    import os
+    import zlib
+
+    cal = os.environ.get("DOJO_COLOR_CALIB")
+    for d in _cases(a):
+        if not (d / "scan_inputs.json").exists() or ((d / "b1_scan.json").exists() and not a.force):
+            continue
+        inp = json.loads((d / "inputs.json").read_text())
+        ep = Path(a.scan_root) / inp["task"] / inp["episode"]
+        fold = zlib.crc32(inp["episode"].encode()) % 2
+        kw = {"color_M": json.loads(Path(cal).read_text())[f"fold{fold}"]} if cal and Path(cal).exists() else {}
+        cfg = EstimatorConfig(**kw)
+        bgs = fold_backgrounds(ep)
+        o0, oS = load_obs(ep, 0), load_obs(ep, "S1")
+        t0 = time.time()
+        rec = estimate_with_scan({"images": oS["images"], "state": oS["state"]}, {"images": o0["images"], "state": o0["state"]},
+                                 inp["task"], inp["instruction"], bgs=bgs, cfg=cfg)
+        out = {"objects": record_objects(rec), "needs_look": [], "regions": [], "task": inp["task"],
+               "frame0_fill": rec.get("_perception", {}).get("frame0_fill"), "_dev_wall_s": round(time.time() - t0, 2),
+               "_record": rec}
+        (d / "b1_scan.json").write_text(json.dumps(out, default=str))
+        print(d.name, len(out["objects"]), "objects", out["_dev_wall_s"], "s fill", out["frame0_fill"], flush=True)
+
+
 def cmd_run(a):
     from .j1 import perceive_impl
 
@@ -103,12 +150,20 @@ def cmd_run(a):
         if f.exists() and not a.force:
             continue
         inp = _inputs(d)
-        b1 = json.loads((d / "b1.json").read_text()) if (d / "b1.json").exists() and not a.no_hint else None
+        hint = "b1_scan.json" if a.scan else "b1.json"
+        b1 = json.loads((d / hint).read_text()) if (d / hint).exists() and not a.no_hint else None
+        extra = None
+        if a.scan:
+            if not (d / "scan_inputs.json").exists():
+                continue
+            si = json.loads((d / "scan_inputs.json").read_text())
+            extra = [{"tag": "scan", "frames": {c: str(d / f"{c}_scan.png") for c in CAMS}, "calib": si["calib"],
+                      "flange": si["flange"], "note": "the arms moved to the fixed scan pose; the objects did not"}]
         t0 = time.time()
         out = perceive_impl(inp["frames"], inp["calib"], inp["flange"], inp["grip_cmd"], inp["instruction"], inp["want"],
                             joints=inp["joints"], b1=b1, use_b1=not a.no_hint and b1 is not None, model=a.model,
                             max_turns=a.max_turns, log_dir=str(Path(a.log_dir or (Path(a.cases) / "_logs")) / tag),
-                            fallback="none" if a.no_hint else "b1", refine=False,  # H2 runs offline: dev_d0 refine
+                            fallback="none" if a.no_hint else "b1", refine=False, extra_obs=extra,  # H2: dev_d0 refine
                             extra_body=json.loads(a.extra_body) if a.extra_body else None)
         out["_dev_wall_s"] = round(time.time() - t0, 2)
         f.write_text(json.dumps(out, default=str))
@@ -304,11 +359,14 @@ def score_case(d: Path, tag: str) -> list[dict]:
     task = inp["task"]
     labs = {lab for g in label_groups(task) for lab in g["labels"]}
     gts = [o for o in json.loads((d / "gt.json").read_text()) if o.get("label") in labs and not o.get("clutter")]
-    f = d / ("b1.json" if tag == "b1" else f"agent_{tag}.json")
+    f = d / ({"b1": "b1.json", "b1_scan": "b1_scan.json"}.get(tag) or f"agent_{tag}.json")
     if not f.exists():
         return []
     out = json.loads(f.read_text())
     b1 = json.loads((d / "b1.json").read_text()) if (d / "b1.json").exists() else {"objects": []}
+    if tag != "b1" and (d / "b1_scan.json").exists():  # labels the scan hint introduced map through it too
+        for o in json.loads((d / "b1_scan.json").read_text()).get("objects", []):
+            b1.setdefault("objects", []).append(o)
     b1_cat = {o["label"]: o.get("category") for o in b1.get("objects", [])}
     classes = {o["category"] for o in gts}
     preds = [o for o in out.get("objects", []) if o.get("pos") is not None]
@@ -381,9 +439,15 @@ def main(argv=None):
     p.add_argument("--out", required=True)
     p.add_argument("--d0", default=str(Path.home() / "dojo-data" / "d0"))
     p.add_argument("--frame", default="0")
+    p.add_argument("--scan-root", default=None, help="our D0 copy with frame_S1 (scan pose) renders")
     p = sp.add_parser("b1")
     p.add_argument("--cases", required=True)
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
+    p.add_argument("--only", nargs="*")
+    p.add_argument("--force", action="store_true")
+    p = sp.add_parser("b1scan")
+    p.add_argument("--cases", required=True)
+    p.add_argument("--scan-root", required=True)
     p.add_argument("--only", nargs="*")
     p.add_argument("--force", action="store_true")
     p = sp.add_parser("run")
@@ -391,6 +455,7 @@ def main(argv=None):
     p.add_argument("--model", required=True)
     p.add_argument("--tag")
     p.add_argument("--no-hint", action="store_true")
+    p.add_argument("--scan", action="store_true", help="add the scan observation; hint = b1_scan.json")
     p.add_argument("--max-turns", type=int, default=8)
     p.add_argument("--extra-body")
     p.add_argument("--log-dir")
@@ -418,7 +483,7 @@ def main(argv=None):
     p.add_argument("--csv")
     p.add_argument("--jsonl")
     a = ap.parse_args(argv)
-    {"cases": cmd_cases, "b1": cmd_b1, "run": cmd_run, "refine": cmd_refine, "seq": cmd_seq, "contrast": cmd_contrast, "score": cmd_score}[a.cmd](a)
+    {"cases": cmd_cases, "b1": cmd_b1, "b1scan": cmd_b1scan, "run": cmd_run, "refine": cmd_refine, "seq": cmd_seq, "contrast": cmd_contrast, "score": cmd_score}[a.cmd](a)
 
 
 if __name__ == "__main__":

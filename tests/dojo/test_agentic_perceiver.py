@@ -363,3 +363,20 @@ def test_urllib_chat_reads_a_non_streamed_body(monkeypatch):
     r = UrllibChat(timeout_s=10)("claude-sonnet-5-5", [{"role": "user", "content": "x"}], max_tokens=10)
     srv.shutdown()
     assert r.text == '{"held": "no"}' and r.prompt_tokens == 7
+
+
+def test_extra_observation_is_attached_and_locatable(tmp_path):
+    cal2 = _calib()
+    fc = FakeChat([json.dumps({"commands": ["locate cam=cam_head px=[320,240] z=0.78 calib=calib_scan.json",
+                                            "project pts=[[0,0,0.78]] img=1 calib=calib_scan.json"]}),
+                   json.dumps({"answer": {"objects": [{"keep": 0}]}})])
+    out = j1.perceive_impl(_frames(), _calib(), FLANGE, {}, "x", None, b1=_b1(), chat=fc, model="fake", refine=False,
+                           extra_obs=[{"tag": "scan", "frames": _frames(), "calib": cal2, "flange": FLANGE}], log_dir=str(tmp_path))
+    assert "result=agent" in out["notes"]
+    sysmsg = fc.sent[0][0]["content"]
+    assert sysmsg.startswith("# Runner preamble (agentic perceiver, RoboDojo, v2")
+    first = fc.sent[0][1]["content"]
+    assert any("Observation 'scan'" in p.get("text", "") for p in first) and sum(p["type"] == "image_url" for p in first) == 4
+    tool_turn = fc.sent[1][-1]["content"]
+    texts = "\n".join(p.get("text", "") for p in tool_turn)
+    assert '"xyz"' in texts and "image project_cam_head_scan.png:" in texts
