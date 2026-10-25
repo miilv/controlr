@@ -108,7 +108,7 @@ def test_fleet_copies_peer_to_peer(sandbox):
 def test_secrets_and_conventions_on_a_box(sandbox, tmp_path):
     sbx, runs, env = sandbox
     dotenv = tmp_path / "dotenv"
-    dotenv.write_text("OMNIROUTE_BASE_URL=https://x.invalid/v1\nOMNIROUTE_API_KEY=sk-SECRET-42\n"
+    dotenv.write_text("OMNIROUTE_BASE_URL=https://x.invalid/v1\nOMNIROUTE_API_KEY=fake-SECRET-42\n"
                       "ANTHROPIC_AUTH_TOKEN=decoy-SECRET\n")
     r = run(["bash", str(BOX), "fakeb", "--only", "conventions,secrets", "--env-file", str(dotenv), "--min-disk-gb", "1"],
             env=env)
