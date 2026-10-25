@@ -135,6 +135,22 @@ class GTProvider:
         self.include_clutter = include_clutter
         self.home_q = None
         self.notes: dict = {}
+        self._actors_prev = None
+
+    def actors_moving(self, tol: float = 2e-3) -> bool | None:
+        """Whether a scripted actor (an opponent's or a demonstrator's arm) moved since the last call: dev-only GT of its
+        joints in G3 (``env.actors_gt``); None when the env cannot tell (the caller then waits a fixed time). At eval
+        the runtime's provider answers it from the frames (a watch read)."""
+        f = getattr(self.env, "actors_gt", None)
+        if f is None:
+            return None
+        cur = {k: np.asarray(v, float) for k, v in (f() or {}).items()}
+        prev, self._actors_prev = self._actors_prev, cur
+        if not cur:
+            return False
+        if prev is None:
+            return True
+        return any(k not in prev or float(np.abs(v - prev[k]).max()) > tol for k, v in cur.items())
 
     def refresh(self, holding: dict | None = None) -> WorldState:
         st = self.env.proprio()

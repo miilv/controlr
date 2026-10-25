@@ -98,6 +98,26 @@ def choose_cell(occ: dict, lines: list, n_cells: int, cost=None, skip=()) -> int
     return min(empty, key=cost)
 
 
+def wait_actors_still(sk: Skills, still_steps: int = 12, max_steps: int = 160, fallback: int = 70) -> str:
+    """Hold still until the scene's scripted actors (an opponent's / a demonstrator's arm) have not moved for
+    ``still_steps`` consecutive steps (``provider.actors_moving()``: GT joints in G3, a watch read at eval), at most
+    ``max_steps``; ``fallback`` steps when the provider cannot tell. Our arms must not move while such an arm moves
+    (the checkers' N = 0 queries), and a fixed wait tuned on our own demos may be short for other demos."""
+    f = getattr(sk.provider, "actors_moving", None)
+    first = f() if f is not None else None
+    if first is None:
+        sk.ex.hold(fallback)
+        return "fallback"
+    calm, n = (0 if first else 1), 0
+    while calm < still_steps:
+        if n >= max_steps:
+            return "timeout"
+        sk.ex.hold(1)
+        n += 1
+        calm = 0 if f() else calm + 1
+    return f"still after {n}"
+
+
 def _still(prev: dict, w, labels, tol: float = 5e-4) -> bool:
     return all(float(np.linalg.norm(w.obj(l).pos - prev[l])) < tol for l in labels if l in prev and l in w.objects)
 
@@ -156,7 +176,7 @@ def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(
     return {"ok": False, "stage": f"place a piece on {tag}", "note": f"none of {candidates} placed"}
 
 
-def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: list[str], after_land: int = 48,
+def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: list[str], after_land: int = 60,
                     max_wait: int = 200, quiet: int = 3, tol_xy: float = 0.008) -> dict:
     """Turn-based placement game against a scripted opponent on a board's cells (support frames ``cell...``): on
     our turn put one of ``pieces`` on an empty cell (tic-tac-toe rules on a 3 x 3 board: win, block, centre,
@@ -195,7 +215,8 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             if n_opp > n_opp0 and calm >= quiet:
                 sk.log(f"[game] opponent piece landed at step {w2.step} ({w2.step - t0} steps of waiting)")
                 try:
-                    sk.ex.hold(after_land)
+                    r = wait_actors_still(sk, fallback=after_land)
+                    sk.log(f"[game] opponent's arm: {r} (step {sk.ex.steps_used})")
                 except EpisodeEnded:
                     return "ended"
                 except BudgetExceeded:
@@ -331,7 +352,7 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
 
 
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
-                       after_last: int = 80, max_wait: int = 1400, tries: int = 2) -> dict:
+                       after_last: int = 110, max_wait: int = 1400, tries: int = 2) -> dict:
     """A scripted demonstrator puts objects into ``demo_container`` one at a time: hold still at home while it works,
     record the order in which objects arrive there (an object counts once it has rested inside for ``quiet`` steps),
     and when the scene has been still for ``after_last`` steps after the last arrival (its arm is back home), put the
@@ -351,7 +372,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         t0 = w.step
         prev = {l: w.obj(l).pos.copy() for l in movers}
         inside_for = {l: 0 for l in movers}
-        last_move = last_entry = w.step
+        last_move = w.step
         while True:
             try:
                 sk.ex.hold(1)
@@ -369,9 +390,10 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
                 inside_for[l] = inside_for[l] + 1 if inside_xy(o, D) else 0
                 if inside_for[l] >= quiet:
                     st["order"].append(l)
-                    last_entry = w.step
                     sk.log(f"[imitate] step {w.step}: {l} ({o.asset.key}) arrived, #{len(st['order'])}")
-            if len(st["order"]) >= expect and w.step - last_entry >= after_last and w.step - last_move >= quiet:
+            if len(st["order"]) >= expect and w.step - last_move >= quiet:
+                r = wait_actors_still(sk, fallback=after_last)
+                sk.log(f"[imitate] demonstrator's arm: {r} (step {sk.ex.steps_used})")
                 break
             if w.step - t0 > max_wait:
                 sk.log(f"[imitate] stopped watching after {w.step - t0} steps, {len(st['order'])} seen")
