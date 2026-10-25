@@ -469,7 +469,8 @@ class Skills:
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
-                   seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003):
+                   seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
+                   fingers_out: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -478,7 +479,10 @@ class Skills:
         ``pre_settle``: still steps at the pre-place pose before the in-hand re-measure (precision).
         ``servo``: run the tail closed loop on the measured object (``_servo_tail``: sag-corrected descent,
         depth check, probing around the target, then turn / release); planned like the open-loop tail;
-        ``servo_ref``: the receptacle (default the first ``grip_only`` object) whose top sets the hover."""
+        ``servo_ref``: the receptacle (default the first ``grip_only`` object) whose top sets the hover.
+        ``fingers_out``: the fingertips stay 3 mm above the receptacle's (``servo_ref`` / first ignored object's) top:
+        the object is let go there and drops the rest of the way (a bread slice into a toaster slot narrower than the
+        open fingers)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -498,7 +502,7 @@ class Skills:
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
                        servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok),
-                       probe=bool(probe), hover_clear=float(hover_clear))
+                       probe=bool(probe), hover_clear=float(hover_clear), fingers_out=bool(fingers_out))
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -541,9 +545,14 @@ class Skills:
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
-                    hover_clear: float = 0.003) -> ArmPlan | str:
+                    hover_clear: float = 0.003, fingers_out: bool = False) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
+        if fingers_out:
+            ref = next((l for l in ((servo_ref,) + tuple(grip_only) + tuple(ignore)) if l and l != h.label
+                        and l in self.world.objects), None)
+            if ref is not None:
+                T_rel[2, 3] += self.tips_raise(T_rel, self.world.obj(ref).top_z + 0.003)
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
                                 ignore=ignore, grip_only=grip_only)
         if not down.ok:
@@ -671,6 +680,11 @@ class Skills:
         r.note = (r.note + "; " + note_rm).strip("; ")
         return r
 
+    def tips_raise(self, T_tcp, z_min: float, gripper: float = CLOSED) -> float:
+        """How far (m, >= 0) the TCP pose must rise for the lowest finger point to be at or above ``z_min``."""
+        low = float(self.kin.finger_points(self.kin.flange_from_tcp(np.asarray(T_tcp, float)), gripper)[:, 2].min())
+        return max(0.0, z_min - low)
+
     # ---- closed-loop insertion tail (tail_kw "servo")
     def _sag(self, arm: str, w: WorldState) -> np.ndarray:
         """Commanded-from-measured TCP transform: under load the arm settles a few mm off its command (twin,
@@ -724,6 +738,14 @@ class Skills:
         # with the pose; twin: a pen's tip came down on the holder's rim and stayed there)
         if kw.get("hover_clear", 0.003) > 0.003 and float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3])) > 0.002:
             go(above(T_obj, hover), rate, "servo_hover2")
+        if kw.get("fingers_out") and rec is not None:
+            # let go with the fingertips above the receptacle: raise the target by what the measured grasp needs
+            w = self.refresh()
+            T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ w.obj(label).T
+            dz = self.tips_raise(T_obj @ inv_T(T_rel), self.world.obj(rec).top_z + 0.003)
+            T_obj = above(T_obj, dz)
+            if dz > 0:
+                kw = {**kw, "probe": False}
         ob = go(T_obj, min(rate, 0.02), "servo_insert", settle=3)
         err = float(ob.pos[2] - T_obj[2, 3])
         note = f"servo: hover {hover*1000:.0f} mm, after the descent {err*1000:+.1f} mm"
