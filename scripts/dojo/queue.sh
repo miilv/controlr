@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ordered job queue for integ evals on compute3 (one runner; jobs strictly in file order):
-#   scripts/dojo/queue.sh add NAME --task T --mode M --verify V --layouts ...   # append a job
+#   scripts/dojo/queue.sh add NAME --task T --mode M --verify V [--repo ~/other-checkout] --layouts ...  # append
 #   scripts/dojo/queue.sh start                                                 # start the runner (detached)
 #   scripts/dojo/queue.sh list
 # Queue file: $DOJO_DATA/integ/queue.txt (one "NAME ARGS..." per line; edit to reorder). Each job runs
