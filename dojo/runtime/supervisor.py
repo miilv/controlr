@@ -88,11 +88,11 @@ def vocabulary_candidates(instruction: str, margin: float = 0.15, max_k: int = 3
     explains the scene best). One entry when the table and the catalogue fallback agree, or the fallback has a clear
     winner; else the table's set plus the fallback's top / close runners-up (within ``margin`` of its top score).
     A ``_random`` twin of a listed std set is dropped (same instruction; the std set is the convention)."""
-    from .vocab import _load, catalog_path, score_sets
+    from .vocab import load_sets, score_sets
     text = " ".join(str(instruction or "").split())
     table = perception_vocabulary(text, fallback=False)
-    p = catalog_path()
-    ranked = score_sets(text, _load(p)) if p else []
+    sets = load_sets(None)
+    ranked = score_sets(text, sets) if sets else []
     ranked = [r for r in ranked if r[0] >= 1.0]
     out = [table] if table is not None else []
     if not ranked:

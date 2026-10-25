@@ -1570,3 +1570,78 @@ def test_ambiguous_instruction_picks_the_candidate_set_that_explains_the_scene(m
     assert v.name == "cover_blocks" and len(rec["Rigid"]["block"]) == 3
     ev = pol.report["events"][-1]
     assert ev["kind"] == "vocab_explain" and ev["chosen"] == "cover_blocks" and len(ev["candidates"]) == len(names)
+
+
+def test_vocabulary_fallback_treats_an_unreadable_catalogue_as_unavailable(monkeypatch):
+    """CI runners: /root exists but is unreadable, so the catalogue probe raises PermissionError; the table still
+    answers and the fallback is simply off."""
+    from pathlib import Path as _P
+
+    from dojo.runtime import vocab
+    from dojo.runtime.supervisor import vocabulary_candidates
+    vocab._load.cache_clear()
+
+    def denied(self):
+        raise PermissionError(13, "Permission denied", str(self))
+    monkeypatch.setattr(_P, "is_file", denied)
+    monkeypatch.delenv("DOJO_CATALOG", raising=False)
+    assert vocab.catalog_path() is None
+    assert perception_vocabulary(STACK).name == "stack_blocks"
+    assert perception_vocabulary("Put the charger into the socket.") is None
+    assert [v.name for v in vocabulary_candidates(STACK)] == ["stack_blocks"]
+    monkeypatch.undo()
+    monkeypatch.setattr(vocab, "catalog_path", lambda: "/root/no/tasks.json")
+    monkeypatch.setattr(vocab, "_load", lambda p: (_ for _ in ()).throw(PermissionError(13, "denied")))
+    assert vocab.catalog_vocabulary("Put the charger into the socket.")[0] is None
+
+
+@pytest.mark.parametrize("needs", [True, False])
+def test_agentic_with_scan_is_one_call_with_the_scan_as_second_observation(needs):
+    env = _env()
+    scan_q = {"left": [-0.9523, -0.24314, 1.28768, -1.77756, -0.63467, -0.14824],
+              "right": [0.94768, -0.24334, 1.28759, -1.77684, 0.63018, 0.14684]}
+
+    class P:
+        def __init__(self):
+            self.ag = []
+
+        def _rec(self, tag):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]}, "_tag": tag}
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return self._rec("b1")
+
+        def scan_looks(self):
+            return [{"arm": a, "joints": q, "steps_out": 12} for a, q in scan_q.items()]
+
+        def scan_trigger(self, record):
+            return needs, "hidden" if needs else "clear", False
+
+        def estimate_scan(self, frame, frame0, vocabulary, fold, rec0=None):
+            return self._rec("scan")
+
+        def agentic_estimate(self, frame, vocabulary, fold, b1_record=None, extra_frame=None):
+            self.ag.append((b1_record.get("_tag"), extra_frame is not None and np.allclose(
+                extra_frame["state"]["left_arm_joint_state"], scan_q["left"], atol=1e-3)))
+            r = self._rec("agentic")
+            r["_perception"] = {"agentic": {"result": "agent", "calls": 3}}
+            return r
+
+        def needs_agent(self, record):
+            return False, "b1_confident"
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+    pc = P()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan="trigger", agentic="budget", agentic_max=3),
+                        assets=FakeAssets(), perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None and _stacked(env)
+    assert pc.ag == ([("scan", True)] if needs else [("b1", False)])     # ONE call: frame 0 (+ the scan when it ran)
+    assert rep["agentic"][0]["tag"] == "frame0" and rep["agentic"][0]["with_scan"] == needs

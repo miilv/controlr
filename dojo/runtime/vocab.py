@@ -99,11 +99,30 @@ def _load(path: str) -> dict:
 
 
 def catalog_path() -> str | None:
+    """The catalogue's tasks.json, or None. Any OSError on a candidate path (an unreadable /root on a CI runner raises
+    PermissionError, not FileNotFoundError) means that candidate is unavailable."""
     for d in [*os.environ.get("DOJO_CATALOG", "").split(os.pathsep), "~/dojo-perception-data/catalog",
               "/root/dojo-data/perception/catalog"]:
-        if d and Path(os.path.expanduser(d), "tasks.json").exists():
-            return str(Path(os.path.expanduser(d), "tasks.json"))
+        if not d:
+            continue
+        p = Path(os.path.expanduser(d), "tasks.json")
+        try:
+            if p.is_file():
+                return str(p)
+        except OSError:
+            continue
     return None
+
+
+def load_sets(path: str | None) -> dict | None:
+    """The candidate sets of ``path`` (or the catalogue's), or None when unavailable (missing, unreadable, invalid)."""
+    p = path or catalog_path()
+    if p is None:
+        return None
+    try:
+        return _load(p)
+    except (OSError, ValueError):
+        return None
 
 
 def _spans(words: list[str], vocab: set[str], n: int = 3) -> list[str]:
@@ -171,14 +190,14 @@ def score_sets(instruction: str, sets: dict) -> list[tuple[float, str, dict]]:
 
 def catalog_vocabulary(instruction: str, path: str | None = None, min_score: float = 1.0) -> tuple[str | None, dict]:
     """(catalogue set name or None, detail) for an instruction, from the catalogue alone."""
-    p = path or catalog_path()
-    if p is None:
-        return None, {"why": "no catalogue tasks.json"}
-    ranked = score_sets(instruction, _load(p))
+    sets = load_sets(path)
+    if sets is None:
+        return None, {"why": "catalogue unavailable"}
+    ranked = score_sets(instruction, sets)
     if not ranked or ranked[0][0] < min_score:
         return None, {"why": "no catalogue object named", "top": [(s, n) for s, n, _ in ranked[:3]]}
     s, name, det = ranked[0]
     return name, {**det, "score": s, "runner_up": [(s2, n2) for s2, n2, _ in ranked[1:3]]}
 
 
-__all__ = ["ALIASES", "catalog_vocabulary", "score_sets", "category_terms", "catalog_path"]
+__all__ = ["ALIASES", "catalog_vocabulary", "score_sets", "category_terms", "catalog_path", "load_sets"]
