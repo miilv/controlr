@@ -343,3 +343,17 @@ jumps > 150 mm ignored; deployed for the tower runs). Code: chunk a on the pre-s
 - Code versions: tower base3 / closed arms run from `~/dojo-integ` (cb0ac66 merge); the fail5 check, mode-A tower and
   the leftovers from a second checkout `~/dojo-integ-next` via the queue's `--repo` (so no barrier is needed).
 - Ledger: robot-harness PR #6 (tier `proxy` for proxy-eval results, per the lead).
+
+## 8. Status at hand-off (2026-10-25 13:05 UTC)
+
+| task | mode A (GT) + verify | mode B (perception) + verify, best arm | gap | n |
+|---|---|---|---|---|
+| stack_blocks | 100.0 (25/25) | 81.8 (20/25, closed2) | 18.2 | 25 settled |
+| build_tower | 100.0 (10/10) | 75.0 (7/10, verify off, before refine) | 25.0 | 10 |
+
+Unattended on compute3 (`~/dojo-data/integ/queue.txt`, runner `scripts/dojo/queue_runner.sh`, 1:1 with the agent
+layer's AGB jobs): build_tower base3 (refine off) ×25 and closed (closed2 config) ×25 from `~/dojo-integ`; then
+`B_stack_bundle_closed3_fail5` (search_lost on the 5 failing closed2 layouts), mode-A tower ×25, A stack verify-off
+controls, stack_bowls / put_bottles (A and B), swap_blocks / press_by_number (A) from `~/dojo-integ-next`.
+Read results with `python -m dojo.runtime.report --arm base:<dirs> --arm closed:<dirs>` (paired rescued / lost) or
+`python -m dojo.runtime.report <dirs>` (totals, gap table, failures, perception errors).
