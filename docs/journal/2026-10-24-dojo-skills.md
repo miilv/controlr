@@ -148,3 +148,44 @@ The twin does reject candidates: one place rolled [2, 2, 0, 0], with two descent
 - Since the lead's fairness ruling, the wrapper uses a blocking `flock -w`, and sweeps run in chunks
   of at most 10 layouts with 90 s between lock holds.
 - One Isaac process at a time. Nothing else on compute3 was touched.
+
+## 7. Interfaces other streams use
+
+- **integration** (`dojo/runtime/`):
+  - `planner.solve(sk)` or `planner.plan()` with `library.SKILLS[name](sk, **args)`;
+  - `Skills(env, provider, verifier=TwinBackend, verify_k, n_cands, remeasure, on_verified, refine)`;
+  - `sk.last_verified`, `sk.history` (SkillResult status = the failure taxonomy);
+  - `world.notes`, one dict per episode, carries the progress of swap / press across re-plans.
+- **perception**: `refine(sk, label, arm, kind)` runs at the hover of every pick and place, before the
+  descent. GT mode passes None. Mode B has no in-hand measurement (`remeasure=False`), so the regrasp
+  safety net needs a wrist re-view after the lift.
+- **simlab**: `TwinBackend.rollout`. The production backend is the bundle twin loaded from our
+  estimate. `g3` runs on simlab's `<id>.settled.json` wherever `settled_index.json` exists.
+
+## 8. Adding the next skill (handoff)
+
+1. Read the task's checker (`task/RoboDojo/tasks/<task>.py` on compute3) and its config.
+2. Write a generic skill in `library.py` that takes roles as arguments; reuse `run_jobs` (pick-place
+   with pipelining, resumable), `press_sequence`, `put_into` and `stacking.plan_stack`.
+3. Add a rule in `planner.plan` that maps instruction words plus object categories / geometry to that
+   skill. No task names.
+4. Test on the kinematic env through `planner.solve` (the dry-run script pattern: layout JSON +
+   asset metadata -> `KinematicEnv`), then G3: `scripts/skills/g3_chunks.sh <task> 100000 100024
+   ~/dojo-data/skills/g3/<run> --trace`. Read failures with the per-step trace (`--trace`), and
+   `python -m dojo.skills.g3 report` prints the table.
+
+Lead's next list, by points: make_kong, insert_key (15 % for lifting the key 5 cm, no gripper gate),
+fill_pen_holder, organize_table (25 per item, latched), plug_in_charger, store_tools_in_toolbox (the
+ladder ignores orientation). Assets and settled layouts exist on compute3 for all of them.
+
+## 9. Next bottlenecks
+
+- **stack_bowls.** The wall pinch holds the bowl; the carry and pre-place over the base bowl are
+  out of reach or collide. Options: a lower carry with the base chosen in the middle, or a two-arm
+  opposite-rim lift.
+- **put_bottles.** Standing bottles handed over through the table tip over on release (use an
+  in-air handover, or lay them down); the dropper sometimes misses its grasp.
+- **Mode B (perception).** No in-hand measurement, so loose grasps go unseen. The wrist refine at
+  the hover is in; a re-view after the lift is next.
+- **Clean same-code reruns.** Several runs above mix code versions across chunks (fixes landed
+  mid-sweep); v4 / v2 reruns are queued.
