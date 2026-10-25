@@ -117,6 +117,9 @@ class RuntimeConfig:
     # off | b1 | b1_then_agent (B1 unless its confidence < 0.5 or dark_risk, then one agent call); a confident
     # "not held" takes the object out of the jaws in the belief
     held_look: str = "off"
+    # mode perception: belt tracking (B1 re-reads every 4 steps while refreshing, a line fit per object over 40 steps;
+    # moving objects' belief poses follow the fit): auto = on iff the scene has a conveyor object | on | off
+    track_moving: str = "auto"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -167,7 +170,7 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always")):
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -424,6 +427,14 @@ class RuntimePolicy:
             if verifier is not None:                    # the twin would run the task's checker on a partial scene
                 verifier.disabled = f"estimate lacks {nf}"
                 events.append({"kind": "verify_unavailable", "reason": verifier.disabled})
+        if cfg.mode == "perception":
+            pc = self.perception()
+            if hasattr(pc, "motion"):                   # provider.actors_moving (skills waiting for a scripted arm)
+                prov.motion_reader = lambda a, b_: pc.motion(a, b_)
+            cats = {o.category for o in prov.belief.objects.values()}
+            if cfg.track_moving == "on" or (cfg.track_moving == "auto" and "conveyor" in cats):
+                prov.track_reader = lambda obs: pc.estimate([obs], scene, self.fold)
+                events.append({"kind": "track_moving", "on": True, "why": cfg.track_moving})
         live = self._live
 
         class _Ctx:
