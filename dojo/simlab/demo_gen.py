@@ -45,7 +45,8 @@ ARM, EE = "support_arm0", "support_ee0"
 HAND_TCP = 0.102            # panda_hand -> grasp point along the hand z (robot_config gripper_bias)
 OPEN, CLOSE = 0.04, -0.01   # finger joint targets (gripper_scale); closing stops on the object
 MAX_WIDTH = 0.077           # widest graspable width across the fingers (2 x 0.04 open, 1.5 mm per side)
-GRASP_DEPTH = 0.02          # grasp point below the object's top (finger pads are ~2 cm)
+GRASP_DEPTH = 0.03          # grasp point below the object's top (at most 60 % of its height)
+CARRY_SLOW = 2.0            # time stretch of the planned paths while an object is held
 HOME_STEP_RAD = 0.004       # per 4 ms sub-step for joint-space moves (1 rad/s)
 ORDER_TRIES = 4             # the seed's order, then other seeded orders (a transport can knock a later object)
 CARRY_CLEARANCE = 0.08
@@ -142,7 +143,7 @@ class DemoPlanner:
         self.q = self.q0.copy()
         self.fingers = OPEN
 
-    def plan_to(self, tcp_xyz, yaw: float, name: str, straight: bool = False) -> bool:
+    def plan_to(self, tcp_xyz, yaw: float, name: str, straight: bool = False, slow: float = 1.0) -> bool:
         """Plan the hand to ``tcp_xyz`` (top-down, fingers along ``yaw`` or yaw + pi). ``straight``: a vertical
         line from the current pose (cuRobo pose-cost hold on orientation and x/y), else free space."""
         pair = [yaw, yaw + math.pi]
@@ -165,6 +166,11 @@ class DemoPlanner:
                  np.asarray(v.detach().cpu().numpy() if hasattr(v, "detach") else v, float).reshape(p.shape))
             if not len(p):
                 continue
+            if slow > 1.0:                               # carrying: less acceleration, less slip
+                n = int(round(len(p) * slow))
+                src, dst = np.linspace(0.0, 1.0, len(p)), np.linspace(0.0, 1.0, n)
+                p = np.stack([np.interp(dst, src, p[:, j]) for j in range(p.shape[1])], axis=1)
+                v = np.stack([np.interp(dst, src, v[:, j]) for j in range(v.shape[1])], axis=1) / slow
             self.segments.append([step_rec(p[i], v[i], self.fingers) for i in range(len(p))])
             self.q = p[-1].copy()
             self.last_yaw = y
@@ -227,23 +233,24 @@ def plan_demo(run, seed: int, order: list[int] | None = None) -> tuple[dict | No
                                       "width_cm": round(100 * g["width"], 1), "height_cm": round(100 * h, 1)}
         if g.get("too_wide"):
             return None, {**info, "status": f"aim{i} ({o['category']}) {100 * g['width']:.1f} cm wider than the gripper"}
-        grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.5 * h), g["bottom"] + 0.01)
+        grasp_z = max(g["top"] - min(GRASP_DEPTH, 0.6 * h), g["bottom"] + 0.01)
         carry_z = max(b_top, tallest - origin[2]) + h + CARRY_CLEARANCE   # the carried object clears everything
         steps = [((*g["xy"], g["top"] + 0.08), g["yaw"], f"pre aim{i}"),
                  ((*g["xy"], grasp_z), g["yaw"], f"grasp aim{i}")]
         for xyz, yaw, name in steps:
-            if not dp.plan_to(xyz, yaw, name, straight=name.startswith("grasp")):
+            if not dp.plan_to(xyz, yaw, name, straight=name.startswith("grasp"),
+                              slow=CARRY_SLOW if name.startswith("grasp") else 1.0):
                 return None, {**info, "status": f"no plan: {name}"}
         dp.grip(CLOSE)
         lift = (*g["xy"], carry_z)
-        if not dp.plan_to(lift, g["yaw"], f"lift aim{i}", straight=True):
+        if not dp.plan_to(lift, g["yaw"], f"lift aim{i}", straight=True, slow=CARRY_SLOW):
             return None, {**info, "status": f"no plan: lift aim{i}"}
-        if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"over basket1 with aim{i}"):
+        if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"over basket1 with aim{i}", slow=CARRY_SLOW):
             return None, {**info, "status": f"no plan: over basket1 with aim{i}"}
         below_tcp = grasp_z - g["bottom"]                # object bottom under the TCP while carried
         release_z = b_top + below_tcp + 0.015            # bottom 1.5 cm above the rim: placed, not dropped
         if release_z < carry_z - 0.01 and not dp.plan_to((*b_xy, release_z), g["yaw"], f"lower aim{i}",
-                                                         straight=True):
+                                                         straight=True, slow=CARRY_SLOW):
             return None, {**info, "status": f"no plan: lower aim{i}"}
         dp.grip(OPEN, steps=40, hold=60)
         if not dp.plan_to((*b_xy, carry_z), g["yaw"], f"clear basket1 after aim{i}", straight=True):
