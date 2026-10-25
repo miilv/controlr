@@ -41,6 +41,7 @@ class AssetInfo:
     active_functional: dict = field(default_factory=dict)  # active functional points (tag -> raw)
     mesh: tuple | None = None                       # (vertices (N,3), faces (M,3)) when a catalogue is present
     irregular: bool | None = None                   # fills its box poorly (set at load for decimated meshes)
+    rgb: np.ndarray | None = None                   # mean face colour 0..255 (catalogue), for "the red block"
 
     @property
     def extents(self) -> np.ndarray:
@@ -90,6 +91,8 @@ class AssetDB:
                         V, F = decimate(V, F, cell)
                         cell *= 1.6
                     info.mesh = (V, F)
+                    if "colors" in z.files and len(z["colors"]):
+                        info.rgb = np.asarray(z["colors"], float).reshape(-1, np.asarray(z["colors"]).shape[-1])[:, :3].mean(0)
                     break
         self._cache[key] = info
         return info
@@ -97,6 +100,20 @@ class AssetDB:
 
 MAX_FACES = 30000             # meshes above this are clustered (tools, figurines, mice: 0.1-1.2 M faces; every
 DECIMATE_CELL = 0.0015        # grasp ray cast and fit is O(faces)); precision parts (keys, plugs, strips) are below
+
+
+COLOURS = {"red": (230, 30, 30), "green": (30, 200, 40), "blue": (30, 40, 230), "yellow": (240, 230, 30),
+           "orange": (250, 110, 0), "cyan": (20, 230, 230), "purple": (140, 40, 200), "pink": (250, 140, 190),
+           "white": (240, 240, 240), "black": (20, 20, 20), "brown": (130, 80, 40), "grey": (128, 128, 128),
+           "gray": (128, 128, 128)}
+
+
+def colour_name(rgb) -> str | None:
+    """The nearest basic colour name of an RGB (0..255) triple."""
+    if rgb is None:
+        return None
+    c = np.asarray(rgb, float)[:3]
+    return min(COLOURS, key=lambda k: float(np.linalg.norm(c - np.asarray(COLOURS[k], float))))
 
 
 def decimate(V: np.ndarray, F: np.ndarray, cell: float) -> tuple[np.ndarray, np.ndarray]:
