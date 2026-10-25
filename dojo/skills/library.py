@@ -23,7 +23,7 @@ import numpy as np
 from dojo.skills.executor import ArmPlan, BudgetExceeded, EpisodeEnded
 from dojo.skills.geometry import R_to_quat, T_from, inv_T
 from dojo.skills.kinematics import ARMS, TABLE_Z, TIP_BEYOND_TCP, down_R, tilted_R
-from dojo.skills.motion import CARRY, FAST, MEDIUM
+from dojo.skills.motion import CARRY, FAST, MEDIUM, SLOW
 from dojo.skills.targets import current_R, half_height, level_R, on_top, rest_pose, table_rest
 from dojo.skills.geometry import rot_z
 from dojo.skills.executor import ArmPlan as _ArmPlan  # noqa: F401
@@ -615,6 +615,181 @@ def _run_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), pla
     return r
 
 
+HANDOVER_POINTS = ((0.0, -0.24, 0.95), (0.0, -0.30, 0.92), (0.0, -0.20, 1.00))
+
+
+def _dense_fingers(kin, T_flange, gripper: float) -> np.ndarray:
+    """Finger volumes sampled on a grid (the corner samples of ``finger_points`` miss crossing fingers)."""
+    from dojo.skills.kinematics import FINGER_MAX, GRIP_SCALE
+    qf = min(max(GRIP_SCALE[0] + gripper * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0), FINGER_MAX)
+    loc = []
+    for x0, x1, yo, zh in ((0.075, 0.105, 0.0378, 0.028), (0.107, 0.126, 0.0134, 0.015), (0.128, 0.1576, 0.0034, 0.009)):
+        for x in np.linspace(x0, x1, 4):
+            for y in np.linspace(0.0004, yo, 3):
+                for z in np.linspace(-zh, zh, 4):
+                    loc += [(x, qf + y, z), (x, -(qf + y), z)]
+    loc = np.asarray(loc)
+    return (np.asarray(T_flange)[:3, :3] @ loc.T).T + np.asarray(T_flange)[:3, 3]
+
+
+def _grippers_apart(sk: Skills, a1: str, q1, g1: float, a2: str, q2, g2: float, min_d: float = 0.004,
+                    min_links: float = 0.06) -> bool:
+    k = sk.kin
+    F1, F2 = k.flange(a1, q1), k.flange(a2, q2)
+    P1 = np.vstack([k.palm_points(F1), _dense_fingers(k, F1, g1)])
+    P2 = np.vstack([k.palm_points(F2), _dense_fingers(k, F2, g2)])
+    if float(np.min(np.linalg.norm(P1[:, None] - P2[None], axis=2))) < min_d:
+        return False
+    L1, L2 = k.link_points(a1, q1), k.link_points(a2, q2)
+    return float(np.min(np.linalg.norm(L1[:, None] - L2[None], axis=2))) >= min_links
+
+
+def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, ignore=(), place_kw=None,
+                      n_yaw: int = 6):
+    """Hand the object over in the air: the giver picks it and holds it between the arms in a final
+    orientation (turned about the vertical), the taker grips it with a grasp that also fits the final
+    place, both grippers kept apart. For objects whose only grasps from the table cannot reach the place
+    (a lying key: gripped from its top face, inserted from the other side). Returns a dict of plan parts
+    or a SkillResult."""
+    from dojo.skills.kinematics import gap_to_grip
+    from dojo.skills.motion import HeldBox
+    from dojo.skills.skills import Held
+    w = sk.world
+    o = w.obj(label)
+    tg = []
+    for T in targets:
+        T = np.asarray(T, float)
+        c = T[:3, :3] @ o.asset.center + T[:3, 3]
+        for k in range(max(1, yaw_sym)):
+            Tk = T.copy()
+            Tk[:3, :3] = rot_z(2 * math.pi * k / max(1, yaw_sym)) @ T[:3, :3]
+            Tk[:3, 3] = c - Tk[:3, :3] @ o.asset.center
+            tg.append(Tk)
+    ign = tuple(set(ignore) | {label})
+    notes = []
+    for g_arm in sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2]))):
+        t_arm = "right" if g_arm == "left" else "left"
+        picks = sk.plan_pick(label, g_arm, return_all=True, keep=6, lift=0.10,
+                             grasps=G_box_and_usual(sk, o, g_arm))
+        if not isinstance(picks, list):
+            notes.append(f"{g_arm} pick: {picks.note[:80]}")
+            continue
+        for pp in picks[:4]:
+            box_g = HeldBox(pp.T_tcp_obj, o.asset.center, o.asset.extents / 2)
+            for H in HANDOVER_POINTS:
+                for T_t in tg[:max(1, yaw_sym)]:
+                    for j in range(n_yaw):
+                        R_H = rot_z(2 * math.pi * j / n_yaw) @ T_t[:3, :3]
+                        T_H = T_from(np.asarray(H) - R_H @ o.asset.center, R_H)
+                        Tg = T_H @ inv_T(pp.T_tcp_obj)
+                        rg = sk.kin.ik(g_arm, Tg, pp.plan.q_end, n_random=0)
+                        if not rg.ok:
+                            continue
+                        saved = (o.pos.copy(), o.quat.copy())
+                        o.pos, o.quat = T_H[:3, 3].copy(), R_to_quat(R_H)
+                        try:
+                            cands = G_box_and_usual(sk, o, t_arm)
+                        finally:
+                            o.pos, o.quat = saved
+                        for gt in cands:
+                            rt = sk.kin.ik(t_arm, gt.T, w.home_q[t_arm], n_random=0)
+                            if not rt.ok:
+                                continue
+                            g_open = gap_to_grip(gt.open_gap())
+                            if not _grippers_apart(sk, g_arm, rg.q, CLOSED, t_arm, rt.q, g_open):
+                                continue
+                            rpre = sk.kin.ik(t_arm, gt.pre(0.06), w.home_q[t_arm], n_random=0)
+                            if not rpre.ok or not _grippers_apart(sk, g_arm, rg.q, CLOSED, t_arm, rpre.q, g_open):
+                                continue
+                            T_to = inv_T(gt.T) @ T_H
+                            box_t = HeldBox(T_to, o.asset.center, o.asset.extents / 2)
+                            for T_obj in tg:
+                                Tp = T_obj @ inv_T(T_to)
+                                rp = sk.kin.ik(t_arm, Tp, w.home_q[t_arm], n_random=0)
+                                if not rp.ok:
+                                    continue
+                                ok, _ = sk.coll.check(t_arm, rp.q, CLOSED, ignore=ign, held=box_t)
+                                if not ok:
+                                    continue
+                                held_t = Held(label, T_to, box_t, gt)
+                                pl = sk.plan_place(t_arm, T_obj, yaw_sym=1, ignore=ignore, q_start=rt.q, held=held_t,
+                                                   **dict(place_kw or {}))
+                                if not isinstance(pl, PlacePlan):
+                                    continue
+                                pl.transfer_kw = {"ignore": tuple(ignore), **dict(place_kw or {})}
+                                return {"giver": g_arm, "taker": t_arm, "pick": pp, "T_H": T_H, "q_give": rg.q,
+                                        "box_g": box_g, "grasp_t": gt, "T_H_grasp": inv_T(T_H) @ gt.T, "place": pl,
+                                        "target": T_obj}
+            notes.append(f"{g_arm} pick {pp.grasp.note}: no handover pose")
+    return SkillResult(False, "handover", "ik_fail", 0, None, note="; ".join(notes[:4]))
+
+
+def G_box_and_usual(sk: Skills, o, arm: str) -> list:
+    from dojo.skills import grasps as G
+    return G.box_grasps(o, sk.kin, arm) + G.candidates(o, sk.kin, arm)
+
+
+def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult:
+    """Execute ``plan_air_handover``: pick, carry to the handover pose, the taker approaches and closes, the
+    giver opens and backs off, then the taker's place (re-planned for the measured in-hand pose)."""
+    from dojo.skills.kinematics import grip_to_gap, gap_to_grip
+    from dojo.skills.skills import close_steps, OPEN_STEPS
+    g_arm, t_arm, label = h["giver"], h["taker"], h["pick"].label
+    r = sk._record(sk.run_pick(h["pick"]))
+    if not r.ok:
+        return r
+    held = sk.held[g_arm]
+    try:
+        Tg = h["T_H"] @ inv_T(held.T_tcp_obj)
+        mv = sk.motion.to_pose(g_arm, sk.ex.q[g_arm], Tg, CARRY, "handover_carry", gripper=CLOSED, held=held.box,
+                               ignore=(label,), ease=3)
+        if not mv.ok:
+            mv = sk.motion.to_pose(g_arm, sk.ex.q[g_arm], h["T_H"] @ inv_T(h["pick"].T_tcp_obj), CARRY,
+                                   "handover_carry", gripper=CLOSED, check=False, ease=3)
+        sk.ex.run({g_arm: ArmPlan(g_arm, sk.ex.q[g_arm].copy(), CLOSED).move(mv).hold(3)}, name="handover carry")
+        w = sk.refresh()
+        o = w.obj(label)
+        gT = o.T @ h["T_H_grasp"]                          # the taker's grasp on the object as it is now
+        from dojo.skills.grasps import Grasp
+        gt = h["grasp_t"]
+        g2 = Grasp(gt.method, gT, gt.width, gt.pre_dist, gt.score, gt.note)
+        g_open = gap_to_grip(g2.open_gap())
+        to_pre = sk.motion.to_pose(t_arm, sk.ex.q[t_arm], g2.pre(0.06), FAST, "take_approach", gripper=g_open,
+                                   ignore=(label,))
+        if not to_pre.ok:
+            return sk._record(SkillResult(False, "handover", to_pre.status, 0, t_arm, note=to_pre.note[:120]))
+        down = sk.motion.line(t_arm, to_pre.q_end, g2.T, SLOW, "take_in", gripper=g_open, check=False)
+        p = ArmPlan(t_arm, sk.ex.q[t_arm].copy(), sk.ex.g[t_arm]).grip(g_open, 0).move(to_pre).move(down).hold(2)
+        p.grip(CLOSED, close_steps(grip_to_gap(g_open), g2.width), "take_close").hold(2)
+        sk.ex.run({t_arm: p}, name="handover take")
+        # the giver lets go and backs off along its approach
+        Tq = sk.kin.tcp(g_arm, sk.ex.q[g_arm])
+        T_back = Tq.copy()
+        T_back[:3, 3] -= Tq[:3, 0] * 0.07
+        back = sk.motion.line(g_arm, sk.ex.q[g_arm], T_back, MEDIUM, "give_back", gripper=OPEN, check=False)
+        sk.ex.run({g_arm: ArmPlan(g_arm, sk.ex.q[g_arm].copy(), CLOSED).grip(OPEN, OPEN_STEPS + 1).move(back)},
+                  name="handover release")
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return sk._record(SkillResult(False, "handover", "step_budget" if isinstance(e, BudgetExceeded) else "ended",
+                                      0, t_arm, note=str(e)))
+    sk.held[g_arm] = None
+    w = sk.refresh()
+    o = w.obj(label)
+    from dojo.skills.motion import HeldBox
+    from dojo.skills.skills import Held
+    T_rel = inv_T(sk.kin.tcp(t_arm, w.arms[t_arm].q)) @ o.T
+    drift = float(np.linalg.norm(T_rel[:3, 3] - inv_T(g2.T)[:3, :3] @ (o.T[:3, 3] - g2.T[:3, 3])))
+    sk.held[t_arm] = Held(label, T_rel, HeldBox(T_rel, o.asset.center, o.asset.extents / 2), g2)
+    sk._record(SkillResult(True, "handover", "ok", 0, t_arm, note=f"{label} {g_arm} -> {t_arm}, drift {drift*1000:.1f} mm"))
+    sk.ex.run({g_arm: sk.plan_home(g_arm)}, name="giver home")
+    pl = h["place"]
+    kw = dict(getattr(pl, "transfer_kw", {}) or {})
+    pl2 = sk.plan_place(t_arm, h["target"], yaw_sym=1, **kw)
+    use = pl2 if isinstance(pl2, PlacePlan) else pl
+    ref = next((l for l in (kw.get("ignore") or ()) if l in sk.world.objects), None)
+    return sk._record(sk.run_place(use, tol[0], tol[1], tol_z=tol[2], ref_label=ref))
+
+
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
                    max_spots: int = 3, relay_near=(0.0, -0.28)) -> SkillResult:
@@ -684,6 +859,12 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
             sk.bank()
             sk.refresh()
         return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight)
+    h = plan_air_handover(sk, label, targets, yaw_sym, ignore, place_kw)
+    if isinstance(h, dict):
+        sk.log(f"[place_oriented] {label}: in-air handover {h['giver']} ({h['pick'].grasp.note}) -> {h['taker']} "
+               f"({h['grasp_t'].note}) at {np.round(h['T_H'][:3, 3], 3).tolist()}")
+        return run_air_handover(sk, h, tol=tight)
+    notes.append(h.note[:150])
     return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
 
 
