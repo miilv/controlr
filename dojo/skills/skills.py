@@ -812,7 +812,8 @@ class Skills:
     # ------------------------------------------------------------------ re-orienting transfer
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
-                      q_start: dict | None = None, max_pick_tilt: float = 50.0):
+                      q_start: dict | None = None, max_pick_tilt: float = 50.0, box_tilts=(0.0, 25.0, -25.0),
+                      lift_to_pre: bool = False):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
@@ -821,7 +822,11 @@ class Skills:
         from the lift's end). ``yaw_sym``: each target is also tried turned by 2 pi k / yaw_sym about the
         vertical through its bbox centre. ``max_pick_tilt``: grasps whose pick approach is further from
         straight down are not used (twin: an end-on grasp of a lying tile, 65 deg from vertical, shifted it
-        4 mm while closing and held it with 18 mm drift). Returns (PickPlan, PlacePlan) or a SkillResult."""
+        4 mm while closing and held it with 18 mm drift). ``box_tilts``: approach tilts (deg, about the closing axis)
+        of the box grasps (40: a top grasp that still reaches 1 m high at 0.54 m from the base, 0.32 m straight
+        down). ``lift_to_pre``: lift the object at least to the pre-place height (a slice carried from its rack into
+        a toaster 12 cm taller: the 8 cm lift's joint move to the pre-place cut through the toaster).
+        Returns (PickPlan, PlacePlan) or a SkillResult."""
         w = self.world
         obj = w.obj(label)
         place_kw = dict(place_kw or {})
@@ -853,7 +858,7 @@ class Skills:
             elif grasps is not None:
                 cands = list(grasps)
             else:
-                cands = G.box_grasps(obj, self.kin, a) + G.candidates(obj, self.kin, a)
+                cands = G.box_grasps(obj, self.kin, a, tilts=tuple(box_tilts)) + G.candidates(obj, self.kin, a)
                 if held_box(obj, np.eye(4)).points is not None:          # irregular: real slices too
                     cands += G.slice_grasps(obj, self.kin, a)
             n_g = n_p = 0
@@ -905,7 +910,19 @@ class Skills:
             notes.append(f"{a}: {n_g}/{len(cands)} grasps reachable, {n_p} grasp-place pairs")
         screened.sort(key=lambda x: x[0])
         for _, a, g, T_obj in screened[:max_full]:
-            pp = self.plan_pick(label, a, grasps=[g], lift=lift, keep=1, q_start=q_start, **pick_kw)
+            kw_p = dict(pick_kw)
+            if lift_to_pre and "lift_to_z" not in kw_p:
+                # the pre-place TCP height for this grasp (plan_place: the object's lowest corner 15 mm over the
+                # highest ignored support, at least pre_h above the target)
+                T_tcp_t = T_obj @ inv_T(inv_T(g.T) @ obj.T)
+                corners = (T_obj[:3, :3] @ (np.array([[x, y, z] for x in (0, 1) for y in (0, 1) for z in (0, 1)])
+                                            * obj.asset.extents + obj.asset.bbox_min).T).T + T_obj[:3, 3]
+                sup = max((w.obj(l).top_z for l in ignore if l in w.objects), default=None)
+                up = float(place_kw.get("pre_h", 0.06))
+                if sup is not None:
+                    up = max(up, sup + 0.015 - float(corners[:, 2].min()))
+                kw_p["lift_to_z"] = float(T_tcp_t[2, 3]) + up + 0.01
+            pp = self.plan_pick(label, a, grasps=[g], lift=lift, keep=1, q_start=q_start, **kw_p)
             if not isinstance(pp, PickPlan):
                 notes.append(f"pick {g.note}: {pp.note[:70]}")
                 continue
