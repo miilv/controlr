@@ -648,10 +648,20 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         st["first"] = max(labs, key=lambda l: float(w.obj(l).pos[:2] @ u))
     first = st["first"]
     key = w.obj(first).asset.key
-    same = [l for l in labs if l != first and w.obj(l).asset.key == key]
+    same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key]
+    t0 = w.step
+    while not same:
+        # not in view yet (at eval the far end of the belt may be out of the head camera): keep looking
+        if w.step - t0 > max_wait:
+            return {"ok": False, "stage": "match", "note": f"no other {key} seen"}
+        try:
+            sk.ex.hold(5)
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return {"ok": False, "stage": "match", "note": str(e)}
+        w = sk.refresh()
+        labs = [l for l in w.objects if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter]
+        same = [l for l in labs if l != first and w.obj(l).asset.key == key]
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
-    if not same:
-        return {"ok": False, "stage": "match", "note": f"no other {key}"}
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
     ign = (conveyor,) if conveyor else ()
     for attempt in range(2):
