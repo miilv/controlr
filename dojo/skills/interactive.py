@@ -519,9 +519,13 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
                     T = T_g.copy()
                     T[:3, 3] += v3 * k
                     samples.append(("close", T))
-                for k in range(1, 7):
+                for k in range(1, 4):                           # lift off with the belt, then straight up
                     T = T_g.copy()
-                    T[:3, 3] += v3 * (n_close + k) + np.array([0, 0, lift * k / 6])
+                    T[:3, 3] += v3 * (n_close + k) + np.array([0, 0, 0.03 * k / 3])
+                    samples.append(("lift", T))
+                for k in range(1, 9):
+                    T = T_g.copy()
+                    T[:3, 3] += v3 * (n_close + 3) + np.array([0, 0, 0.03 + (lift - 0.03) * k / 8])
                     samples.append(("lift", T))
                 qs = _track_ik(sk, a, samples, sk.world.home_q[a])
                 if qs is None:
@@ -597,6 +601,7 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.16, ig
                 track = [(qq, go if kind == "open" else 0.0) for kind, qq in qs]
                 sk.log(f"[belt] re-read: shifted the track by {np.round(err * 1000, 1).tolist()} mm")
         sk.ex.run_lists({a: track}, name=f"belt pick {label}")
+        sk.ex.settle(tol=0.01, max_steps=12)            # the arm lags its command on the lift: measure at the top
         sk.ex.hold(2)
     except BudgetExceeded as e:
         return SkillResult(False, "belt_pick", "step_budget", 0, a, note=str(e))
