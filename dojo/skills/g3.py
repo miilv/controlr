@@ -363,6 +363,72 @@ def cmd_probe(a) -> None:
     run.close()
 
 
+def _eval_tree(rm, node, depth: int = 0, op: str = "and", out=None) -> bool:
+    """Evaluate a RoboDojo check tree like ``RewardManager.check_once`` (lists alternate or / and), printing every
+    leaf with its value."""
+    out = out if out is not None else []
+    pad = "  " * depth
+    if isinstance(node, tuple):
+        v = rm.call_func_parser(node, 0)
+        args = {k: v_ for k, v_ in node[1].items() if k != "env_idx" and v_ is not None}
+        out.append(f"{pad}{'OK ' if v and v >= 1 else 'NO '}{node[0]} {str(args)[:150]}")
+        return bool(v is not None and v >= 1)
+    vals = []
+    out.append(f"{pad}[{op}]")
+    for sub in node:
+        vals.append(_eval_tree(rm, sub, depth + 1, "and" if op == "or" else "or", out))
+    res = any(vals) if op == "or" else all(vals)
+    out.append(f"{pad}=> {res}")
+    return res
+
+
+def cmd_checks(a) -> None:
+    """Every checker term of a task on one layout, after the layout loads (dev): ``--pose LABEL:x,y,z,qw,qx,qy,qz``
+    moves objects first (e.g. the final poses of a failed episode) and lets them settle ``--settle`` steps."""
+    from dojo.simlab import paths
+    from dojo.simlab.runner import RoboDojoRunner
+
+    out = Path(a.out)
+    paths.assert_not_eval(out)
+    lp = Path(a.layout)
+    paths.assert_not_eval(lp)
+    lay = json.loads(lp.read_text())
+    poses = {}
+    for spec in a.pose or []:
+        lab, vals = spec.split(":")
+        poses[lab] = [float(x) for x in vals.split(",")]
+    for grp in lay.values():
+        if not isinstance(grp, dict):
+            continue
+        for recs in grp.values():
+            for r in recs if isinstance(recs, list) else []:
+                if isinstance(r, dict) and r.get("label") in poses:
+                    v = poses[r["label"]]
+                    r["default_pos"], r["default_ori"] = v[:3], v[3:7]
+    run = RoboDojoRunner(a.task, num_envs=1, workdir=str(out / "work"), physics_only=True, need_planner=False)
+    info = run.load(lay)
+    for _ in range(a.settle):
+        run.step(run.hold_action())
+    rm = run.env.reward_manager
+    lines = [f"stable {info['stable']}; reward {run.reward()}; score {run.score()}"]
+    for i, stage in enumerate(rm.check_list[0]):
+        lines.append(f"== check stage {i}")
+        _eval_tree(rm, list(stage) if not isinstance(stage, tuple) else [stage], 1, "and", lines)
+    for i, entry in enumerate(rm.score_list[0]):
+        lines.append(f"== score entry {i} ({rm.score_meta[0].get('mode')}, completed {rm.score_completed_count[0]})")
+        checks = entry[0] if rm.score_meta[0].get("mode") == "paired" else entry
+        _eval_tree(rm, list(checks), 1, "and", lines)
+    for o in run.objects_gt(0):
+        if not o.get("clutter"):
+            lines.append(f"obj {o.get('label')} pos {np.round(o['pos'], 4).tolist() if o.get('pos') else None} "
+                         f"quat {np.round(o['quat'], 4).tolist() if o.get('quat') else None} joints {o.get('joint_pos')}")
+    txt = "\n".join(lines)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"checks_{a.task}_{lp.stem}.txt").write_text(txt)
+    print(txt, flush=True)
+    run.close()
+
+
 def cmd_report(a) -> None:
     """Table of every run's summary under ``--root`` (CPU only, no Isaac)."""
     root = Path(a.root)
@@ -394,10 +460,16 @@ def main(argv=None) -> None:
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")
+    c = sub.add_parser("checks")
+    c.add_argument("--task", required=True)
+    c.add_argument("--layout", required=True)
+    c.add_argument("--out", required=True)
+    c.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
+    c.add_argument("--settle", type=int, default=5)
     q = sub.add_parser("report")
     q.add_argument("--root", default=os.path.expanduser("~/dojo-data/skills/g3"))
     a = ap.parse_args(argv)
-    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report}[a.cmd](a)
+    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report, "checks": cmd_checks}[a.cmd](a)
 
 
 if __name__ == "__main__":
