@@ -26,6 +26,7 @@ class Vocabulary:
     name: str                 # perception catalogue candidate set (catalog/tasks.json key)
     patterns: tuple           # all must match the instruction (re.I)
     excludes: tuple = ()      # none may match
+    source: str = "table"     # table (the regexes) | catalog (the fallback: objects the instruction names)
 
 
 VOCABULARIES: tuple[Vocabulary, ...] = (
@@ -43,15 +44,72 @@ VOCABULARIES: tuple[Vocabulary, ...] = (
     Vocabulary("stack_blocks_by_language", (r"\bstack\b", r"\bblocks\b", r"\bin the order of\b")),
     Vocabulary("plug_in_charger", (r"\bplug\b", r"\bcharger\b", r"\bpower strip\b")),
     Vocabulary("make_kong", (r"\bdeclare a kong\b", r"\btiles?\b")),
+    # the rest of Ilia's lane (robot-harness coord/LANES.md), from the public configs' gen_instruction templates
+    Vocabulary("fold_clothes", (r"\bfold\b", r"\bclothes\b")),
+    Vocabulary("hang_mugs", (r"\bhang\b", r"\bmugs?\b", r"\brack\b")),
+    Vocabulary("make_toast", (r"\bbread\b", r"\btoaster\b")),
+    Vocabulary("store_laptop_and_headphones", (r"\bheadphones?\b", r"\blaptop\b")),
+    Vocabulary("sweep_blocks", (r"\bbroom\b", r"\bdustpan\b|\bsweep\b")),
+    Vocabulary("deposit_coin", (r"\bcoin\b", r"\bbank\b")),
+    Vocabulary("fasten_screws", (r"\bscrews?\b", r"\bnuts?\b")),
+    Vocabulary("play_Xylophone", (r"\bxylophone\b", r"\bmallet\b")),
+    Vocabulary("insert_key", (r"\bkey\b", r"\bkeyhole\b")),
+    Vocabulary("insert_tubes", (r"\btubes?\b", r"\brack\b")),
+    Vocabulary("fill_egg_holder", (r"\beggs?\b", r"\begg holder\b")),
+    Vocabulary("fill_pen_holder", (r"\bpens?\b", r"\bpen holder\b")),
+    Vocabulary("organize_table", (r"\balarm clock\b", r"\bkeyboard\b")),
+    Vocabulary("play_stacking_toy", (r"\bstacking toy\b", r"\bpegs?\b")),
+    Vocabulary("play_tic_tac_toe", (r"\btic-?tac-?toe\b",)),
+    Vocabulary("pick_from_conveyor_by_image", (r"\bconveyor\b", r"\bimage\b")),
+    Vocabulary("match_and_pick_from_conveyor", (r"\bconveyor\b", r"\bremember\b")),
+    Vocabulary("imitate_sorting_sequence", (r"\bplacement order\b", r"\bbasket\b")),
+    Vocabulary("store_tools_in_toolbox", (r"\btools?\b", r"\btoolbox\b")),
 )
 
 
-def perception_vocabulary(instruction: str) -> Vocabulary | None:
+def perception_vocabulary(instruction: str, fallback: bool = True, table: bool = True) -> Vocabulary | None:
+    """The instruction-regex table first (fast path); when nothing matches, the catalogue fallback
+    (``vocab.catalog_vocabulary``: the candidate set whose objects the instruction names). ``table=False`` is the
+    fallback alone (offline measurement)."""
     text = " ".join(str(instruction or "").split())
-    for v in VOCABULARIES:
-        if all(re.search(p, text, re.I) for p in v.patterns) and not any(re.search(p, text, re.I) for p in v.excludes):
-            return v
-    return None
+    if table:
+        for v in VOCABULARIES:
+            if all(re.search(p, text, re.I) for p in v.patterns) and not any(re.search(p, text, re.I) for p in v.excludes):
+                return v
+    if not fallback:
+        return None
+    from .vocab import catalog_vocabulary
+    name, _detail = catalog_vocabulary(text)
+    return Vocabulary(name, (), (), source="catalog") if name else None
+
+
+def vocabulary_candidates(instruction: str, margin: float = 0.15, max_k: int = 3) -> list[Vocabulary]:
+    """Candidate sets for set-level explain-away (the runtime estimates frame 0 with each and keeps the one that
+    explains the scene best). One entry when the table and the catalogue fallback agree, or the fallback has a clear
+    winner; else the table's set plus the fallback's top / close runners-up (within ``margin`` of its top score).
+    A ``_random`` twin of a listed std set is dropped (same instruction; the std set is the convention)."""
+    from .vocab import load_sets, score_sets
+    text = " ".join(str(instruction or "").split())
+    table = perception_vocabulary(text, fallback=False)
+    sets = load_sets(None)
+    ranked = score_sets(text, sets) if sets else []
+    ranked = [r for r in ranked if r[0] >= 1.0]
+    out = [table] if table is not None else []
+    if not ranked:
+        return out
+    if table is not None and ranked[0][1] == table.name:
+        return out
+    top = ranked[0][0]
+    for sc, name, _ in ranked:
+        if sc < (1 - margin) * top and out:
+            break
+        names = {v.name for v in out}
+        if name in names or (name.endswith("_random") and name[: -len("_random")] in names):
+            continue
+        out.append(Vocabulary(name, (), (), source="catalog"))
+        if len(out) >= max_k:
+            break
+    return out
 
 
 @dataclass
@@ -99,4 +157,4 @@ class RuleSupervisor:
         return Decision("run", p.skill, dict(p.args), f"{why}: {p.why}")
 
 
-__all__ = ["Vocabulary", "VOCABULARIES", "perception_vocabulary", "Decision", "RuleSupervisor"]
+__all__ = ["Vocabulary", "VOCABULARIES", "perception_vocabulary", "vocabulary_candidates", "Decision", "RuleSupervisor"]
