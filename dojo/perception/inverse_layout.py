@@ -857,7 +857,9 @@ def label_groups(task: str) -> list[dict]:
                                   "select_mode": d["select_mode"], "categories": d["categories"], "regions": []})
         g["labels"].append(lab)
         for cat in d["categories"] or [{}]:
-            g["regions"].append(_region({**d["placement"], **(cat.get("override") or {})}))
+            r = _region({**d["placement"], **(cat.get("override") or {})})
+            if r not in g["regions"]:  # general_pickup: 85 categories, one region
+                g["regions"].append(r)
     return list(groups.values())
 
 
@@ -1082,28 +1084,64 @@ def _app(obs_rgb, keys) -> float:
     return min(appearance_distance(obs_rgb, ref_color(k)) for k in keys)
 
 
+def _single_target(g: dict) -> bool:
+    """One label named by the instruction out of a big vocabulary (general_pickup's target among clutter).
+    Instruction-ranked groups only: pack's single-label groups (12 cars) keep the D0-validated path."""
+    return len(g["labels"]) == 1 and g.get("target_ranking") is not None
+
+
+def _split_blob(b: Blob, v: ViewMasks, sm: ShapeModel, max_k: int = 6) -> list[Blob]:
+    """A blob several times the object's expected silhouette (it merged with neighbours) cut into pieces of
+    about that size (k-means on pixel coordinates, fixed seed): each piece is a proposal of its own."""
+    X = v.cam.ray_plane(b.centroid[None, :], TABLE_Z + sm.height / 2)[0]
+    if not np.isfinite(X).all():
+        return []
+    a_pred = int(sm.sil(v.cam, sm.pose(X[0], X[1], 0.0)).sum())
+    r = b.area / max(a_pred, 1)
+    if r < 2.5:
+        return []
+    k = int(min(max_k, max(2, round(r))))
+    ys, xs = np.nonzero(b.mask)
+    pts = np.c_[xs, ys].astype(np.float32)
+    cv2.setRNGSeed(0)
+    crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.5)
+    _, lab, _ = cv2.kmeans(pts, k, None, crit, 3, cv2.KMEANS_PP_CENTERS)
+    lab = lab.ravel()
+    out = []
+    for i in range(k):
+        sel = lab == i
+        if sel.sum() < 0.3 * a_pred:
+            continue
+        m = np.zeros_like(b.mask)
+        m[ys[sel], xs[sel]] = 1
+        x0, y0 = int(xs[sel].min()), int(ys[sel].min())
+        out.append(Blob(b.view, m, int(sel.sum()), np.array([xs[sel].mean(), ys[sel].mean()]),
+                        (x0, y0, int(xs[sel].max()) - x0 + 1, int(ys[sel].max()) - y0 + 1)))
+    return out
+
+
 def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=None, blob_offset=0):
     """Hypotheses per blob: candidates prefiltered by silhouette area and blob colour, a yaw-grid coarse fit
     (diverse starts + 180-degree flip), then the best ``refine_per_blob`` per blob (at most
     ``refine_per_group`` per label group) get a quick multi-view refinement and an appearance + texture
     cost. Selection happens later at scene level (``_scene_select``)."""
-    head = views["cam_head"]
     per_blob: dict[int, list[Hypothesis]] = {}
     for bi, b in enumerate(blob_list):
-        bcol = _blob_color(head.img, b.mask)
-        occl = _touches_unknown(b, head)
+        bv = views[b.view]  # blobs come from the head view, or from a wrist view (single-target fallback)
+        bcol = _blob_color(bv.img, b.mask)
+        occl = _touches_unknown(b, bv)
         scored = []  # (prefilter score, group, prior, shapes) across all label groups
         for gi, g, prior in pending:
             for sms in shapes_by_group[gi].values():
                 sm = sms[0]
-                X = head.cam.ray_plane(b.centroid[None, :], TABLE_Z + sm.height / 2)[0]
+                X = bv.cam.ray_plane(b.centroid[None, :], TABLE_Z + sm.height / 2)[0]
                 if not np.isfinite(X).all():
                     continue
                 if prior["fixed_xy"] is not None and np.hypot(X[0] - prior["fixed_xy"][0], X[1] - prior["fixed_xy"][1]) > 0.08:
                     continue
                 if not region_ok(g, X[0], X[1]):  # outside where the generator can put this label
                     continue
-                a_pred = int(sm.sil(head.cam, sm.pose(X[0], X[1], 0.0)).sum())
+                a_pred = int(sm.sil(bv.cam, sm.pose(X[0], X[1], 0.0)).sum())
                 ratio = b.area / max(a_pred, 1)
                 if ratio > 3.0 or (ratio < 0.3 and not occl):
                     continue
@@ -1528,6 +1566,8 @@ class EstimatorConfig:
     # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
     use_slots: bool = True  # labels pinned to config slots start there (make_kong tiles, tower base)
     slot_identity_max: int = 12  # slot labels with 2..N candidates get a per-candidate identity check
+    wrist_proposals: bool = True  # single-target groups with a poor head fit also propose from wrist blobs
+    wrist_fallback_loss: float = 0.6
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
@@ -1692,6 +1732,35 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     timings["propose_assign_s"] = round(time.time() - t1, 3)
 
     # ---- polish: identity among the label group's shapes + 180-degree flips, per chosen object
+    # single-target groups (general_pickup: one asset among clutter) with a poor or no head-based fit: also
+    # propose from the wrist views' blobs (the target can merge with a neighbour in the head view and stand
+    # alone in a wrist view); the lower combined cost wins
+    if cfg.wrist_proposals:
+        for gi, g, prior in pending:
+            if not _single_target(g):
+                continue
+            cur = [h for h in chosen if h.label_group == gi]
+            if cur and cur[0].per_view.get("sil_loss", cur[0].loss) < cfg.wrist_fallback_loss:
+                continue
+            sm0 = next(iter(shapes_by_group[gi].values()))[0]
+            wb = []
+            for name in ("cam_head", "cam_left_wrist", "cam_right_wrist"):  # merged blobs cut into pieces
+                if name in views:
+                    for b in blobs(views[name], name):
+                        pieces = _split_blob(b, views[name], sm0)
+                        wb += pieces if pieces else ([b] if name != "cam_head" else [])
+            if not wb:
+                continue
+            others_w = _union_masks([h for h in chosen if h.label_group != gi], views)
+            more = _propose(wb, [(gi, g, prior)], shapes_by_group, views, cfg, groups, others=others_w, blob_offset=5000)
+            pool += more
+            best = min(more, key=lambda h: h.loss) if more else None
+            if best is not None and (not cur or best.loss < cur[0].loss - 0.05):
+                if cur:
+                    chosen.remove(cur[0])
+                best.per_view["from_wrist"] = True
+                chosen.append(best)
+
     t3 = time.time()
     if cfg.polish:
         chosen = _polish(chosen, views, cfg, groups, pending)
