@@ -339,7 +339,7 @@ def antipodal_grasps(obj: ObjectState, kin: X5Kin, arm: str, n_samples: int = 20
     return out
 
 
-def mesh_width_at(obj: ObjectState, T_grasp: np.ndarray, reach: float = 0.05, depths=(0.0, 0.006),
+def mesh_width_at(obj: ObjectState, T_grasp: np.ndarray, reach: float = 0.05, depths=(0.0, 0.006, 0.011),
                   max_normal_deg: float = 32.0) -> float | None:
     """The object's real width between the pads of a grasp (rays along the closing axis from both sides
     towards the TCP, at the TCP and a little deeper along the approach). None when either side misses
@@ -375,6 +375,94 @@ def mesh_width_at(obj: ObjectState, T_grasp: np.ndarray, reach: float = 0.05, de
         return None
     w = max(widths)
     return w if w > 0.002 else None
+
+
+def mesh_com(asset) -> np.ndarray:
+    """Centre of mass in the object frame: the volume centroid of a closed mesh (PhysX takes the mass
+    properties from the colliders at uniform density), else the area-weighted surface centroid, else the
+    bbox centre. A key: volume centroid at the bow / shaft junction (z -11 mm), surface centroid 5 mm lower."""
+    mesh = getattr(asset, "mesh", None)
+    if mesh is None:
+        return np.asarray(asset.center, float)
+    V, F = mesh
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    vol = np.einsum("ij,ij->i", a, np.cross(b, c)) / 6.0
+    tot = float(vol.sum())
+    ext = np.maximum(V.max(0) - V.min(0), 1e-6)
+    if tot > 0.02 * float(np.prod(ext)):
+        com = ((a + b + c) / 4.0 * vol[:, None]).sum(0) / tot
+        if np.all(com >= V.min(0) - 1e-4) and np.all(com <= V.max(0) + 1e-4):
+            return com
+    ar = np.linalg.norm(np.cross(b - a, c - a), axis=1)
+    return ((a + b + c) / 3 * ar[:, None]).sum(0) / max(float(ar.sum()), 1e-12)
+
+
+def grasp_lever(obj: ObjectState, T_grasp: np.ndarray, centre=None) -> float:
+    """Distance (m) from the object's centre of mass to the closing axis through the pads' contact centre
+    (``centre``, world; default the TCP): the arm of the gravity torque that turns the object about the
+    pads (a key held on its bow 9 mm off it swung 50 deg in the pads during a carry, twin)."""
+    com_w = obj.R @ mesh_com(obj.asset) + obj.pos
+    p = T_grasp[:3, 3] if centre is None else np.asarray(centre, float)
+    d = com_w - p
+    y = T_grasp[:3, 1]
+    return float(np.linalg.norm(d - y * float(d @ y)))
+
+
+def pad_contact(obj: ObjectState, T_grasp: np.ndarray, half_w: float = 0.008, x_range=(-0.008, 0.012),
+                n: int = 5, tol: float = 0.0012, reach: float = 0.05, max_normal_deg: float = 32.0):
+    """Where the pads touch the object once they close at ``T_grasp``: rays along the closing axis from both
+    sides on an n x n grid over the pad (along the approach, across the finger); a side's contacts are its
+    hits within ``tol`` of its outermost hit, on faces square to the closing axis. Returns (patch, centre):
+    the smaller side's contact bbox as a fraction of the pad grid (flat faces, a key's bow from its sides,
+    score high; a cylinder squeezed across its diameter, the bow from its rim, or an edge, low: the pads
+    hold a line and the object turns about the closing axis) and the contacts' centre (world), or (0, None)."""
+    if obj.asset.mesh is None:
+        return 1.0, T_grasp[:3, 3].copy()
+    V, F = obj.asset.mesh
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    Rt, pt = obj.R.T, obj.pos
+    x, y, z = T_grasp[:3, 0], T_grasp[:3, 1], T_grasp[:3, 2]
+    cos_max = math.cos(math.radians(max_normal_deg))
+    dx, dz = (x_range[1] - x_range[0]) / (n - 1), 2 * half_w / (n - 1)
+    side = {1.0: [], -1.0: []}
+    for xi in np.linspace(x_range[0], x_range[1], n):
+        for zi in np.linspace(-half_w, half_w, n):
+            p = T_grasp[:3, 3] + x * xi + z * zi
+            for sgn in (1.0, -1.0):
+                h = _ray_mesh(Rt @ (p + sgn * y * reach - pt), Rt @ (-sgn * y), a, b, c)
+                if h is None or h[0] > 2 * reach:
+                    continue
+                nrm = np.cross(b[h[1]] - a[h[1]], c[h[1]] - a[h[1]])
+                nrm /= max(float(np.linalg.norm(nrm)), 1e-12)
+                if abs(float(nrm @ (Rt @ y))) < cos_max:
+                    continue
+                side[sgn].append((reach - h[0], xi, zi))
+    full = (x_range[1] - x_range[0] + dx) * (2 * half_w + dz)
+    areas, cpts = [], []
+    for sgn in (1.0, -1.0):
+        h = side[sgn]
+        if not h:
+            return 0.0, None
+        top = max(t for t, _, _ in h)
+        pts = np.array([(xi, zi) for t, xi, zi in h if t >= top - tol])
+        ext = pts.max(0) - pts.min(0)
+        areas.append((ext[0] + dx) * (ext[1] + dz))
+        cpts.append(pts)
+    m = np.vstack(cpts).mean(0)
+    return float(min(areas) / full), T_grasp[:3, 3] + x * m[0] + z * m[1]
+
+
+def contact_patch(obj: ObjectState, T_grasp: np.ndarray, **kw) -> float:
+    return pad_contact(obj, T_grasp, **kw)[0]
+
+
+def hold_quality(obj: ObjectState, T_grasp: np.ndarray) -> float:
+    """Lower is better: the gravity lever about the pads (per cm) plus the missing contact patch. Ranks
+    grasps that must hold the object while the hand turns (in-air handovers, re-orienting carries)."""
+    patch, centre = pad_contact(obj, T_grasp)
+    if centre is None:
+        return 9.0
+    return grasp_lever(obj, T_grasp, centre) / 0.01 + 2.0 * (1.0 - min(1.0, patch / 0.5))
 
 
 def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WIDTH, depth: float = 0.016,
@@ -421,6 +509,8 @@ def box_grasps(obj: ObjectState, kin: X5Kin, arm: str, max_width: float = MAX_WI
                 room = float(ext[m]) / 2 - edge
                 if ends and room > 0.008:
                     offs += [room, -room]
+                    if irregular and room > 0.016:      # quarter points too (a key's shaft below its bow,
+                        offs += [room / 2, -room / 2]   # clear of the other hand's fingers on the bow)
                 for tilt in tilts:
                     t = math.radians(tilt)
                     appr_b = -s * (math.cos(t) * eye[j] + math.sin(t) * eye[m])
