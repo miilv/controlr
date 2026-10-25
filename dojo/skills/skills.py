@@ -467,7 +467,8 @@ class Skills:
                    descend_rad: float = SLOW, open_g: float = OPEN, settle: int = 2, open_steps: int = OPEN_STEPS,
                    extra_yaws=(), pre_open_hold: int = 1, ease: int = 3, return_all: bool = False,
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
-                   pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None):
+                   pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
+                   seat_tol: float = 0.004):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -495,7 +496,7 @@ class Skills:
         tail_kw = dict(release_gap=release_gap, retreat=retreat, ignore=tuple(set(ignore) | {h.label}),
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
-                       servo=bool(servo), servo_ref=servo_ref)
+                       servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol))
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -536,7 +537,8 @@ class Skills:
 
     def _place_tail(self, arm, q_pre, T_obj, h: "Held", release_gap, retreat, ignore, descend_rad, open_g, settle,
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
-                    grip_only=(), servo: bool = False, servo_ref: str | None = None) -> ArmPlan | str:
+                    grip_only=(), servo: bool = False, servo_ref: str | None = None,
+                    seat_tol: float = 0.004) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
@@ -674,6 +676,7 @@ class Skills:
         beside the hole): lift ``probe_lift`` and probe around the target (``radii`` x ``n_dir``) until it drops
         in. Then the optional turn, release, back out. Returns a note."""
         arm, label, kw = pp.arm, pp.label, pp.tail_kw
+        seat_tol = float(kw.get("seat_tol", seat_tol))
         T_obj = np.asarray(pp.T_obj_target, float)
         rate = float(kw.get("descend_rad", SLOW))
         rec = next((l for l in ((kw.get("servo_ref"),) + tuple(kw.get("grip_only") or ())) if l in self.world.objects),
