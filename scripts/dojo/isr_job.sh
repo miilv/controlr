@@ -5,7 +5,8 @@
 #    gpu.reserve covers now (Mikhail's side has priority on its box);
 # 2. takes flock ~/data2/coord/gpu.lock (waits up to ISR_LOCK_WAIT_S, default 1800 s; rc 75 on timeout), re-checks the
 #    reserve, writes gpu.owner (side, who, pid, start, eta, what) and a START line in ~/data2/bench/COORDINATION.md;
-# 3. runs cmd (DOJO_ILIA=1, nice 10, timeout ISR_MAX_S default 5400 s), pidfile ~/data2/ilia/run/NAME.pid;
+# 3. runs cmd (DOJO_ILIA=1, nice 10, timeout ISR_MAX_S default 5400 s, CPU affinity ISR_CPUS default 0-11),
+#    pidfile ~/data2/ilia/run/NAME.pid;
 # 4. always (trap): clears gpu.owner, releases the lock, DONE line with the rc; yields ISR_YIELD_S (default 60 s).
 # Never kills anything it did not start; stop a running job with scripts/simlab/ilia_stop.sh (pidfiles + DOJO_ILIA=1).
 set -uo pipefail
@@ -77,7 +78,10 @@ trap '[[ -n "$CHILD" ]] && kill -TERM "$CHILD" 2>/dev/null && wait "$CHILD"; exi
 printf 'side: ilia\nwho: %s\npid: %s\nstart: %s\neta: %s\nwhat: %s\n' "$WHO" "$$" "$(date -u +%FT%H:%MZ)" \
   "$(date -u -d "+$ETA min" +%FT%H:%MZ)" "$NAME" > "$OWNER"
 clog "START $NAME (pid $$, gpu.lock held, ETA ${ETA} min)"
-nice -n 10 timeout "${ISR_MAX_S:-5400}" "$@" &
+# CPU affinity bounds everything of ours (children inherit it: Mikhail's launcher, the eval client, the twin, perception)
+# to ISR_CPUS: an Isaac RTX boot otherwise spikes to ~20 cores for ~1 min (load 15 on 2026-10-26) on a box that
+# hard-resets under all-core load
+taskset -c "${ISR_CPUS:-0-11}" nice -n 10 timeout "${ISR_MAX_S:-5400}" "$@" &
 CHILD=$!
 echo "$CHILD" > "$RUN/$NAME.pid"
 wait "$CHILD"
