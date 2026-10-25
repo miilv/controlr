@@ -102,3 +102,18 @@ Report: [agent-e2e](../experiments/2026-10-25-agent-e2e.md).
   runs stay reproducible.
 - J2 is in PR #21: `skills/registry.yaml` + `dojo/agent/registry.py`, with `AgentConfig.registry / strict /
   scene_version`; scene v3 adds the named frames for `stack_on_pegs` / `slots_and_press`.
+- **J2 aligned with robot-harness's merged registry** (lead), which is the shared truth: schema `j2-registry/1`,
+  83 entries, `docs/REGISTRY.md`, validator `harness/registry.py`.
+  - Our 12 entries use their file shape: `side: ilia`, `benchmark: robodojo`, args as "type = default; meaning",
+    `selects_on {words, needs_categories}`, `inputs {source, objects}`, `obs_needs.reads`, `measured: none` (their
+    ledger only), and our numbers in `stats`.
+  - `build_tower` is registered as `tower_from_boards`, because the name reaches the chooser and equals a task name.
+  - All our reads are contract tokens (`object_args` = perception estimates passed by scene id). Our grasps use the
+    catalogue mesh of the perceived identity (public asset files), not the privileged mesh their `mesh_grasps` means.
+    The note says so. If the owner rules catalogue meshes non-contract, these entries flip to `contract_only: false`.
+  - Their validator on robot-harness main d279be1 with our entries under the ilia marker: `OK: 0 errors, 12
+    warnings`, all "module dojo.skills.library is not in this repo (expected after the J4 import)". 95 entries;
+    strict-selectable robodojo 22.
+  - Their `tests/test_registry.py` then fails 2 tests that assume every entry is a misha-side file entry; they need
+    a `side == "misha"` filter at J4.
+

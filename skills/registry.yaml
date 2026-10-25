@@ -1,228 +1,381 @@
-# One skill registry for both teams (J2; robot-harness issue #5). The agent's chooser builds the manual's skill
-# section from these entries; strict runs keep only `obs_needs.contract_only: true` BEFORE the prompt is built.
-#
-# Per entry (one entry per variant, e.g. place_on_rgb vs place_on_rgb_strict):
-#   name        unique; the name the model calls (`robo.skill(name, ...)` / JSON `{"skill": name}`)
-#   side        dojo (controlr's dojo stack) | harness (Mikhail's robot-harness)
-#   doc         effects, argument roles, preconditions, what it does NOT do. NO task / layout / seed names (P4)
-#   args        name -> {type, doc, default?}; types: id, [id], [[id]], frame, [frame], bool, float, int,
-#               [[id, int]], [[verb, id, id]]
-#   selects_on  instruction / scene patterns the chooser keys on (patterns, never task names)
-#   obs_needs   contract_only (only the official observation contract + derived estimates), held_look
-#               (wrist | operator | false), refine (pre-contact wrist re-fit), twin_verify (physics twin checks)
-#   inputs      objects: the estimate fields the skill needs per object (the chooser checks perception covered them)
-#   backend     dojo_skills (called in-process on the dojo runtime) | robot_server (run(robot, **args) over the
-#               harness socket client)
-#   entry       dojo_skills: "module:function"; robot_server: "skills/<name>/skill_robodojo.py:run"
-#   measured    numbers from our runs: {mode: "A gt" | "B perception", verify, n, success, score, source}
-#   default     true for the J5 winner of a family; a loser carries `fallback_for: <winner>` and is not prompted
-version: 1
-skills:
+# J2 skill registry, ilia side (controlr's dojo stack). Same schema as robot-harness's skills/registry.yaml
+# (schema j2-registry/1, docs/REGISTRY.md there; validator harness/registry.py): at J4 the entries below move verbatim
+# under that file's `# ---- ilia side: added by J4 import ----` marker. Loader here: dojo/agent/registry.py (it also
+# loads robot-harness's file unchanged; pinned copy in tests/fixtures/).
+# Only name + args + doc reach the chooser. doc and args must not name benchmark tasks, layouts, seeds or task ids
+# (rule P4). measured holds robot-harness ledger pointers only (none for this side yet); our numbers are in stats,
+# with the journal / experiment report they come from. Object arguments are scene ids: the dojo runtime maps each id
+# to its perception estimate (pose, size, catalogue identity), so they read as `object_args`.
+schema: j2-registry/1
+entries:
+
+  # ---- ilia side: added by J4 import ----
+
   - name: stack_objects
-    side: dojo
-    doc: >-
-      Stacks the listed objects into ONE pile on top of one another; with nest=true nests concave objects (bowls,
-      cups) inside one another instead. With ordered=false the skill chooses the base, the order and the site; with
-      ordered=true objects[0] is the base and the others go on in list order. Only for piles on the table (not onto
-      pegs, poles or fixtures). Banks when done.
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Pile the listed objects on top of one another on the table (nest=True: concave objects such as bowls or cups
+      inside one another). ordered=False: the skill picks the base, the order and the site; ordered=True: objects[0]
+      stays the base and the others go on in list order. Not for pegs, poles or fixtures. Plans with own IK against
+      the estimate, re-measures each object from the wrist before contact, opens both grippers when done.
     args:
-      objects: {type: "[id]", doc: "the objects to pile"}
-      nest: {type: bool, default: false, doc: "concave objects inside one another"}
-      ordered: {type: bool, default: false, doc: "keep the list order bottom to top"}
-    selects_on: ["stack / pile / nest <objects> (together)", "stack ... from bottom to top in the order of ..."]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      objects: "[id], required; the objects to pile"
+      nest: "bool = False; nest concave objects inside one another"
+      ordered: "bool = False; keep the list order, first id at the bottom"
+    selects_on:
+      words: [stack, pile, nest, on top of, bottom to top]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:stack_objects
-    measured:
-      - {mode: "A gt", verify: bundle, n: 10, success: 10, score: 100, source: "journal/2026-10-24-dojo-integ.md (3 blocks)"}
-      - {mode: "B perception", verify: bundle, n: 25, success: 17, score: 71.6, source: "journal/2026-10-24-dojo-integ.md (closed loop)"}
-      - {mode: "B perception", verify: "off", n: 6, success: 0, score: 0, source: "experiments/2026-10-25-agent-e2e.md (bowls, nest; perception_gross)"}
-    default: true
-  - name: build_tower
-    side: dojo
-    doc: >-
-      Builds a two-level tower from flat boards and blocks: two pillars, a board across them, two pillars on that
-      board, a second board, then the remaining pieces centred on top. Which piece is a board, a pillar or a topper
-      is decided from the geometry, so pass EVERY piece of the set. Each level is banked.
+    entry: "dojo.skills.library:stack_objects"
+    measured: none
+    stats:
+      - {src: docs/journal/2026-10-24-dojo-integ.md, bench: robodojo, cell: stack_blocks, tier: A, verify: bundle, n: 10, success: 10}
+      - {src: docs/journal/2026-10-24-dojo-integ.md, bench: robodojo, cell: stack_blocks, tier: B, verify: bundle, version: closed loop, n: 25, success: 17}
+      - {src: docs/experiments/2026-10-25-agent-e2e.md, bench: robodojo, cell: stack_bowls, tier: B, verify: "off", version: nest, n: 6, success: 0}
+    notes: "grasps from the catalogue mesh of the perceived asset identity (public asset files) at the perceived pose; no privileged poses"
+
+  - name: tower_from_boards
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Build a two-level structure from flat boards and blocks: two pillars, a board across them, two pillars on that
+      board, a second board, then the remaining pieces centred on top. Board / pillar / topper roles come from the
+      geometry, so pass EVERY piece of the set. Each completed level is banked (both grippers opened).
     args:
-      pieces: {type: "[id]", doc: "every board and block of the set"}
-    selects_on: ["build a tower using <blocks> and <boards>"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      pieces: "[id], required; every board and block of the set"
+    selects_on:
+      words: [tower, boards, wooden blocks, build]
+      needs_categories: [block]
+    inputs:
+      source: args
+      objects:
+        - {what: each piece, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:build_tower
-    measured:
-      - {mode: "A gt", verify: bundle, n: 10, success: 10, score: 100, source: "journal/2026-10-24-dojo-integ.md"}
-      - {mode: "B perception", verify: "off", n: 10, success: 7, score: 75, source: "journal/2026-10-24-dojo-integ.md"}
-      - {mode: "B perception", verify: "off", n: 6, success: 3, score: 53, source: "experiments/2026-10-25-agent-e2e.md"}
-    default: true
+    entry: "dojo.skills.library:build_tower"
+    measured: none
+    stats:
+      - {src: docs/journal/2026-10-24-dojo-integ.md, bench: robodojo, cell: build_tower, tier: A, verify: bundle, n: 10, success: 10}
+      - {src: docs/journal/2026-10-24-dojo-integ.md, bench: robodojo, cell: build_tower, tier: B, verify: "off", n: 10, success: 7}
+      - {src: docs/experiments/2026-10-25-agent-e2e.md, bench: robodojo, cell: build_tower, tier: B, verify: "off", n: 6, success: 3}
+    notes: "registered under its own name; the library function is build_tower"
+
   - name: put_into
-    side: dojo
-    doc: >-
-      Puts or drops every listed object into ONE open container (bin, basket, box, tray), using whichever arm reaches
-      and handing an object over between the arms through a free table spot when needed. Only 'ends up inside' is
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Put or drop every listed object into ONE open container (bin, basket, box, tray), with whichever arm reaches,
+      handing an object over between the arms through a free table spot when needed. Only "ends up inside" is
       controlled: no orientation, no slots, no order. One container per call; banks after each object.
     args:
-      objects: {type: "[id]", doc: "the objects to put in"}
-      container: {type: id, doc: "the open container"}
-    selects_on: ["put / throw <objects> into the <container>", "<category> objects into the left / middle / right <container> (one call per container)"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      objects: "[id], required; the objects to put in"
+      container: "id, required; the open container"
+    selects_on:
+      words: [into the, throw, put, basket, bin]
+      needs_categories: [container]
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+        - {what: container, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:put_into
-    measured:
-      - {mode: "B perception", verify: "off", n: 6, success: 0, score: 20, source: "experiments/2026-10-25-agent-e2e.md (bottles: drop misses, pick collisions)"}
-    default: true
+    entry: "dojo.skills.library:put_into"
+    measured: none
+    stats:
+      - {src: docs/experiments/2026-10-25-agent-e2e.md, bench: robodojo, cell: put_bottles_into_dustbin, tier: B, verify: "off", n: 6, success: 0}
+    notes: "mode-B failures were drop misses past the bin and pick collisions (verify off)"
+
   - name: press_sequence
-    side: dojo
-    doc: >-
-      Presses buttons in exactly the given order, n full press-and-release cycles each (e.g. [[a, 2], [b, 1], [a, 1]]).
-      Every press counts; nothing else is pressed.
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Press buttons in exactly the given order, n full press-and-release cycles each, e.g. [[a, 2], [b, 1], [a, 1]].
+      Every press counts and nothing else is pressed. A confirm button pressed after each counted group appears once
+      per group in the list.
     args:
-      presses: {type: "[[id, int]]", doc: "(button, count) in order"}
-    selects_on: ["press <buttons> N times / according to <cards>, then press <button> to confirm (confirm after EACH counted group)"]
-    obs_needs: {contract_only: true, held_look: false, refine: true, twin_verify: false}
-    inputs: {objects: [pose6, digit]}
+      presses: "[[id, int]], required; (button, count) pairs in order"
+    selects_on:
+      words: [press, button, times, confirm]
+      needs_categories: [button]
+    inputs:
+      source: args
+      objects:
+        - {what: each button, fields: [pos]}
+        - {what: number cards, fields: [value]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:press_sequence
-    measured:
-      - {mode: "A gt", verify: "off", n: 6, success: 6, score: 100, source: "experiments/2026-10-25-agent-e2e.md"}
-    default: true
+    entry: "dojo.skills.library:press_sequence"
+    measured: none
+    stats:
+      - {src: docs/experiments/2026-10-25-agent-e2e.md, bench: robodojo, cell: press_by_number, tier: A, verify: "off", n: 6, success: 6}
+
   - name: swap_on_mats
-    side: dojo
-    doc: >-
-      Swaps two objects that sit on two of three mats by way of the empty one: a -> empty mat, b -> a's mat, a -> b's
-      mat; with a button, presses it once after each of the three moves (press_after_each).
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Swap two objects that sit on two of three mats by way of the empty one: a -> empty mat, b -> a's mat,
+      a -> b's mat. With a button, press it once after each of the three moves (press_after_each).
     args:
-      objects: {type: "[id]", doc: "[a, b], the two objects to swap"}
-      mats: {type: "[id]", doc: "the three mats"}
-      button: {type: id, default: null, doc: "button pressed after each move, if any"}
-      press_after_each: {type: bool, default: true, doc: "press the button after each move"}
-    selects_on: ["swap the two <objects> using the empty mat (pressing the button after each move)"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      objects: "[id, id], required; a and b, the two objects to swap"
+      mats: "[id, id, id], required; the three mats"
+      button: "id = None; pressed after each move"
+      press_after_each: "bool = True"
+    selects_on:
+      words: [swap, empty mat, after each move]
+      needs_categories: [mat]
+    inputs:
+      source: args
+      objects:
+        - {what: the two objects, fields: [pos, quat, size]}
+        - {what: mats, fields: [pos]}
+        - {what: button, fields: [pos]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:swap_on_mats
-    measured: []
-    default: true
+    entry: "dojo.skills.library:swap_on_mats"
+    measured: none
+    stats: []
+
   - name: declare_kong
-    side: dojo
-    doc: >-
-      Mahjong: holds still until the scripted opponent has discarded a tile and its arm is back, tips face up the
-      three standing hand tiles that match the discard, then draws a tile from the wall and stands it at the free end
-      of the hand row. Pass EVERY mahjong tile in the scene; the roles (hand, discard, wall) come from their poses.
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Mahjong: hold still until the scripted opponent has discarded a tile and its arm is back, tip face up the three
+      standing hand tiles that match the discard, then draw a tile from the wall and stand it at the free end of the
+      hand row. Pass EVERY mahjong tile in the scene; hand / discard / wall roles come from their poses.
     args:
-      tiles: {type: "[id]", doc: "every mahjong tile"}
-    selects_on: ["wait for the opponent to discard, then declare a kong with the matching tiles"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: false, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      tiles: "[id], required; every mahjong tile"
+    selects_on:
+      words: [kong, opponent, discard, tiles]
+      needs_categories: [mahjong]
+    inputs:
+      source: args
+      objects:
+        - {what: each tile, fields: [pos, quat, value]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:declare_kong
-    measured:
-      - {mode: "A gt (G3)", verify: "off", n: 25, success: 25, score: 100, source: "journal/2026-10-25-dojo-skills2.md"}
-    default: true
+    entry: "dojo.skills.library:declare_kong"
+    measured: none
+    stats:
+      - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: make_kong, tier: A, version: v3 G3 twin, n: 25, success: 25}
+    notes: "waits on the steps counter and the tiles' estimated poses; never moves while the opponent moves"
+
   - name: insert_into
-    side: dojo
-    doc: >-
-      Peg-in-hole: picks obj and inserts it into whichever listed receptacle its mesh fits best (slot, socket,
-      keyhole, opening), with a slow guided descent; then, if turn_deg != 0, turns it about the insertion axis before
-      letting go (turning a key in its lock: turn_deg = -60). List only the intended receptacle(s): the fixture obj
-      starts in is skipped. Relays between the arms when one arm cannot both pick and insert.
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Peg-in-hole: pick obj and insert it into whichever listed receptacle its mesh fits best (slot, socket, keyhole,
+      opening) with a slow guided descent; with turn_deg != 0 turn it about the insertion axis before letting go
+      (a key in its lock: -60). List only the intended receptacle(s); the fixture obj starts in is skipped.
+      Relays between the arms when one arm cannot both pick and insert.
     args:
-      obj: {type: id, doc: "the object to insert"}
-      receptacles: {type: "[id]", doc: "the intended receptacle(s)"}
-      turn_deg: {type: float, default: 0.0, doc: "turn after insertion (a key: -60)"}
-    selects_on: ["insert / plug / deposit <object> into <receptacle> (then turn it)"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      obj: "id, required; the object to insert"
+      receptacles: "[id], required; the intended receptacle(s)"
+      turn_deg: "float deg = 0.0; turn after the insertion"
+    selects_on:
+      words: [insert, plug, deposit, keyhole, socket, turn it]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: obj, fields: [pos, quat, size]}
+        - {what: receptacles, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:insert_into
-    measured:
-      - {mode: "A gt (G3)", verify: "off", n: 10, success: 6, score: 60, source: "journal/2026-10-25-dojo-skills3.md (charger v2)"}
-      - {mode: "A gt (G3)", verify: "off", n: 6, success: 0, score: 15, source: "journal/2026-10-25-dojo-skills2.md (key v2: lift credit)"}
-    default: true
+    entry: "dojo.skills.library:insert_into"
+    measured: none
+    stats:
+      - {src: docs/journal/2026-10-25-dojo-skills3.md, bench: robodojo, cell: plug_in_charger, tier: A, version: v2 G3 twin, n: 10, success: 6}
+      - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: insert_key, tier: A, version: v2 G3 twin, n: 6, success: 0, note: lift credit only}
+
   - name: place_in_slots
-    side: dojo
-    doc: >-
-      Puts each object into the compartment of the container that is shaped for it (a slot named after the object's
-      kind, e.g. a fitted tool tray), re-oriented as the slot requires; grippers opened after each.
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Put each object into the compartment of the container shaped for it (a slot named after the object's kind, as in
+      a fitted tray), re-oriented as the slot requires; both grippers opened after each object.
     args:
-      objects: {type: "[id]", doc: "the objects"}
-      container: {type: id, doc: "the container with shaped slots"}
-    selects_on: ["place each <tool> into its matching position in the <container>"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      objects: "[id], required; the objects"
+      container: "id, required; the container with shaped slots"
+    selects_on:
+      words: [matching position, each, compartment, tray]
+      needs_categories: [container]
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+        - {what: container, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:place_in_slots
-    measured:
-      - {mode: "A gt (G3)", verify: "off", n: 5, success: 0, score: 25, source: "journal/2026-10-25-dojo-skills2.md (tape measure 5/5)"}
-    default: true
+    entry: "dojo.skills.library:place_in_slots"
+    measured: none
+    stats:
+      - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: store_tools_in_toolbox, tier: A, version: v3 G3 twin, n: 5, success: 0, mean_score: 0.25}
+
   - name: fill_container
-    side: dojo
-    doc: >-
-      Puts long objects (pens, sticks, tubes) one by one into an upright holder, leading end first; a holder that is
-      out of comfortable reach is first carried (upright) to where both arms reach it and put back down; grippers
-      opened after each.
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Put long objects (pens, sticks, tubes) one by one into an upright holder, leading end first. A holder out of
+      comfortable reach is first carried upright to where both arms reach it and put back down. Both grippers opened
+      after each object.
     args:
-      objects: {type: "[id]", doc: "the long objects"}
-      container: {type: id, doc: "the holder"}
-    selects_on: ["(hold the <holder> and) place all <pens / tubes> into it"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      objects: "[id], required; the long objects"
+      container: "id, required; the holder"
+    selects_on:
+      words: [all, into it, holder, rack, hold the]
+      needs_categories: [holder]
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+        - {what: holder, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:fill_container
-    measured:
-      - {mode: "A gt (G3)", verify: "off", n: 5, success: 0, score: 8, source: "journal/2026-10-25-dojo-skills2.md (v2)"}
-    default: true
+    entry: "dojo.skills.library:fill_container"
+    measured: none
+    stats:
+      - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: fill_pen_holder, tier: A, version: v2 G3 twin, n: 5, success: 0, mean_score: 0.08}
+
   - name: arrange
-    side: dojo
-    doc: >-
-      Does every step: "place" = put obj upright on top of support; "push" = slide obj (too wide to grasp) onto or
-      into support without lifting it. Steps are independent (any order); grippers opened after each. Use for an
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Do every step: "place" = put obj upright on top of support; "push" = slide obj (too wide to grasp) onto or into
+      support without lifting it. Steps are independent (any order); both grippers opened after each. For an
       instruction that lists several put-X-on-Y / push-X-into-Y goals. Position only: no heading alignment.
     args:
-      steps: {type: "[[verb, id, id]]", doc: "[verb, object, support], verb place | push"}
-    selects_on: ["place the <X> on the <Y>, put the <Z> on the <W>, and push the <V> into the <U>"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: true}
-    inputs: {objects: [asset_key, pose6]}
+      steps: "[[verb, id, id]], required; [place | push, object, support] per goal"
+    selects_on:
+      words: [place the, put the, push the, on the, into the]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+        - {what: each support, fields: [pos, quat, size, top_z]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:arrange
-    measured:
-      - {mode: "A gt (G3)", verify: "off", n: 5, success: 0, score: 35, source: "journal/2026-10-25-dojo-skills2.md (v1)"}
-    default: true
+    entry: "dojo.skills.library:arrange"
+    measured: none
+    stats:
+      - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: organize_table, tier: A, version: v1 G3 twin, n: 5, success: 0, mean_score: 0.35}
+
   - name: stack_on_pegs
-    side: dojo
-    doc: >-
-      Threads pieces onto the pegs or poles of a base: group i (identical pieces) goes onto peg pegs[i] (a peg frame of
-      the base, as listed for it in the scene), one piece at a time, flat and centred, released just above the peg top
-      so it slides down. Banks after each piece.
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Thread pieces onto the pegs or poles of a base: group i (identical pieces) goes onto peg pegs[i] (a frame of the
+      base, as listed for it in the scene), one piece at a time, flat and centred, released just above the peg top so
+      it slides down. Banks after each piece.
     args:
-      groups: {type: "[[id]]", doc: "identical pieces per peg"}
-      base: {type: id, doc: "the object carrying the pegs"}
-      pegs: {type: "[frame]", doc: "the base's peg frames, one per group"}
-    selects_on: ["place all <pieces / rings> onto the correct <pegs / poles>"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: false}
-    inputs: {objects: [asset_key, pose6, support_frames]}
+      groups: "[[id]], required; the identical pieces for each peg"
+      base: "id, required; the object carrying the pegs"
+      pegs: "[frame], required; the base's peg frames, one per group"
+    selects_on:
+      words: [pegs, poles, rings, onto the correct]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each piece, fields: [pos, quat, size]}
+        - {what: base, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:stack_on_pegs
-    measured: []
-    default: true
+    entry: "dojo.skills.library:stack_on_pegs"
+    measured: none
+    stats: []
+    notes: "untested in the twin (no dev records for a peg base yet)"
+
   - name: slots_and_press
-    side: dojo
-    doc: >-
-      Stands one object in each named slot of the container (slot frames as listed for it in the scene), thinnest
-      axis across the slot, lowered to the slot floor; then, if press_tag is given (a lever or button on the
-      container), presses it down. Pass only as many objects as the instruction asks for.
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Stand one object in each named slot of the container (slot frames as listed for it in the scene), thinnest axis
+      across the slot, lowered to the slot floor; then, with press_tag (a lever or button frame of the container),
+      press it down. Pass only as many objects as the instruction asks for.
     args:
-      objects: {type: "[id]", doc: "one object per slot, as many as asked"}
-      container: {type: id, doc: "the container with slots"}
-      slots: {type: "[frame]", doc: "the container's slot frames, one per object"}
-      press_tag: {type: frame, default: null, doc: "the lever / button frame to press after, if any"}
-    selects_on: ["place <N> <items> into <an appliance with slots> and press the lever down"]
-    obs_needs: {contract_only: true, held_look: wrist, refine: true, twin_verify: false}
-    inputs: {objects: [asset_key, pose6, functional_frames]}
+      objects: "[id], required; one object per slot, as many as asked"
+      container: "id, required; the container with slots"
+      slots: "[frame], required; the container's slot frames, one per object"
+      press_tag: "frame = None; the lever or button frame pressed after"
+    selects_on:
+      words: [slots, lever, press the lever, into the]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+        - {what: container, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: dojo.skills.library:slots_and_press
-    measured: []
-    default: true
+    entry: "dojo.skills.library:slots_and_press"
+    measured: none
+    stats: []
+    notes: "untested in the twin (no dev records for a slotted appliance yet)"
