@@ -104,3 +104,31 @@ call.
    - measure VRAM with the eval client + twin + perception on one card, plus observation latency and twin boot.
 3. Unify the two instruction routers.
 4. Scored blocks only on the lead's go: md5 freeze of our checkout + data, blind, ledger lines.
+
+## Addendum: robot-harness PR #9 (`joint_steps`) verified offline
+
+PR #22 merged. Mikhail's PR #9 (head `23b1224`) adds: the J2 server (J1 loaded read-only + `joint_steps`), the shim
+`harness_strict_j2` (rd_shim_strict_v2 over the strict + frozen shims), `bin/robot-start-j2` with a `HARNESS_ENV`
+override, and `harness/j2_mock_shim.py` (his real server + shim on a fake RoboDojo task env).
+
+`tests/dojo/test_bridge_rh.py` against that branch: **3 / 3 pass** (J1 server; J2 raw contract; J2 whole episode).
+- **Contract.** Refusal codes `jump` (index 0), `keys` (1), `gripper_range` (1) and `budget` (index None), all at 0
+  steps. On an accepted list, `steps == executed == requested`. `actions_md5` equals our md5 of the list we sent.
+  `tracking_rad` has both arms. `eef.<arm>` = `{q, flange: {pos, quat}, grip_cmd}`. No key in his replies hits our
+  banned list. No mismatch with the backend's assumptions.
+- **Whole episode.** RuntimePolicy (server perceive route = his J1 mock perceiver, verify off) through his real J2
+  stack: policy_done, every chunk accepted (`ran == n`), md5s matched.
+- **His invariant-3 counter found real cases.** `grip_change_while_moving` = 3 in a stack episode (left 2, right 1),
+  equal to our own recount. Cause: the skills' 0-step grip ops (`open_for_grasp` before a pick approach,
+  `grip_for_home`, `close_for_push` / `_press`) put the new gripper command on the first step of a free-space move,
+  from rest or at a via point. This is by design and identical in every proxy run. So it is the SAME arm, not "the
+  other arm"; counted-not-refused is the right rule for us.
+- Backend changes from this check:
+  - every chunk's `actions_md5` is checked and kept (`bridge.json` → `joint_steps_chunks`);
+  - `grip_change_while_moving` and `tracking_max_rad` are summed into the backend stats;
+  - the client's `on_reply` hook keeps the step counter current after verbs sent through `backend.robot` (a
+    robot-harness skill), a gap the raw-verb test exposed.
+- The fake server now mirrors HARNESS-CONTRACT 1.1: codes, `index`, `executed` / `requested` / `actions_md5`, the
+  counter.
+- **Still untested: the Isaac path** (his point (b)). First GPU run: a short `joint_steps` smoke (small moves + a grip,
+  read `tracking_rad` / `tracking_max_rad` at 0.18 rad/step) before the first full episode.

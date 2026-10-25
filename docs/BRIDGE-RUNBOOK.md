@@ -32,7 +32,7 @@ Its per-step joint action lists go out through `joint_steps`: one RoboDojo `take
 | what | note |
 |---|---|
 | `joint_steps` verb on the strict server (+ shim op), and a start script for that server (`bin/robot-start-j2`) | Mikhail's lane, robot-harness issue #8; we never fork his server |
-| robot-harness launchers runnable on the box | `bin/robot-start-*` and `harness/robodojo_*.sh` source `/home/anywherevla/data2/bench/env.sh` (BENCH, RD_HOME, caches): the path must exist on the box, or be overridable on his side |
+| robot-harness launchers runnable on the box | `bin/robot-start-j2` / `harness/robodojo_{start,launch}_j2.sh` source `${HARNESS_ENV:-/home/anywherevla/data2/bench/env.sh}`: on our box export `HARNESS_ENV=<an env.sh with this box's BENCH and RD_HOME>` |
 | a GPU box with driver 570/580 | Isaac 5.1 RTX rendering (robot-harness D-P10) |
 | our side | `dojo/bridge/`, `scripts/dojo/bridge_episode.sh`; CPU-tested (§3) |
 
@@ -44,8 +44,10 @@ Current state of each: the latest `docs/journal/*-dojo-bridge.md` entry.
 # RoboDojo + Isaac 5.1 + cuRobo + policy_venv as on isr-lab (robot-harness docs/SETUP-compute.md; RoboDojo f57e163,
 # XPolicyLab 7074afb). RD_HOME = that install.
 export RD_HOME=<robodojo install>
-# robot-harness at a pinned commit (Mikhail's code; read-only for us), env.sh pointing at this box
-git clone https://github.com/msannikov03/robot-harness $BENCH && git -C $BENCH checkout <commit with #8>
+# robot-harness at a pinned commit (Mikhail's code; read-only for us) + an env file for this box (BENCH, RD_HOME, caches)
+git clone https://github.com/msannikov03/robot-harness $BENCH && git -C $BENCH checkout <commit with joint_steps>
+sed -e "s|^export BENCH=.*|export BENCH=$BENCH|" -e "s|^export RD_HOME=.*|export RD_HOME=$RD_HOME|" $BENCH/env.sh > ~/bench_env.sh
+export HARNESS_ENV=~/bench_env.sh          # read by bin/robot-start-j2 and its launcher (and inherited by bridge_episode.sh)
 # controlr at the commit under test (for a scored run: a pinned checkout nobody edits, md5-frozen)
 git clone git@github.com:miilv/controlr.git $CR && cd $CR && git checkout <commit> && uv sync --extra dev --extra perception
 # perception data (2.9 GB catalogue + backgrounds + colour maps) from compute3
@@ -64,6 +66,10 @@ BENCH=/tmp/rbfake scripts/dojo/bridge_episode.sh --id fk-1 --fake --policy dojo.
     --perception server --verify off --out /tmp/rbfake/out
 # -> "[bridge] fk-1: end=ended steps=172/550 ended=True ..." (the fake's latch: stacked + home), driver rc=0
 ```
+With a robot-harness checkout that has `joint_steps`, the same file also runs his offline J2 stack
+(`harness/j2_mock_shim.py`: the real J2 server + J2 shim on a fake task env) twice: once for the raw contract
+(refusal codes, `actions_md5`, `tracking_rad`, `eef`), once for a whole RuntimePolicy episode through his validator.
+
 Our backend against robot-harness's REAL strict J1 server code. His files are copied into a temp `$BENCH`, never
 modified, and run with his offline mock shim; only `strict_calib.py` is stubbed:
 ```bash
@@ -187,20 +193,27 @@ For a scored block, follow robot-harness AGENTS.md:
 - **Without `joint_steps` on the server (#8)**, `connect()` refuses with a pointer to #8. There is no
   fallback through `move_to`: it re-plans with cuRobo at <= 0.08 rad/step, so the executed paths would differ from
   the twin-verified ones and cost about 2x the steps.
-- **Gripper semantics.** `joint_steps` sends our gripper command per step without the shim's 0.25-per-step ramp, as in
-  the proxy runs (RoboDojo's own `take_action`). If Mikhail's side keeps the ramp, the twin must model it too.
+- **Gripper semantics.** `joint_steps` sends our gripper command per step, verbatim, without the shim's 0.25-per-step
+  ramp, as in the proxy runs (RoboDojo's own `take_action`).
+  - The skills' 0-step grip ops put a new gripper command on the FIRST step of a free-space move: `open_for_grasp`
+    before a pick approach, `grip_for_home`, `close_for_push` / `close_for_press`. This happens from rest or at a via
+    point between two moves.
+  - The server counts these per arm (`grip_change_while_moving`, the shim's invariant 3) and does not refuse them.
+    `bridge.json` → `backend.grip_change_while_moving` holds the episode's total. A stack episode has >= 3, which is
+    expected; a refusal rule would need >= 1 grip step per such op in the skills.
 - **The server's `perceive` route has no refine / check / search** unless the local service also runs. Its task routing
   (`j1_adapter.infer_task`) covers 6 tasks, while the runtime's vocabularies cover more. Unifying them is BACKLOG.
 - **`held_look`** (B1) is available as `backend.held_look`, but the runtime does not call it: its slip checks read
   predictions; see the integ journal's open items.
 
-## 9. The `joint_steps` contract (as requested in robot-harness #8; implemented by `dojo/bridge/fake_server.py`)
+## 9. The `joint_steps` contract (robot-harness #8 / HARNESS-CONTRACT 1.1; mirrored by `dojo/bridge/fake_server.py`)
 
 ```
 joint_steps actions=[{"left_arm_joint_state":[6],"left_ee_joint_state":[1],"right_arm_joint_state":[6],"right_ee_joint_state":[1]}, ...]
             [reserve=<int, default --reserve>] [max_dq=0.2]
 ```
-1. The whole list is validated before any step; a failure replies `{steps: 0, refused: "<reason>"}`. Checks:
+1. The whole list is validated before any step. A failure replies `{steps: 0, refused: "<code>", hint, index}`, with
+   codes `keys`, `shape`, `non_finite`, `gripper_range`, `jump`, `budget`, `too_long`, `empty`. Checks:
    - all four keys per entry, with 6 / 1 finite numbers;
    - gripper in [0, 1];
    - per-arm joint jump between consecutive commands (the first entry vs the current hold) <= `max_dq`, capped at
@@ -208,8 +221,14 @@ joint_steps actions=[{"left_arm_joint_state":[6],"left_ee_joint_state":[1],"righ
    - length <= steps_left - reserve (`budget`), and <= 2000.
 2. Then one `take_action` per entry, verbatim: no IK, no re-timing, no gripper ramp. `get_obs` runs once per step,
    `is_episode_end` after each step, and the run stops when it is true. The hold stays at the last entry.
-3. Reply: `{steps, refused: null, tracking_rad: {arm}, eef: {arm: {q, flange, grip_cmd}}}` plus `step`,
-   `steps_left`, `ended`.
+3. Reply: `{steps, executed, requested, refused: null, tracking_rad, tracking_max_rad, tracking_max_at,
+   start_tracking_rad, grip_change_while_moving, max_step_dq, max_dq, reserve, actions_md5, eef: {arm: {q, flange,
+   grip_cmd}}}` plus `step`, `steps_left`, `ended`.
+
+Every chunk's `actions_md5` (md5 of `json.dumps(actions, sort_keys=True, separators=(",", ":"))`) is checked
+against the reply and kept in `bridge.json` → `joint_steps_chunks`, to match against the server's `episode.jsonl`.
+After a robot-harness skill moves an arm through `backend.robot`, our Skills must be rebuilt from proprio. Otherwise the
+executor's first entry jumps from a stale commanded pose and is refused (`jump`).
 
 We always pass `reserve=0`. The runtime keeps its own fixed reserve for `finish()` (`RuntimeConfig.reserve` = 30, the
 same for every episode). The backend sends at most 500 entries per call, and actions past the step limit are never
