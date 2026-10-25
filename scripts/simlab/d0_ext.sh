@@ -3,6 +3,7 @@
 # (left-arm look at a task object). States: physics-only Isaac 5.1; RGB: Isaac 6.0 proxy. index.json appears
 # only after the task is rendered (perception's watcher keys on it). Stops past SIMLAB_D0_EXT_MB (300).
 #   scripts/simlab/d0_ext.sh N task [task ...]      -> ~/dojo-data/d0_ext/<task>/<id>/
+#   SIMLAB_D0_EXT_ARGS="--look-label button0 --hover-cm 10"   extra make_d0 args (frame 1 hovers over an object)
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 N="$1"; shift
@@ -14,7 +15,7 @@ for t in "$@"; do
   if [[ "$used" -ge "$CAP_MB" ]]; then echo "$(date -u +%FT%TZ) stop: $used MB >= $CAP_MB MB" >> "$OUT/logs/progress.txt"; break; fi
   SIMLAB_MIN_FREE_MB="${SIMLAB_MIN_FREE_MB:-6000}" systemd-run --user --scope -q -p MemoryMax=20G -p CPUQuota=1200% \
       "$HERE/scripts/simlab/rdpy.sh" -m dojo.simlab.make_d0 --task "$t" --n "$N" --out "$OUT" --physics-only \
-      --settled --max-frame 1 --index-name states_index.json > "$OUT/logs/${t}_states.log" 2>&1
+      --settled --max-frame 1 --index-name states_index.json ${SIMLAB_D0_EXT_ARGS:-} > "$OUT/logs/${t}_states.log" 2>&1
   echo "$(date -u +%FT%TZ) $t states rc=$? $(tr '\r' '\n' < "$OUT/logs/${t}_states.log" | grep -a '^\[d0\].*layouts in')" >> "$OUT/logs/progress.txt"
   sleep "${SIMLAB_LOCK_YIELD_S:-90}"   # team lock policy: yield before re-taking the GPU lock
   "$HERE/scripts/simlab/isaac6.sh" dojo/simlab/render_d0_proxy.py --root "$OUT" --tasks "$t" > "$OUT/logs/${t}_render.log" 2>&1
