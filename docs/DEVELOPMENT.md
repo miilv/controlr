@@ -146,8 +146,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **Shell under `set -eo pipefail`** (all our step scripts): `cmd | grep -q x` fails when grep exits early (the writer
   gets SIGPIPE), and `find | xargs grep -l` returns 123 when some file does NOT match — both kill a `set -e` step on
   the good path. Count with `grep -c`, or turn pipefail off in that one substitution. `find -size -1k` matches only
-  EMPTY files (sizes round up to whole KiB): use bytes (`-size -400c`). Test steps for real (the bootstrap's ssh shim
-  runs them in a sandbox HOME, journal 2026-10-25-dojo-infra), not only as dry runs.
+  EMPTY files (sizes round up to whole KiB): use bytes (`-size -400c`). `{ cat a; cat b 2>/dev/null; } | sort` fails
+  too when `b` does not exist yet (a first run): `cat b 2>/dev/null || true`. Test steps for real (the bootstrap's ssh
+  shim runs them in sandbox HOMEs, `tests/test_bootstrap_fleet.py`; journal 2026-10-25-dojo-infra), not only as dry runs.
+- **Never rewrite `~/.ssh/authorized_keys` through a temp file** (`grep -v x f > t; cat t > f`): if grep fails, `t` is
+  empty and the box locks you out. Append, and remove with `sed -i '/marker$/d'` (it replaces the file atomically).
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
 
