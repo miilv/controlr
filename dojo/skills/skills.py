@@ -266,7 +266,7 @@ class Skills:
     def run_pick(self, pp: PickPlan) -> SkillResult:
         before = self.world.obj(pp.label).pos.copy()
         try:
-            self.ex.run({pp.arm: pp.plan}, name=f"pick {pp.label}")
+            self.parallel([pp.plan], name=f"pick {pp.label}")
         except BudgetExceeded as e:
             return SkillResult(False, "pick", "step_budget", 0, pp.arm, note=str(e))
         except EpisodeEnded as e:
@@ -815,6 +815,13 @@ class Skills:
                 return {"steps": r1["steps"] + r2["steps"], "parallel": False, "min_dist": dmin}
             r = self.ex.run({a.arm: a, b.arm: b}, name=name)
             return {"steps": r["steps"], "parallel": True, "min_dist": dmin}
+        if len(plans) == 1:
+            # the idle arm must be clear of this arm's whole path (twin: an arm resting over the shared
+            # stack site blocked the other arm's pick; the pick missed by 7-10 cm, twice)
+            p = plans[0]
+            other = "right" if p.arm == "left" else "left"
+            if not self.clear_of(p, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
+                self.ex.run({other: self.plan_home(other)}, name=f"park {other}")
         r = self.ex.run({p.arm: p for p in plans}, name=name)
         return {"steps": r["steps"], "parallel": True}
 
