@@ -568,7 +568,7 @@ Findings:
   nominal: push 0.3-19 mm, pick_place 0.07-4.4 mm, stack 0.1-4.5 mm. Cross-machine noise does not move a
   perturbed replay across push's bifurcation: dx 1 mm lands 19 mm from the nominal on both machines, and the
   two agree to 0.28 mm.
-- Success agrees 33/33. Only stack is informative (11 True); push and pick_place are False everywhere.
+- Success agrees 33/33 per mode. Only stack is informative (11 True); push and pick_place are False everywhere.
   pick_place's script places a block, which does not complete stack_blocks.
 - **Implication for the twin and the eval.** A physics-only twin cannot bitwise-predict the rendered 5.1
   eval, even on the same GPU. Expect about 1 mm of drift after a grasp-place. `Twin.verify` with
@@ -593,3 +593,87 @@ Findings:
   `SIMLAB_GPU=0`), then pre-settle (GPU lock, then a 90 s yield).
   - Pre-settle runs 7-10 s per layout. Most of a task's wall time is waiting for the lock.
   - So far: cover_blocks 25/25, swap_T 25/25.
+
+## Disk freeze and cleanup (lead's policy, 2026-10-25)
+
+- compute3's `/` is at 99%. The RoboDojo install is frozen at 37 GB; no new assets without the lead's OK.
+- check_assets passes for all 54 task configs: 650 task-object instances, 192/193 clutter assets. No task is
+  blocked by assets.
+- Upstream gaps that more downloads cannot fix:
+  - Rigid/broom_shovel 1 and 4 are unpublished;
+  - Rigid/hammer/7 has no active.place annotation;
+  - fluids have no place annotations (they are placed by zlim).
+- Cleanup:
+  - compute3: layouts_v3/v4/v6_bak, the 79 MB tests dir, proxy-eval PNGs, stale Kit work dirs, conda's package cache.
+    Bootsweep and settle-check logs are now one tar.gz. Our scratch: 134 MB.
+  - isr-lab: d0_51 (verified file-for-file against compute3), d0_src and the Kit/HOME caches.
+    That frees 3.2 GB on Misha's data2, which was at 98%. We now use 224 MB there.
+
+## Generators v10 / v11 (dry run of every remaining task, 5 layouts each, CPU only)
+
+Five tasks failed under v9. All 32 generate under v11.
+
+- **v10**:
+  - `unique` is per object type. pour_liquid_into_cup's Fluid wuliangye/0 is the liquid inside the Rigid
+    wuliangye/0 bottle, not a second copy of it.
+  - One pinned axis on a support disk is now sampled correctly. Before, store_laptop's laptop on its stand,
+    with y pinned and x free, could never be sampled.
+- **v11, sibling footprints**: kept apart per support (the `relative_plane` string), with RoboDojo's check_mode
+  semantics from `ClusteredGenerator.add_polygon`:
+  - `bbox`: contained and no collision;
+  - `none`: no containment check, collisions still checked;
+  - `enforce`: no checks.
+  make_toast's four bread slots are four supports, 2.5 cm apart.
+- **v11, fluids**: a zlim child of a parent without supports (a fluid) is placed from the container's local
+  bbox top, the convention of the public PhysicalRSI sampler in XPolicyLab (`parent_local_bbox_top_center`).
+  - **Bug in existing records**: pour_by_language's wine had sat 10 cm under the table top (z 0.665) since v2.
+  - Pre-settle never checks fluids, so nothing flagged it.
+  - Under v11 the wine centre is at 0.823, inside the bottle. pour_by_language is regenerated and re-settled.
+
+## Asset firewall and the imitate_sorting_sequence demo landmine
+
+- RoboDojo plays imitate_sorting_sequence's support arm from
+  `Assets/Traj/RoboDojo/imitate_sorting_sequence/<eval_seed>/<seed>.pkl`.
+  - There are 3 x 65 such files, paired with the EVAL layouts.
+  - Their `target_label` is the order the policy must reproduce.
+- make_kong (`<push rank>.pkl`) and play_tic_tac_toe (`<i>_<j>.pkl`) Traj files are generic.
+- No other task reads per-seed files. Their opponents and conveyors are procedural, seeded from the layout seed.
+- The `Assets/Traj` listing was read by name only, never opened.
+- `paths.install_asset_firewall()`:
+  - A permanent audit hook in every RoboDojoRunner process and in dev_eval.
+  - open / listdir / scandir / glob / copy of Eval_Layout or a non-generic Traj path raises PermissionError,
+    whoever calls (RoboDojo's own code included).
+  - Live on compute3: Kit and the env start normally under it.
+- Our runs never need those files:
+  - The imitate demo goes to `~/dojo-data/simlab/traj/<task>/<seed>.pkl` (our `demo_gen`).
+  - When that file is missing, a no-demo stub is used: seed-fixed labels, an empty trajectory.
+  - The route goes through `utils.load_file.load_pkl`, patched before the task modules import it.
+  - Non-dev seeds are refused.
+  - Why imitate's first pre-settle was 0/25: `run_reward` read the eval-paired path for our seed and the
+    file was missing.
+- `tests/dojo/test_simlab_firewall.py`:
+  - static: no dojo/ string constant builds such a path, except membership guards;
+  - subprocess: the hook blocks open, Path.read_text, listdir, scandir, glob and copyfile, and lets the generic
+    make_kong demo through;
+  - routing: eval-paired demos are stubbed or refused, never opened.
+- `runner.load` now also queries the support-arm trajectory right after the reset, as EvalEnv.run_eval does.
+  make_kong / tic-tac-toe support arms used to start one env step late in our runs.
+
+## Twin: incomplete estimates (integration's stack bundle errors)
+
+- 4 of 25 stack_blocks bundle episodes ended in `twin service: TypeError: 'NoneType' object is not subscriptable`.
+- Cause: perception missed block_2, so the estimate sent to `verify` held two blocks. The twin loaded it, and
+  RoboDojo's `is_stacked` looked up block_2, got a None pose, and crashed mid-rollout.
+- Fix: `Twin.load_from_estimate` raises `IncompleteWorld` when labels the task config guarantees are missing.
+  - The required set is `gen_layouts.required_labels`. It covers task groups only: scene fixtures such as
+    camera_stand are not looked up by rewards, and estimates omit them.
+  - The service maps it to `TwinIncompleteWorld` on the client side.
+  - The integration stream is told to catch it, and either verify without the twin or re-add the object at
+    its last known pose.
+
+## d0_ext (perception request): D0-style frames 0-1 for 11 more tasks
+
+- `scripts/simlab/d0_ext.sh 10 <tasks>` writes `~/dojo-data/d0_ext/<task>/<id>/`.
+- `make_d0 --settled --max-frame 1` replays pre-settled records instead of generating; LAYOUTS is not written.
+- `<task>/index.json` appears only after the render, because perception's watcher keys on it.
+- The driver stops at 300 MB.
