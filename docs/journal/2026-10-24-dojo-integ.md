@@ -291,3 +291,13 @@ visited the right region (each missed block lies inside a `hidden_by_gripper` re
 full fuse, whose proposals come only from frame 0's head view, where these blocks were never visible. Fix: at each
 region fit the missing label by wrist `refine()` (candidate at the found blocks' size, region centre prior, 10 cm
 search), full fuse as fallback. Not yet measured on the GPU.
+
+Mode A + verify on the same 25 settled layouts (`A_stack_bundle3_*`): **25/25, score 100**, steps median 169 /
+max 219, 32 s / episode. **stack_blocks gap = 28.4 points** (closed loop 71.6); all 8 lost episodes are
+perception-side except 100010 (verify_reject).
+
+The two "27–31 mm off at planning" cases (100005, 100020) were my gate, not perception: refine at the hover found
+the blocks with good fits (iou 0.65–0.72, perception ok) but `refine_max_shift_m` (30 mm) rejected the corrections
+(34.9 / 59.2 mm), and post-place refines that saw 34–39 mm offsets were discarded the same way. The closed2 arm
+sets the cap to 70 mm (perception's in-frame search range; perception's own `ok` requires iou ≥ 0.6), post-place
+uses the same cap. closed2 = closed + search by wrist refine + 70 mm cap.
