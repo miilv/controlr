@@ -13,6 +13,8 @@ think.
 
 - Start by mapping the instruction onto the scene ids. If ONE skill achieves the whole instruction, the first cell
   runs it, prints its result and calls `finish()` when it is ok: `r = robo.skill("<name>", ...); print(r)`.
+  When it is not ok, do NOT finish in that cell: read `r.note`, `robo.scene()` and the image, and continue the
+  remaining stages in code (the stages it completed stay done).
 - Otherwise do the task stage by stage in code (skills can be stages). A cell is stopped at a checkpoint when it
   has spent {max_cell_steps} env steps or made {max_cell_contacts} contacts; the next action raises
   `CellCheckpoint` and control returns to you. Check results in code (`if not r.ok: ...`) instead of assuming.
