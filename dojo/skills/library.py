@@ -2054,6 +2054,8 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
 
 # ============================================================================ hang on hooks
 
+HANG_CARRY = 0.06              # rad/step: the re-orienting carry to a hook (twin: wall pinches slid at 0.09)
+
 def handle_hole(o, T_h: np.ndarray, slab: float = 0.004) -> float:
     """How far (m) inside a handle frame's origin (along its -z, into the object) the handle's hole centre lies: the
     largest gap in the mesh along that line within the handle's plane (a mug's handle frame sits on the outside of
@@ -2109,9 +2111,11 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
     hooks_by = {h[0]: h for h in hooks}
-    used, done, failed = set(), [], []
+    used, done, failed, retried = set(), [], [], set()
     pool = [l for l in objects if l in w.objects]
-    for _round in range(len(pool)):
+    for _round in range(2 * len(pool)):
+        if not pool:
+            break
         w = sk.refresh()
         found = None
         for lab in pool:
@@ -2134,8 +2138,8 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                     else:
                         T_pre[:3, 3] += H[:3, 0] * (tip + 0.02)
                     grasps = (lambda a, o=o: G_hang(sk, o, a))
-                    r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=grasps,
-                                         place_kw={"pre_h": 0.03, "release": False, "approach_rad": 0.09})
+                    r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=grasps, max_full=8,
+                                         place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY})
                     if not isinstance(r, SkillResult):
                         found = (lab, hi, H, T_obj, T_pre, r)
                         break
@@ -2151,8 +2155,16 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         sk.log(f"[hang] {lab} -> hook {hi}: {pp.arm} ({pp.grasp.note})")
         pool.remove(lab)
         used.add(hi)
-        r = sk.run_transfer(pp, pl, tol_xy=0.03, tol_tilt=25.0, tol_z=0.05)
+        # tol_xy < LOOSE_OK_TOL: a grasp that shifted in the hand is put down (and the object tried once more)
+        r = sk.run_transfer(pp, pl, tol_xy=0.015, tol_tilt=25.0, tol_z=0.05)
         arm = pp.arm
+        if r.status == "loose" and lab not in retried:
+            retried.add(lab)
+            pool.append(lab)
+            used.discard(hi)
+            sk.log(f"[hang] {lab} loose in the hand ({r.note[:80]}), put down; again later")
+            sk.bank()
+            continue
         if sk.held[arm] is None:
             failed.append(lab)
             sk.bank()
@@ -2209,7 +2221,8 @@ def G_hang(sk: Skills, o, arm: str) -> list:
     from dojo.skills.motion import held_box
     if held_box(o, np.eye(4)).points is not None:          # irregular (a headset): its real slices
         return G.box_grasps(o, sk.kin, arm) + G.slice_grasps(o, sk.kin, arm) + G.antipodal_grasps(o, sk.kin, arm)
-    return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.008, 0.014, 0.02))
+    # deep wall pinches only (twin: an 8 mm deep pinch slid 46 mm in the hand while the mug turned 90 deg)
+    return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032))
 
 
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
