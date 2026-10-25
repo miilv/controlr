@@ -591,7 +591,8 @@ def rests_stably(o, R, margin: float = 0.25) -> bool:
     return bool(np.all(np.abs(cw[:2] - mid) <= half * (1 - margin)) and np.all(half > 0.004) and wide)
 
 
-def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, at=None):
+def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, at=None,
+              transfer_kw=None):
     """``plan_transfer`` with the object virtually at pose ``at`` (4x4; None = where it is now; both arms
     then start from home)."""
     o = sk.world.obj(label)
@@ -600,18 +601,20 @@ def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), pl
         o.pos, o.quat = np.asarray(at, float)[:3, 3].copy(), R_to_quat(np.asarray(at, float)[:3, :3])
     try:
         return sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw,
-                                q_start={a: sk.world.home_q[a] for a in ARMS} if at is not None else None)
+                                q_start={a: sk.world.home_q[a] for a in ARMS} if at is not None else None,
+                                **(transfer_kw or {}))
     finally:
         o.pos, o.quat = saved
 
 
 def _run_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, first=None,
-             tol=(0.03, 10.0, 0.03), tries: int = 2) -> SkillResult:
+             tol=(0.03, 10.0, 0.03), tries: int = 2, transfer_kw=None) -> SkillResult:
     """Plan (or take ``first``) and run one transfer; a loose grasp is put down and the leg re-planned."""
     r = None
     for t in range(tries):
         plan = first if (t == 0 and first is not None) else sk.plan_transfer(label, targets, yaw_sym=yaw_sym,
-                                                                             ignore=ignore, place_kw=place_kw)
+                                                                             ignore=ignore, place_kw=place_kw,
+                                                                             **(transfer_kw or {}))
         if isinstance(plan, SkillResult):
             return sk._record(plan)
         r = sk.run_transfer(*plan, tol_xy=tol[0], tol_tilt=tol[1], tol_z=tol[2])
@@ -997,7 +1000,8 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
 
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
-                   max_spots: int = 3, relay_near=(0.0, -0.28), air_handover: bool = True) -> SkillResult:
+                   max_spots: int = 3, relay_near=(0.0, -0.28), air_handover: bool = True,
+                   transfer_kw: dict | None = None) -> SkillResult:
     """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
     the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
     through free table spots, the shortest that plans end to end:
@@ -1010,13 +1014,15 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
       the open, then carried top-down into a tight slot).
 
     Every leg picks its arm; all legs are planned before the first moves, and each later leg is
-    re-planned from the world as it is then (same intermediate pose)."""
+    re-planned from the world as it is then (same intermediate pose). ``transfer_kw``: extra ``plan_transfer``
+    arguments for every leg (grasp tilts, lift height)."""
     sk.refresh()
     tight = (tol_xy, tol_tilt, tol_z)
-    r = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw)
+    tkw = dict(transfer_kw or {})
+    r = sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore, place_kw=place_kw, **tkw)
     if not isinstance(r, SkillResult):
         sk.log(f"[place_oriented] {label}: direct, {r[0].arm} ({r[0].grasp.note})")
-        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, first=r, tol=tight)
+        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, first=r, tol=tight, transfer_kw=tkw)
     sk.log(f"[place_oriented] {label}: no direct transfer ({r.note[:240]}); relay")
     o = sk.world.obj(label)
     Rs = [np.asarray(T, float)[:3, :3] for T in targets]
@@ -1024,11 +1030,15 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03)[:max_spots]
     stable = all(rests_stably(o, R) for R in Rs)
     chains = []
+    # as it is only when it stands by itself (a slice standing in a rack, 12 mm thick under a centre of mass 58 mm up,
+    # does not)
+    as_is_ok = rests_stably(o, R_now)
     for sp in spots:
         if stable:
             chains.append([("target", sp)])
-        chains.append([("as_is", sp)])
-    if stable:
+        if as_is_ok:
+            chains.append([("as_is", sp)])
+    if stable and as_is_ok:
         chains += [[("as_is", s1), ("target", s2)] for s1 in spots for s2 in spots
                    if float(np.linalg.norm(np.subtract(s1, s2))) > 0.09]
     notes, cache = [r.note[:120]], {}
@@ -1044,7 +1054,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
             if key not in cache:
                 mids, ys = (([rest_with_R(sk, label, sp, R) for R in Rs], yaw_sym) if kind == "target"
                             else ([rest_with_R(sk, label, sp, R_now)], 4))
-                cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at))
+                cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at, transfer_kw=tkw))
             mids, ys, rl = cache[key]
             if isinstance(rl, SkillResult):
                 notes.append(f"{kind} {np.round(sp, 2).tolist()}: {rl.note[:90]}")
@@ -1054,7 +1064,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
             at = rl[1].T_obj_target
         if not ok:
             continue
-        rf = _plan_leg(sk, label, targets, yaw_sym, ignore, place_kw, at=at)
+        rf = _plan_leg(sk, label, targets, yaw_sym, ignore, place_kw, at=at, transfer_kw=tkw)
         if isinstance(rf, SkillResult):
             notes.append(f"chain {[k for k, _ in chain]} last leg: {rf.note[:90]}")
             continue
@@ -1063,12 +1073,12 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
             + f" -> target {rf[0].arm} ({rf[0].grasp.note})")
         for i, (kind, sp, rl) in enumerate(legs):
             tgt = [rl[1].T_obj_target]
-            res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None)
+            res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None, transfer_kw=tkw)
             if not res.ok and res.status in ("step_budget", "ended", "grasp_slip", "ik_fail", "collision", "logic"):
                 return res
             sk.bank()
             sk.refresh()
-        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight)
+        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight, transfer_kw=tkw)
     # in-air handovers are for small objects (a key, a plug): two grippers around a 19-cm figurine never plan,
     # and the search costs minutes
     if float(np.max(o.asset.extents)) > HANDOVER_MAX_EXTENT:
@@ -1911,7 +1921,8 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
         tg = [rest_with_R(sk, lab, ctr[:2], R, z_bottom=floor + 0.002)]
         r = place_oriented(sk, lab, tg, yaw_sym=2, tol_xy=0.015, tol_tilt=20.0, tol_z=0.06, ignore=(container,),
                            place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                     "servo": True, "servo_ref": container, "fingers_out": True, "probe": False})
+                                     "servo": True, "servo_ref": container, "fingers_out": True, "probe": False},
+                           transfer_kw={"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True})
         (done if r.ok else failed).append(lab)
         for a in ARMS:
             if sk.held[a] is not None:
