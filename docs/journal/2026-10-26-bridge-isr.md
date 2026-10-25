@@ -80,16 +80,163 @@ The twin-verified joint lists replay faithfully; no re-timing is needed.
 
 ## 4. Strict full-system episodes (practice seed 0 layout 9; n = 1 per row)
 
-TABLE
+### 4a. Through the official client: robot-harness J2 strict server + RoboDojo's eval client, seed 0 layout 9
+
+Setup:
+- every row: `--perception local`, `bg_folds_51` + `color_calib_51`, twin 4 envs, `usd_sync_links` on;
+- AgentPolicy = `cx/gpt-6.1-sol`; the agentic perceiver = `claude/claude-sonnet-5-5`;
+- score = RoboDojo's `_result.json`, read after the close;
+- "gross at planning" = our frame-0 record vs the server's `dev.jsonl` truth, read after the close: > 30 mm or a wrong
+  asset, over the labelled task objects (`scripts/dojo/isr_summary.py`).
+
+Configs:
+- **C3F** = integration-2's system config: refine, refine_max_shift 0.07, max_rehovers 2, post_place, search,
+  **search_lost on**, place_confirm, watch.
+- **agx** = C3F + agentic budget (max 3) + held_look b1_then_agent (tracker auto), no scan.
+- **submit** = the scan config: C3F with search_lost OFF + scan trigger + agentic budget 3 + held_look b1_then_agent,
+  tracker auto, snap on.
+- "M-lane" = Mikhail's lane task run through OUR stack as a bridge check, not a lane result.
+
+| run | task | arm (config) | success / score | steps | wall s | gross at planning (err med / max mm) | verify used | agent (Sol) calls | agentic (Sonnet) calls by trigger |
+|---|---|---|---|---|---|---|---|---|---|
+| ilbr-rt-stack-s0L9-1 | stack_blocks | RuntimePolicy (C3F) | yes / 100 | 230/550 | 39.9 | 0/3 (0.5 / 1.5) | no: disabled (landmine 1) | 0 | - |
+| ilbr-rt-stack-s0L9-2 | stack_blocks | RuntimePolicy (C3F) | no / 0 (infra) | 60/550 | 16.3 | 0/3 (0.4 / 1.5) | no: twin died (landmine 2) | 0 | - |
+| ilbr-rt-stack-s0L9-3 | stack_blocks | RuntimePolicy (C3F) | yes / 100 | 228/550 | 69.7 | 0/3 (0.5 / 1.5) | yes (6 seg / 48 rollouts) | 0 | - |
+| ilbr-ag-stack-s0L9-1 | stack_blocks | AgentPolicy (C3F) | yes / 100 | 228/550 | 80.5 | 0/3 (0.4 / 1.5) | yes | 1 | - |
+| ilbr-agx-stack-s0L9-1 | stack_blocks | AgentPolicy (agx) | yes / 100 | 218/550 | 120.2 | 0/3 (2.1 / 5.9) | yes | 1 | frame0 3, held 1 |
+| ilbr-sub-stack-s0L9-1 | stack_blocks | AgentPolicy (submit) | yes / 100 | 247/550 | 107.4 | 0/3 (0.4 / 0.6) | yes | 1 | frame0 2, held 1 |
+| ilbr-rt-tower-s0L9-1 | build_tower | RuntimePolicy (C3F) | no / 0 | 570/1050 | 225.2 | 0/8 (1.0 / 14.9) | yes (12 / 96) | 0 | - |
+| ilbr-rt-press-s0L9-1 | press_by_number | RuntimePolicy (C3F) | yes / 100 | 174/700 | 35.0 | 0/5 (1.6 / 1.9) | no segments | 0 | - |
+| ilbr-ag-press-s0L9-1 | press_by_number | AgentPolicy (C3F) | yes / 100 | 173/700 | 38.0 | 0/5 (1.6 / 1.6) | no segments | 1 | - |
+| ilbr-agx-press-s0L9-1 | press_by_number | AgentPolicy (agx) | yes / 100 | 174/700 | 78.8 | 0/5 (1.6 / 1.6) | no segments | 1 | frame0 2, after_looks 2 |
+| ilbr-rt-stacklang-s0L9-1 | stack_blocks_by_language | RuntimePolicy (C3F) | yes / 100 | 245/400 | 74.0 | 0/3 (0.5 / 0.6) | yes (6 / 48) | 0 | - |
+| ilbr-ag-stacklang-s0L9-1 | stack_blocks_by_language | AgentPolicy (C3F) | yes / 100 | 245/400 | 80.0 | 0/3 (0.6 / 0.6) | yes | 1 | - |
+| ilbr-agx-stacklang-s0L9-1 | stack_blocks_by_language | AgentPolicy (agx) | yes / 100 | 245/400 | 98.6 | 0/3 (0.4 / 0.6) | yes | 1 | frame0 2 |
+| ilbr-rt-kong-s0L9-1 | make_kong | RuntimePolicy (C3F) | no / 0 | 218/600 | 45.3 | 0/22 (1.2 / 15.0), position only | no segments | 0 | - |
+| ilbr-rt-swapb-s0L9-1 | swap_blocks | RuntimePolicy (C3F) | no / 0 | 49/700 | 15.9 | 2/6: both targets not found | no: estimate incomplete | 0 | - |
+| ilbr-rt-plug-s0L9-1 | plug_in_charger | RuntimePolicy (C3F) | no / 0 | 246/400 | 98.2 | 0/2 (2.1 / 3.4) | no segments | 0 | - |
+| ilbr-rt-pushT-s0L9-1 | push_T (M-lane) | RuntimePolicy (C3F) | no / 0 | 3/600 | 7.9 | 0/2 (0.8 / 0.8) | - | 0 | - |
+| ilbr-ag-pushT-s0L9-1 | push_T (M-lane) | AgentPolicy (C3F) | no / 0 | 548/600 | 170.0 | 0/2 (0.8 / 0.8) | - | 15 | - |
+| ilbr-rt-cover-s0L9-1 | cover_blocks (M-lane) | RuntimePolicy (C3F) | no / 0 | 3/800 | 8.3 | 0/6 (0.5 / 0.6) | - | 0 | - |
+| ilbr-ag-cover-s0L9-1 | cover_blocks (M-lane) | AgentPolicy (C3F) | yes / 100 | 338/800 | 88.0 | 0/6 (0.6 / 0.8) | - | 6 | - |
+| ilbr-agx-cover-s0L9-1 | cover_blocks (M-lane) | AgentPolicy (agx) | yes / 100 | 336/800 | 153.1 | 0/6 (0.5 / 0.6) | - | 6 | frame0 3, risk 4 |
+| ilbr-rt-bowls-s0L9-1 | stack_bowls (M-lane) | RuntimePolicy (C3F) | no / 0 | 215/800 | 61.7 | 0/3 (2.0 / 9.9) | no: twin pickling error | 0 | - |
+| ilbr-rt-bottles-s0L9-1 | put_bottles_into_dustbin (M-lane) | RuntimePolicy (C3F) | no / 0 | 348/700 | 541.6 | 3/5 (11.5 / 50.0), bottle3 not found | no: estimate incomplete | 0 | - |
+
+Block b5 (the s0L9 tower rerun with RuntimePolicy + scanFA, and the submit arm on press / stacklang / cover / make_toast): see the addendum.
+
+### 4b. Rendered Isaac 5.1 dev eval on our settled layouts
+
+`dojo.runtime.eval --renderer isaac51` (`RenderedEpisode`) runs the proxy driver on one RoboDojo EvalEnv with RTX,
+started with the eval client's app flags. It uses the same EvalEnv reset, step accounting and latches as the proxy,
+but genuine 5.1 frames, and has no robot server. Launcher: `scripts/dojo/isr_dev_eval.sh`, one hold per task, with a
+per-episode gate (`DOJO_EVAL_GATE` = `isr_gate.sh`).
+
+The arm is RuntimePolicy + integration-2's scanFA config, without `save_look_frames`:
+`{"refine":true,"refine_max_shift_m":0.07,"max_rehovers":2,"post_place":true,"search":true,"place_confirm":true,
+"watch":true,"scan":"trigger","agentic":"budget","agentic_max":3,"held_look":"b1_then_agent"}`. Twin 8 envs; code
+38ad5af (= integ2 0982971 merged). Layouts: build_tower, stack_blocks, push_T `100000-100009.settled.json`, the same
+as compute3's scanFA proxy arm. Results: see the addendum.
+
+Why the failures failed (from the episode reports; routed to the owners by the lead):
+
+| task | failure | where |
+|---|---|---|
+| build_tower | No refine over 70 mm was accepted. block7's pick refine missed, so search_lost fired. Its full-fuse fallback "found" block7 at a spot where every pick candidate collides, so the board had 0 feasible picks. Integration-2's diagnosis: the compute3 loss chain; the submit config has search_lost off | integration-2 |
+| make_kong | watch saw the discard (confident, margin 57). topple said "axis at 90 deg from up" and did nothing. Perception gives every tile `category_idx` 0 | perception-R&D |
+| swap_blocks | the target cubes (`Rigid/cube/00003`, geometry only in the catalogue) not found even after search | perception-R&D (BACKLOG) |
+| plug_in_charger | the place hit the table (palm z 0.770). The in-hand view then said "turned 180 deg", which led to a regrasp loop. Fix in integ2 ca5e406 (refine_max_turn_deg) | integration-2 |
+| stack_bowls | grasp_slip on bowl0. The twin's verify failed with `Pickling of "pxr.Usd.Stage"`. Fix in integ2 ca5e406 | integration-2 |
+| put_bottles_into_dustbin | perception: 3 of 5 gross, bottle3 not found | Mikhail's lane |
+| push_T, cover_blocks | no rule skill (RuntimePolicy ends at once). The agent coded cover (2/2) but not push_T | - |
+
+Against the proxy / G3 references (same tasks, our dev layouts; n = 1 here, so only gross disagreement means anything):
+
+| task | strict s0L9 (this table) | proxy mode B (5.1 physics + 6.0 frames) | G3 / proxy mode A (GT) |
+|---|---|---|---|
+| stack_blocks | 4/4 with verify working (rt, ag, agx, submit) | closed2 20/25 (81.8) | 25/25 |
+| stack_blocks_by_language | 3/3 | - | 10/10 |
+| press_by_number | 3/3 | - | 20/20; agent e2e mode A 6/6 |
+| cover_blocks (agent) | 2/2 | agent e2e mode B 6/6 | - |
+| build_tower | 0/1 | base3 11/25 (49.6), closed 6/25 (30.8) | 25/25 |
+| plug_in_charger | 0/1 | - | 22/25 |
+| make_kong | 0/1 | - (mode B never ran) | 25/25 |
+| swap_blocks | 0/1 (catalogue gap) | - (same gap) | 24/25 |
+| stack_bowls | 0/1 | 0/5 (verify off) | proxy A 1/5 |
+| put_bottles | 0/1 | agent e2e 0/6 | 1/7 |
+
+Reading:
+- No task did better on genuine 5.1 frames than its proxy / G3 reference.
+- Every pass is a task whose proxy or G3 number is high.
+- Every fail is either a task the proxy also loses (tower, bowls, bottles) or a mode-B path that never ran in the
+  proxy (kong, plug, swap).
+- Perception at planning on genuine 5.1 frames was within 2 mm on all the D0-style tasks.
+- The bridge itself (contract, `joint_steps`, the latch, the close) added no failure once its three landmines were
+  fixed.
+
 
 ## 5. Landmines found (all fixed on this branch unless noted; BACKLOG)
 
-LANDMINES
+1. **The twin-layout template needs RoboDojo's generator deps in OUR venv.**
+   - `dojo.runtime.estimate._template` -> `gen_layouts` -> RoboDojo's `utils.cluttered_generator` imports `tqdm` and
+     `transforms3d` at module level.
+   - Behind the bridge the policy runs in our venv, so every twin verify failed and verify switched itself off.
+   - The proxy never showed it: there the policy runs in RoboDojo's python, and the fake-server tests mock the
+     template.
+   - Fix: both are in the perception extra, with a CI guard test.
+2. **Cross-interpreter pickles.**
+   - Twin requests carried numpy-2 arrays from our venv into RoboDojo's numpy 1.26, which cannot unpickle them
+     (`No module named 'numpy._core'`). The service exited, and the episode ran unverified, then failed.
+   - Fix: `TwinClient` sends plain lists / numbers (`twin_service.plain`), with a test. Replies the other way are fine.
+3. **`bridge_episode.sh` orphaned the perception service.**
+   - `$!` was the subshell's bash, so the cleanup trap killed only that. The service lived on with fd 9 (the session
+     lock), and the next episode waited on the lock.
+   - Fix: the service is now exec'd, with fd 9 closed.
+4. **No runtime vocabulary** for make_toast(_random), store_laptop and hang_mugs on the strict path: fixed on main by
+   #32 (lane vocabularies + catalogue fallback). push_T and cover_blocks have no rule skill, so RuntimePolicy ends at
+   once.
+5. **The official eval client builds RoboDojo's 10-env scene for one layout.** VRAM peaks at 10-12 GB with our twin and
+   perception.
+6. **Isaac caches under our shim HOME grow per new task**, by ~0.1-0.4 GB (texture cache 1.6 -> 2.4 GB over 10 tasks).
+   Pruning them is wrong: the rebuild at the next boot spiked the box (item 7). Lead's rule: never prune them on
+   isr-lab; stop below 7 GB free instead.
+7. **An Isaac 5.1 RTX boot with a cold shader cache took ~20 cores for ~1 min.** We saw 1954-2286 % CPU and 186
+   threads; the 1-min load reached 15.2 and the package 78 °C. That is on a box that hard-resets under all-core load.
+   - Fix: `isr_job.sh` pins everything of ours to CPUs 0-11 (`taskset`; children inherit it).
+   - Also a load watchdog: 1-min load > 12 or our tree's CPU% > 1200 for more than 30 s stops our tree.
+   - A warm boot under taskset: load <= 5.1, CPU <= ~210 %.
+8. **robot-harness's lock-aware starters** (on their main, not synced to the mirror). Mock run of their J2 starter in
+   `ROBOT_START_DRYRUN` mode under our `isr_job` hold (`scripts/dojo/isr_lockmock.py`): delegated mode (a) works, and
+   gpu.owner stays ours. Two traps for the sync, both fixed on our side:
+   - their `COORD_DIR` default is `$HOME/data2/coord`, which our HOME redirect makes private; `isr_env.sh` exports the
+     real path;
+   - they append START / DONE to `$BENCH/COORDINATION.md`; our BENCH farm now links the shared log.
+9. **A deploy under a running job mixes code.** The inbox gate cleared and the chain auto-started 2 min before a
+   deploy; the running process would then have imported old and new modules. It was stopped by PIDs after 0 finished
+   episodes and restarted. Rule: deploy only between holds, and record the commit in `COMMIT` before the start.
+10. **The inbox gate stops a block on ANY unprocessed message, acks included.** That is by design (the lead reads first),
+    but it cost two block restarts tonight (b4, the first dev eval). The lead moves messages to `done/` promptly.
+11. **stack_bowls twin verify: `Pickling of "pxr.Usd.Stage"`**, a checker member holding a USD stage; fixed in integ2
+    ca5e406. **plug_in_charger regrasp loop**: a 180 deg flip of a near-symmetric body; same commit
+    (`refine_max_turn_deg`).
+12. **The agentic frame-0 record on stack_blocks was less precise than B1's**: 2.1 / 5.9 mm vs 0.5 / 1.5 mm (agx-stack).
+    Still within tolerance, and the snap in #33 targets it. Routed to perception-R&D.
+13. **The perception catalogue on isr-lab is a task-scoped subset** (no `visual.glb`, 332 MB). general_pickup (523 MB)
+    and pack_objects (576 MB) do not fit the disk budget, so they did not run.
+
 
 ## 6. Spend
 
-SPEND
+Through the end of block b4 (episode reports; the router reports no cost field, so tokens only):
+- agent `cx/gpt-6.1-sol`: 34 calls, 233.5k prompt (198.4k cached), 3.0k completion;
+- agentic perceiver `claude/claude-sonnet-5-5`: 20 calls, 247.0k prompt (188.9k cache read), 13.7k completion.
+
+Totals including the dev eval and b5: see the addendum.
 
 ## 7. Next
 
-NEXT
+- Rerun s0L9 make_kong, plug_in_charger and stack_bowls on the integ2 fixes (ca5e406), and build_tower on the
+  submit config (block b5).
+- Scored blocks only on the lead's go: md5-freeze the checkout + `pdata`, run blind, write ledger lines.
+- Mikhail's lock-aware starters: rerun `scripts/dojo/isr_lockmock.py` against the synced mirror before the next hold
+  after his sync.
