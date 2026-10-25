@@ -102,3 +102,7 @@ ambiguous and scales its confidence. Integration's two misses: stack_blocks 1000
 fg-residual 0.37 → confidence 0.35, flagged; 100006 (21.7 mm) is 44 % hidden by the robot → flagged.
 stack_blocks frame 0: recall on out-of-tolerance 12/13 (was 15/22 with conf < 0 on blocks+bowls), at the
 price of precision 0.27 (60 % of blocks flagged); with refine() at every hover, a flag costs little.
+- `refine_identity(obj_ids, ...)`: refine every candidate shape at the hover, lowest residual wins, with a
+  margin. build_tower wrist views (board idx 1 / pillar idx 2 / prism idx 3, centred, prior ±15 mm):
+  43/53 correct overall; when `identity_ok` (margin ≥ 0.05 and fit ok) 40/42 (95 %); 0.3 s per candidate.
+  Integration wired `refine` (uses the pose when ok and shift ≤ 30 mm).
