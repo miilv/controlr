@@ -418,6 +418,20 @@ def cmd_checks(a) -> None:
         lines.append(f"== score entry {i} ({rm.score_meta[0].get('mode')}, completed {rm.score_completed_count[0]})")
         checks = entry[0] if rm.score_meta[0].get("mode") == "paired" else entry
         _eval_tree(rm, list(checks), 1, "and", lines)
+    lm = run.env.scene_manager.layout_manager
+    for o in run.objects_gt(0):
+        if o.get("clutter") or o.get("type") not in ("Articulation", "Geometry"):
+            continue
+        meta = lm.get_instance_metadata(inst_name=o["inst_name"], env_idx=0) or {}
+        for typ in ("passive", "active"):
+            for tag in ((meta.get(typ) or {}).get("functional") or {}):
+                try:
+                    pts = lm.get_functional_points(tag=tag, type=typ, config=meta, ret="list", obj_name=o["inst_name"],
+                                                   env_idx=0)
+                    lines.append(f"fp {o.get('label')} {typ} {tag}: "
+                                 f"{[np.round(np.asarray(q, float).reshape(-1)[:3], 4).tolist() for q in (pts or [])]}")
+                except Exception as e:  # noqa: BLE001
+                    lines.append(f"fp {o.get('label')} {typ} {tag}: error {e}")
     for o in run.objects_gt(0):
         if not o.get("clutter"):
             lines.append(f"obj {o.get('label')} pos {np.round(o['pos'], 4).tolist() if o.get('pos') else None} "
