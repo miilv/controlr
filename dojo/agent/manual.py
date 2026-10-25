@@ -89,7 +89,7 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "match_and_pick(objects: [id, ...], conveyor: id | null = null)",
         "Objects ride a moving belt: measures the belt's speed from the objects' motion, remembers the first object "
         "(the one leading in the direction of motion), and picks the next object of the same kind on the move "
-        "(the hand follows the belt while it closes), then lifts it ~16 cm and holds it."),
+        "(the hand follows the belt while it closes), then lifts it ~12 cm and holds it."),
     "fill_holes": (
         "fill_holes(objects: [id, ...], holder: id, lid_tag: frame | null = null)",
         "Stands each object (long axis up) over a free hole of the holder's body and lets it drop in, fingers above "

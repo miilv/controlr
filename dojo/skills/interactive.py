@@ -478,7 +478,7 @@ def belt_velocity(sk: Skills, labels: list[str], steps: int = 4) -> np.ndarray:
 
 
 def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max: int = 600, n_desc: int = 8,
-                   n_close: int = 5, h_pre: float = 0.06, lift: float = 0.16, arms=None, ignore=()):
+                   n_close: int = 5, h_pre: float = 0.06, lift: float = 0.125, arms=None, ignore=()):
     """A grasp of an object riding the belt: for each arm, the earliest step ``t`` (from now, >= ``t_min``) at which a
     top grasp of the object's predicted pose is reachable with its pre-grasp and lift; the plan tracks the object
     (TCP moving with the belt) through the descent and the close. Returns (arm, t_contact, per-step list from the
@@ -578,7 +578,7 @@ def _track_ik(sk: Skills, a: str, samples: list, q0) -> list | None:
     return qs
 
 
-def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.16, ignore=(), arms=None) -> SkillResult:
+def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
     approach, then the tracked descent / close / lift (one IK target per env step). Checked by the object's height."""
     w = sk.refresh()
@@ -631,7 +631,7 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.16, ig
                                   note=f"{label} rose {dz * 1000:.0f} mm"))
 
 
-def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, lift: float = 0.16,
+def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, lift: float = 0.125,
                    max_wait: int = 650) -> dict:
     """Remember the first object on a moving belt (the one leading in the belt's direction), then pick the next object
     of the same identity when it comes and lift it. Everything from observation: the belt velocity from the objects'
