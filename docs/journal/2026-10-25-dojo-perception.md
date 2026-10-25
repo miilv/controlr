@@ -120,3 +120,61 @@ regressions: stack_blocks 100003 block_0 (0.4 → 9.7 mm, also integration's cas
   9 mm move toward a mediocre look-view fit (IoU 0.54). D0 L1: **0 regressions > 5 mm** on stack_blocks and
   build_tower (improvements 2 and 7); within tolerance stack_blocks 0.85, build_tower 0.84 (vs frame 0
   0.83 / 0.81). Safety over gain: a wrong move after a look is worse than no move.
+
+## v2 look plans (frame_L2) vs v1, partial (same full-fuse scoring as the v1 table)
+| task | frame 0 | v1 look | v2 look |
+|---|---|---|---|
+| build_tower | 0.81 | 0.87 | 0.89 (xy p90 6.0 → 5.1 mm) |
+| stack_bowls | 0.88 | 0.91 | 0.92 |
+| stack_blocks | 0.83 | 0.87 | 0.85 (± 1–2 blocks) |
+pack / push_T / bottles pending (`~/dojo-perception-data/after_l2.sh` runs each as simlab finishes).
+
+## Integration's saved look frames
+`integ_looks.py` re-estimates from integration's frame0/look PNGs + state, fuses, scores vs D0 GT (their
+settled records equal D0 frame-0 GT; their frame0 images match D0's, mean |Δ| 0.7). First 5 stack_blocks
+episodes (100000–100004, hard layouts): conservative fuse 0 objects worse / 0 better than frame 0; the old
+full fuse raised xy p90 17.2 → 20.6 mm. Look variants: "plan" 12 objects, "d0.18/e70" fallback 3, no harm.
+
+## v1 vs v2 look plans, all tasks (full-fuse scoring, simlab frame_L1 / frame_L2)
+| task / class | n | frame 0 | v1 | v2 |
+|---|---|---|---|---|
+| build_tower | 200 | 0.81 | 0.87 | 0.89 |
+| push_T T | 25 | 0.84 | 0.92 | 0.96 |
+| push_T pad | 25 | 0.80 | 0.80 | 0.76 |
+| stack_blocks | 75 | 0.83 | 0.87 | 0.85 |
+| stack_bowls | 75 | 0.88 | 0.91 | 0.92 |
+| put_bottles | 100 | 0.76 | 0.77 | 0.84 |
+| pack box / car / toothbrush / hammer / shoe | 25 each | 0.92/0.56/0.60/0.88/0.52 | 0.80/0.72/0.72/0.88/0.80 | 0.76/0.60/0.72/0.88/0.64 |
+| all | 625 | 0.82 | 0.84 | 0.84 |
+v2 (partly-hidden first, clearance-aware azimuths) helps bottles (+0.07), T, tower, bowls; it costs pack's
+car and shoe (which v1 reviewed for flips) and the pad. Net equal: the targeting should be per need
+(flip review for thin pack items, partly-hidden for blocks/pads). Conservative-fuse evals on v2 queued
+(`cons_l2.sh`), since that is what the runtime uses.
+
+## Backlog
+- v3 = per-class look objective (flip/identity review for thin textured items such as pack's car/shoe;
+  partly-hidden coverage for blocks/pads). Not now: v1 vs v2 swings are within noise at n = 25 per class,
+  and with refine() at every hover the grasp-time error is refine's (~1 mm).
+
+## Integration's paired stack_blocks runs (look frames saved)
+- integ_looks over base3 a–e + refine3 a–d (42 episodes with looks, 126 blocks): conservative fuse vs
+  frame 0 within 15 mm 0.85 → 0.87, xy p90 19.3 → 15.0 mm; worse > 5 mm: 0 of 81 after planned looks, 1 of
+  40 after the d0.18/e70 fallback; better > 5 mm: 4 and 3.
+- refine events (refine3): pick 49/55 ok (shift median 1.5 mm, p90 11.3); place only 15/44 ok (IoU ~0.24,
+  visible 1.0): the carried block sits between the wrist camera and the support and pollutes the local
+  table colour model and the foreground → `refine(..., held=(key, pose7))` masks it as an occluder.
+- Success so far: refine3 15/20, base3 16/25 (pairs incomplete).
+
+## Runtime configuration (v2 looks + conservative fuse) vs full fuse, all tasks
+| task / class | n | frame 0 | v2 full | v2 conservative | worse > 5 mm full / cons | better > 5 mm full / cons |
+|---|---|---|---|---|---|---|
+| build_tower | 200 | 0.81 | 0.89 | 0.86 | 2 / 2 | 13 / 8 |
+| push_T T | 25 | 0.84 | 0.96 | 0.92 | 1 / 0 | 2 / 1 |
+| push_T pad | 25 | 0.80 | 0.76 | 0.80 | 1 / 0 | 2 / 0 |
+| stack_blocks | 75 | 0.83 | 0.85 | 0.84 | 7 / 1 | 12 / 2 |
+| stack_bowls | 75 | 0.88 | 0.92 | 0.89 | 4 / 2 | 12 / 2 |
+| put_bottles | 100 | 0.76 | 0.84 | 0.78 | 8 / 0 | 18 / 3 |
+| pack box / car / toothbrush / hammer / shoe | 25 each | .92/.56/.60/.88/.52 | .76/.60/.72/.88/.64 | .92/.60/.60/.88/.60 | 17 / 1 | 25 / 7 |
+| all | 625 | 0.82 | 0.84 | 0.82 | 40 / 6 | 84 / 23 |
+Full fuse gains more on average and regresses 40 objects; conservative regresses 6 (1 %) and improves 23.
+With refine() at every hover the grasp-time error is refine's, so the runtime keeps conservative fuse.
