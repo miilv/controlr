@@ -106,3 +106,13 @@ price of precision 0.27 (60 % of blocks flagged); with refine() at every hover, 
   margin. build_tower wrist views (board idx 1 / pillar idx 2 / prism idx 3, centred, prior ±15 mm):
   43/53 correct overall; when `identity_ok` (margin ≥ 0.05 and fit ok) 40/42 (95 %); 0.3 s per candidate.
   Integration wired `refine` (uses the pose when ok and shift ≤ 30 mm).
+
+## Conservative fuse (integration: fused worse than frame 0 on several blocks)
+`look.fuse` used to re-run the whole estimate with the look views (re-selection included). Now
+(default `mode="conservative"`): keep the frame-0 record's objects, identities and assignment; refine each
+object from its frame-0 pose over all views; accept only if the total residual drops by > 0.02 and the look
+views alone do not get worse. D0 L1 frames, objects moved > 5 mm worse / better than frame 0:
+stack_blocks full 7 / 8 → conservative 1 / 4; build_tower full 5 / 14 → 1 / 7. Within tolerance:
+stack_blocks 0.83 → 0.87 (full) / 0.88 (conservative); build_tower 0.81 → 0.87 (full) / 0.84
+(conservative: re-assignment fixed some swaps but also caused the regressions). Remaining conservative
+regressions: stack_blocks 100003 block_0 (0.4 → 9.7 mm, also integration's case), build_tower 100018 block3.
