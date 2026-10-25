@@ -37,6 +37,7 @@ TOLERANCE = {
     "align_blocks": (8, 8, "block centres within 8 mm of one line, faces within 8 deg"),
     "store_tools_in_toolbox": (50, 10, "tool centre <= 50 mm from its slot, orientation <= 10 deg"),
     "insert_key": (7, 7, "key xy <= 7 mm, axis <= 7 deg (insertion)"),
+    "press_by_number": (10, None, "button press point <= 10 mm (cap radius 30 mm); card digit = identity"),
     "plug_in_charger": (7, 10, "inside the socket footprint (7 mm assumed), charger y-axis <= 10 deg"),
     "cover_blocks": (15, None, "covering cups / cube positions (15 mm assumed)"),
     "stack_blocks_by_language": (17.5, None, "ordered stack xy <= 17.5 mm"),

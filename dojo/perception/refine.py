@@ -32,7 +32,7 @@ import cv2
 import numpy as np
 
 from .cameras import TABLE_Z, R_to_quat_wxyz, pose_to_T, wrist_camera
-from .inverse_layout import make_roi_views, refine as nm_refine, shape_models
+from .inverse_layout import make_roi_views, refine as nm_refine, shape_by_tag, shape_models
 from .segment import load_backgrounds, segment_virtual
 
 _BGS = None
@@ -117,9 +117,10 @@ def _shape_for(key: str, R: np.ndarray, tag: str | None):
     """The place frame whose resting up-direction matches the prior rotation best (or the given tag)."""
     sms = shape_models(key)
     if tag:
-        m = [s for s in sms if s.tag == tag]
-        if m:
-            return m[0]
+        try:
+            return shape_by_tag(key, tag)  # includes fixed-pose (zlim / qpos) shapes estimate() created
+        except StopIteration:
+            pass
     up = R.T @ np.array([0, 0, 1.0])
     return max(sms, key=lambda s: float((s.R0.T @ np.array([0, 0, 1.0])) @ up))
 
@@ -168,7 +169,7 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         return T
 
     starts = [(T0[0, 3], T0[1, 3], yaw0)]
-    for dx, dy in ((xy_starts, 0), (-xy_starts, 0), (0, xy_starts), (0, -xy_starts)):
+    for dx, dy in (((xy_starts, 0), (-xy_starts, 0), (0, xy_starts), (0, -xy_starts)) if xy_starts > 0 else ()):
         starts.append((T0[0, 3] + dx, T0[1, 3] + dy, yaw0))
     if sm.yaw_period > 1.5 * np.pi:
         starts.append((T0[0, 3], T0[1, 3], yaw0 + np.pi))
@@ -278,12 +279,17 @@ def _wide_search(obj_id, sm, z_off, img, cam, proprio, rob, T0, iters):
 
 
 def refine_identity(obj_ids: list[str], wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
-                    margin: float = 0.05, **kw) -> dict:
+                    margin: float = 0.05, max_full: int = 6, **kw) -> dict:
     """Identity check at the hover: ``refine`` every candidate asset at the prior (e.g. the label group's
     candidates, or the record's ``label_rival``) and keep the lowest residual. Adds ``obj_id``,
     ``identity_scores`` {id: residual} and ``identity_margin`` (runner-up minus best residual);
     ``identity_ok`` is false when the margin is below ``margin`` (look again or keep the prior identity)."""
-    outs = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **kw) for k in dict.fromkeys(obj_ids)}
+    ids = list(dict.fromkeys(obj_ids))
+    if len(ids) > max_full:  # screen with a short single-start fit, then the full refine on the best few
+        quick = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **{**kw, "iters": 15, "xy_starts": 0.0,
+                                                                            "search": False}) for k in ids}
+        ids = [k for k, _ in sorted(quick.items(), key=lambda kv: kv[1]["residual"])[:max_full]]
+    outs = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **kw) for k in ids}
     ranked = sorted(outs.items(), key=lambda kv: kv[1]["residual"])
     best_id, best = ranked[0]
     m = (ranked[1][1]["residual"] - best["residual"]) if len(ranked) > 1 else 1.0
