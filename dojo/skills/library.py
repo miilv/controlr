@@ -665,7 +665,8 @@ def _grippers_apart(sk: Skills, a1: str, q1, g1: float, a2: str, q2, g2: float, 
     return float(np.min(np.linalg.norm(L1[:, None] - L2[None], axis=2))) >= min_links
 
 
-RELAY_PLAN_S = 150.0           # wall-time cap of the relay-chain search (twin: 21 min planning one hammer's relays)
+HANDOVER_MAX_EXTENT = 0.16     # m, largest bbox side of an object handed over in the air
+RELAY_PLAN_S = 100.0           # wall-time cap of the relay-chain search (twin: 21 min planning one hammer's relays)
 HANDOVER_CARRY = 0.07          # rad/step: the giver's carry into the handover pose (twin, 0.14: a key held on
                                # its round bow turned 50 deg in the pads during the carry and fell, 6 of 6)
 HANDOVER_PLAN_S = 40.0         # wall-time cap of the handover search once a solution is known (x3 without)
@@ -822,7 +823,7 @@ def plan_air_handover(sk: Skills, label: str, targets: list, yaw_sym: int = 1, i
                 uniq.append(pp)
         picks = uniq
         for pp in picks[:8]:
-            if (sols and _time.perf_counter() - t0 > HANDOVER_PLAN_S) or _time.perf_counter() - t0 > 3 * HANDOVER_PLAN_S:
+            if (sols and _time.perf_counter() - t0 > HANDOVER_PLAN_S) or _time.perf_counter() - t0 > 2 * HANDOVER_PLAN_S:
                 break
             box_g = held_box(o, pp.T_tcp_obj)
             g_hold = gap_to_grip(pp.grasp.width)            # the giver's fingers rest on the object's faces
@@ -1061,6 +1062,11 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
             sk.bank()
             sk.refresh()
         return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight)
+    # in-air handovers are for small objects (a key, a plug): two grippers around a 19-cm figurine never plan,
+    # and the search costs minutes
+    if float(np.max(o.asset.extents)) > HANDOVER_MAX_EXTENT:
+        notes.append(f"no in-air handover for a {float(np.max(o.asset.extents))*1000:.0f} mm object")
+        return sk._record(SkillResult(False, "place_oriented", "ik_fail", 0, None, note="; ".join(notes[:6])))
     h = plan_air_handover(sk, label, targets, yaw_sym, ignore, place_kw)
     if isinstance(h, dict):
         sk.log(f"[place_oriented] {label}: in-air handover {h['giver']} ({h['pick'].grasp.note}) -> {h['taker']} "
