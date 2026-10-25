@@ -306,7 +306,7 @@ class RuntimePolicy:
         t = time.perf_counter()
         if cfg.mode == "gt":
             prov.init_from_gt()
-        elif cfg.agentic == "budget":
+        elif cfg.agentic == "budget" and cfg.scan == "off":
             rec = self._agentic(obs0, scene, rec_b1, "frame0")
             self.report["records"]["initial"] = _slim(rec)
             self._last_record = rec
@@ -365,9 +365,19 @@ class RuntimePolicy:
         sk = make_skills()
         if cfg.mode == "perception" and cfg.scan != "off":
             t = time.perf_counter()
-            srec = self._scan(sk, obs0, rec, scene)
+            srec, obs_s = self._scan(sk, obs0, rec, scene)
             self.report["timings"]["scan_s"] = round(time.perf_counter() - t, 2)
-            if srec is not None:
+            if cfg.agentic == "budget":
+                # ONE agentic estimate, frame 0 with the scan as its second observation when the scan ran (B1 hint =
+                # the scan-primary record), else frame 0 alone; it counts as the frame0 call
+                if srec is not None:
+                    self.report["records"]["scan"] = _slim(srec)
+                rec = self._agentic(obs0, scene, srec if srec is not None else rec, "frame0", extra=obs_s)
+                self.report["records"]["agentic0"] = _slim(rec)
+                self._last_record = rec
+                prov.init_from_record(rec)
+                sk = make_skills()
+            elif srec is not None:
                 if prov.tracker_on:
                     srec = self._track_record(prov, srec, "scan")
                 rec = srec
@@ -644,10 +654,11 @@ class RuntimePolicy:
             return cands[0], None
         return best["_v"], best["_rec"]
 
-    def _scan(self, sk, obs0: dict, rec: dict, scene: str) -> dict | None:
+    def _scan(self, sk, obs0: dict, rec: dict, scene: str) -> tuple[dict | None, dict | None]:
         """The scan macro: gate (``cfg.scan``), both arms in parallel to perception's frozen scan joints with the
         grippers open (joint-space, <= ``scan_step_rad`` per step), observe, scan-primary estimate. The arms stay
-        there: the first skill plans from the scan pose. Returns the record, or None when the gate says no."""
+        there: the first skill plans from the scan pose. Returns (scan-primary record, scan observation); (None, None)
+        when the gate says no."""
         import math
 
         cfg, b, pc = self.cfg, self.bridge, self.perception()
@@ -666,7 +677,7 @@ class RuntimePolicy:
                        "budget_ok": budget_ok, "step_lim": b.step_lim})
             if not needs or not (budget_ok or nf):
                 ev["ran"] = False
-                return None
+                return None, None
         acts = [{**{f"{a}_arm_joint_state": (q0[a] + (qt[a] - q0[a]) * (i + 1) / n).astype(np.float32) for a in qt},
                  **{f"{a}_ee_joint_state": np.array([1.0], np.float32) for a in qt}} for i in range(n)]
         acts += [acts[-1]] * max(0, int(cfg.scan_settle))
@@ -676,10 +687,10 @@ class RuntimePolicy:
         ev.update({"ran": True, "steps_used": b.steps_used - n0})
         self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
         try:
-            return pc.estimate_scan(obs_s, obs0, scene, self.fold, rec0=rec)
+            return pc.estimate_scan(obs_s, obs0, scene, self.fold, rec0=rec), obs_s
         except Exception as e:  # noqa: BLE001 (keep the frame-0 record; the arms still start from the scan pose)
             ev["error"] = f"{type(e).__name__}: {str(e)[:200]}"
-            return None
+            return None, obs_s
 
     def _track_record(self, prov, rec: dict, tag: str) -> dict:
         """A B1 re-read record through perception's tracker against the belief: labels whose re-read pose the
@@ -732,18 +743,19 @@ class RuntimePolicy:
                                       "step": self.bridge.steps_used})
         return self._agentic(obs, scene, rec, trigger) if needs else rec
 
-    def _agentic(self, obs: dict, scene: str, b1: dict | None, tag: str) -> dict:
-        """One agentic estimate (perception service). Usage goes to report["agentic"]; on an error the B1 record is
-        kept (``b1``, else a plain estimate of this frame)."""
+    def _agentic(self, obs: dict, scene: str, b1: dict | None, tag: str, extra: dict | None = None) -> dict:
+        """One agentic estimate (perception service), ``extra`` = a second observation of the same scene (the scan).
+        Usage goes to report["agentic"]; on an error the B1 record is kept (``b1``, else a plain estimate)."""
         t = time.perf_counter()
         try:
-            rec = self.perception().agentic_estimate(obs, scene, self.fold, b1_record=b1)
+            kw = {"extra_frame": extra} if extra is not None else {}
+            rec = self.perception().agentic_estimate(obs, scene, self.fold, b1_record=b1, **kw)
         except Exception as e:  # noqa: BLE001 (B1 is the fallback)
             self.report["agentic"].append({"tag": tag, "error": f"{type(e).__name__}: {str(e)[:200]}",
                                            "s": round(time.perf_counter() - t, 1)})
             return b1 if b1 is not None else self.perception().estimate([obs], scene, self.fold)
         st = ((rec.get("_perception") or {}).get("agentic") or {})
-        self.report["agentic"].append({"tag": tag, "s": round(time.perf_counter() - t, 1),
+        self.report["agentic"].append({"tag": tag, "s": round(time.perf_counter() - t, 1), "with_scan": extra is not None,
                                        **{k: st.get(k) for k in ("result", "calls", "tokens", "agent_s", "model",
                                                                   "system_md5")},
                                        "merged": len(st.get("merge") or [])})
