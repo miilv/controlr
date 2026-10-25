@@ -34,6 +34,9 @@ CLOSE_STEPS = 4
 OPEN_STEPS = 2
 FINGER_SPEED = 0.008          # m per env step per finger, measured in the twin (g3 probe: 0.15 of the 0..1 range)
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)   # of a place's turn, tried in order (the wrist's reach ends first)
+PLACE_REACH = 0.56            # m, TCP from the arm's base in the plane: farther places are left to the other arm /
+                              # a relay (twin: places 0.66-0.67 m out, the arm across the table, stalled 30 mm above
+                              # the target with the commanded pose 33 mm lower, plug 7/10)
 TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0.02 cost 52 of insert_key's 300 steps)
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
@@ -646,7 +649,7 @@ class Skills:
         C = Tc @ inv_T(Tm)
         return C if float(np.linalg.norm(C[:3, 3])) < 0.02 else np.eye(4)
 
-    def _servo_tail(self, pp: PlacePlan, seat_tol: float = 0.004, radii=(0.0015, 0.003), n_dir: int = 6,
+    def _servo_tail(self, pp: PlacePlan, seat_tol: float = 0.004, radii=(0.0007, 0.0015, 0.003), n_dir: int = 6,
                     probe_lift: float = 0.006, min_left: int = 25) -> str:
         """Insertion tail, closed loop on the measured object (``tail_kw["servo"]``): from the pre-place, descend
         to just above the receptacle's top, re-measure the object (in-hand pose and the arm's sag) and correct,
@@ -804,6 +807,8 @@ class Skills:
                 box = held_box(obj, T_tcp_obj)
                 for ti, T_obj in enumerate(tg):
                     T_tcp = T_obj @ inv_T(T_tcp_obj)
+                    if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > PLACE_REACH:
+                        continue
                     r2 = self.kin.ik(a, T_tcp, w.home_q[a], n_random=0)
                     if not r2.ok:
                         continue
