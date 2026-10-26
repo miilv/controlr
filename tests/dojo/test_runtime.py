@@ -1876,8 +1876,9 @@ def test_catalog_check_finds_and_syncs_missing_assets(tmp_path):
 @pytest.mark.skipif(not Path("~/dojo-perception-data/catalog/tasks.json").expanduser().is_file(),
                     reason="needs the perception catalogue (compute / GPU boxes)")
 def test_the_installed_catalogue_holds_every_table_vocabulary():
-    from dojo.runtime.catalog_check import missing_assets
+    from dojo.runtime.catalog_check import missing_assets, missing_support
     assert missing_assets(Path("~/dojo-perception-data/catalog").expanduser()) == {}
+    assert missing_support(Path("~/dojo-perception-data/catalog").expanduser()) == {}  # slot bases annotated
 
 
 
@@ -2288,3 +2289,33 @@ def test_eval_cli_takes_mode_and_verify_from_the_preset(monkeypatch, tmp_path):
     seen.clear()
     EV.main(["--task", "stack_blocks", "--layouts", str(lay), "--out", str(tmp_path / "o")])
     assert (seen["cfg"].preset, seen["cfg"].mode, seen["cfg"].verify) == (None, "gt", "off")
+
+
+def test_catalog_check_fails_on_a_slot_base_without_support_frames(tmp_path):
+    import json as _json
+
+    from dojo.runtime.catalog_check import missing_support
+    cat = tmp_path / "catalog"
+    for k, info in (("Geometry/bread_shelf/00000", {}), ("Rigid/bread/00000", {}),
+                    ("Rigid/mallet_stand/00000", {"support": {"mallet_stand/0": {"center": [[0, 0, 0, 1, 0, 0, 0]]}}}),
+                    ("Rigid/mallet/00000", {})):
+        (cat / k).mkdir(parents=True)
+        (cat / k / "info.json").write_text(_json.dumps(info))
+    slot = {"xlim": [-0.02, -0.02], "ylim": [-0.007, -0.007], "rotate_rand": False}
+    (cat / "tasks.json").write_text(_json.dumps({
+        "make_toast": {"labels": {"bread_shelf": {"candidates": ["Geometry/bread_shelf/00000"], "placement": {}},
+                                  "bread_0": {"candidates": ["Rigid/bread/00000"],
+                                              "placement": {**slot, "relative_plane": "bread_shelf/bread_shelf/0"}}}},
+        "play_Xylophone": {"labels": {"mallet_stand": {"candidates": ["Rigid/mallet_stand/00000"], "placement": {}},
+                                      "mallet": {"candidates": ["Rigid/mallet/00000"],
+                                                 "placement": {"xlim": [0, 0], "ylim": [0, 0], "rotate_rand": False,
+                                                               "relative_plane": "mallet_stand/mallet_stand/0"}}}}}))
+    # the shelf was never annotated: make_toast fails loudly; the annotated stand passes (both pairs have settle data)
+    assert missing_support(cat, ["make_toast", "play_Xylophone"]) == {"make_toast": ["Geometry/bread_shelf/00000#bread_shelf/0"]}
+    # a slot pair without settle data (make_kong's stacked tiles) is perception's generic path: nothing required
+    tasks = _json.loads((cat / "tasks.json").read_text())
+    tasks["make_kong"] = {"labels": {"other0": {"candidates": ["Rigid/mahjong/00000"], "placement": {}},
+                                     "other1": {"candidates": ["Rigid/mahjong/00001"],
+                                                "placement": {"xlim": [0, 0], "ylim": [0, 0], "relative_plane": "other0/mahjong_0"}}}}
+    (cat / "tasks.json").write_text(_json.dumps(tasks))
+    assert "make_kong" not in missing_support(cat, ["make_kong"])

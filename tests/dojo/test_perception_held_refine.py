@@ -212,7 +212,7 @@ def test_support_slot_pose_reproduces_the_layout_generator(monkeypatch):
     infos = {"Geometry/bread_shelf/00000": {"support": sup},
              "Rigid/bread/00000": {"place": {"up": {"center": [0, 0, 0, 1, 0, 0, 0]}}}}
     monkeypatch.setattr(IL, "load_asset", lambda k: SimpleNamespace(info=infos[k]))
-    monkeypatch.setattr(IL, "_slot_settle", lambda: {})  # the generator's (drop) pose; the settled table is below
+    monkeypatch.setattr(IL, "_settled", lambda b, s_, c: None)  # the generator's (drop) pose; the settled table below
     pl = {"xlim": [-0.02, -0.02], "ylim": [-0.007, -0.007], "rotate_rand": False,
           "relative_plane": "bread_shelf/bread_shelf/0", "place_tag": "up"}
     assert IL.support_slot(pl) == ("bread_shelf", "bread_shelf/0")
@@ -223,7 +223,20 @@ def test_support_slot_pose_reproduces_the_layout_generator(monkeypatch):
     assert np.allclose(q, [0.7071067811865476, 0.0, 0.7071067811865475, 0.0], atol=1e-6)  # the slice stands up
     assert IL.support_slot_pose("Rigid/bread/00000", [0, 0, 0], [1, 0, 0, 0], "Rigid/bread/00000", pl) is None
     # with the settled table: where physics puts the slice (16-17 mm lower in the slot)
-    monkeypatch.setattr(IL, "_slot_settle", lambda: {"Geometry/bread_shelf/00000|bread_shelf/0|Rigid/bread/00000":
-                                                    {"pos": [0.0358, -0.0023, 0.0382], "quat": [0.7071, 0, 0.7071, 0]}})
+    table = {"Geometry/bread_shelf/00000|bread_shelf/0|Rigid/bread/00000": {"pos": [0.0358, -0.0023, 0.0382],
+                                                                          "quat": [0.7071, 0, 0.7071, 0]}}
+    monkeypatch.setattr(IL, "_settled", lambda b, s_, c: table.get(f"{b}|{s_}|{c}"))
     pos, _ = IL.support_slot_pose("Geometry/bread_shelf/00000", [-0.14, -0.02, 0.803], [1, 0, 0, 0], "Rigid/bread/00000", pl)
     assert np.allclose(pos, [-0.1042, -0.0223, 0.8412], atol=1e-6)
+
+
+def test_slot_settle_table_is_keyed_by_asset_pairs_only():
+    import json as _json
+    import re
+    from pathlib import Path as _P
+
+    import dojo.perception as P
+    d = _json.loads((_P(P.__file__).parent / "slot_settle.json").read_text())
+    pat = re.compile(r"^(Rigid|Geometry|Articulation)/[a-z_]+/\d{5}\|[^|]+\|(Rigid|Geometry|Articulation)/[a-z_]+/\d{5}$")
+    keys = [k for k in d if not k.startswith("_")]
+    assert keys and all(pat.match(k) for k in keys)  # (base asset, support frame, object asset): no task, no layout

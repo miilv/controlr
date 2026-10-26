@@ -16,6 +16,15 @@
 - DEV scripts: `val_slots.py`, `val_slots_breadth.py`, `slot_settle_build.py`.
 - Report: docs/experiments/2026-10-26-slot-objects.md.
 
+- **`dojo/perception/slots.py`** (pure python): `support_slot`, `slot_requirements` and the settle table loader.
+- **`slot_settle.json`** is keyed by the physical asset pair only, `"<base asset>|<support frame>|<object asset>"`,
+  never by a task or a layout. A test enforces it.
+- **The slot path runs only for validated asset pairs** (with settle data). Other slot pairs keep the generic path,
+  e.g. make_kong's stacked tiles, whose tiles do publish a `mahjong_0` support frame.
+- **`dojo.runtime.catalog_check`:** `missing_support` makes a validated pair's base without its `passive.support`
+  frame an ERROR (exit 1). `--sync --assets` annotates it. Perception also records `_catalog_gaps` and warns when it
+  meets one.
+
 **Decisions:**
 - **Settled poses come from our own physics settle of public assets, not from the layout generator.** The generator
   drops the slices from 2 cm; the eval scenes are settled the same way.

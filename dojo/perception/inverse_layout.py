@@ -43,6 +43,7 @@ from scipy.spatial.transform import Rotation
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
 from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
+from .slots import settled as _settled, support_slot
 
 MIN_BLOB_PX = {"cam_head": 25, "cam_left_wrist": 150, "cam_right_wrist": 150}
 
@@ -1040,28 +1041,6 @@ def _qmul(a, b) -> np.ndarray:
                      w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2])
 
 
-def support_slot(placement: dict) -> tuple[str, str] | None:
-    """(base label, support key) when the config pins an object in a support slot of another object: relative_plane
-    "<base>/<support key>" (make_toast: "bread_shelf/bread_shelf/0"), a pinned x/y offset, no z range, no random
-    turn. None otherwise."""
-    rp = placement.get("relative_plane", "Table")
-    if not isinstance(rp, str) or "/" not in rp or placement.get("zlim") is not None or placement.get("rotate_rand"):
-        return None
-    xl, yl = placement.get("xlim") or [0, 0], placement.get("ylim") or [0, 0]
-    if not (isinstance(xl, list) and len(xl) == 2 and not isinstance(xl[0], list) and xl[0] == xl[1]
-            and isinstance(yl, list) and len(yl) == 2 and not isinstance(yl[0], list) and yl[0] == yl[1]):
-        return None
-    base, _, skey = rp.partition("/")
-    return base, skey
-
-
-@lru_cache(maxsize=1)
-def _slot_settle() -> dict:
-    """Settled slot poses (``slot_settle.json``): {"<base key>|<support key>|<child key>": {"pos", "quat"}}."""
-    p = Path(__file__).with_name("slot_settle.json")
-    return {k: v for k, v in json.loads(p.read_text()).items() if not k.startswith("_")} if p.exists() else {}
-
-
 def support_slot_pose(base_key: str, base_pos, base_quat, child_key: str, placement: dict):
     """World (pos, quat wxyz) of an object pinned in a support slot of a placed base object, as the layout
     generator puts it: the base's public ``passive.support`` frame (catalogue ``support``) is the reference, the
@@ -1070,7 +1049,7 @@ def support_slot_pose(base_key: str, base_pos, base_quat, child_key: str, placem
     slot = support_slot(placement)
     if slot is None:
         return None
-    settled = _slot_settle().get(f"{base_key}|{slot[1]}|{child_key}")
+    settled = _settled(base_key, slot[1], child_key)
     if settled is not None:  # where physics puts it (the generator's pose is the drop pose, 2 cm above the slot)
         Tb = np.eye(4)
         Tb[:3, :3], Tb[:3, 3] = quat_wxyz_to_R(base_quat), np.asarray(base_pos, float)
@@ -2140,9 +2119,22 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             sl = support_slot(g["placement"])
             if not (sl and sl[0] in task_labels and sl[0] not in g["labels"] and g["type"] == "Rigid"):
                 continue
-            # only where the catalogue has the base's support frame (annotated assets); others keep the generic path
-            if all((asset_info(k).get("support") or {}).get(sl[1]) for k in task_labels[sl[0]].get("candidates", [])[:8]):
+            # only for validated asset pairs (settle data: make_toast's bread / shelf, play_Xylophone's mallet / stand);
+            # other slot pairs keep the generic path (make_kong's stacked tiles)
+            bases = task_labels[sl[0]].get("candidates", [])[:8]
+            if not all(_settled(b, sl[1], c) for b in bases for c in g["candidates"][:8]):
+                continue
+            # a validated pair needs the base's support frame: a catalogue without ``catalog annotate`` silently zeroed
+            # make_toast and play_Xylophone
+            if all((asset_info(k).get("support") or {}).get(sl[1]) for k in bases):
                 slot_groups.append(g)
+            else:
+                gap = {"labels": list(g["labels"]), "base": sl[0], "support": sl[1],
+                       "fix": "python -m dojo.runtime.catalog_check --sync --assets <RoboDojo Assets>"}
+                record.setdefault("_catalog_gaps", []).append(gap)
+                import warnings
+                warnings.warn(f"catalogue lacks {sl[0]}'s support frame {sl[1]!r} (catalog annotate): {g['labels']} "
+                              "cannot be placed in their slots")
         groups = [g for g in groups if g not in slot_groups]
 
     # ---- fixed-pose geometry (e.g. a ground-standing dustbin): place at the config pose, flagged
