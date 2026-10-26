@@ -42,6 +42,16 @@ from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candid
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
 
 
+def keep_centre(o, fit_pos, fit_quat) -> np.ndarray:
+    """The root position that puts ``o``'s bbox centre where a refine's fit (``fit_pos``, ``fit_quat``) has it, under
+    ``o``'s CURRENT (prior) orientation. A refine that turns an object more than ``refine_max_turn_deg`` keeps the
+    prior orientation; the fit's root position belongs to the turned pose, so pairing it with the prior quat moves
+    the object by the root's offset from its centre, twice (breadth2 plug_in_charger: root ~24 mm off the centre,
+    flip -> 47 mm off, the relay handed over a charger that was not there)."""
+    from dojo.skills.geometry import quat_to_R
+    c = np.asarray(o.asset.center, float)
+    return np.asarray(fit_pos, float) + quat_to_R(np.asarray(fit_quat, float)) @ c - quat_to_R(o.quat) @ c
+
 def label_candidates(vocabulary: str, label: str) -> list[str]:
     """The catalogue candidate keys of ``label``'s own config group in ``vocabulary`` (catalog/tasks.json), [] when
     unknown. A label whose group has one key admits no identity change."""
@@ -107,7 +117,13 @@ class RuntimeConfig:
     refine_max_turn_deg: float = 90.0   # a pick / place refine turning the object more than this keeps the prior
                                         # orientation (position only): a near-symmetric body fits flipped (5.1
                                         # plug_in_charger: a 178 deg yaw flip -> "turned 180" regrasp loop); the
-                                        # in-hand (held) review still sees real flips
+                                        # in-hand (held) review still sees real flips. The fit's CENTRE is kept
+                                        # (``keep_centre``): its root belongs to the turned pose
+    refine_turn_check_deg: float = 45.0 # a pick / place refine turning the object more than this ...
+    refine_turn_min_iou: float = 0.9    # ... at a lower iou is not applied at all (prior pose kept). Proxy runs: 22
+                                        # of 24 such fits on untouched objects turned AWAY from the truth (tower
+                                        # pillars read lying / standing, flips of bread, alarm, tape, mug), the other
+                                        # 2 were 63-70 deg off as well; the one right big turn had iou 0.98
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
@@ -661,6 +677,14 @@ class RuntimePolicy:
             if handled:
                 return out
         pend = self._pending_far.pop(label, None) if hasattr(self, "_pending_far") else None
+        if r.get("ok") and self._low_iou_turn(r):
+            # a big turn at a mediocre fit is the fit's mistake (a pillar read lying, a flip): nothing of it is applied
+            if pend is not None:
+                o.pos, o.quat = pend                    # a pending large correction goes back to its prior as well
+            ev.update({"applied": False, "why": (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg at "
+                       f"iou {float(r.get('iou') or 0):.2f}: prior pose kept)"})
+            prov.stats["turn_low_iou"] = prov.stats.get("turn_low_iou", 0) + 1
+            return None
         if r.get("ok") and (r.get("shift_mm") or 0) > self.cfg.big_shift_mm and pend is None:
             # a large correction is also how a refine can lock onto a neighbour: check it before believing it
             near = [x.label for x in others
@@ -739,12 +763,15 @@ class RuntimePolicy:
             ev.update({"identity_from": o.asset.key, "identity_to": new_id})
             o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
-        q_new = np.asarray(r["quat"], float)
+        q_new, p_new = np.asarray(r["quat"], float), np.asarray(r["pos"], float)
         if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg:
-            q_new = o.quat.copy()
+            q_new, p_new = o.quat.copy(), keep_centre(o, r["pos"], r["quat"])
             ev["why"] = (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg: prior orientation kept)"
             prov.stats["turn_kept"] = prov.stats.get("turn_kept", 0) + 1
-        o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
+            # the root shift belongs to the turned fit: what moved is the centre (a recentre re-hover over a flip of
+            # an off-centre root oscillated between the two modes on every view)
+            far = float(np.linalg.norm(p_new - o.pos)) * 1000 > self.cfg.rehover_min_shift_mm
+        o.pos, o.quat, o.source = p_new, q_new, "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
         prov.touched.discard(label)                     # a good reading (tracker)
         if far and self.cfg.rehover_when_far:
@@ -1106,6 +1133,12 @@ class RuntimePolicy:
                 return bool(e.get("ok"))
         return False
 
+    def _low_iou_turn(self, r: dict) -> bool:
+        """A refine whose fit turns the object more than ``refine_turn_check_deg`` at an iou under
+        ``refine_turn_min_iou``: not applied (``RuntimeConfig.refine_turn_min_iou``)."""
+        return (float(r.get("turned_deg") or 0) > self.cfg.refine_turn_check_deg
+                and float(r.get("iou") or 0) < self.cfg.refine_turn_min_iou)
+
     def _place_refine(self, prov, o, r: dict, ev: dict, others, arm: str) -> tuple[bool, dict | None]:
         """PLACE refine under ``cfg.place_confirm`` (a refine that contradicts a confident belief needs a confirming
         better view). Returns (handled, hook value); not handled = the general refine logic runs (a first-view fit
@@ -1119,10 +1152,12 @@ class RuntimePolicy:
             if r.get("ok") and r.get("pos") is not None:
                 agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
             ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
-            if agree is not None and agree <= cfg.place_agree_mm:
-                q_new = (np.asarray(r["quat"], float) if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg
-                         else o.quat.copy())
-                o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
+            if agree is not None and agree <= cfg.place_agree_mm and not self._low_iou_turn(r):
+                if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg:
+                    o.pos, o.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
+                else:
+                    o.pos, o.quat = keep_centre(o, r["pos"], r["quat"]), o.quat.copy()
+                o.source = "perception"
                 prov.stats["refined"] = prov.stats.get("refined", 0) + 1
                 prov.stats["place_confirmed"] = prov.stats.get("place_confirmed", 0) + 1
                 prov.touched.discard(label)

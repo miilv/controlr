@@ -1783,6 +1783,81 @@ def test_refine_flip_keeps_the_prior_orientation():
     assert "prior orientation kept" in pol.report["events"][-1]["why"]
 
 
+@pytest.mark.parametrize("iou,applied", [(0.70, False), (0.95, True)])
+def test_refine_big_turn_at_a_mediocre_iou_is_not_applied(iou, applied):
+    """Proxy tower: a pick refine "turned 90 deg" at iou 0.67-0.70 read a standing pillar lying (22 of 22 such fits
+    wrong); applied, the grasp was loose and the place tilted 90 deg. Below refine_turn_min_iou nothing of it is
+    applied; a confident one (iou 0.95) still is."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    q90 = [float(np.cos(np.pi / 4)), float(np.sin(np.pi / 4)), 0.0, 0.0]          # 90 deg about x (wxyz)
+
+    class Turn:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            p = list(o["pos"])
+            p[0] += 0.006
+            return {o["label"]: {"ok": True, "pos": p, "quat": q90, "shift_mm": 6.0, "iou": iou, "visible_frac": 1.0,
+                                 "turned_deg": 90.0}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=Turn())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    q0, p0 = o.quat.copy(), o.pos.copy()
+    out = pol._refine_hook(prov, None, "block_1", "left", "pick")
+    if applied:
+        assert out and np.allclose(o.quat, q90) and np.allclose(o.pos, p0 + [0.006, 0.0, 0.0])
+    else:
+        assert out is None and np.allclose(o.quat, q0) and np.allclose(o.pos, p0)
+        assert "prior pose kept" in pol.report["events"][-1]["why"] and prov.stats["turn_low_iou"] == 1
+
+
+@pytest.mark.parametrize("kind", ["pick", "place"])
+def test_refine_flip_of_an_off_centre_root_keeps_the_fit_centre(kind):
+    """breadth2 plug_in_charger: the charger's root is ~24 mm off its centre. A refine that finds it flipped (the
+    other symmetric mode, the same physical object) has its root 48 mm away; the prior orientation is kept, so the
+    root must move with it: the object stays where the fit sees it (centre), no 48 mm jump and no recentre re-hover
+    (both paths: the general refine and place_confirm's confirming view)."""
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.skills.geometry import quat_to_R
+    env = _env()
+    flip = [0.0, 0.0, 0.0, 1.0]                                          # 180 deg about z (wxyz)
+
+    class OffCentre(FakeAssets):
+        def get(self, typ, cat, idx, clutter=False, mesh=False):
+            lo, hi = np.array([0.009, -0.015, -0.015]), np.array([0.039, 0.015, 0.015])    # centre (0.024, 0, 0)
+            return AssetInfo(key=f"{typ}/{cat}/{int(idx):05d}", bbox_min=lo, bbox_max=hi)
+
+    class Flip:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            centre = np.asarray(o["pos"], float) + np.array([0.024, 0.0, 0.0]) + np.array([0.001, 0.0, 0.0])
+            root = centre - quat_to_R(np.asarray(flip)) @ np.array([0.024, 0.0, 0.0])
+            return {o["label"]: {"ok": True, "pos": [float(v) for v in root], "quat": flip, "iou": 0.97,
+                                 "visible_frac": 0.95, "shift_mm": 49.0, "turned_deg": 180.0}}
+    cfg = RuntimeConfig(mode="perception", refine=True, place_confirm=True)
+    pol = RuntimePolicy(cfg, assets=OffCentre(), perception_client=Flip())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", OffCentre())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    o.asset = OffCentre().get("Rigid", "block", 5)
+    q0, p0 = o.quat.copy(), o.pos.copy()
+    if kind == "place":                                                   # the confirming view of a place correction
+        pol._place_pending["block_1"] = {"pos": np.asarray(Flip().refine(None, [{"label": "block_1", "pos": list(p0)}],
+                                                                         None)["block_1"]["pos"]),
+                                         "step": b.steps_used, "arm": "left"}
+    out = pol._refine_hook(prov, None, "block_1", "left", kind)
+    assert out is not None and "rehover" not in out
+    assert np.allclose(o.quat, q0)
+    assert np.allclose(o.pos, p0 + [0.001, 0.0, 0.0], atol=1e-9)          # the fit's 1 mm, not the root's 49 mm
+
+
 @pytest.mark.parametrize("api", ["old", "new"])
 def test_not_ok_refine_rehovers_over_the_fit_with_either_perception_api(api):
     """perception #36: a not-ok refine sends the prior as the pose and the raw fit as fit_pose; the runtime re-hovers
