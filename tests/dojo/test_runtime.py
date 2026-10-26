@@ -1804,3 +1804,76 @@ def test_not_ok_refine_rehovers_over_the_fit_with_either_perception_api(api):
     assert out and abs(float(out["rehover"][0][0]) - (x0 + 0.02)) < 1e-9
     out, _, pol = hook(R("truncated"))
     assert out is None and "truncated" in pol.report["events"][-1]["why"]
+
+
+def test_provider_watch_read_goes_to_perception_on_the_current_frame():
+    env = _env()
+
+    class W:
+        def __init__(self):
+            self.calls = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]}}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+        def watch_read(self, frame, region, vocabulary, fold, prior=None):
+            self.calls.append((region["kind"], vocabulary, frame["steps_used"], prior))
+            return {"occluded": False, "visible_frac": 0.9, "stable_vs_prior": True, "new": [], "inside": []}
+
+    seen = {}
+
+    def program(ctx):
+        seen["read"] = ctx.prov.watch_read({"kind": "container", "container": {"asset": "Geometry/basket/00005",
+                                                                              "pos": [0, 0, 0.77], "quat": [1, 0, 0, 0]},
+                                            "candidates": []}, prior={"inside": []})
+        return {"ok": True}
+    pc = W()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=pc,
+                        program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None
+    assert pc.calls == [("container", "stack_blocks", 0, {"inside": []})] and seen["read"]["visible_frac"] == 0.9
+    assert rep["watch_reads"] == 1
+
+
+def test_every_table_vocabulary_is_a_catalogue_candidate_set():
+    import json as _json
+
+    from dojo.runtime.supervisor import VOCABULARIES
+    sets = _json.loads((FIX / "catalog_task_label_categories.json").read_text())
+    assert [v.name for v in VOCABULARIES if v.name not in sets] == []
+
+
+def test_catalog_check_finds_and_syncs_missing_assets(tmp_path):
+    import json as _json
+
+    from dojo.runtime.catalog_check import missing_assets, sync
+    cat, src = tmp_path / "catalog", tmp_path / "skills_catalog"
+    for k, root in (("Rigid/cube/00003", cat), ("Rigid/mug/00000", src)):
+        (root / k).mkdir(parents=True)
+        (root / k / "geom.npz").write_bytes(b"x")
+        (root / k / "info.json").write_text("{}")
+    (cat / "tasks.json").write_text(_json.dumps({
+        "swap_blocks": {"labels": {"a": {"candidates": ["Rigid/cube/00003"]}}},
+        "hang_mugs": {"labels": {"m": {"candidates": ["Rigid/mug/00000", "Geometry/cup_holder/00000"]}}}}))
+    (cat / "index.json").write_text(_json.dumps({"Rigid/cube/00003": {}}))
+    miss = missing_assets(cat, ["swap_blocks", "hang_mugs", "make_toast"])
+    assert miss == {"hang_mugs": ["Geometry/cup_holder/00000", "Rigid/mug/00000"], "make_toast": ["<not in tasks.json>"]}
+    done = sync(cat, miss["hang_mugs"], [src], run_tools=False)
+    assert [k for k, _ in done["copied"]] == ["Rigid/mug/00000"] and done["unresolved"] == ["Geometry/cup_holder/00000"]
+    assert (cat / "Rigid/mug/00000/geom.npz").is_file()
+
+
+@pytest.mark.skipif(not Path("~/dojo-perception-data/catalog/tasks.json").expanduser().is_file(),
+                    reason="needs the perception catalogue (compute / GPU boxes)")
+def test_the_installed_catalogue_holds_every_table_vocabulary():
+    from dojo.runtime.catalog_check import missing_assets
+    assert missing_assets(Path("~/dojo-perception-data/catalog").expanduser()) == {}

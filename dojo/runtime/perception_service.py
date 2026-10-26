@@ -40,6 +40,10 @@ Ops (request dicts):
         did anything but OUR arms change between two head views: Lab difference outside the union of both frames' FK
         robot masks (a scripted opponent / demonstrator arm, its gripper, objects it moves): {moving, changed_px,
         visible_px}; moving None when too little of the view is visible
+    {"op": "watch_read", "frame": frame, "region": json, "vocabulary": str, "fold": int, "prior": json|None}
+                                                                                   -> {"watch_read": json}
+        perception's ``dojo.perception.watch.watch_read`` (cells of a board / contents of a container, what the scene's
+        own actors put there; Skills-6's provider read (b))
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -154,6 +158,12 @@ class PerceptionClient:
         if extra_frame is not None:
             req["extra_frame"] = encode_frame(extra_frame)
         return json.loads(self._call(req)["record"])
+
+    def watch_read(self, frame: dict, region: dict, vocabulary: str, fold: int, prior: dict | None = None) -> dict:
+        return json.loads(self._call({"op": "watch_read", "frame": encode_frame(frame),
+                                      "region": json.dumps(region, default=_default), "vocabulary": vocabulary,
+                                      "fold": int(fold), "prior": None if prior is None else json.dumps(prior, default=_default)})
+                          ["watch_read"])
 
     def motion(self, frame_a: dict, frame_b: dict, thr: float = 12.0, min_px: int = 150) -> dict:
         def head_only(f):
@@ -633,6 +643,13 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         rec = p.agentic_estimate(req["frame"], req["vocabulary"], int(req.get("fold", 0)), b1,
                                                  req.get("extra_frame"))
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "watch_read":
+                        from dojo.perception.watch import watch_read
+                        fr = decode_frame(req["frame"])
+                        w = watch_read(fr, json.loads(req["region"]), req.get("vocabulary"), bgs=p.bgs(int(req.get("fold", 0))),
+                                       cfg=p.cfg(int(req.get("fold", 0))),
+                                       prior=json.loads(req["prior"]) if req.get("prior") else None)
+                        conn.send({"ok": True, "watch_read": json.dumps(w, default=_default)})
                     elif op == "motion":
                         mo = p.motion(req["frame_a"], req["frame_b"], float(req.get("thr", 12.0)), int(req.get("min_px", 150)))
                         conn.send({"ok": True, "motion": json.dumps(mo, default=_default)})

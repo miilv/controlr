@@ -441,6 +441,8 @@ class RuntimePolicy:
             pc = self.perception()
             if hasattr(pc, "motion"):                   # provider.actors_moving (skills waiting for a scripted arm)
                 prov.motion_reader = lambda a, b_: pc.motion(a, b_)
+            if hasattr(pc, "watch_read"):               # provider.watch_read(region, prior): board cells / container
+                prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
             cats = {o.category for o in prov.belief.objects.values()}
             if cfg.track_moving == "on" or (cfg.track_moving == "auto" and "conveyor" in cats):
                 prov.track_reader = lambda obs: pc.estimate([obs], scene, self.fold)
@@ -803,6 +805,18 @@ class RuntimePolicy:
                                                                   "system_md5")},
                                        "merged": len(st.get("merge") or [])})
         return rec
+
+    def _watch_read(self, region: dict, prior: dict | None, scene: str) -> dict:
+        """Skills-6's provider read (b): perception's ``watch_read`` on the current observation. On an error the read
+        is reported occluded (callers must not count it toward arrival / stability)."""
+        try:
+            r = self.perception().watch_read(self.bridge.observe(), region, scene, self.fold, prior)
+        except Exception as e:  # noqa: BLE001
+            self.report["events"].append({"kind": "watch_read_error", "note": f"{type(e).__name__}: {str(e)[:160]}"})
+            return {"occluded": True, "visible_frac": 0.0, "stable_vs_prior": False, "new": [], "error": str(e)[:160]}
+        self.report.setdefault("watch_reads", 0)
+        self.report["watch_reads"] += 1
+        return r
 
     def _make_watcher(self, prov, obs0: dict, scene: str):
         """The provider's watcher: perception's ``watch`` (frame 0 vs now) until it reports a change twice in a row
