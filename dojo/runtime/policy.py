@@ -57,6 +57,12 @@ def label_candidates(vocabulary: str, label: str) -> list[str]:
     return list(lab.get("candidates") or [])
 
 
+def _png(im) -> bytes:
+    """An RGB image as PNG bytes."""
+    import cv2
+    return cv2.imencode(".png", cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR))[1].tobytes()
+
+
 def _layout_seed(prov) -> int:
     """A reproducible per-episode seed from the initial belief (object labels and positions to the mm)."""
     import zlib
@@ -760,6 +766,15 @@ class RuntimePolicy:
             return cands[0], None
         return best["_v"], best["_rec"]
 
+    def _keep_frame(self, tag: str, obs: dict) -> None:
+        """``save_look_frames`` (dev): keep this observation (every camera as PNG + the state) under ``tag`` in the
+        report (eval writes them to ``<run>/<task>_<layout>_look_frames/``); a later frame with the same tag replaces it."""
+        if not self.cfg.save_look_frames:
+            return
+        self.report.setdefault("look_frames", {})[tag] = {
+            "state": {k: np.asarray(v, float).tolist() for k, v in obs["state"].items()},
+            "png": {c: _png(im) for c, im in obs["images"].items()}}
+
     def _scan(self, sk, obs0: dict, rec: dict, scene: str) -> tuple[dict | None, dict | None]:
         """The scan macro: gate (``cfg.scan``), both arms in parallel to perception's frozen scan joints with the
         grippers open (joint-space, <= ``scan_step_rad`` per step), observe, scan-primary estimate. The arms stay
@@ -790,6 +805,8 @@ class RuntimePolicy:
         n0 = b.steps_used
         sk.ex.run_actions(acts, name="scan")
         obs_s = b.observe()
+        self._keep_frame("frame0", obs0)                 # dev: the scan path replayable (every camera + state)
+        self._keep_frame("scan", obs_s)
         ev.update({"ran": True, "steps_used": b.steps_used - n0})
         self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
         try:
@@ -1284,13 +1301,8 @@ class RuntimePolicy:
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
         self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
-        if cfg.save_look_frames:
-            import cv2
-            self.report["look_frames"] = {
-                tag: {"state": {k: np.asarray(v, float).tolist() for k, v in o["state"].items()},
-                      "png": {c: cv2.imencode(".png", cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR))[1].tobytes()
-                              for c, im in o["images"].items()}}
-                for tag, o in (("frame0", obs0), ("look", obs1))}
+        self._keep_frame("frame0", obs0)
+        self._keep_frame("look", obs1)
         rec1 = self.perception().estimate([obs0, obs1], scene, self.fold, prior_record=rec0)
         if cfg.look_merge == "flagged":
             from .estimate import merge_looked
