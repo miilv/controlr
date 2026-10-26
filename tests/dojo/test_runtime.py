@@ -2349,3 +2349,53 @@ def test_provider_show_pose_plans_with_the_hold_joints_and_held_pose_passes_the_
     pol2 = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=SP(env),
                          program=lambda ctx: {"ok": not hasattr(ctx.prov, "show_pose")})
     assert run_episode(pol2, FakeEpisode(_env()), "perception")["result"]["ok"]            # held_pose off: no show_pose
+
+
+@pytest.mark.parametrize("inc_conf, alt, chosen", [(0.78, (2, 3, 0.826), "stack_blocks_by_language"),  # 100002: 0.55 vs 0.52
+                                                   (0.78, (3, 3, 0.6), "stack_blocks"),               # finds more: switch
+                                                   (0.6, (2, 3, 0.9), "stack_blocks")])               # 0.60 vs 0.40: switch
+def test_vocab_explain_keeps_the_table_match_unless_another_set_clearly_explains_more(inc_conf, alt, chosen):
+    from dojo.runtime.supervisor import Vocabulary
+    n_found, n_lab, conf = alt
+
+    class P:
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            k, n, c = (2, 3, inc_conf) if vocabulary == "stack_blocks_by_language" else (n_found, n_lab, conf)
+            recs = [{"category": "cube", "category_idx": 1, "label": f"block_{i}", "default_pos": [0.1 * i, 0, 0.78],
+                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": c}} for i in range(k)]
+            return {"Rigid": {"cube": recs}, "_not_found": [{"label": f"block_{i}"} for i in range(k, n)]}
+
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=P())
+    pol.reset({"instruction": "x", "step_lim": 550})
+    cands = [Vocabulary("stack_blocks_by_language", (), source="table"), Vocabulary("stack_blocks", (), source="catalog")]
+    v, _rec = pol._explain_vocabulary(cands, {"instruction": "x"})
+    assert v.name == chosen
+
+
+@pytest.mark.parametrize("belief_prec, expected_prec, adopted", [(0.9, 0.5, False), (0.1, 0.85, True), (None, None, False)])
+def test_confirm_pose_adopts_a_skills_expected_outcome_only_when_the_head_view_prefers_it(belief_prec, expected_prec, adopted):
+    """A topple moves a tile without a grasp: no release, no twin segment, so the belief keeps it standing and the
+    skill reads "did not tip over" (breadth make_kong 0/5). The skill proposes the toppled pose; the head view decides."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+
+    class C:
+        def __init__(self):
+            self.n = 0
+
+        def check(self, obs, objects):
+            self.n += 1
+            p = belief_prec if self.n == 1 else expected_prec
+            return {objects[0].label: {"head": {"prec": p, "n_vis": 500 if p is not None else 0, "n_px": 600}}}
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=C())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    q_fallen = [float(np.cos(np.pi / 4)), float(np.sin(np.pi / 4)), 0.0, 0.0]
+    p0 = prov.belief.objects["block_1"].pos.copy()
+    r = prov.confirm_pose("block_1", p0 + [0.0, 0.01, -0.002], q_fallen)
+    o = prov.belief.objects["block_1"]
+    assert r["adopted"] == adopted and np.allclose(o.quat, q_fallen) == adopted
+    assert (("block_1" in prov.touched) == adopted) and prov.events[-1]["kind"] == "confirm_pose"
+    gt = RuntimeProvider(b, "stack_blocks", STACK, "gt", FakeAssets(), checker=C())
+    assert gt.confirm_pose("block_1", p0, q_fallen)["adopted"] is False

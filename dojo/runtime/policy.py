@@ -150,6 +150,10 @@ class RuntimeConfig:
     # mode perception: when the instruction is ambiguous (table and catalogue fallback disagree, or the fallback's
     # runner-up is close), estimate frame 0 with each candidate set and keep the one that explains the scene best
     vocab_explain: bool = True
+    # ... the first candidate (the instruction table's match, when there is one) stays unless another set explains MORE
+    # of the scene (a higher found-label share) or scores at least this much higher (2026-10-26: a 0.55 vs 0.52 score
+    # difference at the same found share swapped stack_blocks_by_language's cubes for stack_blocks' blocks)
+    vocab_explain_margin: float = 0.15
     # mode perception: perception's episode tracker on B1 re-reads (look fuse, divergence re-estimate): only objects
     # the robot moved since their last good reading take a re-read pose. auto = on iff agentic == "budget"
     tracker: str = "auto"
@@ -745,8 +749,9 @@ class RuntimePolicy:
         return {label: (o.pos.copy(), o.quat.copy())}
 
     def _explain_vocabulary(self, cands: list, obs0: dict):
-        """Set-level explain-away: B1 on frame 0 with each candidate set; the set whose estimate explains the scene
-        best (found-label share x mean confidence) wins. Returns (vocabulary, its record)."""
+        """Set-level explain-away: B1 on frame 0 with each candidate set, scored by found-label share x mean
+        confidence. The first candidate (the table's match) stays unless another set finds more of its labels or
+        scores ``vocab_explain_margin`` higher. Returns (vocabulary, its record)."""
         from .estimate import iter_records
         scored = []
         for v in cands:
@@ -762,7 +767,12 @@ class RuntimePolicy:
             scored.append({"name": v.name, "source": v.source, "found": round(found, 3), "conf": round(float(np.mean(confs)), 3)
                            if confs else 0.0, "score": round(sc, 4), "_v": v, "_rec": rec})
         ok = [x for x in scored if "score" in x]
-        best = max(ok, key=lambda x: x["score"]) if ok else None   # ties: the earlier candidate (the table's)
+        best = None
+        if ok:
+            inc = ok[0]                                 # the incumbent: the table's match (else the fallback's best)
+            better = [x for x in ok[1:] if x["found"] > inc["found"] + 1e-9
+                      or x["score"] >= inc["score"] + self.cfg.vocab_explain_margin]
+            best = max(better, key=lambda x: x["score"]) if better else inc
         self.report["events"].append({"kind": "vocab_explain", "chosen": best["name"] if best else None,
                                       "candidates": [{k: v for k, v in x.items() if not k.startswith("_")} for x in scored]})
         if best is None:
