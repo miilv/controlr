@@ -98,7 +98,8 @@ GT state, physics-only twin, settled dev layouts, `SIMLAB_USD_SYNC_LINKS=1`. Sco
 | make_kong (regression) | 0a59dac | 100000-04 | **5/5** | 1.00 | 379 / 379 (600) | 5/5 | |
 
 Commits: the fill code at the head equals 27b5e85's (v8 was reverted); the slots code equals dfb7eb9's; 0a59dac is the head's
-code. Mode B (`--mode-b`: no in-hand re-measure, a refine hook that sees nothing; plus 2.5 mm belief offsets until held) costs
+code. The run commits predate the final rebase on main. They stay reachable on the branches `skills8-runs` (3f8795e..0a59dac),
+`skills8-runs-early` (d718622, 267cdfa) and `skills8-runs-v1` (bc889bc, 8c253c7, 290efad). Mode B (`--mode-b`: no in-hand re-measure, a refine hook that sees nothing; plus 2.5 mm belief offsets until held) costs
 both tasks most of their gain:
 - fill 0.21 -> 0.13 on the same seeds;
 - store_tools 0.45 -> 0.10.
