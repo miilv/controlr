@@ -262,3 +262,46 @@ def test_container_read_is_stable_with_identical_twins():
     assert r1["stable_vs_prior"] and len(r1["inside"]) == 1 and len(r1["outside"]) == 1
     a2.pos = a2.pos + np.array([0.01, 0, 0])
     assert not gt_watch_read(objs, reg, r1)["stable_vs_prior"]
+
+
+def test_skill_reads_go_through_the_runtime_provider():
+    """The waits and the belt read call RuntimeProvider's own methods (integration-2 #34 / #39) with the signatures
+    they have: actors_moving(), watch_read(region, prior) (set by the policy), belt_velocity()."""
+    from types import SimpleNamespace
+
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.runtime.estimate import objects_from_gt_rows
+    from dojo.skills import interactive as I
+    from dojo.skills.watch import watch
+    from tests.dojo.test_runtime import STACK, Bridge, FakeAssets, FakeEpisode, _env
+    env = _env()
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    clock = {"step": 0}
+
+    class Ex:
+        def hold(self, n, **kw):
+            clock["step"] += n
+            b.obs, b.fresh = dict(ep.observe(), steps_used=clock["step"]), True
+            return n
+    sk = SimpleNamespace(provider=prov, ex=Ex(), refresh=prov.refresh)
+    # (a) no motion reader: unknown -> the fixed hold
+    assert I.wait_actors_still(sk, fallback=7) == "fallback" and clock["step"] == 7
+    # (a) a scripted arm that stops at step 30: still after a 12-step window of no motion
+    prov.motion_reader = lambda a, b_: {"moving": b_["steps_used"] < 30}
+    r = I.wait_actors_still(sk, still_steps=12, max_steps=200)
+    assert r.startswith("still") and clock["step"] >= 30 + 11              # 12 still reads: steps 30..41
+    # (b) the policy's watch_read attribute, called the way the skills call it
+    calls = []
+    prov.watch_read = lambda region, prior=None: calls.append((region["kind"], prior)) or {
+        "occluded": False, "visible_frac": 0.9, "stable_vs_prior": True, "new": [], "inside": [], "outside": []}
+    out = watch(sk, {"kind": "container", "container": {"asset": "Geometry/basket/00005", "pos": [0, 0, 0.77],
+                                                      "quat": [1, 0, 0, 0]}, "candidates": []}, {"inside": []})
+    assert calls == [("container", {"inside": []})] and out["visible_frac"] == 0.9
+    # (c) the tracked belt velocity is used as soon as it reads as moving
+    prov.velocity = {"block_0": np.array([0.004, 0.0])}
+    v = I.belt_velocity(sk, ["block_0", "block_1"])
+    assert np.allclose(v, [0.004, 0.0])
