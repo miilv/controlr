@@ -148,3 +148,25 @@ def test_free_spots_avoid_a_fixture():
     clear = free_spots(SK(), "p", near_xy=(0.0, -0.2), clearance=0.03, avoid=("base",))
     assert any(abs(y + 0.2) < 1e-9 for _, y in plain)           # without: spots on the base
     assert clear and all(abs(y + 0.2) > 0.032 + 0.04 for _, y in clear)
+
+
+def test_stack_top_and_stuck():
+    from dojo.skills.geometry import rot_x
+    from dojo.skills.pegs import stack_top, stuck
+    from tests.dojo.test_skills2 import _world
+    m = _plate_with_hole(0.0, 0.0)
+    a = _obj("a", "toy", 706, (0.0, -0.2, 0.7753), (0.03, 0.03, 0.0065), mesh=m, place={"up": [1.0, 0, 0, 0]})
+    q = np.array([np.cos(np.radians(10)), np.sin(np.radians(10)), 0, 0])        # 20 deg about x
+    b = _obj("b", "toy", 706, (0.0, -0.2, 0.80), (0.03, 0.03, 0.0065), mesh=m, quat=q, place={"up": [1.0, 0, 0, 0]})
+
+    class SK:
+        world = _world([a, b])
+
+        def refresh(self):
+            return self.world
+    peg = {"plate": 0.7753, "frame_z": 0.828}
+    assert abs(stack_top(SK(), [], peg) - 0.7753) < 1e-9
+    assert abs(stack_top(SK(), ["a"], peg) - (0.7753 + 0.013)) < 1e-6
+    assert stuck(SK(), "b", peg, ["a"])                      # tilted 20 deg, high on the peg
+    assert not stuck(SK(), "a", peg, [])
+    assert rot_x(0.0).shape == (3, 3)

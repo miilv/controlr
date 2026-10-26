@@ -59,8 +59,9 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
     "stack_on_pegs": (
         "stack_on_pegs(groups: [[id, ...], ...], base: id, pegs: [frame, ...])",
         "Threads pieces onto the pegs/poles of a base: group i (identical pieces) goes onto peg pegs[i] (a peg "
-        "frame of the base, as listed for it in the scene), one piece at a time, flat and centred, released just "
-        "above the peg top so it slides down. Banks after each piece. For 'put the rings/pieces on the poles'."),
+        "frame of the base, as listed for it in the scene), the shortest peg first, one piece at a time, flat, its "
+        "hole on the peg's axis (any turn), carried down the peg onto the pieces below and let go there; a piece "
+        "left tilted is tried once more. Banks after each piece. For 'put the rings/pieces on the poles'."),
     "slots_and_press": (
         "slots_and_press(objects: [id, ...], container: id, slots: [frame, ...], press_tag: frame | null = null)",
         "Stands one object in each named slot of the container (slot frames as listed for it in the scene), "
@@ -70,8 +71,9 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
     "hang_on_hooks": (
         "hang_on_hooks(objects: [id, ...], rack: id, hook_tag: frame, handle_tag: frame = 'handle')",
         "Hangs each object by its handle on one of the rack's hooks (hook frames as listed for the rack in the "
-        "scene): carried re-oriented to just beyond a hook's tip, slid along the hook through the handle, let go. "
-        "Banks after each object. For 'hang the X on the Y'."),
+        "scene): the highest hooks, the lowest of them first; carried re-oriented to just beyond a hook's tip, slid "
+        "along the hook through the handle, let go. An object no arm can hang from where it stands is first stood on "
+        "a spot in front of the rack. Banks after each object. For 'hang the X on the Y'."),
     "play_board_game": (
         "play_board_game(board: id, pieces: [id, ...], opponent_pieces: [id, ...])",
         "Turn-based placement game against a scripted opponent on a board's cells (cell frames as listed for the board "
@@ -132,9 +134,10 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "the thread with wrist sweeps and re-grips (clockwise from above) until it sits ~1 cm down; grippers opened "
         "after each pair. Pair them first (e.g. by matching colour)."),
 }
-SKILL_DOCS_VERSION = 5  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 6  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
+#                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',
