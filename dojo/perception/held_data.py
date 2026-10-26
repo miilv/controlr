@@ -291,8 +291,11 @@ def _set_arm(rec: dict, arm: str, q, model, rigid_from: dict | None = None) -> N
 
 
 def make_variants(cap_path: Path, rng_seed: int = 0, n_grasp: int = 2, n_looks: int = 2, n_shows: int = 2,
-                  slide_mm=(1.0, 3.0), turn_deg=(2.0, 6.0)) -> list[Path]:
-    """Kinematic variants of one capture (see the module doc). Returns the written frame files."""
+                  slide_mm=(1.0, 3.0), turn_deg=(2.0, 6.0), kinds: str = "gosrt") -> list[Path]:
+    """Kinematic variants of one capture (see the module doc). ``kinds``: g grasp variations, o the naive observer
+    look planned at capture time (``plan_costs``), s the naive "front" show pose, r observer looks ranked by the
+    predicted accuracy (``show_pose.rank_observer_looks``), t show poses ranked the same way
+    (``show_pose.rank_show_poses``). Returns the written frame files."""
     from .robot_model import X5Model
 
     model = X5Model.default()
@@ -329,7 +332,7 @@ def make_variants(cap_path: Path, rng_seed: int = 0, n_grasp: int = 2, n_looks: 
         written.append(p)
 
     # grasp variations at the hover: a turn about the closing axis (TCP y) through the TCP and a slide in the pad plane
-    for j in range(n_grasp):
+    for j in range(n_grasp if "g" in kinds else 0):
         ang = math.radians(rng.uniform(*turn_deg)) * rng.choice([-1, 1])
         sl = rng.uniform(*slide_mm) / 1000 * np.array([rng.choice([-1, 1]), 0.0, rng.choice([-1, 1])]) \
             * rng.uniform(0.3, 1.0, 3)
@@ -338,13 +341,13 @@ def make_variants(cap_path: Path, rng_seed: int = 0, n_grasp: int = 2, n_looks: 
         D[:3, 3] = sl
         emit(f"V{k}g{j}", rec0, D @ T_tco, {"kind": "grasp", "turn_deg": math.degrees(ang), "slide_mm": (sl * 1000).tolist()})
     pc = h.get("plan_costs") or {}
-    looks = [L for L in pc.get("looks", []) if L.get("ok")][:n_looks]
+    looks = [L for L in pc.get("looks", []) if L.get("ok")][:n_looks] if "o" in kinds else []
     for j, L in enumerate(looks):
         rec = copy.deepcopy(rec0)
         _set_arm(rec, obs, L["q_end"], model)
         emit(f"V{k}o{j}", rec, T_tco, {"kind": "observer_look", "name": L["name"], "steps": L["steps"],
                                        "eye": L["eye"], "dist": L["dist"]})
-    shows = [S for S in pc.get("shows", []) if S.get("ok")][:n_shows]
+    shows = [S for S in pc.get("shows", []) if S.get("ok")][:n_shows] if "s" in kinds else []
     for j, S in enumerate(shows):
         rec = copy.deepcopy(rec0)
         _set_arm(rec, arm, S["q_end"], model, rigid_from=rigid)
@@ -354,6 +357,34 @@ def make_variants(cap_path: Path, rng_seed: int = 0, n_grasp: int = 2, n_looks: 
         emit(f"V{k}s{j}", rec, T_tco, {"kind": "show", "name": S["name"], "steps_out": S["steps_out"],
                                        "steps_back": S.get("steps_back"), "look": sl[0]["name"] if sl else None,
                                        "look_steps": sl[0]["steps"] if sl else None})
+    if "r" in kinds or "t" in kinds:
+        from . import show_pose as SP
+        from .render import load_asset
+
+        a = load_asset(h["key"])
+        lead = None
+        if (h.get("place") or {}).get("T_obj_target") is not None:
+            lead, _ = lead_axis_from_target(a.V, h["place"]["T_obj_target"])
+        st = {kk: np.asarray(v, float) for kk, v in rec0["obs"]["state"].items()}
+        T_tcp = tcp_from_flange_T(model.fk_world(arm, q_h)["link6"])
+        if "r" in kinds:
+            I0, _ = SP.base_information(st, arm, h["key"], T_tcp, T_tco)
+            for j, L in enumerate(SP.rank_observer_looks(st, arm, h["key"], T_tco, base_I=I0, lead_obj=lead,
+                                                         max_out=n_looks)):
+                rec = copy.deepcopy(rec0)
+                _set_arm(rec, obs, L["q"], model)
+                emit(f"V{k}r{j}", rec, T_tco, {"kind": "look_ranked", "name": L["name"], "steps": L["est_steps"],
+                                               "pred_sigma": L["pred_sigma"], "visible_frac": L["visible_frac"]})
+        if "t" in kinds:
+            for j, S in enumerate(SP.rank_show_poses(st, arm, h["key"], T_tco, lead_obj=lead)[:n_shows]):
+                rec = copy.deepcopy(rec0)
+                _set_arm(rec, arm, S["q"], model, rigid_from=rigid)
+                if S.get("observer"):
+                    _set_arm(rec, obs, S["observer"]["q"], model)
+                emit(f"V{k}t{j}", rec, T_tco, {"kind": "show_ranked", "name": S["name"], "steps": S["est_steps"],
+                                               "steps_out": S["est_steps_out"], "steps_back": S["est_steps_back"],
+                                               "look": (S.get("observer") or {}).get("name"),
+                                               "pred_sigma": S["pred_sigma"]})
     return written
 
 

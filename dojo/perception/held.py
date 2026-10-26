@@ -47,6 +47,8 @@ MIN_VIS_FRAC = 0.25                # visible share of the silhouette
 PAD_LEN = 0.030                    # m of each finger (from the tip) that can touch the object
 CENTRE_SIGMA_M = 0.0015            # soft gripper term: the contact faces centred on the TCP along the closing axis
 SIGMA_SCALE = {"pos": 1.0, "rot": 1.0}   # calibrated on dev captures (held_eval)
+SIGMA_DF = 0.002                   # cost rise below which poses are indistinguishable (calibrated with SIGMA_SCALE)
+SIGMA_SAMPLES = 60
 OK_IOU = 0.80                      # best view's IoU for an ok fit
 OK_MAX_LEAD_SIGMA_MM = 2.0
 VIEW_W = {"own": 1.0, "head": 0.6, "observer": 1.0}
@@ -56,6 +58,9 @@ RING_M = 0.006                     # background ring width beyond that
 FINGER_BAND_M = 0.0025             # the holding fingers are masked over openings for widths +- this
 EDGE_CAP_PX = 8.0                  # outline-to-edge distance cap (ROI px)
 W_EDGE = 0.5                       # weight of the outline term against 1 - IoU
+W_CREASE = 0.3                     # weight of the crease term (inner mesh edges vs image edges)
+W_SHADE = 0.0                      # weight of the shading term (flat-shaded render vs image, NCC inside the silhouette)
+CREASE_DEG = 40.0
 W_PRIOR = 0.01                     # cost units per sigma^2 of the gripper / off-pad priors
 OFFPAD_ROT_SIGMA = math.radians(1.5)
 OFFPAD_Y_SIGMA_M = 0.0008
@@ -123,9 +128,83 @@ def opening_for_width(width: float) -> float:
     return float(np.clip(np.interp(width, t[order, 1], t[order, 0]), 0.0, 1.0))
 
 
+def est_opening(V_obj: np.ndarray, T_tcp_obj) -> float:
+    """The normalised finger opening at which the pads touch an object held at ``T_tcp_obj``."""
+    Vt = transform(V_obj, np.asarray(T_tcp_obj, float))
+    tbl = finger_table()
+    tip_x = float(np.interp(0.5, tbl[:, 0], tbl[:, 2]))
+    zone = pad_zone(Vt, tip_x)
+    width = float(np.ptp(Vt[zone, 1])) if zone.sum() >= 3 else float(np.ptp(Vt[:, 1]))
+    return opening_for_width(width)
+
+
 def pad_zone(V_tcp: np.ndarray, tip_x: float, half_h: float = 0.012) -> np.ndarray:
     """Object points the pads can touch: within PAD_LEN of the fingertip along x and near the pad's mid-plane."""
     return (V_tcp[:, 0] > tip_x - PAD_LEN) & (V_tcp[:, 0] < tip_x + 0.002) & (np.abs(V_tcp[:, 2]) < half_h)
+
+
+@lru_cache(maxsize=16)
+def crease_points(key: str, deg: float = None):
+    """Points sampled every ~1 mm along the mesh's crease edges (dihedral angle > ``CREASE_DEG``) with both adjacent
+    face normals: inner edges between faces (a cube's top / front faces) that the outline misses. In the object frame."""
+    deg = CREASE_DEG if deg is None else deg
+    a = load_asset(key)
+    V, F = a.Vs, np.asarray(a.Fs, np.int64)
+    N = np.cross(V[F[:, 1]] - V[F[:, 0]], V[F[:, 2]] - V[F[:, 0]])
+    nn = np.linalg.norm(N, axis=1)
+    ok = nn > 1e-12
+    N[ok] /= nn[ok, None]
+    E = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]])
+    fi = np.tile(np.arange(len(F)), 3)
+    Es = np.sort(E, axis=1)
+    order = np.lexsort((Es[:, 1], Es[:, 0]))
+    Es, fi = Es[order], fi[order]
+    same = np.all(Es[1:] == Es[:-1], axis=1)
+    i = np.nonzero(same)[0]
+    f1, f2 = fi[i], fi[i + 1]
+    good = ok[f1] & ok[f2]
+    cosang = np.einsum("ij,ij->i", N[f1], N[f2])
+    sel = good & (cosang < math.cos(math.radians(deg)))
+    e, f1, f2 = Es[i][sel], f1[sel], f2[sel]
+    P, N1, N2 = [], [], []
+    for (u, v), a1, a2 in zip(e, f1, f2):
+        L = float(np.linalg.norm(V[v] - V[u]))
+        n = max(2, int(math.ceil(L / 0.001)) + 1)
+        t = np.linspace(0.0, 1.0, n)[1:-1, None] if n > 2 else np.array([[0.5]])
+        P.append(V[u] + t * (V[v] - V[u]))
+        N1.append(np.repeat(N[a1][None], len(t), 0))
+        N2.append(np.repeat(N[a2][None], len(t), 0))
+    if not P:
+        return np.zeros((0, 3)), np.zeros((0, 3)), np.zeros((0, 3))
+    return np.concatenate(P), np.concatenate(N1), np.concatenate(N2)
+
+
+def _crease_cost(Pw, N1w, N2w, v) -> float | None:
+    """Mean truncated distance (cap units) from the visible crease points (both faces toward the camera) to image
+    edges in view ``v`` (bilinear lookup in the edge distance map); None when fewer than 20 points count."""
+    if len(Pw) == 0:
+        return None
+    c = v.cam.T_wc[:3, 3]
+    d = Pw - c
+    vis = (np.einsum("ij,ij->i", N1w, d) < 0) & (np.einsum("ij,ij->i", N2w, d) < 0)
+    if vis.sum() < 20:
+        return None
+    uv, z = v.cam.project(Pw[vis])
+    s = v.size
+    inb = (z > 0.01) & (uv[:, 0] >= 1) & (uv[:, 1] >= 1) & (uv[:, 0] < s - 2) & (uv[:, 1] < s - 2)
+    uv = uv[inb]
+    if len(uv) < 20:
+        return None
+    x, y = uv[:, 0] - 0.5, uv[:, 1] - 0.5
+    x0, y0 = np.floor(x).astype(int), np.floor(y).astype(int)
+    fx, fy = x - x0, y - y0
+    ok = v.outline_ok[y0, x0]
+    if ok.sum() < 20:
+        return None
+    D = v.edge_D
+    val = (D[y0, x0] * (1 - fx) * (1 - fy) + D[y0, x0 + 1] * fx * (1 - fy) + D[y0 + 1, x0] * (1 - fx) * fy
+           + D[y0 + 1, x0 + 1] * fx * fy)
+    return float(val[ok].mean()) / EDGE_CAP_PX
 
 
 # ----------------------------------------------------------------------------------------------- views
@@ -143,6 +222,7 @@ class View:
         self.known = cv2.resize(_crop(known.astype(np.float32), crop), (size, size), interpolation=interp)
         self.known = (self.known > 0.5).astype(np.float32)
         self.rgb = cv2.resize(_crop(img, crop), (size, size), interpolation=interp)
+        self.gray = cv2.cvtColor(self.rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
         lab = cv2.cvtColor(self.rgb, cv2.COLOR_RGB2LAB)
         q = (lab.astype(np.int32) >> (8 - HIST_BITS))
         self.bins = (q[..., 0] << (2 * HIST_BITS)) | (q[..., 1] << HIST_BITS) | q[..., 2]
@@ -208,6 +288,30 @@ class Silhouettes:
         if g is not None:
             return g.render(cam, [(self.key, self.a.Vg, self.a.Fg, T)]).astype(np.float32)
         return silhouette(cam, transform(self.a.Vs, T), self.a.Fs).astype(np.float32)
+
+    def shaded(self, cam: Camera, T: np.ndarray) -> np.ndarray:
+        """Flat-shaded render (painter's order, CPU): grey = the facet's normal toward a light from above and the
+        camera; 0 outside. Only the ORDER of facet brightness matters (it is compared by NCC): a cube's lit top and
+        darker sides, i.e. the inner shading edges the outline misses (the turn about the closing axis)."""
+        V = transform(self.a.Vs, T)
+        F = np.asarray(self.a.Fs)
+        N = np.cross(V[F[:, 1]] - V[F[:, 0]], V[F[:, 2]] - V[F[:, 0]])
+        N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-12)
+        c = cam.T_wc[:3, 3]
+        ctr = V[F].mean(1)
+        to_cam = c - ctr
+        dist = np.linalg.norm(to_cam, axis=1)
+        to_cam /= np.maximum(dist[:, None], 1e-12)
+        front = np.einsum("ij,ij->i", N, to_cam) > 0
+        L = np.array([0.0, 0.0, 1.0])
+        shade = 0.25 + 0.6 * np.clip(N @ L, 0, 1) + 0.35 * np.clip(np.einsum("ij,ij->i", N, to_cam), 0, 1)
+        uv, z = cam.project(V)
+        img = np.zeros((cam.h, cam.w), np.float32)
+        P = ((uv[F] - 0.5) * 16).round().astype(np.int32)
+        idx = np.nonzero(front & (z[F] > 0.01).all(1))[0]
+        for i in idx[np.argsort(-dist[idx])]:
+            cv2.fillConvexPoly(img, P[i], float(shade[i]), lineType=cv2.LINE_8, shift=4)
+        return img
 
 
 def robot_unknown(cam: Camera, state: dict, arm: str, o_lo: float, o_hi: float, other_g: float | None,
@@ -285,10 +389,9 @@ def _views(images, state, arm, sil: Silhouettes, T_tcp, T_prior, cams, o_lo, o_h
             diag[name] = {"used": False, "why": "occluded", "visible_frac": round(vis, 3), "px": n}
             continue
         known = (1 - rob).astype(np.uint8)
-        if others:
-            for k2, p2 in others:
-                a2 = load_asset(k2)
-                known &= 1 - silhouette(cam, transform(a2.Vs, pose_to_T(p2[:3], p2[3:])), a2.Fs)
+        for k2, T2 in others or ():            # known objects (and the other arm's held one): unknown pixels
+            a2 = load_asset(k2)
+            known &= 1 - cv2.dilate(silhouette(cam, transform(a2.Vs, T2), a2.Fs), np.ones((5, 5), np.uint8))
         roi = _roi_for(cam, bbw, max_shift_m + 0.01)
         if roi is None:
             diag[name] = {"used": False, "why": "roi"}
@@ -348,8 +451,17 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
     o_lo, o_hi = opening_for_width(max(0.0, width - FINGER_BAND_M)), opening_for_width(width + FINGER_BAND_M)
     other_g = state.get(f"{'right' if arm == 'left' else 'left'}_ee_joint_state")
     other_g = None if other_g is None else float(other_g[0])
+    others = []
+    for o in cfg.get("others") or ():
+        k2, p2 = (o["key"], o["pose7"]) if isinstance(o, dict) else (o[0], o[1])
+        others.append((k2, pose_to_T(p2[:3], p2[3:])))
+    oh = cfg.get("other_held")
+    if oh:
+        oq = state.get(f"{oh['arm']}_arm_joint_state")
+        if oq is not None:
+            others.append((oh["key"], tcp_T(oh["arm"], oq[:6], model) @ np.asarray(oh["T_tcp_obj"], float)))
     views, diag = _views(images, state, arm, sil, T_tcp, T_prior, cams, o_lo, o_hi, other_g, max_shift,
-                         others=cfg.get("others"), exclude_cams=tuple(cfg.get("exclude_cams", ())))
+                         others=others, exclude_cams=tuple(cfg.get("exclude_cams", ())))
     lead_obj, axis_obj = _lead_axis(a, T_prior, cfg)
     base = {"version": VERSION, "views": [v.name for v in views], "view_diag": diag, "opening_est": round(o_est, 3),
             "width_mm": round(width * 1000, 2)}
@@ -362,17 +474,34 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
     if Vp is not None and len(Vp) > 400:
         Vp = Vp[np.random.default_rng(0).choice(len(Vp), 400, replace=False)]
     w_views = np.array([VIEW_W[v.role] for v in views])
+    w_shade = [float(cfg.get("w_shade", W_SHADE))]
+    Pc, N1c, N2c = crease_points(asset_key) if W_CREASE > 0 else (np.zeros((0, 3)),) * 3
+    if len(Pc) > 1500:
+        sel = np.random.default_rng(0).choice(len(Pc), 1500, replace=False)
+        Pc, N1c, N2c = Pc[sel], N1c[sel], N2c[sel]
 
     def cost(d, detail=False):
         T = apply_delta(T_prior, c_tcp, d)
         Tw = T_tcp @ T
         tot, ious = 0.0, {}
+        Pw = transform(Pc, Tw) if len(Pc) else Pc
+        N1w, N2w = (N1c @ Tw[:3, :3].T, N2c @ Tw[:3, :3].T) if len(Pc) else (Pc, Pc)
         for v, w in zip(views, w_views):
             s = sil.render(v.cam, Tw)
             iou = _iou(s, v)
             ious[v.name] = iou
             ec = _edge_cost(s, v) if W_EDGE > 0 else None
-            tot += w * ((1.0 - iou) + (W_EDGE * ec if ec is not None else W_EDGE * 0.5))
+            cc = _crease_cost(Pw, N1w, N2w, v) if len(Pc) else None
+            tot += w * ((1.0 - iou) + (W_EDGE * ec if ec is not None else W_EDGE * 0.5)
+                        + (W_CREASE * cc if cc is not None else 0.0))
+            if w_shade[0] > 0 and v.role != "head":
+                sh = sil.shaded(v.cam, Tw)
+                m = (sh > 0) & (v.known > 0.5)
+                if m.sum() > 200:
+                    a_, b_ = sh[m], v.gray[m]
+                    if a_.std() > 1e-3 and b_.std() > 1.0:
+                        ncc = float(((a_ - a_.mean()) * (b_ - b_.mean())).mean() / (a_.std() * b_.std()))
+                        tot += w * w_shade[0] * (1.0 - ncc) / 2
         tot /= float(w_views.sum())
         pen = 0.0
         if Vp is not None:
@@ -502,34 +631,30 @@ def _pose7(T) -> list:
 
 
 def _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f0) -> dict:
-    """Laplace approximation: cov = 2 f0 / n_eff * H^-1 of the cost in (rad, m), mapped to TCP pos / rot, the leading
-    point and the axis; times SIGMA_SCALE (calibrated)."""
-    h = np.array([0.4, 0.4, 0.4, 0.3, 0.3, 0.3]) * np.array([math.radians(1)] * 3 + [0.001] * 3)
-    n = 6
-    H = np.zeros((n, n))
-    fx = cost(x)
-    E = np.eye(n)
-    fp = [cost(x + h[i] * E[i]) for i in range(n)]
-    fm = [cost(x - h[i] * E[i]) for i in range(n)]
-    for i in range(n):
-        H[i, i] = (fp[i] - 2 * fx + fm[i]) / h[i] ** 2
-    for i in range(n):
-        for j in range(i + 1, n):
-            fpp = cost(x + h[i] * E[i] + h[j] * E[j])
-            H[i, j] = H[j, i] = (fpp - fp[i] - fp[j] + fx) / (h[i] * h[j])
-    # a non-smooth cost can give a non-PD Hessian: floor the eigenvalues
-    w, U = np.linalg.eigh((H + H.T) / 2)
-    w = np.maximum(w, 1e-3 * max(float(w.max()), 1e-9))
-    s2 = max(fx, 1e-4) * 1e-3     # residual-scaled noise level (calibrated via SIGMA_SCALE)
-    cov = U @ np.diag(s2 / w) @ U.T
-    # Jacobians of the outputs w.r.t. d (numerical, tiny steps)
-    T0 = apply_delta(T_prior, c_tcp, x)
-
+    """Uncertainty of the fit: a full quadratic model of the cost fitted to ``SIGMA_SAMPLES`` random poses around the
+    optimum (robust to the IoU cost's pixel steps, unlike finite differences), its Hessian H (eigenvalues floored),
+    cov = 2 * SIGMA_DF * H^-1 (the poses whose cost rises by less than SIGMA_DF are indistinguishable), mapped to the
+    TCP position / rotation, the leading point and the insertion axis; times SIGMA_SCALE (both calibrated on dev
+    captures, ``held_eval``)."""
+    S = np.array([math.radians(1.0)] * 3 + [0.0006, 0.0004, 0.0006])     # sampling half-widths per DoF
+    rng = np.random.default_rng(1)
+    U = rng.uniform(-1.0, 1.0, (SIGMA_SAMPLES, 6))
+    fs = np.array([cost(x + u * S) for u in U])
+    iu = np.triu_indices(6)
+    A = np.c_[np.ones(len(U)), U, 0.5 * np.array([np.outer(u, u)[iu] * np.where(iu[0] == iu[1], 1.0, 2.0) for u in U])]
+    coef, *_ = np.linalg.lstsq(A, fs, rcond=None)
+    Hn = np.zeros((6, 6))
+    Hn[iu] = coef[7:]
+    Hn = Hn + np.triu(Hn, 1).T
+    w, V = np.linalg.eigh(Hn)
+    w = np.maximum(w, 1e-3 * max(float(w.max()), 1e-6))
+    cov_n = V @ np.diag(2.0 * SIGMA_DF / w) @ V.T
+    cov = cov_n * np.outer(S, S)
     def outputs(T):
         lead = T[:3, :3] @ lead_obj + T[:3, 3]
         ax = T[:3, :3] @ axis_obj
         return np.r_[T[:3, 3], lead, ax]
-    o0 = outputs(T0)
+    o0 = outputs(apply_delta(T_prior, c_tcp, x))
     J = np.zeros((9, 6))
     for i in range(6):
         e = np.zeros(6)
@@ -539,8 +664,7 @@ def _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f0) -> dict:
     pos = np.sqrt(np.maximum(np.diag(C)[:3], 0)) * 1000 * SIGMA_SCALE["pos"]
     lead = np.sqrt(np.maximum(np.diag(C)[3:6], 0)) * 1000 * SIGMA_SCALE["pos"]
     rot = np.degrees(np.sqrt(np.maximum(np.diag(cov)[:3], 0))) * SIGMA_SCALE["rot"]
-    Ca = C[6:9, 6:9]
-    axis_deg = float(np.degrees(math.sqrt(max(float(np.trace(Ca)), 0.0)))) * SIGMA_SCALE["rot"]
+    axis_deg = float(np.degrees(math.sqrt(max(float(np.trace(C[6:9, 6:9])), 0.0)))) * SIGMA_SCALE["rot"]
     return {"pos_mm": pos.tolist(), "rot_deg": rot.tolist(), "lead_mm": lead.tolist(), "axis_deg": axis_deg,
             "hessian_eig": w.tolist()}
 

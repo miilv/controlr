@@ -32,6 +32,40 @@ VIEW_SETS = {"all": (), "own": ("cam_head", "OBSERVER"), "own+head": ("OBSERVER"
              "own+observer": ("cam_head",)}
 
 
+_R51_INDEX: dict = {}
+
+
+def _r51_record(path: Path) -> dict | None:
+    """Bridge-isr's genuine Isaac 5.1 held_look frames (``<root>/frames/<task>/<layout>_s<step>/state.json`` + the
+    three PNGs; ``<root>/held_index.json`` holds the true object poses): a record in the captures' format. The held
+    object's catalogue key comes from our dev layout (labels -> category / idx)."""
+    root = path.parents[3]
+    if root not in _R51_INDEX:
+        idx = json.loads((root / "held_index.json").read_text())
+        _R51_INDEX[root] = {i["dir"].split("/all/")[1]: i for i in idx}
+    e = _R51_INDEX[root].get(f"{path.parent.parent.name}/{path.parent.name}")
+    if e is None:
+        return None
+    lay_d = Path(os.environ.get("HELD_LAYOUTS", os.path.expanduser("~/dojo-data/simlab/layouts"))) / e["task"]
+    lp = lay_d / f"{e['layout']}.settled.json"
+    lay = json.loads((lp if lp.exists() else lay_d / f"{e['layout']}.json").read_text())
+    key = None
+    for typ in ("Rigid",):
+        for cat, recs in (lay.get(typ) or {}).items():
+            for r in recs:
+                if r.get("label") == e["physical_object"]:
+                    key = f"{typ}/{cat}/{int(r['category_idx']):05d}"
+    if key is None:
+        return None
+    arm = e["check"]["arm"]
+    st = json.loads(path.read_text())
+    return {"frame": path.parent.name, "obs": {"state": st, "images": {c: f"{c}.png" for c in ("cam_head", "cam_left_wrist",
+                                                                                               "cam_right_wrist")}},
+            "meta": {"renderer": "isaac-5.1 (RoboDojo native, Bridge-isr replay)"},
+            "held_gt": {"arm": arm, "held": {"label": e["physical_object"], "key": key,
+                                             "pose7": e["objects_true"][e["physical_object"]]}}}
+
+
 def load_frame(path: Path) -> dict | None:
     """Images + state + held info + GT in-hand transform + scoring geometry of one rendered frame."""
     import cv2
@@ -39,7 +73,10 @@ def load_frame(path: Path) -> dict | None:
     from .robot_model import X5Model
     from .render import load_asset
 
-    rec = json.loads(Path(path).read_text())
+    path = Path(path)
+    rec = _r51_record(path) if path.name == "state.json" else json.loads(path.read_text())
+    if rec is None:
+        return None
     if not (rec.get("meta") or {}).get("renderer"):
         return None
     st = rec["obs"]["state"]
@@ -79,6 +116,7 @@ def load_frame(path: Path) -> dict | None:
     meta = rec.get("meta") or {}
     var = meta.get("variant") or {}
     return {"path": str(path), "tag": rec.get("frame"), "task": Path(path).parent.parent.name, "seed": Path(path).parent.name,
+            "renderer": meta.get("renderer"),
             "frame": {"images": images, "state": state}, "arm": arm, "label": label, "key": key, "T_gt": T_gt,
             "T_plan": np.asarray(rec["held"]["T_tcp_obj_plan"]) if "held" in rec and rec["held"].get("T_tcp_obj_plan") else None,
             "lead": lead, "axis": axis, "geo": geo, "kind": var.get("kind", "hover"), "variant": var,
@@ -146,6 +184,9 @@ def eval_frame(path: str, n_priors: int, view_sets: list[str], seed: int, prior_
 
 
 def _paths(root: Path, tasks, frames) -> list[str]:
+    if (root / "held_index.json").exists():                    # Bridge-isr's 5.1 replay frames
+        return sorted(str(p) for p in (root / "frames").glob("*/*/state.json")
+                      if not tasks or p.parent.parent.name in tasks)
     out = []
     for t in sorted(p for p in root.iterdir() if p.is_dir()):
         if tasks and t.name not in tasks:
@@ -176,9 +217,9 @@ def cmd_variants(a) -> None:
         if "held" not in rec:
             continue
         k = rec["frame"][1:]
-        if list(Path(f).parent.glob(f"frame_V{k}[gos]*.json")) and not a.force:
+        if list(Path(f).parent.glob(f"frame_V{k}[{a.kinds}]*.json")) and not a.force:
             continue
-        w = make_variants(Path(f), n_grasp=a.n_grasp, n_looks=a.n_looks, n_shows=a.n_shows)
+        w = make_variants(Path(f), n_grasp=a.n_grasp, n_looks=a.n_looks, n_shows=a.n_shows, kinds=a.kinds)
         print(f, "->", len(w), flush=True)
 
 
@@ -230,11 +271,14 @@ def summarize(rows: list[dict], key=lambda r: (r["task"], r["kind"], r["views_se
         ax_ok = np.array([r["err_out"]["axis_deg"] for r in ok])
         pri = np.array([r["err_prior"]["lead_norm_mm"] for r in rs])
         hit = [r for r in ok if r["err_out"]["lead_norm_mm"] <= 0.5 and r["err_out"]["axis_deg"] <= 1.0]
+        ry = np.array([abs(r["err_fit"]["rot_deg"][1]) for r in rs])
+        ry_ok = np.array([abs(r["err_out"]["rot_deg"][1]) for r in ok])
         out.append({"group": k, "n": len(rs), "ok": len(ok), "prior_lead_med": _q(pri, 50),
                     "fit_lead_med": _q(lead, 50), "fit_lead_p90": _q(lead, 90), "fit_axis_med": _q(ax, 50),
                     "fit_axis_p90": _q(ax, 90), "ok_lead_med": _q(lead_ok, 50), "ok_lead_p90": _q(lead_ok, 90),
                     "ok_lead_max": float(lead_ok.max()) if len(lead_ok) else float("nan"),
                     "ok_axis_med": _q(ax_ok, 50), "ok_axis_p90": _q(ax_ok, 90),
+                    "fit_ry_med": _q(ry, 50), "fit_ry_p90": _q(ry, 90), "ok_ry_p90": _q(ry_ok, 90),
                     "within_0.5mm_1deg": len(hit), "t_med_s": _q([r["t_s"] for r in rs], 50)})
     return out
 
@@ -266,8 +310,9 @@ def cmd_report(a) -> None:
             "views": lambda r: (r["views_set"], r["kind"]),
             "kind": lambda r: (r["kind"],)}[a.by]
     S = summarize(rows, keyf)
-    cols = ["n", "ok", "prior_lead_med", "fit_lead_med", "fit_lead_p90", "fit_axis_med", "fit_axis_p90", "ok_lead_med",
-            "ok_lead_p90", "ok_lead_max", "ok_axis_med", "ok_axis_p90", "within_0.5mm_1deg", "t_med_s"]
+    cols = ["n", "ok", "prior_lead_med", "fit_lead_med", "fit_lead_p90", "fit_axis_med", "fit_axis_p90", "fit_ry_med",
+            "fit_ry_p90", "ok_lead_med", "ok_lead_p90", "ok_lead_max", "ok_axis_med", "ok_axis_p90", "ok_ry_p90",
+            "within_0.5mm_1deg", "t_med_s"]
     print("| group | " + " | ".join(cols) + " |")
     print("|" + "---|" * (len(cols) + 1))
     for s in S:
@@ -286,6 +331,7 @@ def main(argv=None) -> None:
     v.add_argument("--n-looks", type=int, default=2)
     v.add_argument("--n-shows", type=int, default=1)
     v.add_argument("--force", action="store_true")
+    v.add_argument("--kinds", default="gosrt", help="g grasp, o naive look, s naive show, r ranked look, t ranked show")
     r = sub.add_parser("run")
     r.add_argument("--root", required=True)
     r.add_argument("--out", required=True)

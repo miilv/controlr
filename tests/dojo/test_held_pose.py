@@ -141,3 +141,26 @@ def test_held_pose_without_views_keeps_the_prior(monkeypatch):
     r = H.held_pose(frame, "left", "Rigid/box/00000", T_gt, {"exclude_cams": ("cam_left_wrist", "cam_right_wrist")})
     assert not r["ok"] and r["why"] == "no_views"
     assert np.allclose(r["T_tcp_obj"], T_gt)
+
+
+def test_propose_returns_a_hover_look_and_show_poses_with_step_estimates():
+    from dojo.skills.kinematics import X5Kin
+
+    kin = X5Kin()
+    q_l = np.array([0.0, 1.2, 1.0, -0.6, 0.0, 0.0])                # left arm over the table, roughly pointing down
+    T_tcp = kin.tcp("left", q_l)
+    T_tcp_obj = np.eye(4)
+    T_tcp_obj[:3, 3] = [0.03, 0.0, 0.0]
+    state = {"left_arm_joint_state": q_l, "right_arm_joint_state": np.zeros(6)}
+    out = SP.propose("left", [-0.02, -0.01, -0.01], [0.02, 0.01, 0.01], T_tcp_obj, state, kin=kin)
+    names = [p["name"] for p in out["poses"]]
+    assert out["poses"], "no candidate at all"
+    for p in out["poses"]:
+        assert p["est_steps"] >= 0
+        if p["observer"] is not None:
+            assert p["observer"]["arm"] == "right" and p["observer"]["clearance_m"] >= SP.MIN_ARM_CLEARANCE
+            T_obs = kin.tcp("right", p["observer"]["q"])            # the IK hint reaches the look pose
+            assert np.linalg.norm(T_obs[:3, 3] - np.asarray(p["observer"]["tcp"])[:3, 3]) < 0.005
+    if "hover_look" in names:
+        assert out["poses"][names.index("hover_look")]["est_steps_out"] == 0
+    assert np.allclose(out["object_centre"], (T_tcp @ T_tcp_obj)[:3, 3], atol=1e-6)

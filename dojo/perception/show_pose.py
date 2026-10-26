@@ -247,3 +247,202 @@ def propose(arm: str, bbox_min, bbox_max, T_tcp_obj, state: dict, kin=None) -> d
                     "est_steps_back": int(back), "observer": lk,
                     "est_steps": int(max(n, lk["est_steps"] if lk else 0) + back)})
     return {"poses": out, "object_centre": c_now.tolist()}
+
+
+# ------------------------------------------------------------------------------------------------ predicted accuracy
+# (the perception venv: CPU silhouettes of the object and of both arms from FK)
+FREE_DOF = ((1, "ry", math.radians(1.0)), (3, "x", 0.001), (5, "z", 0.001))   # the in-pad DoF a grasp leaves free
+SIGMA_PX = 0.35            # effective boundary noise of a silhouette fit (px), fitted to the dev errors (held_eval)
+
+
+def view_information(cam, state: dict, arm: str, key: str, T_tcp, T_tcp_obj, opening: float | None = None,
+                     occ: np.ndarray | None = None):
+    """Fisher information (3x3, per px^2 of boundary noise) of one camera about the in-pad DoF (turn about the closing
+    axis, slide along approach / across): the signed silhouette change per unit of each DoF, counted only where the
+    object is not hidden by either arm. Returns (I, visible_frac, n_px) or None when the object is not in view."""
+    from .held import apply_delta, robot_unknown
+    from .render import load_asset, silhouette, transform
+
+    a = load_asset(key)
+    T_tcp, T_tcp_obj = np.asarray(T_tcp, float), np.asarray(T_tcp_obj, float)
+    c = (np.asarray(a.info["bbox_min"]) + np.asarray(a.info["bbox_max"])) / 2
+    c_tcp = T_tcp_obj[:3, :3] @ c + T_tcp_obj[:3, 3]
+    Vw = transform(a.Vs, T_tcp @ T_tcp_obj)
+    uv, z = cam.project(Vw)
+    if (z <= 0.02).any():
+        return None
+    S = silhouette(cam, Vw, a.Fs).astype(np.float32)
+    n = float(S.sum())
+    if n < 30:
+        return None
+    if occ is None:
+        from .held import est_opening
+        o = est_opening(a.V, T_tcp_obj) if opening is None else opening
+        occ = robot_unknown(cam, state, arm, max(0.0, o - 0.05), min(1.0, o + 0.05), None, dilate_px=1)
+    vis = 1.0 - occ.astype(np.float32)
+    dS = []
+    for idx, _, step in FREE_DOF:
+        d = np.zeros(6)
+        d[idx] = step
+        Sk = silhouette(cam, transform(a.Vs, T_tcp @ apply_delta(T_tcp_obj, c_tcp, d)), a.Fs).astype(np.float32)
+        unit = 1.0 if idx < 3 else 1000.0                                       # per degree / per mm
+        dS.append((Sk - S) * vis / (step * (math.degrees(1) if idx < 3 else unit)))
+    G = np.stack([g.ravel() for g in dS])
+    return G @ G.T, float((S * vis).sum() / n), int(n)
+
+
+def predicted_sigma(I: np.ndarray, sigma_px: float = SIGMA_PX) -> dict:
+    """Predicted 1-sigma of (ry deg, x mm, z mm) from summed view information (boundary noise ``sigma_px``)."""
+    w, V = np.linalg.eigh(I)
+    w = np.maximum(w, 1e-6 * max(float(w.max()), 1e-9))
+    C = V @ np.diag(1.0 / w) @ V.T * sigma_px ** 2
+    s = np.sqrt(np.maximum(np.diag(C), 0))
+    return {"ry_deg": float(s[0]), "x_mm": float(s[1]), "z_mm": float(s[2]), "cov": C}
+
+
+def lead_sigma(C: np.ndarray, T_tcp_obj, lead_obj) -> float:
+    """Leading-point 1-sigma (mm, norm) from the (ry deg, x mm, z mm) covariance: the turn moves the point by its
+    lever about the closing axis through the bbox centre (approximated by the TCP-frame lever)."""
+    p = np.asarray(T_tcp_obj, float)[:3, :3] @ np.asarray(lead_obj, float) + np.asarray(T_tcp_obj, float)[:3, 3]
+    lever = math.hypot(p[0], p[2]) * 1000 * math.radians(1.0)                   # mm per degree about y
+    J = np.array([[lever, 1.0, 0.0], [lever, 0.0, 1.0]]) / math.sqrt(2)
+    return float(math.sqrt(max(np.trace(J @ C @ J.T), 0.0)))
+
+
+def observer_dirs(T_tcp) -> list[tuple[str, np.ndarray]]:
+    """Viewing directions (object -> eye, world) defined in the TCP frame, so the holding gripper stays out of the line
+    of sight: beside the pads (+-y) and across them (+-z), tilted toward the protruding side (+x) by 20 / 45 deg, and
+    end-on (+x)."""
+    R = np.asarray(T_tcp, float)[:3, :3]
+    x, y, z = R[:, 0], R[:, 1], R[:, 2]
+    out = [("end_on", x)]
+    for name, s in (("side+y", y), ("side-y", -y), ("across+z", z), ("across-z", -z)):
+        for t in (20.0, 45.0):
+            r = math.radians(t)
+            out.append((f"{name}@{t:.0f}", math.cos(r) * s + math.sin(r) * x))
+    return out
+
+
+def rank_observer_looks(state: dict, arm: str, key: str, T_tcp_obj, kin=None, base_I: np.ndarray | None = None,
+                        lead_obj=None, max_out: int = 4) -> list[dict]:
+    """Observer look candidates for the object ``arm`` holds, ranked by the predicted in-pad accuracy WITH the views
+    the caller already has (``base_I``): reachable (the skills' IK), clear of the holding arm, the object visible."""
+    from dojo.skills.kinematics import X5Kin
+    from dojo.skills.motion import FAST, segment_targets
+
+    from .cameras import Camera, intrinsics, WRIST
+    from .render import load_asset
+
+    kin = kin or X5Kin()
+    obs = other(arm)
+    q_h = np.asarray(state[f"{arm}_arm_joint_state"], float).reshape(-1)[:6]
+    q_o = np.asarray(state[f"{obs}_arm_joint_state"], float).reshape(-1)[:6]
+    T_tcp = kin.tcp(arm, q_h)
+    a = load_asset(key)
+    bmin, bmax = np.asarray(a.info["bbox_min"]), np.asarray(a.info["bbox_max"])
+    ext = float(np.max(bmax - bmin))
+    target = object_centre_world(T_tcp, T_tcp_obj, bmin, bmax)
+    K = intrinsics(WRIST["focal_length"], WRIST["horizontal_aperture"])
+    base_I = np.zeros((3, 3)) if base_I is None else base_I
+    out = []
+    for name, u in observer_dirs(T_tcp):
+        if u[2] < -0.35:                         # an eye under the object (the table / the receptacle is there)
+            continue
+        d = look_distance(ext)
+        eye = target + d * u
+        if eye[2] < TABLE_Z + 0.05:
+            continue
+        for roll in (0.0, -45.0, 45.0, 90.0, -90.0):
+            T_wc = look_at_camera(eye, target, roll)
+            T_t = tcp_for_camera(T_wc)
+            r = kin.ik(obs, T_t, q_o)
+            if not r.ok:
+                continue
+            clr = arm_clearance(kin, *((q_h, r.q) if arm == "left" else (r.q, q_h)))
+            if clr < MIN_ARM_CLEARANCE:
+                continue
+            st = {**state, f"{obs}_arm_joint_state": r.q}
+            cam = Camera(f"cam_{obs}_wrist", K, T_wc)
+            vi = view_information(cam, st, arm, key, T_tcp, T_tcp_obj)
+            if vi is None or vi[1] < 0.3:
+                continue
+            ps = predicted_sigma(base_I + vi[0])
+            row = {"name": f"{name}_r{roll:+.0f}", "arm": obs, "tcp": T_t.tolist(), "q": r.q.tolist(),
+                   "eye": eye.tolist(), "look_at": target.tolist(), "dist": d, "visible_frac": round(vi[1], 3),
+                   "est_steps": len(segment_targets(np.stack([q_o, r.q]), FAST, 2)), "clearance_m": round(clr, 3),
+                   "pred_sigma": {k: round(v, 3) for k, v in ps.items() if k != "cov"}}
+            if lead_obj is not None:
+                row["pred_sigma"]["lead_mm"] = round(lead_sigma(ps["cov"], T_tcp_obj, lead_obj), 3)
+            out.append(row)
+            break                                 # the first reachable roll per direction
+    key_ = (lambda r: r["pred_sigma"].get("lead_mm", r["pred_sigma"]["ry_deg"]))
+    return sorted(out, key=key_)[:max_out]
+
+
+def base_information(state: dict, arm: str, key: str, T_tcp, T_tcp_obj, cams=("own", "head")) -> tuple[np.ndarray, dict]:
+    """Summed information of the holding arm's own wrist camera and the head camera at the current joints."""
+    from .cameras import head_camera, wrist_camera
+
+    I = np.zeros((3, 3))
+    per = {}
+    q = np.asarray(state[f"{arm}_arm_joint_state"], float).reshape(-1)[:6]
+    for name, cam in (("own", wrist_camera(arm, q)), ("head", head_camera())):
+        if name not in cams:
+            continue
+        vi = view_information(cam, state, arm, key, T_tcp, T_tcp_obj)
+        if vi is not None and vi[1] >= 0.2:
+            I = I + vi[0]
+            per[name] = round(vi[1], 3)
+    return I, per
+
+
+def rank_show_poses(state: dict, arm: str, key: str, T_tcp_obj, kin=None, lead_obj=None, yaws_deg=range(0, 360, 45),
+                    n_observer: int = 2) -> list[dict]:
+    """Show poses of the holding arm: the object's bbox centre at the canonical show point, the hover's TCP turned
+    about world z by each of ``yaws_deg``; ranked by the predicted accuracy of own + head (+ the best observer look
+    for the top ``n_observer``). Each with IK hints and step estimates (out at CARRY, back the same; the observer
+    moves in parallel)."""
+    from dojo.skills.kinematics import X5Kin
+    from dojo.skills.motion import CARRY, segment_targets
+
+    from .render import load_asset
+
+    kin = kin or X5Kin()
+    q_h = np.asarray(state[f"{arm}_arm_joint_state"], float).reshape(-1)[:6]
+    T_tcp = kin.tcp(arm, q_h)
+    a = load_asset(key)
+    bmin, bmax = np.asarray(a.info["bbox_min"]), np.asarray(a.info["bbox_max"])
+    c_now = object_centre_world(T_tcp, T_tcp_obj, bmin, bmax)
+    P = show_point(arm)
+    rows = []
+    for yd in yaws_deg:
+        Rz = _rot_z(math.radians(yd))
+        T = np.eye(4)
+        T[:3, :3] = Rz @ T_tcp[:3, :3]
+        T[:3, 3] = P + Rz @ (T_tcp[:3, 3] - c_now)
+        r = kin.ik(arm, T, q_h)
+        if not r.ok:
+            continue
+        st = {**state, f"{arm}_arm_joint_state": r.q}
+        I, per = base_information(st, arm, key, T, T_tcp_obj)
+        ps = predicted_sigma(I)
+        n_out = len(segment_targets(np.stack([q_h, r.q]), CARRY, 3))
+        row = {"name": f"show_yaw{yd:+d}", "arm": arm, "tcp": T.tolist(), "q": r.q.tolist(), "est_steps_out": n_out,
+               "est_steps_back": n_out, "views": per, "pred_sigma": {k: round(v, 3) for k, v in ps.items() if k != "cov"},
+               "_I": I}
+        if lead_obj is not None:
+            row["pred_sigma"]["lead_mm"] = round(lead_sigma(ps["cov"], T_tcp_obj, lead_obj), 3)
+        rows.append(row)
+    key_ = (lambda r: r["pred_sigma"].get("lead_mm", r["pred_sigma"]["ry_deg"]))
+    rows.sort(key=key_)
+    for row in rows[:n_observer]:
+        st = {**state, f"{arm}_arm_joint_state": np.asarray(row["q"])}
+        looks = rank_observer_looks(st, arm, key, T_tcp_obj, kin=kin, base_I=row["_I"], lead_obj=lead_obj, max_out=1)
+        row["observer"] = looks[0] if looks else None
+        if looks:
+            row["pred_sigma"] = looks[0]["pred_sigma"]
+    for row in rows:
+        row.pop("_I", None)
+        row.setdefault("observer", None)
+        row["est_steps"] = int(max(row["est_steps_out"], (row["observer"] or {}).get("est_steps", 0)) + row["est_steps_back"])
+    return sorted(rows, key=key_)
