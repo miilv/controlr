@@ -1989,3 +1989,29 @@ def test_post_place_adopts_a_height_only_correction():
     ev = prov.post_place(b.obs, ["block_1"])
     assert abs(float(prov.belief.objects["block_1"].pos[2]) - (z_high - 0.056)) < 1e-9
     assert ev[0]["z_dropped_mm"] == 56.0 and ev[0].get("to")
+
+
+def test_pick_refine_identity_is_restricted_to_the_labels_own_group(tmp_path, monkeypatch):
+    import json as _json
+
+    from dojo.runtime import vocab
+    from dojo.runtime.belief import RuntimeProvider
+    (tmp_path / "tasks.json").write_text(_json.dumps({"stack_blocks": {"labels": {
+        "block_1": {"candidates": ["Rigid/block/00005"]}, "block_2": {"candidates": ["Rigid/block/00003"]}}}}))
+    monkeypatch.setattr(vocab, "catalog_path", lambda: str(tmp_path / "tasks.json"))
+    env = _env()
+    seen = {}
+
+    class R:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            seen["idv"] = identity_vocabulary
+            o = objects[0]
+            return {o["label"]: {"ok": True, "pos": list(o["pos"]), "quat": o["quat"], "shift_mm": 0.0, "iou": 0.9}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=R())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    pol._refine_hook(prov, None, "block_1", "left", "pick")
+    assert seen["idv"] == ["Rigid/block/00005"]                       # its own group, not the whole vocabulary

@@ -42,6 +42,21 @@ from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candid
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
 
 
+def label_candidates(vocabulary: str, label: str) -> list[str]:
+    """The catalogue candidate keys of ``label``'s own config group in ``vocabulary`` (catalog/tasks.json), [] when
+    unknown. A label whose group has one key admits no identity change."""
+    from .vocab import catalog_path
+    import json as _json
+    p = catalog_path()
+    if p is None:
+        return []
+    try:
+        lab = (_json.loads(open(p).read()).get(vocabulary) or {}).get("labels", {}).get(label) or {}
+    except (OSError, ValueError):
+        return []
+    return list(lab.get("candidates") or [])
+
+
 @dataclass
 class RuntimeConfig:
     mode: str = "gt"                    # gt (dev-only upper bound) | perception
@@ -566,7 +581,9 @@ class RuntimePolicy:
             # vocabulary's distinct shapes (85 classes for a target-category vocabulary: slow and noisy)
             rank = (((getattr(self, "_last_record", None) or {}).get("_perception") or {}).get("target_ranking")
                     or {}).get(label)
-            idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else prov.task
+            # else the label's OWN config group (its candidate keys), never the whole vocabulary: a pillar must not be
+            # re-identified as a prism (5.1 tower: iou 0.67, turned 91 deg, the tower tilted while we believed "built")
+            idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else label_candidates(prov.task, label)
         res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv,
                                        held=held)
         r = res.get(label) or {}
