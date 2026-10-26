@@ -156,6 +156,13 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   shim runs them in sandbox HOMEs, `tests/test_bootstrap_fleet.py`; journal 2026-10-25-dojo-infra), not only as dry runs.
 - **Never rewrite `~/.ssh/authorized_keys` through a temp file** (`grep -v x f > t; cat t > f`): if grep fails, `t` is
   empty and the box locks you out. Append, and remove with `sed -i '/marker$/d'` (it replaces the file atomically).
+- **Two light lanes at once never come free by polling.** The g3 chains re-take a released light lock within seconds
+  (blocked `flock -w` waiters and 15-s pollers). A job that needs two lanes (an Isaac 6.0 render of ours) takes them
+  as they free up with a 0.5-s poller on fds the shell holds (`scripts/perception/held_render.sh`: a flock on an
+  inherited fd stays held after the helper exits).
+- **Mesh vertices are not surface samples.** A box-like catalogue mesh (the charger) has vertices only at its edges,
+  so a vertex test of "what the pads touch" found nothing on its flat sides and fell back to a wrong width (the held
+  object then hid under a finger mask). Sample the surface (`held.surface_points`).
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
 
