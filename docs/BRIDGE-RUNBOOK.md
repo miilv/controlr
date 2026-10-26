@@ -74,6 +74,9 @@ Everything of ours lives under `~/data2/ilia`. `~/data2/bench` and `~/data2/cont
 | GPU: the coord lock `~/data2/coord/gpu.lock` + `gpu.owner` + COORDINATION.md lines, inbox / `gpu.reserve` gate | `scripts/dojo/isr_job.sh NAME ETA cmd` (one hold) |
 | several practice episodes in one hold (<= 2 h), gate + disk floor (7 GB) before each, prune + summary row after | `scripts/dojo/isr_block.sh BLOCK ETA SPEC` (SPEC: `ID TASK <bridge_episode.sh options>` per line; seed 0 layout 9 fixed) |
 | one episode | `scripts/dojo/isr_episode.sh ID TASK <options>` |
+| rendered 5.1 dev eval on OUR settled layouts (>= 100000): the proxy driver with `--renderer isaac51` (`RenderedEpisode`: one EvalEnv with RTX, the eval client's app flags), perception service + twin, no robot server; the gate runs before every episode (`DOJO_EVAL_GATE`) | `scripts/dojo/isr_dev_eval.sh NAME ETA --task T --layouts L... --policy P --config JSON [--twin-envs 8]` |
+| rendered vs physics-only kit: replay an episode's executed actions, per-step object poses, divergence + phase | `scripts/dojo/replay_kits.py run ... [--physics-only] [--update-to-usd] [--no-fabric-ext] [--obs-every K]`, then `compare A B` |
+| robot-harness's lock-aware starters under our hold (mock, `ROBOT_START_DRYRUN`) | `scripts/dojo/isr_lockmock.py` |
 | rows (task, score, steps, wall, perception error at planning vs `dev.jsonl` after the close, verify, LLM calls) | `scripts/dojo/isr_summary.py` -> `~/data2/ilia/dojo-data/bridge/rows.jsonl` |
 
 Why the farms: robot-harness's launchers write the server's run dir under `$BENCH/run/<id>/`. They also copy the shim
@@ -87,7 +90,14 @@ The session lock `DOJO_GPU_LOCK` (`~/data2/ilia/home/dojo-gpu.lock`, fd 9) is ou
 so nothing of ours writes into the coord lock file.
 
 Rules there (Mikhail's conditions for our use of his box):
-- <= 8 runnable processes of ours, thread pools <= 4, twin with 4 envs; the box hard-resets under all-core load;
+- <= 8 runnable processes of ours, thread pools <= 4; the box hard-resets under all-core load;
+- CPUs 0-11 only (`taskset`, set by `isr_job.sh`; Mikhail's jobs use 12-23, 24-31 stay free); never widen it;
+- a load watchdog in `isr_job.sh` stops our tree when the 1-min load is above 12, or our CPU% above 1200, for more than
+  30 s;
+- never prune Isaac's shader / texture caches (their rebuild is an all-core spike); prune only run dirs and PNGs;
+- deploy only between holds; record the commit in the checkout's `COMMIT` before a run;
+- Mikhail's launcher files are md5-pinned (`isr_job.sh --pin`). A change, or his gpu.lock-taking starter appearing,
+  refuses the hold (rc 78);
 - disk: stop below 6 GB free on data2;
 - holds <= 2 h;
 - `DOJO_ILIA=1` on every PID;
