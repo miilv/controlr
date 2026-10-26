@@ -334,15 +334,27 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
     sym = 4 if abs(float(o.asset.extents[0] - o.asset.extents[1])) < 0.004 else 2
     near = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - c.center_w[:2])))
 
+    bad = sk.world.notes.setdefault("bad_grasps", {}).setdefault(label, [])
+
+    def grasps(a):
+        from dojo.skills import grasps as G
+        ob = sk.world.obj(label)
+        cands = G.box_grasps(ob, sk.kin, a, tilts=(0.0, 25.0, 40.0, -25.0)) + G.candidates(ob, sk.kin, a)
+        return [g for g in cands if (a, g.note) not in bad]
+
     def transfer(arms):
         targets = [rest_pose(sk, label, p, rim + 0.012, sym=sym) for p in drop_spots(sk, container, label)]
         plans = SkillResult(False, "put_in_open", "ik_fail", 0, None, note="no arm")
         for a in arms:
             for pre_h in (0.04, 0.02):
-                plans = sk.plan_transfer(label, targets, arms=[a], ignore=(container,), yaw_sym=sym,
-                                         box_tilts=(0.0, 25.0, 40.0, -25.0), place_kw={"pre_h": pre_h})
+                plans = sk.plan_transfer(label, targets, arms=[a], ignore=(container,), yaw_sym=sym, grasps=grasps,
+                                         place_kw={"pre_h": pre_h})
                 if not isinstance(plans, SkillResult):
-                    return sk.run_transfer(*plans, tol_xy=0.05, tol_tilt=45.0, tol_z=0.08)
+                    r = sk.run_transfer(*plans, tol_xy=0.05, tol_tilt=45.0, tol_z=0.08)
+                    if r.status in ("grasp_slip", "loose") or (r.status == "place_miss" and "in-hand shift" in r.note
+                                                                 and not inside_xy(sk.refresh().obj(label), sk.world.obj(container))):
+                        bad.append((a, plans[0].grasp.note))      # a retry takes another grasp
+                    return r
         return plans
     r = transfer(near)
     if not isinstance(r, SkillResult) or r.ok or r.status not in ("ik_fail", "collision"):
