@@ -278,6 +278,8 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             w = sk.refresh()
             occ = occupancy()
             free_pieces = [l for l in pieces if l in w.objects and all(v[1] != l for v in occ.values())]
+            if not free_pieces:     # a failed place can leave none believed free: cost() would min() over nothing
+                return {"ok": False, "stage": "no free piece", "note": f"after a failed place, tried {sorted(tried)}"}
         piece = r["piece"]
         st["placed"].append((piece, cells[k][0]))
         st["turns"] += 1
