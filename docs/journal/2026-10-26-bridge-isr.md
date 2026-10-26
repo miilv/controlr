@@ -271,6 +271,55 @@ not found or wrong shape).
   - verify_reject + place_miss "dz +54 / +56 mm": 100001, 100007;
   - grasp_slip "rose 0 mm, drift 77 mm" with the twin passing every candidate: 100004, 100008.
 
+### A1b. Rendered 5.1 dev eval, build_tower settled 100000-09 (RuntimePolicy + scanFA, twin 8 envs)
+
+Code ae43bac: main 29ae685 merged, paired with integration-2's frozen integ3 tree.
+
+| task | layout | success / score | steps | wall s | Sonnet calls by trigger | scan ran | gross at planning (xy med mm) | failure |
+|---|---|---|---|---|---|---|---|---|
+| build_tower | 100000 | no / 10 | 795/1050 | 398.6 | frame0 4, held 5 | no | 0/8 (med 0.7) | grasp_slip object rose 0 mm (planned 80), in-hand drift 77 mm; verify passes [2,  |
+| build_tower | 100001 | no / 0 | 142/1050 | 155.7 | frame0 3, held 1, risk 3 | yes | 0/8 (med 0.7) | verify_reject pick grasp_slip: object rose 5 mm (planned 80), in-hand drift 86 mm; v |
+| build_tower | 100002 | yes / 100 | 669/1050 | 339.1 | frame0 4, held 3 | no | 0/8 (med 0.7) |   |
+| build_tower | 100003 | yes / 100 | 721/1050 | 340.4 | frame0 5, held 5 | no | 0/8 (med 0.9) |   |
+| build_tower | 100004 | yes / 100 | 695/1050 | 282.7 | frame0 2, held 3 | no | 0/8 (med 0.6) |   |
+| build_tower | 100005 | no / 0 | 261/1050 | 133.6 | frame0 2, held 2 | yes | 0/8 (med 1.7) | plan place place_miss: xy err 13.5 mm, dz +0.0 mm (centre 0.7838 vs 0.7838) |
+| build_tower | 100006 | yes / 100 | 684/1050 | 276.9 | frame0 3, held 3 | no | 0/8 (med 0.9) |   |
+| build_tower | 100007 | no / 10 | 800/1050 | 350.5 | frame0 3, held 6 | no | 0/8 (med 1.0) | grasp_slip object rose 0 mm (planned 80), in-hand drift 77 mm; verify passes [2,  |
+| build_tower | 100008 | yes / 100 | 664/1050 | 273.7 | frame0 2, held 3 | no | 0/8 (med 0.8) |   |
+| build_tower | 100009 | no / 0 | 593/1050 | 263.4 | frame0 4, after_looks 3, held 2 | no | 0/8 (med 0.6) | verify_reject pick grasp_slip: object rose 0 mm (planned 80), in-hand drift 77 mm; v |
+
+**build_tower: 5/10, mean score 52.0.**
+- Perception at planning: 0 gross over all 80 objects (xy median 0.6-1.7 mm).
+- 4 of the 5 losses carry the "rose 0 mm, drift 77 mm" grasp_slip signature that the replay proved is a held-check false
+  negative (A2).
+- Sonnet: 71 calls, 533k prompt (440k cache read), 36k completion.
+
+The s0L9 tower rerun on the official client (block b5's first episode, RuntimePolicy + scanFA, ae43bac) was
+`ilbr-scan-tower-s0L9-1`:
+- fail / 0, 703/1050 steps, 425 s;
+- verify 18 segments / 136 rollouts, all first_ok;
+- 9 held checks, all "held" (B1, conf 1.0);
+- the runtime ended believing `stage: built`. The checker disagreed. 3 of 8 objects were gross at planning on identity
+  (max 15 mm), which is consistent with a role / identity error.
+- The eval layout cannot be replayed on our side, so only its kept frames are available, in `runs/<id>/frames/`.
+- The remaining b5 episodes did not run (disk, A4).
+
+### A4. Disk on data2: the floor reached
+
+- Free space went from 9.4 GB to 7.06 GB over the night.
+- Isaac's texture cache under our shim HOME regrew to 1.4 GB after the one early prune (never again: §5.6-7); run dirs
+  and agentic frames took ~0.4 GB.
+- The gates rounded `df -BG` up, so the 7 GB floor was effectively 6 GB until the MB fix.
+- At 7.16 GB the s0L9 block was stopped after its running episode, with a stop file (`$DOJO_DATA/bridge/STOP`, read by
+  `bridge_episode.sh`).
+- Pruned: our A checkout (stack's 38ad5af is in git), the replay per-step JSON (re-creatable), the farm's duplicate
+  result videos, work dirs.
+- Kept: every report / actions / episodes.jsonl, the regenerated frames, and the strict runs' kept frames.
+- Tonight's floor per the lead: 6.5 GB (`ISR_DISK_FLOOR_MB=6656`); Mikhail's is 6 GB.
+
+Another team's Isaac (`bi-manual` user, 470 MiB VRAM) appeared on the GPU around 01:15Z. It does not interfere, and it
+is not ours.
+
 ### A2. Kit replay: the twin's physics is the eval's physics, bit for bit
 
 `scripts/dojo/replay_kits.py` replays an episode's executed action list (from `actions.json.gz`) open-loop on the
