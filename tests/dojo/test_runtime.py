@@ -2430,3 +2430,20 @@ def test_confirm_pose_adopts_a_skills_expected_outcome_only_when_the_head_view_p
     assert (("block_1" in prov.touched) == adopted) and prov.events[-1]["kind"] == "confirm_pose"
     gt = RuntimeProvider(b, "stack_blocks", STACK, "gt", FakeAssets(), checker=C())
     assert gt.confirm_pose("block_1", p0, q_fallen)["adopted"] is False
+
+
+def test_catalog_check_reports_a_new_gap_but_not_a_known_unshipped_asset(tmp_path):
+    import json as _json
+
+    from dojo.runtime.catalog_check import KNOWN_UNSHIPPED, missing_assets
+    known = sorted(KNOWN_UNSHIPPED)[0]
+    c = tmp_path / "catalog"
+    have = "Rigid/block/00001"
+    (c / have).mkdir(parents=True)
+    for f in ("geom.npz", "info.json"):
+        (c / have / f).write_text("x")
+    (c / "index.json").write_text(_json.dumps({have: {}}))
+    tasks = {"a": {"labels": {"x": {"candidates": [have, known]}}}, "b": {"labels": {"y": {"candidates": [have, "Rigid/new/00001"]}}}}
+    (c / "tasks.json").write_text(_json.dumps(tasks))
+    assert missing_assets(c, ["a", "b"]) == {"b": ["Rigid/new/00001"]}
+    assert missing_assets(c, ["a"], known={}) == {"a": [known]}

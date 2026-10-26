@@ -40,9 +40,21 @@ def vocabulary_names(which: str = "table", tasks: dict | None = None) -> list[st
     return names
 
 
-def missing_assets(catalog: str | Path, names: list[str] | None = None) -> dict[str, list[str]]:
+# Candidate keys the catalogue cannot have because RoboDojo's Assets do not ship them (checked on compute3 and in
+# ``--sync --assets``: no source catalogue has them and ``catalog build`` finds no USD). A known gap is reported
+# separately and does not fail the check; any other missing key does.
+KNOWN_UNSHIPPED: dict[str, str] = {
+    "Rigid/broom_shovel/00001": "sweep_blocks candidate; not in RoboDojo's Assets",
+    "Rigid/broom_shovel/00004": "sweep_blocks candidate; not in RoboDojo's Assets",
+}
+
+
+def missing_assets(catalog: str | Path, names: list[str] | None = None,
+                   known: dict | None = None) -> dict[str, list[str]]:
     """{vocabulary: [candidate keys without an index entry or geometry]} (only vocabularies with gaps; a vocabulary
-    absent from tasks.json maps to ["<not in tasks.json>"])."""
+    absent from tasks.json maps to ["<not in tasks.json>"]). Keys in ``known`` (default ``KNOWN_UNSHIPPED``; pass
+    {} to list them too) are not gaps."""
+    known = KNOWN_UNSHIPPED if known is None else known
     c = Path(catalog)
     tasks = json.loads((c / "tasks.json").read_text())
     index = json.loads((c / "index.json").read_text()) if (c / "index.json").exists() else {}
@@ -52,7 +64,8 @@ def missing_assets(catalog: str | Path, names: list[str] | None = None) -> dict[
             out[name] = ["<not in tasks.json>"]
             continue
         keys = sorted({k for d in tasks[name]["labels"].values() for k in d.get("candidates") or []})
-        miss = [k for k in keys if k not in index or not (c / k / "geom.npz").is_file() or not (c / k / "info.json").is_file()]
+        miss = [k for k in keys if k not in known
+                and (k not in index or not (c / k / "geom.npz").is_file() or not (c / k / "info.json").is_file())]
         if miss:
             out[name] = miss
     return out
@@ -146,6 +159,10 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     tasks = json.loads((Path(a.catalog) / "tasks.json").read_text())
     names = vocabulary_names(a.vocabularies, tasks)
+    unshipped = missing_assets(a.catalog, names, known={})
+    unshipped = sorted({k for v in unshipped.values() for k in v if k in KNOWN_UNSHIPPED})
+    if unshipped:
+        print(f"known unshipped (not a gap): {unshipped}")
     miss = missing_assets(a.catalog, names)
     for name, keys in miss.items():
         print(f"{name}: {len(keys)} missing {keys[:8]}{' ...' if len(keys) > 8 else ''}")
