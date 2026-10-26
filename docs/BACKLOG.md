@@ -139,7 +139,15 @@
 - [ ] **RoboDojo: `episode.end_on_fail: false` A/B** — the model declares FAIL with 7–25 env steps left (enough for one more grasp cycle); see [tool-direction](experiments/2026-10-05-robodojo-tool-direction.md).
 - [ ] **RoboDojo: the env-step budget binds** (pilot: every failure ran out of `general_pickup`'s 200 steps during re-grasps; [report](experiments/2026-10-04-robodojo-pilot.md)). Levers: `max_chunk > 1`, coarser approach moves, `reasoning_effort: low` for latency.
 - [ ] **dojo runtime: one perception vocabulary per instruction, including `_random`.** `stack_blocks` and `stack_blocks_random` (and the other G tasks) share the instruction, so the instruction-matched candidate set must be the union of the std and held-out instances (`dojo/runtime/supervisor.py` VOCABULARIES); today it is the std set only.
-- [ ] **dojo runtime: mode perception needs catalogue assets for every task the planner serves.** compute3's perception catalogue holds the D0 tasks only; swap_blocks / press_by_number (mats, buttons, cards) cannot run in mode perception until their assets are converted.
+- [x] ~~**dojo runtime: mode perception needs catalogue assets for every task the planner serves.**~~
+  `python -m dojo.runtime.catalog_check [--sync --sources <skills catalogues> --assets <RoboDojo Assets>]` reports
+  and fills the gaps: it copies from the skills catalogues (same builder format), else builds, then runs annotate /
+  index / precompute. compute3 (2026-10-25): 314 -> 407 index entries, existing entries unchanged; every table
+  vocabulary is complete except sweep_blocks' `Rigid/broom_shovel/00001`, `00004`, which RoboDojo's Assets do not ship
+  (only 00000). A test checks an installed catalogue when present.
+- [ ] **isr-lab's perception catalogue**: Bridge-isr merged make_toast's assets there. The xylophone / mallet set,
+  the mugs + cup_holder set and the other 75 assets added on compute3 are probably still missing: run
+  `catalog_check --sync` there before mode-B runs of those tasks.
 - [x] ~~**dojo bridge: the official-client path needs robot-harness's `joint_steps` verb**~~: robot-harness PR #9 (J2 server + shim `harness_strict_j2` + `bin/robot-start-j2`); verified offline by `tests/dojo/test_bridge_rh.py`. The Isaac path runs first on our GPUs.
 - [x] ~~**dojo bridge: robot-harness's launchers hard-code isr-lab paths**~~: the J2 starter / launcher read `HARNESS_ENV` (robot-harness PR #9); BRIDGE-RUNBOOK §2.
 - [x] ~~**dojo bridge: spawn the twin after the runtime's vocabulary choice.**~~ The driver hands the policy a lazy
