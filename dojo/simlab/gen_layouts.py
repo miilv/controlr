@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v12"
+GENERATOR = "simlab/v13"
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -351,7 +351,19 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     supports = (pmeta.get("passive") or {}).get("support") or {}
     ppos, pq = np.asarray(parent["default_pos"], float), np.asarray(parent["default_ori"], float)
     max_off = None
-    if supports:
+    fixture = bool(supports) and not skey and prm["zlim"] is not None and \
+        bool((pmeta.get("geometry") or {}).get("oriented_bbox"))
+    if fixture:
+        # a fixture placed by the bare label of a parent with supports, at a fixed z (pick_from_conveyor_by_image's
+        # photo board and basket on the conveyor): world xy from the parent's root, z from the parent's world bbox top,
+        # orientation qpos in the world (v13; the public PhysicalRSI sampler's place_fixture,
+        # "world_axes_parent_origin_xy_world_bbox_top_z"). v12 offset them from the first belt support, which put
+        # the basket's 22 cm body inside the conveyor (ejected at load).
+        v = np.asarray(pmeta["geometry"]["oriented_bbox"]["vertices"], float)
+        ztop = max(float(_qrot(pq, x)[2]) for x in v)
+        ref_pos, ref_q = np.array([ppos[0], ppos[1], ppos[2] + ztop]), np.array([1.0, 0.0, 0.0, 0.0])
+        supports = {}
+    elif supports:
         sup = supports[skey if skey in supports else next(iter(supports))]
         centre = np.asarray(sup["center"][0], float)
         ref_pos, ref_q = ppos + _qrot(pq, centre[:3]), _qmul(pq, centre[3:])

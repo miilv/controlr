@@ -411,3 +411,168 @@ entries:
     measured: none
     stats: []
     notes: "skills-4 first version"
+
+  - name: play_board_game
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Turn-based placement game against a scripted opponent on a board's cells (cell frames as listed for the board in
+      the scene): on our turn put one of our pieces on an empty cell (3 x 3 boards: win, block, centre, corners, edges),
+      open both grippers, take both arms home, then hold still until the opponent's piece rests in a cell and its arm
+      is at rest. Repeats until the board is full or our pieces are used up.
+    args:
+      board: "id, required; the board with cell frames"
+      pieces: "[id], required; our pieces (the identical kind nearer the robot)"
+      opponent_pieces: "[id], required; the opponent's pieces (the other kind)"
+    selects_on:
+      words: [play, tic-tac-toe, board, first player, opponent]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each piece, fields: [pos, quat, size]}
+        - {what: board, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.library:play_board_game"
+    measured: none
+    stats: []
+    notes: >-
+      watch reads: piece poses on the board every env step while the opponent moves (a new opponent piece within 25 mm
+      of a cell, still for 3 reads), then provider.actors_moving() every step until 12 still reads (fallback: hold 60);
+      skills-6
+
+  - name: copy_demonstration
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      A scripted arm demonstrates: hold still at home while it puts objects into its container one by one, remember
+      the order they arrive in, and once its arm is at rest put the matching object of each (same kind, in neither
+      container) into our container in that order, both grippers opened after each. Pass every movable object.
+    args:
+      container: "id, required; our container (the one nearer the robot)"
+      demo_container: "id, required; the demonstrator's container"
+      objects: "[id], required; every movable object"
+    selects_on:
+      words: [observe, order, sequence, remember, same order, imitate]
+      needs_categories: [basket]
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size, identity]}
+        - {what: both containers, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.library:copy_demonstration"
+    measured: none
+    stats: []
+    notes: >-
+      watch reads: from step 0, each object's identity and whether its root is inside the demonstrator's container
+      (arrival = 4 inside reads; every 5-20 steps suffices, only the order matters), then provider.actors_moving()
+      until 12 still reads (fallback: hold 110); skills-6
+
+  - name: match_and_pick
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Objects ride a moving belt: measure the belt's velocity from the objects' motion, remember the first object (the
+      one leading in the direction of motion), and pick the next object of the same kind on the move (the hand follows
+      the belt through the descent and the close), then lift it about 12 cm and hold it.
+    args:
+      objects: "[id], required; every object on the belt"
+      conveyor: "id = null; the belt (left out of collision checks)"
+    selects_on:
+      words: [conveyor, first object, matching, appears again, remember]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size, identity]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.library:match_and_pick"
+    measured: none
+    stats: []
+    notes: >-
+      watch reads: object tracks on the belt (positions 4 steps apart -> velocity; identities), one target re-read at
+      the end of the approach (~8 steps before contact; error under ~8 mm needed); skills-6
+
+  - name: fill_holes
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Stand each object (long axis up) over a free hole of the holder's body and let it drop in with the fingers above
+      the body; objects lying crowded in a basket are first moved to the table. When every object is in, swing the
+      holder's hinged lid (the joint the lid frame rides on) shut.
+    args:
+      objects: "[id], required; the objects to put in the holes"
+      holder: "id, required; the holder with holes and a hinged lid"
+      lid_tag: "frame = null; the lid's functional frame"
+    selects_on:
+      words: [into the holder, holder, close the lid, eggs]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+        - {what: holder, fields: [pos, quat, joint angle]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.library:fill_holes"
+    measured: none
+    stats: []
+    notes: "static scene; reads each object after its drop and the lid angle before / after the swing; skills-6"
+
+  - name: pick_into_held
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      A container and objects ride a moving belt: take the container off the belt with one arm and hold it up about
+      11 cm, then pick the object the board's picture shows on the move with the other arm and drop it into the held
+      container, which stays up.
+    args:
+      objects: "[id], required; every object on the belt"
+      container: "id, required; the container to lift"
+      picture: "id = null; the board picture that shows the target"
+      conveyor: "id = null; the belt (left out of collision checks)"
+    selects_on:
+      words: [lift the basket, image on the board, conveyor, identify]
+      needs_categories: [basket]
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size, identity]}
+        - {what: picture, fields: [depicted identity]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.library:pick_into_held"
+    measured: none
+    stats: []
+    notes: >-
+      watch reads: belt tracks as in match_and_pick; what the picture depicts (an identity; G3 uses the picture
+      asset's public map.json); skills-6
