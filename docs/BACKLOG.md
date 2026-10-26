@@ -33,6 +33,11 @@
 - [ ] **Save the scan frame with `save_look_frames`.** The runtime keeps frame 0 and the last look only, so a
   scan-primary artefact cannot be replayed. Integration's tower scan A/B phantoms in 100011 / 100014 could not be
   re-run (experiments/2026-10-26-phantom-stack.md).
+- [ ] **Annotate the catalogue's support frames on every install.** `catalog annotate` adds `passive.support` to
+  info.json. make_toast's bread and play_Xylophone's mallet are placed from `Geometry/bread_shelf/00000`'s and
+  `Rigid/mallet_stand/00000`'s slots, so B1 finds neither where the catalogue lacks them. Annotated on compute3 only.
+  Then settle and annotate the other slot tasks' bases: deposit_coin, fill_egg_holder
+  (experiments/2026-10-26-slot-objects.md).
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at

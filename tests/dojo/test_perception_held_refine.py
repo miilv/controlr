@@ -200,3 +200,30 @@ def test_elevated_hypothesis_needs_two_views(monkeypatch):
     monkeypatch.setattr(IL, "elevated_support", lambda h, o, v: {"support": 2, "refute": 0, "views": {}})
     assert IL._multiview_ok(on_pillar, [], {}, ident, pil)
     assert IL._multiview_ok(on_board, [], {}, ident, "Rigid/block/00004")  # not identical: not checked
+
+
+def test_support_slot_pose_reproduces_the_layout_generator(monkeypatch):
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as IL
+
+    sup = {"bread_shelf/0": {"center": [[0.035, 0.0, 0.035, 0.7071067811865476, 0.0, 0.7071067811865475, 0.0]],
+                             "radius": [0.05]}}
+    infos = {"Geometry/bread_shelf/00000": {"support": sup},
+             "Rigid/bread/00000": {"place": {"up": {"center": [0, 0, 0, 1, 0, 0, 0]}}}}
+    monkeypatch.setattr(IL, "load_asset", lambda k: SimpleNamespace(info=infos[k]))
+    monkeypatch.setattr(IL, "_slot_settle", lambda: {})  # the generator's (drop) pose; the settled table is below
+    pl = {"xlim": [-0.02, -0.02], "ylim": [-0.007, -0.007], "rotate_rand": False,
+          "relative_plane": "bread_shelf/bread_shelf/0", "place_tag": "up"}
+    assert IL.support_slot(pl) == ("bread_shelf", "bread_shelf/0")
+    assert IL.support_slot({**pl, "xlim": [-0.05, 0.05]}) is None and IL.support_slot({**pl, "relative_plane": "Table"}) is None
+    # make_toast 100000 (our dev layout): shelf at (-0.14, -0.02, 0.803), bread_0 at z 0.858 = 0.803 + 0.035 + 0.02
+    pos, q = IL.support_slot_pose("Geometry/bread_shelf/00000", [-0.14, -0.02, 0.803], [1, 0, 0, 0], "Rigid/bread/00000", pl)
+    assert np.allclose(pos, [-0.14 + 0.035, -0.02 - 0.007, 0.858], atol=1e-6)
+    assert np.allclose(q, [0.7071067811865476, 0.0, 0.7071067811865475, 0.0], atol=1e-6)  # the slice stands up
+    assert IL.support_slot_pose("Rigid/bread/00000", [0, 0, 0], [1, 0, 0, 0], "Rigid/bread/00000", pl) is None
+    # with the settled table: where physics puts the slice (16-17 mm lower in the slot)
+    monkeypatch.setattr(IL, "_slot_settle", lambda: {"Geometry/bread_shelf/00000|bread_shelf/0|Rigid/bread/00000":
+                                                    {"pos": [0.0358, -0.0023, 0.0382], "quat": [0.7071, 0, 0.7071, 0]}})
+    pos, _ = IL.support_slot_pose("Geometry/bread_shelf/00000", [-0.14, -0.02, 0.803], [1, 0, 0, 0], "Rigid/bread/00000", pl)
+    assert np.allclose(pos, [-0.1042, -0.0223, 0.8412], atol=1e-6)

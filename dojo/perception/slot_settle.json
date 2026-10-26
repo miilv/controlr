@@ -1,0 +1,78 @@
+{
+ "_source": "relative pose (base asset frame) of each object pinned in a support slot after physics settles it: our physics-only Isaac 5.1 settle (simlab make_d0) of our dev layouts 100000-100009, frame 0 GT, averaged (n = layouts, spread = max deviation). make_toast: the generator drops the bread slices 2 cm above the slot bottom; they come to rest 16-17 mm lower, leaning 4-6 deg. play_Xylophone: the mallet on its stand (either stand orientation).",
+ "Geometry/bread_shelf/00000|bread_shelf/0|Rigid/bread/00000": {
+  "pos": [
+   0.03579,
+   -0.00226,
+   0.03821
+  ],
+  "quat": [
+   -0.686403,
+   0.021698,
+   -0.72582,
+   0.039563
+  ],
+  "n": 10,
+  "spread_mm": 0.03
+ },
+ "Geometry/bread_shelf/00000|bread_shelf/1|Rigid/bread/00000": {
+  "pos": [
+   0.01053,
+   -0.00351,
+   0.03775
+  ],
+  "quat": [
+   -0.688736,
+   0.024166,
+   -0.724,
+   0.0297
+  ],
+  "n": 10,
+  "spread_mm": 2.67
+ },
+ "Geometry/bread_shelf/00000|bread_shelf/2|Rigid/bread/00000": {
+  "pos": [
+   -0.01582,
+   -0.00338,
+   0.03795
+  ],
+  "quat": [
+   -0.704483,
+   0.031862,
+   -0.708418,
+   0.028861
+  ],
+  "n": 10,
+  "spread_mm": 0.09
+ },
+ "Geometry/bread_shelf/00000|bread_shelf/3|Rigid/bread/00000": {
+  "pos": [
+   -0.04046,
+   -0.00292,
+   0.03851
+  ],
+  "quat": [
+   -0.693809,
+   0.015063,
+   -0.71951,
+   0.026603
+  ],
+  "n": 10,
+  "spread_mm": 3.57
+ },
+ "Rigid/mallet_stand/00000|mallet_stand/0|Rigid/mallet/00000": {
+  "pos": [
+   -0.0007,
+   0.0948,
+   0.00503
+  ],
+  "quat": [
+   -0.000115,
+   -0.022201,
+   -0.002693,
+   -0.99975
+  ],
+  "n": 10,
+  "spread_mm": 1.78
+ }
+}
