@@ -687,7 +687,7 @@ def test_place_refine_passes_the_held_object_and_rehovers_higher():
         def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
             seen["held"], seen["labels"], seen["idv"] = held, [o["label"] for o in objects], identity_vocabulary
             o = objects[0]
-            return {o["label"]: {"ok": False, "pos": None, "quat": None, "iou": 0.1}}
+            return {o["label"]: {"ok": False, "pos": None, "quat": None, "iou": 0.1, "visible_frac": 0.5}}
 
     pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=HeldAware())
     pol.reset(FakeEpisode(env).info())
@@ -2015,3 +2015,78 @@ def test_pick_refine_identity_is_restricted_to_the_labels_own_group(tmp_path, mo
     prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
     pol._refine_hook(prov, None, "block_1", "left", "pick")
     assert seen["idv"] == ["Rigid/block/00005"]                       # its own group, not the whole vocabulary
+
+
+def test_a_failed_recentre_reverts_the_correction():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class Seq:
+        def __init__(self):
+            self.n = 0
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            self.n += 1
+            if self.n == 1:
+                return {o["label"]: {"ok": True, "pos": [o["pos"][0] + 0.024, o["pos"][1], o["pos"][2]], "quat": o["quat"],
+                                     "shift_mm": 24.0, "iou": 0.79, "visible_frac": 1.0}}
+            return {o["label"]: {"ok": False, "pos": list(o["pos"]), "quat": o["quat"], "shift_mm": 0.0, "iou": 0.0,
+                                 "visible_frac": 1.0}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True, refine_max_shift_m=0.07), assets=FakeAssets(),
+                        perception_client=Seq())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    x0 = float(prov.belief.objects["block_1"].pos[0])
+    h = pol._refine_hook(prov, None, "block_1", "left", "pick")
+    assert h["rehover"] is not None and abs(float(prov.belief.objects["block_1"].pos[0]) - (x0 + 0.024)) < 1e-9
+    assert pol._refine_hook(prov, None, "block_1", "left", "pick") is None
+    assert float(prov.belief.objects["block_1"].pos[0]) == x0 and "reverted" in pol.report["events"][-1]["why"]
+
+
+def test_no_higher_rehover_over_a_fully_covered_support():
+    env = _env()
+
+    class Covered:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            return {o["label"]: {"ok": False, "pos": list(o["pos"]), "quat": o["quat"], "iou": 0.0, "visible_frac": 0.0}}
+    pol, prov = _place_setup(RuntimeConfig(mode="perception", refine=True), Covered(), env)
+    prov.belief.attached["left"] = ("block_2", np.eye(4))
+
+    class Sk:
+        refine_ctx = {"kind": "place", "label": "block_0", "arm": "left", "held": ("Rigid/block/00005", [0, 0, 0.9, 1, 0, 0, 0])}
+    assert pol._refine_hook(prov, Sk(), "block_0", "left", "place") is None
+
+
+
+def test_a_covered_recentre_keeps_the_correction():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class Seq:
+        def __init__(self):
+            self.n = 0
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            self.n += 1
+            if self.n == 1:
+                return {o["label"]: {"ok": True, "pos": [o["pos"][0] + 0.02, o["pos"][1], o["pos"][2]], "quat": o["quat"],
+                                     "shift_mm": 20.0, "iou": 0.8, "visible_frac": 1.0}}
+            return {o["label"]: {"ok": False, "pos": list(o["pos"]), "quat": o["quat"], "iou": 0.0, "visible_frac": 0.1}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True, refine_max_shift_m=0.07), assets=FakeAssets(),
+                        perception_client=Seq())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    x0 = float(prov.belief.objects["block_1"].pos[0])
+    pol._refine_hook(prov, None, "block_1", "left", "pick")
+    pol._refine_hook(prov, None, "block_1", "left", "pick")
+    assert abs(float(prov.belief.objects["block_1"].pos[0]) - (x0 + 0.02)) < 1e-9          # kept
+    assert "correction kept" in pol.report["events"][-1]["why"]
