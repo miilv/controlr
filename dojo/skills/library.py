@@ -1202,6 +1202,10 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
                                                          f"{i['lowered_mm']} mm clear {i['clearance']*1000:.2f}"
                                                          for _, (_, i) in fine[:3]))
                 tg = [rf[0] for _, rf in fine]
+            from dojo.skills.precision import disc_axis, disc_into_slot
+            if disc_axis(o) is not None and not turn_deg:
+                # a thin disc (a coin): by its rim, edge first, let go over the slot (skills-5)
+                return disc_into_slot(sk, obj, rec, tg)
             sk.coll.include.add(rec)
             for T in tg:
                 T[2, 3] -= press
@@ -2264,6 +2268,10 @@ SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into"
           "insert_into": insert_into, "place_in_slots": place_in_slots,
           "fill_container": fill_container, "arrange": arrange, "stack_on_pegs": stack_on_pegs,
           "slots_and_press": slots_and_press, "hang_on_hooks": hang_on_hooks}
+
+from dojo.skills import precision as _precision  # noqa: E402  (skills-5; imports this module)
+
+SKILLS.update(_precision.SKILLS)
 
 # skills that interleave observation with action (scripted opponents, demonstrations, conveyors): skills-6
 from dojo.skills.holders import fill_holes  # noqa: E402

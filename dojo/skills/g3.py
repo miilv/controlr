@@ -61,8 +61,30 @@ def classify(res: dict, reward: dict, history: list[dict]) -> str | None:
     return "logic"
 
 
+class OffsetBeliefProvider:
+    """Dev hook for a mode-B-like run in G3: the GT world, except that ``offsets`` {label: (dx, dy)} shift an object's
+    pose while it is NOT held (the belief at grasp time is off, as perception's can be; once held, the object is seen
+    where it really is, but a ``remeasure=False`` Skills keeps the in-hand transform it planned)."""
+
+    def __init__(self, base, offsets: dict):
+        self.base = base
+        self.offsets = {k: np.asarray(v, float) for k, v in offsets.items()}
+
+    def __getattr__(self, name):
+        return getattr(self.base, name)
+
+    def refresh(self, holding: dict | None = None):
+        w = self.base.refresh(holding)
+        held = set((holding or {}).values())
+        for lab, d in self.offsets.items():
+            if lab in w.objects and lab not in held:
+                o = w.objects[lab]
+                o.pos = o.pos + np.r_[d[:2], 0.0]
+        return w
+
+
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
-                verify_k: int = 0) -> dict:
+                verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False) -> dict:
     """``task`` is bookkeeping only: the episode runs ``planner.solve`` from the instruction + world."""
     from dojo.skills import planner
     from dojo.skills.env import RunnerEnv
@@ -79,14 +101,18 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
         return rec
     env = RunnerEnv(run)
     prov = GTProvider(env, assets, instruction=env.instruction)
+    if belief_offsets:
+        prov = OffsetBeliefProvider(prov, belief_offsets)
     t1 = time.perf_counter()
     sim_time = [0.0]
     verifier = None
     if verify_k:
         from dojo.skills.verify import InProcessTwin
         verifier = InProcessTwin(run, list(range(1, run.num_envs)), seed=seed)
+    # mode_b: as the runtime's perception mode (no in-hand re-measure; a refine hook that observes nothing)
     sk = Skills(env, prov, reserve=30, log=log, verifier=verifier,
-                verify_k=verify_k or 2, n_cands=4)
+                verify_k=verify_k or 2, n_cands=4, remeasure=not mode_b,
+                refine=(lambda sk_, label, arm, kind: None) if mode_b else None)
     frames = []
     if trace:
         labels = [o.label for o in sk.world.task_objects() if o.obj_type != "Geometry"]
@@ -200,8 +226,14 @@ def cmd_run(a) -> None:
         lay.setdefault("_simlab", {})["seed"] = seed
         lay["_simlab"]["layout_file"] = lp.name
         logs = []
+        offs = {}
+        for spec in a.belief_offset or []:
+            lab, vals = spec.split(":")
+            offs[lab] = [float(x) for x in vals.split(",")]
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
-                          verify_k=a.verify)
+                          verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b)
+        if offs or a.mode_b:
+            rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b)}
         rec["log"] = logs[-60:]
         rec["code"] = code
         rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
@@ -480,6 +512,58 @@ def cmd_checks(a) -> None:
     run.close()
 
 
+def cmd_snippet(a) -> None:
+    """Dev probe: load one layout (``--pose`` overrides like ``checks``), build the episode's ``Skills`` on the twin
+    (GT provider, as ``run``), then exec a python file with ``sk``, ``env``, ``run``, ``np`` in scope (scripted picks,
+    contact tests). The layout's load-time stability check is reported, not enforced (a coin spawned flat moves)."""
+    from dojo.simlab import paths
+    from dojo.simlab.runner import RoboDojoRunner
+    from dojo.skills.env import RunnerEnv
+    from dojo.skills.skills import GTProvider, Skills
+    from dojo.skills.world import AssetDB
+
+    out = Path(a.out)
+    paths.assert_not_eval(out)
+    lp = Path(a.layout)
+    paths.assert_not_eval(lp)
+    lay = json.loads(lp.read_text())
+    poses = {}
+    for spec in a.pose or []:
+        lab, vals = spec.split(":")
+        poses[lab] = [float(x) for x in vals.split(",")]
+    for grp in lay.values():
+        if not isinstance(grp, dict):
+            continue
+        for recs in grp.values():
+            for r in recs if isinstance(recs, list) else []:
+                if isinstance(r, dict) and r.get("label") in poses:
+                    v = poses[r["label"]]
+                    r["default_pos"], r["default_ori"] = v[:3], v[3:7]
+    run = RoboDojoRunner(a.task, num_envs=1, workdir=str(out / "work"), physics_only=True, need_planner=False)
+    info = run.load(lay)
+    print(f"[snippet] stable {info['stable']}", flush=True)
+    run.env.step_lim = max(int(run.env.step_lim), int(a.step_lim))
+    for _ in range(a.settle):
+        run.step(run.hold_action())
+    assets = AssetDB(paths.OBJECTS)
+
+    def rebuild(layout=None):
+        """Reload the layout (or another record) and return a fresh Skills on it."""
+        if layout is not None:
+            run.load(layout)
+            run.env.step_lim = max(int(run.env.step_lim), int(a.step_lim))
+        e = RunnerEnv(run)
+        return Skills(e, GTProvider(e, assets, instruction=e.instruction), reserve=30, log=lambda m: print(m, flush=True))
+    sk = rebuild()
+    env = sk.env
+    try:
+        exec(compile(Path(a.code).read_text(), a.code, "exec"), {"sk": sk, "env": env, "run": run, "np": np,
+                                                                 "print": print, "lay": lay, "rebuild": rebuild})
+    except Exception:  # noqa: BLE001
+        traceback.print_exc()
+    run.close()
+
+
 def cmd_report(a) -> None:
     """Table of every run's summary under ``--root`` (CPU only, no Isaac)."""
     root = Path(a.root)
@@ -508,6 +592,9 @@ def main(argv=None) -> None:
     r.add_argument("--verify", type=int, default=0, help="plan + verify: samples per candidate (0 = single plan)")
     r.add_argument("--twins", type=int, default=8, help="twin envs for --verify (same process as the episode)")
     r.add_argument("--layouts", default=None, help="layout dir (default $DOJO_DATA/simlab/layouts/<task>)")
+    r.add_argument("--belief-offset", action="append", default=[],
+                   help="LABEL:dx,dy (m): the object's pose is believed this far off until it is held (dev)")
+    r.add_argument("--mode-b", action="store_true", help="no in-hand re-measure, a refine hook that sees nothing (dev)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")
@@ -518,10 +605,19 @@ def main(argv=None) -> None:
     c.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
     c.add_argument("--settle", type=int, default=5)
     c.add_argument("--move", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz, applied after the load")
+    sn = sub.add_parser("snippet")
+    sn.add_argument("--task", required=True)
+    sn.add_argument("--layout", required=True)
+    sn.add_argument("--out", required=True)
+    sn.add_argument("--code", required=True)
+    sn.add_argument("--pose", action="append", default=[], help="LABEL:x,y,z,qw,qx,qy,qz")
+    sn.add_argument("--settle", type=int, default=0)
+    sn.add_argument("--step-lim", type=int, default=2000)
     q = sub.add_parser("report")
     q.add_argument("--root", default=os.path.expanduser("~/dojo-data/skills/g3"))
     a = ap.parse_args(argv)
-    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report, "checks": cmd_checks}[a.cmd](a)
+    {"run": cmd_run, "probe": cmd_probe, "report": cmd_report, "checks": cmd_checks,
+     "snippet": cmd_snippet}[a.cmd](a)
 
 
 if __name__ == "__main__":

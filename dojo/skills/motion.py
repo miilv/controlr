@@ -193,6 +193,9 @@ class Collision:
         # per-object margins instead of obj_margin (identical slices side by side in a rack: 13 mm between two
         # bread slices, the fingertips need 3.4 mm + clearance there)
         self.margin_of: dict = {}
+        # label -> height map of its mesh (``precision.height_map``): a point inside that object's box only collides
+        # below its top surface there (a coin bank's rounded back; the box alone blocked the hand over its edge)
+        self.heightmaps: dict = {}
         # articulated objects whose links are modelled as slabs (one box per ~2 cm of the link's long axis) instead of
         # one box per link: an egg carton's open lid is a 4 cm shell behind the body with a lip on top, its link box
         # covers the back of the body's holes too
@@ -259,6 +262,8 @@ class Collision:
             for c, R, h, lab in obs:
                 loc = (pts - c) @ R
                 inside = np.all(np.abs(loc) <= h, axis=1)
+                if inside.any() and lab in self.heightmaps:
+                    inside &= below_height_map(self.heightmaps[lab], loc, self.margin_of.get(lab, self.obj_margin))
                 if inside.any():
                     return False, f"hits {lab}"
         if grip_only and self.world is not None:
@@ -432,6 +437,31 @@ class Motion:
     # ---- helpers
     def down(self, xyz, yaw: float) -> np.ndarray:
         return T_from(xyz, down_R(yaw))
+
+
+def finger_samples(kin: X5Kin, T_flange, gripper: float) -> np.ndarray:
+    """Both fingers sampled on grids (world points; ``dense_hand``'s finger part)."""
+    from dojo.skills.kinematics import FINGER_MAX, GRIP_SCALE
+    qf = min(max(GRIP_SCALE[0] + gripper * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0), FINGER_MAX)
+    loc = []
+    for x0, x1, yo, zh in ((0.075, 0.105, 0.0378, 0.028), (0.107, 0.126, 0.0134, 0.015), (0.128, 0.1576, 0.0034, 0.009)):
+        for x in np.linspace(x0, x1, 4):
+            for y in (0.0004, yo):
+                for z in np.linspace(-zh, zh, 5):
+                    loc += [(x, qf + y, z), (x, -(qf + y), z)]
+    loc = np.asarray(loc)
+    return (np.asarray(T_flange)[:3, :3] @ loc.T).T + np.asarray(T_flange)[:3, 3]
+
+
+def below_height_map(hm: dict, loc: np.ndarray, margin: float) -> np.ndarray:
+    """Points (OBB-local: object frame minus the bbox centre) at or below the object's top surface + ``margin``
+    (``hm``: {"x0", "y0", "cell", "Z" (ny, nx) object-frame top z, -inf where empty, "center"})."""
+    p = loc + hm["center"]
+    if "R" in hm:                      # a world-vertical map: offsets from the object's root in world axes
+        p = p @ np.asarray(hm["R"], float).T
+    ix = np.clip(((p[:, 0] - hm["x0"]) / hm["cell"]).astype(int), 0, hm["Z"].shape[1] - 1)
+    iy = np.clip(((p[:, 1] - hm["y0"]) / hm["cell"]).astype(int), 0, hm["Z"].shape[0] - 1)
+    return p[:, 2] <= hm["Z"][iy, ix] + margin
 
 
 def held_box(o, T_tcp_obj) -> HeldBox:

@@ -140,8 +140,12 @@ def _gold(t: str, it: dict) -> dict:
         g["alt"] = [_skill("arrange", steps={"op": "set", "value": [["place", d, m] for d, m in zip(digits, mats)]})]
         return g
     if t == "fasten_screws":
-        return _code("1. pair each screw with the nut of the same colour; 2. pick each screw/nut and screw it on "
-                     "(insert, then turn); 3. finish.")
+        g = _code("1. pair each screw with the nut of the same colour; 2. pick each screw/nut and screw it on "
+                  "(insert, then turn); 3. finish.")
+        # skills-5: screw_on does the whole goal with the colour pairs (nut_i on bolt_i)
+        g["alt"] = [_skill("screw_on", pairs={"op": "set", "value": [[_id(it, f"nut{i}"), _id(it, f"bolt{i}")]
+                                                                     for i in range(3)]})]
+        return g
     if t == "fill_egg_holder":
         return _code("1. pick each of the four eggs from the basket and place it into an egg holder cell; bank "
                      "after each; 2. close the holder's lid; 3. finish.")
@@ -158,7 +162,9 @@ def _gold(t: str, it: dict) -> dict:
         g = _code("1. insert each of the three tubes upright into a free rack hole, one by one, banking after "
                   "each (insert_into per tube); 2. finish.")
         g["alt"] = [_skill("fill_container", objects={"op": "set", "value": _ids(it, _lab("tube"))},
-                           container={"op": "eq", "value": _id(it, "slot")})]
+                           container={"op": "eq", "value": _id(it, "slot")}),
+                    _skill("insert_each", objects={"op": "set", "value": _ids(it, _lab("tube"))},
+                           receptacle={"op": "eq", "value": _id(it, "slot")})]
         return g
     if t == "match_and_pick_from_conveyor":
         return _code("1. watch the conveyor and record the first object; 2. wait until the same object comes "
@@ -171,7 +177,12 @@ def _gold(t: str, it: dict) -> dict:
                      "and keep it up; 3. pick the target from the moving conveyor with the other arm and drop it "
                      "into the held basket.")
     if t == "play_Xylophone":
-        return _code("1. pick the mallet; 2. strike every key once from left to right (lift between strikes).")
+        g = _code("1. pick the mallet; 2. strike every key once from left to right (lift between strikes).")
+        # skills-5: strike_in_order with the keys' hit points in the checker's order (hit_0 is the leftmost key)
+        g["alt"] = [_skill("strike_in_order", tool={"op": "eq", "value": _id(it, "mallet")},
+                           instrument={"op": "eq", "value": _id(it, "xylophone")},
+                           points={"op": "seq", "value": [f"hit_{k}" for k in range(8)]})]
+        return g
     if t == "play_tic_tac_toe":
         return _code("1. place a piece on an empty cell; 2. home both arms and wait while the opponent moves; "
                      "3. repeat until the board is full (5 own pieces); 4. finish.")
