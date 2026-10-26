@@ -824,8 +824,14 @@ class Skills:
                 o = w.obj(pp.label)
                 measured = self._held_protocol(pp, h, o, tol_xy, tol_tilt, pre=pre) if not self.remeasure else None
                 guarded_b = not self.remeasure and bool((pp.tail_kw or {}).get("guarded"))
-                if ((pp.tail_kw or {}).get("servo") and not other_arm
-                        and (self.remeasure or (measured is not None and not guarded_b))):
+                tk = pp.tail_kw or {}
+                # mode B, a servo place that does not probe (a drop into an opening, a nut onto its bolt's top): the
+                # contact-probing tail is for insertions; this one runs the same servo tail as G3 on the predicted
+                # in-hand transform (the probing tail ignored ``probe``: 24 probes dragged a pen around the holder)
+                let_go = (not self.remeasure and measured is None and not tk.get("probe", True) and not tk.get("turn")
+                          and not tk.get("fingers_out") and not tk.get("blind_up"))
+                if (tk.get("servo") and not other_arm
+                        and (self.remeasure or (measured is not None and not guarded_b) or let_go)):
                     # mode B with a usable in-hand read: the same closed-loop tail as G3, on the measured transform
                     # (``_servo_obj``) and the arm's measured sag
                     note_m = ""
@@ -1012,7 +1018,9 @@ class Skills:
             short = float(Tc[2, 3] - T_goal[2, 3])
             note = f"{n} steps down, {'reached' if reached else f'contact {short*1000:.1f} mm short (lag {lag*1000:.1f} mm)'}"
             k = 0
-            if not reached and short > float(kw.get("guard_seated", GUARD_SEATED)):
+            if not reached and short > float(kw.get("guard_seated", GUARD_SEATED)) and not kw.get("probe", True):
+                note += ", no probing (the place does not probe)"     # off stays None: not in
+            elif not reached and short > float(kw.get("guard_seated", GUARD_SEATED)):
                 z_c = float(Tc[2, 3])
                 probes = [(r * math.cos(2 * math.pi * i / n_dir), r * math.sin(2 * math.pi * i / n_dir))
                           for r in radii for i in range(n_dir)]

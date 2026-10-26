@@ -1092,6 +1092,29 @@ SCREW_RATE = 0.15             # rad/step of the wrist while turning a nut (twin:
 SCREW_SWEEPS_DEG = (300.0, 270.0, 240.0, 180.0, 120.0)
 SCREW_DEPTH = 0.0100          # m: a nut is turned until its bottom is this far below the bolt's top
 SCREW_MAX_SWEEPS = 8
+SCREW_SEAT = 0.0026           # m: a nut put on a bolt's top seats this far down (the thread's chamfer; twin probe)
+
+
+def _screw_seen(sk: Skills, nut: str, bolt: str, z_bot: float | None):
+    """The nut and bolt as the world has them; in mode B (no in-hand re-measure: the world is a belief that cannot
+    measure a nut on a bolt) the nut's bottom is the skill's own prediction ``z_bot`` (seated on the top, then down by
+    each sweep's pitch) when the belief has the nut on the bolt's axis but more than 3 mm under it: the belief let it
+    fall through the bolt (integration-2's breadth run: every nut 53 mm under its bolt's top, so the sweep loop
+    thought it was down and never turned one). The prediction is offered to ``provider.confirm_pose``."""
+    w = sk.refresh()
+    o, b = w.obj(nut), w.obj(bolt)
+    if sk.remeasure or z_bot is None:
+        return o, b
+    if o.bottom_z < z_bot - 0.003 and float(np.linalg.norm(o.center_w[:2] - b.center_w[:2])) < 0.006:
+        import copy
+        o2 = copy.copy(o)
+        o2.pos = o.pos + np.array([0.0, 0.0, z_bot - o.bottom_z])
+        sk.confirm_moved(nut, o2.T, f"on {bolt}")
+        oc = sk.world.obj(nut)
+        if abs(oc.bottom_z - z_bot) <= 0.003:
+            return oc, sk.world.obj(bolt)
+        return o2, b
+    return o, b
 
 
 def n_fold(o) -> int:
@@ -1184,8 +1207,8 @@ def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sig
         for a in ARMS:
             if sk.held[a] is not None:
                 sk._record(sk.regrasp(a))
-        w = sk.refresh()
-        o, b = w.obj(nut), w.obj(bolt)
+        z_bot = float(b.top_z) - SCREW_SEAT
+        o, b = _screw_seen(sk, nut, bolt, z_bot)
         off = float(np.linalg.norm(o.center_w[:2] - b.center_w[:2]))
         if off > 0.004 or o.bottom_z > b.top_z + 0.004:
             failed.append(nut)
@@ -1205,8 +1228,7 @@ def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sig
         n_sw = 0
         g_open = gap_to_grip(min(G.MAX_GAP, float(np.min(o.asset.extents[:2])) + 0.022))
         while n_sw < SCREW_MAX_SWEEPS:
-            w = sk.refresh()
-            o, b = w.obj(nut), w.obj(bolt)
+            o, b = _screw_seen(sk, nut, bolt, z_bot)
             down = b.top_z - o.bottom_z
             if down >= depth:
                 break
@@ -1240,7 +1262,8 @@ def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sig
                 sk._record(SkillResult(True, "screw", "ended", pl.steps, arm, note=str(e)))
                 return {"ok": True, "stage": "ended"}
             n_sw += 1
-            o2 = sk.refresh().obj(nut)
+            z_bot -= pitch * th / (2 * math.pi)                # mode B's prediction: the nut followed the thread
+            o2, _ = _screw_seen(sk, nut, bolt, z_bot)
             dz = float(z0 - o2.pos[2])
             if dz > 0.0003:
                 pitch = float(np.clip(dz * 2 * math.pi / th, 0.0005, 0.006))
@@ -1248,8 +1271,7 @@ def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sig
                                    note=f"{nut}: sweep {n_sw} {math.degrees(th):.0f} deg, down {dz*1000:.1f} mm, "
                                         f"{(b.top_z - o2.bottom_z)*1000:.1f} mm below the top, pitch {pitch*1000:.2f}"))
         sk.bank()
-        w = sk.refresh()
-        o, b = w.obj(nut), w.obj(bolt)
+        o, b = _screw_seen(sk, nut, bolt, z_bot)
         if b.top_z - o.bottom_z >= depth - 0.001:
             st["done"].append(nut)
             done.append(nut)

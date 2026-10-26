@@ -180,6 +180,15 @@ def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(
             if d <= 0.010 and abs(float(w.obj(piece).bottom_z) - z_bottom) < 0.006:
                 sk.log(f"[game] {piece} in {tag}, {d * 1000:.1f} mm off")
                 return {"ok": True, "stage": "placed", "piece": piece}
+            if not sk.remeasure and d <= 0.010 and z_bottom - 0.03 < float(w.obj(piece).bottom_z) < z_bottom:
+                # mode B: the belief has it under the board's top at the cell, where nothing can be (the belief let it
+                # fall through the static board to the table: every piece 17 mm low in integration-2's breadth run,
+                # then re-placed and the game run on): it rests on the cell. The expected pose goes to confirm_pose
+                Tc = w.obj(piece).T.copy()
+                Tc[2, 3] += z_bottom - float(w.obj(piece).bottom_z)
+                sk.confirm_moved(piece, Tc, f"on {tag}")
+                sk.log(f"[game] {piece} in {tag}, {d * 1000:.1f} mm off (believed under the board's top: on it)")
+                return {"ok": True, "stage": "placed", "piece": piece}
             sk.log(f"[game] {piece} {d * 1000:.0f} mm from {tag} ({r.status}): again")
             if any(sk.held.values()):
                 sk.home(gripper=OPEN)
@@ -204,7 +213,10 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
     sk.log(f"[game] {len(cells)} cells, {len(lines)} lines, {len(pieces)} own / {len(opponent_pieces)} opponent pieces")
 
     def occupancy():
-        return board_state(sk.world, board, cells, pieces, opponent_pieces)
+        # mode B: a piece believed at the board's root height on a cell fell through the board in the belief (it lies on
+        # the cell; nothing can be inside the board)
+        return board_state(sk.world, board, cells, pieces, opponent_pieces,
+                           dz=(0.0, 0.03) if sk.remeasure else (-0.02, 0.03))
 
     own_key = w.obj(pieces[0]).asset.key if pieces else None
     opp_key = w.obj(opponent_pieces[0]).asset.key if opponent_pieces else None

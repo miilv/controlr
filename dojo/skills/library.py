@@ -23,7 +23,7 @@ import time
 import numpy as np
 
 from dojo.skills.executor import ArmPlan, BudgetExceeded, EpisodeEnded
-from dojo.skills.geometry import R_to_quat, T_from, inv_T
+from dojo.skills.geometry import R_to_quat, T_from, T_to_pose7, inv_T
 from dojo.skills.kinematics import ARMS, TABLE_Z, TIP_BEYOND_TCP, down_R, tilted_R
 from dojo.skills.motion import CARRY, FAST, MEDIUM, SLOW
 from dojo.skills.targets import current_R, half_height, level_R, on_top, rest_pose, table_rest
@@ -2610,11 +2610,22 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             _hang_exit(sk, arm, lab)
         except (BudgetExceeded, EpisodeEnded) as e:
             return {"ok": False, "stage": f"hang {lab}", "note": str(e)}
+        def handle_at(o_):
+            hs_ = functional_frames(o_, handle_tag, active=True)
+            hp_ = (o_.T @ hs_[0])[:3, 3] if hs_ else o_.pos
+            d_ = float(np.linalg.norm(hp_ - H[:3, 3]))
+            return hp_, d_, d_ < 0.045 and hp_[2] > H[2, 3] - 0.03
         o2 = sk.refresh().obj(lab)
-        hs = functional_frames(o2, handle_tag, active=True)
-        hp = (o2.T @ hs[0])[:3, 3] if hs else o2.pos
-        d = float(np.linalg.norm(hp - H[:3, 3]))
-        ok = d < 0.045 and hp[2] > H[2, 3] - 0.03
+        hp, d, ok = handle_at(o2)
+        if not ok and not sk.remeasure:
+            # mode B: nothing measures a mug on a hook (the belief dropped one let go there to the table: integration-2's
+            # breadth run, every hang "handle 55-95 mm from the hook, z 0.87"); the pose it was let go at goes to
+            # confirm_pose (the head view decides)
+            T_let = sk.kin.tcp(arm, q_dn) @ T_rel
+            if handle_at(_with_T(o2, T_let))[2]:
+                sk.confirm_moved(lab, T_let, f"on hook {hi}")
+                o2 = sk.world.obj(lab)
+                hp, d, ok = handle_at(o2)
         sk._record(SkillResult(ok, "hang", "ok" if ok else "place_miss", 0, arm,
                                note=f"{lab} handle {d*1000:.0f} mm from hook {hi}, z {hp[2]:.3f}"))
         (done if ok else failed).append(lab)
@@ -2626,6 +2637,15 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if failed:
         return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
     return {"ok": True, "stage": "hang"}
+
+
+def _with_T(o, T):
+    """A copy of object state ``o`` at pose ``T``."""
+    import copy
+    o2 = copy.copy(o)
+    p7 = T_to_pose7(np.asarray(T, float))
+    o2.pos, o2.quat = np.asarray(p7[:3], float), np.asarray(p7[3:], float)
+    return o2
 
 
 def _hang_exit(sk: Skills, arm: str, lab: str, back: float = 0.06) -> None:
