@@ -859,9 +859,9 @@ def label_groups(task: str) -> list[dict]:
                                   "select_mode": d["select_mode"], "categories": d["categories"], "regions": []})
         g["labels"].append(lab)
         for cat in d["categories"] or [{}]:
-            r = _region({**d["placement"], **(cat.get("override") or {})})
-            if r not in g["regions"]:  # general_pickup: 85 categories, one region
-                g["regions"].append(r)
+            for r in _regions({**d["placement"], **(cat.get("override") or {})}, labels, d.get("type", "Rigid")):
+                if r not in g["regions"]:  # general_pickup: 85 categories, one region
+                    g["regions"].append(r)
     return list(groups.values())
 
 
@@ -890,6 +890,144 @@ def _region(p: dict) -> dict:
 
 XY_MARGIN = 0.04
 YAW_MARGIN = np.deg2rad(15)
+FIXTURE_PLANES = ("table", "ground")
+MOVING_BASE_MARGIN = 0.06  # a moving base (a conveyor belt) shifts its riders across its band too
+UNPINNED_BASE_MARGIN = 0.05  # a child of an estimated base: its offsets are taken from anywhere the base can be
+
+
+def _on_object(rp) -> bool:
+    """``relative_plane`` names other labels (a base object), not the table / ground."""
+    if isinstance(rp, (list, tuple)):
+        return True
+    return str(rp).split("/")[0].lower() not in FIXTURE_PLANES
+
+
+def _pinned_point(p: dict) -> tuple[float, float] | None:
+    xl, yl = p.get("xlim"), p.get("ylim")
+    if (isinstance(xl, list) and len(xl) == 2 and not isinstance(xl[0], list) and xl[0] == xl[1]
+            and isinstance(yl, list) and len(yl) == 2 and not isinstance(yl[0], list) and yl[0] == yl[1]):
+        return float(xl[0]), float(yl[0])
+    return None
+
+
+def _yaw_of(R: np.ndarray) -> float:
+    return float(np.arctan2(R[1, 0], R[0, 0]))
+
+
+def _base_reference(base: dict, skey: str, fixture: bool = False) -> dict | None:
+    """The world frame a child's xlim / ylim live in when its base's pose is pinned by the config (RoboDojo's
+    generator, ``dojo.simlab.gen_layouts.place_on_object``): a fixed pose (``zlim`` + ``qpos``: a ground-standing
+    conveyor) composed with the base asset's public support frame (catalogue ``support``, first centre of ``skey``),
+    or a point pinned on the table (the place frame, yaw 0; flat bases have their support at their middle).
+    ``fixture``: a child placed by the bare base label at a fixed z (a photo board, a basket on the conveyor) is
+    offset in world axes from the base's root (v13 / the public PhysicalRSI sampler's place_fixture).
+    {"xy", "yaw", "aabb": world xy box of the base or None}; None when the config does not pin the base."""
+    p = base["placement"]
+    pt = _pinned_point(p)
+    if pt is None or _on_object(p.get("relative_plane", "Table")):
+        return None
+    if p.get("rotate_rand") and float(np.max(np.abs(np.atleast_1d(p.get("rotate_deg") or 0)))) > 0:
+        return None
+    if p.get("zlim") is None:
+        return {"xy": np.array(pt), "yaw": 0.0, "aabb": None}
+    keys = list(dict.fromkeys(base.get("candidates") or []))
+    R0 = quat_wxyz_to_R(p.get("qpos") or [1, 0, 0, 0])
+    o = np.array([pt[0], pt[1], float(_ranges(p["zlim"])[0][0])])
+    ref, R = o.copy(), R0
+    aabb = None
+    if len(keys) == 1:
+        try:
+            info = asset_info(keys[0])
+        except (OSError, ValueError):
+            info = {}
+        sup = info.get("support") or {}
+        if sup and not fixture:
+            c = np.asarray((sup.get(skey) or next(iter(sup.values())))["center"][0], float)
+            ref, R = o + R0 @ c[:3], R0 @ quat_wxyz_to_R(c[3:7])
+        if info.get("bbox_min") is not None:
+            lo, hi = np.asarray(info["bbox_min"], float), np.asarray(info["bbox_max"], float)
+            C = np.array([[x, y, 0.0] for x in (lo[0], hi[0]) for y in (lo[1], hi[1])]) @ R0.T + o
+            aabb = (C[:, 0].min(), C[:, 0].max(), C[:, 1].min(), C[:, 1].max())
+    return {"xy": ref[:2], "yaw": 0.0 if fixture else _yaw_of(R), "aabb": aabb}
+
+
+def _shift_ranges(rngs, d: float):
+    return [(a + d, b + d) for a, b in rngs]
+
+
+def _regions(p: dict, labels: dict | None = None, child_type: str = "Rigid") -> list[dict]:
+    """The label's generator region(s) in WORLD xy (``_region``'s shape). Table / ground placements: ``_region``
+    as is. A placement relative to other labels (``relative_plane`` "<base>[/<support>]", or a list of bases) has
+    its xlim / ylim in the base's frame, so they are mapped (they used to be read as world xy, which rejected every
+    hypothesis of the conveyor's objects, xlim 1.88 in the belt's frame):
+    - a base the config pins: through its pose and support frame (``_base_reference``);
+    - a Dynamic base (a conveyor) also moves its riders (not its static Geometry): its long axis spans the whole
+      base, the cross band is widened by ``MOVING_BASE_MARGIN`` and the yaw is free;
+    - a base the config does not pin (estimated: an egg basket, a cup): the base's own region, widened by the
+      child's largest offset, yaw free;
+    - an unknown base: unconstrained.
+    Fluids (inside their bottle, never fitted as resting objects) keep ``_region`` as is."""
+    rp = p.get("relative_plane", "Table")
+    if labels is None or not _on_object(rp) or child_type == "Fluid":
+        return [_region(p)]
+    loc = _region(p)
+    xr, yr = loc["x"] or [(0.0, 0.0)], loc["y"] or [(0.0, 0.0)]
+    out = []
+    for b in (rp if isinstance(rp, (list, tuple)) else [rp]):
+        bl, _, skey = str(b).partition("/")
+        base = labels.get(bl)
+        if base is None:
+            out.append({"x": None, "y": None, "yaw": None})
+            continue
+        fixture = not skey and p.get("zlim") is not None
+        ref = _base_reference(base, skey, fixture=fixture)
+        if ref is None:
+            bp = base["placement"]
+            if _on_object(bp.get("relative_plane", "Table")):
+                out.append({"x": None, "y": None, "yaw": None})
+                continue
+            br = _region(bp)
+            r_off = float(np.hypot(max(abs(v) for r in xr for v in r), max(abs(v) for r in yr for v in r)))
+            m = r_off + UNPINNED_BASE_MARGIN
+            out.append({"x": None if br["x"] is None else [(a - m, b_ + m) for a, b_ in br["x"]],
+                        "y": None if br["y"] is None else [(a - m, b_ + m) for a, b_ in br["y"]], "yaw": None})
+            continue
+        refs = [ref]
+        if fixture:
+            # which frame the official generator offsets a fixture from is not settled (our v12: the first support,
+            # v13: the root; BACKLOG): both
+            refs.append(_base_reference(base, skey))
+        for ref in refs:
+            r = _mapped_region(xr, yr, loc["yaw"], ref, base.get("type") == "Dynamic" and child_type != "Geometry")
+            if r not in out:
+                out.append(r)
+    return out
+
+
+def _mapped_region(xr, yr, yaw, ref: dict, rides: bool) -> dict:
+    """xlim / ylim ranges (a base's frame) -> a world region through ``ref`` (``_base_reference``); ``rides``: the
+    child rides a moving base (the base's long axis, a widened cross band, free yaw)."""
+    c, s_ = np.cos(ref["yaw"]), np.sin(ref["yaw"])
+    xs, ys = [], []
+    for x0, x1 in xr:
+        for y0, y1 in yr:
+            C = np.array([[x, y] for x in (x0, x1) for y in (y0, y1)])
+            W = C @ np.array([[c, s_], [-s_, c]]) + ref["xy"]
+            xs.append((float(W[:, 0].min()), float(W[:, 0].max())))
+            ys.append((float(W[:, 1].min()), float(W[:, 1].max())))
+    if yaw is not None and abs(ref["yaw"]) > 1e-6:
+        yaw = (yaw[0] + ref["yaw"], yaw[1] + ref["yaw"])
+    if rides:
+        ab = ref["aabb"]
+        if ab is None:
+            return {"x": None, "y": None, "yaw": None}
+        if (ab[1] - ab[0]) >= (ab[3] - ab[2]):
+            return {"x": [(ab[0], ab[1])], "yaw": None,
+                    "y": [(min(a for a, _ in ys) - MOVING_BASE_MARGIN, max(b for _, b in ys) + MOVING_BASE_MARGIN)]}
+        return {"x": [(min(a for a, _ in xs) - MOVING_BASE_MARGIN, max(b for _, b in xs) + MOVING_BASE_MARGIN)],
+                "y": [(ab[2], ab[3])], "yaw": None}
+    # one box per (x range, y range) pair would multiply regions; their union's ranges keep the slots
+    return {"x": sorted(set(xs)), "y": sorted(set(ys)), "yaw": yaw}
 
 
 def _bbox_centre_local(sm) -> np.ndarray:
@@ -1025,7 +1163,14 @@ def _placement_prior(g: dict) -> dict:
     p = g["placement"]
     fixed_xy = None
     xl, yl = p.get("xlim"), p.get("ylim")
-    if (isinstance(xl, list) and len(xl) == 2 and not isinstance(xl[0], list) and xl[0] == xl[1]
+    if _on_object(p.get("relative_plane", "Table")):
+        # offsets in a base's frame: the world point only when every label of the group maps to one point (a
+        # conveyor's five interchangeable labels used to take target0's xlim 1.88 as a world pin, 8 cm filter)
+        regs = g.get("regions") or []
+        if (len(regs) == 1 and regs[0]["x"] and regs[0]["y"] and len(regs[0]["x"]) == 1 and len(regs[0]["y"]) == 1
+                and regs[0]["x"][0][0] == regs[0]["x"][0][1] and regs[0]["y"][0][0] == regs[0]["y"][0][1]):
+            fixed_xy = (float(regs[0]["x"][0][0]), float(regs[0]["y"][0][0]))
+    elif (isinstance(xl, list) and len(xl) == 2 and not isinstance(xl[0], list) and xl[0] == xl[1]
             and isinstance(yl, list) and yl[0] == yl[1]):
         fixed_xy = (float(xl[0]), float(yl[0]))
     yaw_fixed = not p.get("rotate_rand", False)

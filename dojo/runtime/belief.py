@@ -178,7 +178,16 @@ class RuntimeProvider:
         self.track_every = 4
         self.track_window = 40
         self.track_min_speed = 3e-4             # m / step: slower is "at rest"
+        self.track_match_m = 0.08               # a read farther than this from every prediction is a new object
+        self.track_cat_cost = 0.02              # m: matching cost of a category change between reads
+        self.track_new_conf = 0.5               # a new object needs at least this B1 confidence
+        self.track_max_speed = 0.006            # m / step: the fastest rider we expect (belts: 4 mm / step)
+        self.track_outlier_m = 0.015            # a read this far off its track's line is dropped from the fit
         self._tracks: dict = {}                 # label -> [(step, xy)] reads
+        self._id_votes: dict = {}               # label -> {asset key: summed confidence}
+        self._unconfirmed: dict = {}            # label -> re-reads that did not see a never-confirmed object
+        self.track_confirm_reads = 2
+        self._n_new = 0
         self._track_last = None
         self.velocity: dict = {}                # label -> np.array([vx, vy]) m / step (fitted)
         self._fit: dict = {}                    # label -> (step of the fit's origin, xy there)
@@ -351,9 +360,14 @@ class RuntimeProvider:
         return np.median(np.array(v), axis=0) if v else np.zeros(2)
 
     def _track(self, obs: dict) -> None:
-        """Belt tracking: a B1 re-read every ``track_every`` steps; reads are matched to belief objects by category and
-        predicted position; per object a line is fitted over the last ``track_window`` steps; a moving, not-held object's
-        belief pose is the fit at the current step (no read latency: the sim waits for the read)."""
+        """Belt tracking: a B1 re-read every ``track_every`` steps. Reads are matched to the belief's movable, not-held
+        objects by predicted position (a category change costs ``track_cat_cost``: B1 can name a rider differently
+        from one read to the next); per object a line is fitted over the last ``track_window`` steps, and a moving
+        object's belief pose is the fit at the current step (no read latency: the sim waits for the read). A read that
+        matches nothing is an object that came into view (onto the belt): it joins the belief under a fresh label
+        (B1 hands its interchangeable labels out in x order, so a newcomer's label is usually taken already: the
+        2026-10-26 breadth conveyor never added one). Identity: every matched read votes for its asset (weighted by
+        confidence); the belief takes the asset with the most votes, and the latest read's orientation."""
         step = int(obs["steps_used"])
         if self._track_last is not None and step - self._track_last < self.track_every:
             self._predict(step)
@@ -367,25 +381,49 @@ class RuntimeProvider:
         est = objects_from_record(rec, self.assets, step)
         held = set(self.belief.held_labels())
         from .estimate import _assign
-        for cat in {o.category for o in est.values()}:
-            bl = [o for o in self.belief.movable() if o.category == cat and o.label not in held]
-            el = [e for e in est.values() if e.category == cat]
-            if not el:
+        el = [e for e in est.values() if e.obj_type == "Rigid" and not e.clutter]
+        bl = [o for o in self.belief.movable() if o.label not in held and o.obj_type == "Rigid"]
+        pairs = []
+        if el and bl:
+            pred = [self._predicted_xy(o, step) for o in bl]
+            C = np.array([[float(np.linalg.norm(e.pos[:2] - p_)) + (0.0 if e.category == o.category else self.track_cat_cost)
+                           for e in el] for o, p_ in zip(bl, pred)])
+            # without a velocity fit the prediction is the last reading: allow for a rider's travel since then (the
+            # first re-read comes after the scan and the looks, 15-40 steps after the frame-0 reading)
+            gate = [self.track_match_m + (0.0 if o.label in self._fit else
+                                          self.track_max_speed * max(0, step - self._last_seen(o))) for o in bl]
+            pairs = [(i, j) for i, j in _assign(C) if C[i, j] < gate[i]]
+        used = {j for _, j in pairs}
+        for i, j in pairs:
+            o, e = bl[i], el[j]
+            self._tracks.setdefault(o.label, []).append((step, e.pos[:2].copy()))
+            self._vote(o.label, e)
+        # a belief object no re-read ever confirmed is a phantom of the episode-start estimates (the scan estimate
+        # fuses frame 0 as if nothing moved, and fills a label from frame 0's reading of a rider that had moved on: a
+        # ghost of the same asset is "the next one" for a matching skill): dropped after ``track_confirm_reads``
+        matched = {bl[i].label for i, _ in pairs}
+        for o in bl:
+            if o.label in matched or o.label in self._tracks:
                 continue
-            if bl:
-                pred = [self._predicted_xy(o, step) for o in bl]
-                C = np.array([[float(np.linalg.norm(e.pos[:2] - p)) for e in el] for p in pred])
-                pairs = [(i, j) for i, j in _assign(C) if C[i, j] < 0.08]
-            else:
-                pairs = []
-            used = {j for _, j in pairs}
-            for i, j in pairs:
-                self._tracks.setdefault(bl[i].label, []).append((step, el[j].pos[:2].copy()))
-            for j, e in enumerate(el):                  # an object that came into view (e.g. onto the belt)
-                if j not in used and e.label not in self.belief.objects and e.confidence >= 0.5:
-                    self.belief.objects[e.label] = e
-                    self._tracks[e.label] = [(step, e.pos[:2].copy())]
-                    self.events.append({"kind": "track_new", "label": e.label, "step": step})
+            n = self._unconfirmed[o.label] = self._unconfirmed.get(o.label, 0) + 1
+            if n >= self.track_confirm_reads:
+                del self.belief.objects[o.label]
+                self.events.append({"kind": "track_drop", "label": o.label, "step": step, "reads": n,
+                                    "pos": [round(float(v), 3) for v in o.pos[:2]]})
+        for j, e in enumerate(el):                      # an object that came into view (e.g. onto the belt)
+            if j in used or e.confidence < self.track_new_conf:
+                continue
+            lab = e.label
+            if lab in self.belief.objects:
+                self._n_new += 1
+                lab = f"{e.category}_t{self._n_new}"
+                e = copy.deepcopy(e)
+                e.label = lab
+            self.belief.objects[lab] = e
+            self._tracks[lab] = [(step, e.pos[:2].copy())]
+            self._vote(lab, e)
+            self.events.append({"kind": "track_new", "label": lab, "asset": e.asset.key if e.asset else None,
+                                "pos": [round(float(v), 3) for v in e.pos[:2]], "step": step})
         for lab, tr in self._tracks.items():
             tr[:] = [(s_, p) for s_, p in tr if s_ >= step - self.track_window]
             if len(tr) >= 3 and tr[-1][0] - tr[0][0] >= 8:
@@ -393,16 +431,40 @@ class RuntimeProvider:
                 P = np.array([p for _, p in tr])
                 A = np.c_[t - t[-1], np.ones(len(t))]
                 coef, *_ = np.linalg.lstsq(A, P, rcond=None)
+                res = np.linalg.norm(A @ coef - P, axis=1)
+                keep = res <= max(self.track_outlier_m, 3.0 * float(np.median(res)))
+                if keep.sum() >= 3 and not keep.all():     # a read the arm half hid: refit without it
+                    coef, *_ = np.linalg.lstsq(A[keep], P[keep], rcond=None)
                 self.velocity[lab] = coef[0]
                 self._fit[lab] = (float(t[-1]), coef[1])
         self._predict(step)
         self.stats["track_reads"] = self.stats.get("track_reads", 0) + 1
 
+    def _last_seen(self, o) -> int:
+        tr = self._tracks.get(o.label)
+        return int(tr[-1][0]) if tr else int(getattr(o, "t", 0) or 0)
+
+    def _vote(self, label: str, e) -> None:
+        """One identity vote of a matched read; the belief object takes the leading asset and the read's orientation."""
+        o = self.belief.objects.get(label)
+        if o is None or e.asset is None:
+            return
+        v = self._id_votes.setdefault(label, {})
+        v[e.asset.key] = v.get(e.asset.key, 0.0) + max(float(e.confidence), 0.05)
+        best = max(v, key=v.get)
+        if o.asset is not None and best != o.asset.key and best == e.asset.key:
+            self.events.append({"kind": "track_identity", "label": label, "from": o.asset.key, "to": best,
+                                "votes": {k: round(x, 2) for k, x in v.items()}})
+            o.asset, o.category, o.idx = e.asset, e.category, e.idx
+        if o.asset is not None and o.asset.key == e.asset.key:
+            o.quat = np.asarray(e.quat, float).copy()
+
     def _predicted_xy(self, o, step: int) -> np.ndarray:
         f = self._fit.get(o.label)
         v = self.velocity.get(o.label)
         if f is None or v is None:
-            return o.pos[:2].copy()
+            tr = self._tracks.get(o.label)
+            return tr[-1][1].copy() if tr else o.pos[:2].copy()     # no fit yet: the latest reading
         return f[1] + v * (step - f[0])
 
     def _predict(self, step: int) -> None:

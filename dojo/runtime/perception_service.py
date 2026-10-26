@@ -235,15 +235,32 @@ class _Perception:
     def __init__(self):
         self._bgs: dict = {}
         self._cal = None
+        self._scene: tuple = ()                 # asset keys of the current vocabulary's scene (scene backgrounds)
         cal = os.environ.get("DOJO_COLOR_CALIB")
         if cal and Path(cal).exists():
             self._cal = json.loads(Path(cal).read_text())
 
+    def set_scene(self, vocabulary: str | None) -> None:
+        """The episode's scene, from the vocabulary of the op that carries one (every episode starts with an
+        estimate): its fixtures' asset keys pick a scene background (``segment.with_scene``: a conveyor belt
+        replaces the table). Keyed by the scene's assets, never by the vocabulary's name."""
+        if not vocabulary:
+            return
+        try:
+            from dojo.perception.inverse_layout import task_map
+            labels = task_map()[vocabulary]["labels"]
+        except Exception:  # noqa: BLE001 (an unknown vocabulary: the table backgrounds)
+            self._scene = ()
+            return
+        self._scene = tuple(sorted({k for d in labels.values() if d.get("type") in ("Dynamic", "Geometry")
+                                    for k in d.get("candidates") or []}))
+
     def bgs(self, fold: int) -> dict:
-        if fold not in self._bgs:
+        key = (int(fold), self._scene)
+        if key not in self._bgs:
             import cv2
 
-            from dojo.perception.segment import load_backgrounds
+            from dojo.perception.segment import load_backgrounds, with_scene
             d = Path(os.environ["DOJO_BG_FOLDS"]) / f"fold{int(fold)}"
             out = load_backgrounds(d)
             m = d / "cam_head_clean_unseen.png"
@@ -251,8 +268,8 @@ class _Perception:
                 out["cam_head_clean_unseen"] = (cv2.imread(str(m), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
             if "cam_head" not in out:
                 raise FileNotFoundError(f"no backgrounds in {d}")
-            self._bgs[fold] = out
-        return self._bgs[fold]
+            self._bgs[key] = with_scene(out, d, self._scene)
+        return self._bgs[key]
 
     def cfg(self, fold: int):
         from dojo.perception.inverse_layout import EstimatorConfig
@@ -661,6 +678,8 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                 t0 = time.perf_counter()
                 op = req.get("op")
                 stats["calls"] += 1
+                if req.get("vocabulary"):
+                    p.set_scene(req["vocabulary"])
                 try:
                     if op == "info":
                         conn.send({"ok": True, "info": stats})

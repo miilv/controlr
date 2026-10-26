@@ -316,3 +316,82 @@ def test_tower_shape_stacks_copies_straight_up():
     z = (t.asset.V @ T[:3, :3].T + T[:3, 3])[:, 2]
     assert abs(z.min() - il.TABLE_Z) < 1e-9 and abs(z.max() - (il.TABLE_Z + 3 * h)) < 1e-9
     assert len(t.asset.Vg) == 3 * len(V) and t.height == 3 * h
+
+
+def _conveyor_labels():
+    cands = ["Rigid/bottle/00047", "Rigid/puppet/00000"]
+    cats = [{"name": "bottle", "index": [47]}, {"name": "puppet", "index": [0]}]
+    rp = "conveyor/conveyor/0"
+    slots = [[-0.3, -0.3], [-0.14, -0.14], [0.02, 0.02], [0.2, 0.2]]
+    labels = {"target0": {"type": "Rigid", "candidates": cands, "categories": cats,
+                          "select_mode": {"nums": 1, "mode": "same_as_label", "same_label": "target1", "label": ["target0"]},
+                          "placement": {"xlim": [1.88, 1.88], "ylim": [-0.13, -0.13], "rotate_deg": 35, "rotate_rand": True,
+                                        "relative_plane": rp}}}
+    for lab in ("target1", "other0", "other1"):
+        labels[lab] = {"type": "Rigid", "candidates": cands, "categories": cats,
+                       "select_mode": {"nums": 1, "mode": "unique", "label": [lab]},
+                       "placement": {"xlim": slots, "ylim": [-0.3, -0.2], "rotate_deg": 35, "rotate_rand": True,
+                                     "relative_plane": rp}}
+    labels["conveyor"] = {"type": "Dynamic", "candidates": ["Dynamic/conveyor/00000"], "categories": [{"name": "conveyor"}],
+                          "select_mode": {"nums": 1, "mode": "unique", "label": ["conveyor"]},
+                          "placement": {"xlim": [-2.08, -2.08], "ylim": [0.175, 0.175], "zlim": [0.0, 0.0], "rotate_deg": 0,
+                                        "rotate_rand": True, "relative_plane": "Ground", "qpos": [0, 0, 0, 1]}}
+    # the public catalogue entry of the belt (info.json): its support frame and bbox
+    info = {"support": {"conveyor/0": {"center": [[-0.445, 0.003, 0.718, 0.0, 0.0, 0.0, 1.0]], "radius": [0.44]}},
+            "bbox_min": [-3.962948, -0.601345, 0.0], "bbox_max": [1e-06, 0.575493, 0.92438]}
+    return labels, info
+
+
+def test_conveyor_regions_are_mapped_through_the_belt_and_span_it(monkeypatch):
+    from dojo.perception import inverse_layout as IL
+
+    labels, info = _conveyor_labels()
+    monkeypatch.setattr(IL, "task_map", lambda: {"belt": {"labels": labels}})
+    monkeypatch.setattr(IL, "asset_info", lambda key: info if key.startswith("Dynamic/conveyor") else {})
+    groups = IL.label_groups("belt")
+    g = next(g for g in groups if "target0" in g["labels"])
+    assert set(g["labels"]) == {"target0", "target1", "other0", "other1"}
+    # frame 0 of our dev layouts: target0 rides at x 0.23-0.31, y ~0.04; the others spawn at x -1.94..-1.43
+    for x, y in ((0.245, 0.042), (0.6, 0.03), (-0.5, -0.08), (-1.935, -0.124)):
+        assert IL.region_ok(g, x, y, yaw=2.5)                       # anywhere along the belt, any yaw
+    assert not IL.region_ok(g, 0.2, -0.35) and not IL.region_ok(g, 0.2, 0.2)   # off the belt's band
+    assert not IL.region_ok(g, 2.3, 0.0)                           # past the belt's end
+    prior = IL._placement_prior(g)
+    assert prior["fixed_xy"] is None                               # target0's 1.88 is not a world pin
+    assert IL._seed_region(g, prior) is None and IL.yaw_range(g, 2 * np.pi) is None
+    conv = next(g for g in groups if "conveyor" in g["labels"])
+    assert IL._placement_prior(conv)["fixed_xy"] == (-2.08, 0.175)  # the ground fixture keeps its config pose
+
+
+def test_regions_relative_to_a_pinned_or_an_estimated_base(monkeypatch):
+    from dojo.perception import inverse_layout as IL
+
+    labels = {
+        "tile": {"type": "Rigid", "candidates": ["Rigid/mahjong/00001"], "categories": [{"name": "mahjong"}],
+                 "select_mode": {"mode": "unique", "label": ["tile"]},
+                 "placement": {"xlim": [-0.4, -0.4], "ylim": [-0.002, -0.002], "relative_plane": "Table"}},
+        "top": {"type": "Rigid", "candidates": ["Rigid/mahjong/00002"], "categories": [{"name": "mahjong"}],
+                "select_mode": {"mode": "unique", "label": ["top"]},
+                "placement": {"xlim": [0.0, 0.0], "ylim": [0.0, 0.0], "relative_plane": "tile/mahjong_0"}},
+        "basket": {"type": "Rigid", "candidates": ["Rigid/egg_basket/00000"], "categories": [{"name": "egg_basket"}],
+                   "select_mode": {"mode": "unique", "label": ["basket"]},
+                   "placement": {"xlim": [-0.4, 0.4], "ylim": [-0.2, -0.1], "rotate_rand": True, "rotate_deg": 20,
+                                 "relative_plane": "Table"}},
+        "egg": {"type": "Rigid", "candidates": ["Rigid/egg/00000"], "categories": [{"name": "egg"}],
+                "select_mode": {"mode": "unique", "label": ["egg"]},
+                "placement": {"xlim": [-0.1, 0.1], "ylim": [-0.1, 0.1], "relative_plane": "basket/egg_basket/0"}},
+        "table_obj": {"type": "Rigid", "candidates": ["Rigid/cup/00000"], "categories": [{"name": "cup"}],
+                      "select_mode": {"mode": "unique", "label": ["table_obj"]},
+                      "placement": {"xlim": [-0.3, 0.3], "ylim": [-0.2, 0.0], "rotate_rand": True, "rotate_deg": 180}},
+    }
+    monkeypatch.setattr(IL, "task_map", lambda: {"t": {"labels": labels}})
+    monkeypatch.setattr(IL, "asset_info", lambda key: {})
+    gs = {g["labels"][0]: g for g in IL.label_groups("t")}
+    # a pinned zero offset on a pinned base: the base's point (it used to be world (0, 0))
+    assert IL._placement_prior(gs["top"])["fixed_xy"] == (-0.4, -0.002)
+    assert IL.region_ok(gs["top"], -0.4, 0.0) and not IL.region_ok(gs["top"], 0.0, 0.0)
+    # an estimated base: anywhere the basket can be, widened by the offsets; yaw free
+    assert IL.region_ok(gs["egg"], 0.45, -0.25, yaw=3.0) and IL.region_ok(gs["egg"], -0.5, 0.0)
+    assert not IL.region_ok(gs["egg"], 0.0, 0.2)
+    # table placements are read exactly as before
+    assert gs["table_obj"]["regions"] == [IL._region(labels["table_obj"]["placement"])]

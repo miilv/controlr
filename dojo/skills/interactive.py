@@ -661,10 +661,11 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
 
 
 def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, lift: float = 0.125,
-                   max_wait: int = 650) -> dict:
+                   max_wait: int = 650, confirm: int = 2) -> dict:
     """Remember the first object on a moving belt (the one leading in the belt's direction), then pick the next object
     of the same identity when it comes and lift it. Everything from observation: the belt velocity from the objects'
-    motion, identities from the perceived assets."""
+    motion, identities from the perceived assets. A match that comes into view while we wait counts after ``confirm``
+    reads in a row (a match known from the start counts at once)."""
     w = sk.refresh()
     st = w.notes.setdefault("belt", {})
     labs = [l for l in objects if l in w.objects]
@@ -679,8 +680,11 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     key = w.obj(first).asset.key
     same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key]
     t0 = w.step
-    while not same:
-        # not in view yet (at eval the far end of the belt may be out of the head camera): keep looking
+    seen = confirm if same else 0
+    while not same or seen < confirm:
+        # not in view yet (at eval the far end of the belt may be out of the head camera): keep looking. A rider that
+        # came into view is read again before it counts: its first readings are at the edge of the view, and the
+        # tracker's identity is the majority of its readings (so is the first object's: re-read every time)
         if w.step - t0 > max_wait:
             return {"ok": False, "stage": "match", "note": f"no other {key} seen"}
         try:
@@ -689,7 +693,9 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
             return {"ok": False, "stage": "match", "note": str(e)}
         w = sk.refresh()
         labs = [l for l in w.objects if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter]
+        key = w.obj(first).asset.key
         same = [l for l in labs if l != first and w.obj(l).asset.key == key]
+        seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
     ign = (conveyor,) if conveyor else ()

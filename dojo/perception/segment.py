@@ -82,6 +82,29 @@ def load_backgrounds(root: Path | None = None) -> dict[str, np.ndarray]:
     return out
 
 
+SCENE_DIR = "scene"
+
+
+def scene_dir_name(key: str) -> str:
+    """``Dynamic/conveyor/00000`` -> ``Dynamic_conveyor_00000``."""
+    return str(key).replace("/", "_")
+
+
+def with_scene(bgs: dict, fold_dir, keys) -> dict:
+    """The fold's (table) backgrounds, overlaid with a scene background when one of ``keys`` (the scene's asset keys)
+    has one: ``<fold_dir>/scene/<Type_cat_idx>/`` built for a fixture that replaces the table in the head view (a
+    conveyor belt; ``dojo.perception.belt_bg``). The scene's images replace the table's camera by camera; a
+    table-only clean head background is dropped (it would show the table where the scene has its fixture)."""
+    for k in keys or ():
+        d = Path(fold_dir) / SCENE_DIR / scene_dir_name(k)
+        if (d / "cam_head.png").exists():
+            sc = load_backgrounds(d)
+            out = {k_: v for k_, v in bgs.items() if not k_.startswith("cam_head_clean")}
+            out.update(sc)
+            return out
+    return bgs
+
+
 def table_homography_bg(head_bg: np.ndarray, head_cam: Camera, cam: Camera, z: float = TABLE_Z):
     """Warp the head background onto ``cam`` through the plane z. Returns (bg, valid) where valid marks
     pixels whose ray hits the table top inside its extent."""
