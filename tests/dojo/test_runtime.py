@@ -2310,3 +2310,42 @@ def test_eval_cli_takes_mode_and_verify_from_the_preset(monkeypatch, tmp_path):
     seen.clear()
     EV.main(["--task", "stack_blocks", "--layouts", str(lay), "--out", str(tmp_path / "o")])
     assert (seen["cfg"].preset, seen["cfg"].mode, seen["cfg"].verify) == (None, "gt", "off")
+
+
+def test_provider_show_pose_plans_with_the_hold_joints_and_held_pose_passes_the_view():
+    env = _env()
+    q_hold = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6]
+
+    class SP(_HeldPosePerception):
+        def __init__(self, env):
+            super().__init__(env, lambda prior: {"ok": False, "why": "ambiguous", "T_tcp_obj": prior.tolist()})
+            self.shows, self.views = [], []
+
+        def show_pose(self, arm, key, T_tcp_obj, state, cfg=None):
+            self.shows.append((arm, key, np.asarray(T_tcp_obj).shape, list(np.round(state[f"{arm}_arm_joint_state"][:6], 3)),
+                               dict(cfg or {})))
+            return {"looks": [{"arm": "right", "joints": [0.0] * 6, "steps": 12}], "shows": []}
+
+        def held_pose(self, frame, arm, asset_key, prior_T_tcp_obj, cfg=None):
+            self.views.append(cfg.get("view"))
+            return self.answer(np.asarray(prior_T_tcp_obj, float))
+
+    seen = {}
+
+    def program(ctx):
+        seen["show"] = ctx.prov.show_pose("left", np.eye(4), "Rigid/charger/00000", {"q_hold": q_hold, "view": "show"})
+        seen["held"] = ctx.prov.held_pose("left", np.eye(4), "Rigid/charger/00000", {"view": "look"})
+        return {"ok": True}
+    pc = SP(env)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", held_pose="auto"), assets=FakeAssets(),
+                        perception_client=pc, program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    (arm, key, shape, q, cfg), = pc.shows
+    assert (arm, key, shape) == ("left", "Rigid/charger/00000", (4, 4)) and q == q_hold and cfg == {"view": "show"}
+    assert seen["show"]["looks"][0]["steps"] == 12 and pc.views == ["look"] and seen["held"]["why"] == "ambiguous"
+    ev = {e["kind"]: e for e in rep["events"] if e["kind"] in ("show_pose", "held_pose")}
+    assert ev["show_pose"]["q_hold"] and ev["show_pose"]["n"] == {"looks": 1, "shows": 0} and ev["held_pose"]["view"] == "look"
+    pol2 = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=SP(env),
+                         program=lambda ctx: {"ok": not hasattr(ctx.prov, "show_pose")})
+    assert run_episode(pol2, FakeEpisode(_env()), "perception")["result"]["ok"]            # held_pose off: no show_pose
