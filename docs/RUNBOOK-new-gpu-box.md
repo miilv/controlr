@@ -20,6 +20,27 @@ Code:
 Machine conventions: [dojo/README.md](../dojo/README.md). Background and pitfalls: journals
 [2026-10-24-dojo-simlab](journal/2026-10-24-dojo-simlab.md) and [2026-10-25-dojo-infra](journal/2026-10-25-dojo-infra.md).
 
+## 0. A clean Ubuntu box: the system layer first
+
+A freshly installed Ubuntu 22.04 / 24.04 with no NVIDIA driver needs root work before the bootstrap:
+[`scripts/provision_box.sh`](../scripts/provision_box.sh). Do this once per box.
+
+What the human does at the box: install Ubuntu, create a sudo user, enable ssh, and join the tailnet.
+
+```bash
+SUDO_PASS=... scripts/provision_box.sh --ip 100.64.0.N --user haptics boxname   # one new box: writes the ssh alias
+SUDO_PASS=... scripts/provision_box.sh box1 box2 box3                           # several (aliases exist), in parallel
+scripts/bootstrap_fleet.sh box1 box2 box3                                       # then the usual bootstrap
+```
+
+- **ssh key:** it installs this box's ssh key with one password login. The password goes over ssh stdin only; it is never printed, logged or put on a command line.
+- **driver:** it installs the HWE kernel meta plus Canonical-SIGNED prebuilt NVIDIA modules (`linux-modules-nvidia-580-open-generic-hwe-<ver>`), then `nvidia-driver-580-open`.
+  - It removes `nvidia-dkms-580-open` if apt pulled it in. A DKMS module is signed with a local key that Secure Boot rejects until someone enrols it at the console (MokManager); the signed modules load with Secure Boot on, and nobody needs to enter the BIOS.
+  - The meta packages keep kernel and modules in step on later kernel updates.
+- **tools and settings:** build tools, git-lfs, ffmpeg, `loginctl enable-linger`, and persistent inotify watches.
+- **reboot:** only if the driver isn't live yet, or a newer kernel is waiting. It then checks `nvidia-smi`. Re-runs are idempotent.
+- **driver branch:** 580, because Isaac Sim 5.1 renders on 570/580 and crashes on 595. compute4 (RTX 5090, 580.178.04, kernel 7.0.0-38) runs it with Secure Boot on.
+
 ## 1. The commands
 
 ```bash
