@@ -115,9 +115,26 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         'Does every step: "place" = put obj upright on top of support; "push" = slide obj (too wide to grasp) onto '
         "or into support without lifting it. Steps are independent (any order); grippers opened after each. Use "
         "for an instruction that lists several put-X-on-Y / push-X-into-Y goals."),
+    "strike_in_order": (
+        "strike_in_order(tool: id, instrument: id, points: [frame, ...])",
+        "Picks a striking tool (mallet, stick) by its handle and strikes the instrument's target points (frames as "
+        "listed for it in the scene) one after another with the tool's working end: a quick stroke down to touch the "
+        "surface, back up ~7 cm, next. Pass the points in the order to strike them (for 'from left to right': by "
+        "increasing x). The tool stays in the hand."),
+    "insert_each": (
+        "insert_each(objects: [id, ...], receptacle: id)",
+        "Inserts several objects of one kind one by one, leading end first and upright, into free holes of one "
+        "receptacle (a rack's holes, as listed for it in the scene), spread out; grippers opened after each. For "
+        "'insert the N things into the rack'."),
+    "screw_on": (
+        "screw_on(pairs: [[part, partner], ...])",
+        "Puts each movable threaded part (a nut) on its fixed partner (a bolt), upright on its axis, and turns it down "
+        "the thread with wrist sweeps and re-grips (clockwise from above) until it sits ~1 cm down; grippers opened "
+        "after each pair. Pair them first (e.g. by matching colour)."),
 }
-SKILL_DOCS_VERSION = 4  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 5  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
+#                        5: + strike_in_order, insert_each, screw_on (skills-5)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

@@ -26,6 +26,10 @@
   standing on its 62 mm end. Offer only the label's own config group (in build_tower, one index per label: no
   change possible). Perception now also requires iou >= 0.9 for an identity change
   (experiments/2026-10-26-what-is-there.md).
+- [ ] **Runtime: a `partial` post-place refine confirms the across offset only.** For a board wider than the wrist
+  view, refine fits the offset across the long axis and the yaw. `partial.unobserved_axis` keeps the prior's
+  position along the axis. Check that axis with the head-view render-compare or a second wrist pose at a board end;
+  do not read `ok` as a full confirmation (experiments/2026-10-26-tower-post-place.md).
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
@@ -182,6 +186,15 @@
     through `verify_choose`, keep the twin chain), no runtime change; then a G3 A/B per task.
   - Idea, not needed for plug (Skills-5: in-jaw drift 0.0-0.4 mm): an in-hand transform from the twin's nominal
     replay of an unverified grasp.
+- [ ] **dojo runtime: a second look at a weakly measured support before the next object covers it.** 5.1 stack
+  100006: block_0's post-place refine was borderline (iou 0.70). The next block hid it completely (visible 0.0 at all
+  3 place hovers), and the stack missed by 14-18 mm. Proposal: when a support's post-place iou is below 0.8, the
+  releasing arm looks again from 3 cm higher before the next carry, behind a config field (default off), then
+  measured on the proxy. It needs a motion step at release time, i.e. a skills hook; the provider cannot move arms.
+- [ ] **dojo runtime: a partial refine is not a full confirmation.** perception #52 marks a board fit that cannot see
+  along one axis as `partial.unobserved_axis`. Such an ok must not confirm or apply a correction along that axis:
+  post-place, place_confirm's second view and the recentre revert should project the correction onto the observed
+  axis only, or treat it as unconfirmed.
 - [ ] **dojo runtime: fixture-aware place refine.** Under perception cb5c3a4 the place refines on the tower's base board
   are all "not ok" (the static fixture keeps its prior), and each place still spends 8-10 steps on 2 re-hovers (~50
   steps per 8-piece tower episode, journal 2026-10-25-dojo-integ2 §5). A stationary support whose prior perception
@@ -227,7 +240,19 @@
 - [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
   25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
 - [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and **fold_clothes** (parked: no cloth state in the skills layer).
-- [ ] **dojo skills: deposit_coin.** The coin bank's `slot_opening` frames now give the target, but the coin (21 mm, 1 mm thick) starts out of the inserting arm's reach. The as-is relay lays it flat, and two grippers cannot share it in the air. It needs a relay that keeps it on its edge (back into a stand-like holder, or leaned against something).
+- [x] ~~**dojo skills: deposit_coin.** The coin starts out of the inserting arm's reach in about half the layouts.~~ Rim grasps tilted in the coin's plane reach 12/25 with one arm; the rest go through an in-air rim handover (the giver turns the coin on its side, the taker takes its top rim 8 mm off-centre). The coin is 28.4 mm x 1.9 mm (the collider; `physics.size` in its metadata says 21 x 1 mm). Two grippers can share it this way (journal/2026-10-26-dojo-skills5.md).
+- [ ] **dojo skills: a flat coin can be pinched but not inserted.** Pinched across a diameter with the fingertips 0.6 mm over the table, it lifts and turns on edge (3/3). The hand then points sideways, and the X5's 37 mm finger roots hang 28 mm below the TCP over the bank's back, so the coin stays 7 mm above the slot (table relay 0/7, `DISC_TABLE_RELAY = False`).
+- [ ] **dojo: the insert_tubes depth term is met by a tube lying on the table.** `is_A_depth_in_B` is rack bbox top - tube bbox bottom > 45 mm, and a lying tube's bottom is 50 mm below the rack's top. Not a gaming risk (the skill inserts), but any score from a "partial" episode must be read with that in mind. The rack's holes are 54 mm deep.
+- [ ] **dojo: asset metadata bboxes are not the colliders.** The test tube's metadata bbox is 42 x 140 mm, its mesh 35 x 117 mm (the checker reads a 42 mm square). The coin's checker bbox is +-20 mm against a 14.2 mm radius. A coin resting tilted inside the bank can fail the bank's 8 mm bottom bound with its box corners. The skills' collision model uses the metadata box: standing tubes are therefore registered with their mesh height map (`Collision.heightmaps`).
+- [ ] **dojo: RoboDojo Geometry objects are static colliders** (`GeometryObject._remove_rigid_body_if_exists`): a coin bank, a coin stand, a bolt, a rack, a xylophone cannot be moved or pushed. Plans that move a receptacle closer only work for Rigid ones.
+- [ ] **dojo skills: plug_in_charger in mode B is bounded by the in-hand pose** (journal/2026-10-26-dojo-skills5.md).
+  The blades are 0.8 mm in 1.0 mm slots (about +-0.1 mm), and a 3.5 mm belief error at grasp time leaves the blades on the
+  strip. A discrete probe grid would need about 0.2 mm spacing (hundreds of probes); a pressed spiral to 5 mm is about 260
+  steps, against ~170 left. Even with an exact belief (no offset) mode B goes 0/4: G3's servo works because it re-measures
+  the held object 3 mm over the strip. Needs that measurement (a held-object view at the hover, about 0.3 mm), then a
+  short spiral. The contact-probing tail (`Skills._guarded_tail`) is in place for mode B and is harmless (the place
+  completes, nothing drops).
+- [ ] **dojo skills: insert_tubes, the second tube from the same side.** After the first tube stands, the same arm often has no plan into the remaining holes of its half of the rack (no grasp-place pairs, see the journal), and the relay fails too.
 - [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
 - [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).

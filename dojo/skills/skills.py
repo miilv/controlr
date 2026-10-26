@@ -41,6 +41,11 @@ TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0
 SCREEN_IK_BUDGET = 6000       # place IKs per arm in a transfer screen (a figurine x 81 stand poses: 9k IKs, 3 min)
 UNEVEN_CARRY = 0.09           # rad/step, carries of uneven objects (tools, figurines, pens) instead of CARRY 0.14
 LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is carried on rather than redone
+GUARD_LAG = 0.004             # m: measured-vs-commanded TCP gap that stops a guarded descent (contact)
+GUARD_SEATED = 0.004          # m: a guarded descent that stops this close to its target counts as seated
+PROBE_RADII = (0.0015, 0.003, 0.0045)   # m: probe circles around a contact beside the hole (nearest first)
+PROBE_LIFT = 0.002            # m: lift above the contact height before each probe
+PROBE_IN = 0.005              # m below the contact height: the probe went into the hole
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
 
@@ -249,8 +254,10 @@ class Skills:
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
                   lift_to_z: float | None = None, approach_rad: float = FAST, descend_rad: float = SLOW,
                   open_g: float | None = None, settle: int = 2, return_all: bool = False, lift_rad: float = MEDIUM,
-                  grasps: list | None = None):
-        """``grasps``: explicit candidates (world TCP poses) instead of the method's generator."""
+                  grasps: list | None = None, squeeze: int = 0):
+        """``grasps``: explicit candidates (world TCP poses) instead of the method's generator. ``squeeze``: still
+        steps with the gripper closing before the lift (a 2 mm coin between the pads: lifted right after the close
+        it stayed in its holder, 3/3; four more steps and it came out, 3/3)."""
         w = self.world
         obj = w.obj(label)
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
@@ -284,6 +291,10 @@ class Skills:
                     # a tall object's top grasp: the default pre-grasp is out of reach (figurine, 19 cm)
                     to_pre = self.motion.to_pose(a, q0, g.pre(0.035), approach_rad, "pick_approach", gripper=go,
                                                  ignore=own)
+                    if not to_pre.ok:
+                        # at the edge of reach (a coin 0.52 m out): a 2 cm pre-grasp still plans
+                        to_pre = self.motion.to_pose(a, q0, g.pre(0.02), approach_rad, "pick_approach", gripper=go,
+                                                     ignore=own)
                 if not to_pre.ok:
                     n_coll += to_pre.status == "collision"
                     n_ik += to_pre.status == "ik_fail"
@@ -311,7 +322,7 @@ class Skills:
                 p = ArmPlan(a, np.asarray(q0, float), self.ex.g[a])
                 p.grip(go, 0, "open_for_grasp").move(to_pre, "approach").move(down, "descend").hold(settle, "settle")
                 from dojo.skills.kinematics import grip_to_gap
-                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").move(up, "lift")
+                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").hold(squeeze, "squeeze").move(up, "lift")
                 cost = p.steps + 30 * g.score
                 feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label)))
                 if len(feas) >= keep:
@@ -503,7 +514,8 @@ class Skills:
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
-                   fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None):
+                   fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
+                   sym_axis: int | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -518,7 +530,9 @@ class Skills:
         the object is let go there and drops the rest of the way (a bread slice into a toaster slot narrower than the
         open fingers).
         ``ref_top``: the receptacle's top height (world z) for ``fingers_out`` and the servo hover instead of its whole
-        bbox top (an egg carton whose open lid stands 12 cm above the plate the eggs go through)."""
+        bbox top (an egg carton whose open lid stands 12 cm above the plate the eggs go through).
+        ``sym_axis``: the object is the same turned about this axis of its own (a disc about its normal): the servo tail
+        takes the turn of the target nearest to the object's measured pose (a coin spun in a rim pinch)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -540,6 +554,8 @@ class Skills:
                        servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok),
                        probe=bool(probe), hover_clear=float(hover_clear), fingers_out=bool(fingers_out),
                        ref_top=None if ref_top is None else float(ref_top))
+        if sym_axis is not None:
+            tail_kw["sym_axis"] = int(sym_axis)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -584,15 +600,17 @@ class Skills:
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
-                    hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None) -> ArmPlan | str:
+                    hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None,
+                    sym_axis: int | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
             ref = next((l for l in ((servo_ref,) + tuple(grip_only) + tuple(ignore)) if l and l != h.label
                         and l in self.world.objects), None)
-            if ref is not None or ref_top is not None:
-                top = float(ref_top) if ref_top is not None else self.world.obj(ref).top_z
-                T_rel[2, 3] += self.tips_raise(T_rel, top + 0.003)
+            if ref_top is not None:
+                T_rel[2, 3] += self.tips_raise(T_rel, float(ref_top) + 0.003)
+            elif ref is not None:
+                T_rel[2, 3] += self.fingers_raise(T_rel, ref)       # its top, or its height map under the fingers
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
                                 ignore=ignore, grip_only=grip_only)
         if not down.ok:
@@ -624,7 +642,13 @@ class Skills:
             T_up[2, 3] += 0.02
         up = self.motion.line(arm, q_last, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
         if not up.ok:
-            return f"retreat: {up.note}"
+            # straight up instead (a hand pointing sideways over a slot: backing out along its approach left the reach)
+            T_up = T_last.copy()
+            T_up[2, 3] += 0.04
+            up2 = self.motion.line(arm, q_last, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
+            if not up2.ok:
+                return f"retreat: {up.note}"
+            up = up2
         t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
         return t
 
@@ -667,6 +691,15 @@ class Skills:
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
                     v.note = (v.note + "; " + r).strip("; ")
                     return v
+                if ((pp.tail_kw or {}).get("servo") and not self.remeasure and not other_arm
+                        and not (pp.tail_kw or {}).get("turn") and not (pp.tail_kw or {}).get("fingers_out")):
+                    # no in-hand measurement (mode B): the planned tail rests on a predicted in-hand pose (a belief 3.5 mm
+                    # off put a charger's blades beside the outlet): the contact-probing tail instead
+                    g = self._guarded_tail(pp.arm, pp.T_obj_target, h, pp.tail_kw)
+                    self.held[pp.arm] = None
+                    v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
+                    v.note = (v.note + f"; probing tail: {g}").strip("; ")
+                    return v
                 T_rel_meas = (inv_T(self.kin.tcp(pp.arm, w.arms[pp.arm].q)) @ o.T if self.remeasure
                               else h.T_tcp_obj)
                 shift = float(np.linalg.norm(T_rel_meas[:3, 3] - h.T_tcp_obj[:3, 3]))
@@ -698,6 +731,15 @@ class Skills:
                     if mv.segments:
                         tail.move(mv, "retreat")
                     note_rm += "; dropped over the target (descent blocked)"
+                if isinstance(tail, str) and (pp.tail_kw or {}).get("servo") and not other_arm:
+                    # an insertion whose final waypoints the collision model refuses (an in-hand pose predicted, not
+                    # measured, in mode B: "palm at table" at the plug's last waypoint): go down slowly, unchecked, and
+                    # stop where the arm meets resistance, then let go (the arm's own lag is the contact sensor)
+                    g = self._guarded_tail(pp.arm, pp.T_obj_target, h2, pp.tail_kw)
+                    self.held[pp.arm] = None
+                    v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
+                    v.note = (v.note + f"; descent refused ({tail[:80]}), guarded: {g}").strip("; ")
+                    return v
                 if isinstance(tail, str):
                     return SkillResult(False, "place", "collision", self.ex.steps_used, pp.arm, note=tail)
                 c2 = tail.compile()[0]
@@ -721,6 +763,115 @@ class Skills:
         r = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
         r.note = (r.note + "; " + note_rm).strip("; ")
         return r
+
+    def fingers_raise(self, T_tcp, ref: str, clear: float = 0.003, gripper: float = CLOSED) -> float:
+        """How far (m, >= 0) the TCP must rise for the fingers to be ``clear`` above receptacle ``ref``: above its top
+        (``tips_raise``), or, when ``coll.heightmaps`` has ``ref``, above its surface under each finger point (a
+        hand pointing sideways over a coin bank's slot: its finger roots hang 28 mm low, beside the bank's back)."""
+        o = self.world.obj(ref)
+        hm = self.coll.heightmaps.get(ref)
+        if hm is None:
+            return self.tips_raise(T_tcp, o.top_z + clear, gripper)
+        from dojo.skills.motion import finger_samples
+        P = finger_samples(self.kin, self.kin.flange_from_tcp(np.asarray(T_tcp, float)), gripper)
+        loc = (P - o.pos) @ o.R
+        ix = ((loc[:, 0] - hm["x0"]) / hm["cell"]).astype(int)
+        iy = ((loc[:, 1] - hm["y0"]) / hm["cell"]).astype(int)
+        inb = (ix >= 0) & (iy >= 0) & (ix < hm["Z"].shape[1]) & (iy < hm["Z"].shape[0])
+        if not inb.any():
+            return 0.0
+        Z = hm["Z"][iy[inb], ix[inb]]
+        fin = np.isfinite(Z)
+        if not fin.any():
+            return 0.0
+        zw = o.pos[2] + o.R[2, 2] * Z[fin]                       # the surface's world z (an upright receptacle)
+        return float(max(0.0, np.max(zw + clear - P[inb][fin][:, 2])))
+
+    def _lag(self, arm: str) -> float:
+        """Measured-vs-commanded TCP distance (m) of ``arm`` (proprio only; the arm pressing on something lags)."""
+        w = self.refresh()
+        return float(np.linalg.norm(self.kin.tcp(arm, w.arms[arm].q)[:3, 3] - self.kin.tcp(arm, self.ex.q[arm])[:3, 3]))
+
+    def _guarded_line(self, arm: str, T_goal, rate: float, step_m: float, lag_stop: float) -> tuple[int, float, bool]:
+        """Run a straight line to ``T_goal`` in short unchecked steps, stopping when the arm lags more than ``lag_stop``.
+        Returns (steps run, last lag, reached)."""
+        from dojo.skills.motion import Segment
+        # commanded through the arm's sag (proprio only: measured vs commanded TCP), as the servo tail does
+        T_cmd = self._sag(arm, self.refresh()) @ np.asarray(T_goal, float)
+        mv = self.motion.line(arm, self.ex.q[arm], T_cmd, rate, "guarded", gripper=CLOSED, check=False,
+                              max_step_m=step_m, max_step_deg=2.0)
+        n, lag = 0, 0.0
+        if not mv.segments:
+            return 0, 0.0, False
+        qs = np.asarray(mv.segments[-1].q)
+        for q in qs[1:]:
+            self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(
+                [Segment(np.stack([self.ex.q[arm], q]), rate, "guarded")]).hold(1)}, name="guarded")
+            n += 1
+            lag = self._lag(arm)
+            if lag > lag_stop:
+                return n, lag, False
+        return n, lag, bool(mv.ok)
+
+    def _guarded_tail(self, arm: str, T_obj, h: "Held", kw: dict, lag_stop: float = GUARD_LAG, rate: float = 0.02,
+                      step_m: float = 0.003, radii=PROBE_RADII, n_dir: int = 8, min_left: int = 25) -> str:
+        """Insertion tail without object measurement (proprio only): descend to ``T_obj`` (the held object's target) in
+        short unchecked steps and stop where the arm meets resistance (measured TCP lags its command by > ``lag_stop``).
+        Stopped more than ``GUARD_SEATED`` short of the target = on the receptacle's surface beside the hole: lift
+        ``PROBE_LIFT`` and probe around the contact point (``radii`` x ``n_dir``, nearest first), each probe a guarded
+        descent that counts as in when it gets ``PROBE_IN`` below the contact height; then down to the target, let go,
+        back off upwards. Probes only while the step budget allows (``min_left`` above the reserve). Returns a note."""
+        T_goal = np.asarray(T_obj, float) @ inv_T(h.T_tcp_obj)
+        T_goal[2, 3] += float(kw.get("release_gap", 0.0))
+        note = ""
+        try:
+            n, lag, reached = self._guarded_line(arm, T_goal, rate, step_m, lag_stop)
+            Tc = self.kin.tcp(arm, self.ex.q[arm])
+            short = float(Tc[2, 3] - T_goal[2, 3])
+            note = f"{n} steps down, {'reached' if reached else f'contact {short*1000:.1f} mm short (lag {lag*1000:.1f} mm)'}"
+            k = 0
+            if not reached and short > GUARD_SEATED:
+                z_c = float(Tc[2, 3])
+                probes = [(r * math.cos(2 * math.pi * i / n_dir), r * math.sin(2 * math.pi * i / n_dir))
+                          for r in radii for i in range(n_dir)]
+                found = False
+                for dx, dy in probes:
+                    if self.ex.steps_left - self.ex.reserve < min_left:
+                        note += ", step budget"
+                        break
+                    k += 1
+                    T_dn = T_goal.copy()                 # the target shifted by the probe offset
+                    T_dn[0, 3] += dx
+                    T_dn[1, 3] += dy
+                    T_up = T_dn.copy()
+                    T_up[2, 3] = z_c + PROBE_LIFT
+                    up = self.motion.line(arm, self.ex.q[arm], T_up, 0.03, "probe_up", gripper=CLOSED, check=False)
+                    if up.segments:
+                        self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(up).hold(1)}, name="probe up")
+                    T_in = T_dn.copy()
+                    T_in[2, 3] = max(float(T_goal[2, 3]), z_c - PROBE_IN)
+                    _, lag, ok = self._guarded_line(arm, T_in, rate, 0.002, lag_stop)
+                    if ok:
+                        found = True
+                        n2, lag, reached = self._guarded_line(arm, T_dn, rate, step_m, lag_stop)
+                        note += f", in at probe {k} ({dx*1000:+.1f}, {dy*1000:+.1f}) mm"
+                        break
+                if not found and k:
+                    note += f", {k} probes, not in"
+        except (BudgetExceeded, EpisodeEnded) as e:
+            note += f" ({type(e).__name__})"
+        Tq = self.kin.tcp(arm, self.ex.q[arm])
+        T_up = Tq.copy()
+        T_up[2, 3] += 0.04
+        up = self.motion.line(arm, self.ex.q[arm], T_up, MEDIUM, "place_retreat", gripper=OPEN, check=False)
+        p = ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).grip(float(kw.get("open_g", OPEN)), OPEN_STEPS, "release").hold(2)
+        if up.segments:
+            p.move(up, "retreat")
+        try:
+            self.ex.run({arm: p}, name="guarded release")
+        except (BudgetExceeded, EpisodeEnded):
+            pass
+        return note
 
     def tips_raise(self, T_tcp, z_min: float, gripper: float = CLOSED) -> float:
         """How far (m, >= 0) the TCP pose must rise for the lowest finger point to be at or above ``z_min``."""
@@ -751,6 +902,9 @@ class Skills:
         rec = next((l for l in ((kw.get("servo_ref"),) + tuple(kw.get("grip_only") or ())) if l in self.world.objects),
                    None)
         o = self.world.obj(label)
+        if kw.get("sym_axis") is not None:
+            # the target turned about the object's symmetry axis to the measured pose (a coin may spin in the pads)
+            T_obj = self._nearest_spin(T_obj, self.refresh().obj(label), int(kw["sym_axis"]))
         hover = 0.004
         rec_top = kw.get("ref_top")
         if rec_top is None and rec is not None:
@@ -787,13 +941,22 @@ class Skills:
             # let go with the fingertips above the receptacle: raise the target by what the measured grasp needs
             w = self.refresh()
             T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ w.obj(label).T
-            dz = self.tips_raise(T_obj @ inv_T(T_rel), float(rec_top) + 0.003)
+            if kw.get("ref_top") is None and rec is not None:
+                dz = self.fingers_raise(T_obj @ inv_T(T_rel), rec)
+            else:
+                dz = self.tips_raise(T_obj @ inv_T(T_rel), float(rec_top) + 0.003)
             T_obj = above(T_obj, dz)
             if dz > 0:
                 kw = {**kw, "probe": False}
         ob = go(T_obj, min(rate, 0.02), "servo_insert", settle=3)
         err = float(ob.pos[2] - T_obj[2, 3])
         note = f"servo: hover {hover*1000:.0f} mm, after the descent {err*1000:+.1f} mm"
+        w_ = self.refresh()
+        lag = float(np.linalg.norm(self.kin.tcp(arm, w_.arms[arm].q)[:3, 3] - self.kin.tcp(arm, self.ex.q[arm])[:3, 3]))
+        if lag > 0.02 and err > seat_tol:
+            # the arm is held off its command (it pushes on something): probing would drag the object around
+            kw = {**kw, "probe": False}
+            note += f", the arm held {lag*1000:.0f} mm off its command: no probing"
         probes = [(r * math.cos(2 * math.pi * k / n_dir), r * math.sin(2 * math.pi * k / n_dir))
                   for r in radii for k in range(n_dir)] if kw.get("probe", True) else []
         n = 0
@@ -840,6 +1003,25 @@ class Skills:
         self.ex.run({arm: p}, name=f"place {label} release")
         return note
 
+    @staticmethod
+    def _nearest_spin(T_obj, o, k: int, n: int = 72) -> np.ndarray:
+        """``T_obj`` turned about the object's axis ``k`` through its bbox centre to the turn closest to ``o``'s pose."""
+        from dojo.skills.geometry import angle_between_R, axis_angle_R
+        c = o.asset.center
+        ax = np.zeros(3)
+        ax[k] = 1.0
+        best, bd = np.asarray(T_obj, float), 1e9
+        for i in range(n):
+            Rk = axis_angle_R(ax, 2 * math.pi * i / n)
+            Tl = np.eye(4)
+            Tl[:3, :3] = Rk
+            Tl[:3, 3] = c - Rk @ c
+            T = np.asarray(T_obj, float) @ Tl
+            d = angle_between_R(T[:3, :3], o.R)
+            if d < bd:
+                best, bd = T, d
+        return best
+
     def verify_place(self, pp: PlacePlan, tol_xy=0.01, tol_tilt=6.0, tol_yaw=None, tol_z: float = 0.02) -> SkillResult:
         w = self.refresh()
         o = w.obj(pp.label)
@@ -858,7 +1040,7 @@ class Skills:
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
                       q_start: dict | None = None, max_pick_tilt: float = 50.0, box_tilts=(0.0, 25.0, -25.0),
-                      lift_to_pre: bool = False):
+                      lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
@@ -871,6 +1053,9 @@ class Skills:
         of the box grasps (40: a top grasp that still reaches 1 m high at 0.54 m from the base, 0.32 m straight
         down). ``lift_to_pre``: lift the object at least to the pre-place height (a slice carried from its rack into
         a toaster 12 cm taller: the 8 cm lift's joint move to the pre-place cut through the toaster).
+        ``screen_fingers_out``: screen each place at the pose ``place_kw["fingers_out"]`` lets go from (the TCP raised
+        until the fingertips clear the receptacle's top; a coin dropped into a slot from a grasp at its middle).
+        ``pair_ok(grasp, T_tcp_obj, T_obj, T_tcp) -> bool``: an extra test of each screened grasp-place pair.
         Returns (PickPlan, PlacePlan) or a SkillResult."""
         w = self.world
         obj = w.obj(label)
@@ -887,6 +1072,11 @@ class Skills:
                 Tk[:3, 3] = c - Tk[:3, :3] @ obj.asset.center
                 tg.append(Tk)
         ign = tuple(set(ignore) | {label})
+        fo_ref = None
+        if screen_fingers_out and place_kw.get("fingers_out"):
+            ref = next((l for l in ((place_kw.get("servo_ref"),) + tuple(place_kw.get("grip_only") or ()) + tuple(ignore))
+                        if l and l in w.objects), None)
+            fo_ref = ref
         screened, notes = [], []
         # irregular objects (tools, figurines): how well a grasp holds while the hand turns counts in the ranking
         # (twin: pliers squeezed across their diverging handles, a hammer across its head, slid out; the
@@ -931,7 +1121,11 @@ class Skills:
                 box = held_box(obj, T_tcp_obj)
                 for ti, T_obj in enumerate(tg):
                     T_tcp = T_obj @ inv_T(T_tcp_obj)
+                    if screen_fingers_out and fo_ref is not None:
+                        T_tcp[2, 3] += self.fingers_raise(T_tcp, fo_ref)
                     if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > PLACE_REACH:
+                        continue
+                    if pair_ok is not None and not pair_ok(g, T_tcp_obj, T_obj, T_tcp):
                         continue
                     n_ik += 1
                     r2 = self.kin.ik(a, T_tcp, w.home_q[a], n_random=0)

@@ -169,6 +169,8 @@ for e in json.loads((R / "index.json").read_text()):
     row = {"task": e["task"], "layout": e["layout"], "step": e["step"], "kind": c["kind"], "label": c["label"], "arm": arm,
            "old_logged": {k: c.get(k) for k in ("held", "confidence", "ok", "iou", "shift_mm", "why")},
            "physical": e.get("physical_object"), "in_jaws": e.get("physical_in_jaws")}
+    if c["kind"] == "held_look" and os.environ.get("PP_ONLY"):
+        continue
     if c["kind"] == "held_look":
         cams = cameras_from_state(sta)
         calib = {k: {"K": cm.K.tolist(), "T_world_cam": cm.T_wc.tolist()} for k, cm in cams.items()}
@@ -192,6 +194,10 @@ for e in json.loads((R / "index.json").read_text()):
         phys = e.get("physical_object") or c["label"]
         ok_truth, why_truth = well_placed(e["task"], phys, objs, keys)
         prior = prior_for(e["task"], phys, objs, keys, ok_truth)
+        shift = float(os.environ.get("PP_SHIFT_MM", "0")) / 1000
+        if shift > 0:  # robustness: the prior displaced (a wrong belief): recover the true pose or say not ok
+            ang = rng.uniform(0, 2 * math.pi)
+            prior = [prior[0] + shift * math.cos(ang), prior[1] + shift * math.sin(ang)] + list(prior[2:])
         img = cv2.cvtColor(cv2.imread(str(d / f"cam_{arm}_wrist.png")), cv2.COLOR_BGR2RGB)
         others = [(keys[l], list(objs[l])) for l in objs if l != phys and l in keys]
         r = refine(keys[phys], img, sta, prior, arm=arm, others=others)
