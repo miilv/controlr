@@ -16,6 +16,10 @@
   Candidate fix: score the prior's own position against the best fit (prefer the prior unless the fit gains
   clearly), or require the neighbour guard against all same-shape objects of the belief. This is the next tower risk
   after the scan.
+- [ ] **Runtime post-place drops z-only corrections.** `belief.post_place` adopts a refine only when its xy
+  `shift_mm` >= `post_place_min_mm` (2 mm). A refine that lowered a floating belief onto its support
+  (`z_dropped_mm`, 5.1 stack 100007 s142: 56 mm) with < 2 mm xy shift is ignored. Adopt when `z_dropped_mm` is
+  set (or use a 3-D shift) (journal/2026-10-26-held-look-stack-refine.md).
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
