@@ -1134,12 +1134,14 @@ class Skills:
         appr = getattr(pp, "approach", None)
         tail_need = max(30, int(pp.steps) - int(appr.steps if appr is not None else 0)) + HELD_LOOK_MIN_LEFT
         tried: set = set()
+        why_not = []
         for c in list(props.get("poses") or []):
             kind = "look" if c.get("name") == "hover_look" else "show"
             if kind in tried or len(tried) >= HELD_LOOK_TRIES:
                 continue
             plan = self._plan_held_look(pp.arm, h, c)
-            if plan is None:
+            if isinstance(plan, str):
+                why_not.append(f"{c.get('name')}/{(c.get('observer') or {}).get('name', '-')}: {plan}")
                 continue
             if self.ex.steps_left - self.ex.reserve < plan["steps"] + tail_need:
                 self.log(f"[held] {h.label}: no {kind} ({plan['steps']} steps; {self.ex.steps_left} left, the tail "
@@ -1152,14 +1154,16 @@ class Skills:
             good = take(kind, plan["steps"])
             self.ex.run(plan["back"], name=f"held {kind} back")
             if good:
-                return
+                break
+        if why_not:
+            self.log(f"[held] {h.label}: infeasible candidates: " + "; ".join(why_not)[:400])
 
-    def _plan_held_look(self, arm: str, h: "Held", c: dict) -> dict | None:
+    def _plan_held_look(self, arm: str, h: "Held", c: dict) -> dict | str:
         """One ``show_pose`` candidate as executable plans: the holding arm to ``c["tcp"]`` carrying the object (CARRY,
         held box, collision-checked; nothing when it is already there), the other arm's wrist to ``c["observer"]["tcp"]``
-        (FAST; only when that arm is free; its hand kept ``HELD_LOOK_HAND_CLEAR`` off the held object), both back where
+        (FAST; that arm must be free; its hand kept ``HELD_LOOK_HAND_CLEAR`` off the held object), both back where
         they were; the arms ``HELD_LOOK_CLEAR`` apart on both schedules. -> {"out", "back": {arm: ArmPlan}, "steps"} or
-        None (infeasible)."""
+        why it is infeasible (str)."""
         from dojo.skills.geometry import angle_between_R
         obs = "right" if arm == "left" else "left"
         q_h, q_o = self.ex.q[arm].copy(), self.ex.q[obs].copy()
@@ -1172,34 +1176,41 @@ class Skills:
             mv = self.motion.to_pose(arm, q_h, T_h, CARRY, "held_show", gripper=CLOSED, held=h.box, ignore=(h.label,),
                                      ease=3)
             if not mv.ok:
-                return None
+                return f"show: {mv.note[:60]}"
             bk = self.motion.joint(arm, mv.q_end, q_h, CARRY, "held_show_back", gripper=CLOSED, held=h.box,
                                    ignore=(h.label,), ease=3)
             if not bk.ok:
-                return None
+                return f"show back: {bk.note[:60]}"
             q_h_end = mv.q_end
             out[arm] = ArmPlan(arm, q_h, CLOSED).move(mv)
             back[arm] = ArmPlan(arm, q_h_end, CLOSED).move(bk)
         ob = c.get("observer")
+        why = "no observer" if not ob else ("observer busy" if self.held.get(obs) is not None else "")
         if ob and ob.get("tcp") is not None and self.held.get(obs) is None:
             g_o = float(self.ex.g[obs])
             # the held object is checked separately at its pose there (a show pose moves it away from where the world has it)
             mv = self.motion.to_pose(obs, q_o, np.asarray(ob["tcp"], float), FAST, "held_look", gripper=g_o,
                                      ignore=(h.label,))
-            if mv.ok and self._hand_clear_of_held(obs, mv.q_end, arm, q_h_end, h):
+            if not mv.ok:
+                why = f"look: {mv.note[:60]}"
+            elif not self._hand_clear_of_held(obs, mv.q_end, arm, q_h_end, h):
+                why = "look: the observer's hand at the held object"
+            else:
                 bk = self.motion.joint(obs, mv.q_end, q_o, FAST, "held_look_back", gripper=g_o, ignore=(h.label,))
                 if bk.ok:
                     out[obs] = ArmPlan(obs, q_o, g_o).move(mv)
                     back[obs] = ArmPlan(obs, mv.q_end, g_o).move(bk)
-        if obs not in out and c.get("name") == "hover_look":
-            return None                                   # a look with no observer is no look
-        if not out:
-            return None
+                else:
+                    why = f"look back: {bk.note[:60]}"
+        if obs not in out:
+            # no observer, no look: a show pose seen by the own wrist + head only is no better than the hover
+            # (perception-held: plug 7 / 24 within target vs 24 / 24 with the observer)
+            return why or "no look"
         if obs in out:
             for sched in (out, back):
                 pa = sched.get(arm) or ArmPlan(arm, q_h_end if sched is back else q_h, CLOSED).hold(1)
                 if not self.clear_of(pa, sched[obs], HELD_LOOK_CLEAR):
-                    return None
+                    return f"arms closer than {HELD_LOOK_CLEAR * 100:.0f} cm ({'out' if sched is out else 'back'})"
         steps = max(p.steps for p in out.values()) + HELD_LOOK_STILL + max(p.steps for p in back.values())
         return {"out": out, "back": back, "steps": int(steps)}
 
