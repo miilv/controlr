@@ -61,6 +61,7 @@ median / max (limit).
 | imitate_sorting_sequence | v2 (7a6e6e5, put_in_open) | 100002, 04, 10, 14 | 2/4 | 0.51 | 872-1328 | relay found no table spot (1), object turned in the hand (1) | |
 | imitate_sorting_sequence | v3 (17acd42, watch reads) | first 2 of 13 | 0/2 | 0.10 | 1578-1591 | watched to the step budget: the container read never read as stable (identical twins keyed by asset); fixed, test | |
 | imitate_sorting_sequence | **v4 (848f38e)** | **the 13 with validated demos** | **10/13** | **0.77** | **1276 / 1527** | the first object's grasp failed twice: a slip on the carry (toy car), a grasp that closed beside the object (phone), a relay collision | |
+| imitate_sorting_sequence | **v5 (29876c6 / 51b3094: a grasp that failed is not retried, 3 tries)** | **the 13 with validated demos** | **12/13** | **0.92** | **1359 / 1505** | 100017: the toy car's grasps kept failing (dropped on the carry, then 0 mm lifts) | |
 | match_and_pick_from_conveyor | v1b (369e7a0) | 100000-02 raw | 2/3 | 0.67 | 190 / 286 (700) | ice cream: no top grasp | 86 / 92 |
 | match_and_pick_from_conveyor | v4 (7ad3f4c) | all 25 raw | 20/25 | 0.80 | 199 / 362 | ice cream 3 (no grasp), a standing bottle and a 24 cm figurine (16 cm lift out of reach) | |
 
