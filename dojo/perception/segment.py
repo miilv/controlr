@@ -93,15 +93,12 @@ def scene_dir_name(key: str) -> str:
 def with_scene(bgs: dict, fold_dir, keys) -> dict:
     """The fold's (table) backgrounds, overlaid with a scene background when one of ``keys`` (the scene's asset keys)
     has one: ``<fold_dir>/scene/<Type_cat_idx>/`` built for a fixture that replaces the table in the head view (a
-    conveyor belt; ``dojo.perception.belt_bg``). The scene's images replace the table's camera by camera; a
-    table-only clean head background is dropped (it would show the table where the scene has its fixture)."""
+    conveyor belt; ``dojo.perception.belt_bg``). Every table image is dropped (it would show the table where the
+    scene has its fixture); a camera the scene has no image for falls back to the head background warped onto it."""
     for k in keys or ():
         d = Path(fold_dir) / SCENE_DIR / scene_dir_name(k)
         if (d / "cam_head.png").exists():
-            sc = load_backgrounds(d)
-            out = {k_: v for k_, v in bgs.items() if not k_.startswith("cam_head_clean")}
-            out.update(sc)
-            return out
+            return load_backgrounds(d)
     return bgs
 
 

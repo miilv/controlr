@@ -508,13 +508,9 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
     (TCP moving with the belt) through the descent and the close. Returns (arm, t_contact, per-step list from the
     start of the approach, approach steps) or None."""
     from dojo.skills import grasps as G
-    from dojo.skills.kinematics import gap_to_grip
-    w = sk.world
-    o = w.obj(label)
+    o = sk.world.obj(label)
     v3 = np.r_[v, 0.0]
-    best = None
     arms = list(arms) if arms else list(ARMS)
-    import dataclasses
     # grasps in the object's frame, once per arm (a pure translation along the belt keeps them valid)
     rel = {}
     for a in arms:
@@ -525,12 +521,62 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
             cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.75], key=lambda g: g.score)[:6] + \
                 sorted(G.rim_grasps(o, sk.kin, a), key=lambda g: float(np.linalg.norm(g.T[:2, 3] - sk.kin.base(a)[:2, 3])))[:6]
         cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.6], key=lambda g: g.score)[:12]
-        rel[a] = [(g, g.T[:3, 3] - o.pos) for g in cands]
+        rel[a] = [(g, g.T[:3, 3] - o.pos, UP) for g in cands]
+    best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
+    if best is None:
+        # wider than the hand at the top (an ice cream's 104 mm scoop on a 69 mm cone): a level grasp of its waist,
+        # approached along the hand's axis while tracking the belt
+        rel = {a: [(g, g.T[:3, 3] - o.pos, -g.T[:3, 0]) for g in waist_grasps(sk, o, a)][:12] for a in arms}
+        best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
+    return best
+
+
+UP = np.array([0.0, 0.0, 1.0])
+
+
+def waist_grasps(sk: Skills, o, arm: str, fracs=(0.3, 0.45, 0.6), pitches=(0.0, 20.0), n_heading: int = 7,
+                 spread_deg: float = 60.0) -> list:
+    """Level-ish grasps across an upright object's narrower waist, facing the arm: the pad gap from the mesh at that
+    height (``mesh_width_at``), not the bbox (whose widest section, a scoop on a cone, rules out ``side_grasps``)."""
+    import math
+
+    from dojo.skills.geometry import T_from
+    from dojo.skills.grasps import MAX_WIDTH, Grasp, _frame, mesh_width_at
+    base = sk.kin.base(arm)[:3, 3]
+    c = o.center_w
+    lo, hi = float(o.bottom_z), float(o.top_z)
+    h0 = math.atan2(c[1] - base[1], c[0] - base[0])
+    out = []
+    for frac in fracs:
+        z = lo + frac * (hi - lo)
+        for dh in np.linspace(-math.radians(spread_deg), math.radians(spread_deg), n_heading):
+            head = h0 + dh
+            for pitch in pitches:
+                pr = math.radians(pitch)
+                appr = np.array([math.cos(pr) * math.cos(head), math.cos(pr) * math.sin(head), -math.sin(pr)])
+                closing = np.array([-math.sin(head), math.cos(head), 0.0])
+                T = T_from(np.array([c[0], c[1], z]), _frame(appr, closing))
+                wd = mesh_width_at(o, T)
+                if wd is None or not (wd <= MAX_WIDTH):
+                    continue
+                out.append(Grasp("waist", T, float(wd), score=abs(dh) / math.radians(spread_deg) + pitch / 70.0
+                                 + abs(frac - 0.45), note=f"waist h {frac:.2f} head {math.degrees(head):.0f} pitch {pitch:.0f}"))
+    return sorted(out, key=lambda g: g.score)
+
+
+def _intercept_search(sk: Skills, label: str, o, v3, rel: dict, arms, t_min, t_max, n_desc, n_close, h_pre, lift,
+                      ignore, pull):
+    """``plan_intercept``'s search over contact times and arms for grasps given in the object's frame
+    ({arm: [(grasp, offset from the object, pre-grasp direction)]})."""
+    from dojo.skills.kinematics import gap_to_grip
+    import dataclasses
+    w = sk.world
+    best = None
     for t in range(t_min, t_max, 6):
         for a in arms:
             if best is not None and best[1] <= t:
                 break
-            for g0, off in rel[a]:
+            for g0, off, pre in rel[a]:
                 T = g0.T.copy()
                 T[:3, 3] = o.pos + v3 * t + off
                 g = dataclasses.replace(g0, T=T)
@@ -540,7 +586,7 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
                 samples = []
                 for k in range(n_desc + 1):
                     T = T_g.copy()
-                    T[:3, 3] += v3 * (k - n_desc) + np.array([0, 0, h_pre * (n_desc - k) / n_desc])
+                    T[:3, 3] += v3 * (k - n_desc) + pre * (h_pre * (n_desc - k) / n_desc)
                     samples.append(("open", T))
                 for k in range(1, n_close + 1):
                     T = T_g.copy()

@@ -395,3 +395,23 @@ def test_regions_relative_to_a_pinned_or_an_estimated_base(monkeypatch):
     assert not IL.region_ok(gs["egg"], 0.0, 0.2)
     # table placements are read exactly as before
     assert gs["table_obj"]["regions"] == [IL._region(labels["table_obj"]["placement"])]
+
+
+def test_scene_background_replaces_the_table_for_its_fixture(tmp_path):
+    import cv2
+
+    from dojo.perception.segment import load_backgrounds, scene_dir_name, with_scene
+
+    fold = tmp_path / "fold0"
+    fold.mkdir()
+    for c, v in (("cam_head", 10), ("cam_left_wrist", 20), ("cam_right_wrist", 30), ("cam_head_clean", 40)):
+        cv2.imwrite(str(fold / f"{c}.png"), np.full((4, 6, 3), v, np.uint8))
+    cv2.imwrite(str(fold / "cam_head_clean_unseen.png"), np.zeros((4, 6), np.uint8))
+    sc = fold / "scene" / scene_dir_name("Dynamic/conveyor/00000")
+    sc.mkdir(parents=True)
+    cv2.imwrite(str(sc / "cam_head.png"), np.full((4, 6, 3), 99, np.uint8))
+    base = load_backgrounds(fold)
+    assert with_scene(base, fold, ["Geometry/camera_stand/00000"]) is base          # no scene background: the table
+    b = with_scene(base, fold, ["Geometry/camera_stand/00000", "Dynamic/conveyor/00000"])
+    assert int(b["cam_head"][0, 0, 0]) == 99
+    assert "cam_left_wrist" not in b and "cam_head_clean" not in b                     # no table image survives
