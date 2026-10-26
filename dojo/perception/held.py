@@ -9,13 +9,15 @@ the commanded gripper and the published camera / robot config. The prior is the 
 (``Held.T_tcp_obj``: object root in the TCP frame; TCP = FK link6 @ +``TCP_OFFSET`` along flange x; x = approach,
 y = closing axis).
 
-Method (B1 machinery: ``render`` silhouettes, ``refine.local_foreground``):
+Method (B1 machinery: ``render`` silhouettes and crop cameras):
 - Views: the holding arm's own wrist camera (the object at 6-15 cm: 0.15-0.4 mm per pixel; rigid with the TCP, so
   the arm's own FK error cancels), the head camera and the other arm's wrist camera, each used when enough of the
   object's silhouette is visible (not under the robot, inside the image).
 - Robot pixels (both arms from FK; the holding arm's fingers over the range of openings the object allows) are
   unknown: they neither count as object nor as background.
-- Foreground per view: a background colour model from a ring around the expected silhouette (``local_foreground``).
+- Foreground per view: P(object | colour) from two Lab histograms learnt in the frame itself: the object inside the
+  expected silhouette (eroded by the prior's error), the background in a ring outside it; re-learnt around the fit.
+  (A one-class table model, ``refine.local_foreground``, missed a light-wood block on the wood table.)
 - Fit: soft IoU of the rendered silhouette with the foreground, summed over views, in square ROIs at up to
   ``ROI_MAX`` px (sub-pixel through supersampling), 6 DoF about the object's bbox centre, from the prior and a few
   starts in the pad plane (turn about the closing axis, slide along approach / across), then a 6-DoF polish.
@@ -48,6 +50,16 @@ SIGMA_SCALE = {"pos": 1.0, "rot": 1.0}   # calibrated on dev captures (held_eval
 OK_IOU = 0.80                      # best view's IoU for an ok fit
 OK_MAX_LEAD_SIGMA_MM = 2.0
 VIEW_W = {"own": 1.0, "head": 0.6, "observer": 1.0}
+HIST_BITS = 4                      # Lab histogram: 16 levels per channel
+PRIOR_ERR_M = 0.004                # expected prior error: the object model is learnt this far inside the prior's outline
+RING_M = 0.006                     # background ring width beyond that
+FINGER_BAND_M = 0.0025             # the holding fingers are masked over openings for widths +- this
+EDGE_CAP_PX = 8.0                  # outline-to-edge distance cap (ROI px)
+W_EDGE = 0.5                       # weight of the outline term against 1 - IoU
+W_PRIOR = 0.01                     # cost units per sigma^2 of the gripper / off-pad priors
+OFFPAD_ROT_SIGMA = math.radians(1.5)
+OFFPAD_Y_SIGMA_M = 0.0008
+OBJ_MODEL_ERODE = 0.35             # the first object colour model: the prior's silhouette eroded by this x prior error
 
 
 # ----------------------------------------------------------------------------------------------- geometry helpers
@@ -118,19 +130,60 @@ def pad_zone(V_tcp: np.ndarray, tip_x: float, half_h: float = 0.012) -> np.ndarr
 
 # ----------------------------------------------------------------------------------------------- views
 class View:
-    """One camera restricted to a square ROI around the object (resampled to ``size``)."""
+    """One camera restricted to a square ROI around the object (resampled to ``size``), with a two-class colour model
+    (object vs background, Lab histograms) learnt from the frame around a silhouette (``fit_models``)."""
 
-    def __init__(self, name, role, cam: Camera, img, fg, known, crop, size):
+    def __init__(self, name, role, cam: Camera, img, known, crop, size):
         self.name, self.role, self.cam_full = name, role, cam
         x0, y0, x1, y1 = crop
         self.crop = crop
         self.size = size
         self.cam = crop_camera(cam, x0, y0, x1, y1, size)
         interp = cv2.INTER_AREA if (x1 - x0) > size else cv2.INTER_LINEAR
-        self.fg = cv2.resize(_crop(fg.astype(np.float32), crop), (size, size), interpolation=interp)
         self.known = cv2.resize(_crop(known.astype(np.float32), crop), (size, size), interpolation=interp)
+        self.known = (self.known > 0.5).astype(np.float32)
+        self.rgb = cv2.resize(_crop(img, crop), (size, size), interpolation=interp)
+        lab = cv2.cvtColor(self.rgb, cv2.COLOR_RGB2LAB)
+        q = (lab.astype(np.int32) >> (8 - HIST_BITS))
+        self.bins = (q[..., 0] << (2 * HIST_BITS)) | (q[..., 1] << HIST_BITS) | q[..., 2]
         self.px_scale = (x1 - x0) / size     # native px per ROI px
         self.img = img
+        self.fg = np.zeros((size, size), np.float32)
+        self.model_px = (0, 0)
+        # image edges (Canny on L, a*, b*: a white part on light wood differs in b*, not in grey level), robot edges
+        # removed; distance to the nearest edge, truncated (the outline term)
+        from .refine import image_edges
+        E = image_edges(self.rgb)
+        kn = cv2.erode((self.known > 0.5).astype(np.uint8), np.ones((5, 5), np.uint8))
+        E[kn == 0] = 0
+        self.edge_D = np.minimum(cv2.distanceTransform((E == 0).astype(np.uint8), cv2.DIST_L2, 3),
+                                 EDGE_CAP_PX).astype(np.float32)
+        self.outline_ok = kn.astype(bool)
+        self.outline_ok[:3, :] = self.outline_ok[-3:, :] = False
+        self.outline_ok[:, :3] = self.outline_ok[:, -3:] = False
+
+    def fit_models(self, S: np.ndarray, e_in: float, band: float) -> bool:
+        """Object model from the silhouette ``S`` (ROI px) eroded by ``e_in`` px, background model from the ring
+        ``e_in`` .. ``e_in + band`` px outside it (robot / out-of-image pixels excluded); ``fg`` = P(object | colour)."""
+        Sb = (S > 0.5).astype(np.uint8)
+        din = cv2.distanceTransform(Sb, cv2.DIST_L2, 3)
+        dout = cv2.distanceTransform(1 - Sb, cv2.DIST_L2, 3)
+        k = self.known > 0.5
+        e = float(e_in)
+        if din.max() > 0 and ((din > e) & k).sum() < 0.25 * max(1, (Sb.astype(bool) & k).sum()):
+            e = 0.5 * float(din.max())                 # a thin object: keep its core
+        fgm = (din > e) & k
+        bgm = (dout > e) & (dout <= e + band) & k
+        nf, nb = int(fgm.sum()), int(bgm.sum())
+        self.model_px = (nf, nb)
+        if nf < 30 or nb < 30:
+            return False
+        nbins = 1 << (3 * HIST_BITS)
+        hf = np.bincount(self.bins[fgm], minlength=nbins).astype(np.float64) / nf
+        hb = np.bincount(self.bins[bgm], minlength=nbins).astype(np.float64) / nb
+        p = (hf + 1e-4) / (hf + hb + 2e-4)
+        self.fg = p[self.bins].astype(np.float32)
+        return True
 
 
 def _crop(a: np.ndarray, crop) -> np.ndarray:
@@ -208,8 +261,6 @@ def _roi_for(cam: Camera, P_world: np.ndarray, margin_m: float):
 
 def _views(images, state, arm, sil: Silhouettes, T_tcp, T_prior, cams, o_lo, o_hi, other_g, max_shift_m,
            others=None, exclude_cams=()):
-    from .refine import local_foreground
-
     a = sil.a
     T_w = T_tcp @ T_prior
     Vw = transform(a.Vs, T_w)
@@ -233,25 +284,18 @@ def _views(images, state, arm, sil: Silhouettes, T_tcp, T_prior, cams, o_lo, o_h
         if vis < MIN_VIS_FRAC or n * vis < MIN_VIS_PX * (0.15 if role == "head" else 1.0):
             diag[name] = {"used": False, "why": "occluded", "visible_frac": round(vis, 3), "px": n}
             continue
-        excl = None
+        known = (1 - rob).astype(np.uint8)
         if others:
-            excl = np.zeros_like(S)
             for k2, p2 in others:
                 a2 = load_asset(k2)
-                excl |= silhouette(cam, transform(a2.Vs, pose_to_T(p2[:3], p2[3:])), a2.Fs)
-        # the colour model's ring sits outside the expected silhouette grown by the search range
-        grow_px = int(max_shift_m * cam.K[0, 0] / max(float(np.median(cam.project(bbw)[1])), 1e-3))
-        Sg = cv2.dilate(S, np.ones((2 * grow_px + 1, 2 * grow_px + 1), np.uint8)) if grow_px > 0 else S
-        fg, known = local_foreground(images[name], cam, Sg, rob, grow=0.5, exclude=excl)
-        known = known & (1 - rob)
-        roi = _roi_for(cam, bbw, max_shift_m)
+                known &= 1 - silhouette(cam, transform(a2.Vs, pose_to_T(p2[:3], p2[3:])), a2.Fs)
+        roi = _roi_for(cam, bbw, max_shift_m + 0.01)
         if roi is None:
             diag[name] = {"used": False, "why": "roi"}
             continue
         side = roi[2] - roi[0]
         size = int(np.clip(side * 3, 96, ROI_MAX))
-        size = min(size, ROI_MAX)
-        v = View(name, role, cam, images[name], fg, known, roi, size)
+        v = View(name, role, cam, images[name], known, roi, size)
         out.append(v)
         diag[name] = {"used": True, "role": role, "visible_frac": round(vis, 3), "px": n, "roi_px": side,
                       "roi_size": size}
@@ -263,6 +307,19 @@ def _iou(s: np.ndarray, v: View) -> float:
     inter = float((s * v.fg * k).sum())
     union = float(((s + v.fg - s * v.fg) * k).sum())
     return inter / union if union > 0 else 0.0
+
+
+_K3 = np.ones((3, 3), np.uint8)
+
+
+def _edge_cost(s: np.ndarray, v: View) -> float | None:
+    """Mean truncated distance (in units of the cap) from the silhouette's visible outline to image edges."""
+    sb = (s > 0.5).astype(np.uint8)
+    O = (sb > 0) & (cv2.erode(sb, _K3) == 0) & v.outline_ok
+    n = int(O.sum())
+    if n < 20:
+        return None
+    return float(v.edge_D[O].mean()) / EDGE_CAP_PX
 
 
 # ----------------------------------------------------------------------------------------------- the estimator
@@ -281,14 +338,14 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
     sil = Silhouettes(asset_key)
     a = sil.a
     cams = cameras_from_state({k: v for k, v in state.items()}, model)
-    # the object between the pads: its width there sets the finger opening; unknown band over +-3 mm
+    # the object between the pads: its width there sets the finger opening; the fingers over +-FINGER_BAND_M are unknown
     Vt = transform(a.V, T_prior)
     tbl = finger_table()
     tip_x = float(np.interp(0.5, tbl[:, 0], tbl[:, 2]))
     zone = pad_zone(Vt, tip_x)
     width = float(np.ptp(Vt[zone, 1])) if zone.sum() >= 3 else float(np.ptp(Vt[:, 1]))
     o_est = opening_for_width(width)
-    o_lo, o_hi = opening_for_width(max(0.0, width - 0.006)), opening_for_width(width + 0.006)
+    o_lo, o_hi = opening_for_width(max(0.0, width - FINGER_BAND_M)), opening_for_width(width + FINGER_BAND_M)
     other_g = state.get(f"{'right' if arm == 'left' else 'left'}_ee_joint_state")
     other_g = None if other_g is None else float(other_g[0])
     views, diag = _views(images, state, arm, sil, T_tcp, T_prior, cams, o_lo, o_hi, other_g, max_shift,
@@ -314,13 +371,18 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
             s = sil.render(v.cam, Tw)
             iou = _iou(s, v)
             ious[v.name] = iou
-            tot += w * (1.0 - iou)
+            ec = _edge_cost(s, v) if W_EDGE > 0 else None
+            tot += w * ((1.0 - iou) + (W_EDGE * ec if ec is not None else W_EDGE * 0.5))
         tot /= float(w_views.sum())
         pen = 0.0
         if Vp is not None:
             P = transform(Vp, T)
             mid = 0.5 * (P[:, 1].max() + P[:, 1].min())
-            pen = 0.5 * (mid / CENTRE_SIGMA_M) ** 2 * 0.002
+            pen = 0.5 * (mid / CENTRE_SIGMA_M) ** 2 * W_PRIOR
+        # the pads hold flat faces / a cylinder's sides parallel to them: turns about x / z (and the slide along y)
+        # stay near the prior's; a weak Gaussian prior (MAP), the free in-pad DoF (x, z, turn about y) have none
+        pen += 0.5 * W_PRIOR * ((d[0] / OFFPAD_ROT_SIGMA) ** 2 + (d[2] / OFFPAD_ROT_SIGMA) ** 2
+                                + (d[4] / OFFPAD_Y_SIGMA_M) ** 2)
         # beyond the search range: a wall
         sh = float(np.linalg.norm(d[3:6]))
         tr = float(np.linalg.norm(d[:3]))
@@ -342,22 +404,52 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
                      options={"initial_simplex": np.array(simplex), "maxiter": iters, "xatol": 1e-5, "fatol": 1e-5})
         return r.x, float(r.fun)
 
-    # 1) pad-plane starts: turn about the closing axis (TCP y), slide along approach (x) / across (z)
+    def models(x, e_m, band_m):
+        Tw = T_tcp @ apply_delta(T_prior, c_tcp, x)
+        n_ok = 0
+        for v in views:
+            depth = float(np.median(v.cam.project(transform(a.Vs[::max(1, len(a.Vs) // 200)], Tw))[1]))
+            px_m = v.cam.K[0, 0] / max(depth, 1e-3)               # ROI px per metre at the object
+            n_ok += v.fit_models(sil.render(v.cam, Tw), e_m * px_m, max(6.0, band_m * px_m))
+        return n_ok
+
+    # 1) colour models around the prior; pad-plane starts: turn about the closing axis (TCP y), slide along approach
+    #    (x) / across (z); Nelder-Mead in 6 DoF from the best three
+    if models(np.zeros(6), OBJ_MODEL_ERODE * float(cfg.get("prior_err_mm", PRIOR_ERR_M * 1000)) / 1000, RING_M) == 0:
+        return _fail(T_prior, T_tcp, "no_views", base, t0, lead_obj, axis_obj)
     starts = [np.zeros(6)]
-    for ry in (-6, 6):
+    for ry in (-4, 4):
         starts.append(np.array([0, ry * deg, 0, 0, 0, 0], float))
-    for dx, dz in ((3, 0), (-3, 0), (0, 3), (0, -3)):
+    for dx, dz in ((2.5, 0), (-2.5, 0), (0, 2.5), (0, -2.5)):
         starts.append(np.array([0, 0, 0, dx * mm, 0, dz * mm], float))
-    scored = sorted(((cost(s), s) for s in starts), key=lambda t: t[0])
+    scored = sorted(((cost(s), i, s) for i, s in enumerate(starts)), key=lambda t: t[:2])
     best = None
-    for f0, s in scored[:3]:
-        x, f = nm(s, [3 * deg, 3 * deg, 3 * deg, 2 * mm, 1 * mm, 2 * mm], 400)
+    free = (1, 3, 5)                                    # the in-pad DoF: turn about y, slide along x / z
+
+    def cost3(p):
+        d = np.zeros(6)
+        d[list(free)] = p
+        return cost(d)
+    for f0, _, s in scored[:3]:
+        r3 = minimize(cost3, s[list(free)], method="Nelder-Mead",
+                      options={"initial_simplex": np.array([s[list(free)]] + [s[list(free)] + e for e in
+                                                            np.diag([3 * deg, 2 * mm, 2 * mm])]),
+                               "maxiter": 200, "xatol": 1e-5, "fatol": 1e-5})
+        x0 = np.zeros(6)
+        x0[list(free)] = r3.x
+        x, f = nm(x0, [1.5 * deg, 1.5 * deg, 1.5 * deg, 1 * mm, 0.5 * mm, 1 * mm], 400)
         if best is None or f < best[1]:
             best = (x, f)
-    # 2) polish with small steps
-    x, f = nm(best[0], [0.5 * deg, 0.5 * deg, 0.5 * deg, 0.3 * mm, 0.3 * mm, 0.3 * mm], 400)
-    if f > best[1]:
-        x, f = best
+    # 2) colour models re-learnt around the fit (now within a few px), then a 6-DoF polish with small steps
+    models(best[0], 0.0008, RING_M)
+    f_b = cost(best[0])
+    x, f = nm(best[0], [1.0 * deg, 1.0 * deg, 1.0 * deg, 0.6 * mm, 0.4 * mm, 0.6 * mm], 500)
+    if f > f_b:
+        x, f = best[0], f_b
+    models(x, 0.0005, RING_M)
+    x2, f2 = nm(x, [0.4 * deg, 0.4 * deg, 0.4 * deg, 0.2 * mm, 0.2 * mm, 0.2 * mm], 300)
+    if f2 <= cost(x):
+        x = x2
     f, ious = cost(x, detail=True)
     T_est = apply_delta(T_prior, c_tcp, x)
     sig = _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f)
@@ -372,6 +464,8 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
         why = "ambiguous"
     out["ok"] = why == ""
     out["why"] = why
+    if cfg.get("debug"):
+        out["_debug"] = {"views": views, "sil": sil, "T_tcp": T_tcp}
     if not out["ok"]:
         out["fit_T_tcp_obj"] = out["T_tcp_obj"]
         out["T_tcp_obj"] = T_prior.tolist()

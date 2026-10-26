@@ -191,3 +191,59 @@ def plan_costs(sk, arm: str, obj_label: str, T_tcp_obj, bmin, bmax, max_looks: i
                         "looks": look_plans(s["object_centre"], qe, s["name"])})
         out["shows"].append(row)
     return out
+
+
+def _ik_steps(kin, arm: str, q0, T_tcp, step_rad: float, ease: int):
+    """IK (the skills' solver, nearest to ``q0``) and the env steps of a straight joint move there (no collision
+    check: the caller plans the real move)."""
+    from dojo.skills.motion import segment_targets
+
+    r = kin.ik(arm, np.asarray(T_tcp, float), np.asarray(q0, float))
+    if not r.ok:
+        return None, None
+    return r.q, len(segment_targets(np.stack([np.asarray(q0, float), r.q]), step_rad, ease))
+
+
+def propose(arm: str, bbox_min, bbox_max, T_tcp_obj, state: dict, kin=None) -> dict:
+    """The service's ``show_pose``: candidates for (a) an observer look at the object where it is now (the holding arm
+    stays: ``hover_look``) and (b) the canonical show poses (``front``, ``front_yaw90``) with the observer looking.
+    Every entry carries IK hints and a straight-move step estimate (holding arm at CARRY speed, observer at FAST); the
+    skills plan the actual moves with their own collision model. Ordered: hover looks first (cheapest), then shows."""
+    from dojo.skills.kinematics import X5Kin
+    from dojo.skills.motion import CARRY, FAST, segment_targets
+
+    kin = kin or X5Kin()
+    obs = other(arm)
+    q_h = np.asarray(state[f"{arm}_arm_joint_state"], float).reshape(-1)[:6]
+    q_o = np.asarray(state[f"{obs}_arm_joint_state"], float).reshape(-1)[:6]
+    T_tcp = kin.tcp(arm, q_h)
+    ext = float(np.max(np.asarray(bbox_max, float) - np.asarray(bbox_min, float)))
+
+    def look(target, q_hold):
+        for c in observer_looks(target, obs, ext):
+            q, n = _ik_steps(kin, obs, q_o, c["T_tcp"], FAST, 2)
+            if q is None:
+                continue
+            clr = arm_clearance(kin, *((q_hold, q) if arm == "left" else (q, q_hold)))
+            if clr < MIN_ARM_CLEARANCE:
+                continue
+            return {"arm": obs, "name": c["name"], "tcp": c["T_tcp"].tolist(), "q": q.tolist(), "eye": c["eye"].tolist(),
+                    "look_at": c["look_at"].tolist(), "dist": c["dist"], "est_steps": int(n), "clearance_m": round(clr, 3)}
+        return None
+
+    out = []
+    c_now = object_centre_world(T_tcp, T_tcp_obj, bbox_min, bbox_max)
+    lk = look(c_now, q_h)
+    if lk is not None:
+        out.append({"name": "hover_look", "arm": arm, "tcp": T_tcp.tolist(), "q": q_h.tolist(), "est_steps_out": 0,
+                    "est_steps_back": 0, "observer": lk, "est_steps": lk["est_steps"]})
+    for s in show_poses(arm, T_tcp, T_tcp_obj, bbox_min, bbox_max):
+        q, n = _ik_steps(kin, arm, q_h, s["T_tcp"], CARRY, 3)
+        if q is None:
+            continue
+        lk = look(s["object_centre"], q)
+        back = len(segment_targets(np.stack([q, q_h]), CARRY, 3))
+        out.append({"name": s["name"], "arm": arm, "tcp": s["T_tcp"].tolist(), "q": q.tolist(), "est_steps_out": int(n),
+                    "est_steps_back": int(back), "observer": lk,
+                    "est_steps": int(max(n, lk["est_steps"] if lk else 0) + back)})
+    return {"poses": out, "object_centre": c_now.tolist()}

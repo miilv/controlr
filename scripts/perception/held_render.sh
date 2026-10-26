@@ -15,20 +15,28 @@ mkdir -p "$HOME/dojo-data/perc_held"
 exec 7>>"$HOME/dojo-data/perc_held/.render.lock"
 flock -n 7 || { echo "[held_render] another render of ours is running" >&2; exit 75; }
 LOCKS=("$HOME/dojo-gpu-light.lock" "$HOME/dojo-gpu-light2.lock" "$HOME/dojo-gpu-light3.lock" "$HOME/dojo-gpu-light4.lock")
-t0=$(date +%s); got=()
-while :; do
-  if [[ "$(avail_gb)" -ge 24 && "$(vram_free_mb)" -ge 10000 ]]; then
-    got=()
-    for L in "${LOCKS[@]}"; do
-      exec {fd}>>"$L"
-      if flock -n "$fd"; then got+=("$fd:$L"); else exec {fd}>&-; fi
-      [[ ${#got[@]} -ge 2 ]] && break
-    done
+t0=$(date +%s); got=(); held_paths=" "
+# take free light lanes one by one as they free up (two at the same instant almost never happens while other streams
+# run chains), then wait for memory / VRAM while holding them
+while [[ ${#got[@]} -lt 2 ]]; do
+  for L in "${LOCKS[@]}"; do
+    [[ "$held_paths" == *" $L "* ]] && continue
+    exec {fd}>>"$L"
+    if flock -n "$fd"; then
+      got+=("$fd:$L"); held_paths+="$L "
+      printf 'pid=%s stream=perc_held start=%s cmd=isaac6 render (waiting for a 2nd light slot)\n' "$$" "$(date -u +%FT%TZ)" > "$L"
+    else
+      eval "exec ${fd}>&-"
+    fi
     [[ ${#got[@]} -ge 2 ]] && break
-    for g in "${got[@]}"; do fd="${g%%:*}"; eval "exec ${fd}>&-"; done
-  fi
-  (( $(date +%s) - t0 > ${HELD_RENDER_WAIT_S:-14400} )) && { echo "[held_render] gave up waiting" >&2; exit 75; }
-  sleep 30
+  done
+  [[ ${#got[@]} -ge 2 ]] && break
+  (( $(date +%s) - t0 > ${HELD_RENDER_WAIT_S:-14400} )) && { echo "[held_render] gave up waiting for lanes" >&2; exit 75; }
+  sleep 15
+done
+until [[ "$(avail_gb)" -ge 24 && "$(vram_free_mb)" -ge 10000 ]]; do
+  (( $(date +%s) - t0 > ${HELD_RENDER_WAIT_S:-14400} )) && { echo "[held_render] gave up waiting for memory" >&2; exit 75; }
+  sleep 15
 done
 for g in "${got[@]}"; do
   printf 'pid=%s stream=perc_held start=%s cmd=isaac6 render_d0_proxy %s (2 light slots)\n' "$$" "$(date -u +%FT%TZ)" "$*" > "${g#*:}"

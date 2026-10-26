@@ -44,6 +44,15 @@ Ops (request dicts):
                                                                                    -> {"watch_read": json}
         perception's ``dojo.perception.watch.watch_read`` (cells of a board / contents of a container, what the scene's
         own actors put there; Skills-6's provider read (b))
+    {"op": "held_pose", "frame": frame, "arm": str, "key": str, "prior_T_tcp_obj": 4x4, "cfg": dict|None}
+                                                                                   -> {"held_pose": json}
+        perception's in-hand pose of the object ``arm`` holds (``dojo.perception.held.held_pose``): render-and-compare in
+        the own wrist, head and other wrist cameras, gripper-constrained; {ok, why, T_tcp_obj, sigma, lead_tcp, axis_tcp,
+        views, iou, ...}; T_tcp_obj is in the skills' TCP frame (Held.T_tcp_obj)
+    {"op": "show_pose", "arm": str, "key": str, "T_tcp_obj": 4x4, "state": {k: list}, "cfg": dict|None}
+                                                                                   -> {"show_pose": json}
+        where to look at it (``dojo.perception.show_pose.propose``): an observer look at the hover, canonical show poses
+        of the holding arm (+ observer look), IK hints and step estimates; generic (mesh bbox + cameras)
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -187,6 +196,20 @@ class PerceptionClient:
     def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
         return json.loads(self._call({"op": "held_look", "frame": encode_frame(frame), "arm": arm,
                                       "mode": mode})["held_look"])
+
+    def held_pose(self, frame: dict, arm: str, key: str, prior_T_tcp_obj, cfg: dict | None = None) -> dict:
+        """In-hand pose of what ``arm`` holds (perception's ``held.held_pose``). ``prior_T_tcp_obj`` = the skills'
+        ``Held.T_tcp_obj``; adopt the returned ``T_tcp_obj`` only when ``ok`` (and its sigma suits the skill)."""
+        return json.loads(self._call({"op": "held_pose", "frame": encode_frame(frame), "arm": arm, "key": key,
+                                      "prior_T_tcp_obj": np.asarray(prior_T_tcp_obj, float).tolist(),
+                                      "cfg": json.loads(json.dumps(cfg or {}, default=_default))})["held_pose"])
+
+    def show_pose(self, arm: str, key: str, T_tcp_obj, state: dict, cfg: dict | None = None) -> dict:
+        """Observer look / show-pose candidates for the object ``arm`` holds (perception's ``show_pose.propose``)."""
+        return json.loads(self._call({"op": "show_pose", "arm": arm, "key": key,
+                                      "T_tcp_obj": np.asarray(T_tcp_obj, float).tolist(),
+                                      "state": {k: np.asarray(v, float).reshape(-1).tolist() for k, v in state.items()},
+                                      "cfg": cfg or {}})["show_pose"])
 
     def needs_agent(self, record: dict) -> tuple[bool, str]:
         r = self._call({"op": "needs_agent", "record": json.dumps(record, default=_default)})
@@ -347,6 +370,22 @@ class _Perception:
         s, f0 = decode_frame(frame), decode_frame(frame0)
         return estimate_with_scan({"images": s["images"], "state": s["state"]}, {"images": f0["images"], "state": f0["state"]},
                                   vocabulary, s["instruction"], bgs=self.bgs(fold), cfg=self.cfg(fold), rec0=rec0)
+
+    def held_pose(self, frame: dict, arm: str, key: str, prior_T_tcp_obj, cfg: dict | None = None) -> dict:
+        from dojo.perception.held import held_pose
+        fr = decode_frame(frame)
+        r = held_pose({"images": fr["images"], "state": fr["state"]}, arm, key, np.asarray(prior_T_tcp_obj, float),
+                      cfg or {})
+        r.pop("_debug", None)
+        return r
+
+    @staticmethod
+    def show_pose(arm: str, key: str, T_tcp_obj, state: dict, cfg: dict | None = None) -> dict:
+        from dojo.perception.render import load_asset
+        from dojo.perception.show_pose import propose
+        info = load_asset(key).info
+        return propose(arm, info["bbox_min"], info["bbox_max"], np.asarray(T_tcp_obj, float),
+                       {k: np.asarray(v, float) for k, v in state.items()})
 
     def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
         """perception's held_look (``agentic.j1.held_look_impl``: B1 = the strict-tier fingertip-region read, then
@@ -667,6 +706,12 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "held_look":
                         h = p.held_look(req["frame"], req["arm"], req.get("mode") or "b1_then_agent")
                         conn.send({"ok": True, "held_look": json.dumps(h, default=_default)})
+                    elif op == "held_pose":
+                        r = p.held_pose(req["frame"], req["arm"], req["key"], req["prior_T_tcp_obj"], req.get("cfg"))
+                        conn.send({"ok": True, "held_pose": json.dumps(r, default=_default)})
+                    elif op == "show_pose":
+                        r = p.show_pose(req["arm"], req["key"], req["T_tcp_obj"], req["state"], req.get("cfg"))
+                        conn.send({"ok": True, "show_pose": json.dumps(r, default=_default)})
                     elif op == "needs_agent":
                         from dojo.perception.agentic.record import needs_agent
                         needs, why = needs_agent(json.loads(req["record"]))
