@@ -1426,6 +1426,20 @@ def in_tip_down(sk: Skills, label: str, container: str, depth: float = 0.035, ra
     return bool(np.hypot(d[0], d[1]) < radius and low < c.top_z - depth and tilt < max_tilt)
 
 
+def _clear_of(sk: Skills, label: str, container: str, margin: float = 0.01) -> bool:
+    """Is ``label`` lying on the table away from ``container`` (its footprint clear of the container's by ``margin``,
+    its lowest point within 3 cm of the table): free to be picked again without touching what is in the container."""
+    w = sk.world
+    o, c = w.obj(label), w.obj(container)
+    P = o.world_bbox_corners()
+    if float(P[:, 2].min()) > TABLE_Z + 0.03:
+        return False
+    mn, mx = c.aabb()
+    q = P[:, :2]
+    inside = (q[:, 0] > mn[0] - margin) & (q[:, 0] < mx[0] + margin) & (q[:, 1] > mn[1] - margin) & (q[:, 1] < mx[1] + margin)
+    return not bool(inside.any())
+
+
 def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str]):
     """Where ``label`` is let go over ``container``'s opening: leading end down, its footprint against the wall with
     >= 3 mm clearance (``fit_insertion(pack=True)``: the first ones stand along the wall and leave the middle to the
@@ -1571,7 +1585,7 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
                                      "hover_clear": 0.01, "grip_only": (container, *st["inside"])},
                            transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min)}, air_handover=False)
         try:
-            sk.ex.hold(4)                       # it falls the rest of the way
+            sk.ex.hold(8)                       # it falls the rest of the way and settles
         except (BudgetExceeded, EpisodeEnded):
             pass
         sk.refresh()
@@ -1582,6 +1596,8 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
             sk.log(f"[fill] {lab} not inside ({r.status}: {r.note[:120]})")
             if r.status in ("ik_fail", "collision") and not r.steps:
                 failed.append(lab)            # nothing plans for it: the next one
+            elif not _clear_of(sk, lab, container):
+                failed.append(lab)            # caught in or on the holder: picking it again could pull others out
         if any(sk.held[a] is not None for a in ARMS):
             for a in ARMS:
                 if sk.held[a] is not None:
