@@ -2179,7 +2179,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         o = sk.world.obj(lab)
         hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
         note = "no handle frame threads the hook"
-        for Th in hs[:2]:
+        for Th, high in [(Th, high) for high in (False, True) for Th in hs[:2]]:
             dz = handle_hole(o, Th)
             if tip is not None and not threads_along_x(o, Th, dz):
                 continue
@@ -2193,11 +2193,15 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                 T_pre[2, 3] += 0.03
             else:
                 T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
+            # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
+            # lamp), and its via path over the top hook was out of reach
             r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=(lambda a, o=o: G_hang(sk, o, a)), max_full=8,
-                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY}, q_start=q_start)
+                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY}, q_start=q_start,
+                                 lift_to_pre=high)
             if not isinstance(r, SkillResult):
                 return (lab, hi, H, T_obj, T_pre, r)
-            note = r.note
+            if "grasp-place pairs" not in note or " 0 grasp-place pairs" not in r.note:
+                note = r.note                    # keep the most telling note (one that got as far as full plans)
         return note
 
     def relay_spot(labels, free_hooks, max_spots: int = 3, budget_s: float = 90.0):

@@ -20,6 +20,7 @@ from dojo.skills.targets import level_R
 PEG_YAWS = 12                 # turns of a piece about its hole tried per place (every 30 deg)
 THREAD = 0.004                # m: the piece is lowered this far onto the peg (below its top) before it is let go
 SEAT_GAP = 0.0005             # m: a seated piece is let go this far over the pieces below it (``seat``)
+SEAT_XY_TOL = 0.0003          # m: a seated piece is moved until its measured axis is this close to its target
 SEAT_TOL = 0.0025             # m: a piece held higher than this above its threaded target rests on the peg's top
 GUARD_SEATED_PEG = 0.0015     # m: the same for the guarded tail (mode B: no measured object, the arm's lag is the sensor)
 GUARD_LAG_PEG = 0.0012        # m: its contact threshold (free descent lags 0.3-0.5 mm; a piece stopped by the top: 1.7)
@@ -273,7 +274,7 @@ def _one_piece(sk: Skills, lab: str, b, base: str, peg: dict, on_this: list[str]
     pkw = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "servo": True, "retreat": PEG_RETREAT,
            "servo_ref": base, "ref_top": peg["top"], "seat_tol": SEAT_TOL if probing else 0.004,
            "probe": probing, "guard_seated": GUARD_SEATED_PEG, "guard_lag": GUARD_LAG_PEG,
-           "approach_rad": PEG_CARRY}
+           "approach_rad": PEG_CARRY, "servo_xy_tol": SEAT_XY_TOL if seat else None}
     r = place_oriented(sk, lab, [T], yaw_sym=PEG_YAWS, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08,
                        ignore=(base,) + tuple(on_this),
                        place_kw=pkw, air_handover=False, spot_avoid=(base,),

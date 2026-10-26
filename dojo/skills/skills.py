@@ -515,7 +515,8 @@ class Skills:
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
                    fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
-                   sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None):
+                   sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
+                   servo_xy_tol: float | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -536,7 +537,9 @@ class Skills:
         ``guard_seated``: the guarded (mode B) tail's seated tolerance instead of ``GUARD_SEATED`` (a ring threaded 4 mm
         onto a peg that stops on the peg's rounded top is 2-3 mm short of its target, not seated); ``guard_lag``: its
         contact threshold instead of ``GUARD_LAG`` (twin: a ring stopped by a peg's top slid 2.6 mm in the pads and the
-        arm lagged only 1.7 mm)."""
+        arm lagged only 1.7 mm). ``servo_xy_tol``: once seated, the servo tail corrects the object's measured xy until
+        it is this close to the target (two more moves at most; a ring seated 0.6 mm off its neighbour's axis on a peg
+        judged at 1 mm)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -564,6 +567,8 @@ class Skills:
             tail_kw["guard_seated"] = float(guard_seated)
         if guard_lag is not None:
             tail_kw["guard_lag"] = float(guard_lag)
+        if servo_xy_tol is not None:
+            tail_kw["servo_xy_tol"] = float(servo_xy_tol)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -610,7 +615,7 @@ class Skills:
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
                     hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None,
                     sym_axis: int | None = None, guard_seated: float | None = None,
-                    guard_lag: float | None = None) -> ArmPlan | str:
+                    guard_lag: float | None = None, servo_xy_tol: float | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -982,6 +987,14 @@ class Skills:
             if err <= seat_tol:
                 T_obj = T_p
         note += f", {n} probes, final {err*1000:+.1f} mm" if n else ""
+        if kw.get("servo_xy_tol") is not None and err <= seat_tol:
+            for k in range(3):
+                ob = self.refresh().obj(label)
+                dxy = float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3]))
+                if dxy <= float(kw["servo_xy_tol"]) or k == 2:
+                    break
+                ob = go(T_obj, min(rate, 0.02), "servo_xy", settle=2)
+            note += f", xy {dxy*1000:.1f} mm after {k} corrections"
         turn = float(kw.get("turn", 0.0) or 0.0)
         if turn:
             w = self.refresh()
