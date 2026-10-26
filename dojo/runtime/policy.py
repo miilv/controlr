@@ -92,6 +92,7 @@ class RuntimeConfig:
     look_min_budget: float = 0.6        # look only while steps_left >= this fraction of step_lim
     look_merge: str = "all"             # all: the fused record replaces frame 0 | flagged: only flagged objects
     save_look_frames: bool = False      # dev: keep frame 0 and the look frame (PNG) for perception's analysis
+    save_track_frames: int = 0          # dev: keep the first N belt-tracker re-read frames (PNG) as well
     resync: bool = True
     div_iou: float = 0.2                 # fallback without z-buffer: head IoU at the predicted pose
     div_prec: float = 0.4                # predicted front-most head pixels that are foreground, below = divergence
@@ -271,6 +272,7 @@ class RuntimePolicy:
         self.log_task = self.info.get("task")            # logging only (never a decision input)
         self.fold = int(self.info.get("dev_calib_fold", 0))
         self.bridge = Bridge()
+        self._pc_calls0 = len(getattr(self._pc, "calls", None) or [])   # the client's call log spans episodes
         self._lost_searched = set()
         self._pending_far, self._place_pending, self._vsel_seen = {}, {}, {}
         self._recentre_prior = {}
@@ -319,7 +321,14 @@ class RuntimePolicy:
                                       "unavailable (see events)"))
             self.report["provider"] = dict(live["prov"].stats)
             if self._pc is not None:
-                self.report["perception_calls"] = list(getattr(self._pc, "calls", [])[-200:])
+                calls = list(getattr(self._pc, "calls", [])[getattr(self, "_pc_calls0", 0):])   # this episode's only
+                self.report["perception_calls"] = calls[-200:]
+                ops: dict = {}
+                for c in calls:                         # every call of the episode: count and seconds per op
+                    n_s = ops.setdefault(c.get("op"), [0, 0.0])
+                    n_s[0] += 1
+                    n_s[1] = round(n_s[1] + float(c.get("s") or 0.0), 3)
+                self.report["perception_ops"] = ops
 
     # ------------------------------------------------------------------ the episode (worker thread)
     def _setup(self, obs0: dict):
@@ -500,7 +509,7 @@ class RuntimePolicy:
                 prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
             cats = {o.category for o in prov.belief.objects.values()}
             if cfg.track_moving == "on" or (cfg.track_moving == "auto" and "conveyor" in cats):
-                prov.track_reader = lambda obs: pc.estimate([obs], scene, self.fold)
+                prov.track_reader = lambda obs: self._track_read(pc, obs, scene)
                 events.append({"kind": "track_moving", "on": True, "why": cfg.track_moving})
         live = self._live
 
@@ -779,10 +788,27 @@ class RuntimePolicy:
             return cands[0], None
         return best["_v"], best["_rec"]
 
-    def _keep_frame(self, tag: str, obs: dict) -> None:
-        """``save_look_frames`` (dev): keep this observation (every camera as PNG + the state) under ``tag`` in the
-        report (eval writes them to ``<run>/<task>_<layout>_look_frames/``); a later frame with the same tag replaces it."""
-        if not self.cfg.save_look_frames:
+    def _track_read(self, pc, obs: dict, scene: str) -> dict:
+        """The belt tracker's B1 re-read, logged per read (what it found, how sure: the 2026-10-26 breadth conveyor
+        tracked 31 reads and never added an object); the first ``save_track_frames`` read frames are kept (dev)."""
+        from .estimate import iter_records
+        rec = pc.estimate([obs], scene, self.fold)
+        found = [(r.get("label"), round(float((r.get("_perception") or {}).get("confidence", 0.0)), 2))
+                 for _t, _c, r in iter_records(rec)]
+        n = self.report.setdefault("track_reads", 0) + 1
+        self.report["track_reads"] = n
+        if n <= 60:
+            self.report["events"].append({"kind": "track_read", "step": int(obs["steps_used"]), "found": found[:12],
+                                          "not_found": len(rec.get("_not_found") or [])})
+        if n <= int(self.cfg.save_track_frames):
+            self._keep_frame(f"track{n:02d}_s{int(obs['steps_used'])}", obs, force=True)
+        return rec
+
+    def _keep_frame(self, tag: str, obs: dict, force: bool = False) -> None:
+        """``save_look_frames`` (dev; ``force``: the caller has its own switch): keep this observation (every camera as
+        PNG + the state) under ``tag`` in the report (eval writes them to ``<run>/<task>_<layout>_look_frames/``); a
+        later frame with the same tag replaces it."""
+        if not (self.cfg.save_look_frames or force):
             return
         self.report.setdefault("look_frames", {})[tag] = {
             "state": {k: np.asarray(v, float).tolist() for k, v in obs["state"].items()},
