@@ -314,7 +314,7 @@ class RuntimePolicy:
                                                                                       and cfg.agentic == "budget")))
         if cfg.mode == "perception" and cfg.held_look != "off":
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
-            prov.held_confirm = lambda obs, arm, lab: self._held_look(obs, arm, lab, mode="agent")
+            prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()
@@ -760,6 +760,39 @@ class RuntimePolicy:
                 r["default_pos"], r["default_ori"] = o.pos.tolist(), o.quat.tolist()
                 r.setdefault("_perception", {})["tracker"] = "kept"
         return out
+
+    def _held_head_confirm(self, prov, obs: dict, arm: str, label: str, min_px: int = 40) -> dict:
+        """The independent second look before a drop: the HEAD camera of the same step (an agent read of the same wrist
+        frame is a correlated opinion). perception's ``check`` renders ``label`` z-buffered among the other objects at
+        (1) its in-jaw pose (the belief's attached pose) and (2) its pick pose; "not held" only when the head view shows
+        it at the pick pose (precision >= 0.6) and not in the jaws (precision < 0.3), each over >= ``min_px`` visible
+        pixels. Anything else (in the jaws, hidden by the robot, unreadable) keeps the grasp."""
+        o = prov.belief.objects.get(label)
+        g = prov.belief.grasp_z.get(arm)
+        if o is None or g is None:
+            return {"held": None, "source": "head", "why": "no poses"}
+        others = [x for x in prov.belief.movable() if x.label != label]
+
+        def obj(pos, quat):
+            return [{"label": label, "key": o.asset.key, "pos": [float(v) for v in pos], "quat": [float(v) for v in quat]}] + \
+                   [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
+                    for x in others]
+        try:
+            jaw = (self.perception().check(obs, obj(o.pos, o.quat), self.fold).get(label) or {}).get("head") or {}
+            pick = (self.perception().check(obs, obj(g[2][:3], g[2][3:]), self.fold).get(label) or {}).get("head") or {}
+        except Exception as e:  # noqa: BLE001 (unreadable: keep the grasp)
+            return {"held": None, "source": "head", "why": f"{type(e).__name__}: {str(e)[:120]}"}
+
+        def prec(h):
+            return h.get("prec") if (h.get("n_vis") or 0) >= min_px else None
+        pj, pp = prec(jaw), prec(pick)
+        out = {"source": "head", "calls": 0, "jaw_prec": pj, "pick_prec": pp,
+               "jaw_vis": jaw.get("n_vis"), "pick_vis": pick.get("n_vis")}
+        if pp is not None and pp >= 0.6 and pj is not None and pj < 0.3:
+            return {**out, "held": False, "confidence": round(float(pp), 3)}
+        if pj is not None and pj >= 0.6:
+            return {**out, "held": True, "confidence": round(float(pj), 3)}
+        return {**out, "held": None, "confidence": 0.0, "why": "inconclusive"}
 
     def _held_look(self, obs: dict, arm: str, label: str, mode: str | None = None) -> dict:
         """perception's held_look (service op) on ``arm``'s wrist frame; agent calls are logged as trigger "held".
