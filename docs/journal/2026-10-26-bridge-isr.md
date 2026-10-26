@@ -458,3 +458,27 @@ Same commits, config, twin and layouts as A6.
 - This looks like a regression in #41-#46 on the topper place; routed by the lead to integration-2.
 - This run predates #50 (B1 held_look had skipped every gripper command > 0.5, i.e. all board / pillar grasps).
 - Sonnet: 68 calls, 524k prompt (431k cache read), 34k completion.
+
+### A8. The LLM agent on top preserves the system on genuine 5.1: stack_blocks 10/10
+
+AgentPolicy (`cx/gpt-6.1-sol`) on top of the runtime: the same scanFA config, twin 8, the same settled 100000-09, main
+dcc1560 (#50 included), merged here as 170a5c1.
+
+| layout | RuntimePolicy @ b8acf78 (A6) | AgentPolicy on top @ dcc1560 | agent | Sonnet calls by trigger |
+|---|---|---|---|---|
+| 100000 | yes | yes | 1 call, `stack_objects` | frame0 3, after_looks 3, held 3 |
+| 100001 | yes | yes | 1, `stack_objects` | frame0 2, after_looks 6, held 2 |
+| 100002 | yes | yes | 1, `stack_objects` | frame0 3 |
+| 100003 | yes | yes | 1, `stack_objects` | frame0 3, after_looks 4, held 3 |
+| 100004 | yes | yes | 1, `stack_objects` | frame0 2 |
+| 100005 | yes | yes | 1, `stack_objects` | frame0 2, held 1 |
+| 100006 | no (place_miss 17.8 mm) | yes | 1, `stack_objects` | frame0 2 |
+| 100007 | yes | yes | 1, `stack_objects` | frame0 2, held 2 |
+| 100008 | yes | yes | 1, `stack_objects` | frame0 2 |
+| 100009 | yes | yes | 1, `stack_objects` | frame0 4, held 3 |
+| total | 9/10 | **10/10** | 10 calls | 52 calls |
+
+- In every episode the agent's one cell called `stack_objects`, the rule planner's skill. Each call was ~5.53k prompt
+  (4.74k cached from the second episode on) and 52-83 completion tokens.
+- Sonnet: 583k prompt (470k cache read), 26k completion.
+- The code differs from A6 (dcc1560 adds #50), so 100006 reads as "no loss from the agent", not as a gain from it.
