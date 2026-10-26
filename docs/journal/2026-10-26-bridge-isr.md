@@ -315,3 +315,23 @@ Routed by the lead to perception-R&D (held_look and post-place checks on the 5.1
 integration-2 (a confident "not held" opens the jaws without a second look). The paired scanFA proxy runs on the same
 layouts will show whether the 6.0 frames hide these false negatives.
 
+### A3. The mis-judged frames, regenerated (for perception-R&D)
+
+The replay is deterministic, so `replay_kits.py run --save-obs-at <steps>` regenerates the exact contract
+observations (3 RGB PNGs + state) at the steps where a perception check ran. There are 12 sets in
+`isr-lab:~/data2/ilia/dojo-data/bridge/replay_frames/<layout>_s<step>/`, 12 MB. `index.json` holds each check's
+verdict / confidence / iou and the TRUE poses from the replay.
+
+| frame | check | truth | reading |
+|---|---|---|---|
+| 100004 s64, s117 | held_look block_0 (B1): not held, conf 1.0 | block_0 lifted to z 0.859 in the closed left jaws | false negative |
+| 100001 s152 | post_place block_2: not ok, iou 0.18 | a perfect 3-stack (0.780 / 0.810 / 0.840) | false failure |
+| 100001 s205 | held_look block_2 (B1): not held, 0.79 | block_2 on the stack; the jaws closed on air | correct |
+| 100008 s206 / s266 / s354 (agent, 0.9) / s422 | held_look **block_2**: not held | block_2 on the table under block_0; the right jaws hold **block_1** (z 0.862) | right about the label, wrong about the world: the belief had block_1 / block_2 swapped |
+| 100007 s142 | post_place **block_1**: not ok, iou 0.0017 | a complete stack with block_1 at the bottom, block_0 on top | label permutation: the carried block was block_0 |
+| 100007 s166 | held_look block_1 (B1): not held, 0.81 | block_1 at the bottom of the stack | correct for the label |
+
+There are two failure modes on genuine 5.1 frames, both of which make the runtime undo correct physical progress:
+1. **Confident false negatives** of B1's held / post-place checks: 100004, 100001.
+2. **Label permutations** between same-category blocks in the belief: 100007, 100008. The label-keyed checks are then
+   right about the label and wrong about the world.
