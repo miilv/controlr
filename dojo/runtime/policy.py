@@ -489,6 +489,9 @@ class RuntimePolicy:
             if cfg.held_pose == "auto" and hasattr(pc, "held_pose"):
                 prov.held_pose = lambda arm, prior_T_tcp_obj, asset_key, cfg_=None: self._held_pose(
                     prov, arm, prior_T_tcp_obj, asset_key, cfg_)
+            if cfg.held_pose == "auto" and hasattr(pc, "show_pose"):   # observer looks / show poses for that read
+                prov.show_pose = lambda arm, T_tcp_obj, asset_key, cfg_=None: self._show_pose(
+                    arm, T_tcp_obj, asset_key, cfg_)
             if hasattr(pc, "watch_read"):               # provider.watch_read(region, prior): board cells / container
                 prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
             cats = {o.category for o in prov.belief.objects.values()}
@@ -918,6 +921,28 @@ class RuntimePolicy:
                                        "merged": len(st.get("merge") or [])})
         return rec
 
+    def _show_pose(self, arm: str, T_tcp_obj, asset_key: str, cfg: dict | None = None) -> dict:
+        """perception's ``show_pose`` (observer looks / show poses for the object ``arm`` holds) on the current proprio;
+        ``cfg["q_hold"]``: the holding arm's joints where the skills will hold it (they plan the look during the
+        approach), put into the state in place of the current ones. The rest of ``cfg`` goes to perception."""
+        cfg = dict(cfg or {})
+        q_hold = cfg.pop("q_hold", None)
+        state = {k: np.asarray(v, float).reshape(-1) for k, v in self.bridge.observe()["state"].items()}
+        if q_hold is not None:
+            k = f"{arm}_arm_joint_state"
+            q = np.asarray(q_hold, float).reshape(-1)
+            state[k] = np.r_[q, state[k][len(q):]] if k in state and len(state[k]) > len(q) else q
+        t = time.perf_counter()
+        try:
+            r = self.perception().show_pose(arm, asset_key, np.asarray(T_tcp_obj, float).tolist(), state, cfg) or {}
+        except Exception as e:  # noqa: BLE001 (the skills fall back to the plain hover)
+            self.report["events"].append({"kind": "show_pose", "arm": arm, "error": f"{type(e).__name__}: {str(e)[:160]}"})
+            return {}
+        n = {k: len(v) for k, v in r.items() if isinstance(v, list)}
+        self.report["events"].append({"kind": "show_pose", "arm": arm, "step": self.bridge.steps_used, "q_hold": q_hold is not None,
+                                      "s": round(time.perf_counter() - t, 2), "n": n})
+        return r
+
     def _held_pose(self, prov, arm: str, prior_T_tcp_obj, asset_key: str, cfg: dict | None = None) -> dict:
         """perception's held_pose on the current observation (the belief's other objects as occluders, the skills'
         place target for the insertion geometry); an ok read re-anchors the belief's in-hand transform."""
@@ -933,7 +958,7 @@ class RuntimePolicy:
             self.report["events"].append({"kind": "held_pose", "arm": arm, "error": f"{type(e).__name__}: {str(e)[:160]}"})
             return {"ok": False, "why": "error"}
         self.report["events"].append({"kind": "held_pose", "arm": arm, "step": self.bridge.steps_used,
-                                      "s": round(time.perf_counter() - t, 2),
+                                      "view": cfg.get("view"), "s": round(time.perf_counter() - t, 2),
                                       **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
         if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
             lab, _ = prov.belief.attached[arm]
