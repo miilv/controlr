@@ -572,10 +572,11 @@ def held_look_impl(frames, calib, flange, grip_cmd, arm=None, stage=None, chat=N
     cfg = _cfg(kw)
     t0 = time.time()
     mode = kw.get("held_mode") or os.environ.get("AGENTIC_HELD", "b1_then_agent")
+    hb: dict = {}
     if mode in ("b1", "b1_then_agent"):
         try:
             hb = _b1._held_look_impl(frames, calib, flange, grip_cmd, arm=arm, stage=stage,
-                                     **{k: v for k, v in kw.items() if k in ("joints", "gripper")})
+                                     **{k: v for k, v in kw.items() if k in ("joints", "gripper", "candidates")})
         except Exception as e:
             hb = {"_error": f"{type(e).__name__}: {e}"}
         a_ = arm or next((a for a in ("left", "right") if a in hb), None)
@@ -588,7 +589,7 @@ def held_look_impl(frames, calib, flange, grip_cmd, arm=None, stage=None, chat=N
                                        "held": hb.get("held"), "confidence": conf, "calls": 0})
             return hb
     if arm is None:  # the arm whose gripper is commanded closed
-        closed = [a for a in ("left", "right") if a in (grip_cmd or {}) and _b1._grip01(grip_cmd[a]) < 0.5]
+        closed = [a for a in ("left", "right") if a in (grip_cmd or {}) and _b1._grip01(grip_cmd[a]) < _b1.HELD_OPEN_CMD]
         arm = closed[0] if closed else "left"
     _N[0] += 1
     ws = cfg["log_dir"] / f"{time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}-{_N[0]:04d}-held"
@@ -618,6 +619,14 @@ def held_look_impl(frames, calib, flange, grip_cmd, arm=None, stage=None, chat=N
     else:
         out = {"held": held, "confidence": 0.9, "note": note, "t_ms": t_ms, "version": VERSION}
     out[arm] = {"held": out["held"], "confidence": out["confidence"]}
+    b1_arm = hb.get(arm) if isinstance(hb.get(arm), dict) else {}
+    if out["held"] and b1_arm.get("what") is not None:  # identity of what is there: B1's colour ranking
+        out[arm].update({k: b1_arm[k] for k in ("what", "scored", "what_region") if k in b1_arm})
+        asked = (kw.get("candidates") or [{}])[0]
+        from dojo.perception import identity
+        out[arm]["asked_held"] = identity.asked_verdict(b1_arm["what"], asked, True) if asked.get("key") else None
+    elif kw.get("candidates"):
+        out[arm].update({"what": None, "asked_held": False if held is False else None, "scored": []})
     _log_call(cfg["log_dir"], {"t": time.time(), "fn": "held_look", "ws": str(ws), "model": cfg["model"], "arm": arm,
                                "stage": stage, "held": out["held"], "calls": calls, "t_ms": t_ms})
     return out
