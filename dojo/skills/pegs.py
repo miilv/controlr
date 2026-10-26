@@ -276,6 +276,9 @@ def _one_piece(sk: Skills, lab: str, b, base: str, peg: dict, on_this: list[str]
     """One transfer of piece ``lab`` onto ``peg`` (see ``stack_on_pegs``)."""
     from dojo.skills.library import place_oriented
     sk.refresh()
+    # seating needs the held piece measured (the servo); blind (mode B), a piece pushed 30-50 mm down the peg on a
+    # predicted in-hand pose binds and tilts (twin, 2 mm belief offsets: 0/5, 0.30): let go threaded at the top instead
+    seat = seat and bool(getattr(sk, "remeasure", True))
     if seat:
         z_bot = stack_top(sk, on_this, peg) + SEAT_GAP
     else:
