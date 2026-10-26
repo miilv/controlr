@@ -1264,19 +1264,7 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
                          place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
     if not res.ok and res.status != "ended":
         if "in-air handover not attempted" in res.note:
-            # no grasp from the table reaches the insertion (a lying key: gripped from its upper face it would go in
-            # with the hand pointing back at the robot): stand it up on its leading end against the table instead,
-            # held from above (``regrasp.stand_up_insert``; skills-8)
-            from dojo.skills.regrasp import stand_up_insert
-            su = stand_up_insert(sk, obj, rec, targets[0], turn_deg)
-            if su.ok:
-                return {"ok": True, "stage": "inserted (stood up)"}
-            if su.status not in ("step_budget", "ended") and sk.ex.steps_left - sk.ex.reserve > 60:
-                for a in ARMS:
-                    if sk.held[a] is not None:
-                        sk._record(sk.regrasp(a))
-                lift_and_return(sk, obj)
-            return {"ok": False, "stage": f"insert {obj}", "result": su}
+            lift_and_return(sk, obj)
         return {"ok": False, "stage": f"insert {obj}", "result": res}
     return {"ok": True, "stage": "inserted"}
 
