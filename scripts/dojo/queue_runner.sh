@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # The ordered integ queue's runner (started by scripts/dojo/queue.sh start). Pops the first line of the queue
 # file ("NAME ARGS...") and runs scripts/dojo/integ_eval.sh for it, until the file is empty.
+# bash reads a script while it runs: a deploy that rewrites this file in place (cp, an editor) would make a
+# running copy execute a mix of old and new lines (2026-10-26: the runner re-ran a finished job with mangled
+# args, then died on a syntax error). The whole body is one brace group, read before any of it runs.
+{
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 D="${DOJO_DATA:-$HOME/dojo-data}/integ"; Q="$D/queue.txt"; RUNS="$D/runs"
-cd "$HERE"
+cd "$HERE"; mkdir -p "$RUNS"
 # pre-flight (docs/incidents/2026-10-26-catalog-env-crash.md): perception must load its catalogue with THIS environment
 # (DOJO_CATALOG etc. are inherited by every job); a runner restarted with a broken env would fail every episode
 if [[ -x "$HERE/.venv/bin/python" ]]; then
@@ -32,3 +36,5 @@ while true; do
   echo "$(date -u +%FT%TZ) done $name rc=$?"
 done
 echo "$(date -u +%FT%TZ) queue empty"
+exit
+}

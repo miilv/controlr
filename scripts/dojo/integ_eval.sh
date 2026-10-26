@@ -11,6 +11,10 @@
 # Team rules: starts only with MemAvailable >= 25 GB (waits <= 10 min), holds ~/dojo-gpu.lock (blocking flock -w)
 # for its lifetime (keep a job <= 30 min: --max-minutes), every child runs with SIMLAB_GPU=0; services stopped
 # on exit; after releasing the lock it yields 90 s (INTEG_YIELD_S) before returning.
+# bash reads a script while it runs: a deploy that rewrites this file in place (cp, an editor) would make a
+# running copy execute a mix of old and new lines (2026-10-26: the runner re-ran a finished job with mangled
+# args, then died on a syntax error). The whole body is one brace group, read before any of it runs.
+{
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export RD_HOME="${RD_HOME:-$HOME/dojo-robodojo}" DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
@@ -123,3 +127,5 @@ rm -f "$OUT/stage_current.usd"; rm -rf "$OUT/work"          # scratch (37 MB sta
 echo "[integ] results: $OUT"
 exec 9>&-
 sleep "${INTEG_YIELD_S:-90}"
+exit
+}
