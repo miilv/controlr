@@ -106,12 +106,14 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
     "place_in_slots": (
         "place_in_slots(objects: [id, ...], container: id)",
         "Puts each object into the compartment of the container that is shaped for it (a slot named after the "
-        "object's kind, e.g. a fitted tool tray), re-oriented as the slot requires; grippers opened after each."),
+        "object's kind, e.g. a fitted tool tray), compact ones first; one already lying as its slot wants it is carried "
+        "level, gripped near its centre of mass, else re-oriented as the slot requires; grippers opened after each."),
     "fill_container": (
         "fill_container(objects: [id, ...], container: id)",
-        "Puts long objects (pens, sticks, tubes) one by one into an upright holder, leading end first; a holder "
-        "that is out of comfortable reach is first carried (upright) to where both arms reach it and put back "
-        "down; grippers opened after each."),
+        "Puts long objects (pens, sticks, tubes) one by one into an upright holder: each is held leading end down "
+        "just over the holder's opening, at its free spot, the hand kept out of the holder, and let go so it drops "
+        "in (widest first; one that lands on the table is tried again). A holder that is out of comfortable reach "
+        "is first carried (upright) to where both arms reach it and put back down; grippers opened after each."),
     "arrange": (
         'arrange(steps: [["place" | "push", obj_id, support_id], ...])',
         'Does every step: "place" = put obj upright on top of support; "push" = slide obj (too wide to grasp) onto '
@@ -134,10 +136,11 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "the thread with wrist sweeps and re-grips (clockwise from above) until it sits ~1 cm down; grippers opened "
         "after each pair. Pair them first (e.g. by matching colour)."),
 }
-SKILL_DOCS_VERSION = 6  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 7  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
 #                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
+#                        7: fill_container drops into the opening, place_in_slots carries level (skills-8)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',
