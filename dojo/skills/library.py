@@ -2175,7 +2175,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         if not pool:
             break
         w = sk.refresh()
-        found = None
+        found, why = None, {}
         for hi, H, tip in order:
             if hi in used:
                 continue
@@ -2205,12 +2205,14 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                     if not isinstance(r, SkillResult):
                         found = (lab, hi, H, T_obj, T_pre, r)
                         break
+                    why[hi] = f"{lab}: {r.note[:160]}"
                 if found:
                     break
             if found:
                 break
         if not found:
-            sk.log(f"[hang] no plan for {pool} on hooks {[h[0] for h in order if h[0] not in used]}")
+            sk.log(f"[hang] no plan for {pool} on hooks {[h[0] for h in order if h[0] not in used]}: "
+                   + "; ".join(f"hook {k}: {v}" for k, v in why.items()))
             failed += pool
             break
         lab, hi, H, T_obj, T_pre, (pp, pl) = found
