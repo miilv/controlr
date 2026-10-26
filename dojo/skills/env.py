@@ -219,6 +219,13 @@ class KinematicEnv:
     def _drop(self, label: str) -> None:
         o = self._obj(label)
         R = quat_to_R(o["quat"])
+        # hooks (dry runs: a Geometry row's ``hang_points`` = [[x, y, z], ...], world): an object let go with a hook
+        # point inside its box (a mug's handle over a rack's arm) hangs there
+        for g in self.objects:
+            for hp in (g.get("hang_points") or []) if g.get("type") == "Geometry" else []:
+                loc = R.T @ (np.asarray(hp, float) - o["pos"]) - o["center"]
+                if np.all(np.abs(loc) <= o["half"] + 0.005):
+                    return
         R = self._disc_falls_flat(o, R)
         off = R @ o["center"]                    # root -> bbox centre (world)
         o["pos"] = o["pos"] + off

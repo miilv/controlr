@@ -515,7 +515,7 @@ class Skills:
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
                    fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
-                   sym_axis: int | None = None):
+                   sym_axis: int | None = None, guard_seated: float | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -532,7 +532,9 @@ class Skills:
         ``ref_top``: the receptacle's top height (world z) for ``fingers_out`` and the servo hover instead of its whole
         bbox top (an egg carton whose open lid stands 12 cm above the plate the eggs go through).
         ``sym_axis``: the object is the same turned about this axis of its own (a disc about its normal): the servo tail
-        takes the turn of the target nearest to the object's measured pose (a coin spun in a rim pinch)."""
+        takes the turn of the target nearest to the object's measured pose (a coin spun in a rim pinch).
+        ``guard_seated``: the guarded (mode B) tail's seated tolerance instead of ``GUARD_SEATED`` (a ring threaded 4 mm
+        onto a peg that stops on the peg's rounded top is 2-3 mm short of its target, not seated)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -556,6 +558,8 @@ class Skills:
                        ref_top=None if ref_top is None else float(ref_top))
         if sym_axis is not None:
             tail_kw["sym_axis"] = int(sym_axis)
+        if guard_seated is not None:
+            tail_kw["guard_seated"] = float(guard_seated)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -601,7 +605,7 @@ class Skills:
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
                     hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None,
-                    sym_axis: int | None = None) -> ArmPlan | str:
+                    sym_axis: int | None = None, guard_seated: float | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -830,7 +834,7 @@ class Skills:
             short = float(Tc[2, 3] - T_goal[2, 3])
             note = f"{n} steps down, {'reached' if reached else f'contact {short*1000:.1f} mm short (lag {lag*1000:.1f} mm)'}"
             k = 0
-            if not reached and short > GUARD_SEATED:
+            if not reached and short > float(kw.get("guard_seated", GUARD_SEATED)):
                 z_c = float(Tc[2, 3])
                 probes = [(r * math.cos(2 * math.pi * i / n_dir), r * math.sin(2 * math.pi * i / n_dir))
                           for r in radii for i in range(n_dir)]

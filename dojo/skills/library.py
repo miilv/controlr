@@ -2126,6 +2126,13 @@ def hook_frames(rack, tag: str) -> list[tuple[int, np.ndarray, float]]:
     return out
 
 
+def hook_order(hooks: list, n: int) -> list:
+    """The order hooks are filled in: the ``n`` highest, lowest of them first (an object hung on a higher hook hangs
+    over the ones below it), then the rest, highest first (fallbacks)."""
+    by_h = sorted(hooks, key=lambda h: -float(h[1][2, 3]))
+    return sorted(by_h[:n], key=lambda h: float(h[1][2, 3])) + by_h[n:]
+
+
 def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
     """Hang each object by its handle on one of the rack's hooks. The handle frame (on the outside of the handle's
     bar) goes onto the hook frame, raised by the handle's hole depth so the hook's arm runs through the hole; hooks
@@ -2143,16 +2150,26 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     hooks_by = {h[0]: h for h in hooks}
     # the rack as an obstacle, pole and arms as small boxes from its mesh (its bbox covers every hook): the carry to a
     # low hook passes under the upper arms (twin v2: low hooks 4/10, the mug knocked out of the pads on the way)
+    parts = None
     if rk.asset.mesh is not None:
         from dojo.skills.motion import mesh_parts
         sk.coll.include.add(rack)
-        sk.coll.parts[rack] = mesh_parts(*rk.asset.mesh)
+        parts = mesh_parts(*rk.asset.mesh)
+        sk.coll.parts[rack] = parts
+    fr_local = functional_frames(rk, hook_tag)
+
+    def without_arm(hi: int, tip):
+        """The rack's boxes less the hook's own arm (what the handle is threaded onto may come close to it)."""
+        if parts is None or tip is None or hi >= len(fr_local):
+            return parts
+        F = fr_local[hi]
+        L = (parts[0] - F[:3, 3]) @ F[:3, :3]
+        arm = (L[:, 0] > -0.012) & (L[:, 0] < float(tip) + 0.012) & (np.hypot(L[:, 1], L[:, 2]) < 0.02)
+        return parts[0][~arm], parts[1][~arm]
     # the highest hooks, filled from the lowest up: an object hung on a higher hook hangs over the ones below it, and
     # every low hook used is a hard carry under the arms above it (v2: top hooks 8/8, low ones 4/10)
     pool = [l for l in objects if l in w.objects]
-    by_h = sorted(hooks, key=lambda h: -float(h[1][2, 3]))
-    chosen = sorted(by_h[:len(pool)], key=lambda h: float(h[1][2, 3]))
-    order = chosen + sorted(by_h[len(pool):], key=lambda h: -float(h[1][2, 3]))
+    order = hook_order(hooks, len(pool))
     used, done, failed, retried = set(), [], [], set()
     for _round in range(2 * len(pool)):
         if not pool:
@@ -2162,6 +2179,8 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         for hi, H, tip in order:
             if hi in used:
                 continue
+            if parts is not None:
+                sk.coll.parts[rack] = without_arm(hi, tip)
             for lab in pool:
                 o = w.obj(lab)
                 hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)

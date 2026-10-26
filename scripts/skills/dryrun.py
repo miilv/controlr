@@ -45,7 +45,29 @@ def rows_from_layout(lay: dict, assets: AssetDB) -> list[dict]:
             pegs = _pegs(assets, otype, cat, int(inst["category_idx"]), rows[-1]["pos"], rows[-1]["quat"])
             if pegs:
                 rows[-1]["pegs"] = pegs
+            hooks = _hooks(assets, otype, cat, int(inst["category_idx"]), rows[-1]["pos"], rows[-1]["quat"])
+            if hooks:
+                rows[-1]["hang_points"] = hooks
     return rows
+
+
+def _hooks(assets: AssetDB, otype: str, cat: str, idx: int, pos, quat) -> list:
+    """World points of a rack's hook frames (functional points named hook / support_point / hang), for the kinematic
+    env: an object let go around one hangs there."""
+    import re
+    from dojo.skills.geometry import quat_to_R
+    try:
+        info = assets.get(otype, cat, idx)
+    except (OSError, KeyError):
+        return []
+    R = quat_to_R(np.asarray(quat, float))
+    out = []
+    for tag, v in (info.functional or {}).items():
+        if re.search(r"hook|support_point|hang", tag.lower()):
+            for f in (v or {}).get("frame") or []:
+                w = R @ np.asarray(f[:3], float) + np.asarray(pos, float)
+                out.append([float(x) for x in w])
+    return out
 
 
 def _pegs(assets: AssetDB, otype: str, cat: str, idx: int, pos, quat) -> list:
