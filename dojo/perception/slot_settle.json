@@ -1,5 +1,5 @@
 {
- "_source": "relative pose (base asset frame) of each object pinned in a support slot after physics settles it: our physics-only Isaac 5.1 settle (simlab make_d0) of our dev layouts 100000-100009, frame 0 GT, averaged (n = layouts, spread = max deviation). make_toast: the generator drops the bread slices 2 cm above the slot bottom; they come to rest 16-17 mm lower, leaning 4-6 deg. play_Xylophone: the mallet on its stand (either stand orientation).",
+ "_source": "relative pose (base asset frame) of each object pinned in a support slot after physics settles it: our physics-only Isaac 5.1 settle (simlab make_d0) of our dev layouts 100000-100009, frame 0 GT, averaged (n = layouts, spread = max deviation). make_toast: the generator drops the bread slices 2 cm above the slot bottom; they come to rest 16-17 mm lower, leaning 4-6 deg. play_Xylophone: the mallet on its stand (either stand orientation). deposit_coin: the coin standing in its stand's slot.",
  "Geometry/bread_shelf/00000|bread_shelf/0|Rigid/bread/00000": {
   "pos": [
    0.03579,
@@ -74,5 +74,20 @@
   ],
   "n": 10,
   "spread_mm": 1.78
+ },
+ "Geometry/vertical_coin_stand/00000|vertical_coin_stand/0|Rigid/coin/00000": {
+  "pos": [
+   0.00015,
+   -0.00096,
+   0.00709
+  ],
+  "quat": [
+   0.053746,
+   -0.056521,
+   -0.710579,
+   -0.699281
+  ],
+  "n": 10,
+  "spread_mm": 1.33
  }
 }
