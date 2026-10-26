@@ -432,4 +432,29 @@ cap + stack refine + z-drop refit, the gripper-fallback fix, post-place z-only a
 
 Paired: 4 rescued (exactly the four losses the forensics traced to false negatives), 1 lost (100006, a place 17.8 mm
 off; its perception error at planning was the set's highest, xy median 7.8 mm, not gross). Sonnet: 54 calls, 581k
-prompt (478k cache read), 26k completion. build_tower: below.
+prompt (478k cache read), 26k completion.
+
+### A7. Before / after, build_tower: 5/10 -> 3/10 (a regression on the topper place)
+
+Same commits, config, twin and layouts as A6.
+
+| layout | before @ ae43bac | after @ b8acf78 | after: failure |
+|---|---|---|---|
+| 100000 | no (held false negative) | no / 30 | place_miss xy 40.7 mm, top level (centre z 0.8875) |
+| 100001 | no (verify_reject grasp_slip) | no / 0 | place_miss xy 10.0 mm |
+| 100002 | yes | yes | |
+| 100003 | yes | **no / 30** | place_miss xy 40.8 mm, top level |
+| 100004 | yes | **no / 30** | place_miss xy 41.2 mm, top level |
+| 100005 | no (place_miss 13.5 mm) | **yes** | |
+| 100006 | yes | **no / 30** | place_miss xy 6.6 mm |
+| 100007 | no (held false negative) | **yes** | |
+| 100008 | yes | **no / 0** | identity gross at planning (block3 / block1) |
+| 100009 | no (held false negative) | no / 30 | place_miss xy 42.3 mm, top level |
+| total | 5/10, mean score 52.0 | **3/10, mean score 45.0** | |
+
+- Paired: 2 rescued, 4 lost.
+- The held false negatives are gone, but a new systematic mode appeared: 4 episodes miss the TOP-level place (a topper
+  on the pillars, centre z 0.8875) by 40.7-42.3 mm in xy with dz 0. Score 30 means the lower stages were complete.
+- This looks like a regression in #41-#46 on the topper place; routed by the lead to integration-2.
+- This run predates #50 (B1 held_look had skipped every gripper command > 0.5, i.e. all board / pillar grasps).
+- Sonnet: 68 calls, 524k prompt (431k cache read), 34k completion.
