@@ -205,7 +205,7 @@ def stand_up_insert(sk: Skills, obj: str, rec: str, T_target, turn_deg: float = 
             notes.append(f"relay {xy}: {(st.note if isinstance(st, SkillResult) else pl.note)[:70]}")
             continue
         sk.log(f"[stand_up] {obj}: relay as it lies to {xy}, then {arm} stands it up")
-        r = _run_leg(sk, obj, [T_spot], 4, tol=(0.03, 15.0, 0.03))
+        r = _run_leg(sk, obj, [T_spot], 1, tol=(0.03, 15.0, 0.03))
         sk.bank()
         if r.status in ("step_budget", "ended"):
             return r
