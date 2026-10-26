@@ -16,6 +16,10 @@
   Candidate fix: score the prior's own position against the best fit (prefer the prior unless the fit gains
   clearly), or require the neighbour guard against all same-shape objects of the belief. This is the next tower risk
   after the scan.
+- [ ] **Runtime post-place drops z-only corrections.** `belief.post_place` adopts a refine only when its xy
+  `shift_mm` >= `post_place_min_mm` (2 mm). A refine that lowered a floating belief onto its support
+  (`z_dropped_mm`, 5.1 stack 100007 s142: 56 mm) with < 2 mm xy shift is ignored. Adopt when `z_dropped_mm` is
+  set (or use a 3-D shift) (journal/2026-10-26-held-look-stack-refine.md).
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
@@ -139,12 +143,39 @@
 - [ ] **RoboDojo: `episode.end_on_fail: false` A/B** — the model declares FAIL with 7–25 env steps left (enough for one more grasp cycle); see [tool-direction](experiments/2026-10-05-robodojo-tool-direction.md).
 - [ ] **RoboDojo: the env-step budget binds** (pilot: every failure ran out of `general_pickup`'s 200 steps during re-grasps; [report](experiments/2026-10-04-robodojo-pilot.md)). Levers: `max_chunk > 1`, coarser approach moves, `reasoning_effort: low` for latency.
 - [ ] **dojo runtime: one perception vocabulary per instruction, including `_random`.** `stack_blocks` and `stack_blocks_random` (and the other G tasks) share the instruction, so the instruction-matched candidate set must be the union of the std and held-out instances (`dojo/runtime/supervisor.py` VOCABULARIES); today it is the std set only.
-- [ ] **dojo runtime: mode perception needs catalogue assets for every task the planner serves.** compute3's perception catalogue holds the D0 tasks only; swap_blocks / press_by_number (mats, buttons, cards) cannot run in mode perception until their assets are converted.
+- [x] ~~**dojo runtime: mode perception needs catalogue assets for every task the planner serves.**~~
+  `python -m dojo.runtime.catalog_check [--sync --sources <skills catalogues> --assets <RoboDojo Assets>]` reports
+  and fills the gaps: it copies from the skills catalogues (same builder format), else builds, then runs annotate /
+  index / precompute. compute3 (2026-10-25): 314 -> 407 index entries, existing entries unchanged; every table
+  vocabulary is complete except sweep_blocks' `Rigid/broom_shovel/00001`, `00004`, which RoboDojo's Assets do not ship
+  (only 00000). A test checks an installed catalogue when present.
+- [ ] **isr-lab's perception catalogue**: Bridge-isr merged make_toast's assets there. The xylophone / mallet set,
+  the mugs + cup_holder set and the other 75 assets added on compute3 are probably still missing: run
+  `catalog_check --sync` there before mode-B runs of those tasks.
 - [x] ~~**dojo bridge: the official-client path needs robot-harness's `joint_steps` verb**~~: robot-harness PR #9 (J2 server + shim `harness_strict_j2` + `bin/robot-start-j2`); verified offline by `tests/dojo/test_bridge_rh.py`. The Isaac path runs first on our GPUs.
 - [x] ~~**dojo bridge: robot-harness's launchers hard-code isr-lab paths**~~: the J2 starter / launcher read `HARNESS_ENV` (robot-harness PR #9); BRIDGE-RUNBOOK §2.
 - [x] ~~**dojo bridge: spawn the twin after the runtime's vocabulary choice.**~~ The driver hands the policy a lazy
   `_twin_factory`; `RuntimePolicy.twin(scene)` starts the twin for the scene the episode chose (`bridge.json` →
   `twin_scene`, `twin_start_s`).
+- [ ] **dojo skills: twin verification for the library skills that run their own picks / places.** `verify_choose`
+  (k candidates rolled in the twin, the first robust one runs) covers only `run_jobs` (stack, tower, swap, put_into).
+  insert_into, place_oriented, slots_and_press, hang_on_hooks, fill_container, place_in_slots and stack_on_pegs plan
+  and execute their primitives unverified, even with `verify=bundle` (5.1 plug_in_charger s0L9: 0 verified segments).
+  - Size of the gap, from the latest G3 run per task on compute3 (`~/dojo-data/skills*/g3`, 2026-10-25), in those
+    tasks' failed episodes:
+    - physical failures (slip / place miss / loose / fell) 41;
+    - checker disagreements 6 (make_toast);
+    - planning failures 20, which verification cannot fix (it chooses among feasible candidates).
+  - Per task (physical / failed / n): hang_mugs 8/9/10, hang_rand 6/10/10, organize 7/8/8, fill_pen 4/5/5,
+    store_tools 3/5/5, deposit_coin 3/4/5, laptop 3/10/10, make_toast 2/7/25 (+2 checker), toast_rand 2/7/16
+    (+4 checker), stacking 2/5/5, insert_tubes 1/4/5.
+  - Upper bound on what a k-candidate twin check could catch: 47 of ~120 episodes. The realistic share is lower: the
+    twin must reproduce the failure and an alternative candidate must pass. In run_jobs tasks verify rescued about 1
+    in 10 episodes (mode A stack: 100009's slip), so expect roughly 10-20 episodes.
+  - Effort: about 1 day on the skills side (route the shared pick / place / transfer primitives' candidate lists
+    through `verify_choose`, keep the twin chain), no runtime change; then a G3 A/B per task.
+  - Idea, not needed for plug (Skills-5: in-jaw drift 0.0-0.4 mm): an in-hand transform from the twin's nominal
+    replay of an unverified grasp.
 - [ ] **dojo runtime: fixture-aware place refine.** Under perception cb5c3a4 the place refines on the tower's base board
   are all "not ok" (the static fixture keeps its prior), and each place still spends 8-10 steps on 2 re-hovers (~50
   steps per 8-piece tower episode, journal 2026-10-25-dojo-integ2 §5). A stationary support whose prior perception

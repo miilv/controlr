@@ -1337,6 +1337,7 @@ def test_held_look_drops_an_empty_grasp_from_the_jaws():
     prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
     calls = []
     prov.held_checker = lambda obs, arm, lab: calls.append((arm, lab)) or {"held": False, "confidence": 0.8, "source": "b1"}
+    prov.held_confirm = lambda obs, arm, lab: {"held": False, "confidence": 0.9, "source": "agent"}   # agrees
     bel = prov.belief
     o = bel.objects["block_1"]
     pose0 = np.r_[o.pos, o.quat].copy()
@@ -1804,3 +1805,187 @@ def test_not_ok_refine_rehovers_over_the_fit_with_either_perception_api(api):
     assert out and abs(float(out["rehover"][0][0]) - (x0 + 0.02)) < 1e-9
     out, _, pol = hook(R("truncated"))
     assert out is None and "truncated" in pol.report["events"][-1]["why"]
+
+
+def test_provider_watch_read_goes_to_perception_on_the_current_frame():
+    env = _env()
+
+    class W:
+        def __init__(self):
+            self.calls = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for i, p in enumerate(POS)]}}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+        def watch_read(self, frame, region, vocabulary, fold, prior=None):
+            self.calls.append((region["kind"], vocabulary, frame["steps_used"], prior))
+            return {"occluded": False, "visible_frac": 0.9, "stable_vs_prior": True, "new": [], "inside": []}
+
+    seen = {}
+
+    def program(ctx):
+        seen["read"] = ctx.prov.watch_read({"kind": "container", "container": {"asset": "Geometry/basket/00005",
+                                                                              "pos": [0, 0, 0.77], "quat": [1, 0, 0, 0]},
+                                            "candidates": []}, prior={"inside": []})
+        return {"ok": True}
+    pc = W()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=pc,
+                        program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None
+    assert pc.calls == [("container", "stack_blocks", 0, {"inside": []})] and seen["read"]["visible_frac"] == 0.9
+    assert rep["watch_reads"] == 1
+
+
+def test_every_table_vocabulary_is_a_catalogue_candidate_set():
+    import json as _json
+
+    from dojo.runtime.supervisor import VOCABULARIES
+    sets = _json.loads((FIX / "catalog_task_label_categories.json").read_text())
+    assert [v.name for v in VOCABULARIES if v.name not in sets] == []
+
+
+def test_catalog_check_finds_and_syncs_missing_assets(tmp_path):
+    import json as _json
+
+    from dojo.runtime.catalog_check import missing_assets, sync
+    cat, src = tmp_path / "catalog", tmp_path / "skills_catalog"
+    for k, root in (("Rigid/cube/00003", cat), ("Rigid/mug/00000", src)):
+        (root / k).mkdir(parents=True)
+        (root / k / "geom.npz").write_bytes(b"x")
+        (root / k / "info.json").write_text("{}")
+    (cat / "tasks.json").write_text(_json.dumps({
+        "swap_blocks": {"labels": {"a": {"candidates": ["Rigid/cube/00003"]}}},
+        "hang_mugs": {"labels": {"m": {"candidates": ["Rigid/mug/00000", "Geometry/cup_holder/00000"]}}}}))
+    (cat / "index.json").write_text(_json.dumps({"Rigid/cube/00003": {}}))
+    miss = missing_assets(cat, ["swap_blocks", "hang_mugs", "make_toast"])
+    assert miss == {"hang_mugs": ["Geometry/cup_holder/00000", "Rigid/mug/00000"], "make_toast": ["<not in tasks.json>"]}
+    done = sync(cat, miss["hang_mugs"], [src], run_tools=False)
+    assert [k for k, _ in done["copied"]] == ["Rigid/mug/00000"] and done["unresolved"] == ["Geometry/cup_holder/00000"]
+    assert (cat / "Rigid/mug/00000/geom.npz").is_file()
+
+
+@pytest.mark.skipif(not Path("~/dojo-perception-data/catalog/tasks.json").expanduser().is_file(),
+                    reason="needs the perception catalogue (compute / GPU boxes)")
+def test_the_installed_catalogue_holds_every_table_vocabulary():
+    from dojo.runtime.catalog_check import missing_assets
+    assert missing_assets(Path("~/dojo-perception-data/catalog").expanduser()) == {}
+
+
+
+@pytest.mark.parametrize("confirm", [None, {"held": True, "confidence": 0.9}])
+def test_held_look_never_drops_on_a_single_vision_negative(confirm):
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.held_checker = lambda obs, arm, lab: {"held": False, "confidence": 1.0, "source": "b1"}
+    prov.held_confirm = None if confirm is None else (lambda obs, arm, lab: confirm)
+    bel = prov.belief
+    o = bel.objects["block_1"]
+    z0 = float(bel.kin.tcp("left", bel.q["left"])[2, 3])
+    bel.attached["left"] = ("block_1", np.eye(4))
+    bel.grasp_z["left"] = (z0 - 0.05, 1, np.r_[o.pos, o.quat].copy())
+    prov._held_check(b.obs)
+    assert "left" in bel.attached and prov.events[-1]["kept"]                 # still in the jaws
+
+
+def test_a_none_ok_prediction_is_not_adopted_and_drops_the_twin_chain():
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.runtime.verifier import BundleVerifier
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    tc = FakeTwinClient()
+    ver = BundleVerifier(tc, "stack_blocks", prov, b)
+    ver.chain = {"sid": 7, "n": 0}
+    ver.kept = {0: 8}
+    tc.snaps = {7: None, 8: None}
+    info = {"idx": 2, "none_ok": True, "outcomes": [], "actions": []}
+    prov.on_verified(info)
+    ver.on_verified(info)
+    assert prov.pred is None and prov.stats["pred_untrusted"] == 1
+    assert ver.chain is None and ver.kept == {} and tc.snaps == {}
+
+
+def test_verify_choose_runs_the_best_outcome_when_nothing_passes():
+    from types import SimpleNamespace
+
+    from dojo.skills.skills import Skills
+    from dojo.skills.verify import Outcome
+
+    outs = [Outcome(c, s_, {}, {}, False, False, 0.0, False) for c in range(3) for s_ in range(2)]
+
+    def judge(c):
+        j = lambda o: False                                             # nothing passes
+        j.score = lambda o, c=c: [-0.05, -0.01, -0.03][c]               # candidate 1 comes closest
+        return j
+    seen = []
+    fake = SimpleNamespace(ex=SimpleNamespace(actions_for=lambda c: [c]), verify_k=2,
+                           verifier=SimpleNamespace(rollout=lambda acts, k, held_labels: outs),
+                           vstats={"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0},
+                           on_verified=seen.append, last_verified=None)
+    idx, passes = Skills.verify_choose(fake, [{"a": 0}, {"a": 1}, {"a": 2}], [judge(0), judge(1), judge(2)], kind="place")
+    assert idx == 1 and passes == [0, 0, 0] and seen[-1]["none_ok"] and fake.vstats["best_outcome"] == 1
+
+
+@pytest.mark.parametrize("jaw, pick, held", [((0.1, 500), (0.9, 500), False), ((0.8, 500), (0.1, 500), True),
+                                             ((0.1, 10), (0.9, 500), None), ((0.1, 500), (0.4, 500), None)])
+def test_held_confirmation_uses_the_head_view_at_the_jaw_and_pick_poses(jaw, pick, held):
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class Head:
+        def __init__(self):
+            self.n = 0
+
+        def check(self, frame, objects, fold):
+            self.n += 1
+            p, v = jaw if self.n == 1 else pick
+            return {objects[0]["label"]: {"head": {"prec": p, "n_vis": v, "n_px": 600}}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", held_look="b1"), assets=FakeAssets(), perception_client=Head())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    prov.belief.attached["left"] = ("block_1", np.eye(4))
+    prov.belief.grasp_z["left"] = (0.8, 1, np.r_[o.pos, o.quat].copy())
+    r = pol._held_head_confirm(prov, b.obs, "left", "block_1")
+    assert r["held"] is held and r["source"] == "head" and r["calls"] == 0
+
+
+def test_post_place_adopts_a_height_only_correction():
+    """A released block the belief floats 56 mm high (a no-candidate place): perception re-fits it from its support
+    at the same xy; the belief comes down although the xy shift is 0."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+
+    class Z:
+        def refine(self, obs, o, others, arm, held=None):
+            return {"ok": True, "pos": [float(o.pos[0]), float(o.pos[1]), float(o.pos[2]) - 0.056], "quat": list(o.quat),
+                    "shift_mm": 0.0, "iou": 0.84, "z_dropped_mm": 56.0}
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=Z())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    o.pos = o.pos + np.array([0.0, 0.0, 0.056])
+    prov.belief.released_by["block_1"] = "left"
+    z_high = float(o.pos[2])
+    ev = prov.post_place(b.obs, ["block_1"])
+    assert abs(float(prov.belief.objects["block_1"].pos[2]) - (z_high - 0.056)) < 1e-9
+    assert ev[0]["z_dropped_mm"] == 56.0 and ev[0].get("to")

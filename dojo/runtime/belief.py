@@ -170,6 +170,7 @@ class RuntimeProvider:
         self.touched: set[str] = set()          # labels the robot moved since their last good reading (tracker)
         self.held_checker = None                # mode perception: (obs, arm, label) -> {"held": bool|None, ...}
         self.held_min_lift_m = 0.04
+        self.held_confirm = None                # second, independent held look (agent) required before a drop
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
         self.actor_window = 12                  # actors_moving compares with the frame this many steps back
         self._head_hist: list = []              # (step, obs) for actors_moving
@@ -215,6 +216,13 @@ class RuntimeProvider:
     # ------------------------------------------------------------------ predictions
     def on_verified(self, info: dict) -> None:
         """skills hook: the candidate that is about to run, with its twin outcomes."""
+        if info.get("none_ok"):
+            # the twin rejected every candidate: its prediction of what runs is a failure we do not believe (mode B:
+            # the twin is seeded from our belief, and a wrong belief makes it wrong too); keep the kinematic prediction
+            # and let a measurement (post-place, refine) correct it
+            self.pred = None
+            self.stats["pred_untrusted"] = self.stats.get("pred_untrusted", 0) + 1
+            return
         idx = info.get("idx")
         idx = 0 if idx is None else int(idx)
         nom = next((o for o in info["outcomes"] if o.candidate == idx and o.sample == 0), None)
@@ -268,7 +276,13 @@ class RuntimeProvider:
                   **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "why")}}
             if r.get("ok"):
                 self.touched.discard(lab)              # a good reading: the tracker's "last good reading"
-            if r.get("ok") and (r.get("shift_mm") or 0) >= self.post_place_min_mm:
+            dz_mm = (abs(float(r["pos"][2]) - float(o.pos[2])) * 1000 if r.get("pos") is not None else 0.0)
+            if r.get("z_dropped_mm") is not None:
+                ev["z_dropped_mm"] = r.get("z_dropped_mm")
+            if r.get("ok") and ((r.get("shift_mm") or 0) >= self.post_place_min_mm or dz_mm >= self.post_place_min_mm
+                                or r.get("z_dropped_mm") is not None):
+                # an xy shift OR a height correction (perception re-fits a released object from its support: a belief
+                # that floated 56 mm high after a no-candidate place comes back down)
                 ev["from"] = np.round(o.pos, 4).tolist()
                 o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
                 ev["to"] = np.round(o.pos, 4).tolist()
@@ -383,8 +397,22 @@ class RuntimeProvider:
             self._held_checked[arm] = (lab, g[1])
             r = self.held_checker(obs, arm, lab) or {}
             ev = {"kind": "held_look", "arm": arm, "label": lab, "step": self.bridge.steps_used,
-                  **{k: r.get(k) for k in ("held", "confidence", "source", "calls", "dark_risk", "error")}}
+                  **{k: r.get(k) for k in ("held", "confidence", "source", "calls", "dark_risk", "error", "evidence",
+                                           "opening")}}
             self.events.append(ev)
+            if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5 and self.held_confirm is not None:
+                # never take an object out of the jaws on one vision negative (5.1: B1 said "not held" at confidence
+                # 1.0 on blocks lifted 87 mm in the jaws; skills then opened the jaws and dropped them): a second,
+                # independent look must agree, else carry on and let the place / post-place checks decide
+                r2 = self.held_confirm(obs, arm, lab) or {}
+                ev["confirm"] = {k: r2.get(k) for k in ("held", "confidence", "source", "calls")}
+                if not (r2.get("held") is False and float(r2.get("confidence") or 0) >= 0.5):
+                    ev["kept"] = True
+                    self.stats["held_look_overruled"] = self.stats.get("held_look_overruled", 0) + 1
+                    continue
+            elif r.get("held") is False:
+                ev["kept"] = True
+                continue
             if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5:
                 self.belief.attached.pop(arm)
                 o = self.belief.objects[lab]
@@ -401,7 +429,9 @@ class RuntimeProvider:
         measured = set()
         if released and self.post_place_refine:
             measured = {e["label"] for e in self.post_place(obs, released) if e.get("ok")}
-        objs = [o for o in self.belief.movable() if o.label not in measured]   # the wrist just measured these
+        # the wrist just measured these; the just-released ones are judged by their post-place check (and the place
+        # check), never "fixed" from a low head check (5.1: a perfect 3-stack re-estimated from iou 0.09-0.32)
+        objs = [o for o in self.belief.movable() if o.label not in measured and o.label not in set(released or ())]
         chk = self.checker.check(obs, objs)
         bad = {}
         for lab, c in chk.items():
