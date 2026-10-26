@@ -1,0 +1,7 @@
+{
+ "_doc": "Centre of mass (object frame, m) and mass (kg) PhysX simulates for an asset, read in the physics-only twin with RigidPrim.get_com / get_mass (scripts/skills/physics_com.py). PhysX takes mass properties from the colliders, and RoboDojo's convex decompositions inflate thin parts to minThickness 20 mm, so this differs from the visual mesh's volume centroid (hammer 00005: 12.4 mm). An asset constant: the same assets and RoboDojo code give the same numbers on any machine.",
+ "Rigid/hammer/00005": {"com": [0.0016, 0.0002, 0.00215], "mass": 0.5},
+ "Rigid/pliers/00000": {"com": [0.00332, 0.0, 0.0001], "mass": 0.5},
+ "Rigid/tape_measure/00000": {"com": [-0.00126, -0.00003, 0.00164], "mass": 0.5},
+ "Rigid/wrench/00000": {"com": [-0.01951, 0.00008, -0.00148], "mass": 0.35}
+}

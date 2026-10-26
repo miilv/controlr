@@ -234,7 +234,8 @@ entries:
     benchmark: robodojo
     doc: |
       Put each object into the compartment of the container shaped for it (a slot named after the object's kind, as in
-      a fitted tray), re-oriented as the slot requires; both grippers opened after each object.
+      a fitted tray), compact ones first; one already lying as its slot wants it is carried level, gripped near its
+      centre of mass, else re-oriented as the slot requires; both grippers opened after each object.
     args:
       objects: "[id], required; the objects"
       container: "id, required; the container with shaped slots"
@@ -257,14 +258,15 @@ entries:
     measured: none
     stats:
       - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: store_tools_in_toolbox, tier: A, version: v3 G3 twin, n: 5, success: 0, mean_score: 0.25}
+      - {src: docs/journal/2026-10-26-dojo-skills8.md, bench: robodojo, cell: store_tools_in_toolbox, tier: A, version: skills8 final G3 twin, n: 25, success: 4, mean_score: 0.61}
 
   - name: fill_container
     side: ilia
     benchmark: robodojo
     doc: |
-      Put long objects (pens, sticks, tubes) one by one into an upright holder, leading end first. A holder out of
-      comfortable reach is first carried upright to where both arms reach it and put back down. Both grippers opened
-      after each object.
+      Put long objects (pens, sticks, tubes) one by one into an upright holder: each held leading end down just over
+      the opening's free spot, the hand kept out of the holder, and let go so it drops in (widest first). A holder out
+      of comfortable reach is first carried upright to where both arms reach it. Both grippers opened after each.
     args:
       objects: "[id], required; the long objects"
       container: "id, required; the holder"
@@ -287,6 +289,7 @@ entries:
     measured: none
     stats:
       - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: fill_pen_holder, tier: A, version: v2 G3 twin, n: 5, success: 0, mean_score: 0.08}
+      - {src: docs/journal/2026-10-26-dojo-skills8.md, bench: robodojo, cell: fill_pen_holder, tier: A, version: skills8 v7 G3 twin, n: 25, success: 1, mean_score: 0.18}
 
   - name: arrange
     side: ilia

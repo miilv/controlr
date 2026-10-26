@@ -347,8 +347,9 @@ class FakeTwinClient:
         self.snaps.pop(int(sid), None)
 
 
-@pytest.mark.parametrize("mode", ["gt", "perception"])
-def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
+@pytest.mark.parametrize("mode,extra", [("gt", {}), ("perception", {}),
+                                        ("gt", {"twin_load_noise": [2.0, 1.5], "twin_load": "consistent"})])
+def test_bundle_verify_chains_through_the_grasp(mode, extra, monkeypatch):
     import dojo.runtime.estimate as E
     monkeypatch.setattr(E, "estimate_to_layout", lambda scene, objs: {"Rigid": {"block": [
         {"label": o["label"], "category_idx": o["category_idx"], "default_pos": o["pos"], "default_ori": o["quat"]}
@@ -368,12 +369,15 @@ def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
         def look_plan(self, frame, record, max_looks=2):
             return []
 
-    pol = RuntimePolicy(RuntimeConfig(mode=mode, verify="bundle", n_cands=2, verify_k=2), assets=FakeAssets(),
+    pol = RuntimePolicy(RuntimeConfig(mode=mode, verify="bundle", n_cands=2, verify_k=2, **extra), assets=FakeAssets(),
                         twin_client=tc, perception_client=FakePerception())
     rep = run_episode(pol, FakeEpisode(env), mode)
     assert rep["error"] is None, rep["error"]
     assert _stacked(env)
     v = rep["verify"]
+    if extra:                                    # noisy loads (3-sigma ~6 mm) then levelled / seated on the table
+        assert v.get("load_leveled", 0) + v.get("load_seated", 0) >= 1, v
+        return                                   # (the fake twin's strict judge rejects noisy loads: no chain to check)
     assert v["segments"] >= 4 and v["calls"] == v["segments"], v
     assert v["from_snapshot"] >= 2 and v["from_estimate"] >= 2, v          # places chain from the kept pick
     for vv in tc.verifies:
@@ -1394,7 +1398,9 @@ def test_episode_with_held_look_checks_every_grasp_once():
 
 @pytest.mark.parametrize("mode, needs, step_lim, ran", [("always", False, 550, True), ("trigger", True, 550, True),
                                                        ("trigger", False, 550, False), ("trigger", True, 200, False)])
-def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs, step_lim, ran):
+def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs, step_lim, ran, monkeypatch):
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png%d" % np.asarray(im).size)      # no cv2 in the unit-test venv
     env = _env(step_lim=step_lim)
     scan_q = {"left": [-0.9523, -0.24314, 1.28768, -1.77756, -0.63467, -0.14824],
               "right": [0.94768, -0.24334, 1.28759, -1.77684, 0.63018, 0.14684]}
@@ -1429,10 +1435,16 @@ def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs,
             return []
 
     pc = ScanPerception()
-    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan=mode), assets=FakeAssets(), perception_client=pc)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan=mode, save_look_frames=True), assets=FakeAssets(),
+                        perception_client=pc)
     rep = run_episode(pol, FakeEpisode(env), "perception")
     assert rep["error"] is None, rep["error"]
     ev = next(e for e in rep["events"] if e["kind"] == "scan")
+    lf = rep.get("look_frames") or {}
+    assert ("scan" in lf) == ran                                     # the scan frame kept for replay (save_look_frames)
+    if ran:
+        assert set(lf) >= {"frame0", "scan"} and set(lf["scan"]["png"]) == set(FakeEpisode(env).observe()["images"])
+        assert np.allclose(lf["scan"]["state"]["left_arm_joint_state"][:6], scan_q["left"], atol=1e-3)
     assert ev["ran"] == ran and (mode == "always") == ("trigger" not in pc.calls)
     if mode == "trigger":                                            # both step gates logged per episode
         assert ev["frac_ok"] and ev["min_step_lim_ok"] == (step_lim >= 300)
@@ -2139,6 +2151,7 @@ class _HeldPosePerception:
         return []
 
     def held_pose(self, frame, arm, asset_key, prior_T_tcp_obj, cfg=None):
+        assert len(cfg["others"]) == 2 and np.asarray(cfg["T_obj_target"]).shape == (4, 4)   # occluders, insertion target
         self.calls.append((arm, asset_key, frame["steps_used"], np.asarray(prior_T_tcp_obj, float)))
         return self.answer(np.asarray(prior_T_tcp_obj, float))
 
@@ -2178,18 +2191,27 @@ def test_held_pose_adopts_only_a_confident_read_within_the_place_tolerance():
     meas[:3, 3] = [0.003, 0.0, 0.0]
     answers = []
 
-    def held_pose(arm, prior_T_tcp_obj, asset_key):
+    cfgs = []
+
+    def held_pose(arm, prior_T_tcp_obj, asset_key, cfg_=None):
+        cfgs.append(cfg_)
         return answers.pop(0)
     me = SimpleNamespace(provider=SimpleNamespace(held_pose=held_pose))
     h = SimpleNamespace(T_tcp_obj=prior)
     o = SimpleNamespace(asset=SimpleNamespace(key="Rigid/block/00005"))
-    good = {"ok": True, "T_tcp_obj": meas.tolist(), "sigma": {"pos_mm": [1.0, 2.0, 9.0], "rot_deg": [1.0, 2.0, 2.0]}}
-    answers += [good, {**good, "ok": False}, {**good, "sigma": {"pos_mm": [6.0, 1.0, 1.0], "rot_deg": [1, 1, 1]}},
-                {**good, "sigma": {"pos_mm": [1.0, 1.0, 1.0], "rot_deg": [1.0, 4.0, 1.0]}}, {**good, "sigma": None}]
-    pp = SimpleNamespace(arm="left")
-    got = [Skills._measure_held(me, pp, h, o, 0.01, 6.0) for _ in range(5)]
-    assert np.allclose(got[0], meas)                      # z sigma does not gate (the descent is guarded / verified)
-    assert got[1:] == [None] * 4                          # not ok / lateral 6 mm > 5 / rot 4 deg > 3 / no sigma
+    # sigma per TCP axis (x = approach): the approach axis does not gate (the descent is guarded / verified)
+    good = {"ok": True, "T_tcp_obj": meas.tolist(),
+            "sigma": {"pos_mm": [9.0, 1.0, 2.0], "rot_deg": [9.0, 1.0, 1.0], "lead_mm": [9.0, 2.0, 2.0], "axis_deg": 2.0}}
+    answers += [good, {**good, "ok": False},
+                {**good, "sigma": {**good["sigma"], "lead_mm": [1.0, 6.0, 1.0]}},             # across 6 mm > 5
+                {**good, "sigma": {**good["sigma"], "axis_deg": 4.0}},                        # axis 4 deg > 3
+                {**good, "sigma": None},
+                {**good, "sigma": {"pos_mm": [9.0, 1.0, 1.0], "rot_deg": [9.0, 1.0, 2.0]}}]   # no lead / axis: TCP y, z
+    pp = SimpleNamespace(arm="left", T_obj_target=np.eye(4))
+    got = [Skills._measure_held(me, pp, h, o, 0.01, 6.0) for _ in range(6)]
+    assert np.allclose(got[0], meas) and np.allclose(got[5], meas)
+    assert got[1:5] == [None] * 4                          # not ok / across 6 mm / axis 4 deg / no sigma
+    assert np.allclose(cfgs[0]["T_obj_target"], np.eye(4))                  # perception's insertion geometry
     assert Skills._measure_held(SimpleNamespace(provider=SimpleNamespace()), pp, h, o, 0.01, 6.0) is None
 
 
@@ -2319,3 +2341,42 @@ def test_catalog_check_fails_on_a_slot_base_without_support_frames(tmp_path):
                                                 "placement": {"xlim": [0, 0], "ylim": [0, 0], "relative_plane": "other0/mahjong_0"}}}}
     (cat / "tasks.json").write_text(_json.dumps(tasks))
     assert "make_kong" not in missing_support(cat, ["make_kong"])
+
+
+def test_provider_show_pose_plans_with_the_hold_joints_and_held_pose_passes_the_view():
+    env = _env()
+    q_hold = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6]
+
+    class SP(_HeldPosePerception):
+        def __init__(self, env):
+            super().__init__(env, lambda prior: {"ok": False, "why": "ambiguous", "T_tcp_obj": prior.tolist()})
+            self.shows, self.views = [], []
+
+        def show_pose(self, arm, key, T_tcp_obj, state, cfg=None):
+            self.shows.append((arm, key, np.asarray(T_tcp_obj).shape, list(np.round(state[f"{arm}_arm_joint_state"][:6], 3)),
+                               dict(cfg or {})))
+            return {"looks": [{"arm": "right", "joints": [0.0] * 6, "steps": 12}], "shows": []}
+
+        def held_pose(self, frame, arm, asset_key, prior_T_tcp_obj, cfg=None):
+            self.views.append(cfg.get("view"))
+            return self.answer(np.asarray(prior_T_tcp_obj, float))
+
+    seen = {}
+
+    def program(ctx):
+        seen["show"] = ctx.prov.show_pose("left", np.eye(4), "Rigid/charger/00000", {"q_hold": q_hold, "view": "show"})
+        seen["held"] = ctx.prov.held_pose("left", np.eye(4), "Rigid/charger/00000", {"view": "look"})
+        return {"ok": True}
+    pc = SP(env)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", held_pose="auto"), assets=FakeAssets(),
+                        perception_client=pc, program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    (arm, key, shape, q, cfg), = pc.shows
+    assert (arm, key, shape) == ("left", "Rigid/charger/00000", (4, 4)) and q == q_hold and cfg == {"view": "show"}
+    assert seen["show"]["looks"][0]["steps"] == 12 and pc.views == ["look"] and seen["held"]["why"] == "ambiguous"
+    ev = {e["kind"]: e for e in rep["events"] if e["kind"] in ("show_pose", "held_pose")}
+    assert ev["show_pose"]["q_hold"] and ev["show_pose"]["n"] == {"looks": 1, "shows": 0} and ev["held_pose"]["view"] == "look"
+    pol2 = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=SP(env),
+                         program=lambda ctx: {"ok": not hasattr(ctx.prov, "show_pose")})
+    assert run_episode(pol2, FakeEpisode(_env()), "perception")["result"]["ok"]            # held_pose off: no show_pose

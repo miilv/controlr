@@ -57,6 +57,12 @@ def label_candidates(vocabulary: str, label: str) -> list[str]:
     return list(lab.get("candidates") or [])
 
 
+def _png(im) -> bytes:
+    """An RGB image as PNG bytes."""
+    import cv2
+    return cv2.imencode(".png", cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR))[1].tobytes()
+
+
 def _layout_seed(prov) -> int:
     """A reproducible per-episode seed from the initial belief (object labels and positions to the mm)."""
     import zlib
@@ -483,6 +489,9 @@ class RuntimePolicy:
             if cfg.held_pose == "auto" and hasattr(pc, "held_pose"):
                 prov.held_pose = lambda arm, prior_T_tcp_obj, asset_key, cfg_=None: self._held_pose(
                     prov, arm, prior_T_tcp_obj, asset_key, cfg_)
+            if cfg.held_pose == "auto" and hasattr(pc, "show_pose"):   # observer looks / show poses for that read
+                prov.show_pose = lambda arm, T_tcp_obj, asset_key, cfg_=None: self._show_pose(
+                    arm, T_tcp_obj, asset_key, cfg_)
             if hasattr(pc, "watch_read"):               # provider.watch_read(region, prior): board cells / container
                 prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
             cats = {o.category for o in prov.belief.objects.values()}
@@ -760,6 +769,15 @@ class RuntimePolicy:
             return cands[0], None
         return best["_v"], best["_rec"]
 
+    def _keep_frame(self, tag: str, obs: dict) -> None:
+        """``save_look_frames`` (dev): keep this observation (every camera as PNG + the state) under ``tag`` in the
+        report (eval writes them to ``<run>/<task>_<layout>_look_frames/``); a later frame with the same tag replaces it."""
+        if not self.cfg.save_look_frames:
+            return
+        self.report.setdefault("look_frames", {})[tag] = {
+            "state": {k: np.asarray(v, float).tolist() for k, v in obs["state"].items()},
+            "png": {c: _png(im) for c, im in obs["images"].items()}}
+
     def _scan(self, sk, obs0: dict, rec: dict, scene: str) -> tuple[dict | None, dict | None]:
         """The scan macro: gate (``cfg.scan``), both arms in parallel to perception's frozen scan joints with the
         grippers open (joint-space, <= ``scan_step_rad`` per step), observe, scan-primary estimate. The arms stay
@@ -790,6 +808,8 @@ class RuntimePolicy:
         n0 = b.steps_used
         sk.ex.run_actions(acts, name="scan")
         obs_s = b.observe()
+        self._keep_frame("frame0", obs0)                 # dev: the scan path replayable (every camera + state)
+        self._keep_frame("scan", obs_s)
         ev.update({"ran": True, "steps_used": b.steps_used - n0})
         self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
         try:
@@ -901,9 +921,36 @@ class RuntimePolicy:
                                        "merged": len(st.get("merge") or [])})
         return rec
 
-    def _held_pose(self, prov, arm: str, prior_T_tcp_obj, asset_key: str, cfg: dict | None = None) -> dict:
-        """perception's held_pose on the current observation; an ok read re-anchors the belief's in-hand transform."""
+    def _show_pose(self, arm: str, T_tcp_obj, asset_key: str, cfg: dict | None = None) -> dict:
+        """perception's ``show_pose`` (observer looks / show poses for the object ``arm`` holds) on the current proprio;
+        ``cfg["q_hold"]``: the holding arm's joints where the skills will hold it (they plan the look during the
+        approach), put into the state in place of the current ones. The rest of ``cfg`` goes to perception."""
+        cfg = dict(cfg or {})
+        q_hold = cfg.pop("q_hold", None)
+        state = {k: np.asarray(v, float).reshape(-1) for k, v in self.bridge.observe()["state"].items()}
+        if q_hold is not None:
+            k = f"{arm}_arm_joint_state"
+            q = np.asarray(q_hold, float).reshape(-1)
+            state[k] = np.r_[q, state[k][len(q):]] if k in state and len(state[k]) > len(q) else q
         t = time.perf_counter()
+        try:
+            r = self.perception().show_pose(arm, asset_key, np.asarray(T_tcp_obj, float).tolist(), state, cfg) or {}
+        except Exception as e:  # noqa: BLE001 (the skills fall back to the plain hover)
+            self.report["events"].append({"kind": "show_pose", "arm": arm, "error": f"{type(e).__name__}: {str(e)[:160]}"})
+            return {}
+        n = {k: len(v) for k, v in r.items() if isinstance(v, list)}
+        self.report["events"].append({"kind": "show_pose", "arm": arm, "step": self.bridge.steps_used, "q_hold": q_hold is not None,
+                                      "s": round(time.perf_counter() - t, 2), "n": n})
+        return r
+
+    def _held_pose(self, prov, arm: str, prior_T_tcp_obj, asset_key: str, cfg: dict | None = None) -> dict:
+        """perception's held_pose on the current observation (the belief's other objects as occluders, the skills'
+        place target for the insertion geometry); an ok read re-anchors the belief's in-hand transform."""
+        t = time.perf_counter()
+        held = set(prov.belief.held_labels()) if prov.belief is not None else set()
+        others = [{"key": o.asset.key, "pose7": [float(v) for v in np.r_[o.pos, o.quat]]}
+                  for o in (prov.belief.movable() if prov.belief is not None else []) if o.label not in held]
+        cfg = {"others": others, **(cfg or {})}
         try:
             r = self.perception().held_pose(self.bridge.observe(), arm, asset_key,
                                             np.asarray(prior_T_tcp_obj, float).tolist(), cfg) or {}
@@ -911,7 +958,7 @@ class RuntimePolicy:
             self.report["events"].append({"kind": "held_pose", "arm": arm, "error": f"{type(e).__name__}: {str(e)[:160]}"})
             return {"ok": False, "why": "error"}
         self.report["events"].append({"kind": "held_pose", "arm": arm, "step": self.bridge.steps_used,
-                                      "s": round(time.perf_counter() - t, 2),
+                                      "view": cfg.get("view"), "s": round(time.perf_counter() - t, 2),
                                       **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
         if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
             lab, _ = prov.belief.attached[arm]
@@ -1284,13 +1331,8 @@ class RuntimePolicy:
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
         self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
-        if cfg.save_look_frames:
-            import cv2
-            self.report["look_frames"] = {
-                tag: {"state": {k: np.asarray(v, float).tolist() for k, v in o["state"].items()},
-                      "png": {c: cv2.imencode(".png", cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR))[1].tobytes()
-                              for c, im in o["images"].items()}}
-                for tag, o in (("frame0", obs0), ("look", obs1))}
+        self._keep_frame("frame0", obs0)
+        self._keep_frame("look", obs1)
         rec1 = self.perception().estimate([obs0, obs1], scene, self.fold, prior_record=rec0)
         if cfg.look_merge == "flagged":
             from .estimate import merge_looked
