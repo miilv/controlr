@@ -477,16 +477,26 @@ def belt_objects(w, exclude=()) -> list[str]:
     return [o.label for o in w.task_objects() if o.obj_type == "Rigid" and o.label not in exclude]
 
 
-def belt_velocity(sk: Skills, labels: list[str], steps: int = 4) -> np.ndarray:
-    """The belt's velocity (m per env step, world xy) from what the objects do over ``steps`` still steps: the median
-    displacement of the objects that moved."""
+def belt_velocity(sk: Skills, labels: list[str], steps: int = 4, max_wait: int = 60) -> np.ndarray:
+    """The belt's velocity (m per env step, world xy): the provider's tracked belt velocity when it has one (the runtime
+    fits each moving object's reads over a window), else the median displacement of the objects that moved over
+    ``steps`` still steps. Keeps looking up to ``max_wait`` steps while nothing reads as moving (a tracker warming up)."""
+    f = getattr(sk.provider, "belt_velocity", None)
     w0 = sk.refresh()
     p0 = {l: w0.obj(l).pos.copy() for l in labels if l in w0.objects}
-    sk.ex.hold(steps)
-    w1 = sk.refresh()
-    d = [(w1.obj(l).pos - p)[:2] / steps for l, p in p0.items() if l in w1.objects]
-    d = [x for x in d if np.linalg.norm(x) > 1e-4]
-    return np.median(np.array(d), axis=0) if d else np.zeros(2)
+    waited = 0
+    while True:
+        sk.ex.hold(steps)
+        waited += steps
+        if f is not None:
+            v = np.asarray(f(), float).reshape(-1)[:2]
+            if float(np.linalg.norm(v)) > 1e-4:
+                return v
+        w1 = sk.refresh()
+        d = [(w1.obj(l).pos - p)[:2] / waited for l, p in p0.items() if l in w1.objects]
+        d = [x for x in d if np.linalg.norm(x) > 1e-4]
+        if d or waited >= max_wait:
+            return np.median(np.array(d), axis=0) if d else np.zeros(2)
 
 
 def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max: int = 600, n_desc: int = 8,

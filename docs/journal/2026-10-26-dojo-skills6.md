@@ -61,6 +61,7 @@ median / max (limit).
 | imitate_sorting_sequence | v2 (7a6e6e5, put_in_open) | 100002, 04, 10, 14 | 2/4 | 0.51 | 872-1328 | relay found no table spot (1), object turned in the hand (1) | |
 | imitate_sorting_sequence | v3 (17acd42, watch reads) | first 2 of 13 | 0/2 | 0.10 | 1578-1591 | watched to the step budget: the container read never read as stable (identical twins keyed by asset); fixed, test | |
 | imitate_sorting_sequence | **v4 (848f38e)** | **the 13 with validated demos** | **10/13** | **0.77** | **1276 / 1527** | the first object's grasp failed twice: a slip on the carry (toy car), a grasp that closed beside the object (phone), a relay collision | |
+| imitate_sorting_sequence | **v5 (29876c6 / 51b3094: a grasp that failed is not retried, 3 tries)** | **the 13 with validated demos** | **12/13** | **0.92** | **1359 / 1505** | 100017: the toy car's grasps kept failing (dropped on the carry, then 0 mm lifts) | |
 | match_and_pick_from_conveyor | v1b (369e7a0) | 100000-02 raw | 2/3 | 0.67 | 190 / 286 (700) | ice cream: no top grasp | 86 / 92 |
 | match_and_pick_from_conveyor | v4 (7ad3f4c) | all 25 raw | 20/25 | 0.80 | 199 / 362 | ice cream 3 (no grasp), a standing bottle and a 24 cm figurine (16 cm lift out of reach) | |
 
@@ -73,7 +74,7 @@ median / max (limit).
 | fill_egg_holder | **v6 (29876c6, level pads only for the stand-up)** | **all 11 settled** | **0/11** | **0.03** | **160 / 452** | grasp_slip 6, place_miss 3, collision 2: one egg in 3/11 episodes; most eggs sit packed against the basket wall, where no level grasp is free, and the relay to the table loses them | |
 | pick_from_conveyor_by_image | v1 (5d9ba52, layouts v13) | 100000-04 (ours, v13) | 0/5 | 0.00 | 7 (700) | no intercept for the basket: its handle is 1 m up, ~0.48 m out | 22 / 52 |
 | pick_from_conveyor_by_image | v2 (cc4dc44, lift pulled toward the arm) | 100000-02 | 0/3 | 0.00 | 7 | still no intercept: the pre-grasp over the handle is out of reach | |
-| pick_from_conveyor_by_image | v3 (51b3094, rim grasps) | 100000-02 so far | 0/3 | 0.00 | 65-67 | the near-rim pinch of the moving basket did not lift it ("rose 0 mm") | |
+| pick_from_conveyor_by_image | v3 (51b3094, rim grasps) | 100000-09 (ours, v13) | 0/10 | 0.00 | 67 / 68 | the near-rim pinch of the moving basket did not lift it ("rose 0 mm"), 10/10 | |
 | make_kong (regression) | 29876c6 | 100000-04 settled | **5/5** | 1.00 | 379 / 379 (600) | - (skills3: 5/5, 379) | |
 
 Notes:
@@ -167,3 +168,19 @@ Every skill reads through its provider, so moving from GT to perception swaps th
 | fill_holes | object estimates (static scene) | Eggs, holder, basket | At the start, after each drop ("in a hole": root within r_hole - 4 mm of the hole centre, bottom >= 10 mm below the hole top), lid angle before / after the swing | Poses, lid joint angle | Normal |
 
 The registry's `reads` tokens stay within the j2 vocabulary (`object_args`); the watch cadence is in each entry's `notes`.
+
+## 7. After #47: the runtime's reads (integration-2 #34 / #39)
+
+- `RuntimeProvider.actors_moving()`: no arguments. It compares head frames over a 12-step window, counts gripper motion
+  as motion, and returns None when it cannot read. That matches `wait_actors_still`'s call.
+- `RuntimeProvider.watch_read`: set by the policy as `lambda region, prior=None`. `watch(sk, region, prior)` calls it
+  positionally. The perception side (`dojo.perception.watch.watch_read`, #36) returns the dict shape `gt_watch_read`
+  mirrors, with cells keyed by the `cell/k` index.
+- `RuntimeProvider.belt_velocity()`: now preferred by the skills' `belt_velocity` when it reads as moving. The skill
+  keeps looking for up to 60 steps while the tracker warms up. Before, a mode-B belief that did not move yet would
+  have ended the skill with "nothing moves".
+- Checked on CPU against the real `RuntimeProvider` with fake readers (`test_skill_reads_go_through_the_runtime_provider`).
+  No signature mismatches.
+- One dependency outside skills: perception's `watch_read` loads the board / container assets from perception's
+  catalogue. The chessman, checkerboard, basket/5 and the conveyor objects are in `compute3:~/dojo-data/skills6/catalog`
+  (`--no-glb`); perception needs them in its own catalogue.
