@@ -932,6 +932,8 @@ def uniform_section_grasps(sk: Skills, o, arm: str, tilts=(0.0, 25.0, -25.0, 40.
 
 EACH_OVER = 0.07              # m: a filled hole this close to the line from the carrying arm's base to a hole is "in
                               # the way"
+EACH_RELAY_HOLES = 3          # holes tried through a relay (the object put down as it lies, then into the hole)
+EACH_RELAY_NEAR = (0.0, -0.28)    # relay spots near here (between the arms, in front of the robot)
 
 
 def _seg_dist(p, a, b) -> float:
@@ -1062,10 +1064,20 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
             res = _run_leg(sk, lab, tg, 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
             break
         if res is None and cands:
-            tag, d, tg = cands[0]
-            sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: relay")
-            res = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.008, tol_tilt=20.0, tol_z=0.03, ignore=(receptacle,),
-                                 place_kw=pk, air_handover=False, transfer_kw=tkw)
+            # no one-arm plan: put it down as it lies on a spot between the arms, then into a hole from there (often the
+            # other arm's: the picking arm's holes are taken, or the object lies out of the inserting arm's reach). The
+            # holes for that leg: not reached over from the other arm's base, then nearest to the spot.
+            oth = sk.kin.base("right" if picker == "left" else "left")[:2, 3]
+            mid = np.asarray(EACH_RELAY_NEAR, float)
+            rank = {tag: (any(_seg_dist(f[:2], oth, T[:3, 3][:2]) < EACH_OVER for f in filled),
+                          float(np.linalg.norm(T[:3, 3][:2] - mid))) for _sb, _sd, tag, T, _r in free}
+            for tag, d, tg in sorted(cands, key=lambda c: rank[c[0]])[:EACH_RELAY_HOLES]:
+                sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: relay")
+                res = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.008, tol_tilt=20.0, tol_z=0.03,
+                                     ignore=(receptacle,), place_kw=pk, air_handover=False, transfer_kw=tkw,
+                                     relay_near=EACH_RELAY_NEAR, spot_avoid=(receptacle,), as_is_lying=True)
+                if res.ok or res.steps > 0 or res.status != "ik_fail":
+                    break
         for a in ARMS:
             if sk.held[a] is not None:
                 sk._record(sk.regrasp(a))
