@@ -272,6 +272,43 @@ def step_cost(r: dict) -> int:
     return 0
 
 
+_CLASS: dict = {}
+
+
+def geometry_class(key: str) -> str:
+    if key not in _CLASS:
+        from .held import spin_axis
+        _CLASS[key] = "spin" if spin_axis(key) is not None else "rigid"
+    return _CLASS[key]
+
+
+def rescale(rows: list[dict], scales: dict) -> list[dict]:
+    """Rows as if the estimator had used ``scales`` {class: {"pos", "rot"}} (the rows' sigma are raw, scale 1): sigma
+    scaled, ok re-decided with held's bars (fit_poor / out_of_range stay not ok), err_out = the fit when ok else the
+    prior."""
+    from . import held as H
+
+    out = []
+    for r in rows:
+        if "err_fit" not in r or not r.get("sigma"):
+            out.append(r)
+            continue
+        k = scales[geometry_class(r["key"])]
+        s = dict(r["sigma"])
+        for f in ("pos_mm", "lead_mm"):
+            s[f] = [v * k["pos"] for v in s[f]]
+        for f in ("lead_lat_mm", "lead_along_mm"):
+            if f in s:
+                s[f] = s[f] * k["pos"]
+        s["rot_deg"] = [v * k["rot"] for v in s["rot_deg"]]
+        s["axis_deg"] = s["axis_deg"] * k["rot"]
+        ok = r["why"] in ("", "ambiguous") and s.get("lead_lat_mm", 1e9) <= H.OK_MAX_LEAD_SIGMA_MM \
+            and s["axis_deg"] <= H.OK_MAX_AXIS_SIGMA_DEG
+        out.append({**r, "sigma": s, "ok": ok, "why": "" if ok else (r["why"] or "ambiguous"),
+                    "err_out": r["err_fit"] if ok else r["err_prior"]})
+    return out
+
+
 def summarize(rows: list[dict], key=lambda r: (r["task"], r["kind"], r["views_set"])) -> list[dict]:
     groups: dict = {}
     for r in rows:
@@ -364,6 +401,36 @@ def calibrate(rows: list[dict], q: float = 95.0) -> dict:
     return out
 
 
+def calibrate_classes(rows: list[dict], q: float = 95.0) -> dict:
+    """Per geometry class: the lateral-lead and axis factors (fit on all), and their 2-fold held-out coverage."""
+    out = {}
+    for cls in ("rigid", "spin"):
+        use = [r for r in rows if "err_fit" in r and r.get("sigma") and r["why"] in ("", "ambiguous")
+               and geometry_class(r["key"]) == cls and "lead_lat_mm" in r["sigma"]]
+        if len(use) < 20:
+            continue
+
+        def ks(rs):
+            el = np.array([r["err_fit"]["lead_lat_mm"] for r in rs])
+            sl = np.maximum(np.array([r["sigma"]["lead_lat_mm"] for r in rs]), 1e-6)
+            ea = np.array([r["err_fit"]["axis_deg"] for r in rs])
+            sa = np.maximum(np.array([r["sigma"]["axis_deg"] for r in rs]), 1e-6)
+            return float(np.percentile(el / sl, q) / 2), float(np.percentile(ea / sa, q) / 2)
+
+        def cover(rs, kp, kr):
+            el = np.array([r["err_fit"]["lead_lat_mm"] for r in rs])
+            sl = np.array([r["sigma"]["lead_lat_mm"] for r in rs]) * kp
+            ea = np.array([r["err_fit"]["axis_deg"] for r in rs])
+            sa = np.array([r["sigma"]["axis_deg"] for r in rs]) * kr
+            return [round(float(np.mean(el <= 2 * sl)), 3), round(float(np.mean(ea <= 2 * sa)), 3)]
+
+        halves = [[r for r in use if int(str(r["seed"]).split("_")[0][-1]) % 2 == h] for h in (0, 1)]
+        kp, kr = ks(use)
+        out[cls] = {"n": len(use), "pos": round(kp, 2), "rot": round(kr, 2),
+                    "held_out": [cover(halves[1 - h], *ks(halves[h])) for h in (0, 1) if len(halves[h]) >= 10]}
+    return out
+
+
 def cmd_report(a) -> None:
     rows = []
     for f in a.files:
@@ -375,6 +442,9 @@ def cmd_report(a) -> None:
             "task_kind": lambda r: (r["task"], r["kind"], r["views_set"]),
             "views": lambda r: (r["views_set"], r["kind"]),
             "kind": lambda r: (r["kind"],)}[a.by]
+    if a.scales:
+        sc = json.loads(a.scales)
+        rows = rescale(rows, {c: sc.get(c, {"pos": 1.0, "rot": 1.0}) for c in ("rigid", "spin")})
     S = summarize(rows, keyf)
     cols = {"short": ["n", "steps_med", "prior_lead_med", "fit_lat_med", "fit_lat_p90", "fit_along_med", "fit_axis_med",
                       "fit_axis_p90", "hit_all", "ok", "ok_lat_med", "ok_lat_p90", "ok_lat_max", "ok_axis_med", "ok_axis_p90",
@@ -389,6 +459,8 @@ def cmd_report(a) -> None:
             (f"{s[c]:.2f}" if isinstance(s[c], float) else str(s[c])) for c in cols) + " |")
     print("sigma coverage (ok fits):", {k: (round(v, 3) if isinstance(v, float) else v) for k, v in coverage(rows).items()})
     print("sigma calibration (2-fold by layout):", calibrate([r for r in rows if "err_fit" in r]))
+    if a.classes:
+        print("per-class calibration (lateral lead, axis):", calibrate_classes(rows))
 
 
 def main(argv=None) -> None:
@@ -417,6 +489,8 @@ def main(argv=None) -> None:
     p.add_argument("files", nargs="+")
     p.add_argument("--by", default="task")
     p.add_argument("--cols", default="short")
+    p.add_argument("--scales", default=None, help='json {"rigid": {"pos": k, "rot": k}, "spin": {...}} applied to raw sigma')
+    p.add_argument("--classes", action="store_true", help="per geometry class calibration (needs the catalogue)")
     a = ap.parse_args(argv)
     {"variants": cmd_variants, "run": cmd_run, "report": cmd_report}[a.cmd](a)
 

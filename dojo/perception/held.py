@@ -46,9 +46,11 @@ MIN_VIS_PX = 150                   # visible silhouette pixels (native) for a vi
 MIN_VIS_FRAC = 0.25                # visible share of the silhouette
 PAD_LEN = 0.030                    # m of each finger (from the tip) that can touch the object
 CENTRE_SIGMA_M = 0.0015            # soft gripper term: the contact faces centred on the TCP along the closing axis
-SIGMA_SCALE = {"pos": 1.6, "rot": 1.6}   # calibrated 2-fold by layout on our dev frames (held_eval report: calibrate)
+# raw sigma -> calibrated sigma, per geometry class ("spin": a continuous symmetry axis, i.e. tubes, pens, coins; else
+# "rigid"); fitted 2-fold by layout on our dev frames (held_eval report: calibration), held-out coverage in the report
+SIGMA_SCALE = {"rigid": {"pos": 1.0, "rot": 1.0}, "spin": {"pos": 1.0, "rot": 1.0}}
 SIGMA_DF = 0.002                   # cost rise below which poses are indistinguishable (calibrated with SIGMA_SCALE)
-SIGMA_SAMPLES = 60
+SIGMA_SAMPLES = 70
 OK_IOU = 0.70                      # best view's IoU for an ok fit (a gross mismatch; precision is the sigma's job)
 DROP_VIEW_IOU = 0.60               # a view below this IoU at the first fit is dropped when another view is good
 OK_MAX_LEAD_SIGMA_MM = 1.0        # calibrated 1-sigma of the leading point ACROSS the insertion axis
@@ -253,6 +255,7 @@ class View:
         self.px_scale = (x1 - x0) / size     # native px per ROI px
         self.img = img
         self.fg = np.zeros((size, size), np.float32)
+        self.domain = np.ones((size, size), np.float32)
         self.model_px = (0, 0)
         # image edges (Canny on L, a*, b*: a white part on light wood differs in b*, not in grey level), robot edges
         # removed; distance to the nearest edge, truncated (the outline term)
@@ -278,6 +281,9 @@ class View:
             e = 0.5 * float(din.max())                 # a thin object: keep its core
         fgm = (din > e) & k
         bgm = (dout > e) & (dout <= e + band) & k
+        # the IoU is scored only near the expected outline: far background of a similar colour (a light wall behind a
+        # white tube seen from the side) had P(object) ~ 0.5 and inflated the union (observer views dropped at IoU 0.3)
+        self.domain = (dout <= e + band).astype(np.float32)
         nf, nb = int(fgm.sum()), int(bgm.sum())
         self.model_px = (nf, nb)
         if nf < 30 or nb < 30:
@@ -430,7 +436,7 @@ def _views(images, state, arm, sil: Silhouettes, T_tcp, T_prior, cams, o_lo, o_h
 
 
 def _iou(s: np.ndarray, v: View) -> float:
-    k = v.known
+    k = v.known * v.domain
     inter = float((s * v.fg * k).sum())
     union = float(((s + v.fg - s * v.fg) * k).sum())
     return inter / union if union > 0 else 0.0
@@ -611,7 +617,11 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
         x = x2
     f, ious = cost(x, detail=True)
     T_est = apply_delta(T_prior, c_tcp, x)
-    sig = _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f)
+    sp = spin_axis(asset_key)
+    sig = _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f,
+                 spin_tcp=None if sp is None else apply_delta(T_prior, c_tcp, x)[:3, :3] @ sp,
+                 scale=SIGMA_SCALE["spin" if sp is not None else "rigid"])
+    base["geometry_class"] = "spin" if sp is not None else "rigid"
     out = _result(T_est, T_prior, T_tcp, lead_obj, axis_obj, sig, ious, f, base, t0)
     best_iou = max(ious.values()) if ious else 0.0
     why = ""
@@ -664,25 +674,53 @@ def _pose7(T) -> list:
     return [float(v) for v in T[:3, 3]] + [float(v) for v in R_to_quat_wxyz(T[:3, :3])]
 
 
-def _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f0) -> dict:
+@lru_cache(maxsize=32)
+def spin_axis(key: str):
+    """The object-frame axis (through the bbox centre) about which the mesh is continuously symmetric (a tube, a pen, a
+    coin), or None. A turn about it changes no image, so it is left out of the uncertainty."""
+    from .inverse_layout import world_z_symmetry
+
+    a = load_asset(key)
+    c = (np.asarray(a.info["bbox_min"]) + np.asarray(a.info["bbox_max"])) / 2
+    V = a.Vs - c
+    for k in range(3):
+        z = np.zeros(3)
+        z[k] = 1.0
+        x = np.zeros(3)
+        x[(k + 1) % 3] = 1.0
+        R = np.stack([x, np.cross(z, x), z])                 # rows: the object axis k becomes z
+        if world_z_symmetry(V @ R.T, np.asarray(a.Fs)) >= 36:
+            return z
+    return None
+
+
+def _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f0, spin_tcp=None, scale=None) -> dict:
     """Uncertainty of the fit: a full quadratic model of the cost fitted to ``SIGMA_SAMPLES`` random poses around the
     optimum (robust to the IoU cost's pixel steps, unlike finite differences), its Hessian H (eigenvalues floored),
     cov = 2 * SIGMA_DF * H^-1 (the poses whose cost rises by less than SIGMA_DF are indistinguishable), mapped to the
     TCP position / rotation, the leading point and the insertion axis; times SIGMA_SCALE (both calibrated on dev
     captures, ``held_eval``)."""
     S = np.array([math.radians(1.0)] * 3 + [0.0006, 0.0004, 0.0006])     # sampling half-widths per DoF
+    # the sampled subspace: all 6 DoF, minus the turn about a symmetry axis (no image changes, the outputs neither)
+    B = np.eye(6)
+    if spin_tcp is not None:
+        v = np.r_[np.asarray(spin_tcp, float) / math.radians(1.0), np.zeros(3)]   # normalised coordinates
+        v /= np.linalg.norm(v)
+        Q, _ = np.linalg.qr(np.c_[v, np.eye(6)])
+        B = Q[:, 1:6]
+    m = B.shape[1]
     rng = np.random.default_rng(1)
-    U = rng.uniform(-1.0, 1.0, (SIGMA_SAMPLES, 6))
-    fs = np.array([cost(x + u * S) for u in U])
-    iu = np.triu_indices(6)
+    U = rng.uniform(-1.0, 1.0, (SIGMA_SAMPLES, m))
+    fs = np.array([cost(x + (B @ u) * S) for u in U])
+    iu = np.triu_indices(m)
     A = np.c_[np.ones(len(U)), U, 0.5 * np.array([np.outer(u, u)[iu] * np.where(iu[0] == iu[1], 1.0, 2.0) for u in U])]
     coef, *_ = np.linalg.lstsq(A, fs, rcond=None)
-    Hn = np.zeros((6, 6))
-    Hn[iu] = coef[7:]
+    Hn = np.zeros((m, m))
+    Hn[iu] = coef[1 + m:]
     Hn = Hn + np.triu(Hn, 1).T
     w, V = np.linalg.eigh(Hn)
-    w = np.maximum(w, 1e-3 * max(float(w.max()), 1e-6))
-    cov_n = V @ np.diag(2.0 * SIGMA_DF / w) @ V.T
+    w = np.maximum(w, 1e-2 * max(float(w.max()), 1e-6))
+    cov_n = B @ (V @ np.diag(2.0 * SIGMA_DF / w) @ V.T) @ B.T
     cov = cov_n * np.outer(S, S)
     def outputs(T):
         lead = T[:3, :3] @ lead_obj + T[:3, 3]
@@ -698,12 +736,13 @@ def _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f0) -> dict:
     a = o0[6:9] / max(float(np.linalg.norm(o0[6:9])), 1e-12)
     Pl = np.eye(3) - np.outer(a, a)                       # across the insertion axis at the leading point
     Cl = C[3:6, 3:6]
-    lat = math.sqrt(max(float(np.trace(Pl @ Cl @ Pl)), 0.0)) * 1000 * SIGMA_SCALE["pos"]
-    along = math.sqrt(max(float(a @ Cl @ a), 0.0)) * 1000 * SIGMA_SCALE["pos"]
-    pos = np.sqrt(np.maximum(np.diag(C)[:3], 0)) * 1000 * SIGMA_SCALE["pos"]
-    lead = np.sqrt(np.maximum(np.diag(C)[3:6], 0)) * 1000 * SIGMA_SCALE["pos"]
-    rot = np.degrees(np.sqrt(np.maximum(np.diag(cov)[:3], 0))) * SIGMA_SCALE["rot"]
-    axis_deg = float(np.degrees(math.sqrt(max(float(np.trace(C[6:9, 6:9])), 0.0)))) * SIGMA_SCALE["rot"]
+    kp, kr = (scale or SIGMA_SCALE["rigid"])["pos"], (scale or SIGMA_SCALE["rigid"])["rot"]
+    lat = math.sqrt(max(float(np.trace(Pl @ Cl @ Pl)), 0.0)) * 1000 * kp
+    along = math.sqrt(max(float(a @ Cl @ a), 0.0)) * 1000 * kp
+    pos = np.sqrt(np.maximum(np.diag(C)[:3], 0)) * 1000 * kp
+    lead = np.sqrt(np.maximum(np.diag(C)[3:6], 0)) * 1000 * kp
+    rot = np.degrees(np.sqrt(np.maximum(np.diag(cov)[:3], 0))) * kr
+    axis_deg = float(np.degrees(math.sqrt(max(float(np.trace(C[6:9, 6:9])), 0.0)))) * kr
     return {"pos_mm": pos.tolist(), "rot_deg": rot.tolist(), "lead_mm": lead.tolist(), "lead_lat_mm": lat,
             "lead_along_mm": along, "axis_deg": axis_deg, "hessian_eig": w.tolist()}
 
