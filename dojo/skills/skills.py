@@ -607,7 +607,7 @@ class Skills:
                    fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
-                   blind_up: float | None = None, spiral: float | None = None):
+                   blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -638,7 +638,9 @@ class Skills:
         (a piece meant to be seated deep on a peg is only threaded: pushed down blind on a predicted pose, it binds).
         ``spiral`` (m): with an adopted read, a servo tail that is not seated after its descent first drags the object,
         pressed onto the receptacle, along a spiral out to this radius (a read 0.15-0.3 mm off, blades in +-0.1 mm
-        slots), then probes as usual."""
+        slots), then probes as usual. ``guarded``: with an adopted read too, the guarded / probing tail (on the measured
+        transform) instead of the servo: its arm-lag stop sees an object caught on the receptacle that slides in the pads
+        (a ring on a peg's top), which the servo's held pose (the TCP's) cannot."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -671,6 +673,8 @@ class Skills:
         for k, v in (("held_tol", held_tol), ("held_gate", held_gate), ("blind_up", blind_up), ("spiral", spiral)):
             if v is not None:
                 tail_kw[k] = float(v)
+        if guarded:
+            tail_kw["guarded"] = True
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -719,7 +723,8 @@ class Skills:
                     sym_axis: int | None = None, guard_seated: float | None = None,
                     guard_lag: float | None = None, servo_xy_tol: float | None = None,
                     held_tol: float | None = None, held_gate: float | None = None,
-                    blind_up: float | None = None, spiral: float | None = None) -> ArmPlan | str:
+                    blind_up: float | None = None, spiral: float | None = None,
+                    guarded: bool | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -817,7 +822,9 @@ class Skills:
                 h = self.held[pp.arm]
                 o = w.obj(pp.label)
                 measured = self._held_protocol(pp, h, o, tol_xy, tol_tilt, pre=pre) if not self.remeasure else None
-                if (pp.tail_kw or {}).get("servo") and not other_arm and (self.remeasure or measured is not None):
+                guarded_b = not self.remeasure and bool((pp.tail_kw or {}).get("guarded"))
+                if ((pp.tail_kw or {}).get("servo") and not other_arm
+                        and (self.remeasure or (measured is not None and not guarded_b))):
                     # mode B with a usable in-hand read: the same closed-loop tail as G3, on the measured transform
                     # (``_servo_obj``) and the arm's measured sag
                     note_m = ""
@@ -830,17 +837,25 @@ class Skills:
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
                     v.note = (v.note + "; " + note_m + r).strip("; ")
                     return v
-                if ((pp.tail_kw or {}).get("servo") and not self.remeasure and measured is None and not other_arm
-                        and not (pp.tail_kw or {}).get("turn") and not (pp.tail_kw or {}).get("fingers_out")):
+                if ((pp.tail_kw or {}).get("servo") and not self.remeasure and (measured is None or guarded_b)
+                        and not other_arm and not (pp.tail_kw or {}).get("turn")
+                        and not (pp.tail_kw or {}).get("fingers_out")):
                     # no in-hand measurement (mode B): the planned tail rests on a predicted in-hand pose (a belief 3.5 mm
                     # off put a charger's blades beside the outlet): the contact-probing tail instead, never deeper than
-                    # ``blind_up`` above the target (a ring is threaded onto its peg, not pushed down to its seat)
+                    # ``blind_up`` above the target (a ring is threaded onto its peg, not pushed down to its seat); a
+                    # ``guarded`` place runs it on the adopted read
                     T_g = np.asarray(pp.T_obj_target, float).copy()
-                    T_g[2, 3] += float((pp.tail_kw or {}).get("blind_up") or 0.0)
-                    g = self._guarded_tail(pp.arm, T_g, h, pp.tail_kw)
+                    hg = h
+                    if measured is not None:
+                        hg = Held(h.label, measured, held_box(o, measured), h.grasp)
+                        self.held[pp.arm] = hg
+                    else:
+                        T_g[2, 3] += float((pp.tail_kw or {}).get("blind_up") or 0.0)
+                    g = self._guarded_tail(pp.arm, T_g, hg, pp.tail_kw)
                     self.held[pp.arm] = None
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
-                    v.note = (v.note + f"; probing tail: {g}").strip("; ")
+                    v.note = (v.note + ("; held read adopted" if measured is not None else "")
+                              + f"; probing tail: {g}").strip("; ")
                     return v
                 T_rel_meas = (inv_T(self.kin.tcp(pp.arm, w.arms[pp.arm].q)) @ o.T if self.remeasure
                               else (measured if measured is not None else h.T_tcp_obj))

@@ -241,10 +241,17 @@ def test_pegs_seat_on_a_good_read_and_thread_blind_without_one(monkeypatch):
         seen.clear()
         pegs._one_piece(sk, "b", sk.world.obj("b"), "b", peg, [], True, pegs.THREAD, 0.003)
         if remeasure:                                            # G3: unchanged
-            assert not {"held_tol", "held_gate", "blind_up"} & set(seen)
-        else:
-            assert seen["held_gate"] == pegs.SEAT_SIGMA
-            assert abs(seen["blind_up"] - (0.85 - pegs.THREAD - (0.80 + pegs.SEAT_GAP))) < 1e-9
+            assert not {"held_tol", "held_gate", "blind_up", "guarded"} & set(seen)
+        else:                                                    # mode B: threaded, guarded (on the read if any)
+            assert seen["guarded"] and not {"held_tol", "held_gate", "blind_up"} & set(seen)
+    monkeypatch.setattr(pegs, "PEG_SEAT_MODE_B", True)
+    prov = GTProvider(env, None)
+    prov.held_pose = lambda arm, **kw: {"ok": False}
+    sk = Skills(env, prov, remeasure=False)
+    seen.clear()
+    pegs._one_piece(sk, "b", sk.world.obj("b"), "b", peg, [], True, pegs.THREAD, 0.003)
+    assert seen["held_gate"] == pegs.SEAT_SIGMA and seen["guarded"]
+    assert abs(seen["blind_up"] - (0.85 - pegs.THREAD - (0.80 + pegs.SEAT_GAP))) < 1e-9
 
 
 def test_the_pressed_spiral_covers_its_disc_in_short_steps():
@@ -264,3 +271,10 @@ def test_a_seat_on_a_read_threads_first_with_the_guarded_descent():
     r = sk.run_place(sk.plan_place("left", T, servo=True, pre_h=0.04, blind_up=0.01))
     assert sk.held_events[0]["adopted"] and "threaded first" in r.note and "servo" in r.note, r.note
     assert np.linalg.norm(_true_pos(env) - T[:3, 3]) < 0.0008, r.note        # then down to the full target
+
+
+def test_a_guarded_place_runs_the_probing_tail_on_the_adopted_read():
+    env, prov, sk, T = _held_scene({"block": {"hover": [GOOD], "look": [GOOD], "show": [GOOD]}})
+    r = sk.run_place(sk.plan_place("left", T, servo=True, pre_h=0.04, guarded=True))
+    assert sk.held_events[0]["adopted"] and "held read adopted" in r.note and "probing tail" in r.note, r.note
+    assert np.linalg.norm(_true_pos(env)[:2] - T[:2, 3]) < 0.0005, r.note    # aimed with the read (belief 3 mm off)
