@@ -1966,3 +1966,26 @@ def test_held_confirmation_uses_the_head_view_at_the_jaw_and_pick_poses(jaw, pic
     prov.belief.grasp_z["left"] = (0.8, 1, np.r_[o.pos, o.quat].copy())
     r = pol._held_head_confirm(prov, b.obs, "left", "block_1")
     assert r["held"] is held and r["source"] == "head" and r["calls"] == 0
+
+
+def test_post_place_adopts_a_height_only_correction():
+    """A released block the belief floats 56 mm high (a no-candidate place): perception re-fits it from its support
+    at the same xy; the belief comes down although the xy shift is 0."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+
+    class Z:
+        def refine(self, obs, o, others, arm, held=None):
+            return {"ok": True, "pos": [float(o.pos[0]), float(o.pos[1]), float(o.pos[2]) - 0.056], "quat": list(o.quat),
+                    "shift_mm": 0.0, "iou": 0.84, "z_dropped_mm": 56.0}
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=Z())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    o.pos = o.pos + np.array([0.0, 0.0, 0.056])
+    prov.belief.released_by["block_1"] = "left"
+    z_high = float(o.pos[2])
+    ev = prov.post_place(b.obs, ["block_1"])
+    assert abs(float(prov.belief.objects["block_1"].pos[2]) - (z_high - 0.056)) < 1e-9
+    assert ev[0]["z_dropped_mm"] == 56.0 and ev[0].get("to")
