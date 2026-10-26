@@ -57,6 +57,15 @@ def label_candidates(vocabulary: str, label: str) -> list[str]:
     return list(lab.get("candidates") or [])
 
 
+def _layout_seed(prov) -> int:
+    """A reproducible per-episode seed from the initial belief (object labels and positions to the mm)."""
+    import zlib
+    cp = getattr(prov, "checkpoint", None) or {}
+    key = ";".join(f"{o['label']}:{','.join(str(round(float(v) * 1000)) for v in o['pos'])}"
+                   for o in sorted(cp.get("objects") or [], key=lambda o: str(o.get("label"))))
+    return int(zlib.crc32(key.encode()))
+
+
 @dataclass
 class RuntimeConfig:
     mode: str = "gt"                    # gt (dev-only upper bound) | perception
@@ -65,6 +74,12 @@ class RuntimeConfig:
     n_cands: int = 4
     perturb_mm: float = 2.0
     perturb_deg: float = 1.0
+    # dev experiment, mode gt only: a persistent per-object pose error on every twin load from the estimate,
+    # [pos_mm, rot_deg] standard deviations per axis (None = off): is mode B's none_ok rate load sensitivity?
+    twin_load_noise: list | None = None
+    # the twin's start state from the belief: raw (as estimated) | consistent (resting objects levelled within 3 deg
+    # and seated on what they rest on within 6 mm; dojo/runtime/twin_load.py)
+    twin_load: str = "raw"
     look: bool = True
     look_conf: float = 0.7
     max_looks: int = 2
@@ -152,6 +167,7 @@ class RuntimeConfig:
     scan_step_rad: float = 0.16
     scan_settle: int = 2                # hold steps at the scan pose before the observation
     extra: dict = field(default_factory=dict)
+    preset: str | None = None           # name of the preset these fields came from (dojo/runtime/presets.py), if any
 
     @classmethod
     def from_env(cls) -> "RuntimeConfig":
@@ -192,7 +208,8 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.held_pose not in ("off", "auto")):
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.held_pose not in ("off", "auto")
+                or self.cfg.twin_load not in ("raw", "consistent")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -359,7 +376,9 @@ class RuntimePolicy:
                 events.append({"kind": "verify_unavailable", "reason": f"twin runs {tw_task!r}, the instruction "
                                                                         f"names scene {scene!r}"})
             else:
-                verifier = BundleVerifier(tc, scene, prov, b, cfg.perturb_mm, cfg.perturb_deg, log=self.log)
+                verifier = BundleVerifier(tc, scene, prov, b, cfg.perturb_mm, cfg.perturb_deg, log=self.log,
+                                          load_noise=cfg.twin_load_noise if cfg.mode == "gt" else None,
+                                          seed=_layout_seed(prov), load=cfg.twin_load)
 
         def hooks(info):
             prov.on_verified(info)
