@@ -1300,6 +1300,7 @@ def slot_targets(sk: Skills, label: str, container: str) -> list[np.ndarray]:
 SLOT_LEVEL_DEG = 20.0          # deg: a slot pose this close to the object's current orientation is reached by a level
                                # carry (tools spawn lying as their slots want them: 0.6-5.4 deg off)
 LEVEL_GRASP_DEG = 25.0         # deg: a level carry's grasps come down at most this far from vertical
+LEVEL_CARRY = 0.05             # rad/step: the lift and the carry of a level carry
 
 
 LEVEL_TILT_COST = 10.0        # deg of approach tilt that cost as much as 1 cm of lever (slots at the edge of a straight-
@@ -1371,8 +1372,12 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
                   place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
         r = None
         if level:
+            # heavy flat objects swing in the pads on brisk moves (twin: a 0.5 kg hammer at its centre of mass held 4 mm
+            # through a 0.05 rad/step lift and carry, 11-14 mm loose after the planner's usual 0.10 / 0.09): slow
+            lkw = {**kw, "place_kw": {**kw["place_kw"], "approach_rad": LEVEL_CARRY}}
             r = place_oriented(sk, lab, level, air_handover=False,
-                               transfer_kw={"grasps": _level_grasps(sk, lab), "max_pick_tilt": LEVEL_GRASP_DEG}, **kw)
+                               transfer_kw={"grasps": _level_grasps(sk, lab), "max_pick_tilt": LEVEL_GRASP_DEG,
+                                            "pick_kw": {"lift_rad": LEVEL_CARRY}}, **lkw)
             if not r.ok and r.status in ("ik_fail", "collision") and not r.steps:
                 sk.log(f"[slots] {lab}: no level carry ({r.note[:100]}), re-orienting transfer")
                 r = None
