@@ -234,7 +234,8 @@ entries:
     benchmark: robodojo
     doc: |
       Put each object into the compartment of the container shaped for it (a slot named after the object's kind, as in
-      a fitted tray), re-oriented as the slot requires; both grippers opened after each object.
+      a fitted tray), compact ones first; one already lying as its slot wants it is carried level, gripped near its
+      centre of mass, else re-oriented as the slot requires; both grippers opened after each object.
     args:
       objects: "[id], required; the objects"
       container: "id, required; the container with shaped slots"
@@ -257,14 +258,15 @@ entries:
     measured: none
     stats:
       - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: store_tools_in_toolbox, tier: A, version: v3 G3 twin, n: 5, success: 0, mean_score: 0.25}
+      - {src: docs/journal/2026-10-26-dojo-skills8.md, bench: robodojo, cell: store_tools_in_toolbox, tier: A, version: skills8 final G3 twin, n: 25, success: 4, mean_score: 0.61}
 
   - name: fill_container
     side: ilia
     benchmark: robodojo
     doc: |
-      Put long objects (pens, sticks, tubes) one by one into an upright holder, leading end first. A holder out of
-      comfortable reach is first carried upright to where both arms reach it and put back down. Both grippers opened
-      after each object.
+      Put long objects (pens, sticks, tubes) one by one into an upright holder: each held leading end down just over
+      the opening's free spot, the hand kept out of the holder, and let go so it drops in (widest first). A holder out
+      of comfortable reach is first carried upright to where both arms reach it. Both grippers opened after each.
     args:
       objects: "[id], required; the long objects"
       container: "id, required; the holder"
@@ -287,6 +289,7 @@ entries:
     measured: none
     stats:
       - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: fill_pen_holder, tier: A, version: v2 G3 twin, n: 5, success: 0, mean_score: 0.08}
+      - {src: docs/journal/2026-10-26-dojo-skills8.md, bench: robodojo, cell: fill_pen_holder, tier: A, version: skills8 v7 G3 twin, n: 25, success: 1, mean_score: 0.18}
 
   - name: arrange
     side: ilia
@@ -322,8 +325,9 @@ entries:
     benchmark: robodojo
     doc: |
       Thread pieces onto the pegs or poles of a base: group i (identical pieces) goes onto peg pegs[i] (a frame of the
-      base, as listed for it in the scene), one piece at a time, flat and centred, released just above the peg top so
-      it slides down. Banks after each piece.
+      base, as listed for it in the scene), the shortest peg first, one piece at a time, flat, its hole on the peg's
+      axis (any turn), carried down the peg onto the pieces below and let go there; a piece left tilted is tried once
+      more. Banks after each piece.
     args:
       groups: "[[id]], required; the identical pieces for each peg"
       base: "id, required; the object carrying the pegs"
@@ -343,10 +347,11 @@ entries:
       twin_verify: false
       reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
     backend: dojo_skills
-    entry: "dojo.skills.library:stack_on_pegs"
+    entry: "dojo.skills.pegs:stack_on_pegs"
     measured: none
-    stats: []
-    notes: "untested in the twin (no dev records for a peg base yet)"
+    stats:
+      - {src: docs/journal/2026-10-26-dojo-skills7.md, bench: robodojo, cell: play_stacking_toy, tier: A, version: v4.6 G3 twin, n: 25, success: 24}
+    notes: "skills-7: hole axis from the mesh, pieces seated against one side of the peg (the checker's 1 mm)"
 
   - name: slots_and_press
     side: ilia
@@ -385,8 +390,9 @@ entries:
     benchmark: robodojo
     doc: |
       Hang each object by its handle on one of the rack's hooks (hook frames as listed for the rack in the scene):
-      carried re-oriented to just beyond a hook's tip, slid along the hook through the handle, let go. Banks after
-      each object.
+      the highest hooks, the lowest of them first; carried re-oriented to just beyond a hook's tip, slid along the
+      hook through the handle, let go. An object no arm can hang from where it stands is first stood on a spot in
+      front of the rack. Banks after each object.
     args:
       objects: "[id], required; the objects with handles"
       rack: "id, required; the fixture with hooks"
@@ -409,8 +415,9 @@ entries:
     backend: dojo_skills
     entry: "dojo.skills.library:hang_on_hooks"
     measured: none
-    stats: []
-    notes: "skills-4 first version"
+    stats:
+      - {src: docs/journal/2026-10-26-dojo-skills7.md, bench: robodojo, cell: hang_mugs, tier: A, version: v6.2 G3 twin, n: 25, success: 5}
+    notes: "skills-4 first version; skills-7: the rack and hung objects as small mesh boxes, relay"
 
   - name: play_board_game
     side: ilia

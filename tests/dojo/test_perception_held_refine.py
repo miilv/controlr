@@ -179,3 +179,24 @@ def test_image_edges_see_a_white_block_on_light_wood():
     assert cv2.Canny(cv2.GaussianBlur(grey, (5, 5), 0), 40, 120).sum() == 0   # grey-only Canny: nothing
     E = image_edges(img)
     assert E[38:43, 60:100].any() and E[40:80, 58:63].any()                  # chroma edges: the outline
+
+
+def test_elevated_hypothesis_needs_two_views(monkeypatch):
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as IL
+
+    pil = "Rigid/block/00002"
+    on_pillar = IL.Hypothesis(0, pil, "up", 0.19, -0.09, 0.0, 0.3, {"z_off": 0.0378, "stacked_on": pil})
+    on_board = IL.Hypothesis(0, pil, "up", 0.0, -0.3, 0.0, 0.3, {"z_off": 0.02, "stacked_on": "Rigid/block/00004"})
+    table = IL.Hypothesis(0, pil, "up", 0.2, -0.1, 0.0, 0.3, {})
+    ident, every, off = (SimpleNamespace(elevated_multiview=m) for m in ("identical", "all", "off"))
+    assert IL._needs_multiview(on_pillar, pil, ident) and not IL._needs_multiview(on_board, "Rigid/block/00004", ident)
+    assert IL._needs_multiview(on_board, "Rigid/block/00004", every) and not IL._needs_multiview(table, None, every)
+    assert not IL._needs_multiview(on_pillar, pil, off)
+    # the tower scan phantom: one view (the scan head view) supports it, frame 0 refutes it
+    monkeypatch.setattr(IL, "elevated_support", lambda h, o, v: {"support": 1, "refute": 1, "views": {}})
+    assert not IL._multiview_ok(on_pillar, [], {}, ident, pil)
+    monkeypatch.setattr(IL, "elevated_support", lambda h, o, v: {"support": 2, "refute": 0, "views": {}})
+    assert IL._multiview_ok(on_pillar, [], {}, ident, pil)
+    assert IL._multiview_ok(on_board, [], {}, ident, "Rigid/block/00004")  # not identical: not checked

@@ -1394,7 +1394,9 @@ def test_episode_with_held_look_checks_every_grasp_once():
 
 @pytest.mark.parametrize("mode, needs, step_lim, ran", [("always", False, 550, True), ("trigger", True, 550, True),
                                                        ("trigger", False, 550, False), ("trigger", True, 200, False)])
-def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs, step_lim, ran):
+def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs, step_lim, ran, monkeypatch):
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png%d" % np.asarray(im).size)      # no cv2 in the unit-test venv
     env = _env(step_lim=step_lim)
     scan_q = {"left": [-0.9523, -0.24314, 1.28768, -1.77756, -0.63467, -0.14824],
               "right": [0.94768, -0.24334, 1.28759, -1.77684, 0.63018, 0.14684]}
@@ -1429,10 +1431,16 @@ def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs,
             return []
 
     pc = ScanPerception()
-    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan=mode), assets=FakeAssets(), perception_client=pc)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan=mode, save_look_frames=True), assets=FakeAssets(),
+                        perception_client=pc)
     rep = run_episode(pol, FakeEpisode(env), "perception")
     assert rep["error"] is None, rep["error"]
     ev = next(e for e in rep["events"] if e["kind"] == "scan")
+    lf = rep.get("look_frames") or {}
+    assert ("scan" in lf) == ran                                     # the scan frame kept for replay (save_look_frames)
+    if ran:
+        assert set(lf) >= {"frame0", "scan"} and set(lf["scan"]["png"]) == set(FakeEpisode(env).observe()["images"])
+        assert np.allclose(lf["scan"]["state"]["left_arm_joint_state"][:6], scan_q["left"], atol=1e-3)
     assert ev["ran"] == ran and (mode == "always") == ("trigger" not in pc.calls)
     if mode == "trigger":                                            # both step gates logged per episode
         assert ev["frac_ok"] and ev["min_step_lim_ok"] == (step_lim >= 300)
@@ -2118,3 +2126,173 @@ def test_a_large_post_place_correction_needs_the_head_view(pred_prec, corr_prec,
     prov.post_place(b.obs, ["block_1"])
     x1 = float(prov.belief.objects["block_1"].pos[0])
     assert (abs(x1 - (x0 + 0.041)) < 1e-9) == adopted and (adopted or x1 == x0)
+
+
+class _HeldPosePerception:
+    """B1 frame 0 from the env's truth; held_pose answers ``answer(prior)`` and records the calls."""
+
+    def __init__(self, env, answer):
+        self.env, self.answer, self.calls = env, answer, []
+
+    def estimate(self, frames, vocabulary, fold, prior_record=None):
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                     "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                     "_perception": {"confidence": 0.9}} for o in self.env.objects]}}
+
+    def check(self, frame, objects, fold):
+        return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+    def look_plan(self, frame, record, max_looks=2):
+        return []
+
+    def held_pose(self, frame, arm, asset_key, prior_T_tcp_obj, cfg=None):
+        self.calls.append((arm, asset_key, frame["steps_used"], np.asarray(prior_T_tcp_obj, float)))
+        return self.answer(np.asarray(prior_T_tcp_obj, float))
+
+
+@pytest.mark.parametrize("held_pose", ["off", "auto"])
+def test_held_pose_reads_the_grasp_at_every_place_hover_only_when_on(held_pose):
+    env = _env()
+
+    def ok(prior):                                        # the read: the object 2 mm off the prediction
+        T = prior.copy()
+        T[:3, 3] += [0.002, 0.0, 0.0]
+        return {"ok": True, "why": "ok", "T_tcp_obj": T.tolist(), "shift_mm": 2.0, "turn_deg": 0.0,
+                "sigma": {"pos_mm": [1.0, 1.0, 3.0], "rot_deg": [1.0, 1.0, 1.0]}}
+    pc = _HeldPosePerception(env, ok)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", held_pose=held_pose), assets=FakeAssets(),
+                        perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    assert _stacked(env)
+    ev = [e for e in rep["events"] if e["kind"] == "held_pose"]
+    if held_pose == "off":
+        assert pc.calls == [] and ev == []
+        return
+    places = [h for h in rep["history"] if h["skill"] == "place"]
+    assert len(pc.calls) == len(places) == len(ev) == 3 and all(e["ok"] for e in ev)   # one read per place hover
+    assert all(c[1] == "Rigid/block/00005" and c[3].shape == (4, 4) for c in pc.calls)
+    assert rep["provider"]["held_pose"] == 3
+    assert all("in-hand shift 2.0 mm, re-planned" in h["note"] for h in places)       # the tail used the read
+
+
+def test_held_pose_adopts_only_a_confident_read_within_the_place_tolerance():
+    from types import SimpleNamespace
+
+    from dojo.skills.skills import Skills
+    prior = np.eye(4)
+    meas = np.eye(4)
+    meas[:3, 3] = [0.003, 0.0, 0.0]
+    answers = []
+
+    def held_pose(arm, prior_T_tcp_obj, asset_key):
+        return answers.pop(0)
+    me = SimpleNamespace(provider=SimpleNamespace(held_pose=held_pose))
+    h = SimpleNamespace(T_tcp_obj=prior)
+    o = SimpleNamespace(asset=SimpleNamespace(key="Rigid/block/00005"))
+    good = {"ok": True, "T_tcp_obj": meas.tolist(), "sigma": {"pos_mm": [1.0, 2.0, 9.0], "rot_deg": [1.0, 2.0, 2.0]}}
+    answers += [good, {**good, "ok": False}, {**good, "sigma": {"pos_mm": [6.0, 1.0, 1.0], "rot_deg": [1, 1, 1]}},
+                {**good, "sigma": {"pos_mm": [1.0, 1.0, 1.0], "rot_deg": [1.0, 4.0, 1.0]}}, {**good, "sigma": None}]
+    pp = SimpleNamespace(arm="left")
+    got = [Skills._measure_held(me, pp, h, o, 0.01, 6.0) for _ in range(5)]
+    assert np.allclose(got[0], meas)                      # z sigma does not gate (the descent is guarded / verified)
+    assert got[1:] == [None] * 4                          # not ok / lateral 6 mm > 5 / rot 4 deg > 3 / no sigma
+    assert Skills._measure_held(SimpleNamespace(provider=SimpleNamespace()), pp, h, o, 0.01, 6.0) is None
+
+
+def test_eval_rows_count_every_event_kind_and_keep_the_setup_events():
+    from dojo.runtime.eval import event_counts
+    ev = [{"kind": "scan", "ran": True}] + [{"kind": "resync"}] * 40 + [{"kind": "program_done"}, "junk"]
+    assert event_counts(ev) == {"scan": 1, "resync": 40, "program_done": 1, "?": 1}
+    assert event_counts(None) == {}
+
+
+def test_twin_load_noise_is_a_fixed_offset_per_object_and_only_on_estimate_loads():
+    from types import SimpleNamespace
+
+    from dojo.runtime.verifier import BundleVerifier
+    objs = [{"label": "block_0", "pos": [0.1, 0.0, 0.78], "quat": [1, 0, 0, 0]},
+            {"label": "block_1", "pos": [0.2, 0.0, 0.81], "quat": [1, 0, 0, 0]}]
+    prov = SimpleNamespace(checkpoint={"objects": objs, "robot": {}, "n": 0})
+    seen = []
+    v = BundleVerifier(None, "stack_blocks", prov, SimpleNamespace(n_executed=0), load_noise=(2.0, 1.5), seed=3,
+                       layout_fn=lambda scene, o: seen.append(o) or {"objs": o})
+    v._base(())
+    v._base(())
+    a, b = seen
+    for o0, o1, o2 in zip(objs, a, b):
+        d = np.asarray(o1["pos"]) - np.asarray(o0["pos"])
+        assert 0 < np.linalg.norm(d) < 0.02 and o1["pos"] == o2["pos"] and o1["quat"] == o2["quat"]   # fixed per label
+        assert abs(np.linalg.norm(o1["quat"]) - 1) < 1e-9 and o1["quat"] != o0["quat"]
+    assert objs[0]["pos"] == [0.1, 0.0, 0.78]                                     # the provider's estimate untouched
+    v2 = BundleVerifier(None, "stack_blocks", prov, SimpleNamespace(n_executed=0),
+                        layout_fn=lambda scene, o: seen.append(o) or {"objs": o})
+    v2._base(())
+    assert seen[-1] is objs                                                        # off: the estimate as is
+
+
+def test_consistent_twin_load_levels_and_seats_only_small_inconsistencies():
+    from dojo.runtime.twin_load import consistent
+    from dojo.skills.geometry import quat_to_R
+    from dojo.skills.kinematics import TABLE_Z
+    from dojo.skills.world import AssetInfo
+    cube = AssetInfo("Rigid/block/00001", np.array([-0.015] * 3), np.array([0.015] * 3))
+    tilt = [float(np.cos(np.radians(1))), float(np.sin(np.radians(1))), 0.0, 0.0]          # 2 deg about x
+    objs = [{"label": "a", "pos": [0.0, 0.0, TABLE_Z + 0.015 - 0.003], "quat": [1, 0, 0, 0]},   # 3 mm into the table
+            {"label": "b", "pos": [0.002, 0.0, TABLE_Z + 0.045 + 0.004], "quat": tilt},      # 4 mm above a, tilted
+            {"label": "c", "pos": [0.0, 0.0, TABLE_Z + 0.075 - 0.020], "quat": [1, 0, 0, 0]},  # 20 mm into b: left
+            {"label": "d", "pos": [0.2, 0.0, TABLE_Z + 0.015 + 0.002], "quat": [1, 0, 0, 0]}]  # fixed: left
+    out, st = consistent(objs, {k: cube for k in "abcd"}, fixed={"d"})
+    by = {o["label"]: o for o in out}
+    assert abs(by["a"]["pos"][2] - (TABLE_Z + 0.015)) < 1e-6
+    assert abs(by["b"]["pos"][2] - (TABLE_Z + 0.045)) < 1e-4 and abs(quat_to_R(by["b"]["quat"])[2, 2] - 1) < 1e-9
+    assert by["c"]["pos"] == objs[2]["pos"] and by["d"]["pos"] == objs[3]["pos"] and by["a"]["quat"] == [1, 0, 0, 0]
+    assert [x[0] for x in st["leveled"]] == ["b"] and sorted(x[0] for x in st["seated"]) == ["a", "b"]
+
+
+def test_verifier_consistent_load_uses_the_belief_assets_and_counts_what_it_changed():
+    from types import SimpleNamespace
+
+    from dojo.runtime.verifier import BundleVerifier
+    from dojo.skills.kinematics import TABLE_Z
+    from dojo.skills.world import AssetInfo, ObjectState
+    cube = AssetInfo("Rigid/block/00001", np.array([-0.015] * 3), np.array([0.015] * 3))
+    bel = {"block_0": ObjectState("block_0", "Rigid", "block", 1, np.array([0.0, 0.0, TABLE_Z + 0.013]),
+                                  np.array([1.0, 0, 0, 0]), cube)}
+    prov = SimpleNamespace(checkpoint={"objects": [{"label": "block_0", "pos": [0.0, 0.0, TABLE_Z + 0.013],
+                                                    "quat": [1, 0, 0, 0]}], "robot": {}, "n": 0},
+                           belief=SimpleNamespace(objects=bel))
+    seen = []
+    v = BundleVerifier(None, "no_such_scene", prov, SimpleNamespace(n_executed=0), load="consistent",
+                       layout_fn=lambda scene, o: seen.append(o) or {})
+    v._base(())
+    assert abs(seen[0][0]["pos"][2] - (TABLE_Z + 0.015)) < 1e-6 and v.stats["load_seated"] == 1
+    assert prov.checkpoint["objects"][0]["pos"][2] == TABLE_Z + 0.013
+
+
+def test_presets_resolve_in_order_and_name_themselves():
+    from dojo.runtime.presets import PRESETS, check_env, resolve
+    d = resolve("submit_v1", {"agentic_max": 2}, mode=None, verify="off")
+    cfg = RuntimeConfig(**d)                                   # every preset field is a RuntimeConfig field
+    assert cfg.preset == "submit_v1" and cfg.mode == "perception" and cfg.verify == "off" and cfg.agentic_max == 2
+    assert cfg.scan == "trigger" and cfg.search_lost is False and cfg.held_pose == "off" and cfg.refine_max_shift_m == 0.07
+    assert PRESETS["submit_v1"]["agentic_max"] == 3                       # the preset itself is untouched
+    assert resolve(None, {"refine": True}) == {"refine": True}
+    assert check_env("submit_v1", {}) == [] and check_env("submit_v1", {"AGENTIC_SNAP": "1"}) == []
+    assert check_env("submit_v1", {"AGENTIC_SNAP": "0"})
+    for fields in PRESETS.values():
+        RuntimeConfig(**fields)
+
+
+def test_eval_cli_takes_mode_and_verify_from_the_preset(monkeypatch, tmp_path):
+    import dojo.runtime.eval as EV
+    seen = {}
+    monkeypatch.setattr(EV, "run", lambda task, layouts, cfg, out, *a, **k: seen.setdefault("cfg", cfg) and {})
+    lay = tmp_path / "100000.settled.json"
+    lay.write_text("{}")
+    EV.main(["--task", "stack_blocks", "--layouts", str(lay), "--out", str(tmp_path / "o"), "--preset", "submit_v1"])
+    c = seen["cfg"]
+    assert (c.preset, c.mode, c.verify, c.scan, c.agentic) == ("submit_v1", "perception", "bundle", "trigger", "budget")
+    seen.clear()
+    EV.main(["--task", "stack_blocks", "--layouts", str(lay), "--out", str(tmp_path / "o")])
+    assert (seen["cfg"].preset, seen["cfg"].mode, seen["cfg"].verify) == (None, "gt", "off")

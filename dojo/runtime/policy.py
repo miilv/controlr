@@ -57,6 +57,21 @@ def label_candidates(vocabulary: str, label: str) -> list[str]:
     return list(lab.get("candidates") or [])
 
 
+def _png(im) -> bytes:
+    """An RGB image as PNG bytes."""
+    import cv2
+    return cv2.imencode(".png", cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR))[1].tobytes()
+
+
+def _layout_seed(prov) -> int:
+    """A reproducible per-episode seed from the initial belief (object labels and positions to the mm)."""
+    import zlib
+    cp = getattr(prov, "checkpoint", None) or {}
+    key = ";".join(f"{o['label']}:{','.join(str(round(float(v) * 1000)) for v in o['pos'])}"
+                   for o in sorted(cp.get("objects") or [], key=lambda o: str(o.get("label"))))
+    return int(zlib.crc32(key.encode()))
+
+
 @dataclass
 class RuntimeConfig:
     mode: str = "gt"                    # gt (dev-only upper bound) | perception
@@ -65,6 +80,12 @@ class RuntimeConfig:
     n_cands: int = 4
     perturb_mm: float = 2.0
     perturb_deg: float = 1.0
+    # dev experiment, mode gt only: a persistent per-object pose error on every twin load from the estimate,
+    # [pos_mm, rot_deg] standard deviations per axis (None = off): is mode B's none_ok rate load sensitivity?
+    twin_load_noise: list | None = None
+    # the twin's start state from the belief: raw (as estimated) | consistent (resting objects levelled within 3 deg
+    # and seated on what they rest on within 6 mm; dojo/runtime/twin_load.py)
+    twin_load: str = "raw"
     look: bool = True
     look_conf: float = 0.7
     max_looks: int = 2
@@ -139,6 +160,9 @@ class RuntimeConfig:
     # mode perception: belt tracking (B1 re-reads every 4 steps while refreshing, a line fit per object over 40 steps;
     # moving objects' belief poses follow the fit): auto = on iff the scene has a conveyor object | on | off
     track_moving: str = "auto"
+    # mode perception: the in-hand pose at the pre-insert hover (perception's held_pose, where G3 re-measures from
+    # GT): off | auto (when the perception service offers it); skills adopt it within the place's tolerances
+    held_pose: str = "off"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -149,6 +173,7 @@ class RuntimeConfig:
     scan_step_rad: float = 0.16
     scan_settle: int = 2                # hold steps at the scan pose before the observation
     extra: dict = field(default_factory=dict)
+    preset: str | None = None           # name of the preset these fields came from (dojo/runtime/presets.py), if any
 
     @classmethod
     def from_env(cls) -> "RuntimeConfig":
@@ -189,7 +214,8 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on")):
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.held_pose not in ("off", "auto")
+                or self.cfg.twin_load not in ("raw", "consistent")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -356,7 +382,9 @@ class RuntimePolicy:
                 events.append({"kind": "verify_unavailable", "reason": f"twin runs {tw_task!r}, the instruction "
                                                                         f"names scene {scene!r}"})
             else:
-                verifier = BundleVerifier(tc, scene, prov, b, cfg.perturb_mm, cfg.perturb_deg, log=self.log)
+                verifier = BundleVerifier(tc, scene, prov, b, cfg.perturb_mm, cfg.perturb_deg, log=self.log,
+                                          load_noise=cfg.twin_load_noise if cfg.mode == "gt" else None,
+                                          seed=_layout_seed(prov), load=cfg.twin_load)
 
         def hooks(info):
             prov.on_verified(info)
@@ -458,6 +486,9 @@ class RuntimePolicy:
             pc = self.perception()
             if hasattr(pc, "motion"):                   # provider.actors_moving (skills waiting for a scripted arm)
                 prov.motion_reader = lambda a, b_: pc.motion(a, b_)
+            if cfg.held_pose == "auto" and hasattr(pc, "held_pose"):
+                prov.held_pose = lambda arm, prior_T_tcp_obj, asset_key, cfg_=None: self._held_pose(
+                    prov, arm, prior_T_tcp_obj, asset_key, cfg_)
             if hasattr(pc, "watch_read"):               # provider.watch_read(region, prior): board cells / container
                 prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
             cats = {o.category for o in prov.belief.objects.values()}
@@ -735,6 +766,15 @@ class RuntimePolicy:
             return cands[0], None
         return best["_v"], best["_rec"]
 
+    def _keep_frame(self, tag: str, obs: dict) -> None:
+        """``save_look_frames`` (dev): keep this observation (every camera as PNG + the state) under ``tag`` in the
+        report (eval writes them to ``<run>/<task>_<layout>_look_frames/``); a later frame with the same tag replaces it."""
+        if not self.cfg.save_look_frames:
+            return
+        self.report.setdefault("look_frames", {})[tag] = {
+            "state": {k: np.asarray(v, float).tolist() for k, v in obs["state"].items()},
+            "png": {c: _png(im) for c, im in obs["images"].items()}}
+
     def _scan(self, sk, obs0: dict, rec: dict, scene: str) -> tuple[dict | None, dict | None]:
         """The scan macro: gate (``cfg.scan``), both arms in parallel to perception's frozen scan joints with the
         grippers open (joint-space, <= ``scan_step_rad`` per step), observe, scan-primary estimate. The arms stay
@@ -765,6 +805,8 @@ class RuntimePolicy:
         n0 = b.steps_used
         sk.ex.run_actions(acts, name="scan")
         obs_s = b.observe()
+        self._keep_frame("frame0", obs0)                 # dev: the scan path replayable (every camera + state)
+        self._keep_frame("scan", obs_s)
         ev.update({"ran": True, "steps_used": b.steps_used - n0})
         self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
         try:
@@ -875,6 +917,25 @@ class RuntimePolicy:
                                                                   "system_md5")},
                                        "merged": len(st.get("merge") or [])})
         return rec
+
+    def _held_pose(self, prov, arm: str, prior_T_tcp_obj, asset_key: str, cfg: dict | None = None) -> dict:
+        """perception's held_pose on the current observation; an ok read re-anchors the belief's in-hand transform."""
+        t = time.perf_counter()
+        try:
+            r = self.perception().held_pose(self.bridge.observe(), arm, asset_key,
+                                            np.asarray(prior_T_tcp_obj, float).tolist(), cfg) or {}
+        except Exception as e:  # noqa: BLE001
+            self.report["events"].append({"kind": "held_pose", "arm": arm, "error": f"{type(e).__name__}: {str(e)[:160]}"})
+            return {"ok": False, "why": "error"}
+        self.report["events"].append({"kind": "held_pose", "arm": arm, "step": self.bridge.steps_used,
+                                      "s": round(time.perf_counter() - t, 2),
+                                      **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
+        if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
+            lab, _ = prov.belief.attached[arm]
+            prov.belief.attached[arm] = (lab, np.asarray(r["T_tcp_obj"], float))
+            prov.belief.sync_robot(self.bridge.observe()["state"])
+            prov.stats["held_pose"] = prov.stats.get("held_pose", 0) + 1
+        return r
 
     def _watch_read(self, region: dict, prior: dict | None, scene: str) -> dict:
         """Skills-6's provider read (b): perception's ``watch_read`` on the current observation. On an error the read
@@ -1240,13 +1301,8 @@ class RuntimePolicy:
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
         self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
-        if cfg.save_look_frames:
-            import cv2
-            self.report["look_frames"] = {
-                tag: {"state": {k: np.asarray(v, float).tolist() for k, v in o["state"].items()},
-                      "png": {c: cv2.imencode(".png", cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR))[1].tobytes()
-                              for c, im in o["images"].items()}}
-                for tag, o in (("frame0", obs0), ("look", obs1))}
+        self._keep_frame("frame0", obs0)
+        self._keep_frame("look", obs1)
         rec1 = self.perception().estimate([obs0, obs1], scene, self.fold, prior_record=rec0)
         if cfg.look_merge == "flagged":
             from .estimate import merge_looked

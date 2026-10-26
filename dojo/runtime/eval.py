@@ -42,6 +42,14 @@ TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget",
             "divergence", "error", "other")
 
 
+def event_counts(events: list) -> dict:
+    """{event kind: count} over an episode's whole event list."""
+    out: dict = {}
+    for e in events or []:
+        k = str(e.get("kind")) if isinstance(e, dict) else "?"
+        out[k] = out.get(k, 0) + 1
+    return out
+
 def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -> tuple[str | None, str]:
     if res.get("success"):
         return None, ""
@@ -179,7 +187,8 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         cat, why = classify(res, reward, rep, perc, cfg.mode)
         wall = time.perf_counter() - t0
         v = rep.get("verify")
-        row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "renderer": renderer,
+        row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "preset": cfg.preset,
+               "renderer": renderer,
                "success": bool(res["success"]), "score": float(res["score"]), "steps_used": int(res["steps_used"]),
                "step_lim": int(res["step_lim"]), "observations": int(res["observations"]), "wall_s": round(wall, 1),
                "sim_s": round(sim_s, 1), "observe_s": round(float(np.sum(obs_s)), 1),
@@ -190,6 +199,9 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                "category": cat, "why": why, "reward": reward,
                "verify_stats": v if isinstance(v, dict) else v, "provider": rep.get("provider"),
                "perception": perc, "events": rep.get("events", [])[-30:], "decisions": rep.get("decisions"),
+               # the row keeps the last 30 events; the episode's setup events (scan, gates at step 0) and per-kind
+               # counts of all of them stay readable from the row too (the full list is in the report.json.gz)
+               "events_head": rep.get("events", [])[:8], "event_counts": event_counts(rep.get("events", [])),
                "history": rep.get("history", [])[-40:], "result": rep.get("result"), "info_dropped": rep.get("info_dropped"),
                "agent": rep.get("agent"), "agentic": rep.get("agentic"), "policy": type(pol).__module__ + ":" + type(pol).__name__, "code": code}
         rows.append(row)
@@ -253,15 +265,22 @@ def main(argv=None) -> None:
     ap.add_argument("--task", required=True)
     ap.add_argument("--layouts", nargs="+", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--mode", choices=("gt", "perception"), default="gt")
-    ap.add_argument("--verify", choices=("off", "bundle"), default="off")
-    ap.add_argument("--config", default="{}", help="extra RuntimeConfig fields as JSON")
+    ap.add_argument("--mode", choices=("gt", "perception"), default=None, help="default: the preset's, else gt")
+    ap.add_argument("--verify", choices=("off", "bundle"), default=None, help="default: the preset's, else off")
+    ap.add_argument("--preset", default=None, help="named RuntimeConfig preset (dojo/runtime/presets.py), e.g. submit_v1")
+    ap.add_argument("--config", default="{}", help="extra RuntimeConfig fields as JSON (over the preset)")
     ap.add_argument("--max-minutes", type=float, default=25.0)
     ap.add_argument("--policy", default=None, help="module:Class, called as Class(cfg) (default RuntimePolicy)")
     ap.add_argument("--renderer", choices=("isaac60", "isaac51"), default="isaac60",
                     help="isaac60: the proxy (6.0 render service); isaac51: one 5.1 EvalEnv with RTX (isr-lab)")
     a = ap.parse_args(argv)
-    cfg = RuntimeConfig(**{**json.loads(a.config), "mode": a.mode, "verify": a.verify})
+    from .presets import check_env, resolve
+    if a.preset and check_env(a.preset):
+        raise SystemExit(f"preset {a.preset}: this environment contradicts it: {check_env(a.preset)}")
+    d = resolve(a.preset, json.loads(a.config), a.mode, a.verify)
+    d.setdefault("mode", "gt")
+    d.setdefault("verify", "off")
+    cfg = RuntimeConfig(**d)
     run(a.task, a.layouts, cfg, Path(a.out), a.max_minutes, policy_factory=load_policy_factory(a.policy),
         renderer=a.renderer)
     if a.renderer == "isaac51":                     # results are written; never wait on Kit's own shutdown
