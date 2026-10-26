@@ -277,3 +277,18 @@ def test_isr_job_watchdog_stops_a_runaway_tree(tmp_path):
     assert r.returncode != 0
     assert "over the limit" in (tmp_path / "run" / "wd.watchdog").read_text()
     assert "WATCHDOG wd" in (tmp_path / "C.md").read_text() and "DONE wd" in (tmp_path / "C.md").read_text()
+
+
+def test_frames_plan_takes_negatives_first_then_equal_positives_within_budget(tmp_path):
+    import frames_plan
+    d = tmp_path / "ev"
+    d.mkdir()
+    ev = [{"kind": "held_look", "label": "block_0", "arm": "left", "step": s, "held": s % 3 != 0} for s in range(1, 31)]
+    ev += [{"kind": "post_place", "label": "block_0", "arm": "left", "step": 100 + s, "ok": False} for s in range(4)]
+    with gzip.open(d / "stack_blocks_perception_verify-bundle_100000_report.json.gz", "wt") as f:
+        json.dump({"events": ev}, f)
+    out = tmp_path / "plan.json"
+    frames_plan.main(["plan", str(d), "--budget-mb", "18", "--out", str(out)])   # 20 sets at 0.9 MB
+    p = json.loads(out.read_text())
+    assert p["n_negatives_total"] == 14 and p["n_chosen_negatives"] == 14 and p["n_chosen_positives"] == 6
+    assert all(c["negative"] for c in p["checks"][:14]) and len(p["episodes"][0]["steps"]) == 20
