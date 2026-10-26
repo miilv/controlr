@@ -204,49 +204,29 @@ def _ik_steps(kin, arm: str, q0, T_tcp, step_rad: float, ease: int):
     return r.q, len(segment_targets(np.stack([np.asarray(q0, float), r.q]), step_rad, ease))
 
 
-def propose(arm: str, bbox_min, bbox_max, T_tcp_obj, state: dict, kin=None) -> dict:
-    """The service's ``show_pose``: candidates for (a) an observer look at the object where it is now (the holding arm
-    stays: ``hover_look``) and (b) the canonical show poses (``front``, ``front_yaw90``) with the observer looking.
-    Every entry carries IK hints and a straight-move step estimate (holding arm at CARRY speed, observer at FAST); the
-    skills plan the actual moves with their own collision model. Ordered: hover looks first (cheapest), then shows."""
+def propose(arm: str, key: str, T_tcp_obj, state: dict, kin=None, lead_obj=None, n_looks: int = 2,
+            n_shows: int = 2) -> dict:
+    """The service's ``show_pose``: (a) observer looks at the object where it is now (the holding arm stays:
+    ``hover_look``), (b) show poses of the holding arm (+ the observer), both ranked by the predicted accuracy of the
+    in-pad DoF given the own wrist + head views (``rank_observer_looks`` / ``rank_show_poses``). Every entry: IK hints
+    (``q``), TCP targets, a straight-move step estimate (holding arm at CARRY, observer at FAST, in parallel) and the
+    predicted 1-sigma (relative: use it to rank, held_pose's sigma for decisions). The skills plan the actual moves with
+    their own collision model; nothing here keys on a task."""
     from dojo.skills.kinematics import X5Kin
-    from dojo.skills.motion import CARRY, FAST, segment_targets
 
     kin = kin or X5Kin()
-    obs = other(arm)
     q_h = np.asarray(state[f"{arm}_arm_joint_state"], float).reshape(-1)[:6]
-    q_o = np.asarray(state[f"{obs}_arm_joint_state"], float).reshape(-1)[:6]
     T_tcp = kin.tcp(arm, q_h)
-    ext = float(np.max(np.asarray(bbox_max, float) - np.asarray(bbox_min, float)))
-
-    def look(target, q_hold):
-        for c in observer_looks(target, obs, ext):
-            q, n = _ik_steps(kin, obs, q_o, c["T_tcp"], FAST, 2)
-            if q is None:
-                continue
-            clr = arm_clearance(kin, *((q_hold, q) if arm == "left" else (q, q_hold)))
-            if clr < MIN_ARM_CLEARANCE:
-                continue
-            return {"arm": obs, "name": c["name"], "tcp": c["T_tcp"].tolist(), "q": q.tolist(), "eye": c["eye"].tolist(),
-                    "look_at": c["look_at"].tolist(), "dist": c["dist"], "est_steps": int(n), "clearance_m": round(clr, 3)}
-        return None
-
-    out = []
-    c_now = object_centre_world(T_tcp, T_tcp_obj, bbox_min, bbox_max)
-    lk = look(c_now, q_h)
-    if lk is not None:
-        out.append({"name": "hover_look", "arm": arm, "tcp": T_tcp.tolist(), "q": q_h.tolist(), "est_steps_out": 0,
-                    "est_steps_back": 0, "observer": lk, "est_steps": lk["est_steps"]})
-    for s in show_poses(arm, T_tcp, T_tcp_obj, bbox_min, bbox_max):
-        q, n = _ik_steps(kin, arm, q_h, s["T_tcp"], CARRY, 3)
-        if q is None:
-            continue
-        lk = look(s["object_centre"], q)
-        back = len(segment_targets(np.stack([q, q_h]), CARRY, 3))
-        out.append({"name": s["name"], "arm": arm, "tcp": s["T_tcp"].tolist(), "q": q.tolist(), "est_steps_out": int(n),
-                    "est_steps_back": int(back), "observer": lk,
-                    "est_steps": int(max(n, lk["est_steps"] if lk else 0) + back)})
-    return {"poses": out, "object_centre": c_now.tolist()}
+    I0, per = base_information(state, arm, key, T_tcp, T_tcp_obj)
+    ps0 = predicted_sigma(I0)
+    out = {"hover": {"views": per, "pred_sigma": {k: round(v, 3) for k, v in ps0.items() if k != "cov"}}, "poses": []}
+    for L in rank_observer_looks(state, arm, key, T_tcp_obj, kin=kin, base_I=I0, lead_obj=lead_obj, max_out=n_looks):
+        out["poses"].append({"name": "hover_look", "arm": arm, "tcp": T_tcp.tolist(), "q": q_h.tolist(),
+                             "est_steps_out": 0, "est_steps_back": 0, "observer": L, "est_steps": L["est_steps"],
+                             "pred_sigma": L["pred_sigma"]})
+    for S in rank_show_poses(state, arm, key, T_tcp_obj, kin=kin, lead_obj=lead_obj)[:n_shows]:
+        out["poses"].append(S)
+    return out
 
 
 # ------------------------------------------------------------------------------------------------ predicted accuracy
@@ -277,7 +257,7 @@ def view_information(cam, state: dict, arm: str, key: str, T_tcp, T_tcp_obj, ope
         return None
     if occ is None:
         from .held import est_opening
-        o = est_opening(a.V, T_tcp_obj) if opening is None else opening
+        o = est_opening(key, T_tcp_obj) if opening is None else opening
         occ = robot_unknown(cam, state, arm, max(0.0, o - 0.05), min(1.0, o + 0.05), None, dilate_px=1)
     vis = 1.0 - occ.astype(np.float32)
     dS = []
@@ -311,13 +291,13 @@ def lead_sigma(C: np.ndarray, T_tcp_obj, lead_obj) -> float:
 
 def observer_dirs(T_tcp) -> list[tuple[str, np.ndarray]]:
     """Viewing directions (object -> eye, world) defined in the TCP frame, so the holding gripper stays out of the line
-    of sight: beside the pads (+-y) and across them (+-z), tilted toward the protruding side (+x) by 20 / 45 deg, and
-    end-on (+x)."""
+    of sight: beside the pads (+-y) and across them (+-z), tilted toward the protruding side (+x) by -20 .. 45 deg
+    (a low hover leaves no room under the object: then the level and slightly-from-behind views), and end-on (+x)."""
     R = np.asarray(T_tcp, float)[:3, :3]
     x, y, z = R[:, 0], R[:, 1], R[:, 2]
     out = [("end_on", x)]
     for name, s in (("side+y", y), ("side-y", -y), ("across+z", z), ("across-z", -z)):
-        for t in (20.0, 45.0):
+        for t in (20.0, 0.0, 45.0, -20.0):
             r = math.radians(t)
             out.append((f"{name}@{t:.0f}", math.cos(r) * s + math.sin(r) * x))
     return out
@@ -352,7 +332,7 @@ def rank_observer_looks(state: dict, arm: str, key: str, T_tcp_obj, kin=None, ba
         eye = target + d * u
         if eye[2] < TABLE_Z + 0.05:
             continue
-        for roll in (0.0, -45.0, 45.0, 90.0, -90.0):
+        for roll in (0.0, 90.0, -90.0, 45.0, -45.0):
             T_wc = look_at_camera(eye, target, roll)
             T_t = tcp_for_camera(T_wc)
             r = kin.ik(obs, T_t, q_o)

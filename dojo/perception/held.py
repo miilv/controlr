@@ -41,15 +41,16 @@ from .robot_model import X5Model
 VERSION = "held-pose-1"
 TCP_OFFSET = 0.145                 # dojo.skills.kinematics.TCP_OFFSET
 CAMS = ("cam_head", "cam_left_wrist", "cam_right_wrist")
-ROI_MAX = 256                      # px of a view's ROI render (supersampled up to x3 for small objects)
+ROI_MAX = 320                      # px of a view's ROI render (supersampled up to x3 for small objects)
 MIN_VIS_PX = 150                   # visible silhouette pixels (native) for a view to count
 MIN_VIS_FRAC = 0.25                # visible share of the silhouette
 PAD_LEN = 0.030                    # m of each finger (from the tip) that can touch the object
 CENTRE_SIGMA_M = 0.0015            # soft gripper term: the contact faces centred on the TCP along the closing axis
-SIGMA_SCALE = {"pos": 1.0, "rot": 1.0}   # calibrated on dev captures (held_eval)
+SIGMA_SCALE = {"pos": 1.6, "rot": 1.6}   # calibrated 2-fold by layout on our dev frames (held_eval report: calibrate)
 SIGMA_DF = 0.002                   # cost rise below which poses are indistinguishable (calibrated with SIGMA_SCALE)
 SIGMA_SAMPLES = 60
 OK_IOU = 0.80                      # best view's IoU for an ok fit
+DROP_VIEW_IOU = 0.60               # a view below this IoU at the first fit is dropped when another view is good
 OK_MAX_LEAD_SIGMA_MM = 2.0
 VIEW_W = {"own": 1.0, "head": 0.6, "observer": 1.0}
 HIST_BITS = 4                      # Lab histogram: 16 levels per channel
@@ -128,14 +129,36 @@ def opening_for_width(width: float) -> float:
     return float(np.clip(np.interp(width, t[order, 1], t[order, 0]), 0.0, 1.0))
 
 
-def est_opening(V_obj: np.ndarray, T_tcp_obj) -> float:
-    """The normalised finger opening at which the pads touch an object held at ``T_tcp_obj``."""
-    Vt = transform(V_obj, np.asarray(T_tcp_obj, float))
+@lru_cache(maxsize=16)
+def surface_points(key: str, n: int = 6000) -> np.ndarray:
+    """Area-weighted samples of the asset's surface (object frame): a box's flat sides have vertices only at their
+    edges, so vertex-based pad tests missed the faces the pads actually touch."""
+    a = load_asset(key)
+    V, F = a.V, np.asarray(a.F, np.int64)
+    tri = V[F]
+    area = 0.5 * np.linalg.norm(np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]), axis=1)
+    rng = np.random.default_rng(0)
+    idx = rng.choice(len(F), n, p=area / max(area.sum(), 1e-12))
+    r1, r2 = rng.random((2, n))
+    sq = np.sqrt(r1)
+    return (1 - sq)[:, None] * tri[idx, 0] + (sq * (1 - r2))[:, None] * tri[idx, 1] + (sq * r2)[:, None] * tri[idx, 2]
+
+
+def pad_width(P_obj: np.ndarray, T_tcp_obj) -> tuple[float, np.ndarray]:
+    """Width of the object between the pads (m) and the pad-zone mask of the points: their extent along the closing
+    axis where the pads can touch; the whole extent when nothing lies in the zone."""
+    Pt = transform(P_obj, np.asarray(T_tcp_obj, float))
     tbl = finger_table()
     tip_x = float(np.interp(0.5, tbl[:, 0], tbl[:, 2]))
-    zone = pad_zone(Vt, tip_x)
-    width = float(np.ptp(Vt[zone, 1])) if zone.sum() >= 3 else float(np.ptp(Vt[:, 1]))
-    return opening_for_width(width)
+    zone = pad_zone(Pt, tip_x)
+    if zone.sum() >= 20:
+        return float(np.ptp(Pt[zone, 1])), zone
+    return float(np.ptp(Pt[:, 1])), zone
+
+
+def est_opening(key: str, T_tcp_obj) -> float:
+    """The normalised finger opening at which the pads touch an object held at ``T_tcp_obj``."""
+    return opening_for_width(pad_width(surface_points(key), T_tcp_obj)[0])
 
 
 def pad_zone(V_tcp: np.ndarray, tip_x: float, half_h: float = 0.012) -> np.ndarray:
@@ -442,11 +465,8 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
     a = sil.a
     cams = cameras_from_state({k: v for k, v in state.items()}, model)
     # the object between the pads: its width there sets the finger opening; the fingers over +-FINGER_BAND_M are unknown
-    Vt = transform(a.V, T_prior)
-    tbl = finger_table()
-    tip_x = float(np.interp(0.5, tbl[:, 0], tbl[:, 2]))
-    zone = pad_zone(Vt, tip_x)
-    width = float(np.ptp(Vt[zone, 1])) if zone.sum() >= 3 else float(np.ptp(Vt[:, 1]))
+    Ps = surface_points(asset_key)
+    width, zone = pad_width(Ps, T_prior)
     o_est = opening_for_width(width)
     o_lo, o_hi = opening_for_width(max(0.0, width - FINGER_BAND_M)), opening_for_width(width + FINGER_BAND_M)
     other_g = state.get(f"{'right' if arm == 'left' else 'left'}_ee_joint_state")
@@ -470,7 +490,7 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
     c = (np.asarray(a.info["bbox_min"]) + np.asarray(a.info["bbox_max"])) / 2
     c_tcp = T_prior[:3, :3] @ c + T_prior[:3, 3]
     # pad-zone points for the gripper term (a subsample)
-    Vp = a.V[zone] if zone.sum() >= 3 else None
+    Vp = Ps[zone] if zone.sum() >= 20 else None
     if Vp is not None and len(Vp) > 400:
         Vp = Vp[np.random.default_rng(0).choice(len(Vp), 400, replace=False)]
     w_views = np.array([VIEW_W[v.role] for v in views])
@@ -487,6 +507,8 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
         Pw = transform(Pc, Tw) if len(Pc) else Pc
         N1w, N2w = (N1c @ Tw[:3, :3].T, N2c @ Tw[:3, :3].T) if len(Pc) else (Pc, Pc)
         for v, w in zip(views, w_views):
+            if w <= 0:
+                continue
             s = sil.render(v.cam, Tw)
             iou = _iou(s, v)
             ious[v.name] = iou
@@ -502,7 +524,7 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
                     if a_.std() > 1e-3 and b_.std() > 1.0:
                         ncc = float(((a_ - a_.mean()) * (b_ - b_.mean())).mean() / (a_.std() * b_.std()))
                         tot += w * w_shade[0] * (1.0 - ncc) / 2
-        tot /= float(w_views.sum())
+        tot /= max(float(w_views.sum()), 1e-9)
         pen = 0.0
         if Vp is not None:
             P = transform(Vp, T)
@@ -546,11 +568,10 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
     #    (x) / across (z); Nelder-Mead in 6 DoF from the best three
     if models(np.zeros(6), OBJ_MODEL_ERODE * float(cfg.get("prior_err_mm", PRIOR_ERR_M * 1000)) / 1000, RING_M) == 0:
         return _fail(T_prior, T_tcp, "no_views", base, t0, lead_obj, axis_obj)
-    starts = [np.zeros(6)]
-    for ry in (-4, 4):
-        starts.append(np.array([0, ry * deg, 0, 0, 0, 0], float))
-    for dx, dz in ((2.5, 0), (-2.5, 0), (0, 2.5), (0, -2.5)):
-        starts.append(np.array([0, 0, 0, dx * mm, 0, dz * mm], float))
+    # a grid over the in-pad DoF: the turn about the closing axis and the slide along the approach trade off in the
+    # own wrist view (a flat valley of the cost), so seeds span it rather than a few axis-aligned steps
+    starts = [np.array([0, ry * deg, 0, dx * mm, 0, dz * mm], float)
+              for ry in (-6, -3, 0, 3, 6) for dx in (-3, 0, 3) for dz in (-2, 0, 2)]
     scored = sorted(((cost(s), i, s) for i, s in enumerate(starts)), key=lambda t: t[:2])
     best = None
     free = (1, 3, 5)                                    # the in-pad DoF: turn about y, slide along x / z
@@ -569,8 +590,16 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
         x, f = nm(x0, [1.5 * deg, 1.5 * deg, 1.5 * deg, 1 * mm, 0.5 * mm, 1 * mm], 400)
         if best is None or f < best[1]:
             best = (x, f)
-    # 2) colour models re-learnt around the fit (now within a few px), then a 6-DoF polish with small steps
+    # 2) colour models re-learnt around the fit (now within a few px), then a 6-DoF polish with small steps. A view
+    # whose silhouette does not match at the fit (a far head view with a same-colour receptacle behind the object)
+    # is dropped when a good view remains: its edges pulled the fit off
     models(best[0], 0.0008, RING_M)
+    _, ious_b = cost(best[0], detail=True)
+    if len(views) > 1 and max(ious_b.values()) >= OK_IOU:
+        for i, v in enumerate(views):
+            if ious_b.get(v.name, 0.0) < DROP_VIEW_IOU:
+                w_views[i] = 0.0
+                diag[v.name]["dropped"] = round(ious_b.get(v.name, 0.0), 3)
     f_b = cost(best[0])
     x, f = nm(best[0], [1.0 * deg, 1.0 * deg, 1.0 * deg, 0.6 * mm, 0.4 * mm, 0.6 * mm], 500)
     if f > f_b:
@@ -603,8 +632,12 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
 
 
 def _lead_axis(a, T_prior, cfg):
-    """Insertion geometry in the object frame: given (cfg lead_obj / axis_obj), else the end of the mesh pointing
-    down at the prior (world -z through the TCP) and the principal mesh axis nearest that direction."""
+    """Insertion geometry in the object frame: given (cfg lead_obj / axis_obj), or from the place target
+    (cfg T_obj_target: the axis = world down there, the leading point = the lowest mesh points there), else the end of
+    the mesh along the approach (TCP +x) at the prior and the principal mesh axis nearest that direction."""
+    if cfg.get("T_obj_target") is not None and cfg.get("lead_obj") is None:
+        from .held_data import lead_axis_from_target
+        return lead_axis_from_target(a.V, np.asarray(cfg["T_obj_target"], float).reshape(4, 4))
     if cfg.get("lead_obj") is not None and cfg.get("axis_obj") is not None:
         ax = np.asarray(cfg["axis_obj"], float)
         return np.asarray(cfg["lead_obj"], float), ax / np.linalg.norm(ax)

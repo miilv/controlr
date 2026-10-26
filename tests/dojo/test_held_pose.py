@@ -143,24 +143,43 @@ def test_held_pose_without_views_keeps_the_prior(monkeypatch):
     assert np.allclose(r["T_tcp_obj"], T_gt)
 
 
-def test_propose_returns_a_hover_look_and_show_poses_with_step_estimates():
+def test_show_pose_candidates_reach_their_targets_and_keep_the_arms_apart():
     from dojo.skills.kinematics import X5Kin
 
     kin = X5Kin()
-    q_l = np.array([0.0, 1.2, 1.0, -0.6, 0.0, 0.0])                # left arm over the table, roughly pointing down
+    q_l = np.array([0.0, 1.2, 1.0, -0.6, 0.0, 0.0])
     T_tcp = kin.tcp("left", q_l)
     T_tcp_obj = np.eye(4)
     T_tcp_obj[:3, 3] = [0.03, 0.0, 0.0]
-    state = {"left_arm_joint_state": q_l, "right_arm_joint_state": np.zeros(6)}
-    out = SP.propose("left", [-0.02, -0.01, -0.01], [0.02, 0.01, 0.01], T_tcp_obj, state, kin=kin)
-    names = [p["name"] for p in out["poses"]]
-    assert out["poses"], "no candidate at all"
-    for p in out["poses"]:
-        assert p["est_steps"] >= 0
-        if p["observer"] is not None:
-            assert p["observer"]["arm"] == "right" and p["observer"]["clearance_m"] >= SP.MIN_ARM_CLEARANCE
-            T_obs = kin.tcp("right", p["observer"]["q"])            # the IK hint reaches the look pose
-            assert np.linalg.norm(T_obs[:3, 3] - np.asarray(p["observer"]["tcp"])[:3, 3]) < 0.005
-    if "hover_look" in names:
-        assert out["poses"][names.index("hover_look")]["est_steps_out"] == 0
-    assert np.allclose(out["object_centre"], (T_tcp @ T_tcp_obj)[:3, 3], atol=1e-6)
+    for c in SP.show_poses("left", T_tcp, T_tcp_obj, [-0.02, -0.01, -0.01], [0.02, 0.01, 0.01]):
+        r = kin.ik("left", c["T_tcp"], q_l)
+        if r.ok:
+            assert np.linalg.norm(kin.tcp("left", r.q)[:3, 3] - c["T_tcp"][:3, 3]) < 0.005
+    looks = SP.observer_looks((T_tcp @ T_tcp_obj)[:3, 3], "right", 0.04)
+    dirs = SP.observer_dirs(T_tcp)
+    assert dirs[0][0] == "end_on" and all(abs(np.linalg.norm(u) - 1) < 1e-9 for _, u in dirs)
+    assert all(L["arm"] == "right" for L in looks)
+    assert SP.arm_clearance(kin, q_l, np.zeros(6)) > 0.1
+
+
+def test_eval_summary_and_sigma_calibration_on_fake_rows():
+    from dojo.perception import held_eval as HE
+
+    rng = np.random.default_rng(0)
+    rows = []
+    for i in range(80):
+        s = rng.uniform(0.1, 0.5)
+        e = rng.normal(0, 1.5 * s, 3)                       # errors 1.5x the reported sigma
+        rows.append({"task": "t", "kind": "hover", "views_set": "all", "prior": "perturb", "seed": str(100000 + i),
+                     "ok": True, "why": "", "t_s": 1.0, "sigma": {"lead_mm": [s] * 3, "axis_deg": 1.0},
+                     "err_prior": {"lead_norm_mm": 2.0}, "err_fit": {"lead_mm": e.tolist(),
+                                                                       "lead_norm_mm": float(np.linalg.norm(e)),
+                                                                       "axis_deg": 0.5, "rot_deg": [0, 0.4, 0]},
+                     "err_out": {"lead_mm": e.tolist(), "lead_norm_mm": float(np.linalg.norm(e)), "axis_deg": 0.5,
+                                 "rot_deg": [0, 0.4, 0]}})
+    S = HE.summarize(rows)
+    assert S[0]["n"] == 80 and S[0]["ok"] == 80
+    c = HE.calibrate(rows)
+    assert 1.3 < c["all"]["k_lead"] < 2.6                 # the factor recovers the 1.5x under-statement
+    for h in (0, 1):
+        assert c[f"fit_on_{h}"]["held_out_cover_lead_axis"][0] > 0.85

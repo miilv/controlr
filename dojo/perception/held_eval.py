@@ -28,6 +28,8 @@ import numpy as np
 
 from .held_data import R_rotvec, inv_T, lead_axis_from_target, pose7_to_T, pose_errors, rotvec_R, tcp_from_flange_T
 
+AUTO_VIEWS = {"hover": ["own", "all"], "grasp": ["own", "all"], "observer_look": ["all"], "look_ranked": ["all"],
+              "show": ["own+head", "all"], "show_ranked": ["own+head", "all"]}
 VIEW_SETS = {"all": (), "own": ("cam_head", "OBSERVER"), "own+head": ("OBSERVER",), "head+observer": ("OWN",),
              "own+observer": ("cam_head",)}
 
@@ -161,6 +163,8 @@ def eval_frame(path: str, n_priors: int, view_sets: list[str], seed: int, prior_
     if "gt" in prior_kinds:
         priors.append(("gt", 0, F["T_gt"], {}))
     rows = []
+    if view_sets == ["auto"]:                   # per frame kind: what each option can use
+        view_sets = AUTO_VIEWS.get(F["kind"], ["own", "all"])
     for vs in view_sets:
         for kind, i, Tp, info in priors:
             t0 = time.time()
@@ -299,6 +303,39 @@ def coverage(rows: list[dict]) -> dict:
             "k_axis_95": float(np.percentile(ea / sa, 95) / 2)}
 
 
+def calibrate(rows: list[dict], q: float = 95.0) -> dict:
+    """SIGMA_SCALE factors from fits that pass every gate but the sigma one (why in "", "ambiguous"), 2-fold by layout:
+    the factor k (on the reported sigma) that puts q % of max_i |e_i| / (k sigma_i) <= 2, fitted on one half and
+    checked on the other."""
+    use = [r for r in rows if "err_fit" in r and r.get("sigma") and r["why"] in ("", "ambiguous")]
+
+    def k_of(rs):
+        e = np.abs(np.array([r["err_fit"]["lead_mm"] for r in rs]))
+        s = np.maximum(np.array([r["sigma"]["lead_mm"] for r in rs]), 1e-6)
+        ea = np.array([r["err_fit"]["axis_deg"] for r in rs])
+        sa = np.maximum(np.array([r["sigma"]["axis_deg"] for r in rs]), 1e-6)
+        return float(np.percentile(np.max(e / s, 1), q) / 2), float(np.percentile(ea / sa, q) / 2)
+
+    def cover(rs, kl, ka):
+        e = np.abs(np.array([r["err_fit"]["lead_mm"] for r in rs]))
+        s = np.array([r["sigma"]["lead_mm"] for r in rs]) * kl
+        ea = np.array([r["err_fit"]["axis_deg"] for r in rs])
+        sa = np.array([r["sigma"]["axis_deg"] for r in rs]) * ka
+        return float(np.mean(np.all(e <= 2 * s, 1))), float(np.mean(ea <= 2 * sa))
+
+    out = {"n": len(use)}
+    if len(use) < 20:
+        return out
+    halves = [[r for r in use if int(str(r["seed"]).split("_")[0][-1]) % 2 == h] for h in (0, 1)]
+    for h in (0, 1):
+        kl, ka = k_of(halves[h])
+        out[f"fit_on_{h}"] = {"k_lead": round(kl, 2), "k_axis": round(ka, 2),
+                              "held_out_cover_lead_axis": [round(v, 3) for v in cover(halves[1 - h], kl, ka)]}
+    kl, ka = k_of(use)
+    out["all"] = {"k_lead": round(kl, 2), "k_axis": round(ka, 2)}
+    return out
+
+
 def cmd_report(a) -> None:
     rows = []
     for f in a.files:
@@ -319,6 +356,7 @@ def cmd_report(a) -> None:
         print("| " + " / ".join(map(str, s["group"])) + " | " + " | ".join(
             (f"{s[c]:.2f}" if isinstance(s[c], float) else str(s[c])) for c in cols) + " |")
     print("sigma coverage (ok fits):", {k: (round(v, 3) if isinstance(v, float) else v) for k, v in coverage(rows).items()})
+    print("sigma calibration (2-fold by layout):", calibrate([r for r in rows if "err_fit" in r]))
 
 
 def main(argv=None) -> None:

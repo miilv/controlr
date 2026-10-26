@@ -381,11 +381,17 @@ class _Perception:
 
     @staticmethod
     def show_pose(arm: str, key: str, T_tcp_obj, state: dict, cfg: dict | None = None) -> dict:
-        from dojo.perception.render import load_asset
         from dojo.perception.show_pose import propose
-        info = load_asset(key).info
-        return propose(arm, info["bbox_min"], info["bbox_max"], np.asarray(T_tcp_obj, float),
-                       {k: np.asarray(v, float) for k, v in state.items()})
+        cfg = cfg or {}
+        lead = None
+        if cfg.get("T_obj_target") is not None:
+            from dojo.perception.held_data import lead_axis_from_target
+            from dojo.perception.render import load_asset
+            lead, _ = lead_axis_from_target(load_asset(key).V, np.asarray(cfg["T_obj_target"], float).reshape(4, 4))
+        elif cfg.get("lead_obj") is not None:
+            lead = np.asarray(cfg["lead_obj"], float)
+        return propose(arm, key, np.asarray(T_tcp_obj, float), {k: np.asarray(v, float) for k, v in state.items()},
+                       lead_obj=lead)
 
     def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
         """perception's held_look (``agentic.j1.held_look_impl``: B1 = the strict-tier fingertip-region read, then
