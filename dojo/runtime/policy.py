@@ -139,6 +139,9 @@ class RuntimeConfig:
     # mode perception: belt tracking (B1 re-reads every 4 steps while refreshing, a line fit per object over 40 steps;
     # moving objects' belief poses follow the fit): auto = on iff the scene has a conveyor object | on | off
     track_moving: str = "auto"
+    # mode perception: the in-hand pose at the pre-insert hover (perception's held_pose, where G3 re-measures from
+    # GT): off | auto (when the perception service offers it); skills adopt it within the place's tolerances
+    held_pose: str = "off"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -189,7 +192,7 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on")):
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.held_pose not in ("off", "auto")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -458,6 +461,9 @@ class RuntimePolicy:
             pc = self.perception()
             if hasattr(pc, "motion"):                   # provider.actors_moving (skills waiting for a scripted arm)
                 prov.motion_reader = lambda a, b_: pc.motion(a, b_)
+            if cfg.held_pose == "auto" and hasattr(pc, "held_pose"):
+                prov.held_pose = lambda arm, prior_T_tcp_obj, asset_key, cfg_=None: self._held_pose(
+                    prov, arm, prior_T_tcp_obj, asset_key, cfg_)
             if hasattr(pc, "watch_read"):               # provider.watch_read(region, prior): board cells / container
                 prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
             cats = {o.category for o in prov.belief.objects.values()}
@@ -875,6 +881,25 @@ class RuntimePolicy:
                                                                   "system_md5")},
                                        "merged": len(st.get("merge") or [])})
         return rec
+
+    def _held_pose(self, prov, arm: str, prior_T_tcp_obj, asset_key: str, cfg: dict | None = None) -> dict:
+        """perception's held_pose on the current observation; an ok read re-anchors the belief's in-hand transform."""
+        t = time.perf_counter()
+        try:
+            r = self.perception().held_pose(self.bridge.observe(), arm, asset_key,
+                                            np.asarray(prior_T_tcp_obj, float).tolist(), cfg) or {}
+        except Exception as e:  # noqa: BLE001
+            self.report["events"].append({"kind": "held_pose", "arm": arm, "error": f"{type(e).__name__}: {str(e)[:160]}"})
+            return {"ok": False, "why": "error"}
+        self.report["events"].append({"kind": "held_pose", "arm": arm, "step": self.bridge.steps_used,
+                                      "s": round(time.perf_counter() - t, 2),
+                                      **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
+        if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
+            lab, _ = prov.belief.attached[arm]
+            prov.belief.attached[arm] = (lab, np.asarray(r["T_tcp_obj"], float))
+            prov.belief.sync_robot(self.bridge.observe()["state"])
+            prov.stats["held_pose"] = prov.stats.get("held_pose", 0) + 1
+        return r
 
     def _watch_read(self, region: dict, prior: dict | None, scene: str) -> dict:
         """Skills-6's provider read (b): perception's ``watch_read`` on the current observation. On an error the read
