@@ -382,7 +382,7 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
 
 
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
-                       every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 2) -> dict:
+                       every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 3) -> dict:
     """A scripted demonstrator puts objects into ``demo_container`` one at a time: hold still at home while it works,
     record the order in which objects arrive there (watch reads of the container every ``every`` steps; an object counts
     once it is inside for ``quiet`` reads in a row), and when the demonstrator's arm is at rest (``wait_actors_still``,
