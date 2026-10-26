@@ -2185,18 +2185,27 @@ def test_held_pose_adopts_only_a_confident_read_within_the_place_tolerance():
     meas[:3, 3] = [0.003, 0.0, 0.0]
     answers = []
 
-    def held_pose(arm, prior_T_tcp_obj, asset_key):
+    cfgs = []
+
+    def held_pose(arm, prior_T_tcp_obj, asset_key, cfg_=None):
+        cfgs.append(cfg_)
         return answers.pop(0)
     me = SimpleNamespace(provider=SimpleNamespace(held_pose=held_pose))
     h = SimpleNamespace(T_tcp_obj=prior)
     o = SimpleNamespace(asset=SimpleNamespace(key="Rigid/block/00005"))
-    good = {"ok": True, "T_tcp_obj": meas.tolist(), "sigma": {"pos_mm": [1.0, 2.0, 9.0], "rot_deg": [1.0, 2.0, 2.0]}}
-    answers += [good, {**good, "ok": False}, {**good, "sigma": {"pos_mm": [6.0, 1.0, 1.0], "rot_deg": [1, 1, 1]}},
-                {**good, "sigma": {"pos_mm": [1.0, 1.0, 1.0], "rot_deg": [1.0, 4.0, 1.0]}}, {**good, "sigma": None}]
-    pp = SimpleNamespace(arm="left")
-    got = [Skills._measure_held(me, pp, h, o, 0.01, 6.0) for _ in range(5)]
-    assert np.allclose(got[0], meas)                      # z sigma does not gate (the descent is guarded / verified)
-    assert got[1:] == [None] * 4                          # not ok / lateral 6 mm > 5 / rot 4 deg > 3 / no sigma
+    # sigma per TCP axis (x = approach): the approach axis does not gate (the descent is guarded / verified)
+    good = {"ok": True, "T_tcp_obj": meas.tolist(),
+            "sigma": {"pos_mm": [9.0, 1.0, 2.0], "rot_deg": [9.0, 1.0, 1.0], "lead_mm": [9.0, 2.0, 2.0], "axis_deg": 2.0}}
+    answers += [good, {**good, "ok": False},
+                {**good, "sigma": {**good["sigma"], "lead_mm": [1.0, 6.0, 1.0]}},             # across 6 mm > 5
+                {**good, "sigma": {**good["sigma"], "axis_deg": 4.0}},                        # axis 4 deg > 3
+                {**good, "sigma": None},
+                {**good, "sigma": {"pos_mm": [9.0, 1.0, 1.0], "rot_deg": [9.0, 1.0, 2.0]}}]   # no lead / axis: TCP y, z
+    pp = SimpleNamespace(arm="left", T_obj_target=np.eye(4))
+    got = [Skills._measure_held(me, pp, h, o, 0.01, 6.0) for _ in range(6)]
+    assert np.allclose(got[0], meas) and np.allclose(got[5], meas)
+    assert got[1:5] == [None] * 4                          # not ok / across 6 mm / axis 4 deg / no sigma
+    assert np.allclose(cfgs[0]["T_obj_target"], np.eye(4))                  # perception's insertion geometry
     assert Skills._measure_held(SimpleNamespace(provider=SimpleNamespace()), pp, h, o, 0.01, 6.0) is None
 
 

@@ -316,10 +316,8 @@ def _one_piece(sk: Skills, lab: str, b, base: str, peg: dict, on_this: list[str]
     # seating needs the held piece measured (the servo); blind (mode B), a piece pushed 30-50 mm down the peg on a
     # predicted in-hand pose binds and tilts (twin, 2 mm belief offsets: 0/5, 0.30): let go threaded at the top instead
     seat = seat and held_measured(sk)
-    if seat:
-        z_bot = stack_top(sk, on_this, peg) + SEAT_GAP
-    else:
-        z_bot = peg["top"] - thread if thread > 0 else peg["top"] + drop
+    z_thread = peg["top"] - thread if thread > 0 else peg["top"] + drop
+    z_bot = stack_top(sk, on_this, peg) + SEAT_GAP if seat else z_thread
     probing = seat or thread > 0
     bias = side_bias(sk.world.obj(lab), peg) * np.asarray(BIAS_DIR)
     T, hole = piece_target(sk, lab, peg, b.yaw(), z_bot, bias=bias)
@@ -327,6 +325,10 @@ def _one_piece(sk: Skills, lab: str, b, base: str, peg: dict, on_this: list[str]
            "servo_ref": base, "ref_top": peg["top"], "seat_tol": SEAT_TOL if probing else 0.004,
            "probe": probing, "guard_seated": GUARD_SEATED_PEG, "guard_lag": GUARD_LAG_PEG,
            "approach_rad": PEG_CARRY, "servo_xy_tol": SEAT_XY_TOL if seat else None}
+    if seat and not getattr(sk, "remeasure", True):
+        # mode B with a held-object read: seat only on a read this good (``Skills._held_protocol``); without one the
+        # guarded tail threads it (``blind_up``: up to the threaded target), never pushes it down to its seat blind
+        pkw.update({"held_tol": SEAT_SIGMA, "held_gate": SEAT_SIGMA, "blind_up": max(0.0, z_thread - z_bot)})
     r = place_oriented(sk, lab, [T], yaw_sym=PEG_YAWS, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08,
                        ignore=(base,) + tuple(on_this),
                        place_kw=pkw, air_handover=False, spot_avoid=(base,),
