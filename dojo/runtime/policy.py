@@ -167,6 +167,7 @@ class RuntimeConfig:
     scan_step_rad: float = 0.16
     scan_settle: int = 2                # hold steps at the scan pose before the observation
     extra: dict = field(default_factory=dict)
+    preset: str | None = None           # name of the preset these fields came from (dojo/runtime/presets.py), if any
 
     @classmethod
     def from_env(cls) -> "RuntimeConfig":
