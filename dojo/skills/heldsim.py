@@ -18,6 +18,13 @@ skills' mode-B held-pose protocol (``Skills._held_protocol``) runs in G3 with th
   refine). ``confirm_pose(label, pos, quat)`` (``confirm=True``; the runtime's #67: the head view decides) adopts the
   skill's expected pose when it is closer to the truth (+ the belief offset) than the frozen belief and within
   ``CONFIRM_TOL`` of it;
+- ``drop`` ("runtime" / "fixtures"): like the runtime belief, an object let go is predicted where the jaws let it go,
+  dropped onto its support by ``dojo.runtime.belief.drop_rest`` ("runtime": the table and movable tops only, the
+  belief before the fixture rule, an object let go on a bolt / board / hook falls through it; "fixtures": + the static
+  fixtures' mesh surfaces and holds); the post-place re-measure sees the truth only where perception's support model
+  (the table, movable tops) explains it, else the prediction stays until the next grasp or a confirmed
+  ``confirm_pose`` (G3 mode B read GT after every release, which hid this: fasten_screws 0/5, tic-tac-toe 0/5 on the
+  proxy, G3 24/25 and 25/25);
 - ``show_pose(arm, T_tcp_obj, asset_key, cfg_)``: generic candidates in perception's ``show_pose.propose`` format:
   observer looks of the other arm's wrist camera at the held object from beside / across the pads, then show poses of
   the holding arm with the object in front of the head camera (+ an observer look there); reachable by our IK, in a
@@ -35,6 +42,8 @@ from pathlib import Path
 
 import numpy as np
 
+import copy
+
 from dojo.skills.geometry import T_to_pose7, inv_T
 from dojo.skills.kinematics import ARMS, TABLE_Z, X5Kin
 
@@ -44,6 +53,9 @@ ATTACH_MARGIN = 0.015          # m: the runtime belief's attach margin (``Kinema
 TOUCH_MARGIN = 0.02            # m: fingertips this close to an object's (believed) box touch it (``freeze``)
 MOVED = (0.003, 5.0)           # m, deg: a touched object that moved more than this since the last refresh froze
 CONFIRM_TOL = (0.015, 20.0)    # m, deg: a ``confirm_pose`` this far off the truth is not confirmed
+MEASURED_TOL = (0.004, 0.010)  # m (z, xy): a released object resting this close to where perception's support model
+                               # puts it is re-measured by the post-place refine (``drop``)
+STILL_RAD = 0.002              # rad: as the runtime belief, a release counts as a put-down when the command holds
 
 # --- from dojo/perception/show_pose.py (perception-held, PR #59)
 T_TCP_CAM = np.array([[-0.000007, -0.500030, 0.866008, -0.060158],
@@ -128,7 +140,7 @@ class HeldBeliefProvider:
     """See the module doc. ``mode``: None (belief only: no ``held_pose`` / ``show_pose``), "noise" or "gt"."""
 
     def __init__(self, base, env, kin: X5Kin | None = None, mode: str | None = "noise", seed: int = 0,
-                 table: dict | None = None, freeze: bool = False, confirm: bool = False):
+                 table: dict | None = None, freeze: bool = False, confirm: bool = False, drop: str | None = None):
         self.base = base
         self.env = env
         self.kin = kin or X5Kin()
@@ -145,7 +157,12 @@ class HeldBeliefProvider:
         self._frozen: dict = {}              # label -> (pos, quat) the belief keeps
         self._base_prev: dict = {}           # label -> the base provider's (pos, quat) at the last refresh
         self.stats.update({"frozen": 0, "confirm": 0, "confirm_adopted": 0})
-        if confirm:
+        assert drop in (None, "runtime", "fixtures"), drop
+        self.drop = drop
+        self._pending: dict = {}             # label -> the belief's rest pose (pos, quat) after a release (``drop``)
+        self._cmd: dict = {}                 # arm -> last commanded joints
+        self.stats.update({"released": 0, "remeasured": 0, "kept": 0})
+        if confirm or drop:
             self.confirm_pose = self._confirm_pose
         if mode:
             if table is None:
@@ -162,6 +179,9 @@ class HeldBeliefProvider:
     # ------------------------------------------------------------------ belief
     def _on_step(self, action: dict):
         for a in ARMS:
+            q_cmd = np.asarray(action[f"{a}_arm_joint_state"], float).reshape(-1)[:6]
+            still = a in self._cmd and float(np.abs(q_cmd - self._cmd[a]).max()) < STILL_RAD
+            self._cmd[a] = q_cmd.copy()
             g_new = float(np.clip(np.asarray(action[f"{a}_ee_joint_state"]).reshape(-1)[0], 0, 1))
             if g_new < 0.5 and self._g[a] > g_new + 1e-6 and a not in self.att:
                 T_c = self.kin.tcp(a, np.asarray(action[f"{a}_arm_joint_state"], float).reshape(-1)[:6])
@@ -170,8 +190,12 @@ class HeldBeliefProvider:
                     self.att[a] = (lab, inv_T(T_c) @ self._free[lab].T)
                     self.stats["attached"] += 1
             if g_new > 0.6 and a in self.att:
-                lab = self.att.pop(a)[0]
+                lab, T_rel = self.att.pop(a)
                 self._frozen.pop(lab, None)                 # released: the post-place re-measure (GT + offset)
+                if self.drop and lab in self._free:
+                    self._pending[lab] = self._belief_rest(lab, self.kin.tcp(a, q_cmd) @ T_rel,
+                                                           self.drop == "fixtures" and still)
+                    self.stats["released"] += 1
             self._g[a] = g_new
             if self.freeze:
                 T = self.kin.tcp(a, np.asarray(action[f"{a}_arm_joint_state"], float).reshape(-1)[:6])
@@ -210,14 +234,15 @@ class HeldBeliefProvider:
             o.pos, o.quat = np.asarray(p7[:3], float), np.asarray(p7[3:], float)
             o.source = "predicted"
             attached[lab] = a
-        import copy
         for lab, o in w.objects.items():
             if lab in attached:
                 continue
-            if self.freeze:
+            if lab in self._pending:
+                self._after_release(lab, o, w)
+            if self.freeze or self.drop:
                 base = (o.pos.copy(), o.quat.copy())
                 prev = self._base_prev.get(lab)
-                if lab not in self._frozen and lab in self._touched and prev is not None:
+                if self.freeze and lab not in self._frozen and lab in self._touched and prev is not None:
                     from dojo.skills.geometry import angle_between_R, quat_to_R
                     if (float(np.linalg.norm(base[0] - prev[0])) > MOVED[0]
                             or math.degrees(angle_between_R(quat_to_R(base[1]), quat_to_R(prev[1]))) > MOVED[1]):
@@ -225,12 +250,46 @@ class HeldBeliefProvider:
                         self._frozen[lab] = ((prev_b.pos.copy(), prev_b.quat.copy()) if prev_b is not None else prev)
                         self.stats["frozen"] += 1
                 self._base_prev[lab] = base
-                if lab in self._frozen:
-                    o.pos, o.quat = self._frozen[lab][0].copy(), self._frozen[lab][1].copy()
-                    o.source = "predicted"
+            if lab in self._frozen:
+                o.pos, o.quat = self._frozen[lab][0].copy(), self._frozen[lab][1].copy()
+                o.source = "predicted"
             self._free[lab] = copy.copy(o)
         self._touched.clear()
         return w
+
+    def _belief_rest(self, lab: str, T_release, fixtures: bool):
+        """The runtime belief's prediction for ``lab`` let go at ``T_release`` (``drop_rest`` over what the belief
+        holds: the other objects as last reported)."""
+        from dojo.runtime.belief import drop_rest
+        o = copy.copy(self._free[lab])
+        p7 = T_to_pose7(np.asarray(T_release, float))
+        o.pos, o.quat = np.asarray(p7[:3], float), np.asarray(p7[3:], float)
+        others = [x for k, x in self._free.items() if k != lab and not getattr(x, "clutter", False)]
+        movables = [x for x in others if x.obj_type != "Geometry"]
+        fx = [x for x in others if x.obj_type == "Geometry"] if fixtures else ()
+        pos, ev = drop_rest(o, movables, fx)
+        if pos is not None:
+            o.pos = pos
+        if ev is not None:
+            self.events.append({"kind": "belief_drop", "label": lab, "step": int(self.env.steps_used), **ev})
+        return o.pos.copy(), o.quat.copy()
+
+    def _after_release(self, lab: str, o, w) -> None:
+        """The post-place re-measure: the truth (+ offset) where perception's support model (the table, movable tops:
+        ``drop_rest`` without fixtures) explains where it rests, else the belief's prediction stays (``_frozen``)."""
+        from dojo.runtime.belief import drop_rest
+        pred = self._pending.pop(lab)
+        movables = [x for k, x in w.objects.items() if k != lab and x.obj_type != "Geometry" and not x.clutter]
+        p_fit, _ = drop_rest(o, movables, ())
+        fits = (p_fit is not None and abs(float(p_fit[2] - o.pos[2])) <= MEASURED_TOL[0])
+        if fits:
+            self.stats["remeasured"] += 1
+            return
+        self._frozen[lab] = pred
+        self.stats["kept"] += 1
+        err = float(np.linalg.norm(pred[0] - o.pos))
+        self.events.append({"kind": "release_kept", "label": lab, "step": int(self.env.steps_used),
+                            "pred_err_mm": round(err * 1000, 1)})
 
     def _confirm_pose(self, label: str, pos, quat) -> dict:
         """GT stand-in for the runtime's ``confirm_pose``: adopted when the expected pose is within ``CONFIRM_TOL`` of
