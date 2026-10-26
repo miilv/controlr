@@ -347,8 +347,9 @@ class FakeTwinClient:
         self.snaps.pop(int(sid), None)
 
 
-@pytest.mark.parametrize("mode", ["gt", "perception"])
-def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
+@pytest.mark.parametrize("mode,extra", [("gt", {}), ("perception", {}),
+                                        ("gt", {"twin_load_noise": [2.0, 1.5], "twin_load": "consistent"})])
+def test_bundle_verify_chains_through_the_grasp(mode, extra, monkeypatch):
     import dojo.runtime.estimate as E
     monkeypatch.setattr(E, "estimate_to_layout", lambda scene, objs: {"Rigid": {"block": [
         {"label": o["label"], "category_idx": o["category_idx"], "default_pos": o["pos"], "default_ori": o["quat"]}
@@ -368,12 +369,15 @@ def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
         def look_plan(self, frame, record, max_looks=2):
             return []
 
-    pol = RuntimePolicy(RuntimeConfig(mode=mode, verify="bundle", n_cands=2, verify_k=2), assets=FakeAssets(),
+    pol = RuntimePolicy(RuntimeConfig(mode=mode, verify="bundle", n_cands=2, verify_k=2, **extra), assets=FakeAssets(),
                         twin_client=tc, perception_client=FakePerception())
     rep = run_episode(pol, FakeEpisode(env), mode)
     assert rep["error"] is None, rep["error"]
     assert _stacked(env)
     v = rep["verify"]
+    if extra:                                    # noisy loads (3-sigma ~6 mm) then levelled / seated on the table
+        assert v.get("load_leveled", 0) + v.get("load_seated", 0) >= 1, v
+        return                                   # (the fake twin's strict judge rejects noisy loads: no chain to check)
     assert v["segments"] >= 4 and v["calls"] == v["segments"], v
     assert v["from_snapshot"] >= 2 and v["from_estimate"] >= 2, v          # places chain from the kept pick
     for vv in tc.verifies:
