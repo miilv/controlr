@@ -143,6 +143,11 @@
 - [ ] **dojo: the insert_tubes depth term is met by a tube lying on the table.** `is_A_depth_in_B` is rack bbox top - tube bbox bottom > 45 mm, and a lying tube's bottom is 50 mm below the rack's top. Not a gaming risk (the skill inserts), but any score from a "partial" episode must be read with that in mind. The rack's holes are 54 mm deep.
 - [ ] **dojo: asset metadata bboxes are not the colliders.** The test tube's metadata bbox is 42 x 140 mm, its mesh 35 x 117 mm (the checker reads a 42 mm square). The coin's checker bbox is +-20 mm against a 14.2 mm radius. A coin resting tilted inside the bank can fail the bank's 8 mm bottom bound with its box corners. The skills' collision model uses the metadata box: standing tubes are therefore registered with their mesh height map (`Collision.heightmaps`).
 - [ ] **dojo: RoboDojo Geometry objects are static colliders** (`GeometryObject._remove_rigid_body_if_exists`): a coin bank, a coin stand, a bolt, a rack, a xylophone cannot be moved or pushed. Plans that move a receptacle closer only work for Rigid ones.
+- [ ] **dojo skills: plug_in_charger in mode B is bounded by the in-hand pose** (journal/2026-10-26-dojo-skills5.md).
+  The blades are 0.8 mm in 1.0 mm slots (about +-0.1 mm), and a 3.5 mm belief error at grasp time leaves the blades on the
+  strip. A discrete probe grid would need about 0.2 mm spacing (hundreds of probes); a pressed spiral to 5 mm is about 260
+  steps, against ~170 left. Needs a held-object refine good to about 0.3 mm, then a short spiral. The contact-probing
+  tail (`Skills._guarded_tail`) is in place for mode B.
 - [ ] **dojo skills: insert_tubes, the second tube from the same side.** After the first tube stands, the same arm often has no plan into the remaining holes of its half of the rack (no grasp-place pairs, see the journal), and the relay fails too.
 - [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
 - [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).

@@ -25,7 +25,40 @@ first in `DOJO_CATALOG`. G3 means the TRUE state in the physics-only twin. The e
 
 ## 2. G3 numbers
 
-(filled in below)
+GT state, physics-only twin, settled dev layouts, `SIMLAB_USD_SYNC_LINKS=1`. Board scale = mean score x 100.
+
+**Final (all 25 settled, one commit per task):**
+
+| task | run (commit) | success | mean | steps median / max (limit) | failures | board (PyRUA / best) |
+|---|---|---|---|---|---|---|
+| play_Xylophone | xylo_final (eae2b9d) | **25/25** | **1.00** | 166 / 188 (500) | - | 62 / 62 |
+| fasten_screws | screws_final (eae2b9d) | **24/25** | **0.98** | 1245 / 1365 (1900) | 1 at 0.5: a nut fell beside its bolt (the arm was held 31 mm off its command at the place) | 80.6 / 80.6 |
+| deposit_coin | coin_final (eae2b9d) | **16/25** | **0.69** | 163 / 229 (300) | one-arm 9/11, handover 7/13. The rest: place_miss 5 (the coin fell on or beside the slot after release), a handover with no reachable taker descent, a loose giver pick, a rim pick that slipped | 44 / 62.3 |
+| insert_tubes | tubes_v5 (c0af901) | see the table below | | | the third tube had no plan; a grasp off the centre of mass missed | 66.4 / 82.9 |
+
+The coin, screw and xylophone finals ran on eae2b9d. The later commits touch these tasks only in paths those episodes
+did not take:
+- a loose handover pick is lifted once more (applies to 1 coin episode, 100000);
+- a place planned with its pick keeps the gripper closed (only when the post-pick re-plan fails);
+- the mode-B probing tail (only without in-hand measurement).
+
+**Iterations:**
+
+| task | run (commit) | layouts | success | mean | steps median / max | main failure / change |
+|---|---|---|---|---|---|---|
+| play_Xylophone | v1 (0f53f14) | 25 | 23/25 | 0.92 | 166 / 188 | 2 mallets lay on the table (fell off their stand): no handle grasp |
+| play_Xylophone | v2 (ec39dd9) | the 2 failed | 2/2 | 1.00 | 165 / 168 | low handle grasps (fingertips 0.6 mm over the table) |
+| fasten_screws | v1 (60c58d8) | 100000-04 | 5/5 | 1.00 | 1295 / 1348 | - |
+| deposit_coin | v1 (00d7c1f) | 100000-04 | 0/5 | 0.00 | 46 / 51 | rim grasp, lifted at once: the coin stayed in its holder 5/5 |
+| deposit_coin | v2 (ec39dd9) | 100000-04 | 0/5 | 0.00 | 50 / 55 | + 4-step squeeze: still 5/5 in the holder (the lift at 0.10 rad/step) |
+| deposit_coin | v3 (83164a1) | 100000-04 | 2/5 | 0.48 | 88 / 211 | lift at 0.03: one-arm 2/2. The relay (laid flat, pinch) knocked the coin out at the hover |
+| deposit_coin | v4-v5 | 100000-09 / -06 | 2/10, 2/7 | 0.34, 0.37 | 171 / 210 | relays: the pinched coin cannot reach the slot (finger roots over the bank) or slid out of an offset pinch |
+| deposit_coin | v6 (2df0198) | 25 | 6/25 | 0.39 | 77 / 130 | relay off: cross-arm layouts lift and set back (0.2) |
+| deposit_coin | v7 (51566d5) | 100000-09 | 4/10 | 0.48 | 91 / 179 | in-air rim handover 3/5; 6 mm rim grasps tilted 20 deg dropped the coin on the carry |
+| insert_tubes | v1-v2 (2df0198, 60c58d8) | 1, 5 | 0/1, 1/5 | 0.40, 0.48 | 233 / 341 | the hand over a standing tube was held 34 mm off its command; no plan for the third tube; a sweeping collision with the rack |
+| insert_tubes | v3 (cf857cd) | 2 (stopped) | 0/2 | 0.40 | 216 / 218 | back row first and one screen over 6 holes: worse (IK budget; the left arm 50 mm off its command at a back hole). Reverted |
+| insert_tubes | v4 (626c268) | 100000-09 | 6/10 | 0.76 | | a screen per hole, holes not reached over, a usual-lift retry |
+| plug_in_charger (regression) | plug_reg (3c76332) | 100000-09 | 8/10 | 0.80 | 181 / 228 | skills-3 had 8/10 on the same layouts (the same two fail) |
 
 ## 3. Findings per task
 
@@ -85,6 +118,28 @@ first in `DOJO_CATALOG`. G3 means the TRUE state in the physics-only twin. The e
      pre-place height).
   4. A grasp on the flange slid 5 mm and dropped the tube (fixed: pads on a uniform section).
 
+### plug_in_charger in mode B (inherited from skills-3, the lead's ask)
+
+- On genuine 5.1 mode B, the plug's insertion descent was refused at its last waypoint ("palm at table"). The G3
+  in-jaw drift of the charger is 0.0-0.4 mm for the insertion grasp (skills-3's 25 episodes), so slip in the jaws is
+  not the cause. The cause is the in-hand transform: G3 re-measures it after the grasp, mode B predicts it from the
+  belief at grasp time.
+- `g3 run --mode-b --belief-offset charger:0.0035,0` reproduces that exact refusal in G3. It also exposed a
+  shared bug: when the post-pick re-plan of a place fails, `run_transfer` ran the place planned BEFORE the pick, whose
+  `ArmPlan` started with the gripper open, so the approach dropped the object. Fixed in PR #45 (merged): a place
+  planned with its pick starts closed, and `run_place` never opens a holding gripper on the approach.
+- With the fix, a refused tail now goes down guarded: it stops on arm lag, 17 mm short, the blades on the strip.
+  Then comes the contact-probing tail (1.5 / 3 / 4.5 mm x 8 around the target, budget-aware), which in mode B now
+  replaces the planned open-loop tail.
+- Results with a 3.5 mm belief error: guarded only 0/5, probing 0/2 (stopped).
+- Arithmetic: the blades are 0.8 mm in 1.0 mm slots, about +-0.1 mm. A 3.5 mm error leaves 0.5 mm at the nearest
+  probe of a 1.5 mm grid, so a discrete search needs about 0.2 mm spacing, i.e. hundreds of probes. A compliant
+  search (press 2 mm and drag along an Archimedean spiral, 0.6 mm pitch, to 5 mm) is about 130 mm of path, about
+  260 steps, against the ~170 the plug has left after its relay.
+- Conclusion: mode-B plug is bounded by the in-hand pose. It needs a held-object refine good to about 0.3 mm,
+  then a short spiral. The tail stays in the code: it completes the place (no refusal, no drop).
+- No-offset mode-B sanity check: see the table.
+
 ## 4. Landmines (also in BACKLOG)
 
 1. Asset metadata bboxes are not the colliders: the tube's is 42 x 140 mm (mesh 35 x 117), the coin's checker box is
@@ -94,3 +149,18 @@ first in `DOJO_CATALOG`. G3 means the TRUE state in the physics-only twin. The e
    `[p]attern` regex avoids it. A wait loop built on the plain pattern never ended.
 4. The kinematic env treats Geometry as no support, so a nut let go over a bolt falls through it to the table. Dry
    runs of `screw_on` therefore end "done" without sweeps; only G3 tests it.
+5. A place planned before its pick carried the open gripper into its approach (PR #45; it hit every mode-B place whose
+   post-pick re-plan failed).
+6. The tubes' remaining failure: once two tubes stand, the third often has no one-arm plan into the remaining holes
+   (IK-bound: 632 / 880 place IKs fail for the second tube of a side). And when nothing nearer plans, the only grasps
+   left are more than 10 mm off the tube's centre of mass, which slide (6.5 mm) or miss.
+
+## 5. Next
+
+- insert_tubes: assign holes jointly for all tubes. A canonical-reach assignment tried in a dry run did not predict the
+  full plans. A relay that frees reach (a tube laid near the middle for the other arm) is the next lever.
+- deposit_coin: the handover's taker drops 4/13 coins beside the slot. Release lower, with the coin deeper in the
+  slot (the taker's pads cover only its top 10 mm), and re-measure before the release.
+- plug_in_charger mode B: a held-object refine good to about 0.3 mm (perception), then a short pressed spiral.
+- fasten_screws: one nut place in 25 collided (the arm was held 31 mm off its command): the same "blocked arm" check
+  as the servo, then a re-plan from another side.
