@@ -11,7 +11,7 @@ episodes), as many as ``--budget-mb`` allows at ~0.9 MB per frame set. Writes pe
 every task object from the replay, and the physical object the check was about. The match is by ASSET KEY + POSITION:
 the belief label's asset (``category_idx`` in the episode's record) -> the truth objects with that asset -> the one
 nearest the checking arm's flange at that step. Labels of same-asset objects are exchangeable, so matching by label
-would be meaningless. ``in_jaws`` = within 0.12 m of that flange and > 1 cm above its layout height.
+would be meaningless. ``in_jaws`` = within 0.20 m of that flange (the X5 holds an object ~0.15 m below it) and > 1 cm above its layout height.
 """
 
 from __future__ import annotations
@@ -89,8 +89,9 @@ def index_cmd(a) -> None:
                    and e.get("label") == c["label"]), {})
         recs = rep.get("records") or {}
         rec = recs.get("fused") or recs.get("scan") or recs.get("initial") or {}
-        bel_asset = {r.get("label"): (typ, cat, r.get("category_idx")) for typ, cats in rec.items() if isinstance(cats, dict)
-                     for cat, rows in cats.items() for r in rows if isinstance(r, dict)}
+        bel_asset = {r.get("label"): (typ, cat, r.get("category_idx")) for typ, cats in rec.items()
+                     if isinstance(cats, dict) and not typ.startswith("_") for cat, rows in cats.items()
+                     if isinstance(rows, list) for r in rows if isinstance(r, dict)}
         lay = json.loads((Path(a.layouts) / c["task"] / f"{c['layout']}.settled.json").read_text())
         truth_asset = {r.get("label"): (typ, cat, r.get("category_idx")) for typ, cats in lay.items()
                        if isinstance(cats, dict) and not typ.startswith("_") for cat, rows in cats.items()
@@ -110,7 +111,7 @@ def index_cmd(a) -> None:
         in_jaws = None
         if phys and flange:
             p = fr["objects"][phys]
-            in_jaws = _dist(p, flange) < 0.12 and p[2] > layout_z.get(phys, p[2]) + 0.01
+            in_jaws = _dist(p, flange) < 0.20 and p[2] > layout_z.get(phys, p[2]) + 0.01
         out.append({"task": c["task"], "layout": c["layout"], "step": c["step"], "dir": saved["dir"],
                     "check": {k: ev.get(k) for k in ("kind", "label", "arm", "held", "confidence", "source", "dropped", "ok",
                                                      "iou", "visible_frac", "shift_mm", "why", "calls", "dark_risk")},
