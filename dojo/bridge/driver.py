@@ -140,7 +140,8 @@ def main(argv=None) -> None:
     ap.add_argument("--bench", default=None, help="robot-harness $BENCH (socket = $BENCH/run/<id>.sock)")
     ap.add_argument("--sock", default=None, help="explicit socket path (overrides --bench)")
     ap.add_argument("--policy", default=None, help="module:Class (default dojo.runtime.policy:RuntimePolicy)")
-    ap.add_argument("--config", default="{}", help="RuntimeConfig fields as JSON (mode is always perception)")
+    ap.add_argument("--preset", default=None, help="named RuntimeConfig preset (dojo/runtime/presets.py), e.g. submit_v1")
+    ap.add_argument("--config", default="{}", help="RuntimeConfig fields as JSON over the preset (mode is always perception)")
     ap.add_argument("--verify", choices=("off", "bundle"), default="bundle")
     ap.add_argument("--twin", choices=("spawn", "env", "off"), default="spawn",
                     help="spawn: our twin service for the instruction's scene; env: SIMLAB_TWIN_PORT/AUTHKEY; off")
@@ -156,7 +157,10 @@ def main(argv=None) -> None:
     a = ap.parse_args(argv)
 
     from dojo.runtime.policy import RuntimeConfig
-    cfg_d = json.loads(a.config)
+    from dojo.runtime.presets import check_env, resolve
+    if a.preset and check_env(a.preset):
+        raise SystemExit(f"preset {a.preset}: this environment contradicts it: {check_env(a.preset)}")
+    cfg_d = resolve(a.preset, json.loads(a.config))
     if cfg_d.get("mode", "perception") != "perception":
         raise SystemExit("behind a robot server the runtime runs in mode perception only (no GT on this path)")
     verify = a.verify if a.twin != "off" else "off"
