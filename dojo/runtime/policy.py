@@ -901,8 +901,13 @@ class RuntimePolicy:
         return rec
 
     def _held_pose(self, prov, arm: str, prior_T_tcp_obj, asset_key: str, cfg: dict | None = None) -> dict:
-        """perception's held_pose on the current observation; an ok read re-anchors the belief's in-hand transform."""
+        """perception's held_pose on the current observation (the belief's other objects as occluders, the skills'
+        place target for the insertion geometry); an ok read re-anchors the belief's in-hand transform."""
         t = time.perf_counter()
+        held = set(prov.belief.held_labels()) if prov.belief is not None else set()
+        others = [{"key": o.asset.key, "pose7": [float(v) for v in np.r_[o.pos, o.quat]]}
+                  for o in (prov.belief.movable() if prov.belief is not None else []) if o.label not in held]
+        cfg = {"others": others, **(cfg or {})}
         try:
             r = self.perception().held_pose(self.bridge.observe(), arm, asset_key,
                                             np.asarray(prior_T_tcp_obj, float).tolist(), cfg) or {}
