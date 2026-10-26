@@ -352,11 +352,12 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
             o = w.obj(lab)
             plans = SkillResult(False, "transfer", "ik_fail", 0, None, note="no hole")
             arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2])))
-            for h in free:                                    # one hole and one arm at a time (screen budget, full plans)
-                targets = standing_targets(o, h["center"], h["top"] - 0.010)
+            for h in free[:2]:                                # one hole and one arm at a time (screen budget, full plans)
+                targets = standing_targets(o, h["center"], h["top"] - 0.010, tilts=(0.0, 25.0))
                 for a in arms:
                     plans = sk.plan_transfer(lab, targets, arms=[a], ignore=ignore, yaw_sym=8,
-                                             grasps=lambda a, lab=lab: grasps_inside(sk, lab, a),
+                                             grasps=lambda a, lab=lab: [g for g in grasps_inside(sk, lab, a)
+                                                                         if g.method != "ends"],
                                              place_kw={"servo": True, "servo_ref": holder,
                                                        "ref_top": holes[0]["top"] + 0.006, "fingers_out": True,
                                                        "probe": False, "hover_clear": 0.008, "descend_rad": 0.03,

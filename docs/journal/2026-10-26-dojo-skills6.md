@@ -48,7 +48,26 @@ Registry: four `j2-registry/1` entries with `obs_needs.notes` (section 6). SKILL
 
 ## 3. G3 numbers
 
-(filled in below)
+GT state, physics-only twin, `SIMLAB_USD_SYNC_LINKS=1`. Score = the checker's ladder tier (board scale x 100). Steps are
+median / max (limit).
+
+| task | run (code) | layouts | success | mean | steps | failures | board (PyRUA / best) |
+|---|---|---|---|---|---|---|---|
+| play_tic_tac_toe | v1 (006c5a4) | 100000-01 | 0/2 | 0.30 | 444 (1100) | the right back corner did not plan | 97.2 / 100 |
+| play_tic_tac_toe | v4 (8d21857, plan_transfer) | 100000-03 | 2/4 | 0.88 | 792-840 | the last back corner did not plan, 2x | |
+| play_tic_tac_toe | v6 (d217619, one arm at a time, centred grasps) | 100000-04 | **5/5** | 1.00 | 826 / 901 | - | |
+| play_tic_tac_toe | **v7 (watch reads + actors at rest)** | **all 25 settled** | **25/25** | **1.00** | **832 / 901** | - | |
+| imitate_sorting_sequence | v1 (8cbc27c) | 100002, 100004 | 0/2 | 0.00 | 689-718 (1600) | order seen right 2/2; `put_into` has no drop point on a table | 92.4 / 92.4 |
+| imitate_sorting_sequence | v2 (7a6e6e5, put_in_open) | 100002, 04, 10, 14 | 2/4 | 0.51 | 872-1328 | relay found no table spot (1), object turned in the hand (1) | |
+| match_and_pick_from_conveyor | v1b (369e7a0) | 100000-02 raw | 2/3 | 0.67 | 190 / 286 (700) | ice cream: no top grasp | 86 / 92 |
+| match_and_pick_from_conveyor | v4 (7ad3f4c) | all 25 raw | 20/25 | 0.80 | 199 / 362 | ice cream 3 (no grasp), a standing bottle and a 24 cm figurine (16 cm lift out of reach) | |
+
+Notes:
+- The ttt v7 run's chunks were deployed from 194e49b, 7ad3f4c, 848f38e and 17acd42. Between them `play_board_game` and
+  its waits changed only in a provider fallback the G3 provider does not take.
+- One episode takes about 2.5 min of wall time (planning 37 s median).
+- In the watch-read runs the opponent's and the demonstrator's arm read "still" 45-62 steps after their last piece or
+  object. The old fixed waits (48, 80) would have been just enough on our demos, with no margin for other demos.
 
 ## 4. Failure modes and what fixed them
 
