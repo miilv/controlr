@@ -49,9 +49,10 @@ CENTRE_SIGMA_M = 0.0015            # soft gripper term: the contact faces centre
 SIGMA_SCALE = {"pos": 1.6, "rot": 1.6}   # calibrated 2-fold by layout on our dev frames (held_eval report: calibrate)
 SIGMA_DF = 0.002                   # cost rise below which poses are indistinguishable (calibrated with SIGMA_SCALE)
 SIGMA_SAMPLES = 60
-OK_IOU = 0.80                      # best view's IoU for an ok fit
+OK_IOU = 0.70                      # best view's IoU for an ok fit (a gross mismatch; precision is the sigma's job)
 DROP_VIEW_IOU = 0.60               # a view below this IoU at the first fit is dropped when another view is good
-OK_MAX_LEAD_SIGMA_MM = 2.0
+OK_MAX_LEAD_SIGMA_MM = 1.0        # calibrated 1-sigma of the leading point ACROSS the insertion axis
+OK_MAX_AXIS_SIGMA_DEG = 2.0        # calibrated 1-sigma of the insertion axis direction
 VIEW_W = {"own": 1.0, "head": 0.6, "observer": 1.0}
 HIST_BITS = 4                      # Lab histogram: 16 levels per channel
 PRIOR_ERR_M = 0.004                # expected prior error: the object model is learnt this far inside the prior's outline
@@ -618,7 +619,7 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
         why = "fit_poor"
     elif float(np.linalg.norm(x[3:])) > 0.98 * max_shift or float(np.linalg.norm(x[:3])) > 0.98 * max_turn:
         why = "out_of_range"
-    elif max(sig["lead_mm"]) > OK_MAX_LEAD_SIGMA_MM:
+    elif sig["lead_lat_mm"] > OK_MAX_LEAD_SIGMA_MM or sig["axis_deg"] > OK_MAX_AXIS_SIGMA_DEG:
         why = "ambiguous"
     out["ok"] = why == ""
     out["why"] = why
@@ -694,12 +695,17 @@ def _sigma(cost, x, T_prior, c_tcp, lead_obj, axis_obj, f0) -> dict:
         e[i] = 1e-6
         J[:, i] = (outputs(apply_delta(T_prior, c_tcp, x + e)) - o0) / 1e-6
     C = J @ cov @ J.T
+    a = o0[6:9] / max(float(np.linalg.norm(o0[6:9])), 1e-12)
+    Pl = np.eye(3) - np.outer(a, a)                       # across the insertion axis at the leading point
+    Cl = C[3:6, 3:6]
+    lat = math.sqrt(max(float(np.trace(Pl @ Cl @ Pl)), 0.0)) * 1000 * SIGMA_SCALE["pos"]
+    along = math.sqrt(max(float(a @ Cl @ a), 0.0)) * 1000 * SIGMA_SCALE["pos"]
     pos = np.sqrt(np.maximum(np.diag(C)[:3], 0)) * 1000 * SIGMA_SCALE["pos"]
     lead = np.sqrt(np.maximum(np.diag(C)[3:6], 0)) * 1000 * SIGMA_SCALE["pos"]
     rot = np.degrees(np.sqrt(np.maximum(np.diag(cov)[:3], 0))) * SIGMA_SCALE["rot"]
     axis_deg = float(np.degrees(math.sqrt(max(float(np.trace(C[6:9, 6:9])), 0.0)))) * SIGMA_SCALE["rot"]
-    return {"pos_mm": pos.tolist(), "rot_deg": rot.tolist(), "lead_mm": lead.tolist(), "axis_deg": axis_deg,
-            "hessian_eig": w.tolist()}
+    return {"pos_mm": pos.tolist(), "rot_deg": rot.tolist(), "lead_mm": lead.tolist(), "lead_lat_mm": lat,
+            "lead_along_mm": along, "axis_deg": axis_deg, "hessian_eig": w.tolist()}
 
 
 def _result(T_est, T_prior, T_tcp, lead_obj, axis_obj, sig, ious, f, base, t0) -> dict:

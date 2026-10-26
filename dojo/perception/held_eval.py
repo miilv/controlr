@@ -260,6 +260,18 @@ def _q(v, p):
     return float(np.percentile(v, p)) if len(v) else float("nan")
 
 
+def step_cost(r: dict) -> int:
+    """Env steps the option costs beyond the hover: observer look = its move (parallel to the approach when the skill
+    schedules it so); show pose = out (the observer in parallel) + back."""
+    v = r.get("variant") or {}
+    k = r.get("kind")
+    if k in ("observer_look", "look_ranked", "show_ranked"):
+        return int(v.get("steps") or 0)
+    if k == "show":
+        return int(max(v.get("steps_out") or 0, v.get("look_steps") or 0) + (v.get("steps_back") or 0))
+    return 0
+
+
 def summarize(rows: list[dict], key=lambda r: (r["task"], r["kind"], r["views_set"])) -> list[dict]:
     groups: dict = {}
     for r in rows:
@@ -274,16 +286,24 @@ def summarize(rows: list[dict], key=lambda r: (r["task"], r["kind"], r["views_se
         lead_ok = np.array([r["err_out"]["lead_norm_mm"] for r in ok])
         ax_ok = np.array([r["err_out"]["axis_deg"] for r in ok])
         pri = np.array([r["err_prior"]["lead_norm_mm"] for r in rs])
-        hit = [r for r in ok if r["err_out"]["lead_norm_mm"] <= 0.5 and r["err_out"]["axis_deg"] <= 1.0]
+        hit = [r for r in ok if r["err_out"]["lead_lat_mm"] <= 0.5 and r["err_out"]["axis_deg"] <= 1.0]
+        hit_all = [r for r in rs if r["err_fit"]["lead_lat_mm"] <= 0.5 and r["err_fit"]["axis_deg"] <= 1.0]
+        lat = np.array([r["err_fit"]["lead_lat_mm"] for r in rs])
+        lat_ok = np.array([r["err_out"]["lead_lat_mm"] for r in ok])
+        along = np.array([abs(r["err_fit"]["lead_along_mm"]) for r in rs])
         ry = np.array([abs(r["err_fit"]["rot_deg"][1]) for r in rs])
         ry_ok = np.array([abs(r["err_out"]["rot_deg"][1]) for r in ok])
-        out.append({"group": k, "n": len(rs), "ok": len(ok), "prior_lead_med": _q(pri, 50),
+        out.append({"group": k, "n": len(rs), "ok": len(ok), "steps_med": _q([step_cost(r) for r in rs], 50),
+                    "prior_lead_med": _q(pri, 50),
                     "fit_lead_med": _q(lead, 50), "fit_lead_p90": _q(lead, 90), "fit_axis_med": _q(ax, 50),
                     "fit_axis_p90": _q(ax, 90), "ok_lead_med": _q(lead_ok, 50), "ok_lead_p90": _q(lead_ok, 90),
                     "ok_lead_max": float(lead_ok.max()) if len(lead_ok) else float("nan"),
                     "ok_axis_med": _q(ax_ok, 50), "ok_axis_p90": _q(ax_ok, 90),
                     "fit_ry_med": _q(ry, 50), "fit_ry_p90": _q(ry, 90), "ok_ry_p90": _q(ry_ok, 90),
-                    "within_0.5mm_1deg": len(hit), "t_med_s": _q([r["t_s"] for r in rs], 50)})
+                    "fit_lat_med": _q(lat, 50), "fit_lat_p90": _q(lat, 90), "fit_along_med": _q(along, 50),
+                    "ok_lat_med": _q(lat_ok, 50), "ok_lat_p90": _q(lat_ok, 90),
+                    "ok_lat_max": float(lat_ok.max()) if len(lat_ok) else float("nan"),
+                    "hit_all": len(hit_all), "within_0.5mm_1deg": len(hit), "t_med_s": _q([r["t_s"] for r in rs], 50)})
     return out
 
 
@@ -316,6 +336,14 @@ def calibrate(rows: list[dict], q: float = 95.0) -> dict:
         sa = np.maximum(np.array([r["sigma"]["axis_deg"] for r in rs]), 1e-6)
         return float(np.percentile(np.max(e / s, 1), q) / 2), float(np.percentile(ea / sa, q) / 2)
 
+    def k_lat(rs):
+        rs = [r for r in rs if "lead_lat_mm" in r["sigma"]]
+        if not rs:
+            return None
+        e = np.array([r["err_fit"]["lead_lat_mm"] for r in rs])
+        s = np.maximum(np.array([r["sigma"]["lead_lat_mm"] for r in rs]), 1e-6)
+        return round(float(np.percentile(e / s, q) / 2), 2)
+
     def cover(rs, kl, ka):
         e = np.abs(np.array([r["err_fit"]["lead_mm"] for r in rs]))
         s = np.array([r["sigma"]["lead_mm"] for r in rs]) * kl
@@ -332,7 +360,7 @@ def calibrate(rows: list[dict], q: float = 95.0) -> dict:
         out[f"fit_on_{h}"] = {"k_lead": round(kl, 2), "k_axis": round(ka, 2),
                               "held_out_cover_lead_axis": [round(v, 3) for v in cover(halves[1 - h], kl, ka)]}
     kl, ka = k_of(use)
-    out["all"] = {"k_lead": round(kl, 2), "k_axis": round(ka, 2)}
+    out["all"] = {"k_lead": round(kl, 2), "k_axis": round(ka, 2), "k_lead_lat": k_lat(use)}
     return out
 
 
@@ -344,12 +372,16 @@ def cmd_report(a) -> None:
     if errs:
         print(f"{len(errs)} errors, first: {errs[0]['error']}")
     keyf = {"task": lambda r: (r["task"], r["kind"], r["views_set"], r["prior"]),
+            "task_kind": lambda r: (r["task"], r["kind"], r["views_set"]),
             "views": lambda r: (r["views_set"], r["kind"]),
             "kind": lambda r: (r["kind"],)}[a.by]
     S = summarize(rows, keyf)
-    cols = ["n", "ok", "prior_lead_med", "fit_lead_med", "fit_lead_p90", "fit_axis_med", "fit_axis_p90", "fit_ry_med",
-            "fit_ry_p90", "ok_lead_med", "ok_lead_p90", "ok_lead_max", "ok_axis_med", "ok_axis_p90", "ok_ry_p90",
-            "within_0.5mm_1deg", "t_med_s"]
+    cols = {"short": ["n", "steps_med", "prior_lead_med", "fit_lat_med", "fit_lat_p90", "fit_along_med", "fit_axis_med",
+                      "fit_axis_p90", "hit_all", "ok", "ok_lat_med", "ok_lat_p90", "ok_lat_max", "ok_axis_med", "ok_axis_p90",
+                      "within_0.5mm_1deg"],
+            "long": ["n", "ok", "steps_med", "prior_lead_med", "fit_lead_med", "fit_lead_p90", "fit_axis_med", "fit_axis_p90",
+                     "fit_ry_med", "fit_ry_p90", "ok_lead_med", "ok_lead_p90", "ok_lead_max", "ok_axis_med", "ok_axis_p90",
+                     "ok_ry_p90", "within_0.5mm_1deg", "t_med_s"]}[a.cols]
     print("| group | " + " | ".join(cols) + " |")
     print("|" + "---|" * (len(cols) + 1))
     for s in S:
@@ -384,6 +416,7 @@ def main(argv=None) -> None:
     p = sub.add_parser("report")
     p.add_argument("files", nargs="+")
     p.add_argument("--by", default="task")
+    p.add_argument("--cols", default="short")
     a = ap.parse_args(argv)
     {"variants": cmd_variants, "run": cmd_run, "report": cmd_report}[a.cmd](a)
 

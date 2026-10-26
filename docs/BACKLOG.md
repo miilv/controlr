@@ -246,6 +246,19 @@
 - [ ] **dojo: the insert_tubes depth term is met by a tube lying on the table.** `is_A_depth_in_B` is rack bbox top - tube bbox bottom > 45 mm, and a lying tube's bottom is 50 mm below the rack's top. Not a gaming risk (the skill inserts), but any score from a "partial" episode must be read with that in mind. The rack's holes are 54 mm deep.
 - [ ] **dojo: asset metadata bboxes are not the colliders.** The test tube's metadata bbox is 42 x 140 mm, its mesh 35 x 117 mm (the checker reads a 42 mm square). The coin's checker bbox is +-20 mm against a 14.2 mm radius. A coin resting tilted inside the bank can fail the bank's 8 mm bottom bound with its box corners. The skills' collision model uses the metadata box: standing tubes are therefore registered with their mesh height map (`Collision.heightmaps`).
 - [ ] **dojo: RoboDojo Geometry objects are static colliders** (`GeometryObject._remove_rigid_body_if_exists`): a coin bank, a coin stand, a bolt, a rack, a xylophone cannot be moved or pushed. Plans that move a receptacle closer only work for Rigid ones.
+- [ ] **dojo runtime + skills: measure the in-hand pose at the pre-insert hover in mode B** (perception #59,
+  `PerceptionClient.held_pose` / `.show_pose`, experiments/2026-10-26-held-pose.md). Integration-2:
+  `provider.held_pose(arm)` (frame, held key, `Held.T_tcp_obj` as the prior, the place target in cfg). Skills: in the
+  shared insertion tail, adopt `T_tcp_obj` when `ok` and the sigma suits the fit; otherwise an observer look
+  (`show_pose` hover_look, ~14-19 steps, can overlap the approach), then a show pose; protocol per object class in the
+  report.
+- [ ] **dojo perception: the own wrist camera cannot separate a turn about the closing axis from a slide along the
+  approach** for box-like held objects (the charger; a flat valley of the cost). `held_pose` reports it (sigma along the
+  approach 3-7 mm, `why=ambiguous`); a second view fixes it. Ideas: a photometric term on the shading of the faces
+  (tried flat shading + NCC: no gain on 5.1 blocks), a learned keypoint for the leading end.
+- [ ] **dojo perception: `show_pose`'s predicted sigma is relative.** The silhouette information assumes independent
+  pixel noise and is far below the measured error (ranking only). Calibrate `SIGMA_PX` against `held_eval` errors per
+  option before a skill compares options by it.
 - [ ] **dojo skills: plug_in_charger in mode B is bounded by the in-hand pose** (journal/2026-10-26-dojo-skills5.md).
   The blades are 0.8 mm in 1.0 mm slots (about +-0.1 mm), and a 3.5 mm belief error at grasp time leaves the blades on the
   strip. A discrete probe grid would need about 0.2 mm spacing (hundreds of probes); a pressed spiral to 5 mm is about 260

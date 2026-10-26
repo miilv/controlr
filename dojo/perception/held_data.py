@@ -240,7 +240,18 @@ def capture_snippet(g: dict) -> None:
                               "servo": bool((getattr(pp, "tail_kw", None) or {}).get("servo"))})
             return rp(pp, *a, **kw)
 
-        sk.verify_pick, sk.run_place = verify_pick, run_place
+        ep = sk.execute_pick
+
+        def execute_pick(pp, *a, **kw):
+            # the hook is for place hovers only: with a refine hook the pick re-plans from its hover, which changed
+            # G3's picks (a coin's squeeze-and-slow-lift slipped 7 of 8)
+            r0, sk.refine = sk.refine, None
+            try:
+                return ep(pp, *a, **kw)
+            finally:
+                sk.refine = r0
+
+        sk.verify_pick, sk.run_place, sk.execute_pick = verify_pick, run_place, execute_pick
         res = {}
         try:
             res = planner.solve(sk) or {}
@@ -407,8 +418,12 @@ def pose_errors(T_est, T_gt, lead_obj, axis_obj) -> dict:
     lead_g = T_gt[:3, :3] @ lead_obj + T_gt[:3, 3]
     ax_e, ax_g = T_est[:3, :3] @ axis_obj, T_gt[:3, :3] @ axis_obj
     rv = R_rotvec(T_est[:3, :3] @ T_gt[:3, :3].T)
+    dl = (lead_e - lead_g) * 1000
+    a = ax_g / np.linalg.norm(ax_g)
+    along = float(dl @ a)
     return {"pos_mm": ((T_est[:3, 3] - T_gt[:3, 3]) * 1000).tolist(),
-            "lead_mm": ((lead_e - lead_g) * 1000).tolist(),
-            "lead_norm_mm": float(np.linalg.norm(lead_e - lead_g) * 1000),
+            "lead_mm": dl.tolist(),
+            "lead_norm_mm": float(np.linalg.norm(dl)),
+            "lead_lat_mm": float(np.linalg.norm(dl - along * a)), "lead_along_mm": along,
             "rot_deg": np.degrees(rv).tolist(), "rot_norm_deg": float(np.degrees(np.linalg.norm(rv))),
             "axis_deg": float(np.degrees(math.acos(float(np.clip(ax_e @ ax_g, -1, 1)))))}

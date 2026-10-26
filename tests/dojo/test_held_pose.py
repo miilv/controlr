@@ -172,11 +172,11 @@ def test_eval_summary_and_sigma_calibration_on_fake_rows():
         e = rng.normal(0, 1.5 * s, 3)                       # errors 1.5x the reported sigma
         rows.append({"task": "t", "kind": "hover", "views_set": "all", "prior": "perturb", "seed": str(100000 + i),
                      "ok": True, "why": "", "t_s": 1.0, "sigma": {"lead_mm": [s] * 3, "axis_deg": 1.0},
-                     "err_prior": {"lead_norm_mm": 2.0}, "err_fit": {"lead_mm": e.tolist(),
-                                                                       "lead_norm_mm": float(np.linalg.norm(e)),
-                                                                       "axis_deg": 0.5, "rot_deg": [0, 0.4, 0]},
-                     "err_out": {"lead_mm": e.tolist(), "lead_norm_mm": float(np.linalg.norm(e)), "axis_deg": 0.5,
-                                 "rot_deg": [0, 0.4, 0]}})
+                     "err_prior": {"lead_norm_mm": 2.0}})
+        err = {"lead_mm": e.tolist(), "lead_norm_mm": float(np.linalg.norm(e)), "lead_lat_mm": float(np.linalg.norm(e[:2])),
+               "lead_along_mm": float(e[2]), "axis_deg": 0.5, "rot_deg": [0, 0.4, 0]}
+        rows[-1]["err_fit"], rows[-1]["err_out"] = err, err
+        rows[-1]["sigma"]["lead_lat_mm"] = s * math.sqrt(2)
     S = HE.summarize(rows)
     assert S[0]["n"] == 80 and S[0]["ok"] == 80
     c = HE.calibrate(rows)
