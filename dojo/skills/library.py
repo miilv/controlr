@@ -18,6 +18,7 @@ from __future__ import annotations
 import itertools
 import math
 import re
+import time
 
 import numpy as np
 
@@ -2061,6 +2062,7 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
 
 HANG_CARRY = 0.06              # rad/step: the re-orienting carry to a hook (twin: wall pinches slid at 0.09)
 HANG_PRE = 0.025               # m: the handle's hole is carried to this far beyond the hook arm's tip, then slid on
+HANG_SEARCH_S = 150.0          # s: wall-time cap of one round's hook x object search (twin: a 35 min episode)
 HANG_RELAY_DY = 0.2            # m: relay spots this far in front of a rack (towards the robot; both arms reach there)
 
 _SURF: dict = {}
@@ -2179,7 +2181,10 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         o = sk.world.obj(lab)
         hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
         note = "no handle frame threads the hook"
-        for Th, high in [(Th, high) for high in (False, True) for Th in hs[:2]]:
+        no_pairs = set()
+        for fi, Th, high in [(fi, Th, high) for high in (False, True) for fi, Th in enumerate(hs[:2])]:
+            if high and fi in no_pairs:
+                continue              # the same place pose, fewer lifts: no pairs either
             dz = handle_hole(o, Th)
             if tip is not None and not threads_along_x(o, Th, dz):
                 continue
@@ -2198,6 +2203,8 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=(lambda a, o=o: G_hang(sk, o, a)), max_full=8,
                                  place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY}, q_start=q_start,
                                  lift_to_pre=high)
+            if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
+                no_pairs.add(fi)
             if not isinstance(r, SkillResult):
                 if tip is None:
                     return (lab, hi, H, T_obj, T_pre, r)
@@ -2246,9 +2253,13 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             break
         w = sk.refresh()
         found, why = None, {}
+        t_round = time.perf_counter()
         for hi, H, tip in order:
             if hi in used:
                 continue
+            if time.perf_counter() - t_round > HANG_SEARCH_S:
+                why.setdefault(hi, []).append(f"search stopped after {HANG_SEARCH_S:.0f} s")
+                break
             for lab in pool:
                 f = plan_hook(lab, hi, H, tip)
                 if isinstance(f, str):
