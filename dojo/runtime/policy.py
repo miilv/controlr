@@ -36,10 +36,25 @@ from .belief import Divergence, LostObject, RuntimeProvider
 from .bridge import Bridge
 from .estimate import flagged
 from .firewall import check_obs, sanitize_info
-from .supervisor import RuleSupervisor, perception_vocabulary
+from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candidates
 
 
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
+
+
+def label_candidates(vocabulary: str, label: str) -> list[str]:
+    """The catalogue candidate keys of ``label``'s own config group in ``vocabulary`` (catalog/tasks.json), [] when
+    unknown. A label whose group has one key admits no identity change."""
+    from .vocab import catalog_path
+    import json as _json
+    p = catalog_path()
+    if p is None:
+        return []
+    try:
+        lab = (_json.loads(open(p).read()).get(vocabulary) or {}).get("labels", {}).get(label) or {}
+    except (OSError, ValueError):
+        return []
+    return list(lab.get("candidates") or [])
 
 
 @dataclass
@@ -67,6 +82,10 @@ class RuntimeConfig:
     refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
     refine_max_shift_m: float = 0.03    # accept a refined pose at most this far from the prior (perception searches 7 cm)
     refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
+    refine_max_turn_deg: float = 90.0   # a pick / place refine turning the object more than this keeps the prior
+                                        # orientation (position only): a near-symmetric body fits flipped (5.1
+                                        # plug_in_charger: a 178 deg yaw flip -> "turned 180" regrasp loop); the
+                                        # in-hand (held) review still sees real flips
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
@@ -81,6 +100,9 @@ class RuntimeConfig:
     search_max_regions: int = 4
     search_lost: bool = False           # a pick refine with iou < lost_iou and no usable suggestion -> search around it
     lost_iou: float = 0.2
+    lost_fuse_max_m: float = 0.10       # a lost object's search accepts a full-fuse find only this close to its belief
+                                        # (refine-confirmed finds anywhere); a far fuse "find" put a tower piece onto
+                                        # the build area (journal integ2 §5)
     # PLACE refines contradicting a confident belief need a confirming view (off = the closed2 behaviour):
     # applied directly only when shift <= place_cap_mm, visible >= place_min_vis and the support was not measured by
     # our own post-place refine; else ONE re-hover place_confirm_dz higher over the found pose, refit from the prior,
@@ -98,6 +120,34 @@ class RuntimeConfig:
     # changed (service op "watch"; make_kong: the opponent's discard); two equal reads update the belief
     watch: bool = False
     watch_every: int = 4
+    # mode perception: perception R&D's agentic perceiver (LLM calls via omniroute, in the perception service).
+    # "budget": the first estimate is agentic; then, while fewer than agentic_max estimates ran, perception's
+    # needs_agent(record) decides once after the looks / search and at each re-estimate after a confirmed divergence
+    # (trigger "risk"). "off": B1 only
+    agentic: str = "off"
+    agentic_max: int = 2
+    # mode perception: when the instruction is ambiguous (table and catalogue fallback disagree, or the fallback's
+    # runner-up is close), estimate frame 0 with each candidate set and keep the one that explains the scene best
+    vocab_explain: bool = True
+    # mode perception: perception's episode tracker on B1 re-reads (look fuse, divergence re-estimate): only objects
+    # the robot moved since their last good reading take a re-read pose. auto = on iff agentic == "budget"
+    tracker: str = "auto"
+    # mode perception: held check once per grasp after the lift (perception's held_look on that arm's wrist frame):
+    # off | b1 | b1_then_agent (B1 unless its confidence < 0.5 or dark_risk, then one agent call); a confident
+    # "not held" takes the object out of the jaws in the belief
+    held_look: str = "off"
+    # mode perception: belt tracking (B1 re-reads every 4 steps while refreshing, a line fit per object over 40 steps;
+    # moving objects' belief poses follow the fit): auto = on iff the scene has a conveyor object | on | off
+    track_moving: str = "auto"
+    # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
+    # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
+    # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
+    # a not-found label always scans) | always. The first skill starts from the scan pose
+    scan: str = "off"
+    scan_budget_frac: float = 0.12
+    scan_min_step_lim: int = 300
+    scan_step_rad: float = 0.16
+    scan_settle: int = 2                # hold steps at the scan pose before the observation
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -118,7 +168,9 @@ class _Checker:
         return self.pc.check(obs, objs, self.fold)
 
     def estimate(self, obs: dict) -> dict:
-        return self.pc.estimate([obs], self.vocabulary, self.fold)
+        rec = self.pc.estimate([obs], self.vocabulary, self.fold)
+        hook = getattr(self, "agentic_hook", None)          # agentic="budget": a risky re-estimate may go agentic
+        return hook(obs, rec) if hook is not None else rec
 
     def refine(self, obs: dict, obj, others, arm: str, held=None) -> dict:
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
@@ -135,7 +187,9 @@ class RuntimePolicy:
         still steps, error handling, report) is the same."""
         self.cfg = cfg or RuntimeConfig.from_env()
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
-                or self.cfg.verify_select not in ("all", "risky")):
+                or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
+                or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -155,10 +209,16 @@ class RuntimePolicy:
             self._assets = AssetDB(paths.OBJECTS)
         return self._assets
 
-    def twin(self):
+    def twin(self, scene: str | None = None):
+        """The twin client. A host that sets ``_twin_factory(scene) -> client`` (the bridge driver) gets the twin started
+        for the scene the episode actually uses (after the vocabulary choice); else the bundle's running service."""
         if self._tc is None:
-            from dojo.simlab.twin_service import TwinClient
-            self._tc = TwinClient()
+            f = getattr(self, "_twin_factory", None)
+            if f is not None and scene:
+                self._tc = f(scene)
+            else:
+                from dojo.simlab.twin_service import TwinClient
+                self._tc = TwinClient()
         return self._tc
 
     def perception(self):
@@ -186,7 +246,7 @@ class RuntimePolicy:
         self.dev_gt = None
         self.log_lines = []
         self.t0 = time.perf_counter()
-        self.report = {"config": asdict(self.cfg), "info_dropped": dropped, "skill": None, "looks": [],
+        self.report = {"config": asdict(self.cfg), "info_dropped": dropped, "skill": None, "looks": [], "agentic": [],
                        "events": [], "records": {}, "decisions": [], "history": [], "verify": None,
                        "result": None, "error": None, "timings": {}}
 
@@ -242,7 +302,13 @@ class RuntimePolicy:
         cfg, b = self.cfg, self.bridge
         instruction = obs0["instruction"]
         vocab = perception_vocabulary(instruction)
+        rec_b1 = None                                   # the chosen set's frame-0 B1 estimate (explain-away)
+        if cfg.mode == "perception" and cfg.vocab_explain:
+            cands = vocabulary_candidates(instruction)
+            if len(cands) > 1:
+                vocab, rec_b1 = self._explain_vocabulary(cands, obs0)
         self.report["vocabulary"] = vocab.name if vocab else None
+        self.report["vocabulary_source"] = vocab.source if vocab else None
         if cfg.mode == "perception" and vocab is None:
             self.log(f"[runtime] no perception vocabulary for {instruction!r}: finish")
             self.report["result"] = {"ok": False, "stage": "no_vocabulary"}
@@ -257,13 +323,25 @@ class RuntimePolicy:
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
         prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
+        if checker is not None and cfg.agentic == "budget":
+            checker.agentic_hook = lambda obs, rec: self._agentic_gate(obs, scene, rec, "risk")
+        prov.tracker_on = bool(cfg.mode == "perception" and (cfg.tracker == "on" or (cfg.tracker == "auto"
+                                                                                      and cfg.agentic == "budget")))
+        if cfg.mode == "perception" and cfg.held_look != "off":
+            prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
+            prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()
         if cfg.mode == "gt":
             prov.init_from_gt()
+        elif cfg.agentic == "budget" and cfg.scan == "off":
+            rec = self._agentic(obs0, scene, rec_b1, "frame0")
+            self.report["records"]["initial"] = _slim(rec)
+            self._last_record = rec
+            prov.init_from_record(rec)
         else:
-            rec = self.perception().estimate([obs0], scene, self.fold)
+            rec = rec_b1 if rec_b1 is not None else self.perception().estimate([obs0], scene, self.fold)
             self.report["records"]["initial"] = _slim(rec)
             self._last_record = rec
             prov.init_from_record(rec)
@@ -271,7 +349,7 @@ class RuntimePolicy:
         verifier = None
         if cfg.verify == "bundle":
             from .verifier import BundleVerifier
-            tc = self.twin()
+            tc = self.twin(scene)
             tw_task = tc.info().get("task")
             if tw_task != scene:
                 events.append({"kind": "verify_unavailable", "reason": f"twin runs {tw_task!r}, the instruction "
@@ -314,10 +392,34 @@ class RuntimePolicy:
             return sk_
 
         sk = make_skills()
+        if cfg.mode == "perception" and cfg.scan != "off":
+            t = time.perf_counter()
+            srec, obs_s = self._scan(sk, obs0, rec, scene)
+            self.report["timings"]["scan_s"] = round(time.perf_counter() - t, 2)
+            if cfg.agentic == "budget":
+                # ONE agentic estimate, frame 0 with the scan as its second observation when the scan ran (B1 hint =
+                # the scan-primary record), else frame 0 alone; it counts as the frame0 call
+                if srec is not None:
+                    self.report["records"]["scan"] = _slim(srec)
+                rec = self._agentic(obs0, scene, srec if srec is not None else rec, "frame0", extra=obs_s)
+                self.report["records"]["agentic0"] = _slim(rec)
+                self._last_record = rec
+                prov.init_from_record(rec)
+                sk = make_skills()
+            elif srec is not None:
+                if prov.tracker_on:
+                    srec = self._track_record(prov, srec, "scan")
+                rec = srec
+                self.report["records"]["scan"] = _slim(srec)
+                self._last_record = srec
+                prov.init_from_record(srec)
+                sk = make_skills()
         if cfg.mode == "perception" and cfg.look:
             t = time.perf_counter()
             rec = self._look(sk, obs0, rec, scene, kin)
             self.report["timings"]["look_s"] = round(time.perf_counter() - t, 2)
+            if rec is not None and prov.tracker_on:
+                rec = self._track_record(prov, rec, "look")
             if rec is not None:
                 self.report["records"]["fused"] = _slim(rec)
                 self._last_record = rec
@@ -334,13 +436,33 @@ class RuntimePolicy:
                 self.report["records"]["searched"] = _slim(srec)
                 prov.init_from_record(srec)
                 sk = make_skills()
-        nf = [x.get("label") for x in (self.report["records"].get("searched") or self.report["records"].get("fused")
-                                        or self.report["records"].get("initial") or {}).get("_not_found") or []]
+                self._last_record = srec
+        if cfg.mode == "perception" and cfg.agentic == "budget":
+            cur = self._last_record
+            rec2 = self._agentic_gate(b.observe(), scene, cur, "after_looks")
+            if rec2 is not cur:
+                self.report["records"]["agentic2"] = _slim(rec2)
+                self._last_record = rec2
+                prov.init_from_record(rec2)
+                sk = make_skills()
+        recs = self.report["records"]
+        nf = [x.get("label") for x in (recs.get("agentic2") or recs.get("searched") or recs.get("fused")
+                                        or recs.get("initial") or {}).get("_not_found") or []]
         if nf:
             events.append({"kind": "perception_missing", "labels": nf})
             if verifier is not None:                    # the twin would run the task's checker on a partial scene
                 verifier.disabled = f"estimate lacks {nf}"
                 events.append({"kind": "verify_unavailable", "reason": verifier.disabled})
+        if cfg.mode == "perception":
+            pc = self.perception()
+            if hasattr(pc, "motion"):                   # provider.actors_moving (skills waiting for a scripted arm)
+                prov.motion_reader = lambda a, b_: pc.motion(a, b_)
+            if hasattr(pc, "watch_read"):               # provider.watch_read(region, prior): board cells / container
+                prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
+            cats = {o.category for o in prov.belief.objects.values()}
+            if cfg.track_moving == "on" or (cfg.track_moving == "auto" and "conveyor" in cats):
+                prov.track_reader = lambda obs: pc.estimate([obs], scene, self.fold)
+                events.append({"kind": "track_moving", "on": True, "why": cfg.track_moving})
         live = self._live
 
         class _Ctx:
@@ -459,14 +581,16 @@ class RuntimePolicy:
             # vocabulary's distinct shapes (85 classes for a target-category vocabulary: slow and noisy)
             rank = (((getattr(self, "_last_record", None) or {}).get("_perception") or {}).get("target_ranking")
                     or {}).get(label)
-            idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else prov.task
+            # else the label's OWN config group (its candidate keys), never the whole vocabulary: a pillar must not be
+            # re-identified as a prism (5.1 tower: iou 0.67, turned 91 deg, the tower tilted while we believed "built")
+            idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else label_candidates(prov.task, label)
         res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv,
                                        held=held)
         r = res.get(label) or {}
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
               "prior7": [round(float(v), 4) for v in np.r_[o.pos, o.quat]],
               **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why",
-                                       "suggest_xy", "suggest_shift_mm")}}
+                                       "suggest_xy", "suggest_shift_mm", "fit_shift_mm", "p_why")}}
         if r.get("pos") is not None:
             ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         self.report["events"].append(ev)
@@ -496,6 +620,11 @@ class RuntimePolicy:
             o.pos, o.quat = pend                        # the second look did not confirm: back to the prior
             ev["why"] = (ev.get("why") or "") + " (large correction not confirmed, prior kept)"
             return None
+        if not r.get("ok") and str(r.get("p_why") or "").startswith("truncated"):
+            # the object is larger than the wrist view (a tower board): perception keeps the prior and no re-hover or
+            # search can do better from here
+            ev["why"] = (ev.get("why") or "") + " (truncated: prior kept, no re-hover)"
+            return None
         if (not r.get("ok") and kind == "pick" and self.cfg.search_lost and (r.get("iou") or 0) < self.cfg.lost_iou
                 and (r.get("suggest_xy") is None or (r.get("suggest_shift_mm") or 0) < 5.0)
                 and label not in getattr(self, "_lost_searched", set())):
@@ -505,8 +634,16 @@ class RuntimePolicy:
         if not r.get("ok"):
             # perception found the object away from the prior but could not fit it well from this hover (it sits
             # off-centre in the wrist view): ask skills to hover over that spot and refine once more
+            def on_neighbour(xy) -> list:
+                return [x.label for x in others
+                        if float(np.linalg.norm(np.asarray(xy, float)[:2] - x.center_w[:2])) < self.cfg.neighbour_mm / 1000]
             if r.get("suggest_xy") is not None and (r.get("suggest_shift_mm") or 0) > self.cfg.rehover_min_shift_mm:
-                # perception's in-frame search: "the object is probably that way" (a direction, not a pose)
+                # perception's in-frame search: "the object is probably that way" (a direction, not a pose). A spot on
+                # another known object is that object (s0L9 tower on 5.1: a 99 mm suggestion onto a placed block)
+                near = on_neighbour(r["suggest_xy"])
+                if near:
+                    ev["why"] = (ev.get("why") or "") + f" (suggestion on a neighbour {near}: no re-hover)"
+                    return None
                 p = o.pos.copy()
                 p[:2] = np.asarray(r["suggest_xy"], float)[:2]
                 ev["rehover"] = "suggest"
@@ -514,10 +651,14 @@ class RuntimePolicy:
                 if kind == "place":
                     hint["rehover_dz"] = self.cfg.rehover_place_dz
                 return hint
-            if (r.get("pos") is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
-                    and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm):
+            # the found-off fit: perception >= #36 sends it as fit_pos (pos = the prior), earlier versions as pos
+            fpos, fquat = ((r.get("fit_pos"), r.get("fit_quat")) if r.get("fit_pos") is not None
+                           else (r.get("pos"), r.get("quat")))
+            fshift = r.get("fit_shift_mm") if r.get("fit_pos") is not None else r.get("shift_mm")
+            if (fpos is not None and (r.get("iou") or 0) > self.cfg.rehover_min_iou
+                    and (fshift or 0) > self.cfg.rehover_min_shift_mm and not on_neighbour(fpos)):
                 ev["rehover"] = True
-                hint = {"rehover": (np.asarray(r["pos"], float), np.asarray(r["quat"], float))}
+                hint = {"rehover": (np.asarray(fpos, float), np.asarray(fquat, float))}
                 if kind == "place":
                     hint["rehover_dz"] = self.cfg.rehover_place_dz
                 return hint
@@ -534,8 +675,14 @@ class RuntimePolicy:
             ev.update({"identity_from": o.asset.key, "identity_to": new_id})
             o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
-        o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+        q_new = np.asarray(r["quat"], float)
+        if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg:
+            q_new = o.quat.copy()
+            ev["why"] = (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg: prior orientation kept)"
+            prov.stats["turn_kept"] = prov.stats.get("turn_kept", 0) + 1
+        o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
+        prov.touched.discard(label)                     # a good reading (tracker)
         if far and self.cfg.rehover_when_far:
             # found well off the prior: hover over the new spot (object centred in the wrist view) and refine again
             ev["rehover"] = "recentre"
@@ -544,6 +691,184 @@ class RuntimePolicy:
                 hint["rehover_dz"] = self.cfg.rehover_place_dz
             return hint
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _explain_vocabulary(self, cands: list, obs0: dict):
+        """Set-level explain-away: B1 on frame 0 with each candidate set; the set whose estimate explains the scene
+        best (found-label share x mean confidence) wins. Returns (vocabulary, its record)."""
+        from .estimate import iter_records
+        scored = []
+        for v in cands:
+            try:
+                rec = self.perception().estimate([obs0], v.name, self.fold)
+            except Exception as e:  # noqa: BLE001 (a candidate the service cannot estimate is out)
+                scored.append({"name": v.name, "source": v.source, "error": f"{type(e).__name__}: {str(e)[:120]}"})
+                continue
+            confs = [float((r.get("_perception") or {}).get("confidence", 0.5)) for _t, _c, r in iter_records(rec)]
+            n_nf = len(rec.get("_not_found") or [])
+            found = len(confs) / max(1, len(confs) + n_nf)
+            sc = found * (float(np.mean(confs)) if confs else 0.0)
+            scored.append({"name": v.name, "source": v.source, "found": round(found, 3), "conf": round(float(np.mean(confs)), 3)
+                           if confs else 0.0, "score": round(sc, 4), "_v": v, "_rec": rec})
+        ok = [x for x in scored if "score" in x]
+        best = max(ok, key=lambda x: x["score"]) if ok else None   # ties: the earlier candidate (the table's)
+        self.report["events"].append({"kind": "vocab_explain", "chosen": best["name"] if best else None,
+                                      "candidates": [{k: v for k, v in x.items() if not k.startswith("_")} for x in scored]})
+        if best is None:
+            return cands[0], None
+        return best["_v"], best["_rec"]
+
+    def _scan(self, sk, obs0: dict, rec: dict, scene: str) -> tuple[dict | None, dict | None]:
+        """The scan macro: gate (``cfg.scan``), both arms in parallel to perception's frozen scan joints with the
+        grippers open (joint-space, <= ``scan_step_rad`` per step), observe, scan-primary estimate. The arms stay
+        there: the first skill plans from the scan pose. Returns (scan-primary record, scan observation); (None, None)
+        when the gate says no."""
+        import math
+
+        cfg, b, pc = self.cfg, self.bridge, self.perception()
+        looks = {lk["arm"]: lk for lk in pc.scan_looks()}
+        q0 = {a: np.asarray(sk.ex.q[a], float).copy() for a in ("left", "right")}
+        qt = {a: np.asarray(looks[a]["joints"], float) for a in ("left", "right")}
+        n = max(1, max(int(math.ceil(float(np.max(np.abs(qt[a] - q0[a]))) / cfg.scan_step_rad)) for a in qt))
+        ev = {"kind": "scan", "mode": cfg.scan, "steps": n + max(0, int(cfg.scan_settle)), "step": b.steps_used}
+        self.report["events"].append(ev)
+        if cfg.scan == "trigger":
+            needs, why, nf = pc.scan_trigger(rec)
+            frac_ok = ev["steps"] <= cfg.scan_budget_frac * b.step_lim
+            lim_ok = b.step_lim >= cfg.scan_min_step_lim
+            budget_ok = frac_ok and lim_ok
+            ev.update({"needs": needs, "why": why, "not_found": nf, "frac_ok": frac_ok, "min_step_lim_ok": lim_ok,
+                       "budget_ok": budget_ok, "step_lim": b.step_lim})
+            if not needs or not (budget_ok or nf):
+                ev["ran"] = False
+                return None, None
+        acts = [{**{f"{a}_arm_joint_state": (q0[a] + (qt[a] - q0[a]) * (i + 1) / n).astype(np.float32) for a in qt},
+                 **{f"{a}_ee_joint_state": np.array([1.0], np.float32) for a in qt}} for i in range(n)]
+        acts += [acts[-1]] * max(0, int(cfg.scan_settle))
+        n0 = b.steps_used
+        sk.ex.run_actions(acts, name="scan")
+        obs_s = b.observe()
+        ev.update({"ran": True, "steps_used": b.steps_used - n0})
+        self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
+        try:
+            return pc.estimate_scan(obs_s, obs0, scene, self.fold, rec0=rec), obs_s
+        except Exception as e:  # noqa: BLE001 (keep the frame-0 record; the arms still start from the scan pose)
+            ev["error"] = f"{type(e).__name__}: {str(e)[:200]}"
+            return None, obs_s
+
+    def _track_record(self, prov, rec: dict, tag: str) -> dict:
+        """A B1 re-read record through perception's tracker against the belief: labels whose re-read pose the
+        tracker does not accept keep the belief pose in the returned record."""
+        import copy as _copy
+
+        from .estimate import iter_records, objects_from_record
+        from .track import filter_readings
+        est = objects_from_record(rec, self.assets(), self.bridge.steps_used, meshes=False)
+        ok, tev = filter_readings(prov.belief.objects, {l: e for l, e in est.items() if l in prov.belief.objects},
+                                  prov.touched)
+        kept = sorted(l for l, a in ok.items() if not a)
+        self.report["events"].append({"kind": "tracker", "on": tag, "kept": kept, "accepted": sorted(l for l, a in ok.items() if a),
+                                      "events": [e for e in tev if e.get("event") not in ("init",)][:10]})
+        if not kept:
+            return rec
+        out = _copy.deepcopy(rec)
+        for _t, _c, r in iter_records(out):
+            if r.get("label") in kept:
+                o = prov.belief.objects[r["label"]]
+                r["default_pos"], r["default_ori"] = o.pos.tolist(), o.quat.tolist()
+                r.setdefault("_perception", {})["tracker"] = "kept"
+        return out
+
+    def _held_head_confirm(self, prov, obs: dict, arm: str, label: str, min_px: int = 40) -> dict:
+        """The independent second look before a drop: the HEAD camera of the same step (an agent read of the same wrist
+        frame is a correlated opinion). perception's ``check`` renders ``label`` z-buffered among the other objects at
+        (1) its in-jaw pose (the belief's attached pose) and (2) its pick pose; "not held" only when the head view shows
+        it at the pick pose (precision >= 0.6) and not in the jaws (precision < 0.3), each over >= ``min_px`` visible
+        pixels. Anything else (in the jaws, hidden by the robot, unreadable) keeps the grasp."""
+        o = prov.belief.objects.get(label)
+        g = prov.belief.grasp_z.get(arm)
+        if o is None or g is None:
+            return {"held": None, "source": "head", "why": "no poses"}
+        others = [x for x in prov.belief.movable() if x.label != label]
+
+        def obj(pos, quat):
+            return [{"label": label, "key": o.asset.key, "pos": [float(v) for v in pos], "quat": [float(v) for v in quat]}] + \
+                   [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
+                    for x in others]
+        try:
+            jaw = (self.perception().check(obs, obj(o.pos, o.quat), self.fold).get(label) or {}).get("head") or {}
+            pick = (self.perception().check(obs, obj(g[2][:3], g[2][3:]), self.fold).get(label) or {}).get("head") or {}
+        except Exception as e:  # noqa: BLE001 (unreadable: keep the grasp)
+            return {"held": None, "source": "head", "why": f"{type(e).__name__}: {str(e)[:120]}"}
+
+        def prec(h):
+            return h.get("prec") if (h.get("n_vis") or 0) >= min_px else None
+        pj, pp = prec(jaw), prec(pick)
+        out = {"source": "head", "calls": 0, "jaw_prec": pj, "pick_prec": pp,
+               "jaw_vis": jaw.get("n_vis"), "pick_vis": pick.get("n_vis")}
+        if pp is not None and pp >= 0.6 and pj is not None and pj < 0.3:
+            return {**out, "held": False, "confidence": round(float(pp), 3)}
+        if pj is not None and pj >= 0.6:
+            return {**out, "held": True, "confidence": round(float(pj), 3)}
+        return {**out, "held": None, "confidence": 0.0, "why": "inconclusive"}
+
+    def _held_look(self, obs: dict, arm: str, label: str, mode: str | None = None) -> dict:
+        """perception's held_look (service op) on ``arm``'s wrist frame; agent calls are logged as trigger "held".
+        ``mode="agent"``: the independent second look before a drop (the agent alone)."""
+        t = time.perf_counter()
+        try:
+            r = self.perception().held_look(obs, arm, mode or self.cfg.held_look)
+        except Exception as e:  # noqa: BLE001 (an optional check: the belief keeps the grasp)
+            return {"held": None, "error": f"{type(e).__name__}: {str(e)[:160]}"}
+        if r.get("calls"):
+            self.report["agentic"].append({"tag": "held", "label": label, "arm": arm, "calls": int(r["calls"]),
+                                           "result": f"held={r.get('held')}", "s": round(time.perf_counter() - t, 1)})
+        return r
+
+    def _agentic_gate(self, obs: dict, scene: str, rec: dict, trigger: str) -> dict:
+        """perception's ``needs_agent(rec)`` while the episode's budget lasts (``agentic_max`` estimates, frame 0
+        included): agentic estimate of this frame with ``rec`` as the B1 hint, else ``rec`` itself. ``trigger``:
+        after_looks (once, after the looks / search) or risk (a re-estimate at a confirmed divergence)."""
+        if len(self.report["agentic"]) >= self.cfg.agentic_max:
+            self.report["events"].append({"kind": "agentic_gate", "trigger": trigger, "needs": None, "why": "budget spent",
+                                          "step": self.bridge.steps_used})
+            return rec
+        try:
+            needs, why = self.perception().needs_agent(rec)
+        except Exception as e:  # noqa: BLE001 (the gate is optional: go on with B1)
+            needs, why = False, f"needs_agent error {type(e).__name__}: {str(e)[:120]}"
+        self.report["events"].append({"kind": "agentic_gate", "trigger": trigger, "needs": needs, "why": why,
+                                      "step": self.bridge.steps_used})
+        return self._agentic(obs, scene, rec, trigger) if needs else rec
+
+    def _agentic(self, obs: dict, scene: str, b1: dict | None, tag: str, extra: dict | None = None) -> dict:
+        """One agentic estimate (perception service), ``extra`` = a second observation of the same scene (the scan).
+        Usage goes to report["agentic"]; on an error the B1 record is kept (``b1``, else a plain estimate)."""
+        t = time.perf_counter()
+        try:
+            kw = {"extra_frame": extra} if extra is not None else {}
+            rec = self.perception().agentic_estimate(obs, scene, self.fold, b1_record=b1, **kw)
+        except Exception as e:  # noqa: BLE001 (B1 is the fallback)
+            self.report["agentic"].append({"tag": tag, "error": f"{type(e).__name__}: {str(e)[:200]}",
+                                           "s": round(time.perf_counter() - t, 1)})
+            return b1 if b1 is not None else self.perception().estimate([obs], scene, self.fold)
+        st = ((rec.get("_perception") or {}).get("agentic") or {})
+        self.report["agentic"].append({"tag": tag, "s": round(time.perf_counter() - t, 1), "with_scan": extra is not None,
+                                       **{k: st.get(k) for k in ("result", "calls", "tokens", "agent_s", "model",
+                                                                  "system_md5")},
+                                       "merged": len(st.get("merge") or [])})
+        return rec
+
+    def _watch_read(self, region: dict, prior: dict | None, scene: str) -> dict:
+        """Skills-6's provider read (b): perception's ``watch_read`` on the current observation. On an error the read
+        is reported occluded (callers must not count it toward arrival / stability)."""
+        try:
+            r = self.perception().watch_read(self.bridge.observe(), region, scene, self.fold, prior)
+        except Exception as e:  # noqa: BLE001
+            self.report["events"].append({"kind": "watch_read_error", "note": f"{type(e).__name__}: {str(e)[:160]}"})
+            return {"occluded": True, "visible_frac": 0.0, "stable_vs_prior": False, "new": [], "error": str(e)[:160]}
+        self.report.setdefault("watch_reads", 0)
+        self.report["watch_reads"] += 1
+        return r
 
     def _make_watcher(self, prov, obs0: dict, scene: str):
         """The provider's watcher: perception's ``watch`` (frame 0 vs now) until it reports a change twice in a row
@@ -648,9 +973,12 @@ class RuntimePolicy:
                 agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
             ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
             if agree is not None and agree <= cfg.place_agree_mm:
-                o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
+                q_new = (np.asarray(r["quat"], float) if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg
+                         else o.quat.copy())
+                o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
                 prov.stats["refined"] = prov.stats.get("refined", 0) + 1
                 prov.stats["place_confirmed"] = prov.stats.get("place_confirmed", 0) + 1
+                prov.touched.discard(label)
                 ev["applied"] = True
                 return True, {label: (o.pos.copy(), o.quat.copy())}
             prov.stats["place_unconfirmed"] = prov.stats.get("place_unconfirmed", 0) + 1
@@ -723,13 +1051,21 @@ class RuntimePolicy:
                 {"category": o["category"], "category_idx": o["category_idx"], "label": o["label"], "default_pos": o["pos"],
                  "default_ori": o["quat"], "_perception": {"confidence": 0.9}})
         seed = {"target": [float(e.pos[0]), float(e.pos[1]), 0.765], "arm": None, "why": "lost_at_belief"}
+        n_log = len(self.report.get("search", []))
         out = self._search(ctx.sk, ctx.bridge.observe(), rec, ctx.scene, ctx.kin, seed=seed, min_budget=0.3)
         if out is None or any(x.get("label") == e.label for x in out.get("_not_found") or []):
             return False
+        via = [x.get("via") for x in self.report.get("search", [])[n_log:] if e.label in (x.get("found") or [])]
         for _t, _c, r in iter_records(out):
             if r.get("label") == e.label:
+                p = np.asarray(r["default_pos"], float)
+                far = float(np.linalg.norm(p[:2] - e.pos[:2]))
+                if "refine" not in via and far > self.cfg.lost_fuse_max_m:
+                    self.report["events"].append({"kind": "lost_fuse_rejected", "label": e.label, "far_m": round(far, 3),
+                                                  "via": via, "step": ctx.bridge.steps_used})
+                    return False
                 o = prov.belief.objects[e.label]
-                o.pos, o.quat, o.source = np.asarray(r["default_pos"], float), np.asarray(r["default_ori"], float), "perception"
+                o.pos, o.quat, o.source = p, np.asarray(r["default_ori"], float), "perception"
                 return True
         return False
 
@@ -885,7 +1221,7 @@ class RuntimePolicy:
         sk.ex.execute(moves, name="look")
         obs1 = b.observe()
         sk.ex.run({a: sk.plan_home(a) for a in moves}, name="look_home")
-        self.report["look_steps"] = b.steps_used - n0
+        self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
         if cfg.save_look_frames:
             import cv2
             self.report["look_frames"] = {

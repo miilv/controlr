@@ -45,6 +45,8 @@ export DOJO_PERCEPTION_AUTHKEY="$(key)" DOJO_PERCEPTION_PORT="$(port)" DOJO_PERC
 PD="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"
 export DOJO_CATALOG="${DOJO_CATALOG:-$PD/catalog}" DOJO_X5_DIR="${DOJO_X5_DIR:-$PD/catalog/robot/x5}"
 export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib.json}"
+# agentic perceiver (only read when the config sets "agentic"): omniroute keys from the controlr .env, transcripts here
+export AGENTIC_ENV_FILE="${AGENTIC_ENV_FILE:-$HOME/controlr/.env}" DOJO_AGENTIC_LOG="${DOJO_AGENTIC_LOG:-$OUT/agentic}"
 export OUT HERE MODE VERIFY TWIN_ENVS TASK
 if [[ "$VERIFY" == bundle || "$MODE" == perception ]]; then MEM=24G CPU=1400%; else MEM=16G CPU=1200%; fi
 systemd-run --user --scope -q -p MemoryMax=$MEM -p CPUQuota=$CPU bash -c '

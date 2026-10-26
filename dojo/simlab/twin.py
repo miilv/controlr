@@ -62,6 +62,22 @@ def held_objects(hist, grip_cmd: dict, blocked: dict, near_m: float = 0.06, rigi
     return out
 
 
+
+def _safe_copy(v):
+    """deepcopy of env / checker state; a member that cannot be copied (a checker keeps a USD prim / stage handle for
+    some tasks, e.g. stack_bowls: "Pickling of pxr.Usd.Stage instances is not enabled") is kept by reference, a
+    handle the snapshot only reads back."""
+    try:
+        return copy.deepcopy(v)
+    except Exception:  # noqa: BLE001
+        if isinstance(v, dict):
+            return {k: _safe_copy(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [_safe_copy(x) for x in v]
+        if isinstance(v, tuple):
+            return tuple(_safe_copy(x) for x in v)
+        return v
+
 class IncompleteWorld(ValueError):
     """An estimated world lacks objects the task's reward refers to (perception missed them)."""
 
@@ -149,17 +165,17 @@ class Twin:
             fp = rwm.func_parser
             snap["envs"][i] = {
                 "objects": objs, "keys": self._name_keys(i),
-                "prev_control": copy.deepcopy(rm.control_manager.prev_control[i]),
+                "prev_control": _safe_copy(rm.control_manager.prev_control[i]),
                 "counters": {"take_action_cnt": int(env.take_action_cnt[i]), "success": bool(env.success[i]),
                              "end_flag": bool(env.end_flag[i])},
-                "reward": {k: copy.deepcopy(getattr(rwm, k)[i]) for k in (
+                "reward": {k: _safe_copy(getattr(rwm, k)[i]) for k in (
                     "check_list", "final_check_list", "query_list", "trigger_check_list", "trigger_query_list",
                     "score_list", "score_achieved", "score_completed_count", "score_meta", "score_trigger_meta",
                     "final_score_list", "final_score_achieved", "final_score_completed_count", "final_score_meta")},
-                "func_parser": {k: copy.deepcopy(getattr(fp, k)[i]) for k in (
+                "func_parser": {k: _safe_copy(getattr(fp, k)[i]) for k in (
                     "pre_state", "robot_origin_endpose", "joint_ratio_transition_state")},
             }
-        snap["gated_score"] = copy.deepcopy(env.reward_manager._gated_score_lst)
+        snap["gated_score"] = _safe_copy(env.reward_manager._gated_score_lst)
         return snap
 
     def _name_keys(self, env_idx: int) -> dict:
@@ -212,19 +228,19 @@ class Twin:
                         obj.set_current_joint_positions(rec["joints"])
                     except Exception:  # noqa: BLE001
                         pass
-            rm.control_manager.prev_control[i] = copy.deepcopy(e["prev_control"])
+            rm.control_manager.prev_control[i] = _safe_copy(e["prev_control"])
             c = e["counters"]
             env.take_action_cnt[i], env.success[i], env.end_flag[i] = c["take_action_cnt"], c["success"], c["end_flag"]
             rwm = env.reward_manager
             for k2, v in e["reward"].items():
-                getattr(rwm, k2)[i] = copy.deepcopy(v)
+                getattr(rwm, k2)[i] = _safe_copy(v)
             for k2, v in e["func_parser"].items():           # keyed by inst_name where it is per object
-                v = copy.deepcopy(v)
+                v = _safe_copy(v)
                 if isinstance(v, dict):
                     v = {rename.get(kk, kk): vv for kk, vv in v.items()}
                 getattr(rwm.func_parser, k2)[i] = v
         gs = snap.get("gated_score")
-        env.reward_manager._gated_score_lst = None if gs is None else [copy.deepcopy(gs[src]) for _ in range(n)]
+        env.reward_manager._gated_score_lst = None if gs is None else [_safe_copy(gs[src]) for _ in range(n)]
         env.sim.scene.write_data_to_sim()
 
     def restore(self, snap: dict, settle_steps: int = 0) -> None:
@@ -258,15 +274,15 @@ class Twin:
                         obj.set_current_joint_positions(rec["joints"])
                     except Exception:  # noqa: BLE001
                         pass
-            rm.control_manager.prev_control[i] = copy.deepcopy(e["prev_control"])
+            rm.control_manager.prev_control[i] = _safe_copy(e["prev_control"])
             c = e["counters"]
             env.take_action_cnt[i], env.success[i], env.end_flag[i] = c["take_action_cnt"], c["success"], c["end_flag"]
             rwm = env.reward_manager
             for k, v in e["reward"].items():
-                getattr(rwm, k)[i] = copy.deepcopy(v)
+                getattr(rwm, k)[i] = _safe_copy(v)
             for k, v in e["func_parser"].items():
-                getattr(rwm.func_parser, k)[i] = copy.deepcopy(v)
-        env.reward_manager._gated_score_lst = copy.deepcopy(snap["gated_score"])
+                getattr(rwm.func_parser, k)[i] = _safe_copy(v)
+        env.reward_manager._gated_score_lst = _safe_copy(snap["gated_score"])
         env.sim.scene.write_data_to_sim()
         for _ in range(settle_steps):
             env.sim_step(render=False)

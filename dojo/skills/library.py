@@ -82,6 +82,14 @@ def stack_objects(sk: Skills, objects: list[str], nest: bool = False, ordered: b
     and sequence), or ``ordered``: objects[0] is the base and the rest go on in list order (bottom to top)."""
     w = sk.refresh()
     objects = [l for l in objects if l in w.objects]
+    if not nest and len(objects) >= 2:
+        # never undo a goal-satisfying state: the stack already stands in the WORLD (the belief's geometry in mode B,
+        # label-agnostic unless ordered), e.g. on a retry after a label-keyed check failed
+        from dojo.skills.stacking import existing_chain
+        chain = existing_chain(w, objects)
+        if len(chain) == len(objects) and (not ordered or chain == objects):
+            sk.log(f"[stack_objects] the stack already stands: {chain}")
+            return {"ok": True, "stage": "stacked", "note": "goal already holds (world geometry)"}
     o0 = w.obj(objects[0])
     if nest:
         geo = bowl_geometry(o0)
@@ -2264,3 +2272,10 @@ SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into"
 from dojo.skills import precision as _precision  # noqa: E402  (skills-5; imports this module)
 
 SKILLS.update(_precision.SKILLS)
+
+# skills that interleave observation with action (scripted opponents, demonstrations, conveyors): skills-6
+from dojo.skills.holders import fill_holes  # noqa: E402
+from dojo.skills.interactive import copy_demonstration, match_and_pick, pick_into_held, play_board_game  # noqa: E402
+
+SKILLS.update({"play_board_game": play_board_game, "fill_holes": fill_holes, "copy_demonstration": copy_demonstration,
+               "match_and_pick": match_and_pick, "pick_into_held": pick_into_held})

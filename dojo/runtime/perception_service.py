@@ -19,6 +19,31 @@ Ops (request dicts):
     {"op": "watch", "frame0": frame, "frame": frame, "vocabulary": str}            -> {"watch": json}
         what the scene's own actors changed while the robot waits (``dojo.perception.task_state``; make_kong:
         the push tile the opponent knocked over): {"supported", "knocked": [label], "detail"}
+    {"op": "agentic_estimate", "frame": frame, "vocabulary": str, "fold": int, "b1_record": json|None,
+     "extra_frame": scan frame (optional: the agent's second observation)}
+                                                                                   -> {"record": json}
+        perception R&D's agentic perceiver (``dojo.perception.agentic.record``): B1 (= op estimate on this frame,
+        unless ``b1_record``), one fresh LLM agent with B1 as the hint, render-and-compare from its points; usage in
+        record["_perception"]["agentic"]. Env: AGENTIC_ENV_FILE (OMNIROUTE_* only), AGENTIC_MODEL, AGENTIC_MAX_TURNS,
+        AGENTIC_REFINE; transcripts under DOJO_AGENTIC_LOG
+    {"op": "needs_agent", "record": json}                                          -> {"needs": bool, "why": str}
+    {"op": "scan_looks"}                                                           -> {"looks": json}
+    {"op": "scan_trigger", "record": json}                                         -> {"needs", "why", "not_found"}
+    {"op": "estimate_scan", "frame": scan frame, "frame0": frame, "vocabulary", "fold", "rec0": json|None}
+                                                                                   -> {"record": json}
+        perception's scan pose (``dojo.perception.scan``): the frozen pose pair, the generic trigger (a not-found label,
+        hidden_frac >= 0.2, or calibrated risk >= 0.5 at frame 0) and the scan-primary estimate (needs a scan-aware
+        head background in DOJO_BG_FOLDS)
+    {"op": "held_look", "frame": frame, "arm": str, "mode": "b1"|"b1_then_agent"}  -> {"held_look": json}
+        perception's held check on the arm's wrist frame: {held, confidence, dark_risk, source, calls}
+    {"op": "motion", "frame_a": frame, "frame_b": frame, "thr": 12.0, "min_px": 150}  -> {"motion": json}
+        did anything but OUR arms change between two head views: Lab difference outside the union of both frames' FK
+        robot masks (a scripted opponent / demonstrator arm, its gripper, objects it moves): {moving, changed_px,
+        visible_px}; moving None when too little of the view is visible
+    {"op": "watch_read", "frame": frame, "region": json, "vocabulary": str, "fold": int, "prior": json|None}
+                                                                                   -> {"watch_read": json}
+        perception's ``dojo.perception.watch.watch_read`` (cells of a board / contents of a container, what the scene's
+        own actors put there; Skills-6's provider read (b))
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -126,6 +151,47 @@ class PerceptionClient:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
                                       "fold": int(fold)})["check"])
 
+    def agentic_estimate(self, frame: dict, vocabulary: str, fold: int, b1_record: dict | None = None,
+                         extra_frame: dict | None = None) -> dict:
+        req = {"op": "agentic_estimate", "frame": encode_frame(frame), "vocabulary": vocabulary, "fold": int(fold),
+               "b1_record": None if b1_record is None else json.dumps(b1_record, default=_default)}
+        if extra_frame is not None:
+            req["extra_frame"] = encode_frame(extra_frame)
+        return json.loads(self._call(req)["record"])
+
+    def watch_read(self, frame: dict, region: dict, vocabulary: str, fold: int, prior: dict | None = None) -> dict:
+        return json.loads(self._call({"op": "watch_read", "frame": encode_frame(frame),
+                                      "region": json.dumps(region, default=_default), "vocabulary": vocabulary,
+                                      "fold": int(fold), "prior": None if prior is None else json.dumps(prior, default=_default)})
+                          ["watch_read"])
+
+    def motion(self, frame_a: dict, frame_b: dict, thr: float = 12.0, min_px: int = 150) -> dict:
+        def head_only(f):
+            return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
+        return json.loads(self._call({"op": "motion", "frame_a": head_only(frame_a), "frame_b": head_only(frame_b),
+                                      "thr": float(thr), "min_px": int(min_px)})["motion"])
+
+    def scan_looks(self) -> list[dict]:
+        return json.loads(self._call({"op": "scan_looks"})["looks"])
+
+    def scan_trigger(self, record: dict) -> tuple[bool, str, bool]:
+        r = self._call({"op": "scan_trigger", "record": json.dumps(record, default=_default)})
+        return bool(r["needs"]), str(r["why"]), bool(r["not_found"])
+
+    def estimate_scan(self, frame: dict, frame0: dict, vocabulary: str, fold: int, rec0: dict | None = None) -> dict:
+        r = self._call({"op": "estimate_scan", "frame": encode_frame(frame), "frame0": encode_frame(frame0),
+                        "vocabulary": vocabulary, "fold": int(fold),
+                        "rec0": None if rec0 is None else json.dumps(rec0, default=_default)})
+        return json.loads(r["record"])
+
+    def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
+        return json.loads(self._call({"op": "held_look", "frame": encode_frame(frame), "arm": arm,
+                                      "mode": mode})["held_look"])
+
+    def needs_agent(self, record: dict) -> tuple[bool, str]:
+        r = self._call({"op": "needs_agent", "record": json.dumps(record, default=_default)})
+        return bool(r["needs"]), str(r["why"])
+
     def watch(self, frame0: dict, frame: dict, vocabulary: str) -> dict:
         def head_only(f):                       # the reads compare head views only: send just that image
             return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
@@ -214,6 +280,103 @@ class _Perception:
         return {"supported": True, "knocked": [r["knocked"]] if r.get("knocked") and r.get("confident") else [],
                 "detail": r}
 
+    def agentic_estimate(self, frame: dict, vocabulary: str, fold: int, b1_record: dict | None = None,
+                         extra_frame: dict | None = None) -> dict:
+        """The agentic perceiver on one frame; B1 = this service's own ``estimate`` (the b1 arm's path) unless given.
+        ``extra_frame``: the scan observation of the same scene, passed as the agent's second observation (its
+        preamble v2, calib_scan.json for locate / project)."""
+        from dojo.perception.agentic.record import _calib_from_state, agentic_estimate
+        if b1_record is None:
+            b1_record = self.estimate([frame], vocabulary, fold)
+        fr = decode_frame(frame)
+        kw = {}
+        if extra_frame is not None:
+            ex = decode_frame(extra_frame)
+            st = {k: np.asarray(v, float).reshape(-1) for k, v in ex["state"].items()}
+            kw["extra_obs"] = [{"tag": "scan", "frames": ex["images"], "calib": _calib_from_state(ex["state"]),
+                                "flange": {a: st[f"{a}_ee_pose"].tolist() for a in ("left", "right") if f"{a}_ee_pose" in st},
+                                "note": "the arms moved to the fixed scan pose; the objects did not"}]
+        self._n_agentic = getattr(self, "_n_agentic", 0) + 1
+        log = os.environ.get("DOJO_AGENTIC_LOG")
+        log_dir = str(Path(log) / f"call_{self._n_agentic:03d}") if log else None
+        return agentic_estimate(fr["images"], fr["state"], vocabulary, fr["instruction"], bgs=self.bgs(fold),
+                                cfg=self.cfg(fold), b1_record=b1_record, log_dir=log_dir, **kw)
+
+    @staticmethod
+    def motion(frame_a: dict, frame_b: dict, thr: float = 12.0, min_px: int = 150, dilate_px: int = 6) -> dict:
+        """Scene change outside OUR arms between two head frames (contract frames; our arms masked by FK at each
+        frame's measured joints, dilated). A changed pixel: Lab distance > ``thr`` (L halved). moving: > ``min_px``
+        changed pixels; None when less than 20 % of the view is unmasked."""
+        import cv2
+
+        from dojo.perception.cameras import head_camera
+        from dojo.perception.render import robot_mask
+        fa, fb = decode_frame(frame_a), decode_frame(frame_b)
+        cam = head_camera()
+        m = np.maximum(robot_mask(cam, fa["state"], dilate_px), robot_mask(cam, fb["state"], dilate_px)) > 0
+        a = cv2.cvtColor(np.ascontiguousarray(fa["images"]["cam_head"]), cv2.COLOR_RGB2LAB).astype(np.float32)
+        b = cv2.cvtColor(np.ascontiguousarray(fb["images"]["cam_head"]), cv2.COLOR_RGB2LAB).astype(np.float32)
+        d = a - b
+        d[..., 0] *= 0.5
+        dist = np.sqrt((d ** 2).sum(-1))
+        vis = ~m
+        changed = int(((dist > thr) & vis).sum())
+        n_vis = int(vis.sum())
+        moving = None if n_vis < 0.2 * vis.size else bool(changed > min_px)
+        return {"moving": moving, "changed_px": changed, "visible_px": n_vis}
+
+    @staticmethod
+    def scan_trigger(record: dict, hidden_thr: float = 0.2, risk_thr: float = 0.5) -> dict:
+        """Scan iff frame 0 has a not-found label, an object with hidden_frac >= 0.2, or calibrated risk >= 0.5."""
+        nf = [x.get("label") for x in record.get("_not_found") or []]
+        if nf:
+            return {"needs": True, "why": f"not_found:{nf}", "not_found": True}
+        from dojo.perception.agentic.j1 import risk
+        from dojo.perception.agentic.record import record_objects
+        objs = record_objects(record)
+        hid = [o["label"] for o in objs if float((o.get("flags") or {}).get("hidden_frac") or 0) >= hidden_thr]
+        if hid:
+            return {"needs": True, "why": f"hidden:{hid[:4]}", "not_found": False}
+        hi = [(o["label"], round(risk(o), 2)) for o in objs if risk(o) >= risk_thr]
+        if hi:
+            return {"needs": True, "why": f"risk:{hi[:4]}", "not_found": False}
+        return {"needs": False, "why": "frame0_clear", "not_found": False}
+
+    def estimate_scan(self, frame: dict, frame0: dict, vocabulary: str, fold: int, rec0: dict | None = None) -> dict:
+        from dojo.perception.scan import estimate_with_scan
+        s, f0 = decode_frame(frame), decode_frame(frame0)
+        return estimate_with_scan({"images": s["images"], "state": s["state"]}, {"images": f0["images"], "state": f0["state"]},
+                                  vocabulary, s["instruction"], bgs=self.bgs(fold), cfg=self.cfg(fold), rec0=rec0)
+
+    def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
+        """perception's held_look (``agentic.j1.held_look_impl``: B1 = the strict-tier fingertip-region read, then
+        the agent when B1 is unsure) on contract frames; calibration from the public config + measured joints."""
+        from dojo.perception.agentic import j1
+        from dojo.perception.agentic.record import _calib_from_state
+        fr = decode_frame(frame)
+        st = {k: np.asarray(v, float).reshape(-1) for k, v in fr["state"].items()}
+        flange = {a: st[f"{a}_ee_pose"].tolist() for a in ("left", "right") if f"{a}_ee_pose" in st}
+        grip = {a: float(st[f"{a}_ee_joint_state"][0]) for a in ("left", "right") if f"{a}_ee_joint_state" in st}
+        joints = {a: st[f"{a}_arm_joint_state"][:6].tolist() for a in ("left", "right") if f"{a}_arm_joint_state" in st}
+        n = [0]
+        base = None
+
+        def chat(*a, **k):
+            nonlocal base
+            base = base or j1._chat()
+            n[0] += 1
+            return base(*a, **k)
+        log = os.environ.get("DOJO_AGENTIC_LOG")
+        kw = {"log_dir": str(Path(log) / "held")} if log else {}
+        r = j1.held_look_impl(fr["images"], _calib_from_state(fr["state"]), flange, grip, arm=arm, stage="after_lift",
+                              chat=chat, joints=joints, held_mode=mode, **kw)
+        sub = r.get(arm) if isinstance(r.get(arm), dict) else {}
+        return {"held": r.get("held") if sub.get("held") is None else sub.get("held"),
+                "confidence": float(sub.get("confidence", r.get("confidence", 0.0)) or 0.0),
+                "dark_risk": bool(sub.get("dark_risk", False)), "calls": n[0],
+                "evidence": sub.get("evidence", r.get("evidence")), "opening": sub.get("opening", r.get("opening")),
+                "source": "agent" if n[0] else "b1", "note": str(r.get("note") or "")[:200]}
+
     def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
                  fuse_mode: str | None = None) -> dict:
         import inspect
@@ -300,7 +463,15 @@ class _Perception:
             shift = None if pose is None else float(np.hypot(*(pose[:2] - np.asarray(o["pos"][:2], float))))
             ok = bool(r.get("ok")) and pose is not None and shift <= max_shift_m
             sug = r.get("suggest_xy")
+            # perception >= #36: a not-ok refine returns the PRIOR as "pose" and the raw fit as "fit_pose"
+            fit = np.asarray(r["fit_pose"], float) if r.get("fit_pose") is not None else (None if ok else pose)
+            fit_shift = None if fit is None else float(np.hypot(*(fit[:2] - np.asarray(o["pos"][:2], float))))
             return {o["label"]: {"ok": ok, "pos": None if pose is None else pose[:3].tolist(),
+                                 "fit_pos": None if fit is None else fit[:3].tolist(),
+                                 "fit_quat": None if fit is None else fit[3:7].tolist(),
+                                 "fit_shift_mm": None if fit_shift is None else round(fit_shift * 1000, 1),
+                                 "p_why": r.get("why"), "truncated_frac": r.get("truncated_frac"),
+                                 "z_dropped_mm": r.get("z_dropped_mm"),
                                  "suggest_xy": sug, "suggest_shift_mm": r.get("suggest_shift_mm"),
                                  "searched": r.get("searched"),
                                  "quat": None if pose is None else pose[3:7].tolist(),
@@ -469,6 +640,37 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
                         conn.send({"ok": True, "check": json.dumps(chk, default=_default)})
+                    elif op == "agentic_estimate":
+                        b1 = json.loads(req["b1_record"]) if req.get("b1_record") else None
+                        rec = p.agentic_estimate(req["frame"], req["vocabulary"], int(req.get("fold", 0)), b1,
+                                                 req.get("extra_frame"))
+                        conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "watch_read":
+                        from dojo.perception.watch import watch_read
+                        fr = decode_frame(req["frame"])
+                        w = watch_read(fr, json.loads(req["region"]), req.get("vocabulary"), bgs=p.bgs(int(req.get("fold", 0))),
+                                       cfg=p.cfg(int(req.get("fold", 0))),
+                                       prior=json.loads(req["prior"]) if req.get("prior") else None)
+                        conn.send({"ok": True, "watch_read": json.dumps(w, default=_default)})
+                    elif op == "motion":
+                        mo = p.motion(req["frame_a"], req["frame_b"], float(req.get("thr", 12.0)), int(req.get("min_px", 150)))
+                        conn.send({"ok": True, "motion": json.dumps(mo, default=_default)})
+                    elif op == "scan_looks":
+                        from dojo.perception.scan import looks
+                        conn.send({"ok": True, "looks": json.dumps(looks(), default=_default)})
+                    elif op == "scan_trigger":
+                        conn.send({"ok": True, **p.scan_trigger(json.loads(req["record"]))})
+                    elif op == "estimate_scan":
+                        r0 = json.loads(req["rec0"]) if req.get("rec0") else None
+                        rec = p.estimate_scan(req["frame"], req["frame0"], req["vocabulary"], int(req.get("fold", 0)), r0)
+                        conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "held_look":
+                        h = p.held_look(req["frame"], req["arm"], req.get("mode") or "b1_then_agent")
+                        conn.send({"ok": True, "held_look": json.dumps(h, default=_default)})
+                    elif op == "needs_agent":
+                        from dojo.perception.agentic.record import needs_agent
+                        needs, why = needs_agent(json.loads(req["record"]))
+                        conn.send({"ok": True, "needs": bool(needs), "why": str(why)})
                     elif op == "watch":
                         w = p.watch(req["frame0"], req["frame"], req["vocabulary"])
                         conn.send({"ok": True, "watch": json.dumps(w, default=_default)})

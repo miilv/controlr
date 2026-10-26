@@ -88,6 +88,18 @@ DOJO_AGENT_LOG=/tmp/rbfake/agent .venv/bin/python -m dojo.bridge.driver --server
 Practice only: **seed 0 layout 9** (robot-harness AGENTS.md rule 1). Scored seeds and layouts are run once, blind,
 md5-frozen, on the lead's go (§6).
 
+### 4.0 First on a new box: the `joint_steps` smoke (about 70 steps, no perception / twin / LLM)
+```bash
+scripts/dojo/bridge_episode.sh --id br-prac-smoke-s0L9-1 --task stack_blocks --layout 9 --seed 0 \
+    --policy dojo.bridge.smoke:JointStepsSmoke --perception server --verify off
+```
+`dojo.bridge.smoke.JointStepsSmoke` moves each arm's base and wrist-roll joints out and back at 0.18 rad/step (the
+skills' free-space rate) and toggles each gripper with a step command, one `joint_steps` chunk per phase. Read
+`bridge.json` → `joint_steps_chunks`: per phase `tracking_rad` / `tracking_max_rad` (measured vs commanded after the
+chunk), `max_step_dq`, `grip_change_while_moving`. Every chunk should run in full (`ran == n`). If tracking after the
+3 hold steps stays far above the proxy's, re-time the skills (the twin verifies the same lists) before running 4a.
+Then RuntimePolicy (`--policy dojo.runtime.policy:RuntimePolicy`, 0 calls), then AgentPolicy.
+
 ### 4a. One command
 ```bash
 cd $CR

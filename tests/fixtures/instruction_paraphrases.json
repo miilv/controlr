@@ -1,0 +1,95 @@
+{
+ "_source": "hand-written paraphrases of the public instruction templates (controlr integration-2), for the vocabulary fallback's robustness test",
+ "instructions": {
+  "plug_in_charger": [
+   "Put the charger into the socket.",
+   "Insert the plug of the charger into the power outlet."
+  ],
+  "make_toast": [
+   "Place two bread slices in the toaster and push its lever.",
+   "Toast two slices of bread."
+  ],
+  "hang_mugs": [
+   "Hang every mug on the rack.",
+   "Put the mugs onto the mug holder."
+  ],
+  "deposit_coin": [
+   "Insert the coin into the piggy bank.",
+   "Take the coin off its stand and drop it into the bank."
+  ],
+  "fasten_screws": [
+   "Screw each bolt into the matching nut.",
+   "Fasten every screw onto the nut with the same colour."
+  ],
+  "insert_tubes": [
+   "Put the tubes in the tube rack.",
+   "Place each test tube into the rack."
+  ],
+  "play_Xylophone": [
+   "Hit every key of the xylophone with the mallet, left to right.",
+   "Use the mallet to play the xylophone."
+  ],
+  "fill_egg_holder": [
+   "Put all eggs into the egg holder and close it.",
+   "Move the eggs from the basket to the egg holder."
+  ],
+  "fill_pen_holder": [
+   "Put the pens in the pen holder.",
+   "Lift the pen holder and drop every pen into it."
+  ],
+  "sweep_blocks": [
+   "Sweep the cubes into the dustpan using the broom.",
+   "Use the broom and the pan to clean up the blocks."
+  ],
+  "store_laptop_and_headphones": [
+   "Put the headphones on their stand and store the laptop.",
+   "Close the laptop and put it in the laptop rack after hanging the headset."
+  ],
+  "fold_clothes": [
+   "Fold the shirt.",
+   "Neatly fold the garment."
+  ],
+  "play_stacking_toy": [
+   "Put the stacking toy rings on the pegs.",
+   "Place every piece of the stacking toy on its peg."
+  ],
+  "store_tools_in_toolbox": [
+   "Put each tool in its slot of the toolbox.",
+   "Store the hammer, pliers, wrench and tape measure in the tool box."
+  ],
+  "insert_key": [
+   "Use the key: insert it into the lock and turn it.",
+   "Put the key in the keyhole and rotate it."
+  ],
+  "press_by_number": [
+   "Press each red button as many times as the number card shows, then the blue one.",
+   "Push the buttons according to the cards and confirm with the blue button."
+  ],
+  "swap_blocks": [
+   "Exchange the two cubes using the free mat and press the button after every move.",
+   "Swap the blocks via the empty pad, pressing the button each time."
+  ],
+  "make_kong": [
+   "Once the opponent discards, declare a kong with your tiles.",
+   "Wait for the discard and expose the matching mahjong tiles."
+  ],
+  "build_tower": [
+   "Stack the wooden blocks and boards into a tower.",
+   "Make a tower out of the wooden blocks and boards."
+  ],
+  "organize_table": [
+   "Put the alarm clock on the drawer, the figurine on the stand, the mouse on its pad and push the keyboard into the frame.",
+   "Tidy the desk: clock on the drawer, mouse on the mouse pad, keyboard into the frame."
+  ],
+  "play_tic_tac_toe": [
+   "Play a game of tic tac toe against the opponent, going first.",
+   "Fill the board with your pieces taking turns with the opponent."
+  ],
+  "match_and_pick_from_conveyor": [
+   "Watch the conveyor, remember the first item, and pick its twin when it comes back."
+  ],
+  "pick_from_conveyor_by_image": [
+   "Raise the basket, find the object shown in the photo on the conveyor and put it in the basket."
+  ]
+ }
+}

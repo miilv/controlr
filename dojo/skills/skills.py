@@ -140,6 +140,33 @@ class GTProvider:
         self.include_clutter = include_clutter
         self.home_q = None
         self.notes: dict = {}
+        self._actors_prev = None
+
+    def actors_moving(self, tol: float = 2e-3) -> bool | None:
+        """Whether a scripted actor (an opponent's or a demonstrator's arm) moved since the last call: dev-only GT of its
+        joints in G3 (``env.actors_gt``); None when the env cannot tell (the caller then waits a fixed time). At eval
+        the runtime's provider answers it from the frames (a watch read)."""
+        f = getattr(self.env, "actors_gt", None)
+        if f is None:
+            return None
+        cur = {k: np.asarray(v, float) for k, v in (f() or {}).items()}
+        prev, self._actors_prev = self._actors_prev, cur
+        if not cur:
+            return False
+        if prev is None:
+            return True
+        return any(k not in prev or float(np.abs(v - prev[k]).max()) > tol for k, v in cur.items())
+
+    def watch_read(self, region: dict, prior: dict | None = None) -> dict:
+        """Dev-only GT answer to perception's watch read (same dict shape, so G3 -> eval is a provider swap):
+        region {"kind": "cells", "board": {"asset", "pos", "quat"}, "pieces": {"own": key, "opponent": key}} ->
+        "cells": [{"k", "occupant", "conf", "pos"}]; {"kind": "container", "container": {...}, "candidates": [keys]} ->
+        "inside" / "outside": [{"asset", "pos", "conf"}]. Plus t_ms, visible_frac, occluded, stable_vs_prior, new."""
+        from dojo.skills.watch import gt_watch_read
+        rows = self.env.gt_objects()
+        objs = (_objects_from_rows_nodb(rows) if self.assets is None else
+                objects_from_gt(rows, self.assets, step=self.env.steps_used, include_clutter=False, meshes=False))
+        return gt_watch_read(objs, region, prior, step=int(self.env.steps_used))
 
     def refresh(self, holding: dict | None = None) -> WorldState:
         st = self.env.proprio()
@@ -199,6 +226,7 @@ class Skills:
         self.on_verified = on_verified
         self.refine = refine
         self.max_rehovers = int(max_rehovers)       # re-hover hints followed per pick / place (refine hook)
+        self.widen_on_none = True                   # twin rejects every candidate: widen (more candidates), re-look
         self.refine_ctx: dict = {}
         # labels the wrist refine must not be asked about (perception: tiles in a dense row fit their neighbours;
         # their layout slots are better than a refine there); a place carrying one of them is skipped too
@@ -486,7 +514,8 @@ class Skills:
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
-                   fingers_out: bool = False, pre_clear: float = 0.015, sym_axis: int | None = None):
+                   fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
+                   sym_axis: int | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -499,8 +528,11 @@ class Skills:
         ``pre_clear``: the pre-place holds the object's lowest corner this far over the highest ignored support.
         ``fingers_out``: the fingertips stay 3 mm above the receptacle's (``servo_ref`` / first ignored object's) top:
         the object is let go there and drops the rest of the way (a bread slice into a toaster slot narrower than the
-        open fingers). ``sym_axis``: the object is the same turned about this axis of its own (a disc about its normal):
-        the servo tail takes the turn of the target nearest to the object's measured pose (a coin spun in a rim pinch)."""
+        open fingers).
+        ``ref_top``: the receptacle's top height (world z) for ``fingers_out`` and the servo hover instead of its whole
+        bbox top (an egg carton whose open lid stands 12 cm above the plate the eggs go through).
+        ``sym_axis``: the object is the same turned about this axis of its own (a disc about its normal): the servo tail
+        takes the turn of the target nearest to the object's measured pose (a coin spun in a rim pinch)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -520,7 +552,8 @@ class Skills:
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
                        servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok),
-                       probe=bool(probe), hover_clear=float(hover_clear), fingers_out=bool(fingers_out))
+                       probe=bool(probe), hover_clear=float(hover_clear), fingers_out=bool(fingers_out),
+                       ref_top=None if ref_top is None else float(ref_top))
         if sym_axis is not None:
             tail_kw["sym_axis"] = int(sym_axis)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
@@ -567,14 +600,17 @@ class Skills:
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
-                    hover_clear: float = 0.003, fingers_out: bool = False, sym_axis: int | None = None) -> ArmPlan | str:
+                    hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None,
+                    sym_axis: int | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
             ref = next((l for l in ((servo_ref,) + tuple(grip_only) + tuple(ignore)) if l and l != h.label
                         and l in self.world.objects), None)
-            if ref is not None:
-                T_rel[2, 3] += self.fingers_raise(T_rel, ref)
+            if ref_top is not None:
+                T_rel[2, 3] += self.tips_raise(T_rel, float(ref_top) + 0.003)
+            elif ref is not None:
+                T_rel[2, 3] += self.fingers_raise(T_rel, ref)       # its top, or its height map under the fingers
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
                                 ignore=ignore, grip_only=grip_only)
         if not down.ok:
@@ -868,9 +904,12 @@ class Skills:
             # the target turned about the object's symmetry axis to the measured pose (a coin may spin in the pads)
             T_obj = self._nearest_spin(T_obj, self.refresh().obj(label), int(kw["sym_axis"]))
         hover = 0.004
-        if rec is not None and o.asset.mesh is not None:
+        rec_top = kw.get("ref_top")
+        if rec_top is None and rec is not None:
+            rec_top = self.world.obj(rec).top_z
+        if rec_top is not None and o.asset.mesh is not None:
             V = o.asset.mesh[0] @ T_obj[:3, :3].T + T_obj[:3, 3]
-            hover = max(0.004, self.world.obj(rec).top_z - float(V[:, 2].min()) + float(kw.get("hover_clear", 0.003)))
+            hover = max(0.004, float(rec_top) - float(V[:, 2].min()) + float(kw.get("hover_clear", 0.003)))
 
         def go(T_goal, step_rad, name, settle=2):
             for _ in range(3):              # a long line that stops short (IK) is resumed from where it got to
@@ -896,11 +935,14 @@ class Skills:
         # with the pose; twin: a pen's tip came down on the holder's rim and stayed there)
         if kw.get("hover_clear", 0.003) > 0.003 and float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3])) > 0.002:
             go(above(T_obj, hover), rate, "servo_hover2")
-        if kw.get("fingers_out") and rec is not None:
+        if kw.get("fingers_out") and rec_top is not None:
             # let go with the fingertips above the receptacle: raise the target by what the measured grasp needs
             w = self.refresh()
             T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ w.obj(label).T
-            dz = self.fingers_raise(T_obj @ inv_T(T_rel), rec)
+            if kw.get("ref_top") is None and rec is not None:
+                dz = self.fingers_raise(T_obj @ inv_T(T_rel), rec)
+            else:
+                dz = self.tips_raise(T_obj @ inv_T(T_rel), float(rec_top) + 0.003)
             T_obj = above(T_obj, dz)
             if dz > 0:
                 kw = {**kw, "probe": False}
@@ -1320,6 +1362,15 @@ class Skills:
             if np.linalg.norm(pos - exp) > 0.015:
                 return False
             return _others_still(o, before, {pp.label, *moving})
+
+        def score(o) -> float:
+            """How close the outcome comes to a held lift (higher is better): rise minus twice the in-hand drift."""
+            if o.failed or pp.label not in o.objects:
+                return -1.0
+            pos = o.objects[pp.label][0]
+            exp = (self.kin.tcp(pp.arm, o.q[pp.arm]) @ pp.T_tcp_obj)[:3, 3]
+            return float(min(pos[2] - z0, max(lift, 0.02)) - 2.0 * np.linalg.norm(pos - exp))
+        j.score = score
         return j
 
     def judge_place(self, pl: "PlacePlan", before: dict, tol_xy: float, tol_tilt: float, tol_z: float, moving=()):
@@ -1339,6 +1390,18 @@ class Skills:
             if tilt > tol_tilt:
                 return False
             return _others_still(o, before, {pl.label, *moving})
+
+        def score(o) -> float:
+            """Closeness of the outcome to the target (higher is better): -(xy + z error + 1 mm per degree of tilt)."""
+            if o.failed or pl.label not in o.objects:
+                return -1.0
+            p, q = o.objects[pl.label]
+            from dojo.skills.geometry import quat_to_R
+            R = quat_to_R(q)
+            c = R @ o0.asset.center + p
+            tilt = math.degrees(math.acos(min(1.0, abs(float((R.T @ pl.T_obj_target[:3, :3])[2, 2])))))
+            return -float(np.linalg.norm(c[:2] - exp_c[:2]) + abs(c[2] - exp_c[2]) + 0.001 * tilt)
+        j.score = score
         return j
 
     def verify_choose(self, cands: list[dict], judges: list, held=(), kind: str = "", label: str = "") -> tuple[int | None, list]:
@@ -1358,10 +1421,17 @@ class Skills:
                 self.vstats["first_ok" if i == 0 else "later_ok"] += 1
                 chosen = i
                 break
-        if chosen is None:
+        none_ok = chosen is None
+        if none_ok:
             self.vstats["none_ok"] += 1
             chosen = int(np.argmax(passes)) if max(passes) > 0 else None
-        self.last_verified = {"idx": chosen, "passes": passes, "outcomes": outs,
+            if chosen is None and outs and all(hasattr(j, "score") for j in judges):
+                # nothing passed: the candidate whose twin outcome comes closest to the goal, not candidate 0
+                sc = [float(np.mean([judges[i].score(o) for o in outs if o.candidate == i] or [-1e9]))
+                      for i in range(len(cands))]
+                chosen = int(np.argmax(sc))
+                self.vstats["best_outcome"] = self.vstats.get("best_outcome", 0) + 1
+        self.last_verified = {"idx": chosen, "passes": passes, "outcomes": outs, "none_ok": none_ok and max(passes) == 0,
                               "actions": acts[0 if chosen is None else chosen], "kind": kind, "label": label}
         if self.on_verified is not None:
             self.on_verified(self.last_verified)
@@ -1398,6 +1468,22 @@ class Skills:
         before = self._at_rest(exclude=held)
         idx, passes = self.verify_choose([{c.arm: c.plan.compile()[0]} for c in cands],
                                          [self.judge_pick(c, before) for c in cands], held, kind="pick", label=job.label)
+        if (self.last_verified or {}).get("none_ok") and self.widen_on_none:
+            # the twin rejects every grasp: widen to the planner's next candidates before running the best outcome
+            arm0 = cands[0].arm
+            more = self.plan_pick(job.label, arm0, job.method, q_start={arm0: self.ex.q[arm0]}, return_all=True,
+                                  keep=2 * self.n_cands, **job.pick_kw)
+            more = more[len(cands):2 * self.n_cands] if isinstance(more, list) else []
+            if more:
+                self.vstats["widened"] = self.vstats.get("widened", 0) + 1
+                first = (idx, passes, cands)
+                idx2, passes2 = self.verify_choose([{c.arm: c.plan.compile()[0]} for c in more],
+                                                   [self.judge_pick(c, before) for c in more], held, kind="pick",
+                                                   label=job.label)
+                if not (self.last_verified or {}).get("none_ok"):
+                    idx, passes, cands = idx2, passes2, more
+                else:
+                    idx, passes, cands = first
         pp = cands[0 if idx is None else idx]
         self.log(f"[verify] pick {job.label}: passes {passes} -> candidate {idx}")
         b = self.world.obj(job.label).pos.copy()
@@ -1428,34 +1514,61 @@ class Skills:
                 ref = next((l for l in ign if l in self.world.objects), None)
                 self._refine_hover(ref, job.arm, "place", self._place_rehover(job.arm, lambda: job.target(self)))
                 T = job.target(self)                 # from the refreshed (refined) world
-        variants = []
-        for kw in ({}, {"pre_h": 0.04, "descend_rad": 0.03}, {"release_gap": 0.006, "settle": 3}):
-            pk = dict(job.place_kw)
-            pk.update(kw)
-            r = self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, return_all=True, **pk)
-            if isinstance(r, list):
-                variants.extend(r[:2])
-        if not variants:
-            return self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw), None
-        variants = variants[:self.n_cands]
-        if nxt_pick is None:
-            self._park_if_blocking(variants[0].plan)
-        moving = {nxt_pick.label} if nxt_pick is not None else set()
-        before = self._at_rest(exclude=set(held_other) | {job.label})
-        cands, judges = [], []
         other = "right" if job.arm == "left" else "left"
-        for pl in variants:
-            c = {pl.arm: pl.plan.compile()[0]}
-            jp = self.judge_place(pl, before, job.tol_xy, job.tol_tilt, job.tol_z, moving)
-            if nxt_pick is not None and self.clear_of(pl.plan, nxt_pick.plan):
-                c[other] = nxt_pick.plan.compile()[0]
-                jk = self.judge_pick(nxt_pick, before, moving={job.label})
-                judges.append(lambda o, jp=jp, jk=jk: jp(o) and jk(o))
-            else:
-                judges.append(jp)
-            cands.append(c)
-        idx, passes = self.verify_choose(cands, judges, held=tuple({job.label, *held_other}), kind="place",
-                                         label=job.label)
+
+        def attempt(T_, kws):
+            """Plan the place variants for target ``T_`` and roll them in the twin -> (idx, passes, variants, cands)."""
+            variants = []
+            for kw in kws:
+                pk = dict(job.place_kw)
+                pk.update(kw)
+                r = self.plan_place(job.arm, T_, yaw_sym=job.yaw_sym, ignore=ign, return_all=True, **pk)
+                if isinstance(r, list):
+                    variants.extend(r[:2])
+            if not variants:
+                return None
+            variants = variants[:self.n_cands]
+            if nxt_pick is None:
+                self._park_if_blocking(variants[0].plan)
+            moving = {nxt_pick.label} if nxt_pick is not None else set()
+            before = self._at_rest(exclude=set(held_other) | {job.label})
+            cands, judges = [], []
+            for pl in variants:
+                c = {pl.arm: pl.plan.compile()[0]}
+                jp = self.judge_place(pl, before, job.tol_xy, job.tol_tilt, job.tol_z, moving)
+                if nxt_pick is not None and self.clear_of(pl.plan, nxt_pick.plan):
+                    c[other] = nxt_pick.plan.compile()[0]
+                    jk = self.judge_pick(nxt_pick, before, moving={job.label})
+                    both = (lambda o, jp=jp, jk=jk: jp(o) and jk(o))
+                    both.score = jp.score
+                    judges.append(both)
+                else:
+                    judges.append(jp)
+                cands.append(c)
+            idx, passes = self.verify_choose(cands, judges, held=tuple({job.label, *held_other}), kind="place",
+                                             label=job.label)
+            return idx, passes, variants, cands
+
+        res = attempt(T, ({}, {"pre_h": 0.04, "descend_rad": 0.03}, {"release_gap": 0.006, "settle": 3}))
+        if res is None:
+            return self.plan_place(job.arm, T, yaw_sym=job.yaw_sym, ignore=ign, **job.place_kw), None
+        if (self.last_verified or {}).get("none_ok") and self.widen_on_none:
+            # the twin rejects every candidate: (1) widen the search, (2) look at the support again and re-plan,
+            # (3) only then run the best outcome of the first round (verify_choose already chose it)
+            self.vstats["widened"] = self.vstats.get("widened", 0) + 1
+            r2 = attempt(T, ({"pre_h": 0.06}, {"release_gap": 0.010, "settle": 4}, {"pre_h": 0.05, "descend_rad": 0.02}))
+            if r2 is not None and not (self.last_verified or {}).get("none_ok"):
+                res = r2
+            elif self.refine is not None:
+                ref = next((l for l in ign if l in self.world.objects), None)
+                if ref is not None:
+                    self._refine(ref, job.arm, "place")
+                    T2 = job.target(self)
+                    r3 = attempt(T2, ({}, {"pre_h": 0.04, "descend_rad": 0.03}, {"release_gap": 0.006, "settle": 3}))
+                    if r3 is not None and not (self.last_verified or {}).get("none_ok"):
+                        res, T = r3, T2
+                        self.vstats["relook_ok"] = self.vstats.get("relook_ok", 0) + 1
+        idx, passes, variants, cands = res
         i = 0 if idx is None else idx
         pl, c = variants[i], cands[i]
         self.log(f"[verify] place {job.label}: passes {passes} -> candidate {idx}")

@@ -39,7 +39,7 @@ import threading
 import time
 from pathlib import Path
 
-VERSION = "j1-adapter-1"
+VERSION = "j1-adapter-2"  # 2: held_look jaw-opening evidence + absence cap; refine stack guards
 ROOT = Path(__file__).resolve().parents[2]  # the checkout
 _LOCK = threading.Lock()
 _PROC = None
@@ -176,8 +176,10 @@ def perceive(frames, calib, flange, grip_cmd, instruction, want=None, **kw) -> d
 
 
 def held_look(frames, calib, flange, grip_cmd, **kw) -> dict:
-    """Is an object between the fingers? {left|right: {held, confidence, fg_frac}, held, confidence} for the
-    arm(s) whose gripper is commanded closed, from the wrist image alone."""
+    """Is an object between the fingers? {left|right: {held, confidence, evidence, opening, fg_frac, dark_risk}, held,
+    confidence} for the arm(s) whose gripper is commanded closed, from the wrist image alone. ``evidence``:
+    "opening" (jaw opening measured from the finger silhouettes vs the command), "colour" (object colour where the
+    fingertips would be), "absent" (nothing found there: weak, confidence capped)."""
     frames = _abs_frames(frames)
     if os.environ.get("J1_INPROC") == "1":
         return _held_look_impl(frames, calib, flange, grip_cmd, **kw)
@@ -672,12 +674,86 @@ HELD_DARK_L = 70  # OpenCV Lab L (0..255): the X5 finger pads render near-black 
 HELD_PAD_CHROMA = 12  # and grey (Lab chroma); a dark blue / red T is dark but saturated
 
 
+HELD_OPEN_MARGIN = 0.1  # measured opening above the commanded one (normalised 0..1; 0.1 = 5.4 mm per finger): blocked
+HELD_CLOSED_FLOOR = 0.185  # commands at or below this all put the finger joints at their closed limit
+HELD_ABSENCE_CAP = 0.3  # confidence cap of a not-held verdict that rests on "object not found" on a dark region
+
+
+def measure_opening(cam, arm: str, q6, image: np.ndarray, meshes=None, model=None) -> dict | None:
+    """The gripper opening the wrist image shows (normalised 0..1), from the finger silhouettes: for each candidate
+    opening, the share of dark pixels inside the rendered fingers minus the share in a thin band along their OUTER
+    sides (the gap between the fingers excluded, so a dark object held there does not count against). The strict
+    observation has only the commanded opening; a jaw stopped by an object reads wider than commanded."""
+    import cv2
+    import numpy as np
+
+    from .render import robot_link_meshes, silhouette
+    from .robot_model import X5Model
+
+    model = model or X5Model.default()
+    meshes = meshes or robot_link_meshes()
+    if "link7" not in meshes or "link8" not in meshes:
+        return None
+    L = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)[..., 0]
+    dark = L < HELD_DARK_L
+    k5 = np.ones((11, 11), np.uint8)
+    scores = []
+    for o in np.linspace(0.0, 1.0, 21):
+        P = model.fk_world(arm, q6, float(o))
+        F = np.zeros((cam.h, cam.w), np.uint8)
+        for ln in ("link7", "link8"):
+            V, Fc = meshes[ln]
+            silhouette(cam, V @ P[ln][:3, :3].T + P[ln][:3, 3], Fc, out=F)
+        if F.sum() < 200:
+            return None
+        pts = np.argwhere(F > 0)[:, ::-1].astype(np.int32)
+        hull = np.zeros_like(F)
+        cv2.fillConvexPoly(hull, cv2.convexHull(pts), 1)
+        band = (cv2.dilate(F, k5) > 0) & (F == 0) & (hull == 0)
+        if band.sum() < 50:
+            return None
+        sc = float(dark[F > 0].mean() - dark[band].mean())
+        scores.append((sc, float(o)))
+    best = max(scores)
+    return {"opening": best[1], "score": round(best[0], 3), "scores": [round(s_, 3) for s_, _ in scores]}
+
+
+def held_from_opening(opening: float, cmd: float, held_px: bool, dark_like: bool) -> tuple[bool, float]:
+    """Verdict from the measured jaw opening (primary evidence) vs the commanded one; ``held_px`` is the colour test.
+    A jaw stopped by an object reads wider than commanded. Commands at or below ``HELD_CLOSED_FLOOR`` all put the
+    finger joints at their closed limit (gripper_scale [-0.01, 0.044] m): an empty closed jaw measures 0.15-0.2
+    whatever was commanded. 5.1 stack: a dark block held 77 mm up read as "pads" (not held, confidence 1.0) by the
+    colour test alone; its jaws measured 0.55 against a command of 0.30."""
+    gap = float(opening) - max(float(cmd), HELD_CLOSED_FLOOR)
+    held = bool(gap > HELD_OPEN_MARGIN)
+    agree = held == bool(held_px)
+    conf = min(1.0, abs(gap - HELD_OPEN_MARGIN) / 0.2)
+    if not agree and abs(gap - HELD_OPEN_MARGIN) < 0.1:
+        conf = min(conf, 0.6)  # the two tests disagree near the opening threshold
+    if not held and dark_like and not agree:
+        conf = min(conf, 0.4)  # "jaws at the command" but the colour test sees an object on a dark region
+    return held, round(conf, 3)
+
+
+def held_from_colour(frac: float, dark_like: bool) -> tuple[bool, float, str]:
+    """Fallback verdict when the fingers cannot be measured: share of non-pad pixels where the fingertips would be
+    on an empty grasp. "Nothing found between the fingers" is absence evidence, weaker than "the jaws visibly
+    empty": a dark object reads as pads, so a not-held verdict on a dark region is capped at 0.3."""
+    held = bool(frac > 0.5)
+    conf = min(1.0, abs(frac - 0.5) / 0.4)
+    if not held and dark_like:
+        conf = min(conf, HELD_ABSENCE_CAP)
+    return held, round(conf, 3), ("colour" if held else "absent")
+
+
 def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, **_ignored) -> dict:
-    """Object between the fingers, from the wrist image alone (strict tier: no finger measurement). Where the
-    fingertips would be if the jaws had closed on nothing (FK at gripper 0, outer 3 cm of both fingers,
-    projected into the wrist camera), the image shows the dark finger pads when the grasp is empty and the
-    object when the jaws stopped on it. held when most of that region is not pad-dark. A dark object
-    (black block) reads as empty: confidence is low near the threshold, and ``dark_risk`` flags it."""
+    """Object between the fingers, from the wrist image alone (the strict observation has only the commanded
+    opening). Primary evidence: the jaw opening measured from the finger silhouettes (``measure_opening``) vs the
+    commanded one (``held_from_opening``): a jaw stopped by an object reads wider than commanded. Secondary: where
+    the fingertips would be if the jaws had closed on nothing (FK at gripper 0, outer 3 cm of both fingers), the
+    image shows the dark finger pads when the grasp is empty. Without a measurement the colour test decides alone
+    (``held_from_colour``) and a not-held verdict there is absence evidence, capped. Per arm: held, confidence,
+    evidence ("opening" | "colour" | "absent"), opening {measured, commanded, score} | None, fg_frac, dark_risk."""
     import cv2
     import numpy as np
 
@@ -720,11 +796,19 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
         Lc, chroma = lab[:, 0], np.hypot(lab[:, 1] - 128, lab[:, 2] - 128)
         pad = (Lc < HELD_DARK_L) & (chroma < HELD_PAD_CHROMA)  # dark and grey: the finger pads
         frac = float((~pad).mean())
-        held = frac > 0.5
-        conf = min(1.0, abs(frac - 0.5) / 0.4)
-        dark_risk = bool(not held and np.median(Lc) > 0.5 * HELD_DARK_L)  # a black object reads as pads
-        out[arm] = {"held": held, "confidence": round(min(conf, 0.3) if dark_risk else conf, 3), "fg_frac": round(frac, 3),
-                    "region_px": int(reg.sum()), "dark_risk": dark_risk}
+        held_px = frac > 0.5
+        dark_like = bool(np.median(Lc) < HELD_DARK_L)  # the fingertip region is dark: pads OR a dark object
+        meas = measure_opening(cam, arm, state[f"{arm}_arm_joint_state"], images[c], meshes, model)
+        base = {"fg_frac": round(frac, 3), "region_px": int(reg.sum())}
+        if meas is not None:
+            held, conf = held_from_opening(meas["opening"], g, held_px, dark_like)
+            out[arm] = {"held": held, "confidence": conf, "evidence": "opening",
+                        "opening": {"measured": meas["opening"], "commanded": round(g, 3), "score": meas["score"]},
+                        **base, "dark_risk": bool(dark_like and not held and conf < 0.5)}
+        else:
+            held, conf, evidence = held_from_colour(frac, dark_like)
+            out[arm] = {"held": held, "confidence": conf, "evidence": evidence, "opening": None, **base,
+                        "dark_risk": bool(dark_like and not held)}
     arms = [v for v in out.values() if v.get("held") is not None]
     res = {**out, "t_ms": round(1000 * (time.time() - t0), 1), "version": VERSION}
     if arms:

@@ -62,6 +62,8 @@ class KinematicBelief:
         self.margin = attach_margin
         self.released: list[str] = []          # labels released since the last ``pop_released``
         self.released_by: dict[str, str] = {}   # label -> arm that released it (last release)
+        self.grasp_z: dict[str, tuple] = {}     # arm -> (TCP z at closing, grasp counter, object pose7 at closing)
+        self._n_grasp = 0
 
     def movable(self):
         return [o for o in self.objects.values() if o.obj_type != "Geometry" and not o.clutter]
@@ -106,6 +108,9 @@ class KinematicBelief:
                 lab = self._object_at(T_tcp[:3, 3])
                 if lab is not None and lab not in [v[0] for v in self.attached.values()]:
                     self.attached[a] = (lab, inv_T(T_tcp) @ self.objects[lab].T)
+                    self._n_grasp += 1
+                    o = self.objects[lab]
+                    self.grasp_z[a] = (float(T_tcp[2, 3]), self._n_grasp, np.r_[o.pos, o.quat].astype(float))
             if g_new > 0.6 and a in self.attached:
                 lab, _ = self.attached.pop(a)
                 self._drop(lab)
@@ -161,6 +166,23 @@ class RuntimeProvider:
         self.max_jump_mm = 150.0                # a re-estimate farther than this from the belief is not believed
         self.post_place_refine = False          # set by the policy (RuntimeConfig.post_place)
         self.watcher = None                     # mode perception: (obs) -> None, may update at-rest objects (watch)
+        self.tracker_on = False                 # mode perception: re-estimates pass perception's episode tracker
+        self.touched: set[str] = set()          # labels the robot moved since their last good reading (tracker)
+        self.held_checker = None                # mode perception: (obs, arm, label) -> {"held": bool|None, ...}
+        self.held_min_lift_m = 0.04
+        self.held_confirm = None                # second, independent held look (agent) required before a drop
+        self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
+        self.actor_window = 12                  # actors_moving compares with the frame this many steps back
+        self._head_hist: list = []              # (step, obs) for actors_moving
+        self.track_reader = None                # (obs) -> record: B1 re-read for moving objects (belt tracking)
+        self.track_every = 4
+        self.track_window = 40
+        self.track_min_speed = 3e-4             # m / step: slower is "at rest"
+        self._tracks: dict = {}                 # label -> [(step, xy)] reads
+        self._track_last = None
+        self.velocity: dict = {}                # label -> np.array([vx, vy]) m / step (fitted)
+        self._fit: dict = {}                    # label -> (step of the fit's origin, xy there)
+        self._held_checked: dict = {}           # arm -> label already checked for the current grasp
         self.post_place_min_mm = 2.0
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
@@ -177,6 +199,8 @@ class RuntimeProvider:
     def init_objects(self, objects: dict[str, ObjectState]) -> None:
         st = self.bridge.observe()["state"]
         self.belief = KinematicBelief(objects, self.kin, st)
+        self.touched = set()
+        self._held_checked = {}
         self.n_seen = self.bridge.n_executed
         self._checkpoint(st)
 
@@ -192,6 +216,13 @@ class RuntimeProvider:
     # ------------------------------------------------------------------ predictions
     def on_verified(self, info: dict) -> None:
         """skills hook: the candidate that is about to run, with its twin outcomes."""
+        if info.get("none_ok"):
+            # the twin rejected every candidate: its prediction of what runs is a failure we do not believe (mode B:
+            # the twin is seeded from our belief, and a wrong belief makes it wrong too); keep the kinematic prediction
+            # and let a measurement (post-place, refine) correct it
+            self.pred = None
+            self.stats["pred_untrusted"] = self.stats.get("pred_untrusted", 0) + 1
+            return
         idx = info.get("idx")
         idx = 0 if idx is None else int(idx)
         nom = next((o for o in info["outcomes"] if o.candidate == idx and o.sample == 0), None)
@@ -205,11 +236,16 @@ class RuntimeProvider:
         allx = self.bridge.executed
         for a in allx[self.n_seen:]:
             self.belief.step(a)
+            self.touched.update(self.belief.held_labels())
         self.n_seen = len(allx)
         self.belief.sync_robot(st)
+        self.touched.update(self.belief.released)
         if self.pred is not None and self.n_seen - self.pred["n_start"] >= self.pred["n_actions"]:
             if self.n_seen - self.pred["n_start"] == self.pred["n_actions"] or self.pred["n_actions"] > 0:
+                before = {l: o.pos.copy() for l, o in self.belief.objects.items()}
                 self.belief.adopt(self.pred["objects"])
+                self.touched.update(l for l, o in self.belief.objects.items()
+                                    if l in before and float(np.linalg.norm(o.pos - before[l])) > 0.004)
                 self.stats["adopted"] += 1
             self.pred = None
 
@@ -238,7 +274,15 @@ class RuntimeProvider:
             r = self.checker.refine(obs, o, others, arm, held) or {}
             ev = {"kind": "post_place", "label": lab, "arm": arm, "step": self.bridge.steps_used,
                   **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "why")}}
-            if r.get("ok") and (r.get("shift_mm") or 0) >= self.post_place_min_mm:
+            if r.get("ok"):
+                self.touched.discard(lab)              # a good reading: the tracker's "last good reading"
+            dz_mm = (abs(float(r["pos"][2]) - float(o.pos[2])) * 1000 if r.get("pos") is not None else 0.0)
+            if r.get("z_dropped_mm") is not None:
+                ev["z_dropped_mm"] = r.get("z_dropped_mm")
+            if r.get("ok") and ((r.get("shift_mm") or 0) >= self.post_place_min_mm or dz_mm >= self.post_place_min_mm
+                                or r.get("z_dropped_mm") is not None):
+                # an xy shift OR a height correction (perception re-fits a released object from its support: a belief
+                # that floated 56 mm high after a no-candidate place comes back down)
                 ev["from"] = np.round(o.pos, 4).tolist()
                 o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
                 ev["to"] = np.round(o.pos, 4).tolist()
@@ -248,6 +292,136 @@ class RuntimeProvider:
             out.append(ev)
         return out
 
+    # ------------------------------------------------------------------ watch reads (scripted actors, belts)
+    def actors_moving(self) -> bool | None:
+        """Did anything but our arms move: the current head frame vs the one ``actor_window`` steps back (a window
+        longer than a scripted arm's pauses, e.g. ~10 steps while its gripper closes, so a pause reads as motion).
+        None when this provider cannot tell (no reader, too little of the view visible); skills then hold a fixed
+        time. Call once per env step while waiting."""
+        if self.motion_reader is None:
+            return None
+        obs = self.bridge.observe()
+        step = int(obs["steps_used"])
+        self._head_hist = [(s_, o) for s_, o in self._head_hist if s_ >= step - self.actor_window] + [(step, obs)]
+        ref = self._head_hist[0]
+        if ref[0] >= step:
+            return True                                 # nothing to compare with yet: not at rest
+        try:
+            r = self.motion_reader(ref[1], obs) or {}
+        except Exception as e:  # noqa: BLE001 (an optional read)
+            self.events.append({"kind": "motion_error", "note": f"{type(e).__name__}: {str(e)[:120]}"})
+            return None
+        self.stats["motion_reads"] = self.stats.get("motion_reads", 0) + 1
+        return r.get("moving")
+
+    def belt_velocity(self) -> np.ndarray:
+        """Median fitted velocity (m / step, world xy) of the objects tracked as moving; zeros when none."""
+        v = [vv for vv in self.velocity.values() if float(np.linalg.norm(vv)) > self.track_min_speed]
+        return np.median(np.array(v), axis=0) if v else np.zeros(2)
+
+    def _track(self, obs: dict) -> None:
+        """Belt tracking: a B1 re-read every ``track_every`` steps; reads are matched to belief objects by category and
+        predicted position; per object a line is fitted over the last ``track_window`` steps; a moving, not-held object's
+        belief pose is the fit at the current step (no read latency: the sim waits for the read)."""
+        step = int(obs["steps_used"])
+        if self._track_last is not None and step - self._track_last < self.track_every:
+            self._predict(step)
+            return
+        self._track_last = step
+        try:
+            rec = self.track_reader(obs)
+        except Exception as e:  # noqa: BLE001
+            self.events.append({"kind": "track_error", "note": f"{type(e).__name__}: {str(e)[:120]}"})
+            return
+        est = objects_from_record(rec, self.assets, step)
+        held = set(self.belief.held_labels())
+        from .estimate import _assign
+        for cat in {o.category for o in est.values()}:
+            bl = [o for o in self.belief.movable() if o.category == cat and o.label not in held]
+            el = [e for e in est.values() if e.category == cat]
+            if not el:
+                continue
+            if bl:
+                pred = [self._predicted_xy(o, step) for o in bl]
+                C = np.array([[float(np.linalg.norm(e.pos[:2] - p)) for e in el] for p in pred])
+                pairs = [(i, j) for i, j in _assign(C) if C[i, j] < 0.08]
+            else:
+                pairs = []
+            used = {j for _, j in pairs}
+            for i, j in pairs:
+                self._tracks.setdefault(bl[i].label, []).append((step, el[j].pos[:2].copy()))
+            for j, e in enumerate(el):                  # an object that came into view (e.g. onto the belt)
+                if j not in used and e.label not in self.belief.objects and e.confidence >= 0.5:
+                    self.belief.objects[e.label] = e
+                    self._tracks[e.label] = [(step, e.pos[:2].copy())]
+                    self.events.append({"kind": "track_new", "label": e.label, "step": step})
+        for lab, tr in self._tracks.items():
+            tr[:] = [(s_, p) for s_, p in tr if s_ >= step - self.track_window]
+            if len(tr) >= 3 and tr[-1][0] - tr[0][0] >= 8:
+                t = np.array([s_ for s_, _ in tr], float)
+                P = np.array([p for _, p in tr])
+                A = np.c_[t - t[-1], np.ones(len(t))]
+                coef, *_ = np.linalg.lstsq(A, P, rcond=None)
+                self.velocity[lab] = coef[0]
+                self._fit[lab] = (float(t[-1]), coef[1])
+        self._predict(step)
+        self.stats["track_reads"] = self.stats.get("track_reads", 0) + 1
+
+    def _predicted_xy(self, o, step: int) -> np.ndarray:
+        f = self._fit.get(o.label)
+        v = self.velocity.get(o.label)
+        if f is None or v is None:
+            return o.pos[:2].copy()
+        return f[1] + v * (step - f[0])
+
+    def _predict(self, step: int) -> None:
+        held = set(self.belief.held_labels())
+        for lab, v in self.velocity.items():
+            o = self.belief.objects.get(lab)
+            if o is None or lab in held or float(np.linalg.norm(v)) <= self.track_min_speed:
+                continue
+            o.pos = np.r_[self._predicted_xy(o, step), o.pos[2]]
+            o.source = "tracked"
+
+    def _held_check(self, obs: dict) -> None:
+        """Once per grasp, when the arm holding ``label`` has lifted ``held_min_lift_m`` above the closing pose:
+        perception's held_look on that arm's wrist frame. A confident "not held" takes the object out of the jaws in
+        the belief: it lies where it was grasped (dropped onto its support), so the pick's own check sees no rise."""
+        for arm, (lab, _T) in list(self.belief.attached.items()):
+            g = self.belief.grasp_z.get(arm)
+            if g is None or self._held_checked.get(arm) == (lab, g[1]):
+                continue
+            z = float(self.kin.tcp(arm, self.belief.q[arm])[2, 3])
+            if z - g[0] < self.held_min_lift_m:
+                continue
+            self._held_checked[arm] = (lab, g[1])
+            r = self.held_checker(obs, arm, lab) or {}
+            ev = {"kind": "held_look", "arm": arm, "label": lab, "step": self.bridge.steps_used,
+                  **{k: r.get(k) for k in ("held", "confidence", "source", "calls", "dark_risk", "error", "evidence",
+                                           "opening")}}
+            self.events.append(ev)
+            if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5 and self.held_confirm is not None:
+                # never take an object out of the jaws on one vision negative (5.1: B1 said "not held" at confidence
+                # 1.0 on blocks lifted 87 mm in the jaws; skills then opened the jaws and dropped them): a second,
+                # independent look must agree, else carry on and let the place / post-place checks decide
+                r2 = self.held_confirm(obs, arm, lab) or {}
+                ev["confirm"] = {k: r2.get(k) for k in ("held", "confidence", "source", "calls")}
+                if not (r2.get("held") is False and float(r2.get("confidence") or 0) >= 0.5):
+                    ev["kept"] = True
+                    self.stats["held_look_overruled"] = self.stats.get("held_look_overruled", 0) + 1
+                    continue
+            elif r.get("held") is False:
+                ev["kept"] = True
+                continue
+            if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5:
+                self.belief.attached.pop(arm)
+                o = self.belief.objects[lab]
+                o.pos, o.quat = g[2][:3].copy(), g[2][3:].copy()
+                self.belief._drop(lab)
+                self.touched.add(lab)
+                ev["dropped"] = True
+                self.stats["held_look_empty"] = self.stats.get("held_look_empty", 0) + 1
+
     def resync(self, obs: dict, released: list[str] | None = None) -> dict:
         """Post-place wrist refine of what was just released, then render-compare the predicted state against
         the frames; on a confirmed divergence re-estimate and raise."""
@@ -255,7 +429,9 @@ class RuntimeProvider:
         measured = set()
         if released and self.post_place_refine:
             measured = {e["label"] for e in self.post_place(obs, released) if e.get("ok")}
-        objs = [o for o in self.belief.movable() if o.label not in measured]   # the wrist just measured these
+        # the wrist just measured these; the just-released ones are judged by their post-place check (and the place
+        # check), never "fixed" from a low head check (5.1: a perfect 3-stack re-estimated from iou 0.09-0.32)
+        objs = [o for o in self.belief.movable() if o.label not in measured and o.label not in set(released or ())]
         chk = self.checker.check(obs, objs)
         bad = {}
         for lab, c in chk.items():
@@ -277,15 +453,26 @@ class RuntimeProvider:
         # labels of same-category objects are interchangeable in a fresh estimate: match by position
         est = self._match_by_position(est)
         upd = {}
-        for lab in bad:
-            e = est.get(lab)
-            if e is not None and e.confidence >= 0.5 and lab not in self.belief.held_labels():
-                o = self.belief.objects[lab]
-                d_mm = float(np.linalg.norm(e.center_w[:2] - o.center_w[:2])) * 1000
-                if d_mm < self.confirm_mm or d_mm > self.max_jump_mm:
-                    continue
-                upd[lab] = {"from": np.round(o.pos, 4).tolist(), "to": np.round(e.pos, 4).tolist(), "mm": round(d_mm, 1)}
-                o.pos, o.quat, o.source, o.confidence = e.pos.copy(), e.quat.copy(), "perception", e.confidence
+        cand = {lab: est[lab] for lab in bad if est.get(lab) is not None and est[lab].confidence >= 0.5
+                and lab not in self.belief.held_labels()}
+        if self.tracker_on and cand:
+            from .track import filter_readings
+            ok, tev = filter_readings(self.belief.objects, cand, self.touched)
+            kept = sorted(lab for lab, a in ok.items() if not a)
+            if kept:
+                self.events.append({"kind": "tracker_kept", "step": self.bridge.steps_used, "labels": kept,
+                                    "touched": sorted(self.touched & set(cand)),
+                                    "events": [e for e in tev if e.get("event") not in ("init",)][:8]})
+                self.stats["tracker_kept"] = self.stats.get("tracker_kept", 0) + len(kept)
+            cand = {lab: e for lab, e in cand.items() if ok.get(lab)}
+        for lab, e in cand.items():
+            o = self.belief.objects[lab]
+            d_mm = float(np.linalg.norm(e.center_w[:2] - o.center_w[:2])) * 1000
+            if d_mm < self.confirm_mm or d_mm > self.max_jump_mm:
+                continue
+            upd[lab] = {"from": np.round(o.pos, 4).tolist(), "to": np.round(e.pos, 4).tolist(), "mm": round(d_mm, 1)}
+            o.pos, o.quat, o.source, o.confidence = e.pos.copy(), e.quat.copy(), "perception", e.confidence
+            self.touched.discard(lab)
         ev["updated"] = upd
         if not upd:
             # the frames disagree but the re-estimate does not place the object elsewhere: keep the belief and
@@ -338,6 +525,10 @@ class RuntimeProvider:
                 if l in self.belief.objects and l not in self.belief.held_labels():
                     self.belief.objects[l].pos, self.belief.objects[l].quat = o.pos.copy(), o.quat.copy()
         else:
+            if self.held_checker is not None:
+                self._held_check(obs)
+            if self.track_reader is not None:
+                self._track(obs)
             if released and self.checker is not None and not self.belief.held_labels():
                 self.resync(obs, released)
             if self.watcher is not None and not self.belief.held_labels():

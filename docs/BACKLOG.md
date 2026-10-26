@@ -6,6 +6,25 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **refine() reports ok for a wrong fit, 20-63 mm off.** 10 of 291 cases in the D0 wrist validation
+  (`dojo/perception/val_refine.py`, priors ±20 mm, `WITH_OTHERS=1`), IoU 0.62-0.86, mostly an identical
+  pillar / block nearby:
+  - build_tower 100003 f1 block1, 100004 L1 block1, 100007 L1 block1, 100009 L1 block2, 100018 f1 + f2 block1,
+    100022 L1 block6;
+  - stack_blocks 100002 f2 block_2, 100015 L1 block_1, 100017 f2 block_2.
+  
+  Candidate fix: score the prior's own position against the best fit (prefer the prior unless the fit gains
+  clearly), or require the neighbour guard against all same-shape objects of the belief. This is the next tower risk
+  after the scan.
+- [ ] **Runtime post-place drops z-only corrections.** `belief.post_place` adopts a refine only when its xy
+  `shift_mm` >= `post_place_min_mm` (2 mm). A refine that lowered a floating belief onto its support
+  (`z_dropped_mm`, 5.1 stack 100007 s142: 56 mm) with < 2 mm xy shift is ignored. Adopt when `z_dropped_mm` is
+  set (or use a 3-D shift) (journal/2026-10-26-held-look-stack-refine.md).
+- [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
+  objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
+  cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
+  x = -0.43 that no reader found in D0 100024. A perception-side `look_plan` request
+  (docs/experiments/2026-10-25-scan-pose.md).
 - [ ] **Decision head, first light** (`configs/sim_waffle_yaw_luna_dec.yaml`, journal/2026-10-07-luna-decisions.md):
   (1) ~~image format probe~~ done: `parts` is seen, `field` is not (journal/2026-10-07-luna-decisions.md);
   drop `field` or make its live test expect blindness; (2) one mock episode
@@ -124,9 +143,43 @@
 - [ ] **RoboDojo: `episode.end_on_fail: false` A/B** — the model declares FAIL with 7–25 env steps left (enough for one more grasp cycle); see [tool-direction](experiments/2026-10-05-robodojo-tool-direction.md).
 - [ ] **RoboDojo: the env-step budget binds** (pilot: every failure ran out of `general_pickup`'s 200 steps during re-grasps; [report](experiments/2026-10-04-robodojo-pilot.md)). Levers: `max_chunk > 1`, coarser approach moves, `reasoning_effort: low` for latency.
 - [ ] **dojo runtime: one perception vocabulary per instruction, including `_random`.** `stack_blocks` and `stack_blocks_random` (and the other G tasks) share the instruction, so the instruction-matched candidate set must be the union of the std and held-out instances (`dojo/runtime/supervisor.py` VOCABULARIES); today it is the std set only.
-- [ ] **dojo runtime: mode perception needs catalogue assets for every task the planner serves.** compute3's perception catalogue holds the D0 tasks only; swap_blocks / press_by_number (mats, buttons, cards) cannot run in mode perception until their assets are converted.
+- [x] ~~**dojo runtime: mode perception needs catalogue assets for every task the planner serves.**~~
+  `python -m dojo.runtime.catalog_check [--sync --sources <skills catalogues> --assets <RoboDojo Assets>]` reports
+  and fills the gaps: it copies from the skills catalogues (same builder format), else builds, then runs annotate /
+  index / precompute. compute3 (2026-10-25): 314 -> 407 index entries, existing entries unchanged; every table
+  vocabulary is complete except sweep_blocks' `Rigid/broom_shovel/00001`, `00004`, which RoboDojo's Assets do not ship
+  (only 00000). A test checks an installed catalogue when present.
+- [ ] **isr-lab's perception catalogue**: Bridge-isr merged make_toast's assets there. The xylophone / mallet set,
+  the mugs + cup_holder set and the other 75 assets added on compute3 are probably still missing: run
+  `catalog_check --sync` there before mode-B runs of those tasks.
 - [x] ~~**dojo bridge: the official-client path needs robot-harness's `joint_steps` verb**~~: robot-harness PR #9 (J2 server + shim `harness_strict_j2` + `bin/robot-start-j2`); verified offline by `tests/dojo/test_bridge_rh.py`. The Isaac path runs first on our GPUs.
 - [x] ~~**dojo bridge: robot-harness's launchers hard-code isr-lab paths**~~: the J2 starter / launcher read `HARNESS_ENV` (robot-harness PR #9); BRIDGE-RUNBOOK §2.
+- [x] ~~**dojo bridge: spawn the twin after the runtime's vocabulary choice.**~~ The driver hands the policy a lazy
+  `_twin_factory`; `RuntimePolicy.twin(scene)` starts the twin for the scene the episode chose (`bridge.json` →
+  `twin_scene`, `twin_start_s`).
+- [ ] **dojo skills: twin verification for the library skills that run their own picks / places.** `verify_choose`
+  (k candidates rolled in the twin, the first robust one runs) covers only `run_jobs` (stack, tower, swap, put_into).
+  insert_into, place_oriented, slots_and_press, hang_on_hooks, fill_container, place_in_slots and stack_on_pegs plan
+  and execute their primitives unverified, even with `verify=bundle` (5.1 plug_in_charger s0L9: 0 verified segments).
+  - Size of the gap, from the latest G3 run per task on compute3 (`~/dojo-data/skills*/g3`, 2026-10-25), in those
+    tasks' failed episodes:
+    - physical failures (slip / place miss / loose / fell) 41;
+    - checker disagreements 6 (make_toast);
+    - planning failures 20, which verification cannot fix (it chooses among feasible candidates).
+  - Per task (physical / failed / n): hang_mugs 8/9/10, hang_rand 6/10/10, organize 7/8/8, fill_pen 4/5/5,
+    store_tools 3/5/5, deposit_coin 3/4/5, laptop 3/10/10, make_toast 2/7/25 (+2 checker), toast_rand 2/7/16
+    (+4 checker), stacking 2/5/5, insert_tubes 1/4/5.
+  - Upper bound on what a k-candidate twin check could catch: 47 of ~120 episodes. The realistic share is lower: the
+    twin must reproduce the failure and an alternative candidate must pass. In run_jobs tasks verify rescued about 1
+    in 10 episodes (mode A stack: 100009's slip), so expect roughly 10-20 episodes.
+  - Effort: about 1 day on the skills side (route the shared pick / place / transfer primitives' candidate lists
+    through `verify_choose`, keep the twin chain), no runtime change; then a G3 A/B per task.
+  - Idea, not needed for plug (Skills-5: in-jaw drift 0.0-0.4 mm): an in-hand transform from the twin's nominal
+    replay of an unverified grasp.
+- [ ] **dojo runtime: fixture-aware place refine.** Under perception cb5c3a4 the place refines on the tower's base board
+  are all "not ok" (the static fixture keeps its prior), and each place still spends 8-10 steps on 2 re-hovers (~50
+  steps per 8-piece tower episode, journal 2026-10-25-dojo-integ2 §5). A stationary support whose prior perception
+  kept + a not-ok place refine -> accept the prior, no re-hover.
 - [ ] **dojo bridge: two instruction routers for perception.** `j1_adapter.infer_task` (the server's `perceive` route) knows 6 tasks; the runtime's `supervisor.perception_vocabulary` knows more. One function should serve both.
 - [ ] **dojo runtime: the twin service is started per task by the launcher** (`--task`). A submission must start / load it from the instruction-matched scene; the policy already refuses to verify when the twin's task differs from that scene. Done for the official-client path: `dojo.bridge.twin` spawns it for the instruction's scene (`perception_vocabulary`); the proxy launcher still takes `--task`.
 - [x] ~~**dojo skills: the perception catalogue lacks the skills2 tasks' meshes**~~: it has them. The files are md5-identical to `skills2/catalog`, and G3 has read perception's catalogue all along. The skills3 tasks' new assets (coin, coin stand, piggy bank, stacking toy, toaster, bread, bread shelf) are in `compute3:~/dojo-data/skills3/catalog` (`DOJO_CATALOG`); perception should add them.
@@ -135,8 +188,28 @@
 - [ ] **dojo skills: insert_key's handover giver.** The key's round bow (a cylinder collider) lifts reliably but turns about the closing axis on the carry to the handover pose. The 5 mm shaft slips at the lift. Candidates: hand the key over with less turn (an intermediate orientation), or have the giver hold the bow while the taker takes the shaft's flat faces.
 - [ ] **dojo skills: fill_pen_holder, the collider's opening is not the visual cup's** (parked at 0.08). The holder's collider is a convex decomposition of a 453-vertex `/World/collision` mesh. Pens centred within 3 mm of the axis jam about 6 mm into the opening and push the holder across the table, while the fit (visual mesh, 30 mm inner radius) says they clear. Fit against the collision mesh, or the decomposition's hulls, and re-run.
 - [ ] **dojo skills: parked tasks** (lead, 2026-10-25). insert_key: lift + return banks 15; the in-air handover lost the key on the carry 0/31. store_tools: keep v2 (0.20); the pliers slip, and the hammer and wrench are lost on the carry. fill_pen: see above. Revisit after the Generalization tasks.
-- [ ] **dojo: make_toast_random's slot checks cannot pass in our twin.** RoboDojo's `get_functional_points` returns toaster 00002/00004's frames untransformed (object frame, z ≈ -0.03). Those assets lack ArticulationRootAPI, and `Articulation.get_link_pose` reads the USD xform. Skills place physically; score rand with `scripts/skills/phys_slots.py`. Behaviour in the official env is unknown upstream. Evidence: `g3 checks` (journal 2026-10-25-dojo-skills4 §3).
+- [x] ~~**dojo: make_toast_random's slot checks cannot pass in our twin.**~~ Resolved: the official rendered kit writes physics to USD (live link poses), and the physics-only runner now reads link poses from physics by default (`usd_sync_links`, journal 2026-10-25-usd-sync-default). RoboDojo's `get_functional_points` returns toaster 00002/00004's frames untransformed (object frame, z ≈ -0.03). Those assets lack ArticulationRootAPI, and `Articulation.get_link_pose` reads the USD xform. Skills place physically; score rand with `scripts/skills/phys_slots.py`. Behaviour in the official env is unknown upstream. Evidence: `g3 checks` (journal 2026-10-25-dojo-skills4 §3).
 - [ ] **dojo skills: store_laptop's laptop half (80) unexplained.** In our twin, the checker's `bottom` frame ends 78 mm above the table for any +y-up laptop, while the rack's bbox is 49 mm tall. The public demo's end pose is upright in the rack. Find what the official checker does differently before building the lid-close + stand skill. Headset half: `hang_on_hooks`.
+- [ ] **dojo runtime: watch reads for observation-driven skills** (skills-6, journal 2026-10-26-dojo-skills6 §6).
+  `play_board_game` and `copy_demonstration` call `provider.watch_read(region, prior)` (perception-R&D's dict shape:
+  `cells` / `container`) and `provider.actors_moving()` while they hold still. `match_and_pick` needs object tracks on
+  the belt. G3 answers all three from GT (`GTProvider`); `RuntimeProvider` has none of them yet. Without
+  `actors_moving` the skills hold a fixed 60 / 110 steps, tuned on our own demos.
+- [ ] **dojo skills: fill_egg_holder, a 0.3 kg egg falls out of the pads while the hand turns it upright** (twin
+  v3-v6: rolled, raised, end-to-end and off-middle grasps, slow carries; one level grasp held and stood its egg in a
+  hole). The holes, the stand-up place, the drop and the lid swing are built (`dojo/skills/holders.py`).
+- [ ] **dojo skills: fill_egg_holder, eggs crowded in the basket have no grasp.** The X5 finger's root block (38 mm
+  thick, 56 mm wide, 40-70 mm above the TCP) meets the basket's rim or the neighbouring egg for every grasp of an egg
+  lying against the basket wall (dev layouts: ~31 of 44 eggs). Eggs on the table and the stand-up drop into the
+  holder's holes work. Next: roll / push an egg off the wall first, or a grasp model that may touch the rim.
+- [ ] **dojo simlab: pick_from_conveyor_by_image's photo board and basket placement is a public guess.** v12 put the
+  basket's 22 cm body inside the conveyor (ejected at load). v13 (skills-6) follows the public PhysicalRSI sampler's
+  `place_fixture` (world xy from the conveyor's root, z from its world bbox top): the basket stands on the belt in front
+  of the left arm, the board at the robot side, 1.02 m up. PhysicalRSI marks that convention "native scene not
+  validated"; check it against the official videos / a rendered episode when one is available. Skills-6's layouts are
+  in `compute3:~/dojo-data/skills6/layouts/pick_from_conveyor_by_image` (simlab's shared copies are still v12).
+- [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
+  25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
 - [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and **fold_clothes** (parked: no cloth state in the skills layer).
 - [x] ~~**dojo skills: deposit_coin.** The coin starts out of the inserting arm's reach in about half the layouts.~~ Rim grasps tilted in the coin's plane reach 12/25 with one arm; the rest go through an in-air rim handover (the giver turns the coin on its side, the taker takes its top rim 8 mm off-centre). The coin is 28.4 mm x 1.9 mm (the collider; `physics.size` in its metadata says 21 x 1 mm). Two grippers can share it this way (journal/2026-10-26-dojo-skills5.md).
 - [ ] **dojo skills: a flat coin can be pinched but not inserted.** Pinched across a diameter with the fingertips 0.6 mm over the table, it lifts and turns on edge (3/3). The hand then points sideways, and the X5's 37 mm finger roots hang 28 mm below the TCP over the bank's back, so the coin stays 7 mm above the slot (table relay 0/7, `DISC_TABLE_RELAY = False`).

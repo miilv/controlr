@@ -160,6 +160,24 @@ class HeldBox:
         return (T[:3, :3] @ c.T).T + T[:3, 3]
 
 
+def link_slabs(lk: dict, thick: float = 0.02, min_pts: int = 50) -> list[tuple[np.ndarray, np.ndarray]]:
+    """A link's sampled points (object frame) as boxes, one per ``thick`` slab along its longest bbox axis."""
+    P = np.asarray(lk.get("points") if lk.get("points") is not None else [], float).reshape(-1, 3)
+    mn0, mx0 = np.asarray(lk["bbox_min"], float), np.asarray(lk["bbox_max"], float)
+    if len(P) < min_pts:
+        return [(mn0, mx0)]
+    k = int(np.argmax(mx0 - mn0))
+    edges = np.arange(mn0[k], mx0[k] + thick, thick)
+    out = []
+    for a, b in zip(edges[:-1], edges[1:]):
+        sel = P[(P[:, k] >= a - 1e-6) & (P[:, k] <= b + 1e-6)]
+        if len(sel):
+            lo, hi = sel.min(0), sel.max(0)
+            lo[k], hi[k] = max(a, mn0[k]), min(b, mx0[k])
+            out.append((lo, hi))
+    return out or [(mn0, mx0)]
+
+
 class Collision:
     """Coarse checks: table clearance for the arm and fingers, gripper/arm/held-object points
     against inflated object OBBs. No self-collision model (X5 IK solutions stay near home)."""
@@ -178,6 +196,10 @@ class Collision:
         # label -> height map of its mesh (``precision.height_map``): a point inside that object's box only collides
         # below its top surface there (a coin bank's rounded back; the box alone blocked the hand over its edge)
         self.heightmaps: dict = {}
+        # articulated objects whose links are modelled as slabs (one box per ~2 cm of the link's long axis) instead of
+        # one box per link: an egg carton's open lid is a 4 cm shell behind the body with a lip on top, its link box
+        # covers the back of the body's holes too
+        self.slab_links: set = set()
 
     def obstacles(self, ignore=()) -> list[tuple[np.ndarray, np.ndarray, np.ndarray, str]]:
         if self.world is None:
@@ -188,12 +210,17 @@ class Collision:
             m = self.margin_of.get(o.label, self.obj_margin)
             links = getattr(o.asset, "links", None)
             if links and len(links) > 1:
-                # an articulated object as one box per link (an open laptop's bbox is mostly air around its lid)
+                # an articulated object as one box per link (an open laptop's bbox is mostly air around its lid);
+                # "label#link" in ``ignore`` drops one link (an egg carton's body while the lid stays an obstacle)
                 R = o.R
-                for lk in links.values():
-                    c = (np.asarray(lk["bbox_min"]) + np.asarray(lk["bbox_max"])) / 2
-                    h = (np.asarray(lk["bbox_max"]) - np.asarray(lk["bbox_min"])) / 2 + m
-                    out.append((R @ c + o.pos, R, h, o.label))
+                for name, lk in links.items():
+                    if f"{o.label}#{name}" in ignore:
+                        continue
+                    for mn, mx in (link_slabs(lk) if o.label in self.slab_links else
+                                   [(np.asarray(lk["bbox_min"]), np.asarray(lk["bbox_max"]))]):
+                        c = (mn + mx) / 2
+                        h = (mx - mn) / 2 + m
+                        out.append((R @ c + o.pos, R, h, o.label))
                 continue
             c, R, h = o.obb(m)
             out.append((c, R, h, o.label))

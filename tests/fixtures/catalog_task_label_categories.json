@@ -1,0 +1,1164 @@
+{
+"align_blocks": {
+"cube0": [
+"cube"
+],
+"cube1": [
+"cube"
+],
+"cube2": [
+"cube"
+],
+"target": [
+"triangular_prism"
+]
+},
+"arrange_largest_number": {
+"geometry0": [
+"cube_cushion"
+],
+"rigid0": [
+"number"
+]
+},
+"arrange_largest_number_random": {
+"geometry0": [
+"cube_cushion"
+],
+"rigid0": [
+"number"
+]
+},
+"build_tower": {
+"block0": [
+"block"
+],
+"block1": [
+"block"
+],
+"block2": [
+"block"
+],
+"block3": [
+"block"
+],
+"block4": [
+"block"
+],
+"block5": [
+"block"
+],
+"block6": [
+"block"
+],
+"block7": [
+"block"
+]
+},
+"classify_objects": {
+"basket0": [
+"basket"
+],
+"basket1": [
+"basket"
+],
+"basket2": [
+"basket"
+],
+"rigid0": [
+"action_camera",
+"garage",
+"pen",
+"toy_car",
+"watch"
+]
+},
+"classify_objects_by_language": {
+"basket0": [
+"basket"
+],
+"basket1": [
+"basket"
+],
+"basket2": [
+"basket"
+],
+"rigid0": [
+"car",
+"chocolate_bar",
+"pepper",
+"watch",
+"wooden_toy"
+]
+},
+"cover_blocks": {
+"blue": [
+"cube"
+],
+"cup0": [
+"cup"
+],
+"cup1": [
+"cup"
+],
+"cup2": [
+"cup"
+],
+"green": [
+"cube"
+],
+"red": [
+"cube"
+]
+},
+"deposit_coin": {
+"coin0": [
+"coin"
+],
+"piggy_bank": [
+"piggy_bank"
+],
+"vertical_coin_stand": [
+"vertical_coin_stand"
+]
+},
+"fasten_screws": {
+"bolt0": [
+"factory_bolt"
+],
+"bolt1": [
+"factory_bolt"
+],
+"bolt2": [
+"factory_bolt"
+],
+"nut0": [
+"factory_nut"
+],
+"nut1": [
+"factory_nut"
+],
+"nut2": [
+"factory_nut"
+]
+},
+"fill_egg_holder": {
+"egg_basket": [
+"egg_basket"
+],
+"egg_holder": [
+"egg_holder"
+],
+"target0": [
+"egg"
+],
+"target1": [
+"egg"
+],
+"target2": [
+"egg"
+],
+"target3": [
+"egg"
+]
+},
+"fill_pen_holder": {
+"pen_holder": [
+"pen_holder"
+],
+"target0": [
+"pen"
+],
+"target1": [
+"pen"
+],
+"target2": [
+"oil_pen"
+],
+"target3": [
+"oil_pen"
+]
+},
+"fold_clothes": {
+"target": [
+"Top_Long"
+]
+},
+"fold_clothes_random": {
+"target": [
+"Top_Long"
+]
+},
+"general_pickup": {
+"target": [
+"bell",
+"bicycle",
+"binoculars",
+"bottle",
+"bottle_opener",
+"bread",
+"cactus",
+"can",
+"car",
+"cassette",
+"chick",
+"chocolate_bag",
+"chocolate_bar",
+"clock",
+"corkscrew",
+"correction_tape",
+"cup",
+"donut",
+"drawing_compass",
+"figurine",
+"frame",
+"garage",
+"glasses",
+"glue",
+"glue_gun",
+"grapes",
+"handled_paint",
+"headphone",
+"helicopter",
+"hoe",
+"jewelry_box",
+"juice_carton",
+"kiwi",
+"lighter",
+"mouse",
+"music_player",
+"nail_clippers",
+"noodles",
+"origami_crane",
+"owl",
+"paint_roller",
+"peeler",
+"pen",
+"pepper",
+"piler",
+"plane",
+"pot",
+"power_bank",
+"prayer_bead",
+"remote",
+"sachet",
+"saw",
+"scan",
+"scissor",
+"seashell",
+"shovel",
+"sickle",
+"speaker",
+"stapler",
+"tape_dispense",
+"tape_roll",
+"teddy_bear",
+"thread",
+"tiara",
+"toy",
+"trophy",
+"usb_multip",
+"waffle",
+"watch",
+"watering_can",
+"whisk",
+"wooden_toy",
+"wrench",
+"yogurt"
+]
+},
+"hang_mugs": {
+"cup_holder": [
+"cup_holder"
+],
+"mug0": [
+"mug"
+],
+"mug1": [
+"mug"
+],
+"mug2": [
+"mug"
+]
+},
+"hang_mugs_random": {
+"cup_holder": [
+"cup_holder"
+],
+"mug0": [
+"mug"
+],
+"mug1": [
+"mug"
+],
+"mug2": [
+"mug"
+]
+},
+"imitate_sorting_sequence": {
+"aim0": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"aim1": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"aim2": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"aim3": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"aim4": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"basket0": [
+"basket"
+],
+"basket1": [
+"basket"
+],
+"t0": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"t1": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"t2": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"t3": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+],
+"t4": [
+"action_camera",
+"garage",
+"phone",
+"toy_car",
+"watch"
+]
+},
+"insert_key": {
+"key": [
+"key"
+],
+"slot": [
+"key_slot"
+]
+},
+"insert_tubes": {
+"slot": [
+"test_tube_slot"
+],
+"tube0": [
+"test_tube"
+],
+"tube1": [
+"test_tube"
+],
+"tube2": [
+"test_tube"
+]
+},
+"make_kong": {
+"mahjong0_0": [
+"mahjong"
+],
+"mahjong0_1": [
+"mahjong"
+],
+"mahjong0_2": [
+"mahjong"
+],
+"mahjong1_0": [
+"mahjong"
+],
+"mahjong1_1": [
+"mahjong"
+],
+"mahjong1_2": [
+"mahjong"
+],
+"mahjong2_0": [
+"mahjong"
+],
+"mahjong2_1": [
+"mahjong"
+],
+"mahjong2_2": [
+"mahjong"
+],
+"mahjong3_0": [
+"mahjong"
+],
+"mahjong3_1": [
+"mahjong"
+],
+"mahjong3_2": [
+"mahjong"
+],
+"mahjong4_0": [
+"mahjong"
+],
+"mahjong4_1": [
+"mahjong"
+],
+"mahjong5_0": [
+"mahjong"
+],
+"mahjong6_0": [
+"mahjong"
+],
+"mahjong7_0": [
+"mahjong"
+],
+"mahjong8_0": [
+"mahjong"
+],
+"mahjong9_0": [
+"mahjong"
+],
+"other0": [
+"mahjong"
+],
+"other1": [
+"mahjong"
+],
+"other2": [
+"mahjong"
+]
+},
+"make_toast": {
+"bread_0": [
+"bread"
+],
+"bread_1": [
+"bread"
+],
+"bread_2": [
+"bread"
+],
+"bread_3": [
+"bread"
+],
+"bread_shelf": [
+"bread_shelf"
+],
+"toaster": [
+"toaster"
+]
+},
+"make_toast_random": {
+"bread_0": [
+"bread"
+],
+"bread_1": [
+"bread"
+],
+"bread_2": [
+"bread"
+],
+"bread_3": [
+"bread"
+],
+"bread_shelf": [
+"bread_shelf"
+],
+"toaster": [
+"toaster"
+]
+},
+"match_and_pick_from_conveyor": {
+"conveyor": [
+"conveyor"
+],
+"other0": [
+"bag",
+"bottle",
+"camera",
+"game_machine",
+"garage",
+"headset",
+"ice_cream",
+"phone",
+"plate",
+"puppet"
+],
+"other1": [
+"bag",
+"bottle",
+"camera",
+"game_machine",
+"garage",
+"headset",
+"ice_cream",
+"phone",
+"plate",
+"puppet"
+],
+"other2": [
+"bag",
+"bottle",
+"camera",
+"game_machine",
+"garage",
+"headset",
+"ice_cream",
+"phone",
+"plate",
+"puppet"
+],
+"target0": [
+"bag",
+"bottle",
+"camera",
+"game_machine",
+"garage",
+"headset",
+"ice_cream",
+"phone",
+"plate",
+"puppet"
+],
+"target1": [
+"bag",
+"bottle",
+"camera",
+"game_machine",
+"garage",
+"headset",
+"ice_cream",
+"phone",
+"plate",
+"puppet"
+]
+},
+"organize_table": {
+"alarm": [
+"alarm"
+],
+"cube_cushion": [
+"cube_cushion"
+],
+"drawer": [
+"drawer"
+],
+"frame": [
+"frame"
+],
+"garage": [
+"garage"
+],
+"keyboard": [
+"keyboard"
+],
+"monitor": [
+"monitor"
+],
+"mouse": [
+"mouse"
+],
+"mousemat": [
+"mousemat"
+]
+},
+"pack_objects_into_box": {
+"box": [
+"box"
+],
+"car": [
+"car"
+],
+"electric_toothbrush": [
+"electric_toothbrush"
+],
+"hammer": [
+"hammer"
+],
+"shoe": [
+"shoe"
+]
+},
+"pack_objects_into_box_random": {
+"box": [
+"box"
+],
+"car": [
+"car"
+],
+"electric_toothbrush": [
+"electric_toothbrush"
+],
+"hammer": [
+"hammer"
+],
+"shoe": [
+"shoe"
+]
+},
+"pick_from_conveyor_by_image": {
+"basket": [
+"basket_grasp"
+],
+"conveyor": [
+"conveyor"
+],
+"object1": [
+"can",
+"car",
+"correction_tape",
+"cup",
+"donut",
+"figurine",
+"glue",
+"noodles",
+"peeler",
+"remote",
+"sachet",
+"toy",
+"yogurt"
+],
+"object2": [
+"can",
+"car",
+"correction_tape",
+"cup",
+"donut",
+"figurine",
+"glue",
+"noodles",
+"peeler",
+"remote",
+"sachet",
+"toy",
+"yogurt"
+],
+"object3": [
+"can",
+"car",
+"correction_tape",
+"cup",
+"donut",
+"figurine",
+"glue",
+"noodles",
+"peeler",
+"remote",
+"sachet",
+"toy",
+"yogurt"
+],
+"photo": [
+"photo"
+],
+"target": [
+"can",
+"car",
+"correction_tape",
+"cup",
+"donut",
+"figurine",
+"glue",
+"noodles",
+"peeler",
+"remote",
+"sachet",
+"toy",
+"yogurt"
+]
+},
+"play_Xylophone": {
+"mallet": [
+"mallet"
+],
+"mallet_stand": [
+"mallet_stand"
+],
+"xylophone": [
+"xylophone"
+]
+},
+"play_stacking_toy": {
+"block0": [
+"stackingblocks"
+],
+"block1": [
+"stackingblocks"
+],
+"block2": [
+"stackingblocks"
+],
+"block3": [
+"stackingblocks"
+],
+"block4": [
+"stackingblocks"
+],
+"block5": [
+"stackingblocks"
+],
+"block6": [
+"stackingblocks"
+],
+"block7": [
+"stackingblocks"
+],
+"block8": [
+"stackingblocks"
+],
+"block9": [
+"stackingblocks"
+],
+"stack_base": [
+"stack_base"
+]
+},
+"play_tic_tac_toe": {
+"checkerboard": [
+"checkerboard"
+],
+"opponent_piece0": [
+"chessman"
+],
+"opponent_piece1": [
+"chessman"
+],
+"opponent_piece2": [
+"chessman"
+],
+"opponent_piece3": [
+"chessman"
+],
+"player_piece0": [
+"chessman"
+],
+"player_piece1": [
+"chessman"
+],
+"player_piece2": [
+"chessman"
+],
+"player_piece3": [
+"chessman"
+],
+"player_piece4": [
+"chessman"
+]
+},
+"plug_in_charger": {
+"charger": [
+"charger"
+],
+"socket": [
+"socket"
+]
+},
+"pour_balls_into_vase": {
+"cup": [
+"cup"
+],
+"sphere_0": [
+"sphere"
+],
+"sphere_1": [
+"sphere"
+],
+"sphere_2": [
+"sphere"
+],
+"sphere_3": [
+"sphere"
+],
+"sphere_4": [
+"sphere"
+],
+"sphere_5": [
+"sphere"
+],
+"sphere_6": [
+"sphere"
+],
+"vase": [
+"vase"
+]
+},
+"pour_by_language": {
+"bottle_0": [
+"wine_bottle"
+],
+"bottle_1": [
+"wine_bottle"
+],
+"bottle_2": [
+"wine_bottle"
+],
+"bowl_0": [
+"wine_bowl"
+],
+"bowl_1": [
+"wine_bowl"
+],
+"bowl_2": [
+"wine_bowl"
+],
+"wine_0": [
+"wuliangye"
+],
+"wine_1": [
+"wuliangye"
+],
+"wine_2": [
+"wuliangye"
+]
+},
+"pour_liquid_into_cup": {
+"bottle": [
+"wuliangye"
+],
+"cup": [
+"goblet",
+"mug"
+],
+"wine": [
+"wuliangye"
+]
+},
+"pour_liquid_into_cup_random": {
+"bottle": [
+"wuliangye"
+],
+"cup": [
+"mug"
+],
+"wine": [
+"wuliangye"
+]
+},
+"press_by_number": {
+"button0": [
+"SpringButton"
+],
+"button1": [
+"SpringButton"
+],
+"button2": [
+"SpringButton"
+],
+"num0": [
+"number_card"
+],
+"num1": [
+"number_card"
+]
+},
+"push_T": {
+"t": [
+"t"
+],
+"target_t": [
+"t_cushion"
+]
+},
+"push_T_random": {
+"t": [
+"t"
+],
+"target_t": [
+"t_cushion"
+]
+},
+"put_bottles_into_dustbin": {
+"bottle0": [
+"bottle"
+],
+"bottle1": [
+"bottle"
+],
+"bottle2": [
+"bottle"
+],
+"bottle3": [
+"bottle"
+],
+"dustbin": [
+"dustbin"
+]
+},
+"solve_equation": {
+"division": [
+"division"
+],
+"equal": [
+"equal"
+],
+"mat0": [
+"cube_cushion"
+],
+"mat1": [
+"cube_cushion"
+],
+"mat2": [
+"cube_cushion"
+],
+"mat3": [
+"cube_cushion"
+],
+"mat4": [
+"cube_cushion"
+],
+"minus": [
+"minus"
+],
+"multiplication": [
+"multiplication"
+],
+"plus": [
+"plus"
+],
+"rigid0": [
+"number"
+],
+"t0": [
+"number"
+],
+"t1": [
+"division",
+"minus",
+"multiplication",
+"plus"
+],
+"t2": [
+"number"
+],
+"t4": [
+"number"
+]
+},
+"sort_nesting_dolls_by_size": {
+"doll0": [
+"matryoshka_dolls"
+],
+"doll1": [
+"matryoshka_dolls"
+],
+"doll2": [
+"matryoshka_dolls"
+],
+"doll3": [
+"matryoshka_dolls"
+],
+"doll4": [
+"matryoshka_dolls"
+]
+},
+"sort_nesting_dolls_by_size_random": {
+"doll0": [
+"matryoshka_dolls"
+],
+"doll1": [
+"matryoshka_dolls"
+],
+"doll2": [
+"matryoshka_dolls"
+],
+"doll3": [
+"matryoshka_dolls"
+],
+"doll4": [
+"matryoshka_dolls"
+]
+},
+"stack_blocks": {
+"block_0": [
+"block"
+],
+"block_1": [
+"block"
+],
+"block_2": [
+"block"
+]
+},
+"stack_blocks_by_language": {
+"block_0": [
+"cube"
+],
+"block_1": [
+"cube"
+],
+"block_2": [
+"cube"
+]
+},
+"stack_blocks_random": {
+"block_0": [
+"block"
+],
+"block_1": [
+"block"
+],
+"block_2": [
+"block"
+]
+},
+"stack_bowls": {
+"bowl0": [
+"bowl"
+],
+"bowl1": [
+"bowl"
+],
+"bowl2": [
+"bowl"
+]
+},
+"stack_bowls_random": {
+"bowl0": [
+"bowl"
+],
+"bowl1": [
+"bowl"
+],
+"bowl2": [
+"bowl"
+]
+},
+"store_laptop_and_headphones": {
+"headset": [
+"headset"
+],
+"laptop": [
+"laptop"
+],
+"laptop_stand": [
+"laptop_stand"
+],
+"stand": [
+"headset_stand"
+],
+"vertical_laptop_storage_rack": [
+"vertical_laptop_storage_rack"
+]
+},
+"store_laptop_and_headphones_random": {
+"headset": [
+"headset"
+],
+"laptop": [
+"laptop"
+],
+"laptop_stand": [
+"laptop_stand"
+],
+"stand": [
+"headset_stand"
+],
+"vertical_laptop_storage_rack": [
+"vertical_laptop_storage_rack"
+]
+},
+"store_tools_in_toolbox": {
+"hammer": [
+"hammer"
+],
+"pliers": [
+"pliers"
+],
+"tape_measure": [
+"tape_measure"
+],
+"toolbox": [
+"toolbox"
+],
+"wrench": [
+"wrench"
+]
+},
+"swap_T": {
+"t0": [
+"t"
+],
+"t1": [
+"t"
+]
+},
+"swap_blocks": {
+"button0": [
+"SpringButton"
+],
+"mat0": [
+"cube_cushion"
+],
+"mat1": [
+"cube_cushion"
+],
+"mat2": [
+"cube_cushion"
+],
+"target0": [
+"cube"
+],
+"target1": [
+"cube"
+]
+},
+"sweep_blocks": {
+"broom": [
+"broom"
+],
+"broom_shovel": [
+"broom_shovel"
+],
+"rigid2": [
+"small_cube"
+]
+},
+"sweep_blocks_random": {
+"broom": [
+"broom"
+],
+"broom_shovel": [
+"broom_shovel"
+],
+"rigid2": [
+"brick",
+"earbuds",
+"paper_ball"
+]
+}
+}

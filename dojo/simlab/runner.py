@@ -387,6 +387,14 @@ def install_dev_demo_loader() -> int:
     return n
 
 
+def resolve_usd_sync_links(flag: bool | None, physics_only: bool) -> bool:
+    """An explicit ``flag`` wins, then ``SIMLAB_USD_SYNC_LINKS=0/1``, then ``physics_only`` (see RoboDojoRunner)."""
+    if flag is not None:
+        return bool(flag)
+    env = os.environ.get("SIMLAB_USD_SYNC_LINKS")
+    return env == "1" if env in ("0", "1") else bool(physics_only)
+
+
 class RoboDojoRunner:
     """One RoboDojo task env (``num_envs`` parallel copies) driven from our layout records."""
 
@@ -395,13 +403,13 @@ class RoboDojoRunner:
                  physics_only: bool = False, support_planner: bool = False, usd_sync_links: bool | None = None):
         self.task = task
         self.physics_only = physics_only
-        # usd_sync_links (default OFF; env SIMLAB_USD_SYNC_LINKS=1): RoboDojo's checker reads articulation link poses
-        # from USD (ArticulationObject.get_link_pose), which physics never updates here (kit updateToUsd = false). Moved
-        # articulations (a laptop) then keep their spawn pose and joint-rooted ones (toasters 00002/00004) read
-        # identity. ON: get_link_pose answers from the articulation's physics view instead.
-        if usd_sync_links is None:
-            usd_sync_links = os.environ.get("SIMLAB_USD_SYNC_LINKS", "0") == "1"
-        self.usd_sync_links = bool(usd_sync_links)
+        # usd_sync_links (default: ON when physics_only; env SIMLAB_USD_SYNC_LINKS=0/1 overrides): RoboDojo's checker
+        # reads articulation link poses from USD (ArticulationObject.get_link_pose). The physics-only kit never writes
+        # physics back to USD (updateToUsd = false, omni.physx.fabric loaded): moved articulations (a laptop) keep
+        # their spawn pose and joint-rooted ones (toasters 00002/00004) read identity. The official rendered kit has
+        # updateToUsd = true, USD = physics on every link (probed on isr-lab). ON: get_link_pose answers from the
+        # articulation's physics view, as the official env effectively does.
+        self.usd_sync_links = resolve_usd_sync_links(usd_sync_links, physics_only)
         paths.install_asset_firewall()                 # no Eval_Layout, no eval-paired Traj, from here on
         self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only)
         # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
