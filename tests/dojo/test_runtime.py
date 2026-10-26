@@ -2260,3 +2260,31 @@ def test_verifier_consistent_load_uses_the_belief_assets_and_counts_what_it_chan
     v._base(())
     assert abs(seen[0][0]["pos"][2] - (TABLE_Z + 0.015)) < 1e-6 and v.stats["load_seated"] == 1
     assert prov.checkpoint["objects"][0]["pos"][2] == TABLE_Z + 0.013
+
+
+def test_presets_resolve_in_order_and_name_themselves():
+    from dojo.runtime.presets import PRESETS, check_env, resolve
+    d = resolve("submit_v1", {"agentic_max": 2}, mode=None, verify="off")
+    cfg = RuntimeConfig(**d)                                   # every preset field is a RuntimeConfig field
+    assert cfg.preset == "submit_v1" and cfg.mode == "perception" and cfg.verify == "off" and cfg.agentic_max == 2
+    assert cfg.scan == "trigger" and cfg.search_lost is False and cfg.held_pose == "off" and cfg.refine_max_shift_m == 0.07
+    assert PRESETS["submit_v1"]["agentic_max"] == 3                       # the preset itself is untouched
+    assert resolve(None, {"refine": True}) == {"refine": True}
+    assert check_env("submit_v1", {}) == [] and check_env("submit_v1", {"AGENTIC_SNAP": "1"}) == []
+    assert check_env("submit_v1", {"AGENTIC_SNAP": "0"})
+    for fields in PRESETS.values():
+        RuntimeConfig(**fields)
+
+
+def test_eval_cli_takes_mode_and_verify_from_the_preset(monkeypatch, tmp_path):
+    import dojo.runtime.eval as EV
+    seen = {}
+    monkeypatch.setattr(EV, "run", lambda task, layouts, cfg, out, *a, **k: seen.setdefault("cfg", cfg) and {})
+    lay = tmp_path / "100000.settled.json"
+    lay.write_text("{}")
+    EV.main(["--task", "stack_blocks", "--layouts", str(lay), "--out", str(tmp_path / "o"), "--preset", "submit_v1"])
+    c = seen["cfg"]
+    assert (c.preset, c.mode, c.verify, c.scan, c.agentic) == ("submit_v1", "perception", "bundle", "trigger", "budget")
+    seen.clear()
+    EV.main(["--task", "stack_blocks", "--layouts", str(lay), "--out", str(tmp_path / "o")])
+    assert (seen["cfg"].preset, seen["cfg"].mode, seen["cfg"].verify) == (None, "gt", "off")
