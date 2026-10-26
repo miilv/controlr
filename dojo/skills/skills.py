@@ -47,6 +47,12 @@ PROBE_RADII = (0.0015, 0.003, 0.0045)   # m: probe circles around a contact besi
 PROBE_LIFT = 0.002            # m: lift above the contact height before each probe
 PROBE_IN = 0.005              # m below the contact height: the probe went into the hole
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
+# mode B, the held-pose protocol at the pre-insert hover (``Skills._held_protocol``; only with a provider ``held_pose``)
+HELD_LOOK_TRIES = 2           # looks per place: the provider's best observer look, then its best show pose
+HELD_LOOK_STILL = 2           # still steps at a look before the read
+HELD_LOOK_CLEAR = 0.04        # m between the arms (chain, palm, fingers) on the way to a look and back
+HELD_LOOK_HAND_CLEAR = 0.015  # m between the observer's hand and the held object's box
+HELD_LOOK_MIN_LEFT = 25       # env steps a look must leave beyond the insertion tail's own (probes)
 
 
 def wrist_safe(q) -> bool:
@@ -238,6 +244,10 @@ class Skills:
         # their layout slots are better than a refine there); a place carrying one of them is skipped too
         self.no_refine: set = set()
         self._hq_cache: dict = {}
+        # mode B with a provider ``held_pose``: look at the held object (``provider.show_pose``: an observer look, a
+        # show pose) when the read at the pre-insert hover is not good enough (``_held_protocol``); every read logged
+        self.held_looks = True
+        self.held_events: list = []
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
 
@@ -577,7 +587,8 @@ class Skills:
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
                    fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
-                   servo_xy_tol: float | None = None):
+                   servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
+                   blind_up: float | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -600,7 +611,12 @@ class Skills:
         contact threshold instead of ``GUARD_LAG`` (twin: a ring stopped by a peg's top slid 2.6 mm in the pads and the
         arm lagged only 1.7 mm). ``servo_xy_tol``: once seated, the servo tail corrects the object's measured xy until
         it is this close to the target (two more moves at most; a ring seated 0.6 mm off its neighbour's axis on a peg
-        judged at 1 mm)."""
+        judged at 1 mm).
+        Mode B only (no in-hand re-measure; a provider ``held_pose``; ``_held_protocol``): ``held_gate`` (m) = the
+        leading point's lateral sigma an in-hand read needs to be used (default half of the place's ``tol_xy``);
+        ``held_tol`` (m) = the sigma below which no look is taken (default the gate: a servo place looks only when the
+        hover read fails it); ``blind_up`` (m): with no usable read, the guarded tail aims this much above the target
+        (a piece meant to be seated deep on a peg is only threaded: pushed down blind on a predicted pose, it binds)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -630,6 +646,9 @@ class Skills:
             tail_kw["guard_lag"] = float(guard_lag)
         if servo_xy_tol is not None:
             tail_kw["servo_xy_tol"] = float(servo_xy_tol)
+        for k, v in (("held_tol", held_tol), ("held_gate", held_gate), ("blind_up", blind_up)):
+            if v is not None:
+                tail_kw[k] = float(v)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -676,7 +695,9 @@ class Skills:
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
                     hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None,
                     sym_axis: int | None = None, guard_seated: float | None = None,
-                    guard_lag: float | None = None, servo_xy_tol: float | None = None) -> ArmPlan | str:
+                    guard_lag: float | None = None, servo_xy_tol: float | None = None,
+                    held_tol: float | None = None, held_gate: float | None = None,
+                    blind_up: float | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -761,18 +782,28 @@ class Skills:
                     pp.T_obj_target = retarget()                   # the support was re-measured
                 h = self.held[pp.arm]
                 o = w.obj(pp.label)
-                measured = self._measure_held(pp, h, o, tol_xy, tol_tilt) if not self.remeasure else None
-                if (pp.tail_kw or {}).get("servo") and self.remeasure and not other_arm:
+                measured = self._held_protocol(pp, h, o, tol_xy, tol_tilt) if not self.remeasure else None
+                if (pp.tail_kw or {}).get("servo") and not other_arm and (self.remeasure or measured is not None):
+                    # mode B with a usable in-hand read: the same closed-loop tail as G3, on the measured transform
+                    # (``_servo_obj``) and the arm's measured sag
+                    note_m = ""
+                    if measured is not None:
+                        self.held[pp.arm] = Held(h.label, measured, held_box(o, measured), h.grasp)
+                        note_m = (f"held read adopted (in-hand shift "
+                                  f"{float(np.linalg.norm(measured[:3, 3] - h.T_tcp_obj[:3, 3])) * 1000:.1f} mm); ")
                     r = self._servo_tail(pp)
                     self.held[pp.arm] = None if (pp.tail_kw or {}).get("release", True) else self.held[pp.arm]
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
-                    v.note = (v.note + "; " + r).strip("; ")
+                    v.note = (v.note + "; " + note_m + r).strip("; ")
                     return v
                 if ((pp.tail_kw or {}).get("servo") and not self.remeasure and measured is None and not other_arm
                         and not (pp.tail_kw or {}).get("turn") and not (pp.tail_kw or {}).get("fingers_out")):
                     # no in-hand measurement (mode B): the planned tail rests on a predicted in-hand pose (a belief 3.5 mm
-                    # off put a charger's blades beside the outlet): the contact-probing tail instead
-                    g = self._guarded_tail(pp.arm, pp.T_obj_target, h, pp.tail_kw)
+                    # off put a charger's blades beside the outlet): the contact-probing tail instead, never deeper than
+                    # ``blind_up`` above the target (a ring is threaded onto its peg, not pushed down to its seat)
+                    T_g = np.asarray(pp.T_obj_target, float).copy()
+                    T_g[2, 3] += float((pp.tail_kw or {}).get("blind_up") or 0.0)
+                    g = self._guarded_tail(pp.arm, T_g, h, pp.tail_kw)
                     self.held[pp.arm] = None
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
                     v.note = (v.note + f"; probing tail: {g}").strip("; ")
@@ -966,30 +997,211 @@ class Skills:
         C = Tc @ inv_T(Tm)
         return C if float(np.linalg.norm(C[:3, 3])) < 0.02 else np.eye(4)
 
-    def _measure_held(self, pp: "PlacePlan", h, o, tol_xy: float, tol_tilt: float):
-        """Mode B: the in-hand pose at the pre-insert hover from the provider's ``held_pose(arm, ...)`` (perception's
-        wrist / head read of the object in the jaws, ``dojo.perception.held``), where G3 re-measures from GT. The place
-        target goes along (``cfg.T_obj_target``: perception's insertion axis = world down there, leading point = the
-        mesh's lowest points there). Its sigma is per TCP axis (x = approach, y = closing, z = across): the place sees
-        the error across the approach, so the read is adopted only when ok, the leading point's sigma across the
-        approach (TCP y, z) is <= half of ``tol_xy`` and the insertion axis' sigma (``axis_deg``; else the rotations
-        about TCP y, z) is <= half of ``tol_tilt``. Returns T_tcp_obj, else None (the predicted transform stands, and
-        a servo place keeps the probing tail)."""
-        f = getattr(self.provider, "held_pose", None)
+    def _held_read(self, pp: "PlacePlan", h, o, view: str = "hover") -> dict | None:
+        """One read of the provider's ``held_pose(arm, prior_T_tcp_obj, asset_key, cfg_)`` (perception's in-hand pose
+        of the object in the jaws, ``dojo.perception.held``; G3 re-measures from GT instead). ``cfg_``: the place target
+        (perception's insertion axis = world down there, leading point = the mesh's lowest points there) and ``view``
+        (where the cameras are: "hover", "look" = the other arm's wrist looks, "show" = the holding arm at a show pose;
+        perception uses every camera that sees the object, a test provider may key its noise on it). None: no provider
+        or the read raised."""
+        return Skills._held_call(self.provider, pp, h, o, view)
+
+    @staticmethod
+    def _held_call(provider, pp, h, o, view: str = "hover") -> dict | None:
+        f = getattr(provider, "held_pose", None)
         if f is None or h is None:
             return None
         try:
             r = f(pp.arm, prior_T_tcp_obj=h.T_tcp_obj, asset_key=o.asset.key,
-                  cfg_={"T_obj_target": np.asarray(pp.T_obj_target, float).tolist()}) or {}
+                  cfg_={"T_obj_target": np.asarray(pp.T_obj_target, float).tolist(), "view": view}) or {}
         except Exception:  # noqa: BLE001 (an optional read)
             return None
+        return r
+
+    @staticmethod
+    def held_sigma(r: dict) -> tuple[float, float]:
+        """(lateral sigma of the leading point across the insertion axis, mm; sigma of the insertion axis, deg) of an
+        ok ``held_pose`` read (perception's ``lead_lat_mm`` / ``axis_deg``; else the leading point's / the object's TCP
+        y, z sigma and the rotations about TCP y, z); (inf, inf) for a failed read."""
+        if not r or not r.get("ok"):
+            return math.inf, math.inf
         sig = r.get("sigma") or {}
-        lat = [float(v) for v in (sig.get("lead_mm") or sig.get("pos_mm") or [99.0, 99.0, 99.0])][1:3]
-        tilt = (float(sig["axis_deg"]) if sig.get("axis_deg") is not None
-                else max(float(v) for v in (sig.get("rot_deg") or [99.0, 99.0, 99.0])[1:3]))
-        if not r.get("ok") or max(lat) > 500.0 * tol_xy or tilt > 0.5 * tol_tilt:
+        lat = sig.get("lead_lat_mm")
+        if lat is None:
+            lat = max(float(v) for v in (sig.get("lead_mm") or sig.get("pos_mm") or [99.0, 99.0, 99.0])[1:3])
+        tilt = sig.get("axis_deg")
+        if tilt is None:
+            tilt = max(float(v) for v in (sig.get("rot_deg") or [99.0, 99.0, 99.0])[1:3])
+        return float(lat), float(tilt)
+
+    def _measure_held(self, pp: "PlacePlan", h, o, tol_xy: float, tol_tilt: float, view: str = "hover"):
+        """Mode B: one in-hand read at the pre-insert hover (``_held_read``). Its sigma is per TCP axis (x = approach,
+        y = closing, z = across): the place sees the error across the insertion axis, so the read is used only when ok,
+        the leading point's lateral sigma <= ``held_gate`` (default half of ``tol_xy``) and the axis' sigma <= half of
+        ``tol_tilt`` (``held_sigma``). Returns T_tcp_obj, else None (the predicted transform stands)."""
+        r = Skills._held_call(self.provider, pp, h, o, view)
+        lat, tilt = Skills.held_sigma(r)
+        kw = getattr(pp, "tail_kw", None) or {}
+        gate = 1000.0 * float(kw["held_gate"] if kw.get("held_gate") is not None else 0.5 * tol_xy)
+        if lat > gate or tilt > 0.5 * tol_tilt:
             return None
         return np.asarray(r["T_tcp_obj"], float)
+
+    def _held_protocol(self, pp: "PlacePlan", h, o, tol_xy: float, tol_tilt: float):
+        """Mode B, at the pre-insert hover (``run_place``): the in-hand transform the tail may use, or None.
+
+        1. Read at the hover (own wrist + head + the other wrist where it sees the object). Good enough: ok, lateral
+           sigma <= ``held_tol`` (default: the gate; 0 = never: always look while the budget allows, for insertions
+           whose clearance is far below what a hover read gives) and axis sigma <= half of ``tol_tilt``.
+        2. Not good enough (failed, ambiguous: the own wrist looks along the approach and cannot tell a turn about the
+           closing axis from a slide along it), a servo place, a provider ``show_pose`` and the step budget allowing:
+           the provider's candidates (observer looks of the other arm's wrist at the hover; show poses of the holding arm
+           in front of the head camera, with an observer look), planned with our own IK + collision model
+           (``_plan_held_look``), at most one look and one show pose (``HELD_LOOK_TRIES``); at each, a still step or
+           two, a read, back to the hover. Stops at the first ok read within the gate.
+        3. The gate: ok, lateral sigma <= ``held_gate`` (default half of ``tol_xy``), axis sigma <= half of
+           ``tol_tilt``. The LAST read within it is used (a look sees more than the hover; the runtime's belief keeps
+           the last ok read too); none: None (the caller's safe fallback: the guarded / probing tail, ``blind_up``).
+        Every read goes to ``self.held_events`` ({label, arm, view, ok, why, lat_mm, axis_deg, steps, adopted})."""
+        if getattr(self.provider, "held_pose", None) is None or h is None:
+            return None
+        kw = pp.tail_kw or {}
+        gate = 1000.0 * float(kw["held_gate"] if kw.get("held_gate") is not None else 0.5 * tol_xy)
+        good = 1000.0 * float(kw["held_tol"]) if kw.get("held_tol") is not None else gate
+        gate_tilt = 0.5 * tol_tilt
+        reads = []
+
+        def take(view: str, steps: int):
+            r = self._held_read(pp, h, o, view)
+            if r is None:
+                return None
+            lat, tilt = self.held_sigma(r)
+            ev = {"label": h.label, "arm": pp.arm, "view": view, "ok": bool(r.get("ok")), "why": r.get("why", ""),
+                  "lat_mm": None if math.isinf(lat) else round(lat, 3),
+                  "axis_deg": None if math.isinf(tilt) else round(tilt, 3), "steps": int(steps),
+                  "step": int(self.ex.steps_used), "adopted": False}
+            self.held_events.append(ev)
+            if r.get("ok") and r.get("T_tcp_obj") is not None:
+                reads.append((lat, tilt, np.asarray(r["T_tcp_obj"], float), ev))
+            self.log(f"[held] {h.label} {view}: ok={ev['ok']} {ev['why']} lat {ev['lat_mm']} mm axis {ev['axis_deg']} deg"
+                     + (f" ({steps} steps)" if steps else ""))
+            return lat <= (good if view == "hover" else gate) and tilt <= gate_tilt
+        first = take("hover", 0)
+        if first is None:
+            return None
+        if (not first and self.held_looks and kw.get("servo")
+                and callable(getattr(self.provider, "show_pose", None))):
+            self._held_look(pp, h, o, take)
+        ok = [x for x in reads if x[0] <= gate and x[1] <= gate_tilt]
+        if not ok:
+            return None
+        ok[-1][3]["adopted"] = True
+        return ok[-1][2]
+
+    def _held_look(self, pp: "PlacePlan", h, o, take) -> None:
+        """Step 2 of ``_held_protocol``: the provider's look / show candidates (``show_pose(arm, T_tcp_obj, asset_key,
+        cfg_)`` -> {"poses": [{"name", "arm", "tcp" (4x4, the holding arm; "hover_look": where it is), "observer":
+        {"arm", "tcp"} | None, ...}]}, best first), each planned by ``_plan_held_look``; run while the budget leaves the
+        insertion tail its steps + ``HELD_LOOK_MIN_LEFT``."""
+        try:
+            props = self.provider.show_pose(pp.arm, T_tcp_obj=h.T_tcp_obj, asset_key=o.asset.key,
+                                            cfg_={"T_obj_target": np.asarray(pp.T_obj_target, float).tolist()}) or {}
+        except Exception as e:  # noqa: BLE001 (an optional proposal)
+            self.log(f"[held] show_pose failed: {type(e).__name__}: {str(e)[:80]}")
+            return
+        appr = getattr(pp, "approach", None)
+        tail_need = max(30, int(pp.steps) - int(appr.steps if appr is not None else 0)) + HELD_LOOK_MIN_LEFT
+        tried: set = set()
+        for c in list(props.get("poses") or []):
+            kind = "look" if c.get("name") == "hover_look" else "show"
+            if kind in tried or len(tried) >= HELD_LOOK_TRIES:
+                continue
+            plan = self._plan_held_look(pp.arm, h, c)
+            if plan is None:
+                continue
+            if self.ex.steps_left - self.ex.reserve < plan["steps"] + tail_need:
+                self.log(f"[held] {h.label}: no {kind} ({plan['steps']} steps; {self.ex.steps_left} left, the tail "
+                         f"needs {tail_need})")
+                continue
+            tried.add(kind)
+            self.ex.run(plan["out"], name=f"held {kind} {c.get('name', '')}")
+            self.ex.run({a: ArmPlan(a, self.ex.q[a].copy(), self.ex.g[a]).hold(HELD_LOOK_STILL) for a in plan["out"]},
+                        name=f"held {kind} still")
+            good = take(kind, plan["steps"])
+            self.ex.run(plan["back"], name=f"held {kind} back")
+            if good:
+                return
+
+    def _plan_held_look(self, arm: str, h: "Held", c: dict) -> dict | None:
+        """One ``show_pose`` candidate as executable plans: the holding arm to ``c["tcp"]`` carrying the object (CARRY,
+        held box, collision-checked; nothing when it is already there), the other arm's wrist to ``c["observer"]["tcp"]``
+        (FAST; only when that arm is free; its hand kept ``HELD_LOOK_HAND_CLEAR`` off the held object), both back where
+        they were; the arms ``HELD_LOOK_CLEAR`` apart on both schedules. -> {"out", "back": {arm: ArmPlan}, "steps"} or
+        None (infeasible)."""
+        from dojo.skills.geometry import angle_between_R
+        obs = "right" if arm == "left" else "left"
+        q_h, q_o = self.ex.q[arm].copy(), self.ex.q[obs].copy()
+        out, back = {}, {}
+        T_now = self.kin.tcp(arm, q_h)
+        q_h_end = q_h
+        T_h = np.asarray(c["tcp"], float) if c.get("tcp") is not None else T_now
+        if (float(np.linalg.norm(T_h[:3, 3] - T_now[:3, 3])) > 1e-3
+                or math.degrees(angle_between_R(T_h[:3, :3], T_now[:3, :3])) > 1.0):
+            mv = self.motion.to_pose(arm, q_h, T_h, CARRY, "held_show", gripper=CLOSED, held=h.box, ignore=(h.label,),
+                                     ease=3)
+            if not mv.ok:
+                return None
+            bk = self.motion.joint(arm, mv.q_end, q_h, CARRY, "held_show_back", gripper=CLOSED, held=h.box,
+                                   ignore=(h.label,), ease=3)
+            if not bk.ok:
+                return None
+            q_h_end = mv.q_end
+            out[arm] = ArmPlan(arm, q_h, CLOSED).move(mv)
+            back[arm] = ArmPlan(arm, q_h_end, CLOSED).move(bk)
+        ob = c.get("observer")
+        if ob and ob.get("tcp") is not None and self.held.get(obs) is None:
+            g_o = float(self.ex.g[obs])
+            # the held object is checked separately at its pose there (a show pose moves it away from where the world has it)
+            mv = self.motion.to_pose(obs, q_o, np.asarray(ob["tcp"], float), FAST, "held_look", gripper=g_o,
+                                     ignore=(h.label,))
+            if mv.ok and self._hand_clear_of_held(obs, mv.q_end, arm, q_h_end, h):
+                bk = self.motion.joint(obs, mv.q_end, q_o, FAST, "held_look_back", gripper=g_o, ignore=(h.label,))
+                if bk.ok:
+                    out[obs] = ArmPlan(obs, q_o, g_o).move(mv)
+                    back[obs] = ArmPlan(obs, mv.q_end, g_o).move(bk)
+        if obs not in out and c.get("name") == "hover_look":
+            return None                                   # a look with no observer is no look
+        if not out:
+            return None
+        if obs in out:
+            for sched in (out, back):
+                pa = sched.get(arm) or ArmPlan(arm, q_h_end if sched is back else q_h, CLOSED).hold(1)
+                if not self.clear_of(pa, sched[obs], HELD_LOOK_CLEAR):
+                    return None
+        steps = max(p.steps for p in out.values()) + HELD_LOOK_STILL + max(p.steps for p in back.values())
+        return {"out": out, "back": back, "steps": int(steps)}
+
+    def _hand_clear_of_held(self, obs: str, q_o, arm: str, q_h, h: "Held") -> bool:
+        """The observer's links, palm and fingers stay ``HELD_LOOK_HAND_CLEAR`` outside the held object's box (held by
+        ``arm`` at ``q_h``)."""
+        Tf = self.kin.flange(obs, q_o)
+        P = np.vstack([self.kin.link_points(obs, q_o), self.kin.palm_points(Tf), self.kin.finger_points(Tf)])
+        T_obj = self.kin.tcp(arm, q_h) @ h.box.T_tcp_obj
+        loc = (P - T_obj[:3, 3]) @ T_obj[:3, :3] - h.box.center
+        return not bool(np.all(np.abs(loc) <= h.box.half + HELD_LOOK_HAND_CLEAR, axis=1).any())
+
+    def _servo_obj(self, arm: str, label: str, w: WorldState):
+        """The held object as the servo tail sees it: from the world with ``remeasure`` (G3: measured); mode B: the
+        adopted in-hand transform (``self.held``) on the measured TCP (a belief that did not follow the read)."""
+        o = w.obj(label)
+        h = self.held.get(arm)
+        if self.remeasure or h is None or h.label != label:
+            return o
+        import copy
+        p7 = T_to_pose7(self.kin.tcp(arm, w.arms[arm].q) @ h.T_tcp_obj)
+        o2 = copy.copy(o)
+        o2.pos, o2.quat = np.asarray(p7[:3], float), np.asarray(p7[3:], float)
+        return o2
 
     def _servo_tail(self, pp: PlacePlan, seat_tol: float = 0.004, radii=(0.0007, 0.0015, 0.003), n_dir: int = 6,
                     probe_lift: float = 0.006, min_left: int = 25) -> str:
@@ -1007,7 +1219,7 @@ class Skills:
         o = self.world.obj(label)
         if kw.get("sym_axis") is not None:
             # the target turned about the object's symmetry axis to the measured pose (a coin may spin in the pads)
-            T_obj = self._nearest_spin(T_obj, self.refresh().obj(label), int(kw["sym_axis"]))
+            T_obj = self._nearest_spin(T_obj, self._servo_obj(arm, label, self.refresh()), int(kw["sym_axis"]))
         hover = 0.004
         rec_top = kw.get("ref_top")
         if rec_top is None and rec is not None:
@@ -1019,7 +1231,7 @@ class Skills:
         def go(T_goal, step_rad, name, settle=2):
             for _ in range(3):              # a long line that stops short (IK) is resumed from where it got to
                 w = self.refresh()
-                ob = w.obj(label)
+                ob = self._servo_obj(arm, label, w)
                 T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ ob.T
                 T_tcp = self._sag(arm, w) @ T_goal @ inv_T(T_rel)
                 mv = self.motion.line(arm, self.ex.q[arm], T_tcp, step_rad, name, gripper=CLOSED, check=False,
@@ -1029,7 +1241,7 @@ class Skills:
                                 name=f"place {label} {name}")
                 if mv.ok or not mv.segments or len(mv.segments[-1].q) < 2:
                     break
-            return self.refresh().obj(label)
+            return self._servo_obj(arm, label, self.refresh())
 
         def above(T, dz):
             T = np.asarray(T, float).copy()
@@ -1043,7 +1255,7 @@ class Skills:
         if kw.get("fingers_out") and rec_top is not None:
             # let go with the fingertips above the receptacle: raise the target by what the measured grasp needs
             w = self.refresh()
-            T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ w.obj(label).T
+            T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ self._servo_obj(arm, label, w).T
             if kw.get("ref_top") is None and rec is not None:
                 dz = self.fingers_raise(T_obj @ inv_T(T_rel), rec)
             else:
@@ -1077,7 +1289,7 @@ class Skills:
         note += f", {n} probes, final {err*1000:+.1f} mm" if n else ""
         if kw.get("servo_xy_tol") is not None and err <= seat_tol:
             for k in range(3):
-                ob = self.refresh().obj(label)
+                ob = self._servo_obj(arm, label, self.refresh())
                 dxy = float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3]))
                 if dxy <= float(kw["servo_xy_tol"]) or k == 2:
                     break
@@ -1086,7 +1298,7 @@ class Skills:
         turn = float(kw.get("turn", 0.0) or 0.0)
         if turn:
             w = self.refresh()
-            T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ w.obj(label).T
+            T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ self._servo_obj(arm, label, w).T
             for frac in TURN_FRACTIONS:
                 T_t = T_obj.copy()
                 T_t[:3, :3] = rot_z(turn * frac) @ T_t[:3, :3]
