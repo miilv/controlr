@@ -20,6 +20,9 @@ from dojo.skills.targets import level_R
 PEG_YAWS = 12                 # turns of a piece about its hole tried per place (every 30 deg)
 THREAD = 0.004                # m: the piece is lowered this far onto the peg (below its top) before it is let go
 SEAT_TOL = 0.0025             # m: a piece held higher than this above its threaded target rests on the peg's top
+PEG_RETREAT = 0.02            # m: up after the release (the far peg is at the edge of reach: 3 and 5 cm failed the IK)
+RELAY_DY = 0.12               # m: relay spots this far in front of the base (towards the robot; both arms reach there)
+BIAS_DIR = (0.0, -1.0)        # world xy: the side of the peg every piece is let go against (``side_bias``)
 PLACED_MARGIN = 0.002         # m: collision margin of pieces already on a peg (pegs 65 mm apart, pieces 58 mm wide)
 
 _HOLES: dict = {}
@@ -101,7 +104,7 @@ def peg_geometry(b, tag: str) -> dict:
     F = T_from(raw[:3], quat=raw[3:7] / np.linalg.norm(raw[3:7]))
     Fw = b.T @ F
     p, ax = Fw[:3, 3], Fw[:3, 2]
-    top, plate = float(p[2]), None
+    top, plate, radius = float(p[2]), None, None
     if b.asset.mesh is not None:
         V = b.asset.mesh[0]
         d = np.hypot(V[:, 0] - raw[0], V[:, 1] - raw[1])
@@ -109,14 +112,30 @@ def peg_geometry(b, tag: str) -> dict:
         if len(shaft):
             top = float(b.T[2, 2] * shaft[:, 2].max() + b.T[2, 3])
         ring = V[(d > 0.008) & (d < 0.02)]
+        z_plate = float(np.percentile(ring[:, 2], 90)) if len(ring) else float(V[:, 2].min())
         if len(ring):
-            plate = float(b.T[2, 2] * np.percentile(ring[:, 2], 90) + b.T[2, 3])
-    return {"tag": tag, "p": p, "axis": ax, "frame_z": float(p[2]), "top": top, "plate": plate}
+            plate = float(b.T[2, 2] * z_plate + b.T[2, 3])
+        band = (d < 0.0075) & (V[:, 2] > z_plate + 0.004) & (V[:, 2] < float(raw[2]) - 0.003)
+        if band.sum() >= 8:
+            radius = float(np.median(d[band]))
+    return {"tag": tag, "p": p, "axis": ax, "frame_z": float(p[2]), "top": top, "plate": plate, "radius": radius}
 
 
-def piece_target(sk: Skills, label: str, peg: dict, base_yaw: float, bottom_z: float) -> tuple[np.ndarray, np.ndarray]:
+def side_bias(o, peg: dict, keep: float = 0.00015) -> float:
+    """How far (m) the piece's hole is put off the peg's axis, all pieces of a peg towards the same side: the hole's
+    clearance on the peg less ``keep``. Let go centred, a piece ends anywhere within the clearance (0.3-0.65 mm here),
+    and two pieces on one peg differed by up to 1.14 mm against the 1 mm the stack is judged by (twin); against one
+    side, they line up."""
+    h = through_hole(o)
+    if h is None or peg.get("radius") is None:
+        return 0.0
+    return max(0.0, float(h[1]) - float(peg["radius"]) - keep)
+
+
+def piece_target(sk: Skills, label: str, peg: dict, base_yaw: float, bottom_z: float,
+                 bias=(0.0, 0.0)) -> tuple[np.ndarray, np.ndarray]:
     """(object pose, hole point in the object frame): the piece flat (its "up" pose, turned with the base), its hole on
-    the peg's axis, its lowest point at ``bottom_z``."""
+    the peg's axis (shifted by ``bias``, world xy), its lowest point at ``bottom_z``."""
     o = sk.world.obj(label)
     q = o.asset.place.get("up")
     R = rot_z(base_yaw) @ (quat_to_R(np.asarray(q, float)) if q is not None else level_R(o.R))
@@ -128,7 +147,7 @@ def piece_target(sk: Skills, label: str, peg: dict, base_yaw: float, bottom_z: f
         ext = np.abs(R) @ o.asset.extents
         low = float((R @ o.asset.center)[2] - ext[2] / 2)
     p_hole_w = R @ hole
-    pos = np.array([peg["p"][0] - p_hole_w[0], peg["p"][1] - p_hole_w[1], bottom_z - low])
+    pos = np.array([peg["p"][0] + bias[0] - p_hole_w[0], peg["p"][1] + bias[1] - p_hole_w[1], bottom_z - low])
     return T_from(pos, R), hole
 
 
@@ -172,12 +191,14 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
                 done.append(lab)
                 continue
             z_bot = peg["top"] - thread if thread > 0 else peg["top"] + drop
-            T, hole = piece_target(sk, lab, peg, b.yaw(), z_bot)
-            pkw = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "servo": True,
+            bias = side_bias(sk.world.obj(lab), peg) * np.asarray(BIAS_DIR)
+            T, hole = piece_target(sk, lab, peg, b.yaw(), z_bot, bias=bias)
+            pkw = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "servo": True, "retreat": PEG_RETREAT,
                    "servo_ref": base, "ref_top": peg["top"], "seat_tol": SEAT_TOL if thread > 0 else 0.004,
                    "probe": thread > 0}
             r = place_oriented(sk, lab, [T], yaw_sym=PEG_YAWS, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08, ignore=(base,),
-                               place_kw=pkw, air_handover=False,
+                               place_kw=pkw, air_handover=False, spot_avoid=(base,),
+                               relay_near=(float(b.center_w[0]), float(b.center_w[1]) - RELAY_DY),
                                transfer_kw={"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True,
                                             "yaw_about": hole})
             for a in ARMS:

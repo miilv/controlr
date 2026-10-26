@@ -304,11 +304,18 @@ def plan_drop(sk: Skills, arm: str, xy, z_tcp: float = 0.93) -> ArmPlan | SkillR
     return best[1]
 
 
-def free_spots(sk: Skills, label: str, near_xy=(0.0, -0.15), clearance: float = 0.02) -> list[tuple]:
-    """Table spots near ``near_xy`` clear of the other objects (for putting ``label`` down)."""
+def free_spots(sk: Skills, label: str, near_xy=(0.0, -0.15), clearance: float = 0.02, avoid=()) -> list[tuple]:
+    """Table spots near ``near_xy`` clear of the other objects (for putting ``label`` down); ``avoid``: fixtures
+    (Geometry labels) whose footprint (oriented box) the spot must also clear (a peg base between the arms)."""
     w = sk.world
     o = w.obj(label)
     r_self = float(np.linalg.norm(o.asset.extents[:2])) / 2
+    fixtures = []
+    for lab in avoid:
+        if lab in w.objects:
+            g = w.obj(lab)
+            c, R, h = g.obb(0.0)
+            fixtures.append((np.asarray(c, float)[:2], np.asarray(R, float)[:2, :2], np.asarray(h, float)[:2]))
     out = []
     for dx in (0.0, -0.05, 0.05, -0.1, 0.1, -0.15, 0.15):
         for dy in (0.0, -0.06, 0.06, -0.12, 0.12, -0.18):
@@ -318,6 +325,10 @@ def free_spots(sk: Skills, label: str, near_xy=(0.0, -0.15), clearance: float = 
             clear = all(np.linalg.norm(other.center_w[:2] - np.asarray(xy)) >=
                         r_self + float(np.linalg.norm(other.asset.extents[:2])) / 2 + clearance
                         for other in w.task_objects() if other.label != label and other.obj_type != "Geometry")
+            for c, R2, h in fixtures:
+                loc = np.abs(R2.T @ (np.asarray(xy) - c)) - h
+                if float(np.linalg.norm(np.maximum(loc, 0.0))) < r_self + clearance:
+                    clear = False
             if clear:
                 out.append(xy)
     return out
@@ -1011,7 +1022,7 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
                    max_spots: int = 3, relay_near=(0.0, -0.28), air_handover: bool = True,
-                   transfer_kw: dict | None = None) -> SkillResult:
+                   transfer_kw: dict | None = None, spot_avoid=()) -> SkillResult:
     """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
     the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
     through free table spots, the shortest that plans end to end:
@@ -1025,7 +1036,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
 
     Every leg picks its arm; all legs are planned before the first moves, and each later leg is
     re-planned from the world as it is then (same intermediate pose). ``transfer_kw``: extra ``plan_transfer``
-    arguments for every leg (grasp tilts, lift height)."""
+    arguments for every leg (grasp tilts, lift height). ``spot_avoid``: fixtures the relay spots must clear (``free_spots``)."""
     sk.refresh()
     tight = (tol_xy, tol_tilt, tol_z)
     tkw = dict(transfer_kw or {})
@@ -1037,7 +1048,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     o = sk.world.obj(label)
     Rs = [np.asarray(T, float)[:3, :3] for T in targets]
     R_now = level_R(o.R)
-    spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03)[:max_spots]
+    spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03, avoid=spot_avoid)[:max_spots]
     stable = all(rests_stably(o, R) for R in Rs)
     chains = []
     # as it is only when it stands by itself (a slice standing in a rack, 12 mm thick under a centre of mass 58 mm up,
@@ -2049,15 +2060,40 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
 # ============================================================================ hang on hooks
 
 HANG_CARRY = 0.06              # rad/step: the re-orienting carry to a hook (twin: wall pinches slid at 0.09)
+HANG_PRE = 0.025               # m: the handle's hole is carried to this far beyond the hook arm's tip, then slid on
+
+_SURF: dict = {}
+
+
+def _surface_points(o, step: float = 0.001) -> np.ndarray:
+    """Surface samples of an object's mesh (object frame), cached per asset."""
+    from dojo.skills.insertion import _surface_samples
+    key = (getattr(o.asset, "key", id(o.asset)), step)
+    if key not in _SURF:
+        _SURF[key] = _surface_samples(*o.asset.mesh, step=step)
+    return _SURF[key]
+
+
+def threads_along_x(o, T_h: np.ndarray, depth: float, r: float = 0.003, half: float = 0.012) -> bool:
+    """Does a line along the handle frame's x through the hole centre (``depth`` inside the frame along -z) pass
+    through the handle without touching it (the frame's x is the hole's axis, what a hook's arm runs along)? True
+    without a mesh. Mug frames differ: most have x across the handle's loop, one has x along the handle."""
+    if o.asset.mesh is None:
+        return True
+    P = _surface_points(o)
+    c = T_h[:3, 3] - T_h[:3, 2] * depth
+    L = (P - c) @ T_h[:3, :3]
+    near = (np.abs(L[:, 0]) < half) & (np.hypot(L[:, 1], L[:, 2]) < r)
+    return not bool(near.any())
+
 
 def handle_hole(o, T_h: np.ndarray, slab: float = 0.004) -> float:
     """How far (m) inside a handle frame's origin (along its -z, into the object) the handle's hole centre lies: the
     largest gap in the mesh along that line within the handle's plane (a mug's handle frame sits on the outside of
     its bar). 8 mm when the mesh says nothing."""
-    from dojo.skills.insertion import _surface_samples
     if o.asset.mesh is None:
         return 0.008
-    P = _surface_samples(*o.asset.mesh, step=0.001)
+    P = _surface_points(o)
     L = (P - T_h[:3, 3]) @ T_h[:3, :3]
     z = np.sort(L[(np.abs(L[:, 0]) < slab) & (np.abs(L[:, 1]) < slab) & (L[:, 2] < 0.002) & (L[:, 2] > -0.04)][:, 2])
     if len(z) < 4:
@@ -2105,23 +2141,34 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
     hooks_by = {h[0]: h for h in hooks}
-    # hook order as the rack lists them (v3 tried the highest first: 0.32 on 3 layouts against v2's 0.42 on 6; the
-    # top hooks took 8/8 mugs in v2 when filled after the low ones)
-    used, done, failed, retried = set(), [], [], set()
+    # the rack as an obstacle, pole and arms as small boxes from its mesh (its bbox covers every hook): the carry to a
+    # low hook passes under the upper arms (twin v2: low hooks 4/10, the mug knocked out of the pads on the way)
+    if rk.asset.mesh is not None:
+        from dojo.skills.motion import mesh_parts
+        sk.coll.include.add(rack)
+        sk.coll.parts[rack] = mesh_parts(*rk.asset.mesh)
+    # the highest hooks, filled from the lowest up: an object hung on a higher hook hangs over the ones below it, and
+    # every low hook used is a hard carry under the arms above it (v2: top hooks 8/8, low ones 4/10)
     pool = [l for l in objects if l in w.objects]
+    by_h = sorted(hooks, key=lambda h: -float(h[1][2, 3]))
+    chosen = sorted(by_h[:len(pool)], key=lambda h: float(h[1][2, 3]))
+    order = chosen + sorted(by_h[len(pool):], key=lambda h: -float(h[1][2, 3]))
+    used, done, failed, retried = set(), [], [], set()
     for _round in range(2 * len(pool)):
         if not pool:
             break
         w = sk.refresh()
         found = None
-        for lab in pool:
-            o = w.obj(lab)
-            hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
-            for hi, H, tip in hooks:
-                if hi in used:
-                    continue
+        for hi, H, tip in order:
+            if hi in used:
+                continue
+            for lab in pool:
+                o = w.obj(lab)
+                hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
                 for Th in hs[:2]:
                     dz = handle_hole(o, Th)
+                    if tip is not None and not threads_along_x(o, Th, dz):
+                        continue
                     Ht = H.copy()
                     Ht[:3, 3] += H[:3, 2] * dz
                     if tip is None:              # a cradle: the point itself goes onto it, from above
@@ -2132,7 +2179,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                     if tip is None:
                         T_pre[2, 3] += 0.03
                     else:
-                        T_pre[:3, 3] += H[:3, 0] * (tip + 0.02)
+                        T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
                     grasps = (lambda a, o=o: G_hang(sk, o, a))
                     r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=grasps, max_full=8,
                                          place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY})
@@ -2144,7 +2191,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             if found:
                 break
         if not found:
-            sk.log(f"[hang] no plan for {pool} on hooks {[h[0] for h in hooks if h[0] not in used]}")
+            sk.log(f"[hang] no plan for {pool} on hooks {[h[0] for h in order if h[0] not in used]}")
             failed += pool
             break
         lab, hi, H, T_obj, T_pre, (pp, pl) = found
@@ -2205,9 +2252,13 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                                note=f"{lab} handle {d*1000:.0f} mm from hook {hi}, z {hp[2]:.3f}"))
         (done if ok else failed).append(lab)
         if ok:
-            # a hung object's box (bbox + margin, turned handle-up) covers most of a small rack: shrink it for the
-            # next plans (twin, a 14 cm rack: after the first mug no other mug had a plan)
-            sk.coll.margin_of[lab] = -0.01
+            # a hung object's box (bbox + margin, turned handle-up) covers most of a small rack (twin, a 14 cm rack: after
+            # the first mug no other mug had a plan): its mesh as small boxes for the next plans
+            if o2.asset.mesh is not None:
+                from dojo.skills.motion import mesh_parts
+                sk.coll.parts[lab] = mesh_parts(*o2.asset.mesh, cell=0.025, step=0.006)
+            else:
+                sk.coll.margin_of[lab] = -0.01
         sk.bank()
     if failed:
         return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
