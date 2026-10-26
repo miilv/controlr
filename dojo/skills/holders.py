@@ -321,7 +321,7 @@ def in_hole(o, hole: dict) -> bool:
 
 
 def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None = None, close: bool = True,
-               tries: int = 3, hold_below: float = 0.010) -> dict:
+               tries: int = 3, hold_below: float = 0.010, carry_rad: float = 0.05) -> dict:
     """Stand each object upright over a free hole of ``holder``'s body and let it drop in (the fingertips stay above
     the body), back holes first (nearest the lid hinge); bank after each. Then, with ``close``, swing the lid shut
     (``swing_closed``). Objects lying in a round container are grasped inside its wall."""
@@ -369,7 +369,7 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
                                          place_kw={"servo": True, "servo_ref": holder,
                                                    "ref_top": holes[0]["top"] + 0.006, "fingers_out": True,
                                                    "probe": False, "hover_clear": 0.008, "descend_rad": 0.03,
-                                                   "pre_h": 0.05})
+                                                   "pre_h": 0.05, "approach_rad": carry_rad, "ease": 6})
                 if not isinstance(plans, SkillResult):
                     break
             if isinstance(plans, SkillResult):
