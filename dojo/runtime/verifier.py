@@ -30,7 +30,8 @@ from . import estimate as _est
 
 class BundleVerifier:
     def __init__(self, client, task_scene: str, provider, bridge, perturb_mm: float = 2.0, perturb_deg: float = 1.0,
-                 layout_fn=None, log=None, max_prefix: int = 400):
+                 layout_fn=None, log=None, max_prefix: int = 400, load_noise: tuple | None = None, seed: int = 0,
+                 load: str = "raw"):
         self.tc = client
         self.scene = task_scene
         self.provider = provider
@@ -39,6 +40,12 @@ class BundleVerifier:
         self.layout_fn = layout_fn
         self.log = log or (lambda *a, **k: None)
         self.max_prefix = max_prefix
+        # dev experiment (mode gt): a persistent per-object pose error on every load from the estimate, (pos_mm,
+        # rot_deg) standard deviations per axis: does belief noise alone make the twin reject every candidate?
+        self.load_noise = tuple(load_noise) if load_noise else None
+        self._noise: dict = {}
+        self._rng = np.random.default_rng(seed)
+        self.load = load                        # raw | consistent (``twin_load``: level + seat before the layout)
         self.disabled: str | None = None        # reason verification is off for the rest of the episode
         self.kept: dict[int, int] = {}          # candidate -> snapshot id (last rollout, nominal samples)
         self.chain: dict | None = None          # {"sid", "n"}: twin end state of the executed candidate
@@ -80,8 +87,45 @@ class BundleVerifier:
         if held and self.chain is not None and self.chain.get("sid") is not None and self.chain["n"] <= self.bridge.n_executed:
             return {"snapshot_id": int(self.chain["sid"])}, self.chain["n"], "snapshot"
         cp = self.provider.checkpoint
-        lay = (self.layout_fn or _est.estimate_to_layout)(self.scene, cp["objects"])
+        objs = self._noisy(cp["objects"]) if self.load_noise else cp["objects"]
+        if self.load == "consistent":
+            objs = self._consistent(objs)
+        lay = (self.layout_fn or _est.estimate_to_layout)(self.scene, objs)
         return {"layout": lay, "robot": cp["robot"]}, cp["n"], "estimate"
+
+    def _consistent(self, objects: list[dict]) -> list[dict]:
+        from .twin_load import consistent
+        bel = getattr(self.provider, "belief", None)
+        objs = getattr(bel, "objects", None) or {}
+        assets = {lab: o.asset for lab, o in objs.items() if not o.clutter}
+        fixed = {lab for lab, o in objs.items() if o.obj_type == "Geometry"}
+        try:
+            fixed |= _est._fixed_labels(self.scene)
+        except Exception:  # noqa: BLE001 (no generator config for this scene: every non-Geometry object is movable)
+            pass
+        out, st = consistent(objects, assets, fixed)
+        self.stats["load_leveled"] = self.stats.get("load_leveled", 0) + len(st["leveled"])
+        self.stats["load_seated"] = self.stats.get("load_seated", 0) + len(st["seated"])
+        if st["seated"]:
+            self.stats["load_seat_max_mm"] = max(self.stats.get("load_seat_max_mm", 0.0),
+                                                 max(abs(d) for _, d in st["seated"]))
+        return out
+
+    def _noisy(self, objects: list[dict]) -> list[dict]:
+        """``objects`` with each label's own fixed offset (drawn once per label and episode): position N(0, pos_mm)
+        per axis (z included: a stacked piece may load into its support), rotation N(0, rot_deg) per axis."""
+        pos_mm, rot_deg = self.load_noise
+        out = []
+        for o in objects:
+            lab = o.get("label")
+            if lab not in self._noise:
+                self._noise[lab] = (self._rng.normal(0.0, pos_mm / 1000.0, 3), self._rng.normal(0.0, np.radians(rot_deg), 3))
+            dp, rv = self._noise[lab]
+            o2 = dict(o)
+            o2["pos"] = (np.asarray(o["pos"], float) + dp).tolist()
+            o2["quat"] = _quat_mul(_quat_rv(rv), np.asarray(o["quat"], float)).tolist()
+            out.append(o2)
+        return out
 
     def rollout(self, candidates: list[list[dict]], k: int = 2, held_labels: tuple = (), src: int = 0) -> list[Outcome]:
         """On a twin error: log it, disable verification for the rest of the episode and return no outcomes
@@ -127,6 +171,23 @@ class BundleVerifier:
         self.stats["steps"] += max((len(c["actions"]) for c in cands), default=0)
         self.stats["wall_s"] += time.perf_counter() - t0
         return res
+
+
+def _quat_rv(rv) -> np.ndarray:
+    """Quaternion (w, x, y, z) of the rotation vector ``rv`` (rad)."""
+    a = float(np.linalg.norm(rv))
+    if a < 1e-12:
+        return np.array([1.0, 0.0, 0.0, 0.0])
+    return np.r_[np.cos(a / 2), np.sin(a / 2) * np.asarray(rv, float) / a]
+
+
+def _quat_mul(a, b) -> np.ndarray:
+    """Hamilton product a * b, (w, x, y, z), normalised."""
+    w1, x1, y1, z1 = a
+    w2, x2, y2, z2 = b
+    q = np.array([w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+                  w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2])
+    return q / np.linalg.norm(q)
 
 
 def chosen_len(info: dict, idx: int) -> int:

@@ -195,6 +195,35 @@
   along one axis as `partial.unobserved_axis`. Such an ok must not confirm or apply a correction along that axis:
   post-place, place_confirm's second view and the recentre revert should project the correction onto the observed
   axis only, or treat it as unconfirmed.
+- [ ] **dojo runtime: label repair after a confident "what is there" (deferred, designed).** held_look already
+  returns `what` / `asked_held` when given `candidates` (`j1.held_look_impl`), and `identity.refine_what` returns
+  `best` for the post-place. The runtime service passes no candidates yet. Design:
+  - candidates = the labels of the asked label's config group, with belief poses (the asked one at its in-jaw /
+    released pose);
+  - repair when `asked_*` is false and `what` / `best` names another label at conf >= 0.7 and margin >= 0.15:
+    1. swap the two labels' belief states (pose, attachment, touched) and the skills' `Held` label;
+    2. log `label_repair`;
+    3. continue (no drop or re-pick);
+  - below the bar, keep the grasp / pose. Same-key twins cannot be repaired by design.
+  - Deferred: today's failures don't need it. Stack labels are exchangeable, and tower pieces of one shape share a
+    colour.
+- [ ] **dojo perception: a multi-view estimate can stack a duplicate pillar on a real one.** In 3 of 23 tower
+  scan-primary records (100011, 100014, 100022):
+  - a key-00002 pillar sits on top of a real right-side pillar, at z +38 mm (one pillar height) with conf 0.57-0.62;
+  - it carries the label of a real left-side pillar, which thereby counts as found while it is not;
+  - all 3 episodes failed: a tower "built" on the belief, or picks with 0 feasible grasps next to the phantom;
+  - the search's full fuse produced the same kind of stacked find in 100022 (conf 0.80).
+
+  At frame 0 nothing is stacked on build_tower. Perception should reject a piece resting on an identical piece
+  unless the views support both. The runtime could also distrust a frame-0 "stacked" piece when the task starts flat.
+  Journal 2026-10-25-dojo-integ2 §8.
+- [ ] **dojo runtime: search after the scan.** The search regions come from the record only (perception
+  `look.search_regions(record)`), and each region's full-fuse fallback fuses frame 0 + that region's wrist view.
+  - After a scan, the regions come from the scan-fused record, so the search visits different places.
+  - In 100024 the search found 2 of 3 missing pieces in the trigger arm vs 3 of 3 in the off arm.
+  - The start pose is not the cause: the looks home every arm they move before the search.
+  - Cheap candidate: add the scan observation to the full fuse (`estimate([frame0, scan, region view])`) as a config
+    switch, A/B on the tower layouts with not-found pieces.
 - [ ] **dojo runtime: fixture-aware place refine.** Under perception cb5c3a4 the place refines on the tower's base board
   are all "not ok" (the static fixture keeps its prior), and each place still spends 8-10 steps on 2 re-hovers (~50
   steps per 8-piece tower episode, journal 2026-10-25-dojo-integ2 §5). A stationary support whose prior perception
