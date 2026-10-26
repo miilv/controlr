@@ -208,6 +208,11 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
     w = sk.refresh()
     b = w.obj(base)
     sk.coll.include.add(base)
+    if b.asset.mesh is not None:
+        # the base as small boxes (plate and pegs): its box is mostly air between the pegs, and a hand let go of a seated
+        # piece is inside it (twin: every pick after the first piece "hits stack_base" from there)
+        from dojo.skills.motion import mesh_parts
+        sk.coll.parts[base] = mesh_parts(*b.asset.mesh, cell=0.02, step=0.004)
     geo = {tag: peg_geometry(b, tag) for tag in pegs}
     order = sorted(range(len(groups)), key=lambda i: geo[pegs[i]]["top"])
     done, failed = [], []
@@ -243,6 +248,13 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
             if ok:
                 on_this.append(lab)
                 sk.coll.margin_of[lab] = PLACED_MARGIN
+                # as small mesh boxes, checked against the held piece's own mesh points: seated, the next piece comes
+                # down 7 mm from the finished stack beside it, inside the held box's 5 mm inflation plus its margin
+                # (twin: 0 grasp-place pairs for the 4 pieces of the last peg)
+                o = sk.world.obj(lab)
+                if o.asset.mesh is not None:
+                    from dojo.skills.motion import mesh_parts
+                    sk.coll.parts[lab] = mesh_parts(*o.asset.mesh, cell=0.015, step=0.004)
     if failed:
         return {"ok": False, "stage": "pegs", "note": f"done {done}, failed {failed}"}
     return {"ok": True, "stage": "pegs"}
