@@ -164,3 +164,18 @@ def test_refine_identity_changes_identity_only_on_a_good_fit(monkeypatch):
     fits["Rigid/block/00003"]["iou"] = 0.95
     r = refine.refine_identity(["Rigid/block/00002", "Rigid/block/00003"], None, {}, [0, 0, 0.78, 1, 0, 0, 0])
     assert r["obj_id"] == "Rigid/block/00003" and r["identity_ok"] is True
+
+
+def test_image_edges_see_a_white_block_on_light_wood():
+    import cv2
+
+    from dojo.perception.refine import image_edges
+
+    img = np.zeros((120, 160, 3), np.uint8)
+    img[:] = (236, 222, 180)                      # light wood (RGB)
+    img[40:80, 60:100] = (228, 228, 226)          # a white pillar: about the same grey level, no yellow
+    grey = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    assert abs(int(grey[60, 80]) - int(grey[10, 10])) < 15
+    assert cv2.Canny(cv2.GaussianBlur(grey, (5, 5), 0), 40, 120).sum() == 0   # grey-only Canny: nothing
+    E = image_edges(img)
+    assert E[38:43, 60:100].any() and E[40:80, 58:63].any()                  # chroma edges: the outline

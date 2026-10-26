@@ -26,6 +26,10 @@
   standing on its 62 mm end. Offer only the label's own config group (in build_tower, one index per label: no
   change possible). Perception now also requires iou >= 0.9 for an identity change
   (experiments/2026-10-26-what-is-there.md).
+- [ ] **Runtime: a `partial` post-place refine confirms the across offset only.** For a board wider than the wrist
+  view, refine fits the offset across the long axis and the yaw. `partial.unobserved_axis` keeps the prior's
+  position along the axis. Check that axis with the head-view render-compare or a second wrist pose at a board end;
+  do not read `ok` as a full confirmation (experiments/2026-10-26-tower-post-place.md).
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
