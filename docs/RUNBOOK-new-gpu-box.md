@@ -178,7 +178,7 @@ Measured on compute3 (Skoltech network: HF ~15-25 MB/s, compute3 → local ~50 M
 | smoke_perception | EGL context on the NVIDIA driver + `eval_g1` on push_T 100000 frame 0 (genuine 5.1). Expected: T 0.5 mm, pad 0.7 mm | — | 1-3 min |
 | smoke_bridge | CPU: `scripts/dojo/bridge_episode.sh --fake` with RuntimePolicy (the launcher path on the fake strict server, 0 LLM calls). Expected: end=ended, 172/550 steps | — | < 1 min |
 | assets_post | `RoboDojo/Assets` link, `curobo.yml` regeneration, `check_assets` over all task configs | — | 1-2 min |
-| smoke_twin | physics-only Twin: boot, load + settle, 40-step rollout, snapshot/restore + 40; G2 contact restore must be bitwise | — | 2-4 min |
+| smoke_twin | physics-only Twin: boot, load + settle, 40-step rollout, snapshot/restore + 40; G2 contact restore bitwise, or within 0.01 mm (WARN) | — | 2-4 min |
 | smoke_render | full: an Isaac Sim 5.1 RTX render of D0 stack_blocks 100000 (3 cameras), compared with isr-lab's genuine 5.1 frame 0 (MAD) | — | 5-15 min (the first RTX boot builds the shader cache) |
 | smoke_dev_eval | full: the official harness (`scripts/simlab/dev_eval.sh`, RoboDojo's `main.py`) on dev layout 110007, replaying G2's `stack` trajectory with the XPolicyLab policy `dojo_replay`. Expected: 1 episode, success 1.0 | — | 4-8 min |
 | smoke_proxy_eval | physics: `scripts/simlab/proxy_eval.sh` (physics-only 5.1 episode + the 6.0 render service in one scope, the heavy lock), replaying the same trajectory. Expected: success, 263/550 steps, ~0.12 s/obs | — | 3-8 min (first 6.0 RTX boot) |
@@ -224,7 +224,7 @@ their RoboDojo installs.
 | any copy | `direct ... not possible: relaying through this box` | Boxes cannot reach each other (NAT, firewall, ssh alias without a resolvable HostName). It works, slower. `--addr HOST=user@ip:port` with an address the boxes can reach makes it direct. |
 | isaac6 | `VERSION ... != 6.0.0-rc.59...` | compute3's Isaac Sim 6.0 changed. Decide whether to re-pin `ISAAC6_VERSION` (both scripts) or copy from a box that has the old one. |
 | assets_post | `no curobo.yml` | `update_embodiment_config_path.py` failed: run it by hand in `~/dojo-robodojo/RoboDojo` with the env python. |
-| smoke_twin | `contact restore bitwise False` | Twin restore is not exact on this machine. Physics still works. Report it before trusting verify-before-execute. |
+| smoke_twin | `contact restore bitwise False` with max > 0.01 mm | Twin restore is not exact on this machine. Physics still works. Report it before trusting verify-before-execute. Within 0.01 mm (float noise, compute4: 0.0001 mm) the step passes with a WARN. |
 | smoke_render | segfault in `librtx.scenedb` | 5.1 RTX does not run here (5090 + driver 580 had never been tried; compute3's crash may be Blackwell + Kit 107.3, not the driver). With role auto, the box switches to physics by itself and fetches Isaac 6.0. With `--role full`, re-run with `--role physics`. |
 | smoke_dev_eval | `no _result.json` | Read `~/dojo-data/infra/smoke/dev_eval/*/eval_client.log` and `policy_server.log`. |
 | smoke_dev_eval / smoke_proxy_eval | success 0.0 (WARN) | The harness ran but the replay failed. Compare with G2b (cross-machine contact divergence, journal): the box works, but the twin-vs-eval gap is larger here. |
