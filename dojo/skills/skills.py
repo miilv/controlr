@@ -541,7 +541,9 @@ class Skills:
             if isinstance(tail, str):
                 notes.append(tail)
                 continue
-            p = ArmPlan(arm, np.asarray(q0, float), self.ex.g[arm]).move(to_pre, "approach")
+            # a place planned with its pick (``held``) starts with the gripper closed on the object, not open as it is
+            # now (mode B: the re-plan after the pick failed, this plan ran, and its approach let go of the charger)
+            p = ArmPlan(arm, np.asarray(q0, float), CLOSED if held is not None else self.ex.g[arm]).move(to_pre, "approach")
             p.ops.extend(tail.ops)
             cand = PlacePlan(arm, p, T_obj, p.steps, h.label, keep_tilt=keep_tilt)
             cand.approach = to_pre
@@ -624,6 +626,8 @@ class Skills:
         descent for the measured in-hand pose, descend, release, back out. ``other`` = the other
         arm's compiled per-step (q, g) list, run in the same env steps throughout."""
         other = list(other or [])
+        if self.held.get(pp.arm) is not None:
+            pp.plan.g0 = min(float(pp.plan.g0), float(self.ex.g[pp.arm]))   # the gripper holds: never open on the way
         try:
             if (remeasure and (self.remeasure or self.refine is not None)
                     and getattr(pp, "approach", None) is not None):

@@ -234,3 +234,17 @@ def test_offset_belief_provider_shifts_only_unheld_objects():
     assert np.allclose(w.obj("b").pos[:2], [-0.246, -0.153])
     w = prov.refresh({"left": "b"})
     assert np.allclose(w.obj("b").pos[:2], [-0.25, -0.15])
+
+
+def test_a_place_planned_with_its_pick_keeps_the_gripper_closed():
+    env = KinematicEnv([{"label": "b", "category": "block", "pos": [-0.25, -0.15, TABLE_Z + 0.015],
+                         "quat": [1, 0, 0, 0], "half": [0.015] * 3}])
+    sk = Skills(env, GTProvider(env, None))
+    T = np.asarray(sk.world.obj("b").T, float).copy()
+    T[:2, 3] = (-0.2, -0.2)
+    r = sk.plan_transfer("b", [T])
+    assert not hasattr(r, "note"), r
+    pp, pl = r
+    assert pl.plan.g0 == 0.0                        # planned before the pick, while the gripper is open
+    comp = pl.plan.compile()[0]
+    assert all(g == 0.0 for _, g in comp[:5])       # the approach does not open it
