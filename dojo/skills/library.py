@@ -1124,6 +1124,12 @@ def _support_raw(o, tag: str) -> list:
             for c, _r in o.asset.support.get(tag, [])]
 
 
+# mode B (a provider held_pose; ``Skills._held_protocol``): an insertion always looks at the held object when the budget
+# allows (perception-held's report, charger: a hover read is 0.49 / 1.29 mm off at the leading point (median / p90), an
+# observer look 0.25 / 0.37, a show pose 0.15 / 0.31; the blades need about +-0.1 mm), and with that read a descent that
+# stops on the receptacle first tries a pressed spiral out to 0.5 mm
+INSERT_HELD_KW = {"held_tol": 0.0, "spiral": 0.0005}
+
 INSERT_AIR_HANDOVER = False    # insertions that only plan through an in-air handover: lift + return instead (G3: the
                                # handover lost the key on the carry in 5 versions, 0/34; the lift banks the 15 % rung)
 
@@ -1222,7 +1228,8 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
             for T in tg:
                 T[2, 3] -= press
             place_kw = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
-                        "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True}
+                        "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True,
+                        **INSERT_HELD_KW}
             res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                                  place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
             if not res.ok and res.status != "ended":
@@ -1271,7 +1278,7 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
         w.notes["insert"] = {"receptacle": rec, "fit": "blind"}
     sk.coll.include.add(rec)
     place_kw = {"pre_h": 0.02, "descend_rad": 0.025, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
-                "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True}
+                "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True, **INSERT_HELD_KW}
     res = place_oriented(sk, obj, targets, yaw_sym=ysym, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                          place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
     if not res.ok and res.status != "ended":

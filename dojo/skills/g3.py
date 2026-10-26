@@ -84,7 +84,11 @@ class OffsetBeliefProvider:
 
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
-                verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False) -> dict:
+                verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False,
+                held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True) -> dict:
+    """``held_pose`` ("noise" / "gt", mode B): perception's in-hand read answered from GT (``heldsim``), with the
+    runtime belief's in-hand transform (implied); ``held_belief``: that belief alone (no read); ``held_looks``: the
+    protocol may look / show (``Skills.held_looks``)."""
     """``task`` is bookkeeping only: the episode runs ``planner.solve`` from the instruction + world."""
     from dojo.skills import planner
     from dojo.skills.env import RunnerEnv
@@ -103,6 +107,9 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     prov = GTProvider(env, assets, instruction=env.instruction)
     if belief_offsets:
         prov = OffsetBeliefProvider(prov, belief_offsets)
+    if held_pose or held_belief:
+        from dojo.skills.heldsim import HeldBeliefProvider
+        prov = HeldBeliefProvider(prov, env, mode=held_pose or None, seed=seed)
     t1 = time.perf_counter()
     sim_time = [0.0]
     verifier = None
@@ -113,6 +120,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     sk = Skills(env, prov, reserve=30, log=log, verifier=verifier,
                 verify_k=verify_k or 2, n_cands=4, remeasure=not mode_b,
                 refine=(lambda sk_, label, arm, kind: None) if mode_b else None)
+    sk.held_looks = bool(held_looks)
     frames = []
     if trace:
         labels = [o.label for o in sk.world.task_objects() if o.obj_type != "Geometry"]
@@ -175,6 +183,13 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
                                   for o in sk.refresh().task_objects()}})
     rec["category"] = classify(res_j, reward, hist)
+    if sk.held_events or held_pose or held_belief:
+        ev = sk.held_events
+        rec["held"] = {"reads": len(ev), "adopted": sum(bool(e.get("adopted")) for e in ev),
+                       "looks": sum(e["view"] != "hover" for e in ev), "look_steps": sum(int(e.get("steps", 0)) for e in ev),
+                       "by_view": {v: [sum(e["view"] == v for e in ev), sum(e["view"] == v and e["ok"] for e in ev)]
+                                   for v in ("hover", "look", "show")},
+                       "events": ev[-40:], "provider": getattr(prov, "stats", None)}
     if verifier is not None:
         rec["verify"] = {**sk.vstats, **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in verifier.stats.items()}}
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -231,9 +246,11 @@ def cmd_run(a) -> None:
             lab, vals = spec.split(":")
             offs[lab] = [float(x) for x in vals.split(",")]
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
-                          verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b)
+                          verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b, held_pose=a.held_pose,
+                          held_belief=a.held_belief, held_looks=not a.no_held_looks)
         if offs or a.mode_b:
-            rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b)}
+            rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b), "held_pose": a.held_pose,
+                                "held_belief": bool(a.held_belief or a.held_pose), "held_looks": not a.no_held_looks}
         rec["log"] = logs[-60:]
         rec["code"] = code
         rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
@@ -595,6 +612,12 @@ def main(argv=None) -> None:
     r.add_argument("--belief-offset", action="append", default=[],
                    help="LABEL:dx,dy (m): the object's pose is believed this far off until it is held (dev)")
     r.add_argument("--mode-b", action="store_true", help="no in-hand re-measure, a refine hook that sees nothing (dev)")
+    r.add_argument("--held-pose", choices=("noise", "gt"), default=None,
+                   help="mode B: held_pose / show_pose answered from GT (+ perception-held's calibrated noise), with the "
+                        "runtime belief's in-hand transform (dojo.skills.heldsim; dev)")
+    r.add_argument("--held-belief", action="store_true",
+                   help="mode B: the runtime belief's in-hand transform (attached at the close), no held_pose (dev)")
+    r.add_argument("--no-held-looks", action="store_true", help="the held-pose protocol reads at the hover only (dev)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")
