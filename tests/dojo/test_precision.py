@@ -78,3 +78,24 @@ def test_insert_each_relays_a_lying_tube_through_up_to_three_holes(monkeypatch):
     w.notes.clear()
     P.insert_each(sk, ["tube0"], "rack")
     assert len(calls) == 1
+
+
+def test_insert_each_tries_a_relay_before_a_plan_that_holds_the_tube_off_its_centre_of_mass(monkeypatch):
+    V, F = _tube_mesh()
+    rack = _obj("rack", "Geometry", "test_tube_slot", (0.0, -0.05, TABLE_Z + 0.03), lo=(-0.1, -0.05, -0.03),
+                hi=(0.1, 0.05, 0.03),
+                support={f"s/{k}": [(np.array([-0.072 + 0.036 * k, 0.0, 0.028, 1, 0, 0, 0]), 0.015)] for k in range(5)})
+    tube = _obj("tube0", "Rigid", "test_tube", (-0.35, -0.2, TABLE_Z + 0.014), mesh=(V, F))
+    w = WorldState(task="", instruction="", objects={"rack": rack, "tube0": tube}, arms={}, home_q={}, step=0,
+                   step_lim=500)
+    plan = (SimpleNamespace(arm="left", grasp=SimpleNamespace(note="box close 0 off +21mm (off the CoM)")), None)
+    sk = SimpleNamespace(world=w, kin=X5Kin(), held={"left": None, "right": None}, log=lambda m: None,
+                         coll=SimpleNamespace(include=set(), heightmaps={}, margin_of={}),
+                         refresh=lambda: w, bank=lambda: None, plan_transfer=lambda *a, **k: plan)
+    order = []
+    monkeypatch.setattr(L, "place_oriented", lambda sk_, lab, tg, **kw: order.append("relay") or SkillResult(
+        False, "place_oriented", "ik_fail", 0, None, note="no relay"))
+    monkeypatch.setattr(L, "_run_leg", lambda sk_, lab, tg, ys, ign, pk, first=None, **kw: order.append(
+        ("leg", first is plan)) or SkillResult(False, "place", "place_miss", 50, "left", note="x"))
+    P.insert_each(sk, ["tube0"], "rack")
+    assert order == ["relay"] * P.EACH_RELAY_HOLES + [("leg", True)]

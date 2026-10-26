@@ -1040,17 +1040,21 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
         res = None
         pk = {**EACH_PLACE_KW, "grip_only": (receptacle,)}
         tkw = {"grasps": lambda a, lab=lab: uniform_section_grasps(sk, sk.world.obj(lab), a), "lift_to_pre": True}
-        cands = []
-        for spread_bad, _, tag, T, r in free[:EACH_HOLES]:
+        def hole_targets(T, r):
             p = T[:3, 3]
             fl = hole_floor(rec, p[:2], r)
             d = depth if depth is not None else (min(0.8 * L, float(p[2]) - fl) if fl is not None else 0.5 * L)
-            tg = upright_targets(o, p, fl, d, n_yaw=8)
+            return d, upright_targets(o, p, fl, d, n_yaw=8)
+        cands = []
+        for spread_bad, _, tag, T, r in free[:EACH_HOLES]:
+            d, tg = hole_targets(T, r)
             if tg:
                 cands.append((tag, d, tg))
         # a one-arm plan into one of the best holes (a screen per hole: one screen over all of them ran out of its IK
-        # budget before the later holes, twin); a relay only when none has one
+        # budget before the later holes, twin); a relay only when none has one, or when the only ones hold the object
+        # far from its centre of mass (twin: tubes held 21 mm off it slid 6.5 mm or missed the hole)
         from dojo.skills.library import _run_leg
+        off_com = None
         for tag, d, tg in cands:
             plan = sk.plan_transfer(lab, tg, ignore=(receptacle,), place_kw=pk, **tkw)
             if isinstance(plan, SkillResult) and re.search(r"[1-9]\d* grasp-place pairs", plan.note):
@@ -1060,24 +1064,40 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
             if isinstance(plan, SkillResult):
                 sk.log(f"[insert_each] {lab} -> {tag}: no one-arm plan ({plan.note[:120]})")
                 continue
+            if "off the CoM" in plan[0].grasp.note:
+                sk.log(f"[insert_each] {lab} -> {tag}: one-arm plan off the CoM only ({plan[0].arm}, {plan[0].grasp.note})")
+                off_com = off_com or (tag, d, tg, plan)
+                continue
             sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: {plan[0].arm} ({plan[0].grasp.note}), {d*1000:.0f} mm in")
             res = _run_leg(sk, lab, tg, 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
             break
-        if res is None and cands:
-            # no one-arm plan: put it down as it lies on a spot between the arms, then into a hole from there (often the
-            # other arm's: the picking arm's holes are taken, or the object lies out of the inserting arm's reach). The
-            # holes for that leg: not reached over from the other arm's base, then nearest to the spot.
-            oth = sk.kin.base("right" if picker == "left" else "left")[:2, 3]
-            mid = np.asarray(EACH_RELAY_NEAR, float)
-            rank = {tag: (any(_seg_dist(f[:2], oth, T[:3, 3][:2]) < EACH_OVER for f in filled),
-                          float(np.linalg.norm(T[:3, 3][:2] - mid))) for _sb, _sd, tag, T, _r in free}
-            for tag, d, tg in sorted(cands, key=lambda c: rank[c[0]])[:EACH_RELAY_HOLES]:
+        if res is None and free:
+            # put it down as it lies on a spot between the arms, then into a hole from there (often with the other
+            # arm: the picking arm's holes are taken, or the object lies out of the inserting arm's reach). Holes for
+            # that leg from all the free ones: not reached over from the nearer arm's base, away from filled ones, then
+            # the nearest to a base (twin: the holes are 0.49-0.61 m out, each arm reaches its own side)
+            bases = [sk.kin.base(a_)[:2, 3] for a_ in ARMS]
+
+            def reach_rank(x):
+                p = x[3][:3, 3][:2]
+                ds = [float(np.linalg.norm(p - b_)) for b_ in bases]
+                ib = int(np.argmin(ds))
+                return (any(_seg_dist(f[:2], bases[ib], p) < EACH_OVER for f in filled), x[0], ds[ib])
+            for _sb, _sd, tag, T, r in sorted(free, key=reach_rank)[:EACH_RELAY_HOLES]:
+                d, tg = hole_targets(T, r)
+                if not tg:
+                    continue
                 sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: relay")
                 res = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.008, tol_tilt=20.0, tol_z=0.03,
                                      ignore=(receptacle,), place_kw=pk, air_handover=False, transfer_kw=tkw,
                                      relay_near=EACH_RELAY_NEAR, spot_avoid=(receptacle,), as_is_lying=True)
                 if res.ok or res.steps > 0 or res.status != "ik_fail":
                     break
+            if off_com is not None and (res is None or (not res.ok and res.steps == 0)):
+                tag, d, tg, plan = off_com
+                sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: no relay, off the CoM: {plan[0].arm} "
+                       f"({plan[0].grasp.note}), {d*1000:.0f} mm in")
+                res = _run_leg(sk, lab, tg, 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
         for a in ARMS:
             if sk.held[a] is not None:
                 sk._record(sk.regrasp(a))
