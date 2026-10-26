@@ -42,6 +42,10 @@ SCREEN_IK_BUDGET = 6000       # place IKs per arm in a transfer screen (a figuri
 UNEVEN_CARRY = 0.09           # rad/step, carries of uneven objects (tools, figurines, pens) instead of CARRY 0.14
 LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is carried on rather than redone
 GUARD_LAG = 0.004             # m: measured-vs-commanded TCP gap that stops a guarded descent (contact)
+GUARD_SEATED = 0.004          # m: a guarded descent that stops this close to its target counts as seated
+PROBE_RADII = (0.0015, 0.003, 0.0045)   # m: probe circles around a contact beside the hole (nearest first)
+PROBE_LIFT = 0.002            # m: lift above the contact height before each probe
+PROBE_IN = 0.005              # m below the contact height: the probe went into the hole
 LOOSE_DRIFT = 0.008           # in-hand drift after the lift beyond which a grasp is redone (good grasps: < 1 mm)
 
 
@@ -651,6 +655,15 @@ class Skills:
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
                     v.note = (v.note + "; " + r).strip("; ")
                     return v
+                if ((pp.tail_kw or {}).get("servo") and not self.remeasure and not other_arm
+                        and not (pp.tail_kw or {}).get("turn") and not (pp.tail_kw or {}).get("fingers_out")):
+                    # no in-hand measurement (mode B): the planned tail rests on a predicted in-hand pose (a belief 3.5 mm
+                    # off put a charger's blades beside the outlet): the contact-probing tail instead
+                    g = self._guarded_tail(pp.arm, pp.T_obj_target, h, pp.tail_kw)
+                    self.held[pp.arm] = None
+                    v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
+                    v.note = (v.note + f"; probing tail: {g}").strip("; ")
+                    return v
                 T_rel_meas = (inv_T(self.kin.tcp(pp.arm, w.arms[pp.arm].q)) @ o.T if self.remeasure
                               else h.T_tcp_obj)
                 shift = float(np.linalg.norm(T_rel_meas[:3, 3] - h.T_tcp_obj[:3, 3]))
@@ -738,30 +751,77 @@ class Skills:
         zw = o.pos[2] + o.R[2, 2] * Z[fin]                       # the surface's world z (an upright receptacle)
         return float(max(0.0, np.max(zw + clear - P[inb][fin][:, 2])))
 
-    def _guarded_tail(self, arm: str, T_obj, h: "Held", kw: dict, lag_stop: float = GUARD_LAG, rate: float = 0.02,
-                      step_m: float = 0.003) -> str:
-        """Descend to ``T_obj`` (the held object's target) in short unchecked steps, stopping as soon as the measured TCP
-        lags its command by more than ``lag_stop`` (contact: the plug's blades on the strip, a palm on the table); then
-        let go and back off upwards. No object measurement needed (proprio only). Returns a note."""
+    def _lag(self, arm: str) -> float:
+        """Measured-vs-commanded TCP distance (m) of ``arm`` (proprio only; the arm pressing on something lags)."""
+        w = self.refresh()
+        return float(np.linalg.norm(self.kin.tcp(arm, w.arms[arm].q)[:3, 3] - self.kin.tcp(arm, self.ex.q[arm])[:3, 3]))
+
+    def _guarded_line(self, arm: str, T_goal, rate: float, step_m: float, lag_stop: float) -> tuple[int, float, bool]:
+        """Run a straight line to ``T_goal`` in short unchecked steps, stopping when the arm lags more than ``lag_stop``.
+        Returns (steps run, last lag, reached)."""
         from dojo.skills.motion import Segment
-        T_goal = np.asarray(T_obj, float) @ inv_T(h.T_tcp_obj)
-        T_goal[2, 3] += float(kw.get("release_gap", 0.0))
-        mv = self.motion.line(arm, self.ex.q[arm], T_goal, rate, "guarded_descend", gripper=CLOSED, check=False,
+        mv = self.motion.line(arm, self.ex.q[arm], T_goal, rate, "guarded", gripper=CLOSED, check=False,
                               max_step_m=step_m, max_step_deg=2.0)
         n, lag = 0, 0.0
-        if mv.segments:
-            qs = np.asarray(mv.segments[-1].q)
-            for q in qs[1:]:
-                try:
-                    self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(
-                        [Segment(np.stack([self.ex.q[arm], q]), rate, "guarded")]).hold(1)}, name="guarded descent")
-                except (BudgetExceeded, EpisodeEnded):
-                    break
-                n += 1
-                w = self.refresh()
-                lag = float(np.linalg.norm(self.kin.tcp(arm, w.arms[arm].q)[:3, 3] - self.kin.tcp(arm, self.ex.q[arm])[:3, 3]))
-                if lag > lag_stop:
-                    break
+        if not mv.segments:
+            return 0, 0.0, False
+        qs = np.asarray(mv.segments[-1].q)
+        for q in qs[1:]:
+            self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(
+                [Segment(np.stack([self.ex.q[arm], q]), rate, "guarded")]).hold(1)}, name="guarded")
+            n += 1
+            lag = self._lag(arm)
+            if lag > lag_stop:
+                return n, lag, False
+        return n, lag, bool(mv.ok)
+
+    def _guarded_tail(self, arm: str, T_obj, h: "Held", kw: dict, lag_stop: float = GUARD_LAG, rate: float = 0.02,
+                      step_m: float = 0.003, radii=PROBE_RADII, n_dir: int = 8, min_left: int = 25) -> str:
+        """Insertion tail without object measurement (proprio only): descend to ``T_obj`` (the held object's target) in
+        short unchecked steps and stop where the arm meets resistance (measured TCP lags its command by > ``lag_stop``).
+        Stopped more than ``GUARD_SEATED`` short of the target = on the receptacle's surface beside the hole: lift
+        ``PROBE_LIFT`` and probe around the contact point (``radii`` x ``n_dir``, nearest first), each probe a guarded
+        descent that counts as in when it gets ``PROBE_IN`` below the contact height; then down to the target, let go,
+        back off upwards. Probes only while the step budget allows (``min_left`` above the reserve). Returns a note."""
+        T_goal = np.asarray(T_obj, float) @ inv_T(h.T_tcp_obj)
+        T_goal[2, 3] += float(kw.get("release_gap", 0.0))
+        note = ""
+        try:
+            n, lag, reached = self._guarded_line(arm, T_goal, rate, step_m, lag_stop)
+            Tc = self.kin.tcp(arm, self.ex.q[arm])
+            short = float(Tc[2, 3] - T_goal[2, 3])
+            note = f"{n} steps down, {'reached' if reached else f'contact {short*1000:.1f} mm short (lag {lag*1000:.1f} mm)'}"
+            k = 0
+            if not reached and short > GUARD_SEATED:
+                z_c = float(Tc[2, 3])
+                probes = [(r * math.cos(2 * math.pi * i / n_dir), r * math.sin(2 * math.pi * i / n_dir))
+                          for r in radii for i in range(n_dir)]
+                found = False
+                for dx, dy in probes:
+                    if self.ex.steps_left - self.ex.reserve < min_left:
+                        note += ", step budget"
+                        break
+                    k += 1
+                    T_dn = T_goal.copy()                 # the target shifted by the probe offset
+                    T_dn[0, 3] += dx
+                    T_dn[1, 3] += dy
+                    T_up = T_dn.copy()
+                    T_up[2, 3] = z_c + PROBE_LIFT
+                    up = self.motion.line(arm, self.ex.q[arm], T_up, 0.03, "probe_up", gripper=CLOSED, check=False)
+                    if up.segments:
+                        self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(up).hold(1)}, name="probe up")
+                    T_in = T_dn.copy()
+                    T_in[2, 3] = max(float(T_goal[2, 3]), z_c - PROBE_IN)
+                    _, lag, ok = self._guarded_line(arm, T_in, rate, 0.002, lag_stop)
+                    if ok:
+                        found = True
+                        n2, lag, reached = self._guarded_line(arm, T_dn, rate, step_m, lag_stop)
+                        note += f", in at probe {k} ({dx*1000:+.1f}, {dy*1000:+.1f}) mm"
+                        break
+                if not found and k:
+                    note += f", {k} probes, not in"
+        except (BudgetExceeded, EpisodeEnded) as e:
+            note += f" ({type(e).__name__})"
         Tq = self.kin.tcp(arm, self.ex.q[arm])
         T_up = Tq.copy()
         T_up[2, 3] += 0.04
@@ -773,8 +833,7 @@ class Skills:
             self.ex.run({arm: p}, name="guarded release")
         except (BudgetExceeded, EpisodeEnded):
             pass
-        rest = float(np.linalg.norm(Tq[:3, 3] - T_goal[:3, 3]))
-        return f"{n} steps down, stopped {rest*1000:.1f} mm short (lag {lag*1000:.1f} mm)"
+        return note
 
     def tips_raise(self, T_tcp, z_min: float, gripper: float = CLOSED) -> float:
         """How far (m, >= 0) the TCP pose must rise for the lowest finger point to be at or above ``z_min``."""

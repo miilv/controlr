@@ -222,7 +222,7 @@ def test_guarded_tail_descends_and_lets_go_on_the_kinematic_env():
     T = np.asarray(sk.world.obj("b").T, float).copy()
     T[2, 3] = TABLE_Z + 0.03
     note = sk._guarded_tail("left", T, h, {"release_gap": 0.0})
-    assert "stopped" in note and sk.ex.g["left"] > 0.9
+    assert "reached" in note and sk.ex.g["left"] > 0.9            # no contact on the kinematic env: straight down
     assert abs(sk.refresh().obj("b").pos[2] - (TABLE_Z + 0.015)) < 0.005   # let go: it dropped onto the table
 
 
