@@ -245,6 +245,8 @@ class HeldBeliefProvider:
         obs = "right" if arm == "left" else "left"
         st = self.env.proprio()
         q_h = np.asarray(st[f"{arm}_arm_joint_state"], float).reshape(-1)[:6]
+        if (cfg_ or {}).get("q_hold") is not None:            # planned for the hover the arm is approaching
+            q_h = np.asarray(cfg_["q_hold"], float).reshape(-1)[:6]
         q_o = np.asarray(st[f"{obs}_arm_joint_state"], float).reshape(-1)[:6]
         T_tcp = self.kin.tcp(arm, q_h)
         T_rel = np.asarray(T_tcp_obj, float)

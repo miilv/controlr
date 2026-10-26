@@ -149,8 +149,26 @@ def test_a_good_hover_read_is_used_without_a_look():
     assert np.linalg.norm(_true_pos(env)[:2] - T[:2, 3]) < 0.0005, r.note
 
 
-def test_held_tol_zero_always_looks_and_uses_the_last_read():
+def test_held_tol_zero_looks_during_the_approach():
+    table = {"block": {"hover": [AMB], "look": [GOOD], "show": [GOOD]}}
+    env, prov, sk, T = _held_scene(table)
+    n0 = sk.ex.steps_used
+    sk.run_place(sk.plan_place("left", T, servo=True, pre_h=0.04))           # hover read, then a look
+    seq = sk.ex.steps_used - n0
+    env2, prov2, sk2, T2 = _held_scene(table)
+    q_obs = sk2.ex.q["right"].copy()
+    n0 = sk2.ex.steps_used
+    r = sk2.run_place(sk2.plan_place("left", T2, servo=True, pre_h=0.04, held_tol=0.0))
+    ev = sk2.held_events
+    assert [e["view"] for e in ev] == ["look"] and ev[0]["adopted"], ev    # no hover read: the observer was there
+    assert sk2.ex.steps_used - n0 < seq - 5, (sk2.ex.steps_used - n0, seq)  # the look's way out overlapped the approach
+    assert np.abs(sk2.ex.q["right"] - q_obs).max() < 1e-9
+    assert np.linalg.norm(_true_pos(env2)[:2] - T2[:2, 3]) < 0.0005, r.note
+
+
+def test_held_tol_zero_without_a_pre_look_reads_at_the_hover_then_looks(monkeypatch):
     env, prov, sk, T = _held_scene({"block": {"hover": [GOOD], "look": [GOOD], "show": [GOOD]}})
+    monkeypatch.setattr(sk, "_pre_look", lambda pp, a1: None)
     sk.run_place(sk.plan_place("left", T, servo=True, pre_h=0.04, held_tol=0.0))
     ev = sk.held_events
     assert ev[0]["view"] == "hover" and len(ev) == 2 and ev[1]["adopted"] and not ev[0]["adopted"]
