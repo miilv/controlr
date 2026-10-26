@@ -43,6 +43,7 @@ from scipy.spatial.transform import Rotation
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
 from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
+from .slots import settled as _settled, support_slot
 
 MIN_BLOB_PX = {"cam_head": 25, "cam_left_wrist": 150, "cam_right_wrist": 150}
 
@@ -367,7 +368,7 @@ def roi_color_cost(sm: ShapeModel, T: np.ndarray, rvs: list[RoiView], min_px: in
     for rv in rvs:
         if rv.gray is None:
             continue
-        col, d = r.render(rv.cam, sm.key, T)
+        col, d = r.render(rv.cam, _cat_key(sm.key), T)
         m = (d > 0) & (rv.known > 0.5) & (rv.fg > 0.5)
         n = int(m.sum())
         if n < min_px:
@@ -602,7 +603,7 @@ def texture_cost(sm: ShapeModel, T: np.ndarray, views: dict[str, ViewMasks], key
     """(1 - NCC) / 2 between a textured render of the object and the observed pixels inside its visible,
     eroded silhouette, pooled over views (pixel-weighted). Lighting-robust to gain and offset. None when
     the object is untextured/uniform or not visible enough."""
-    r = tex_for(key or sm.key)
+    r = tex_for(_cat_key(key or sm.key))
     if r is None:
         return None
     acc, wsum = 0.0, 0
@@ -610,7 +611,7 @@ def texture_cost(sm: ShapeModel, T: np.ndarray, views: dict[str, ViewMasks], key
         roi = _bbox_roi(v.cam, sm.bbox_world(T), 2)
         if roi is None:
             continue
-        col, d = r.render(v.cam, key or sm.key, T)
+        col, d = r.render(v.cam, _cat_key(key or sm.key), T)
         m = (d[roi] > 0).astype(np.uint8)
         m = cv2.erode(m, np.ones((3, 3), np.uint8)) & v.known[roi] & v.fg[roi]
         n = int(m.sum())
@@ -647,8 +648,8 @@ def paired_texture(smA: ShapeModel, TA: np.ndarray, smB: ShapeModel, TB: np.ndar
         x0 = min(rois[0][1].start, rois[1][1].start)
         x1 = max(rois[0][1].stop, rois[1][1].stop)
         roi = (slice(y0, y1), slice(x0, x1))
-        cA, dA = r.render(v.cam, smA.key, TA)
-        cB, dB = r.render(v.cam, smB.key, TB)
+        cA, dA = r.render(v.cam, _cat_key(smA.key), TA)
+        cB, dB = r.render(v.cam, _cat_key(smB.key), TB)
         m = ((dA[roi] > 0) | (dB[roi] > 0)).astype(np.uint8) & v.known[roi] & v.fg[roi]
         if others is not None and others.get(name) is not None:
             m &= 1 - others[name][roi]
@@ -784,7 +785,7 @@ def _slot_identity(h: "Hypothesis", g: dict, placement: dict, tag: str | None, v
 @lru_cache(maxsize=4096)
 def asset_info(key: str) -> dict:
     """info.json alone (no geometry): captions, description, extents."""
-    return json.loads((catalog_root() / key / "info.json").read_text())
+    return json.loads((catalog_root() / _cat_key(key) / "info.json").read_text())
 
 
 _STOP = {"the", "a", "an", "of", "by", "to", "and", "with", "up", "pick", "cm", "10"}
@@ -1033,6 +1034,49 @@ def _placement_prior(g: dict) -> dict:
     return {"fixed_xy": fixed_xy, "yaw_fixed": yaw_fixed, "place_tag": tag, "relative_plane": rel, "zlim": p.get("zlim")}
 
 
+def _qmul(a, b) -> np.ndarray:
+    w1, x1, y1, z1 = a
+    w2, x2, y2, z2 = b
+    return np.array([w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+                     w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2])
+
+
+def support_slot_pose(base_key: str, base_pos, base_quat, child_key: str, placement: dict):
+    """World (pos, quat wxyz) of an object pinned in a support slot of a placed base object, as the layout
+    generator puts it: the base's public ``passive.support`` frame (catalogue ``support``) is the reference, the
+    pinned offset lives in that frame, and the child rests on the reference with its place frame (RoboDojo's
+    placement-to-origin). None without the base's support frame (catalogue built without annotations)."""
+    slot = support_slot(placement)
+    if slot is None:
+        return None
+    settled = _settled(base_key, slot[1], child_key)
+    if settled is not None:  # where physics puts it (the generator's pose is the drop pose, 2 cm above the slot)
+        Tb = np.eye(4)
+        Tb[:3, :3], Tb[:3, 3] = quat_wxyz_to_R(base_quat), np.asarray(base_pos, float)
+        Tr = np.eye(4)
+        Tr[:3, :3], Tr[:3, 3] = quat_wxyz_to_R(settled["quat"]), settled["pos"]
+        Tw = Tb @ Tr
+        return Tw[:3, 3].copy(), np.asarray(R_to_quat_wxyz(Tw[:3, :3]), float)
+    sup = (load_asset(base_key).info.get("support") or {}).get(slot[1])
+    if not sup:
+        return None
+    c = np.asarray(sup["center"][0], float)
+    qb = np.asarray(base_quat, float)
+    Rb = quat_wxyz_to_R(qb)
+    ref_pos = np.asarray(base_pos, float) + Rb @ c[:3]
+    ref_q = _qmul(qb, c[3:7])
+    off = np.array([float(placement.get("xlim", [0, 0])[0]), float(placement.get("ylim", [0, 0])[0]), 0.0])
+    P_pos, P_q = ref_pos + quat_wxyz_to_R(ref_q) @ off, ref_q
+    places = load_asset(child_key).info.get("place") or {}
+    tag = placement.get("place_tag") or (next(iter(places)) if places else None)
+    cf = np.asarray((places.get(tag) or {}).get("center", [0, 0, 0, 1, 0, 0, 0]), float)
+    cq_inv = np.array([cf[3], -cf[4], -cf[5], -cf[6]])
+    o_q = _qmul(cq_inv, P_q)
+    o_q /= np.linalg.norm(o_q)
+    o_pos = P_pos - quat_wxyz_to_R(o_q) @ cf[:3]
+    return o_pos, o_q
+
+
 def _geometry_groups(g: dict, prior: dict) -> dict[tuple, list[ShapeModel]]:
     """Candidate shapes of a label group, merged when geometry is identical (same extents, faces, tag):
     those are fitted once, identity comes from appearance."""
@@ -1107,9 +1151,14 @@ def _top_face_color_distance(sm: ShapeModel, x: float, y: float, z_off: float, v
     return float(np.median(ds)) if ds else 1.0
 
 
+def _cat_key(key: str) -> str:
+    """The catalogue key behind a composite shape key ("assembly:<base key>:<children>" -> the base key)."""
+    return key.split(":")[1] if key.startswith("assembly:") else key
+
+
 def ref_color(key: str) -> np.ndarray:
     """The catalogue's mean texture colour of an asset, mapped to the renderer's look when calibrated."""
-    c = np.asarray(load_asset(key).info["mean_color"], dtype=float)
+    c = np.asarray(load_asset(_cat_key(key)).info["mean_color"], dtype=float)
     if _COLOR_M is not None:
         return np.clip(np.r_[c, 1.0] @ np.asarray(_COLOR_M), 0.0, 1.0)
     return c
@@ -1306,6 +1355,154 @@ def _multiview_ok(h: Hypothesis, others, views, cfg, support_key: str | None) ->
     s = elevated_support(h, others, views)
     h.per_view["multiview"] = s
     return s["support"] >= 2 and s["support"] > s["refute"]
+
+
+SLOT_SUPPORT_FG = 0.5  # a view sees a slot object: >= this share of the pixels only it would explain are foreground
+SLOT_EMPTY_FG = 0.2  # a view sees the slot empty: below this share
+
+
+def _hyp_pose(h: Hypothesis):
+    if h.tag == "fixed":
+        return np.array([h.x, h.y, float(h.per_view["z"])]), np.asarray(h.per_view["quat"], float)
+    T = h.T()
+    return T[:3, 3].copy(), np.asarray(R_to_quat_wxyz(T[:3, :3]), float)
+
+
+def _assembly_shape(sm: ShapeModel, children: list) -> ShapeModel:
+    """``sm``'s shape with slot objects fused into its mesh: ``children`` = [(key, T_rel)] with T_rel the child's pose in
+    the base asset frame. One silhouette for a fixture and what stands in it (make_toast: the shelf is mostly hidden
+    behind its four slices; alone it fits nothing and the shelf was missed in 3 of 10 dev layouts). Registered for
+    ``shape_by_tag``."""
+    from types import SimpleNamespace
+
+    key = f"assembly:{sm.key}:" + ",".join(k for k, _ in children)
+    hit = _FIXED_POSE_SHAPES.get((key, sm.tag))
+    if hit is not None:
+        return hit
+    a = sm.asset
+    parts = {"": ([a.V], [a.F]), "s": ([a.Vs], [a.Fs]), "g": ([a.Vg], [a.Fg])}  # full, decimated (CPU), GL meshes
+    counts = {"": len(a.V), "s": len(a.Vs), "g": len(a.Vg)}
+    for ckey, Tr in children:
+        c = load_asset(ckey)
+        for k, (Vc, Fc) in {"": (c.V, c.F), "s": (c.Vs, c.Fs), "g": (c.Vg, c.Fg)}.items():
+            parts[k][0].append(Vc @ Tr[:3, :3].T + Tr[:3, 3])
+            parts[k][1].append(Fc + counts[k])
+            counts[k] += len(Vc)
+    cat = {k: (np.concatenate(v[0]), np.concatenate(v[1])) for k, v in parts.items()}
+    V, F = cat[""]
+    asset = SimpleNamespace(V=V, F=F, Vs=cat["s"][0], Fs=cat["s"][1], Vg=cat["g"][0], Fg=cat["g"][1], info=dict(a.info),
+                            key=key, extents=np.ptp(V, axis=0), dir=a.dir)
+    # the base keeps resting on the table (same zmin): a hypothesis of the assembly is a pose of the base
+    t = ShapeModel(key, sm.tag, asset, sm.R0, sm.zmin, float((V @ sm.R0.T)[:, 2].max()) - sm.zmin, sm.sym, False, None,
+                   centre_local=sm.centre_local)
+    _FIXED_POSE_SHAPES[(key, sm.tag)] = t
+    return t
+
+
+def _add_assembly_shapes(shapes_by_group: dict, pending, slot_groups, task) -> dict:
+    """For each base group with slot objects: one more candidate shape per base geometry, the base with its slot
+    objects at their settled poses. Returns {assembly key: base key}."""
+    labels = task_map()[task]["labels"]
+    by_base = {}
+    for g in slot_groups:
+        for lab in g["labels"]:
+            pl = labels[lab]["placement"]
+            by_base.setdefault(support_slot(pl)[0], []).append((g["candidates"][0], pl))
+    out = {}
+    for gi, g, _ in pending:
+        if len(g["labels"]) != 1 or g["labels"][0] not in by_base:
+            continue
+        for gk, sms in list(shapes_by_group[gi].items()):
+            for sm in sms:
+                kids = []
+                for ckey, pl in by_base[g["labels"][0]]:
+                    pose = support_slot_pose(sm.key, [0, 0, 0], [1, 0, 0, 0], ckey, pl)
+                    if pose is None:
+                        continue
+                    Tr = np.eye(4)
+                    Tr[:3, :3], Tr[:3, 3] = quat_wxyz_to_R(pose[1]), pose[0]
+                    kids.append((ckey, Tr))
+                if kids:
+                    asm = _assembly_shape(sm, kids)
+                    shapes_by_group[gi].setdefault(("assembly",) + tuple(gk), []).append(asm)
+                    out[asm.key] = sm.key
+    return out
+
+
+def _place_support_slots(slot_groups, chosen, groups, views, task, record) -> list:
+    """Records for labels pinned in support slots (``support_slot``): pose from the chosen base, then a per-view check
+    on the pixels only the object would explain (its silhouette minus the base's and every other object's). A slot
+    that the views see empty (no view supports it, one refutes it) -> ``_not_found`` "support slot empty"."""
+    labels = task_map()[task]["labels"]
+    base_by_label = {}
+    for h in chosen:
+        g = groups[h.label_group]
+        if len(g["labels"]) == 1:
+            base_by_label[g["labels"][0]] = h
+    items = []
+    for g in slot_groups:
+        key = g["candidates"][0]
+        for lab in g["labels"]:
+            pl = labels[lab]["placement"]
+            base, skey = support_slot(pl)
+            hb = base_by_label.get(base)
+            pose = None
+            if hb is not None:
+                bpos, bq = _hyp_pose(hb)
+                pose = support_slot_pose(hb.key, bpos, bq, key, pl)
+            if pose is None:
+                record.setdefault("_not_found", []).append(
+                    {"label": lab, "candidates": [key], "confidence": 0.0,
+                     "reason": "support base not found" if hb is None else "no support frame in the catalogue"})
+                continue
+            items.append((g, lab, key, pl, base, skey, pose))
+    occ = {name: np.zeros((v.cam.h, v.cam.w), np.uint8) for name, v in views.items()}
+    for h in chosen:
+        sm, T = h.sm(), h.T()
+        for name, v in views.items():
+            sm.sil(v.cam, T, out=occ[name])
+    a_cache = {}
+    sils = []
+    for g, lab, key, pl, base, skey, (pos, q) in items:
+        a = a_cache.setdefault(key, load_asset(key))
+        T = np.eye(4)
+        T[:3, :3], T[:3, 3] = quat_wxyz_to_R(q), pos
+        Vw = a.Vs @ T[:3, :3].T + T[:3, 3]
+        sils.append({name: silhouette(v.cam, Vw, a.Fs) for name, v in views.items()})
+    out = []
+    for i, (g, lab, key, pl, base, skey, (pos, q)) in enumerate(items):
+        support = refute = 0
+        fracs = {}
+        for name, v in views.items():
+            m = sils[i][name].astype(bool)
+            others = occ[name].copy()
+            for j in range(len(items)):
+                if j != i:
+                    others |= sils[j][name]
+            excl = m & (others == 0) & (v.known > 0)
+            n = int(excl.sum())
+            if n < max(20, 0.1 * int(m.sum())):
+                continue
+            f = float((v.fg[excl] > 0).mean())
+            fracs[name] = round(f, 3)
+            support += f >= SLOT_SUPPORT_FG
+            refute += f < SLOT_EMPTY_FG
+        if refute > 0 and support == 0:
+            record.setdefault("_not_found", []).append({"label": lab, "candidates": [key], "confidence": 0.0,
+                                                        "reason": "support slot empty", "per_view_fg": fracs})
+            continue
+        conf = float(np.clip(np.mean(list(fracs.values())), 0, 1)) if fracs else 0.3
+        hb = base_by_label[base]  # no surer than the base it is placed from
+        conf = min(conf, float(np.clip(1 - hb.per_view.get("sil_loss", hb.loss), 0, 1)))
+        typ, cat, idx = key.split("/")
+        rec = {"category": cat, "category_idx": int(idx), "label": lab, "default_pos": [float(v) for v in pos],
+               "default_ori": [float(v) for v in q], "scale": [1.0, 1.0, 1.0],
+               "_perception": {"place_tag": pl.get("place_tag"), "residual": round(1 - conf, 4), "cost": round(1 - conf, 4),
+                               "confidence": round(conf, 3), "per_view_fg": fracs, "n_views": len(fracs),
+                               "occluded": not fracs, "ambiguous": not fracs, "slot": True, "support_slot": skey,
+                               "stacked_on": base, "geom_group": list(g["candidates"])}}
+        out.append((typ, cat, rec))
+    return out
 
 
 def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
@@ -1687,8 +1884,8 @@ def view_request(best: Hypothesis, alt: dict, dist: float = 0.16, elev_deg: floa
             continue
         d = 1 - (m1 & m2).sum() / u
         if r is not None:
-            c1, _ = r.render(cam, sm_b.key, T_b)
-            c2, _ = r.render(cam, sm_a.key, T_a)
+            c1, _ = r.render(cam, _cat_key(sm_b.key), T_b)
+            c2, _ = r.render(cam, _cat_key(sm_a.key), T_a)
             mm = (m1 & m2).astype(bool)
             if mm.sum() > 50:
                 d += float(np.abs(c1[mm].astype(float) - c2[mm].astype(float)).mean() / 255.0)
@@ -1774,6 +1971,8 @@ class EstimatorConfig:
     # "identical" = only a piece on an IDENTICAL piece (a phantom pillar on a real one: tower scan A/B, 3 of 23 scan
     # records); "all" = every elevated hypothesis (an episode-start scene has nothing stacked); "off"
     elevated_multiview: str = "identical"
+    support_slots: bool = True  # labels pinned in a support slot of another object: placed from its support frame
+    slot_assembly: bool = True  # a base with slot objects is also proposed as one shape with them (settled poses)
     wrist_proposals: bool = True  # single-target groups with a poor head fit also propose from wrist blobs
     wrist_fallback_loss: float = 0.6
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
@@ -1910,6 +2109,34 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             g["labels"] = []
     groups = [g for g in groups if g["labels"]]
 
+    # ---- labels the config pins in a support slot of another object (make_toast: four bread slices standing in the
+    # shelf's slots). They are part of the fixture's blob and fit no table-resting proposal ("no foreground
+    # explained" in every make_toast record): placed from the base's pose and its public support frame after the
+    # base is chosen, then checked in the views (an empty slot is reported as not found)
+    slot_groups = []
+    if cfg.support_slots:
+        for g in groups:
+            sl = support_slot(g["placement"])
+            if not (sl and sl[0] in task_labels and sl[0] not in g["labels"] and g["type"] == "Rigid"):
+                continue
+            # only for validated asset pairs (settle data: make_toast's bread / shelf, play_Xylophone's mallet / stand);
+            # other slot pairs keep the generic path (make_kong's stacked tiles)
+            bases = task_labels[sl[0]].get("candidates", [])[:8]
+            if not all(_settled(b, sl[1], c) for b in bases for c in g["candidates"][:8]):
+                continue
+            # a validated pair needs the base's support frame: a catalogue without ``catalog annotate`` silently zeroed
+            # make_toast and play_Xylophone
+            if all((asset_info(k).get("support") or {}).get(sl[1]) for k in bases):
+                slot_groups.append(g)
+            else:
+                gap = {"labels": list(g["labels"]), "base": sl[0], "support": sl[1],
+                       "fix": "python -m dojo.runtime.catalog_check --sync --assets <RoboDojo Assets>"}
+                record.setdefault("_catalog_gaps", []).append(gap)
+                import warnings
+                warnings.warn(f"catalogue lacks {sl[0]}'s support frame {sl[1]!r} (catalog annotate): {g['labels']} "
+                              "cannot be placed in their slots")
+        groups = [g for g in groups if g not in slot_groups]
+
     # ---- fixed-pose geometry (e.g. a ground-standing dustbin): place at the config pose, flagged
     pending = []
     for gi, g in enumerate(groups):
@@ -1929,6 +2156,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     # then re-propose on the residual foreground for groups still short of objects (merged blobs)
     t1 = time.time()
     shapes_by_group = {gi: _geometry_groups(g, prior) for gi, g, prior in pending}
+    asm_base = _add_assembly_shapes(shapes_by_group, pending, slot_groups, task) if slot_groups and cfg.slot_assembly else {}
     need0 = {gi: len(g["labels"]) for gi, g, _ in pending}
     refined = _propose(head_blobs, pending, shapes_by_group, views, cfg, groups)
     if cfg.region_seeds:  # only groups the blob proposals left short (seeds can win by hiding in unknown pixels)
@@ -2130,6 +2358,20 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         if np.isfinite(X).all():
             unexplained.append({"xy": [round(float(X[0]), 4), round(float(X[1]), 4)], "area_px": a_px})
 
+    # a base chosen as its assembly (base + slot objects; refined as one shape so far) is the base from here on (same
+    # frame and pose); the slot objects are placed from it
+    for h in chosen:
+        if h.key in asm_base:
+            h.per_view["assembly"] = h.key
+            h.key = asm_base[h.key]
+            if h.per_view.get("geom_group"):
+                h.per_view["geom_group"] = [asm_base.get(k, k) for k in h.per_view["geom_group"]]
+
+    # ---- support-slot labels (see above): from the chosen base's pose
+    slot_recs = []
+    if slot_groups:
+        slot_recs = _place_support_slots(slot_groups, chosen, groups, views, task, record)
+
     # ---- records
     for gi, g, _ in pending:
         # interchangeable labels go to objects in a fixed spatial order (x, then y): the selection order
@@ -2213,6 +2455,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             jw = joints_world(h.key, h.T())
             if jw:
                 rec["_perception"]["joints"] = jw
+        record.setdefault(typ, {}).setdefault(cat, []).append(rec)
+    for typ, cat, rec in slot_recs:
         record.setdefault(typ, {}).setdefault(cat, []).append(rec)
     timings["total_s"] = round(time.time() - t0, 3)
     record["_perception"] = {"version": "v0", "timings": timings, "n_head_blobs": len(head_blobs),
