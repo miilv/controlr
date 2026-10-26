@@ -2090,3 +2090,31 @@ def test_a_covered_recentre_keeps_the_correction():
     pol._refine_hook(prov, None, "block_1", "left", "pick")
     assert abs(float(prov.belief.objects["block_1"].pos[0]) - (x0 + 0.02)) < 1e-9          # kept
     assert "correction kept" in pol.report["events"][-1]["why"]
+
+
+@pytest.mark.parametrize("pred_prec, corr_prec, adopted", [(0.9, 0.7, False), (0.2, 0.9, True), (None, None, False)])
+def test_a_large_post_place_correction_needs_the_head_view(pred_prec, corr_prec, adopted):
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+
+    class C:
+        def __init__(self):
+            self.n = 0
+
+        def refine(self, obs, o, others, arm, held=None):
+            return {"ok": True, "pos": [float(o.pos[0]) + 0.041, float(o.pos[1]), float(o.pos[2])], "quat": list(o.quat),
+                    "shift_mm": 41.0, "iou": 0.8}
+
+        def check(self, obs, objects):
+            self.n += 1
+            p = pred_prec if self.n == 1 else corr_prec
+            return {objects[0].label: {"head": {"prec": p, "n_vis": 500 if p is not None else 0, "n_px": 600}}}
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=C())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.belief.released_by["block_1"] = "left"
+    x0 = float(prov.belief.objects["block_1"].pos[0])
+    prov.post_place(b.obs, ["block_1"])
+    x1 = float(prov.belief.objects["block_1"].pos[0])
+    assert (abs(x1 - (x0 + 0.041)) < 1e-9) == adopted and (adopted or x1 == x0)

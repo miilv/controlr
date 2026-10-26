@@ -184,6 +184,7 @@ class RuntimeProvider:
         self._fit: dict = {}                    # label -> (step of the fit's origin, xy there)
         self._held_checked: dict = {}           # arm -> label already checked for the current grasp
         self.post_place_min_mm = 2.0
+        self.post_place_confirm_mm = 20.0       # larger post-place corrections need the head view to agree
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
         self.home_q = None
@@ -279,8 +280,13 @@ class RuntimeProvider:
             dz_mm = (abs(float(r["pos"][2]) - float(o.pos[2])) * 1000 if r.get("pos") is not None else 0.0)
             if r.get("z_dropped_mm") is not None:
                 ev["z_dropped_mm"] = r.get("z_dropped_mm")
-            if r.get("ok") and ((r.get("shift_mm") or 0) >= self.post_place_min_mm or dz_mm >= self.post_place_min_mm
-                                or r.get("z_dropped_mm") is not None):
+            big = float(r.get("shift_mm") or 0) > self.post_place_confirm_mm
+            if r.get("ok") and big and not self._post_place_confirmed(obs, o, r, others, ev):
+                # a released object 20+ mm from where the jaws let it go needs a second look (5.1 tower: a 41 mm slide of
+                # a plank on a same-colour board, ok at iou 0.72-0.84, adopted, then a re-pick from a wrong belief)
+                self.stats["post_place_unconfirmed"] = self.stats.get("post_place_unconfirmed", 0) + 1
+            elif r.get("ok") and ((r.get("shift_mm") or 0) >= self.post_place_min_mm or dz_mm >= self.post_place_min_mm
+                                  or r.get("z_dropped_mm") is not None):
                 # an xy shift OR a height correction (perception re-fits a released object from its support: a belief
                 # that floated 56 mm high after a no-candidate place comes back down)
                 ev["from"] = np.round(o.pos, 4).tolist()
@@ -421,6 +427,27 @@ class RuntimeProvider:
                 self.touched.add(lab)
                 ev["dropped"] = True
                 self.stats["held_look_empty"] = self.stats.get("held_look_empty", 0) + 1
+
+    def _post_place_confirmed(self, obs: dict, o, r: dict, others, ev: dict, min_px: int = 40) -> bool:
+        """The second look for a large post-place correction: the HEAD view of the same step, rendered with the object at
+        the predicted (released) pose and at the corrected one (perception check, z-buffered among the others). The
+        correction stands only if the head view clearly prefers it (precision >= 0.6 and >= the prediction's + 0.15)."""
+        if self.checker is None or not hasattr(self.checker, "check"):
+            ev["confirm"] = "no head check"
+            return False
+        corr = copy.deepcopy(o)
+        corr.pos, corr.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
+        try:
+            hp = (self.checker.check(obs, [o] + list(others)).get(o.label) or {}).get("head") or {}
+            hc = (self.checker.check(obs, [corr] + list(others)).get(o.label) or {}).get("head") or {}
+        except Exception as e:  # noqa: BLE001 (no second look: keep the prediction)
+            ev["confirm"] = f"head check error {type(e).__name__}"
+            return False
+        pp = hp.get("prec") if (hp.get("n_vis") or 0) >= min_px else None
+        pc = hc.get("prec") if (hc.get("n_vis") or 0) >= min_px else None
+        ok = pc is not None and pc >= 0.6 and (pp is None or pc >= pp + 0.15)
+        ev["confirm"] = {"head_prec_predicted": pp, "head_prec_corrected": pc, "confirmed": ok}
+        return ok
 
     def resync(self, obs: dict, released: list[str] | None = None) -> dict:
         """Post-place wrist refine of what was just released, then render-compare the predicted state against
