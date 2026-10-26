@@ -117,7 +117,13 @@ class RuntimeConfig:
     refine_max_turn_deg: float = 90.0   # a pick / place refine turning the object more than this keeps the prior
                                         # orientation (position only): a near-symmetric body fits flipped (5.1
                                         # plug_in_charger: a 178 deg yaw flip -> "turned 180" regrasp loop); the
-                                        # in-hand (held) review still sees real flips
+                                        # in-hand (held) review still sees real flips. The fit's CENTRE is kept
+                                        # (``keep_centre``): its root belongs to the turned pose
+    refine_turn_check_deg: float = 45.0 # a pick / place refine turning the object more than this ...
+    refine_turn_min_iou: float = 0.9    # ... at a lower iou is not applied at all (prior pose kept). Proxy runs: 22
+                                        # of 24 such fits on untouched objects turned AWAY from the truth (tower
+                                        # pillars read lying / standing, flips of bread, alarm, tape, mug), the other
+                                        # 2 were 63-70 deg off as well; the one right big turn had iou 0.98
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
@@ -671,6 +677,14 @@ class RuntimePolicy:
             if handled:
                 return out
         pend = self._pending_far.pop(label, None) if hasattr(self, "_pending_far") else None
+        if r.get("ok") and self._low_iou_turn(r):
+            # a big turn at a mediocre fit is the fit's mistake (a pillar read lying, a flip): nothing of it is applied
+            if pend is not None:
+                o.pos, o.quat = pend                    # a pending large correction goes back to its prior as well
+            ev.update({"applied": False, "why": (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg at "
+                       f"iou {float(r.get('iou') or 0):.2f}: prior pose kept)"})
+            prov.stats["turn_low_iou"] = prov.stats.get("turn_low_iou", 0) + 1
+            return None
         if r.get("ok") and (r.get("shift_mm") or 0) > self.cfg.big_shift_mm and pend is None:
             # a large correction is also how a refine can lock onto a neighbour: check it before believing it
             near = [x.label for x in others
@@ -1119,6 +1133,12 @@ class RuntimePolicy:
                 return bool(e.get("ok"))
         return False
 
+    def _low_iou_turn(self, r: dict) -> bool:
+        """A refine whose fit turns the object more than ``refine_turn_check_deg`` at an iou under
+        ``refine_turn_min_iou``: not applied (``RuntimeConfig.refine_turn_min_iou``)."""
+        return (float(r.get("turned_deg") or 0) > self.cfg.refine_turn_check_deg
+                and float(r.get("iou") or 0) < self.cfg.refine_turn_min_iou)
+
     def _place_refine(self, prov, o, r: dict, ev: dict, others, arm: str) -> tuple[bool, dict | None]:
         """PLACE refine under ``cfg.place_confirm`` (a refine that contradicts a confident belief needs a confirming
         better view). Returns (handled, hook value); not handled = the general refine logic runs (a first-view fit
@@ -1132,7 +1152,7 @@ class RuntimePolicy:
             if r.get("ok") and r.get("pos") is not None:
                 agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
             ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
-            if agree is not None and agree <= cfg.place_agree_mm:
+            if agree is not None and agree <= cfg.place_agree_mm and not self._low_iou_turn(r):
                 if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg:
                     o.pos, o.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
                 else:

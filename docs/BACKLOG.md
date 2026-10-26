@@ -16,11 +16,12 @@
   Candidate fix: score the prior's own position against the best fit (prefer the prior unless the fit gains
   clearly), or require the neighbour guard against all same-shape objects of the belief. This is the next tower risk
   after the scan.
-- [ ] **Runtime: should a confident flip be adopted?** A pick / place refine that turns an object more than
-  `refine_max_turn_deg` (90) keeps the prior orientation (and now the fit's centre, `policy.keep_centre`). In breadth2
-  plug_in_charger 100003 / 100004 the flip was the truth (iou 0.97, the same mode on every re-hover), so the belief kept
-  a wrong charger orientation into the relay. Measure: adopt a > 90 deg turn when two views agree on it at iou >= 0.9
-  (or the held review confirms it), A/B on plug_in_charger and the near-symmetric pieces.
+- [ ] **Runtime: a confident flip of a near-symmetric object is a coin toss.** A pick / place refine that turns an
+  object more than `refine_max_turn_deg` (90) at iou >= `refine_turn_min_iou` (0.9) keeps the prior orientation and the
+  fit's centre (`policy.keep_centre`); below that iou nothing is applied. The charger's flips at iou 0.92-0.98 were
+  right in breadth2 100003 / 100004 (the prior was the flipped one) and wrong in breadth 100002 / 100004 and breadth2
+  100002, the same mode on every re-hover either way: neither the iou nor a second view decides. Needs a feature cue
+  (the prong side) from perception, or the in-hand review after the lift; then an A/B on plug_in_charger.
 - [ ] **Runtime post-place drops z-only corrections.** `belief.post_place` adopts a refine only when its xy
   `shift_mm` >= `post_place_min_mm` (2 mm). A refine that lowered a floating belief onto its support
   (`z_dropped_mm`, 5.1 stack 100007 s142: 56 mm) with < 2 mm xy shift is ignored. Adopt when `z_dropped_mm` is

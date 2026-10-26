@@ -1783,6 +1783,38 @@ def test_refine_flip_keeps_the_prior_orientation():
     assert "prior orientation kept" in pol.report["events"][-1]["why"]
 
 
+@pytest.mark.parametrize("iou,applied", [(0.70, False), (0.95, True)])
+def test_refine_big_turn_at_a_mediocre_iou_is_not_applied(iou, applied):
+    """Proxy tower: a pick refine "turned 90 deg" at iou 0.67-0.70 read a standing pillar lying (22 of 22 such fits
+    wrong); applied, the grasp was loose and the place tilted 90 deg. Below refine_turn_min_iou nothing of it is
+    applied; a confident one (iou 0.95) still is."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    q90 = [float(np.cos(np.pi / 4)), float(np.sin(np.pi / 4)), 0.0, 0.0]          # 90 deg about x (wxyz)
+
+    class Turn:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            p = list(o["pos"])
+            p[0] += 0.006
+            return {o["label"]: {"ok": True, "pos": p, "quat": q90, "shift_mm": 6.0, "iou": iou, "visible_frac": 1.0,
+                                 "turned_deg": 90.0}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=Turn())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    q0, p0 = o.quat.copy(), o.pos.copy()
+    out = pol._refine_hook(prov, None, "block_1", "left", "pick")
+    if applied:
+        assert out and np.allclose(o.quat, q90) and np.allclose(o.pos, p0 + [0.006, 0.0, 0.0])
+    else:
+        assert out is None and np.allclose(o.quat, q0) and np.allclose(o.pos, p0)
+        assert "prior pose kept" in pol.report["events"][-1]["why"] and prov.stats["turn_low_iou"] == 1
+
+
 @pytest.mark.parametrize("kind", ["pick", "place"])
 def test_refine_flip_of_an_off_centre_root_keeps_the_fit_centre(kind):
     """breadth2 plug_in_charger: the charger's root is ~24 mm off its centre. A refine that finds it flipped (the
