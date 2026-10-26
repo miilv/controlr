@@ -2199,7 +2199,17 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                                  place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY}, q_start=q_start,
                                  lift_to_pre=high)
             if not isinstance(r, SkillResult):
-                return (lab, hi, H, T_obj, T_pre, r)
+                if tip is None:
+                    return (lab, hi, H, T_obj, T_pre, r)
+                # the slide onto the arm must be in reach too (twin: a slide to the far top hook stopped 4 cm short, the
+                # handle never reached the arm and the mug fell when let go)
+                pp, pl = r
+                T_on = T_obj @ inv_T(pp.T_tcp_obj)
+                sl = sk.motion.line(pp.arm, pl.plan.q_end, T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
+                if sl.ok:
+                    return (lab, hi, H, T_obj, T_pre, r)
+                note = f"slide onto hook {hi} out of reach ({sl.note[:60]})"
+                continue
             if "grasp-place pairs" not in note or " 0 grasp-place pairs" not in r.note:
                 note = r.note                    # keep the most telling note (one that got as far as full plans)
         return note
@@ -2317,6 +2327,13 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                 plan.move(bk, "retreat")
             sk.ex.run({arm: plan}, name=f"hang {lab}")
             sk.held[arm] = None
+            o_h = sk.refresh().obj(lab)
+            if o_h.asset.mesh is not None:
+                from dojo.skills.motion import mesh_parts
+                # fine boxes, a small margin: the next mug hangs a few cm above or below it on the same side
+                sk.coll.parts[lab] = mesh_parts(*o_h.asset.mesh, cell=0.015, step=0.005)
+                sk.coll.margin_of[lab] = 0.002
+            _hang_exit(sk, arm, lab)
         except (BudgetExceeded, EpisodeEnded) as e:
             return {"ok": False, "stage": f"hang {lab}", "note": str(e)}
         o2 = sk.refresh().obj(lab)
@@ -2327,20 +2344,33 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         sk._record(SkillResult(ok, "hang", "ok" if ok else "place_miss", 0, arm,
                                note=f"{lab} handle {d*1000:.0f} mm from hook {hi}, z {hp[2]:.3f}"))
         (done if ok else failed).append(lab)
-        if ok:
+        if ok and o2.asset.mesh is None:
             # a hung object's box (bbox + margin, turned handle-up) covers most of a small rack (twin, a 14 cm rack: after
-            # the first mug no other mug had a plan): its mesh as small boxes for the next plans
-            if o2.asset.mesh is not None:
-                from dojo.skills.motion import mesh_parts
-                # fine boxes, a small margin: the next mug hangs a few cm above or below it on the same side
-                sk.coll.parts[lab] = mesh_parts(*o2.asset.mesh, cell=0.015, step=0.005)
-                sk.coll.margin_of[lab] = 0.002
-            else:
-                sk.coll.margin_of[lab] = -0.01
+            # the first mug no other mug had a plan); with a mesh it is small boxes already (above)
+            sk.coll.margin_of[lab] = -0.01
         sk.bank()
     if failed:
         return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
     return {"ok": True, "stage": "hang"}
+
+
+def _hang_exit(sk: Skills, arm: str, lab: str, back: float = 0.06) -> None:
+    """Leave an object just hung: back the open hand off further along its approach (unchecked: it starts beside the
+    object), then home on a collision-checked path, the rack and the hung objects as obstacles. The finish's straight,
+    unchecked joint move home swept the open hand through a mug just hung on a low hook and flung it off (twin)."""
+    q = sk.ex.q[arm].copy()
+    T = sk.kin.tcp(arm, q)
+    T_out = T.copy()
+    T_out[:3, 3] -= T[:3, 0] * back
+    out = sk.motion.line(arm, q, T_out, MEDIUM, "hang_back", gripper=OPEN, check=False)
+    p = ArmPlan(arm, q, OPEN)
+    if out.segments:
+        p.move(out, "hang_back")
+        q = out.q_end
+    home = sk.motion.to_pose(arm, q, sk.kin.tcp(arm, sk.world.home_q[arm]), FAST, "hang_home", gripper=OPEN)
+    if home.ok:
+        p.move(home, "hang_home")
+    sk.ex.run({arm: p}, name=f"hang {lab} exit")
 
 
 def G_hang(sk: Skills, o, arm: str) -> list:
