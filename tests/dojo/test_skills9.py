@@ -257,3 +257,10 @@ def test_the_pressed_spiral_covers_its_disc_in_short_steps():
                   if x * x + y * y <= 0.00045 ** 2])
     d = np.min(np.linalg.norm(g[:, None, :] - p[None, :, :], axis=2), axis=1)
     assert d.max() <= 0.5 * SPIRAL_PITCH + SPIRAL_STEP / 2 and len(p) < 40
+
+
+def test_a_seat_on_a_read_threads_first_with_the_guarded_descent():
+    env, prov, sk, T = _held_scene({"block": {"hover": [GOOD], "look": [GOOD], "show": [GOOD]}})
+    r = sk.run_place(sk.plan_place("left", T, servo=True, pre_h=0.04, blind_up=0.01))
+    assert sk.held_events[0]["adopted"] and "threaded first" in r.note and "servo" in r.note, r.note
+    assert np.linalg.norm(_true_pos(env) - T[:3, 3]) < 0.0008, r.note        # then down to the full target
