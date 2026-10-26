@@ -1125,9 +1125,10 @@ def _support_raw(o, tag: str) -> list:
 
 
 # mode B (a provider held_pose; ``Skills._held_protocol``): an insertion always looks at the held object when the budget
-# allows (perception-held's dev table, charger: a hover read is 0.54 mm off at the leading point (median), an observer
-# look 0.19, a show pose 0.14; the blades need about +-0.1 mm)
-INSERT_HELD_KW = {"held_tol": 0.0}
+# allows (perception-held's report, charger: a hover read is 0.49 / 1.29 mm off at the leading point (median / p90), an
+# observer look 0.25 / 0.37, a show pose 0.15 / 0.31; the blades need about +-0.1 mm), and with that read a descent that
+# stops on the receptacle first tries a pressed spiral out to 0.5 mm
+INSERT_HELD_KW = {"held_tol": 0.0, "spiral": 0.0005}
 
 INSERT_AIR_HANDOVER = False    # insertions that only plan through an in-air handover: lift + return instead (G3: the
                                # handover lost the key on the carry in 5 versions, 0/34; the lift banks the 15 % rung)
