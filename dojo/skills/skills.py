@@ -267,6 +267,7 @@ class Skills:
         # show pose) when the read at the pre-insert hover is not good enough (``_held_protocol``); every read logged
         self.held_looks = True
         self.held_events: list = []
+        self.confirm_events: list = []              # ``confirm_moved``: what non-grasp actions asked the provider
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
 
@@ -1051,6 +1052,41 @@ class Skills:
         """How far (m, >= 0) the TCP pose must rise for the lowest finger point to be at or above ``z_min``."""
         low = float(self.kin.finger_points(self.kin.flange_from_tcp(np.asarray(T_tcp, float)), gripper)[:, 2].min())
         return max(0.0, z_min - low)
+
+    def confirm_moved(self, label: str, T_expected, why: str = "") -> dict | None:
+        """A non-grasp action (a topple, a push) moved ``label``. In mode B nothing re-measures it (no grasp, so no
+        release and no post-place; no twin segment): the belief keeps it where it was, whatever it did. The provider's
+        ``confirm_pose(label, pos, quat)`` (the runtime: the head view of the current frame decides, the post-place
+        second-look rule) gets the expected outcome and moves the belief there when it is confirmed; then a refresh.
+        Returns the answer ({"adopted", ...}) or None (no such provider: G3 reads the world)."""
+        f = getattr(self.provider, "confirm_pose", None)
+        if f is None or label not in self.world.objects:
+            return None
+        p7 = T_to_pose7(np.asarray(T_expected, float))
+        try:
+            r = f(label, np.asarray(p7[:3], float), np.asarray(p7[3:], float)) or {}
+        except Exception as e:  # noqa: BLE001 (an optional check)
+            r = {"adopted": False, "why": f"{type(e).__name__}: {str(e)[:80]}"}
+        self.confirm_events.append({"label": label, "why": why, "adopted": bool(r.get("adopted")),
+                                    "step": int(self.ex.steps_used), "expected7": [round(float(v), 4) for v in p7]})
+        self.log(f"[confirm] {label} ({why}): adopted={bool(r.get('adopted'))} {r.get('why', '')}")
+        self.refresh()
+        return r
+
+    @staticmethod
+    def toppled_pose(o, d) -> np.ndarray:
+        """Where object ``o`` (standing) comes to rest when tipped over its bottom edge on the side of the horizontal
+        direction ``d`` (a 90-degree turn about that edge; the far face ends on the support): its root 4x4 pose."""
+        d = np.array([d[0], d[1], 0.0], float)
+        d /= np.linalg.norm(d)
+        from dojo.skills.geometry import axis_angle_R
+        Rr = axis_angle_R(np.cross([0.0, 0.0, 1.0], d), math.pi / 2)
+        c = o.center_w
+        half_d = float(np.abs(o.R.T @ d) @ (o.asset.extents / 2))
+        piv = np.array([c[0], c[1], o.bottom_z]) + d * half_d
+        R = Rr @ o.R
+        c2 = piv + Rr @ (c - piv)
+        return T_from(c2 - R @ o.asset.center, R)
 
     # ---- closed-loop insertion tail (tail_kw "servo")
     def _sag(self, arm: str, w: WorldState) -> np.ndarray:
@@ -2458,6 +2494,9 @@ class Skills:
                 self.ex.run({a: p}, name=f"push {label} {it}")
             except (BudgetExceeded, EpisodeEnded) as e:
                 return self._record(SkillResult(False, "push", "step_budget", self.ex.steps_used - n0, a, note=str(e)))
+            T_x = o.T.copy()                                  # the stroke's expected outcome: ``step`` along u
+            T_x[:2, 3] += u * step
+            self.confirm_moved(label, T_x, "push")
         w = self.refresh()
         dist = float(np.linalg.norm(target_xy - w.obj(label).center_w[:2]))
         return self._record(SkillResult(dist <= tol, "push", "ok" if dist <= tol else "place_miss",

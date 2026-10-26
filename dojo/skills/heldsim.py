@@ -12,6 +12,12 @@ skills' mode-B held-pose protocol (``Skills._held_protocol``) runs in G3 with th
   perception-held's dev evaluation for the object's category and the view (``cfg_["view"]``: hover / look / show; the
   table ``data/held_noise.json``, ``scripts/skills/held_noise_table.py``), with that read's ok / why / sigma; an ok
   read re-anchors the attachment (as the runtime's ``_held_pose`` does). ``mode="gt"``: the exact transform;
+- ``freeze=True``: like the runtime belief, an object the robot moved WITHOUT a grasp (a topple, a push: the fingertips
+  came within ``TOUCH_MARGIN`` of its box, then it moved more than 3 mm / 5 deg) stays where the belief had it (no
+  release, so no post-place re-measure); a grasp and its release unfreeze it (the release stands in for the post-place
+  refine). ``confirm_pose(label, pos, quat)`` (``confirm=True``; the runtime's #67: the head view decides) adopts the
+  skill's expected pose when it is closer to the truth (+ the belief offset) than the frozen belief and within
+  ``CONFIRM_TOL`` of it;
 - ``show_pose(arm, T_tcp_obj, asset_key, cfg_)``: generic candidates in perception's ``show_pose.propose`` format:
   observer looks of the other arm's wrist camera at the held object from beside / across the pads, then show poses of
   the holding arm with the object in front of the head camera (+ an observer look there); reachable by our IK, in a
@@ -35,6 +41,9 @@ from dojo.skills.kinematics import ARMS, TABLE_Z, X5Kin
 NOISE_FILE = Path(__file__).with_name("data") / "held_noise.json"
 VIEWS = ("hover", "look", "show")
 ATTACH_MARGIN = 0.015          # m: the runtime belief's attach margin (``KinematicBelief``)
+TOUCH_MARGIN = 0.02            # m: fingertips this close to an object's (believed) box touch it (``freeze``)
+MOVED = (0.003, 5.0)           # m, deg: a touched object that moved more than this since the last refresh froze
+CONFIRM_TOL = (0.015, 20.0)    # m, deg: a ``confirm_pose`` this far off the truth is not confirmed
 
 # --- from dojo/perception/show_pose.py (perception-held, PR #59)
 T_TCP_CAM = np.array([[-0.000007, -0.500030, 0.866008, -0.060158],
@@ -119,7 +128,7 @@ class HeldBeliefProvider:
     """See the module doc. ``mode``: None (belief only: no ``held_pose`` / ``show_pose``), "noise" or "gt"."""
 
     def __init__(self, base, env, kin: X5Kin | None = None, mode: str | None = "noise", seed: int = 0,
-                 table: dict | None = None):
+                 table: dict | None = None, freeze: bool = False, confirm: bool = False):
         self.base = base
         self.env = env
         self.kin = kin or X5Kin()
@@ -131,6 +140,13 @@ class HeldBeliefProvider:
         self.stats: dict = {"reads": {v: 0 for v in VIEWS}, "ok": {v: 0 for v in VIEWS}, "show_pose": 0,
                             "attached": 0, "reanchored": 0}
         self.events: list = []
+        self.freeze = bool(freeze or confirm)
+        self._touched: set = set()
+        self._frozen: dict = {}              # label -> (pos, quat) the belief keeps
+        self._base_prev: dict = {}           # label -> the base provider's (pos, quat) at the last refresh
+        self.stats.update({"frozen": 0, "confirm": 0, "confirm_adopted": 0})
+        if confirm:
+            self.confirm_pose = self._confirm_pose
         if mode:
             if table is None:
                 table = json.loads(NOISE_FILE.read_text())["table"] if mode == "noise" else {}
@@ -154,8 +170,20 @@ class HeldBeliefProvider:
                     self.att[a] = (lab, inv_T(T_c) @ self._free[lab].T)
                     self.stats["attached"] += 1
             if g_new > 0.6 and a in self.att:
-                self.att.pop(a)
+                lab = self.att.pop(a)[0]
+                self._frozen.pop(lab, None)                 # released: the post-place re-measure (GT + offset)
             self._g[a] = g_new
+            if self.freeze:
+                T = self.kin.tcp(a, np.asarray(action[f"{a}_arm_joint_state"], float).reshape(-1)[:6])
+                tip = T[:3, 3] + T[:3, 0] * 0.0126
+                held = {v[0] for v in self.att.values()}
+                for lab, o in self._free.items():
+                    if lab in held or o.obj_type == "Geometry":
+                        continue
+                    for p in (T[:3, 3], tip):
+                        if np.all(np.abs(o.R.T @ (p - o.center_w)) <= o.asset.extents / 2 + TOUCH_MARGIN):
+                            self._touched.add(lab)
+                            break
         return self._step(action)
 
     def _object_at(self, p) -> str | None:
@@ -184,9 +212,50 @@ class HeldBeliefProvider:
             attached[lab] = a
         import copy
         for lab, o in w.objects.items():
-            if lab not in attached:
-                self._free[lab] = copy.copy(o)
+            if lab in attached:
+                continue
+            if self.freeze:
+                base = (o.pos.copy(), o.quat.copy())
+                prev = self._base_prev.get(lab)
+                if lab not in self._frozen and lab in self._touched and prev is not None:
+                    from dojo.skills.geometry import angle_between_R, quat_to_R
+                    if (float(np.linalg.norm(base[0] - prev[0])) > MOVED[0]
+                            or math.degrees(angle_between_R(quat_to_R(base[1]), quat_to_R(prev[1]))) > MOVED[1]):
+                        prev_b = self._free.get(lab)
+                        self._frozen[lab] = ((prev_b.pos.copy(), prev_b.quat.copy()) if prev_b is not None else prev)
+                        self.stats["frozen"] += 1
+                self._base_prev[lab] = base
+                if lab in self._frozen:
+                    o.pos, o.quat = self._frozen[lab][0].copy(), self._frozen[lab][1].copy()
+                    o.source = "predicted"
+            self._free[lab] = copy.copy(o)
+        self._touched.clear()
         return w
+
+    def _confirm_pose(self, label: str, pos, quat) -> dict:
+        """GT stand-in for the runtime's ``confirm_pose``: adopted when the expected pose is within ``CONFIRM_TOL`` of
+        the truth (as the belief sees it: + the offset) and closer to it than the frozen belief."""
+        from dojo.skills.geometry import angle_between_R, quat_to_R
+        self.stats["confirm"] += 1
+        self.refresh({a: v[0] for a, v in self.att.items()})      # what moved since the last refresh (the freeze)
+        if label not in self._frozen:
+            return {"adopted": False, "why": "belief current"}
+        truth = self._base_prev.get(label)
+        if truth is None:
+            return {"adopted": False, "why": "unknown"}
+
+        def err(p, q):
+            return (float(np.linalg.norm(np.asarray(p, float) - truth[0])),
+                    math.degrees(angle_between_R(quat_to_R(np.asarray(q, float)), quat_to_R(truth[1]))))
+        e_x, e_b = err(pos, quat), err(*self._frozen[label])
+        ok = e_x[0] <= CONFIRM_TOL[0] and e_x[1] <= CONFIRM_TOL[1] and (e_x[0] + e_x[1] / 1000.0) < (e_b[0] + e_b[1] / 1000.0)
+        ev = {"label": label, "expected_err": [round(e_x[0] * 1000, 1), round(e_x[1], 1)],
+              "belief_err": [round(e_b[0] * 1000, 1), round(e_b[1], 1)], "adopted": ok, "step": int(self.env.steps_used)}
+        self.events.append({"kind": "confirm", **ev})
+        if ok:
+            self._frozen[label] = (np.asarray(pos, float).copy(), np.asarray(quat, float).copy())
+            self.stats["confirm_adopted"] += 1
+        return {"adopted": ok, "confirm": ev}
 
     # ------------------------------------------------------------------ reads
     def _true_T_rel(self, arm: str, label: str) -> np.ndarray:

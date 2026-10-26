@@ -278,3 +278,81 @@ def test_a_guarded_place_runs_the_probing_tail_on_the_adopted_read():
     r = sk.run_place(sk.plan_place("left", T, servo=True, pre_h=0.04, guarded=True))
     assert sk.held_events[0]["adopted"] and "held read adopted" in r.note and "probing tail" in r.note, r.note
     assert np.linalg.norm(_true_pos(env)[:2] - T[:2, 3]) < 0.0005, r.note    # aimed with the read (belief 3 mm off)
+# ------------------------------------------------------------------------- non-grasp outcomes (confirm_pose, #67)
+def _kong_scene(freeze, confirm, offset=(0.002, 0.0)):
+    from dojo.skills.heldsim import HeldBeliefProvider
+    from tests.dojo.test_skills2 import kong_rows
+    env = KinematicEnv(kong_rows(0)[:3], step_lim=400)
+    base = OffsetBeliefProvider(GTProvider(env, None), {"mahjong0_1": offset})
+    prov = HeldBeliefProvider(base, env, mode=None, freeze=freeze, confirm=confirm)
+    return env, prov, Skills(env, prov, remeasure=False, refine=lambda *a: None)
+
+
+def test_a_topple_the_belief_does_not_see_fails_without_confirm_pose():
+    from dojo.skills.library import topple, up_body_axis
+    env, prov, sk = _kong_scene(freeze=True, confirm=False)
+    r = topple(sk, "mahjong0_1", up_body_axis(sk.world.obj("mahjong0_1")))
+    from dojo.skills.geometry import quat_to_R
+    assert quat_to_R(next(o for o in env.objects if o["label"] == "mahjong0_1")["quat"])[2, 2] > 0.95   # it did tip
+    assert not r.ok and prov.stats["frozen"] >= 1                 # ... but the belief keeps it standing (mode B)
+
+
+def test_confirm_pose_adopts_the_toppled_pose():
+    from dojo.skills.library import topple, up_body_axis
+    env, prov, sk = _kong_scene(freeze=True, confirm=True)
+    r = topple(sk, "mahjong0_1", up_body_axis(sk.world.obj("mahjong0_1")))
+    assert r.ok, r.note
+    assert sk.confirm_events and sk.confirm_events[0]["adopted"] and prov.stats["confirm_adopted"] == 1
+    assert sk.refresh().obj("mahjong0_1").R[2, 2] > 0.95
+    for lab in ("mahjong0_0", "mahjong0_2"):                     # the neighbours were not confirmed into anything
+        assert abs(sk.world.obj(lab).R[2, 1]) > 0.99
+
+
+def test_a_wrong_expectation_is_not_confirmed():
+    env, prov, sk = _kong_scene(freeze=True, confirm=True)
+    from dojo.skills.library import topple, up_body_axis
+    r = topple(sk, "mahjong0_1", up_body_axis(sk.world.obj("mahjong0_1")))
+    assert r.ok
+    T = sk.world.obj("mahjong0_1").T.copy()
+    T[0, 3] += 0.05                                               # 5 cm off the truth
+    ans = sk.confirm_moved("mahjong0_1", T, "test")
+    assert ans is not None and not ans["adopted"]
+
+
+def test_without_a_confirm_provider_a_topple_reads_the_world():
+    from dojo.skills.library import topple, up_body_axis
+    from tests.dojo.test_skills2 import kong_rows
+    env = KinematicEnv(kong_rows(0)[:3], step_lim=300)
+    sk = Skills(env, GTProvider(env, None))
+    assert topple(sk, "mahjong0_1", up_body_axis(sk.world.obj("mahjong0_1"))).ok and sk.confirm_events == []
+
+
+def test_toppled_pose_turns_about_the_far_bottom_edge():
+    from tests.dojo.test_skills2 import FRONT, HALF as KH, _obj
+    o = _obj("t", "mahjong", 0, (0.0, -0.2, TABLE_Z + KH[1]), KH, quat=FRONT)
+    from dojo.skills.library import up_body_axis
+    ax = np.asarray(up_body_axis(o), float)
+    n = o.R @ ax                                                   # horizontal now; tips the other way
+    T = Skills.toppled_pose(o, -n)
+    from dojo.skills.geometry import quat_to_R, T_to_pose7
+    R = quat_to_R(T_to_pose7(T)[3:])
+    assert float((R @ ax)[2]) > 0.999                              # that axis points up
+    lo = (R @ (np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)]) * KH).T).T + T[:3, 3]
+    assert abs(lo[:, 2].min() - TABLE_Z) < 1e-6                    # resting on the table
+
+
+def test_declare_kong_in_mode_b_needs_confirm_pose():
+    from dojo.skills import planner
+    from dojo.skills.heldsim import HeldBeliefProvider
+    from tests.dojo.test_skills2 import KONG, kong_rows
+    out = {}
+    for confirm in (False, True):
+        env = KinematicEnv(kong_rows(0), step_lim=600, instruction=KONG)
+        prov = HeldBeliefProvider(GTProvider(env, None, instruction=KONG), env, mode=None, freeze=True, confirm=confirm)
+        sk = Skills(env, prov, remeasure=False, refine=lambda *a: None)
+        res = planner.solve(sk)
+        from dojo.skills.geometry import quat_to_R
+        rows = {o["label"]: o for o in env.objects}
+        out[confirm] = (bool(res.get("ok")), sum(quat_to_R(rows[f"mahjong0_{i}"]["quat"])[2, 2] > 0.85 for i in range(3)))
+    assert out[True] == (True, 3), out
+    assert not out[False][0], out                               # the belief never sees the tiles tip
