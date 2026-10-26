@@ -42,6 +42,16 @@ from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candid
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
 
 
+def keep_centre(o, fit_pos, fit_quat) -> np.ndarray:
+    """The root position that puts ``o``'s bbox centre where a refine's fit (``fit_pos``, ``fit_quat``) has it, under
+    ``o``'s CURRENT (prior) orientation. A refine that turns an object more than ``refine_max_turn_deg`` keeps the
+    prior orientation; the fit's root position belongs to the turned pose, so pairing it with the prior quat moves
+    the object by the root's offset from its centre, twice (breadth2 plug_in_charger: root ~24 mm off the centre,
+    flip -> 47 mm off, the relay handed over a charger that was not there)."""
+    from dojo.skills.geometry import quat_to_R
+    c = np.asarray(o.asset.center, float)
+    return np.asarray(fit_pos, float) + quat_to_R(np.asarray(fit_quat, float)) @ c - quat_to_R(o.quat) @ c
+
 def label_candidates(vocabulary: str, label: str) -> list[str]:
     """The catalogue candidate keys of ``label``'s own config group in ``vocabulary`` (catalog/tasks.json), [] when
     unknown. A label whose group has one key admits no identity change."""
@@ -739,12 +749,15 @@ class RuntimePolicy:
             ev.update({"identity_from": o.asset.key, "identity_to": new_id})
             o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
-        q_new = np.asarray(r["quat"], float)
+        q_new, p_new = np.asarray(r["quat"], float), np.asarray(r["pos"], float)
         if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg:
-            q_new = o.quat.copy()
+            q_new, p_new = o.quat.copy(), keep_centre(o, r["pos"], r["quat"])
             ev["why"] = (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg: prior orientation kept)"
             prov.stats["turn_kept"] = prov.stats.get("turn_kept", 0) + 1
-        o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
+            # the root shift belongs to the turned fit: what moved is the centre (a recentre re-hover over a flip of
+            # an off-centre root oscillated between the two modes on every view)
+            far = float(np.linalg.norm(p_new - o.pos)) * 1000 > self.cfg.rehover_min_shift_mm
+        o.pos, o.quat, o.source = p_new, q_new, "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
         prov.touched.discard(label)                     # a good reading (tracker)
         if far and self.cfg.rehover_when_far:
@@ -1120,9 +1133,11 @@ class RuntimePolicy:
                 agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
             ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
             if agree is not None and agree <= cfg.place_agree_mm:
-                q_new = (np.asarray(r["quat"], float) if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg
-                         else o.quat.copy())
-                o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
+                if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg:
+                    o.pos, o.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
+                else:
+                    o.pos, o.quat = keep_centre(o, r["pos"], r["quat"]), o.quat.copy()
+                o.source = "perception"
                 prov.stats["refined"] = prov.stats.get("refined", 0) + 1
                 prov.stats["place_confirmed"] = prov.stats.get("place_confirmed", 0) + 1
                 prov.touched.discard(label)
