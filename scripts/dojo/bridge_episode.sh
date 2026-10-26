@@ -35,6 +35,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$ID" ]] || { echo "--id is required" >&2; exit 2; }
+# a stop file ends a running block before its next episode (isr-lab: the disk floor, a GPU hand-back)
+STOPF="${BRIDGE_STOP_FILE:-${DOJO_DATA:-$HOME/dojo-data}/bridge/STOP}"
+[[ -e "$STOPF" ]] && { echo "[bridge_episode] stop file $STOPF present: not starting $ID" >&2; exit 79; }
 [[ "$FAKE" == 1 || ( -n "$TASK" && -n "$LAYOUT" ) ]] || { echo "--task and --layout are required" >&2; exit 2; }
 mkdir -p "$OUT/$ID"
 LOG="$OUT/$ID/bridge_episode.log"
