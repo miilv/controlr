@@ -1,5 +1,6 @@
-"""Integration tooling: the queue runner survives its own script being rewritten in place while it runs (a deploy into the runner's
-checkout; 2026-10-26 the runner re-ran a finished job with mangled args and died on a syntax error)."""
+"""Integration tooling. The queue runner survives its own script being rewritten in place while it runs (a deploy
+into the runner's checkout; 2026-10-26 the runner re-ran a finished job with mangled args and died on a syntax
+error). dojo.runtime.report's breadth table and ledger rows."""
 import os
 import shutil
 import subprocess
