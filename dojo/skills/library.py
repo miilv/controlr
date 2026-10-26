@@ -1353,13 +1353,61 @@ def _inside_opening(sk: Skills, label: str, container: str, depth: float = 0.02)
     return bool(mn[0] <= low[0] <= mx[0] and mn[1] <= low[1] <= mx[1] and low[2] < c.top_z - depth)
 
 
-def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
-                   comfy: float = 0.42) -> dict:
-    """Put every object into ``container`` leading end first (``insertion.fit_insertion`` per object, the
-    ones already inside taken out of the free area), grippers open after each (partial credit per
-    object). A movable container out of comfortable reach of the arm that picks the objects is first
-    carried to a free spot both arms reach (the instruction's "hold the holder"); it stays upright."""
+FILL_DROP_DEPTH = 0.012       # m: the leading end is let go this far inside the opening (twin, pens and oil pens released
+                              # 4 mm over a holder's rim within 18 mm of its axis fell to the floor 39/41; inside the
+                              # opening they cannot topple out over the rim)
+FILL_FINGER_CLEAR = 0.02      # m: the fingers stay this far above the rim, and 1 cm above whatever stands in the opening
+
+
+def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str]):
+    """Where ``label`` is let go over ``container``'s opening: leading end down, its footprint at the free spot of the
+    opening with the most clearance (``fit_insertion`` with the objects already inside taken out near the rim), the
+    leading end ``FILL_DROP_DEPTH`` below the rim. Returns (pose 4x4, HoleFit) or (None, None)."""
     from dojo.skills.insertion import fit_insertion
+    w = sk.world
+    o, c = w.obj(label), w.obj(container)
+    others = [w.obj(l) for l in inside if l in w.objects]
+    for kw in ({"others_pad": 0.004}, {"others_pad": 0.002}, {"others_pad": 0.0, "others_band": 0.01},
+               {"others": ()}):
+        fit = fit_insertion(o, c, **{"others": others, "res": 0.001, "yaw_step_deg": 15.0, "pack": False, **kw})
+        if fit is not None:
+            T = fit.T_obj.copy()
+            T[2, 3] += (fit.top_z - FILL_DROP_DEPTH) - fit.floor_z
+            return T, fit
+    return None, None
+
+
+def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, box_tilts=(0.0, 25.0, -25.0)):
+    """A ``plan_transfer`` grasp source: the usual candidates (box grasps, the category's, slices of irregular ones)
+    whose fingers, with the object at ``T_target``, all stay above ``z_min`` (the hand never reaches into the
+    opening, and stays over what already stands in it)."""
+    from dojo.skills import grasps as G
+    from dojo.skills.motion import held_box
+
+    def source(arm):
+        o = sk.world.obj(label)
+        cands = G.box_grasps(o, sk.kin, arm, tilts=tuple(box_tilts)) + G.candidates(o, sk.kin, arm)
+        if held_box(o, np.eye(4)).points is not None:
+            cands += G.slice_grasps(o, sk.kin, arm)
+        Tinv = inv_T(o.T)
+        out = []
+        for g in cands:
+            Tt = T_target @ Tinv @ g.T
+            if float(sk.kin.finger_points(sk.kin.flange_from_tcp(Tt), CLOSED)[:, 2].min()) >= z_min:
+                out.append(g)
+        return out
+    return source
+
+
+def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
+                   comfy: float = 0.42, tries: int = 2) -> dict:
+    """Put every object into ``container`` leading end first, grippers open after each (partial credit per
+    object). A movable container out of comfortable reach of the arm that picks the objects is first
+    carried to a free spot both arms reach (the instruction's "hold the holder"); it stays upright.
+    Each object is held leading end down over the free spot of the opening (``_fill_drop_target``), its leading end
+    ``FILL_DROP_DEPTH`` inside, the fingers above the rim and above what already stands in it, and let go: it drops
+    to the floor (twin: an earlier version pushed pens down to the floor, and grasps near their tips caught the
+    rim). The widest go first. One that ends outside is tried again (``tries``)."""
     w = sk.refresh()
     objects = [l for l in objects if l in w.objects]
     c = w.obj(container)
@@ -1382,52 +1430,55 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
                 break
         sk.bank()
     sk.coll.include.add(container)
-    failed = []
-    for _ in range(len(objects)):
+    failed: list = []
+    attempts: dict = {}
+    for _ in range(tries * len(objects)):
         w = sk.refresh()
+        st["inside"] = [l for l in st["inside"] if _inside_opening(sk, l, container, depth=0.035)]
         todo = [l for l in objects if l not in st["inside"] and l not in failed]
         if not todo:
             break
         # the widest first (the slim ones fit the gaps left at the rim)
         lab = max(todo, key=lambda l: float(np.prod(np.sort(w.obj(l).asset.extents)[:2])))
-        inside = [w.obj(l) for l in st["inside"]]
-        fit = None
-        # crowded opening: less padding, then the rim band only, then the objects inside ignored (they lean;
-        # the twin settles the newcomer between them)
-        # the first one in the middle; then packed against the wall with >= 6 mm to it (twin: an oil pen
-        # packed 2 mm from the wall jammed 50 mm down), relaxing when the opening is crowded
-        tries = ([{"pack": False}] if not inside else []) + [
-            {"others_pad": 0.002, "min_clear": 0.006}, {"others_pad": 0.002, "min_clear": 0.003},
-            {"others_pad": 0.0, "min_clear": 0.0015}, {"others_pad": 0.0, "min_clear": 0.0015, "others_band": 0.008},
-            {"others": ()}]
-        for kw in tries:
-            args = {"others": inside, "res": 0.001, "yaw_step_deg": 15.0, "pack": True, **kw}
-            fit = fit_insertion(w.obj(lab), w.obj(container), **args)
-            if fit is not None:
-                break
-        if fit is None:
+        attempts[lab] = attempts.get(lab, 0) + 1
+        if attempts[lab] > tries:
             failed.append(lab)
             continue
-        T = fit.T_obj.copy()
-        T[2, 3] += drop
-        sk.log(f"[fill] {lab}: {fit.note}")
-        r = place_oriented(sk, lab, [T], yaw_sym=4, tol_xy=0.03, tol_tilt=30.0, tol_z=0.05,
-                           ignore=(container, *st["inside"]),
-                           place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                     "servo": True, "servo_ref": container, "seat_tol": 0.02, "probe": False,
-                                     "hover_clear": 0.008})
-        sk.refresh()
-        if _inside_opening(sk, lab, container):
+        if _inside_opening(sk, lab, container, depth=0.035):
             st["inside"].append(lab)
-        else:
+            continue
+        T, fit = _fill_drop_target(sk, lab, container, st["inside"])
+        if T is None:
             failed.append(lab)
+            sk.log(f"[fill] {lab}: no free spot in the opening")
+            continue
+        top_inside = max((w.obj(l).top_z for l in st["inside"]), default=fit.top_z)
+        z_min = max(fit.top_z + FILL_FINGER_CLEAR, top_inside + 0.01)
+        sk.log(f"[fill] {lab}: drop at {fit.note}, fingers over {z_min:.3f}")
+        r = place_oriented(sk, lab, [T], yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
+                           ignore=(container, *st["inside"]),
+                           place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
+                                     "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
+                                     "hover_clear": 0.01},
+                           transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min)}, air_handover=False)
+        try:
+            sk.ex.hold(4)                       # it falls the rest of the way
+        except (BudgetExceeded, EpisodeEnded):
+            pass
+        sk.refresh()
+        if _inside_opening(sk, lab, container, depth=0.035):
+            st["inside"].append(lab)
+            sk.log(f"[fill] {lab} inside")
+        else:
             sk.log(f"[fill] {lab} not inside ({r.status}: {r.note[:120]})")
+            if r.status in ("ik_fail", "collision") and not r.steps:
+                failed.append(lab)            # nothing plans for it: the next one
         if any(sk.held[a] is not None for a in ARMS):
             for a in ARMS:
                 if sk.held[a] is not None:
                     sk._record(sk.regrasp(a))
         sk.bank()
-        if r.status in ("step_budget", "ended"):
+        if r.status in ("step_budget", "ended") or sk.ex.steps_left - sk.ex.reserve < 60:
             break
     if len(st["inside"]) < len(objects):
         return {"ok": False, "stage": "fill", "note": f"inside {st['inside']}, failed {failed}"}
