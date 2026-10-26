@@ -1265,6 +1265,49 @@ def _conflicts(h: Hypothesis, others) -> bool:
                for c in others)
 
 
+ELEV_SUPPORT_FG = 0.5  # a view supports an elevated hypothesis: >= this share of its exclusive pixels is foreground
+ELEV_REFUTE_FG = 0.25  # a view refutes it: below this share
+ELEV_MIN_PX = 30
+
+
+def elevated_support(h: Hypothesis, others, views) -> dict:
+    """Per view, the pixels ``h`` alone would explain (its silhouette minus every other object's, the support's
+    included) that are known: the foreground share there. {"support": n, "refute": n, "views": {name: frac}}; views
+    with too few exclusive pixels are uninformative (a block on top seen straight from above hides in its support)."""
+    U = _union_masks(list(others), views)
+    out = {"support": 0, "refute": 0, "views": {}}
+    for name, (roi, m) in _hyp_masks(h, views).items():
+        v = views[name]
+        excl = m.astype(bool) & (U[name][roi] == 0) & (v.known[roi] > 0)
+        n = int(excl.sum())
+        if n < max(ELEV_MIN_PX, 0.15 * int(m.sum())):
+            continue
+        frac = float((v.fg[roi][excl] > 0).mean())
+        out["views"][name] = round(frac, 3)
+        if frac >= ELEV_SUPPORT_FG:
+            out["support"] += 1
+        elif frac < ELEV_REFUTE_FG:
+            out["refute"] += 1
+    return out
+
+
+def _needs_multiview(h: Hypothesis, support_key: str | None, cfg) -> bool:
+    mode = getattr(cfg, "elevated_multiview", "identical")
+    if mode == "off" or not h.per_view.get("z_off"):
+        return False
+    return mode == "all" or (support_key is not None and support_key == h.key)
+
+
+def _multiview_ok(h: Hypothesis, others, views, cfg, support_key: str | None) -> bool:
+    """An elevated hypothesis that needs it (``_needs_multiview``) stands only on >= 2 supporting views, more than
+    refuting ones. Records the check in ``per_view["multiview"]``."""
+    if not _needs_multiview(h, support_key, cfg):
+        return True
+    s = elevated_support(h, others, views)
+    h.per_view["multiview"] = s
+    return s["support"] >= 2 and s["support"] > s["refute"]
+
+
 def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
     """Explain-away selection: repeatedly add the hypothesis that most increases (new foreground covered -
     new background covered - penalty x own area), summed over views and normalised by each view's
@@ -1416,13 +1459,22 @@ def _tower_proposals(chosen, need, pending, views, cfg, groups, margin: float = 
             if best[1] == 1:
                 continue
             _, k, x, y, yaw = best
-            out.remove(c)
+            levels = []
             for i in range(k):
                 h = Hypothesis(gi, c.key, c.tag, x, y, yaw, float(best[0]), dict(c.per_view), c.blob)
                 h.per_view["z_off"] = float(i * sm.height)
                 h.per_view["tower"] = {"levels": k, "level": i}
                 h.per_view["sil_loss"] = round(float(best[0]), 4)
-                out.append(h)
+                levels.append(h)
+            rest = [o for o in out if o is not c]
+            # every level above the first is a piece on an identical piece: each needs two views of its own
+            if not all(_multiview_ok(levels[i], rest + levels[:i] + levels[i + 1:], views, cfg, c.key)
+                       for i in range(1, k)):
+                if os.environ.get("DOJO_DEBUG_STACK"):
+                    print("tower rejected (multi-view)", c.key, [lv.per_view.get("multiview") for lv in levels[1:]])
+                continue
+            out.remove(c)
+            out.extend(levels)
             need[gi] -= k - 1
     return out
 
@@ -1718,6 +1770,10 @@ class EstimatorConfig:
     stack_proposals: bool = True  # groups still short look for objects resting on chosen ones (_stack_proposals)
     stack_levels: int = 2
     stack_max_loss: float = 0.5
+    # an elevated (stacked) hypothesis needs >= 2 views whose pixels it alone would explain are mostly foreground:
+    # "identical" = only a piece on an IDENTICAL piece (a phantom pillar on a real one: tower scan A/B, 3 of 23 scan
+    # records); "all" = every elevated hypothesis (an episode-start scene has nothing stacked); "off"
+    elevated_multiview: str = "identical"
     wrist_proposals: bool = True  # single-target groups with a poor head fit also propose from wrist blobs
     wrist_fallback_loss: float = 0.6
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
@@ -1938,6 +1994,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                         h.per_view.get("sil_loss"), {k: v for k, v in h.per_view.items() if k.startswith("cam")}) for h in stacked],
                       "selected", len(add))
             add = [h for h in add if h.per_view.get("sil_loss", h.loss) < cfg.stack_max_loss]
+            # a piece on an identical piece (or, at an episode start, any piece up in the air) needs two views
+            add = [h for h in add if _multiview_ok(h, [c for c in chosen] + [a for a in add if a is not h], views, cfg,
+                                                  h.per_view.get("stacked_on"))]
             if not add:
                 break
             pool += stacked
