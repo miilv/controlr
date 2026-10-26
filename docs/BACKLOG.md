@@ -219,8 +219,10 @@
 - [ ] **dojo skills: plug_in_charger in mode B is bounded by the in-hand pose** (journal/2026-10-26-dojo-skills5.md).
   The blades are 0.8 mm in 1.0 mm slots (about +-0.1 mm), and a 3.5 mm belief error at grasp time leaves the blades on the
   strip. A discrete probe grid would need about 0.2 mm spacing (hundreds of probes); a pressed spiral to 5 mm is about 260
-  steps, against ~170 left. Needs a held-object refine good to about 0.3 mm, then a short spiral. The contact-probing
-  tail (`Skills._guarded_tail`) is in place for mode B.
+  steps, against ~170 left. Even with an exact belief (no offset) mode B goes 0/4: G3's servo works because it re-measures
+  the held object 3 mm over the strip. Needs that measurement (a held-object view at the hover, about 0.3 mm), then a
+  short spiral. The contact-probing tail (`Skills._guarded_tail`) is in place for mode B and is harmless (the place
+  completes, nothing drops).
 - [ ] **dojo skills: insert_tubes, the second tube from the same side.** After the first tube stands, the same arm often has no plan into the remaining holes of its half of the rack (no grasp-place pairs, see the journal), and the relay fails too.
 - [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
 - [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).

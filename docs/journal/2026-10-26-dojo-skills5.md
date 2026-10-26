@@ -34,7 +34,7 @@ GT state, physics-only twin, settled dev layouts, `SIMLAB_USD_SYNC_LINKS=1`. Boa
 | play_Xylophone | xylo_final (eae2b9d) | **25/25** | **1.00** | 166 / 188 (500) | - | 62 / 62 |
 | fasten_screws | screws_final (eae2b9d) | **24/25** | **0.98** | 1245 / 1365 (1900) | 1 at 0.5: a nut fell beside its bolt (the arm was held 31 mm off its command at the place) | 80.6 / 80.6 |
 | deposit_coin | coin_final (eae2b9d) | **16/25** | **0.69** | 163 / 229 (300) | one-arm 9/11, handover 7/13. The rest: place_miss 5 (the coin fell on or beside the slot after release), a handover with no reachable taker descent, a loose giver pick, a rim pick that slipped | 44 / 62.3 |
-| insert_tubes | tubes_v5 (c0af901) | see the table below | | | the third tube had no plan; a grasp off the centre of mass missed | 66.4 / 82.9 |
+| insert_tubes | tubes_v5 (c0af901) | **16/25** | **0.78** | 336 / 430 (500) | every failure at 0.4 (2 of 3 tubes in): the third tube had no plan 4, a tube held more than 10 mm off its centre of mass (the only grasp left) missed 4, a miss 1 | 66.4 / 82.9 |
 
 The coin, screw and xylophone finals ran on eae2b9d. The later commits touch these tasks only in paths those episodes
 did not take:
@@ -58,7 +58,12 @@ did not take:
 | insert_tubes | v1-v2 (2df0198, 60c58d8) | 1, 5 | 0/1, 1/5 | 0.40, 0.48 | 233 / 341 | the hand over a standing tube was held 34 mm off its command; no plan for the third tube; a sweeping collision with the rack |
 | insert_tubes | v3 (cf857cd) | 2 (stopped) | 0/2 | 0.40 | 216 / 218 | back row first and one screen over 6 holes: worse (IK budget; the left arm 50 mm off its command at a back hole). Reverted |
 | insert_tubes | v4 (626c268) | 100000-09 | 6/10 | 0.76 | | a screen per hole, holes not reached over, a usual-lift retry |
+| insert_tubes | v5 (c0af901: + grasps > 10 mm off the CoM rank last) | 25 | 16/25 | 0.78 | 336 / 430 | the final row above |
 | plug_in_charger (regression) | plug_reg (3c76332) | 100000-09 | 8/10 | 0.80 | 181 / 228 | skills-3 had 8/10 on the same layouts (the same two fail) |
+| plug_in_charger mode B, 3.5 mm offset | plug_modeb (3c76332 / c0af901) | 100000-01 / -04 | 0/2, 0/5 | 0.00 | | before #45: the pre-planned approach dropped the charger; after: guarded descent, blades on the strip |
+| plug_in_charger mode B, 3.5 mm offset | plug_probe35 (ac4f6d2) | 100000-01 (stopped) | 0/2 | 0.00 | 247 / 363 | 24 probes, none in (+-0.1 mm slots) |
+| plug_in_charger mode B, no offset | plug_probe00 (ac4f6d2) | 100000-02 (stopped) | 0/3 | 0.00 | | contact 17 mm short, 24 probes, none in |
+| plug_in_charger mode B, no offset | plug_probe00s (b4690b3: + the sag transform on the guarded lines) | 100000-03 | 0/4 | 0.00 | 271 / 363 | the same contact, 9-17 mm short, none in. 100002 has no relay plan in any mode |
 
 ## 3. Findings per task
 
@@ -138,7 +143,11 @@ did not take:
   260 steps, against the ~170 the plug has left after its relay.
 - Conclusion: mode-B plug is bounded by the in-hand pose. It needs a held-object refine good to about 0.3 mm,
   then a short spiral. The tail stays in the code: it completes the place (no refusal, no drop).
-- No-offset mode-B sanity check: see the table.
+- No-offset mode-B sanity check: 0/4. With an exact belief the blades still land on the strip, 9-17 mm short of the
+  target, with or without the sag transform. So what makes G3's servo tail work is the MEASURED in-hand pose at the
+  hover (the object re-measured 3 mm over the strip), not sag alone. The tail is harmless (the place completes, nothing
+  drops, nothing is refused), but mode-B plug needs that measurement: a held-object view from a wrist or head camera at
+  the hover.
 
 ## 4. Landmines (also in BACKLOG)
 
