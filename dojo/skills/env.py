@@ -219,6 +219,13 @@ class KinematicEnv:
     def _drop(self, label: str) -> None:
         o = self._obj(label)
         R = quat_to_R(o["quat"])
+        # hooks (dry runs: a Geometry row's ``hang_points`` = [[x, y, z], ...], world): an object let go with a hook
+        # point inside its box (a mug's handle over a rack's arm) hangs there
+        for g in self.objects:
+            for hp in (g.get("hang_points") or []) if g.get("type") == "Geometry" else []:
+                loc = R.T @ (np.asarray(hp, float) - o["pos"]) - o["center"]
+                if np.all(np.abs(loc) <= o["half"] + 0.005):
+                    return
         R = self._disc_falls_flat(o, R)
         off = R @ o["center"]                    # root -> bbox centre (world)
         o["pos"] = o["pos"] + off
@@ -266,6 +273,25 @@ class KinematicEnv:
                         support = g["pos"][2] - hg[2] + 0.01         # a container: its bottom
             o["pos"] = np.array([o["pos"][0], o["pos"][1], support + hz])
             return
+        # pegs (dry runs: a Geometry row's ``pegs`` = [[x, y, plate_z], ...], world): a piece let go with its root
+        # within 4 mm of a peg's axis slides down onto the plate (or the pieces already on the peg)
+        root = o["pos"] - R @ o["center"]
+        for g in self.objects:
+            for px, py, pz in (g.get("pegs") or []) if g.get("type") == "Geometry" else []:
+                if math.hypot(root[0] - px, root[1] - py) < 0.004 and o["pos"][2] - hz > pz:
+                    o["pos"] = o["pos"] + np.array([px - root[0], py - root[1], 0.0])
+                    support = pz
+                    for other in self.objects:
+                        if other["label"] == label or other.get("type") == "Geometry":
+                            continue
+                        Ro = quat_to_R(other["quat"])
+                        if math.hypot(other["pos"][0] - px, other["pos"][1] - py) < 0.004:
+                            ho = np.abs(Ro @ np.diag(other["half"])).sum(axis=1)
+                            oc = other["pos"] + Ro @ other["center"]
+                            if oc[2] < o["pos"][2]:
+                                support = max(support, oc[2] + ho[2])
+                    o["pos"] = np.array([o["pos"][0], o["pos"][1], support + hz])
+                    return
         for other in self.objects:
             if other["label"] == label or other.get("type") == "Geometry":
                 continue

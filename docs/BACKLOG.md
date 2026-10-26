@@ -283,6 +283,42 @@
   short spiral. The contact-probing tail (`Skills._guarded_tail`) is in place for mode B and is harmless (the place
   completes, nothing drops).
 - [ ] **dojo skills: insert_tubes, the second tube from the same side.** After the first tube stands, the same arm often has no plan into the remaining holes of its half of the rack (no grasp-place pairs, see the journal), and the relay fails too.
+- [ ] **dojo: hang_mugs judges only the FIRST frame on each side** (`is_axis_aligned` takes `fp_poses[0]` of the mug's
+  `handle` and of the rack's `handle_support_point`; journal/2026-10-26-dojo-skills7.md).
+  - Only the hooks oriented like the rack's hook 0 can score: 4 of 6, the ±x arms at two heights. The ±y middle arms
+    never pass the x-axis test.
+  - Mug 14 (the `_random` set) has handle frame 0 = identity, so its z is the mug's axis. Hung by its handle that axis
+    is horizontal; the test wants it within 60 deg of the hook's z. A mug 14 hung on a hook can never pass.
+  - 17 of our 25 rand dev layouts hold at least one mug 14, which caps them at 40 or 15. The rand ceiling on our set is
+    about 55 (official draws: about 68). This is part of why the board's rand numbers are low (PyRUA 28.4).
+  - `hang_on_hooks` uses only the hooks oriented like the first one, and skips handle frames whose x does not run
+    through the handle's hole (`threads_along_x`).
+- [ ] **dojo: play_stacking_toy's 1 mm pair check is tighter than the pegs' clearance.** The holes are 5.2-5.55 mm in
+  radius (from the meshes) and the pegs 4.83 mm, so a piece moves up to 0.65 mm off-axis. Let go at the peg's top, the
+  pieces of one peg ended 1.0-1.14 mm apart (twin v4.1/v4.2: 4 of 25 episodes at 60 instead of 100). `stack_on_pegs`
+  now seats each piece on the one below, against the same side of the peg, servoed to 0.3 mm.
+- [ ] **dojo skills: `plan_transfer`'s `yaw_sym` turns targets about the bbox centre.** A place whose symmetry axis is not
+  the bbox centre (a star-shaped ring's hole is 2.9 mm off it) must pass `yaw_about`. Before that, 3 of 4 yaw targets
+  missed the peg by 4-6 mm, and every tilted piece in skills-3/4 was a star.
+- [ ] **dojo skills: `free_spots` ignores Geometry fixtures** unless they are passed in `avoid=`: a relay spot can land
+  on a fixture between the arms (a peg base). `place_oriented(spot_avoid=)` passes them.
+- [ ] **dojo skills: mode B and pieces on pegs.** Without an object measurement the guarded tail is all there is. A ring
+  stopped by the peg's rounded top slid 2.6 mm in the pads, and the arm lagged only 1.7 mm against `GUARD_LAG` (4 mm),
+  so the ring was let go tilted on the top (G3 `--mode-b`, 2 mm belief offsets: 0.6 / 0.6 / 0.1). Pegs now pass
+  `guard_lag` 1.2 mm / `guard_seated` 1.5 mm and retry a piece left tilted. The real fix is a held-object or peg
+  measurement at the hover, like plug_in_charger's.
+  - Seated blind (v4.6), a ring pushed 30-50 mm down the peg on a predicted pose binds and tilts: 0/5, 0.30. v4.7 threads
+    4 mm blind instead: 1/3, 0.73.
+  - Open gap for the insertion-tail stream: `stack_on_pegs` plans the seat target whenever `held_measured(sk)` says a
+    measurement exists (`Skills.remeasure`, or a provider `held_pose`). If the `held_pose` read then fails or is too
+    uncertain at the hover (`Skills._measure_held` returns None), the guarded tail runs to that seat target blind,
+    which is the 0.30 case. Fix: a hook in the place tail that falls back to the threaded target when `_measure_held`
+    returns None (`pegs.held_measured(sk, arm)` already does the per-arm sigma gate).
+  - Hang has the same gap: mode B 0/3, 0.10 against mode A 1.0 / 1.0 / 0.4 on the same layouts. The mug's 2-10 mm slip
+    in the wall pinch is never re-measured, so the handle misses the hook's arm (journal/2026-10-26-dojo-skills7.md).
+- [ ] **dojo skills: planning time with mesh-box obstacles.** `hang_on_hooks` plans 200-450 s per episode: rack and hung mugs
+  as `Collision.parts`, two handle frames x two lift heights per hook, and the relay search. The batched parts check
+  (3 ms) made it about 10x faster; most of the time left is IK screening.
 - [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
 - [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).

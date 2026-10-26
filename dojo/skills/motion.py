@@ -147,6 +147,13 @@ class HeldBox:
     center: np.ndarray            # bbox centre, object frame
     half: np.ndarray
     points: np.ndarray | None = None
+    # mesh points (object frame) checked against ``Collision.parts`` obstacles (a rack's thin arms pass between the box
+    # corners of a held mug); None = the box corners
+    dense: np.ndarray | None = None
+
+    def dense_w(self, T_tcp: np.ndarray) -> np.ndarray:
+        T = T_tcp @ self.T_tcp_obj
+        return (T[:3, :3] @ self.dense.T).T + T[:3, 3]
 
     def points_w(self, T_tcp: np.ndarray) -> np.ndarray:
         T = T_tcp @ self.T_tcp_obj
@@ -200,6 +207,10 @@ class Collision:
         # one box per link: an egg carton's open lid is a 4 cm shell behind the body with a lip on top, its link box
         # covers the back of the body's holes too
         self.slab_links: set = set()
+        # objects modelled as many small boxes from their mesh (``mesh_parts``: label -> (centres, half sizes), object
+        # frame) instead of one box: a mug rack is a pole with thin arms, its box covers every hook; the held object is
+        # checked against them with its mesh points (``HeldBox.dense``)
+        self.parts: dict = {}
 
     def obstacles(self, ignore=()) -> list[tuple[np.ndarray, np.ndarray, np.ndarray, str]]:
         if self.world is None:
@@ -208,6 +219,12 @@ class Collision:
         extra = [self.world.objects[l] for l in self.include if l in self.world.objects and l not in ignore]
         for o in self.world.obstacles(exclude=set(ignore)) + [o for o in extra if o.obj_type == "Geometry"]:
             m = self.margin_of.get(o.label, self.obj_margin)
+            if o.label in self.parts:
+                C, H = self.parts[o.label]
+                R = o.R
+                for c, h in zip(C, H):
+                    out.append((R @ c + o.pos, R, h + m, o.label))
+                continue
             links = getattr(o.asset, "links", None)
             if links and len(links) > 1:
                 # an articulated object as one box per link (an open laptop's bbox is mostly air around its lid);
@@ -255,12 +272,31 @@ class Collision:
         obs = self.obstacles(ignore) if obstacles is None else obstacles
         if obs:
             pts = np.vstack([links, palm, fingers])
+            pts_parts = pts
             if held is not None:          # a held object may sit a few mm off its model: inflate it
                 T_tcp = self.kin.tcp_from_flange(Tf)
                 pts = np.vstack([pts, held.points_w(T_tcp) if held.points is not None
                                  else held.corners_w(T_tcp, shrink=-0.005)])
+                pts_parts = (np.vstack([pts_parts, held.dense_w(T_tcp)]) if held.dense is not None and self.parts
+                             else pts)
+            if self.parts:
+                # the many small boxes of ``parts`` objects in one batch
+                pb = [o for o in obs if o[3] in self.parts]
+                if pb:
+                    obs = [o for o in obs if o[3] not in self.parts]
+                    Cb = np.array([o[0] for o in pb])
+                    Rb = np.array([o[1] for o in pb])
+                    Hb = np.array([o[2] for o in pb])
+                    reach = np.abs(Rb) @ Hb[:, :, None]                        # world half extents of each box
+                    lo, hi = (Cb - reach[:, :, 0]).min(0), (Cb + reach[:, :, 0]).max(0)
+                    P = pts_parts[np.all((pts_parts >= lo) & (pts_parts <= hi), axis=1)]
+                    if len(P):
+                        loc = (P[None, :, :] - Cb[:, None, :]) @ Rb
+                        hit = np.all(np.abs(loc) <= Hb[:, None, :], axis=2).any(axis=1)
+                        if hit.any():
+                            return False, f"hits {pb[int(np.argmax(hit))][3]}"
             for c, R, h, lab in obs:
-                loc = (pts - c) @ R
+                loc = ((pts_parts if lab in self.parts else pts) - c) @ R
                 inside = np.all(np.abs(loc) <= h, axis=1)
                 if inside.any() and lab in self.heightmaps:
                     inside &= below_height_map(self.heightmaps[lab], loc, self.margin_of.get(lab, self.obj_margin))
@@ -472,12 +508,30 @@ def held_box(o, T_tcp_obj) -> HeldBox:
     if mesh is None or len(mesh[0]) < 60:
         return hb
     V = np.asarray(mesh[0], float)
+    hb.dense = V[:: max(1, len(V) // 600)].copy()
     irr = getattr(o.asset, "irregular", None)      # decided on the full mesh when it was loaded (AssetDB)
     if irr is None:
         irr = mesh_irregular(V)
     if irr:
         hb.points = V[:: max(1, len(V) // 400)].copy()
     return hb
+
+
+def mesh_parts(V: np.ndarray, F: np.ndarray, cell: float = 0.02, step: float = 0.004,
+               min_half: float = 0.002) -> tuple[np.ndarray, np.ndarray]:
+    """A mesh as small boxes (object frame): its surface sampled every ``step``, clustered on a ``cell`` grid, one box
+    per cluster around its points (``Collision.parts``; a mug rack's pole and thin hook arms)."""
+    from dojo.skills.insertion import _surface_samples
+    P = _surface_samples(np.asarray(V, float), np.asarray(F, int), step=step)
+    key = np.floor((P - P.min(0)) / cell).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True)
+    inv = inv.reshape(-1)
+    n = int(inv.max()) + 1
+    lo = np.full((n, 3), np.inf)
+    hi = np.full((n, 3), -np.inf)
+    np.minimum.at(lo, inv, P)
+    np.maximum.at(hi, inv, P)
+    return (lo + hi) / 2, np.maximum((hi - lo) / 2, min_half)
 
 
 def dense_hand(kin: X5Kin, T_flange, gripper: float) -> np.ndarray:

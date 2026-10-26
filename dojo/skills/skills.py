@@ -515,7 +515,8 @@ class Skills:
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
                    fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
-                   sym_axis: int | None = None):
+                   sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
+                   servo_xy_tol: float | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -532,7 +533,13 @@ class Skills:
         ``ref_top``: the receptacle's top height (world z) for ``fingers_out`` and the servo hover instead of its whole
         bbox top (an egg carton whose open lid stands 12 cm above the plate the eggs go through).
         ``sym_axis``: the object is the same turned about this axis of its own (a disc about its normal): the servo tail
-        takes the turn of the target nearest to the object's measured pose (a coin spun in a rim pinch)."""
+        takes the turn of the target nearest to the object's measured pose (a coin spun in a rim pinch).
+        ``guard_seated``: the guarded (mode B) tail's seated tolerance instead of ``GUARD_SEATED`` (a ring threaded 4 mm
+        onto a peg that stops on the peg's rounded top is 2-3 mm short of its target, not seated); ``guard_lag``: its
+        contact threshold instead of ``GUARD_LAG`` (twin: a ring stopped by a peg's top slid 2.6 mm in the pads and the
+        arm lagged only 1.7 mm). ``servo_xy_tol``: once seated, the servo tail corrects the object's measured xy until
+        it is this close to the target (two more moves at most; a ring seated 0.6 mm off its neighbour's axis on a peg
+        judged at 1 mm)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -556,6 +563,12 @@ class Skills:
                        ref_top=None if ref_top is None else float(ref_top))
         if sym_axis is not None:
             tail_kw["sym_axis"] = int(sym_axis)
+        if guard_seated is not None:
+            tail_kw["guard_seated"] = float(guard_seated)
+        if guard_lag is not None:
+            tail_kw["guard_lag"] = float(guard_lag)
+        if servo_xy_tol is not None:
+            tail_kw["servo_xy_tol"] = float(servo_xy_tol)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -601,7 +614,8 @@ class Skills:
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
                     hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None,
-                    sym_axis: int | None = None) -> ArmPlan | str:
+                    sym_axis: int | None = None, guard_seated: float | None = None,
+                    guard_lag: float | None = None, servo_xy_tol: float | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -825,6 +839,7 @@ class Skills:
         back off upwards. Probes only while the step budget allows (``min_left`` above the reserve). Returns a note."""
         T_goal = np.asarray(T_obj, float) @ inv_T(h.T_tcp_obj)
         T_goal[2, 3] += float(kw.get("release_gap", 0.0))
+        lag_stop = float(kw.get("guard_lag", lag_stop))
         note = ""
         try:
             n, lag, reached = self._guarded_line(arm, T_goal, rate, step_m, lag_stop)
@@ -832,7 +847,7 @@ class Skills:
             short = float(Tc[2, 3] - T_goal[2, 3])
             note = f"{n} steps down, {'reached' if reached else f'contact {short*1000:.1f} mm short (lag {lag*1000:.1f} mm)'}"
             k = 0
-            if not reached and short > GUARD_SEATED:
+            if not reached and short > float(kw.get("guard_seated", GUARD_SEATED)):
                 z_c = float(Tc[2, 3])
                 probes = [(r * math.cos(2 * math.pi * i / n_dir), r * math.sin(2 * math.pi * i / n_dir))
                           for r in radii for i in range(n_dir)]
@@ -999,6 +1014,14 @@ class Skills:
             if err <= seat_tol:
                 T_obj = T_p
         note += f", {n} probes, final {err*1000:+.1f} mm" if n else ""
+        if kw.get("servo_xy_tol") is not None and err <= seat_tol:
+            for k in range(3):
+                ob = self.refresh().obj(label)
+                dxy = float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3]))
+                if dxy <= float(kw["servo_xy_tol"]) or k == 2:
+                    break
+                ob = go(T_obj, min(rate, 0.02), "servo_xy", settle=2)
+            note += f", xy {dxy*1000:.1f} mm after {k} corrections"
         turn = float(kw.get("turn", 0.0) or 0.0)
         if turn:
             w = self.refresh()
@@ -1067,7 +1090,7 @@ class Skills:
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
                       q_start: dict | None = None, max_pick_tilt: float = 50.0, box_tilts=(0.0, 25.0, -25.0),
-                      lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None):
+                      lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None, yaw_about=None):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
@@ -1083,6 +1106,8 @@ class Skills:
         ``screen_fingers_out``: screen each place at the pose ``place_kw["fingers_out"]`` lets go from (the TCP raised
         until the fingertips clear the receptacle's top; a coin dropped into a slot from a grasp at its middle).
         ``pair_ok(grasp, T_tcp_obj, T_obj, T_tcp) -> bool``: an extra test of each screened grasp-place pair.
+        ``yaw_about``: the point (object frame) the ``yaw_sym`` turns are about, instead of the bbox centre (a star-shaped
+        ring's hole sits 2.9 mm off its bbox centre: turned about the centre, 3 of 4 targets missed the peg by 4-6 mm).
         Returns (PickPlan, PlacePlan) or a SkillResult."""
         w = self.world
         obj = w.obj(label)
@@ -1090,13 +1115,14 @@ class Skills:
         pick_kw = dict(pick_kw or {})
         arms = list(arms) if arms else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
         tg = []
+        piv = obj.asset.center if yaw_about is None else np.asarray(yaw_about, float)
         for T in targets:
             T = np.asarray(T, float)
-            c = T[:3, :3] @ obj.asset.center + T[:3, 3]
+            c = T[:3, :3] @ piv + T[:3, 3]
             for k in range(max(1, yaw_sym)):
                 Tk = T.copy()
                 Tk[:3, :3] = rot_z(2 * math.pi * k / max(1, yaw_sym)) @ T[:3, :3]
-                Tk[:3, 3] = c - Tk[:3, :3] @ obj.asset.center
+                Tk[:3, 3] = c - Tk[:3, :3] @ piv
                 tg.append(Tk)
         ign = tuple(set(ignore) | {label})
         fo_ref = None
