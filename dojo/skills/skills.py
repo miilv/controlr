@@ -794,17 +794,29 @@ class Skills:
                     int(getattr(pp, "pre_settle", 1)), "still")
                 c1 = a1.compile()[0]
                 lists = {pp.arm: c1}
+                # mode B, a place that always looks at the held object (``held_tol`` 0): the other arm's look runs in
+                # the same steps as the approach (perception-held: ~0 extra steps instead of 13-17)
+                pre = None if (other_arm or self.remeasure) else self._pre_look(pp, a1)
                 if other_arm:
                     lists[other_arm] = other[:len(c1)]
+                elif pre is not None:
+                    lists[pre["obs"]] = pre["out"].compile()[0]
                 self.ex.run_lists(lists, name=f"place {pp.label} approach")
                 rest_other = other[len(c1):]
-                self._refine_hover(ref_label, pp.arm, "place", self._place_rehover(pp.arm, retarget))
+                rehover = self._place_rehover(pp.arm, retarget)
+                if pre is not None:
+                    def rehover(f=rehover, pre=pre):          # the observer leaves before the holding arm re-hovers
+                        if pre.get("out") is not None:
+                            self.ex.run({pre["obs"]: pre["back"]}, name="held look back")
+                            pre["out"] = None
+                        return f()
+                self._refine_hover(ref_label, pp.arm, "place", rehover)
                 w = self.refresh()
                 if retarget is not None and self.refine is not None:
                     pp.T_obj_target = retarget()                   # the support was re-measured
                 h = self.held[pp.arm]
                 o = w.obj(pp.label)
-                measured = self._held_protocol(pp, h, o, tol_xy, tol_tilt) if not self.remeasure else None
+                measured = self._held_protocol(pp, h, o, tol_xy, tol_tilt, pre=pre) if not self.remeasure else None
                 if (pp.tail_kw or {}).get("servo") and not other_arm and (self.remeasure or measured is not None):
                     # mode B with a usable in-hand read: the same closed-loop tail as G3, on the measured transform
                     # (``_servo_obj``) and the arm's measured sag
@@ -1069,7 +1081,7 @@ class Skills:
             return None
         return np.asarray(r["T_tcp_obj"], float)
 
-    def _held_protocol(self, pp: "PlacePlan", h, o, tol_xy: float, tol_tilt: float):
+    def _held_protocol(self, pp: "PlacePlan", h, o, tol_xy: float, tol_tilt: float, pre: dict | None = None):
         """Mode B, at the pre-insert hover (``run_place``): the in-hand transform the tail may use, or None.
 
         1. Read at the hover (own wrist + head + the other wrist where it sees the object). Good enough: ok, lateral
@@ -1084,6 +1096,8 @@ class Skills:
         3. The gate: ok, lateral sigma <= ``held_gate`` (default half of ``tol_xy``), axis sigma <= half of
            ``tol_tilt``. The LAST read within it is used (a look sees more than the hover; the runtime's belief keeps
            the last ok read too); none: None (the caller's safe fallback: the guarded / probing tail, ``blind_up``).
+        ``pre`` (``_pre_look``): the observer already looks (it moved during the approach): the first read is that look,
+        then the observer goes back; step 2 then tries a show pose only.
         Every read goes to ``self.held_events`` ({label, arm, view, ok, why, lat_mm, axis_deg, steps, adopted})."""
         if getattr(self.provider, "held_pose", None) is None or h is None:
             return None
@@ -1108,19 +1122,28 @@ class Skills:
             self.log(f"[held] {h.label} {view}: ok={ev['ok']} {ev['why']} lat {ev['lat_mm']} mm axis {ev['axis_deg']} deg"
                      + (f" ({steps} steps)" if steps else ""))
             return lat <= (good if view == "hover" else gate) and tilt <= gate_tilt
-        first = take("hover", 0)
+        if pre is not None and pre.get("out") is not None:
+            self.ex.run({pre["obs"]: ArmPlan(pre["obs"], self.ex.q[pre["obs"]].copy(), self.ex.g[pre["obs"]]).hold(
+                HELD_LOOK_STILL)}, name="held look still")
+            first = take("look", pre["steps"])
+            self.ex.run({pre["obs"]: pre["back"]}, name="held look back")
+            pre["out"] = None
+            done = {"look"}
+        else:
+            first = take("hover", 0)
+            done = set()
         if first is None:
             return None
         if (not first and self.held_looks and kw.get("servo")
                 and callable(getattr(self.provider, "show_pose", None))):
-            self._held_look(pp, h, o, take)
+            self._held_look(pp, h, o, take, done=done)
         ok = [x for x in reads if x[0] <= gate and x[1] <= gate_tilt]
         if not ok:
             return None
         ok[-1][3]["adopted"] = True
         return ok[-1][2]
 
-    def _held_look(self, pp: "PlacePlan", h, o, take) -> None:
+    def _held_look(self, pp: "PlacePlan", h, o, take, done: set | None = None) -> None:
         """Step 2 of ``_held_protocol``: the provider's look / show candidates (``show_pose(arm, T_tcp_obj, asset_key,
         cfg_)`` -> {"poses": [{"name", "arm", "tcp" (4x4, the holding arm; "hover_look": where it is), "observer":
         {"arm", "tcp"} | None, ...}]}, best first), each planned by ``_plan_held_look``; run while the budget leaves the
@@ -1133,7 +1156,7 @@ class Skills:
             return
         appr = getattr(pp, "approach", None)
         tail_need = max(30, int(pp.steps) - int(appr.steps if appr is not None else 0)) + HELD_LOOK_MIN_LEFT
-        tried: set = set()
+        tried: set = set(done or ())
         why_not = []
         for c in list(props.get("poses") or []):
             kind = "look" if c.get("name") == "hover_look" else "show"
@@ -1157,6 +1180,62 @@ class Skills:
                 break
         if why_not:
             self.log(f"[held] {h.label}: infeasible candidates: " + "; ".join(why_not)[:400])
+
+    def _pre_look(self, pp: "PlacePlan", approach: ArmPlan) -> dict | None:
+        """Mode B, a servo place with ``held_tol`` 0 (it always looks), a provider ``held_pose`` + ``show_pose``, the
+        other arm free: the provider's best feasible observer look at the hover the arm is approaching
+        (``cfg_["q_hold"]`` = the hover's joints), planned like ``_plan_held_look`` (collision-checked, the observer's
+        hand off the held object at the hover, ``HELD_LOOK_CLEAR`` between the arms on the merged approach / look
+        schedule and on the way back), within the budget. -> {"obs", "out", "back": ArmPlan, "steps": the extra steps
+        it costs (the look beyond the approach + still + back), "name"} or None."""
+        kw = pp.tail_kw or {}
+        h = self.held.get(pp.arm)
+        appr = getattr(pp, "approach", None)
+        if (not kw.get("servo") or kw.get("held_tol") is None or float(kw["held_tol"]) > 0 or not self.held_looks
+                or h is None or appr is None or appr.q_end is None
+                or getattr(self.provider, "held_pose", None) is None
+                or not callable(getattr(self.provider, "show_pose", None))):
+            return None
+        obs = "right" if pp.arm == "left" else "left"
+        if self.held.get(obs) is not None:
+            return None
+        o = self.world.obj(h.label)
+        try:
+            props = self.provider.show_pose(pp.arm, T_tcp_obj=h.T_tcp_obj, asset_key=o.asset.key,
+                                            cfg_={"T_obj_target": np.asarray(pp.T_obj_target, float).tolist(),
+                                                  "q_hold": np.asarray(appr.q_end, float).tolist()}) or {}
+        except Exception as e:  # noqa: BLE001 (an optional proposal)
+            self.log(f"[held] show_pose (pre-look) failed: {type(e).__name__}: {str(e)[:80]}")
+            return None
+        q_h, q_o, g_o = np.asarray(appr.q_end, float), self.ex.q[obs].copy(), float(self.ex.g[obs])
+        tail_need = max(30, int(pp.steps) - int(appr.steps)) + HELD_LOOK_MIN_LEFT
+        why_not = []
+        for c in props.get("poses") or []:
+            ob = c.get("observer") or {}
+            if c.get("name") != "hover_look" or ob.get("tcp") is None:
+                continue
+            mv = self.motion.to_pose(obs, q_o, np.asarray(ob["tcp"], float), FAST, "held_look", gripper=g_o,
+                                     ignore=(h.label,))
+            if not mv.ok:
+                why_not.append(f"{ob.get('name')}: {mv.note[:50]}")
+                continue
+            if not self._hand_clear_of_held(obs, mv.q_end, pp.arm, q_h, h):
+                why_not.append(f"{ob.get('name')}: hand at the held object")
+                continue
+            bk = self.motion.joint(obs, mv.q_end, q_o, FAST, "held_look_back", gripper=g_o, ignore=(h.label,))
+            out, back = ArmPlan(obs, q_o, g_o).move(mv), ArmPlan(obs, mv.q_end, g_o).move(bk)
+            if not bk.ok or not self.clear_of(approach, out, HELD_LOOK_CLEAR) or not self.clear_of(
+                    ArmPlan(pp.arm, q_h, CLOSED).hold(1), back, HELD_LOOK_CLEAR):
+                why_not.append(f"{ob.get('name')}: arms too close / no way back")
+                continue
+            extra = max(0, out.steps - approach.steps) + HELD_LOOK_STILL + back.steps
+            if self.ex.steps_left - self.ex.reserve < approach.steps + extra + tail_need:
+                self.log(f"[held] {h.label}: no pre-look ({extra} steps; {self.ex.steps_left} left)")
+                return None
+            return {"obs": obs, "out": out, "back": back, "steps": int(extra), "name": ob.get("name")}
+        if why_not:
+            self.log(f"[held] {h.label}: no pre-look: " + "; ".join(why_not)[:300])
+        return None
 
     def _plan_held_look(self, arm: str, h: "Held", c: dict) -> dict | str:
         """One ``show_pose`` candidate as executable plans: the holding arm to ``c["tcp"]`` carrying the object (CARRY,
