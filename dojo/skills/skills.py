@@ -669,7 +669,8 @@ class Skills:
         if self.held.get(pp.arm) is not None:
             pp.plan.g0 = min(float(pp.plan.g0), float(self.ex.g[pp.arm]))   # the gripper holds: never open on the way
         try:
-            if (remeasure and (self.remeasure or self.refine is not None)
+            if (remeasure and (self.remeasure or self.refine is not None
+                               or getattr(self.provider, "held_pose", None) is not None)
                     and getattr(pp, "approach", None) is not None):
                 a1 = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0).move(pp.approach, "approach").hold(
                     int(getattr(pp, "pre_settle", 1)), "still")
@@ -685,13 +686,14 @@ class Skills:
                     pp.T_obj_target = retarget()                   # the support was re-measured
                 h = self.held[pp.arm]
                 o = w.obj(pp.label)
+                measured = self._measure_held(pp, h, o, tol_xy, tol_tilt) if not self.remeasure else None
                 if (pp.tail_kw or {}).get("servo") and self.remeasure and not other_arm:
                     r = self._servo_tail(pp)
                     self.held[pp.arm] = None if (pp.tail_kw or {}).get("release", True) else self.held[pp.arm]
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
                     v.note = (v.note + "; " + r).strip("; ")
                     return v
-                if ((pp.tail_kw or {}).get("servo") and not self.remeasure and not other_arm
+                if ((pp.tail_kw or {}).get("servo") and not self.remeasure and measured is None and not other_arm
                         and not (pp.tail_kw or {}).get("turn") and not (pp.tail_kw or {}).get("fingers_out")):
                     # no in-hand measurement (mode B): the planned tail rests on a predicted in-hand pose (a belief 3.5 mm
                     # off put a charger's blades beside the outlet): the contact-probing tail instead
@@ -701,7 +703,7 @@ class Skills:
                     v.note = (v.note + f"; probing tail: {g}").strip("; ")
                     return v
                 T_rel_meas = (inv_T(self.kin.tcp(pp.arm, w.arms[pp.arm].q)) @ o.T if self.remeasure
-                              else h.T_tcp_obj)
+                              else (measured if measured is not None else h.T_tcp_obj))
                 shift = float(np.linalg.norm(T_rel_meas[:3, 3] - h.T_tcp_obj[:3, 3]))
                 h2 = Held(h.label, T_rel_meas, held_box(o, T_rel_meas), h.grasp)
                 tail = self._place_tail(pp.arm, self.ex.q[pp.arm], pp.T_obj_target, h2, **pp.tail_kw)
@@ -887,6 +889,25 @@ class Skills:
         Tc = self.kin.tcp(arm, self.ex.q[arm])
         C = Tc @ inv_T(Tm)
         return C if float(np.linalg.norm(C[:3, 3])) < 0.02 else np.eye(4)
+
+    def _measure_held(self, pp: "PlacePlan", h, o, tol_xy: float, tol_tilt: float):
+        """Mode B: the in-hand pose at the pre-insert hover from the provider's ``held_pose(arm, ...)`` (perception's
+        wrist / head read of the object in the jaws), where G3 re-measures from GT. Returns T_tcp_obj when the read is
+        ok and its uncertainty fits the place: lateral (x, y) sigma <= half of ``tol_xy``, every rotation sigma <= half
+        of ``tol_tilt``; else None (the predicted transform stands, and a servo place keeps the probing tail)."""
+        f = getattr(self.provider, "held_pose", None)
+        if f is None or h is None:
+            return None
+        try:
+            r = f(pp.arm, prior_T_tcp_obj=h.T_tcp_obj, asset_key=o.asset.key) or {}
+        except Exception:  # noqa: BLE001 (an optional read)
+            return None
+        sig = r.get("sigma") or {}
+        pos = [float(v) for v in (sig.get("pos_mm") or [99.0, 99.0, 99.0])]
+        rot = [float(v) for v in (sig.get("rot_deg") or [99.0, 99.0, 99.0])]
+        if not r.get("ok") or max(pos[:2]) > 500.0 * tol_xy or max(rot) > 0.5 * tol_tilt:
+            return None
+        return np.asarray(r["T_tcp_obj"], float)
 
     def _servo_tail(self, pp: PlacePlan, seat_tol: float = 0.004, radii=(0.0007, 0.0015, 0.003), n_dir: int = 6,
                     probe_lift: float = 0.006, min_left: int = 25) -> str:
