@@ -347,8 +347,9 @@ class FakeTwinClient:
         self.snaps.pop(int(sid), None)
 
 
-@pytest.mark.parametrize("mode", ["gt", "perception"])
-def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
+@pytest.mark.parametrize("mode,extra", [("gt", {}), ("perception", {}),
+                                        ("gt", {"twin_load_noise": [2.0, 1.5], "twin_load": "consistent"})])
+def test_bundle_verify_chains_through_the_grasp(mode, extra, monkeypatch):
     import dojo.runtime.estimate as E
     monkeypatch.setattr(E, "estimate_to_layout", lambda scene, objs: {"Rigid": {"block": [
         {"label": o["label"], "category_idx": o["category_idx"], "default_pos": o["pos"], "default_ori": o["quat"]}
@@ -368,12 +369,15 @@ def test_bundle_verify_chains_through_the_grasp(mode, monkeypatch):
         def look_plan(self, frame, record, max_looks=2):
             return []
 
-    pol = RuntimePolicy(RuntimeConfig(mode=mode, verify="bundle", n_cands=2, verify_k=2), assets=FakeAssets(),
+    pol = RuntimePolicy(RuntimeConfig(mode=mode, verify="bundle", n_cands=2, verify_k=2, **extra), assets=FakeAssets(),
                         twin_client=tc, perception_client=FakePerception())
     rep = run_episode(pol, FakeEpisode(env), mode)
     assert rep["error"] is None, rep["error"]
     assert _stacked(env)
     v = rep["verify"]
+    if extra:                                    # noisy loads (3-sigma ~6 mm) then levelled / seated on the table
+        assert v.get("load_leveled", 0) + v.get("load_seated", 0) >= 1, v
+        return                                   # (the fake twin's strict judge rejects noisy loads: no chain to check)
     assert v["segments"] >= 4 and v["calls"] == v["segments"], v
     assert v["from_snapshot"] >= 2 and v["from_estimate"] >= 2, v          # places chain from the kept pick
     for vv in tc.verifies:
@@ -2146,6 +2150,7 @@ class _HeldPosePerception:
         return []
 
     def held_pose(self, frame, arm, asset_key, prior_T_tcp_obj, cfg=None):
+        assert len(cfg["others"]) == 2 and np.asarray(cfg["T_obj_target"]).shape == (4, 4)   # occluders, insertion target
         self.calls.append((arm, asset_key, frame["steps_used"], np.asarray(prior_T_tcp_obj, float)))
         return self.answer(np.asarray(prior_T_tcp_obj, float))
 
@@ -2185,18 +2190,27 @@ def test_held_pose_adopts_only_a_confident_read_within_the_place_tolerance():
     meas[:3, 3] = [0.003, 0.0, 0.0]
     answers = []
 
-    def held_pose(arm, prior_T_tcp_obj, asset_key):
+    cfgs = []
+
+    def held_pose(arm, prior_T_tcp_obj, asset_key, cfg_=None):
+        cfgs.append(cfg_)
         return answers.pop(0)
     me = SimpleNamespace(provider=SimpleNamespace(held_pose=held_pose))
     h = SimpleNamespace(T_tcp_obj=prior)
     o = SimpleNamespace(asset=SimpleNamespace(key="Rigid/block/00005"))
-    good = {"ok": True, "T_tcp_obj": meas.tolist(), "sigma": {"pos_mm": [1.0, 2.0, 9.0], "rot_deg": [1.0, 2.0, 2.0]}}
-    answers += [good, {**good, "ok": False}, {**good, "sigma": {"pos_mm": [6.0, 1.0, 1.0], "rot_deg": [1, 1, 1]}},
-                {**good, "sigma": {"pos_mm": [1.0, 1.0, 1.0], "rot_deg": [1.0, 4.0, 1.0]}}, {**good, "sigma": None}]
-    pp = SimpleNamespace(arm="left")
-    got = [Skills._measure_held(me, pp, h, o, 0.01, 6.0) for _ in range(5)]
-    assert np.allclose(got[0], meas)                      # z sigma does not gate (the descent is guarded / verified)
-    assert got[1:] == [None] * 4                          # not ok / lateral 6 mm > 5 / rot 4 deg > 3 / no sigma
+    # sigma per TCP axis (x = approach): the approach axis does not gate (the descent is guarded / verified)
+    good = {"ok": True, "T_tcp_obj": meas.tolist(),
+            "sigma": {"pos_mm": [9.0, 1.0, 2.0], "rot_deg": [9.0, 1.0, 1.0], "lead_mm": [9.0, 2.0, 2.0], "axis_deg": 2.0}}
+    answers += [good, {**good, "ok": False},
+                {**good, "sigma": {**good["sigma"], "lead_mm": [1.0, 6.0, 1.0]}},             # across 6 mm > 5
+                {**good, "sigma": {**good["sigma"], "axis_deg": 4.0}},                        # axis 4 deg > 3
+                {**good, "sigma": None},
+                {**good, "sigma": {"pos_mm": [9.0, 1.0, 1.0], "rot_deg": [9.0, 1.0, 2.0]}}]   # no lead / axis: TCP y, z
+    pp = SimpleNamespace(arm="left", T_obj_target=np.eye(4))
+    got = [Skills._measure_held(me, pp, h, o, 0.01, 6.0) for _ in range(6)]
+    assert np.allclose(got[0], meas) and np.allclose(got[5], meas)
+    assert got[1:5] == [None] * 4                          # not ok / across 6 mm / axis 4 deg / no sigma
+    assert np.allclose(cfgs[0]["T_obj_target"], np.eye(4))                  # perception's insertion geometry
     assert Skills._measure_held(SimpleNamespace(provider=SimpleNamespace()), pp, h, o, 0.01, 6.0) is None
 
 

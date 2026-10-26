@@ -907,20 +907,26 @@ class Skills:
 
     def _measure_held(self, pp: "PlacePlan", h, o, tol_xy: float, tol_tilt: float):
         """Mode B: the in-hand pose at the pre-insert hover from the provider's ``held_pose(arm, ...)`` (perception's
-        wrist / head read of the object in the jaws), where G3 re-measures from GT. Returns T_tcp_obj when the read is
-        ok and its uncertainty fits the place: lateral (x, y) sigma <= half of ``tol_xy``, every rotation sigma <= half
-        of ``tol_tilt``; else None (the predicted transform stands, and a servo place keeps the probing tail)."""
+        wrist / head read of the object in the jaws, ``dojo.perception.held``), where G3 re-measures from GT. The place
+        target goes along (``cfg.T_obj_target``: perception's insertion axis = world down there, leading point = the
+        mesh's lowest points there). Its sigma is per TCP axis (x = approach, y = closing, z = across): the place sees
+        the error across the approach, so the read is adopted only when ok, the leading point's sigma across the
+        approach (TCP y, z) is <= half of ``tol_xy`` and the insertion axis' sigma (``axis_deg``; else the rotations
+        about TCP y, z) is <= half of ``tol_tilt``. Returns T_tcp_obj, else None (the predicted transform stands, and
+        a servo place keeps the probing tail)."""
         f = getattr(self.provider, "held_pose", None)
         if f is None or h is None:
             return None
         try:
-            r = f(pp.arm, prior_T_tcp_obj=h.T_tcp_obj, asset_key=o.asset.key) or {}
+            r = f(pp.arm, prior_T_tcp_obj=h.T_tcp_obj, asset_key=o.asset.key,
+                  cfg_={"T_obj_target": np.asarray(pp.T_obj_target, float).tolist()}) or {}
         except Exception:  # noqa: BLE001 (an optional read)
             return None
         sig = r.get("sigma") or {}
-        pos = [float(v) for v in (sig.get("pos_mm") or [99.0, 99.0, 99.0])]
-        rot = [float(v) for v in (sig.get("rot_deg") or [99.0, 99.0, 99.0])]
-        if not r.get("ok") or max(pos[:2]) > 500.0 * tol_xy or max(rot) > 0.5 * tol_tilt:
+        lat = [float(v) for v in (sig.get("lead_mm") or sig.get("pos_mm") or [99.0, 99.0, 99.0])][1:3]
+        tilt = (float(sig["axis_deg"]) if sig.get("axis_deg") is not None
+                else max(float(v) for v in (sig.get("rot_deg") or [99.0, 99.0, 99.0])[1:3]))
+        if not r.get("ok") or max(lat) > 500.0 * tol_xy or tilt > 0.5 * tol_tilt:
             return None
         return np.asarray(r["T_tcp_obj"], float)
 
