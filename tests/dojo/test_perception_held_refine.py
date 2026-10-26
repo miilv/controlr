@@ -79,3 +79,88 @@ def test_support_z_is_the_highest_known_top_under_the_footprint(monkeypatch):
     assert refine.support_z(a, p_float, [("b", p_far)]) == pytest.approx(refine.TABLE_Z)
     _, p_under = _box(0.002, 0, 0.80)    # an "other" above the target's bottom is not its support
     assert refine.support_z(a, p_under, [("b", p_mid)]) == pytest.approx(refine.TABLE_Z)
+
+
+def _fake_ref(key, M=None):
+    return np.asarray({"red": [0.8, 0.1, 0.1], "green": [0.1, 0.7, 0.2], "blue": [0.1, 0.2, 0.8]}[key], float)
+
+
+def test_identity_rank_pick_and_twins():
+    from dojo.perception import identity
+
+    cands = [{"label": "block_0", "key": "red"}, {"label": "block_1", "key": "green"}, {"label": "block_2", "key": "blue"}]
+    rk = identity.rank([0.15, 0.65, 0.2], cands, ref=_fake_ref)
+    assert rk[0]["label"] == "block_1"
+    p = identity.pick(rk)
+    assert p["label"] == "block_1" and p["key"] == "green" and p["margin"] > 0.15
+    twins = cands + [{"label": "block_3", "key": "green"}]
+    p2 = identity.pick(identity.rank([0.15, 0.65, 0.2], twins, ref=_fake_ref))
+    assert p2["label"] is None and p2["key"] == "green"  # same key: identity by appearance impossible
+    assert p2["margin"] == p["margin"]                     # margin among distinct keys only
+    assert identity.rank(None, cands, ref=_fake_ref) == [] and identity.pick([]) is None
+
+
+def test_identity_asked_verdict():
+    from dojo.perception import identity
+
+    asked = {"label": "block_0", "key": "red"}
+    assert identity.asked_verdict(None, asked, False) is False
+    assert identity.asked_verdict({"key": "red", "conf": 0.3, "margin": 0.01}, asked, True) is True
+    assert identity.asked_verdict({"key": "green", "conf": 0.9, "margin": 0.3}, asked, True) is False
+    assert identity.asked_verdict({"key": "green", "conf": 0.6, "margin": 0.3}, asked, True) is None
+    assert identity.asked_verdict(None, asked, None) is None
+
+
+def test_catalog_root_treats_unreadable_dirs_as_absent_and_takes_a_list(tmp_path, monkeypatch):
+    import os
+    from pathlib import Path
+
+    from dojo.perception import render
+
+    good = tmp_path / "cat"
+    good.mkdir()
+    (good / "index.json").write_text("{}")
+    real_exists = Path.exists
+
+    def exists(self, *a, **k):  # non-root probing /root/... (compute3: a colon-list DOJO_CATALOG fell through to it)
+        if str(self).startswith("/root"):
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_exists(self, *a, **k)
+
+    monkeypatch.setattr(Path, "exists", exists)
+    monkeypatch.setenv("DOJO_CATALOG", os.pathsep.join([str(tmp_path / "missing"), "/root/dojo-data/x", str(good)]))
+    assert render.catalog_root() == good
+    monkeypatch.setenv("DOJO_CATALOG", "")
+    monkeypatch.setattr(render, "CATALOG_FALLBACKS", ("/root/dojo-data/perception/catalog", str(tmp_path / "none")))
+    with pytest.raises(FileNotFoundError, match="not found in"):
+        render.catalog_root()
+    assert render.path_exists("/root/anything") is False
+
+
+def test_look_alike_changes_the_size_not_the_texture(monkeypatch):
+    from dojo.perception import refine
+
+    idx = {f"Rigid/block/{i:05d}": {"extents": [s, s, s], "mean_color": c}
+           for i, s, c in ((5, 0.03, [0.53, 0.34, 0.2]), (6, 0.035, [0.53, 0.34, 0.2]), (7, 0.04, [0.53, 0.34, 0.2]),
+                           (14, 0.03, [0.82, 0.65, 0.45]), (15, 0.035, [0.82, 0.65, 0.45]), (16, 0.04, [0.82, 0.65, 0.45]))}
+    monkeypatch.setattr(refine, "_catalog_index", lambda: idx)
+    # 5.1 stack 100006: the 40 mm class representative is texture #1 (00007); the block is texture #4
+    assert refine.look_alike("Rigid/block/00015", "Rigid/block/00007") == "Rigid/block/00016"
+    assert refine.look_alike("Rigid/block/00015", "Rigid/block/00005") == "Rigid/block/00014"
+    assert refine.look_alike("Rigid/block/00015", "Rigid/block/00099") == "Rigid/block/00099"  # unknown: unchanged
+
+
+def test_refine_identity_changes_identity_only_on_a_good_fit(monkeypatch):
+    from dojo.perception import refine
+
+    fits = {"Rigid/block/00002": {"residual": 0.30, "iou": 0.66, "ok": True, "pose": [0, 0, 0.78, 1, 0, 0, 0]},
+            "Rigid/block/00003": {"residual": 0.20, "iou": 0.67, "ok": True, "pose": [0, 0, 0.79, 0.7, 0.7, 0, 0]}}
+    monkeypatch.setattr(refine, "refine", lambda k, *a, **kw: dict(fits[k]))
+    monkeypatch.setattr(refine, "look_alike", lambda cur, rep: rep)
+    # 5.1 build_tower s0L9: pillar -> prism at iou 0.67 (footprints alike from above): rejected, the pillar's own fit
+    r = refine.refine_identity(["Rigid/block/00002", "Rigid/block/00003"], None, {}, [0, 0, 0.78, 1, 0, 0, 0])
+    assert r["obj_id"] == "Rigid/block/00002" and r["identity_ok"] is False and r["identity_rival"] == "Rigid/block/00003"
+    assert r["pose"] == fits["Rigid/block/00002"]["pose"]
+    fits["Rigid/block/00003"]["iou"] = 0.95
+    r = refine.refine_identity(["Rigid/block/00002", "Rigid/block/00003"], None, {}, [0, 0, 0.78, 1, 0, 0, 0])
+    assert r["obj_id"] == "Rigid/block/00003" and r["identity_ok"] is True

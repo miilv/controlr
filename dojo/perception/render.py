@@ -25,18 +25,29 @@ TEX_CACHE = 4
 COLOR_MAX_FACES = 40000
 GL_NODE_CACHE = 64  # LRU over object meshes; a smaller cache thrashes on pack (22 candidates): 70-100 s/frame
 
-CATALOG_DIRS = (
-    os.environ.get("DOJO_CATALOG", ""),
-    "/root/dojo-data/perception/catalog",
-    os.path.expanduser("~/dojo-perception-data/catalog"),
-)
+CATALOG_FALLBACKS = ("/root/dojo-data/perception/catalog", os.path.expanduser("~/dojo-perception-data/catalog"))
+
+
+def path_exists(p) -> bool:
+    """``Path.exists`` that treats any OSError as absent (non-root: probing /root/... raises PermissionError)."""
+    try:
+        return Path(p).exists()
+    except OSError:
+        return False
+
+
+def catalog_dirs() -> list[str]:
+    """Candidate catalogue dirs, in order: ``DOJO_CATALOG`` (one dir or an ``os.pathsep`` list), then the fallbacks."""
+    return [c for c in os.environ.get("DOJO_CATALOG", "").split(os.pathsep) if c] + list(CATALOG_FALLBACKS)
 
 
 def catalog_root() -> Path:
-    for d in CATALOG_DIRS:
-        if d and Path(d, "index.json").exists():
+    """The first candidate dir holding ``index.json``."""
+    dirs = catalog_dirs()
+    for d in dirs:
+        if path_exists(Path(d, "index.json")):
             return Path(d)
-    raise FileNotFoundError("perception catalog not found; set DOJO_CATALOG")
+    raise FileNotFoundError(f"perception catalog (index.json) not found in {dirs}; set DOJO_CATALOG")
 
 
 def cluster_decimate(V: np.ndarray, F: np.ndarray, cell: float = 0.002):
@@ -164,7 +175,7 @@ class SceneRenderer:
             return self._mesh_cache[key]
         import trimesh
 
-        if textured_glb is not None and Path(textured_glb).exists():
+        if textured_glb is not None and path_exists(textured_glb):
             sc = trimesh.load(textured_glb, force="scene")
             meshes = [self.pr.Mesh.from_trimesh(g, smooth=False) for g in sc.dump()]
         else:

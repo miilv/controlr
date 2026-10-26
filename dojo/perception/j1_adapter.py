@@ -676,6 +676,8 @@ HELD_PAD_CHROMA = 12  # and grey (Lab chroma); a dark blue / red T is dark but s
 
 HELD_OPEN_MARGIN = 0.1  # measured opening above the commanded one (normalised 0..1; 0.1 = 5.4 mm per finger): blocked
 HELD_CLOSED_FLOOR = 0.185  # commands at or below this all put the finger joints at their closed limit
+HELD_OPEN_CMD = 0.95  # commands at or above this are "open": no grasp to check. A board / pillar grasp commands 0.55-0.58
+# (5.1 build_tower: 27 of 33 held checks had no B1 verdict under the old "closed below 0.5" rule)
 HELD_ABSENCE_CAP = 0.3  # confidence cap of a not-held verdict that rests on "object not found" on a dark region
 
 
@@ -713,9 +715,10 @@ def measure_opening(cam, arm: str, q6, image: np.ndarray, meshes=None, model=Non
         if band.sum() < 50:
             return None
         sc = float(dark[F > 0].mean() - dark[band].mean())
-        scores.append((sc, float(o)))
-    best = max(scores)
-    return {"opening": best[1], "score": round(best[0], 3), "scores": [round(s_, 3) for s_, _ in scores]}
+        scores.append((sc, float(o), F))
+    best = max(scores, key=lambda t: t[0])
+    return {"opening": best[1], "score": round(best[0], 3), "scores": [round(t[0], 3) for t in scores],
+            "fingers": best[2]}
 
 
 def held_from_opening(opening: float, cmd: float, held_px: bool, dark_like: bool) -> tuple[bool, float]:
@@ -746,7 +749,42 @@ def held_from_colour(frac: float, dark_like: bool) -> tuple[bool, float, str]:
     return held, round(conf, 3), ("colour" if held else "absent")
 
 
-def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, **_ignored) -> dict:
+def held_what(cam, image, candidates: list[dict], held: bool, fingertip_region, fingers=None) -> dict:
+    """Which candidate is between the fingers: the mean colour of the asked candidate's silhouette at its expected
+    in-jaw pose (``candidates[0]["pose7"]``; else the fingertip region), minus the fingers at their measured opening,
+    ranked against each candidate's catalogue colour (``identity``). {"what", "asked_held", "scored"}."""
+    import cv2
+    import numpy as np
+
+    from . import identity
+    from .render import load_asset, silhouette, transform
+    from .cameras import pose_to_T
+
+    asked = candidates[0]
+    region = None
+    if asked.get("pose7") is not None:
+        try:
+            a = load_asset(asked["key"])
+            p = asked["pose7"]
+            region = silhouette(cam, transform(a.Vs, pose_to_T(p[:3], p[3:])), a.Fs)
+            region = cv2.erode(region.astype(np.uint8), np.ones((5, 5), np.uint8))
+        except Exception:
+            region = None
+    src = "expected_pose"
+    if region is None or region.sum() < 50:
+        region, src = (fingertip_region > 0).astype(np.uint8), "fingertip_region"
+    if fingers is not None:
+        region = region & (cv2.dilate(fingers.astype(np.uint8), np.ones((7, 7), np.uint8)) == 0)
+    n = int(region.sum())
+    rgb = image[region > 0].astype(float).mean(0) / 255.0 if n >= 30 else None
+    ranked = identity.rank(rgb, candidates, None, w_l=identity.HELD_W_L) if held else []
+    what = identity.pick(ranked, identity.CONF_HELD) if held else None
+    return {"what": what, "asked_held": identity.asked_verdict(what, asked, bool(held)) if held else False,
+            "scored": ranked[:3], "what_region": {"px": n, "source": src}}
+
+
+def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, candidates=None, arm=None,
+                    **_ignored) -> dict:
     """Object between the fingers, from the wrist image alone (the strict observation has only the commanded
     opening). Primary evidence: the jaw opening measured from the finger silhouettes (``measure_opening``) vs the
     commanded one (``held_from_opening``): a jaw stopped by an object reads wider than commanded. Secondary: where
@@ -767,10 +805,11 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
     model = X5Model.default()
     meshes = robot_link_meshes()
     out = {}
+    asked_arm = arm if arm in ("left", "right") else None
     for arm in ("left", "right"):
         c = f"cam_{arm}_wrist"
         g = _grip01((gripper or {}).get(arm, (grip_cmd or {}).get(arm, 1.0)))
-        if (c not in images or c not in cams or g > 0.5 or "link7" not in meshes or "link8" not in meshes
+        if (c not in images or c not in cams or g >= HELD_OPEN_CMD or "link7" not in meshes or "link8" not in meshes
                 or f"{arm}_arm_joint_state" not in state):
             continue
         cam = cams[c]
@@ -809,6 +848,8 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
             held, conf, evidence = held_from_colour(frac, dark_like)
             out[arm] = {"held": held, "confidence": conf, "evidence": evidence, "opening": None, **base,
                         "dark_risk": bool(dark_like and not held)}
+        if candidates and (asked_arm is None or arm == asked_arm):
+            out[arm].update(held_what(cam, images[c], candidates, held, reg, (meas or {}).get("fingers")))
     arms = [v for v in out.values() if v.get("held") is not None]
     res = {**out, "t_ms": round(1000 * (time.time() - t0), 1), "version": VERSION}
     if arms:
