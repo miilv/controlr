@@ -1299,31 +1299,38 @@ def slot_targets(sk: Skills, label: str, container: str) -> list[np.ndarray]:
 
 SLOT_LEVEL_DEG = 20.0          # deg: a slot pose this close to the object's current orientation is reached by a level
                                # carry (tools spawn lying as their slots want them: 0.6-5.4 deg off)
-LEVEL_GRASP_DEG = 8.0          # deg: a level carry's grasps come straight down (twin probe, a 0.5 kg hammer at its
-                               # centre of mass: a 25-deg tilted pinch turned 37-49 mm in the pads over a 15 cm carry,
-                               # the straight-down one 4 mm)
+LEVEL_GRASP_DEG = 25.0         # deg: a level carry's grasps come down at most this far from vertical
 
 
-def _level_grasps(sk: Skills, label: str, max_tilt_deg: float = LEVEL_GRASP_DEG):
-    """A ``plan_transfer`` grasp source for a carry that keeps the object's orientation: straight-down grasps (box
-    grasps untilted, the category's, slices of irregular ones), the closing axis nearest the centre of mass first
-    (``grasps.grasp_lever``: what turns a heavy flat object in the pads)."""
+LEVEL_TILT_COST = 10.0        # deg of approach tilt that cost as much as 1 cm of lever (slots at the edge of a straight-
+                               # down reach: a tilted grasp, ranked after every straight-down one that reaches)
+
+
+def _level_grasps(sk: Skills, label: str, max_tilt_deg: float = 25.0):
+    """A ``plan_transfer`` grasp source for a carry that keeps the object's orientation: box grasps (tilts 0 / 15 /
+    25 deg about the closing axis), the category's and slices of irregular ones, ranked by the closing axis' distance
+    to the centre of mass (``grasps.grasp_lever``: what turns a heavy flat object in the pads) plus the approach's tilt
+    (twin probe: a 0.5 kg hammer at its centre of mass turned 4 mm in a straight-down pinch, 37-81 mm in a 25-deg
+    one)."""
     import dataclasses
 
     from dojo.skills import grasps as G
     from dojo.skills.motion import held_box
-    cos_t = math.cos(math.radians(max_tilt_deg))
+    cos_t = math.cos(math.radians(max_tilt_deg + 0.5))
 
     def source(arm):
         o = sk.world.obj(label)
-        cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0,)) + G.candidates(o, sk.kin, arm)
+        cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0, 15.0, -15.0, 25.0, -25.0)) + G.candidates(o, sk.kin, arm)
         if held_box(o, np.eye(4)).points is not None:
             cands += G.slice_grasps(o, sk.kin, arm)
         out = []
         for g in cands:
-            if -float(g.T[2, 0]) < cos_t:
+            down = -float(g.T[2, 0])
+            if down < cos_t:
                 continue
-            out.append(dataclasses.replace(g, score=float(g.score) + G.grasp_lever(o, g.T) / 0.01))
+            tilt = math.degrees(math.acos(max(-1.0, min(1.0, down))))
+            out.append(dataclasses.replace(g, score=float(g.score) + G.grasp_lever(o, g.T) / 0.01
+                                           + tilt / LEVEL_TILT_COST))
         return out
     return source
 
@@ -1335,8 +1342,9 @@ def _rot_deg(Ra, Rb) -> float:
 def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
     """Put every object into its matching slot of ``container`` (``slot_targets``), the nearest first,
     re-oriented as the slot frame says; grippers open after each (partial credit is per object). A slot pose within
-    ``SLOT_LEVEL_DEG`` of the object's current orientation is reached by a level carry with a straight-down grasp
-    near the centre of mass (``_level_grasps``); the re-orienting transfers / relays only when that does not plan."""
+    ``SLOT_LEVEL_DEG`` of the object's current orientation is reached by a level carry with a grasp near the centre of
+    mass, straight down where it reaches (``_level_grasps``); the re-orienting transfers / relays only when that does
+    not plan. Compact objects go first."""
     w = sk.refresh()
     sk.coll.include.add(container)
     todo = [l for l in objects if l in w.objects and slot_targets(sk, l, container)]
@@ -1349,7 +1357,10 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
         rest = [l for l in todo if l not in done and l not in failed]
         if not rest:
             break
-        lab = min(rest, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - c[:2])))
+        # the compact ones first (they hold best; a long one that fails and lies across the container blocks the rest),
+        # then the nearest
+        lab = min(rest, key=lambda l: (round(float(np.max(w.obj(l).asset.extents)), 2),
+                                       float(np.linalg.norm(w.obj(l).center_w[:2] - c[:2]))))
         tg = slot_targets(sk, lab, container)
         R0 = w.obj(lab).R
         level = sorted([T for T in tg if _rot_deg(T[:3, :3], R0) <= SLOT_LEVEL_DEG],
