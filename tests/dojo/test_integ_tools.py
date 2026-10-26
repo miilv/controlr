@@ -55,3 +55,27 @@ def test_breadth_table_and_ledger_rows():
     d = led["deposit_coin"]
     assert (d["n"], d["success"], d["score"], d["calls_per_ep"], d["tier"]) == (3, 1, 50.0, 3.0, "dev_5.1_rendered")
     assert d["layouts"] == "100000-100002 settled" and d["commit"] == "miilv/controlr@abc1234"
+
+
+@pytest.mark.skipif(shutil.which("flock") is None, reason="needs util-linux flock")
+def test_runner_retries_a_job_whose_services_never_got_ready_once(tmp_path):
+    """integ_eval.sh exits 3 when a service never got ready (no episode ran): the runner keeps that dir as
+    NAME__services_not_ready and runs the job once more, first in the queue; a second 3 is not retried again."""
+    repo = tmp_path / "repo"
+    (repo / "scripts/dojo").mkdir(parents=True)
+    shutil.copy(ROOT / "scripts/dojo/queue_runner.sh", repo / "scripts/dojo/queue_runner.sh")
+    (repo / "scripts/dojo/integ_eval.sh").write_text(
+        "#!/usr/bin/env bash\n"
+        'out=$2; mkdir -p "$out"; echo "$(basename "$out") $3 $4" >> "$DOJO_DATA/ran.txt"\n'
+        '[[ "$(basename "$out")" == job_a* || "$(basename "$out")" == job_c* ]] && exit 3\nexit 0\n')
+    data = tmp_path / "data"
+    (data / "integ").mkdir(parents=True)
+    (data / "integ/queue.txt").write_text("job_a --task a\njob_b --task b\njob_c --task c\n")
+    out = subprocess.run(["bash", str(repo / "scripts/dojo/queue_runner.sh")], cwd=repo,
+                         env={**os.environ, "DOJO_DATA": str(data)}, capture_output=True, text=True, timeout=60)
+    ran = (data / "ran.txt").read_text().splitlines()
+    assert ran == ["job_a --task a", "job_a_retry --task a", "job_b --task b", "job_c --task c",
+                   "job_c_retry --task c"], out.stdout + out.stderr
+    runs = data / "integ/runs"
+    assert (runs / "job_a__services_not_ready").is_dir() and (runs / "job_a_retry").is_dir()
+    assert not (runs / "job_c_retry__services_not_ready").exists() and "queue empty" in out.stdout

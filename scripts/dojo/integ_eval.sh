@@ -10,7 +10,8 @@
 #   [perception service (controlr venv, EGL; --mode perception)], the driver (dojo.runtime.eval, RoboDojo python).
 # Team rules: starts only with MemAvailable >= 25 GB (waits <= 10 min), holds ~/dojo-gpu.lock (blocking flock -w)
 # for its lifetime (keep a job <= 30 min: --max-minutes), every child runs with SIMLAB_GPU=0; services stopped
-# on exit; after releasing the lock it yields 90 s (INTEG_YIELD_S) before returning.
+# on exit; after releasing the lock it yields 90 s (INTEG_YIELD_S) before returning. Exit 3: a service never got
+# ready (no episode ran; the queue runner retries such a job once).
 # bash reads a script while it runs: a deploy that rewrites this file in place (cp, an editor) would make a
 # running copy execute a mix of old and new lines (2026-10-26: the runner re-ran a finished job with mangled
 # args, then died on a syntax error). The whole body is one brace group, read before any of it runs.
@@ -97,6 +98,7 @@ systemd-run --user --scope -q --unit="$UNIT" -p MemoryMax=$MEM -p CPUQuota=$CPU 
   [[ -z "$svc" || -f "$SIMLAB_RENDER_READY" ]] || { echo "[integ] render service not ready: see render_service.log"; ok=0; }
   [[ -z "$twin" || -f "$SIMLAB_TWIN_READY" ]] || { echo "[integ] twin service not ready: see twin_service.log"; ok=0; }
   [[ -z "$perc" || -f "$DOJO_PERCEPTION_READY" ]] || { echo "[integ] perception service not ready: see perception_service.log"; ok=0; }
+  [[ "$ok" == 1 ]] || touch "$OUT/services_not_ready"          # exit 3: the runner retries the job once
   if [[ "$ok" == 1 ]]; then
     "$HERE/scripts/simlab/rdpy.sh" -u -m dojo.runtime.eval --out "$OUT" "$@" 2>&1 | tee "$OUT/integ_eval.log" | grep -a "^\[integ\]"
   fi
@@ -123,9 +125,13 @@ scope_pid=$!
 trap 'echo "[integ] stopping scope $UNIT" >&2; systemctl --user stop "$UNIT.scope" 2>/dev/null; kill "$scope_pid" 2>/dev/null' TERM INT
 wait "$scope_pid"
 trap - TERM INT
+# a service's python child can outlive the kill of its wrapper (rdpy.sh / isaac6.sh) and keeps the scope, and the GPU
+# lock fd it inherited, alive: 2026-10-26 a twin that never got ready held ~/dojo-gpu.lock for 30 min after its job
+systemctl --user stop "$UNIT.scope" 2>/dev/null || true
 rm -f "$OUT/stage_current.usd"; rm -rf "$OUT/work"          # scratch (37 MB stage export per job; disk is shared)
 echo "[integ] results: $OUT"
 exec 9>&-
 sleep "${INTEG_YIELD_S:-90}"
-exit
+[[ -f "$OUT/services_not_ready" ]] && exit 3
+exit 0
 }
