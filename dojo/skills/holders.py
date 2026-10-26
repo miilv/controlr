@@ -245,8 +245,10 @@ def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.
     """Box + usual grasps of ``label``; when it lies inside a round container, only those whose open fingers stay
     inside the wall at the grasp and on the way in."""
     o = sk.world.obj(label)
-    if along is not None:                 # a stand-up place: round grasps off the middle toward the end that goes down
-        cands = round_grasps(o, sk.kin, arm, along=along, ends=False)
+    if along is not None:                 # a stand-up place: round grasps off the middle toward the end that goes down,
+        # pads level (twin: of the eggs turned up from grasps rolled 12 deg about the long axis none stayed in the pads,
+        # 0/6; level pads 1/1)
+        cands = round_grasps(o, sk.kin, arm, rolls=(0.0,), along=along, ends=False)
     else:
         cands = round_grasps(o, sk.kin, arm) + G.box_grasps(o, sk.kin, arm, tilts=tuple(tilts)) + \
             G.candidates(o, sk.kin, arm)
@@ -263,7 +265,7 @@ def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.
         # raise a grasp whose fingers dip into the floor by up to 6 mm (the pads still cover the widest section)
         cl = wall_clearance(c, prof, sk.kin.finger_points(sk.kin.flange_from_tcp(g.T), go))
         if cl < margin:
-            if margin - cl > 0.006:
+            if margin - cl > 0.006 or along is not None:      # a raised grasp does not hold an egg turned up
                 continue
             T = g.T.copy()
             T[2, 3] += margin - cl + 0.0005
