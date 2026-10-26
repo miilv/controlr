@@ -423,6 +423,14 @@ class Blob:
     bbox: tuple
 
 
+def _explained_cut(v: ViewMasks, hyps, dilate: int = 3) -> np.ndarray:
+    """``v.fg`` minus the (dilated) silhouettes of ``hyps``."""
+    expl = np.zeros_like(v.fg)
+    for h in hyps:
+        h.sm().sil(v.cam, h.T(), out=expl)
+    return v.fg & (1 - cv2.dilate(expl, np.ones((dilate, dilate), np.uint8)))
+
+
 def blobs(v: ViewMasks, name: str) -> list[Blob]:
     n, lab, stats, cents = cv2.connectedComponentsWithStats(v.fg, connectivity=8)
     out = []
@@ -1384,6 +1392,32 @@ def _split_blob(b: Blob, v: ViewMasks, sm: ShapeModel, max_k: int = 6) -> list[B
     return out
 
 
+MERGED_RATIO = 2.5  # a head blob this many times the largest candidate's silhouette holds several objects
+
+
+def _split_merged(blob_list, pending, shapes_by_group, views) -> list:
+    """Head blobs larger than MERGED_RATIO x the largest candidate silhouette of any pending group (at the blob) hold
+    several objects lying together: object-sized pieces (``_split_blob`` with that largest shape, so the piece count stays
+    conservative) are added as proposals of their own. The whole blob stays: the scene selection takes whichever
+    explains the pixels (build_tower 100022: three pieces within 10 cm were one blob, > 3x a pillar, and never proposed)."""
+    out = list(blob_list)
+    for b in blob_list:
+        v = views[b.view]
+        best = None  # (predicted area, shape) of the largest candidate silhouette here
+        for gi, g, prior in pending:
+            for sms in shapes_by_group[gi].values():
+                sm = sms[0]
+                X = v.cam.ray_plane(b.centroid[None, :], TABLE_Z + sm.height / 2)[0]
+                if not np.isfinite(X).all():
+                    continue
+                a = int(sm.sil(v.cam, sm.pose(X[0], X[1], 0.0)).sum())
+                if best is None or a > best[0]:
+                    best = (a, sm)
+        if best is not None and b.area > MERGED_RATIO * max(best[0], 1):
+            out += _split_blob(b, v, best[1])
+    return out
+
+
 def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=None, blob_offset=0):
     """Hypotheses per blob: candidates prefiltered by silhouette area and blob colour, a yaw-grid coarse fit
     (diverse starts + 180-degree flip), then the best ``refine_per_blob`` per blob (at most
@@ -2141,6 +2175,12 @@ class EstimatorConfig:
     # tasks where the colour map is applied: it lifts block identity (0.73 -> 0.81) but hurts pack items
     # (shoe within tolerance 0.52 -> 0.40; D0-proxy ablation), whose colours it under-represents
     use_slots: bool = True  # labels pinned to config slots start there (make_kong tiles, tower base)
+    # the pinned (slot) objects' head-view pixels are explained before blob proposals: a piece touching a pinned base
+    # board merged into its blob (> 3x its own silhouette) and was never proposed (build_tower)
+    slot_blob_cut: bool = True
+    # a head blob > 2.5x the largest candidate's silhouette (pieces lying together) also proposes object-sized pieces of it
+    # (build_tower: three pieces within 10 cm were one blob, never proposed)
+    split_merged: bool = True
     slot_identity_max: int = 12  # slot labels with 2..N candidates get a per-candidate identity check
     stack_proposals: bool = True  # groups still short look for objects resting on chosen ones (_stack_proposals)
     stack_levels: int = 2
@@ -2343,9 +2383,15 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     # ---- propose (coarse + refine) on head blobs, assign under the config's selection constraints,
     # then re-propose on the residual foreground for groups still short of objects (merged blobs)
     t1 = time.time()
+    slot_h = [h for _, h, _ in slot_placed] if cfg.slot_blob_cut else []
+    if slot_h:  # blobs of what the pinned objects do not explain (a neighbour touching a pinned base is a blob of its own)
+        hv = views["cam_head"]
+        head_blobs = blobs(ViewMasks(hv.cam, hv.img, _explained_cut(hv, slot_h), hv.known, hv.dist, hv.robot), "cam_head")
     shapes_by_group = {gi: _geometry_groups(g, prior) for gi, g, prior in pending}
     asm_base = _add_assembly_shapes(shapes_by_group, pending, slot_groups, task) if slot_groups and cfg.slot_assembly else {}
     need0 = {gi: len(g["labels"]) for gi, g, _ in pending}
+    if cfg.split_merged:
+        head_blobs = _split_merged(head_blobs, pending, shapes_by_group, views)
     refined = _propose(head_blobs, pending, shapes_by_group, views, cfg, groups)
     if cfg.region_seeds:  # only groups the blob proposals left short (seeds can win by hiding in unknown pixels)
         short = [(gi, g, p) for gi, g, p in pending
@@ -2361,7 +2407,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         if not any(n > 0 for n in need.values()):
             break
         expl = np.zeros_like(head.fg)
-        for h in chosen:
+        for h in chosen + slot_h:
             h.sm().sil(head.cam, h.T(), out=expl)
         resid = head.fg & (1 - cv2.dilate(expl, np.ones((3, 3), np.uint8)))
         rv = ViewMasks(head.cam, head.img, resid, head.known, head.dist, head.robot)
@@ -2521,7 +2567,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     # shifted onto it, leaves foreground uncovered right next to it
     resid_near = {}
     expl_all = np.zeros_like(head.fg)
-    for h in chosen:
+    for h in chosen + slot_h:  # pinned objects explain their pixels too (they were "unexplained" search regions)
         h.sm().sil(head.cam, h.T(), out=expl_all)
     resid = head.fg & (1 - cv2.dilate(expl_all, np.ones((5, 5), np.uint8)))
     for h in chosen:
