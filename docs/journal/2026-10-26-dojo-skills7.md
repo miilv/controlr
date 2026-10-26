@@ -92,7 +92,50 @@ The tiers are 15/40/100 for 1/2/3 mugs. `is_axis_aligned` takes the FIRST frame 
 
 ## 4. G3 numbers
 
-TBD (filled at the end)
+GT state, physics-only twin, settled dev layouts, `SIMLAB_USD_SYNC_LINKS` on. Score = the checker's ladder tier. Steps are
+median / max (limit). Runs before the rebase carry pre-rebase hashes (1f1928d = 844cdb3, b9a07b7 = 45c2822).
+
+**play_stacking_toy** (1200 steps; board PyRUA 78.2):
+
+| run (commit) | layouts | success | mean | steps | failures |
+|---|---|---|---|---|---|
+| skills-3 v2 / skills-4 v3 (before) | 100000-04 | 0/5 | 0.44 / 0.40 | 516-801 | far pegs: 0 grasp-place pairs; stars tilted on the peg |
+| v4 (1f1928d: shortest peg first, hole axis, 12 turns) | 100000-02, 05-08 | 3/7 | 0.77 | 813 / 913 | far-peg retreat IK 2, pieces 1.1 mm apart 2 |
+| v4.1/v4.2 (b9a07b7 / 82a1d28: one side of the peg, 2 cm retreat, relay spots, centred grasps) | all 25 | 21/25 | 0.93 | 833 / 930 | pieces of one peg 1.0-1.14 mm apart 3, a disc pinched off centre 1 |
+| **v4.6 (37a223a: seated + servoed to 0.3 mm, base and seated pieces as mesh boxes)** | **all 25** | **24/25** | **0.98** | **938 / 1101** | 100002: a relay's last leg found no pre-place IK (0.6) |
+| mode B, 1.5-2 mm belief offsets (b044443, let go 4 mm down the peg) | 100000-02 | 0/3 | 0.43 | 570 / 1036 | rings stuck tilted on the peg's top (no contact seen at 4 mm lag) |
+| mode B, 1.5-2 mm (37a223a, seated) | 100000-04 | 0/5 | 0.30 | 896 / 1195 | a ring pushed 30-50 mm down the peg on a predicted pose binds, tilts, can't be re-grasped and blocks the next pegs; one ran out of steps |
+| mode B, 1.5-2 mm (f24365a: seated only when measured, else threaded) | 100000-02 | TBD | | | |
+
+v4.6 = the final code for mode A: v4.7/v4.8 change only the branch without a held-object measurement.
+`stack_on_pegs` and the shared code it calls are unchanged from 37a223a to the PR head.
+
+**hang_mugs** (800 steps; board VPP2 74.2, PyRUA 27):
+
+| run (commit) | layouts | success | mean | steps | failures |
+|---|---|---|---|---|---|
+| skills-4 v2 (before) | 100000-09 | 2/10 | 0.36 | 324 / 392 | low hooks 4/10 (rack not modelled) |
+| v5 (c2295b8: rack and hung mugs as mesh boxes, highest hooks lowest first, relay) | 100000-04 | 2/5 | 0.64 | 345 / 399 | a mug flung off a low hook by the unchecked move home, a mug out of the pads on the carry, no plan for the biggest mug |
+| v6 (37a223a: + lifted retry) | 100005-07 | 1/3 | 0.52 | 317 / 560 | slide to the far hook short (mug fell), relays failing |
+| **v6.2 (722a9db: + checked exit, slide reach, search caps)** | **all 25** | **5/25** | **0.44** | 365 / 641 | 1.0 ×5, 0.4 ×12, 0.15 ×8. place_miss 15, not_home 3 (2 mugs), collision 2 (relays); planning median 192 s, max 414 s |
+
+v6.2 is below v5's first chunk: v5 scored 0.64 on 100000-04, v6.2 0.76 on the same seeds, but only 0.44 over 25. The
+first five layouts were the easy ones.
+
+v6.2 per mug, 100000-18: 34 hung of 57.
+- Failures:
+  - 7 fell out of the wall pinch on the carry (in-hand shift > 15 mm);
+  - 7 not threaded (fell at the release: mostly the top hook on the far side, done by the other arm);
+  - 4 loose, put down;
+  - 3 relay places failed at the descent IK;
+  - no plan 2.
+- Per hook (hung / tried): low +x 16/19, top +x 7/11, top -x 8/20, low -x 3/9.
+
+**hang_mugs_random** (rand ceiling about 55 on our dev set, mug 14): TBD.
+
+**Regression on 722a9db** (shared code touched):
+- plug_in_charger 100000-09: 8/10, 0.80. The reference is 8/10; the same two layouts fail (100002 no relay, 100008 the relay's last leg).
+- make_kong 100000-04: 5/5, 379 steps.
 
 ## 5. Shared-code changes (all opt-in; defaults unchanged)
 
@@ -108,4 +151,25 @@ TBD (filled at the end)
 
 ## 6. Parked / next
 
-TBD
+- **stacking, mode B.**
+  - With 1.5-2 mm belief offsets and no held-object measurement, 0/5 and 0.30.
+  - The guarded tail now sees the contact (`guard_lag` 1.2 mm) and its probes find the hole. But a ring pushed down the
+    peg on a predicted in-hand pose binds and tilts.
+  - A tilted ring is not re-graspable with the centred top grasps, and its box blocks the neighbouring pegs.
+  - v4.7/v4.8 thread blind and seat only with a measurement (`held_measured`: `Skills.remeasure` or perception-held's
+    `held_pose`).
+  - Next:
+    - wire `held_pose` into the servo tail;
+    - a per-arm sigma gate at the hover (`held_measured(sk, arm)`);
+    - every piece left on the base as mesh boxes, not just the seated ones;
+    - grasps for a tilted ring.
+- **stacking, 100002.** A relay's last leg plans with the piece at the relay pose but finds no pre-place IK at run time.
+  Homing both arms and re-planning did not help (dry run); not found.
+- **hang, the third mug.**
+  - It falls out of a wall pinch on the carry (7 of 23 failures).
+  - Or it is not threaded and drops at the release (7): mostly the far-side top hook done by the arm across the rack.
+    Prefer the hook-side arm, and check the slide with the measured grasp.
+  - Relays fail at the descent IK (3).
+- **hang, planning time.** 2-7 min per episode. The search is capped at 150 s per round plus 90 s for the relay.
+- **hang_mugs_random.** The small rack's low hooks have no plan for big mugs (palm at the table, clutter). Mug 14 can never
+  score (BACKLOG).

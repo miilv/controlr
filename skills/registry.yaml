@@ -346,7 +346,8 @@ entries:
     backend: dojo_skills
     entry: "dojo.skills.pegs:stack_on_pegs"
     measured: none
-    stats: []
+    stats:
+      - {src: docs/journal/2026-10-26-dojo-skills7.md, bench: robodojo, cell: play_stacking_toy, tier: A, version: v4.6 G3 twin, n: 25, success: 24}
     notes: "skills-7: hole axis from the mesh, pieces seated against one side of the peg (the checker's 1 mm)"
 
   - name: slots_and_press
@@ -411,7 +412,8 @@ entries:
     backend: dojo_skills
     entry: "dojo.skills.library:hang_on_hooks"
     measured: none
-    stats: []
+    stats:
+      - {src: docs/journal/2026-10-26-dojo-skills7.md, bench: robodojo, cell: hang_mugs, tier: A, version: v6.2 G3 twin, n: 25, success: 5}
     notes: "skills-4 first version; skills-7: the rack and hung objects as small mesh boxes, relay"
 
   - name: play_board_game
