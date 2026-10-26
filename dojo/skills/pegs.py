@@ -19,10 +19,11 @@ from dojo.skills.targets import level_R
 
 PEG_YAWS = 12                 # turns of a piece about its hole tried per place (every 30 deg)
 THREAD = 0.004                # m: the piece is lowered this far onto the peg (below its top) before it is let go
+SEAT_GAP = 0.0005             # m: a seated piece is let go this far over the pieces below it (``seat``)
 SEAT_TOL = 0.0025             # m: a piece held higher than this above its threaded target rests on the peg's top
 GUARD_SEATED_PEG = 0.0015     # m: the same for the guarded tail (mode B: no measured object, the arm's lag is the sensor)
 GUARD_LAG_PEG = 0.0012        # m: its contact threshold (free descent lags 0.3-0.5 mm; a piece stopped by the top: 1.7)
-PEG_CARRY = 0.10              # rad/step: the carry to the peg (at 0.14 the arm lagged 7 mm and a piece tilted 6 deg in the pads)
+PEG_CARRY = 0.12              # rad/step: the carry to the peg (at 0.14 the arm lagged 7 mm and a piece tilted 6 deg in the pads)
 PEG_RETREAT = 0.02            # m: up after the release (the far peg is at the edge of reach: 3 and 5 cm failed the IK)
 RELAY_DY = 0.12               # m: relay spots this far in front of the base (towards the robot; both arms reach there)
 BIAS_DIR = (0.0, -1.0)        # world xy: the side of the peg every piece is let go against (``side_bias``)
@@ -166,27 +167,43 @@ def on_peg(sk: Skills, label: str, peg: dict, tol: float = 0.003) -> bool:
     return bool(float(low) < peg["top"] - 0.002)
 
 
-def centred_grasps(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, -25.0, 40.0, -40.0), off: float = 0.006) -> list:
+def centred_grasps(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, -25.0), off: float = 0.006,
+                   max_tilt: float = 30.0) -> list:
     """``plan_transfer``'s usual grasps of a piece (box + the category's), only those centred on it: a round piece
     pinched 16 mm off its centre turned out of the pads (twin: 14-21 mm in-hand drift, one dropped on the carry)."""
     from dojo.skills import grasps as G
     o = sk.world.obj(label)
     c = o.center_w
     cands = G.box_grasps(o, sk.kin, arm, tilts=tuple(tilts)) + G.candidates(o, sk.kin, arm)
-    return [g for g in cands if float(np.linalg.norm(g.T[:2, 3] - c[:2])) < off]
+    down = math.cos(math.radians(max_tilt))
+    # no steep pinches either: a 13 mm piece pinched 40 deg from vertical did not lift (twin, mode B)
+    return [g for g in cands if float(np.linalg.norm(g.T[:2, 3] - c[:2])) < off and -float(g.T[2, 0]) >= down]
+
+
+def stack_top(sk: Skills, labels: list[str], peg: dict) -> float:
+    """World z the next piece on ``peg`` rests at: the highest top of ``labels`` (pieces on it), else its plate."""
+    tops = []
+    for lab in labels:
+        o = sk.world.obj(lab)
+        tops.append(float((o.asset.mesh[0] @ o.R.T + o.pos)[:, 2].max()) if o.asset.mesh is not None else o.top_z)
+    if tops:
+        return max(tops)
+    return float(peg["plate"]) if peg.get("plate") is not None else float(peg["frame_z"]) - 0.05
 
 
 def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str], drop: float = 0.003,
-                  thread: float = THREAD) -> dict:
+                  thread: float = THREAD, seat: bool = True) -> dict:
     """Thread pieces onto a base's pegs: group i (identical pieces) onto peg ``pegs[i]`` (a support frame of ``base``),
     one at a time, flat (the piece's "up" pose), its hole (``through_hole``, from the mesh) on the peg's axis, any turn
     about the hole (``PEG_YAWS``). The shortest peg is filled first: every later piece then goes in above the finished
     neighbours (tallest first, the next peg's pieces were let go level with the stack beside them and found no
     collision-free grasp: 0 grasp-place pairs for 3-7 of 10 pieces, twin). Each piece is lowered ``thread`` onto the
     peg's top through the closed-loop tail (``servo``: measured, sag-corrected, probing around the axis when it rests
-    on the top) and let go there; it slides down the peg. ``thread=0``: let go ``drop`` above the top instead. Grippers
-    open after each piece (per-peg credit); no in-air handovers (a ring handed over in the air fell 2/2)."""
-    from dojo.skills.library import place_oriented
+    on the top). ``seat`` (default): it is carried on down the peg until it rests on the pieces below (``SEAT_GAP``) and
+    let go there, so it stays where the hand put it (let go at the top, the pieces of one peg slid down to anywhere in
+    the clearance: 0.99-1.14 mm apart against the 1 mm the stack is judged by, twin); else it is let go ``thread`` down
+    the peg and slides; ``thread=0``: let go ``drop`` above the top. Grippers open after each piece (per-peg credit);
+    no in-air handovers (a ring handed over in the air fell 2/2). A piece left tilted on a peg is tried once more."""
     w = sk.refresh()
     b = w.obj(base)
     sk.coll.include.add(base)
@@ -196,37 +213,71 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
     for i in order:
         grp, tag = groups[i], pegs[i]
         peg = geo[tag]
+        on_this: list[str] = []
         for lab in grp:
             if lab not in sk.world.objects:
                 continue
             sk.refresh()
             if on_peg(sk, lab, peg):
                 done.append(lab)
+                on_this.append(lab)
                 continue
-            z_bot = peg["top"] - thread if thread > 0 else peg["top"] + drop
-            bias = side_bias(sk.world.obj(lab), peg) * np.asarray(BIAS_DIR)
-            T, hole = piece_target(sk, lab, peg, b.yaw(), z_bot, bias=bias)
-            pkw = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "servo": True, "retreat": PEG_RETREAT,
-                   "servo_ref": base, "ref_top": peg["top"], "seat_tol": SEAT_TOL if thread > 0 else 0.004,
-                   "probe": thread > 0, "guard_seated": GUARD_SEATED_PEG, "guard_lag": GUARD_LAG_PEG,
-                   "approach_rad": PEG_CARRY}
-            r = place_oriented(sk, lab, [T], yaw_sym=PEG_YAWS, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08, ignore=(base,),
-                               place_kw=pkw, air_handover=False, spot_avoid=(base,),
-                               relay_near=(float(b.center_w[0]), float(b.center_w[1]) - RELAY_DY),
-                               transfer_kw={"lift_to_pre": True, "yaw_about": hole,
-                                            "grasps": (lambda a, lab=lab: centred_grasps(sk, lab, a))})
-            for a in ARMS:
-                if sk.held[a] is not None:
-                    sk._record(sk.regrasp(a))
-            sk.bank()
-            ok = on_peg(sk, lab, peg)
+            for attempt in range(2):
+                r = _one_piece(sk, lab, b, base, peg, on_this, seat, thread, drop)
+                for a in ARMS:
+                    if sk.held[a] is not None:
+                        sk._record(sk.regrasp(a))
+                sk.bank()
+                if r.status in ("step_budget", "ended"):
+                    return {"ok": False, "stage": f"peg {tag}", "result": r}
+                ok = on_peg(sk, lab, peg)
+                # stuck tilted on the peg's top (or on its neighbours) blocks this peg and the next: lift it off and
+                # try once more (twin, mode B: a ring 27 deg tilted on a peg left 0 grasp-place pairs for 6 pieces)
+                if ok or not stuck(sk, lab, peg, on_this) or not r.ok and r.status == "ik_fail":
+                    break
+                sk.log(f"[pegs] {lab} rests tilted on {tag}: once more")
             sk._record(SkillResult(ok, "peg", "ok" if ok else "place_miss", 0, None,
                                    note=f"{lab} {'on' if ok else 'not on'} {tag}"))
             (done if ok else failed).append(lab)
             if ok:
+                on_this.append(lab)
                 sk.coll.margin_of[lab] = PLACED_MARGIN
-            if r.status in ("step_budget", "ended"):
-                return {"ok": False, "stage": f"peg {tag}", "result": r}
     if failed:
         return {"ok": False, "stage": "pegs", "note": f"done {done}, failed {failed}"}
     return {"ok": True, "stage": "pegs"}
+
+
+def stuck(sk: Skills, label: str, peg: dict, on_this: list[str], tilt_deg: float = 10.0) -> bool:
+    """Does a piece meant for ``peg`` rest tilted, or well above where it should sit (on the peg's top)?"""
+    from dojo.skills.geometry import tilt_deg as _tilt
+    o = sk.refresh().obj(label)
+    q = o.asset.place.get("up")
+    R_up = quat_to_R(np.asarray(q, float)) if q is not None else np.eye(3)
+    tilt = float(_tilt(o.R @ R_up.T))
+    low = float((o.asset.mesh[0] @ o.R.T + o.pos)[:, 2].min()) if o.asset.mesh is not None else o.bottom_z
+    return tilt > tilt_deg or low > stack_top(sk, on_this, peg) + 0.006
+
+
+def _one_piece(sk: Skills, lab: str, b, base: str, peg: dict, on_this: list[str], seat: bool, thread: float,
+               drop: float):
+    """One transfer of piece ``lab`` onto ``peg`` (see ``stack_on_pegs``)."""
+    from dojo.skills.library import place_oriented
+    sk.refresh()
+    if seat:
+        z_bot = stack_top(sk, on_this, peg) + SEAT_GAP
+    else:
+        z_bot = peg["top"] - thread if thread > 0 else peg["top"] + drop
+    probing = seat or thread > 0
+    bias = side_bias(sk.world.obj(lab), peg) * np.asarray(BIAS_DIR)
+    T, hole = piece_target(sk, lab, peg, b.yaw(), z_bot, bias=bias)
+    pkw = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "servo": True, "retreat": PEG_RETREAT,
+           "servo_ref": base, "ref_top": peg["top"], "seat_tol": SEAT_TOL if probing else 0.004,
+           "probe": probing, "guard_seated": GUARD_SEATED_PEG, "guard_lag": GUARD_LAG_PEG,
+           "approach_rad": PEG_CARRY}
+    r = place_oriented(sk, lab, [T], yaw_sym=PEG_YAWS, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08,
+                       ignore=(base,) + tuple(on_this),
+                       place_kw=pkw, air_handover=False, spot_avoid=(base,),
+                       relay_near=(float(b.center_w[0]), float(b.center_w[1]) - RELAY_DY),
+                       transfer_kw={"lift_to_pre": True, "yaw_about": hole,
+                                    "grasps": (lambda a, lab=lab: centred_grasps(sk, lab, a))})
+    return r
