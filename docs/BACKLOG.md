@@ -187,6 +187,10 @@
   3 place hovers), and the stack missed by 14-18 mm. Proposal: when a support's post-place iou is below 0.8, the
   releasing arm looks again from 3 cm higher before the next carry, behind a config field (default off), then
   measured on the proxy. It needs a motion step at release time, i.e. a skills hook; the provider cannot move arms.
+- [ ] **dojo runtime: a partial refine is not a full confirmation.** perception #52 marks a board fit that cannot see
+  along one axis as `partial.unobserved_axis`. Such an ok must not confirm or apply a correction along that axis:
+  post-place, place_confirm's second view and the recentre revert should project the correction onto the observed
+  axis only, or treat it as unconfirmed.
 - [ ] **dojo runtime: fixture-aware place refine.** Under perception cb5c3a4 the place refines on the tower's base board
   are all "not ok" (the static fixture keeps its prior), and each place still spends 8-10 steps on 2 re-hovers (~50
   steps per 8-piece tower episode, journal 2026-10-25-dojo-integ2 §5). A stationary support whose prior perception
