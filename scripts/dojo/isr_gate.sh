@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The isr-lab gate before each episode (dojo.runtime.eval runs it as DOJO_EVAL_GATE; isr_block.sh has the same
 # checks): rc 0 = go; 76 = an unprocessed inbox message or gpu.reserve set (the lead reads / Mikhail's side has
-# priority); 77 = data2 below ISR_DISK_FLOOR_GB free (ISR_DISK_FLOOR_MB, default 7168; Mikhail's floor is 6 GB).
+# priority); 77 = data2 below ISR_DISK_FLOOR_MB free (default 7168; Mikhail's floor is 6 GB).
 COORD=/home/anywherevla/data2/coord
 m="$(find "$COORD/inbox/ilia" -maxdepth 1 -type f 2>/dev/null | head -1)"
 [[ -z "$m" ]] || { echo "unprocessed inbox message $m"; exit 76; }
