@@ -182,6 +182,17 @@ def plan(instruction: str, world: WorldState) -> Plan:
             return Plan("play_board_game", {"board": b.label, "pieces": own, "opponent_pieces": opp},
                         f"{len(own)} own pieces vs {len(opp)} on {b.label}'s cells")
 
+    # --- a container to lift off a conveyor and the object a picture shows, caught into it
+    belts = [o for o in objs if o.obj_type == "Dynamic" or "conveyor" in o.category.lower()]
+    if belts and re.search(r"\blift\b", text) and re.search(r"\bimage\b|\bpicture\b|\bphoto\b", text):
+        conts = [o for o in objs if o.obj_type == "Rigid" and any(w in o.category.lower() for w in CONTAINER_WORDS)]
+        pics = [o for o in objs if o.obj_type == "Geometry" and re.search(r"photo|picture|image|board", o.category.lower())]
+        if conts:
+            movers = [o.label for o in objs if o.obj_type == "Rigid" and not o.clutter and o.label != conts[0].label]
+            return Plan("pick_into_held", {"objects": movers, "container": conts[0].label,
+                                           "picture": pics[0].label if pics else None, "conveyor": belts[0].label},
+                        f"lift {conts[0].label}, catch what {pics[0].label if pics else '?'} shows")
+
     # --- objects riding a conveyor: remember the first one, pick the next of the same identity when it comes
     belts = [o for o in objs if o.obj_type == "Dynamic" or "conveyor" in o.category.lower()]
     if belts and re.search(r"\bfirst\b|\bremember\b", text) and re.search(r"\bmatch|\bsame\b|\bagain\b", text):

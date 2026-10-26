@@ -678,5 +678,128 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     return {"ok": False, "stage": "pick", "note": r.note}
 
 
+
+
+# ---- the picture on a board, a container to lift
+
+
+def depicted_identity(o) -> str | None:
+    """The asset identity ("<Type>/<category>/<idx>") a picture shows: perception's reading when the estimate has it
+    (``o.depicts``), else the picture asset's public ``map.json`` next to its metadata (photo index -> category/idx)."""
+    import json
+    import os
+    from pathlib import Path
+    d = getattr(o, "depicts", None)
+    if d:
+        return str(d)
+    typ, cat, idx = o.asset.key.split("/")
+    rd = os.environ.get("RD_ROOT") or str(Path(os.environ.get("RD_HOME", "/root/controlr-robodojo")) / "RoboDojo")
+    p = Path(rd) / "Assets" / "Object" / "RoboDojo" / typ / cat / "map.json"
+    try:
+        m = json.loads(p.read_text())
+    except OSError:
+        return None
+    inv = {str(v).zfill(5): k for k, v in m.items()}
+    k = inv.get(idx)
+    return f"Rigid/{k}" if k else None
+
+
+def hold_up(sk: Skills, arm: str, label: str, xy, z_bottom: float) -> SkillResult:
+    """Carry the held ``label`` level to ``xy`` with its bottom at ``z_bottom`` and keep holding it."""
+    from dojo.skills.geometry import inv_T
+    from dojo.skills.motion import CARRY
+    w = sk.refresh()
+    o = w.obj(label)
+    h = sk.held.get(arm)
+    if h is None:
+        return SkillResult(False, "hold_up", "logic", 0, arm, note="nothing held")
+    T_now = sk.kin.tcp(arm, w.arms[arm].q) @ h.T_tcp_obj
+    T = T_now.copy()
+    T[0, 3] += float(xy[0]) - float(o.center_w[0])
+    T[1, 3] += float(xy[1]) - float(o.center_w[1])
+    T[2, 3] += z_bottom - float(o.bottom_z)
+    mv = sk.motion.to_pose(arm, sk.ex.q[arm], T @ inv_T(h.T_tcp_obj), CARRY, "hold_up", gripper=0.0, held=h.box,
+                           ignore=(label,), check=False)
+    if not mv.ok:
+        return SkillResult(False, "hold_up", mv.status, 0, arm, note=mv.note[:160])
+    from dojo.skills.executor import ArmPlan
+    try:
+        sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).move(mv, "hold_up").hold(2, "still")}, name="hold up")
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return SkillResult(False, "hold_up", "step_budget", 0, arm, note=str(e))
+    return sk._record(SkillResult(True, "hold_up", "ok", mv.n_steps() if hasattr(mv, "n_steps") else 0, arm))
+
+
+def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str | None = None,
+                   conveyor: str | None = None, lift: float = 0.11, max_wait: int = 650) -> dict:
+    """Objects (and an open container) ride a moving belt: take the container off the belt with the arm it is
+    nearer and hold it up ``lift`` higher, then pick the object the board's picture shows (``picture``) on the move
+    with the other arm and drop it into the held container. The belt velocity comes from the objects' motion; the
+    target from what the picture depicts (asset identity)."""
+    w = sk.refresh()
+    labs = [l for l in objects if l in w.objects and l != container]
+    v = belt_velocity(sk, labs + [container])
+    if float(np.linalg.norm(v)) < 1e-4:
+        return {"ok": False, "stage": "belt", "note": "nothing moves"}
+    w = sk.refresh()
+    ident = depicted_identity(w.obj(picture)) if picture else None
+    cands = [l for l in labs if ident and w.obj(l).asset.key == ident]
+    sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; the picture shows {ident}: {cands}")
+    if not cands:
+        return {"ok": False, "stage": "identify", "note": f"nothing on the belt like {ident}"}
+    u = v / np.linalg.norm(v)
+    target = max(cands, key=lambda l: float(w.obj(l).pos[:2] @ u))
+    ign = (conveyor,) if conveyor else ()
+    # 1. the container off the belt (whichever arm intercepts it first), held up
+    r = pick_from_belt(sk, container, v, lift=lift, ignore=ign)
+    if not r.ok:
+        return {"ok": False, "stage": f"lift {container}", "note": r.note}
+    carm = r.arm
+    oarm = "right" if carm == "left" else "left"
+    w = sk.refresh()
+    c = w.obj(container)
+    base = sk.kin.base(carm)[:3, 3]
+    hold_xy = (float(base[0]) + (0.12 if carm == "left" else -0.12), -0.18)
+    hr = hold_up(sk, carm, container, hold_xy, float(c.bottom_z))
+    sk.log(f"[belt] {container} held by {carm} ({hr.status}) at {np.round(sk.refresh().obj(container).center_w, 3).tolist()}")
+    # 2. the target off the belt with the other arm, dropped into the container
+    r2 = pick_from_belt(sk, target, v, lift=0.15, ignore=ign + (container,), arms=[oarm])
+    if not r2.ok:
+        return {"ok": False, "stage": f"pick {target}", "note": r2.note}
+    w = sk.refresh()
+    c = w.obj(container)
+    o = w.obj(target)
+    from dojo.skills.targets import current_R
+    from dojo.skills.geometry import T_from
+    R = current_R(sk, target)
+    # over the container's middle beside its handle, the object's bottom 3 cm over the rim
+    mn, mx = c.asset.bbox_min, c.asset.bbox_max
+    pts = [c.R @ np.array([mn[0] + f * (mx[0] - mn[0]), (mn[1] + mx[1]) / 2, 0.0]) + c.pos for f in (0.25, 0.75)]
+    rim = float(c.bottom_z) + 0.75 * float(c.asset.extents[2])
+    best = None
+    for p in sorted(pts, key=lambda p: float(np.linalg.norm(p[:2] - sk.kin.base(oarm)[:2, 3]))):
+        W = (np.asarray(o.asset.mesh[0], float) if o.asset.mesh is not None else np.zeros((1, 3))) @ R.T
+        cen = (W.min(0) + W.max(0)) / 2
+        T = T_from(np.array([p[0] - cen[0], p[1] - cen[1], rim + 0.03 - W[:, 2].min()]), R)
+        pl = sk.plan_place(oarm, T, ignore=(container,), pre_h=0.03, release_gap=0.0)
+        if not isinstance(pl, SkillResult):
+            best = pl
+            break
+    if best is None:
+        return {"ok": False, "stage": "drop", "note": "no drop over the container"}
+    try:
+        sk.ex.run({oarm: best.plan}, name=f"drop {target}")
+        sk.ex.hold(6)
+    except EpisodeEnded:
+        return {"ok": True, "stage": "ended"}
+    except BudgetExceeded as e:
+        return {"ok": False, "stage": "drop", "note": str(e)}
+    sk.held[oarm] = None
+    w = sk.refresh()
+    ok = inside_xy(w.obj(target), w.obj(container))
+    return {"ok": ok, "stage": "dropped", "note": f"{target} {'in' if ok else 'not in'} {container}"}
+
+
 __all__ = ["play_board_game", "board_cells", "grid_lines", "board_state", "choose_cell", "copy_demonstration", "inside_xy",
-           "put_in_open", "match_and_pick", "pick_from_belt", "belt_velocity", "plan_intercept"]
+           "put_in_open", "match_and_pick", "pick_from_belt", "belt_velocity", "plan_intercept", "pick_into_held",
+           "depicted_identity", "hold_up"]

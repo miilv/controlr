@@ -90,6 +90,11 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "Objects ride a moving belt: measures the belt's speed from the objects' motion, remembers the first object "
         "(the one leading in the direction of motion), and picks the next object of the same kind on the move "
         "(the hand follows the belt while it closes), then lifts it ~12 cm and holds it."),
+    "pick_into_held": (
+        "pick_into_held(objects: [id, ...], container: id, picture: id | null = null, conveyor: id | null = null)",
+        "A container and objects ride a moving belt: takes the container off the belt with one arm and holds it up "
+        "~11 cm, then picks the object the board's picture shows on the move with the other arm and drops it into the "
+        "held container (which stays up). For 'lift the basket, pick the object shown on the board into it'."),
     "fill_holes": (
         "fill_holes(objects: [id, ...], holder: id, lid_tag: frame | null = null)",
         "Stands each object (long axis up) over a free hole of the holder's body and lets it drop in, fingers above "
@@ -112,7 +117,7 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "for an instruction that lists several put-X-on-Y / push-X-into-Y goals."),
 }
 SKILL_DOCS_VERSION = 4  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
-#                        4: + play_board_game, copy_demonstration, match_and_pick, fill_holes (skills-6)
+#                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

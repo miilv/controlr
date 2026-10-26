@@ -542,3 +542,37 @@ entries:
     measured: none
     stats: []
     notes: "static scene; reads each object after its drop and the lid angle before / after the swing; skills-6"
+
+  - name: pick_into_held
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      A container and objects ride a moving belt: take the container off the belt with one arm and hold it up about
+      11 cm, then pick the object the board's picture shows on the move with the other arm and drop it into the held
+      container, which stays up.
+    args:
+      objects: "[id], required; every object on the belt"
+      container: "id, required; the container to lift"
+      picture: "id = null; the board picture that shows the target"
+      conveyor: "id = null; the belt (left out of collision checks)"
+    selects_on:
+      words: [lift the basket, image on the board, conveyor, identify]
+      needs_categories: [basket]
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size, identity]}
+        - {what: picture, fields: [depicted identity]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.library:pick_into_held"
+    measured: none
+    stats: []
+    notes: >-
+      watch reads: belt tracks as in match_and_pick; what the picture depicts (an identity; G3 uses the picture
+      asset's public map.json); skills-6
