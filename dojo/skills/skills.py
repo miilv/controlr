@@ -1040,7 +1040,7 @@ class Skills:
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
                       q_start: dict | None = None, max_pick_tilt: float = 50.0, box_tilts=(0.0, 25.0, -25.0),
-                      lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None):
+                      lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None, yaw_about=None):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
@@ -1056,6 +1056,8 @@ class Skills:
         ``screen_fingers_out``: screen each place at the pose ``place_kw["fingers_out"]`` lets go from (the TCP raised
         until the fingertips clear the receptacle's top; a coin dropped into a slot from a grasp at its middle).
         ``pair_ok(grasp, T_tcp_obj, T_obj, T_tcp) -> bool``: an extra test of each screened grasp-place pair.
+        ``yaw_about``: the point (object frame) the ``yaw_sym`` turns are about, instead of the bbox centre (a star-shaped
+        ring's hole sits 2.9 mm off its bbox centre: turned about the centre, 3 of 4 targets missed the peg by 4-6 mm).
         Returns (PickPlan, PlacePlan) or a SkillResult."""
         w = self.world
         obj = w.obj(label)
@@ -1063,13 +1065,14 @@ class Skills:
         pick_kw = dict(pick_kw or {})
         arms = list(arms) if arms else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
         tg = []
+        piv = obj.asset.center if yaw_about is None else np.asarray(yaw_about, float)
         for T in targets:
             T = np.asarray(T, float)
-            c = T[:3, :3] @ obj.asset.center + T[:3, 3]
+            c = T[:3, :3] @ piv + T[:3, 3]
             for k in range(max(1, yaw_sym)):
                 Tk = T.copy()
                 Tk[:3, :3] = rot_z(2 * math.pi * k / max(1, yaw_sym)) @ T[:3, :3]
-                Tk[:3, 3] = c - Tk[:3, :3] @ obj.asset.center
+                Tk[:3, 3] = c - Tk[:3, :3] @ piv
                 tg.append(Tk)
         ign = tuple(set(ignore) | {label})
         fo_ref = None

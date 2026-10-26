@@ -1750,44 +1750,6 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
 
 # ============================================================================ pegs, slots + press
 
-def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str], drop: float = 0.003) -> dict:
-    """Thread pieces onto a base's pegs: group i (identical pieces) onto peg ``pegs[i]`` (a support frame of
-    ``base``), one at a time, flat (the piece's "up" pose), centred over the peg and released just above its
-    top: the piece slides down the peg (the peg keeps it co-axial). Closed-loop descent on the base; grippers
-    open after each piece (per-peg credit). Untested in the twin (no dev layouts for a stacking toy yet)."""
-    from dojo.skills.geometry import quat_to_R
-    w = sk.refresh()
-    b = w.obj(base)
-    sk.coll.include.add(base)
-    done, failed = [], []
-    for grp, tag in zip(groups, pegs):
-        c = np.asarray(_support_raw(b, tag)[0], float)
-        top_w = b.T @ np.r_[c[:3], 1.0]
-        for lab in grp:
-            if lab not in sk.world.objects:
-                continue
-            o = sk.world.obj(lab)
-            q = o.asset.place.get("up")
-            R = rot_z(b.yaw()) @ (quat_to_R(np.asarray(q, float)) if q is not None else level_R(o.R))
-            tg = [rest_with_R(sk, lab, top_w[:2], R, z_bottom=float(top_w[2]) + drop)]
-            # 40-deg top grasps and a lift to the pre-place height (twin, skills3: a far peg had 0 grasp-place pairs
-            # for 3-4 of 10 pieces per layout; the same reach limit as a toaster's far slot)
-            r = place_oriented(sk, lab, tg, yaw_sym=4, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08, ignore=(base,),
-                               place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                         "servo": True, "servo_ref": base},
-                               transfer_kw={"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True})
-            (done if r.ok else failed).append(lab)
-            for a in ARMS:
-                if sk.held[a] is not None:
-                    sk._record(sk.regrasp(a))
-            sk.bank()
-            if r.status in ("step_budget", "ended"):
-                return {"ok": False, "stage": f"peg {tag}", "result": r}
-    if failed:
-        return {"ok": False, "stage": "pegs", "note": f"done {done}, failed {failed}"}
-    return {"ok": True, "stage": "pegs"}
-
-
 def joint_part(o, tag: str):
     """The moving part a functional point rides on: (link points in the object frame, joint dict) from the
     asset's ``links.json`` (``AssetInfo.links`` / ``joints``), or None. The metadata names the link
@@ -2262,6 +2224,9 @@ def G_hang(sk: Skills, o, arm: str) -> list:
     # deep wall pinches only (twin: an 8 mm deep pinch slid 46 mm in the hand while the mug turned 90 deg)
     return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032))
 
+
+# pieces threaded onto pegs: skills-7 (dojo/skills/pegs.py)
+from dojo.skills.pegs import stack_on_pegs  # noqa: E402
 
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
           "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,

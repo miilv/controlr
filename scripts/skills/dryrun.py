@@ -41,7 +41,39 @@ def rows_from_layout(lay: dict, assets: AssetDB) -> list[dict]:
                      "category": cat, "category_idx": int(inst["category_idx"]), "clutter": clutter,
                      "pos": np.asarray(inst["default_pos"], float), "quat": np.asarray(inst["default_ori"], float),
                      "half": half, "center": ctr})
+        if otype == "Geometry":
+            pegs = _pegs(assets, otype, cat, int(inst["category_idx"]), rows[-1]["pos"], rows[-1]["quat"])
+            if pegs:
+                rows[-1]["pegs"] = pegs
     return rows
+
+
+def _pegs(assets: AssetDB, otype: str, cat: str, idx: int, pos, quat) -> list:
+    """[[x, y, plate_z], ...] (world) of a base's pegs (support frames named pole / peg), for the kinematic env: the
+    plate height around each peg from the mesh (else the frame's height)."""
+    import re
+    from dojo.skills.geometry import quat_to_R
+    try:
+        info = assets.get(otype, cat, idx, mesh=True)
+    except (OSError, KeyError):
+        return []
+    R = quat_to_R(np.asarray(quat, float))
+    out = []
+    for tag, frames in (info.support or {}).items():
+        if not re.search(r"pole|peg", tag.lower()):
+            continue
+        for f in frames:
+            c = np.asarray(f[0], float)[:3]
+            z = float(c[2])
+            if info.mesh is not None:
+                V = info.mesh[0]
+                d = np.hypot(V[:, 0] - c[0], V[:, 1] - c[1])
+                ring = V[(d > 0.008) & (d < 0.02)]
+                if len(ring):
+                    z = float(np.percentile(ring[:, 2], 90))
+            w = R @ np.array([c[0], c[1], z]) + np.asarray(pos, float)
+            out.append([float(w[0]), float(w[1]), float(w[2])])
+    return out
 
 
 def main(argv=None) -> None:
