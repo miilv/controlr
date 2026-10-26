@@ -58,7 +58,10 @@ export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds}" DOJO_COLOR_CALIB="${DOJO_C
 export AGENTIC_ENV_FILE="${AGENTIC_ENV_FILE:-$HOME/controlr/.env}" DOJO_AGENTIC_LOG="${DOJO_AGENTIC_LOG:-$OUT/agentic}"
 export OUT HERE MODE VERIFY TWIN_ENVS TASK
 if [[ "$VERIFY" == bundle || "$MODE" == perception ]]; then MEM=24G CPU=1400%; else MEM=16G CPU=1200%; fi
-systemd-run --user --scope -q -p MemoryMax=$MEM -p CPUQuota=$CPU bash -c '
+# the scope runs in the background so a TERM / INT to this script can stop it: a killed integ_eval.sh used to leave
+# the services and the driver running, still holding the GPU lock (fd 9) (2026-10-26, imitate_sorting)
+UNIT="$(basename "$OUT")"; UNIT="integ-${UNIT//[^A-Za-z0-9_.-]/_}-$$"
+systemd-run --user --scope -q --unit="$UNIT" -p MemoryMax=$MEM -p CPUQuota=$CPU bash -c '
   cg=/sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup | head -1)
   cpu0=$(awk "/usage_usec/ {print \$2}" $cg/cpu.stat); t0=$(date +%s.%N)
   "$HERE/scripts/simlab/isaac6.sh" dojo/simlab/render_service.py > "$OUT/render_service.log" 2>&1 &
@@ -101,7 +104,11 @@ PY
   peak=$(cat $cg/memory.peak 2>/dev/null || echo 0)
   python3 -c "import json,sys; c0,c1,t0,t1,pk=map(float,sys.argv[1:6]); json.dump({\"mem_peak_gb\": pk/1e9, \"cpu_cores_avg\": (c1-c0)/1e6/(t1-t0), \"wall_s\": t1-t0, \"mode\": sys.argv[6], \"verify\": sys.argv[7]}, open(sys.argv[8], \"w\"), indent=1)" $cpu0 $cpu1 $t0 $t1 $peak "$MODE" "$VERIFY" "$OUT/scope_stats.json"
   cat "$OUT/scope_stats.json"
-' _ "${args[@]}"
+' _ "${args[@]}" &
+scope_pid=$!
+trap 'echo "[integ] stopping scope $UNIT" >&2; systemctl --user stop "$UNIT.scope" 2>/dev/null; kill "$scope_pid" 2>/dev/null' TERM INT
+wait "$scope_pid"
+trap - TERM INT
 rm -f "$OUT/stage_current.usd"; rm -rf "$OUT/work"          # scratch (37 MB stage export per job; disk is shared)
 echo "[integ] results: $OUT"
 exec 9>&-
