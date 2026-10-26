@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .held_data import R_rotvec, inv_T, lead_axis_from_target, pose7_to_T, pose_errors, rotvec_R, tcp_from_flange_T
+from .held_data import R_rotvec, inv_T, lead_axis_from_target, pose7_to_T, pose_errors, rotvec_R, tcp_from_flange_T  # noqa: F401
 
 AUTO_VIEWS = {"hover": ["own", "all"], "grasp": ["own", "all"], "observer_look": ["all"], "look_ranked": ["all"],
               "show": ["own+head", "all"], "show_ranked": ["own+head", "all"]}
@@ -146,6 +146,35 @@ def _exclude(view_set: str, arm: str) -> tuple:
     return tuple(out)
 
 
+def align_spin(T_est, T_gt, axis_obj_sym) -> np.ndarray:
+    """``T_est`` turned about the object's own symmetry axis (object frame, through the bbox-centre line the mesh is
+    symmetric about) to the turn nearest ``T_gt``: a symmetric object is the same object at every turn, so only the
+    rest of the pose is an error (the skills take the nearest symmetric target, ``Skills._nearest_spin``)."""
+    from .render import load_asset  # noqa: F401
+    T_est, T_gt = np.asarray(T_est, float), np.asarray(T_gt, float)
+    a = np.asarray(axis_obj_sym, float)
+    def score(th):
+        return float(np.trace((T_est[:3, :3] @ rotvec_R(a * th)).T @ T_gt[:3, :3]))
+    th = max(np.radians(np.arange(0.0, 360.0, 0.5)), key=score)
+    return max(th + np.radians(np.arange(-0.5, 0.5, 0.01)), key=score)
+
+
+def _spin_aligned(T_est, T_gt, key):
+    from .held import spin_axis
+    from .render import load_asset
+
+    sp = spin_axis(key)
+    if sp is None:
+        return np.asarray(T_est, float)
+    a = load_asset(key)
+    c = (np.asarray(a.info["bbox_min"]) + np.asarray(a.info["bbox_max"])) / 2
+    th = align_spin(T_est, T_gt, sp)
+    S = np.eye(4)
+    S[:3, :3] = rotvec_R(sp * th)
+    S[:3, 3] = c - S[:3, :3] @ c                    # about the symmetry line through the bbox centre
+    return np.asarray(T_est, float) @ S
+
+
 def eval_frame(path: str, n_priors: int, view_sets: list[str], seed: int, prior_kinds=("perturb",)) -> list[dict]:
     from .held import held_pose
 
@@ -175,14 +204,16 @@ def eval_frame(path: str, n_priors: int, view_sets: list[str], seed: int, prior_
                 import traceback
                 rows.append({"path": F["path"], "error": f"{type(e).__name__}: {e}", "trace": traceback.format_exc()[-1500:]})
                 continue
-            e_prior = pose_errors(Tp, F["T_gt"], F["lead"], F["axis"])
-            e_fit = pose_errors(r.get("fit_T_tcp_obj", r["T_tcp_obj"]), F["T_gt"], F["lead"], F["axis"])
-            e_out = pose_errors(r["T_tcp_obj"], F["T_gt"], F["lead"], F["axis"])
+            T_fit = np.asarray(r.get("fit_T_tcp_obj", r["T_tcp_obj"]), float)
+            e_prior = pose_errors(_spin_aligned(Tp, F["T_gt"], F["key"]), F["T_gt"], F["lead"], F["axis"])
+            e_fit = pose_errors(_spin_aligned(T_fit, F["T_gt"], F["key"]), F["T_gt"], F["lead"], F["axis"])
+            e_out = pose_errors(_spin_aligned(r["T_tcp_obj"], F["T_gt"], F["key"]), F["T_gt"], F["lead"], F["axis"])
             rows.append({"path": F["path"], "task": F["task"], "seed": F["seed"], "tag": F["tag"], "kind": F["kind"],
                          "variant": F["variant"], "key": F["key"], "arm": F["arm"], "geo": F["geo"], "views_set": vs,
                          "prior": kind, "prior_i": i, "prior_info": info, "ok": r["ok"], "why": r["why"],
                          "views": r.get("views"), "view_diag": r.get("view_diag"), "iou": r.get("iou"),
                          "sigma": r.get("sigma"), "err_prior": e_prior, "err_fit": e_fit, "err_out": e_out,
+                         "T_fit": T_fit.tolist(), "T_gt": np.asarray(F["T_gt"]).tolist(),
                          "residual": r.get("residual"), "t_s": round(time.time() - t0, 2)})
     return rows
 

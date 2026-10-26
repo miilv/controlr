@@ -48,7 +48,7 @@ PAD_LEN = 0.030                    # m of each finger (from the tip) that can to
 CENTRE_SIGMA_M = 0.0015            # soft gripper term: the contact faces centred on the TCP along the closing axis
 # raw sigma -> calibrated sigma, per geometry class ("spin": a continuous symmetry axis, i.e. tubes, pens, coins; else
 # "rigid"); fitted 2-fold by layout on our dev frames (held_eval report: calibration), held-out coverage in the report
-SIGMA_SCALE = {"rigid": {"pos": 1.0, "rot": 1.0}, "spin": {"pos": 1.0, "rot": 1.0}}
+SIGMA_SCALE = {"rigid": {"pos": 1.21, "rot": 1.31}, "spin": {"pos": 1.62, "rot": 1.61}}
 SIGMA_DF = 0.002                   # cost rise below which poses are indistinguishable (calibrated with SIGMA_SCALE)
 SIGMA_SAMPLES = 70
 OK_IOU = 0.70                      # best view's IoU for an ok fit (a gross mismatch; precision is the sigma's job)
