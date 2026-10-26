@@ -18,6 +18,7 @@ from __future__ import annotations
 import itertools
 import math
 import re
+import time
 
 import numpy as np
 
@@ -304,11 +305,18 @@ def plan_drop(sk: Skills, arm: str, xy, z_tcp: float = 0.93) -> ArmPlan | SkillR
     return best[1]
 
 
-def free_spots(sk: Skills, label: str, near_xy=(0.0, -0.15), clearance: float = 0.02) -> list[tuple]:
-    """Table spots near ``near_xy`` clear of the other objects (for putting ``label`` down)."""
+def free_spots(sk: Skills, label: str, near_xy=(0.0, -0.15), clearance: float = 0.02, avoid=()) -> list[tuple]:
+    """Table spots near ``near_xy`` clear of the other objects (for putting ``label`` down); ``avoid``: fixtures
+    (Geometry labels) whose footprint (oriented box) the spot must also clear (a peg base between the arms)."""
     w = sk.world
     o = w.obj(label)
     r_self = float(np.linalg.norm(o.asset.extents[:2])) / 2
+    fixtures = []
+    for lab in avoid:
+        if lab in w.objects:
+            g = w.obj(lab)
+            c, R, h = g.obb(0.0)
+            fixtures.append((np.asarray(c, float)[:2], np.asarray(R, float)[:2, :2], np.asarray(h, float)[:2]))
     out = []
     for dx in (0.0, -0.05, 0.05, -0.1, 0.1, -0.15, 0.15):
         for dy in (0.0, -0.06, 0.06, -0.12, 0.12, -0.18):
@@ -318,6 +326,10 @@ def free_spots(sk: Skills, label: str, near_xy=(0.0, -0.15), clearance: float = 
             clear = all(np.linalg.norm(other.center_w[:2] - np.asarray(xy)) >=
                         r_self + float(np.linalg.norm(other.asset.extents[:2])) / 2 + clearance
                         for other in w.task_objects() if other.label != label and other.obj_type != "Geometry")
+            for c, R2, h in fixtures:
+                loc = np.abs(R2.T @ (np.asarray(xy) - c)) - h
+                if float(np.linalg.norm(np.maximum(loc, 0.0))) < r_self + clearance:
+                    clear = False
             if clear:
                 out.append(xy)
     return out
@@ -1011,7 +1023,7 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
                    max_spots: int = 3, relay_near=(0.0, -0.28), air_handover: bool = True,
-                   transfer_kw: dict | None = None) -> SkillResult:
+                   transfer_kw: dict | None = None, spot_avoid=()) -> SkillResult:
     """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
     the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
     through free table spots, the shortest that plans end to end:
@@ -1025,7 +1037,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
 
     Every leg picks its arm; all legs are planned before the first moves, and each later leg is
     re-planned from the world as it is then (same intermediate pose). ``transfer_kw``: extra ``plan_transfer``
-    arguments for every leg (grasp tilts, lift height)."""
+    arguments for every leg (grasp tilts, lift height). ``spot_avoid``: fixtures the relay spots must clear (``free_spots``)."""
     sk.refresh()
     tight = (tol_xy, tol_tilt, tol_z)
     tkw = dict(transfer_kw or {})
@@ -1037,7 +1049,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     o = sk.world.obj(label)
     Rs = [np.asarray(T, float)[:3, :3] for T in targets]
     R_now = level_R(o.R)
-    spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03)[:max_spots]
+    spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03, avoid=spot_avoid)[:max_spots]
     stable = all(rests_stably(o, R) for R in Rs)
     chains = []
     # as it is only when it stands by itself (a slice standing in a rack, 12 mm thick under a centre of mass 58 mm up,
@@ -1750,44 +1762,6 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
 
 # ============================================================================ pegs, slots + press
 
-def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str], drop: float = 0.003) -> dict:
-    """Thread pieces onto a base's pegs: group i (identical pieces) onto peg ``pegs[i]`` (a support frame of
-    ``base``), one at a time, flat (the piece's "up" pose), centred over the peg and released just above its
-    top: the piece slides down the peg (the peg keeps it co-axial). Closed-loop descent on the base; grippers
-    open after each piece (per-peg credit). Untested in the twin (no dev layouts for a stacking toy yet)."""
-    from dojo.skills.geometry import quat_to_R
-    w = sk.refresh()
-    b = w.obj(base)
-    sk.coll.include.add(base)
-    done, failed = [], []
-    for grp, tag in zip(groups, pegs):
-        c = np.asarray(_support_raw(b, tag)[0], float)
-        top_w = b.T @ np.r_[c[:3], 1.0]
-        for lab in grp:
-            if lab not in sk.world.objects:
-                continue
-            o = sk.world.obj(lab)
-            q = o.asset.place.get("up")
-            R = rot_z(b.yaw()) @ (quat_to_R(np.asarray(q, float)) if q is not None else level_R(o.R))
-            tg = [rest_with_R(sk, lab, top_w[:2], R, z_bottom=float(top_w[2]) + drop)]
-            # 40-deg top grasps and a lift to the pre-place height (twin, skills3: a far peg had 0 grasp-place pairs
-            # for 3-4 of 10 pieces per layout; the same reach limit as a toaster's far slot)
-            r = place_oriented(sk, lab, tg, yaw_sym=4, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08, ignore=(base,),
-                               place_kw={"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2,
-                                         "servo": True, "servo_ref": base},
-                               transfer_kw={"box_tilts": (0.0, 25.0, -25.0, 40.0, -40.0), "lift_to_pre": True})
-            (done if r.ok else failed).append(lab)
-            for a in ARMS:
-                if sk.held[a] is not None:
-                    sk._record(sk.regrasp(a))
-            sk.bank()
-            if r.status in ("step_budget", "ended"):
-                return {"ok": False, "stage": f"peg {tag}", "result": r}
-    if failed:
-        return {"ok": False, "stage": "pegs", "note": f"done {done}, failed {failed}"}
-    return {"ok": True, "stage": "pegs"}
-
-
 def joint_part(o, tag: str):
     """The moving part a functional point rides on: (link points in the object frame, joint dict) from the
     asset's ``links.json`` (``AssetInfo.links`` / ``joints``), or None. The metadata names the link
@@ -2087,15 +2061,42 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
 # ============================================================================ hang on hooks
 
 HANG_CARRY = 0.06              # rad/step: the re-orienting carry to a hook (twin: wall pinches slid at 0.09)
+HANG_PRE = 0.025               # m: the handle's hole is carried to this far beyond the hook arm's tip, then slid on
+HANG_SEARCH_S = 150.0          # s: wall-time cap of one round's hook x object search (twin: a 35 min episode)
+HANG_RELAY_DY = 0.2            # m: relay spots this far in front of a rack (towards the robot; both arms reach there)
+
+_SURF: dict = {}
+
+
+def _surface_points(o, step: float = 0.001) -> np.ndarray:
+    """Surface samples of an object's mesh (object frame), cached per asset."""
+    from dojo.skills.insertion import _surface_samples
+    key = (getattr(o.asset, "key", id(o.asset)), step)
+    if key not in _SURF:
+        _SURF[key] = _surface_samples(*o.asset.mesh, step=step)
+    return _SURF[key]
+
+
+def threads_along_x(o, T_h: np.ndarray, depth: float, r: float = 0.003, half: float = 0.012) -> bool:
+    """Does a line along the handle frame's x through the hole centre (``depth`` inside the frame along -z) pass
+    through the handle without touching it (the frame's x is the hole's axis, what a hook's arm runs along)? True
+    without a mesh. Mug frames differ: most have x across the handle's loop, one has x along the handle."""
+    if o.asset.mesh is None:
+        return True
+    P = _surface_points(o)
+    c = T_h[:3, 3] - T_h[:3, 2] * depth
+    L = (P - c) @ T_h[:3, :3]
+    near = (np.abs(L[:, 0]) < half) & (np.hypot(L[:, 1], L[:, 2]) < r)
+    return not bool(near.any())
+
 
 def handle_hole(o, T_h: np.ndarray, slab: float = 0.004) -> float:
     """How far (m) inside a handle frame's origin (along its -z, into the object) the handle's hole centre lies: the
     largest gap in the mesh along that line within the handle's plane (a mug's handle frame sits on the outside of
     its bar). 8 mm when the mesh says nothing."""
-    from dojo.skills.insertion import _surface_samples
     if o.asset.mesh is None:
         return 0.008
-    P = _surface_samples(*o.asset.mesh, step=0.001)
+    P = _surface_points(o)
     L = (P - T_h[:3, 3]) @ T_h[:3, :3]
     z = np.sort(L[(np.abs(L[:, 0]) < slab) & (np.abs(L[:, 1]) < slab) & (L[:, 2] < 0.002) & (L[:, 2] > -0.04)][:, 2])
     if len(z) < 4:
@@ -2128,6 +2129,13 @@ def hook_frames(rack, tag: str) -> list[tuple[int, np.ndarray, float]]:
     return out
 
 
+def hook_order(hooks: list, n: int) -> list:
+    """The order hooks are filled in: the ``n`` highest, lowest of them first (an object hung on a higher hook hangs
+    over the ones below it), then the rest, highest first (fallbacks)."""
+    by_h = sorted(hooks, key=lambda h: -float(h[1][2, 3]))
+    return sorted(by_h[:n], key=lambda h: float(h[1][2, 3])) + by_h[n:]
+
+
 def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
     """Hang each object by its handle on one of the rack's hooks. The handle frame (on the outside of the handle's
     bar) goes onto the hook frame, raised by the handle's hole depth so the hook's arm runs through the hole; hooks
@@ -2143,46 +2151,144 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
     hooks_by = {h[0]: h for h in hooks}
-    # hook order as the rack lists them (v3 tried the highest first: 0.32 on 3 layouts against v2's 0.42 on 6; the
-    # top hooks took 8/8 mugs in v2 when filled after the low ones)
-    used, done, failed, retried = set(), [], [], set()
+    # the rack as an obstacle, pole and arms as small boxes from its mesh (its bbox covers every hook): the carry to a
+    # low hook passes under the upper arms (twin v2: low hooks 4/10, the mug knocked out of the pads on the way)
+    parts = None
+    if rk.asset.mesh is not None:
+        from dojo.skills.motion import mesh_parts
+        sk.coll.include.add(rack)
+        parts = mesh_parts(*rk.asset.mesh)
+        sk.coll.parts[rack] = parts
+    fr_local = functional_frames(rk, hook_tag)
+
+    def without_arm(hi: int, tip):
+        """The rack's boxes less the hook's own arm (what the handle is threaded onto may come close to it)."""
+        if parts is None or tip is None or hi >= len(fr_local):
+            return parts
+        F = fr_local[hi]
+        L = (parts[0] - F[:3, 3]) @ F[:3, :3]
+        arm = (L[:, 0] > -0.012) & (L[:, 0] < float(tip) + 0.012) & (np.hypot(L[:, 1], L[:, 2]) < 0.02)
+        return parts[0][~arm], parts[1][~arm]
+    # the highest hooks, filled from the lowest up: an object hung on a higher hook hangs over the ones below it, and
+    # every low hook used is a hard carry under the arms above it (v2: top hooks 8/8, low ones 4/10)
     pool = [l for l in objects if l in w.objects]
+    order = hook_order(hooks, len(pool))
+
+    def plan_hook(lab: str, hi: int, H, tip, q_start=None):
+        """(lab, hook, H, T_obj, T_pre, (pick, place)) for hanging ``lab`` on hook ``hi`` with one arm, or a note."""
+        if parts is not None:
+            sk.coll.parts[rack] = without_arm(hi, tip)
+        o = sk.world.obj(lab)
+        hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
+        note = "no handle frame threads the hook"
+        no_pairs = set()
+        for fi, Th, high in [(fi, Th, high) for high in (False, True) for fi, Th in enumerate(hs[:2])]:
+            if high and fi in no_pairs:
+                continue              # the same place pose, fewer lifts: no pairs either
+            dz = handle_hole(o, Th)
+            if tip is not None and not threads_along_x(o, Th, dz):
+                continue
+            Ht = H.copy()
+            Ht[:3, 3] += H[:3, 2] * dz
+            if tip is None:              # a cradle: the point itself goes onto it, from above
+                Ht = H.copy()
+            T_obj = Ht @ inv_T(Th)
+            T_pre = T_obj.copy()
+            if tip is None:
+                T_pre[2, 3] += 0.03
+            else:
+                T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
+            # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
+            # lamp), and its via path over the top hook was out of reach
+            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=(lambda a, o=o: G_hang(sk, o, a)), max_full=8,
+                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY}, q_start=q_start,
+                                 lift_to_pre=high)
+            if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
+                no_pairs.add(fi)
+            if not isinstance(r, SkillResult):
+                if tip is None:
+                    return (lab, hi, H, T_obj, T_pre, r)
+                # the slide onto the arm must be in reach too (twin: a slide to the far top hook stopped 4 cm short, the
+                # handle never reached the arm and the mug fell when let go)
+                pp, pl = r
+                T_on = T_obj @ inv_T(pp.T_tcp_obj)
+                sl = sk.motion.line(pp.arm, pl.plan.q_end, T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
+                if sl.ok:
+                    return (lab, hi, H, T_obj, T_pre, r)
+                note = f"slide onto hook {hi} out of reach ({sl.note[:60]})"
+                continue
+            if "grasp-place pairs" not in note or " 0 grasp-place pairs" not in r.note:
+                note = r.note                    # keep the most telling note (one that got as far as full plans)
+        return note
+
+    def relay_spot(labels, free_hooks, max_spots: int = 3, budget_s: float = 90.0):
+        """(lab, spot pose, transfer plan) of the first object that, stood as it is on a free spot in front of the
+        rack, has a hook plan from there; None."""
+        import time as _time
+        t0 = _time.perf_counter()
+        near = (float(rk.center_w[0]), float(rk.center_w[1]) - HANG_RELAY_DY)
+        for lab in labels:
+            o = sk.world.obj(lab)
+            for sp in free_spots(sk, lab, near_xy=near, clearance=0.03, avoid=(rack,))[:max_spots]:
+                if _time.perf_counter() - t0 > budget_s:
+                    return None
+                T_sp = rest_with_R(sk, lab, sp, level_R(o.R))
+                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw={"grasps": (lambda a, o=o: G_hang(sk, o, a))})
+                if isinstance(leg, SkillResult):
+                    continue
+                saved = (o.pos.copy(), o.quat.copy())
+                o.pos, o.quat = T_sp[:3, 3].copy(), R_to_quat(T_sp[:3, :3])
+                try:
+                    home = {a: sk.world.home_q[a] for a in ARMS}
+                    ok = any(not isinstance(plan_hook(lab, hi, H, tip, q_start=home), str) for hi, H, tip in free_hooks)
+                finally:
+                    o.pos, o.quat = saved
+                if ok:
+                    return lab, T_sp, leg
+        return None
+    relays = 2
+    used, done, failed, retried = set(), [], [], set()
     for _round in range(2 * len(pool)):
         if not pool:
             break
         w = sk.refresh()
-        found = None
-        for lab in pool:
-            o = w.obj(lab)
-            hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
-            for hi, H, tip in hooks:
-                if hi in used:
+        found, why = None, {}
+        t_round = time.perf_counter()
+        for hi, H, tip in order:
+            if hi in used:
+                continue
+            if time.perf_counter() - t_round > HANG_SEARCH_S:
+                why.setdefault(hi, []).append(f"search stopped after {HANG_SEARCH_S:.0f} s")
+                break
+            for lab in pool:
+                f = plan_hook(lab, hi, H, tip)
+                if isinstance(f, str):
+                    why.setdefault(hi, []).append(f"{lab}: {f[:160]}")
                     continue
-                for Th in hs[:2]:
-                    dz = handle_hole(o, Th)
-                    Ht = H.copy()
-                    Ht[:3, 3] += H[:3, 2] * dz
-                    if tip is None:              # a cradle: the point itself goes onto it, from above
-                        dz = 0.0
-                        Ht = H.copy()
-                    T_obj = Ht @ inv_T(Th)
-                    T_pre = T_obj.copy()
-                    if tip is None:
-                        T_pre[2, 3] += 0.03
-                    else:
-                        T_pre[:3, 3] += H[:3, 0] * (tip + 0.02)
-                    grasps = (lambda a, o=o: G_hang(sk, o, a))
-                    r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=grasps, max_full=8,
-                                         place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY})
-                    if not isinstance(r, SkillResult):
-                        found = (lab, hi, H, T_obj, T_pre, r)
-                        break
-                if found:
-                    break
+                found = f
+                break
             if found:
                 break
+        if not found and relays > 0:
+            # an object no arm can hang from where it is (a mug 0.5 m out on one side, the free hooks on the other):
+            # stand it on a free spot in front of the rack, as it is, when some hook plans from there
+            mv = relay_spot(pool, [h for h in order if h[0] not in used])
+            if mv is not None:
+                relays -= 1
+                lab, T_sp, leg = mv
+                sk.log(f"[hang] {lab}: no hook plans from where it is; relay to {np.round(T_sp[:2, 3], 3).tolist()} "
+                       f"({leg[0].arm})")
+                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw={"grasps": (lambda a, lab=lab: G_hang(sk, sk.world.obj(lab), a))})
+                for a in ARMS:
+                    if sk.held[a] is not None:
+                        sk._record(sk.regrasp(a))
+                sk.bank()
+                if rr.status in ("step_budget", "ended"):
+                    return {"ok": False, "stage": f"relay {lab}", "result": rr}
+                continue
         if not found:
-            sk.log(f"[hang] no plan for {pool} on hooks {[h[0] for h in hooks if h[0] not in used]}")
+            sk.log(f"[hang] no plan for {pool} on hooks {[h[0] for h in order if h[0] not in used]}: "
+                   + "; ".join(f"hook {k}: {' | '.join(v)}" for k, v in why.items()))
             failed += pool
             break
         lab, hi, H, T_obj, T_pre, (pp, pl) = found
@@ -2232,6 +2338,13 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                 plan.move(bk, "retreat")
             sk.ex.run({arm: plan}, name=f"hang {lab}")
             sk.held[arm] = None
+            o_h = sk.refresh().obj(lab)
+            if o_h.asset.mesh is not None:
+                from dojo.skills.motion import mesh_parts
+                # fine boxes, a small margin: the next mug hangs a few cm above or below it on the same side
+                sk.coll.parts[lab] = mesh_parts(*o_h.asset.mesh, cell=0.015, step=0.005)
+                sk.coll.margin_of[lab] = 0.002
+            _hang_exit(sk, arm, lab)
         except (BudgetExceeded, EpisodeEnded) as e:
             return {"ok": False, "stage": f"hang {lab}", "note": str(e)}
         o2 = sk.refresh().obj(lab)
@@ -2242,14 +2355,33 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         sk._record(SkillResult(ok, "hang", "ok" if ok else "place_miss", 0, arm,
                                note=f"{lab} handle {d*1000:.0f} mm from hook {hi}, z {hp[2]:.3f}"))
         (done if ok else failed).append(lab)
-        if ok:
-            # a hung object's box (bbox + margin, turned handle-up) covers most of a small rack: shrink it for the
-            # next plans (twin, a 14 cm rack: after the first mug no other mug had a plan)
+        if ok and o2.asset.mesh is None:
+            # a hung object's box (bbox + margin, turned handle-up) covers most of a small rack (twin, a 14 cm rack: after
+            # the first mug no other mug had a plan); with a mesh it is small boxes already (above)
             sk.coll.margin_of[lab] = -0.01
         sk.bank()
     if failed:
         return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
     return {"ok": True, "stage": "hang"}
+
+
+def _hang_exit(sk: Skills, arm: str, lab: str, back: float = 0.06) -> None:
+    """Leave an object just hung: back the open hand off further along its approach (unchecked: it starts beside the
+    object), then home on a collision-checked path, the rack and the hung objects as obstacles. The finish's straight,
+    unchecked joint move home swept the open hand through a mug just hung on a low hook and flung it off (twin)."""
+    q = sk.ex.q[arm].copy()
+    T = sk.kin.tcp(arm, q)
+    T_out = T.copy()
+    T_out[:3, 3] -= T[:3, 0] * back
+    out = sk.motion.line(arm, q, T_out, MEDIUM, "hang_back", gripper=OPEN, check=False)
+    p = ArmPlan(arm, q, OPEN)
+    if out.segments:
+        p.move(out, "hang_back")
+        q = out.q_end
+    home = sk.motion.to_pose(arm, q, sk.kin.tcp(arm, sk.world.home_q[arm]), FAST, "hang_home", gripper=OPEN)
+    if home.ok:
+        p.move(home, "hang_home")
+    sk.ex.run({arm: p}, name=f"hang {lab} exit")
 
 
 def G_hang(sk: Skills, o, arm: str) -> list:
@@ -2262,6 +2394,9 @@ def G_hang(sk: Skills, o, arm: str) -> list:
     # deep wall pinches only (twin: an 8 mm deep pinch slid 46 mm in the hand while the mug turned 90 deg)
     return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032))
 
+
+# pieces threaded onto pegs: skills-7 (dojo/skills/pegs.py)
+from dojo.skills.pegs import stack_on_pegs  # noqa: E402
 
 SKILLS = {"stack_objects": stack_objects, "build_tower": build_tower, "put_into": put_into,
           "swap_on_mats": swap_on_mats, "press_sequence": press_sequence, "declare_kong": declare_kong,
