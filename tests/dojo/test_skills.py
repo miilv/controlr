@@ -258,9 +258,10 @@ def test_replanned_stack_skips_finished_jobs():
     assert planner.solve(sk)["ok"]
     n = env.steps_used
     sk2 = Skills(env, GTProvider(env, None, instruction=env.instruction))
-    assert planner.solve(sk2)["ok"]
+    r2 = planner.solve(sk2)
+    assert r2["ok"]
     assert env.steps_used - n < 30          # no re-picks: only finish
-    assert any(h.status == "skipped" for h in sk2.history)
+    assert any(h.status == "skipped" for h in sk2.history) or "already holds" in (r2.get("note") or "")
 
 
 def test_refine_hook_called_at_hover_and_used():
@@ -346,3 +347,17 @@ def test_refine_follows_up_to_max_rehovers_hints():
     assert planner.solve(sk)["ok"]
     picks = [l for k, l in calls if k == "pick"]
     assert all(picks.count(l) == 3 for l in set(picks))
+
+
+def test_stack_objects_never_undoes_a_standing_stack_whatever_the_labels():
+    """The world (the belief in mode B) already shows the three blocks stacked, in an order the labels do not
+    match: stack_objects (any order) finishes at once, no pick."""
+    from dojo.skills import library
+    env = _blocks_env([(-0.25, -0.15, 0.78), (-0.25, -0.15, 0.81), (-0.25, -0.15, 0.84)])
+    sk = Skills(env, GTProvider(env, None, instruction=env.instruction))
+    labels = [o["label"] for o in env.objects]
+    n = env.steps_used
+    r = library.stack_objects(sk, labels[::-1])                       # a different order than the physical one
+    assert r["ok"] and "already holds" in r.get("note", "") and env.steps_used == n
+    r2 = library.stack_objects(sk, labels[::-1], ordered=True)          # ordered: the physical order is not that one
+    assert "already holds" not in r2.get("note", "")
