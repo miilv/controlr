@@ -254,6 +254,31 @@ class RuntimeProvider:
         self.checkpoint = {"objects": est_objects(self.belief.objects), "robot": robot_from_state(st),
                            "n": self.bridge.n_executed, "step": self.bridge.steps_used}
 
+    # ------------------------------------------------------------------ outcome of a non-grasp action
+    def confirm_pose(self, label: str, pos, quat) -> dict:
+        """A skill that moved ``label`` without grasping it (a topple, a push) proposes the pose it expects; nothing
+        else updates the belief after such a motion (no release, so no post-place; no twin segment). The head view of
+        the current frame decides (perception check, z-buffered among the others; ``_post_place_confirmed``): the
+        expected pose replaces the belief only if the head view clearly prefers it. Returns {"adopted", "confirm"}."""
+        if self.mode == "gt" or self.belief is None or label not in self.belief.objects:
+            return {"adopted": False, "why": "gt" if self.mode == "gt" else "unknown label"}
+        obs = self.bridge.observe()
+        o = self.belief.objects[label]
+        others = [x for x in self.belief.movable() if x.label != label]
+        ev = {"kind": "confirm_pose", "label": label, "step": self.bridge.steps_used,
+              "prior7": [round(float(v), 4) for v in np.r_[o.pos, o.quat]],
+              "expected7": [round(float(v), 4) for v in np.r_[np.asarray(pos, float), np.asarray(quat, float)]]}
+        ok = self._post_place_confirmed(obs, o, {"pos": pos, "quat": quat}, others, ev)
+        if ok:
+            o.pos, o.quat, o.source = np.asarray(pos, float).copy(), np.asarray(quat, float).copy(), "perception"
+            self.touched.add(label)
+            if not self.belief.held_labels():
+                self._checkpoint(obs["state"])
+            self.stats["confirm_pose_adopted"] = self.stats.get("confirm_pose_adopted", 0) + 1
+        ev["adopted"] = ok
+        self.events.append(ev)
+        return {"adopted": ok, "confirm": ev.get("confirm")}
+
     # ------------------------------------------------------------------ resync
     def post_place(self, obs: dict, released: list[str]) -> list[dict]:
         """Right after a release the arm is at its retreat pose above the placed object: re-measure that object

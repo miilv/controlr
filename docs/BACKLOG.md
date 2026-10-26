@@ -33,6 +33,11 @@
 - [ ] **Save the scan frame with `save_look_frames`.** The runtime keeps frame 0 and the last look only, so a
   scan-primary artefact cannot be replayed. Integration's tower scan A/B phantoms in 100011 / 100014 could not be
   re-run (experiments/2026-10-26-phantom-stack.md).
+- [ ] **Run `catalog_check --sync --assets <RoboDojo Assets>` on every catalogue install.** It annotates the slot
+  bases (`passive.support`); without it, `catalog_check` now exits 1 with an ERROR. make_toast's bread and
+  play_Xylophone's mallet are placed from `Geometry/bread_shelf/00000`'s and `Rigid/mallet_stand/00000`'s slots.
+  Annotated on compute3 only. Then settle the other slot tasks' pairs: deposit_coin, fill_egg_holder
+  (experiments/2026-10-26-slot-objects.md).
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at

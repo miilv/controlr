@@ -1888,8 +1888,9 @@ def test_catalog_check_finds_and_syncs_missing_assets(tmp_path):
 @pytest.mark.skipif(not Path("~/dojo-perception-data/catalog/tasks.json").expanduser().is_file(),
                     reason="needs the perception catalogue (compute / GPU boxes)")
 def test_the_installed_catalogue_holds_every_table_vocabulary():
-    from dojo.runtime.catalog_check import missing_assets
+    from dojo.runtime.catalog_check import missing_assets, missing_support
     assert missing_assets(Path("~/dojo-perception-data/catalog").expanduser()) == {}
+    assert missing_support(Path("~/dojo-perception-data/catalog").expanduser()) == {}  # slot bases annotated
 
 
 
@@ -2312,6 +2313,36 @@ def test_eval_cli_takes_mode_and_verify_from_the_preset(monkeypatch, tmp_path):
     assert (seen["cfg"].preset, seen["cfg"].mode, seen["cfg"].verify) == (None, "gt", "off")
 
 
+def test_catalog_check_fails_on_a_slot_base_without_support_frames(tmp_path):
+    import json as _json
+
+    from dojo.runtime.catalog_check import missing_support
+    cat = tmp_path / "catalog"
+    for k, info in (("Geometry/bread_shelf/00000", {}), ("Rigid/bread/00000", {}),
+                    ("Rigid/mallet_stand/00000", {"support": {"mallet_stand/0": {"center": [[0, 0, 0, 1, 0, 0, 0]]}}}),
+                    ("Rigid/mallet/00000", {})):
+        (cat / k).mkdir(parents=True)
+        (cat / k / "info.json").write_text(_json.dumps(info))
+    slot = {"xlim": [-0.02, -0.02], "ylim": [-0.007, -0.007], "rotate_rand": False}
+    (cat / "tasks.json").write_text(_json.dumps({
+        "make_toast": {"labels": {"bread_shelf": {"candidates": ["Geometry/bread_shelf/00000"], "placement": {}},
+                                  "bread_0": {"candidates": ["Rigid/bread/00000"],
+                                              "placement": {**slot, "relative_plane": "bread_shelf/bread_shelf/0"}}}},
+        "play_Xylophone": {"labels": {"mallet_stand": {"candidates": ["Rigid/mallet_stand/00000"], "placement": {}},
+                                      "mallet": {"candidates": ["Rigid/mallet/00000"],
+                                                 "placement": {"xlim": [0, 0], "ylim": [0, 0], "rotate_rand": False,
+                                                               "relative_plane": "mallet_stand/mallet_stand/0"}}}}}))
+    # the shelf was never annotated: make_toast fails loudly; the annotated stand passes (both pairs have settle data)
+    assert missing_support(cat, ["make_toast", "play_Xylophone"]) == {"make_toast": ["Geometry/bread_shelf/00000#bread_shelf/0"]}
+    # a slot pair without settle data (make_kong's stacked tiles) is perception's generic path: nothing required
+    tasks = _json.loads((cat / "tasks.json").read_text())
+    tasks["make_kong"] = {"labels": {"other0": {"candidates": ["Rigid/mahjong/00000"], "placement": {}},
+                                     "other1": {"candidates": ["Rigid/mahjong/00001"],
+                                                "placement": {"xlim": [0, 0], "ylim": [0, 0], "relative_plane": "other0/mahjong_0"}}}}
+    (cat / "tasks.json").write_text(_json.dumps(tasks))
+    assert "make_kong" not in missing_support(cat, ["make_kong"])
+
+
 def test_provider_show_pose_plans_with_the_hold_joints_and_held_pose_passes_the_view():
     env = _env()
     q_hold = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6]
@@ -2349,3 +2380,70 @@ def test_provider_show_pose_plans_with_the_hold_joints_and_held_pose_passes_the_
     pol2 = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=SP(env),
                          program=lambda ctx: {"ok": not hasattr(ctx.prov, "show_pose")})
     assert run_episode(pol2, FakeEpisode(_env()), "perception")["result"]["ok"]            # held_pose off: no show_pose
+
+
+@pytest.mark.parametrize("inc_conf, alt, chosen", [(0.78, (2, 3, 0.826), "stack_blocks_by_language"),  # 100002: 0.55 vs 0.52
+                                                   (0.78, (3, 3, 0.6), "stack_blocks"),               # finds more: switch
+                                                   (0.6, (2, 3, 0.9), "stack_blocks")])               # 0.60 vs 0.40: switch
+def test_vocab_explain_keeps_the_table_match_unless_another_set_clearly_explains_more(inc_conf, alt, chosen):
+    from dojo.runtime.supervisor import Vocabulary
+    n_found, n_lab, conf = alt
+
+    class P:
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            k, n, c = (2, 3, inc_conf) if vocabulary == "stack_blocks_by_language" else (n_found, n_lab, conf)
+            recs = [{"category": "cube", "category_idx": 1, "label": f"block_{i}", "default_pos": [0.1 * i, 0, 0.78],
+                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": c}} for i in range(k)]
+            return {"Rigid": {"cube": recs}, "_not_found": [{"label": f"block_{i}"} for i in range(k, n)]}
+
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=P())
+    pol.reset({"instruction": "x", "step_lim": 550})
+    cands = [Vocabulary("stack_blocks_by_language", (), source="table"), Vocabulary("stack_blocks", (), source="catalog")]
+    v, _rec = pol._explain_vocabulary(cands, {"instruction": "x"})
+    assert v.name == chosen
+
+
+@pytest.mark.parametrize("belief_prec, expected_prec, adopted", [(0.9, 0.5, False), (0.1, 0.85, True), (None, None, False)])
+def test_confirm_pose_adopts_a_skills_expected_outcome_only_when_the_head_view_prefers_it(belief_prec, expected_prec, adopted):
+    """A topple moves a tile without a grasp: no release, no twin segment, so the belief keeps it standing and the
+    skill reads "did not tip over" (breadth make_kong 0/5). The skill proposes the toppled pose; the head view decides."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+
+    class C:
+        def __init__(self):
+            self.n = 0
+
+        def check(self, obs, objects):
+            self.n += 1
+            p = belief_prec if self.n == 1 else expected_prec
+            return {objects[0].label: {"head": {"prec": p, "n_vis": 500 if p is not None else 0, "n_px": 600}}}
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=C())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    q_fallen = [float(np.cos(np.pi / 4)), float(np.sin(np.pi / 4)), 0.0, 0.0]
+    p0 = prov.belief.objects["block_1"].pos.copy()
+    r = prov.confirm_pose("block_1", p0 + [0.0, 0.01, -0.002], q_fallen)
+    o = prov.belief.objects["block_1"]
+    assert r["adopted"] == adopted and np.allclose(o.quat, q_fallen) == adopted
+    assert (("block_1" in prov.touched) == adopted) and prov.events[-1]["kind"] == "confirm_pose"
+    gt = RuntimeProvider(b, "stack_blocks", STACK, "gt", FakeAssets(), checker=C())
+    assert gt.confirm_pose("block_1", p0, q_fallen)["adopted"] is False
+
+
+def test_catalog_check_reports_a_new_gap_but_not_a_known_unshipped_asset(tmp_path):
+    import json as _json
+
+    from dojo.runtime.catalog_check import KNOWN_UNSHIPPED, missing_assets
+    known = sorted(KNOWN_UNSHIPPED)[0]
+    c = tmp_path / "catalog"
+    have = "Rigid/block/00001"
+    (c / have).mkdir(parents=True)
+    for f in ("geom.npz", "info.json"):
+        (c / have / f).write_text("x")
+    (c / "index.json").write_text(_json.dumps({have: {}}))
+    tasks = {"a": {"labels": {"x": {"candidates": [have, known]}}}, "b": {"labels": {"y": {"candidates": [have, "Rigid/new/00001"]}}}}
+    (c / "tasks.json").write_text(_json.dumps(tasks))
+    assert missing_assets(c, ["a", "b"]) == {"b": ["Rigid/new/00001"]}
+    assert missing_assets(c, ["a"], known={}) == {"a": [known]}
