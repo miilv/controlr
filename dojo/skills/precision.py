@@ -1012,10 +1012,9 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
             # the arm carrying it in must not reach over an object already standing in a hole (twin: a hand passing
             # over a filled hole was held 34 mm off its command, the tube landed on the rack)
             over = any(_seg_dist(f[:2], base, p[:2]) < EACH_OVER for f in filled)
-            # holes farther from the robot first: the later ones are then reached without passing over the filled
-            free.append((over, (dmin < EACH_SPREAD), -round(float(p[1]), 2), side, tag, T, r))
-        free.sort(key=lambda x: (x[0], x[1], x[2], x[3]))
-        free = [x[1:2] + x[3:] for x in free]
+            free.append((over, (dmin < EACH_SPREAD), side, tag, T, r))
+        free.sort(key=lambda x: (x[0], x[1], x[2]))
+        free = [x[1:] for x in free]
         res = None
         pk = {**EACH_PLACE_KW, "grip_only": (receptacle,)}
         tkw = {"grasps": lambda a, lab=lab: uniform_section_grasps(sk, sk.world.obj(lab), a), "lift_to_pre": True}
@@ -1027,18 +1026,17 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
             tg = upright_targets(o, p, fl, d, n_yaw=8)
             if tg:
                 cands.append((tag, d, tg))
-        # a one-arm plan into any of the best holes (one screen over all of them, the better holes first); a relay
-        # only when none has one
-        tg_all = [T for _, _, tg in cands for T in tg]
-        plan = sk.plan_transfer(lab, tg_all, ignore=(receptacle,), place_kw=pk, **tkw) if tg_all else None
-        if plan is not None and not isinstance(plan, SkillResult):
-            T_sel = plan[1].T_obj_target
-            tag, d, tg = min(cands, key=lambda c: min(float(np.linalg.norm(T[:3, 3] - T_sel[:3, 3])) for T in c[2]))
+        # a one-arm plan into one of the best holes (a screen per hole: one screen over all of them ran out of its IK
+        # budget before the later holes, twin); a relay only when none has one
+        from dojo.skills.library import _run_leg
+        for tag, d, tg in cands:
+            plan = sk.plan_transfer(lab, tg, ignore=(receptacle,), place_kw=pk, **tkw)
+            if isinstance(plan, SkillResult):
+                sk.log(f"[insert_each] {lab} -> {tag}: no one-arm plan ({plan.note[:120]})")
+                continue
             sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: {plan[0].arm} ({plan[0].grasp.note}), {d*1000:.0f} mm in")
-            from dojo.skills.library import _run_leg
-            res = _run_leg(sk, lab, [T_sel], 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
-        elif plan is not None:
-            sk.log(f"[insert_each] {lab}: no one-arm plan into {[c[0] for c in cands]} ({plan.note[:160]})")
+            res = _run_leg(sk, lab, tg, 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
+            break
         if res is None and cands:
             tag, d, tg = cands[0]
             sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: relay")
