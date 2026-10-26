@@ -240,3 +240,78 @@ Totals including the dev eval and b5: see the addendum.
 - Scored blocks only on the lead's go: md5-freeze the checkout + `pdata`, run blind, write ledger lines.
 - Mikhail's lock-aware starters: rerun `scripts/dojo/isr_lockmock.py` against the synced mirror before the next hold
   after his sync.
+
+## Addendum: rendered 5.1 dev eval and the kit replay
+
+### A1. Rendered 5.1 dev eval, stack_blocks settled 100000-09 (RuntimePolicy + scanFA, twin 8 envs)
+
+Code 38ad5af: integ2 0982971 merged, plus the exit fix 56229d1, which changes only the process exit. Layouts 100005-09
+ran in a second hold after an inbox-gate stop. Sonnet calls are the agentic perceiver's turns by trigger. "scan ran" =
+the scan macro fired (trigger mode). Gross at planning = `dojo.runtime.eval`'s scorer vs the layout GT (> 20 mm xy,
+not found or wrong shape).
+
+| task | layout | success / score | steps | wall s | Sonnet calls by trigger | scan ran | gross at planning (xy med mm) | failure |
+|---|---|---|---|---|---|---|---|---|
+| stack_blocks | 100000 | yes / 100 | 231/550 | 148.4 | frame0 2, after_looks 2, risk 3 | yes | 0/3 (med 2.1) |   |
+| stack_blocks | 100001 | no / 15 | 291/550 | 131.5 | frame0 2, after_looks 3 | yes | 0/3 (med 1.9) | verify_reject place place_miss: xy err 10.1 mm, dz +54.1 mm (centre 0.8941 vs 0.8400 |
+| stack_blocks | 100002 | yes / 100 | 256/550 | 73.9 | frame0 2 | yes | 0/3 (med 1.2) |   |
+| stack_blocks | 100003 | yes / 100 | 218/550 | 177.0 | frame0 5, after_looks 5, held 1 | no | 0/3 (med 1.0) |   |
+| stack_blocks | 100004 | no / 0 | 200/550 | 94.6 | frame0 4 | yes | 0/3 (med 2.6) | grasp_slip object rose 0 mm (planned 80), in-hand drift 77 mm; verify passes [2,  |
+| stack_blocks | 100005 | yes / 100 | 222/550 | 80.1 | frame0 2, held 1 | yes | 0/3 (med 1.3) |   |
+| stack_blocks | 100006 | yes / 100 | 248/550 | 82.4 | frame0 2 | yes | 0/3 (med 4.9) |   |
+| stack_blocks | 100007 | no / 15 | 224/550 | 110.9 | frame0 2 | yes | 0/3 (med 0.6) | verify_reject place place_miss: xy err 6.7 mm, dz +56.0 mm (centre 0.8961 vs 0.8400) |
+| stack_blocks | 100008 | no / 15 | 443/550 | 127.4 | frame0 3, held 1 | yes | 0/3 (med 0.2) | grasp_slip object rose 0 mm (planned 80), in-hand drift 77 mm; verify passes [2,  |
+| stack_blocks | 100009 | yes / 100 | 216/550 | 101.9 | frame0 5 | no | 0/3 (med 1.3) |   |
+
+**stack_blocks: 6/10, mean score 64.5.**
+- Perception at planning: 0 gross in 10 (xy median 0.2-4.9 mm).
+- The scan ran in 8 of 10.
+- Sonnet: 45 calls, 614.8k prompt (499.5k cache read), 30.7k completion.
+- The losses split into two signatures:
+  - verify_reject + place_miss "dz +54 / +56 mm": 100001, 100007;
+  - grasp_slip "rose 0 mm, drift 77 mm" with the twin passing every candidate: 100004, 100008.
+
+### A2. Kit replay: the twin's physics is the eval's physics, bit for bit
+
+`scripts/dojo/replay_kits.py` replays an episode's executed action list (from `actions.json.gz`) open-loop on the
+same settled layout. Each run is one process: rendered with the eval client's flags, or physics-only (the twin's kit).
+Every task object's pos + quat is recorded after every step.
+
+| layout | pair | steps | bitwise equal | max mm / deg |
+|---|---|---|---|---|
+| 100004 | rendered vs physics-only | 200 | yes | 0.0 / 0.0 |
+| 100004 | physics-only vs physics-only | 200 | yes | 0.0 / 0.0 |
+| 100004 | rendered vs rendered with an observation every 10 steps | 200 | yes | 0.0 / 0.0 |
+| 100004 | rendered vs physics-only with `updateToUsd` forced on | 200 | yes | 0.0 / 0.0 |
+| 100004 | rendered vs physics-only without `omni.physx.fabric` | 200 | yes | 0.0 / 0.0 |
+| 100001 | rendered vs physics-only | 291 | yes | 0.0 / 0.0 |
+| 100001 | physics-only vs physics-only | 291 | yes | 0.0 / 0.0 |
+
+The kit difference found by the USD probe (§1) touches only what USD reads: the checker's articulation link poses. It
+does not change the physics. Rendering between steps does not change it either.
+
+**So the stack losses are perception verdicts on genuine 5.1 frames, not physics.** The replay is reality, so it shows
+what happened:
+- **100004: B1 `held_look` false negative.**
+  - The jaws closed at step 58-59, and block_0 rose to z 0.870 (+87 mm) by step 65.
+  - B1 at step 64 said held=False, confidence 1.0. The runtime treated it as dropped and opened the jaws, so the block
+    fell back 22.5 mm away, yaw 15.9 deg.
+  - Attempt 2 repeated it: lifted to 0.869, B1 said not held (conf 1.0), released.
+  - Attempts 3-4 then closed on air.
+  - `b1_then_agent` never asked the agent (B1 claimed conf 1.0), and the twin's "pass" verdicts were right.
+- **100001: a correct stack was undone.**
+  - At step 150 the stack was physically complete (z 0.780 / 0.810 / 0.840, xy within 2 mm).
+  - The post-place refine (iou 0.18) and the resync check (iou 0.30 / 0.32 / 0.09) failed on the stack, and the place
+    check called it place_miss "dz +54 mm".
+  - The runtime re-picked block_2 from a believed z 0.894 and knocked it off the stack by step 291. The twin's 0/4 on
+    that place came from a twin loaded from the wrong belief.
+- **100007 / 100008 show the same signatures** in their reports:
+  - 100008: four `held=False, dropped` verdicts (B1 conf 0.9-1.0, once the agent at conf 0.9), each "rose 0 mm,
+    drift 77 mm";
+  - 100007: post_place iou 0.0017, then a not-held drop.
+  - They have not been replayed yet.
+
+Routed by the lead to perception-R&D (held_look and post-place checks on the 5.1 wrist and head views) and to
+integration-2 (a confident "not held" opens the jaws without a second look). The paired scanFA proxy runs on the same
+layouts will show whether the 6.0 frames hide these false negatives.
+
