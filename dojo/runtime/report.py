@@ -1,6 +1,9 @@
 """Aggregate integ runs into markdown tables (per task x mode x verify, plus per-episode failures).
 
     python -m dojo.runtime.report ~/dojo-data/integ/runs/A_stack_off_1 ~/dojo-data/integ/runs/B_stack_off_1 ...
+    python -m dojo.runtime.report --arm main:DIR,DIR --arm pr:DIR,DIR          # paired arms
+    python -m dojo.runtime.report --breadth [--refs refs.json] DIR ...           # one row per task (breadth runs)
+    python -m dojo.runtime.report --ledger rows.jsonl --tier dev_5.1_rendered --date YYYY-MM-DD DIR ...
 """
 
 from __future__ import annotations
@@ -125,11 +128,110 @@ def arm_table(arms: dict[str, list[dict]]) -> str:
     return "\n".join(out)
 
 
+def _calls(r: dict) -> int:
+    a = r.get("agentic") or []
+    return int(sum(x.get("calls", 0) or 0 for x in a)) if isinstance(a, list) else int((a or {}).get("calls", 0) or 0)
+
+
+def _why(why) -> str:
+    """A failure reason for a table cell; a perception_gross reason (the per-label error dict) as "coin0 not found",
+    "mug0 read as mug1 571 mm"."""
+    w = str(why or "")
+    if not w.startswith("{"):
+        return w
+    try:
+        d = json.loads(w)
+    except ValueError:
+        return w
+    parts = []
+    for lab, v in d.items():
+        if not isinstance(v, dict):
+            continue
+        if not v.get("found"):
+            parts.append(f"{lab} not found")
+        elif v.get("est_label") not in (None, lab):
+            parts.append(f"{lab} read as {v['est_label']} {float(v.get('xy_mm') or 0):.0f} mm")
+        else:
+            parts.append(f"{lab} {float(v.get('xy_mm') or 0):.0f} mm off")
+    return ", ".join(parts) or w
+
+
+def breadth_table(rows: list[dict], refs: dict | None = None) -> str:
+    """One row per task (a breadth run: every task, the same preset): success, score, steps, wall, LLM calls per
+    episode, and the failures by category, each with its most common reason (``why``, first 70 characters) and the
+    layouts. ``refs`` {task: "G3 mode A text"} adds a reference column."""
+    refs = refs or {}
+    out = ["| task | n | success | score | steps med / max (lim) | wall s med | calls / ep | failures (category n: layouts; "
+           "typical reason) |" + (" G3 mode A |" if refs else ""),
+           "|---|---|---|---|---|---|---|---|" + ("---|" if refs else "")]
+    for task in sorted({r["task"] for r in rows}):
+        rs = sorted((r for r in rows if r["task"] == task), key=lambda r: r["layout_id"])
+        n = len(rs)
+        steps = [r["steps_used"] for r in rs]
+        cats: dict = {}
+        for r in rs:
+            if not r["success"]:
+                cats.setdefault(r.get("category") or "?", []).append(r)
+        fails = []
+        for c, lst in sorted(cats.items(), key=lambda kv: -len(kv[1])):
+            whys: dict = {}
+            for r in lst:
+                w = _why(r.get("why")).replace("|", "/")[:70]
+                whys[w] = whys.get(w, 0) + 1
+            top = max(whys, key=whys.get) if whys else ""
+            fails.append(f"{c} {len(lst)}: {', '.join(str(r['layout_id'])[-2:] for r in lst)}; {top}")
+        row = (f"| {task} | {n} | {sum(r['success'] for r in rs)}/{n} | {np.mean([r['score'] for r in rs]) * 100:.1f} | "
+               f"{int(np.median(steps))} / {max(steps)} ({rs[0]['step_lim']}) | {np.median([r['wall_s'] for r in rs]):.0f} | "
+               f"{np.mean([_calls(r) for r in rs]):.1f} | {'<br>'.join(fails) or '-'} |")
+        if refs:
+            row += f" {refs.get(task, '-')} |"
+        out.append(row)
+    tot = len(rows)
+    out.append(f"\n{tot} episodes, {sum(r['success'] for r in rows)} successes, {sum(_calls(r) for r in rows)} LLM calls "
+               f"({sum(_calls(r) for r in rows) / max(1, tot):.1f} / episode)")
+    return "\n".join(out)
+
+
+def ledger_rows(rows: list[dict], tier: str, date: str, system: str = "dojo RuntimePolicy", path: str = "") -> list[dict]:
+    """One robot-harness ledger row (``results/ledger.jsonl`` schema) per task: n, success, score, LLM calls per
+    episode, the commit(s) and preset the episodes ran."""
+    out = []
+    for task in sorted({r["task"] for r in rows}):
+        rs = [r for r in rows if r["task"] == task]
+        ids = sorted(int(r["layout_id"]) for r in rs)
+        heads = sorted({(r.get("code") or {}).get("head", "?") for r in rs})
+        presets = sorted({str(r.get("preset")) for r in rs})
+        settled = all(str(r.get("layout", "")).endswith(".settled.json") for r in rs)
+        out.append({"date": date, "side": "ilia", "system": f"{system} ({', '.join(presets)}, mode B, cameras only)",
+                    "commit": "miilv/controlr@" + "+".join(heads), "task": task, "tier": tier,
+                    "layouts": f"{ids[0]}-{ids[-1]}" + (" settled" if settled else " (some raw)"), "n": len(rs),
+                    "success": int(sum(r["success"] for r in rs)), "score": round(float(np.mean([r["score"] for r in rs])) * 100, 1),
+                    "calls_per_ep": round(float(np.mean([_calls(r) for r in rs])), 1),
+                    "notes": f"renderer {sorted({str(r.get('renderer')) for r in rs})}; dev layouts, not a leaderboard score",
+                    "path": path})
+    return out
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("dirs", nargs="*")
     ap.add_argument("--arm", action="append", default=[], help="NAME:DIR[,DIR...] (give two for a paired table)")
+    ap.add_argument("--breadth", action="store_true", help="one row per task: success, score, calls, failures")
+    ap.add_argument("--refs", help="JSON {task: text}: a reference column for --breadth (e.g. G3 mode A)")
+    ap.add_argument("--ledger", help="write robot-harness ledger rows (JSONL) for the dirs to this file")
+    ap.add_argument("--tier", default="proxy", help="--ledger: the tier (proxy | dev_5.1_rendered | ...)")
+    ap.add_argument("--date", default="", help="--ledger: the row date (YYYY-MM-DD)")
+    ap.add_argument("--path", default="", help="--ledger: where the runs are")
     a = ap.parse_args(argv)
+    if a.breadth or a.ledger:
+        rows = load(a.dirs)
+        if a.breadth:
+            print(breadth_table(rows, json.loads(Path(a.refs).read_text()) if a.refs else None))
+        if a.ledger:
+            with open(a.ledger, "w") as f:
+                for row in ledger_rows(rows, a.tier, a.date, path=a.path):
+                    f.write(json.dumps(row) + "\n")
+        return
     if a.arm:
         arms = {spec.split(":", 1)[0]: load(spec.split(":", 1)[1].split(",")) for spec in a.arm}
         print(arm_table(arms))
