@@ -76,6 +76,8 @@ Everything of ours lives under `~/data2/ilia`. `~/data2/bench` and `~/data2/cont
 | one episode | `scripts/dojo/isr_episode.sh ID TASK <options>` |
 | rendered 5.1 dev eval on OUR settled layouts (>= 100000): the proxy driver with `--renderer isaac51` (`RenderedEpisode`: one EvalEnv with RTX, the eval client's app flags), perception service + twin, no robot server; the gate runs before every episode (`DOJO_EVAL_GATE`) | `scripts/dojo/isr_dev_eval.sh NAME ETA --task T --layouts L... --policy P --config JSON [--twin-envs 8]` |
 | rendered vs physics-only kit: replay an episode's executed actions, per-step object poses, divergence + phase | `scripts/dojo/replay_kits.py run ... [--physics-only] [--update-to-usd] [--no-fabric-ext] [--obs-every K]`, then `compare A B` |
+| regenerate the exact contract observations of a dev-eval episode (physics is deterministic, so they are bit-exact) | `replay_kits.py run ... --save-obs-at s1,s2,...`; which checks: `scripts/dojo/frames_plan.py plan --budget-mb N` (negatives first), then `index` (matched by asset key + position, never by label) |
+| stop a running block before its next episode | `touch $DOJO_DATA/bridge/STOP` (read by `bridge_episode.sh`; remove it to resume) |
 | robot-harness's lock-aware starters under our hold (mock, `ROBOT_START_DRYRUN`) | `scripts/dojo/isr_lockmock.py` |
 | rows (task, score, steps, wall, perception error at planning vs `dev.jsonl` after the close, verify, LLM calls) | `scripts/dojo/isr_summary.py` -> `~/data2/ilia/dojo-data/bridge/rows.jsonl` |
 
