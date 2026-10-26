@@ -30,6 +30,9 @@
   view, refine fits the offset across the long axis and the yaw. `partial.unobserved_axis` keeps the prior's
   position along the axis. Check that axis with the head-view render-compare or a second wrist pose at a board end;
   do not read `ok` as a full confirmation (experiments/2026-10-26-tower-post-place.md).
+- [ ] **Save the scan frame with `save_look_frames`.** The runtime keeps frame 0 and the last look only, so a
+  scan-primary artefact cannot be replayed. Integration's tower scan A/B phantoms in 100011 / 100014 could not be
+  re-run (experiments/2026-10-26-phantom-stack.md).
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at

@@ -201,8 +201,13 @@ def estimate_with_scan(scan: dict, frame0: dict, task: str, instruction: str = "
     """The scan frame as the primary view (its head view is unoccluded), frame 0 as extra views, then the frame-0
     fill. ``scan`` / ``frame0`` = {"images": {cam: RGB}, "state": {...}}. ``bgs`` must be a scan-aware background
     (clean head background built with scan frames), else the zone under the home grippers stays "unseen"."""
-    from .inverse_layout import estimate
+    import dataclasses
 
+    from .inverse_layout import EstimatorConfig, estimate
+
+    # an episode start has nothing stacked: every elevated hypothesis needs two views (tower scan A/B: a phantom
+    # pillar on a real one in 3 of 23 scan records, nothing stacked at frame 0)
+    cfg = dataclasses.replace(cfg or EstimatorConfig(), elevated_multiview="all")
     rec = estimate(scan["images"], scan["state"], task, instruction, bgs=bgs, cfg=cfg,
                    extra_frames=[(frame0["images"], frame0["state"])])
     if rec.get("_not_found"):
