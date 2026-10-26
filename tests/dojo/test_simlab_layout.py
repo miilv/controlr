@@ -286,3 +286,32 @@ def test_offsets_live_in_the_support_frame(monkeypatch):
              check_mode="none", place_tag="up")
     pose, _ = G.place_on_object(p, child, lay, set(), random.Random(0), {"ground": Ground()}, {})
     assert pose[:3] == pytest.approx([0.035, -0.007, 0.8 + 0.035 + 0.02], abs=1e-9)   # x offset lifts the slice
+
+
+def test_bare_label_fixture_on_a_parent_with_supports(monkeypatch):
+    """pick_from_conveyor_by_image's basket / photo: ``relative_plane: conveyor`` (no support key) + zlim -> world xy from
+    the conveyor's root, z from its world bbox top (PhysicalRSI place_fixture); not from the first belt support."""
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    box = [[x, y, z] for x in (-3.96, 0.0) for y in (-0.6, 0.575) for z in (0.0, 0.924)]
+    metas = {("Dynamic", "conveyor"): {"geometry": {"oriented_bbox": {"vertices": box}},
+                                       "passive": {"support": {"conveyor/0": {"center": [[-0.445, 0.003, 0.718, 0, 0, 0, 1]],
+                                                                              "radius": [0.44]}}}}}
+    monkeypatch.setattr(G, "metadata", lambda t, c, i, clutter=False: metas.get((t, c)))
+    lay = {"Dynamic": {"conveyor": [{"category": "conveyor", "category_idx": 1, "label": "conveyor",
+                                     "default_pos": [-2.08, 0.175, 0.05], "default_ori": [0.0, 0.0, 0.0, 1.0]}]}}
+    q = [0.707, 0.0, 0.0, 0.707]
+    p = dict(G.SAMPLING_DEFAULTS, relative_plane="conveyor", xlim=[1.5, 2.0], ylim=[-0.2, -0.1], zlim=[-0.1, -0.1],
+             qpos=q, check_mode="enforce")
+    pose, parent = G.place_on_object(p, {}, lay, set(), random.Random(0), {}, {})
+    assert parent == "conveyor"
+    assert -2.08 + 1.5 <= pose[0] <= -2.08 + 2.0 and 0.175 - 0.2 <= pose[1] <= 0.175 - 0.1
+    assert pose[2] == pytest.approx(0.05 + 0.924 - 0.1)
+    assert pose[3:] == pytest.approx(q)
+    # with a support key the child still rides that support (match_and_pick's objects on the belt)
+    p2 = dict(G.SAMPLING_DEFAULTS, relative_plane="conveyor/conveyor/0", xlim=[0.0, 0.0], ylim=[0.0, 0.0],
+              zlim=[0.02, 0.02], check_mode="enforce")
+    pose2, _ = G.place_on_object(p2, {}, lay, set(), random.Random(0), {}, {})
+    assert pose2[2] == pytest.approx(0.05 + 0.718 + 0.02)

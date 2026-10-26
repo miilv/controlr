@@ -135,6 +135,33 @@ class GTProvider:
         self.include_clutter = include_clutter
         self.home_q = None
         self.notes: dict = {}
+        self._actors_prev = None
+
+    def actors_moving(self, tol: float = 2e-3) -> bool | None:
+        """Whether a scripted actor (an opponent's or a demonstrator's arm) moved since the last call: dev-only GT of its
+        joints in G3 (``env.actors_gt``); None when the env cannot tell (the caller then waits a fixed time). At eval
+        the runtime's provider answers it from the frames (a watch read)."""
+        f = getattr(self.env, "actors_gt", None)
+        if f is None:
+            return None
+        cur = {k: np.asarray(v, float) for k, v in (f() or {}).items()}
+        prev, self._actors_prev = self._actors_prev, cur
+        if not cur:
+            return False
+        if prev is None:
+            return True
+        return any(k not in prev or float(np.abs(v - prev[k]).max()) > tol for k, v in cur.items())
+
+    def watch_read(self, region: dict, prior: dict | None = None) -> dict:
+        """Dev-only GT answer to perception's watch read (same dict shape, so G3 -> eval is a provider swap):
+        region {"kind": "cells", "board": {"asset", "pos", "quat"}, "pieces": {"own": key, "opponent": key}} ->
+        "cells": [{"k", "occupant", "conf", "pos"}]; {"kind": "container", "container": {...}, "candidates": [keys]} ->
+        "inside" / "outside": [{"asset", "pos", "conf"}]. Plus t_ms, visible_frac, occluded, stable_vs_prior, new."""
+        from dojo.skills.watch import gt_watch_read
+        rows = self.env.gt_objects()
+        objs = (_objects_from_rows_nodb(rows) if self.assets is None else
+                objects_from_gt(rows, self.assets, step=self.env.steps_used, include_clutter=False, meshes=False))
+        return gt_watch_read(objs, region, prior, step=int(self.env.steps_used))
 
     def refresh(self, holding: dict | None = None) -> WorldState:
         st = self.env.proprio()
@@ -476,7 +503,7 @@ class Skills:
                    keep_tilt: bool = False, held: "Held | None" = None, turn: float = 0.0, release: bool = True,
                    pre_settle: int = 1, grip_only=(), servo: bool = False, servo_ref: str | None = None,
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
-                   fingers_out: bool = False, pre_clear: float = 0.015):
+                   fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -489,7 +516,9 @@ class Skills:
         ``pre_clear``: the pre-place holds the object's lowest corner this far over the highest ignored support.
         ``fingers_out``: the fingertips stay 3 mm above the receptacle's (``servo_ref`` / first ignored object's) top:
         the object is let go there and drops the rest of the way (a bread slice into a toaster slot narrower than the
-        open fingers)."""
+        open fingers).
+        ``ref_top``: the receptacle's top height (world z) for ``fingers_out`` and the servo hover instead of its whole
+        bbox top (an egg carton whose open lid stands 12 cm above the plate the eggs go through)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -509,7 +538,8 @@ class Skills:
                        descend_rad=descend_rad, open_g=open_g, settle=settle, open_steps=open_steps,
                        pre_open_hold=pre_open_hold, turn=turn, release=release, grip_only=tuple(grip_only),
                        servo=bool(servo), servo_ref=servo_ref, seat_tol=float(seat_tol), drop_ok=bool(drop_ok),
-                       probe=bool(probe), hover_clear=float(hover_clear), fingers_out=bool(fingers_out))
+                       probe=bool(probe), hover_clear=float(hover_clear), fingers_out=bool(fingers_out),
+                       ref_top=None if ref_top is None else float(ref_top))
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -532,7 +562,9 @@ class Skills:
             if isinstance(tail, str):
                 notes.append(tail)
                 continue
-            p = ArmPlan(arm, np.asarray(q0, float), self.ex.g[arm]).move(to_pre, "approach")
+            # a place planned with its pick (``held``) starts with the gripper closed on the object, not open as it is
+            # now (mode B: the re-plan after the pick failed, this plan ran, and its approach let go of the charger)
+            p = ArmPlan(arm, np.asarray(q0, float), CLOSED if held is not None else self.ex.g[arm]).move(to_pre, "approach")
             p.ops.extend(tail.ops)
             cand = PlacePlan(arm, p, T_obj, p.steps, h.label, keep_tilt=keep_tilt)
             cand.approach = to_pre
@@ -552,14 +584,15 @@ class Skills:
                     open_steps, pre_open_hold, turn: float = 0.0, release: bool = True,
                     grip_only=(), servo: bool = False, servo_ref: str | None = None,
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
-                    hover_clear: float = 0.003, fingers_out: bool = False) -> ArmPlan | str:
+                    hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
             ref = next((l for l in ((servo_ref,) + tuple(grip_only) + tuple(ignore)) if l and l != h.label
                         and l in self.world.objects), None)
-            if ref is not None:
-                T_rel[2, 3] += self.tips_raise(T_rel, self.world.obj(ref).top_z + 0.003)
+            if ref is not None or ref_top is not None:
+                top = float(ref_top) if ref_top is not None else self.world.obj(ref).top_z
+                T_rel[2, 3] += self.tips_raise(T_rel, top + 0.003)
         down = self.motion.line(arm, q_pre, T_rel, descend_rad, "place_descend", gripper=CLOSED, held=h.box,
                                 ignore=ignore, grip_only=grip_only)
         if not down.ok:
@@ -609,6 +642,8 @@ class Skills:
         descent for the measured in-hand pose, descend, release, back out. ``other`` = the other
         arm's compiled per-step (q, g) list, run in the same env steps throughout."""
         other = list(other or [])
+        if self.held.get(pp.arm) is not None:
+            pp.plan.g0 = min(float(pp.plan.g0), float(self.ex.g[pp.arm]))   # the gripper holds: never open on the way
         try:
             if (remeasure and (self.remeasure or self.refine is not None)
                     and getattr(pp, "approach", None) is not None):
@@ -717,9 +752,12 @@ class Skills:
                    None)
         o = self.world.obj(label)
         hover = 0.004
-        if rec is not None and o.asset.mesh is not None:
+        rec_top = kw.get("ref_top")
+        if rec_top is None and rec is not None:
+            rec_top = self.world.obj(rec).top_z
+        if rec_top is not None and o.asset.mesh is not None:
             V = o.asset.mesh[0] @ T_obj[:3, :3].T + T_obj[:3, 3]
-            hover = max(0.004, self.world.obj(rec).top_z - float(V[:, 2].min()) + float(kw.get("hover_clear", 0.003)))
+            hover = max(0.004, float(rec_top) - float(V[:, 2].min()) + float(kw.get("hover_clear", 0.003)))
 
         def go(T_goal, step_rad, name, settle=2):
             for _ in range(3):              # a long line that stops short (IK) is resumed from where it got to
@@ -745,11 +783,11 @@ class Skills:
         # with the pose; twin: a pen's tip came down on the holder's rim and stayed there)
         if kw.get("hover_clear", 0.003) > 0.003 and float(np.linalg.norm(ob.pos[:2] - T_obj[:2, 3])) > 0.002:
             go(above(T_obj, hover), rate, "servo_hover2")
-        if kw.get("fingers_out") and rec is not None:
+        if kw.get("fingers_out") and rec_top is not None:
             # let go with the fingertips above the receptacle: raise the target by what the measured grasp needs
             w = self.refresh()
             T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ w.obj(label).T
-            dz = self.tips_raise(T_obj @ inv_T(T_rel), self.world.obj(rec).top_z + 0.003)
+            dz = self.tips_raise(T_obj @ inv_T(T_rel), float(rec_top) + 0.003)
             T_obj = above(T_obj, dz)
             if dz > 0:
                 kw = {**kw, "probe": False}

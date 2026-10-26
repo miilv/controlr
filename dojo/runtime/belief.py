@@ -276,7 +276,13 @@ class RuntimeProvider:
                   **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "why")}}
             if r.get("ok"):
                 self.touched.discard(lab)              # a good reading: the tracker's "last good reading"
-            if r.get("ok") and (r.get("shift_mm") or 0) >= self.post_place_min_mm:
+            dz_mm = (abs(float(r["pos"][2]) - float(o.pos[2])) * 1000 if r.get("pos") is not None else 0.0)
+            if r.get("z_dropped_mm") is not None:
+                ev["z_dropped_mm"] = r.get("z_dropped_mm")
+            if r.get("ok") and ((r.get("shift_mm") or 0) >= self.post_place_min_mm or dz_mm >= self.post_place_min_mm
+                                or r.get("z_dropped_mm") is not None):
+                # an xy shift OR a height correction (perception re-fits a released object from its support: a belief
+                # that floated 56 mm high after a no-candidate place comes back down)
                 ev["from"] = np.round(o.pos, 4).tolist()
                 o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
                 ev["to"] = np.round(o.pos, 4).tolist()
@@ -391,7 +397,8 @@ class RuntimeProvider:
             self._held_checked[arm] = (lab, g[1])
             r = self.held_checker(obs, arm, lab) or {}
             ev = {"kind": "held_look", "arm": arm, "label": lab, "step": self.bridge.steps_used,
-                  **{k: r.get(k) for k in ("held", "confidence", "source", "calls", "dark_risk", "error")}}
+                  **{k: r.get(k) for k in ("held", "confidence", "source", "calls", "dark_risk", "error", "evidence",
+                                           "opening")}}
             self.events.append(ev)
             if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5 and self.held_confirm is not None:
                 # never take an object out of the jaws on one vision negative (5.1: B1 said "not held" at confidence

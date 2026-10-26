@@ -5,6 +5,15 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 D="${DOJO_DATA:-$HOME/dojo-data}/integ"; Q="$D/queue.txt"; RUNS="$D/runs"
 cd "$HERE"
+# pre-flight (docs/incidents/2026-10-26-catalog-env-crash.md): perception must load its catalogue with THIS environment
+# (DOJO_CATALOG etc. are inherited by every job); a runner restarted with a broken env would fail every episode
+if [[ -x "$HERE/.venv/bin/python" ]]; then
+  if ! (timeout 120 "$HERE/.venv/bin/python" -c 'import json; from dojo.perception.render import catalog_root
+r = catalog_root(); n = len(json.load(open(r / "index.json"))); print(f"[runner] pre-flight: perception catalogue {r} ({n} assets)")'); then
+    echo "$(date -u +%FT%TZ) [runner] pre-flight FAILED: perception cannot load its catalogue with this environment; not starting"
+    exit 3
+  fi
+fi
 # a restarted runner first lets an in-flight job of ours finish (its integ_eval.sh includes the 90 s yield)
 while pgrep -u "$(id -u)" -f "^bash scripts/dojo/integ_eval.sh --out $RUNS/" >/dev/null; do sleep 15; done
 while true; do

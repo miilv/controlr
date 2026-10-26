@@ -374,6 +374,7 @@ class _Perception:
         return {"held": r.get("held") if sub.get("held") is None else sub.get("held"),
                 "confidence": float(sub.get("confidence", r.get("confidence", 0.0)) or 0.0),
                 "dark_risk": bool(sub.get("dark_risk", False)), "calls": n[0],
+                "evidence": sub.get("evidence", r.get("evidence")), "opening": sub.get("opening", r.get("opening")),
                 "source": "agent" if n[0] else "b1", "note": str(r.get("note") or "")[:200]}
 
     def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
@@ -470,6 +471,7 @@ class _Perception:
                                  "fit_quat": None if fit is None else fit[3:7].tolist(),
                                  "fit_shift_mm": None if fit_shift is None else round(fit_shift * 1000, 1),
                                  "p_why": r.get("why"), "truncated_frac": r.get("truncated_frac"),
+                                 "z_dropped_mm": r.get("z_dropped_mm"),
                                  "suggest_xy": sug, "suggest_shift_mm": r.get("suggest_shift_mm"),
                                  "searched": r.get("searched"),
                                  "quat": None if pose is None else pose[3:7].tolist(),

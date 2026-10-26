@@ -65,6 +65,12 @@ class RunnerEnv:
     def score(self) -> float:
         return self.r.score(self.i)
 
+    def actors_gt(self) -> dict:
+        """DEV-ONLY: joint positions (arm + gripper) of the scene's scripted arms (robots that are not ours: an opponent,
+        a demonstrator). G3 answers "is a scripted actor still moving" from it; at eval a watch read on the frames."""
+        g = self.r.robot_gt(self.i)
+        return {k: v["joint_pos"] for k, v in g.items() if v.get("type") != "target"}
+
     def measured_gripper(self) -> dict:
         g = self.r.robot_gt(self.i)
         return {a: g[a].get("gripper_open_measured") for a in ARMS}
