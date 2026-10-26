@@ -42,6 +42,14 @@ TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget",
             "divergence", "error", "other")
 
 
+def event_counts(events: list) -> dict:
+    """{event kind: count} over an episode's whole event list."""
+    out: dict = {}
+    for e in events or []:
+        k = str(e.get("kind")) if isinstance(e, dict) else "?"
+        out[k] = out.get(k, 0) + 1
+    return out
+
 def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -> tuple[str | None, str]:
     if res.get("success"):
         return None, ""
@@ -190,6 +198,9 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                "category": cat, "why": why, "reward": reward,
                "verify_stats": v if isinstance(v, dict) else v, "provider": rep.get("provider"),
                "perception": perc, "events": rep.get("events", [])[-30:], "decisions": rep.get("decisions"),
+               # the row keeps the last 30 events; the episode's setup events (scan, gates at step 0) and per-kind
+               # counts of all of them stay readable from the row too (the full list is in the report.json.gz)
+               "events_head": rep.get("events", [])[:8], "event_counts": event_counts(rep.get("events", [])),
                "history": rep.get("history", [])[-40:], "result": rep.get("result"), "info_dropped": rep.get("info_dropped"),
                "agent": rep.get("agent"), "agentic": rep.get("agentic"), "policy": type(pol).__module__ + ":" + type(pol).__name__, "code": code}
         rows.append(row)
