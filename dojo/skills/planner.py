@@ -162,6 +162,73 @@ def plan(instruction: str, world: WorldState) -> Plan:
     buttons = [o for o in objs if "button" in o.category.lower()]
     flat_geo = [o for o in objs if o.obj_type == "Geometry" and float(o.asset.extents[2]) < 0.012]
 
+    # --- a turn-based game on a board's cells (support frames "cell...") against a scripted opponent: two kinds of
+    # identical pieces, ours are the kind nearer the robot
+    if re.search(r"tic.?tac.?toe|\bplay\b", text):
+        for b in objs:
+            if sum(1 for t in b.asset.support if t.lower().startswith("cell")) < 4:
+                continue
+            groups: dict = {}
+            for o in objs:
+                if o.obj_type == "Rigid" and not o.clutter and o.label != b.label:
+                    groups.setdefault(o.asset.key, []).append(o)
+            groups = {k: v for k, v in groups.items() if len(v) >= 2}
+            if len(groups) < 2:
+                continue
+            robot = np.array([0.0, -0.45])
+            order = sorted(groups, key=lambda k: float(np.mean([np.linalg.norm(o.pos[:2] - robot) for o in groups[k]])))
+            own = [o.label for o in sorted(groups[order[0]], key=lambda o: o.pos[0])]
+            opp = [o.label for k in order[1:] for o in groups[k]]
+            return Plan("play_board_game", {"board": b.label, "pieces": own, "opponent_pieces": opp},
+                        f"{len(own)} own pieces vs {len(opp)} on {b.label}'s cells")
+
+    # --- a container to lift off a conveyor and the object a picture shows, caught into it
+    belts = [o for o in objs if o.obj_type == "Dynamic" or "conveyor" in o.category.lower()]
+    if belts and re.search(r"\blift\b", text) and re.search(r"\bimage\b|\bpicture\b|\bphoto\b", text):
+        conts = [o for o in objs if o.obj_type == "Rigid" and any(w in o.category.lower() for w in CONTAINER_WORDS)]
+        pics = [o for o in objs if o.obj_type == "Geometry" and re.search(r"photo|picture|image|board", o.category.lower())]
+        if conts:
+            movers = [o.label for o in objs if o.obj_type == "Rigid" and not o.clutter and o.label != conts[0].label]
+            return Plan("pick_into_held", {"objects": movers, "container": conts[0].label,
+                                           "picture": pics[0].label if pics else None, "conveyor": belts[0].label},
+                        f"lift {conts[0].label}, catch what {pics[0].label if pics else '?'} shows")
+
+    # --- objects riding a conveyor: remember the first one, pick the next of the same identity when it comes
+    belts = [o for o in objs if o.obj_type == "Dynamic" or "conveyor" in o.category.lower()]
+    if belts and re.search(r"\bfirst\b|\bremember\b", text) and re.search(r"\bmatch|\bsame\b|\bagain\b", text):
+        movers = [o.label for o in objs if o.obj_type == "Rigid" and not o.clutter]
+        return Plan("match_and_pick", {"objects": movers, "conveyor": belts[0].label},
+                    f"{len(movers)} objects on {belts[0].label}")
+
+    # --- copy a demonstrated order: two containers of one kind (ours = the one nearer the robot), the objects whose
+    # identity appears twice (one set for the demonstrator, one for us)
+    if re.search(r"\border\b|\bsequence\b", text) and re.search(r"observe|watch|remember|imitate|same order", text):
+        robot = np.array([0.0, -0.45])
+        by_kind: dict = {}
+        for o in objs:
+            if o.obj_type in ("Geometry", "Rigid") and not o.clutter and any(w in o.category.lower() for w in CONTAINER_WORDS):
+                by_kind.setdefault(o.asset.key.split("/")[1], []).append(o)
+        pairs = [v for v in by_kind.values() if len(v) >= 2]
+        if pairs:
+            cs = sorted(pairs[0], key=lambda o: float(np.linalg.norm(o.pos[:2] - robot)))
+            movers = [o.label for o in objs if o.obj_type == "Rigid" and not o.clutter and o.label not in (cs[0].label, cs[1].label)]
+            return Plan("copy_demonstration", {"container": cs[0].label, "demo_container": cs[1].label, "objects": movers},
+                        f"watch {cs[1].label}, copy into {cs[0].label}")
+
+    # --- objects into a holder whose lid is hinged, then close the lid: the holder is the articulated object with a
+    # revolute joint, the objects the named rigid category
+    if re.search(r"\blid\b", text) and re.search(r"\bclose\b|\bshut\b", text):
+        holders = [o for o in objs if o.obj_type == "Articulation"
+                   and any((j or {}).get("type") == "revolute" for j in (o.asset.joints or {}).values())]
+        if holders:
+            h = holders[0]
+            movers = [o.label for c in named for o in cats[c] if o.obj_type == "Rigid" and not o.clutter
+                      and o.label != h.label]
+            tag = next((t for t in _joint_tags(h)), None)
+            if movers:
+                return Plan("fill_holes", {"objects": movers, "holder": h.label, "lid_tag": tag},
+                            f"{len(movers)} objects into {h.label}'s holes, then close its lid ({tag})")
+
     # --- mahjong: declare a kong with the tiles (the most numerous rigid category)
     if "kong" in text:
         rig = [c for c, v in cats.items() if sum(o.obj_type == "Rigid" for o in v) >= 4]

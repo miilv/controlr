@@ -72,6 +72,35 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "Hangs each object by its handle on one of the rack's hooks (hook frames as listed for the rack in the "
         "scene): carried re-oriented to just beyond a hook's tip, slid along the hook through the handle, let go. "
         "Banks after each object. For 'hang the X on the Y'."),
+    "play_board_game": (
+        "play_board_game(board: id, pieces: [id, ...], opponent_pieces: [id, ...])",
+        "Turn-based placement game against a scripted opponent on a board's cells (cell frames as listed for the board "
+        "in the scene): on our turn puts one of `pieces` on an empty cell (tic-tac-toe rules on a 3 x 3 board), opens "
+        "both grippers, takes both arms home, then holds still until the opponent's piece lands and its arm is at "
+        "rest. Repeats until the board is full or our pieces are used. `pieces` = our kind (the set nearer the "
+        "robot), `opponent_pieces` = the other kind."),
+    "copy_demonstration": (
+        "copy_demonstration(container: id, demo_container: id, objects: [id, ...])",
+        "A scripted arm demonstrates: holds still at home while it puts objects into `demo_container` one by one, "
+        "remembers the order they arrive in, and once its arm is at rest puts the matching object of each (same kind, "
+        "not in either container) into `container` in that same order, opening the grippers after each. Pass every "
+        "movable object; `container` = ours (nearer the robot)."),
+    "match_and_pick": (
+        "match_and_pick(objects: [id, ...], conveyor: id | null = null)",
+        "Objects ride a moving belt: measures the belt's speed from the objects' motion, remembers the first object "
+        "(the one leading in the direction of motion), and picks the next object of the same kind on the move "
+        "(the hand follows the belt while it closes), then lifts it ~12 cm and holds it."),
+    "pick_into_held": (
+        "pick_into_held(objects: [id, ...], container: id, picture: id | null = null, conveyor: id | null = null)",
+        "A container and objects ride a moving belt: takes the container off the belt with one arm and holds it up "
+        "~11 cm, then picks the object the board's picture shows on the move with the other arm and drops it into the "
+        "held container (which stays up). For 'lift the basket, pick the object shown on the board into it'."),
+    "fill_holes": (
+        "fill_holes(objects: [id, ...], holder: id, lid_tag: frame | null = null)",
+        "Stands each object (long axis up) over a free hole of the holder's body and lets it drop in, fingers above "
+        "the body; objects lying crowded in a basket are first moved to the table. When every object is in, swings "
+        "the holder's hinged lid (the joint `lid_tag` rides on) shut. For 'put the eggs into the egg holder, then "
+        "close the lid'."),
     "place_in_slots": (
         "place_in_slots(objects: [id, ...], container: id)",
         "Puts each object into the compartment of the container that is shaped for it (a slot named after the "
@@ -87,7 +116,8 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "or into support without lifting it. Steps are independent (any order); grippers opened after each. Use "
         "for an instruction that lists several put-X-on-Y / push-X-into-Y goals."),
 }
-SKILL_DOCS_VERSION = 3  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4)
+SKILL_DOCS_VERSION = 4  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+#                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',
