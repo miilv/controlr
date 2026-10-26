@@ -1034,6 +1034,39 @@ def _placement_prior(g: dict) -> dict:
     return {"fixed_xy": fixed_xy, "yaw_fixed": yaw_fixed, "place_tag": tag, "relative_plane": rel, "zlim": p.get("zlim")}
 
 
+SMALL_OBJECT_M = 0.06  # largest extent of a "small" object: its head-view blob is a few pixels
+
+
+def _small_group(g: dict) -> bool:
+    try:
+        return max(float(np.max(asset_info(k)["extents"])) for k in g["candidates"][:8]) <= SMALL_OBJECT_M
+    except Exception:
+        return False
+
+
+def _support_xy(h: Hypothesis) -> tuple[float, float]:
+    """World xy of the hypothesis' first public support point (catalogue ``support``), else its origin."""
+    sup = load_asset(_cat_key(h.key)).info.get("support") or {}
+    if sup:
+        c = np.asarray(next(iter(sup.values()))["center"][0][:3], float)
+        T = h.T() if h.tag != "fixed" else None
+        if T is not None:
+            p = T[:3, :3] @ c + T[:3, 3]
+            return float(p[0]), float(p[1])
+    return float(h.x), float(h.y)
+
+
+def _yaw_only_fit(sm: ShapeModel, x: float, y: float, z_off: float, views, step_deg: float = 3.0):
+    """Best yaw at a fixed xy (grid over the shape's yaw period on the ROI soft-IoU): (x, y, yaw, loss, per)."""
+    rvs = make_roi_views(sm, sm.pose(x, y, 0.0, z_off), views)
+    best = None
+    for yaw in np.arange(0.0, sm.yaw_period, np.radians(step_deg)):
+        loss, per = roi_loss(sm, sm.pose(x, y, float(yaw), z_off), rvs)
+        if best is None or loss < best[3]:
+            best = (x, y, float(yaw), float(loss), per)
+    return best if best is not None else (x, y, 0.0, 1.0, {})
+
+
 def _qmul(a, b) -> np.ndarray:
     w1, x1, y1, z1 = a
     w2, x2, y2, z2 = b
@@ -2064,6 +2097,16 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                         # silhouettes cannot tell a base with the object on it from an empty one (the base is foreground
                         # too): the object's colour at its own top face decides (a red cube vs a beige mat)
                         app = _top_face_color_distance(sm, hb.x, hb.y, top - TABLE_Z, views, ref)
+                        if p_.get("ylim") in ([0.0, 0.0], [0, 0]):
+                            # pinned on the base's support point (swap_blocks: a cube at a mat's centre, random yaw):
+                            # only the yaw is unknown. A free xy fit slid 16-22 mm toward the camera on the mat's
+                            # same-height foreground (breadth-1: 4 of 5 episodes, both cubes)
+                            bx, by = _support_xy(hb)
+                            xr, yr, yawr, loss, per = _yaw_only_fit(sm, bx, by, top - TABLE_Z, views)
+                            score = app + 0.1 * loss
+                            if best is None or score < best[0]:
+                                best = (score, base, xr, yr, yawr, top, per, loss, app)
+                            continue
                         for yaw0 in np.linspace(0, sm.yaw_period, 4, endpoint=False):
                             xr, yr, yawr, loss, per = refine(sm, hb.x, hb.y, float(yaw0), views, maxiter=60, xy_step=0.004,
                                                              yaw_step=0.12, fix_yaw=sm.yaw_period < 0.2, z_off=top - TABLE_Z)
@@ -2239,7 +2282,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     # alone in a wrist view); the lower combined cost wins
     if cfg.wrist_proposals:
         for gi, g, prior in pending:
-            if not _single_target(g):
+            # small single objects too (deposit_coin's 32 x 11 x 17 mm coin stand: a few head-view pixels next to the
+            # home gripper, placed 70-660 mm off or missed; a wrist view sees it whole)
+            if not (_single_target(g) or (len(g["labels"]) == 1 and _small_group(g))):
                 continue
             cur = [h for h in chosen if h.label_group == gi]
             if cur and cur[0].per_view.get("sil_loss", cur[0].loss) < cfg.wrist_fallback_loss:
