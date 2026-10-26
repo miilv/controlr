@@ -325,6 +325,8 @@ class RuntimePolicy:
                 self.report["perception_calls"] = calls[-200:]
                 ops: dict = {}
                 for c in calls:                         # every call of the episode: count and seconds per op
+                    if not isinstance(c, dict):         # (test doubles log tuples)
+                        continue
                     n_s = ops.setdefault(c.get("op"), [0, 0.0])
                     n_s[0] += 1
                     n_s[1] = round(n_s[1] + float(c.get("s") or 0.0), 3)
