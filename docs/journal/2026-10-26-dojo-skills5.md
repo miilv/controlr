@@ -27,6 +27,70 @@ first in `DOJO_CATALOG`. G3 means the TRUE state in the physics-only twin. The e
 
 (filled in below)
 
-## 3. Findings and landmines
+## 3. Findings per task
 
-(filled in below)
+### play_Xylophone (500 steps, binary, 8 ordered stages, no home)
+
+- The checker per key: a mallet "beat" point inside the key's xy polygon (`bbox_k`, 4 corners), and 10-36 mm above
+  `hit_k` (z only; any beat point, any hit frame). Then the mallet root must rise 25 mm above where it was when that
+  stage latched. A touching head (key surface 6.8 mm above `hit_k`, head radius 12.7 mm) satisfies the z window with
+  the upper beat point. The skill touches each key and lifts 7 cm.
+- Reach: no single arm reaches all 8 keys with the gripper straight down and the handle pointing back at its base.
+  The orientation grid (handle heading x rise x roll) finds one orientation for all 8; on 100000 the handle points
+  at -y with a 5 deg rise.
+- v1 failures (2/25): the mallet had fallen off its stand in the settled record and lay on the table. The handle,
+  7.6 mm thick, was too low for the 2.5 mm fingertip clearance. v2 grips it with the fingertips 0.6 mm over the
+  table.
+
+### fasten_screws (1900 steps, 20 / 50 / 100, 1 mm, colour)
+
+- Physics (probe): the nut is an SDF thread (`physics:approximation=sdf`), the bolt a static triangle mesh, M24-like,
+  pitch 3.0 mm right-hand (fitted on the bolt's crest points). Nut minor radius 10.15 mm, bolt major 11.76 mm: the
+  nut cannot slide down, it must be turned. Put on the top, it seats 2.6 mm down (the chamfer). It needs 9 mm, about
+  2.1 turns.
+- Probe, the nut gripped across its flats and turned clockwise in 270-deg sweeps: down 2.2 mm per sweep at 0.08 and
+  at 0.15 rad/step, with the commanded descent at 1.0 or 1.3 x pitch (the pads slip vertically; no binding).
+- The skill pairs nuts and bolts by the catalogue's mean colour (nut i and bolt i share it). It puts each nut on its
+  bolt, then turns it in 300-deg sweeps: about 79 steps each, 4-5 per nut, the measured pitch 2.95-3.0 mm after the
+  first sweep.
+
+### deposit_coin (300 steps, 20 / 100)
+
+- The slot in the bank's collider is open (probe: a coin let go edge-down over the slot falls in and lies on the
+  bottom). The checker: the coin's bbox (+-20 mm in the checker, against a 14.2 mm radius) inside the bank's
+  polygon, between its `bottom` (8 mm) and `center` (57 mm) frames. A coin lying tilted on the bank's floor can fail
+  that bottom bound with its box corners.
+- Rim grasp from the holder. The coin has friction 0.0 in its metadata, but the pads hold it. Lifted right after the
+  close, at the default 0.10 rad/step, it stayed in its holder (v1 and v2, 10/10). A 4-step squeeze plus a lift at
+  0.03 rad/step takes it out (probe 3/3).
+- Reach: in about half the layouts the holder and the bank are on opposite arms (0.65-0.8 m from the far arm).
+  - Tilting the rim grasp in the coin's plane, up to 28 deg, plus a 3 cm lift out of the holder: 12/25 plan with one
+    arm (6/25 before).
+  - Grasps with less than 7 mm of coin between the pads dropped it on the carry (2/2).
+  - Table relay (laid flat, pinched by the other arm): the pinch works, but the coin cannot reach the slot from a
+    sideways hand (finger roots over the bank's back). 0/7, off.
+  - Option C, moving the bank: impossible, it is a static collider.
+  - The in-air rim handover (option A): 3/5 of the cross-arm layouts in v7.
+
+### insert_tubes (500 steps, 20 / 40 / 100)
+
+- The rack's holes (SDF collider) are 29-30 mm wide and 54 mm deep. The tube body is 28 mm (a 35 mm flange at
+  102-107 mm from the conical tip). A tube let go upright over a hole falls to the floor, tilted 16 deg (the
+  checker allows 30).
+- The checker's depth term is met by a tube lying on the table (BACKLOG).
+- What failed, in order of how often:
+  1. The same arm's second tube found no plan into its half of the rack: IK-bound (632 / 880 place IKs).
+  2. A hand passing over a standing tube was held 34-50 mm off its command, and its tube landed on the rack.
+  3. The tube's lowest point swept into the rack during the joint move that stands it up (fixed: lift to the
+     pre-place height).
+  4. A grasp on the flange slid 5 mm and dropped the tube (fixed: pads on a uniform section).
+
+## 4. Landmines (also in BACKLOG)
+
+1. Asset metadata bboxes are not the colliders: the tube's is 42 x 140 mm (mesh 35 x 117), the coin's checker box is
+   +-20 mm (radius 14.2), and the coin's `physics.size` says 21 x 1 mm (the collider is 28.4 x 1.9).
+2. RoboDojo Geometry objects (bank, coin stand, bolts, rack, xylophone) are static colliders: they cannot be moved.
+3. `pgrep -f PATTERN` over ssh matches its own shell (the same pitfall DEVELOPMENT.md notes for `pkill`). A
+   `[p]attern` regex avoids it. A wait loop built on the plain pattern never ended.
+4. The kinematic env treats Geometry as no support, so a nut let go over a bolt falls through it to the table. Dry
+   runs of `screw_on` therefore end "done" without sweeps; only G3 tests it.

@@ -612,6 +612,9 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
             w = sk.refresh()
             if inside_bbox(w.obj(obj), w.obj(rec)):
                 return {"ok": True, "stage": "inserted (handover)", "result": r}
+            if r.status == "grasp_slip" and "giver" in r.note:
+                # put back after a loose pick: lift it properly once (the lift is the first rung)
+                disc_lift_and_return(sk, obj, floor, tkw)
             return {"ok": False, "stage": f"insert {obj} (handover)", "result": r}
         sk.log(f"[disc] no handover plan ({h.note[:200]})")
     if isinstance(direct, SkillResult) and not DISC_TABLE_RELAY:
