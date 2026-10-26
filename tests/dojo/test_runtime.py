@@ -1939,3 +1939,30 @@ def test_verify_choose_runs_the_best_outcome_when_nothing_passes():
                            on_verified=seen.append, last_verified=None)
     idx, passes = Skills.verify_choose(fake, [{"a": 0}, {"a": 1}, {"a": 2}], [judge(0), judge(1), judge(2)], kind="place")
     assert idx == 1 and passes == [0, 0, 0] and seen[-1]["none_ok"] and fake.vstats["best_outcome"] == 1
+
+
+@pytest.mark.parametrize("jaw, pick, held", [((0.1, 500), (0.9, 500), False), ((0.8, 500), (0.1, 500), True),
+                                             ((0.1, 10), (0.9, 500), None), ((0.1, 500), (0.4, 500), None)])
+def test_held_confirmation_uses_the_head_view_at_the_jaw_and_pick_poses(jaw, pick, held):
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class Head:
+        def __init__(self):
+            self.n = 0
+
+        def check(self, frame, objects, fold):
+            self.n += 1
+            p, v = jaw if self.n == 1 else pick
+            return {objects[0]["label"]: {"head": {"prec": p, "n_vis": v, "n_px": 600}}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", held_look="b1"), assets=FakeAssets(), perception_client=Head())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    prov.belief.attached["left"] = ("block_1", np.eye(4))
+    prov.belief.grasp_z["left"] = (0.8, 1, np.r_[o.pos, o.quat].copy())
+    r = pol._held_head_confirm(prov, b.obs, "left", "block_1")
+    assert r["held"] is held and r["source"] == "head" and r["calls"] == 0
