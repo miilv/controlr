@@ -38,7 +38,7 @@ from .firewall import DEV_GT_KEY
 from .policy import RuntimeConfig, RuntimePolicy
 
 GROSS_XY_MM = 20.0
-TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "belief_mismatch", "not_home",
+TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "time_cap", "belief_mismatch", "not_home",
             "divergence", "error", "other")
 
 
@@ -123,7 +123,7 @@ def deployed_code() -> dict | None:
 
 
 def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_minutes: float = 25.0,
-        policy_factory=None, renderer: str = "isaac60") -> dict:
+        policy_factory=None, renderer: str = "isaac60", episode_max_minutes: float | None = 25.0) -> dict:
     """``renderer``: ``isaac60`` = the proxy (physics-only 5.1 + the 6.0 render service, compute3); ``isaac51`` =
     one 5.1 EvalEnv with RTX (``RenderedEpisode``; a box where 5.1 renders, e.g. isr-lab)."""
     from dojo.skills.world import AssetDB
@@ -164,8 +164,13 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         gt0 = ep.run.objects_gt(0)                  # scorer side (dev only)
         pol.reset(info)
         t0 = time.perf_counter()
-        sim_s, obs_s, ended = 0.0, [], False
+        sim_s, obs_s, ended, capped = 0.0, [], False, False
         while not ended:
+            if episode_max_minutes and time.perf_counter() - t0 > 60.0 * episode_max_minutes:
+                capped = True                       # the GPU-lock rule: no episode holds the lane past this
+                print(f"\n[integ] {tag} {lid}: episode wall-time cap {episode_max_minutes} min reached at step "
+                      f"{ep.result().get('steps_used')}: ending it", flush=True)
+                break
             t1 = time.perf_counter()
             obs = ep.observe()
             if cfg.mode == "gt":
@@ -185,9 +190,12 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         rep = pol.episode_report()
         perc = perception_eval(rep, gt0, assets) if cfg.mode == "perception" else None
         cat, why = classify(res, reward, rep, perc, cfg.mode)
+        if capped and not res.get("success"):
+            cat, why = "time_cap", f"episode wall-time cap {episode_max_minutes} min at step {res.get('steps_used')}"
         wall = time.perf_counter() - t0
         v = rep.get("verify")
         row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "preset": cfg.preset,
+               "time_capped": capped,
                "renderer": renderer,
                "success": bool(res["success"]), "score": float(res["score"]), "steps_used": int(res["steps_used"]),
                "step_lim": int(res["step_lim"]), "observations": int(res["observations"]), "wall_s": round(wall, 1),
@@ -269,7 +277,9 @@ def main(argv=None) -> None:
     ap.add_argument("--verify", choices=("off", "bundle"), default=None, help="default: the preset's, else off")
     ap.add_argument("--preset", default=None, help="named RuntimeConfig preset (dojo/runtime/presets.py), e.g. submit_v1")
     ap.add_argument("--config", default="{}", help="extra RuntimeConfig fields as JSON (over the preset)")
-    ap.add_argument("--max-minutes", type=float, default=25.0)
+    ap.add_argument("--max-minutes", type=float, default=25.0, help="no new layout after this many minutes")
+    ap.add_argument("--episode-max-minutes", type=float, default=25.0,
+                    help="end an episode after this many wall-clock minutes (0: no cap); the GPU-lock rule")
     ap.add_argument("--policy", default=None, help="module:Class, called as Class(cfg) (default RuntimePolicy)")
     ap.add_argument("--renderer", choices=("isaac60", "isaac51"), default="isaac60",
                     help="isaac60: the proxy (6.0 render service); isaac51: one 5.1 EvalEnv with RTX (isr-lab)")
@@ -282,6 +292,7 @@ def main(argv=None) -> None:
     d.setdefault("verify", "off")
     cfg = RuntimeConfig(**d)
     run(a.task, a.layouts, cfg, Path(a.out), a.max_minutes, policy_factory=load_policy_factory(a.policy),
+        episode_max_minutes=a.episode_max_minutes or None,
         renderer=a.renderer)
     if a.renderer == "isaac51":                     # results are written; never wait on Kit's own shutdown
         import sys
