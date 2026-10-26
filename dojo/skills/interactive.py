@@ -507,11 +507,12 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
     rel = {}
     for a in arms:
         cands = G.candidates(o, sk.kin, a, "top")
-        if not cands:                                           # wider than the hand on top: slices / antipodal
+        if not cands:          # wider than the hand on top: slices / antipodal, and the rim of a plate or a basket
             cands = G.slice_grasps(o, sk.kin, a) + G.antipodal_grasps(o, sk.kin, a)
-        if not cands:                                           # a plate: pinch its rim
-            cands = G.rim_grasps(o, sk.kin, a)
-        cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.75], key=lambda g: g.score)[:6]
+            # (a basket's handle can be out of reach where its near rim is not)
+            cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.75], key=lambda g: g.score)[:6] + \
+                sorted(G.rim_grasps(o, sk.kin, a), key=lambda g: float(np.linalg.norm(g.T[:2, 3] - sk.kin.base(a)[:2, 3])))[:6]
+        cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.6], key=lambda g: g.score)[:12]
         rel[a] = [(g, g.T[:3, 3] - o.pos) for g in cands]
     for t in range(t_min, t_max, 6):
         for a in arms:
