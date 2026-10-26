@@ -105,7 +105,7 @@ median / max (limit). Runs before the rebase carry pre-rebase hashes (1f1928d = 
 | **v4.6 (37a223a: seated + servoed to 0.3 mm, base and seated pieces as mesh boxes)** | **all 25** | **24/25** | **0.98** | **938 / 1101** | 100002: a relay's last leg found no pre-place IK (0.6) |
 | mode B, 1.5-2 mm belief offsets (b044443, let go 4 mm down the peg) | 100000-02 | 0/3 | 0.43 | 570 / 1036 | rings stuck tilted on the peg's top (no contact seen at 4 mm lag) |
 | mode B, 1.5-2 mm (37a223a, seated) | 100000-04 | 0/5 | 0.30 | 896 / 1195 | a ring pushed 30-50 mm down the peg on a predicted pose binds, tilts, can't be re-grasped and blocks the next pegs; one ran out of steps |
-| mode B, 1.5-2 mm (f24365a: seated only when measured, else threaded) | 100000-02 | TBD | | | |
+| **mode B, 1.5-2 mm (f24365a = v4.7/v4.8: seated only when measured, else threaded 4 mm)** | 100000-02 | 1/3 | 0.73 | 1174 / 1181 | 0.6 / 0.6 / 1.0. Rings tilt on the peg's top (5 of 30 places); the retry fixes some. Two ran to 1174-1181 of 1200 steps. The same layouts seated: 0.30 each |
 
 v4.6 = the final code for mode A: v4.7/v4.8 change only the branch without a held-object measurement.
 `stack_on_pegs` and the shared code it calls are unchanged from 37a223a to the PR head.
@@ -118,6 +118,11 @@ v4.6 = the final code for mode A: v4.7/v4.8 change only the branch without a hel
 | v5 (c2295b8: rack and hung mugs as mesh boxes, highest hooks lowest first, relay) | 100000-04 | 2/5 | 0.64 | 345 / 399 | a mug flung off a low hook by the unchecked move home, a mug out of the pads on the carry, no plan for the biggest mug |
 | v6 (37a223a: + lifted retry) | 100005-07 | 1/3 | 0.52 | 317 / 560 | slide to the far hook short (mug fell), relays failing |
 | **v6.2 (722a9db: + checked exit, slide reach, search caps)** | **all 25** | **5/25** | **0.44** | 365 / 641 | 1.0 ×5, 0.4 ×12, 0.15 ×8. place_miss 15, not_home 3 (2 mugs), collision 2 (relays); planning median 192 s, max 414 s |
+
+Mode B with 1.5-2 mm belief offsets on the rack and the mugs (722a9db), 100000-02: 0/3, mean 0.10 (0.15 / 0.0 / 0.15).
+Mode A on the same layouts gave 1.0 / 1.0 / 0.4. Without the in-hand re-measure, the place is not re-planned for the
+2-10 mm a mug slides in the wall pinch, and the handle misses the hook's arm. This is the same held-object measurement gap
+as plug and the rings.
 
 v6.2 is below v5's first chunk: v5 scored 0.64 on 100000-04, v6.2 0.76 on the same seeds, but only 0.44 over 25. The
 first five layouts were the easy ones.
