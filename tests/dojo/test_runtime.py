@@ -847,6 +847,28 @@ def test_search_refine_fits_the_missing_block_at_the_region():
     assert _stacked(env)
 
 
+def test_search_refine_keeps_a_geometry_fixture_s_type_among_the_occluders():
+    """play_Xylophone: the xylophone is Geometry; the occluder list used to call it Rigid/xylophone/00000 and the
+    perception service's refine crashed on the missing catalogue entry."""
+    env = _env()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", search=True), assets=FakeAssets(), perception_client=None)
+    seen = []
+
+    class P:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            seen.extend(o["key"] for o in objects)
+            return {}
+    pol.perception = lambda: P()
+    pol.report, pol.fold = {"events": []}, 0
+    rec = {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [0.1, -0.1, 0.78],
+                                "default_ori": [1, 0, 0, 0]}]},
+           "Geometry": {"xylophone": [{"category": "xylophone", "category_idx": 0, "label": "xylophone",
+                                       "default_pos": [0.0, 0.0, 0.8], "default_ori": [1, 0, 0, 0]}]},
+           "_not_found": [{"label": "block_1", "candidates": ["Rigid/block/00005"]}]}
+    _, found = pol._search_refine(rec, {"target": [0.2, -0.1, 0.78], "why": "test"}, {}, "right")
+    assert found == [] and "Geometry/xylophone/00000" in seen and "Rigid/xylophone/00000" not in seen
+
+
 def test_large_borderline_correction_needs_a_confirming_second_refine():
     from dojo.runtime.belief import RuntimeProvider
     env = _env()
@@ -1960,12 +1982,38 @@ def test_catalog_check_finds_and_syncs_missing_assets(tmp_path):
     assert (cat / "Rigid/mug/00000/geom.npz").is_file()
 
 
+def test_catalog_check_finds_and_copies_a_missing_links_json(tmp_path):
+    import json as _json
+
+    from dojo.runtime.catalog_check import missing_links, sync_links
+    cat, src = tmp_path / "catalog", tmp_path / "skills6_catalog"
+    for k in ("Articulation/egg_holder/00000", "Articulation/toaster/00000", "Rigid/egg/00000", "Articulation/SpringButton/00002"):
+        (cat / k).mkdir(parents=True)
+        (cat / k / "geom.npz").write_bytes(b"x")
+    (cat / "Articulation/toaster/00000/links.json").write_text("{}")
+    (src / "Articulation/egg_holder/00000").mkdir(parents=True)
+    (src / "Articulation/egg_holder/00000/links.json").write_text(_json.dumps({"links": {"lid": {}}, "joints": {}}))
+    (cat / "tasks.json").write_text(_json.dumps({
+        "fill_egg_holder": {"labels": {"h": {"candidates": ["Articulation/egg_holder/00000"]},
+                                       "e": {"candidates": ["Rigid/egg/00000"]}}},
+        "make_toast": {"labels": {"t": {"candidates": ["Articulation/toaster/00000", "Articulation/toaster/00009"]}}},
+        "press_by_number": {"labels": {"b": {"candidates": ["Articulation/SpringButton/00002"]}}}}))
+    # a missing links.json is a gap; a key without geometry is missing_assets' business, not this check's; buttons are
+    # pressed at perception's annotated press point and need none
+    assert missing_links(cat, ["fill_egg_holder", "make_toast", "press_by_number"]) == {
+        "fill_egg_holder": ["Articulation/egg_holder/00000"]}
+    done = sync_links(cat, ["Articulation/egg_holder/00000"], [src])
+    assert [k for k, _ in done["copied"]] == ["Articulation/egg_holder/00000"]
+    assert missing_links(cat, ["fill_egg_holder", "make_toast"]) == {}
+
+
 @pytest.mark.skipif(not Path("~/dojo-perception-data/catalog/tasks.json").expanduser().is_file(),
                     reason="needs the perception catalogue (compute / GPU boxes)")
 def test_the_installed_catalogue_holds_every_table_vocabulary():
-    from dojo.runtime.catalog_check import missing_assets, missing_support
+    from dojo.runtime.catalog_check import missing_assets, missing_links, missing_support
     assert missing_assets(Path("~/dojo-perception-data/catalog").expanduser()) == {}
     assert missing_support(Path("~/dojo-perception-data/catalog").expanduser()) == {}  # slot bases annotated
+    assert missing_links(Path("~/dojo-perception-data/catalog").expanduser()) == {}  # articulations' links / joints
 
 
 
