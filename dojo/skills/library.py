@@ -1571,10 +1571,10 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
 
 
 def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
-                   comfy: float = 0.42, tries: int = 2) -> dict:
+                   move_tol: float = 0.05, tries: int = 2) -> dict:
     """Put every object into ``container`` leading end first, grippers open after each (partial credit per
-    object). A movable container out of comfortable reach of the arm that picks the objects is first
-    carried to a free spot both arms reach (the instruction's "hold the holder"); it stays upright.
+    object). A movable container is first carried upright to a free spot near the arm that picks the objects, where
+    both arms reach (the instruction's "hold the holder"), unless it stands within ``move_tol`` of it.
     Each object is held leading end down over the free spot of the opening (``_fill_drop_target``), its leading end
     ``FILL_DROP_H`` over the rim, the hand above the rim and clear of what already stands in it (``grip_only``), and
     let go: it drops to the floor (twin: an earlier version pushed pens down to the floor; grasps near their tips
@@ -1583,11 +1583,12 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
     objects = [l for l in objects if l in w.objects]
     c = w.obj(container)
     cen = np.mean([w.obj(l).center_w[:2] for l in objects], axis=0)
-    picker = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - cen)))
     st = w.notes.setdefault("fill", {"inside": []})
-    if c.obj_type == "Rigid" and float(np.linalg.norm(sk.kin.base(picker)[:2, 3] - c.center_w[:2])) > comfy \
+    near = (0.5 * float(cen[0]), -0.27)
+    # always to the spot between the objects and the middle (twin: left where it stood within 0.42 m of the picking arm,
+    # holders had no drop pose a grasp reached, 0-1 pens per layout in a dry run; moved there, 2-3)
+    if c.obj_type == "Rigid" and float(np.linalg.norm(c.center_w[:2] - np.asarray(near))) > move_tol \
             and not st.get("moved"):
-        near = (0.5 * float(cen[0]), -0.27)
         spots = sorted(free_spots(sk, container, near_xy=near, clearance=0.04),
                        key=lambda xy: float(np.linalg.norm(np.subtract(xy, near))))
         for xy in spots[:4]:
