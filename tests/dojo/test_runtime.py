@@ -1394,7 +1394,9 @@ def test_episode_with_held_look_checks_every_grasp_once():
 
 @pytest.mark.parametrize("mode, needs, step_lim, ran", [("always", False, 550, True), ("trigger", True, 550, True),
                                                        ("trigger", False, 550, False), ("trigger", True, 200, False)])
-def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs, step_lim, ran):
+def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs, step_lim, ran, monkeypatch):
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png%d" % np.asarray(im).size)      # no cv2 in the unit-test venv
     env = _env(step_lim=step_lim)
     scan_q = {"left": [-0.9523, -0.24314, 1.28768, -1.77756, -0.63467, -0.14824],
               "right": [0.94768, -0.24334, 1.28759, -1.77684, 0.63018, 0.14684]}
@@ -1429,10 +1431,16 @@ def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs,
             return []
 
     pc = ScanPerception()
-    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan=mode), assets=FakeAssets(), perception_client=pc)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan=mode, save_look_frames=True), assets=FakeAssets(),
+                        perception_client=pc)
     rep = run_episode(pol, FakeEpisode(env), "perception")
     assert rep["error"] is None, rep["error"]
     ev = next(e for e in rep["events"] if e["kind"] == "scan")
+    lf = rep.get("look_frames") or {}
+    assert ("scan" in lf) == ran                                     # the scan frame kept for replay (save_look_frames)
+    if ran:
+        assert set(lf) >= {"frame0", "scan"} and set(lf["scan"]["png"]) == set(FakeEpisode(env).observe()["images"])
+        assert np.allclose(lf["scan"]["state"]["left_arm_joint_state"][:6], scan_q["left"], atol=1e-3)
     assert ev["ran"] == ran and (mode == "always") == ("trigger" not in pc.calls)
     if mode == "trigger":                                            # both step gates logged per episode
         assert ev["frac_ok"] and ev["min_step_lim_ok"] == (step_lim >= 300)
