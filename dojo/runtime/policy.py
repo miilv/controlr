@@ -243,6 +243,7 @@ class RuntimePolicy:
         self.bridge = Bridge()
         self._lost_searched = set()
         self._pending_far, self._place_pending, self._vsel_seen = {}, {}, {}
+        self._recentre_prior = {}
         self.dev_gt = None
         self.log_lines = []
         self.t0 = time.perf_counter()
@@ -584,6 +585,7 @@ class RuntimePolicy:
             # else the label's OWN config group (its candidate keys), never the whole vocabulary: a pillar must not be
             # re-identified as a prism (5.1 tower: iou 0.67, turned 91 deg, the tower tilted while we believed "built")
             idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else label_candidates(prov.task, label)
+        prior_pose = (o.pos.copy(), o.quat.copy())
         res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv,
                                        held=held)
         r = res.get(label) or {}
@@ -594,6 +596,17 @@ class RuntimePolicy:
         if r.get("pos") is not None:
             ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         self.report["events"].append(ev)
+        rc = getattr(self, "_recentre_prior", {}).pop(label, None)
+        looked = (float(r.get("visible_frac") or 0) >= 0.3 and not str(r.get("p_why") or "").startswith("truncated"))
+        if rc is not None and not r.get("ok") and float(r.get("iou") or 0) < 0.2 and not looked:
+            ev["why"] = (ev.get("why") or "") + " (recentre view covered / truncated: correction kept)"
+        if rc is not None and not r.get("ok") and float(r.get("iou") or 0) < 0.2 and looked:
+            # the recentred view over an applied correction finds nothing there: the correction contradicted a
+            # confident belief and lost (5.1 stack 100006: a 24 mm pick "correction" at iou 0.79, then iou 0.0 over it)
+            o.pos, o.quat = rc
+            prov.stats["recentre_reverted"] = prov.stats.get("recentre_reverted", 0) + 1
+            ev["why"] = (ev.get("why") or "") + " (recentre found nothing: correction reverted)"
+            return None
         if kind == "place" and self.cfg.place_confirm:
             handled, out = self._place_refine(prov, o, r, ev, others, arm)
             if handled:
@@ -662,7 +675,9 @@ class RuntimePolicy:
                 if kind == "place":
                     hint["rehover_dz"] = self.cfg.rehover_place_dz
                 return hint
-            if kind == "place" and held is not None and self.cfg.rehover_place_dz > 0:
+            if (kind == "place" and held is not None and self.cfg.rehover_place_dz > 0
+                    and float(r.get("visible_frac") or 0) >= 0.05):
+                # (a support the carried object hides completely stays hidden from 3 cm higher: no re-hover)
                 # the support may be hidden behind the carried object: look again from higher up, same pose
                 ev["rehover"] = "higher"
                 return {"rehover": (o.pos.copy(), o.quat.copy()), "rehover_dz": self.cfg.rehover_place_dz}
@@ -684,7 +699,10 @@ class RuntimePolicy:
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
         prov.touched.discard(label)                     # a good reading (tracker)
         if far and self.cfg.rehover_when_far:
-            # found well off the prior: hover over the new spot (object centred in the wrist view) and refine again
+            # found well off the prior: hover over the new spot (object centred in the wrist view) and refine again;
+            # if that view finds nothing, the prior comes back
+            self._recentre_prior = getattr(self, "_recentre_prior", {})
+            self._recentre_prior[label] = prior_pose
             ev["rehover"] = "recentre"
             hint = {"rehover": (o.pos.copy(), o.quat.copy())}
             if kind == "place":

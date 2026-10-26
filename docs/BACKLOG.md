@@ -182,6 +182,11 @@
     through `verify_choose`, keep the twin chain), no runtime change; then a G3 A/B per task.
   - Idea, not needed for plug (Skills-5: in-jaw drift 0.0-0.4 mm): an in-hand transform from the twin's nominal
     replay of an unverified grasp.
+- [ ] **dojo runtime: a second look at a weakly measured support before the next object covers it.** 5.1 stack
+  100006: block_0's post-place refine was borderline (iou 0.70). The next block hid it completely (visible 0.0 at all
+  3 place hovers), and the stack missed by 14-18 mm. Proposal: when a support's post-place iou is below 0.8, the
+  releasing arm looks again from 3 cm higher before the next carry, behind a config field (default off), then
+  measured on the proxy. It needs a motion step at release time, i.e. a skills hook; the provider cannot move arms.
 - [ ] **dojo runtime: fixture-aware place refine.** Under perception cb5c3a4 the place refines on the tower's base board
   are all "not ok" (the static fixture keeps its prior), and each place still spends 8-10 steps on 2 re-hovers (~50
   steps per 8-piece tower episode, journal 2026-10-25-dojo-integ2 §5). A stationary support whose prior perception
