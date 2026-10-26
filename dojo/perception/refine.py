@@ -127,7 +127,27 @@ def _shape_for(key: str, R: np.ndarray, tag: str | None):
 
 def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
            tag: str | None = None, bgs: dict | None = None, others: list | None = None, iters: int = 60,
-           xy_starts: float = 0.015, seg: str = "local", held=None, search: bool = True) -> dict:
+           xy_starts: float = 0.015, seg: str = "local", held=None, search: bool = True,
+           support_snap: bool = True) -> dict:
+    if support_snap and others:
+        # a prior floating above every known support under it (a carried-height belief after a release; 5.1 stack
+        # 100007 s142: 56 mm up, iou 0.0): also refine from the prior lowered onto that support. The local masks are
+        # built around the prior's projection, so this is a second full refine, not a second start
+        from .render import load_asset
+
+        a_t = load_asset(obj_id)
+        Tp = pose_to_T(prior_pose[:3], prior_pose[3:])
+        lo = float((a_t.Vs @ Tp[:3, :3].T + Tp[:3, 3])[:, 2].min())
+        drop = lo - support_z(a_t, prior_pose, others)
+        if drop > SUPPORT_FLOAT_M:
+            kw = dict(tag=tag, bgs=bgs, others=others, iters=iters, xy_starts=xy_starts, seg=seg, held=held,
+                      search=search, support_snap=False)
+            out_a = refine(obj_id, wrist_frame, proprio, prior_pose, arm, **kw)
+            prior_b = [float(prior_pose[0]), float(prior_pose[1]), float(prior_pose[2]) - drop] + list(map(float, prior_pose[3:]))
+            out_b = refine(obj_id, wrist_frame, proprio, prior_b, arm, **kw)
+            if out_b["ok"] and out_b["iou"] >= out_a["iou"] + SUPPORT_GAIN_IOU:
+                return {**out_b, "z_dropped_mm": round(1000 * drop, 1), "iou_at_prior_height": out_a["iou"]}
+            return {**out_a, "support_tried": {"z_dropped_mm": round(1000 * drop, 1), "iou": out_b["iou"], "ok": out_b["ok"]}}
     t0 = time.time()
     bgs = _backgrounds(bgs) if seg != "local" else bgs
     cam = wrist_camera(arm, np.asarray(proprio[f"{arm}_arm_joint_state"], dtype=float))
@@ -152,8 +172,11 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
     if others:
         from .render import load_asset, silhouette, transform
 
+        a_t = load_asset(obj_id)
         for key, pose in others:
             a = load_asset(key)
+            if _under(a, pose, a_t, prior_pose):
+                continue  # a support under the target (a stack seen from above): its pixels are the target's
             m = silhouette(cam, transform(a.Vs, pose_to_T(pose[:3], pose[3:])), a.Fs)
             v.fg &= 1 - m
     views = {cam.name: v}
@@ -180,6 +203,7 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         starts.append((T0[0, 3] + dx, T0[1, 3] + dy, yaw0))
     if sm.yaw_period > 1.5 * np.pi:
         starts.append((T0[0, 3], T0[1, 3], yaw0 + np.pi))
+
     best = None
     for x, y, yaw in starts:
         # nm_refine poses objects on the table; a height offset is applied through a shifted shape copy
@@ -209,6 +233,15 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
             "ok": ok, "time_s": round(time.time() - t0, 3), "camera": cam.name}
+    if others and out["ok"]:
+        from .render import load_asset
+
+        a_t = load_asset(obj_id)
+        for k2, p2 in others:  # a known object resting on the target covers its top: from above, only side
+            if _rests_on(load_asset(k2), p2, a_t, prior_pose):  # strips are left (5.1 stack: middle block 8 mm off)
+                out["ok"] = False
+                out["why"] = f"covered:{k2}"
+                break
     if others and out["ok"]:  # landed on a known neighbour: not this object (a large shift can grab one)
         from .render import load_asset
 
@@ -218,7 +251,9 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
                 fp2 = float(np.min(load_asset(k2).extents[:2]))
             except Exception:
                 fp2 = fp
-            if np.hypot(out["pose"][0] - p2[0], out["pose"][1] - p2[1]) < 0.7 * min(fp, fp2):
+            h = 0.5 * min(float(load_asset(obj_id).extents[2]), float(load_asset(k2).extents[2]) if k2 else 1.0)
+            if (np.hypot(out["pose"][0] - p2[0], out["pose"][1] - p2[1]) < 0.7 * min(fp, fp2)
+                    and abs(out["pose"][2] - p2[2]) < h):  # same level only: the blocks of a stack share xy
                 out["ok"] = False
                 out["why"] = f"neighbour:{k2}"
                 break
@@ -243,6 +278,65 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
                                                        searched["suggest_xy"][1] - T0[1, 3]) * 1000), 1)
         out["suggest_score"] = searched["score"]
     return out
+
+
+def _under(a_other, pose_other, a_target, pose_target, tol: float = 0.004) -> bool:
+    """``other`` lies under ``target``: its top at or below the target's bottom (+ tol) and their footprints overlap."""
+    To, Tt = pose_to_T(pose_other[:3], pose_other[3:]), pose_to_T(pose_target[:3], pose_target[3:])
+    Wo = a_other.Vs @ To[:3, :3].T + To[:3, 3]
+    Wt = a_target.Vs @ Tt[:3, :3].T + Tt[:3, 3]
+    if Wo[:, 2].max() > Wt[:, 2].min() + tol:
+        return False
+    lo = np.maximum(Wo[:, :2].min(0), Wt[:, :2].min(0))
+    hi = np.minimum(Wo[:, :2].max(0), Wt[:, :2].max(0))
+    return bool((hi > lo).all())
+
+
+SUPPORT_FLOAT_M = 0.008  # prior's bottom this far above the highest known support under it: floating
+SUPPORT_GAIN_IOU = 0.15  # the support-height fit must beat the prior-height fit by this much to be taken
+
+
+def support_z(asset, pose, others) -> float:
+    """Top of the highest known support under ``pose``'s footprint (others' tops at or below its bottom + 6 mm,
+    footprints overlapping by >= 30 %), else the table."""
+    from .render import load_asset
+
+    T = pose_to_T(pose[:3], pose[3:])
+    W = asset.Vs @ T[:3, :3].T + T[:3, 3]
+    lo = float(W[:, 2].min())
+    top = TABLE_Z
+    for k2, p2 in others:
+        try:
+            a2 = load_asset(k2)
+        except Exception:
+            continue
+        T2 = pose_to_T(p2[:3], p2[3:])
+        W2 = a2.Vs @ T2[:3, :3].T + T2[:3, 3]
+        hi2 = float(W2[:, 2].max())
+        if hi2 > lo + 0.006:
+            continue
+        a_lo = np.maximum(W[:, :2].min(0), W2[:, :2].min(0))
+        a_hi = np.minimum(W[:, :2].max(0), W2[:, :2].max(0))
+        inter = float(np.prod(np.clip(a_hi - a_lo, 0, None)))
+        small = min(float(np.prod(np.ptp(W[:, :2], 0))), float(np.prod(np.ptp(W2[:, :2], 0))))
+        if inter >= 0.3 * max(small, 1e-9):
+            top = max(top, hi2)
+    return top
+
+
+def _rests_on(a_top, pose_top, a_base, pose_base, tol: float = 0.006, min_overlap: float = 0.3) -> bool:
+    """``top`` rests on ``base``: its bottom within ``tol`` of the base's top and their footprints overlap by at least
+    ``min_overlap`` of the smaller one (a block hovering in the jaws above the base does not count)."""
+    Tt, Tb = pose_to_T(pose_top[:3], pose_top[3:]), pose_to_T(pose_base[:3], pose_base[3:])
+    Wt = a_top.Vs @ Tt[:3, :3].T + Tt[:3, 3]
+    Wb = a_base.Vs @ Tb[:3, :3].T + Tb[:3, 3]
+    if abs(Wt[:, 2].min() - Wb[:, 2].max()) > tol:
+        return False
+    lo = np.maximum(Wt[:, :2].min(0), Wb[:, :2].min(0))
+    hi = np.minimum(Wt[:, :2].max(0), Wb[:, :2].max(0))
+    inter = float(np.prod(np.clip(hi - lo, 0, None)))
+    small = min(float(np.prod(np.ptp(Wt[:, :2], 0))), float(np.prod(np.ptp(Wb[:, :2], 0))))
+    return inter >= min_overlap * max(small, 1e-9)
 
 
 TRUNCATED_MAX = 0.3  # more of the object outside the wrist image than this: translation along the cut is unobservable
