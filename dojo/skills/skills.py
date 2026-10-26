@@ -92,6 +92,12 @@ class PickPlan:
     T_tcp_obj: np.ndarray
     steps: int
     label: str
+    method: str = "auto"
+    plan_kw: dict = field(default_factory=dict)     # the plan_pick arguments it was planned with (re-plans reuse them)
+    # set by plan_transfer: re-pair(q_start) -> (PickPlan, PlacePlan) | SkillResult, the pick and place re-planned
+    # together for the object as it is now; and the place paired with a re-paired pick (execute_pick fills it)
+    repair: object = None
+    paired_place: object = None
 
 
 @dataclass
@@ -260,6 +266,10 @@ class Skills:
         it stayed in its holder, 3/3; four more steps and it came out, 3/3)."""
         w = self.world
         obj = w.obj(label)
+        # what a re-plan of this pick (after a wrist refine) must plan with again: everything but the grasps and the
+        # start (``execute_pick``)
+        plan_kw = dict(lift=lift, max_eval=max_eval, grasp_kw=grasp_kw, lift_to_z=lift_to_z, approach_rad=approach_rad,
+                       descend_rad=descend_rad, open_g=open_g, settle=settle, lift_rad=lift_rad, squeeze=squeeze)
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
         best, notes, allf = None, [], []
         for a in arms:
@@ -324,7 +334,7 @@ class Skills:
                 from dojo.skills.kinematics import grip_to_gap
                 p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").hold(squeeze, "squeeze").move(up, "lift")
                 cost = p.steps + 30 * g.score
-                feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label)))
+                feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label, method, dict(plan_kw))))
                 if len(feas) >= keep:
                     break
             if feas:
@@ -396,10 +406,13 @@ class Skills:
                 return
             hint = self._refine(label, arm, kind)   # after the last allowed re-hover a further hint is ignored
 
-    def _pick_rehover(self, label: str, arm: str, method: str, plan_kw: dict):
+    def _pick_rehover(self, label: str, arm: str, method: str, plan_kw: dict, pp: "PickPlan | None" = None):
         def f() -> bool:
             kw = {k: v for k, v in plan_kw.items() if k not in ("keep", "q_start", "return_all")}
-            ph = self.plan_pick(label, arm, method, q_start={arm: self.ex.q[arm]}, keep=1, **kw)
+            # the planned grasp (object frame) over the hinted pose first: a pick planned with its place must keep it
+            ph = self._same_grasp_pick(pp, kw) if pp is not None else None
+            if ph is None:
+                ph = self.plan_pick(label, arm, method, q_start={arm: self.ex.q[arm]}, keep=1, **kw)
             if not isinstance(ph, PickPlan):
                 return False
             hov = ArmPlan(arm, self.ex.q[arm].copy(), self.ex.g[arm])
@@ -426,31 +439,79 @@ class Skills:
             return True
         return f
 
-    def execute_pick(self, pp: PickPlan, method: str = "auto", **plan_kw) -> PickPlan:
+    def _same_grasp_pick(self, pp: "PickPlan", kw: dict) -> "PickPlan | None":
+        """``pp``'s grasp, fixed in the object frame (``inv(T_tcp_obj)``), at the object's pose in the world now (a wrist
+        refine moved it), planned from the arm's current joints with ``pp``'s own pick arguments; None if infeasible."""
+        import dataclasses
+        if pp.label not in self.world.objects:
+            return None
+        g = dataclasses.replace(pp.grasp, T=self.world.obj(pp.label).T @ inv_T(pp.T_tcp_obj))
+        kw = {k: v for k, v in kw.items() if k not in ("keep", "q_start", "return_all", "grasps")}
+        r = self.plan_pick(pp.label, pp.arm, pp.method, q_start={pp.arm: self.ex.q[pp.arm]}, grasps=[g], keep=1, **kw)
+        if not isinstance(r, PickPlan):
+            return None
+        r.repair = pp.repair
+        return r
+
+    def execute_pick(self, pp: PickPlan, method: str | None = None, **plan_kw) -> PickPlan:
         """Run a pick plan. With a refine hook: hover (approach) first, refine the object's pose from
         the wrist, then re-plan and run the descent / close / lift from the refined pose. Returns the
-        plan that was actually executed (for verify_pick)."""
+        plan that was actually executed (for verify_pick).
+
+        The re-plan keeps the planned grasp in the object frame (``_same_grasp_pick``): a pick planned together with its
+        place (``plan_transfer``: a re-orienting transfer, a relay leg) fixes the in-hand orientation the place needs
+        (mode B: a tape measure's 25-deg pinch re-planned with the default grasps came out straight down, the place
+        re-planned for it had no IK at the slot, and the nominal plan put it in 33 deg tilted). Unmoved by the refine,
+        the original descent runs. When that grasp is infeasible at the refined pose: a pick with a place
+        (``pp.repair``) re-plans both together (the executed plan's ``paired_place``), any other pick re-plans with
+        the method's grasps, as before; with no plan, the original descent."""
         if self.refine is None:
             self.parallel([pp.plan], name=f"pick {pp.label}")
             return pp
+        method = pp.method if method is None else method
+        kw = {**pp.plan_kw, **{k: v for k, v in plan_kw.items() if k not in ("keep", "q_start", "return_all", "grasps")}}
         hover = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0)
         hover.ops = [op for op in pp.plan.ops[:2]]            # open-for-grasp + approach to the pre-grasp
         self.parallel([hover], name=f"pick {pp.label} hover")
-        self._refine_hover(pp.label, pp.arm, "pick", self._pick_rehover(pp.label, pp.arm, method, plan_kw))
-        pp2 = self.plan_pick(pp.label, pp.arm, method, q_start={pp.arm: self.ex.q[pp.arm]}, **plan_kw)
-        if not isinstance(pp2, PickPlan):
-            pp2 = pp                                          # keep the original descent
-            rest = ArmPlan(pp.arm, self.ex.q[pp.arm].copy(), self.ex.g[pp.arm])
-            rest.ops = pp.plan.ops[2:]
-            self.ex.run({pp.arm: rest}, name=f"pick {pp.label} descent")
-            return pp2
+        T_plan = pp.grasp.T @ pp.T_tcp_obj                    # the object's pose the pick was planned for
+        self._refine_hover(pp.label, pp.arm, "pick", self._pick_rehover(pp.label, pp.arm, method, kw, pp=pp))
+
+        def rest_of(p: PickPlan, note: str) -> PickPlan:
+            rest = ArmPlan(p.arm, self.ex.q[p.arm].copy(), self.ex.g[p.arm])
+            rest.ops = p.plan.ops[2:]
+            self.ex.run({p.arm: rest}, name=f"pick {p.label} {note}")
+            return p
+
+        o = self.world.objects.get(pp.label)
+        hover_q = np.asarray(hover.compile()[0][-1][0], float) if hover.compile()[0] else np.asarray(pp.plan.q0, float)
+        if o is not None and float(np.abs(self.ex.q[pp.arm] - hover_q).max()) < 1e-6:
+            from dojo.skills.geometry import angle_between_R
+            dp = float(np.linalg.norm(o.T[:3, 3] - T_plan[:3, 3]))
+            if dp < 2e-4 and math.degrees(angle_between_R(o.R, T_plan[:3, :3])) < 0.2:
+                return rest_of(pp, "descent")                 # the refine saw it where it was planned
+        pp2 = self._same_grasp_pick(pp, kw)
+        if pp2 is None and pp.repair is not None:
+            rr = pp.repair({pp.arm: self.ex.q[pp.arm].copy()})
+            if isinstance(rr, tuple):
+                pp2, pl2 = rr
+                pp2.paired_place = pl2
+                self.log(f"[pick] {pp.label}: planned grasp infeasible at the refined pose; re-paired "
+                         f"({pp2.grasp.note})")
+        elif pp2 is None:
+            pp2 = self.plan_pick(pp.label, pp.arm, method, q_start={pp.arm: self.ex.q[pp.arm]}, **kw)
+            pp2 = pp2 if isinstance(pp2, PickPlan) else None
+        if pp2 is None:
+            return rest_of(pp, "descent")                     # keep the original descent
         self.ex.run({pp2.arm: pp2.plan}, name=f"pick {pp.label} refined")
         return pp2
 
     def run_pick(self, pp: PickPlan) -> SkillResult:
+        """Execute + verify a pick; ``self.last_pick`` = the plan that ran (a refine may re-plan it)."""
         before = self.world.obj(pp.label).pos.copy()
+        self.last_pick = pp
         try:
             pp = self.execute_pick(pp)
+            self.last_pick = pp
         except BudgetExceeded as e:
             return SkillResult(False, "pick", "step_budget", 0, pp.arm, note=str(e))
         except EpisodeEnded as e:
@@ -1102,9 +1163,15 @@ class Skills:
         ``pair_ok(grasp, T_tcp_obj, T_obj, T_tcp) -> bool``: an extra test of each screened grasp-place pair.
         ``yaw_about``: the point (object frame) the ``yaw_sym`` turns are about, instead of the bbox centre (a star-shaped
         ring's hole sits 2.9 mm off its bbox centre: turned about the centre, 3 of 4 targets missed the peg by 4-6 mm).
-        Returns (PickPlan, PlacePlan) or a SkillResult."""
+        Returns (PickPlan, PlacePlan) or a SkillResult. The PickPlan's ``repair(q_start)`` re-plans the pair from the
+        world as it is then, same arm, same arguments (``execute_pick``, when a refine leaves the planned grasp
+        infeasible)."""
         w = self.world
         obj = w.obj(label)
+        call = dict(targets=list(targets), ignore=ignore, yaw_sym=yaw_sym, lift=lift, place_kw=place_kw,
+                    pick_kw=pick_kw, max_full=max_full, grasps=grasps, max_pick_tilt=max_pick_tilt,
+                    box_tilts=box_tilts, lift_to_pre=lift_to_pre, screen_fingers_out=screen_fingers_out,
+                    pair_ok=pair_ok, yaw_about=yaw_about)
         place_kw = dict(place_kw or {})
         pick_kw = dict(pick_kw or {})
         arms = list(arms) if arms else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
@@ -1214,6 +1281,7 @@ class Skills:
             pl = self.plan_place(a, T_obj, yaw_sym=1, ignore=ignore, q_start=pp.plan.q_end, held=held, **place_kw)
             if isinstance(pl, PlacePlan):
                 pl.transfer_kw = {"ignore": tuple(ignore), **place_kw}
+                pp.repair = (lambda q_s, a=a: self.plan_transfer(label, arms=[a], q_start=q_s, **call))
                 return pp, pl
             notes.append(f"place {g.note}: {pl.note[:70]}")
         return SkillResult(False, "transfer", "ik_fail" if not screened else "collision", 0, None,
@@ -1237,6 +1305,12 @@ class Skills:
         pose (same target; the nominal plan when the re-plan fails, ``run_place`` re-measures at the
         approach anyway), place."""
         r = self._record(self.run_pick(pp))
+        px = getattr(self, "last_pick", None)
+        if isinstance(px, PickPlan) and px is not pp and px.label == pp.label:
+            # the refine re-planned the pick: a re-paired one brings its own place (same grasp: same place)
+            if isinstance(px.paired_place, PlacePlan):
+                pl = px.paired_place
+            pp = px
         if not r.ok:
             return r
         if r.status == "ok" and self.refine is not None:
