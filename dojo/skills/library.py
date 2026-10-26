@@ -1378,34 +1378,40 @@ def in_tip_down(sk: Skills, label: str, container: str, depth: float = 0.035, ra
 
 
 def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str]):
-    """Where ``label`` is let go over ``container``'s opening: leading end down, its footprint at the free spot of the
-    opening with the most clearance (``fit_insertion``; what already stands in the opening is taken out where it
-    crosses the rim), the leading end ``FILL_DROP_H`` above the rim. Returns (pose 4x4, HoleFit) or (None, None)."""
+    """Where ``label`` is let go over ``container``'s opening: leading end down, its footprint against the wall with
+    >= 3 mm clearance (``fit_insertion(pack=True)``: the first ones stand along the wall and leave the middle to the
+    next; twin, an oil pen dropped in the middle leaned across and left the second 1-2 mm), else at the spot with the
+    most clearance; what already stands in the opening is taken out where it crosses the rim. The leading end
+    ``FILL_DROP_H`` above the rim. Returns (pose 4x4, HoleFit) or (None, None)."""
     from dojo.skills.insertion import fit_insertion
     w = sk.world
     o, c = w.obj(label), w.obj(container)
     others = [w.obj(l) for l in inside if l in w.objects]
-    for kw in ({"others_pad": 0.004}, {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()}):
+    for kw in ({"pack": True, "min_clear": 0.003, "others_pad": 0.003}, {"others_pad": 0.004}, {"others_pad": 0.002},
+               {"others_pad": 0.0}, {"others": ()}):
         fit = fit_insertion(o, c, **{"others": others, "res": 0.001, "yaw_step_deg": 15.0, "pack": False,
                                      "others_band": 0.012, **kw})
-        if fit is not None:
+        if fit is not None and (not kw.get("pack") or fit.clearance >= kw["min_clear"]):
             T = fit.T_obj.copy()
             T[2, 3] += (fit.top_z + FILL_DROP_H) - fit.floor_z
             return T, fit
     return None, None
 
 
-FILL_LEAN_DEG = (15.0, 30.0)  # deg: drop poses also leaning the object's top towards an arm (a 185 mm pen held upright 1 m
+FILL_LEAN_DEG = (15.0, 25.0)  # deg: drop poses also leaning the object's top towards an arm (a 185 mm pen held upright 1 m
                               # high near its centre is out of a side grasp's reach; the checker takes pens within 45 deg)
+FILL_LEAN_IN = 0.012          # m: a leaning one is let go with its leading end this far inside the opening (twin: let go
+                              # 4 mm over the rim leaning 30 deg, pens toppled out over the rim)
 
 
 def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
     """``T`` (an upright drop pose) first, then the same pose leaning ``FILL_LEAN_DEG`` about its lowest point, its top
-    towards either arm's base."""
+    towards either arm's base, its lowest point ``FILL_LEAN_IN`` below the rim."""
     o = sk.world.obj(label)
     out = [T]
     if o.asset.mesh is None:
         return out
+    from dojo.skills.geometry import axis_angle_R
     V = np.asarray(o.asset.mesh[0], float) @ T[:3, :3].T + T[:3, 3]
     tip = V[np.argmin(V[:, 2])]
     up = np.array([0.0, 0.0, 1.0])
@@ -1416,11 +1422,11 @@ def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
             if np.linalg.norm(d) < 1e-6:
                 continue
             a = np.cross(up, d / np.linalg.norm(d))
-            from dojo.skills.geometry import axis_angle_R
             Rl = axis_angle_R(a / np.linalg.norm(a), math.radians(deg))
             Tl = T.copy()
             Tl[:3, :3] = Rl @ T[:3, :3]
             Tl[:3, 3] = tip + Rl @ (T[:3, 3] - tip)
+            Tl[2, 3] -= FILL_DROP_H + FILL_LEAN_IN
             out.append(Tl)
     return out
 
