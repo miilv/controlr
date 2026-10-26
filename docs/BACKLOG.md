@@ -195,6 +195,9 @@
   `cells` / `container`) and `provider.actors_moving()` while they hold still. `match_and_pick` needs object tracks on
   the belt. G3 answers all three from GT (`GTProvider`); `RuntimeProvider` has none of them yet. Without
   `actors_moving` the skills hold a fixed 60 / 110 steps, tuned on our own demos.
+- [ ] **dojo skills: fill_egg_holder, a 0.3 kg egg falls out of the pads while the hand turns it upright** (twin
+  v3-v6: rolled, raised, end-to-end and off-middle grasps, slow carries; one level grasp held and stood its egg in a
+  hole). The holes, the stand-up place, the drop and the lid swing are built (`dojo/skills/holders.py`).
 - [ ] **dojo skills: fill_egg_holder, eggs crowded in the basket have no grasp.** The X5 finger's root block (38 mm
   thick, 56 mm wide, 40-70 mm above the TCP) meets the basket's rim or the neighbouring egg for every grasp of an egg
   lying against the basket wall (dev layouts: ~31 of 44 eggs). Eggs on the table and the stand-up drop into the

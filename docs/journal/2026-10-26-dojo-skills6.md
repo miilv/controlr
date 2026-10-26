@@ -64,6 +64,12 @@ median / max (limit).
 | match_and_pick_from_conveyor | v1b (369e7a0) | 100000-02 raw | 2/3 | 0.67 | 190 / 286 (700) | ice cream: no top grasp | 86 / 92 |
 | match_and_pick_from_conveyor | v4 (7ad3f4c) | all 25 raw | 20/25 | 0.80 | 199 / 362 | ice cream 3 (no grasp), a standing bottle and a 24 cm figurine (16 cm lift out of reach) | |
 
+| fill_egg_holder | v1 (6b466c6) | 100000-01 settled | 0/2 | 0.00 | 59-60 (700) | no grasp (basket wall filter); lid read wrongly as closed | 21.2 / 21.2 |
+| fill_egg_holder | v2 (62ed59b, wall model, end grasps, table relay) | 100000 | 0/1 | 0.10 | 363 | 1 egg in; end-to-end grasps slipped on the relay; planning 8 min | |
+| fill_egg_holder | v3 (e4235d6) | 100000-01 | 0/2 | 0.00 | 174-333 | eggs fell out of the pads while the hand turned them up | |
+| fill_egg_holder | v4 (dd05e1a, held 10 mm below the middle) | 100000-01 | 0/2 | 0.00 | 182-477 | same | |
+| fill_egg_holder | v5 (5d9ba52, slow eased carry) | 100000-01 | 0/2 | 0.05 | 586-605 | rolled grasps 0/4 held; a level grasp 1/1 stood its egg in a hole | |
+
 Notes:
 - The ttt v7 run's chunks were deployed from 194e49b, 7ad3f4c, 848f38e and 17acd42. Between them `play_board_game` and
   its waits changed only in a provider fallback the G3 provider does not take.
@@ -112,9 +118,23 @@ fill_egg_holder:
 3. An egg's bbox top is the open lid (12 cm over the plate), so `fingers_out` raised the release far too high. Now
    `ref_top` = the body's top.
 
-## 5. Parked
+## 5. Parked and open
 
-(filled in below)
+- **fill_egg_holder: first version only, no measured gain.**
+  - Each part works on its own:
+    - the holes come from the body mesh;
+    - the stand-up place plans, kinematically for 22 of the 44 dev eggs;
+    - an egg released over a hole drops in standing: twin v5 100001, 3.6 deg tilt, scored;
+    - the lid swing plans (never run in the twin: it only runs once all four eggs are in).
+  - The blocker is holding a 0.3 kg egg in the X5's pads while the hand turns it upright. In the twin it fell out
+    between the pads on almost every carry: rolled, raised and end-to-end grasps, slow carries, grasps off the middle.
+    Most dev eggs lie packed against the basket wall, so the level grasp that held is rarely free.
+  - Next: a better hold (a regrasp from the table with the egg wedged against something, or pads at the egg's lower
+    third measured in the twin).
+  - PyRUA's 21 suggests 1-2 eggs per episode. Ours is near 0, so this task does not count in the projection yet.
+- **pick_from_conveyor_by_image:** the generator fix (v13) and a first skill (`pick_into_held`); first G3 numbers in §3.
+- **Wide objects on the belt** (ice cream: 3 of the 4-5 match_and_pick failures): a side grasp of the cone on the
+  moving belt.
 
 ## 6. obs_needs (for integration-2 / perception-R&D)
 
