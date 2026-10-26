@@ -91,7 +91,8 @@ def body_holes(o, body_link: str | None, min_depth: float = 0.02) -> list[dict]:
     return out
 
 
-def standing_targets(o, xy, z_bottom: float, tilts=(0.0, 20.0, 35.0), spins=(0.0, 90.0)) -> list[np.ndarray]:
+def standing_targets(o, xy, z_bottom: float, tilts=(0.0, 20.0, 35.0), spins=(0.0, 90.0),
+                     ups=(1.0, -1.0)) -> list[np.ndarray]:
     """Poses of ``o`` with its long axis (largest bbox extent) tilted ``tilt`` deg from vertical (either end up), spun
     about that axis, its bbox centre over ``xy`` and its lowest mesh point at ``z_bottom``. Tilts toward world +x only:
     the caller's yaw symmetry turns them about the vertical."""
@@ -104,7 +105,7 @@ def standing_targets(o, xy, z_bottom: float, tilts=(0.0, 20.0, 35.0), spins=(0.0
     out = []
     for tilt in tilts:
         u = np.array([math.sin(math.radians(tilt)), 0.0, math.cos(math.radians(tilt))])
-        for sgn in (1.0, -1.0):
+        for sgn in ups:
             # the rotation taking the body long axis (sgn * e) to u
             a = sgn * e
             v = np.cross(a, u)
@@ -171,11 +172,12 @@ def inside_wall(c, prof: dict, pts_w: np.ndarray, margin: float = 0.003) -> bool
 
 
 def round_grasps(o, kin, arm, rolls=(0.0, 12.0, -12.0, 25.0, -25.0, 40.0, -40.0),
-                 tilts=(0.0, 25.0, -25.0, 40.0, -40.0)) -> list:
+                 tilts=(0.0, 25.0, -25.0, 40.0, -40.0), along: float = 0.0, ends: bool = True) -> list:
     """Grasps of an object with a round cross-section about its long axis (an egg, a can lying down): the pads close
     through the long axis at its middle, the closing direction rolled about the long axis by ``rolls`` (deg from
     horizontal: the fingers clear a wall next to it), the approach tilted about the closing axis by ``tilts`` (it turns
-    the long axis up when the object is stood in a place)."""
+    the long axis up when the object is stood in a place). ``along``: the pads that far along the body long axis from
+    the middle (stood up with that end down, the wider middle rests on the pads instead of sliding out between them)."""
     ext = o.asset.extents
     k = int(np.argmax(ext))
     short = [i for i in range(3) if i != k]
@@ -186,7 +188,7 @@ def round_grasps(o, kin, arm, rolls=(0.0, 12.0, -12.0, 25.0, -25.0, 40.0, -40.0)
         return []
     ax = o.R[:, k]
     ax = ax / np.linalg.norm(ax)
-    c = o.center_w
+    c = o.center_w + ax * along
     h = np.cross(ax, [0.0, 0.0, 1.0])                   # horizontal, across the long axis
     if np.linalg.norm(h) < 0.3:
         return []                                       # standing on its end: not this generator
@@ -208,7 +210,7 @@ def round_grasps(o, kin, arm, rolls=(0.0, 12.0, -12.0, 25.0, -25.0, 40.0, -40.0)
     # end to end (pads on the two tips): free when neighbours touch its sides; it cannot stand the object up, but it
     # gets it out of a crowded container
     L = float(ext[k])
-    if L <= G.MAX_WIDTH and abs(float(ax[2])) < 0.5:
+    if ends and L <= G.MAX_WIDTH and abs(float(ax[2])) < 0.5:
         a_dn = np.array([0.0, 0.0, -1.0]) - ax * float(-ax[2])
         a_dn = a_dn / np.linalg.norm(a_dn)
         for tilt in (0.0, 20.0, -20.0, 35.0, -35.0, 50.0, -50.0):     # leaning in keeps the palm off a wall
@@ -239,11 +241,15 @@ WALL_MARGIN = -0.008   # m; finger samples may touch a container's wall / rim by
 
 
 def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.0, -40.0),
-                  margin: float = WALL_MARGIN) -> list:
+                  margin: float = WALL_MARGIN, along: float | None = None) -> list:
     """Box + usual grasps of ``label``; when it lies inside a round container, only those whose open fingers stay
     inside the wall at the grasp and on the way in."""
     o = sk.world.obj(label)
-    cands = round_grasps(o, sk.kin, arm) + G.box_grasps(o, sk.kin, arm, tilts=tuple(tilts)) + G.candidates(o, sk.kin, arm)
+    if along is not None:                 # a stand-up place: round grasps off the middle toward the end that goes down
+        cands = round_grasps(o, sk.kin, arm, along=along, ends=False)
+    else:
+        cands = round_grasps(o, sk.kin, arm) + G.box_grasps(o, sk.kin, arm, tilts=tuple(tilts)) + \
+            G.candidates(o, sk.kin, arm)
     c = container_of(sk, label)
     prof = wall_profile(c) if c is not None else None
     if prof is None:
@@ -315,7 +321,7 @@ def in_hole(o, hole: dict) -> bool:
 
 
 def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None = None, close: bool = True,
-               tries: int = 3) -> dict:
+               tries: int = 3, hold_below: float = 0.010) -> dict:
     """Stand each object upright over a free hole of ``holder``'s body and let it drop in (the fingertips stay above
     the body), back holes first (nearest the lid hinge); bank after each. Then, with ``close``, swing the lid shut
     (``swing_closed``). Objects lying in a round container are grasped inside its wall."""
@@ -352,18 +358,18 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
             o = w.obj(lab)
             plans = SkillResult(False, "transfer", "ik_fail", 0, None, note="no hole")
             arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2])))
-            for h in free[:2]:                                # one hole and one arm at a time (screen budget, full plans)
-                targets = standing_targets(o, h["center"], h["top"] - 0.010, tilts=(0.0, 25.0))
-                for a in arms:
-                    plans = sk.plan_transfer(lab, targets, arms=[a], ignore=ignore, yaw_sym=8,
-                                             grasps=lambda a, lab=lab: [g for g in grasps_inside(sk, lab, a)
-                                                                         if g.method != "ends"],
-                                             place_kw={"servo": True, "servo_ref": holder,
-                                                       "ref_top": holes[0]["top"] + 0.006, "fingers_out": True,
-                                                       "probe": False, "hover_clear": 0.008, "descend_rad": 0.03,
-                                                       "pre_h": 0.05})
-                    if not isinstance(plans, SkillResult):
-                        break
+            # stood up with one end down, the pads hold it below its widest section (twin: held at the middle it slid
+            # out between the pads as the hand turned it up, 2/2); one hole, one end and one arm per plan
+            combos = [(h, up, a) for h in free[:2] for up in (1.0, -1.0) for a in arms]
+            for h, up, a in combos:
+                targets = standing_targets(o, h["center"], h["top"] - 0.010, tilts=(0.0, 25.0), ups=(up,))
+                plans = sk.plan_transfer(lab, targets, arms=[a], ignore=ignore, yaw_sym=8,
+                                         grasps=lambda a, lab=lab, up=up: grasps_inside(sk, lab, a,
+                                                                                        along=-up * hold_below),
+                                         place_kw={"servo": True, "servo_ref": holder,
+                                                   "ref_top": holes[0]["top"] + 0.006, "fingers_out": True,
+                                                   "probe": False, "hover_clear": 0.008, "descend_rad": 0.03,
+                                                   "pre_h": 0.05})
                 if not isinstance(plans, SkillResult):
                     break
             if isinstance(plans, SkillResult):
