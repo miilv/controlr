@@ -96,6 +96,8 @@ Development runs (fixed subsets; several stopped once superseded):
 | fill_pen_holder | v4 (267cdfa), stopped | 100000-02 | 1/3 | 0.50 | .1, .4, 1.0 | 367 / 550 | + spots packed 3 mm from the wall, leaning drops 12 mm inside |
 | fill_pen_holder | v5 (3f8795e), stopped | 100000-02 | 1/3 | 0.45 | .1, .25, 1.0 | 618 / 619 | + only pens clear of the holder retried |
 | fill_pen_holder | v6 (43324a5), stopped | 100000-05 | 0/6 | 0.20 | .1 x3, .25 x2, .4 | 511 / 660 | first in the middle, then 5 mm packing; failed grasps skipped. Reverted to 3 mm packing for all (v7) |
+| fill_pen_holder | v7 (27b5e85) | **all 25** | 1/25 | 0.18 | 0 x8, .1 x4, .25 x11, .4, 1.0 | 437 / 776 | v5's packing + the grasp exclusion. Per pen not in: no reachable drop pose (ik_fail) 30, landed on the rim / outside 22, grasp slip 12. Holders left in place (within 0.42 m of the picking arm, 12/25) had no reachable drop pose in a dry run for 0-1 of 4 pens; moved, 2-3 |
+| fill_pen_holder | v8 (6c998f3), stopped | 100000-04 | 0/5 | 0.16 | .1 x3, .25 x2 | 486 / 618 | the holder always carried to the spot near the picking arm: 100001, left in place before, fell from 1.0 to 0.1. Reverted; v7 is the final |
 | store_tools_in_toolbox | main (skills3 v2) | 100000-09 | 0/10 | 0.20 | | 302 / 409 (900) | (before) |
 | store_tools_in_toolbox | v1 (d718622), stopped | 100000-02 | 0/3 | 0.25 | .25 x3 | 330 / 342 | level carry, straight-down grasps only: no IK at most slots, the re-orienting fallback's tilted pinches |
 | store_tools_in_toolbox | v2 (3f8795e), stopped | 100000-01 | 0/2 | 0.25 | .25 x2 | 269 / 277 | + tilts 15 / 25 ranked after straight down: pick lifts at 0.10 rad/step left hammer / wrench 11-14 mm loose |
