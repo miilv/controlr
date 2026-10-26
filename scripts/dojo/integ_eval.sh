@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # PROXY end-to-end eval of dojo.runtime.RuntimePolicy on compute3 (one GPU job):
-#   scripts/dojo/integ_eval.sh --task T --layouts L1.json ... --mode gt|perception --verify off|bundle
+#   scripts/dojo/integ_eval.sh --task T --layouts L1.json ... [--preset NAME] [--mode gt|perception] [--verify off|bundle]
 #        [--twin-envs 8] [--out DIR] [--config JSON] [--max-minutes 25]
+# --preset (dojo/runtime/presets.py, e.g. submit_v1) supplies mode / verify unless given explicitly.
 # Processes, all in ONE systemd user scope (24G / 14 cores with a twin or perception, else 16G / 12 cores):
 #   render service (Isaac 6.0), [twin service (physics-only 5.1 Twin, --verify bundle)],
 #   [perception service (controlr venv, EGL; --mode perception)], the driver (dojo.runtime.eval, RoboDojo python).
@@ -12,18 +13,26 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export RD_HOME="${RD_HOME:-$HOME/dojo-robodojo}" DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
 OUT="$DOJO_DATA/integ/runs/$(date -u +%Y%m%dT%H%M%SZ)"
-MODE=gt VERIFY=off TWIN_ENVS=8 TASK="" args=()
+MODE="" VERIFY="" PRESET="" TWIN_ENVS=8 TASK="" args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --out) OUT="$2"; shift 2 ;;
     --mode) MODE="$2"; args+=("$1" "$2"); shift 2 ;;
     --verify) VERIFY="$2"; args+=("$1" "$2"); shift 2 ;;
+    --preset) PRESET="$2"; args+=("$1" "$2"); shift 2 ;;
     --twin-envs) TWIN_ENVS="$2"; shift 2 ;;
     --task) TASK="$2"; args+=("$1" "$2"); shift 2 ;;
     *) args+=("$1"); shift ;;
   esac
 done
 [[ -n "$TASK" ]] || { echo "--task is required" >&2; exit 2; }
+if [[ -n "$PRESET" ]]; then        # the services follow the preset's mode / verify (explicit flags win, as in eval)
+  read -r P_MODE P_VERIFY < <(python3 -c 'import runpy, sys; p = runpy.run_path(sys.argv[1])["PRESETS"][sys.argv[2]]
+print(p.get("mode", "gt"), p.get("verify", "off"))' "$HERE/dojo/runtime/presets.py" "$PRESET") \
+    || { echo "[integ] unknown preset $PRESET" >&2; exit 2; }
+  MODE="${MODE:-$P_MODE}" VERIFY="${VERIFY:-$P_VERIFY}"
+fi
+MODE="${MODE:-gt}" VERIFY="${VERIFY:-off}"
 mkdir -p "$OUT"
 avail() { awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo; }
 for i in $(seq 30); do
