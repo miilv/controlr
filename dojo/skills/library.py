@@ -1435,7 +1435,8 @@ def _inside_opening(sk: Skills, label: str, container: str, depth: float = 0.02)
 FILL_DROP_H = 0.004           # m: the leading end is let go this far above the rim (twin probe: pens and oil pens let go
                               # 4 mm over a holder's rim within 18 mm of its axis fell to its floor 39/41)
 FILL_FINGER_CLEAR = 0.02      # m: the fingers stay this far above the rim
-FILL_PACK_CLEAR = 0.005       # m: a packed drop spot keeps this far from the wall and from what is inside
+FILL_PACK_CLEAR = 0.003       # m: a packed drop spot keeps this far from the wall and from what is inside (twin, 100000-
+                              # 100002: the first in the middle and 5 mm for the next 0.2 mean, 3 mm for all 0.45)
 
 
 def _leading_end(o) -> tuple[np.ndarray, np.ndarray] | None:
@@ -1484,18 +1485,17 @@ def _clear_of(sk: Skills, label: str, container: str, margin: float = 0.01) -> b
 
 
 def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str]):
-    """Where ``label`` is let go over ``container``'s opening: leading end down; the first at the spot with the most
-    clearance, the next ones against the wall with >= ``FILL_PACK_CLEAR`` (``fit_insertion(pack=True)``; twin, an oil pen
-    dropped in the middle leaned across and left the second 1-2 mm), else the most clearance; what already stands in the
-    opening is taken out where it crosses the rim. The leading end ``FILL_DROP_H`` above the rim. Returns (pose 4x4,
-    HoleFit) or (None, None)."""
+    """Where ``label`` is let go over ``container``'s opening: leading end down, against the wall with >=
+    ``FILL_PACK_CLEAR`` (``fit_insertion(pack=True)``: each stands along the wall and leaves the middle to the next; twin,
+    an oil pen dropped in the middle leaned across and left the second 1-2 mm), else the spot with the most clearance;
+    what already stands in the opening is taken out where it crosses the rim. The leading end ``FILL_DROP_H`` above the
+    rim. Returns (pose 4x4, HoleFit) or (None, None)."""
     from dojo.skills.insertion import fit_insertion
     w = sk.world
     o, c = w.obj(label), w.obj(container)
     others = [w.obj(l) for l in inside if l in w.objects]
-    # the first one in the middle (twin: packed 3 mm from the wall, an oil pen landed on the rim), the next ones packed
-    first = [{"pack": True, "min_clear": FILL_PACK_CLEAR, "others_pad": 0.003}] if others else []
-    for kw in first + [{"others_pad": 0.004}, {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()}]:
+    for kw in ({"pack": True, "min_clear": FILL_PACK_CLEAR, "others_pad": 0.003}, {"others_pad": 0.004},
+               {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()}):
         fit = fit_insertion(o, c, **{"others": others, "res": 0.001, "yaw_step_deg": 15.0, "pack": False,
                                      "others_band": 0.012, **kw})
         if fit is not None and (not kw.get("pack") or fit.clearance >= kw["min_clear"]):
