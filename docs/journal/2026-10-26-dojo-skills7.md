@@ -136,7 +136,18 @@ v6.2 per mug, 100000-18: 34 hung of 57.
   - no plan 2.
 - Per hook (hung / tried): low +x 16/19, top +x 7/11, top -x 8/20, low -x 3/9.
 
-**hang_mugs_random** (rand ceiling about 55 on our dev set, mug 14): TBD.
+**hang_mugs_random** (the ceiling on our dev set is about 55 because of mug 14):
+- v6.2 (722a9db), 100000-02 settled: 0/3, mean 0.00. The first try of this run hung at Isaac start (no output for 1 h);
+  the rerun went through.
+- origin/main's skills-4 v4 skill on the same three layouts (6810cbe): 0/3, mean 0.05 (0 / 0 / 0.15).
+  - Both are near zero, and the difference is one layout at 15. This is no evidence for a regression, and no gain.
+  - skills-4's 0.20 was on our raw 110000-09 layouts.
+- Failures:
+  - loose wall pinches on the bigger rand mugs (11-13 mm drift, put down twice);
+  - mugs falling out on the carry;
+  - no plan for the small rack's low hooks;
+  - mug 14 (100000: one hung, which does not score).
+- Parked.
 
 **Regression on 722a9db** (shared code touched):
 - plug_in_charger 100000-09: 8/10, 0.80. The reference is 8/10; the same two layouts fail (100002 no relay, 100008 the relay's last leg).
