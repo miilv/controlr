@@ -65,6 +65,23 @@ def run_cmd(a) -> None:
                 "grip_cmd": {arm: float(np.asarray(s[f"{arm}_ee_joint_state"]).reshape(-1)[0]) for arm in ARMS}}
 
     frames = [snap(0)]
+    save_at = {int(x) for x in (a.save_obs_at or "").split(",") if x.strip()}
+    saved = {}
+
+    def save_obs(k: int) -> None:
+        """The contract observation after k executed actions (3 RGB PNGs + the official state), as the policy got it."""
+        from PIL import Image
+        o = run.obs(0)
+        d = out.parent / f"{Path(a.layout).name.split('.')[0]}_s{k:04d}"
+        d.mkdir(parents=True, exist_ok=True)
+        for cam, im in o["images"].items():
+            Image.fromarray(np.asarray(im, np.uint8)).save(d / f"{cam}.png")
+        (d / "state.json").write_text(json.dumps({kk: np.asarray(v, float).reshape(-1).tolist()
+                                                  for kk, v in o["state"].items()}, indent=1))
+        saved[k] = {"dir": str(d), "objects_true": frames[-1]["objects"]}
+
+    if 0 in save_at:
+        save_obs(0)
     t0 = time.perf_counter()
     ended_at = None
     for k, act in enumerate(acts, 1):
@@ -73,13 +90,15 @@ def run_cmd(a) -> None:
         if run.step({kk: np.asarray(v, np.float32) for kk, v in act.items()})[0] and ended_at is None:
             ended_at = k
         frames.append(snap(k))
+        if k in save_at and not a.physics_only:
+            save_obs(k)
         if ended_at is not None:
             break
     res = {"layout": a.layout, "actions": a.actions, "physics_only": a.physics_only, "update_to_usd": a.update_to_usd,
            "obs_every": a.obs_every,
            "no_fabric_ext": a.no_fabric_ext, "settings": settings, "stable": info["stable"], "steps": len(frames) - 1,
            "ended_at": ended_at, "replay_s": round(time.perf_counter() - t0, 1), "reward": run.reward(0),
-           "frames": frames}
+           "frames": frames, "saved_obs": saved}
     out.write_text(json.dumps(res))
     print(f"[replay] {out.name}: {res['steps']} steps, ended_at {ended_at}, settings {settings}, reward {res['reward']}",
           flush=True)
@@ -175,6 +194,8 @@ def main(argv=None) -> None:
     r.add_argument("--update-to-usd", action="store_true")
     r.add_argument("--no-fabric-ext", action="store_true")
     r.add_argument("--obs-every", type=int, default=0, help="rendered only: an observation before every k-th step")
+    r.add_argument("--save-obs-at", default="", help="rendered only: save the contract observation after these step "
+                   "counts (comma list) to <out dir>/<layout>_s<step>/{cam_*.png,state.json}")
     c = sub.add_parser("compare")
     c.add_argument("a")
     c.add_argument("b")
