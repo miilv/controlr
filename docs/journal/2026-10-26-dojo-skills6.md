@@ -72,6 +72,9 @@ median / max (limit).
 | fill_egg_holder | v5 (5d9ba52, slow eased carry) | 100000-01 | 0/2 | 0.05 | 586-605 | rolled grasps 0/4 held; a level grasp 1/1 stood its egg in a hole | |
 | fill_egg_holder | **v6 (29876c6, level pads only for the stand-up)** | **all 11 settled** | **0/11** | **0.03** | **160 / 452** | grasp_slip 6, place_miss 3, collision 2: one egg in 3/11 episodes; most eggs sit packed against the basket wall, where no level grasp is free, and the relay to the table loses them | |
 | pick_from_conveyor_by_image | v1 (5d9ba52, layouts v13) | 100000-04 (ours, v13) | 0/5 | 0.00 | 7 (700) | no intercept for the basket: its handle is 1 m up, ~0.48 m out | 22 / 52 |
+| pick_from_conveyor_by_image | v2 (cc4dc44, lift pulled toward the arm) | 100000-02 | 0/3 | 0.00 | 7 | still no intercept: the pre-grasp over the handle is out of reach | |
+| pick_from_conveyor_by_image | v3 (51b3094, rim grasps) | 100000-02 so far | 0/3 | 0.00 | 65-67 | the near-rim pinch of the moving basket did not lift it ("rose 0 mm") | |
+| make_kong (regression) | 29876c6 | 100000-04 settled | **5/5** | 1.00 | 379 / 379 (600) | - (skills3: 5/5, 379) | |
 
 Notes:
 - The ttt v7 run's chunks were deployed from 194e49b, 7ad3f4c, 848f38e and 17acd42. Between them `play_board_game` and
@@ -135,7 +138,15 @@ fill_egg_holder:
   - Next: a better hold (a regrasp from the table with the egg wedged against something, or pads at the egg's lower
     third measured in the twin).
   - PyRUA's 21 suggests 1-2 eggs per episode. Ours is near 0, so this task does not count in the projection yet.
-- **pick_from_conveyor_by_image:** the generator fix (v13) and a first skill (`pick_into_held`); first G3 numbers in §3.
+- **pick_from_conveyor_by_image: parked after three iterations.** The generator fix (v13) and a first skill
+  (`pick_into_held`: belt velocity, picture identity, lift and hold, catch, drop) are in. The basket on the belt is not
+  picked:
+  - its handle is 1 m up and 0.45-0.5 m in front of both arms, so no tracked top grasp reaches it, even lifting while
+    pulling it toward the arm;
+  - a pinch of its near rim closed on nothing.
+  - Next: a side grasp of the near rim wall with the hand leaning in, or catch the basket when the belt brings it past
+    the right arm closer to the robot (it rides at y 0.03).
+  - Whether v13's basket pose is the official one is itself open (BACKLOG).
 - **Wide objects on the belt** (ice cream: 3 of the 4-5 match_and_pick failures): a side grasp of the cone on the
   moving belt.
 
