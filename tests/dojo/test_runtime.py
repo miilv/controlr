@@ -2118,3 +2118,82 @@ def test_a_large_post_place_correction_needs_the_head_view(pred_prec, corr_prec,
     prov.post_place(b.obs, ["block_1"])
     x1 = float(prov.belief.objects["block_1"].pos[0])
     assert (abs(x1 - (x0 + 0.041)) < 1e-9) == adopted and (adopted or x1 == x0)
+
+
+class _HeldPosePerception:
+    """B1 frame 0 from the env's truth; held_pose answers ``answer(prior)`` and records the calls."""
+
+    def __init__(self, env, answer):
+        self.env, self.answer, self.calls = env, answer, []
+
+    def estimate(self, frames, vocabulary, fold, prior_record=None):
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                     "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                     "_perception": {"confidence": 0.9}} for o in self.env.objects]}}
+
+    def check(self, frame, objects, fold):
+        return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+    def look_plan(self, frame, record, max_looks=2):
+        return []
+
+    def held_pose(self, frame, arm, asset_key, prior_T_tcp_obj, cfg=None):
+        self.calls.append((arm, asset_key, frame["steps_used"], np.asarray(prior_T_tcp_obj, float)))
+        return self.answer(np.asarray(prior_T_tcp_obj, float))
+
+
+@pytest.mark.parametrize("held_pose", ["off", "auto"])
+def test_held_pose_reads_the_grasp_at_every_place_hover_only_when_on(held_pose):
+    env = _env()
+
+    def ok(prior):                                        # the read: the object 2 mm off the prediction
+        T = prior.copy()
+        T[:3, 3] += [0.002, 0.0, 0.0]
+        return {"ok": True, "why": "ok", "T_tcp_obj": T.tolist(), "shift_mm": 2.0, "turn_deg": 0.0,
+                "sigma": {"pos_mm": [1.0, 1.0, 3.0], "rot_deg": [1.0, 1.0, 1.0]}}
+    pc = _HeldPosePerception(env, ok)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", held_pose=held_pose), assets=FakeAssets(),
+                        perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    assert _stacked(env)
+    ev = [e for e in rep["events"] if e["kind"] == "held_pose"]
+    if held_pose == "off":
+        assert pc.calls == [] and ev == []
+        return
+    places = [h for h in rep["history"] if h["skill"] == "place"]
+    assert len(pc.calls) == len(places) == len(ev) == 3 and all(e["ok"] for e in ev)   # one read per place hover
+    assert all(c[1] == "Rigid/block/00005" and c[3].shape == (4, 4) for c in pc.calls)
+    assert rep["provider"]["held_pose"] == 3
+    assert all("in-hand shift 2.0 mm, re-planned" in h["note"] for h in places)       # the tail used the read
+
+
+def test_held_pose_adopts_only_a_confident_read_within_the_place_tolerance():
+    from types import SimpleNamespace
+
+    from dojo.skills.skills import Skills
+    prior = np.eye(4)
+    meas = np.eye(4)
+    meas[:3, 3] = [0.003, 0.0, 0.0]
+    answers = []
+
+    def held_pose(arm, prior_T_tcp_obj, asset_key):
+        return answers.pop(0)
+    me = SimpleNamespace(provider=SimpleNamespace(held_pose=held_pose))
+    h = SimpleNamespace(T_tcp_obj=prior)
+    o = SimpleNamespace(asset=SimpleNamespace(key="Rigid/block/00005"))
+    good = {"ok": True, "T_tcp_obj": meas.tolist(), "sigma": {"pos_mm": [1.0, 2.0, 9.0], "rot_deg": [1.0, 2.0, 2.0]}}
+    answers += [good, {**good, "ok": False}, {**good, "sigma": {"pos_mm": [6.0, 1.0, 1.0], "rot_deg": [1, 1, 1]}},
+                {**good, "sigma": {"pos_mm": [1.0, 1.0, 1.0], "rot_deg": [1.0, 4.0, 1.0]}}, {**good, "sigma": None}]
+    pp = SimpleNamespace(arm="left")
+    got = [Skills._measure_held(me, pp, h, o, 0.01, 6.0) for _ in range(5)]
+    assert np.allclose(got[0], meas)                      # z sigma does not gate (the descent is guarded / verified)
+    assert got[1:] == [None] * 4                          # not ok / lateral 6 mm > 5 / rot 4 deg > 3 / no sigma
+    assert Skills._measure_held(SimpleNamespace(provider=SimpleNamespace()), pp, h, o, 0.01, 6.0) is None
+
+
+def test_eval_rows_count_every_event_kind_and_keep_the_setup_events():
+    from dojo.runtime.eval import event_counts
+    ev = [{"kind": "scan", "ran": True}] + [{"kind": "resync"}] * 40 + [{"kind": "program_done"}, "junk"]
+    assert event_counts(ev) == {"scan": 1, "resync": 40, "program_done": 1, "?": 1}
+    assert event_counts(None) == {}
