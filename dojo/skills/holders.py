@@ -282,6 +282,122 @@ def grasps_inside(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25.
     return out
 
 
+# ---- dense finger samples against a container's wall (the corner samples straddle a basket's rim)
+
+
+def finger_samples(kin, T_flange, gripper: float, n: int = 4) -> np.ndarray:
+    """Points over both fingers' zone boxes (``X5Kin.finger_points``' zones, ``n`` per edge, both faces and the
+    middle): world frame. The root block is 38 x 56 mm; its corners alone let a basket's rim pass between them
+    (egg_v6: hands stopped 15-65 mm short of eggs whose planned grasps cleared the wall at every corner)."""
+    from dojo.skills.kinematics import FINGER_MAX, GRIP_SCALE
+    qf = min(max(GRIP_SCALE[0] + gripper * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0), FINGER_MAX)
+    zones = ((0.075, 0.105, 0.0378, 0.028), (0.107, 0.126, 0.0134, 0.015), (0.128, 0.1576, 0.0034, 0.009))
+    loc = []
+    for s in (1, -1):
+        for x0, x1, yo, zh in zones:
+            for x in np.linspace(x0, x1, n):
+                for y in (0.0004, 0.5 * yo, yo):
+                    for z in np.linspace(-zh, zh, n):
+                        loc.append((x, s * (qf + y), z))
+    loc = np.asarray(loc)
+    T = np.asarray(T_flange)
+    return (T[:3, :3] @ loc.T).T + T[:3, 3]
+
+
+def wall_clearance_v(c, prof: dict, pts_w: np.ndarray) -> float:
+    """``wall_clearance`` for many points at once: the smallest height of the points above the container's inner
+    surface (each radius bin and its two neighbours: the finger's width), +inf when none is over the container."""
+    P = (np.asarray(pts_w, float) - c.pos) @ c.R
+    r = np.linalg.norm(P[:, :2] - prof["center"], axis=1)
+    m = r <= prof["r_out"] + 0.004
+    if not m.any():
+        return float("inf")
+    surf = np.asarray(prof["surf"], float)
+    s3 = np.maximum(np.maximum(surf, np.r_[surf[1:], surf[-1]]), np.r_[surf[0], surf[:-1]])
+    i = np.minimum((r[m] / prof["bin"]).astype(int), len(surf) - 1)
+    return float((P[m, 2] - s3[i]).min())
+
+
+EGG_WALL_CLEAR = -0.010       # m: dense finger samples at most this far into a container's inner surface profile (grasp
+                              # + descent). egg_v6 traces: hands that went down had >= -12.6 mm, blocked ones <= -17 mm
+                              # (the profile is the max over 4 mm radius bins of a woven mesh; the collider is leaner)
+EGG_PUSH_OK = -0.003         # m: the fingers may push a neighbouring egg this far (it rolls aside)
+EGG_LIFT_OVER = 0.045         # m: an object picked inside a container is lifted until its centre is this far over the rim
+EGG_DROP_OFFSETS = (0.007, 0.012)   # m: a lying egg is let go with its centre this far along its long axis off the hole
+                              # centre: its far end rests on the rim, the near end has nothing under it and it tips in
+                              # (centred, a lying egg spans the hole and can stay). 12 mm: a back hole under the open lid,
+                              # the egg pointing at the lid and moved to the front
+EGG_DROP_CLEAR = 0.002        # m: its underside over the far rim at the release
+EGG_STAND_FALLBACK = True     # no lying drop plans (the back holes, under the open lid): stand the held egg up instead
+STAND_PLACE_KW = {"servo": True, "fingers_out": True, "probe": False, "hover_clear": 0.008, "descend_rad": 0.03,
+                  "pre_h": 0.05, "approach_rad": 0.05, "ease": 6}
+
+
+def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CLEAR) -> list:
+    """Top-down grasps of a round-section object lying (an egg on its side) for a lying carry: level pads across its
+    middle, pads on its two tips, then rolled / tilted variants; in a round container only those whose dense finger
+    samples stay ``wall_clear`` above its inner surface at the grasp and along the descent from above its rim (the
+    pre-grasp is moved there)."""
+    import dataclasses
+    o = sk.world.obj(label)
+    cands = round_grasps(o, sk.kin, arm, rolls=(0.0,), tilts=(0.0,), ends=True)
+    cands += [g for g in round_grasps(o, sk.kin, arm, rolls=(12.0, -12.0, 25.0, -25.0), tilts=(0.0, 20.0, -20.0),
+                                      ends=False)]
+    if not cands:                                   # standing on its end, or not round: the usual generators
+        cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, -25.0)) + G.candidates(o, sk.kin, arm)
+    c = container_of(sk, label)
+    prof = wall_profile(c) if c is not None else None
+    if prof is None:
+        return cands
+    rim_w = float((c.R @ np.r_[prof["center"], prof["rim"]] + c.pos)[2])
+    out = []
+    for g in cands + [G.narrowed(x) for x in cands if x.method in ("round", "ends")]:
+        go = gap_to_grip(g.open_gap())
+        a = g.approach
+        if a[2] > -0.5:
+            continue
+        # the pre-grasp above the rim (fingertips 2 cm over it), the descent a straight line from there
+        d_pre = max(g.pre_dist, (rim_w + 0.02 + TIP_BEYOND_TCP - float(g.T[2, 3])) / max(-float(a[2]), 0.3))
+        ok = True
+        for d in np.linspace(0.0, d_pre, 6):
+            T = g.T.copy()
+            T[:3, 3] -= a * d
+            P = finger_samples(sk.kin, sk.kin.flange_from_tcp(T), go)
+            if wall_clearance_v(c, prof, P) < wall_clear:
+                ok = False
+                break
+        if ok:
+            out.append(dataclasses.replace(g, pre_dist=float(d_pre)))
+    return out
+
+
+def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OFFSETS, clear: float = EGG_DROP_CLEAR,
+                     yaws=range(0, 360, 30)) -> list[tuple[float, float, float, np.ndarray]]:
+    """Poses of a lying object carried as it is held (``R_now`` turned about the vertical by ``yaws``): its bbox centre
+    ``offset`` along its horizontal long axis (either way) from the hole centre, as low as its underside clears the far
+    rim by ``clear`` (an ellipsoid of the bbox's half extents). (offset, yaw deg, side, T), smaller offsets first."""
+    k = int(np.argmax(o.asset.extents))
+    a_ = 0.5 * float(o.asset.extents[k])
+    b_ = 0.5 * float(max(np.delete(o.asset.extents, k)))
+    r_h = float(hole["radius"])
+    out = []
+    for off in offsets:
+        x = (r_h - off) / a_
+        z_c = plate_top + b_ * math.sqrt(max(0.0, 1.0 - x * x)) + clear
+        for yd in yaws:
+            c_, s_ = math.cos(math.radians(yd)), math.sin(math.radians(yd))
+            R = np.array([[c_, -s_, 0.0], [s_, c_, 0.0], [0.0, 0.0, 1.0]]) @ np.asarray(R_now, float)
+            u = R[:, k].copy()
+            u[2] = 0.0
+            if np.linalg.norm(u) < 0.3:
+                continue
+            u /= np.linalg.norm(u)
+            for side in (1.0, -1.0):
+                cw = np.r_[np.asarray(hole["center"], float)[:2] + side * off * u[:2], z_c]
+                out.append((float(off), float(yd), side, T_from(cw - R @ o.asset.center, R)))
+    return out
+
+
 # ============================================================================ skill
 
 
@@ -322,11 +438,137 @@ def in_hole(o, hole: dict) -> bool:
                 and o.bottom_z < hole["top"] - 0.01)
 
 
+FILL_MODE = "drop"            # "drop": carried lying as picked, let go low over a hole off its centre (it tips in);
+                              # "stand": turned upright in the pads first (skills-6: the egg left the pads on most carries)
+
+
+def _container_obstacle(sk: Skills, c, on: bool) -> None:
+    """A round container (a basket) as a collision obstacle shaped by its mesh's top surface (``Collision.heightmaps``):
+    transits and places go over its rim, not through it (egg_v6: arms moving at rim height stopped on it, 7 picks).
+    Off while a pick inside it is planned: the object resting on its floor would hit it."""
+    if c is None:
+        return
+    if on:
+        from dojo.skills.precision import height_map
+        hm = height_map(c)
+        if hm is None:
+            return
+        sk.coll.heightmaps[c.label] = hm
+        sk.coll.margin_of[c.label] = 0.004
+        sk.coll.include.add(c.label)
+    else:
+        sk.coll.include.discard(c.label)
+
+
+def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, ignore: tuple, st: dict,
+               tries: int = 3) -> list[str]:
+    """``FILL_MODE`` "drop": each object picked top-down (``egg_grasps``), lifted over its container's rim, carried as
+    held and let go lying over a free hole, its centre ``EGG_DROP_OFFSETS`` off the hole's centre along its long axis
+    (``egg_drop_targets``); a grasp that failed is not tried again. Returns the labels that did not go in."""
+    failed = []
+    plate_top = float(holes[0]["top"])
+    for lab in sorted(objects, key=lambda l: float(np.linalg.norm(sk.world.obj(l).pos[:2] - H.pos[:2]))):
+        w = sk.refresh()
+        if any(in_hole(w.obj(lab), h) for h in holes):
+            continue
+        ok, bad = False, []
+        for attempt in range(tries):
+            w = sk.refresh()
+            o = w.obj(lab)
+            free = [h for h in holes if _hole_free(w, h, objects, lab)]
+            if not free:
+                return failed + [lab]
+            c = container_of(sk, lab)
+            _container_obstacle(sk, c, False)
+            lift_z = None                 # the TCP (about the object's centre for these grasps) over the rim
+            if c is not None and (prof := wall_profile(c)) is not None:
+                lift_z = float((c.R @ np.r_[prof["center"], prof["rim"]] + c.pos)[2]) + EGG_LIFT_OVER
+            arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2])))
+            pp = None
+            for a in arms:
+                gs = [g for g in egg_grasps(sk, lab, a) if g.note not in bad]
+                if not gs:
+                    continue
+                r = sk.plan_pick(lab, a, grasps=gs, lift=0.06, lift_to_z=lift_z, max_eval=60)
+                if not isinstance(r, SkillResult):
+                    pp = r
+                    break
+                sk.log(f"[holes] {lab}: {a}: no pick ({r.note[:160]})")
+            if pp is None:
+                break
+            sk.log(f"[holes] {lab}: {pp.arm} picks ({pp.grasp.method} {pp.grasp.note}, pre {pp.grasp.pre_dist * 1000:.0f} mm)")
+            r = sk._record(sk.run_pick(pp))
+            if r.status in ("ended", "step_budget"):
+                return failed + [lab]
+            if not r.ok:
+                bad.append(pp.grasp.note)
+                _container_obstacle(sk, c, True)
+                sk.bank()
+                continue
+            _container_obstacle(sk, c, True)
+            a = pp.arm
+            w = sk.refresh()
+            o = w.obj(lab)
+            pl, last = None, ""
+            for h in free:                 # front holes first (``holes`` order)
+                for off, yd, side, T in egg_drop_targets(o, h, plate_top, o.R):
+                    q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0, pre_h=0.05, ignore=ignore, descend_rad=0.03,
+                                      settle=2, retreat=0.04)
+                    if not isinstance(q, SkillResult):
+                        pl = (h, yd, side, q, off)
+                        break
+                    last = q.note
+                if pl:
+                    break
+            if pl is None and EGG_STAND_FALLBACK:
+                # a back hole under the open lid has no room for a lying egg: stood up in the pads (a level pinch turns
+                # it about the pads' axis), let go with the fingertips over the body
+                for h in free:
+                    for T in standing_targets(o, h["center"], h["top"] - 0.010, tilts=(0.0, 25.0)):
+                        q = sk.plan_place(a, T, yaw_sym=8, ignore=ignore, ref_top=plate_top + 0.006, servo_ref=holder,
+                                          **STAND_PLACE_KW)
+                        if not isinstance(q, SkillResult):
+                            pl = (h, float("nan"), 0.0, q, float("nan"))      # stood up (no offset / yaw)
+                            break
+                        last = q.note
+                    if pl:
+                        break
+            if pl is None:
+                sk.log(f"[holes] {lab}: no drop plan ({last[:200]})")
+                sk.home(gripper=OPEN)
+                sk.held = {x: None for x in sk.held}
+                break
+            h, yd, side, q, off = pl
+            rr = sk.run_place(q, tol_xy=0.05, tol_tilt=90.0, tol_z=0.08)
+            if rr.status == "ended":
+                return failed + [lab]
+            sk.ex.hold(4)
+            sk.bank()
+            w = sk.refresh()
+            o = w.obj(lab)
+            hit = next((x for x in holes if in_hole(o, x)), None)
+            how = "stood up" if off != off else f"offset {off * 1000:.0f} mm, yaw {yd:.0f}, side {side:+.0f}"
+            sk.log(f"[holes] {lab} dropped over the hole at {np.round(h['center'], 3).tolist()} ({how}; {rr.status}): "
+                   f"{'in a hole' if hit else 'NOT in a hole'}, pos {np.round(o.pos, 3).tolist()} tilt {o.tilt((0, 0, 1)):.0f}")
+            if hit is not None:
+                ok = True
+                st["done"].append(lab)
+                break
+            if any(sk.held.values()):
+                sk.home(gripper=OPEN)
+                sk.held = {x: None for x in sk.held}
+        if not ok:
+            failed.append(lab)
+    return failed
+
+
 def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None = None, close: bool = True,
-               tries: int = 3, hold_below: float = 0.010, carry_rad: float = 0.05) -> dict:
-    """Stand each object upright over a free hole of ``holder``'s body and let it drop in (the fingertips stay above
-    the body), back holes first (nearest the lid hinge); bank after each. Then, with ``close``, swing the lid shut
-    (``swing_closed``). Objects lying in a round container are grasped inside its wall."""
+               tries: int = 3, hold_below: float = 0.010, carry_rad: float = 0.05, mode: str | None = None) -> dict:
+    """Put each object into a free hole of ``holder``'s body, back holes first (nearest the lid hinge); bank after
+    each. Then, with ``close``, swing the lid shut (``swing_closed``). Objects lying in a round container are grasped
+    inside its wall. ``mode`` (default ``FILL_MODE``): "drop" carries each object lying as picked and lets it go low over
+    a hole, off its centre, so it tips in (``_fill_drop``); "stand" stands it upright in the pads first and lets it
+    drop in with the fingertips above the body."""
     w = sk.refresh()
     H = w.obj(holder)
     lj = lid_joint(H, lid_tag)
@@ -343,9 +585,29 @@ def fill_holes(sk: Skills, objects: list[str], holder: str, lid_tag: str | None 
     # to them (dry runs: front holes plan, back ones rarely)
     holes.sort(key=lambda h: -float(np.linalg.norm(h["center"] - hinge_w[:2])))
     st = w.notes.setdefault("fill_holes", {"done": []})
+    mode = mode or FILL_MODE
     sk.log(f"[holes] {holder}: {len(holes)} holes r {[round(h['radius'] * 1000) for h in holes]} mm, "
-           f"top {holes[0]['top']:.3f} floor {holes[0]['floor']:.3f}; lid {lj[0] if lj else None}")
+           f"top {holes[0]['top']:.3f} floor {holes[0]['floor']:.3f}; lid {lj[0] if lj else None}; mode {mode}")
     ignore = (f"{holder}#{body}",) if body else (holder,)
+    if mode == "drop":
+        from dojo.skills.motion import mesh_parts
+        for l in objects:
+            # neighbours as small boxes from their mesh (an egg's box corners stand 8 mm off its shell and closed every
+            # finger corridor between two touching eggs), pushed aside up to EGG_PUSH_OK
+            o = w.obj(l)
+            if o.asset.mesh is not None:
+                sk.coll.parts[l] = mesh_parts(*o.asset.mesh, cell=0.012)
+                sk.coll.margin_of[l] = EGG_PUSH_OK
+        failed = _fill_drop(sk, objects, holder, H, holes, ignore, st, tries=tries)
+        res = {"ok": not failed, "stage": "holes", "note": f"in: {st['done']}, failed: {failed}"}
+        if close and lj is not None and not failed:
+            r = swing_closed(sk, holder, lid_tag)
+            res["lid"] = r.note
+            if not r.ok:
+                res["ok"] = False
+                res["stage"] = "lid"
+            sk.bank()
+        return res
     failed = []
     for lab in sorted(objects, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - H.pos[:2]))):
         w = sk.refresh()
