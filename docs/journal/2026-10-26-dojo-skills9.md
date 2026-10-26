@@ -145,3 +145,30 @@ them did not beat threading:
   - stacking: the in-hand read does not help in G3 mode B; the remaining misses are rings tilted on a peg top and the
     G3 offset artifact (`on_peg` on offset beliefs). A real test needs the runtime's post-place refine.
   - plug: observer looks are infeasible at its low hover (the other arm at the table); the show pose carries it.
+
+## 3. Non-grasp outcomes: topple and push confirmed through `provider.confirm_pose`
+
+Integration-2's breadth triage (#67): make_kong 0/5 in mode B (G3 25/25). A topple or a push moves an object without a
+grasp: no release, so no post-place re-measure, and no twin segment. The runtime belief keeps the tile standing, every
+check reads "axis at 90 deg from up", and the skill retries and fails whatever the tile did.
+
+- Skills side (`Skills.confirm_moved`): after the action, the predicted outcome goes to `provider.confirm_pose(label,
+  pos, quat)` (the runtime: the head view of the current frame decides, the post-place second-look rule), then a
+  refresh. `topple` predicts `Skills.toppled_pose` (a 90-deg turn about the far bottom edge, the far face on the
+  support); `library.push_to` and `Skills.push` predict each stroke's step along the push. Without such a provider (G3)
+  nothing changes. Every call is logged (`Skills.confirm_events`; G3 records `confirm`).
+- G3 side (`heldsim`, `g3 run --freeze-touched` / `--confirm-pose`): an object the robot's fingertips came within 2 cm
+  of and that then moved > 3 mm / 5 deg without a grasp keeps its believed pose (the runtime's blind spot); a grasp's
+  release unfreezes it. `confirm_pose` adopts the expected pose when it is within 15 mm / 20 deg of the truth (+ the
+  offset) and closer to it than the frozen belief. G3 mode B before re-read GT at every refresh, which hid this.
+
+| make_kong 100000-04, mode B, 1 mm offsets on the 12 hand tiles | success | mean | steps |
+|---|---|---|---|
+| today's G3 mode B (the world re-read from GT) | 5/5 | 1.00 | 370-379 |
+| `--freeze-touched` (the runtime's blind spot) | 0/5 | 0.00 | 143-146 (topple retries, "did not tip over") |
+| `--confirm-pose` | **5/5** | **1.00** | 370-379; 3 topples per episode, all adopted (expected pose 0.8-1.9 mm / 0.1-2.3 deg off the truth; the frozen belief 50 mm / 90 deg) |
+
+Regression (G3, no offset; run commit febf68e on `skills9-runs3`, the same code before the rebase): make_kong
+100000-04 5/5 (no provider `confirm_pose`: nothing changes in G3).
+
+Open: other non-grasp motions that change an object's pose (a lever press, a sweep) do not call it yet.
