@@ -21,6 +21,8 @@ PEG_YAWS = 12                 # turns of a piece about its hole tried per place 
 THREAD = 0.004                # m: the piece is lowered this far onto the peg (below its top) before it is let go
 SEAT_TOL = 0.0025             # m: a piece held higher than this above its threaded target rests on the peg's top
 GUARD_SEATED_PEG = 0.0015     # m: the same for the guarded tail (mode B: no measured object, the arm's lag is the sensor)
+GUARD_LAG_PEG = 0.0012        # m: its contact threshold (free descent lags 0.3-0.5 mm; a piece stopped by the top: 1.7)
+PEG_CARRY = 0.10              # rad/step: the carry to the peg (at 0.14 the arm lagged 7 mm and a piece tilted 6 deg in the pads)
 PEG_RETREAT = 0.02            # m: up after the release (the far peg is at the edge of reach: 3 and 5 cm failed the IK)
 RELAY_DY = 0.12               # m: relay spots this far in front of the base (towards the robot; both arms reach there)
 BIAS_DIR = (0.0, -1.0)        # world xy: the side of the peg every piece is let go against (``side_bias``)
@@ -206,7 +208,8 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
             T, hole = piece_target(sk, lab, peg, b.yaw(), z_bot, bias=bias)
             pkw = {"pre_h": 0.02, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "servo": True, "retreat": PEG_RETREAT,
                    "servo_ref": base, "ref_top": peg["top"], "seat_tol": SEAT_TOL if thread > 0 else 0.004,
-                   "probe": thread > 0, "guard_seated": GUARD_SEATED_PEG}
+                   "probe": thread > 0, "guard_seated": GUARD_SEATED_PEG, "guard_lag": GUARD_LAG_PEG,
+                   "approach_rad": PEG_CARRY}
             r = place_oriented(sk, lab, [T], yaw_sym=PEG_YAWS, tol_xy=0.01, tol_tilt=15.0, tol_z=0.08, ignore=(base,),
                                place_kw=pkw, air_handover=False, spot_avoid=(base,),
                                relay_near=(float(b.center_w[0]), float(b.center_w[1]) - RELAY_DY),
