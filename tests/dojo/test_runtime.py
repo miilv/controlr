@@ -1337,6 +1337,7 @@ def test_held_look_drops_an_empty_grasp_from_the_jaws():
     prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
     calls = []
     prov.held_checker = lambda obs, arm, lab: calls.append((arm, lab)) or {"held": False, "confidence": 0.8, "source": "b1"}
+    prov.held_confirm = lambda obs, arm, lab: {"held": False, "confidence": 0.9, "source": "agent"}   # agrees
     bel = prov.belief
     o = bel.objects["block_1"]
     pose0 = np.r_[o.pos, o.quat].copy()
@@ -1877,3 +1878,64 @@ def test_catalog_check_finds_and_syncs_missing_assets(tmp_path):
 def test_the_installed_catalogue_holds_every_table_vocabulary():
     from dojo.runtime.catalog_check import missing_assets
     assert missing_assets(Path("~/dojo-perception-data/catalog").expanduser()) == {}
+
+
+
+@pytest.mark.parametrize("confirm", [None, {"held": True, "confidence": 0.9}])
+def test_held_look_never_drops_on_a_single_vision_negative(confirm):
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.held_checker = lambda obs, arm, lab: {"held": False, "confidence": 1.0, "source": "b1"}
+    prov.held_confirm = None if confirm is None else (lambda obs, arm, lab: confirm)
+    bel = prov.belief
+    o = bel.objects["block_1"]
+    z0 = float(bel.kin.tcp("left", bel.q["left"])[2, 3])
+    bel.attached["left"] = ("block_1", np.eye(4))
+    bel.grasp_z["left"] = (z0 - 0.05, 1, np.r_[o.pos, o.quat].copy())
+    prov._held_check(b.obs)
+    assert "left" in bel.attached and prov.events[-1]["kept"]                 # still in the jaws
+
+
+def test_a_none_ok_prediction_is_not_adopted_and_drops_the_twin_chain():
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.runtime.verifier import BundleVerifier
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    tc = FakeTwinClient()
+    ver = BundleVerifier(tc, "stack_blocks", prov, b)
+    ver.chain = {"sid": 7, "n": 0}
+    ver.kept = {0: 8}
+    tc.snaps = {7: None, 8: None}
+    info = {"idx": 2, "none_ok": True, "outcomes": [], "actions": []}
+    prov.on_verified(info)
+    ver.on_verified(info)
+    assert prov.pred is None and prov.stats["pred_untrusted"] == 1
+    assert ver.chain is None and ver.kept == {} and tc.snaps == {}
+
+
+def test_verify_choose_runs_the_best_outcome_when_nothing_passes():
+    from types import SimpleNamespace
+
+    from dojo.skills.skills import Skills
+    from dojo.skills.verify import Outcome
+
+    outs = [Outcome(c, s_, {}, {}, False, False, 0.0, False) for c in range(3) for s_ in range(2)]
+
+    def judge(c):
+        j = lambda o: False                                             # nothing passes
+        j.score = lambda o, c=c: [-0.05, -0.01, -0.03][c]               # candidate 1 comes closest
+        return j
+    seen = []
+    fake = SimpleNamespace(ex=SimpleNamespace(actions_for=lambda c: [c]), verify_k=2,
+                           verifier=SimpleNamespace(rollout=lambda acts, k, held_labels: outs),
+                           vstats={"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0},
+                           on_verified=seen.append, last_verified=None)
+    idx, passes = Skills.verify_choose(fake, [{"a": 0}, {"a": 1}, {"a": 2}], [judge(0), judge(1), judge(2)], kind="place")
+    assert idx == 1 and passes == [0, 0, 0] and seen[-1]["none_ok"] and fake.vstats["best_outcome"] == 1

@@ -314,6 +314,7 @@ class RuntimePolicy:
                                                                                       and cfg.agentic == "budget")))
         if cfg.mode == "perception" and cfg.held_look != "off":
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
+            prov.held_confirm = lambda obs, arm, lab: self._held_look(obs, arm, lab, mode="agent")
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()
@@ -760,11 +761,12 @@ class RuntimePolicy:
                 r.setdefault("_perception", {})["tracker"] = "kept"
         return out
 
-    def _held_look(self, obs: dict, arm: str, label: str) -> dict:
-        """perception's held_look (service op) on ``arm``'s wrist frame; agent calls are logged as trigger "held"."""
+    def _held_look(self, obs: dict, arm: str, label: str, mode: str | None = None) -> dict:
+        """perception's held_look (service op) on ``arm``'s wrist frame; agent calls are logged as trigger "held".
+        ``mode="agent"``: the independent second look before a drop (the agent alone)."""
         t = time.perf_counter()
         try:
-            r = self.perception().held_look(obs, arm, self.cfg.held_look)
+            r = self.perception().held_look(obs, arm, mode or self.cfg.held_look)
         except Exception as e:  # noqa: BLE001 (an optional check: the belief keeps the grasp)
             return {"held": None, "error": f"{type(e).__name__}: {str(e)[:160]}"}
         if r.get("calls"):

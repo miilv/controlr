@@ -49,6 +49,15 @@ class BundleVerifier:
 
     # skills hook (wired by the policy next to the provider's)
     def on_verified(self, info: dict) -> None:
+        if info.get("none_ok"):
+            # every candidate failed in the twin: its end state is not a base to chain from (next load: the estimate)
+            for s_ in self.kept.values():
+                self._drop(s_)
+            self.kept = {}
+            if self.chain is not None and self.chain.get("sid") is not None:
+                self._drop(self.chain["sid"])
+            self.chain = None
+            return
         idx = 0 if info.get("idx") is None else int(info["idx"])
         sid = self.kept.get(idx)
         for ci, s in self.kept.items():
