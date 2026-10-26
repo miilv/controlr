@@ -1297,9 +1297,46 @@ def slot_targets(sk: Skills, label: str, container: str) -> list[np.ndarray]:
     return out
 
 
+SLOT_LEVEL_DEG = 20.0          # deg: a slot pose this close to the object's current orientation is reached by a level
+                               # carry (tools spawn lying as their slots want them: 0.6-5.4 deg off)
+LEVEL_GRASP_DEG = 8.0          # deg: a level carry's grasps come straight down (twin probe, a 0.5 kg hammer at its
+                               # centre of mass: a 25-deg tilted pinch turned 37-49 mm in the pads over a 15 cm carry,
+                               # the straight-down one 4 mm)
+
+
+def _level_grasps(sk: Skills, label: str, max_tilt_deg: float = LEVEL_GRASP_DEG):
+    """A ``plan_transfer`` grasp source for a carry that keeps the object's orientation: straight-down grasps (box
+    grasps untilted, the category's, slices of irregular ones), the closing axis nearest the centre of mass first
+    (``grasps.grasp_lever``: what turns a heavy flat object in the pads)."""
+    import dataclasses
+
+    from dojo.skills import grasps as G
+    from dojo.skills.motion import held_box
+    cos_t = math.cos(math.radians(max_tilt_deg))
+
+    def source(arm):
+        o = sk.world.obj(label)
+        cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0,)) + G.candidates(o, sk.kin, arm)
+        if held_box(o, np.eye(4)).points is not None:
+            cands += G.slice_grasps(o, sk.kin, arm)
+        out = []
+        for g in cands:
+            if -float(g.T[2, 0]) < cos_t:
+                continue
+            out.append(dataclasses.replace(g, score=float(g.score) + G.grasp_lever(o, g.T) / 0.01))
+        return out
+    return source
+
+
+def _rot_deg(Ra, Rb) -> float:
+    return math.degrees(math.acos(max(-1.0, min(1.0, (float(np.trace(Ra @ Rb.T)) - 1) / 2))))
+
+
 def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
     """Put every object into its matching slot of ``container`` (``slot_targets``), the nearest first,
-    re-oriented as the slot frame says; grippers open after each (partial credit is per object)."""
+    re-oriented as the slot frame says; grippers open after each (partial credit is per object). A slot pose within
+    ``SLOT_LEVEL_DEG`` of the object's current orientation is reached by a level carry with a straight-down grasp
+    near the centre of mass (``_level_grasps``); the re-orienting transfers / relays only when that does not plan."""
     w = sk.refresh()
     sk.coll.include.add(container)
     todo = [l for l in objects if l in w.objects and slot_targets(sk, l, container)]
@@ -1314,10 +1351,22 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
             break
         lab = min(rest, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - c[:2])))
         tg = slot_targets(sk, lab, container)
-        sk.log(f"[slots] {lab}: {len(tg)} slot poses")
+        R0 = w.obj(lab).R
+        level = sorted([T for T in tg if _rot_deg(T[:3, :3], R0) <= SLOT_LEVEL_DEG],
+                       key=lambda T: _rot_deg(T[:3, :3], R0))
+        sk.log(f"[slots] {lab}: {len(tg)} slot poses, {len(level)} within {SLOT_LEVEL_DEG:.0f} deg of how it lies")
         # the objects already in their slots are ignored for the place (their boxes overlap the next slot's)
-        r = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03,
-                           ignore=(container, *done), place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
+        kw = dict(yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03, ignore=(container, *done),
+                  place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
+        r = None
+        if level:
+            r = place_oriented(sk, lab, level, air_handover=False,
+                               transfer_kw={"grasps": _level_grasps(sk, lab), "max_pick_tilt": LEVEL_GRASP_DEG}, **kw)
+            if not r.ok and r.status in ("ik_fail", "collision") and not r.steps:
+                sk.log(f"[slots] {lab}: no level carry ({r.note[:100]}), re-orienting transfer")
+                r = None
+        if r is None:
+            r = place_oriented(sk, lab, tg, **kw)
         (done if r.ok else failed).append(lab)
         if r.status in ("step_budget", "ended"):
             break
