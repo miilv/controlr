@@ -12,6 +12,26 @@ frames, measured joints, measured flange, commanded gripper, instruction).
 Before this: our code had run only in physics-only Isaac 5.1 (compute3), with Isaac 6.0 renders (the proxy), and in
 J1 / J1b (our perceiver behind Mikhail's skills).
 
+## Results at a glance
+
+- **USD probe.** The official rendered kit keeps articulation link poses live-synced; the physics-only twin's are stale
+  or identity. Hence `usd_sync_links` (§1).
+- **`joint_steps`.** The twin-verified joint lists replay faithfully at 0.18 rad/step (§3).
+- **Strict practice through the official client (s0L9, n = 1 per row, §4a).**
+  - Passes: stack_blocks 4/4 with verify working (RuntimePolicy, AgentPolicy, agentic, submit config), press_by_number
+    3/3, stack_blocks_by_language 3/3, cover_blocks (agent) 2/2.
+  - Fails: build_tower, make_kong, plug_in_charger, swap_blocks, stack_bowls and put_bottles, each diagnosed and routed.
+- **Rendered 5.1 dev eval, submit config (RuntimePolicy + scanFA), our settled 100000-09, paired by layout:**
+
+| task | before | after | agent on top |
+|---|---|---|---|
+| stack_blocks | 6/10 @ 38ad5af | **9/10** @ b8acf78 | **10/10** @ dcc1560 (1 Sol call per episode, same skill as the rule planner) |
+| build_tower | 5/10 @ ae43bac (3/10 @ b8acf78, a bad window: A7) | **9/10** @ f9b0d75 | - |
+
+- **The twin's physics is the eval's physics, bitwise (A2).** The losses before the fixes were confident false
+  negatives of held_look / post-place on genuine 5.1 frames: 12 of 17 "not held" verdicts had the block in the jaws
+  (A3, A5). Main #41-#53 fixed them, as the paired reruns show (A6-A9).
+
 ## 1. USD link-pose probe: the official rendered env is LIVE-synced
 
 Question (skills-4, journal 2026-10-25-dojo-skills4 §3): RoboDojo's checker reads articulation link poses from the USD
@@ -227,19 +247,28 @@ Reading:
 
 ## 6. Spend
 
-Through the end of block b4 (episode reports; the router reports no cost field, so tokens only):
-- agent `cx/gpt-6.1-sol`: 34 calls, 233.5k prompt (198.4k cached), 3.0k completion;
-- agentic perceiver `claude/claude-sonnet-5-5`: 20 calls, 247.0k prompt (188.9k cache read), 13.7k completion.
+From the episode reports (the router reports no cost field, so tokens only):
 
-Totals including the dev eval and b5: see the addendum.
+| | episodes | `cx/gpt-6.1-sol` (agent): calls / prompt (cached) / completion | `claude/claude-sonnet-5-5` (agentic perceiver): calls / prompt (cache read) / completion |
+|---|---|---|---|
+| strict s0L9 (official client) | 25 | 34 / 233.5k (198.4k) / 3.0k | 30 / 388.7k (304.5k) / 23.0k |
+| rendered 5.1 dev eval | 61 | 10 / 55.3k (37.9k) / 0.7k | 331 / 3.42M (2.79M) / 193.0k |
+| total | 86 | **44 / 288.8k (236.3k) / 3.7k** | **361 / 3.81M (3.10M) / 216.0k** |
+
+There are also at most ~10 uncounted Sonnet calls in the three aborted starts (the mixed-code chain, the old-code
+push_T, the tower started before the frame job). The USD probe, the smoke, the kit replays and the frame
+regeneration made no LLM calls.
 
 ## 7. Next
 
-- Rerun s0L9 make_kong, plug_in_charger and stack_bowls on the integ2 fixes (ca5e406), and build_tower on the
-  submit config (block b5).
+- build_tower 100008: identity gross at planning (block3 / block1) on both new commits (BACKLOG).
+- stack_blocks 100006 on b8acf78: place_miss 17.8 mm (planning xy median 7.8 mm; routed to integration-2).
+- s0L9 reruns on the fixed main of make_kong, plug_in_charger, stack_bowls and build_tower; the b6 leftovers
+  (agent-on-top submit arm on press / stacklang / cover / make_toast) did not run (disk).
+- A post_place placement-truth rule for the 186 regenerated frame sets (perception-R&D).
 - Scored blocks only on the lead's go: md5-freeze the checkout + `pdata`, run blind, write ledger lines.
-- Mikhail's lock-aware starters: rerun `scripts/dojo/isr_lockmock.py` against the synced mirror before the next hold
-  after his sync.
+- After Mikhail syncs his lock-aware starters: re-pin (`isr_job.sh --pin`) and rerun `scripts/dojo/isr_lockmock.py`
+  against the synced mirror.
 
 ## Addendum: rendered 5.1 dev eval and the kit replay
 
@@ -482,3 +511,25 @@ dcc1560 (#50 included), merged here as 170a5c1.
   (4.74k cached from the second episode on) and 52-83 completion tokens.
 - Sonnet: 583k prompt (470k cache read), 26k completion.
 - The code differs from A6 (dcc1560 adds #50), so 100006 reads as "no loss from the agent", not as a gain from it.
+
+### A9. build_tower on main f9b0d75 (#50 + #52 + #53): 9/10
+
+The branch is merged as dc63679. Same config, twin and layouts.
+
+| layout | before @ ae43bac | bad window @ b8acf78 | after @ f9b0d75 | after: steps, wall s |
+|---|---|---|---|---|
+| 100000 | no | no | **yes** | 689, 298 |
+| 100001 | no | no | **yes** | 648, 248 |
+| 100002 | yes | yes | yes | 660, 260 |
+| 100003 | yes | no | **yes** | 668, 279 |
+| 100004 | yes | no | **yes** | 630, 240 |
+| 100005 | no | yes | yes | 640, 264 |
+| 100006 | yes | no | **yes** | 638, 223 |
+| 100007 | no | yes | yes | 654, 246 |
+| 100008 | yes | no | **no / 10** (identity gross at planning: block3 / block1, 11.9 mm) | 648, 263 |
+| 100009 | no | no | **yes** | 614, 293 |
+| total | 5/10, mean 52.0 | 3/10, mean 45.0 | **9/10, mean 91.0** | median 648 steps |
+
+- Paired with the ae43bac baseline: 5 rescued, 1 lost (100008, the only gross at planning in the set).
+- Held escalations dropped to 1 Sonnet call in 10 episodes. Sonnet: 37 calls, 511k prompt (421k cache read), 36k
+  completion.
