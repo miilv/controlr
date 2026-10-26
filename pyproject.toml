@@ -23,6 +23,10 @@ perception = [
   "shapely>=2",
   "rtree>=1.2",
   "yourdfpy>=0.0.56",
+  # RoboDojo's utils.cluttered_generator (the twin-layout template, dojo.runtime.estimate._template -> gen_layouts)
+  # imports these at module level; the bridge runs the policy in this venv, not in RoboDojo's python
+  "tqdm>=4.60",
+  "transforms3d>=0.4",
 ]
 
 [project.scripts]

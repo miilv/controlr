@@ -35,6 +35,18 @@ from .client import RobotServerClient
 from .twin import TwinProcess, twin_scene
 
 
+# Run settings that live in the environment (perception data sets, twin flags, agentic perceiver), recorded in
+# bridge.json -> "env" so a row says which sets it ran with. Names and paths only: never a key (OMNIROUTE_* stays out).
+ENV_NOTES = ("DOJO_CATALOG", "DOJO_BG_FOLDS", "DOJO_COLOR_CALIB", "DOJO_X5_DIR", "SIMLAB_USD_SYNC_LINKS", "AGENTIC_MODEL",
+             "AGENTIC_MAX_TURNS", "AGENTIC_REFINE", "AGENTIC_EXTRA_BODY", "DOJO_AGENTIC_LOG", "J1_PERCEIVER", "RD_HOME",
+             "BENCH")
+
+
+def env_notes(environ=None) -> dict:
+    e = os.environ if environ is None else environ
+    return {k: e[k] for k in ENV_NOTES if k in e}
+
+
 def load_policy(spec: str | None):
     if not spec:
         from dojo.runtime.policy import RuntimePolicy
@@ -173,7 +185,9 @@ def main(argv=None) -> None:
         res = run_episode(pol, backend, twin_factory=twin.start if twin else None, calib_fold=a.calib_fold)
         if twin is not None:
             res["summary"]["twin_boot_s"] = twin.boot_s
-        res["summary"].update(server_id=a.server_id, perception=a.perception, verify=verify, config=cfg.__dict__)
+        res["summary"].update(server_id=a.server_id, perception=a.perception, verify=verify, config=cfg.__dict__,
+                              twin_envs=a.twin_envs if twin is not None else None, calib_fold=a.calib_fold,
+                              env=env_notes())
         write_outputs(res, out_dir)
         s = res["summary"]
         print(f"[bridge] {a.server_id}: end={s['end']} steps={s['steps_used']}/{s['step_lim']} ended={s['ended']} "

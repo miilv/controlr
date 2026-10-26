@@ -324,3 +324,13 @@ def test_joint_steps_smoke_runs_one_chunk_per_phase_and_keeps_the_tracking(bench
     assert max(max(c["max_step_dq"].values()) for c in chunks) == pytest.approx(0.18, abs=1e-6)   # per arm, per chunk
     assert _home(envs[0])                                             # out and back: the arms end where they began
     srv.stop()
+
+
+def test_env_notes_record_run_settings_but_never_keys():
+    from dojo.bridge.driver import env_notes
+    env = {"DOJO_BG_FOLDS": "/d/bg_folds_51", "SIMLAB_USD_SYNC_LINKS": "1", "AGENTIC_MODEL": "claude/claude-sonnet-5-5",
+           "OMNIROUTE_API_KEY": "sk-secret", "OMNIROUTE_BASE_URL": "https://x", "HOME": "/h"}
+    out = env_notes(env)
+    assert out == {"DOJO_BG_FOLDS": "/d/bg_folds_51", "SIMLAB_USD_SYNC_LINKS": "1",
+                   "AGENTIC_MODEL": "claude/claude-sonnet-5-5"}
+    assert not any(k.startswith("OMNIROUTE") for k in out)

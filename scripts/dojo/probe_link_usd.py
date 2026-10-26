@@ -3,8 +3,8 @@
 physics-only twin; the open question is the official rendered env (Isaac Sim 5.1 with RTX).
 
     scripts/simlab/rdpy.sh scripts/dojo/probe_link_usd.py --task make_toast_random \\
-        --layout ~/dojo-data/simlab/layouts/make_toast_random/100000.settled.json --out ~/dojo-data/integ/probe_usd \\
-        [--physics-only]
+        --layout ~/dojo-data/simlab/layouts/make_toast_random/100000.settled.json [more layouts of the task ...] \\
+        --out ~/dojo-data/integ/probe_usd [--physics-only]
 
 For every articulation in env 0 it reads, for each link, the USD pose and the physics pose (the PhysX view's link
 transforms), then moves the object through PHYSICS only:
@@ -13,8 +13,10 @@ transforms), then moves the object through PHYSICS only:
 
 holds the robot still for ``--steps`` counted env steps and reads both again. Settings that decide the write-back
 (``/physics/updateToUsd``, ``/physics/fabricEnabled``, the omni.physx.fabric extension) are printed and saved.
-"tracks" = the USD link positions moved like the physics ones (within 2 mm). Dev layouts only (the runner's
-firewall); never an eval layout. Writes ``probe.json`` in ``--out``.
+"tracks" = the USD link positions moved like the physics ones (within 2 mm). With a renderer, the USD poses are read
+again after one official observation (``RoboDojoRunner.obs``: ``render_for_capture`` + ``get_obs``, what the eval
+client does every step), as ``tracks_after_obs``: a write-back that happens only on render shows up there. Dev
+layouts only (the runner's firewall); never an eval layout. Writes ``probe.json`` in ``--out``.
 """
 
 from __future__ import annotations
@@ -55,32 +57,21 @@ def _usd_links(obj, names) -> dict:
     return out
 
 
-def main(argv=None) -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--task", required=True)
-    ap.add_argument("--layout", required=True)
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--steps", type=int, default=10)
-    ap.add_argument("--physics-only", action="store_true")
-    a = ap.parse_args(argv)
-    from dojo.simlab import paths
-    from dojo.simlab.runner import RoboDojoRunner
-    paths.assert_not_eval(a.layout)
-    out = Path(a.out)
-    paths.assert_not_eval(out)
-    out.mkdir(parents=True, exist_ok=True)
-    run = RoboDojoRunner(a.task, workdir=str(out / "work"), physics_only=a.physics_only)
-    info = run.load(json.loads(Path(a.layout).read_text()))
+def probe_layout(run, layout: str, a) -> dict:
+    """Load one dev layout, move every articulation through physics, compare USD vs physics link poses."""
+    info = run.load(json.loads(Path(layout).read_text()))
     import carb
     import omni.kit.app
     st = carb.settings.get_settings()
     em = omni.kit.app.get_app().get_extension_manager()
-    res = {"task": a.task, "layout": a.layout, "physics_only": a.physics_only, "stable": info["stable"],
+    res = {"task": a.task, "layout": layout, "physics_only": a.physics_only, "stable": info["stable"],
            "settings": {k: st.get(k) for k in ("/physics/updateToUsd", "/physics/fabricEnabled",
                                                "/physics/updateVelocitiesToUsd", "/physics/updateParticlesToUsd")},
            "physx_fabric_ext": bool(em.is_extension_enabled("omni.physx.fabric")),
            "use_fabric": getattr(run.env, "use_fabric", None), "objects": {}}
     arts = run.env.scene_manager._articulation_objects[0]
+    res["articulations"] = list(arts)
+    print(f"[probe] {Path(layout).name}: articulations in env 0: {list(arts)}", flush=True)
     hold = run.hold_action(0)
     for key, obj in arts.items():
         r = {"prim": getattr(obj, "_prim_path", None)}
@@ -100,6 +91,13 @@ def main(argv=None) -> None:
             run.step(hold)
         ph1 = _phys_links(obj)
         us1 = _usd_links(obj, ph1)
+        us2 = None
+        if not a.physics_only:
+            try:
+                run.obs(0)                       # one official observation: render_for_capture + get_obs
+                us2 = _usd_links(obj, ph1)
+            except Exception as e:  # noqa: BLE001
+                r["obs_error"] = f"{type(e).__name__}: {e}"[:200]
         d = {}
         for n in ph1:
             if n.startswith("_") or not isinstance(us0.get(n), list) or not isinstance(us1.get(n), list) or n not in ph0:
@@ -109,16 +107,48 @@ def main(argv=None) -> None:
             d[n] = {"phys_moved_mm": round(float(np.linalg.norm(dp)) * 1000, 1),
                     "usd_moved_mm": round(float(np.linalg.norm(du)) * 1000, 1),
                     "usd_vs_phys_mm": round(float(np.linalg.norm(np.subtract(us1[n], ph1[n]))) * 1000, 1)}
+            if us2 is not None and isinstance(us2.get(n), list):
+                d[n]["usd_moved_after_obs_mm"] = round(float(np.linalg.norm(np.subtract(us2[n], us0[n]))) * 1000, 1)
+                d[n]["usd_vs_phys_after_obs_mm"] = round(float(np.linalg.norm(np.subtract(us2[n], ph1[n]))) * 1000, 1)
         moved = [v for v in d.values() if v["phys_moved_mm"] > 5]
         r.update({"links": d, "tracks": bool(moved) and all(abs(v["usd_moved_mm"] - v["phys_moved_mm"]) < 2 for v in moved),
-                  "phys_before": ph0, "usd_before": us0, "phys_after": ph1, "usd_after": us1})
+                  "n_links_moved": len(moved), "phys_before": ph0, "usd_before": us0, "phys_after": ph1, "usd_after": us1,
+                  "usd_after_obs": us2})
+        if us2 is not None:
+            r["tracks_after_obs"] = bool(moved) and all(
+                abs(v.get("usd_moved_after_obs_mm", -1e9) - v["phys_moved_mm"]) < 2 for v in moved)
         res["objects"][key] = r
-        print(f"[probe] {key}: tracks={r['tracks']} " + ", ".join(f"{n} phys {v['phys_moved_mm']} / usd {v['usd_moved_mm']} mm"
-                                                            for n, v in list(d.items())[:4]), flush=True)
+        print(f"[probe] {key}: tracks={r['tracks']} tracks_after_obs={r.get('tracks_after_obs')} moved_links={len(moved)} "
+              + ", ".join(f"{n} phys {v['phys_moved_mm']} / usd {v['usd_moved_mm']} / usd+obs {v.get('usd_moved_after_obs_mm')} mm"
+                          for n, v in list(d.items())[:4]), flush=True)
     print(f"[probe] settings {res['settings']} physx_fabric_ext={res['physx_fabric_ext']} use_fabric={res['use_fabric']}",
           flush=True)
-    (out / "probe.json").write_text(json.dumps(res, indent=1, default=str))
+    return res
+
+
+def main(argv=None) -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--task", required=True)
+    ap.add_argument("--layout", required=True, nargs="+", help="one or more dev layouts of --task (one Isaac boot)")
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--steps", type=int, default=10)
+    ap.add_argument("--physics-only", action="store_true")
+    a = ap.parse_args(argv)
+    from dojo.simlab import paths
+    from dojo.simlab.runner import RoboDojoRunner
+    for lay in a.layout:
+        paths.assert_not_eval(lay)
+    out = Path(a.out)
+    paths.assert_not_eval(out)
+    out.mkdir(parents=True, exist_ok=True)
+    run = RoboDojoRunner(a.task, workdir=str(out / "work"), physics_only=a.physics_only)
+    runs = []
+    for lay in a.layout:
+        runs.append(probe_layout(run, lay, a))
+        (out / "probe.json").write_text(json.dumps(runs[0] if len(a.layout) == 1 else {"runs": runs}, indent=1,
+                                                   default=str))
     sys.stdout.flush()
+    run.close()
 
 
 if __name__ == "__main__":

@@ -28,6 +28,22 @@ class TwinIncompleteWorld(RuntimeError):
     is fine; verify without the twin, or add the missing objects (e.g. at their last known pose)."""
 
 
+def plain(x):
+    """``x`` with every numpy array / scalar turned into Python lists / numbers (dicts, lists, tuples recursed).
+    Requests cross interpreters: behind the bridge the client runs in OUR venv (numpy 2.x) and the service in
+    RoboDojo's python (numpy 1.26), which cannot unpickle numpy-2 objects (``No module named 'numpy._core'``)."""
+    import numpy as np
+    if isinstance(x, dict):
+        return {k: plain(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [plain(v) for v in x]
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    if isinstance(x, np.generic):
+        return x.item()
+    return x
+
+
 class TwinClient:
     def __init__(self, port: int | None = None, authkey: bytes | None = None, timeout_s: float = 600.0):
         port = port or int(os.environ["SIMLAB_TWIN_PORT"])
@@ -43,7 +59,7 @@ class TwinClient:
                 time.sleep(2)
 
     def _call(self, req: dict):
-        self.conn.send(req)
+        self.conn.send(plain(req))
         res = self.conn.recv()
         if not res.get("ok"):
             if res.get("error_type") == "IncompleteWorld":

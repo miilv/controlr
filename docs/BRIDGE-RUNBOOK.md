@@ -56,6 +56,55 @@ rsync -a compute3:dojo-perception-data/{catalog,bg_folds,bg_folds_51} ~/dojo-per
 # reads nothing else from it). A new machine holding .env needs the owner's OK (CLAUDE.md rule 5): ask first.
 ```
 
+The venv needs the perception extra, which carries RoboDojo's generator deps (`tqdm`, `transforms3d`). The twin-layout
+template (`dojo.runtime.estimate._template`) imports RoboDojo's `utils.cluttered_generator` in OUR venv. Without them,
+every twin verify of a bridge episode fails. The proxy never showed this, because there the policy runs in RoboDojo's
+python.
+
+### 2b. isr-lab (Mikhail's 4090; the Unix user is shared): our tree only, his code unmodified
+
+Everything of ours lives under `~/data2/ilia`. `~/data2/bench` and `~/data2/controlr-robodojo` are read-only for us.
+
+| what | where |
+|---|---|
+| controlr checkout + `.venv` (py3.11, `uv sync --extra dev --extra perception`, `UV_CACHE_DIR` in our tree) | `~/data2/ilia/bridge/controlr` (`COMMIT` file; deployed as a `git archive` of the branch) |
+| perception data: task-scoped catalogue subset (no `visual.glb`), `bg_folds{,_51}`, `color_calib{,_51}.json` | `~/data2/ilia/bridge/pdata` (~285 MB) |
+| BENCH / RD_HOME: symlink farms over his installs (`scripts/dojo/isr_farm.sh`) | `~/data2/ilia/bench` (`run/` ours), `~/data2/ilia/rdhome` (`RoboDojo/eval_result/`, `RoboDojo/XPolicyLab/policy/` ours; `setup_policy_server.py` a byte copy) |
+| the environment of every process of ours | `scripts/dojo/isr_env.sh`, with `HARNESS_ENV=scripts/dojo/isr_harness_env.sh` and `HARNESS_SHIM_HOME=~/data2/ilia/home` |
+| GPU: the coord lock `~/data2/coord/gpu.lock` + `gpu.owner` + COORDINATION.md lines, inbox / `gpu.reserve` gate | `scripts/dojo/isr_job.sh NAME ETA cmd` (one hold) |
+| several practice episodes in one hold (<= 2 h), gate + disk floor (7 GB) before each, prune + summary row after | `scripts/dojo/isr_block.sh BLOCK ETA SPEC` (SPEC: `ID TASK <bridge_episode.sh options>` per line; seed 0 layout 9 fixed) |
+| one episode | `scripts/dojo/isr_episode.sh ID TASK <options>` |
+| rendered 5.1 dev eval on OUR settled layouts (>= 100000): the proxy driver with `--renderer isaac51` (`RenderedEpisode`: one EvalEnv with RTX, the eval client's app flags), perception service + twin, no robot server; the gate runs before every episode (`DOJO_EVAL_GATE`) | `scripts/dojo/isr_dev_eval.sh NAME ETA --task T --layouts L... --policy P --config JSON [--twin-envs 8]` |
+| rendered vs physics-only kit: replay an episode's executed actions, per-step object poses, divergence + phase | `scripts/dojo/replay_kits.py run ... [--physics-only] [--update-to-usd] [--no-fabric-ext] [--obs-every K]`, then `compare A B` |
+| regenerate the exact contract observations of a dev-eval episode (physics is deterministic, so they are bit-exact) | `replay_kits.py run ... --save-obs-at s1,s2,...`; which checks: `scripts/dojo/frames_plan.py plan --budget-mb N` (negatives first), then `index` (matched by asset key + position, never by label) |
+| stop a running block before its next episode | `touch $DOJO_DATA/bridge/STOP` (read by `bridge_episode.sh`; remove it to resume) |
+| robot-harness's lock-aware starters under our hold (mock, `ROBOT_START_DRYRUN`) | `scripts/dojo/isr_lockmock.py` |
+| rows (task, score, steps, wall, perception error at planning vs `dev.jsonl` after the close, verify, LLM calls) | `scripts/dojo/isr_summary.py` -> `~/data2/ilia/dojo-data/bridge/rows.jsonl` |
+
+Why the farms: robot-harness's launchers write the server's run dir under `$BENCH/run/<id>/`. They also copy the shim
+into `$RD/XPolicyLab/policy/harness_strict_j2/`, and the eval client writes its result under `$RD/eval_result/`,
+relative to its cwd. With `BENCH` / `RD_HOME` pointing at the farms, all three land in our tree:
+- RoboDojo's own path logic keeps the farm: `pwd`-based roots in its shell scripts, `abspath(__file__)` in
+  `global_configs.py`;
+- `PYTHONDONTWRITEBYTECODE=1` keeps `__pycache__` out of his trees.
+
+The session lock `DOJO_GPU_LOCK` (`~/data2/ilia/home/dojo-gpu.lock`, fd 9) is ours. The coord lock is held around it,
+so nothing of ours writes into the coord lock file.
+
+Rules there (Mikhail's conditions for our use of his box):
+- <= 8 runnable processes of ours, thread pools <= 4; the box hard-resets under all-core load;
+- CPUs 0-11 only (`taskset`, set by `isr_job.sh`; Mikhail's jobs use 12-23, 24-31 stay free); never widen it;
+- a load watchdog in `isr_job.sh` stops our tree when the 1-min load is above 12, or our CPU% above 1200, for more than
+  30 s;
+- never prune Isaac's shader / texture caches (their rebuild is an all-core spike); prune only run dirs and PNGs;
+- deploy only between holds; record the commit in the checkout's `COMMIT` before a run;
+- Mikhail's launcher files are md5-pinned (`isr_job.sh --pin`). A change, or his gpu.lock-taking starter appearing,
+  refuses the hold (rc 78);
+- disk: Mikhail's floor is 6 GB free on data2; ours is `ISR_DISK_FLOOR_MB` (default 7168, checked in MB before every episode);
+- holds <= 2 h;
+- `DOJO_ILIA=1` on every PID;
+- kill only our own PIDs (`scripts/simlab/ilia_stop.sh`).
+
 ## 3. CPU preflight, no GPU, about 1 min [CPU]
 
 ```bash
@@ -190,14 +239,17 @@ For a scored block, follow robot-harness AGENTS.md:
 - Live LLM calls count toward the daily cap (CLAUDE.md rule 3). Each episode's usage is in
   `report.json.gz` → `agent.usage`.
 
-## 7. Timing and resources (expected; measure on the first practice episode)
+## 7. Timing and resources (measured on isr-lab: RTX 4090, Isaac 5.1 RTX; journal 2026-10-26-bridge-isr)
 
 | item | value |
 |---|---|
-| observation | `obs` writes 3 PNGs and we decode them: ~0.1-0.2 s per observation (fake server: 4 ms at 48x64) |
-| twin boot | 1-2 min after `reset`; the sim is paused meanwhile (shim idle timeout 3600 s) |
-| perception / verify per episode | as in the proxy (journal 2026-10-24-dojo-integ: 34-54 s per stack episode) |
-| VRAM | eval client with RTX + twin (8 envs) + perception EGL on one GPU. The bundle peaked at 11.7 GB without RTX; check `nvidia-smi` before the first run |
+| eval client boot (`robot-start-j2` to `episode_pending`) | < 1 min with a warm shader cache. The first RTX boot fills ~1.6 GB of Kit caches under the shim HOME |
+| observation | `obs` writes 3 PNGs into our `frames/` (`save_dir`) and we decode them: ~0.07 s per observation. A stack episode has ~15 observations |
+| twin boot | 4-5 s after `reset` (physics-only, 4 envs) |
+| perception / verify per episode | stack_blocks: perceive ~3 s, verify ~31 s for 6 segments / 48 rollouts (4 envs); agentic frame-0 estimate ~39 s (3 Sonnet calls) |
+| VRAM | 10.1-12.4 GB peak: the eval client (it runs RoboDojo's 10-env scene for one layout), the twin and perception EGL |
+| CPU | peak <= 3 runnable processes of ours, load average <= 3.5 |
+| disk | ~4 MB per run dir with `--keep-frames 20` (+ ~2 MB of agentic frames). Prune with `scripts/dojo/isr_prune.py` |
 | robot-start busy check | refuses when < 6 GB VRAM is free or another eval client runs, so start the official run BEFORE our services |
 
 ## 8. Known gaps
@@ -215,8 +267,15 @@ For a scored block, follow robot-harness AGENTS.md:
     expected; a refusal rule would need >= 1 grip step per such op in the skills.
 - **The server's `perceive` route has no refine / check / search** unless the local service also runs. Its task routing
   (`j1_adapter.infer_task`) covers 6 tasks, while the runtime's vocabularies cover more. Unifying them is BACKLOG.
-- **`held_look`** (B1) is available as `backend.held_look`, but the runtime does not call it: its slip checks read
-  predictions; see the integ journal's open items.
+- **`held_look`**: the server's verb (B1 inside his server) is available as `backend.held_look`, but the runtime does
+  not call it. The runtime's own held check (`RuntimeConfig.held_look` = `b1` | `b1_then_agent`) is a perception
+  SERVICE op. Like `agentic`, it exists only with `--perception local`.
+- **Instructions without a runtime perception vocabulary** (`dojo.runtime.supervisor.VOCABULARIES`) cannot run in
+  mode perception, so they cannot run on this path at all: make_toast, make_toast_random, store_laptop_and_headphones,
+  hang_mugs.
+- **Cross-interpreter pickles.** The driver and perception run in our venv (numpy 2.x); the twin service runs in
+  RoboDojo's python (numpy 1.26). `TwinClient` sends plain lists and numbers (`twin_service.plain`), because a numpy-2
+  array does not unpickle under numpy 1.26 (`No module named 'numpy._core'`). Replies the other way are fine.
 
 ## 9. The `joint_steps` contract (robot-harness #8 / HARNESS-CONTRACT 1.1; mirrored by `dojo/bridge/fake_server.py`)
 

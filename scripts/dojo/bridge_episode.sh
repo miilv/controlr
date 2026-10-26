@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # One strict full-system RoboDojo episode through the OFFICIAL eval client (docs/BRIDGE-RUNBOOK.md):
 #   scripts/dojo/bridge_episode.sh --id ID --task T --layout L --seed S [--policy module:Class]
-#       [--perception local|server] [--verify bundle|off] [--config JSON] [--twin-envs 8] [--out DIR] [--fake]
+#       [--perception local|server] [--verify bundle|off] [--config JSON] [--twin-envs 8] [--keep-frames 20] [--out DIR]
+#       [--fake]
 # Processes (one GPU box, one session lock ~/dojo-gpu.lock held for the whole episode):
 #   robot-harness (Mikhail's lane, $BENCH): strict server with joint_steps + no-op ws policy server + RoboDojo's eval
 #     client (Isaac 5.1 with rendering, XPolicyLab policy harness_strict), started by $ROBOT_START;
@@ -19,7 +20,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export BENCH="${BENCH:-/home/anywherevla/data2/bench}"
 ROBOT_START="${ROBOT_START:-$BENCH/bin/robot-start-j2}"
-ID="" TASK="" LAYOUT="" SEED=0 POLICY="dojo.agent.policy:AgentPolicy" PERC=local VERIFY=bundle CONFIG='{}' TWIN_ENVS=8
+ID="" TASK="" LAYOUT="" SEED=0 POLICY="dojo.agent.policy:AgentPolicy" PERC=local VERIFY=bundle CONFIG='{}' TWIN_ENVS=8 KEEP=20
 OUT="${DOJO_DATA:-$HOME/dojo-data}/bridge/runs" FAKE=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -28,11 +29,15 @@ while [[ $# -gt 0 ]]; do
     --policy) POLICY="$2"; shift 2 ;;    --perception) PERC="$2"; shift 2 ;;
     --verify) VERIFY="$2"; shift 2 ;;    --config) CONFIG="$2"; shift 2 ;;
     --twin-envs) TWIN_ENVS="$2"; shift 2 ;;  --out) OUT="$2"; shift 2 ;;
+    --keep-frames) KEEP="$2"; shift 2 ;;
     --fake) FAKE=1; shift ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
 done
 [[ -n "$ID" ]] || { echo "--id is required" >&2; exit 2; }
+# a stop file ends a running block before its next episode (isr-lab: the disk floor, a GPU hand-back)
+STOPF="${BRIDGE_STOP_FILE:-${DOJO_DATA:-$HOME/dojo-data}/bridge/STOP}"
+[[ -e "$STOPF" ]] && { echo "[bridge_episode] stop file $STOPF present: not starting $ID" >&2; exit 79; }
 [[ "$FAKE" == 1 || ( -n "$TASK" && -n "$LAYOUT" ) ]] || { echo "--task and --layout are required" >&2; exit 2; }
 mkdir -p "$OUT/$ID"
 LOG="$OUT/$ID/bridge_episode.log"
@@ -70,7 +75,9 @@ if [[ "$PERC" == local ]]; then
   key() { python3 -c 'import secrets; print(secrets.token_hex(16))'; }
   port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
   export DOJO_PERCEPTION_AUTHKEY="$(key)" DOJO_PERCEPTION_PORT="$(port)" DOJO_PERCEPTION_READY="$OUT/$ID/perception.ready"
-  ( cd "$HERE" && DOJO_ILIA=1 PYOPENGL_PLATFORM=egl nice "$PY" -u -m dojo.runtime.perception_service ) \
+  # exec: $! is the service's own PID, so the cleanup trap stops it (with a plain subshell it killed only the bash
+  # and the service lived on, holding fd 9 = the session lock: the next episode waited on it, isr-lab 2026-10-26)
+  ( cd "$HERE" && DOJO_ILIA=1 PYOPENGL_PLATFORM=egl exec nice "$PY" -u -m dojo.runtime.perception_service 9>&- ) \
     > "$OUT/$ID/perception_service.log" 2>&1 &
   PIDS+=($!)
   for _ in $(seq 150); do [[ -f "$DOJO_PERCEPTION_READY" ]] && break; sleep 2; done
@@ -81,7 +88,7 @@ fi
 TWIN=spawn; [[ "$VERIFY" == bundle ]] || TWIN=off
 ( cd "$HERE" && DOJO_ILIA=1 DOJO_AGENT_LOG="$OUT/$ID/agent" "$PY" -u -m dojo.bridge.driver --server-id "$ID" \
     --bench "$BENCH" --policy "$POLICY" --perception "$PERC" --verify "$VERIFY" --twin "$TWIN" \
-    --twin-envs "$TWIN_ENVS" --hold-gpu-lock --config "$CONFIG" --out "$OUT" --close ) 2>&1 | tee -a "$LOG"
+    --twin-envs "$TWIN_ENVS" --keep-frames "$KEEP" --hold-gpu-lock --config "$CONFIG" --out "$OUT" --close ) 2>&1 | tee -a "$LOG"
 RC=${PIPESTATUS[0]}
 
 # 4. the official run writes its result when the server closes; wait for the launcher (never read the verdict here)
