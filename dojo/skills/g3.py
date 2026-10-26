@@ -85,10 +85,12 @@ class OffsetBeliefProvider:
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
                 verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False,
-                held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True) -> dict:
+                held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True,
+                freeze_touched: bool = False, confirm_pose: bool = False) -> dict:
     """``held_pose`` ("noise" / "gt", mode B): perception's in-hand read answered from GT (``heldsim``), with the
     runtime belief's in-hand transform (implied); ``held_belief``: that belief alone (no read); ``held_looks``: the
-    protocol may look / show (``Skills.held_looks``)."""
+    protocol may look / show (``Skills.held_looks``). ``freeze_touched``: an object the robot moved without a grasp keeps
+    its believed pose (the runtime belief's blind spot); ``confirm_pose``: + the provider's ``confirm_pose`` from GT."""
     """``task`` is bookkeeping only: the episode runs ``planner.solve`` from the instruction + world."""
     from dojo.skills import planner
     from dojo.skills.env import RunnerEnv
@@ -107,9 +109,10 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     prov = GTProvider(env, assets, instruction=env.instruction)
     if belief_offsets:
         prov = OffsetBeliefProvider(prov, belief_offsets)
-    if held_pose or held_belief:
+    if held_pose or held_belief or freeze_touched or confirm_pose:
         from dojo.skills.heldsim import HeldBeliefProvider
-        prov = HeldBeliefProvider(prov, env, mode=held_pose or None, seed=seed)
+        prov = HeldBeliefProvider(prov, env, mode=held_pose or None, seed=seed, freeze=freeze_touched,
+                                  confirm=confirm_pose)
     t1 = time.perf_counter()
     sim_time = [0.0]
     verifier = None
@@ -190,6 +193,11 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                        "by_view": {v: [sum(e["view"] == v for e in ev), sum(e["view"] == v and e["ok"] for e in ev)]
                                    for v in ("hover", "look", "show")},
                        "events": ev[-40:], "provider": getattr(prov, "stats", None)}
+    if sk.confirm_events or freeze_touched or confirm_pose:
+        ce = sk.confirm_events
+        rec["confirm"] = {"asked": len(ce), "adopted": sum(bool(e["adopted"]) for e in ce), "events": ce[-30:],
+                          "provider": getattr(prov, "stats", None),
+                          "provider_events": [e for e in (getattr(prov, "events", None) or []) if e.get("kind") == "confirm"][-30:]}
     if verifier is not None:
         rec["verify"] = {**sk.vstats, **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in verifier.stats.items()}}
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -247,10 +255,13 @@ def cmd_run(a) -> None:
             offs[lab] = [float(x) for x in vals.split(",")]
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
                           verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b, held_pose=a.held_pose,
-                          held_belief=a.held_belief, held_looks=not a.no_held_looks)
+                          held_belief=a.held_belief, held_looks=not a.no_held_looks,
+                          freeze_touched=a.freeze_touched, confirm_pose=a.confirm_pose)
         if offs or a.mode_b:
             rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b), "held_pose": a.held_pose,
-                                "held_belief": bool(a.held_belief or a.held_pose), "held_looks": not a.no_held_looks}
+                                "held_belief": bool(a.held_belief or a.held_pose or a.freeze_touched or a.confirm_pose),
+                                "held_looks": not a.no_held_looks, "freeze_touched": bool(a.freeze_touched or a.confirm_pose),
+                                "confirm_pose": bool(a.confirm_pose)}
         rec["log"] = logs[-60:]
         rec["code"] = code
         rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
@@ -618,6 +629,11 @@ def main(argv=None) -> None:
     r.add_argument("--held-belief", action="store_true",
                    help="mode B: the runtime belief's in-hand transform (attached at the close), no held_pose (dev)")
     r.add_argument("--no-held-looks", action="store_true", help="the held-pose protocol reads at the hover only (dev)")
+    r.add_argument("--freeze-touched", action="store_true",
+                   help="mode B: an object the robot moved without a grasp keeps its believed pose (the runtime's blind "
+                        "spot; dojo.skills.heldsim; dev)")
+    r.add_argument("--confirm-pose", action="store_true",
+                   help="mode B: --freeze-touched + the provider's confirm_pose answered from GT (dev)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")

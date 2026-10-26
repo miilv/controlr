@@ -1815,6 +1815,7 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
                     m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "push_up", gripper=CLOSED, check=False)
                     plan = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3)
                     plan.move(m4)
+                    push_u, push_step = u, step
                     break
                 if plan is not None:
                     break
@@ -1830,6 +1831,9 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
             sk.parallel([plan], name=f"push {label} {it}")
         except (BudgetExceeded, EpisodeEnded) as e:
             return sk._record(SkillResult(False, "push", "step_budget", sk.ex.steps_used - n0, last, note=str(e)))
+        T_x = o.T.copy()                                      # the stroke's expected outcome: ``step`` along u
+        T_x[:2, 3] += push_u * push_step
+        sk.confirm_moved(label, T_x, "push")                  # mode B: nothing else sees a pushed object move
         moved = float(np.linalg.norm(sk.refresh().obj(label).center_w[:2] - before))
         stuck = stuck + 1 if moved < 0.003 else 0
         if stuck >= 2:
@@ -1908,12 +1912,16 @@ def topple(sk: Skills, label: str, axis_body, arm: str | None = None, tries: int
         p = sk.plan_topple(label, k, sign, arm=arm, over=0.012 + 0.012 * t, below_top=0.012 + 0.004 * t)
         if isinstance(p, SkillResult):
             return sk._record(p)
+        o0 = sk.world.obj(label)
+        n_up = o0.R[:, k] * sign                         # the axis to point up, now horizontal: it tips the other way
         try:
             sk.parallel([p], name=f"topple {label}")
             sk.ex.settle(tol=0.02, max_steps=4)
         except (BudgetExceeded, EpisodeEnded) as e:
             return sk._record(SkillResult(False, "topple", "step_budget" if isinstance(e, BudgetExceeded) else "ended",
                                           0, p.arm, note=str(e)))
+        # mode B: no grasp, so nothing re-measures it; the provider confirms the expected outcome (or not)
+        sk.confirm_moved(label, Skills.toppled_pose(o0, -n_up), "topple")
         w = sk.refresh()
         o = w.obj(label)
         up = float((o.R @ ax)[2])
