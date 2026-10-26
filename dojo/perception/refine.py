@@ -32,7 +32,7 @@ import cv2
 import numpy as np
 
 from .cameras import TABLE_Z, R_to_quat_wxyz, pose_to_T, wrist_camera
-from .inverse_layout import make_roi_views, refine as nm_refine, shape_by_tag, shape_models
+from .inverse_layout import make_roi_views, refine as nm_refine, roi_loss, shape_by_tag, shape_models
 from .segment import load_backgrounds, segment_virtual
 
 _BGS = None
@@ -132,7 +132,7 @@ def _shape_for(key: str, R: np.ndarray, tag: str | None):
 def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
            tag: str | None = None, bgs: dict | None = None, others: list | None = None, iters: int = 60,
            xy_starts: float = 0.015, seg: str = "local", held=None, search: bool = True,
-           support_snap: bool = True) -> dict:
+           support_snap: bool = True, edge_fallback: bool = True) -> dict:
     if support_snap and others:
         # a prior floating above every known support under it (a carried-height belief after a release; 5.1 stack
         # 100007 s142: 56 mm up, iou 0.0): also refine from the prior lowered onto that support. The local masks are
@@ -145,7 +145,7 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         drop = lo - support_z(a_t, prior_pose, others)
         if drop > SUPPORT_FLOAT_M:
             kw = dict(tag=tag, bgs=bgs, others=others, iters=iters, xy_starts=xy_starts, seg=seg, held=held,
-                      search=search, support_snap=False)
+                      search=search, support_snap=False, edge_fallback=edge_fallback)
             out_a = refine(obj_id, wrist_frame, proprio, prior_pose, arm, **kw)
             prior_b = [float(prior_pose[0]), float(prior_pose[1]), float(prior_pose[2]) - drop] + list(map(float, prior_pose[3:]))
             out_b = refine(obj_id, wrist_frame, proprio, prior_b, arm, **kw)
@@ -203,15 +203,26 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
     T0 = pose_to_T(prior_pose[:3], prior_pose[3:])
     sm = _shape_for(obj_id, T0[:3, :3], tag)
     trunc = truncated_frac(cam, sm.asset.V @ T0[:3, :3].T + T0[:3, 3])
-    if trunc > TRUNCATED_MAX:
-        # the object is larger than the wrist view (a 24-37 cm tower board under a 15 cm hover): a fit slides
-        # freely along the cut (5.1 build_tower: 83-122 mm "corrections" of the boards). Keep the prior.
-        return {"pose": list(map(float, prior_pose)), "residual": 1.0, "iou": 0.0, "visible_frac": round(1 - trunc, 3),
-                "place_tag": sm.tag, "moved_mm": 0.0, "turned_deg": 0.0, "ok": False, "why": "truncated",
-                "truncated_frac": round(trunc, 3), "time_s": round(time.time() - t0, 3), "camera": cam.name}
     Rz = T0[:3, :3] @ sm.R0.T
     yaw0 = float(np.arctan2(Rz[1, 0], Rz[0, 0]))
     z_off = float(T0[2, 3] - (TABLE_Z - sm.zmin))  # keep the prior's height (stacked targets)
+    if trunc > TRUNCATED_MAX:
+        # the object is larger than the wrist view (a 24-37 cm tower board under a 15 cm hover): a free fit slides
+        # along the cut (5.1 build_tower: 83-122 mm "corrections" of the boards). Fit only what the view constrains:
+        # the offset across the long axis and the yaw; the position along the long axis stays the prior's
+        out = _partial_fit(sm, z_off, T0, yaw0, v)
+        base = {"place_tag": sm.tag, "truncated_frac": round(trunc, 3), "camera": cam.name}
+        if out is None or not out["ok"]:
+            return {"pose": list(map(float, prior_pose)), "residual": 1.0, "iou": 0.0 if out is None else out["iou"],
+                    "visible_frac": round(1 - trunc, 3), "moved_mm": 0.0, "turned_deg": 0.0, "ok": False,
+                    "why": "truncated", "time_s": round(time.time() - t0, 3), **base}
+        T = out["T"]
+        return {"pose": np.r_[T[:3, 3], R_to_quat_wxyz(T[:3, :3])].tolist(), "residual": out["loss"], "iou": out["iou"],
+                "visible_frac": round(1 - trunc, 3), "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1),
+                "turned_deg": round(float(np.degrees(abs(out["dyaw"]))), 1), "ok": True,
+                "partial": {"unobserved_axis": out["along_axis"], "end_seen": out["end_seen"],
+                            "note": "position along this axis kept from the prior (truncated view)"},
+                "time_s": round(time.time() - t0, 3), **base}
 
     def pose_T(x, y, yaw):
         T = sm.pose(x, y, yaw)
@@ -249,20 +260,52 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
             T = pose_T(x, y, yaw)
             ok = True
             d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
+    slid = None
+    if ok:  # a fit that slid out of the view: the IoU only counts the part still inside (5.1 tower: a plank on a
+        # same-colour board slid 36-44 mm toward the image edge at iou 0.7-0.8)
+        trunc_fit = truncated_frac(cam, sm.asset.V @ T[:3, :3].T + T[:3, 3])
+        if trunc_fit > trunc + TRUNC_SLIDE_MAX:
+            ok, slid = False, f"slid out of view ({trunc:.2f} -> {trunc_fit:.2f} outside)"
+    edge = None
+    stacked = bool(others) and any(_under(load_asset(k2), p2, load_asset(obj_id), prior_pose) for k2, p2 in others) \
+        if seg == "local" else False
+    if ok and stacked and edge_fallback:
+        # on a same-colour support the colour fit can be ok and still wrong (5.1 tower: the plank on block7 10-40 mm
+        # off at iou 0.8): a tight edge fit that disagrees by > 5 mm wins
+        e2 = _edge_fit(sm, z_off, wrist_frame, cam, rob, T0, yaw0, iters)
+        if e2 is not None and e2["ok"] and e2["cost_px"] <= EDGE_OVERRIDE_COST_PX and \
+                np.hypot(e2["x"] - T[0, 3], e2["y"] - T[1, 3]) > 0.005:
+            edge = e2
+            T, x, y, yaw = e2["T"], e2["x"], e2["y"], e2["yaw"]
+            loss, per = roi_loss(sm, T, make_roi_views(sm, T, views))
+            iou = float(next(iter(per.values()), 0.0)) if per else 0.0
+            d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
+    if not ok and seg == "local" and edge_fallback:
+        # the colour model cannot separate the target from a same-colour support (5.1 tower: a white pillar on the
+        # light-wood board, iou 0.03-0.2): fit the silhouette outline to image edges instead
+        edge = _edge_fit(sm, z_off, wrist_frame, cam, rob, T0, yaw0, iters)
+        if edge is not None and edge["ok"]:
+            T = edge["T"]
+            x, y, yaw = edge["x"], edge["y"], edge["yaw"]
+            loss, per = roi_loss(sm, T, make_roi_views(sm, T, views))
+            iou = float(next(iter(per.values()), 0.0)) if per else 0.0
+            ok = True
+            d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
     out = {"pose": np.r_[T[:3, 3], R_to_quat_wxyz(T[:3, :3])].tolist(), "residual": round(float(loss), 4),
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
             "ok": ok, "time_s": round(time.time() - t0, 3), "camera": cam.name}
+    if slid and not ok:
+        out["why"] = slid
+    if edge is not None:
+        out["edge"] = {k: edge[k] for k in ("ok", "cost_px", "coverage", "n_px", "moved_mm")}
+        if edge["ok"]:
+            out["via"] = "edges"
     # what the pixels look like at the fit and at the prior (identity of what is there: ``identity.rank``)
     for tag_, T_ in (("fit", T), ("prior", T0)):
         rgb, n_fg, n_sil = _obs_color(sm, T_, v)
         out[f"obs_{tag_}"] = {"rgb": None if rgb is None else [round(float(c), 4) for c in rgb], "fg_px": n_fg,
                               "sil_px": n_sil}
-    if out["ok"]:  # a fit that slid out of the view: the IoU only counts the part still inside (5.1 tower: a plank on a
-        # same-colour board slid 36-44 mm toward the image edge at iou 0.7-0.8)
-        trunc_fit = truncated_frac(cam, sm.asset.V @ T[:3, :3].T + T[:3, 3])
-        if trunc_fit > trunc + TRUNC_SLIDE_MAX:
-            out["ok"], out["why"] = False, f"slid out of view ({trunc:.2f} -> {trunc_fit:.2f} outside)"
     if others and out["ok"]:
         from .render import load_asset
 
@@ -308,6 +351,148 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
                                                        searched["suggest_xy"][1] - T0[1, 3]) * 1000), 1)
         out["suggest_score"] = searched["score"]
     return out
+
+
+EDGE_MAX_COST_PX = 1.0  # mean outline-to-edge distance (px, truncated at EDGE_CAP_PX) of an accepted edge fit (5.1 tower
+# + stack, priors displaced 15 / 40 mm: right fits 0.04-0.9 px; the one wrong fit, on a neighbouring pillar, 1.37 px)
+EDGE_MIN_COVERAGE = 0.85
+EDGE_OVERRIDE_COST_PX = 0.5  # an edge fit this tight overrides an ok colour fit it disagrees with  # share of the outline within 2 px of an image edge
+EDGE_CAP_PX = 10.0
+EDGE_MAX_SHIFT_M = 0.03
+
+
+def image_edges(img: np.ndarray) -> np.ndarray:
+    """Canny on lightness and on both chroma channels: a white pillar on a light-wood board differs in b*, not in
+    grey level (grey-only Canny found no edge between them)."""
+    lab = cv2.GaussianBlur(cv2.cvtColor(img, cv2.COLOR_RGB2LAB), (5, 5), 0)
+    E = cv2.Canny(lab[..., 0], 40, 120)
+    for c in (1, 2):
+        E |= cv2.Canny(lab[..., c], EDGE_CHROMA_LO, 3 * EDGE_CHROMA_LO)
+    return E
+
+
+EDGE_CHROMA_LO = 6
+
+
+def _edge_fit(sm, z_off, img, cam, rob, T0, yaw0, iters: int = 80) -> dict | None:
+    """Fit the silhouette OUTLINE to image edges (truncated chamfer), from the prior. Used when the colour
+    foreground fails: a target on a same-colour support. Edges on the robot are ignored; outline pixels on the robot
+    or the image border do not count. Accepted when the outline lies on edges (cost, coverage) within 30 mm."""
+    from scipy.optimize import minimize
+
+    E = image_edges(img)
+    robd = cv2.dilate(rob.astype(np.uint8), np.ones((7, 7), np.uint8))
+    E[robd > 0] = 0
+    D = np.minimum(cv2.distanceTransform((E == 0).astype(np.uint8), cv2.DIST_L2, 3), EDGE_CAP_PX)
+    h, w = D.shape
+    border = np.zeros((h, w), np.uint8)
+    border[3:-3, 3:-3] = 1
+    k3 = np.ones((3, 3), np.uint8)
+
+    def outline(x, y, yaw):
+        T = sm.pose(x, y, yaw)
+        T[2, 3] += z_off
+        S = sm.sil(cam, T).astype(np.uint8)
+        B = (S > 0) & (cv2.erode(S, k3) == 0) & (robd == 0) & (border > 0)
+        return T, B
+
+    def cost(p):
+        _, B = outline(*p)
+        n = int(B.sum())
+        return EDGE_CAP_PX if n < 60 else float(D[B].mean())
+
+    x0 = np.array([T0[0, 3], T0[1, 3], yaw0])
+    best = None
+    for dx, dy in ((0, 0), (0.008, 0), (-0.008, 0), (0, 0.008), (0, -0.008)):
+        s0 = x0 + np.array([dx, dy, 0.0])
+        simplex = [s0, s0 + [0.004, 0, 0], s0 + [0, 0.004, 0], s0 + [0, 0, 0.05]]
+        r = minimize(cost, s0, method="Nelder-Mead",
+                     options={"initial_simplex": np.array(simplex), "maxiter": iters, "xatol": 2e-4, "fatol": 1e-3})
+        if best is None or r.fun < best.fun:
+            best = r
+    x, y, yaw = (float(v) for v in best.x)
+    T, B = outline(x, y, yaw)
+    n = int(B.sum())
+    if n < 60:
+        return None
+    c = float(D[B].mean())
+    cov = float((D[B] <= 2.0).mean())
+    moved = float(np.hypot(x - T0[0, 3], y - T0[1, 3]))
+    ok = bool(c <= EDGE_MAX_COST_PX and cov >= EDGE_MIN_COVERAGE and moved <= EDGE_MAX_SHIFT_M)
+    return {"ok": ok, "T": T, "x": x, "y": y, "yaw": yaw, "cost_px": round(c, 2), "coverage": round(cov, 3), "n_px": n,
+            "moved_mm": round(1000 * moved, 1)}
+
+
+def _partial_fit(sm, z_off, T0, yaw0, v, s_lim: float = 0.03, iters: int = 60) -> dict | None:
+    """A truncated object (longer than the view; box-like: tower boards): fit the offset ACROSS its long horizontal
+    axis and the yaw; the position along the long axis stays the prior's. The box is clipped to the stretch of the
+    long axis the camera sees (the far ends project behind it), and scored by IoU against the colour foreground in
+    the image around its expected silhouette. ok at IoU >= 0.6."""
+    from scipy.optimize import minimize
+
+    from .render import silhouette
+
+    V = sm.asset.V
+    c0 = (V.max(0) + V.min(0)) / 2
+    half = (V.max(0) - V.min(0)) / 2
+    R = T0[:3, :3]
+    horiz = [i for i in range(3) if abs(R[2, i]) < 0.7]
+    if not horiz:
+        return None
+    il = max(horiz, key=lambda i: half[i])
+    u = R[:2, il] / max(np.linalg.norm(R[:2, il]), 1e-9)
+    n = np.array([-u[1], u[0]])
+    cam = v.cam
+    ts = np.arange(-half[il], half[il] + 1e-9, 0.01)
+    P = np.array([T0[:3, :3] @ (c0 + np.eye(3)[il] * t) + T0[:3, 3] for t in ts])
+    uv, z = cam.project(P)
+    inside = (z > 0.05) & (uv[:, 0] > -40) & (uv[:, 0] < cam.w + 40) & (uv[:, 1] > -40) & (uv[:, 1] < cam.h + 40)
+    if inside.sum() < 2:
+        return None
+    seen = (z > 0.05) & (uv[:, 0] > 10) & (uv[:, 0] < cam.w - 10) & (uv[:, 1] > 10) & (uv[:, 1] < cam.h - 10)
+    end_seen = bool(seen.any() and (ts[seen].min() <= ts[0] + 0.011 or ts[seen].max() >= ts[-1] - 0.011))
+    t0_, t1_ = ts[inside].min() - 0.02, ts[inside].max() + 0.02
+    lo, hi = c0 - half, c0 + half
+    lo[il], hi[il] = max(lo[il], c0[il] + t0_), min(hi[il], c0[il] + t1_)
+    C = np.array([[x, y, zz] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for zz in (lo[2], hi[2])])
+    F = np.array([[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1],
+                  [2, 3, 7], [2, 7, 6], [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]])
+    Rz0 = R.copy()
+
+    def world(p):
+        a = p[1]
+        Rz = np.array([[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]])
+        T = np.eye(4)
+        T[:3, :3] = Rz @ Rz0
+        T[:3, 3] = T0[:3, 3] + np.r_[n * p[0] + (u * p[2] if len(p) > 2 else 0.0), 0.0]
+        return T, C @ T[:3, :3].T + T[:3, 3]
+
+    S0 = silhouette(cam, world(np.zeros(2))[1], F)
+    if S0.sum() < 200:
+        return None
+    region = cv2.dilate(S0.astype(np.uint8), np.ones((61, 61), np.uint8)) & v.known
+    fg = v.fg & region
+
+    def iou(p):
+        S = silhouette(cam, world(p)[1], F) & region
+        inter = float((S & fg).sum())
+        union = float(((S | fg) & region).sum())
+        return inter / union if union > 0 else 0.0
+
+    def f(p):
+        pen = sum(10.0 * (abs(p[i]) - s_lim) for i in (0, 2) if i < len(p) and abs(p[i]) > s_lim)
+        return 1.0 - iou(p) + pen
+
+    # the position along the axis is NOT fitted even when an end is in view: the end strip is a small part of the
+    # IoU and the fits stopped 10-20 mm off (5.1 tower, priors displaced 15 mm); the head view checks it
+    x0 = np.zeros(2)
+    r = minimize(f, x0, method="Nelder-Mead",
+                 options={"initial_simplex": np.array([x0, [0.004, 0], [0, 0.03]]), "maxiter": iters,
+                          "xatol": 2e-4, "fatol": 1e-4})
+    T, _ = world(r.x)
+    q = iou(r.x)
+    return {"ok": bool(q >= 0.6 and abs(r.x[0]) <= s_lim), "T": T, "loss": round(1 - q, 4), "iou": round(q, 4),
+            "dyaw": float(r.x[1]), "end_seen": end_seen, "along_axis": [round(float(u[0]), 4), round(float(u[1]), 4)]}
 
 
 def _obs_color(sm, T: np.ndarray, v, erode: int = 2) -> tuple:
