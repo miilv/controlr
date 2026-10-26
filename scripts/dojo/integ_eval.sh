@@ -8,10 +8,11 @@
 # Processes, all in ONE systemd user scope (24G / 14 cores with a twin or perception, else 16G / 12 cores):
 #   render service (Isaac 6.0), [twin service (physics-only 5.1 Twin, --verify bundle)],
 #   [perception service (controlr venv, EGL; --mode perception)], the driver (dojo.runtime.eval, RoboDojo python).
-# Team rules: starts only with MemAvailable >= 25 GB (waits <= 10 min), holds ~/dojo-gpu.lock (blocking flock -w)
+# Team rules: starts only with MemAvailable >= 25 GB (INTEG_MIN_MEM_GB; + free VRAM INTEG_MIN_FREE_MB; waits <= 10 min),
+# holds $DOJO_GPU_LOCK (default ~/dojo-gpu.lock; compute5-8: Integration-3's ~/dojo-gpu-heavy2.lock) (blocking flock -w)
 # for its lifetime (keep a job <= 30 min: --max-minutes), every child runs with SIMLAB_GPU=0; services stopped
 # on exit; after releasing the lock it yields 90 s (INTEG_YIELD_S) before returning. Exit 3: a service never got
-# ready (no episode ran; the queue runner retries such a job once).
+# ready (no episode ran), 75: resources / the lock never came: the queue runner retries such a job once.
 # bash reads a script while it runs: a deploy that rewrites this file in place (cp, an editor) would make a
 # running copy execute a mix of old and new lines (2026-10-26: the runner re-ran a finished job with mangled
 # args, then died on a syntax error). The whole body is one brace group, read before any of it runs.
@@ -43,16 +44,25 @@ fi
 MODE="${MODE:-gt}" VERIFY="${VERIFY:-off}"
 mkdir -p "$OUT"
 avail() { awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo; }
-for i in $(seq 30); do
-  [[ "$(avail)" -ge 25 ]] && break
-  [[ "$i" -eq 30 ]] && { echo "[integ] MemAvailable $(avail) GB < 25 GB: refusing to start" >&2; exit 75; }
-  echo "[integ] MemAvailable $(avail) GB < 25 GB, waiting..." >&2; sleep 20
-done
+vram() { command -v nvidia-smi >/dev/null && nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits | head -1 | tr -d ' ' || echo 999999; }
+# resources before a start: MemAvailable >= INTEG_MIN_MEM_GB (25; 16 on the boxes with two heavy lanes) and, when
+# INTEG_MIN_FREE_MB > 0, that much free VRAM (a rendered episode needs ~8 GB; Kit hangs when it runs out)
+MIN_GB="${INTEG_MIN_MEM_GB:-25}" MIN_MB="${INTEG_MIN_FREE_MB:-0}"
+ready() { [[ "$(avail)" -ge "$MIN_GB" ]] && { [[ "$MIN_MB" -le 0 ]] || [[ "$(vram)" -ge "$MIN_MB" ]]; }; }
+wait_res() {
+  for i in $(seq "${INTEG_RES_TRIES:-30}"); do
+    ready && return 0
+    [[ $((i % 3)) -eq 1 ]] && echo "[integ] waiting: MemAvailable $(avail) GB (need $MIN_GB), VRAM free $(vram) MiB (need $MIN_MB)" >&2
+    sleep 20
+  done
+  ready
+}
+wait_res || { echo "[integ] MemAvailable $(avail) GB / VRAM free $(vram) MiB below $MIN_GB GB / $MIN_MB MiB: refusing to start" >&2; exit 75; }
 LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"; exec 9>>"$LOCK"
 echo "[integ] waiting for $LOCK: $(head -c 160 "$LOCK" | tr '\n' ' ')" >&2
 flock -w "${INTEG_LOCK_WAIT_S:-10800}" 9 || { echo "[integ] gave up waiting for $LOCK" >&2; exit 75; }
 printf 'pid=%s stream=integ start=%s cmd=integ_eval %s\n' "$$" "$(date -u +%FT%TZ)" "${args[*]}" > "$LOCK"
-[[ "$(avail)" -ge 25 ]] || { echo "[integ] MemAvailable dropped below 25 GB while waiting for the lock" >&2; exit 75; }
+wait_res || { echo "[integ] resources dropped below $MIN_GB GB / $MIN_MB MiB while waiting for the lock" >&2; exit 75; }
 key() { python3 -c 'import secrets; print(secrets.token_hex(16))'; }
 port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
 export SIMLAB_GPU=0 SIMLAB_MIN_FREE_MB=0

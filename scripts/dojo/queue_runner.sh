@@ -35,11 +35,13 @@ while true; do
   (cd "$repo" && bash scripts/dojo/integ_eval.sh --out "$RUNS/$name" $args) > "$RUNS/$name.log" 2>&1 < /dev/null
   rc=$?
   echo "$(date -u +%FT%TZ) done $name rc=$rc"
-  if [[ "$rc" == 3 && "$name" != *_retry ]]; then
-    # a service never got ready (no episode ran): keep the evidence, run the job once more at the front of the queue
-    mv "$RUNS/$name" "$RUNS/${name}__services_not_ready"; mv "$RUNS/$name.log" "$RUNS/${name}__services_not_ready.log"
+  if [[ ( "$rc" == 3 || "$rc" == 75 ) && "$name" != *_retry ]]; then
+    # no episode ran (3: a service never got ready; 75: memory / VRAM / the lock never came): keep the evidence, run
+    # the job once more at the front of the queue
+    why=$([[ "$rc" == 3 ]] && echo services_not_ready || echo no_resources)
+    mv "$RUNS/$name" "$RUNS/${name}__$why"; mv "$RUNS/$name.log" "$RUNS/${name}__$why.log"
     flock "$Q.lock" bash -c '{ printf "%s\n" "$2"; cat "$1"; } > "$1.tmp" && mv "$1.tmp" "$1"' _ "$Q" "${name}_retry ${line#* }"
-    echo "$(date -u +%FT%TZ) requeued ${name}_retry (services not ready)"
+    echo "$(date -u +%FT%TZ) requeued ${name}_retry ($why)"
   fi
 done
 echo "$(date -u +%FT%TZ) queue empty"
