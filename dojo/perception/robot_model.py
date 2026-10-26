@@ -86,10 +86,13 @@ class X5Model:
     @classmethod
     @lru_cache(maxsize=1)
     def default(cls) -> "X5Model":
-        for d in DEFAULT_URDF_DIRS:
-            if d and Path(d, "X5A.urdf").exists():
+        from .render import path_exists
+
+        dirs = [d for d in os.environ.get("DOJO_X5_DIR", "").split(os.pathsep) if d] + list(DEFAULT_URDF_DIRS[1:])
+        for d in dirs:
+            if path_exists(Path(d, "X5A.urdf")):
                 return cls.load(Path(d, "X5A.urdf"))
-        raise FileNotFoundError("X5A.urdf not found; set DOJO_X5_DIR")
+        raise FileNotFoundError(f"X5A.urdf not found in {dirs}; set DOJO_X5_DIR")
 
     def fk(self, q6, gripper: float | None = None) -> dict[str, np.ndarray]:
         """Link poses in the arm's base_link frame."""

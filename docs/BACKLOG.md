@@ -20,6 +20,12 @@
   `shift_mm` >= `post_place_min_mm` (2 mm). A refine that lowered a floating belief onto its support
   (`z_dropped_mm`, 5.1 stack 100007 s142: 56 mm) with < 2 mm xy shift is ignored. Adopt when `z_dropped_mm` is
   set (or use a 3-D shift) (journal/2026-10-26-held-look-stack-refine.md).
+- [ ] **Hover identity candidates = the whole task vocabulary.** `perception_service.shape_classes` /
+  `policy._refine_hook` offer `refine_identity` every distinct shape of the task, so a label can become another
+  label's asset: 5.1 build_tower s0L9, a pillar (00002) became the prism (00003) at the pick hover and was placed
+  standing on its 62 mm end. Offer only the label's own config group (in build_tower, one index per label: no
+  change possible). Perception now also requires iou >= 0.9 for an identity change
+  (experiments/2026-10-26-what-is-there.md).
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at

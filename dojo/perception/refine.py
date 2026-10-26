@@ -48,11 +48,13 @@ def _backgrounds(bgs):
 
 
 def local_foreground(img: np.ndarray, cam, sil: np.ndarray, robot: np.ndarray, grow: float = 0.8,
-                     k: int = 5, thr: float = 3.0):
+                     k: int = 5, thr: float = 3.0, exclude: np.ndarray | None = None):
     """Foreground near an expected object from the frame itself: a table colour model (k-means in Lab, with a
     per-cluster spread) sampled from a ring around the expected silhouette, then pixels inside the ROI far
     from every table cluster. Immune to the view-dependent sheen that breaks warped backgrounds at close
-    range. Returns (fg, known) uint8 masks over the full image (known = the ROI minus the robot)."""
+    range. Returns (fg, known) uint8 masks over the full image (known = the ROI minus the robot).
+    ``exclude``: pixels that are not table either (other known objects, e.g. a light-wood board next to a white
+    pillar: sampled as "table", it made the pillar's lit face background; 5.1 build_tower post-place iou 0.03-0.2)."""
     import cv2
 
     from .segment import ViewMasks  # noqa: F401  (same mask conventions)
@@ -70,6 +72,8 @@ def local_foreground(img: np.ndarray, cam, sil: np.ndarray, robot: np.ndarray, g
     roi = (slice(y0, y1), slice(x0, x1))
     near = cv2.dilate(sil, np.ones((2 * (pad // 3) + 1, 2 * (pad // 3) + 1), np.uint8))
     ring = (near[roi] == 0) & (robot[roi] == 0)
+    if exclude is not None:
+        ring &= exclude[roi] == 0
     lab = cv2.cvtColor(img[roi], cv2.COLOR_RGB2LAB).astype(np.float32)
     lab[..., 0] *= 0.5
     samples = lab[ring]
@@ -165,7 +169,16 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
             ha = load_asset(hk)
             hm = silhouette(cam, transform(ha.Vs, pose_to_T(hp[:3], hp[3:])), ha.Fs)
             rob |= cv2.dilate(hm, np.ones((9, 9), np.uint8))
-        fgm, kn = local_foreground(wrist_frame, cam, sil, rob)
+        excl = None
+        if others:  # known objects other than the target's supports are not table: keep them out of its colour model
+            excl = np.zeros_like(sil)
+            for key, pose in others:
+                ao = load_asset(key)
+                if _under(ao, pose, a, prior_pose):
+                    continue
+                excl |= silhouette(cam, transform(ao.Vs, pose_to_T(pose[:3], pose[3:])), ao.Fs)
+            excl = cv2.dilate(excl, np.ones((7, 7), np.uint8))
+        fgm, kn = local_foreground(wrist_frame, cam, sil, rob, exclude=excl)
         v = ViewMasks(cam, wrist_frame, fgm, kn, np.zeros(fgm.shape, np.float32), rob)
     else:
         v = segment_virtual(wrist_frame, cam, bgs, state=proprio)
@@ -173,11 +186,18 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         from .render import load_asset, silhouette, transform
 
         a_t = load_asset(obj_id)
+        keep = None
         for key, pose in others:
             a = load_asset(key)
-            if _under(a, pose, a_t, prior_pose):
-                continue  # a support under the target (a stack seen from above): its pixels are the target's
             m = silhouette(cam, transform(a.Vs, pose_to_T(pose[:3], pose[3:])), a.Fs)
+            if _under(a, pose, a_t, prior_pose):
+                # a support under the target: where the target is expected, its pixels are the target's (a stack seen
+                # from above); elsewhere they are the support's (5.1 tower: a plank slid 36-44 mm along the same-colour
+                # board under it). Keep the expected silhouette + a prior-error margin
+                if keep is None:
+                    keep = cv2.dilate(silhouette(cam, transform(a_t.Vs, T_prior), a_t.Fs).astype(np.uint8),
+                                      np.ones((2 * SUPPORT_KEEP_PX + 1, 2 * SUPPORT_KEEP_PX + 1), np.uint8))
+                m = m & (keep == 0)
             v.fg &= 1 - m
     views = {cam.name: v}
     T0 = pose_to_T(prior_pose[:3], prior_pose[3:])
@@ -233,6 +253,16 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
             "ok": ok, "time_s": round(time.time() - t0, 3), "camera": cam.name}
+    # what the pixels look like at the fit and at the prior (identity of what is there: ``identity.rank``)
+    for tag_, T_ in (("fit", T), ("prior", T0)):
+        rgb, n_fg, n_sil = _obs_color(sm, T_, v)
+        out[f"obs_{tag_}"] = {"rgb": None if rgb is None else [round(float(c), 4) for c in rgb], "fg_px": n_fg,
+                              "sil_px": n_sil}
+    if out["ok"]:  # a fit that slid out of the view: the IoU only counts the part still inside (5.1 tower: a plank on a
+        # same-colour board slid 36-44 mm toward the image edge at iou 0.7-0.8)
+        trunc_fit = truncated_frac(cam, sm.asset.V @ T[:3, :3].T + T[:3, 3])
+        if trunc_fit > trunc + TRUNC_SLIDE_MAX:
+            out["ok"], out["why"] = False, f"slid out of view ({trunc:.2f} -> {trunc_fit:.2f} outside)"
     if others and out["ok"]:
         from .render import load_asset
 
@@ -280,6 +310,19 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
     return out
 
 
+def _obs_color(sm, T: np.ndarray, v, erode: int = 2) -> tuple:
+    """(mean RGB 0..1 | None, foreground px, silhouette px) inside the eroded silhouette of ``sm`` at ``T`` in the
+    view: known foreground pixels only (others and the robot are masked out of the foreground already)."""
+    s = sm.sil(v.cam, T).astype(np.uint8)
+    if erode:
+        s = cv2.erode(s, np.ones((2 * erode + 1, 2 * erode + 1), np.uint8))
+    m = (s > 0) & (v.known > 0) & (v.fg > 0)
+    n_sil = int(((s > 0) & (v.known > 0)).sum())
+    if m.sum() < 10:
+        return None, int(m.sum()), n_sil
+    return v.img[m].astype(float).mean(0) / 255.0, int(m.sum()), n_sil
+
+
 def _under(a_other, pose_other, a_target, pose_target, tol: float = 0.004) -> bool:
     """``other`` lies under ``target``: its top at or below the target's bottom (+ tol) and their footprints overlap."""
     To, Tt = pose_to_T(pose_other[:3], pose_other[3:]), pose_to_T(pose_target[:3], pose_target[3:])
@@ -292,6 +335,7 @@ def _under(a_other, pose_other, a_target, pose_target, tol: float = 0.004) -> bo
     return bool((hi > lo).all())
 
 
+SUPPORT_KEEP_PX = 15  # around the target's expected silhouette a support's pixels stay foreground (prior error margin)
 SUPPORT_FLOAT_M = 0.008  # prior's bottom this far above the highest known support under it: floating
 SUPPORT_GAIN_IOU = 0.15  # the support-height fit must beat the prior-height fit by this much to be taken
 
@@ -339,6 +383,7 @@ def _rests_on(a_top, pose_top, a_base, pose_base, tol: float = 0.006, min_overla
     return inter >= min_overlap * max(small, 1e-9)
 
 
+TRUNC_SLIDE_MAX = 0.1  # a fit may leave at most this much more of the object outside the view than the prior did
 TRUNCATED_MAX = 0.3  # more of the object outside the wrist image than this: translation along the cut is unobservable
 
 
@@ -403,23 +448,79 @@ def _wide_search(obj_id, sm, z_off, img, cam, proprio, rob, T0, iters):
     return res
 
 
+def look_alike(current: str, rep: str, color_tol: float = 0.02, ext_tol: float = 0.003) -> str:
+    """The catalogue asset with ``rep``'s shape (sorted extents within ``ext_tol``) and ``current``'s look (mean
+    texture colour within ``color_tol``), else ``rep``. Shape classes are represented by one key each; deciding the
+    SIZE at the hover must not swap the texture too (5.1 stack 100006: 35 mm texture #4 "corrected" to 40 mm texture
+    #1)."""
+    if rep == current:
+        return rep
+    try:
+        idx = _catalog_index()
+        cur, r = idx.get(current), idx.get(rep)
+        if cur is None or r is None:
+            return rep
+        cat = rep.rsplit("/", 1)[0]
+        e_r = np.sort(np.asarray(r["extents"], float))
+        hits = [k for k, v in idx.items()
+                if k.rsplit("/", 1)[0] == cat and np.abs(np.sort(np.asarray(v["extents"], float)) - e_r).max() <= ext_tol
+                and np.abs(np.asarray(v["mean_color"], float) - np.asarray(cur["mean_color"], float)).max() <= color_tol]
+        if not hits:
+            return rep
+        n = int(current.rsplit("/", 1)[1])  # the same series: catalogue neighbours of the current asset first
+        return min(hits, key=lambda k: abs(int(k.rsplit("/", 1)[1]) - n))
+    except Exception:
+        return rep
+
+
+_IDX: dict | None = None
+
+
+def _catalog_index() -> dict:
+    global _IDX
+    if _IDX is None:
+        import json
+
+        from .render import catalog_root
+        _IDX = json.loads((catalog_root() / "index.json").read_text())
+    return _IDX
+
+
+IDENTITY_CHANGE_MIN_IOU = 0.9  # a hover identity CHANGE needs a fit this good (D0 6.0 + 5.1 stack sizes: 115/115 right;
+# below it 24 % wrong). 5.1 build_tower s0L9: a pillar (00002) became the prism (00003) at iou 0.67, turned 91 deg:
+# from above their footprints are 38 x 62 vs 37.5 x 61 mm, and the pillar then went in standing on its 62 mm end
+
+
 def refine_identity(obj_ids: list[str], wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
-                    margin: float = 0.05, max_full: int = 6, **kw) -> dict:
+                    margin: float = 0.05, max_full: int = 6, keep_look: bool = True,
+                    change_min_iou: float = IDENTITY_CHANGE_MIN_IOU, **kw) -> dict:
     """Identity check at the hover: ``refine`` every candidate asset at the prior (e.g. the label group's
     candidates, or the record's ``label_rival``) and keep the lowest residual. Adds ``obj_id``,
     ``identity_scores`` {id: residual} and ``identity_margin`` (runner-up minus best residual);
-    ``identity_ok`` is false when the margin is below ``margin`` (look again or keep the prior identity)."""
+    ``identity_ok`` is false when the margin is below ``margin`` (look again or keep the prior identity).
+    ``keep_look``: the first id is the current belief; every other candidate is replaced by its same-shape asset
+    with the current one's texture (``look_alike``), so a silhouette decision changes the size only."""
     ids = list(dict.fromkeys(obj_ids))
+    if keep_look and len(ids) > 1:
+        ids = list(dict.fromkeys([ids[0]] + [look_alike(ids[0], k) for k in ids[1:]]))
+    current = ids[0]  # the belief's identity
     if len(ids) > max_full:  # screen with a short single-start fit, then the full refine on the best few
         quick = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **{**kw, "iters": 15, "xy_starts": 0.0,
                                                                             "search": False}) for k in ids}
         ids = [k for k, _ in sorted(quick.items(), key=lambda kv: kv[1]["residual"])[:max_full]]
+        ids = ids if current in ids else [current] + ids[:max_full - 1]
     outs = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **kw) for k in ids}
     ranked = sorted(outs.items(), key=lambda kv: kv[1]["residual"])
     best_id, best = ranked[0]
     m = (ranked[1][1]["residual"] - best["residual"]) if len(ranked) > 1 else 1.0
-    return {**best, "obj_id": best_id, "identity_scores": {k: v["residual"] for k, v in outs.items()},
-            "identity_margin": round(float(m), 4), "identity_ok": bool(m >= margin and best["ok"])}
+    scores = {k: v["residual"] for k, v in outs.items()}
+    if best_id != current and float(best.get("iou") or 0.0) < change_min_iou:
+        # not enough to change what we believe: report the current identity's own fit (its pose, its ok)
+        return {**outs[current], "obj_id": current, "identity_scores": scores, "identity_margin": round(float(m), 4),
+                "identity_ok": False, "identity_rival": best_id,
+                "identity_why": f"change to {best_id} needs iou >= {change_min_iou} (got {best.get('iou')})"}
+    return {**best, "obj_id": best_id, "identity_scores": scores, "identity_margin": round(float(m), 4),
+            "identity_ok": bool(m >= margin and best["ok"])}
 
 
 class _ZShift:
