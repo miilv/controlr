@@ -904,12 +904,18 @@ def uniform_section_grasps(sk: Skills, o, arm: str, tilts=(0.0, 25.0, -25.0, 40.
         prof = radius_profile(o)
         sk._hq_cache[key] = prof
     k, ss, rr = prof
+    com_k = float(G.mesh_com(o.asset)[k])
     out = []
     for g in gs:
         s_ = float((inv_T(o.T) @ np.r_[g.T[:3, 3], 1.0])[k])
         m = np.abs(ss - s_) <= EACH_PAD_BAND
         band = rr[m]
         if len(band) and np.all(np.isfinite(band)) and float(band.max() - band.min()) <= EACH_SECTION_VAR:
+            if abs(s_ - com_k) > EACH_COM_OFF:
+                # far from the centre of mass: only when nothing nearer plans (twin: tubes held 12 mm off it slid
+                # 6.5 mm or fell beside the rack, the three grasps that far all ended in a miss)
+                import dataclasses
+                g = dataclasses.replace(g, score=g.score + 3.0, note=g.note + " (off the CoM)")
             out.append(g)
     return out
 
@@ -926,6 +932,7 @@ def _seg_dist(p, a, b) -> float:
     return float(np.linalg.norm(p - (a + t * ab)))
 
 
+EACH_COM_OFF = 0.010          # m along a long object's axis from its centre of mass: grasps farther off rank last
 EACH_SPREAD = 0.06            # m: holes at least this far from a filled one first (open fingers next to a filled hole)
 
 
