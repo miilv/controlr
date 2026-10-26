@@ -796,7 +796,9 @@ class Skills:
         """Run a straight line to ``T_goal`` in short unchecked steps, stopping when the arm lags more than ``lag_stop``.
         Returns (steps run, last lag, reached)."""
         from dojo.skills.motion import Segment
-        mv = self.motion.line(arm, self.ex.q[arm], T_goal, rate, "guarded", gripper=CLOSED, check=False,
+        # commanded through the arm's sag (proprio only: measured vs commanded TCP), as the servo tail does
+        T_cmd = self._sag(arm, self.refresh()) @ np.asarray(T_goal, float)
+        mv = self.motion.line(arm, self.ex.q[arm], T_cmd, rate, "guarded", gripper=CLOSED, check=False,
                               max_step_m=step_m, max_step_deg=2.0)
         n, lag = 0, 0.0
         if not mv.segments:
