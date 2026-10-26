@@ -1337,26 +1337,56 @@ def _inside_opening(sk: Skills, label: str, container: str, depth: float = 0.02)
     return bool(mn[0] <= low[0] <= mx[0] and mn[1] <= low[1] <= mx[1] and low[2] < c.top_z - depth)
 
 
-FILL_DROP_DEPTH = 0.012       # m: the leading end is let go this far inside the opening (twin, pens and oil pens released
-                              # 4 mm over a holder's rim within 18 mm of its axis fell to the floor 39/41; inside the
-                              # opening they cannot topple out over the rim)
-FILL_FINGER_CLEAR = 0.02      # m: the fingers stay this far above the rim, and 1 cm above whatever stands in the opening
+FILL_DROP_H = 0.004           # m: the leading end is let go this far above the rim (twin probe: pens and oil pens let go
+                              # 4 mm over a holder's rim within 18 mm of its axis fell to its floor 39/41)
+FILL_FINGER_CLEAR = 0.02      # m: the fingers stay this far above the rim
+
+
+def _leading_end(o) -> tuple[np.ndarray, np.ndarray] | None:
+    """(world point, unit vector) of an elongated object's leading end (``insertion.insertion_axis``: its narrow end)
+    and the direction from it towards the other end. None without a mesh."""
+    from dojo.skills.insertion import insertion_axis
+    if o.asset.mesh is None:
+        return None
+    V = np.asarray(o.asset.mesh[0], float)
+    k, sg = insertion_axis(V)
+    tip_b = V[np.argmax(sg * V[:, k])]
+    e = np.zeros(3)
+    e[k] = -sg
+    return o.R @ tip_b + o.pos, o.R @ e
+
+
+def in_tip_down(sk: Skills, label: str, container: str, depth: float = 0.035, radius: float = 0.035,
+                max_tilt: float = 45.0) -> bool:
+    """Is ``label`` in ``container`` leading end down: the leading end within ``radius`` of the container's axis, the
+    object's lowest point ``depth`` below the container's top, the leading end below the other end and the long axis
+    within ``max_tilt`` of vertical (a pen in a pen holder)."""
+    w = sk.world
+    o, c = w.obj(label), w.obj(container)
+    le = _leading_end(o)
+    if le is None:
+        return _inside_opening(sk, label, container, depth)
+    tip, up = le
+    d = c.R.T @ (tip - c.pos)
+    low = float(o.world_bbox_corners()[:, 2].min())
+    tilt = math.degrees(math.acos(max(-1.0, min(1.0, float(up[2])))))
+    return bool(np.hypot(d[0], d[1]) < radius and low < c.top_z - depth and tilt < max_tilt)
 
 
 def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str]):
     """Where ``label`` is let go over ``container``'s opening: leading end down, its footprint at the free spot of the
-    opening with the most clearance (``fit_insertion`` with the objects already inside taken out near the rim), the
-    leading end ``FILL_DROP_DEPTH`` below the rim. Returns (pose 4x4, HoleFit) or (None, None)."""
+    opening with the most clearance (``fit_insertion``; what already stands in the opening is taken out where it
+    crosses the rim), the leading end ``FILL_DROP_H`` above the rim. Returns (pose 4x4, HoleFit) or (None, None)."""
     from dojo.skills.insertion import fit_insertion
     w = sk.world
     o, c = w.obj(label), w.obj(container)
     others = [w.obj(l) for l in inside if l in w.objects]
-    for kw in ({"others_pad": 0.004}, {"others_pad": 0.002}, {"others_pad": 0.0, "others_band": 0.01},
-               {"others": ()}):
-        fit = fit_insertion(o, c, **{"others": others, "res": 0.001, "yaw_step_deg": 15.0, "pack": False, **kw})
+    for kw in ({"others_pad": 0.004}, {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()}):
+        fit = fit_insertion(o, c, **{"others": others, "res": 0.001, "yaw_step_deg": 15.0, "pack": False,
+                                     "others_band": 0.012, **kw})
         if fit is not None:
             T = fit.T_obj.copy()
-            T[2, 3] += (fit.top_z - FILL_DROP_DEPTH) - fit.floor_z
+            T[2, 3] += (fit.top_z + FILL_DROP_H) - fit.floor_z
             return T, fit
     return None, None
 
@@ -1364,7 +1394,10 @@ def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str])
 def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, box_tilts=(0.0, 25.0, -25.0)):
     """A ``plan_transfer`` grasp source: the usual candidates (box grasps, the category's, slices of irregular ones)
     whose fingers, with the object at ``T_target``, all stay above ``z_min`` (the hand never reaches into the
-    opening, and stays over what already stands in it)."""
+    opening); ranked by how far the pads sit from the object's centre along its long axis (twin: a pen held 81 mm
+    off its centre turned 20 mm in the pads on the lift)."""
+    import dataclasses
+
     from dojo.skills import grasps as G
     from dojo.skills.motion import held_box
 
@@ -1374,11 +1407,15 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
         if held_box(o, np.eye(4)).points is not None:
             cands += G.slice_grasps(o, sk.kin, arm)
         Tinv = inv_T(o.T)
+        k = int(np.argmax(o.asset.extents))
         out = []
         for g in cands:
-            Tt = T_target @ Tinv @ g.T
-            if float(sk.kin.finger_points(sk.kin.flange_from_tcp(Tt), CLOSED)[:, 2].min()) >= z_min:
-                out.append(g)
+            Tg = Tinv @ g.T
+            Tt = T_target @ Tg
+            if float(sk.kin.finger_points(sk.kin.flange_from_tcp(Tt), CLOSED)[:, 2].min()) < z_min:
+                continue
+            off = abs(float(Tg[k, 3] - o.asset.center[k]))
+            out.append(dataclasses.replace(g, score=float(g.score) + off / 0.03))
         return out
     return source
 
@@ -1389,9 +1426,9 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
     object). A movable container out of comfortable reach of the arm that picks the objects is first
     carried to a free spot both arms reach (the instruction's "hold the holder"); it stays upright.
     Each object is held leading end down over the free spot of the opening (``_fill_drop_target``), its leading end
-    ``FILL_DROP_DEPTH`` inside, the fingers above the rim and above what already stands in it, and let go: it drops
-    to the floor (twin: an earlier version pushed pens down to the floor, and grasps near their tips caught the
-    rim). The widest go first. One that ends outside is tried again (``tries``)."""
+    ``FILL_DROP_H`` over the rim, the hand above the rim and clear of what already stands in it (``grip_only``), and
+    let go: it drops to the floor (twin: an earlier version pushed pens down to the floor; grasps near their tips
+    caught the rim). The widest go first. One that ends outside is tried again (``tries``)."""
     w = sk.refresh()
     objects = [l for l in objects if l in w.objects]
     c = w.obj(container)
@@ -1418,7 +1455,7 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
     attempts: dict = {}
     for _ in range(tries * len(objects)):
         w = sk.refresh()
-        st["inside"] = [l for l in st["inside"] if _inside_opening(sk, l, container, depth=0.035)]
+        st["inside"] = [l for l in st["inside"] if in_tip_down(sk, l, container)]
         todo = [l for l in objects if l not in st["inside"] and l not in failed]
         if not todo:
             break
@@ -1428,7 +1465,7 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
         if attempts[lab] > tries:
             failed.append(lab)
             continue
-        if _inside_opening(sk, lab, container, depth=0.035):
+        if in_tip_down(sk, lab, container):
             st["inside"].append(lab)
             continue
         T, fit = _fill_drop_target(sk, lab, container, st["inside"])
@@ -1436,21 +1473,20 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
             failed.append(lab)
             sk.log(f"[fill] {lab}: no free spot in the opening")
             continue
-        top_inside = max((w.obj(l).top_z for l in st["inside"]), default=fit.top_z)
-        z_min = max(fit.top_z + FILL_FINGER_CLEAR, top_inside + 0.01)
-        sk.log(f"[fill] {lab}: drop at {fit.note}, fingers over {z_min:.3f}")
+        z_min = fit.top_z + FILL_FINGER_CLEAR
+        sk.log(f"[fill] {lab}: drop at {fit.note}")
         r = place_oriented(sk, lab, [T], yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
                            ignore=(container, *st["inside"]),
                            place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
                                      "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
-                                     "hover_clear": 0.01},
+                                     "hover_clear": 0.01, "grip_only": (container, *st["inside"])},
                            transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min)}, air_handover=False)
         try:
             sk.ex.hold(4)                       # it falls the rest of the way
         except (BudgetExceeded, EpisodeEnded):
             pass
         sk.refresh()
-        if _inside_opening(sk, lab, container, depth=0.035):
+        if in_tip_down(sk, lab, container):
             st["inside"].append(lab)
             sk.log(f"[fill] {lab} inside")
         else:
