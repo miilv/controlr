@@ -37,6 +37,7 @@ include = ["controlr*", "dojo*"]
 
 [tool.setuptools.package-data]
 "controlr" = ["prompts/*.md", "prompts/*.yaml"]
+"dojo.skills" = ["data/*.json"]
 "dojo.perception.agentic" = ["prompts/*.md", "*.json", "vendor/*.md", "vendor/*.py", "vendor/*.txt", "vendor/*.md5", "vendor/robodojo/*.py", "vendor/libero/*.py"]
 
 [tool.pytest.ini_options]
