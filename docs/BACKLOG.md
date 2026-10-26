@@ -326,11 +326,12 @@
   measurement at the hover, like plug_in_charger's.
   - Seated blind (v4.6), a ring pushed 30-50 mm down the peg on a predicted pose binds and tilts: 0/5, 0.30. v4.7 threads
     4 mm blind instead: 1/3, 0.73.
-  - Open gap for the insertion-tail stream: `stack_on_pegs` plans the seat target whenever `held_measured(sk)` says a
-    measurement exists (`Skills.remeasure`, or a provider `held_pose`). If the `held_pose` read then fails or is too
-    uncertain at the hover (`Skills._measure_held` returns None), the guarded tail runs to that seat target blind,
-    which is the 0.30 case. Fix: a hook in the place tail that falls back to the threaded target when `_measure_held`
-    returns None (`pegs.held_measured(sk, arm)` already does the per-arm sigma gate).
+  - ~~Open gap for the insertion-tail stream: the seat target ran blind when the `held_pose` read failed.~~ Closed
+    (skills-9): in mode B the pieces stay threaded (`pegs.PEG_SEAT_MODE_B` off) and the guarded tail runs on the
+    held-object read when there is one; seated on a read they did worse in G3 (0.78 / 0.36 against threaded 0.92 /
+    0.76, pieces / pieces + base offset: the read fixes the hand, not the peg, and the servo's held pose cannot see a
+    ring caught on a peg top). If seating is turned on, a seat without a read <= 0.5 mm aims `blind_up` above it (the
+    threaded depth), never pushes down blind (journal 2026-10-26-dojo-skills9.md).
   - Hang has the same gap: mode B 0/3, 0.10 against mode A 1.0 / 1.0 / 0.4 on the same layouts. The mug's 2-10 mm slip
     in the wall pinch is never re-measured, so the handle misses the hook's arm (journal/2026-10-26-dojo-skills7.md).
 - [ ] **dojo skills: planning time with mesh-box obstacles.** `hang_on_hooks` plans 200-450 s per episode: rack and hung mugs
@@ -357,3 +358,17 @@
 - [x] ~~**Slow VPN on compute3**~~ — Happ/AmneziaVPN/OpenVPN removed, machine-wide `controlr-vpn` (sing-box tun, router direct: 740 KB in 0.43–0.48 s) (journal/2026-10-04-compute3-network.md). Remaining: ethernet on `eno1` (Ilia).
 - [ ] The meta package `linux-modules-nvidia-595-open-generic-hwe-24.04` lags the kernel → the next kernel update will drop the GPU again ([incident](incidents/2026-10-02-compute3-nvidia-driver.md)). Upgrade it together with the kernel (agree with the machine's owner).
 - [ ] Delete the old `~/controlr-dev-isaac`, `~/controlr-dev-loopcli` (≈100 MB; their `.env` copies are already deleted).
+- [ ] **dojo runtime: wire `provider.show_pose`** (skills-9's held-pose protocol, `Skills._held_protocol` / `_pre_look`).
+  The skills call `provider.show_pose(arm, T_tcp_obj, asset_key, cfg_)` and expect perception's `show_pose.propose`
+  dict; `cfg_["q_hold"]` (when present) = the holding arm's joints to plan for (the hover it is approaching: put them in
+  `state`). `held_pose`'s `cfg_` also carries `view` (hover / look / show; perception may ignore it). Until it is wired
+  the protocol reads at the hover only.
+- [ ] **dojo skills: G3 mode B keeps a released object's belief offset forever** (`g3.OffsetBeliefProvider`). A support or
+  a piece already placed stays off by its offset in the skills' own checks (`pegs.on_peg`, `verify_place`), and the
+  null refine hook never corrects it (the runtime's place refine would). Pieces 2 mm off against a base 2 mm off the
+  other way read 4 mm off their peg ("not on") while the checker counts them. Read G3 mode-B numbers with that in mind;
+  `--held-pose` changes only the held object.
+- [ ] **dojo skills: held-pose protocol, per class** (journal 2026-10-26-dojo-skills9.md). With the merged estimator's
+  calibrated sigma a test tube's read is almost never ok (sigma about 3x its error, perception-held's report), so the
+  tubes stay on the fallback; a coin's own-camera read under-covers (perception-held: never adopt it without a second
+  view), which the protocol does not enforce yet (`disc_into_slot` places pass no `held_tol`).
