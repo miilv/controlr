@@ -85,6 +85,38 @@ wrist turn away, and no second hand is needed. Probes on 100000 (right arm):
 GT state, physics-only twin, settled dev layouts, `SIMLAB_USD_SYNC_LINKS=1`. Score = the checker's ladder tier (board scale x
 100). Steps median / max (limit). Data `compute3:~/dojo-data/skills8/g3/<run>_<commit>/`.
 
+**Summary (final code = this PR's head; G3, GT state; the board's scale is score x 100):**
+
+| task | run (commit) | layouts | success | mean | steps median / max (limit) | before (main) | board PyRUA / best |
+|---|---|---|---|---|---|---|---|
+| fill_pen_holder | v7 (27b5e85; fill code = head) | all 25 settled | 1/25 | **0.18** (sd 0.21) | 437 / 776 (1100) | 0.08 (n 5) | 23.5 / 61.8 |
+| fill_pen_holder, mode B | `--mode-b --belief-offset pen_holder:0.0025,0` (0a59dac) | 100000-09 | 0/10 | 0.13 (same seeds G3: 0.21) | 550 / 918 | | |
+| store_tools_in_toolbox | final (dfb7eb9; slots code = head) | all 25 settled | **4/25** | **0.61** (sd 0.27) | 506 / 589 (900) | 0.20 (n 10) | 15.5 / 15.5 |
+| store_tools_in_toolbox, mode B | `--mode-b --belief-offset hammer:0.0025,0 --belief-offset wrench:0,0.0025` (0a59dac) | 100000-04 | 0/5 | 0.10 (same seeds G3: 0.45) | 328 / 419 | | |
+| insert_key | parked: lift + return (0a59dac) | the 14 settled | 0/14 | 0.14 (13 x 0.15, 1 grasp slip) | 57 / 62 (300) | 0.15 (n 6) | 0 / 48.4 |
+| plug_in_charger (regression) | 0a59dac | 100000-09 | **8/10** | 0.80 | 181 / 228 (400) | 8/10 | |
+| make_kong (regression) | 0a59dac | 100000-04 | **5/5** | 1.00 | 379 / 379 (600) | 5/5 | |
+
+Commits: the fill code at the head equals 27b5e85's (v8 was reverted); the slots code equals dfb7eb9's; 0a59dac is the head's
+code. Mode B (`--mode-b`: no in-hand re-measure, a refine hook that sees nothing; plus 2.5 mm belief offsets until held) costs
+both tasks most of their gain:
+- fill 0.21 -> 0.13 on the same seeds;
+- store_tools 0.45 -> 0.10.
+
+For store_tools a cause is in the episode logs, and it is a shared landmine (BACKLOG): with a refine hook, `execute_pick`
+re-plans the pick with the default grasps. The tape measure's planned 25-deg pinch became a straight-down one, the place
+re-planned for it found no IK at the slot, and the nominal plan put it 33 deg tilted. Fixing it touches every `plan_transfer`
+user, so it is left for a regression-checked change.
+
+Board context (Average = mean of 5 dimensions; one Long-Horizon / Open / Precision task weighs 1/40):
+- store_tools 20 -> 61: +1.0 Average over main, and 45 over the best entry (PyRUA 15.5).
+- fill_pen 8 -> 18: +0.25 Average; still under PyRUA's 23.5.
+- insert_key unchanged (0.14-0.15, the lift rung).
+
+Spend: no LLM calls. Light lanes only, at most two at once (one for 45 min, lent to Perception-held), about 9 h of lane time.
+Probes: snippets on 100000. G3 episodes: 159, plus 14 insert_key and 15 regression.
+
+
 Development runs (fixed subsets; several stopped once superseded):
 
 | task | run (commit) | layouts | success | mean | scores | steps | change |
@@ -102,6 +134,7 @@ Development runs (fixed subsets; several stopped once superseded):
 | store_tools_in_toolbox | v1 (d718622), stopped | 100000-02 | 0/3 | 0.25 | .25 x3 | 330 / 342 | level carry, straight-down grasps only: no IK at most slots, the re-orienting fallback's tilted pinches |
 | store_tools_in_toolbox | v2 (3f8795e), stopped | 100000-01 | 0/2 | 0.25 | .25 x2 | 269 / 277 | + tilts 15 / 25 ranked after straight down: pick lifts at 0.10 rad/step left hammer / wrench 11-14 mm loose |
 | store_tools_in_toolbox | v3 (44a2e1f), stopped | 100000-01 | 0/2 | 0.63 | .5, .75 | 394 / 398 | + lift and carry at 0.05 rad/step: pliers and wrench go in |
+| store_tools_in_toolbox | **final (dfb7eb9)** | **all 25** | **4/25** | **0.61** | 0 x2, .25, .5 x10, .75 x8, 1.0 x4 | 506 / 589 | + grasps ranked by the simulated centre of mass. In their slot by the skill's own check: tape measure 21, pliers 19, hammer 13, wrench 10 of 25 |
 
 
 ## 4. Failure taxonomy
@@ -130,3 +163,20 @@ store_tools_in_toolbox:
 4. **Pliers squeezed out** (rose 0 mm) with the straight-down slice across both handles at the planner's lift speed; at 0.05
    rad/step the same grasp lifts them.
 
+
+## 5. Parked and next
+
+- **insert_key** (parked twice). The stand-up against the table is physically blocked by the bow's ~2.2 mm depth in the pads
+  (section 1). Next: a deeper grip first (lean the key against the lock block, then grip the bow 10+ mm deep and let it turn
+  to vertical), or an in-air handover whose giver holds the bow's flat faces.
+- **fill_pen_holder** at 0.18. Per pen not in: no reachable drop pose 30, landed on the rim or outside 22, grasp slip 12 (v7,
+  25 episodes).
+  - Carrying the holder to the picking arm every time planned more pens in a dry run, but scored worse in the twin (v8,
+    reverted).
+  - Levers left: drop poses the side grasps reach (lower, leaning towards the arm, the pen gripped nearer its tip with the
+    fingers still over the rim), and a held holder tilted towards the pen (the instruction's "hold the pen holder").
+- **store_tools** at 0.61. The hammer (13/25) and wrench (10/25) still fall or end beside their slots. Their slots are at
+  the edge of a straight-down reach, and tilted pinches turn them.
+- **Mode B** for both (section 3): the refine hook's pick re-plan is the first thing to fix (BACKLOG).
+- The physics centre-of-mass table has only the four tools; `scripts/skills/physics_com.py` adds any task's assets in one
+  snippet run.

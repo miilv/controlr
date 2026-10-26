@@ -258,6 +258,7 @@ entries:
     measured: none
     stats:
       - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: store_tools_in_toolbox, tier: A, version: v3 G3 twin, n: 5, success: 0, mean_score: 0.25}
+      - {src: docs/journal/2026-10-26-dojo-skills8.md, bench: robodojo, cell: store_tools_in_toolbox, tier: A, version: skills8 final G3 twin, n: 25, success: 4, mean_score: 0.61}
 
   - name: fill_container
     side: ilia
@@ -288,6 +289,7 @@ entries:
     measured: none
     stats:
       - {src: docs/journal/2026-10-25-dojo-skills2.md, bench: robodojo, cell: fill_pen_holder, tier: A, version: v2 G3 twin, n: 5, success: 0, mean_score: 0.08}
+      - {src: docs/journal/2026-10-26-dojo-skills8.md, bench: robodojo, cell: fill_pen_holder, tier: A, version: skills8 v7 G3 twin, n: 25, success: 1, mean_score: 0.18}
 
   - name: arrange
     side: ilia
