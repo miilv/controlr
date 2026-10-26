@@ -320,18 +320,25 @@ layouts will show whether the 6.0 frames hide these false negatives.
 The replay is deterministic, so `replay_kits.py run --save-obs-at <steps>` regenerates the exact contract
 observations (3 RGB PNGs + state) at the steps where a perception check ran. There are 12 sets in
 `isr-lab:~/data2/ilia/dojo-data/bridge/replay_frames/<layout>_s<step>/`, 12 MB. `index.json` holds each check's
-verdict / confidence / iou and the TRUE poses from the replay.
+verdict / confidence / iou, the TRUE poses from the replay, and the physical block each check was about.
 
-| frame | check | truth | reading |
-|---|---|---|---|
-| 100004 s64, s117 | held_look block_0 (B1): not held, conf 1.0 | block_0 lifted to z 0.859 in the closed left jaws | false negative |
-| 100001 s152 | post_place block_2: not ok, iou 0.18 | a perfect 3-stack (0.780 / 0.810 / 0.840) | false failure |
-| 100001 s205 | held_look block_2 (B1): not held, 0.79 | block_2 on the stack; the jaws closed on air | correct |
-| 100008 s206 / s266 / s354 (agent, 0.9) / s422 | held_look **block_2**: not held | block_2 on the table under block_0; the right jaws hold **block_1** (z 0.862) | right about the label, wrong about the world: the belief had block_1 / block_2 swapped |
-| 100007 s142 | post_place **block_1**: not ok, iou 0.0017 | a complete stack with block_1 at the bottom, block_0 on top | label permutation: the carried block was block_0 |
-| 100007 s166 | held_look block_1 (B1): not held, 0.81 | block_1 at the bottom of the stack | correct for the label |
+stack_blocks' block labels are exchangeable: the config labels them in sampling order, and the checker ignores the
+order. So a check is mapped to its physical block by asset key: belief label -> the record's `category_idx` -> the
+truth block with that asset. Matching by label would be meaningless; the earlier draft of this table did that and is
+corrected here. Both scorers match by position, so they need no re-scoring: the dev eval's `pose_errors` (per-category
+Hungarian on xy) and `isr_summary.py` (the same, plus identity by asset).
 
-There are two failure modes on genuine 5.1 frames, both of which make the runtime undo correct physical progress:
-1. **Confident false negatives** of B1's held / post-place checks: 100004, 100001.
-2. **Label permutations** between same-category blocks in the belief: 100007, 100008. The label-keyed checks are then
-   right about the label and wrong about the world.
+| frame | check: belief label -> asset -> physical block | true pose | verdict | reading |
+|---|---|---|---|---|
+| 100004 s64, s117 | held_look block_0 -> 12 -> block_0 | z 0.859, in the closed left jaws | not held, conf 1.0 (B1) | false negative |
+| 100008 s206 / s266 / s354 / s422 | held_look block_2 -> 13 -> block_1 | z 0.862, in the right jaws | not held, conf 1.0 / 1.0 / 0.9 (agent) / 1.0 | false negative |
+| 100001 s152 | post_place block_2 -> 5 -> block_2 | top of a perfect stack (0.780 / 0.810 / 0.840) | not ok, iou 0.18 | false failure |
+| 100007 s142 | post_place block_1 -> 17 -> block_0 | top of a complete stack, z 0.840, xy within 1.3 mm of the base | not ok, iou 0.0017 | false failure on my reading of the truth; perception-R&D read it as a real misplacement, still open |
+| 100001 s205 | held_look block_2 -> 5 | on the stack; the jaws closed on air | not held, 0.79 | correct |
+| 100007 s166 | held_look block_1 -> 17 | on the stack; empty jaws | not held, 0.81 | correct |
+
+One failure mode, on genuine 5.1 frames: confident false negatives of the held / post-place checks on a physically
+correct state. That is 8 of the 10 checks that triggered recovery; the other 2 were correct "not held" verdicts on
+empty jaws. Each false verdict made the runtime undo correct physical progress: it opened the jaws on a held block,
+or re-picked a stacked one. `b1_then_agent` escalates only below conf 0.5, so a confident B1 verdict was never
+checked; the one agent verdict (100008 s354) was also a false negative.
