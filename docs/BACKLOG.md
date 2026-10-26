@@ -307,6 +307,15 @@
   so the ring was let go tilted on the top (G3 `--mode-b`, 2 mm belief offsets: 0.6 / 0.6 / 0.1). Pegs now pass
   `guard_lag` 1.2 mm / `guard_seated` 1.5 mm and retry a piece left tilted. The real fix is a held-object or peg
   measurement at the hover, like plug_in_charger's.
+  - Seated blind (v4.6), a ring pushed 30-50 mm down the peg on a predicted pose binds and tilts: 0/5, 0.30. v4.7 threads
+    4 mm blind instead: 1/3, 0.73.
+  - Open gap for the insertion-tail stream: `stack_on_pegs` plans the seat target whenever `held_measured(sk)` says a
+    measurement exists (`Skills.remeasure`, or a provider `held_pose`). If the `held_pose` read then fails or is too
+    uncertain at the hover (`Skills._measure_held` returns None), the guarded tail runs to that seat target blind,
+    which is the 0.30 case. Fix: a hook in the place tail that falls back to the threaded target when `_measure_held`
+    returns None (`pegs.held_measured(sk, arm)` already does the per-arm sigma gate).
+  - Hang has the same gap: mode B 0/3, 0.10 against mode A 1.0 / 1.0 / 0.4 on the same layouts. The mug's 2-10 mm slip
+    in the wall pinch is never re-measured, so the handle misses the hook's arm (journal/2026-10-26-dojo-skills7.md).
 - [ ] **dojo skills: planning time with mesh-box obstacles.** `hang_on_hooks` plans 200-450 s per episode: rack and hung mugs
   as `Collision.parts`, two handle frames x two lift heights per hook, and the relay search. The batched parts check
   (3 ms) made it about 10x faster; most of the time left is IK screening.
