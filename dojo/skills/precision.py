@@ -1034,6 +1034,10 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
         from dojo.skills.library import _run_leg
         for tag, d, tg in cands:
             plan = sk.plan_transfer(lab, tg, ignore=(receptacle,), place_kw=pk, **tkw)
+            if isinstance(plan, SkillResult) and re.search(r"[1-9]\d* grasp-place pairs", plan.note):
+                # the lift to the pre-place height was out of reach for every pair (an object next to the arm's base):
+                # the usual lift
+                plan = sk.plan_transfer(lab, tg, ignore=(receptacle,), place_kw=pk, **{**tkw, "lift_to_pre": False})
             if isinstance(plan, SkillResult):
                 sk.log(f"[insert_each] {lab} -> {tag}: no one-arm plan ({plan.note[:120]})")
                 continue
