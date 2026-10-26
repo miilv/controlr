@@ -391,3 +391,45 @@ correct state. That is 8 of the 10 checks that triggered recovery; the other 2 w
 empty jaws. Each false verdict made the runtime undo correct physical progress: it opened the jaws on a held block,
 or re-picked a stacked one. `b1_then_agent` escalates only below conf 0.5, so a confident B1 verdict was never
 checked; the one agent verdict (100008 s354) was also a false negative.
+
+### A5. Every held_look / post_place frame of the dev eval, regenerated (186 sets)
+
+`scripts/dojo/frames_plan.py` + `replay_kits.py --save-obs-at` regenerated 186 frame sets from the 20 dev-eval episodes
+(stack 38ad5af, tower ae43bac). The disk budget was 200 MB: all 93 negatives first, then 93 positives spread over the
+episodes. They are in `isr-lab:~/data2/ilia/dojo-data/bridge/replay_frames/all/` (209 MB).
+
+`index.json` matches each check to its physical object by asset key + position: the same-asset truth object nearest
+the checking arm's flange. `physical_in_jaws` = within 0.20 m of that flange and > 1 cm above its layout height.
+held_look against the truth:
+
+| verdict | in the jaws | not in the jaws |
+|---|---|---|
+| held (77) | 74 | 0 (3 unmatched) |
+| not held (17) | **12** | 5 |
+
+There were no false "held" verdicts, but 12 of the 17 "not held" verdicts (71 %) were false negatives. The 92 post_place
+checks (76 not ok) need a placement-truth rule; the data is in the index for perception-R&D.
+
+### A6. Before / after on the same genuine-5.1 layouts: stack_blocks 6/10 -> 9/10
+
+Main b8acf78 (#41-#46: none_ok widen / no adoption, head-confirmed release, never undo, held_look jaw opening + absence
+cap + stack refine + z-drop refit, the gripper-fallback fix, post-place z-only adoption), merged into this branch as
+600d8ec. Same config, twin and layouts.
+
+| layout | before @ 38ad5af | after @ b8acf78 |
+|---|---|---|
+| 100000 | yes | yes |
+| 100001 | no (false post-place) | **yes** |
+| 100002 | yes | yes |
+| 100003 | yes | yes |
+| 100004 | no (held_look false negative x2) | **yes** |
+| 100005 | yes | yes |
+| 100006 | yes | **no** (plan place_miss, xy 17.8 mm) |
+| 100007 | no (false post-place, then a drop) | **yes** |
+| 100008 | no (held_look false negatives x4) | **yes** |
+| 100009 | yes | yes |
+| total | 6/10, mean score 64.5 | **9/10, mean score 90.0** |
+
+Paired: 4 rescued (exactly the four losses the forensics traced to false negatives), 1 lost (100006, a place 17.8 mm
+off; its perception error at planning was the set's highest, xy median 7.8 mm, not gross). Sonnet: 54 calls, 581k
+prompt (478k cache read), 26k completion. build_tower: below.
