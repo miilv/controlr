@@ -3,7 +3,7 @@
 #   scripts/dojo/isr_block.sh BLOCK ETA_MIN SPEC
 # SPEC: one episode per line, "ID TASK [bridge_episode.sh options]" (blank lines and # comments skipped); seed 0
 # layout 9 are fixed (practice). Before EACH episode: the inbox / gpu.reserve gate and the disk floor
-# (ISR_DISK_FLOOR_GB, default 7) -- any failure ends the block (rc 76 / 77) and releases the lock. After each
+# (ISR_DISK_FLOOR_MB, default 7168) -- any failure ends the block (rc 76 / 77) and releases the lock. After each
 # episode: isr_prune.py (server PNGs) and isr_summary.py (one row -> $DOJO_DATA/bridge/rows.jsonl).
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -24,7 +24,7 @@ gate() {
   [[ -z "$m" ]] || { echo "[block] unprocessed inbox message $m: stopping the block" >&2; return 76; }
   if [[ -s "$COORD/gpu.reserve" ]]; then echo "[block] gpu.reserve is set: stopping the block" >&2; return 76; fi
   local free_gb free_mb; free_mb=$(df -BM --output=avail /home/anywherevla/data2 | tail -1 | tr -dc 0-9); free_gb=$(awk -v m="$free_mb" 'BEGIN {printf "%.1f", m / 1024}')
-  (( free_mb >= ${ISR_DISK_FLOOR_GB:-7} * 1024 )) || { echo "[block] only ${free_gb} GB free (< ${ISR_DISK_FLOOR_GB:-7}): stopping" >&2; return 77; }
+  (( free_mb >= ${ISR_DISK_FLOOR_MB:-7168} )) || { echo "[block] only ${free_gb} GB free (< ${ISR_DISK_FLOOR_MB:-7168} MB): stopping" >&2; return 77; }
   return 0
 }
 rc=0

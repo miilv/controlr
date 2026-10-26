@@ -98,7 +98,7 @@ Rules there (Mikhail's conditions for our use of his box):
 - deploy only between holds; record the commit in the checkout's `COMMIT` before a run;
 - Mikhail's launcher files are md5-pinned (`isr_job.sh --pin`). A change, or his gpu.lock-taking starter appearing,
   refuses the hold (rc 78);
-- disk: stop below 6 GB free on data2;
+- disk: Mikhail's floor is 6 GB free on data2; ours is `ISR_DISK_FLOOR_MB` (default 7168, checked in MB before every episode);
 - holds <= 2 h;
 - `DOJO_ILIA=1` on every PID;
 - kill only our own PIDs (`scripts/simlab/ilia_stop.sh`).
