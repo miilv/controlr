@@ -53,6 +53,25 @@ HELD_LOOK_STILL = 2           # still steps at a look before the read
 HELD_LOOK_CLEAR = 0.04        # m between the arms (chain, palm, fingers) on the way to a look and back
 HELD_LOOK_HAND_CLEAR = 0.015  # m between the observer's hand and the held object's box
 HELD_LOOK_MIN_LEFT = 25       # env steps a look must leave beyond the insertion tail's own (probes)
+SPIRAL_PITCH = 0.00015        # m per turn of the pressed spiral (``_servo_tail``, tail kw ``spiral``; mode B only)
+SPIRAL_STEP = 0.0003          # m of spiral path per env step
+SPIRAL_PRESS = 0.0015         # m the object is commanded below its contact height while it is dragged
+SPIRAL_IN = 0.001             # m under the contact height: it went in
+
+
+def spiral_points(r_max: float, pitch: float = SPIRAL_PITCH, step: float = SPIRAL_STEP) -> list[tuple[float, float]]:
+    """(dx, dy) along an Archimedean spiral from the centre out to ``r_max`` (``pitch`` per turn, ``step`` of path apart),
+    then once around at ``r_max``."""
+    out, th, b = [(0.0, 0.0)], 0.0, pitch / (2 * math.pi)
+    while b * th < r_max:
+        th += step / max(b * th, b * 2.0)
+        r = min(b * th, r_max)
+        out.append((r * math.cos(th), r * math.sin(th)))
+    th0 = th
+    while th < th0 + 2 * math.pi:
+        th += step / r_max
+        out.append((r_max * math.cos(th), r_max * math.sin(th)))
+    return out
 
 
 def wrist_safe(q) -> bool:
@@ -588,7 +607,7 @@ class Skills:
                    fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
-                   blind_up: float | None = None):
+                   blind_up: float | None = None, spiral: float | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -616,7 +635,10 @@ class Skills:
         leading point's lateral sigma an in-hand read needs to be used (default half of the place's ``tol_xy``);
         ``held_tol`` (m) = the sigma below which no look is taken (default the gate: a servo place looks only when the
         hover read fails it); ``blind_up`` (m): with no usable read, the guarded tail aims this much above the target
-        (a piece meant to be seated deep on a peg is only threaded: pushed down blind on a predicted pose, it binds)."""
+        (a piece meant to be seated deep on a peg is only threaded: pushed down blind on a predicted pose, it binds).
+        ``spiral`` (m): with an adopted read, a servo tail that is not seated after its descent first drags the object,
+        pressed onto the receptacle, along a spiral out to this radius (a read 0.15-0.3 mm off, blades in +-0.1 mm
+        slots), then probes as usual."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -646,7 +668,7 @@ class Skills:
             tail_kw["guard_lag"] = float(guard_lag)
         if servo_xy_tol is not None:
             tail_kw["servo_xy_tol"] = float(servo_xy_tol)
-        for k, v in (("held_tol", held_tol), ("held_gate", held_gate), ("blind_up", blind_up)):
+        for k, v in (("held_tol", held_tol), ("held_gate", held_gate), ("blind_up", blind_up), ("spiral", spiral)):
             if v is not None:
                 tail_kw[k] = float(v)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
@@ -697,7 +719,7 @@ class Skills:
                     sym_axis: int | None = None, guard_seated: float | None = None,
                     guard_lag: float | None = None, servo_xy_tol: float | None = None,
                     held_tol: float | None = None, held_gate: float | None = None,
-                    blind_up: float | None = None) -> ArmPlan | str:
+                    blind_up: float | None = None, spiral: float | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -1272,6 +1294,43 @@ class Skills:
             # the arm is held off its command (it pushes on something): probing would drag the object around
             kw = {**kw, "probe": False}
             note += f", the arm held {lag*1000:.0f} mm off its command: no probing"
+        if (err > seat_tol and kw.get("spiral") and not self.remeasure and kw.get("probe", True)
+                and self.ex.steps_left - self.ex.reserve > min_left):
+            # mode B with an adopted read (~0.2 mm off) and an opening of +-0.1 mm (a plug's blades): free 2 mm over
+            # the contact, then pressed SPIRAL_PRESS past it and dragged along a spiral out to ``spiral``; it went in
+            # when the object drops SPIRAL_IN under the contact (the arm's lag is the sensor)
+            from dojo.skills.motion import Segment
+            z_c = float(T_obj[2, 3]) + err
+            go(above(T_obj, err + 0.002), 0.03, "spiral_up", settle=1)
+            w = self.refresh()
+            C0 = self._sag(arm, w)                       # measured free, before the press
+            T_rel = inv_T(self.kin.tcp(arm, w.arms[arm].q)) @ self._servo_obj(arm, label, w).T
+            k_sp, found = 0, None
+            for dx, dy in spiral_points(float(kw["spiral"])):
+                if self.ex.steps_left - self.ex.reserve <= min_left:
+                    break
+                T_p = T_obj.copy()
+                T_p[0, 3] += dx
+                T_p[1, 3] += dy
+                T_p[2, 3] = z_c - SPIRAL_PRESS
+                r_ik = self.kin.ik(arm, C0 @ T_p @ inv_T(T_rel), self.ex.q[arm])
+                if not r_ik.ok:
+                    continue
+                self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(
+                    [Segment(np.stack([self.ex.q[arm], r_ik.q]), 0.05, "spiral")])}, name=f"place {label} spiral")
+                k_sp += 1
+                if float(self._servo_obj(arm, label, self.refresh()).pos[2]) < z_c - SPIRAL_IN:
+                    found = T_obj.copy()
+                    found[0, 3] += dx
+                    found[1, 3] += dy
+                    break
+            note += (f", pressed spiral {k_sp} steps, " + (f"in at ({found[0, 3] - T_obj[0, 3]:+.4f}, "
+                                                            f"{found[1, 3] - T_obj[1, 3]:+.4f}) m" if found is not None
+                                                            else "not in"))
+            if found is not None:
+                T_obj = found
+                ob = go(T_obj, min(rate, 0.02), "spiral_insert", settle=3)
+                err = float(ob.pos[2] - T_obj[2, 3])
         probes = [(r * math.cos(2 * math.pi * k / n_dir), r * math.sin(2 * math.pi * k / n_dir))
                   for r in radii for k in range(n_dir)] if kw.get("probe", True) else []
         n = 0

@@ -227,3 +227,15 @@ def test_pegs_seat_on_a_good_read_and_thread_blind_without_one(monkeypatch):
         else:
             assert seen["held_gate"] == pegs.SEAT_SIGMA
             assert abs(seen["blind_up"] - (0.85 - pegs.THREAD - (0.80 + pegs.SEAT_GAP))) < 1e-9
+
+
+def test_the_pressed_spiral_covers_its_disc_in_short_steps():
+    from dojo.skills.skills import SPIRAL_PITCH, SPIRAL_STEP, spiral_points
+    p = np.asarray(spiral_points(0.0005))
+    assert np.allclose(p[0], 0.0) and np.linalg.norm(p, axis=1).max() <= 0.0005 + 1e-12
+    assert np.linalg.norm(np.diff(p, axis=0), axis=1).max() <= SPIRAL_STEP * 1.01
+    # every point of the disc is within half a pitch of the path
+    g = np.array([(x, y) for x in np.linspace(-4.5e-4, 4.5e-4, 10) for y in np.linspace(-4.5e-4, 4.5e-4, 10)
+                  if x * x + y * y <= 0.00045 ** 2])
+    d = np.min(np.linalg.norm(g[:, None, :] - p[None, :, :], axis=2), axis=1)
+    assert d.max() <= 0.5 * SPIRAL_PITCH + SPIRAL_STEP / 2 and len(p) < 40
