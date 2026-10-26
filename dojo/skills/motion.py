@@ -279,6 +279,22 @@ class Collision:
                                  else held.corners_w(T_tcp, shrink=-0.005)])
                 pts_parts = (np.vstack([pts_parts, held.dense_w(T_tcp)]) if held.dense is not None and self.parts
                              else pts)
+            if self.parts:
+                # the many small boxes of ``parts`` objects in one batch
+                pb = [o for o in obs if o[3] in self.parts]
+                if pb:
+                    obs = [o for o in obs if o[3] not in self.parts]
+                    Cb = np.array([o[0] for o in pb])
+                    Rb = np.array([o[1] for o in pb])
+                    Hb = np.array([o[2] for o in pb])
+                    reach = np.abs(Rb) @ Hb[:, :, None]                        # world half extents of each box
+                    lo, hi = (Cb - reach[:, :, 0]).min(0), (Cb + reach[:, :, 0]).max(0)
+                    P = pts_parts[np.all((pts_parts >= lo) & (pts_parts <= hi), axis=1)]
+                    if len(P):
+                        loc = (P[None, :, :] - Cb[:, None, :]) @ Rb
+                        hit = np.all(np.abs(loc) <= Hb[:, None, :], axis=2).any(axis=1)
+                        if hit.any():
+                            return False, f"hits {pb[int(np.argmax(hit))][3]}"
             for c, R, h, lab in obs:
                 loc = ((pts_parts if lab in self.parts else pts) - c) @ R
                 inside = np.all(np.abs(loc) <= h, axis=1)
