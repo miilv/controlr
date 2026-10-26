@@ -104,4 +104,27 @@ Development runs (fixed subsets; several stopped once superseded):
 
 ## 4. Failure taxonomy
 
-(filled below)
+fill_pen_holder (dev runs and the final, from the episode logs):
+1. **The second oil pen lands on the first or on the rim.** Two 33 x 23 mm oil pens share a 60 mm opening; once the first leans
+   against the wall, the free spot left at the rim is 1-3 mm wider than the second one's footprint, and the 5-10 mm the pen
+   lands off its release point (a pen falling 110 mm and leaning) does the rest. Packing the first one against the wall (3 mm)
+   leaves the middle; it still fails in ~1/3 of the episodes.
+2. **Tall thin pens out of reach.** A 185 mm pen held upright with its tip over the rim is gripped ~1 m high; the side grasps
+   near its centre are out of reach, the ones that reach sit near its end and turn in the pads (20 mm). Leaning drop poses
+   (15 / 25 deg towards an arm) give central grasps; let go over the rim they toppled out, so they are let go 12 mm inside.
+3. **A pen released over the opening ends on the rim** (100002: the first oil pen 44-46 mm off in three versions,
+   deterministic for that layout). Not explained; the release itself (fingers open over 2 steps, back off along the approach)
+   is the suspect.
+4. **Grasps that never lift** (a pen's side pinch, rose 0 mm, twice in a row): now excluded on the retry.
+5. **No grasp-place pair** for a pen lying at the far left of the table (both arms 0 reachable grasps): nothing to do.
+
+store_tools_in_toolbox:
+1. **Reach at the slots.** Straight-down grasps do not reach most slots at the toolbox's height (IK fails for 28/40 hammer,
+   34/36 wrench, 16/16 tape-measure grasps); tilted ones do, and tilted pinches let heavy flat tools turn in the pads.
+2. **Brisk moves.** At the planner's usual lift (0.10 rad/step) and uneven carry (0.09) the 0.5 kg hammer and the 0.35 kg
+   wrench came out 11-14 mm loose or fell; at 0.05 both mostly stay.
+3. **The centre of mass.** PhysX's (from the inflated colliders) is 12.4 mm from the visual mesh's for the hammer, so the
+   "centre of mass" grasp was a 12 mm lever. Measured now for the four tools.
+4. **Pliers squeezed out** (rose 0 mm) with the straight-down slice across both handles at the planner's lift speed; at 0.05
+   rad/step the same grasp lifts them.
+
