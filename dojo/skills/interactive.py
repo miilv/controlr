@@ -490,7 +490,7 @@ def belt_velocity(sk: Skills, labels: list[str], steps: int = 4) -> np.ndarray:
 
 
 def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max: int = 600, n_desc: int = 8,
-                   n_close: int = 5, h_pre: float = 0.06, lift: float = 0.125, arms=None, ignore=()):
+                   n_close: int = 5, h_pre: float = 0.06, lift: float = 0.125, arms=None, ignore=(), pull: float = 0.0):
     """A grasp of an object riding the belt: for each arm, the earliest step ``t`` (from now, >= ``t_min``) at which a
     top grasp of the object's predicted pose is reachable with its pre-grasp and lift; the plan tracks the object
     (TCP moving with the belt) through the descent and the close. Returns (arm, t_contact, per-step list from the
@@ -537,9 +537,12 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
                     T = T_g.copy()
                     T[:3, 3] += v3 * (n_close + k) + np.array([0, 0, 0.03 * k / 3])
                     samples.append(("lift", T))
+                to_base = sk.kin.base(a)[:3, 3] - T_g[:3, 3]
+                to_base[2] = 0.0
+                to_base = to_base / max(float(np.linalg.norm(to_base)), 1e-9)
                 for k in range(1, 9):
                     T = T_g.copy()
-                    T[:3, 3] += v3 * (n_close + 3) + np.array([0, 0, 0.03 + (lift - 0.03) * k / 8])
+                    T[:3, 3] += v3 * (n_close + 3) + np.array([0, 0, 0.03 + (lift - 0.03) * k / 8]) + to_base * pull * k / 8
                     samples.append(("lift", T))
                 qs = _track_ik(sk, a, samples, sk.world.home_q[a])
                 if qs is None:
@@ -590,12 +593,13 @@ def _track_ik(sk: Skills, a: str, samples: list, q0) -> list | None:
     return qs
 
 
-def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None) -> SkillResult:
+def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
+                   pull: float = 0.0) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
     approach, then the tracked descent / close / lift (one IK target per env step). Checked by the object's height."""
     w = sk.refresh()
     z0 = float(w.obj(label).pos[2])
-    plan = plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms)
+    plan = plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms, pull=pull)
     if plan is None:
         return SkillResult(False, "belt_pick", "ik_fail", 0, None, note=f"no intercept for {label}")
     a, t, app, track, g, samples, go = plan
@@ -763,7 +767,8 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
     target = max(cands, key=lambda l: float(w.obj(l).pos[:2] @ u))
     ign = (conveyor,) if conveyor else ()
     # 1. the container off the belt (whichever arm intercepts it first), held up
-    r = pick_from_belt(sk, container, v, lift=lift, ignore=ign)
+    # lifted while pulled toward the arm (its handle is 1 m up, half a metre out: straight up is out of reach)
+    r = pick_from_belt(sk, container, v, lift=lift, ignore=ign, pull=0.18)
     if not r.ok:
         return {"ok": False, "stage": f"lift {container}", "note": r.note}
     carm = r.arm
