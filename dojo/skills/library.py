@@ -1391,6 +1391,36 @@ def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str])
     return None, None
 
 
+FILL_LEAN_DEG = (15.0, 30.0)  # deg: drop poses also leaning the object's top towards an arm (a 185 mm pen held upright 1 m
+                              # high near its centre is out of a side grasp's reach; the checker takes pens within 45 deg)
+
+
+def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
+    """``T`` (an upright drop pose) first, then the same pose leaning ``FILL_LEAN_DEG`` about its lowest point, its top
+    towards either arm's base."""
+    o = sk.world.obj(label)
+    out = [T]
+    if o.asset.mesh is None:
+        return out
+    V = np.asarray(o.asset.mesh[0], float) @ T[:3, :3].T + T[:3, 3]
+    tip = V[np.argmin(V[:, 2])]
+    up = np.array([0.0, 0.0, 1.0])
+    for deg in FILL_LEAN_DEG:
+        for arm in ARMS:
+            d = sk.kin.base(arm)[:3, 3] - tip
+            d[2] = 0.0
+            if np.linalg.norm(d) < 1e-6:
+                continue
+            a = np.cross(up, d / np.linalg.norm(d))
+            from dojo.skills.geometry import axis_angle_R
+            Rl = axis_angle_R(a / np.linalg.norm(a), math.radians(deg))
+            Tl = T.copy()
+            Tl[:3, :3] = Rl @ T[:3, :3]
+            Tl[:3, 3] = tip + Rl @ (T[:3, 3] - tip)
+            out.append(Tl)
+    return out
+
+
 def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, box_tilts=(0.0, 25.0, -25.0)):
     """A ``plan_transfer`` grasp source: the usual candidates (box grasps, the category's, slices of irregular ones)
     whose fingers, with the object at ``T_target``, all stay above ``z_min`` (the hand never reaches into the
@@ -1475,7 +1505,7 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
             continue
         z_min = fit.top_z + FILL_FINGER_CLEAR
         sk.log(f"[fill] {lab}: drop at {fit.note}")
-        r = place_oriented(sk, lab, [T], yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
+        r = place_oriented(sk, lab, _leaning(sk, lab, T), yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
                            ignore=(container, *st["inside"]),
                            place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
                                      "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
