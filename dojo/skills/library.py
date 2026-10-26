@@ -1319,10 +1319,37 @@ LEVEL_TILT_COST = 10.0        # deg of approach tilt that cost as much as 1 cm o
                                # down reach: a tilted grasp, ranked after every straight-down one that reaches)
 
 
+_PHYSICS_COM: dict | None = None
+
+
+def physics_com(o) -> np.ndarray:
+    """The centre of mass (object frame) PhysX simulates for ``o``'s asset when measured (``data/physics_com.json``),
+    else the visual mesh's (``grasps.mesh_com``)."""
+    global _PHYSICS_COM
+    if _PHYSICS_COM is None:
+        import json
+        from pathlib import Path
+        f = Path(__file__).with_name("data") / "physics_com.json"
+        _PHYSICS_COM = json.loads(f.read_text()) if f.exists() else {}
+    rec = _PHYSICS_COM.get(o.asset.key)
+    if rec and "com" in rec:
+        return np.asarray(rec["com"], float)
+    from dojo.skills.grasps import mesh_com
+    return mesh_com(o.asset)
+
+
+def _lever(o, T_grasp: np.ndarray) -> float:
+    """Distance (m) from ``o``'s simulated centre of mass to the grasp's closing axis (``grasps.grasp_lever`` with
+    ``physics_com``)."""
+    d = o.R @ physics_com(o) + o.pos - T_grasp[:3, 3]
+    y = T_grasp[:3, 1]
+    return float(np.linalg.norm(d - y * float(d @ y)))
+
+
 def _level_grasps(sk: Skills, label: str, max_tilt_deg: float = 25.0):
     """A ``plan_transfer`` grasp source for a carry that keeps the object's orientation: box grasps (tilts 0 / 15 /
     25 deg about the closing axis), the category's and slices of irregular ones, ranked by the closing axis' distance
-    to the centre of mass (``grasps.grasp_lever``: what turns a heavy flat object in the pads) plus the approach's tilt
+    to the simulated centre of mass (``_lever``: what turns a heavy flat object in the pads) plus the approach's tilt
     (twin probe: a 0.5 kg hammer at its centre of mass turned 4 mm in a straight-down pinch, 37-81 mm in a 25-deg
     one)."""
     import dataclasses
@@ -1342,8 +1369,7 @@ def _level_grasps(sk: Skills, label: str, max_tilt_deg: float = 25.0):
             if down < cos_t:
                 continue
             tilt = math.degrees(math.acos(max(-1.0, min(1.0, down))))
-            out.append(dataclasses.replace(g, score=float(g.score) + G.grasp_lever(o, g.T) / 0.01
-                                           + tilt / LEVEL_TILT_COST))
+            out.append(dataclasses.replace(g, score=float(g.score) + _lever(o, g.T) / 0.01 + tilt / LEVEL_TILT_COST))
         return out
     return source
 

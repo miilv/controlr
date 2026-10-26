@@ -126,3 +126,17 @@ def test_next_drop_is_packed_and_failed_grasps_are_skipped():
     assert gs
     skip = gs[0].note
     assert all(g.note != skip for g in _fingers_above(sk, "p0", T, TABLE + 0.13, skip=(skip,))("left"))
+
+
+def test_physics_com_table_and_lever():
+    from dojo.skills.library import _lever, physics_com
+    hammer = _obj("hm", "hammer", 5, (0.0, -0.2, TABLE + 0.013), (0.114, 0.013, 0.038), mesh=_box_mesh((-0.114, -0.013, -0.038), (0.114, 0.013, 0.038)))
+    assert np.allclose(physics_com(hammer), [0.0016, 0.0002, 0.00215])            # measured in the twin
+    other = _obj("x", "box", 0, (0.0, 0.0, TABLE), (0.02, 0.02, 0.02), mesh=_box_mesh((-0.01, -0.02, -0.02), (0.03, 0.02, 0.02)))
+    assert np.allclose(physics_com(other), [0.01, 0.0, 0.0], atol=1e-6)            # not measured: the mesh's
+    from dojo.skills.kinematics import down_R
+    from dojo.skills.geometry import T_from
+    T = T_from(hammer.pos + np.array([0.02, 0.0, 0.0]), down_R(0.0))             # closing axis along world x
+    assert _lever(hammer, T) < 0.003                                              # the offset is along the closing axis
+    T2 = T_from(hammer.pos + np.array([0.0, 0.02, 0.0]), down_R(0.0))
+    assert abs(_lever(hammer, T2) - 0.02) < 0.003
