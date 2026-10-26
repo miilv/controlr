@@ -1318,17 +1318,19 @@ class RuntimePolicy:
         import copy as _copy
 
         from .estimate import iter_records
-        known = [(c, r) for _t, c, r in iter_records(rec)]
+        # keep each entry's type: a Geometry fixture (play_Xylophone's xylophone) has no Rigid/... catalogue entry, and
+        # refine's occluder list crashed on it (FileNotFoundError catalog/Rigid/xylophone/00000/geom.npz)
+        known = [(t, c, r) for t, c, r in iter_records(rec)]
         found = []
         for nf in list(rec.get("_not_found") or []):
             lab = nf.get("label")
             cands = nf.get("candidates") or []
             if not cands:
                 continue
-            ref = next(((c, r) for c, r in known if any(f"/{c}/" in k for k in cands)), None)
+            ref = next(((t, c, r) for t, c, r in known if any(k.split("/")[:2] == [t, c] for k in cands)), None)
             if ref is not None:
-                c_ref, r_ref = ref
-                ext_ref = self.assets().get("Rigid", c_ref, int(r_ref["category_idx"])).extents
+                t_ref, c_ref, r_ref = ref
+                ext_ref = self.assets().get(t_ref, c_ref, int(r_ref["category_idx"])).extents
                 same = [k for k in cands if np.abs(np.sort(self.assets().get(*k.split("/")[:2], int(k.split("/")[2])).extents)
                                                    - np.sort(ext_ref)).max() < 0.003]
                 key = same[0] if same else cands[0]
@@ -1340,9 +1342,9 @@ class RuntimePolicy:
             typ, cat, idx = key.split("/")
             prior = {"label": lab, "key": key, "pos": [float(reg["target"][0]), float(reg["target"][1]), z],
                      "quat": [1.0, 0.0, 0.0, 0.0]}
-            others = [{"label": r["label"], "key": f"Rigid/{c}/{int(r['category_idx']):05d}",
+            others = [{"label": r["label"], "key": f"{t}/{c}/{int(r['category_idx']):05d}",
                        "pos": [float(v) for v in r["default_pos"]], "quat": [float(v) for v in r["default_ori"]]}
-                      for c, r in known]
+                      for t, c, r in known]
             try:
                 res = (self.perception().refine(obs, [prior] + others, self.fold, 0.10, arm=arm) or {}).get(lab) or {}
             except Exception as e:  # noqa: BLE001 (no refine available: the full-fuse fallback runs)
@@ -1359,7 +1361,7 @@ class RuntimePolicy:
             rec = _copy.deepcopy(rec)
             rec.setdefault(typ, {}).setdefault(cat, []).append(entry)
             rec["_not_found"] = [x for x in rec.get("_not_found") or [] if x.get("label") != lab]
-            known.append((cat, entry))
+            known.append((typ, cat, entry))
             found.append(lab)
         return rec, found
 
