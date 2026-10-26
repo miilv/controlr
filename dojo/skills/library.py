@@ -1409,6 +1409,7 @@ def _inside_opening(sk: Skills, label: str, container: str, depth: float = 0.02)
 FILL_DROP_H = 0.004           # m: the leading end is let go this far above the rim (twin probe: pens and oil pens let go
                               # 4 mm over a holder's rim within 18 mm of its axis fell to its floor 39/41)
 FILL_FINGER_CLEAR = 0.02      # m: the fingers stay this far above the rim
+FILL_PACK_CLEAR = 0.005       # m: a packed drop spot keeps this far from the wall and from what is inside
 
 
 def _leading_end(o) -> tuple[np.ndarray, np.ndarray] | None:
@@ -1457,17 +1458,18 @@ def _clear_of(sk: Skills, label: str, container: str, margin: float = 0.01) -> b
 
 
 def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str]):
-    """Where ``label`` is let go over ``container``'s opening: leading end down, its footprint against the wall with
-    >= 3 mm clearance (``fit_insertion(pack=True)``: the first ones stand along the wall and leave the middle to the
-    next; twin, an oil pen dropped in the middle leaned across and left the second 1-2 mm), else at the spot with the
-    most clearance; what already stands in the opening is taken out where it crosses the rim. The leading end
-    ``FILL_DROP_H`` above the rim. Returns (pose 4x4, HoleFit) or (None, None)."""
+    """Where ``label`` is let go over ``container``'s opening: leading end down; the first at the spot with the most
+    clearance, the next ones against the wall with >= ``FILL_PACK_CLEAR`` (``fit_insertion(pack=True)``; twin, an oil pen
+    dropped in the middle leaned across and left the second 1-2 mm), else the most clearance; what already stands in the
+    opening is taken out where it crosses the rim. The leading end ``FILL_DROP_H`` above the rim. Returns (pose 4x4,
+    HoleFit) or (None, None)."""
     from dojo.skills.insertion import fit_insertion
     w = sk.world
     o, c = w.obj(label), w.obj(container)
     others = [w.obj(l) for l in inside if l in w.objects]
-    for kw in ({"pack": True, "min_clear": 0.003, "others_pad": 0.003}, {"others_pad": 0.004}, {"others_pad": 0.002},
-               {"others_pad": 0.0}, {"others": ()}):
+    # the first one in the middle (twin: packed 3 mm from the wall, an oil pen landed on the rim), the next ones packed
+    first = [{"pack": True, "min_clear": FILL_PACK_CLEAR, "others_pad": 0.003}] if others else []
+    for kw in first + [{"others_pad": 0.004}, {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()}]:
         fit = fit_insertion(o, c, **{"others": others, "res": 0.001, "yaw_step_deg": 15.0, "pack": False,
                                      "others_band": 0.012, **kw})
         if fit is not None and (not kw.get("pack") or fit.clearance >= kw["min_clear"]):
@@ -1510,7 +1512,8 @@ def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
     return out
 
 
-def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, box_tilts=(0.0, 25.0, -25.0)):
+def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, box_tilts=(0.0, 25.0, -25.0),
+                   skip=()):
     """A ``plan_transfer`` grasp source: the usual candidates (box grasps, the category's, slices of irregular ones)
     whose fingers, with the object at ``T_target``, all stay above ``z_min`` (the hand never reaches into the
     opening); ranked by how far the pads sit from the object's centre along its long axis (twin: a pen held 81 mm
@@ -1529,6 +1532,8 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
         k = int(np.argmax(o.asset.extents))
         out = []
         for g in cands:
+            if g.note in skip:
+                continue
             Tg = Tinv @ g.T
             Tt = T_target @ Tg
             if float(sk.kin.finger_points(sk.kin.flange_from_tcp(Tt), CLOSED)[:, 2].min()) < z_min:
@@ -1594,12 +1599,25 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
             continue
         z_min = fit.top_z + FILL_FINGER_CLEAR
         sk.log(f"[fill] {lab}: drop at {fit.note}")
-        r = place_oriented(sk, lab, _leaning(sk, lab, T), yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
+        bad = st.setdefault("bad_grasps", {}).setdefault(lab, [])
+        said: list = []
+        log0 = sk.log
+        sk.log = lambda m, _l=log0: (said.append(str(m)), _l(m))[1]
+        try:
+            r = place_oriented(sk, lab, _leaning(sk, lab, T), yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
                            ignore=(container, *st["inside"]),
                            place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
                                      "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
                                      "hover_clear": 0.01, "grip_only": (container, *st["inside"])},
-                           transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min)}, air_handover=False)
+                           transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min, skip=tuple(bad))}, air_handover=False)
+        finally:
+            sk.log = log0
+        if r.status == "grasp_slip":
+            # the grasp that did not lift is not tried again (twin: a pen's side pinch rose 0 mm, twice in a row)
+            m = next((re.search(r"(?:direct,|-> target) \w+ \((.+)\)\s*$", x) for x in reversed(said)
+                      if x.startswith(f"[place_oriented] {lab}:")), None)
+            if m:
+                bad.append(m.group(1))
         try:
             sk.ex.hold(8)                       # it falls the rest of the way and settles
         except (BudgetExceeded, EpisodeEnded):

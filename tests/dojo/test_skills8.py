@@ -52,10 +52,9 @@ def test_drop_target_holds_the_leading_end_just_over_the_rim():
     V = pen.asset.mesh[0] @ T[:3, :3].T + T[:3, 3]
     assert abs(float(V[:, 2].min()) - (TABLE + 0.11 + FILL_DROP_H)) < 0.002     # lowest point 4 mm over the rim
     assert float(np.degrees(np.arccos(T[:3, :3] @ [-1.0, 0, 0] @ [0, 0, -1.0]))) < 1.0   # leading end straight down
-    # packed against the wall, inside the opening
+    # the first one in the middle of the opening
     tip_xy = V[np.argmin(V[:, 2])][:2] - cup.pos[:2]
-    assert np.all(np.abs(tip_xy) < 0.03 - 0.006)
-    assert float(np.max(np.abs(tip_xy))) > 0.01
+    assert float(np.max(np.abs(tip_xy))) < 0.006
     pen.pos, pen.quat = T[:3, 3].copy(), _quat(T[:3, :3])
     tip, up = _leading_end(pen)
     assert abs(float(tip[2]) - float(V[:, 2].min())) < 1e-6 and float(up[2]) > 0.999
@@ -108,3 +107,22 @@ def test_in_tip_down():
 def _quat(R):
     from dojo.skills.geometry import R_to_quat
     return R_to_quat(np.asarray(R, float))
+
+
+def test_next_drop_is_packed_and_failed_grasps_are_skipped():
+    from dojo.skills.library import FILL_PACK_CLEAR, _fill_drop_target, _fingers_above
+    cup, pen, other = _cup(), _pen(), _pen("p1", xy=(-0.2, -0.1))
+    sk = _sk([cup, pen, other])
+    o1 = sk.world.obj("p1")                               # one already standing in the middle of the opening
+    o1.quat = _quat(np.array([[0, 0, -1.0], [0, 1.0, 0], [1.0, 0, 0]]))
+    o1.pos = np.array([cup.pos[0], cup.pos[1], TABLE + 0.002 + 0.075])
+    T, fit = _fill_drop_target(sk, "p0", "h", ["p1"])
+    assert T is not None and fit.clearance >= FILL_PACK_CLEAR - 1e-9
+    V = pen.asset.mesh[0] @ T[:3, :3].T + T[:3, 3]
+    tip_xy = V[np.argmin(V[:, 2])][:2] - cup.pos[:2]
+    assert float(np.max(np.abs(tip_xy))) > 0.012              # against the wall, away from the one in the middle
+    src = _fingers_above(sk, "p0", T, TABLE + 0.13)
+    gs = src("left")
+    assert gs
+    skip = gs[0].note
+    assert all(g.note != skip for g in _fingers_above(sk, "p0", T, TABLE + 0.13, skip=(skip,))("left"))
