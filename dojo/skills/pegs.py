@@ -20,6 +20,7 @@ from dojo.skills.targets import level_R
 PEG_YAWS = 12                 # turns of a piece about its hole tried per place (every 30 deg)
 THREAD = 0.004                # m: the piece is lowered this far onto the peg (below its top) before it is let go
 SEAT_GAP = 0.0005             # m: a seated piece is let go this far over the pieces below it (``seat``)
+SEAT_SIGMA = 0.0005           # m: a held-piece measurement this good (or better) is enough to seat (``held_measured``)
 SEAT_XY_TOL = 0.0003          # m: a seated piece is moved until its measured axis is this close to its target
 SEAT_TOL = 0.0025             # m: a piece held higher than this above its threaded target rests on the peg's top
 GUARD_SEATED_PEG = 0.0015     # m: the same for the guarded tail (mode B: no measured object, the arm's lag is the sensor)
@@ -181,6 +182,31 @@ def centred_grasps(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, -25.0), o
     return [g for g in cands if float(np.linalg.norm(g.T[:2, 3] - c[:2])) < off and -float(g.T[2, 0]) >= down]
 
 
+def held_measured(sk: Skills, arm: str | None = None, tol: float = SEAT_SIGMA) -> bool:
+    """Can a held piece be measured well enough to seat it (the servo tail works on its measured pose)? Yes with
+    ``Skills.remeasure`` (G3: the true pose). Else with a provider ``held_pose(arm)`` (a held-object measurement, T_tcp_obj
+    with a sigma in m, as a (T, sigma) pair or a dict with "sigma"): given an arm, its sigma must be within ``tol``;
+    without one, having the measurement is enough to plan for it. Otherwise no: the blind threading is the fallback.
+    The per-arm sigma gate wants a hook in the place tail (after the pick, at the hover: thread instead of seat when the
+    measurement is worse than ``tol``); today the plan takes the capability, and the servo tail measures through
+    ``provider.refresh`` with the held objects."""
+    if getattr(sk, "remeasure", True):
+        return True
+    hp = getattr(getattr(sk, "provider", None), "held_pose", None)
+    if not callable(hp):
+        return False
+    if arm is None:
+        return True
+    try:
+        r = hp(arm)
+    except Exception:  # noqa: BLE001 - a failed measurement is no measurement
+        return False
+    if r is None:
+        return False
+    sigma = r.get("sigma") if isinstance(r, dict) else (r[1] if isinstance(r, (tuple, list)) and len(r) > 1 else None)
+    return sigma is not None and float(sigma) <= tol
+
+
 def stack_top(sk: Skills, labels: list[str], peg: dict) -> float:
     """World z the next piece on ``peg`` rests at: the highest top of ``labels`` (pieces on it), else its plate."""
     tops = []
@@ -278,7 +304,7 @@ def _one_piece(sk: Skills, lab: str, b, base: str, peg: dict, on_this: list[str]
     sk.refresh()
     # seating needs the held piece measured (the servo); blind (mode B), a piece pushed 30-50 mm down the peg on a
     # predicted in-hand pose binds and tilts (twin, 2 mm belief offsets: 0/5, 0.30): let go threaded at the top instead
-    seat = seat and bool(getattr(sk, "remeasure", True))
+    seat = seat and held_measured(sk)
     if seat:
         z_bot = stack_top(sk, on_this, peg) + SEAT_GAP
     else:

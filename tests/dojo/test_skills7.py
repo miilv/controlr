@@ -170,3 +170,18 @@ def test_stack_top_and_stuck():
     assert stuck(SK(), "b", peg, ["a"])                      # tilted 20 deg, high on the peg
     assert not stuck(SK(), "a", peg, [])
     assert rot_x(0.0).shape == (3, 3)
+
+
+def test_held_measured_falls_back_to_blind_threading():
+    import types
+    from dojo.skills.pegs import held_measured
+    eye = np.eye(4)
+    assert held_measured(types.SimpleNamespace(remeasure=True, provider=None))           # G3: the true pose
+    assert not held_measured(types.SimpleNamespace(remeasure=False, provider=object()))  # mode B, nothing to measure
+    prov = types.SimpleNamespace(held_pose=lambda arm: (eye, 0.0003) if arm == "left" else {"T_tcp_obj": eye, "sigma": 0.002})
+    sk = types.SimpleNamespace(remeasure=False, provider=prov)
+    assert held_measured(sk)                       # a measurement exists: plan to seat
+    assert held_measured(sk, "left")               # 0.3 mm: seat
+    assert not held_measured(sk, "right")          # 2 mm: thread blind
+    sk.provider = types.SimpleNamespace(held_pose=lambda arm: None)
+    assert not held_measured(sk, "left")
