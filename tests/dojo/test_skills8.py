@@ -52,9 +52,10 @@ def test_drop_target_holds_the_leading_end_just_over_the_rim():
     V = pen.asset.mesh[0] @ T[:3, :3].T + T[:3, 3]
     assert abs(float(V[:, 2].min()) - (TABLE + 0.11 + FILL_DROP_H)) < 0.002     # lowest point 4 mm over the rim
     assert float(np.degrees(np.arccos(T[:3, :3] @ [-1.0, 0, 0] @ [0, 0, -1.0]))) < 1.0   # leading end straight down
-    # the first one in the middle of the opening
+    # packed against the wall, inside the opening
     tip_xy = V[np.argmin(V[:, 2])][:2] - cup.pos[:2]
-    assert float(np.max(np.abs(tip_xy))) < 0.006
+    assert np.all(np.abs(tip_xy) < 0.03 - 0.006)
+    assert float(np.max(np.abs(tip_xy))) > 0.01
     pen.pos, pen.quat = T[:3, 3].copy(), _quat(T[:3, :3])
     tip, up = _leading_end(pen)
     assert abs(float(tip[2]) - float(V[:, 2].min())) < 1e-6 and float(up[2]) > 0.999
