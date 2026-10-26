@@ -23,8 +23,8 @@ gate() {
   local m; m="$(find "$COORD/inbox/ilia" -maxdepth 1 -type f 2>/dev/null | head -1)"
   [[ -z "$m" ]] || { echo "[block] unprocessed inbox message $m: stopping the block" >&2; return 76; }
   if [[ -s "$COORD/gpu.reserve" ]]; then echo "[block] gpu.reserve is set: stopping the block" >&2; return 76; fi
-  local free_gb; free_gb=$(df -BG --output=avail /home/anywherevla/data2 | tail -1 | tr -dc 0-9)
-  (( free_gb >= ${ISR_DISK_FLOOR_GB:-7} )) || { echo "[block] only ${free_gb} GB free (< ${ISR_DISK_FLOOR_GB:-7}): stopping" >&2; return 77; }
+  local free_gb free_mb; free_mb=$(df -BM --output=avail /home/anywherevla/data2 | tail -1 | tr -dc 0-9); free_gb=$(awk -v m="$free_mb" 'BEGIN {printf "%.1f", m / 1024}')
+  (( free_mb >= ${ISR_DISK_FLOOR_GB:-7} * 1024 )) || { echo "[block] only ${free_gb} GB free (< ${ISR_DISK_FLOOR_GB:-7}): stopping" >&2; return 77; }
   return 0
 }
 rc=0

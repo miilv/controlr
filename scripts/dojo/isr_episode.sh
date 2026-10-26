@@ -15,8 +15,8 @@ for x in "$@"; do
 done
 export CR="$HERE"
 source "$HERE/scripts/dojo/isr_env.sh"
-free_gb=$(df -BG --output=avail /home/anywherevla/data2 | tail -1 | tr -dc 0-9)
-(( free_gb >= ${ISR_DISK_FLOOR_GB:-7} )) || { echo "isr_episode.sh: only ${free_gb} GB free on data2 (< ${ISR_DISK_FLOOR_GB:-7})" >&2; exit 77; }
+free_mb=$(df -BM --output=avail /home/anywherevla/data2 | tail -1 | tr -dc 0-9); free_gb=$(awk -v m="$free_mb" 'BEGIN {printf "%.1f", m / 1024}')
+(( free_mb >= ${ISR_DISK_FLOOR_GB:-7} * 1024 )) || { echo "isr_episode.sh: only ${free_gb} GB free on data2 (< ${ISR_DISK_FLOOR_GB:-7})" >&2; exit 77; }
 OUT="$DOJO_DATA/bridge/runs"
 mkdir -p "$OUT/$ID"
 export DOJO_AGENTIC_LOG="$OUT/$ID/agentic"
