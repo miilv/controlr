@@ -1092,6 +1092,13 @@ SCREW_RATE = 0.15             # rad/step of the wrist while turning a nut (twin:
 SCREW_SWEEPS_DEG = (300.0, 270.0, 240.0, 180.0, 120.0)
 SCREW_DEPTH = 0.0100          # m: a nut is turned until its bottom is this far below the bolt's top
 SCREW_MAX_SWEEPS = 8
+# mode B (no re-measure: the belief cannot see a nut on a bolt; it keeps a released nut where the jaws let it go, so it
+# goes down with the hand, 2.6-2.8 mm a sweep, and stopped the loop a sweep early): the nut's descent per sweep is
+# modelled as a fraction of what the thread gives the turn (SCREW_PITCH x sweep / 360). Twin, mode A (true descents,
+# 25 layouts): the first sweep after the seat 0.7-0.9 of 2.5 mm (the thread engages), later ones 2.2-2.5
+SCREW_FIRST_EFF = 0.28
+SCREW_EFF = 0.88
+SCREW_SEAT_MAX = 0.004        # m: a nut let go on its bolt's top seats at most this far down (the chamfer; twin 2.6-3.1)
 
 
 def n_fold(o) -> int:
@@ -1111,6 +1118,16 @@ def _flat_yaw(o) -> float:
     k = int(np.argmin(o.asset.extents[:2]))
     ax = o.R[:, k]
     return math.atan2(float(ax[1]), float(ax[0]))
+
+
+def _screw_model(o, b, down: float):
+    """The nut as mode B's sweeps take it (a copy): threaded, so on the bolt's axis, its bottom ``down`` under the
+    bolt's top; the belief's orientation (it turns with the pads)."""
+    import copy
+    o2 = copy.copy(o)
+    c, cb = o.center_w, b.center_w
+    o2.pos = o.pos + np.array([cb[0] - c[0], cb[1] - c[1], (b.top_z - down) - o.bottom_z])
+    return o2
 
 
 def plan_sweep(sk: Skills, a: str, nut, pitch: float, sign: float):
@@ -1159,7 +1176,9 @@ def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sig
     hand following the pitch down, ``SCREW_RATE``), let go and re-gripped between sweeps, until its bottom is
     ``depth`` below the bolt's top. ``sign`` -1 = clockwise from above (a right-hand thread tightens). The pitch is
     re-measured from the nut's descent after every sweep. Both grippers are opened after each pair (partial credit
-    per pair)."""
+    per pair). Mode B (``not sk.remeasure``): the nut's depth is the lower of the belief's and a model's (seated at most
+    ``SCREW_SEAT_MAX``, then ``SCREW_FIRST_EFF`` / ``SCREW_EFF`` of the thread's descent per sweep), the nut on the
+    bolt's axis at that depth, and the pitch stays ``SCREW_PITCH``."""
     from dojo.skills.library import place_oriented
     from dojo.skills.kinematics import gap_to_grip
     done, failed = [], []
@@ -1203,11 +1222,18 @@ def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sig
                 pass
         pitch = SCREW_PITCH
         n_sw = 0
+        model = None                        # mode B: the modelled depth of the nut's bottom under the bolt's top
         g_open = gap_to_grip(min(G.MAX_GAP, float(np.min(o.asset.extents[:2])) + 0.022))
         while n_sw < SCREW_MAX_SWEEPS:
             w = sk.refresh()
             o, b = w.obj(nut), w.obj(bolt)
             down = b.top_z - o.bottom_z
+            z0_belief = float(o.pos[2])
+            if not sk.remeasure:
+                if model is None:
+                    model = float(np.clip(down, 0.0, SCREW_SEAT_MAX))
+                down = min(down, model)
+                o = _screw_model(o, b, down)
             if down >= depth:
                 break
             sw = plan_sweep(sk, arm, o, pitch, sign)
@@ -1241,16 +1267,26 @@ def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sig
                 return {"ok": True, "stage": "ended"}
             n_sw += 1
             o2 = sk.refresh().obj(nut)
-            dz = float(z0 - o2.pos[2])
-            if dz > 0.0003:
-                pitch = float(np.clip(dz * 2 * math.pi / th, 0.0005, 0.006))
+            if sk.remeasure:
+                dz = float(z0 - o2.pos[2])
+                if dz > 0.0003:
+                    pitch = float(np.clip(dz * 2 * math.pi / th, 0.0005, 0.006))
+                below = f"{(b.top_z - o2.bottom_z)*1000:.1f} mm below the top"
+            else:
+                dz = SCREW_PITCH * th / (2 * math.pi) * (SCREW_FIRST_EFF if n_sw == 1 else SCREW_EFF)
+                model += dz
+                below = (f"{min(model, b.top_z - o2.bottom_z)*1000:.1f} mm below the top (model; belief "
+                         f"{(z0_belief - o2.pos[2])*1000:.1f} mm down)")
             sk._record(SkillResult(True, "screw", "ok", pl.steps, arm,
                                    note=f"{nut}: sweep {n_sw} {math.degrees(th):.0f} deg, down {dz*1000:.1f} mm, "
-                                        f"{(b.top_z - o2.bottom_z)*1000:.1f} mm below the top, pitch {pitch*1000:.2f}"))
+                                        f"{below}, pitch {pitch*1000:.2f}"))
         sk.bank()
         w = sk.refresh()
         o, b = w.obj(nut), w.obj(bolt)
-        if b.top_z - o.bottom_z >= depth - 0.001:
+        down = b.top_z - o.bottom_z
+        if model is not None:
+            down = min(down, model)
+        if down >= depth - 0.001:
             st["done"].append(nut)
             done.append(nut)
         else:
