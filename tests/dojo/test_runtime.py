@@ -2507,3 +2507,38 @@ def test_eval_ends_an_episode_at_the_wall_time_cap(tmp_path, monkeypatch):
            renderer="isaac51", episode_max_minutes=5)
     row = json.loads((tmp_path / "out" / "stack_blocks_gt_verify-off_episodes.jsonl").read_text().splitlines()[0])
     assert row["time_capped"] and row["category"] == "time_cap" and row["steps_used"] == 6
+
+
+def test_track_reads_are_logged_and_kept_and_perception_ops_are_per_episode(monkeypatch):
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png")
+    env = _env()
+
+    class Belt(_HeldPosePerception):
+        def __init__(self, env):
+            super().__init__(env, lambda prior: {})
+            self.calls = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            self.calls.append({"op": "estimate", "s": 0.5})
+            return super().estimate(frames, vocabulary, fold, prior_record)
+
+    seen = {}
+
+    def program(ctx):
+        for _ in range(3):
+            ctx.prov.refresh()
+            ctx.sk.ex.hold(5)
+        seen["n"] = ctx.prov.stats.get("track_reads")
+        return {"ok": True}
+    pc = Belt(env)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", track_moving="on", save_track_frames=2),
+                        assets=FakeAssets(), perception_client=pc, program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    tr = [e for e in rep["events"] if e["kind"] == "track_read"]
+    assert len(tr) == rep["track_reads"] >= 2 and len(tr[0]["found"]) == 3 and tr[0]["not_found"] == 0
+    assert sum(1 for k in rep.get("look_frames", {}) if k.startswith("track")) == 2
+    n1 = rep["perception_ops"]["estimate"][0]
+    rep2 = run_episode(pol, FakeEpisode(_env()), "perception")                 # same client, a second episode
+    assert rep2["perception_ops"]["estimate"][0] == n1                         # not the running total
