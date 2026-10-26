@@ -3,6 +3,8 @@
 #   scripts/dojo/integ_eval.sh --task T --layouts L1.json ... [--preset NAME] [--mode gt|perception] [--verify off|bundle]
 #        [--twin-envs 8] [--out DIR] [--config JSON] [--max-minutes 25]
 # --preset (dojo/runtime/presets.py, e.g. submit_v1) supplies mode / verify unless given explicitly.
+# --renderer isaac51 (a "full" box where Isaac 5.1 renders, e.g. compute4): episodes are RoboDojo EvalEnvs with RTX
+# (dojo.runtime.eval's RenderedEpisode), no 6.0 render service; perception defaults to the 5.1 backgrounds / colours.
 # Processes, all in ONE systemd user scope (24G / 14 cores with a twin or perception, else 16G / 12 cores):
 #   render service (Isaac 6.0), [twin service (physics-only 5.1 Twin, --verify bundle)],
 #   [perception service (controlr venv, EGL; --mode perception)], the driver (dojo.runtime.eval, RoboDojo python).
@@ -13,13 +15,14 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export RD_HOME="${RD_HOME:-$HOME/dojo-robodojo}" DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
 OUT="$DOJO_DATA/integ/runs/$(date -u +%Y%m%dT%H%M%SZ)"
-MODE="" VERIFY="" PRESET="" TWIN_ENVS=8 TASK="" args=()
+MODE="" VERIFY="" PRESET="" RENDERER=isaac60 TWIN_ENVS=8 TASK="" args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --out) OUT="$2"; shift 2 ;;
     --mode) MODE="$2"; args+=("$1" "$2"); shift 2 ;;
     --verify) VERIFY="$2"; args+=("$1" "$2"); shift 2 ;;
     --preset) PRESET="$2"; args+=("$1" "$2"); shift 2 ;;
+    --renderer) RENDERER="$2"; args+=("$1" "$2"); shift 2 ;;
     --twin-envs) TWIN_ENVS="$2"; shift 2 ;;
     --task) TASK="$2"; args+=("$1" "$2"); shift 2 ;;
     *) args+=("$1"); shift ;;
@@ -53,10 +56,14 @@ export SIMLAB_TWIN_AUTHKEY="$(key)" SIMLAB_TWIN_PORT="$(port)" SIMLAB_TWIN_READY
 export DOJO_PERCEPTION_AUTHKEY="$(key)" DOJO_PERCEPTION_PORT="$(port)" DOJO_PERCEPTION_READY="$OUT/perception.ready"
 PD="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"
 export DOJO_CATALOG="${DOJO_CATALOG:-$PD/catalog}" DOJO_X5_DIR="${DOJO_X5_DIR:-$PD/catalog/robot/x5}"
-export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib.json}"
+if [[ "$RENDERER" == isaac51 ]]; then           # genuine 5.1 frames: the 5.1 backgrounds and colour map
+  export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds_51}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib_51.json}"
+else
+  export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib.json}"
+fi
 # agentic perceiver (only read when the config sets "agentic"): omniroute keys from the controlr .env, transcripts here
 export AGENTIC_ENV_FILE="${AGENTIC_ENV_FILE:-$HOME/controlr/.env}" DOJO_AGENTIC_LOG="${DOJO_AGENTIC_LOG:-$OUT/agentic}"
-export OUT HERE MODE VERIFY TWIN_ENVS TASK
+export OUT HERE MODE VERIFY TWIN_ENVS TASK RENDERER
 if [[ "$VERIFY" == bundle || "$MODE" == perception ]]; then MEM=24G CPU=1400%; else MEM=16G CPU=1200%; fi
 # the scope runs in the background so a TERM / INT to this script can stop it: a killed integ_eval.sh used to leave
 # the services and the driver running, still holding the GPU lock (fd 9) (2026-10-26, imitate_sorting)
@@ -64,8 +71,11 @@ UNIT="$(basename "$OUT")"; UNIT="integ-${UNIT//[^A-Za-z0-9_.-]/_}-$$"
 systemd-run --user --scope -q --unit="$UNIT" -p MemoryMax=$MEM -p CPUQuota=$CPU bash -c '
   cg=/sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup | head -1)
   cpu0=$(awk "/usage_usec/ {print \$2}" $cg/cpu.stat); t0=$(date +%s.%N)
-  "$HERE/scripts/simlab/isaac6.sh" dojo/simlab/render_service.py > "$OUT/render_service.log" 2>&1 &
-  svc=$!; twin=""; perc=""
+  svc=""; twin=""; perc=""
+  if [[ "$RENDERER" != isaac51 ]]; then
+    "$HERE/scripts/simlab/isaac6.sh" dojo/simlab/render_service.py > "$OUT/render_service.log" 2>&1 &
+    svc=$!
+  fi
   if [[ "$VERIFY" == bundle ]]; then
     "$HERE/scripts/simlab/rdpy.sh" -u -m dojo.simlab.twin_service --task "$TASK" --num-envs "$TWIN_ENVS" > "$OUT/twin_service.log" 2>&1 &
     twin=$!
@@ -75,12 +85,12 @@ systemd-run --user --scope -q --unit="$UNIT" -p MemoryMax=$MEM -p CPUQuota=$CPU 
     perc=$!
   fi
   for i in $(seq 200); do
-    [[ -f "$SIMLAB_RENDER_READY" ]] && { [[ -z "$twin" ]] || [[ -f "$SIMLAB_TWIN_READY" ]]; } \
+    { [[ -z "$svc" ]] || [[ -f "$SIMLAB_RENDER_READY" ]]; } && { [[ -z "$twin" ]] || [[ -f "$SIMLAB_TWIN_READY" ]]; } \
       && { [[ -z "$perc" ]] || [[ -f "$DOJO_PERCEPTION_READY" ]]; } && break
     sleep 2
   done
   ok=1
-  [[ -f "$SIMLAB_RENDER_READY" ]] || { echo "[integ] render service not ready: see render_service.log"; ok=0; }
+  [[ -z "$svc" || -f "$SIMLAB_RENDER_READY" ]] || { echo "[integ] render service not ready: see render_service.log"; ok=0; }
   [[ -z "$twin" || -f "$SIMLAB_TWIN_READY" ]] || { echo "[integ] twin service not ready: see twin_service.log"; ok=0; }
   [[ -z "$perc" || -f "$DOJO_PERCEPTION_READY" ]] || { echo "[integ] perception service not ready: see perception_service.log"; ok=0; }
   if [[ "$ok" == 1 ]]; then
@@ -89,7 +99,7 @@ systemd-run --user --scope -q --unit="$UNIT" -p MemoryMax=$MEM -p CPUQuota=$CPU 
   python3 - <<PY
 import os
 from multiprocessing.connection import Client
-for p, k, on in (("SIMLAB_RENDER_PORT", "SIMLAB_RENDER_AUTHKEY", True),
+for p, k, on in (("SIMLAB_RENDER_PORT", "SIMLAB_RENDER_AUTHKEY", os.environ["RENDERER"] != "isaac51"),
                  ("SIMLAB_TWIN_PORT", "SIMLAB_TWIN_AUTHKEY", os.environ["VERIFY"] == "bundle"),
                  ("DOJO_PERCEPTION_PORT", "DOJO_PERCEPTION_AUTHKEY", os.environ["MODE"] == "perception")):
     if not on:
