@@ -185,3 +185,14 @@ def test_held_measured_falls_back_to_blind_threading():
     assert not held_measured(sk, "right")          # 2 mm: thread blind
     sk.provider = types.SimpleNamespace(held_pose=lambda arm: None)
     assert not held_measured(sk, "left")
+
+
+def test_held_measured_reads_the_perception_held_contract():
+    import types
+    from dojo.skills.pegs import held_measured
+    good = {"ok": True, "T_tcp_obj": np.eye(4), "sigma": {"pos_mm": [0.2, 0.3, 0.4], "rot_deg": [1, 1, 1]}}
+    bad = {"ok": True, "T_tcp_obj": np.eye(4), "sigma": {"pos_mm": [0.2, 1.5, 0.4], "rot_deg": [1, 1, 1]}}
+    off = {"ok": False, "T_tcp_obj": np.eye(4), "sigma": {"pos_mm": [0.1, 0.1, 0.1]}}
+    for r, exp in ((good, True), (bad, False), (off, False)):
+        sk = types.SimpleNamespace(remeasure=False, provider=types.SimpleNamespace(held_pose=lambda arm, r=r: r))
+        assert held_measured(sk, "left") is exp

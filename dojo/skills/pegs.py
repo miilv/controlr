@@ -184,8 +184,9 @@ def centred_grasps(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, -25.0), o
 
 def held_measured(sk: Skills, arm: str | None = None, tol: float = SEAT_SIGMA) -> bool:
     """Can a held piece be measured well enough to seat it (the servo tail works on its measured pose)? Yes with
-    ``Skills.remeasure`` (G3: the true pose). Else with a provider ``held_pose(arm)`` (a held-object measurement, T_tcp_obj
-    with a sigma in m, as a (T, sigma) pair or a dict with "sigma"): given an arm, its sigma must be within ``tol``;
+    ``Skills.remeasure`` (G3: the true pose). Else with a provider ``held_pose(arm)`` (a held-object measurement: the
+    perception-held dict {ok, T_tcp_obj, sigma: {pos_mm[3], ...}}, or a (T, sigma m) pair): given an arm, it must be ok and
+    its position sigma within ``tol``;
     without one, having the measurement is enough to plan for it. Otherwise no: the blind threading is the fallback.
     The per-arm sigma gate wants a hook in the place tail (after the pick, at the hover: thread instead of seat when the
     measurement is worse than ``tol``); today the plan takes the capability, and the servo tail measures through
@@ -203,7 +204,17 @@ def held_measured(sk: Skills, arm: str | None = None, tol: float = SEAT_SIGMA) -
         return False
     if r is None:
         return False
-    sigma = r.get("sigma") if isinstance(r, dict) else (r[1] if isinstance(r, (tuple, list)) and len(r) > 1 else None)
+    if isinstance(r, dict):
+        # perception-held's contract: {ok, T_tcp_obj, lead_tcp, axis_tcp, sigma: {pos_mm[3], rot_deg[3], ...}}
+        if not r.get("ok", True):
+            return False
+        sg = r.get("sigma")
+        if isinstance(sg, dict):
+            pos = sg.get("pos_mm")
+            return pos is not None and max(float(x) for x in pos) / 1000.0 <= tol
+        sigma = sg
+    else:
+        sigma = r[1] if isinstance(r, (tuple, list)) and len(r) > 1 else None
     return sigma is not None and float(sigma) <= tol
 
 
