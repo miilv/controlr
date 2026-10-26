@@ -199,10 +199,12 @@
   thick, 56 mm wide, 40-70 mm above the TCP) meets the basket's rim or the neighbouring egg for every grasp of an egg
   lying against the basket wall (dev layouts: ~31 of 44 eggs). Eggs on the table and the stand-up drop into the
   holder's holes work. Next: roll / push an egg off the wall first, or a grasp model that may touch the rim.
-- [ ] **dojo simlab: pick_from_conveyor_by_image layouts put the basket inside the conveyor's body.** The generator
-  offsets `relative_plane: conveyor` from the first belt support: the basket's centre is 10 cm below the belt top,
-  its 22 cm body spans z 0.56-0.78 under a 0.69-0.77 belt, and it is ejected at load (simlab saw it move 1.7 m).
-  Until RoboDojo's reading of that placement is known, the task cannot be measured (skills-6 parked it).
+- [ ] **dojo simlab: pick_from_conveyor_by_image's photo board and basket placement is a public guess.** v12 put the
+  basket's 22 cm body inside the conveyor (ejected at load). v13 (skills-6) follows the public PhysicalRSI sampler's
+  `place_fixture` (world xy from the conveyor's root, z from its world bbox top): the basket stands on the belt in front
+  of the left arm, the board at the robot side, 1.02 m up. PhysicalRSI marks that convention "native scene not
+  validated"; check it against the official videos / a rendered episode when one is available. Skills-6's layouts are
+  in `compute3:~/dojo-data/skills6/layouts/pick_from_conveyor_by_image` (simlab's shared copies are still v12).
 - [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
   25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
 - [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and **fold_clothes** (parked: no cloth state in the skills layer).

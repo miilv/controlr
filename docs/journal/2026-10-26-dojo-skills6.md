@@ -59,6 +59,8 @@ median / max (limit).
 | play_tic_tac_toe | **v7 (watch reads + actors at rest)** | **all 25 settled** | **25/25** | **1.00** | **832 / 901** | - | |
 | imitate_sorting_sequence | v1 (8cbc27c) | 100002, 100004 | 0/2 | 0.00 | 689-718 (1600) | order seen right 2/2; `put_into` has no drop point on a table | 92.4 / 92.4 |
 | imitate_sorting_sequence | v2 (7a6e6e5, put_in_open) | 100002, 04, 10, 14 | 2/4 | 0.51 | 872-1328 | relay found no table spot (1), object turned in the hand (1) | |
+| imitate_sorting_sequence | v3 (17acd42, watch reads) | first 2 of 13 | 0/2 | 0.10 | 1578-1591 | watched to the step budget: the container read never read as stable (identical twins keyed by asset); fixed, test | |
+| imitate_sorting_sequence | **v4 (848f38e)** | **the 13 with validated demos** | **10/13** | **0.77** | **1276 / 1527** | the first object's grasp failed twice: a slip on the carry (toy car), a grasp that closed beside the object (phone), a relay collision | |
 | match_and_pick_from_conveyor | v1b (369e7a0) | 100000-02 raw | 2/3 | 0.67 | 190 / 286 (700) | ice cream: no top grasp | 86 / 92 |
 | match_and_pick_from_conveyor | v4 (7ad3f4c) | all 25 raw | 20/25 | 0.80 | 199 / 362 | ice cream 3 (no grasp), a standing bottle and a 24 cm figurine (16 cm lift out of reach) | |
 
@@ -127,6 +129,7 @@ Every skill reads through its provider, so moving from GT to perception swaps th
 | copy_demonstration | (a) `actors_moving()` | The demonstrator's arm | After the last arrival, until 12 still reads | bool (None -> hold 110) | As above |
 | copy_demonstration | object estimates | Our twins (by identity), our container | Before each pick; inside-check after each drop | Poses, inside | Normal |
 | match_and_pick | (c) object tracks on the belt | Every object on the belt | Velocity from two reads 4 steps apart, at the start and before a retry; one target re-read at the end of the approach (~8 steps before contact) | Positions by identity, belt velocity | Target error < ~8 mm at contact: velocity good to ~0.03 mm/step over the <= 300-step prediction, or a fresh re-read <= 3 steps old (a known latency is shifted by v * latency) |
+| pick_into_held | (c) belt tracks + what the board's picture depicts | Every object on the belt; the picture (a Geometry board) | As match_and_pick; the picture once at the start | Identity of the depicted object (G3: the picture asset's public `map.json`) | As match_and_pick |
 | fill_holes | object estimates (static scene) | Eggs, holder, basket | At the start, after each drop ("in a hole": root within r_hole - 4 mm of the hole centre, bottom >= 10 mm below the hole top), lid angle before / after the swing | Poses, lid joint angle | Normal |
 
 The registry's `reads` tokens stay within the j2 vocabulary (`object_args`); the watch cadence is in each entry's `notes`.
