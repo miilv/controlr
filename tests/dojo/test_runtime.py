@@ -2447,3 +2447,63 @@ def test_catalog_check_reports_a_new_gap_but_not_a_known_unshipped_asset(tmp_pat
     (c / "tasks.json").write_text(_json.dumps(tasks))
     assert missing_assets(c, ["a", "b"]) == {"b": ["Rigid/new/00001"]}
     assert missing_assets(c, ["a"], known={}) == {"a": [known]}
+
+
+def test_eval_ends_an_episode_at_the_wall_time_cap(tmp_path, monkeypatch):
+    """imitate_sorting (breadth 2026-10-26): one episode held the GPU lane 48 min at 6 s per step; max_minutes only
+    stops NEW layouts. The per-episode cap ends it and the row says so."""
+    import json
+    import types
+
+    import dojo.runtime.eval as EV
+    clock = {"t": 0.0}
+    monkeypatch.setattr(EV.time, "perf_counter", lambda: clock["t"])
+
+    class FakeRun:
+        def objects_gt(self, i):
+            return []
+
+        def reward(self, i):
+            return {"success": False, "ended": False, "steps_used": 7, "step_lim": 1600}
+
+    class FakeRendered:
+        def __init__(self, task, workdir):
+            self.run = FakeRun()
+            self.run.close = lambda: None
+            self.n = 0
+
+        def reset(self, layout):
+            return {"stable": True, "task": "stack_blocks", "layout_id": 100000, "instruction": "x", "step_lim": 1600,
+                    "reset_s": 0.0}
+
+        def observe(self):
+            return {"images": {}, "state": {}, "instruction": "x", "steps_used": self.n, "step_lim": 1600}
+
+        def step(self, a):
+            self.n += 1
+            clock["t"] += 60.0                       # one minute per env step
+            return False
+
+        def result(self):
+            return {"success": False, "score": 0.0, "steps_used": self.n, "step_lim": 1600, "observations": self.n}
+
+    class Pol:
+        def __init__(self, cfg):
+            self.bridge = types.SimpleNamespace(executed=[])
+
+        def reset(self, info):
+            pass
+
+        def next(self, obs):
+            return {"actions": [{}]}
+
+        def episode_report(self):
+            return {"timings": {}, "looks": [], "events": []}
+
+    monkeypatch.setattr(EV, "RenderedEpisode", FakeRendered)
+    lay = tmp_path / "100000.settled.json"
+    lay.write_text(json.dumps({"_simlab": {"id": 100000}}))
+    EV.run("stack_blocks", [str(lay)], EV.RuntimeConfig(mode="gt", verify="off"), tmp_path / "out", policy_factory=Pol,
+           renderer="isaac51", episode_max_minutes=5)
+    row = json.loads((tmp_path / "out" / "stack_blocks_gt_verify-off_episodes.jsonl").read_text().splitlines()[0])
+    assert row["time_capped"] and row["category"] == "time_cap" and row["steps_used"] == 6
