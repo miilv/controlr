@@ -1971,6 +1971,22 @@ def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.
     return out
 
 
+def _polish_prefers(best: Hypothesis, t2: Hypothesis, pt, cfg) -> bool:
+    """Does a polish trial ``t2`` replace the incumbent ``best``? Paired texture on shared pixels (``pt`` = their two
+    costs) decides when it is informative, else the combined cost. Paired texture decides only between colour-compatible
+    candidates (``polish_color_veto``): weighed 0.8 against the mean colour's 0.3, it turned a white mug (colour distance
+    0.10) into a dark one (0.46) on hang_mugs; a vetoed trial is skipped, not judged by the combined cost (that cost
+    organize_table's garage figure)."""
+    informative = pt is not None and abs(pt[0] - pt[1]) > cfg.paired_tex_margin
+    if informative and cfg.polish_color_veto is not None and t2.appearance - best.appearance > cfg.polish_color_veto:
+        return False
+    if informative:
+        cb = best.per_view["sil_loss"] + cfg.appearance_weight * best.appearance + cfg.paired_tex_weight * pt[0]
+        ct = t2.per_view["sil_loss"] + cfg.appearance_weight * t2.appearance + cfg.paired_tex_weight * pt[1]
+        return ct < cb - 0.01
+    return t2.loss < best.loss - 0.01
+
+
 def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypothesis]:
     """Per chosen object: re-fit the other candidate shapes of its label group at its location (identity) and
     its 180-degree flip, keeping the lowest combined cost (silhouette + colour + texture). Groups under a
@@ -2035,19 +2051,9 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
             scored.append(t2)
             # paired texture on shared pixels decides when it is informative; else the combined cost
             pt = paired_texture(best.sm(), best.T(), t2.sm(), t2.T(), views, others) if cfg.texture_weight > 0 else None
-            # paired texture decides only between colour-compatible candidates: weighed 0.8 against the mean colour's
-            # 0.3, it turned a white mug (colour distance 0.10) into a dark one (0.46) on hang_mugs
-            colour_worse = cfg.polish_color_veto is not None and t2.appearance - best.appearance > cfg.polish_color_veto
-            informative = pt is not None and abs(pt[0] - pt[1]) > cfg.paired_tex_margin
-            if informative and colour_worse:
-                continue  # paired texture would decide, but the colour clearly says no: the incumbent stays
-            if informative:
-                cb = best.per_view["sil_loss"] + cfg.appearance_weight * best.appearance + cfg.paired_tex_weight * pt[0]
-                ct = t2.per_view["sil_loss"] + cfg.appearance_weight * t2.appearance + cfg.paired_tex_weight * pt[1]
+            if pt is not None:
                 t2.per_view["paired_tex"] = [round(pt[0], 4), round(pt[1], 4)]
-                if ct < cb - 0.01:
-                    best = t2
-            elif t2.loss < best.loss - 0.01:
+            if _polish_prefers(best, t2, pt, cfg):
                 best = t2
         if best is not h0:
             best.per_view["polished"] = True
