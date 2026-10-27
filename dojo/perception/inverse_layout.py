@@ -2143,6 +2143,10 @@ def _quota_members(out, gi, lists) -> dict[int, int]:
     return member
 
 
+QUOTA_DUP_OVERLAP = 0.6  # a quota member this much inside another member's head silhouette is a second fit on it
+QUOTA_DUP_POOR_OVERLAP, QUOTA_DUP_POOR_LOSS = 0.3, 0.5  # ... or this much with a silhouette loss above this
+
+
 def _quota_balance(out: list[Hypothesis], views, cfg, groups, gi, g, prior, lists) -> list[Hypothesis]:
     """Quota lists hold one object per label: a list with more objects than labels drops a duplicate (an object of a
     repeated category whose head silhouette most overlaps another chosen object, then the worst fit); a list with fewer
@@ -2173,6 +2177,24 @@ def _quota_balance(out: list[Hypothesis], views, cfg, groups, gi, g, prior, list
             worst = max(pool_, key=dup_score)
             removed.add(worst)
             ms.remove(worst)
+    # two fits on one object under different categories (100017: a "watch" inside the near figure's silhouette while the
+    # real watch lay unexplained): a member whose head silhouette lies mostly on another member's is the worse-fitting
+    # one of the pair or the other one
+    ms_all = [i for i in member if i not in removed]
+    for i in sorted(ms_all, key=lambda i: -out[i].per_view.get("sil_loss", out[i].loss)):
+        if i in removed:
+            continue
+        a = max(int(S(i).sum()), 1)
+        for j in ms_all:
+            if j == i or j in removed:
+                continue
+            ov = int((S(i) & S(j)).sum()) / min(a, max(int(S(j).sum()), 1))
+            li_, lj_ = out[i].per_view.get("sil_loss", out[i].loss), out[j].per_view.get("sil_loss", out[j].loss)
+            # mostly on the other, or a poor fit partly on a better one (100017's re-fitted "watch": 37 % on the figure,
+            # silhouette loss 0.66 vs the figure's 0.19)
+            if ov > QUOTA_DUP_OVERLAP or (ov > QUOTA_DUP_POOR_OVERLAP and li_ > QUOTA_DUP_POOR_LOSS and li_ > lj_):
+                removed.add(i if li_ >= lj_ else j)
+                break
     keep = [h for i, h in enumerate(out) if i not in removed]
     free = len(g["labels"]) - sum(1 for h in keep if h.label_group == gi)
     if free <= 0:
@@ -2289,6 +2311,9 @@ def _category_quota(chosen: list[Hypothesis], views, cfg, groups, pending, task)
                     t2.per_view["quota"] = {"was": out[i].key, "cost": round(float(C[r_, c_]), 4),
                                             "kept_cost": round(float(fits[(i, ("keep", cat_of[i]))].loss), 4)}
                     out[i] = t2
+        # a re-fit can land a missing category on another object (100017: the near "watch" re-fitted onto the figure
+        # while the real watch lay unexplained): one more balance drops it and proposes the category where nothing is
+        out = _quota_balance(out, views, cfg, groups, gi, g, prior, lists)
         if cfg.quota_copy_assets:
             out = _quota_copy_assets(out, views, cfg, groups, gi, g, prior, lists)
     return out
