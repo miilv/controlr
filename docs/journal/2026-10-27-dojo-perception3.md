@@ -99,3 +99,24 @@ Paired, same frames, the scene background of §1.3 (no leakage either way):
 - G1 regression (region fix vs + quota, frame 0, d0_51 + d0_ext, 1310 objects): no object changed (no other task has
   a quota list).
 - Cost: the quota re-fits only when a list repeats a category (0-4 objects per imitate frame).
+
+### 1.3 Fix 3: the quota lists' sizes (`_quota_balance`, `EstimatorConfig.quota_add_max_loss` 0.8)
+
+Three of the six layouts still wrong after §1.2 had 6 objects in one list and 4 in the other: two fits on one object
+(a near figure read as figure + action camera, or a near watch as watch + action camera) while the other side's object
+went unread.
+- A list with more objects than labels drops one object of a repeated category: the one whose head silhouette most
+  overlaps another chosen object, then the worst fit.
+- A list with fewer proposes its missing categories on head foreground no chosen object explains, inside its regions
+  (`_propose` on the residual blobs, silhouette loss <= 0.8), one per category and blob, up to the free labels.
+- Then §1.2's re-fit of repeated categories.
+
+Paired, same frames, the 12-non-demo scene background (§1.4):
+
+| arm | ours found / cat / asset | demo found / cat / asset | layouts all 10 right | order exact | twins right (of 65) | plan right |
+|---|---|---|---|---|---|---|
+| main (#143 + #146) | 63 / 61 / 56 | 61 / 57 / 51 | 8 | 7 / 13 | 52 | 7 / 13 |
+| + sizes | 64 / 64 / 57 | 63 / 57 / 51 | 8 | 8 / 13 | 56 | 7 / 13 |
+
+- 3 objects added (100014 near watch, 100016 near figure, 100018 far action camera), 0 phantoms added.
+- G1 regression: only imitate has quota lists (by construction no other task runs it); d0_51 rerun queued.

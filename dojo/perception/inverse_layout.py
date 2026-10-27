@@ -2063,6 +2063,92 @@ def quota_lists(task: str, g: dict) -> list[dict]:
     return out
 
 
+def _quota_members(out, gi, lists) -> dict[int, int]:
+    """{index in ``out``: list index} for the group's chosen objects whose generator point lies in exactly one list."""
+    member: dict[int, int] = {}
+    for i, h in enumerate(out):
+        if h.label_group != gi or h.per_view.get("z_off"):
+            continue
+        ins = [li for li, L in enumerate(lists) if region_ok(L, *_centre_xy(h, L), h.yaw, h.sm().yaw_period)]
+        if len(ins) == 1:
+            member[i] = ins[0]
+    return member
+
+
+def _quota_balance(out: list[Hypothesis], views, cfg, groups, gi, g, prior, lists) -> list[Hypothesis]:
+    """Quota lists hold one object per label: a list with more objects than labels drops a duplicate (an object of a
+    repeated category whose head silhouette most overlaps another chosen object, then the worst fit); a list with fewer
+    proposes its missing categories on the head foreground that no chosen object explains, inside its regions
+    (imitate: two fits on one near figure while the far action camera went unread)."""
+    head = views["cam_head"]
+    sil: dict[int, np.ndarray] = {}
+
+    def S(i):
+        if i not in sil:
+            sil[i] = out[i].sm().sil(head.cam, out[i].T()).astype(bool)
+        return sil[i]
+
+    member = _quota_members(out, gi, lists)
+    removed: set = set()
+    for li, L in enumerate(lists):
+        ms = [i for i, l_ in member.items() if l_ == li]
+        while len(ms) > len(L["labels"]):
+            cats: dict[str, list] = {}
+            for i in ms:
+                cats.setdefault(out[i].key.split("/")[1], []).append(i)
+            pool_ = [i for v in cats.values() if len(v) > 1 for i in v] or ms
+
+            def dup_score(i):
+                a = max(int(S(i).sum()), 1)
+                ov = max((int((S(i) & S(j)).sum()) / a for j in range(len(out)) if j != i and j not in removed), default=0.0)
+                return (round(ov, 1), out[i].per_view.get("sil_loss", out[i].loss))
+            worst = max(pool_, key=dup_score)
+            removed.add(worst)
+            ms.remove(worst)
+    keep = [h for i, h in enumerate(out) if i not in removed]
+    free = len(g["labels"]) - sum(1 for h in keep if h.label_group == gi)
+    if free <= 0:
+        return keep
+    expl = np.zeros_like(head.fg)
+    for h in keep:
+        h.sm().sil(head.cam, h.T(), out=expl)
+    resid = head.fg & (1 - cv2.dilate(expl, np.ones((3, 3), np.uint8)))
+    rblobs = blobs(ViewMasks(head.cam, head.img, resid, head.known, head.dist, head.robot), "cam_head")
+    member = _quota_members(keep, gi, lists)
+    geom = _geometry_groups(g, prior)
+    for li, L in enumerate(lists):
+        ms = [i for i, l_ in member.items() if l_ == li]
+        have = {keep[i].key.split("/")[1] for i in ms}
+        missing = [c for c in L["cats"] if c not in have]
+        if free <= 0 or not missing or len(ms) >= len(L["labels"]):
+            continue
+        lb = []
+        for b in rblobs:
+            X = head.cam.ray_plane(b.centroid[None, :], TABLE_Z + 0.02)[0]
+            if np.isfinite(X).all() and region_ok(L, X[0], X[1], extra=0.06):
+                lb.append(b)
+        if not lb:
+            continue
+        shapes = {k: v for k, v in geom.items() if v[0].key.split("/")[1] in missing}
+        cands = _propose(lb, [(gi, g, prior)], {gi: shapes}, views, cfg, groups, others=_union_masks(keep, views),
+                         blob_offset=7000 + 100 * li)
+        used_c, used_b, n_ms = set(), set(), len(ms)
+        for h in sorted(cands, key=lambda h: h.loss):
+            c = h.key.split("/")[1]
+            if free <= 0 or n_ms >= len(L["labels"]):
+                break
+            if (c in used_c or h.blob in used_b or h.per_view.get("sil_loss", h.loss) > cfg.quota_add_max_loss
+                    or not region_ok(L, *_centre_xy(h, L), h.yaw, h.sm().yaw_period)):
+                continue
+            h.per_view["quota"] = {"added": c, "cost": round(float(h.loss), 4)}
+            keep.append(h)
+            used_c.add(c)
+            used_b.add(h.blob)
+            n_ms += 1
+            free -= 1
+    return keep
+
+
 def _category_quota(chosen: list[Hypothesis], views, cfg, groups, pending, task) -> list[Hypothesis]:
     """Per quota list (``quota_lists``): the chosen objects whose generator point lies in exactly one list's regions
     belong to it. When a category repeats in a list, every object of a repeated category is also fitted (at its own
@@ -2076,14 +2162,8 @@ def _category_quota(chosen: list[Hypothesis], views, cfg, groups, pending, task)
         lists = quota_lists(task, g)
         if not lists:
             continue
-        idx = [i for i, h in enumerate(out) if h.label_group == gi and not h.per_view.get("z_off")]
-        member: dict[int, int] = {}
-        for i in idx:
-            h = out[i]
-            ins = [li for li, L in enumerate(lists)
-                   if region_ok(L, *_centre_xy(h, L), h.yaw, h.sm().yaw_period)]
-            if len(ins) == 1:
-                member[i] = ins[0]
+        out = _quota_balance(out, views, cfg, groups, gi, g, prior, lists)
+        member = _quota_members(out, gi, lists)
         for li, L in enumerate(lists):
             ms = [i for i, l_ in member.items() if l_ == li]
             cat_of = {i: out[i].key.split("/")[1] for i in ms}
@@ -2407,6 +2487,7 @@ class EstimatorConfig:
     # imitate_sorting_sequence: watches read as action cameras)
     category_quota: bool = True
     quota_variants: int = 2  # ... fitting each missing category's best-coloured variants
+    quota_add_max_loss: float = 0.8  # ... and a list short of objects takes a missing category's fit on unexplained foreground up to this silhouette loss
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 
