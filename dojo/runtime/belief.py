@@ -755,7 +755,9 @@ class RuntimeProvider:
         # the wrist just measured these; the just-released ones are judged by their post-place check (and the place
         # check), never "fixed" from a low head check (5.1: a perfect 3-stack re-estimated from iou 0.09-0.32)
         objs = [o for o in self.belief.movable() if o.label not in measured and o.label not in set(released or ())]
-        chk = self.checker.check(obs, objs)
+        # nothing left to check (a one-object task right after its release: breadth3 deposit_coin / insert_key crashed
+        # the perception service with an empty z-buffer stack)
+        chk = self.checker.check(obs, objs) if objs else {}
         bad = {}
         for lab, c in chk.items():
             head = c.get("head") or {}
