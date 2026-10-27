@@ -587,7 +587,11 @@ class RoboDojoRunner:
                 "success_flag": bool(env.success[env_idx]), "ended": bool(env.end_flag[env_idx]),
                 "stages_left": len(rm.check_list[env_idx]), "final_left": len(rm.final_check_list[env_idx]),
                 "queries": [[int(q[1]), int(q[2])] for q in rm.query_list[env_idx]],
-                "steps_used": int(env.take_action_cnt[env_idx]), "step_lim": int(env.step_lim)}
+                "steps_used": int(env.take_action_cnt[env_idx]), "step_lim": int(env.step_lim),
+                # the task marked the episode invalid (make_kong's scripted discard failed, play_tic_tac_toe's opponent
+                # did not place, imitate's demonstrator failed: mark_env_unstable). RoboDojo's eval client then drops
+                # it from the eval (no result row, ``unstable_nums``): it is not a sample.
+                "unstable": int(env_idx) in (getattr(env, "unstable_envs", None) or set())}
 
     def score(self, env_idx: int = 0) -> float:
         """Episode score as RoboDojo would book it now: 1.0 on success, else process score/100."""
