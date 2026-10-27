@@ -2944,6 +2944,41 @@ def test_track_reads_are_logged_and_kept_and_perception_ops_are_per_episode(monk
     assert rep2["perception_ops"]["estimate"][0] == n1                         # not the running total
 
 
+def test_belt_tracker_reads_through_the_belt_read_when_the_service_has_it(monkeypatch):
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png")
+    env = _env()
+
+    class Belt(_HeldPosePerception):
+        def __init__(self, env):
+            super().__init__(env, lambda prior: {})
+            self.ops = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            self.ops.append("estimate")
+            return super().estimate(frames, vocabulary, fold, prior_record)
+
+        def belt_read(self, frame, vocabulary, fold):
+            self.ops.append("belt_read")
+            return super().estimate([frame], vocabulary, fold)
+
+    def program(ctx):
+        for _ in range(3):
+            ctx.prov.refresh()
+            ctx.sk.ex.hold(5)
+        return {"ok": True}
+    for mode, op in (("belt", "belt_read"), ("b1", "estimate")):
+        pc = Belt(env)
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", track_moving="on", track_read=mode),
+                            assets=FakeAssets(), perception_client=pc, program=program)
+        rep = run_episode(pol, FakeEpisode(_env()), "perception")
+        assert rep["error"] is None, rep["error"]
+        n = rep["track_reads"]
+        assert n >= 2 and pc.ops.count(op) >= n
+        if mode == "belt":
+            assert pc.ops.count("belt_read") == n                              # every tracker read, nothing else
+
+
 def test_kinematic_belief_attaches_a_narrow_pick_closed_from_below_half_open():
     """A pick that opens to less than half (a bread slice, a mallet handle, a thin mug wall: g 0.37-0.46) and then
     closes must attach its object like a wide one (breadth2 mode B: those picks read "rose 0 mm, drift = lift")."""
