@@ -2,6 +2,7 @@
 
 The perception extra (scipy, opencv) is needed; without it the module is skipped (CI installs only dev).
 """
+import json
 import textwrap
 
 import numpy as np
@@ -464,3 +465,27 @@ def test_polish_paired_texture_cannot_override_a_clearly_worse_colour():
     close.appearance = 0.13                            # colour-compatible: paired texture decides
     assert il._polish_prefers(white, close, pt, cfg)
     assert not il._polish_prefers(white, close, None, cfg)                 # no texture: the combined cost (0.25 > 0.2)
+
+
+def test_task_map_skips_candidates_without_geometry(tmp_path, monkeypatch):
+    from dojo.perception import inverse_layout as il
+
+    (tmp_path / "index.json").write_text("{}")
+    tasks = {"sweep": {"labels": {
+        "broom_shovel": {"type": "Rigid", "candidates": ["Rigid/bs/00000", "Rigid/bs/00001"]},
+        "ghost": {"type": "Rigid", "candidates": ["Rigid/ghost/00000"]}}}}
+    (tmp_path / "tasks.json").write_text(json.dumps(tasks))
+    d = tmp_path / "Rigid" / "bs" / "00000"
+    d.mkdir(parents=True)
+    np.savez(d / "geom.npz", vertices=np.zeros((3, 3)), faces=np.array([[0, 1, 2]]))
+    monkeypatch.setenv("DOJO_CATALOG", str(tmp_path))
+    il.task_map.cache_clear()
+    try:
+        with pytest.warns(UserWarning, match="no geometry"):
+            tm = il.task_map()
+        lab = tm["sweep"]["labels"]
+        assert lab["broom_shovel"]["candidates"] == ["Rigid/bs/00000"]          # the unshipped one is skipped
+        assert lab["broom_shovel"]["candidates_missing"] == ["Rigid/bs/00001"]
+        assert "ghost" not in lab                                              # nothing left to fit
+    finally:
+        il.task_map.cache_clear()

@@ -700,7 +700,31 @@ def flip_about_centroid(h: "Hypothesis") -> "Hypothesis":
 
 @lru_cache(maxsize=1)
 def task_map() -> dict:
-    return json.loads((catalog_root() / "tasks.json").read_text())
+    """``tasks.json``, minus candidates the catalogue has no geometry for. RoboDojo ships no USD for a few
+    (sweep_blocks' broom_shovel 00001 / 00004, ``catalog_check.KNOWN_UNSHIPPED``), so no layout can hold them, and
+    loading one crashed every estimate of the task. The dropped keys stay in ``candidates_missing``; a label left
+    with no candidate is dropped (nothing to fit). Each gap is warned about once."""
+    root = catalog_root()
+    tm = json.loads((root / "tasks.json").read_text())
+    gaps = []
+    for name, d in tm.items():
+        labels = d.get("labels") or {}
+        for lab in list(labels):
+            c = labels[lab].get("candidates") or []
+            keep = [k for k in c if (root / k / "geom.npz").exists()]
+            if len(keep) == len(c):
+                continue
+            gaps.append(f"{name}/{lab}: {sorted(set(c) - set(keep))}")
+            if keep:
+                labels[lab]["candidates_missing"] = [k for k in c if k not in keep]
+                labels[lab]["candidates"] = keep
+            else:
+                del labels[lab]
+    if gaps:
+        import warnings
+        warnings.warn(f"catalogue {root} has no geometry for {len(gaps)} label candidate sets, skipped: "
+                      + "; ".join(gaps[:8]) + (" ..." if len(gaps) > 8 else ""))
+    return tm
 
 
 def fixed_slot_labels(task: str) -> dict:
