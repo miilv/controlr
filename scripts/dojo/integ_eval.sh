@@ -133,8 +133,61 @@ PY
 ' _ "${args[@]}" &
 scope_pid=$!
 trap 'echo "[integ] stopping scope $UNIT" >&2; systemctl --user stop "$UNIT.scope" 2>/dev/null; kill "$scope_pid" 2>/dev/null' TERM INT
+# watchdog: a rendered episode can freeze inside a Kit step (5.1 on compute5: a zenity "Failed to open display" every 2 min,
+# no step for 44 min), where the driver's --episode-max-minutes check never runs. No env-step progress in integ_eval.log
+# for INTEG_WATCHDOG_S (300) while the whole scope burns under INTEG_WATCHDOG_CORES (0.5; planning keeps it busy): stop the
+# scope, write an infra_failure row for the frozen layout, exit 4 (the runner re-queues the layouts left once)
+WD_S="${INTEG_WATCHDOG_S:-300}" WD_CORES="${INTEG_WATCHDOG_CORES:-0.5}" WD_FIRED=""
+cg_usage() {
+  local cg; cg=$(systemctl --user show -p ControlGroup --value "$UNIT.scope" 2>/dev/null)
+  if [[ -n "$cg" && -f "/sys/fs/cgroup$cg/cpu.stat" ]]; then awk '/usage_usec/ {print $2}' "/sys/fs/cgroup$cg/cpu.stat"; else echo 0; fi
+}
+progress() {          # (episodes finished, last env step) from the driver's log
+  python3 - "$OUT/integ_eval.log" <<'PY' 2>/dev/null
+import re, sys
+t = open(sys.argv[1], "rb").read().decode("utf-8", "replace")
+s = re.findall(r"step: (?:\x1b\[[0-9;]*m)?(\d+) /", t[-40000:])
+print(t.count("[integ] "), s[-1] if s else "")
+PY
+}
+wd_tok="" wd_t=$(date +%s) wd_cpu=$(cg_usage)
+while kill -0 "$scope_pid" 2>/dev/null; do
+  sleep 20 & wait $!
+  if [[ ! -f "$OUT/integ_eval.log" ]]; then wd_t=$(date +%s) wd_cpu=$(cg_usage); continue; fi    # services booting
+  tok=$(progress)
+  if [[ "$tok" != "$wd_tok" ]]; then wd_tok=$tok wd_t=$(date +%s) wd_cpu=$(cg_usage); continue; fi
+  el=$(( $(date +%s) - wd_t ))
+  (( el < WD_S )) && continue
+  cpu=$(cg_usage)
+  if python3 -c "import sys; sys.exit(0 if ($cpu - $wd_cpu) / 1e6 / $el < $WD_CORES else 1)"; then
+    WD_FIRED="no env step for ${el} s (at step '${tok#* }'), scope CPU $(python3 -c "print(round(($cpu - $wd_cpu) / 1e6 / $el, 2))") cores"
+    echo "[integ] watchdog: $WD_FIRED: stopping the scope" >&2
+    systemctl --user stop "$UNIT.scope" 2>/dev/null; kill "$scope_pid" 2>/dev/null
+    break
+  fi
+  wd_t=$(date +%s) wd_cpu=$cpu                     # busy (planning, perception): a new window
+done
 wait "$scope_pid"
 trap - TERM INT
+if [[ -n "$WD_FIRED" ]]; then
+  python3 - "$OUT" "$TASK" "$MODE" "$VERIFY" "$WD_FIRED" "${args[@]}" <<'PY'
+import glob, json, os, sys
+out, task, mode, verify, why = sys.argv[1:6]
+rest = sys.argv[6:]
+lays = rest[rest.index("--layouts") + 1:] if "--layouts" in rest else []
+lays = lays[:next((i for i, a in enumerate(lays) if a.startswith("--")), len(lays))]
+f = os.path.join(out, f"{task}_{mode}_verify-{verify}_episodes.jsonl")
+done = {json.loads(ln).get("layout") for g in glob.glob(os.path.join(out, "*_episodes.jsonl")) for ln in open(g) if ln.strip()}
+hung = next((lf for lf in lays if lf not in done), None)
+if hung:
+    with open(f, "a") as fh:
+        fh.write(json.dumps({"task": task, "layout": hung, "layout_id": int(os.path.basename(hung).split(".")[0]), "mode": mode,
+                             "verify": verify, "success": False, "score": 0.0, "steps_used": 0, "step_lim": 0, "wall_s": 0.0,
+                             "category": "infra_failure", "why": f"watchdog: {why}", "agentic": []}) + "\n")
+    print(f"[integ] watchdog: {os.path.basename(hung)} marked infra_failure")
+PY
+  touch "$OUT/watchdog_fired"
+fi
 # a service's python child can outlive the kill of its wrapper (rdpy.sh / isaac6.sh) and keeps the scope, and the GPU
 # lock fd it inherited, alive: 2026-10-26 a twin that never got ready held ~/dojo-gpu.lock for 30 min after its job
 systemctl --user stop "$UNIT.scope" 2>/dev/null || true
@@ -143,5 +196,6 @@ echo "[integ] results: $OUT"
 exec 9>&-
 sleep "${INTEG_YIELD_S:-90}"
 [[ -f "$OUT/services_not_ready" ]] && exit 3
+[[ -f "$OUT/watchdog_fired" ]] && exit 4
 exit 0
 }
