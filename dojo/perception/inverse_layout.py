@@ -2451,6 +2451,79 @@ def _quota_copy_assets(out: list[Hypothesis], views, cfg, groups, gi, g, prior, 
     return out
 
 
+def _on_base_refit(chosen: list[Hypothesis], views, cfg, groups, pending, task) -> list[Hypothesis]:
+    """Labels the config places ON another label's object with an offset range (``relative_plane`` "<base>/...", not the
+    zero-offset stack, a support slot or a container) are searched like table objects, so B1 fits them resting on the
+    TABLE. 5.1 store_laptop: the laptop sits on its stand, B1 read the screen as a laptop lying ~180 mm behind the stand,
+    yaw flipped, on 10/10 frames (perceiver-models report §5). Once the base is chosen, the chosen object is refitted
+    resting on the base's top (``z_off``) from the base's middle with ``on_base_yaws`` yaw seeds, inside the base's
+    footprint; the refit replaces the table fit unless its silhouette loss (other objects masked) is higher by more than
+    ``on_base_margin`` (the config's own prior), and a single-candidate label the table search did not find is looked for
+    there (kept at ``on_base_found_max_loss``). The yaw then comes from the fit at the right height (store_laptop: true
+    yaw 0.45 vs flipped 0.73)."""
+    labels = task_map()[task]["labels"]
+    out = list(chosen)
+    for gi, g, prior in pending:
+        p = g["placement"]
+        rp = p.get("relative_plane", "Table")
+        if isinstance(rp, (list, tuple)) or not _on_object(rp) or p.get("xlim") in ([0, 0], [0.0, 0.0]):
+            continue
+        base = str(rp).split("/")[0]
+        if base not in labels or base in g["labels"] or labels[base].get("type") != "Geometry":
+            continue  # a static fixture base only (not a conveyor's moving belt)
+        gb = next((j for j, gg in enumerate(groups) if base in gg["labels"]), None)
+        hb = next((h for h in out if h.label_group == gb), None)
+        if hb is None or hb.per_view.get("occluded") or hb.key.split("/")[1] in CONTAINER_CATEGORIES:
+            continue  # containers: _contained_children
+        from . import contained
+
+        if contained.is_container(_cat_key(hb.key)):
+            continue
+        Tb = hb.T()
+        Vb = hb.sm().asset.V @ Tb[:3, :3].T + Tb[:3, 3]
+        top = float(Vb[:, 2].max())
+        lo, hi = Vb[:, :2].min(0), Vb[:, :2].max(0)
+        cx, cy = 0.5 * (lo + hi)
+        def fit_on_base(sm, others):
+            best = None
+            for yaw0 in np.linspace(0, sm.yaw_period, cfg.on_base_yaws, endpoint=False):
+                xr, yr, yawr, loss, per = refine(sm, float(cx), float(cy), float(yaw0), views, others, maxiter=80,
+                                                 xy_step=0.008, yaw_step=0.15, z_off=top - TABLE_Z)
+                if not (lo[0] - 0.02 <= xr <= hi[0] + 0.02 and lo[1] - 0.02 <= yr <= hi[1] + 0.02):
+                    continue
+                if best is None or loss < best[3]:
+                    best = (xr, yr, yawr, loss, per)
+            return best
+
+        def on_base_hyp(key, tag, best, blob, geom, trace):
+            h2 = Hypothesis(gi, key, tag, best[0], best[1], best[2], best[3], best[4], blob)
+            h2.per_view.update({"geom_group": geom, "z_off": top - TABLE_Z, "stacked_on": base,
+                                "sil_loss": round(float(best[3]), 4), "on_base": trace})
+            return h2
+
+        mine = [i for i, h in enumerate(out) if h.label_group == gi]
+        for i in mine:
+            h = out[i]
+            if h.per_view.get("z_off") or h.per_view.get("contained") or h.per_view.get("occluded"):
+                continue
+            others = _union_masks(out, views, skip=i, target=h)
+            cur = refine(h.sm(), h.x, h.y, h.yaw, views, others, maxiter=1, fix_yaw=True)[3]
+            best = fit_on_base(h.sm(), others)
+            # the config puts it on the base: the base-top fit wins unless it is worse than the table fit by the margin
+            if best is None or best[3] > cur + cfg.on_base_margin:
+                continue
+            out[i] = on_base_hyp(h.key, h.tag, best, h.blob, h.per_view.get("geom_group", [h.key]),
+                                 {"table_loss": round(float(cur), 4), "loss": round(float(best[3]), 4)})
+        if len(mine) < len(g["labels"]) and len(g["candidates"]) == 1:  # not found on the table: look on the base
+            key = g["candidates"][0]
+            sms = [s_ for s_ in shape_models(key) if not prior.get("place_tag") or s_.tag == prior["place_tag"]] or list(shape_models(key))
+            others = _union_masks(out, views)
+            best = fit_on_base(sms[0], others)
+            if best is not None and best[3] <= cfg.on_base_found_max_loss:
+                out.append(on_base_hyp(key, sms[0].tag, best, -1, [key], {"found_on_base": True, "loss": round(float(best[3]), 4)}))
+    return out
+
+
 def _contained_children(chosen: list[Hypothesis], views, cfg, groups, pending, task) -> list[Hypothesis]:
     """Rigid labels the config places on a static (Geometry) container base label (``contained.is_container``: a floor
     under a rim), once that base is chosen: the group's chosen
@@ -3006,6 +3079,10 @@ class EstimatorConfig:
     # objects placed inside a static container base (fill_egg_holder's eggs in the egg basket): fitted on the base's
     # top surface to the evidence that interrupts its texture, only their pixels in front of it counted (contained.py)
     contained_children: bool = True
+    on_base_refit: bool = False  # a child placed on another label's object with an offset range: refit on the base's top
+    on_base_margin: float = 0.03  # ... replaces the table fit unless its silhouette loss is higher by more than this
+    on_base_yaws: int = 8  # ... yaw seeds
+    on_base_found_max_loss: float = 0.5  # ... and a label the table search did not find is found there at this loss
     # identity by learned image embeddings (embed_id.py). None = off; a model name ("dinov2_s", "dinov2_b", "siglip2_b",
     # "clip_l") makes the belt read (belt.belt_read, conveyor scenes) pick each blob's asset by crop-vs-catalogue-render
     # similarity minus embed_weight x our fit loss, fitting the picked asset when our proposals did not
@@ -3464,6 +3541,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         chosen = _category_quota(chosen, views, cfg, groups, pending, task)
     if cfg.contained_children:
         chosen = _contained_children(chosen, views, cfg, groups, pending, task)
+    if cfg.on_base_refit:
+        chosen = _on_base_refit(chosen, views, cfg, groups, pending, task)
     timings["polish_s"] = round(time.time() - t3, 3)
 
     # ---- joint refinement on the union of the others
@@ -3679,7 +3758,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                                 ("sign_ok", "tail_mm", "ratio_axis", "ratio_flip", "camera")}}
                                   if h.per_view.get("top_feature") else {}),
                                **({"quota": h.per_view["quota"]} if h.per_view.get("quota") else {}),
-                               **({"contained": h.per_view["contained"]} if h.per_view.get("contained") else {})}}
+                               **({"contained": h.per_view["contained"]} if h.per_view.get("contained") else {}),
+                               **({"on_base": h.per_view["on_base"]} if h.per_view.get("on_base") else {}),
+                               **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []
