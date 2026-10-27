@@ -699,6 +699,20 @@ def flip_about_centroid(h: "Hypothesis") -> "Hypothesis":
 # --------------------------------------------------------------------------------------------
 
 @lru_cache(maxsize=1)
+def scene_keys(vocabulary: str | None) -> tuple:
+    """Asset keys of a candidate set's scene fixtures (its ``Dynamic`` / ``Geometry`` candidates, sorted). They pick a
+    scene background (``segment.with_scene``): a conveyor belt or a basket that replaces the table in the head view.
+    Keyed by the scene's assets, never by the set's name. Unknown set: ()."""
+    if not vocabulary:
+        return ()
+    try:
+        labels = task_map()[vocabulary]["labels"]
+    except Exception:  # noqa: BLE001 (an unknown set, or no catalogue: the table backgrounds)
+        return ()
+    return tuple(sorted({k for d in labels.values() if d.get("type") in ("Dynamic", "Geometry")
+                         for k in d.get("candidates") or []}))
+
+
 def task_map() -> dict:
     """``tasks.json``, minus candidates the catalogue has no geometry for. RoboDojo ships no USD for a few
     (sweep_blocks' broom_shovel 00001 / 00004, ``catalog_check.KNOWN_UNSHIPPED``), so no layout can hold them, and
