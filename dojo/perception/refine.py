@@ -19,6 +19,13 @@
 - ``held``: (key, pose7) or a list of them: objects in the gripper (at a place hover the carried block is
   between the camera and the support): masked as occluders. Without it, place-time refines of the support
   mostly fail (integration: 15/44 ok, IoU ~0.24).
+- ``search_radius`` (m, default none = the local search only): the prior's uncertainty (a belt rider's head-view track).
+  When the prior's own refine is not ok, shifted priors on a coarse grid over the radius, in every resting shape of
+  the asset, are scored with their own local colour models; the best few are refined in full; the best ok fit wins
+  (``radius_search`` reports what was tried). A caller raises its accepted shift with it.
+- ``empty_hand``: nothing is in the jaws, so a gripper commanded below half open is a pre-shape, and no held box is
+  masked between the fingertips (by default a command below 0.5 counts as a grip: the strict tier has no finger
+  measurement).
 - ``refine_identity(obj_ids, ...)``: the same for several candidate assets (shape swaps such as
   build_tower's board / prism / pillar): the lowest residual wins, with a margin.
 - Returns also ``iou``, ``visible_frac`` (share of the silhouette not under the robot / out of view),
@@ -132,7 +139,8 @@ def _shape_for(key: str, R: np.ndarray, tag: str | None):
 def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm: str = "left",
            tag: str | None = None, bgs: dict | None = None, others: list | None = None, iters: int = 60,
            xy_starts: float = 0.015, seg: str = "local", held=None, search: bool = True,
-           support_snap: bool = True, edge_fallback: bool = True) -> dict:
+           support_snap: bool = True, edge_fallback: bool = True, search_radius: float | None = None,
+           empty_hand: bool = False) -> dict:
     if support_snap and others:
         # a prior floating above every known support under it (a carried-height belief after a release; 5.1 stack
         # 100007 s142: 56 mm up, iou 0.0): also refine from the prior lowered onto that support. The local masks are
@@ -145,13 +153,18 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         drop = lo - support_z(a_t, prior_pose, others)
         if drop > SUPPORT_FLOAT_M:
             kw = dict(tag=tag, bgs=bgs, others=others, iters=iters, xy_starts=xy_starts, seg=seg, held=held,
-                      search=search, support_snap=False, edge_fallback=edge_fallback)
+                      search=search, support_snap=False, edge_fallback=edge_fallback, search_radius=search_radius,
+                      empty_hand=empty_hand)
             out_a = refine(obj_id, wrist_frame, proprio, prior_pose, arm, **kw)
             prior_b = [float(prior_pose[0]), float(prior_pose[1]), float(prior_pose[2]) - drop] + list(map(float, prior_pose[3:]))
             out_b = refine(obj_id, wrist_frame, proprio, prior_b, arm, **kw)
             if out_b["ok"] and out_b["iou"] >= out_a["iou"] + SUPPORT_GAIN_IOU:
                 return {**out_b, "z_dropped_mm": round(1000 * drop, 1), "iou_at_prior_height": out_a["iou"]}
             return {**out_a, "support_tried": {"z_dropped_mm": round(1000 * drop, 1), "iou": out_b["iou"], "ok": out_b["ok"]}}
+    if search_radius and search_radius > xy_starts and seg == "local":
+        return _radius_refine(obj_id, wrist_frame, proprio, prior_pose, arm, search_radius,
+                              dict(tag=tag, bgs=bgs, others=others, iters=iters, xy_starts=xy_starts, seg=seg, held=held,
+                                   search=search, support_snap=False, edge_fallback=edge_fallback, empty_hand=empty_hand))
     t0 = time.time()
     bgs = _backgrounds(bgs) if seg != "local" else bgs
     cam = wrist_camera(arm, np.asarray(proprio[f"{arm}_arm_joint_state"], dtype=float))
@@ -162,7 +175,7 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
 
         a = load_asset(obj_id)
         sil = silhouette(cam, transform(a.Vs, T_prior), a.Fs)
-        rob = robot_mask(cam, proprio, dilate_px=3)
+        rob = robot_mask(cam, proprio, dilate_px=3, closed_jaws=not empty_hand)
         # a held object (e.g. the block carried to a place) sits between the camera and the target: treat its
         # silhouette as an occluder, so it neither trains the table colour model nor counts as foreground
         for hk, hp in ([held] if held and isinstance(held[0], str) else (held or [])):
@@ -414,6 +427,71 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
                                                        searched["suggest_xy"][1] - T0[1, 3]) * 1000), 1)
         out["suggest_score"] = searched["score"]
     return out
+
+
+SEARCH_RADIUS_STEP = 0.02     # m, the coarse grid over a caller's search radius
+SEARCH_RADIUS_TOP = 3         # best grid candidates refined in full
+SEARCH_RADIUS_MIN_IOU = 0.15  # a grid candidate explains this much of its own local foreground at least
+
+
+def _radius_refine(obj_id, wrist_frame, proprio, prior_pose, arm, radius, kw) -> dict:
+    """refine() over a caller's search radius (the prior's uncertainty: a belt rider's head-view track is 3-6 cm off
+    at the end of the approach; Memory, 5.1 conveyor). The prior's own refine first; when it is not ok, a coarse grid
+    of shifted priors over the radius, in each of the asset's resting shapes, each scored by how well its silhouette
+    explains the foreground of its OWN local colour model (a single colour model over the whole search area fails at
+    a close hover: the area fills the frame and leaves no table to sample); the best few are refined in full, and the
+    best ok fit wins (highest IoU, then nearest). Not ok: the prior's own result, with what the search saw."""
+    from .render import robot_mask
+
+    t0 = time.time()
+    base = refine(obj_id, wrist_frame, proprio, prior_pose, arm, **kw)
+    if base["ok"]:
+        return {**base, "radius_search": {"radius_mm": round(1000 * radius, 1), "used": False}}
+    cam = wrist_camera(arm, np.asarray(proprio[f"{arm}_arm_joint_state"], dtype=float))
+    rob = robot_mask(cam, proprio, dilate_px=3, closed_jaws=not kw.get("empty_hand", False))
+    T0 = pose_to_T(prior_pose[:3], prior_pose[3:])
+    sm0 = _shape_for(obj_id, T0[:3, :3], kw.get("tag"))
+    Rz = T0[:3, :3] @ sm0.R0.T
+    yaw0 = float(np.arctan2(Rz[1, 0], Rz[0, 0]))
+    z_off = float(T0[2, 3] - (TABLE_Z - sm0.zmin))  # the support's height: kept for every resting shape
+    n = max(1, int(round(radius / SEARCH_RADIUS_STEP)))
+    grid = np.linspace(-radius, radius, 2 * n + 1)
+    cands = []
+    for sm in shape_models(obj_id):
+        for dx in grid:
+            for dy in grid:
+                if np.hypot(dx, dy) > radius * 1.0001 or not (dx or dy or sm.tag != sm0.tag):
+                    continue  # a disc; the prior itself in its own shape was refined above
+                T = sm.pose(T0[0, 3] + dx, T0[1, 3] + dy, yaw0)
+                T[2, 3] += z_off
+                sil = sm.sil(cam, T).astype(np.uint8)
+                n_s = float(sil.sum())
+                if n_s < 30:
+                    continue
+                fg, kn = local_foreground(wrist_frame, cam, sil, rob)
+                sk = sil & kn
+                if float(sk.sum()) < 0.5 * n_s:  # mostly out of view or under the robot
+                    continue
+                iou = float((sk & fg).sum()) / max(float(((sil | fg) & kn).sum()), 1.0)
+                if iou >= SEARCH_RADIUS_MIN_IOU:
+                    cands.append((iou, float(np.hypot(dx, dy)), sm.tag, T))
+    cands.sort(key=lambda c: (-c[0], c[1]))
+    best, tried = None, []
+    for iou_g, d, tag, T in cands[:SEARCH_RADIUS_TOP]:
+        prior_g = np.r_[T[:3, 3], R_to_quat_wxyz(T[:3, :3])].tolist()
+        out = refine(obj_id, wrist_frame, proprio, prior_g, arm, **{**kw, "tag": tag, "search": False})
+        tried.append({"offset_mm": round(1000 * d, 1), "tag": tag, "grid_iou": round(iou_g, 3), "iou": out["iou"],
+                      "ok": out["ok"]})
+        if out["ok"] and (best is None or out["iou"] > best["iou"] + 0.02):
+            best = out
+    info = {"radius_mm": round(1000 * radius, 1), "used": best is not None, "grid": len(cands), "tried": tried,
+            "time_s": round(time.time() - t0, 3)}
+    if best is None:
+        return {**base, "radius_search": info}
+    T = pose_to_T(best["pose"][:3], best["pose"][3:])
+    d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
+    return {**best, "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1),
+            "turned_deg": round(float(d_rot), 1), "time_s": round(time.time() - t0, 3), "radius_search": info}
 
 
 EMPTY_FIT_IOU = 0.2       # the prior's resting shape fitting this little of an object in view: try its other ones ...
@@ -758,7 +836,8 @@ def refine_identity(obj_ids: list[str], wrist_frame: np.ndarray, proprio: dict, 
     current = ids[0]  # the belief's identity
     if len(ids) > max_full:  # screen with a short single-start fit, then the full refine on the best few
         quick = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **{**kw, "iters": 15, "xy_starts": 0.0,
-                                                                            "search": False}) for k in ids}
+                                                                            "search": False, "search_radius": None})
+                 for k in ids}
         ids = [k for k, _ in sorted(quick.items(), key=lambda kv: kv[1]["residual"])[:max_full]]
         ids = ids if current in ids else [current] + ids[:max_full - 1]
     outs = {k: refine(k, wrist_frame, proprio, prior_pose, arm=arm, **kw) for k in ids}

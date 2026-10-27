@@ -10,7 +10,8 @@ Ops (request dicts):
         one frame = inverse layout; several = ``look.fuse`` (first frame + later views, objects static)
     {"op": "look_plan", "frame": frame, "record": dict, "max_looks": 2}            -> {"plan": [...]}
     {"op": "look_poses", "target": xyz, "arm": str, "variants": [(dist, elev)]}    -> {"poses": [...]}
-    {"op": "refine", "frame": frame, "objects": [{label, key, pos, quat}], "fold"} -> {"refine": {label: ...}}
+    {"op": "refine", "frame": frame, "objects": [{label, key, pos, quat}], "fold"[, "search_radius", "empty_hand"]}
+        -> {"refine": {label: ...}}
         local (x, y, yaw) re-fit of each object from its given pose on this frame (pre-contact wrist refine)
     {"op": "check", "frame": frame, "objects": [{label, key, pos, quat}], "fold"}  -> {"check": {label: ...}}
         per object at the GIVEN pose and per view: ``prec`` = fraction of the pixels where it is predicted
@@ -153,15 +154,22 @@ class PerceptionClient:
                                       "variants": variants})["poses"])
 
     def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None,
-               identity_vocabulary: str | None = None, held=None) -> dict:
+               identity_vocabulary: str | None = None, held=None, search_radius: float | None = None,
+               empty_hand: bool = False) -> dict:
         """Pre-contact refine of ``objects[0]`` from ``arm``'s wrist view (perception's ``refine()``); the other
         objects are occluders, ``held`` = (key, pose7) of the object in the jaws (masked: at a place hover it sits
         between the camera and the support). With ``identity_vocabulary``: ``refine_identity`` over that
-        vocabulary's distinct shapes. Returns {label: {"ok", "pos", "quat", "shift_mm", "obj_id", ...}}."""
-        return json.loads(self._call({"op": "refine", "frame": encode_frame(frame), "objects": objects, "fold": int(fold),
-                                      "max_shift_m": float(max_shift_m), "arm": arm,
-                                      "identity_vocabulary": identity_vocabulary,
-                                      "held": None if held is None else [held[0], [float(v) for v in held[1]]]})["refine"])
+        vocabulary's distinct shapes. ``search_radius`` (m): the prior's uncertainty, searched with a coarse grid
+        before the local fit (raise ``max_shift_m`` with it). ``empty_hand``: nothing in the jaws (a pre-grasp opening
+        below half is then not masked as a grip with a held box between the fingertips). Returns {label: {"ok", "pos", "quat", "shift_mm", ...}}."""
+        req = {"op": "refine", "frame": encode_frame(frame), "objects": objects, "fold": int(fold),
+               "max_shift_m": float(max_shift_m), "arm": arm, "identity_vocabulary": identity_vocabulary,
+               "held": None if held is None else [held[0], [float(v) for v in held[1]]]}
+        if search_radius:
+            req["search_radius"] = float(search_radius)
+        if empty_hand:
+            req["empty_hand"] = True
+        return json.loads(self._call(req)["refine"])
 
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
@@ -512,7 +520,8 @@ class _Perception:
         return reps
 
     def refine(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03, arm: str | None = None,
-               identity_vocabulary: str | list | None = None, held=None) -> dict:
+               identity_vocabulary: str | list | None = None, held=None, search_radius: float | None = None,
+               empty_hand: bool = False) -> dict:
         """``objects[0]`` re-measured from ``arm``'s wrist frame by perception's ``dojo.perception.refine.refine``
         (accepted when its ``ok`` holds and the shift stays below ``max_shift_m``); without that module, the
         local fit below on every view."""
@@ -529,6 +538,10 @@ class _Perception:
                 import inspect
                 if "held" in inspect.signature(p_refine).parameters:
                     kw["held"] = (held[0], list(held[1]))
+            if search_radius:
+                kw["search_radius"] = float(search_radius)
+            if empty_hand:
+                kw["empty_hand"] = True
             img, prior = f["images"][f"cam_{arm}_wrist"], list(o["pos"]) + list(o["quat"])
             if isinstance(identity_vocabulary, (list, tuple)):      # explicit candidate keys (target_ranking top-k)
                 cands = [o["key"]] + [k for k in identity_vocabulary if k != o["key"]]
@@ -553,7 +566,7 @@ class _Perception:
                                  "p_why": r.get("why"), "truncated_frac": r.get("truncated_frac"),
                                  "z_dropped_mm": r.get("z_dropped_mm"),
                                  "suggest_xy": sug, "suggest_shift_mm": r.get("suggest_shift_mm"),
-                                 "searched": r.get("searched"),
+                                 "searched": r.get("searched"), "radius_search": r.get("radius_search"),
                                  "quat": None if pose is None else pose[3:7].tolist(),
                                  "shift_mm": None if shift is None else round(shift * 1000, 1),
                                  "iou": r.get("iou"), "visible_frac": r.get("visible_frac"),
@@ -721,7 +734,7 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "refine":
                         ref = p.refine(req["frame"], req["objects"], int(req.get("fold", 0)),
                                        float(req.get("max_shift_m", 0.03)), req.get("arm"), req.get("identity_vocabulary"),
-                                       req.get("held"))
+                                       req.get("held"), req.get("search_radius"), bool(req.get("empty_hand")))
                         conn.send({"ok": True, "refine": json.dumps(ref, default=_default)})
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
