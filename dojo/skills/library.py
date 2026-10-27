@@ -2450,6 +2450,12 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     # every low hook used is a hard carry under the arms above it (v2: top hooks 8/8, low ones 4/10)
     pool = [l for l in objects if l in w.objects]
     order = hook_order(hooks, len(pool))
+    # a re-planned episode (the runtime found that a released mug fell, #119, and re-plans) starts with the others on
+    # their hooks: they are done, their hooks taken (else the re-plan would take a hung mug off its hook)
+    already = {lab: hi for lab in pool for hi in [on_hook(w.obj(lab), hooks, handle_tag)] if hi is not None}
+    if already:
+        sk.log(f"[hang] already on hooks: {already}")
+        pool = [l for l in pool if l not in already]
 
     def plan_hook(lab: str, hi: int, H, tip, q_start=None):
         """(lab, hook, H, T_obj, T_pre, (pick, place)) for hanging ``lab`` on hook ``hi`` with one arm, or a note."""
@@ -2524,7 +2530,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                     return lab, T_sp, leg
         return None
     relays = 2
-    used, done, failed, retried = set(), [], [], set()
+    used, done, failed, retried = set(already.values()), list(already), [], set()
     for _round in range(2 * len(pool)):
         if not pool:
             break
@@ -2625,10 +2631,9 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         except (BudgetExceeded, EpisodeEnded) as e:
             return {"ok": False, "stage": f"hang {lab}", "note": str(e)}
         o2 = sk.refresh().obj(lab)
-        hs = functional_frames(o2, handle_tag, active=True)
-        hp = (o2.T @ hs[0])[:3, 3] if hs else o2.pos
+        hp = handle_point(o2, handle_tag)
         d = float(np.linalg.norm(hp - H[:3, 3]))
-        ok = d < 0.045 and hp[2] > H[2, 3] - 0.03
+        ok = on_hook(o2, [(hi, H, tip)], handle_tag) is not None
         sk._record(SkillResult(ok, "hang", "ok" if ok else "place_miss", 0, arm,
                                note=f"{lab} handle {d*1000:.0f} mm from hook {hi}, z {hp[2]:.3f}"))
         (done if ok else failed).append(lab)
@@ -2640,6 +2645,22 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if failed:
         return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
     return {"ok": True, "stage": "hang"}
+
+
+def handle_point(o, handle_tag: str = "handle") -> np.ndarray:
+    """World position of ``o``'s (first active) handle frame, else its origin."""
+    hs = functional_frames(o, handle_tag, active=True)
+    return (o.T @ hs[0])[:3, 3] if hs else o.pos
+
+
+def on_hook(o, hooks, handle_tag: str = "handle"):
+    """Index of the hook (``(i, H, tip)`` frames) ``o`` hangs on: its handle within 45 mm of the hook frame and not
+    more than 3 cm below it (hang_on_hooks' post-release check); None."""
+    hp = handle_point(o, handle_tag)
+    for hi, H, _ in hooks:
+        if float(np.linalg.norm(hp - H[:3, 3])) < 0.045 and hp[2] > H[2, 3] - 0.03:
+            return hi
+    return None
 
 
 def _hang_exit(sk: Skills, arm: str, lab: str, back: float = 0.06) -> None:
