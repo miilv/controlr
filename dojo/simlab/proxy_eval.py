@@ -32,6 +32,7 @@ from pathlib import Path
 import numpy as np
 
 from dojo.simlab import paths
+from dojo.simlab.gripobs import GripObs
 from dojo.simlab.runner import RoboDojoRunner, jsonable
 
 PROXY_TAG = "proxy: isaac-5.1 physics-only + isaac-6.0 render on demand (not the official renderer)"
@@ -89,6 +90,7 @@ class ProxyEpisode:
         self.workdir = Path(workdir)
         self.run = RoboDojoRunner(task, physics_only=True, need_planner=False, workdir=str(self.workdir / "work"))
         self.n_obs = 0
+        self.grip = GripObs()                  # DOJO_GRIP_OBS: RoboDojo's gripper reading or the strict command
 
     def reset(self, layout: dict) -> dict:
         t0 = time.perf_counter()
@@ -98,6 +100,7 @@ class ProxyEpisode:
         stage = self.run.export_stage(self.workdir / "stage_current.usd")
         t_load = self.r.load_stage(str(stage), self.run.camera_spec())
         self.n_obs = 0
+        self.grip.reset()
         return {"stable": True, "task": self.task, "layout_id": (layout.get("_simlab") or {}).get("id"),
                 "instruction": info["instruction"][0], "step_lim": int(self.run.env.step_lim),
                 "reset_s": time.perf_counter() - t0, "render_stage_s": t_load}
@@ -107,10 +110,11 @@ class ProxyEpisode:
         res = self.r.render(self.run.gt(0))
         self.n_obs += 1
         rw = self.run.reward(0)
-        return {"images": res["images"], "state": o["state"], "instruction": o["instruction"],
+        return {"images": res["images"], "state": self.grip.apply(o["state"]), "instruction": o["instruction"],
                 "steps_used": rw["steps_used"], "step_lim": rw["step_lim"], "renderer": res["renderer"]}
 
     def step(self, action: dict) -> bool:
+        self.grip.stepped(action)
         return bool(self.run.step(action)[0])
 
     def result(self) -> dict:
@@ -132,6 +136,7 @@ class RenderedEpisode:
         self.workdir = Path(workdir)
         self.run = RoboDojoRunner(task, physics_only=False, need_planner=False, workdir=str(self.workdir / "work"))
         self.n_obs = 0
+        self.grip = GripObs()
 
     def reset(self, layout: dict) -> dict:
         t0 = time.perf_counter()
@@ -139,6 +144,7 @@ class RenderedEpisode:
         if not info["stable"]:
             return {"stable": False}
         self.n_obs = 0
+        self.grip.reset()
         return {"stable": True, "task": self.task, "layout_id": (layout.get("_simlab") or {}).get("id"),
                 "instruction": info["instruction"][0], "step_lim": int(self.run.env.step_lim),
                 "reset_s": time.perf_counter() - t0, "render_stage_s": 0.0}
@@ -147,10 +153,11 @@ class RenderedEpisode:
         o = self.run.obs(0)
         self.n_obs += 1
         rw = self.run.reward(0)
-        return {"images": o["images"], "state": o["state"], "instruction": o["instruction"],
+        return {"images": o["images"], "state": self.grip.apply(o["state"]), "instruction": o["instruction"],
                 "steps_used": rw["steps_used"], "step_lim": rw["step_lim"], "renderer": self.renderer}
 
     def step(self, action: dict) -> bool:
+        self.grip.stepped(action)
         return bool(self.run.step(action)[0])
 
     def result(self) -> dict:
@@ -276,7 +283,7 @@ def run_eval(task: str, layout_files: list[str], policy, out: Path, dev_layout_i
               f"observe {res['observe_s_median']:.2f}s (render {np.median(rc.render_s[-len(obs_s):]):.2f}s) "
               f"reset {info['reset_s']:.1f}s + stage {info['render_stage_s']:.1f}s", flush=True)
     ok = [d for d in details.values() if not d.get("unstable")]
-    result = {"proxy": PROXY_TAG, "task": task, "eval_time": len(ok),
+    result = {"proxy": PROXY_TAG, "task": task, "eval_time": len(ok), "grip_obs": ep.grip.mode,
               "success_rate": float(np.mean([d["success"] for d in ok])) if ok else 0.0,
               "score": float(np.mean([d["score"] for d in ok])) * 100 if ok else 0.0,
               "render_s_median": float(np.median(rc.render_s)) if rc.render_s else None,

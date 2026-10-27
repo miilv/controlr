@@ -30,6 +30,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `ASSETS_PINS` | same | optional: another RoboDojo Asset list than `scripts/infra/pins/robodojo_assets.txt` (partial installs, tests) |
 | `BOX_DRIVER_OK` / `PREFLIGHT_NET` | same (preflight) | driver majors accepted for Isaac Sim 5.1 rendering (default `570 580`); `PREFLIGHT_NET=0` skips the network probes (unit tests) |
 | `DOJO_REPLAY_TRAJ` | a 5.1 box (`dev_eval.sh --policy dojo_replay`) | trajectory JSON the XPolicyLab policy `dojo_replay` replays (bootstrap smoke) |
+| `DOJO_GRIP_OBS` | any dev harness (integ_eval / proxy_eval / G3) | `robodojo` (default): the policy reads RoboDojo's `{arm}_ee_joint_state`, the APPLIED gripper control (it follows the measured fingers within 0.2 of the range); `command`: the strict server's contract instead, the last commanded value (`dojo/simlab/gripobs.py`; recorded per row as `grip_obs`) |
 | `BOOT_RUNS_DIR` | local (`bootstrap_gpu_box.sh`, `bootstrap_fleet.sh`) | where the local logs, `summary.tsv`, fleet dirs and the fleet key go (default `runs/bootstrap`; tests use a tmp dir) |
 | `FLEET_WAIT_S` / `FLEET_POLL_S` / `FLEET_TICK_S` | same (fleet) | how long a box waits for a fleet peer to have a set before fetching from the origin itself (default 5400 s), how often it looks (15 s), how often the fleet prints progress (10 s) |
 | `ISAAC6_SRC` | same | where compute3's Isaac Sim 6.0 is copied from (default `/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0`) |

@@ -200,7 +200,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         v = rep.get("verify")
         row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "preset": cfg.preset,
                "time_capped": capped,
-               "renderer": renderer,
+               "renderer": renderer, "grip_obs": getattr(getattr(ep, "grip", None), "mode", None),
                "success": bool(res["success"]), "score": float(res["score"]), "steps_used": int(res["steps_used"]),
                "step_lim": int(res["step_lim"]), "observations": int(res["observations"]), "wall_s": round(wall, 1),
                "sim_s": round(sim_s, 1), "observe_s": round(float(np.sum(obs_s)), 1),
@@ -241,6 +241,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         if row["missing_meshes"]:
             print(f"[integ] WARNING {lid}: no catalogue mesh for {row['missing_meshes']} (bboxes stood in)", flush=True)
     summ = summarize(rows, task, cfg)
+    summ["grip_obs"] = getattr(getattr(ep, "grip", None), "mode", None)      # dojo.simlab.gripobs (DOJO_GRIP_OBS)
     if renderer == "isaac51":
         summ["proxy"] = RENDERED_TAG
         summ["renderer"] = renderer

@@ -293,6 +293,7 @@ def cmd_run(a) -> None:
         rec["log"] = logs[-60:]
         rec["code"] = code
         rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
+        rec["grip_obs"] = os.environ.get("DOJO_GRIP_OBS", "robodojo")        # dojo.simlab.gripobs (RunnerEnv)
         rows.append(rec)
         with summ_p.open("a") as f:
             f.write(json.dumps(rec, default=str) + "\n")
