@@ -23,6 +23,10 @@ Worker environment (on top of j1_adapter.install_env):
   AGENTIC_SNAP        1 (default): agent objects within 2 cm of a confident B1 object (risk < AGENTIC_GATE_THR) of the
                       same kind take B1's pose (agent: identity / labels / missing objects; B1: metric pose)
   AGENTIC_REFINE      1 (default): B1's render-and-compare refines the agent's new / moved objects (seed_refine.py)
+  AGENTIC_ARBITRATE   1 (default): an agent pose that moves or turns one of B1's objects stands only when its silhouette
+                      explains this frame + the extra observations (the scan) better than B1's pose by
+                      AGENTIC_ARB_MARGIN (default 0.0; AGENTIC_ARB_PINNED_MARGIN, default 0.15, for objects B1 placed
+                      at their config slot); else B1's pose and asset stay (seed_refine.arbitrate)
   AGENTIC_TRACK       auto (default: on with gate=budget) | 1 | 0: the episode tracker (dojo.perception.tracker) over the
                       B1-gated calls, initialised from the agent's answer
   AGENTIC_HELD        held_look source: b1_then_agent (default: B1's answer unless its confidence < 0.5 or dark_risk,
@@ -132,6 +136,9 @@ def _cfg(kw: dict) -> dict:
             "max_per_episode": int(kw.get("max_per_episode") or os.environ.get("AGENTIC_MAX_PER_EPISODE", 2)),
             "track": str(kw.get("track", os.environ.get("AGENTIC_TRACK", "auto"))),
             "gate_thr": float(kw.get("gate_thr") or os.environ.get("AGENTIC_GATE_THR", 0.2)),
+            "arbitrate": str(kw.get("arbitrate", os.environ.get("AGENTIC_ARBITRATE", "1"))) not in ("0", "false", "False"),
+            "arb_margin": float(kw.get("arb_margin") or os.environ.get("AGENTIC_ARB_MARGIN", 0.0)),
+            "arb_pinned_margin": float(kw.get("arb_pinned_margin") or os.environ.get("AGENTIC_ARB_PINNED_MARGIN", 0.15)),
             "log_dir": Path(kw.get("log_dir") or os.environ.get("AGENTIC_LOG_DIR", str(home / "run" / "agentic")))}
 
 
@@ -289,6 +296,7 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
                 probs.append(f"objects[{i}]: bad yaw_deg")
         if a.get("keep") is None:
             o["source"] = "head"
+            o["_agent_point"] = True  # the agent's own point (a head-plane hit), not one of B1's poses
         if "label" not in o or "pos" not in o:
             probs.append(f"objects[{i}]: needs label and pos")
             continue
@@ -356,6 +364,7 @@ def snap_to_b1(objects: list[dict], b1: dict | None, thr: float = 0.2, radius_m:
             q = dict(o)
             q.update({k: b[k] for k in ("pos", "quat", "asset", "size", "top_z", "category") if b.get(k) is not None})
             q["source"] = b.get("source", "head")
+            q.pop("_agent_point", None)
             out.append(q)
         else:
             out.append(o)
@@ -454,6 +463,64 @@ def gate_decision(b1: dict | None, want, prior, cfg: dict) -> tuple[bool, str]:
     return False, "b1_confident"
 
 
+def _extra_views(extra_obs, grip_cmd) -> list[tuple[dict, dict, dict]]:
+    """``extra_obs`` (other observations of the same scene, e.g. the scan) -> [(images, state, cams)]; the robot mask
+    from IK on each observation's measured flange."""
+    out = []
+    for ob in extra_obs or []:
+        try:
+            st_, _ = _b1._state(ob.get("flange") or {}, grip_cmd or {}, ob.get("joints"), None)
+            out.append((_b1._load_frames(ob["frames"]), st_, _b1._cameras(ob["calib"])))
+        except Exception:  # noqa: BLE001 (an unreadable extra view only weakens the check)
+            continue
+    return out
+
+
+def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd, cfg: dict, joints=None,
+                  instruction: str = "", **kw) -> tuple[list[dict], list[dict], str, list[str], dict | None]:
+    """The agent's answer -> (objects, needs_look, source, problems, refine info): snap to B1, keep B1's unmentioned
+    objects, H2 (B1's render-and-compare from the agent's points), then the arbitration against B1 (``cfg["arbitrate"]``,
+    ``seed_refine.arbitrate``): an agent pose that MOVES or TURNS one of B1's objects stands only when it explains the
+    views (this frame + ``kw["extra_obs"]``, e.g. the scan) better than B1's pose. No LLM here: replays use it as is."""
+    objects, looks, probs = answer_to_output(answer, b1)
+    src, ref_info = "agent", None
+    if cfg["snap"] and b1 is not None:
+        objects, n_snap = snap_to_b1(objects, b1, thr=cfg["gate_thr"])
+        if n_snap:
+            probs.append(f"snapped_to_b1={n_snap}")
+    if cfg["keep_unmentioned"] and b1 is not None:
+        objects, n_kept = add_unmentioned(objects, b1)
+        if n_kept:
+            probs.append(f"b1_unmentioned_kept={n_kept}")
+    if cfg["refine"] and b1 is not None and objects:
+        try:  # H2: B1's render-and-compare from the agent's points (new / moved / orientation-less objects)
+            from ..segment import load_backgrounds
+            from .seed_refine import arbitrate, build_views, seeded_refine
+
+            bgs = kw.get("bgs") or _b1._BG.get("bg")
+            if bgs is None:
+                bgs = _b1._BG["bg"] = load_backgrounds()
+            state, _ = _b1._state(flange, grip_cmd or {}, joints, kw.get("gripper"))
+            imgs, cams = _b1._load_frames(frames), _b1._cameras(calib)
+            task = kw.get("task") or b1.get("task") or _b1.infer_task(instruction)
+            objects, ref_info = seeded_refine(imgs, state, cams, task, objects, b1.get("objects") or [], bgs)
+            src = "agent+refine"
+            if cfg.get("arbitrate"):
+                views = build_views(imgs, state, cams, bgs, _extra_views(kw.get("extra_obs"), grip_cmd))
+                objects, arb = arbitrate(views, objects, b1.get("objects") or [], margin=cfg.get("arb_margin", 0.0),
+                                         pinned_margin=cfg.get("arb_pinned_margin", 0.15))
+                ref_info = list(ref_info or []) + [dict(a, arbitration=True) for a in arb]
+                n_kept = sum(1 for a in arb if a.get("kept") == "b1")
+                if n_kept:
+                    probs.append(f"arbitration_kept_b1={n_kept}")
+        except Exception as e:
+            probs.append(f"refine: {type(e).__name__}: {e}")
+    if not kw.get("keep_markers"):  # replays arbitrate the same H2 output themselves
+        for o in objects:
+            o.pop("_agent_point", None)
+    return objects, looks, src, probs, ref_info
+
+
 def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joints=None, prior=None, b1=None, chat=None,
                   **kw) -> dict:
     """Worker side. ``b1``: a precomputed B1 output (dev harness); else B1 runs here when AGENTIC_B1=1.
@@ -506,31 +573,8 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
     probs = []
     ref_info = None
     if st["answer"] is not None:
-        objects, looks, probs = answer_to_output(st["answer"], b1)
-        src = "agent"
-        if cfg["snap"] and b1 is not None:
-            objects, n_snap = snap_to_b1(objects, b1, thr=cfg["gate_thr"])
-            if n_snap:
-                probs.append(f"snapped_to_b1={n_snap}")
-        if cfg["keep_unmentioned"] and b1 is not None:
-            objects, n_kept = add_unmentioned(objects, b1)
-            if n_kept:
-                probs.append(f"b1_unmentioned_kept={n_kept}")
-        if cfg["refine"] and b1 is not None and objects:
-            try:  # H2: B1's render-and-compare from the agent's points (new / moved / orientation-less objects)
-                from ..segment import load_backgrounds
-                from .seed_refine import seeded_refine
-
-                bgs = kw.get("bgs") or _b1._BG.get("bg")
-                if bgs is None:
-                    bgs = _b1._BG["bg"] = load_backgrounds()
-                state, _ = _b1._state(flange, grip_cmd or {}, joints, kw.get("gripper"))
-                objects, ref_info = seeded_refine(_b1._load_frames(frames), state, _b1._cameras(calib),
-                                                  kw.get("task") or b1.get("task") or _b1.infer_task(instruction), objects,
-                                                  b1.get("objects") or [], bgs)
-                src = "agent+refine"
-            except Exception as e:
-                probs.append(f"refine: {type(e).__name__}: {e}")
+        objects, looks, src, probs, ref_info = finish_answer(st["answer"], b1, frames, calib, flange, grip_cmd, cfg,
+                                                             joints=joints, instruction=instruction, **kw)
     elif cfg["fallback"] == "b1" and b1 is not None:
         objects, looks, src = list(b1.get("objects") or []), list(b1.get("needs_look") or []), "b1_fallback"
     else:
