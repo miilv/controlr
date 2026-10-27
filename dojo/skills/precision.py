@@ -668,6 +668,11 @@ DISC_AIR_POINTS = ((0.0, -0.24, 0.95), (0.0, -0.28, 0.93), (0.0, -0.20, 0.97), (
 DISC_TAKER_SHIFT = 0.008      # m: the taker's pads this far off the disc's centre line, away from the giver's
 DISC_TAKER_COVER = 0.010      # m of the disc between the taker's pads
 DISC_CARRY = 0.07             # rad/step of the giver's carry to the handover pose
+DISC_DRIFTED = 0.003          # m: a disc that slid this far in the giver's pads at the pick ...
+DISC_CARRY_DRIFTED = 0.035    # ... is carried at this rate (twin 100017: 5 mm, it fell out of the pads at 0.07; at
+                              # 0.035 it stayed and went in)
+DISC_HANDOVER_RECENTRE = True # the giver moves a disc that slid in its pads back to the planned handover pose
+DISC_LOST = 0.03              # m: a disc this far off the handover pose after the carry is not in the giver's pads
 
 
 def _frame_from(a1, a2) -> np.ndarray:
@@ -766,9 +771,12 @@ def run_disc_handover(sk: Skills, h: dict) -> SkillResult:
         # turned in the giver's pads (twin: 22 mm off after the lift, the taker could not reach it): put it back
         sk._record(sk.regrasp(giver))
         return SkillResult(False, "handover", "grasp_slip", r.steps, giver, note=f"giver's grasp loose ({r.note[-40:]})")
+    hd, lp = sk.held.get(giver), getattr(sk, "last_pick", None) or h["pick"]
+    drift = 0.0 if hd is None else float(np.linalg.norm(hd.T_tcp_obj[:3, 3] - lp.T_tcp_obj[:3, 3]))
+    carry = DISC_CARRY_DRIFTED if drift > DISC_DRIFTED else DISC_CARRY
     try:
         box = held_box(sk.world.obj(obj), h["pick"].T_tcp_obj)
-        mv = sk.motion.joint(giver, sk.ex.q[giver], h["q_g"], DISC_CARRY, "handover_carry", gripper=CLOSED, held=box,
+        mv = sk.motion.joint(giver, sk.ex.q[giver], h["q_g"], carry, "handover_carry", gripper=CLOSED, held=box,
                              check=False)
         pre = sk.motion.joint(taker, sk.ex.q[taker], h["q_pre"], FAST, "taker_pre", gripper=OPEN, check=False)
         sk.ex.run({giver: ArmPlan(giver, sk.ex.q[giver].copy(), CLOSED).move(mv).hold(2, "still"),
@@ -776,6 +784,28 @@ def run_disc_handover(sk: Skills, h: dict) -> SkillResult:
                   name=f"handover {obj} carry")
         w = sk.refresh()
         o = w.obj(obj)
+        # a disc that slid in the giver's pads at the pick is off the planned handover pose by as much: the giver moves
+        # it back (a straight line) before the taker takes it (twin 100003: 5 mm off, the taker's grasp turned it 78 deg
+        # at the slot; moved back, in)
+        d = (np.asarray(h["T_c"], float)[:3, :3] @ o.asset.center + np.asarray(h["T_c"], float)[:3, 3]) - o.center_w
+        if float(np.linalg.norm(d)) > DISC_LOST:
+            # not in the giver's pads any more (twin 100017 at a 0.07 carry: on the table; the taker then went for it
+            # there and reported "taker descent partial")
+            sk.held[giver] = None
+            return sk._record(SkillResult(False, "handover", "grasp_slip", 0, giver,
+                                          note=f"the disc fell out on the carry ({float(np.linalg.norm(d))*1000:.0f} mm "
+                                               f"off the handover pose)"))
+        if DISC_HANDOVER_RECENTRE and 0.002 < float(np.linalg.norm(d)):
+            Tg = sk.kin.tcp(giver, sk.ex.q[giver])
+            Tg2 = Tg.copy()
+            Tg2[:3, 3] += d
+            fix = sk.motion.line(giver, sk.ex.q[giver], Tg2, 0.03, "handover_recentre", gripper=CLOSED, check=False)
+            if fix.ok:
+                sk.ex.run({giver: ArmPlan(giver, sk.ex.q[giver].copy(), CLOSED).move(fix).hold(2, "still")},
+                          name=f"handover {obj} recentre")
+                sk.log(f"[disc] handover: giver moved the disc {float(np.linalg.norm(d))*1000:.1f} mm back to the plan")
+                w = sk.refresh()
+                o = w.obj(obj)
         k = disc_axis(o)
         r_ = float(np.delete(o.asset.extents, k).max()) / 2
         # the taker's grasp on the disc as it is now: its top rim, closing along its normal, shifted from the giver
