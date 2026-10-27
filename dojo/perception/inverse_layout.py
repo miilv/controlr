@@ -702,7 +702,6 @@ def flip_about_centroid(h: "Hypothesis") -> "Hypothesis":
 def task_map() -> dict:
     return json.loads((catalog_root() / "tasks.json").read_text())
 
-
 def fixed_slot_labels(task: str) -> dict:
     """Labels the config pins to a table slot: point xlim/ylim (a list of points = one per label of the entry,
     in label order), no random yaw, relative to the Table. {label: (x, y, place_tag)}. make_kong's tiles,
@@ -2136,12 +2135,17 @@ def view_request(best: Hypothesis, alt: dict, dist: float = 0.16, elev_deg: floa
 
 def _options(g: dict, geom_groups: dict) -> list[set] | None:
     """Selection constraints from the config: ``hierarchical`` with one category -> all objects from one
-    category entry; ``same`` -> all objects are one asset. None = unconstrained."""
+    category entry; ``same`` -> all objects are one asset. None = unconstrained.
+
+    ``same`` binds one select list (``select_mode.label``), while a label group merges every label with the same
+    candidates: play_stacking_toy's 10 pieces are 4 lists (4 / 3 / 2 / 1 pieces, one asset each, distinct assets).
+    A group wider than its first label's list is therefore unconstrained here: forcing one asset on all 10 made each
+    selection round pick a single shape for every piece it placed."""
     sel = g["select_mode"]
     mode = sel.get("mode")
     if mode == "hierarchical" and (sel.get("select_category_nums") or [0])[0] == 1:
         return [{f"{g['type']}/{c['name']}/{i:05d}" for i in c["index"]} for c in g["categories"]]
-    if mode == "same":
+    if mode == "same" and set(g["labels"]) <= set(sel.get("label") or g["labels"]):
         return [set(sm.key for sm in sms) for sms in geom_groups.values()]
     return None
 

@@ -24,6 +24,7 @@ import argparse
 import io
 import json
 import os
+import re
 import sys
 import zipfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -62,8 +63,115 @@ def _read_texture(resolved: str, usd_path: Path) -> bytes | None:
     return p.read_bytes() if p.exists() else None
 
 
-def _shader_inputs(material):
-    """Base colour (factor, texture asset path, uv transform) of a gltf/pbr.mdl or UsdPreviewSurface material."""
+# An MDL preset's flat base colour: the argument names (best first) that carry it. Others (emission, specular, coat,
+# tint, flakes...) are not the surface colour.
+MDL_COLOR_ARGS = ("diffuse_color_constant", "diffuse_reflection_color", "base_color", "diffuse_color", "color_diffuse",
+                  "albedo", "albedo_color", "color", "colour", "color_1", "color_2", "color_3")
+_MDL_TEXTURE_ARG = re.compile(r"(diffuse|base_?colou?r|albedo)\w*(texture|image)$")
+
+
+def _strip_mdl_comments(text: str) -> str:
+    return re.sub(r"//[^\n]*", "", re.sub(r"/\*.*?\*/", "", text, flags=re.S))
+
+
+def _mdl_args(text: str, start: int) -> list[tuple[str, str]]:
+    """``name: value`` pairs of the call whose ``(`` is at ``text[start]``, split at its top-level commas."""
+    depth, i, cur, out = 0, start, [], []
+    while i < len(text):
+        ch = text[i]
+        if ch in "([":
+            depth += 1
+            if depth == 1:
+                i += 1
+                continue
+        elif ch in ")]":
+            depth -= 1
+            if depth == 0:
+                break
+        if depth == 1 and ch == ",":
+            out.append("".join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+        i += 1
+    out.append("".join(cur))
+    pairs = []
+    for a in out:
+        if ":" in a:
+            k, v = a.split(":", 1)
+            pairs.append((k.strip(), v.strip()))
+    return pairs
+
+
+def _mdl_color(value: str) -> np.ndarray | None:
+    m = re.fullmatch(r"color\s*\(\s*([-+0-9.eE]+)f?\s*(?:,\s*([-+0-9.eE]+)f?\s*,\s*([-+0-9.eE]+)f?\s*)?\)", value.strip())
+    if not m:
+        return None
+    vals = [float(x) for x in m.groups() if x is not None]
+    return np.array(vals * 3 if len(vals) == 1 else vals, dtype=float)
+
+
+def _linear_to_srgb(c: np.ndarray) -> np.ndarray:
+    c = np.clip(np.asarray(c, dtype=float), 0.0, 1.0)
+    return np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
+
+
+def mdl_preset_color(text: str, name: str) -> np.ndarray | None:
+    """The flat base colour (sRGB, 0-1) of the MDL material preset ``name`` (``export material name(*) = Base(...)``),
+    or None when the preset has none or takes its colour from a texture.
+
+    vMaterials presets such as ``ABS_Soft_Leather_Pop_Orange`` carry the surface colour as one ``color(...)`` argument
+    (``color_2``, ``color_diffuse``, ``diffuse_color_constant``...) and no shader inputs on the USD side, so the
+    USD reader alone sees no colour. MDL colour literals are linear; the catalogue's texture means are sRGB."""
+    text = _strip_mdl_comments(text)
+    m = re.search(r"export\s+material\s+" + re.escape(name) + r"\s*\(\s*\*\s*\)", text)
+    if not m:
+        return None
+    eq = re.compile(r"=\s*[\w:]+\s*\(").search(text, m.end())
+    if not eq:
+        return None
+    args = dict(_mdl_args(text, eq.end() - 1))
+    for k, v in args.items():
+        if _MDL_TEXTURE_ARG.search(k) and re.search(r'texture_2d\s*\(\s*"[^"]+"', v):
+            return None
+    for k in MDL_COLOR_ARGS:
+        c = _mdl_color(args[k]) if k in args else None
+        if c is not None:
+            return _linear_to_srgb(c)
+    return None
+
+
+def _mdl_material_color(material, usd_path: Path) -> np.ndarray | None:
+    """``mdl_preset_color`` of a material whose shader is an MDL preset (``info:mdl:sourceAsset`` + subIdentifier)."""
+    from pxr import Usd
+
+    for prim in Usd.PrimRange(material.GetPrim()):
+        if prim.GetTypeName() != "Shader":
+            continue
+        src = prim.GetAttribute("info:mdl:sourceAsset")
+        sub = prim.GetAttribute("info:mdl:sourceAsset:subIdentifier")
+        ap = src.Get() if src else None
+        name = sub.Get() if sub else None
+        if ap is None or not name:
+            continue
+        data = _read_texture(ap.resolvedPath, usd_path) if ap.resolvedPath else None
+        if data is None and ap.path and usd_path.suffix == ".usdz":
+            try:
+                with zipfile.ZipFile(usd_path) as z:
+                    data = z.read(os.path.normpath(ap.path).lstrip("./"))
+            except (KeyError, OSError, zipfile.BadZipFile):
+                data = None
+        if data is None:
+            continue
+        c = mdl_preset_color(data.decode("utf-8", errors="replace"), str(name))
+        if c is not None:
+            return c
+    return None
+
+
+def _shader_inputs(material, usd_path: Path | None = None):
+    """Base colour (factor, texture asset path, uv transform) of a gltf/pbr.mdl or UsdPreviewSurface material, or of
+    an MDL preset's flat colour (``mdl_preset_color``) when the shader has no colour input of its own."""
     from pxr import UsdShade
 
     factor = np.array([0.7, 0.7, 0.7])
@@ -73,17 +181,16 @@ def _shader_inputs(material):
         return factor, tex, uvx
     from pxr import Usd
 
+    found = False
     for prim in Usd.PrimRange(material.GetPrim()):
         if prim.GetTypeName() != "Shader":
             continue
         sh = UsdShade.Shader(prim)
         names = {i.GetBaseName(): i for i in sh.GetInputs()}
-        if "base_color_factor" in names and names["base_color_factor"].Get() is not None:
-            factor = np.array(names["base_color_factor"].Get(), dtype=float)[:3]
-        if "diffuseColor" in names and names["diffuseColor"].Get() is not None:
-            factor = np.array(names["diffuseColor"].Get(), dtype=float)[:3]
-        if "diffuse_color_constant" in names and names["diffuse_color_constant"].Get() is not None:
-            factor = np.array(names["diffuse_color_constant"].Get(), dtype=float)[:3]
+        for key in ("base_color_factor", "diffuseColor", "diffuse_color_constant"):
+            if key in names and names[key].Get() is not None:
+                factor = np.array(names[key].Get(), dtype=float)[:3]
+                found = True
         lname = prim.GetName().lower().replace("_", "")
         is_base = "basecolor" in lname or "diffuse" in lname or "albedo" in lname
         for key in ("texture", "file", "diffuse_texture"):
@@ -108,6 +215,10 @@ def _shader_inputs(material):
                if p.GetTypeName() == "Shader"}
         if "UsdPreviewSurface" in ids:
             factor = np.ones(3)
+    elif not found and usd_path is not None:
+        c = _mdl_material_color(material, Path(usd_path))
+        if c is not None:
+            factor = c
     return factor, tex, uvx
 
 
@@ -214,7 +325,7 @@ def read_usd_meshes(usd_path: Path):
             sel = np.isin(tri_src, fidx)
             if not sel.any():
                 continue
-            factor, tex_path, uvx = _shader_inputs(mat)
+            factor, tex_path, uvx = _shader_inputs(mat, usd_path)
             tex = _read_texture(tex_path, usd_path) if tex_path else None
             if tex is None:
                 dc = pv.GetPrimvar("displayColor") if pv.HasPrimvar("displayColor") else None

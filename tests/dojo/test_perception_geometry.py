@@ -464,3 +464,18 @@ def test_polish_paired_texture_cannot_override_a_clearly_worse_colour():
     close.appearance = 0.13                            # colour-compatible: paired texture decides
     assert il._polish_prefers(white, close, pt, cfg)
     assert not il._polish_prefers(white, close, None, cfg)                 # no texture: the combined cost (0.25 > 0.2)
+
+
+def test_same_mode_binds_one_select_list_not_the_merged_group():
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    geom = {i: [SimpleNamespace(key=f"Rigid/stackingblocks/0000{i}")] for i in range(4)}
+    sel = {"mode": "same", "nums": 4, "label": ["block0", "block1", "block2", "block3"]}
+    # play_stacking_toy: 10 pieces with identical candidates merge into one group of 4 select lists (4/3/2/1)
+    wide = {"select_mode": sel, "labels": [f"block{i}" for i in range(10)]}
+    assert il._options(wide, geom) is None
+    one_list = {"select_mode": sel, "labels": ["block0", "block1", "block2", "block3"]}
+    assert il._options(one_list, geom) == [{f"Rigid/stackingblocks/0000{i}"} for i in range(4)]
+

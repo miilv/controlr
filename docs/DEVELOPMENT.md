@@ -175,6 +175,13 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **Mesh vertices are not surface samples.** A box-like catalogue mesh (the charger) has vertices only at its edges,
   so a vertex test of "what the pads touch" found nothing on its flat sides and fell back to a wrong width (the held
   object then hid under a finger mask). Sample the surface (`held.surface_points`).
+- **A catalogue colour of exactly 0.7 grey means "colour not read".** Some assets take their colour from an MDL preset
+  (`info:mdl:sourceAsset:subIdentifier`, e.g. `ABS_Soft_Leather_Pop_Orange`), with no shader inputs on the USD
+  side. `catalog.mdl_preset_color` reads the preset's flat colour argument (linear -> sRGB). Before it existed, the
+  four play_stacking_toy pieces (purple, yellow, blue, orange-red in the render) were all grey, and B1 told them
+  apart by silhouette alone. A preset whose colour comes from a texture (copper, marble, wood) still reads grey.
+  Rebuild an asset after a builder change (`catalog build --force --keys-json`), then sync the boxes
+  (`catalog_check`).
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
 - **G3 episodes are bit-deterministic, with two exceptions.** The same layout replays the same actions on a loaded
