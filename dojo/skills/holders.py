@@ -542,6 +542,7 @@ EGG_PRESS_DEPTH = 0.014       # m: the closed fingertips go this far below the e
 
 EGG_SLIDE = 0.045             # m: the fingertips' push along a lying egg's axis (it starts this far beyond its end)
 EGG_SLIDE_START = 0.022       # m: the push starts this far out from the egg's believed end (in-hand error up to 15 mm)
+EGG_SLIDE_Z = 0.007           # m: the fingertips' height over the plate during the push
 
 
 def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=()) -> str:
@@ -563,7 +564,9 @@ def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=()) -> str:
     hc = np.asarray(hole["center"], float)[:2]
     u = ax if float(ax[:2] @ (c0[:2] - hc)) >= 0 else -ax          # towards the side it was let go on
     half = 0.5 * float(o.asset.extents[k])
-    z_tip = float(c0[2]) - 0.004
+    # just over the plate: the egg's lower end whatever its height in the hand (mode B: 10-14 mm lower than believed;
+    # at its believed middle the fingertips passed over it, egg_mbD 100001)
+    z_tip = float(hole["top"]) + EGG_SLIDE_Z
     p0 = np.r_[c0[:2] - u[:2] * (half + EGG_SLIDE_START), z_tip]
     p1 = p0 + u * EGG_SLIDE
     from dojo.skills.kinematics import down_R
