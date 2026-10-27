@@ -153,6 +153,13 @@ def _turn_reach(sk: Skills, arm: str, T_tg, T_ko, q0, turn_rad: float) -> float:
     return 0.0
 
 
+def _unpressed(T, kw) -> np.ndarray:
+    """The insertion target without the place's press (``insert_into`` commands the object 1 mm past its seat)."""
+    T = np.asarray(T, float).copy()
+    T[2, 3] += 0.001
+    return T
+
+
 def _turned(T, turn_rad):
     T = np.asarray(T, float).copy()
     T[:3, :3] = rot_z(turn_rad) @ T[:3, :3]
@@ -353,10 +360,11 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
         return r
     if held_on:
         return sk._record(turn_held(sk, t_arm, label, turn))
-    return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm)
+    return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(h["target"], kw))
 
 
-def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm: str | None = None) -> SkillResult:
+def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm: str | None = None,
+                 T_seat=None) -> SkillResult:
     """Grip the object standing in its receptacle (``top_grasps_at`` its pose there) with the arm and grasp whose wrist
     reaches the most of the turn, then ``turn_held``. The arm that let go goes home first when the other one turns."""
     from dojo.skills.motion import FAST
@@ -414,7 +422,7 @@ def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm:
     o = w.obj(label)
     T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ o.T
     sk.held[arm] = Held(label, T_rel, held_box(o, T_rel), G.Grasp("turn_grip", o.T @ inv_T(T_rel), width, note=note))
-    return sk._record(turn_held(sk, arm, label, turn))
+    return sk._record(turn_held(sk, arm, label, turn, T_seat=T_seat))
 
 
 def _turn_schedule(deg: float) -> list[float]:
@@ -428,15 +436,23 @@ def _turn_schedule(deg: float) -> list[float]:
     return out
 
 
-def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_LIFT) -> SkillResult:
+def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_LIFT, T_seat=None) -> SkillResult:
     """Turn the held object about the vertical through its root by ``turn`` (rad), ``lift`` above where it rests now
-    (``_turn_schedule`` steps; the largest of ``TURN_FRACTIONS`` that the wrist reaches)."""
+    (``_turn_schedule`` steps; the largest of ``TURN_FRACTIONS`` that the wrist reaches). ``T_seat`` (the insertion
+    target): the turn starts from it instead, at the object's current yaw: a key let go 2-6 deg tilted in its lock,
+    gripped and turned as it stood, jammed (G3 100000: -7 of -36 deg, 17 deg of tilt)."""
     w = sk.refresh()
     o = w.obj(label)
     T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ o.T
     # commanded from the MEASURED hand, no sag correction: after the insertion the hand still pushes the seated object
     # (its command is below where it is), and the sag transform would keep it pushing through the turn
     T0 = o.T.copy()
+    if T_seat is not None:
+        T_seat = np.asarray(T_seat, float)
+        dyaw = math.atan2(o.R[1, 0], o.R[0, 0]) - math.atan2(T_seat[1, 0], T_seat[0, 0])
+        T0 = T_seat.copy()
+        T0[:3, :3] = rot_z(dyaw) @ T_seat[:3, :3]
+        T0[2, 3] = max(float(T_seat[2, 3]), float(o.pos[2]) - 0.002)     # not deeper than it can go
     T0[2, 3] += lift
     mv, frac = None, 0.0
     for frac in TURN_FRACTIONS:
