@@ -42,7 +42,12 @@ than main), xy median 7.3 -> 5.9 mm, +0.9 s per read. `embed_merge` is therefore
 
 ## 3. pick_from_conveyor_by_image
 
-Pending: the frames are recorded and partly scored. This section is added to this PR when the run ends.
+- **Riders (6.0 proxy, 5 layouts, 208 blobs).** Ours 0.69, the frozen DINOv2 arm 0.68 (no gain), SigLIP2 fused 0.87:
+  it reads the basket and the cans.
+- **The board.** It stands behind the right arm's links in the home head view, so neither our colour pick (always
+  `photo/00000`, which has no map entry) nor any embedding can read it there.
+- **Given the picture** (the true `photo.png`), the target rider is the most similar crop: CLIP-L 33/33, SigLIP2 32/33,
+  DINOv2 28-29/33. The skill needs a look at the board first.
 
 ## 4. eval_g1 on the table
 
