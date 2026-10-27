@@ -141,8 +141,13 @@ def _why(why) -> str:
         return w
     try:
         d = json.loads(w)
-    except ValueError:
-        return w
+    except ValueError:                              # eval keeps 300 characters: parse the complete entries
+        import re
+        d = {m.group(1): {"found": m.group(2) == "true", "est_label": m.group(3),
+                          "xy_mm": float(m.group(4)) if m.group(4) else None}
+             for m in re.finditer(r'"([^"]+)": \{"found": (true|false)(?:, "est_label": "([^"]+)", "xy_mm": ([0-9.]+))?', w)}
+        if not d:
+            return w
     parts = []
     for lab, v in d.items():
         if not isinstance(v, dict):
