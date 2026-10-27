@@ -291,10 +291,36 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
             iou = float(next(iter(per.values()), 0.0)) if per else 0.0
             ok = True
             d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
+    yaw_read = None
+    from .top_feature import read_yaw, top_feature
+
+    if top_feature(sm) is not None:
+        # a round outline with a cut in its top (insert_key's lock): the outline fit's yaw is arbitrary, the keyhole
+        # seen from above gives it (axis + bulb side); at the fit when it is ok, else at the prior's place
+        xr, yr = (x, y) if ok else (T0[0, 3], T0[1, 3])
+        rob_m = rob if seg == "local" else v.robot
+        yaw_read = read_yaw(wrist_frame, cam, sm, xr, yr, z_off, rob_m)
+        if yaw_read is not None and yaw_read.get("ok"):
+            yaw = yaw_read["yaw"]
+            if yaw_read.get("sign_ok"):
+                # the opening, both ends resolved, places the object too: 0.2-0.7 mm on 25 5.1 wrist hovers where the
+                # outline fit of the round lock was 0.3-6.9 mm off
+                x, y = yaw_read["x"], yaw_read["y"]
+            if ok:
+                T = pose_T(x, y, yaw)
+            else:  # the rejected fit stays rejected; the prior keeps its place and takes the read yaw
+                Tp = pose_T(T0[0, 3], T0[1, 3], yaw)
+                Tp[2, 3] = T0[2, 3]
+                prior_pose = np.r_[Tp[:3, 3], R_to_quat_wxyz(Tp[:3, :3])].tolist()
+            d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
     out = {"pose": np.r_[T[:3, 3], R_to_quat_wxyz(T[:3, :3])].tolist(), "residual": round(float(loss), 4),
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
             "ok": ok, "time_s": round(time.time() - t0, 3), "camera": cam.name}
+    if yaw_read is not None:
+        out["yaw_read"] = yaw_read
+        if yaw_read.get("ok"):
+            out["yaw_source"] = "top_feature" if yaw_read.get("sign_ok") else "top_feature_axis"
     if slid and not ok:
         out["why"] = slid
     if edge is not None:

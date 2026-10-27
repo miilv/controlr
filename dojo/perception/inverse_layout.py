@@ -2219,6 +2219,7 @@ class EstimatorConfig:
     polish_fit_color: bool = True  # polish ranks its identity trials by the colour inside the incumbent's silhouette
     polish_color_candidates: int = 2  # ... and also tries the best-coloured candidates the ranking left out
     polish_color_veto: float | None = 0.2  # paired texture cannot pick a trial whose mean colour is this much worse
+    top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
     paired_tex_weight: float = 0.8
     refine_color_weight: float = 0.5
     paired_tex_margin: float = 0.04
@@ -2619,6 +2620,23 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             chosen[i].appearance = float(C[row].min())
     timings["identity_s"] = round(time.time() - t4, 3)
 
+    # ---- yaw from a feature cut into the top (insert_key's round lock: its keyhole). Such an outline is the same at
+    # every yaw, so the silhouette fit's yaw is arbitrary; the keyhole's axis and bulb give it (``top_feature``)
+    if cfg.top_feature_yaw:
+        from .top_feature import read_yaw, top_feature
+
+        for h in chosen:
+            if h.per_view.get("occluded") or top_feature(h.sm()) is None:
+                continue
+            best = None
+            for v in views.values():
+                r = read_yaw(v.img, v.cam, h.sm(), h.x, h.y, float(h.per_view.get("z_off", 0.0)), v.robot)
+                if r and r.get("ok") and (best is None or (r["sign_ok"], -r["tail_mm"]) > (best["sign_ok"], -best["tail_mm"])):
+                    best = r
+            h.per_view["top_feature"] = best
+            if best is not None:
+                h.yaw = best["yaw"]
+
     # ---- unexplained foreground near each fit (head view): an object fitted to part of a blob, or a neighbour
     # shifted onto it, leaves foreground uncovered right next to it
     resid_near = {}
@@ -2729,7 +2747,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "hidden_frac": round(hidden, 3), "near_home_grippers": bool(near_home),
                                "fg_resid_near": round(fg_near, 3),
                                "texture": h.per_view.get("texture"),
-                               "geom_group": h.per_view.get("geom_group"), "slot": bool(h.per_view.get("slot", False))}}
+                               "geom_group": h.per_view.get("geom_group"), "slot": bool(h.per_view.get("slot", False)),
+                               **({"yaw_read": {k: h.per_view["top_feature"][k] for k in
+                                                ("sign_ok", "tail_mm", "ratio_axis", "ratio_flip", "camera")}}
+                                  if h.per_view.get("top_feature") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []

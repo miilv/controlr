@@ -265,6 +265,7 @@ class Skills:
         self.max_rehovers = int(max_rehovers)       # re-hover hints followed per pick / place (refine hook)
         self.widen_on_none = True                   # twin rejects every candidate: widen (more candidates), re-look
         self.refine_ctx: dict = {}
+        self.last_refine: dict | None = None        # the latest wrist refine's reading (the hook's raw result)
         # labels the wrist refine must not be asked about (perception: tiles in a dense row fit their neighbours;
         # their layout slots are better than a refine there); a place carrying one of them is skipped too
         self.no_refine: set = set()
@@ -413,7 +414,10 @@ class Skills:
         if label in self.no_refine or (held is not None and held.label in self.no_refine):
             return None
         self.refine_ctx = {"kind": kind, "label": label, "arm": arm, "held": self.held_pose7(arm)}
+        self.last_refine = None
         out = self.refine(self, label, arm, kind)
+        if self.last_refine is None and isinstance(out, dict):
+            self.last_refine = out              # a hook that does not set the raw reading: its return value
         hint, dz = None, 0.0
         if isinstance(out, dict) and out.get("rehover") is not None:
             hint, dz = out["rehover"], float(out.get("rehover_dz", 0.0))

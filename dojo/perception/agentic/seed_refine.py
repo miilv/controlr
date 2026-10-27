@@ -345,3 +345,24 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
             o.pop("rest_dz_mm", None)
         infos.append(info)
     return out, infos
+
+
+def keep_read_yaws(objects: list[dict], b1_objs: list[dict], radius_m: float = 0.03) -> int:
+    """B1 objects whose yaw was read from a feature the outline does not show (``flags.yaw_read``: a round lock's
+    keyhole) keep that yaw in the agent's output: no silhouette loss can tell such yaws apart, so neither the agent's
+    turn nor an H2 refit is evidence against it (5.1 keyR 100003: B1 29.6 deg, the agent 0.03 deg, truth 10.7 deg).
+    Pairs by label, else the nearest object of the same asset within ``radius_m``. Returns how many changed."""
+    n = 0
+    for b in b1_objs:
+        if not (b.get("flags") or {}).get("yaw_read") or not b.get("quat"):
+            continue
+        o = next((o for o in objects if o.get("label") == b.get("label")), None)
+        if o is None:
+            near = [o for o in objects if o.get("asset") == b.get("asset") and o.get("pos")
+                    and math.hypot(o["pos"][0] - b["pos"][0], o["pos"][1] - b["pos"][1]) <= radius_m]
+            o = min(near, key=lambda o: math.hypot(o["pos"][0] - b["pos"][0], o["pos"][1] - b["pos"][1]), default=None)
+        if o is not None and o.get("quat") != b["quat"]:
+            o["quat"] = list(b["quat"])
+            o["yaw_from"] = "b1_top_feature"
+            n += 1
+    return n

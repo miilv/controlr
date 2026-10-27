@@ -38,8 +38,9 @@ def record_objects(rec: dict) -> list[dict]:
                      "pos": [float(v) for v in r["default_pos"]], "quat": [float(v) for v in r["default_ori"]],
                      "confidence": float(p.get("confidence", 0.5)), "residual": p.get("residual"),
                      "source": "fused" if p.get("n_views", 0) > 1 else "head",
-                     "flags": {k: p[k] for k in ("occluded", "ambiguous", "hidden_frac", "near_home_grippers", "fg_resid_near",
-                                                 "slot") if k in p}}
+                     "flags": {**{k: p[k] for k in ("occluded", "ambiguous", "hidden_frac", "near_home_grippers",
+                                                    "fg_resid_near", "slot") if k in p},
+                               **({"yaw_read": True} if p.get("yaw_read") else {})}}
                 if p.get("alternative"):
                     o["alternative"] = {"asset": p["alternative"].get("key"), "margin": p["alternative"].get("margin")}
                 out.append(o)

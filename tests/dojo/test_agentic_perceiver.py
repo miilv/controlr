@@ -529,3 +529,19 @@ def test_arbitration_never_pairs_a_kind_b1_does_not_have(monkeypatch):
     sr, calls = _arb(monkeypatch, {})
     out, info = sr.arbitrate({}, agent, b1)
     assert info == [] and out[0]["pos"] == [0.2, -0.1, 0.78] and calls == []
+
+
+def test_agent_output_keeps_b1_read_yaws():
+    from dojo.perception.agentic.seed_refine import keep_read_yaws
+
+    q_b1 = [0.99566, 0.0, 0.0, 0.09314]                     # 10.7 deg, read from the keyhole
+    b1 = [{"label": "slot", "asset": "Geometry/key_slot/00000", "pos": [0.157, -0.167, 0.765], "quat": q_b1,
+           "flags": {"yaw_read": True}},
+          {"label": "key", "asset": "Rigid/key/00000", "pos": [-0.16, -0.12, 0.77], "quat": [1.0, 0.0, 0.0, 0.0],
+           "flags": {}}]
+    agent = [{"label": "lock", "asset": "Geometry/key_slot/00000", "pos": [0.1565, -0.1672, 0.765],
+              "quat": [1.0, 0.0, 0.0, 0.0003]},                # the agent's 0.03 deg (5.1 keyR 100003)
+             {"label": "key", "asset": "Rigid/key/00000", "pos": [-0.16, -0.12, 0.77], "quat": [0.98, 0.0, 0.0, 0.2]}]
+    assert keep_read_yaws(agent, b1) == 1
+    assert agent[0]["quat"] == q_b1 and agent[0]["yaw_from"] == "b1_top_feature"
+    assert agent[1]["quat"] == [0.98, 0.0, 0.0, 0.2]        # no read yaw: the agent's turn is arbitrated as before
