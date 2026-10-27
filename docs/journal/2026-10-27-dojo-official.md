@@ -65,8 +65,9 @@ same, or it games the checker by accident.
 | press_by_number | 5/5, 100 | 5/5, 100 | 5/5 | identical on 4/5 (242 vs 240) | no verify segments |
 | stack_blocks | 5/5, 100 | 5/5, 100 | 5/5 | 230-265 vs 186-255 | official twin verify was OFF (finding 1); 100001: a 9.3 mm place_miss and a re-pick (257 vs 186 steps); re-run pending |
 | swap_blocks | 5/5, 100 | 5/5, 100 | 5/5 | 350-371 vs 348-410 | the twin rejects every swap candidate on BOTH paths (finding 4) |
-| make_kong | pending | pending | | | |
-| insert_tubes | pending | pending | | | |
+| make_kong | 0/4, 0 + 1 unstable (dropped by RoboDojo) | 1/5, 20 | 3/5 | 100003: the scripted discard failed (`mark_env_unstable`): RoboDojo drops it, integ counted a fail (fixed: #173); 100002: the agent's retry passed 8 of 22 tiles on the official run, all 22 on integ (Sol sampling; retry line #182) |
+| insert_tubes | 3/5, 76 | 4/5, 88 | 4/5 | 100000: a step-budget knife edge. 52 steps left, the 3rd tube's place needed 45 + the 30-step finish reserve, so it was refused (official); integ had a few more steps, started it, and the tube went in before BudgetExceeded |
+| **total** | **18/24 + 1 unstable** | **20/25** | **22/25** | no disagreement from the eval client's accounting or from the bridge |
 
 Spend, phase A + B so far (29 episodes): Sol 28 calls (171 k prompt, 120 k cached), Sonnet (agentic perceiver) 114 calls.
 
