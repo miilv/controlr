@@ -70,6 +70,19 @@ def board_state(w, board: str, cells, pieces: list[str], opponent: list[str], to
     return occ
 
 
+def with_watch_read(occ: dict, read: dict | None) -> dict:
+    """``board_state``'s occupancy plus the cells a (stable) watch read saw taken that it has nothing in, as
+    ("opp" | "own", "watch:<k>"). In mode B nothing moves the belief when the opponent moves its piece (no grasp of ours,
+    no release), so a piece the watch saw land counts from that read (rendered 5.1 tic-tac-toe: "own 1 opp 0" after
+    the opponent's move, then a 200-step wait for a move that had already happened)."""
+    out = dict(occ)
+    for c in (read or {}).get("cells", []):
+        k = int(c["k"])
+        if c.get("occupant") in ("own", "opponent") and k not in out:
+            out[k] = ("opp" if c["occupant"] == "opponent" else "own", f"watch:{k}")
+    return out
+
+
 def choose_cell(occ: dict, lines: list, n_cells: int, cost=None, skip=()) -> int | None:
     """Tic-tac-toe move for "own": win, block, centre, a corner opposite the opponent's, any corner, an edge;
     equal choices by ``cost(cell)``. Boards that are not 3 x 3: the cheapest empty cell."""
@@ -204,7 +217,7 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
     sk.log(f"[game] {len(cells)} cells, {len(lines)} lines, {len(pieces)} own / {len(opponent_pieces)} opponent pieces")
 
     def occupancy():
-        return board_state(sk.world, board, cells, pieces, opponent_pieces)
+        return with_watch_read(board_state(sk.world, board, cells, pieces, opponent_pieces), st.get("read"))
 
     own_key = w.obj(pieces[0]).asset.key if pieces else None
     opp_key = w.obj(opponent_pieces[0]).asset.key if opponent_pieces else None
@@ -229,6 +242,7 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             stable = stable + 1 if read["stable_vs_prior"] else 0
             prior = read
             if n_opp > n_opp0 and stable >= quiet:
+                st["read"] = read
                 sk.log(f"[game] opponent piece landed by step {sk.ex.steps_used} ({sk.ex.steps_used - t0} steps of waiting)")
                 try:
                     r = wait_actors_still(sk, fallback=after_land)
