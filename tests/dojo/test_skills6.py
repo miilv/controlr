@@ -315,6 +315,8 @@ def test_waits_on_actor_from_the_plan_or_the_words():
                           "into the basket in the same order.") == "copy_demonstration"
     assert waits_on_actor("Play tic-tac-toe with the opponent.") is None              # our first piece comes first
     assert waits_on_actor("Stack the three blocks.") is None
+    assert waits_on_actor("Remember the first object on the conveyor, then pick up the same one when it comes "
+                          "and lift it.") == "match_and_pick"                  # the belt: no steps before the skill
     assert waits_on_actor("Play tic-tac-toe.", _board_world()) is None                # the plan: play_board_game
 
 def test_copy_demonstration_follows_departures_and_matches_twins_by_asset_then_category(monkeypatch):

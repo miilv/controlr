@@ -23,3 +23,9 @@
 
 Tests: `test_no_arm_moves_before_a_skill_that_waits_on_a_scripted_actor` (kong, imitate, and stack as the control),
 `test_waits_on_actor_from_the_plan_or_the_words`.
+
+**The conveyor is the same pattern** (time-critical scripted motion at episode start). On #140's genuine-5.1 100003,
+submit_v1's scan + looks + search took ~60 env steps before `match_and_pick` started. The first rider rode out of view
+by step ~80, the tracker had 4 reads and no velocity, and the skill gave up with "nothing moves". `match_and_pick` and
+`pick_into_held` join `WAITS_ON_ACTOR` (follow-up PR): no arm motion before them, and the frame-0 estimate and the
+agentic gate still run.

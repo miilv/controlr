@@ -27,6 +27,7 @@ CONTAINER_WORDS = ("dustbin", "bin", "basket", "box", "bowl", "drawer", "toolbox
 # ``plan`` and ``waits_on_actor`` (all must match)
 COPY_ORDER_TEXT = (r"\border\b|\bsequence\b", r"observe|watch|remember|imitate|same order")
 KONG_TEXT = (r"\bkong\b",)
+BELT_TEXT = (r"\bconveyor\b|\bbelt\b",)
 
 
 def waits_on_actor(instruction: str, world: WorldState | None = None) -> str | None:
@@ -41,7 +42,7 @@ def waits_on_actor(instruction: str, world: WorldState | None = None) -> str | N
         if p is not None and p.skill in L.WAITS_ON_ACTOR:
             return p.skill
     text = (instruction or "").lower()
-    for skill, pats in (("copy_demonstration", COPY_ORDER_TEXT), ("declare_kong", KONG_TEXT)):
+    for skill, pats in (("copy_demonstration", COPY_ORDER_TEXT), ("declare_kong", KONG_TEXT), ("match_and_pick", BELT_TEXT)):
         if skill in L.WAITS_ON_ACTOR and all(re.search(pt, text) for pt in pats):
             return skill
     return None

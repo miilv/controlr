@@ -867,7 +867,12 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     w = sk.refresh()
     st = w.notes.setdefault("belt", {})
     labs = [l for l in objects if l in w.objects]
-    v = belt_velocity(sk, labs)
+    riders = [l for l in labs if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter]
+    if st.get("first") is None and len(riders) == 1:
+        # one rider in view at the start: it is the first one (remember it before it rides out of view)
+        st["first"], st["first_key"] = riders[0], w.obj(riders[0]).asset.key
+    # a tracking provider (the runtime) may need the next riders' tracks for the velocity: wait longer for it
+    v = belt_velocity(sk, labs, max_wait=250 if getattr(sk.provider, "belt_velocity", None) else 60)
     if float(np.linalg.norm(v)) < 1e-4:
         return {"ok": False, "stage": "belt", "note": "nothing moves"}
     u = v / np.linalg.norm(v)
