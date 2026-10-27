@@ -396,7 +396,8 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
 
 
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
-                       every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 3) -> dict:
+                       every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 3,
+                       gone_quiet: int = 260) -> dict:
     """A scripted demonstrator puts objects into ``demo_container`` one at a time: hold still at home while it works,
     record the order in which objects arrive there (watch reads of the container every ``every`` steps; an object counts
     once it is inside for ``quiet`` reads in a row), and when the demonstrator's arm is at rest (``wait_actors_still``,
@@ -421,16 +422,39 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
               "sources": [{"asset": w.obj(l).asset.key, "label": l, "pos": w.obj(l).pos.tolist(),
                            "quat": w.obj(l).quat.tolist(), "conf": float(getattr(w.obj(l), "confidence", 1.0))}
                           for l in movers]}
-    if len(st["order"]) < expect:
+    # the demonstrator's objects: the half of the movers farther from our arms (its side of the table). A read that
+    # reports departures ("gone": perception's departure read) orders them by when they left their places; the
+    # identity of each comes from the episode-start estimate, so a twin is matched by asset, else by category
+    base = 0.5 * (sk.kin.base("left")[:2, 3] + sk.kin.base("right")[:2, 3])
+    demo_side = sorted(movers, key=lambda l: -float(np.linalg.norm(w.obj(l).pos[:2] - base)))[:len(movers) // 2]
+    st.setdefault("gone", [])
+    if not st["order"] or len(st["order"]) < expect:      # (the start estimate may see no identity twice)
         t0 = w.step
         ao = ArrivalOrder(n_consecutive=quiet, expected=expect)
-        prior, stable = None, 0
+        prior, stable, last_new = None, 0, w.step
         while True:
             try:
                 sk.ex.hold(every)
             except (EpisodeEnded, BudgetExceeded) as e:
                 return {"ok": False, "stage": "watch", "note": str(e)}
             read = watch(sk, region, prior)
+            if "gone" in read:
+                prior = read
+                for e in read["gone"]:
+                    if e["label"] in demo_side and e["label"] not in st["gone"]:
+                        st["gone"].append(e["label"])
+                        last_new = sk.ex.steps_used
+                        sk.log(f"[imitate] step {sk.ex.steps_used}: {e['label']} ({e['asset']}) left its place, #{len(st['gone'])}")
+                st["order"] = list(st["gone"])
+                quiet_long = st["gone"] and sk.ex.steps_used - last_new > gone_quiet
+                if len(st["gone"]) >= len(demo_side) or quiet_long:
+                    r = wait_actors_still(sk, fallback=after_last)
+                    sk.log(f"[imitate] {len(st['gone'])} of {len(demo_side)} left; demonstrator's arm: {r} (step {sk.ex.steps_used})")
+                    break
+                if sk.ex.steps_used - t0 > max_wait:
+                    sk.log(f"[imitate] stopped watching after {sk.ex.steps_used - t0} steps, {len(st['gone'])} left")
+                    break
+                continue
             if not usable(read):
                 continue
             n0 = len(ao.order)
@@ -448,13 +472,23 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
                 sk.log(f"[imitate] stopped watching after {sk.ex.steps_used - t0} steps, {len(st['order'])} seen")
                 break
     # copy: the twin of each demonstrated object, in order
+    if st["gone"]:
+        expect = len(st["gone"])
     for i, key in enumerate(st["order"]):
         if i < len(st["done"]):
             continue
         w = sk.refresh()
         l = key
-        cands = [m for m in keys.get(key, []) if m not in st["done"]
-                 and not inside_xy(w.obj(m), w.obj(container)) and not inside_xy(w.obj(m), w.obj(demo_container))]
+        if key in w.objects:                            # departure order: a label; its twin is on our side
+            k_ = w.obj(key).asset.key
+            free = [m for m in movers if m not in st["gone"] and m not in demo_side and m not in st["done"] and m in w.objects
+                    and not inside_xy(w.obj(m), w.obj(container))]
+            cands = [m for m in free if w.obj(m).asset.key == k_] or \
+                [m for m in free if w.obj(m).category == w.obj(key).category]
+            key = k_
+        else:
+            cands = [m for m in keys.get(key, []) if m not in st["done"]
+                     and not inside_xy(w.obj(m), w.obj(container)) and not inside_xy(w.obj(m), w.obj(demo_container))]
         if not cands:
             return {"ok": False, "stage": f"match {l}", "note": f"no free object like {key}"}
         twin = cands[0]
