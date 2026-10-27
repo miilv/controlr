@@ -13,6 +13,15 @@
   the belt: puppet -> camera when their blobs touch (5 of 23 puppet reads). B1's path (`embed_b1`) stays off: neutral
   on the table except fill_pen (-3 pens). pick_from_conveyor_by_image: the picture board is hidden behind the right arm
   at home; after a look, CLIP-L picks the pictured rider 33/33 (picture = the public photo.png).
+- [ ] **dojo perception: laptop root vs catalogue mesh frame** (store_laptop, perceiver-models report §5): the catalogue
+  mesh `Articulation/laptop/00000` drawn at the sim's laptop pose (`objects_gt`, the settled record) sits ~80 mm in front
+  of the rendered laptop; at +(0, 0.08, -0.025) m in the object frame it fits all 10 genuine-5.1 frames. Perception's
+  mesh-frame pose vs the twin / skills' root frame: trace through catalogue, record conversion, twin, skills (Integration).
+- [ ] **dojo perception: arbitration reverts agent fixes** (perceiver-models report §3): an unrefined agent point loses
+  to B1's refined fit to the wrong blob; `arbitrate(risky_b1=0.2)` (+7..+12 fixed of 84 on every model, broken +0..+2)
+  needs a rendered A/B before it becomes the default (`AGENTIC_*` wiring not done).
+- [ ] **dojo agentic: the first message shows `np.str_('...')` as the instruction** when the runtime passes a numpy
+  string (`j1._first_message` formats `instruction!r`; c4_laptop transcripts). Harmless to the models so far; `str()` it.
 - [ ] **dojo skills: a silent in-hand slip in mode B** (store_tools 5.1 B, 6/10 "stages_left 1"; journal
   2026-10-27-dojo-longh §8). A physics replay of 100008: the wrench slid out of an off-centre grasp ~15 steps after the
   lift, after held_look had said "held"; nothing re-checks before the release and the skill places an empty gripper.
