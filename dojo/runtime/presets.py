@@ -16,6 +16,11 @@ journal. The code defaults of ``RuntimeConfig`` stay as they are (rule 1: no sil
 ``submit_v2`` (2026-10-27; evidence: journal 2026-10-27-dojo-pegs §9, the rendered A/B): ``submit_v1`` with
 ``held_pose`` "request". Only a place that opts in (``held_read``) reads the held object; today just insert_key's, so
 every other task runs as under ``submit_v1``. insert_key genuine 5.1, 100000-09: 1/6 vs 0/6 (rescued 1, lost 0).
+
+``submit_v3`` (2026-10-27, candidate; the lead's call, evidence to come from the paired breadth3 A/B against round 3):
+``submit_v2`` with the pick / place refine searching a 7 cm grid when the prior's own fit is not ok
+(``refine_search_radius`` 0.07, #183 / #184) and pick refines telling perception the hands are empty
+(``refine_empty_hand``). D0 5.1 wrist looks with priors +-50 mm: correct fits 187 -> 315 of 334, no new false ok.
 """
 
 from __future__ import annotations
@@ -34,11 +39,13 @@ PRESETS: dict[str, dict] = {
     },
 }
 PRESETS["submit_v2"] = {**PRESETS["submit_v1"], "held_pose": "request"}
+PRESETS["submit_v3"] = {**PRESETS["submit_v2"], "refine_search_radius": 0.07, "refine_empty_hand": True}
 
 # perception-side settings a preset assumes (environment of the perception service / agentic perceiver)
 PERCEPTION_ENV: dict[str, dict[str, str]] = {
     "submit_v1": {"AGENTIC_SNAP": "1"},
     "submit_v2": {"AGENTIC_SNAP": "1"},
+    "submit_v3": {"AGENTIC_SNAP": "1"},
 }
 
 
