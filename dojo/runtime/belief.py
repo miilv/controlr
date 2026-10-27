@@ -307,6 +307,8 @@ class RuntimeProvider:
         self.held_checker = None                # mode perception: (obs, arm, label) -> {"held": bool|None, ...}
         self.held_min_lift_m = 0.04
         self.held_confirm = None                # second, independent held look (agent) required before a drop
+        self._pp_doubt: set[str] = set()        # released, post-place refine not ok (``resync``: fallen if it then diverges)
+        self.fallen_check = True                # policy: fallen_check
         self.confirm_wrists = True              # confirm_pose also scores the wrist views (policy: confirm_wrists)
         self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
@@ -479,6 +481,10 @@ class RuntimeProvider:
                 self.stats["post_place_moved"] = self.stats.get("post_place_moved", 0) + 1
             self.stats["post_place"] = self.stats.get("post_place", 0) + 1
             self.events.append(ev)
+            if r.get("ok"):
+                self._pp_doubt.discard(lab)
+            else:
+                self._pp_doubt.add(lab)                 # not measured where it was let go (a mug off its hook?)
             out.append(ev)
         return out
 
@@ -845,6 +851,27 @@ class RuntimeProvider:
             o.pos, o.quat, o.source, o.confidence = e.pos.copy(), e.quat.copy(), "perception", e.confidence
             self.touched.discard(lab)
         ev["updated"] = upd
+        fallen = sorted(lab for lab in bad if lab in self._pp_doubt and lab not in upd and self.fallen_check
+                        and lab not in self.belief.held_labels())
+        if fallen:
+            # released where the wrist could not confirm it (post-place not ok) and now missing from the head view: it
+            # fell (5.1 hang: mugs believed "held by a fixture" on their hooks, every later divergence unconfirmed, no
+            # retry). Off the fixture in the belief (the table / movable supports only), touched, and a re-plan.
+            for lab in fallen:
+                o = self.belief.objects[lab]
+                pos, _ = drop_rest(o, [x for x in self.belief.movable() if x.label != lab], ())
+                if pos is not None:
+                    o.pos = pos
+                o.source = "predicted"
+                self.touched.add(lab)
+                self._pp_doubt.discard(lab)
+            self.stats["fallen"] = self.stats.get("fallen", 0) + len(fallen)
+            self.events.append({"kind": "fallen", "step": self.bridge.steps_used, "labels": fallen})
+            self.log(f"[runtime] fallen {fallen}: off its fixture in the belief, re-plan")
+            ev["fallen"] = fallen
+            if self.replan:
+                raise Divergence(fallen, ev)
+            return ev
         if not upd:
             # the frames disagree but the re-estimate does not place the object elsewhere: keep the belief and
             # go on (re-planning a half-built structure from scratch is worse than a doubtful check)

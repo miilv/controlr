@@ -973,6 +973,43 @@ def test_resync_with_nothing_left_to_check_does_not_call_the_checker():
     prov.resync(b.obs, released=["block_0"])                        # no exception
 
 
+@pytest.mark.parametrize("pp_ok,fallen", [(False, True), (True, False)])
+def test_a_doubtful_release_that_later_diverges_fell(pp_ok, fallen):
+    """5.1 hang: every mug release read "held by a fixture", the post-place refine was not ok, and a mug that fell showed
+    up only as a head divergence at the next resync, which the re-estimate never confirmed: no retry. A release whose
+    post-place refine was not ok and that then diverges fell: off its fixture in the belief, touched, re-plan."""
+    from dojo.runtime.belief import Divergence, RuntimeProvider
+    env = _env()
+
+    class C:
+        def refine(self, obs, obj, others, arm, held=None):
+            return {"ok": pp_ok, "iou": 0.9 if pp_ok else 0.25, "pos": list(obj.pos), "quat": list(obj.quat), "shift_mm": 0.0}
+
+        def check(self, obs, objects):
+            return {o.label: {"head": {"prec": 0.05 if o.label == "block_1" else 1.0, "n_vis": 500, "n_px": 600}}
+                    for o in objects}
+
+        def estimate(self, obs):
+            return {"Rigid": {}}                     # the re-estimate does not place it anywhere
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=C(), replan_on_divergence=True)
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    o.pos = o.pos + [0.0, 0.0, 0.12]                  # let go on a hook, 12 cm up
+    prov.belief.released_by["block_1"] = "left"
+    prov.post_place_refine = True
+    prov.resync(b.obs, released=["block_1"])          # post-place refine of the release
+    if fallen:
+        with pytest.raises(Divergence):
+            prov.resync(b.obs)
+        assert prov.events[-1]["kind"] == "fallen" and "block_1" in prov.touched
+        assert float(o.pos[2]) < 0.80                 # back on the table in the belief
+    else:
+        prov.resync(b.obs)                             # measured where it was let go: an unconfirmed divergence only
+        assert not any(e["kind"] == "fallen" for e in prov.events)
+
+
 def test_failed_pick_refine_triggers_a_local_search():
     """block_1's estimate is 35 mm off; at its pick hover refine finds nothing (iou 0.05, no suggestion): the
     policy treats it as lost, searches around its belief pose with a wrist look, refits it there and re-plans."""
