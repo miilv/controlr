@@ -79,3 +79,22 @@ def test_runner_retries_a_job_whose_services_never_got_ready_once(tmp_path):
     runs = data / "integ/runs"
     assert (runs / "job_a__services_not_ready").is_dir() and (runs / "job_a_retry").is_dir()
     assert not (runs / "job_c_retry__services_not_ready").exists() and "queue empty" in out.stdout
+
+
+def test_perception_eval_scores_the_record_the_skills_planned_with():
+    """breadth2 scored perception on the fused record, else the initial one: an object the scan / agentic / search record
+    found (insert_tubes 100002, play_Xylophone 100000 / 01, deposit_coin 100001) read as perception_gross."""
+    from dojo.runtime.estimate import planning_record
+    from dojo.runtime.eval import perception_eval
+
+    def ent(lab, x):
+        return {"category": "tube", "category_idx": 0, "label": lab, "default_pos": [x, 0.0, 0.8], "default_ori": [1, 0, 0, 0]}
+    initial = {"Rigid": {"tube": [ent("tube0", 0.1)]}, "_not_found": [{"label": "tube1"}]}
+    agentic0 = {"Rigid": {"tube": [ent("tube0", 0.1), ent("tube1", 0.2)]}}
+    gt = [{"label": "tube0", "type": "Rigid", "category": "tube", "category_idx": 0, "pos": [0.1, 0, 0.8], "quat": [1, 0, 0, 0]},
+          {"label": "tube1", "type": "Rigid", "category": "tube", "category_idx": 0, "pos": [0.2, 0, 0.8], "quat": [1, 0, 0, 0]}]
+    rep = {"records": {"initial": initial, "agentic0": agentic0}}
+    assert planning_record(rep["records"])[0] == "agentic0"
+    out = perception_eval(rep, gt, None)
+    assert out["tube1"]["found"] and out["tube1"]["xy_mm"] < 1.0 and out["tube0"]["xy_mm_first"] < 1.0
+    assert not perception_eval({"records": {"initial": initial}}, gt, None)["tube1"]["found"]

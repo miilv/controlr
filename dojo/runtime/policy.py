@@ -506,8 +506,11 @@ class RuntimePolicy:
                 prov.init_from_record(rec2)
                 sk = make_skills()
         recs = self.report["records"]
-        nf = [x.get("label") for x in (recs.get("agentic2") or recs.get("searched") or recs.get("fused")
-                                        or recs.get("initial") or {}).get("_not_found") or []]
+        # the record the belief starts from (a scan / agentic frame-0 record supersedes the initial one: breadth2
+        # insert_tubes 100002 had verify disabled for a tube the agentic record had found)
+        from .estimate import planning_record
+        last = planning_record(recs)[1]
+        nf = [x.get("label") for x in (last or {}).get("_not_found") or []]
         if nf:
             events.append({"kind": "perception_missing", "labels": nf})
             if verifier is not None:                    # the twin would run the task's checker on a partial scene
