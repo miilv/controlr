@@ -1249,7 +1249,8 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
                         **INSERT_HELD_KW}
             res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                                  place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
-            if not res.ok and res.status != "ended" and "in-air handover not attempted" in res.note:
+            if not res.ok and res.status != "ended" and ("in-air handover not attempted" in res.note
+                                                         or (turn_deg and res.status == "grasp_slip")):
                 return _insert_by_rest_handover(sk, obj, tg, rec, place_kw, res)
             if not res.ok and res.status != "ended":
                 return {"ok": False, "stage": f"insert {obj}", "result": res}
@@ -1298,7 +1299,9 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
                 "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True, **INSERT_HELD_KW}
     res = place_oriented(sk, obj, targets, yaw_sym=ysym, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                          place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
-    if not res.ok and res.status != "ended" and "in-air handover not attempted" in res.note:
+    if not res.ok and res.status != "ended" and ("in-air handover not attempted" in res.note
+                                                 or (turn_deg and res.status == "grasp_slip")):
+        # (a direct pick of a key that slipped: G3 100024, a slice grasp rose 0 mm; the rest handover picks it lengthwise)
         return _insert_by_rest_handover(sk, obj, targets, rec, place_kw, res)
     if not res.ok and res.status != "ended":
         return {"ok": False, "stage": f"insert {obj}", "result": res}
