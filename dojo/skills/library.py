@@ -1146,6 +1146,7 @@ INSERT_HELD_KW = {"held_tol": 0.0, "spiral": 0.0005}
 
 INSERT_AIR_HANDOVER = False    # insertions that only plan through an in-air handover: lift + return instead (G3: the
                                # handover lost the key on the carry in 5 versions, 0/34; the lift banks the 15 % rung)
+INSERT_REST_HANDOVER = True    # ... and before that the handover with the object kept as it rests (``regrasp``; a key)
 
 
 def lift_and_return(sk: Skills, label: str, lift: float = 0.08) -> SkillResult:
@@ -1246,9 +1247,9 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
                         **INSERT_HELD_KW}
             res = place_oriented(sk, obj, tg, yaw_sym=1, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                                  place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
+            if not res.ok and res.status != "ended" and "in-air handover not attempted" in res.note:
+                return _insert_by_rest_handover(sk, obj, tg, rec, place_kw, res)
             if not res.ok and res.status != "ended":
-                if "in-air handover not attempted" in res.note:
-                    lift_and_return(sk, obj)
                 return {"ok": False, "stage": f"insert {obj}", "result": res}
             return {"ok": True, "stage": "inserted"}
     fits = []
@@ -1295,11 +1296,28 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
                 "turn": math.radians(turn_deg), "release": True, "grip_only": (rec,), "servo": True, **INSERT_HELD_KW}
     res = place_oriented(sk, obj, targets, yaw_sym=ysym, tol_xy=0.004, tol_tilt=7.0, tol_z=0.01, ignore=(rec,),
                          place_kw=place_kw, air_handover=INSERT_AIR_HANDOVER)
+    if not res.ok and res.status != "ended" and "in-air handover not attempted" in res.note:
+        return _insert_by_rest_handover(sk, obj, targets, rec, place_kw, res)
     if not res.ok and res.status != "ended":
-        if "in-air handover not attempted" in res.note:
-            lift_and_return(sk, obj)
         return {"ok": False, "stage": f"insert {obj}", "result": res}
     return {"ok": True, "stage": "inserted"}
+
+
+def _insert_by_rest_handover(sk: Skills, obj: str, targets: list, rec: str, place_kw: dict, res) -> dict:
+    """An insertion that plans only through an in-air handover: hand the object over as it rests
+    (``regrasp.rest_handover``: a lengthwise pick, the taker's grasp chosen at the target); when that does not get as far
+    as its pick, lift the object and set it back (the first rung of the ladders; the handover's own pick lifts 10 cm)."""
+    if INSERT_REST_HANDOVER:
+        from dojo.skills.regrasp import rest_handover
+        n_pick = sum(1 for h in sk.history if h.skill == "pick" and h.ok)
+        r2 = rest_handover(sk, obj, list(targets), rec, place_kw)
+        if r2.ok:
+            return {"ok": True, "stage": "inserted (rest handover)"}
+        if r2.status != "ended" and sum(1 for h in sk.history if h.skill == "pick" and h.ok) == n_pick:
+            lift_and_return(sk, obj)
+        return {"ok": False, "stage": f"insert {obj} (rest handover)", "result": r2}
+    lift_and_return(sk, obj)
+    return {"ok": False, "stage": f"insert {obj}", "result": res}
 
 
 def functional_frames(o, tag: str, active: bool = False) -> list[np.ndarray]:
