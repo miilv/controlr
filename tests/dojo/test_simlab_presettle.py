@@ -80,3 +80,38 @@ def test_dev_demo_never_touches_eval_paired_demos(tmp_path, monkeypatch):
             "target_place_tag": [None] * 5}
     (d / f"{paths.SEED_BASE + 3}.pkl").write_bytes(pickle.dumps(demo))
     assert R.dev_demo("imitate_sorting_sequence", paths.SEED_BASE + 3) == demo
+
+
+def test_keep_raw_unmoved_keeps_only_objects_that_did_not_move():
+    import math
+    lay = record()
+    live = live_rows(lay)
+    live[0]["pos"] = [live[0]["pos"][0] + 0.0005, live[0]["pos"][1], live[0]["pos"][2]]      # block_0: 0.5 mm
+    live[1]["pos"] = [live[1]["pos"][0] + 0.003, live[1]["pos"][1], live[1]["pos"][2]]       # block_1: 3 mm
+    h = math.radians(2.0) / 2
+    live[2]["quat"] = [math.cos(h), math.sin(h), 0.0, 0.0]                                   # pen: tilted 2 deg
+    keep = P.unmoved(live)
+    assert keep == {live[0]["inst_name"]}
+    out, n = P.write_back(lay, live, keep)
+    assert n == 2
+    assert out["Rigid"]["block"][0]["default_pos"] == lay["Rigid"]["block"][0]["default_pos"]   # kept at the raw pose
+    assert out["Rigid"]["block"][1]["default_pos"][0] == live[1]["pos"][0]
+    assert P.write_back(lay, live)[1] == 3                                                     # default: every object
+
+
+def test_keep_raw_unmoved_selects_only_dropped_ids_without_a_settled_file(tmp_path):
+    import json
+    d = tmp_path / "t"
+    d.mkdir()
+    index = {"100000": {"status": "ok"}, "100001": {"status": "dropped: settled record not stable"},
+             "100002": {"status": "dropped: settled record not stable"}, "100004": {"status": "dropped: not at rest"},
+             "100150": {"status": "dropped: settled record not stable"}}
+    for n in ("100000", "100001", "100002", "100003", "100004", "100150"):
+        (d / f"{n}.json").write_text("{}")
+    for n in ("100000", "100002"):                       # 100002: a settled file next to a dropped entry
+        (d / f"{n}.settled.json").write_text("{}")
+    (d / "settled_index.json").write_text(json.dumps(index))
+    names = lambda fs: [p.stem for p in fs]
+    assert names(P.select_files("t", root=tmp_path)) == ["100000", "100001", "100002", "100003", "100004"]  # reserved out
+    assert names(P.select_files("t", root=tmp_path, keep_raw_unmoved=True)) == ["100001"]
+    assert names(P.select_files("t", ids=[100000, 100002], root=tmp_path, keep_raw_unmoved=True)) == []
