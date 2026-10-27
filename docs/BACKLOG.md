@@ -321,11 +321,18 @@
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
 - [ ] **dojo skills: fill_egg_holder, an egg can land lying across a hole** (its centre 2-5 mm over the plate, the
   checker wants it in). Two presses from above did not free it; ordering the drops so the far end rests on the outer
-  rim (not on the wall between two holes) did not help (G3, 11 layouts).
+  rim (not on the wall between two holes) did not help (G3, 11 layouts). `slide_in` pushes it along its axis until
+  one end is over the hole (G3 mode B 8 -> 12 eggs); mode B still lands half as many as mode A, because the egg's
+  in-hand position along its axis (10-14 mm lower than believed) is not measured: a held-pose look would close it.
 - [ ] **dojo runtime: an egg let go over the egg holder's hole is predicted on the table.** The holder is an
   Articulation, so the fixture rule (#77, Geometry only) does not see its holes and `drop_rest` drops the egg to the
-  table at the release's xy. Mode B then re-picks a phantom egg. The post-place refine must find it in the hole, or
-  the drop rule must use the holder's body mesh.
+  table at the release's xy. In G3 mode B the skill's in-hole check happens to accept that prediction (no phantom
+  re-picks), and `fill_holes` proposes the tipped-in pose to `confirm_pose` after each drop. Rendered: unmeasured.
+- [ ] **dojo skills: hang_mugs, a mug lying on its side cannot be stood up or hung** (G3). No pick + upright-place
+  pair exists: the place puts the X5's wrist horizontal low over the table (IK fails within 13 deg of horizontal).
+  Only a rim-to-base pinch plans a direct hang, and it slips. Next: an in-air handover that re-orients it, or a
+  handle grasp. In mode A 14 of 62 mugs fall at the release after a good place (journal 2026-10-27-dojo-tools §8):
+  preventing that comes first.
 - [ ] **dojo simlab: pick_from_conveyor_by_image's photo board and basket placement is a public guess.** v12 put the
   basket's 22 cm body inside the conveyor (ejected at load). v13 (skills-6) follows the public PhysicalRSI sampler's
   `place_fixture` (world xy from the conveyor's root, z from its world bbox top): the basket stands on the belt in front
