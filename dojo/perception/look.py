@@ -256,12 +256,21 @@ def fuse(frames: list[dict], task: str, bgs: dict | None = None, cfg=None, prior
             out[name] = m
         return out
 
+    # the config's placement bounds, as B1's own fits have them (``origin_bounds``, a fixed yaw): the extra views do
+    # not lift them. Breadth3 organize_table 100001: the frame-0 drawer (9 mm) slid 112 mm off its fixed slot row and
+    # turned 27 deg against a fixed yaw, at a lower loss in every view (the cabinet model fits it loosely, 0.45-0.5)
+    from .inverse_layout import _placement_prior, label_groups, origin_bounds
+
+    group_of = {lab: g for g in label_groups(task) for lab in g["labels"]}
     for r, key, sm, T0 in entries:
         others = union_others(r)
         Rz = T0[:3, :3] @ sm.R0.T
         yaw0 = float(np.arctan2(Rz[1, 0], Rz[0, 0]))
         z_off = float(T0[2, 3] - (sm.pose(0, 0, 0)[2, 3]))
         zsm = _ZShift(sm, z_off)
+        g = group_of.get(r.get("label"))
+        yaw_fixed = bool(g is not None and _placement_prior(g)["yaw_fixed"])
+        bounds = origin_bounds(g, sm, yaw0) if g is not None else None
         rvs = make_roi_views(zsm, T0, views, others)
         ex_rvs = [rv for rv in rvs if "@" in rv.name]
         info = {"accepted": False, "extra_views": [rv.name for rv in ex_rvs]}
@@ -269,7 +278,10 @@ def fuse(frames: list[dict], task: str, bgs: dict | None = None, cfg=None, prior
             l0 = roi_loss(zsm, T0, rvs)[0]
             e0 = roi_loss(zsm, T0, ex_rvs)[0]
             x1, y1, yaw1, _, _ = nm_refine(zsm, T0[0, 3], T0[1, 3], yaw0, views, others, xy_step=0.004, yaw_step=0.06,
-                                           maxiter=cfg.refine_iters, fix_yaw=(sm.yaw_period < 0.2))
+                                           maxiter=cfg.refine_iters, fix_yaw=(sm.yaw_period < 0.2) or yaw_fixed,
+                                           bounds=bounds)
+            if bounds is not None:  # the penalty only steers: a pose outside the region is not a placement
+                x1, y1 = float(np.clip(x1, bounds[0], bounds[1])), float(np.clip(y1, bounds[2], bounds[3]))
             T1 = zsm.pose(x1, y1, yaw1)
             l1 = roi_loss(zsm, T1, rvs)[0]
             e1 = roi_loss(zsm, T1, ex_rvs)[0]
