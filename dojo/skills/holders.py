@@ -503,6 +503,36 @@ def HO_align(a, b) -> np.ndarray:
     return _rot(v / s_, math.atan2(s_, c_))
 
 
+EGG_TIP_DEG = 30.0            # deg from vertical: how an egg let go lying off a hole's centre ends up in it (G3: 16-51)
+
+
+def tipped_in_pose(o, hole: dict, T_release, tilt_deg: float = EGG_TIP_DEG) -> np.ndarray:
+    """The expected pose of a lying object let go at ``T_release`` off ``hole``'s centre after it tipped in: its near end
+    (towards the hole's centre) went down, its long axis keeps its heading and stands ``tilt_deg`` from vertical, its
+    lower end on the hole's floor (mode B: nothing re-measures where it went; ``confirm_pose`` decides)."""
+    k = int(np.argmax(o.asset.extents))
+    R0 = np.asarray(T_release, float)[:3, :3]
+    c0 = R0 @ o.asset.center + np.asarray(T_release, float)[:3, 3]
+    ax = R0[:, k].copy()
+    hc = np.asarray(hole["center"], float)[:2]
+    far = c0[:2] - hc                                  # the release offset: from the hole centre to the far rim
+    sgn = 1.0 if float(ax[:2] @ far) >= 0 else -1.0     # the axis' end that points at the far rim stays up
+    u = np.r_[sgn * ax[:2], 0.0]
+    u = u / max(float(np.linalg.norm(u)), 1e-9)
+    t = math.radians(90.0 - tilt_deg)                   # elevation of the far end
+    a_new = math.cos(t) * u + np.array([0.0, 0.0, math.sin(t)])
+    a_old = sgn * ax
+    v = np.cross(a_old, a_new)
+    sv, cv = float(np.linalg.norm(v)), float(a_old @ a_new)
+    Rt = _rot(v / sv, math.atan2(sv, cv)) if sv > 1e-9 else np.eye(3)
+    R = Rt @ R0
+    half = 0.5 * float(o.asset.extents[k])
+    w = 0.5 * float(max(np.delete(o.asset.extents, k)))
+    zc = float(hole["floor"]) + math.hypot(half * math.sin(t), w * math.cos(t))      # an ellipsoid on its lower end
+    c = np.r_[hc + u[:2] * 0.003, zc]
+    return T_from(c - R @ o.asset.center, R)
+
+
 EGG_PRESS = True              # an egg left lying across its hole is pressed in from above
 EGG_SUNK = 0.003              # m: its centre this far under the plate's top counts as in (lying across: 4-11 mm over it;
                               # the checker wants the centre < 40 mm over the holder's bottom frame, 5 mm over its base)
@@ -714,6 +744,10 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
                 return failed + [lab]
             sk.ex.hold(4)
             sk.bank()
+            if off == off:
+                # mode B: the belief's release rule does not know the holder's holes (an Articulation, not a fixture)
+                # and puts the egg on the table; the provider's confirm_pose (the head view) decides on the expected one
+                sk.confirm_moved(lab, tipped_in_pose(o, h, q.T_obj_target), "dropped into a hole")
             w = sk.refresh()
             o = w.obj(lab)
             if EGG_PRESS and off == off and float(o.center_w[2]) > plate_top - EGG_SUNK:

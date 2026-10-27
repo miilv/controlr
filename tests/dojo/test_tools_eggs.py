@@ -111,3 +111,19 @@ def test_g3_yaw_belief_offset_turns_about_the_bbox_centre():
     yaw = math.degrees(math.atan2(m.R[1, 0], m.R[0, 0]))
     assert abs(yaw - 10.0) < 1e-6
     assert np.allclose(inv_T(m.T)[:3, :3] @ m.R, np.eye(3), atol=1e-9)
+
+
+def test_tipped_in_pose_stands_the_egg_in_the_hole_far_end_up():
+    o = _egg(quat=(0.7071, 0.0, 0.7071, 0.0))             # lying: its long axis (local z) along world +x
+    hole = {"center": np.array([0.03, -0.15]), "radius": 0.0245, "top": 0.814, "floor": 0.769}
+    T_rel = np.eye(4)
+    T_rel[:3, :3] = o.R
+    T_rel[:3, 3] = np.r_[0.03 + 0.012, -0.15, 0.835] - o.R @ o.asset.center     # released 12 mm towards +x
+    T = HO.tipped_in_pose(o, hole, T_rel)
+    ax = T[:3, 2]
+    assert abs(math.degrees(math.acos(abs(ax[2]))) - HO.EGG_TIP_DEG) < 1e-6        # 30 deg from vertical
+    up_end = ax if ax[2] > 0 else -ax
+    assert up_end[0] > 0                                                             # the far (+x) end stays up
+    c = T[:3, :3] @ o.asset.center + T[:3, 3]
+    assert np.linalg.norm(c[:2] - hole["center"]) < 0.006
+    assert 0.769 + 0.02 < c[2] < 0.814                                               # in the hole, under the plate
