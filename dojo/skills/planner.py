@@ -257,6 +257,20 @@ def plan(instruction: str, world: WorldState) -> Plan:
         if cloth:
             return Plan("fold_garment", {"garment": cloth[0].label}, f"fold {cloth[0].label} ({cloth[0].category})")
 
+    # --- sweep small objects into a dustpan with a broom (the pan: a movable receptacle with a support circle, named
+    # like a shovel / dustpan; the tool: the broom; the objects: every other movable one)
+    if re.search(r"\bsweep\b", text):
+        pans = [o for o in objs if o.obj_type == "Rigid" and not o.clutter and o.asset.support
+                and re.search(r"shovel|dustpan|pan\b", o.category.lower())]
+        tools = [o for o in objs if o.obj_type == "Rigid" and not o.clutter and "broom" in o.category.lower()
+                 and o not in pans]
+        if pans and tools:
+            movers = [o.label for o in objs if o.obj_type == "Rigid" and not o.clutter
+                      and o.label not in (pans[0].label, tools[0].label)]
+            if movers:
+                return Plan("sweep_into", {"objects": movers, "pan": pans[0].label, "tool": tools[0].label},
+                            f"{len(movers)} objects into {pans[0].label} with {tools[0].label}")
+
     # --- mahjong: declare a kong with the tiles (the most numerous rigid category)
     if "kong" in text:
         rig = [c for c, v in cats.items() if sum(o.obj_type == "Rigid" for o in v) >= 4]
