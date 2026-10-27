@@ -127,3 +127,24 @@ def test_tipped_in_pose_stands_the_egg_in_the_hole_far_end_up():
     c = T[:3, :3] @ o.asset.center + T[:3, 3]
     assert np.linalg.norm(c[:2] - hole["center"]) < 0.006
     assert 0.769 + 0.02 < c[2] < 0.814                                               # in the hole, under the plate
+
+
+def test_heldsim_confirm_ignores_the_spin_of_a_round_object():
+    """G3's confirm_pose stand-in compares a round object's long axis, not its spin about it (the head view cannot
+    tell an egg turned about its axis); a box is still compared in full."""
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.geometry import R_to_quat, quat_to_R
+    from dojo.skills.heldsim import HeldBeliefProvider
+    from dojo.skills.skills import GTProvider
+    for half, adopted in (([0.0205, 0.021, 0.029], True), ([0.03, 0.012, 0.01], False)):
+        env = KinematicEnv([{"label": "e", "category": "egg", "pos": [-0.2, -0.15, 0.80], "quat": [1, 0, 0, 0],
+                             "half": half}])
+        prov = HeldBeliefProvider(GTProvider(env, None), env, mode=None, drop="fixtures")
+        w = prov.refresh()
+        o = w.obj("e")
+        k = int(np.argmax(o.asset.extents))
+        prov._frozen["e"] = (o.pos + np.array([0.1, 0.0, 0.0]), o.quat.copy())     # the belief: 10 cm off
+        R_spun = o.R @ HO._rot(np.eye(3)[k], math.radians(90.0))                    # the same object turned about it
+        r = prov.confirm_pose("e", o.pos.copy(), R_to_quat(R_spun))
+        assert r["adopted"] is adopted, half
+        assert np.allclose(quat_to_R(R_to_quat(R_spun)), R_spun, atol=1e-9)
