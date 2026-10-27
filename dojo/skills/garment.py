@@ -61,8 +61,9 @@ def _poses(xy, z_tip: float, yaw: float, arm_base) -> list[np.ndarray]:
     return out
 
 
-def plan_pinch(sk: Skills, arm: str, src, dst, yaw: float, q0=None, carry_z: float = CARRY_Z) -> ArmPlan | str:
-    """One arm: pinch the cloth at ``src`` (world xy), carry it over ``dst`` and let it go there. A plan, or why not."""
+def plan_pinch(sk: Skills, arm: str, src, dst, yaw: float, q0=None, carry_z: float = CARRY_Z):
+    """One arm: pinch the cloth at ``src`` (world xy), carry it over ``dst`` and let it go there. (pick, place) plans
+    (the place starts where the pick's lift ends), or why not."""
     q0 = np.asarray(sk.ex.q[arm] if q0 is None else q0, float)
     base = sk.kin.base(arm)[:2, 3]
     why = "no pose"
@@ -83,28 +84,100 @@ def plan_pinch(sk: Skills, arm: str, src, dst, yaw: float, q0=None, carry_z: flo
         if not a3.ok:
             why = f"lift: {a3.note[:60]}"
             continue
-        for T_dst in _poses(dst, carry_z, yaw, base):
-            T_low = T_dst.copy()
-            T_low[2, 3] -= carry_z - RELEASE_Z
-            a4 = sk.motion.line(arm, a3.q_end, T_dst, MEDIUM, "pinch_carry", gripper=CLOSED, check=False)
-            if not a4.ok:
-                why = f"carry: {a4.note[:60]}"
-                continue
-            a5 = sk.motion.line(arm, a4.q_end, T_low, SLOW, "pinch_lower", gripper=CLOSED, check=False)
-            if not a5.ok:
-                why = f"lower: {a5.note[:60]}"
-                continue
-            T_out = T_low.copy()
-            T_out[2, 3] += 0.08
-            a6 = sk.motion.line(arm, a5.q_end, T_out, MEDIUM, "pinch_away", gripper=OPEN, check=False)
-            p = ArmPlan(arm, q0, sk.ex.g[arm])
-            p.grip(OPEN, 3, "open").move(a1, "above").move(a2, "down").grip(CLOSED, 10, "close").hold(4, "squeeze")
-            p.move(a3, "lift").move(a4, "carry").move(a5, "lower").hold(3, "settle").grip(OPEN, 6, "release")
-            p.hold(6, "let_go")
-            if a6.ok:
-                p.move(a6, "away")
-            return p
+        pl = plan_lay(sk, arm, a3.q_end, dst, yaw, carry_z)
+        if isinstance(pl, str):
+            why = pl
+            continue
+        p = ArmPlan(arm, q0, sk.ex.g[arm])
+        p.grip(OPEN, 3, "open").move(a1, "above").move(a2, "down").grip(CLOSED, 10, "close").hold(4, "squeeze")
+        p.move(a3, "lift")
+        return p, pl
     return why
+
+
+def plan_lay(sk: Skills, arm: str, q0, dst, yaw: float, carry_z: float = CARRY_Z) -> ArmPlan | str:
+    """Carry what the closed pads hold over ``dst`` (world xy), lower to 2 cm, let go, back up."""
+    base = sk.kin.base(arm)[:2, 3]
+    why = "no pose"
+    for T_dst in _poses(dst, carry_z, yaw, base):
+        T_low = T_dst.copy()
+        T_low[2, 3] -= carry_z - RELEASE_Z
+        a4 = sk.motion.line(arm, q0, T_dst, MEDIUM, "pinch_carry", gripper=CLOSED, check=False)
+        if not a4.ok:
+            why = f"carry: {a4.note[:60]}"
+            continue
+        a5 = sk.motion.line(arm, a4.q_end, T_low, SLOW, "pinch_lower", gripper=CLOSED, check=False)
+        if not a5.ok:
+            why = f"lower: {a5.note[:60]}"
+            continue
+        T_out = T_low.copy()
+        T_out[2, 3] += 0.08
+        a6 = sk.motion.line(arm, a5.q_end, T_out, MEDIUM, "pinch_away", gripper=OPEN, check=False)
+        p = ArmPlan(arm, np.asarray(q0, float), CLOSED)
+        p.move(a4, "carry").move(a5, "lower").hold(3, "settle").grip(OPEN, 6, "release").hold(6, "let_go")
+        if a6.ok:
+            p.move(a6, "away")
+        return p
+    return why
+
+
+def _let_go(sk: Skills, arms) -> None:
+    """Open and back up 8 cm (a pinch that caught no cloth)."""
+    plans = {}
+    for arm in arms:
+        q = sk.ex.q[arm].copy()
+        T = sk.kin.tcp(arm, q)
+        T[2, 3] += 0.08
+        up = sk.motion.line(arm, q, T, MEDIUM, "pinch_retry_up", gripper=OPEN, check=False)
+        p = ArmPlan(arm, q, sk.ex.g[arm]).grip(OPEN, 6, "open")
+        if up.ok:
+            p.move(up, "up")
+        plans[arm] = p
+    sk.ex.run(plans, name="pinch let go")
+
+
+def pinch_and_lay(sk: Skills, read, garment: str, jobs: list[dict], tries: int = 3) -> dict:
+    """Run pinches together (one per arm): ``jobs`` = [{"arm", "point", "src", "dst", "carry_z"}]. After the lifts the
+    garment is read: a pinch whose named point did not rise 25 mm caught no cloth (or only an edge) and is let go and
+    tried again deeper in and turned 90 deg, while the others hold. Then every held point is laid down together.
+    Returns {point: rise (m)}."""
+    rise, pending, held = {}, list(jobs), {}
+    for t in range(tries):
+        if not pending:
+            break
+        gm0 = read(garment) or {}
+        z0 = {j["point"]: (_kp(gm0, j["point"]) if _kp(gm0, j["point"]) is not None else np.zeros(3))[2] for j in pending}
+        picks = {}
+        for j in pending:
+            src = j["src"] if t == 0 else _inward(j["src"], j["dst"], 0.015 * t)
+            yaw = _pinch_yaw(j["src"], j["dst"]) + (math.pi / 2 if t % 2 else 0.0)
+            r = plan_pinch(sk, j["arm"], src, j["dst"], yaw, carry_z=j.get("carry_z", CARRY_Z))
+            if isinstance(r, str):
+                sk.log(f"[fold] {j['point']}: no pinch plan ({r})")
+                continue
+            picks[j["arm"]] = (j, r)
+        if not picks:
+            break
+        sk.ex.run({a: r[0] for a, (j, r) in picks.items()}, name="pinch")
+        gm = read(garment) or {}
+        pending = []
+        for a, (j, r) in picks.items():
+            p = _kp(gm, j["point"])
+            dz = float(p[2] - z0[j["point"]]) if p is not None else 0.0
+            rise[j["point"]] = dz
+            sk.log(f"[fold] {j['point']} pinched by {a} (try {t + 1}): rose {dz * 1000:.0f} mm")
+            if dz >= 0.025:
+                # the lay was planned for the planned yaw; re-plan from where the arm is now (same yaw)
+                yaw = _pinch_yaw(j["src"], j["dst"]) + (math.pi / 2 if t % 2 else 0.0)
+                lay = plan_lay(sk, a, sk.ex.q[a], j["dst"], yaw, j.get("carry_z", CARRY_Z))
+                held[a] = (j, lay if isinstance(lay, ArmPlan) else r[1])
+            else:
+                pending.append(j)
+        if pending:
+            _let_go(sk, [j["arm"] for j in pending])
+    if held:
+        sk.ex.run({a: lay for a, (j, lay) in held.items()}, name="lay")
+    return rise
 
 
 def _pinch_yaw(src, toward) -> float:
@@ -142,55 +215,39 @@ def fold_garment(sk: Skills, garment: str) -> dict:
             sgn = -1.0 if side == "left" else 1.0
             dst = ch[:2] + sgn * SLEEVE_OWN * xa
             src = _inward(sl, centre)
-            arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - src)))
-            plan, why = None, {}
-            for arm in arms:
-                r = plan_pinch(sk, arm, src, dst, _pinch_yaw(src, dst))
-                if isinstance(r, ArmPlan):
-                    plan = r
-                    break
-                why[arm] = r
-            if plan is None:
-                sk._record(SkillResult(False, "fold_sleeve", "ik_fail", 0, None, note=f"{side}: {why}"))
-                return {"ok": False, "stage": f"{side} sleeve", "note": str(why), "done": done}
+            arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - src)))
             n0 = sk.ex.steps_used
-            sk.ex.run({plan.arm: plan}, name=f"fold {side} sleeve")
+            rise = pinch_and_lay(sk, read, garment, [{"arm": arm, "point": f"{side}_sleeve", "src": src, "dst": dst}])
             gm = read(garment) or gm
             sl2 = _kp(gm, f"{side}_sleeve")
-            ok = sl2 is not None and float(np.linalg.norm(sl2[:2] - ch[:2])) < 0.13
-            sk._record(SkillResult(ok, "fold_sleeve", "ok" if ok else "place_miss", sk.ex.steps_used - n0, plan.arm,
-                                   note=f"{side} sleeve {1000 * float(np.linalg.norm(sl2[:2] - ch[:2])):.0f} mm from "
-                                        f"the {other} chest" if sl2 is not None else "no read"))
+            d = float(np.linalg.norm(sl2[:2] - ch[:2])) if sl2 is not None else float("inf")
+            ok = d < 0.13
+            sk._record(SkillResult(ok, "fold_sleeve", "ok" if ok else "place_miss", sk.ex.steps_used - n0, arm,
+                                   note=f"{side} sleeve {1000 * d:.0f} mm from the {other} chest, rose "
+                                        f"{1000 * rise.get(f'{side}_sleeve', 0.0):.0f} mm"))
             done.append(f"{side} sleeve")
         # the body: both hem corners onto the shoulders at once (the hem line stays parallel to the shoulder line)
         gm = read(garment) or gm
-        plans, why = {}, {}
         centre = np.mean(np.asarray(gm["points"], float)[:, :2], axis=0) if gm.get("points") is not None else None
+        jobs = []
         for side in ("left", "right"):
             hm, sh = _kp(gm, f"{side}_hem"), _kp(gm, f"{side}_shoulder")
             if hm is None or sh is None:
                 return {"ok": False, "stage": "hem", "note": f"no {side} hem / shoulder point", "done": done}
             v = sh[:2] - hm[:2]
             dst = sh[:2] - v / (np.linalg.norm(v) or 1.0) * HEM_SHORT
-            src = _inward(hm, centre if centre is not None else sh)
-            arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - src)))
-            if arm in plans:
-                arm = "right" if arm == "left" else "left"
-            r = plan_pinch(sk, arm, src, dst, _pinch_yaw(src, dst), carry_z=0.12)
-            if not isinstance(r, ArmPlan):
-                why[side] = f"{arm}: {r}"
-                continue
-            plans[arm] = r
-        if len(plans) < 2:
-            sk._record(SkillResult(False, "fold_body", "ik_fail", 0, None, note=str(why)))
-            return {"ok": False, "stage": "hem", "note": str(why), "done": done}
+            jobs.append({"point": f"{side}_hem", "src": _inward(hm, centre if centre is not None else sh), "dst": dst,
+                         "carry_z": 0.12})
+        # each hem corner to the arm on its side
+        jobs.sort(key=lambda j: float(j["src"][0]))
+        jobs[0]["arm"], jobs[1]["arm"] = "left", "right"
         n0 = sk.ex.steps_used
-        sk.ex.run(plans, name="fold body")
+        rise = pinch_and_lay(sk, read, garment, jobs)
         gm = read(garment) or gm
         d = [float(np.linalg.norm(_kp(gm, f"{s}_hem")[:2] - _kp(gm, f"{s}_shoulder")[:2])) for s in ("left", "right")]
         sk._record(SkillResult(max(d) < 0.15, "fold_body", "ok" if max(d) < 0.15 else "place_miss",
                                sk.ex.steps_used - n0, None, note=f"hems {1000 * d[0]:.0f} / {1000 * d[1]:.0f} mm "
-                                                                  f"from the shoulders"))
+                                                                  f"from the shoulders, rose {rise}"))
         done.append("body")
     except (BudgetExceeded, EpisodeEnded) as e:
         return {"ok": False, "stage": "fold", "note": str(e), "done": done}

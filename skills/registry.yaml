@@ -419,6 +419,34 @@ entries:
       - {src: docs/journal/2026-10-26-dojo-skills7.md, bench: robodojo, cell: hang_mugs, tier: A, version: v6.2 G3 twin, n: 25, success: 5}
     notes: "skills-4 first version; skills-7: the rack and hung objects as small mesh boxes, relay"
 
+  - name: fold_garment
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Fold a long-sleeved top lying flat on the table with pinches: each sleeve is pinched at its end and laid on the
+      opposite chest (one arm each), then both hem corners are pinched together and laid on the shoulders; grippers
+      opened after each fold.
+    args:
+      garment: "id, required; the garment"
+    selects_on:
+      words: [fold, clothes, shirt]
+      needs_categories: []
+    inputs:
+      source: provider
+      objects:
+        - {what: garment, fields: [keypoints, pose]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.garment:fold_garment"
+    measured: none
+    stats: []
+    notes: "gennew first version; reads the garment's named points from the provider (GT in G3)"
+
   - name: play_board_game
     side: ilia
     benchmark: robodojo
