@@ -136,3 +136,35 @@ emulation does not reach the "in: []" slot-check loop seen in breadth2 (proxy B)
 - Open, ranked by points: store_tools planning (the wrench next to the toolbox; a 5.1 B run on main 1152d1d is the next
   measurement), organize_table (section 5), fill_pen_holder (G3 0.20), tic-tac-toe's cell reads (perception), the
   cross-reach pick of the far-left piece.
+
+## 8. Later the same morning
+
+**make_kong + `snap_row` (#141, merged).** Genuine 5.1 B, 100000-09: main a3dc7e1 (#102 + #105) 6/10, 60.0 (4 topple plan
+collisions with a hand neighbour believed up to 11.5 mm into the 13 mm gap) -> main 13a28b6 + snap_row **10/10**. Report:
+[experiments/2026-10-27-kong-mode-b](../experiments/2026-10-27-kong-mode-b.md).
+
+**tic-tac-toe, a board read after the opponent's arm rests** (`feat/dojo-longh-ttt-actor`): 2/10, 0.64 vs #107's 2/10,
+0.66 on the same layouts; not merged. Perception-2 rewrote the cell read (#151: gold chroma, arm-covered cells keep the
+prior) from the replayed frames; the rendered pair main (#107 + #151) vs + actor v2 (no read-based landing while the
+opponent's arm moves) runs after this entry.
+
+**store_tools.** Genuine 5.1 B on main 1152d1d, 100000-09: 0/10, 42.5 (G3 mode A on the same layouts 0.57); losses:
+belief_mismatch "stages_left 1" 6, plan 2, grasp_slip 2. A physics-only replay of 100008's action list reproduces its
+"stages_left 1": the wrench (an off-centre grasp, 16 mm) slid out of the jaws ~15 steps after the lift; held_look had
+said "held" just before; nothing re-checked before the release, so the skill placed an empty gripper. Under the strict
+v1 contract the gripper observation is the command, so a finger-gap guard is not available: a vision check before the
+release is the candidate (open).
+
+**Why "0 grasp-place pairs"** (plan_transfer's screen instrumented on kinematic dry runs):
+- store_tools' wrench against the toolbox (100003): 94 of 98 IK-feasible picks "hit toolbox" (its box + 6 mm);
+- organize's figurine: the place hits the drawer's box;
+- fill_pen's second pen "hits target2": an artefact of the kinematic env (no physics, the first pen not inside); in G3
+  `fill_container` already ignores and grip_only's the pens inside.
+PR #169: containers / supports as mesh-height-map obstacles (`container_obstacle`, `Collision.heightmaps`) in
+`place_in_slots` and `arrange`. G3 mode A, paired: store_tools 100000-19 3/20, 0.588 -> 7/20, 0.675 (6 better, 0 worse);
+organize 0.44 = 0.44; insert_tubes 10/10 = 10/10; regression plug 8/10, kong 5/5, stack 5/5.
+
+**organize_table, genuine 5.1 B** on main 8c845c9 (#135), 100000-07: 0/8, 25.0, perception_gross 7 (the alarm not found
+or 261-371 mm off, the figurine 42-90 mm off and turned 63-82 deg; p90 73.7 mm). To Perception-3. 100008 hung: Kit sat on
+a GUI dialog (`zenity ... Failed to open display`) and held the heavy lock ~45 min; TERM did not stop it, `kill -9` of
+the eval python did.

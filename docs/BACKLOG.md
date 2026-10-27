@@ -6,6 +6,13 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo skills: a silent in-hand slip in mode B** (store_tools 5.1 B, 6/10 "stages_left 1"; journal
+  2026-10-27-dojo-longh §8). A physics replay of 100008: the wrench slid out of an off-centre grasp ~15 steps after the
+  lift, after held_look had said "held"; nothing re-checks before the release and the skill places an empty gripper.
+  The strict v1 contract gives no finger gap; a vision check (held_look) right before the release of slip-prone grasps.
+- [ ] **dojo runtime: a Kit hang on a GUI dialog holds the heavy lock** (compute8, organize_table 100008 on 8c845c9):
+  `zenity ... Failed to open display` every 2 min in integ_eval.log, no env step for 45 min; integ_eval's TERM path hung
+  in `systemctl --user stop` until the eval python got `kill -9`. Needs a hard watchdog (no step for N min -> kill -9).
 - [ ] **dojo perception: deposit_coin's coin + stand read at a phantom near a home gripper** (5.1 coinmain, 6 of 10 layouts, at frame 0 or in the scan read). The real assembly is ~10 px in the head view; B1 fits the stand onto the piggy bank or gripper area instead. #153 makes the agent's correction stand the coin up; the B1 miss is the root. Also: coin not found when the stand fit is 19-115 mm off (the slot check refutes it).
 - [ ] **dojo perception: a "held" refine can fit the object 80 mm below the jaws** (breadth3 store_tools 100000 step 67: fit 78 mm low, 43 deg off, iou 0.73). The runtime's in-hand bounds (#99) reject it now; perception could reject fits whose centre is outside the jaws itself.
 - [ ] **dojo skills: organize_table, three skill-side gaps (G3 mode A 0.44: alarm 2/9, figurine 0/9, keyboard 4/9).**
