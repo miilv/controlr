@@ -197,6 +197,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
     `--allow-bbox` plans on the bboxes anyway.
   Before calling a difference a regression, diff the saved actions (`<task>_<seed>_actions.json.gz`) of the two runs:
   the first differing step points at the skill that diverged.
+- **`scripts/deploy.sh` installs only `.[dev]`.** A rendered `integ_eval.sh` starts the perception service from the
+  deploy dir's `.venv`, and that needs `.[perception]` (opencv, trimesh, ...). Without it the episode ends at step 0,
+  `cat=error ... No module named 'cv2'`. Before a rendered run: `uv pip install --python .venv/bin/python -e
+  ".[dev,perception]"` in the deploy dir. G3 runs in RoboDojo's python and does not need it.
 
 ## 5. What lives where
 
