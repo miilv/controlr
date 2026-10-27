@@ -161,8 +161,9 @@ def pinch_and_lay(sk: Skills, read, garment: str, jobs: list[dict], tries: int =
         z0 = {j["point"]: (_kp(gm0, j["point"]) if _kp(gm0, j["point"]) is not None else np.zeros(3))[2] for j in pending}
         picks = {}
         for j in pending:
-            src = j["src"] if t == 0 else _inward(j["src"], j["dst"], 0.015 * t)
-            yaw = _pinch_yaw(j["src"], j["dst"]) + (math.pi / 2 if t % 2 else 0.0)
+            k = t + int(j.get("first", 0))           # a job may start at a later recipe
+            src = j["src"] if k == 0 else _inward(j["src"], j["dst"], 0.015 * k)
+            yaw = _pinch_yaw(j["src"], j["dst"]) + (math.pi / 2 if k % 2 else 0.0)
             r = plan_pinch(sk, j["arm"], src, j["dst"], yaw, carry_z=j.get("carry_z", CARRY_Z))
             if isinstance(r, str):
                 sk.log(f"[fold] {j['point']}: no pinch plan ({r})")
@@ -184,7 +185,7 @@ def pinch_and_lay(sk: Skills, read, garment: str, jobs: list[dict], tries: int =
             sk.log(f"[fold] {j['point']} pinched by {a} (try {t + 1}): rose {dz * 1000:.0f} mm")
             if dz >= 0.025:
                 # the lay was planned for the planned yaw; re-plan from where the arm is now (same yaw)
-                yaw = _pinch_yaw(j["src"], j["dst"]) + (math.pi / 2 if t % 2 else 0.0)
+                yaw = _pinch_yaw(j["src"], j["dst"]) + (math.pi / 2 if k % 2 else 0.0)
                 lay = plan_lay(sk, a, sk.ex.q[a], j["dst"], yaw, j.get("carry_z", CARRY_Z))
                 held[a] = (j, lay if isinstance(lay, ArmPlan) else r[1])
             else:
@@ -267,8 +268,10 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
                 return {"ok": False, "stage": "hem", "note": f"no {side} hem / shoulder point", "done": done}
             v = sh[:2] - hm[:2]
             dst = sh[:2] + v / (np.linalg.norm(v) or 1.0) * HEM_PAST
+            # hems start at the second recipe (1.5 cm deeper, turned 90 deg): the first one caught nothing on 4 of 10
+            # hem pinches, the second caught 8/8 (twin, 946862b); mode B gets one pinch, no retry
             jobs.append({"point": f"{side}_hem", "src": _inward(hm, centre if centre is not None else sh), "dst": dst,
-                         "carry_z": 0.12})
+                         "carry_z": 0.12, "first": 1})
         # each hem corner to the arm on its side
         jobs.sort(key=lambda j: float(j["src"][0]))
         jobs[0]["arm"], jobs[1]["arm"] = "left", "right"
