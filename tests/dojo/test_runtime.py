@@ -1389,6 +1389,30 @@ def test_tracker_keeps_an_untouched_object_against_an_unsure_reread(touched, con
         assert any(e["kind"] == "tracker_kept" and e["labels"] == ["block_1"] for e in prov.events)
 
 
+def test_resync_with_nothing_left_to_check_does_not_call_the_checker():
+    """The only movable object was just released (a key in its lock): no head check of an empty list (the service's
+    check raised on it and ended a rendered insert_key episode)."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env([(-0.30, -0.15, 0.78)])
+
+    class Strict:
+        def check(self, obs, objects):
+            assert objects, "check of no objects"
+            return {}
+
+        def estimate(self, obs):
+            raise AssertionError("no re-estimate expected")
+
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=Strict(), replan_on_divergence=False)
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.post_place_refine = False
+    lab = sorted(prov.belief.objects)[0]
+    ev = prov.resync(b.obs, released=[lab])
+    assert ev["kind"] == "resync" and ev["diverged"] == []
+
+
 def test_held_look_drops_an_empty_grasp_from_the_jaws():
     from dojo.runtime.belief import RuntimeProvider
     env = _env()

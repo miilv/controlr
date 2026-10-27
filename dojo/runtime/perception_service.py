@@ -625,6 +625,8 @@ class _Perception:
         from dojo.perception.inverse_layout import shape_models, view_iou
         from dojo.perception.render import gl
         from dojo.perception.segment import segment_views
+        if not objects:                  # nothing to compare (np.stack of no depth maps raised)
+            return {}
         f = decode_frame(frame)
         cfg = self.cfg(fold)
         views = segment_views(f["images"], cameras_from_state(f["state"]), f["state"], self.bgs(fold), thr=cfg.fg_thr)
