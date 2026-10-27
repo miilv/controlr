@@ -403,9 +403,11 @@ def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OF
 
 EGG_NUDGE = 0.03              # m: an egg resting against a container's wall is pushed this far towards its middle
 EGG_NUDGE_GAP = 0.0045        # m: the closed fingertips go down this far outside the egg's side facing the wall
+EGG_NUDGE_WALL_CLEAR = -0.020 # m: the push's closed fingertips may graze the wall profile this far (a push, not a pick:
+                              # 19 vs 16 eggs in, G3 mode A, the 11 settled layouts, 3 up and 0 down)
 
 
-def nudge_from_wall(sk: Skills, label: str, wall_clear: float = EGG_WALL_CLEAR) -> SkillResult | None:
+def nudge_from_wall(sk: Skills, label: str, wall_clear: float = EGG_NUDGE_WALL_CLEAR) -> SkillResult | None:
     """Push a round object lying against a round container's wall ``EGG_NUDGE`` towards the container's middle: the
     closed fingertips go down into the gap between its side and the sloped wall at its widest height (the closing axis
     along the push, 7 mm thick) and move inward (egg_drop1: eggs resting on the wall's foot had no grasp whose fingers
