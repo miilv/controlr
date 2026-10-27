@@ -579,6 +579,37 @@ def test_refine_hook_updates_the_belief_only_when_accepted():
         assert pol.report["events"][-1]["kind"] == "refine"
 
 
+def test_refine_hook_passes_the_search_radius_and_empty_hand_only_when_configured():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class RefinePerception:
+        def __init__(self):
+            self.calls = []
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None, **kw):
+            self.calls.append((max_shift_m, kw))
+            return {objects[0]["label"]: {"ok": False, "pos": list(objects[0]["pos"]), "quat": objects[0]["quat"],
+                                          "shift_mm": 0.0, "radius_search": {"used": False, "grid": 4, "time_s": 1.0}}}
+
+    for cfg_kw, want in (({}, (0.03, {})),                                       # default: the call as before
+                         ({"refine_search_radius": 0.06, "refine_empty_hand": True},
+                          (0.07, {"search_radius": 0.06, "empty_hand": True}))):
+        pc = RefinePerception()
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True, **cfg_kw), assets=FakeAssets(), perception_client=pc)
+        pol.reset(FakeEpisode(env).info())
+        b = pol.bridge
+        b.obs, b.fresh = FakeEpisode(env).observe(), True
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        pol._refine_hook(prov, None, "block_1", "left", "pick")
+        assert pc.calls[-1][0] == pytest.approx(want[0]) and pc.calls[-1][1] == want[1]
+        assert pol.report["events"][-1]["radius_search"]["grid"] == 4
+        if cfg_kw:   # a place (something in the jaws) keeps the radius, never the empty hand
+            pol._refine_hook(prov, None, "block_1", "left", "place")
+            assert pc.calls[-1][1] == {"search_radius": 0.06}
+
+
 def test_refine_hook_applies_a_read_yaw_past_the_turn_guards_and_exposes_it():
     """A refine whose yaw perception read over the full turn (yaw_source "top_feature": insert_key's keyhole) is a
     measurement: a 150 deg turn at a mediocre iou is applied, the skill sees the raw reading (sk.last_refine) and

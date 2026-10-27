@@ -115,6 +115,13 @@ class RuntimeConfig:
     refine: bool = False                # pre-contact wrist refine at the hover (mode perception; needs skills' hook)
     refine_max_shift_m: float = 0.03    # accept a refined pose at most this far from the prior (perception searches 7 cm)
     refine_identity: bool = True        # at pick hovers: identity over the vocabulary's distinct shapes
+    refine_search_radius: float = 0.0   # m, 0 = off: a pick / place refine whose prior's own fit is not ok searches a
+                                        # grid of shifted priors over this radius (perception's ``search_radius``);
+                                        # the accepted shift is raised to radius + 1 cm. D0 5.1 wrist looks with priors
+                                        # +-50 mm: correct fits 187 -> 315 of 334 at 70 mm, no new false ok (PR #183)
+    refine_empty_hand: bool = False     # pick refines with nothing attached to either arm tell perception the hands are
+                                        # empty: a pre-grasp opening below half is then not masked as a grip (a 65 mm
+                                        # held box between the fingertips; 197k of 307k wrist pixels at a 15 cm hover)
     refine_max_turn_deg: float = 90.0   # a pick / place refine turning the object more than this keeps the prior
                                         # orientation (position only): a near-symmetric body fits flipped (5.1
                                         # plug_in_charger: a 178 deg yaw flip -> "turned 180" regrasp loop); the
@@ -706,8 +713,13 @@ class RuntimePolicy:
             # re-identified as a prism (5.1 tower: iou 0.67, turned 91 deg, the tower tilted while we believed "built")
             idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else label_candidates(prov.task, label)
         prior_pose = (o.pos.copy(), o.quat.copy())
-        res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv,
-                                       held=held)
+        kw, max_shift = {}, self.cfg.refine_max_shift_m
+        if self.cfg.refine_search_radius > 0:   # the prior may be this far off (B1 / agentic read, a place target)
+            kw["search_radius"] = float(self.cfg.refine_search_radius)
+            max_shift = max(max_shift, float(self.cfg.refine_search_radius) + 0.01)
+        if self.cfg.refine_empty_hand and kind == "pick" and held is None and not prov.belief.attached:
+            kw["empty_hand"] = True
+        res = self.perception().refine(obs, objs, self.fold, max_shift, arm=arm, identity_vocabulary=idv, held=held, **kw)
         r = res.get(label) or {}
         if sk is not None:
             sk.last_refine = {**r, "label": label, "for": kind}  # the raw reading (skills read e.g. its yaw_source)
@@ -717,6 +729,8 @@ class RuntimePolicy:
                                        "suggest_xy", "suggest_shift_mm", "fit_shift_mm", "p_why", "yaw_source")}}
         if r.get("pos") is not None:
             ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
+        if r.get("radius_search"):
+            ev["radius_search"] = {k: r["radius_search"].get(k) for k in ("used", "grid", "time_s")}
         self.report["events"].append(ev)
         rc = getattr(self, "_recentre_prior", {}).pop(label, None)
         looked = (float(r.get("visible_frac") or 0) >= 0.3 and not str(r.get("p_why") or "").startswith("truncated"))
