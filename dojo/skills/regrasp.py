@@ -411,9 +411,14 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
                                       t_arm, note=str(e)))
     mode_b = not getattr(sk, "remeasure", True)
     if mode_b and turn:
-        # mode B: the blind tail stops at the contact and holds on; a key stopped on its lock's top is then turned about
-        # its axis under a light press until it drops in (``keyed_sweep``), and let go after
-        kw.update({"probe": False, "release": False})
+        # mode B: a guarded descent by proprio from the hover; a key stopped on its lock's top is turned about its axis
+        # under a light press until it drops in (``keyed_sweep``); let go; the turn with a fresh grasp in the lock
+        # (the place tail's non-probing branch servos on the predicted transform and never feels the lock's top)
+        r = sk._record(_blind_insert(sk, t_arm, label, h["target"], receptacle))
+        if r.status in ("ended", "step_budget"):
+            return r
+        _let_go(sk, t_arm, label)
+        return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(h["target"], kw))
     pl = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
     held_on = False
     if not isinstance(pl, PlacePlan) and turn:
@@ -425,17 +430,39 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     r = sk._record(sk.run_place(pl, tol[0], tol[1], tol_z=tol[2], ref_label=receptacle))
     if not turn or r.status in ("ended", "step_budget"):
         return r
-    if mode_b and not held_on:
-        sw = sk._record(keyed_sweep(sk, t_arm, label, _unpressed(h["target"], kw)))
-        if sw.status in ("ended", "step_budget"):
-            return sw
-        _let_go(sk, t_arm, label)
     if held_on:
         rt = sk._record(turn_held(sk, t_arm, label, turn))
         if rt.status != "ik_fail":
             return rt
         _let_go(sk, t_arm, label)             # this grasp's wrist does not reach the turn: a fresh one in the lock
     return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(h["target"], kw))
+
+
+def _blind_insert(sk: Skills, arm: str, label: str, T_target, receptacle: str, hover: float = 0.045) -> SkillResult:
+    """Mode B: from over the receptacle, the held object down to ``T_target`` (on its believed in-hand transform) in
+    short guarded steps that stop when the arm lags (contact: ``Skills._guarded_line``); stopped short, the keyed sweep."""
+    from dojo.skills.skills import GUARD_LAG
+    w = sk.refresh()
+    o = w.obj(label)
+    T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ o.T
+    T_goal = np.asarray(T_target, float) @ inv_T(T_rel)
+    T_up = T_goal.copy()
+    T_up[2, 3] += hover
+    n0 = sk.ex.steps_used
+    try:
+        mv = sk.motion.line(arm, sk.ex.q[arm], T_up, 0.05, "blind_hover", gripper=CLOSED, check=False)
+        if mv.segments:
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move(mv).hold(1)}, name=f"over {receptacle}")
+        n, lag, reached = sk._guarded_line(arm, T_goal, 0.02, 0.003, GUARD_LAG)
+    except EpisodeEnded as e:
+        return SkillResult(True, "place", "ended", sk.ex.steps_used - n0, arm, note=str(e))
+    except BudgetExceeded as e:
+        return SkillResult(False, "place", "step_budget", sk.ex.steps_used - n0, arm, note=str(e))
+    if reached:
+        return SkillResult(True, "place", "ok", sk.ex.steps_used - n0, arm, note=f"{label} guarded descent reached ({n} steps)")
+    sw = keyed_sweep(sk, arm, label, T_target)
+    sw.steps += sk.ex.steps_used - n0 - sw.steps
+    return sw
 
 
 def keyed_sweep(sk: Skills, arm: str, label: str, T_seat, max_deg: float = SWEEP_MAX_DEG, step_deg: float = SWEEP_STEP_DEG,
