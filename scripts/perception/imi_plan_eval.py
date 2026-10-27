@@ -68,10 +68,11 @@ def main():
             for e in r.get("gone") or []:
                 if e["label"] not in gone_any:
                     gone_any.append(e["label"])
-                    # a false departure: the GT object at the source's place has not left it (> 30 mm) yet
+                    # a false departure: the GT object at the source's place has not left it (moved < 20 mm, 3-D: a
+                    # lift is vertical) by this read; a source on no GT object (a phantom) is not counted
                     o0 = G.get(smap.get(e["label"]) or "")
                     ot = next((o for o in gt["objects"] if o0 is not None and o["label"] == o0["label"]), None)
-                    if o0 is None or ot is None or np.hypot(ot["pos"][0] - o0["pos"][0], ot["pos"][1] - o0["pos"][1]) < 0.03:
+                    if o0 is not None and ot is not None and np.linalg.norm(np.subtract(ot["pos"], o0["pos"])) < 0.02:
                         false_gone.append((e["label"], smap.get(e["label"]), t))
                 if e["label"] in demo and e["label"] not in gone:
                     gone.append(e["label"])
