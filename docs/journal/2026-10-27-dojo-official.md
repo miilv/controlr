@@ -145,6 +145,31 @@ A/B, paired, integ isaac51, RuntimePolicy on `submit_v1`, 100000-04, same deploy
 - Side finding for ttt's owner: on rendered 5.1 integ, ttt is 0/9 in both arms, every episode `not_home` (all stages
   but the last met) at score 10, while G3 mode B is 5/5.
 
+
+### 1.6 The hybrid: `AgentConfig.planner_first` (default OFF; A/B pending)
+
+- **Evidence that led to it** (phase B, rendered 5.1, AgentPolicy on `submit_v1`):
+  - On press / stack / swap the agent's ONLY cell called the rule planner's own skill with the same arguments: 20/20
+    episodes, 1 Sol call each.
+  - The agent and RuntimePolicy differ only after a skill fails. make_kong 100002: the first `declare_kong` failed on
+    both paths.
+    - integ: the agent retried with all 22 tiles and succeeded.
+    - official: the agent retried with a subset of 8 tiles, breaking the doc's "pass EVERY tile", and gave up.
+  - RuntimePolicy's `RuleSupervisor` retries once with the planner's complete arguments (`max_attempts` 2, when >= 35 %
+    of the budget is left).
+- **`planner_first`:**
+  - RuntimePolicy's own program (`_supervise`: the rule planner's skill, its bounded retry, re-plan on divergence,
+    lost-object search) runs first, with no LLM call.
+  - The agent gets the episode only when the planner names no skill (fold / sweep / laptop / Mikhail's tasks), or
+    after that program failed with >= `planner_first_budget_frac` (0.35) of the budget left. Its first turn then
+    carries an "ALREADY TRIED (no LLM)" note.
+  - Rows show `agent.outcome` = `planner_done` / `planner_failed_low_budget`, the event `planner_first`, and
+    `agent.planner_skill`.
+- **For the strict path (J4):** nothing changes on the server. The bridge driver turns it on with
+  `--config '{"extra":{"agent":{"planner_first":true}}}'` (or `DOJO_AGENT='{"planner_first":true}'`) on
+  `--policy dojo.agent.policy:AgentPolicy` (J4: `runtime.agent.policy:AgentPolicy`). `RuntimePolicy` alone is the
+  planner without the agent fallback.
+
 ## 2. Routing (PR #90; report docs/experiments/2026-10-27-routing-sonnet.md)
 
 **Question:** given only the instruction and the scene, does the agent's chooser pick the skill and arguments the
