@@ -2665,3 +2665,39 @@ def test_track_reads_are_logged_and_kept_and_perception_ops_are_per_episode(monk
     n1 = rep["perception_ops"]["estimate"][0]
     rep2 = run_episode(pol, FakeEpisode(_env()), "perception")                 # same client, a second episode
     assert rep2["perception_ops"]["estimate"][0] == n1                         # not the running total
+
+
+def test_kinematic_belief_attaches_a_narrow_pick_closed_from_below_half_open():
+    """A pick that opens to less than half (a bread slice, a mallet handle, a thin mug wall: g 0.37-0.46) and then
+    closes must attach its object like a wide one (breadth2 mode B: those picks read "rose 0 mm, drift = lift")."""
+    env = _env([(-0.30, -0.15, 0.78), (0.3, -0.2, 0.78)])
+    objs = objects_from_gt_rows(env.gt_objects(), None)
+    kin = X5Kin()
+    for g_open in (1.0, 0.46, 0.37):
+        kb = KinematicBelief(objs, kin, env.proprio())
+        lab = sorted(kb.objects)[0]
+        o = kb.objects[lab]
+        from dojo.skills.kinematics import down_R
+        from dojo.skills.geometry import T_from
+        r = kin.ik("left", T_from(o.center_w, down_R(0.0)), np.zeros(6), n_random=4)
+        assert r.ok
+        hold = {"right_arm_joint_state": [0.0] * 6, "right_ee_joint_state": [1.0]}
+        for _ in range(20):                    # the belief's arm moves at most MAX_JOINT_STEP per step
+            kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [g_open], **hold})
+        kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [0.0], **hold})
+        assert kb.attached.get("left", (None,))[0] == lab, g_open
+        z0 = float(kb.objects[lab].pos[2])
+        r2 = kin.ik("left", T_from(o.center_w + np.array([0, 0, 0.05]), down_R(0.0)), r.q, n_random=2)
+        for _ in range(10):
+            kb.step({"left_arm_joint_state": list(r2.q), "left_ee_joint_state": [0.0], **hold})
+        assert float(kb.objects[lab].pos[2]) > z0 + 0.04, g_open        # follows the jaws up
+        kb.step({"left_arm_joint_state": list(r2.q), "left_ee_joint_state": [0.1], **hold})
+        assert kb.attached.get("left", (None,))[0] == lab                # a small loosening keeps it
+        kb.step({"left_arm_joint_state": list(r2.q), "left_ee_joint_state": [g_open if g_open < 0.6 else 1.0], **hold})
+        assert not kb.attached and kb.pop_released() == [lab], g_open    # a narrow release lets go too
+    # a nudge from 0.6 to 0.55 (not a close) attaches nothing
+    kb = KinematicBelief(objs, kin, env.proprio())
+    for _ in range(20):
+        kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [0.6], **hold})
+    kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [0.55], **hold})
+    assert not kb.attached

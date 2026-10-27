@@ -33,6 +33,7 @@ from dojo.skills.world import ObjectState, WorldState, arms_from_proprio, table_
 from .estimate import est_objects, objects_from_gt_rows, objects_from_record, robot_from_state
 
 MAX_JOINT_STEP = 0.2
+RELEASE_OPEN = 0.15             # a gripper command this far above its tightest since the grasp releases the object
 
 
 class Divergence(Exception):
@@ -63,6 +64,7 @@ class KinematicBelief:
         self.released: list[str] = []          # labels released since the last ``pop_released``
         self.released_by: dict[str, str] = {}   # label -> arm that released it (last release)
         self.grasp_z: dict[str, tuple] = {}     # arm -> (TCP z at closing, grasp counter, object pose7 at closing)
+        self.g_held: dict[str, float] = {}      # arm -> the lowest gripper command since its object was attached
         self._n_grasp = 0
 
     def movable(self):
@@ -104,15 +106,24 @@ class KinematicBelief:
             self.q[a] = self.q[a] + np.clip(tgt - self.q[a], -MAX_JOINT_STEP, MAX_JOINT_STEP)
             g_new = float(np.clip(np.asarray(action[f"{a}_ee_joint_state"]).reshape(-1)[0], 0, 1))
             T_tcp = self.kin.tcp(a, self.q[a])
-            if g_new < 0.5 <= self.g[a] and a not in self.attached:
+            # a closing command below half open, from any opening: narrow picks open to < 0.5 before they close (a bread
+            # slice 0.37, a mallet handle 0.42-0.46, a 3-5 mm mug wall 0.42-0.44); requiring a crossing of 0.5 from above
+            # never attached them, the belief stayed on the table and every such pick read "rose 0 mm" (grasp_slip)
+            if g_new < 0.5 and g_new < self.g[a] - 1e-6 and a not in self.attached:
                 lab = self._object_at(T_tcp[:3, 3])
                 if lab is not None and lab not in [v[0] for v in self.attached.values()]:
                     self.attached[a] = (lab, inv_T(T_tcp) @ self.objects[lab].T)
+                    self.g_held[a] = g_new
                     self._n_grasp += 1
                     o = self.objects[lab]
                     self.grasp_z[a] = (float(T_tcp[2, 3]), self._n_grasp, np.r_[o.pos, o.quat].astype(float))
-            if g_new > 0.6 and a in self.attached:
+            if a in self.attached:
+                self.g_held[a] = min(self.g_held.get(a, g_new), g_new)
+            # released by an opening command: above 0.6 as before, or RELEASE_OPEN above the tightest command since the
+            # grasp (a narrow release, open_g < 0.6, must not leave the object riding with the hand)
+            if a in self.attached and g_new > min(0.6, self.g_held[a] + RELEASE_OPEN):
                 lab, _ = self.attached.pop(a)
+                self.g_held.pop(a, None)
                 self._drop(lab)
                 self.released.append(lab)
                 self.released_by[lab] = a
