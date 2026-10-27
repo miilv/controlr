@@ -186,3 +186,38 @@ def test_reserved_layout_ids_are_refused(tmp_path, monkeypatch):
     r = subprocess.run(["bash", str(ROOT / "scripts" / "dojo" / "official_eval.sh"), "--inner", "--task", "stack_blocks",
                         "--layouts", "100100"], capture_output=True, text=True, env={**os.environ, "DOJO_DATA": str(tmp_path)})
     assert r.returncode == 2 and "reserved" in r.stderr
+
+
+def test_unstable_episodes_are_not_samples_on_either_path(tmp_path):
+    """RoboDojo's eval client drops an episode the task marked unstable (make_kong's scripted discard failed, ...):
+    no result row. integ_eval now records it (``unstable_episode``) and leaves it out of n, and the pairing agrees."""
+    import types
+
+    from dojo.runtime import eval as EV
+    from dojo.runtime.policy import RuntimeConfig as RC
+    from dojo.simlab.runner import RoboDojoRunner
+
+    env = types.SimpleNamespace(success=[True], end_flag=[True], take_action_cnt=[300], step_lim=600, unstable_envs={0},
+                                reward_manager=types.SimpleNamespace(check_list=[[]], final_check_list=[[]], query_list=[[]]))
+    rw = RoboDojoRunner.reward(types.SimpleNamespace(env=env), 0)
+    assert rw["unstable"] is True
+    assert EV.classify({"success": True}, rw, {}, None, "perception")[0] == "unstable_episode"
+    rows = [{"success": False, "score": 0.0, "steps_used": 300, "step_lim": 600, "layout_id": 100003, "unstable_episode": True},
+            {"success": True, "score": 1.0, "steps_used": 400, "step_lim": 600, "layout_id": 100002}]
+    summ = EV.summarize(rows, "make_kong", RC(mode="perception"))
+    assert summ["n"] == 1 and summ["success"] == 1 and summ["unstable"] == 1
+
+    task, ids = "make_kong", [100002, 100003]
+    a = [_act(0.0)]
+    out = _official_run(tmp_path, task, ids, {100002: (True, 1.0)}, {100002: a, 100003: a},
+                        {100002: "ended", 100003: "policy_done"})
+    rs = O.rows(out)
+    assert rs[1]["success"] is None and rs[1]["category"] == "unstable_episode"
+    integ = _integ_run(tmp_path, task, {100002: (True, 1.0, 400, None), 100003: (False, 0.0, 300, "unstable_episode")},
+                       {100002: a, 100003: a})
+    lines = (integ / f"{task}_perception_verify-bundle_episodes.jsonl").read_text().splitlines()
+    lines[1] = json.dumps({**json.loads(lines[1]), "unstable_episode": True})
+    (integ / f"{task}_perception_verify-bundle_episodes.jsonl").write_text("\n".join(lines) + "\n")
+    (out / "rows.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rs))
+    ps = {p["layout_id"]: p for p in O.pair(O.load_official([str(out)]), O.load_integ([str(integ)]))}
+    assert ps[100002]["agree"] and ps[100003]["agree"]

@@ -40,7 +40,7 @@ from .firewall import DEV_GT_KEY
 from .policy import RuntimeConfig, RuntimePolicy
 
 GROSS_XY_MM = 20.0
-TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "time_cap", "belief_mismatch", "not_home",
+TAXONOMY = ("unstable_episode", "perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "time_cap", "belief_mismatch", "not_home",
             "divergence", "error", "infra_failure", "other")
 COOKING_FAIL = "cooking failure"            # [omni.physx.cooking.plugin] UjitsoMeshCookingContext: cooking failure for <prim>
 
@@ -85,6 +85,8 @@ def event_counts(events: list) -> dict:
     return out
 
 def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -> tuple[str | None, str]:
+    if reward.get("unstable"):
+        return "unstable_episode", "the task marked the episode invalid (RoboDojo's eval client drops it)"
     if res.get("success"):
         return None, ""
     if rep.get("error") or rep.get("error_handled"):
@@ -314,7 +316,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                "look_s": rep["timings"].get("look_s"), "reset_s": round(info["reset_s"], 1),
                "n_looks": sum(1 for lk in rep.get("looks", []) if lk.get("status") == "ok"),
                "look_steps": rep.get("look_steps", 0), "flags": rep.get("flags"), "skill": rep.get("skill"),
-               "category": cat, "why": why, "reward": reward,
+               "category": cat, "why": why, "reward": reward, "unstable_episode": bool(reward.get("unstable")),
                "verify_stats": v if isinstance(v, dict) else v, "provider": rep.get("provider"),
                "perception": perc, "dev_gt_probe": probe.report(),
                "events": rep.get("events", [])[-30:], "decisions": rep.get("decisions"),
@@ -368,7 +370,8 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
 
 
 def summarize(rows: list[dict], task: str, cfg: RuntimeConfig) -> dict:
-    ok = [r for r in rows if "success" in r]
+    # an episode the task marked unstable is not a sample (RoboDojo's eval client drops it): out of n, counted apart
+    ok = [r for r in rows if "success" in r and not r.get("unstable_episode")]
     n = len(ok)
     cats: dict = {}
     for r in ok:
@@ -378,7 +381,7 @@ def summarize(rows: list[dict], task: str, cfg: RuntimeConfig) -> dict:
            if any(r.get(k) is not None for r in ok) else None)
     return {"proxy": PROXY_TAG, "task": task, "mode": cfg.mode, "verify": cfg.verify,
             "verify_note": None if cfg.verify == "bundle" else "verification OFF (stub): single plan, no twin",
-            "n": n, "unstable": sum(1 for r in rows if r.get("unstable")),
+            "n": n, "unstable": sum(1 for r in rows if r.get("unstable") or r.get("unstable_episode")),
             "skipped": sum(1 for r in rows if r.get("skipped")),
             "success": sum(1 for r in ok if r["success"]), "success_rate": round(np.mean([r["success"] for r in ok]), 3) if n else None,
             "score": round(float(np.mean([r["score"] for r in ok])) * 100, 1) if n else None,

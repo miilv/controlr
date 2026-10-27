@@ -120,7 +120,7 @@ class ProxyEpisode:
     def result(self) -> dict:
         rw = self.run.reward(0)
         return {"success": rw["success"], "score": self.run.score(0), "steps_used": rw["steps_used"],
-                "step_lim": rw["step_lim"], "observations": self.n_obs}
+                "step_lim": rw["step_lim"], "observations": self.n_obs, "unstable": bool(rw.get("unstable"))}
 
 
 class RenderedEpisode:
@@ -163,7 +163,7 @@ class RenderedEpisode:
     def result(self) -> dict:
         rw = self.run.reward(0)
         return {"success": rw["success"], "score": self.run.score(0), "steps_used": rw["steps_used"],
-                "step_lim": rw["step_lim"], "observations": self.n_obs}
+                "step_lim": rw["step_lim"], "observations": self.n_obs, "unstable": bool(rw.get("unstable"))}
 
 
 class ReplayPolicy:

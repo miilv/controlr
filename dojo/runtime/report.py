@@ -22,6 +22,8 @@ def load(dirs: list[str]) -> list[dict]:
             for ln in f.read_text().splitlines():
                 if ln.strip():
                     r = json.loads(ln)
+                    if r.get("unstable_episode"):       # not a sample: RoboDojo's eval client drops it (eval.summarize)
+                        continue
                     r["_run"] = Path(d).name
                     rows.append(r)
     return rows
