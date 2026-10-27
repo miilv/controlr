@@ -1452,6 +1452,22 @@ def _rot_deg(Ra, Rb) -> float:
     return math.degrees(math.acos(max(-1.0, min(1.0, (float(np.trace(Ra @ Rb.T)) - 1) / 2))))
 
 
+def container_obstacle(sk: Skills, label: str) -> None:
+    """``label`` (a box, a drawer, a stand) as an obstacle: shaped by its mesh's top surface where it has one
+    (``Collision.heightmaps``: a point inside its box collides only below that surface, so the open inside and the air
+    beside its walls are free), else its box. Kinematic G3 store_tools 100003: 94 of 98 IK-feasible picks of a wrench
+    lying against the toolbox hit the toolbox's box (+ 6 mm), none its walls."""
+    o = sk.world.objects.get(label)
+    sk.coll.include.add(label)
+    if o is None or o.asset.mesh is None or abs(float(o.R[2, 2])) < 0.99:
+        return
+    from dojo.skills.precision import height_map
+    hm = height_map(o)
+    if hm is not None:
+        sk.coll.heightmaps[label] = hm
+        sk.coll.margin_of.setdefault(label, 0.004)
+
+
 def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
     """Put every object into its matching slot of ``container`` (``slot_targets``), the nearest first,
     re-oriented as the slot frame says; grippers open after each (partial credit is per object). A slot pose within
@@ -1459,7 +1475,7 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
     mass, straight down where it reaches (``_level_grasps``); the re-orienting transfers / relays only when that does
     not plan. Compact objects go first."""
     w = sk.refresh()
-    sk.coll.include.add(container)
+    container_obstacle(sk, container)
     todo = [l for l in objects if l in w.objects and slot_targets(sk, l, container)]
     if not todo:
         return {"ok": False, "stage": "roles", "note": f"no slot in {container} matches {objects}"}
@@ -1928,7 +1944,7 @@ def arrange(sk: Skills, steps: list) -> dict:
         if verb == "push":
             r = push_to(sk, obj, sk.world.obj(sup).center_w[:2])
         else:
-            sk.coll.include.add(sup)
+            container_obstacle(sk, sup)
             tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05
             r = place_oriented(sk, obj, on_targets(sk, obj, sup), yaw_sym=1, tol_xy=0.03, tol_tilt=10.0,
                                tol_z=0.03, ignore=(sup,), place_kw={"pre_h": 0.015 if tall else 0.04})
