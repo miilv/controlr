@@ -259,11 +259,10 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
 
     out = [dict(o) for o in objects]
     infos: list[dict] = []
-    b1_cats = {_cat(b) for b in b1_objs}
 
-    def cat_of(o):  # merge_into_record's rule: a free-text kind ("figurine") is the nearest B1 object's category
-        c = _cat(o)
-        if c in b1_cats or not b1_objs:
+    def cat_of(o):  # merge_into_record's rule: a free-text kind ("figurine", no asset) is the nearest B1 object's category;
+        c = _cat(o)  # a catalogue kind B1 has none of (a missing alarm clock) pairs with nothing
+        if c is not None or not b1_objs:
             return c
         return _cat(min(b1_objs, key=lambda b: math.hypot(b["pos"][0] - o["pos"][0], b["pos"][1] - o["pos"][1])))
 

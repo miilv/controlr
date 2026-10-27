@@ -519,3 +519,13 @@ def test_arbitration_keeps_an_h2_fit_unless_it_flips_the_object(monkeypatch):
     sr, calls = _arb(monkeypatch, {(0.02, -0.2, 10): 0.4, (0.0, -0.2, 0): 0.1, (0.33, -0.2, 165): 0.26, (0.3, -0.2, -15): 0.25})
     out, info = sr.arbitrate({}, agent, b1)
     assert out[0]["pos"] == [0.02, -0.2, 0.78] and len(info) == 1 and info[0]["b1_label"] == "c" and info[0]["kept"] == "b1"
+
+
+def test_arbitration_never_pairs_a_kind_b1_does_not_have(monkeypatch):
+    b1 = [{"label": "cube_cushion", "category": "cube_cushion", "asset": "Rigid/cube_cushion/00000", "pos": [0.1, -0.1, 0.78],
+           "quat": _q(0)}]
+    agent = [{"label": "alarm clock", "category": "alarm", "asset": "Rigid/alarm/00000", "pos": [0.2, -0.1, 0.78],
+              "quat": _q(0), "source": "refined"}]                      # B1 missed the alarm: the agent fills it
+    sr, calls = _arb(monkeypatch, {})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert info == [] and out[0]["pos"] == [0.2, -0.1, 0.78] and calls == []
