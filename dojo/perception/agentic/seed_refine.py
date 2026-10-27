@@ -233,11 +233,17 @@ def _bottom(h) -> float:
     return float((V @ T[:3, :3].T + T[:3, 3])[:, 2].min())
 
 
+ARB_ALONE_MAX_LOSS = 0.8  # a far agent move of a B1 pose no view can score is reverted when it explains the views this badly
+
+
 def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: float = 0.0, move_mm: float = 3.0,
               turn_deg: float = 5.0, pair_m: float = 0.15, rest_z: bool = True,
-              pinned_margin: float = 0.15, refined_turn_deg: float = 30.0) -> tuple[list[dict], list[dict]]:
+              pinned_margin: float = 0.15, refined_turn_deg: float = 30.0,
+              alone_max_loss: float = ARB_ALONE_MAX_LOSS) -> tuple[list[dict], list[dict]]:
     """The agent says WHAT is where; it replaces a pose B1 fitted only with evidence. Agent objects are paired with B1's
-    objects of the same category (Hungarian on xy within ``pair_m``, the pairing ``record.merge_into_record`` makes).
+    objects of the same category (Hungarian on xy within ``pair_m``, the pairing ``record.merge_into_record`` makes). The
+    only object of a kind on both sides is also paired at any distance (as the merge pairs it), but such a far move is
+    reverted only when no view can score B1's pose and the agent's explains nothing (loss above ``alone_max_loss``).
 
     - Height (``rest_z``): an unrefined agent point (``_agent_point``) is a head-plane hit at a height the agent chose
       (often the top face): breadth replays had it 15-154 mm off for 30 of 99 agent-changed objects (a garage figure
@@ -272,7 +278,7 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
     for j, b in enumerate(b1_objs):
         if _cat(b) in by_cat:
             by_cat[_cat(b)][1].append(j)
-    pairs = []
+    pairs, far = [], []
     for cat, (A, B) in by_cat.items():
         if not A or not B:
             continue
@@ -280,7 +286,13 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
                        for j in B] for i in A])
         ri, ci = linear_sum_assignment(np.minimum(C, pair_m + 1.0))
         pairs += [(A[r], B[c]) for r, c in zip(ri, ci) if C[r, c] <= pair_m]
-    pair_of = dict(pairs)
+        if len(A) == 1 and len(B) == 1 and C[0, 0] > pair_m and _cat(out[A[0]]) is not None:
+            # the only one of its kind on both sides, named by the agent: the same physical object however far the agent
+            # moved it (merge_into_record pairs it so and writes the move). 5.1 organize_table 100003: after the looks,
+            # the agent read the alarm on the drawer, 262 mm away and 115 mm up, from a scan-correct fit; unpaired, the
+            # move stood without a comparison
+            far.append((A[0], B[0]))
+    pair_of = dict(pairs)  # heights (rest_z): near pairs only; a far agent point is not at its B1 object's height
     h_b1 = {j: _hyp(b) for j, b in enumerate(b1_objs)}
     if rest_z:
         from .record import rest_quat
@@ -306,7 +318,7 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
             o["rest_dz_mm"] = round(dz * 1000, 1)
     # each pose is scored inside its own scene: B1's pose with B1's other objects (+ the agent's new ones) masked out,
     # the agent's with the agent's others (a row of tiles shifted together must not mask the true neighbours)
-    paired_a = {i for i, _ in pairs}
+    paired_a = {i for i, _ in pairs + far}
     h_ag = {i: _hyp(o) for i, o in enumerate(out)}
 
     sil_cache: dict = {}
@@ -323,16 +335,18 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
             m_out[name] = m
         return m_out
 
-    for i, j in pairs:
+    for i, j in pairs + far:
         o, b = out[i], b1_objs[j]
         moved = math.hypot(o["pos"][0] - b["pos"][0], o["pos"][1] - b["pos"][1]) * 1000
         turn = _quat_angle_deg(o["quat"], b["quat"]) if o.get("quat") and b.get("quat") else 0.0
         if moved <= move_mm and turn <= turn_deg and (not o.get("asset") or o.get("asset") == b.get("asset")):
             continue
-        if o.get("source") == "refined" and turn <= refined_turn_deg and not (b.get("flags") or {}).get("slot"):
+        if o.get("source") == "refined" and turn <= refined_turn_deg and not (b.get("flags") or {}).get("slot") \
+                and (i, j) not in far:
             # H2 fitted it in these views from the agent's point (loss < 0.5, a capped shift): that is the evidence. A
             # frame-0-only comparison reverted good H2 fits of blocks half under the home grippers, where B1's wrong
-            # fit to the visible half scores lower. A flipped H2 fit (plug 100003, 180 deg) is still compared
+            # fit to the visible half scores lower. A flipped H2 fit (plug 100003, 180 deg) is still compared; a far one
+            # goes to the far-pair rule below
             continue
         # merge keeps B1's turn / asset where the agent gives none
         cand = dict(o, quat=o.get("quat") or b.get("quat"), asset=o.get("asset") or b.get("asset"))
@@ -340,10 +354,18 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
         oth_b = masks([(("b", k), h) for k, h in h_b1.items() if k != j] + [(("a", k), h) for k, h in h_ag.items() if k not in paired_a])
         l_a, l_b = pose_loss(cand, views, oth_a), pose_loss(b, views, oth_b)
         m = pinned_margin if (b.get("flags") or {}).get("slot") else margin  # the config pins it there: a higher bar
-        keep_b1 = l_a is None or (l_b is not None and not (l_a < l_b - m))
+        if (i, j) in far:
+            # a far move stands unless B1's pose has no view to answer for it (the arm over it after the looks) and the
+            # agent's explains nothing either (5.1 organize_table 100003: the alarm moved 262 mm onto the drawer at loss
+            # 0.995). A loss comparison is not used here: B1's coin-stand phantoms at a home gripper (400-800 mm off)
+            # scored 0.83-0.86 against the agent's right 10-px stands at 0.92-0.99 in 6 replayed deposit_coin layouts
+            keep_b1 = l_b is None and l_a is not None and l_a > alone_max_loss
+        else:
+            keep_b1 = l_a is None or (l_b is not None and not (l_a < l_b - m))
         info = {"label": o.get("label"), "b1_label": b.get("label"), "moved_mm": round(moved, 1), "turn_deg": round(turn, 1),
                 "loss_agent": None if l_a is None else round(l_a, 4), "loss_b1": None if l_b is None else round(l_b, 4),
-                "agent_source": o.get("source"), "margin": m, "kept": "b1" if keep_b1 else "agent"}
+                "agent_source": o.get("source"), "margin": m, "kept": "b1" if keep_b1 else "agent",
+                **({"far_pair": True} if (i, j) in far else {})}
         if keep_b1:
             o.update({k: b[k] for k in ("pos", "quat", "asset", "size", "top_z", "category") if b.get(k) is not None})
             o["confidence"] = float(b.get("confidence", o.get("confidence", 0.5)))
