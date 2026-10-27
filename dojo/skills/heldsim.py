@@ -189,13 +189,20 @@ class HeldBeliefProvider:
                 if lab is not None:
                     self.att[a] = (lab, inv_T(T_c) @ self._free[lab].T)
                     self.stats["attached"] += 1
+                else:
+                    # a handover: closing on what the other hand holds, at its believed pose there
+                    hv = self._held_at(T_c[:3, 3], a, action)
+                    if hv is not None:
+                        self.att[a] = (hv[0], inv_T(T_c) @ hv[1])
+                        self.stats["attached"] += 1
             if g_new > 0.6 and a in self.att:
                 lab, T_rel = self.att.pop(a)
-                self._frozen.pop(lab, None)                 # released: the post-place re-measure (GT + offset)
-                if self.drop and lab in self._free:
-                    self._pending[lab] = self._belief_rest(lab, self.kin.tcp(a, q_cmd) @ T_rel,
-                                                           self.drop == "fixtures" and still)
-                    self.stats["released"] += 1
+                if lab not in {v[0] for v in self.att.values()}:   # the other hand may still hold it (a handover)
+                    self._frozen.pop(lab, None)             # released: the post-place re-measure (GT + offset)
+                    if self.drop and lab in self._free:
+                        self._pending[lab] = self._belief_rest(lab, self.kin.tcp(a, q_cmd) @ T_rel,
+                                                               self.drop == "fixtures" and still)
+                        self.stats["released"] += 1
             self._g[a] = g_new
             if self.freeze:
                 T = self.kin.tcp(a, np.asarray(action[f"{a}_arm_joint_state"], float).reshape(-1)[:6])
@@ -209,6 +216,19 @@ class HeldBeliefProvider:
                             self._touched.add(lab)
                             break
         return self._step(action)
+
+    def _held_at(self, p, arm: str, action: dict):
+        """(label, believed world pose) of an object the OTHER arm holds whose box contains ``p`` (+ the attach
+        margin), else None."""
+        for b, (lab, T_rel) in self.att.items():
+            if b == arm or lab not in self._free:
+                continue
+            T_o = self.kin.tcp(b, np.asarray(action[f"{b}_arm_joint_state"], float).reshape(-1)[:6]) @ T_rel
+            o = self._free[lab]
+            c = T_o[:3, :3] @ o.asset.center + T_o[:3, 3]
+            if np.all(np.abs(T_o[:3, :3].T @ (np.asarray(p, float) - c)) <= o.asset.extents / 2 + ATTACH_MARGIN):
+                return lab, T_o
+        return None
 
     def _object_at(self, p) -> str | None:
         held = {v[0] for v in self.att.values()}

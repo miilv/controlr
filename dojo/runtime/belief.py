@@ -187,9 +187,11 @@ class KinematicBelief:
     def movable(self):
         return [o for o in self.objects.values() if o.obj_type != "Geometry" and not o.clutter]
 
-    def _object_at(self, p) -> str | None:
+    def _object_at(self, p, exclude=()) -> str | None:
         best, bd = None, 1e9
         for o in self.movable():
+            if o.label in exclude:
+                continue
             loc = o.R.T @ (p - o.center_w)
             if np.all(np.abs(loc) <= o.asset.extents / 2 + self.margin):
                 d = float(np.linalg.norm(loc))
@@ -228,8 +230,12 @@ class KinematicBelief:
             # slice 0.37, a mallet handle 0.42-0.46, a 3-5 mm mug wall 0.42-0.44); requiring a crossing of 0.5 from above
             # never attached them, the belief stayed on the table and every such pick read "rose 0 mm" (grasp_slip)
             if g_new < 0.5 and g_new < self.g[a] - 1e-6 and a not in self.attached:
-                lab = self._object_at(T_tcp[:3, 3])
-                if lab is not None and lab not in [v[0] for v in self.attached.values()]:
+                # a free object at the pads first; else one the other hand holds: a handover, both hands hold it
+                # until one opens (before, the taker's close was ignored and the giver's open dropped the object to
+                # the table while the taker held it: a key, a coin)
+                held = [v[0] for v in self.attached.values()]
+                lab = self._object_at(T_tcp[:3, 3], exclude=held) or self._object_at(T_tcp[:3, 3])
+                if lab is not None:
                     self.attached[a] = (lab, inv_T(T_tcp) @ self.objects[lab].T)
                     self.g_held[a] = g_new
                     self._n_grasp += 1
@@ -242,9 +248,10 @@ class KinematicBelief:
             if a in self.attached and g_new > min(0.6, self.g_held[a] + RELEASE_OPEN):
                 lab, _ = self.attached.pop(a)
                 self.g_held.pop(a, None)
-                self._drop(lab, release=still)
-                self.released.append(lab)
-                self.released_by[lab] = a
+                if lab not in [v[0] for v in self.attached.values()]:     # the other hand still holds it: no drop
+                    self._drop(lab, release=still)
+                    self.released.append(lab)
+                    self.released_by[lab] = a
             self.g[a] = g_new
             if a in self.attached:
                 lab, T_rel = self.attached[a]
