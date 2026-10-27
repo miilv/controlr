@@ -1069,13 +1069,46 @@ def _bbox_centre_local(sm) -> np.ndarray:
     return (V.min(0) + V.max(0)) / 2
 
 
-def _centre_xy(h) -> tuple[float, float]:
+# RoboDojo's table / ground generator (``ClutteredGenerator.add_model``) puts the place frame's centre at the
+# sampled xlim / ylim point, THEN turns the orientation by the random yaw about the asset ORIGIN (the position stays):
+# the constrained point is origin + R0 @ centre, whatever the yaw. A phone (origin at one end, centre 58 mm along it)
+# lies up to 2 x 58 mm from where the yawed centre says (imitate_sorting_sequence: 22 of 250 settled phones outside
+# region + margin, never proposed). Placements on another object (``gen_layouts.place_on_object``) turn about the
+# placement point: the yawed centre, as before.
+GEN_YAW_ABOUT_ORIGIN = True
+
+
+def _turns_about_origin(g: dict | None) -> bool:
+    return (GEN_YAW_ABOUT_ORIGIN and g is not None
+            and not _on_object((g.get("placement") or {}).get("relative_plane", "Table")))
+
+
+def _gen_offset(g: dict | None, sm, yaw: float) -> np.ndarray:
+    """xy from the asset origin to the point the generator's xlim / ylim constrain (see GEN_YAW_ABOUT_ORIGIN)."""
+    c = _bbox_centre_local(sm)
+    R = sm.R0 if _turns_about_origin(g) else sm.pose(0.0, 0.0, yaw)[:3, :3]
+    return (R @ c)[:2]
+
+
+def _centre_xy(h, g: dict | None = None) -> tuple[float, float]:
     """World xy of the generator's placement centre (the place frame's projection-circle centre): xlim/ylim
     constrain it, and it can sit centimetres from the asset origin (organize_table's drawer: 5 cm) and from
-    the vertex centroid (monitor 00000: 7 cm). Fixed-pose shapes (zlim): the origin."""
+    the vertex centroid (monitor 00000: 7 cm). Fixed-pose shapes (zlim): the origin. With the label's group
+    ``g``: the generator's own point for its placement (``_gen_offset``: table placements turn about the origin)."""
+    if g is not None:
+        o = _gen_offset(g, h.sm(), h.yaw)
+        return float(h.x + o[0]), float(h.y + o[1])
     T = h.T()
     c = T[:3, :3] @ _bbox_centre_local(h.sm()) + T[:3, 3]
     return float(c[0]), float(c[1])
+
+
+def _blob_margin(g: dict, sm) -> float:
+    """Extra prefilter margin for a blob centroid (~ the yawed centre) against the generator point (the un-yawed
+    one, ``_gen_offset``): they differ by up to twice the centre's horizontal offset from the origin."""
+    if not _turns_about_origin(g):
+        return 0.0
+    return 2.0 * float(np.linalg.norm((sm.R0 @ _bbox_centre_local(sm))[:2]))
 
 
 SEED_MAX_SPAN = 0.25  # region seeding only for compact generator regions (m, per axis)
@@ -1114,7 +1147,7 @@ def _region_seeds(blob_list, pending, shapes_by_group, views, cfg, groups, other
         for sms in shapes_by_group[gi].values():
             sm = sms[0]
             keys = [s_.key for s_ in sms]
-            c_off = (sm.pose(0.0, 0.0, yaw0)[:3, :3] @ _bbox_centre_local(sm))[:2]
+            c_off = _gen_offset(g, sm, yaw0)
             seeds = []
             for cx in xs:
                 for cy in ys:
@@ -1135,7 +1168,7 @@ def _region_seeds(blob_list, pending, shapes_by_group, views, cfg, groups, other
                 h.per_view = {"geom_group": keys}
                 h2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
                 h2.per_view["seeded"] = True
-                cx, cy = _centre_xy(h2)
+                cx, cy = _centre_xy(h2, groups[h2.label_group])
                 if region_ok(groups[h2.label_group], cx, cy, h2.yaw, sm.yaw_period):
                     out.append(h2)
     return out
@@ -1154,20 +1187,22 @@ def origin_bounds(g: dict, sm, yaw: float):
     if sr is None:
         return None
     xs, ys, _ = sr
-    c_off = (sm.pose(0.0, 0.0, yaw)[:3, :3] @ _bbox_centre_local(sm))[:2]
+    c_off = _gen_offset(g, sm, yaw)
     m = SEED_BOUND_MARGIN
     return (xs[0] - m - c_off[0], xs[-1] + m - c_off[0], ys[0] - m - c_off[1], ys[-1] + m - c_off[1])
 
 
-def region_ok(g: dict, x: float, y: float, yaw: float | None = None, period: float = 2 * np.pi) -> bool:
-    """Is (x, y[, yaw]) inside any of the group's generator regions (with settle margins)?"""
+def region_ok(g: dict, x: float, y: float, yaw: float | None = None, period: float = 2 * np.pi,
+              extra: float = 0.0) -> bool:
+    """Is (x, y[, yaw]) inside any of the group's generator regions (with settle margins, + ``extra``)?"""
     regs = g.get("regions") or []
     if not regs:
         return True
+    m = XY_MARGIN + extra
     for r in regs:
-        if r["x"] and not any(a - XY_MARGIN <= x <= b + XY_MARGIN for a, b in r["x"]):
+        if r["x"] and not any(a - m <= x <= b + m for a, b in r["x"]):
             continue
-        if r["y"] and not any(a - XY_MARGIN <= y <= b + XY_MARGIN for a, b in r["y"]):
+        if r["y"] and not any(a - m <= y <= b + m for a, b in r["y"]):
             continue
         if yaw is not None and r["yaw"] is not None and (r["yaw"][1] - r["yaw"][0]) + 2 * YAW_MARGIN < period:
             lo, hi = r["yaw"][0] - YAW_MARGIN, r["yaw"][1] + YAW_MARGIN
@@ -1460,7 +1495,7 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
                     continue
                 if prior["fixed_xy"] is not None and np.hypot(X[0] - prior["fixed_xy"][0], X[1] - prior["fixed_xy"][1]) > 0.08:
                     continue
-                if not region_ok(g, X[0], X[1]):  # outside where the generator can put this label
+                if not region_ok(g, X[0], X[1], extra=_blob_margin(g, sm)):  # outside where the generator can put this label
                     continue
                 a_pred = int(sm.sil(bv.cam, sm.pose(X[0], X[1], 0.0)).sum())
                 ratio = b.area / max(a_pred, 1)
@@ -1498,7 +1533,7 @@ def _propose(blob_list, pending, shapes_by_group, views, cfg, groups, others=Non
                 break
         for h in kept:
             h2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters)
-            cx, cy = _centre_xy(h2)
+            cx, cy = _centre_xy(h2, groups[h2.label_group])
             if region_ok(groups[h2.label_group], cx, cy, h2.yaw, h2.sm().yaw_period):
                 refined.append(h2)
     return refined
@@ -1824,7 +1859,7 @@ def _place_like(h: Hypothesis, target_xy: np.ndarray, yaws, views, others, cfg, 
         t = Hypothesis(h.label_group, h.key, h.tag, float(xy[0]), float(xy[1]), float(yaw), h.loss, blob=h.blob)
         t.per_view = {"geom_group": h.per_view["geom_group"]}
         t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters)
-        cx, cy = _centre_xy(t2)
+        cx, cy = _centre_xy(t2, groups[t2.label_group])
         if not region_ok(groups[t2.label_group], cx, cy, t2.yaw, sm.yaw_period):
             continue
         if best is None or t2.loss < best.loss:
@@ -2024,7 +2059,7 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         others = _union_masks(out, views, skip=i, target=out[i])
         trials = []
         if (not prior["yaw_fixed"] and h.sm().yaw_period > 1.5 * np.pi
-                and region_ok(g, *_centre_xy(h), (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
+                and region_ok(g, *_centre_xy(flip_about_centroid(h), g), (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
             trials.append(flip_about_centroid(h))
         if _options(g, _geometry_groups(g, prior)) is None:
             s_h = h.sm().sil(head.cam, h.T())
@@ -2069,7 +2104,7 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         scored = [h0]
         for t in trials:
             t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
-            if not region_ok(g, *_centre_xy(t2), t2.yaw, t2.sm().yaw_period):
+            if not region_ok(g, *_centre_xy(t2, g), t2.yaw, t2.sm().yaw_period):
                 continue
             scored.append(t2)
             # paired texture on shared pixels decides when it is informative; else the combined cost
