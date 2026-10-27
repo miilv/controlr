@@ -2507,7 +2507,6 @@ class EstimatorConfig:
     polish_color_candidates: int = 2  # ... and also tries the best-coloured candidates the ranking left out
     polish_color_veto: float | None = 0.2  # paired texture cannot pick a trial whose mean colour is this much worse
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
-    residual_small_max_sil: float | None = None  # residual rounds: a small object's fit looser than this is not taken
     small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
     low_contrast_frac: float | None = 0.6  # still-unfound labels: re-segment at this x fg_thr in their region
     low_contrast_max_loss: float = 0.40  # ... and keep a find only at this silhouette loss or lower
@@ -2775,11 +2774,6 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         pool += more
         add = _assign_constrained(more, need, [(gi, g, p) for gi, g, p in pending if need[gi] > 0], rblobs, views,
                                   existing=chosen, blob_offset=1000 * (_round + 1))
-        if cfg.residual_small_max_sil is not None:
-            # a small object fitted to a leftover piece of a bigger object's blob (deposit_coin: the 3 cm coin stand on
-            # the edge of the piggy bank under the home gripper, sil 0.73-0.80, while its own 42 px blob sat at 0.52-0.59
-            # but explained too little new foreground to be chosen): too loose a fit for a residual round
-            add = [h for h in add if not (_small(h) and float(h.per_view.get("sil_loss", h.loss)) > cfg.residual_small_max_sil)]
         if not add:
             break
         chosen += add
