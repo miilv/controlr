@@ -44,6 +44,7 @@ TAKE_PAST = (0.004, 0.006)          # m: its fingertip this far past the part's 
                                     # between the pads: the key fell when the giver opened, 3 of 7 in G3)
 HAND_CLEAR = 0.003                  # m between the hands at the handover (grasp and pre-grasp)
 HANDOVER_XY = ((0.06, -0.22), (0.0, -0.22), (0.06, -0.28), (0.10, -0.22), (0.0, -0.18), (0.06, -0.18), (-0.04, -0.22))
+HANDOVER_XY_MORE = ((0.14, -0.22), (0.10, -0.28), (-0.04, -0.28), (0.14, -0.28))   # only when the above find none
 HANDOVER_Z = (0.92, 0.98, 1.04)
 MAX_TAKES = 4000                    # taker grasps tried at handover poses per search (a count, not a wall-clock cap:
                                     # a time cap made the chosen handover depend on the box's load, G3)
@@ -52,6 +53,7 @@ SWEEP_STEP_DEG = 3.0
 SWEEP_PRESS = 0.002                 # m: pressed this far below the contact while it turns
 SWEEP_DROP = 0.0012                 # m: the hand this far under the contact = it went in
 SWEEP_SEATED = 0.004                # m: the hand this close to the seat after the descent = already in
+LOOK_HEIGHT = 0.18                  # m: the giver's hand over the receptacle's top for the mode-B look at its keyhole
 VIA_UP = 0.08                       # m: the via over the receptacle when the direct move to its hover does not plan
 PLACE_CHECKS = 6                    # handover candidates whose taker place is planned before one is chosen
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
@@ -63,6 +65,13 @@ TURN_FINE = (0.45, 0.85, 1.5)       # ... except between these fractions of it: 
 # (twin, a key spawned in its lock, the turn about its root: the teeth catch at -14 deg, the key tilts 7-11 deg while
 # forced, then snaps through at -30 to -36 deg with 5-7 deg of tilt for a step or two, the moment the checker can pass;
 # 0.3 / 0.9 / 1.2 mm up passed at that step, 0.6 mm missed by 0.3 deg of tilt; pressed on the floor it never passed)
+
+
+def _xy_passes(sols: list):
+    """``HANDOVER_XY``, then ``HANDOVER_XY_MORE`` while no handover was found (G3 100001: the left giver found none)."""
+    yield from HANDOVER_XY
+    if not sols:
+        yield from HANDOVER_XY_MORE
 
 
 def lengthwise_grasps(sk: Skills, label: str, arm: str) -> list:
@@ -229,7 +238,7 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
         for pp in picks[:2]:
             g_hold = gap_to_grip(pp.grasp.width)
             T_lift = sk.kin.tcp(g_arm, pp.plan.q_end) @ pp.T_tcp_obj
-            for (hx, hy) in HANDOVER_XY:
+            for (hx, hy) in _xy_passes(sols):
                 hx = hx if g_arm == "right" else -hx
                 for hz in HANDOVER_Z:
                     for j in range(12):
@@ -300,6 +309,13 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     approach and close, the giver's release (open, up 6 cm, home), then the taker's place through ``place_kw`` (held on
     after a turn)."""
     from dojo.skills.motion import MEDIUM
+    if place_kw.get("turn") and getattr(sk, "refine", None) is not None:
+        # mode B: first the wrist of the arm nearer the receptacle looks straight down at it (a lock's yaw is only seen
+        # in its keyhole, a few pixels from the head camera: perceived 0 deg, truly 10.7, rendered 5.1); a refined pose
+        # moves the targets with it, before anything is planned on them
+        rec = sk.world.obj(receptacle)
+        look_arm = min(ARMS, key=lambda a_: float(np.linalg.norm(sk.kin.base(a_)[:2, 3] - rec.pos[:2])))
+        targets = [_look_over(sk, look_arm, receptacle, T) for T in targets[:1]] + list(targets[1:])
     h = plan_rest_handover(sk, label, targets, receptacle, 0.0, place_kw)
     if isinstance(h, SkillResult):
         return sk._record(h)
@@ -490,6 +506,37 @@ def _let_go(sk: Skills, arm: str, label: str) -> None:
     except (BudgetExceeded, EpisodeEnded):
         pass
     sk.held[arm] = None
+
+
+def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = LOOK_HEIGHT) -> np.ndarray:
+    """Mode B: ``arm``'s hand straight down ``height`` over the receptacle, one still step, the refine hook on it (kind
+    "look"); the target moved by however the receptacle's believed pose changed (the target is fixed in its frame).
+    The target unchanged when no look plans or nothing changed."""
+    from dojo.skills.kinematics import down_R
+    from dojo.skills.motion import FAST
+    rec = sk.world.obj(receptacle)
+    T_rec0 = rec.T.copy()
+    c = rec.center_w
+    mv = None
+    for yaw in (0.0, math.pi / 2, -math.pi / 2, math.pi):
+        T = T_from(np.array([c[0], c[1], float(rec.top_z) + height]), down_R(yaw))
+        mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, FAST, "look_receptacle", gripper=OPEN)
+        if mv.ok:
+            break
+    if mv is None or not mv.ok:
+        sk.log(f"[look_over] {receptacle}: no look pose for {arm}")
+        return T_target
+    try:
+        sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {receptacle}")
+    except (BudgetExceeded, EpisodeEnded):
+        return T_target
+    sk._refine(receptacle, arm, "look")
+    T_rec1 = sk.world.obj(receptacle).T
+    d = T_rec1 @ inv_T(T_rec0)
+    moved = float(np.linalg.norm(d[:3, 3])) * 1000
+    turned = math.degrees(math.acos(max(-1.0, min(1.0, (float(np.trace(d[:3, :3])) - 1) / 2))))
+    sk.log(f"[look_over] {receptacle}: refined {moved:.1f} mm / {turned:.1f} deg")
+    return d @ np.asarray(T_target, float) if (moved > 0.2 or turned > 0.3) else T_target
 
 
 def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm: str | None = None,
