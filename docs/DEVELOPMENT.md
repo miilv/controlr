@@ -63,6 +63,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 
 ## 4. Pitfalls (already stepped on)
 
+- **A test must not import from `tests.`** (`from tests.dojo.test_skills2 import ...`): CI collects with no repo root on
+  `sys.path`, so collection dies with `No module named 'tests'` (fold, ttt: 2026-10-27). Give the test its own helpers or
+  import from `dojo/`.
+- **CI never runs a G3 / Isaac episode**, so a name that exists only on your measurement base passes CI and breaks main
+  (#85 → #89: `belief_drop` in g3.py before #79 landed; every mode-A run died with NameError). Before a PR: run one G3
+  episode from the PR head itself, and `uvx pyflakes` the files you touched (it flags undefined names).
 - **omniroute replays responses** to byte-identical requests (~0.4 s, no usage). That's why
   `llm.request_nonce: true` puts the run id into the first turn. Benchmarks too.
 - **Thinking control through the router differs per model.** Opus planner: effort only via the id
