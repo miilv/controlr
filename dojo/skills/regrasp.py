@@ -47,6 +47,11 @@ HANDOVER_XY = ((0.06, -0.22), (0.0, -0.22), (0.06, -0.28), (0.10, -0.22), (0.0, 
 HANDOVER_Z = (0.92, 0.98, 1.04)
 MAX_TAKES = 4000                    # taker grasps tried at handover poses per search (a count, not a wall-clock cap:
                                     # a time cap made the chosen handover depend on the box's load, G3)
+SWEEP_MAX_DEG = 15.0                # mode B: the key turned this far either way on its lock's top looking for the channel
+SWEEP_STEP_DEG = 3.0
+SWEEP_PRESS = 0.002                 # m: pressed this far below the contact while it turns
+SWEEP_DROP = 0.0012                 # m: the hand this far under the contact = it went in
+SWEEP_SEATED = 0.004                # m: the hand this close to the seat after the descent = already in
 VIA_UP = 0.08                       # m: the via over the receptacle when the direct move to its hover does not plan
 PLACE_CHECKS = 6                    # handover candidates whose taker place is planned before one is chosen
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
@@ -388,6 +393,11 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     except (BudgetExceeded, EpisodeEnded) as e:
         return sk._record(SkillResult(False, "place", "step_budget" if isinstance(e, BudgetExceeded) else "ended", 0,
                                       t_arm, note=str(e)))
+    mode_b = not getattr(sk, "remeasure", True)
+    if mode_b and turn:
+        # mode B: the blind tail stops at the contact and holds on; a key stopped on its lock's top is then turned about
+        # its axis under a light press until it drops in (``keyed_sweep``), and let go after
+        kw.update({"probe": False, "release": False})
     pl = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
     held_on = False
     if not isinstance(pl, PlacePlan) and turn:
@@ -399,9 +409,87 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     r = sk._record(sk.run_place(pl, tol[0], tol[1], tol_z=tol[2], ref_label=receptacle))
     if not turn or r.status in ("ended", "step_budget"):
         return r
+    if mode_b and not held_on:
+        sw = sk._record(keyed_sweep(sk, t_arm, label, _unpressed(h["target"], kw)))
+        if sw.status in ("ended", "step_budget"):
+            return sw
+        _let_go(sk, t_arm, label)
     if held_on:
         return sk._record(turn_held(sk, t_arm, label, turn))
     return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(h["target"], kw))
+
+
+def keyed_sweep(sk: Skills, arm: str, label: str, T_seat, max_deg: float = SWEEP_MAX_DEG, step_deg: float = SWEEP_STEP_DEG,
+                press: float = SWEEP_PRESS) -> SkillResult:
+    """Mode B, an object held in the hand stopped on its receptacle short of ``T_seat`` (the arm's lag stopped the blind
+    descent): turn it about its axis by +-``step_deg``, +-2x, ... up to ``max_deg``, each turn pressed ``press`` below
+    the contact, until the hand drops (proprio): the bit found its channel; then down to the seat at that turn. The
+    receptacle's yaw from perception can be off (a key's lock perceived at 0 deg, truly 10.7: the key sat on the lock's
+    top, rendered 5.1). Logs the turn it went in at."""
+    w = sk.refresh()
+    o = w.obj(label)
+    Tm = sk.kin.tcp(arm, w.arms[arm].q)
+    T_rel = inv_T(Tm) @ o.T                                  # the believed in-hand transform
+    T_seat = np.asarray(T_seat, float)
+    z_seat = float((T_seat @ inv_T(T_rel))[2, 3])
+    z_c = float(Tm[2, 3])
+    if z_c - z_seat < SWEEP_SEATED:
+        return SkillResult(True, "sweep", "ok", 0, arm, note=f"{label} seated ({(z_c - z_seat)*1000:.1f} mm)")
+    n0 = sk.ex.steps_used
+    q = sk.ex.q[arm].copy()
+    k = 1
+    tries = []
+    while k * step_deg <= max_deg + 1e-9:
+        tries += [k * step_deg, -k * step_deg]
+        k += 1
+    from dojo.skills.motion import Segment
+    try:
+        for d in tries:
+            T = T_seat.copy()
+            T[:3, :3] = rot_z(math.radians(d)) @ T_seat[:3, :3]
+            T_tcp = T @ inv_T(T_rel)
+            T_tcp[2, 3] = z_c - press
+            ik = sk.kin.ik(arm, T_tcp, q, n_random=0)
+            if not ik.ok or float(np.abs(ik.q - q).max()) > 3 * TURN_MAX_JUMP:
+                continue
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move([Segment(np.vstack([sk.ex.q[arm], ik.q]), 0.08)],
+                                                                            "sweep").hold(1)},
+                      name=f"sweep {label} {d:+.0f} deg", use_reserve=True)
+            q = ik.q
+            z = float(sk.kin.tcp(arm, sk.refresh().arms[arm].q)[2, 3])
+            if z < z_c - SWEEP_DROP:
+                T_tcp[2, 3] = z_seat
+                ik2 = sk.kin.ik(arm, T_tcp, q, n_random=0)
+                if ik2.ok:
+                    sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move(
+                        [Segment(np.vstack([sk.ex.q[arm], ik2.q]), 0.02)], "sweep_in").hold(2)},
+                        name=f"sweep {label} in", use_reserve=True)
+                z2 = float(sk.kin.tcp(arm, sk.refresh().arms[arm].q)[2, 3])
+                return SkillResult(True, "sweep", "ok", sk.ex.steps_used - n0, arm,
+                                   note=f"{label} went in at {d:+.0f} deg ({(z2 - z_seat)*1000:+.1f} mm from the seat)")
+    except EpisodeEnded as e:
+        return SkillResult(True, "sweep", "ended", sk.ex.steps_used - n0, arm, note=str(e))
+    except BudgetExceeded as e:
+        return SkillResult(False, "sweep", "step_budget", sk.ex.steps_used - n0, arm, note=str(e))
+    return SkillResult(False, "sweep", "place_miss", sk.ex.steps_used - n0, arm,
+                       note=f"{label} did not drop in over +-{max_deg:.0f} deg ({(z_c - z_seat)*1000:.0f} mm short)")
+
+
+def _let_go(sk: Skills, arm: str, label: str) -> None:
+    """Open and back off ``REST_RETREAT`` straight up (unchecked); the object stays where it is."""
+    from dojo.skills.motion import MEDIUM
+    Tq = sk.kin.tcp(arm, sk.ex.q[arm])
+    T_up = Tq.copy()
+    T_up[2, 3] += REST_RETREAT
+    up = sk.motion.line(arm, sk.ex.q[arm], T_up, MEDIUM, "let_go", gripper=OPEN, check=False)
+    p = ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).grip(OPEN, 2, "release").hold(1)
+    if up.segments:
+        p.move(up, "retreat")
+    try:
+        sk.ex.run({arm: p}, name=f"let go of {label}", use_reserve=True)
+    except (BudgetExceeded, EpisodeEnded):
+        pass
+    sk.held[arm] = None
 
 
 def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm: str | None = None,
@@ -425,14 +513,14 @@ def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm:
             T_up = o.T.copy()
             T_up[2, 3] += TURN_LIFT
             frac = _turn_reach(sk, arm, T_up, T_ko, r.q, turn)
-            if frac < MIN_TURN_FRAC:
+            if frac < TURN_FRACTIONS[-1]:             # -36 of -60 at least (the key snaps through by -30..-36)
                 continue
             cost = 3.0 * (1.0 - frac) + 0.3 * float(np.abs(r.q - sk.ex.q[arm]).max()) + (0.0 if arm == last_arm else 0.2)
             if best is None or cost < best[0]:
                 best = (cost, arm, note, T_ko, width, frac)
     if best is None:
         return sk._record(SkillResult(False, "turn", "ik_fail", 0, None,
-                                      note=f"{label}: no grasp in the {receptacle} reaches {MIN_TURN_FRAC:.0%} of the turn"))
+                                      note=f"{label}: no grasp in the {receptacle} reaches {TURN_FRACTIONS[-1]:.0%} of the turn"))
     _, arm, note, T_ko, width, frac = best
     sk.log(f"[turn_in_lock] {label}: {arm} ({note}), reaches {frac:.0%} of {math.degrees(turn):.0f} deg")
     try:
