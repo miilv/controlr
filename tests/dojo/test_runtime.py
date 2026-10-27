@@ -2255,6 +2255,31 @@ def test_held_look_drops_on_a_sure_negative_unless_the_head_sees_the_object(conf
     assert bool(prov.events[-1].get("dropped")) == dropped and bool(prov.events[-1].get("kept")) == (not dropped)
 
 
+def test_held_look_negative_in_a_handover_releases_only_that_hand():
+    """#101: in a handover both hands hold the label. An empty-jaws read on one hand drops that hand's attachment only;
+    the object stays where the other hand holds it (before: it was dropped back to its pick pose)."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.held_checker = lambda obs, arm, lab: ({"held": False, "confidence": 1.0, "source": "b1"} if arm == "left"
+                                                else {"held": True, "confidence": 1.0, "source": "b1"})
+    prov.held_confirm = lambda obs, arm, lab: {"held": None}
+    bel = prov.belief
+    o = bel.objects["block_1"]
+    o.pos = o.pos + [0.0, 0.0, 0.1]                                        # carried, 10 cm up
+    p_air = o.pos.copy()
+    for a in ("left", "right"):
+        z0 = float(bel.kin.tcp(a, bel.q[a])[2, 3])
+        bel.attached[a] = ("block_1", np.eye(4))
+        bel.grasp_z[a] = (z0 - 0.05, 1 if a == "left" else 2, np.r_[o.pos - [0, 0, 0.1], o.quat].copy())
+    prov._held_check(b.obs)
+    assert "left" not in bel.attached and bel.attached["right"][0] == "block_1"
+    assert np.allclose(o.pos, p_air)                                       # not dropped to the pick pose
+
+
 def test_a_none_ok_prediction_is_not_adopted_and_drops_the_twin_chain():
     from dojo.runtime.belief import RuntimeProvider
     from dojo.runtime.verifier import BundleVerifier
