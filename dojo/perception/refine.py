@@ -250,6 +250,32 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         s = sm.sil(cam, T)
         vis = float((s & v.known).sum() / max(s.sum(), 1))
     iou = float(next(iter(per.values()), 0.0)) if per else 0.0
+    other_pose, tried = None, []
+    if iou < EMPTY_FIT_IOU and vis >= 0.5:
+        # the object is in view but its prior's resting pose fits nothing: it may rest another way (a bottle lying where
+        # the belief has it upright: conveyor 5.1, 8 of 9 wrist looks at iou 0.0). Try the asset's other resting shapes
+        # at the same place, on the same support
+        for sm2 in shape_models(obj_id):
+            if sm2.tag == sm.tag:
+                continue
+            z2 = z_off                          # the same support under it: its own rest height on top of it
+            b2 = None
+            for yw in (yaw0, yaw0 + np.pi / 2):
+                r2 = nm_refine(_ZShift(sm2, z2), T0[0, 3], T0[1, 3], yw, views, maxiter=iters, xy_step=0.004,
+                               yaw_step=0.08)
+                if b2 is None or r2[3] < b2[3]:
+                    b2 = r2
+            iou2 = float(next(iter(b2[4].values()), 0.0)) if b2[4] else 0.0
+            tried.append((sm2.tag, round(iou2, 4)))
+            if iou2 > max(iou, OTHER_POSE_MIN_IOU) and (other_pose is None or iou2 > other_pose["iou"]):
+                other_pose = {"tag": sm2.tag, "iou": iou2, "fit": b2, "sm": sm2, "z_off": z2}
+        if other_pose is not None:
+            sm, z_off = other_pose["sm"], other_pose["z_off"]
+            x, y, yaw, loss, per = other_pose["fit"]
+            iou = other_pose["iou"]
+            T = pose_T(x, y, yaw)
+            s = sm.sil(cam, T)
+            vis = float((s & v.known).sum() / max(s.sum(), 1))
     d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
     ok = bool(iou >= 0.6 and vis >= 0.5)
     searched = None
@@ -285,12 +311,18 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
         # light-wood board, iou 0.03-0.2): fit the silhouette outline to image edges instead
         edge = _edge_fit(sm, z_off, wrist_frame, cam, rob, T0, yaw0, iters)
         if edge is not None and edge["ok"]:
-            T = edge["T"]
-            x, y, yaw = edge["x"], edge["y"], edge["yaw"]
-            loss, per = roi_loss(sm, T, make_roi_views(sm, T, views))
-            iou = float(next(iter(per.values()), 0.0)) if per else 0.0
-            ok = True
-            d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
+            s_e = sm.sil(cam, edge["T"])
+            vis_e = float((s_e & v.known).sum() / max(s_e.sum(), 1))
+            if vis_e >= EDGE_MIN_VIS:
+                T = edge["T"]
+                x, y, yaw = edge["x"], edge["y"], edge["yaw"]
+                loss, per = roi_loss(sm, T, make_roi_views(sm, T, views))
+                iou = float(next(iter(per.values()), 0.0)) if per else 0.0
+                vis = vis_e
+                ok = True
+                d_rot = np.degrees(np.arccos(np.clip((np.trace(T0[:3, :3].T @ T[:3, :3]) - 1) / 2, -1, 1)))
+            else:  # "ok" with nothing in view (Memory, conveyor 100004 s260: ok at iou 0.0, vis 0.0, 18.8 mm)
+                edge = dict(edge, ok=False, why=f"edge fit out of view (vis {vis_e:.2f})")
     yaw_read = None
     from .top_feature import read_yaw, top_feature
 
@@ -317,6 +349,11 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
             "iou": round(iou, 4), "visible_frac": round(vis, 3), "place_tag": sm.tag,
             "moved_mm": round(float(np.linalg.norm(T[:2, 3] - T0[:2, 3]) * 1000), 1), "turned_deg": round(float(d_rot), 1),
             "ok": ok, "time_s": round(time.time() - t0, 3), "camera": cam.name}
+    if tried:
+        out["other_poses_tried"] = tried
+    if other_pose is not None:
+        out["place_tag"] = sm.tag
+        out["other_pose"] = {"tag": sm.tag, "iou": round(other_pose["iou"], 4)}
     if yaw_read is not None:
         out["yaw_read"] = yaw_read
         if yaw_read.get("ok"):
@@ -379,6 +416,10 @@ def refine(obj_id: str, wrist_frame: np.ndarray, proprio: dict, prior_pose, arm:
     return out
 
 
+EMPTY_FIT_IOU = 0.2       # the prior's resting shape fitting this little of an object in view: try its other ones ...
+OTHER_POSE_MIN_IOU = 0.6  # ... and take one that fits at least this well
+EDGE_MIN_VIS = 0.05       # an edge fit counts only for an object in view at its pose (else it locked onto other
+# edges: Memory's conveyor "ok" at vis 0.0; D0 val_refine's right edge fits of half-hidden blocks are all above this)
 EDGE_MAX_COST_PX = 1.0  # mean outline-to-edge distance (px, truncated at EDGE_CAP_PX) of an accepted edge fit (5.1 tower
 # + stack, priors displaced 15 / 40 mm: right fits 0.04-0.9 px; the one wrong fit, on a neighbouring pillar, 1.37 px)
 EDGE_MIN_COVERAGE = 0.85
