@@ -1142,7 +1142,8 @@ def _support_raw(o, tag: str) -> list:
 # allows (perception-held's report, charger: a hover read is 0.49 / 1.29 mm off at the leading point (median / p90), an
 # observer look 0.25 / 0.37, a show pose 0.15 / 0.31; the blades need about +-0.1 mm), and with that read a descent that
 # stops on the receptacle first tries a pressed spiral out to 0.5 mm
-INSERT_HELD_KW = {"held_tol": 0.0, "spiral": 0.0005}
+INSERT_HELD_KW = {"held_tol": 0.0, "spiral": 0.0005, "held_read": True}   # held_read: the read is asked for even
+                              # where the runtime reads only on request (``held_pose: request``)
 
 INSERT_AIR_HANDOVER = False    # insertions that only plan through an in-air handover: lift + return instead (G3: the
                                # handover lost the key on the carry in 5 versions, 0/34; the lift banks the 15 % rung)

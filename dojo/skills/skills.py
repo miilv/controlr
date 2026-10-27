@@ -625,7 +625,8 @@ class Skills:
                    fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
-                   blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None):
+                   blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
+                   held_read: bool | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
@@ -658,7 +659,9 @@ class Skills:
         pressed onto the receptacle, along a spiral out to this radius (a read 0.15-0.3 mm off, blades in +-0.1 mm
         slots), then probes as usual. ``guarded``: with an adopted read too, the guarded / probing tail (on the measured
         transform) instead of the servo: its arm-lag stop sees an object caught on the receptacle that slides in the pads
-        (a ring on a peg's top), which the servo's held pose (the TCP's) cannot."""
+        (a ring on a peg's top), which the servo's held pose (the TCP's) cannot. ``held_read``: this place asks for the
+        in-hand read when the provider reads only on request (``provider.held_pose_on_request``: runtime ``held_pose:
+        request``; insertions whose clearance a predicted in-hand pose cannot meet)."""
         h = self.held[arm] if held is None else held
         if h is None:
             return SkillResult(False, "place", "logic", 0, arm, note="nothing held")
@@ -693,6 +696,8 @@ class Skills:
                 tail_kw[k] = float(v)
         if guarded:
             tail_kw["guarded"] = True
+        if held_read:
+            tail_kw["held_read"] = True
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -742,7 +747,7 @@ class Skills:
                     guard_lag: float | None = None, servo_xy_tol: float | None = None,
                     held_tol: float | None = None, held_gate: float | None = None,
                     blind_up: float | None = None, spiral: float | None = None,
-                    guarded: bool | None = None) -> ArmPlan | str:
+                    guarded: bool | None = None, held_read: bool | None = None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -1196,6 +1201,8 @@ class Skills:
         if getattr(self.provider, "held_pose", None) is None or h is None:
             return None
         kw = pp.tail_kw or {}
+        if getattr(self.provider, "held_pose_on_request", False) and not kw.get("held_read"):
+            return None                     # reads only where a place asks (``held_read``)
         gate = 1000.0 * float(kw["held_gate"] if kw.get("held_gate") is not None else 0.5 * tol_xy)
         good = 1000.0 * float(kw["held_tol"]) if kw.get("held_tol") is not None else gate
         gate_tilt = 0.5 * tol_tilt
@@ -1358,7 +1365,8 @@ class Skills:
         if (not kw.get("servo") or kw.get("held_tol") is None or float(kw["held_tol"]) > 0 or not self.held_looks
                 or h is None or appr is None or appr.q_end is None
                 or getattr(self.provider, "held_pose", None) is None
-                or not callable(getattr(self.provider, "show_pose", None))):
+                or not callable(getattr(self.provider, "show_pose", None))
+                or (getattr(self.provider, "held_pose_on_request", False) and not kw.get("held_read"))):
             return None
         obs = "right" if pp.arm == "left" else "left"
         if self.held.get(obs) is not None:

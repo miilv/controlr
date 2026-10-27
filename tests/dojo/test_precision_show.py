@@ -46,3 +46,21 @@ def test_without_the_fallback_only_the_hover_is_read(monkeypatch):
     env, prov, sk, T = _scene()
     sk.run_place(sk.plan_place("left", T, servo=True, pre_h=0.04))
     assert [e["view"] for e in sk.held_events] == ["hover"]
+
+
+def test_on_request_only_a_place_that_asks_reads_the_held_object():
+    env, prov, sk, T = _scene()
+    prov.held_pose_on_request = True                          # the runtime's held_pose: request
+    sk.run_place(sk.plan_place("left", T, servo=True, pre_h=0.04))
+    assert sk.held_events == []                               # this place did not ask
+    env, prov, sk, T = _scene()
+    prov.held_pose_on_request = True
+    pl = sk.plan_place("left", T, servo=True, pre_h=0.04, held_read=True)
+    assert pl.tail_kw["held_read"] is True
+    sk.run_place(pl)
+    assert [e["view"] for e in sk.held_events] == ["hover", "show"] and sk.held_events[1]["adopted"]
+
+
+def test_insertions_ask_for_the_read():
+    from dojo.skills.library import INSERT_HELD_KW
+    assert INSERT_HELD_KW["held_read"] is True

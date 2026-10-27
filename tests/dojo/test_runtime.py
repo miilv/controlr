@@ -2931,6 +2931,13 @@ def test_provider_show_pose_plans_with_the_hold_joints_and_held_pose_passes_the_
     pol2 = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=SP(env),
                          program=lambda ctx: {"ok": not hasattr(ctx.prov, "show_pose")})
     assert run_episode(pol2, FakeEpisode(_env()), "perception")["result"]["ok"]            # held_pose off: no show_pose
+    flags = {}
+    pol3 = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", held_pose="request"), assets=FakeAssets(),
+                         perception_client=SP(env), program=lambda ctx: flags.update(
+                             on_request=getattr(ctx.prov, "held_pose_on_request", None),
+                             wired=callable(getattr(ctx.prov, "held_pose", None)) and callable(ctx.prov.show_pose)) or {"ok": True})
+    assert run_episode(pol3, FakeEpisode(_env()), "perception")["error"] is None
+    assert flags == {"on_request": True, "wired": True}                                 # request: wired, skills ask
 
 
 @pytest.mark.parametrize("inc_conf, alt, chosen", [(0.78, (2, 3, 0.826), "stack_blocks_by_language"),  # 100002: 0.55 vs 0.52
