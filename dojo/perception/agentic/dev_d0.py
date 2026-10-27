@@ -370,7 +370,7 @@ def cmd_contrast(a):
 
 # ------------------------------------------------------------------------------------------------ scoring (DEV ONLY)
 
-def _cls_of(o: dict, gt_classes: set, b1_cat: dict) -> str | None:
+def _cls_of(o: dict, gt_classes: set, b1_cat: dict, b1_objs: list | None = None) -> str | None:
     cat = o.get("category")
     if cat in gt_classes:
         return cat
@@ -389,6 +389,10 @@ def _cls_of(o: dict, gt_classes: set, b1_cat: dict) -> str | None:
     for c in gt_classes:
         if c.replace("_", " ") in s:
             return c
+    if b1_objs and o.get("pos") is not None:  # as record.merge_into_record: a free-text kind = the nearest B1 object's
+        near = [b for b in b1_objs if b.get("category") in gt_classes and b.get("pos") is not None]
+        if near:
+            return min(near, key=lambda b: math.hypot(b["pos"][0] - o["pos"][0], b["pos"][1] - o["pos"][1]))["category"]
     return None
 
 
@@ -429,7 +433,7 @@ def score_case(d: Path, tag: str, stats: dict | None = None) -> list[dict]:
     classes = {o["category"] for o in gts}
     preds = [o for o in out.get("objects", []) if o.get("pos") is not None]
     for o in preds:
-        o["_cls"] = _cls_of(o, classes, b1_cat)
+        o["_cls"] = _cls_of(o, classes, b1_cat, b1.get("objects") or [])
     tol = task_tol(task)
     rows = []
     if stats is not None:
@@ -451,7 +455,7 @@ def score_case(d: Path, tag: str, stats: dict | None = None) -> list[dict]:
                 e = float(C[gi, m[gi]] * 1000)
                 row.update(xy_mm=round(e, 1), conf=p.get("confidence"), source=p.get("source"),
                            id_ok=(p.get("asset") == key) if p.get("asset") else None)
-                if p.get("quat") and tol[1]:
+                if p.get("quat"):  # reported everywhere (a 180-deg flip shows); within tolerance only where the task has one
                     try:
                         sym = gt_world_symmetry(key, g["quat"])
                     except Exception:
