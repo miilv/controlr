@@ -79,6 +79,9 @@ def load_backgrounds(root: Path | None = None) -> dict[str, np.ndarray]:
     p = root / "cam_head_clean_unseen.png"
     if p.exists():
         out["cam_head_clean_unseen"] = (cv2.imread(str(p), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
+    p = root / "cam_head_actor_mask.png"  # a scene background's scripted actor at home (watch.read_sources skips it)
+    if p.exists():
+        out["cam_head_actor_mask"] = (cv2.imread(str(p), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
     return out
 
 

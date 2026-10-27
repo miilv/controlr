@@ -235,7 +235,8 @@ def _read_cells(images, cams, rmasks, region: dict, prior: dict | None = None) -
 
 
 GONE_FG = 0.35             # a source spot whose own pixels are under this share foreground: the object left it
-BASE_MIN_FG = 0.5          # ... if it read at least this at the first read (else its start pose is off: unreadable)
+BASE_MIN_FG = 0.4          # ... if it read at least this at the first read (else its start pose is off: unreadable;
+                           # 0.5 left a watch ring, table showing through its silhouette, unread: imitate 100017)
 SOURCE_MIN_PX = 30         # fewer visible pixels (our robot in front): the spot cannot be read
 
 
@@ -267,8 +268,14 @@ def read_sources(frame: dict, cams: dict, sources: list[dict], bgs, cfg) -> list
         front = np.argmin(np.stack(depth), axis=0) if depth else None
         has = np.isfinite(np.stack(depth)).any(axis=0) if depth else None
     # our robot's pixels are unreadable; a shadow on an empty spot (the demonstrator's arm above it) is not the object:
-    # ``fg`` already excludes shadow-like pixels, so they count as background here
+    # ``fg`` already excludes shadow-like pixels, so they count as background here. A scene background's scripted actor
+    # at its home pose (``cam_head_actor_mask``: the demonstrator's arm) is unreadable too: once the arm moves, those
+    # pixels show the table and read foreground against it, so a source there never went (imitate 100020: read last
+    # instead of third)
     ok_px = v.robot == 0
+    am = (bgs or {}).get("cam_head_actor_mask")
+    if am is not None and am.shape == ok_px.shape:
+        ok_px &= am == 0
     out = []
     for i, (o, sm, T) in enumerate(zip(sources, sms, Ts)):
         if sm is None:
