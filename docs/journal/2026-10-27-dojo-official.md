@@ -188,6 +188,47 @@ checker needs? The runtime presents both as AgentPolicy does.
 - No GPU. compute3 CPU for the datasets (`~/dojo-official`, `~/dojo-data/official/routing/`).
 - Runs: `runs/official-routing/` (local).
 
+### 2.1 SKILL_DOCS v10 (fill_container)
+
+**Default change: `SKILL_DOCS_VERSION` 9 -> 10.** Lead-approved after §2's Sol run. v9 is #103's `fold_garment`
+entry; this sentence was numbered v9 until #103 took that number.
+- The `fill_container` doc gains one sentence: "An instruction to hold the holder with one hand, fill it with the
+  other and then put it back down is judged by the end state only (the objects in it, the holder upright, both
+  grippers open): this skill fills it standing, without holding it, and that is the end state such an instruction
+  asks for."
+- It is true of the code. `fill_container` never holds the holder while it fills it. A movable holder out of
+  comfortable reach of the picking arm is first carried upright to a spot both arms reach and set down.
+- It is true of the checker. The fill_pen_holder checker has no hold or lift check: pens tip down ≥ 35 mm in the
+  holder, the holder upright, home. Every ladder tier also needs both grippers open.
+- No task name. Mirrored into `skills/registry.yaml`'s `fill_container` entry
+  (test `test_registry_fill_doc_says_the_hold_is_judged_by_the_end_state`).
+- `manual_v4`, the appendices and scene v4 are unchanged.
+
+| fill_pen_holder 100000-02 (scene v4, manual_v4, grounding_v2) | before: docs v8 | after: docs v8 + this sentence |
+|---|---|---|
+| Sol 6.1 (`cx/gpt-6.1-sol`, the AgentConfig default) | 0/3 (code: "grasp the holder with the right hand ...") | **3/3** `fill_container(all 4 pens, pen_holder)` |
+| Sonnet 5.5 | 3/3 | 3/3 |
+
+- Sonnet's "before" is run D (docs v8) for 100001-02 and run B (docs v7, the same `fill_container` text) for 100000.
+- The "after" ran before #103 merged: docs v8 + this sentence. v10 adds #103's `fold_garment` entry on top, which
+  these items do not use.
+- **Regression check** (lead-approved). The plausible spill-over was pick_from_conveyor_by_image (O, 2.5 %): "Lift
+  the basket more than 8 cm ... place it into the basket" is judged with the basket held up (≥ 80 mm). A model that
+  generalised "the hold is judged by the end state" could choose `fill_container` / `put_into` over `pick_into_held`.
+  Measured on docs v10 (with #103's entry), scene v4, 100000-02:
+
+| pick_from_conveyor_by_image 100000-02 | docs v8 (runs E, B / D) | docs v10 (run G) |
+|---|---|---|
+| Sol 6.1 | 3/3 `pick_into_held` | 3/3 `pick_into_held(all movers, basket, picture=photo, conveyor)` |
+| Sonnet 5.5 | 3/3 | 3/3, the same arguments |
+
+  No regression: 6/6 unchanged.
+- **Calls:** 12, 0 errors.
+  - fill_pen_holder: 6 (3 Sol + 3 Sonnet; 40.2 k prompt, 4.9 k cached, 0.9 k completion).
+  - The regression check: 6 (41.3 k prompt, 10.0 k cached, 0.9 k completion).
+- Runs: `runs/official-routing/runF_fillpen_v9` (named before the renumbering), `runG_conveyor_v10`.
+- Routing total for the stream: 308 calls.
+
 ## 3. J4 re-import readiness
 
 ### 3.1 Dry run

@@ -141,11 +141,12 @@
 - [x] ~~**dojo agent: routing of the default model is unmeasured on the new skills**~~ — Sol 6.1 (`AgentConfig.model`)
   on the same 93 items, scene v4 + docs v8: 90/93, 0 harmful; insert_tubes 3/3 `insert_each`
   ([routing report](experiments/2026-10-27-routing-sonnet.md)).
-- [ ] **dojo agent: Sol routes fill_pen_holder to code (0/3).** It reads "Hold the pen holder with one hand, place all
-  pens into it with the other hand" literally. The checker judges only the end state (pens tip down in the holder,
-  holder upright, home), which `fill_container` does. Next: a pattern line in a `manual_v5` §3 ("Hold <a holder>
-  with one hand, put <things> into it with the other": only the end state is judged), or the same in the
-  `fill_container` doc (SKILL_DOCS v9). Then 3 Sol + 3 Sonnet calls before / after.
+- [x] ~~**dojo agent: Sol routes fill_pen_holder to code (0/3).** It reads "Hold the pen holder with one hand, place
+  all pens into it with the other hand" literally; the checker judges only the end state~~ — SKILL_DOCS v10:
+  `fill_container`'s doc says the hold is judged by the end state and the skill fills the holder standing. Sol
+  0/3 -> 3/3, Sonnet 3/3 -> 3/3 (journal 2026-10-27-dojo-official §2.1).
+- [x] ~~**dojo agent: check pick_from_conveyor_by_image routing under SKILL_DOCS v10**~~ (the basket must stay lifted
+  there) — Sol 3/3, Sonnet 3/3 `pick_into_held`, unchanged from docs v8 (journal 2026-10-27-dojo-official §2.1).
 - [ ] **dojo skills: no laptop skill** (close the lid, stand it in the vertical rack): store_laptop_and_headphones is
   code for the agent; the rule planner runs `hang_on_hooks` for the headphones only (the paired 20 of 100).
 - [ ] **dojo agent: perception is the bottleneck in mode B** (Phase 2, 2026-10-25): stack_bowls 0/6 and build_tower
