@@ -197,3 +197,14 @@ top grasp, and the position error at contact is 12-16 mm.
   (bottle/00047) and pick_from_conveyor_by_image (remote/00001).
 - Existing ids 100000-29 are not regenerated, so paired numbers stay comparable. A fresh conveyor robustness set at
   100030-39 is generated with v14 and settled.
+
+## 9. A dev GT probe in the rendered eval (`dojo.runtime.eval.GTProbe`)
+- The rendered conveyor runs could not say why a "rose 125 mm" lift (belief, held look held=true) did not count:
+  RoboDojo's `is_lift(target1, 0.1)` compares GT z with the reset pose, and the eval kept no GT after frame 0.
+- Every episode row now has `dev_gt_probe`, on the scorer side of the firewall like the frame-0 scoring. It holds each
+  label's largest z rise over its reset pose (sampled after every action batch and at every close) and, at each
+  gripper close, the GT object nearest the jaws, with the TCP taken from the commanded joints. The integ log prints it.
+  The policy's observations and info carry nothing of it (unit test).
+- First use (arm 5, rendered 100003): one close at step 182, the nearest GT object target1 at 72 mm, target1 rose 0.0 mm,
+  while the belief read "rose 125 mm". The held look saw an empty, fully closed opening (conf 1.0), and the head confirm
+  (held, 0.99) overrode it; routed to Integration-3.
