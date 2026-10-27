@@ -287,11 +287,13 @@ class HeldBeliefProvider:
         others = [x for k, x in self._free.items() if k != lab and not getattr(x, "clutter", False)]
         movables = [x for x in others if x.obj_type != "Geometry"]
         fx = [x for x in others if x.obj_type == "Geometry"] if fixtures else ()
+        rel7 = np.round(np.r_[o.pos, o.quat], 5).tolist()
         pos, ev = drop_rest(o, movables, fx)
         if pos is not None:
             o.pos = pos
         if ev is not None:
-            self.events.append({"kind": "belief_drop", "label": lab, "step": int(self.env.steps_used), **ev})
+            self.events.append({"kind": "belief_drop", "label": lab, "step": int(self.env.steps_used), **ev,
+                                "release7": rel7})
         return o.pos.copy(), o.quat.copy()
 
     def _after_release(self, lab: str, o, w) -> None:
@@ -309,7 +311,8 @@ class HeldBeliefProvider:
         self.stats["kept"] += 1
         err = float(np.linalg.norm(pred[0] - o.pos))
         self.events.append({"kind": "release_kept", "label": lab, "step": int(self.env.steps_used),
-                            "pred_err_mm": round(err * 1000, 1)})
+                            "pred_err_mm": round(err * 1000, 1),
+                            "truth7": np.round(np.r_[o.pos, o.quat], 5).tolist()})
 
     def _confirm_pose(self, label: str, pos, quat) -> dict:
         """GT stand-in for the runtime's ``confirm_pose``: adopted when the expected pose is within ``CONFIRM_TOL`` of
