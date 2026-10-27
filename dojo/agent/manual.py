@@ -137,14 +137,20 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "Puts each movable threaded part (a nut) on its fixed partner (a bolt), upright on its axis, and turns it down "
         "the thread with wrist sweeps and re-grips (clockwise from above) until it sits ~1 cm down; grippers opened "
         "after each pair. Pair them first (e.g. by matching colour)."),
+    "fold_garment": (
+        "fold_garment(garment: id | null = null)",
+        "Folds a long-sleeved top lying flat on the table with pinches: each sleeve is pinched at its end and laid "
+        "on the opposite chest (one arm each), then both hem corners are pinched together and laid on the shoulders; "
+        "grippers opened after each fold. For 'fold the clothes'."),
 }
-SKILL_DOCS_VERSION = 8  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 9  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
 #                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
 #                        7: fill_container drops into the opening, place_in_slots carries level (skills-8)
 #                        8: stack_on_pegs says which group fits which peg (most pieces -> highest peg; routing 2026-10-27:
 #                           with the peg heights in scene v4 and doc v7, Sonnet mapped groups by asset index on 2/10)
+#                        9: + fold_garment (gennew)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

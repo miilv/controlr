@@ -642,6 +642,30 @@ class RoboDojoRunner:
                          "width": 640, "height": 480}
         return out
 
+    def garment_gt(self, env_idx: int = 0, label: str | None = None) -> dict | None:
+        """Dev-only GT of a garment: its particle positions (world, env-relative), the metadata's named points
+        (``passive.functional`` particle ids -> mean position) and the root pose the checker takes its axes from."""
+        lm = self.env.scene_manager.layout_manager
+        for rec in lm.object_records_by_type["Garment"].layout_records_by_env[env_idx]:
+            if label is not None and rec.get("label") != label:
+                continue
+            name = rec["inst_name"]
+            g = lm.get_scene_object(env_idx, name)
+            meta = lm.get_instance_metadata(inst_name=name, env_idx=env_idx) or {}
+            P, _, pw, ow = g.sample_mesh_vertices()
+            org = _np(self.env.scene_manager.env_origins[env_idx]).reshape(-1)[:3]
+            P = _np(P).reshape(-1, 3) - org
+            kp = {}
+            for k, v in ((meta.get("passive") or {}).get("functional") or {}).items():
+                ids = [int(i) for i in (v or {}).get("id", []) if 0 <= int(i) < len(P)]
+                if ids:
+                    kp[k] = P[ids].mean(0).tolist()
+            pos, quat = lm.get_instance_pose(env_idx=env_idx, inst_name=name)
+            return {"label": rec.get("label"), "inst_name": name, "points": P, "keypoints": kp,
+                    "pos": _np(pos).reshape(-1)[:3].tolist() if pos is not None else None,
+                    "quat": _np(quat).reshape(-1)[:4].tolist() if quat is not None else None}
+        return None
+
     def robot_gt(self, env_idx: int = 0) -> dict:
         rm = self.env.robot_manager
         out = {}

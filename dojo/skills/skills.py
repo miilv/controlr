@@ -173,6 +173,12 @@ class GTProvider:
         self.notes: dict = {}
         self._actors_prev = None
 
+    def garment(self, label: str | None = None) -> dict | None:
+        """Dev-only GT of a garment lying on the table (``RunnerEnv.garment_gt``: particles, named points, root pose);
+        None when the env has none. At eval perception's garment read answers it (same dict shape)."""
+        f = getattr(self.env, "garment_gt", None)
+        return None if f is None else f(label)
+
     def actors_moving(self, tol: float = 2e-3) -> bool | None:
         """Whether a scripted actor (an opponent's or a demonstrator's arm) moved since the last call: dev-only GT of its
         joints in G3 (``env.actors_gt``); None when the env cannot tell (the caller then waits a fixed time). At eval

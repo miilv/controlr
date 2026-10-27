@@ -2683,3 +2683,8 @@ WAITS_ON_ACTOR = frozenset({"copy_demonstration", "declare_kong"})
 
 SKILLS.update({"play_board_game": play_board_game, "fill_holes": fill_holes, "copy_demonstration": copy_demonstration,
                "match_and_pick": match_and_pick, "pick_into_held": pick_into_held})
+
+# a garment folded with pinches (Generalization-New)
+from dojo.skills.garment import SKILLS as _GARMENT_SKILLS  # noqa: E402
+
+SKILLS.update(_GARMENT_SKILLS)

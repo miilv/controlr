@@ -275,6 +275,15 @@ def plan(instruction: str, world: WorldState) -> Plan:
                 return Plan("fill_holes", {"objects": movers, "holder": h.label, "lid_tag": tag},
                             f"{len(movers)} objects into {h.label}'s holes, then close its lid ({tag})")
 
+    # --- fold a garment lying on the table (a cloth object: sleeves onto the chest, then the hem onto the shoulders)
+    if re.search(r"\bfold\b", text):
+        cloth = [o for o in objs if o.obj_type == "Garment" and not o.clutter]
+        if cloth:
+            return Plan("fold_garment", {"garment": cloth[0].label}, f"fold {cloth[0].label} ({cloth[0].category})")
+        if re.search(r"\bcloth(es|ing)?\b|\bshirt\b|\bgarment\b|\btowel\b", text):
+            # no cloth in the belief (a rigid-object perception has no garment): the skill reads it itself
+            return Plan("fold_garment", {"garment": None}, "fold the garment the provider reads")
+
     # --- mahjong: declare a kong with the tiles (the most numerous rigid category)
     if all(re.search(pt, text) for pt in KONG_TEXT):
         rig = [c for c, v in cats.items() if sum(o.obj_type == "Rigid" for o in v) >= 4]
