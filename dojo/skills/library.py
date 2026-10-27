@@ -2327,6 +2327,7 @@ HANG_CARRY = 0.06              # rad/step: the re-orienting carry to a hook (twi
 HANG_PRE = 0.025               # m: the handle's hole is carried to this far beyond the hook arm's tip, then slid on
 HANG_SEARCH_S = 150.0          # s: wall-time cap of one round's hook x object search (twin: a 35 min episode)
 HANG_RELAY_DY = 0.2            # m: relay spots this far in front of a rack (towards the robot; both arms reach there)
+HANG_CRADLE_OUT = 0.12         # m: an object for a cradle is carried this far outside it, then slid on
 
 _SURF: dict = {}
 
@@ -2358,49 +2359,97 @@ def _area_samples(o, n: int = 60000, seed: int = 0) -> np.ndarray:
     return _SURF[key]
 
 
+class _MeshClear:
+    """Is ``o``'s mesh about ``gap`` clear of ``support``'s mesh at a pose? Surface samples on a voxel grid (``gap`` /
+    3): no support voxel within 3 voxels (L-inf) of an object point's, else exact distances for the flagged points.
+    Built once over the region the poses can reach (``reach``: extra margin around the object at ``T_ref``)."""
+
+    def __init__(self, o, support, T_ref: np.ndarray, gap: float = 0.006, reach=(0.0, 0.0, 0.0, 0.0, 0.0, 0.06)):
+        self.gap = gap
+        self.v = gap / 3.0
+        Po = _area_samples(o)
+        self.Po = Po[np.random.default_rng(1).choice(len(Po), size=min(3000, len(Po)), replace=False)]
+        Pw = self.Po @ T_ref[:3, :3].T + T_ref[:3, 3]
+        S = _area_samples(support, n=200000) @ support.R.T + support.pos
+        lo = Pw.min(0) - 2 * gap - np.asarray(reach[:3], float)
+        hi = Pw.max(0) + 2 * gap + np.asarray(reach[3:], float)
+        S = S[np.all((S >= lo) & (S <= hi), axis=1)]
+        self.S = np.unique(np.round(S / 0.001).astype(np.int64), axis=0) * 0.001 if len(S) else S
+        self.org = lo - 4 * self.v
+        self.dims = np.ceil((hi - self.org) / self.v).astype(np.int64) + 8
+        self.occ = np.unique(self._enc(np.floor((self.S - self.org) / self.v).astype(np.int64))) if len(self.S) else None
+        r = np.arange(-3, 4)
+        self.offs = np.stack(np.meshgrid(r, r, r, indexing="ij"), -1).reshape(-1, 3)
+
+    def _enc(self, K):
+        d = self.dims
+        return (K[:, 0] * d[1] + K[:, 1]) * d[2] + K[:, 2]
+
+    def clear(self, T: np.ndarray) -> bool:
+        if self.occ is None:
+            return True
+        P = self.Po @ T[:3, :3].T + T[:3, 3]
+        Kn = np.floor((P - self.org) / self.v).astype(np.int64)[:, None, :] + self.offs[None, :, :]
+        inside = np.all((Kn >= 0) & (Kn < self.dims), axis=2)
+        near = (np.isin(self._enc(Kn.reshape(-1, 3)), self.occ).reshape(Kn.shape[:2]) & inside).any(axis=1)
+        if not near.any():
+            return True
+        Q = P[near]
+        g = self.gap
+        Sn = self.S[np.all((self.S >= Q.min(0) - 2 * g) & (self.S <= Q.max(0) + 2 * g), axis=1)]
+        if not len(Sn):
+            return True
+        d2 = min(float(((Q[i:i + 256, None, :] - Sn[None, :, :]) ** 2).sum(-1).min()) for i in range(0, len(Q), 256))
+        return d2 >= g * g
+
+
 def rest_clearance(o, support, T_obj: np.ndarray, gap: float = 0.006, step: float = 0.002,
                    max_up: float = 0.06) -> float | None:
     """How far ``o`` at ``T_obj`` (world) must be raised for its mesh to stay about ``gap`` clear of ``support``'s
-    mesh (an object let go onto a support from above, e.g. a headset's headband onto a stand's cradle: the cradle
-    frame sits 3 mm under the saddle's surface and the bridge frame inside the band, so the frames' pose overlaps the
-    meshes by ~13 mm). Surface samples on a voxel grid (``gap`` / 3): no support voxel within 3 voxels (L-inf) of an
-    object point's, i.e. at least ``gap`` and at most ~2.3 ``gap`` of clearance. None when no raise up to ``max_up``
-    clears it; 0.0 without meshes."""
+    mesh (an object let go onto a support, e.g. a headset's headband onto a stand's cradle: the cradle frame sits 3 mm
+    under the saddle's surface and the bridge frame inside the band, so the frames' pose overlaps the meshes by
+    ~13 mm). None when no raise up to ``max_up`` clears it; 0.0 without meshes."""
     if o.asset.mesh is None or support.asset.mesh is None:
         return 0.0
-    v = gap / 3.0
-    Po = _area_samples(o)
-    Po = Po[np.random.default_rng(1).choice(len(Po), size=min(3000, len(Po)), replace=False)]
-    Pw = Po @ T_obj[:3, :3].T + T_obj[:3, 3]
-    S = _area_samples(support, n=200000) @ support.R.T + support.pos
-    lo, hi = Pw.min(0) - 2 * gap, Pw.max(0) + 2 * gap
-    hi[2] += max_up
-    S = S[np.all((S >= lo) & (S <= hi), axis=1)]
-    if not len(S):
-        return 0.0
-    S = np.unique(np.round(S / 0.001).astype(np.int64), axis=0) * 0.001        # 1 mm grid: fewer exact distances
-    org = lo - 4 * v
-    dims = np.ceil((hi - org) / v).astype(np.int64) + 8
-
-    def enc(K):
-        return (K[:, 0] * dims[1] + K[:, 1]) * dims[2] + K[:, 2]
-    occ = np.unique(enc(np.floor((S - org) / v).astype(np.int64)))
-    r = np.arange(-3, 4)
-    offs = np.stack(np.meshgrid(r, r, r, indexing="ij"), -1).reshape(-1, 3)
+    mc = _MeshClear(o, support, T_obj, gap, reach=(0.0, 0.0, 0.0, 0.0, 0.0, max_up))
     for k in range(int(round(max_up / step)) + 1):
-        P = Pw + np.array([0.0, 0.0, k * step])
-        K = np.floor((P - org) / v).astype(np.int64)
-        Kn = (K[:, None, :] + offs[None, :, :])
-        inside = np.all((Kn >= 0) & (Kn < dims), axis=2)
-        near = (np.isin(enc(Kn.reshape(-1, 3)), occ).reshape(Kn.shape[:2]) & inside).any(axis=1)
-        if not near.any():
+        T = T_obj.copy()
+        T[2, 3] += k * step
+        if mc.clear(T):
             return k * step
-        # the voxel test is conservative (up to ~2.3 gap): the flagged points against the support samples exactly
-        Q = P[near]
-        Sn = S[np.all((S >= Q.min(0) - 2 * gap) & (S <= Q.max(0) + 2 * gap), axis=1)]
-        d2 = min(float(((Q[i:i + 256, None, :] - Sn[None, :, :]) ** 2).sum(-1).min()) for i in range(0, len(Q), 256))
-        if d2 >= gap * gap:
-            return k * step
+    return None
+
+
+def way_out(o, support, T_obj: np.ndarray, toward_xy, dist: float = 0.12, gap: float = 0.004) -> np.ndarray | None:
+    """A horizontal direction ``o`` can leave ``support`` along from ``T_obj`` (and so come in along, reversed) with its
+    mesh ``gap`` clear the whole way, the one nearest ``toward_xy`` (the robot) first; None. A rigid headset hangs on a
+    stand's saddle with its cups below the saddle's sides: it cannot be lowered on from above (34 mm between the cups,
+    a 106 mm saddle), only slid on from the front."""
+    if o.asset.mesh is None or support.asset.mesh is None:
+        return np.zeros(3)
+    c = T_obj[:3, 3]
+    to = np.r_[np.asarray(toward_xy, float)[:2] - c[:2], 0.0]
+    to = to / (np.linalg.norm(to) or 1.0)
+    cands = []
+    for k in range(16):
+        th = 2 * math.pi * k / 16
+        d = np.array([math.cos(th), math.sin(th), 0.0])
+        cands.append((-float(d @ to), d))
+    cands.sort(key=lambda x: x[0])
+    mc = _MeshClear(o, support, T_obj, gap, reach=(dist, dist, 0.0, dist, dist, 0.4 * dist))
+    for rise in (0.0, 0.15, 0.3):                           # level first, then rising a little (over a saddle's lip)
+        for _, d0 in cands[:9]:                             # within 90 deg of the robot's side
+            d = d0 + np.array([0.0, 0.0, rise])
+            d = d / np.linalg.norm(d)
+            ok = True
+            for s in np.arange(0.01, dist + 1e-9, 0.01):
+                T = T_obj.copy()
+                T[:3, 3] += d * s
+                if not mc.clear(T):
+                    ok = False
+                    break
+            if ok:
+                return d
     return None
 
 
@@ -2555,8 +2604,14 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                     continue
                 T_obj = T_obj.copy()
                 T_obj[2, 3] += up
+                # carried to just outside the support, then slid on along the way out reversed (a rigid headset's cups
+                # hang below the stand's saddle on both sides: it goes on from the front, not from above)
+                d_out = way_out(o, rk, T_obj, (0.0, -0.45), dist=HANG_CRADLE_OUT)
+                if d_out is None:
+                    note = "no way onto the cradle"
+                    continue
                 T_pre = T_obj.copy()
-                T_pre[2, 3] += 0.03
+                T_pre[:3, 3] += d_out * HANG_CRADLE_OUT
             else:
                 T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
             # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a

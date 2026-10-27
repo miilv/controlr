@@ -63,6 +63,12 @@ def terms(tag):
 
 
 P0 = terms("start")
+for k in range(6):
+    for _ in range(int(os.environ.get("FOLD_SETTLE", "20"))):
+        run.step(run.hold_action())
+    P_, _, _ = pts()
+    print(f"[fold] settle {k}: z range {P_[:, 2].min():.4f} {P_[:, 2].max():.4f} mean {P_[:, 2].mean():.4f}", flush=True)
+P0 = terms("settled")
 _, pw, ow = pts()
 print("[fold] garment pose", pw, ow, "points", P0.shape, "z range", float(P0[:, 2].min()), float(P0[:, 2].max()),
       "xy", np.round(P0[:, :2].min(0), 3).tolist(), np.round(P0[:, :2].max(0), 3).tolist(), flush=True)
@@ -99,11 +105,15 @@ def pinch_move(arm, src, dst, yaw):
     run_plan(arm, p, "pinch")
     P = terms(f"{arm} pinched + lifted")
     m4 = sk.motion.line(arm, sk.ex.q[arm], over, MEDIUM, "fold_carry", gripper=CLOSED, check=False)
+    print("[fold] carry", m4.status, m4.note[:100], flush=True)
+    if not m4.ok:
+        return False
     m5 = sk.motion.line(arm, m4.q_end, low, SLOW, "fold_lower", gripper=CLOSED, check=False)
     p2 = ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move(m4, "carry").move(m5, "lower").hold(3, "settle")
     p2.grip(OPEN, 6, "release").hold(10, "let_go")
-    m6 = sk.motion.line(arm, m5.q_end, over, MEDIUM, "fold_back", gripper=OPEN, check=False)
-    p2.move(m6, "back")
+    if m5.ok:
+        m6 = sk.motion.line(arm, m5.q_end, over, MEDIUM, "fold_back", gripper=OPEN, check=False)
+        p2.move(m6, "back")
     run_plan(arm, p2, "carry")
     terms(f"{arm} released")
     return True

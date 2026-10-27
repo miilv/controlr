@@ -188,7 +188,10 @@ def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = F
     if physics_only:
         install_camera_stubs()
         kit = physics_only_experience(paths.DATA / "simlab" / "kit")
-        argv = ["--headless", "--experience", str(kit), "--kit_args=" + " ".join(PHYSICS_ONLY_SETTINGS)]
+        # dev: extra Kit settings for the physics-only twin, e.g. particle write-back to USD for a garment task
+        # (``SIMLAB_PHYSICS_KIT_ARGS="--/physics/updateToUsd=true --/physics/updateParticlesToUsd=true"``); unset: none
+        extra = tuple(os.environ.get("SIMLAB_PHYSICS_KIT_ARGS", "").split())
+        argv = ["--headless", "--experience", str(kit), "--kit_args=" + " ".join(PHYSICS_ONLY_SETTINGS + extra)]
         args = ap.parse_args(argv)
         # RoboDojo's IsaacLab fork defaults enable_cameras=True (offscreen rendering) and its
         # ENABLE_CAMERAS env check never fires (int compared with `is False`): set the arg.
