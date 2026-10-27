@@ -345,6 +345,16 @@
   The belt tracker drops belief objects no re-read ever confirmed (`RuntimeProvider._track`, 2 reads), but the scan
   itself (14 steps + a fused estimate) buys nothing there. Candidate fix: no scan (or no frame-0 fusion) when the
   scene has a Dynamic base (journal 2026-10-27-dojo-memory).
+- [ ] **dojo twin: swap_blocks' cube/00003 never moves in any pick rollout.**
+  - G3 `--verify 2`: all 48 pick rollouts of 100001 were rejected with "rise 0 mm". Both cubes stay at their start
+    poses in every rollout: an identical-asset label swap was ruled out with a re-assignment by position, which never
+    fired.
+  - stack_blocks verifies fine (6/6 first_ok).
+  - Official-Path saw none_ok on every segment on the rendered path too (~72 s of twin time per episode, no
+    selection). The rendered outcomes are 10/10, so it costs time, not points.
+  - Suspects: a non-simulated pose read for that asset in the twin envs, or the cube held by the cushion mat.
+  - Tool: the judges' reject reasons (`Skills.vreasons`, `rejects` / `reject_examples` in G3 and runtime verify
+    reports).
 - [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
   25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
   Memory (2026-10-27): `plan_intercept` falls back to `waist_grasps` (level, the pad gap from the mesh at that height);

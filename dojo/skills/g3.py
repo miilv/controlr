@@ -269,7 +269,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                               "events": [e for e in pe if e.get("kind") in ("belief_drop", "release_kept", "release_remeasured",
                                                                             "release_resynced")][-40:]}
     if verifier is not None:
-        rec["verify"] = {**sk.vstats, **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in verifier.stats.items()}}
+        rec["verify"] = {**sk.vstats, **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in verifier.stats.items()},
+                         **(getattr(sk, "vreasons", None) or {})}
     out_dir.mkdir(parents=True, exist_ok=True)
     with gzip.open(out_dir / f"{task}_{seed}_actions.json.gz", "wt") as f:
         json.dump(sk.ex.trajectory_json(), f)

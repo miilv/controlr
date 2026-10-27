@@ -345,6 +345,13 @@ class RuntimePolicy:
                 for k, v in sk.vstats.items():
                     vt[k] = vt.get(k, 0) + v
             self.report["history"] = [h for s_ in live["sks"] for h in _hist(s_)]
+            rej: dict = {}                              # why the twin rejected candidates (judges' ``why``)
+            for s_ in live["sks"]:
+                for k, n in (getattr(s_, "vreasons", None) or {}).get("rejects", {}).items():
+                    rej[k] = rej.get(k, 0) + n
+            if rej:
+                vt["rejects"] = rej
+                vt["reject_examples"] = [e for s_ in live["sks"] for e in s_.vreasons.get("examples", [])][:20]
             ver = live.get("verifier")
             self.report["verify"] = ({**vt, **ver.stats, "disabled": ver.disabled} if ver is not None else
                                      ("off (stub: single plan, no twin)" if self.cfg.verify == "off" else
