@@ -251,3 +251,36 @@ inside it:
   (the evidence choosing) changed nothing offline (22 / 44 and 28 / 44 again): they need a side look (Tools, skill
   side), not a better frame-0 fit.
 - Most remaining episode losses are skill-side (no pick for eggs against the wall, grasp slips, nudge misses).
+## 5. organize_table: the table next to the fixtures reads as foreground
+
+**Long-Horizon's rendered runs** (genuine 5.1 B, main 8c845c9, 100000-07): 0 / 8, perception_gross 7 / 8: the alarm
+not found or 35-371 mm off, the garage figure 42-129 mm off (often the wrong variant). By record stage
+(`compute8:~/dojo-data/longh/runs/B51_org_main6_1000{00,05}`): the scan fixes the alarm in 100000 / 02 / 03 (the agent
+in 05), but later stages move it again (100003: agentic2 took a scan-correct alarm 261 mm away and 115 mm up; 100001 /
+04: the searched record 235-371 mm off): routed to Perception-2 (arbitration at late stages).
+
+**Data.** Frame 0 + three scan-pose frames of the 18 settled dev layouts 100000-19 (no 08 / 12), rendered on compute5
+(genuine 5.1, 6 min). `scripts/perception/val_frames.py`, eval_g1's scoring.
+
+**Cause.** In every layout B1 put garage variant 5 (a big figure) at about (-0.33, -0.08), in front of the drawer
+(silhouette loss ~0.52), and the alarm then landed on the real figure's spot under the left home gripper or on empty
+table. Next to the big white fixtures (drawer, monitor) the RTX-lit wood is darker and warmer than the table
+background (e.g. (106, 45, 24) vs (162, 123, 110): chroma 0.19 apart, not shadow-like), so a large region there is
+foreground that B1 explains with the big figure.
+
+**Fix** (data + an offline builder, no runtime code): an organize scene background
+(`scripts/perception/scene_bg_masked.py`): the per-pixel median of frame 0 over dev layouts with every labelled object
+masked by its dev GT silhouette (dilated 6 px), plus a robot-free clean head view from frame 0 + scan-pose frames. The
+table keeps the scene's own shading; every object and fixture stays foreground. Keyed by `Geometry/cube_cushion/00002`
+(unique to organize) through `segment.with_scene`.
+
+| frame 0, 18 layouts (2-fold: each half's background from the other half) | alarm within 15 mm | alarm > 50 mm or missing | garage within 15 mm | garage > 50 mm or missing | mouse within 15 mm | keyboard within 15 mm |
+|---|---|---|---|---|---|---|
+| table background (main) | 0 | 14 | 3 | 15 | 11 | 13 |
+| organize scene background | **11** | **6** | **8** | **8** | 12 | 13 |
+
+- The fixtures: drawer 17 -> 18, monitor 17 -> 18 within 15 mm; mouse mat, frame, cube cushion 18 / 18 both.
+- Production build: all 18 layouts, deployed to `bg_folds_51/fold{0,1}/scene/Geometry_cube_cushion_00002/` on compute3
+  and compute5-8 (md5 of the files' md5s c1cbfaf8ba16).
+- Left: the garage figure under the left home gripper (8 of 18 still > 50 mm or missing at frame 0); the scan views now
+  see that region with the scene's clean head view.
