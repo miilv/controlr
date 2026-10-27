@@ -221,9 +221,12 @@ class LostObject(Exception):
 
 
 class KinematicBelief:
-    def __init__(self, objects: dict[str, ObjectState], kin: X5Kin, state: dict, attach_margin: float = 0.015):
+    def __init__(self, objects: dict[str, ObjectState], kin: X5Kin, state: dict, attach_margin: float = 0.015,
+                 rider_margin: float = 0.04):
         self.kin = kin
         self.objects = {k: copy.deepcopy(v) for k, v in objects.items()}
+        self.riders: set[str] = set()           # labels whose pose is a belt tracker's prediction (provider ``_predict``)
+        self.rider_margin = rider_margin
         self.q = {a: np.asarray(state[f"{a}_arm_joint_state"], float).reshape(-1)[:6].copy() for a in ARMS}
         self.g = {a: float(np.asarray(state[f"{a}_ee_joint_state"]).reshape(-1)[0]) for a in ARMS}
         self.attached: dict[str, tuple[str, np.ndarray]] = {}
@@ -242,13 +245,29 @@ class KinematicBelief:
     def _object_at(self, p, exclude=()) -> str | None:
         best, bd = None, 1e9
         for o in self.movable():
-            if o.label in exclude:
+            # a moving base (a conveyor) is never in the jaws: its box holds every closing above the belt (5.1 rendered
+            # conveyor, 22 episodes: 11 of 27 held looks were on the belt, twice with the rider in the jaws; the skill
+            # read "rose 0 mm" and let it go)
+            if o.label in exclude or o.obj_type == "Dynamic":
                 continue
             loc = o.R.T @ (p - o.center_w)
             if np.all(np.abs(loc) <= o.asset.extents / 2 + self.margin):
                 d = float(np.linalg.norm(loc))
                 if d < bd:
                     best, bd = o.label, d
+        if best is None:
+            # a belt rider's pose is the head-view track's prediction, 10-40 mm off at contact (the skill aims by a
+            # wrist look the track does not keep): the nearest rider within ``rider_margin`` of its footprint (the held
+            # look then measures the jaws' opening and takes a wrong guess back out)
+            for lab in self.riders:
+                o = self.objects.get(lab)
+                if o is None or lab in exclude or o.asset is None:
+                    continue
+                d = p - o.center_w
+                r = float(np.max(o.asset.extents)) / 2
+                dxy = float(np.hypot(d[0], d[1]))
+                if dxy <= r + self.rider_margin and abs(float(d[2])) <= r + self.margin and dxy < bd:
+                    best, bd = lab, dxy
         return best
 
     def _set_T(self, label: str, T: np.ndarray) -> None:
@@ -447,7 +466,15 @@ class RuntimeProvider:
 
     def _advance(self, st: dict) -> None:
         allx = self.bridge.executed
-        for a in allx[self.n_seen:]:
+        new = allx[self.n_seen:]
+        # belt riders move on while the arm does: each replayed action sees the riders predicted to its own step, so a
+        # closing command finds the rider the skill aimed at (the riders stayed where the last refresh had put them,
+        # 30-40 mm upstream of the jaws at a belt close)
+        vb = self.belt_velocity() if self._tracks and new else None
+        s_end = int(self.bridge.steps_used)
+        for i, a in enumerate(new):
+            if self._tracks:
+                self._predict(s_end - (len(new) - 1 - i), vb)
             self.belief.step(a)
             self.touched.update(self.belief.held_labels())
         if self.belief.drop_events:
@@ -765,7 +792,10 @@ class RuntimeProvider:
                                 "votes": {k: round(x, 2) for k, x in v.items()}})
             o.asset, o.category, o.idx = e.asset, e.category, e.idx
         if o.asset is not None and o.asset.key == e.asset.key:
+            # the read's stable pose: its orientation and its height (5.1 100000: a rider that joined as a "camera"
+            # kept that read's height after the votes made it a puppet, 47 mm above it: the jaws closed above it)
             o.quat = np.asarray(e.quat, float).copy()
+            o.pos = np.r_[o.pos[:2], float(e.pos[2])]
 
     def _rider_velocity(self, lab: str, vb=None) -> np.ndarray | None:
         """The velocity a tracked object moves with: zero when its own long track says it is at rest, else the belt's
@@ -789,9 +819,10 @@ class RuntimeProvider:
             return tr[-1][1] + (v if v is not None else 0.0) * (step - tr[-1][0])
         return o.pos[:2].copy()
 
-    def _predict(self, step: int) -> None:
+    def _predict(self, step: int, vb=None) -> None:
         held = set(self.belief.held_labels())
-        vb = self.belt_velocity()
+        vb = self.belt_velocity() if vb is None else vb
+        riders = set()
         for lab in list(self._tracks):
             o = self.belief.objects.get(lab)
             v = self._rider_velocity(lab, vb)
@@ -799,6 +830,8 @@ class RuntimeProvider:
                 continue
             o.pos = np.r_[self._predicted_xy(o, step, vb), o.pos[2]]
             o.source = "tracked"
+            riders.add(lab)
+        self.belief.riders = riders
 
     def _held_check(self, obs: dict) -> None:
         """Once per grasp, when the arm holding ``label`` has lifted ``held_min_lift_m`` above the closing pose:
