@@ -1515,6 +1515,62 @@ def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs,
         assert not any(isinstance(c, tuple) for c in pc.calls)
 
 
+KONG = "Wait for the opponent to discard a tile, then declare a kong with the matching tiles and draw a tile."
+IMITATE = ("Observe the object placement order, remember it, then place the corresponding objects into the basket in "
+           "the same order.")
+
+
+@pytest.mark.parametrize("instruction, hold", [(KONG, "declare_kong"), (IMITATE, "copy_demonstration"), (STACK, None)])
+def test_no_arm_moves_before_a_skill_that_waits_on_a_scripted_actor(instruction, hold, monkeypatch):
+    """imitate / make_kong: the checker fails the episode while our arms are away from home and the actor's arm is too,
+    and the actor starts at step 1. Before such a skill: no scan, no looks, no search (genuine-5.1 imitate 100002 ended
+    at step 27 after the step-0 scan)."""
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png")
+    env = _env(instruction=instruction)
+    moved = []
+
+    class Perception:
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}", "default_pos": list(p),
+                                         "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.9}}
+                                        for i, p in enumerate(POS)]}}
+
+        def scan_looks(self):
+            moved.append("scan")
+            return [{"arm": a, "joints": [0.3] * 6, "steps_out": 10} for a in ("left", "right")]
+
+        def scan_trigger(self, record):
+            return True, "forced", False
+
+        def estimate_scan(self, frame, frame0, vocabulary, fold, rec0=None):
+            return self.estimate([frame], vocabulary, fold)
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0, "n_px": 100}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            moved.append("look")
+            return []
+
+        def search_regions(self, frame, record, vocabulary):
+            moved.append("search")
+            return []
+
+    def program(ctx):
+        return {"ok": True}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", scan="always", look=True, search=True),
+                        assets=FakeAssets(), perception_client=Perception(), program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    ev = [e for e in rep["events"] if e["kind"] == "actor_hold"]
+    if hold:
+        assert ev and ev[0]["skill"] == hold and "scan" in ev[0]["skipped"] and not moved
+        assert not any(e["kind"] == "scan" for e in rep["events"])
+    else:
+        assert not ev and "scan" in moved
+
+
 def test_scan_trigger_rule_on_a_frame0_record():
     from dojo.runtime.perception_service import _Perception
     base = {"category": "block", "category_idx": 5, "default_pos": [0.1, -0.1, 0.78], "default_ori": [1, 0, 0, 0]}

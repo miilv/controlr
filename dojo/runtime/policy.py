@@ -458,7 +458,18 @@ class RuntimePolicy:
             return sk_
 
         sk = make_skills()
-        if cfg.mode == "perception" and cfg.scan != "off":
+        # a skill that waits on a scripted actor (a demonstrator, a discarding opponent) starts with both arms at home:
+        # its task's checker fails the episode while our arms are away from home and the actor's arm is too, and the
+        # actor starts at step 1 (2026-10-27: genuine-5.1 imitate 100002 ended at step 27 after the step-0 scan). No arm
+        # moves before it: no scan, looks or search (perception reads from frame 0 and the agentic gate still run)
+        hold = None
+        if cfg.mode == "perception":
+            from dojo.skills.planner import waits_on_actor
+            hold = waits_on_actor(instruction, sk.refresh())
+            if hold:
+                events.append({"kind": "actor_hold", "skill": hold, "skipped": [n for n, on in (
+                    ("scan", cfg.scan != "off"), ("look", cfg.look), ("search", cfg.search)) if on]})
+        if cfg.mode == "perception" and cfg.scan != "off" and not hold:
             t = time.perf_counter()
             srec, obs_s = self._scan(sk, obs0, rec, scene)
             self.report["timings"]["scan_s"] = round(time.perf_counter() - t, 2)
@@ -480,7 +491,7 @@ class RuntimePolicy:
                 self._last_record = srec
                 prov.init_from_record(srec)
                 sk = make_skills()
-        if cfg.mode == "perception" and cfg.look:
+        if cfg.mode == "perception" and cfg.look and not hold:
             t = time.perf_counter()
             rec = self._look(sk, obs0, rec, scene, kin)
             self.report["timings"]["look_s"] = round(time.perf_counter() - t, 2)
@@ -492,7 +503,7 @@ class RuntimePolicy:
                 prov.init_from_record(rec)
                 sk = make_skills()
             rec = None
-        if cfg.mode == "perception" and cfg.search:
+        if cfg.mode == "perception" and cfg.search and not hold:
             cur = rec if rec is not None else None
             base = cur or self._last_record
             t = time.perf_counter()

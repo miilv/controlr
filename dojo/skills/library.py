@@ -2675,5 +2675,11 @@ SKILLS.update(_precision.SKILLS)
 from dojo.skills.holders import fill_holes  # noqa: E402
 from dojo.skills.interactive import copy_demonstration, match_and_pick, pick_into_held, play_board_game  # noqa: E402
 
+# skills that hold both arms at home while a scripted actor works first (a demonstrator, a discarding opponent): those
+# tasks' checkers fail the episode the moment our arms are away from home (> 0.3 m / 30 deg) while the actor's arm is
+# away from its own (imitate_sorting_sequence, make_kong). The runtime moves no arm before such a skill starts (no
+# scan, looks or search). play_board_game is not one: its opponent starts only after our first piece.
+WAITS_ON_ACTOR = frozenset({"copy_demonstration", "declare_kong"})
+
 SKILLS.update({"play_board_game": play_board_game, "fill_holes": fill_holes, "copy_demonstration": copy_demonstration,
                "match_and_pick": match_and_pick, "pick_into_held": pick_into_held})
