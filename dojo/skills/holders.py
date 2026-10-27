@@ -533,10 +533,70 @@ def tipped_in_pose(o, hole: dict, T_release, tilt_deg: float = EGG_TIP_DEG) -> n
     return T_from(c - R @ o.asset.center, R)
 
 
+EGG_SLIDE_IN = True           # an egg left lying across its hole is pushed along its axis first (mode B: every drop)
 EGG_PRESS = True              # an egg left lying across its hole is pressed in from above
 EGG_SUNK = 0.003              # m: its centre this far under the plate's top counts as in (lying across: 4-11 mm over it;
                               # the checker wants the centre < 40 mm over the holder's bottom frame, 5 mm over its base)
 EGG_PRESS_DEPTH = 0.014       # m: the closed fingertips go this far below the egg's top
+
+
+EGG_SLIDE = 0.045             # m: the fingertips' push along a lying egg's axis (it starts this far beyond its end)
+EGG_SLIDE_START = 0.022       # m: the push starts this far out from the egg's believed end (in-hand error up to 15 mm)
+
+
+def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=()) -> str:
+    """Push a lying object, let go across ``hole``, along its long axis towards the side it was let go on: once one end
+    is over the hole with nothing under it, it tips in. Closed fingertips straight down beside its end on the other side
+    (``EGG_SLIDE_START`` out from where it should be: the in-hand position along the axis is known to +-15 mm only in
+    mode B), at its middle's height, then ``EGG_SLIDE`` along the axis. Uses the release pose, not the belief after it.
+    (G3 mode B traces: let go 6 mm off the hole's centre instead of 12, the egg wedged across the hole.)"""
+    o = sk.world.obj(label)
+    k = int(np.argmax(o.asset.extents))
+    T = np.asarray(T_release, float)
+    R0 = T[:3, :3]
+    c0 = R0 @ o.asset.center + T[:3, 3]
+    ax = R0[:, k].copy()
+    ax[2] = 0.0
+    if float(np.linalg.norm(ax)) < 0.3:
+        return "not lying"
+    ax /= np.linalg.norm(ax)
+    hc = np.asarray(hole["center"], float)[:2]
+    u = ax if float(ax[:2] @ (c0[:2] - hc)) >= 0 else -ax          # towards the side it was let go on
+    half = 0.5 * float(o.asset.extents[k])
+    z_tip = float(c0[2]) - 0.004
+    p0 = np.r_[c0[:2] - u[:2] * (half + EGG_SLIDE_START), z_tip]
+    p1 = p0 + u * EGG_SLIDE
+    from dojo.skills.kinematics import down_R
+    R = down_R(math.atan2(u[1], u[0]) + math.pi / 2)                 # closing across the push, the finger's width along it
+
+    def tcp_at(p):
+        return T_from(np.asarray(p, float) + np.array([0.0, 0.0, TIP_BEYOND_TCP]), R)
+    arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - p0[:2])))
+    for a in arms:
+        to = sk.motion.to_pose(a, sk.ex.q[a], tcp_at(p0 + np.array([0.0, 0.0, 0.05])), FAST, "slide_approach",
+                               gripper=CLOSED, ignore=(label,) + tuple(ignore))
+        if not to.ok:
+            continue
+        dn = sk.motion.line(a, to.q_end, tcp_at(p0), 0.04, "slide_down", gripper=CLOSED, check=False)
+        if not dn.ok:
+            continue
+        ps = sk.motion.line(a, dn.q_end, tcp_at(p1), 0.03, "slide_push", gripper=CLOSED, check=False)
+        if not ps.ok:
+            continue
+        up = sk.motion.line(a, ps.q_end, tcp_at(p1 + np.array([0.0, 0.0, 0.06])), MEDIUM, "slide_up", gripper=CLOSED,
+                            check=False)
+        pl = ArmPlan(a, sk.ex.q[a].copy(), sk.ex.g[a]).grip(CLOSED, 2, "close_for_slide")
+        pl.move(to, "approach").move(dn, "down").move(ps, "push").hold(2, "settle")
+        if up.segments:
+            pl.move(up, "up")
+        try:
+            sk.ex.run({a: pl}, name=f"slide {label}")
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return f"stopped: {e}"
+        sk.confirm_moved(label, tipped_in_pose(o, hole, T_release), "slid into a hole")
+        sk.bank()
+        return f"{a}, {pl.steps} steps"
+    return "no slide plan"
 
 
 def press_in(sk: Skills, label: str, hole: dict, ignore=(), at_end: bool = False) -> str:
@@ -750,6 +810,13 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
                 sk.confirm_moved(lab, tipped_in_pose(o, h, q.T_obj_target), "dropped into a hole")
             w = sk.refresh()
             o = w.obj(lab)
+            if EGG_SLIDE_IN and off == off and (not sk.remeasure or float(o.center_w[2]) > plate_top - EGG_SUNK):
+                # lying across the hole (mode A: measured; mode B: the release cannot be checked, so always): slid along
+                # its axis until one end is over the hole
+                r_s = slide_in(sk, lab, h, q.T_obj_target, ignore)
+                sk.log(f"[holes] {lab}: slid along its axis ({r_s})")
+                w = sk.refresh()
+                o = w.obj(lab)
             if EGG_PRESS and off == off and float(o.center_w[2]) > plate_top - EGG_SUNK:
                 # still lying across the hole (wedged between the rim and the hole's wall): pressed in from above
                 for at_end in (False, True):
