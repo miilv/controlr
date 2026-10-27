@@ -106,6 +106,22 @@ def test_perception_extra_carries_robodojo_generator_deps():
     assert {"tqdm", "transforms3d", "shapely", "rtree", "scipy"} <= names
 
 
+def test_fleet_venv_pins_carry_every_perception_extra():
+    """The GPU boxes' venvs are built from ``scripts/infra/pins/controlr-venv.txt`` (box_steps.sh ``venv``), not from
+    the extra. That freeze lacked tqdm / transforms3d, so every bridge / official-path episode on compute5-8 ran with
+    twin verify disabled (2026-10-27, compute7: "No module named 'tqdm'", none_ok on every segment)."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:                                   # python 3.10
+        tomllib = pytest.importorskip("tomli")
+    proj = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    norm = lambda d: d.split(">")[0].split("=")[0].split("<")[0].split("[")[0].strip().lower().replace("_", "-")  # noqa: E731
+    want = {norm(d) for d in proj["dependencies"] + proj["optional-dependencies"]["perception"]}
+    pins = (ROOT / "scripts" / "infra" / "pins" / "controlr-venv.txt").read_text().splitlines()
+    have = {norm(ln) for ln in pins if ln.strip() and not ln.lstrip().startswith("#")}
+    assert want <= have, f"missing from the fleet venv pins: {sorted(want - have)}"
+
+
 def test_twin_requests_are_numpy_free_across_interpreters():
     """Behind the bridge the twin client runs in our venv (numpy 2.x) and the service in RoboDojo's python (numpy
     1.26): a request must unpickle without numpy (isr-lab 2026-10-26: "No module named 'numpy._core'")."""
