@@ -140,6 +140,25 @@ Paired, same frames, the 12-non-demo scene background (§1.4):
   - Same records (#152's), 13 layouts: order exact 8 -> 10, plan right 7 -> 8, 0 false departures before and after.
 - **End to end, all fixes:** plan right 0 / 13 -> 8 / 13, order exact 2 -> 10, twins right 31 -> 56 of 65.
 
+### 1.5 The demonstrator's side takes our side's assets (`_quota_copy_assets`, `EstimatorConfig.quota_copy_assets`)
+
+After §1.4 the misses were category swaps among the demonstrator's small, far objects (action camera <-> figure <->
+watch: 100016, 100018, 100023) while our near side read 64 of 65 right. aim_i is t_i's asset (`same_as_label`), so the
+copy list holds exactly the source list's assets:
+- when the source list is complete (one object per label, every category once), each copy-list object is re-fitted at
+  its own blob as each of the source's assets (coarse fit + quick refine, colour + texture, as `_polish`), and a
+  Hungarian (each source asset once) picks them by total cost; the record notes it (`_perception.quota.copy_of`);
+- cost: 25 fits per imitate frame (frame-0 estimate ~110 s instead of ~70 s with 5 in parallel on a loaded box).
+
+Paired, same frames, the 12-non-demo scene background, main's departure read (#155):
+
+| arm | ours found / cat / asset | demo found / cat / asset | layouts all 10 right | order exact | twins right (of 65) | false departures | plan right |
+|---|---|---|---|---|---|---|---|
+| main (#152 + #155) | 64 / 64 / 57 | 63 / 57 / 51 | 8 | 10 / 13 | 56 | 0 | 8 / 13 |
+| + copy assets | 64 / 64 / 57 | 63 / **63** / 56 | 10 | 11 / 13 | **62** | 0 | **10 / 13** |
+
+Left (3): 100014's far phone and 100017's near watch not found at frame 0; 100023's far watch hidden behind a figure.
+
 ## 2. make_toast: not perception
 
 breadth3's toast rows (compute7 `B3_make_toast_r1a`, 1f7e965) read "place_miss: xy err 0.0 mm, dz -62.6 mm (centre
