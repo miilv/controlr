@@ -1131,7 +1131,8 @@ def test_held_refine_measures_the_in_hand_object_and_reanchors_the_grasp():
             return {o["label"]: {"ok": True, "pos": list(o["pos"]), "quat": flipped, "shift_mm": 0.5, "turned_deg": 180.0}}
 
     pc = InHand()
-    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=pc)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True, held_flip_confirm=False), assets=FakeAssets(),
+                        perception_client=pc)
     pol.reset(FakeEpisode(env).info())
     b = pol.bridge
     b.obs, b.fresh = FakeEpisode(env).observe(), True
@@ -3195,3 +3196,69 @@ def test_kinematic_belief_attaches_a_narrow_pick_closed_from_below_half_open():
         kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [0.6], **hold})
     kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [0.55], **hold})
     assert not kb.attached
+
+
+def _flip_setup(answers):
+    """A policy + provider whose perception answers each refine with the next of ``answers`` (quat, turned_deg)."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class Views:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            q, turned = answers.pop(0)
+            return {o["label"]: {"ok": True, "pos": list(o["pos"]), "quat": q, "shift_mm": 0.5, "iou": 0.95,
+                                 "visible_frac": 1.0, "turned_deg": turned}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=Views())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+
+    class Sk:
+        refine_ctx = {"kind": "held", "label": "block_1", "arm": "left",
+                      "held": ("Rigid/block/00005", list(o.pos) + [float(v) for v in o.quat])}
+    return pol, prov, o, Sk()
+
+
+def test_held_flip_waits_for_a_second_view_then_applies():
+    """Rendered 5.1 plug 100004: in-hand views flipped the charger wrongly 2 of 4 times, and each adopted flip put it down
+    and re-planned. A lone in-hand turn > refine_max_turn_deg is pending; a later view finding the same turn applies it."""
+    flipped = [0.0, 0.0, 0.0, 1.0]                                   # 180 deg about z (wxyz)
+    pol, prov, o, sk = _flip_setup([(flipped, 180.0), (flipped, 178.0)])
+    q0 = o.quat.copy()
+    assert pol._refine_hook(prov, sk, "block_1", "left", "held") is None
+    assert np.allclose(o.quat, q0) and "pending a second view" in pol.report["events"][-1]["why"]
+    assert prov.stats["held_flip_pending"] == 1
+    pol.bridge.obs["steps_used"] = int(pol.bridge.obs["steps_used"]) + 40      # later: the other arm's pick view
+    out = pol._refine_hook(prov, None, "block_1", "right", "pick")
+    assert out and abs(abs(float(np.dot(o.quat, flipped))) - 1.0) < 1e-6
+    assert pol.report["events"][-1]["flip_confirmed"]["by"] == "held" and prov.stats["flip_confirmed"] == 1
+
+
+def test_held_flip_refuted_by_a_view_that_agrees_with_the_plan():
+    flipped = [0.0, 0.0, 0.0, 1.0]
+    pol, prov, o, sk = _flip_setup([(flipped, 180.0), ([1.0, 0.0, 0.0, 0.0], 2.0), (flipped, 179.0)])
+    q0 = o.quat.copy()
+    assert pol._refine_hook(prov, sk, "block_1", "left", "held") is None
+    pol.bridge.obs["steps_used"] = int(pol.bridge.obs["steps_used"]) + 40
+    pol._refine_hook(prov, None, "block_1", "right", "pick")              # agrees with the plan: the flip is refuted
+    assert "block_1" not in pol._flip_pending
+    pol.bridge.obs["steps_used"] = int(pol.bridge.obs["steps_used"]) + 40
+    assert pol._refine_hook(prov, sk, "block_1", "left", "held") is None  # a new lone flip: pending again
+    assert np.allclose(o.quat, q0) and prov.stats["held_flip_pending"] == 2
+
+
+def test_pick_views_alone_never_flip_the_belief():
+    """Pick refines' big turns keep the prior orientation as before (#80): they confirm an in-hand flip, they do not
+    start one."""
+    flipped = [0.0, 0.0, 0.0, 1.0]
+    pol, prov, o, _ = _flip_setup([(flipped, 179.0), (flipped, 178.0)])
+    q0 = o.quat.copy()
+    for _ in range(2):
+        pol._refine_hook(prov, None, "block_1", "left", "pick")
+        pol.bridge.obs["steps_used"] = int(pol.bridge.obs["steps_used"]) + 3
+        assert np.allclose(o.quat, q0) and "prior orientation kept" in pol.report["events"][-1]["why"]
+    assert not pol._flip_pending

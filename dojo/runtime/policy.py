@@ -26,6 +26,7 @@ dojo.runtime.policy:RuntimePolicy``).
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 from dataclasses import asdict, dataclass, field
@@ -124,6 +125,13 @@ class RuntimeConfig:
                                         # of 24 such fits on untouched objects turned AWAY from the truth (tower
                                         # pillars read lying / standing, flips of bread, alarm, tape, mug), the other
                                         # 2 were 63-70 deg off as well; the one right big turn had iou 0.98
+    held_flip_confirm: bool = True      # an in-hand ("held") refine turning the object > refine_max_turn_deg is applied
+                                        # only when a second, different view (a later pick or held refine) finds the
+                                        # same turn in the object's frame (held_flip_agree_deg); until then the plan's
+                                        # orientation stays. Rendered 5.1 plug 100004: in-hand views flipped the
+                                        # charger wrongly 2 of 4 times; each adopted flip put it down and re-planned
+                                        # (4 cycles, 604 s), and the first plan was right
+    held_flip_agree_deg: float = 30.0
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
@@ -305,6 +313,7 @@ class RuntimePolicy:
         self._pc_calls0 = len(getattr(self._pc, "calls", None) or [])   # the client's call log spans episodes
         self._lost_searched = set()
         self._pending_far, self._place_pending, self._vsel_seen = {}, {}, {}
+        self._flip_pending = {}          # label -> a big turn one view found, awaiting a second view (held_flip_confirm)
         self._recentre_prior = {}
         self.dev_gt = None
         self.log_lines = []
@@ -808,13 +817,19 @@ class RuntimePolicy:
             o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
         q_new, p_new = np.asarray(r["quat"], float), np.asarray(r["pos"], float)
-        if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg and not self._read_yaw(r):
+        read_yaw = self._read_yaw(r)
+        if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg and not read_yaw and self._flip_seen(
+                prov, label, o.quat, r["quat"], kind, arm, ev, record=False):
+            pass                                        # a second view found the same flip: applied
+        elif float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg and not read_yaw:
             q_new, p_new = o.quat.copy(), keep_centre(o, r["pos"], r["quat"])
             ev["why"] = (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg: prior orientation kept)"
             prov.stats["turn_kept"] = prov.stats.get("turn_kept", 0) + 1
             # the root shift belongs to the turned fit: what moved is the centre (a recentre re-hover over a flip of
             # an off-centre root oscillated between the two modes on every view)
             far = float(np.linalg.norm(p_new - o.pos)) * 1000 > self.cfg.rehover_min_shift_mm
+        elif read_yaw or float(r.get("turned_deg") or 0) <= self.cfg.refine_turn_check_deg:
+            self._flip_pending.pop(label, None)         # a read yaw, or a view that agrees with the belief: settled
         o.pos, o.quat, o.source = p_new, q_new, "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
         prov.touched.discard(label)                     # a good reading (tracker)
@@ -1285,6 +1300,15 @@ class RuntimePolicy:
                        f"{'outside the jaws' if dc > lim else 'not clear enough'}, prior kept)"})
             prov.stats["held_refine_rejected"] = prov.stats.get("held_refine_rejected", 0) + 1
             return None
+        turn = float(r.get("turned_deg") or 0)
+        if self.cfg.held_flip_confirm and turn > self.cfg.refine_max_turn_deg:
+            if not self._flip_seen(prov, label, prior[3:7], r["quat"], "held", arm, ev):
+                ev.update({"applied": False, "why": (ev.get("why") or "") + f" (in-hand turn {turn:.0f} deg from the plan: "
+                           "pending a second view, plan kept)"})
+                prov.stats["held_flip_pending"] = prov.stats.get("held_flip_pending", 0) + 1
+                return None
+        elif self.cfg.held_flip_confirm and turn <= self.cfg.refine_turn_check_deg:
+            self._flip_pending.pop(label, None)         # the jaws' view agrees with the plan: a pending flip is refuted
         o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
         if arm in prov.belief.attached and prov.belief.attached[arm][0] == label:
             from dojo.skills.geometry import inv_T
@@ -1292,6 +1316,31 @@ class RuntimePolicy:
             prov.belief.attached[arm] = (label, inv_T(T_tcp) @ T_from(o.pos, quat=o.quat))
         prov.stats["held_refined"] = prov.stats.get("held_refined", 0) + 1
         return {label: (o.pos.copy(), o.quat.copy())}
+
+    def _flip_seen(self, prov, label: str, q_prior, q_fit, kind: str, arm: str, ev: dict, record: bool = True) -> bool:
+        """``held_flip_confirm``: a refine turned ``label`` more than ``refine_max_turn_deg`` from ``q_prior``. True when
+        an earlier in-hand view (another refine step) found the same turn in the object's own frame (within
+        ``held_flip_agree_deg``: the turn survives a carry or a relay); the pending flip is then cleared. Else, with
+        ``record`` (in-hand views), this turn becomes the pending one; False. A pick view only confirms: pick views
+        alone never flip the belief (their big turns keep the prior orientation). Always False with the flag off."""
+        if not self.cfg.held_flip_confirm:
+            return False
+        from dojo.skills.geometry import quat_to_R
+        d = quat_to_R(np.asarray(q_prior, float)).T @ quat_to_R(np.asarray(q_fit, float))
+        pend = self._flip_pending.get(label)
+        step = self.bridge.steps_used
+        if pend is not None and pend["step"] != step:
+            c = (float(np.trace(pend["d"].T @ d)) - 1.0) / 2.0
+            ang = math.degrees(math.acos(max(-1.0, min(1.0, c))))
+            if ang <= self.cfg.held_flip_agree_deg:
+                self._flip_pending.pop(label, None)
+                ev.update({"flip_confirmed": {"by": pend["kind"], "step": pend["step"], "agree_deg": round(ang, 1)}})
+                ev["why"] = (ev.get("why") or "") + f" (a {pend['kind']} view at step {pend['step']} found the same turn: applied)"
+                prov.stats["flip_confirmed"] = prov.stats.get("flip_confirmed", 0) + 1
+                return True
+        if record:
+            self._flip_pending[label] = {"d": d, "step": step, "kind": kind, "arm": arm}
+        return False
 
     def _search_lost(self, ctx, e) -> bool:
         """The object of a failed pick refine, treated as not found locally: a wrist search seeded at its belief
