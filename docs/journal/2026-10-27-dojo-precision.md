@@ -283,6 +283,30 @@ tail (it re-measures and servos).
     - 100009: budget, in both arms.
   - Every success took fewer steps: 45-67 fewer per episode.
 
+## 9. plug_in_charger 100002: relay spots toward the socket's side (#163)
+
+100002 had no relay plan in any mode. The socket is 0.39 m to the right and only the left arm reaches the charger. Every
+relay chain from spots near `relay_near` (0, -0.28) failed to plan: from there, no grasp the right arm can take
+inserts.
+
+G3 snippets with `relay_near` moved:
+- (0.12, -0.28): 1.0 (2 of 2);
+- (0.2, -0.28) and (0.15, -0.24): 1.0;
+- (0.15, -0.28): 0 (the left arm's as-is put-down landed 26 deg tilted).
+
+**Change:** when no chain plans near `relay_near`, `place_oriented` runs a second round of spots near a point moved
+toward the targets' mean x, by up to `RELAY_SHIFT` = 0.12 m. The first round is unchanged, so only an episode with no
+relay plan at all can change.
+
+G3 mode A, paired against main:
+- plug 100002: 0 -> 1.0;
+- plug's other failures (100008 / 13): identical;
+- the regression set (store_tools 5, insert_tubes 100005-14, make_kong 5, stack_blocks 5): identical scores and
+  steps.
+
+The second round fired only on 100002. The first version (0.15 m) over all 25 plug layouts was identical to main
+except 100002.
+
 ## Spend and machines
 
 - LLM calls: only the agentic perceiver's in the rendered plug A/Bs: 4 arms x 10 episodes, ~3 calls each, ~120 calls
