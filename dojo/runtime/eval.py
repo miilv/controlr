@@ -213,7 +213,10 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                # counts of all of them stay readable from the row too (the full list is in the report.json.gz)
                "events_head": rep.get("events", [])[:8], "event_counts": event_counts(rep.get("events", [])),
                "history": rep.get("history", [])[-40:], "result": rep.get("result"), "info_dropped": rep.get("info_dropped"),
-               "agent": rep.get("agent"), "agentic": rep.get("agentic"), "policy": type(pol).__module__ + ":" + type(pol).__name__, "code": code}
+               "agent": rep.get("agent"), "agentic": rep.get("agentic"), "policy": type(pol).__module__ + ":" + type(pol).__name__, "code": code,
+               # assets planned on their bboxes (no catalogue mesh): loud, an incomplete catalogue changes episodes
+               "missing_meshes": sorted(set(getattr(assets, "missing_meshes", ()))
+                                        | set(getattr(getattr(pol, "_assets", None), "missing_meshes", None) or ()))}
         rows.append(row)
         with (out / f"{tag}_episodes.jsonl").open("a") as f:
             f.write(json.dumps(jsonable(row), default=str) + "\n")
@@ -233,6 +236,8 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         print(f"\n[integ] {tag} {lid}: success={row['success']} score={row['score']:.2f} "
               f"steps={row['steps_used']}/{row['step_lim']} looks={row['n_looks']} wall={row['wall_s']}s "
               f"(sim {row['sim_s']} obs {row['observe_s']} worker {row['worker_s']}) cat={cat} {why[:120]}", flush=True)
+        if row["missing_meshes"]:
+            print(f"[integ] WARNING {lid}: no catalogue mesh for {row['missing_meshes']} (bboxes stood in)", flush=True)
     summ = summarize(rows, task, cfg)
     if renderer == "isaac51":
         summ["proxy"] = RENDERED_TAG
