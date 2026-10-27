@@ -79,6 +79,16 @@ class OffsetBeliefProvider:
         for lab, d in self.offsets.items():
             if lab in w.objects and lab not in held:
                 o = w.objects[lab]
+                if len(d) > 2 and d[2]:
+                    # a yaw error (deg) about the vertical through the object's bbox centre (a long tool's believed
+                    # heading off by a few degrees moves its handle by much more than its origin)
+                    from dojo.skills.geometry import R_to_quat
+                    c, s = math.cos(math.radians(float(d[2]))), math.sin(math.radians(float(d[2])))
+                    Rz = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+                    cw = o.R @ o.asset.center + o.pos
+                    R = Rz @ o.R
+                    o.quat = R_to_quat(R)
+                    o.pos = cw - R @ o.asset.center
                 o.pos = o.pos + np.r_[d[:2], 0.0]
         return w
 
@@ -639,7 +649,8 @@ def main(argv=None) -> None:
     r.add_argument("--twins", type=int, default=8, help="twin envs for --verify (same process as the episode)")
     r.add_argument("--layouts", default=None, help="layout dir (default $DOJO_DATA/simlab/layouts/<task>)")
     r.add_argument("--belief-offset", action="append", default=[],
-                   help="LABEL:dx,dy (m): the object's pose is believed this far off until it is held (dev)")
+                   help="LABEL:dx,dy[,dyaw_deg] (m, deg): the object's pose is believed this far off (the yaw about "
+                        "the vertical through its bbox centre) until it is held (dev)")
     r.add_argument("--mode-b", action="store_true", help="no in-hand re-measure, a refine hook that sees nothing (dev)")
     r.add_argument("--held-pose", choices=("noise", "gt"), default=None,
                    help="mode B: held_pose / show_pose answered from GT (+ perception-held's calibrated noise), with the "
