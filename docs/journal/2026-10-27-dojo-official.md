@@ -96,14 +96,19 @@ Spend, phase A + B so far (29 episodes): Sol 28 calls (171 k prompt, 120 k cache
      held box below 0.5), `world.arms_from_proprio`, `KinematicBelief` init, `perception_service`, `estimate`.
    - The executor keeps its own commanded value during a hold: the gripper command sequences are identical on both
      paths.
-   - Proposed to the lead: a harness flag presenting the strict contract's gripper (the last command) to the policy in
-     integ / proxy / G3 mode B, A/B'd before it becomes the default.
-4. **swap_blocks: the twin never passes a candidate, on either path.** Every episode had 12/12 segments `none_ok` (96
-   rollouts, ~72 s of twin time), then a `best_outcome` pick. stack_blocks on integ: first_ok on 27/30 segments. The
-   verifier costs wall time and selects nothing for swap. Routed to swap's owner through the lead.
+   - Built: `DOJO_GRIP_OBS=robodojo|command` (PR #104, default robodojo = unchanged). It presents the strict
+     contract's gripper (the last command) to the policy in integ / proxy / G3. A paired A/B is in §1.5.
+   - Mikhail's side answered (through the lead): stripping the value is a conservative choice, not a benchmark rule; the
+     field is part of RoboDojo's official observation. They propose a strict server v2 that passes
+     `{arm}_ee_joint_state` through as `grip_obs`, with a new version tag on rows (Mikhail decides). The lead voted v2.
+     If v2 lands, our bridge (`contract.state_from_eef`, which reads `grip_cmd` today) must read the passed-through
+     value behind a server-version check, and the J4 import must carry that change.
 3. **integ_eval's `actions.json.gz` dropped the last batch** of every latch-ended episode: 26 of 240 actions on press
    100000. The runtime's Bridge records a batch at the next observation, which never comes once RoboDojo ends the
    episode. `replay_kits.py` replays these files. Fixed in #95: record what the env stepped.
+4. **swap_blocks: the twin never passes a candidate, on either path.** Every episode had 12/12 segments `none_ok` (96
+   rollouts, ~72 s of twin time), then a `best_outcome` pick. stack_blocks on integ: first_ok on 27/30 segments. The
+   verifier costs wall time and selects nothing for swap. Routed to swap's owner through the lead.
 
 ## 2. Routing (PR #90; report docs/experiments/2026-10-27-routing-sonnet.md)
 
