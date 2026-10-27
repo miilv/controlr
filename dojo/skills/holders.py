@@ -375,7 +375,7 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
 
 
 def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OFFSETS, clear: float = EGG_DROP_CLEAR,
-                     yaws=range(0, 360, 30), away_from=None) -> list[tuple[float, float, float, np.ndarray]]:
+                     yaws=range(0, 360, 30)) -> list[tuple[float, float, float, np.ndarray]]:
     """Poses of a lying object carried as it is held (``R_now`` turned about the vertical by ``yaws``): its bbox centre
     ``offset`` along its horizontal long axis (either way) from the hole centre, as low as its underside clears the far
     rim by ``clear`` (an ellipsoid of the bbox's half extents). (offset, yaw deg, side, T), smaller offsets first."""
@@ -398,17 +398,6 @@ def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OF
             for side in (1.0, -1.0):
                 cw = np.r_[np.asarray(hole["center"], float)[:2] + side * off * u[:2], z_c]
                 out.append((float(off), float(yd), side, T_from(cw - R @ o.asset.center, R)))
-    if away_from is not None:
-        # the far end on the holder's outer rim first: with its far end on the 5 mm wall between two holes an egg
-        # straddles them (egg_press2: 2 of 5 wedged 2-5 mm over the plate, pressing did not free them)
-        d = np.asarray(hole["center"], float)[:2] - np.asarray(away_from, float)[:2]
-        d = d / max(float(np.linalg.norm(d)), 1e-9)
-
-        def outward(t):
-            Tt = t[3]
-            v = (Tt[:3, :3] @ o.asset.center + Tt[:3, 3])[:2] - np.asarray(hole["center"], float)[:2]
-            return float(v @ d) / max(float(np.linalg.norm(v)), 1e-9)
-        out = sorted(out, key=lambda t: (-(outward(t) > 0.3), t[0]))
     return out
 
 
@@ -692,8 +681,7 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             o = w.obj(lab)
             pl, last = None, ""
             for h in free:                 # front holes first (``holes`` order)
-                for off, yd, side, T in egg_drop_targets(o, h, plate_top, o.R,
-                                                         away_from=np.mean([x["center"] for x in holes], axis=0)):
+                for off, yd, side, T in egg_drop_targets(o, h, plate_top, o.R):
                     q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0, pre_h=0.05, ignore=ignore, descend_rad=0.03,
                                       settle=2, retreat=0.04)
                     if not isinstance(q, SkillResult):
