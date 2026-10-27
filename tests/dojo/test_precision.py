@@ -102,3 +102,27 @@ def test_insert_each_tries_a_relay_before_a_plan_that_holds_the_tube_off_its_cen
     P.insert_each(sk, ["tube0"], "rack")
     assert order == ["relay"] * P.EACH_RELAY_HOLES + [("leg", True)]
     assert seen and all(r == P.EACH_REACH for r in seen)        # every one-arm screen keeps to the tubes' reach
+
+
+def test_insert_each_takes_an_object_only_one_arm_reaches_first(monkeypatch):
+    V, F = _tube_mesh()
+    rack = _obj("rack", "Geometry", "test_tube_slot", (0.0, -0.05, TABLE_Z + 0.03), lo=(-0.1, -0.05, -0.03),
+                hi=(0.1, 0.05, 0.03),
+                support={f"s/{k}": [(np.array([-0.072 + 0.036 * k, 0.0, 0.028, 1, 0, 0, 0]), 0.015)] for k in range(5)})
+    near = _obj("tubeA", "Rigid", "test_tube", (0.05, -0.2, TABLE_Z + 0.014), mesh=(V, F))     # both arms, by the rack
+    far = _obj("tubeB", "Rigid", "test_tube", (-0.40, -0.12, TABLE_Z + 0.014), mesh=(V, F))     # the left arm only
+    kin = X5Kin()
+    d = lambda o: [float(np.linalg.norm(kin.base(a)[:2, 3] - o.center_w[:2])) for a in ("left", "right")]
+    assert max(d(far)) > P.EACH_PICK_REACH >= max(d(near))
+    w = WorldState(task="", instruction="", objects={"rack": rack, "tubeA": near, "tubeB": far}, arms={}, home_q={},
+                   step=0, step_lim=500)
+    order = []
+    sk = SimpleNamespace(world=w, kin=kin, held={"left": None, "right": None}, log=lambda m: None,
+                         coll=SimpleNamespace(include=set(), heightmaps={}, margin_of={}), refresh=lambda: w,
+                         bank=lambda: None,
+                         plan_transfer=lambda lab, *a, **k: order.append(lab) or SkillResult(
+                             False, "transfer", "ik_fail", 0, None, note="0 grasp-place pairs"))
+    monkeypatch.setattr(L, "place_oriented", lambda *a, **k: SkillResult(False, "place_oriented", "ik_fail", 0, None,
+                                                                          note="x"))
+    P.insert_each(sk, ["tubeA", "tubeB"], "rack")
+    assert order[0] == "tubeB" and order[-1] == "tubeA"

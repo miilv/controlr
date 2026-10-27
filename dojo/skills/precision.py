@@ -933,6 +933,9 @@ def uniform_section_grasps(sk: Skills, o, arm: str, tilts=(0.0, 25.0, -25.0, 40.
 EACH_OVER = 0.07              # m: a filled hole this close to the line from the carrying arm's base to a hole is "in
                               # the way"
 EACH_RELAY_HOLES = 3          # holes tried through a relay (the object put down as it lies, then into the hole)
+EACH_ONE_ARM_FIRST = True     # objects within EACH_PICK_REACH of one arm's base only go first
+EACH_PICK_REACH = 0.62        # m, object centre from an arm's base (twin: tubes 0.64-0.77 m out had 0/180 grasps
+                              # reachable for that arm)
 EACH_REACH = 0.57             # m, place TCP from the placing arm's base (twin, tubes held at the CoM: 68/68 in below
                               # 0.57 m, 2 of 4 at 0.574-0.58 m missed with the arm held 46-56 mm off its command)
 EACH_RELAY_NEAR = (0.0, -0.28)    # relay spots near here (between the arms, in front of the robot)
@@ -1019,8 +1022,12 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
         todo = [l for l in objects if l in w.objects and l not in st["done"] and l not in failed]
         if not todo:
             break
-        # the object nearest to the receptacle first (shortest carries; the far ones keep their room)
-        lab = min(todo, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - rec.center_w[:2])))
+        # an object only one arm can reach first (twin: left for last, its arm's holes were taken by objects either arm
+        # could have carried, and it needed a relay or had no plan at all), then the nearest to the receptacle
+        # (shortest carries; the far ones keep their room)
+        lab = min(todo, key=lambda l: (sum(float(np.linalg.norm(sk.kin.base(a_)[:2, 3] - w.obj(l).center_w[:2]))
+                                           <= EACH_PICK_REACH for a_ in ARMS) if EACH_ONE_ARM_FIRST else 0,
+                                       float(np.linalg.norm(w.obj(l).center_w[:2] - rec.center_w[:2]))))
         o = w.obj(lab)
         L = float(np.max(o.asset.extents))
         filled = [np.asarray(v, float) for v in st["filled"].values()]
