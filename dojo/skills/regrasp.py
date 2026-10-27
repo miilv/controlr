@@ -34,9 +34,12 @@ from dojo.skills.skills import CLOSED, OPEN, Held, PlacePlan, SkillResult, Skill
 
 LENGTHWISE_TIP = (0.0028, 0.0038)   # m: the giver's fingertips over the support (twin: 2.8 mm passes the collision check)
 REST_CARRY = 0.04                   # rad/step: the giver's carry to the handover pose (eased)
-TILTS = (15.0, 30.0, 45.0, 60.0)    # deg: the taker's approach under the horizontal at the target
+TILTS = (15.0, 30.0)                # deg: the taker's approach under the horizontal at the target (45 / 60: the pads
+                                    # held only the bow's top edge)
 TOP_BAND = 0.02                     # m: the object's top part (the taker's pads) at the target
 TAKE_GAP = 0.006                    # m: the taker opens this much wider than the part it takes
+TAKE_PAST = (0.004, 0.006)          # m: its fingertip this far past the part's centre (at the centre, half the bow
+                                    # between the pads: the key fell when the giver opened, 3 of 7 in G3)
 HAND_CLEAR = 0.003                  # m between the hands at the handover (grasp and pre-grasp)
 HANDOVER_XY = ((0.06, -0.22), (0.0, -0.22), (0.06, -0.28), (0.10, -0.22), (0.0, -0.18), (0.06, -0.18), (-0.04, -0.22))
 HANDOVER_Z = (0.92, 0.98, 1.04)
@@ -118,10 +121,31 @@ def top_grasps_at(o, T_target) -> list[tuple[str, np.ndarray, float]]:
             for cs in (1.0, -1.0):
                 c = cs * e_c
                 R = np.stack([a, c, np.cross(a, c)], 1)
-                for past in (0.004, 0.0):
+                for past in TAKE_PAST:
                     tip = ctr + s * past * e_h - 0.002 * up
                     out.append((f"top s{s:+.0f} tilt {beta:.0f} past {past*1000:.0f}", T_from(tip - a * TIP_BEYOND_TCP, R), width))
     return out
+
+
+MIN_TURN_FRAC = 0.7                 # of the turn the taker's wrist must reach at the target (the key snapped through its
+                                    # lock's narrow zone at -30..-36 deg commanded, probes; -36 = 0.6 left no margin)
+
+
+def _turn_reach(sk: Skills, arm: str, T_tg, T_ko, q0, turn_rad: float) -> float:
+    """The largest of ``TURN_FRACTIONS`` whose stepped turn (``_turn_schedule``) the arm follows from ``q0`` at the
+    target with the grasp ``T_ko``; 0 when none."""
+    for frac in TURN_FRACTIONS:
+        q, ok = q0, True
+        sched = _turn_schedule(abs(math.degrees(turn_rad * frac)))
+        for f in sched[::2] + sched[-1:]:
+            ik = sk.kin.ik(arm, _turned(T_tg, turn_rad * frac * f) @ T_ko, q, n_random=0)
+            if not ik.ok:
+                ok = False
+                break
+            q = ik.q
+        if ok:
+            return frac
+    return 0.0
 
 
 def _turned(T, turn_rad):
@@ -159,11 +183,10 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                     q_ins = r_.q if q_ins is None else q_ins
                 if not ok:
                     continue
-                if turn_rad:
-                    if not any(sk.kin.ik(t_arm, _turned(T_tg, turn_rad * f) @ T_ko, q_ins, n_random=0).ok
-                               for f in TURN_FRACTIONS):
-                        continue
-                fam.append((note, T_ko, width, g_open, T_tg))
+                frac = _turn_reach(sk, t_arm, T_tg, T_ko, q_ins, turn_rad) if turn_rad else 1.0
+                if frac < MIN_TURN_FRAC:
+                    continue
+                fam.append((note, T_ko, width, g_open, T_tg, frac))
         if not fam:
             notes.append(f"{t_arm}: no top grasp reaches the target")
             continue
@@ -188,7 +211,7 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                         if not rg.ok:
                             continue
                         P_give = _hand_points(sk, sk.kin.flange(g_arm, rg.q), g_hold)
-                        for note, T_ko, width, g_open, T_tg in fam:
+                        for note, T_ko, width, g_open, T_tg, frac in fam:
                             Tt = T_H @ T_ko
                             pre = Tt.copy()
                             pre[:3, 3] -= Tt[:3, 0] * 0.06
@@ -203,11 +226,11 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                                                                 min_d=HAND_CLEAR):
                                 continue
                             cost = (float(np.abs(rg.q - pp.plan.q_end).max() + np.abs(rp.q - w.home_q[t_arm]).max())
-                                    + pp.steps / 100.0)
+                                    + pp.steps / 100.0 + 3.0 * (1.0 - frac))     # the full turn first
                             if best is None or cost < best[0]:
                                 best = (cost, {"giver": g_arm, "taker": t_arm, "pick": pp, "T_H": T_H, "T_ko": T_ko,
                                                "width": width, "g_open": g_open, "target": T_tg, "note": note})
-                        if best is not None and best[0] < 1.0:
+                        if best is not None and best[0] < 0.8:
                             break
         if best is not None:
             return best[1]

@@ -74,4 +74,4 @@ def test_top_grasps_at_the_target_close_across_the_bow_and_point_down():
         a = Tw[:3, 0]
         assert a[2] < -0.2                                   # pointing down at the target (tilted >= 15 deg)
         tip = T_ko[:3, 3] + T_ko[:3, 0] * TIP_BEYOND_TCP
-        assert abs(tip[1]) < 1e-9 and -0.003 < tip[2] < 0.0 and abs(tip[0]) <= 0.0041   # at the bow's centre
+        assert abs(tip[1]) < 1e-9 and -0.003 < tip[2] < 0.0 and abs(tip[0]) <= 0.0061   # at the bow's centre
