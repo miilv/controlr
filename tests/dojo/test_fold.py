@@ -7,7 +7,17 @@ import math
 
 import numpy as np
 
-from tests.dojo.test_skills2 import _obj, _world
+
+
+def _obj(label, cat, idx, xyz, half, typ="Rigid", quat=(1.0, 0, 0, 0)):
+    from dojo.skills.world import AssetInfo, ObjectState
+    info = AssetInfo(key=f"{typ}/{cat}/{idx:05d}", bbox_min=-np.asarray(half, float), bbox_max=np.asarray(half, float))
+    return ObjectState(label, typ, cat, idx, np.asarray(xyz, float), np.asarray(quat, float), info)
+
+
+def _world(objs):
+    from dojo.skills.world import WorldState
+    return WorldState("", "", {o.label: o for o in objs}, {}, {})
 
 FOLD_KP = {"left_sleeve": [-0.29, -0.14, 0.775], "right_sleeve": [0.21, -0.28, 0.774],
            "left_chest": [-0.07, -0.045, 0.78], "right_chest": [0.087, -0.089, 0.79],
