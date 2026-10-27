@@ -235,7 +235,8 @@ def _read_cells(images, cams, rmasks, region: dict, prior: dict | None = None) -
 
 
 GONE_FG = 0.35             # a source spot whose own pixels are under this share foreground: the object left it
-BASE_MIN_FG = 0.5          # ... if it read at least this at the first read (else its start pose is off: unreadable)
+BASE_MIN_FG = 0.4          # ... if it read at least this at the first read (else its start pose is off: unreadable;
+                           # 0.5 left a watch ring, table showing through its silhouette, unread: imitate 100017)
 SOURCE_MIN_PX = 30         # fewer visible pixels (our robot in front): the spot cannot be read
 
 
@@ -250,8 +251,14 @@ def read_sources(frame: dict, cams: dict, sources: list[dict], bgs, cfg) -> list
     from .render import gl
     from .segment import segment_views
 
+    bgs = dict(bgs or {})
+    if "cam_head_noactor" in bgs:
+        # a scene background with a scripted actor at home (the demonstrator's arm): read against the scene without
+        # it. Against the actor, a spot the arm left read foreground for good and its object never went (imitate
+        # 100020: read last instead of third); now the arm reads foreground (present) wherever it is, as elsewhere
+        bgs["cam_head"] = bgs["cam_head_noactor"]
     v = segment_views({"cam_head": frame["images"]["cam_head"]}, {"cam_head": cams["cam_head"]},
-                      {k: np.asarray(x) for k, x in frame["state"].items()}, bgs or {}, thr=getattr(cfg, "fg_thr", 18.0))["cam_head"]
+                      {k: np.asarray(x) for k, x in frame["state"].items()}, bgs, thr=getattr(cfg, "fg_thr", 18.0))["cam_head"]
     g = gl()
     Ts, sms = [], []
     for o in sources:

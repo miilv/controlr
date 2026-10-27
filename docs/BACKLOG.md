@@ -355,6 +355,20 @@
   of the left arm, the board at the robot side, 1.02 m up. PhysicalRSI marks that convention "native scene not
   validated"; check it against the official videos / a rendered episode when one is available. Skills-6's layouts are
   in `compute3:~/dojo-data/skills6/layouts/pick_from_conveyor_by_image` (simlab's shared copies are still v12).
+  - The breadth3 by_image episodes ran on v12: its board sits behind our right arm's links in the head view (not
+    readable); v13's board is fully in view (72 x 93 px). Public code cannot settle it (RoboDojo only loads layout
+    files; PhysicalRSI's own docstring: "no historical evaluation layout supplies board/basket transforms"), so
+    perception should find the board by appearance in whatever view shows it, not at a pinned pose (journal
+    2026-10-27-dojo-perception3).
+- [ ] **dojo perception: imitate_sorting_sequence, what frame 0 still gets wrong** (experiments/2026-10-27-imitate-frame0,
+  plan right 8 / 13 offline): category swaps among the demonstrator's small far objects (action camera / garage figure
+  / watch: 100016, 100018, 100023) and objects not found (a far phone, a near watch, a far watch hidden behind a figure
+  at frame 0). Candidate: pair each far object with the near objects' assets (same asset per pair, the near side's
+  categories are 64 / 65 right) by render-and-compare at the far blob.
+- [ ] **dojo perception: no 6.0-proxy scene background for imitate.** The genuine-5.1 one is in every box's
+  `bg_folds_51/fold{0,1}/scene/Geometry_basket_00005/` (`scripts/perception/scene_bg_frame0.py`); compute3's 6.0
+  `bg_folds` has none, so proxy imitate runs still see the demonstrator's arm as foreground. Build it from 6.0 renders
+  of the non-demo layouts' frame 0 when proxy imitate runs matter.
 - [ ] **dojo perception: the scan estimate assumes nothing moved since frame 0** (`scan.estimate_with_scan` fuses frame
   0 as extra views, then `fill_from_frame0` fills a not-found label from frame 0's reading). On a conveyor the riders
   move 4 mm / step, so a rider can appear twice: at its scan-time pose and as a frame-0 ghost under another label.

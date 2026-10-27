@@ -120,3 +120,22 @@ Paired, same frames, the 12-non-demo scene background (§1.4):
 
 - 3 objects added (100014 near watch, 100016 near figure, 100018 far action camera), 0 phantoms added.
 - G1 regression: only imitate has quota lists (by construction no other task runs it); d0_51 rerun queued.
+### 1.4 The scene background and the departure read (experiments/2026-10-27-imitate-frame0)
+
+- **Scene background** (`scripts/perception/scene_bg_frame0.py`): the per-pixel median of frame 0 over dev layouts (the
+  demonstrator's arm at home, both baskets, the scene's shading) + a clean head view from scan-pose frames, under
+  `<fold>/scene/Geometry_basket_00005/` (Memory's `with_scene` picks it by the scene's asset; no service change).
+  - Evaluation build: the 12 NON-demo layouts' frame 0, rendered on compute5 (genuine 5.1, `belt_bg record --steps 0
+    --away-frames 3`, 5.5 min under heavy lock 1). A 2-fold build from the demo layouts gave the same picture.
+  - Production build: those 12 + the 13 demo layouts' frame 0 (25), deployed to `bg_folds_51/fold{0,1}` on compute3
+    and compute5-8 (md5 of the 16 files' md5s 8d82c1c429d4).
+- **Departure read** (Memory's `watch.read_sources`, Memory reviews):
+  - against the scene background, the arm's home pixels read foreground for good once it moved: an object touching
+    the home gripper never "went" (100020: read last instead of third). Masking those pixels lost two sources next
+    to the gripper (too few pixels left). Reads now use the scene WITHOUT its actor (`cam_head_noactor`: the actor's
+    home pixels, the top-border-connected part of |scene - table|, taken from the fold's table background), where the
+    arm reads present wherever it is;
+  - `BASE_MIN_FG` 0.5 -> 0.4: of 65 demonstrator sources 64 read >= 0.5 at their first read; the one in 0.4-0.5 is
+    100017's watch ring (table shows through its silhouette).
+  - Same records (#152's), 13 layouts: order exact 8 -> 10, plan right 7 -> 8, 0 false departures before and after.
+- **End to end, all fixes:** plan right 0 / 13 -> 8 / 13, order exact 2 -> 10, twins right 31 -> 56 of 65.

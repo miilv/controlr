@@ -600,3 +600,34 @@ def test_region_mask_covers_the_generator_region_only():
     assert at(0.121, -0.188) and at(-0.2, -0.168) and at(0.24, -0.13)     # inside, and within half a lock outside
     assert not at(0.0, -0.17) and not at(0.15, 0.05)                      # between the two boxes; far behind
     assert il._region_mask(cam, {"regions": [{"x": None, "y": [(-0.2, -0.1)], "yaw": None}]}, [sm]) is None
+
+
+def test_departure_read_uses_the_scene_without_its_actor(tmp_path, monkeypatch):
+    """A scene background with a scripted actor at home ships ``cam_head_noactor`` (the actor's home pixels from the
+    table background); watch.read_sources segments against it, so the arm reads present wherever it is and a spot it
+    left reads table (imitate 100020)."""
+    from types import SimpleNamespace
+
+    import cv2
+
+    from dojo.perception import render, segment, watch
+    from dojo.perception.segment import load_backgrounds
+
+    for c, v in (("cam_head", 10), ("cam_head_noactor", 77)):
+        cv2.imwrite(str(tmp_path / f"{c}.png"), np.full((4, 6, 3), v, np.uint8))
+    bgs = load_backgrounds(tmp_path)
+    assert int(bgs["cam_head_noactor"][0, 0, 0]) == 77
+    seen = {}
+
+    def fake_segment(images, cams, state, bgs_, thr=18.0):
+        seen["bg"] = int(bgs_["cam_head"][0, 0, 0])
+        return {"cam_head": SimpleNamespace(fg=np.zeros((4, 6), np.uint8), robot=np.zeros((4, 6), np.uint8), cam=None)}
+
+    monkeypatch.setattr(segment, "segment_views", fake_segment)
+    monkeypatch.setattr(render, "gl", lambda: None)
+    frame = {"images": {"cam_head": np.zeros((4, 6, 3), np.uint8)}, "state": {}}
+    watch.read_sources(frame, {"cam_head": None}, [], bgs, None)
+    assert seen["bg"] == 77 and int(bgs["cam_head"][0, 0, 0]) == 10      # the caller's backgrounds are untouched
+    del bgs["cam_head_noactor"]
+    watch.read_sources(frame, {"cam_head": None}, [], bgs, None)
+    assert seen["bg"] == 10
