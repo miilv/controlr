@@ -701,6 +701,9 @@ def _grippers_apart(sk: Skills, a1: str, q1, g1: float, a2: str, q2, g2: float, 
 
 
 HANDOVER_MAX_EXTENT = 0.16     # m, largest bbox side of an object handed over in the air
+RELAY_SHIFT = 0.12             # m: the second round of relay spots, this far toward the targets' side (x); twin plug
+                              # 100002 (socket 0.39 m right): from (0.12, -0.28) 1.0 (2/2), (0.2, -0.28) 1.0, (0.15, -0.24)
+                              # 1.0; from (0.15, -0.28) the left arm's as-is put-down landed 26 deg tilted (0)
 RELAY_PLAN_S = 100.0           # wall-time cap of the relay-chain search (twin: 21 min planning one hammer's relays)
 HANDOVER_CARRY = 0.07          # rad/step: the giver's carry into the handover pose (twin, 0.14: a key held on
                                # its round bow turned 50 deg in the pads during the carry and fell, 6 of 6)
@@ -1063,58 +1066,66 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     o = sk.world.obj(label)
     Rs = [np.asarray(T, float)[:3, :3] for T in targets]
     R_now = level_R(o.R)
-    spots = free_spots(sk, label, near_xy=relay_near, clearance=0.03, avoid=spot_avoid)[:max_spots]
     stable = all(rests_stably(o, R) for R in Rs)
-    chains = []
     # as it is only when it stands by itself (a slice standing in a rack, 12 mm thick under a centre of mass 58 mm up,
     # does not)
     as_is_ok = rests_stably(o, R_now) or (as_is_lying and lies_on_table(o))
-    for sp in spots:
-        if stable:
-            chains.append([("target", sp)])
-        if as_is_ok:
-            chains.append([("as_is", sp)])
-    if stable and as_is_ok:
-        chains += [[("as_is", s1), ("target", s2)] for s1 in spots for s2 in spots
-                   if float(np.linalg.norm(np.subtract(s1, s2))) > 0.09]
+    # relay spots near ``relay_near``; when no chain plans from there, near a point moved toward the targets' side too
+    # (twin, plug 100002: the socket 0.39 m to the right, no chain from (0, -0.28); from (0.12, -0.28) in)
+    nears = [tuple(relay_near)]
+    t_x = float(np.mean([np.asarray(T, float)[0, 3] for T in targets]))
+    dx = float(np.clip(t_x - relay_near[0], -RELAY_SHIFT, RELAY_SHIFT))
+    if abs(dx) >= 0.05:
+        nears.append((relay_near[0] + dx, relay_near[1]))
     notes, cache = [r.note[:120]], {}
     import time as _time
-    t0 = _time.perf_counter()
-    for chain in chains:
-        if _time.perf_counter() - t0 > RELAY_PLAN_S:
-            notes.append(f"relay search stopped after {RELAY_PLAN_S:.0f} s")
-            break
-        legs, at, ok = [], None, True
-        for kind, sp in chain:
-            key = (kind, tuple(sp), None if at is None else tuple(np.round(at[:3, 3], 4)))
-            if key not in cache:
-                mids, ys = (([rest_with_R(sk, label, sp, R) for R in Rs], yaw_sym) if kind == "target"
-                            else ([rest_with_R(sk, label, sp, R_now)], 4))
-                cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at, transfer_kw=tkw))
-            mids, ys, rl = cache[key]
-            if isinstance(rl, SkillResult):
-                notes.append(f"{kind} {np.round(sp, 2).tolist()}: {rl.note[:90]}")
-                ok = False
+    for near in nears:
+        spots = free_spots(sk, label, near_xy=near, clearance=0.03, avoid=spot_avoid)[:max_spots]
+        chains = []
+        for sp in spots:
+            if stable:
+                chains.append([("target", sp)])
+            if as_is_ok:
+                chains.append([("as_is", sp)])
+        if stable and as_is_ok:
+            chains += [[("as_is", s1), ("target", s2)] for s1 in spots for s2 in spots
+                       if float(np.linalg.norm(np.subtract(s1, s2))) > 0.09]
+        t0 = _time.perf_counter()
+        for chain in chains:
+            if _time.perf_counter() - t0 > RELAY_PLAN_S:
+                notes.append(f"relay search stopped after {RELAY_PLAN_S:.0f} s")
                 break
-            legs.append((kind, sp, rl))
-            at = rl[1].T_obj_target
-        if not ok:
-            continue
-        rf = _plan_leg(sk, label, targets, yaw_sym, ignore, place_kw, at=at, transfer_kw=tkw)
-        if isinstance(rf, SkillResult):
-            notes.append(f"chain {[k for k, _ in chain]} last leg: {rf.note[:90]}")
-            continue
-        sk.log(f"[place_oriented] {label}: relay " + " -> ".join(
-            f"{k}@{np.round(sp, 2).tolist()} {rl[0].arm} ({rl[0].grasp.note})" for k, sp, rl in legs)
-            + f" -> target {rf[0].arm} ({rf[0].grasp.note})")
-        for i, (kind, sp, rl) in enumerate(legs):
-            tgt = [rl[1].T_obj_target]
-            res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None, transfer_kw=tkw)
-            if not res.ok and res.status in ("step_budget", "ended", "grasp_slip", "ik_fail", "collision", "logic"):
-                return res
-            sk.bank()
-            sk.refresh()
-        return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight, transfer_kw=tkw)
+            legs, at, ok = [], None, True
+            for kind, sp in chain:
+                key = (kind, tuple(sp), None if at is None else tuple(np.round(at[:3, 3], 4)))
+                if key not in cache:
+                    mids, ys = (([rest_with_R(sk, label, sp, R) for R in Rs], yaw_sym) if kind == "target"
+                                else ([rest_with_R(sk, label, sp, R_now)], 4))
+                    cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at, transfer_kw=tkw))
+                mids, ys, rl = cache[key]
+                if isinstance(rl, SkillResult):
+                    notes.append(f"{kind} {np.round(sp, 2).tolist()}: {rl.note[:90]}")
+                    ok = False
+                    break
+                legs.append((kind, sp, rl))
+                at = rl[1].T_obj_target
+            if not ok:
+                continue
+            rf = _plan_leg(sk, label, targets, yaw_sym, ignore, place_kw, at=at, transfer_kw=tkw)
+            if isinstance(rf, SkillResult):
+                notes.append(f"chain {[k for k, _ in chain]} last leg: {rf.note[:90]}")
+                continue
+            sk.log(f"[place_oriented] {label}: relay " + " -> ".join(
+                f"{k}@{np.round(sp, 2).tolist()} {rl[0].arm} ({rl[0].grasp.note})" for k, sp, rl in legs)
+                + f" -> target {rf[0].arm} ({rf[0].grasp.note})")
+            for i, (kind, sp, rl) in enumerate(legs):
+                tgt = [rl[1].T_obj_target]
+                res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None, transfer_kw=tkw)
+                if not res.ok and res.status in ("step_budget", "ended", "grasp_slip", "ik_fail", "collision", "logic"):
+                    return res
+                sk.bank()
+                sk.refresh()
+            return _run_leg(sk, label, targets, yaw_sym, ignore, place_kw, tol=tight, transfer_kw=tkw)
     # in-air handovers are for small objects (a key, a plug): two grippers around a 19-cm figurine never plan,
     # and the search costs minutes
     if float(np.max(o.asset.extents)) > HANDOVER_MAX_EXTENT:

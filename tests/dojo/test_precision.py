@@ -155,3 +155,22 @@ def _counted(monkeypatch, short):
 def test_insert_each_counts_a_tube_only_at_its_depth(monkeypatch):
     assert _counted(monkeypatch, 0.0)
     assert not _counted(monkeypatch, 0.012)        # believed held by the rack 12 mm short (a probing tail stopped)
+
+
+def test_relay_spots_are_also_sought_toward_a_far_target(monkeypatch):
+    V, F = _tube_mesh()
+    tube = _obj("tube0", "Rigid", "test_tube", (-0.1, -0.25, TABLE_Z + 0.014), mesh=(V, F))
+    w = WorldState(task="", instruction="", objects={"tube0": tube}, arms={}, home_q={}, step=0, step_lim=500)
+    sk = SimpleNamespace(world=w, kin=X5Kin(), log=lambda m: None, refresh=lambda: w,
+                         plan_transfer=lambda *a, **k: SkillResult(False, "transfer", "ik_fail", 0, None, note="none"),
+                         _record=lambda r: r)
+    seen = []
+    monkeypatch.setattr(L, "free_spots", lambda sk_, lab, near_xy=None, **k: seen.append(tuple(near_xy)) or [])
+    T = np.eye(4)
+    T[:3, 3] = (0.39, -0.10, TABLE_Z + 0.03)                    # the target far to the right
+    r = L.place_oriented(sk, "tube0", [T], air_handover=False)
+    assert not r.ok and seen == [(0.0, -0.28), (L.RELAY_SHIFT, -0.28)]
+    seen.clear()
+    T[0, 3] = 0.02                                              # central: one round
+    L.place_oriented(sk, "tube0", [T], air_handover=False)
+    assert seen == [(0.0, -0.28)]
