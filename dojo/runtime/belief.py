@@ -658,6 +658,11 @@ class RuntimeProvider:
             if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5:
                 self.belief.attached.pop(arm)
                 getattr(self.belief, "g_held", {}).pop(arm, None)
+                if lab in [v[0] for v in self.belief.attached.values()]:
+                    # a handover (#101): this hand's jaws are empty, the other hand still holds the object
+                    ev["dropped"] = "this hand only (the other hand holds it)"
+                    self.stats["held_look_empty"] = self.stats.get("held_look_empty", 0) + 1
+                    continue
                 o = self.belief.objects[lab]
                 o.pos, o.quat = g[2][:3].copy(), g[2][3:].copy()
                 self.belief._drop(lab)

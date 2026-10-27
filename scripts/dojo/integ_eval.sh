@@ -61,7 +61,7 @@ wait_res || { echo "[integ] MemAvailable $(avail) GB / VRAM free $(vram) MiB bel
 LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"; exec 9>>"$LOCK"
 echo "[integ] waiting for $LOCK: $(head -c 160 "$LOCK" | tr '\n' ' ')" >&2
 flock -w "${INTEG_LOCK_WAIT_S:-10800}" 9 || { echo "[integ] gave up waiting for $LOCK" >&2; exit 75; }
-printf 'pid=%s stream=integ start=%s cmd=integ_eval %s\n' "$$" "$(date -u +%FT%TZ)" "${args[*]}" > "$LOCK"
+printf 'pid=%s stream=%s job=%s start=%s cmd=integ_eval %s\n' "$$" "${DOJO_STREAM:-integ}" "$(basename "$OUT")" "$(date -u +%FT%TZ)" "${args[*]}" > "$LOCK"
 wait_res || { echo "[integ] resources dropped below $MIN_GB GB / $MIN_MB MiB while waiting for the lock" >&2; exit 75; }
 key() { python3 -c 'import secrets; print(secrets.token_hex(16))'; }
 port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
