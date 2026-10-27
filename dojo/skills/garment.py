@@ -144,12 +144,15 @@ def _let_go(sk: Skills, arms) -> None:
     sk.ex.run(plans, name="pinch let go")
 
 
-def pinch_and_lay(sk: Skills, read, garment: str, jobs: list[dict], tries: int = 3) -> dict:
+def pinch_and_lay(sk: Skills, read, garment: str, jobs: list[dict], tries: int = 3, verify: bool = True) -> dict:
     """Run pinches together (one per arm): ``jobs`` = [{"arm", "point", "src", "dst", "carry_z"}]. After the lifts the
     garment is read: a pinch whose named point did not rise 25 mm caught no cloth (or only an edge) and is let go and
     tried again deeper in and turned 90 deg, while the others hold. Then every held point is laid down together.
-    Returns {point: rise (m)}."""
+    Returns {point: rise (m)}. ``verify=False`` (a read that does not follow the cloth: the camera's first read at
+    eval): one pinch each, assumed caught (twin: sleeves 20/20 and hems 18/20 caught at the first pinch)."""
     rise, pending, held = {}, list(jobs), {}
+    if not verify:
+        tries = 1
     for t in range(tries):
         if not pending:
             break
@@ -167,6 +170,10 @@ def pinch_and_lay(sk: Skills, read, garment: str, jobs: list[dict], tries: int =
         if not picks:
             break
         sk.ex.run({a: r[0] for a, (j, r) in picks.items()}, name="pinch")
+        if not verify:
+            for a, (j, r) in picks.items():
+                held[a] = (j, r[1])
+            break
         gm = read(garment) or {}
         pending = []
         for a, (j, r) in picks.items():
@@ -211,6 +218,12 @@ def fold_garment(sk: Skills, garment: str) -> dict:
     if not gm or not gm.get("keypoints"):
         return {"ok": False, "stage": "read", "note": f"no garment {garment!r}"}
     xa, _ = garment_axes(gm)
+    live = bool(gm.get("live", True))
+    if not live:
+        # one read of the flat garment (the camera's, at eval): every fold is planned from it; the points a fold does
+        # not touch stay put (twin: the right sleeve and hems moved <= 1 cm while the left sleeve was folded)
+        g0 = gm
+        read = (lambda label=None: g0)
     done = []
     try:
         for side, other in (("left", "right"), ("right", "left")):
@@ -225,7 +238,8 @@ def fold_garment(sk: Skills, garment: str) -> dict:
             src = _inward(sl, centre)
             arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - src)))
             n0 = sk.ex.steps_used
-            rise = pinch_and_lay(sk, read, garment, [{"arm": arm, "point": f"{side}_sleeve", "src": src, "dst": dst}])
+            rise = pinch_and_lay(sk, read, garment, [{"arm": arm, "point": f"{side}_sleeve", "src": src, "dst": dst}],
+                                 verify=live)
             gm = read(garment) or gm
             sl2 = _kp(gm, f"{side}_sleeve")
             d = float(np.linalg.norm(sl2[:2] - ch[:2])) if sl2 is not None else float("inf")
@@ -253,7 +267,7 @@ def fold_garment(sk: Skills, garment: str) -> dict:
         jobs.sort(key=lambda j: float(j["src"][0]))
         jobs[0]["arm"], jobs[1]["arm"] = "left", "right"
         n0 = sk.ex.steps_used
-        rise = pinch_and_lay(sk, read, garment, jobs)
+        rise = pinch_and_lay(sk, read, garment, jobs, verify=live)
         gm = read(garment) or gm
         d = [float(np.linalg.norm(_kp(gm, f"{s}_hem")[:2] - _kp(gm, f"{s}_shoulder")[:2])) for s in ("left", "right")]
         sk._record(SkillResult(max(d) < 0.15, "fold_body", "ok" if max(d) < 0.15 else "place_miss",
