@@ -38,15 +38,28 @@ def run(ep):
     return ep.name, rec, gt, dt
 
 
+def _centre(key, pos, quat):
+    """World centre of the asset's mesh (its bounding-box middle) at a pose: objects are matched by it, not by their
+    origin (the phone's origin is at one end: a fit turned half about its middle is the same footprint)."""
+    from dojo.perception.cameras import quat_wxyz_to_R
+    from dojo.perception.render import load_asset
+    V = load_asset(key).V
+    c = (V.min(0) + V.max(0)) / 2
+    return np.asarray(pos, float) + quat_wxyz_to_R(np.asarray(quat, float)) @ c
+
+
 def score(rec, gt):
     preds = []
     for typ in ("Rigid",):
         for cat, lst in (rec.get(typ) or {}).items():
             for r in lst:
-                preds.append({"label": r["label"], "key": f"{typ}/{cat}/{int(r['category_idx']):05d}", "cat": cat,
-                              "pos": np.asarray(r["default_pos"]), "conf": (r.get("_perception") or {}).get("confidence")})
+                k_ = f"{typ}/{cat}/{int(r['category_idx']):05d}"
+                preds.append({"label": r["label"], "key": k_, "cat": cat,
+                              "pos": _centre(k_, r["default_pos"], r["default_ori"]),
+                              "conf": (r.get("_perception") or {}).get("confidence")})
     G = [o for o in gt["objects"] if o["type"] == "Rigid"]
-    C = np.array([[np.linalg.norm(p["pos"][:2] - np.asarray(o["pos"][:2])) for p in preds] for o in G]) if preds else np.zeros((len(G), 0))
+    gc = [_centre(f"Rigid/{o['category']}/{o['category_idx']:05d}", o["pos"], o["quat"]) for o in G]
+    C = np.array([[np.linalg.norm(p["pos"][:2] - c[:2]) for p in preds] for c in gc]) if preds else np.zeros((len(G), 0))
     rows = []
     ri, ci = linear_sum_assignment(C) if preds else ([], [])
     mt = dict(zip(ri, ci))

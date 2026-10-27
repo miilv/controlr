@@ -51,9 +51,18 @@ def main():
         frames = sorted((p.stem[len("frame_"):] for p in ep.glob("frame_W*.json")), key=lambda t: int(t[1:]))
         g0 = d0.load_gt(ep, frames[0])
         G = {o["label"]: o for o in g0["objects"] if o["type"] == "Rigid"}
+        from dojo.perception.cameras import quat_wxyz_to_R
+        from dojo.perception.render import load_asset
+
+        def centre(key, pos, quat):  # objects meet by their mesh middle (a phone's origin is at one end)
+            V = load_asset(key).V
+            return np.asarray(pos, float) + quat_wxyz_to_R(np.asarray(quat, float)) @ ((V.min(0) + V.max(0)) / 2)
+        Gc = {l: centre(f"Rigid/{o['category']}/{o['category_idx']:05d}", o["pos"], o["quat"]) for l, o in G.items()}
+
         def near(s):
-            o = min(G.values(), key=lambda o: np.hypot(o["pos"][0] - s["pos"][0], o["pos"][1] - s["pos"][1]))
-            return o["label"] if np.hypot(o["pos"][0] - s["pos"][0], o["pos"][1] - s["pos"][1]) < 0.05 else None
+            c = centre(s["asset"], s["pos"], s["quat"])
+            l = min(Gc, key=lambda l: np.hypot(*(Gc[l][:2] - c[:2])))
+            return l if np.hypot(*(Gc[l][:2] - c[:2])) < 0.05 else None
         smap = {s["label"]: near(s) for s in srcs}
         prior, gone, gt_gone, gone_any, false_gone = None, [], [], [], []
         for t in frames:
