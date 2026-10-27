@@ -61,6 +61,6 @@ def test_on_request_only_a_place_that_asks_reads_the_held_object():
     assert [e["view"] for e in sk.held_events] == ["hover", "show"] and sk.held_events[1]["adopted"]
 
 
-def test_insertions_ask_for_the_read():
+def test_insert_into_does_not_ask_by_default():
     from dojo.skills.library import INSERT_HELD_KW
-    assert INSERT_HELD_KW["held_read"] is True
+    assert "held_read" not in INSERT_HELD_KW              # the plug's blind probing tail beat the read (rendered)

@@ -197,7 +197,7 @@ class RuntimeConfig:
     track_read: str = "belt"
     # mode perception: the in-hand pose at the pre-insert hover (perception's held_pose, where G3 re-measures from
     # GT): off | auto (when the perception service offers it: every servo place reads) | request (only places that ask
-    # for it, ``plan_place(held_read=True)``: insertions; rendered plug, auto everywhere: no gain, 2026-10-27);
+    # for it, ``plan_place(held_read=True)``; rendered plug, auto: no gain, 2026-10-27);
     # skills adopt it within the place's tolerances
     held_pose: str = "off"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
