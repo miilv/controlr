@@ -2,6 +2,7 @@
 kinematic env through the proxy_eval policy interface. CPU only (no Isaac, no perception service)."""
 
 import copy
+import math
 import re
 from pathlib import Path
 
@@ -577,6 +578,43 @@ def test_refine_hook_updates_the_belief_only_when_accepted():
             assert out is None and x1 == x0
         assert pol.report["events"][-1]["kind"] == "refine"
 
+
+def test_refine_hook_applies_a_read_yaw_past_the_turn_guards_and_exposes_it():
+    """A refine whose yaw perception read over the full turn (yaw_source "top_feature": insert_key's keyhole) is a
+    measurement: a 150 deg turn at a mediocre iou is applied, the skill sees the raw reading (sk.last_refine) and
+    the hook's return carries yaw_source. The same turn from a plain fit keeps the prior orientation."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    q_turn = [math.cos(math.radians(75)), 0.0, 0.0, math.sin(math.radians(75))]       # 150 deg about z
+
+    class Turned:
+        def __init__(self, src):
+            self.src = src
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            return {o["label"]: {"ok": True, "pos": list(o["pos"]), "quat": q_turn, "shift_mm": 0.5, "iou": 0.5,
+                                 "turned_deg": 150.0, "yaw_source": self.src}}
+
+    class Sk:
+        last_refine = None
+
+    for src in ("top_feature", None):
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=Turned(src))
+        pol.reset(FakeEpisode(env).info())
+        b = pol.bridge
+        b.obs, b.fresh = FakeEpisode(env).observe(), True
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        q0 = prov.belief.objects["block_1"].quat.copy()
+        sk = Sk()
+        out = pol._refine_hook(prov, sk, "block_1", "left", "pick")
+        q1 = prov.belief.objects["block_1"].quat
+        assert sk.last_refine["yaw_source"] == src and sk.last_refine["label"] == "block_1"
+        if src:
+            assert np.allclose(q1, q_turn) and out["yaw_source"] == "top_feature"
+        else:
+            assert out is None and np.allclose(q1, q0)                    # a low-iou big turn: not applied
 
 def test_refine_runs_at_every_hover_in_an_episode():
     """Mode perception + refine: skills calls the hook at each pick / place hover; accepted re-fits move the

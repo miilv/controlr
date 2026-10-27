@@ -515,6 +515,12 @@ def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd
                     probs.append(f"arbitration_kept_b1={n_kept}")
         except Exception as e:
             probs.append(f"refine: {type(e).__name__}: {e}")
+    if b1 is not None:
+        from .seed_refine import keep_read_yaws
+
+        n_yaw = keep_read_yaws(objects, b1.get("objects") or [])
+        if n_yaw:
+            probs.append(f"b1_read_yaw_kept={n_yaw}")
     if not kw.get("keep_markers"):  # replays arbitrate the same H2 output themselves
         for o in objects:
             o.pop("_agent_point", None)

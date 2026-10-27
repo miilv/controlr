@@ -696,10 +696,12 @@ class RuntimePolicy:
         res = self.perception().refine(obs, objs, self.fold, self.cfg.refine_max_shift_m, arm=arm, identity_vocabulary=idv,
                                        held=held)
         r = res.get(label) or {}
+        if sk is not None:
+            sk.last_refine = {**r, "label": label, "for": kind}  # the raw reading (skills read e.g. its yaw_source)
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
               "prior7": [round(float(v), 4) for v in np.r_[o.pos, o.quat]],
               **{k: r.get(k) for k in ("ok", "shift_mm", "iou", "visible_frac", "turned_deg", "time_s", "via", "why",
-                                       "suggest_xy", "suggest_shift_mm", "fit_shift_mm", "p_why")}}
+                                       "suggest_xy", "suggest_shift_mm", "fit_shift_mm", "p_why", "yaw_source")}}
         if r.get("pos") is not None:
             ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         self.report["events"].append(ev)
@@ -806,7 +808,7 @@ class RuntimePolicy:
             o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
         q_new, p_new = np.asarray(r["quat"], float), np.asarray(r["pos"], float)
-        if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg:
+        if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg and not self._read_yaw(r):
             q_new, p_new = o.quat.copy(), keep_centre(o, r["pos"], r["quat"])
             ev["why"] = (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg: prior orientation kept)"
             prov.stats["turn_kept"] = prov.stats.get("turn_kept", 0) + 1
@@ -826,7 +828,10 @@ class RuntimePolicy:
             if kind == "place":
                 hint["rehover_dz"] = self.cfg.rehover_place_dz
             return hint
-        return {label: (o.pos.copy(), o.quat.copy())}
+        out = {label: (o.pos.copy(), o.quat.copy())}
+        if r.get("yaw_source"):
+            out["yaw_source"] = r["yaw_source"]
+        return out
 
     def _explain_vocabulary(self, cands: list, obs0: dict):
         """Set-level explain-away: B1 on frame 0 with each candidate set, scored by found-label share x mean
@@ -1179,11 +1184,18 @@ class RuntimePolicy:
                 return bool(e.get("ok"))
         return False
 
+    @staticmethod
+    def _read_yaw(r: dict) -> bool:
+        """A refine whose yaw perception READ from a feature over the full turn (``yaw_source`` "top_feature":
+        insert_key's keyhole, axis and bulb side; 5.1 hovers 24/25 within 3 deg). Its turn is the measurement, not a
+        fit's slip: the turn guards below do not apply (a flip of B1's mod-180 head yaw is the correction)."""
+        return r.get("yaw_source") == "top_feature"
+
     def _low_iou_turn(self, r: dict) -> bool:
         """A refine whose fit turns the object more than ``refine_turn_check_deg`` at an iou under
-        ``refine_turn_min_iou``: not applied (``RuntimeConfig.refine_turn_min_iou``)."""
+        ``refine_turn_min_iou``: not applied (``RuntimeConfig.refine_turn_min_iou``). A read yaw is exempt."""
         return (float(r.get("turned_deg") or 0) > self.cfg.refine_turn_check_deg
-                and float(r.get("iou") or 0) < self.cfg.refine_turn_min_iou)
+                and float(r.get("iou") or 0) < self.cfg.refine_turn_min_iou and not self._read_yaw(r))
 
     def _place_refine(self, prov, o, r: dict, ev: dict, others, arm: str) -> tuple[bool, dict | None]:
         """PLACE refine under ``cfg.place_confirm`` (a refine that contradicts a confident belief needs a confirming
@@ -1199,7 +1211,7 @@ class RuntimePolicy:
                 agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
             ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
             if agree is not None and agree <= cfg.place_agree_mm and not self._low_iou_turn(r):
-                if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg:
+                if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg or self._read_yaw(r):
                     o.pos, o.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
                 else:
                     o.pos, o.quat = keep_centre(o, r["pos"], r["quat"]), o.quat.copy()
