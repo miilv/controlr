@@ -317,13 +317,17 @@ def arms_from_proprio(st: dict, holding: dict | None = None) -> dict[str, ArmSta
 
 def objects_from_gt(rows: list[dict], assets: AssetDB, step: int = 0, include_clutter: bool = True,
                     meshes: bool = True) -> dict[str, ObjectState]:
-    """``RoboDojoRunner.objects_gt()`` rows -> ObjectState per label (clutter keyed by inst name)."""
+    """``RoboDojoRunner.objects_gt()`` rows -> ObjectState per label (clutter keyed by inst name). An Articulation's
+    row pose is RoboDojo's (its root prim's); the ObjectState gets its asset frame, where the meshes, bboxes and
+    links live (``artroot``: the laptop's base link sits 77 mm off its asset origin)."""
+    from dojo.skills.artroot import row_to_asset
     out = {}
     for r in rows:
         if r.get("pos") is None:
             continue
         if r.get("clutter") and not include_clutter:
             continue
+        r = row_to_asset(r)
         label = r.get("label") or r["inst_name"]
         if label == "camera_stand":
             pass

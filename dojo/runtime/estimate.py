@@ -210,6 +210,7 @@ def estimate_to_layout(task: str, objs: list[dict], template: dict | None = None
         fixed = _fixed_labels(task)
     if meta_fn is None:
         from dojo.simlab.gen_layouts import metadata as meta_fn
+    from dojo.skills.artroot import asset_key, to_root
     by_label = {inst.get("label"): (t, inst) for t, _c, inst in iter_objects(template) if inst.get("label")}
     out: dict = {k: copy.deepcopy(template[k]) for k in FIXTURE_KEYS if k in template}
     have = set()
@@ -217,8 +218,11 @@ def estimate_to_layout(task: str, objs: list[dict], template: dict | None = None
         lab = o["label"]
         t_inst = by_label.get(lab)
         inst = copy.deepcopy(t_inst[1]) if t_inst else {}
+        # the estimate is in the asset frame; RoboDojo poses an Articulation on its root prim (artroot)
+        pos, quat = (to_root(o["pos"], o["quat"], asset_key(o["type"], o["category"], o["category_idx"]))
+                     if o["type"] == "Articulation" else (o["pos"], o["quat"]))
         inst.update({"category": o["category"], "category_idx": int(o["category_idx"]), "label": lab,
-                     "default_pos": [float(v) for v in o["pos"]], "default_ori": [float(v) for v in o["quat"]],
+                     "default_pos": [float(v) for v in pos], "default_ori": [float(v) for v in quat],
                      "scale": [1.0, 1.0, 1.0]})
         meta = meta_fn(o["type"], o["category"], int(o["category_idx"])) or {}
         phys = dict(meta.get("physics") or {})

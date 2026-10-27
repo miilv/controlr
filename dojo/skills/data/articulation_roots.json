@@ -1,0 +1,68 @@
+{
+ "schema": "articulation-roots/1",
+ "generated": "2026-10-27",
+ "checked": 11,
+ "rule": "RoboDojo poses an Articulation (record default_pos/ori, objects_gt) on its PhysicsArticulationRootAPI prim; pos/quat (m, wxyz) = that prim's transform in the asset's default-prim frame (catalogue mesh frame); listed only where it is not the identity (dojo/skills/artroot.py)",
+ "assets": {
+  "Articulation/laptop/00000": {
+   "prim": "/root/E_body_1",
+   "pos": [
+    3.1e-05,
+    -0.077112,
+    0.003522
+   ],
+   "quat": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "Articulation/laptop/00001": {
+   "prim": "/root/E_body_1",
+   "pos": [
+    3.1e-05,
+    -0.077112,
+    0.003522
+   ],
+   "quat": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "Articulation/laptop/00002": {
+   "prim": "/root/E_body_1",
+   "pos": [
+    3.1e-05,
+    -0.077112,
+    0.003522
+   ],
+   "quat": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "Articulation/laptop/00003": {
+   "prim": "/root/E_body_1",
+   "pos": [
+    3.1e-05,
+    -0.077112,
+    0.003522
+   ],
+   "quat": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "notes": {
+  "Articulation/toaster/00002": "root API on /root/root_joint: PhysicsFixedJoint (not Xformable)",
+  "Articulation/toaster/00004": "root API on /root/root_joint: PhysicsFixedJoint (not Xformable)"
+ }
+}
