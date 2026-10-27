@@ -350,3 +350,86 @@ pixels).
   `_not_found` (the search log records it under `rejected_low_conf`), so the agentic stage or a later look can still
   find the object instead of the skill going to a wrong place.
 
+
+## 21. deposit_coin: coin + stand phantoms near a home gripper (PR #158)
+
+- B1 filled the stand's label with a loose fit on a leftover of a bigger object's blob (the piggy bank's edge, sil
+  0.72-1.0), and a scan read moved a confident frame-0 coin 658 mm onto a gripper area.
+- Fixes:
+  - `small_rechoose`: a small single-label fixture fitted loose (sil > `SMALL_RECHOOSE_SIL` 0.6) is re-chosen in the
+    low-contrast pass;
+  - `THIN_CHILD_M`: a thin slot child (the 2 mm coin, edge-on to the head) on an uncertain base (low contrast or
+    re-chosen) is not declared "support slot empty";
+  - `scan.keep_frame0_small`: a scan read that moves a confident frame-0 small-object fit more than `SCAN_MOVE_M`
+    needs agreement (as #92 does for the agent).
+- deposit_coin D0 (5.1): ok 22 -> 29 / 75; the scan case 658 -> 0.3 mm.
+- **Open**, handed to Perception-3: 5 far phantoms, 1 at 96 mm, 5 missed stands, 8 coins missed beside a stand fit
+  5-25 mm off.
+
+## 22. refine: "ok" needs evidence; other resting poses (PR #162)
+
+- Memory: a refine returned ok at iou 0.0 / vis 0.0 (conveyor 100004 s260). The edge fallback took an outline fit
+  with nothing of the object in view.
+- An edge fit counts only at `EDGE_MIN_VIS` 0.05 or more.
+- A prior whose resting shape fits less than `EMPTY_FIT_IOU` 0.2 of an object in view tries the asset's other resting
+  shapes; one is taken at iou >= `OTHER_POSE_MIN_IOU` 0.6.
+- val_refine (498 rows): 0 changes. Memory's two belt riders were not recovered: their cause was xy (§26).
+
+## 23. J1: needs_look carries an executable pose (PR #164)
+
+- Mikhail's D-C7 / D-C8: the agent's needs_look requests had no pose the J1 driver could execute.
+- `j1.executable_looks` adds a flange pose (`default_look` toward the target), else takes B1's look pose. Unit test.
+
+## 24. fasten_screws: the bolt's place refine (diagnosis, no PR)
+
+- At the place hover the held nut sits between the wrist camera and the bolt, so the bolt is hidden: "perception not
+  ok" is right. A bolt-top fit cannot see it either.
+- Needs a skill-side look at the bolt before the nut is picked.
+
+## 25. play_Xylophone: the mallet out of its slot (PR #174)
+
+- A slot child whose slot the views see empty is searched as a loose object anywhere on the table (on the head
+  foreground no chosen object explains). Multi-label slot lists and thin children are skipped: the first version
+  found a coin phantom 700 mm away.
+- Xylophone D0 (5.1, 25 layouts): mallet missed 8 -> 6 (100010 2.1 mm and 100020 2.9 mm, both off the stand).
+  Coin D0: identical.
+- **Open (cause 2):** all 6 remaining misses have the mallet stand 20-90 deg off in yaw. The mallet sits 93 mm from the
+  stand's origin, so its slot lands off the mallet. Next: an assembly-scored yaw sweep of the stand.
+
+## 26. refine: a caller's search radius; the empty hand (PRs #183, #184)
+
+- Memory's belt riders: the head-view track is 3-6 cm off at the end of the approach.
+- `refine(search_radius=m)`: when the prior's own fit is not ok, shifted priors on a 20 mm grid (a disc), in every
+  resting shape, each scored with its own local colour model; the best 3 are refined in full.
+  - One colour model over the whole area failed: at a close hover the area fills the frame and leaves no table to
+    sample.
+- val_refine (D0 5.1, neighbours given, n = 334, priors ±50 mm per axis):
+
+  | | ok | correct (<= 10 mm) | false ok (> 15 mm) |
+  |---|---|---|---|
+  | no radius | 196 | 187 | 6 |
+  | radius 70 mm | 327 | 315 | 6 |
+
+  - The search ran on 125 rows: 124 correct, 0 false, at 2.3 s median.
+  - No radius: 0 of 334 rows change vs main.
+- `empty_hand`: the strict-tier robot mask reads a gripper commanded below 0.5 as a grip (jaw sweep + a 65 mm held box).
+  Memory's 0.444 pre-shape hid 197k of 307k wrist pixels. Opt-in; BACKLOG has the landmine for B1 / looks / held_look.
+- Runtime fields (#184, default off): `refine_search_radius`, `refine_empty_hand`.
+  - About 1 search per episode (breadth r2: 0.94 of 4.4 pick / place refines are perception-not-ok).
+  - Integration-3's `submit_v3` A/Bs them.
+- Memory's two frames are still not recovered (riders huge and cut by the image edge at that hover).
+
+## 27. organize_table: a late stage moved a scan-correct alarm (PR #188)
+
+- #92's arbitration does run at agentic2. The gap was the pairing (within 150 mm only): the agent moved the alarm
+  262 mm onto the drawer (+115 mm), unpaired. In that frame the arm hid B1's pose, so it could not be scored either.
+- Fix: the only object of a kind on both sides is paired at any distance. Such a far move is reverted only when no view
+  can score B1's pose and the agent's explains nothing (loss > 0.8).
+- No loss comparison for far pairs: the first version reverted 8 right deposit_coin corrections (B1's stand phantoms
+  out-scored the agent's right 10-px stands) and 5 better laptop moves.
+- Replays (no LLM), 619 agentic calls on compute5-8: 56 far pairs, 1 reverted (organize 100003: alarm 261 -> 0.7 mm).
+
+## 28. Reviews
+
+- #152, #155, #157, #159, #166: approved.
+- #170: post-merge look, nothing off.
