@@ -260,7 +260,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     if belief_drop:
         pe = getattr(prov, "events", None) or []
         rec["belief_drop"] = {"rule": belief_drop, "provider": getattr(prov, "stats", None),
-                              "events": [e for e in pe if e.get("kind") in ("belief_drop", "release_kept")][-40:]}
+                              "events": [e for e in pe if e.get("kind") in ("belief_drop", "release_kept", "release_remeasured",
+                                                                            "release_resynced")][-40:]}
     if verifier is not None:
         rec["verify"] = {**sk.vstats, **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in verifier.stats.items()}}
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -701,7 +702,7 @@ def main(argv=None) -> None:
                         "spot; dojo.skills.heldsim; dev)")
     r.add_argument("--confirm-pose", action="store_true",
                    help="mode B: --freeze-touched + the provider's confirm_pose answered from GT (dev)")
-    r.add_argument("--belief-drop", choices=("runtime", "fixtures"), default=None,
+    r.add_argument("--belief-drop", choices=("runtime", "fixtures", "fixtures_look"), default=None,
                    help="mode B: a released object rests where the runtime belief's drop rule puts it (runtime: table and "
                         "movable tops; fixtures: + static fixtures' meshes) unless the post-place re-measure sees it "
                         "(dojo.skills.heldsim; dev)")

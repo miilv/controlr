@@ -611,6 +611,18 @@ def rests_stably(o, R, margin: float = 0.25) -> bool:
     return bool(np.all(np.abs(cw[:2] - mid) <= half * (1 - margin)) and np.all(half > 0.004) and wide)
 
 
+def lies_on_table(o, tol: float = 0.004, max_tilt_deg: float = 10.0) -> bool:
+    """Does ``o`` lie on the table now with its long axis level (a test tube as spawned: on its flange and its tip)?
+    It already rests that way, so it can be put down the same way (``place_oriented(as_is_lying=True)``)."""
+    if o.asset.mesh is None:
+        return False
+    V = np.asarray(o.asset.mesh[0], float)
+    W = V @ o.R.T + o.pos
+    k = int(np.argmax(o.asset.extents))
+    return (abs(float(o.R[2, k])) <= math.sin(math.radians(max_tilt_deg))
+            and float(W[:, 2].min()) - TABLE_Z <= tol)
+
+
 def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, at=None,
               transfer_kw=None):
     """``plan_transfer`` with the object virtually at pose ``at`` (4x4; None = where it is now; both arms
@@ -1023,7 +1035,7 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
                    max_spots: int = 3, relay_near=(0.0, -0.28), air_handover: bool = True,
-                   transfer_kw: dict | None = None, spot_avoid=()) -> SkillResult:
+                   transfer_kw: dict | None = None, spot_avoid=(), as_is_lying: bool = False) -> SkillResult:
     """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
     the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
     through free table spots, the shortest that plans end to end:
@@ -1037,7 +1049,9 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
 
     Every leg picks its arm; all legs are planned before the first moves, and each later leg is
     re-planned from the world as it is then (same intermediate pose). ``transfer_kw``: extra ``plan_transfer``
-    arguments for every leg (grasp tilts, lift height). ``spot_avoid``: fixtures the relay spots must clear (``free_spots``)."""
+    arguments for every leg (grasp tilts, lift height). ``spot_avoid``: fixtures the relay spots must clear (``free_spots``).
+    ``as_is_lying``: an object lying on the table (``lies_on_table``) may be put down as it is on a relay spot although
+    its lowest points are a line (a tube: ``rests_stably`` wants a footprint)."""
     sk.refresh()
     tight = (tol_xy, tol_tilt, tol_z)
     tkw = dict(transfer_kw or {})
@@ -1054,7 +1068,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     chains = []
     # as it is only when it stands by itself (a slice standing in a rack, 12 mm thick under a centre of mass 58 mm up,
     # does not)
-    as_is_ok = rests_stably(o, R_now)
+    as_is_ok = rests_stably(o, R_now) or (as_is_lying and lies_on_table(o))
     for sp in spots:
         if stable:
             chains.append([("target", sp)])

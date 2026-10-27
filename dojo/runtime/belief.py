@@ -323,6 +323,11 @@ class RuntimeProvider:
         self.track_new_conf = 0.5               # a new object needs at least this B1 confidence
         self.track_max_speed = 0.006            # m / step: the fastest rider we expect (belts: 4 mm / step)
         self.track_outlier_m = 0.015            # a read this far off its track's line is dropped from the fit
+        self.track_lost_reads = 6               # an unmatched track is dropped after this many reads (arms still)
+        self._missed: dict = {}                 # label -> reads in a row without a match
+        self._q_last = None                     # arm joints at the last read (is the robot still?)
+        self.track_vel_reads = 4                # a track's velocity counts toward the belt's after this many reads
+        self.track_vel_span = 16                # ... spanning this many steps
         self._tracks: dict = {}                 # label -> [(step, xy)] reads
         self._id_votes: dict = {}               # label -> [(asset key, confidence)] of its latest reads
         self.track_id_window = 4
@@ -516,8 +521,17 @@ class RuntimeProvider:
         return r.get("moving")
 
     def belt_velocity(self) -> np.ndarray:
-        """Median fitted velocity (m / step, world xy) of the objects tracked as moving; zeros when none."""
-        v = [vv for vv in self.velocity.values() if float(np.linalg.norm(vv)) > self.track_min_speed]
+        """Median fitted velocity (m / step, world xy) of the objects tracked as moving, from tracks long enough to trust
+        (>= ``track_vel_reads`` reads over >= ``track_vel_span`` steps) and not faster than ``track_max_speed`` (a track
+        that swapped riders or took a phantom); zeros when none. Genuine-5.1 100005: an early 3-read fit gave
+        (7.95, -10.69) mm / step for a 4.0 mm / step belt, and the intercept missed."""
+        v = []
+        for lab, vv in self.velocity.items():
+            tr = self._tracks.get(lab) or []
+            sp = float(np.linalg.norm(vv))
+            if (self.track_min_speed < sp <= self.track_max_speed and len(tr) >= self.track_vel_reads
+                    and tr[-1][0] - tr[0][0] >= self.track_vel_span):
+                v.append(vv)
         return np.median(np.array(v), axis=0) if v else np.zeros(2)
 
     def _track(self, obs: dict) -> None:
@@ -563,8 +577,24 @@ class RuntimeProvider:
         # fuses frame 0 as if nothing moved, and fills a label from frame 0's reading of a rider that had moved on: a
         # ghost of the same asset is "the next one" for a matching skill): dropped after ``track_confirm_reads``
         matched = {bl[i].label for i, _ in pairs}
+        # a track no read has matched for ``track_lost_reads`` reads while our arms held still is a rider we lost (its
+        # re-acquired self is a newcomer by then): dropped, or it would be a ghost "next one" of its identity
+        idle = self._q_last is not None and all(float(np.abs(self.belief.q[a] - self._q_last[a]).max()) < 0.01 for a in ARMS)
+        self._q_last = {a: self.belief.q[a].copy() for a in ARMS}
         for o in bl:
-            if o.label in matched or o.label in self._tracks:
+            if o.label in matched:
+                self._missed.pop(o.label, None)
+            elif o.label in self._tracks:
+                n = self._missed[o.label] = self._missed.get(o.label, 0) + 1
+                if idle and n >= self.track_lost_reads and not self.belief.attached:
+                    del self.belief.objects[o.label]
+                    self._tracks.pop(o.label, None)
+                    self.velocity.pop(o.label, None)
+                    self._fit.pop(o.label, None)
+                    self.events.append({"kind": "track_lost", "label": o.label, "step": step, "reads": n,
+                                        "pos": [round(float(v), 3) for v in o.pos[:2]]})
+        for o in bl:
+            if o.label in matched or o.label in self._tracks or o.label not in self.belief.objects:
                 continue
             n = self._unconfirmed[o.label] = self._unconfirmed.get(o.label, 0) + 1
             if n >= self.track_confirm_reads:
@@ -637,21 +667,37 @@ class RuntimeProvider:
         if o.asset is not None and o.asset.key == e.asset.key:
             o.quat = np.asarray(e.quat, float).copy()
 
-    def _predicted_xy(self, o, step: int) -> np.ndarray:
+    def _rider_velocity(self, lab: str, vb=None) -> np.ndarray | None:
+        """The velocity a tracked object moves with: zero when its own long track says it is at rest, else the belt's
+        (every rider moves with the belt, and one rider's short or swapped track is noisy), else its own fit."""
+        vo = self.velocity.get(lab)
+        tr = self._tracks.get(lab) or []
+        if vo is not None and float(np.linalg.norm(vo)) <= self.track_min_speed and len(tr) >= self.track_vel_reads:
+            return np.zeros(2)
+        vb = self.belt_velocity() if vb is None else vb
+        if float(np.linalg.norm(vb)) > self.track_min_speed:
+            return vb
+        return vo
+
+    def _predicted_xy(self, o, step: int, vb=None) -> np.ndarray:
+        v = self._rider_velocity(o.label, vb)
         f = self._fit.get(o.label)
-        v = self.velocity.get(o.label)
-        if f is None or v is None:
-            tr = self._tracks.get(o.label)
-            return tr[-1][1].copy() if tr else o.pos[:2].copy()     # no fit yet: the latest reading
-        return f[1] + v * (step - f[0])
+        tr = self._tracks.get(o.label)
+        if f is not None and v is not None:
+            return f[1] + v * (step - f[0])                      # the track's smoothed position, moved on
+        if tr:                                                   # no fit yet: the latest reading, moved on
+            return tr[-1][1] + (v if v is not None else 0.0) * (step - tr[-1][0])
+        return o.pos[:2].copy()
 
     def _predict(self, step: int) -> None:
         held = set(self.belief.held_labels())
-        for lab, v in self.velocity.items():
+        vb = self.belt_velocity()
+        for lab in list(self._tracks):
             o = self.belief.objects.get(lab)
-            if o is None or lab in held or float(np.linalg.norm(v)) <= self.track_min_speed:
+            v = self._rider_velocity(lab, vb)
+            if o is None or lab in held or v is None or float(np.linalg.norm(v)) <= self.track_min_speed:
                 continue
-            o.pos = np.r_[self._predicted_xy(o, step), o.pos[2]]
+            o.pos = np.r_[self._predicted_xy(o, step, vb), o.pos[2]]
             o.source = "tracked"
 
     def _held_check(self, obs: dict) -> None:
@@ -755,7 +801,9 @@ class RuntimeProvider:
         # the wrist just measured these; the just-released ones are judged by their post-place check (and the place
         # check), never "fixed" from a low head check (5.1: a perfect 3-stack re-estimated from iou 0.09-0.32)
         objs = [o for o in self.belief.movable() if o.label not in measured and o.label not in set(released or ())]
-        chk = self.checker.check(obs, objs)
+        # nothing left to check (a one-object task right after its release: breadth3 deposit_coin / insert_key crashed
+        # the perception service with an empty z-buffer stack)
+        chk = self.checker.check(obs, objs) if objs else {}
         bad = {}
         for lab, c in chk.items():
             head = c.get("head") or {}

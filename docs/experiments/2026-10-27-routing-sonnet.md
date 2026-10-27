@@ -163,9 +163,28 @@ Per config:
 
 | config | Sonnet 5.5 (final) | Sol 6.1 (E) |
 |---|---|---|
-| fill_pen_holder | 3/3 | **0/3** (code instead of a skill) |
+| fill_pen_holder | 3/3 | **0/3** (code instead of a skill); **3/3 with SKILL_DOCS v10** (below) |
 | the other 30 configs | 3/3 each (toy 10/10) | 3/3 each |
 | total | 100/100 | 90/93 |
+
+**Follow-up: SKILL_DOCS v10** (lead-approved; journal 2026-10-27-dojo-official §2.1; v9 is #103's `fold_garment` entry).
+- `fill_container`'s doc adds: an instruction to hold the holder with one hand, fill it with the other and then put
+  it back down is judged by the end state only (the objects in it, the holder upright, both grippers open). This
+  skill fills it standing, without holding it, which is true of the code: it carries an out-of-reach holder upright
+  within reach and sets it down. The checker has no hold check.
+- Mirrored into `skills/registry.yaml`.
+- Same 3 items (fill_pen_holder 100000-02, scene v4):
+
+| model | docs v8 (before) | docs v8 + the sentence (after) |
+|---|---|---|
+| Sol 6.1 | 0/3 | **3/3** |
+| Sonnet 5.5 | 3/3 | 3/3 |
+
+- Calls: 6 (run F). It ran before #103 merged; v10 = that + #103's `fold_garment` entry.
+- **Regression check** (run G, docs v10): pick_from_conveyor_by_image 100000-02 is the one config where a held
+  container IS judged (the basket lifted ≥ 80 mm). Sol 3/3 and Sonnet 3/3 still pick
+  `pick_into_held(..., picture=photo)`, as on docs v8: no regression (6 calls).
+- **With v10, Sol routes all 31 configs right (93/93, combining E, F and G).**
 
 ## Failure modes and fixes
 
@@ -227,6 +246,7 @@ Planner code was not changed.
   earlier runs remain identifiable.
 - **`SKILL_DOCS_VERSION`: 7 -> 8.** Only the `stack_on_pegs` text changed. `manual_v4` and the appendices are
   unchanged, but manual_v4 renders the v8 skill list from now on (as with v5-v7).
+- **`SKILL_DOCS_VERSION`: 9 -> 10** (follow-up; v9 = #103's `fold_garment`). The `fill_container` sentence above, mirrored into the registry; journal §2.1.
 - **Mirrored into the registry.** The same sentence is in `skills/registry.yaml`'s `stack_on_pegs` doc (the ilia
   entries below the J4 marker). An agent with `AgentConfig.registry` set, and the J4 import, therefore route the
   stacking toy as SKILL_DOCS v8 does.
@@ -239,12 +259,11 @@ Weights: Memory 3.33 %, Precision / Long-Horizon / Open 2.5 %, Generalization 0.
 
 | # | gap | tasks | points at stake | next |
 |---|---|---|---|---|
-| 1 | the default model Sol routes fill_pen_holder to code 3/3: it takes "hold the pen holder with one hand" literally; the checker judges only the end state | fill_pen_holder (L) | ≤ 2.5 × the skill's score (G3 mode A 0.18 mean, skills-8) | a §3 pattern line in a new `manual_v5`: "Hold <a holder> with one hand, put <things> into it with the other": only the end state is judged, and the filling skill does it. Or say so in the `fill_container` doc (SKILL_DOCS v9). Then 3 Sol + 3 Sonnet calls before / after |
-| 2 | fold_clothes: no skill, no planner rule | fold_clothes (+ `_random`) | ≤ 1.67 | a fold skill (Generalization-New's lane) |
-| 3 | sweep_blocks: no skill, no planner rule | sweep_blocks (+ `_random`) | ≤ 1.67 (best entry 20) | a tool-sweep skill |
-| 4 | no laptop skill (close the lid, stand it in the rack); the planner banks the headphones' 20 | store_laptop_and_headphones (+ `_random`) | ≤ 1.33 (80 of 100 × 1.67) | a laptop skill; the agent writes code meanwhile |
-| 5 | wrong asset captions ("smartphone" rack, bread, coin) | hang_mugs (G), make_toast (G), deposit_coin (P) | small with v4 for Sonnet (6/6); unmeasured for other models | caption sanity check in `scene.caption` |
-| 6 | `robo.obj()` has no frames: code cannot look one up | the frame-skill tasks when code is chosen | small | add `frames` to `Obj` |
+| 1 | fold_clothes: no skill, no planner rule | fold_clothes (+ `_random`) | ≤ 1.67 | a fold skill (Generalization-New's lane) |
+| 2 | sweep_blocks: no skill, no planner rule | sweep_blocks (+ `_random`) | ≤ 1.67 (best entry 20) | a tool-sweep skill |
+| 3 | no laptop skill (close the lid, stand it in the rack); the planner banks the headphones' 20 | store_laptop_and_headphones (+ `_random`) | ≤ 1.33 (80 of 100 × 1.67) | a laptop skill; the agent writes code meanwhile |
+| 4 | wrong asset captions ("smartphone" rack, bread, coin) | hang_mugs (G), make_toast (G), deposit_coin (P) | small with v4 for Sonnet (6/6); unmeasured for other models | caption sanity check in `scene.caption` |
+| 5 | `robo.obj()` has no frames: code cannot look one up | the frame-skill tasks when code is chosen | small | add `frames` to `Obj` |
 
 ## Conclusions (given n)
 
@@ -257,7 +276,7 @@ Weights: Memory 3.33 %, Precision / Long-Horizon / Open 2.5 %, Generalization 0.
   on 10 paired layouts (6 -> 10). The scene change is shown on 27 paired items (8 -> 25 before the doc fix), with
   66 items of the other configs as a regression check.
 - **The default model Sol 6.1 routes 30/31 configs right** (90/93, 0 harmful). Its one miss is the pen holder's
-  "hold it with one hand" wording, which Sonnet reads through.
+  "hold it with one hand" wording, which Sonnet reads through. SKILL_DOCS v10 fixes it: 0/3 -> 3/3, with no change on the conveyor-basket config (6/6).
 - The rule planner is right wherever a skill exists (25/25 configs). What it lacks, the agent's code path also
   lacks: fold, sweep and the laptop.
 - This is routing, not success: whether the chosen skill succeeds in mode B is the skill streams' and the e2e
@@ -280,4 +299,4 @@ uv run python -m dojo.agent.grounding score runs/official-routing/<run> --md
 
 Datasets on compute3: `~/dojo-data/official/routing/dataset_v{2,3,4m}.jsonl` and `dataset_v4m_toy10.jsonl`. Runs
 are local, under `runs/official-routing/`: `runA_v2_manual4_docs7`, `runB_v4_manual4_docs7`, `runB2_toy10_v4_docs7`,
-`runC_toy10_v4_docs8`, `runD_v4_docs8_rest`, `runE_sol_v4_docs8`.
+`runC_toy10_v4_docs8`, `runD_v4_docs8_rest`, `runE_sol_v4_docs8`, `runF_fillpen_v9`, `runG_conveyor_v10` (6 calls each; 308 in all).

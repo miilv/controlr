@@ -1609,7 +1609,8 @@ class Skills:
     def plan_transfer(self, label: str, targets: list, arms=None, ignore=(), yaw_sym: int = 1, lift: float = 0.08,
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
                       q_start: dict | None = None, max_pick_tilt: float = 50.0, box_tilts=(0.0, 25.0, -25.0),
-                      lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None, yaw_about=None):
+                      lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None, yaw_about=None,
+                      place_reach: float | None = None):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
@@ -1627,6 +1628,7 @@ class Skills:
         ``pair_ok(grasp, T_tcp_obj, T_obj, T_tcp) -> bool``: an extra test of each screened grasp-place pair.
         ``yaw_about``: the point (object frame) the ``yaw_sym`` turns are about, instead of the bbox centre (a star-shaped
         ring's hole sits 2.9 mm off its bbox centre: turned about the centre, 3 of 4 targets missed the peg by 4-6 mm).
+        ``place_reach``: the farthest place TCP from the placing arm's base in the plane (default ``PLACE_REACH``).
         Returns (PickPlan, PlacePlan) or a SkillResult. The PickPlan's ``repair(q_start)`` re-plans the pair from the
         world as it is then, same arm, same arguments (``execute_pick``, when a refine leaves the planned grasp
         infeasible)."""
@@ -1635,7 +1637,8 @@ class Skills:
         call = dict(targets=list(targets), ignore=ignore, yaw_sym=yaw_sym, lift=lift, place_kw=place_kw,
                     pick_kw=pick_kw, max_full=max_full, grasps=grasps, max_pick_tilt=max_pick_tilt,
                     box_tilts=box_tilts, lift_to_pre=lift_to_pre, screen_fingers_out=screen_fingers_out,
-                    pair_ok=pair_ok, yaw_about=yaw_about)
+                    pair_ok=pair_ok, yaw_about=yaw_about, place_reach=place_reach)
+        reach = PLACE_REACH if place_reach is None else float(place_reach)
         place_kw = dict(place_kw or {})
         pick_kw = dict(pick_kw or {})
         arms = list(arms) if arms else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
@@ -1701,7 +1704,7 @@ class Skills:
                     T_tcp = T_obj @ inv_T(T_tcp_obj)
                     if screen_fingers_out and fo_ref is not None:
                         T_tcp[2, 3] += self.fingers_raise(T_tcp, fo_ref)
-                    if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > PLACE_REACH:
+                    if float(np.linalg.norm(T_tcp[:2, 3] - self.kin.base(a)[:2, 3])) > reach:
                         continue
                     if pair_ok is not None and not pair_ok(g, T_tcp_obj, T_obj, T_tcp):
                         continue

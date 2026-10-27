@@ -141,11 +141,12 @@
 - [x] ~~**dojo agent: routing of the default model is unmeasured on the new skills**~~ — Sol 6.1 (`AgentConfig.model`)
   on the same 93 items, scene v4 + docs v8: 90/93, 0 harmful; insert_tubes 3/3 `insert_each`
   ([routing report](experiments/2026-10-27-routing-sonnet.md)).
-- [ ] **dojo agent: Sol routes fill_pen_holder to code (0/3).** It reads "Hold the pen holder with one hand, place all
-  pens into it with the other hand" literally. The checker judges only the end state (pens tip down in the holder,
-  holder upright, home), which `fill_container` does. Next: a pattern line in a `manual_v5` §3 ("Hold <a holder>
-  with one hand, put <things> into it with the other": only the end state is judged), or the same in the
-  `fill_container` doc (SKILL_DOCS v9). Then 3 Sol + 3 Sonnet calls before / after.
+- [x] ~~**dojo agent: Sol routes fill_pen_holder to code (0/3).** It reads "Hold the pen holder with one hand, place
+  all pens into it with the other hand" literally; the checker judges only the end state~~ — SKILL_DOCS v10:
+  `fill_container`'s doc says the hold is judged by the end state and the skill fills the holder standing. Sol
+  0/3 -> 3/3, Sonnet 3/3 -> 3/3 (journal 2026-10-27-dojo-official §2.1).
+- [x] ~~**dojo agent: check pick_from_conveyor_by_image routing under SKILL_DOCS v10**~~ (the basket must stay lifted
+  there) — Sol 3/3, Sonnet 3/3 `pick_into_held`, unchanged from docs v8 (journal 2026-10-27-dojo-official §2.1).
 - [ ] **dojo skills: no laptop skill** (close the lid, stand it in the vertical rack): store_laptop_and_headphones is
   code for the agent; the rule planner runs `hang_on_hooks` for the headphones only (the paired 20 of 100).
 - [ ] **dojo agent: perception is the bottleneck in mode B** (Phase 2, 2026-10-25): stack_bowls 0/6 and build_tower
@@ -372,7 +373,9 @@
   the held object 3 mm over the strip. Needs that measurement (a held-object view at the hover, about 0.3 mm), then a
   short spiral. The contact-probing tail (`Skills._guarded_tail`) is in place for mode B and is harmless (the place
   completes, nothing drops).
-- [ ] **dojo skills: insert_tubes, the second tube from the same side.** After the first tube stands, the same arm often has no plan into the remaining holes of its half of the rack (no grasp-place pairs, see the journal), and the relay fails too.
+- [x] ~~**dojo skills: insert_tubes, the second tube from the same side.** After the first tube stands, the same arm often has no plan into the remaining holes of its half of the rack (no grasp-place pairs, see the journal), and the relay fails too.~~ Fixed (journal 2026-10-27-dojo-precision.md §4): an as-is relay of the lying tube (`place_oriented(as_is_lying=)`), one-arm tubes first, places within 0.56 m, off-CoM plans after the relay; G3 mode A 16 -> 24/25.
+- [ ] **dojo skills: insert_tubes in mode B runs out of steps on relays.** A relay leg costs ~110 steps (put-down + re-pick); G3 mode B relay episodes end at 471-485 of 500, and proxy B spends ~440 on three direct tubes. Levers: a cheaper put-down (lower pre-place, faster descent), fewer mode-B refine hovers per pick, or a hole assignment that never needs a relay.
+- [ ] **dojo skills: the right arm into the rack's far-left front hole** (0.562-0.567 m from its base) is held 46-56 mm off its command and misses (0/4), while the left arm's mirror place at 0.596 m goes in (2/2): `EACH_REACH` 0.56 m avoids it; the asymmetry is not understood.
 - [ ] **dojo: hang_mugs judges only the FIRST frame on each side** (`is_axis_aligned` takes `fp_poses[0]` of the mug's
   `handle` and of the rack's `handle_support_point`; journal/2026-10-26-dojo-skills7.md).
   - Only the hooks oriented like the rack's hook 0 can score: 4 of 6, the ±x arms at two heights. The ±y middle arms

@@ -115,7 +115,10 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "Puts long objects (pens, sticks, tubes) one by one into an upright holder: each is held leading end down "
         "just over the holder's opening, at its free spot, the hand kept out of the holder, and let go so it drops "
         "in (widest first; one that lands on the table is tried again). A holder that is out of comfortable reach "
-        "is first carried (upright) to where both arms reach it and put back down; grippers opened after each."),
+        "is first carried (upright) to where both arms reach it and put back down; grippers opened after each. An "
+        "instruction to hold the holder with one hand, fill it with the other and then put it back down is judged "
+        "by the end state only (the objects in it, the holder upright, both grippers open): this skill fills it "
+        "standing, without holding it, and that is the end state such an instruction asks for."),
     "arrange": (
         'arrange(steps: [["place" | "push", obj_id, support_id], ...])',
         'Does every step: "place" = put obj upright on top of support; "push" = slide obj (too wide to grasp) onto '
@@ -143,7 +146,7 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "on the opposite chest (one arm each), then both hem corners are pinched together and laid on the shoulders; "
         "grippers opened after each fold. For 'fold the clothes'."),
 }
-SKILL_DOCS_VERSION = 9  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 10  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
 #                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
@@ -151,6 +154,8 @@ SKILL_DOCS_VERSION = 9  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + h
 #                        8: stack_on_pegs says which group fits which peg (most pieces -> highest peg; routing 2026-10-27:
 #                           with the peg heights in scene v4 and doc v7, Sonnet mapped groups by asset index on 2/10)
 #                        9: + fold_garment (gennew)
+#                        10: fill_container: "hold the holder with one hand, fill it with the other, put it back down" is
+#                           judged by the end state; the skill fills it standing (routing 2026-10-27: Sol wrote code 3/3)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

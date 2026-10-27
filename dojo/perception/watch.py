@@ -156,6 +156,54 @@ def _read_cells(images, cams, rmasks, region: dict) -> list[dict]:
     return out
 
 
+GONE_FG = 0.35             # a source spot whose own pixels are under this share foreground: the object left it
+BASE_MIN_FG = 0.5          # ... if it read at least this at the first read (else its start pose is off: unreadable)
+SOURCE_MIN_PX = 30         # fewer visible pixels (our robot in front): the spot cannot be read
+
+
+def read_sources(frame: dict, cams: dict, sources: list[dict], bgs, cfg) -> list[dict]:
+    """Per source object (its episode-start pose: {"asset", "label", "pos", "quat"}), is it still where it was? The
+    share of its own head-view silhouette (pixels where it is the front-most source, our robot and unknown pixels
+    excluded) that is still foreground. An object a scripted actor took away leaves background behind (an arm in front
+    of it reads as foreground: "still there", never a false departure). No inverse layout: a moved object is outside
+    every generator region, so the estimate never proposes it in its new place."""
+    from .cameras import pose_to_T
+    from .inverse_layout import shape_models
+    from .render import gl
+    from .segment import segment_views
+
+    v = segment_views({"cam_head": frame["images"]["cam_head"]}, {"cam_head": cams["cam_head"]},
+                      {k: np.asarray(x) for k, x in frame["state"].items()}, bgs or {}, thr=getattr(cfg, "fg_thr", 18.0))["cam_head"]
+    g = gl()
+    Ts, sms = [], []
+    for o in sources:
+        try:
+            sms.append(shape_models(o["asset"])[0])
+        except Exception:  # noqa: BLE001 (not in the catalogue)
+            sms.append(None)
+        Ts.append(pose_to_T(np.asarray(o["pos"], float), np.asarray(o.get("quat") or [1, 0, 0, 0], float)))
+    if g is not None:
+        depth = [np.full(v.fg.shape, np.inf) if sm is None else
+                 np.where((d := g.render(v.cam, [(sm.key, sm.asset.Vg, sm.asset.Fg, T)], depth=True)) > 0, d, np.inf)
+                 for sm, T in zip(sms, Ts)]
+        front = np.argmin(np.stack(depth), axis=0) if depth else None
+        has = np.isfinite(np.stack(depth)).any(axis=0) if depth else None
+    # our robot's pixels are unreadable; a shadow on an empty spot (the demonstrator's arm above it) is not the object:
+    # ``fg`` already excludes shadow-like pixels, so they count as background here
+    ok_px = v.robot == 0
+    out = []
+    for i, (o, sm, T) in enumerate(zip(sources, sms, Ts)):
+        if sm is None:
+            out.append({"asset": o["asset"], "label": o.get("label"), "fg": None, "n_px": 0})
+            continue
+        own = (has & (front == i)) if g is not None else sm.sil(v.cam, T).astype(bool)
+        m = own & ok_px
+        n = int(m.sum())
+        fgf = float((v.fg.astype(bool) & m).sum() / n) if n else None
+        out.append({"asset": o["asset"], "label": o.get("label"), "fg": None if fgf is None else round(fgf, 3), "n_px": n})
+    return out
+
+
 def _read_container(frame, cams, region: dict, vocabulary: str, bgs, cfg) -> tuple[list, list]:
     from .inverse_layout import estimate
 
@@ -177,6 +225,9 @@ def _read_container(frame, cams, region: dict, vocabulary: str, bgs, cfg) -> tup
 
 
 def watch_read(frame: dict, region: dict, vocabulary: str | None = None, bgs=None, cfg=None, prior: dict | None = None) -> dict:
+    """Container regions with ``sources`` (every mover's episode-start pose) read departures (``read_sources``): the
+    full-scene estimate per read took 23.7 s and never saw an object inside the demonstrator's basket (a moved object is
+    outside every generator region; percrnd watch sequences 100002: 0 of 5 reads with objects inside)."""
     from .cameras import cameras_from_state
 
     t0 = time.time()
@@ -202,13 +253,37 @@ def watch_read(frame: dict, region: dict, vocabulary: str | None = None, bgs=Non
         ys = np.linspace(poly[:, 1].min(), poly[:, 1].max(), 8)
         pts = np.array([[x, y, zt] for x in xs for y in ys if inside_polygon((x, y), poly)])
         out["visible_frac"] = round(_visible_frac(cams, rmasks, pts), 3) if len(pts) else 0.0
-        out["inside"], out["outside"] = _read_container(frame, cams, region, vocabulary, bgs, cfg)
+        if region.get("sources"):
+            # what left its place: the demonstrator moves one object at a time into its container, so the order of
+            # departures is the order of arrivals; a departure is final (the arm in front of an empty spot reads as
+            # "still there", so a departed object stays departed)
+            src = read_sources(frame, cams, region["sources"], bgs, cfg)
+            gone = {e["label"] for e in (prior or {}).get("gone") or []}
+            # each spot's own baseline: the first read where it was readable, or the source's own episode-start fit
+            # confidence (``conf``: the demonstrator may have taken it before the first read). A source whose start
+            # pose is off shows little foreground from the start; it is not "gone", it is unreadable (< BASE_MIN_FG)
+            base = dict((prior or {}).get("src_base") or {})
+            conf0 = {o.get("label"): float(o.get("conf", 0.0)) for o in region["sources"]}
+            for e in src:
+                if e["label"] not in base and e["fg"] is not None and e["n_px"] >= SOURCE_MIN_PX:
+                    base[e["label"]] = max(e["fg"], conf0.get(e["label"], 0.0))
+            out["src_base"] = base
+            out["sources"] = src
+            out["gone"] = [{"asset": e["asset"], "label": e["label"]} for e in src
+                           if e["label"] in gone or (e["fg"] is not None and e["n_px"] >= SOURCE_MIN_PX
+                                                     and base.get(e["label"], 0.0) >= BASE_MIN_FG
+                                                     and e["fg"] < min(GONE_FG, 0.5 * base[e["label"]]))]
+            out["inside"] = [{"asset": e["asset"], "label": e["label"], "pos": None, "conf": 1.0} for e in out["gone"]]
+            out["outside"] = []
+        else:
+            out["inside"], out["outside"] = _read_container(frame, cams, region, vocabulary, bgs, cfg)
         if prior and prior.get("inside") is not None:
             prev = {e["asset"]: e for e in prior["inside"]}
             cur = {e["asset"]: e for e in out["inside"]}
             out["new"] = [e for k, e in cur.items() if k not in prev]
             out["stable_vs_prior"] = set(cur) == set(prev) and all(
-                math.dist(cur[k]["pos"], prev[k]["pos"]) <= STABLE_M for k in cur)
+                cur[k]["pos"] is None or prev[k]["pos"] is None or math.dist(cur[k]["pos"], prev[k]["pos"]) <= STABLE_M
+                for k in cur)
     out.setdefault("new", [])
     out.setdefault("stable_vs_prior", False)
     out["occluded"] = out["visible_frac"] < OCCLUDED_BELOW
