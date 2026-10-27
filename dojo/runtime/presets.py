@@ -12,6 +12,10 @@ journal. The code defaults of ``RuntimeConfig`` stay as they are (rule 1: no sil
 - ``search_lost`` off, ``held_pose`` off;
 - perception side (the service's environment, not a RuntimeConfig field): the agentic estimate snapped to B1
   (``AGENTIC_SNAP`` unset or 1, perception's default).
+
+``submit_v2`` (2026-10-27; evidence: journal 2026-10-27-dojo-pegs §9, the rendered A/B): ``submit_v1`` with
+``held_pose`` "request". Only a place that opts in (``held_read``) reads the held object; today just insert_key's, so
+every other task runs as under ``submit_v1``. insert_key genuine 5.1, 100000-09: 1/6 vs 0/6 (rescued 1, lost 0).
 """
 
 from __future__ import annotations
@@ -29,10 +33,12 @@ PRESETS: dict[str, dict] = {
         "held_pose": "off",
     },
 }
+PRESETS["submit_v2"] = {**PRESETS["submit_v1"], "held_pose": "request"}
 
 # perception-side settings a preset assumes (environment of the perception service / agentic perceiver)
 PERCEPTION_ENV: dict[str, dict[str, str]] = {
     "submit_v1": {"AGENTIC_SNAP": "1"},
+    "submit_v2": {"AGENTIC_SNAP": "1"},
 }
 
 
