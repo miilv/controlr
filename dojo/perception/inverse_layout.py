@@ -2823,6 +2823,16 @@ class EstimatorConfig:
     embed_b1: bool = False
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
+    # height check (stereo.check_record): the frame's own head + wrist views, plane-swept, against every object's
+    # predicted surface height -> ``_perception.stereo`` per object (``mismatch``) and ``_perception.stereo_unexplained``.
+    # Annotation only; CPU ~3-6 s per frame
+    stereo_check: bool = False
+    stereo_dh_mm: float = 4.0  # |measured - predicted| median height over an object's pixels that counts as a mismatch
+    # what acts on a mismatch: "off"; "slot_bases" = a support-slot base whose slot children are all thin (no evidence of
+    # their own: deposit_coin's stand + 2 mm coin) goes to ``_not_found`` with them (reason "stereo height mismatch"):
+    # the stand phantoms a read puts on bare table or on the piggy bank. Other bases (kong tiles, the bread shelf, the
+    # mallet stand) are never dropped: on 71 integ layouts the 10 mm flag was wrong on 9 % of right objects
+    stereo_reject: str = "off"
 
 
 def _views_subset(views, cfg):
@@ -3463,7 +3473,65 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
         record["_perception"]["target_ranking"] = ranking
     index_structure(record, task)
+    if cfg.stereo_check:
+        stereo_check(record, images, state, cams, {n: v.robot for n, v in views_all.items()}, cfg)
     return record
+
+
+def stereo_check(record: dict, images: dict, state: dict, cams: dict, robot_masks: dict, cfg: EstimatorConfig) -> dict:
+    """``EstimatorConfig.stereo_check``: annotate the record (stereo.check_record), then ``stereo_reject``."""
+    from .stereo import check_record
+
+    try:
+        summ = check_record(record, images, state, cams=cams, robot_masks=robot_masks, dh_mm=cfg.stereo_dh_mm)
+    except Exception as e:  # a check must never cost the estimate
+        record.setdefault("_perception", {})["stereo_check"] = {"error": f"{type(e).__name__}: {e}"}
+        return record
+    if cfg.stereo_reject == "slot_bases" and summ.get("mismatch"):
+        reject_slot_bases(record)
+    return record
+
+
+def reject_slot_bases(record: dict, thin_m: float = THIN_CHILD_M) -> list[str]:
+    """Support-slot bases whose stereo check is a mismatch and whose slot children are all thin (min extent <=
+    ``thin_m``), with those children -> ``_not_found``. A thin child (deposit_coin's 2 mm coin, edge-on) is no evidence
+    of its own: it follows its base."""
+    from .render import load_asset
+
+    entries = [(typ, cat, r) for typ in ("Rigid", "Geometry", "Articulation") for cat, lst in (record.get(typ) or {}).items()
+               for r in lst]
+
+    def thin(typ, cat, r):
+        try:
+            return float(np.min(load_asset(f"{typ}/{cat}/{int(r['category_idx']):05d}").extents)) <= thin_m
+        except Exception:
+            return False
+
+    kids: dict[str, list[bool]] = {}
+    for typ, cat, r in entries:
+        p = r.get("_perception") or {}
+        if p.get("support_slot") and p.get("stacked_on"):
+            kids.setdefault(p["stacked_on"], []).append(thin(typ, cat, r))
+    bases = {b for b, t in kids.items() if t and all(t)}
+    drop = {r["label"] for _, _, r in entries
+            if r.get("label") in bases and ((r.get("_perception") or {}).get("stereo") or {}).get("mismatch")}
+    drop |= {r["label"] for _, _, r in entries if (r.get("_perception") or {}).get("stacked_on") in drop}
+    if not drop:
+        return []
+    for typ, cat, r in entries:
+        if r.get("label") not in drop:
+            continue
+        record[typ][cat].remove(r)
+        if not record[typ][cat]:
+            del record[typ][cat]
+        record.setdefault("_not_found", []).append({
+            "label": r["label"], "candidates": [f"{typ}/{cat}/{int(r['category_idx']):05d}"], "confidence": 0.0,
+            "reason": "stereo height mismatch", "stereo": (r.get("_perception") or {}).get("stereo"),
+            "was": {"default_pos": r["default_pos"], "default_ori": r["default_ori"]}})
+    for typ in ("Rigid", "Geometry", "Articulation"):
+        if typ in record and not record[typ]:
+            del record[typ]
+    return sorted(drop)
 
 
 IDENTITY_READ_MAX = 12  # _slot_identity reads the identity of slots with at most this many candidates

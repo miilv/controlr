@@ -259,7 +259,9 @@ def estimate_with_scan(scan: dict, frame0: dict, task: str, instruction: str = "
 
     # an episode start has nothing stacked: every elevated hypothesis needs two views (tower scan A/B: a phantom
     # pillar on a real one in 3 of 23 scan records, nothing stacked at frame 0)
-    cfg = dataclasses.replace(cfg or EstimatorConfig(), elevated_multiview="all")
+    cfg = cfg or EstimatorConfig()
+    check = cfg.stereo_check  # the height check runs once, on the final record (after the frame-0 keep / fill)
+    cfg = dataclasses.replace(cfg, elevated_multiview="all", stereo_check=False)
     rec = estimate(scan["images"], scan["state"], task, instruction, bgs=bgs, cfg=cfg,
                    extra_frames=[(frame0["images"], frame0["state"])])
     if rec0 is not None:
@@ -271,6 +273,12 @@ def estimate_with_scan(scan: dict, frame0: dict, task: str, instruction: str = "
             rec0 = estimate(frame0["images"], frame0["state"], task, instruction, bgs=bgs, cfg=cfg)
         rec, filled = fill_from_frame0(rec, rec0, task)
         rec.setdefault("_perception", {})["frame0_fill"] = filled
+    if check:
+        from .cameras import cameras_from_state
+        from .inverse_layout import stereo_check
+
+        stereo_check(rec, scan["images"], scan["state"], cameras_from_state(scan["state"]), None,
+                     dataclasses.replace(cfg, stereo_check=True))
     rec.setdefault("_perception", {})["scan_primary"] = True
     return rec
 
