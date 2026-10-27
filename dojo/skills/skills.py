@@ -53,6 +53,11 @@ HELD_LOOK_STILL = 2           # still steps at a look before the read
 HELD_LOOK_CLEAR = 0.04        # m between the arms (chain, palm, fingers) on the way to a look and back
 HELD_LOOK_HAND_CLEAR = 0.015  # m between the observer's hand and the held object's box
 HELD_LOOK_MIN_LEFT = 25       # env steps a look must leave beyond the insertion tail's own (probes)
+HELD_GENERIC_SHOW = True      # mode B: when none of the provider's candidates plans a show pose, our own (show poses in
+                              # front of the head camera, the first observer look that plans; rendered 5.1 plug: every
+                              # one of perception's candidates was infeasible, "palm at table" / "arms closer than 4
+                              # cm", so no look ever ran; G3's generic candidates took plug mode B 2/10 -> 8/10)
+HELD_GENERIC_MAX = 24         # generic candidates planned at most per place (planning time)
 SPIRAL_PITCH = 0.00015        # m per turn of the pressed spiral (``_servo_tail``, tail kw ``spiral``; mode B only)
 SPIRAL_STEP = 0.0003          # m of spiral path per env step
 SPIRAL_PRESS = 0.0015         # m the object is commanded below its contact height while it is dragged
@@ -1247,6 +1252,7 @@ class Skills:
         tail_need = max(30, int(pp.steps) - int(appr.steps if appr is not None else 0)) + HELD_LOOK_MIN_LEFT
         tried: set = set(done or ())
         why_not = []
+        good = False
         for c in list(props.get("poses") or []):
             kind = "look" if c.get("name") == "hover_look" else "show"
             if kind in tried or len(tried) >= HELD_LOOK_TRIES:
@@ -1269,6 +1275,75 @@ class Skills:
                 break
         if why_not:
             self.log(f"[held] {h.label}: infeasible candidates: " + "; ".join(why_not)[:400])
+        if HELD_GENERIC_SHOW and not good and "show" not in tried and len(tried) < HELD_LOOK_TRIES:
+            n, why_g = 0, []
+            for c in self._generic_show_candidates(pp.arm, h, o):
+                if n >= HELD_GENERIC_MAX:
+                    break
+                n += 1
+                plan = self._plan_held_look(pp.arm, h, c)
+                if isinstance(plan, str):
+                    why_g.append(f"{c['name']}/{c['observer']['name']}: {plan}")
+                    continue
+                if self.ex.steps_left - self.ex.reserve < plan["steps"] + tail_need:
+                    self.log(f"[held] {h.label}: no generic show ({plan['steps']} steps; {self.ex.steps_left} left, the "
+                             f"tail needs {tail_need})")
+                    break
+                self.log(f"[held] {h.label}: generic show {c['name']}/{c['observer']['name']} ({plan['steps']} steps, "
+                         f"{n} planned)")
+                self.ex.run(plan["out"], name=f"held show {c['name']}")
+                self.ex.run({a: ArmPlan(a, self.ex.q[a].copy(), self.ex.g[a]).hold(HELD_LOOK_STILL)
+                             for a in plan["out"]}, name="held show still")
+                take("show", plan["steps"])
+                self.ex.run(plan["back"], name=f"held show back {c['name']}")
+                break
+            else:
+                if why_g:
+                    self.log(f"[held] {h.label}: no generic show plans: " + "; ".join(why_g)[:300])
+
+    def _generic_show_candidates(self, arm: str, h: "Held", o):
+        """Show-pose candidates of our own (``HELD_GENERIC_SHOW``), in ``show_pose``'s format: the holding arm carries the
+        object to the show point in front of the head camera at each yaw (0, +-45, +-90, +-135, 180), the other arm's
+        wrist looks at it from the first direction / roll its IK reaches (beside the pads, across them, end-on; the
+        geometry of perception's show_pose, as G3's ``heldsim`` proposes). Yields candidates lazily (planning is the
+        caller's)."""
+        from dojo.skills.heldsim import T_TCP_CAM, _rot_z, look_at_camera, look_distance, observer_dirs, show_point
+        from dojo.skills.kinematics import TABLE_Z
+        obs = "right" if arm == "left" else "left"
+        q_h, q_o = self.ex.q[arm].copy(), self.ex.q[obs].copy()
+        T_tcp = self.kin.tcp(arm, q_h)
+        T_rel = np.asarray(h.T_tcp_obj, float)
+        ext = float(np.max(o.asset.extents))
+
+        def centre(T_t):
+            T_o = T_t @ T_rel
+            return T_o[:3, :3] @ o.asset.center + T_o[:3, 3]
+        c_now = centre(T_tcp)
+        P = show_point(arm)
+        for yd in (0, 45, -45, 90, -90, 135, -135, 180):
+            Rz = _rot_z(math.radians(yd))
+            T = np.eye(4)
+            T[:3, :3] = Rz @ T_tcp[:3, :3]
+            T[:3, 3] = P + Rz @ (T_tcp[:3, 3] - c_now)
+            r = self.kin.ik(arm, T, q_h)
+            if not r.ok:
+                continue
+            c = centre(T)
+            d = look_distance(ext)
+            for name, u in observer_dirs(T):
+                if u[2] < -0.35:
+                    continue
+                eye = c + d * u
+                if eye[2] < TABLE_Z + 0.05:
+                    continue
+                for roll in (0.0, 90.0, -90.0, 45.0, -45.0):
+                    T_o = look_at_camera(eye, c, roll) @ inv_T(T_TCP_CAM)
+                    ro = self.kin.ik(obs, T_o, q_o)
+                    if ro.ok:
+                        yield {"name": f"generic_show_yaw{yd:+d}", "arm": arm, "tcp": T.tolist(), "q": r.q.tolist(),
+                               "observer": {"name": f"{name}_r{roll:+.0f}", "arm": obs, "tcp": T_o.tolist(),
+                                            "q": ro.q.tolist()}}
+                        break
 
     def _pre_look(self, pp: "PlacePlan", approach: ArmPlan) -> dict | None:
         """Mode B, a servo place with ``held_tol`` 0 (it always looks), a provider ``held_pose`` + ``show_pose``, the
