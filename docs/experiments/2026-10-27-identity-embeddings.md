@@ -181,12 +181,17 @@ eval_g1's: ok / identity / overshoot / gross / missed.
 | fill_pen_holder | 50 | 49 -> 47 | 48/1/0/1/0 -> 45/3/1/1/0 | 3 pens ok -> identity, 1 identity -> overshoot |
 | stack_blocks_by_language | 30 | 26 -> 26 | identical | 0 |
 | store_tools_in_toolbox | 50 | 49 -> 49 | identical | 0 |
+| put_bottles_into_dustbin (d0_51, genuine 5.1) | 85 | 72 -> 73 | 72/4/1/5/3 -> 71/4/2/5/3 | 13: 3 fixed (2 identity, 1 gross), 3 broken |
+| pack_objects_into_box_random (d0_51) | 75 | 58 -> 58 | 50/2/1/20/2 -> 51/0/0/22/2 | 16, mostly shoe / car variants trading places |
 
 - **On the table, B1's identity is already right** where segmentation is clean. There the embedding does not add, and
   it costs pens: the pens differ in colour and are thin.
 - **So the B1 path is a separate switch,** `embed_b1`, default False. `embed_model` alone changes only the belt read,
   which runs only in conveyor scenes.
-- d0_51 (put_bottles, pack_objects_random), the same pair, is pending.
+- **d0_51 (genuine 5.1; ids 100000-09, 100020-49) agrees: no net gain.**
+  - put_bottles: within tolerance 72 -> 71.
+  - pack: 50 -> 51, with gross 20 -> 22.
+  - Per frame: 17.6 -> 22.0 s median.
 
 ## Verdict
 
@@ -195,8 +200,8 @@ eval_g1's: ok / identity / overshoot / gross / missed.
   - Paired read-level A/B: identity 0.68 -> 0.90, phantoms 77 -> 47, xy median 7.3 -> 5.9 mm, +0.9 s per read.
   - The arm for the rendered conveyor A/B is `embed_model="dinov2_s"`: merge on, B1 off. The service takes it as
     `DOJO_PERCEPTION_CFG='{"embed_model": "dinov2_s"}'`. The default stays None until that A/B lands.
-- **B1 on the table: DROP for now** (`embed_b1` off). It is neutral on organize / store_tools / stack_by_language and
-  costs fill_pen 3 pens. d0_51 is pending.
+- **B1 on the table: DROP** (`embed_b1` off). Across 6 tasks and 371 objects (d0_ext + d0_51), within tolerance is
+  303 -> 300. The embedding trades a few fixes for a few breaks where B1 is already right.
 - **by_image.**
   - First the board needs a look: it is hidden behind the right arm at home.
   - Then picture -> rider matching works with CLIP-L (33/33) or SigLIP2 (32/33).

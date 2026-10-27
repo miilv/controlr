@@ -57,7 +57,8 @@ d0_ext frame 0, paired, with the B1 path on:
 - stack_by_language and store_tools: identical.
 
 On the table the embedding does not pay. The B1 path is therefore its own switch, `embed_b1`, default False:
-`embed_model` alone touches only the belt read. d0_51 pending.
+`embed_model` alone touches only the belt read. d0_51 (genuine 5.1) agrees: put_bottles ok 72 -> 71, pack 50 -> 51
+(gross 20 -> 22), +4 s per frame.
 
 ## Code (PR)
 
