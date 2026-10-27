@@ -107,6 +107,16 @@ class FrozenGarmentProvider:
     def __getattr__(self, name):
         return getattr(self.base, name)
 
+    def garment_update(self, label=None, names=()):
+        """The named points ``names`` read again from the current state (the camera's hem re-read at eval), with the
+        same noise."""
+        g = self.base.garment(label)
+        if g is None:
+            return None
+        kp = {k: (np.asarray(g["keypoints"][k], float) + np.r_[self.rng.normal(0, self.noise, 2), 0.0]).tolist()
+              for k in names if k in g["keypoints"]}
+        return {"keypoints": kp, "live": False}
+
     def garment(self, label=None):
         if label not in self._g:
             g = self.base.garment(label)

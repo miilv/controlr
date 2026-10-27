@@ -259,6 +259,22 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
             done.append(f"{side} sleeve")
         # the body: both hem corners onto the shoulders at once (the hem line stays parallel to the shoulder line)
         gm = read(garment) or gm
+        upd = getattr(sk.provider, "garment_update", None)
+        if not live and upd is not None:
+            # one read does not follow the cloth: the hem corners move when the sleeves are folded (random set: hem
+            # lines 57-90 deg off after a fold planned from the first read); re-read just them from the current view
+            try:
+                g2 = upd(garment, ["left_hem", "right_hem"])
+            except Exception as e:  # noqa: BLE001 (an optional read)
+                g2 = None
+                sk.log(f"[fold] hem re-read failed: {type(e).__name__}: {str(e)[:80]}")
+            if g2 and g2.get("keypoints"):
+                kp = dict(gm.get("keypoints") or {})
+                moved = {k: float(np.linalg.norm(np.asarray(v, float)[:2] - np.asarray(kp[k], float)[:2]))
+                         for k, v in g2["keypoints"].items() if k in kp}
+                kp.update({k: list(v) for k, v in g2["keypoints"].items()})
+                gm = {**gm, "keypoints": kp}
+                sk.log(f"[fold] hems re-read: moved {', '.join(f'{k} {1000 * d:.0f} mm' for k, d in moved.items())}")
         if blown_up(gm):
             sk._record(SkillResult(False, "fold_body", "unstable", 0, None, note="the cloth simulation diverged"))
             return {"ok": False, "stage": "hem", "note": "cloth diverged", "done": done}
