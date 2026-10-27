@@ -415,3 +415,34 @@ def test_scene_background_replaces_the_table_for_its_fixture(tmp_path):
     b = with_scene(base, fold, ["Geometry/camera_stand/00000", "Dynamic/conveyor/00000"])
     assert int(b["cam_head"][0, 0, 0]) == 99
     assert "cam_left_wrist" not in b and "cam_head_clean" not in b                     # no table image survives
+def _box_shape(il, key, ext):
+    from types import SimpleNamespace
+
+    V = np.array([[x, y, z] for x in (-ext[0] / 2, ext[0] / 2) for y in (-ext[1] / 2, ext[1] / 2) for z in (0.0, ext[2])])
+    F = np.array([[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1], [2, 3, 7], [2, 7, 6],
+                  [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]])
+    a = SimpleNamespace(V=V, F=F, Vg=V, Fg=F, Vs=V, Fs=F, info={}, dir=None, extents=np.asarray(ext))
+    sm = il.ShapeModel(key, "test", a, np.eye(3), 0.0, ext[2], 4, True, V, centre_local=np.zeros(3))
+    il._FIXED_POSE_SHAPES[(key, "test")] = sm
+    return sm
+
+
+def test_merged_blob_of_several_pieces_adds_pieces_and_a_single_piece_does_not():
+    from dojo.perception import inverse_layout as il
+    from dojo.perception.segment import ViewMasks
+
+    sm = _box_shape(il, "Rigid/block/split_test", (0.038, 0.038, 0.062))
+    cam = cameras.head_camera()
+    fg = np.zeros((cam.h, cam.w), np.uint8)
+    for x, y in ((-0.30, -0.10), (-0.255, -0.10), (-0.30, -0.055), (-0.255, -0.055), (0.25, -0.10)):  # 4 touching + 1
+        sm.sil(cam, sm.pose(x, y, 0.0), out=fg)
+    v = ViewMasks(cam, np.zeros((cam.h, cam.w, 3), np.uint8), fg, np.ones_like(fg), np.zeros(fg.shape, np.float32), np.zeros_like(fg))
+    bl = il.blobs(v, "cam_head")
+    assert len(bl) == 2
+    pending = [(0, {"labels": ["a", "b", "c", "d", "e"]}, {})]
+    out = il._split_merged(bl, pending, {0: {"g": [sm]}}, {"cam_head": v})
+    merged = max(bl, key=lambda b: b.area)
+    assert out[:2] == bl and len(out) >= 4                # both blobs stay; the merged cluster adds >= 2 pieces
+    assert sum(b.area for b in out[2:]) == merged.area    # the pieces partition it; the lone block adds none
+    assert all(b.area < 0.6 * merged.area for b in out[2:])
+
