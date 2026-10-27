@@ -373,7 +373,9 @@
   the held object 3 mm over the strip. Needs that measurement (a held-object view at the hover, about 0.3 mm), then a
   short spiral. The contact-probing tail (`Skills._guarded_tail`) is in place for mode B and is harmless (the place
   completes, nothing drops).
-- [ ] **dojo skills: insert_tubes, the second tube from the same side.** After the first tube stands, the same arm often has no plan into the remaining holes of its half of the rack (no grasp-place pairs, see the journal), and the relay fails too.
+- [x] ~~**dojo skills: insert_tubes, the second tube from the same side.** After the first tube stands, the same arm often has no plan into the remaining holes of its half of the rack (no grasp-place pairs, see the journal), and the relay fails too.~~ Fixed (journal 2026-10-27-dojo-precision.md §4): an as-is relay of the lying tube (`place_oriented(as_is_lying=)`), one-arm tubes first, places within 0.56 m, off-CoM plans after the relay; G3 mode A 16 -> 24/25.
+- [ ] **dojo skills: insert_tubes in mode B runs out of steps on relays.** A relay leg costs ~110 steps (put-down + re-pick); G3 mode B relay episodes end at 471-485 of 500, and proxy B spends ~440 on three direct tubes. Levers: a cheaper put-down (lower pre-place, faster descent), fewer mode-B refine hovers per pick, or a hole assignment that never needs a relay.
+- [ ] **dojo skills: the right arm into the rack's far-left front hole** (0.562-0.567 m from its base) is held 46-56 mm off its command and misses (0/4), while the left arm's mirror place at 0.596 m goes in (2/2): `EACH_REACH` 0.56 m avoids it; the asymmetry is not understood.
 - [ ] **dojo: hang_mugs judges only the FIRST frame on each side** (`is_axis_aligned` takes `fp_poses[0]` of the mug's
   `handle` and of the rack's `handle_support_point`; journal/2026-10-26-dojo-skills7.md).
   - Only the hooks oriented like the rack's hook 0 can score: 4 of 6, the ±x arms at two heights. The ±y middle arms

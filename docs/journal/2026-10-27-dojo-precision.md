@@ -123,3 +123,53 @@ Left (G3, 5 of 25):
 - 100000: the giver's pick turned loose (21.7 mm);
 - 100017: the taker's descent is out of reach;
 - 100003: the bottom bound.
+
+## 4. insert_tubes: a relay for a tube lying on the table, places within reach, one-arm tubes first
+
+G3 on main has 9 failures in 25, all at 0.4 (2 of 3 tubes in):
+- 4: one tube with no one-arm plan;
+- 4: the only one-arm plan held the tube 21 mm off its centre of mass, and it missed;
+- 1: a far place missed.
+
+The fallback relay never ran: `place_oriented`'s as-is relay needs `rests_stably` of the object as it lies, and a
+lying tube's lowest points are a line.
+
+**Changes** (`precision.insert_each`; `library.place_oriented(as_is_lying=)` + `lies_on_table`; `skills.plan_transfer(place_reach=)`,
+default `PLACE_REACH`, so no other caller changes):
+1. **The as-is relay of an object lying on the table.** It is put down as it lies on a spot between the arms, clear of
+   the rack (`spot_avoid`), then put into a hole from there. The relay's holes come from all the free ones, ranked by
+   reach from either base: each arm reaches only its own side of the rack (holes 0.49-0.61 m out).
+   - Half the relays end with the same arm: the put-down works as a re-grasp, giving a CoM grasp that reaches the
+     hole.
+2. **A one-arm plan holding the tube off its CoM runs only after the relay found nothing** (G3: such places 2 in /
+   6 missed).
+3. **Places at most `EACH_REACH` 0.56 m from the placing arm's base** (all legs). From per-layout hole distances,
+   CoM-held tubes:
+   - 143/144 in below 0.56 m;
+   - 0/4 at 0.562-0.567 m: the right arm into the far-left front hole, held 46-56 mm off its command;
+   - the left arm's mirror place at 0.596 m 2/2: the arms are not mirror images here. Thin evidence: 2 independent
+     bad cases.
+4. **An object only one arm can reach goes first** (`EACH_PICK_REACH` 0.62 m). In every relay case the stranded tube
+   was a one-arm tube, left for last (nearest to the rack first) after objects either arm could carry had taken its
+   arm's holes.
+5. **A tube counts as in only at its depth** (leading end >= depth - `seat_tol` below the mouth). With #77 a probing
+   tail that met the rack short and let go left the tube believed "held by the rack" where the jaws opened
+   (Integration-3's G3 runtime-belief run: one 11.9 mm short counted as in, and the checker did not count it).
+
+**G3 numbers** (compute6; before = main 48f5dde; after = the PR head 2681f3d on main 0127871 with #93):
+
+| | layouts | success | mean | steps median / max (500) |
+|---|---|---|---|---|
+| mode A, before | all 25 | 16/25 | 0.784 | 336 / 430 |
+| mode A, after | all 25 | **24/25** | **0.976** | 344 / 485 |
+| mode A, relay + off-CoM only (7effcc9) | all 25 | 21/25 | 0.904 | 345 / 485 |
+| mode B, 2 mm offsets, `--belief-drop fixtures`, before (main 0127871) | 100000-14 | 6/15 | 0.613 | 305 / 473 |
+| mode B, the same, after (2681f3d) | 100000-14 | **9/15** | **0.760** | 452 / 481 |
+
+- Mode A: rescued 8 (100005 / 06 / 08 / 09 / 10 / 11 / 19 / 22), lost 0. Left: 100013, two relays in one
+  episode, out of steps at 485.
+- Mode B: rescued 3 (100002 / 06 / 10), lost 0. Five of the six left are relay episodes out of steps (449-481).
+- Mode B and the step budget: a relay leg costs ~110 steps (a put-down + a re-pick at mode B's ~47 steps per pick).
+  The mode B failures left are relay episodes that ran out of steps (471-481). Proxy B spends ~440 steps on three
+  direct tubes (breadth2: looks, refines, scan), so in proxy / rendered B a second relay never fits and a first one
+  rarely does. Change (4) is the step-free part.

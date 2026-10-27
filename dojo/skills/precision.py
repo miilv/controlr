@@ -932,6 +932,14 @@ def uniform_section_grasps(sk: Skills, o, arm: str, tilts=(0.0, 25.0, -25.0, 40.
 
 EACH_OVER = 0.07              # m: a filled hole this close to the line from the carrying arm's base to a hole is "in
                               # the way"
+EACH_RELAY_HOLES = 3          # holes tried through a relay (the object put down as it lies, then into the hole)
+EACH_ONE_ARM_FIRST = True     # objects within EACH_PICK_REACH of one arm's base only go first
+EACH_PICK_REACH = 0.62        # m, object centre from an arm's base (twin: tubes 0.64-0.77 m out had 0/180 grasps
+                              # reachable for that arm)
+EACH_REACH = 0.56             # m, place TCP from the placing arm's base (twin, tubes held at the CoM, per-layout hole
+                              # distances: 143/144 in below 0.56 m; at 0.562-0.567 m 0/4, the right arm into the far-left
+                              # front hole held 46-56 mm off its command; the left arm's mirror place at 0.596 m 2/2)
+EACH_RELAY_NEAR = (0.0, -0.28)    # relay spots near here (between the arms, in front of the robot)
 
 
 def _seg_dist(p, a, b) -> float:
@@ -1015,8 +1023,12 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
         todo = [l for l in objects if l in w.objects and l not in st["done"] and l not in failed]
         if not todo:
             break
-        # the object nearest to the receptacle first (shortest carries; the far ones keep their room)
-        lab = min(todo, key=lambda l: float(np.linalg.norm(w.obj(l).center_w[:2] - rec.center_w[:2])))
+        # an object only one arm can reach first (twin: left for last, its arm's holes were taken by objects either arm
+        # could have carried, and it needed a relay or had no plan at all), then the nearest to the receptacle
+        # (shortest carries; the far ones keep their room)
+        lab = min(todo, key=lambda l: (sum(float(np.linalg.norm(sk.kin.base(a_)[:2, 3] - w.obj(l).center_w[:2]))
+                                           <= EACH_PICK_REACH for a_ in ARMS) if EACH_ONE_ARM_FIRST else 0,
+                                       float(np.linalg.norm(w.obj(l).center_w[:2] - rec.center_w[:2]))))
         o = w.obj(lab)
         L = float(np.max(o.asset.extents))
         filled = [np.asarray(v, float) for v in st["filled"].values()]
@@ -1037,18 +1049,23 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
         free = [x[1:] for x in free]
         res = None
         pk = {**EACH_PLACE_KW, "grip_only": (receptacle,)}
-        tkw = {"grasps": lambda a, lab=lab: uniform_section_grasps(sk, sk.world.obj(lab), a), "lift_to_pre": True}
-        cands = []
-        for spread_bad, _, tag, T, r in free[:EACH_HOLES]:
+        tkw = {"grasps": lambda a, lab=lab: uniform_section_grasps(sk, sk.world.obj(lab), a), "lift_to_pre": True,
+               "place_reach": EACH_REACH}
+        def hole_targets(T, r):
             p = T[:3, 3]
             fl = hole_floor(rec, p[:2], r)
             d = depth if depth is not None else (min(0.8 * L, float(p[2]) - fl) if fl is not None else 0.5 * L)
-            tg = upright_targets(o, p, fl, d, n_yaw=8)
+            return d, upright_targets(o, p, fl, d, n_yaw=8)
+        cands = []
+        for spread_bad, _, tag, T, r in free[:EACH_HOLES]:
+            d, tg = hole_targets(T, r)
             if tg:
                 cands.append((tag, d, tg))
         # a one-arm plan into one of the best holes (a screen per hole: one screen over all of them ran out of its IK
-        # budget before the later holes, twin); a relay only when none has one
+        # budget before the later holes, twin); a relay only when none has one, or when the only ones hold the object
+        # far from its centre of mass (twin: tubes held 21 mm off it slid 6.5 mm or missed the hole)
         from dojo.skills.library import _run_leg
+        off_com = None
         for tag, d, tg in cands:
             plan = sk.plan_transfer(lab, tg, ignore=(receptacle,), place_kw=pk, **tkw)
             if isinstance(plan, SkillResult) and re.search(r"[1-9]\d* grasp-place pairs", plan.note):
@@ -1058,23 +1075,64 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
             if isinstance(plan, SkillResult):
                 sk.log(f"[insert_each] {lab} -> {tag}: no one-arm plan ({plan.note[:120]})")
                 continue
+            if "off the CoM" in plan[0].grasp.note:
+                sk.log(f"[insert_each] {lab} -> {tag}: one-arm plan off the CoM only ({plan[0].arm}, {plan[0].grasp.note})")
+                off_com = off_com or (tag, d, tg, plan)
+                continue
             sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: {plan[0].arm} ({plan[0].grasp.note}), {d*1000:.0f} mm in")
             res = _run_leg(sk, lab, tg, 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
             break
-        if res is None and cands:
-            tag, d, tg = cands[0]
-            sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: relay")
-            res = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.008, tol_tilt=20.0, tol_z=0.03, ignore=(receptacle,),
-                                 place_kw=pk, air_handover=False, transfer_kw=tkw)
+        if res is None and free:
+            # put it down as it lies on a spot between the arms, then into a hole from there (often with the other
+            # arm: the picking arm's holes are taken, or the object lies out of the inserting arm's reach). Holes for
+            # that leg from all the free ones: not reached over from the nearer arm's base, away from filled ones, then
+            # the nearest to a base (twin: the holes are 0.49-0.61 m out, each arm reaches its own side)
+            bases = [sk.kin.base(a_)[:2, 3] for a_ in ARMS]
+
+            def reach_rank(x):
+                p = x[3][:3, 3][:2]
+                ds = [float(np.linalg.norm(p - b_)) for b_ in bases]
+                ib = int(np.argmin(ds))
+                return (any(_seg_dist(f[:2], bases[ib], p) < EACH_OVER for f in filled), x[0], ds[ib])
+            for _sb, _sd, tag, T, r in sorted(free, key=reach_rank)[:EACH_RELAY_HOLES]:
+                d, tg = hole_targets(T, r)
+                if not tg:
+                    continue
+                sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: relay")
+                res = place_oriented(sk, lab, tg, yaw_sym=1, tol_xy=0.008, tol_tilt=20.0, tol_z=0.03,
+                                     ignore=(receptacle,), place_kw=pk, air_handover=False, transfer_kw=tkw,
+                                     relay_near=EACH_RELAY_NEAR, spot_avoid=(receptacle,), as_is_lying=True)
+                if res.ok or res.steps > 0 or res.status != "ik_fail":
+                    break
+            if off_com is not None and (res is None or (not res.ok and res.steps == 0)):
+                tag, d, tg, plan = off_com
+                sk.log(f"[insert_each] {lab} -> {receptacle} {tag}: no relay, off the CoM: {plan[0].arm} "
+                       f"({plan[0].grasp.note}), {d*1000:.0f} mm in")
+                res = _run_leg(sk, lab, tg, 1, (receptacle,), pk, first=plan, tol=(0.008, 20.0, 0.03), transfer_kw=tkw)
         for a in ARMS:
             if sk.held[a] is not None:
                 sk._record(sk.regrasp(a))
         sk.bank()
         w = sk.refresh()
         o = w.obj(lab)
-        ins = [p for _, T, r in holes for p in [T[:3, 3]] if float(np.linalg.norm(o.pos[:2] - p[:2])) < r + 0.004]
+        hit = [(T, r) for _, T, r in holes if float(np.linalg.norm(o.pos[:2] - T[:2, 3])) < r + 0.004]
+        ins = [T[:3, 3] for T, _r in hit]
         up = abs(float((o.R @ _unit(np.eye(3)[int(np.argmax(o.asset.extents))]))[2])) > math.cos(math.radians(30))
-        if ins and up:
+        deep = True
+        if hit and up and o.asset.mesh is not None:
+            # and its leading end at the depth it was put to: in mode B a probing tail that met the rack short and let go
+            # leaves the object where the jaws opened, "held by the rack" in the belief (#77; G3 runtime belief: a tube
+            # 11.9 mm short counted as in, the checker did not)
+            T_h, r_h = hit[0]
+            p_h = T_h[:3, 3]
+            fl = hole_floor(rec, p_h[:2], r_h)
+            d_exp = depth if depth is not None else (min(0.8 * L, float(p_h[2]) - fl) if fl is not None else 0.5 * L)
+            low = float((np.asarray(o.asset.mesh[0], float) @ o.R.T + o.pos)[:, 2].min())
+            deep = float(p_h[2]) - low >= d_exp - float(EACH_PLACE_KW["seat_tol"])
+            if not deep:
+                sk.log(f"[insert_each] {lab}: over a hole but {(float(p_h[2]) - low)*1000:.0f} mm in of "
+                       f"{d_exp*1000:.0f}: not counted")
+        if ins and up and deep:
             st["done"].append(lab)
             st["filled"][lab] = ins[0].tolist()
             # a standing neighbour's own shape, not its asset box, for the next ones (the box of a 28 mm tube is 42 mm
