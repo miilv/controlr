@@ -138,8 +138,11 @@ def drop_rest(o, movables, fixtures=()) -> tuple[np.ndarray | None, dict | None]
     piece 17 mm under the board)."""
     lo, hi = o.aabb()
     support = TABLE_Z if table_contains_xy(o.center_w) else 0.05
+    # an articulation is movable and a fixture: with its static mesh in ``fixtures`` the mesh decides, not its bbox top
+    # (an egg let go a few mm over a hole rested on the holder's bbox top: Integration-3's review of #139)
+    meshed = {g.label for g in fixtures if fixture_mesh(g) is not None}
     for other in movables:
-        if other.label == o.label:
+        if other.label == o.label or other.label in meshed:
             continue
         olo, ohi = other.aabb()
         if (olo[0] < hi[0] - 1e-3 and ohi[0] > lo[0] + 1e-3 and olo[1] < hi[1] - 1e-3 and ohi[1] > lo[1] + 1e-3
