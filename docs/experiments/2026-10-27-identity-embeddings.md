@@ -95,7 +95,47 @@ Phantoms per layout, off -> merge: 36 -> 21, 19 -> 12, 22 -> 14, 0 -> 0.
 
 ## 3. The reference picture (pick_from_conveyor_by_image)
 
-Pending: the frames are recorded and partly scored. This section is added to this PR when the run ends.
+**Data.** pick_from_conveyor_by_image, dev layouts 100000-04, recorded tonight in one 6-min hold of compute3's heavy
+lock (`belt_bg record`, physics-only 5.1, + Isaac 6.0 proxy render). It is therefore 6.0-proxy tier: 61 frames per
+layout, every 3rd scored. The belt background was built 2-fold (100000-01 / 100002-04 each for the other half).
+
+**The riders (component, as in section 1; 208 blobs).**
+
+| arm | basket | can | car (2 variants) | glue | toy | all | all but the basket |
+|---|---|---|---|---|---|---|---|
+| ours (belt read) | 0/33 | 10/23 | 45/45 | 15/19 | 6/6 | 144/208 (0.69) | 144/175 |
+| DINOv2-S fused (the frozen belt arm) | 7/33 | 10/23 | 39/45 | 13/19 | 3/6 | 142/208 (0.68) | 135/175 |
+| SigLIP2-B, `ca` unlit | 29/33 | 21/23 | 36/45 | 13/19 | 5/6 | 170/208 (0.82) | 141/175 |
+| SigLIP2-B fused (post hoc) | 27/33 | 21/23 | 41/45 | 15/19 | 6/6 | 181/208 (0.87) | 154/175 |
+| DINOv2-S + SigLIP2 mean, fused (post hoc) | | | | | | 159/208 | |
+
+- On these colourful riders our colour identity is already good, and DINOv2 adds nothing: it confuses the two car
+  variants, which differ only in colour.
+- SigLIP2 reads the basket and the can.
+- The DINOv2-S + SigLIP2 mean keeps the belt (207/249 vs 207/249 on 5.1, 125 vs 123 held-out) and gains here. It was
+  chosen after seeing both sets, so it needs a fresh set before it counts (6.0 belt frames of 100000-02, queued).
+
+**The picture (instruction's reference image).**
+- **The board is hidden from the head camera at home on our layouts.** It stands behind the right arm's links: GT
+  silhouette 2278 px, of which only a wooden sliver shows. Perception-3 found the same on v12.
+- **So the board cannot be identified from the home view.**
+  - Ours: B1's colour pick of the board asset gives `photo/00000` in 105/105 frames. That index has no `map.json`
+    entry, so the skill gets no target.
+  - The embeddings, matching the board crop against the 17 public `photo.png`: 0-21/105, one constant answer.
+- **Given the picture, matching it to the riders works.** Here the true `photo.png` stands in for a look at the board.
+  On 33 frames that show the target and >= 1 other rider (5 layouts), the target is the rider whose crop is most similar:
+
+| model | rider crop raw | rider crop masked |
+|---|---|---|
+| CLIP-L | **33/33** | **33/33** |
+| SigLIP2-B | 30/33 | 32/33 |
+| DINOv2-B | 29/33 | 28/33 |
+| DINOv2-S | 28/33 | 29/33 |
+
+- **For by_image, the order is: first a look at the board** (from a wrist, or the scan pose). Then either identify it
+  (the board crop vs the 17 `photo.png`, then `map.json`), or match the picture straight to the riders (CLIP-L).
+- **Language-image models win here** (photo -> render, across domains); DINOv2 wins render -> render on the dark belt.
+- Script: `scripts/perception/identity_photo.py`.
 
 ## 4. End to end on the table (eval_g1, frame 0, paired)
 
