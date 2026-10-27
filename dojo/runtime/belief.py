@@ -876,7 +876,11 @@ class RuntimeProvider:
                 # jaws, and 51 of them were kept (5.1 xylophone 100002: mallet believed 88 mm off, strikes in the air)
                 sure = float(r.get("confidence") or 0) >= self.held_drop_conf
                 held2 = r2.get("held") is True and float(r2.get("confidence") or 0) >= 0.5
-                if sure and not held2:
+                if sure and self._jaws_closed(r, lab):
+                    # the wrist MEASURED the jaws closed past the object's narrowest width: geometry the head view cannot
+                    # overrule (conveyor 100003: jaw opening 0.0, head "held" at 0.99, the skill finished holding air)
+                    ev["sure"] = "jaws closed"
+                elif sure and not held2:
                     ev["sure"] = True
                 elif not (r2.get("held") is False and float(r2.get("confidence") or 0) >= 0.5):
                     ev["kept"] = True
@@ -899,6 +903,17 @@ class RuntimeProvider:
                 self.touched.add(lab)
                 ev["dropped"] = True
                 self.stats["held_look_empty"] = self.stats.get("held_look_empty", 0) + 1
+
+    def _jaws_closed(self, r: dict, label: str) -> bool:
+        """held_look measured the jaw opening (evidence "opening", from the finger silhouettes) narrower than half the
+        held object's narrowest width (capped at 10 mm): nothing that object's size is between the pads."""
+        op = r.get("opening") or {}
+        if r.get("evidence") != "opening" or op.get("measured") is None:
+            return False
+        from dojo.skills.kinematics import grip_to_gap
+        o = self.belief.objects.get(label)
+        w = float(np.min(o.asset.extents)) if o is not None and o.asset is not None else 0.02
+        return grip_to_gap(float(op["measured"])) < max(0.001, min(0.01, 0.5 * w))
 
     def _post_place_confirmed(self, obs: dict, o, r: dict, others, ev: dict, min_px: int = 40, wrists: bool = False) -> bool:
         """The second look for a large post-place correction: the HEAD view of the same step, rendered with the object at
