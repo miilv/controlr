@@ -6,6 +6,14 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo skills: organize_table, three skill-side gaps (G3 mode A 0.44: alarm 2/9, figurine 0/9, keyboard 4/9).**
+  (journal 2026-10-27-dojo-longh §5) The drawer's top is a tray 23 mm under a rim; the place targets use the bbox top,
+  so the alarm lands across the rim (17-19 deg) or falls off its front edge. The figurine has no collision-free pair within
+  12 mm of its 40 mm stand next to the drawer (with the drawer ignored there is one). The keyboard, pushed away from the
+  robot first, ends beside the drawer where no sideways stroke fits; pushes turn it 15-26 deg and it slides 20-30 % past
+  a stroke. Tried on `feat/dojo-longh-organize` without a gain: mesh-height-map targets (their full plans collide at the
+  pick), stand offsets to its half-size (the screen's 6000-IK budget runs out over 85 targets), a cover-the-frame push
+  goal, a stroke-order lookahead, off-centre strokes.
 - [ ] **dojo perception: tic-tac-toe cell reads flicker on genuine 5.1 frames.** `watch_read` (kind cells) on compute8's
   rendered tic-tac-toe (Long-Horizon, journal 2026-10-27-dojo-longh): a board with our two pieces and one of the
   opponent's read "........." for 200 steps (100005), pieces appear and vanish between reads 1-2 steps apart
