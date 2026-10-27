@@ -227,3 +227,28 @@ Result:
 Standing a mug up puts the X5's wrist horizontal low over the table, and the X5 does not reach that. A re-orient through an in-air handover or a handle grasp would be needed. Both rank after the falls.
 
 **The re-plan after #119.** Integration-3's fallen check re-plans the episode. `hang_on_hooks` then starts again with every mug, and would take hung mugs off their hooks. Fix (separate PR): mugs already on a hook count as done and keep their hooks.
+
+## 9. The runtime belief dropped what was let go in an articulation to the table (follow-up PR)
+
+Perception-3 found breadth3's make_toast failure: every failed place read "xy err 0.0 mm, dz -62.6 mm (centre 0.8231 vs 0.8858)". That is the belief's prediction, not perception:
+- `drop_rest` drops a released slice to the table;
+- the toaster is an Articulation, and #77's fixture rule takes static Geometry only;
+- the skill then re-planned every slice.
+
+The egg holder has the same landmine.
+
+**Fix.** An articulation's static links are a fixture, in the runtime belief and in heldsim:
+- the links that are no joint's child: the egg holder's body, the toaster's base;
+- each mesh vertex goes to the link with the nearest `links.json` sample;
+- the lid and the lever are left out.
+
+**G3 mode B, `--belief-drop fixtures`, main e3e4bb5 vs the fix:**
+
+| task | layouts | score | places ok | belief on the table |
+|---|---|---|---|---|
+| make_toast (raw records, 2 mm / 1.5 deg offsets) | 10 | 0.725 -> 0.725 | 7/19 -> 19/19 | 19 -> 0 |
+| fill_egg_holder (2 mm offsets) | 11 | 12 eggs -> 12 eggs | | |
+
+- G3 never failed on the wrong belief: it re-measures after a place. The rendered runs did, so the rendered pair decides.
+- Eggs: the score is unchanged, with 25 picks instead of 21. The belief now puts an egg let go over a hole lying across it, 2 mm into the hole, and the skill tries again more often.
+

@@ -329,10 +329,10 @@
   rim (not on the wall between two holes) did not help (G3, 11 layouts). `slide_in` pushes it along its axis until
   one end is over the hole (G3 mode B 8 -> 12 eggs); mode B still lands half as many as mode A, because the egg's
   in-hand position along its axis (10-14 mm lower than believed) is not measured: a held-pose look would close it.
-- [ ] **dojo runtime: an egg let go over the egg holder's hole is predicted on the table.** The holder is an
-  Articulation, so the fixture rule (#77, Geometry only) does not see its holes and `drop_rest` drops the egg to the
-  table at the release's xy. In G3 mode B the skill's in-hole check happens to accept that prediction (no phantom
-  re-picks), and `fill_holes` proposes the tipped-in pose to `confirm_pose` after each drop. Rendered: unmeasured.
+- [x] ~~**dojo runtime: an egg let go over the egg holder's hole is predicted on the table**~~ (and a bread slice let
+  go in the toaster's slot: breadth3's make_toast "dz -62.6 mm"). An articulation's static links are now a fixture
+  (`static_link_mesh`: the egg holder's body, the toaster's base; not the lid or the lever). Its moving links are
+  left out at any joint state; a fixture rule for them needs the joint's current position in the belief.
 - [ ] **dojo skills: hang_mugs, a mug lying on its side cannot be stood up or hung** (G3). No pick + upright-place
   pair exists: the place puts the X5's wrist horizontal low over the table (IK fails within 13 deg of horizontal).
   Only a rim-to-base pinch plans a direct hang, and it slips. Next: an in-air handover that re-orients it, or a
