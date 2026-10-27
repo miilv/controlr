@@ -492,6 +492,17 @@ def nudge_from_wall(sk: Skills, label: str, wall_clear: float = EGG_WALL_CLEAR) 
     return None
 
 
+def HO_align(a, b) -> np.ndarray:
+    """Rotation taking unit vector ``a`` onto ``b`` (shortest arc)."""
+    a = np.asarray(a, float) / np.linalg.norm(a)
+    b = np.asarray(b, float) / np.linalg.norm(b)
+    v = np.cross(a, b)
+    s_, c_ = float(np.linalg.norm(v)), float(a @ b)
+    if s_ < 1e-9:
+        return np.eye(3) if c_ > 0 else _rot(np.cross(a, [1.0, 0, 0]) if abs(a[0]) < 0.9 else np.cross(a, [0, 1.0, 0]), math.pi)
+    return _rot(v / s_, math.atan2(s_, c_))
+
+
 EGG_PRESS = True              # an egg left lying across its hole is pressed in from above
 EGG_SUNK = 0.003              # m: its centre this far under the plate's top counts as in (lying across: 4-11 mm over it;
                               # the checker wants the centre < 40 mm over the holder's bottom frame, 5 mm over its base)
@@ -541,6 +552,13 @@ def press_in(sk: Skills, label: str, hole: dict, ignore=(), at_end: bool = False
                 sk.ex.run({a: pl}, name=f"press {label}")
             except (BudgetExceeded, EpisodeEnded) as e:
                 return f"stopped: {e}"
+            # mode B: no grasp, no re-measure; the expected outcome (in the hole, long axis near vertical, its lower end
+            # on the hole's floor) goes to the provider's confirm_pose
+            e = np.zeros(3)
+            e[k] = 1.0
+            R_up = HO_align(e, np.array([0.0, 0.0, 1.0]))
+            c_exp = np.r_[hc, float(hole["floor"]) + 0.5 * float(o.asset.extents[k]) + 0.002]
+            sk.confirm_moved(label, T_from(c_exp - R_up @ o.asset.center, R_up), "press")
             sk.bank()
             return f"{a}, {pl.steps} steps"
     return "no press plan"
