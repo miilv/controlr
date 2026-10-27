@@ -2718,6 +2718,37 @@ def test_confirm_pose_adopts_a_skills_expected_outcome_only_when_the_head_view_p
     assert gt.confirm_pose("block_1", p0, q_fallen)["adopted"] is False
 
 
+@pytest.mark.parametrize("wrist_ious,on,adopted", [((0.075, 0.93), True, True), ((0.075, 0.93), False, False),
+                                                   ((0.50, 0.58), True, False), ((0.80, 0.90), True, False)])
+def test_confirm_pose_also_accepts_a_wrist_view_that_clearly_prefers_the_expected_pose(wrist_ious, on, adopted):
+    """5.1 make_kong 100001: the topple worked, but the toppling arm's gripper hung over the tile and the head view could
+    not tell (silhouette 0.59 vs 0.57); that arm's own wrist camera could (0.075 vs 0.93)."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+
+    class C:
+        def __init__(self):
+            self.n = 0
+
+        def check(self, obs, objects):
+            self.n += 1
+            i = wrist_ious[0] if self.n == 1 else wrist_ious[1]
+            head = {"prec": 0.59 if self.n == 1 else 0.57, "n_vis": 400, "n_px": 600}
+            return {objects[0].label: {"head": head, "per_view": {"cam_head": head,
+                                                                  "cam_left_wrist": {"iou": i, "n_px": 900, "n_vis": 800}}}}
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=C())
+    prov.confirm_wrists = on
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    q_fallen = [float(np.cos(np.pi / 4)), float(np.sin(np.pi / 4)), 0.0, 0.0]
+    p0 = prov.belief.objects["block_1"].pos.copy()
+    r = prov.confirm_pose("block_1", p0 + [0.0, 0.01, -0.002], q_fallen)
+    assert r["adopted"] == adopted
+    if adopted:
+        assert prov.events[-1]["confirm"]["by"] == "cam_left_wrist"
+
+
 def test_catalog_check_reports_a_new_gap_but_not_a_known_unshipped_asset(tmp_path):
     import json as _json
 
