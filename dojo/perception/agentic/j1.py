@@ -476,6 +476,45 @@ def _extra_views(extra_obs, grip_cmd) -> list[tuple[dict, dict, dict]]:
     return out
 
 
+def executable_looks(looks: list[dict], b1_looks: list[dict], objects: list[dict]) -> tuple[list[dict], int]:
+    """The agent's look requests made executable: each needs a wrist camera and a ``flange_pose`` the J1 driver can
+    move to (Mikhail's D-C7 / D-C8: 29 agent looks without one were never executed; push L2 planned from a 140 deg
+    heading error B1-only's own look fixed). A look for a label B1 also wants to look at takes B1's pose; else one is
+    computed for its target (given, or the labelled object's position) like B1's own (``look.default_look``); a look
+    with neither falls back to B1's first look. Returns (looks, how many got a pose)."""
+    out, n = [], 0
+    by_label = {lk.get("label"): lk for lk in b1_looks or [] if lk.get("flange_pose") and lk.get("label")}
+    pos_of = {o.get("label"): o.get("pos") for o in objects or [] if o.get("label") and o.get("pos")}
+    for lk in looks or []:
+        if lk.get("flange_pose"):
+            out.append(lk)
+            continue
+        new = dict(lk)
+        src = by_label.get(lk.get("label"))
+        if src is not None:
+            new.update({k: src[k] for k in ("cam", "target", "flange_pose") if k in src})
+        else:
+            tgt = lk.get("target") or pos_of.get(lk.get("label"))
+            if tgt is not None and len(tgt) >= 3:
+                import numpy as np
+
+                from ..look import default_look, flange_for_camera
+
+                cam = str(lk.get("cam") or "")
+                arm = "left" if "left" in cam else "right" if "right" in cam else ("left" if float(tgt[0]) < 0 else "right")
+                T = default_look(np.asarray(tgt[:3], float), arm)
+                new.update({"cam": f"cam_{arm}_wrist", "target": [round(float(v), 4) for v in tgt[:3]],
+                            "flange_pose": np.round(flange_for_camera(T), 5).tolist()})
+            elif b1_looks and any(b.get("flange_pose") for b in b1_looks):
+                src = next(b for b in b1_looks if b.get("flange_pose"))
+                new.update({k: src[k] for k in ("cam", "target", "flange_pose", "label") if k in src})
+                new["reason"] = f"{lk.get('reason') or 'agent'} (B1's look)"
+        if new.get("flange_pose"):
+            n += 1
+        out.append(new)
+    return out, n
+
+
 def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd, cfg: dict, joints=None,
                   instruction: str = "", **kw) -> tuple[list[dict], list[dict], str, list[str], dict | None]:
     """The agent's answer -> (objects, needs_look, source, problems, refine info): snap to B1, keep B1's unmentioned
@@ -534,6 +573,12 @@ def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd
     if not kw.get("keep_markers"):  # replays arbitrate the same H2 output themselves
         for o in objects:
             o.pop("_agent_point", None)
+    try:
+        looks, n_pose = executable_looks(looks, (b1 or {}).get("needs_look") or [], objects)
+        if n_pose:
+            probs.append(f"look_poses_added={n_pose}")
+    except Exception as e:  # noqa: BLE001 (a look suggestion must never cost the scene)
+        probs.append(f"look_poses: {type(e).__name__}: {e}")
     return objects, looks, src, probs, ref_info
 
 
