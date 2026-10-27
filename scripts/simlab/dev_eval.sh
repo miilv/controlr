@@ -8,7 +8,7 @@
 # Layout source: $LAYOUTS/<task>/<id>.json (dojo/simlab/dev_eval.py patches SeedManager; RoboDojo's
 # result "layout_id" i = the i-th smallest dev id). Policy: XPolicyLab/policy/<policy>/ must exist in
 # the RoboDojo tree (its deploy.yml drives the ws policy server, as in scripts/robodojo/run.sh).
-# Holds the team GPU lock; results land in $OUT/<stamp>_<task>_<policy>/.
+# Holds the team GPU lock (DOJO_GPU_LOCK_HELD=1: the caller holds it); results land in $OUT/<stamp>_<task>_<policy>/.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RD_HOME="${RD_HOME:-/root/controlr-robodojo}"; RD="${RD_ROOT:-$RD_HOME/RoboDojo}"
@@ -24,9 +24,12 @@ done
 [[ -d "$RD/XPolicyLab/policy/$POLICY" ]] || { echo "no XPolicyLab policy $POLICY in $RD" >&2; exit 2; }
 [[ "$LAYOUTS" != *Eval_Layout* ]] || { echo "refusing eval layouts" >&2; exit 2; }
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"; RUN="$OUT/${STAMP}_${TASK}_${POLICY}"; mkdir -p "$RUN"
-LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"; exec 9>>"$LOCK"
-flock -n 9 || { echo "[dev_eval] waiting for $LOCK: $(cat "$LOCK")" >&2; flock -w "${SIMLAB_LOCK_WAIT_S:-43200}" 9 || exit 75; }
-printf 'pid=%s stream=simlab start=%s cmd=dev_eval %s %s\n' "$$" "$(date -u +%FT%TZ)" "$TASK" "$POLICY" > "$LOCK"
+LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
+if [[ "${DOJO_GPU_LOCK_HELD:-0}" != 1 ]]; then     # 1: the caller holds the lock for us (scripts/dojo/official_eval.sh)
+  exec 9>>"$LOCK"
+  flock -n 9 || { echo "[dev_eval] waiting for $LOCK: $(cat "$LOCK")" >&2; flock -w "${SIMLAB_LOCK_WAIT_S:-43200}" 9 || exit 75; }
+  printf 'pid=%s stream=simlab start=%s cmd=dev_eval %s %s\n' "$$" "$(date -u +%FT%TZ)" "$TASK" "$POLICY" > "$LOCK"
+fi
 free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
 WS_PORT="$(free_port)"; PIDS=()
 cleanup() { for p in "${PIDS[@]}"; do kill -TERM -- -"$p" 2>/dev/null || kill "$p" 2>/dev/null || true; done; }

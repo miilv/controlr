@@ -200,6 +200,39 @@ Variants (one flag each):
   pour_balls_into_vase and general_pickup.
 - `--verify off`: no twin.
 
+### 4c. The official path on OUR dev layouts, on any 5.1-rendering box of ours [GPU]
+
+`robot-start-j2` runs RoboDojo's client on `Assets/Eval_Layout` (and needs it on disk, which our boxes do not have).
+`scripts/dojo/official_eval.sh` runs the same chain on our settled dev layouts (>= 100000), several episodes per eval
+client, so a dev gain can be checked on the path the leaderboard scores:
+
+```bash
+source ~/dojo-env.sh && cd ~/dojo-<stream>
+# once: robot-harness at a pinned commit, read-only (a git archive + a COMMIT file; never a working clone of his repo)
+mkdir -p ~/dojo-official-rh && tar -xzf rh-<sha>.tar.gz -C ~/dojo-official-rh && echo <sha> > ~/dojo-official-rh/COMMIT
+scripts/dojo/official_eval.sh --task press_by_number --layouts "100000 100001 100002" \
+    [--policy dojo.agent.policy:AgentPolicy] [--preset submit_v1] [--config JSON]
+python -m dojo.bridge.official compare --official ~/dojo-data/official/runs/<id> --integ <integ_eval out dir> --md pair.md
+```
+
+| piece | whose | how |
+|---|---|---|
+| eval client | RoboDojo's `main.py`, unchanged | `scripts/simlab/dev_eval.sh` (`dojo/simlab/dev_eval.py`: SeedManager reads `OUT/layouts/<task>/<id>.settled.json`, ids ascending) |
+| strict J2 server + shim `harness_strict_j2` | Mikhail's files, unmodified (`$BENCH`, default `~/dojo-official-rh`) | the J2 launcher's md5 checks, its env (`HARNESS_STRICT=1`, `HARNESS_DEV=1` for `dev.jsonl` only); the shim is copied into OUR RoboDojo farm |
+| RoboDojo install | the box's `~/dojo-robodojo`, read-only | a symlink farm `~/dojo-official-rdhome` (`scripts/dojo/rd_farm.sh`): `XPolicyLab/policy/` and `eval_result/` are ours |
+| bridge driver, perception service, twin | ours | one driver per episode; the next driver's `reset` ends the previous episode on the server (the shim books an unfinished one as failed), the last one `--close`s; `--calib-fold` = crc32(layout id) % 2, as integ_eval |
+
+- Everything runs under the heavy lock and in one systemd scope (24G / 1400 %). Keep a call <= 30 min.
+- Outputs, under `~/dojo-data/official/runs/<id>/`:
+  - `_result.json`: RoboDojo's own. `details[i].layout_id` is the index of the dev layout in id order.
+  - `rows.jsonl`: per episode, the verdict joined with our side (`python -m dojo.bridge.official rows`).
+  - `eps/<layout>/<id>/`: the driver's `bridge.json`, `report.json.gz`, `actions.json.gz`, frames, agent.
+  - `server_run/`: the server's run dir (`episode.jsonl`, `dev.jsonl`), `eval/`: the eval client's logs and mp4s.
+- `compare` pairs it with an integ_eval run on the same layouts: verdicts, steps, and the first executed action where the
+  two paths differ (tol 1e-4: the server rounds measured joints / flange to 1e-5). Physics is bitwise deterministic
+  (journal 2026-10-26-bridge-isr A2), so an outcome difference with identical actions is a scoring difference, and one
+  after a divergence is a decision difference with its cause at that step.
+
 ## 5. What is strict, and where it is checked [CPU]
 
 | check | where | test |
