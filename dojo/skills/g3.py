@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 
 CATEGORIES = ("grasp_slip", "ik_fail", "collision", "place_miss", "step_budget", "logic", "not_home",
-              "unstable_layout", "error")
+              "unstable_layout", "error", "infra_failure")
 
 
 def parse_seeds(s: str) -> list[int]:
@@ -135,7 +135,9 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     from dojo.skills.env import RunnerEnv
     from dojo.skills.skills import GTProvider, Skills
 
+    from dojo.simlab.kitlog import KitLogWatch
     seed = int((layout.get("_simlab") or {}).get("seed", 0))
+    watch = KitLogWatch()                     # Kit logs what the physics could not build (an uncooked SDF collider)
     t0 = time.perf_counter()
     info = run.load(layout)
     t_load = time.perf_counter() - t0
@@ -233,6 +235,10 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
                                   for o in sk.refresh().task_objects()}})
     rec["category"] = classify(res_j, reward, hist)
+    infra = watch.since()
+    if infra:
+        # the episode measured the infrastructure, not the skill: out of every summary (``write_summary``)
+        rec.update({"infra_failure": infra, "category": "infra_failure"})
     rec["missing_meshes"] = sorted(getattr(assets, "missing_meshes", ()))        # bboxes stood in for these
     try:
         gfin = env.garment_gt() if hasattr(env, "garment_gt") else None
@@ -348,7 +354,8 @@ def cmd_run(a) -> None:
 
 
 def write_summary(out: Path, task: str, rows: list[dict]) -> dict:
-    ok = [r for r in rows if r.get("stable")]
+    ok = [r for r in rows if r.get("stable") and not r.get("infra_failure")]
+    infra = [r["seed"] for r in rows if r.get("infra_failure")]
     n = len(ok)
     succ = sum(1 for r in ok if r.get("success"))
     cats: dict[str, int] = {}
@@ -359,7 +366,8 @@ def write_summary(out: Path, task: str, rows: list[dict]) -> dict:
     steps = [r["steps"] for r in ok if "steps" in r]
     s_steps = [r["steps"] for r in ok if r.get("success")]
     vs = [r["verify"] for r in ok if r.get("verify")]
-    summ = {"task": task, "n": n, "unstable": len(rows) - n, "success": succ,
+    summ = {"task": task, "n": n, "unstable": len(rows) - n - len(infra), "infra_failures": len(infra),
+            "infra_seeds": infra, "success": succ,
             "verify": ({k: sum(v.get(k, 0) for v in vs) for k in ("segments", "first_ok", "later_ok", "none_ok",
                                                                   "candidates", "rollouts")} if vs else None),
             "success_rate": round(succ / n, 3) if n else None,
