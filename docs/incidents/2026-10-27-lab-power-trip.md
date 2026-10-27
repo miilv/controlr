@@ -2,7 +2,12 @@
 
 **Symptom:** at about 10:05 UTC, ssh and `tailscale ping` to compute5-8 stopped answering. All four boxes share one site and LAN. Headscale marked them offline a few minutes later. The DERP relay and compute3 stayed healthy. Ilia then learned that the lab's power had gone out, overloaded by our machines. The lab will not give us these boxes again.
 
-**Root cause:** the load we put on the site, set by the lead's (the agent's) own decisions:
+**Root cause:** most likely physical plus load. All four boxes were plugged into one extension cord on a single
+outlet (Ilia, after the fact). At full load a box draws roughly 0.7-0.9 kW: an RTX 5090 up to ~575-600 W, plus the CPU.
+Four of them make ~3 kW sustained through one socket, at or above what a single outlet or power strip is rated for
+(16 A / 230 V ≈ 3.7 kW; many strips are rated 10 A ≈ 2.3 kW). We never asked the lab's professor for permission
+to run this load, and never asked how the boxes were powered. What pushed it over was the load we put on the site,
+set by the lead's (the agent's) own decisions:
 - From ~00:00Z the team rule was "fill the boxes to the brim".
 - At ~09:15Z a third heavy (rendered) lock was added on compute7 and compute8.
 - At ~08:00Z a slot-borrowing rule was added. Streams could take any free light slot, so idle capacity was filled too.
@@ -15,7 +20,7 @@ The extra load was not even productive. Fleet's analysis of 816 rendered and 876
 
 **What changed so it won't repeat:**
 - Work continues on compute3 and compute4 only, with conservative per-box caps: compute4 ≤ 2 rendered + ≤ 2 G3, compute3 ≤ 1 proxy + ≤ 3 G3.
-- Rule: before scaling load on hardware we don't own outright, agree a power budget with whoever owns it. Ask for a GPU power limit (`nvidia-smi -pl`, admin) where possible. Never "max out" a site. Monitor `power.draw` as well as utilisation.
+- Rule: before scaling load on hardware we don't own outright, get the owner's permission (the professor, for a lab) and ask how it is powered (outlets, circuits). Agree a power budget with them. Ask for a GPU power limit (`nvidia-smi -pl`, admin) where possible. Never "max out" a site. Monitor `power.draw` as well as utilisation.
 - The lead's memory carries this as a standing rule.
 
 **Lessons:**
