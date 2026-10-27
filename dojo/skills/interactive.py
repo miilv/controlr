@@ -598,7 +598,9 @@ def belt_velocity(sk: Skills, labels: list[str], steps: int = 4, max_wait: int =
         w1 = sk.refresh()
         d = [(w1.obj(l).pos - p)[:2] / waited for l, p in p0.items() if l in w1.objects]
         d = [x for x in d if np.linalg.norm(x) > 1e-4]
-        if d or waited >= max_wait:
+        # a provider that tracks (the runtime) is waited for: the belief's displacement there is its predictions
+        # jumping between readings (genuine-5.1 100005: (-1.6, -16.05) mm / step for a 4.0 belt)
+        if (d and f is None) or waited >= max_wait:
             return np.median(np.array(d), axis=0) if d else np.zeros(2)
 
 
@@ -779,7 +781,7 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
         w = sk.refresh()
         err = w.obj(label).pos - (p_plan + np.r_[v, 0.0] * (sk.ex.steps_used - t_plan))
         err[2] = 0.0
-        if 0.002 < float(np.linalg.norm(err)) < 0.05:
+        if 0.002 < float(np.linalg.norm(err)) < 0.025:     # larger: the arm half hides it, trust the track
             shifted = []
             for kind, T in samples:
                 T2 = T.copy()
