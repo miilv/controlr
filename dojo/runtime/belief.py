@@ -300,6 +300,7 @@ class RuntimeProvider:
         self.held_checker = None                # mode perception: (obs, arm, label) -> {"held": bool|None, ...}
         self.held_min_lift_m = 0.04
         self.held_confirm = None                # second, independent held look (agent) required before a drop
+        self.confirm_wrists = True              # confirm_pose also scores the wrist views (policy: confirm_wrists)
         self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
         self.actor_window = 12                  # actors_moving compares with the frame this many steps back
@@ -410,7 +411,7 @@ class RuntimeProvider:
         ev = {"kind": "confirm_pose", "label": label, "step": self.bridge.steps_used,
               "prior7": [round(float(v), 4) for v in np.r_[o.pos, o.quat]],
               "expected7": [round(float(v), 4) for v in np.r_[np.asarray(pos, float), np.asarray(quat, float)]]}
-        ok = self._post_place_confirmed(obs, o, {"pos": pos, "quat": quat}, others, ev)
+        ok = self._post_place_confirmed(obs, o, {"pos": pos, "quat": quat}, others, ev, wrists=self.confirm_wrists)
         if ok:
             o.pos, o.quat, o.source = np.asarray(pos, float).copy(), np.asarray(quat, float).copy(), "perception"
             self.touched.add(label)
@@ -657,25 +658,42 @@ class RuntimeProvider:
                 ev["dropped"] = True
                 self.stats["held_look_empty"] = self.stats.get("held_look_empty", 0) + 1
 
-    def _post_place_confirmed(self, obs: dict, o, r: dict, others, ev: dict, min_px: int = 40) -> bool:
+    def _post_place_confirmed(self, obs: dict, o, r: dict, others, ev: dict, min_px: int = 40, wrists: bool = False) -> bool:
         """The second look for a large post-place correction: the HEAD view of the same step, rendered with the object at
         the predicted (released) pose and at the corrected one (perception check, z-buffered among the others). The
-        correction stands only if the head view clearly prefers it (precision >= 0.6 and >= the prediction's + 0.15)."""
+        correction stands only if the head view clearly prefers it (precision >= 0.6 and >= the prediction's + 0.15).
+        ``wrists`` (confirm_pose: nothing was released, so the wrist view is not the source of the proposal): a WRIST
+        view whose silhouette IoU clearly prefers it (>= 0.6 and >= the prior's + 0.15, over >= ``min_px`` pixels) also
+        confirms; the arm that toppled / pushed the object hangs over it and hides it from the head."""
         if self.checker is None or not hasattr(self.checker, "check"):
             ev["confirm"] = "no head check"
             return False
         corr = copy.deepcopy(o)
         corr.pos, corr.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
         try:
-            hp = (self.checker.check(obs, [o] + list(others)).get(o.label) or {}).get("head") or {}
-            hc = (self.checker.check(obs, [corr] + list(others)).get(o.label) or {}).get("head") or {}
+            cp = self.checker.check(obs, [o] + list(others)).get(o.label) or {}
+            cc = self.checker.check(obs, [corr] + list(others)).get(o.label) or {}
         except Exception as e:  # noqa: BLE001 (no second look: keep the prediction)
             ev["confirm"] = f"head check error {type(e).__name__}"
             return False
+        hp, hc = cp.get("head") or {}, cc.get("head") or {}
         pp = hp.get("prec") if (hp.get("n_vis") or 0) >= min_px else None
         pc = hc.get("prec") if (hc.get("n_vis") or 0) >= min_px else None
         ok = pc is not None and pc >= 0.6 and (pp is None or pc >= pp + 0.15)
         ev["confirm"] = {"head_prec_predicted": pp, "head_prec_corrected": pc, "confirmed": ok}
+        if wrists and not ok:
+            for cam in ("cam_left_wrist", "cam_right_wrist"):
+                vp = (cp.get("per_view") or {}).get(cam) or {}
+                vc = (cc.get("per_view") or {}).get(cam) or {}
+                ip = vp.get("iou") if (vp.get("n_px") or 0) >= min_px else None
+                ic = vc.get("iou") if (vc.get("n_px") or 0) >= min_px else None
+                if ic is None:
+                    continue
+                ev["confirm"][f"{cam}_iou"] = [ip, ic]
+                if ic >= 0.6 and (ip is None or ic >= ip + 0.15):
+                    ok = True
+                    ev["confirm"].update({"confirmed": True, "by": cam})
+                    break
         return ok
 
     def resync(self, obs: dict, released: list[str] | None = None) -> dict:

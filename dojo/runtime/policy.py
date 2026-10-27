@@ -180,6 +180,10 @@ class RuntimeConfig:
     held_look: str = "off"
     held_refine_max_mm: float = 10.0    # an in-hand (kind "held") refine moving the object's centre more than this ...
     held_refine_min_iou: float = 0.85   # ... needs at least this iou; past half the object's largest extent: never
+    confirm_wrists: bool = True         # confirm_pose (a topple / push proposes the moved object's pose) also accepts a
+                                        # wrist view that clearly prefers it (silhouette IoU >= 0.6 and >= prior + 0.15);
+                                        # the head alone rejected a tile that had toppled (5.1 make_kong 100001: 0.59 vs
+                                        # 0.57 under the hanging gripper, the wrist 0.075 vs 0.93)
     held_drop_conf: float = 0.9         # a held_look "not held" at this confidence drops the grasp unless the head check sees
                                         # the object in the jaws (before: only when the head also saw it at the pick pose,
                                         # which kept 51 of 52 truly empty grasps on the proxy); > 1 = the old rule
@@ -394,6 +398,7 @@ class RuntimePolicy:
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
             prov.held_drop_conf = float(cfg.held_drop_conf)
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
+        prov.confirm_wrists = bool(cfg.confirm_wrists)
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()
