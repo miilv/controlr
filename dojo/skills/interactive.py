@@ -893,8 +893,12 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         labs = [l for l in w.objects if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter]
         if first in w.objects:                      # (the first one rides out of view and leaves the belief: keep its key)
             key = st["first_key"] = w.obj(first).asset.key
-        # a newcomer's identity counts once most of its latest reads agree (the tracker's vote share; GT: 1)
-        same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share]
+        # a newcomer's identity counts once most of its latest reads agree (the tracker's vote share; GT: 1), and the
+        # next one comes from behind the first (a second track of the first object itself is not it: 100002)
+        behind = ((lambda l: float((w.obj(l).pos[:2] - w.obj(first).pos[:2]) @ u) < -0.08) if first in w.objects
+                  else (lambda l: True))
+        same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share
+                and behind(l)]
         seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
