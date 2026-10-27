@@ -401,7 +401,10 @@ class Twin:
 
     # ------------------------------------------------------------------ batched verification
     def _task_labels(self, env_idx: int = 0) -> dict:
-        return {o["label"]: o for o in self.run.objects_gt(env_idx) if o["label"] and not o["clutter"]
+        """Task objects' GT rows by label, an Articulation's pose in its asset frame (``dojo.skills.artroot``): the
+        verify outcomes (``final_objects``, held / slip proximity) are compared with the caller's belief."""
+        from dojo.skills.artroot import row_to_asset
+        return {o["label"]: row_to_asset(o) for o in self.run.objects_gt(env_idx) if o["label"] and not o["clutter"]
                 and o["type"] in ("Rigid", "Dynamic", "Articulation")}
 
     def _perturb_env(self, env_idx: int, perturb: dict, rng: np.random.Generator) -> None:

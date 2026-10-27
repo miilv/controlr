@@ -183,6 +183,15 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   use this for table / ground placements (`inverse_layout._gen_offset`); placements on another object
   (`gen_layouts.place_on_object`) turn about the placement point. `scripts/perception/region_check.py TASK` lists the
   settled dev objects outside region + margin under both rules.
+- **RoboDojo poses an Articulation on its articulation-root prim, not on the asset's origin.** Its `ArticulationObject`
+  is an Isaac `SingleArticulation`, whose view resolves the prim path to the prim with `PhysicsArticulationRootAPI`;
+  the record's `default_pos/ori` lands there and `objects_gt` reads it back. On laptop/00000-03 that is the base link,
+  77 mm off the default prim, where our catalogue meshes, bboxes and `links.json` live: the mesh sits at the record
+  pose + (0, +78, -11) mm (object frame), so perception's (correct) laptop read scored "80 mm off" and G3 planned on a
+  laptop 8 cm away. `dojo/skills/artroot.py` converts (`to_asset` / `to_root`, table `data/articulation_roots.json`
+  from the USDs by `scripts/skills/articulation_roots.py`): our side is the asset frame, RoboDojo's side (records the
+  sim loads, `objects_gt` rows) the root frame. New code that pairs a GT row or a record with a mesh goes through
+  `artroot.row_to_asset`; a pose handed to RoboDojo through `to_root`. Re-run the script after an asset update.
 - **A catalogue colour of exactly 0.7 grey means "colour not read".** Some assets take their colour from an MDL preset
   (`info:mdl:sourceAsset:subIdentifier`, e.g. `ABS_Soft_Leather_Pop_Orange`), with no shader inputs on the USD
   side. `catalog.mdl_preset_color` reads the preset's flat colour argument (linear -> sRGB). Before it existed, the

@@ -140,6 +140,8 @@ def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict]
     """Per-object errors of a layout record against DEV-ONLY ground truth (Hungarian on xy within each
     interchangeable label group). Objects of a numbered series are scored under their config label (before
     2026-10-27 they were dropped: sweep_blocks' cubes, classify_objects' items)."""
+    from dojo.skills.artroot import row_to_asset
+
     from .inverse_layout import label_groups
 
     groups = label_groups(task)
@@ -149,6 +151,7 @@ def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict]
     for o in gt["objects"]:
         lab = gt_label(o, lab2group, series)
         if lab is not None and not o.get("clutter") and o.get("pos") is not None:
+            o = row_to_asset(o)    # GT rows: RoboDojo's pose (an Articulation's root prim); the record: the mesh frame
             gts.append(o if lab == o.get("label") else {**o, "label": lab, "series_label": o.get("label")})
     preds = []
     for p in flatten_pred(rec):  # an estimate may name a series' objects as the layout does (cube_0, ...)

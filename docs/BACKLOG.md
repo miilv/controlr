@@ -6,6 +6,15 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo: the rest of the articulation root frame (laptop).** `artroot` converts at objects_from_gt,
+  estimate_to_layout, the twin's verify rows and eval_g1 (journal 2026-10-27-dojo-integ-c4 §4). Left: (1) dev tools
+  that pair GT rows with meshes on their own (`color_calib`, `val_refine`, `val_what`, `review_exp`, `held_data`,
+  runtime `GTProbe`'s nearest object at a close) still read the root pose: use `artroot.row_to_asset`;
+  (2) presettle v2 never writes an articulation back, and the laptop settles ~8 mm down after spawn (probe: GT - record
+  = (0, +1, -8) mm), so settled records keep the spawn z; (3) `Rigid/factory_nut` carries an ArticulationRootAPI on
+  `/root/visual` (15.6 mm off) but loads as a rigid prim: G3 fasten_screws 10/10 says harmless, unprobed;
+  (4) the record's `scale` is not applied to the root offset (every record: 1).
+
 - [ ] **dojo perception: learned identity on the conveyors needs torch in the perception venvs.** The belt read with
   `EstimatorConfig.embed_model="dinov2_s"` (5.1 belt reads: identity 79/116 -> 104/116, phantoms 77 -> 47; report
   2026-10-27-identity-embeddings) is off by default. The rendered A/B arm sets `DOJO_PERCEPTION_CFG='{"embed_model":
