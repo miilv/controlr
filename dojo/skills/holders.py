@@ -545,7 +545,7 @@ EGG_SLIDE_START = 0.022       # m: the push starts this far out from the egg's b
 EGG_SLIDE_Z = 0.007           # m: the fingertips' height over the plate during the push
 
 
-def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=()) -> str:
+def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=(), arm: str | None = None) -> str:
     """Push a lying object, let go across ``hole``, along its long axis towards the side it was let go on: once one end
     is over the hole with nothing under it, it tips in. Closed fingertips straight down beside its end on the other side
     (``EGG_SLIDE_START`` out from where it should be: the in-hand position along the axis is known to +-15 mm only in
@@ -574,8 +574,12 @@ def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=()) -> str:
 
     def tcp_at(p):
         return T_from(np.asarray(p, float) + np.array([0.0, 0.0, TIP_BEYOND_TCP]), R)
-    arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - p0[:2])))
+    # the arm that let it go first (it is right there; the other one's path crossed its hand: egg_mbE 100001)
+    arms = sorted(ARMS, key=lambda a: (a != arm, float(np.linalg.norm(sk.kin.base(a)[:2, 3] - p0[:2]))))
     for a in arms:
+        other = "right" if a == "left" else "left"
+        if a != arm and arm is not None:
+            sk.ex.run({other: sk.plan_home(other)}, name=f"clear {other}")
         to = sk.motion.to_pose(a, sk.ex.q[a], tcp_at(p0 + np.array([0.0, 0.0, 0.05])), FAST, "slide_approach",
                                gripper=CLOSED, ignore=(label,) + tuple(ignore))
         if not to.ok:
@@ -816,7 +820,7 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             if EGG_SLIDE_IN and off == off and (not sk.remeasure or float(o.center_w[2]) > plate_top - EGG_SUNK):
                 # lying across the hole (mode A: measured; mode B: the release cannot be checked, so always): slid along
                 # its axis until one end is over the hole
-                r_s = slide_in(sk, lab, h, q.T_obj_target, ignore)
+                r_s = slide_in(sk, lab, h, q.T_obj_target, ignore, arm=a)
                 sk.log(f"[holes] {lab}: slid along its axis ({r_s})")
                 w = sk.refresh()
                 o = w.obj(lab)
