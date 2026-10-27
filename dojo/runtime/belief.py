@@ -636,9 +636,12 @@ class RuntimeProvider:
             sp = float(np.linalg.norm(vv))
             if (self.track_min_speed < sp <= self.track_max_speed and len(tr) >= self.track_vel_reads
                     and tr[-1][0] - tr[0][0] >= self.track_vel_span):
-                v.append(vv)
+                v.append((tr[-1][0] - tr[0][0], vv))
         if not v:
             return np.zeros(2)
+        # the longest tracks: the cleanest fits (a rider alone in view; 100001: the median over every trusted track read
+        # 2.69 mm / step for a 4.0 belt)
+        v = [vv for _, vv in sorted(v, key=lambda t: -t[0])[:3]]
         ax = self._belt_axis()
         if ax is not None:
             # a belt moves its riders along its long axis: the fits' components across it are track noise

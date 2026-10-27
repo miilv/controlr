@@ -2825,7 +2825,10 @@ from dojo.skills.interactive import copy_demonstration, match_and_pick, pick_int
 # tasks' checkers fail the episode the moment our arms are away from home (> 0.3 m / 30 deg) while the actor's arm is
 # away from its own (imitate_sorting_sequence, make_kong). The runtime moves no arm before such a skill starts (no
 # scan, looks or search). play_board_game is not one: its opponent starts only after our first piece.
-WAITS_ON_ACTOR = frozenset({"copy_demonstration", "declare_kong"})
+# The conveyor skills join them: on a moving belt every step before the skill is the first rider riding out of view (the
+# scan + looks + search took ~60 steps; the first rider leaves by ~80: no belt velocity, "nothing moves", genuine-5.1
+# 100003).
+WAITS_ON_ACTOR = frozenset({"copy_demonstration", "declare_kong", "match_and_pick", "pick_into_held"})
 
 SKILLS.update({"play_board_game": play_board_game, "fill_holes": fill_holes, "copy_demonstration": copy_demonstration,
                "match_and_pick": match_and_pick, "pick_into_held": pick_into_held})

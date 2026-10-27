@@ -315,6 +315,8 @@ def test_waits_on_actor_from_the_plan_or_the_words():
                           "into the basket in the same order.") == "copy_demonstration"
     assert waits_on_actor("Play tic-tac-toe with the opponent.") is None              # our first piece comes first
     assert waits_on_actor("Stack the three blocks.") is None
+    assert waits_on_actor("Remember the first object on the conveyor, then pick up the same one when it comes "
+                          "and lift it.") == "match_and_pick"                  # the belt: no steps before the skill
     assert waits_on_actor("Play tic-tac-toe.", _board_world()) is None                # the plan: play_board_game
 
 def test_copy_demonstration_follows_departures_and_matches_twins_by_asset_then_category(monkeypatch):
@@ -377,3 +379,79 @@ def test_copy_demonstration_follows_departures_and_matches_twins_by_asset_then_c
     monkeypatch.setattr(I, "wait_actors_still", lambda sk_, **kw: "still")
     r = I.copy_demonstration(sk, "basket0", "basket1", [o.label for o in objs])
     assert put == ["t1", "t0", "t2"] and r["ok"], (put, r, sk.logs)
+
+
+def test_match_and_pick_waits_for_a_first_object_when_none_was_read():
+    """Genuine 5.1 (eeb94de, 100003): no rider read at the start and none when the belt's velocity came: max() of an
+    empty list crashed the skill. Now the first rider to come into view is the first object; nothing ever: a clean
+    stage end."""
+    import dojo.skills.interactive as I
+
+    belt = _obj("conveyor", "conveyor", 0, (-2.08, 0.175, 0.05), (2.0, 0.6, 0.46), typ="Dynamic")
+    w = _world([belt])
+    comes = _obj("phone_t1", "phone", 0, (-0.7, -0.05, 0.77), (0.03, 0.06, 0.01))
+
+    class Ex:
+        steps_used = 0
+
+        def hold(self, n):
+            self.steps_used += n
+
+    class Prov:
+        def belt_velocity(self):
+            return np.array([0.004, 0.0]) if sk.ex.steps_used >= 20 else np.zeros(2)
+
+    class Sk:
+        ex, provider, held = Ex(), Prov(), {"left": None, "right": None}
+        logs: list = []
+        arrive = 60
+
+        def refresh(self):
+            w.step = self.ex.steps_used
+            if self.arrive is not None and self.ex.steps_used >= self.arrive and "phone_t1" not in w.objects:
+                w.objects["phone_t1"] = comes
+            return w
+
+        def log(self, m):
+            self.logs.append(m)
+    sk = Sk()
+    r = I.match_and_pick(sk, ["target0", "target1", "other0"], conveyor="conveyor", max_wait=40)
+    assert w.notes["belt"]["first"] == "phone_t1" and w.notes["belt"]["first_key"] == comes.asset.key
+    assert r["ok"] is False and r["stage"] == "match" and "no other" in r["note"]
+    w.objects.pop("phone_t1")
+    w.notes.clear()
+    sk.ex.steps_used, sk.arrive = 0, None
+    r = I.match_and_pick(sk, ["target0"], conveyor="conveyor", max_wait=40)
+    assert r == {"ok": False, "stage": "match", "note": "no object seen on the belt"}
+
+
+def test_belt_wrist_look_pose_is_above_the_descent_and_fits_the_time():
+    """Mode B's belt look: BELT_LOOK_H above the descent's first sample, reached BELT_LOOK_DOWN steps before the descent
+    is due; None when it leaves no time or is unreachable (the look then stays at the pre-grasp)."""
+    from types import SimpleNamespace
+
+    import dojo.skills.interactive as I
+    from dojo.skills.motion import Segment
+    q_first = np.zeros(6)
+    asked = []
+
+    class Kin:
+        def ik(self, a, T, q0, n_random=0):
+            asked.append(T[:3, 3].copy())
+            return SimpleNamespace(ok=T[2, 3] < 2.0, q=q0 + 0.1)
+
+    class Motion:
+        def joint(self, a, q0, q1, step_rad, name, gripper=1.0, check=True):
+            return SimpleNamespace(segments=[Segment(np.stack([np.asarray(q0, float), np.asarray(q1, float)]), 0.16, name, 0)])
+    sk = SimpleNamespace(kin=Kin(), motion=Motion(), ex=SimpleNamespace(q={"left": np.full(6, -0.5)}))
+    T0 = np.eye(4)
+    T0[:3, 3] = (-0.4, -0.1, 0.9)
+    samples, track = [("open", T0)], [(q_first, 0.9)]
+    out = I._belt_look_pose(sk, "left", samples, track, 0.9, n_desc_start=40)
+    assert out is not None and np.allclose(asked[-1], (-0.4, -0.1, 0.9 + I.BELT_LOOK_H))
+    app, q_look = out
+    assert np.allclose(q_look, 0.1) and np.allclose(app[-1][0], 0.1) and app[-1][1] == 0.9
+    assert I._belt_look_pose(sk, "left", samples, track, 0.9, n_desc_start=len(app) + I.BELT_LOOK_DOWN - 1) is None
+    T_hi = T0.copy()
+    T_hi[2, 3] = 1.95                                                   # unreachable once raised
+    assert I._belt_look_pose(sk, "left", [("open", T_hi)], track, 0.9, n_desc_start=40) is None

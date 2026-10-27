@@ -757,6 +757,27 @@ def _track_ik(sk: Skills, a: str, samples: list, q0) -> list | None:
     return qs
 
 
+BELT_LOOK_H = 0.08        # m: the wrist look's height above the descent's first sample (mode B)
+BELT_LOOK_DOWN = 5        # steps from the look down to the descent's start
+
+
+def _belt_look_pose(sk: Skills, a: str, samples: list, track: list, go: float, n_desc_start: int):
+    """The approach to a wrist-look pose ``BELT_LOOK_H`` above the descent's first sample: (approach list, look q), or
+    None when it is unreachable, too far from the descent's start for ``BELT_LOOK_DOWN`` steps, or leaves no time."""
+    from dojo.skills.motion import segment_targets
+    T = samples[0][1].copy()
+    T[2, 3] += BELT_LOOK_H
+    q_first = np.asarray(track[0][0], float)
+    r = sk.kin.ik(a, T, q_first, n_random=0)
+    if not r.ok or float(np.abs(np.asarray(r.q, float) - q_first).max()) > 0.2 * BELT_LOOK_DOWN:
+        return None
+    mv = sk.motion.joint(a, sk.ex.q[a], r.q, FAST_RAD, "belt_look", gripper=go, check=False)
+    app = [(qq, go) for seg in mv.segments for qq in segment_targets(seg.q, seg.step_rad, seg.ease)]
+    if len(app) + BELT_LOOK_DOWN > n_desc_start:
+        return None
+    return app, np.asarray(r.q, float)
+
+
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
                    pull: float = 0.0, skip_methods=()) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
@@ -773,15 +794,46 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
     sk.log(f"[belt] {label}: {a} intercept at +{t} steps ({g.note}), wait {wait}, approach {len(app)}")
     t_plan = sk.ex.steps_used
     p_plan = w.obj(label).pos.copy()
+    # mode B: the wrist look from BELT_LOOK_H above the descent's start, BELT_LOOK_DOWN steps before it (from the
+    # pre-grasp itself the rider fills or leaves the wrist view: 5.1 conveyor, 2 of 9 looks fit; the head track is 30-60
+    # mm off there). The descent's start is re-aimed after the look.
+    look = _belt_look_pose(sk, a, samples, track, go, n_desc_start) if getattr(sk, "refine", None) is not None else None
+    if look is not None:
+        app, q_look = look
+        wait = max(0, n_desc_start - len(app) - BELT_LOOK_DOWN)
     try:
         if wait:
             sk.ex.hold(wait)
         sk.ex.run_lists({a: app}, name="belt approach")
         # re-read the object and shift the tracked part by the prediction error (the belt keeps moving)
         w = sk.refresh()
-        err = w.obj(label).pos - (p_plan + np.r_[v, 0.0] * (sk.ex.steps_used - t_plan))
-        err[2] = 0.0
-        if 0.002 < float(np.linalg.norm(err)) < 0.025:     # larger: the arm half hides it, trust the track
+        p_now = w.obj(label).pos.copy()
+        max_shift = 0.025                               # the head-view tracker: larger is the arm half hiding the rider
+        if getattr(sk, "refine", None) is not None:
+            # a wrist look from the end of the approach (mode B: the sim waits for the read, the rider does not move
+            # meanwhile): the head-view tracker is 10-15 mm off at contact on a crowded belt
+            try:
+                sk._refine(label, a, "pick")
+            except Exception as e:  # noqa: BLE001 (a look that fails keeps the tracker's reading)
+                sk.log(f"[belt] wrist look failed: {type(e).__name__}")
+            lr = getattr(sk, "last_refine", None) or {}
+            if lr.get("ok") and lr.get("pos") is not None and float(lr.get("iou") or 0.0) >= 0.5:
+                p_now = np.asarray(lr["pos"], float)
+                max_shift = 0.05
+                sk.log(f"[belt] wrist look: {np.round((p_now - w.obj(label).pos) * 1000, 1).tolist()} mm from the track"
+                       f" (iou {float(lr.get('iou') or 0):.2f})")
+            # the lift is measured from the height the belief holds now: a look (or a read of the rider's own stable
+            # pose) re-measures it (#147 100000: the look moved the belief 47 mm down, the lift check read "rose -47 mm")
+            z0 = float(sk.refresh().obj(label).pos[2])
+        err = p_now - (p_plan + np.r_[v, 0.0] * (sk.ex.steps_used - t_plan))
+        if max_shift < 0.05:
+            err[2] = 0.0                                # the tracker's z is its model's, not a measurement
+        else:
+            # the wrist look measures the height too: a rider read in the wrong stable pose sat 47 mm lower than the
+            # track believed (#147 100000: the jaws closed above it, "rose -47 mm")
+            err[2] = float(np.clip(err[2], -0.06, 0.03))
+            max_shift = 0.08
+        if 0.002 < float(np.linalg.norm(err)) < max_shift:
             shifted = []
             for kind, T in samples:
                 T2 = T.copy()
@@ -791,6 +843,11 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
             if qs is not None:
                 track = [(qq, go if kind == "open" else 0.0) for kind, qq in qs]
                 sk.log(f"[belt] re-read: shifted the track by {np.round(err * 1000, 1).tolist()} mm")
+        if look is not None:
+            # down from the look to the (re-aimed) descent's start, arriving when the descent is due
+            q0, q1 = np.asarray(sk.ex.q[a], float), np.asarray(track[0][0], float)
+            sk.ex.run_lists({a: [(q0 + (q1 - q0) * k / (BELT_LOOK_DOWN + 1), go) for k in range(1, BELT_LOOK_DOWN + 1)]},
+                            name="belt look down")
         sk.ex.run_lists({a: track}, name=f"belt pick {label}")
         sk.ex.settle(tol=0.01, max_steps=12)            # the arm lags its command on the lift: measure at the top
         sk.ex.hold(2)
@@ -852,13 +909,37 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     w = sk.refresh()
     st = w.notes.setdefault("belt", {})
     labs = [l for l in objects if l in w.objects]
-    v = belt_velocity(sk, labs)
+    riders = [l for l in labs if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter]
+    if st.get("first") is None and len(riders) == 1:
+        # one rider in view at the start: it is the first one (remember it before it rides out of view)
+        st["first"], st["first_key"] = riders[0], w.obj(riders[0]).asset.key
+    # where the riders were at the start: the first one is the one leading there, even when it has ridden out of view
+    # (or the tracker dropped it) by the time the belt's direction is known
+    start = {l: (w.obj(l).pos[:2].copy(), w.obj(l).asset.key) for l in riders}
+    # a tracking provider (the runtime) may need the next riders' tracks for the velocity: wait longer for it
+    v = belt_velocity(sk, labs, max_wait=250 if getattr(sk.provider, "belt_velocity", None) else 60)
     if float(np.linalg.norm(v)) < 1e-4:
         return {"ok": False, "stage": "belt", "note": "nothing moves"}
     u = v / np.linalg.norm(v)
     w = sk.refresh()
-    if st.get("first") is None:
-        st["first"] = max(labs, key=lambda l: float(w.obj(l).pos[:2] @ u))
+    t_first = w.step
+    while st.get("first") is None:
+        now = {l: (w.obj(l).pos[:2].copy(), w.obj(l).asset.key) for l in w.objects
+               if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter}
+        pool = start or now
+        if pool:
+            st["first"] = max(pool, key=lambda l: float(pool[l][0] @ u))
+            st["first_key"] = pool[st["first"]][1]
+            break
+        # no rider read at the start and none now (genuine 5.1 eeb94de 100003: the tracker had added nothing; this
+        # crashed on an empty max()): the next one to ride into view is the first one
+        if w.step - t_first > max_wait:
+            return {"ok": False, "stage": "match", "note": "no object seen on the belt"}
+        try:
+            sk.ex.hold(5)
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return {"ok": False, "stage": "match", "note": str(e)}
+        w = sk.refresh()
     first = st["first"]
     key = st["first_key"] = w.obj(first).asset.key if first in w.objects else st.get("first_key")
     same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key]
@@ -878,8 +959,12 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         labs = [l for l in w.objects if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter]
         if first in w.objects:                      # (the first one rides out of view and leaves the belief: keep its key)
             key = st["first_key"] = w.obj(first).asset.key
-        # a newcomer's identity counts once most of its latest reads agree (the tracker's vote share; GT: 1)
-        same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share]
+        # a newcomer's identity counts once most of its latest reads agree (the tracker's vote share; GT: 1), and the
+        # next one comes from behind the first (a second track of the first object itself is not it: 100002)
+        behind = ((lambda l: float((w.obj(l).pos[:2] - w.obj(first).pos[:2]) @ u) < -0.08) if first in w.objects
+                  else (lambda l: True))
+        same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share
+                and behind(l)]
         seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
