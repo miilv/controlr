@@ -2468,6 +2468,8 @@ def _on_base_refit(chosen: list[Hypothesis], views, cfg, groups, pending, task) 
         rp = p.get("relative_plane", "Table")
         if isinstance(rp, (list, tuple)) or not _on_object(rp) or p.get("xlim") in ([0, 0], [0.0, 0.0]):
             continue
+        if cfg.support_slots and support_slot(p):
+            continue  # standing in a support slot (make_toast's bread): _place_support_slots
         base = str(rp).split("/")[0]
         if base not in labels or base in g["labels"] or labels[base].get("type") != "Geometry":
             continue  # a static fixture base only (not a conveyor's moving belt)

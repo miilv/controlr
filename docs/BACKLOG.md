@@ -6,6 +6,9 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo perception: store_laptop headset identity 00002 vs 00004** (5.1 c4 frames; B1 picks 00002 with the alternative
+  00004 at +0.03..+0.08, so `identity_margin_swap` never fires): try the embedding path (`embed_b1`) on these frames.
+  The laptop flip: `on_base_refit` (off) fixes 7 of 17 estimates; A/B after the root-vs-mesh offset is resolved.
 - [ ] **dojo skills: store_laptop's headset hang never plans: G3 mode A 0/10 stops before the laptop.** The planner
   picks `hang_on_hooks` for the headset (its `headband_bridge` on `stand`'s `support_cradle`) first, and finds
   "0 grasp-place pairs" on all of 100000-09. 8-99 of the 96-405 headset grasps are reachable per arm, but none pairs
