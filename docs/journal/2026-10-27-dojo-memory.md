@@ -208,3 +208,54 @@ top grasp, and the position error at contact is 12-16 mm.
 - First use (arm 5, rendered 100003): one close at step 182, the nearest GT object target1 at 72 mm, target1 rose 0.0 mm,
   while the belief read "rose 125 mm". The held look saw an empty, fully closed opening (conf 1.0), and the head confirm
   (held, 0.99) overrode it; routed to Integration-3.
+
+## 10. Rendered conveyor A/B on 100000-04: the arms, the causes, what was merged and dropped
+All rows are genuine-5.1 mode B, submit_v1, compute5, n = 5 per arm. These are smoke tests; the GT probe (§9) gives
+each failure's cause.
+
+| arm | code | success |
+|---|---|---|
+| #140 | long-track velocity | 0/5 |
+| #147 | + wrist look at the pre-grasp, top-3 track velocity, match behind the first | 1/5 |
+| #116 | older velocity | 0/5 |
+| conveyor7 | #147 + no steps before the skill + lone start rider + wrist-look z | 0/5 |
+| arm 5 | conveyor7 + #156 + #161 + crash guard | 1/5 |
+| arm 5, v14 set 100035-37 | | 1/3 |
+| arm 6 | main incl. #156 / #161 / #172 + #177 + #175 | 1/5 |
+
+- **Merged**
+  - #156: belt closes attach the rider, never the conveyor. A rider's z follows its identity. Before this, 11 of 27
+    held looks were on the conveyor, and the rider prior was 4-6 cm off in z at 8 of 9 picks.
+  - #161: a rider's stable pose comes from a vote.
+  - #165: simlab v14, a random place frame per child (RoboDojo draws among all of them).
+  - #168: the dev GT probe.
+  - #177: no steps before the belt skills, wrist-look height, a look from 8 cm higher, the first-object crash guard.
+  - #186: an identity switch needs 2 reads. One border read had renamed the first object.
+- **Open**
+  - #175: border-cut reads count 0.3. G1: 5 of 189 scored reads discounted, all right. On hold for rendered evidence.
+  - #180: open approach in mode B. 6 of 30 wrist looks were blind at grip 0.444 under the closed-hand mask. Paired
+    A/B on 100000-09 running.
+  - The #183 radius wiring (search_radius 0.06, empty_hand) goes up after #180.
+- **Dropped**
+  - Riders restricted to the first place frame: RoboDojo can spawn "side".
+  - Far-intercept replan: deterministic G3 +3 / -2 over 35 layouts; grasp preference did not change it.
+  - Belt grasp depth: -10 mm ±1, -20 mm worse.
+- **Failure tags**, arms 5 + 6 (10 episodes), overlapping:
+  - identity at commit: 4;
+  - xy at the close (≥ 60 mm): 3;
+  - grasp-offset slip: 2;
+  - false held: 2 (wrist opening misread 0.45-0.5 over the dark belt; routed);
+  - "side" z: 2 on the v14 set.
+- G1: when belt_read's identity is right, its z is right (0 of 72 reads off by 15 mm or more). Identity by asset:
+  camera 4/10 (6 misread as phone), garage 3/10.
+- G3 mode A: #177 gets 24/25 on 100000-24 and 7/10 on v14 100030-39. Regression set: plug 9/10, kong 5/5, stack 5/5,
+  tools 0.45.
+- compute6 heavy2 (loaned): belt_read averaged 20.6 s a call against 3.6 s on compute5, with several RTX jobs on the
+  GPU. An episode hit the 25-min cap, so the loan was given back and the A/B moved to compute5. This fed into the team
+  GPU cap.
+- Imitate on main, rendered, 100002 / 100004 (the demo layouts in D-C10's slice): 0/2.
+  - 100002: departures of our own objects were counted, and the skill started at step 664 while the demonstrator's arm
+    was out; the checker query ended it.
+  - 100004: 4 of 5 departures seen, and "no free object like toy_car" (frame-0 identity).
+  - Routed to Perception-3.
+- Spend so far: 315 LLM calls (agentic perceiver + held-look agent) over 62 rendered episodes; G1 / G3 none.
