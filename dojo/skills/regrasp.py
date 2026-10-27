@@ -47,6 +47,7 @@ HANDOVER_XY = ((0.06, -0.22), (0.0, -0.22), (0.06, -0.28), (0.10, -0.22), (0.0, 
 HANDOVER_Z = (0.92, 0.98, 1.04)
 MAX_TAKES = 4000                    # taker grasps tried at handover poses per search (a count, not a wall-clock cap:
                                     # a time cap made the chosen handover depend on the box's load, G3)
+VIA_UP = 0.08                       # m: the via over the receptacle when the direct move to its hover does not plan
 PLACE_CHECKS = 6                    # handover candidates whose taker place is planned before one is chosen
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
 TURN_LIFT = 0.0009                  # m: the object is turned this far above where it seated
@@ -270,6 +271,18 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                                **kw)
             if isinstance(pl, PlacePlan):
                 return sol
+            # through a waypoint over the receptacle first: the joint move from the handover to the hover swept through
+            # the lock block or the table, and the planner's via (1.02 m) was out of reach (G3 100001, 100013)
+            T_via = np.asarray(sol["target"], float) @ sol["T_ko"]
+            T_via[2, 3] += VIA_UP
+            mv = sk.motion.to_pose(t_arm, sol["q_take"], T_via, REST_PLACE_CARRY, "via_receptacle", gripper=CLOSED,
+                                   held=held.box, ignore=(label,), safe_z=float(T_via[2, 3]))
+            if mv.ok:
+                pl = sk.plan_place(t_arm, sol["target"], yaw_sym=1, ignore=(receptacle,), q_start=mv.q_end, held=held,
+                                   **kw)
+                if isinstance(pl, PlacePlan):
+                    sol["via"] = T_via
+                    return sol
             notes.append(f"{sol['note']}: place from the handover: {pl.note[:80]}")
         notes.append(f"{g_arm} -> {t_arm}: no handover pose ({len(fam)} taker grasps reach the target, "
                      f"{len(sols)} handovers)")
@@ -355,6 +368,26 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     # insert and let go; the turn takes a grasp of its own, the one whose wrist reaches the whole turn
     # (``turn_in_lock``: the handover's grasp reached -42 of -60 or less in most layouts, G3)
     kw["release"] = True
+    try:
+        # the giver goes home while the taker moves on (300 steps: in sequence the episode ran out, G3): to the via over
+        # the receptacle when the handover search needed one, else along the place's own approach to its hover
+        first = None
+        if h.get("via") is not None:
+            mv = sk.motion.to_pose(t_arm, sk.ex.q[t_arm], h["via"], REST_PLACE_CARRY, "via_receptacle", gripper=CLOSED,
+                                   held=sk.held[t_arm].box, ignore=(label,), safe_z=float(h["via"][2, 3]))
+            first = mv if mv.ok else None
+        if first is None:
+            pl0 = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
+            first = pl0.approach if isinstance(pl0, PlacePlan) else None
+        home = sk.plan_home(g_arm)
+        if first is not None:
+            sk.ex.run({t_arm: ArmPlan(t_arm, sk.ex.q[t_arm].copy(), CLOSED).move(first, "approach"), g_arm: home},
+                      name="place approach + giver home")
+        else:
+            sk.ex.run({g_arm: home}, name="giver home")
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return sk._record(SkillResult(False, "place", "step_budget" if isinstance(e, BudgetExceeded) else "ended", 0,
+                                      t_arm, note=str(e)))
     pl = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
     held_on = False
     if not isinstance(pl, PlacePlan) and turn:
@@ -362,19 +395,7 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
         pl = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
         held_on = True
     if not isinstance(pl, PlacePlan):
-        sk.ex.run({g_arm: sk.plan_home(g_arm)}, name="giver home")
         return sk._record(SkillResult(False, "place", pl.status, 0, t_arm, note=f"after the handover: {pl.note[:150]}"))
-    try:
-        # the giver goes home while the taker moves to the hover (300 steps: in sequence the episode ran out, G3), then
-        # the place from there (its approach is then a few steps)
-        appr = ArmPlan(t_arm, sk.ex.q[t_arm].copy(), CLOSED).move(pl.approach, "approach")
-        sk.ex.run({t_arm: appr, g_arm: sk.plan_home(g_arm)}, name="place approach + giver home")
-    except (BudgetExceeded, EpisodeEnded) as e:
-        return sk._record(SkillResult(False, "place", "step_budget" if isinstance(e, BudgetExceeded) else "ended", 0,
-                                      t_arm, note=str(e)))
-    pl2 = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
-    if isinstance(pl2, PlacePlan):
-        pl = pl2
     r = sk._record(sk.run_place(pl, tol[0], tol[1], tol_z=tol[2], ref_label=receptacle))
     if not turn or r.status in ("ended", "step_budget"):
         return r
