@@ -266,7 +266,10 @@ entries:
     doc: |
       Put long objects (pens, sticks, tubes) one by one into an upright holder: each held leading end down just over
       the opening's free spot, the hand kept out of the holder, and let go so it drops in (widest first). A holder out
-      of comfortable reach is first carried upright to where both arms reach it. Both grippers opened after each.
+      of comfortable reach is first carried upright to where both arms reach it. Both grippers opened after each. An
+      instruction to hold the holder with one hand, fill it with the other and then put it back down is judged by the
+      end state only (the objects in it, the holder upright, both grippers open): this skill fills it standing,
+      without holding it, and that is the end state such an instruction asks for.
     args:
       objects: "[id], required; the long objects"
       container: "id, required; the holder"
