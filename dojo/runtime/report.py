@@ -141,8 +141,13 @@ def _why(why) -> str:
         return w
     try:
         d = json.loads(w)
-    except ValueError:
-        return w
+    except ValueError:                              # eval keeps 300 characters: parse the complete entries
+        import re
+        d = {m.group(1): {"found": m.group(2) == "true", "est_label": m.group(3),
+                          "xy_mm": float(m.group(4)) if m.group(4) else None}
+             for m in re.finditer(r'"([^"]+)": \{"found": (true|false)(?:, "est_label": "([^"]+)", "xy_mm": ([0-9.]+))?', w)}
+        if not d:
+            return w
     parts = []
     for lab, v in d.items():
         if not isinstance(v, dict):
@@ -164,6 +169,8 @@ def breadth_table(rows: list[dict], refs: dict | None = None) -> str:
     out = ["| task | n | success | score | steps med / max (lim) | wall s med | calls / ep | failures (category n: layouts; "
            "typical reason) |" + (" G3 mode A |" if refs else ""),
            "|---|---|---|---|---|---|---|---|" + ("---|" if refs else "")]
+    infra = [r for r in rows if r.get("category") == "infra_failure"]
+    rows = [r for r in rows if r.get("category") != "infra_failure"]   # an object without its collider: not a measurement
     for task in sorted({r["task"] for r in rows}):
         rs = sorted((r for r in rows if r["task"] == task), key=lambda r: r["layout_id"])
         n = len(rs)
@@ -189,6 +196,9 @@ def breadth_table(rows: list[dict], refs: dict | None = None) -> str:
     tot = len(rows)
     out.append(f"\n{tot} episodes, {sum(r['success'] for r in rows)} successes, {sum(_calls(r) for r in rows)} LLM calls "
                f"({sum(_calls(r) for r in rows) / max(1, tot):.1f} / episode)")
+    if infra:
+        bad = ", ".join(f"{r['task']} {r['layout_id']}" for r in infra)
+        out.append(f"excluded as infra_failure (collider cooking failed; re-run them): {bad}")
     return "\n".join(out)
 
 
