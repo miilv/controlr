@@ -493,7 +493,7 @@ EGG_SUNK = 0.003              # m: its centre this far under the plate's top cou
 EGG_PRESS_DEPTH = 0.014       # m: the closed fingertips go this far below the egg's top
 
 
-def press_in(sk: Skills, label: str, hole: dict, ignore=()) -> str:
+def press_in(sk: Skills, label: str, hole: dict, ignore=(), at_end: bool = False) -> str:
     """Closed fingertips straight down onto the top of an object lying across ``hole``, at its point over the hole
     nearest the hole's centre, ``EGG_PRESS_DEPTH`` below its top, and back up (egg_nudge1: 2 of 9 eggs let go off a
     hole's centre stayed wedged across it, 4 mm over the plate, tilted 14 deg from level)."""
@@ -504,6 +504,10 @@ def press_in(sk: Skills, label: str, hole: dict, ignore=()) -> str:
     V = np.asarray(o.asset.mesh[0], float) @ o.R.T + o.pos if o.asset.mesh is not None else o.world_bbox_corners()
     # the point of its long axis over the hole nearest the hole centre, on its upper surface
     s_ = float(np.clip((hc - o.center_w[:2]) @ ax[:2] / max(float(ax[:2] @ ax[:2]), 1e-9), -0.012, 0.012))
+    if at_end:
+        # its higher end (the one resting on the rim), 12 mm in from its tip: that end slides down into the hole
+        half = 0.5 * float(o.asset.extents[k])
+        s_ = (half - 0.012) * (1.0 if float(ax[2]) > 0 else -1.0)
     p = o.center_w + ax * s_
     near = V[np.linalg.norm(V[:, :2] - p[:2], axis=1) < 0.006]
     top = float(near[:, 2].max()) if len(near) else float(o.top_z)
@@ -691,11 +695,14 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             o = w.obj(lab)
             if EGG_PRESS and off == off and float(o.center_w[2]) > plate_top - EGG_SUNK:
                 # still lying across the hole (wedged between the rim and the hole's wall): pressed in from above
-                r_p = press_in(sk, lab, h, ignore)
-                sk.log(f"[holes] {lab} lay across the hole (centre {1000 * (float(o.center_w[2]) - plate_top):+.0f} mm over "
-                       f"the plate): pressed ({r_p})")
-                w = sk.refresh()
-                o = w.obj(lab)
+                for at_end in (False, True):
+                    r_p = press_in(sk, lab, h, ignore, at_end=at_end)
+                    sk.log(f"[holes] {lab} lay across the hole (centre {1000 * (float(o.center_w[2]) - plate_top):+.0f} mm "
+                           f"over the plate): pressed {'its high end' if at_end else 'its middle'} ({r_p})")
+                    w = sk.refresh()
+                    o = w.obj(lab)
+                    if float(o.center_w[2]) <= plate_top - EGG_SUNK:
+                        break
             hit = next((x for x in holes if in_hole(o, x)), None)
             how = "stood up" if off != off else f"offset {off * 1000:.0f} mm, yaw {yd:.0f}, side {side:+.0f}"
             sk.log(f"[holes] {lab} dropped over the hole at {np.round(h['center'], 3).tolist()} ({how}; {rr.status}): "
