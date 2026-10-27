@@ -246,11 +246,22 @@ def _stroke(sk: Skills, arm: str, tool: str, obj: str, u: np.ndarray, dist: floa
     ang_u = math.atan2(u[1], u[0])
     half_o = 0.5 * float(np.max(o.asset.extents[:2]))
     why = "no pose"
-    for side in (1.0, -1.0):
+    # the broom's long axis across the push, either way round; then rolled about that axis (the hand tilted off
+    # vertical) when the straight-down hand is out of reach (twin: 'no seed converged' for most strokes on 3 of 5)
+    poses = []
+    for roll in (0.0, 20.0, -20.0, 35.0, -35.0):
+        for side in (1.0, -1.0):
+            poses.append((roll, side))
+    for roll, side in poses:
         dpsi = (ang_u + side * math.pi / 2) - ang_a
         dpsi = (dpsi + math.pi) % (2 * math.pi) - math.pi
         Rz = rot_z(dpsi)
         R_t = Rz @ t.R
+        if roll:
+            ax = R_t[:, hd["axis"]].copy()
+            ax[2] = 0.0
+            ax /= np.linalg.norm(ax) or 1.0
+            R_t = _axis_rot(ax, math.radians(roll)) @ R_t
         P = (hd["pts"] @ R_t.T) if hd["pts"] is not None else np.zeros((1, 3))
         c_h = R_t @ hd["centre"]
         # the head's centre behind the object, its lowest point PUSH_Z over the table
@@ -288,6 +299,12 @@ def _stroke(sk: Skills, arm: str, tool: str, obj: str, u: np.ndarray, dist: floa
             p.move(m4, "up")
         return p
     return why
+
+
+def _axis_rot(a, th: float) -> np.ndarray:
+    a = np.asarray(a, float)
+    K = np.array([[0, -a[2], a[1]], [a[2], 0, -a[0]], [-a[1], a[0], 0]])
+    return np.eye(3) + math.sin(th) * K + (1 - math.cos(th)) * K @ K
 
 
 def push_leg(sk: Skills, arm: str, tool: str, obj: str, target_xy, tol: float = PUSH_TOL, max_strokes: int = 3,
