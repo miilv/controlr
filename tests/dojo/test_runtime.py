@@ -1738,6 +1738,107 @@ def test_belt_tracking_fits_the_velocity_and_moves_the_belief():
     assert prov.stats["track_reads"] == 11                                              # every 4th step
 
 
+def test_belt_newcomers_get_fresh_labels_and_identities_follow_the_votes():
+    """B1 hands out its interchangeable labels in x order (target0, target1, ...): an object that rides into view
+    gets a label the belief already has. It must still join the belief (the 2026-10-26 breadth conveyor never added
+    one), keep its track, and its identity follows the majority of the reads."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    first = objects_from_gt_rows(env.gt_objects(), None)
+    first = {"target0": first["block_0"]}
+    first["target0"].label = "target0"
+    prov.init_objects(first)
+    v = 0.004
+    # (x at step 0, category / idx as read): the first rides away to the right; a newcomer enters at the left at
+    # step 20; B1 misreads the newcomer's identity once
+    riders = [(0.25, 0.04, ("puppet", 0)), (-0.75, -0.08, ("bottle", 47))]
+
+    def reader(obs):
+        s_ = obs["steps_used"]
+        seen = []
+        for k, (x0, y, ident) in enumerate(riders):
+            x = x0 + v * s_
+            if k == 1 and s_ < 20:
+                continue                                                   # not in view yet
+            cat, idx = ident
+            if k == 1 and s_ == 28:
+                cat, idx = "camera", 2                                     # one wrong identity read
+            seen.append((x, y, cat, idx))
+        seen.sort(key=lambda t: t[0])                                      # labels by x, like B1
+        labs = ["target0", "target1", "other0"]
+        out = {}
+        for lab, (x, y, cat, idx) in zip(labs, seen):
+            out.setdefault(cat, []).append({"category": cat, "category_idx": idx, "label": lab, "default_pos": [x, y, 0.78],
+                                            "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}})
+        return {"Rigid": out}
+    prov.track_reader = reader
+    for step in range(0, 61):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    new = [e for e in prov.events if e["kind"] == "track_new"]
+    assert len(new) == 1 and new[0]["step"] == 20 and new[0]["label"] not in ("target0",)
+    lab = new[0]["label"]
+    o = prov.belief.objects[lab]
+    assert o.asset.key == "Rigid/bottle/00047"                            # the majority, not the one misread
+    assert abs(float(o.pos[0]) - (-0.75 + v * 60)) < 0.002
+    assert abs(float(prov.belief.objects["target0"].pos[0]) - (0.25 + v * 60)) < 0.002
+    assert prov.belief.objects["target0"].asset.key == "Rigid/puppet/00000"
+    assert abs(float(prov.belt_velocity()[0]) - v) < 2e-4
+
+
+def test_belt_first_reread_after_the_scan_still_matches_the_frame0_reading():
+    """The tracker starts after the scan and the looks: the rider moved ~12 cm since its frame-0 reading. It must be
+    the same object, not a newcomer next to a ghost of itself (a ghost of the same asset would be "the next one")."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    v = 0.004
+
+    def reader(obs):
+        x = 0.25 + v * obs["steps_used"]
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [x, 0.04, 0.78],
+                                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}}]}}
+    prov.track_reader = reader
+    for step in range(30, 60):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    assert not [e for e in prov.events if e["kind"] == "track_new"]
+    assert list(prov.belief.objects) == ["block_0"]
+    assert abs(float(prov.belief.objects["block_0"].pos[0]) - (0.25 + v * 59)) < 0.002
+
+
+def test_belt_phantom_of_the_start_estimates_is_dropped():
+    """A label filled from frame 0 where the rider no longer is (the scan estimate assumes nothing moved): no re-read
+    ever confirms it, so it leaves the belief before a matching skill takes it for "the next one"."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.31, 0.04, 0.78), (0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))     # block_0 real, block_1 its frame-0 ghost
+    v = 0.004
+
+    def reader(obs):
+        x = 0.31 + v * (obs["steps_used"] - 14)
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [x, 0.04, 0.78],
+                                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}}]}}
+    prov.track_reader = reader
+    for step in range(20, 40):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    assert list(prov.belief.objects) == ["block_0"]
+    assert [e["label"] for e in prov.events if e["kind"] == "track_drop"] == ["block_1"]
+
+
 def test_twin_is_started_for_the_scene_the_policy_chose():
     started = []
     pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="bundle"))
