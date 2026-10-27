@@ -542,36 +542,44 @@ EGG_SUNK = 0.003              # m: its centre this far under the plate's top cou
 EGG_PRESS_DEPTH = 0.014       # m: the closed fingertips go this far below the egg's top
 
 
-EGG_SLIDE = 0.045             # m: the fingertips' push along a lying egg's axis (it starts this far beyond its end)
+EGG_SLIDE = 0.045             # m: the fingertips' push along a lying egg's axis, from its release pose (mode B)
 EGG_SLIDE_START = 0.022       # m: the push starts this far out from the egg's believed end (in-hand error up to 15 mm)
+EGG_SLIDE_MEASURED = (0.006, 0.022)   # m: (start, push) from its measured pose (mode A): a short push past the contact
 EGG_SLIDE_Z = 0.007           # m: the fingertips' height over the plate during the push
+
+
+def slide_path(o, hole: dict, T, start: float = EGG_SLIDE_START, push: float = EGG_SLIDE):
+    """(fingertip start, fingertip end, push direction) of the push along a lying object's long axis with ``o``'s
+    asset at pose ``T``: towards the side of ``hole``'s centre its middle is on, from ``start`` beyond its other end,
+    ``push`` long, ``EGG_SLIDE_Z`` over the plate (its lower end whatever its height in the hand: mode B, 10-14 mm
+    lower than believed; at its believed middle the fingertips passed over it, egg_mbD 100001). None: not lying."""
+    k = int(np.argmax(o.asset.extents))
+    T = np.asarray(T, float)
+    c0 = T[:3, :3] @ o.asset.center + T[:3, 3]
+    ax = T[:3, k].copy()
+    ax[2] = 0.0
+    if float(np.linalg.norm(ax)) < 0.3:
+        return None
+    ax /= np.linalg.norm(ax)
+    hc = np.asarray(hole["center"], float)[:2]
+    u = ax if float(ax[:2] @ (c0[:2] - hc)) >= 0 else -ax
+    half = 0.5 * float(o.asset.extents[k])
+    p0 = np.r_[c0[:2] - u[:2] * (half + start), float(hole["top"]) + EGG_SLIDE_Z]
+    return p0, p0 + u * push, u
 
 
 def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=(), arm: str | None = None,
              start: float = EGG_SLIDE_START, push: float = EGG_SLIDE) -> str:
     """Push a lying object, let go across ``hole``, along its long axis towards the side it was let go on: once one end
-    is over the hole with nothing under it, it tips in. Closed fingertips straight down beside its end on the other side
-    (``EGG_SLIDE_START`` out from where it should be: the in-hand position along the axis is known to +-15 mm only in
-    mode B), at its middle's height, then ``EGG_SLIDE`` along the axis. Uses the release pose, not the belief after it.
+    is over the hole with nothing under it, it tips in (``slide_path``: closed fingertips straight down beside its other
+    end, then along the axis). Mode B pushes from the release pose (``EGG_SLIDE_START`` out: the in-hand position along
+    the axis is known to +-15 mm only); mode A from the measured pose, a short push (``EGG_SLIDE_MEASURED``).
     (G3 mode B traces: let go 6 mm off the hole's centre instead of 12, the egg wedged across the hole.)"""
     o = sk.world.obj(label)
-    k = int(np.argmax(o.asset.extents))
-    T = np.asarray(T_release, float)
-    R0 = T[:3, :3]
-    c0 = R0 @ o.asset.center + T[:3, 3]
-    ax = R0[:, k].copy()
-    ax[2] = 0.0
-    if float(np.linalg.norm(ax)) < 0.3:
+    sp = slide_path(o, hole, T_release, start, push)
+    if sp is None:
         return "not lying"
-    ax /= np.linalg.norm(ax)
-    hc = np.asarray(hole["center"], float)[:2]
-    u = ax if float(ax[:2] @ (c0[:2] - hc)) >= 0 else -ax          # towards the side it was let go on
-    half = 0.5 * float(o.asset.extents[k])
-    # just over the plate: the egg's lower end whatever its height in the hand (mode B: 10-14 mm lower than believed;
-    # at its believed middle the fingertips passed over it, egg_mbD 100001)
-    z_tip = float(hole["top"]) + EGG_SLIDE_Z
-    p0 = np.r_[c0[:2] - u[:2] * (half + start), z_tip]
-    p1 = p0 + u * push
+    p0, p1, u = sp
     from dojo.skills.kinematics import down_R
     R = down_R(math.atan2(u[1], u[0]) + math.pi / 2)                 # closing across the push, the finger's width along it
 
@@ -823,10 +831,10 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             if EGG_SLIDE_IN and off == off and (not sk.remeasure or float(o.center_w[2]) > plate_top - EGG_SUNK):
                 # lying across the hole (mode A: measured; mode B: the release cannot be checked, so always): slid along
                 # its axis until one end is over the hole
-                # mode A: from where it lies (measured), a short push past the contact; mode B: from the release pose,
-                # long enough for +-15 mm of unknown in-hand position (G3: it pushed an egg on across the next hole)
+                # mode B: from the release pose, long enough for +-15 mm of in-hand error; mode A: from where it lies, a
+                # short push (the long one from the measured pose pushed an egg on across the next hole: egg_AF)
                 r_s = (slide_in(sk, lab, h, q.T_obj_target, ignore, arm=a) if not sk.remeasure else
-                       slide_in(sk, lab, h, o.T, ignore, arm=a, start=0.006, push=0.022))
+                       slide_in(sk, lab, h, o.T, ignore, arm=a, start=EGG_SLIDE_MEASURED[0], push=EGG_SLIDE_MEASURED[1]))
                 sk.log(f"[holes] {lab}: slid along its axis ({r_s})")
                 w = sk.refresh()
                 o = w.obj(lab)

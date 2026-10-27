@@ -148,3 +148,20 @@ def test_heldsim_confirm_ignores_the_spin_of_a_round_object():
         r = prov.confirm_pose("e", o.pos.copy(), R_to_quat(R_spun))
         assert r["adopted"] is adopted, half
         assert np.allclose(quat_to_R(R_to_quat(R_spun)), R_spun, atol=1e-9)
+
+
+def test_slide_path_pushes_a_lying_egg_along_its_axis_towards_the_side_it_was_let_go_on():
+    o = _egg()                                         # lying: its long axis (local z) along world -y
+    hole = {"center": np.array([0.0, -0.2]), "radius": 0.0245, "top": 0.814, "floor": 0.768}
+    half = 0.5 * float(o.asset.extents[2])
+    for dy in (0.006, -0.006):                          # let go 6 mm off the hole's centre, on either side
+        T = o.T.copy()
+        T[:3, 3] = np.array([0.0, -0.2 + dy, 0.79]) - o.R @ o.asset.center      # its middle dy off the hole's centre
+        p0, p1, u = HO.slide_path(o, hole, T)
+        assert np.allclose(np.abs(u), [0.0, 1.0, 0.0]) and math.copysign(1.0, u[1]) == math.copysign(1.0, dy)
+        # it starts beyond the egg's other end and pushes towards the side it was let go on, just over the plate
+        assert math.isclose(p0[1], -0.2 + dy - u[1] * (half + HO.EGG_SLIDE_START), abs_tol=1e-9)
+        assert np.allclose(p1 - p0, u * HO.EGG_SLIDE)
+        assert math.isclose(p0[2], hole["top"] + HO.EGG_SLIDE_Z) and math.isclose(p1[2], p0[2])
+    up = _egg(quat=(1.0, 0.0, 0.0, 0.0))               # standing: nothing to push
+    assert HO.slide_path(up, hole, up.T) is None
