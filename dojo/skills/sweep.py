@@ -96,6 +96,11 @@ def handle_grasps(sk: Skills, tool, arm: str) -> list:
     hd = tool_head(tool)
     k, sgn = hd["axis"], hd["sign"]
     mid = 0.5 * (tool.asset.bbox_min[k] + tool.asset.bbox_max[k])
+    try:
+        from dojo.skills.library import physics_com
+        com_k = float(physics_com(tool)[k])
+    except Exception:  # noqa: BLE001
+        com_k = mid
     out = []
     for g in G.box_grasps(tool, sk.kin, arm) + G.slice_grasps(tool, sk.kin, arm) + G.antipodal_grasps(tool, sk.kin, arm):
         p = (inv_T(tool.T) @ np.r_[g.T[:3, 3], 1.0])[:3]
@@ -103,7 +108,9 @@ def handle_grasps(sk: Skills, tool, arm: str) -> list:
         # of it (twin: every grasp mid-handle had its fingertips at the table); the head's root holds (5 mm drift)
         if (p[k] - mid) * sgn < 0.025 and -float(g.T[2, 0]) > 0.8 and float(g.width) >= 0.012:
             # nearest the head's root first (the least lever on a level carry), straight down first
-            g.score = float(g.score) + 2.0 * abs(float(p[k] - mid)) + 0.5 * (1.0 + float(g.T[2, 0]))
+            # nearest the centre of mass first (the broom's is at its head's root: twin, a pinch 7 mm in held with 5 mm
+            # drift, 19 mm in came loose with 13 mm), straight down first
+            g.score = float(g.score) + 3.0 * abs(float(p[k] - com_k)) + 0.5 * (1.0 + float(g.T[2, 0]))
             out.append(g)
     # box grasps only when there are any (twin probe: a box pinch 7 mm into the head held with 5 mm drift; a 76 mm slice
     # across the bristles caught nothing; plan_transfer re-ranks by score, so filter rather than sort)
@@ -145,7 +152,7 @@ def pan_handle_grasps(o) -> list:
     """Top-down pinches across the dustpan's handle (its asset frame's +y end): slices of the mesh at a few stations
     along the handle, pads on its sides (closing along the asset x), the TCP at the slice's mid height."""
     from dojo.skills import grasps as G
-    from dojo.skills.kinematics import down_R
+    from dojo.skills.kinematics import down_R, tilted_R
     if o.asset.mesh is None:
         return []
     V = np.asarray(o.asset.mesh[0], float)
@@ -166,6 +173,13 @@ def pan_handle_grasps(o) -> list:
         for flip in (0.0, math.pi):
             T = T_from(p, down_R(yaw + flip))
             out.append(G.Grasp("handle", T, w, score=dy, note=f"handle {dy * 1000:.0f} mm from its end, w {w * 1000:.0f} mm"))
+            # tilted towards the left arm's side too (a pan far out on the left: no straight-down handle grasp reached)
+            for pitch in (65.0, 50.0):
+                for arm_x in (-0.3, 0.3):
+                    heading = math.atan2(p[1] + 0.45, p[0] - arm_x)
+                    R = tilted_R(yaw + flip, pitch, heading)
+                    out.append(G.Grasp("handle", T_from(p, R), w, score=dy + 0.3,
+                                       note=f"handle {dy * 1000:.0f} mm from its end, pitch {pitch:.0f}"))
     return out
 
 
