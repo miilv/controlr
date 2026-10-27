@@ -109,6 +109,25 @@
 
 - [x] ~~**dojo agent: the scene must list functional frames** (pegs, slots, press tags) for `stack_on_pegs` /
   `slots_and_press`~~ — scene v3 (`AgentConfig.scene_version=3`) lists the asset's named support / functional frames.
+- [x] ~~**dojo agent: AgentConfig ran scene v2 by default**, so the frames above never reached the chooser (Sonnet
+  wrote code for hang_on_hooks / slots_and_press / strike_in_order / stack_on_pegs, 19/93 items), and v3 cut every
+  object's frames at 8 (no `hit_*` xylophone keys, no ninth board cell)~~ — scene v4 (every frame, numbered series
+  with positions) is the default; `stack_on_pegs` doc v8 says which group fits which peg
+  ([routing report](experiments/2026-10-27-routing-sonnet.md)).
+- [ ] **dojo agent: registry path lags SKILL_DOCS v8.** `skills/registry.yaml`'s `stack_on_pegs` doc lacks the "most
+  pieces -> highest peg" sentence; a run with `AgentConfig.registry` set routes the stacking toy as doc v7 did
+  (6/10). Mirror it before the J4 import.
+- [ ] **dojo agent: wrong asset captions mislead the chooser.** The mug rack (cup_holder 0) is captioned
+  "smartphone", the bread and the coin "smartphone", both vertical stands "business card holder". With scene v2
+  Sonnet called the rack "a phone-shaped holder, not a rack" and planned a `robo.search` for a missing rack. A
+  caption-sanity pass (category vs caption) in `scene.caption` would remove the trap.
+- [ ] **dojo agent: `robo.obj()` has no frames.** Code cannot look a frame name up (Run A plans "print the toaster's
+  frames" would have found nothing); since scene v4 the frames are in the scene text only.
+- [ ] **dojo agent: routing of the default model is unmeasured on the new skills.** The 2026-10-27 routing study ran
+  Sonnet 5.5 only; `AgentConfig.model` is `cx/gpt-6.1-sol`. In Phase 1 run 1 the OpenAI arms read
+  `fill_container`'s "(pens, sticks, tubes)" as the tube-rack skill; `insert_each` now exists for that.
+- [ ] **dojo skills: no laptop skill** (close the lid, stand it in the vertical rack): store_laptop_and_headphones is
+  code for the agent; the rule planner runs `hang_on_hooks` for the headphones only (the paired 20 of 100).
 - [ ] **dojo agent: perception is the bottleneck in mode B** (Phase 2, 2026-10-25): stack_bowls 0/6 and build_tower
   100000 0/3 were perception_gross for every model; put_bottles 0/6 were put_into drop misses / pick collisions
   (verify off). The model choice did not change these outcomes ([report](experiments/2026-10-25-agent-e2e.md)).

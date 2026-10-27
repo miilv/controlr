@@ -142,9 +142,61 @@ def frame_tags(o: ObjectState, limit: int = 8) -> list[str]:
     return tags[:limit]
 
 
-def object_line(o: ObjectState, oid: str, objects_root=None, all_names: bool = True, frames: bool = False) -> str:
+SERIES_RE = re.compile(r"^(.*?)(\d+)$")
+
+
+def _frame_point_w(o: ObjectState, tag: str) -> np.ndarray | None:
+    """World position of a named frame (the mean of its points): support centres, else functional frames."""
+    P = [np.asarray(c, float)[:3] for c, _ in (o.asset.support or {}).get(tag) or []]
+    if not P:
+        raw = (o.asset.functional or {}).get(tag) or (o.asset.active_functional or {}).get(tag) or {}
+        P = [np.asarray(f, float)[:3] for f in (raw.get("frame") or []) if len(f) >= 3]
+    if not P:
+        return None
+    return o.R @ np.mean(P, axis=0) + np.asarray(o.pos, float)
+
+
+FRAME_ENTRIES_V4 = 16          # entries per object (a numbered series is one entry, never cut)
+
+
+def frames_v4(o: ObjectState) -> str:
+    """Scene v4 frames: every named frame (v3 cut the list at 8: a xylophone's ``hit_*`` keys, a board's ninth cell
+    and a rack's ninth and tenth holes were missing), each name once; a numbered series (``pole/0`` .. ``pole/3``,
+    ``hit_0`` .. ``hit_7``) as one entry with each member's world position, so its order in space ("left to right")
+    and its heights (pegs) can be read. At most ``FRAME_ENTRIES_V4`` entries."""
+    tags = [t for t in (o.asset.support or {}) if t not in ("up", "down", "top", "bottom")]
+    tags += list(o.asset.functional or {}) + list(o.asset.active_functional or {})
+    tags = list(dict.fromkeys(tags))
+    series: dict[str, list[tuple[int, str]]] = {}
+    for t in tags:
+        m = SERIES_RE.match(t)
+        if m:
+            series.setdefault(m.group(1), []).append((int(m.group(2)), t))
+    out, done = [], set()
+    for t in tags:
+        if t in done:
+            continue
+        m = SERIES_RE.match(t)
+        members = sorted(series.get(m.group(1), [])) if m else []
+        if len(members) < 2:
+            out.append(t)
+            done.add(t)
+            continue
+        names = [n for _, n in members]
+        done.update(names)
+        pos = []
+        for n in names:
+            p = _frame_point_w(o, n)
+            pos.append("?" if p is None else f"({_fmt(p[0])}, {_fmt(p[1])}, {p[2]:.2f})")
+        out.append(f"{names[0]} .. {names[-1]} at " + ", ".join(pos))
+    return "; ".join(out[:FRAME_ENTRIES_V4])
+
+
+def object_line(o: ObjectState, oid: str, objects_root=None, all_names: bool = True, frames: bool = False,
+                frames_version: int = 3) -> str:
     """``all_names``: every caption name of the asset (``"hoe" / "ice axe" / ...``; instructions name objects by
-    any of their descriptions), else only the first one when it differs from the category (scene v1)."""
+    any of their descriptions), else only the first one when it differs from the category (scene v1).
+    ``frames_version`` 3: the first 8 frame names (``frame_tags``); 4: ``frames_v4``."""
     ext = np.asarray(o.asset.extents, float) * 100
     cap = caption(o, objects_root)
     desc = []
@@ -156,7 +208,11 @@ def object_line(o: ObjectState, oid: str, objects_root=None, all_names: bool = T
         desc.append(f"colour {cap['color']}")
     if o.category in DIGIT_CATEGORIES:
         desc.append(f"shows {DIGIT_CATEGORIES[o.category](int(o.idx))}")
-    if frames:
+    if frames and frames_version >= 4:
+        fr4 = frames_v4(o)
+        if fr4:
+            desc.append(f"frames [{fr4}]")
+    elif frames:
         fr = frame_tags(o)
         if fr:
             desc.append("frames " + ", ".join(fr))
@@ -177,13 +233,20 @@ def _natural(s: str):
 def scene_text(world: WorldState, ids: SceneIds | None = None, objects_root=None, step_lim: int | None = None,
                max_objects: int = 60, version: int = 2) -> tuple[str, SceneIds]:
     """``version`` 1: the first caption name only (Phase 1 run 1); 2: all caption names; 3: + the asset's named
-    support / functional frames (J2: ``stack_on_pegs`` / ``slots_and_press`` take them as arguments)."""
+    support / functional frames (J2: ``stack_on_pegs`` / ``slots_and_press`` take them as arguments), the first 8;
+    4: every frame, numbered series with their members' positions (``frames_v4``), and the header says what frames
+    are (2026-10-27 routing: with v2 every frame-taking skill was answered with code, v3 hid the xylophone's keys)."""
     ids = ids or assign_ids(world)
-    lines = ["SCENE (world frame, metres: x to the robot's right, y away from the robot, z up; table top z 0.765;"
-             " arm bases left (-0.30, -0.45), right (+0.30, -0.45); positions are object centres, yaw/tilt in deg)"]
+    head = ("SCENE (world frame, metres: x to the robot's right, y away from the robot, z up; table top z 0.765;"
+            " arm bases left (-0.30, -0.45), right (+0.30, -0.45); positions are object centres, yaw/tilt in deg")
+    if version >= 4:
+        head += ("; frames = the named points of an object a skill argument can name (slots, pegs, hooks, keys, "
+                 "levers, cells), a numbered series with each member's world position")
+    lines = [head + ")"]
     objs = sorted(visible_objects(world), key=lambda o: _natural(ids.oid(o.label) or o.label))
     for o in objs[:max_objects]:
-        lines.append(object_line(o, ids.oid(o.label), objects_root, all_names=version >= 2, frames=version >= 3))
+        lines.append(object_line(o, ids.oid(o.label), objects_root, all_names=version >= 2, frames=version >= 3,
+                                 frames_version=version))
     if len(objs) > max_objects:
         lines.append(f"- ... {len(objs) - max_objects} more objects not listed")
     arms = []

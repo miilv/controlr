@@ -15,6 +15,14 @@ scene id plays which role; the agent never sees them.
 
 Where the rule-based planner's output disagrees with these rules it is wrong against the checker, not the rule
 (e.g. ``stack_objects`` does not keep an order, so it cannot do stack_blocks_by_language).
+
+2026-10-27 (official-path routing, journal 2026-10-27-dojo-official §2): the tasks whose skill was added since the
+first rules (skills-3..8) are skill items now: fasten_screws (screw_on), insert_tubes (insert_each), play_Xylophone
+(strike_in_order), fill_egg_holder (fill_holes), hang_mugs (hang_on_hooks), make_toast (slots_and_press),
+play_stacking_toy (stack_on_pegs), play_tic_tac_toe (play_board_game), imitate_sorting_sequence (copy_demonstration),
+match_and_pick_from_conveyor (match_and_pick), pick_from_conveyor_by_image (pick_into_held). More comparisons:
+``any`` (not judged: the skill falls back by itself), ``in`` (one of these values), ``k_of`` (exactly ``k`` distinct
+ids from ``allowed``), ``pegmap`` (``groups[i]`` onto ``pegs[i]``: the same frame -> pieces map, any group order).
 """
 
 from __future__ import annotations
@@ -60,23 +68,79 @@ def _gold(t: str, it: dict) -> dict:
     if t == "build_tower":
         return _skill("build_tower", pieces={"op": "set", "value": _ids(it, lambda o: o["type"] == "Rigid")})
     if t == "deposit_coin":
+        # the coin's own stand is allowed in the list: insert_into drops a receptacle that holds obj (skills-3)
         return _skill("insert_into", obj={"op": "eq", "value": _id(it, "coin0")},
                       receptacles={"op": "has", "value": _ids(it, _cat("piggy_bank")),
-                                   "allowed": _ids(it, _cat("piggy_bank"))},
+                                   "allowed": _ids(it, _cat("piggy_bank", "vertical_coin_stand"))},
                       turn_deg={"op": "approx", "value": 0.0, "tol": 5.0, "default": 0.0})
+    if t == "fasten_screws":
+        # nut_i on bolt_i (the checker's pairs; same asset index = same colour)
+        return _skill("screw_on", pairs={"op": "set", "value": [[_id(it, f"nut{i}"), _id(it, f"bolt{i}")] for i in range(3)]})
+    if t == "fill_egg_holder":
+        # lid_tag: fill_holes falls back to the holder's revolute joint when the tag names none (holders.lid_joint)
+        return _skill("fill_holes", objects={"op": "set", "value": _ids(it, _lab("target"))},
+                      holder={"op": "eq", "value": _id(it, "egg_holder")}, lid_tag={"op": "any"})
     if t == "fill_pen_holder":
         return _skill("fill_container", objects={"op": "set", "value": _ids(it, _lab("target"))},
                       container={"op": "eq", "value": _id(it, "pen_holder")})
+    if t == "hang_mugs":
+        # every mug's handle on the rack's hooks (hook frames ``handle_support_point``, the checker's z > 0.9 handle)
+        return _skill("hang_on_hooks", objects={"op": "set", "value": _ids(it, _lab("mug"))},
+                      rack={"op": "eq", "value": _id(it, "cup_holder")},
+                      hook_tag={"op": "eq", "value": "handle_support_point"},
+                      handle_tag={"op": "eq", "value": "handle", "default": "handle"})
+    if t == "imitate_sorting_sequence":
+        # ours = basket0 (nearer the robot), the demonstrator's = basket1; every movable (t* and aim*) is passed
+        return _skill("copy_demonstration", container={"op": "eq", "value": _id(it, "basket0")},
+                      demo_container={"op": "eq", "value": _id(it, "basket1")},
+                      objects={"op": "set", "value": _ids(it, lambda o: o["type"] == "Rigid")})
+    if t == "insert_tubes":
+        # every tube >= 45 mm deep in the rack ("slot"), upright: insert_each (skills-5)
+        return _skill("insert_each", objects={"op": "set", "value": _ids(it, _lab("tube"))},
+                      receptacle={"op": "eq", "value": _id(it, "slot")})
     if t == "insert_key":
         return _skill("insert_into", obj={"op": "eq", "value": _id(it, "key")},
                       receptacles={"op": "has", "value": [_id(it, "slot")], "allowed": [_id(it, "slot")]},
                       turn_deg={"op": "approx", "value": -60.0, "tol": 15.0, "default": 0.0})
     if t == "make_kong":
         return _skill("declare_kong", tiles={"op": "set", "value": _ids(it, _cat("mahjong"))})
+    if t == "make_toast":
+        # exactly one slice per slot (toast_slot1 / toast_slot2), two stay on the shelf, lever toast_botton >= 85 %
+        return _skill("slots_and_press", objects={"op": "k_of", "k": 2, "allowed": _ids(it, _cat("bread")), "value": None},
+                      container={"op": "eq", "value": _id(it, "toaster")},
+                      slots={"op": "set", "value": ["toast_slot1", "toast_slot2"]},
+                      press_tag={"op": "eq", "value": "toast_botton"})
+    if t == "match_and_pick_from_conveyor":
+        # target0 leads, target1 is the match; other movables may be passed too (the skill keys on the leader)
+        return _skill("match_and_pick", objects={"op": "has", "value": [_id(it, "target0"), _id(it, "target1")],
+                                                 "allowed": _ids(it, lambda o: o["type"] == "Rigid")},
+                      conveyor={"op": "in", "value": [_id(it, "conveyor"), None], "default": None})
     if t == "organize_table":
         steps = [["place", _id(it, "alarm"), _id(it, "drawer")], ["place", _id(it, "garage"), _id(it, "cube_cushion")],
                  ["place", _id(it, "mouse"), _id(it, "mousemat")], ["push", _id(it, "keyboard"), _id(it, "frame")]]
         return _skill("arrange", steps={"op": "set", "value": steps})
+    if t == "pick_from_conveyor_by_image":
+        # the basket lifted and held, the pictured target ("target") caught into it; the picture identifies it
+        basket = _id(it, "basket")
+        return _skill("pick_into_held", objects={"op": "has", "value": [_id(it, "target")],
+                                                 "allowed": _ids(it, lambda o: o["type"] == "Rigid" and o["label"] != "basket")},
+                      container={"op": "eq", "value": basket}, picture={"op": "eq", "value": _id(it, "photo")},
+                      conveyor={"op": "in", "value": [_id(it, "conveyor"), None], "default": None})
+    if t == "play_stacking_toy":
+        # pole/0: block0-3, pole/1: block4-6, pole/2: block7-8, pole/3: block9 (the checker's per-pole lists)
+        pegs = {"pole/0": range(0, 4), "pole/1": range(4, 7), "pole/2": range(7, 9), "pole/3": range(9, 10)}
+        return _skill("stack_on_pegs", base={"op": "eq", "value": _id(it, "stack_base")},
+                      groups={"op": "pegmap", "with": "pegs",
+                              "value": {tag: [_id(it, f"block{i}") for i in r] for tag, r in pegs.items()}})
+    if t == "play_tic_tac_toe":
+        return _skill("play_board_game", board={"op": "eq", "value": _id(it, "checkerboard")},
+                      pieces={"op": "set", "value": _ids(it, _lab("player_piece"))},
+                      opponent_pieces={"op": "set", "value": _ids(it, _lab("opponent_piece"))})
+    if t == "play_Xylophone":
+        # 8 ordered stages: the mallet's beat point on key k's bbox_k, above its hit_k (hit_0 is the leftmost key)
+        return _skill("strike_in_order", tool={"op": "eq", "value": _id(it, "mallet")},
+                      instrument={"op": "eq", "value": _id(it, "xylophone")},
+                      points={"op": "seq", "value": [f"hit_{k}" for k in range(8)]})
     if t == "plug_in_charger":
         return _skill("insert_into", obj={"op": "eq", "value": _id(it, "charger")},
                       receptacles={"op": "has", "value": [_id(it, "socket")], "allowed": [_id(it, "socket")]},
@@ -118,13 +182,6 @@ def _gold(t: str, it: dict) -> dict:
     if t == "classify_objects":
         return _code("1. group the movable objects by category (3 groups); 2. one basket per group; put_into each "
                      "group; 3. finish.")
-    if t == "make_toast":
-        return _code("1. pick one bread slice at a time and insert it standing on its edge into one toaster slot "
-                     "(exactly one per slot, two slices only, two stay on the shelf); 2. press the toaster lever "
-                     "fully down; 3. finish.")
-    if t == "play_stacking_toy":
-        return _code("1. match each ring/piece to the peg its shape and size fits; 2. put each piece onto its peg "
-                     "(complete one peg at a time, bank after each); 3. finish.")
     if t == "cover_blocks":
         return _code("1. record each block's colour and position; 2. cover the blocks with the cups left to right "
                      "(cups upside down); 3. uncover in the order red, green, blue (lift the cup over each); 4. never "
@@ -139,53 +196,12 @@ def _gold(t: str, it: dict) -> dict:
         mats = sorted(_ids(it, _lab("mat_")), key=lambda i: int(it["objects"][i]["label"].split("_")[1]))
         g["alt"] = [_skill("arrange", steps={"op": "set", "value": [["place", d, m] for d, m in zip(digits, mats)]})]
         return g
-    if t == "fasten_screws":
-        g = _code("1. pair each screw with the nut of the same colour; 2. pick each screw/nut and screw it on "
-                  "(insert, then turn); 3. finish.")
-        # skills-5: screw_on does the whole goal with the colour pairs (nut_i on bolt_i)
-        g["alt"] = [_skill("screw_on", pairs={"op": "set", "value": [[_id(it, f"nut{i}"), _id(it, f"bolt{i}")]
-                                                                     for i in range(3)]})]
-        return g
-    if t == "fill_egg_holder":
-        return _code("1. pick each of the four eggs from the basket and place it into an egg holder cell; bank "
-                     "after each; 2. close the holder's lid; 3. finish.")
     if t == "fold_clothes":
         return _code("1. fold each sleeve onto the opposite chest (sleeves first); 2. fold the hem up onto the "
                      "shoulders with both arms; 3. finish.")
-    if t == "hang_mugs":
-        return _code("1. for each mug: pick it by the body, lift and hang its handle on a free hook of the rack; "
-                     "bank after each; 2. finish.")
-    if t == "imitate_sorting_sequence":
-        return _code("1. hold still and watch the scripted arm put objects into its basket; record the order; "
-                     "2. put the matching objects into our basket in the same order; 3. finish.")
-    if t == "insert_tubes":
-        g = _code("1. insert each of the three tubes upright into a free rack hole, one by one, banking after "
-                  "each (insert_into per tube); 2. finish.")
-        g["alt"] = [_skill("fill_container", objects={"op": "set", "value": _ids(it, _lab("tube"))},
-                           container={"op": "eq", "value": _id(it, "slot")}),
-                    _skill("insert_each", objects={"op": "set", "value": _ids(it, _lab("tube"))},
-                           receptacle={"op": "eq", "value": _id(it, "slot")})]
-        return g
-    if t == "match_and_pick_from_conveyor":
-        return _code("1. watch the conveyor and record the first object; 2. wait until the same object comes "
-                     "again; 3. pick it and lift it >= 10 cm.")
     if t == "pack_objects_into_box":
         return _code("1. for each object: pick it, turn it so its front faces left and its long axis "
                      "follows the box, place it inside the box; bank after each; 2. finish.")
-    if t == "pick_from_conveyor_by_image":
-        return _code("1. identify the target from the picture on the board; 2. lift the basket > 8 cm with one arm "
-                     "and keep it up; 3. pick the target from the moving conveyor with the other arm and drop it "
-                     "into the held basket.")
-    if t == "play_Xylophone":
-        g = _code("1. pick the mallet; 2. strike every key once from left to right (lift between strikes).")
-        # skills-5: strike_in_order with the keys' hit points in the checker's order (hit_0 is the leftmost key)
-        g["alt"] = [_skill("strike_in_order", tool={"op": "eq", "value": _id(it, "mallet")},
-                           instrument={"op": "eq", "value": _id(it, "xylophone")},
-                           points={"op": "seq", "value": [f"hit_{k}" for k in range(8)]})]
-        return g
-    if t == "play_tic_tac_toe":
-        return _code("1. place a piece on an empty cell; 2. home both arms and wait while the opponent moves; "
-                     "3. repeat until the board is full (5 own pieces); 4. finish.")
     if t == "pour_balls_into_vase":
         return _code("1. pick the cup upright; 2. carry it over the vase and tilt to pour all balls in; 3. set the "
                      "cup back upright; 4. finish.")
@@ -204,14 +220,17 @@ def _gold(t: str, it: dict) -> dict:
         return _code("1. order the five dolls by size; 2. place them upright in a row along x, smallest at the "
                      "left; 3. finish.")
     if t == "store_laptop_and_headphones":
-        return _code("1. hang the headphones on the headphone stand; 2. close the laptop lid; 3. stand the laptop "
-                     "in the vertical stand; 4. finish.")
+        # hang_on_hooks does the headphones (the 20 of the paired 20 + 80); nothing does the laptop yet
+        return _code("1. hang the headphones on the headphone stand (hang_on_hooks: headband bridge on the cradle); bank; "
+                     "2. close the laptop lid; 3. stand the laptop in the vertical stand; 4. finish.",
+                     need=[_id(it, "headset"), _id(it, "stand"), _id(it, "laptop"), _id(it, "vertical_laptop_storage_rack")])
     if t == "swap_T":
         return _code("1. record both T blocks' poses; 2. move T1 to a free spot, T2 to T1's pose, T1 to T2's pose "
                      "(position and yaw within a few degrees); 3. finish.")
     if t == "sweep_blocks":
         return _code("1. pick the broom with the left arm, hand it over to the right arm; 2. hold the dustpan "
-                     "flat with the left arm; 3. sweep the blocks into the dustpan; 4. finish.")
+                     "flat with the left arm; 3. sweep the blocks into the dustpan; 4. finish.",
+                     need=[_id(it, "broom"), _id(it, "broom_shovel")])
     raise KeyError(f"no gold rule for {t}")
 
 

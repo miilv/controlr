@@ -115,11 +115,25 @@ def run(dataset: Path, arms: list[str], out: Path, limit: int | None, workers: i
 
 # ------------------------------------------------------------------ score
 
-def _cmp(spec: dict, val) -> bool:
+def _cmp(spec: dict, val, args: dict | None = None) -> bool:
+    """``args``: every argument of the answer (``pegmap`` pairs this one with ``spec["with"]``)."""
     if val is None and "default" in spec:
         val = spec["default"]
-    op, ref = spec["op"], spec["value"]
+    op, ref = spec["op"], spec.get("value")
     try:
+        if op == "any":
+            return True
+        if op == "in":
+            return val in ref
+        if op == "k_of":           # exactly ``k`` distinct ids, all from ``allowed`` (any ``k`` of the slices)
+            return (isinstance(val, list) and len(val) == spec["k"] and len(set(map(str, val))) == len(val)
+                    and set(map(str, val)) <= set(spec["allowed"]))
+        if op == "pegmap":         # groups[i] goes onto with[i]: the same {frame: set of ids} as ``value``
+            tags = (args or {}).get(spec["with"])
+            if not (isinstance(val, list) and isinstance(tags, list) and len(val) == len(tags)):
+                return False
+            got = {str(t): sorted(map(str, g)) for g, t in zip(val, tags) if isinstance(g, list)}
+            return got == {k: sorted(v) for k, v in ref.items()}
         if op == "eq":
             return val == ref or (isinstance(ref, bool) and isinstance(val, str) and val.lower() == str(ref).lower())
         if op == "approx":
@@ -148,14 +162,15 @@ def judge(answer: dict | None, gold: dict) -> dict:
         out["skill_ok"] = skill == gold["skill"]
         if out["skill_ok"]:
             args = a.get("args") or {}
-            bad = [k for k, spec in gold["args"].items() if not _cmp(spec, args.get(k))]
+            bad = [k for k, spec in gold["args"].items() if not _cmp(spec, args.get(k), args)]
             out["args_ok"] = not bad
             out["bad_args"] = bad
         else:
             out["args_ok"] = False
         out["full_ok"] = bool(out["args_ok"])
     else:
-        alt_ok = skill is not None and any(skill == g["skill"] and all(_cmp(sp, (a.get("args") or {}).get(k))
+        alt_ok = skill is not None and any(skill == g["skill"] and all(_cmp(sp, (a.get("args") or {}).get(k),
+                                                                            a.get("args") or {})
                                                                      for k, sp in g["args"].items())
                                            for g in gold.get("alt", []))
         out["decision_ok"] = is_code or alt_ok
