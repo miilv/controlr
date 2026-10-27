@@ -48,6 +48,8 @@ PLACE_CHECKS = 6                    # handover candidates whose taker place is p
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
 TURN_LIFT = 0.0009                  # m: the object is turned this far above where it seated
 TURN_STEP_DEG = 3.0                 # deg per env step of that turn ...
+TURN_MAX_JUMP = 0.3                 # rad: the most a joint may move between two turn steps (a 3 deg step moves the wrist
+                                    # ~0.05; IK's wrist +-pi seeds otherwise flip it when the local solution runs out)
 TURN_FINE = (0.45, 0.85, 1.5)       # ... except between these fractions of it: 1.5 deg steps, each held one step
 # (twin, a key spawned in its lock, the turn about its root: the teeth catch at -14 deg, the key tilts 7-11 deg while
 # forced, then snaps through at -30 to -36 deg with 5-7 deg of tilt for a step or two, the moment the checker can pass;
@@ -138,9 +140,9 @@ def _turn_reach(sk: Skills, arm: str, T_tg, T_ko, q0, turn_rad: float) -> float:
     for frac in TURN_FRACTIONS:
         q, ok = q0, True
         sched = _turn_schedule(abs(math.degrees(turn_rad * frac)))
-        for f in sched[::2] + sched[-1:]:
+        for f in sched:
             ik = sk.kin.ik(arm, _turned(T_tg, turn_rad * frac * f) @ T_ko, q, n_random=0)
-            if not ik.ok:
+            if not ik.ok or float(np.abs(ik.q - q).max()) > TURN_MAX_JUMP:
                 ok = False
                 break
             q = ik.q
@@ -370,9 +372,9 @@ def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_
             T_t = T0.copy()
             T_t[:3, :3] = rot_z(turn * frac * f) @ T0[:3, :3]
             ik = sk.kin.ik(arm, T_t @ inv_T(T_rel), q, n_random=0)
-            if not ik.ok:
-                ok = False
-                break
+            if not ik.ok or float(np.abs(ik.q - q).max()) > TURN_MAX_JUMP:
+                ok = False                    # out of reach, or only a wrist flip reaches it (G3: a flip mid-turn spun
+                break                         # the key 117 deg and tore it out of the lock; another came back to 2 deg)
             q = ik.q
             segs.append(q.copy())
         if ok:
