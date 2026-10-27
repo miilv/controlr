@@ -99,3 +99,29 @@ G3 mode A, store_laptop_and_headphones 100000-09 (n=10, paired, compute4 light3)
 - The reachable counts moved with the fix (e.g. 100000 right arm 77 -> 88). The laptop's collision geometry now sits
   where the sim has it, so the laptop place stage gets correct geometry once the headset hang plans.
 - Runs: compute4 `~/dojo-data/integ-c4/g3/laptop_A_{main,pr}`.
+
+## 6. After #198: power, spend, the cube_k check, state at the pause
+
+- Power, box-wide on compute4, 30 s samples, 17:36-20:25Z, with SAM's server and bake running alongside:
+  - 2 rendered lanes of ours: median 103 W, p90 216 W, max 252 W.
+  - 1 lane: median 70 W.
+  - none of ours: median 82 W, max 176 W.
+  - Per episode (28): median of medians 94 W.
+- Spend: 119 agentic calls answered (claude/claude-sonnet-5-5; 1.61 M prompt / 91 k completion tokens) and 38 failed
+  on the 429, plus 2 in the press smoke. G3, probes and checks made 0 calls.
+- #196 renames a single-prefix series to the layout's names (cube_0..). Checked on main 8189429 with 0 LLM calls:
+  - Rendered sweep_blocks 100000 with submit_v3 + `{"agentic": "off", "held_look": "b1"}`: perception's initial record
+    is broom, broom_shovel, cube_0..2. The runtime and belief carry them for 967/1000 steps (cat plan: place_miss).
+  - sweep_into never verifies, so the twin path was checked offline: that record -> `estimate_to_layout` ->
+    `Twin.load_from_estimate` (physics-only). Stable (4.1 s; reuse 0.17 s), every label at its estimated pose,
+    <= 1.1 mm.
+  - G3 mode B sweep 100000-02 on d2c7146 ran 3/3 end to end with cube_k (place_miss 0/3, 0 tracebacks).
+- State at the pause: lanes stopped (`~/dojo-integ-c4-state/STOP`), queue kept in `queue.txt`, embed jobs in
+  `emb_held.txt`, `~/dojo-integ-c4-emb` at 8189429 (torch + transformers, dinov2-small in
+  `~/dojo-data/models/embed`). The arms to run on one sha >= 8189429, both arms of a pair on one perceiver route:
+  1. the conveyor embed arm;
+  2. deposit_coin stereo;
+  3. the laptop root frame (#198) against a pre-#198 sha;
+  4. series_count `min` vs `one` (sweep / classify);
+  5. the SAM 2.1-S proposer (organize, mugs, laptop, plus tower and stack as no-regression checks), with a SAM
+     server of our own counted against the cap.
