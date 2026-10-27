@@ -176,3 +176,13 @@ def test_gold_frame_skills():
     assert not grounding.judge({"skill": "strike_in_order", "args": dict(hits["args"], points=hits["args"]["points"][::-1])},
                                g)["full_ok"]
     assert grounding.judge({"code": True, "plan": "strike"}, g)["missed_skill"]
+
+
+def test_gold_fold_is_the_fold_skill():
+    for task in ("fold_clothes", "fold_clothes_random"):
+        g = gold.gold_for(_item(task, {"Top_Long_0": ("target", "Top_Long", 0, "Garment")}))
+        assert g["kind"] == "skill" and g["home"]
+        assert grounding.judge({"skill": "fold_garment", "args": {"garment": "Top_Long_0"}}, g)["full_ok"]
+        assert grounding.judge({"skill": "fold_garment", "args": {}}, g)["full_ok"]          # null: the provider's read
+        assert not grounding.judge({"skill": "fold_garment", "args": {"garment": "towel_0"}}, g)["full_ok"]
+        assert grounding.judge({"code": True, "plan": "fold"}, g)["missed_skill"]

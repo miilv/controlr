@@ -229,6 +229,29 @@ entry; this sentence was numbered v9 until #103 took that number.
 - Runs: `runs/official-routing/runF_fillpen_v9` (named before the renumbering), `runG_conveyor_v10`.
 - Routing total for the stream: 308 calls.
 
+### 2.2 fold_clothes gold (fold_garment)
+
+**Gold rule change** (lead-approved): fold_clothes and fold_clothes_random are skill items.
+- They were code items, written when no fold skill existed. #103 added `fold_garment(garment: id | null = null)`
+  (SKILL_DOCS v9): each sleeve onto the opposite chest, then both hem corners onto the shoulders, grippers opened
+  after each fold.
+- The checker (shared by both configs) judges the garment `target`: sleeves on the opposite chest first, hems on the
+  shoulders, the hem line against the shoulder line, with both grippers open and the arms home. That is the skill's
+  end state.
+- Rule: `fold_garment`, garment = the target's scene id or null (the skill then reads the garment from the provider).
+- No manual, scene or default change.
+
+| fold_clothes + `_random`, 100000-02 (scene v4, docs v10, manual_v4, grounding_v2) | right | harmful |
+|---|---|---|
+| Sol 6.1 (`cx/gpt-6.1-sol`) | 6/6 `fold_garment(garment=target)` | 0 |
+| Sonnet 5.5 | 6/6 `fold_garment(garment=target)` | 0 |
+| rule planner (#103's fold rule; reference rebuilt on current main) | 6/6 the same | 0 |
+
+- The 6 scenes are byte-identical to §2's. Before #103 both models answered these items with code, which was right
+  under the old rule.
+- **Calls:** 12, 0 errors (85.7 k prompt, 73.5 k cached, 0.3 k completion). Run: `runs/official-routing/runH_fold_v10`.
+- Routing total for the stream: 320 calls.
+
 ## 3. J4 re-import readiness
 
 ### 3.1 Dry run

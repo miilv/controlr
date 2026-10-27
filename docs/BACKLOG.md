@@ -342,7 +342,7 @@
   25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
   Memory (2026-10-27): `plan_intercept` falls back to `waist_grasps` (level, the pad gap from the mesh at that height);
   G3 result in journal 2026-10-27-dojo-memory.
-- [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and **fold_clothes** (parked: no cloth state in the skills layer).
+- [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and ~~**fold_clothes** (parked: no cloth state in the skills layer)~~ — `fold_garment` (#103); Sol, Sonnet and the planner route fold_clothes (+ `_random`) to it 6/6 each (journal 2026-10-27-dojo-official §2.2).
 - [x] ~~**dojo skills: deposit_coin.** The coin starts out of the inserting arm's reach in about half the layouts.~~ Rim grasps tilted in the coin's plane reach 12/25 with one arm; the rest go through an in-air rim handover (the giver turns the coin on its side, the taker takes its top rim 8 mm off-centre). The coin is 28.4 mm x 1.9 mm (the collider; `physics.size` in its metadata says 21 x 1 mm). Two grippers can share it this way (journal/2026-10-26-dojo-skills5.md).
 - [ ] **dojo skills: a rim-held coin slides in the pads as it leaves its stand** (G3 2/25, journal
   2026-10-27-dojo-precision.md §3). 100002: the coin slid 5.2 mm down in the pads during the lift out of the stand
