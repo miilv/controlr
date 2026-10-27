@@ -2621,6 +2621,16 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
         if sims:
             best.per_view["embed"] = {"top": max(sims, key=sims.get), "sim": round(max(sims.values()), 4)}
         alts = sorted((t for t in scored if t is not best), key=lambda t: t.loss)
+        if cfg.identity_margin_swap and not sims:
+            # another asset whose combined cost beats the kept one's (a negative alternative margin): paired texture or
+            # the colour veto kept the incumbent against the cost (5.1 store_laptop 100002: headset 00002 kept over the
+            # true 00004 at margin -0.04). Off when the embedding decided (sims).
+            a = next((t for t in alts if t.key != best.key), None)
+            if a is not None and a.loss < best.loss - cfg.identity_margin_swap_eps:
+                a.per_view["identity_swap"] = {"from": best.key, "margin": round(float(a.loss - best.loss), 4)}
+                a.per_view["polished"] = True
+                best = a
+                alts = sorted((t for t in scored if t is not best), key=lambda t: t.loss)
         if alts:
             a = alts[0]
             best.per_view["alternative"] = {"key": a.key, "tag": a.tag, "x": a.x, "y": a.y, "yaw": a.yaw,
@@ -2947,6 +2957,8 @@ class EstimatorConfig:
     polish_fit_color: bool = True  # polish ranks its identity trials by the colour inside the incumbent's silhouette
     polish_color_candidates: int = 2  # ... and also tries the best-coloured candidates the ranking left out
     polish_color_veto: float | None = 0.2  # paired texture cannot pick a trial whose mean colour is this much worse
+    identity_margin_swap: bool = False  # polish: another asset whose combined cost beats the kept one by > eps replaces it
+    identity_margin_swap_eps: float = 0.01  # (= the cost rule's own hysteresis in _polish_prefers)
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
     small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
     slot_free_search: bool = True  # a slot child whose slot looks empty is looked for loose on the table

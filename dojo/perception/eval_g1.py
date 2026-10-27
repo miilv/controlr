@@ -457,6 +457,7 @@ def main(argv=None):
     ap.add_argument("--fuse-mode", default="full", choices=["full", "conservative", "single"], help="--look: how frames are fused (single: --look-primary alone)")
     ap.add_argument("--look-primary", action="store_true", help="--look: the look frame is the primary view, frame 0 an extra one")
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--ids", help="episode id ranges to keep, e.g. 100000-100009,100020-100049 (default: all)")
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
     if a.build_bg_folds:
@@ -475,6 +476,9 @@ def main(argv=None):
     tasks = a.tasks or sorted(p.name for p in root.iterdir() if p.is_dir())
     for t in tasks:
         eps = d0.episodes(root, t)
+        if a.ids:
+            rng = [tuple(int(v) for v in r.split("-")) if "-" in r else (int(r), int(r)) for r in a.ids.split(",")]
+            eps = [e for e in eps if e.name.isdigit() and any(lo <= int(e.name) <= hi for lo, hi in rng)]
         if a.episodes:
             eps = eps[: a.episodes]
         for ep in eps:
