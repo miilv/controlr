@@ -151,7 +151,7 @@ def pan_handle_grasps(o) -> list:
     V = np.asarray(o.asset.mesh[0], float)
     y1 = float(V[:, 1].max())
     out = []
-    for dy in (0.03, 0.045, 0.06, 0.075):
+    for dy in (0.03, 0.05, 0.07, 0.09, 0.11):
         y = y1 - dy
         S = V[np.abs(V[:, 1] - y) < 0.006]
         if len(S) < 6:
