@@ -167,6 +167,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         pol.reset(info)
         t0 = time.perf_counter()
         sim_s, obs_s, ended, capped = 0.0, [], False, False
+        executed: list[dict] = []                   # what the env ran (the policy's own list misses the batch the latch ended)
         while not ended:
             if episode_max_minutes and time.perf_counter() - t0 > 60.0 * episode_max_minutes:
                 capped = True                       # the GPU-lock rule: no episode holds the lane past this
@@ -183,6 +184,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                 break
             t2 = time.perf_counter()
             for a in d["actions"]:
+                executed.append(a)
                 if ep.step(a):
                     ended = True
                     break
@@ -229,7 +231,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
             json.dump(jsonable(rep), f, default=str)
         with gzip.open(out / f"{tag}_{lid}_actions.json.gz", "wt") as f:
             json.dump({"actions": [{k: np.asarray(x, np.float64).tolist() for k, x in a.items()}
-                                   for a in pol.bridge.executed]}, f)
+                                   for a in executed]}, f)
         print(f"\n[integ] {tag} {lid}: success={row['success']} score={row['score']:.2f} "
               f"steps={row['steps_used']}/{row['step_lim']} looks={row['n_looks']} wall={row['wall_s']}s "
               f"(sim {row['sim_s']} obs {row['observe_s']} worker {row['worker_s']}) cat={cat} {why[:120]}", flush=True)

@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -292,3 +293,75 @@ def test_frames_plan_takes_negatives_first_then_equal_positives_within_budget(tm
     p = json.loads(out.read_text())
     assert p["n_negatives_total"] == 14 and p["n_chosen_negatives"] == 14 and p["n_chosen_positives"] == 6
     assert all(c["negative"] for c in p["checks"][:14]) and len(p["episodes"][0]["steps"]) == 20
+
+
+def test_runtime_eval_actions_file_holds_what_the_env_ran(tmp_path, monkeypatch):
+    """``<tag>_<lid>_actions.json.gz`` = every action the env stepped, including the batch RoboDojo's latch ended (the
+    policy's own ``Bridge.executed`` never gets that batch: the worker waits for an observation that never comes). The
+    kit replays (scripts/dojo/replay_kits.py) replay this file."""
+    import types
+
+    import dojo.runtime.eval as EV
+
+    stepped = []
+
+    class FakeRun:
+        def objects_gt(self, i):
+            return []
+
+        def reward(self, i):
+            return {"success": True, "ended": True, "steps_used": len(stepped), "step_lim": 10}
+
+        def close(self):
+            pass
+
+    class FakeRendered:
+        def __init__(self, task, workdir):
+            self.run = FakeRun()
+
+        def reset(self, layout):
+            return {"stable": True, "task": "stack_blocks", "layout_id": 100000, "instruction": "x", "step_lim": 10,
+                    "reset_s": 0.0, "render_stage_s": 0.0}
+
+        def observe(self):
+            return {"images": {}, "state": {}, "instruction": "x", "steps_used": len(stepped), "step_lim": 10}
+
+        def step(self, a):
+            stepped.append(a)
+            return len(stepped) == 5                       # the success latch fires on the 5th step
+
+        def result(self):
+            return {"success": True, "score": 1.0, "steps_used": len(stepped), "step_lim": 10, "observations": 2}
+
+    act = lambda x: {"left_arm_joint_state": np.full(6, x, np.float32), "left_ee_joint_state": np.ones(1, np.float32),  # noqa: E731
+                     "right_arm_joint_state": np.zeros(6, np.float32), "right_ee_joint_state": np.ones(1, np.float32)}
+    batches = [[act(0.1), act(0.2)], [act(0.3), act(0.4), act(0.5), act(0.6)]]
+
+    class Pol:
+        def __init__(self, cfg):
+            self.bridge = types.SimpleNamespace(executed=[])
+            self.k = 0
+
+        def reset(self, info):
+            pass
+
+        def next(self, obs):
+            if self.k:                                     # the runtime's Bridge records a batch at the NEXT observation
+                self.bridge.executed.extend(batches[self.k - 1])
+            if self.k >= len(batches):
+                return {"done": True}
+            self.k += 1
+            return {"actions": batches[self.k - 1]}
+
+        def episode_report(self):
+            return {"timings": {}, "looks": [], "events": []}
+
+    monkeypatch.setattr(EV, "RenderedEpisode", FakeRendered)
+    lay = tmp_path / "100000.settled.json"
+    lay.write_text(json.dumps({"_simlab": {"id": 100000}}))
+    EV.run("stack_blocks", [str(lay)], EV.RuntimeConfig(mode="gt", verify="off"), tmp_path / "out", policy_factory=Pol,
+           renderer="isaac51")
+    with gzip.open(tmp_path / "out" / "stack_blocks_gt_verify-off_100000_actions.json.gz", "rt") as f:
+        got = json.load(f)["actions"]
+    assert len(stepped) == 5 and len(got) == 5           # the latch-ended batch is in the file, the unrun action not
+    assert [round(a["left_arm_joint_state"][0], 3) for a in got] == [0.1, 0.2, 0.3, 0.4, 0.5]
