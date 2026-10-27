@@ -83,7 +83,11 @@ def episode_row(out: Path, task: str, lid: int, verdict: dict | None) -> dict:
         # the client booked the run but not this episode: the task marked it unstable (mark_env_unstable: make_kong's
         # scripted discard, play_tic_tac_toe's opponent, imitate's demonstrator) and RoboDojo dropped it from the eval
         cat, why = "unstable_episode", "no row in RoboDojo's _result.json: dropped from the eval (unstable_nums)"
-    return {"path": "official", "task": task, "layout_id": lid, "success": succ,
+    cfg = s.get("config") or {}
+    return {"path": "official", "task": task, "layout_id": lid, "preset": cfg.get("preset"),
+            "grip_source": "command",            # the strict server always gives the runtime the commanded gripper
+            "planner_first": ((cfg.get("extra") or {}).get("agent") or {}).get("planner_first", False),
+            "success": succ,
             "score": (verdict or {}).get("score"), "steps_used": s.get("steps_used"), "step_lim": s.get("step_lim"),
             "end": s.get("end"), "wall_s": s.get("wall_s"), "policy_s": s.get("policy_s"), "exec_s": s.get("exec_s"),
             "observe_s": s.get("observe_s"), "twin_scene": s.get("twin_scene"), "calib_fold": s.get("calib_fold"),
@@ -151,6 +155,7 @@ def pair(off: dict[tuple, dict], integ: dict[tuple, dict], actions: bool = True)
         if o.get("category") == "unstable_episode" or g.get("unstable_episode"):    # not a sample on that path
             agree = o.get("category") == "unstable_episode" and bool(g.get("unstable_episode"))
         out.append({"task": key[0], "layout_id": key[1], "agree": agree, "first_divergence": div,
+                    "preset": {"official": o.get("preset"), "integ": g.get("preset")},
                     "official": {k: o.get(k) for k in ("success", "score", "steps_used", "end", "category", "why",
                                                        "wall_s", "policy_error")},
                     "integ": {k: g.get(k) for k in ("success", "score", "steps_used", "category", "why", "wall_s",
