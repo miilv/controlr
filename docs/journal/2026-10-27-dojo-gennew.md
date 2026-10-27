@@ -200,3 +200,35 @@ G3 mode B, fold_clothes_random 100000-09 (same layouts):
 
 The remaining random-set failures are hem lines 53-85 deg off on garment 00007; mode A fails the same layouts
 (100003, 100008).
+
+## 7. sweep_blocks: `sweep_into` (first version)
+
+Checker (task code): one check stage, binary. It needs:
+- every cube inside the dustpan's support circle (81 mm about a point 53 mm in from its centre) or its 4-point
+  'handle' polygon (xy only);
+- the dustpan not lifted more than 10 mm over its start and within 5 deg of upright;
+- the dustpan at least 10 cm left of the broom;
+- both arms home.
+The instruction's hand-over is not checked.
+
+Iterations, G3 mode A (each a fix for a traced failure):
+
+| version (commit) | what changed | result |
+|---|---|---|
+| v1-v5 | - | the broom relay pick slipped every time (rose 0 mm): bristle slices, handle-end pinches |
+| v6 (33dbfac) | box pinch at the head's root (probe: 7 mm in held, 5 mm drift) | 100000 and 100003 ran end to end, every cube reported in the pan, check failed |
+| v7 (b96c416) | lanes 2 cm, pushes 4.5 cm past the lip (traced: the head hit a side wall and shoved the held pan 7 cm) | **first success, 100000**; 1/5 |
+| v8 (0d2edc4) | broom grasps ranked by centre of mass, tilted handle grasps for a far-left pan | drags 5/5; 1/5 |
+| v9 (109251e) | broom put down where the taker can pick it; dustpan let go with an 8 cm lift | 1/5 |
+| v10 (001fe61) | strokes may roll the hand about the broom's axis | 1/10 |
+
+What still fails, in order:
+1. **The drag turns the dustpan.** A pinch on its narrow handle holds the position, not the yaw. Traced on 100003:
+   the pan ended 2 mm from its target position but turned 100-260 deg, so the opening no longer faced the cubes; on
+   another layout the grip itself shoved it 20 cm. The drag now starts from the measured grip, and the handle
+   stations stay clear of the back wall. Next: keep the pan's own yaw when its opening already faces the objects
+   (within 45 deg), translate only, along its handle axis.
+2. Stroke IK for some cubes ('no seed converged'), even with the rolled hand.
+3. The broom relay pick still slips on some layouts (rose 2 mm).
+
+Not run rendered: sweep needs G3 >= 3/5 first (the lead).

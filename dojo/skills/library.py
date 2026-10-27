@@ -2804,3 +2804,8 @@ SKILLS.update({"play_board_game": play_board_game, "fill_holes": fill_holes, "co
 from dojo.skills.garment import SKILLS as _GARMENT_SKILLS  # noqa: E402
 
 SKILLS.update(_GARMENT_SKILLS)
+
+# small objects swept into a dustpan with a broom (Generalization-New)
+from dojo.skills.sweep import SKILLS as _SWEEP_SKILLS  # noqa: E402
+
+SKILLS.update(_SWEEP_SKILLS)

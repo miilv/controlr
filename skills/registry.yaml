@@ -452,6 +452,39 @@ entries:
     stats: []
     notes: "gennew first version; reads the garment's named points from the provider (GT in G3)"
 
+  - name: sweep_into
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Sweep small objects into a dustpan with a hand broom: one arm slides the dustpan flat along the table to beside
+      the objects, its opening towards them, and holds it; the other picks the broom by its handle (handed over through
+      the table when out of reach) and pushes each object with the side of the broom's head onto the dustpan's axis,
+      then along it over the lip into the pan; the broom is put down away from the dustpan.
+    args:
+      objects: "[id], required; the objects to sweep"
+      pan: "id, required; the dustpan"
+      tool: "id, required; the broom"
+    selects_on:
+      words: [sweep, broom, dustpan]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, size]}
+        - {what: pan, fields: [pos, quat]}
+        - {what: tool, fields: [pos, quat]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.sweep:sweep_into"
+    measured: none
+    stats: []
+    notes: "gennew first version"
+
   - name: play_board_game
     side: ilia
     benchmark: robodojo
