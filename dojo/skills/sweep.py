@@ -97,9 +97,11 @@ def handle_grasps(sk: Skills, tool, arm: str) -> list:
     out = []
     for g in G.box_grasps(tool, sk.kin, arm) + G.slice_grasps(tool, sk.kin, arm) + G.antipodal_grasps(tool, sk.kin, arm):
         p = (inv_T(tool.T) @ np.r_[g.T[:3, 3], 1.0])[:3]
-        if (p[k] - mid) * sgn < -0.02 and -float(g.T[2, 0]) > 0.8:
+        if (p[k] - mid) * sgn < -0.02 and -float(g.T[2, 0]) > 0.8 and float(g.width) >= 0.012:
+            # nearest the head first (the least lever on a level carry), straight down first
+            g.score = float(g.score) + 2.0 * abs(float(p[k] - mid)) + 0.5 * (1.0 + float(g.T[2, 0]))
             out.append(g)
-    return out
+    return sorted(out, key=lambda g: g.score)
 
 
 def _pick_tool(sk: Skills, tool: str, arm: str):
@@ -120,8 +122,9 @@ def relay_tool(sk: Skills, tool: str, arm: str, near_xy=(0.08, -0.27)) -> SkillR
     giver = _other(arm)
     for sp in L.free_spots(sk, tool, near_xy=near_xy, clearance=0.02)[:4]:
         T_sp = L.rest_with_R(sk, tool, sp, level_R(o.R))
-        plan = sk.plan_transfer(tool, [T_sp], arms=[giver], yaw_sym=4,
-                                grasps=(lambda a, o=o: handle_grasps(sk, o, a)))
+        # any grasp near the centre of mass (default candidates, hold-ranked): a 40 g broom pinched at its handle's
+        # end swung 17 cm in the pads on the carry (twin)
+        plan = sk.plan_transfer(tool, [T_sp], arms=[giver], yaw_sym=4)
         if isinstance(plan, SkillResult):
             continue
         r = sk.run_transfer(*plan, tol_xy=0.05, tol_tilt=15.0, tol_z=0.03)
