@@ -446,3 +446,21 @@ def test_merged_blob_of_several_pieces_adds_pieces_and_a_single_piece_does_not()
     assert sum(b.area for b in out[2:]) == merged.area    # the pieces partition it; the lone block adds none
     assert all(b.area < 0.6 * merged.area for b in out[2:])
 
+
+
+def test_polish_paired_texture_cannot_override_a_clearly_worse_colour():
+    from dojo.perception import inverse_layout as il
+
+    cfg = il.EstimatorConfig()
+    white = il.Hypothesis(0, "Rigid/mug/00004", "up", 0.0, 0.0, 0.0, 0.2, {"sil_loss": 0.05})
+    white.appearance = 0.10
+    dark = il.Hypothesis(0, "Rigid/mug/00002", "up", 0.0, 0.0, 0.0, 0.3, {"sil_loss": 0.06})
+    dark.appearance = 0.46
+    pt = (0.47, 0.30)                                  # paired texture prefers the dark mug by 0.17
+    assert not il._polish_prefers(white, dark, pt, cfg)                    # the colour vetoes it
+    import dataclasses
+    assert il._polish_prefers(white, dark, pt, dataclasses.replace(cfg, polish_color_veto=None))   # as before
+    close = il.Hypothesis(0, "Rigid/mug/00003", "up", 0.0, 0.0, 0.0, 0.25, {"sil_loss": 0.06})
+    close.appearance = 0.13                            # colour-compatible: paired texture decides
+    assert il._polish_prefers(white, close, pt, cfg)
+    assert not il._polish_prefers(white, close, None, cfg)                 # no texture: the combined cost (0.25 > 0.2)
