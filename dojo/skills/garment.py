@@ -31,8 +31,9 @@ RELEASE_Z = 0.045              # m: fingertips over the table when letting go (t
                                # first sleeve, already lying there, squeezed the cloth and it blew up)
 SLEEVE_OWN = 0.02              # m: a sleeve is laid this far short of the opposite chest point, on its own side
                                # (5 cm put the two sleeves 6 cm apart, the second onto the first)
-HEM_PAST = 0.04                # m: a hem is laid this far beyond its shoulder point: the checker's window runs from
-                               # 9.5 cm short to 17 cm past it, and laid hems pull back (twin: up to 13 cm short)
+HEM_PAST = -0.02               # m: a hem is laid this far beyond its shoulder point (negative: short of it). The
+                               # checker's window runs from 9.5 cm short to 17 cm past it; laid hems land beyond
+                               # their target (twin, 4 cm past: +5..+22 cm, 2 of 12 over the window)
 
 
 def garment_axes(gm: dict) -> tuple[np.ndarray, np.ndarray]:
