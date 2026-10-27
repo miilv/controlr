@@ -85,3 +85,41 @@ Also in the PR:
 
 Open (fasten_screws): proxy / rendered B after #77 lands, i.e. whether perception's post-place re-measure of a nut on
 its bolt agrees with the model, and the nut colour pairing from perception.
+
+## 3. deposit_coin: the handover's taker put its hand on its side at the slot
+
+G3 (skills-5's coin_final) has 9 failures in 25. I read each failure's trace (object poses + measured joints per step,
+`--trace`).
+
+**Cause of the 5 handover misses** (100001 / 09 / 13 / 16 / 22).
+- The taker takes the coin's top rim from above with its hand straight down (0 deg). At the slot hover the same hand
+  leans 76 / 71 / 46 / 68 / 90 deg from vertical.
+- `plan_disc_handover` and `run_disc_handover` take the FIRST of the 48 slot targets (4 insert frames x 12 spins of
+  the coin about its normal) that plans, and the first spin can turn the hand onto its side.
+- On its side, the hand's 28 mm finger-root blocks hang over the pig's back (offline from the traces:
+  `fingers_raise`'s worst point is 41 mm along the slot and 66 mm across it). The `fingers_out` raise lets the servo
+  descend only 0-7.5 mm, so the coin is let go 0-1.5 mm into the slot and falls flat on the bank or onto the table.
+
+**Fix:** `precision.hand_down_first`: the targets are ordered by how far the hand holding the coin would lean from
+straight down there. Both the handover's plan and its re-plan from the measured grasp take the first that plans.
+
+| G3, all 25 settled layouts | success | mean | steps median |
+|---|---|---|---|
+| before: main 48f5dde | 16/25 | 0.688 | 163 |
+| after: + hand_down_first | **20/25** | **0.816** | 168 |
+
+- Rescued: 100001, 09, 13, 16, 22 (exactly the five leaning hands). Lost: 100003.
+- 100003 is the checker's bottom-bound landmine, not a regression: the coin went in (xy 1.1 mm) and lies on the
+  bank's floor 0.8 mm lower than the lowest of the 20 successes (z 0.7747 vs 0.7755). In the before run it landed
+  leaning and passed. Every coin on the floor sits within ~1 mm of that bound.
+- The after arm also carried one-arm coins at 0.06 rad/step instead of 0.09. No one-arm outcome changed, and that
+  change is not in the PR: the one-arm drop it was meant for (100002) is the coin sliding 5.2 mm down in the pads
+  during the lift out of its stand (cover 9 -> 3.8 mm), then falling out early in the carry.
+
+Data: compute6 `~/dojo-data/precision/g3/coin_g3main_48f5dde/`, `coin_hdown_97ea679/` (traces of the failures).
+
+Left (G3, 5 of 25):
+- 100002 / 100019: the coin slides in the pads as it leaves the stand (100019: back into the stand);
+- 100000: the giver's pick turned loose (21.7 mm);
+- 100017: the taker's descent is out of reach;
+- 100003: the bottom bound.
