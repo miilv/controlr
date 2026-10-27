@@ -343,6 +343,16 @@ def _conveyor_labels():
     return labels, info
 
 
+def test_belt_reads_of_riders_cut_by_the_frame_count_less():
+    """A rider riding in from the image border is named by its visible part: its reads are discounted (EDGE_CONF) for
+    the tracker's identity votes and its newcomer gate (track_new_conf 0.5)."""
+    from dojo.perception.belt import EDGE_CONF, at_edge
+    shape = (480, 640)
+    assert at_edge((0, 150, 60, 80), shape) and at_edge((590, 150, 50, 80), shape) and at_edge((300, 430, 40, 49), shape)
+    assert not at_edge((100, 150, 60, 80), shape) and not at_edge((3, 3, 600, 400), shape)
+    assert 0.9 * EDGE_CONF < 0.5                                          # a sure edge read never starts a track
+
+
 def test_conveyor_regions_are_mapped_through_the_belt_and_span_it(monkeypatch):
     from dojo.perception import inverse_layout as IL
 

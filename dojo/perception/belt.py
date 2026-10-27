@@ -22,6 +22,17 @@ import time
 import numpy as np
 
 MIN_RIDER_CONF = 0.25     # a blob whose best fit explains less is not reported (an arm's edge, a shadow)
+EDGE_PX = 2               # a head-view blob this close to the image border is a rider cut by the frame ...
+EDGE_CONF = 0.3           # ... and its read counts this much (identity votes, newcomer gate): riders ride in from
+#                           the border, and their first reads name them by the visible part (5.1 100001: a bottle
+#                           entering at the left border voted "ice cream" in two reads and was picked as the match)
+
+
+def at_edge(bbox, shape, px: int = EDGE_PX) -> bool:
+    """Whether a blob's (x, y, w, h) box touches the border of an image of ``shape`` (h, w)."""
+    x, y, w, h = (int(v) for v in bbox)
+    H, W = int(shape[0]), int(shape[1])
+    return x <= px or y <= px or x + w >= W - px or y + h >= H - px
 
 
 def rider_groups(groups: list[dict], task_labels: dict) -> list[int]:
@@ -70,6 +81,9 @@ def belt_read(images: dict, state: dict, task: str, instruction: str = "", bgs: 
         conf = float(np.clip(1 - h.per_view.get("sil_loss", h.loss), 0, 1))
         if conf < MIN_RIDER_CONF:
             continue
+        edge = 0 <= bi < len(head_blobs) and at_edge(head_blobs[bi].bbox, head_blobs[bi].mask.shape)
+        if edge:
+            conf *= EDGE_CONF
         alt = next((x for x in hs[1:] if x.key != h.key), None)
         T = h.T()
         cat, idx = h.key.split("/")[1], int(h.key.split("/")[2])
@@ -79,10 +93,10 @@ def belt_read(images: dict, state: dict, task: str, instruction: str = "", bgs: 
             "_perception": {"confidence": round(conf, 3), "sil_loss": h.per_view.get("sil_loss"), "cost": round(float(h.loss), 4),
                             "blob_px": int(head_blobs[bi].area) if 0 <= bi < len(head_blobs) else None,
                             "alternative": None if alt is None else {"key": alt.key, "margin": round(float(alt.loss - h.loss), 4)},
-                            "source": "belt_read"}})
+                            "at_edge": bool(edge), "source": "belt_read"}})
         k += 1
     record["_perception"] = {"version": "belt-v0", "n_head_blobs": len(head_blobs), "t_s": round(time.time() - t0, 3)}
     return record
 
 
-__all__ = ["belt_read", "rider_groups"]
+__all__ = ["at_edge", "belt_read", "rider_groups"]
