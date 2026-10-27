@@ -73,3 +73,23 @@ def test_heldsim_drop_keeps_the_runtime_prediction_where_perception_cannot_fit_i
     w = prov.refresh()
     assert "b" in prov._frozen and abs(w.obj("b").bottom_z - TABLE_Z) < 1e-6   # the belief dropped it to the table
     assert T_rel.shape == (4, 4)
+
+
+def test_heldsim_fixtures_look_reestimates_a_fixture_held_prediction_that_is_far_off():
+    """``drop="fixtures_look"``: a release the fixture rule kept where it was let go ("held by a fixture") whose truth is
+    > RESYNC_TOL away (a mug that fell off its hook) is re-estimated, as the runtime's release resync would; with
+    ``drop="fixtures"`` the prediction stays."""
+    from dojo.skills.heldsim import RESYNC_TOL, HeldBeliefProvider
+    for drop, kept in (("fixtures", True), ("fixtures_look", False)):
+        env = KinematicEnv([{"label": "b", "category": "block", "pos": [-0.22, -0.15, TABLE_Z + 0.04],
+                             "quat": [1, 0, 0, 0], "half": HALF}])           # the truth: 30 mm over the table (no fit)
+        prov = HeldBeliefProvider(GTProvider(env, None), env, mode=None, drop=drop)
+        w = prov.refresh()
+        o = w.obj("b")
+        pred = (o.pos + np.array([0.0, 0.0, 0.03 + RESYNC_TOL]), o.quat.copy())
+        prov._pending["b"] = (pred[0], pred[1], "held by a fixture")
+        w = prov.refresh()
+        assert ("b" in prov._frozen) == kept, drop
+        if not kept:
+            assert np.allclose(w.obj("b").pos, o.pos) and prov.stats["resynced"] == 1
+            assert any(e["kind"] == "release_resynced" for e in prov.events)
