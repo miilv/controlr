@@ -251,8 +251,14 @@ def read_sources(frame: dict, cams: dict, sources: list[dict], bgs, cfg) -> list
     from .render import gl
     from .segment import segment_views
 
+    bgs = dict(bgs or {})
+    if "cam_head_noactor" in bgs:
+        # a scene background with a scripted actor at home (the demonstrator's arm): read against the scene without
+        # it. Against the actor, a spot the arm left read foreground for good and its object never went (imitate
+        # 100020: read last instead of third); now the arm reads foreground (present) wherever it is, as elsewhere
+        bgs["cam_head"] = bgs["cam_head_noactor"]
     v = segment_views({"cam_head": frame["images"]["cam_head"]}, {"cam_head": cams["cam_head"]},
-                      {k: np.asarray(x) for k, x in frame["state"].items()}, bgs or {}, thr=getattr(cfg, "fg_thr", 18.0))["cam_head"]
+                      {k: np.asarray(x) for k, x in frame["state"].items()}, bgs, thr=getattr(cfg, "fg_thr", 18.0))["cam_head"]
     g = gl()
     Ts, sms = [], []
     for o in sources:
@@ -268,14 +274,8 @@ def read_sources(frame: dict, cams: dict, sources: list[dict], bgs, cfg) -> list
         front = np.argmin(np.stack(depth), axis=0) if depth else None
         has = np.isfinite(np.stack(depth)).any(axis=0) if depth else None
     # our robot's pixels are unreadable; a shadow on an empty spot (the demonstrator's arm above it) is not the object:
-    # ``fg`` already excludes shadow-like pixels, so they count as background here. A scene background's scripted actor
-    # at its home pose (``cam_head_actor_mask``: the demonstrator's arm) is unreadable too: once the arm moves, those
-    # pixels show the table and read foreground against it, so a source there never went (imitate 100020: read last
-    # instead of third)
+    # ``fg`` already excludes shadow-like pixels, so they count as background here
     ok_px = v.robot == 0
-    am = (bgs or {}).get("cam_head_actor_mask")
-    if am is not None and am.shape == ok_px.shape:
-        ok_px &= am == 0
     out = []
     for i, (o, sm, T) in enumerate(zip(sources, sms, Ts)):
         if sm is None:

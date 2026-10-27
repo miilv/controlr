@@ -28,7 +28,8 @@ def actor_mask(scene: np.ndarray, table: np.ndarray, thr: float = 25.0, dilate: 
     """Head pixels a scripted actor covers at its home pose (the imitate demonstrator's arm): where the scene's
     frame-0 median differs from the table background, the connected parts that touch the image's top border (the arm
     reaches in from above; the baskets and objects do not), dilated. Once the actor moves those pixels show the table
-    and read foreground against the scene background: a departure read must not count them."""
+    and read foreground against the scene background: departure reads use the scene with these pixels from the table
+    (``cam_head_noactor``)."""
     from dojo.perception.segment import color_distance
 
     d = (color_distance(scene, table) > thr).astype(np.uint8)
@@ -93,7 +94,12 @@ def main(argv=None):
             cv2.imwrite(str(o / "cam_head_clean_unseen.png"), (unseen * 255).astype(np.uint8))
         table = Path(dest) / "cam_head.png"
         if table.exists():
-            am = actor_mask(out["cam_head"], _rgb(table), a.actor_thr)
+            # the scene without its actor: the actor's home pixels from the fold's table background (departure reads)
+            tb = _rgb(table)
+            am = actor_mask(out["cam_head"], tb, a.actor_thr).astype(bool)
+            na = out["cam_head"].copy()
+            na[am] = tb[am]
+            cv2.imwrite(str(o / "cam_head_noactor.png"), cv2.cvtColor(na, cv2.COLOR_RGB2BGR))
             cv2.imwrite(str(o / "cam_head_actor_mask.png"), (am * 255).astype(np.uint8))
             meta["actor_px"] = int(am.sum())
             (o / "provenance.json").write_text(json.dumps(meta, indent=1))
