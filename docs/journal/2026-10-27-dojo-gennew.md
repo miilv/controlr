@@ -76,6 +76,22 @@ Validation on genuine Isaac 5.1 rendered frame 0s of our dev layouts (`garment_f
 
 The templates come from 3 of these layouts (100000, 100002, 100004: one per asset); the other 17 are held out.
 
+### 3a. The random half's templates (Garment/Top_Long 6, 7, 11) and the 40-frame check
+
+fold_clothes and fold_clothes_random have the same instruction, so the vocabulary cannot tell their garment sets
+apart. The read therefore tries all six templates; it is not restricted to the vocabulary's candidates. Each template
+now records the dev layout it was settled in (`seed`). Rendered 5.1 frame 0s, against GT; the random half has
+20 clutter objects on the table:
+
+| set | n | asset right | named point error median | worst point per layout: median / max | yaw error median |
+|---|---|---|---|---|---|
+| fold_clothes 100000-19 | 20 | 15/20 | 4 mm | 8 / 14 mm | 0.6 deg |
+| fold_clothes_random 100000-19 | 20 | 18/20 | 4 mm | 7 / 19 mm | 0.9 deg |
+
+Every wrong asset is 00001 read as 00011 or the reverse. Both have the same mesh (20622 faces, 10410 vertices, nearly
+the same particle ids), so their named points differ by a few mm: the worst point on those layouts is 11-17 mm off.
+Templates come from 6 of the 40 layouts, one per asset.
+
 ## 4. Other tasks of this stream (parked, in order of points)
 
 ### store_laptop_and_headphones (headset 20, laptop 80; paired score)
