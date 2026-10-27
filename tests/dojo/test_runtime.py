@@ -2477,14 +2477,18 @@ def test_held_look_never_drops_on_a_single_vision_negative(confirm):
     assert "left" in bel.attached and prov.events[-1]["kept"]                 # still in the jaws
 
 
-@pytest.mark.parametrize("confirm,conf,dropped", [({"held": None}, 1.0, True), ({"held": True, "confidence": 0.9}, 1.0, False),
-                                                  ({"held": None}, 0.8, False), ({"held": False, "confidence": 0.7}, 0.8, True)])
-def test_held_look_drops_on_a_sure_negative_unless_the_head_sees_the_object(confirm, conf, dropped):
+@pytest.mark.parametrize("confirm,conf,measured,dropped", [
+    ({"held": None}, 1.0, 0.0, True),
+    ({"held": True, "confidence": 0.9}, 1.0, 0.45, False),       # jaws 29 mm open: the head's "held" stands
+    ({"held": True, "confidence": 0.99}, 1.0, 0.0, True),        # jaws measured closed: the head cannot overrule it
+    ({"held": None}, 0.8, 0.0, False), ({"held": False, "confidence": 0.7}, 0.8, 0.0, True)])
+def test_held_look_drops_on_a_sure_negative_unless_the_head_sees_the_object(confirm, conf, measured, dropped):
     """5.1 xylophone 100002: the mallet was believed 88 mm off, the jaws closed on nothing, held_look measured the
     opening at 0.0 (evidence "opening", score 0.91) and the head check at the (wrong) pick pose was inconclusive, so the
     grasp was kept and the strikes hit air. A sure opening negative now stands unless the head view sees the object in
-    the jaws (replayed in physics: 52 of 52 such reads on the proxy were empty jaws); a weaker one (0.8) still needs the
-    head's agreement."""
+    the jaws (replayed in physics: 52 of 52 such reads on the proxy were empty jaws), and not even then when the wrist
+    measured the jaws closed past the object's width (conveyor 100003: head "held" at 0.99 on empty jaws); a weaker one
+    (0.8) still needs the head's agreement."""
     from dojo.runtime.belief import RuntimeProvider
     env = _env()
     b = Bridge()
@@ -2492,7 +2496,7 @@ def test_held_look_drops_on_a_sure_negative_unless_the_head_sees_the_object(conf
     prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
     prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
     prov.held_checker = lambda obs, arm, lab: {"held": False, "confidence": conf, "source": "b1", "evidence": "opening",
-                                               "opening": {"measured": 0.0, "commanded": 0.0, "score": 0.91}}
+                                               "opening": {"measured": measured, "commanded": 0.0, "score": 0.91}}
     prov.held_confirm = lambda obs, arm, lab: confirm
     bel = prov.belief
     o = bel.objects["block_1"]
