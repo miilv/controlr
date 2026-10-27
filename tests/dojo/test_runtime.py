@@ -2997,6 +2997,16 @@ def test_verifier_consistent_load_uses_the_belief_assets_and_counts_what_it_chan
     assert prov.checkpoint["objects"][0]["pos"][2] == TABLE_Z + 0.013
 
 
+def test_submit_v3_is_submit_v2_with_the_refine_search_and_empty_hand():
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.runtime.presets import PRESETS, check_env, resolve
+    v2, v3 = PRESETS["submit_v2"], PRESETS["submit_v3"]
+    assert {k: v for k, v in v3.items() if v2.get(k) != v} == {"refine_search_radius": 0.07, "refine_empty_hand": True}
+    cfg = RuntimeConfig(**{k: v for k, v in resolve("submit_v3", {}).items()})
+    assert cfg.refine_search_radius == 0.07 and cfg.refine_empty_hand and cfg.preset == "submit_v3"
+    assert check_env("submit_v3", {}) == []
+
+
 def test_submit_v2_is_submit_v1_with_the_held_read_on_request():
     from dojo.runtime.presets import PRESETS, resolve
     v1, v2 = PRESETS["submit_v1"], PRESETS["submit_v2"]
