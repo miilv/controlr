@@ -2210,6 +2210,44 @@ def test_a_belt_close_attaches_the_rider_where_it_is_by_then_and_never_the_conve
         assert bel._object_at(p_jaws) == want, (dy, riders)
 
 
+def test_belt_identity_switch_needs_two_reads_in_the_window():
+    """5.1 arm 6 100001: the first object read "ice cream" 15 times (0.95), then, riding out of view at the border,
+    three discounted ice-cream reads (0.27-0.29) and ONE sure "bottle" read (0.95) flipped the 4-read window; the skill
+    then matched the bottle. A switch needs the new identity in >= 2 of the window's reads; two consistent reads still
+    switch (a newcomer created under a misread)."""
+    import copy as _copy
+
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.skills.world import AssetInfo
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    objs = objects_from_gt_rows(env.gt_objects(), None)
+    prov.init_objects(objs)
+    ice = AssetInfo(key="Rigid/ice_cream/00000", bbox_min=np.full(3, -0.03), bbox_max=np.full(3, 0.03))
+    bottle = AssetInfo(key="Rigid/bottle/00047", bbox_min=np.full(3, -0.03), bbox_max=np.full(3, 0.07))
+    phone = AssetInfo(key="Rigid/phone/00000", bbox_min=np.full(3, -0.01), bbox_max=np.full(3, 0.01))
+    o = prov.belief.objects["block_0"]
+    o.asset = ice
+
+    def read(asset, conf):
+        e = _copy.deepcopy(objs["block_0"])
+        e.asset, e.confidence = asset, conf
+        return e
+    for c in [0.95] * 15 + [0.29, 0.28, 0.27]:
+        prov._vote("block_0", read(ice, c))
+    prov._vote("block_0", read(bottle, 0.95))                           # one sure read at the border
+    assert o.asset.key == ice.key and o.confidence < 0.5                # kept, and the doubt is visible
+    prov._vote("block_0", read(phone, 0.85))
+    prov._vote("block_0", read(ice, 0.26))
+    assert o.asset.key == ice.key
+    prov._vote("block_0", read(bottle, 0.9))
+    prov._vote("block_0", read(bottle, 0.9))                            # two consistent reads: it switches
+    assert o.asset.key == bottle.key and not any(e.get("to") == phone.key for e in prov.events
+                                                 if e.get("kind") == "track_identity")
+
+
 def test_twin_is_started_for_the_scene_the_policy_chose():
     started = []
     pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="bundle"))
