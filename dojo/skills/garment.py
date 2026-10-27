@@ -209,6 +209,17 @@ def _pinch_yaw(src, toward) -> float:
     return math.atan2(d[1], d[0]) + math.pi / 2
 
 
+def _centre(gm: dict, fallback):
+    """The garment's middle (pinches go in towards it): its particles' mean, else its root position (a read without
+    particles: the camera's, G3 mode B; twin: falling back to the chest / shoulder point instead pinched hems 3.5 cm
+    straight up from the corner, on the side edge, and the random set's hem line failed 6 of 10)."""
+    if gm.get("points") is not None:
+        return np.mean(np.asarray(gm["points"], float)[:, :2], axis=0)
+    if gm.get("pos") is not None:
+        return np.asarray(gm["pos"], float)[:2]
+    return None if fallback is None else np.asarray(fallback, float)[:2]
+
+
 def _inward(p, centre, d: float = PINCH_IN) -> np.ndarray:
     v = np.asarray(centre, float)[:2] - np.asarray(p, float)[:2]
     n = float(np.linalg.norm(v))
@@ -239,7 +250,7 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
             sl, ch = _kp(gm, f"{side}_sleeve"), _kp(gm, f"{other}_chest")
             if sl is None or ch is None:
                 return {"ok": False, "stage": f"{side} sleeve", "note": "no sleeve / chest point", "done": done}
-            centre = np.mean(np.asarray(gm["points"], float)[:, :2], axis=0) if gm.get("points") is not None else ch[:2]
+            centre = _centre(gm, ch)
             # laid on the chest, short of it on the sleeve's own side (left sleeve: the -x side of the garment frame)
             sgn = -1.0 if side == "left" else 1.0
             dst = ch[:2] + sgn * SLEEVE_OWN * xa
@@ -259,10 +270,29 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
             done.append(f"{side} sleeve")
         # the body: both hem corners onto the shoulders at once (the hem line stays parallel to the shoulder line)
         gm = read(garment) or gm
+        upd = getattr(sk.provider, "garment_update", None)
+        if not live and upd is not None:
+            # one read does not follow the cloth: the hem corners move when the sleeves are folded (random set: hem
+            # lines 57-90 deg off after a fold planned from the first read); re-read just them from the current view,
+            # the arms home first (the head view as the first read saw it; the sleeves are folded, so going home is
+            # safe for the checker's "body folded, sleeves not" rule)
+            sk.home(gripper=OPEN)
+            try:
+                g2 = upd(garment, ["left_hem", "right_hem"])
+            except Exception as e:  # noqa: BLE001 (an optional read)
+                g2 = None
+                sk.log(f"[fold] hem re-read failed: {type(e).__name__}: {str(e)[:80]}")
+            if g2 and g2.get("keypoints"):
+                kp = dict(gm.get("keypoints") or {})
+                moved = {k: float(np.linalg.norm(np.asarray(v, float)[:2] - np.asarray(kp[k], float)[:2]))
+                         for k, v in g2["keypoints"].items() if k in kp}
+                kp.update({k: list(v) for k, v in g2["keypoints"].items()})
+                gm = {**gm, "keypoints": kp}
+                sk.log(f"[fold] hems re-read: moved {', '.join(f'{k} {1000 * d:.0f} mm' for k, d in moved.items())}")
         if blown_up(gm):
             sk._record(SkillResult(False, "fold_body", "unstable", 0, None, note="the cloth simulation diverged"))
             return {"ok": False, "stage": "hem", "note": "cloth diverged", "done": done}
-        centre = np.mean(np.asarray(gm["points"], float)[:, :2], axis=0) if gm.get("points") is not None else None
+        centre = _centre(gm, None)
         jobs = []
         for side in ("left", "right"):
             hm, sh = _kp(gm, f"{side}_hem"), _kp(gm, f"{side}_shoulder")

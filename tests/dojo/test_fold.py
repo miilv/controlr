@@ -91,3 +91,17 @@ def test_g3_mode_b_reads_the_garment_once_with_noise():
     assert a is b and Base.n == 1 and a["live"] is False
     d = [np.linalg.norm(np.asarray(a["keypoints"][k])[:2] - np.asarray(FOLD_KP[k])[:2]) for k in FOLD_KP]
     assert 0 < max(d) < 0.03
+
+
+def test_a_read_without_particles_pinches_towards_the_garment_root():
+    from dojo.skills.garment import _centre, _inward
+    hem = np.array([-0.14, -0.25, 0.774])
+    sh = np.array([-0.044, 0.015, 0.774])
+    c = _centre({"keypoints": {}, "pos": [0.0, -0.12, 0.78]}, sh)
+    assert np.allclose(c, [0.0, -0.12])
+    src = _inward(hem, c)
+    # in towards the middle (right and up), not straight up the side edge towards the shoulder
+    assert src[0] > hem[0] + 0.01 and src[1] > hem[1]
+    assert np.allclose(_centre({"keypoints": {}}, sh), sh[:2])
+    pts = np.array([[0.0, 0.0, 0.77], [0.2, 0.0, 0.77]])
+    assert np.allclose(_centre({"points": pts, "pos": [9, 9, 9]}, sh), [0.1, 0.0])
