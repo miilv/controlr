@@ -339,9 +339,19 @@ class HeldBeliefProvider:
         if truth is None:
             return {"adopted": False, "why": "unknown"}
 
+        o_ = self._free.get(label)
+        ext = np.asarray(o_.asset.extents, float) if o_ is not None else None
+        k_ = int(np.argmax(ext)) if ext is not None else None
+        sh = np.delete(ext, k_) if ext is not None else None
+        # a round object (two equal short extents: an egg, a can) looks the same turned about its long axis: the head
+        # view compares that axis, not the spin about it
+        axisym = sh is not None and abs(float(sh[0] - sh[1])) <= 0.1 * float(sh.max()) and float(ext[k_]) > 1.15 * float(sh.max())
+
         def err(p, q):
-            return (float(np.linalg.norm(np.asarray(p, float) - truth[0])),
-                    math.degrees(angle_between_R(quat_to_R(np.asarray(q, float)), quat_to_R(truth[1]))))
+            Rq, Rt = quat_to_R(np.asarray(q, float)), quat_to_R(truth[1])
+            ang = (math.degrees(math.acos(min(1.0, abs(float(Rq[:, k_] @ Rt[:, k_]))))) if axisym
+                   else math.degrees(angle_between_R(Rq, Rt)))
+            return float(np.linalg.norm(np.asarray(p, float) - truth[0])), ang
         e_x, e_b = err(pos, quat), err(*self._frozen[label])
         ok = e_x[0] <= CONFIRM_TOL[0] and e_x[1] <= CONFIRM_TOL[1] and (e_x[0] + e_x[1] / 1000.0) < (e_b[0] + e_b[1] / 1000.0)
         ev = {"label": label, "expected_err": [round(e_x[0] * 1000, 1), round(e_x[1], 1)],

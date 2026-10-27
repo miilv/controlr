@@ -111,3 +111,57 @@ def test_g3_yaw_belief_offset_turns_about_the_bbox_centre():
     yaw = math.degrees(math.atan2(m.R[1, 0], m.R[0, 0]))
     assert abs(yaw - 10.0) < 1e-6
     assert np.allclose(inv_T(m.T)[:3, :3] @ m.R, np.eye(3), atol=1e-9)
+
+
+def test_tipped_in_pose_stands_the_egg_in_the_hole_far_end_up():
+    o = _egg(quat=(0.7071, 0.0, 0.7071, 0.0))             # lying: its long axis (local z) along world +x
+    hole = {"center": np.array([0.03, -0.15]), "radius": 0.0245, "top": 0.814, "floor": 0.769}
+    T_rel = np.eye(4)
+    T_rel[:3, :3] = o.R
+    T_rel[:3, 3] = np.r_[0.03 + 0.012, -0.15, 0.835] - o.R @ o.asset.center     # released 12 mm towards +x
+    T = HO.tipped_in_pose(o, hole, T_rel)
+    ax = T[:3, 2]
+    assert abs(math.degrees(math.acos(abs(ax[2]))) - HO.EGG_TIP_DEG) < 1e-6        # 30 deg from vertical
+    up_end = ax if ax[2] > 0 else -ax
+    assert up_end[0] > 0                                                             # the far (+x) end stays up
+    c = T[:3, :3] @ o.asset.center + T[:3, 3]
+    assert np.linalg.norm(c[:2] - hole["center"]) < 0.006
+    assert 0.769 + 0.02 < c[2] < 0.814                                               # in the hole, under the plate
+
+
+def test_heldsim_confirm_ignores_the_spin_of_a_round_object():
+    """G3's confirm_pose stand-in compares a round object's long axis, not its spin about it (the head view cannot
+    tell an egg turned about its axis); a box is still compared in full."""
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.geometry import R_to_quat, quat_to_R
+    from dojo.skills.heldsim import HeldBeliefProvider
+    from dojo.skills.skills import GTProvider
+    for half, adopted in (([0.0205, 0.021, 0.029], True), ([0.03, 0.012, 0.01], False)):
+        env = KinematicEnv([{"label": "e", "category": "egg", "pos": [-0.2, -0.15, 0.80], "quat": [1, 0, 0, 0],
+                             "half": half}])
+        prov = HeldBeliefProvider(GTProvider(env, None), env, mode=None, drop="fixtures")
+        w = prov.refresh()
+        o = w.obj("e")
+        k = int(np.argmax(o.asset.extents))
+        prov._frozen["e"] = (o.pos + np.array([0.1, 0.0, 0.0]), o.quat.copy())     # the belief: 10 cm off
+        R_spun = o.R @ HO._rot(np.eye(3)[k], math.radians(90.0))                    # the same object turned about it
+        r = prov.confirm_pose("e", o.pos.copy(), R_to_quat(R_spun))
+        assert r["adopted"] is adopted, half
+        assert np.allclose(quat_to_R(R_to_quat(R_spun)), R_spun, atol=1e-9)
+
+
+def test_slide_path_pushes_a_lying_egg_along_its_axis_towards_the_side_it_was_let_go_on():
+    o = _egg()                                         # lying: its long axis (local z) along world -y
+    hole = {"center": np.array([0.0, -0.2]), "radius": 0.0245, "top": 0.814, "floor": 0.768}
+    half = 0.5 * float(o.asset.extents[2])
+    for dy in (0.006, -0.006):                          # let go 6 mm off the hole's centre, on either side
+        T = o.T.copy()
+        T[:3, 3] = np.array([0.0, -0.2 + dy, 0.79]) - o.R @ o.asset.center      # its middle dy off the hole's centre
+        p0, p1, u = HO.slide_path(o, hole, T)
+        assert np.allclose(np.abs(u), [0.0, 1.0, 0.0]) and math.copysign(1.0, u[1]) == math.copysign(1.0, dy)
+        # it starts beyond the egg's other end and pushes towards the side it was let go on, just over the plate
+        assert math.isclose(p0[1], -0.2 + dy - u[1] * (half + HO.EGG_SLIDE_START), abs_tol=1e-9)
+        assert np.allclose(p1 - p0, u * HO.EGG_SLIDE)
+        assert math.isclose(p0[2], hole["top"] + HO.EGG_SLIDE_Z) and math.isclose(p1[2], p0[2])
+    up = _egg(quat=(1.0, 0.0, 0.0, 0.0))               # standing: nothing to push
+    assert HO.slide_path(up, hole, up.T) is None
