@@ -186,7 +186,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
                                   for o in sk.refresh().task_objects()}})
     rec["category"] = classify(res_j, reward, hist)
-    if mode_b or belief_offsets or held_pose or held_belief or freeze_touched or confirm_pose or belief_drop:
+    if mode_b or belief_offsets or held_pose or held_belief or freeze_touched or confirm_pose:
         # with these hooks ``final_objects`` is the BELIEF (the provider's refresh); the true poses for comparisons
         rec["final_true"] = {r["label"]: np.round(np.r_[r["pos"], r["quat"]], 4).tolist() for r in env.gt_objects()
                              if r.get("label") in rec["final_objects"]}
