@@ -407,6 +407,7 @@ class RuntimeProvider:
         self._id_votes: dict = {}               # label -> [(asset key, confidence)] of its latest reads
         self._pose_votes: dict = {}             # label -> [(asset key, confidence, up axis in the object, quat, z)]
         self.track_id_window = 4
+        self.track_switch_reads = 2             # an identity switch needs this many of the window's reads (not one)
         self._tentative: list = []              # unmatched reads of the last re-read: (step, xy, ObjectState)
         self._unconfirmed: dict = {}            # label -> re-reads that did not see a never-confirmed object
         self.track_confirm_reads = 2
@@ -790,11 +791,17 @@ class RuntimeProvider:
         for k, c in hist:
             v[k] = v.get(k, 0.0) + c
         best = max(v, key=v.get)
-        o.confidence = round(v[best] / max(sum(v.values()), 1e-9), 3)   # identity: the leader's share of the votes
-        if o.asset is not None and best != o.asset.key and best == e.asset.key:
+        # a switch needs the new identity in ``track_switch_reads`` of the window's reads: one sure read of a rider
+        # leaving the view cut by the border ("bottle" 0.95 after three discounted "ice cream" reads, 5.1 100001 arm 6)
+        # renamed the first object, after 15 reads of ice cream, and the skill matched the wrong asset
+        n_best = sum(1 for k, _ in hist if k == best)
+        if (o.asset is not None and best != o.asset.key and best == e.asset.key
+                and n_best >= self.track_switch_reads):
             self.events.append({"kind": "track_identity", "label": label, "from": o.asset.key, "to": best,
                                 "votes": {k: round(x, 2) for k, x in v.items()}})
             o.asset, o.category, o.idx = e.asset, e.category, e.idx
+        cur = o.asset.key if o.asset is not None else best
+        o.confidence = round(v.get(cur, 0.0) / max(sum(v.values()), 1e-9), 3)   # identity: its share of the votes
         ph = self._pose_votes.setdefault(label, [])
         ph.append((e.asset.key, max(float(e.confidence), 0.05), np.asarray(e.R, float)[2, :].copy(),
                    np.asarray(e.quat, float).copy(), float(e.pos[2])))
