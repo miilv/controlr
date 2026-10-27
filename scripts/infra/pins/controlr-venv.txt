@@ -1,5 +1,7 @@
 # compute3 ~/dojo-perception/.venv (python 3.12) uv pip freeze, 2026-10-25: the controlr venv with the perception
 # extras (pyopengl 3.1.9 over pyrender's 3.1.0 pin: texture upload under 3.12). Installed as is, then controlr --no-deps -e.
+# + tqdm / transforms3d (2026-10-27): the perception extra's twin-template deps, missing from that freeze (the
+#   bridge / official path ran with twin verify disabled on every fleet box); versions from RoboDojo env freeze
 anyio==4.15.1
 attrs==26.1.0
 certifi==2026.10.23
@@ -40,6 +42,8 @@ scipy==1.18.1
 shapely==2.2.0
 six==1.17.0
 svg-path==7.1
+tqdm==4.70.1
+transforms3d==0.4.2
 trimesh==5.2.0
 typing-extensions==4.16.0
 tzdata==2026.5
