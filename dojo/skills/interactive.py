@@ -413,8 +413,14 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         keys.setdefault(w.obj(l).asset.key, []).append(l)
     expect = sum(1 for v in keys.values() if len(v) >= 2)
     sk.log(f"[imitate] {len(movers)} objects, {expect} identities appear twice; watching {demo_container}")
+    # sources: where every mover stands now (the demonstrator has not started): a read reports which of them left
+    # their place, in order (perception's departure read; the container's contents are hard to read, and a moved
+    # object is outside every generator region the inverse layout proposes in)
     region = {"kind": "container", "container": {"asset": D.asset.key, "pos": D.pos.tolist(), "quat": D.quat.tolist()},
-              "candidates": sorted({w.obj(l).asset.key for l in movers})}
+              "candidates": sorted({w.obj(l).asset.key for l in movers}),
+              "sources": [{"asset": w.obj(l).asset.key, "label": l, "pos": w.obj(l).pos.tolist(),
+                           "quat": w.obj(l).quat.tolist(), "conf": float(getattr(w.obj(l), "confidence", 1.0))}
+                          for l in movers]}
     if len(st["order"]) < expect:
         t0 = w.step
         ao = ArrivalOrder(n_consecutive=quiet, expected=expect)
