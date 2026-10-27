@@ -92,3 +92,11 @@ def test_the_note_passes_the_strict_servers_schema():
     clean, rep = validate_perceive(out)
     assert clean is not None and not rep["rejected"] and "scene Dynamic_conveyor_00000" in clean["notes"], rep
     assert J.VERSION == "j1-adapter-3"
+
+
+def test_task_map_keeps_its_cache():
+    """scene_keys was once inserted under task_map's @lru_cache: the decorator then cached scene_keys and task_map
+    re-read tasks.json on every call (Memory's review of #148)."""
+    pytest.importorskip("scipy")
+    from dojo.perception import inverse_layout as IL
+    assert hasattr(IL.task_map, "cache_clear") and not hasattr(IL.scene_keys, "cache_clear")
