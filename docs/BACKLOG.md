@@ -273,13 +273,20 @@
   `cells` / `container`) and `provider.actors_moving()` while they hold still. `match_and_pick` needs object tracks on
   the belt. G3 answers all three from GT (`GTProvider`); `RuntimeProvider` has none of them yet. Without
   `actors_moving` the skills hold a fixed 60 / 110 steps, tuned on our own demos.
-- [ ] **dojo skills: fill_egg_holder, a 0.3 kg egg falls out of the pads while the hand turns it upright** (twin
-  v3-v6: rolled, raised, end-to-end and off-middle grasps, slow carries; one level grasp held and stood its egg in a
-  hole). The holes, the stand-up place, the drop and the lid swing are built (`dojo/skills/holders.py`).
-- [ ] **dojo skills: fill_egg_holder, eggs crowded in the basket have no grasp.** The X5 finger's root block (38 mm
-  thick, 56 mm wide, 40-70 mm above the TCP) meets the basket's rim or the neighbouring egg for every grasp of an egg
-  lying against the basket wall (dev layouts: ~31 of 44 eggs). Eggs on the table and the stand-up drop into the
-  holder's holes work. Next: roll / push an egg off the wall first, or a grasp model that may touch the rim.
+- [x] ~~**dojo skills: fill_egg_holder, a 0.3 kg egg falls out of the pads while the hand turns it upright**~~
+  (twin v3-v6). Not needed: `fill_holes` mode "drop" (tools stream) carries the egg lying as picked and lets it go low
+  over a hole, off its centre, so it tips in (journal 2026-10-27-dojo-tools). The stand-up remains as the fallback for
+  the back holes under the open lid.
+- [ ] **dojo skills: fill_egg_holder, eggs against the basket wall.** Most dev eggs rest on the wall's foot: no
+  top-down grasp keeps the finger's root block (38 x 56 mm) out of the wall. `nudge_from_wall` pushes one off when its
+  fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
+  grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
+- [ ] **dojo skills: fill_egg_holder, an egg can land lying across a hole** (its centre 2-5 mm over the plate, the
+  checker wants it in). Two presses from above did not free it. Drops now put the far end on the outer rim first.
+- [ ] **dojo runtime: an egg let go over the egg holder's hole is predicted on the table.** The holder is an
+  Articulation, so the fixture rule (#77, Geometry only) does not see its holes and `drop_rest` drops the egg to the
+  table at the release's xy. Mode B then re-picks a phantom egg. The post-place refine must find it in the hole, or
+  the drop rule must use the holder's body mesh.
 - [ ] **dojo simlab: pick_from_conveyor_by_image's photo board and basket placement is a public guess.** v12 put the
   basket's 22 cm body inside the conveyor (ejected at load). v13 (skills-6) follows the public PhysicalRSI sampler's
   `place_fixture` (world xy from the conveyor's root, z from its world bbox top): the basket stands on the belt in front

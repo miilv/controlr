@@ -62,3 +62,52 @@ def test_vectorised_wall_clearance_matches_the_per_point_one():
     pts = np.array([[0.1, -0.2, 0.79], [0.17, -0.2, 0.81], [0.15, -0.15, 0.8], [0.5, 0.5, 0.8]])
     assert abs(HO.wall_clearance_v(C, prof, pts) - HO.wall_clearance(C, prof, pts)) < 1e-12
     assert HO.wall_clearance_v(C, prof, pts[3:]) == float("inf")
+
+
+# ---------------------------------------------------------------------------------------------- G3 yaw belief offset
+from dojo.skills.geometry import inv_T  # noqa: E402
+from dojo.skills.kinematics import TABLE_Z  # noqa: E402
+def _cyl_mesh(r, y0, y1, n=24):
+    """A closed cylinder along y (vertices only at its two end rings)."""
+    a = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    ring = np.stack([r * np.cos(a), np.zeros(n), r * np.sin(a)], axis=1)
+    V = np.vstack([ring + [0, y0, 0], ring + [0, y1, 0], [[0, y0, 0], [0, y1, 0]]])
+    F = []
+    for i in range(n):
+        j = (i + 1) % n
+        F += [[i, j, n + j], [i, n + j, n + i], [2 * n, j, i], [2 * n + 1, n + i, n + j]]
+    return V, np.asarray(F)
+
+
+def _obj(label, typ, cat, pos, quat=(1, 0, 0, 0), lo=(-0.02, -0.02, 0), hi=(0.02, 0.02, 0.04), mesh=None, **asset):
+    info = AssetInfo(key=f"{typ}/{cat}/00000", bbox_min=np.asarray(lo, float), bbox_max=np.asarray(hi, float),
+                     mesh=mesh, **asset)
+    return ObjectState(label, typ, cat, 0, np.asarray(pos, float), np.asarray(quat, float), info)
+
+
+def _mallet(pos=(-0.25, -0.15, TABLE_Z + 0.03)):
+    V, F = _cyl_mesh(0.004, 0.014, 0.2)
+    return _obj("m", "Rigid", "mallet", pos, lo=(-0.013, -0.013, -0.013), hi=(0.013, 0.2, 0.013), mesh=(V, F))
+
+
+def test_g3_yaw_belief_offset_turns_about_the_bbox_centre():
+    from dojo.skills.g3 import OffsetBeliefProvider
+
+    o = _mallet()
+    c0 = o.R @ o.asset.center + o.pos
+
+    class _W:
+        objects = {"m": o}
+
+    class _Base:
+        def refresh(self, holding=None):
+            return _W()
+
+    prov = OffsetBeliefProvider(_Base(), {"m": [0.002, 0.0, 10.0]})
+    w = prov.refresh()
+    m = w.objects["m"]
+    c1 = m.R @ m.asset.center + m.pos
+    assert np.allclose(c1 - c0, [0.002, 0.0, 0.0], atol=1e-9)
+    yaw = math.degrees(math.atan2(m.R[1, 0], m.R[0, 0]))
+    assert abs(yaw - 10.0) < 1e-6
+    assert np.allclose(inv_T(m.T)[:3, :3] @ m.R, np.eye(3), atol=1e-9)
