@@ -704,6 +704,8 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
                     if float(o.center_w[2]) <= plate_top - EGG_SUNK:
                         break
             hit = next((x for x in holes if in_hole(o, x)), None)
+            if hit is not None and off == off and float(o.center_w[2]) > plate_top - EGG_SUNK:
+                hit = None                    # lying across it, not in (the checker wants its centre lower)
             how = "stood up" if off != off else f"offset {off * 1000:.0f} mm, yaw {yd:.0f}, side {side:+.0f}"
             sk.log(f"[holes] {lab} dropped over the hole at {np.round(h['center'], 3).tolist()} ({how}; {rr.status}): "
                    f"{'in a hole' if hit else 'NOT in a hole'}, pos {np.round(o.pos, 3).tolist()} tilt {o.tilt((0, 0, 1)):.0f}")
