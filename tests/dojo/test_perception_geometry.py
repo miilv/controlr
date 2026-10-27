@@ -505,7 +505,7 @@ def test_task_map_skips_candidates_without_geometry(tmp_path, monkeypatch):
         il.task_map.cache_clear()
 
 
-def test_table_generator_turns_the_asset_about_its_origin():
+def test_table_generator_turns_the_asset_about_its_origin(monkeypatch):
     """RoboDojo's table generator puts the place centre at the sampled point, then turns the orientation about the
     asset ORIGIN: an off-centre asset (a phone, origin at one end) lies with its centre anywhere on a circle around
     the origin, and the constrained point is origin + R0 @ centre whatever the yaw. On another object (gen_layouts'
@@ -518,7 +518,7 @@ def test_table_generator_turns_the_asset_about_its_origin():
     a = SimpleNamespace(V=V, F=np.zeros((0, 3), int), extents=np.ptp(V, axis=0), info={})
     sm = il.ShapeModel("Rigid/phone/t", "t", a, np.eye(3), 0.0, 0.012, 1, True, None,
                        centre_local=np.array([0.0, 0.0575, 0.006]))
-    il._FIXED_POSE_SHAPES[("Rigid/phone/t", "t")] = sm
+    monkeypatch.setitem(il._FIXED_POSE_SHAPES, ("Rigid/phone/t", "t"), sm)
     table = {"placement": {"relative_plane": "Table"}, "regions": [il._region({"xlim": [-0.3, 0.4], "ylim": [-0.2, -0.05],
                                                                                "rotate_rand": True, "rotate_deg": 180})]}
     on_obj = {"placement": {"relative_plane": "stand/stand/0"}, "regions": table["regions"]}
@@ -529,12 +529,8 @@ def test_table_generator_turns_the_asset_about_its_origin():
     assert il.region_ok(table, *il._centre_xy(h, table)) and not il.region_ok(table, *il._centre_xy(h))
     assert np.allclose(il._centre_xy(h, on_obj), il._centre_xy(h))          # on an object: unchanged
     assert il._blob_margin(table, sm) == pytest.approx(0.115) and il._blob_margin(on_obj, sm) == 0.0
-    old = il.GEN_YAW_ABOUT_ORIGIN
-    try:
-        il.GEN_YAW_ABOUT_ORIGIN = False
-        assert np.allclose(il._centre_xy(h, table), il._centre_xy(h))
-    finally:
-        il.GEN_YAW_ABOUT_ORIGIN = old
+    monkeypatch.setattr(il, "GEN_YAW_ABOUT_ORIGIN", False)
+    assert np.allclose(il._centre_xy(h, table), il._centre_xy(h))
 
 
 def test_quota_lists_from_a_hierarchical_list_and_its_copies(monkeypatch):
@@ -560,6 +556,30 @@ def test_quota_lists_from_a_hierarchical_list_and_its_copies(monkeypatch):
     assert il.region_ok(ls[1], 0.0, 0.2) and not il.region_ok(ls[0], 0.0, 0.2)
     labels["t0"]["select_mode"] = labels["t1"]["select_mode"] = dict(t_sel, select_category_nums=[1, 2])
     assert il.quota_lists("imi", g) == []
+
+
+def test_quota_balance_drops_a_duplicate_on_one_object(monkeypatch):
+    """A quota list with more objects than labels drops the object of a repeated category that most overlaps another
+    chosen object (two fits on one near figure); a full list keeps all."""
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    for key, ext in (("Rigid/car/t", (0.06, 0.03, 0.03)), ("Rigid/fig/t", (0.05, 0.05, 0.08))):
+        sm = _box_shape(il, key, ext)
+        monkeypatch.setitem(il._FIXED_POSE_SHAPES, (key, "test"), sm)
+    monkeypatch.setattr(il, "gl", lambda: None)
+    reg = il._region({"xlim": [-0.3, 0.4], "ylim": [-0.2, -0.05], "rotate_rand": True, "rotate_deg": 180})
+    lists = [{"labels": ["t0", "t1"], "cats": ["car", "fig"], "placement": {"relative_plane": "Table"}, "regions": [reg]}]
+    head = SimpleNamespace(cam=cameras.head_camera(), fg=np.zeros((480, 640), np.uint8))
+    real = il.Hypothesis(0, "Rigid/car/t", "test", 0.10, -0.12, 0.0, 0.2, {"sil_loss": 0.2})
+    fig = il.Hypothesis(0, "Rigid/fig/t", "test", -0.10, -0.12, 0.0, 0.3, {"sil_loss": 0.3})
+    dup = il.Hypothesis(0, "Rigid/car/t", "test", -0.102, -0.121, 0.4, 0.5, {"sil_loss": 0.5})   # on the figure
+    g = {"labels": ["t0", "t1"]}
+    out = il._quota_balance([real, fig, dup], {"cam_head": head}, None, None, 0, g, None, lists)
+    assert out == [real, fig]
+    out = il._quota_balance([real, fig], {"cam_head": head}, None, None, 0, g, None, lists)
+    assert out == [real, fig]
 
 
 def test_region_mask_covers_the_generator_region_only():
