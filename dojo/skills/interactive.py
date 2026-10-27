@@ -880,14 +880,33 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     if st.get("first") is None and len(riders) == 1:
         # one rider in view at the start: it is the first one (remember it before it rides out of view)
         st["first"], st["first_key"] = riders[0], w.obj(riders[0]).asset.key
+    # where the riders were at the start: the first one is the one leading there, even when it has ridden out of view
+    # (or the tracker dropped it) by the time the belt's direction is known
+    start = {l: (w.obj(l).pos[:2].copy(), w.obj(l).asset.key) for l in riders}
     # a tracking provider (the runtime) may need the next riders' tracks for the velocity: wait longer for it
     v = belt_velocity(sk, labs, max_wait=250 if getattr(sk.provider, "belt_velocity", None) else 60)
     if float(np.linalg.norm(v)) < 1e-4:
         return {"ok": False, "stage": "belt", "note": "nothing moves"}
     u = v / np.linalg.norm(v)
     w = sk.refresh()
-    if st.get("first") is None:
-        st["first"] = max(labs, key=lambda l: float(w.obj(l).pos[:2] @ u))
+    t_first = w.step
+    while st.get("first") is None:
+        now = {l: (w.obj(l).pos[:2].copy(), w.obj(l).asset.key) for l in w.objects
+               if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter}
+        pool = start or now
+        if pool:
+            st["first"] = max(pool, key=lambda l: float(pool[l][0] @ u))
+            st["first_key"] = pool[st["first"]][1]
+            break
+        # no rider read at the start and none now (genuine 5.1 eeb94de 100003: the tracker had added nothing; this
+        # crashed on an empty max()): the next one to ride into view is the first one
+        if w.step - t_first > max_wait:
+            return {"ok": False, "stage": "match", "note": "no object seen on the belt"}
+        try:
+            sk.ex.hold(5)
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return {"ok": False, "stage": "match", "note": str(e)}
+        w = sk.refresh()
     first = st["first"]
     key = st["first_key"] = w.obj(first).asset.key if first in w.objects else st.get("first_key")
     same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key]
