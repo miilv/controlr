@@ -181,7 +181,8 @@ def pan_handle_grasps(o) -> list:
     V = np.asarray(o.asset.mesh[0], float)
     y1 = float(V[:, 1].max())
     out = []
-    for dy in (0.03, 0.05, 0.07, 0.09, 0.11):
+    for dy in (0.03, 0.045, 0.06, 0.075):            # not nearer the pan: the fingers came down on its back wall
+                                                     # and shoved it 20 cm (twin, traced)
         y = y1 - dy
         S = V[np.abs(V[:, 1] - y) < 0.006]
         if len(S) < 6:
@@ -214,12 +215,15 @@ def _drag_pan(sk: Skills, pan: str, arm: str, T_target: np.ndarray) -> SkillResu
     pp = sk.plan_pick(pan, arm, grasps=[g for _, g in cands[:30]], keep=1, lift=0.0)
     if isinstance(pp, SkillResult):
         return sk._record(SkillResult(False, "drag", "ik_fail", 0, arm, note=f"no handle grasp: {pp.note[:120]}"))
-    T_rel = pp.T_tcp_obj
-    T_tcp_end = T_target @ inv_T(T_rel)
     n0 = sk.ex.steps_used
     # the pick without its lift: open, approach, descend, close (the lift op is a zero move)
     sk.ex.run({arm: pp.plan}, name=f"grip {pan}")
     q = sk.ex.q[arm].copy()
+    # the drag from the grip as it is (a grip that nudged the dustpan, planned from where it was, turned it 260 deg on
+    # the way: twin, traced)
+    o1 = sk.refresh().obj(pan)
+    T_rel = inv_T(sk.kin.tcp(arm, q)) @ o1.T
+    T_tcp_end = T_target @ inv_T(T_rel)
     mv = sk.motion.line(arm, q, T_tcp_end, SLOW, "drag", gripper=CLOSED, check=False, max_step_m=0.01)
     if not mv.ok:
         return sk._record(SkillResult(False, "drag", "ik_fail", sk.ex.steps_used - n0, arm, note=mv.note[:120]))
