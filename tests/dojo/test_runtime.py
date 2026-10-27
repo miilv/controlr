@@ -2092,6 +2092,30 @@ def test_belt_a_lost_rider_track_is_dropped_while_the_arms_hold_still():
     assert lost and lost[0]["label"] == "block_0" and "block_0" not in prov.belief.objects
 
 
+def test_belt_velocity_runs_along_the_moving_base_and_identity_carries_its_vote_share():
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.skills.world import AssetInfo, ObjectState
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    objs = objects_from_gt_rows(env.gt_objects(), None)
+    belt = AssetInfo(key="Dynamic/conveyor/00000", bbox_min=np.array([-3.96, -0.6, 0.0]), bbox_max=np.array([0.0, 0.58, 0.92]))
+    objs["conveyor"] = ObjectState("conveyor", "Dynamic", "conveyor", 0, np.array([-2.08, 0.175, 0.0]),
+                                   np.array([0.0, 0.0, 0.0, 1.0]), belt)                   # 180 deg about z: long axis x
+    prov.init_objects(objs)
+    tr = [(s_, np.zeros(2)) for s_ in range(0, 40, 4)]
+    prov._tracks = {"block_0": list(tr), "block_1": list(tr), "block_2": list(tr)}
+    prov.velocity = {"block_0": np.array([0.004, 0.0003]), "block_1": np.array([0.0039, -0.0002]),
+                     "block_2": np.array([0.00215, 0.00329])}                             # a noisy track
+    v = prov.belt_velocity()
+    assert abs(float(v[1])) < 1e-9 and abs(float(v[0]) - 0.0039) < 1e-6                  # along x, the median
+    e = objs["block_0"]
+    prov._vote("block_0", e)
+    prov._vote("block_0", e)
+    assert prov.belief.objects["block_0"].confidence == 1.0
+
+
 def test_twin_is_started_for_the_scene_the_policy_chose():
     started = []
     pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="bundle"))

@@ -557,7 +557,29 @@ class RuntimeProvider:
             if (self.track_min_speed < sp <= self.track_max_speed and len(tr) >= self.track_vel_reads
                     and tr[-1][0] - tr[0][0] >= self.track_vel_span):
                 v.append(vv)
-        return np.median(np.array(v), axis=0) if v else np.zeros(2)
+        if not v:
+            return np.zeros(2)
+        ax = self._belt_axis()
+        if ax is not None:
+            # a belt moves its riders along its long axis: the fits' components across it are track noise
+            # (genuine-5.1 100005: (2.15, 3.29) mm / step from 4-read tracks on a belt running along x)
+            return float(np.median(np.array(v) @ ax)) * ax
+        return np.median(np.array(v), axis=0)
+
+    def _belt_axis(self) -> np.ndarray | None:
+        """The world xy unit vector of the long axis of the scene's moving base (a Dynamic object), None without one."""
+        for o in self.belief.objects.values():
+            if o.obj_type != "Dynamic" or o.asset is None:
+                continue
+            ext = np.asarray(o.asset.extents, float)
+            R = o.R
+            axes = [R[:2, k] * float(ext[k]) for k in range(3)]
+            k = int(np.argmax([float(np.linalg.norm(a)) for a in axes]))
+            a = R[:2, k]
+            n = float(np.linalg.norm(a))
+            if n > 0.5:
+                return a / n
+        return None
 
     def _track(self, obs: dict) -> None:
         """Belt tracking: a B1 re-read every ``track_every`` steps. Reads are matched to the belief's movable, not-held
@@ -685,6 +707,7 @@ class RuntimeProvider:
         for k, c in hist:
             v[k] = v.get(k, 0.0) + c
         best = max(v, key=v.get)
+        o.confidence = round(v[best] / max(sum(v.values()), 1e-9), 3)   # identity: the leader's share of the votes
         if o.asset is not None and best != o.asset.key and best == e.asset.key:
             self.events.append({"kind": "track_identity", "label": label, "from": o.asset.key, "to": best,
                                 "votes": {k: round(x, 2) for k, x in v.items()}})
