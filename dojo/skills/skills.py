@@ -268,6 +268,9 @@ class Skills:
         self.held_looks = True
         self.held_events: list = []
         self.confirm_events: list = []              # ``confirm_moved``: what non-grasp actions asked the provider
+        # ``confirm_moved``: not confirmed -> the arm that moved the object goes home and the provider looks once more (mode B
+        # only: at the end of a topple it hangs over the object, in the head view)
+        self.confirm_clear = True
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
 
@@ -1061,23 +1064,41 @@ class Skills:
         low = float(self.kin.finger_points(self.kin.flange_from_tcp(np.asarray(T_tcp, float)), gripper)[:, 2].min())
         return max(0.0, z_min - low)
 
-    def confirm_moved(self, label: str, T_expected, why: str = "") -> dict | None:
+    def confirm_moved(self, label: str, T_expected, why: str = "", arm: str | None = None) -> dict | None:
         """A non-grasp action (a topple, a push) moved ``label``. In mode B nothing re-measures it (no grasp, so no
         release and no post-place; no twin segment): the belief keeps it where it was, whatever it did. The provider's
         ``confirm_pose(label, pos, quat)`` (the runtime: the head view of the current frame decides, the post-place
         second-look rule) gets the expected outcome and moves the belief there when it is confirmed; then a refresh.
-        Returns the answer ({"adopted", ...}) or None (no such provider: G3 reads the world)."""
+        ``arm``: the arm that moved it. Not confirmed and ``confirm_clear``: that arm (empty) goes home, out of the head
+        view, and the provider is asked once more (proxy B kong: the topple's arm hanging 4 cm over the toppled tile, the
+        head view read the old standing pose at precision 0.90-0.97 and the confirm's margin never passed, 8 of 8).
+        Returns the last answer ({"adopted", ...}) or None (no such provider: G3 reads the world)."""
         f = getattr(self.provider, "confirm_pose", None)
         if f is None or label not in self.world.objects:
             return None
         p7 = T_to_pose7(np.asarray(T_expected, float))
-        try:
-            r = f(label, np.asarray(p7[:3], float), np.asarray(p7[3:], float)) or {}
-        except Exception as e:  # noqa: BLE001 (an optional check)
-            r = {"adopted": False, "why": f"{type(e).__name__}: {str(e)[:80]}"}
-        self.confirm_events.append({"label": label, "why": why, "adopted": bool(r.get("adopted")),
-                                    "step": int(self.ex.steps_used), "expected7": [round(float(v), 4) for v in p7]})
-        self.log(f"[confirm] {label} ({why}): adopted={bool(r.get('adopted'))} {r.get('why', '')}")
+
+        def ask(tag: str) -> dict:
+            try:
+                r = f(label, np.asarray(p7[:3], float), np.asarray(p7[3:], float)) or {}
+            except Exception as e:  # noqa: BLE001 (an optional check)
+                r = {"adopted": False, "why": f"{type(e).__name__}: {str(e)[:80]}"}
+            self.confirm_events.append({"label": label, "why": why + tag, "adopted": bool(r.get("adopted")),
+                                        "step": int(self.ex.steps_used), "expected7": [round(float(v), 4) for v in p7]})
+            self.log(f"[confirm] {label} ({why}{tag}): adopted={bool(r.get('adopted'))} {r.get('why', '')}")
+            return r
+
+        r = ask("")
+        if not r.get("adopted") and arm is not None and self.confirm_clear and self.held.get(arm) is None:
+            n0 = self.ex.steps_used
+            try:
+                self.ex.run({arm: self.plan_home(arm)}, name=f"clear {arm} for confirm")
+                self.ex.settle(tol=0.02, max_steps=2)
+            except (BudgetExceeded, EpisodeEnded) as e:
+                self.log(f"[confirm] {label}: clearing {arm} stopped ({type(e).__name__})")
+            else:
+                self.log(f"[confirm] {label}: {arm} home for a second look ({self.ex.steps_used - n0} steps)")
+                r = ask(", arm clear")
         self.refresh()
         return r
 

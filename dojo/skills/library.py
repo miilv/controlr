@@ -1833,7 +1833,7 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
             return sk._record(SkillResult(False, "push", "step_budget", sk.ex.steps_used - n0, last, note=str(e)))
         T_x = o.T.copy()                                      # the stroke's expected outcome: ``step`` along u
         T_x[:2, 3] += push_u * push_step
-        sk.confirm_moved(label, T_x, "push")                  # mode B: nothing else sees a pushed object move
+        sk.confirm_moved(label, T_x, "push", arm=last)        # mode B: nothing else sees a pushed object move
         moved = float(np.linalg.norm(sk.refresh().obj(label).center_w[:2] - before))
         stuck = stuck + 1 if moved < 0.003 else 0
         if stuck >= 2:
@@ -1921,7 +1921,7 @@ def topple(sk: Skills, label: str, axis_body, arm: str | None = None, tries: int
             return sk._record(SkillResult(False, "topple", "step_budget" if isinstance(e, BudgetExceeded) else "ended",
                                           0, p.arm, note=str(e)))
         # mode B: no grasp, so nothing re-measures it; the provider confirms the expected outcome (or not)
-        sk.confirm_moved(label, Skills.toppled_pose(o0, -n_up), "topple")
+        sk.confirm_moved(label, Skills.toppled_pose(o0, -n_up), "topple", arm=p.arm)
         w = sk.refresh()
         o = w.obj(label)
         up = float((o.R @ ax)[2])
