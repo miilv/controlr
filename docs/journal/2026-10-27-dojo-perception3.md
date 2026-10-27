@@ -139,3 +139,65 @@ Paired, same frames, the 12-non-demo scene background (§1.4):
     100017's watch ring (table shows through its silhouette).
   - Same records (#152's), 13 layouts: order exact 8 -> 10, plan right 7 -> 8, 0 false departures before and after.
 - **End to end, all fixes:** plan right 0 / 13 -> 8 / 13, order exact 2 -> 10, twins right 31 -> 56 of 65.
+
+## 2. make_toast: not perception
+
+breadth3's toast rows (compute7 `B3_make_toast_r1a`, 1f7e965) read "place_miss: xy err 0.0 mm, dz -62.6 mm (centre
+0.8231 vs 0.8858)" on every slice. xy exactly 0.0 means the post-release pose is the runtime belief's prediction, not a
+reading: `belief.drop_rest` dropped the slice to the table (0.8231 = table + the bread's half height) because the
+toaster is an Articulation and the fixture rule (#77) only took static Geometry. The toaster itself was within 5 mm.
+Routed to Tools / Integration-3 (Articulation links as fixtures; the same landmine as the egg dropped by the holder).
+
+## 3. pick_from_conveyor_by_image: placement unknown, skill blocked
+
+- breadth3 ran on the shared v12 layouts: the photo board sits behind our right arm's links in the head view (not
+  readable) and the basket inside the conveyor. Skills-6's v13 (PhysicalRSI's `place_fixture`) puts the board fully in
+  the head view (72 x 93 px).
+- Public code cannot settle which is official: RoboDojo only loads layout files, and PhysicalRSI's own docstring says
+  no historical evaluation layout gave them the board / basket transforms. So the board should be found by its
+  appearance in whatever view shows it, not at a pinned pose.
+- The skill is 0 / 10 in G3 on v13 (the moving basket's handle is out of reach): perception alone earns nothing there
+  yet. Parked after eggs (lead's call); BACKLOG.
+
+## 4. fill_egg_holder: eggs in the egg basket
+
+**Tools' rendered run** (main + #139 + #145, genuine 5.1, submit_v1, 5 layouts): 2 of 20 eggs, every miss perception;
+misplaced eggs believed ~17 mm low and 46-108 mm off in xy.
+
+**Data.** Frame 0 and three scan-pose frames (arms parked) of the 11 settled egg layouts (100000, 01, 06, 08, 09, 10,
+12, 15, 16, 19, 23), rendered on compute5 (genuine 5.1, `belt_bg record --steps 0 --away-frames 3`, 6 min). Scored
+with `scripts/perception/val_frames.py` (eval_g1's Hungarian on the 4 interchangeable eggs, settled GT).
+
+**Causes.**
+1. The egg basket is a static Geometry whose generator place frame sits 11.5 mm under its mesh bottom: it floats
+   (GT z 0.821) while B1 rests it on the table (0.809). Of every task's Geometry only one other asset floats:
+   store_laptop's vertical rack, 13.7 mm.
+2. Most eggs lie on the basket's floor at the foot of its wall (bottom 17-19 mm above the table, 42-66 mm from its
+   axis), the rest on the table under the flared rim. B1 rests every egg on the table, and the basket's near wall
+   hides their lower half, so the fit slides toward the camera.
+3. The basket is foreground itself, so foreground says nothing about where an egg lies inside it.
+
+**Fix A** (`shape_models`, `STATIC_AT_PLACE_FRAME`): a static Geometry asset rests where the generator put its place
+centre. **Fix B** (`dojo/perception/contained.py`, `EstimatorConfig.contained_children`): Rigid labels placed on a
+static container base (`is_container`: its middle 15 mm or more below its rim), once the base is chosen, are fitted
+inside it:
+- evidence = light, low-saturation regions wider than a wicker strand inside the base's silhouette (on GT silhouettes:
+  egg recall 0.66, 3 % of the basket's own pixels);
+- each evidence blob (largest first; a fit removes its pixels, so touching eggs separate) is fitted in (x, y, yaw),
+  resting on the base mesh's top surface (a 2 mm height grid), scoring the visible-silhouette IoU with the evidence in
+  every view where only the egg pixels in front of the base count (depth test);
+- the group's objects B1 placed outside the base's footprint (an egg on the table under the rim) stay.
+
+**Results** (11 layouts, 44 eggs, same frames; experiments/2026-10-27-egg-perception):
+
+| view | arm | eggs within 15 mm | egg xy med / p90 (mm) | egg z med | basket xy med (z) |
+|---|---|---|---|---|---|
+| frame 0 | main | 5 | 94 / 181 | -17.4 | 12.4 (-11.5) |
+| frame 0 | + fix A | 6 | 90 / 158 | -17.2 | 2.6 (+0.0) |
+| frame 0 | + fix B | 22 | 10.7 / 138 | +2.3 | 5.4 (+0.0) |
+| scan pose (arms parked) | main | 5 (8 found) | 2.0 / 103 | +1.1 | 7.7 (-11.5) |
+| scan pose | + fixes A + B | 28 | 4.5 / 85 | +2.1 | 2.7 (+0.0) |
+
+- Left at frame 0: the basket under the right home gripper (100006, 100009: 46-59 mm off, so its eggs follow the
+  wrong base; fine from the scan pose) and eggs on the table under the rim (hidden from the head).
+- At the scan pose, 100023's basket went missing with fix A (main found it 8 mm off): 1 of 22 frames.

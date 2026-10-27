@@ -144,6 +144,10 @@ def world_z_symmetry(Vr: np.ndarray, F: np.ndarray, orders=(2, 3, 4, 6, 8), tol:
     return best
 
 
+# static (Geometry) assets rest at the generator's place frame, not on their lowest vertex (``shape_models``)
+STATIC_AT_PLACE_FRAME = True
+
+
 @lru_cache(maxsize=48)  # holds Asset references: keep it as small as load_asset's cache
 def shape_models(key: str) -> tuple[ShapeModel, ...]:
     a = load_asset(key)
@@ -191,6 +195,11 @@ def shape_models(key: str) -> tuple[ShapeModel, ...]:
         Vr = a.V @ R0.T
         zmin = float(Vr[:, 2].min())
         height = float(Vr[:, 2].max() - zmin)
+        if STATIC_AT_PLACE_FRAME and key.split("/")[0] == "Geometry":
+            # a static fixture never settles: it stays where the generator put it, its place centre on the table. Two
+            # assets have that centre under their mesh bottom and float: fill_egg_holder's egg basket 11.5 mm (B1 rested
+            # it and the eggs on its floor 17 mm low), store_laptop's vertical rack 13.7 mm
+            zmin = float((R0 @ np.asarray(fr["center"][:3], dtype=float))[2])
         sym = int(cached[tag]) if tag in cached else world_z_symmetry(Vr, a.F)
         out.append(ShapeModel(key, tag, a, R0, zmin, height, sym, convex, hull_V,
                               centre_local=np.asarray(fr["center"][:3], dtype=float)))
@@ -2281,6 +2290,44 @@ def _category_quota(chosen: list[Hypothesis], views, cfg, groups, pending, task)
     return out
 
 
+def _contained_children(chosen: list[Hypothesis], views, cfg, groups, pending, task) -> list[Hypothesis]:
+    """Rigid labels the config places on a static (Geometry) container base label (``contained.is_container``: a floor
+    under a rim), once that base is chosen: the group's chosen
+    objects inside the base's footprint are replaced by ``contained.fit_children`` (on the base's top surface, against
+    the evidence inside its silhouette, its near wall hiding their lower part); those outside it (an egg on the table
+    under the basket's rim) stay. A base the estimate did not choose leaves the group as it is."""
+    from . import contained
+
+    labels = task_map()[task]["labels"]
+    out = list(chosen)
+    for gi, g, prior in pending:
+        base = str(g["placement"].get("relative_plane", "Table")).split("/")[0]
+        if (g["type"] != "Rigid" or base.lower() in FIXTURE_PLANES or base not in labels
+                or labels[base].get("type") != "Geometry"):
+            continue
+        gb = next((j for j, gg in enumerate(groups) if base in gg["labels"]), None)
+        hb = next((h for h in out if h.label_group == gb), None)
+        if hb is None or hb.tag == "fixed" or not contained.is_container(_cat_key(hb.key)):
+            continue
+        Tb = hb.T()
+        rb = 0.5 * float(max(hb.sm().asset.extents[:2]))
+        keep = [h for h in out if h.label_group != gi
+                or float(np.hypot(*(_centroid_xy(h.sm(), h.x, h.y, h.yaw) - Tb[:2, 3]))) > rb]
+        n_free = len(g["labels"]) - sum(1 for h in keep if h.label_group == gi)
+        if n_free <= 0:
+            continue
+        sms = next(iter(_geometry_groups(g, prior).values()))
+        fits = contained.fit_children(views, _cat_key(hb.key), Tb, sms[0], n_free,
+                                      exclude=[(h.x, h.y) for h in keep if h.label_group == gi])
+        for f in fits:
+            h = Hypothesis(gi, sms[0].key, sms[0].tag, f["x"], f["y"], f["yaw"], 1.0 - f["score"])
+            h.per_view = {"geom_group": [s_.key for s_ in sms], "z_off": f["z_off"], "contained": base,
+                          "sil_loss": round(1.0 - f["score"], 4), "n_views_contained": f["n_views"]}
+            keep.append(h)
+        out = keep
+    return out
+
+
 def _polish_prefers(best: Hypothesis, t2: Hypothesis, pt, cfg) -> bool:
     """Does a polish trial ``t2`` replace the incumbent ``best``? Paired texture on shared pixels (``pt`` = their two
     costs) decides when it is informative, else the combined cost. Paired texture decides only between colour-compatible
@@ -2548,6 +2595,9 @@ class EstimatorConfig:
     category_quota: bool = True
     quota_variants: int = 2  # ... fitting each missing category's best-coloured variants
     quota_add_max_loss: float = 0.8  # ... and a list short of objects takes a missing category's fit on unexplained foreground up to this silhouette loss
+    # objects placed inside a static container base (fill_egg_holder's eggs in the egg basket): fitted on the base's
+    # top surface to the evidence that interrupts its texture, only their pixels in front of it counted (contained.py)
+    contained_children: bool = True
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 
@@ -2949,13 +2999,15 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         chosen = _swap_pairs(chosen, views, cfg, groups)
     if cfg.category_quota:
         chosen = _category_quota(chosen, views, cfg, groups, pending, task)
+    if cfg.contained_children:
+        chosen = _contained_children(chosen, views, cfg, groups, pending, task)
     timings["polish_s"] = round(time.time() - t3, 3)
 
     # ---- joint refinement on the union of the others
     t3 = time.time()
     for _ in range(cfg.joint_rounds):
         for i, h in enumerate(chosen):
-            if h.per_view.get("occluded"):
+            if h.per_view.get("occluded") or h.per_view.get("contained"):
                 continue
             others = _union_masks(chosen, views, skip=i, target=h)
             yaw_fixed = _placement_prior(groups[h.label_group])["yaw_fixed"]
@@ -3143,7 +3195,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                **({"yaw_read": {k: h.per_view["top_feature"][k] for k in
                                                 ("sign_ok", "tail_mm", "ratio_axis", "ratio_flip", "camera")}}
                                   if h.per_view.get("top_feature") else {}),
-                               **({"quota": h.per_view["quota"]} if h.per_view.get("quota") else {})}}
+                               **({"quota": h.per_view["quota"]} if h.per_view.get("quota") else {}),
+                               **({"contained": h.per_view["contained"]} if h.per_view.get("contained") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []

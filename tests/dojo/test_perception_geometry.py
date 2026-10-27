@@ -633,6 +633,45 @@ def test_departure_read_uses_the_scene_without_its_actor(tmp_path, monkeypatch):
     assert seen["bg"] == 10
 
 
+def test_contained_support_height_and_evidence(monkeypatch):
+    """contained.py: the base's top surface under a point (a box's floor vs its rim), and the child evidence (a light
+    blob survives, thin light strands of the base's texture do not)."""
+    from types import SimpleNamespace
+
+    from dojo.perception import contained
+
+    # a 0.2 m square tray: floor at z 0.01, a 0.05 m high rim 1 cm wide
+    def quad(x0, x1, y0, y1, z):
+        return [[x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z]]
+    V, F = [], []
+    for x0, x1, y0, y1, z in ((-0.09, 0.09, -0.09, 0.09, 0.01), (-0.1, -0.09, -0.1, 0.1, 0.05), (0.09, 0.1, -0.1, 0.1, 0.05),
+                              (-0.1, 0.1, -0.1, -0.09, 0.05), (-0.1, 0.1, 0.09, 0.1, 0.05)):
+        b = len(V)
+        V += quad(x0, x1, y0, y1, z)
+        F += [[b, b + 1, b + 2], [b, b + 2, b + 3]]
+    monkeypatch.setattr(contained, "load_asset", lambda key: SimpleNamespace(V=np.asarray(V, float), F=np.asarray(F)))
+    contained.height_grid.cache_clear()
+    T = np.eye(4)
+    T[:3, 3] = [0.3, -0.2, 0.8]
+    assert contained.surface_z("Geometry/tray/t", T, 0.3, -0.2) == pytest.approx(0.81, abs=1e-3)
+    assert contained.surface_z("Geometry/tray/t", T, 0.3 + 0.095, -0.2) == pytest.approx(0.85, abs=1e-3)
+    assert contained.surface_z("Geometry/tray/t", T, 0.9, -0.2) is None
+    assert contained.is_container("Geometry/tray/t")
+    contained.height_grid.cache_clear()
+    contained.is_container.cache_clear()
+    V[:] = [[x, y, 0.01] for x, y, _ in V]                         # flattened: a mat, not a container
+    assert not contained.is_container("Geometry/tray/t")
+    contained.height_grid.cache_clear()
+    contained.is_container.cache_clear()
+    img = np.zeros((60, 60, 3), np.uint8)
+    img[:] = (150, 100, 60)                  # wicker brown
+    img[:, ::6] = (235, 225, 190)            # thin light strands (1 px of every 6)
+    yy, xx = np.mgrid[0:60, 0:60]
+    img[(yy - 30) ** 2 + (xx - 30) ** 2 < 100] = (240, 225, 205)   # a light egg, r 10 px
+    ev = contained.evidence(img)
+    assert ev[30, 30] == 1 and ev[5, 0] == 0 and ev[:, :12].sum() == 0
+
+
 def test_scan_keeps_a_confident_frame0_small_object_and_its_slot_child(monkeypatch):
     from dojo.perception import inverse_layout as il
     from dojo.perception import scan as sc
