@@ -104,13 +104,14 @@ def test_keep_raw_unmoved_selects_only_dropped_ids_without_a_settled_file(tmp_pa
     d = tmp_path / "t"
     d.mkdir()
     index = {"100000": {"status": "ok"}, "100001": {"status": "dropped: settled record not stable"},
-             "100002": {"status": "dropped: not at rest"}, "100150": {"status": "dropped: not at rest"}}
-    for n in ("100000", "100001", "100002", "100003", "100150"):
+             "100002": {"status": "dropped: settled record not stable"}, "100004": {"status": "dropped: not at rest"},
+             "100150": {"status": "dropped: settled record not stable"}}
+    for n in ("100000", "100001", "100002", "100003", "100004", "100150"):
         (d / f"{n}.json").write_text("{}")
     for n in ("100000", "100002"):                       # 100002: a settled file next to a dropped entry
         (d / f"{n}.settled.json").write_text("{}")
     (d / "settled_index.json").write_text(json.dumps(index))
     names = lambda fs: [p.stem for p in fs]
-    assert names(P.select_files("t", root=tmp_path)) == ["100000", "100001", "100002", "100003"]    # reserved id out
+    assert names(P.select_files("t", root=tmp_path)) == ["100000", "100001", "100002", "100003", "100004"]  # reserved out
     assert names(P.select_files("t", root=tmp_path, keep_raw_unmoved=True)) == ["100001"]
     assert names(P.select_files("t", ids=[100000, 100002], root=tmp_path, keep_raw_unmoved=True)) == []

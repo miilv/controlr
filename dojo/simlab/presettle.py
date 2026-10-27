@@ -15,8 +15,7 @@ A layout whose objects moved during pass 1 but came to rest (fill_egg_holder: th
 collision-less Geometry, so the eggs drop to the table) is kept: the settled record is what RoboDojo
 would actually show at episode start.
 
-``--keep-raw-unmoved`` (off by default) re-tries only ids that are currently dropped and have no settled
-file: objects that did not move in pass 1 (<= ``UNMOVED_MM`` / ``UNMOVED_DEG`` from the record) keep their
+``--keep-raw-unmoved`` (off by default) re-tries only ids dropped in pass 2 that have no settled file: objects that did not move in pass 1 (<= ``UNMOVED_MM`` / ``UNMOVED_DEG`` from the record) keep their
 generated pose instead of the live one. insert_key's key (friction 0) rests at its generated pose (0.03 mm in
 pass 1), but written back with the 0.26 deg tilt PhysX reports it slides 6-37 mm on the reload and fails pass 2.
 Such records carry ``_simlab.presettle = "keep_raw_unmoved"``; their index entry keeps the default run's
@@ -135,15 +134,16 @@ def drift(live: list[dict], top: list | None = None) -> tuple[float, float]:
 
 def select_files(task: str, ids: list[int] | None = None, reserved_slice: bool = False,
                  keep_raw_unmoved: bool = False, root: Path | None = None) -> list[Path]:
-    """The raw records to settle. ``keep_raw_unmoved``: only ids the index lists as dropped and that have no
-    settled file (an existing settled record is never rewritten)."""
+    """The raw records to settle. ``keep_raw_unmoved``: only ids the index lists as dropped in pass 2 (at rest in
+    pass 1, settled record not stable) that have no settled file (an existing settled record is never rewritten;
+    pass 1 is the same run, so a "not at rest" id is not re-tried)."""
     files = [p for p in layout_files(task, root) if not ids or int(p.stem) in ids]
     if not reserved_slice:                      # D-C10: ids >= paths.RESERVED_MIN_ID belong to joint paired runs
         files = [p for p in files if not paths.is_reserved_id(p.stem)]
     if keep_raw_unmoved:
         index_p = (root or paths.LAYOUTS) / task / "settled_index.json"
         index = json.loads(index_p.read_text()) if index_p.exists() else {}
-        files = [p for p in files if str(index.get(p.stem, {}).get("status", "")).startswith("dropped")
+        files = [p for p in files if index.get(p.stem, {}).get("status") == "dropped: settled record not stable"
                  and not p.with_name(f"{p.stem}.settled.json").exists()]
     return files
 
