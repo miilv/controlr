@@ -697,7 +697,7 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
         return SkillResult(True, "belt_pick", "ended", 0, a, note=str(e))
     w = sk.refresh()
     dz = float(w.obj(label).pos[2]) - z0
-    if 0.6 * lift < dz < lift - 0.015:
+    if 0.04 < dz < lift - 0.015:
         # it slid in the pads on the way up (an ice cream pinched at its scoop rose 85 of 125 mm): lift the rest
         try:
             _lift_more(sk, a, label, lift - dz + 0.01)
@@ -718,16 +718,26 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
 
 
 def _lift_more(sk: Skills, arm: str, label: str, dz: float) -> None:
-    """Straight up by ``dz`` with the jaws closed (the object stays in the hand)."""
+    """Up by ``dz`` with the jaws closed (the object stays in the hand); straight up, else drawn toward the arm's base
+    (a hand already high and far out has no IK straight above)."""
     from dojo.skills.executor import ArmPlan
     from dojo.skills.motion import CARRY
-    T = sk.kin.tcp(arm, sk.ex.q[arm]).copy()
-    T[2, 3] += dz
-    mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, CARRY, "lift_more", gripper=0.0, ignore=(label,), check=False)
-    if not mv.ok:
-        return
-    sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).move(mv, "lift_more").hold(2, "still")}, name="lift more")
-    sk.ex.settle(tol=0.01, max_steps=12)
+    T0 = sk.kin.tcp(arm, sk.ex.q[arm])
+    to_base = sk.kin.base(arm)[:3, 3] - T0[:3, 3]
+    to_base[2] = 0.0
+    to_base /= max(float(np.linalg.norm(to_base)), 1e-9)
+    why = []
+    for pull in (0.0, 0.05, 0.10):
+        T = T0.copy()
+        T[:3, 3] += np.array([0.0, 0.0, dz]) + to_base * pull
+        mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, CARRY, "lift_more", gripper=0.0, ignore=(label,), check=False)
+        if mv.ok:
+            sk.log(f"[belt] lift {label} {dz * 1000:.0f} mm more (pulled {pull * 100:.0f} cm in)")
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).move(mv, "lift_more").hold(2, "still")}, name="lift more")
+            sk.ex.settle(tol=0.01, max_steps=12)
+            return
+        why.append(mv.status)
+    sk.log(f"[belt] no lift-more for {label}: {why}")
 
 
 def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, lift: float = 0.125,
