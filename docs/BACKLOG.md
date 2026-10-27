@@ -114,18 +114,22 @@
   object's frames at 8 (no `hit_*` xylophone keys, no ninth board cell)~~ — scene v4 (every frame, numbered series
   with positions) is the default; `stack_on_pegs` doc v8 says which group fits which peg
   ([routing report](experiments/2026-10-27-routing-sonnet.md)).
-- [ ] **dojo agent: registry path lags SKILL_DOCS v8.** `skills/registry.yaml`'s `stack_on_pegs` doc lacks the "most
-  pieces -> highest peg" sentence; a run with `AgentConfig.registry` set routes the stacking toy as doc v7 did
-  (6/10). Mirror it before the J4 import.
+- [x] ~~**dojo agent: registry path lags SKILL_DOCS v8**~~ — `skills/registry.yaml`'s `stack_on_pegs` doc carries
+  the same "most pieces -> highest peg" sentence (test `test_registry_peg_doc_says_which_group_fits_which_peg`).
 - [ ] **dojo agent: wrong asset captions mislead the chooser.** The mug rack (cup_holder 0) is captioned
   "smartphone", the bread and the coin "smartphone", both vertical stands "business card holder". With scene v2
   Sonnet called the rack "a phone-shaped holder, not a rack" and planned a `robo.search` for a missing rack. A
   caption-sanity pass (category vs caption) in `scene.caption` would remove the trap.
 - [ ] **dojo agent: `robo.obj()` has no frames.** Code cannot look a frame name up (Run A plans "print the toaster's
   frames" would have found nothing); since scene v4 the frames are in the scene text only.
-- [ ] **dojo agent: routing of the default model is unmeasured on the new skills.** The 2026-10-27 routing study ran
-  Sonnet 5.5 only; `AgentConfig.model` is `cx/gpt-6.1-sol`. In Phase 1 run 1 the OpenAI arms read
-  `fill_container`'s "(pens, sticks, tubes)" as the tube-rack skill; `insert_each` now exists for that.
+- [x] ~~**dojo agent: routing of the default model is unmeasured on the new skills**~~ — Sol 6.1 (`AgentConfig.model`)
+  on the same 93 items, scene v4 + docs v8: 90/93, 0 harmful; insert_tubes 3/3 `insert_each`
+  ([routing report](experiments/2026-10-27-routing-sonnet.md)).
+- [ ] **dojo agent: Sol routes fill_pen_holder to code (0/3).** It reads "Hold the pen holder with one hand, place all
+  pens into it with the other hand" literally. The checker judges only the end state (pens tip down in the holder,
+  holder upright, home), which `fill_container` does. Next: a pattern line in a `manual_v5` §3 ("Hold <a holder>
+  with one hand, put <things> into it with the other": only the end state is judged), or the same in the
+  `fill_container` doc (SKILL_DOCS v9). Then 3 Sol + 3 Sonnet calls before / after.
 - [ ] **dojo skills: no laptop skill** (close the lid, stand it in the vertical rack): store_laptop_and_headphones is
   code for the agent; the rule planner runs `hang_on_hooks` for the headphones only (the paired 20 of 100).
 - [ ] **dojo agent: perception is the bottleneck in mode B** (Phase 2, 2026-10-25): stack_bowls 0/6 and build_tower

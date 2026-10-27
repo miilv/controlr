@@ -126,3 +126,15 @@ def test_scene_v3_lists_named_frames():
     w = WorldState("", "", {"base": o}, {s: ArmState(np.zeros(6), np.zeros(7), 1.0) for s in ("left", "right")}, {})
     assert "frames peg_0, peg_1, slot_left, lever" in scene_text(w, version=3)[0]
     assert "frames" not in scene_text(w, version=2)[0]
+
+
+def test_registry_peg_doc_says_which_group_fits_which_peg():
+    """SKILL_DOCS v8's stack_on_pegs sentence is in the registry's doc too (an agent with AgentConfig.registry set,
+    and the J4 import, route the stacking toy as SKILL_DOCS does; routing report 2026-10-27: 6/10 without it)."""
+    from dojo.agent.manual import SKILL_DOCS
+    norm = lambda s: " ".join(s.split())  # noqa: E731
+    doc = SKILL_DOCS["stack_on_pegs"][1]
+    sentence = norm(doc[doc.index("Which group fits which peg"):])
+    reg = {e.name: e for e in R.load().entries}
+    assert sentence in norm(reg["stack_on_pegs"].doc)
+    assert sentence in norm(system_text(AgentConfig(registry="default")))

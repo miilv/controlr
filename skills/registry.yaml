@@ -327,7 +327,9 @@ entries:
       Thread pieces onto the pegs or poles of a base: group i (identical pieces) goes onto peg pegs[i] (a frame of the
       base, as listed for it in the scene), the shortest peg first, one piece at a time, flat, its hole on the peg's
       axis (any turn), carried down the peg onto the pieces below and let go there; a piece left tilted is tried once
-      more. Banks after each piece.
+      more. Banks after each piece. Which group fits which peg: a peg is as tall as the stack it takes, so the group
+      with the most pieces goes onto the highest peg (the z of its frame in the scene), the next largest group onto
+      the next highest, and so on.
     args:
       groups: "[[id]], required; the identical pieces for each peg"
       base: "id, required; the object carrying the pegs"

@@ -1,4 +1,4 @@
-# 2026-10-27: does the agent route every one of our 25 tasks to the right skill and arguments? (Sonnet 5.5)
+# 2026-10-27: does the agent route every one of our 25 tasks to the right skill and arguments? (Sonnet 5.5, then the default Sol 6.1)
 
 **Question:** given only the instruction and the scene text, does the chooser pick the skill and arguments the
 checker needs for each of our 25 tasks? The runtime presents both as AgentPolicy does. The configs are 22 own
@@ -8,7 +8,7 @@ the JSON decision appendix. Where it picks wrong, is the cause the manual, the s
 **Hypothesis:** routing is solved (Phase 1 manual v2: Sonnet 162/162). What remains are the gold rules written
 before skills-3..8 existed.
 
-Stream: Official-Path (branch `feat/dojo-official-routing`). Code: `dojo/agent/` (dataset, scene, gold, grounding,
+Stream: Official-Path (branch `feat/dojo-official-routing`; journal [2026-10-27-dojo-official §2](../journal/2026-10-27-dojo-official.md)). Code: `dojo/agent/` (dataset, scene, gold, grounding,
 manual). Runs: `runs/official-routing/` (local, not in git).
 
 ## Setup
@@ -70,12 +70,24 @@ Further changes to the rules:
 | B2 | v4 | v7 | play_stacking_toy 100003-09 (with B's 3: the "before" of the doc A/B, n = 10) |
 | C | v4 | v8 | play_stacking_toy 100000-09 (n = 10, paired with B + B2) |
 | D | v4 | v8 | the other 44 items of the 22 non-frame configs (completes all 93 at v4) |
+| E (lead-approved follow-up) | v4 | v8 | all 93 items with the default control model `cx/gpt-6.1-sol` (arm `sol-6.1`) |
+
+**Run E's call path.** It is the same grounding call: one JSON-only completion and no `tools` field.
+- AgentPolicy's `python_tool` declares a `python(code)` tool for episode cells. The router drops undeclared tool
+  calls from `cx/` GPT-6, which then return empty replies.
+- The grounding call asks for JSON, not a code cell, so that path does not apply (DEVELOPMENT pitfalls).
+- Checked: 93/93 replies non-empty, `finish_reason: stop`, 0 parse failures.
 
 **Spend:**
-- 203 omniroute calls, 0 errors: A 93, B 49, B2 7, C 10, D 44.
-- Tokens: 1.61 M prompt (1.34 M cached), 59.0 k completion, of which 31.6 k reasoning.
-- Mean tokens per call: 7.9 k in / 6.6 k cached / 290 out.
-- Latency p50 3.3-4.5 s.
+- 296 omniroute calls, 0 errors:
+  - Sonnet 203: A 93, B 49, B2 7, C 10, D 44;
+  - Sol 93: E.
+- Sonnet tokens: 1.61 M prompt (1.34 M cached), 59.0 k completion (31.6 k reasoning). Mean per call: 7.9 k in /
+  6.6 k cached / 290 out.
+- Sol tokens: 536 k prompt (435 k cached), 7.0 k completion (0.3 k reasoning). Mean per call: 5.8 k in / 4.7 k
+  cached / 75 out.
+- Total: 2.15 M prompt (1.77 M cached), 66.0 k completion.
+- Latency p50: Sonnet 3.3-4.5 s, Sol 4.2 s.
 - No GPU was used; the dataset builds used compute3's CPU only (`nice`, about 2 min each).
 
 ## Results
@@ -85,6 +97,7 @@ Further changes to the rules:
 | Sonnet, scene v2, docs v7 (A: as deployed) | 93 | **74 (80 %)** | 19 | 0 | 0 | 0 |
 | Sonnet, scene v4, docs v7 (B + B2) | 56 | 52 | 2 | 0 | 2 | 0 |
 | Sonnet, scene v4, docs v8 (final: B frame items + D + C) | 100 | **100 (100 %)** | 0 | 0 | 0 | 0 |
+| Sol 6.1 (`cx/gpt-6.1-sol`, the AgentConfig default), scene v4, docs v8 (E) | 93 | **90 (97 %)** | 3 | 0 | 0 | 0 |
 | rule planner (`planner.plan`, meshes) | 93 | 75 (81 %) | – | 0 | 0 | 6 |
 
 The planner has 12 more items with no rule: fold_clothes and sweep_blocks (+ `_random`), where RuntimePolicy finishes
@@ -135,6 +148,24 @@ Per config:
 | store_tools_in_toolbox (O) | Place each tool into its matching position in the toolbox, then reset the robot arm. | place_in_slots | 3 right | place_in_slots(objects=[hammer, pliers, tape_measure, wrench]; container=toolbox) | 3 right | the same | 3 right |
 | press_by_number (M) | Press the two red buttons the required number of times according to the number cards, then press the blue button to confirm. | press_sequence | 3 right | press_sequence([button0, 7], [button2, 1], [button1, 8], [button2, 1]) | 3 right | the same | 3 right |
 | swap_blocks (M) | Swap the two blocks using the empty mat, pressing the button after each move. | swap_on_mats | 3 right | swap_on_mats(objects=[target0, target1]; mats=[mat0, mat1, mat2]; button=button0; press_after_each=true) | 3 right | the same | 3 right |
+
+**Sol 6.1 vs Sonnet 5.5** (the same 93 items, scene v4, docs v8):
+- Sol misses only fill_pen_holder: 0/3, code instead of `fill_container`.
+- Every other config is 3/3 for both models, including the 11 newly skilled tasks.
+  - On the stacking toy Sol passes the groups shortest peg first: `[[block9], [block7-8], [block4-6], [block0-3]]`
+    onto `[pole/3 .. pole/0]`.
+- Sol's fill_pen_holder plans take the instruction literally: "grasp the pen holder with the right hand ... with the
+  left hand insert each pen ... set it back down".
+- The checker never checks the hold, only pens in the holder (tip down, 35 mm deep), the holder upright and the
+  arms home.
+- Astra-medium made the same reading in Phase 1 (2026-10-25). It is a missed skill, not a harmful one; the code
+  path then has to do the two-arm hold with primitives.
+
+| config | Sonnet 5.5 (final) | Sol 6.1 (E) |
+|---|---|---|
+| fill_pen_holder | 3/3 | **0/3** (code instead of a skill) |
+| the other 30 configs | 3/3 each (toy 10/10) | 3/3 each |
+| total | 100/100 | 90/93 |
 
 ## Failure modes and fixes
 
@@ -196,8 +227,11 @@ Planner code was not changed.
   earlier runs remain identifiable.
 - **`SKILL_DOCS_VERSION`: 7 -> 8.** Only the `stack_on_pegs` text changed. `manual_v4` and the appendices are
   unchanged, but manual_v4 renders the v8 skill list from now on (as with v5-v7).
-- **Not changed:** `skills/registry.yaml`'s `stack_on_pegs` doc (the J2 / J4 registry path). A run with
-  `AgentConfig.registry` set routes the stacking toy as docs v7 did. Mirror the sentence before the J4 import (BACKLOG).
+- **Mirrored into the registry.** The same sentence is in `skills/registry.yaml`'s `stack_on_pegs` doc (the ilia
+  entries below the J4 marker). An agent with `AgentConfig.registry` set, and the J4 import, therefore route the
+  stacking toy as SKILL_DOCS v8 does.
+  - The registry carries no doc-version marker (schema `j2-registry/1` only), so nothing was bumped.
+  - `test_registry_peg_doc_says_which_group_fits_which_peg` keeps the two in step.
 
 ## Open gaps, ranked by leaderboard points
 
@@ -205,13 +239,12 @@ Weights: Memory 3.33 %, Precision / Long-Horizon / Open 2.5 %, Generalization 0.
 
 | # | gap | tasks | points at stake | next |
 |---|---|---|---|---|
-| 1 | the default control model `cx/gpt-6.1-sol` is unmeasured on the 11 newly skilled tasks (this study ran Sonnet only). In Phase 1, the OpenAI arms misread wording that Sonnet got right | hang_mugs, make_toast (G, 1.67 each), play_Xylophone, fasten_screws, insert_tubes (P), fill_egg_holder, play_stacking_toy, play_tic_tac_toe (L), pick_from_conveyor_by_image (O), imitate, match_and_pick (M) | weight sum 27.5; at stake = weight × task score × Sol's misroute rate | the same 93 items on `sol-6.1` (93 calls, `cx/` subscription) |
+| 1 | the default model Sol routes fill_pen_holder to code 3/3: it takes "hold the pen holder with one hand" literally; the checker judges only the end state | fill_pen_holder (L) | ≤ 2.5 × the skill's score (G3 mode A 0.18 mean, skills-8) | a §3 pattern line in a new `manual_v5`: "Hold <a holder> with one hand, put <things> into it with the other": only the end state is judged, and the filling skill does it. Or say so in the `fill_container` doc (SKILL_DOCS v9). Then 3 Sol + 3 Sonnet calls before / after |
 | 2 | fold_clothes: no skill, no planner rule | fold_clothes (+ `_random`) | ≤ 1.67 | a fold skill (Generalization-New's lane) |
 | 3 | sweep_blocks: no skill, no planner rule | sweep_blocks (+ `_random`) | ≤ 1.67 (best entry 20) | a tool-sweep skill |
 | 4 | no laptop skill (close the lid, stand it in the rack); the planner banks the headphones' 20 | store_laptop_and_headphones (+ `_random`) | ≤ 1.33 (80 of 100 × 1.67) | a laptop skill; the agent writes code meanwhile |
-| 5 | the registry path lags docs v8 (4/10 stacking-toy routes wrong with the v7 wording) | play_stacking_toy (L) | ≤ 1.0 in registry mode | mirror the sentence in `skills/registry.yaml` |
-| 6 | wrong asset captions ("smartphone" rack, bread, coin) | hang_mugs (G), make_toast (G), deposit_coin (P) | small with v4 for Sonnet (6/6); unmeasured for other models | caption sanity check in `scene.caption` |
-| 7 | `robo.obj()` has no frames: code cannot look one up | the frame-skill tasks when code is chosen | small | add `frames` to `Obj` |
+| 5 | wrong asset captions ("smartphone" rack, bread, coin) | hang_mugs (G), make_toast (G), deposit_coin (P) | small with v4 for Sonnet (6/6); unmeasured for other models | caption sanity check in `scene.caption` |
+| 6 | `robo.obj()` has no frames: code cannot look one up | the frame-skill tasks when code is chosen | small | add `frames` to `Obj` |
 
 ## Conclusions (given n)
 
@@ -223,6 +256,8 @@ Weights: Memory 3.33 %, Precision / Long-Horizon / Open 2.5 %, Generalization 0.
 - **With scene v4 + docs v8, Sonnet routes all 31 configs right: 100/100 items, 0 harmful.** The doc change is shown
   on 10 paired layouts (6 -> 10). The scene change is shown on 27 paired items (8 -> 25 before the doc fix), with
   66 items of the other configs as a regression check.
+- **The default model Sol 6.1 routes 30/31 configs right** (90/93, 0 harmful). Its one miss is the pen holder's
+  "hold it with one hand" wording, which Sonnet reads through.
 - The rule planner is right wherever a skill exists (25/25 configs). What it lacks, the agent's code path also
   lacks: fold, sweep and the laptop.
 - This is routing, not success: whether the chosen skill succeeds in mode B is the skill streams' and the e2e
@@ -240,8 +275,9 @@ ssh compute3 'cd ~/dojo-official && RD_ROOT=/home/physicalai/dojo-robodojo/RoboD
 uv run python -m dojo.agent.grounding run --dataset runs/official-routing/dataset_v4m.jsonl --arms sonnet-5.5 \
     --manual manual_v4 --appendix grounding_v2 --out runs/official-routing/<run>
 uv run python -m dojo.agent.grounding score runs/official-routing/<run> --md
+# the default model: --arms sol-6.1 (run E)
 ```
 
 Datasets on compute3: `~/dojo-data/official/routing/dataset_v{2,3,4m}.jsonl` and `dataset_v4m_toy10.jsonl`. Runs
 are local, under `runs/official-routing/`: `runA_v2_manual4_docs7`, `runB_v4_manual4_docs7`, `runB2_toy10_v4_docs7`,
-`runC_toy10_v4_docs8`, `runD_v4_docs8_rest`.
+`runC_toy10_v4_docs8`, `runD_v4_docs8_rest`, `runE_sol_v4_docs8`.
