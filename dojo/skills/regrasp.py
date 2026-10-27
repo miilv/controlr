@@ -51,7 +51,7 @@ MAX_TAKES = 4000                    # taker grasps tried at handover poses per s
 SWEEP_MAX_DEG = 15.0                # mode B: the key turned this far either way on its lock's top looking for the channel
 SWEEP_STEP_DEG = 3.0
 SWEEP_UP = 0.0015                   # m: each probe of the sweep turns the key this far over where it touched ...
-SWEEP_DOWN = 0.001                  # ... then commands it this far under it (more and it slides up in the pads)
+SWEEP_PROBE = 0.003                 # ... then descends in fine steps to this far under it
 SWEEP_SEATED = 0.004                # m: the hand this close to the seat after the descent = already in
 # mode B descent by proprio: the vertical lag of the measured hand under its command, over its value at the hover.
 # Twin (the key gripped across its bow, a tooth on the lock's top): the key does not stop the arm, it slides up in the
@@ -61,7 +61,6 @@ FINE_STEP = 0.0015                  # m per step through the zone where the bit 
 FINE_ABOVE = 0.003                  # m: that zone starts with the object's lowest point this far over the top ...
 FINE_BELOW = 0.010                  # ... and ends this far under it (a key's teeth sit 3.9 mm over its tip)
 FINE_LAG = 0.0005                   # m: contact on a moving step
-PROBE_LAG = 0.0003                  # m: contact after a held step (a probe of the sweep)
 COARSE_STEP = 0.003
 COARSE_LAG = 0.0008
 LOOK_HEIGHT = 0.18                  # m: the giver's hand over the receptacle's top for the mode-B look at its keyhole
@@ -617,15 +616,15 @@ def _blind_insert(sk: Skills, arm: str, label: str, T_target, receptacle: str):
 def keyed_sweep(sk: Skills, arm: str, label: str, T_c, base: float, max_deg: float = SWEEP_MAX_DEG,
                 step_deg: float = SWEEP_STEP_DEG):
     """Mode B, the held object stopped on its receptacle's top (``T_c``: the hand's command there): probe turns about
-    the object's axis, +-``step_deg``, +-2x, ... up to ``max_deg``, each lifted ``SWEEP_UP`` over the contact, turned,
-    then commanded ``SWEEP_DOWN`` under it and held: the hand gets there (no lag) = the bit found its channel. The
-    receptacle's yaw from perception can be off (a key's lock perceived at 0 deg, truly 10.7: the key sat on the lock's
-    top, rendered 5.1). Pressing harder slides the key up in the pads (twin). Returns (SkillResult, the turn in deg it
-    went in at or None)."""
+    the object's axis, +-``step_deg``, +-2x, ... up to ``max_deg``. Each probe lifts ``SWEEP_UP`` over where it last
+    touched, turns, and descends in ``FINE_STEP`` steps to ``SWEEP_PROBE`` under that height: no contact on the way
+    (``FINE_LAG``) = the bit found its channel. Where it touched is re-measured each time: the key slides up in the pads
+    a little at every touch (twin: 2 mm over three probes; a fixed probe depth then cleared the top and read as in).
+    The receptacle's yaw from perception can be off (a key's lock perceived at 0 deg, truly 10.7: the key sat on the
+    lock's top, rendered 5.1). Returns (SkillResult, the turn in deg it went in at or None)."""
     w = sk.refresh()
     o = w.obj(label)
-    Tm = sk.kin.tcp(arm, w.arms[arm].q)
-    z_c = float(Tm[2, 3])
+    z_c = float(sk.kin.tcp(arm, w.arms[arm].q)[2, 3])
     root = o.pos.copy()                                     # the turn is about the vertical through the object
     n0 = sk.ex.steps_used
     tries = []
@@ -633,20 +632,21 @@ def keyed_sweep(sk: Skills, arm: str, label: str, T_c, base: float, max_deg: flo
     while k * step_deg <= max_deg + 1e-9:
         tries += [k * step_deg, -k * step_deg]
         k += 1
+    T_c = np.asarray(T_c, float)
     for d in tries:
         R = rot_z(math.radians(d))
-        T = np.asarray(T_c, float).copy()
-        T[:3, :3] = R @ T[:3, :3]
+        T = T_c.copy()
+        T[:3, :3] = R @ T_c[:3, :3]
         T[:2, 3] = root[:2] + (R @ (T_c[:3, 3] - root))[:2]
         T[2, 3] = z_c + SWEEP_UP
         if not _vstep(sk, arm, T, 0.08, 0, f"sweep {label} {d:+.0f} deg"):
             continue
-        T[2, 3] = z_c - SWEEP_DOWN
-        _vstep(sk, arm, T, 0.02, 1, "sweep probe")
-        if _vlag(sk, arm) - base < PROBE_LAG:
+        ok, _ = _descend(sk, arm, T, z_c - SWEEP_PROBE, FINE_STEP, FINE_LAG, base)
+        if ok:
             sk.log(f"[keyed_sweep] {label} went in at {d:+.0f} deg")
             return SkillResult(True, "sweep", "ok", sk.ex.steps_used - n0, arm, note=f"{label} went in at {d:+.0f} deg"), d
-    T = np.asarray(T_c, float).copy()
+        z_c = float(sk.kin.tcp(arm, sk.refresh().arms[arm].q)[2, 3])
+    T = T_c.copy()
     T[2, 3] = z_c + SWEEP_UP
     _vstep(sk, arm, T, 0.08, 0, "sweep back")
     return SkillResult(False, "sweep", "place_miss", sk.ex.steps_used - n0, arm,
