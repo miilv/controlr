@@ -300,7 +300,7 @@ class RuntimeProvider:
         self.held_checker = None                # mode perception: (obs, arm, label) -> {"held": bool|None, ...}
         self.held_min_lift_m = 0.04
         self.held_confirm = None                # second, independent held look (agent) required before a drop
-        self.held_opening_score = 0.9           # an "opening" negative this sure needs no agreeing second look (policy)
+        self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
         self.actor_window = 12                  # actors_moving compares with the frame this many steps back
         self._head_hist: list = []              # (step, obs) for actors_moving
@@ -632,15 +632,14 @@ class RuntimeProvider:
                 # independent look must agree, else carry on and let the place / post-place checks decide
                 r2 = self.held_confirm(obs, arm, lab) or {}
                 ev["confirm"] = {k: r2.get(k) for k in ("held", "confidence", "source", "calls")}
-                # the jaws measured closed on nothing (finger silhouettes vs the command: geometry, not the colour test
-                # that misread the dark blocks) stands unless the second look sees the object in the jaws: the head
-                # check at the pick pose is inconclusive whenever the belief's pick pose was wrong, which is when the
-                # jaws close on air (5.1 xylophone 100002: mallet believed 88 mm off, opening 0.0, score 0.91, kept)
-                op = r.get("opening") or {}
-                sure = (r.get("evidence") == "opening" and float(r.get("confidence") or 0) >= 0.9
-                        and float(op.get("score") or 0) >= self.held_opening_score)
-                if sure and r2.get("held") is None:
-                    ev["opening_sure"] = True
+                # a sure negative stands unless the head view sees the object in the jaws. The head check at the pick
+                # pose is inconclusive whenever the belief's pick pose was wrong, which is when the jaws close on air:
+                # replayed in physics, all 52 "not held" reads of breadth2 / step A (confidence 0.9-1.0) were empty
+                # jaws, and 51 of them were kept (5.1 xylophone 100002: mallet believed 88 mm off, strikes in the air)
+                sure = float(r.get("confidence") or 0) >= self.held_drop_conf
+                held2 = r2.get("held") is True and float(r2.get("confidence") or 0) >= 0.5
+                if sure and not held2:
+                    ev["sure"] = True
                 elif not (r2.get("held") is False and float(r2.get("confidence") or 0) >= 0.5):
                     ev["kept"] = True
                     self.stats["held_look_overruled"] = self.stats.get("held_look_overruled", 0) + 1

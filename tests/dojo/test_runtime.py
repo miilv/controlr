@@ -1057,6 +1057,41 @@ def test_held_refine_measures_the_in_hand_object_and_reanchors_the_grasp():
     assert abs(abs(float(np.dot(prov.belief.objects["block_1"].quat, flipped))) - 1.0) < 1e-6
 
 
+@pytest.mark.parametrize("dx,iou,half,adopted", [(0.042, 0.66, 0.015, False), (0.042, 0.94, 0.015, False),
+                                                   (0.008, 0.70, 0.015, True), (0.020, 0.90, 0.05, True)])
+def test_held_refine_rejects_in_hand_shifts_the_jaws_cannot_allow(dx, iou, half, adopted):
+    """breadth / rendered ttt 100003: in-hand fits moved a held nut / piece 40-60 mm (iou 0.6-0.94) and were adopted; the
+    place was planned 42 mm off. Closed jaws keep the centre within half the largest extent, and a > 10 mm shift needs
+    iou >= 0.85."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(half=half)
+
+    class InHand:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            p = list(o["pos"])
+            p[0] += dx
+            return {o["label"]: {"ok": True, "pos": p, "quat": list(o["quat"]), "shift_mm": dx * 1000, "iou": iou}}
+
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(half), perception_client=InHand())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(half))
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    o.asset = FakeAssets(half).get("Rigid", "block", 5)
+    x0 = float(o.pos[0])
+
+    class Sk:
+        refine_ctx = {"kind": "held", "label": "block_1", "arm": "left", "held": ("Rigid/block/00005", list(o.pos) + [1.0, 0, 0, 0])}
+    out = pol._refine_hook(prov, Sk(), "block_1", "left", "held")
+    assert (out is not None) == adopted
+    assert abs(float(o.pos[0]) - x0 - (dx if adopted else 0.0)) < 1e-9
+    if not adopted:
+        assert "prior kept" in pol.report["events"][-1]["why"]
+
+
 def test_deployed_code_reads_the_deploy_stamp(tmp_path, monkeypatch):
     import json as _json
 
@@ -2137,21 +2172,22 @@ def test_held_look_never_drops_on_a_single_vision_negative(confirm):
     assert "left" in bel.attached and prov.events[-1]["kept"]                 # still in the jaws
 
 
-@pytest.mark.parametrize("confirm,score,dropped", [({"held": None}, 0.91, True), ({"held": True, "confidence": 0.9}, 0.91, False),
-                                                   ({"held": None}, 0.6, False)])
-def test_held_look_drops_on_jaws_measured_closed_unless_the_head_sees_the_object(confirm, score, dropped):
+@pytest.mark.parametrize("confirm,conf,dropped", [({"held": None}, 1.0, True), ({"held": True, "confidence": 0.9}, 1.0, False),
+                                                  ({"held": None}, 0.8, False), ({"held": False, "confidence": 0.7}, 0.8, True)])
+def test_held_look_drops_on_a_sure_negative_unless_the_head_sees_the_object(confirm, conf, dropped):
     """5.1 xylophone 100002: the mallet was believed 88 mm off, the jaws closed on nothing, held_look measured the
     opening at 0.0 (evidence "opening", score 0.91) and the head check at the (wrong) pick pose was inconclusive, so the
     grasp was kept and the strikes hit air. A sure opening negative now stands unless the head view sees the object in
-    the jaws; a weak measurement (score 0.6) still needs the head's agreement."""
+    the jaws (replayed in physics: 52 of 52 such reads on the proxy were empty jaws); a weaker one (0.8) still needs the
+    head's agreement."""
     from dojo.runtime.belief import RuntimeProvider
     env = _env()
     b = Bridge()
     b.obs, b.fresh = FakeEpisode(env).observe(), True
     prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
     prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
-    prov.held_checker = lambda obs, arm, lab: {"held": False, "confidence": 1.0, "source": "b1", "evidence": "opening",
-                                               "opening": {"measured": 0.0, "commanded": 0.0, "score": score}}
+    prov.held_checker = lambda obs, arm, lab: {"held": False, "confidence": conf, "source": "b1", "evidence": "opening",
+                                               "opening": {"measured": 0.0, "commanded": 0.0, "score": 0.91}}
     prov.held_confirm = lambda obs, arm, lab: confirm
     bel = prov.belief
     o = bel.objects["block_1"]
