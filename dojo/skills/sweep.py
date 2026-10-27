@@ -267,6 +267,12 @@ def push_leg(sk: Skills, arm: str, tool: str, obj: str, target_xy, tol: float = 
             sk.log(f"[sweep] {obj}: no stroke ({p})")
             return left
         sk.ex.run({arm: p}, name=f"sweep {obj}")
+        # mode B: nothing re-measures a pushed object; the expected outcome goes to the provider's confirm
+        T_x = o.T.copy()
+        T_x[:2, 3] += u * max(0.0, dist - 0.012)
+        sk.confirm_moved(obj, T_x, "sweep")
+        # the dustpan the other hand holds and the objects already in it: also moved by nothing we measure; the drag
+        # and the pushes only touch the one object
     o = sk.refresh().obj(obj)
     return float(np.linalg.norm(target_xy - o.center_w[:2]))
 
@@ -319,6 +325,7 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
         r = _drag_pan(sk, pan, pan_arm, T_t)
         if not r.ok and r.status == "ik_fail":
             return {"ok": False, "stage": "dustpan", "note": r.note}
+        sk.confirm_moved(pan, T_t, "drag")
         g = pan_geometry(sk.refresh().obj(pan))
         # 2. the broom in the other hand
         r = _pick_tool(sk, tool, arm)
