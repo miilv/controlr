@@ -96,7 +96,8 @@ class OffsetBeliefProvider:
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
                 verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False,
                 held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True,
-                freeze_touched: bool = False, confirm_pose: bool = False, belief_drop: str | None = None) -> dict:
+                freeze_touched: bool = False, confirm_pose: bool = False, belief_drop: str | None = None,
+                allow_bbox: bool = False) -> dict:
     """``held_pose`` ("noise" / "gt", mode B): perception's in-hand read answered from GT (``heldsim``), with the
     runtime belief's in-hand transform (implied); ``held_belief``: that belief alone (no read); ``held_looks``: the
     protocol may look / show (``Skills.held_looks``). ``freeze_touched``: an object the robot moved without a grasp keeps
@@ -136,6 +137,12 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 verify_k=verify_k or 2, n_cands=4, remeasure=not mode_b,
                 refine=(lambda sk_, label, arm, kind: None) if mode_b else None)
     sk.held_looks = bool(held_looks)
+    # an asset the full catalogue has a mesh for but this box's does not (a catalogue still syncing): its bbox would
+    # stand in and the episode would differ without a word; refuse unless asked to plan on bboxes
+    unexpected = assets.unexpected_missing() if hasattr(assets, "unexpected_missing") else []
+    if unexpected and not allow_bbox:
+        raise RuntimeError(f"no catalogue mesh for {unexpected} (the full catalogue has them; DOJO_CATALOG="
+                           f"{os.environ.get('DOJO_CATALOG', '')}): is the catalogue complete? --allow-bbox plans on bboxes")
     frames = []
     if trace:
         labels = [o.label for o in sk.world.task_objects() if o.obj_type != "Geometry"]
@@ -198,6 +205,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
                                   for o in sk.refresh().task_objects()}})
     rec["category"] = classify(res_j, reward, hist)
+    rec["missing_meshes"] = sorted(getattr(assets, "missing_meshes", ()))        # bboxes stood in for these
     if mode_b or belief_offsets or held_pose or held_belief or freeze_touched or confirm_pose or belief_drop:
         # with these hooks ``final_objects`` is the BELIEF (the provider's refresh); the true poses for comparisons
         rec["final_true"] = {r["label"]: np.round(np.r_[r["pos"], r["quat"]], 4).tolist() for r in env.gt_objects()
@@ -276,7 +284,7 @@ def cmd_run(a) -> None:
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
                           verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b, held_pose=a.held_pose,
                           held_belief=a.held_belief, held_looks=not a.no_held_looks,
-                          freeze_touched=a.freeze_touched, confirm_pose=a.confirm_pose, belief_drop=a.belief_drop)
+                          freeze_touched=a.freeze_touched, confirm_pose=a.confirm_pose, belief_drop=a.belief_drop, allow_bbox=a.allow_bbox)
         if offs or a.mode_b:
             rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b), "held_pose": a.held_pose,
                                 "held_belief": bool(a.held_belief or a.held_pose or a.freeze_touched or a.confirm_pose),
@@ -650,6 +658,8 @@ def main(argv=None) -> None:
     r.add_argument("--held-belief", action="store_true",
                    help="mode B: the runtime belief's in-hand transform (attached at the close), no held_pose (dev)")
     r.add_argument("--no-held-looks", action="store_true", help="the held-pose protocol reads at the hover only (dev)")
+    r.add_argument("--allow-bbox", action="store_true",
+                   help="plan on bboxes where this box's catalogue lacks a mesh the full catalogue has (else: refuse)")
     r.add_argument("--freeze-touched", action="store_true",
                    help="mode B: an object the robot moved without a grasp keeps its believed pose (the runtime's blind "
                         "spot; dojo.skills.heldsim; dev)")

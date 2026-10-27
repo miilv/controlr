@@ -16,6 +16,11 @@
   Candidate fix: score the prior's own position against the best fit (prefer the prior unless the fit gains
   clearly), or require the neighbour guard against all same-shape objects of the belief. This is the next tower risk
   after the scan.
+  Re-measured on main 2026-10-27 (Perception-2 journal §9).
+  - Same set: 3 ok fits of 271 are beyond 15 mm. Only build_tower 100009 L1 block2 is gross (62 mm, iou 0.67), and the
+    runtime's big-shift bar (iou >= 0.7 above 30 mm) already refuses it.
+  - Genuine 5.1 d0_51 (frames 1/2, 4 tasks): 0 of 321 ok fits beyond 15 mm.
+  - Keep open only as a watch item.
 - [ ] **Runtime: a confident flip of a near-symmetric object is a coin toss.** A pick / place refine that turns an
   object more than `refine_max_turn_deg` (90) at iou >= `refine_turn_min_iou` (0.9) keeps the prior orientation and the
   fit's centre (`policy.keep_centre`); below that iou nothing is applied. The charger's flips at iou 0.92-0.98 were
@@ -111,6 +116,29 @@
 
 - [x] ~~**dojo agent: the scene must list functional frames** (pegs, slots, press tags) for `stack_on_pegs` /
   `slots_and_press`~~ — scene v3 (`AgentConfig.scene_version=3`) lists the asset's named support / functional frames.
+- [x] ~~**dojo agent: AgentConfig ran scene v2 by default**, so the frames above never reached the chooser (Sonnet
+  wrote code for hang_on_hooks / slots_and_press / strike_in_order / stack_on_pegs, 19/93 items), and v3 cut every
+  object's frames at 8 (no `hit_*` xylophone keys, no ninth board cell)~~ — scene v4 (every frame, numbered series
+  with positions) is the default; `stack_on_pegs` doc v8 says which group fits which peg
+  ([routing report](experiments/2026-10-27-routing-sonnet.md)).
+- [x] ~~**dojo agent: registry path lags SKILL_DOCS v8**~~ — `skills/registry.yaml`'s `stack_on_pegs` doc carries
+  the same "most pieces -> highest peg" sentence (test `test_registry_peg_doc_says_which_group_fits_which_peg`).
+- [ ] **dojo agent: wrong asset captions mislead the chooser.** The mug rack (cup_holder 0) is captioned
+  "smartphone", the bread and the coin "smartphone", both vertical stands "business card holder". With scene v2
+  Sonnet called the rack "a phone-shaped holder, not a rack" and planned a `robo.search` for a missing rack. A
+  caption-sanity pass (category vs caption) in `scene.caption` would remove the trap.
+- [ ] **dojo agent: `robo.obj()` has no frames.** Code cannot look a frame name up (Run A plans "print the toaster's
+  frames" would have found nothing); since scene v4 the frames are in the scene text only.
+- [x] ~~**dojo agent: routing of the default model is unmeasured on the new skills**~~ — Sol 6.1 (`AgentConfig.model`)
+  on the same 93 items, scene v4 + docs v8: 90/93, 0 harmful; insert_tubes 3/3 `insert_each`
+  ([routing report](experiments/2026-10-27-routing-sonnet.md)).
+- [ ] **dojo agent: Sol routes fill_pen_holder to code (0/3).** It reads "Hold the pen holder with one hand, place all
+  pens into it with the other hand" literally. The checker judges only the end state (pens tip down in the holder,
+  holder upright, home), which `fill_container` does. Next: a pattern line in a `manual_v5` §3 ("Hold <a holder>
+  with one hand, put <things> into it with the other": only the end state is judged), or the same in the
+  `fill_container` doc (SKILL_DOCS v9). Then 3 Sol + 3 Sonnet calls before / after.
+- [ ] **dojo skills: no laptop skill** (close the lid, stand it in the vertical rack): store_laptop_and_headphones is
+  code for the agent; the rule planner runs `hang_on_hooks` for the headphones only (the paired 20 of 100).
 - [ ] **dojo agent: perception is the bottleneck in mode B** (Phase 2, 2026-10-25): stack_bowls 0/6 and build_tower
   100000 0/3 were perception_gross for every model; put_bottles 0/6 were put_into drop misses / pick collisions
   (verify off). The model choice did not change these outcomes ([report](experiments/2026-10-25-agent-e2e.md)).

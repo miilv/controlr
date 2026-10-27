@@ -59,7 +59,10 @@ class AgentConfig:
     # path); strict = only contract-only entries reach the prompt (and robo.skill)
     registry: str = ""
     strict: bool = False
-    scene_version: int = 2              # 3 = + named support / functional frames (needed by stack_on_pegs, slots_and_press)
+    # 3 = + named support / functional frames (the first 8); 4 = every frame, numbered series with their positions.
+    # Default 2 -> 4 (2026-10-27, docs/experiments/2026-10-27-routing-sonnet.md): with v2 the frame-taking skills
+    # (hang_on_hooks, slots_and_press, strike_in_order, stack_on_pegs) were answered with code on 19/93 items
+    scene_version: int = 4
 
 
 def registry_skills(cfg: AgentConfig):

@@ -61,7 +61,9 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "Threads pieces onto the pegs/poles of a base: group i (identical pieces) goes onto peg pegs[i] (a peg "
         "frame of the base, as listed for it in the scene), the shortest peg first, one piece at a time, flat, its "
         "hole on the peg's axis (any turn), carried down the peg onto the pieces below and let go there; a piece "
-        "left tilted is tried once more. Banks after each piece. For 'put the rings/pieces on the poles'."),
+        "left tilted is tried once more. Banks after each piece. For 'put the rings/pieces on the poles'. Which group "
+        "fits which peg: a peg is as tall as the stack it takes, so the group with the most pieces goes onto the "
+        "highest peg (the z of its frame in the scene), the next largest group onto the next highest, and so on."),
     "slots_and_press": (
         "slots_and_press(objects: [id, ...], container: id, slots: [frame, ...], press_tag: frame | null = null)",
         "Stands one object in each named slot of the container (slot frames as listed for it in the scene), "
@@ -136,11 +138,13 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "the thread with wrist sweeps and re-grips (clockwise from above) until it sits ~1 cm down; grippers opened "
         "after each pair. Pair them first (e.g. by matching colour)."),
 }
-SKILL_DOCS_VERSION = 7  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 8  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
 #                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
 #                        7: fill_container drops into the opening, place_in_slots carries level (skills-8)
+#                        8: stack_on_pegs says which group fits which peg (most pieces -> highest peg; routing 2026-10-27:
+#                           with the peg heights in scene v4 and doc v7, Sonnet mapped groups by asset index on 2/10)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

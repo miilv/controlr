@@ -171,7 +171,29 @@ def install_camera_stubs() -> None:
     sys.modules.update({cm.__name__: cm, tc.__name__: tc, rs.__name__: rs})
 
 
-def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = False):
+def config_spawns_garment(task: str) -> bool:
+    """Does the task's config spawn a Garment (particle cloth)? Keyed by the object type in the config."""
+    try:
+        txt = (paths.TASK_CONFIGS / f"{task}.yml").read_text()
+    except OSError:
+        return False
+    return any(line.startswith("Garment:") for line in txt.splitlines())
+
+
+# The physics-only kit writes no simulation state back to USD. RoboDojo reads a CPU-device garment's particles from
+# its USD ``points`` (``GarmentObject.sample_mesh_vertices``), so in physics-only mode the cloth read as its spawn mesh
+# forever (fold_clothes: every checker point frozen 6-11 cm above the table, a pinched sleeve "never moved"). These
+# turn the write-back on; the rendered kit (the official eval) writes USD anyway.
+GARMENT_KIT_SETTINGS = ("--/physics/updateToUsd=true", "--/physics/updateParticlesToUsd=true")
+
+
+def physics_only_kit_settings(extra_settings: tuple = ()) -> tuple:
+    """The physics-only kit's settings: ours, then ``extra_settings``, then ``SIMLAB_PHYSICS_KIT_ARGS`` (dev, space
+    separated; unset: none)."""
+    return PHYSICS_ONLY_SETTINGS + tuple(extra_settings) + tuple(os.environ.get("SIMLAB_PHYSICS_KIT_ARGS", "").split())
+
+
+def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = False, extra_settings: tuple = ()):
     """Start Kit once per process. Default: the eval client's flags (headless, cameras, the two
     sensor extensions, zero-delay render sync). ``physics_only``: no renderer at all (see
     ``physics_only_experience``); observations then carry no images."""
@@ -188,7 +210,7 @@ def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = F
     if physics_only:
         install_camera_stubs()
         kit = physics_only_experience(paths.DATA / "simlab" / "kit")
-        argv = ["--headless", "--experience", str(kit), "--kit_args=" + " ".join(PHYSICS_ONLY_SETTINGS)]
+        argv = ["--headless", "--experience", str(kit), "--kit_args=" + " ".join(physics_only_kit_settings(extra_settings))]
         args = ap.parse_args(argv)
         # RoboDojo's IsaacLab fork defaults enable_cameras=True (offscreen rendering) and its
         # ENABLE_CAMERAS env check never fires (int compared with `is False`): set the arg.
@@ -411,7 +433,10 @@ class RoboDojoRunner:
         # articulation's physics view, as the official env effectively does.
         self.usd_sync_links = resolve_usd_sync_links(usd_sync_links, physics_only)
         paths.install_asset_firewall()                 # no Eval_Layout, no eval-paired Traj, from here on
-        self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only)
+        # a garment's particles are read from USD: physics-only writes them back for configs that spawn one
+        self.garment_usd = bool(physics_only and config_spawns_garment(task))
+        self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only,
+                              extra_settings=GARMENT_KIT_SETTINGS if self.garment_usd else ())
         # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
         wd = Path(workdir or (paths.DATA / "simlab" / "work"))
         paths.assert_not_eval(wd)

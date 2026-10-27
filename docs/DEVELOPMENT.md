@@ -160,11 +160,29 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   (blocked `flock -w` waiters and 15-s pollers). A job that needs two lanes (an Isaac 6.0 render of ours) takes them
   as they free up with a 0.5-s poller on fds the shell holds (`scripts/perception/held_render.sh`: a flock on an
   inherited fd stays held after the helper exits).
+- **The physics-only twin writes nothing back to USD** (`updateToUsd = false`, omni.physx.fabric loaded), and RoboDojo
+  reads some state from USD: articulation link poses (`usd_sync_links` answers them from the physics view) and a
+  CPU-device garment's particles (`GarmentObject.sample_mesh_vertices`). For configs that spawn a Garment the runner
+  launches the physics-only kit with `--/physics/updateToUsd=true --/physics/updateParticlesToUsd=true`
+  (`runner.GARMENT_KIT_SETTINGS`); without them the cloth reads as its spawn mesh forever. `SIMLAB_PHYSICS_KIT_ARGS`
+  adds any other Kit setting to a physics-only run (dev).
 - **Mesh vertices are not surface samples.** A box-like catalogue mesh (the charger) has vertices only at its edges,
   so a vertex test of "what the pads touch" found nothing on its flat sides and fell back to a wrong width (the held
   object then hid under a finger mask). Sample the surface (`held.surface_points`).
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
+- **G3 episodes are bit-deterministic, with two exceptions.** The same layout replays the same actions on a loaded
+  box (stacking 100001: 927 identical steps over 6 runs and 6 commits). Outcomes still differ when:
+  - a search hits a wall-clock cap. `library.RELAY_PLAN_S` (relay chains), `HANDOVER_PLAN_S`, `HANG_SEARCH_S` and
+    hang's per-round budget: a loaded box explores less before the cap;
+  - meshes are missing. `AssetDB` falls back to bboxes when no catalogue has an asset's `geom.npz`. On a box whose
+    catalogue sync was still running, the pieces' servo tail hovered 4 mm instead of 22 mm and three layouts changed.
+    Now every miss is printed (`[AssetDB] WARNING no mesh for ...`) and listed in the episode records
+    (`missing_meshes`, G3 and `dojo.runtime.eval`). G3 refuses to run when the full catalogue has the mesh
+    (`dojo/skills/data/mesh_less.json` lists those it never has; `scripts/skills/mesh_less.py` regenerates it);
+    `--allow-bbox` plans on the bboxes anyway.
+  Before calling a difference a regression, diff the saved actions (`<task>_<seed>_actions.json.gz`) of the two runs:
+  the first differing step points at the skill that diverged.
 
 ## 5. What lives where
 
