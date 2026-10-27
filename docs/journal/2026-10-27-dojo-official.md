@@ -338,16 +338,19 @@ failed on a crowded row in both runs ("1 hand tiles match ...", status `roles`).
 - Grading: the sampled cell runs in the agent's `Session` against a stub `robo` that records the first
   `robo.skill` call. The question is whether the retried `declare_kong` passes all 22 tile ids.
 
-| next cell, 3 samples each | agent_v4 (as run) | agent_v5 |
+| next cell, 10 samples each | agent_v4 (as run) | agent_v5 |
 |---|---|---|
-| Sol 6.1 (`cx/gpt-6.1-sol`) | **0/3 complete**: 8, 8 and 20 of 22 ids | **0/3 drop ids**: 1 retries with all 22 (the discard first); 2 re-measure tiles first (`robo.refine`), so their retry falls in a later cell |
-| Sonnet 5.5 | 3/3 all 22 | 3/3 all 22 (2 in reversed order) |
+| Sol 6.1 (`cx/gpt-6.1-sol`) | **9/10 drop ids** (4× 8 of 22, 5× 20 of 22); 1 re-measures first | **0/10 drop ids**: 2 retry with all 22; 8 re-measure tiles first (`robo.refine`), so their retry falls in a later cell |
+| Sonnet 5.5 | 1/10 drops ids (18 of 22); 5 all 22; 4 look first (`robo.show` / refine) | **0/10 drop ids**: 7 all 22 (some reordered); 3 look first |
 
-- n = 3 per arm at one decision point. The line removes the dropped-id retry here (3/3 -> 0/3 for Sol), but whether
-  the two re-measuring samples later retry with all 22 is unobserved. An episode A/B on make_kong (or another
-  every-object skill) would settle it.
-- **Calls:** 12, 0 errors (131 k prompt, 51 k cached, 6.5 k completion). Run: `runs/official-routing/probeI_kong_retry`
-  (`probe.jsonl`, `graded.json`). Routing total for the stream: 332 calls.
+- Dropped-id retries: Sol 9/10 -> 0/10, Sonnet 1/10 -> 0/10. That is n = 10 per arm at one decision point.
+- The line also moves Sol to re-measure before retrying (1/10 -> 8/10). Whether those samples then retry with all 22
+  is unobserved here; an episode A/B on make_kong (or another every-object skill) would settle it (BACKLOG).
+- The first 3 samples per arm came under the 15-call budget. The other 7 came after the lead's notice that there is
+  no LLM call cap.
+- **Calls:** 40 (Sol 20, Sonnet 20). All returned HTTP 200 with code; replies made as tool calls carry no text.
+  Tokens: 437 k prompt (225 k cached), 23.4 k completion. Run: `runs/official-routing/probeI_kong_retry`
+  (`probe.jsonl`, `graded.json`). Routing total for the stream: 360 calls.
 
 ## 3. J4 re-import readiness
 
