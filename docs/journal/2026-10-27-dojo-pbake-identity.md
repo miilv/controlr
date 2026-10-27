@@ -42,21 +42,32 @@ than main), xy median 7.3 -> 5.9 mm, +0.9 s per read. `embed_merge` is therefore
 
 ## 3. pick_from_conveyor_by_image
 
-Pending: the frames are recorded and partly scored. This section is added to this PR when the run ends.
+- **Riders (6.0 proxy, 5 layouts, 208 blobs).** Ours 0.69, the frozen DINOv2 arm 0.68 (no gain), SigLIP2 fused 0.87:
+  it reads the basket and the cans.
+- **The board.** It stands behind the right arm's links in the home head view, so neither our colour pick (always
+  `photo/00000`, which has no map entry) nor any embedding can read it there.
+- **Given the picture** (the true `photo.png`), the target rider is the most similar crop: CLIP-L 33/33, SigLIP2 32/33,
+  DINOv2 28-29/33. The skill needs a look at the board first.
 
 ## 4. eval_g1 on the table
 
-Pending: the eval_g1 off / on pairs are running on compute3 light 1. This section is added to this PR when they end.
+d0_ext frame 0, paired, with the B1 path on:
+- organize_table: ok 60 -> 60, id 69 -> 70 of 81;
+- fill_pen_holder: ok 48 -> 45, 3 pens -> identity;
+- stack_by_language and store_tools: identical.
+
+On the table the embedding does not pay. The B1 path is therefore its own switch, `embed_b1`, default False:
+`embed_model` alone touches only the belt read. d0_51 pending.
 
 ## Code (PR)
 
 - **`dojo/perception/embed_id.py`.** `Embedder` (lazy torch), `Gallery` (catalogue renders at the blob's ray, lit or
   flat, colour-mapped), `EmbedIdentity.scores` / `scores_at_poses`, `identity()` (one model per process), `fuse`.
 - **`EstimatorConfig`.** New fields `embed_model` (default None = off), `embed_weight` 0.25, `embed_crop` composite,
-  `embed_lit` True, `embed_min_px` 40, `embed_merge` False. With the model unset, nothing changes.
+  `embed_lit` True, `embed_min_px` 40, `embed_merge` True, `embed_b1` False. With the model unset, nothing changes.
 - **`belt.belt_read`.** Per blob, the fused pick. A pick we did not propose is fitted on the blob (`_fit_key`).
   `_merge_fragments` (`embed_merge`) merges same-asset blobs within half the asset's extent.
-- **B1.**
+- **B1** (only with `embed_b1`).
   - `_polish` adds the embedding's best geometry as a trial and decides by the fused score.
   - The same-geometry identity step adds 1 - similarity, rendered at the fitted pose.
   - `ViewMasks.bg` keeps the background each view was segmented against.

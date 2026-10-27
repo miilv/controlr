@@ -91,6 +91,9 @@ def test_estimator_config_keeps_the_embedding_off_by_default():
     from dojo.perception.inverse_layout import EstimatorConfig
 
     assert EstimatorConfig().embed_model is None
+    from dojo.perception.inverse_layout import _embed
+
+    assert _embed(EstimatorConfig(embed_model="dinov2_s")) is None        # B1 stays off unless embed_b1 is set too
 
 
 def test_merge_fragments_joins_close_blobs_given_the_same_asset(monkeypatch):
