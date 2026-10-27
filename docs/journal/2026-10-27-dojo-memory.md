@@ -91,3 +91,11 @@ Code: origin/main (48600bf) vs this branch, same frames, same backgrounds.
 
 - Every other D0 task has only table / ground placements, whose regions are byte-identical (the region diff above).
 - The swap cubes are placed by the slot path, which runs before any region check.
+- **Not measured (no G1 set covers them):** the region changes for non-belt tasks whose children used to be read as
+  world xy:
+  - fill_egg_holder's eggs (egg-basket region + offsets, yaw free);
+  - store_laptop(_random)'s laptop (stand region + offsets);
+  - pick_from_conveyor_by_image's photo board and basket (both fixture conventions);
+  - solve_equation's tiles on the mats (now the mats' pinned points instead of (0, 0));
+  - deposit_coin / make_toast / play_Xylophone slot children and pour_balls_into_vase's contained spheres (these paths
+    run before any region check, so they should not move).
