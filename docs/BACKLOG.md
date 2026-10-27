@@ -16,6 +16,11 @@
   Candidate fix: score the prior's own position against the best fit (prefer the prior unless the fit gains
   clearly), or require the neighbour guard against all same-shape objects of the belief. This is the next tower risk
   after the scan.
+  Re-measured on main 2026-10-27 (Perception-2 journal §9).
+  - Same set: 3 ok fits of 271 are beyond 15 mm. Only build_tower 100009 L1 block2 is gross (62 mm, iou 0.67), and the
+    runtime's big-shift bar (iou >= 0.7 above 30 mm) already refuses it.
+  - Genuine 5.1 d0_51 (frames 1/2, 4 tasks): 0 of 321 ok fits beyond 15 mm.
+  - Keep open only as a watch item.
 - [ ] **Runtime: a confident flip of a near-symmetric object is a coin toss.** A pick / place refine that turns an
   object more than `refine_max_turn_deg` (90) at iou >= `refine_turn_min_iou` (0.9) keeps the prior orientation and the
   fit's centre (`policy.keep_centre`); below that iou nothing is applied. The charger's flips at iou 0.92-0.98 were
