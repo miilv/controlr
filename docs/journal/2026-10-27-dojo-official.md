@@ -312,6 +312,43 @@ entry; this sentence was numbered v9 until #103 took that number.
 - **Calls:** 12, 0 errors (85.7 k prompt, 73.5 k cached, 0.3 k completion). Run: `runs/official-routing/runH_fold_v10`.
 - Routing total for the stream: 320 calls.
 
+### 2.3 agent_v5: a retry passes a skill its complete arguments
+
+**Default change: `AgentConfig.appendix` agent_v4 -> agent_v5** (lead-approved). agent_v5 = agent_v4 + one bullet
+after "When it is not ok, ...":
+
+> A retry passes a failed skill its complete arguments again: when a skill's doc says to pass every object of a kind,
+> every retry passes all of them too (the skill reads the roles from the full set). A retry changes the approach,
+> the order of the arguments or the arm; it never drops required ids.
+
+**Evidence.** make_kong 100002 (rendered 5.1, AgentPolicy on submit_v1, Sol): the first `declare_kong(all 22 tiles)`
+failed on a crowded row in both runs ("1 hand tiles match ...", status `roles`).
+- The integ run's retry passed all 22 again and succeeded.
+- The official run's retry passed 8 tiles: the discard, its 3 matches and the 4 wall tiles. That broke the doc
+  ("Pass EVERY mahjong tile"); the skill failed again and the agent gave up at step 206.
+- Retries are discussed in the episode appendix, not in the skill docs, so the line is there. That leaves the
+  grounding prompt and SKILL_DOCS (v11 on main) unchanged. The registry carries no appendix: nothing to mirror.
+
+**Replay probe** (`dojo/agent/replay_probe.py`, no episodes):
+- Input: the official episode's log (compute7, copied read-only), rebuilt up to message 5. Message 3 is the failure
+  feedback; message 5 is the scene the agent printed next. The original next cell was the 8-tile retry.
+- System text: exactly the logged one (manual_v4, that deploy's skill docs, agent_v4), then the same text with
+  agent_v5 in place of agent_v4.
+- Each sample gets a fresh `RUN` nonce, and the call is made as in AgentLoop (the `python` tool declared).
+- Grading: the sampled cell runs in the agent's `Session` against a stub `robo` that records the first
+  `robo.skill` call. The question is whether the retried `declare_kong` passes all 22 tile ids.
+
+| next cell, 3 samples each | agent_v4 (as run) | agent_v5 |
+|---|---|---|
+| Sol 6.1 (`cx/gpt-6.1-sol`) | **0/3 complete**: 8, 8 and 20 of 22 ids | **0/3 drop ids**: 1 retries with all 22 (the discard first); 2 re-measure tiles first (`robo.refine`), so their retry falls in a later cell |
+| Sonnet 5.5 | 3/3 all 22 | 3/3 all 22 (2 in reversed order) |
+
+- n = 3 per arm at one decision point. The line removes the dropped-id retry here (3/3 -> 0/3 for Sol), but whether
+  the two re-measuring samples later retry with all 22 is unobserved. An episode A/B on make_kong (or another
+  every-object skill) would settle it.
+- **Calls:** 12, 0 errors (131 k prompt, 51 k cached, 6.5 k completion). Run: `runs/official-routing/probeI_kong_retry`
+  (`probe.jsonl`, `graded.json`). Routing total for the stream: 332 calls.
+
 ## 3. J4 re-import readiness
 
 ### 3.1 Dry run
