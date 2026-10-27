@@ -2340,6 +2340,80 @@ def _surface_points(o, step: float = 0.001) -> np.ndarray:
     return _SURF[key]
 
 
+def _area_samples(o, n: int = 60000, seed: int = 0) -> np.ndarray:
+    """Area-weighted random surface points of an object's mesh (object frame), cached per asset; vectorised (a
+    headset stand's 50k faces: the per-triangle sampler takes seconds)."""
+    key = (getattr(o.asset, "key", id(o.asset)), "area", n)
+    if key not in _SURF:
+        V, F = (np.asarray(x) for x in o.asset.mesh)
+        a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+        w = np.linalg.norm(np.cross(b - a, c - a), axis=1)
+        rng = np.random.default_rng(seed)
+        idx = rng.choice(len(F), size=n, p=w / w.sum())
+        u, v = rng.random(n), rng.random(n)
+        f = u + v > 1
+        u[f], v[f] = 1 - u[f], 1 - v[f]
+        P = a[idx] + u[:, None] * (b[idx] - a[idx]) + v[:, None] * (c[idx] - a[idx])
+        _SURF[key] = np.vstack([V, P])
+    return _SURF[key]
+
+
+def rest_clearance(o, support, T_obj: np.ndarray, gap: float = 0.006, step: float = 0.002,
+                   max_up: float = 0.06) -> float | None:
+    """How far ``o`` at ``T_obj`` (world) must be raised for its mesh to stay about ``gap`` clear of ``support``'s
+    mesh (an object let go onto a support from above, e.g. a headset's headband onto a stand's cradle: the cradle
+    frame sits 3 mm under the saddle's surface and the bridge frame inside the band, so the frames' pose overlaps the
+    meshes by ~13 mm). Surface samples on a voxel grid (``gap`` / 3): no support voxel within 3 voxels (L-inf) of an
+    object point's, i.e. at least ``gap`` and at most ~2.3 ``gap`` of clearance. None when no raise up to ``max_up``
+    clears it; 0.0 without meshes."""
+    if o.asset.mesh is None or support.asset.mesh is None:
+        return 0.0
+    v = gap / 3.0
+    Po = _area_samples(o)
+    Po = Po[np.random.default_rng(1).choice(len(Po), size=min(3000, len(Po)), replace=False)]
+    Pw = Po @ T_obj[:3, :3].T + T_obj[:3, 3]
+    S = _area_samples(support, n=200000) @ support.R.T + support.pos
+    lo, hi = Pw.min(0) - 2 * gap, Pw.max(0) + 2 * gap
+    hi[2] += max_up
+    S = S[np.all((S >= lo) & (S <= hi), axis=1)]
+    if not len(S):
+        return 0.0
+    S = np.unique(np.round(S / 0.001).astype(np.int64), axis=0) * 0.001        # 1 mm grid: fewer exact distances
+    org = lo - 4 * v
+    dims = np.ceil((hi - org) / v).astype(np.int64) + 8
+
+    def enc(K):
+        return (K[:, 0] * dims[1] + K[:, 1]) * dims[2] + K[:, 2]
+    occ = np.unique(enc(np.floor((S - org) / v).astype(np.int64)))
+    r = np.arange(-3, 4)
+    offs = np.stack(np.meshgrid(r, r, r, indexing="ij"), -1).reshape(-1, 3)
+    for k in range(int(round(max_up / step)) + 1):
+        P = Pw + np.array([0.0, 0.0, k * step])
+        K = np.floor((P - org) / v).astype(np.int64)
+        Kn = (K[:, None, :] + offs[None, :, :])
+        inside = np.all((Kn >= 0) & (Kn < dims), axis=2)
+        near = (np.isin(enc(Kn.reshape(-1, 3)), occ).reshape(Kn.shape[:2]) & inside).any(axis=1)
+        if not near.any():
+            return k * step
+        # the voxel test is conservative (up to ~2.3 gap): the flagged points against the support samples exactly
+        Q = P[near]
+        Sn = S[np.all((S >= Q.min(0) - 2 * gap) & (S <= Q.max(0) + 2 * gap), axis=1)]
+        d2 = min(float(((Q[i:i + 256, None, :] - Sn[None, :, :]) ** 2).sum(-1).min()) for i in range(0, len(Q), 256))
+        if d2 >= gap * gap:
+            return k * step
+    return None
+
+
+def _flipped(g):
+    """The same parallel-jaw grasp turned 180 deg about its approach (pads swapped): another wrist solution (a
+    forward reach with the closing axis along +x needs j6 at its 3.14 stop, along -x j6 = 0)."""
+    import dataclasses
+    T = g.T.copy()
+    T[:3, 1] *= -1
+    T[:3, 2] *= -1
+    return dataclasses.replace(g, T=T, note=g.note + " flip")
+
+
 def threads_along_x(o, T_h: np.ndarray, depth: float, r: float = 0.003, half: float = 0.012) -> bool:
     """Does a line along the handle frame's x through the hole centre (``depth`` inside the frame along -z) pass
     through the handle without touching it (the frame's x is the hole's axis, what a hook's arm runs along)? True
@@ -2420,9 +2494,24 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if rk.asset.mesh is not None:
         from dojo.skills.motion import mesh_parts
         sk.coll.include.add(rack)
-        parts = mesh_parts(*rk.asset.mesh)
+        if thread:
+            parts = mesh_parts(*rk.asset.mesh)
+        else:
+            # a cradle the object is let go onto from above: the clearance comes from the meshes (``rest_clearance``),
+            # so the support is modelled closely (twin: 2 cm cells + the 6 mm margin flagged every headset place 3 cm
+            # over a stand's saddle although the meshes were 10 mm apart: 0 grasp-place pairs, 10/10 layouts)
+            parts = mesh_parts(*rk.asset.mesh, cell=0.01, step=0.003)
+            sk.coll.margin_of[rack] = 0.002
         sk.coll.parts[rack] = parts
     fr_local = functional_frames(rk, hook_tag)
+    # what is let go onto a cradle: grasps in both pad orders (the hand reaches the cradle forward, where one of the
+    # two needs the last wrist joint at its stop), and a pick that may pull the object out from under an overhang
+    # first (dev layouts: 10/20 headsets lie partly under the open laptop's front edge, 16 mm below its body)
+    if thread:
+        G_obj, pick_kw = (lambda a, o: G_hang(sk, o, a)), None
+    else:
+        G_obj = (lambda a, o: [g for g0 in G_hang(sk, o, a) for g in (g0, _flipped(g0))])
+        pick_kw = {"lift_pulls": ((0.0, -0.08), (0.0, -0.12), (-0.08, -0.06), (0.08, -0.06)), "held_mesh_table": True}
 
     def without_arm(hi: int, tip):
         """The rack's boxes less the hook's own arm (what the handle is threaded onto may come close to it)."""
@@ -2458,14 +2547,23 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             T_obj = Ht @ inv_T(Th)
             T_pre = T_obj.copy()
             if tip is None:
+                # let go just over the support: the frames' pose overlaps the meshes (a headset's band ~13 mm into
+                # the stand's saddle); the checker allows 5 cm
+                up = rest_clearance(o, rk, T_obj)
+                if up is None:
+                    note = "no clear rest over the cradle"
+                    continue
+                T_obj = T_obj.copy()
+                T_obj[2, 3] += up
+                T_pre = T_obj.copy()
                 T_pre[2, 3] += 0.03
             else:
                 T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
             # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
             # lamp), and its via path over the top hook was out of reach
-            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=(lambda a, o=o: G_hang(sk, o, a)), max_full=8,
+            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=(lambda a, o=o: G_obj(a, o)), max_full=8,
                                  place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY}, q_start=q_start,
-                                 lift_to_pre=high)
+                                 lift_to_pre=high, pick_kw=pick_kw)
             if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
                 no_pairs.add(fi)
             if not isinstance(r, SkillResult):
@@ -2496,7 +2594,8 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                 if _time.perf_counter() - t0 > budget_s:
                     return None
                 T_sp = rest_with_R(sk, lab, sp, level_R(o.R))
-                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw={"grasps": (lambda a, o=o: G_hang(sk, o, a))})
+                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw={"grasps": (lambda a, o=o: G_obj(a, o)),
+                                                                 "pick_kw": pick_kw})
                 if isinstance(leg, SkillResult):
                     continue
                 saved = (o.pos.copy(), o.quat.copy())
@@ -2541,7 +2640,8 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                 lab, T_sp, leg = mv
                 sk.log(f"[hang] {lab}: no hook plans from where it is; relay to {np.round(T_sp[:2, 3], 3).tolist()} "
                        f"({leg[0].arm})")
-                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw={"grasps": (lambda a, lab=lab: G_hang(sk, sk.world.obj(lab), a))})
+                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw={"grasps": (lambda a, lab=lab: G_obj(a, sk.world.obj(lab))),
+                                                                          "pick_kw": pick_kw})
                 for a in ARMS:
                     if sk.held[a] is not None:
                         sk._record(sk.regrasp(a))
@@ -2579,11 +2679,10 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             w = sk.refresh()
             T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ w.obj(lab).T
             T_on = T_obj @ inv_T(T_rel)
-            if hooks_by[hi][2] is None:
-                T_on[2, 3] += 0.02           # lowered onto a support from above: let go over it
             mv = sk.motion.line(arm, sk.ex.q[arm], T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
             T_dn = T_on.copy()
-            T_dn[2, 3] -= 0.006
+            if hooks_by[hi][2] is not None:
+                T_dn[2, 3] -= 0.006          # a handle onto a hook's arm; onto a cradle: let go where cleared
             dn = sk.motion.line(arm, mv.q_end if mv.segments else sk.ex.q[arm], T_dn, 0.03, "hang_lower",
                                 gripper=CLOSED, check=False)
             T_back = T_dn.copy()

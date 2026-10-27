@@ -290,16 +290,24 @@ class Skills:
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
                   lift_to_z: float | None = None, approach_rad: float = FAST, descend_rad: float = SLOW,
                   open_g: float | None = None, settle: int = 2, return_all: bool = False, lift_rad: float = MEDIUM,
-                  grasps: list | None = None, squeeze: int = 0):
+                  grasps: list | None = None, squeeze: int = 0, lift_pulls: tuple = (), held_mesh_table: bool = False):
         """``grasps``: explicit candidates (world TCP poses) instead of the method's generator. ``squeeze``: still
         steps with the gripper closing before the lift (a 2 mm coin between the pads: lifted right after the close
-        it stayed in its holder, 3/3; four more steps and it came out, 3/3)."""
+        it stayed in its holder, 3/3; four more steps and it came out, 3/3). ``lift_pulls``: world xy offsets (m)
+        tried in order when the straight lift collides: the object is first slid that far just over its support
+        (6 mm up), then lifted (a headset lying partly under an open laptop's overhang: the straight lift hit the
+        laptop's body 16 mm above it). Empty (default): straight lifts only. ``held_mesh_table``: the lift's "held
+        object below the table" test uses the object's mesh points, not its box corners (``HeldBox.table_points``)."""
         w = self.world
         obj = w.obj(label)
         # what a re-plan of this pick (after a wrist refine) must plan with again: everything but the grasps and the
         # start (``execute_pick``)
         plan_kw = dict(lift=lift, max_eval=max_eval, grasp_kw=grasp_kw, lift_to_z=lift_to_z, approach_rad=approach_rad,
                        descend_rad=descend_rad, open_g=open_g, settle=settle, lift_rad=lift_rad, squeeze=squeeze)
+        if lift_pulls:
+            plan_kw["lift_pulls"] = tuple(lift_pulls)
+        if held_mesh_table:
+            plan_kw["held_mesh_table"] = True
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
         best, notes, allf = None, [], []
         for a in arms:
@@ -346,6 +354,7 @@ class Skills:
                     continue
                 T_tcp_obj = inv_T(g.T) @ obj.T
                 box = held_box(obj, T_tcp_obj)
+                box.table_points = bool(held_mesh_table)
                 T_lift = g.T.copy()
                 T_lift[2, 3] = max(g.T[2, 3] + lift, lift_to_z or 0.0)
                 if g.narrow:
@@ -355,6 +364,22 @@ class Skills:
                     T_lift[:3, 3] = g.T[:3, 3] + u * (float(T_lift[2, 3] - g.T[2, 3]) / max(float(u[2]), 0.5))
                 up = self.motion.line(a, down.q_end, T_lift, lift_rad, "pick_lift", gripper=CLOSED, ignore=(label,),
                                       held=box)
+                pull = None
+                if not up.ok and lift_pulls:
+                    for dxy in lift_pulls:
+                        T_out = g.T.copy()
+                        T_out[:3, 3] += np.array([float(dxy[0]), float(dxy[1]), 0.006])
+                        sl = self.motion.line(a, down.q_end, T_out, lift_rad, "pick_pull", gripper=CLOSED,
+                                              ignore=(label,), held=box)
+                        if not sl.ok:
+                            continue
+                        T_l2 = T_out.copy()
+                        T_l2[2, 3] = max(T_out[2, 3] + lift, lift_to_z or 0.0)
+                        up2 = self.motion.line(a, sl.q_end, T_l2, lift_rad, "pick_lift", gripper=CLOSED,
+                                               ignore=(label,), held=box)
+                        if up2.ok:
+                            pull, up = sl, up2
+                            break
                 if not up.ok:
                     n_coll += up.status == "collision"
                     n_ik += up.status != "collision"
@@ -362,7 +387,10 @@ class Skills:
                 p = ArmPlan(a, np.asarray(q0, float), self.ex.g[a])
                 p.grip(go, 0, "open_for_grasp").move(to_pre, "approach").move(down, "descend").hold(settle, "settle")
                 from dojo.skills.kinematics import grip_to_gap
-                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").hold(squeeze, "squeeze").move(up, "lift")
+                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").hold(squeeze, "squeeze")
+                if pull is not None:
+                    p.move(pull, "pull")
+                p.move(up, "lift")
                 cost = p.steps + 30 * g.score
                 feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label, method, dict(plan_kw))))
                 if len(feas) >= keep:

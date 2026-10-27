@@ -150,6 +150,9 @@ class HeldBox:
     # mesh points (object frame) checked against ``Collision.parts`` obstacles (a rack's thin arms pass between the box
     # corners of a held mug); None = the box corners
     dense: np.ndarray | None = None
+    # the "held object below the table" test on the mesh points instead of the box corners (opt-in: a headset lying
+    # on its side has bbox corners 24 mm under the table, so every lift and pull of it failed at its first waypoint)
+    table_points: bool = False
 
     def dense_w(self, T_tcp: np.ndarray) -> np.ndarray:
         T = T_tcp @ self.T_tcp_obj
@@ -314,7 +317,11 @@ class Collision:
                 if np.all(np.abs((pts - c) @ R) <= h, axis=1).any():
                     return False, f"gripper hits {lab}"
         if held is not None and table:
-            hc = held.corners_w(self.kin.tcp_from_flange(Tf), shrink=0.002)
+            T_h = self.kin.tcp_from_flange(Tf)
+            if held.table_points and (held.points is not None or held.dense is not None):
+                hc = held.points_w(T_h) if held.points is not None else held.dense_w(T_h)
+            else:
+                hc = held.corners_w(T_h, shrink=0.002)
             for p in hc:
                 if table_contains_xy(p) and TABLE_Z - 0.3 < p[2] < TABLE_Z - 0.003:
                     return False, "held object below the table"
