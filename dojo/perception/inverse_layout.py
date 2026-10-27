@@ -2407,7 +2407,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         if not any(n > 0 for n in need.values()):
             break
         expl = np.zeros_like(head.fg)
-        for h in chosen + slot_h:
+        for h in chosen:
             h.sm().sil(head.cam, h.T(), out=expl)
         resid = head.fg & (1 - cv2.dilate(expl, np.ones((3, 3), np.uint8)))
         rv = ViewMasks(head.cam, head.img, resid, head.known, head.dist, head.robot)
