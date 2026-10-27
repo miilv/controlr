@@ -1761,6 +1761,65 @@ def _add_assembly_shapes(shapes_by_group: dict, pending, slot_groups, task) -> d
     return out
 
 
+SLOT_FREE_MAX_LOSS = 0.7  # a slot child found loose on the table is taken at this silhouette loss or better (a mallet: a
+# thin stick, 0.6 when right)
+
+
+def _free_search_slot_children(slot_groups, chosen, slot_recs, views, cfg, groups, record) -> list:
+    """Slot children whose slot the views see empty, looked for as loose objects on the table: physics can drop them
+    out of their slot while the layout settles (play_Xylophone 5.1 D0: the mallet 236 mm from its stand in 100010, off
+    the table's front in 100020), and a few degrees of base yaw move a long lever's slot off the child (the mallet sits
+    93 mm from the stand's origin). Proposals on the head foreground nothing chosen explains, the child free on the
+    table (any place, any yaw). Returns record entries; found labels leave ``_not_found``."""
+    empty = [nf for nf in record.get("_not_found", []) if nf.get("reason") == "support slot empty"]
+    if not empty:
+        return []
+    head = views["cam_head"]
+    expl = np.zeros_like(head.fg)
+    for h in chosen:
+        h.sm().sil(head.cam, h.T(), out=expl)
+    for _typ, _cat, r in slot_recs:
+        a = load_asset(f"{_typ}/{_cat}/{int(r['category_idx']):05d}")
+        T = np.eye(4)
+        T[:3, :3], T[:3, 3] = quat_wxyz_to_R(r["default_ori"]), r["default_pos"]
+        expl |= silhouette(head.cam, a.Vs @ T[:3, :3].T + T[:3, 3], a.Fs)
+    resid = head.fg & (1 - cv2.dilate(expl, np.ones((3, 3), np.uint8)))
+    rblobs = blobs(ViewMasks(head.cam, head.img, resid, head.known, head.dist, head.robot), "cam_head")
+    if not rblobs:
+        return []
+    out = []
+    for nf in empty:
+        g = next((gg for gg in slot_groups if nf["label"] in gg["labels"]), None)
+        if g is None or len(g["labels"]) != 1 or float(np.min(load_asset(g["candidates"][0]).extents)) <= THIN_CHILD_M:
+            # one child per slot list (make_toast's four bread slices stay in their shelf), and not a thin one (a 2 mm
+            # coin edge-on is a few pixels: loose on the table it matched a phantom 700 mm away)
+            continue
+        g2 = dict(g, labels=[nf["label"]], regions=[],
+                  placement={"relative_plane": "Table", "rotate_rand": True, "rotate_deg": 180})
+        prior2 = _placement_prior(g2)
+        gi = len(groups)
+        groups_t = list(groups) + [g2]
+        shapes = {gi: _geometry_groups(g2, prior2)}
+        more = _propose(rblobs, [(gi, g2, prior2)], shapes, views, cfg, groups_t, others=_union_masks(chosen, views),
+                        blob_offset=8000)
+        add = _assign_constrained(more, {gi: 1}, [(gi, g2, prior2)], rblobs, views, existing=chosen, blob_offset=8000)
+        add = [h for h in add if float(h.per_view.get("sil_loss", h.loss)) <= SLOT_FREE_MAX_LOSS]
+        if not add:
+            continue
+        h = add[0]
+        T = h.T()
+        typ, cat, idx = h.key.split("/")
+        conf = float(np.clip(1 - h.per_view.get("sil_loss", h.loss), 0, 1))
+        out.append((typ, cat, {"category": cat, "category_idx": int(idx), "label": nf["label"],
+                               "default_pos": [float(v) for v in T[:3, 3]],
+                               "default_ori": [float(v) for v in R_to_quat_wxyz(T[:3, :3])], "scale": [1.0, 1.0, 1.0],
+                               "_perception": {"place_tag": h.tag, "residual": round(1 - conf, 4),
+                                               "confidence": round(min(conf, 0.6), 3), "slot_free": True,
+                                               "ambiguous": True, "geom_group": list(g["candidates"])}}))
+        record["_not_found"] = [x for x in record.get("_not_found", []) if x is not nf]
+    return out
+
+
 def _place_support_slots(slot_groups, chosen, groups, views, task, record) -> list:
     """Records for labels pinned in support slots (``support_slot``): pose from the chosen base, then a per-view check
     on the pixels only the object would explain (its silhouette minus the base's and every other object's). A slot
@@ -2657,6 +2716,7 @@ class EstimatorConfig:
     polish_color_veto: float | None = 0.2  # paired texture cannot pick a trial whose mean colour is this much worse
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
     small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
+    slot_free_search: bool = True  # a slot child whose slot looks empty is looked for loose on the table
     low_contrast_frac: float | None = 0.6  # still-unfound labels: re-segment at this x fg_thr in their region
     low_contrast_max_loss: float = 0.40  # ... and keep a find only at this silhouette loss or lower
     paired_tex_weight: float = 0.8
@@ -3224,6 +3284,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     slot_recs = []
     if slot_groups:
         slot_recs = _place_support_slots(slot_groups, chosen, groups, views, task, record)
+        if cfg.slot_free_search:
+            slot_recs += _free_search_slot_children(slot_groups, chosen, slot_recs, views, cfg, groups, record)
 
     # ---- records
     for gi, g, _ in pending:
