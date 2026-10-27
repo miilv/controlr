@@ -180,6 +180,8 @@ class RuntimeConfig:
     held_look: str = "off"
     held_refine_max_mm: float = 10.0    # an in-hand (kind "held") refine moving the object's centre more than this ...
     held_refine_min_iou: float = 0.85   # ... needs at least this iou; past half the object's largest extent: never
+    fallen_check: bool = True           # a released object whose post-place refine was not ok and that diverges at a
+                                        # later resync fell: off its fixture in the belief, touched, re-plan (5.1 hang)
     confirm_wrists: bool = True         # confirm_pose (a topple / push proposes the moved object's pose) also accepts a
                                         # wrist view that clearly prefers it (silhouette IoU >= 0.6 and >= prior + 0.15);
                                         # the head alone rejected a tile that had toppled (5.1 make_kong 100001: 0.59 vs
@@ -402,6 +404,7 @@ class RuntimePolicy:
             prov.held_drop_conf = float(cfg.held_drop_conf)
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         prov.confirm_wrists = bool(cfg.confirm_wrists)
+        prov.fallen_check = bool(cfg.fallen_check)
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()
