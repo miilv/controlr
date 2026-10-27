@@ -487,6 +487,56 @@ def nudge_from_wall(sk: Skills, label: str, wall_clear: float = EGG_WALL_CLEAR) 
     return None
 
 
+EGG_PRESS = True              # an egg left lying across its hole is pressed in from above
+EGG_SUNK = 0.003              # m: its centre this far under the plate's top counts as in (lying across: 4-11 mm over it;
+                              # the checker wants the centre < 40 mm over the holder's bottom frame, 5 mm over its base)
+EGG_PRESS_DEPTH = 0.014       # m: the closed fingertips go this far below the egg's top
+
+
+def press_in(sk: Skills, label: str, hole: dict, ignore=()) -> str:
+    """Closed fingertips straight down onto the top of an object lying across ``hole``, at its point over the hole
+    nearest the hole's centre, ``EGG_PRESS_DEPTH`` below its top, and back up (egg_nudge1: 2 of 9 eggs let go off a
+    hole's centre stayed wedged across it, 4 mm over the plate, tilted 14 deg from level)."""
+    o = sk.world.obj(label)
+    k = int(np.argmax(o.asset.extents))
+    ax = o.R[:, k]
+    hc = np.asarray(hole["center"], float)[:2]
+    V = np.asarray(o.asset.mesh[0], float) @ o.R.T + o.pos if o.asset.mesh is not None else o.world_bbox_corners()
+    # the point of its long axis over the hole nearest the hole centre, on its upper surface
+    s_ = float(np.clip((hc - o.center_w[:2]) @ ax[:2] / max(float(ax[:2] @ ax[:2]), 1e-9), -0.012, 0.012))
+    p = o.center_w + ax * s_
+    near = V[np.linalg.norm(V[:, :2] - p[:2], axis=1) < 0.006]
+    top = float(near[:, 2].max()) if len(near) else float(o.top_z)
+    from dojo.skills.kinematics import down_R
+    arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - p[:2])))
+    for a in arms:
+        for yaw in (math.atan2(ax[1], ax[0]) + math.pi / 2, math.atan2(ax[1], ax[0])):
+            R = down_R(yaw)
+
+            def tcp_at(z):
+                return T_from(np.r_[p[:2], z + TIP_BEYOND_TCP], R)
+            to = sk.motion.to_pose(a, sk.ex.q[a], tcp_at(top + 0.04), FAST, "press_approach", gripper=CLOSED,
+                                   ignore=(label,) + tuple(ignore))
+            if not to.ok:
+                continue
+            dn = sk.motion.line(a, to.q_end, tcp_at(top - EGG_PRESS_DEPTH), 0.04, "press_down", gripper=CLOSED,
+                                check=False)
+            if not dn.ok:
+                continue
+            up = sk.motion.line(a, dn.q_end, tcp_at(top + 0.05), MEDIUM, "press_up", gripper=CLOSED, check=False)
+            pl = ArmPlan(a, sk.ex.q[a].copy(), sk.ex.g[a]).grip(CLOSED, 2, "close_for_press")
+            pl.move(to, "approach").move(dn, "down").hold(2, "pressed")
+            if up.segments:
+                pl.move(up, "up")
+            try:
+                sk.ex.run({a: pl}, name=f"press {label}")
+            except (BudgetExceeded, EpisodeEnded) as e:
+                return f"stopped: {e}"
+            sk.bank()
+            return f"{a}, {pl.steps} steps"
+    return "no press plan"
+
+
 # ============================================================================ skill
 
 
@@ -639,6 +689,13 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             sk.bank()
             w = sk.refresh()
             o = w.obj(lab)
+            if EGG_PRESS and off == off and float(o.center_w[2]) > plate_top - EGG_SUNK:
+                # still lying across the hole (wedged between the rim and the hole's wall): pressed in from above
+                r_p = press_in(sk, lab, h, ignore)
+                sk.log(f"[holes] {lab} lay across the hole (centre {1000 * (float(o.center_w[2]) - plate_top):+.0f} mm over "
+                       f"the plate): pressed ({r_p})")
+                w = sk.refresh()
+                o = w.obj(lab)
             hit = next((x for x in holes if in_hole(o, x)), None)
             how = "stood up" if off != off else f"offset {off * 1000:.0f} mm, yaw {yd:.0f}, side {side:+.0f}"
             sk.log(f"[holes] {lab} dropped over the hole at {np.round(h['center'], 3).tolist()} ({how}; {rr.status}): "
