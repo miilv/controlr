@@ -478,6 +478,11 @@ def nudge_from_wall(sk: Skills, label: str, wall_clear: float = EGG_WALL_CLEAR) 
                 return sk._record(SkillResult(False, "nudge", "step_budget", 0, a, note=str(e)))
             except EpisodeEnded as e:
                 return sk._record(SkillResult(False, "nudge", "ended", 0, a, note=str(e)))
+            # mode B: a push moves the egg without a grasp (no release, no re-measure): the provider confirms the
+            # predicted outcome (rolled inward by the push past the contact), as a topple's is (``confirm_moved``)
+            T_exp = o.T.copy()
+            T_exp[:3, 3] -= u * max(0.0, EGG_NUDGE - EGG_NUDGE_GAP)
+            sk.confirm_moved(label, T_exp, "nudge")
             o2 = sk.refresh().obj(label)
             moved = float(np.dot((o2.center_w - p0)[:2], -u[:2]))
             return sk._record(SkillResult(moved > 0.008, "nudge", "ok" if moved > 0.008 else "place_miss", pl.steps, a,
