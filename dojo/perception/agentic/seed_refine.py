@@ -366,3 +366,49 @@ def keep_read_yaws(objects: list[dict], b1_objs: list[dict], radius_m: float = 0
             o["yaw_from"] = "b1_top_feature"
             n += 1
     return n
+
+
+SLOT_CHILD_RADIUS_M = 0.04  # an output object this close (xy) to its config slot on the output base is in that slot
+
+
+def settle_slot_children(objects: list[dict], task: str, radius_m: float = SLOT_CHILD_RADIUS_M) -> int:
+    """Objects the task config pins in a support slot of another label (``slots.support_slot``: deposit_coin's coin in
+    its stand, make_toast's bread, the xylophone mallet) take the slot pose on the output's base: the base at rest on
+    the table (its x, y, yaw), then ``support_slot_pose``. B1 places such objects this way, but an agent that moves the
+    base (and the child with it) gives the child its own rest pose: 5.1 deposit_coin 100000 / 04 / 07 / 09 read the
+    coin LYING FLAT in its stand (z 0.765), and the skill found no rim grasp. Only a child already within ``radius_m``
+    of its slot is moved (one taken out of the slot later stays where it was read). Returns how many changed."""
+    from ..cameras import R_to_quat_wxyz, quat_wxyz_to_R
+    from ..inverse_layout import shape_models, support_slot_pose, task_map
+    from ..slots import support_slot
+
+    labels = (task_map().get(task) or {}).get("labels") or {}
+    by_label = {o.get("label"): o for o in objects if o.get("label")}
+    n = 0
+    for lab, d in labels.items():
+        sl = support_slot(d.get("placement") or {})
+        child, base = by_label.get(lab), by_label.get(sl[0]) if sl else None
+        if sl is None or child is None or base is None or not base.get("asset") or not child.get("asset"):
+            continue
+        if not base.get("pos") or not base.get("quat"):
+            continue
+        Rb = quat_wxyz_to_R(base["quat"])
+        bpos, bq = list(base["pos"]), list(base["quat"])
+        if (labels.get(sl[0], {}).get("placement") or {}).get("relative_plane", "Table") == "Table":
+            # the base rests on the table: its own rest height and yaw, not a height read from agent points
+            sms = shape_models(base["asset"])
+            up = Rb.T @ np.array([0.0, 0.0, 1.0])
+            sm = max(sms, key=lambda s: float((s.R0.T @ np.array([0.0, 0.0, 1.0])) @ up))
+            Rz = Rb @ sm.R0.T
+            T = sm.pose(float(base["pos"][0]), float(base["pos"][1]), float(math.atan2(Rz[1, 0], Rz[0, 0])))
+            bpos, bq = T[:3, 3].tolist(), list(R_to_quat_wxyz(T[:3, :3]))
+        pose = support_slot_pose(base["asset"], bpos, bq, child["asset"], d["placement"])
+        if pose is None:
+            continue
+        p, q = pose
+        if math.hypot(float(child["pos"][0]) - float(p[0]), float(child["pos"][1]) - float(p[1])) > radius_m:
+            continue
+        child["pos"], child["quat"] = [float(v) for v in p], [float(v) for v in q]
+        child["slot_from_base"] = sl[0]
+        n += 1
+    return n

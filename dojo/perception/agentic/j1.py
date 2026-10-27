@@ -521,6 +521,16 @@ def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd
         n_yaw = keep_read_yaws(objects, b1.get("objects") or [])
         if n_yaw:
             probs.append(f"b1_read_yaw_kept={n_yaw}")
+    task_ = kw.get("task") or (b1 or {}).get("task") or _b1.infer_task(instruction)
+    if task_:
+        try:
+            from .seed_refine import settle_slot_children
+
+            n_slot = settle_slot_children(objects, task_)
+            if n_slot:
+                probs.append(f"slot_children_settled={n_slot}")
+        except Exception as e:  # noqa: BLE001 (catalogue gaps: the agent's poses stand)
+            probs.append(f"slot_settle: {type(e).__name__}: {e}")
     if not kw.get("keep_markers"):  # replays arbitrate the same H2 output themselves
         for o in objects:
             o.pop("_agent_point", None)
