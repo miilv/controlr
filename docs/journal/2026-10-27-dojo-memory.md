@@ -142,3 +142,20 @@ Fixes on the follow-up:
 - Identity = the confidence-weighted vote of the latest 4 reads.
 - In `match_and_pick`, a retry after a slip takes another kind of grasp (fixed 100005's camera in G3).
 - A partly slipped lift (> 4 cm) is topped up.
+
+## 6. G3 mode A, conveyor: all 25 raw layouts, the same layouts as skills6's v5a
+
+| code | success | failures |
+|---|---|---|
+| skills6 v5a (e4235d6, reference) | 20/25 | ice cream 3 (no intercept / slip), headset 1, figurine 1 |
+| #86 (13073ad: waist grasps) | 21/25 | 100004 ice cream rose 85 mm, 100005 camera slip ×2, 100008 headset slip, 100024 ice cream slip |
+| follow-up (475bf80: retry with another kind of grasp, topped-up lift) | **24/25** | 100008 headset: slipped, topped up to 90 mm (the checker wants 100) |
+
+- main's grasps now give the ice cream a rim pinch of its scoop. It slid 40 mm in the pads on the way up. The top-up
+  lifts the rest (100004: 50 mm more, pulled 5 cm toward the base, 113 mm in all).
+- The camera's rim pinch closed on nothing. The retry now excludes the kind that slipped, and an antipodal grasp took it
+  (100005).
+- The waist grasp took the garage figurine that v5a could not intercept (100014).
+- The regression set ran on #86's code: plug_in_charger 8/10, make_kong 5/5, stack_blocks 5/5, store_tools 0.45, all
+  equal to the references. The follow-up changes only the conveyor skill, the perception-mode tracker and the
+  perception service: none of them runs in G3.
