@@ -174,3 +174,29 @@ So hems now start with the second recipe. With it, first pinches caught 30/30 he
   folded, a sleeve not) that is a 0, not a 0.2.
 - The random set in mode B fails the hem line (57-90 deg). A frozen read of the hem corners is off once the sleeves
   are folded on those garments. Open.
+
+## 6. fold, random half in mode B: where the pinches go
+
+- First hypothesis: the hem corners move when the sleeves fold, so a frozen read misplaces the body fold. Built a
+  re-read of just the hem corners before the body fold:
+  - `provider.garment_update`, with the arms home first;
+  - camera: `dojo.perception.garment.update_hems` moves each first-read hem point by its footprint corner's shift
+    since the first read's frame;
+  - G3 mode B: GT + noise.
+  The re-reads moved the hems only 3-13 mm (GT) and 0-16 mm (camera, rendered 5.1), so that was not the cause.
+- The cause: a read without particles (the camera's, G3 mode B's frozen one) had no garment middle to pinch towards.
+  The skill fell back to the chest / shoulder point, so each hem was pinched 3.5 cm straight up from its corner, on
+  the side edge. Mode A pinches 2 cm diagonally inward. Such a read now pinches towards the garment's root position
+  (`_centre`), which is near its middle.
+
+G3 mode B, fold_clothes_random 100000-09 (same layouts):
+
+| commit | change | success | mean |
+|---|---|---|---|
+| 421d5ea (#123) | - | 4/10 | 0.52 |
+| 2c7a7d9 | + hem re-read (GT) | 6/10 | 0.64 |
+| 0ec4ed3 | + arms home before the re-read | 6/10 | 0.66 |
+| 7459eb8 | + pinches towards the garment root | 6/10 | 0.68 |
+
+The remaining random-set failures are hem lines 53-85 deg off on garment 00007; mode A fails the same layouts
+(100003, 100008).
