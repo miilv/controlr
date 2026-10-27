@@ -2,8 +2,8 @@
 
 * ``RunnerEnv`` wraps simlab's ``RoboDojoRunner`` (RoboDojo's own EvalEnv on our layouts; runs in
   RoboDojo's python). Actions are official joint action dicts; proprio is the official obs
-  (joints, flange poses, grippers: RoboDojo's reading, or the strict command with ``DOJO_GRIP_OBS=command``,
-  ``dojo.simlab.gripobs``). Ground truth (objects, reward, measured fingers) is
+  (joints, flange poses, grippers: the strict command, or RoboDojo's reading with ``DOJO_GRIP_SOURCE=robodojo``,
+  ``dojo.simlab.grip_source``). Ground truth (objects, reward, measured fingers) is
   DEV-ONLY and goes through ``gt_objects`` / ``reward`` only.
 * ``KinematicEnv`` is a CPU stand-in for tests: joints track targets at <= 0.2 rad per step,
   a closed gripper picks up the object around its TCP, an opened one drops it straight down.
@@ -35,11 +35,11 @@ class Env(Protocol):
 class RunnerEnv:
     """``dojo.simlab.runner.RoboDojoRunner`` (env 0) behind the executor's interface."""
 
-    def __init__(self, runner, env_idx: int = 0, grip_obs: str | None = None):
-        from dojo.simlab.gripobs import GripObs
+    def __init__(self, runner, env_idx: int = 0, grip_source: str | None = None):
+        from dojo.simlab.grip_source import GripSource
         self.r = runner
         self.i = env_idx
-        self.grip = GripObs(grip_obs)         # DOJO_GRIP_OBS (default robodojo: proprio unchanged)
+        self.grip = GripSource(grip_source)   # DOJO_GRIP_SOURCE (default command: the strict contract's gripper)
 
     @property
     def step_lim(self) -> int:

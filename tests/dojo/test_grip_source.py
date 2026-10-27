@@ -1,11 +1,12 @@
-"""DOJO_GRIP_OBS (dojo.simlab.gripobs): what a dev harness hands the policy as the gripper reading. ``robodojo`` passes
-RoboDojo's observation through unchanged (the default). ``command`` gives the strict contract's value: the last
-command, the step-0 observation before any command, rounded as the strict server reports it. CPU only."""
+"""DOJO_GRIP_SOURCE (dojo.simlab.grip_source; DOJO_GRIP_OBS = its deprecated alias): what a dev harness hands the policy
+as the gripper reading. ``command`` (the default) gives the strict contract's value: the last command, the step-0
+observation before any command, rounded as the strict server reports it. ``robodojo`` passes RoboDojo's observation
+through unchanged. CPU only."""
 
 import numpy as np
 import pytest
 
-from dojo.simlab.gripobs import GripObs, grip_obs_mode
+from dojo.simlab.grip_source import GripSource, grip_source_mode
 
 
 def _st(gl, gr):
@@ -18,9 +19,20 @@ def _act(gl, gr):
             "right_arm_joint_state": np.zeros(6, np.float32), "right_ee_joint_state": np.array([gr], np.float32)}
 
 
+def test_the_default_is_the_strict_command_and_the_old_name_still_works(monkeypatch):
+    monkeypatch.delenv("DOJO_GRIP_SOURCE", raising=False)
+    monkeypatch.delenv("DOJO_GRIP_OBS", raising=False)
+    assert GripSource().mode == "command"
+    monkeypatch.setenv("DOJO_GRIP_OBS", "robodojo")                    # the deprecated alias, until 2026-10-28
+    assert GripSource().mode == "robodojo"
+    monkeypatch.setenv("DOJO_GRIP_SOURCE", "command")                  # the new name wins
+    assert GripSource().mode == "command"
+
+
 def test_robodojo_mode_is_a_pass_through(monkeypatch):
     monkeypatch.delenv("DOJO_GRIP_OBS", raising=False)
-    g = GripObs()
+    monkeypatch.setenv("DOJO_GRIP_SOURCE", "robodojo")
+    g = GripSource()
     assert g.mode == "robodojo"
     st = _st(1.0, 1.0)
     assert g.apply(st) is st
@@ -30,8 +42,8 @@ def test_robodojo_mode_is_a_pass_through(monkeypatch):
 
 
 def test_command_mode_reads_the_last_command_like_the_strict_server(monkeypatch):
-    monkeypatch.setenv("DOJO_GRIP_OBS", "command")
-    g = GripObs()
+    monkeypatch.setenv("DOJO_GRIP_SOURCE", "command")
+    g = GripSource()
     assert g.mode == "command"
     assert float(g.apply(_st(1.0, 1.0))["left_ee_joint_state"][0]) == 1.0        # step 0: the observation itself
     g.stepped(_act(0.667, 1.0))
@@ -47,12 +59,13 @@ def test_command_mode_reads_the_last_command_like_the_strict_server(monkeypatch)
 
 def test_bad_mode_is_refused():
     with pytest.raises(ValueError):
-        grip_obs_mode("finger")
-    assert grip_obs_mode(" Command ") == "command"
+        grip_source_mode("finger")
+    assert grip_source_mode(" Command ") == "command"
 
 
 def test_runner_env_and_rendered_episode_apply_it(monkeypatch):
-    monkeypatch.setenv("DOJO_GRIP_OBS", "command")
+    monkeypatch.delenv("DOJO_GRIP_SOURCE", raising=False)
+    monkeypatch.delenv("DOJO_GRIP_OBS", raising=False)                 # the default: command
     from dojo.simlab.proxy_eval import RenderedEpisode
     from dojo.skills.env import RunnerEnv
 
@@ -86,10 +99,10 @@ def test_runner_env_and_rendered_episode_apply_it(monkeypatch):
     env.step(_act(0.0, 1.0))
     r.g = 0.33                                                                    # RoboDojo: the blocked jaws
     assert float(env.proprio()["left_ee_joint_state"][0]) == 0.0
-    assert float(RunnerEnv(r, grip_obs="robodojo").proprio()["left_ee_joint_state"][0]) == 0.33
+    assert float(RunnerEnv(r, grip_source="robodojo").proprio()["left_ee_joint_state"][0]) == 0.33
 
     ep = object.__new__(RenderedEpisode)
-    ep.run, ep.n_obs, ep.grip = FakeRunner(), 0, __import__("dojo.simlab.gripobs", fromlist=["GripObs"]).GripObs()
+    ep.run, ep.n_obs, ep.grip = FakeRunner(), 0, GripSource()
     assert float(ep.observe()["state"]["left_ee_joint_state"][0]) == 1.0
     ep.step(_act(0.0, 1.0))
     ep.run.g = 0.3

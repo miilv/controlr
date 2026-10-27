@@ -32,7 +32,7 @@ from pathlib import Path
 import numpy as np
 
 from dojo.simlab import paths
-from dojo.simlab.gripobs import GripObs
+from dojo.simlab.grip_source import GripSource
 from dojo.simlab.runner import RoboDojoRunner, jsonable
 
 PROXY_TAG = "proxy: isaac-5.1 physics-only + isaac-6.0 render on demand (not the official renderer)"
@@ -90,7 +90,7 @@ class ProxyEpisode:
         self.workdir = Path(workdir)
         self.run = RoboDojoRunner(task, physics_only=True, need_planner=False, workdir=str(self.workdir / "work"))
         self.n_obs = 0
-        self.grip = GripObs()                  # DOJO_GRIP_OBS: RoboDojo's gripper reading or the strict command
+        self.grip = GripSource()               # DOJO_GRIP_SOURCE: the strict command (default) or RoboDojo's reading
 
     def reset(self, layout: dict) -> dict:
         t0 = time.perf_counter()
@@ -136,7 +136,7 @@ class RenderedEpisode:
         self.workdir = Path(workdir)
         self.run = RoboDojoRunner(task, physics_only=False, need_planner=False, workdir=str(self.workdir / "work"))
         self.n_obs = 0
-        self.grip = GripObs()
+        self.grip = GripSource()
 
     def reset(self, layout: dict) -> dict:
         t0 = time.perf_counter()
@@ -283,7 +283,7 @@ def run_eval(task: str, layout_files: list[str], policy, out: Path, dev_layout_i
               f"observe {res['observe_s_median']:.2f}s (render {np.median(rc.render_s[-len(obs_s):]):.2f}s) "
               f"reset {info['reset_s']:.1f}s + stage {info['render_stage_s']:.1f}s", flush=True)
     ok = [d for d in details.values() if not d.get("unstable")]
-    result = {"proxy": PROXY_TAG, "task": task, "eval_time": len(ok), "grip_obs": ep.grip.mode,
+    result = {"proxy": PROXY_TAG, "task": task, "eval_time": len(ok), "grip_source": ep.grip.mode,
               "success_rate": float(np.mean([d["success"] for d in ok])) if ok else 0.0,
               "score": float(np.mean([d["score"] for d in ok])) * 100 if ok else 0.0,
               "render_s_median": float(np.median(rc.render_s)) if rc.render_s else None,
