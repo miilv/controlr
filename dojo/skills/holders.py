@@ -329,9 +329,6 @@ EGG_DROP_OFFSETS = (0.007, 0.012)   # m: a lying egg is let go with its centre t
                               # (centred, a lying egg spans the hole and can stay). 12 mm: a back hole under the open lid,
                               # the egg pointing at the lid and moved to the front
 EGG_DROP_CLEAR = 0.002        # m: its underside over the far rim at the release
-EGG_DROP_TRIES = 260          # drop targets planned at most per egg (planning time)
-EGG_DROP_SPINS = (-25.0, 25.0, -45.0, 45.0)   # deg about its long axis when no drop plans as held (a rolled pick's hand
-                                              # is tilted at the target; egg_press2: 'no drop plan, unreachable')
 EGG_STAND_FALLBACK = True     # no lying drop plans (the back holes, under the open lid): stand the held egg up instead
 STAND_PLACE_KW = {"servo": True, "fingers_out": True, "probe": False, "hover_clear": 0.008, "descend_rad": 0.03,
                   "pre_h": 0.05, "approach_rad": 0.05, "ease": 6}
@@ -378,7 +375,7 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
 
 
 def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OFFSETS, clear: float = EGG_DROP_CLEAR,
-                     yaws=range(0, 360, 30), away_from=None, spins=(0.0,)) -> list[tuple[float, float, float, np.ndarray]]:
+                     yaws=range(0, 360, 30), away_from=None) -> list[tuple[float, float, float, np.ndarray]]:
     """Poses of a lying object carried as it is held (``R_now`` turned about the vertical by ``yaws``): its bbox centre
     ``offset`` along its horizontal long axis (either way) from the hole centre, as low as its underside clears the far
     rim by ``clear`` (an ellipsoid of the bbox's half extents). (offset, yaw deg, side, T), smaller offsets first."""
@@ -390,21 +387,17 @@ def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OF
     for off in offsets:
         x = (r_h - off) / a_
         z_c = plate_top + b_ * math.sqrt(max(0.0, 1.0 - x * x)) + clear
-        e_k = np.zeros(3)
-        e_k[k] = 1.0
-        for spin in spins:                   # turned about its own long axis (round: the same egg, another hand roll)
-            for yd in yaws:
-                c_, s_ = math.cos(math.radians(yd)), math.sin(math.radians(yd))
-                R = np.array([[c_, -s_, 0.0], [s_, c_, 0.0], [0.0, 0.0, 1.0]]) @ np.asarray(R_now, float) @ \
-                    _rot(e_k, math.radians(spin))
-                u = R[:, k].copy()
-                u[2] = 0.0
-                if np.linalg.norm(u) < 0.3:
-                    continue
-                u /= np.linalg.norm(u)
-                for side in (1.0, -1.0):
-                    cw = np.r_[np.asarray(hole["center"], float)[:2] + side * off * u[:2], z_c]
-                    out.append((float(off), float(yd), side, T_from(cw - R @ o.asset.center, R)))
+        for yd in yaws:
+            c_, s_ = math.cos(math.radians(yd)), math.sin(math.radians(yd))
+            R = np.array([[c_, -s_, 0.0], [s_, c_, 0.0], [0.0, 0.0, 1.0]]) @ np.asarray(R_now, float)
+            u = R[:, k].copy()
+            u[2] = 0.0
+            if np.linalg.norm(u) < 0.3:
+                continue
+            u /= np.linalg.norm(u)
+            for side in (1.0, -1.0):
+                cw = np.r_[np.asarray(hole["center"], float)[:2] + side * off * u[:2], z_c]
+                out.append((float(off), float(yd), side, T_from(cw - R @ o.asset.center, R)))
     if away_from is not None:
         # the far end on the holder's outer rim first: with its far end on the 5 mm wall between two holes an egg
         # straddles them (egg_press2: 2 of 5 wedged 2-5 mm over the plate, pressing did not free them)
@@ -698,18 +691,17 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             w = sk.refresh()
             o = w.obj(lab)
             pl, last = None, ""
-            mid = np.mean([x["center"] for x in holes], axis=0)
-            cands = [(h, t) for h in free for t in egg_drop_targets(o, h, plate_top, o.R, away_from=mid)]
-            cands += [(h, t) for h in free for t in egg_drop_targets(o, h, plate_top, o.R, away_from=mid,
-                                                                      spins=EGG_DROP_SPINS, offsets=EGG_DROP_OFFSETS[:1],
-                                                                      yaws=range(0, 360, 60))]
-            for h, (off, yd, side, T) in cands[:EGG_DROP_TRIES]:
-                q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0, pre_h=0.05, ignore=ignore, descend_rad=0.03,
-                                  settle=2, retreat=0.04)
-                if not isinstance(q, SkillResult):
-                    pl = (h, yd, side, q, off)
+            for h in free:                 # front holes first (``holes`` order)
+                for off, yd, side, T in egg_drop_targets(o, h, plate_top, o.R,
+                                                         away_from=np.mean([x["center"] for x in holes], axis=0)):
+                    q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0, pre_h=0.05, ignore=ignore, descend_rad=0.03,
+                                      settle=2, retreat=0.04)
+                    if not isinstance(q, SkillResult):
+                        pl = (h, yd, side, q, off)
+                        break
+                    last = q.note
+                if pl:
                     break
-                last = q.note
             if pl is None and EGG_STAND_FALLBACK:
                 # a back hole under the open lid has no room for a lying egg: stood up in the pads (a level pinch turns
                 # it about the pads' axis), let go with the fingertips over the body
