@@ -321,6 +321,7 @@ def wall_clearance_v(c, prof: dict, pts_w: np.ndarray) -> float:
 EGG_WALL_CLEAR = -0.010       # m: dense finger samples at most this far into a container's inner surface profile (grasp
                               # + descent). egg_v6 traces: hands that went down had >= -12.6 mm, blocked ones <= -17 mm
                               # (the profile is the max over 4 mm radius bins of a woven mesh; the collider is leaner)
+EGG_ENDS = False              # pick eggs by their tips too (last)
 EGG_PUSH_OK = -0.003         # m: the fingers may push a neighbouring egg this far (it rolls aside)
 EGG_LIFT_OVER = 0.045         # m: an object picked inside a container is lifted until its centre is this far over the rim
 EGG_DROP_OFFSETS = (0.007, 0.012)   # m: a lying egg is let go with its centre this far along its long axis off the hole
@@ -340,9 +341,11 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
     pre-grasp is moved there)."""
     import dataclasses
     o = sk.world.obj(label)
-    cands = round_grasps(o, sk.kin, arm, rolls=(0.0,), tilts=(0.0,), ends=True)
+    cands = round_grasps(o, sk.kin, arm, rolls=(0.0,), tilts=(0.0,), ends=False)
     cands += [g for g in round_grasps(o, sk.kin, arm, rolls=(12.0, -12.0, 25.0, -25.0), tilts=(0.0, 20.0, -20.0),
                                       ends=False)]
+    if EGG_ENDS:                                    # pads on its two tips: they slipped (egg_drop1 100000: rose 1 mm)
+        cands += [g for g in round_grasps(o, sk.kin, arm, rolls=(0.0,), tilts=(0.0,), ends=True) if g.method == "ends"]
     if not cands:                                   # standing on its end, or not round: the usual generators
         cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, -25.0)) + G.candidates(o, sk.kin, arm)
     c = container_of(sk, label)
@@ -396,6 +399,92 @@ def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OF
                 cw = np.r_[np.asarray(hole["center"], float)[:2] + side * off * u[:2], z_c]
                 out.append((float(off), float(yd), side, T_from(cw - R @ o.asset.center, R)))
     return out
+
+
+EGG_NUDGE = 0.03              # m: an egg resting against a container's wall is pushed this far towards its middle
+EGG_NUDGE_GAP = 0.0045        # m: the closed fingertips go down this far outside the egg's side facing the wall
+
+
+def nudge_from_wall(sk: Skills, label: str, wall_clear: float = EGG_WALL_CLEAR) -> SkillResult | None:
+    """Push a round object lying against a round container's wall ``EGG_NUDGE`` towards the container's middle: the
+    closed fingertips go down into the gap between its side and the sloped wall at its widest height (the closing axis
+    along the push, 7 mm thick) and move inward (egg_drop1: eggs resting on the wall's foot had no grasp whose fingers
+    stay out of the wall, 3 of 4 per layout). None when it is not against a wall or no push plans."""
+    o = sk.world.obj(label)
+    c = container_of(sk, label)
+    prof = wall_profile(c) if c is not None else None
+    if prof is None:
+        return None
+    ctr = c.R @ np.r_[prof["center"], 0.0] + c.pos
+    d = np.r_[o.center_w[:2] - ctr[:2], 0.0]
+    if float(np.linalg.norm(d)) < 0.02:
+        return None
+    u = d / np.linalg.norm(d)
+    V = np.asarray(o.asset.mesh[0], float) @ o.R.T + o.pos if o.asset.mesh is not None else o.world_bbox_corners()
+    ext = float(((V[:, :2] - o.center_w[:2]) @ u[:2]).max())         # its side facing the wall
+    z_mid = float(o.center_w[2])
+    from dojo.skills.kinematics import tilted_R
+    out_note = []
+    arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2])))
+    # at its widest height, or higher on its side where the sloped wall leaves the fingertips room (a push above its
+    # middle rolls it the same way)
+    combos = [(a, lean, dz) for dz in (0.0, 0.006, 0.010, 0.014) for a in arms for lean in (0.0, 15.0)]
+    for a, lean, dz in combos:
+        tip0 = np.r_[o.center_w[:2] + u[:2] * (ext + EGG_NUDGE_GAP), z_mid + dz]
+        if True:
+            Rg = tilted_R(math.atan2(u[1], u[0]), 90.0 - lean, math.atan2(u[1], u[0]))     # wrist over the middle
+            x = Rg[:, 0]
+
+            def tcp_at(tip):
+                return T_from(np.asarray(tip, float) - x * TIP_BEYOND_TCP, Rg)
+            path = [tip0 + np.r_[0, 0, 0.06], tip0, tip0 - u * EGG_NUDGE]
+            ok = True
+            for k in range(len(path) - 1):
+                for t in np.linspace(0.0, 1.0, 6):
+                    P = finger_samples(sk.kin, sk.kin.flange_from_tcp(tcp_at(path[k] + t * (path[k + 1] - path[k]))),
+                                       CLOSED)
+                    if wall_clearance_v(c, prof, P) < wall_clear:
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if not ok:
+                out_note.append(f"{a} lean {lean:.0f} +{dz * 1000:.0f}mm: wall")
+                continue
+            T_hi = tcp_at(path[0])
+            to = sk.motion.to_pose(a, sk.ex.q[a], T_hi, FAST, "nudge_approach", gripper=CLOSED, ignore=(label,))
+            if not to.ok:
+                out_note.append(f"{a} lean {lean:.0f}: approach {to.note[:40]}")
+                continue
+            dn = sk.motion.line(a, to.q_end, tcp_at(path[1]), 0.04, "nudge_down", gripper=CLOSED, ignore=(label,))
+            if not dn.ok:
+                out_note.append(f"{a} lean {lean:.0f}: down {dn.note[:40]}")
+                continue
+            ps = sk.motion.line(a, dn.q_end, tcp_at(path[2]), 0.03, "nudge_push", gripper=CLOSED, check=False)
+            if not ps.ok:
+                out_note.append(f"{a} lean {lean:.0f}: push {ps.note[:40]}")
+                continue
+            T_up = tcp_at(path[2])
+            T_up[2, 3] += 0.06
+            up = sk.motion.line(a, ps.q_end, T_up, MEDIUM, "nudge_up", gripper=CLOSED, check=False)
+            pl = ArmPlan(a, sk.ex.q[a].copy(), sk.ex.g[a]).grip(CLOSED, 2, "close_for_push")
+            pl.move(to, "approach").move(dn, "down").move(ps, "push").hold(1, "settle")
+            if up.segments:
+                pl.move(up, "up")
+            p0 = o.center_w.copy()
+            try:
+                sk.ex.run({a: pl}, name=f"nudge {label}")
+            except BudgetExceeded as e:
+                return sk._record(SkillResult(False, "nudge", "step_budget", 0, a, note=str(e)))
+            except EpisodeEnded as e:
+                return sk._record(SkillResult(False, "nudge", "ended", 0, a, note=str(e)))
+            o2 = sk.refresh().obj(label)
+            moved = float(np.dot((o2.center_w - p0)[:2], -u[:2]))
+            return sk._record(SkillResult(moved > 0.008, "nudge", "ok" if moved > 0.008 else "place_miss", pl.steps, a,
+                                          note=f"{label} {moved * 1000:.0f} mm off the wall ({a}, lean {lean:.0f}, "
+                                               f"+{dz * 1000:.0f} mm over its middle)"))
+    sk.log(f"[holes] {label}: no nudge ({'; '.join(out_note)[:200]})")
+    return None
 
 
 # ============================================================================ skill
@@ -471,8 +560,8 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
         w = sk.refresh()
         if any(in_hole(w.obj(lab), h) for h in holes):
             continue
-        ok, bad = False, []
-        for attempt in range(tries):
+        ok, bad, nudged = False, [], set()
+        for attempt in range(tries + 1):
             w = sk.refresh()
             o = w.obj(lab)
             free = [h for h in holes if _hole_free(w, h, objects, lab)]
@@ -495,6 +584,10 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
                     break
                 sk.log(f"[holes] {lab}: {a}: no pick ({r.note[:160]})")
             if pp is None:
+                if lab not in nudged and nudge_from_wall(sk, lab) is not None:
+                    nudged.add(lab)
+                    continue                  # re-plan the pick from where it rolled to
+                sk.log(f"[holes] {lab}: no pick")
                 break
             sk.log(f"[holes] {lab}: {pp.arm} picks ({pp.grasp.method} {pp.grasp.note}, pre {pp.grasp.pre_dist * 1000:.0f} mm)")
             r = sk._record(sk.run_pick(pp))
