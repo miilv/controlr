@@ -2137,6 +2137,32 @@ def test_held_look_never_drops_on_a_single_vision_negative(confirm):
     assert "left" in bel.attached and prov.events[-1]["kept"]                 # still in the jaws
 
 
+@pytest.mark.parametrize("confirm,score,dropped", [({"held": None}, 0.91, True), ({"held": True, "confidence": 0.9}, 0.91, False),
+                                                   ({"held": None}, 0.6, False)])
+def test_held_look_drops_on_jaws_measured_closed_unless_the_head_sees_the_object(confirm, score, dropped):
+    """5.1 xylophone 100002: the mallet was believed 88 mm off, the jaws closed on nothing, held_look measured the
+    opening at 0.0 (evidence "opening", score 0.91) and the head check at the (wrong) pick pose was inconclusive, so the
+    grasp was kept and the strikes hit air. A sure opening negative now stands unless the head view sees the object in
+    the jaws; a weak measurement (score 0.6) still needs the head's agreement."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.held_checker = lambda obs, arm, lab: {"held": False, "confidence": 1.0, "source": "b1", "evidence": "opening",
+                                               "opening": {"measured": 0.0, "commanded": 0.0, "score": score}}
+    prov.held_confirm = lambda obs, arm, lab: confirm
+    bel = prov.belief
+    o = bel.objects["block_1"]
+    z0 = float(bel.kin.tcp("left", bel.q["left"])[2, 3])
+    bel.attached["left"] = ("block_1", np.eye(4))
+    bel.grasp_z["left"] = (z0 - 0.05, 1, np.r_[o.pos, o.quat].copy())
+    prov._held_check(b.obs)
+    assert ("left" not in bel.attached) == dropped
+    assert bool(prov.events[-1].get("dropped")) == dropped and bool(prov.events[-1].get("kept")) == (not dropped)
+
+
 def test_a_none_ok_prediction_is_not_adopted_and_drops_the_twin_chain():
     from dojo.runtime.belief import RuntimeProvider
     from dojo.runtime.verifier import BundleVerifier

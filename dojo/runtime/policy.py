@@ -178,6 +178,9 @@ class RuntimeConfig:
     # off | b1 | b1_then_agent (B1 unless its confidence < 0.5 or dark_risk, then one agent call); a confident
     # "not held" takes the object out of the jaws in the belief
     held_look: str = "off"
+    held_opening_score: float = 0.9     # a held_look "not held" from the jaw opening (evidence "opening", confidence >= 0.9)
+                                        # with at least this measurement score drops the grasp unless the head check sees
+                                        # the object in the jaws (before: only when it also saw it at the pick pose); > 1 = off
     # mode perception: belt tracking (B1 re-reads every 4 steps while refreshing, a line fit per object over 40 steps;
     # moving objects' belief poses follow the fit): auto = on iff the scene has a conveyor object | on | off
     track_moving: str = "auto"
@@ -387,6 +390,7 @@ class RuntimePolicy:
                                                                                       and cfg.agentic == "budget")))
         if cfg.mode == "perception" and cfg.held_look != "off":
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
+            prov.held_opening_score = float(cfg.held_opening_score)
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
