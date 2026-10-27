@@ -182,7 +182,6 @@ def cmd_run(a):
 
 def cmd_refine(a):
     """H2 offline: B1's render-and-compare seeded by the agent's answer (agent_<tag>.json -> agent_<tag>_ref.json)."""
-    import os
     import zlib
 
     from .. import j1_adapter
