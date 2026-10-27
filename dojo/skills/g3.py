@@ -234,6 +234,13 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                                   for o in sk.refresh().task_objects()}})
     rec["category"] = classify(res_j, reward, hist)
     rec["missing_meshes"] = sorted(getattr(assets, "missing_meshes", ()))        # bboxes stood in for these
+    try:
+        gfin = env.garment_gt() if hasattr(env, "garment_gt") else None
+    except Exception:  # noqa: BLE001 (no garment records in this task)
+        gfin = None
+    if gfin is not None:
+        rec["garment_final"] = {k: np.round(v, 4).tolist() for k, v in gfin["keypoints"].items()}
+        rec["garment_quat"] = np.round(np.asarray(gfin["quat"], float), 4).tolist() if gfin.get("quat") else None
     if mode_b or belief_offsets or held_pose or held_belief or freeze_touched or confirm_pose or belief_drop:
         # with these hooks ``final_objects`` is the BELIEF (the provider's refresh); the true poses for comparisons
         rec["final_true"] = {r["label"]: np.round(np.r_[r["pos"], r["quat"]], 4).tolist() for r in env.gt_objects()
