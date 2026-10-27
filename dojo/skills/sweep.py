@@ -103,7 +103,9 @@ def handle_grasps(sk: Skills, tool, arm: str) -> list:
             # nearest the head's root first (the least lever on a level carry), straight down first
             g.score = float(g.score) + 2.0 * abs(float(p[k] - mid)) + 0.5 * (1.0 + float(g.T[2, 0]))
             out.append(g)
-    return sorted(out, key=lambda g: g.score)
+    # box grasps first (twin probe: a box pinch 7 mm into the head held with 5 mm drift; antipodal / slice ones on the
+    # bristles caught nothing)
+    return sorted(out, key=lambda g: (g.method != "box", g.score))
 
 
 def _pick_tool(sk: Skills, tool: str, arm: str):
