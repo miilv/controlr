@@ -138,40 +138,70 @@ PY
   cat "$OUT/scope_stats.json"
 ' _ "${args[@]}" &
 scope_pid=$!
-trap 'echo "[integ] stopping scope $UNIT" >&2; systemctl --user stop "$UNIT.scope" 2>/dev/null; kill "$scope_pid" 2>/dev/null' TERM INT
-# watchdog: a rendered episode can freeze inside a Kit step (5.1 on compute5: a zenity "Failed to open display" every 2 min,
-# no step for 44 min), where the driver's --episode-max-minutes check never runs. No env-step progress in integ_eval.log
-# for INTEG_WATCHDOG_S (300) while the whole scope burns under INTEG_WATCHDOG_CORES (0.5; planning keeps it busy): stop the
-# scope, write an infra_failure row for the frozen layout, exit 4 (the runner re-queues the layouts left once)
-WD_S="${INTEG_WATCHDOG_S:-300}" WD_CORES="${INTEG_WATCHDOG_CORES:-0.5}" WD_FIRED=""
-cg_usage() {
-  local cg; cg=$(systemctl --user show -p ControlGroup --value "$UNIT.scope" 2>/dev/null)
-  if [[ -n "$cg" && -f "/sys/fs/cgroup$cg/cpu.stat" ]]; then awk '/usage_usec/ {print $2}' "/sys/fs/cgroup$cg/cpu.stat"; else echo 0; fi
+cg_path() { local cg; cg=$(timeout 10 systemctl --user show -p ControlGroup --value "$UNIT.scope" 2>/dev/null); [[ -n "$cg" ]] && echo "/sys/fs/cgroup$cg"; }
+kill_scope() {
+  # TERM the scope, then SIGKILL whatever is left after INTEG_KILL_GRACE_S (90): a Kit app on a GUI dialog ignores TERM and
+  # `systemctl --user stop` then hangs (compute8 2026-10-27: heavy lock 1 held 45 min until a manual kill -9). Every
+  # systemctl call is bounded; the cgroup's own process list is the fallback.
+  local cg; cg=$(cg_path)
+  timeout 10 systemctl --user kill -s TERM "$UNIT.scope" 2>/dev/null; kill "$scope_pid" 2>/dev/null
+  for i in $(seq "${INTEG_KILL_GRACE_S:-90}"); do
+    [[ -n "$cg" && -s "$cg/cgroup.procs" ]] || break
+    sleep 1
+  done
+  if [[ -n "$cg" && -s "$cg/cgroup.procs" ]]; then
+    echo "[integ] scope $UNIT ignored TERM: SIGKILL" >&2
+    timeout 10 systemctl --user kill -s KILL "$UNIT.scope" 2>/dev/null
+    for p in $(cat "$cg/cgroup.procs" 2>/dev/null); do kill -9 "$p" 2>/dev/null; done
+  fi
+  timeout 15 systemctl --user stop "$UNIT.scope" 2>/dev/null || true
 }
-progress() {          # (episodes finished, last env step) from the driver's log
+trap 'echo "[integ] stopping scope $UNIT" >&2; kill_scope' TERM INT
+# watchdog: a rendered episode can freeze inside a Kit step (5.1: a zenity "Failed to open display" every 2 min, no step for
+# 44 min), where the driver's --episode-max-minutes check never runs. Hung when, with no env-step / episode progress in
+# integ_eval.log for
+#   INTEG_WATCHDOG_HARD_S (600): always;
+#   INTEG_WATCHDOG_S (300): when Kit logged a GUI dialog (zenity / "Failed to open display") since the last progress, or
+#     the whole scope burned under INTEG_WATCHDOG_CORES (0.5; planning keeps it busy).
+# Then: kill the scope (TERM, SIGKILL after 90 s), an infra_failure row for the frozen layout, exit 4 (the runner re-queues
+# the layouts left once).
+WD_S="${INTEG_WATCHDOG_S:-300}" WD_HARD_S="${INTEG_WATCHDOG_HARD_S:-600}" WD_CORES="${INTEG_WATCHDOG_CORES:-0.5}" WD_FIRED=""
+cg_usage() {
+  local cg; cg=$(cg_path)
+  if [[ -n "$cg" && -f "$cg/cpu.stat" ]]; then awk '/usage_usec/ {print $2}' "$cg/cpu.stat"; else echo 0; fi
+}
+progress() {          # "(episodes finished) (last env step)" and the GUI-dialog line count, from the driver's log
   python3 - "$OUT/integ_eval.log" <<'PY' 2>/dev/null
 import re, sys
 t = open(sys.argv[1], "rb").read().decode("utf-8", "replace")
 s = re.findall(r"step: (?:\x1b\[[0-9;]*m)?(\d+) /", t[-40000:])
-print(t.count("[integ] "), s[-1] if s else "")
+print(f"{t.count('[integ] ')}:{s[-1] if s else ''}", t.count("Failed to open display") + t.count("zenity"))
 PY
 }
-wd_tok="" wd_t=$(date +%s) wd_cpu=$(cg_usage)
+wd_tok="" wd_zen=0 wd_t=$(date +%s) wd_ct=$(date +%s) wd_cpu=$(cg_usage)
 while kill -0 "$scope_pid" 2>/dev/null; do
   sleep 20 & wait $!
-  if [[ ! -f "$OUT/integ_eval.log" ]]; then wd_t=$(date +%s) wd_cpu=$(cg_usage); continue; fi    # services booting
-  tok=$(progress)
-  if [[ "$tok" != "$wd_tok" ]]; then wd_tok=$tok wd_t=$(date +%s) wd_cpu=$(cg_usage); continue; fi
-  el=$(( $(date +%s) - wd_t ))
+  now=$(date +%s)
+  if [[ ! -f "$OUT/integ_eval.log" ]]; then wd_t=$now wd_ct=$now wd_cpu=$(cg_usage); continue; fi    # services booting
+  read -r tok zen < <(progress)
+  if [[ "$tok" != "$wd_tok" ]]; then wd_tok=$tok wd_zen=${zen:-0} wd_t=$now wd_ct=$now wd_cpu=$(cg_usage); continue; fi
+  el=$(( now - wd_t )); cel=$(( now - wd_ct ))
   (( el < WD_S )) && continue
   cpu=$(cg_usage)
-  if python3 -c "import sys; sys.exit(0 if ($cpu - $wd_cpu) / 1e6 / $el < $WD_CORES else 1)"; then
-    WD_FIRED="no env step for ${el} s (at step '${tok#* }'), scope CPU $(python3 -c "print(round(($cpu - $wd_cpu) / 1e6 / $el, 2))") cores"
-    echo "[integ] watchdog: $WD_FIRED: stopping the scope" >&2
-    systemctl --user stop "$UNIT.scope" 2>/dev/null; kill "$scope_pid" 2>/dev/null
+  cores=$(python3 -c "print(round(($cpu - $wd_cpu) / 1e6 / max(1, $cel), 2))")
+  why=""
+  if (( el >= WD_HARD_S )); then why="no env step for ${el} s"
+  elif (( ${zen:-0} > wd_zen )); then why="no env step for ${el} s, a Kit GUI dialog (zenity) since"
+  elif (( cel >= WD_S )) && python3 -c "import sys; sys.exit(0 if $cores < $WD_CORES else 1)"; then
+    why="no env step for ${el} s at $cores cores"
+  fi
+  if [[ -n "$why" ]]; then
+    WD_FIRED="$why (at ${tok}), scope CPU $cores cores"
+    echo "[integ] watchdog: $WD_FIRED: killing the scope" >&2
+    kill_scope
     break
   fi
-  wd_t=$(date +%s) wd_cpu=$cpu                     # busy (planning, perception): a new window
+  if (( cel >= WD_S )); then wd_ct=$now wd_cpu=$cpu; fi   # busy (planning): a new CPU window, the hard limit keeps counting
 done
 wait "$scope_pid"
 trap - TERM INT
@@ -196,7 +226,8 @@ PY
 fi
 # a service's python child can outlive the kill of its wrapper (rdpy.sh / isaac6.sh) and keeps the scope, and the GPU
 # lock fd it inherited, alive: 2026-10-26 a twin that never got ready held ~/dojo-gpu.lock for 30 min after its job
-systemctl --user stop "$UNIT.scope" 2>/dev/null || true
+[[ -n "$(cg_path)" && -s "$(cg_path)/cgroup.procs" ]] && kill_scope
+timeout 15 systemctl --user stop "$UNIT.scope" 2>/dev/null || true
 rm -f "$OUT/stage_current.usd"; rm -rf "$OUT/work"          # scratch (37 MB stage export per job; disk is shared)
 echo "[integ] results: $OUT"
 exec 9>&-
