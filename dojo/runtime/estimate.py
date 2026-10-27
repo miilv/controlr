@@ -253,6 +253,16 @@ def _assign(C: np.ndarray) -> list[tuple[int, int]]:
     return out
 
 
+PLANNING_ORDER = ("agentic2", "searched", "fused", "agentic0", "scan", "initial")
+
+
+def planning_record(recs: dict) -> tuple[str | None, dict | None]:
+    """The record the belief was last initialised from before the skills ran (the policy's pipeline: initial -> scan ->
+    agentic0 -> fused -> searched -> agentic2; each later one supersedes the earlier). (name, record)."""
+    name = next((k for k in PLANNING_ORDER if (recs or {}).get(k)), None)
+    return name, (recs[name] if name else None)
+
+
 def pose_errors(est: dict[str, ObjectState], gt: dict[str, ObjectState]) -> dict:
     """DEV-ONLY scorer. Labels of same-category objects are interchangeable for the skills (roles come from
     geometry and position), so estimates are matched to GT objects per category by position (Hungarian on
@@ -286,4 +296,4 @@ def pose_errors(est: dict[str, ObjectState], gt: dict[str, ObjectState]) -> dict
 
 
 __all__ = ["objects_from_record", "objects_from_gt_rows", "est_objects", "estimate_to_layout", "robot_from_state",
-           "flagged", "pose_errors", "iter_records"]
+           "flagged", "pose_errors", "iter_records", "planning_record", "PLANNING_ORDER"]
