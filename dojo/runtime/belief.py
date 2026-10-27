@@ -405,6 +405,7 @@ class RuntimeProvider:
         self.track_vel_span = 16                # ... spanning this many steps
         self._tracks: dict = {}                 # label -> [(step, xy)] reads
         self._id_votes: dict = {}               # label -> [(asset key, confidence)] of its latest reads
+        self._pose_votes: dict = {}             # label -> [(asset key, confidence, up axis in the object, quat, z)]
         self.track_id_window = 4
         self._tentative: list = []              # unmatched reads of the last re-read: (step, xy, ObjectState)
         self._unconfirmed: dict = {}            # label -> re-reads that did not see a never-confirmed object
@@ -791,11 +792,24 @@ class RuntimeProvider:
             self.events.append({"kind": "track_identity", "label": label, "from": o.asset.key, "to": best,
                                 "votes": {k: round(x, 2) for k, x in v.items()}})
             o.asset, o.category, o.idx = e.asset, e.category, e.idx
+        ph = self._pose_votes.setdefault(label, [])
+        ph.append((e.asset.key, max(float(e.confidence), 0.05), np.asarray(e.R, float)[2, :].copy(),
+                   np.asarray(e.quat, float).copy(), float(e.pos[2])))
+        del ph[:-self.track_id_window]
         if o.asset is not None and o.asset.key == e.asset.key:
-            # the read's stable pose: its orientation and its height (5.1 100000: a rider that joined as a "camera"
-            # kept that read's height after the votes made it a puppet, 47 mm above it: the jaws closed above it)
-            o.quat = np.asarray(e.quat, float).copy()
-            o.pos = np.r_[o.pos[:2], float(e.pos[2])]
+            # the stable pose (orientation and height) of the identity's own reads: a rider that joined as a "camera"
+            # kept that read's height after the votes made it a puppet, 47 mm above it (5.1 100000: the jaws closed
+            # above it). A rider keeps its stable pose on the belt: the pose most of its latest reads agree on (same
+            # up axis within 20 deg), from the latest of them (one read of a bottle lying, 44 mm lower, does not move it)
+            same = [x for x in ph if x[0] == o.asset.key]
+            cos_t = float(np.cos(np.radians(20.0)))
+
+            def support(x):
+                return sum(c for _, c, u, _, _ in same if float(u @ x[2]) > cos_t)
+            lead = max(range(len(same)), key=lambda i: (support(same[i]), i))
+            pick = [x for x in same if float(x[2] @ same[lead][2]) > cos_t][-1]
+            o.quat = pick[3].copy()
+            o.pos = np.r_[o.pos[:2], pick[4]]
 
     def _rider_velocity(self, lab: str, vb=None) -> np.ndarray | None:
         """The velocity a tracked object moves with: zero when its own long track says it is at rest, else the belt's
