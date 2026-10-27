@@ -385,7 +385,7 @@ def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm:
     try:
         other = "right" if arm == "left" else "left"
         if last_arm == other:
-            sk.ex.run({other: sk.plan_home(other)}, name="home before the turn")
+            sk.ex.run({other: sk.plan_home(other)}, name="home before the turn", use_reserve=True)
         o = sk.refresh().obj(label)
         Tt = o.T @ T_ko
         pre = Tt.copy()
@@ -399,7 +399,9 @@ def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm:
             return sk._record(SkillResult(False, "turn", "ik_fail", 0, arm, note=f"approach: {mi.note[:120]}"))
         p = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(g_open, 0).move(mp).move(mi).hold(1)
         p.grip(CLOSED, 4, "turn_close").hold(3)
-        sk.ex.run({arm: p}, name=f"grip {label} in {receptacle}")
+        # the grip and the turn complete an insert-and-turn: they may use the finish's step reserve (G3: inserted at
+        # step 230 of 300, the turn found 29 of the 31 steps it needed)
+        sk.ex.run({arm: p}, name=f"grip {label} in {receptacle}", use_reserve=True)
     except EpisodeEnded as e:
         return sk._record(SkillResult(True, "turn", "ended", 0, arm, note=str(e)))
     except BudgetExceeded as e:
@@ -454,7 +456,7 @@ def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_
     from dojo.skills.motion import Segment
     p.move([Segment(np.vstack([sk.ex.q[arm]] + mv), 1.0)], "turn").hold(3, "turned")
     try:
-        sk.ex.run({arm: p}, name=f"turn {label}")
+        sk.ex.run({arm: p}, name=f"turn {label}", use_reserve=True)
     except EpisodeEnded as e:
         return SkillResult(True, "turn", "ended", sk.ex.steps_used - n0, arm,
                            note=f"{label} turned {math.degrees(turn * frac):.0f} deg: {e}")
