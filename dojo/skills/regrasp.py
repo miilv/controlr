@@ -359,15 +359,21 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     approach and close, the giver's release (open, up 6 cm, home), then the taker's place through ``place_kw`` (held on
     after a turn)."""
     from dojo.skills.motion import MEDIUM
+    alt = None
     if place_kw.get("turn") and getattr(sk, "refine", None) is not None:
         # mode B: first the wrist of the arm nearer the receptacle looks straight down at it (a lock's yaw is only seen
         # in its keyhole, a few pixels from the head camera: perceived 0 deg, truly 10.7, rendered 5.1); a refined pose
         # moves the targets with it, before anything is planned on them
         rec = sk.world.obj(receptacle)
         look_arm = min(ARMS, key=lambda a_: float(np.linalg.norm(sk.kin.base(a_)[:2, 3] - rec.pos[:2])))
-        targets = [_look_over(sk, look_arm, receptacle, T) for T in targets[:1]] + list(targets[1:])
+        T0, yaw_src = _look_over(sk, look_arm, receptacle, targets[0])
+        targets = [T0] + list(targets[1:])
+        if yaw_src == "top_feature_axis":
+            # the keyhole's axis is read, its side is not: the target turned half a turn is tried when the first stops
+            # on the lock's top
+            alt = _turned_about(T0, sk.world.obj(receptacle).pos, math.pi)
     mode_b = not getattr(sk, "remeasure", True)
-    h = plan_rest_handover(sk, label, targets, receptacle, 0.0, place_kw, upright=mode_b and bool(place_kw.get("turn")))
+    h = plan_rest_handover(sk, label, targets, receptacle, 0.0, place_kw)
     if isinstance(h, SkillResult):
         return sk._record(h)
     g_arm, t_arm, pp = h["giver"], h["taker"], h["pick"]
@@ -388,7 +394,15 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
             return sk._record(SkillResult(False, "rest_handover", "ik_fail", 0, g_arm, note=f"carry: {mv.note[:120]}"))
         for seg in mv.segments:
             seg.ease = 4
-        sk.ex.run({g_arm: ArmPlan(g_arm, sk.ex.q[g_arm].copy(), CLOSED).move(mv).hold(3)}, name="rest handover carry")
+        plans = {g_arm: ArmPlan(g_arm, sk.ex.q[g_arm].copy(), CLOSED).move(mv).hold(3)}
+        if getattr(sk, "looked_with", None) == t_arm:
+            # the taker is still over the lock from the look: home while the giver carries (its unchecked move to the
+            # pre-grasp from over the lock swept through the giver's hand and knocked the key out: G3 100004, lag 78 mm;
+            # rendered 5.1 100004, replayed: the key pushed 20 mm in the giver's pads, dropped; home after the look
+            # on its own cost 15 steps and four episodes ran out of the 300)
+            plans[t_arm] = sk.plan_home(t_arm)
+            sk.looked_with = None
+        sk.ex.run(plans, name="rest handover carry")
         w = sk.refresh()
         o = w.obj(label)
         T_rel_g = inv_T(sk.kin.tcp(g_arm, w.arms[g_arm].q)) @ o.T
@@ -464,11 +478,12 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     except (BudgetExceeded, EpisodeEnded) as e:
         return sk._record(SkillResult(False, "place", "step_budget" if isinstance(e, BudgetExceeded) else "ended", 0,
                                       t_arm, note=str(e)))
-    if mode_b and turn:
-        # mode B: a guarded descent by proprio from the hover; a key stopped on its lock's top is turned about its axis
-        # under a light press until it drops in (``keyed_sweep``); let go; the turn with a fresh grasp in the lock
+    if mode_b and turn and getattr(sk.provider, "held_pose", None) is None:
+        # mode B without an in-hand read (submit_v1: held_pose off; with one, the place below runs the held protocol and
+        # the servo on its read, G3 b10 mode B 5/14): a guarded descent by proprio from the hover; a key stopped on its
+        # lock's top is probed about its axis until it drops in (``keyed_sweep``); the turn held, else with a fresh grasp
         # (the place tail's non-probing branch servos on the predicted transform and never feels the lock's top)
-        r, T_seat = _blind_insert(sk, t_arm, label, h["target"], receptacle)
+        r, T_seat = _blind_insert(sk, t_arm, label, h["target"], receptacle, alt=alt)
         r = sk._record(r)
         if r.status in ("ended", "step_budget", "ik_fail"):
             return r
@@ -477,6 +492,10 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
             return rt
         _let_go(sk, t_arm, label)             # this grasp's wrist does not reach the turn: a fresh one in the lock
         return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(T_seat, kw))
+    if mode_b:
+        # with an in-hand read available (runtime held_pose "request" / "auto", G3 --held-pose): this place asks for it
+        # (#136: insert_into does not by default; the key's tip must meet a 6 mm hole)
+        kw["held_read"] = True
     pl = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
     held_on = False
     if not isinstance(pl, PlacePlan) and turn:
@@ -563,7 +582,7 @@ def _descend(sk: Skills, arm: str, T_cmd, z_to: float, step: float, thr: float, 
     return True, n
 
 
-def _blind_insert(sk: Skills, arm: str, label: str, T_target, receptacle: str):
+def _blind_insert(sk: Skills, arm: str, label: str, T_target, receptacle: str, alt=None):
     """Mode B: the held object from over the receptacle down to ``T_target`` (on its believed in-hand transform) by
     proprio (``_vlag``): unchecked to just over the receptacle's top, ``FINE_STEP`` steps through the zone where its bit
     meets the top, ``COARSE_STEP`` steps after; stopped in that zone, the keyed sweep (``keyed_sweep``). Returns
@@ -592,9 +611,23 @@ def _blind_insert(sk: Skills, arm: str, label: str, T_target, receptacle: str):
         base = _vlag(sk, arm)
         T_c = T_f.copy()
         ok, n = _descend(sk, arm, T_c, z_fine1, FINE_STEP, FINE_LAG, base)
+        if not ok and alt is not None:
+            # the keyhole's side unsure ("top_feature_axis"): the target turned half a turn, from over the zone again
+            T_a = sk._sag(arm, sk.refresh()) @ (np.asarray(alt, float) @ inv_T(T_rel))
+            T_a[2, 3] = z_fine0
+            ma = sk.motion.to_pose(arm, sk.ex.q[arm], T_a, 0.05, "blind_alt", gripper=CLOSED, check=False)
+            if ma.ok:
+                sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move(ma).hold(1)}, name=f"{label} half a turn")
+                T_c = T_a.copy()
+                ok, n = _descend(sk, arm, T_c, z_fine1, FINE_STEP, FINE_LAG, base)
+                note = f"half a turn: {'in' if ok else 'stopped too'}"
+                if ok:
+                    T_seat = np.asarray(alt, float)
+                    T_target = T_seat
+                    T_goal = T_target @ inv_T(T_rel)
         if not ok:
             sw, d = keyed_sweep(sk, arm, label, T_c, base)
-            note = sw.note
+            note = (note + "; " if note else "") + sw.note
             if d is None:
                 return sw, T_target
             T_seat = _turned(T_target, math.radians(d))
@@ -670,48 +703,85 @@ def _let_go(sk: Skills, arm: str, label: str) -> None:
     sk.held[arm] = None
 
 
-def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = LOOK_HEIGHT) -> np.ndarray:
-    """Mode B: ``arm``'s hand straight down ``height`` over the receptacle, one still step, the refine hook on it (kind
-    "look"); the target moved by however the receptacle's believed pose changed (the target is fixed in its frame).
-    The target unchanged when no look plans or nothing changed."""
-    from dojo.skills.kinematics import down_R
-    from dojo.skills.motion import FAST
+def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = LOOK_HEIGHT):
+    """Mode B: a hand straight down ``height`` over the receptacle (``arm`` first, then the other; lower when out of
+    reach), one still step, the refine hook on it (kind "look"; ``_look_read``); the target moved by however the
+    receptacle's believed pose changed (the target is fixed in its frame); the arm that looked in ``sk.looked_with``
+    (it stays over the receptacle: ``rest_handover`` sends it home during the giver's carry). Returns (target,
+    yaw_source): perception's
+    ``yaw_source`` of the read ("top_feature": a keyhole's full-turn yaw and xy; "top_feature_axis": its axis, the side
+    unsure; None: none read), the target unchanged when no look plans or nothing changed."""
     rec = sk.world.obj(receptacle)
     T_rec0 = rec.T.copy()
-    c = rec.center_w
-    mv = None
+    mv, hgt = None, height
     # the nearer arm first, then the other; lower when 18 cm up is out of reach (rendered 5.1 100004: none for the
     # right arm at 18 cm, the look skipped)
     for arm_ in (arm, "left" if arm == "right" else "right"):
         for hgt in (height, height - 0.04, height - 0.07):
-            for yaw in (0.0, math.pi / 2, -math.pi / 2, math.pi):
-                T = T_from(np.array([c[0], c[1], float(rec.top_z) + hgt]), down_R(yaw))
-                mv = sk.motion.to_pose(arm_, sk.ex.q[arm_], T, FAST, "look_receptacle", gripper=OPEN)
-                if mv.ok:
-                    break
-            if mv.ok:
+            mv = _look_move(sk, arm_, rec.center_w[:2], float(rec.top_z) + hgt)
+            if mv is not None:
                 break
-        if mv.ok:
+        if mv is not None:
             arm = arm_
             break
-    if mv is None or not mv.ok:
+    if mv is None:
         sk.log(f"[look_over] {receptacle}: no look pose for either arm")
-        return T_target
+        return T_target, None
+    sk.looked_with = arm
     try:
         sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {receptacle}")
-        sk._refine(receptacle, arm, "look")
-        # home again: the handover's moves are planned from home, and the taker's unchecked move to its pre-grasp from
-        # over the lock swept through the giver's hand and knocked the key out (G3 100004 lag 78 mm; rendered 5.1
-        # 100004 b21, replayed: the key pushed 20 mm in the giver's pads, then dropped)
-        sk.ex.run({arm: sk.plan_home(arm)}, name="home after the look")
+        ys = _look_read(sk, arm, receptacle, hgt)
     except (BudgetExceeded, EpisodeEnded):
-        return T_target
+        return T_target, None
     T_rec1 = sk.world.obj(receptacle).T
     d = T_rec1 @ inv_T(T_rec0)
     moved = float(np.linalg.norm(d[:3, 3])) * 1000
     turned = math.degrees(math.acos(max(-1.0, min(1.0, (float(np.trace(d[:3, :3])) - 1) / 2))))
-    sk.log(f"[look_over] {receptacle}: {arm} {hgt*100:.0f} cm up, refined {moved:.1f} mm / {turned:.1f} deg")
-    return d @ np.asarray(T_target, float) if (moved > 0.2 or turned > 0.3) else T_target
+    sk.log(f"[look_over] {receptacle}: {arm} {hgt*100:.0f} cm up, refined {moved:.1f} mm / {turned:.1f} deg, "
+           f"yaw source {ys}")
+    return (d @ np.asarray(T_target, float) if (moved > 0.2 or turned > 0.3) else T_target), ys
+
+
+def _look_move(sk: Skills, arm: str, xy, z: float):
+    """A planned move of ``arm``'s hand straight down at (xy, z) (four wrist yaws tried), or None."""
+    from dojo.skills.kinematics import down_R
+    from dojo.skills.motion import FAST
+    for yaw in (0.0, math.pi / 2, -math.pi / 2, math.pi):
+        T = T_from(np.array([float(xy[0]), float(xy[1]), z]), down_R(yaw))
+        mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, FAST, "look_receptacle", gripper=OPEN)
+        if mv.ok:
+            return mv
+    return None
+
+
+def _look_read(sk: Skills, arm: str, receptacle: str, hgt: float):
+    """The refine at the look, and once more straight over the receptacle when the first read gave a re-hover hint or
+    no yaw (``sk.last_refine["yaw_source"]`` None: the keyhole not in view; B1 put the lock 18-25 mm off in 3 of 25
+    5.1 frames). Returns the yaw source of the last read."""
+    hint = sk._refine(receptacle, arm, "look")
+    ys = (getattr(sk, "last_refine", None) or {}).get("yaw_source")
+    if ys is not None:
+        return ys
+    rec = sk.world.obj(receptacle)
+    xy = np.asarray(hint[0], float)[:2] if hint is not None else rec.center_w[:2]
+    mv = _look_move(sk, arm, xy, float(rec.top_z) + hgt)
+    if mv is None:
+        return None
+    sk.log(f"[look_over] {receptacle}: re-hover over {np.round(xy, 3).tolist()} ({'hint' if hint is not None else 'no yaw read'})")
+    sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)},
+              name=f"look at {receptacle} again")
+    sk._refine(receptacle, arm, "look")
+    return (getattr(sk, "last_refine", None) or {}).get("yaw_source")
+
+
+def _turned_about(T, c, ang: float) -> np.ndarray:
+    """``T`` turned by ``ang`` (rad) about the vertical through the point ``c``."""
+    R = rot_z(ang)
+    T = np.asarray(T, float).copy()
+    c = np.asarray(c, float)
+    T[:3, :3] = R @ T[:3, :3]
+    T[:2, 3] = c[:2] + (R @ (T[:3, 3] - c))[:2]
+    return T
 
 
 def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm: str | None = None,
