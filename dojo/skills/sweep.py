@@ -132,13 +132,36 @@ def relay_tool(sk: Skills, tool: str, arm: str, near_xy=(0.08, -0.27)) -> SkillR
     ``near_xy`` (in front, between the arms) - the hand-over, through the table."""
     from dojo.skills import library as L
     from dojo.skills.targets import level_R
+    from dojo.skills.geometry import R_to_quat
     o = sk.world.obj(tool)
     giver = _other(arm)
+
+    def taker_can_pick(T_obj) -> bool:
+        saved = (o.pos.copy(), o.quat.copy())
+        o.pos, o.quat = np.asarray(T_obj, float)[:3, 3].copy(), R_to_quat(np.asarray(T_obj, float)[:3, :3])
+        try:
+            pp = sk.plan_pick(tool, arm, grasps=handle_grasps(sk, o, arm), keep=1, lift=0.06,
+                              q_start={a: sk.world.home_q[a] for a in ARMS})
+            return not isinstance(pp, SkillResult)
+        finally:
+            o.pos, o.quat = saved
     for sp in L.free_spots(sk, tool, near_xy=near_xy, clearance=0.02)[:4]:
-        T_sp = L.rest_with_R(sk, tool, sp, level_R(o.R))
+        T0 = L.rest_with_R(sk, tool, sp, level_R(o.R))
+        # every quarter turn about the vertical where the taker can then pick it by its handle (twin: a broom put down
+        # where the right arm reached none of its handle grasps, 0 of 40)
+        targets = []
+        for k in range(4):
+            T = T0.copy()
+            T[:3, :3] = rot_z(k * math.pi / 2) @ T0[:3, :3]
+            c = T0[:3, :3] @ o.asset.center + T0[:3, 3]
+            T[:3, 3] = c - T[:3, :3] @ o.asset.center
+            if taker_can_pick(T):
+                targets.append(T)
+        if not targets:
+            continue
         # the head's root (``handle_grasps``): a 40 g broom pinched at its handle's end swung 17 cm in the pads on the
         # carry, a wide slice across its bristles caught nothing (twin); 7 mm into the head held (5 mm drift)
-        plan = sk.plan_transfer(tool, [T_sp], arms=[giver], yaw_sym=4,
+        plan = sk.plan_transfer(tool, targets, arms=[giver], yaw_sym=1,
                                 grasps=(lambda a, o=o: handle_grasps(sk, o, a)))
         if isinstance(plan, SkillResult):
             continue
@@ -386,11 +409,17 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
         p.grip(OPEN, 6, "drop broom").hold(6, "let_go")
         q = sk.ex.q[pan_arm].copy()
         T2 = sk.kin.tcp(pan_arm, q)
-        T2[2, 3] += 0.06
+        T2[2, 3] += 0.08
         up = sk.motion.line(pan_arm, q, T2, MEDIUM, "pan_let_go", gripper=OPEN, check=False)
-        p2 = ArmPlan(pan_arm, q, CLOSED).grip(OPEN, 6, "open")
+        if not up.ok:
+            # the open fingers must leave the handle before the arm goes home, or the dustpan comes along (twin: dragged
+            # 25 cm on the way home, every swept cube left behind)
+            up = sk.motion.to_pose(pan_arm, q, T2, MEDIUM, "pan_let_go", gripper=OPEN, check=False)
+        p2 = ArmPlan(pan_arm, q, CLOSED).grip(OPEN, 8, "open").hold(4, "let_go")
         if up.ok:
             p2.move(up, "up")
+        else:
+            sk.log(f"[sweep] no lift off the dustpan's handle ({up.note[:60]})")
         sk.ex.run({arm: p, pan_arm: p2}, name="let go")
         for a in ARMS:
             sk.held[a] = None
