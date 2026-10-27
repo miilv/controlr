@@ -6,6 +6,12 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo skills: store_laptop's headset hang never plans: G3 mode A 0/10 stops before the laptop.** The planner
+  picks `hang_on_hooks` for the headset (its `headband_bridge` on `stand`'s `support_cradle`) first, and finds
+  "0 grasp-place pairs" on all of 100000-09. 8-99 of the 96-405 headset grasps are reachable per arm, but none pairs
+  with a reachable hang. The episode then finishes with the laptop untouched (`not_home`, 0.0). Identical on main
+  22f6339 and with #198's frame fix (journal 2026-10-27-dojo-integ-c4 §5; runs compute4
+  `~/dojo-data/integ-c4/g3/laptop_A_{main,pr}`). The laptop stage runs only once this plans.
 - [ ] **dojo: the rest of the articulation root frame (laptop).** `artroot` converts at objects_from_gt,
   estimate_to_layout, the twin's verify rows and eval_g1 (journal 2026-10-27-dojo-integ-c4 §4). Left: (1) dev tools
   that pair GT rows with meshes on their own (`color_calib`, `val_refine`, `val_what`, `review_exp`, `held_data`,
