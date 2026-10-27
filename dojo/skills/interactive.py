@@ -757,6 +757,27 @@ def _track_ik(sk: Skills, a: str, samples: list, q0) -> list | None:
     return qs
 
 
+BELT_LOOK_H = 0.08        # m: the wrist look's height above the descent's first sample (mode B)
+BELT_LOOK_DOWN = 5        # steps from the look down to the descent's start
+
+
+def _belt_look_pose(sk: Skills, a: str, samples: list, track: list, go: float, n_desc_start: int):
+    """The approach to a wrist-look pose ``BELT_LOOK_H`` above the descent's first sample: (approach list, look q), or
+    None when it is unreachable, too far from the descent's start for ``BELT_LOOK_DOWN`` steps, or leaves no time."""
+    from dojo.skills.motion import segment_targets
+    T = samples[0][1].copy()
+    T[2, 3] += BELT_LOOK_H
+    q_first = np.asarray(track[0][0], float)
+    r = sk.kin.ik(a, T, q_first, n_random=0)
+    if not r.ok or float(np.abs(np.asarray(r.q, float) - q_first).max()) > 0.2 * BELT_LOOK_DOWN:
+        return None
+    mv = sk.motion.joint(a, sk.ex.q[a], r.q, FAST_RAD, "belt_look", gripper=go, check=False)
+    app = [(qq, go) for seg in mv.segments for qq in segment_targets(seg.q, seg.step_rad, seg.ease)]
+    if len(app) + BELT_LOOK_DOWN > n_desc_start:
+        return None
+    return app, np.asarray(r.q, float)
+
+
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
                    pull: float = 0.0, skip_methods=()) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
@@ -773,6 +794,13 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
     sk.log(f"[belt] {label}: {a} intercept at +{t} steps ({g.note}), wait {wait}, approach {len(app)}")
     t_plan = sk.ex.steps_used
     p_plan = w.obj(label).pos.copy()
+    # mode B: the wrist look from BELT_LOOK_H above the descent's start, BELT_LOOK_DOWN steps before it (from the
+    # pre-grasp itself the rider fills or leaves the wrist view: 5.1 conveyor, 2 of 9 looks fit; the head track is 30-60
+    # mm off there). The descent's start is re-aimed after the look.
+    look = _belt_look_pose(sk, a, samples, track, go, n_desc_start) if getattr(sk, "refine", None) is not None else None
+    if look is not None:
+        app, q_look = look
+        wait = max(0, n_desc_start - len(app) - BELT_LOOK_DOWN)
     try:
         if wait:
             sk.ex.hold(wait)
@@ -815,6 +843,11 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
             if qs is not None:
                 track = [(qq, go if kind == "open" else 0.0) for kind, qq in qs]
                 sk.log(f"[belt] re-read: shifted the track by {np.round(err * 1000, 1).tolist()} mm")
+        if look is not None:
+            # down from the look to the (re-aimed) descent's start, arriving when the descent is due
+            q0, q1 = np.asarray(sk.ex.q[a], float), np.asarray(track[0][0], float)
+            sk.ex.run_lists({a: [(q0 + (q1 - q0) * k / (BELT_LOOK_DOWN + 1), go) for k in range(1, BELT_LOOK_DOWN + 1)]},
+                            name="belt look down")
         sk.ex.run_lists({a: track}, name=f"belt pick {label}")
         sk.ex.settle(tol=0.01, max_steps=12)            # the arm lags its command on the lift: measure at the top
         sk.ex.hold(2)

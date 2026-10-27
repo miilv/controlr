@@ -423,3 +423,35 @@ def test_match_and_pick_waits_for_a_first_object_when_none_was_read():
     sk.ex.steps_used, sk.arrive = 0, None
     r = I.match_and_pick(sk, ["target0"], conveyor="conveyor", max_wait=40)
     assert r == {"ok": False, "stage": "match", "note": "no object seen on the belt"}
+
+
+def test_belt_wrist_look_pose_is_above_the_descent_and_fits_the_time():
+    """Mode B's belt look: BELT_LOOK_H above the descent's first sample, reached BELT_LOOK_DOWN steps before the descent
+    is due; None when it leaves no time or is unreachable (the look then stays at the pre-grasp)."""
+    from types import SimpleNamespace
+
+    import dojo.skills.interactive as I
+    from dojo.skills.motion import Segment
+    q_first = np.zeros(6)
+    asked = []
+
+    class Kin:
+        def ik(self, a, T, q0, n_random=0):
+            asked.append(T[:3, 3].copy())
+            return SimpleNamespace(ok=T[2, 3] < 2.0, q=q0 + 0.1)
+
+    class Motion:
+        def joint(self, a, q0, q1, step_rad, name, gripper=1.0, check=True):
+            return SimpleNamespace(segments=[Segment(np.stack([np.asarray(q0, float), np.asarray(q1, float)]), 0.16, name, 0)])
+    sk = SimpleNamespace(kin=Kin(), motion=Motion(), ex=SimpleNamespace(q={"left": np.full(6, -0.5)}))
+    T0 = np.eye(4)
+    T0[:3, 3] = (-0.4, -0.1, 0.9)
+    samples, track = [("open", T0)], [(q_first, 0.9)]
+    out = I._belt_look_pose(sk, "left", samples, track, 0.9, n_desc_start=40)
+    assert out is not None and np.allclose(asked[-1], (-0.4, -0.1, 0.9 + I.BELT_LOOK_H))
+    app, q_look = out
+    assert np.allclose(q_look, 0.1) and np.allclose(app[-1][0], 0.1) and app[-1][1] == 0.9
+    assert I._belt_look_pose(sk, "left", samples, track, 0.9, n_desc_start=len(app) + I.BELT_LOOK_DOWN - 1) is None
+    T_hi = T0.copy()
+    T_hi[2, 3] = 1.95                                                   # unreachable once raised
+    assert I._belt_look_pose(sk, "left", [("open", T_hi)], track, 0.9, n_desc_start=40) is None
