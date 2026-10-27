@@ -265,6 +265,7 @@ class Skills:
         self.max_rehovers = int(max_rehovers)       # re-hover hints followed per pick / place (refine hook)
         self.widen_on_none = True                   # twin rejects every candidate: widen (more candidates), re-look
         self.refine_ctx: dict = {}
+        self.last_refine: dict | None = None        # the latest wrist refine's reading (the hook's raw result)
         # labels the wrist refine must not be asked about (perception: tiles in a dense row fit their neighbours;
         # their layout slots are better than a refine there); a place carrying one of them is skipped too
         self.no_refine: set = set()
@@ -276,6 +277,8 @@ class Skills:
         self.confirm_events: list = []              # ``confirm_moved``: what non-grasp actions asked the provider
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
+        # why the twin rejected candidates: {"rejects": {"<kind>: <criterion>": n}, "examples": [...]} (judges' ``why``)
+        self.vreasons = {"rejects": {}, "examples": []}
 
     # ------------------------------------------------------------------ world
     def refresh(self) -> WorldState:
@@ -413,7 +416,10 @@ class Skills:
         if label in self.no_refine or (held is not None and held.label in self.no_refine):
             return None
         self.refine_ctx = {"kind": kind, "label": label, "arm": arm, "held": self.held_pose7(arm)}
+        self.last_refine = None
         out = self.refine(self, label, arm, kind)
+        if self.last_refine is None and isinstance(out, dict):
+            self.last_refine = out              # a hook that does not set the raw reading: its return value
         hint, dz = None, 0.0
         if isinstance(out, dict) and out.get("rehover") is not None:
             hint, dz = out["rehover"], float(out.get("rehover_dz", 0.0))
@@ -1953,6 +1959,19 @@ class Skills:
                 return False
             return _others_still(o, before, {pp.label, *moving})
 
+        def why(o) -> str:
+            """The first criterion the outcome fails ("" = it passes): verify diagnostics."""
+            if o.failed or pp.label not in o.objects:
+                return "failed" if o.failed else "no object"
+            pos = o.objects[pp.label][0]
+            if pos[2] - z0 < 0.6 * max(lift, 0.02):
+                return f"rise {1000 * (pos[2] - z0):.0f} mm < {600 * max(lift, 0.02):.0f}"
+            exp = (self.kin.tcp(pp.arm, o.q[pp.arm]) @ pp.T_tcp_obj)[:3, 3]
+            if np.linalg.norm(pos - exp) > 0.015:
+                return f"in-hand drift {1000 * np.linalg.norm(pos - exp):.0f} mm"
+            return _others_moved(o, before, {pp.label, *moving})
+        j.why = why
+
         def score(o) -> float:
             """How close the outcome comes to a held lift (higher is better): rise minus twice the in-hand drift."""
             if o.failed or pp.label not in o.objects:
@@ -1981,6 +2000,23 @@ class Skills:
                 return False
             return _others_still(o, before, {pl.label, *moving})
 
+        def why(o) -> str:
+            if o.failed or pl.label not in o.objects:
+                return "failed" if o.failed else "no object"
+            p, q = o.objects[pl.label]
+            from dojo.skills.geometry import quat_to_R
+            R = quat_to_R(q)
+            c = R @ o0.asset.center + p
+            if np.linalg.norm(c[:2] - exp_c[:2]) > 0.7 * tol_xy:
+                return f"xy {1000 * np.linalg.norm(c[:2] - exp_c[:2]):.1f} mm > {700 * tol_xy:.1f}"
+            if abs(c[2] - exp_c[2]) > tol_z:
+                return f"z {1000 * (c[2] - exp_c[2]):+.1f} mm (tol {1000 * tol_z:.1f})"
+            tilt = math.degrees(math.acos(min(1.0, abs(float((R.T @ pl.T_obj_target[:3, :3])[2, 2])))))
+            if tilt > tol_tilt:
+                return f"tilt {tilt:.1f} deg"
+            return _others_moved(o, before, {pl.label, *moving})
+        j.why = why
+
         def score(o) -> float:
             """Closeness of the outcome to the target (higher is better): -(xy + z error + 1 mm per degree of tilt)."""
             if o.failed or pl.label not in o.objects:
@@ -2000,9 +2036,19 @@ class Skills:
         acts = [self.ex.actions_for(c) for c in cands]
         outs = self.verifier.rollout(acts, k=self.verify_k, held_labels=tuple(held))
         passes = [0] * len(cands)
+        whys = []
         for o in outs:
             if judges[o.candidate](o):
                 passes[o.candidate] += 1
+            elif hasattr(judges[o.candidate], "why"):
+                whys.append(judges[o.candidate].why(o))
+        if whys:                                        # why the twin rejected candidates, per segment kind (diagnostics)
+            rej = self.vreasons["rejects"]
+            for w_ in whys:
+                k_ = f"{kind}: {w_.split(' ')[0] if ' moved ' not in w_ else w_.split(' moved ')[0] + ' moved'}"
+                rej[k_] = rej.get(k_, 0) + 1
+            ex = self.vreasons["examples"]
+            ex.extend(f"{kind} {label}: {w_}" for w_ in whys[:2] if len(ex) < 40)
         self.vstats["segments"] += 1
         self.vstats["candidates"] += len(cands)
         chosen = None
@@ -2537,6 +2583,17 @@ class Skills:
             return self._record(SkillResult(False, "handover", r.status, r.steps, from_arm, note=r.note))
         r2 = self.pick(label, to_arm)
         return self._record(SkillResult(r2.ok, "handover", r2.status, r.steps + r2.steps, to_arm, note=r2.note))
+
+
+def _others_moved(o, before: dict, skip: set, tol: float = 0.006) -> str:
+    """"" when every other object stayed within ``tol`` (``_others_still``), else which one moved and how far."""
+    for lab, p0 in before.items():
+        if lab in skip or lab not in o.objects:
+            continue
+        d = float(np.linalg.norm(o.objects[lab][0] - p0))
+        if d > tol:
+            return f"{lab} moved {1000 * d:.0f} mm"
+    return ""
 
 
 def _others_still(o, before: dict, skip: set, tol: float = 0.006) -> bool:

@@ -416,8 +416,9 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
                      "size": _size(key, sm) if sm is not None else [round(float(v), 4) for v in info["extents"]],
                      "confidence": round(float(p.get("confidence", 0.5)), 3),
                      "source": "fused" if n_views > 1 else "head",
-                     "flags": {k: p[k] for k in ("occluded", "ambiguous", "hidden_frac", "near_home_grippers",
-                                                  "fg_resid_near") if k in p},
+                     "flags": {**{k: p[k] for k in ("occluded", "ambiguous", "hidden_frac", "near_home_grippers",
+                                                     "fg_resid_near") if k in p},
+                               **({"yaw_read": True} if p.get("yaw_read") else {})},
                      "place_tag": p.get("place_tag"), "residual": p.get("residual"),
                      "colour": _colour_name(info.get("mean_color")),
                      "names": info.get("names", []), "colors": info.get("colors_text", [])}

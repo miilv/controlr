@@ -562,6 +562,8 @@ class _Perception:
                                  "turned_deg": r.get("turned_deg"), "time_s": r.get("time_s"), "via": "perception.refine",
                                  "obj_id": r.get("obj_id", o["key"]), "identity_ok": r.get("identity_ok"),
                                  "identity_margin": r.get("identity_margin"), "n_candidates": len(cands),
+                                 # a round object's yaw (and xy) read from a cut in its top: insert_key's keyhole
+                                 "yaw_source": r.get("yaw_source"), "yaw_read": r.get("yaw_read"),
                                  "why": None if ok else ("perception not ok" if not r.get("ok") else "shift too large")}}
         return self._refine_local(frame, objects, fold, max_shift_m)
 
