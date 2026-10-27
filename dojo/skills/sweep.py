@@ -124,9 +124,10 @@ def relay_tool(sk: Skills, tool: str, arm: str, near_xy=(0.08, -0.27)) -> SkillR
     giver = _other(arm)
     for sp in L.free_spots(sk, tool, near_xy=near_xy, clearance=0.02)[:4]:
         T_sp = L.rest_with_R(sk, tool, sp, level_R(o.R))
-        # any grasp near the centre of mass (default candidates, hold-ranked): a 40 g broom pinched at its handle's
-        # end swung 17 cm in the pads on the carry (twin)
-        plan = sk.plan_transfer(tool, [T_sp], arms=[giver], yaw_sym=4)
+        # the head's root (``handle_grasps``): a 40 g broom pinched at its handle's end swung 17 cm in the pads on the
+        # carry, a wide slice across its bristles caught nothing (twin); 7 mm into the head held (5 mm drift)
+        plan = sk.plan_transfer(tool, [T_sp], arms=[giver], yaw_sym=4,
+                                grasps=(lambda a, o=o: handle_grasps(sk, o, a)))
         if isinstance(plan, SkillResult):
             continue
         r = sk.run_transfer(*plan, tol_xy=0.05, tol_tilt=15.0, tol_z=0.03)
