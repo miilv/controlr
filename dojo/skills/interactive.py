@@ -563,7 +563,8 @@ def belt_velocity(sk: Skills, labels: list[str], steps: int = 4, max_wait: int =
 
 
 def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max: int = 600, n_desc: int = 8,
-                   n_close: int = 5, h_pre: float = 0.06, lift: float = 0.125, arms=None, ignore=(), pull: float = 0.0):
+                   n_close: int = 5, h_pre: float = 0.06, lift: float = 0.125, arms=None, ignore=(), pull: float = 0.0,
+                   skip_methods=()):
     """A grasp of an object riding the belt: for each arm, the earliest step ``t`` (from now, >= ``t_min``) at which a
     top grasp of the object's predicted pose is reachable with its pre-grasp and lift; the plan tracks the object
     (TCP moving with the belt) through the descent and the close. Returns (arm, t_contact, per-step list from the
@@ -581,7 +582,8 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
             # (a basket's handle can be out of reach where its near rim is not)
             cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.75], key=lambda g: g.score)[:6] + \
                 sorted(G.rim_grasps(o, sk.kin, a), key=lambda g: float(np.linalg.norm(g.T[:2, 3] - sk.kin.base(a)[:2, 3])))[:6]
-        cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.6], key=lambda g: g.score)[:12]
+        cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.6 and g.method not in skip_methods],
+                       key=lambda g: g.score)[:12]
         rel[a] = [(g, g.T[:3, 3] - o.pos, UP) for g in cands]
     best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
     if best is None:
@@ -714,15 +716,16 @@ def _track_ik(sk: Skills, a: str, samples: list, q0) -> list | None:
 
 
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
-                   pull: float = 0.0) -> SkillResult:
+                   pull: float = 0.0, skip_methods=()) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
     approach, then the tracked descent / close / lift (one IK target per env step). Checked by the object's height."""
     w = sk.refresh()
     z0 = float(w.obj(label).pos[2])
-    plan = plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms, pull=pull)
+    plan = plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms, pull=pull, skip_methods=skip_methods)
     if plan is None:
         return SkillResult(False, "belt_pick", "ik_fail", 0, None, note=f"no intercept for {label}")
     a, t, app, track, g, samples, go = plan
+    sk.notes_belt_method = g.method
     n_desc_start = t - 8                                   # the descent's first sample is at contact - n_desc
     wait = max(0, n_desc_start - len(app))
     sk.log(f"[belt] {label}: {a} intercept at +{t} steps ({g.note}), wait {wait}, approach {len(app)}")
@@ -755,6 +758,14 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
         return SkillResult(True, "belt_pick", "ended", 0, a, note=str(e))
     w = sk.refresh()
     dz = float(w.obj(label).pos[2]) - z0
+    if 0.04 < dz < lift - 0.015:
+        # it slid in the pads on the way up (an ice cream pinched at its scoop rose 85 of 125 mm): lift the rest
+        try:
+            _lift_more(sk, a, label, lift - dz + 0.01)
+        except (BudgetExceeded, EpisodeEnded):
+            pass
+        w = sk.refresh()
+        dz = float(w.obj(label).pos[2]) - z0
     ok = dz > 0.6 * lift
     if ok:
         from dojo.skills.geometry import inv_T
@@ -765,6 +776,29 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
         sk.held[a] = Held(label, T_rel, held_box(o, T_rel), g)
     return sk._record(SkillResult(ok, "belt_pick", "ok" if ok else "grasp_slip", len(app) + len(track), a,
                                   note=f"{label} rose {dz * 1000:.0f} mm"))
+
+
+def _lift_more(sk: Skills, arm: str, label: str, dz: float) -> None:
+    """Up by ``dz`` with the jaws closed (the object stays in the hand); straight up, else drawn toward the arm's base
+    (a hand already high and far out has no IK straight above)."""
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.motion import CARRY
+    T0 = sk.kin.tcp(arm, sk.ex.q[arm])
+    to_base = sk.kin.base(arm)[:3, 3] - T0[:3, 3]
+    to_base[2] = 0.0
+    to_base /= max(float(np.linalg.norm(to_base)), 1e-9)
+    why = []
+    for pull in (0.0, 0.05, 0.10):
+        T = T0.copy()
+        T[:3, 3] += np.array([0.0, 0.0, dz]) + to_base * pull
+        mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, CARRY, "lift_more", gripper=0.0, ignore=(label,), check=False)
+        if mv.ok:
+            sk.log(f"[belt] lift {label} {dz * 1000:.0f} mm more (pulled {pull * 100:.0f} cm in)")
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).move(mv, "lift_more").hold(2, "still")}, name="lift more")
+            sk.ex.settle(tol=0.01, max_steps=12)
+            return
+        why.append(mv.status)
+    sk.log(f"[belt] no lift-more for {label}: {why}")
 
 
 def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, lift: float = 0.125,
@@ -806,11 +840,15 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
     ign = (conveyor,) if conveyor else ()
+    skip: set = set()
     for attempt in range(2):
-        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign)
+        sk.notes_belt_method = None
+        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip))
         if r.ok or r.status == "ended":
             return {"ok": True, "stage": "picked", "note": r.note}
         sk.log(f"[belt] pick {target}: {r.status} {r.note}")
+        if r.status == "grasp_slip" and getattr(sk, "notes_belt_method", None):
+            skip.add(sk.notes_belt_method)     # the retry takes another kind of grasp (a rim pinch of a solid toy)
         try:
             sk.home(gripper=OPEN)
         except Exception:  # noqa: BLE001

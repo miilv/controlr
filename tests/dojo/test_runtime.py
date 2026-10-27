@@ -1871,7 +1871,7 @@ def test_belt_newcomers_get_fresh_labels_and_identities_follow_the_votes():
         b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
         prov._track(b.obs)
     new = [e for e in prov.events if e["kind"] == "track_new"]
-    assert len(new) == 1 and new[0]["step"] == 20 and new[0]["label"] not in ("target0",)
+    assert len(new) == 1 and new[0]["step"] == 24 and new[0]["label"] not in ("target0",)   # seen at 20 and 24
     lab = new[0]["label"]
     o = prov.belief.objects[lab]
     assert o.asset.key == "Rigid/bottle/00047"                            # the majority, not the one misread
@@ -1928,6 +1928,33 @@ def test_belt_phantom_of_the_start_estimates_is_dropped():
         prov._track(b.obs)
     assert list(prov.belief.objects) == ["block_0"]
     assert [e["label"] for e in prov.events if e["kind"] == "track_drop"] == ["block_1"]
+
+
+def test_belt_a_one_read_phantom_never_joins():
+    """B1 splits a crowded blob into an extra object here and there: a read that is not seen again near the same place
+    in the next read is not an object."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+
+    def reader(obs):
+        s_ = obs["steps_used"]
+        recs = [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [0.25 + 0.004 * s_, 0.04, 0.78],
+                 "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}}]
+        if s_ % 8 == 0:                                                   # a phantom, somewhere else every time
+            recs.append({"category": "block", "category_idx": 5, "label": "block_1",
+                         "default_pos": [-0.5 + 0.03 * (s_ % 24), -0.1 + 0.3 * ((s_ // 8) % 2), 0.78],
+                         "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.7}})
+        return {"Rigid": {"block": recs}}
+    prov.track_reader = reader
+    for step in range(0, 60):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    assert not [e for e in prov.events if e["kind"] == "track_new"] and list(prov.belief.objects) == ["block_0"]
 
 
 def test_twin_is_started_for_the_scene_the_policy_chose():
@@ -2940,6 +2967,41 @@ def test_track_reads_are_logged_and_kept_and_perception_ops_are_per_episode(monk
     n1 = rep["perception_ops"]["estimate"][0]
     rep2 = run_episode(pol, FakeEpisode(_env()), "perception")                 # same client, a second episode
     assert rep2["perception_ops"]["estimate"][0] == n1                         # not the running total
+
+
+def test_belt_tracker_reads_through_the_belt_read_when_the_service_has_it(monkeypatch):
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png")
+    env = _env()
+
+    class Belt(_HeldPosePerception):
+        def __init__(self, env):
+            super().__init__(env, lambda prior: {})
+            self.ops = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            self.ops.append("estimate")
+            return super().estimate(frames, vocabulary, fold, prior_record)
+
+        def belt_read(self, frame, vocabulary, fold):
+            self.ops.append("belt_read")
+            return super().estimate([frame], vocabulary, fold)
+
+    def program(ctx):
+        for _ in range(3):
+            ctx.prov.refresh()
+            ctx.sk.ex.hold(5)
+        return {"ok": True}
+    for mode, op in (("belt", "belt_read"), ("b1", "estimate")):
+        pc = Belt(env)
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", track_moving="on", track_read=mode),
+                            assets=FakeAssets(), perception_client=pc, program=program)
+        rep = run_episode(pol, FakeEpisode(_env()), "perception")
+        assert rep["error"] is None, rep["error"]
+        n = rep["track_reads"]
+        assert n >= 2 and pc.ops.count(op) >= n
+        if mode == "belt":
+            assert pc.ops.count("belt_read") == n                              # every tracker read, nothing else
 
 
 def test_kinematic_belief_attaches_a_narrow_pick_closed_from_below_half_open():

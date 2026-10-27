@@ -40,6 +40,9 @@ Ops (request dicts):
         did anything but OUR arms change between two head views: Lab difference outside the union of both frames' FK
         robot masks (a scripted opponent / demonstrator arm, its gripper, objects it moves): {moving, changed_px,
         visible_px}; moving None when too little of the view is visible
+    {"op": "belt_read", "frame": frame, "vocabulary": str, "fold": int}             -> {"record": json}
+        the riders of a moving base, one best single-object fit per head-view blob (``dojo.perception.belt``): the belt
+        tracker's re-read (no label counts, so no split blobs / phantoms; ~2.5 s vs B1's ~9 s on 5.1 belt frames)
     {"op": "watch_read", "frame": frame, "region": json, "vocabulary": str, "fold": int, "prior": json|None}
                                                                                    -> {"watch_read": json}
         perception's ``dojo.perception.watch.watch_read`` (cells of a board / contents of a container, what the scene's
@@ -169,6 +172,10 @@ class PerceptionClient:
         if extra_frame is not None:
             req["extra_frame"] = encode_frame(extra_frame)
         return json.loads(self._call(req)["record"])
+
+    def belt_read(self, frame: dict, vocabulary: str, fold: int) -> dict:
+        return json.loads(self._call({"op": "belt_read", "frame": encode_frame(frame), "vocabulary": vocabulary,
+                                      "fold": int(fold)})["record"])
 
     def watch_read(self, frame: dict, region: dict, vocabulary: str, fold: int, prior: dict | None = None) -> dict:
         return json.loads(self._call({"op": "watch_read", "frame": encode_frame(frame),
@@ -714,6 +721,13 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         b1 = json.loads(req["b1_record"]) if req.get("b1_record") else None
                         rec = p.agentic_estimate(req["frame"], req["vocabulary"], int(req.get("fold", 0)), b1,
                                                  req.get("extra_frame"))
+                        conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "belt_read":
+                        from dojo.perception.belt import belt_read
+                        fr = decode_frame(req["frame"])
+                        fold = int(req.get("fold", 0))
+                        rec = belt_read(fr["images"], fr["state"], req["vocabulary"], fr["instruction"], bgs=p.bgs(fold),
+                                        cfg=p.cfg(fold))
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
                     elif op == "watch_read":
                         from dojo.perception.watch import watch_read

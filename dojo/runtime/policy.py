@@ -190,6 +190,9 @@ class RuntimeConfig:
     # mode perception: belt tracking (B1 re-reads every 4 steps while refreshing, a line fit per object over 40 steps;
     # moving objects' belief poses follow the fit): auto = on iff the scene has a conveyor object | on | off
     track_moving: str = "auto"
+    # the belt tracker's re-read: belt (perception's belt read when the service has it: one fit per head-view blob, no
+    # label counts) | b1 (the full inverse-layout estimate; on a crowded belt it splits blobs into phantoms)
+    track_read: str = "belt"
     # mode perception: the in-hand pose at the pre-insert hover (perception's held_pose, where G3 re-measures from
     # GT): off | auto (when the perception service offers it); skills adopt it within the place's tolerances
     held_pose: str = "off"
@@ -244,7 +247,7 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.held_pose not in ("off", "auto")
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto")
                 or self.cfg.twin_load not in ("raw", "consistent")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
@@ -845,12 +848,16 @@ class RuntimePolicy:
         return best["_v"], best["_rec"]
 
     def _track_read(self, pc, obs: dict, scene: str) -> dict:
-        """The belt tracker's B1 re-read, logged per read (what it found, how sure: the 2026-10-26 breadth conveyor
+        """The belt tracker's re-read (``track_read``: perception's belt read, else B1), logged per read (what it found, how sure: the 2026-10-26 breadth conveyor
         tracked 31 reads and never added an object); the first ``save_track_frames`` read frames are kept (dev)."""
         from .estimate import iter_records
-        rec = pc.estimate([obs], scene, self.fold)
-        found = [(r.get("label"), round(float((r.get("_perception") or {}).get("confidence", 0.0)), 2))
-                 for _t, _c, r in iter_records(rec)]
+        if self.cfg.track_read == "belt" and hasattr(pc, "belt_read"):
+            rec = pc.belt_read(obs, scene, self.fold)
+        else:
+            rec = pc.estimate([obs], scene, self.fold)
+        found = [(r.get("label"), round(float((r.get("_perception") or {}).get("confidence", 0.0)), 2), c,
+                  [round(float(v), 3) for v in (r.get("default_pos") or [])[:2]])
+                 for _t, c, r in iter_records(rec)]
         n = self.report.setdefault("track_reads", 0) + 1
         self.report["track_reads"] = n
         if n <= 60:
