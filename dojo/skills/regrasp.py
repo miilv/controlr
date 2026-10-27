@@ -355,11 +355,12 @@ def _turn_schedule(deg: float) -> list[float]:
 
 def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_LIFT) -> SkillResult:
     """Turn the held object about the vertical through its root by ``turn`` (rad), ``lift`` above where it rests now
-    (sag-corrected; ``TURN_STEP_DEG`` per step; the largest of ``TURN_FRACTIONS`` that the wrist reaches)."""
+    (``_turn_schedule`` steps; the largest of ``TURN_FRACTIONS`` that the wrist reaches)."""
     w = sk.refresh()
     o = w.obj(label)
     T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ o.T
-    C = sk._sag(arm, w)
+    # commanded from the MEASURED hand, no sag correction: after the insertion the hand still pushes the seated object
+    # (its command is below where it is), and the sag transform would keep it pushing through the turn
     T0 = o.T.copy()
     T0[2, 3] += lift
     mv, frac = None, 0.0
@@ -368,7 +369,7 @@ def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_
         for f in _turn_schedule(abs(math.degrees(turn * frac))):
             T_t = T0.copy()
             T_t[:3, :3] = rot_z(turn * frac * f) @ T0[:3, :3]
-            ik = sk.kin.ik(arm, C @ T_t @ inv_T(T_rel), q, n_random=0)
+            ik = sk.kin.ik(arm, T_t @ inv_T(T_rel), q, n_random=0)
             if not ik.ok:
                 ok = False
                 break
