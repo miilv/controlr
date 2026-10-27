@@ -40,6 +40,9 @@ def parse_seeds(s: str) -> list[int]:
             out.extend(range(int(a), int(b) + 1))
         elif part:
             out.append(int(part))
+    from dojo.simlab.paths import RESERVED_MIN_ID       # D-C10: ids >= 100100 belong to joint paired runs, never ours
+    if any(x >= RESERVED_MIN_ID for x in out):
+        raise SystemExit(f"--seeds {s}: reserved layout ids (>= {RESERVED_MIN_ID}, D-C10), joint paired runs only")
     return out
 
 
