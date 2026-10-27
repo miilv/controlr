@@ -138,7 +138,7 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "the thread with wrist sweeps and re-grips (clockwise from above) until it sits ~1 cm down; grippers opened "
         "after each pair. Pair them first (e.g. by matching colour)."),
     "fold_garment": (
-        "fold_garment(garment: id)",
+        "fold_garment(garment: id | null = null)",
         "Folds a long-sleeved top lying flat on the table with pinches: each sleeve is pinched at its end and laid "
         "on the opposite chest (one arm each), then both hem corners are pinched together and laid on the shoulders; "
         "grippers opened after each fold. For 'fold the clothes'."),

@@ -21,7 +21,10 @@ def test_planner_routes_fold_to_the_garment():
     p = planner.plan("Fold the clothes neatly.", _world([g]))
     assert p.skill == "fold_garment" and p.args == {"garment": "target"}
     b = _obj("block", "cube", 1, (0.0, -0.12, 0.78), (0.02, 0.02, 0.02))
-    assert planner.plan("Fold the clothes neatly.", _world([b])).skill != "fold_garment"
+    # no garment in the belief: still routed, the skill reads the garment through the provider
+    p = planner.plan("Fold the clothes neatly.", _world([b]))
+    assert p.skill == "fold_garment" and p.args == {"garment": None}
+    assert planner.plan("Fold the paper in half and stack the blocks.", _world([b])).skill != "fold_garment"
 
 
 def test_garment_axes_follow_the_root_yaw():

@@ -207,7 +207,7 @@ def _inward(p, centre, d: float = PINCH_IN) -> np.ndarray:
     return np.asarray(p, float)[:2] + (v / n * d if n > 1e-6 else 0.0)
 
 
-def fold_garment(sk: Skills, garment: str) -> dict:
+def fold_garment(sk: Skills, garment: str | None = None) -> dict:
     """Fold a long-sleeved top lying flat: left and right sleeve onto the opposite chest (one arm each, the arm on
     the sleeve's side), then both hem corners onto the shoulders together. Each fold is planned from a fresh read of
     the garment."""
