@@ -252,3 +252,28 @@ The egg holder has the same landmine.
 - G3 never failed on the wrong belief: it re-measures after a place. The rendered runs did, so the rendered pair decides.
 - Eggs: the score is unchanged, with 25 picks instead of 21. The belief now puts an egg let go over a hole lying across it, 2 mm into the hole, and the skill tries again more often.
 
+Follow-up (#145, Integration-3's review): an articulation was also a movable, whose bbox top counted as a support. Now, on a release, an articulation with a static mesh is no bbox-top support; its mesh decides.
+
+## 10. hang_mugs in mode A: why mugs fall at the release, and four fixes that did not hold (branch `feat/dojo-tools-hang-falls`, not merged)
+
+**Traces** (G3 `--trace`; the handle frame in the hook's frame, commanded vs measured TCP). 6 falls after a good place:
+
+| layouts | hook | what happened |
+|---|---|---|
+| 100005, 100008, 100009, 100011, 100012 | 4 or 5 (the high ones) | the arm stuck 7 mm into the slide, then 80 mm behind its command; the mug did not slip in the hand; the handle was let go 40-50 mm short of the arm's tip (x 48-81 mm along the arm, tip at 30) |
+| 100004 | 1 | hung (handle at x 1 mm). The open hand's move home then rose through the swinging mug and knocked it off. |
+
+**Tried.** Main's G3 mode A is deterministic (13 layouts re-run on 13a28b6: identical), so each try is compared per layout against main's 25.
+
+| change | result |
+|---|---|
+| a slide that does not reach is retried from the planned configuration | never triggered: the slide's IK is fine, and the arm is physically blocked |
+| the exit moves the open hand 8 cm away from the mug before going home | worse: 100003 1.0 -> 0.4 (it knocked the mug on the high hook above); 100004 still fell |
+| the slide is planned collision-free | the rack's collision boxes reject nearly every slide: 13 layouts scored ~0.01 against 0.44 |
+| an arm > 10 mm behind the slide stops, the mug is put back down, the hook is left out | a false positive (100007 1.0 -> 0.4: that mug hangs despite a 47 mm lag); from the hook region no put-down plans (approach IK) |
+
+**Next.**
+- Decide "on the arm" from the handle's position in the hook frame (measured TCP + grasp), not from the lag.
+- When the handle is not on the arm, try the next free hook while still holding the mug.
+- The exit needs the swinging mug's pose: wait, or plan against a swept volume.
+
