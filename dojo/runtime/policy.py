@@ -196,7 +196,9 @@ class RuntimeConfig:
     # label counts) | b1 (the full inverse-layout estimate; on a crowded belt it splits blobs into phantoms)
     track_read: str = "belt"
     # mode perception: the in-hand pose at the pre-insert hover (perception's held_pose, where G3 re-measures from
-    # GT): off | auto (when the perception service offers it); skills adopt it within the place's tolerances
+    # GT): off | auto (when the perception service offers it: every servo place reads) | request (only places that ask
+    # for it, ``plan_place(held_read=True)``; rendered plug, auto: no gain, 2026-10-27);
+    # skills adopt it within the place's tolerances
     held_pose: str = "off"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
@@ -249,7 +251,7 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto")
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request")
                 or self.cfg.twin_load not in ("raw", "consistent")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
@@ -559,10 +561,12 @@ class RuntimePolicy:
                 prov.garment_reader = lambda obs: pc.garment_read(obs, self.fold)
             if hasattr(pc, "garment_update"):           # provider.garment_update (its hem corners again, later)
                 prov.garment_updater = lambda obs0, obs, read: pc.garment_update(obs0, obs, read, self.fold)
-            if cfg.held_pose == "auto" and hasattr(pc, "held_pose"):
+            if cfg.held_pose in ("auto", "request") and hasattr(pc, "held_pose"):
                 prov.held_pose = lambda arm, prior_T_tcp_obj, asset_key, cfg_=None: self._held_pose(
                     prov, arm, prior_T_tcp_obj, asset_key, cfg_)
-            if cfg.held_pose == "auto" and hasattr(pc, "show_pose"):   # observer looks / show poses for that read
+                # request: the skills read only at places that ask for it (``plan_place(held_read=True)``: insertions)
+                prov.held_pose_on_request = cfg.held_pose == "request"
+            if cfg.held_pose in ("auto", "request") and hasattr(pc, "show_pose"):   # observer looks / show poses
                 prov.show_pose = lambda arm, T_tcp_obj, asset_key, cfg_=None: self._show_pose(
                     arm, T_tcp_obj, asset_key, cfg_)
             if hasattr(pc, "watch_read"):               # provider.watch_read(region, prior): board cells / container
