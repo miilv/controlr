@@ -535,3 +535,28 @@ def test_table_generator_turns_the_asset_about_its_origin():
         assert np.allclose(il._centre_xy(h, table), il._centre_xy(h))
     finally:
         il.GEN_YAW_ABOUT_ORIGIN = old
+
+
+def test_quota_lists_from_a_hierarchical_list_and_its_copies(monkeypatch):
+    """imitate_sorting_sequence: t0..t4 hold each of 5 categories once (hierarchical 5 x 1), aim_i is t_i's asset
+    (same_as_label): two quota lists, told apart by their generator regions. A list that may repeat a category (fewer
+    category draws than labels) is not one."""
+    from dojo.perception import inverse_layout as il
+
+    cats = [{"name": c, "index": [0]} for c in ("car", "phone")]
+    t_sel = {"mode": "hierarchical", "select_category_nums": [2, 2], "select_instance_nums": [1, 1], "label": ["t0", "t1"]}
+    t_pl = {"xlim": [-0.3, 0.4], "ylim": [-0.2, -0.05], "rotate_rand": True, "rotate_deg": 180, "relative_plane": "Table"}
+    a_pl = dict(t_pl, ylim=[0.1, 0.3])
+    labels = {f"t{i}": {"type": "Rigid", "candidates": ["Rigid/car/00000", "Rigid/phone/00000"], "categories": cats,
+                        "placement": t_pl, "select_mode": t_sel} for i in range(2)}
+    labels.update({f"aim{i}": {"type": "Rigid", "candidates": ["Rigid/car/00000", "Rigid/phone/00000"], "categories": cats,
+                               "placement": a_pl, "select_mode": {"mode": "same_as_label", "same_label": f"t{i}",
+                                                                  "label": [f"aim{i}"]}} for i in range(2)})
+    monkeypatch.setattr(il, "task_map", lambda: {"imi": {"labels": labels}})
+    g = {"labels": ["t0", "t1", "aim0", "aim1"]}
+    ls = il.quota_lists("imi", g)
+    assert [L["labels"] for L in ls] == [["t0", "t1"], ["aim0", "aim1"]]
+    assert ls[0]["cats"] == ["car", "phone"] and ls[1]["regions"][0]["y"] == [(0.1, 0.3)]
+    assert il.region_ok(ls[1], 0.0, 0.2) and not il.region_ok(ls[0], 0.0, 0.2)
+    labels["t0"]["select_mode"] = labels["t1"]["select_mode"] = dict(t_sel, select_category_nums=[1, 2])
+    assert il.quota_lists("imi", g) == []
