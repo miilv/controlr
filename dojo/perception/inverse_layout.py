@@ -698,6 +698,20 @@ def flip_about_centroid(h: "Hypothesis") -> "Hypothesis":
 # Main estimator
 # --------------------------------------------------------------------------------------------
 
+def scene_keys(vocabulary: str | None) -> tuple:
+    """Asset keys of a candidate set's scene fixtures (its ``Dynamic`` / ``Geometry`` candidates, sorted). They pick a
+    scene background (``segment.with_scene``): a conveyor belt or a basket that replaces the table in the head view.
+    Keyed by the scene's assets, never by the set's name. Unknown set: (). Not cached itself: ``task_map`` is."""
+    if not vocabulary:
+        return ()
+    try:
+        labels = task_map()[vocabulary]["labels"]
+    except Exception:  # noqa: BLE001 (an unknown set, or no catalogue: the table backgrounds)
+        return ()
+    return tuple(sorted({k for d in labels.values() if d.get("type") in ("Dynamic", "Geometry")
+                         for k in d.get("candidates") or []}))
+
+
 @lru_cache(maxsize=1)
 def task_map() -> dict:
     """``tasks.json``, minus candidates the catalogue has no geometry for. RoboDojo ships no USD for a few
@@ -1130,6 +1144,33 @@ def _seed_region(g: dict, prior: dict):
     xs = np.linspace(x0, x1, max(1, int(np.ceil((x1 - x0) / SEED_STEP)) + 1))
     ys = np.linspace(y0, y1, max(1, int(np.ceil((y1 - y0) / SEED_STEP)) + 1))
     return xs, ys, (r["yaw"][0] + r["yaw"][1]) / 2
+
+
+LOW_CONTRAST_CONF = 0.45  # confidence cap of an object found only in the low-contrast pass (a look should confirm)
+LOW_CONTRAST_MIN_SEEN = 0.3  # share of such an object's head silhouette that is foreground at the normal threshold
+
+
+def _region_mask(cam: Camera, g: dict, sms: list) -> np.ndarray | None:
+    """Head-image mask of where the generator may put a label group's objects: each region's xy box grown by the
+    settle margin and the objects' half size, projected at half their height. None when a region is unbounded."""
+    regs = g.get("regions") or []
+    if not regs or not sms:
+        return None
+    half = 0.5 * max(float(np.max(sm.asset.extents[:2])) for sm in sms) + XY_MARGIN
+    z = TABLE_Z + 0.5 * max(float(sm.height) for sm in sms)
+    m = np.zeros((cam.h, cam.w), np.uint8)
+    for r in regs:
+        if not r.get("x") or not r.get("y"):
+            return None
+        for xa, xb in r["x"]:
+            for ya, yb in r["y"]:
+                P = np.array([[xa - half, ya - half, z], [xb + half, ya - half, z], [xb + half, yb + half, z],
+                              [xa - half, yb + half, z]])
+                uv, zc = cam.project(P)
+                if (zc <= 0.01).any():
+                    return None
+                cv2.fillConvexPoly(m, np.round(uv - 0.5).astype(np.int32), 1)
+    return m
 
 
 def _region_seeds(blob_list, pending, shapes_by_group, views, cfg, groups, others=None, blob_offset=0):
@@ -2450,6 +2491,8 @@ class EstimatorConfig:
     polish_color_candidates: int = 2  # ... and also tries the best-coloured candidates the ranking left out
     polish_color_veto: float | None = 0.2  # paired texture cannot pick a trial whose mean colour is this much worse
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
+    low_contrast_frac: float | None = 0.6  # still-unfound labels: re-segment at this x fg_thr in their region
+    low_contrast_max_loss: float = 0.40  # ... and keep a find only at this silhouette loss or lower
     paired_tex_weight: float = 0.8
     refine_color_weight: float = 0.5
     paired_tex_margin: float = 0.04
@@ -2717,6 +2760,55 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         if not add:
             break
         chosen += add
+    # low contrast: a group still short after the residual rounds may be an object whose colour is close to the
+    # table's. insert_key's copper lock on the brown wood (5.1): the colour distance inside its silhouette has a median
+    # of 17.6 against fg_thr 18, so 47-56 % of it is foreground, in pieces 15-25 px apart that no proposal explains
+    # (2 of 25 locks not found, 2 more 18-25 mm off). Re-segment at ``low_contrast_frac`` x fg_thr inside that
+    # label's generator region only (0.6: 67-98 % of the lock, 0.1-0.6 % of the table around it outside its shadow),
+    # propose and select against that foreground, and keep only tight fits. Such objects are flagged, confidence capped
+    if cfg.low_contrast_frac:
+        need = dict(need0)
+        for h in chosen:
+            need[h.label_group] -= 1
+        # fixtures (Geometry) of single-label groups only: the task cannot start without its lock / board, the generator
+        # puts them in compact regions, and a movable object missed is the runtime search's job. On the G1 sets the
+        # wider versions added phantoms (build_tower 118 mm, organize_table 150-340 mm) and re-ran a group's colour
+        # identity (stack_blocks 100014 swapped two blocks)
+        short = [(gi, g, p) for gi, g, p in pending
+                 if need.get(gi, 0) > 0 and len(g["labels"]) == 1 and g["type"] == "Geometry" and g.get("regions")]
+        if short:
+            expl = np.zeros_like(head.fg)
+            for h in chosen + slot_h:
+                h.sm().sil(head.cam, h.T(), out=expl)
+            free = (head.known > 0) & (head.robot == 0) & (cv2.dilate(expl, np.ones((5, 5), np.uint8)) == 0)
+            low = ((head.dist > cfg.low_contrast_frac * cfg.fg_thr) & free).astype(np.uint8)
+            low = cv2.morphologyEx(low, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+            for gi, g, prior in short:
+                reg = _region_mask(head.cam, g, [sm for sms in shapes_by_group[gi].values() for sm in sms])
+                if reg is None:
+                    continue
+                fg_g = low & reg
+                if int(fg_g.sum()) < MIN_BLOB_PX["cam_head"]:
+                    continue
+                vws = dict(views)
+                vws["cam_head"] = ViewMasks(head.cam, head.img, np.maximum(head.fg, fg_g), head.known, head.dist, head.robot)
+                bl = blobs(ViewMasks(head.cam, head.img, fg_g, head.known, head.dist, head.robot), "cam_head")
+                if not bl:
+                    continue
+                others = _union_masks(chosen, vws)
+                more = _propose(bl, [(gi, g, prior)], shapes_by_group, vws, cfg, groups, others=others, blob_offset=9000)
+                add = _assign_constrained(more, {gi: need[gi]}, [(gi, g, prior)], bl, vws, existing=chosen, blob_offset=9000)
+                # only a tight fit: on the G1 sets the right finds fit at 0.32-0.37, the wrong ones (table texture, a
+                # shadow, 150-540 mm from the object) at 0.45-1.0
+                # ... and part of it already foreground at the normal threshold (the lock: 47-56 %); table texture or
+                # a shadow that only the low threshold shows is not an object
+                def seen(h):
+                    s_h = h.sm().sil(head.cam, h.T())
+                    return float((head.fg & s_h).sum()) / max(1.0, float(s_h.sum())) >= LOW_CONTRAST_MIN_SEEN
+                add = [h for h in add if seen(h)]
+                for h in add:
+                    h.per_view["low_contrast"] = True
+                chosen += add               # (not into the pool: the occluded fallback below must not take them)
     # occluded fallback: a group still short takes its best remaining hypothesis whose head silhouette is
     # mostly hidden (robot / unknown pixels), flagged low-confidence (a wrist re-view should confirm it)
     need = dict(need0)
@@ -2953,6 +3045,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             conf = float(np.clip(1 - h.per_view.get("sil_loss", h.loss), 0, 1))
             if h.per_view.get("occluded"):
                 conf = min(conf, 0.2)
+            if h.per_view.get("low_contrast"):
+                conf = min(conf, LOW_CONTRAST_CONF)
             conf *= 1.0 - min(resid_near.get(id(h), 0.0), 0.5)  # unexplained foreground next to the fit
         alt = h.per_view.get("alternative")
         rival = None
@@ -2970,6 +3064,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         near_home = h.tag != "fixed" and any(np.hypot(h.x - c[0], h.y - c[1]) < HOME_HIDE_RADIUS for c in HOME_HIDDEN_XY)
         fg_near = resid_near.get(id(h), 0.0)
         ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
+                     or bool(h.per_view.get("low_contrast"))
                      or rival is not None or hidden > cfg.hidden_frac_flag or near_home or fg_near > cfg.fg_resid_flag)
         review = None
         if ambiguous and alt is not None and cfg.view_requests and h.tag != "fixed":
@@ -2987,6 +3082,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "fg_resid_near": round(fg_near, 3),
                                "texture": h.per_view.get("texture"),
                                "geom_group": h.per_view.get("geom_group"), "slot": bool(h.per_view.get("slot", False)),
+                               **({"low_contrast": True} if h.per_view.get("low_contrast") else {}),
                                **({"yaw_read": {k: h.per_view["top_feature"][k] for k in
                                                 ("sign_ok", "tail_mm", "ratio_axis", "ratio_flip", "camera")}}
                                   if h.per_view.get("top_feature") else {}),

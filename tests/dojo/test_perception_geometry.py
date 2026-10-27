@@ -580,3 +580,23 @@ def test_quota_balance_drops_a_duplicate_on_one_object(monkeypatch):
     assert out == [real, fig]
     out = il._quota_balance([real, fig], {"cam_head": head}, None, None, 0, g, None, lists)
     assert out == [real, fig]
+
+
+def test_region_mask_covers_the_generator_region_only():
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    cam = cameras.head_camera()
+    sm = SimpleNamespace(asset=SimpleNamespace(extents=np.array([0.1, 0.1, 0.055])), height=0.055)
+    # insert_key's lock: x in [-0.2, -0.1] or [0.1, 0.2], y in [-0.2, -0.15]
+    g = {"regions": [{"x": [(-0.2, -0.1), (0.1, 0.2)], "y": [(-0.2, -0.15)], "yaw": None}]}
+    m = il._region_mask(cam, g, [sm])
+
+    def at(x, y):
+        uv, _ = cam.project(np.array([[x, y, il.TABLE_Z + 0.0275]]))
+        return int(m[int(uv[0, 1]), int(uv[0, 0])])
+
+    assert at(0.121, -0.188) and at(-0.2, -0.168) and at(0.24, -0.13)     # inside, and within half a lock outside
+    assert not at(0.0, -0.17) and not at(0.15, 0.05)                      # between the two boxes; far behind
+    assert il._region_mask(cam, {"regions": [{"x": None, "y": [(-0.2, -0.1)], "yaw": None}]}, [sm]) is None

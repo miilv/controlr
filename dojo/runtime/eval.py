@@ -188,6 +188,8 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
             print(f"\n[integ] {tag}: gate refused, skipping {Path(lf).name}: {stop}", flush=True)
             continue
         paths.assert_not_eval(lf)
+        if paths.is_reserved_id(Path(lf).name.split(".")[0]):
+            raise SystemExit(f"{lf}: a reserved layout (>= {paths.RESERVED_MIN_ID}, D-C10: joint paired runs only)")
         lay = json.loads(Path(lf).read_text())
         klog = kit_log_path()
         k_off = kit_log_offset(klog)                # cooking happens at the layout load: watch from here

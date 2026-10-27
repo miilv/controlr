@@ -267,13 +267,11 @@ class _Perception:
         if not vocabulary:
             return
         try:
-            from dojo.perception.inverse_layout import task_map
-            labels = task_map()[vocabulary]["labels"]
-        except Exception:  # noqa: BLE001 (an unknown vocabulary: the table backgrounds)
+            from dojo.perception.inverse_layout import scene_keys
+        except Exception:  # noqa: BLE001 (no perception extras: the table backgrounds)
             self._scene = ()
             return
-        self._scene = tuple(sorted({k for d in labels.values() if d.get("type") in ("Dynamic", "Geometry")
-                                    for k in d.get("candidates") or []}))
+        self._scene = scene_keys(vocabulary)        # () for an unknown vocabulary: the table backgrounds
 
     def bgs(self, fold: int) -> dict:
         key = (int(fold), self._scene)

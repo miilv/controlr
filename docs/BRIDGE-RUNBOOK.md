@@ -196,8 +196,8 @@ Variants (one flag each):
 - `--policy dojo.runtime.policy:RuntimePolicy`: the rule supervisor instead of the agent, 0 LLM calls.
 - `--perception server`: estimates from the server's `perceive` verb, i.e. our B1 adapter inside Mikhail's server,
   logged in `run/<id>/perceive.jsonl`. Refine / check / search then come from the local service if one runs, else they
-  are off. The adapter's own instruction routing covers only stack_blocks, push_T, press_by_number, swap_T,
-  pour_balls_into_vase and general_pickup.
+  are off. The adapter (`j1_adapter.task_for`) routes by the six J1 patterns, then by the runtime's
+  `perception_vocabulary`, and uses the scene backgrounds under `DOJO_BG/scene/` (the conveyor belt).
 - `--verify off`: no twin.
 
 ### 4c. The official path on OUR dev layouts, on any 5.1-rendering box of ours [GPU]
@@ -298,8 +298,9 @@ For a scored block, follow robot-harness AGENTS.md:
   - The server counts these per arm (`grip_change_while_moving`, the shim's invariant 3) and does not refuse them.
     `bridge.json` → `backend.grip_change_while_moving` holds the episode's total. A stack episode has >= 3, which is
     expected; a refusal rule would need >= 1 grip step per such op in the skills.
-- **The server's `perceive` route has no refine / check / search** unless the local service also runs. Its task routing
-  (`j1_adapter.infer_task`) covers 6 tasks, while the runtime's vocabularies cover more. Unifying them is BACKLOG.
+- **The server's `perceive` route has no refine / check / search** unless the local service also runs. Its routing
+  (`j1_adapter.task_for`) falls back to the runtime's `perception_vocabulary`, and its backgrounds follow the scene
+  (`backgrounds_for`). The scene background dirs must be shipped with its `DOJO_BG`.
 - **`held_look`**: the server's verb (B1 inside his server) is available as `backend.held_look`, but the runtime does
   not call it. The runtime's own held check (`RuntimeConfig.held_look` = `b1` | `b1_then_agent`) is a perception
   SERVICE op. Like `agentic`, it exists only with `--perception local`.

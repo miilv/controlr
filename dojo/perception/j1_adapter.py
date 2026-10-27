@@ -14,8 +14,8 @@ calibration ``{cam: {K, T_world_cam}}`` (OpenCV axes; harness/strict_calib.py), 
 ``{left, right: [x, y, z, qw, qx, qy, qz]}``, the commanded gripper ``{left, right}`` (0 closed .. 1 open,
 or "open"/"close") and the instruction. Optional keyword arguments:
   ``joints={left: [6], right: [6]}`` measured arm joints (the robot self-mask; without them the joints come
-  from IK on the measured flange), ``gripper={left, right}`` measured opening 0..1, ``task`` (else inferred
-  from the instruction), ``prior`` (a previous perceive() result: objects in a wrist view get a close-up
+  from IK on the measured flange), ``gripper={left, right}`` measured opening 0..1, ``task`` (else from the
+  instruction: ``task_for``), ``prior`` (a previous perceive() result: objects in a wrist view get a close-up
   refinement, ``source: "refined"``).
 
 Output: ``{"objects": [{label, category, asset, pos, quat, size, confidence, source, t_ms, ...}],
@@ -23,8 +23,9 @@ Output: ``{"objects": [{label, category, asset, pos, quat, size, confidence, sou
 "task", "t_ms", "version"}``. Deterministic: same inputs -> same outputs (no random draws; the GL silhouettes
 and Nelder-Mead runs are deterministic).
 
-Worker environment (all under the install dir, see ``install_env``): DOJO_CATALOG, DOJO_X5_DIR, DOJO_BG,
-DOJO_COLOR_CALIB. GL silhouettes use EGL on the GPU with ``J1_GL=egl`` (default); ``J1_GL=mesa`` runs the
+Worker environment (all under the install dir, see ``install_env``): DOJO_CATALOG, DOJO_X5_DIR, DOJO_BG (table
+backgrounds; scene backgrounds in ``DOJO_BG/scene/<Type_cat_idx>/``, e.g. ``scene/Dynamic_conveyor_00000/`` for the
+conveyor tasks: ``backgrounds_for``), DOJO_COLOR_CALIB. GL silhouettes use EGL on the GPU with ``J1_GL=egl`` (default); ``J1_GL=mesa`` runs the
 same GL path on the CPU through Mesa's llvmpipe EGL device (no GPU; outputs identical to the GPU path on the J1
 replays, 1-9 s per call); ``J1_GL=cpu`` is the non-GL fallback (cannot read card digits).
 """
@@ -39,7 +40,8 @@ import threading
 import time
 from pathlib import Path
 
-VERSION = "j1-adapter-2"  # 2: held_look jaw-opening evidence + absence cap; refine stack guards
+VERSION = "j1-adapter-3"  # 2: held_look jaw-opening evidence + absence cap; refine stack guards; 3: every runtime
+#                            vocabulary (task_for), scene backgrounds (conveyor belt, ... : segment.with_scene)
 ROOT = Path(__file__).resolve().parents[2]  # the checkout
 _LOCK = threading.Lock()
 _PROC = None
@@ -60,6 +62,42 @@ def infer_task(instruction: str) -> str | None:
         if all(k in s for k in keys):
             return task
     return None
+
+
+def task_for(instruction: str, task: str | None = None) -> tuple[str | None, str]:
+    """(candidate set, how it was chosen) for an instruction. The order: the caller's ``task``; then the J1 patterns
+    (the six J1 tasks route exactly as before); then the runtime's vocabulary table + catalogue fallback
+    (``dojo.runtime.supervisor.perception_vocabulary``), the same instruction routing the local perception route
+    uses, so every instruction the runtime can run is perceivable on the strict server's route too. Before
+    j1-adapter-3, every other instruction answered "unknown task"."""
+    if task:
+        return task, "caller"
+    t = infer_task(instruction)
+    if t:
+        return t, "j1_patterns"
+    from dojo.runtime.supervisor import perception_vocabulary
+    v = perception_vocabulary(instruction)
+    return (v.name, "vocabulary") if v else (None, "none")
+
+
+def backgrounds_for(task: str | None) -> tuple[dict, str | None]:
+    """(backgrounds, scene dir name or None) for a candidate set. ``DOJO_BG``'s table backgrounds, overlaid with a scene
+    background from ``$DOJO_BG/scene/<Type_cat_idx>/`` when one of the set's fixtures has one (``segment.with_scene``;
+    e.g. ``scene/Dynamic_conveyor_00000/``, built by ``dojo.perception.belt_bg``). Cached per scene."""
+    from .inverse_layout import scene_keys
+    from .segment import SCENE_DIR, bg_root, load_backgrounds, scene_dir_name, with_scene
+
+    keys = scene_keys(task)
+    ck = ("bg", keys)
+    if ck not in _BG:
+        base = _BG.get("bg")
+        if base is None:
+            base = _BG["bg"] = load_backgrounds()
+        root = bg_root()
+        used = next((scene_dir_name(k) for k in keys if root is not None
+                     and (root / SCENE_DIR / scene_dir_name(k) / "cam_head.png").exists()), None)
+        _BG[ck] = (with_scene(base, root, keys) if used else base, used)
+    return _BG[ck]
 
 
 # ------------------------------------------------------------------------------------------- client side
@@ -381,20 +419,17 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
     from .inverse_layout import EstimatorConfig, estimate, joints_world, shape_by_tag
     from .look import look_plan
     from .render import load_asset
-    from .segment import load_backgrounds
 
     t0 = time.time()
     cv2.setRNGSeed(0)
-    task = task or infer_task(instruction)
+    task, routed = task_for(instruction, task)
     if task is None:
         return {"objects": [], "regions": [], "needs_look": [], "error": "unknown task for this instruction",
                 "t_ms": round(1000 * (time.time() - t0), 1), "version": VERSION}
     images = _load_frames(frames)
     state, ik = _state(flange, grip_cmd or {}, joints, gripper)
     cams = _cameras(calib)
-    bgs = _BG.get("bg")
-    if bgs is None:
-        bgs = _BG["bg"] = load_backgrounds()
+    bgs, scene_bg = backgrounds_for(task)
     cfg = EstimatorConfig(color_M=_color_m())
     rec = estimate(images, state, task, instruction, bgs=bgs, cfg=cfg, cams=cams)
     t_est = time.time()
@@ -475,7 +510,8 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
             "contained": rec.get("_contained", []), "last_seen": last_seen,
             "task": task, "t_ms": t_ms, "t_estimate_ms": round(1000 * (t_est - t0), 1),
             "unexplained_fg": rec.get("_perception", {}).get("unexplained", []),
-            "robot_state": ik, "gl": _gl_mode(), "version": VERSION}
+            "robot_state": ik, "gl": _gl_mode(), "version": VERSION,
+            "notes": f"candidate set via {routed}; background {'scene ' + scene_bg if scene_bg else 'table'}"}
 
 
 _BG: dict = {}

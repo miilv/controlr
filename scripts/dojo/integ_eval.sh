@@ -35,6 +35,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$TASK" ]] || { echo "--task is required" >&2; exit 2; }
+for a in "${args[@]}"; do                       # D-C10: layout ids >= 100100 are reserved for joint paired runs
+  b=${a##*/}; id=${b%%.*}
+  if [[ "$a" == *.json && "$id" =~ ^[0-9]+$ ]] && (( id >= 100100 )); then
+    echo "[integ] $a: a reserved layout (>= 100100, D-C10): refused" >&2; exit 2
+  fi
+done
 if [[ -n "$PRESET" ]]; then        # the services follow the preset's mode / verify (explicit flags win, as in eval)
   read -r P_MODE P_VERIFY < <(python3 -c 'import runpy, sys; p = runpy.run_path(sys.argv[1])["PRESETS"][sys.argv[2]]
 print(p.get("mode", "gt"), p.get("verify", "off"))' "$HERE/dojo/runtime/presets.py" "$PRESET") \

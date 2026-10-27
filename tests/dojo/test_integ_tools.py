@@ -141,3 +141,19 @@ def test_runner_requeues_the_layouts_left_after_a_watchdog_stop(tmp_path):
     ran = (data / "ran.txt").read_text().splitlines()
     assert ran == ["job_a --task a --layouts /l/1.json /l/2.json /l/3.json --preset p",
                    "job_a_wd --task a --layouts /l/2.json /l/3.json --preset p", "job_b --task b"], out.stdout + out.stderr
+
+
+def test_reserved_layout_ids_are_refused_by_our_tools(tmp_path):
+    """D-C10: ids >= paths.RESERVED_MIN_ID (100100) are for joint paired runs: G3's seed ranges and gen_layouts refuse them
+    (gen_layouts unless --reserved-slice), the runtime eval refuses such layout files."""
+    import pytest as _pt
+
+    from dojo.simlab import paths
+    from dojo.simlab.gen_layouts import main as gen_main
+    from dojo.skills.g3 import parse_seeds
+    assert parse_seeds("100000-100004,100029") == [100000, 100001, 100002, 100003, 100004, 100029]
+    with _pt.raises(SystemExit):
+        parse_seeds("100098-100101")
+    with _pt.raises(SystemExit):
+        gen_main(["--task", "stack_blocks", "--n", "2", "--start", str(paths.RESERVED_MIN_ID - 1), "--out", str(tmp_path)])
+    assert not list(tmp_path.glob("*.json"))

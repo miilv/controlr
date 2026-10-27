@@ -5,14 +5,15 @@
         region = {"kind": "cells", "board": {"asset", "pos", "quat"}, "pieces": {"own": asset, "opponent": asset}}
                | {"kind": "container", "container": {"asset", "pos", "quat"}, "candidates": [asset keys]}
         -> {"t_ms", "visible_frac", "occluded", "stable_vs_prior", "new": [...],
-            cells:     "cells": [{"k", "occupant": "own" | "opponent" | None, "conf", "pos", "scores"}]
+            cells:     "cells": [{"k", "occupant": "own" | "opponent" | None, "conf", "pos", "scores"[, "occluded"]}]
             container: "inside": [{"asset", "label", "pos", "conf"}], "outside": [...]}
     ArrivalOrder(n_consecutive=4, expected=None).update(read) -> {"order", "pending", "done"}   (caller side, pure python)
 
 Cells: the board asset's public ``passive.support`` frames ``cell/0..8`` (centre in the board frame, radius 32 mm).
-A cell holds a piece when the bright (gold) pixels inside its disc match a piece silhouette better than the empty
-board does; the kind is the piece model whose silhouette fits them best (ring vs cross: same colour, other shape), with
-a yaw sweep for 4-fold pieces. Container: inverse layout over the task vocabulary (``estimate``), then each candidate
+A cell holds a piece when the gold pixels inside its disc (coloured: the glossy black board and the white opponent arm
+are neutral; the board's gold grid lines masked out) overlap a piece silhouette well enough; the kind is the piece model
+whose silhouette fits them best over a small offset grid (ring vs cross: same colour, other shape), with a yaw sweep for
+4-fold pieces. A cell an arm covers is not read: the prior read's occupant stands, flagged ``occluded``. Container: inverse layout over the task vocabulary (``estimate``), then each candidate
 object's root inside the container's footprint polygon and above its bottom. GT is never read here.
 """
 from __future__ import annotations
@@ -101,56 +102,133 @@ def _piece_shapes(asset: str):
     return shape_models(asset)
 
 
-def _read_cells(images, cams, rmasks, region: dict) -> list[dict]:
-    from .render import silhouette, load_asset, transform
+PIECE_CHROMA = 3.0         # a piece pixel is gold: coloured, where the glossy black board is neutral (chroma 0). Not
+                           # lightness: a cross in shade is L 14-58 (chroma 4-25), and the opponent's white arm passing
+                           # over the board is light but neutral (a lightness test read it as rings in 3 cells)
+LINE_PX = 2                # ... and off the board's gold grid lines (half width in px around the projected lines)
+OCCUPIED_IOU = 0.35        # a cell holds a piece when a piece silhouette overlaps its piece pixels this well
+SEARCH_M = (-0.008, -0.004, 0.0, 0.004, 0.008)   # piece offsets from the cell centre tried (a placed piece sits 0-5 mm off)
+OCCLUDER_L = 60.0          # light neutral pixels on the board are an arm (the opponent's), not a piece ...
+OCCLUDED_CELL = 0.2        # ... and a cell whose disc is this much covered by them is not read (the prior's read kept)
+KIND_MARGIN = 0.06         # ring vs cross closer than this: the kind is not read from this frame (prior's kind kept)
+
+
+def _occluder_mask(img: np.ndarray) -> np.ndarray:
+    """Light neutral pixels: neither the black board nor gold (a piece, the grid lines). On the board that is the
+    opponent's white arm passing over a cell (not in our robot mask): such a cell is not read."""
+    import cv2
+
+    lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB).astype(np.float32)
+    chroma = np.hypot(lab[..., 1] - 128.0, lab[..., 2] - 128.0)
+    return ((lab[..., 0] > OCCLUDER_L) & (chroma <= PIECE_CHROMA)).astype(np.uint8)
+
+
+def _piece_mask(img: np.ndarray, cam, cells: list[dict], robot: np.ndarray) -> np.ndarray:
+    """Pixels that are neither the black board nor its gold grid lines (nor the robot): the pieces. An absolute
+    gold threshold (L > 90) lost a piece in shade (5.1 ttt 100005: the opponent's cross in cell 2, L median 21 but
+    chroma ~10 on a neutral board, scored 0.05) and counted the grid lines inside each cell's bounding box against
+    every piece."""
+    import cv2
+
+    lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB).astype(np.float32)
+    chroma = np.hypot(lab[..., 1] - 128.0, lab[..., 2] - 128.0)
+    m = (chroma > PIECE_CHROMA).astype(np.uint8)
+    m[robot > 0] = 0
+    lines = np.zeros_like(m)
+    by_k = {c["k"]: c["pos"] for c in cells}
+    if len(by_k) == 9:
+        P = np.array([by_k[k] for k in range(9)]).reshape(3, 3, 3)
+        segs = []
+        for r in range(3):          # boundaries between columns / rows, as long as the grid
+            for c in range(2):
+                a, b = P[r, c], P[r, c + 1]
+                mid, d = 0.5 * (a + b), b - a
+                n = np.array([-d[1], d[0], 0.0])
+                segs.append((mid + 0.5 * n, mid - 0.5 * n))
+                a2, b2 = P[c, r], P[c + 1, r]
+                mid, d = 0.5 * (a2 + b2), b2 - a2
+                n = np.array([-d[1], d[0], 0.0])
+                segs.append((mid + 0.5 * n, mid - 0.5 * n))
+        for a, b in segs:
+            uv, z = cam.project(np.array([a, b]))
+            if (z > 0).all():
+                cv2.line(lines, tuple(int(round(v)) for v in uv[0]), tuple(int(round(v)) for v in uv[1]), 1, 2 * LINE_PX + 1)
+    m[lines > 0] = 0
+    return m
+
+
+def _read_cells(images, cams, rmasks, region: dict, prior: dict | None = None) -> list[dict]:
+    """Per cell: the piece kind whose silhouette (best of a small offset grid and, for crosses, a yaw sweep) best overlaps
+    the cell's piece pixels inside its disc, when that overlap reaches ``OCCUPIED_IOU``. When the two kinds score
+    within ``KIND_MARGIN`` the prior read's kind for that cell is kept (a settled piece does not change kind: 5.1 ttt
+    100000 cell 8 alternated x / o on every other read)."""
+    import cv2
+
+    from .render import load_asset, silhouette, transform
 
     cells = board_cells(region["board"])
     pieces = region.get("pieces") or {}
+    prev = {c["k"]: c.get("occupant") for c in ((prior or {}).get("cells") or [])}
+    masks = {c: _piece_mask(images[c], cam, cells, rmasks[c]) for c, cam in cams.items() if c in images}
+    occl = {c: _occluder_mask(images[c]) for c in masks}
     out = []
-    bright = {c: _bright(images[c]) for c in images if c in cams}
     for cell in cells:
-        scores = {}
-        best_piece = None
+        scores, best_by = {}, {}
+        disc = {}
+        for c, cam in cams.items():
+            if c not in masks:
+                continue
+            th = np.linspace(0, 2 * np.pi, 48, endpoint=False)
+            ring = np.c_[cell["pos"][0] + cell["radius"] * np.cos(th), cell["pos"][1] + cell["radius"] * np.sin(th),
+                         np.full(48, cell["pos"][2] + 0.005)]
+            uv, z = cam.project(ring)
+            if (z <= 0).any():
+                continue
+            dm = np.zeros(masks[c].shape, np.uint8)
+            cv2.fillPoly(dm, [np.round(uv - 0.5).astype(np.int32)], 1)
+            dm &= (rmasks[c] == 0).astype(np.uint8)
+            if dm.sum() >= 30 and float((occl[c] & dm).sum()) < OCCLUDED_CELL * float(dm.sum()):
+                disc[c] = dm
         for kind, asset in pieces.items():
             a = load_asset(asset)
             best = None
             for sm in _piece_shapes(asset):
                 yaws = [0.0] if sm.sym >= 36 else list(np.linspace(0, sm.yaw_period, 6, endpoint=False))
                 for yaw in yaws:
-                    T = sm.pose(0, 0, yaw)
-                    T[:3, 3] = [cell["pos"][0], cell["pos"][1], cell["pos"][2] - sm.zmin]
-                    num = den = 0.0
-                    for c, cam in cams.items():
-                        if c not in bright:
-                            continue
-                        S = silhouette(cam, transform(a.Vs, T), a.Fs) > 0
-                        S &= rmasks[c] == 0
-                        if S.sum() < 15:
-                            continue
-                        ys, xs = np.nonzero(S)
-                        pad = 6
-                        y0, y1, x0, x1 = max(ys.min() - pad, 0), ys.max() + pad + 1, max(xs.min() - pad, 0), xs.max() + pad + 1
-                        Sb, Bb = S[y0:y1, x0:x1], bright[c][y0:y1, x0:x1] & (rmasks[c][y0:y1, x0:x1] == 0)
-                        inter = float((Sb & Bb).sum())
-                        union = float((Sb | Bb).sum())
-                        num += inter
-                        den += union
-                    iou = num / den if den else 0.0
-                    if best is None or iou > best[0]:
-                        best = (iou, yaw, T)
+                    for dx in SEARCH_M:
+                        for dy in SEARCH_M:
+                            T = sm.pose(0, 0, yaw)
+                            T[:3, 3] = [cell["pos"][0] + dx, cell["pos"][1] + dy, cell["pos"][2] - sm.zmin]
+                            num = den = 0.0
+                            for c, dm in disc.items():
+                                S = (silhouette(cams[c], transform(a.Vs, T), a.Fs) > 0) & (dm > 0)
+                                P = (masks[c] > 0) & (dm > 0)
+                                num += float((S & P).sum())
+                                den += float((S | P).sum())
+                            iou = num / den if den else 0.0
+                            if best is None or iou > best[0]:
+                                best = (iou, yaw, T)
             if best is not None:
                 scores[kind] = round(best[0], 3)
-                if best_piece is None or best[0] > best_piece[1]:
-                    best_piece = (kind, best[0], best[2])
+                best_by[kind] = best
         occupant, conf, pos = None, 0.0, None
-        if best_piece is not None:
-            ranked = sorted(scores.values(), reverse=True)
-            margin = ranked[0] - (ranked[1] if len(ranked) > 1 else 0.0)
-            if best_piece[1] >= 0.35:
-                occupant, pos = best_piece[0], [round(float(v), 4) for v in best_piece[2][:3, 3]]
-                conf = round(float(min(1.0, best_piece[1] + margin)), 3)
+        if not disc:
+            # no view sees this cell clear (an arm over it): the prior read's occupant stands, flagged
+            pc = next((c for c in ((prior or {}).get("cells") or []) if c.get("k") == cell["k"]), None) or {}
+            out.append({"k": cell["k"], "occupant": pc.get("occupant"), "conf": 0.0, "pos": pc.get("pos"),
+                        "scores": {}, "occluded": True, "cell_pos": [round(float(v), 4) for v in cell["pos"]]})
+            continue
+        if best_by:
+            ranked = sorted(best_by.items(), key=lambda kv: -kv[1][0])
+            top_kind, top = ranked[0]
+            margin = top[0] - (ranked[1][1][0] if len(ranked) > 1 else 0.0)
+            if top[0] >= OCCUPIED_IOU:
+                if margin < KIND_MARGIN and prev.get(cell["k"]) in best_by:
+                    top_kind, top = prev[cell["k"]], best_by[prev[cell["k"]]]
+                occupant, pos = top_kind, [round(float(v), 4) for v in top[2][:3, 3]]
+                conf = round(float(min(1.0, top[0] + margin)), 3)
             else:
-                conf = round(float(1.0 - best_piece[1]), 3)
+                conf = round(float(1.0 - top[0]), 3)
         out.append({"k": cell["k"], "occupant": occupant, "conf": conf, "pos": pos, "scores": scores,
                     "cell_pos": [round(float(v), 4) for v in cell["pos"]]})
     return out
@@ -239,7 +317,7 @@ def watch_read(frame: dict, region: dict, vocabulary: str | None = None, bgs=Non
         cells = board_cells(region["board"])
         pts = np.array([c["pos"] + np.array([dx, dy, 0.0]) for c in cells for dx in (-0.015, 0, 0.015) for dy in (-0.015, 0, 0.015)])
         out["visible_frac"] = round(_visible_frac(cams, rmasks, pts), 3)
-        out["cells"] = _read_cells(frame["images"], cams, rmasks, region)
+        out["cells"] = _read_cells(frame["images"], cams, rmasks, region, prior)
         cur = {c["k"]: c for c in out["cells"] if c["occupant"]}
         if prior and prior.get("cells") is not None:
             prev = {c["k"]: c for c in prior["cells"] if c.get("occupant")}
