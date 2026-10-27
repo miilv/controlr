@@ -118,3 +118,26 @@ def test_cooking_failures_are_read_from_the_episode_s_part_of_the_kit_log(tmp_pa
     t = breadth_table([{**base, "layout_id": 100000, "success": True, "score": 1.0, "category": None},
                        {**base, "layout_id": 100001, "success": False, "score": 0.0, "category": "infra_failure"}])
     assert "| fasten_screws | 1 | 1/1 | 100.0 |" in t and "infra_failure" in t and "fasten_screws 100001" in t
+
+
+@pytest.mark.skipif(shutil.which("flock") is None, reason="needs util-linux flock")
+def test_runner_requeues_the_layouts_left_after_a_watchdog_stop(tmp_path):
+    """integ_eval.sh exits 4 when its watchdog stopped a frozen episode (an infra_failure row for it): the runner
+    re-runs the layouts without a result once (NAME_wd), the finished ones are not repeated."""
+    repo = tmp_path / "repo"
+    (repo / "scripts/dojo").mkdir(parents=True)
+    shutil.copy(ROOT / "scripts/dojo/queue_runner.sh", repo / "scripts/dojo/queue_runner.sh")
+    (repo / "scripts/dojo/integ_eval.sh").write_text(
+        "#!/usr/bin/env bash\n"
+        'out=$2; mkdir -p "$out"; echo "$(basename "$out") ${*:3}" >> "$DOJO_DATA/ran.txt"\n'
+        'if [[ "$(basename "$out")" == job_a ]]; then\n'
+        '  printf \'{"layout": "/l/1.json", "category": null}\\n{"layout": "/l/2.json", "category": "infra_failure"}\\n\' '
+        '> "$out/t_episodes.jsonl"; exit 4; fi\nexit 0\n')
+    data = tmp_path / "data"
+    (data / "integ").mkdir(parents=True)
+    (data / "integ/queue.txt").write_text("job_a --task a --layouts /l/1.json /l/2.json /l/3.json --preset p\njob_b --task b\n")
+    out = subprocess.run(["bash", str(repo / "scripts/dojo/queue_runner.sh")], cwd=repo,
+                         env={**os.environ, "DOJO_DATA": str(data)}, capture_output=True, text=True, timeout=60)
+    ran = (data / "ran.txt").read_text().splitlines()
+    assert ran == ["job_a --task a --layouts /l/1.json /l/2.json /l/3.json --preset p",
+                   "job_a_wd --task a --layouts /l/2.json /l/3.json --preset p", "job_b --task b"], out.stdout + out.stderr

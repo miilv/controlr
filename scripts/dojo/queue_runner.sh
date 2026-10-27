@@ -35,6 +35,27 @@ while true; do
   (cd "$repo" && bash scripts/dojo/integ_eval.sh --out "$RUNS/$name" $args) > "$RUNS/$name.log" 2>&1 < /dev/null
   rc=$?
   echo "$(date -u +%FT%TZ) done $name rc=$rc"
+  if [[ "$rc" == 4 && "$name" != *_wd ]]; then
+    # the watchdog stopped a frozen episode (infra_failure row written): run the layouts without a result once more
+    left=$(python3 - "$RUNS/$name" "${line#* }" <<'PY'
+import glob, json, sys
+d, args = sys.argv[1], sys.argv[2].split()
+lays = args[args.index("--layouts") + 1:] if "--layouts" in args else []
+lays = lays[:next((i for i, a in enumerate(lays) if a.startswith("--")), len(lays))]
+ok = {json.loads(ln).get("layout") for f in glob.glob(d + "/*_episodes.jsonl") for ln in open(f)
+      if ln.strip() and json.loads(ln).get("category") != "infra_failure"}
+rest = [lf for lf in lays if lf not in ok]
+if rest:
+    i = args.index("--layouts")
+    tail = args[i + 1 + len(lays):]
+    print(" ".join(args[:i + 1] + rest + tail))
+PY
+)
+    if [[ -n "$left" ]]; then
+      flock "$Q.lock" bash -c '{ printf "%s\n" "$2"; cat "$1"; } > "$1.tmp" && mv "$1.tmp" "$1"' _ "$Q" "${name}_wd $left"
+      echo "$(date -u +%FT%TZ) requeued ${name}_wd (watchdog: the layouts left)"
+    fi
+  fi
   if [[ ( "$rc" == 3 || "$rc" == 75 ) && "$name" != *_retry ]]; then
     # no episode ran (3: a service never got ready; 75: memory / VRAM / the lock never came): keep the evidence, run
     # the job once more at the front of the queue
