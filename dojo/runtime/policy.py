@@ -874,8 +874,14 @@ class RuntimePolicy:
         best = None
         if ok:
             inc = ok[0]                                 # the incumbent: the table's match (else the fallback's best)
-            better = [x for x in ok[1:] if x["found"] > inc["found"] + 1e-9
-                      or x["score"] >= inc["score"] + self.cfg.vocab_explain_margin]
+            if inc["source"] == "table" and inc["found"] >= 1.0 - 1e-9:
+                # the instruction's own set found every label: keep it. Mean confidence is not comparable across sets
+                # (small, far or half-hidden objects score low by nature): breadth3 imitate 100014 switched to
+                # classify_objects at 0.65 vs 0.47, both finding everything, and ended at step 3
+                better = []
+            else:
+                better = [x for x in ok[1:] if x["found"] > inc["found"] + 1e-9
+                          or x["score"] >= inc["score"] + self.cfg.vocab_explain_margin]
             best = max(better, key=lambda x: x["score"]) if better else inc
         self.report["events"].append({"kind": "vocab_explain", "chosen": best["name"] if best else None,
                                       "candidates": [{k: v for k, v in x.items() if not k.startswith("_")} for x in scored]})
