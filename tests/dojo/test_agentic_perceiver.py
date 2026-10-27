@@ -290,6 +290,20 @@ def test_record_merge_moves_finds_and_keeps():
     assert ok and why.startswith("not_found")
 
 
+def test_an_object_the_agent_names_without_a_turn_rests_in_its_catalogue_pose(monkeypatch):
+    """fill_egg_holder 100000 (rendered): the agent added an egg with no orientation; identity stood the lying egg on its
+    end and the skill pinched 21-37 mm above its middle. A found object without a turn takes its asset's resting one."""
+    pytest.importorskip("scipy")
+    from dojo.perception.agentic import record
+
+    lying = [0.7071, 0.7071, 0.0, 0.0]
+    monkeypatch.setattr(record, "rest_quat", lambda key: lying if key == "Rigid/block/00013" else None)
+    objs = [{"label": "cube near edge", "category": "block", "pos": [0.40, -0.05, 0.7825], "confidence": 0.6, "source": "head"}]
+    new, _ = record.merge_into_record(_rec(), objs)
+    b2 = next(r for r in new["Rigid"]["block"] if r["label"] == "block_2")
+    assert b2["default_ori"] == lying and b2["_perception"]["orientation_known"] is False
+
+
 def test_agentic_estimate_on_a_b1_record(tmp_path):
     pytest.importorskip("scipy")
     from dojo.perception.agentic import record

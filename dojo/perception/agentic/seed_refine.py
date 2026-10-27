@@ -283,10 +283,17 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
     pair_of = dict(pairs)
     h_b1 = {j: _hyp(b) for j, b in enumerate(b1_objs)}
     if rest_z:
+        from .record import rest_quat
+
         for i, o in enumerate(out):
             if not o.get("_agent_point") or o.get("source") == "refined":
                 continue
             j = pair_of.get(i)
+            if j is None and o.get("asset") and not o.get("quat"):
+                # a new object the agent names without a turn: its catalogue resting orientation, set down by it
+                q0 = rest_quat(o["asset"])
+                if q0 is not None:
+                    o["quat"], o["orientation_default"] = q0, True
             cand = dict(o)
             if j is not None:  # merge keeps B1's turn / asset when the agent gives none
                 cand = dict(o, quat=o.get("quat") or b1_objs[j].get("quat"), asset=o.get("asset") or b1_objs[j].get("asset"))
