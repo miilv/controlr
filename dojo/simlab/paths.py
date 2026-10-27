@@ -22,6 +22,16 @@ EVAL_LAYOUT_DIR = ASSETS / "Eval_Layout"
 
 # Our own layout seeds start here; RoboDojo's eval layouts are 0..N per eval seed.
 SEED_BASE = 100_000
+# layout ids >= RESERVED_MIN_ID are for joint paired runs with robot-harness (D-C10, 2026-10-27): never generated, read
+# or run on our side (rendered measurement: 100000-09; G3 / twin dev: 100000-29)
+RESERVED_MIN_ID = 100_100
+
+
+def is_reserved_id(layout_id) -> bool:
+    try:
+        return int(layout_id) >= RESERVED_MIN_ID
+    except (TypeError, ValueError):
+        return False
 
 
 def assert_not_eval(path: str | os.PathLike) -> None:

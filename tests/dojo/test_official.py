@@ -4,8 +4,11 @@ through ONE strict server (the next reset ends the previous episode), and the Ro
 
 import gzip
 import json
+import os
 import subprocess
 from pathlib import Path
+
+import pytest
 
 from dojo.bridge import official as O
 from dojo.bridge.backend import RobotServerBackend
@@ -148,3 +151,38 @@ def test_official_eval_never_reads_eval_layouts_or_verdicts_before_the_close():
     # the result is copied after the eval client exited, never read inside the episode loop
     loop = src[src.index("# 5. one driver per episode"):src.index("# 6. the eval client writes")]
     assert "_result.json" not in loop and "dev.jsonl" not in loop
+
+
+def test_reserved_layout_ids_are_refused(tmp_path, monkeypatch):
+    """D-C10: ids >= 100100 are the joint paired runs' layouts: the official path never loads them."""
+    import sys
+    import types
+
+    from dojo.simlab import dev_eval, paths
+    assert paths.is_reserved_id(100100) and paths.is_reserved_id("100250") and not paths.is_reserved_id(100099)
+    d = tmp_path / "layouts" / "stack_blocks"
+    d.mkdir(parents=True)
+    for lid in (100000, 100001):
+        (d / f"{lid}.settled.json").write_text("{}")
+
+    class SeedManager:                                   # RoboDojo's class, as dev_eval.py patches it
+        task_name, config = "stack_blocks", {}
+    mods = {"env": types.ModuleType("env"), "env.seed_manager": types.ModuleType("env.seed_manager"),
+            "env.seed_manager.seed_manager": types.ModuleType("env.seed_manager.seed_manager"),
+            "utils": types.ModuleType("utils"), "utils.load_file": types.ModuleType("utils.load_file")}
+    mods["env.seed_manager.seed_manager"].SeedManager = SeedManager
+    mods["env.seed_manager"].seed_manager = mods["env.seed_manager.seed_manager"]
+    mods["utils.load_file"].load_json = lambda p: json.loads(Path(p).read_text())
+    for k, v in mods.items():
+        monkeypatch.setitem(sys.modules, k, v)
+    monkeypatch.setenv("SIMLAB_DEV_LAYOUT_SUFFIX", ".settled")
+    dev_eval.patch_seed_manager(tmp_path / "layouts")
+    sm = SeedManager()
+    sm.init_eval()
+    assert [v["layout_id"] for v in sm.seed_info.values()] == [100000, 100001]
+    (d / "100100.settled.json").write_text("{}")
+    with pytest.raises(SystemExit):
+        SeedManager().init_eval()
+    r = subprocess.run(["bash", str(ROOT / "scripts" / "dojo" / "official_eval.sh"), "--inner", "--task", "stack_blocks",
+                        "--layouts", "100100"], capture_output=True, text=True, env={**os.environ, "DOJO_DATA": str(tmp_path)})
+    assert r.returncode == 2 and "reserved" in r.stderr
