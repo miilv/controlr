@@ -62,6 +62,9 @@ class RunnerEnv:
     def reward(self) -> dict:
         return self.r.reward(self.i)
 
+    def garment_gt(self, label: str | None = None) -> dict | None:
+        return self.r.garment_gt(self.i, label)
+
     def score(self) -> float:
         return self.r.score(self.i)
 

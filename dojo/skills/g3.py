@@ -93,6 +93,32 @@ class OffsetBeliefProvider:
         return w
 
 
+class FrozenGarmentProvider:
+    """Dev hook for mode B in G3: a garment is read once, as the camera reads it at eval (``dojo.perception.garment``:
+    one read of the flat garment, not following the cloth), from GT plus ``noise_mm`` Gaussian xy noise per named point
+    (the camera read's error); ``live`` False, so the fold skill plans every fold from it."""
+
+    def __init__(self, base, noise_mm: float = 0.0, seed: int = 0):
+        self.base = base
+        self.noise = noise_mm / 1000.0
+        self.rng = np.random.default_rng(seed)
+        self._g = {}
+
+    def __getattr__(self, name):
+        return getattr(self.base, name)
+
+    def garment(self, label=None):
+        if label not in self._g:
+            g = self.base.garment(label)
+            if g is None:
+                return None
+            kp = {k: (np.asarray(v, float) + np.r_[self.rng.normal(0, self.noise, 2), 0.0]).tolist() if self.noise
+                  else list(v) for k, v in g["keypoints"].items()}
+            self._g[label] = {"label": g.get("label"), "keypoints": kp, "pos": g.get("pos"), "quat": g.get("quat"),
+                              "live": False}
+        return self._g[label]
+
+
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
                 verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False,
                 held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True,
@@ -126,6 +152,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
         from dojo.skills.heldsim import HeldBeliefProvider
         prov = HeldBeliefProvider(prov, env, mode=held_pose or None, seed=seed, freeze=freeze_touched,
                                   confirm=confirm_pose, drop=belief_drop)
+    if mode_b and hasattr(prov, "garment"):
+        prov = FrozenGarmentProvider(prov, noise_mm=float(os.environ.get("G3_GARMENT_NOISE_MM", "0")), seed=seed)
     t1 = time.perf_counter()
     sim_time = [0.0]
     verifier = None
