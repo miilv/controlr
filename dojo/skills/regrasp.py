@@ -65,6 +65,8 @@ PROBE_LAG = 0.0003                  # m: contact after a held step (a probe of t
 COARSE_STEP = 0.003
 COARSE_LAG = 0.0008
 LOOK_HEIGHT = 0.18                  # m: the giver's hand over the receptacle's top for the mode-B look at its keyhole
+UPRIGHT_CARRY = 0.04                # rad/step, eased: mode B's upright carry to the hover (0.07 un-eased: the hand
+                                    # lagged 2.2 mm and the key swung 5 deg in the pads on the way, twin)
 VIA_UP = 0.08                       # m: the via over the receptacle when the direct move to its hover does not plan
 PLACE_CHECKS = 6                    # handover candidates whose taker place is planned before one is chosen
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
@@ -519,9 +521,14 @@ def _upright_moves(sk: Skills, arm: str, label: str, T_target, receptacle: str, 
     if not isinstance(pl, PlacePlan) or not pl.approach.segments:
         return None
     T_hover = sk.kin.tcp(arm, pl.approach.q_end)
-    m2 = sk.motion.line(arm, m1.q_end, T_hover, REST_PLACE_CARRY, "upright_carry", gripper=CLOSED, held=h.box,
+    m2 = sk.motion.line(arm, m1.q_end, T_hover, UPRIGHT_CARRY, "upright_carry", gripper=CLOSED, held=h.box,
                         ignore=(label,), max_step_deg=3.0)
-    return [m1, m2] if m2.ok else None
+    if not m2.ok:
+        return None
+    for m_ in (m1, m2):
+        for seg in m_.segments:
+            seg.ease = 4
+    return [m1, m2]
 
 
 def _vlag(sk: Skills, arm: str) -> float:
