@@ -250,6 +250,8 @@ def run_eval(task: str, layout_files: list[str], policy, out: Path, dev_layout_i
     details, t_all = {}, time.perf_counter()
     for i, lf in enumerate(layout_files):
         paths.assert_not_eval(lf)
+        if paths.is_offslice_rendered(Path(lf).name.split(".")[0]):
+            raise SystemExit(f"{lf}: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= {paths.RESERVED_MIN_ID})")
         lay = json.loads(Path(lf).read_text())
         info = ep.reset(lay)
         if not info["stable"]:
