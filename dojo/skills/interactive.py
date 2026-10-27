@@ -779,9 +779,24 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
         sk.ex.run_lists({a: app}, name="belt approach")
         # re-read the object and shift the tracked part by the prediction error (the belt keeps moving)
         w = sk.refresh()
-        err = w.obj(label).pos - (p_plan + np.r_[v, 0.0] * (sk.ex.steps_used - t_plan))
+        p_now = w.obj(label).pos.copy()
+        max_shift = 0.025                               # the head-view tracker: larger is the arm half hiding the rider
+        if getattr(sk, "refine", None) is not None:
+            # a wrist look from the end of the approach (mode B: the sim waits for the read, the rider does not move
+            # meanwhile): the head-view tracker is 10-15 mm off at contact on a crowded belt
+            try:
+                sk._refine(label, a, "pick")
+            except Exception as e:  # noqa: BLE001 (a look that fails keeps the tracker's reading)
+                sk.log(f"[belt] wrist look failed: {type(e).__name__}")
+            lr = getattr(sk, "last_refine", None) or {}
+            if lr.get("ok") and lr.get("pos") is not None and float(lr.get("iou") or 0.0) >= 0.5:
+                p_now = np.asarray(lr["pos"], float)
+                max_shift = 0.05
+                sk.log(f"[belt] wrist look: {np.round((p_now - w.obj(label).pos) * 1000, 1).tolist()} mm from the track"
+                       f" (iou {float(lr.get('iou') or 0):.2f})")
+        err = p_now - (p_plan + np.r_[v, 0.0] * (sk.ex.steps_used - t_plan))
         err[2] = 0.0
-        if 0.002 < float(np.linalg.norm(err)) < 0.025:     # larger: the arm half hides it, trust the track
+        if 0.002 < float(np.linalg.norm(err)) < max_shift:
             shifted = []
             for kind, T in samples:
                 T2 = T.copy()
