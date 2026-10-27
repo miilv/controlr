@@ -545,7 +545,8 @@ EGG_SLIDE_START = 0.022       # m: the push starts this far out from the egg's b
 EGG_SLIDE_Z = 0.007           # m: the fingertips' height over the plate during the push
 
 
-def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=(), arm: str | None = None) -> str:
+def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=(), arm: str | None = None,
+             start: float = EGG_SLIDE_START, push: float = EGG_SLIDE) -> str:
     """Push a lying object, let go across ``hole``, along its long axis towards the side it was let go on: once one end
     is over the hole with nothing under it, it tips in. Closed fingertips straight down beside its end on the other side
     (``EGG_SLIDE_START`` out from where it should be: the in-hand position along the axis is known to +-15 mm only in
@@ -567,8 +568,8 @@ def slide_in(sk: Skills, label: str, hole: dict, T_release, ignore=(), arm: str 
     # just over the plate: the egg's lower end whatever its height in the hand (mode B: 10-14 mm lower than believed;
     # at its believed middle the fingertips passed over it, egg_mbD 100001)
     z_tip = float(hole["top"]) + EGG_SLIDE_Z
-    p0 = np.r_[c0[:2] - u[:2] * (half + EGG_SLIDE_START), z_tip]
-    p1 = p0 + u * EGG_SLIDE
+    p0 = np.r_[c0[:2] - u[:2] * (half + start), z_tip]
+    p1 = p0 + u * push
     from dojo.skills.kinematics import down_R
     R = down_R(math.atan2(u[1], u[0]) + math.pi / 2)                 # closing across the push, the finger's width along it
 
@@ -820,7 +821,10 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             if EGG_SLIDE_IN and off == off and (not sk.remeasure or float(o.center_w[2]) > plate_top - EGG_SUNK):
                 # lying across the hole (mode A: measured; mode B: the release cannot be checked, so always): slid along
                 # its axis until one end is over the hole
-                r_s = slide_in(sk, lab, h, q.T_obj_target, ignore, arm=a)
+                # mode A: from where it lies (measured), a short push past the contact; mode B: from the release pose,
+                # long enough for +-15 mm of unknown in-hand position (G3: it pushed an egg on across the next hole)
+                r_s = (slide_in(sk, lab, h, q.T_obj_target, ignore, arm=a) if not sk.remeasure else
+                       slide_in(sk, lab, h, o.T, ignore, arm=a, start=0.006, push=0.022))
                 sk.log(f"[holes] {lab}: slid along its axis ({r_s})")
                 w = sk.refresh()
                 o = w.obj(lab)
