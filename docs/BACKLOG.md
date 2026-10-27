@@ -6,6 +6,11 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo perception: learned identity on the conveyors needs torch in the perception venvs.** The belt read with
+  `EstimatorConfig.embed_model="dinov2_s"` (5.1 belt reads: identity 79/116 -> 104/116, phantoms 77 -> 47; report
+  2026-10-27-identity-embeddings) is off by default. The rendered A/B arm sets `DOJO_PERCEPTION_CFG='{"embed_model":
+  "dinov2_s"}'` and needs torch + transformers + `$DOJO_EMBED_MODELS/dinov2-small` (DEVELOPMENT §4). What is left on
+  the belt: puppet -> camera when their blobs touch (5 of 23 puppet reads).
 - [ ] **dojo skills: a silent in-hand slip in mode B** (store_tools 5.1 B, 6/10 "stages_left 1"; journal
   2026-10-27-dojo-longh §8). A physics replay of 100008: the wrench slid out of an off-centre grasp ~15 steps after the
   lift, after held_look had said "held"; nothing re-checks before the release and the skill places an empty gripper.

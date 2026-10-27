@@ -2489,12 +2489,46 @@ def _contained_children(chosen: list[Hypothesis], views, cfg, groups, pending, t
     return out
 
 
-def _polish_prefers(best: Hypothesis, t2: Hypothesis, pt, cfg) -> bool:
+def _embed(cfg):
+    """The learned-identity scorer of ``cfg`` (``embed_id``), or None when ``cfg.embed_model`` is off."""
+    if not getattr(cfg, "embed_model", None):
+        return None
+    from .embed_id import identity
+
+    return identity(cfg.embed_model, color_M=cfg.color_M, lit=cfg.embed_lit, crop_mode=cfg.embed_crop)
+
+
+def _embed_blob(h: Hypothesis, head, others_head=None, dilate: int = 5) -> Blob | None:
+    """The head pixels of a fitted object: its silhouette (dilated) on the foreground, the other objects removed."""
+    s_h = h.sm().sil(head.cam, h.T())
+    m = cv2.dilate(s_h, np.ones((dilate, dilate), np.uint8)) & head.fg
+    if others_head is not None:
+        m &= 1 - others_head
+    if m.sum() < 10:
+        return None
+    n, lab, st, cents = cv2.connectedComponentsWithStats(m, connectivity=8)
+    j = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+    return Blob("cam_head", (lab == j).astype(np.uint8), int(st[j, cv2.CC_STAT_AREA]), cents[j], tuple(st[j, :4]))
+
+
+def _embed_score(h: Hypothesis, sims: dict | None, cfg) -> float | None:
+    """A hypothesis' learned-identity score: its geometry group's best similarity minus ``embed_weight`` x its loss."""
+    if not sims:
+        return None
+    s = [sims[k] for k in (h.per_view.get("geom_group") or [h.key]) if k in sims]
+    return (max(s) - cfg.embed_weight * float(h.loss)) if s else None
+
+
+def _polish_prefers(best: Hypothesis, t2: Hypothesis, pt, cfg, sims: dict | None = None) -> bool:
     """Does a polish trial ``t2`` replace the incumbent ``best``? Paired texture on shared pixels (``pt`` = their two
     costs) decides when it is informative, else the combined cost. Paired texture decides only between colour-compatible
     candidates (``polish_color_veto``): weighed 0.8 against the mean colour's 0.3, it turned a white mug (colour distance
     0.10) into a dark one (0.46) on hang_mugs; a vetoed trial is skipped, not judged by the combined cost (that cost
-    organize_table's garage figure)."""
+    organize_table's garage figure). With learned identity (``sims``: similarity per key of the incumbent's head crop),
+    the fused score (``_embed_score``) decides."""
+    eb, et = _embed_score(best, sims, cfg), _embed_score(t2, sims, cfg)
+    if eb is not None and et is not None:
+        return et > eb + 0.01
     informative = pt is not None and abs(pt[0] - pt[1]) > cfg.paired_tex_margin
     if informative and cfg.polish_color_veto is not None and t2.appearance - best.appearance > cfg.polish_color_veto:
         return False
@@ -2512,12 +2546,14 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
     head = views["cam_head"]
     prior_by_g = {gi: (g, p) for gi, g, p in pending}
     out = list(chosen)
+    emb = _embed(cfg)
     for i, h in enumerate(out):
         if h.per_view.get("occluded") or h.label_group not in prior_by_g or h.per_view.get("z_off"):
             continue  # stacked objects keep their fit (the trials below are table-resting)
         g, prior = prior_by_g[h.label_group]
         others = _union_masks(out, views, skip=i, target=out[i])
         trials = []
+        sims = None
         if (not prior["yaw_fixed"] and h.sm().yaw_period > 1.5 * np.pi
                 and region_ok(g, *_centre_xy(flip_about_centroid(h), g), (h.yaw + np.pi) % (2 * np.pi), h.sm().yaw_period)):
             trials.append(flip_about_centroid(h))
@@ -2551,6 +2587,13 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
                     # hang_mugs' pink mug (best colour by 0.2) came 5th of 9 behind a big cream incumbent
                     by_col = sorted(pre, key=lambda t: _app(bcol, [s_.key for s_ in t[1]]))
                     picked += [t for t in by_col[: cfg.polish_color_candidates] if all(t[1] is not q[1] for q in picked)]
+                if emb is not None and b.area >= cfg.embed_min_px:
+                    # learned identity: the head crop against every candidate's renders; its best geometry is tried too
+                    keys = sorted({s_.key for sms in _geometry_groups(g, prior).values() for s_ in sms})
+                    sims = emb.scores(head.img, head.cam, b.mask, b.bbox, b.centroid, keys, bg=head.bg) or None
+                    if sims:
+                        top = max(sims, key=sims.get)
+                        picked += [t for t in pre if top in [s_.key for s_ in t[1]] and all(t[1] is not q[1] for q in picked)]
                 for _, sms in picked:
                     sm = sms[0]
                     for x, y, yaw, l in coarse_fit(sm, b, {"cam_head": head}, cfg.yaw_step_deg)[:2]:
@@ -2571,10 +2614,12 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
             pt = paired_texture(best.sm(), best.T(), t2.sm(), t2.T(), views, others) if cfg.texture_weight > 0 else None
             if pt is not None:
                 t2.per_view["paired_tex"] = [round(pt[0], 4), round(pt[1], 4)]
-            if _polish_prefers(best, t2, pt, cfg):
+            if _polish_prefers(best, t2, pt, cfg, sims):
                 best = t2
         if best is not h0:
             best.per_view["polished"] = True
+        if sims:
+            best.per_view["embed"] = {"top": max(sims, key=sims.get), "sim": round(max(sims.values()), 4)}
         alts = sorted((t for t in scored if t is not best), key=lambda t: t.loss)
         if alts:
             a = alts[0]
@@ -2761,6 +2806,17 @@ class EstimatorConfig:
     # objects placed inside a static container base (fill_egg_holder's eggs in the egg basket): fitted on the base's
     # top surface to the evidence that interrupts its texture, only their pixels in front of it counted (contained.py)
     contained_children: bool = True
+    # identity by learned image embeddings (embed_id.py). None = off; a model name ("dinov2_s", "dinov2_b", "siglip2_b",
+    # "clip_l") makes the belt read pick each blob's asset by crop-vs-catalogue-render similarity minus embed_weight x our
+    # fit loss, fitting the picked asset when our proposals did not (weights: DOJO_EMBED_MODELS; torch + transformers)
+    embed_model: str | None = None
+    embed_weight: float = 0.25
+    embed_crop: str = "composite"  # composite (raw crop vs renders over the background) | masked (both on grey)
+    embed_lit: bool = True  # renders lit by a light at the camera (False: flat per-face colours)
+    embed_min_px: int = 40  # smaller blobs keep our identity
+    # belt read: blobs given the same asset within half its extent are one object's pieces (a dark figure split on the
+    # dark belt); without it the embedding's confident fits of the pieces add phantoms (5.1 belt reads: 77 -> 114, with it 47)
+    embed_merge: bool = True
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 
@@ -3208,6 +3264,20 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         else:
             C = np.array([[appearance_distance(obs_cols[i], refs[k]) if obs_cols[i] is not None else 1.0 for k in geom_keys]
                           for i in members])
+        emb = _embed(cfg)
+        if emb is not None:
+            # learned identity: + (1 - similarity) of each member's head crop to every key rendered at its fitted pose
+            others_all = _union_masks(chosen, views)
+            for row, i in enumerate(members):
+                h = chosen[i]
+                own = h.sm().sil(views["cam_head"].cam, h.T())
+                b = _embed_blob(h, views["cam_head"], others_all["cam_head"] & (1 - own))
+                if b is None or b.area < cfg.embed_min_px:
+                    continue
+                sims = emb.scores_at_poses(views["cam_head"].img, views["cam_head"].cam, b.mask, b.bbox,
+                                           [(k, h.T()) for k in geom_keys], bg=views["cam_head"].bg)
+                if len(sims) == len(geom_keys):
+                    C[row] = C[row] + np.array([1.0 - sims[k] for k in geom_keys])
         if mode == "same":
             k = geom_keys[int(np.argmin(C.sum(0)))]
             for i in members:

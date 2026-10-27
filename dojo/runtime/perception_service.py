@@ -302,6 +302,8 @@ class _Perception:
         kw = {}
         if self._cal and f"fold{int(fold)}" in self._cal:
             kw["color_M"] = self._cal[f"fold{int(fold)}"]
+        # A/B arms: EstimatorConfig overrides from the service's environment, e.g. '{"embed_model": "dinov2_s"}'
+        kw.update(json.loads(os.environ.get("DOJO_PERCEPTION_CFG") or "{}"))
         return EstimatorConfig(use_wrists=True, **kw)
 
     def search_regions(self, frame: dict, record: dict, vocabulary: str) -> list[dict]:

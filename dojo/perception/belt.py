@@ -13,6 +13,10 @@ appearance), and keeps its single best hypothesis. No label counts, no splitting
         record["Rigid"][cat] = [{category, category_idx, label "rider<k>", default_pos, default_ori,
                                  _perception {confidence, sil_loss, blob_px, alternative}}]
 
+With ``cfg.embed_model`` set (default None: off), each blob's asset is picked by learned image embeddings instead
+(``embed_id``: the head crop against catalogue renders of every rider candidate, similarity minus ``embed_weight`` x
+our fit loss); a picked asset our proposals did not fit is fitted on the blob. ``_perception.embed`` records the pick.
+
 GT is never read here.
 """
 from __future__ import annotations
@@ -63,9 +67,16 @@ def belt_read(images: dict, state: dict, task: str, instruction: str = "", bgs: 
     best: dict[int, list] = {}
     for h in hyps:
         best.setdefault(h.blob, []).append(h)
+    picks: dict[int, dict] = {}
+    if getattr(cfg, "embed_model", None):
+        best, picks = _embed_pick(head_blobs, best, gis, groups, views, bgs, cfg)
+        if getattr(cfg, "embed_merge", False):
+            head_blobs, best, picks = _merge_fragments(head_blobs, best, picks, gis, groups, views, cfg)
     k = 0
     for bi in sorted(best):
         hs = sorted(best[bi], key=lambda h: h.loss)
+        if bi in picks:  # the embedding's pick first, then our other fits
+            hs = sorted(hs, key=lambda h: (h.key != picks[bi]["key"], h.loss))
         h = hs[0]
         conf = float(np.clip(1 - h.per_view.get("sil_loss", h.loss), 0, 1))
         if conf < MIN_RIDER_CONF:
@@ -79,10 +90,118 @@ def belt_read(images: dict, state: dict, task: str, instruction: str = "", bgs: 
             "_perception": {"confidence": round(conf, 3), "sil_loss": h.per_view.get("sil_loss"), "cost": round(float(h.loss), 4),
                             "blob_px": int(head_blobs[bi].area) if 0 <= bi < len(head_blobs) else None,
                             "alternative": None if alt is None else {"key": alt.key, "margin": round(float(alt.loss - h.loss), 4)},
-                            "source": "belt_read"}})
+                            "source": "belt_read", **({"embed": picks[bi]} if bi in picks else {})}})
         k += 1
     record["_perception"] = {"version": "belt-v0", "n_head_blobs": len(head_blobs), "t_s": round(time.time() - t0, 3)}
     return record
+
+
+def _fit_key(key: str, gi: int, bi: int, blob, views, cfg, groups):
+    """Our best fit of one asset on one blob (coarse yaw grid over its place orientations, then the quick refine), or
+    None."""
+    from .inverse_layout import Hypothesis, _score_hyp, coarse_fit, shape_models, yaw_range
+
+    best = None
+    for sm in shape_models(key):
+        for x, y, yaw, l in coarse_fit(sm, blob, views, cfg.yaw_step_deg, yaw_range(groups[gi], sm.yaw_period))[:1]:
+            if best is None or l < best.loss:
+                best = Hypothesis(gi, key, sm.tag, x, y, yaw, l, blob=bi)
+                best.per_view = {"geom_group": [key]}
+    return None if best is None else _score_hyp(best, views, None, cfg, groups, cfg.quick_iters)
+
+
+def _embed_pick(head_blobs, best: dict, gis: list, groups: list, views, bgs, cfg):
+    """Per blob (>= ``cfg.embed_min_px``): the asset the embedding fused with our losses picks; a fit of it is added to
+    the blob's hypotheses when our proposals had none. Returns (hypotheses per blob, {blob: pick record})."""
+    from .embed_id import fuse, identity
+
+    emb = identity(cfg.embed_model, color_M=cfg.color_M, lit=cfg.embed_lit, crop_mode=cfg.embed_crop)
+    key_group = {}
+    for gi in gis:
+        for key in groups[gi]["candidates"]:
+            key_group.setdefault(key, gi)
+    keys = sorted(key_group)
+    head = views["cam_head"]
+    bg = (bgs or {}).get("cam_head")
+    best = {bi: list(hs) for bi, hs in best.items()}
+    picks = {}
+    for bi, b in enumerate(head_blobs):
+        if b.area < cfg.embed_min_px:
+            continue
+        sims = emb.scores(head.img, head.cam, b.mask, b.bbox, b.centroid, keys, bg=bg)
+        if not sims:
+            continue
+        hs = best.get(bi, [])
+        losses: dict[str, float] = {}
+        for h in sorted(hs, key=lambda h: h.loss):
+            losses.setdefault(h.key, float(h.loss))
+        ranked = fuse(sims, losses, cfg.embed_weight)
+        key = ranked[0][0]
+        if key not in losses:
+            h = _fit_key(key, key_group[key], bi, b, views, cfg, groups)
+            if h is None:
+                continue
+            best.setdefault(bi, []).append(h)
+        picks[bi] = {"key": key, "sim": round(sims[key], 4), "margin": round(ranked[0][1] - ranked[1][1], 4) if len(ranked) > 1 else None,
+                     "ours": min(losses, key=losses.get) if losses else None}
+    return best, picks
+
+
+def _merge_fragments(head_blobs, best: dict, picks: dict, gis: list, groups: list, views, cfg):
+    """Blobs the embedding gives the same asset, whose centres lie within half that asset's largest extent of each other
+    (a dark figure split into pieces on the dark belt), become one blob fitted again as that asset. Returns new
+    (blobs, hypotheses per blob, picks); merged-away blobs drop out."""
+    from .cameras import TABLE_Z
+    from .inverse_layout import Blob, shape_models
+
+    cam = views["cam_head"].cam
+    key_group = {}
+    for gi in gis:
+        for key in groups[gi]["candidates"]:
+            key_group.setdefault(key, gi)
+    pts, reach = {}, {}
+    for bi, p in picks.items():
+        sm = shape_models(p["key"])[0]
+        pts[bi] = cam.ray_plane(np.asarray(head_blobs[bi].centroid, float)[None, :], TABLE_Z + sm.height / 2)[0][:2]
+        reach[bi] = max(0.04, 0.5 * float(np.max(sm.asset.extents)))
+    parent = {bi: bi for bi in picks}
+
+    def root(i):
+        while parent[i] != i:
+            i = parent[i]
+        return i
+
+    ids = sorted(picks)
+    for x, i in enumerate(ids):
+        for j in ids[x + 1:]:
+            if picks[i]["key"] == picks[j]["key"] and np.isfinite(pts[i]).all() and np.isfinite(pts[j]).all() \
+                    and float(np.hypot(*(pts[i] - pts[j]))) <= reach[i]:
+                parent[root(j)] = root(i)
+    comps: dict[int, list] = {}
+    for bi in ids:
+        comps.setdefault(root(bi), []).append(bi)
+    blobs_out, best, picks = list(head_blobs), dict(best), dict(picks)
+    for r, members in comps.items():
+        if len(members) < 2:
+            continue
+        m = np.zeros_like(head_blobs[r].mask)
+        for bi in members:
+            m |= head_blobs[bi].mask
+        ys, xs = np.nonzero(m)
+        merged = Blob("cam_head", m, int(m.sum()), np.array([xs.mean(), ys.mean()]),
+                      (int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)))
+        key = picks[r]["key"]
+        h = _fit_key(key, key_group[key], r, merged, views, cfg, groups)
+        if h is None:
+            continue
+        blobs_out[r] = merged
+        best[r] = [h] + [x for x in best.get(r, []) if x.key != key]
+        picks[r] = {**picks[r], "merged": len(members)}
+        for bi in members:
+            if bi != r:
+                best.pop(bi, None)
+                picks.pop(bi, None)
+    return blobs_out, best, picks
 
 
 __all__ = ["belt_read", "rider_groups"]

@@ -150,6 +150,7 @@ class ViewMasks:
     known: np.ndarray  # uint8 0/1
     dist: np.ndarray  # float32 colour distance to background
     robot: np.ndarray  # uint8 0/1 (current robot silhouette, dilated)
+    bg: np.ndarray | None = None  # the background image the mask was taken against (None: none / not kept)
 
 
 HOME = np.zeros(6)
@@ -220,7 +221,7 @@ def segment_views(images: dict[str, np.ndarray], cams: dict[str, Camera], state:
             fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
         known &= 1 - rob
         fg &= known
-        out[name] = ViewMasks(cam, img, fg, known, dist.astype(np.float32), rob)
+        out[name] = ViewMasks(cam, img, fg, known, dist.astype(np.float32), rob, bg)
     return out
 
 
