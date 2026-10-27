@@ -75,3 +75,86 @@ Validation on genuine Isaac 5.1 rendered frame 0s of our dev layouts (`garment_f
 | fold_clothes 100000-19 | 20 | 20/20 | 4 mm | 7 / 19 mm | 0.8 deg |
 
 The templates come from 3 of these layouts (100000, 100002, 100004: one per asset); the other 17 are held out.
+
+## 4. Other tasks of this stream (parked, in order of points)
+
+### store_laptop_and_headphones (headset 20, laptop 80; paired score)
+
+- **Laptop half (80): the checker looks infeasible for any physical placement in our RoboDojo.**
+  - The rack (`vertical_laptop_storage_rack/00000`) is a 49 mm-tall block: a base plate at -21 mm in its frame, two
+    ridges, and an 8-12 mm slot between them.
+  - The checker wants the laptop's `bottom` functional point (on link E_body_1, 1 mm under the body's centre) inside
+    the rack's metadata bbox (z +-24 mm in the rack frame), with the laptop's +y within 10 deg of up.
+  - The body is 126 mm deep and 6 mm thick, and `bottom` is 79 mm from its front edge. Standing front-edge-down in the
+    slot puts `bottom` at about +57 mm in the rack frame, 33 mm above the bbox top. It cannot get lower: the front
+    edge would have to be 30 mm under the table.
+  - Board entries reach 57-59 on this task, so the leaderboard's checker or assets probably differ from ours. Not
+    built: it could not be scored in the twin.
+- **Headset half (20).**
+  - Baseline on main: 0/10 (G3 mode A, settled 100000-09). Every episode failed with "0 grasp-place pairs".
+  - Causes found:
+    1. The stand was modelled as 2 cm mesh boxes plus a 6 mm margin, so every place 3 cm over the saddle "hit" it
+       although the meshes were 10 mm apart.
+    2. Half the forward-reach grasps needed j6 at its stop (the flipped pad order was missing).
+    3. In 10 of 20 dev layouts the lying headset is partly under the open laptop's front edge (16 mm below its
+       body), so vertical lifts collide.
+    4. The headset's bbox corners lie 24 mm under the table, so the held-object table test rejected every lift.
+    5. A rigid headset cannot be lowered onto the saddle from above: its cups are 34 mm apart and the saddle is
+       106 mm wide. It sits in the saddle's trough and can only be slid on from the front, over the trough's lip,
+       then let down.
+  - Fixes on `feat/dojo-gennew-laptop` (cradle branch of `hang_on_hooks` only):
+    - the stand as 1 cm parts with a 2 mm margin;
+    - the release height from the mesh clearance (`rest_clearance`);
+    - the way on from the meshes (`way_out`: up, then out);
+    - both pad orders;
+    - opt-in `plan_pick(lift_pulls=, held_mesh_table=)`.
+  - G3 mode A with these fixes: v1 1/10 at 0.2 (d97c269), v2 1/5 at 0.2.
+  - What remains is the pick: the 0.25 kg headset's pinches slip or come loose (drift 10-14 mm, rose 0 mm).
+  - Parked (the lead): 0.33 % of Average at most. It touches shared `skills.py` / `motion.py`, so it needs the
+    regression set before any PR.
+
+### sweep_blocks (binary; board best 20, PyRUA 4/8)
+
+- `sweep_into` (branch `feat/dojo-gennew-laptop`, `dojo/skills/sweep.py`):
+  1. one arm drags the dustpan flat to beside the objects, its opening towards them, and holds it (pinch across the
+     handle);
+  2. the broom goes to the other arm through the table (box pinch at the head's root);
+  3. each object is pushed with the side of the broom's head onto the pan's axis, then over the lip;
+  4. the broom is put down 10+ cm right of the pan.
+- G3 mode A, v6 (33dbfac), 100000-04: the whole sequence ran on 100000 and 100003, with every cube reported in the pan
+  right after its push. The binary check still failed.
+  - Traced on 100000: the last cube's final push ran the broom's head into a side wall, because of the 3.5 cm lanes.
+    It shoved the held dustpan 7 cm away and left that cube 2.6 cm in front of the lip.
+  - v7 (b96c416): lanes 2 cm, pushes 4.5 cm past the lip, more handle stations (the drag found no reachable handle
+    grasp with the pan at x -0.33 on 100001 / 100002).
+- Other failures: the broom relay pick sometimes slips (rose 0-2 mm).
+- Rendered sweep is blocked: breadth3 found `Rigid/broom_shovel/00001` missing from the perception catalogue
+  (Perception-2).
+
+## 5. fold: mode B (the hem pinch) and the end-to-end check
+
+G3 mode B (`--mode-b`: the garment read once, frozen, one pinch each, no re-read) exposed the hems:
+- with #103's pinch recipe, 4 of 10 hem pinches caught nothing at the first try (mode A retries them; mode B cannot);
+- the second recipe (1.5 cm deeper, turned 90 deg) caught 8/8 as a retry.
+So hems now start with the second recipe. With it, first pinches caught 30/30 hems and 30/30 sleeves (fold5A) and
+20/20 each on the random set.
+
+| run (commit) | layouts | mode | success | mean |
+|---|---|---|---|---|
+| 946862b (#103 + hems 4 cm past, both re-pinched on a miss) | 100000-09 | A | 8/10 | 0.84 |
+| 946862b | 100000-09 | B | 4/10 | 0.52 |
+| 85555e4 (+ hems with the second recipe first) | 100000-09 | B | 9/10 | 0.92 |
+| **421d5ea** (+ hems back to 2 cm short: 4 cm past landed +5..+22 cm, over the window 2/12) | 100000-09 | B | **9/10** | **0.92** |
+| 421d5ea | 100000-14 | B | 12/15 | 0.81 |
+| 421d5ea | 100000-24 | A | 15/25 | 0.62 |
+| 421d5ea | fold_clothes_random 100000-04 | B | 1/5 | 0.36 |
+
+- Rejected: aiming sleeves per side (89e3b82) and 6 cm low with a live redo (153249f). Mode A fell to 5/10 and 4/12;
+  the right sleeve stopped folding. Reverted.
+- Rendered end to end (`integ_eval --renderer isaac51 --preset submit_v1`, perception mode, the camera read, #110 +
+  85555e4): fold_clothes 100000-04 4/5, mean 0.84, 61-76 s per episode, 0 LLM calls.
+  - 100004 (0.2) had the camera read's worst error that night (yaw 4.5 deg, named points up to 19 mm).
+- Mode A's failures are mostly a right sleeve that lands 15-25 cm out (7 of 25 at 0). Under the checker's rule (body
+  folded, a sleeve not) that is a 0, not a 0.2.
+- The random set in mode B fails the hem line (57-90 deg). A frozen read of the hem corners is off once the sleeves
+  are folded on those garments. Open.
