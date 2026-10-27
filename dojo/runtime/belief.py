@@ -313,7 +313,9 @@ class RuntimeProvider:
         self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
         self.garment_reader = None              # (obs) -> a garment read (``dojo.perception.garment``) or None
+        self.garment_updater = None             # (obs0, obs, read) -> {"keypoints": the hem corners again} or None
         self._garment = None
+        self._garment_obs0 = None
         self.actor_window = 12                  # actors_moving compares with the frame this many steps back
         self._head_hist: list = []              # (step, obs) for actors_moving
         self.track_reader = None                # (obs) -> record: B1 re-read for moving objects (belt tracking)
@@ -495,7 +497,8 @@ class RuntimeProvider:
         or a read."""
         if self._garment is None and self.garment_reader is not None:
             try:
-                r = self.garment_reader(self.bridge.observe())
+                self._garment_obs0 = self.bridge.observe()
+                r = self.garment_reader(self._garment_obs0)
             except Exception as e:  # noqa: BLE001 (an optional read)
                 self.events.append({"kind": "garment_error", "note": f"{type(e).__name__}: {str(e)[:120]}"})
                 r = None
@@ -504,6 +507,22 @@ class RuntimeProvider:
                 self.events.append({"kind": "garment_read", "asset": r.get("asset"), "iou": r.get("iou"),
                                     "pos": r.get("pos"), "quat": r.get("quat")})
         return self._garment
+
+    def garment_update(self, label: str | None = None, names=()) -> dict | None:
+        """The garment's hem corners re-read from the current frame (its first read does not follow the cloth): the
+        corners' shift since that read's frame moves its hem points. None without an updater or a read."""
+        if self.garment_updater is None or self._garment is None or self._garment_obs0 is None:
+            return None
+        try:
+            r = self.garment_updater(self._garment_obs0, self.bridge.observe(), self._garment)
+        except Exception as e:  # noqa: BLE001 (an optional read)
+            self.events.append({"kind": "garment_error", "note": f"update: {type(e).__name__}: {str(e)[:120]}"})
+            return None
+        if r:
+            self.events.append({"kind": "garment_update", "shift_mm": r.get("shift_mm")})
+            kp = {k: v for k, v in (r.get("keypoints") or {}).items() if not names or k in names}
+            return {"keypoints": kp, "live": False}
+        return None
 
     def actors_moving(self) -> bool | None:
         """Did anything but our arms move: the current head frame vs the one ``actor_window`` steps back (a window

@@ -262,7 +262,10 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
         upd = getattr(sk.provider, "garment_update", None)
         if not live and upd is not None:
             # one read does not follow the cloth: the hem corners move when the sleeves are folded (random set: hem
-            # lines 57-90 deg off after a fold planned from the first read); re-read just them from the current view
+            # lines 57-90 deg off after a fold planned from the first read); re-read just them from the current view,
+            # the arms home first (the head view as the first read saw it; the sleeves are folded, so going home is
+            # safe for the checker's "body folded, sleeves not" rule)
+            sk.home(gripper=OPEN)
             try:
                 g2 = upd(garment, ["left_hem", "right_hem"])
             except Exception as e:  # noqa: BLE001 (an optional read)

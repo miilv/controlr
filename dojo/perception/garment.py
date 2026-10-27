@@ -165,6 +165,48 @@ def read_garment(img: np.ndarray, templates: dict, cam: Camera | None = None, bg
             "quat": [math.cos(half), 0.0, 0.0, math.sin(half)], "keypoints": kp, "iou": f["iou"], "n_px": int(len(P))}
 
 
+def _corner(P_g: np.ndarray, h_g: np.ndarray, side: str, win: float = 0.06) -> np.ndarray | None:
+    """The hem corner near ``h_g`` (garment frame: x to the garment's right, y towards its neck) among footprint points
+    ``P_g``: the lowest-outermost point within ``win`` (left: min y + x / 2; right: min y - x / 2)."""
+    near = P_g[np.linalg.norm(P_g - h_g[:2], axis=1) < win]
+    if len(near) < 20:
+        return None
+    sc = near[:, 1] + (0.5 if side == "left" else -0.5) * near[:, 0]
+    k = np.argsort(sc)[: max(3, len(near) // 50)]            # a few extreme points, not one noisy pixel
+    return near[k].mean(axis=0)
+
+
+def update_hems(img0: np.ndarray, img: np.ndarray, read0: dict, cam: Camera | None = None, bg: np.ndarray | None = None,
+                robot0: np.ndarray | None = None, robot: np.ndarray | None = None) -> dict | None:
+    """The hem corners again, from a later head frame (the sleeves folded, the body not): each hem corner of the
+    footprint, found the same way in the first frame and this one, moved the first read's hem points by the corner's
+    shift. {"keypoints": {"left_hem", "right_hem"}, "shift_mm": {...}} or None."""
+    cam = cam or head_camera()
+    near = (read0.get("pos") or [0.0, -0.12])[:2]
+    P0 = blob_points(foreground(img0, bg, robot=robot0), cam, near_xy=near)
+    P1 = blob_points(foreground(img, bg, robot=robot), cam, near_xy=near)
+    if len(P0) < 400 or len(P1) < 400:
+        return None
+    q = read0.get("quat") or [1.0, 0.0, 0.0, 0.0]
+    yaw = 2 * math.atan2(q[3], q[0])
+    R = _rot(yaw)
+    t = np.asarray(near, float)
+    out, shift = {}, {}
+    for name, side in (("left_hem", "left"), ("right_hem", "right")):
+        h = (read0.get("keypoints") or {}).get(name)
+        if h is None:
+            continue
+        h_g = R.T @ (np.asarray(h, float)[:2] - t)
+        c0 = _corner((P0 - t) @ R, h_g, side)
+        c1 = _corner((P1 - t) @ R, h_g, side)
+        if c0 is None or c1 is None:
+            continue
+        d = R @ (c1 - c0)
+        out[name] = [float(h[0] + d[0]), float(h[1] + d[1]), float(h[2]) if len(h) > 2 else float(TABLE_Z + 0.008)]
+        shift[name] = round(1000 * float(np.linalg.norm(d)), 1)
+    return {"keypoints": out, "shift_mm": shift} if out else None
+
+
 def build_templates(frames_root: str | Path, out: str | Path | None = None, n: int = 2500) -> dict:
     """Templates from ``garment_frames.py``'s ``templates/*.npz`` (root frame, metres) -> the JSON this module loads
     (mm, footprint subsampled to ``n`` points, named points)."""

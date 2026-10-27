@@ -84,3 +84,54 @@ def test_shipped_templates_cover_both_garment_sets():
     assert {f"Garment/Top_Long/{i:05d}" for i in (1, 4, 9, 6, 7, 11)} <= keys      # standard and random sets
     assert all(isinstance(v.get("seed"), int) and v["seed"] >= 100000 for v in raw.values())   # our dev layouts only
     assert all(len(v["xy"]) >= 1000 and "left_sleeve" in v["kp"] for v in raw.values())
+def test_update_hems_follows_a_shifted_hem_corner():
+    pytest.importorskip("scipy")
+    cv2 = pytest.importorskip("cv2")
+    from dojo.perception.cameras import head_camera
+    from dojo.perception.garment import CLOTH_Z, update_hems
+    rng = np.random.default_rng(2)
+    T = _tshirt(rng)
+    cam = head_camera()
+    bg = np.zeros((cam.h, cam.w, 3), np.uint8)
+    bg[:] = (140, 80, 40)
+
+    def frame(P2):
+        img = bg.copy()
+        uv, _ = cam.project(np.c_[P2, np.full(len(P2), CLOTH_Z)])
+        for u, v in uv:
+            cv2.circle(img, (int(u), int(v)), 3, (15, 15, 15), -1)
+        return img
+    t = np.array([0.0, -0.12])
+    P0 = T + t
+    P1 = P0.copy()
+    lower_left = (T[:, 0] < -0.05) & (T[:, 1] < -0.1)        # the bottom-left of the body slides 3 cm right, 2 cm up
+    P1[lower_left] += [0.03, 0.02]
+    read0 = {"pos": [t[0], t[1], 0.765], "quat": [1.0, 0, 0, 0],
+             "keypoints": {"left_hem": [-0.15 + t[0], -0.2 + t[1], 0.773], "right_hem": [0.15 + t[0], -0.2 + t[1], 0.773]}}
+    r = update_hems(frame(P0), frame(P1), read0, cam=cam, bg=bg)
+    assert r is not None
+    dl = np.asarray(r["keypoints"]["left_hem"][:2]) - np.asarray(read0["keypoints"]["left_hem"][:2])
+    dr = np.asarray(r["keypoints"]["right_hem"][:2]) - np.asarray(read0["keypoints"]["right_hem"][:2])
+    assert np.linalg.norm(dl - [0.03, 0.02]) < 0.012, dl
+    assert np.linalg.norm(dr) < 0.008, dr
+
+
+def test_runtime_provider_garment_update_uses_the_first_frame():
+    from dojo.runtime.belief import RuntimeProvider
+
+    class Bridge:
+        n = 0
+
+        def observe(self):
+            Bridge.n += 1
+            return {"images": {}, "state": {}, "steps_used": Bridge.n}
+    prov = RuntimeProvider(Bridge(), "", "Fold the clothes neatly.", "perception")
+    prov.garment_reader = lambda obs: {"keypoints": {"left_hem": [0, 0, 0]}, "pos": [0, 0, 0], "quat": [1, 0, 0, 0]}
+    seen = []
+    prov.garment_updater = lambda o0, o1, read: seen.append((o0["steps_used"], o1["steps_used"])) or {
+        "keypoints": {"left_hem": [0.01, 0.02, 0.0], "right_hem": [0.0, 0.0, 0.0]}, "shift_mm": {"left_hem": 22.4}}
+    assert prov.garment_update("target", ["left_hem"]) is None      # no first read yet
+    prov.garment("target")
+    g = prov.garment_update("target", ["left_hem"])
+    assert g == {"keypoints": {"left_hem": [0.01, 0.02, 0.0]}, "live": False}
+    assert seen == [(1, 2)]                                         # the first read's frame, then the current one

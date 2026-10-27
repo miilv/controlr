@@ -550,6 +550,8 @@ class RuntimePolicy:
                 prov.motion_reader = lambda a, b_: pc.motion(a, b_)
             if hasattr(pc, "garment_read"):             # provider.garment (a garment lying flat: the fold skill)
                 prov.garment_reader = lambda obs: pc.garment_read(obs, self.fold)
+            if hasattr(pc, "garment_update"):           # provider.garment_update (its hem corners again, later)
+                prov.garment_updater = lambda obs0, obs, read: pc.garment_update(obs0, obs, read, self.fold)
             if cfg.held_pose == "auto" and hasattr(pc, "held_pose"):
                 prov.held_pose = lambda arm, prior_T_tcp_obj, asset_key, cfg_=None: self._held_pose(
                     prov, arm, prior_T_tcp_obj, asset_key, cfg_)

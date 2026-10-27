@@ -57,6 +57,8 @@ Ops (request dicts):
         where to look at it (``dojo.perception.show_pose.propose``): an observer look at the hover, canonical show poses
         of the holding arm (+ observer look), IK hints and step estimates; generic (mesh bbox + cameras)
     {"op": "garment_read", "frame": frame, "fold": int}                           -> {"garment": json|null}
+    {"op": "garment_update", "frame0": frame, "frame": frame, "read": json, "fold": int} -> {"garment": json|null}
+        (the hem corners again from a later frame: ``dojo.perception.garment.update_hems``)
         (a garment lying flat, from the head view: asset, root pose, named points; ``dojo.perception.garment``)
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
@@ -186,6 +188,11 @@ class PerceptionClient:
     def garment_read(self, frame: dict, fold: int) -> dict | None:
         """A garment lying flat on the table (head view): {"asset", "pos", "quat", "keypoints", "iou"} or None."""
         return json.loads(self._call({"op": "garment_read", "frame": encode_frame(frame), "fold": int(fold)})["garment"])
+
+    def garment_update(self, frame0: dict, frame: dict, read: dict, fold: int) -> dict | None:
+        """The hem corners of the first ``read`` (from ``frame0``) re-read in ``frame``: {"keypoints", "shift_mm"}."""
+        return json.loads(self._call({"op": "garment_update", "frame0": encode_frame(frame0), "frame": encode_frame(frame),
+                                      "read": json.dumps(read, default=_default), "fold": int(fold)})["garment"])
 
     def motion(self, frame_a: dict, frame_b: dict, thr: float = 12.0, min_px: int = 150) -> dict:
         def head_only(f):
@@ -746,6 +753,15 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         if img is not None:
                             bg = p.bgs(int(req.get("fold", 0))).get("cam_head")
                             g = read_garment(np.asarray(img, np.uint8), load_templates(), bg=bg)
+                        conn.send({"ok": True, "garment": json.dumps(g, default=_default)})
+                    elif op == "garment_update":
+                        from dojo.perception.garment import update_hems
+                        f0, f1 = decode_frame(req["frame0"]), decode_frame(req["frame"])
+                        i0, i1 = f0["images"].get("cam_head"), f1["images"].get("cam_head")
+                        g = None
+                        if i0 is not None and i1 is not None:
+                            bg = p.bgs(int(req.get("fold", 0))).get("cam_head")
+                            g = update_hems(np.asarray(i0, np.uint8), np.asarray(i1, np.uint8), json.loads(req["read"]), bg=bg)
                         conn.send({"ok": True, "garment": json.dumps(g, default=_default)})
                     elif op == "motion":
                         mo = p.motion(req["frame_a"], req["frame_b"], float(req.get("thr", 12.0)), int(req.get("min_px", 150)))
