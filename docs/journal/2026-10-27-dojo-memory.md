@@ -196,7 +196,7 @@ top grasp, and the position error at contact is 12-16 mm.
   two tasks have such a child (a scan of all task configs against the asset metadata): match_and_pick_from_conveyor
   (bottle/00047) and pick_from_conveyor_by_image (remote/00001).
 - Existing ids 100000-29 are not regenerated, so paired numbers stay comparable. A fresh conveyor robustness set at
-  100030-39 is generated with v14 and settled.
+  100030-39 is generated with v14 (raw records: conveyor layouts never presettle, because their riders keep moving).
 
 ## 9. A dev GT probe in the rendered eval (`dojo.runtime.eval.GTProbe`)
 - The rendered conveyor runs could not say why a "rose 125 mm" lift (belief, held look held=true) did not count:
