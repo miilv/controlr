@@ -30,6 +30,13 @@
   (`DOJO_PERCEPTION_CFG='{"stereo_check": true, "stereo_reject": "slot_bases"}'`; experiments/2026-10-27-stereo-height);
   the rendered deposit_coin A/B decides. Gap: current-main scan reads put 2 of 5 phantom stands where the head sees only
   the piggy bank (behind or inside it), and the check abstains on an object no head pixel shows.
+- [ ] **dojo perception: stereo place-z check (needs post-place frames).** Place misses were dz -38..-62 mm. The plane
+  sweep measures covered tops to 0.5 mm median at the scan pose (0.9-1.3 mm at home, 87 % within 5 mm; experiments/
+  2026-10-27-stereo-height), so a placed object's top vs its believed z is 10-100x above the noise. But no saved frame
+  shows a placed object: `save_look_frames` keeps only frame0 / scan / look (and belt track frames). None of the 1158 integ
+  look_frames dirs on compute3 has one; the `post_place` events log only shift / iou. Next: a dev `_keep_frame` at
+  place_confirm / post_place, one rendered run (tower, stacking toy, toast), then `stereo.check_record` on the placed
+  label.
 - [ ] **dojo perception: plane-sweep stereo is blind on the conveyor belt and in front of the home grippers.** The belt is
   glossy and striped: its view-dependent streaks give ~20 phantom "proud" blobs per frame (a uniqueness gate does not
   help), so stereo there can only confirm colour candidates. The home wrists see only the table beyond y ≈ -0.15, the
