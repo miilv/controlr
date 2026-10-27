@@ -217,17 +217,21 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
     sk.log(f"[game] {len(cells)} cells, {len(lines)} lines, {len(pieces)} own / {len(opponent_pieces)} opponent pieces")
 
     def occupancy():
-        return with_watch_read(board_state(sk.world, board, cells, pieces, opponent_pieces), st.get("read"))
+        # every cell a watch read saw the opponent land in stays the opponent's (the belief never moves its pieces)
+        seen = {"cells": [{"k": k, "occupant": "opponent"} for k in st.get("opp_cells", [])]}
+        return with_watch_read(board_state(sk.world, board, cells, pieces, opponent_pieces), seen)
 
     own_key = w.obj(pieces[0]).asset.key if pieces else None
     opp_key = w.obj(opponent_pieces[0]).asset.key if opponent_pieces else None
     region = {"kind": "cells", "board": region_cells(b), "pieces": {"own": own_key, "opponent": opp_key}}
 
-    def wait_opponent(n_opp0: int, every: int = 2) -> str:
+    def wait_opponent(occ0: dict, every: int = 2) -> str:
         """Hold still at home, reading the board every ``every`` steps (a watch read: perception at eval, GT in G3),
-        until a new opponent piece sits in a cell for two stable reads; then until the opponent's arm is at rest."""
+        until an opponent piece sits for two stable reads in a cell ``occ0`` (the occupancy we know) has empty; then until
+        the opponent's arm is at rest. A new cell, not a higher count: a read that misses an older piece must not hide
+        the new one (rendered 5.1: a third move never counted, 200 steps of waiting)."""
         t0 = sk.world.step
-        prior, stable = None, 0
+        prior, stable, seen = None, 0, None
         while True:
             try:
                 sk.ex.hold(every)
@@ -238,12 +242,17 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             read = watch(sk, region, prior)
             if not usable(read):
                 continue
-            n_opp = sum(1 for c in read["cells"] if c["occupant"] == "opponent")
+            new_opp = [c["k"] for c in read["cells"] if c["occupant"] == "opponent" and int(c["k"]) not in occ0]
             stable = stable + 1 if read["stable_vs_prior"] else 0
             prior = read
-            if n_opp > n_opp0 and stable >= quiet:
-                st["read"] = read
-                sk.log(f"[game] opponent piece landed by step {sk.ex.steps_used} ({sk.ex.steps_used - t0} steps of waiting)")
+            board = "".join({"own": "x", "opponent": "o"}.get(c["occupant"], ".") for c in read["cells"])
+            if board != seen:                                   # the read's board, logged when it changes
+                sk.log(f"[watch] step {sk.ex.steps_used}: {board}")
+                seen = board
+            if new_opp and stable >= quiet:
+                st["opp_cells"] = sorted(set(st.get("opp_cells", [])) | {int(k) for k in new_opp})
+                sk.log(f"[game] opponent piece landed in cell {new_opp} by step {sk.ex.steps_used} "
+                       f"({sk.ex.steps_used - t0} steps of waiting)")
                 try:
                     r = wait_actors_still(sk, fallback=after_land)
                     sk.log(f"[game] opponent's arm: {r} (step {sk.ex.steps_used})")
@@ -266,7 +275,7 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             return {"ok": True, "stage": "board full" if len(occ) >= len(cells) else "pieces used",
                     "turns": st["turns"]}
         if n_own > n_opp:                                       # the opponent's turn
-            r = wait_opponent(n_opp)
+            r = wait_opponent(occ)
             if r == "moved":
                 continue
             if r == "ended":
