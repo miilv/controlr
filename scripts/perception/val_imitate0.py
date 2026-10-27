@@ -1,5 +1,5 @@
 """Frame-0 B1 on recorded imitate sequences (watch51): per GT mover, found / category / asset / xy error."""
-import json, os, sys, time, zlib
+import json, os, sys, time
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
