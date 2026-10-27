@@ -34,6 +34,8 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `BOOT_RUNS_DIR` | local (`bootstrap_gpu_box.sh`, `bootstrap_fleet.sh`) | where the local logs, `summary.tsv`, fleet dirs and the fleet key go (default `runs/bootstrap`; tests use a tmp dir) |
 | `FLEET_WAIT_S` / `FLEET_POLL_S` / `FLEET_TICK_S` | same (fleet) | how long a box waits for a fleet peer to have a set before fetching from the origin itself (default 5400 s), how often it looks (15 s), how often the fleet prints progress (10 s) |
 | `ISAAC6_SRC` | same | where compute3's Isaac Sim 6.0 is copied from (default `/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0`) |
+| `DOJO_EMBED_MODELS` | wherever perception runs with `EstimatorConfig.embed_model` set | dir with one subdir per image-embedding model (`dinov2-small`, `dinov2-base`, `siglip2-base-patch16-224-vision`, `clip-vit-large-patch14-vision`; `dojo/perception/embed_id.py`); default `~/dojo-data/pbake-identity/models`. Needs torch + transformers in the perception venv (DEVELOPMENT §4) |
+| `DOJO_PERCEPTION_CFG` | the perception service (`dojo.runtime.perception_service`) | optional JSON of `EstimatorConfig` overrides for an A/B arm, e.g. `{"embed_model": "dinov2_s", "embed_merge": true}`; unset = the defaults |
 | `DOJO_BOX_ROLE`, `DOJO_GPU_LOCK`, `DOJO_GPU_LIGHT_LOCKS`, `DOJO_SCOPE_BUNDLE` / `_PROXY` / `_BATCH` / `_G3` / `_LIGHT`, `DOJO_MIN_AVAIL_GB` | a GPU box (`source ~/dojo-env.sh`) | the box's role (full / physics), the heavy lock and the four light-lane slots (`DOJO_GPU_LOCKS="$DOJO_GPU_LIGHT_LOCKS"` for g3's light lane), the `systemd-run --user --scope` settings, the memory floor for heavy jobs; the same facts in `~/dojo-box.json` |
 
 ## Machines

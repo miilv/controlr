@@ -2814,7 +2814,9 @@ class EstimatorConfig:
     embed_crop: str = "composite"  # composite (raw crop vs renders over the background) | masked (both on grey)
     embed_lit: bool = True  # renders lit by a light at the camera (False: flat per-face colours)
     embed_min_px: int = 40  # smaller blobs keep our identity
-    embed_merge: bool = False  # belt read: blobs given the same asset within half its extent are one object's pieces
+    # belt read: blobs given the same asset within half its extent are one object's pieces (a dark figure split on the
+    # dark belt); without it the embedding's confident fits of the pieces add phantoms (5.1 belt reads: 77 -> 114, with it 47)
+    embed_merge: bool = True
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 

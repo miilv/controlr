@@ -208,6 +208,16 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   deploy dir's `.venv`, and that needs `.[perception]` (opencv, trimesh, ...). Without it the episode ends at step 0,
   `cat=error ... No module named 'cv2'`. Before a rendered run: `uv pip install --python .venv/bin/python -e
   ".[dev,perception]"` in the deploy dir. G3 runs in RoboDojo's python and does not need it.
+- **Learned identity (`EstimatorConfig.embed_model`) needs torch in the perception venv.** `.[perception]` has no
+  torch: with the flag set and no torch the first belt read raises `ModuleNotFoundError: torch`. On a box (RTX 5090,
+  driver >= 570): `uv pip install --python .venv/bin/python "torch==2.9.1" --index-url https://download.pytorch.org/whl/cu128
+  --extra-index-url https://pypi.org/simple && uv pip install --python .venv/bin/python "transformers>=4.56"` (6.8 GB of
+  venv; `uv pip uninstall triton` saves 0.6 GB, eager inference does not use it), plus the weights in
+  `$DOJO_EMBED_MODELS/dinov2-small` (85 MB: `hf download facebook/dinov2-small config.json preprocessor_config.json
+  model.safetensors --local-dir ...`). Put the uv cache (`UV_CACHE_DIR`) on the venv's filesystem: it hardlinks, so the
+  cache costs nothing extra. Crop style matters more than the model: on the dark belt the segmentation mask drops a
+  black camera's body, so a masked crop scores 0.41-0.53 where the raw crop against renders over the background scores
+  0.76-0.80 (`embed_crop`, journal 2026-10-27-dojo-pbake-identity).
 
 ## 5. What lives where
 

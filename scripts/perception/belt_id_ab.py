@@ -69,7 +69,7 @@ def main(argv=None):
     ap.add_argument("--model", default="dinov2_s")
     ap.add_argument("--weight", type=float, default=0.25)
     ap.add_argument("--crop", default="composite")
-    ap.add_argument("--arms", nargs="*", default=["off", "on"], help="off | on | merge (on + embed_merge)")
+    ap.add_argument("--arms", nargs="*", default=["off", "merge"], help="off | on (embed_merge off) | merge (the flag's default)")
     ap.add_argument("--summary", action="store_true")
     a = ap.parse_args(argv)
     if a.summary:
@@ -89,7 +89,7 @@ def main(argv=None):
     cal = os.environ.get("DOJO_COLOR_CALIB")
     off = EstimatorConfig(use_wrists=True, **({"color_M": json.loads(Path(cal).read_text())["fold0"]} if cal else {}))
     on = dataclasses.replace(off, embed_model=a.model, embed_weight=a.weight, embed_crop=a.crop)
-    cfgs = {"off": off, "on": on, "merge": dataclasses.replace(on, embed_merge=True)}
+    cfgs = {"off": off, "on": dataclasses.replace(on, embed_merge=False), "merge": dataclasses.replace(on, embed_merge=True)}
     open(a.out, "w").close()
     for d in sorted(a.root.iterdir()):
         if not d.is_dir() or not d.name.isdigit() or (a.ids and d.name not in a.ids):
