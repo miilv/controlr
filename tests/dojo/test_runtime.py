@@ -955,6 +955,24 @@ def test_divergence_update_matches_by_position_not_label():
     assert abs(float(prov.belief.objects["block_2"].pos[0]) - 0.30) < 1e-9          # untouched
 
 
+def test_resync_with_nothing_left_to_check_does_not_call_the_checker():
+    """breadth3 deposit_coin / insert_key: right after the only movable object's release nothing is left for the head
+    check (released ones are judged by their post-place check); the service crashed on the empty z-buffer stack."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.3, -0.2, 0.78)])
+
+    class NoEmpty:
+        def check(self, obs, objects):
+            assert objects, "check called with no objects"
+            return {o.label: {"head": {"prec": 1.0, "n_vis": 500, "n_px": 600}} for o in objects}
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=NoEmpty(), replan_on_divergence=False)
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov.post_place_refine = False
+    prov.resync(b.obs, released=["block_0"])                        # no exception
+
+
 def test_failed_pick_refine_triggers_a_local_search():
     """block_1's estimate is 35 mm off; at its pick hover refine finds nothing (iou 0.05, no suggestion): the
     policy treats it as lost, searches around its belief pose with a wrist look, refits it there and re-plans."""
