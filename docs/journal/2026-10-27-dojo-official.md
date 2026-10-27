@@ -129,7 +129,7 @@ A/B, paired, integ isaac51, RuntimePolicy on `submit_v1`, 100000-04, same deploy
 | stack_blocks | 5/5, 100 | 5/5, 100 | = | 10; 2 / 0; 0 (Sonnet calls 32 -> 20) |
 | insert_tubes | 3/5, 76 | 3/5, 76 | = (same failures) | 0; 0 / 0; 0 |
 | plug_in_charger | 1/5, 20 | **4/5, 80** | 3 rescued, 0 lost | 0; 0 / 0; 0 |
-| play_tic_tac_toe | pending | pending | | |
+| play_tic_tac_toe | 0/4, 10 (capped at 4 layouts) | 0/5, 10 | = (all not_home, steps within 4) | 0; 0 / 0; 0 |
 | build_tower | pending | pending | | |
 
 - B1 held_look confidence: 0.56-0.80 with RoboDojo's value, 0.825-1.0 with the command.
@@ -140,7 +140,10 @@ A/B, paired, integ isaac51, RuntimePolicy on `submit_v1`, 100000-04, same deploy
   - Command arm: closed jaws + held box in the mask, the refine said "not ok", the prior was kept, success.
 - **G3 mode A is unchanged:** plug 100000-09 8/10 = 8/10, make_kong 5/5 = 5/5, store_tools 1/5 = 1/5 (0.45), stack
   5/5 = 5/5, with bit-identical executed actions on all 25 layouts.
-- G3 mode B under both arms: pending.
+- **G3 mode B is unchanged too** (`--mode-b`): stack 5/5 = 5/5, tubes 3/5 = 3/5, plug 9/10 = 9/10, ttt 5/5 = 5/5, with
+  bit-identical actions on all 25 layouts (mode B's held reads are simulated).
+- Side finding for ttt's owner: on rendered 5.1 integ, ttt is 0/9 in both arms, every episode `not_home` (all stages
+  but the last met) at score 10, while G3 mode B is 5/5.
 
 ## 2. Routing (PR #90; report docs/experiments/2026-10-27-routing-sonnet.md)
 

@@ -32,7 +32,7 @@ and in-hand refines see less false evidence. Outcomes are equal or better.
 | stack_blocks | 5/5, 100 | 5/5, 100 | = | 16 (10; 2) / 14 (0; 0) | 32 / 20 |
 | insert_tubes | 3/5, 76 | 3/5, 76 | = (same failures, steps within 1) | 13 (0; 0) / 13 (0; 0) | 14 / 17 |
 | plug_in_charger | 1/5, 20 | **4/5, 80** | 3 rescued, 0 lost | 12 (0; 0) / 9 (0; 0) | 15 / 15 |
-| play_tic_tac_toe | pending | pending | | | |
+| play_tic_tac_toe | 0/4, 10 (the 28-min cap stopped the arm at 4 layouts) | 0/5, 10 | = (same 4 layouts: all not_home, steps within 4) | 4 (0; 0) / 5 (0; 0) | 7 / 11 |
 | build_tower | pending | pending | | | |
 
 B1 confidence per held check: robodojo 0.56-0.80, command 0.825-1.0 on every task.
@@ -58,7 +58,17 @@ B1 confidence per held check: robodojo 0.56-0.80, command 0.825-1.0 on every tas
 
 So mode A does not change: the skills' commands never depend on the field.
 
-G3 mode B (`--mode-b`), both arms: pending.
+**G3 mode B** (`--mode-b`), both arms, same code:
+
+| task | robodojo | command | executed actions |
+|---|---|---|---|
+| stack_blocks 100000-04 | 5/5 | 5/5 | identical on 5/5 |
+| insert_tubes 100000-04 | 3/5, 0.76 | 3/5, 0.76 | identical on 5/5 |
+| plug_in_charger 100000-09 | 9/10 | 9/10 | identical on 10/10 |
+| play_tic_tac_toe 100000-04 | 5/5 | 5/5 | identical on 5/5 |
+
+Mode B's held reads are simulated (`heldsim`), so the field changes nothing there either. The difference lives only on
+the perception paths (integ / proxy / official).
 
 ## Reading
 
