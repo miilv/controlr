@@ -187,3 +187,17 @@ inside it:
   resting on the base mesh's top surface (a 2 mm height grid), scoring the visible-silhouette IoU with the evidence in
   every view where only the egg pixels in front of the base count (depth test);
 - the group's objects B1 placed outside the base's footprint (an egg on the table under the rim) stay.
+
+**Results** (11 layouts, 44 eggs, same frames; experiments/2026-10-27-egg-perception):
+
+| view | arm | eggs within 15 mm | egg xy med / p90 (mm) | egg z med | basket xy med (z) |
+|---|---|---|---|---|---|
+| frame 0 | main | 5 | 94 / 181 | -17.4 | 12.4 (-11.5) |
+| frame 0 | + fix A | 6 | 90 / 158 | -17.2 | 2.6 (+0.0) |
+| frame 0 | + fix B | 22 | 10.7 / 138 | +2.3 | 5.4 (+0.0) |
+| scan pose (arms parked) | main | 5 (8 found) | 2.0 / 103 | +1.1 | 7.7 (-11.5) |
+| scan pose | + fixes A + B | 28 | 4.5 / 85 | +2.1 | 2.7 (+0.0) |
+
+- Left at frame 0: the basket under the right home gripper (100006, 100009: 46-59 mm off, so its eggs follow the
+  wrong base; fine from the scan pose) and eggs on the table under the rim (hidden from the head).
+- At the scan pose, 100023's basket went missing with fix A (main found it 8 mm off): 1 of 22 frames.
