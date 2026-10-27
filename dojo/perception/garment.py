@@ -37,7 +37,9 @@ def load_templates_dict(raw: dict) -> dict:
 
 
 def load_templates(path: str | Path | None = None) -> dict:
-    """{asset key: {"xy": (N, 2) root-frame footprint samples, "kp": {name: (3,) root frame}}}."""
+    """{asset key: {"xy": (N, 2) root-frame footprint samples, "kp": {name: (3,) root frame}}} (+ "seed": the dev
+    layout each template was settled in). Every template is tried: the instruction is the same for the standard and the
+    random garment sets, so the vocabulary cannot narrow them."""
     p = Path(path or TEMPLATES)
     if not p.exists():
         return {}
@@ -176,7 +178,8 @@ def build_templates(frames_root: str | Path, out: str | Path | None = None, n: i
         key = f"{parts[0]}/{'_'.join(parts[1:-1])}/{parts[-1]}"
         res[key] = {"xy": np.round(P[idx, :2] * 1000).astype(int).tolist(),
                     "kp": {str(k): np.round(np.asarray(v, float) * 1000, 1).tolist()
-                           for k, v in zip(z["kp_names"], z["kp"])}}
+                           for k, v in zip(z["kp_names"], z["kp"])},
+                    "seed": int(z["seed"]) if "seed" in z.files else None}     # the dev layout it was settled in
     if out:
         Path(out).parent.mkdir(parents=True, exist_ok=True)
         Path(out).write_text(json.dumps(res))
