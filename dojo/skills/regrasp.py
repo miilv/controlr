@@ -153,6 +153,16 @@ def _turn_reach(sk: Skills, arm: str, T_tg, T_ko, q0, turn_rad: float) -> float:
     return 0.0
 
 
+def _pre_height(o, T_tg, rec, pre_h: float = 0.025, pre_clear: float = 0.015) -> float:
+    """How far above the target ``plan_place`` holds the object at its pre-place pose: ``pre_h``, or its lowest point
+    ``pre_clear`` over the receptacle's top (a key's tip 4.5 cm over its lock's floor: the hover 2.5 cm up reached,
+    the pre-place did not, G3 100001)."""
+    if o.asset.mesh is None:
+        return pre_h
+    low = float((o.asset.mesh[0] @ np.asarray(T_tg, float)[:3, :3].T + np.asarray(T_tg, float)[:3, 3])[:, 2].min())
+    return max(pre_h, float(rec.top_z) + pre_clear - low)
+
+
 def _unpressed(T, kw) -> np.ndarray:
     """The insertion target without the place's press (``insert_into`` commands the object 1 mm past its seat)."""
     T = np.asarray(T, float).copy()
@@ -185,7 +195,7 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                 g_open = gap_to_grip(min(G.MAX_GAP, width + TAKE_GAP))
                 ok = True
                 q_ins = None
-                for up in (0.0, 0.025):
+                for up in (0.0, _pre_height(o, T_tg, w.obj(receptacle))):
                     Tq = T_tg @ T_ko
                     Tq[2, 3] += up
                     r_ = sk.kin.ik(t_arm, Tq, w.home_q[t_arm], n_random=4)
