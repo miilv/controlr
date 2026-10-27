@@ -2029,6 +2029,121 @@ def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.
     return out
 
 
+def quota_lists(task: str, g: dict) -> list[dict]:
+    """Select lists of a label group under a per-category quota (public task config): a ``hierarchical`` list with
+    ``select_category_nums`` = ``select_instance_nums`` x k = [k, k] / [1, 1] over k categories holds each category once;
+    the ``same_as_label`` copies of every label of such a list hold the same assets, so each category once too. Each:
+    {"labels", "cats", "placement", "regions"} (the regions of its labels' placements, world xy)."""
+    labels = task_map()[task]["labels"]
+    mine = set(g["labels"])
+    out = []
+    seen: set = set()
+    for lab in g["labels"]:
+        sel = labels[lab]["select_mode"]
+        lst = tuple(sel.get("label") or [lab])
+        if sel.get("mode") != "hierarchical" or lst in seen:
+            continue
+        seen.add(lst)
+        cats = sorted({c["name"] for c in labels[lab].get("categories") or []})
+        cn, inn = list(sel.get("select_category_nums") or []), list(sel.get("select_instance_nums") or [])
+        if not (len(cn) == 2 and cn[0] == cn[1] == len(cats) == len(lst) and inn == [1, 1] and set(lst) <= mine):
+            continue
+        copies = [l for l in g["labels"] if labels[l]["select_mode"].get("mode") == "same_as_label"
+                  and labels[l]["select_mode"].get("same_label") in lst]
+        lists = [list(lst)]
+        if len(copies) == len(lst) and {labels[l]["select_mode"]["same_label"] for l in copies} == set(lst):
+            lists.append(copies)
+        for ls in lists:
+            regs = []
+            for l in ls:
+                for r in _regions(labels[l]["placement"], labels, labels[l].get("type", "Rigid")):
+                    if r not in regs:
+                        regs.append(r)
+            out.append({"labels": ls, "cats": cats, "placement": labels[ls[0]]["placement"], "regions": regs})
+    return out
+
+
+def _category_quota(chosen: list[Hypothesis], views, cfg, groups, pending, task) -> list[Hypothesis]:
+    """Per quota list (``quota_lists``): the chosen objects whose generator point lies in exactly one list's regions
+    belong to it. When a category repeats in a list, every object of a repeated category is also fitted (at its own
+    blob, colour + texture scored like ``_polish``) as each missing category's best-coloured variants, and a Hungarian
+    assignment over (repeated categories once + missing categories) keeps the lowest total cost."""
+    from scipy.optimize import linear_sum_assignment
+
+    head = views["cam_head"]
+    out = list(chosen)
+    for gi, g, prior in pending:
+        lists = quota_lists(task, g)
+        if not lists:
+            continue
+        idx = [i for i, h in enumerate(out) if h.label_group == gi and not h.per_view.get("z_off")]
+        member: dict[int, int] = {}
+        for i in idx:
+            h = out[i]
+            ins = [li for li, L in enumerate(lists)
+                   if region_ok(L, *_centre_xy(h, L), h.yaw, h.sm().yaw_period)]
+            if len(ins) == 1:
+                member[i] = ins[0]
+        for li, L in enumerate(lists):
+            ms = [i for i, l_ in member.items() if l_ == li]
+            cat_of = {i: out[i].key.split("/")[1] for i in ms}
+            counts: dict[str, int] = {}
+            for c in cat_of.values():
+                counts[c] = counts.get(c, 0) + 1
+            dup = [c for c, n in counts.items() if n > 1]
+            missing = [c for c in L["cats"] if c not in counts]
+            if not dup or not missing:
+                continue
+            rows = [i for i in ms if cat_of[i] in dup]
+            cols = [("keep", c) for c in dup] + [("new", c) for c in missing]
+            C = np.full((len(rows), len(cols)), 9.0)
+            fits: dict[tuple, Hypothesis] = {}
+            for r_, i in enumerate(rows):
+                h = out[i]
+                others = _union_masks(out, views, skip=i, target=h)
+                h0 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters, color=True)
+                C[r_, cols.index(("keep", cat_of[i]))] = h0.loss
+                fits[(i, ("keep", cat_of[i]))] = h0
+                s_h = h.sm().sil(head.cam, h.T())
+                m = cv2.dilate(s_h, np.ones((5, 5), np.uint8)) & head.fg & (1 - others["cam_head"])
+                if m.sum() < 10:
+                    continue
+                n, lab, st, cents = cv2.connectedComponentsWithStats(m, connectivity=8)
+                j = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+                b = Blob("cam_head", (lab == j).astype(np.uint8), int(st[j, cv2.CC_STAT_AREA]), cents[j], tuple(st[j, :4]))
+                fc, _n = observed_color(h.sm(), h.T(), views)
+                bcol = fc if fc is not None else _blob_color(head.img, b.mask)
+                for c in missing:
+                    variants = [sms for sms in _geometry_groups(g, prior).values() if sms[0].key.split("/")[1] == c]
+                    variants.sort(key=lambda sms: _app(bcol, [s_.key for s_ in sms]))
+                    best = None
+                    for sms in variants[: cfg.quota_variants]:
+                        sm = sms[0]
+                        for x, y, yaw, l in coarse_fit(sm, b, {"cam_head": head}, cfg.yaw_step_deg)[:2]:
+                            t = Hypothesis(gi, sm.key, sm.tag, x, y, yaw, l, blob=h.blob)
+                            t.per_view = {"geom_group": [s_.key for s_ in sms]}
+                            t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
+                            if not region_ok(L, *_centre_xy(t2, L), t2.yaw, t2.sm().yaw_period):
+                                continue
+                            if best is None or t2.loss < best.loss:
+                                best = t2
+                    if best is not None:
+                        C[r_, cols.index(("new", c))] = best.loss
+                        fits[(i, ("new", c))] = best
+            ri, ci = linear_sum_assignment(C)
+            for r_, c_ in zip(ri, ci):
+                i, col = rows[r_], cols[c_]
+                if col[0] == "new" and C[r_, c_] < 9.0:
+                    t2 = fits[(i, col)]
+                    for k_, v_ in out[i].per_view.items():
+                        if k_ not in t2.per_view and not k_.startswith("cam"):
+                            t2.per_view[k_] = v_
+                    t2.per_view["quota"] = {"was": out[i].key, "cost": round(float(C[r_, c_]), 4),
+                                            "kept_cost": round(float(fits[(i, ("keep", cat_of[i]))].loss), 4)}
+                    out[i] = t2
+    return out
+
+
 def _polish_prefers(best: Hypothesis, t2: Hypothesis, pt, cfg) -> bool:
     """Does a polish trial ``t2`` replace the incumbent ``best``? Paired texture on shared pixels (``pt`` = their two
     costs) decides when it is informative, else the combined cost. Paired texture decides only between colour-compatible
@@ -2286,6 +2401,12 @@ class EstimatorConfig:
     wrist_proposals: bool = True  # single-target groups with a poor head fit also propose from wrist blobs
     wrist_fallback_loss: float = 0.6
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
+    # a select list that holds every category of its entry exactly once (``hierarchical``, k categories x 1 instance), and
+    # the ``same_as_label`` copies of such a list: a list whose objects (told apart by the lists' generator regions) repeat
+    # a category re-fits the repeated ones as the missing categories, the best total cost wins (_category_quota;
+    # imitate_sorting_sequence: watches read as action cameras)
+    category_quota: bool = True
+    quota_variants: int = 2  # ... fitting each missing category's best-coloured variants
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 
@@ -2596,6 +2717,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         chosen = _polish(chosen, views, cfg, groups, pending)
     if cfg.swap_pairs:
         chosen = _swap_pairs(chosen, views, cfg, groups)
+    if cfg.category_quota:
+        chosen = _category_quota(chosen, views, cfg, groups, pending, task)
     timings["polish_s"] = round(time.time() - t3, 3)
 
     # ---- joint refinement on the union of the others
@@ -2785,7 +2908,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "geom_group": h.per_view.get("geom_group"), "slot": bool(h.per_view.get("slot", False)),
                                **({"yaw_read": {k: h.per_view["top_feature"][k] for k in
                                                 ("sign_ok", "tail_mm", "ratio_axis", "ratio_flip", "camera")}}
-                                  if h.per_view.get("top_feature") else {})}}
+                                  if h.per_view.get("top_feature") else {}),
+                               **({"quota": h.per_view["quota"]} if h.per_view.get("quota") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []

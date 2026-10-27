@@ -73,3 +73,29 @@ The demonstrator side got worse on its own: phone hypotheses now reach the suppo
   - organize_table 100006 garage figure (half under the left home gripper): overshoot 26 mm -> gross 153 mm.
   - Both are off-centre rotate_rand assets that the wider (correct) region now admits in more places, where a
     hypothesis in hidden pixels costs little.
+
+### 1.2 Fix 2: the category quota (`inverse_layout._category_quota`, `EstimatorConfig.category_quota`, on)
+
+- `quota_lists`: a `hierarchical` select list with `select_category_nums` = [k, k] over k categories and
+  `select_instance_nums` [1, 1] holds every category once; the `same_as_label` copies of all its labels too. Of the
+  54 tasks only imitate has such a list (t0..t4 and aim0..aim4).
+- The chosen objects are split between the lists by their generator regions (an object in exactly one list's region).
+- A list that repeats a category: every object of a repeated category is also fitted (at its own blob, colour +
+  texture scored like `_polish`) as each missing category's best-coloured variants (`quota_variants`, 2), and a
+  Hungarian assignment over (the repeated categories once + the missing ones) keeps the lowest total cost.
+- The decision goes into the record (`_perception.quota`: the old asset, both costs).
+- The top confusion it fixes: a flat watch ring read as an action camera (8 of 24 category errors).
+
+Paired, same frames, the scene background of §1.3 (no leakage either way):
+
+| scene background | arm | ours found / cat / asset | demo found / cat / asset | layouts all 10 right | order exact | twins right | plan right |
+|---|---|---|---|---|---|---|---|
+| 2-fold (median of the other half of the demo layouts) | region fix | 64 / 55 / 49 | 61 / 51 / 45 | 4 | 7 / 13 | 5 / 13 | 4 / 13 |
+| 2-fold | + quota | 64 / 64 / 56 | 62 / 58 / 50 | 9 | 7 / 13 | 8 / 13 | 7 / 13 |
+| 12 non-demo layouts | region fix | 62 / 54 / 50 | 61 / 53 / 49 | 4 | 8 / 13 | 5 / 13 | 5 / 13 |
+| 12 non-demo layouts | + quota | 63 / 61 / 56 | 61 / 57 / 51 | 8 | 7 / 13 | 8 / 13 | 7 / 13 |
+
+- xy (12 non-demo, quota): ours med 1.6 / p90 7.8 mm, demo 3.4 / 14.4 mm.
+- G1 regression (region fix vs + quota, frame 0, d0_51 + d0_ext, 1310 objects): no object changed (no other task has
+  a quota list).
+- Cost: the quota re-fits only when a list repeats a category (0-4 objects per imitate frame).
