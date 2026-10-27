@@ -227,3 +227,14 @@ def test_an_articulation_without_links_is_no_fixture():
     kb = _belief([h, _obj("piece", "Rigid", PIECE, [0.1, -0.1, TABLE_Z + 0.08 + 0.012])])
     kb._drop("piece", release=True)
     assert abs(kb.objects["piece"].bottom_z - TABLE_Z) < 1e-6                 # as before: through it to the table
+
+
+def test_an_articulation_s_mesh_not_its_bbox_top_takes_what_is_let_go_just_over_it():
+    h = _holder("holder3", [0.1, -0.1, TABLE_Z])                         # bbox top: the lid, 105 mm
+    kb = _belief([h, _obj("piece", "Rigid", PIECE, [0.1, -0.1, TABLE_Z + 0.105 + 0.005])])
+    kb._drop("piece", release=True)          # 5 mm over the bbox top, over the box's opening: down to its floor
+    assert abs(kb.objects["piece"].bottom_z - (TABLE_Z + 0.005)) < 0.0015
+    kb.objects["piece"].pos[2] = TABLE_Z + 0.11
+    kb._drop("piece")                        # not a release (no fixtures consulted): its bbox top, as before
+    assert abs(kb.objects["piece"].bottom_z - (TABLE_Z + 0.105)) < 1e-6
+
