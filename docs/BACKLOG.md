@@ -6,6 +6,15 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo perception: tic-tac-toe cell reads flicker on genuine 5.1 frames.** `watch_read` (kind cells) on compute8's
+  rendered tic-tac-toe (Long-Horizon, journal 2026-10-27-dojo-longh): a board with our two pieces and one of the
+  opponent's read "........." for 200 steps (100005), pieces appear and vanish between reads 1-2 steps apart
+  ("....x...." / "........." / "....x..o."). `play_board_game` counts the opponent's moves from these reads (the
+  belief never moves the opponent's pieces), so a blind read ends the game in "wait opponent (timeout)".
+- [ ] **dojo runtime: a held_look in-hand refine moved a held tic-tac-toe piece 40-42 mm (iou 0.66-0.67, visible_frac
+  0.53) and was adopted** (rendered 5.1 100003 / 100004, breadth2's 41.7 / 42.1 mm place_miss rows). The place is planned
+  from that transform; the belief then says "42 mm from the cell" while the piece is in it. A piece in closed jaws cannot
+  shift more than about its half-width: reject such held refines (or require iou >= 0.85 above 10 mm).
 - [ ] **refine() reports ok for a wrong fit, 20-63 mm off.** 10 of 291 cases in the D0 wrist validation
   (`dojo/perception/val_refine.py`, priors ±20 mm, `WITH_OTHERS=1`), IoU 0.62-0.86, mostly an identical
   pillar / block nearby:
