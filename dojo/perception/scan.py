@@ -196,6 +196,58 @@ def fill_from_frame0(rec: dict, rec0: dict, task: str, same_m: float = 0.03) -> 
     return out, filled
 
 
+SCAN_MOVE_M = 0.05  # a scan read moving a small unique object farther than this from its frame-0 fit ...
+
+
+def keep_frame0_small(rec: dict, rec0: dict, task: str) -> list[str]:
+    """... keeps the frame-0 fit unless the scan read is the surer one. A small unique object (largest extent <=
+    ``inverse_layout.SMALL_OBJECT_M``, a label of its own) is a few head pixels; the scan's joint fit can trade it for a
+    leftover piece of a bigger blob (5.1 deposit_coin 100000: the coin stand right at frame 0, 1 mm, conf 0.42; the
+    scan read put it 650 mm away at conf 0.29). Its slot children (the coin) follow it. Returns the labels kept."""
+    from .inverse_layout import SMALL_OBJECT_M, asset_info, task_map
+    from .slots import support_slot
+
+    labels = (task_map().get(task) or {}).get("labels") or {}
+
+    def entries(r):
+        out = {}
+        for typ in ("Rigid", "Geometry", "Articulation"):
+            for cat, lst in (r.get(typ) or {}).items():
+                for i, e in enumerate(lst):
+                    out[e["label"]] = (typ, cat, i, e)
+        return out
+
+    e1, e0 = entries(rec), entries(rec0)
+    kept = []
+    for lab, (typ, cat, i, e) in list(e1.items()):
+        if lab not in e0 or lab not in labels or lab in kept:
+            continue
+        sel = labels[lab].get("select_mode") or {}
+        if len(sel.get("label") or [lab]) != 1:
+            continue
+        key = f"{typ}/{cat}/{int(e['category_idx']):05d}"
+        try:
+            small = float(max(asset_info(key)["extents"])) <= SMALL_OBJECT_M
+        except Exception:  # noqa: BLE001 (an asset the catalogue lacks: leave it)
+            continue
+        f0 = e0[lab][3]
+        if not small or np.hypot(e["default_pos"][0] - f0["default_pos"][0], e["default_pos"][1] - f0["default_pos"][1]) <= SCAN_MOVE_M:
+            continue
+        c1 = float((e.get("_perception") or {}).get("confidence", 0.0))
+        c0 = float((f0.get("_perception") or {}).get("confidence", 0.0))
+        if c0 < c1:
+            continue
+        rec[typ][cat][i] = f0
+        kept.append(lab)
+        for child, d in labels.items():        # its slot children (deposit_coin's coin in the stand) come along
+            sl = support_slot(d.get("placement") or {})
+            if sl and sl[0] == lab and child in e0 and child in e1 and child not in kept:
+                t2, c2, j2, _ = e1[child]
+                rec[t2][c2][j2] = e0[child][3]
+                kept.append(child)
+    return kept
+
+
 def estimate_with_scan(scan: dict, frame0: dict, task: str, instruction: str = "", bgs=None, cfg=None,
                        rec0: dict | None = None) -> dict:
     """The scan frame as the primary view (its head view is unoccluded), frame 0 as extra views, then the frame-0
@@ -210,6 +262,10 @@ def estimate_with_scan(scan: dict, frame0: dict, task: str, instruction: str = "
     cfg = dataclasses.replace(cfg or EstimatorConfig(), elevated_multiview="all")
     rec = estimate(scan["images"], scan["state"], task, instruction, bgs=bgs, cfg=cfg,
                    extra_frames=[(frame0["images"], frame0["state"])])
+    if rec0 is not None:
+        kept = keep_frame0_small(rec, rec0, task)
+        if kept:
+            rec.setdefault("_perception", {})["frame0_kept"] = kept
     if rec.get("_not_found"):
         if rec0 is None:
             rec0 = estimate(frame0["images"], frame0["state"], task, instruction, bgs=bgs, cfg=cfg)
