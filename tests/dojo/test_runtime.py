@@ -3043,6 +3043,27 @@ def test_vocab_explain_keeps_the_table_match_unless_another_set_clearly_explains
     assert v.name == chosen
 
 
+@pytest.mark.parametrize("inc_found, chosen", [(3, "imitate_sorting_sequence"), (2, "classify_objects")])
+def test_vocab_explain_keeps_a_table_match_that_found_every_label(inc_found, chosen):
+    """breadth3 imitate 100014: the instruction's set found every label at mean confidence 0.47, classify_objects found
+    every label at 0.65 and won by the 0.15 margin; the episode ran the wrong task and ended at step 3. Mean confidence
+    is not comparable across sets: a table match that found everything stays."""
+    from dojo.runtime.supervisor import Vocabulary
+
+    class P:
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            k, c = (inc_found, 0.47) if vocabulary == "imitate_sorting_sequence" else (3, 0.65)
+            recs = [{"category": "cube", "category_idx": 1, "label": f"t{i}", "default_pos": [0.1 * i, 0, 0.78],
+                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": c}} for i in range(k)]
+            return {"Rigid": {"cube": recs}, "_not_found": [{"label": f"t{i}"} for i in range(k, 3)]}
+
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off"), assets=FakeAssets(), perception_client=P())
+    pol.reset({"instruction": "x", "step_lim": 1600})
+    cands = [Vocabulary("imitate_sorting_sequence", (), source="table"), Vocabulary("classify_objects", (), source="catalog")]
+    v, _rec = pol._explain_vocabulary(cands, {"instruction": "x"})
+    assert v.name == chosen
+
+
 @pytest.mark.parametrize("belief_prec, expected_prec, adopted", [(0.9, 0.5, False), (0.1, 0.85, True), (None, None, False)])
 def test_confirm_pose_adopts_a_skills_expected_outcome_only_when_the_head_view_prefers_it(belief_prec, expected_prec, adopted):
     """A topple moves a tile without a grasp: no release, no twin segment, so the belief keeps it standing and the
