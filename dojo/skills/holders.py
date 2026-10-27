@@ -324,10 +324,10 @@ EGG_WALL_CLEAR = -0.010       # m: dense finger samples at most this far into a 
 EGG_ENDS = False              # pick eggs by their tips too (last)
 EGG_PUSH_OK = -0.003         # m: the fingers may push a neighbouring egg this far (it rolls aside)
 EGG_LIFT_OVER = 0.045         # m: an object picked inside a container is lifted until its centre is this far over the rim
-EGG_DROP_OFFSETS = (0.007, 0.012)   # m: a lying egg is let go with its centre this far along its long axis off the hole
+EGG_DROP_OFFSETS = (0.012, 0.007)   # m: a lying egg is let go with its centre this far along its long axis off the hole
                               # centre: its far end rests on the rim, the near end has nothing under it and it tips in
-                              # (centred, a lying egg spans the hole and can stay). 12 mm: a back hole under the open lid,
-                              # the egg pointing at the lid and moved to the front
+                              # (centred, a lying egg spans the hole and can stay). 12 mm first: 17 eggs in vs 13 with
+                              # 7 mm first, same 11 layouts (G3 mode A; 4 layouts up, 1 down)
 EGG_DROP_CLEAR = 0.002        # m: its underside over the far rim at the release
 EGG_STAND_FALLBACK = True     # no lying drop plans (the back holes, under the open lid): stand the held egg up instead
 STAND_PLACE_KW = {"servo": True, "fingers_out": True, "probe": False, "hover_clear": 0.008, "descend_rad": 0.03,

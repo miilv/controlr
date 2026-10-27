@@ -282,7 +282,8 @@
   fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
 - [ ] **dojo skills: fill_egg_holder, an egg can land lying across a hole** (its centre 2-5 mm over the plate, the
-  checker wants it in). Two presses from above did not free it. Drops now put the far end on the outer rim first.
+  checker wants it in). Two presses from above did not free it; ordering the drops so the far end rests on the outer
+  rim (not on the wall between two holes) did not help (G3, 11 layouts).
 - [ ] **dojo runtime: an egg let go over the egg holder's hole is predicted on the table.** The holder is an
   Articulation, so the fixture rule (#77, Geometry only) does not see its holes and `drop_rest` drops the egg to the
   table at the release's xy. Mode B then re-picks a phantom egg. The post-place refine must find it in the hole, or
