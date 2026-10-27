@@ -209,6 +209,17 @@ def _pinch_yaw(src, toward) -> float:
     return math.atan2(d[1], d[0]) + math.pi / 2
 
 
+def _centre(gm: dict, fallback):
+    """The garment's middle (pinches go in towards it): its particles' mean, else its root position (a read without
+    particles: the camera's, G3 mode B; twin: falling back to the chest / shoulder point instead pinched hems 3.5 cm
+    straight up from the corner, on the side edge, and the random set's hem line failed 6 of 10)."""
+    if gm.get("points") is not None:
+        return np.mean(np.asarray(gm["points"], float)[:, :2], axis=0)
+    if gm.get("pos") is not None:
+        return np.asarray(gm["pos"], float)[:2]
+    return None if fallback is None else np.asarray(fallback, float)[:2]
+
+
 def _inward(p, centre, d: float = PINCH_IN) -> np.ndarray:
     v = np.asarray(centre, float)[:2] - np.asarray(p, float)[:2]
     n = float(np.linalg.norm(v))
@@ -239,7 +250,7 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
             sl, ch = _kp(gm, f"{side}_sleeve"), _kp(gm, f"{other}_chest")
             if sl is None or ch is None:
                 return {"ok": False, "stage": f"{side} sleeve", "note": "no sleeve / chest point", "done": done}
-            centre = np.mean(np.asarray(gm["points"], float)[:, :2], axis=0) if gm.get("points") is not None else ch[:2]
+            centre = _centre(gm, ch)
             # laid on the chest, short of it on the sleeve's own side (left sleeve: the -x side of the garment frame)
             sgn = -1.0 if side == "left" else 1.0
             dst = ch[:2] + sgn * SLEEVE_OWN * xa
@@ -281,7 +292,7 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
         if blown_up(gm):
             sk._record(SkillResult(False, "fold_body", "unstable", 0, None, note="the cloth simulation diverged"))
             return {"ok": False, "stage": "hem", "note": "cloth diverged", "done": done}
-        centre = np.mean(np.asarray(gm["points"], float)[:, :2], axis=0) if gm.get("points") is not None else None
+        centre = _centre(gm, None)
         jobs = []
         for side in ("left", "right"):
             hm, sh = _kp(gm, f"{side}_hem"), _kp(gm, f"{side}_shoulder")
