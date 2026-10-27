@@ -63,6 +63,19 @@ Pooled over the 4 layouts: 95/249 (0.38) -> 207/249 (0.83). On the blobs the bel
 - **The garage figure stays the weak kind** (69/96). Its dark figure splits into pieces on the dark belt, and a piece
   alone looks like part of the camera.
 
+**A fresh set, another renderer.** Memory's 6.0-proxy belt recordings (`compute3:~/dojo-memory-data/belt60`) of
+100000-02 were never used for any choice. Their belt background is built from 100020-22, so it is clean. Every 3rd
+frame, 196 blobs:
+
+| arm | camera | garage | ice_cream | puppet | all |
+|---|---|---|---|---|---|
+| ours | 8/41 | 5/68 | 24/35 | 16/21 | 80/196 (0.41) |
+| **DINOv2-S fused (frozen)** | 35/41 | 45/68 | 29/35 | 18/21 | **157/196 (0.80)** |
+| DINOv2-B | 35/41 | 37/68 | 29/35 | 13/21 | 142/196 (0.72) |
+| SigLIP2-B | 34/41 | 26/68 | 26/35 | 19/21 | 134/196 (0.68) |
+| CLIP-L | 27/41 | 12/68 | 23/35 | 17/21 | 100/196 (0.51) |
+| DINOv2-S + SigLIP2 mean, fused | | | | | 155/196 |
+
 Speed (one model, the frozen arm): ~0.4 s to render 10 assets x place frames x 8 yaws per blob, plus ~0.2 s DINOv2-S;
 about 1 GB VRAM.
 
@@ -112,8 +125,12 @@ layout, every 3rd scored. The belt background was built 2-fold (100000-01 / 1000
 - On these colourful riders our colour identity is already good, and DINOv2 adds nothing: it confuses the two car
   variants, which differ only in colour.
 - SigLIP2 reads the basket and the can.
-- The DINOv2-S + SigLIP2 mean keeps the belt (207/249 vs 207/249 on 5.1, 125 vs 123 held-out) and gains here. It was
-  chosen after seeing both sets, so it needs a fresh set before it counts (6.0 belt frames of 100000-02, queued).
+- **The DINOv2-S + SigLIP2 mean** keeps the belt on every belt set:
+  - 5.1: 207/249 vs 207/249;
+  - held-out: 125 vs 123;
+  - the fresh 6.0 set: 155 vs 157.
+  It gains here (159 vs 142 of 208). It is a candidate for one model across both conveyor tasks. Its by_image gain was
+  seen after the choice, so it still needs fresh by_image layouts.
 
 **The picture (instruction's reference image).**
 - **The board is hidden from the head camera at home on our layouts.** It stands behind the right arm's links: GT
@@ -136,6 +153,20 @@ layout, every 3rd scored. The belt background was built 2-fold (100000-01 / 1000
   (the board crop vs the 17 `photo.png`, then `map.json`), or match the picture straight to the riders (CLIP-L).
 - **Language-image models win here** (photo -> render, across domains); DINOv2 wins render -> render on the dark belt.
 - Script: `scripts/perception/identity_photo.py`.
+
+**Proposal for pick_from_conveyor_by_image's identity.** Today the skill asks "which picture asset is the board?"
+(B1's colour pick, then `map.json`). From the home view that pick always fails.
+1. **A look at the board.** Its pose is known once found, so plan a wrist (or scan-pose) view of it, or carry the
+   basket past it. The look must show the picture face, at least ~60 px across.
+2. **Which picture it is.** Match the board crop against the 17 public `Geometry/photo/*/resource/img/photo.png` with
+   CLIP-L or SigLIP2, then `map.json` gives the depicted asset (`skills.interactive.depicted_identity` reads
+   `o.depicts`). As a check, match the same crop straight against the rider crops: CLIP-L picks the pictured rider
+   33/33 from the clean picture.
+3. **Which rider it is.** Use the belt read with `embed_model`. For this task's colourful riders, SigLIP2 (0.87) or the
+   DINOv2 + SigLIP2 mean beats DINOv2 alone (0.68).
+4. **Measure before relying on it.** A picture seen by a wrist camera is not the clean photo.png. Re-run step 2 on real
+   look crops before trusting it. Also note the skill is 0/10 in G3 on v13 for reach reasons (journal skills6), so
+   perception alone does not score this task yet.
 
 ## 4. End to end on the table (eval_g1, frame 0, paired)
 
@@ -160,7 +191,7 @@ eval_g1's: ok / identity / overshoot / gross / missed.
 ## Verdict
 
 - **Belt read (conveyor scenes): ADOPT.**
-  - Per blob on held-out 5.1 frames: 0.46 -> 0.83.
+  - Per blob on held-out 5.1 frames: 0.46 -> 0.83; on a fresh 6.0-proxy set, 0.41 -> 0.80.
   - Paired read-level A/B: identity 0.68 -> 0.90, phantoms 77 -> 47, xy median 7.3 -> 5.9 mm, +0.9 s per read.
   - The arm for the rendered conveyor A/B is `embed_model="dinov2_s"`: merge on, B1 off. The service takes it as
     `DOJO_PERCEPTION_CFG='{"embed_model": "dinov2_s"}'`. The default stays None until that A/B lands.
@@ -170,6 +201,7 @@ eval_g1's: ok / identity / overshoot / gross / missed.
   - First the board needs a look: it is hidden behind the right arm at home.
   - Then picture -> rider matching works with CLIP-L (33/33) or SigLIP2 (32/33).
   - Rider identity there is better with SigLIP2 (0.87) than with the frozen DINOv2 arm (0.68, our 0.69). A
-    DINOv2 + SigLIP2 mean is a candidate for one model that does both, pending a fresh set.
+    DINOv2 + SigLIP2 mean is a candidate for one model that does both: neutral on all three belt sets, +17 on by_image.
+  - The proposal is in section 3.
 - **Which model.** DINOv2 for render -> render on a dark, badly segmented scene. SigLIP2 / CLIP-L when one side is a
   photo, or for colourful product-like riders. CLIP-L is worst on render matching.
