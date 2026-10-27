@@ -46,7 +46,9 @@ class AgentConfig:
     jpeg_quality: int = 80
     max_images_per_turn: int = 3
     manual: str = "manual_v4"           # v3 + "hold what must be held" (the pick(lift) + finish() early release)
-    appendix: str = "agent_v4"          # v3 + "a call of the python tool" as a cell
+    # v5 = v4 + "a retry passes a failed skill its complete arguments again" (2026-10-27: a retry of an every-object
+    # skill with a subset of its ids; journal 2026-10-27-dojo-official §2.3)
+    appendix: str = "agent_v5"
     timeout_s: float = 600.0
     # experiment batching (one bundle job for several model arms): episode k runs models[k % len(models)]
     # ({"model": ..., "extra_body": {...}}); empty = always ``model``. Chosen by the episode counter only.

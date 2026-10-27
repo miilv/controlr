@@ -204,6 +204,21 @@ Per config:
 
 - Calls: 12 (run H). Routing total: 320.
 
+**Follow-up: agent_v5, retries keep the complete arguments** (lead-approved; journal 2026-10-27-dojo-official §2.3).
+- An episode follow-up, not routing. On make_kong 100002 (rendered 5.1, Sol) the official run retried a failed
+  `declare_kong(all 22 tiles)` with 8 tiles and gave up.
+- `AgentConfig.appendix` agent_v4 -> agent_v5 adds: "a retry passes a failed skill its complete arguments again ...
+  it never drops required ids".
+- Replay probe (`dojo/agent/replay_probe.py`): the logged conversation up to the failure feedback and the scene
+  printout, the logged system text vs the same with agent_v5, 10 samples each.
+
+| next cell (n = 10 each) | agent_v4 | agent_v5 |
+|---|---|---|
+| Sol 6.1 | **9/10 drop ids** (8 or 20 of 22); 1 re-measures first | **0/10 drop ids**: 2 all 22; 8 re-measure first |
+| Sonnet 5.5 | 1/10 drops ids; 5 all 22; 4 look first | 0/10 drop ids; 7 all 22; 3 look first |
+
+- Calls: 40 (`probeI_kong_retry`). Routing total: 360.
+
 ## Failure modes and fixes
 
 **1. Scene v2 lists no frames, so every frame-argument skill became code (A: 19/93, 6 configs).**
@@ -318,4 +333,4 @@ uv run python -m dojo.agent.grounding score runs/official-routing/<run> --md
 
 Datasets on compute3: `~/dojo-data/official/routing/dataset_v{2,3,4m}.jsonl` and `dataset_v4m_toy10.jsonl`. Runs
 are local, under `runs/official-routing/`: `runA_v2_manual4_docs7`, `runB_v4_manual4_docs7`, `runB2_toy10_v4_docs7`,
-`runC_toy10_v4_docs8`, `runD_v4_docs8_rest`, `runE_sol_v4_docs8`, `runF_fillpen_v9`, `runG_conveyor_v10` (6 calls each), `runH_fold_v10` (12; dataset `dataset_v4m_fold.jsonl`); 320 in all.
+`runC_toy10_v4_docs8`, `runD_v4_docs8_rest`, `runE_sol_v4_docs8`, `runF_fillpen_v9`, `runG_conveyor_v10` (6 calls each), `runH_fold_v10` (12; dataset `dataset_v4m_fold.jsonl`), `probeI_kong_retry` (40, replay probe); 360 in all.

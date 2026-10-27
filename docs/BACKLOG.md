@@ -155,6 +155,9 @@
   ([routing report](experiments/2026-10-27-routing-sonnet.md)).
 - [x] ~~**dojo agent: registry path lags SKILL_DOCS v8**~~ — `skills/registry.yaml`'s `stack_on_pegs` doc carries
   the same "most pieces -> highest peg" sentence (test `test_registry_peg_doc_says_which_group_fits_which_peg`).
+- [ ] **dojo agent: agent_v5's retry line, episode check.** In the replay probe (journal 2026-10-27-dojo-official
+  §2.3) no retry dropped ids under agent_v5 (v4: Sol 9/10, Sonnet 1/10 did), but 8 of 10 Sol samples re-measured
+  first and their retry was not observed. Confirm with an episode A/B on an every-object skill (make_kong 100002 rendered).
 - [ ] **dojo agent: wrong asset captions mislead the chooser.** The mug rack (cup_holder 0) is captioned
   "smartphone", the bread and the coin "smartphone", both vertical stands "business card holder". With scene v2
   Sonnet called the rack "a phone-shaped holder, not a rack" and planned a `robo.search` for a missing rack. A
