@@ -150,7 +150,9 @@ def perceive_cell(cap: str, instruction: str, cell: str = "object_task", out: st
     subprocess.run([sys.executable, str(VENDOR / "libero" / "grid.py"), "full", "agentview.png", "av_grid.png", "--step", "32",
                     "--scale", "2"], cwd=ws, capture_output=True, timeout=60)
     tools = LiberoTools(ws, cap, cell, reply, os.environ.get("LIBERO_PY", sys.executable), os.environ.get("LIBERO_HARNESS", "harness"))
-    parts = [{"type": "text", "text": f"LIBERO capture ({cell} cell). Instruction: {instruction!r}\n"
+    # ``cell`` only routes the locate helper (HELPER); it is never shown to the model: a cell name is the suite name
+    # (PERCEIVER-PROTOCOL §1, robot-harness audit A2 finding 1)
+    parts = [{"type": "text", "text": f"LIBERO capture. Instruction: {instruction!r}\n"
                                       f"Workspace: agentview.png, wrist.png, av_grid.png (agentview with the 2x grid, attached first)."}]
     for n in ("av_grid.png", "wrist.png"):
         if (ws / n).exists():

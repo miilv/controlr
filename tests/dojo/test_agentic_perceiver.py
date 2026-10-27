@@ -185,6 +185,8 @@ def test_libero_cell_fake_helpers(tmp_path, monkeypatch):
                              reply={"robot_base": [0, 0, 0.9], "eef": {"single": {"pos": [0.1, 0.0, 1.1]}}}, model="fake", chat=fc,
                              log_dir=str(tmp_path / "logs"))
     assert r["stats"]["ok"] and r["stats"]["calls"] == 2 and r["stats"]["commands"] == 3
+    first = "\n".join(p.get("text", "") for p in fc.sent[0][-1]["content"] if isinstance(p, dict))
+    assert "LIBERO capture." in first and not any(c in first for c in libero.HELPER)  # the cell never reaches the model
     tool_turn = fc.sent[1][-1]["content"]
     texts = "\n".join(p.get("text", "") for p in tool_turn)
     assert "table z 0.9" in texts and "spread 0.002" in texts and "centre_xy" in texts
