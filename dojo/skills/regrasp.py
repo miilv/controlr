@@ -33,6 +33,7 @@ from dojo.skills.skills import CLOSED, OPEN, Held, PlacePlan, SkillResult, Skill
 
 LENGTHWISE_TIP = (0.0028, 0.0038)   # m: the giver's fingertips over the support (twin: 2.8 mm passes the collision check)
 REST_CARRY = 0.04                   # rad/step: the giver's carry to the handover pose (eased)
+REST_RETREAT = 0.025                # m: back out after letting the object go in its receptacle (steps: 300 for all)
 REST_PLACE_CARRY = 0.07             # rad/step: the taker's move from the handover to the hover over the receptacle (at
                                     # the usual 0.14 the key turned 78 deg in the pads on the way, G3 100000)
 TILTS = (15.0, 30.0)                # deg: the taker's approach under the horizontal at the target (45 / 60: the pads
@@ -347,13 +348,10 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     sk._record(SkillResult(True, "rest_handover", "ok", 0, t_arm,
                            note=f"{label} {g_arm} -> {t_arm} ({h['note']}), carry drift {drift_g*1000:.1f} mm, "
                                 f"take drift {drift*1000:.1f} mm"))
-    try:
-        sk.ex.run({g_arm: sk.plan_home(g_arm)}, name="giver home")
-    except (BudgetExceeded, EpisodeEnded) as e:
-        return sk._record(SkillResult(False, "rest_handover", "step_budget", 0, g_arm, note=str(e)))
     kw = dict(place_kw)
     turn = float(kw.pop("turn", 0.0) or 0.0)
     kw.setdefault("approach_rad", REST_PLACE_CARRY)
+    kw.setdefault("retreat", REST_RETREAT)
     # insert and let go; the turn takes a grasp of its own, the one whose wrist reaches the whole turn
     # (``turn_in_lock``: the handover's grasp reached -42 of -60 or less in most layouts, G3)
     kw["release"] = True
@@ -364,7 +362,19 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
         pl = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
         held_on = True
     if not isinstance(pl, PlacePlan):
+        sk.ex.run({g_arm: sk.plan_home(g_arm)}, name="giver home")
         return sk._record(SkillResult(False, "place", pl.status, 0, t_arm, note=f"after the handover: {pl.note[:150]}"))
+    try:
+        # the giver goes home while the taker moves to the hover (300 steps: in sequence the episode ran out, G3), then
+        # the place from there (its approach is then a few steps)
+        appr = ArmPlan(t_arm, sk.ex.q[t_arm].copy(), CLOSED).move(pl.approach, "approach")
+        sk.ex.run({t_arm: appr, g_arm: sk.plan_home(g_arm)}, name="place approach + giver home")
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return sk._record(SkillResult(False, "place", "step_budget" if isinstance(e, BudgetExceeded) else "ended", 0,
+                                      t_arm, note=str(e)))
+    pl2 = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
+    if isinstance(pl2, PlacePlan):
+        pl = pl2
     r = sk._record(sk.run_place(pl, tol[0], tol[1], tol_z=tol[2], ref_label=receptacle))
     if not turn or r.status in ("ended", "step_budget"):
         return r
@@ -411,7 +421,7 @@ def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm:
         o = sk.refresh().obj(label)
         Tt = o.T @ T_ko
         pre = Tt.copy()
-        pre[:3, 3] -= Tt[:3, 0] * 0.06
+        pre[:3, 3] -= Tt[:3, 0] * 0.035
         g_open = gap_to_grip(min(G.MAX_GAP, width + TAKE_GAP))
         mp = sk.motion.to_pose(arm, sk.ex.q[arm], pre, FAST, "turn_pre", gripper=g_open, ignore=(label,))
         if not mp.ok:
