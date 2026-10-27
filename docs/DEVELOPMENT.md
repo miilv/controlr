@@ -160,6 +160,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   (blocked `flock -w` waiters and 15-s pollers). A job that needs two lanes (an Isaac 6.0 render of ours) takes them
   as they free up with a 0.5-s poller on fds the shell holds (`scripts/perception/held_render.sh`: a flock on an
   inherited fd stays held after the helper exits).
+- **The physics-only twin writes nothing back to USD** (`updateToUsd = false`, omni.physx.fabric loaded), and RoboDojo
+  reads some state from USD: articulation link poses (`usd_sync_links` answers them from the physics view) and a
+  CPU-device garment's particles (`GarmentObject.sample_mesh_vertices`). For configs that spawn a Garment the runner
+  launches the physics-only kit with `--/physics/updateToUsd=true --/physics/updateParticlesToUsd=true`
+  (`runner.GARMENT_KIT_SETTINGS`); without them the cloth reads as its spawn mesh forever. `SIMLAB_PHYSICS_KIT_ARGS`
+  adds any other Kit setting to a physics-only run (dev).
 - **Mesh vertices are not surface samples.** A box-like catalogue mesh (the charger) has vertices only at its edges,
   so a vertex test of "what the pads touch" found nothing on its flat sides and fell back to a wrong width (the held
   object then hid under a finger mask). Sample the surface (`held.surface_points`).
