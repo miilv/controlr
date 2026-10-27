@@ -492,6 +492,10 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
             return rt
         _let_go(sk, t_arm, label)             # this grasp's wrist does not reach the turn: a fresh one in the lock
         return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(T_seat, kw))
+    if mode_b:
+        # with an in-hand read available (runtime held_pose "request" / "auto", G3 --held-pose): this place asks for it
+        # (#136: insert_into does not by default; the key's tip must meet a 6 mm hole)
+        kw["held_read"] = True
     pl = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
     held_on = False
     if not isinstance(pl, PlacePlan) and turn:
