@@ -553,6 +553,7 @@ def test_quota_lists_from_a_hierarchical_list_and_its_copies(monkeypatch):
     ls = il.quota_lists("imi", g)
     assert [L["labels"] for L in ls] == [["t0", "t1"], ["aim0", "aim1"]]
     assert ls[0]["cats"] == ["car", "phone"] and ls[1]["regions"][0]["y"] == [(0.1, 0.3)]
+    assert ls[0]["copy_of"] is None and ls[1]["copy_of"] == 0
     assert il.region_ok(ls[1], 0.0, 0.2) and not il.region_ok(ls[0], 0.0, 0.2)
     labels["t0"]["select_mode"] = labels["t1"]["select_mode"] = dict(t_sel, select_category_nums=[1, 2])
     assert il.quota_lists("imi", g) == []
@@ -699,3 +700,12 @@ def test_scan_keeps_a_confident_frame0_small_object_and_its_slot_child(monkeypat
     assert scan["Geometry"]["bank"][0]["default_pos"][0] == 0.36           # a big object: the scan's read stands
     scan["Geometry"]["stand"][0] = e("stand", "stand", (0.35, -0.22), 0.6)  # a surer scan read wins
     assert "stand" not in sc.keep_frame0_small(scan, rec0, "coin")
+
+
+def test_copy_assets_hungarian_keeps_an_unfittable_row():
+    """_assign_fitted: a row whose every trial failed to fit (9.0) keeps its incumbent; the others take their columns."""
+    from dojo.perception import inverse_layout as il
+
+    C = np.array([[0.2, 0.5, 9.0], [9.0, 9.0, 9.0], [0.6, 0.1, 9.0]])
+    assert il._assign_fitted(C) == {0: 0, 2: 1}
+    assert il._assign_fitted(np.full((2, 2), 9.0)) == {}

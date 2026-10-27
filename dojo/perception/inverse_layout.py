@@ -2119,13 +2119,15 @@ def quota_lists(task: str, g: dict) -> list[dict]:
         lists = [list(lst)]
         if len(copies) == len(lst) and {labels[l]["select_mode"]["same_label"] for l in copies} == set(lst):
             lists.append(copies)
+        src = len(out)
         for ls in lists:
             regs = []
             for l in ls:
                 for r in _regions(labels[l]["placement"], labels, labels[l].get("type", "Rigid")):
                     if r not in regs:
                         regs.append(r)
-            out.append({"labels": ls, "cats": cats, "placement": labels[ls[0]]["placement"], "regions": regs})
+            out.append({"labels": ls, "cats": cats, "placement": labels[ls[0]]["placement"], "regions": regs,
+                        "copy_of": src if ls is not lists[0] else None})
     return out
 
 
@@ -2287,6 +2289,79 @@ def _category_quota(chosen: list[Hypothesis], views, cfg, groups, pending, task)
                     t2.per_view["quota"] = {"was": out[i].key, "cost": round(float(C[r_, c_]), 4),
                                             "kept_cost": round(float(fits[(i, ("keep", cat_of[i]))].loss), 4)}
                     out[i] = t2
+        if cfg.quota_copy_assets:
+            out = _quota_copy_assets(out, views, cfg, groups, gi, g, prior, lists)
+    return out
+
+
+def _assign_fitted(C: np.ndarray, unfit: float = 9.0) -> dict[int, int]:
+    """Hungarian over a cost matrix whose ``unfit`` entries mark trials that did not fit: {row: column} for the rows
+    assigned a fitted column. A row with nothing fitted keeps its incumbent (absent from the result)."""
+    from scipy.optimize import linear_sum_assignment
+
+    ri, ci = linear_sum_assignment(C)
+    return {int(r): int(c) for r, c in zip(ri, ci) if C[r, c] < unfit}
+
+
+def _quota_copy_assets(out: list[Hypothesis], views, cfg, groups, gi, g, prior, lists) -> list[Hypothesis]:
+    """A ``same_as_label`` copy list holds exactly its source list's assets: when the source list is complete (one object
+    per label, every category once), each copy object is re-fitted at its own blob as each source asset and a Hungarian
+    assignment (each source asset once) picks them by total cost. imitate: the demonstrator's far, small objects swapped
+    categories (action camera <-> figure <-> watch) while our near side read 64 of 65 right."""
+    head = views["cam_head"]
+    member = _quota_members(out, gi, lists)
+    for li, L in enumerate(lists):
+        if L.get("copy_of") is None:
+            continue
+        S = lists[L["copy_of"]]
+        src = [i for i, l_ in member.items() if l_ == L["copy_of"]]
+        if len(src) != len(S["labels"]) or len({out[i].key.split("/")[1] for i in src}) != len(src):
+            continue
+        keys = [out[i].key for i in src]
+        ms = [i for i, l_ in member.items() if l_ == li]
+        if not ms:
+            continue
+        C = np.full((len(ms), len(keys)), 9.0)
+        fits: dict = {}
+        for r_, i in enumerate(ms):
+            h = out[i]
+            others = _union_masks(out, views, skip=i, target=h)
+            s_h = h.sm().sil(head.cam, h.T())
+            m = cv2.dilate(s_h, np.ones((5, 5), np.uint8)) & head.fg & (1 - others["cam_head"])
+            if m.sum() < 10:
+                continue
+            n, lab, st, cents = cv2.connectedComponentsWithStats(m, connectivity=8)
+            j = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+            b = Blob("cam_head", (lab == j).astype(np.uint8), int(st[j, cv2.CC_STAT_AREA]), cents[j], tuple(st[j, :4]))
+            for c_, k in enumerate(keys):
+                if k == h.key:
+                    t2 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters, color=True)
+                    C[r_, c_], fits[(r_, c_)] = t2.loss, t2
+                    continue
+                best = None
+                for sm in shape_models(k):
+                    if prior["place_tag"] and sm.tag != prior["place_tag"]:
+                        continue
+                    for x, y, yaw, l in coarse_fit(sm, b, {"cam_head": head}, cfg.yaw_step_deg)[:2]:
+                        t = Hypothesis(gi, sm.key, sm.tag, x, y, yaw, l, blob=h.blob)
+                        t.per_view = {"geom_group": [k]}
+                        t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
+                        if not region_ok(L, *_centre_xy(t2, L), t2.yaw, t2.sm().yaw_period):
+                            continue
+                        if best is None or t2.loss < best.loss:
+                            best = t2
+                if best is not None:
+                    C[r_, c_], fits[(r_, c_)] = best.loss, best
+        for r_, c_ in _assign_fitted(C).items():
+            i = ms[r_]
+            if keys[c_] == out[i].key:
+                continue
+            t2 = fits[(r_, c_)]
+            for k_, v_ in out[i].per_view.items():
+                if k_ not in t2.per_view and not k_.startswith("cam"):
+                    t2.per_view[k_] = v_
+            t2.per_view["quota"] = {"copy_of": keys[c_], "was": out[i].key, "cost": round(float(C[r_, c_]), 4)}
+            out[i] = t2
     return out
 
 
@@ -2595,6 +2670,7 @@ class EstimatorConfig:
     category_quota: bool = True
     quota_variants: int = 2  # ... fitting each missing category's best-coloured variants
     quota_add_max_loss: float = 0.8  # ... and a list short of objects takes a missing category's fit on unexplained foreground up to this silhouette loss
+    quota_copy_assets: bool = True  # ... and a same_as_label copy list takes its complete source list's assets (Hungarian)
     # objects placed inside a static container base (fill_egg_holder's eggs in the egg basket): fitted on the base's
     # top surface to the evidence that interrupts its texture, only their pixels in front of it counted (contained.py)
     contained_children: bool = True
