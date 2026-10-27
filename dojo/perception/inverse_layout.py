@@ -1995,6 +1995,13 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
                 j = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
                 b = Blob("cam_head", (lab == j).astype(np.uint8), int(st[j, cv2.CC_STAT_AREA]), cents[j], tuple(st[j, :4]))
                 bcol = _blob_color(head.img, b.mask)
+                if cfg.polish_fit_color:
+                    # the colour inside the incumbent's own silhouette (every view), not the blob's: the blob carries
+                    # shadow and background, and hang_mugs' pink mug never made the 4 trials (silhouettes of the 10 mug
+                    # models are flat, 0.30-0.36; only colour separates them)
+                    fc, _n = observed_color(h.sm(), h.T(), views)
+                    if fc is not None:
+                        bcol = fc
                 pre = []
                 for sms in _geometry_groups(g, prior).values():
                     if h.key in [s_.key for s_ in sms] and sms[0].tag == h.tag:
@@ -2004,7 +2011,13 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
                     ratio = b.area / max(a_pred, 1)
                     pre.append((abs(np.log(max(ratio, 1e-3))) * 0.5 + cfg.appearance_weight * _app(bcol, [s_.key for s_ in sms]), sms))
                 pre.sort(key=lambda t: t[0])
-                for _, sms in pre[: cfg.polish_candidates]:
+                picked = pre[: cfg.polish_candidates]
+                if cfg.polish_color_candidates:
+                    # the best colours too: the area-ratio term ranks by size against a WRONG incumbent's silhouette, and
+                    # hang_mugs' pink mug (best colour by 0.2) came 5th of 9 behind a big cream incumbent
+                    by_col = sorted(pre, key=lambda t: _app(bcol, [s_.key for s_ in t[1]]))
+                    picked += [t for t in by_col[: cfg.polish_color_candidates] if all(t[1] is not q[1] for q in picked)]
+                for _, sms in picked:
                     sm = sms[0]
                     for x, y, yaw, l in coarse_fit(sm, b, {"cam_head": head}, cfg.yaw_step_deg)[:2]:
                         t = Hypothesis(h.label_group, sm.key, sm.tag, x, y, yaw, l, blob=h.blob)
@@ -2022,7 +2035,10 @@ def _polish(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypot
             scored.append(t2)
             # paired texture on shared pixels decides when it is informative; else the combined cost
             pt = paired_texture(best.sm(), best.T(), t2.sm(), t2.T(), views, others) if cfg.texture_weight > 0 else None
-            if pt is not None and abs(pt[0] - pt[1]) > cfg.paired_tex_margin:
+            # paired texture decides only between colour-compatible candidates: weighed 0.8 against the mean colour's
+            # 0.3, it turned a white mug (colour distance 0.10) into a dark one (0.46) on hang_mugs
+            colour_worse = cfg.polish_color_veto is not None and t2.appearance - best.appearance > cfg.polish_color_veto
+            if pt is not None and abs(pt[0] - pt[1]) > cfg.paired_tex_margin and not colour_worse:
                 cb = best.per_view["sil_loss"] + cfg.appearance_weight * best.appearance + cfg.paired_tex_weight * pt[0]
                 ct = t2.per_view["sil_loss"] + cfg.appearance_weight * t2.appearance + cfg.paired_tex_weight * pt[1]
                 t2.per_view["paired_tex"] = [round(pt[0], 4), round(pt[1], 4)]
@@ -2163,6 +2179,9 @@ class EstimatorConfig:
     polish: bool = True
     swap_pairs: bool = True  # cross-label place swaps for labels sharing a generator region (_swap_pairs)
     polish_candidates: int = 4
+    polish_fit_color: bool = True  # polish ranks its identity trials by the colour inside the incumbent's silhouette
+    polish_color_candidates: int = 2  # ... and also tries the best-coloured candidates the ranking left out
+    polish_color_veto: float | None = 0.2  # paired texture cannot pick a trial whose mean colour is this much worse
     paired_tex_weight: float = 0.8
     refine_color_weight: float = 0.5
     paired_tex_margin: float = 0.04
