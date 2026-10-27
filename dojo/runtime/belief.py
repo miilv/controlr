@@ -41,17 +41,64 @@ FIXTURE_ERODE = 1           # cells: the fixture's surface is shrunk by this bef
 FIXTURE_HOLD = 0.001        # m: an object point this far below a fixture's surface is held by the fixture
 STILL_RAD = 0.002           # rad: the arm counts as still at a release when its command moved less than this
 _FIXTURE_HM: dict = {}
+_STATIC_MESH: dict = {}
+
+
+def is_fixture(o) -> bool:
+    """A static Geometry object, or an articulated one (an egg holder's body and holes, a toaster's slots): its static
+    links hold or support what is let go on them (``static_link_mesh``)."""
+    return o.obj_type in ("Geometry", "Articulation") and not getattr(o, "clutter", False)
+
+
+def static_link_mesh(o):
+    """(V, F) of the part of an articulated asset's mesh that no joint moves: each mesh vertex goes to the link with
+    the nearest ``links.json`` sample point, a face is kept when its three vertices are on links that are no joint's
+    child (an egg holder's body, not its lid; a toaster's base, not its lever). The asset frame, the authored state.
+    None without a mesh, links or a static link. Cached per asset."""
+    if o.asset.mesh is None or not getattr(o.asset, "links", None):
+        return None
+    key = o.asset.key
+    if key in _STATIC_MESH:
+        return _STATIC_MESH[key]
+    moving = {(j or {}).get("body1") for j in (getattr(o.asset, "joints", None) or {}).values()}
+    names = list(o.asset.links)
+    pts = [np.asarray((o.asset.links[n] or {}).get("points", np.zeros((0, 3))), float).reshape(-1, 3) for n in names]
+    owner = np.concatenate([np.full(len(p), i) for i, p in enumerate(pts)]) if pts else np.zeros(0, int)
+    P = np.concatenate(pts) if pts else np.zeros((0, 3))
+    static = np.array([n not in moving for n in names], bool)
+    res = None
+    if len(P) and static.any():
+        V, F = np.asarray(o.asset.mesh[0], float), np.asarray(o.asset.mesh[1], int)
+        try:
+            from scipy.spatial import cKDTree
+            near = cKDTree(P).query(V)[1]
+        except ImportError:                       # bounded memory: chunks of vertices
+            near = np.concatenate([np.argmin(((V[i:i + 2048, None, :] - P[None]) ** 2).sum(-1), 1)
+                                   for i in range(0, len(V), 2048)])
+        on_static = static[owner[near]]
+        F = F[on_static[F].all(1)]
+        if len(F):
+            used, F2 = np.unique(F, return_inverse=True)
+            res = (V[used], F2.reshape(-1, 3))
+    _STATIC_MESH[key] = res
+    return res
+
+
+def fixture_mesh(o):
+    """The mesh a fixture holds or supports with: a Geometry object's own, an articulated one's static links."""
+    return static_link_mesh(o) if o.obj_type == "Articulation" else o.asset.mesh
 
 
 def fixture_height_map(o, cell: float = FIXTURE_CELL) -> dict | None:
-    """Top surface of a static fixture's mesh in its own frame: the max z of dense surface samples per ``cell``
-    (-inf: no surface), eroded by ``FIXTURE_ERODE`` cells. None without a mesh. Cached per asset."""
-    if o.asset.mesh is None:
+    """Top surface of a fixture's mesh (``fixture_mesh``) in its own frame: the max z of dense surface samples per
+    ``cell`` (-inf: no surface), eroded by ``FIXTURE_ERODE`` cells. None without a mesh. Cached per asset."""
+    mesh = fixture_mesh(o)
+    if mesh is None:
         return None
     key = (o.asset.key, cell)
     if key in _FIXTURE_HM:
         return _FIXTURE_HM[key]
-    V, F = np.asarray(o.asset.mesh[0], float), np.asarray(o.asset.mesh[1], int)
+    V, F = np.asarray(mesh[0], float), np.asarray(mesh[1], int)
     a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
     L = np.maximum(np.maximum(np.linalg.norm(b - a, axis=1), np.linalg.norm(c - a, axis=1)), np.linalg.norm(c - b, axis=1))
     nseg = np.clip(np.ceil(L / (0.7 * cell)), 1, 400).astype(int)
@@ -82,10 +129,11 @@ def fixture_height_map(o, cell: float = FIXTURE_CELL) -> dict | None:
 
 def drop_rest(o, movables, fixtures=()) -> tuple[np.ndarray | None, dict | None]:
     """Where ``o``, let go at its current pose, comes to rest: onto the highest support under its footprint, the table
-    or a ``movables`` object's top (bbox, up to 10 mm into it); with ``fixtures`` (static Geometry objects, passed for a
-    release: the jaws opened on it while the arm was still) also a fixture's mesh surface under it (``fixture_rest``: a
-    piece on a board, a nut on a bolt's top), and a fixture that holds it (a nut threaded on a bolt, a mug on a hook)
-    keeps it where it was let go. Returns (the new root position, None = stays; a fixture event or None). Without
+    or a ``movables`` object's top (bbox, up to 10 mm into it); with ``fixtures`` (``is_fixture``: static Geometry
+    objects and articulated ones' static links, passed for a release: the jaws opened on it while the arm was still)
+    also a fixture's mesh surface under it (``fixture_rest``: a piece on a board, a nut on a bolt's top, a slice in a
+    toaster's slot), and a fixture that holds it (a nut threaded on a bolt, a mug on a hook) keeps it where it was let
+    go. Returns (the new root position, None = stays; a fixture event or None). Without
     ``fixtures`` (as before) an object let go on one fell through it to the table (a nut 53 mm under its bolt's top, a
     piece 17 mm under the board)."""
     lo, hi = o.aabb()
@@ -110,7 +158,8 @@ def drop_rest(o, movables, fixtures=()) -> tuple[np.ndarray | None, dict | None]
 
 
 def fixture_rest(o, fixtures) -> tuple[str, float | None]:
-    """How static ``fixtures`` (Geometry objects) take an object let go at its pose ``o``, from their meshes' top
+    """How ``fixtures`` (Geometry objects, articulated ones' static links) take an object let go at its pose ``o``,
+    from their meshes' top
     surfaces under the object's mesh points: ("held", None) when some point is more than ``FIXTURE_HOLD`` below a
     fixture's surface (a nut on a bolt's thread, a handle around a hook's arm: it stays where it was let go);
     ("support", d) when a fixture's surface lies under it, d = how far the object falls until its mesh meets it (a piece
@@ -122,7 +171,7 @@ def fixture_rest(o, fixtures) -> tuple[str, float | None]:
     lo, hi = P.min(0), P.max(0)
     best = None                                 # the smallest fall onto any fixture
     for g in fixtures:
-        if g.label == o.label or g.asset.mesh is None or float(g.R[2, 2]) < 0.996:
+        if g.label == o.label or fixture_mesh(g) is None or float(g.R[2, 2]) < 0.996:
             continue
         glo, ghi = g.aabb()
         if glo[0] > hi[0] or ghi[0] < lo[0] or glo[1] > hi[1] or ghi[1] < lo[1] or ghi[2] < TABLE_Z - 0.05:
@@ -206,7 +255,7 @@ class KinematicBelief:
         o.source = "predicted"
 
     def fixtures(self):
-        return [o for o in self.objects.values() if o.obj_type == "Geometry" and not o.clutter]
+        return [o for o in self.objects.values() if is_fixture(o)]
 
     def _drop(self, label: str, release: bool = False) -> None:
         o = self.objects[label]
