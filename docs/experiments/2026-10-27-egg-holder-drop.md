@@ -59,8 +59,37 @@ In the blocked picks the dense finger samples were 17-34 mm into the basket's wa
 - The lid never ran, since 4 eggs never went in.
 - n = 11, at 0.1-0.25 per layout: the variants 0.13-0.19 are within noise of each other. The step from 0.03 to ~0.15 is not.
 
-**Mode B (not measured here).**
-- The nudge and the press move an egg without a grasp, so their predicted outcomes go to `provider.confirm_pose`, as a topple's do.
-- The runtime belief drops a released egg to the table: the holder is an Articulation, not a #77 fixture (BACKLOG). The post-place refine has to find it in its hole.
+**Mode B, and the slide** (follow-up PR, branch `feat/dojo-tools-egg-slide`).
 
-**Spend.** No LLM calls. About 14 GPU-hours on compute7 light slots and compute3 overflow slot 4.
+Setup: G3 `--mode-b --held-belief --belief-drop fixtures`, a 2 mm belief offset per egg, the same 11 layouts.
+- The runtime belief drops a released egg to the table: the holder is an Articulation, not a #77 fixture. After a drop, the expected tipped-in pose goes to `confirm_pose` (in G3, heldsim's emulation of the head view; it compares an egg's long axis only, since the head view cannot see its spin).
+- What limits mode B (GT traces, 3 episodes):
+  - at the release the true egg sits 10-14 mm lower in the pads than believed;
+  - mode A re-measures the held egg, and `submit_v1` has held_pose off;
+  - so the egg is let go ~6 mm off the hole's centre instead of 12 and wedges across the hole, 3-4 mm over the plate.
+
+Changes:
+- **Slide** (`slide_in` / `slide_path`): closed fingertips go down 7 mm over the plate, beside the egg's far end, and push along its axis toward the side it was let go on.
+  - Mode B: after every drop, from the release pose, starting 22 mm out (the in-hand position is known to +-15 mm), a 45 mm push.
+  - Mode A: only when the egg is measured lying across its hole, from the measured pose, a 22 mm push.
+  - The arm that let the egg go does the slide. With the other arm, its path crossed that hand.
+- **Nudge**: the wall push may graze the wall profile by 20 mm (was 10).
+
+| version | mode B eggs (mean) | mode A eggs (mean) |
+|---|---|---|
+| main (#98) | 8 (0.077); repeat 9 (0.091) | 16 (0.173) |
+| + slide | 13 (0.136) | 17 (0.186) |
+| **+ slide + nudge 20 mm** | **12 (0.127)** | **20 (0.223)** |
+
+Paired, the last row vs main, per layout:
+- mode B: 5 up, 1 down;
+- mode A: 3 up, 0 down.
+
+Tried and dropped:
+- pushing at the egg's believed middle height: the fingertips passed over it, because it sits 10-14 mm lower;
+- the arm nearer the egg: the other arm's hand was in the way;
+- in mode A, the long push from the measured pose: it pushed an egg on across the next hole.
+
+Still half of mode A: the in-hand error along the egg's axis is not measured in mode B, and it decides the drop offset.
+
+**Spend.** No LLM calls. About 14 GPU-hours on compute7 light slots and compute3 overflow slot 4; the mode-B follow-up about 6 more on compute7.

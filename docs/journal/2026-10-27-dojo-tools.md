@@ -144,3 +144,86 @@ The believed distances overlap completely, so no rule on the believed pose can s
 
 - LLM calls: only the rendered xylophone episodes (submit_v1's agentic perceiver).
 - GPU: compute7 light slots 1-4, compute7 heavy lock 1, compute3 overflow slot 4. No downloads.
+
+## 6. After #98: the confirmation, rendered xylophone, eggs in mode B (later the same night)
+
+**#98 confirmation.** compute7, G3 mode A, the same 11 layouts:
+- main 5878646: 2 eggs (0.018);
+- the merged config: 16 eggs (0.173); its first run had 17 (0.186), so the run-to-run noise is about 1 egg;
+- paired: 9 layouts up, 1 down, 1 same.
+
+**Rendered xylophone (genuine 5.1, submit_v1, compute7).**
+
+| main | layouts | success | failures |
+|---|---|---|---|
+| 6dd647c (before #84) | 100000-04 | 0/5 | four "rose 0 mm, drift 57 mm" |
+| 2a6e30d (#84) | 100000-09 | 3/10 | every miss was perception, six of them the mallet 93-100 mm off |
+| 1f7e965 (#84 + #92 + #93) | 100000-04 | 4/5 | |
+
+- 2a6e30d: Perception-2 traced the 93-100 mm offsets to the agentic perceiver merging the mallet's visual middle as its origin. #92 fixes that.
+- 1f7e965: the only miss is the mallet not found.
+- 100005-09 on 1f7e965 waits for the heavy lock (yielded to Official-Path until 05:00Z).
+
+**Eggs in G3 mode B** (`--held-belief --belief-drop fixtures`, 2 mm belief offsets, 10 layouts): 8 eggs (0.077), against mode A's 16. GT traces of 3 episodes:
+- at the release the true egg sits 10-14 mm lower in the pads than believed;
+- it lands only ~6 mm off the hole centre instead of 12, so it wedges across the hole 3-4 mm over the plate;
+- mode A re-measures the held egg after the pick and at the place; submit_v1 has held_pose off.
+
+The release rule is not what limits mode B. It predicts the egg on the table under the hole's xy, which the skill's in-hole check happens to accept: no phantom re-picks. A post-drop `confirm_pose` of the expected tipped-in pose was adopted once in 10 layouts and changed no outcome (8 eggs either way).
+
+**The slide (follow-up PR).** An egg let go across its hole is pushed along its axis toward the side it was let go on, until one end is over the hole. In mode B this happens after every drop, from the release pose; in mode A, only when the egg is measured lying across. The wall nudge may also graze the wall profile by 20 mm.
+
+| G3, the 11 layouts | mode B eggs | mode A eggs |
+|---|---|---|
+| main (#98) | 8; repeat 9 | 16 |
+| + slide | 13 | 17 |
+| + slide + nudge 20 mm | 12 | 20 |
+
+Details: [experiments/2026-10-27-egg-holder-drop.md](../experiments/2026-10-27-egg-holder-drop.md).
+
+Dropped variants:
+- held_pose auto: no help. Precision is writing a generic show-pose fallback.
+- Pushing at the believed middle height: the fingertips passed over the egg.
+- The nearer arm: the other hand was in the way.
+
+## 7. hang_mugs, the numbers
+
+- **G3 mode A, 25 layouts:** main 0.440 (skills-7 had 0.44).
+- **Retry of a mug not on its hook after the release:** 0.470 on 23 layouts. Paired: 2 up, 1 down, which is noise. Not merged.
+  - Most retried mugs lay on their side.
+  - A lying mug only plans with a rim-to-base pinch, and that pinch slips.
+- **G3 mode B** (`--belief-drop fixtures`, Integration-3's offsets, 10 layouts):
+  - fixtures: 0.370;
+  - fixtures_look (the emulated release resync, 1-3 per episode, PR #117): 0.395;
+  - fixtures_look + retry: 0.385.
+- **Regression set on the retry branch:** plug 8/10 (the same two fail), kong 5/5, store_tools 0.45, stack 5/5. Every reference holds.
+
+## 8. hang_mugs: why mugs fall in mode A, and a fallen mug cannot be stood up
+
+**Where the 18 lost mugs of main's 25 layouts are lost** (place and hang notes):
+
+| what | mugs |
+|---|---|
+| hung | 44 |
+| slipped in the hand on the carry (place missed by 23-54 mm, tilted 27-81 deg) | 4 |
+| fell at the release, the place within tolerance | 14 |
+
+Of the 14 that fell at the release:
+- 6 were placed within 0.2-2.6 mm, with an in-hand shift of at most 5 mm, and still fell after the slide, the lower and the release;
+- the other 8 had shifted 11-35 mm in the hand (the slide uses the measured grasp).
+
+So in mode A the hang motion itself loses ~1 mug in 4. That is the lever; traces of the falls are being read.
+
+**Standing a fallen mug up: not reachable.** G3 snippet:
+- a mug laid on its side in front of the rack;
+- every box, antipodal and auto grasp;
+- 32 upright place poses at 2 relay spots.
+
+Result:
+- right arm: 498 grasps, 0 pick + place pairs;
+- the place IK fails for every approach within 13 deg of horizontal (5705 checks);
+- the wrist limit fails 1255, and the palm hits the table 1204.
+
+Standing a mug up puts the X5's wrist horizontal low over the table, and the X5 does not reach that. A re-orient through an in-air handover or a handle grasp would be needed. Both rank after the falls.
+
+**The re-plan after #119.** Integration-3's fallen check re-plans the episode. `hang_on_hooks` then starts again with every mug, and would take hung mugs off their hooks. Fix (separate PR): mugs already on a hook count as done and keep their hooks.
