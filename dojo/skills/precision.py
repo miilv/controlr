@@ -936,8 +936,9 @@ EACH_RELAY_HOLES = 3          # holes tried through a relay (the object put down
 EACH_ONE_ARM_FIRST = True     # objects within EACH_PICK_REACH of one arm's base only go first
 EACH_PICK_REACH = 0.62        # m, object centre from an arm's base (twin: tubes 0.64-0.77 m out had 0/180 grasps
                               # reachable for that arm)
-EACH_REACH = 0.57             # m, place TCP from the placing arm's base (twin, tubes held at the CoM: 68/68 in below
-                              # 0.57 m, 2 of 4 at 0.574-0.58 m missed with the arm held 46-56 mm off its command)
+EACH_REACH = 0.56             # m, place TCP from the placing arm's base (twin, tubes held at the CoM, per-layout hole
+                              # distances: 143/144 in below 0.56 m; at 0.562-0.567 m 0/4, the right arm into the far-left
+                              # front hole held 46-56 mm off its command; the left arm's mirror place at 0.596 m 2/2)
 EACH_RELAY_NEAR = (0.0, -0.28)    # relay spots near here (between the arms, in front of the robot)
 
 
