@@ -50,7 +50,9 @@
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
   x = -0.43 that no reader found in D0 100024. A perception-side `look_plan` request
-  (docs/experiments/2026-10-25-scan-pose.md).
+  (docs/experiments/2026-10-25-scan-pose.md). D0 100024's three missed pieces were blobs merged with a pinned base
+  board or with each other; B1 now finds them at frame 0 (experiments/2026-10-27-tower-merged-blobs.md), so the case
+  for this item is open again.
 - [ ] **Decision head, first light** (`configs/sim_waffle_yaw_luna_dec.yaml`, journal/2026-10-07-luna-decisions.md):
   (1) ~~image format probe~~ done: `parts` is seen, `field` is not (journal/2026-10-07-luna-decisions.md);
   drop `field` or make its live test expect blindness; (2) one mock episode
