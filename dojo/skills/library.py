@@ -2328,6 +2328,7 @@ HANG_PRE = 0.025               # m: the handle's hole is carried to this far bey
 HANG_SEARCH_S = 150.0          # s: wall-time cap of one round's hook x object search (twin: a 35 min episode)
 HANG_RELAY_DY = 0.2            # m: relay spots this far in front of a rack (towards the robot; both arms reach there)
 HANG_CRADLE_OUT = 0.12         # m: an object for a cradle is carried this far outside it, then slid on
+HANG_CRADLE_MIN_W = 0.015      # m: narrower pinches of an object for a cradle slip (twin: a headset band at 9 mm)
 
 _SURF: dict = {}
 
@@ -2420,13 +2421,15 @@ def rest_clearance(o, support, T_obj: np.ndarray, gap: float = 0.006, step: floa
     return None
 
 
-def way_out(o, support, T_obj: np.ndarray, toward_xy, dist: float = 0.12, gap: float = 0.004) -> np.ndarray | None:
-    """A horizontal direction ``o`` can leave ``support`` along from ``T_obj`` (and so come in along, reversed) with its
-    mesh ``gap`` clear the whole way, the one nearest ``toward_xy`` (the robot) first; None. A rigid headset hangs on a
-    stand's saddle with its cups below the saddle's sides: it cannot be lowered on from above (34 mm between the cups,
-    a 106 mm saddle), only slid on from the front."""
+def way_out(o, support, T_obj: np.ndarray, toward_xy, dist: float = 0.12, gap: float = 0.004,
+            lifts=(0.0, 0.01, 0.02, 0.03, 0.04)) -> tuple[np.ndarray, float] | None:
+    """How ``o`` can leave ``support`` from ``T_obj`` with its mesh ``gap`` clear the whole way (and so come in the same
+    way reversed): straight up by a lift, then along a horizontal direction, the lowest lift and the direction nearest
+    ``toward_xy`` (the robot) first. (direction, lift) or None. A rigid headset sits in a stand's saddle (a trough
+    along its band, a dome across it) with its cups below the saddle's sides: it cannot be lowered on from above (34 mm
+    between the cups, a 106 mm saddle), only slid on from the front over the trough's lip and let down into it."""
     if o.asset.mesh is None or support.asset.mesh is None:
-        return np.zeros(3)
+        return np.zeros(3), 0.0
     c = T_obj[:3, 3]
     to = np.r_[np.asarray(toward_xy, float)[:2] - c[:2], 0.0]
     to = to / (np.linalg.norm(to) or 1.0)
@@ -2436,20 +2439,29 @@ def way_out(o, support, T_obj: np.ndarray, toward_xy, dist: float = 0.12, gap: f
         d = np.array([math.cos(th), math.sin(th), 0.0])
         cands.append((-float(d @ to), d))
     cands.sort(key=lambda x: x[0])
-    mc = _MeshClear(o, support, T_obj, gap, reach=(dist, dist, 0.0, dist, dist, 0.4 * dist))
-    for rise in (0.0, 0.15, 0.3):                           # level first, then rising a little (over a saddle's lip)
-        for _, d0 in cands[:9]:                             # within 90 deg of the robot's side
-            d = d0 + np.array([0.0, 0.0, rise])
-            d = d / np.linalg.norm(d)
+    top = max(lifts)
+    mc = _MeshClear(o, support, T_obj, gap, reach=(dist, dist, 0.0, dist, dist, top))
+    for h in lifts:
+        ok_up = True
+        for z in np.arange(0.005, h + 1e-9, 0.005):
+            T = T_obj.copy()
+            T[2, 3] += z
+            if not mc.clear(T):
+                ok_up = False
+                break
+        if not ok_up:
+            break                                           # higher lifts pass the same blocked heights
+        for _, d in cands[:9]:                              # within 90 deg of the robot's side
             ok = True
             for s in np.arange(0.01, dist + 1e-9, 0.01):
                 T = T_obj.copy()
                 T[:3, 3] += d * s
+                T[2, 3] += h
                 if not mc.clear(T):
                     ok = False
                     break
             if ok:
-                return d
+                return d, float(h)
     return None
 
 
@@ -2559,7 +2571,8 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if thread:
         G_obj, pick_kw = (lambda a, o: G_hang(sk, o, a)), None
     else:
-        G_obj = (lambda a, o: [g for g0 in G_hang(sk, o, a) for g in (g0, _flipped(g0))])
+        G_obj = (lambda a, o: [g for g0 in G_hang(sk, o, a) if float(g0.width) >= HANG_CRADLE_MIN_W
+                               for g in (g0, _flipped(g0))])
         pick_kw = {"lift_pulls": ((0.0, -0.08), (0.0, -0.12), (-0.08, -0.06), (0.08, -0.06)), "held_mesh_table": True}
 
     def without_arm(hi: int, tip):
@@ -2574,6 +2587,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     # every low hook used is a hard carry under the arms above it (v2: top hooks 8/8, low ones 4/10)
     pool = [l for l in objects if l in w.objects]
     order = hook_order(hooks, len(pool))
+    cradle_lift: dict = {}             # (object, hook) -> the lift a cradle's way on starts with (way_out)
 
     def plan_hook(lab: str, hi: int, H, tip, q_start=None):
         """(lab, hook, H, T_obj, T_pre, (pick, place)) for hanging ``lab`` on hook ``hi`` with one arm, or a note."""
@@ -2606,12 +2620,15 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                 T_obj[2, 3] += up
                 # carried to just outside the support, then slid on along the way out reversed (a rigid headset's cups
                 # hang below the stand's saddle on both sides: it goes on from the front, not from above)
-                d_out = way_out(o, rk, T_obj, (0.0, -0.45), dist=HANG_CRADLE_OUT)
-                if d_out is None:
+                wo = way_out(o, rk, T_obj, (0.0, -0.45), dist=HANG_CRADLE_OUT)
+                if wo is None:
                     note = "no way onto the cradle"
                     continue
+                d_out, h_in = wo
+                cradle_lift[(lab, hi)] = h_in
                 T_pre = T_obj.copy()
                 T_pre[:3, 3] += d_out * HANG_CRADLE_OUT
+                T_pre[2, 3] += h_in
             else:
                 T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
             # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
@@ -2734,10 +2751,12 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             w = sk.refresh()
             T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ w.obj(lab).T
             T_on = T_obj @ inv_T(T_rel)
-            mv = sk.motion.line(arm, sk.ex.q[arm], T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
             T_dn = T_on.copy()
             if hooks_by[hi][2] is not None:
-                T_dn[2, 3] -= 0.006          # a handle onto a hook's arm; onto a cradle: let go where cleared
+                T_dn[2, 3] -= 0.006          # a handle onto a hook's arm
+            else:
+                T_on[2, 3] += cradle_lift.get((lab, hi), 0.0)   # onto a cradle: slid on above it, let down, let go
+            mv = sk.motion.line(arm, sk.ex.q[arm], T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
             dn = sk.motion.line(arm, mv.q_end if mv.segments else sk.ex.q[arm], T_dn, 0.03, "hang_lower",
                                 gripper=CLOSED, check=False)
             T_back = T_dn.copy()
