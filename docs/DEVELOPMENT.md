@@ -171,6 +171,18 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   object then hid under a finger mask). Sample the surface (`held.surface_points`).
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
+- **G3 episodes are bit-deterministic, with two exceptions.** The same layout replays the same actions on a loaded
+  box (stacking 100001: 927 identical steps over 6 runs and 6 commits). Outcomes still differ when:
+  - a search hits a wall-clock cap. `library.RELAY_PLAN_S` (relay chains), `HANDOVER_PLAN_S`, `HANG_SEARCH_S` and
+    hang's per-round budget: a loaded box explores less before the cap;
+  - meshes are missing. `AssetDB` falls back to bboxes when no catalogue has an asset's `geom.npz`. On a box whose
+    catalogue sync was still running, the pieces' servo tail hovered 4 mm instead of 22 mm and three layouts changed.
+    Now every miss is printed (`[AssetDB] WARNING no mesh for ...`) and listed in the episode records
+    (`missing_meshes`, G3 and `dojo.runtime.eval`). G3 refuses to run when the full catalogue has the mesh
+    (`dojo/skills/data/mesh_less.json` lists those it never has; `scripts/skills/mesh_less.py` regenerates it);
+    `--allow-bbox` plans on the bboxes anyway.
+  Before calling a difference a regression, diff the saved actions (`<task>_<seed>_actions.json.gz`) of the two runs:
+  the first differing step points at the skill that diverged.
 
 ## 5. What lives where
 

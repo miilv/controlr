@@ -74,6 +74,14 @@ class AssetDB:
         self.catalogs = [Path(os.path.expanduser(str(c))) for c in roots if _is_dir(os.path.expanduser(str(c)))]
         self.catalog = self.catalogs[0] if self.catalogs else None
         self._cache: dict[str, AssetInfo] = {}
+        # assets asked for with a mesh that no catalogue has: their bbox stands in (planning, collisions, fits change).
+        # Loud on purpose: a box whose catalogue sync was still running gave G3 different episodes without a word
+        self.missing_meshes: set[str] = set()
+
+    def unexpected_missing(self) -> list[str]:
+        """``missing_meshes`` that the full catalogue does have (``data/mesh_less.json`` lists the assets that never
+        had a mesh): a sign of an incomplete catalogue on this box."""
+        return sorted(self.missing_meshes - mesh_less())
 
     def get(self, obj_type: str, category: str, idx: int, clutter: bool = False, mesh: bool = False) -> AssetInfo:
         key = f"{'Clutter' if clutter else obj_type}/{category}/{int(idx):05d}"
@@ -110,8 +118,27 @@ class AssetDB:
                     if "colors" in z.files and len(z["colors"]):
                         info.rgb = np.asarray(z["colors"], float).reshape(-1, np.asarray(z["colors"]).shape[-1])[:, :3].mean(0)
                     break
+            if info.mesh is None and not clutter and key not in self.missing_meshes:
+                self.missing_meshes.add(key)
+                import sys
+                print(f"[AssetDB] WARNING no mesh for {key} in {[str(c) for c in self.catalogs]}: its bbox stands in"
+                      + ("" if key in mesh_less() else " (the full catalogue has one: incomplete catalogue?)"),
+                      file=sys.stderr, flush=True)
         self._cache[key] = info
         return info
+
+
+_MESH_LESS: set | None = None
+
+
+def mesh_less() -> set:
+    """Asset keys (type/category/idx) that no catalogue has a mesh for (``dojo/skills/data/mesh_less.json``,
+    ``scripts/skills/mesh_less.py``): G3 on them uses bboxes by design."""
+    global _MESH_LESS
+    if _MESH_LESS is None:
+        f = Path(__file__).parent / "data" / "mesh_less.json"
+        _MESH_LESS = set(json.loads(f.read_text()).get("keys", [])) if f.exists() else set()
+    return _MESH_LESS
 
 
 MAX_FACES = 12000             # meshes above this are clustered (tools, figurines, mice: 0.1-1.2 M faces; every
@@ -306,6 +333,10 @@ def objects_from_gt(rows: list[dict], assets: AssetDB, step: int = 0, include_cl
         except (FileNotFoundError, OSError, KeyError):
             info = AssetInfo(key=f"{r['type']}/{r['category']}/{r['category_idx']}", bbox_min=np.full(3, -0.02),
                              bbox_max=np.full(3, 0.02))
+            if not r.get("clutter") and hasattr(assets, "missing_meshes") and info.key not in assets.missing_meshes:
+                import sys
+                assets.missing_meshes.add(info.key)
+                print(f"[AssetDB] WARNING no metadata for {info.key}: a 4 cm box stands in", file=sys.stderr, flush=True)
         out[label] = ObjectState(label=label, obj_type=r["type"], category=r["category"], idx=int(r["category_idx"]),
                                  pos=np.asarray(r["pos"], float), quat=np.asarray(r["quat"], float), asset=info,
                                  clutter=bool(r.get("clutter")), source="gt", t=step,
