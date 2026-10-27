@@ -670,3 +670,32 @@ def test_contained_support_height_and_evidence(monkeypatch):
     img[(yy - 30) ** 2 + (xx - 30) ** 2 < 100] = (240, 225, 205)   # a light egg, r 10 px
     ev = contained.evidence(img)
     assert ev[30, 30] == 1 and ev[5, 0] == 0 and ev[:, :12].sum() == 0
+
+
+def test_scan_keeps_a_confident_frame0_small_object_and_its_slot_child(monkeypatch):
+    from dojo.perception import inverse_layout as il
+    from dojo.perception import scan as sc
+
+    labels = {"stand": {"select_mode": {"label": ["stand"]}, "placement": {"relative_plane": "Table"}},
+              "coin0": {"select_mode": {"label": ["coin0"]},
+                        "placement": {"xlim": [0.0, 0.0], "ylim": [0.0, 0.0], "rotate_rand": False,
+                                      "relative_plane": "stand/stand/0"}},
+              "bank": {"select_mode": {"label": ["bank"]}, "placement": {"relative_plane": "Table"}}}
+    monkeypatch.setattr(il, "task_map", lambda: {"coin": {"labels": labels}})
+    ext = {"Geometry/stand/00000": [0.032, 0.011, 0.017], "Rigid/coin/00000": [0.028, 0.028, 0.002],
+           "Geometry/bank/00000": [0.15, 0.21, 0.12]}
+    monkeypatch.setattr(il, "asset_info", lambda k: {"extents": ext[k]})
+
+    def e(lab, cat, xy, conf):
+        return {"label": lab, "category": cat, "category_idx": 0, "default_pos": [xy[0], xy[1], 0.77],
+                "_perception": {"confidence": conf}}
+    rec0 = {"Geometry": {"stand": [e("stand", "stand", (-0.30, -0.12), 0.42)], "bank": [e("bank", "bank", (0.3, -0.18), 0.6)]},
+            "Rigid": {"coin": [e("coin0", "coin", (-0.30, -0.12), 0.42)]}}
+    scan = {"Geometry": {"stand": [e("stand", "stand", (0.35, -0.22), 0.29)], "bank": [e("bank", "bank", (0.36, -0.18), 0.7)]},
+            "Rigid": {"coin": [e("coin0", "coin", (0.35, -0.22), 0.31)]}}
+    kept = sc.keep_frame0_small(scan, rec0, "coin")
+    assert sorted(kept) == ["coin0", "stand"]
+    assert scan["Geometry"]["stand"][0]["default_pos"][0] == -0.30 and scan["Rigid"]["coin"][0]["default_pos"][0] == -0.30
+    assert scan["Geometry"]["bank"][0]["default_pos"][0] == 0.36           # a big object: the scan's read stands
+    scan["Geometry"]["stand"][0] = e("stand", "stand", (0.35, -0.22), 0.6)  # a surer scan read wins
+    assert "stand" not in sc.keep_frame0_small(scan, rec0, "coin")

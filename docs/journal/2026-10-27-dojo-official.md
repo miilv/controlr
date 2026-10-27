@@ -130,7 +130,7 @@ A/B, paired, integ isaac51, RuntimePolicy on `submit_v1`, 100000-04, same deploy
 | insert_tubes | 3/5, 76 | 3/5, 76 | = (same failures) | 0; 0 / 0; 0 |
 | plug_in_charger | 1/5, 20 | **4/5, 80** | 3 rescued, 0 lost | 0; 0 / 0; 0 |
 | play_tic_tac_toe | 0/4, 10 (capped at 4 layouts) | 0/5, 10 | = (all not_home, steps within 4) | 0; 0 / 0; 0 |
-| build_tower | pending | pending | | |
+| build_tower | 5/5, 100 | 5/5, 100 | = (the command arm 8-13 steps shorter on every layout) | 0; 0 / 0; 0 |
 
 - B1 held_look confidence: 0.56-0.80 with RoboDojo's value, 0.825-1.0 with the command.
 - plug 100003, robodojo arm:
