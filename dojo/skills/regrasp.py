@@ -44,6 +44,7 @@ HAND_CLEAR = 0.003                  # m between the hands at the handover (grasp
 HANDOVER_XY = ((0.06, -0.22), (0.0, -0.22), (0.06, -0.28), (0.10, -0.22), (0.0, -0.18), (0.06, -0.18), (-0.04, -0.22))
 HANDOVER_Z = (0.92, 0.98, 1.04)
 PLAN_S = 60.0                       # wall-time cap of the handover search
+PLACE_CHECKS = 6                    # handover candidates whose taker place is planned before one is chosen
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
 TURN_LIFT = 0.0009                  # m: the object is turned this far above where it seated
 TURN_STEP_DEG = 3.0                 # deg per env step of that turn ...
@@ -154,7 +155,8 @@ def _turned(T, turn_rad):
     return T
 
 
-def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, turn_rad: float = 0.0):
+def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, turn_rad: float = 0.0,
+                       place_kw: dict | None = None):
     """The giver, its lengthwise pick, the handover pose (the object as lifted, turned about the vertical) and the
     taker's grasp (object frame) that reaches a target, its turn and clears the receptacle. A dict or a SkillResult."""
     from dojo.skills.library import _grippers_apart, _hand_points, _min_dist
@@ -195,7 +197,7 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
         if not isinstance(picks, list):
             notes.append(f"{g_arm} lengthwise pick: {picks.note[:80]}")
             continue
-        best = None
+        best, sols = None, []
         for pp in picks[:2]:
             g_hold = gap_to_grip(pp.grasp.width)
             T_lift = sk.kin.tcp(g_arm, pp.plan.q_end) @ pp.T_tcp_obj
@@ -227,14 +229,27 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                                 continue
                             cost = (float(np.abs(rg.q - pp.plan.q_end).max() + np.abs(rp.q - w.home_q[t_arm]).max())
                                     + pp.steps / 100.0 + 3.0 * (1.0 - frac))     # the full turn first
-                            if best is None or cost < best[0]:
-                                best = (cost, {"giver": g_arm, "taker": t_arm, "pick": pp, "T_H": T_H, "T_ko": T_ko,
-                                               "width": width, "g_open": g_open, "target": T_tg, "note": note})
-                        if best is not None and best[0] < 0.8:
+                            sols.append((cost, {"giver": g_arm, "taker": t_arm, "pick": pp, "T_H": T_H, "T_ko": T_ko,
+                                                "width": width, "g_open": g_open, "target": T_tg, "note": note,
+                                                "q_take": rt.q}))
+                            if best is None or cost < best:
+                                best = cost
+                        if best is not None and best < 0.8:
                             break
-        if best is not None:
-            return best[1]
-        notes.append(f"{g_arm} -> {t_arm}: no handover pose ({len(fam)} taker grasps reach the target)")
+        # the taker's place from where it takes the object must plan too (the joint move from the handover to the
+        # hover met the lock block or the table in G3, 2 of 13); the cheapest few are checked
+        for cost, sol in sorted(sols, key=lambda x: x[0])[:PLACE_CHECKS]:
+            held = Held(label, inv_T(sol["T_ko"]), held_box(o, inv_T(sol["T_ko"])), None)
+            kw = dict(place_kw or {})
+            kw.pop("turn", None)
+            kw["release"] = False
+            pl = sk.plan_place(t_arm, sol["target"], yaw_sym=1, ignore=(receptacle,), q_start=sol["q_take"], held=held,
+                               **kw)
+            if isinstance(pl, PlacePlan):
+                return sol
+            notes.append(f"{sol['note']}: place from the handover: {pl.note[:80]}")
+        notes.append(f"{g_arm} -> {t_arm}: no handover pose ({len(fam)} taker grasps reach the target, "
+                     f"{len(sols)} handovers)")
     return SkillResult(False, "rest_handover", "ik_fail", 0, None, note="; ".join(notes[:4]))
 
 
@@ -244,7 +259,7 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     approach and close, the giver's release (open, up 6 cm, home), then the taker's place through ``place_kw`` (held on
     after a turn)."""
     from dojo.skills.motion import MEDIUM
-    h = plan_rest_handover(sk, label, targets, receptacle, float(place_kw.get("turn", 0.0)))
+    h = plan_rest_handover(sk, label, targets, receptacle, float(place_kw.get("turn", 0.0)), place_kw)
     if isinstance(h, SkillResult):
         return sk._record(h)
     g_arm, t_arm, pp = h["giver"], h["taker"], h["pick"]
