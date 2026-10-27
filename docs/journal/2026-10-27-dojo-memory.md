@@ -183,3 +183,17 @@ Fixes on `feat/dojo-memory-conveyor3`:
 
 The remaining loss in 100006 is the pick: the rider's believed orientation (the belt read's place tag / yaw) gives no
 top grasp, and the position error at contact is 12-16 mm.
+
+## 8. The dev generator's place frame for a child on an object (simlab/v14)
+- `gen_layouts.place_on_object` took a child's FIRST place frame when the config names no `place_tag`. RoboDojo picks
+  among all of the asset's frames that have a projection circle: `utils/cluttered_generator.py` `add_model_from_config`
+  (random frame per attempt) and DataGen's conveyor children (PhysicalRSI `layout_sampling/catalog.py`
+  `_make_conveyor_child_instance`, `_choice(placements, ...)`). Code and configs only, no Eval_Layout.
+- So no dev belt ever had bottle/00047 lying ("side", 44 mm lower than "up"), and pick_from_conveyor_by_image's
+  remote/00001 was always "side" (its first frame). Eval belts can carry either frame.
+- v14 draws the frame per attempt when the child has more than one. A child with one frame draws nothing, so its
+  random stream is unchanged. The change applies to every future child-on-object placement in every task. Today only
+  two tasks have such a child (a scan of all task configs against the asset metadata): match_and_pick_from_conveyor
+  (bottle/00047) and pick_from_conveyor_by_image (remote/00001).
+- Existing ids 100000-29 are not regenerated, so paired numbers stay comparable. A fresh conveyor robustness set at
+  100030-39 is generated with v14 and settled.

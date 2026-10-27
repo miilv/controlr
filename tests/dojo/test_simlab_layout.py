@@ -315,3 +315,47 @@ def test_bare_label_fixture_on_a_parent_with_supports(monkeypatch):
               zlim=[0.02, 0.02], check_mode="enforce")
     pose2, _ = G.place_on_object(p2, {}, lay, set(), random.Random(0), {}, {})
     assert pose2[2] == pytest.approx(0.05 + 0.718 + 0.02)
+
+
+def test_a_child_without_a_place_tag_takes_any_of_its_place_frames(monkeypatch):
+    """RoboDojo's ClutteredGenerator (add_model_from_config) and DataGen's conveyor children draw a place frame among
+    all of the asset's frames when the config names none: a bottle rides the belt standing or lying. v13 always took
+    the first frame (no dev belt ever had a lying bottle). A child with one frame draws nothing (same random stream);
+    a config tag (or tag list) still decides."""
+    pytest.importorskip("shapely")
+    import random
+
+    from dojo.simlab import gen_layouts as G
+    q0 = [1.0, 0.0, 0.0, 0.0]
+    metas = {("Dynamic", "conveyor"): {"passive": {"support": {"conveyor/0": {"center": [[0.0, 0.0, 0.7] + q0],
+                                                                              "radius": [0.44]}}}}}
+    monkeypatch.setattr(G, "metadata", lambda t, c, i, clutter=False: metas.get((t, c)))
+    side = [0.5, -0.5, 0.5, 0.5]
+    two = {"active": {"place": {"up": {"projection_circle": {"radius": 0.03, "center": [0, 0, -0.07] + q0}},
+                                "side": {"projection_circle": {"radius": 0.07, "center": [0.03, 0, 0] + side}}}}}
+    one = {"active": {"place": {"up": {"projection_circle": {"radius": 0.03, "center": [0, 0, -0.07] + q0}}}}}
+    seen = []
+
+    class Ground:
+        def _placement_to_origin(self, pose, c_frame):
+            seen.append(tuple(np.round(c_frame[3:], 3)))
+            return pose
+    lay = {"Dynamic": {"conveyor": [{"category": "conveyor", "category_idx": 0, "label": "conveyor",
+                                     "default_pos": [0.0, 0.0, 0.0], "default_ori": q0}]}}
+
+    def place(child, seed, **kw):
+        p = dict(G.SAMPLING_DEFAULTS, relative_plane="conveyor/conveyor/0", xlim=[-0.3, 0.3], ylim=[-0.1, 0.1],
+                 check_mode="point", rotate_rand=True, rotate_deg=35, **kw)
+        seen.clear()
+        G.place_on_object(p, child, lay, set(), random.Random(seed), {"ground": Ground()}, {})
+        return seen[-1]
+    frames = {place(two, s) for s in range(40)}
+    assert frames == {tuple(q0), tuple(np.round(side, 3))}               # both frames occur
+    assert {place(two, s, place_tag="side") for s in range(10)} == {tuple(np.round(side, 3))}
+    assert {place(two, s, place_tag=["up"]) for s in range(10)} == {tuple(q0)}
+    # one frame: the random stream is the one v13 used (the pose is the same as with the tag named)
+    p = dict(G.SAMPLING_DEFAULTS, relative_plane="conveyor/conveyor/0", xlim=[-0.3, 0.3], ylim=[-0.1, 0.1],
+             check_mode="point", rotate_rand=True, rotate_deg=35)
+    a = G.place_on_object(p, one, lay, set(), random.Random(7), {"ground": Ground()}, {})[0]
+    b = G.place_on_object(dict(p, place_tag="up"), one, lay, set(), random.Random(7), {"ground": Ground()}, {})[0]
+    assert np.allclose(a, b)

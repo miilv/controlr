@@ -36,7 +36,7 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v13"
+GENERATOR = "simlab/v14"     # v14: a child on an object without a place_tag takes a random place frame (v13: the first)
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -378,14 +378,28 @@ def place_on_object(prm: dict, meta: dict, layout: dict, used: set, rng: random.
     else:
         ref_pos, ref_q = ppos, pq
     places = (meta.get("active") or {}).get("place") or {}
-    tag = prm["place_tag"] or (next(iter(places)) if places else None)
-    radius = float(places[tag]["projection_circle"]["radius"]) if tag else 0.03
+    req = prm["place_tag"]
+    if isinstance(req, str) and req:
+        tags = [req]
+    elif isinstance(req, (list, tuple)) and req:
+        tags = list(req)
+    else:
+        # no tag in the config: any of the asset's frames with a projection circle, drawn per attempt, as RoboDojo's
+        # ClutteredGenerator.add_model_from_config and DataGen's conveyor children (PhysicalRSI layout_sampling
+        # _make_conveyor_child_instance) do: a bottle rides the belt standing or lying (v14; v13 took the first frame).
+        tags = [t for t, v in places.items() if ((v or {}).get("projection_circle") or {}).get("center") is not None]
+        tags = tags or list(places)[:1]
     ext = ((meta.get("geometry") or {}).get("oriented_bbox") or {}).get("extents")
-    if ext:                                      # an egg on its side is longer than its projection circle
-        radius = max(radius, 0.5 * float(max(ext)))
+
+    def radius_of(tag):
+        r_ = float(places[tag]["projection_circle"]["radius"]) if tag else 0.03
+        return max(r_, 0.5 * float(max(ext))) if ext else r_    # an egg on its side is longer than its circle
     xrs, yrs = _ranges(prm["xlim"] or [0, 0]), _ranges(prm["ylim"] or [0, 0])   # several ranges = several slots
     # the support radius bounds the placement point (footprints are kept apart separately below)
     for _ in range(400):
+        # a single frame draws nothing: every child with one frame keeps the random stream it had
+        tag = (tags[0] if tags else None) if len(tags) <= 1 else rng.choice(tags)
+        radius = radius_of(tag)
         xr, yr = rng.choice(xrs), rng.choice(yrs)
         if xr[0] == xr[1] and yr[0] == yr[1]:   # a pinned offset (make_kong: a tile stacked on a tile)
             off = np.array([xr[0], yr[0], 0.0])
