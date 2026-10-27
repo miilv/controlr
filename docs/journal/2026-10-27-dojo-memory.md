@@ -159,3 +159,27 @@ Fixes on the follow-up:
 - The regression set ran on #86's code: plug_in_charger 8/10, make_kong 5/5, stack_blocks 5/5, store_tools 0.45, all
   equal to the references. The follow-up changes only the conveyor skill, the perception-mode tracker and the
   perception service: none of them runs in G3.
+
+## 7. Genuine-5.1 B conveyor with the belt read (#111 code), and what it fixed next
+
+Three episodes on #111's code (100005, 100006; 100007 stopped):
+
+| layout | first object (truth) | belief of the first | match | belt v (mm / step) | outcome |
+|---|---|---|---|---|---|
+| 100005 | camera | camera (vote: bottle -> camera) | camera_t6 | (7.95, -10.69) | intercept missed twice (rose 0, 11 mm) |
+| 100006 | game_machine | game_machine | rider2 | (3.97, -0.02) | waist grasp slipped, then top grasp missed (re-read shifted 12-16 mm) |
+
+- Identity and the match now come out right.
+- 100005's belt velocity was a 3-read fit polluted by a swapped track. The camera was also tracked twice: camera_t6
+  lost, camera_t7 re-acquired 272 mm on, right where camera_t6 should have been.
+- Belt reads: 52-56 per episode, 3.1-5.0 s each on a loaded compute5. Episodes 324-498 s.
+
+Fixes on `feat/dojo-memory-conveyor3`:
+- The belt velocity comes only from tracks of >= 4 reads over >= 16 steps, no faster than 6 mm / step.
+- Riders are predicted with the belt's velocity, from their smoothed track position (one rider's short or swapped fit
+  no longer drives its prediction).
+- A track unmatched for 6 reads while our arms hold still is dropped (`track_lost`): no ghost "next one".
+- `match_and_pick` keeps the first object's identity after it rides out of view and leaves the belief.
+
+The remaining loss in 100006 is the pick: the rider's believed orientation (the belt read's place tag / yaw) gives no
+top grasp, and the position error at contact is 12-16 mm.

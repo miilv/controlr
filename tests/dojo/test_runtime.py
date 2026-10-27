@@ -1975,6 +1975,47 @@ def test_belt_a_one_read_phantom_never_joins():
     assert not [e for e in prov.events if e["kind"] == "track_new"] and list(prov.belief.objects) == ["block_0"]
 
 
+def test_belt_velocity_ignores_short_and_impossible_tracks():
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    prov._tracks = {"block_0": [(s_, np.array([0.004 * s_, 0.0])) for s_ in range(0, 40, 4)],     # 10 reads, 36 steps
+                    "block_1": [(30, np.zeros(2)), (34, np.zeros(2)), (38, np.zeros(2))],            # 3 reads, 8 steps
+                    "block_2": [(s_, np.zeros(2)) for s_ in range(0, 40, 4)]}
+    prov.velocity = {"block_0": np.array([0.004, 0.0]), "block_1": np.array([0.008, -0.011]),
+                     "block_2": np.array([0.0079, -0.0107])}                                     # too fast for a belt
+    assert np.allclose(prov.belt_velocity(), [0.004, 0.0])
+
+
+def test_belt_a_lost_rider_track_is_dropped_while_the_arms_hold_still():
+    """A rider the reads lost (its re-acquired self is a newcomer by then) leaves the belief after 6 unmatched reads,
+    so it cannot stay behind as a ghost "next one" of its identity."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+
+    def reader(obs):
+        s_ = obs["steps_used"]
+        if s_ > 24:
+            return {"Rigid": {}}
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_0",
+                                     "default_pos": [0.25 + 0.004 * s_, 0.04, 0.78], "default_ori": [1, 0, 0, 0],
+                                     "_perception": {"confidence": 0.8}}]}}
+    prov.track_reader = reader
+    for step in range(0, 70):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    lost = [e for e in prov.events if e["kind"] == "track_lost"]
+    assert lost and lost[0]["label"] == "block_0" and "block_0" not in prov.belief.objects
+
+
 def test_twin_is_started_for_the_scene_the_policy_chose():
     started = []
     pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="bundle"))
