@@ -394,7 +394,15 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
             return sk._record(SkillResult(False, "rest_handover", "ik_fail", 0, g_arm, note=f"carry: {mv.note[:120]}"))
         for seg in mv.segments:
             seg.ease = 4
-        sk.ex.run({g_arm: ArmPlan(g_arm, sk.ex.q[g_arm].copy(), CLOSED).move(mv).hold(3)}, name="rest handover carry")
+        plans = {g_arm: ArmPlan(g_arm, sk.ex.q[g_arm].copy(), CLOSED).move(mv).hold(3)}
+        if getattr(sk, "looked_with", None) == t_arm:
+            # the taker is still over the lock from the look: home while the giver carries (its unchecked move to the
+            # pre-grasp from over the lock swept through the giver's hand and knocked the key out: G3 100004, lag 78 mm;
+            # rendered 5.1 100004, replayed: the key pushed 20 mm in the giver's pads, dropped; home after the look
+            # on its own cost 15 steps and four episodes ran out of the 300)
+            plans[t_arm] = sk.plan_home(t_arm)
+            sk.looked_with = None
+        sk.ex.run(plans, name="rest handover carry")
         w = sk.refresh()
         o = w.obj(label)
         T_rel_g = inv_T(sk.kin.tcp(g_arm, w.arms[g_arm].q)) @ o.T
@@ -694,7 +702,9 @@ def _let_go(sk: Skills, arm: str, label: str) -> None:
 def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = LOOK_HEIGHT):
     """Mode B: a hand straight down ``height`` over the receptacle (``arm`` first, then the other; lower when out of
     reach), one still step, the refine hook on it (kind "look"; ``_look_read``); the target moved by however the
-    receptacle's believed pose changed (the target is fixed in its frame). Returns (target, yaw_source): perception's
+    receptacle's believed pose changed (the target is fixed in its frame); the arm that looked in ``sk.looked_with``
+    (it stays over the receptacle: ``rest_handover`` sends it home during the giver's carry). Returns (target,
+    yaw_source): perception's
     ``yaw_source`` of the read ("top_feature": a keyhole's full-turn yaw and xy; "top_feature_axis": its axis, the side
     unsure; None: none read), the target unchanged when no look plans or nothing changed."""
     rec = sk.world.obj(receptacle)
@@ -713,13 +723,10 @@ def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = 
     if mv is None:
         sk.log(f"[look_over] {receptacle}: no look pose for either arm")
         return T_target, None
+    sk.looked_with = arm
     try:
         sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {receptacle}")
         ys = _look_read(sk, arm, receptacle, hgt)
-        # home again: the handover's moves are planned from home, and the taker's unchecked move to its pre-grasp from
-        # over the lock swept through the giver's hand and knocked the key out (G3 100004 lag 78 mm; rendered 5.1
-        # 100004 b21, replayed: the key pushed 20 mm in the giver's pads, then dropped)
-        sk.ex.run({arm: sk.plan_home(arm)}, name="home after the look")
     except (BudgetExceeded, EpisodeEnded):
         return T_target, None
     T_rec1 = sk.world.obj(receptacle).T
@@ -757,7 +764,8 @@ def _look_read(sk: Skills, arm: str, receptacle: str, hgt: float):
     if mv is None:
         return None
     sk.log(f"[look_over] {receptacle}: re-hover over {np.round(xy, 3).tolist()} ({'hint' if hint is not None else 'no yaw read'})")
-    sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {receptacle} again")
+    sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)},
+              name=f"look at {receptacle} again")
     sk._refine(receptacle, arm, "look")
     return (getattr(sk, "last_refine", None) or {}).get("yaw_source")
 
