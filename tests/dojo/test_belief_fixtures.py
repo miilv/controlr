@@ -135,3 +135,55 @@ def test_release_through_step_needs_a_still_arm():
         return kb.objects["piece"].bottom_z
     assert abs(run(True) - float(board.top_z)) < 0.0015
     assert abs(run(False) - TABLE_Z) < 1e-6
+
+
+def _bar_between(kin, qL, qR, label="bar"):
+    """A bar whose box holds both arms' TCPs (a stand-in for an object held by one hand and taken by the other)."""
+    pL, pR = kin.tcp("left", qL)[:3, 3], kin.tcp("right", qR)[:3, 3]
+    c = (pL + pR) / 2
+    half = np.abs(pR - pL) / 2 + 0.01
+    return _obj(label, "Rigid", _box(-half, half), c)
+
+
+def test_a_handover_keeps_the_object_with_the_taker():
+    """The taker closes on what the giver holds: both hold it; the giver opens: no drop, it follows the taker; the
+    taker opens: dropped and released as before."""
+    kin = X5Kin()
+    qL = np.array([0.4, 1.0, 1.0, 0.0, 0.0, 0.0])
+    qR = np.array([-0.4, 1.0, 1.0, 0.0, 0.0, 0.0])
+    bar = _bar_between(kin, qL, qR)
+    kb = _belief([bar])
+    kb.q["left"], kb.q["right"] = qL.copy(), qR.copy()
+    act = lambda gl, gr, qr=qR: {"left_arm_joint_state": qL, "left_ee_joint_state": [gl],     # noqa: E731
+                                 "right_arm_joint_state": qr, "right_ee_joint_state": [gr]}
+    kb.step(act(0.0, 1.0))
+    assert kb.attached["left"][0] == "bar"
+    kb.step(act(0.0, 0.0))
+    assert kb.attached["right"][0] == "bar" and kb.attached["left"][0] == "bar"
+    z0 = float(kb.objects["bar"].pos[2])
+    kb.step(act(1.0, 0.0))                                            # the giver lets go
+    assert "left" not in kb.attached and kb.attached["right"][0] == "bar"
+    assert kb.pop_released() == [] and abs(float(kb.objects["bar"].pos[2]) - z0) < 1e-6
+    q_up = qR + np.array([0.0, -0.05, 0.0, 0.0, 0.0, 0.0])
+    kb.step(act(1.0, 0.0, q_up))
+    T_rel = kb.attached["right"][1]
+    assert np.allclose(kb.objects["bar"].T, kin.tcp("right", kb.q["right"]) @ T_rel, atol=1e-9)   # follows the taker
+    kb.step(act(1.0, 1.0, q_up))                                      # the taker lets go: a plain release
+    assert not kb.attached and kb.pop_released() == ["bar"]
+    assert abs(kb.objects["bar"].bottom_z - TABLE_Z) < 1e-6
+
+
+def test_a_free_object_at_the_pads_wins_over_the_one_the_other_hand_holds():
+    kin = X5Kin()
+    qL = np.array([0.4, 1.0, 1.0, 0.0, 0.0, 0.0])
+    qR = np.array([-0.4, 1.0, 1.0, 0.0, 0.0, 0.0])
+    bar = _bar_between(kin, qL, qR)
+    small = _obj("small", "Rigid", _box([-0.01, -0.01, -0.01], [0.01, 0.01, 0.01]), kin.tcp("right", qR)[:3, 3])
+    kb = _belief([bar, small])
+    kb.q["left"], kb.q["right"] = qL.copy(), qR.copy()
+    act = lambda gl, gr: {"left_arm_joint_state": qL, "left_ee_joint_state": [gl],             # noqa: E731
+                          "right_arm_joint_state": qR, "right_ee_joint_state": [gr]}
+    kb.step(act(0.0, 1.0))
+    assert kb.attached["left"][0] == "bar"
+    kb.step(act(0.0, 0.0))
+    assert kb.attached["right"][0] == "small"
