@@ -27,6 +27,18 @@ def _yaw(q) -> float:
     return math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
 
 
+def rest_quat(key: str) -> list[float] | None:
+    """The asset's first catalogue resting orientation at yaw 0 (wxyz): an object the agent names without a turn rests
+    like this, not in its asset frame (identity stood fill_egg_holder's lying egg on its end: the skill pinched 21-37 mm
+    above its middle 8 times, rendered 100000)."""
+    try:
+        from ..cameras import R_to_quat_wxyz
+        from ..inverse_layout import shape_models
+        return [float(v) for v in R_to_quat_wxyz(shape_models(key)[0].R0)]
+    except Exception:  # noqa: BLE001 (an asset outside the catalogue)
+        return None
+
+
 def record_objects(rec: dict) -> list[dict]:
     """B1 record -> J1-style objects (label, category, asset, pos, quat, size, confidence, flags, source, residual)."""
     out = []
@@ -134,12 +146,13 @@ def merge_into_record(rec: dict, objects: list[dict], unmatched_cost_m: float = 
                 a = str(o.get("asset") or "").split("/")
                 key = o["asset"] if len(a) == 3 and a[1] == cat else next(k for k in n["_keys"] if k.split("/")[1] == cat)
                 typ, _, idx = key.split("/")
-                q = o.get("quat") or [1.0, 0.0, 0.0, 0.0]
+                q = o.get("quat") or rest_quat(key) or [1.0, 0.0, 0.0, 0.0]
                 entry = {"category": cat, "category_idx": int(idx), "label": n["label"],
                          "default_pos": [float(v) for v in o["pos"]], "default_ori": [float(v) for v in q],
                          "scale": [1.0, 1.0, 1.0],
                          "_perception": {"source": "agent" if o.get("source") != "refined" else "agent+refine",
-                                         "confidence": float(o.get("confidence", 0.5)), "orientation_known": bool(o.get("quat"))}}
+                                         "confidence": float(o.get("confidence", 0.5)),
+                                         "orientation_known": bool(o.get("quat")) and not o.get("orientation_default")}}
                 out.setdefault(typ, {}).setdefault(cat, []).append(entry)
                 filled_nf.add(n["label"])
                 log.append({"label": n["label"], "action": "found", "source": entry["_perception"]["source"]})

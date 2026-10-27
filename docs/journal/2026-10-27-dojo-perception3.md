@@ -220,3 +220,15 @@ inside it:
 - Left at frame 0: the basket under the right home gripper (100006, 100009: 46-59 mm off, so its eggs follow the
   wrong base; fine from the scan pose) and eggs on the table under the rim (hidden from the head).
 - At the scan pose, 100023's basket went missing with fix A (main found it 8 mm off): 1 of 22 frames.
+
+**Rendered rerun on #157 (Tools, compute7 `egg_r51_p3`).** The B1 eggs now sit near GT (100001: three eggs within
+2-11 mm of GT, the basket exact). Two findings from it:
+- **An egg the agentic perceiver adds stood on its end.** 100000's agent call added an egg seen only from the left
+  wrist (`egg_3`, no orientation in its answer); `record.merge_into_record` wrote identity, i.e. the egg's asset frame
+  standing on its end while it lay on its side, and the skill pinched 21-37 mm above its middle 8 times (Tools' twin
+  replay). Fix: an object the agent names without a turn takes its asset's first catalogue resting orientation
+  (`record.rest_quat`), in the merge and before `arbitrate`'s set-down (`orientation_known` stays false).
+- **Eggs on the table under the rim** are hidden from the head; fitting them at frame 0 on the floor or the table
+  (the evidence choosing) changed nothing offline (22 / 44 and 28 / 44 again): they need a side look (Tools, skill
+  side), not a better frame-0 fit.
+- Most remaining episode losses are skill-side (no pick for eggs against the wall, grasp slips, nudge misses).
