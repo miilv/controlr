@@ -27,8 +27,10 @@ from dojo.skills.skills import CLOSED, OPEN, SkillResult, Skills
 PINCH_TIP_Z = 0.003            # m: fingertips over the table at the pinch (the cloth's particles sit 4-10 mm up)
 PINCH_IN = 0.02                # m: the pinch goes this far from a point towards the garment's centre (cloth in the pads)
 CARRY_Z = 0.08                 # m: fingertips over the table while carrying a pinched point
-RELEASE_Z = 0.02               # m: fingertips over the table when letting go
-SLEEVE_OWN = 0.05              # m: a sleeve is laid this far short of the opposite chest point, on its own side
+RELEASE_Z = 0.045              # m: fingertips over the table when letting go (twin: pads lowered to 2 cm onto the
+                               # first sleeve, already lying there, squeezed the cloth and it blew up)
+SLEEVE_OWN = 0.02              # m: a sleeve is laid this far short of the opposite chest point, on its own side
+                               # (5 cm put the two sleeves 6 cm apart, the second onto the first)
 HEM_SHORT = 0.02               # m: a hem is laid this far short of its shoulder point (inside the checker's window)
 
 
@@ -46,6 +48,12 @@ def garment_axes(gm: dict) -> tuple[np.ndarray, np.ndarray]:
 def _kp(gm: dict, name: str) -> np.ndarray | None:
     v = (gm.get("keypoints") or {}).get(name)
     return None if v is None else np.asarray(v, float)
+
+
+def blown_up(gm: dict | None) -> bool:
+    """The cloth simulation diverged (named points metres off the table)."""
+    kp = (gm or {}).get("keypoints") or {}
+    return any(float(np.abs(np.asarray(v, float)[:2]).max()) > 1.5 for v in kp.values())
 
 
 def _poses(xy, z_tip: float, yaw: float, arm_base) -> list[np.ndarray]:
@@ -228,6 +236,9 @@ def fold_garment(sk: Skills, garment: str) -> dict:
             done.append(f"{side} sleeve")
         # the body: both hem corners onto the shoulders at once (the hem line stays parallel to the shoulder line)
         gm = read(garment) or gm
+        if blown_up(gm):
+            sk._record(SkillResult(False, "fold_body", "unstable", 0, None, note="the cloth simulation diverged"))
+            return {"ok": False, "stage": "hem", "note": "cloth diverged", "done": done}
         centre = np.mean(np.asarray(gm["points"], float)[:, :2], axis=0) if gm.get("points") is not None else None
         jobs = []
         for side in ("left", "right"):
