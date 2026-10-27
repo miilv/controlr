@@ -381,3 +381,90 @@ def test_runtime_eval_actions_file_holds_what_the_env_ran(tmp_path, monkeypatch)
         got = json.load(f)["actions"]
     assert len(stepped) == 5 and len(got) == 5           # the latch-ended batch is in the file, the unrun action not
     assert [round(a["left_arm_joint_state"][0], 3) for a in got] == [0.1, 0.2, 0.3, 0.4, 0.5]
+
+
+def test_dev_gt_probe_records_rises_and_closes_and_never_reaches_the_policy(tmp_path, monkeypatch):
+    """The eval's dev GT probe: each label's largest z rise over its reset pose and the GT object nearest the jaws at
+    each close, in the episode row only. The policy's observations and info carry nothing of it (the firewall)."""
+    import types
+
+    import dojo.runtime.eval as EV
+
+    st = {"z": 0.80}
+
+    class FakeRun:
+        def objects_gt(self, i):
+            return [{"label": "target1", "type": "Rigid", "pos": [0.1, -0.1, st["z"]], "quat": [1, 0, 0, 0]},
+                    {"label": "other0", "type": "Rigid", "pos": [0.3, -0.1, 0.80], "quat": [1, 0, 0, 0]},
+                    {"label": "conveyor", "type": "Dynamic", "pos": [0.0, 0.0, 0.0], "quat": [1, 0, 0, 0]}]
+
+        def reward(self, i):
+            return {"success": True, "ended": True, "steps_used": 3, "step_lim": 10}
+
+        def close(self):
+            pass
+
+    base_obs = {"images": {}, "state": {}, "instruction": "x", "steps_used": 0, "step_lim": 10, "renderer": "isaac-5.1"}
+
+    class FakeRendered:
+        def __init__(self, task, workdir):
+            self.run, self.n = FakeRun(), 0
+
+        def reset(self, layout):
+            return {"stable": True, "task": "match_and_pick_from_conveyor", "layout_id": 100000, "instruction": "x",
+                    "step_lim": 10, "reset_s": 0.0, "render_stage_s": 0.0}
+
+        def observe(self):
+            return dict(base_obs)
+
+        def step(self, a):
+            self.n += 1
+            if float(np.asarray(a["left_ee_joint_state"]).reshape(-1)[0]) < 0.5 and self.n >= 3:
+                st["z"] = 0.92                                          # the lift after the close
+            return False
+
+        def result(self):
+            return {"success": True, "score": 1.0, "steps_used": 3, "step_lim": 10, "observations": 2}
+
+    seen = {"obs": [], "info": []}
+
+    def act(g):
+        return {"left_arm_joint_state": np.zeros(6), "right_arm_joint_state": np.zeros(6),
+                "left_ee_joint_state": np.array([g]), "right_ee_joint_state": np.array([1.0])}
+
+    class Pol:
+        def __init__(self, cfg):
+            self.bridge, self.k = types.SimpleNamespace(executed=[]), 0
+
+        def reset(self, info):
+            seen["info"].append(dict(info))
+
+        def next(self, obs):
+            seen["obs"].append(obs)
+            self.k += 1
+            return {"actions": [act(1.0), act(0.0), act(0.0)]} if self.k == 1 else {"done": True}
+
+        def episode_report(self):
+            return {"timings": {}, "looks": [], "events": []}
+
+    class Kin:
+        def tcp(self, arm, q):
+            T = np.eye(4)
+            T[:3, 3] = (0.1, -0.1, 0.81)                                  # the jaws at target1
+            return T
+
+    monkeypatch.setattr(EV, "RenderedEpisode", FakeRendered)
+    monkeypatch.setattr(EV, "_probe_kin", lambda: Kin())
+    lay = tmp_path / "100000.json"
+    lay.write_text(json.dumps({"_simlab": {"id": 100000}}))
+    EV.run("match_and_pick_from_conveyor", [str(lay)], EV.RuntimeConfig(mode="perception", verify="off"), tmp_path / "out",
+           policy_factory=Pol, renderer="isaac51")
+    row = json.loads((tmp_path / "out" / "match_and_pick_from_conveyor_perception_verify-off_episodes.jsonl")
+                     .read_text().splitlines()[0])
+    pr = row["dev_gt_probe"]
+    assert pr["rise_mm"]["target1"] == pytest.approx(120.0) and pr["rise_mm"]["other0"] == 0.0
+    assert [(c["arm"], c["label"], c["step"]) for c in pr["closes"]] == [("left", "target1", 2)]   # one close, not two
+    assert pr["closes"][0]["dist_mm"] == pytest.approx(10.0) and pr["closes"][0]["next_label"] == "other0"
+    # the policy side: exactly the official observation, and an info without the probe
+    assert seen["obs"] and all(set(o) == set(base_obs) for o in seen["obs"])
+    assert all("dev_gt_probe" not in i and "rise_mm" not in json.dumps(i, default=str) for i in seen["info"])

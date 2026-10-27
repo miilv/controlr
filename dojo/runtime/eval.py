@@ -11,6 +11,8 @@ This driver adds, around simlab's loop:
   must NOT come from (they are built from the other half);
 * a dev-only scorer: perception's estimate vs GT at episode start, and the failure taxonomy
   (perception_gross / grasp_slip / plan / verify_reject / budget / not_home / divergence / error);
+* a dev-only GT probe (``GTProbe``, row ``dev_gt_probe``): each label's largest z rise over its reset pose and the GT
+  object nearest the jaws at each gripper close;
 * results per (task, mode, verify) in separate files: ``<task>_<mode>_<verify>_{episodes.jsonl,summary.json}``.
 
 GT is read here (the scorer) and handed to the policy only in mode gt.
@@ -137,6 +139,67 @@ def perception_eval(rep: dict, gt_rows: list[dict], assets) -> dict | None:
     return out
 
 
+class GTProbe:
+    """DEV-ONLY, the scorer's side of the firewall: nothing of it reaches an observation, the episode info or anything
+    else the policy sees; it is written to the episode row (``dev_gt_probe``) only. Per task label, the largest z rise
+    over its pose after reset (what RoboDojo's ``is_lift`` compares); at each gripper close, the GT object nearest the
+    jaws (TCP from the commanded joints: the arm is within a few mm of its command at a close). Answers, for a rendered
+    run where the policy only has its belief: did the checker's object rise, and which object did we close on
+    (5.1 conveyor: "rose 125 mm" by the belief, held, and the checker's target1 never counted)."""
+
+    def __init__(self, gt0: list[dict], kin=None):
+        self.z0 = {r["label"]: float(r["pos"][2]) for r in gt0
+                   if r.get("label") and r.get("pos") is not None and not r.get("clutter")}
+        self.rigid = {r["label"] for r in gt0 if r.get("label") in self.z0 and r.get("type", "Rigid") == "Rigid"}
+        self.rise = {k: 0.0 for k in self.z0}
+        self.closes: list[dict] = []
+        self.kin = kin
+        self._g: dict = {}
+        self._closed: dict = {}
+
+    def update(self, rows: list[dict]) -> None:
+        for r in rows:
+            lab = r.get("label")
+            if lab in self.z0 and r.get("pos") is not None:
+                self.rise[lab] = max(self.rise[lab], float(r["pos"][2]) - self.z0[lab])
+
+    def on_action(self, a: dict, step: int, gt_fn) -> None:
+        """A closing command (below half open, closing, the hand not already closed: the belief's attach rule)."""
+        for arm in ("left", "right"):
+            k = f"{arm}_ee_joint_state"
+            if k not in a:
+                continue
+            g = float(np.asarray(a[k]).reshape(-1)[0])
+            if g < 0.5 and g < self._g.get(arm, 1.0) - 1e-6 and not self._closed.get(arm):
+                self._closed[arm] = True
+                rows = gt_fn()
+                self.update(rows)
+                rec: dict = {"step": int(step), "arm": arm}
+                if self.kin is not None and f"{arm}_arm_joint_state" in a:
+                    p = self.kin.tcp(arm, np.asarray(a[f"{arm}_arm_joint_state"], float).reshape(-1)[:6])[:3, 3]
+                    near = sorted((float(np.linalg.norm(np.asarray(r["pos"], float) - p)), r["label"]) for r in rows
+                                  if r.get("label") in self.rigid and r.get("pos") is not None)
+                    if near:
+                        rec.update(label=near[0][1], dist_mm=round(1000 * near[0][0], 1))
+                    if len(near) > 1:
+                        rec.update(next_label=near[1][1], next_mm=round(1000 * near[1][0], 1))
+                self.closes.append(rec)
+            elif g > 0.6:
+                self._closed[arm] = False
+            self._g[arm] = g
+
+    def report(self) -> dict:
+        return {"rise_mm": {k: round(1000 * v, 1) for k, v in sorted(self.rise.items())}, "closes": self.closes}
+
+
+def _probe_kin():
+    try:
+        from dojo.skills.kinematics import X5Kin
+        return X5Kin()
+    except Exception:  # noqa: BLE001 (the probe then reports rises only)
+        return None
+
+
 def load_policy_factory(spec: str | None):
     """``module:Class`` (called as ``Class(cfg)``); default ``RuntimePolicy``."""
     if not spec:
@@ -170,6 +233,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         ep = ProxyEpisode(task, rc, out)
     pol = (policy_factory or RuntimePolicy)(cfg)
     assets = AssetDB(paths.OBJECTS)
+    kin = _probe_kin()
     rows, t_all = [], time.perf_counter()
     code = deployed_code()
     gate = os.environ.get("DOJO_EVAL_GATE")          # a command run before each episode (isr-lab: inbox / reserve / disk)
@@ -200,6 +264,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         lid = info.get("layout_id")
         info["dev_calib_fold"] = zlib.crc32(str(lid).encode()) % 2
         gt0 = ep.run.objects_gt(0)                  # scorer side (dev only)
+        probe = GTProbe(gt0, kin)                   # scorer side (dev only): rises and closes, the row only
         pol.reset(info)
         t0 = time.perf_counter()
         sim_s, obs_s, ended, capped = 0.0, [], False, False
@@ -221,9 +286,11 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
             t2 = time.perf_counter()
             for a in d["actions"]:
                 executed.append(a)
+                probe.on_action(a, len(executed), lambda: ep.run.objects_gt(0))
                 if ep.step(a):
                     ended = True
                     break
+            probe.update(ep.run.objects_gt(0))
             sim_s += time.perf_counter() - t2
         res = ep.result()
         reward = ep.run.reward(0)
@@ -249,7 +316,8 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
                "look_steps": rep.get("look_steps", 0), "flags": rep.get("flags"), "skill": rep.get("skill"),
                "category": cat, "why": why, "reward": reward,
                "verify_stats": v if isinstance(v, dict) else v, "provider": rep.get("provider"),
-               "perception": perc, "events": rep.get("events", [])[-30:], "decisions": rep.get("decisions"),
+               "perception": perc, "dev_gt_probe": probe.report(),
+               "events": rep.get("events", [])[-30:], "decisions": rep.get("decisions"),
                # the row keeps the last 30 events; the episode's setup events (scan, gates at step 0) and per-kind
                # counts of all of them stay readable from the row too (the full list is in the report.json.gz)
                "events_head": rep.get("events", [])[:8], "event_counts": event_counts(rep.get("events", [])),
@@ -277,6 +345,9 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         print(f"\n[integ] {tag} {lid}: success={row['success']} score={row['score']:.2f} "
               f"steps={row['steps_used']}/{row['step_lim']} looks={row['n_looks']} wall={row['wall_s']}s "
               f"(sim {row['sim_s']} obs {row['observe_s']} worker {row['worker_s']}) cat={cat} {why[:120]}", flush=True)
+        pr = row["dev_gt_probe"]
+        print(f"[integ] dev GT probe {lid}: rise mm {pr['rise_mm']}; closes "
+              f"{[(c['step'], c['arm'], c.get('label'), c.get('dist_mm')) for c in pr['closes']]}", flush=True)
         if row["missing_meshes"]:
             print(f"[integ] WARNING {lid}: no catalogue mesh for {row['missing_meshes']} (bboxes stood in)", flush=True)
     summ = summarize(rows, task, cfg)
