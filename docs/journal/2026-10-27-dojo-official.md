@@ -110,6 +110,38 @@ Spend, phase A + B so far (29 episodes): Sol 28 calls (171 k prompt, 120 k cache
    rollouts, ~72 s of twin time), then a `best_outcome` pick. stack_blocks on integ: first_ok on 27/30 segments. The
    verifier costs wall time and selects nothing for swap. Routed to swap's owner through the lead.
 
+
+### 1.5 The gripper reading: A/B and the default change (DOJO_GRIP_SOURCE, report docs/experiments/2026-10-27-grip-source-ab.md)
+
+**Default change:** `DOJO_GRIP_SOURCE` (renamed from #104's `DOJO_GRIP_OBS`, a deprecated alias until 2026-10-28)
+defaults to **`command`**. Every dev harness now hands the policy the strict server's gripper (the last command) in
+`{arm}_ee_joint_state`: integ_eval / proxy_eval (`ProxyEpisode`, `RenderedEpisode`) and G3 (`RunnerEnv`). RoboDojo's
+applied control is available with `DOJO_GRIP_SOURCE=robodojo`. Rows say which one ran (`grip_source`).
+- Why the rename: robot-harness's strict v1 already emits `eef.<arm>.grip_obs` (= the command). Its v2 is to add the
+  official value as `ee_joint_state_official`.
+- Why the default flip: the scored path gives the runtime the command, so dev numbers must be measured with the same
+  contract. integ / proxy / G3-mode-B numbers before this change were measured with RoboDojo's value.
+
+A/B, paired, integ isaac51, RuntimePolicy on `submit_v1`, 100000-04, same deploy (771cb05), no cooking failures:
+
+| task | robodojo | command | paired | held checks r / c: escalated to Sonnet; false "not held" |
+|---|---|---|---|---|
+| stack_blocks | 5/5, 100 | 5/5, 100 | = | 10; 2 / 0; 0 (Sonnet calls 32 -> 20) |
+| insert_tubes | 3/5, 76 | 3/5, 76 | = (same failures) | 0; 0 / 0; 0 |
+| plug_in_charger | 1/5, 20 | **4/5, 80** | 3 rescued, 0 lost | 0; 0 / 0; 0 |
+| play_tic_tac_toe | pending | pending | | |
+| build_tower | pending | pending | | |
+
+- B1 held_look confidence: 0.56-0.80 with RoboDojo's value, 0.825-1.0 with the command.
+- plug 100003, robodojo arm:
+  - The fingers are drawn partly open (0.3) in the robot mask. The in-hand refine at step 31 fit the charger flipped
+    180 deg (shift 50.6 mm, IoU 0.94) and it was adopted.
+  - Then a regrasp, a place 12.3 mm off, and a believed insertion the checker rejected.
+  - Command arm: closed jaws + held box in the mask, the refine said "not ok", the prior was kept, success.
+- **G3 mode A is unchanged:** plug 100000-09 8/10 = 8/10, make_kong 5/5 = 5/5, store_tools 1/5 = 1/5 (0.45), stack
+  5/5 = 5/5, with bit-identical executed actions on all 25 layouts.
+- G3 mode B under both arms: pending.
+
 ## 2. Routing (PR #90; report docs/experiments/2026-10-27-routing-sonnet.md)
 
 **Question:** given only the instruction and the scene, does the agent's chooser pick the skill and arguments the
