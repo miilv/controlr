@@ -2114,19 +2114,25 @@ def test_belt_velocity_runs_along_the_moving_base_and_identity_carries_its_vote_
     prov._vote("block_0", e)
     prov._vote("block_0", e)
     assert prov.belief.objects["block_0"].confidence == 1.0
-    # the identity's own read sets the stable pose: orientation AND height; another asset's read moves neither
+    # the stable pose (orientation AND height) comes from the identity's own reads, the pose most of the latest ones
+    # agree on (a rider keeps its pose on the belt): one read lying does not move it, a majority does
     e2 = copy.deepcopy(e)
     e2.pos = e.pos + np.array([0.01, 0.0, -0.047])
     e2.quat = np.array([0.7071, 0.7071, 0.0, 0.0])
-    prov._vote("block_0", e2)
     o = prov.belief.objects["block_0"]
+    prov._vote("block_0", e2)                                           # [e, e, e2]: upright leads
+    assert abs(float(o.pos[2]) - float(e.pos[2])) < 1e-9 and np.allclose(o.quat, e.quat)
+    prov._vote("block_0", e2)                                           # [e, e, e2, e2]: a tie, the latest wins
     assert abs(float(o.pos[2]) - float(e2.pos[2])) < 1e-9 and np.allclose(o.quat, e2.quat)
     assert abs(float(o.pos[0]) - float(e.pos[0])) < 1e-9                  # xy is the track's, not one read's
     e3 = copy.deepcopy(e)
     e3.asset = AssetInfo(key="Rigid/bottle/00047", bbox_min=np.full(3, -0.02), bbox_max=np.full(3, 0.02))
     e3.pos = e.pos + np.array([0.0, 0.0, 0.03])
-    prov._vote("block_0", e3)
+    prov._vote("block_0", e3)                                           # another asset's read moves nothing
     assert abs(float(o.pos[2]) - float(e2.pos[2])) < 1e-9
+    prov._vote("block_0", e)
+    prov._vote("block_0", e)                                            # [e3, e, e, ...]: upright again
+    assert abs(float(o.pos[2]) - float(e.pos[2])) < 1e-9 and np.allclose(o.quat, e.quat)
 
 
 def test_a_belt_close_attaches_the_rider_where_it_is_by_then_and_never_the_conveyor():
