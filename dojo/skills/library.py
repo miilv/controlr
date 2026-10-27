@@ -1251,7 +1251,7 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
                 return _insert_by_rest_handover(sk, obj, tg, rec, place_kw, res)
             if not res.ok and res.status != "ended":
                 return {"ok": False, "stage": f"insert {obj}", "result": res}
-            return {"ok": True, "stage": "inserted"}
+            return _turn_if_not_turned(sk, obj, rec, turn_deg, press, tg, res)
     fits = []
     for r in receptacles:
         if r == obj or r not in w.objects:
@@ -1300,6 +1300,25 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
         return _insert_by_rest_handover(sk, obj, targets, rec, place_kw, res)
     if not res.ok and res.status != "ended":
         return {"ok": False, "stage": f"insert {obj}", "result": res}
+    return _turn_if_not_turned(sk, obj, rec, turn_deg, press, targets, res)
+
+
+def _turn_if_not_turned(sk: Skills, obj: str, rec: str, turn_deg: float, press: float, targets: list, res) -> dict:
+    """After a direct insertion asked to turn: only the servo tail turns (its note says "turned"); mode B without an
+    in-hand read runs the planned tail, which inserts and lets go unturned (genuine 5.1, a key: inserted, 0.15). Then
+    the turn with a fresh grasp in the receptacle (``regrasp.turn_in_lock``) from the target it went to."""
+    if not turn_deg or res.status == "ended" or "turned" in (res.note or ""):
+        return {"ok": True, "stage": "inserted"}
+    from dojo.skills.regrasp import turn_in_lock
+    o = sk.refresh().obj(obj)
+    T = min(targets, key=lambda T_: float(np.linalg.norm(np.asarray(T_)[:3, 3] - o.pos))).copy()
+    T[2, 3] += press
+    for a in ARMS:
+        if sk.held.get(a) is not None and sk.held[a].label == obj:
+            sk.held[a] = None                   # the planned tail let go (release)
+    rt = turn_in_lock(sk, obj, rec, math.radians(turn_deg), last_arm=res.arm, T_seat=T)
+    if not rt.ok and rt.status != "ended":
+        return {"ok": False, "stage": f"turn {obj}", "result": rt}
     return {"ok": True, "stage": "inserted"}
 
 

@@ -75,3 +75,20 @@ def test_top_grasps_at_the_target_close_across_the_bow_and_point_down():
         assert a[2] < -0.2                                   # pointing down at the target (tilted >= 15 deg)
         tip = T_ko[:3, 3] + T_ko[:3, 0] * TIP_BEYOND_TCP
         assert abs(tip[1]) < 1e-9 and -0.003 < tip[2] < 0.0 and abs(tip[0]) <= 0.0061   # at the bow's centre
+
+
+def test_vertical_grasps_at_the_target_point_straight_down_across_the_bow():
+    from dojo.skills.geometry import T_from, rot_z
+    from dojo.skills.kinematics import TIP_BEYOND_TCP
+    from dojo.skills.regrasp import VERTICAL_PAST, vertical_grasps_at
+    k = _lying_key()
+    T_tg = T_from(np.array([-0.14, -0.155, 0.843]), rot_z(0.4))      # standing in its lock
+    out = vertical_grasps_at(k, T_tg)
+    assert len(out) == 2 * len(VERTICAL_PAST)
+    for note, T_ko, width in out:
+        assert abs(width - 0.010) < 1e-6                     # across the bow's faces
+        Tw = T_tg @ T_ko
+        assert Tw[2, 0] < -0.999                             # the approach straight down
+        assert abs(abs(Tw[:3, 1] @ (T_tg[:3, :3] @ np.array([0.0, 1.0, 0.0]))) - 1.0) < 1e-9   # closing along y_key
+        tip = T_ko[:3, 3] + T_ko[:3, 0] * TIP_BEYOND_TCP
+        assert abs(tip[0]) < 1e-9 and abs(tip[1]) < 1e-9 and -0.0081 < tip[2] < -0.0059   # under the bow's centre

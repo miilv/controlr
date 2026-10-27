@@ -159,6 +159,37 @@ def top_grasps_at(o, T_target) -> list[tuple[str, np.ndarray, float]]:
     return out
 
 
+VERTICAL_PAST = (0.006, 0.008)       # m: a straight-down grasp's fingertips this far under the part's centre
+
+
+def vertical_grasps_at(o, T_target) -> list[tuple[str, np.ndarray, float]]:
+    """(note, TCP in the object frame, width) straight down across the thinnest side of the object's top part at
+    ``T_target`` (for the turn of an object standing in its receptacle: the turn is then the wrist's last joint alone;
+    not at the handover, where the giver's pad sits on that top)."""
+    if o.asset.mesh is None:
+        return []
+    V = o.asset.mesh[0]
+    R_t = np.asarray(T_target, float)[:3, :3]
+    up = R_t.T @ np.array([0.0, 0.0, 1.0])
+    h = V @ up
+    top = V[h >= h.max() - TOP_BAND - 1e-9]
+    axes = [i for i in range(3) if abs(up[i]) < 0.5]
+    if len(axes) != 2 or len(top) < 4:
+        return []
+    ic = min(axes, key=lambda i: float(top[:, i].max() - top[:, i].min()))
+    width = float(top[:, ic].max() - top[:, ic].min())
+    ctr = (top.min(0) + top.max(0)) / 2
+    a = -up
+    out = []
+    for cs in (1.0, -1.0):
+        c = cs * np.eye(3)[ic]
+        R = np.stack([a, c, np.cross(a, c)], 1)
+        for past in VERTICAL_PAST:
+            tip = ctr - past * up
+            out.append((f"down c{cs:+.0f} past {past*1000:.0f}", T_from(tip - a * TIP_BEYOND_TCP, R), width))
+    return out
+
+
 MIN_TURN_FRAC = 0.7                 # of the turn the taker's wrist must reach at the target (the key snapped through its
                                     # lock's narrow zone at -30..-36 deg commanded, probes; -36 = 0.6 left no margin)
 
@@ -412,7 +443,9 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
         # the giver goes home while the taker moves on (300 steps: in sequence the episode ran out, G3): to the via over
         # the receptacle when the handover search needed one, else along the place's own approach to its hover
         first = None
-        if h.get("via") is not None:
+        if mode_b and turn:
+            first = _upright_moves(sk, t_arm, label, h["target"], receptacle, kw)
+        if first is None and h.get("via") is not None:
             mv = sk.motion.to_pose(t_arm, sk.ex.q[t_arm], h["via"], REST_PLACE_CARRY, "via_receptacle", gripper=CLOSED,
                                    held=sk.held[t_arm].box, ignore=(label,), safe_z=float(h["via"][2, 3]))
             first = mv if mv.ok else None
@@ -421,8 +454,10 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
             first = pl0.approach if isinstance(pl0, PlacePlan) else None
         home = sk.plan_home(g_arm)
         if first is not None:
-            sk.ex.run({t_arm: ArmPlan(t_arm, sk.ex.q[t_arm].copy(), CLOSED).move(first, "approach"), g_arm: home},
-                      name="place approach + giver home")
+            tp = ArmPlan(t_arm, sk.ex.q[t_arm].copy(), CLOSED)
+            for m_ in (first if isinstance(first, list) else [first]):
+                tp.move(m_, "approach")
+            sk.ex.run({t_arm: tp, g_arm: home}, name="place approach + giver home")
         else:
             sk.ex.run({g_arm: home}, name="giver home")
     except (BudgetExceeded, EpisodeEnded) as e:
@@ -458,6 +493,35 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
             return rt
         _let_go(sk, t_arm, label)             # this grasp's wrist does not reach the turn: a fresh one in the lock
     return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(h["target"], kw))
+
+
+def _upright_moves(sk: Skills, arm: str, label: str, T_target, receptacle: str, kw: dict):
+    """Mode B, the object just taken (lying) by ``arm``: two Cartesian lines, the object turned up in place about its
+    own horizontal x axis, then carried upright to the place's hover turning only about the vertical. Its x axis stays
+    horizontal all the way: a key held across its bow (a hinge about the closing axis, y_key) feels no gravity torque
+    about that hinge (the joint-space carry swung it 7.5-8 deg in the pads, unseen by the kinematic belief; twin).
+    None when either line does not plan."""
+    h = sk.held[arm]
+    Tq = sk.kin.tcp(arm, sk.ex.q[arm])
+    T_o = Tq @ h.T_tcp_obj                                  # the believed object pose (the command's)
+    T_target = np.asarray(T_target, float)
+    x_t = T_target[:3, 0]
+    x_h = T_o[:3, 0] - T_o[2, 0] * np.array([0.0, 0.0, 1.0])
+    if abs(x_t[2]) > 0.2 or np.linalg.norm(x_h) < 0.5:
+        return None                                         # x not horizontal at the target / now: not this case
+    yaw = math.atan2(x_h[1], x_h[0]) - math.atan2(x_t[1], x_t[0])
+    T_up = T_from(T_o[:3, 3], rot_z(yaw) @ T_target[:3, :3])
+    m1 = sk.motion.line(arm, sk.ex.q[arm], T_up @ inv_T(h.T_tcp_obj), REST_PLACE_CARRY, "upright", gripper=CLOSED,
+                        held=h.box, ignore=(label,), max_step_deg=3.0)
+    if not m1.ok:
+        return None
+    pl = sk.plan_place(arm, T_target, yaw_sym=1, ignore=(receptacle,), q_start=m1.q_end, **kw)
+    if not isinstance(pl, PlacePlan) or not pl.approach.segments:
+        return None
+    T_hover = sk.kin.tcp(arm, pl.approach.q_end)
+    m2 = sk.motion.line(arm, m1.q_end, T_hover, REST_PLACE_CARRY, "upright_carry", gripper=CLOSED, held=h.box,
+                        ignore=(label,), max_step_deg=3.0)
+    return [m1, m2] if m2.ok else None
 
 
 def _vlag(sk: Skills, arm: str) -> float:
@@ -632,30 +696,38 @@ def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = 
 
 def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm: str | None = None,
                  T_seat=None) -> SkillResult:
-    """Grip the object standing in its receptacle (``top_grasps_at`` its pose there) with the arm and grasp whose wrist
-    reaches the most of the turn, then ``turn_held``. The arm that let go goes home first when the other one turns."""
+    """Grip the object standing in its receptacle (``top_grasps_at`` its pose there, ``vertical_grasps_at`` when none of
+    those reaches the whole turn) with the arm and grasp whose wrist reaches the most of the turn, then ``turn_held``.
+    The arm that let go goes home first when the other one turns."""
     from dojo.skills.motion import FAST
     w = sk.refresh()
     o = w.obj(label)
     best = None
-    for arm in ARMS:
-        for note, T_ko, width in top_grasps_at(o, o.T):
-            Tt = o.T @ T_ko
-            r = sk.kin.ik(arm, Tt, w.home_q[arm], n_random=4)
-            if not r.ok or not sk.coll.check(arm, r.q, gap_to_grip(width), ignore=(label,), grip_only=(receptacle,))[0]:
-                continue
-            pre = Tt.copy()
-            pre[:3, 3] -= Tt[:3, 0] * 0.06
-            if not sk.kin.ik(arm, pre, r.q, n_random=0).ok:
-                continue
-            T_up = o.T.copy()
-            T_up[2, 3] += TURN_LIFT
-            frac = _turn_reach(sk, arm, T_up, T_ko, r.q, turn)
-            if frac < TURN_FRACTIONS[-1]:             # -36 of -60 at least (the key snaps through by -30..-36)
-                continue
-            cost = 3.0 * (1.0 - frac) + 0.3 * float(np.abs(r.q - sk.ex.q[arm]).max()) + (0.0 if arm == last_arm else 0.2)
-            if best is None or cost < best[0]:
-                best = (cost, arm, note, T_ko, width, frac)
+    # the tilted grasps first (the handover's family); straight down when none of them reaches the whole turn (G3
+    # 100021 / 100023: no tilted grasp reached 60%)
+    for fam in (top_grasps_at, vertical_grasps_at):
+        if best is not None and best[5] >= 1.0:
+            break
+        for arm in ARMS:
+            for note, T_ko, width in fam(o, o.T):
+                Tt = o.T @ T_ko
+                r = sk.kin.ik(arm, Tt, w.home_q[arm], n_random=4)
+                if not r.ok or not sk.coll.check(arm, r.q, gap_to_grip(width), ignore=(label,),
+                                                 grip_only=(receptacle,))[0]:
+                    continue
+                pre = Tt.copy()
+                pre[:3, 3] -= Tt[:3, 0] * 0.06
+                if not sk.kin.ik(arm, pre, r.q, n_random=0).ok:
+                    continue
+                T_up = o.T.copy()
+                T_up[2, 3] += TURN_LIFT
+                frac = _turn_reach(sk, arm, T_up, T_ko, r.q, turn)
+                if frac < TURN_FRACTIONS[-1]:             # -36 of -60 at least (the key snaps through by -30..-36)
+                    continue
+                cost = (3.0 * (1.0 - frac) + 0.3 * float(np.abs(r.q - sk.ex.q[arm]).max())
+                        + (0.0 if arm == last_arm else 0.2))
+                if best is None or cost < best[0]:
+                    best = (cost, arm, note, T_ko, width, frac)
     if best is None:
         return sk._record(SkillResult(False, "turn", "ik_fail", 0, None,
                                       note=f"{label}: no grasp in the {receptacle} reaches {TURN_FRACTIONS[-1]:.0%} of the turn"))
