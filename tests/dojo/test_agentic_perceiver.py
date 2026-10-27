@@ -399,3 +399,133 @@ def test_snap_keeps_b1_pose_where_b1_is_confident():
 def test_free_text_category_maps_to_the_hint_vocabulary():
     objs, _, _ = j1.answer_to_output({"objects": [{"label": "board_long", "category": "board", "pos": [0.3, 0.05, 0.775]}]}, _b1())
     assert objs[0]["category"] == "block" and objs[0]["agent_category"] == "board"  # one kind in the hint: that kind
+
+
+def _arb(monkeypatch, losses):
+    """seed_refine.arbitrate with the silhouette scoring stubbed: ``losses`` maps a reading's rounded xy + yaw to its loss."""
+    pytest.importorskip("scipy")
+    from dojo.perception.agentic import seed_refine
+
+    calls = []
+
+    def fake_loss(o, views, others=None):
+        k = (round(o["pos"][0], 3), round(o["pos"][1], 3), round(math.degrees(2 * math.atan2(o["quat"][3], o["quat"][0]))))
+        calls.append(k)
+        return losses.get(k)
+    monkeypatch.setattr(seed_refine, "pose_loss", fake_loss)
+    monkeypatch.setattr(seed_refine, "_hyp", lambda o: None)
+    return seed_refine, calls
+
+
+def _q(yaw_deg):
+    return j1._quat_from_yaw(yaw_deg)
+
+
+def test_arbitration_keeps_b1_pose_unless_the_views_prefer_the_agent(monkeypatch):
+    b1 = [{"label": "charger", "category": "charger", "asset": "Rigid/charger/00000", "pos": [0.32, -0.24, 0.78],
+           "quat": _q(-15), "confidence": 0.69, "source": "fused"},
+          {"label": "socket", "category": "socket", "asset": "Rigid/socket/00000", "pos": [-0.25, -0.06, 0.76],
+           "quat": _q(25), "confidence": 0.65, "source": "fused"}]
+    agent = [dict(b1[0], pos=[0.33, -0.216, 0.78], quat=_q(-119), confidence=0.7, source="head"),   # turned 104 deg
+             dict(b1[1], pos=[-0.226, -0.06, 0.76], quat=_q(25), source="head"),                     # moved 24 mm
+             {"label": "cable", "category": "socket", "asset": "Rigid/socket/00000", "pos": [0.1, 0.2, 0.76],
+              "quat": _q(0), "source": "head"}]                                                         # nothing near
+    sr, calls = _arb(monkeypatch, {(0.33, -0.216, -119): 0.42, (0.32, -0.24, -15): 0.12,
+                                   (-0.226, -0.06, 25): 0.08, (-0.25, -0.06, 25): 0.30})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert out[0]["pos"] == b1[0]["pos"] and out[0]["quat"] == b1[0]["quat"] and out[0]["arbitrated"] == "b1"
+    assert out[0]["source"] == "fused" and out[0]["confidence"] == 0.69
+    assert out[1]["pos"] == [-0.226, -0.06, 0.76] and "arbitrated" not in out[1]   # the views prefer the move
+    assert out[2]["pos"] == [0.1, 0.2, 0.76] and len(calls) == 4                   # no B1 object within 15 cm: untouched
+    assert {i["label"]: i["kept"] for i in info} == {"charger": "b1", "socket": "agent"}
+
+
+def test_arbitration_skips_agreement_and_handles_unscorable_poses(monkeypatch):
+    b1 = [{"label": "t0", "category": "mahjong", "asset": "Rigid/mahjong/00000", "pos": [0.0, -0.2, 0.78], "quat": _q(0)},
+          {"label": "t1", "category": "mahjong", "asset": "Rigid/mahjong/00000", "pos": [0.05, -0.2, 0.78], "quat": _q(0)},
+          {"label": "t2", "category": "mahjong", "asset": "Rigid/mahjong/00000", "pos": [0.10, -0.2, 0.78], "quat": _q(0)}]
+    agent = [dict(b1[0], pos=[0.002, -0.2, 0.78]),                  # within 3 mm, same asset: not scored
+             dict(b1[1], pos=[0.05, -0.177, 0.78]),                 # moved 23 mm; B1's pose unseen in every view
+             dict(b1[2], pos=[0.10, -0.177, 0.78])]                 # moved 23 mm; the agent's pose unseen
+    sr, calls = _arb(monkeypatch, {(0.05, -0.177, 0): 0.2, (0.1, -0.2, 0): 0.1})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert out[0]["pos"] == [0.002, -0.2, 0.78] and (0.002, -0.2, 0) not in calls
+    assert out[1]["pos"] == [0.05, -0.177, 0.78]          # B1 cannot be scored: the agent's reading stands
+    assert out[2]["pos"] == [0.10, -0.2, 0.78]            # the agent's pose cannot be scored: B1's stays
+    assert [i["kept"] for i in info] == ["agent", "b1"]
+
+
+def test_arbitration_asks_more_evidence_to_move_a_config_slot_object(monkeypatch):
+    b1 = [{"label": "t0", "category": "mahjong", "asset": "Rigid/mahjong/00000", "pos": [0.0, -0.2, 0.78], "quat": _q(0),
+           "flags": {"slot": True}},
+          {"label": "c0", "category": "mahjong", "asset": "Rigid/mahjong/00000", "pos": [0.3, -0.2, 0.78], "quat": _q(0)}]
+    agent = [dict(b1[0], pos=[0.0, -0.177, 0.78], flags={}), dict(b1[1], pos=[0.3, -0.177, 0.78])]
+    sr, _ = _arb(monkeypatch, {(0.0, -0.177, 0): 0.69, (0.0, -0.2, 0): 0.79, (0.3, -0.177, 0): 0.69, (0.3, -0.2, 0): 0.79})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert out[0]["pos"] == [0.0, -0.2, 0.78]          # pinned: 0.10 better is not enough (bar 0.15)
+    assert out[1]["pos"] == [0.3, -0.177, 0.78]        # free object: any improvement moves it
+    assert [i["margin"] for i in info] == [0.15, 0.0]
+
+
+def test_arbitration_sets_an_agent_point_down_on_its_support(monkeypatch):
+    pytest.importorskip("scipy")
+    from types import SimpleNamespace
+
+    from dojo.perception.agentic import seed_refine
+    from dojo.perception.cameras import TABLE_Z, pose_to_T
+
+    box = np.array([[x, y, z] for x in (-0.03, 0.03) for y in (-0.03, 0.03) for z in (-0.05, 0.05)])  # origin mid-height
+    monkeypatch.setattr(seed_refine, "_hyp", lambda o: (SimpleNamespace(asset=SimpleNamespace(V=box)),
+                                                         pose_to_T(o["pos"], o["quat"])) if o.get("asset") and o.get("quat") else None)
+    monkeypatch.setattr(seed_refine, "pose_loss", lambda o, views, others=None: 0.1 if o.get("asset", "").endswith("12") else 0.5)
+    b1 = [{"label": "fig", "category": "garage", "asset": "Rigid/garage/00011", "pos": [0.1, -0.1, TABLE_Z + 0.08],
+           "quat": _q(0)}]                                                   # on a 30 mm pedestal: bottom at TABLE_Z + 0.03
+    agent = [{"label": "fig", "category": "garage", "asset": "Rigid/garage/00012", "pos": [0.12, -0.1, TABLE_Z - 0.1],
+              "quat": _q(0), "source": "head", "_agent_point": True},       # head-plane hit 10 cm under the table
+             {"label": "coin", "category": "coin", "asset": "Rigid/coin/00000", "pos": [0.3, -0.2, TABLE_Z + 0.2],
+              "quat": _q(0), "source": "head", "_agent_point": True},       # nothing of its kind in B1
+             {"label": "kept", "category": "coin", "asset": "Rigid/coin/00000", "pos": [0.4, -0.2, TABLE_Z + 0.2],
+              "quat": _q(0), "source": "refined"}]                          # H2's fit: its height stands
+    out, info = seed_refine.arbitrate({}, agent, b1)
+    assert out[0]["pos"][2] == pytest.approx(TABLE_Z + 0.08) and out[0]["pos"][0] == 0.12  # bottom = the paired B1 bottom
+    assert info[0]["kept"] == "agent" and out[0]["rest_dz_mm"] == pytest.approx(180.0)
+    assert out[1]["pos"][2] == pytest.approx(TABLE_Z + 0.05)               # on the table
+    assert out[2]["pos"][2] == TABLE_Z + 0.2
+
+
+def test_arbitration_pairs_a_free_text_kind_like_the_merge_does(monkeypatch):
+    b1 = [{"label": "garage", "category": "garage", "asset": "Rigid/garage/00011", "pos": [0.1, -0.1, 0.78], "quat": _q(0)}]
+    agent = [{"label": "figurine", "agent_category": "figurine", "pos": [0.18, -0.1, 0.68], "source": "head",
+              "_agent_point": True}]                                     # no category, no asset, no turn
+    sr, calls = _arb(monkeypatch, {(0.18, -0.1, 0): 0.6, (0.1, -0.1, 0): 0.2})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert info and info[0]["b1_label"] == "garage" and out[0]["pos"] == b1[0]["pos"]   # scored as the garage: B1 stays
+
+
+def test_arbitration_scores_an_asset_less_agent_point_with_b1_s_asset(monkeypatch):
+    b1 = [{"label": "block_0", "category": "block", "asset": "Rigid/block/00005", "pos": [0.0, -0.2, 0.78], "quat": _q(0)}]
+    agent = [{"label": "block", "category": "block", "asset": None, "pos": [0.02, -0.2, 0.78], "quat": None,
+              "source": "head"}]
+    sr, calls = _arb(monkeypatch, {(0.02, -0.2, 0): 0.1, (0.0, -0.2, 0): 0.3})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert info[0]["loss_agent"] == 0.1 and info[0]["kept"] == "agent" and out[0]["pos"][0] == 0.02
+
+
+def test_arbitration_keeps_an_h2_fit_unless_it_flips_the_object(monkeypatch):
+    b1 = [{"label": "a", "category": "block", "asset": "Rigid/block/00005", "pos": [0.0, -0.2, 0.78], "quat": _q(0)},
+          {"label": "c", "category": "charger", "asset": "Rigid/charger/00000", "pos": [0.3, -0.2, 0.78], "quat": _q(-15)}]
+    agent = [dict(b1[0], pos=[0.02, -0.2, 0.78], quat=_q(10), source="refined"),       # H2 fit, small turn: stands
+             dict(b1[1], pos=[0.33, -0.2, 0.78], quat=_q(165), source="refined")]      # H2 fit into a flip: compared
+    sr, calls = _arb(monkeypatch, {(0.02, -0.2, 10): 0.4, (0.0, -0.2, 0): 0.1, (0.33, -0.2, 165): 0.26, (0.3, -0.2, -15): 0.25})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert out[0]["pos"] == [0.02, -0.2, 0.78] and len(info) == 1 and info[0]["b1_label"] == "c" and info[0]["kept"] == "b1"
+
+
+def test_arbitration_never_pairs_a_kind_b1_does_not_have(monkeypatch):
+    b1 = [{"label": "cube_cushion", "category": "cube_cushion", "asset": "Rigid/cube_cushion/00000", "pos": [0.1, -0.1, 0.78],
+           "quat": _q(0)}]
+    agent = [{"label": "alarm clock", "category": "alarm", "asset": "Rigid/alarm/00000", "pos": [0.2, -0.1, 0.78],
+              "quat": _q(0), "source": "refined"}]                      # B1 missed the alarm: the agent fills it
+    sr, calls = _arb(monkeypatch, {})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert info == [] and out[0]["pos"] == [0.2, -0.1, 0.78] and calls == []

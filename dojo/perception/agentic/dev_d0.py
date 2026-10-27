@@ -6,6 +6,7 @@
     python -m dojo.perception.agentic.dev_d0 b1 --cases CASES                 B1 (j1_adapter) on every case -> b1.json
     python -m dojo.perception.agentic.dev_d0 run --cases CASES --model M [--tag T] [--no-hint] [--max-turns 8] [--only ...]
         the agentic perceiver (fresh agent per case, B1 hint from b1.json) -> <case>/agent_<tag>.json
+    python -m dojo.perception.agentic.dev_d0 arbitrate --cases CASES --tag <tag>_ref   the arbitration vs B1 -> agent_<tag>_ref_arb
     python -m dojo.perception.agentic.dev_d0 score --cases CASES --tags b1,<tag>,... [--csv out.csv]
 """
 from __future__ import annotations
@@ -208,6 +209,34 @@ def cmd_refine(a):
         g.write_text(json.dumps(out, default=str))
         print(d.name, a.tag, f"{sum(i['accepted'] is True for i in infos)}+{sum(i['accepted'] == 'orientation_only' for i in infos)}/{len(infos)} refined",
               out["refine_s"], "s", flush=True)
+
+
+def cmd_arbitrate(a):
+    """The arbitration offline (``seed_refine.arbitrate``, as ``j1.finish_answer`` runs it after H2): agent_<tag>.json
+    (typically an ``_ref`` output) -> agent_<tag>_arb.json, B1's poses from b1.json, this frame's views."""
+    import zlib
+
+    from .. import j1_adapter
+    from ..segment import load_backgrounds
+    from .seed_refine import arbitrate, build_views
+
+    for d in _cases(a):
+        f = d / f"agent_{a.tag}.json"
+        g = d / f"agent_{a.tag}_arb.json"
+        if not f.exists() or (g.exists() and not a.force):
+            continue
+        inp = _inputs(d)
+        bgs = load_backgrounds(Path(a.bg_folds) / f"fold{zlib.crc32(inp['episode'].encode()) % 2}")
+        b1 = json.loads((d / "b1.json").read_text())
+        out = json.loads(f.read_text())
+        state, _ = j1_adapter._state(inp["flange"], inp["grip_cmd"], inp["joints"])
+        views = build_views(j1_adapter._load_frames(inp["frames"]), state, j1_adapter._cameras(inp["calib"]), bgs)
+        t0 = time.time()
+        objs, infos = arbitrate(views, out["objects"], b1["objects"])
+        out = dict(out, objects=objs, arbitration=infos, arbitration_s=round(time.time() - t0, 2))
+        g.write_text(json.dumps(out, default=str))
+        print(d.name, a.tag, f"{sum(i['kept'] == 'b1' for i in infos)} of {len(infos)} pairs kept B1", out["arbitration_s"], "s",
+              flush=True)
 
 
 def cmd_seq(a):
@@ -478,6 +507,12 @@ def main(argv=None):
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
     p.add_argument("--only", nargs="*")
     p.add_argument("--force", action="store_true")
+    p = sp.add_parser("arbitrate")
+    p.add_argument("--cases", required=True)
+    p.add_argument("--tag", required=True)
+    p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
+    p.add_argument("--only", nargs="*")
+    p.add_argument("--force", action="store_true")
     p = sp.add_parser("seq")
     p.add_argument("--cases", required=True)
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
@@ -494,7 +529,7 @@ def main(argv=None):
     p.add_argument("--csv")
     p.add_argument("--jsonl")
     a = ap.parse_args(argv)
-    {"cases": cmd_cases, "b1": cmd_b1, "b1scan": cmd_b1scan, "run": cmd_run, "refine": cmd_refine, "seq": cmd_seq, "contrast": cmd_contrast, "score": cmd_score}[a.cmd](a)
+    {"cases": cmd_cases, "b1": cmd_b1, "b1scan": cmd_b1scan, "run": cmd_run, "refine": cmd_refine, "arbitrate": cmd_arbitrate, "seq": cmd_seq, "contrast": cmd_contrast, "score": cmd_score}[a.cmd](a)
 
 
 if __name__ == "__main__":
