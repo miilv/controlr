@@ -33,7 +33,7 @@ from dojo.simlab import paths
 from dojo.simlab.proxy_eval import PROXY_TAG, RENDERED_TAG, ProxyEpisode, RenderClient, RenderedEpisode
 from dojo.simlab.runner import jsonable
 
-from .estimate import objects_from_gt_rows, objects_from_record, pose_errors
+from .estimate import objects_from_gt_rows, objects_from_record, planning_record, pose_errors
 from .firewall import DEV_GT_KEY
 from .policy import RuntimeConfig, RuntimePolicy
 
@@ -82,9 +82,11 @@ def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -
 
 
 def perception_eval(rep: dict, gt_rows: list[dict], assets) -> dict | None:
-    """DEV-ONLY scorer: the policy's estimate (fused if it looked, else the first) vs GT at episode start."""
+    """DEV-ONLY scorer: the estimate the skills planned with (``planning_record``; before: the fused record else the
+    first, which missed what the scan / agentic / search records found or broke: breadth2 scored 5 episodes on a stale
+    record) vs GT at episode start; ``xy_mm_first`` / ``id_ok_first``: the frame-0 record."""
     recs = rep.get("records") or {}
-    rec = recs.get("fused") or recs.get("initial")
+    _, rec = planning_record(recs)
     if not rec:
         return None
     est = objects_from_record(rec, assets, meshes=False)
@@ -94,7 +96,7 @@ def perception_eval(rep: dict, gt_rows: list[dict], assets) -> dict | None:
                                              for lst in (rec.get(t) or {}).values() for r in lst)
           or o.obj_type != "Geometry"}
     out = pose_errors(est, gt)
-    if recs.get("fused") and recs.get("initial"):
+    if recs.get("initial") and rec is not recs.get("initial"):
         first = pose_errors(objects_from_record(recs["initial"], assets, meshes=False), gt)
         for k, v in out.items():
             if k in first and first[k].get("found"):

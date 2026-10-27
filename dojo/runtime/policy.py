@@ -42,6 +42,16 @@ from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candid
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
 
 
+def keep_centre(o, fit_pos, fit_quat) -> np.ndarray:
+    """The root position that puts ``o``'s bbox centre where a refine's fit (``fit_pos``, ``fit_quat``) has it, under
+    ``o``'s CURRENT (prior) orientation. A refine that turns an object more than ``refine_max_turn_deg`` keeps the
+    prior orientation; the fit's root position belongs to the turned pose, so pairing it with the prior quat moves
+    the object by the root's offset from its centre, twice (breadth2 plug_in_charger: root ~24 mm off the centre,
+    flip -> 47 mm off, the relay handed over a charger that was not there)."""
+    from dojo.skills.geometry import quat_to_R
+    c = np.asarray(o.asset.center, float)
+    return np.asarray(fit_pos, float) + quat_to_R(np.asarray(fit_quat, float)) @ c - quat_to_R(o.quat) @ c
+
 def label_candidates(vocabulary: str, label: str) -> list[str]:
     """The catalogue candidate keys of ``label``'s own config group in ``vocabulary`` (catalog/tasks.json), [] when
     unknown. A label whose group has one key admits no identity change."""
@@ -92,6 +102,7 @@ class RuntimeConfig:
     look_min_budget: float = 0.6        # look only while steps_left >= this fraction of step_lim
     look_merge: str = "all"             # all: the fused record replaces frame 0 | flagged: only flagged objects
     save_look_frames: bool = False      # dev: keep frame 0 and the look frame (PNG) for perception's analysis
+    save_track_frames: int = 0          # dev: keep the first N belt-tracker re-read frames (PNG) as well
     resync: bool = True
     div_iou: float = 0.2                 # fallback without z-buffer: head IoU at the predicted pose
     div_prec: float = 0.4                # predicted front-most head pixels that are foreground, below = divergence
@@ -106,7 +117,13 @@ class RuntimeConfig:
     refine_max_turn_deg: float = 90.0   # a pick / place refine turning the object more than this keeps the prior
                                         # orientation (position only): a near-symmetric body fits flipped (5.1
                                         # plug_in_charger: a 178 deg yaw flip -> "turned 180" regrasp loop); the
-                                        # in-hand (held) review still sees real flips
+                                        # in-hand (held) review still sees real flips. The fit's CENTRE is kept
+                                        # (``keep_centre``): its root belongs to the turned pose
+    refine_turn_check_deg: float = 45.0 # a pick / place refine turning the object more than this ...
+    refine_turn_min_iou: float = 0.9    # ... at a lower iou is not applied at all (prior pose kept). Proxy runs: 22
+                                        # of 24 such fits on untouched objects turned AWAY from the truth (tower
+                                        # pillars read lying / standing, flips of bread, alarm, tape, mug), the other
+                                        # 2 were 63-70 deg off as well; the one right big turn had iou 0.98
     rehover_min_shift_mm: float = 10.0  # refine not ok but the object found this far off ...
     rehover_min_iou: float = 0.05       # ... with at least this fit: hover over it and refine once more
     rehover_place_dz: float = 0.03      # place re-hovers sit this much higher (camera sees past the held object)
@@ -271,6 +288,7 @@ class RuntimePolicy:
         self.log_task = self.info.get("task")            # logging only (never a decision input)
         self.fold = int(self.info.get("dev_calib_fold", 0))
         self.bridge = Bridge()
+        self._pc_calls0 = len(getattr(self._pc, "calls", None) or [])   # the client's call log spans episodes
         self._lost_searched = set()
         self._pending_far, self._place_pending, self._vsel_seen = {}, {}, {}
         self._recentre_prior = {}
@@ -319,7 +337,16 @@ class RuntimePolicy:
                                       "unavailable (see events)"))
             self.report["provider"] = dict(live["prov"].stats)
             if self._pc is not None:
-                self.report["perception_calls"] = list(getattr(self._pc, "calls", [])[-200:])
+                calls = list(getattr(self._pc, "calls", [])[getattr(self, "_pc_calls0", 0):])   # this episode's only
+                self.report["perception_calls"] = calls[-200:]
+                ops: dict = {}
+                for c in calls:                         # every call of the episode: count and seconds per op
+                    if not isinstance(c, dict):         # (test doubles log tuples)
+                        continue
+                    n_s = ops.setdefault(c.get("op"), [0, 0.0])
+                    n_s[0] += 1
+                    n_s[1] = round(n_s[1] + float(c.get("s") or 0.0), 3)
+                self.report["perception_ops"] = ops
 
     # ------------------------------------------------------------------ the episode (worker thread)
     def _setup(self, obs0: dict):
@@ -479,8 +506,11 @@ class RuntimePolicy:
                 prov.init_from_record(rec2)
                 sk = make_skills()
         recs = self.report["records"]
-        nf = [x.get("label") for x in (recs.get("agentic2") or recs.get("searched") or recs.get("fused")
-                                        or recs.get("initial") or {}).get("_not_found") or []]
+        # the record the belief starts from (a scan / agentic frame-0 record supersedes the initial one: breadth2
+        # insert_tubes 100002 had verify disabled for a tube the agentic record had found)
+        from .estimate import planning_record
+        last = planning_record(recs)[1]
+        nf = [x.get("label") for x in (last or {}).get("_not_found") or []]
         if nf:
             events.append({"kind": "perception_missing", "labels": nf})
             if verifier is not None:                    # the twin would run the task's checker on a partial scene
@@ -500,7 +530,7 @@ class RuntimePolicy:
                 prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
             cats = {o.category for o in prov.belief.objects.values()}
             if cfg.track_moving == "on" or (cfg.track_moving == "auto" and "conveyor" in cats):
-                prov.track_reader = lambda obs: pc.estimate([obs], scene, self.fold)
+                prov.track_reader = lambda obs: self._track_read(pc, obs, scene)
                 events.append({"kind": "track_moving", "on": True, "why": cfg.track_moving})
         live = self._live
 
@@ -650,6 +680,14 @@ class RuntimePolicy:
             if handled:
                 return out
         pend = self._pending_far.pop(label, None) if hasattr(self, "_pending_far") else None
+        if r.get("ok") and self._low_iou_turn(r):
+            # a big turn at a mediocre fit is the fit's mistake (a pillar read lying, a flip): nothing of it is applied
+            if pend is not None:
+                o.pos, o.quat = pend                    # a pending large correction goes back to its prior as well
+            ev.update({"applied": False, "why": (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg at "
+                       f"iou {float(r.get('iou') or 0):.2f}: prior pose kept)"})
+            prov.stats["turn_low_iou"] = prov.stats.get("turn_low_iou", 0) + 1
+            return None
         if r.get("ok") and (r.get("shift_mm") or 0) > self.cfg.big_shift_mm and pend is None:
             # a large correction is also how a refine can lock onto a neighbour: check it before believing it
             near = [x.label for x in others
@@ -728,12 +766,15 @@ class RuntimePolicy:
             ev.update({"identity_from": o.asset.key, "identity_to": new_id})
             o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
             prov.stats["identity_changed"] = prov.stats.get("identity_changed", 0) + 1
-        q_new = np.asarray(r["quat"], float)
+        q_new, p_new = np.asarray(r["quat"], float), np.asarray(r["pos"], float)
         if float(r.get("turned_deg") or 0) > self.cfg.refine_max_turn_deg:
-            q_new = o.quat.copy()
+            q_new, p_new = o.quat.copy(), keep_centre(o, r["pos"], r["quat"])
             ev["why"] = (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg: prior orientation kept)"
             prov.stats["turn_kept"] = prov.stats.get("turn_kept", 0) + 1
-        o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
+            # the root shift belongs to the turned fit: what moved is the centre (a recentre re-hover over a flip of
+            # an off-centre root oscillated between the two modes on every view)
+            far = float(np.linalg.norm(p_new - o.pos)) * 1000 > self.cfg.rehover_min_shift_mm
+        o.pos, o.quat, o.source = p_new, q_new, "perception"
         prov.stats["refined"] = prov.stats.get("refined", 0) + 1
         prov.touched.discard(label)                     # a good reading (tracker)
         if far and self.cfg.rehover_when_far:
@@ -779,10 +820,27 @@ class RuntimePolicy:
             return cands[0], None
         return best["_v"], best["_rec"]
 
-    def _keep_frame(self, tag: str, obs: dict) -> None:
-        """``save_look_frames`` (dev): keep this observation (every camera as PNG + the state) under ``tag`` in the
-        report (eval writes them to ``<run>/<task>_<layout>_look_frames/``); a later frame with the same tag replaces it."""
-        if not self.cfg.save_look_frames:
+    def _track_read(self, pc, obs: dict, scene: str) -> dict:
+        """The belt tracker's B1 re-read, logged per read (what it found, how sure: the 2026-10-26 breadth conveyor
+        tracked 31 reads and never added an object); the first ``save_track_frames`` read frames are kept (dev)."""
+        from .estimate import iter_records
+        rec = pc.estimate([obs], scene, self.fold)
+        found = [(r.get("label"), round(float((r.get("_perception") or {}).get("confidence", 0.0)), 2))
+                 for _t, _c, r in iter_records(rec)]
+        n = self.report.setdefault("track_reads", 0) + 1
+        self.report["track_reads"] = n
+        if n <= 60:
+            self.report["events"].append({"kind": "track_read", "step": int(obs["steps_used"]), "found": found[:12],
+                                          "not_found": len(rec.get("_not_found") or [])})
+        if n <= int(self.cfg.save_track_frames):
+            self._keep_frame(f"track{n:02d}_s{int(obs['steps_used'])}", obs, force=True)
+        return rec
+
+    def _keep_frame(self, tag: str, obs: dict, force: bool = False) -> None:
+        """``save_look_frames`` (dev; ``force``: the caller has its own switch): keep this observation (every camera as
+        PNG + the state) under ``tag`` in the report (eval writes them to ``<run>/<task>_<layout>_look_frames/``); a
+        later frame with the same tag replaces it."""
+        if not (self.cfg.save_look_frames or force):
             return
         self.report.setdefault("look_frames", {})[tag] = {
             "state": {k: np.asarray(v, float).tolist() for k, v in obs["state"].items()},
@@ -1078,6 +1136,12 @@ class RuntimePolicy:
                 return bool(e.get("ok"))
         return False
 
+    def _low_iou_turn(self, r: dict) -> bool:
+        """A refine whose fit turns the object more than ``refine_turn_check_deg`` at an iou under
+        ``refine_turn_min_iou``: not applied (``RuntimeConfig.refine_turn_min_iou``)."""
+        return (float(r.get("turned_deg") or 0) > self.cfg.refine_turn_check_deg
+                and float(r.get("iou") or 0) < self.cfg.refine_turn_min_iou)
+
     def _place_refine(self, prov, o, r: dict, ev: dict, others, arm: str) -> tuple[bool, dict | None]:
         """PLACE refine under ``cfg.place_confirm`` (a refine that contradicts a confident belief needs a confirming
         better view). Returns (handled, hook value); not handled = the general refine logic runs (a first-view fit
@@ -1091,10 +1155,12 @@ class RuntimePolicy:
             if r.get("ok") and r.get("pos") is not None:
                 agree = float(np.linalg.norm(np.asarray(r["pos"], float) - pend["pos"])) * 1000
             ev.update({"place_confirm": "second", "agree_mm": None if agree is None else round(agree, 1)})
-            if agree is not None and agree <= cfg.place_agree_mm:
-                q_new = (np.asarray(r["quat"], float) if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg
-                         else o.quat.copy())
-                o.pos, o.quat, o.source = np.asarray(r["pos"], float), q_new, "perception"
+            if agree is not None and agree <= cfg.place_agree_mm and not self._low_iou_turn(r):
+                if float(r.get("turned_deg") or 0) <= cfg.refine_max_turn_deg:
+                    o.pos, o.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
+                else:
+                    o.pos, o.quat = keep_centre(o, r["pos"], r["quat"]), o.quat.copy()
+                o.source = "perception"
                 prov.stats["refined"] = prov.stats.get("refined", 0) + 1
                 prov.stats["place_confirmed"] = prov.stats.get("place_confirmed", 0) + 1
                 prov.touched.discard(label)
@@ -1255,17 +1321,19 @@ class RuntimePolicy:
         import copy as _copy
 
         from .estimate import iter_records
-        known = [(c, r) for _t, c, r in iter_records(rec)]
+        # keep each entry's type: a Geometry fixture (play_Xylophone's xylophone) has no Rigid/... catalogue entry, and
+        # refine's occluder list crashed on it (FileNotFoundError catalog/Rigid/xylophone/00000/geom.npz)
+        known = [(t, c, r) for t, c, r in iter_records(rec)]
         found = []
         for nf in list(rec.get("_not_found") or []):
             lab = nf.get("label")
             cands = nf.get("candidates") or []
             if not cands:
                 continue
-            ref = next(((c, r) for c, r in known if any(f"/{c}/" in k for k in cands)), None)
+            ref = next(((t, c, r) for t, c, r in known if any(k.split("/")[:2] == [t, c] for k in cands)), None)
             if ref is not None:
-                c_ref, r_ref = ref
-                ext_ref = self.assets().get("Rigid", c_ref, int(r_ref["category_idx"])).extents
+                t_ref, c_ref, r_ref = ref
+                ext_ref = self.assets().get(t_ref, c_ref, int(r_ref["category_idx"])).extents
                 same = [k for k in cands if np.abs(np.sort(self.assets().get(*k.split("/")[:2], int(k.split("/")[2])).extents)
                                                    - np.sort(ext_ref)).max() < 0.003]
                 key = same[0] if same else cands[0]
@@ -1277,9 +1345,9 @@ class RuntimePolicy:
             typ, cat, idx = key.split("/")
             prior = {"label": lab, "key": key, "pos": [float(reg["target"][0]), float(reg["target"][1]), z],
                      "quat": [1.0, 0.0, 0.0, 0.0]}
-            others = [{"label": r["label"], "key": f"Rigid/{c}/{int(r['category_idx']):05d}",
+            others = [{"label": r["label"], "key": f"{t}/{c}/{int(r['category_idx']):05d}",
                        "pos": [float(v) for v in r["default_pos"]], "quat": [float(v) for v in r["default_ori"]]}
-                      for c, r in known]
+                      for t, c, r in known]
             try:
                 res = (self.perception().refine(obs, [prior] + others, self.fold, 0.10, arm=arm) or {}).get(lab) or {}
             except Exception as e:  # noqa: BLE001 (no refine available: the full-fuse fallback runs)
@@ -1296,7 +1364,7 @@ class RuntimePolicy:
             rec = _copy.deepcopy(rec)
             rec.setdefault(typ, {}).setdefault(cat, []).append(entry)
             rec["_not_found"] = [x for x in rec.get("_not_found") or [] if x.get("label") != lab]
-            known.append((cat, entry))
+            known.append((typ, cat, entry))
             found.append(lab)
         return rec, found
 

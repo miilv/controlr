@@ -240,3 +240,12 @@ def test_slot_settle_table_is_keyed_by_asset_pairs_only():
     pat = re.compile(r"^(Rigid|Geometry|Articulation)/[a-z_]+/\d{5}\|[^|]+\|(Rigid|Geometry|Articulation)/[a-z_]+/\d{5}$")
     keys = [k for k in d if not k.startswith("_")]
     assert keys and all(pat.match(k) for k in keys)  # (base asset, support frame, object asset): no task, no layout
+
+
+def test_small_group_is_by_catalogue_extents(monkeypatch):
+    from dojo.perception import inverse_layout as IL
+
+    ext = {"Geometry/vertical_coin_stand/00000": [0.0321, 0.0111, 0.0171], "Geometry/piggy_bank/00000": [0.148, 0.209, 0.115]}
+    monkeypatch.setattr(IL, "asset_info", lambda k: {"extents": ext[k]})
+    assert IL._small_group({"candidates": ["Geometry/vertical_coin_stand/00000"]})
+    assert not IL._small_group({"candidates": ["Geometry/piggy_bank/00000"]})

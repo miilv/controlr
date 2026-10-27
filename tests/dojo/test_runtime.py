@@ -847,6 +847,28 @@ def test_search_refine_fits_the_missing_block_at_the_region():
     assert _stacked(env)
 
 
+def test_search_refine_keeps_a_geometry_fixture_s_type_among_the_occluders():
+    """play_Xylophone: the xylophone is Geometry; the occluder list used to call it Rigid/xylophone/00000 and the
+    perception service's refine crashed on the missing catalogue entry."""
+    env = _env()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", search=True), assets=FakeAssets(), perception_client=None)
+    seen = []
+
+    class P:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            seen.extend(o["key"] for o in objects)
+            return {}
+    pol.perception = lambda: P()
+    pol.report, pol.fold = {"events": []}, 0
+    rec = {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [0.1, -0.1, 0.78],
+                                "default_ori": [1, 0, 0, 0]}]},
+           "Geometry": {"xylophone": [{"category": "xylophone", "category_idx": 0, "label": "xylophone",
+                                       "default_pos": [0.0, 0.0, 0.8], "default_ori": [1, 0, 0, 0]}]},
+           "_not_found": [{"label": "block_1", "candidates": ["Rigid/block/00005"]}]}
+    _, found = pol._search_refine(rec, {"target": [0.2, -0.1, 0.78], "why": "test"}, {}, "right")
+    assert found == [] and "Geometry/xylophone/00000" in seen and "Rigid/xylophone/00000" not in seen
+
+
 def test_large_borderline_correction_needs_a_confirming_second_refine():
     from dojo.runtime.belief import RuntimeProvider
     env = _env()
@@ -1716,6 +1738,107 @@ def test_belt_tracking_fits_the_velocity_and_moves_the_belief():
     assert prov.stats["track_reads"] == 11                                              # every 4th step
 
 
+def test_belt_newcomers_get_fresh_labels_and_identities_follow_the_votes():
+    """B1 hands out its interchangeable labels in x order (target0, target1, ...): an object that rides into view
+    gets a label the belief already has. It must still join the belief (the 2026-10-26 breadth conveyor never added
+    one), keep its track, and its identity follows the majority of the reads."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    first = objects_from_gt_rows(env.gt_objects(), None)
+    first = {"target0": first["block_0"]}
+    first["target0"].label = "target0"
+    prov.init_objects(first)
+    v = 0.004
+    # (x at step 0, category / idx as read): the first rides away to the right; a newcomer enters at the left at
+    # step 20; B1 misreads the newcomer's identity once
+    riders = [(0.25, 0.04, ("puppet", 0)), (-0.75, -0.08, ("bottle", 47))]
+
+    def reader(obs):
+        s_ = obs["steps_used"]
+        seen = []
+        for k, (x0, y, ident) in enumerate(riders):
+            x = x0 + v * s_
+            if k == 1 and s_ < 20:
+                continue                                                   # not in view yet
+            cat, idx = ident
+            if k == 1 and s_ == 28:
+                cat, idx = "camera", 2                                     # one wrong identity read
+            seen.append((x, y, cat, idx))
+        seen.sort(key=lambda t: t[0])                                      # labels by x, like B1
+        labs = ["target0", "target1", "other0"]
+        out = {}
+        for lab, (x, y, cat, idx) in zip(labs, seen):
+            out.setdefault(cat, []).append({"category": cat, "category_idx": idx, "label": lab, "default_pos": [x, y, 0.78],
+                                            "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}})
+        return {"Rigid": out}
+    prov.track_reader = reader
+    for step in range(0, 61):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    new = [e for e in prov.events if e["kind"] == "track_new"]
+    assert len(new) == 1 and new[0]["step"] == 20 and new[0]["label"] not in ("target0",)
+    lab = new[0]["label"]
+    o = prov.belief.objects[lab]
+    assert o.asset.key == "Rigid/bottle/00047"                            # the majority, not the one misread
+    assert abs(float(o.pos[0]) - (-0.75 + v * 60)) < 0.002
+    assert abs(float(prov.belief.objects["target0"].pos[0]) - (0.25 + v * 60)) < 0.002
+    assert prov.belief.objects["target0"].asset.key == "Rigid/puppet/00000"
+    assert abs(float(prov.belt_velocity()[0]) - v) < 2e-4
+
+
+def test_belt_first_reread_after_the_scan_still_matches_the_frame0_reading():
+    """The tracker starts after the scan and the looks: the rider moved ~12 cm since its frame-0 reading. It must be
+    the same object, not a newcomer next to a ghost of itself (a ghost of the same asset would be "the next one")."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    v = 0.004
+
+    def reader(obs):
+        x = 0.25 + v * obs["steps_used"]
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [x, 0.04, 0.78],
+                                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}}]}}
+    prov.track_reader = reader
+    for step in range(30, 60):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    assert not [e for e in prov.events if e["kind"] == "track_new"]
+    assert list(prov.belief.objects) == ["block_0"]
+    assert abs(float(prov.belief.objects["block_0"].pos[0]) - (0.25 + v * 59)) < 0.002
+
+
+def test_belt_phantom_of_the_start_estimates_is_dropped():
+    """A label filled from frame 0 where the rider no longer is (the scan estimate assumes nothing moved): no re-read
+    ever confirms it, so it leaves the belief before a matching skill takes it for "the next one"."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.31, 0.04, 0.78), (0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))     # block_0 real, block_1 its frame-0 ghost
+    v = 0.004
+
+    def reader(obs):
+        x = 0.31 + v * (obs["steps_used"] - 14)
+        return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [x, 0.04, 0.78],
+                                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}}]}}
+    prov.track_reader = reader
+    for step in range(20, 40):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    assert list(prov.belief.objects) == ["block_0"]
+    assert [e["label"] for e in prov.events if e["kind"] == "track_drop"] == ["block_1"]
+
+
 def test_twin_is_started_for_the_scene_the_policy_chose():
     started = []
     pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="bundle"))
@@ -1781,6 +1904,81 @@ def test_refine_flip_keeps_the_prior_orientation():
     o = prov.belief.objects["block_1"]
     assert out and np.allclose(o.quat, q0) and abs(float(o.pos[0]) - x0 - 0.004) < 1e-9
     assert "prior orientation kept" in pol.report["events"][-1]["why"]
+
+
+@pytest.mark.parametrize("iou,applied", [(0.70, False), (0.95, True)])
+def test_refine_big_turn_at_a_mediocre_iou_is_not_applied(iou, applied):
+    """Proxy tower: a pick refine "turned 90 deg" at iou 0.67-0.70 read a standing pillar lying (22 of 22 such fits
+    wrong); applied, the grasp was loose and the place tilted 90 deg. Below refine_turn_min_iou nothing of it is
+    applied; a confident one (iou 0.95) still is."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    q90 = [float(np.cos(np.pi / 4)), float(np.sin(np.pi / 4)), 0.0, 0.0]          # 90 deg about x (wxyz)
+
+    class Turn:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            p = list(o["pos"])
+            p[0] += 0.006
+            return {o["label"]: {"ok": True, "pos": p, "quat": q90, "shift_mm": 6.0, "iou": iou, "visible_frac": 1.0,
+                                 "turned_deg": 90.0}}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=Turn())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    q0, p0 = o.quat.copy(), o.pos.copy()
+    out = pol._refine_hook(prov, None, "block_1", "left", "pick")
+    if applied:
+        assert out and np.allclose(o.quat, q90) and np.allclose(o.pos, p0 + [0.006, 0.0, 0.0])
+    else:
+        assert out is None and np.allclose(o.quat, q0) and np.allclose(o.pos, p0)
+        assert "prior pose kept" in pol.report["events"][-1]["why"] and prov.stats["turn_low_iou"] == 1
+
+
+@pytest.mark.parametrize("kind", ["pick", "place"])
+def test_refine_flip_of_an_off_centre_root_keeps_the_fit_centre(kind):
+    """breadth2 plug_in_charger: the charger's root is ~24 mm off its centre. A refine that finds it flipped (the
+    other symmetric mode, the same physical object) has its root 48 mm away; the prior orientation is kept, so the
+    root must move with it: the object stays where the fit sees it (centre), no 48 mm jump and no recentre re-hover
+    (both paths: the general refine and place_confirm's confirming view)."""
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.skills.geometry import quat_to_R
+    env = _env()
+    flip = [0.0, 0.0, 0.0, 1.0]                                          # 180 deg about z (wxyz)
+
+    class OffCentre(FakeAssets):
+        def get(self, typ, cat, idx, clutter=False, mesh=False):
+            lo, hi = np.array([0.009, -0.015, -0.015]), np.array([0.039, 0.015, 0.015])    # centre (0.024, 0, 0)
+            return AssetInfo(key=f"{typ}/{cat}/{int(idx):05d}", bbox_min=lo, bbox_max=hi)
+
+    class Flip:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            o = objects[0]
+            centre = np.asarray(o["pos"], float) + np.array([0.024, 0.0, 0.0]) + np.array([0.001, 0.0, 0.0])
+            root = centre - quat_to_R(np.asarray(flip)) @ np.array([0.024, 0.0, 0.0])
+            return {o["label"]: {"ok": True, "pos": [float(v) for v in root], "quat": flip, "iou": 0.97,
+                                 "visible_frac": 0.95, "shift_mm": 49.0, "turned_deg": 180.0}}
+    cfg = RuntimeConfig(mode="perception", refine=True, place_confirm=True)
+    pol = RuntimePolicy(cfg, assets=OffCentre(), perception_client=Flip())
+    pol.reset(FakeEpisode(env).info())
+    b = pol.bridge
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", OffCentre())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    o = prov.belief.objects["block_1"]
+    o.asset = OffCentre().get("Rigid", "block", 5)
+    q0, p0 = o.quat.copy(), o.pos.copy()
+    if kind == "place":                                                   # the confirming view of a place correction
+        pol._place_pending["block_1"] = {"pos": np.asarray(Flip().refine(None, [{"label": "block_1", "pos": list(p0)}],
+                                                                         None)["block_1"]["pos"]),
+                                         "step": b.steps_used, "arm": "left"}
+    out = pol._refine_hook(prov, None, "block_1", "left", kind)
+    assert out is not None and "rehover" not in out
+    assert np.allclose(o.quat, q0)
+    assert np.allclose(o.pos, p0 + [0.001, 0.0, 0.0], atol=1e-9)          # the fit's 1 mm, not the root's 49 mm
 
 
 @pytest.mark.parametrize("api", ["old", "new"])
@@ -1885,12 +2083,38 @@ def test_catalog_check_finds_and_syncs_missing_assets(tmp_path):
     assert (cat / "Rigid/mug/00000/geom.npz").is_file()
 
 
+def test_catalog_check_finds_and_copies_a_missing_links_json(tmp_path):
+    import json as _json
+
+    from dojo.runtime.catalog_check import missing_links, sync_links
+    cat, src = tmp_path / "catalog", tmp_path / "skills6_catalog"
+    for k in ("Articulation/egg_holder/00000", "Articulation/toaster/00000", "Rigid/egg/00000", "Articulation/SpringButton/00002"):
+        (cat / k).mkdir(parents=True)
+        (cat / k / "geom.npz").write_bytes(b"x")
+    (cat / "Articulation/toaster/00000/links.json").write_text("{}")
+    (src / "Articulation/egg_holder/00000").mkdir(parents=True)
+    (src / "Articulation/egg_holder/00000/links.json").write_text(_json.dumps({"links": {"lid": {}}, "joints": {}}))
+    (cat / "tasks.json").write_text(_json.dumps({
+        "fill_egg_holder": {"labels": {"h": {"candidates": ["Articulation/egg_holder/00000"]},
+                                       "e": {"candidates": ["Rigid/egg/00000"]}}},
+        "make_toast": {"labels": {"t": {"candidates": ["Articulation/toaster/00000", "Articulation/toaster/00009"]}}},
+        "press_by_number": {"labels": {"b": {"candidates": ["Articulation/SpringButton/00002"]}}}}))
+    # a missing links.json is a gap; a key without geometry is missing_assets' business, not this check's; buttons are
+    # pressed at perception's annotated press point and need none
+    assert missing_links(cat, ["fill_egg_holder", "make_toast", "press_by_number"]) == {
+        "fill_egg_holder": ["Articulation/egg_holder/00000"]}
+    done = sync_links(cat, ["Articulation/egg_holder/00000"], [src])
+    assert [k for k, _ in done["copied"]] == ["Articulation/egg_holder/00000"]
+    assert missing_links(cat, ["fill_egg_holder", "make_toast"]) == {}
+
+
 @pytest.mark.skipif(not Path("~/dojo-perception-data/catalog/tasks.json").expanduser().is_file(),
                     reason="needs the perception catalogue (compute / GPU boxes)")
 def test_the_installed_catalogue_holds_every_table_vocabulary():
-    from dojo.runtime.catalog_check import missing_assets, missing_support
+    from dojo.runtime.catalog_check import missing_assets, missing_links, missing_support
     assert missing_assets(Path("~/dojo-perception-data/catalog").expanduser()) == {}
     assert missing_support(Path("~/dojo-perception-data/catalog").expanduser()) == {}  # slot bases annotated
+    assert missing_links(Path("~/dojo-perception-data/catalog").expanduser()) == {}  # articulations' links / joints
 
 
 
@@ -2507,3 +2731,74 @@ def test_eval_ends_an_episode_at_the_wall_time_cap(tmp_path, monkeypatch):
            renderer="isaac51", episode_max_minutes=5)
     row = json.loads((tmp_path / "out" / "stack_blocks_gt_verify-off_episodes.jsonl").read_text().splitlines()[0])
     assert row["time_capped"] and row["category"] == "time_cap" and row["steps_used"] == 6
+
+
+def test_track_reads_are_logged_and_kept_and_perception_ops_are_per_episode(monkeypatch):
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png")
+    env = _env()
+
+    class Belt(_HeldPosePerception):
+        def __init__(self, env):
+            super().__init__(env, lambda prior: {})
+            self.calls = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            self.calls.append({"op": "estimate", "s": 0.5})
+            return super().estimate(frames, vocabulary, fold, prior_record)
+
+    seen = {}
+
+    def program(ctx):
+        for _ in range(3):
+            ctx.prov.refresh()
+            ctx.sk.ex.hold(5)
+        seen["n"] = ctx.prov.stats.get("track_reads")
+        return {"ok": True}
+    pc = Belt(env)
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", track_moving="on", save_track_frames=2),
+                        assets=FakeAssets(), perception_client=pc, program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    tr = [e for e in rep["events"] if e["kind"] == "track_read"]
+    assert len(tr) == rep["track_reads"] >= 2 and len(tr[0]["found"]) == 3 and tr[0]["not_found"] == 0
+    assert sum(1 for k in rep.get("look_frames", {}) if k.startswith("track")) == 2
+    n1 = rep["perception_ops"]["estimate"][0]
+    rep2 = run_episode(pol, FakeEpisode(_env()), "perception")                 # same client, a second episode
+    assert rep2["perception_ops"]["estimate"][0] == n1                         # not the running total
+
+
+def test_kinematic_belief_attaches_a_narrow_pick_closed_from_below_half_open():
+    """A pick that opens to less than half (a bread slice, a mallet handle, a thin mug wall: g 0.37-0.46) and then
+    closes must attach its object like a wide one (breadth2 mode B: those picks read "rose 0 mm, drift = lift")."""
+    env = _env([(-0.30, -0.15, 0.78), (0.3, -0.2, 0.78)])
+    objs = objects_from_gt_rows(env.gt_objects(), None)
+    kin = X5Kin()
+    for g_open in (1.0, 0.46, 0.37):
+        kb = KinematicBelief(objs, kin, env.proprio())
+        lab = sorted(kb.objects)[0]
+        o = kb.objects[lab]
+        from dojo.skills.kinematics import down_R
+        from dojo.skills.geometry import T_from
+        r = kin.ik("left", T_from(o.center_w, down_R(0.0)), np.zeros(6), n_random=4)
+        assert r.ok
+        hold = {"right_arm_joint_state": [0.0] * 6, "right_ee_joint_state": [1.0]}
+        for _ in range(20):                    # the belief's arm moves at most MAX_JOINT_STEP per step
+            kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [g_open], **hold})
+        kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [0.0], **hold})
+        assert kb.attached.get("left", (None,))[0] == lab, g_open
+        z0 = float(kb.objects[lab].pos[2])
+        r2 = kin.ik("left", T_from(o.center_w + np.array([0, 0, 0.05]), down_R(0.0)), r.q, n_random=2)
+        for _ in range(10):
+            kb.step({"left_arm_joint_state": list(r2.q), "left_ee_joint_state": [0.0], **hold})
+        assert float(kb.objects[lab].pos[2]) > z0 + 0.04, g_open        # follows the jaws up
+        kb.step({"left_arm_joint_state": list(r2.q), "left_ee_joint_state": [0.1], **hold})
+        assert kb.attached.get("left", (None,))[0] == lab                # a small loosening keeps it
+        kb.step({"left_arm_joint_state": list(r2.q), "left_ee_joint_state": [g_open if g_open < 0.6 else 1.0], **hold})
+        assert not kb.attached and kb.pop_released() == [lab], g_open    # a narrow release lets go too
+    # a nudge from 0.6 to 0.55 (not a close) attaches nothing
+    kb = KinematicBelief(objs, kin, env.proprio())
+    for _ in range(20):
+        kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [0.6], **hold})
+    kb.step({"left_arm_joint_state": list(r.q), "left_ee_joint_state": [0.55], **hold})
+    assert not kb.attached

@@ -18,6 +18,11 @@ Slot bases (``missing_support``): an object the config pins in a support slot of
 play_Xylophone's mallet) is placed from the base's ``passive.support`` frame, which only ``catalog annotate`` writes.
 A base without it fails the check (exit 1, ERROR on stderr) even with every asset present; ``--sync --assets``
 annotates it.
+
+Articulated assets (``missing_links``): the skills read an Articulation's links and joints (a lid's hinge, a lever)
+from ``links.json`` next to its geometry (``scripts/skills/articulation_links.py``; ``world.AssetDB``). An
+Articulation candidate without it fails the check (fill_egg_holder's lid was invisible to the runtime); ``--sync``
+copies it from a source catalogue, else writes it from the asset's USD (``--assets``).
 """
 
 from __future__ import annotations
@@ -96,6 +101,64 @@ def missing_support(catalog: str | Path, names: list[str] | None = None) -> dict
         if gaps:
             out[name] = sorted(gaps)
     return out
+
+
+# Articulation categories whose links / joints the skills read from ``links.json`` (holders.py: the egg holder's lid hinge;
+# the toaster's lever; the laptop's lid). SpringButton is pressed at perception's annotated press point
+# (``catalog annotate``, info.json ``articulation``) and has no links.json anywhere: adding one would change what the
+# skills load for press_by_number, so it is not required.
+LINKS_CATEGORIES = ("egg_holder", "laptop", "toaster")
+
+
+def missing_links(catalog: str | Path, names: list[str] | None = None) -> dict[str, list[str]]:
+    """{vocabulary: [Articulation candidate keys (``LINKS_CATEGORIES``) present in the catalogue without ``links.json``]}."""
+    c = Path(catalog)
+    tasks = json.loads((c / "tasks.json").read_text())
+    out = {}
+    for name in names or vocabulary_names("table", tasks):
+        if name not in tasks:
+            continue
+        keys = sorted({k for d in tasks[name]["labels"].values() for k in d.get("candidates") or []
+                       if k.startswith("Articulation/") and k.split("/")[1] in LINKS_CATEGORIES
+                       and (c / k / "geom.npz").is_file() and not (c / k / "links.json").is_file()})
+        if keys:
+            out[name] = keys
+    return out
+
+
+def _robodojo_objects(assets: str | Path) -> Path:
+    """``Assets`` or ``Assets/Object/RoboDojo`` -> the per-type asset root."""
+    a = Path(assets).expanduser()
+    return a / "Object" / "RoboDojo" if (a / "Object" / "RoboDojo").is_dir() else a
+
+
+def sync_links(catalog: str | Path, keys: list[str], sources: list[str | Path], assets: str | Path | None = None) -> dict:
+    """``links.json`` for the given Articulation keys: copied from the first source catalogue that has it, else written
+    from the asset's USD (``articulation_links.read_links``; needs ``pxr``)."""
+    c = Path(catalog)
+    done = {"copied": [], "written": [], "unresolved": []}
+    for k in keys:
+        src = next((Path(s) / k / "links.json" for s in sources if (Path(s) / k / "links.json").is_file()), None)
+        if src is not None:
+            shutil.copy2(src, c / k / "links.json")
+            done["copied"].append((k, str(src)))
+            continue
+        usd = None
+        if assets is not None:
+            d = _robodojo_objects(assets) / k
+            usd = next((d / n for n in ("object.usdz", "object.usd") if (d / n).is_file()), None)
+        if usd is None:
+            done["unresolved"].append(k)
+            continue
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "articulation_links", Path(__file__).resolve().parents[2] / "scripts" / "skills" / "articulation_links.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        (c / k / "links.json").write_text(json.dumps(mod.read_links(usd)))
+        done["written"].append(k)
+    return done
 
 
 def annotate(catalog: str | Path, keys: list[str], assets: str | Path, python: str = sys.executable) -> None:
@@ -189,7 +252,19 @@ def main(argv=None) -> int:
               f"that slot (run --sync --assets <RoboDojo Assets>)", file=sys.stderr)
     if not gaps:
         print("every slot base has its support frames")
-    return 1 if (rc or gaps) else 0
+    # links / joints of articulated assets (the skills' lid hinges, levers)
+    lgaps = missing_links(a.catalog, names)
+    if lgaps and a.sync:
+        keys = sorted({k for v in lgaps.values() for k in v})
+        done = sync_links(a.catalog, keys, [os.path.expanduser(s) for s in a.sources], a.assets)
+        print("links.json:", json.dumps({k: len(v) for k, v in done.items()}))
+        lgaps = missing_links(a.catalog, names)
+    for name, g in lgaps.items():
+        print(f"ERROR {name}: Articulation without links.json {g} -- the skills cannot see its joints / links "
+              f"(run --sync --sources <catalogue with it> or --assets <RoboDojo Assets>)", file=sys.stderr)
+    if not lgaps:
+        print("every Articulation candidate has its links.json")
+    return 1 if (rc or gaps or lgaps) else 0
 
 
 if __name__ == "__main__":

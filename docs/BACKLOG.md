@@ -16,6 +16,12 @@
   Candidate fix: score the prior's own position against the best fit (prefer the prior unless the fit gains
   clearly), or require the neighbour guard against all same-shape objects of the belief. This is the next tower risk
   after the scan.
+- [ ] **Runtime: a confident flip of a near-symmetric object is a coin toss.** A pick / place refine that turns an
+  object more than `refine_max_turn_deg` (90) at iou >= `refine_turn_min_iou` (0.9) keeps the prior orientation and the
+  fit's centre (`policy.keep_centre`); below that iou nothing is applied. The charger's flips at iou 0.92-0.98 were
+  right in breadth2 100003 / 100004 (the prior was the flipped one) and wrong in breadth 100002 / 100004 and breadth2
+  100002, the same mode on every re-hover either way: neither the iou nor a second view decides. Needs a feature cue
+  (the prong side) from perception, or the in-hand review after the lift; then an A/B on plug_in_charger.
 - [ ] **Runtime post-place drops z-only corrections.** `belief.post_place` adopts a refine only when its xy
   `shift_mm` >= `post_place_min_mm` (2 mm). A refine that lowered a floating belief onto its support
   (`z_dropped_mm`, 5.1 stack 100007 s142: 56 mm) with < 2 mm xy shift is ignored. Adopt when `z_dropped_mm` is
@@ -37,7 +43,9 @@
   bases (`passive.support`); without it, `catalog_check` now exits 1 with an ERROR. make_toast's bread and
   play_Xylophone's mallet are placed from `Geometry/bread_shelf/00000`'s and `Rigid/mallet_stand/00000`'s slots.
   Annotated on compute3 only. Then settle the other slot tasks' pairs: deposit_coin, fill_egg_holder
-  (experiments/2026-10-26-slot-objects.md).
+  (experiments/2026-10-26-slot-objects.md). The check also fails on an egg holder / toaster / laptop without its
+  `links.json` (the skills' lid hinge and lever; `--sync --sources <skills catalogue>` copies it, `--assets` writes it):
+  compute3's perception catalogue got `Articulation/egg_holder/00000/links.json` from skills6's on 2026-10-27.
 - [ ] **Corner look when the expected count is not met after scan + agent.** If the scene's vocabulary expects more
   objects than the scan-primary estimate + agentic answer report, look at the head-view regions the scan pose still
   cannot resolve: the table corners and edges, |x| >= 0.4. The case is build_tower `block4`, a green prism at
@@ -276,10 +284,23 @@
   of the left arm, the board at the robot side, 1.02 m up. PhysicalRSI marks that convention "native scene not
   validated"; check it against the official videos / a rendered episode when one is available. Skills-6's layouts are
   in `compute3:~/dojo-data/skills6/layouts/pick_from_conveyor_by_image` (simlab's shared copies are still v12).
+- [ ] **dojo perception: the scan estimate assumes nothing moved since frame 0** (`scan.estimate_with_scan` fuses frame
+  0 as extra views, then `fill_from_frame0` fills a not-found label from frame 0's reading). On a conveyor the riders
+  move 4 mm / step, so a rider can appear twice: at its scan-time pose and as a frame-0 ghost under another label.
+  The belt tracker drops belief objects no re-read ever confirmed (`RuntimeProvider._track`, 2 reads), but the scan
+  itself (14 steps + a fused estimate) buys nothing there. Candidate fix: no scan (or no frame-0 fusion) when the
+  scene has a Dynamic base (journal 2026-10-27-dojo-memory).
 - [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
   25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
+  Memory (2026-10-27): `plan_intercept` falls back to `waist_grasps` (level, the pad gap from the mesh at that height);
+  G3 result in journal 2026-10-27-dojo-memory.
 - [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and **fold_clothes** (parked: no cloth state in the skills layer).
 - [x] ~~**dojo skills: deposit_coin.** The coin starts out of the inserting arm's reach in about half the layouts.~~ Rim grasps tilted in the coin's plane reach 12/25 with one arm; the rest go through an in-air rim handover (the giver turns the coin on its side, the taker takes its top rim 8 mm off-centre). The coin is 28.4 mm x 1.9 mm (the collider; `physics.size` in its metadata says 21 x 1 mm). Two grippers can share it this way (journal/2026-10-26-dojo-skills5.md).
+- [ ] **dojo skills: a rim-held coin slides in the pads as it leaves its stand** (G3 2/25, journal
+  2026-10-27-dojo-precision.md §3). 100002: the coin slid 5.2 mm down in the pads during the lift out of the stand
+  (cover 9 -> 3.8 mm) and fell out early in the carry; 100019: it slid back into the stand. Ideas: a longer squeeze, a
+  re-grasp when the measured cover is under `DISC_MIN_COVER` while the coin is still over its stand. Also note: a hand
+  on its side at the slot (finger roots over the bank) is now avoided only for the handover's taker (`hand_down_first`).
 - [ ] **dojo skills: a flat coin can be pinched but not inserted.** Pinched across a diameter with the fingertips 0.6 mm over the table, it lifts and turns on edge (3/3). The hand then points sideways, and the X5's 37 mm finger roots hang 28 mm below the TCP over the bank's back, so the coin stays 7 mm above the slot (table relay 0/7, `DISC_TABLE_RELAY = False`).
 - [ ] **dojo: the insert_tubes depth term is met by a tube lying on the table.** `is_A_depth_in_B` is rack bbox top - tube bbox bottom > 45 mm, and a lying tube's bottom is 50 mm below the rack's top. Not a gaming risk (the skill inserts), but any score from a "partial" episode must be read with that in mind. The rack's holes are 54 mm deep.
 - [ ] **dojo: asset metadata bboxes are not the colliders.** The test tube's metadata bbox is 42 x 140 mm, its mesh 35 x 117 mm (the checker reads a 42 mm square). The coin's checker bbox is +-20 mm against a 14.2 mm radius. A coin resting tilted inside the bank can fail the bank's 8 mm bottom bound with its box corners. The skills' collision model uses the metadata box: standing tubes are therefore registered with their mesh height map (`Collision.heightmaps`).
@@ -373,6 +394,12 @@
   null refine hook never corrects it (the runtime's place refine would). Pieces 2 mm off against a base 2 mm off the
   other way read 4 mm off their peg ("not on") while the checker counts them. Read G3 mode-B numbers with that in mind;
   `--held-pose` changes only the held object.
+- [ ] **dojo skills: in G3 mode B a record's `final_objects` is the BELIEF** (the provider's refresh), not the truth;
+  compare `final_true` (g3 hook runs record it). A skill that measures its own progress on an object the belief cannot
+  see must model it instead: fasten_screws mode B read "final poses equal to mode A's" while the belief had turned each
+  nut down with the hand (2.6-2.8 mm a sweep against a true 0.7-0.9 then 2.2-2.5) and the loop stopped a sweep early,
+  ~1.5 mm short of the checker's 9 mm (`screw_on`'s depth model, journal 2026-10-27-dojo-precision.md). Others that
+  count on a re-measure after a release onto a fixture: insert_each's "in a hole" check, `disc_into_slot`'s inside test.
 - [ ] **dojo skills: held-pose protocol, per class** (journal 2026-10-26-dojo-skills9.md). With the merged estimator's
   calibrated sigma a test tube's read is almost never ok (sigma about 3x its error, perception-held's report), so the
   tubes stay on the fallback; a coin's own-camera read under-covers (perception-held: never adopt it without a second
