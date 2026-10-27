@@ -6,7 +6,35 @@ import math
 
 import numpy as np
 
-from tests.dojo.test_skills2 import _box_mesh, _merge, _obj, _world
+
+
+def _box_mesh(lo, hi):
+    lo, hi = np.asarray(lo, float), np.asarray(hi, float)
+    V = np.array([[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])])
+    F = np.array([[0, 1, 3], [0, 3, 2], [4, 6, 7], [4, 7, 5], [0, 4, 5], [0, 5, 1],
+                  [2, 3, 7], [2, 7, 6], [0, 2, 6], [0, 6, 4], [1, 5, 7], [1, 7, 3]])
+    return V, F
+
+
+def _merge(*meshes):
+    Vs, Fs, n = [], [], 0
+    for V, F in meshes:
+        Vs.append(V)
+        Fs.append(F + n)
+        n += len(V)
+    return np.vstack(Vs), np.vstack(Fs)
+
+
+def _obj(label, cat, idx, xyz, half, typ="Rigid", quat=(1.0, 0, 0, 0), mesh=None):
+    from dojo.skills.world import AssetInfo, ObjectState
+    info = AssetInfo(key=f"{typ}/{cat}/{idx:05d}", bbox_min=-np.asarray(half, float), bbox_max=np.asarray(half, float),
+                     mesh=mesh, functional={}, place={})
+    return ObjectState(label, typ, cat, idx, np.asarray(xyz, float), np.asarray(quat, float), info)
+
+
+def _world(objs):
+    from dojo.skills.world import WorldState
+    return WorldState("", "", {o.label: o for o in objs}, {}, {})
 
 
 def _key_mesh():
