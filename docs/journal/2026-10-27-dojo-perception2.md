@@ -122,7 +122,14 @@ with identical pillars matched by position:
 - 100003's cream mug, half behind the right gripper, still reads 00002.
 - 100002's missing mug is a different case.
 
-**Next.** G1 regression on all sets is running. A hang_mugs D0 render was requested from the lead (heavy lock).
+**Results (PR #108, merged).**
+- hang_mugs D0, genuine 5.1 (25 layouts rendered on compute5's heavy lock, 6 min), 75 mugs: right model 47 -> 54 at
+  frame 0, 52 -> 56 with the look, 0 lost.
+- put_bottles within tolerance 104 -> 108.
+- 17 other G1 sets are identical.
+- First version lost organize 100000's garage figure and one fill_pen identity: the veto fell through to the
+  plain-loss branch. Fixed.
+- Report: experiments/2026-10-27-mug-identity.md.
 
 ## 8. play_Xylophone: the mallet offsets came from the agent, and #92 removes them
 
@@ -161,3 +168,36 @@ are yaw / position errors.
 - **Genuine 5.1 d0_51** (frames 1 / 2; tower, stack_blocks, bowls, push_T; 334 fits): ok 321, none beyond 15 mm, 4 at
   10-25 mm.
 - The item stays open as a watch item only.
+
+## 10. plug_in_charger: refine flips the charger 180 deg (pick vs in-hand); no fix shipped
+
+**Precision's rendered plug runs (2a6e30d).** The held refine flips the charger 180 deg at iou 0.92-0.93, the pick
+refine flips it back, and so on: up to 4 regrasp cycles, 604 s in 100004.
+
+**Exact replay.** 100004's 9 refine steps were re-run on reproduced genuine-5.1 frames (open-loop rendered replay of
+the action list, `scripts/dojo/replay_kits.py --save-obs-at`) with the logged priors.
+
+| refine variant | wrong of 9 | notes |
+|---|---|---|
+| main (best loss over the prior and flipped starts) | 2 | pick 143 flips a right prior; held 107 keeps a wrong one; 4 wrong priors are corrected |
+| + a flipped fit needs a 0.03 / 0.06 lower loss | 5 | blocks the 4 corrections along with the 1 wrong flip |
+| + paired texture on refine's local masks decides | 6 | the held views give odd yaws (118-135 deg) |
+
+**What separates the two sides** (standalone: each side fitted separately, then paired texture on the full wrist
+pixels).
+- **Pick views:** texture and silhouette both pick the true side in 5 / 5. The texture margins (0.13-0.26) are much
+  larger than the silhouette's (0.003-0.02).
+- **Held views:** the flipped-side refine does not converge (iou 0.02): a turn about world z is not the in-hand
+  ambiguity.
+
+**Dev checks of the margin.**
+- d0_ext plug / key wrist looks: one wrong flip of a right prior removed (15/16 -> 16/16).
+- d0_51 val_refine: 0 of 334 rows changed.
+
+**Not shipped.** Branch feat/dojo-perception2-flip-margin stays local.
+
+**Next.**
+- **Runtime:** adopt a > 90 deg in-hand turn only when a second view agrees (the lead's two-view rule) in
+  `_held_refine`.
+- **Perception:** a two-sided pick refine with the paired texture on the full wrist pixels. The in-hand flip needs
+  the object's own symmetry axis, not world z.
