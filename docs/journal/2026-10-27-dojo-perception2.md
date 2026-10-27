@@ -201,3 +201,64 @@ pixels).
   `_held_refine`.
 - **Perception:** a two-sided pick refine with the paired texture on the full wrist pixels. The in-hand flip needs
   the object's own symmetry axis, not world z.
+
+## 11. PR #110 review (Gen-New's garment read)
+
+- Verdict: approve. Comment on the PR.
+- Template provenance: dev layouts 100000 / 100002 / 100004 only, with `assert_not_eval` on the layout and on the
+  output path.
+- Keying is by the catalogue form.
+- The shared service path is unchanged for other tasks.
+- Notes:
+  - restrict the read to the scene's Garment candidates once the random templates land;
+  - record each template's source seed in the JSON.
+
+## 12. play_stacking_toy: shape swaps between piece groups (PR #122, merged; report: experiments/2026-10-27-stacking-identity.md)
+
+- **Attribution.** Pegs' stackR_main 100000-03: the wrong shapes are already in B1's scan read (3-6 of 10 pieces), and
+  the agent and fusion pass them through unchanged.
+- **Two causes.**
+  1. The catalogue had no colour for the 4 pieces. Their MDL preset colour (`ABS_Soft_Leather_Pop_*`, `color_2`) was
+     never read, so all four were 0.7 grey. 12/407 assets had that default.
+  2. B1's `same` select constraint was applied to the merged 10-label group (4 select lists), so each selection round
+     forced one shape on all the pieces it placed.
+- **Fix.** `catalog.mdl_preset_color` (flat preset colour, linear -> sRGB, no diffuse texture) and `_options` binding
+  `same` to its own list.
+- **Result.** A genuine-5.1 stacking D0 was rendered for this: 25 dev layouts, 250 pieces. Identity 0.56 -> 0.88,
+  and layouts with all 10 right 0/25 -> 8/25.
+- **What is left.** Pieces half under the home grippers.
+- **Regressions.**
+  - make_kong: identical.
+  - build_tower (its green block's colour changed): ok 173 -> 172, found 196 -> 198.
+- **Roll-out.** The 5 assets were rebuilt on compute3 and copied to compute5-8. md5s are identical on all 5
+  machines, catalog_check is clean, and backups are in `~/controlr-p2-catalog/backup` (compute3) and
+  `~/dojo-data/perception2/rollout/backup` (boxes).
+- **Default change.** The catalogue colour of 5 assets, and `_options` for groups wider than their select list. Only
+  play_stacking_toy and build_tower see it.
+
+## 13. sweep_blocks crashed at step 0: unshipped broom_shovel candidates (PR #120, merged)
+
+- RoboDojo ships only `Rigid/broom_shovel/00000`; tasks.json also lists 00001 / 00004
+  (`catalog_check.KNOWN_UNSHIPPED`). B1 loaded every candidate's geometry, so the estimate crashed.
+- `inverse_layout.task_map` now drops candidates without catalogue geometry. They are kept in `candidates_missing`
+  and reported in one warning.
+- **Default change:** tasks whose candidates the catalogue lacks (55 label sets on compute6, mostly tasks not in the
+  catalogue yet) no longer crash; they skip those candidates.
+
+## 14. insert_key: the lock's yaw from its keyhole (PR #131; report: experiments/2026-10-27-keyhole-yaw.md)
+
+- **Cause.** The lock is a round copper cylinder (sym 36), so B1's yaw is arbitrary (29.6 deg). The agent's 0.03 deg
+  stood; truth 10.7 deg. The place refine never saw the lock.
+- **The read** (`top_feature.py`).
+  - The template is the mesh's top-face opening; only key_slot qualifies in the whole catalogue.
+  - The image side: local-contrast dark pixels -> top plane -> chamfer fit over the full turn; the bulb side comes
+    from the opening's end widths.
+  - A genuine-5.1 insert_key D0 with a wrist straight over the lock was rendered for it (25 dev layouts).
+- **Results.**
+  - Wrist hover: yaw 0.8 deg median, 24/25 within 3 deg, sign right 25/25; xy 0.4 mm. Main: arbitrary yaw, 4.0 mm.
+  - Head (B1): mod 180 median 11.9 -> 3.5 deg.
+- **Runtime** (for Pegs' wrist look over the lock):
+  - `refine` returns `yaw_source` / `yaw_read`, and the hook passes them on (`sk.last_refine`);
+  - a "top_feature" read is exempt from the turn guards.
+- **Default change:** `EstimatorConfig.top_feature_yaw = True`. Only objects with a top feature (key_slot) change.
+- **Open.** B1 misses the lock in 2/25 5.1 frames and puts it 18-25 mm off in 3 more.
