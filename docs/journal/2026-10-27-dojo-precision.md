@@ -251,9 +251,42 @@ tweak beats main.
     two charger grasps slipped (the extra carry).
   - So `insert_into` does not ask by default: a skill that opts in shows it on rendered frames first.
 
+## 8. insert_tubes mode B: the guarded descent's stride
+
+Mode B's per-tube cost (G3 mode B, the actions' segments): a tube's insertion is the guarded / probing tail (no in-hand
+read), 23 strides of 3 mm with a still step each, so 46 env steps for the hole's 52 mm, plus 7 for the release. That is
+a third of the ~140 steps a tube costs in mode B. A relay leg (~110) then never fits in 500, and the step-budget
+failures missed by 1-30 steps.
+
+**Change:** `plan_place(guard_step=, guard_rate=)` (default unchanged: 3 mm, 0.02 rad/step); `insert_each` descends in
+6 mm strides at 0.04 rad/step, one move step each. The holes are 29-30 mm for a 28 mm tube. Mode A never runs this
+tail (it re-measures and servos).
+
+| G3 mode B, 2 mm offsets, fixtures belief, 100000-14 | success | mean | steps median / max (500) |
+|---|---|---|---|
+| main d2e64f1 | 9/15 | 0.760 | 452 / 481 |
+| + guard stride (2f80385) | **11/15** | **0.840** | 388 / 485 |
+
+- Rescued 100000 / 100011, lost 0. Left: 100005 / 09 / 13 (two relays in one episode, still out of steps) and 100008
+  (no plan for the last tube).
+- Rendered 5.1 B (submit_v1, compute6, 100000-09 paired, chunks of 5 interleaved; main d2e64f1 vs 2f80385):
+
+| rendered 5.1 B, 100000-09 | success | mean | steps median | wall median |
+|---|---|---|---|---|
+| main | 6/10 | 0.760 | 466 | 180 s |
+| + guard stride | **7/10** | **0.820** | 393 | 132 s |
+
+  - Rescued: 100000 (budget). Lost: none.
+  - Still failing:
+    - 100002 went from budget to belief_mismatch;
+    - 100008: no plan, in both arms;
+    - 100009: budget, in both arms.
+  - Every success took fewer steps: 45-67 fewer per episode.
+
 ## Spend and machines
 
 - LLM calls: only the agentic perceiver's in the rendered plug A/Bs: 4 arms x 10 episodes, ~3 calls each, ~120 calls
   (Sonnet 5.5 via omniroute). Every G3 run: none.
+- The rendered tubes guard A/B (§8): 20 episodes, ~3 agentic-perceiver calls each, ~60 calls.
 - compute3 light slot 4 until compute6 opened (screws, tubes chunk 1); then compute6 light slots 1-4 and heavy lock 1
   (rendered A/Bs).
