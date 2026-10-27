@@ -673,13 +673,22 @@ def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = 
     T_rec0 = rec.T.copy()
     c = rec.center_w
     mv = None
-    for yaw in (0.0, math.pi / 2, -math.pi / 2, math.pi):
-        T = T_from(np.array([c[0], c[1], float(rec.top_z) + height]), down_R(yaw))
-        mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, FAST, "look_receptacle", gripper=OPEN)
+    # the nearer arm first, then the other; lower when 18 cm up is out of reach (rendered 5.1 100004: none for the
+    # right arm at 18 cm, the look skipped)
+    for arm_ in (arm, "left" if arm == "right" else "right"):
+        for hgt in (height, height - 0.04, height - 0.07):
+            for yaw in (0.0, math.pi / 2, -math.pi / 2, math.pi):
+                T = T_from(np.array([c[0], c[1], float(rec.top_z) + hgt]), down_R(yaw))
+                mv = sk.motion.to_pose(arm_, sk.ex.q[arm_], T, FAST, "look_receptacle", gripper=OPEN)
+                if mv.ok:
+                    break
+            if mv.ok:
+                break
         if mv.ok:
+            arm = arm_
             break
     if mv is None or not mv.ok:
-        sk.log(f"[look_over] {receptacle}: no look pose for {arm}")
+        sk.log(f"[look_over] {receptacle}: no look pose for either arm")
         return T_target
     try:
         sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {receptacle}")
@@ -690,7 +699,7 @@ def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = 
     d = T_rec1 @ inv_T(T_rec0)
     moved = float(np.linalg.norm(d[:3, 3])) * 1000
     turned = math.degrees(math.acos(max(-1.0, min(1.0, (float(np.trace(d[:3, :3])) - 1) / 2))))
-    sk.log(f"[look_over] {receptacle}: refined {moved:.1f} mm / {turned:.1f} deg")
+    sk.log(f"[look_over] {receptacle}: {arm} {hgt*100:.0f} cm up, refined {moved:.1f} mm / {turned:.1f} deg")
     return d @ np.asarray(T_target, float) if (moved > 0.2 or turned > 0.3) else T_target
 
 
