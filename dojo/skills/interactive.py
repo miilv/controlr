@@ -858,7 +858,7 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     if st.get("first") is None:
         st["first"] = max(labs, key=lambda l: float(w.obj(l).pos[:2] @ u))
     first = st["first"]
-    key = w.obj(first).asset.key
+    key = st["first_key"] = w.obj(first).asset.key if first in w.objects else st.get("first_key")
     same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key]
     t0 = w.step
     seen = confirm if same else 0
@@ -874,7 +874,8 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
             return {"ok": False, "stage": "match", "note": str(e)}
         w = sk.refresh()
         labs = [l for l in w.objects if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter]
-        key = w.obj(first).asset.key
+        if first in w.objects:                      # (the first one rides out of view and leaves the belief: keep its key)
+            key = st["first_key"] = w.obj(first).asset.key
         same = [l for l in labs if l != first and w.obj(l).asset.key == key]
         seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")

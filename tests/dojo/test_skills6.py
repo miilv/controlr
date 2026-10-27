@@ -303,6 +303,7 @@ def test_skill_reads_go_through_the_runtime_provider():
     assert calls == [("container", {"inside": []})] and out["visible_frac"] == 0.9
     # (c) the tracked belt velocity is used as soon as it reads as moving
     prov.velocity = {"block_0": np.array([0.004, 0.0])}
+    prov._tracks = {"block_0": [(s_, np.array([0.004 * s_, 0.0])) for s_ in range(0, 40, 4)]}   # a long enough track
     v = I.belt_velocity(sk, ["block_0", "block_1"])
     assert np.allclose(v, [0.004, 0.0])
 
