@@ -659,7 +659,8 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
         out["gl"] = b1["gl"]
     if kw.get("return_stats"):  # in-process callers (record.agentic_estimate); never sent over J1
         out["_agent"] = {"result": src, "gate": why, "turns": st["turns"], "calls": st["calls"], "stop": st["stop"],
-                         "agent_s": st["wall_s"], "tokens": st["tokens"], "refine": ref_info, "problems": probs,
+                         "agent_s": st["wall_s"], "tokens": st["tokens"], "call_s": st["call_s"], "commands": st["commands"],
+                         "errors": st["errors"], "refine": ref_info, "problems": probs,
                          "system_md5": p["system_md5"], "model": cfg["model"], "ws": str(ws)}
     _log_call(cfg["log_dir"], {"t": time.time(), "fn": "perceive", "ws": str(ws), "model": cfg["model"], "result": src,
                                "turns": st["turns"], "calls": st["calls"], "commands": st["commands"], "stop": st["stop"],

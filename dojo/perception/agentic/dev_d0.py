@@ -8,6 +8,9 @@
         the agentic perceiver (fresh agent per case, B1 hint from b1.json) -> <case>/agent_<tag>.json
     python -m dojo.perception.agentic.dev_d0 arbitrate --cases CASES --tag <tag>_ref   the arbitration vs B1 -> agent_<tag>_ref_arb
     python -m dojo.perception.agentic.dev_d0 score --cases CASES --tags b1,<tag>,... [--csv out.csv]
+    python -m dojo.perception.agentic.dev_d0 paired --cases CASES --arms <tag>,<tag>_ref_arb,... [--base b1] [--json out]
+        paired per object vs the base: fixed / broken / still gross / not found / phantoms, per task, calls / tokens /
+        latency per arm, and the budget gate's split (what the agent does on the scenes the gate leaves to B1)
 """
 from __future__ import annotations
 
@@ -142,6 +145,12 @@ def cmd_b1scan(a):
         print(d.name, len(out["objects"]), "objects", out["_dev_wall_s"], "s fill", out["frame0_fill"], flush=True)
 
 
+def _hint_file(a) -> str:
+    """The B1 side of run / refine / arbitrate: b1.json, or ``--hint-tag T``'s agent_T.json (a second agentic call on
+    the first call's output, as the runtime's after_looks / risk calls get the current record as their B1 hint)."""
+    return f"agent_{a.hint_tag}.json" if getattr(a, "hint_tag", None) else "b1.json"
+
+
 def cmd_run(a):
     from .j1 import perceive_impl
 
@@ -151,7 +160,7 @@ def cmd_run(a):
         if f.exists() and not a.force:
             continue
         inp = _inputs(d)
-        hint = "b1_scan.json" if a.scan else "b1.json"
+        hint = f"agent_{a.hint_tag}.json" if a.hint_tag else "b1_scan.json" if a.scan else "b1.json"
         b1 = json.loads((d / hint).read_text()) if (d / hint).exists() and not a.no_hint else None
         extra = None
         if a.scan:
@@ -165,7 +174,7 @@ def cmd_run(a):
                             joints=inp["joints"], b1=b1, use_b1=not a.no_hint and b1 is not None, model=a.model,
                             max_turns=a.max_turns, log_dir=str(Path(a.log_dir or (Path(a.cases) / "_logs")) / tag),
                             fallback="none" if a.no_hint else "b1", refine=False, extra_obs=extra,  # H2: dev_d0 refine
-                            extra_body=json.loads(a.extra_body) if a.extra_body else None)
+                            extra_body=json.loads(a.extra_body) if a.extra_body else None, return_stats=True)
         out["_dev_wall_s"] = round(time.time() - t0, 2)
         f.write_text(json.dumps(out, default=str))
         print(d.name, tag, len(out["objects"]), "objects", out["_dev_wall_s"], "s |", out.get("notes", "")[:220], flush=True)
@@ -199,7 +208,7 @@ def cmd_refine(a):
             cams = j1_adapter._cameras(si["calib"])
         else:
             bgs = load_backgrounds(Path(a.bg_folds) / f"fold{fold}")
-            b1 = json.loads((d / "b1.json").read_text())
+            b1 = json.loads((d / _hint_file(a)).read_text())
             images = j1_adapter._load_frames(inp["frames"])
             state, _ = j1_adapter._state(inp["flange"], inp["grip_cmd"], inp["joints"])
             cams = j1_adapter._cameras(inp["calib"])
@@ -227,7 +236,7 @@ def cmd_arbitrate(a):
             continue
         inp = _inputs(d)
         bgs = load_backgrounds(Path(a.bg_folds) / f"fold{zlib.crc32(inp['episode'].encode()) % 2}")
-        b1 = json.loads((d / "b1.json").read_text())
+        b1 = json.loads((d / _hint_file(a)).read_text())
         out = json.loads(f.read_text())
         state, _ = j1_adapter._state(inp["flange"], inp["grip_cmd"], inp["joints"])
         views = build_views(j1_adapter._load_frames(inp["frames"]), state, j1_adapter._cameras(inp["calib"]), bgs)
@@ -388,7 +397,17 @@ def _yaw(q) -> float:
     return math.degrees(math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)))
 
 
-def score_case(d: Path, tag: str) -> list[dict]:
+def task_tol(task: str) -> tuple:
+    """(translation mm, rotation deg | None): dev_d0's own table (the 2026-10-25 hard set), else eval_g1's."""
+    if task in TOL:
+        return TOL[task]
+    from ..eval_g1 import TOLERANCE
+
+    t = TOLERANCE.get(task)
+    return (t[0], t[1]) if t else (15, None)
+
+
+def score_case(d: Path, tag: str, stats: dict | None = None) -> list[dict]:
     from scipy.optimize import linear_sum_assignment
 
     from ..eval_g1 import gt_world_symmetry, rot_err_deg
@@ -411,14 +430,19 @@ def score_case(d: Path, tag: str) -> list[dict]:
     preds = [o for o in out.get("objects", []) if o.get("pos") is not None]
     for o in preds:
         o["_cls"] = _cls_of(o, classes, b1_cat)
-    tol = TOL.get(task, (15, None))
+    tol = task_tol(task)
     rows = []
+    if stats is not None:
+        stats["phantoms"] = sum(1 for o in preds if o["_cls"] is None)
+        stats["n_pred"] = len(preds)
     for c in sorted(classes):
         G = [o for o in gts if o["category"] == c]
         P = [o for o in preds if o["_cls"] == c]
         C = np.array([[np.linalg.norm(np.asarray(p["pos"][:2]) - np.asarray(g["pos"][:2])) for p in P] for g in G]) if P else np.zeros((len(G), 0))
         ri, ci = linear_sum_assignment(C) if P else ([], [])
         m = dict(zip(ri, ci))
+        if stats is not None:
+            stats["phantoms"] += len(P) - len(m)
         for gi, g in enumerate(G):
             key = f"{g['type']}/{g['category']}/{g['category_idx']:05d}"
             row = {"case": d.name, "task": task, "tag": tag, "label": g["label"], "category": c, "found": gi in m}
@@ -470,6 +494,181 @@ def cmd_score(a):
         Path(a.jsonl).write_text("".join(json.dumps(r) + "\n" for r in rows))
 
 
+def _agent_stats(d: Path, tag: str) -> dict | None:
+    """The run's call stats for an arm (``_agent`` of agent_<tag>.json; H2 / arbitration outputs carry their run's)."""
+    f = d / f"agent_{tag}.json"
+    if not f.exists():
+        return None
+    st = json.loads(f.read_text()).get("_agent")
+    return st if isinstance(st, dict) else None
+
+
+def gate_fires(b1: dict, thr: float = 0.2) -> tuple[bool, str]:
+    """The budget gate's escalation rule (``j1.gate_decision`` after frame 0) on a B1 output: a wanted label B1 did not
+    match, or an object whose calibrated risk is >= ``thr``. False = "b1_confident": no agent call."""
+    from .j1 import gate_decision
+
+    return gate_decision(b1, None, {}, {"gate": "budget", "max_per_episode": 10 ** 6, "gate_thr": thr})
+
+
+def gate_after(d: Path, first_tag: str, thr: float = 0.2) -> tuple[bool, str]:
+    """``record.needs_agent`` on the record a first agentic call leaves (frame 0, before the after_looks call),
+    approximated on the J1 outputs: a task label no object carries (B1's ``_not_found`` minus what the agent found), or a
+    B1 object whose calibrated risk is >= ``thr`` once the agent's reading replaces it (``merge_into_record`` keeps B1's
+    residual and flags and writes the agent's confidence and source over a moved object)."""
+    from ..inverse_layout import label_groups
+    from .j1 import risk
+
+    inp = json.loads((d / "inputs.json").read_text())
+    b1 = json.loads((d / "b1.json").read_text())
+    first = json.loads((d / f"agent_{first_tag}.json").read_text())
+    from .j1 import _cat_of
+
+    cats = [_cat_of(o) for o in first.get("objects") or []]
+    nf = []
+    for g in label_groups(inp["task"]):  # per label group: fewer objects of its kinds than labels = a label not found
+        kinds = {k.split("/")[1] for k in g.get("candidates") or []}
+        n = sum(1 for c in cats if c in kinds)
+        if n < len(g["labels"]):
+            nf += list(g["labels"])[n:]
+    if nf:
+        return True, f"not_found:{nf[:4]}"
+    by_label = {str(o.get("label")): o for o in first.get("objects") or []}
+    hi = []
+    for o in b1.get("objects") or []:
+        f = by_label.get(str(o.get("label")))
+        q = dict(o)
+        if f is not None and f.get("pos") and math.hypot(f["pos"][0] - o["pos"][0], f["pos"][1] - o["pos"][1]) > 1e-3:
+            q.update(confidence=float(f.get("confidence", 0.6)), source="agent")
+        r = risk(q)
+        if r >= thr:
+            hi.append((o.get("label"), round(r, 2)))
+    return (True, f"risk:{hi[:4]}") if hi else (False, "b1_confident")
+
+
+def paired_rows(cases: list[Path], base: str, arm: str) -> tuple[list[dict], dict]:
+    """Per GT object: the base and the arm on the same case (rows of ``score_case``), and per case the phantoms and
+    the arm's call stats. Cases where either side has no output are skipped (and counted)."""
+    objs, per_case = [], {}
+    for d in cases:
+        sb, sa = {}, {}
+        rb, ra = score_case(d, base, sb), score_case(d, arm, sa)
+        if not rb or not ra:
+            per_case[d.name] = {"missing": True}
+            continue
+        ka = {r["label"]: r for r in ra}
+        for r in rb:
+            a = ka[r["label"]]
+            objs.append({"case": d.name, "task": r["task"], "label": r["label"], "base": r, "arm": a})
+        per_case[d.name] = {"task": rb[0]["task"], "phantoms": (sb.get("phantoms", 0), sa.get("phantoms", 0)),
+                            "stats": _agent_stats(d, arm.removesuffix("_arb").removesuffix("_ref"))}
+    return objs, per_case
+
+
+def paired_summary(objs: list[dict]) -> dict:
+    """fixed = base gross -> arm not gross; broken = base not gross -> arm gross; identity wrong = within tolerance
+    with a wrong asset (where the output names one)."""
+    n = len(objs)
+    g = lambda side, k: sum(1 for o in objs if o[side][k])  # noqa: E731
+    out = {"n": n, "within": (g("base", "within_tol"), g("arm", "within_tol")), "gross": (g("base", "gross"), g("arm", "gross")),
+           "not_found": (sum(not o["base"]["found"] for o in objs), sum(not o["arm"]["found"] for o in objs)),
+           "fixed": sum(o["base"]["gross"] and not o["arm"]["gross"] for o in objs),
+           "broken": sum(not o["base"]["gross"] and o["arm"]["gross"] for o in objs),
+           "still_gross": sum(o["base"]["gross"] and o["arm"]["gross"] for o in objs),
+           "within_lost": sum(o["base"]["within_tol"] and not o["arm"]["within_tol"] for o in objs),
+           "within_gained": sum(not o["base"]["within_tol"] and o["arm"]["within_tol"] for o in objs),
+           "id_wrong": (sum(o["base"]["within_tol"] and o["base"].get("id_ok") is False for o in objs),
+                        sum(o["arm"]["within_tol"] and o["arm"].get("id_ok") is False for o in objs))}
+    xy = [o["arm"]["xy_mm"] for o in objs if o["arm"]["found"]]
+    out["xy_p90"] = round(float(np.percentile(xy, 90)), 1) if xy else None
+    return out
+
+
+def spend_summary(per_case: dict) -> dict:
+    st = [c["stats"] for c in per_case.values() if c.get("stats")]
+    if not st:
+        return {"perceive": 0}
+    calls = [s.get("calls", 0) for s in st]
+    call_s = [x for s in st for x in (s.get("call_s") or [])]
+    tok = {k: sum((s.get("tokens") or {}).get(k, 0) for s in st) for k in ("prompt", "completion", "reasoning", "cache_read")}
+    ag = [s.get("agent_s", 0.0) for s in st]
+    from collections import Counter
+
+    return {"perceive": len(st), "llm_calls": sum(calls), "calls_med": float(np.median(calls)), "calls_max": max(calls),
+            "tokens": tok, "prompt_k_med": round(float(np.median([(s.get("tokens") or {}).get("prompt", 0) for s in st])) / 1000, 1),
+            "out_k_med": round(float(np.median([(s.get("tokens") or {}).get("completion", 0) for s in st])) / 1000, 2),
+            "s_per_call_med": round(float(np.median(call_s)), 1) if call_s else None,
+            "s_per_call_p90": round(float(np.percentile(call_s, 90)), 1) if call_s else None,
+            "s_per_perceive_med": round(float(np.median(ag)), 1), "s_per_perceive_p90": round(float(np.percentile(ag, 90)), 1),
+            "stops": dict(Counter(str(s.get("stop")) for s in st)),
+            "no_answer": sum(1 for s in st if not str(s.get("result", "")).startswith("agent"))}
+
+
+def cmd_paired(a):
+    """Paired base vs arms on the same objects: fixed / broken / still gross / not found / phantoms, per task, the
+    arms' calls / tokens / latency, and the gate split (``gate_fires`` on the base B1 output, or ``gate_after`` a first
+    agentic call with ``--gate-after``: what an arm does on the scenes the budget gate would not escalate)."""
+    cases = _cases(a)
+    res = {}
+    for arm in a.arms.split(","):
+        objs, per_case = paired_rows(cases, a.base, arm)
+        tasks = sorted({o["task"] for o in objs})
+        by_task = {t: paired_summary([o for o in objs if o["task"] == t]) for t in tasks}
+        ph = [c["phantoms"] for c in per_case.values() if "phantoms" in c]
+        gate = {}
+        for d in cases:
+            if a.gate_after and (d / f"agent_{a.gate_after}.json").exists():
+                gate[d.name] = gate_after(d, a.gate_after, a.gate_thr)
+            elif not a.gate_after and (d / "b1.json").exists():
+                gate[d.name] = gate_fires(json.loads((d / "b1.json").read_text()), a.gate_thr)
+        fire = [o for o in objs if gate.get(o["case"], (True, ""))[0]]
+        skip = [o for o in objs if not gate.get(o["case"], (True, ""))[0]]
+        res[arm] = {"all": paired_summary(objs), "tasks": by_task, "spend": spend_summary(per_case),
+                    "phantoms": (sum(p[0] for p in ph), sum(p[1] for p in ph)),
+                    "cases": sum(1 for c in per_case.values() if not c.get("missing")),
+                    "missing_cases": [k for k, c in per_case.items() if c.get("missing")],
+                    "gate": {"fire_cases": sum(1 for k, v in gate.items() if v[0] and k in per_case and not per_case[k].get("missing")),
+                             "skip_cases": sum(1 for k, v in gate.items() if not v[0] and k in per_case and not per_case[k].get("missing")),
+                             "fire": paired_summary(fire) if fire else None, "skip": paired_summary(skip) if skip else None}}
+    print(f"| arm | cases | objects | within tol ({a.base} -> arm) | gross | not found | fixed / broken / still gross | "
+          f"identity wrong | phantoms | xy p90 mm |")
+    print("|---|---|---|---|---|---|---|---|---|---|")
+    for arm, r in res.items():
+        x = r["all"]
+        print(f"| {arm} | {r['cases']} | {x['n']} | {x['within'][0]} -> {x['within'][1]} | {x['gross'][0]} -> {x['gross'][1]} | "
+              f"{x['not_found'][0]} -> {x['not_found'][1]} | {x['fixed']} / {x['broken']} / {x['still_gross']} | "
+              f"{x['id_wrong'][0]} -> {x['id_wrong'][1]} | {r['phantoms'][0]} -> {r['phantoms'][1]} | {x['xy_p90']} |")
+    print("\n| arm | perceive calls | LLM calls (med / max per perceive) | prompt / completion / reasoning k-tok (total) | "
+          "s per LLM call med / p90 | s per perceive med / p90 | stops | no answer |")
+    print("|---|---|---|---|---|---|---|---|")
+    for arm, r in res.items():
+        sp = r["spend"]
+        if not sp.get("perceive"):
+            continue
+        t = sp["tokens"]
+        print(f"| {arm} | {sp['perceive']} | {sp['llm_calls']} ({sp['calls_med']:g} / {sp['calls_max']}) | "
+              f"{t['prompt'] / 1000:.0f} / {t['completion'] / 1000:.0f} / {t['reasoning'] / 1000:.0f} | "
+              f"{sp['s_per_call_med']} / {sp['s_per_call_p90']} | {sp['s_per_perceive_med']} / {sp['s_per_perceive_p90']} | "
+              f"{sp['stops']} | {sp['no_answer']} |")
+    print("\n| arm | task | n | within tol | gross | fixed / broken |")
+    print("|---|---|---|---|---|---|")
+    for arm, r in res.items():
+        for t, x in r["tasks"].items():
+            print(f"| {arm} | {t} | {x['n']} | {x['within'][0]} -> {x['within'][1]} | {x['gross'][0]} -> {x['gross'][1]} | "
+                  f"{x['fixed']} / {x['broken']} |")
+    src = f"after the first call agent_{a.gate_after}" if a.gate_after else "on b1.json"
+    print(f"\nGate split (budget gate {src}, thr {a.gate_thr}): fire = the gate would call the agent")
+    print("| arm | gate | cases | objects | gross (base -> arm) | fixed / broken |")
+    print("|---|---|---|---|---|---|")
+    for arm, r in res.items():
+        for k in ("fire", "skip"):
+            x = r["gate"][k]
+            if x:
+                print(f"| {arm} | {k} | {r['gate'][k + '_cases']} | {x['n']} | {x['gross'][0]} -> {x['gross'][1]} | {x['fixed']} / {x['broken']} |")
+    if a.json:
+        Path(a.json).write_text(json.dumps(res, indent=1, default=str))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     sp = ap.add_subparsers(dest="cmd", required=True)
@@ -491,6 +690,7 @@ def main(argv=None):
     p.add_argument("--force", action="store_true")
     p = sp.add_parser("run")
     p.add_argument("--cases", required=True)
+    p.add_argument("--hint-tag", help="the B1 side = agent_<hint-tag>.json (a second agentic call)")
     p.add_argument("--model", required=True)
     p.add_argument("--tag")
     p.add_argument("--no-hint", action="store_true")
@@ -502,6 +702,7 @@ def main(argv=None):
     p.add_argument("--force", action="store_true")
     p = sp.add_parser("refine")
     p.add_argument("--cases", required=True)
+    p.add_argument("--hint-tag", help="the B1 side = agent_<hint-tag>.json (a second agentic call)")
     p.add_argument("--tag", required=True)
     p.add_argument("--scan-root", default=None, help="refine in the scan frame (scan_inputs.json, b1_scan.json)")
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
@@ -509,6 +710,7 @@ def main(argv=None):
     p.add_argument("--force", action="store_true")
     p = sp.add_parser("arbitrate")
     p.add_argument("--cases", required=True)
+    p.add_argument("--hint-tag", help="the B1 side = agent_<hint-tag>.json (a second agentic call)")
     p.add_argument("--tag", required=True)
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))
     p.add_argument("--only", nargs="*")
@@ -522,6 +724,14 @@ def main(argv=None):
     p.add_argument("--tasks", nargs="+", default=["stack_blocks", "push_T", "build_tower", "stack_bowls", "put_bottles_into_dustbin"])
     p.add_argument("--episodes", type=int, default=25)
     p.add_argument("--out", required=True)
+    p = sp.add_parser("paired")
+    p.add_argument("--cases", required=True)
+    p.add_argument("--base", default="b1")
+    p.add_argument("--arms", required=True)
+    p.add_argument("--only", nargs="*")
+    p.add_argument("--gate-thr", type=float, default=0.2)
+    p.add_argument("--gate-after", help="gate split by gate_after(first call = agent_<tag>.json) instead of B1's output")
+    p.add_argument("--json")
     p = sp.add_parser("score")
     p.add_argument("--cases", required=True)
     p.add_argument("--tags", required=True)
@@ -529,7 +739,7 @@ def main(argv=None):
     p.add_argument("--csv")
     p.add_argument("--jsonl")
     a = ap.parse_args(argv)
-    {"cases": cmd_cases, "b1": cmd_b1, "b1scan": cmd_b1scan, "run": cmd_run, "refine": cmd_refine, "arbitrate": cmd_arbitrate, "seq": cmd_seq, "contrast": cmd_contrast, "score": cmd_score}[a.cmd](a)
+    {"cases": cmd_cases, "b1": cmd_b1, "b1scan": cmd_b1scan, "run": cmd_run, "refine": cmd_refine, "arbitrate": cmd_arbitrate, "seq": cmd_seq, "contrast": cmd_contrast, "score": cmd_score, "paired": cmd_paired}[a.cmd](a)
 
 
 if __name__ == "__main__":
