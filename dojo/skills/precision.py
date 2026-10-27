@@ -677,6 +677,16 @@ def _frame_from(a1, a2) -> np.ndarray:
     return np.stack([a1, a2, np.cross(a1, a2)], axis=1)
 
 
+def hand_down_first(targets: list, T_tcp_obj) -> list:
+    """``targets`` (object poses) ordered by how far the hand holding the object with ``T_tcp_obj`` leans from
+    straight down there (the TCP's x axis is the approach). Every spin of a disc about its normal is a target, and the
+    first spin that planned could put the hand on its side: its 28 mm finger-root blocks then hang over the coin
+    bank's back and stopped the descent with the coin 0-1.5 mm into the slot (twin, handover takers 46-90 deg from
+    vertical at the slot, 5/5 of the handover misses)."""
+    Ti = inv_T(np.asarray(T_tcp_obj, float))
+    return sorted(targets, key=lambda T: float((np.asarray(T, float) @ Ti)[2, 0]))
+
+
 def plan_disc_handover(sk: Skills, obj: str, rec: str, tg: list, place_kw: dict, floor: float):
     """Plan an in-air handover of a disc no single arm can carry from its holder to its slot: the giver picks it by
     the rim (``edge_grasps``) and carries it to a point between the arms (``DISC_AIR_POINTS``) turned in its plane so
@@ -733,7 +743,7 @@ def plan_disc_handover(sk: Skills, obj: str, rec: str, tg: list, place_kw: dict,
                         continue
                     Tto_t = inv_T(T_t) @ T_c
                     held = Held(obj, Tto_t, held_box(o, Tto_t))
-                    for T_obj in tg:
+                    for T_obj in hand_down_first(tg, Tto_t):
                         pl = sk.plan_place(taker, T_obj, held=held, q_start=rt.q, ignore=(rec,), **place_kw)
                         if not isinstance(pl, SkillResult):
                             return {"giver": giver, "taker": taker, "pick": pp, "T_c": T_c, "q_g": rg.q, "q_t": rt.q,
@@ -809,7 +819,7 @@ def run_disc_handover(sk: Skills, h: dict) -> SkillResult:
     sk._record(SkillResult(True, "handover", "ok", 0, taker, note=f"{giver} -> {taker}"))
     best = None
     kw = {**h["place_kw"], "approach_rad": DISC_CARRY}     # a slow carry (twin: a coin taken by its rim fell out at 0.14)
-    for T_obj in h["tg"]:
+    for T_obj in hand_down_first(h["tg"], T_rel):
         pl = sk.plan_place(taker, T_obj, ignore=(h["rec"],), **kw)
         if not isinstance(pl, SkillResult):
             best = pl
