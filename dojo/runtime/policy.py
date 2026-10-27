@@ -178,6 +178,11 @@ class RuntimeConfig:
     # off | b1 | b1_then_agent (B1 unless its confidence < 0.5 or dark_risk, then one agent call); a confident
     # "not held" takes the object out of the jaws in the belief
     held_look: str = "off"
+    held_refine_max_mm: float = 10.0    # an in-hand (kind "held") refine moving the object's centre more than this ...
+    held_refine_min_iou: float = 0.85   # ... needs at least this iou; past half the object's largest extent: never
+    held_drop_conf: float = 0.9         # a held_look "not held" at this confidence drops the grasp unless the head check sees
+                                        # the object in the jaws (before: only when the head also saw it at the pick pose,
+                                        # which kept 51 of 52 truly empty grasps on the proxy); > 1 = the old rule
     # mode perception: belt tracking (B1 re-reads every 4 steps while refreshing, a line fit per object over 40 steps;
     # moving objects' belief poses follow the fit): auto = on iff the scene has a conveyor object | on | off
     track_moving: str = "auto"
@@ -387,6 +392,7 @@ class RuntimePolicy:
                                                                                       and cfg.agentic == "budget")))
         if cfg.mode == "perception" and cfg.held_look != "off":
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
+            prov.held_drop_conf = float(cfg.held_drop_conf)
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
@@ -1215,6 +1221,20 @@ class RuntimePolicy:
             ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         self.report["events"].append(ev)
         if not r.get("ok"):
+            return None
+        # closed jaws bound what an in-hand fit may say: the object's centre cannot leave them (half its largest extent),
+        # and a shift past ``held_refine_max_mm`` needs a clear fit (breadth: 27 adopted in-hand fits moved a nut / a
+        # piece 40-60 mm at iou 0.6-0.84; the place was planned from them, "42 mm from cell")
+        from dojo.skills.geometry import quat_to_R
+        c = np.asarray(o.asset.center, float)
+        dc = float(np.linalg.norm((np.asarray(r["pos"], float) + quat_to_R(np.asarray(r["quat"], float)) @ c)
+                                  - (prior[:3] + quat_to_R(prior[3:7]) @ c))) * 1000
+        lim = 500.0 * float(np.max(o.asset.extents))
+        if dc > lim or (dc > self.cfg.held_refine_max_mm and float(r.get("iou") or 0) < self.cfg.held_refine_min_iou):
+            ev.update({"applied": False, "centre_shift_mm": round(dc, 1),
+                       "why": (ev.get("why") or "") + f" (in-hand shift {dc:.0f} mm at iou {float(r.get('iou') or 0):.2f}: "
+                       f"{'outside the jaws' if dc > lim else 'not clear enough'}, prior kept)"})
+            prov.stats["held_refine_rejected"] = prov.stats.get("held_refine_rejected", 0) + 1
             return None
         o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
         if arm in prov.belief.attached and prov.belief.attached[arm][0] == label:
