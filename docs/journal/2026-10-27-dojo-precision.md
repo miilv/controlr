@@ -173,3 +173,87 @@ default `PLACE_REACH`, so no other caller changes):
   The mode B failures left are relay episodes that ran out of steps (471-481). Proxy B spends ~440 steps on three
   direct tubes (breadth2: looks, refines, scan), so in proxy / rendered B a second relay never fits and a first one
   rarely does. Change (4) is the step-free part.
+
+## 5. plug_in_charger: held_pose in the runtime (rendered A/B) and the in-hand flip
+
+**held_pose A/B** (rendered 5.1 on compute6, submit_v1 vs + `held_pose: auto`, main 2a6e30d, 100000-09 paired):
+off 6/10, auto 4/10. Auto rescued none and lost two:
+- 100004: the flip loop below, with no held_pose read at all;
+- 100007: both reads not ok, then the same blind probing tail the off arm used.
+
+The protocol never got past the hover read:
+- 14 hover reads: 1 ok, 0 adopted (8 ambiguous, 4 fit_poor, 1 out_of_range).
+- Not one observer look or show pose ran. Every candidate from perception's `show_pose.propose` was infeasible for our
+  planner: "palm / link at table" (looks proposed around the plug's hover, 2 cm over the strip) or "arms closer than
+  4 cm".
+- G3's 2/10 -> 8/10 came from `heldsim`'s generic candidates, which plan.
+
+The lead's decision: `held_pose` stays off. Report: experiments/2026-10-27-plug-held-pose-ab.md.
+
+**The in-hand flip.** The charger's yaw is a coin toss between the top-down pick view and the in-hand ("held") view.
+Rendered 100004 (truth -9.7 deg):
+- pick -11.4 (right);
+- held 170.6 (wrong), adopted: the held review called the grasp "loose", put the charger down and re-planned;
+- pick -10.9 (right), but turned 179 deg from the flipped belief, so "prior kept";
+- held -8.5 (right), but loose against the flipped re-plan;
+- ... 4 cycles, 604 s.
+
+The first plan was right. Perception-2's exact replay: in-hand, the flipped side does not even converge; no perception
+tweak beats main.
+
+**Fix** (runtime, `RuntimeConfig.held_flip_confirm`, default on = a default change; `held_flip_agree_deg` 30):
+- A held refine turning the object more than `refine_max_turn_deg` is not applied: "pending a second view, plan
+  kept". The skills' held review then sees no turn, so there is no put-down loop.
+- A later view applies it when it finds the same turn in the object's own frame: another arm's pick refine (after a
+  relay) or a held refine at another step. A frame-relative turn survives a carry.
+- A view within `refine_turn_check_deg` refutes it.
+- Pick views alone never flip the belief, as before (#80).
+
+**Rendered A/B** (5.1, submit_v1, compute6, 100000-09 paired; main a3dc7e1 vs + the fix 404cc5c):
+- main **4/10**, the fix **8/10**: rescued 4, lost 0. Left: 100002 (no relay plan) and 100005 (perception).
+- On main, the in-hand flips in 100000 / 03 / 08 (1 / 3 / 1 of them) each put the charger down, and all three failed.
+- With the fix, the same layouts' flips (one each) waited, with no put-down, and all three went in.
+- 100009: its in-hand flip was confirmed by the other arm's pick view after the relay and applied (main failed it on
+  an unrelated grasp slip).
+- Wall median 171 -> 141 s.
+- Report: experiments/2026-10-27-plug-held-flip.md.
+
+## 6. Checks: fasten_screws at 25 layouts, coin and tubes on main, an infrastructure landmine
+
+- **SDF cooking failures** (#125). Two physics-only Isaac processes that start the same SDF task at once can fail to
+  cook its SDF colliders ("UjitsoMeshCookingContext: cooking failure"; nuts, bolts, the tube rack).
+  - fasten_screws G3 mode B in two jobs started the same second came out 1/15: every place missed, the arm held 100+
+    mm off its command, 11 s per episode. The same layout alone scores 1.0.
+  - g3 now reads its own Kit log per episode (`KitLogWatch`): such episodes are `infra_failure`, out of n. The twin
+    service flags its load. Kit keeps 200 logs (was 30).
+  - Stagger same-task SDF jobs; the race did not reproduce on demand (2 jobs together: 1.0 each).
+- **fasten_screws G3 mode B on main** (#85; 2 mm offsets, fixtures belief):
+  - 100010-24 as one job: 14/15 (100024 at 0.5);
+  - with 100000-09: **24/25**, equal to mode A's 24/25.
+- **Post-merge, G3 mode A on main 13a28b6, all 25 each** (no infra failures): deposit_coin 20/25 (0.816) and
+  insert_tubes 24/25 (0.976), per layout the same as the PR runs.
+- **deposit_coin G3 mode B on main** (2.5 mm coin offset, `--held-belief`, fixtures; #101 in): 17/25. The extra losses
+  against mode A are rim grasps whose coin falls out at the lift (100006: lifted 24 mm, then fell, and the handover went
+  on with an empty hand). A fixed 2.5 mm offset with a null refine is pessimistic; the runtime refines the coin at the
+  hover.
+- **Tubes, a quicker relay put-down** (3 cm pre-place, 0.10 rad/step): no measurable gain (408 -> 400, 485 -> 487
+  steps). The steps go into homing / parking between the legs (~124 per relay episode outside the skill records), not
+  the put-down. Dropped.
+
+## 7. The held-pose protocol in the runtime: a read on request, our own show pose (#136)
+
+- `held_pose: request` (runtime) + `plan_place(held_read=True)`: only places that ask read (Pegs' insert_key).
+- When none of perception's show-pose candidates plans (in the runtime, none ever did), our own: the show point x 8
+  yaws, the first observer that plans.
+- Rendered plug, the same flip code: held_pose off **8/10** vs auto + the generic show **4/10**.
+  - The show poses ran (26-34 steps), with 2 of 3 reads ok (~0.6 mm lateral).
+  - The read + servo seated 1.6 mm short of the checker's 15 mm blade depth where the blind probing tail went in, and
+    two charger grasps slipped (the extra carry).
+  - So `insert_into` does not ask by default: a skill that opts in shows it on rendered frames first.
+
+## Spend and machines
+
+- LLM calls: only the agentic perceiver's in the rendered plug A/Bs: 4 arms x 10 episodes, ~3 calls each, ~120 calls
+  (Sonnet 5.5 via omniroute). Every G3 run: none.
+- compute3 light slot 4 until compute6 opened (screws, tubes chunk 1); then compute6 light slots 1-4 and heavy lock 1
+  (rendered A/Bs).

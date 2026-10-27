@@ -36,6 +36,7 @@
   right in breadth2 100003 / 100004 (the prior was the flipped one) and wrong in breadth 100002 / 100004 and breadth2
   100002, the same mode on every re-hover either way: neither the iou nor a second view decides. Needs a feature cue
   (the prong side) from perception, or the in-hand review after the lift; then an A/B on plug_in_charger.
+  In-hand half done (journal 2026-10-27-dojo-precision.md §5): an in-hand flip is adopted only when a second view agrees (`held_flip_confirm`; rendered plug 4/10 -> 8/10). Left: pick views alone still never flip (a wrong frame-0 yaw without a relay stays wrong); Perception-2's paired-texture pick refine separates 5/5 on the 100004 replay.
 - [ ] **Runtime post-place drops z-only corrections.** `belief.post_place` adopts a refine only when its xy
   `shift_mm` >= `post_place_min_mm` (2 mm). A refine that lowered a floating belief onto its support
   (`z_dropped_mm`, 5.1 stack 100007 s142: 56 mm) with < 2 mm xy shift is ignored. Adopt when `z_dropped_mm` is
