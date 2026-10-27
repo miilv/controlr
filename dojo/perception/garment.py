@@ -29,6 +29,13 @@ GRID = 0.006                       # m: occupancy cells for the fit
 TEMPLATES = Path(__file__).resolve().parent / "data" / "garment_templates.json"
 
 
+def load_templates_dict(raw: dict) -> dict:
+    """``build_templates``' dict (mm) -> the loaded form (metres, arrays)."""
+    return {k: {"xy": np.asarray(v["xy"], float) / 1000.0, "kp": {n: np.asarray(x, float) / 1000.0
+                                                                   for n, x in v["kp"].items()}}
+            for k, v in raw.items()}
+
+
 def load_templates(path: str | Path | None = None) -> dict:
     """{asset key: {"xy": (N, 2) root-frame footprint samples, "kp": {name: (3,) root frame}}}."""
     p = Path(path or TEMPLATES)

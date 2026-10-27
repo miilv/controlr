@@ -97,8 +97,10 @@ def handle_grasps(sk: Skills, tool, arm: str) -> list:
     out = []
     for g in G.box_grasps(tool, sk.kin, arm) + G.slice_grasps(tool, sk.kin, arm) + G.antipodal_grasps(tool, sk.kin, arm):
         p = (inv_T(tool.T) @ np.r_[g.T[:3, 3], 1.0])[:3]
-        if (p[k] - mid) * sgn < -0.02 and -float(g.T[2, 0]) > 0.8 and float(g.width) >= 0.012:
-            # nearest the head first (the least lever on a level carry), straight down first
+        # the handle up to the head's first 2.5 cm: a lying broom's handle is 13 mm up, too low for the pads over most
+        # of it (twin: every grasp mid-handle had its fingertips at the table); the head's root holds (5 mm drift)
+        if (p[k] - mid) * sgn < 0.025 and -float(g.T[2, 0]) > 0.8 and float(g.width) >= 0.012:
+            # nearest the head's root first (the least lever on a level carry), straight down first
             g.score = float(g.score) + 2.0 * abs(float(p[k] - mid)) + 0.5 * (1.0 + float(g.T[2, 0]))
             out.append(g)
     return sorted(out, key=lambda g: g.score)
