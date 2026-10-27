@@ -579,3 +579,28 @@ def test_slot_children_take_their_slot_pose_on_the_output_base(monkeypatch):
     assert coin["quat"] == standing and coin["pos"][2] == pytest.approx(0.7806) and coin["slot_from_base"] == "stand"
     far = {"label": "coin0", "asset": "Rigid/coin/00000", "pos": [0.2, -0.1, 0.765], "quat": [1.0, 0, 0, 0]}
     assert settle_slot_children([stand, far], "deposit") == 0 and far["quat"] == [1.0, 0, 0, 0]
+
+
+def test_agent_looks_get_an_executable_pose(monkeypatch):
+    """Mikhail's D-C7 / D-C8: the agent's look requests carried no pose the J1 driver could move to (29 never
+    executed). A look for a label B1 also looks at takes B1's pose; one with a target (or a labelled object) gets a
+    computed pose; one with neither falls back to B1's first look."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    import dojo.perception.look as lk
+
+    monkeypatch.setattr(lk, "default_look", lambda tgt, arm, **k: np.eye(4))
+    monkeypatch.setattr(lk, "flange_for_camera", lambda T: np.array([0.1, -0.2, 1.0, 1.0, 0.0, 0.0, 0.0]))
+    b1_looks = [{"cam": "cam_right_wrist", "reason": "partly_hidden", "label": "T", "target": [0.2, -0.1, 0.77],
+                 "flange_pose": [0.2, -0.3, 0.95, 0.7, 0.0, 0.0, 0.7]}]
+    objects = [{"label": "plug", "pos": [-0.15, -0.12, 0.78]}]
+    looks = [{"cam": "cam_left_wrist", "reason": "heading?", "label": "T"},          # B1 looks at T too
+             {"reason": "check plug", "label": "plug"},                              # a labelled object: computed
+             {"reason": "look around"}]                                              # nothing: B1's first look
+    out, n = j1.executable_looks(looks, b1_looks, objects)
+    assert n == 3 and all(o.get("flange_pose") for o in out)
+    assert out[0]["flange_pose"] == b1_looks[0]["flange_pose"] and out[0]["reason"] == "heading?"
+    assert out[1]["cam"] == "cam_left_wrist" and out[1]["target"] == [-0.15, -0.12, 0.78]   # x < 0: the left arm
+    assert out[2]["flange_pose"] == b1_looks[0]["flange_pose"] and "B1's look" in out[2]["reason"]
+    keep = [{"cam": "cam_left_wrist", "flange_pose": [0, 0, 1, 1, 0, 0, 0]}]
+    assert j1.executable_looks(keep, [], [])[0] == keep                                   # already executable
