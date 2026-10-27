@@ -158,10 +158,13 @@ def centred_grasps(sk: Skills, label: str, arm: str, tilts=(0.0, 25.0, 40.0, -25
 
 
 def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(), tol_xy: float = 0.008, tag: str = "",
-                tries: int = 2) -> dict:
+                tries: int = 2, seen_there=None) -> dict:
     """Put one of ``candidates`` (the first one some arm can move there; flat, any yaw) level at ``xy`` with its
     bottom at ``z_bottom``: pick and place planned together (``plan_transfer``: a tilted top grasp reaches a far
-    cell where straight down does not), banked. Re-placed when it lands more than 10 mm off."""
+    cell where straight down does not), banked. Re-placed when it lands more than 10 mm off, unless ``seen_there()``
+    (a watch read of the cell) sees one of ours there: then the belief is what is off (rendered 5.1: an in-hand
+    refine moved a held piece's belief 42 mm; the re-pick at the believed spot closed on air while the opponent's arm
+    moved, which ends the episode)."""
     for piece in candidates:
         o = sk.world.obj(piece)
         sym = 8 if float(np.ptp(o.asset.extents[:2])) < 0.003 else 2
@@ -193,6 +196,10 @@ def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(
             if d <= 0.010 and abs(float(w.obj(piece).bottom_z) - z_bottom) < 0.006:
                 sk.log(f"[game] {piece} in {tag}, {d * 1000:.1f} mm off")
                 return {"ok": True, "stage": "placed", "piece": piece}
+            if r.status not in ("grasp_slip", "loose") and seen_there is not None and seen_there():
+                sk.log(f"[game] {piece} believed {d * 1000:.0f} mm from {tag} ({r.status}), but the watch sees ours "
+                       f"there: placed")
+                return {"ok": True, "stage": "placed", "piece": piece, "seen": True}
             sk.log(f"[game] {piece} {d * 1000:.0f} mm from {tag} ({r.status}): again")
             if any(sk.held.values()):
                 sk.home(gripper=OPEN)
@@ -217,9 +224,32 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
     sk.log(f"[game] {len(cells)} cells, {len(lines)} lines, {len(pieces)} own / {len(opponent_pieces)} opponent pieces")
 
     def occupancy():
-        # every cell a watch read saw the opponent land in stays the opponent's (the belief never moves its pieces)
+        # every cell a watch read saw the opponent land in stays the opponent's (the belief never moves its pieces); a
+        # piece of ours the watch confirmed in its cell stays there whatever the belief says
+        occ = board_state(sk.world, board, cells, pieces, opponent_pieces)
+        own = {int(k): lab for k, lab in st.get("own_cells", {}).items()}
+        occ = {k: v for k, v in occ.items() if v[1] not in own.values()}
+        for k, lab in own.items():
+            occ[k] = ("own", lab)
         seen = {"cells": [{"k": k, "occupant": "opponent"} for k in st.get("opp_cells", [])]}
-        return with_watch_read(board_state(sk.world, board, cells, pieces, opponent_pieces), seen)
+        return with_watch_read(occ, seen)
+
+    def seen_there(k: int, n: int = 3) -> bool:
+        """Two usable watch reads in a row (1 step apart, at most ``n``) see one of ours in cell ``k``."""
+        hits = 0
+        for _ in range(n):
+            try:
+                sk.ex.hold(1)
+            except (BudgetExceeded, EpisodeEnded):
+                return False
+            read = watch(sk, region, None)
+            if not usable(read):
+                continue
+            occ_k = next((c["occupant"] for c in read["cells"] if int(c["k"]) == k), None)
+            hits = hits + 1 if occ_k == "own" else 0
+            if hits >= 2:
+                return True
+        return False
 
     own_key = w.obj(pieces[0]).asset.key if pieces else None
     opp_key = w.obj(opponent_pieces[0]).asset.key if opponent_pieces else None
@@ -292,7 +322,7 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
                 return {"ok": False, "stage": "no placeable cell", "note": f"tried {sorted(tried)}"}
             cxy = cells[k][1][:2]
             r = place_piece(sk, piece_order(w, free_pieces, cxy, float(b.center_w[0])), cxy, top, ignore=(board,),
-                            tol_xy=tol_xy, tag=cells[k][0])
+                            tol_xy=tol_xy, tag=cells[k][0], seen_there=lambda k=k: seen_there(k))
             if r.get("stage") == "ended":
                 return {"ok": True, "stage": "ended"}
             if r["ok"]:
@@ -304,6 +334,8 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             if not free_pieces:     # a failed place can leave none believed free: cost() would min() over nothing
                 return {"ok": False, "stage": "no free piece", "note": f"after a failed place, tried {sorted(tried)}"}
         piece = r["piece"]
+        if r.get("seen"):
+            st.setdefault("own_cells", {})[k] = piece
         st["placed"].append((piece, cells[k][0]))
         st["turns"] += 1
         h = sk.home(gripper=OPEN)
