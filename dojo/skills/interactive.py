@@ -794,6 +794,9 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
                 max_shift = 0.05
                 sk.log(f"[belt] wrist look: {np.round((p_now - w.obj(label).pos) * 1000, 1).tolist()} mm from the track"
                        f" (iou {float(lr.get('iou') or 0):.2f})")
+            # the lift is measured from the height the belief holds now: a look (or a read of the rider's own stable
+            # pose) re-measures it (#147 100000: the look moved the belief 47 mm down, the lift check read "rose -47 mm")
+            z0 = float(sk.refresh().obj(label).pos[2])
         err = p_now - (p_plan + np.r_[v, 0.0] * (sk.ex.steps_used - t_plan))
         if max_shift < 0.05:
             err[2] = 0.0                                # the tracker's z is its model's, not a measurement
