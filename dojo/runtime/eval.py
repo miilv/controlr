@@ -39,7 +39,39 @@ from .policy import RuntimeConfig, RuntimePolicy
 
 GROSS_XY_MM = 20.0
 TAXONOMY = ("perception_gross", "grasp_slip", "plan", "verify_reject", "budget", "time_cap", "belief_mismatch", "not_home",
-            "divergence", "error", "other")
+            "divergence", "error", "infra_failure", "other")
+COOKING_FAIL = "cooking failure"            # [omni.physx.cooking.plugin] UjitsoMeshCookingContext: cooking failure for <prim>
+
+
+def kit_log_path() -> str | None:
+    """This process's Kit log file (Kit keeps only its last ~31 logs, so the run dir keeps what matters itself)."""
+    try:
+        import carb
+        return carb.settings.get_settings().get("/log/file") or None
+    except Exception:  # noqa: BLE001 (not inside Kit: unit tests, a fake episode)
+        return None
+
+
+def kit_log_offset(path: str | None) -> int:
+    try:
+        return os.path.getsize(path) if path else 0
+    except OSError:
+        return 0
+
+
+def cooking_failures(path: str | None, offset: int, limit: int = 20) -> list[str]:
+    """Kit log lines since ``offset`` that report a failed collider cook. Two processes cooking the same SDF asset (nuts,
+    bolts, a tube rack) at the same moment race on the shared cooking cache and leave the object without a proper
+    collider: the episode is invalid (Precision: fasten_screws 1/15 in parallel vs 1.0 alone)."""
+    if not path:
+        return []
+    try:
+        with open(path, "rb") as f:
+            f.seek(offset)
+            lines = f.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return []
+    return [ln.strip()[:300] for ln in lines if COOKING_FAIL in ln][:limit]
 
 
 def event_counts(events: list) -> dict:
@@ -157,6 +189,8 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
             continue
         paths.assert_not_eval(lf)
         lay = json.loads(Path(lf).read_text())
+        klog = kit_log_path()
+        k_off = kit_log_offset(klog)                # cooking happens at the layout load: watch from here
         info = ep.reset(lay)
         if not info["stable"]:
             rows.append({"layout": lf, "unstable": True})
@@ -196,10 +230,13 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         cat, why = classify(res, reward, rep, perc, cfg.mode)
         if capped and not res.get("success"):
             cat, why = "time_cap", f"episode wall-time cap {episode_max_minutes} min at step {res.get('steps_used')}"
+        cook = cooking_failures(klog, k_off)
+        if cook:                                    # an object without its collider: not a measurement of the policy
+            cat, why = "infra_failure", f"collider cooking failed ({len(cook)}): {cook[0][-120:]}"
         wall = time.perf_counter() - t0
         v = rep.get("verify")
         row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "preset": cfg.preset,
-               "time_capped": capped,
+               "time_capped": capped, "cooking_failures": cook,
                "renderer": renderer, "grip_obs": getattr(getattr(ep, "grip", None), "mode", None),
                "success": bool(res["success"]), "score": float(res["score"]), "steps_used": int(res["steps_used"]),
                "step_lim": int(res["step_lim"]), "observations": int(res["observations"]), "wall_s": round(wall, 1),
