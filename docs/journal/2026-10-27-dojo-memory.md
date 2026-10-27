@@ -99,3 +99,46 @@ Code: origin/main (48600bf) vs this branch, same frames, same backgrounds.
   - solve_equation's tiles on the mats (now the mats' pinned points instead of (0, 0));
   - deposit_coin / make_toast / play_Xylophone slot children and pour_balls_into_vase's contained spheres (these paths
     run before any region check, so they should not move).
+
+## 5. Belt backgrounds and what B1 does on the belt (follow-up branch `feat/dojo-memory-conveyor2`)
+
+Backgrounds were rendered from our dev layouts 100020-22. Each layout: 620 hold steps with a frame every 10, plus 3
+scan-pose frames.
+- 6.0 proxy: compute3, one heavy hold of 8 min (record 4.7 min, render 3 min).
+- 5.1: compute5, 11 min.
+- Built into our own copies of the fold dirs, with `provenance.json`: `compute3:~/dojo-memory-data/bg_folds`,
+  `compute5:~/dojo-data/memory/bg_folds_51`.
+- The median shows an empty belt. The clean head view has the belt under the home grippers.
+
+G1 on the recorded 5.1 belt frames: layouts 100000-04, every 30 steps, 105 reads, 226 rider sightings; GT for
+scoring only.
+
+| read | riders found | identity right | xy median / p90 | phantoms per read | s per read (median) |
+|---|---|---|---|---|---|
+| B1, table background (before) | 0 % | 0 % | - | 0.05 | 0.15 |
+| B1, belt background | 92 % | 65 % | 7.5 / 79 mm | 1.52 | 9.2 |
+| belt read (one fit per blob), belt background | 84 % | 63 % | 6.7 / 71 mm | 1.00 | 2.5 |
+
+- One rider alone in view, identity right: B1 19/25, belt read 21/25.
+- 3+ riders in view (they ride 16 cm apart), identity right: 118/181 vs 110/181.
+- B1 always returns the group's 5 objects, so it makes phantoms. That is also how the frame-0 camera of 100005 became
+  puppet + puppet + bottle.
+- A segmentation profile for the dark belt was tried and dropped: no shadow suppression, full-lightness distance,
+  threshold 12. A probe on 100005's frame 0 shows the black camera's body is 80 % "shadow" under the table settings.
+  With the profile, the belt read lost riders to merged blobs (found 60 %, identity 35 %).
+
+First genuine-5.1 B episode on #86 (100005, submit_v1): 0/1, `perception_gross`.
+- B1's frame-0 phantoms.
+- The first object was read as a bottle (it is a camera).
+- 13 phantom newcomers.
+- It picked a phone twice.
+- 61 B1 estimates = 789 s, on a box loaded with my own G3 runs.
+- The other 9 layouts were stopped: the code had known flaws.
+
+Fixes on the follow-up:
+- The tracker reads through the belt read (`track_read: belt`, a new RuntimeConfig field. Default `belt`: it only
+  changes conveyor scenes, which track).
+- A newcomer joins after 2 reads at consistent places.
+- Identity = the confidence-weighted vote of the latest 4 reads.
+- In `match_and_pick`, a retry after a slip takes another kind of grasp (fixed 100005's camera in G3).
+- A partly slipped lift (> 4 cm) is topped up.
