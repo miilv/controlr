@@ -9,7 +9,9 @@ from the official proprio. Objects come from one of two sources:
   resting on the table:
     - the twin's nominal outcome of the verified candidate that actually ran (``on_verified``),
     - otherwise ``KinematicBelief``: an object follows the jaws that closed on it and, when they open,
-      drops onto the highest support under its footprint;
+      drops onto the highest support under its footprint (the table, a movable object's top, or the mesh surface of
+      a static fixture under it: a board, a bolt's top), and stays where it was let go when a fixture holds it (a
+      nut on a bolt's thread, a mug on a hook: ``fixture_rest``);
   At a resync checkpoint (right after an object was released) the predicted state is rendered against
   the new frames (perception service ``check``: per object, the fraction of the pixels where it is predicted
   front-most that are observed foreground); an object whose prediction the frames do not show is a divergence: the table-level objects are re-estimated, and
@@ -33,6 +35,119 @@ from dojo.skills.world import ObjectState, WorldState, arms_from_proprio, table_
 from .estimate import est_objects, objects_from_gt_rows, objects_from_record, robot_from_state
 
 MAX_JOINT_STEP = 0.2
+FIXTURE_CELL = 0.001        # m: cell of a fixture's top-surface height map (``fixture_height_map``)
+FIXTURE_ERODE = 1           # cells: the fixture's surface is shrunk by this before the lookup, so a ring's 0.4 mm
+                            # clearance on its peg reads as free and a nut's thread on its bolt (1.6 mm) as held
+FIXTURE_HOLD = 0.001        # m: an object point this far below a fixture's surface is held by the fixture
+STILL_RAD = 0.002           # rad: the arm counts as still at a release when its command moved less than this
+_FIXTURE_HM: dict = {}
+
+
+def fixture_height_map(o, cell: float = FIXTURE_CELL) -> dict | None:
+    """Top surface of a static fixture's mesh in its own frame: the max z of dense surface samples per ``cell``
+    (-inf: no surface), eroded by ``FIXTURE_ERODE`` cells. None without a mesh. Cached per asset."""
+    if o.asset.mesh is None:
+        return None
+    key = (o.asset.key, cell)
+    if key in _FIXTURE_HM:
+        return _FIXTURE_HM[key]
+    V, F = np.asarray(o.asset.mesh[0], float), np.asarray(o.asset.mesh[1], int)
+    a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+    L = np.maximum(np.maximum(np.linalg.norm(b - a, axis=1), np.linalg.norm(c - a, axis=1)), np.linalg.norm(c - b, axis=1))
+    nseg = np.clip(np.ceil(L / (0.7 * cell)), 1, 400).astype(int)
+    x0, y0 = float(V[:, 0].min()) - cell, float(V[:, 1].min()) - cell
+    nx = int(np.ceil((float(V[:, 0].max()) + cell - x0) / cell)) + 1
+    ny = int(np.ceil((float(V[:, 1].max()) + cell - y0) / cell)) + 1
+    Z = np.full((ny, nx), -np.inf)
+
+    def put(P):
+        np.maximum.at(Z, (((P[:, 1] - y0) / cell).astype(int), ((P[:, 0] - x0) / cell).astype(int)), P[:, 2])
+    put(V)
+    for n in np.unique(nseg):
+        u, v = np.meshgrid(np.linspace(0, 1, n + 1), np.linspace(0, 1, n + 1))
+        keep = (u + v) <= 1.0
+        u, v = u[keep], v[keep]
+        idx = np.flatnonzero(nseg == n)
+        for i in range(0, len(idx), max(1, 2_000_000 // len(u))):        # bounded memory per batch
+            j = idx[i:i + max(1, 2_000_000 // len(u))]
+            P = a[j][:, None, :] + u[None, :, None] * (b[j] - a[j])[:, None, :] + v[None, :, None] * (c[j] - a[j])[:, None, :]
+            put(P.reshape(-1, 3))
+    for _ in range(FIXTURE_ERODE):
+        Zp = np.pad(Z, 1, constant_values=-np.inf)
+        Z = np.min(np.stack([Zp[1 + dy:1 + dy + ny, 1 + dx:1 + dx + nx] for dy in (-1, 0, 1) for dx in (-1, 0, 1)]), 0)
+    hm = {"x0": x0, "y0": y0, "cell": cell, "Z": Z}
+    _FIXTURE_HM[key] = hm
+    return hm
+
+
+def drop_rest(o, movables, fixtures=()) -> tuple[np.ndarray | None, dict | None]:
+    """Where ``o``, let go at its current pose, comes to rest: onto the highest support under its footprint, the table
+    or a ``movables`` object's top (bbox, up to 10 mm into it); with ``fixtures`` (static Geometry objects, passed for a
+    release: the jaws opened on it while the arm was still) also a fixture's mesh surface under it (``fixture_rest``: a
+    piece on a board, a nut on a bolt's top), and a fixture that holds it (a nut threaded on a bolt, a mug on a hook)
+    keeps it where it was let go. Returns (the new root position, None = stays; a fixture event or None). Without
+    ``fixtures`` (as before) an object let go on one fell through it to the table (a nut 53 mm under its bolt's top, a
+    piece 17 mm under the board)."""
+    lo, hi = o.aabb()
+    support = TABLE_Z if table_contains_xy(o.center_w) else 0.05
+    for other in movables:
+        if other.label == o.label:
+            continue
+        olo, ohi = other.aabb()
+        if (olo[0] < hi[0] - 1e-3 and ohi[0] > lo[0] + 1e-3 and olo[1] < hi[1] - 1e-3 and ohi[1] > lo[1] + 1e-3
+                and ohi[2] <= lo[2] + 0.01):
+            support = max(support, float(ohi[2]))
+    ev = None
+    if fixtures:
+        how, d = fixture_rest(o, fixtures)
+        if how == "held":
+            return None, {"how": "held by a fixture"}
+        z = float(lo[2]) - d if how == "support" else -np.inf     # the bbox bottom after falling d onto the fixture
+        if z > support:
+            support = z
+            ev = {"how": "on a fixture", "z": round(float(z), 4)}
+    return o.pos + np.array([0.0, 0.0, support - lo[2]]), ev
+
+
+def fixture_rest(o, fixtures) -> tuple[str, float | None]:
+    """How static ``fixtures`` (Geometry objects) take an object let go at its pose ``o``, from their meshes' top
+    surfaces under the object's mesh points: ("held", None) when some point is more than ``FIXTURE_HOLD`` below a
+    fixture's surface (a nut on a bolt's thread, a handle around a hook's arm: it stays where it was let go);
+    ("support", d) when a fixture's surface lies under it, d = how far the object falls until its mesh meets it (a piece
+    on a board, a nut on a bolt's top; < 0: raised by up to ``FIXTURE_HOLD``); ("none", None) otherwise (no fixture under it, or no meshes: the table / movable supports
+    decide, as before). Fixtures must stand upright; others are skipped."""
+    if o.asset.mesh is None:
+        return "none", None
+    P = np.asarray(o.asset.mesh[0], float) @ o.R.T + o.pos
+    lo, hi = P.min(0), P.max(0)
+    best = None                                 # the smallest fall onto any fixture
+    for g in fixtures:
+        if g.label == o.label or g.asset.mesh is None or float(g.R[2, 2]) < 0.996:
+            continue
+        glo, ghi = g.aabb()
+        if glo[0] > hi[0] or ghi[0] < lo[0] or glo[1] > hi[1] or ghi[1] < lo[1] or ghi[2] < TABLE_Z - 0.05:
+            continue
+        hm = fixture_height_map(g)
+        if hm is None:
+            continue
+        loc = (P - g.pos) @ g.R
+        ix = np.floor((loc[:, 0] - hm["x0"]) / hm["cell"]).astype(int)
+        iy = np.floor((loc[:, 1] - hm["y0"]) / hm["cell"]).astype(int)
+        inb = (ix >= 0) & (iy >= 0) & (ix < hm["Z"].shape[1]) & (iy < hm["Z"].shape[0])
+        if not inb.any():
+            continue
+        zs = hm["Z"][iy[inb], ix[inb]] + float(g.pos[2])
+        fin = np.isfinite(zs)
+        if not fin.any():
+            continue
+        gap = P[inb][fin][:, 2] - zs[fin]
+        if float(gap.min()) < -FIXTURE_HOLD:
+            return "held", None
+        d = float(gap.min())
+        best = d if best is None else min(best, d)
+    return ("support", best) if best is not None else ("none", None)
+
+
 RELEASE_OPEN = 0.15             # a gripper command this far above its tightest since the grasp releases the object
 
 
@@ -66,6 +181,8 @@ class KinematicBelief:
         self.grasp_z: dict[str, tuple] = {}     # arm -> (TCP z at closing, grasp counter, object pose7 at closing)
         self.g_held: dict[str, float] = {}      # arm -> the lowest gripper command since its object was attached
         self._n_grasp = 0
+        self.drop_events: list[dict] = []       # releases a fixture took (``fixture_rest``), for the provider's events
+        self.cmd: dict[str, np.ndarray] = {}    # arm -> the last commanded joint target (a release counts when still)
 
     def movable(self):
         return [o for o in self.objects.values() if o.obj_type != "Geometry" and not o.clutter]
@@ -86,23 +203,24 @@ class KinematicBelief:
         o.pos, o.quat = np.asarray(p7[:3], float), np.asarray(p7[3:], float)
         o.source = "predicted"
 
-    def _drop(self, label: str) -> None:
+    def fixtures(self):
+        return [o for o in self.objects.values() if o.obj_type == "Geometry" and not o.clutter]
+
+    def _drop(self, label: str, release: bool = False) -> None:
         o = self.objects[label]
-        lo, hi = o.aabb()
-        support = TABLE_Z if table_contains_xy(o.center_w) else 0.05
-        for other in self.movable():
-            if other.label == label:
-                continue
-            olo, ohi = other.aabb()
-            if (olo[0] < hi[0] - 1e-3 and ohi[0] > lo[0] + 1e-3 and olo[1] < hi[1] - 1e-3 and ohi[1] > lo[1] + 1e-3
-                    and ohi[2] <= lo[2] + 0.01):
-                support = max(support, float(ohi[2]))
-        o.pos = o.pos + np.array([0.0, 0.0, support - lo[2]])
+        pos, ev = drop_rest(o, self.movable(), self.fixtures() if release else ())
+        if pos is not None:
+            o.pos = pos
         o.source = "predicted"
+        if ev is not None:
+            self.drop_events.append({"label": label, **ev})
 
     def step(self, action: dict) -> None:
         for a in ARMS:
             tgt = np.asarray(action[f"{a}_arm_joint_state"], float).reshape(-1)[:6]
+            prev = self.cmd.get(a)
+            still = prev is not None and float(np.abs(tgt - prev).max()) < STILL_RAD   # the command did not move
+            self.cmd[a] = tgt.copy()
             self.q[a] = self.q[a] + np.clip(tgt - self.q[a], -MAX_JOINT_STEP, MAX_JOINT_STEP)
             g_new = float(np.clip(np.asarray(action[f"{a}_ee_joint_state"]).reshape(-1)[0], 0, 1))
             T_tcp = self.kin.tcp(a, self.q[a])
@@ -124,7 +242,7 @@ class KinematicBelief:
             if a in self.attached and g_new > min(0.6, self.g_held[a] + RELEASE_OPEN):
                 lab, _ = self.attached.pop(a)
                 self.g_held.pop(a, None)
-                self._drop(lab)
+                self._drop(lab, release=still)
                 self.released.append(lab)
                 self.released_by[lab] = a
             self.g[a] = g_new
@@ -258,6 +376,9 @@ class RuntimeProvider:
         for a in allx[self.n_seen:]:
             self.belief.step(a)
             self.touched.update(self.belief.held_labels())
+        if self.belief.drop_events:
+            self.events.extend({"kind": "belief_drop", "step": self.bridge.steps_used, **e} for e in self.belief.drop_events)
+            self.belief.drop_events = []
         self.n_seen = len(allx)
         self.belief.sync_robot(st)
         self.touched.update(self.belief.released)
