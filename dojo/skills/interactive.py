@@ -795,7 +795,13 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
                 sk.log(f"[belt] wrist look: {np.round((p_now - w.obj(label).pos) * 1000, 1).tolist()} mm from the track"
                        f" (iou {float(lr.get('iou') or 0):.2f})")
         err = p_now - (p_plan + np.r_[v, 0.0] * (sk.ex.steps_used - t_plan))
-        err[2] = 0.0
+        if max_shift < 0.05:
+            err[2] = 0.0                                # the tracker's z is its model's, not a measurement
+        else:
+            # the wrist look measures the height too: a rider read in the wrong stable pose sat 47 mm lower than the
+            # track believed (#147 100000: the jaws closed above it, "rose -47 mm")
+            err[2] = float(np.clip(err[2], -0.06, 0.03))
+            max_shift = 0.08
         if 0.002 < float(np.linalg.norm(err)) < max_shift:
             shifted = []
             for kind, T in samples:
