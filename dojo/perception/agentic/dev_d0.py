@@ -231,7 +231,7 @@ def cmd_arbitrate(a):
 
     for d in _cases(a):
         f = d / f"agent_{a.tag}.json"
-        g = d / f"agent_{a.tag}_arb.json"
+        g = d / f"agent_{a.tag}{a.out_suffix}.json"
         if not f.exists() or (g.exists() and not a.force):
             continue
         inp = _inputs(d)
@@ -241,7 +241,7 @@ def cmd_arbitrate(a):
         state, _ = j1_adapter._state(inp["flange"], inp["grip_cmd"], inp["joints"])
         views = build_views(j1_adapter._load_frames(inp["frames"]), state, j1_adapter._cameras(inp["calib"]), bgs)
         t0 = time.time()
-        objs, infos = arbitrate(views, out["objects"], b1["objects"])
+        objs, infos = arbitrate(views, out["objects"], b1["objects"], risky_b1=a.risky_b1)
         out = dict(out, objects=objs, arbitration=infos, arbitration_s=round(time.time() - t0, 2))
         g.write_text(json.dumps(out, default=str))
         print(d.name, a.tag, f"{sum(i['kept'] == 'b1' for i in infos)} of {len(infos)} pairs kept B1", out["arbitration_s"], "s",
@@ -386,8 +386,8 @@ def _cls_of(o: dict, gt_classes: set, b1_cat: dict, b1_objs: list | None = None)
             if c == "t" and "pad" in s:
                 continue
             return c
-    for c in gt_classes:
-        if c.replace("_", " ") in s:
+    for c in sorted(gt_classes, key=lambda c: (-len(c), c)):  # the most specific name first ("vertical coin stand"
+        if c.replace("_", " ") in s:                          # before "coin"); a set's order changes per process
             return c
     if b1_objs and o.get("pos") is not None:  # as record.merge_into_record: a free-text kind = the nearest B1 object's
         near = [b for b in b1_objs if b.get("category") in gt_classes and b.get("pos") is not None]
@@ -714,6 +714,8 @@ def main(argv=None):
     p.add_argument("--force", action="store_true")
     p = sp.add_parser("arbitrate")
     p.add_argument("--cases", required=True)
+    p.add_argument("--out-suffix", default="_arb", help="agent_<tag><suffix>.json (variants side by side)")
+    p.add_argument("--risky-b1", type=float, default=None, help="seed_refine.arbitrate's risky_b1 (None = off)")
     p.add_argument("--hint-tag", help="the B1 side = agent_<hint-tag>.json (a second agentic call)")
     p.add_argument("--tag", required=True)
     p.add_argument("--bg-folds", default=str(Path.home() / "dojo-perception-data" / "bg_folds"))

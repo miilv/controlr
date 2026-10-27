@@ -239,7 +239,7 @@ ARB_ALONE_MAX_LOSS = 0.8  # a far agent move of a B1 pose no view can score is r
 def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: float = 0.0, move_mm: float = 3.0,
               turn_deg: float = 5.0, pair_m: float = 0.15, rest_z: bool = True,
               pinned_margin: float = 0.15, refined_turn_deg: float = 30.0,
-              alone_max_loss: float = ARB_ALONE_MAX_LOSS) -> tuple[list[dict], list[dict]]:
+              alone_max_loss: float = ARB_ALONE_MAX_LOSS, risky_b1: float | None = None) -> tuple[list[dict], list[dict]]:
     """The agent says WHAT is where; it replaces a pose B1 fitted only with evidence. Agent objects are paired with B1's
     objects of the same category (Hungarian on xy within ``pair_m``, the pairing ``record.merge_into_record`` makes). The
     only object of a kind on both sides is also paired at any distance (as the merge pairs it), but such a far move is
@@ -256,6 +256,11 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
       boards); else the object takes B1's pose, asset and confidence back (``arbitrated: "b1"``). A pose B1's views
       cannot score (hidden everywhere) leaves the agent's reading. An H2 fit (``source: refined``) that turns B1's pose
       by at most ``refined_turn_deg`` stands without the comparison (H2's own fit is the evidence).
+
+    ``risky_b1`` (None = off): a pair whose B1 object has a calibrated risk (``j1.risk``) at or above it keeps the agent's
+    pose without the comparison (B1 is the unsure side there; the gate's own rule). Perceiver-models bake-off (2026-10-27,
+    94 frame-0 scenes): the comparison reverted 10 of Sonnet's 37 fixes (an unrefined agent point scores worse than B1's
+    refined fit to the wrong blob) to prevent 3 breaks.
 
     Breadth-2 (proxy B): the agent turned confident, multi-view-consistent charger poses by 80-180 deg (yaw typed in its
     own convention, or H2 fitted from it into a flip) and slid a make_kong tile row 23 mm off its config slots."""
@@ -348,6 +353,13 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
             # fit to the visible half scores lower. A flipped H2 fit (plug 100003, 180 deg) is still compared; a far one
             # goes to the far-pair rule below
             continue
+        if risky_b1 is not None and not (b.get("flags") or {}).get("slot"):
+            from .j1 import risk
+
+            if risk(b) >= risky_b1:
+                infos.append({"label": o.get("label"), "b1_label": b.get("label"), "moved_mm": round(moved, 1),
+                              "turn_deg": round(turn, 1), "kept": "agent", "b1_risk": round(risk(b), 3)})
+                continue
         # merge keeps B1's turn / asset where the agent gives none
         cand = dict(o, quat=o.get("quat") or b.get("quat"), asset=o.get("asset") or b.get("asset"))
         oth_a = masks([(("a", k), h) for k, h in h_ag.items() if k != i])
