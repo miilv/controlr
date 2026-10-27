@@ -42,10 +42,12 @@ HANDOVER_XY = ((0.06, -0.22), (0.0, -0.22), (0.06, -0.28), (0.10, -0.22), (0.0, 
 HANDOVER_Z = (0.92, 0.98, 1.04)
 PLAN_S = 60.0                       # wall-time cap of the handover search
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
-TURN_LIFT = 0.0006                  # m: the object is turned this far above where it seated (twin, a key on its lock's
-                                    # floor: turned there its teeth caught at -14 deg and it tilted 12-20 deg; 0.6 mm up
-                                    # it went round)
-TURN_STEP_DEG = 3.0                 # deg per env step of that turn
+TURN_LIFT = 0.0009                  # m: the object is turned this far above where it seated
+TURN_STEP_DEG = 3.0                 # deg per env step of that turn ...
+TURN_FINE = (0.45, 0.85, 1.5)       # ... except between these fractions of it: 1.5 deg steps, each held one step
+# (twin, a key spawned in its lock, the turn about its root: the teeth catch at -14 deg, the key tilts 7-11 deg while
+# forced, then snaps through at -30 to -36 deg with 5-7 deg of tilt for a step or two, the moment the checker can pass;
+# 0.3 / 0.9 / 1.2 mm up passed at that step, 0.6 mm missed by 0.3 deg of tilt; pressed on the floor it never passed)
 
 
 def lengthwise_grasps(sk: Skills, label: str, arm: str) -> list:
@@ -302,6 +304,17 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     return sk._record(turn_held(sk, t_arm, label, turn))
 
 
+def _turn_schedule(deg: float) -> list[float]:
+    """Fractions of a turn of ``deg`` degrees, one per env step: ``TURN_STEP_DEG`` steps, ``TURN_FINE[2]`` deg steps
+    each repeated once (a held step) between the fractions ``TURN_FINE[:2]``."""
+    out, x = [], 0.0
+    while x < deg - 1e-9:
+        fine = TURN_FINE[0] * deg <= x < TURN_FINE[1] * deg
+        x = min(deg, x + (TURN_FINE[2] if fine else TURN_STEP_DEG))
+        out += [x / deg] * (2 if fine else 1)
+    return out
+
+
 def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_LIFT) -> SkillResult:
     """Turn the held object about the vertical through its root by ``turn`` (rad), ``lift`` above where it rests now
     (sag-corrected; ``TURN_STEP_DEG`` per step; the largest of ``TURN_FRACTIONS`` that the wrist reaches)."""
@@ -313,11 +326,10 @@ def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_
     T0[2, 3] += lift
     mv, frac = None, 0.0
     for frac in TURN_FRACTIONS:
-        n = max(2, int(math.ceil(abs(math.degrees(turn * frac)) / TURN_STEP_DEG)))
         q, segs, ok = sk.ex.q[arm].copy(), [], True
-        for i in range(1, n + 1):
+        for f in _turn_schedule(abs(math.degrees(turn * frac))):
             T_t = T0.copy()
-            T_t[:3, :3] = rot_z(turn * frac * i / n) @ T0[:3, :3]
+            T_t[:3, :3] = rot_z(turn * frac * f) @ T0[:3, :3]
             ik = sk.kin.ik(arm, C @ T_t @ inv_T(T_rel), q, n_random=0)
             if not ik.ok:
                 ok = False
