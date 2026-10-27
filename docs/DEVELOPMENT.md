@@ -176,6 +176,13 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   so a vertex test of "what the pads touch" found nothing on its flat sides and fell back to a wrong width (the held
   object then hid under a finger mask). Sample the surface (`held.surface_points`).
 - **Two Isaac processes that start the same SDF task at once can fail to cook its SDF colliders** (nuts, bolts, the tube rack: `omni.physx.cooking.plugin`, "UjitsoMeshCookingContext: cooking failure for .../collision/collisions"). The uncooked object then has no proper collision, and every episode measures the infrastructure: fasten_screws G3 mode B on compute6 was 1/15 in two jobs started the same second, against 1.0 for the same layout alone. g3 reads its own Kit log (`dojo.simlab.kitlog.KitLogWatch`, carb `/log/file`): such episodes are `category` `infra_failure` and stay out of the summary's n (`infra_failures`, `infra_seeds`), and the twin service flags its load. Stagger same-task SDF jobs by a minute, and re-run the infra seeds.
+- **RoboDojo's table generator turns an object about its ORIGIN, not about the point xlim / ylim constrain.**
+  `ClutteredGenerator.add_model` puts the place frame's centre at the sampled point, then turns only the orientation
+  by the random yaw (the position stays). The constrained point is origin + R0 @ centre whatever the yaw; an asset whose
+  origin sits at one end (the phone: 58 mm from its centre) lies anywhere on a circle around it. B1's region checks
+  use this for table / ground placements (`inverse_layout._gen_offset`); placements on another object
+  (`gen_layouts.place_on_object`) turn about the placement point. `scripts/perception/region_check.py TASK` lists the
+  settled dev objects outside region + margin under both rules.
 - **A catalogue colour of exactly 0.7 grey means "colour not read".** Some assets take their colour from an MDL preset
   (`info:mdl:sourceAsset:subIdentifier`, e.g. `ABS_Soft_Leather_Pop_Orange`), with no shader inputs on the USD
   side. `catalog.mdl_preset_color` reads the preset's flat colour argument (linear -> sRGB). Before it existed, the

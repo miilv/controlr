@@ -503,3 +503,35 @@ def test_task_map_skips_candidates_without_geometry(tmp_path, monkeypatch):
         assert "ghost" not in lab                                              # nothing left to fit
     finally:
         il.task_map.cache_clear()
+
+
+def test_table_generator_turns_the_asset_about_its_origin():
+    """RoboDojo's table generator puts the place centre at the sampled point, then turns the orientation about the
+    asset ORIGIN: an off-centre asset (a phone, origin at one end) lies with its centre anywhere on a circle around
+    the origin, and the constrained point is origin + R0 @ centre whatever the yaw. On another object (gen_layouts'
+    place_on_object) the turn is about the placement point: the yawed centre, as before."""
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    V = np.array([[x, y, z] for x in (-0.024, 0.024) for y in (0.0, 0.115) for z in (0.0, 0.012)])
+    a = SimpleNamespace(V=V, F=np.zeros((0, 3), int), extents=np.ptp(V, axis=0), info={})
+    sm = il.ShapeModel("Rigid/phone/t", "t", a, np.eye(3), 0.0, 0.012, 1, True, None,
+                       centre_local=np.array([0.0, 0.0575, 0.006]))
+    il._FIXED_POSE_SHAPES[("Rigid/phone/t", "t")] = sm
+    table = {"placement": {"relative_plane": "Table"}, "regions": [il._region({"xlim": [-0.3, 0.4], "ylim": [-0.2, -0.05],
+                                                                               "rotate_rand": True, "rotate_deg": 180})]}
+    on_obj = {"placement": {"relative_plane": "stand/stand/0"}, "regions": table["regions"]}
+    # the generator sampled (0.1, -0.19): origin = point - R0 @ centre; then a half turn about the origin
+    h = il.Hypothesis(0, "Rigid/phone/t", "t", 0.1, -0.19 - 0.0575, np.pi, 0.1)
+    assert np.allclose(il._centre_xy(h, table), (0.1, -0.19), atol=1e-6)
+    assert np.allclose(il._centre_xy(h), (0.1, -0.19 - 0.115), atol=1e-6)   # the yawed centre: 11.5 cm off
+    assert il.region_ok(table, *il._centre_xy(h, table)) and not il.region_ok(table, *il._centre_xy(h))
+    assert np.allclose(il._centre_xy(h, on_obj), il._centre_xy(h))          # on an object: unchanged
+    assert il._blob_margin(table, sm) == pytest.approx(0.115) and il._blob_margin(on_obj, sm) == 0.0
+    old = il.GEN_YAW_ABOUT_ORIGIN
+    try:
+        il.GEN_YAW_ABOUT_ORIGIN = False
+        assert np.allclose(il._centre_xy(h, table), il._centre_xy(h))
+    finally:
+        il.GEN_YAW_ABOUT_ORIGIN = old
