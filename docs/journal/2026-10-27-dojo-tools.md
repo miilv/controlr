@@ -277,3 +277,33 @@ Follow-up (#145, Integration-3's review): an articulation was also a movable, wh
 - When the handle is not on the arm, try the next free hook while still holding the mug.
 - The exit needs the swinging mug's pose: wait, or plan against a swept volume.
 
+## 11. Rendered numbers in the morning, and the in-hand read for the egg drop (not merged)
+
+**Rendered B (genuine 5.1, submit_v1, compute7 heavy lock 1), the measurement slice 100000-09.**
+
+| task | code | layouts | result | misses |
+|---|---|---|---|---|
+| play_Xylophone | main 1f7e965 (#84 + #92 + #93) | 100000-09 | **8/10** (100000-04: 4/5; 100005-09: 4/5) | 100001, 100007: the mallet not found |
+| fill_egg_holder | main + #139 + #145 (32fb9a5) | the 5 settled in 100000-09 | 0.04 (2 eggs of 20) | perception_gross on 4 of 5, grasp_slip on 100009 (the pick closed on a belief 104 mm off) |
+
+The egg misses are perception's (routed to Perception-3):
+- every misplaced egg is believed about 17 mm low: eggs on the basket's floor estimated on the table;
+- 46-108 mm off in xy (eggs against the sloped wall or under the rim);
+- one identity swap (100006);
+- one egg not found (100000).
+
+**The egg drop asking for an in-hand read** (branch `feat/dojo-tools-egg-heldread`). The lying drop passes `held_read` (#136's request protocol), so mode B would measure where the egg sits along its axis before letting it go. G3 mode B, `--held-pose noise --held-pose-request`, the 11 layouts:
+
+| version | eggs |
+|---|---|
+| main + #139 (no place asks) | 12 |
+| the drop asks: the hover read only | the same as main on the 5 layouts run; no hover read was ok (0 of 8), since the hand hides a lying egg |
+| + the show look allowed for `held_read` places (it was servo-only), 2 runs | 11, 10 (7 show looks, 8 reads adopted of 26 per run) |
+
+No gain: the extra show carry costs about as much as the read gives. Not merged. The runtime preset has no `held_pose: request` either; that waits for Pegs' insert_key A/B.
+
+## Spend (the whole stream)
+
+- LLM calls: 169, all the agentic perceiver (Sonnet via omniroute) in rendered episodes: 25 xylophone (123 calls) and 5 eggs (46). G3 costs none.
+- GPU: compute7 light slots 1-4 most of the night, heavy lock 1 for the rendered runs. compute3 overflow slot 4 early on. No downloads.
+
