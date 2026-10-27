@@ -145,8 +145,15 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "Folds a long-sleeved top lying flat on the table with pinches: each sleeve is pinched at its end and laid "
         "on the opposite chest (one arm each), then both hem corners are pinched together and laid on the shoulders; "
         "grippers opened after each fold. For 'fold the clothes'."),
+    "sweep_into": (
+        "sweep_into(objects: [id, ...], pan: id, tool: id)",
+        "Sweeps small objects into a dustpan with a hand broom: one arm slides the dustpan flat along the table to "
+        "beside the objects, its opening towards them, and holds it; the other picks the broom by its handle (handed "
+        "over through the table when out of reach) and pushes each object with the side of the broom's head onto the "
+        "dustpan's axis, then along it over the lip into the pan; the broom is put down away from the dustpan. For "
+        "'use the dustpan to sweep the blocks'."),
 }
-SKILL_DOCS_VERSION = 10  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 11  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
 #                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
@@ -156,6 +163,7 @@ SKILL_DOCS_VERSION = 10  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + 
 #                        9: + fold_garment (gennew)
 #                        10: fill_container: "hold the holder with one hand, fill it with the other, put it back down" is
 #                           judged by the end state; the skill fills it standing (routing 2026-10-27: Sol wrote code 3/3)
+#                        11: + sweep_into (gennew)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',
