@@ -381,6 +381,12 @@
   null refine hook never corrects it (the runtime's place refine would). Pieces 2 mm off against a base 2 mm off the
   other way read 4 mm off their peg ("not on") while the checker counts them. Read G3 mode-B numbers with that in mind;
   `--held-pose` changes only the held object.
+- [ ] **dojo skills: in G3 mode B a record's `final_objects` is the BELIEF** (the provider's refresh), not the truth;
+  compare `final_true` (g3 hook runs record it). A skill that measures its own progress on an object the belief cannot
+  see must model it instead: fasten_screws mode B read "final poses equal to mode A's" while the belief had turned each
+  nut down with the hand (2.6-2.8 mm a sweep against a true 0.7-0.9 then 2.2-2.5) and the loop stopped a sweep early,
+  ~1.5 mm short of the checker's 9 mm (`screw_on`'s depth model, journal 2026-10-27-dojo-precision.md). Others that
+  count on a re-measure after a release onto a fixture: insert_each's "in a hole" check, `disc_into_slot`'s inside test.
 - [ ] **dojo skills: held-pose protocol, per class** (journal 2026-10-26-dojo-skills9.md). With the merged estimator's
   calibrated sigma a test tube's read is almost never ok (sigma about 3x its error, perception-held's report), so the
   tubes stay on the fallback; a coin's own-camera read under-covers (perception-held: never adopt it without a second
