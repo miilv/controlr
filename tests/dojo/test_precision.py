@@ -91,7 +91,9 @@ def test_insert_each_tries_a_relay_before_a_plan_that_holds_the_tube_off_its_cen
     plan = (SimpleNamespace(arm="left", grasp=SimpleNamespace(note="box close 0 off +21mm (off the CoM)")), None)
     sk = SimpleNamespace(world=w, kin=X5Kin(), held={"left": None, "right": None}, log=lambda m: None,
                          coll=SimpleNamespace(include=set(), heightmaps={}, margin_of={}),
-                         refresh=lambda: w, bank=lambda: None, plan_transfer=lambda *a, **k: plan)
+                         refresh=lambda: w, bank=lambda: None,
+                         plan_transfer=lambda *a, **k: seen.append(k.get("place_reach")) or plan)
+    seen = []
     order = []
     monkeypatch.setattr(L, "place_oriented", lambda sk_, lab, tg, **kw: order.append("relay") or SkillResult(
         False, "place_oriented", "ik_fail", 0, None, note="no relay"))
@@ -99,3 +101,4 @@ def test_insert_each_tries_a_relay_before_a_plan_that_holds_the_tube_off_its_cen
         ("leg", first is plan)) or SkillResult(False, "place", "place_miss", 50, "left", note="x"))
     P.insert_each(sk, ["tube0"], "rack")
     assert order == ["relay"] * P.EACH_RELAY_HOLES + [("leg", True)]
+    assert seen and all(r == P.EACH_REACH for r in seen)        # every one-arm screen keeps to the tubes' reach

@@ -933,6 +933,8 @@ def uniform_section_grasps(sk: Skills, o, arm: str, tilts=(0.0, 25.0, -25.0, 40.
 EACH_OVER = 0.07              # m: a filled hole this close to the line from the carrying arm's base to a hole is "in
                               # the way"
 EACH_RELAY_HOLES = 3          # holes tried through a relay (the object put down as it lies, then into the hole)
+EACH_REACH = 0.57             # m, place TCP from the placing arm's base (twin, tubes held at the CoM: 68/68 in below
+                              # 0.57 m, 2 of 4 at 0.574-0.58 m missed with the arm held 46-56 mm off its command)
 EACH_RELAY_NEAR = (0.0, -0.28)    # relay spots near here (between the arms, in front of the robot)
 
 
@@ -1039,7 +1041,8 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
         free = [x[1:] for x in free]
         res = None
         pk = {**EACH_PLACE_KW, "grip_only": (receptacle,)}
-        tkw = {"grasps": lambda a, lab=lab: uniform_section_grasps(sk, sk.world.obj(lab), a), "lift_to_pre": True}
+        tkw = {"grasps": lambda a, lab=lab: uniform_section_grasps(sk, sk.world.obj(lab), a), "lift_to_pre": True,
+               "place_reach": EACH_REACH}
         def hole_targets(T, r):
             p = T[:3, 3]
             fl = hole_floor(rec, p[:2], r)
