@@ -315,3 +315,64 @@ def test_waits_on_actor_from_the_plan_or_the_words():
     assert waits_on_actor("Play tic-tac-toe with the opponent.") is None              # our first piece comes first
     assert waits_on_actor("Stack the three blocks.") is None
     assert waits_on_actor("Play tic-tac-toe.", _board_world()) is None                # the plan: play_board_game
+
+def test_copy_demonstration_follows_departures_and_matches_twins_by_asset_then_category(monkeypatch):
+    """Perception's departure read: the demonstrator's objects leave their places in the demonstrated order; each one's
+    twin on our side is put in that order (same asset, else same category: the start estimate can read a sibling
+    model of the same category)."""
+    import dojo.skills.interactive as I
+    from dojo.skills.skills import SkillResult
+
+    objs = [_obj("basket0", "basket", 5, (-0.4, -0.15, 0.8), (0.1, 0.1, 0.05), typ="Geometry"),
+            _obj("basket1", "basket", 5, (0.35, 0.25, 0.8), (0.1, 0.1, 0.05), typ="Geometry"),
+            _obj("t0", "phone", 0, (0.1, -0.1, 0.77), (0.03, 0.06, 0.01)),
+            _obj("t1", "toy_car", 1, (-0.05, -0.08, 0.78), (0.04, 0.02, 0.02)),
+            _obj("t2", "watch", 0, (0.15, -0.13, 0.78), (0.02, 0.02, 0.01)),
+            _obj("aim0", "phone", 0, (-0.19, 0.19, 0.77), (0.03, 0.06, 0.01)),
+            _obj("aim1", "toy_car", 4, (-0.13, 0.29, 0.78), (0.04, 0.02, 0.02)),      # read as a sibling model
+            _obj("aim2", "watch", 0, (-0.15, 0.11, 0.78), (0.02, 0.02, 0.01))]
+    w = _world(objs)
+    departures = {20: "aim1", 140: "aim0", 260: "aim2"}
+
+    class Ex:
+        steps_used = 0
+
+        def hold(self, n):
+            self.steps_used += n
+
+    class Kin:
+        def base(self, arm):
+            T = np.eye(4)
+            T[:3, 3] = (-0.3 if arm == "left" else 0.3, -0.45, 0.77)
+            return T
+
+    class Prov:
+        def watch_read(self, region, prior=None):
+            assert region.get("sources") and {s["label"] for s in region["sources"]} >= {"t0", "aim0"}
+            gone = [{"asset": w.obj(l).asset.key, "label": l} for s_, l in sorted(departures.items()) if s_ <= sk.ex.steps_used]
+            return {"kind": "container", "gone": gone, "inside": gone, "visible_frac": 1.0, "occluded": False}
+
+    class Sk:
+        ex, kin, provider, held = Ex(), Kin(), Prov(), {"left": None, "right": None}
+        logs: list = []
+
+        def refresh(self):
+            w.step = self.ex.steps_used
+            return w
+
+        def log(self, m):
+            self.logs.append(m)
+
+        def bank(self):
+            pass
+    sk = Sk()
+    put = []
+
+    def put_in_open(sk_, label, container):
+        put.append(label)
+        w.obj(label).pos = w.obj(container).pos.copy()
+        return SkillResult(True, "put_in_open", "ok", 10, "left")
+    monkeypatch.setattr(I, "put_in_open", put_in_open)
+    monkeypatch.setattr(I, "wait_actors_still", lambda sk_, **kw: "still")
+    r = I.copy_demonstration(sk, "basket0", "basket1", [o.label for o in objs])
+    assert put == ["t1", "t0", "t2"] and r["ok"], (put, r, sk.logs)
