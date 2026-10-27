@@ -315,7 +315,9 @@ class RuntimeProvider:
         self.track_max_speed = 0.006            # m / step: the fastest rider we expect (belts: 4 mm / step)
         self.track_outlier_m = 0.015            # a read this far off its track's line is dropped from the fit
         self._tracks: dict = {}                 # label -> [(step, xy)] reads
-        self._id_votes: dict = {}               # label -> {asset key: summed confidence}
+        self._id_votes: dict = {}               # label -> [(asset key, confidence)] of its latest reads
+        self.track_id_window = 4
+        self._tentative: list = []              # unmatched reads of the last re-read: (step, xy, ObjectState)
         self._unconfirmed: dict = {}            # label -> re-reads that did not see a never-confirmed object
         self.track_confirm_reads = 2
         self._n_new = 0
@@ -544,9 +546,21 @@ class RuntimeProvider:
                 del self.belief.objects[o.label]
                 self.events.append({"kind": "track_drop", "label": o.label, "step": step, "reads": n,
                                     "pos": [round(float(v), 3) for v in o.pos[:2]]})
-        for j, e in enumerate(el):                      # an object that came into view (e.g. onto the belt)
+        # an object that came into view (e.g. onto the belt) joins after two reads in a row at consistent places (a
+        # crowded belt makes B1 split blobs into extra objects, read once here and once there)
+        prev_tent, self._tentative = self._tentative, []
+        for j, e in enumerate(el):
             if j in used or e.confidence < self.track_new_conf:
                 continue
+            seen = None
+            for k, (s0, p0, e0) in enumerate(prev_tent):
+                if float(np.linalg.norm(e.pos[:2] - p0)) < self.track_match_m + self.track_max_speed * (step - s0):
+                    seen = k
+                    break
+            if seen is None:
+                self._tentative.append((step, e.pos[:2].copy(), e))
+                continue
+            s0, p0, e0 = prev_tent.pop(seen)
             lab = e.label
             if lab in self.belief.objects:
                 self._n_new += 1
@@ -554,7 +568,8 @@ class RuntimeProvider:
                 e = copy.deepcopy(e)
                 e.label = lab
             self.belief.objects[lab] = e
-            self._tracks[lab] = [(step, e.pos[:2].copy())]
+            self._tracks[lab] = [(s0, p0.copy()), (step, e.pos[:2].copy())]
+            self._vote(lab, e0)
             self._vote(lab, e)
             self.events.append({"kind": "track_new", "label": lab, "asset": e.asset.key if e.asset else None,
                                 "pos": [round(float(v), 3) for v in e.pos[:2]], "step": step})
@@ -583,8 +598,12 @@ class RuntimeProvider:
         o = self.belief.objects.get(label)
         if o is None or e.asset is None:
             return
-        v = self._id_votes.setdefault(label, {})
-        v[e.asset.key] = v.get(e.asset.key, 0.0) + max(float(e.confidence), 0.05)
+        hist = self._id_votes.setdefault(label, [])
+        hist.append((e.asset.key, max(float(e.confidence), 0.05)))
+        del hist[:-self.track_id_window]               # the latest reads: a rider gets better views as it rides in
+        v: dict = {}
+        for k, c in hist:
+            v[k] = v.get(k, 0.0) + c
         best = max(v, key=v.get)
         if o.asset is not None and best != o.asset.key and best == e.asset.key:
             self.events.append({"kind": "track_identity", "label": label, "from": o.asset.key, "to": best,

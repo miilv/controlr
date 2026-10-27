@@ -1871,7 +1871,7 @@ def test_belt_newcomers_get_fresh_labels_and_identities_follow_the_votes():
         b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
         prov._track(b.obs)
     new = [e for e in prov.events if e["kind"] == "track_new"]
-    assert len(new) == 1 and new[0]["step"] == 20 and new[0]["label"] not in ("target0",)
+    assert len(new) == 1 and new[0]["step"] == 24 and new[0]["label"] not in ("target0",)   # seen at 20 and 24
     lab = new[0]["label"]
     o = prov.belief.objects[lab]
     assert o.asset.key == "Rigid/bottle/00047"                            # the majority, not the one misread
@@ -1928,6 +1928,33 @@ def test_belt_phantom_of_the_start_estimates_is_dropped():
         prov._track(b.obs)
     assert list(prov.belief.objects) == ["block_0"]
     assert [e["label"] for e in prov.events if e["kind"] == "track_drop"] == ["block_1"]
+
+
+def test_belt_a_one_read_phantom_never_joins():
+    """B1 splits a crowded blob into an extra object here and there: a read that is not seen again near the same place
+    in the next read is not an object."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env(positions=[(0.25, 0.04, 0.78)])
+    b = Bridge()
+    ep = FakeEpisode(env)
+    b.obs, b.fresh = ep.observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+
+    def reader(obs):
+        s_ = obs["steps_used"]
+        recs = [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [0.25 + 0.004 * s_, 0.04, 0.78],
+                 "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.8}}]
+        if s_ % 8 == 0:                                                   # a phantom, somewhere else every time
+            recs.append({"category": "block", "category_idx": 5, "label": "block_1",
+                         "default_pos": [-0.5 + 0.03 * (s_ % 24), -0.1 + 0.3 * ((s_ // 8) % 2), 0.78],
+                         "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.7}})
+        return {"Rigid": {"block": recs}}
+    prov.track_reader = reader
+    for step in range(0, 60):
+        b.obs, b.fresh = dict(ep.observe(), steps_used=step), True
+        prov._track(b.obs)
+    assert not [e for e in prov.events if e["kind"] == "track_new"] and list(prov.belief.objects) == ["block_0"]
 
 
 def test_twin_is_started_for_the_scene_the_policy_chose():
