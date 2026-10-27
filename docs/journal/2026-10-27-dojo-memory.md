@@ -79,3 +79,15 @@ first object's identity is re-read every time (the tracker's vote can change it)
 GT) counts at once, so G3 mode A is unchanged. `plan_intercept` falls back to a level grasp of an upright object's
 waist (`waist_grasps`: the pad gap from the mesh at that height) when nothing on top fits the hand, approached along
 the hand's axis. This is the ice cream (104 mm scoop on a 69 mm cone), 3 of G3's 5 failures.
+
+## 4. G1 regression of the region mapping (offline perception, compute3 light slot 4, no LLM calls)
+
+Code: origin/main (48600bf) vs this branch, same frames, same backgrounds.
+
+| set | frames | main | branch |
+|---|---|---|---|
+| make_kong, d0_ext frame 0, `--bg-loo` | 10 episodes, 220 objects | found 220, xy 0.3 / 9.0 mm (median / max) | identical (every object row) |
+| swap_blocks, breadth-2 look frames (frame 0), `breadth_eval.py` | 5 episodes | target xy 1.3-4.9 mm, yaw 0-42 deg | identical |
+
+- Every other D0 task has only table / ground placements, whose regions are byte-identical (the region diff above).
+- The swap cubes are placed by the slot path, which runs before any region check.

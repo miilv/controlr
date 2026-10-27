@@ -284,8 +284,16 @@
   of the left arm, the board at the robot side, 1.02 m up. PhysicalRSI marks that convention "native scene not
   validated"; check it against the official videos / a rendered episode when one is available. Skills-6's layouts are
   in `compute3:~/dojo-data/skills6/layouts/pick_from_conveyor_by_image` (simlab's shared copies are still v12).
+- [ ] **dojo perception: the scan estimate assumes nothing moved since frame 0** (`scan.estimate_with_scan` fuses frame
+  0 as extra views, then `fill_from_frame0` fills a not-found label from frame 0's reading). On a conveyor the riders
+  move 4 mm / step, so a rider can appear twice: at its scan-time pose and as a frame-0 ghost under another label.
+  The belt tracker drops belief objects no re-read ever confirmed (`RuntimeProvider._track`, 2 reads), but the scan
+  itself (14 steps + a fused estimate) buys nothing there. Candidate fix: no scan (or no frame-0 fusion) when the
+  scene has a Dynamic base (journal 2026-10-27-dojo-memory).
 - [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
   25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
+  Memory (2026-10-27): `plan_intercept` falls back to `waist_grasps` (level, the pad gap from the mesh at that height);
+  G3 result in journal 2026-10-27-dojo-memory.
 - [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and **fold_clothes** (parked: no cloth state in the skills layer).
 - [x] ~~**dojo skills: deposit_coin.** The coin starts out of the inserting arm's reach in about half the layouts.~~ Rim grasps tilted in the coin's plane reach 12/25 with one arm; the rest go through an in-air rim handover (the giver turns the coin on its side, the taker takes its top rim 8 mm off-centre). The coin is 28.4 mm x 1.9 mm (the collider; `physics.size` in its metadata says 21 x 1 mm). Two grippers can share it this way (journal/2026-10-26-dojo-skills5.md).
 - [ ] **dojo skills: a flat coin can be pinched but not inserted.** Pinched across a diameter with the fingertips 0.6 mm over the table, it lifts and turns on edge (3/3). The hand then points sideways, and the X5's 37 mm finger roots hang 28 mm below the TCP over the bank's back, so the coin stays 7 mm above the slot (table relay 0/7, `DISC_TABLE_RELAY = False`).
