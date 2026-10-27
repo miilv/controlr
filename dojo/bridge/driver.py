@@ -25,6 +25,8 @@ import gzip
 import importlib
 import json
 import os
+import signal
+import sys
 import time
 from pathlib import Path
 
@@ -155,6 +157,9 @@ def main(argv=None) -> None:
     ap.add_argument("--close", action="store_true", help="close the server after the episode (RoboDojo writes its result)")
     ap.add_argument("--allow-non-strict", action="store_true", help="dev only: accept a non-strict server")
     a = ap.parse_args(argv)
+    # a TERM (a wall-time cap: timeout(1), the launcher's cleanup) unwinds through the finally below, so the twin
+    # group this driver started is stopped instead of orphaned on the GPU
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(128 + signum))
 
     from dojo.runtime.policy import RuntimeConfig
     from dojo.runtime.presets import check_env, resolve

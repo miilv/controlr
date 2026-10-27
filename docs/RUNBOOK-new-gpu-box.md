@@ -268,7 +268,9 @@ their RoboDojo installs.
   `DOJO_COLOR_CALIB=$DOJO_CATALOG/color_calib_51.json`. `integ_eval.sh` defaults to the 6.0-proxy files, which is
   right on a physics box.
 - **The official harness:** `scripts/simlab/dev_eval.sh --task T --policy P --layouts ~/dojo-data/simlab/layouts`.
-  The bridge: [BRIDGE-RUNBOOK](BRIDGE-RUNBOOK.md) §2, with `HARNESS_ENV` pointing at this box's `BENCH` / `RD_HOME`.
+  Our full system on that client, behind robot-harness's strict J2 server (the leaderboard path, our dev layouts):
+  `scripts/dojo/official_eval.sh` ([BRIDGE-RUNBOOK](BRIDGE-RUNBOOK.md) §4c). The bridge on eval layouts:
+  [BRIDGE-RUNBOOK](BRIDGE-RUNBOOK.md) §2, with `HARNESS_ENV` pointing at this box's `BENCH` / `RD_HOME`.
 - **The eval firewall still applies.** `Assets/Eval_Layout` and the eval-paired imitate `Traj` are not even
   downloaded (or copied) here.
 

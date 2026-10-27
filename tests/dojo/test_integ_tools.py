@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 @pytest.mark.skipif(shutil.which("flock") is None, reason="needs util-linux flock")
 def test_runner_finishes_the_queue_when_its_script_is_rewritten_in_place(tmp_path):
     repo = tmp_path / "repo"
-    (repo / "scripts/dojo").mkdir(parents=True)
+    (repo / "scripts/dojo/").mkdir(parents=True)          # trailing slash: the J4 import maps "scripts/dojo/" only
     runner = repo / "scripts/dojo/queue_runner.sh"
     shutil.copy(ROOT / "scripts/dojo/queue_runner.sh", runner)
     # a fake eval: the first job rewrites the runner IN PLACE (same inode, other content), as cp / an editor would
@@ -62,7 +62,7 @@ def test_runner_retries_a_job_whose_services_never_got_ready_once(tmp_path):
     """integ_eval.sh exits 3 when a service never got ready (no episode ran): the runner keeps that dir as
     NAME__services_not_ready and runs the job once more, first in the queue; a second 3 is not retried again."""
     repo = tmp_path / "repo"
-    (repo / "scripts/dojo").mkdir(parents=True)
+    (repo / "scripts/dojo/").mkdir(parents=True)          # trailing slash: the J4 import maps "scripts/dojo/" only
     shutil.copy(ROOT / "scripts/dojo/queue_runner.sh", repo / "scripts/dojo/queue_runner.sh")
     (repo / "scripts/dojo/integ_eval.sh").write_text(
         "#!/usr/bin/env bash\n"
