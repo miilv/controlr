@@ -27,6 +27,20 @@ SEED_BASE = 100_000
 RESERVED_MIN_ID = 100_100
 
 
+# Mikhail's side develops on these (D-C10a, 2026-10-27): never run them rendered or proxy on our side (G3 overlap on
+# 100010-19 is harmless); our rendered measurement slices are 100000-09 and 100020-49
+MIKHAIL_SLICES = ((100_010, 100_019), (100_050, 100_099))
+
+
+def is_offslice_rendered(layout_id) -> bool:
+    """A layout id our rendered / proxy runs must not use: Mikhail's development slices or the reserved joint slice."""
+    try:
+        i = int(layout_id)
+    except (TypeError, ValueError):
+        return False
+    return is_reserved_id(i) or any(a <= i <= b for a, b in MIKHAIL_SLICES)
+
+
 def is_reserved_id(layout_id) -> bool:
     try:
         return int(layout_id) >= RESERVED_MIN_ID

@@ -89,6 +89,9 @@ IDS=()
 for lid in $(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n); do
   [[ "$lid" =~ ^[0-9]+$ && "$lid" -ge 100000 ]] || { log "layout id $lid: dev layouts are >= 100000"; exit 2; }
   [[ "$lid" -lt 100100 ]] || { log "layout id $lid: ids >= 100100 are reserved for joint paired runs (D-C10)"; exit 2; }
+  if (( lid >= 100010 && lid <= 100019 )) || (( lid >= 100050 && lid <= 100099 )); then
+    log "layout id $lid: Mikhail's development slice (D-C10a: never run rendered on our side)"; exit 2
+  fi
   f="$LAYOUTS_SRC/$lid.settled.json"
   [[ -f "$f" && "$f" != *Eval_Layout* ]] || { log "no settled dev layout $f"; exit 2; }
   cp "$f" "$OUT/layouts/$TASK/"

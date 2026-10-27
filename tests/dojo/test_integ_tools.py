@@ -157,3 +157,15 @@ def test_reserved_layout_ids_are_refused_by_our_tools(tmp_path):
     with _pt.raises(SystemExit):
         gen_main(["--task", "stack_blocks", "--n", "2", "--start", str(paths.RESERVED_MIN_ID - 1), "--out", str(tmp_path)])
     assert not list(tmp_path.glob("*.json"))
+
+
+def test_rendered_runs_refuse_mikhail_s_slices():
+    """D-C10a: our rendered / proxy runs use 100000-09 and 100020-49; 100010-19 and 100050-99 are Mikhail's, >= 100100
+    is the joint reserved slice. integ_eval.sh refuses them before booting anything (exit 2)."""
+    from dojo.simlab.paths import is_offslice_rendered
+    assert [i for i in range(100000, 100110) if is_offslice_rendered(i)] == \
+        list(range(100010, 100020)) + list(range(100050, 100100)) + list(range(100100, 100110))
+    for lid in (100010, 100017, 100050, 100100):
+        out = subprocess.run(["bash", str(ROOT / "scripts/dojo/integ_eval.sh"), "--task", "t", "--layouts", f"/x/{lid}.json"],
+                             capture_output=True, text=True, timeout=30)
+        assert out.returncode == 2 and "not ours" in out.stderr

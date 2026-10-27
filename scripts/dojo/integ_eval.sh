@@ -35,10 +35,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$TASK" ]] || { echo "--task is required" >&2; exit 2; }
-for a in "${args[@]}"; do                       # D-C10: layout ids >= 100100 are reserved for joint paired runs
+for a in "${args[@]}"; do      # D-C10a: >= 100100 reserved for joint runs; 100010-19 / 100050-99 are Mikhail's slices
   b=${a##*/}; id=${b%%.*}
-  if [[ "$a" == *.json && "$id" =~ ^[0-9]+$ ]] && (( id >= 100100 )); then
-    echo "[integ] $a: a reserved layout (>= 100100, D-C10): refused" >&2; exit 2
+  if [[ "$a" == *.json && "$id" =~ ^[0-9]+$ ]] && { (( id >= 100100 )) || (( id >= 100010 && id <= 100019 )) \
+        || (( id >= 100050 && id <= 100099 )); }; then
+    echo "[integ] $a: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused" >&2; exit 2
   fi
 done
 if [[ -n "$PRESET" ]]; then        # the services follow the preset's mode / verify (explicit flags win, as in eval)
