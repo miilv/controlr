@@ -10,7 +10,9 @@
   `EstimatorConfig.embed_model="dinov2_s"` (5.1 belt reads: identity 79/116 -> 104/116, phantoms 77 -> 47; report
   2026-10-27-identity-embeddings) is off by default. The rendered A/B arm sets `DOJO_PERCEPTION_CFG='{"embed_model":
   "dinov2_s"}'` and needs torch + transformers + `$DOJO_EMBED_MODELS/dinov2-small` (DEVELOPMENT §4). What is left on
-  the belt: puppet -> camera when their blobs touch (5 of 23 puppet reads).
+  the belt: puppet -> camera when their blobs touch (5 of 23 puppet reads). B1's path (`embed_b1`) stays off: neutral
+  on the table except fill_pen (-3 pens). pick_from_conveyor_by_image: the picture board is hidden behind the right arm
+  at home; after a look, CLIP-L picks the pictured rider 33/33 (picture = the public photo.png).
 - [ ] **dojo skills: a silent in-hand slip in mode B** (store_tools 5.1 B, 6/10 "stages_left 1"; journal
   2026-10-27-dojo-longh §8). A physics replay of 100008: the wrench slid out of an off-centre grasp ~15 steps after the
   lift, after held_look had said "held"; nothing re-checks before the release and the skill places an empty gripper.

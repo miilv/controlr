@@ -2490,8 +2490,8 @@ def _contained_children(chosen: list[Hypothesis], views, cfg, groups, pending, t
 
 
 def _embed(cfg):
-    """The learned-identity scorer of ``cfg`` (``embed_id``), or None when ``cfg.embed_model`` is off."""
-    if not getattr(cfg, "embed_model", None):
+    """B1's learned-identity scorer (``embed_id``), or None unless both ``cfg.embed_model`` and ``cfg.embed_b1`` are set."""
+    if not getattr(cfg, "embed_model", None) or not getattr(cfg, "embed_b1", False):
         return None
     from .embed_id import identity
 
@@ -2807,8 +2807,9 @@ class EstimatorConfig:
     # top surface to the evidence that interrupts its texture, only their pixels in front of it counted (contained.py)
     contained_children: bool = True
     # identity by learned image embeddings (embed_id.py). None = off; a model name ("dinov2_s", "dinov2_b", "siglip2_b",
-    # "clip_l") makes the belt read pick each blob's asset by crop-vs-catalogue-render similarity minus embed_weight x our
-    # fit loss, fitting the picked asset when our proposals did not (weights: DOJO_EMBED_MODELS; torch + transformers)
+    # "clip_l") makes the belt read (belt.belt_read, conveyor scenes) pick each blob's asset by crop-vs-catalogue-render
+    # similarity minus embed_weight x our fit loss, fitting the picked asset when our proposals did not
+    # (weights: DOJO_EMBED_MODELS; torch + transformers)
     embed_model: str | None = None
     embed_weight: float = 0.25
     embed_crop: str = "composite"  # composite (raw crop vs renders over the background) | masked (both on grey)
@@ -2817,6 +2818,9 @@ class EstimatorConfig:
     # belt read: blobs given the same asset within half its extent are one object's pieces (a dark figure split on the
     # dark belt); without it the embedding's confident fits of the pieces add phantoms (5.1 belt reads: 77 -> 114, with it 47)
     embed_merge: bool = True
+    # ... and B1 (estimate): the polish's identity trials and the same-geometry identity use it too. Off: on the table
+    # (d0_ext frame 0, 6.0) it changed nothing on organize / store_tools / stack_by_language and cost fill_pen 3 pens
+    embed_b1: bool = False
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
 

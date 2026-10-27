@@ -51,17 +51,23 @@ than main), xy median 7.3 -> 5.9 mm, +0.9 s per read. `embed_merge` is therefore
 
 ## 4. eval_g1 on the table
 
-Pending: the eval_g1 off / on pairs are running on compute3 light 1. This section is added to this PR when they end.
+d0_ext frame 0, paired, with the B1 path on:
+- organize_table: ok 60 -> 60, id 69 -> 70 of 81;
+- fill_pen_holder: ok 48 -> 45, 3 pens -> identity;
+- stack_by_language and store_tools: identical.
+
+On the table the embedding does not pay. The B1 path is therefore its own switch, `embed_b1`, default False:
+`embed_model` alone touches only the belt read. d0_51 pending.
 
 ## Code (PR)
 
 - **`dojo/perception/embed_id.py`.** `Embedder` (lazy torch), `Gallery` (catalogue renders at the blob's ray, lit or
   flat, colour-mapped), `EmbedIdentity.scores` / `scores_at_poses`, `identity()` (one model per process), `fuse`.
 - **`EstimatorConfig`.** New fields `embed_model` (default None = off), `embed_weight` 0.25, `embed_crop` composite,
-  `embed_lit` True, `embed_min_px` 40, `embed_merge` False. With the model unset, nothing changes.
+  `embed_lit` True, `embed_min_px` 40, `embed_merge` True, `embed_b1` False. With the model unset, nothing changes.
 - **`belt.belt_read`.** Per blob, the fused pick. A pick we did not propose is fitted on the blob (`_fit_key`).
   `_merge_fragments` (`embed_merge`) merges same-asset blobs within half the asset's extent.
-- **B1.**
+- **B1** (only with `embed_b1`).
   - `_polish` adds the embedding's best geometry as a trial and decides by the fused score.
   - The same-geometry identity step adds 1 - similarity, rendered at the fitted pose.
   - `ViewMasks.bg` keeps the background each view was segmented against.
