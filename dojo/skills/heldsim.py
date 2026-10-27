@@ -56,6 +56,7 @@ CONFIRM_TOL = (0.015, 20.0)    # m, deg: a ``confirm_pose`` this far off the tru
 MEASURED_TOL = (0.004, 0.010)  # m (z, xy): a released object resting this close to where perception's support model
                                # puts it is re-measured by the post-place refine (``drop``)
 STILL_RAD = 0.002              # rad: as the runtime belief, a release counts as a put-down when the command holds
+RESYNC_TOL = 0.02              # m: ``drop="fixtures_look"``: a fixture-held prediction this far off the truth is re-estimated
 
 # --- from dojo/perception/show_pose.py (perception-held, PR #59)
 T_TCP_CAM = np.array([[-0.000007, -0.500030, 0.866008, -0.060158],
@@ -157,7 +158,7 @@ class HeldBeliefProvider:
         self._frozen: dict = {}              # label -> (pos, quat) the belief keeps
         self._base_prev: dict = {}           # label -> the base provider's (pos, quat) at the last refresh
         self.stats.update({"frozen": 0, "confirm": 0, "confirm_adopted": 0})
-        assert drop in (None, "runtime", "fixtures"), drop
+        assert drop in (None, "runtime", "fixtures", "fixtures_look"), drop
         self.drop = drop
         self._pending: dict = {}             # label -> the belief's rest pose (pos, quat) after a release (``drop``)
         self._cmd: dict = {}                 # arm -> last commanded joints
@@ -201,7 +202,7 @@ class HeldBeliefProvider:
                     self._frozen.pop(lab, None)             # released: the post-place re-measure (GT + offset)
                     if self.drop and lab in self._free:
                         self._pending[lab] = self._belief_rest(lab, self.kin.tcp(a, q_cmd) @ T_rel,
-                                                               self.drop == "fixtures" and still)
+                                                               self.drop in ("fixtures", "fixtures_look") and still)
                         self.stats["released"] += 1
             self._g[a] = g_new
             if self.freeze:
@@ -294,13 +295,14 @@ class HeldBeliefProvider:
         if ev is not None:
             self.events.append({"kind": "belief_drop", "label": lab, "step": int(self.env.steps_used), **ev,
                                 "release7": rel7})
-        return o.pos.copy(), o.quat.copy()
+        return o.pos.copy(), o.quat.copy(), (ev or {}).get("how")
 
     def _after_release(self, lab: str, o, w) -> None:
         """The post-place re-measure: the truth (+ offset) where perception's support model (the table, movable tops:
         ``drop_rest`` without fixtures) explains where it rests, else the belief's prediction stays (``_frozen``)."""
         from dojo.runtime.belief import drop_rest
-        pred = self._pending.pop(lab)
+        pos_p, quat_p, how = self._pending.pop(lab)
+        pred = (pos_p, quat_p)
         movables = [x for k, x in w.objects.items() if k != lab and x.obj_type != "Geometry" and not x.clutter]
         p_fit, _ = drop_rest(o, movables, ())
         fits = (p_fit is not None and abs(float(p_fit[2] - o.pos[2])) <= MEASURED_TOL[0])
@@ -310,9 +312,17 @@ class HeldBeliefProvider:
                                 "pred_err_mm": round(float(np.linalg.norm(pred[0] - o.pos)) * 1000, 1),
                                 "truth7": np.round(np.r_[o.pos, o.quat], 5).tolist()})
             return
+        err = float(np.linalg.norm(pred[0] - o.pos))
+        if self.drop == "fixtures_look" and how == "held by a fixture" and err > RESYNC_TOL:
+            # the runtime's release resync: the prediction (held where it was let go) rendered against the next
+            # frames does not show it there, and the re-estimate finds it (G3: the truth + offset)
+            self.stats["resynced"] = self.stats.get("resynced", 0) + 1
+            self.events.append({"kind": "release_resynced", "label": lab, "step": int(self.env.steps_used),
+                                "pred_err_mm": round(err * 1000, 1),
+                                "truth7": np.round(np.r_[o.pos, o.quat], 5).tolist()})
+            return
         self._frozen[lab] = pred
         self.stats["kept"] += 1
-        err = float(np.linalg.norm(pred[0] - o.pos))
         self.events.append({"kind": "release_kept", "label": lab, "step": int(self.env.steps_used),
                             "pred_err_mm": round(err * 1000, 1),
                             "truth7": np.round(np.r_[o.pos, o.quat], 5).tolist()})
