@@ -262,3 +262,55 @@ pixels).
   - a "top_feature" read is exempt from the turn guards.
 - **Default change:** `EstimatorConfig.top_feature_yaw = True`. Only objects with a top feature (key_slot) change.
 - **Open.** B1 misses the lock in 2/25 5.1 frames and puts it 18-25 mm off in 3 more.
+
+## 15. organize_table's drawer 137 mm off: the look fusion had no placement bounds (PR #135, merged)
+
+- The drawer was right at frame 0 (9 mm). The runtime's conservative look fusion then refined it over frame 0 + the
+  look views with no bounds and a free yaw.
+- The cabinet model fits loosely (loss ~0.45), so sliding 112 mm off its fixed slot row and turning 27 deg lowered
+  the loss.
+- Fix: the fusion uses `origin_bounds` and the config's fixed yaw.
+- Replayed on every saved B3 look frame (1072 objects): drawer 120 / 64 / 43 -> 8.5 / 9.3 / 9.9 mm; all other changes
+  <= 3 mm.
+
+## 16. Reviews and verdicts
+
+- **Plug flip re-check** (Official-Path's grip A/B): with the commanded gripper value, 0 adopted in-hand flips
+  (5 with the applied value) and plug 4/5. The two-sided refine was not built.
+- **store_tools 100000 place_miss "dz -73 mm, tilt 42 deg"** (rendered 5.1 replay to step 67):
+  - truth: the tape measure was in the jaws at the prior;
+  - the held fit was 78 mm low and 43 deg off, and was adopted by a build without #99's bounds;
+  - current main rejects it (centre shift 84 mm > 31 mm).
+- **#143 and #146** (Perception-3): approved. #143's 2 worse objects were already wrong on main.
+
+## 17. insert_key: the lock missed on copper-on-wood (PR #149)
+
+- Inside the lock the colour distance has a median of 17.6 against fg_thr 18, so only 47-56 % of it is foreground,
+  in pieces.
+- Fix: an unfound single-label Geometry fixture is re-segmented at 0.6x fg_thr inside its generator region. A find
+  is kept at silhouette loss <= 0.40 with >= 30 % already foreground; it is flagged `low_contrast`, confidence
+  capped at 0.45.
+- G1 over 20 sets / 1785 objects: only 3 locks change, missed -> 1.5-1.7 mm.
+- The wider variants (any Rigid group, multi-label groups) added phantoms and colour-identity swaps.
+- **Default change:** `EstimatorConfig.low_contrast_frac = 0.6`.
+
+## 18. play_tic_tac_toe: the cell read (PR #151)
+
+- An absolute brightness test (L > 90) never saw a shaded cross (L 14-58 on the black board) and read the opponent's
+  white arm as rings; the grid lines counted against every piece.
+- Fix:
+  - gold chroma for piece pixels;
+  - lines masked;
+  - disc IoU over a ±8 mm offset grid;
+  - arm-covered cells flagged `occluded`, keeping the prior read; near-tied kinds keep the prior kind.
+- 41 replayed genuine-5.1 watch reads (3 episodes): occupied cells right 77 -> 191 / 196, frames exact 1 -> 35 / 41.
+  The rest are transit frames.
+
+## 19. deposit_coin: the coin lying flat in its stand (PR #153)
+
+- B1 put the coin + stand at a phantom near a home gripper (at frame 0 or in the scan read). The agent moved both to
+  the right place, but gave the coin its own flat rest pose.
+- Arbitration did not compare: the hint was 450-650 mm away.
+- Fix: `settle_slot_children` re-derives slot-pinned objects from their output base (within 40 mm).
+- Logged records: the 4 flat coins now stand, 1.2-3.2 mm.
+- **Open:** B1's coin + stand phantoms near the home grippers (6 / 10 layouts); coins not found (100001 / 02 / 06).

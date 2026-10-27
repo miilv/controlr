@@ -6,6 +6,8 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo perception: deposit_coin's coin + stand read at a phantom near a home gripper** (5.1 coinmain, 6 of 10 layouts, at frame 0 or in the scan read). The real assembly is ~10 px in the head view; B1 fits the stand onto the piggy bank or gripper area instead. #153 makes the agent's correction stand the coin up; the B1 miss is the root. Also: coin not found when the stand fit is 19-115 mm off (the slot check refutes it).
+- [ ] **dojo perception: a "held" refine can fit the object 80 mm below the jaws** (breadth3 store_tools 100000 step 67: fit 78 mm low, 43 deg off, iou 0.73). The runtime's in-hand bounds (#99) reject it now; perception could reject fits whose centre is outside the jaws itself.
 - [ ] **dojo skills: organize_table, three skill-side gaps (G3 mode A 0.44: alarm 2/9, figurine 0/9, keyboard 4/9).**
   (journal 2026-10-27-dojo-longh §5) The drawer's top is a tray 23 mm under a rim; the place targets use the bbox top,
   so the alarm lands across the rim (17-19 deg) or falls off its front edge. The figurine has no collision-free pair within
