@@ -342,6 +342,13 @@ The strict server's `perceive` route (`--perception server`) cannot run the conv
   instruction returns "unknown task".
 - Until a controlr change (the adapter takes `supervisor.perception_vocabulary(instruction)`, computes the scene keys
   and applies `with_scene`, `VERSION` bump) is re-imported, J4 runs use `--perception local` (the driver's default).
+- **That change: j1-adapter-3** (PR "j1 adapter: every runtime vocabulary + scene backgrounds").
+  - `task_for(instruction)` tries the caller's task, then the six J1 patterns (unchanged), then
+    `perception_vocabulary` (the regex table + the catalogue fallback).
+  - `backgrounds_for(task)` overlays `DOJO_BG/scene/<Type_cat_idx>/` when a `Dynamic` / `Geometry` fixture of the set
+    has a scene background. That covers the belt, and Perception-3's upcoming basket, generically.
+  - `inverse_layout.scene_keys`, the same key set the local service's `set_scene` now uses.
+  - The output's `notes` (allowed by `j1_schema`) say how the set was chosen and which background ran.
 
 ### 3.3 Re-import steps
 
@@ -365,6 +372,9 @@ no switch. submit_v1 results compare only at the same controlr commit."
 3. `pytest tests/ilia` has 0 failures (needs this branch's test fix); `test_bridge_rh.py` passes 4/4.
 4. `python -m runtime.catalog_check` exits 0 on the run box: assets, `support` frames, `links.json`.
 5. The conveyor scene backgrounds exist (5.1-built) before any conveyor run, and those runs use `--perception local`.
+5b. **Must-have:** the import includes j1-adapter-3. Without it, every non-J1 instruction on the `perceive` route
+   answers "unknown task". With `--perception server`, ship `$J1_ILIA_HOME/bg/scene/Dynamic_conveyor_00000/*.png` next
+   to the table backgrounds.
 6. Every ledger row cites the controlr sha (no `@?`): `submit_v1` differs between db48652 and today.
 7. No D-C4 block that lists imported files is running during the re-import.
 
