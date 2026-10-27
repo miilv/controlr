@@ -1,4 +1,5 @@
-"""Precision stream (2026-10-27): deposit_coin's handover place keeps the taker's hand pointing down."""
+"""Precision stream (2026-10-27): deposit_coin's handover keeps the taker's hand pointing down and carries a disc that slid
+in the giver's pads slower."""
 
 import math
 
@@ -28,3 +29,41 @@ def test_hand_down_first_puts_the_spin_with_the_hand_straight_down_first():
     best = P.hand_down_first(tg, Tto)
     assert lean(best[0]) < 1.0 and len(best) == len(tg)
     assert [round(lean(T)) for T in best] == sorted(round(lean(T)) for T in best)
+
+
+def _coin():
+    info = AssetInfo(key="Rigid/coin/00000", bbox_min=np.array([-0.0142, -0.00095, -0.0142]),
+                     bbox_max=np.array([0.0142, 0.00095, 0.0142]), mesh=None)
+    return ObjectState("coin0", "Rigid", "coin", 0, np.array([0.3, -0.15, TABLE_Z + 0.1]), np.array([1.0, 0, 0, 0]), info)
+
+
+def _carry_rate(drift_m: float) -> float:
+    """The giver's carry rate run_disc_handover picks for a disc that slid ``drift_m`` in its pads at the pick (a fake
+    Skills: the pick succeeds, the carry's motion records its rate and stops the episode)."""
+    from types import SimpleNamespace
+
+    from dojo.skills.executor import BudgetExceeded
+    from dojo.skills.skills import Held, PickPlan, SkillResult
+    coin = _coin()
+    Tto = T_from(np.array([0.0, 0.0, 0.03]), np.eye(3))
+    pp = PickPlan("right", None, None, Tto, 10, "coin0")
+    held = Tto.copy()
+    held[0, 3] += drift_m
+    rates = []
+
+    def joint(arm, q0, q1, rate, name, **kw):
+        rates.append(rate)
+        raise BudgetExceeded("stop")
+    sk = SimpleNamespace(held={"right": Held("coin0", held, None), "left": None}, last_pick=pp,
+                         world=SimpleNamespace(obj=lambda label: coin), motion=SimpleNamespace(joint=joint),
+                         ex=SimpleNamespace(q={"right": np.zeros(6), "left": np.zeros(6)}),
+                         _record=lambda r: r, run_pick=lambda p: SkillResult(True, "pick", "ok", 10, "right"))
+    h = {"giver": "right", "taker": "left", "pick": pp, "q_g": np.zeros(6)}
+    r = P.run_disc_handover(sk, h)
+    assert r.status == "step_budget" and len(rates) == 1
+    return rates[0]
+
+
+def test_a_disc_that_slid_in_the_givers_pads_is_carried_slower():
+    assert _carry_rate(0.0005) == P.DISC_CARRY
+    assert _carry_rate(0.005) == P.DISC_CARRY_DRIFTED < P.DISC_CARRY
