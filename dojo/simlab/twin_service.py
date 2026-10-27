@@ -22,6 +22,8 @@ import traceback
 from multiprocessing.connection import Client, Listener
 from pathlib import Path
 
+from dojo.simlab.kitlog import KitLogWatch
+
 
 class TwinIncompleteWorld(RuntimeError):
     """The world sent to the twin lacks objects the task's checks need (``twin.IncompleteWorld``): the service
@@ -125,8 +127,13 @@ def serve(task: str, num_envs: int, port: int, authkey: bytes, ready: str | None
                     if op == "info":
                         conn.send({"ok": True, "info": {"task": task, "num_envs": tw.num_envs, **stats}})
                     elif op == "load_from_estimate":
+                        watch = KitLogWatch()
                         r = tw.load_from_estimate(req["layout"], req.get("robot"), int(req.get("settle_steps", 50)))
-                        conn.send({"ok": True, "result": r})
+                        infra = watch.since()             # an uncooked SDF collider: the twin's answers are not physics
+                        if infra:
+                            stats["infra_failures"] = stats.get("infra_failures", 0) + 1
+                            print(f"[twin_service] infra failure at load: {infra}", flush=True)
+                        conn.send({"ok": True, "result": r, **({"infra_failure": infra} if infra else {})})
                     elif op == "verify":
                         world = dict(req["world"])
                         if "snapshot_id" in world:

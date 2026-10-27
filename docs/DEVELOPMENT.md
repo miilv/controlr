@@ -175,6 +175,7 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **Mesh vertices are not surface samples.** A box-like catalogue mesh (the charger) has vertices only at its edges,
   so a vertex test of "what the pads touch" found nothing on its flat sides and fell back to a wrong width (the held
   object then hid under a finger mask). Sample the surface (`held.surface_points`).
+- **Two Isaac processes that start the same SDF task at once can fail to cook its SDF colliders** (nuts, bolts, the tube rack: `omni.physx.cooking.plugin`, "UjitsoMeshCookingContext: cooking failure for .../collision/collisions"). The uncooked object then has no proper collision, and every episode measures the infrastructure: fasten_screws G3 mode B on compute6 was 1/15 in two jobs started the same second, against 1.0 for the same layout alone. g3 reads its own Kit log (`dojo.simlab.kitlog.KitLogWatch`, carb `/log/file`): such episodes are `category` `infra_failure` and stay out of the summary's n (`infra_failures`, `infra_seeds`), and the twin service flags its load. Stagger same-task SDF jobs by a minute, and re-run the infra seeds.
 - **A catalogue colour of exactly 0.7 grey means "colour not read".** Some assets take their colour from an MDL preset
   (`info:mdl:sourceAsset:subIdentifier`, e.g. `ABS_Soft_Leather_Pop_Orange`), with no shader inputs on the USD
   side. `catalog.mdl_preset_color` reads the preset's flat colour argument (linear -> sRGB). Before it existed, the
