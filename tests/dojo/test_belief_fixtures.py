@@ -187,3 +187,43 @@ def test_a_free_object_at_the_pads_wins_over_the_one_the_other_hand_holds():
     assert kb.attached["left"][0] == "bar"
     kb.step(act(0.0, 0.0))
     assert kb.attached["right"][0] == "small"
+
+
+# an articulated holder: its static body is BIN (the open box), its lid a plate over the box's top on a hinge (a joint's
+# child link). Mesh = both at the authored state; links = sample points per link (links.json)
+LID = _box([-0.06, -0.06, 0.10], [0.06, 0.06, 0.105])
+
+
+def _holder(label, pos, links=True):
+    mesh = _merge(BIN, LID)
+    o = _obj(label, "Articulation", mesh, pos)
+    if links:
+        def pts(m):
+            V, F = np.asarray(m[0], float), np.asarray(m[1], int)
+            return np.vstack([V, V[F].mean(1)])
+        o.asset.links = {"body": {"points": pts(BIN)}, "lid": {"points": pts(LID)}}
+        o.asset.joints = {"hinge": {"type": "revolute", "body0": "body", "body1": "lid"}}
+    return o
+
+
+def test_an_articulation_s_static_links_hold_what_is_let_go_in_it_and_its_moving_links_do_not():
+    from dojo.runtime.belief import static_link_mesh
+    h = _holder("holder", [0.1, -0.1, TABLE_Z])
+    V, F = static_link_mesh(h)
+    assert float(V[:, 2].max()) <= 0.08 + 1e-9 and len(F) == len(BIN[1])      # the box, not its lid
+    kb = _belief([h, _obj("piece", "Rigid", PIECE, [0.1, -0.1, TABLE_Z + 0.08 + 0.012])])
+    kb._drop("piece", release=True)          # let go over the open box: its floor (before: the table, through it)
+    assert abs(kb.objects["piece"].bottom_z - (TABLE_Z + 0.005)) < 0.0015
+    assert kb.drop_events[-1]["how"] == "on a fixture"
+    kb.objects["piece"].pos[2] = TABLE_Z + 0.06                # inside the box, 20 mm under its walls' top,
+    kb.objects["piece"].pos[0] = 0.1 + 0.056 - 0.016 + 0.003   # its edge 3 mm into a wall: held where it was let go
+    kb._drop("piece", release=True)
+    assert abs(kb.objects["piece"].pos[2] - (TABLE_Z + 0.06)) < 1e-9
+    assert kb.drop_events[-1]["how"] == "held by a fixture"
+
+
+def test_an_articulation_without_links_is_no_fixture():
+    h = _holder("holder2", [0.1, -0.1, TABLE_Z], links=False)
+    kb = _belief([h, _obj("piece", "Rigid", PIECE, [0.1, -0.1, TABLE_Z + 0.08 + 0.012])])
+    kb._drop("piece", release=True)
+    assert abs(kb.objects["piece"].bottom_z - TABLE_Z) < 1e-6                 # as before: through it to the table
