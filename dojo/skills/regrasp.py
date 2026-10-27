@@ -50,9 +50,20 @@ MAX_TAKES = 4000                    # taker grasps tried at handover poses per s
                                     # a time cap made the chosen handover depend on the box's load, G3)
 SWEEP_MAX_DEG = 15.0                # mode B: the key turned this far either way on its lock's top looking for the channel
 SWEEP_STEP_DEG = 3.0
-SWEEP_PRESS = 0.002                 # m: pressed this far below the contact while it turns
-SWEEP_DROP = 0.0012                 # m: the hand this far under the contact = it went in
+SWEEP_UP = 0.0015                   # m: each probe of the sweep turns the key this far over where it touched ...
+SWEEP_DOWN = 0.001                  # ... then commands it this far under it (more and it slides up in the pads)
 SWEEP_SEATED = 0.004                # m: the hand this close to the seat after the descent = already in
+# mode B descent by proprio: the vertical lag of the measured hand under its command, over its value at the hover.
+# Twin (the key gripped across its bow, a tooth on the lock's top): the key does not stop the arm, it slides up in the
+# pads and pivots about their closing axis (16 mm / 46 deg over 10 steps), the hand lagging 0.9-1.1 mm on a 3 mm step
+# and 0.5-0.7 mm after a held step; free: 0.2-0.3 and 0.0 (GUARD_LAG, 4 mm, never fired: the key ended on the top).
+FINE_STEP = 0.0015                  # m per step through the zone where the bit meets the receptacle's top
+FINE_ABOVE = 0.003                  # m: that zone starts with the object's lowest point this far over the top ...
+FINE_BELOW = 0.010                  # ... and ends this far under it (a key's teeth sit 3.9 mm over its tip)
+FINE_LAG = 0.0005                   # m: contact on a moving step
+PROBE_LAG = 0.0003                  # m: contact after a held step (a probe of the sweep)
+COARSE_STEP = 0.003
+COARSE_LAG = 0.0008
 LOOK_HEIGHT = 0.18                  # m: the giver's hand over the receptacle's top for the mode-B look at its keyhole
 VIA_UP = 0.08                       # m: the via over the receptacle when the direct move to its hover does not plan
 PLACE_CHECKS = 6                    # handover candidates whose taker place is planned before one is chosen
@@ -193,9 +204,12 @@ def _turned(T, turn_rad):
 
 
 def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, turn_rad: float = 0.0,
-                       place_kw: dict | None = None):
+                       place_kw: dict | None = None, upright: bool = False):
     """The giver, its lengthwise pick, the handover pose (the object as lifted, turned about the vertical) and the
-    taker's grasp (object frame) that reaches a target, its turn and clears the receptacle. A dict or a SkillResult."""
+    taker's grasp (object frame) that reaches a target, its turn and clears the receptacle. A dict or a SkillResult.
+    ``upright``: first handover poses with the object already in its target orientation (turned about the vertical):
+    the giver's lengthwise pinch re-orients it, so the taker only carries it (its grasp across a key's bow is a hinge
+    about the closing axis: the key turned up in it swung 7.5-8 deg, unseen by a kinematic belief, twin mode B)."""
     from dojo.skills.library import _grippers_apart, _hand_points, _min_dist
     n_takes = 0
     w = sk.refresh()
@@ -235,18 +249,22 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
             notes.append(f"{g_arm} lengthwise pick: {picks.note[:80]}")
             continue
         best, sols = None, []
-        for pp in picks[:2]:
+        R_up = np.asarray(targets[0], float)[:3, :3]
+        for pp, R_base in [(pp, R) for R in ([R_up] if upright else []) + [None] for pp in picks[:2]]:
+            if upright and R_base is None and sols:
+                break                                   # upright handovers found: the as-lifted ones not needed
             g_hold = gap_to_grip(pp.grasp.width)
             T_lift = sk.kin.tcp(g_arm, pp.plan.q_end) @ pp.T_tcp_obj
+            R_base = T_lift[:3, :3] if R_base is None else R_base
             for (hx, hy) in _xy_passes(sols):
                 hx = hx if g_arm == "right" else -hx
                 for hz in HANDOVER_Z:
                     for j in range(12):
                         if n_takes > MAX_TAKES:
                             break
-                        R_H = rot_z(2 * math.pi * j / 12) @ T_lift[:3, :3]
+                        R_H = rot_z(2 * math.pi * j / 12) @ R_base
                         T_H = T_from(np.array([hx, hy, hz]) - R_H @ G.mesh_com(o.asset), R_H)
-                        rg = sk.kin.ik(g_arm, T_H @ inv_T(pp.T_tcp_obj), pp.plan.q_end, n_random=0)
+                        rg = sk.kin.ik(g_arm, T_H @ inv_T(pp.T_tcp_obj), pp.plan.q_end, n_random=0 if R_base is not R_up else 2)
                         if not rg.ok:
                             continue
                         P_give = _hand_points(sk, sk.kin.flange(g_arm, rg.q), g_hold)
@@ -316,7 +334,8 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
         rec = sk.world.obj(receptacle)
         look_arm = min(ARMS, key=lambda a_: float(np.linalg.norm(sk.kin.base(a_)[:2, 3] - rec.pos[:2])))
         targets = [_look_over(sk, look_arm, receptacle, T) for T in targets[:1]] + list(targets[1:])
-    h = plan_rest_handover(sk, label, targets, receptacle, 0.0, place_kw)
+    mode_b = not getattr(sk, "remeasure", True)
+    h = plan_rest_handover(sk, label, targets, receptacle, 0.0, place_kw, upright=mode_b and bool(place_kw.get("turn")))
     if isinstance(h, SkillResult):
         return sk._record(h)
     g_arm, t_arm, pp = h["giver"], h["taker"], h["pick"]
@@ -409,16 +428,19 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     except (BudgetExceeded, EpisodeEnded) as e:
         return sk._record(SkillResult(False, "place", "step_budget" if isinstance(e, BudgetExceeded) else "ended", 0,
                                       t_arm, note=str(e)))
-    mode_b = not getattr(sk, "remeasure", True)
     if mode_b and turn:
         # mode B: a guarded descent by proprio from the hover; a key stopped on its lock's top is turned about its axis
         # under a light press until it drops in (``keyed_sweep``); let go; the turn with a fresh grasp in the lock
         # (the place tail's non-probing branch servos on the predicted transform and never feels the lock's top)
-        r = sk._record(_blind_insert(sk, t_arm, label, h["target"], receptacle))
-        if r.status in ("ended", "step_budget"):
+        r, T_seat = _blind_insert(sk, t_arm, label, h["target"], receptacle)
+        r = sk._record(r)
+        if r.status in ("ended", "step_budget", "ik_fail"):
             return r
-        _let_go(sk, t_arm, label)
-        return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(h["target"], kw))
+        rt = sk._record(turn_held(sk, t_arm, label, turn, T_seat=_unpressed(T_seat, kw)))
+        if rt.status != "ik_fail":
+            return rt
+        _let_go(sk, t_arm, label)             # this grasp's wrist does not reach the turn: a fresh one in the lock
+        return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(T_seat, kw))
     pl = sk.plan_place(t_arm, h["target"], yaw_sym=1, ignore=(receptacle,), **kw)
     held_on = False
     if not isinstance(pl, PlacePlan) and turn:
@@ -438,87 +460,126 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
     return turn_in_lock(sk, label, receptacle, turn, last_arm=t_arm, T_seat=_unpressed(h["target"], kw))
 
 
-def _blind_insert(sk: Skills, arm: str, label: str, T_target, receptacle: str, hover: float = 0.045) -> SkillResult:
-    """Mode B: from over the receptacle, the held object down to ``T_target`` (on its believed in-hand transform) in
-    short guarded steps that stop when the arm lags (contact: ``Skills._guarded_line``); stopped short, the keyed sweep."""
-    from dojo.skills.skills import GUARD_LAG
+def _vlag(sk: Skills, arm: str) -> float:
+    """How far (m) the measured hand stands above its command (proprio; pressing on something: > 0)."""
+    w = sk.refresh()
+    return float(sk.kin.tcp(arm, w.arms[arm].q)[2, 3] - sk.kin.tcp(arm, sk.ex.q[arm])[2, 3])
+
+
+def _vstep(sk: Skills, arm: str, T_cmd, rate: float, hold: int, name: str) -> bool:
+    """One unchecked joint step of ``arm`` to the hand pose ``T_cmd`` (IK from its command), ``hold`` still steps after."""
+    from dojo.skills.motion import Segment
+    ik = sk.kin.ik(arm, T_cmd, sk.ex.q[arm], n_random=0)
+    if not ik.ok or float(np.abs(ik.q - sk.ex.q[arm]).max()) > 3 * TURN_MAX_JUMP:
+        return False
+    p = ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move([Segment(np.vstack([sk.ex.q[arm], ik.q]), rate)], name)
+    if hold:
+        p.hold(hold)
+    sk.ex.run({arm: p}, name=name)
+    return True
+
+
+def _descend(sk: Skills, arm: str, T_cmd, z_to: float, step: float, thr: float, base: float) -> tuple[bool, int]:
+    """Lower the commanded hand ``T_cmd`` (in place) to ``z_to`` in ``step`` steps; stop where its vertical lag
+    over ``base`` passes ``thr`` (contact). Returns (reached, steps)."""
+    n = 0
+    while T_cmd[2, 3] > z_to + 1e-6:
+        T_cmd[2, 3] = max(z_to, T_cmd[2, 3] - step)
+        if not _vstep(sk, arm, T_cmd, 0.02, 0, "descend"):
+            return False, n
+        n += 1
+        if _vlag(sk, arm) - base > thr:
+            return False, n
+    return True, n
+
+
+def _blind_insert(sk: Skills, arm: str, label: str, T_target, receptacle: str):
+    """Mode B: the held object from over the receptacle down to ``T_target`` (on its believed in-hand transform) by
+    proprio (``_vlag``): unchecked to just over the receptacle's top, ``FINE_STEP`` steps through the zone where its bit
+    meets the top, ``COARSE_STEP`` steps after; stopped in that zone, the keyed sweep (``keyed_sweep``). Returns
+    (SkillResult, the target turned by the yaw it went in at)."""
     w = sk.refresh()
     o = w.obj(label)
     T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ o.T
-    T_goal = np.asarray(T_target, float) @ inv_T(T_rel)
-    T_up = T_goal.copy()
-    T_up[2, 3] += hover
+    T_target = np.asarray(T_target, float)
+    T_goal = T_target @ inv_T(T_rel)
+    T_cmd = sk._sag(arm, w) @ T_goal                      # commanded through the arm's sag, as the servo tail does
+    low = float((o.asset.mesh[0] @ T_target[:3, :3].T + T_target[:3, 3])[:, 2].min()) if o.asset.mesh is not None \
+        else float(T_target[2, 3])
+    top = float(w.obj(receptacle).top_z)
+    z_goal = float(T_cmd[2, 3])
+    z_fine0 = z_goal + max(0.0, top + FINE_ABOVE - low)
+    z_fine1 = z_goal + max(0.0, top - FINE_BELOW - low)
     n0 = sk.ex.steps_used
+    note, T_seat = "", T_target
     try:
-        mv = sk.motion.line(arm, sk.ex.q[arm], T_up, 0.05, "blind_hover", gripper=CLOSED, check=False)
-        if mv.segments:
-            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move(mv).hold(1)}, name=f"over {receptacle}")
-        n, lag, reached = sk._guarded_line(arm, T_goal, 0.02, 0.003, GUARD_LAG)
+        T_f = T_cmd.copy()                                  # from the place's hover straight down to the zone
+        T_f[2, 3] = z_fine0
+        mf = sk.motion.line(arm, sk.ex.q[arm], T_f, 0.05, "blind_down", gripper=CLOSED, check=False)
+        if not mf.ok:
+            return SkillResult(False, "place", "ik_fail", 0, arm, note=f"blind insert: {mf.note[:100]}"), T_target
+        sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move(mf).hold(1)}, name=f"over {receptacle}")
+        base = _vlag(sk, arm)
+        T_c = T_f.copy()
+        ok, n = _descend(sk, arm, T_c, z_fine1, FINE_STEP, FINE_LAG, base)
+        if not ok:
+            sw, d = keyed_sweep(sk, arm, label, T_c, base)
+            note = sw.note
+            if d is None:
+                return sw, T_target
+            T_seat = _turned(T_target, math.radians(d))
+            T_c = sk._sag(arm, sk.refresh()) @ (T_seat @ inv_T(T_rel))
+            T_c[2, 3] = float(sk.kin.tcp(arm, sk.ex.q[arm])[2, 3])
+        ok, n2 = _descend(sk, arm, T_c, z_goal, COARSE_STEP, COARSE_LAG, base)
+        z = float(sk.kin.tcp(arm, sk.refresh().arms[arm].q)[2, 3])
     except EpisodeEnded as e:
-        return SkillResult(True, "place", "ended", sk.ex.steps_used - n0, arm, note=str(e))
+        return SkillResult(True, "place", "ended", sk.ex.steps_used - n0, arm, note=str(e)), T_seat
     except BudgetExceeded as e:
-        return SkillResult(False, "place", "step_budget", sk.ex.steps_used - n0, arm, note=str(e))
-    if reached:
-        return SkillResult(True, "place", "ok", sk.ex.steps_used - n0, arm, note=f"{label} guarded descent reached ({n} steps)")
-    sw = keyed_sweep(sk, arm, label, T_target)
-    sw.steps += sk.ex.steps_used - n0 - sw.steps
-    return sw
+        return SkillResult(False, "place", "step_budget", sk.ex.steps_used - n0, arm, note=str(e)), T_seat
+    short = z - z_goal
+    st = "ok" if short < SWEEP_SEATED else "place_miss"
+    return SkillResult(st == "ok", "place", st, sk.ex.steps_used - n0, arm,
+                       note=f"{label} blind descent {'reached' if ok else 'stopped'} {short*1000:.1f} mm over the seat"
+                            + (f"; {note}" if note else "")), T_seat
 
 
-def keyed_sweep(sk: Skills, arm: str, label: str, T_seat, max_deg: float = SWEEP_MAX_DEG, step_deg: float = SWEEP_STEP_DEG,
-                press: float = SWEEP_PRESS) -> SkillResult:
-    """Mode B, an object held in the hand stopped on its receptacle short of ``T_seat`` (the arm's lag stopped the blind
-    descent): turn it about its axis by +-``step_deg``, +-2x, ... up to ``max_deg``, each turn pressed ``press`` below
-    the contact, until the hand drops (proprio): the bit found its channel; then down to the seat at that turn. The
+def keyed_sweep(sk: Skills, arm: str, label: str, T_c, base: float, max_deg: float = SWEEP_MAX_DEG,
+                step_deg: float = SWEEP_STEP_DEG):
+    """Mode B, the held object stopped on its receptacle's top (``T_c``: the hand's command there): probe turns about
+    the object's axis, +-``step_deg``, +-2x, ... up to ``max_deg``, each lifted ``SWEEP_UP`` over the contact, turned,
+    then commanded ``SWEEP_DOWN`` under it and held: the hand gets there (no lag) = the bit found its channel. The
     receptacle's yaw from perception can be off (a key's lock perceived at 0 deg, truly 10.7: the key sat on the lock's
-    top, rendered 5.1). Logs the turn it went in at."""
+    top, rendered 5.1). Pressing harder slides the key up in the pads (twin). Returns (SkillResult, the turn in deg it
+    went in at or None)."""
     w = sk.refresh()
     o = w.obj(label)
     Tm = sk.kin.tcp(arm, w.arms[arm].q)
-    T_rel = inv_T(Tm) @ o.T                                  # the believed in-hand transform
-    T_seat = np.asarray(T_seat, float)
-    z_seat = float((T_seat @ inv_T(T_rel))[2, 3])
     z_c = float(Tm[2, 3])
-    if z_c - z_seat < SWEEP_SEATED:
-        return SkillResult(True, "sweep", "ok", 0, arm, note=f"{label} seated ({(z_c - z_seat)*1000:.1f} mm)")
+    root = o.pos.copy()                                     # the turn is about the vertical through the object
     n0 = sk.ex.steps_used
-    q = sk.ex.q[arm].copy()
-    k = 1
     tries = []
+    k = 1
     while k * step_deg <= max_deg + 1e-9:
         tries += [k * step_deg, -k * step_deg]
         k += 1
-    from dojo.skills.motion import Segment
-    try:
-        for d in tries:
-            T = T_seat.copy()
-            T[:3, :3] = rot_z(math.radians(d)) @ T_seat[:3, :3]
-            T_tcp = T @ inv_T(T_rel)
-            T_tcp[2, 3] = z_c - press
-            ik = sk.kin.ik(arm, T_tcp, q, n_random=0)
-            if not ik.ok or float(np.abs(ik.q - q).max()) > 3 * TURN_MAX_JUMP:
-                continue
-            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move([Segment(np.vstack([sk.ex.q[arm], ik.q]), 0.08)],
-                                                                            "sweep").hold(1)},
-                      name=f"sweep {label} {d:+.0f} deg", use_reserve=True)
-            q = ik.q
-            z = float(sk.kin.tcp(arm, sk.refresh().arms[arm].q)[2, 3])
-            if z < z_c - SWEEP_DROP:
-                T_tcp[2, 3] = z_seat
-                ik2 = sk.kin.ik(arm, T_tcp, q, n_random=0)
-                if ik2.ok:
-                    sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED).move(
-                        [Segment(np.vstack([sk.ex.q[arm], ik2.q]), 0.02)], "sweep_in").hold(2)},
-                        name=f"sweep {label} in", use_reserve=True)
-                z2 = float(sk.kin.tcp(arm, sk.refresh().arms[arm].q)[2, 3])
-                return SkillResult(True, "sweep", "ok", sk.ex.steps_used - n0, arm,
-                                   note=f"{label} went in at {d:+.0f} deg ({(z2 - z_seat)*1000:+.1f} mm from the seat)")
-    except EpisodeEnded as e:
-        return SkillResult(True, "sweep", "ended", sk.ex.steps_used - n0, arm, note=str(e))
-    except BudgetExceeded as e:
-        return SkillResult(False, "sweep", "step_budget", sk.ex.steps_used - n0, arm, note=str(e))
+    for d in tries:
+        R = rot_z(math.radians(d))
+        T = np.asarray(T_c, float).copy()
+        T[:3, :3] = R @ T[:3, :3]
+        T[:2, 3] = root[:2] + (R @ (T_c[:3, 3] - root))[:2]
+        T[2, 3] = z_c + SWEEP_UP
+        if not _vstep(sk, arm, T, 0.08, 0, f"sweep {label} {d:+.0f} deg"):
+            continue
+        T[2, 3] = z_c - SWEEP_DOWN
+        _vstep(sk, arm, T, 0.02, 1, "sweep probe")
+        if _vlag(sk, arm) - base < PROBE_LAG:
+            sk.log(f"[keyed_sweep] {label} went in at {d:+.0f} deg")
+            return SkillResult(True, "sweep", "ok", sk.ex.steps_used - n0, arm, note=f"{label} went in at {d:+.0f} deg"), d
+    T = np.asarray(T_c, float).copy()
+    T[2, 3] = z_c + SWEEP_UP
+    _vstep(sk, arm, T, 0.08, 0, "sweep back")
     return SkillResult(False, "sweep", "place_miss", sk.ex.steps_used - n0, arm,
-                       note=f"{label} did not drop in over +-{max_deg:.0f} deg ({(z_c - z_seat)*1000:.0f} mm short)")
+                       note=f"{label} did not drop in over +-{max_deg:.0f} deg"), None
 
 
 def _let_go(sk: Skills, arm: str, label: str) -> None:
