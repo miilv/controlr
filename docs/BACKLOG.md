@@ -13,6 +13,11 @@
 - [ ] **dojo runtime: a Kit hang on a GUI dialog holds the heavy lock** (compute8, organize_table 100008 on 8c845c9):
   `zenity ... Failed to open display` every 2 min in integ_eval.log, no env step for 45 min; integ_eval's TERM path hung
   in `systemctl --user stop` until the eval python got `kill -9`. Needs a hard watchdog (no step for N min -> kill -9).
+- [ ] **dojo perception: the robot mask reads a pre-shaped gripper as a grip** (`render.robot_items`): any command below
+  0.5 masks the jaw sweep and a 65 mm held box between the fingertips (the strict tier has no finger measurement). A
+  pre-grasp opening for a narrow object (`gap_to_grip`, Memory's conveyor approach at 0.444) is not a grip: at a 15 cm
+  hover the box hid 197k of 307k wrist pixels. `refine(empty_hand=True)` / the service's `empty_hand` opt out; B1's wrist
+  frames, looks and `held_look` still mask it. A caller that knows the hand is empty should say so.
 - [ ] **dojo perception: deposit_coin's coin + stand read at a phantom near a home gripper** (5.1 coinmain, 6 of 10 layouts, at frame 0 or in the scan read). The real assembly is ~10 px in the head view; B1 fits the stand onto the piggy bank or gripper area instead. #153 makes the agent's correction stand the coin up; the B1 miss is the root. Also: coin not found when the stand fit is 19-115 mm off (the slot check refutes it).
 - [ ] **dojo perception: a "held" refine can fit the object 80 mm below the jaws** (breadth3 store_tools 100000 step 67: fit 78 mm low, 43 deg off, iou 0.73). The runtime's in-hand bounds (#99) reject it now; perception could reject fits whose centre is outside the jaws itself.
 - [ ] **dojo skills: organize_table, three skill-side gaps (G3 mode A 0.44: alarm 2/9, figurine 0/9, keyboard 4/9).**

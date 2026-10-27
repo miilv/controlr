@@ -250,8 +250,11 @@ def robot_link_meshes(cell: float = 0.003):
     return out
 
 
-def robot_items(state: dict, id_base: int = 1000) -> list[dict]:
-    """Render items for both arms from an observation state (official fields)."""
+def robot_items(state: dict, id_base: int = 1000, closed_jaws: bool = True) -> list[dict]:
+    """Render items for both arms from an observation state (official fields). ``closed_jaws=False``: the hands are
+    known to be empty, so a gripper commanded below half open is a pre-shape, not a grip: its fingers stand at the
+    command and nothing is masked between them (a conveyor approach at 0.44: the 65 mm held box 10 cm in front of
+    the wrist camera hid half the view)."""
     from .robot_model import X5Model
 
     model = X5Model.default()
@@ -268,7 +271,7 @@ def robot_items(state: dict, id_base: int = 1000) -> list[dict]:
             if link in poses:
                 items.append({"id": id_base + 100 * ai + li, "key": f"robot:{arm}:{link}", "V": V, "F": F, "T": poses[link],
                               "link": link, "arm": arm})
-        if g is not None and g < 0.5 and "link7" in meshes and "link8" in meshes:
+        if closed_jaws and g is not None and g < 0.5 and "link7" in meshes and "link8" in meshes:
             items += _closed_jaw_items(model, meshes, arm, q, id_base + 100 * ai + 60)
     return items
 
@@ -313,14 +316,15 @@ def _closed_jaw_items(model, meshes, arm: str, q, id0: int) -> list[dict]:
     return items
 
 
-def robot_mask(cam: Camera, state: dict, dilate_px: int = 0) -> np.ndarray:
-    """Silhouette of both arms in a camera, from FK (GL if available, else CPU)."""
+def robot_mask(cam: Camera, state: dict, dilate_px: int = 0, closed_jaws: bool = True) -> np.ndarray:
+    """Silhouette of both arms in a camera, from FK (GL if available, else CPU); ``closed_jaws``: see robot_items."""
     g = gl()
+    items = robot_items(state, closed_jaws=closed_jaws)
     if g is not None:
-        m = g.render(cam, [(it["key"], it["V"], it["F"], it["T"]) for it in robot_items(state)])
+        m = g.render(cam, [(it["key"], it["V"], it["F"], it["T"]) for it in items])
     else:
         m = np.zeros((cam.h, cam.w), np.uint8)
-        for it in robot_items(state):
+        for it in items:
             silhouette(cam, transform(it["V"], it["T"]), it["F"], out=m)
     if dilate_px > 0:
         m = cv2.dilate(m, np.ones((2 * dilate_px + 1, 2 * dilate_px + 1), np.uint8))
