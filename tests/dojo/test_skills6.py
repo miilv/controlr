@@ -305,3 +305,13 @@ def test_skill_reads_go_through_the_runtime_provider():
     prov.velocity = {"block_0": np.array([0.004, 0.0])}
     v = I.belt_velocity(sk, ["block_0", "block_1"])
     assert np.allclose(v, [0.004, 0.0])
+
+
+def test_waits_on_actor_from_the_plan_or_the_words():
+    from dojo.skills.planner import waits_on_actor
+    assert waits_on_actor("Wait for the opponent to discard a tile, then declare a kong.") == "declare_kong"
+    assert waits_on_actor("Observe the object placement order, remember it, then place the corresponding objects "
+                          "into the basket in the same order.") == "copy_demonstration"
+    assert waits_on_actor("Play tic-tac-toe with the opponent.") is None              # our first piece comes first
+    assert waits_on_actor("Stack the three blocks.") is None
+    assert waits_on_actor("Play tic-tac-toe.", _board_world()) is None                # the plan: play_board_game

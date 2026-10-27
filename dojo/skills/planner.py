@@ -23,6 +23,30 @@ CONCAVE = ("bowl", "cup", "basket")
 CONTAINER_WORDS = ("dustbin", "bin", "basket", "box", "bowl", "drawer", "toolbox")
 
 
+# instruction patterns of the routes whose skill waits on a scripted actor (``library.WAITS_ON_ACTOR``), shared by
+# ``plan`` and ``waits_on_actor`` (all must match)
+COPY_ORDER_TEXT = (r"\border\b|\bsequence\b", r"observe|watch|remember|imitate|same order")
+KONG_TEXT = (r"\bkong\b",)
+
+
+def waits_on_actor(instruction: str, world: WorldState | None = None) -> str | None:
+    """The skill this episode starts with when it is one that holds still while a scripted actor works first
+    (``library.WAITS_ON_ACTOR``), else None: the plan from the start estimate when it routes to one, else the
+    instruction alone (the start estimate may miss the objects the route needs)."""
+    if world is not None:
+        try:
+            p = plan(instruction, world)
+        except Exception:  # noqa: BLE001 (a partial start estimate: fall back to the words)
+            p = None
+        if p is not None and p.skill in L.WAITS_ON_ACTOR:
+            return p.skill
+    text = (instruction or "").lower()
+    for skill, pats in (("copy_demonstration", COPY_ORDER_TEXT), ("declare_kong", KONG_TEXT)):
+        if skill in L.WAITS_ON_ACTOR and all(re.search(pt, text) for pt in pats):
+            return skill
+    return None
+
+
 @dataclass
 class Plan:
     skill: str
@@ -224,7 +248,7 @@ def plan(instruction: str, world: WorldState) -> Plan:
 
     # --- copy a demonstrated order: two containers of one kind (ours = the one nearer the robot), the objects whose
     # identity appears twice (one set for the demonstrator, one for us)
-    if re.search(r"\border\b|\bsequence\b", text) and re.search(r"observe|watch|remember|imitate|same order", text):
+    if all(re.search(pt, text) for pt in COPY_ORDER_TEXT):
         robot = np.array([0.0, -0.45])
         by_kind: dict = {}
         for o in objs:
@@ -252,7 +276,7 @@ def plan(instruction: str, world: WorldState) -> Plan:
                             f"{len(movers)} objects into {h.label}'s holes, then close its lid ({tag})")
 
     # --- mahjong: declare a kong with the tiles (the most numerous rigid category)
-    if "kong" in text:
+    if all(re.search(pt, text) for pt in KONG_TEXT):
         rig = [c for c, v in cats.items() if sum(o.obj_type == "Rigid" for o in v) >= 4]
         if rig:
             c = max(rig, key=lambda c: len(cats[c]))
