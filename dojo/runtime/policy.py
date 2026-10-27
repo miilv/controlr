@@ -151,6 +151,8 @@ class RuntimeConfig:
     post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
     search: bool = False                # objects still missing after the looks: wrist search over regions
     search_max_regions: int = 4
+    search_min_conf: float = 0.3        # a full-fuse search find below this confidence stays missing: on breadth / long
+                                        # runs the 9 finds at 0.06-0.28 were all 44-710 mm off, the 4 right ones 0.34-0.48
     search_lost: bool = False           # a pick refine with iou < lost_iou and no usable suggestion -> search around it
     lost_iou: float = 0.2
     lost_fuse_max_m: float = 0.10       # a lost object's search accepts a full-fuse find only this close to its belief
@@ -1447,8 +1449,11 @@ class RuntimePolicy:
             rec, found = self._search_refine(rec, reg, obs_s, used)
             if not found:
                 rec_s = self.perception().estimate([obs0, obs_s], scene, self.fold, fuse_mode="full")
-                rec, found = add_found(rec, rec_s)
+                low: list = []
+                rec, found = add_found(rec, rec_s, min_conf=cfg.search_min_conf, rejected=low)
                 entry["via"] = "full_fuse"
+                if low:
+                    entry["rejected_low_conf"] = low
             else:
                 entry["via"] = "refine"
             sk.ex.run({used: sk.plan_home(used)}, name="search_home")

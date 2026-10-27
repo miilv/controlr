@@ -790,6 +790,13 @@ def test_add_found_assigns_missing_labels_to_new_objects_only():
     by = {r["label"]: r for r in m["Rigid"]["block"]}
     assert found == ["block_1"] and by["block_1"]["default_pos"] == [-0.3, -0.2, 0.78] and not m["_not_found"]
     assert by["block_0"]["default_pos"] == [0.1, -0.1, 0.78]
+    # 5.1 organize_table 100001 / 04: the full fuse filled the missing alarm 235-371 mm off at confidence 0.12-0.14
+    r1["Rigid"]["block"][1]["_perception"] = {"confidence": 0.12}
+    low = []
+    m, found = add_found(r0, r1, min_conf=0.3, rejected=low)
+    assert found == [] and [x["label"] for x in m["_not_found"]] == ["block_1"] and low[0]["confidence"] == 0.12
+    r1["Rigid"]["block"][1]["_perception"] = {"confidence": 0.34}
+    assert add_found(r0, r1, min_conf=0.3)[1] == ["block_1"]
 
 
 def test_search_finds_a_missing_block_before_planning():

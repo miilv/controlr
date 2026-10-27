@@ -125,10 +125,12 @@ def merge_looked(rec0: dict, rec1: dict, flagged_labels) -> dict:
     return out
 
 
-def add_found(rec0: dict, rec1: dict, min_sep_m: float = 0.03) -> tuple[dict, list[str]]:
+def add_found(rec0: dict, rec1: dict, min_sep_m: float = 0.03, min_conf: float = 0.0,
+              rejected: list | None = None) -> tuple[dict, list[str]]:
     """Objects of ``rec1`` (an estimate including a search frame) that are farther than ``min_sep_m`` from every
     same-category object of ``rec0`` are new finds: they take ``rec0``'s missing labels (``_not_found``) of their
-    category's label group, in order. Returns (merged record, labels found)."""
+    category's label group, in order. A find below ``min_conf`` stays missing (appended to ``rejected``): the full-fuse
+    fallback fills a missing label with whatever fits least badly. Returns (merged record, labels found)."""
     import copy as _copy
     out = _copy.deepcopy(rec0)
     missing = [x.get("label") for x in (rec0.get("_not_found") or [])]
@@ -139,6 +141,12 @@ def add_found(rec0: dict, rec1: dict, min_sep_m: float = 0.03) -> tuple[dict, li
             break
         p = np.asarray(r["default_pos"], float)
         if any(c == c0 and float(np.linalg.norm(p[:2] - p0[:2])) < min_sep_m for c0, p0 in have):
+            continue
+        conf = float((r.get("_perception") or {}).get("confidence", 1.0))
+        if conf < min_conf:
+            if rejected is not None:
+                rejected.append({"category": c, "label": r.get("label"), "confidence": round(conf, 3),
+                                 "pos": [round(float(v), 4) for v in p]})
             continue
         cands = [m for m in missing if any(m in (x.get("label"),) and c in str(x.get("candidates")) for x in
                                            rec0.get("_not_found") or [])] or missing
