@@ -1114,9 +1114,24 @@ def insert_each(sk: Skills, objects: list[str], receptacle: str, depth: float | 
         sk.bank()
         w = sk.refresh()
         o = w.obj(lab)
-        ins = [p for _, T, r in holes for p in [T[:3, 3]] if float(np.linalg.norm(o.pos[:2] - p[:2])) < r + 0.004]
+        hit = [(T, r) for _, T, r in holes if float(np.linalg.norm(o.pos[:2] - T[:2, 3])) < r + 0.004]
+        ins = [T[:3, 3] for T, _r in hit]
         up = abs(float((o.R @ _unit(np.eye(3)[int(np.argmax(o.asset.extents))]))[2])) > math.cos(math.radians(30))
-        if ins and up:
+        deep = True
+        if hit and up and o.asset.mesh is not None:
+            # and its leading end at the depth it was put to: in mode B a probing tail that met the rack short and let go
+            # leaves the object where the jaws opened, "held by the rack" in the belief (#77; G3 runtime belief: a tube
+            # 11.9 mm short counted as in, the checker did not)
+            T_h, r_h = hit[0]
+            p_h = T_h[:3, 3]
+            fl = hole_floor(rec, p_h[:2], r_h)
+            d_exp = depth if depth is not None else (min(0.8 * L, float(p_h[2]) - fl) if fl is not None else 0.5 * L)
+            low = float((np.asarray(o.asset.mesh[0], float) @ o.R.T + o.pos)[:, 2].min())
+            deep = float(p_h[2]) - low >= d_exp - float(EACH_PLACE_KW["seat_tol"])
+            if not deep:
+                sk.log(f"[insert_each] {lab}: over a hole but {(float(p_h[2]) - low)*1000:.0f} mm in of "
+                       f"{d_exp*1000:.0f}: not counted")
+        if ins and up and deep:
             st["done"].append(lab)
             st["filled"][lab] = ins[0].tolist()
             # a standing neighbour's own shape, not its asset box, for the next ones (the box of a 28 mm tube is 42 mm

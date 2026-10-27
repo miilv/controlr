@@ -126,3 +126,32 @@ def test_insert_each_takes_an_object_only_one_arm_reaches_first(monkeypatch):
                                                                           note="x"))
     P.insert_each(sk, ["tubeA", "tubeB"], "rack")
     assert order[0] == "tubeB" and order[-1] == "tubeA"
+
+
+def _counted(monkeypatch, short):
+    """insert_each with a fake transfer that leaves the tube upright over hole 0, ``short`` (m) above its full depth."""
+    V, F = _tube_mesh()
+    rack = _obj("rack", "Geometry", "test_tube_slot", (0.0, -0.05, TABLE_Z + 0.03), lo=(-0.1, -0.05, -0.03),
+                hi=(0.1, 0.05, 0.03),
+                support={f"s/{k}": [(np.array([-0.072 + 0.036 * k, 0.0, 0.028, 1, 0, 0, 0]), 0.015)] for k in range(5)})
+    tube = _obj("tube0", "Rigid", "test_tube", (0.2, -0.2, TABLE_Z + 0.014), mesh=(V, F))
+    w = WorldState(task="", instruction="", objects={"rack": rack, "tube0": tube}, arms={}, home_q={}, step=0,
+                   step_lim=500)
+    mouth = P.hole_frames(rack)[0][1][:3, 3]
+    plan = (SimpleNamespace(arm="right", grasp=SimpleNamespace(note="box close 0 off +9mm")), None)
+    sk = SimpleNamespace(world=w, kin=X5Kin(), held={"left": None, "right": None}, log=lambda m: None,
+                         coll=SimpleNamespace(include=set(), heightmaps={}, margin_of={}), refresh=lambda: w,
+                         bank=lambda: None, plan_transfer=lambda *a, **k: plan)
+
+    def run_leg(sk_, lab, tg, *a, **k):            # tip down (body y up), the tip `short` above mouth - 0.5 L
+        o = w.objects[lab]
+        o.pos = np.array([mouth[0], mouth[1], mouth[2] - 0.5 * 0.11 + short])
+        o.quat = np.array(_quat_x(90))
+        return SkillResult(True, "place", "ok", 50, "right", note="probing tail")
+    monkeypatch.setattr(L, "_run_leg", run_leg)
+    return P.insert_each(sk, ["tube0"], "rack")["ok"]
+
+
+def test_insert_each_counts_a_tube_only_at_its_depth(monkeypatch):
+    assert _counted(monkeypatch, 0.0)
+    assert not _counted(monkeypatch, 0.012)        # believed held by the rack 12 mm short (a probing tail stopped)
