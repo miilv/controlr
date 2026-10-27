@@ -14,6 +14,9 @@ cands += [("default", g) for g in (G.box_grasps(o, sk.kin, arm) + G.candidates(o
                                    + G.slice_grasps(o, sk.kin, arm))[:40:5]]
 for kind, g in cands:
     sk2 = rebuild(lay)
+    from dojo.skills.motion import mesh_parts
+    for lab in ("broom_shovel", "broom"):
+        sk2.coll.parts[lab] = mesh_parts(*sk2.world.obj(lab).asset.mesh, cell=0.015, step=0.004)
     o2 = sk2.refresh().obj("broom")
     p_l = (np.linalg.inv(o2.T) @ np.r_[g.T[:3, 3], 1.0])[:3]
     pp = sk2.plan_pick("broom", arm, grasps=[g], keep=1, lift=0.06)
