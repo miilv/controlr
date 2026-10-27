@@ -53,3 +53,25 @@ The v1/v2 right-sleeve misses: the two sleeve targets were 6 cm apart (each 5 cm
 so the second sleeve was carried onto the first and the pads, lowered to 2 cm, pressed into the pile. A logged probe
 (`scripts/skills/probe_fold_skill.py`, 100000) showed the cloth simulation diverging there: every named point metres
 off the table. `blown_up` now stops the skill when that happens.
+
+## 3. The camera garment read (mode B)
+
+`dojo/perception/garment.py`: which garment, its root pose and its named points from one head frame.
+- A garment is cloth, so no rigid pose fits its mesh once it has fallen. But it falls the same way every time from the
+  same spawn shape. Each asset's settled shape is therefore one flat template: its particles and named points in its
+  root frame, from the twin (`scripts/perception/garment_frames.py`; `data/garment_templates.json`, 2500 footprint
+  points per asset).
+- The read: colour distance to the head background (the fold's `bg_folds_51` image) -> the foreground blob nearest the
+  table's front middle, back-projected onto the cloth plane (table + 6 mm) -> per template, the yaw (+-45 deg) and shift
+  that maximise the footprints' IoU on a 6 mm grid, coarse then local -> the best template's named points, moved.
+- Runtime: perception service op `garment_read`, `RuntimeProvider.garment` (the first read, kept for the episode,
+  `live` False), the policy wires it in perception mode. The fold skill then plans every fold from that one read.
+
+Validation on genuine Isaac 5.1 rendered frame 0s of our dev layouts (`garment_frames.py` on compute5,
+`scripts/perception/garment_read_eval.py`), against the twin's GT particles at the same moment:
+
+| set | n | asset right | named point error median | worst point per layout: median / max | yaw error median |
+|---|---|---|---|---|---|
+| fold_clothes 100000-19 | 20 | 20/20 | 4 mm | 7 / 19 mm | 0.8 deg |
+
+The templates come from 3 of these layouts (100000, 100002, 100004: one per asset); the other 17 are held out.

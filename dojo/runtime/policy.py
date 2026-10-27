@@ -542,6 +542,8 @@ class RuntimePolicy:
             pc = self.perception()
             if hasattr(pc, "motion"):                   # provider.actors_moving (skills waiting for a scripted arm)
                 prov.motion_reader = lambda a, b_: pc.motion(a, b_)
+            if hasattr(pc, "garment_read"):             # provider.garment (a garment lying flat: the fold skill)
+                prov.garment_reader = lambda obs: pc.garment_read(obs, self.fold)
             if cfg.held_pose == "auto" and hasattr(pc, "held_pose"):
                 prov.held_pose = lambda arm, prior_T_tcp_obj, asset_key, cfg_=None: self._held_pose(
                     prov, arm, prior_T_tcp_obj, asset_key, cfg_)

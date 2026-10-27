@@ -53,6 +53,8 @@ Ops (request dicts):
                                                                                    -> {"show_pose": json}
         where to look at it (``dojo.perception.show_pose.propose``): an observer look at the hover, canonical show poses
         of the holding arm (+ observer look), IK hints and step estimates; generic (mesh bbox + cameras)
+    {"op": "garment_read", "frame": frame, "fold": int}                           -> {"garment": json|null}
+        (a garment lying flat, from the head view: asset, root pose, named points; ``dojo.perception.garment``)
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -173,6 +175,10 @@ class PerceptionClient:
                                       "region": json.dumps(region, default=_default), "vocabulary": vocabulary,
                                       "fold": int(fold), "prior": None if prior is None else json.dumps(prior, default=_default)})
                           ["watch_read"])
+
+    def garment_read(self, frame: dict, fold: int) -> dict | None:
+        """A garment lying flat on the table (head view): {"asset", "pos", "quat", "keypoints", "iou"} or None."""
+        return json.loads(self._call({"op": "garment_read", "frame": encode_frame(frame), "fold": int(fold)})["garment"])
 
     def motion(self, frame_a: dict, frame_b: dict, thr: float = 12.0, min_px: int = 150) -> dict:
         def head_only(f):
@@ -716,6 +722,15 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                                        cfg=p.cfg(int(req.get("fold", 0))),
                                        prior=json.loads(req["prior"]) if req.get("prior") else None)
                         conn.send({"ok": True, "watch_read": json.dumps(w, default=_default)})
+                    elif op == "garment_read":
+                        from dojo.perception.garment import load_templates, read_garment
+                        fr = decode_frame(req["frame"])
+                        img = fr["images"].get("cam_head")
+                        g = None
+                        if img is not None:
+                            bg = p.bgs(int(req.get("fold", 0))).get("cam_head")
+                            g = read_garment(np.asarray(img, np.uint8), load_templates(), bg=bg)
+                        conn.send({"ok": True, "garment": json.dumps(g, default=_default)})
                     elif op == "motion":
                         mo = p.motion(req["frame_a"], req["frame_b"], float(req.get("thr", 12.0)), int(req.get("min_px", 150)))
                         conn.send({"ok": True, "motion": json.dumps(mo, default=_default)})
