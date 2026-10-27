@@ -281,13 +281,13 @@ class HeldBeliefProvider:
     def _belief_rest(self, lab: str, T_release, fixtures: bool):
         """The runtime belief's prediction for ``lab`` let go at ``T_release`` (``drop_rest`` over what the belief
         holds: the other objects as last reported)."""
-        from dojo.runtime.belief import drop_rest
+        from dojo.runtime.belief import drop_rest, is_fixture
         o = copy.copy(self._free[lab])
         p7 = T_to_pose7(np.asarray(T_release, float))
         o.pos, o.quat = np.asarray(p7[:3], float), np.asarray(p7[3:], float)
         others = [x for k, x in self._free.items() if k != lab and not getattr(x, "clutter", False)]
         movables = [x for x in others if x.obj_type != "Geometry"]
-        fx = [x for x in others if x.obj_type == "Geometry"] if fixtures else ()
+        fx = [x for x in others if is_fixture(x)] if fixtures else ()
         rel7 = np.round(np.r_[o.pos, o.quat], 5).tolist()
         pos, ev = drop_rest(o, movables, fx)
         if pos is not None:
