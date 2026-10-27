@@ -42,6 +42,11 @@
   help), so stereo there can only confirm colour candidates. The home wrists see only the table beyond y ≈ -0.15, the
   zone in front of the grippers needs the scan pose (coverage 0.34 -> 0.75). Vertical faces and textureless tops get no
   height (experiments/2026-10-27-stereo-height).
+- [ ] **dojo perception: classify_objects' series stay under the config label** (`rigid0` x n). Its per-category
+  prefixes (`cat0_*`, `cat1_*`, `cat2_*`) follow the generator's random category order, which can't be observed, so
+  `series_count` doesn't rename them. Check what the checker / twin need there. SAM 3.1 text also undercounts its
+  small toys (1-5 masks for 3-9 objects): within 30 / 69 with `sam`. arrange_largest_number's `linked_count` mats are
+  not handled at all.
 - [ ] **dojo perception: a "held" refine can fit the object 80 mm below the jaws** (breadth3 store_tools 100000 step 67: fit 78 mm low, 43 deg off, iou 0.73). The runtime's in-hand bounds (#99) reject it now; perception could reject fits whose centre is outside the jaws itself.
 - [ ] **dojo skills: organize_table, three skill-side gaps (G3 mode A 0.44: alarm 2/9, figurine 0/9, keyboard 4/9).**
   (journal 2026-10-27-dojo-longh §5) The drawer's top is a tray 23 mm under a rim; the place targets use the bbox top,

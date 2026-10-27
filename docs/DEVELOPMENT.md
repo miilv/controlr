@@ -219,6 +219,21 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   black camera's body, so a masked crop scores 0.41-0.53 where the raw crop against renders over the background scores
   0.76-0.80 (`embed_crop`, journal 2026-10-27-dojo-pbake-identity).
 
+- **A config label can stand for a numbered series.** `select_mode.label_prefix` with `select_instance_nums` makes the
+  generator expand one label into `<prefix>_<k>` objects (sweep_blocks' `rigid2` -> `cube_0..cube_4`, classify_objects'
+  `rigid0` -> `cat0_*`, `cat1_*`, `cat2_*`). B1 searched for one object per label (2 of 3 cubes never looked for), and
+  `eval_g1` dropped the series' GT objects (their labels are not config labels), so the misses never showed in G1.
+  `EstimatorConfig.series_count` and `eval_g1.series_labels` / `gt_label` handle them; `scripts/perception/sam/series_tasks.py`
+  lists the tasks (journal 2026-10-27-dojo-sam).
+- **SAM flags at runtime need their server.** `sam_fg` / `sam_propose` / `series_count=sam` are estimator-config fields
+  (`DOJO_PERCEPTION_CFG='{"sam_propose": "sam2.1_small"}'` for the perception service), but they only act when a SAM
+  server answers at `DOJO_SAM_ADDR`: start `python -m dojo.perception.sam_masks serve --sock ... --models sam2.1_small`
+  (1-6 GB VRAM by models; `scripts/perception/sam/setup_venv.sh`) next to the perception service and export
+  `DOJO_SAM_ADDR` into the service's environment. Without one the flags are a no-op (plain B1, `series_count=sam`
+  falls back to `min`).
+- **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
+  frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
+
 ## 5. What lives where
 
 | What | Where | Rule |

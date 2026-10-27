@@ -113,15 +113,48 @@ def flatten_pred(rec: dict) -> list[dict]:
     return out
 
 
+def series_labels(task: str) -> dict[str, str]:
+    """``label_prefix`` -> config label for the task's numbered series: one config label the generator expands into
+    ``<prefix>_<k>`` objects (sweep_blocks' ``rigid2`` -> ``cube_0..cube_4``; classify_objects' ``rigid0`` ->
+    ``cat0_*``, ``cat1_*``, ``cat2_*``)."""
+    from .inverse_layout import task_map
+
+    out = {}
+    for lab, d in (task_map().get(task) or {}).get("labels", {}).items():
+        p = (d.get("select_mode") or {}).get("label_prefix")
+        for x in ([p] if isinstance(p, str) else (p or [])):
+            out[str(x)] = lab
+    return out
+
+
+def gt_label(o: dict, labels, series: dict[str, str]) -> str | None:
+    """The config label a GT object is scored under: its own, or its series' (``cube_3`` -> ``rigid2``)."""
+    lab = o.get("label")
+    if lab in labels:
+        return lab
+    base = str(lab).rsplit("_", 1)[0] if "_" in str(lab) else None
+    return series.get(base)
+
+
 def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict], int, int]:
     """Per-object errors of a layout record against DEV-ONLY ground truth (Hungarian on xy within each
-    interchangeable label group)."""
+    interchangeable label group). Objects of a numbered series are scored under their config label (before
+    2026-10-27 they were dropped: sweep_blocks' cubes, classify_objects' items)."""
     from .inverse_layout import label_groups
 
     groups = label_groups(task)
     lab2group = {lab: gi for gi, g in enumerate(groups) for lab in g["labels"]}
-    gts = [o for o in gt["objects"] if o.get("label") in lab2group and not o.get("clutter") and o.get("pos") is not None]
-    preds = [p for p in flatten_pred(rec) if p.get("label") in lab2group]
+    series = series_labels(task)
+    gts = []
+    for o in gt["objects"]:
+        lab = gt_label(o, lab2group, series)
+        if lab is not None and not o.get("clutter") and o.get("pos") is not None:
+            gts.append(o if lab == o.get("label") else {**o, "label": lab, "series_label": o.get("label")})
+    preds = []
+    for p in flatten_pred(rec):  # an estimate may name a series' objects as the layout does (cube_0, ...)
+        lab = gt_label(p, lab2group, series)
+        if lab is not None:
+            preds.append(p if lab == p.get("label") else {**p, "label": lab})
     rows = []
     for gi, g in enumerate(groups):
         G = [o for o in gts if lab2group[o["label"]] == gi]
@@ -140,6 +173,8 @@ def score_record(rec: dict, gt: dict, task: str, meta: dict) -> tuple[list[dict]
                 sym = 1
             row = {"task": task, **meta, "label": o["label"], "category": o["category"],
                    "gt_idx": o["category_idx"], "gt_pos": o["pos"], "sym": sym}
+            if o.get("series_label"):
+                row["series_label"] = o["series_label"]
             if oi in matched:
                 p = P[matched[oi]]
                 pp = p.get("_perception", {})

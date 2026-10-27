@@ -2740,6 +2740,194 @@ def _assign_constrained(refined, need, pending, blob_list, views, existing=(), b
     return _scene_select(allowed, need, views, existing)[0]
 
 
+SAM_IDENTITY_MAX = 8  # sam_propose tries a group's other shapes when it has at most this many candidates
+
+
+def _sam_text(img: np.ndarray, groups: list[dict], instruction: str, cfg) -> tuple[list | None, dict]:
+    """SAM 3.1 text masks for the scene vocabulary (sam_masks.text_masks_for), or None when no SAM server answers."""
+    from . import sam_masks
+
+    if sam_masks.client() is None:
+        return None, {"error": "no SAM server"}
+    try:
+        ms = sam_masks.text_masks_for(img, groups, instruction, thr=cfg.sam_text_thr)
+    except Exception as e:  # a SAM failure never takes perception down
+        return None, {"error": f"{type(e).__name__}: {e}"}
+    return ms, {"n_masks": len(ms), "prompts": sorted({m.prompt for m in ms})}
+
+
+def _sam_fg(head: ViewMasks, ms: list | None, cfg) -> tuple[ViewMasks, dict]:
+    """The head view with its foreground combined with SAM 3.1's text masks (``cfg.sam_fg``; sam_masks.combine_fg).
+    Unchanged without masks (no server, or nothing found and the mode would drop foreground)."""
+    from . import sam_masks
+
+    info = {"mode": cfg.sam_fg}
+    if ms is None or (not ms and cfg.sam_fg != "union"):
+        info["kept_fg"] = True
+        return head, info
+    fg = sam_masks.combine_fg(head.fg, head.known, [m.mask for m in ms], cfg.sam_fg, trim_cover=cfg.sam_trim_cover)
+    info["fg_px"] = [int(head.fg.sum()), int(fg.sum())]
+    return ViewMasks(head.cam, head.img, fg, head.known, head.dist, head.robot), info
+
+
+def instance_range(task: str, g: dict) -> tuple[int, int, int] | None:
+    """(min, max, step) objects of a group whose config label the generator expands into a numbered series
+    (``select_mode.label_prefix`` with ``select_instance_nums``: sweep_blocks' 3-5 cubes under one label, classify_objects'
+    3 categories x 1-3 items each), else None. ``step``: the count moves in whole category sets when the category count
+    is fixed (classify_objects: 3, 6 or 9)."""
+    if len(g["labels"]) != 1:
+        return None
+    sel = (task_map()[task]["labels"].get(g["labels"][0]) or {}).get("select_mode") or {}
+    if not sel.get("label_prefix"):
+        return None
+    inn = list(sel.get("select_instance_nums") or [1, 1])
+    cn = list(sel.get("select_category_nums") or [1, 1])
+    lo, hi = int(inn[0]) * int(cn[0]), int(inn[-1]) * int(cn[-1])
+    step = int(cn[0]) if int(cn[0]) == int(cn[-1]) else 1
+    return (lo, hi, step) if hi > 1 else None
+
+
+def _series_count(task: str, groups: list[dict], ms: list | None, instruction: str, cfg) -> tuple[list[dict], dict]:
+    """How many objects a numbered-series group holds (``cfg.series_count``): "min" = the config's minimum; "sam" = the
+    distinct SAM 3.1 text masks of the group's own vocabulary, rounded up to whole category sets and clamped to the
+    config's range (the minimum without masks). The group's label is repeated that many times (its objects are
+    interchangeable under it)."""
+    import copy
+
+    from . import sam_masks
+
+    out = copy.deepcopy(groups)
+    info = {}
+    for g in out:
+        rng = instance_range(task, g)
+        if rng is None:
+            continue
+        lo, hi, step = rng
+        n = lo
+        rec = {"range": [lo, hi]}
+        if cfg.series_count == "sam" and ms:
+            voc = set(sam_masks.vocabulary([g], instruction))
+            mine: list[np.ndarray] = []
+            for m in sorted((m for m in ms if m.prompt in voc), key=lambda m: -m.score):
+                if not any(_mask_iou(m.mask, x, np.ones_like(x)) > 0.5 for x in mine):
+                    mine.append(m.mask)
+            if mine:
+                n = int(np.clip(step * int(np.ceil(len(mine) / step)), lo, hi))
+            rec["sam"] = len(mine)
+        rec["n"] = n
+        info[g["labels"][0]] = rec
+        g["labels"] = [g["labels"][0]] * n
+    return out, info
+
+
+def _mask_iou(a: np.ndarray, b: np.ndarray, known: np.ndarray) -> float:
+    a, b = (a > 0) & (known > 0), (b > 0) & (known > 0)
+    u = int((a | b).sum())
+    return float((a & b).sum()) / u if u else 0.0
+
+
+def _sam_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[dict]) -> dict:
+    """REAL_RSI's mask proposer on our fits (``cfg.sam_propose``): for each chosen object, SAM clicks at its head-view
+    centre + 4 offsets (half its projected radius) propose masks; the object is re-fitted (same shape, local) inside
+    each plausible mask, and the pose whose silhouette agrees best with its mask wins. B1's pose competes with its own
+    best mask agreement; a re-fit must beat it by ``sam_propose_margin``. Edits ``chosen`` in place."""
+    from . import sam_masks
+
+    c = sam_masks.client()
+    info = {"model": cfg.sam_propose, "n": 0, "replaced": []}
+    if c is None:
+        info["error"] = "no SAM server"
+        return info
+    head = views["cam_head"]
+    for i, h in enumerate(chosen):
+        if h.per_view.get("occluded") or h.per_view.get("contained") or h.per_view.get("fixed_from_config"):
+            continue
+        sm = h.sm()
+        z_off = float(h.per_view.get("z_off", 0.0))
+        sil = sm.sil(head.cam, h.T())
+        area = int(sil.sum())
+        if area < MIN_BLOB_PX.get("cam_head", 25) or int((sil & head.known).sum()) < 0.5 * area:
+            continue  # tiny or mostly hidden in the head view: SAM sees less than the model
+        ys, xs = np.nonzero(sil)
+        u, v = float(xs.mean() + 0.5), float(ys.mean() + 0.5)
+        rad = 0.5 * float(np.sqrt(area / np.pi))
+        try:
+            ms = c.points(img, np.array([[u, v], [u + rad, v], [u - rad, v], [u, v + rad], [u, v - rad]]),
+                          model=cfg.sam_propose)
+        except Exception as e:
+            info["error"] = f"{type(e).__name__}: {e}"
+            break
+        info["n"] += 1
+        cands: list[np.ndarray] = []
+        for m in ms:
+            a = int(m.mask.sum())
+            if 0.3 * area <= a <= 3.0 * area and not any(_mask_iou(m.mask, x, head.known) > 0.9 for x in cands):
+                cands.append(m.mask.astype(np.uint8))
+        if not cands:
+            continue
+        base = max(_mask_iou(sil, M, head.known) for M in cands)
+        others = _union_masks(chosen, views, skip=i, target=h)
+        g = groups[h.label_group]
+        yaw_fixed = _placement_prior(g)["yaw_fixed"]
+
+        def fit(sm_, M, y0):
+            vws = dict(views)
+            vws["cam_head"] = ViewMasks(head.cam, head.img, (M & head.known).astype(np.uint8), head.known, head.dist, head.robot)
+            x, y, yaw, _, _ = refine(sm_, h.x, h.y, y0, vws, others, xy_step=0.004, yaw_step=0.08, maxiter=60,
+                                     fix_yaw=yaw_fixed, bounds=origin_bounds(g, sm_, y0), z_off=z_off)
+            return _mask_iou(sm_.sil(head.cam, sm_.pose(x, y, yaw, z_off)), M, head.known), x, y, yaw
+
+        best = None
+        for M in cands:
+            r = fit(sm, M, h.yaw)
+            if best is None or r[0] > best[0]:
+                best = (*r, sm, M)
+        # the 180-degree flip (a laptop / T read backwards) only where the texture agrees: a silhouette alone cannot
+        # tell a lying bottle's cap from its base, and the asset origin sits at one end (40-70 mm moves)
+        if cfg.sam_propose_flip and not yaw_fixed and sm.yaw_period > 1.5 * np.pi:
+            flip = None
+            for M in cands:
+                r = fit(sm, M, h.yaw + np.pi)
+                if flip is None or r[0] > flip[0]:
+                    flip = (*r, sm, M)
+            if flip[0] > best[0] + cfg.sam_propose_margin:
+                t_old = texture_cost(sm, h.T(), views, h.key)
+                t_new = texture_cost(sm, sm.pose(flip[1], flip[2], flip[3], z_off), views, h.key)
+                if t_old is not None and t_new is not None and t_new < t_old:
+                    best = flip
+        # identity: the group's other shapes fitted inside the winning mask at its heading (headset variants)
+        if cfg.sam_propose_identity and best is not None and 1 < len(g["candidates"]) <= SAM_IDENTITY_MAX:
+            for key in g["candidates"]:
+                if key == h.key:
+                    continue
+                try:
+                    sms = shape_models(key)
+                except Exception:
+                    continue
+                for sm_ in sms:
+                    r = fit(sm_, best[5], best[3])
+                    if r[0] > best[0] + cfg.sam_propose_margin:
+                        best = (*r, sm_, best[5])
+        if best is None or best[0] < base + cfg.sam_propose_margin:
+            continue
+        sc, x, y, yaw, sm_b, _ = best
+        ext = float(np.max(sm.asset.extents))
+        if np.hypot(x - h.x, y - h.y) > ext:  # a re-fit stays local (a mask of a neighbour is not this object)
+            continue
+        loss, per = multi_view_loss(sm_b, sm_b.pose(x, y, yaw, z_off), views, others)
+        info["replaced"].append({"label_group": h.label_group, "from": [round(h.x, 4), round(h.y, 4), round(h.yaw, 3), h.key],
+                                 "to": [round(x, 4), round(y, 4), round(yaw, 3), sm_b.key], "iou": [round(base, 3), round(sc, 3)]})
+        sil0 = h.per_view.get("sil_loss", h.loss)
+        h.loss = h.loss - sil0 + loss
+        h.x, h.y, h.yaw = x, y, yaw
+        if sm_b is not sm:
+            h.key, h.tag = sm_b.key, sm_b.tag
+        h.per_view["sil_loss"] = round(float(loss), 4)
+        h.per_view.update(per)
+        h.per_view["sam_refit"] = info["replaced"][-1]["iou"]
+    return info
+
+
 @dataclass
 class EstimatorConfig:
     use_wrists: bool = True
@@ -2833,6 +3021,24 @@ class EstimatorConfig:
     # the stand phantoms a read puts on bare table or on the piggy bank. Other bases (kong tiles, the bread shelf, the
     # mallet stand) are never dropped: on 71 integ layouts the 10 mm flag was wrong on 9 % of right objects
     stereo_reject: str = "off"
+    # SAM mask proposals (dojo.perception.sam_masks; a no-op without a SAM server at DOJO_SAM_ADDR). Default off.
+    # sam_fg: the head foreground combined with SAM 3.1's text masks for the scene vocabulary: "union" | "gate" | "replace"
+    sam_fg: str = "off"
+    sam_text_thr: float = 0.4
+    sam_trim_cover: float = 0.5  # "trim" cuts only blobs the masks cover by this share (not several objects' merged blob)
+    # sam_propose: after the joint refinement each chosen object is re-fitted inside the SAM masks clicked at its head-view
+    # centre + 4 offsets (point model: "sam2.1_small" | "sam2.1_large" | "sam3.1"); the fit that agrees best with its mask
+    # wins, B1's own pose included, by at least sam_propose_margin IoU
+    sam_propose: str = "off"
+    sam_propose_margin: float = 0.05
+    sam_propose_identity: bool = True  # ... and the group's other shapes (<= SAM_IDENTITY_MAX candidates) in the winning mask
+    sam_propose_flip: bool = True  # ... and B1's 180-degree flip, taken only when the texture agrees
+    # series_count: objects of a numbered-series group (one config label the generator expands into ``<prefix>_<k>``
+    # objects: sweep_blocks' 3-5 cubes, classify_objects' 3-9 items): "one" = the config label once (before
+    # 2026-10-27: 2 of 3 cubes never looked for), "min" = the config's minimum, "sam" = the distinct SAM 3.1 text masks
+    # of its vocabulary within the range (needs a SAM server; "min" without one). Single-prefix series are reported
+    # under the generator's labels (cube_0, cube_1, ...), which the checker looks up by prefix
+    series_count: str = "min"
 
 
 def _views_subset(views, cfg):
@@ -2865,6 +3071,18 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     groups = label_groups(task)
     if instruction:
         groups = restrict_by_instruction(groups, instruction)
+    sam_info: dict = {}
+    sam_text = None
+    if (cfg.sam_fg != "off" or cfg.series_count == "sam") and "cam_head" in images:
+        t_s = time.time()
+        sam_text, sam_info["text"] = _sam_text(images["cam_head"], groups, instruction, cfg)
+        sam_info["text"]["s"] = round(time.time() - t_s, 3)
+    series: dict = {}
+    if cfg.series_count != "one":
+        groups, series = _series_count(task, groups, sam_text, instruction, cfg)
+    if cfg.sam_fg != "off" and "cam_head" in images:
+        views["cam_head"], sam_info["fg"] = _sam_fg(views["cam_head"], sam_text, cfg)
+        head_blobs = blobs(views["cam_head"], "cam_head")
 
     placed: list[tuple[dict, Hypothesis]] = []
     record: dict = {"task": task, "instruction": instruction}
@@ -3255,6 +3473,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 h.per_view["sil_loss"] = round(float(loss), 4)
                 h.per_view.update(per)
     timings["joint_s"] = round(time.time() - t3, 3)
+    if cfg.sam_propose != "off" and "cam_head" in images:
+        t_s = time.time()
+        sam_info["propose"] = _sam_propose(chosen, views, images["cam_head"], cfg, groups)
+        sam_info["propose"]["s"] = round(time.time() - t_s, 3)
 
     # ---- identity by appearance within each geometry group
     t4 = time.time()
@@ -3469,10 +3691,15 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     timings["total_s"] = round(time.time() - t0, 3)
     record["_perception"] = {"version": "v0", "timings": timings, "n_head_blobs": len(head_blobs),
                              "views": list(views), "unexplained": unexplained}
+    if sam_info:
+        record["_perception"]["sam"] = sam_info
     ranking = {lab: g["target_ranking"] for g in groups if g.get("target_ranking") for lab in g["labels"]}
     if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
         record["_perception"]["target_ranking"] = ranking
     index_structure(record, task)
+    if series:
+        record["_perception"]["series"] = series
+        _series_labels_out(record, task, series)
     if cfg.stereo_check:
         stereo_check(record, images, state, cams, {n: v.robot for n, v in views_all.items()}, cfg)
     return record
@@ -3532,6 +3759,24 @@ def reject_slot_bases(record: dict, thin_m: float = THIN_CHILD_M) -> list[str]:
         if typ in record and not record[typ]:
             del record[typ]
     return sorted(drop)
+
+
+def _series_labels_out(record: dict, task: str, series: dict) -> None:
+    """Objects of a single-prefix series under the generator's labels (``rigid2`` x 3 -> ``cube_0..cube_2``, ordered
+    by x then y), as the layout and the checker's prefix lookups name them. Per-category prefixes (classify_objects'
+    cat0 / cat1 / cat2) keep the config label: which category the generator numbered first is not observable."""
+    labels = task_map()[task]["labels"]
+    for lab in series:
+        p = (labels.get(lab, {}).get("select_mode") or {}).get("label_prefix")
+        p = p[0] if isinstance(p, list) and len(p) == 1 else p
+        if not isinstance(p, str):
+            continue
+        ents = [r for typ in ("Rigid", "Geometry", "Articulation") for lst in (record.get(typ) or {}).values()
+                for r in lst if r.get("label") == lab]
+        ents.sort(key=lambda r: (round(float(r["default_pos"][0]), 3), float(r["default_pos"][1])))
+        for k, r in enumerate(ents):
+            r["label"] = f"{p}_{k}"
+        series[lab]["labels"] = [r["label"] for r in ents]
 
 
 IDENTITY_READ_MAX = 12  # _slot_identity reads the identity of slots with at most this many candidates
