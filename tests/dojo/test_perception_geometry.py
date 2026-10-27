@@ -560,3 +560,23 @@ def test_quota_lists_from_a_hierarchical_list_and_its_copies(monkeypatch):
     assert il.region_ok(ls[1], 0.0, 0.2) and not il.region_ok(ls[0], 0.0, 0.2)
     labels["t0"]["select_mode"] = labels["t1"]["select_mode"] = dict(t_sel, select_category_nums=[1, 2])
     assert il.quota_lists("imi", g) == []
+
+
+def test_region_mask_covers_the_generator_region_only():
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    cam = cameras.head_camera()
+    sm = SimpleNamespace(asset=SimpleNamespace(extents=np.array([0.1, 0.1, 0.055])), height=0.055)
+    # insert_key's lock: x in [-0.2, -0.1] or [0.1, 0.2], y in [-0.2, -0.15]
+    g = {"regions": [{"x": [(-0.2, -0.1), (0.1, 0.2)], "y": [(-0.2, -0.15)], "yaw": None}]}
+    m = il._region_mask(cam, g, [sm])
+
+    def at(x, y):
+        uv, _ = cam.project(np.array([[x, y, il.TABLE_Z + 0.0275]]))
+        return int(m[int(uv[0, 1]), int(uv[0, 0])])
+
+    assert at(0.121, -0.188) and at(-0.2, -0.168) and at(0.24, -0.13)     # inside, and within half a lock outside
+    assert not at(0.0, -0.17) and not at(0.15, 0.05)                      # between the two boxes; far behind
+    assert il._region_mask(cam, {"regions": [{"x": None, "y": [(-0.2, -0.1)], "yaw": None}]}, [sm]) is None
