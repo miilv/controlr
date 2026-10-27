@@ -43,6 +43,19 @@ Three `EstimatorConfig` fields:
 
 ## Results
 
+**hang_mugs D0, genuine 5.1.** 25 layouts, 75 mugs, main vs this branch, paired. Right model = the catalogue model;
+pose ok = <= 15 mm and <= 15 deg with the handle counted.
+
+| frames | right model main -> fix | pose ok | model and pose ok | changed |
+|---|---|---|---|---|
+| frame 0 | **47 -> 54** | 42 -> 44 | **40 -> 43** | +7 models, 0 lost; +2 poses, 0 lost |
+| frame 0 + wrist look | **52 -> 56** | 49 -> 50 | 43 -> 45 | +4 models, 0 lost; +1 pose, 0 lost |
+
+**Breadth-2 frames (6.0 proxy, 15 mugs).**
+- 100004 goes from 1/3 to 3/3 right models.
+- 100003's cream mug, half behind the right gripper, still reads 00002.
+- 100002's missing mug is a different case.
+
 **First version, two losses.** In the first version a colour-vetoed trial fell through to the plain-loss comparison.
 - The d0_ext regression lost organize_table 100000's garage figure (0.4 -> 148 mm) and one fill_pen identity.
 - An ablation pinned both on the veto alone.
@@ -62,3 +75,11 @@ Three `EstimatorConfig` fields:
 - **put_bottles:** 6 bottles change class, all for the better (4 identity / overshoot -> ok, 1 gross -> ok, 1
   overshoot -> identity at 9 mm).
 - **Every other set** is identical object for object.
+
+## Caveats and next
+
+- One right model of three is still missing in 21 of 75 frame-0 mugs. The worst cases are mugs half hidden by a home
+  gripper; those need the look (+4 more with it) or the agent.
+- The missing mug (breadth 100002) and the handle yaw when the model is right are not addressed here.
+- The catalogue index's `symmetry_z = 36` for mugs hides handle yaw in index-based evals (eval_g1, breadth_eval). B1
+  itself uses the shape cache (1).
