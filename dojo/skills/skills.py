@@ -992,9 +992,11 @@ class Skills:
     def _guarded_tail(self, arm: str, T_obj, h: "Held", kw: dict, lag_stop: float = GUARD_LAG, rate: float = 0.02,
                       step_m: float = 0.003, radii=PROBE_RADII, n_dir: int = 8, min_left: int = 25) -> str:
         """Insertion tail without object measurement (proprio only): ``_guarded_descent`` to ``T_obj`` (the held
-        object's target), then let go and back off upwards. Returns a note."""
+        object's target), then let go and back off upwards (``release`` False in ``kw``: hold on, a key turned next).
+        Returns a note."""
         note, _, _ = self._guarded_descent(arm, T_obj, h, kw, lag_stop, rate, step_m, radii, n_dir, min_left)
-        self._guarded_release(arm, kw)
+        if kw.get("release", True):
+            self._guarded_release(arm, kw)
         return note
 
     def _guarded_release(self, arm: str, kw: dict) -> None:
