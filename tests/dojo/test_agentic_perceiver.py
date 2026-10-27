@@ -545,3 +545,37 @@ def test_agent_output_keeps_b1_read_yaws():
     assert keep_read_yaws(agent, b1) == 1
     assert agent[0]["quat"] == q_b1 and agent[0]["yaw_from"] == "b1_top_feature"
     assert agent[1]["quat"] == [0.98, 0.0, 0.0, 0.2]        # no read yaw: the agent's turn is arbitrated as before
+
+
+def test_slot_children_take_their_slot_pose_on_the_output_base(monkeypatch):
+    """deposit_coin: the agent moved the stand and the coin, the coin came out lying flat at table height; the coin
+    pinned in the stand's slot takes the slot pose on the output's stand. A child far from its slot is left alone."""
+    pytest.importorskip("cv2")
+    pytest.importorskip("scipy")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+    from dojo.perception.agentic.seed_refine import settle_slot_children
+
+    labels = {"coin0": {"placement": {"xlim": [0.0, 0.0], "ylim": [0.0, 0.0], "rotate_rand": False,
+                                      "relative_plane": "stand/stand/0"}},
+              "stand": {"placement": {"relative_plane": "Table"}}}
+    monkeypatch.setattr(il, "task_map", lambda: {"deposit": {"labels": labels}})
+
+    def pose(x, y, yaw, z_off=0.0):
+        T = np.eye(4)
+        c, s = math.cos(yaw), math.sin(yaw)
+        T[:3, :3] = [[c, -s, 0], [s, c, 0], [0, 0, 1]]
+        T[:3, 3] = (x, y, 0.7736)                          # the stand's rest height, whatever the agent said
+        return T
+
+    monkeypatch.setattr(il, "shape_models", lambda key: [SimpleNamespace(R0=np.eye(3), pose=pose)])
+    standing = [0.7071, 0.7071, 0.0, 0.0]               # the coin's face vertical
+    monkeypatch.setattr(il, "support_slot_pose",
+                        lambda bk, bp, bq, ck, pl: (np.array([bp[0], bp[1], bp[2] + 0.007]), np.array(standing)))
+    stand = {"label": "stand", "asset": "Geometry/stand/00000", "pos": [0.0275, -0.1445, 0.775], "quat": [1.0, 0, 0, 0]}
+    coin = {"label": "coin0", "asset": "Rigid/coin/00000", "pos": [0.0275, -0.1445, 0.765], "quat": [1.0, 0, 0, 0]}
+    assert settle_slot_children([stand, coin], "deposit") == 1
+    assert coin["quat"] == standing and coin["pos"][2] == pytest.approx(0.7806) and coin["slot_from_base"] == "stand"
+    far = {"label": "coin0", "asset": "Rigid/coin/00000", "pos": [0.2, -0.1, 0.765], "quat": [1.0, 0, 0, 0]}
+    assert settle_slot_children([stand, far], "deposit") == 0 and far["quat"] == [1.0, 0, 0, 0]
