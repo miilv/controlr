@@ -259,8 +259,8 @@ class WorldState:
         return [o for o in self.objects.values() if not o.clutter]
 
     def obstacles(self, exclude: tuple | list | set = ()) -> list[ObjectState]:
-        """Every object with a collision body, minus ``exclude`` (labels)."""
-        return [o for o in self.objects.values() if o.label not in exclude and o.obj_type != "Geometry"]
+        """Every object with a collision body, minus ``exclude`` (labels); a garment is cloth, not a body."""
+        return [o for o in self.objects.values() if o.label not in exclude and o.obj_type not in ("Geometry", "Garment")]
 
     def copy(self) -> "WorldState":
         return copy.deepcopy(self)

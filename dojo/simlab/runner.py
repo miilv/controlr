@@ -171,7 +171,23 @@ def install_camera_stubs() -> None:
     sys.modules.update({cm.__name__: cm, tc.__name__: tc, rs.__name__: rs})
 
 
-def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = False):
+def task_has_garment(task: str) -> bool:
+    """Does the task's config spawn a Garment (particle cloth)?"""
+    try:
+        txt = (paths.TASK_CONFIGS / f"{task}.yml").read_text()
+    except OSError:
+        return False
+    return any(line.startswith("Garment:") for line in txt.splitlines())
+
+
+# The physics-only kit writes no simulation state back to USD. RoboDojo reads a CPU-device garment's particles from
+# its USD ``points`` (``GarmentObject.sample_mesh_vertices``), so in physics-only mode the cloth read as its spawn mesh
+# forever (fold_clothes: every checker point frozen 6-11 cm above the table, a pinched sleeve "never moved"). These
+# turn the write-back on; the rendered kit (the official eval) writes USD anyway.
+GARMENT_KIT_SETTINGS = ("--/physics/updateToUsd=true", "--/physics/updateParticlesToUsd=true")
+
+
+def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = False, extra_settings: tuple = ()):
     """Start Kit once per process. Default: the eval client's flags (headless, cameras, the two
     sensor extensions, zero-delay render sync). ``physics_only``: no renderer at all (see
     ``physics_only_experience``); observations then carry no images."""
@@ -190,7 +206,7 @@ def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = F
         kit = physics_only_experience(paths.DATA / "simlab" / "kit")
         # dev: extra Kit settings for the physics-only twin, e.g. particle write-back to USD for a garment task
         # (``SIMLAB_PHYSICS_KIT_ARGS="--/physics/updateToUsd=true --/physics/updateParticlesToUsd=true"``); unset: none
-        extra = tuple(os.environ.get("SIMLAB_PHYSICS_KIT_ARGS", "").split())
+        extra = tuple(extra_settings) + tuple(os.environ.get("SIMLAB_PHYSICS_KIT_ARGS", "").split())
         argv = ["--headless", "--experience", str(kit), "--kit_args=" + " ".join(PHYSICS_ONLY_SETTINGS + extra)]
         args = ap.parse_args(argv)
         # RoboDojo's IsaacLab fork defaults enable_cameras=True (offscreen rendering) and its
@@ -414,7 +430,9 @@ class RoboDojoRunner:
         # articulation's physics view, as the official env effectively does.
         self.usd_sync_links = resolve_usd_sync_links(usd_sync_links, physics_only)
         paths.install_asset_firewall()                 # no Eval_Layout, no eval-paired Traj, from here on
-        self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only)
+        self.garment_usd = bool(physics_only and task_has_garment(task))
+        self.app = launch_app(headless=headless, device_id=device_id, physics_only=physics_only,
+                              extra_settings=GARMENT_KIT_SETTINGS if self.garment_usd else ())
         # EvalEnv writes eval_result/... relative to cwd: keep that out of the shared install.
         wd = Path(workdir or (paths.DATA / "simlab" / "work"))
         paths.assert_not_eval(wd)
@@ -619,6 +637,30 @@ class RoboDojoRunner:
                          "T_world_cam_usd": T_rel.tolist(), "T_world_cam_cv": (T_rel @ CV_FROM_USD).tolist(),
                          "width": 640, "height": 480}
         return out
+
+    def garment_gt(self, env_idx: int = 0, label: str | None = None) -> dict | None:
+        """Dev-only GT of a garment: its particle positions (world, env-relative), the metadata's named points
+        (``passive.functional`` particle ids -> mean position) and the root pose the checker takes its axes from."""
+        lm = self.env.scene_manager.layout_manager
+        for rec in lm.object_records_by_type["Garment"].layout_records_by_env[env_idx]:
+            if label is not None and rec.get("label") != label:
+                continue
+            name = rec["inst_name"]
+            g = lm.get_scene_object(env_idx, name)
+            meta = lm.get_instance_metadata(inst_name=name, env_idx=env_idx) or {}
+            P, _, pw, ow = g.sample_mesh_vertices()
+            org = _np(self.env.scene_manager.env_origins[env_idx]).reshape(-1)[:3]
+            P = _np(P).reshape(-1, 3) - org
+            kp = {}
+            for k, v in ((meta.get("passive") or {}).get("functional") or {}).items():
+                ids = [int(i) for i in (v or {}).get("id", []) if 0 <= int(i) < len(P)]
+                if ids:
+                    kp[k] = P[ids].mean(0).tolist()
+            pos, quat = lm.get_instance_pose(env_idx=env_idx, inst_name=name)
+            return {"label": rec.get("label"), "inst_name": name, "points": P, "keypoints": kp,
+                    "pos": _np(pos).reshape(-1)[:3].tolist() if pos is not None else None,
+                    "quat": _np(quat).reshape(-1)[:4].tolist() if quat is not None else None}
+        return None
 
     def robot_gt(self, env_idx: int = 0) -> dict:
         rm = self.env.robot_manager
