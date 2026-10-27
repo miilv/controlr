@@ -713,16 +713,17 @@ def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = 
 def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm: str | None = None,
                  T_seat=None) -> SkillResult:
     """Grip the object standing in its receptacle (``top_grasps_at`` its pose there, ``vertical_grasps_at`` when none of
-    those reaches the whole turn) with the arm and grasp whose wrist reaches the most of the turn, then ``turn_held``.
+    those reaches 60% of the turn) with the arm and grasp whose wrist reaches the most of the turn, then ``turn_held``.
     The arm that let go goes home first when the other one turns."""
     from dojo.skills.motion import FAST
     w = sk.refresh()
     o = w.obj(label)
     best = None
-    # the tilted grasps first (the handover's family); straight down when none of them reaches the whole turn (G3
-    # 100021 / 100023: no tilted grasp reached 60%)
+    # the tilted grasps (the handover's family); straight down only when none of them reaches 60% of the turn (G3
+    # 100021 / 100023). Preferred whenever it reached all of it, a straight-down grasp's turn did not plan from the
+    # measured grip (100003: "no turn of -60 deg reaches", where a tilted grasp's 85% had turned it -51 deg)
     for fam in (top_grasps_at, vertical_grasps_at):
-        if best is not None and best[5] >= 1.0:
+        if best is not None:
             break
         for arm in ARMS:
             for note, T_ko, width in fam(o, o.T):
