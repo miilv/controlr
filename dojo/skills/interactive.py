@@ -257,11 +257,13 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
 
     def wait_opponent(occ0: dict, every: int = 2) -> str:
         """Hold still at home, reading the board every ``every`` steps (a watch read: perception at eval, GT in G3),
-        until an opponent piece sits for two stable reads in a cell ``occ0`` (the occupancy we know) has empty; then until
+        until an opponent piece sits for two stable reads in a cell ``occ0`` (the occupancy we know) has empty, or was seen
+        there in ``quiet`` + 2 reads (reads on genuine 5.1 frames flicker: a board with three pieces read empty); then until
         the opponent's arm is at rest. A new cell, not a higher count: a read that misses an older piece must not hide
         the new one (rendered 5.1: a third move never counted, 200 steps of waiting)."""
         t0 = sk.world.step
         prior, stable, seen = None, 0, None
+        sightings: dict = {}            # new cell -> reads that saw the opponent there (the reads flicker on 5.1 frames)
         while True:
             try:
                 sk.ex.hold(every)
@@ -273,13 +275,17 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
             if not usable(read):
                 continue
             new_opp = [c["k"] for c in read["cells"] if c["occupant"] == "opponent" and int(c["k"]) not in occ0]
+            for k in new_opp:
+                sightings[int(k)] = sightings.get(int(k), 0) + 1
             stable = stable + 1 if read["stable_vs_prior"] else 0
             prior = read
             board = "".join({"own": "x", "opponent": "o"}.get(c["occupant"], ".") for c in read["cells"])
             if board != seen:                                   # the read's board, logged when it changes
                 sk.log(f"[watch] step {sk.ex.steps_used}: {board}")
                 seen = board
-            if new_opp and stable >= quiet:
+            often = [k for k, n in sightings.items() if n >= quiet + 2]
+            if (new_opp and stable >= quiet) or often:
+                new_opp = new_opp if (new_opp and stable >= quiet) else often[:1]
                 st["opp_cells"] = sorted(set(st.get("opp_cells", [])) | {int(k) for k in new_opp})
                 sk.log(f"[game] opponent piece landed in cell {new_opp} by step {sk.ex.steps_used} "
                        f"({sk.ex.steps_used - t0} steps of waiting)")
