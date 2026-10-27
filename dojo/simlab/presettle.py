@@ -15,6 +15,13 @@ A layout whose objects moved during pass 1 but came to rest (fill_egg_holder: th
 collision-less Geometry, so the eggs drop to the table) is kept: the settled record is what RoboDojo
 would actually show at episode start.
 
+``--keep-raw-unmoved`` (off by default) re-tries only ids that are currently dropped and have no settled
+file: objects that did not move in pass 1 (<= ``UNMOVED_MM`` / ``UNMOVED_DEG`` from the record) keep their
+generated pose instead of the live one. insert_key's key (friction 0) rests at its generated pose (0.03 mm in
+pass 1), but written back with the 0.26 deg tilt PhysX reports it slides 6-37 mm on the reload and fails pass 2.
+Such records carry ``_simlab.presettle = "keep_raw_unmoved"``; their index entry keeps the default run's
+entry under ``previous``. Existing settled records are never rewritten.
+
     scripts/simlab/rdpy.sh -m dojo.simlab.presettle --task fill_egg_holder [--physics-only]
 """
 
@@ -37,6 +44,8 @@ SETTLER = "simlab/presettle v2"   # v2: articulations not written back; optional
 # constant ~7 mm root offset from the record's default_pos, so writing the reported pose back moved them 7 mm on
 # every reload and failed pass 2 (24/24). They are fixtures that do not settle anyway.
 MOVABLE = ("Rigid", "Dynamic")
+KEEP_RAW_UNMOVED = "keep_raw_unmoved"   # _simlab.presettle of records made with --keep-raw-unmoved
+UNMOVED_MM, UNMOVED_DEG = 1.0, 1.0      # "did not move in pass 1": the at_rest tolerances
 ID_RE = re.compile(r"^\d+\.json$")
 
 
@@ -49,8 +58,21 @@ def _key(otype, cat, idx, label, clutter):
     return (otype, cat, int(idx), label, bool(clutter))
 
 
-def write_back(layout: dict, live: list[dict]) -> tuple[dict, int]:
-    """Copy of ``layout`` with movable objects at their live (settled) poses."""
+def unmoved(live: list[dict], tol_mm: float = UNMOVED_MM, tol_deg: float = UNMOVED_DEG) -> set[str]:
+    """``inst_name`` of the movable objects within ``tol_mm`` / ``tol_deg`` of the pose their record gave them."""
+    out = set()
+    for o in live:
+        if o["type"] not in MOVABLE or o["pos"] is None or o.get("layout_pos") is None or o.get("layout_quat") is None:
+            continue
+        mm = float(np.linalg.norm(np.subtract(o["pos"], o["layout_pos"]))) * 1000
+        if mm <= tol_mm and quat_angle_deg(o["quat"], o["layout_quat"]) <= tol_deg:
+            out.add(o["inst_name"])
+    return out
+
+
+def write_back(layout: dict, live: list[dict], keep: set[str] | None = None) -> tuple[dict, int]:
+    """Copy of ``layout`` with movable objects at their live (settled) poses; objects whose ``inst_name`` is in
+    ``keep`` stay at the record's pose (not counted)."""
     pool: dict = {}
     for o in live:
         if o["type"] in MOVABLE and o["pos"] is not None:
@@ -64,6 +86,8 @@ def write_back(layout: dict, live: list[dict]) -> tuple[dict, int]:
         if not cands:
             continue
         o = cands.pop(0)
+        if keep and o["inst_name"] in keep:
+            continue
         q = np.asarray(o["quat"], float)
         inst["default_pos"] = [float(v) for v in o["pos"]]
         inst["default_ori"] = [float(v) for v in q / np.linalg.norm(q)]
@@ -109,13 +133,26 @@ def drift(live: list[dict], top: list | None = None) -> tuple[float, float]:
     return mm, deg
 
 
-def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250, rest_window: int = 100,
-                   drift_tol_mm: float = 5.0, ids: list[int] | None = None, extra_passes: int = 0,
-                   reserved_slice: bool = False) -> dict:
-    from dojo.simlab.runner import RoboDojoRunner, jsonable
-    files = [p for p in layout_files(task) if not ids or int(p.stem) in ids]
+def select_files(task: str, ids: list[int] | None = None, reserved_slice: bool = False,
+                 keep_raw_unmoved: bool = False, root: Path | None = None) -> list[Path]:
+    """The raw records to settle. ``keep_raw_unmoved``: only ids the index lists as dropped and that have no
+    settled file (an existing settled record is never rewritten)."""
+    files = [p for p in layout_files(task, root) if not ids or int(p.stem) in ids]
     if not reserved_slice:                      # D-C10: ids >= paths.RESERVED_MIN_ID belong to joint paired runs
         files = [p for p in files if not paths.is_reserved_id(p.stem)]
+    if keep_raw_unmoved:
+        index_p = (root or paths.LAYOUTS) / task / "settled_index.json"
+        index = json.loads(index_p.read_text()) if index_p.exists() else {}
+        files = [p for p in files if str(index.get(p.stem, {}).get("status", "")).startswith("dropped")
+                 and not p.with_name(f"{p.stem}.settled.json").exists()]
+    return files
+
+
+def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250, rest_window: int = 100,
+                   drift_tol_mm: float = 5.0, ids: list[int] | None = None, extra_passes: int = 0,
+                   reserved_slice: bool = False, keep_raw_unmoved: bool = False) -> dict:
+    from dojo.simlab.runner import RoboDojoRunner, jsonable
+    files = select_files(task, ids, reserved_slice, keep_raw_unmoved)
     run = RoboDojoRunner(task, physics_only=physics_only, need_planner=False,
                          workdir=str(paths.DATA / "simlab" / "work" / f"presettle_{task}"))
     index_p = paths.LAYOUTS / task / "settled_index.json"
@@ -124,6 +161,8 @@ def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250,
         t0 = time.perf_counter()
         lay = json.loads(f.read_text())
         rec: dict = {"from": f.name}
+        if keep_raw_unmoved:
+            rec.update({"presettle": KEEP_RAW_UNMOVED, "previous": index.get(f.stem)})
         info = run.load(lay)
         rec["pass1_robodojo_stable"] = bool(info["stable"])
         for _ in range(extra_steps - rest_window):
@@ -135,11 +174,15 @@ def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250,
         rec["pass1_drift_mm"], rec["pass1_drift_deg"] = (round(v, 2) for v in drift(live))
         ok, why = at_rest(before, live, "Table" in lay)
         out = f.with_name(f"{f.stem}.settled.json")
+        keep = unmoved(live) if keep_raw_unmoved else None
         if not ok:
             rec.update({"status": "dropped: not at rest", "why": why})
-            out.unlink(missing_ok=True)
+            if not keep_raw_unmoved:
+                out.unlink(missing_ok=True)
         else:
-            settled, n = write_back(lay, live)
+            settled, n = write_back(lay, live, keep)
+            if keep is not None:
+                rec["kept_raw"] = sorted(o["label"] or o["inst_name"] for o in live if o["inst_name"] in keep)
             for k in range(max(1, extra_passes + 1)):   # pass 2 (+ re-settle passes for marginal rests)
                 info2 = run.load(settled)
                 live2 = run.objects_gt()
@@ -149,7 +192,7 @@ def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250,
                     drift(live2, top2)
                 if not info2["stable"] or d2[0] <= drift_tol_mm or k == extra_passes:
                     break
-                settled, n = write_back(settled, live2)   # leaning bread slices re-settle ~7 mm once
+                settled, n = write_back(settled, live2, unmoved(live2) if keep_raw_unmoved else None)   # leaning bread slices re-settle ~7 mm once
             rec["pass2_top"] = top2
             rec.update({"objects_written": n, "pass2_robodojo_stable": bool(info2["stable"]),
                         "pass2_drift_mm": round(d2[0], 3), "pass2_drift_deg": round(d2[1], 3), "passes": 2 + k})
@@ -159,12 +202,19 @@ def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250,
                                    "physics": "isaac-5.1 physics-only" if physics_only else "isaac-5.1",
                                    "extra_steps": extra_steps, **{k: rec[k] for k in (
                                        "pass1_robodojo_stable", "pass1_drift_mm", "pass2_drift_mm", "passes")}}
+                if keep_raw_unmoved:
+                    meta["presettle"] = KEEP_RAW_UNMOVED
+                    meta["settled"].update({"mode": KEEP_RAW_UNMOVED, "kept_raw": rec["kept_raw"],
+                                            "unmoved_tol": [UNMOVED_MM, UNMOVED_DEG]})
+                    if out.exists():                    # never rewrite an existing settled record
+                        raise FileExistsError(out)
                 settled["_simlab"] = meta
                 out.write_text(json.dumps(jsonable(settled), indent=1))
                 rec["status"] = "ok"
             else:
                 rec["status"] = "dropped: settled record not stable"
-                out.unlink(missing_ok=True)
+                if not keep_raw_unmoved:
+                    out.unlink(missing_ok=True)
         rec["s"] = round(time.perf_counter() - t0, 1)
         index[f.stem] = rec
         index_p.write_text(json.dumps(index, indent=1))
@@ -186,9 +236,12 @@ def main(argv=None) -> None:
                     help="re-settle passes: write the pass-k poses back and reload again (marginal rests)")
     ap.add_argument("--reserved-slice", action="store_true",
                     help="also settle ids >= paths.RESERVED_MIN_ID (D-C10: only the agreed joint-run generation)")
+    ap.add_argument("--keep-raw-unmoved", action="store_true",
+                    help="re-try dropped ids without a settled file: objects that did not move in pass 1 keep their "
+                         "generated pose (records marked _simlab.presettle=keep_raw_unmoved)")
     a = ap.parse_args(argv)
     presettle_task(a.task, physics_only=not a.rendered, extra_steps=a.extra_steps, ids=a.ids,
-                   extra_passes=a.extra_passes, reserved_slice=a.reserved_slice)
+                   extra_passes=a.extra_passes, reserved_slice=a.reserved_slice, keep_raw_unmoved=a.keep_raw_unmoved)
 
 
 if __name__ == "__main__":

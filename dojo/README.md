@@ -53,7 +53,7 @@ play_tic_tac_toe demos are eval data.
 |---|---|
 | layout schema, perturbation | `dojo/simlab/layout.py` |
 | new dev layouts (seeds >= 100000) | `-m dojo.simlab.gen_layouts --task T --n 25` |
-| pre-settled records `<id>.settled.json` (prefer these) | `scripts/simlab/presettle_all.sh [task ...]` (`-m dojo.simlab.presettle --task T`) |
+| pre-settled records `<id>.settled.json` (prefer these) | `scripts/simlab/presettle_all.sh [task ...]` (`-m dojo.simlab.presettle --task T`); dropped ids whose objects never moved in pass 1 (insert_key's frictionless key): `--keep-raw-unmoved` keeps their generated pose, never rewrites a settled record, marks `_simlab.presettle` |
 | load layouts, official obs vs dev-only GT | `dojo.simlab.runner.RoboDojoRunner` |
 | twin: load / snapshot / restore / step / verify / load_from_estimate | `dojo.simlab.twin.Twin` |
 | scripted motion, replayable action lists | `dojo/simlab/motion.py` |
