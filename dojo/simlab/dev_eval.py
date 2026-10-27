@@ -24,6 +24,8 @@ def patch_seed_manager(layout_root: str | os.PathLike) -> None:
     from env.seed_manager import seed_manager as sm
     from utils.load_file import load_json
 
+    from dojo.simlab import paths
+
     root = Path(layout_root)
     if "Eval_Layout" in root.resolve().parts:
         raise SystemExit("dev-eval must not read eval layouts")
@@ -33,6 +35,9 @@ def patch_seed_manager(layout_root: str | os.PathLike) -> None:
         suffix = os.environ.get("SIMLAB_DEV_LAYOUT_SUFFIX", "")      # ".settled": pre-settled records
         files = sorted((p for p in d.glob(f"*{suffix}.json") if p.name[: -len(f"{suffix}.json")].isdigit()),
                        key=lambda p: int(p.name.split(".")[0]))
+        reserved = [p.name for p in files if paths.is_reserved_id(p.name.split(".")[0])]
+        if reserved:                                 # D-C10: ids >= 100100 belong to the joint paired runs
+            raise SystemExit(f"dev-eval: reserved layout ids in {d} (>= {paths.RESERVED_MIN_ID}): {reserved[:5]}")
         if not files:
             raise FileNotFoundError(f"no dev layouts in {d}")
         self.eval_seed = self.config.get("seed", 0)

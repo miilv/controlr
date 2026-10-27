@@ -15,6 +15,7 @@
 # (python -m dojo.bridge.official rows OUT).
 #
 #   scripts/dojo/official_eval.sh --task T --layouts "100000 100001 ..." [--policy dojo.agent.policy:AgentPolicy]
+#       (rendered measurement uses 100000-09; ids >= 100100 are reserved for joint paired runs and refused)
 #       [--preset submit_v1] [--config JSON] [--twin-envs 8] [--id NAME] [--out DIR] [--episode-max-min 25]
 #
 # Env (defaults for a dojo GPU box, ~/dojo-env.sh): RD_SRC (the box's RoboDojo install, read-only; default $RD_HOME),
@@ -87,6 +88,7 @@ LAYOUTS_SRC="$DOJO_DATA/simlab/layouts/$TASK"
 IDS=()
 for lid in $(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n); do
   [[ "$lid" =~ ^[0-9]+$ && "$lid" -ge 100000 ]] || { log "layout id $lid: dev layouts are >= 100000"; exit 2; }
+  [[ "$lid" -lt 100100 ]] || { log "layout id $lid: ids >= 100100 are reserved for joint paired runs (D-C10)"; exit 2; }
   f="$LAYOUTS_SRC/$lid.settled.json"
   [[ -f "$f" && "$f" != *Eval_Layout* ]] || { log "no settled dev layout $f"; exit 2; }
   cp "$f" "$OUT/layouts/$TASK/"
