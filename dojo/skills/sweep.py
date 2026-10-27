@@ -34,8 +34,10 @@ PUSH_Z = 0.008                 # m: the broom head's lowest point over the table
 PUSH_STROKE = 0.14             # m: longest single push
 PUSH_TOL = 0.015               # m: a leg is done within this of its target
 STAGE_OUT = 0.06               # m: the staging point is this far in front of the lip
-INSIDE = 0.07                  # m: objects are pushed this far past the lip (the support circle's centre is 87 mm in)
-LANE = 0.035                   # m: lateral spacing of the objects' lanes into the pan
+INSIDE = 0.045                 # m: objects are pushed this far past the lip (the checker's region starts 1.6 cm in);
+                               # deeper, the broom's head ran into the pan and shoved it 7 cm away (twin, traced)
+LANE = 0.02                    # m: lateral spacing of the objects' lanes into the pan (the head is 11.6 cm long, the
+                               # pan 17 cm wide inside: 3.5 cm lanes put the head into a side wall)
 LIFT = 0.05                    # m: the head is lifted this far over the objects' tops between strokes
 
 
@@ -341,7 +343,7 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
         def key(l):
             return float(np.linalg.norm(sk.world.obj(l).center_w[:2] - g["lip"][:2]))
         done, failed = [], []
-        lanes = [0.0, -LANE, LANE, -2 * LANE, 2 * LANE]
+        lanes = [0.0, -LANE, LANE, 0.0, 0.0]
         for i, lab in enumerate(sorted(pool, key=key)):
             lane = lanes[i % len(lanes)]
             S = g["lip"][:2] - g["e"][:2] * STAGE_OUT + g["lat"][:2] * lane
