@@ -111,6 +111,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   text and then repeat empty `<invoke>` / `<parameter>` blocks until `max_tokens` (40 s lost per turn). The agentic
   perceiver parses the first non-empty `<parameter>` as the reply and stops such a stream early
   (`dojo.perception.agentic.llm.degenerate`). `dva/gemini-*` answer 401 (no provider credentials); `auto/gemini` works.
+- **omniroute's Claude account (`claude/*`, `cc/*` = the same account) has its own weekly limit.** On 2026-10-27 a
+  multi-arm perceiver sweep (6-13 parallel Sonnet / Opus / Fable sessions, ~1,900 calls, 29.6M prompt tokens of which
+  25M cache reads, in under an hour) plus the rendered runs hit it: 429 "reset after 61h" on every route for everyone
+  ([incident](incidents/2026-10-27-claude-route-rate-limit.md)). "No LLM cap" meant the OpenAI subscription. Before a sweep
+  on `claude/`, estimate its tokens against the weekly budget; a 429 with a multi-day `retry_after` should stop the runner.
 - **Codex-served GPT-6 (`cx/gpt-6-astra-*`, `cx/gpt-6.1-sol`) answers "write a code cell" as a call of a `python`
   tool.** Without a declared tool omniroute drops the call: the stream has only `reasoning_content`, `finish_reason:
   stop`, ~100 completion tokens and empty text (2026-10-25: 24 of 30 agent replies lost). Declare a `python(code)`

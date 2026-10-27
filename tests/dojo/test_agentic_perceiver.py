@@ -648,3 +648,69 @@ def test_agent_looks_get_an_executable_pose(monkeypatch):
     assert out[2]["flange_pose"] == b1_looks[0]["flange_pose"] and "B1's look" in out[2]["reason"]
     keep = [{"cam": "cam_left_wrist", "flange_pose": [0, 0, 1, 1, 0, 0, 0]}]
     assert j1.executable_looks(keep, [], [])[0] == keep                                   # already executable
+
+
+def test_dev_d0_paired_counts_fixed_broken_and_reads_the_arm_stats(tmp_path, monkeypatch):
+    """dev_d0 paired: per GT object base vs arm on the same case; fixed / broken / still gross / not found; phantoms
+    and the arm's call stats from agent_<tag>.json's _agent (H2 / arbitration outputs carry their run's)."""
+    from dojo.perception.agentic import dev_d0
+
+    d = tmp_path / "stack_blocks__100000__f0"
+    d.mkdir()
+    (d / "agent_son.json").write_text(json.dumps({"objects": [], "_agent": {"calls": 3, "call_s": [10.0, 12.0, 8.0],
+                                                                           "tokens": {"prompt": 46000, "completion": 2900},
+                                                                           "agent_s": 31.0, "stop": "answer", "result": "agent"}}))
+
+    def row(label, found, gross, within, xy=None):
+        return {"case": d.name, "task": "stack_blocks", "label": label, "found": found, "gross": gross,
+                "within_tol": within, "xy_mm": xy}
+
+    def fake_score(dd, tag, stats=None):
+        if stats is not None:
+            stats["phantoms"] = 1 if tag == "b1" else 0
+        if tag == "b1":
+            return [row("block_0", True, True, False, 80.0), row("block_1", True, False, True, 2.0),
+                    row("block_2", False, True, False), row("block_3", True, False, True, 3.0)]
+        return [row("block_0", True, False, True, 4.0), row("block_1", True, True, False, 60.0),
+                row("block_2", False, True, False), row("block_3", True, False, True, 3.0)]
+
+    monkeypatch.setattr(dev_d0, "score_case", fake_score)
+    objs, per_case = dev_d0.paired_rows([d], "b1", "son_ref_arb")
+    s = dev_d0.paired_summary(objs)
+    assert (s["fixed"], s["broken"], s["still_gross"]) == (1, 1, 1)
+    assert s["gross"] == (2, 2) and s["not_found"] == (1, 1) and s["within"] == (2, 2)
+    assert per_case[d.name]["phantoms"] == (1, 0)
+    sp = dev_d0.spend_summary(per_case)
+    assert sp["llm_calls"] == 3 and sp["s_per_call_med"] == 10.0 and sp["tokens"]["prompt"] == 46000
+
+
+def test_dev_d0_tolerances_fall_back_to_eval_g1():
+    pytest.importorskip("scipy")  # eval_g1
+    from dojo.perception.agentic import dev_d0
+    from dojo.perception.eval_g1 import TOLERANCE
+
+    assert dev_d0.task_tol("push_T") == (7, 7)
+    assert dev_d0.task_tol("insert_key") == TOLERANCE["insert_key"][:2]
+    assert dev_d0.task_tol("no_such_task") == (15, None)
+
+
+def test_arbitration_risky_b1_keeps_the_agent_where_b1_is_unsure(monkeypatch):
+    """risky_b1: a pair whose B1 object has a calibrated risk at or above it keeps the agent's pose without the
+    comparison; a confident B1 object is still compared (default None = the comparison everywhere)."""
+    sure = {"label": "shoe", "category": "shoe", "asset": "Rigid/shoe/00000", "pos": [0.10, 0.00, 0.78], "quat": _q(0),
+            "confidence": 0.95, "residual": 0.05, "source": "fused", "flags": {}}
+    unsure = {"label": "car", "category": "car", "asset": "Rigid/car/00000", "pos": [-0.20, 0.00, 0.78], "quat": _q(0),
+              "confidence": 0.2, "residual": 0.7, "source": "head", "flags": {"ambiguous": True, "fg_resid_near": 0.7}}
+    agent = [dict(sure, pos=[0.16, 0.00, 0.78], source="head"), dict(unsure, pos=[-0.12, 0.00, 0.78], source="head")]
+    losses = {(0.16, 0.0, 0): 0.6, (0.1, 0.0, 0): 0.3, (-0.12, 0.0, 0): 0.7, (-0.2, 0.0, 0): 0.4}
+    from dojo.perception.agentic.j1 import risk
+
+    assert risk(sure) < 0.2 <= risk(unsure)
+    sr, _ = _arb(monkeypatch, losses)
+    out, _ = sr.arbitrate({}, agent, [sure, unsure])
+    assert out[0]["arbitrated"] == "b1" and out[1]["arbitrated"] == "b1"        # default: B1's lower losses win both
+    sr, _ = _arb(monkeypatch, losses)
+    out, info = sr.arbitrate({}, agent, [sure, unsure], risky_b1=0.2)
+    assert out[0]["arbitrated"] == "b1"                                          # confident B1: still compared
+    assert "arbitrated" not in out[1] and out[1]["pos"][:2] == [-0.12, 0.0]      # unsure B1: the agent stands
+    assert {i["label"]: i["kept"] for i in info} == {"shoe": "b1", "car": "agent"}
