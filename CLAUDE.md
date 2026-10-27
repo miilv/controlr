@@ -58,8 +58,9 @@ uv run controlr bench-cache --model claude/claude-sonnet-5-5 --turns 20   # ⚠�
    → tests locally → if you touched `robot/`, `loop.py`, safety or Isaac: `scripts/deploy.sh` and
    the Isaac tests on compute3 → **open the PR yourself** → green CI → merge. Direct push to
    `main` — docs only (journal, experiments, incidents).
-3. **Live LLM calls cost money, but limits are generous.** Soft cap: don't burn more than
-   ~5k calls a day, and don't waste calls on runs that can't teach anything. Unit
+3. **Live LLM calls cost money, but limits are generous.** No daily cap (the OpenAI models on
+   omniroute sit on a subscription with weekly limits: burn most of it); don't waste calls on
+   runs that can't teach anything, and say so if a run would eat most of the week. Unit
    tests use only `FakeLLM` / `httpx.MockTransport`; live tests are marked `@pytest.mark.live`
    and run only with `CONTROLR_LIVE=1`. Keys: only `OMNIROUTE_*` (and `OPENROUTER_API_KEY` for the decision head) from `.env`,
    **never** the agent session's credentials (`ANTHROPIC_AUTH_TOKEN` etc.). Actual spend (calls, tokens) goes into
