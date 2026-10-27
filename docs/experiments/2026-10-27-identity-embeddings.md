@@ -139,8 +139,37 @@ layout, every 3rd scored. The belt background was built 2-fold (100000-01 / 1000
 
 ## 4. End to end on the table (eval_g1, frame 0, paired)
 
-Pending: the eval_g1 off / on pairs are running on compute3 light 1. This section is added to this PR when they end.
+Same code, same frames, paired. The flag's B1 path is on (`embed_b1`): `_polish` tries the embedding's geometry and
+decides by the fused score, and the same-geometry identity step adds 1 - similarity at the fitted pose. eval_g1 frame 0,
+d0_ext (6.0 proxy, its calibration), ids 100000-09; `scripts/perception/identity_bake*` are not involved. Classes are
+eval_g1's: ok / identity / overshoot / gross / missed.
+
+| task | n | identity right off -> on | ok / identity / overshoot / gross / missed, off -> on | changed objects |
+|---|---|---|---|---|
+| organize_table | 81 | 69 -> 70 | 60/1/2/14/4 -> 60/1/1/15/4 | garage +1 id (still gross), 1 garage ok -> gross, keyboard overshoot -> ok |
+| fill_pen_holder | 50 | 49 -> 47 | 48/1/0/1/0 -> 45/3/1/1/0 | 3 pens ok -> identity, 1 identity -> overshoot |
+| stack_blocks_by_language | 30 | 26 -> 26 | identical | 0 |
+| store_tools_in_toolbox | 50 | 49 -> 49 | identical | 0 |
+
+- **On the table, B1's identity is already right** where segmentation is clean. There the embedding does not add, and
+  it costs pens: the pens differ in colour and are thin.
+- **So the B1 path is a separate switch,** `embed_b1`, default False. `embed_model` alone changes only the belt read,
+  which runs only in conveyor scenes.
+- d0_51 (put_bottles, pack_objects_random), the same pair, is pending.
 
 ## Verdict
 
-Pending, until sections 3 and 4 are in. On the belt: adopt, with `embed_model="dinov2_s"` (merge on) as the arm for the rendered conveyor A/B.
+- **Belt read (conveyor scenes): ADOPT.**
+  - Per blob on held-out 5.1 frames: 0.46 -> 0.83.
+  - Paired read-level A/B: identity 0.68 -> 0.90, phantoms 77 -> 47, xy median 7.3 -> 5.9 mm, +0.9 s per read.
+  - The arm for the rendered conveyor A/B is `embed_model="dinov2_s"`: merge on, B1 off. The service takes it as
+    `DOJO_PERCEPTION_CFG='{"embed_model": "dinov2_s"}'`. The default stays None until that A/B lands.
+- **B1 on the table: DROP for now** (`embed_b1` off). It is neutral on organize / store_tools / stack_by_language and
+  costs fill_pen 3 pens. d0_51 is pending.
+- **by_image.**
+  - First the board needs a look: it is hidden behind the right arm at home.
+  - Then picture -> rider matching works with CLIP-L (33/33) or SigLIP2 (32/33).
+  - Rider identity there is better with SigLIP2 (0.87) than with the frozen DINOv2 arm (0.68, our 0.69). A
+    DINOv2 + SigLIP2 mean is a candidate for one model that does both, pending a fresh set.
+- **Which model.** DINOv2 for render -> render on a dark, badly segmented scene. SigLIP2 / CLIP-L when one side is a
+  photo, or for colourful product-like riders. CLIP-L is worst on render matching.
