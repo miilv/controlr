@@ -33,7 +33,8 @@ and in-hand refines see less false evidence. Outcomes are equal or better.
 | insert_tubes | 3/5, 76 | 3/5, 76 | = (same failures, steps within 1) | 13 (0; 0) / 13 (0; 0) | 14 / 17 |
 | plug_in_charger | 1/5, 20 | **4/5, 80** | 3 rescued, 0 lost | 12 (0; 0) / 9 (0; 0) | 15 / 15 |
 | play_tic_tac_toe | 0/4, 10 (the 28-min cap stopped the arm at 4 layouts) | 0/5, 10 | = (same 4 layouts: all not_home, steps within 4) | 4 (0; 0) / 5 (0; 0) | 7 / 11 |
-| build_tower | pending | pending | | | |
+| build_tower | 5/5, 100 | 5/5, 100 | = (command 8-13 steps shorter on every layout) | 45 (0; 0) / 45 (0; 0) | 17 / 17 |
+| **total** | **14/24** | **17/25** | the command arm never worse on any layout | | |
 
 B1 confidence per held check: robodojo 0.56-0.80, command 0.825-1.0 on every task.
 
