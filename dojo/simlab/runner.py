@@ -71,7 +71,10 @@ def jsonable(x: Any) -> Any:
     return x
 
 
-PHYSICS_ONLY_SETTINGS = ("--/app/extensions/fsWatcherEnabled=0",)
+# Kit keeps only its last 30 log files (``/log/fileMaxCount``, ~40 min of busy boxes): keep more for after-the-fact greps
+# (the per-episode check reads the process's own log as it goes: ``dojo.simlab.kitlog``)
+KIT_LOG_SETTINGS = ("--/log/fileMaxCount=200",)
+PHYSICS_ONLY_SETTINGS = ("--/app/extensions/fsWatcherEnabled=0",) + KIT_LOG_SETTINGS
 
 
 def physics_only_experience(out_dir: Path) -> Path:
@@ -216,7 +219,7 @@ def launch_app(headless: bool = True, device_id: int = 0, physics_only: bool = F
         # ENABLE_CAMERAS env check never fires (int compared with `is False`): set the arg.
         args.enable_cameras = False
     else:
-        kit = " ".join(f"--enable {e}" for e in KIT_ENABLE_EXTS)
+        kit = " ".join(f"--enable {e}" for e in KIT_ENABLE_EXTS) + " " + " ".join(KIT_LOG_SETTINGS)
         if os.environ.get("SIMLAB_KIT_ARGS"):          # e.g. --portable-root <dir>: keep Kit's data out of a shared install
             kit += " " + os.environ["SIMLAB_KIT_ARGS"]
         argv = ["--enable_cameras", "--kit_args=" + kit]
