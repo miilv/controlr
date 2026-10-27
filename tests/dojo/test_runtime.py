@@ -2444,6 +2444,29 @@ def test_verify_choose_runs_the_best_outcome_when_nothing_passes():
     assert idx == 1 and passes == [0, 0, 0] and seen[-1]["none_ok"] and fake.vstats["best_outcome"] == 1
 
 
+def test_verify_choose_counts_why_the_twin_rejected_each_candidate():
+    """The judges say which criterion an outcome failed; verify_choose counts them per segment kind (swap_blocks: every
+    pick rollout "rise 0 mm", none_ok on every segment on both twin paths)."""
+    from types import SimpleNamespace
+
+    from dojo.skills.skills import Skills
+    from dojo.skills.verify import Outcome
+
+    outs = [Outcome(c, s_, {}, {}, False, False, 0.0, False) for c in range(2) for s_ in range(2)]
+
+    def judge(c):
+        j = lambda o: c == 1 and o.sample == 0                          # one sample of candidate 1 passes
+        j.why = lambda o: "rise 0 mm < 48" if c == 0 else "in-hand drift 22 mm"
+        return j
+    fake = SimpleNamespace(ex=SimpleNamespace(actions_for=lambda c: [c]), verify_k=2,
+                           verifier=SimpleNamespace(rollout=lambda acts, k, held_labels: outs),
+                           vstats={"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0},
+                           vreasons={"rejects": {}, "examples": []}, on_verified=None, last_verified=None)
+    Skills.verify_choose(fake, [{"a": 0}, {"a": 1}], [judge(0), judge(1)], kind="pick", label="target0")
+    assert fake.vreasons["rejects"] == {"pick: rise": 2, "pick: in-hand": 1}
+    assert fake.vreasons["examples"][0] == "pick target0: rise 0 mm < 48"
+
+
 @pytest.mark.parametrize("jaw, pick, held", [((0.1, 500), (0.9, 500), False), ((0.8, 500), (0.1, 500), True),
                                              ((0.1, 10), (0.9, 500), None), ((0.1, 500), (0.4, 500), None)])
 def test_held_confirmation_uses_the_head_view_at_the_jaw_and_pick_poses(jaw, pick, held):
