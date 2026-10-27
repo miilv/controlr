@@ -545,6 +545,34 @@ def test_arbitration_never_pairs_a_kind_b1_does_not_have(monkeypatch):
     assert info == [] and out[0]["pos"] == [0.2, -0.1, 0.78] and calls == []
 
 
+def test_arbitration_pairs_the_only_one_of_a_kind_at_any_distance(monkeypatch):
+    # 5.1 organize_table 100003, after the looks: the agent read the alarm on the drawer, 262 mm from a scan-correct fit
+    # and 115 mm up; beyond pair_m it went unpaired and the move stood without a comparison
+    b1 = [{"label": "alarm", "category": "alarm", "asset": "Rigid/alarm/00000", "pos": [-0.443, -0.222, 0.805],
+           "quat": _q(0), "confidence": 0.569, "source": "fused"},
+          {"label": "m0", "category": "mouse", "asset": "Rigid/mouse/00004", "pos": [0.23, -0.15, 0.78], "quat": _q(0)},
+          {"label": "m1", "category": "mouse", "asset": "Rigid/mouse/00004", "pos": [0.0, 0.15, 0.78], "quat": _q(0)}]
+    agent = [{"label": "alarm clock", "category": "alarm", "pos": [-0.428, 0.039, 0.92], "confidence": 0.5,
+              "source": "head", "_agent_point": True},
+             dict(b1[1], pos=[0.23, 0.12, 0.78])]     # one of two mice 270 mm away: no unique pair, untouched
+    sr, calls = _arb(monkeypatch, {(-0.428, 0.039, 0): 0.7, (-0.443, -0.222, 0): 0.38})
+    out, info = sr.arbitrate({}, agent, b1)
+    assert out[0]["pos"] == b1[0]["pos"] and out[0]["arbitrated"] == "b1" and out[0]["confidence"] == 0.569
+    assert info == [dict(info[0], label="alarm clock", kept="b1", far_pair=True)] and out[1]["pos"] == [0.23, 0.12, 0.78]
+    sr, calls = _arb(monkeypatch, {(-0.428, 0.039, 0): 0.2, (-0.443, -0.222, 0): 0.38})
+    out, info = sr.arbitrate({}, [dict(agent[0], source="refined")], b1)   # far H2 fit: compared, and here it explains more
+    assert out[0]["pos"] == [-0.428, 0.039, 0.92] and info[0]["kept"] == "agent"
+    # the arm over B1's alarm after the looks (its pose unscorable): the far move must explain the views on its own
+    sr, calls = _arb(monkeypatch, {(-0.428, 0.039, 0): 0.995})
+    out, info = sr.arbitrate({}, agent[:1], b1)
+    assert out[0]["pos"] == b1[0]["pos"] and info[0]["loss_b1"] is None and info[0]["kept"] == "b1"
+    sr, calls = _arb(monkeypatch, {(-0.428, 0.039, 0): 0.5})
+    assert sr.arbitrate({}, agent[:1], b1)[0][0]["pos"] == [-0.428, 0.039, 0.92]          # it does: the agent's stands
+    near = [dict(agent[0], pos=[-0.43, -0.21, 0.805])]                                     # 18 mm: today's rule
+    sr, calls = _arb(monkeypatch, {(-0.43, -0.21, 0): 0.999})
+    assert sr.arbitrate({}, near, b1)[0][0]["pos"] == [-0.43, -0.21, 0.805]
+
+
 def test_agent_output_keeps_b1_read_yaws():
     from dojo.perception.agentic.seed_refine import keep_read_yaws
 

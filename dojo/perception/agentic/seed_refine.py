@@ -233,11 +233,16 @@ def _bottom(h) -> float:
     return float((V @ T[:3, :3].T + T[:3, 3])[:, 2].min())
 
 
+ARB_ALONE_MAX_LOSS = 0.8  # a far agent move of a B1 pose no view can score stands only when it explains the views this well
+
+
 def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: float = 0.0, move_mm: float = 3.0,
               turn_deg: float = 5.0, pair_m: float = 0.15, rest_z: bool = True,
-              pinned_margin: float = 0.15, refined_turn_deg: float = 30.0) -> tuple[list[dict], list[dict]]:
+              pinned_margin: float = 0.15, refined_turn_deg: float = 30.0,
+              alone_max_loss: float = ARB_ALONE_MAX_LOSS) -> tuple[list[dict], list[dict]]:
     """The agent says WHAT is where; it replaces a pose B1 fitted only with evidence. Agent objects are paired with B1's
-    objects of the same category (Hungarian on xy within ``pair_m``, the pairing ``record.merge_into_record`` makes).
+    objects of the same category (Hungarian on xy within ``pair_m``, the pairing ``record.merge_into_record`` makes; the
+    only object of a kind on both sides is paired at any distance, as the merge pairs it).
 
     - Height (``rest_z``): an unrefined agent point (``_agent_point``) is a head-plane hit at a height the agent chose
       (often the top face): breadth replays had it 15-154 mm off for 30 of 99 agent-changed objects (a garage figure
@@ -248,7 +253,8 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
       masked out, the agent's with the agent's). The agent's pose stands when its loss is below B1's by ``margin``
       (``pinned_margin`` for an object B1 placed at its config slot, ``flags.slot``: make_kong's tiles, the tower's base
       boards); else the object takes B1's pose, asset and confidence back (``arbitrated: "b1"``). A pose B1's views
-      cannot score (hidden everywhere) leaves the agent's reading. An H2 fit (``source: refined``) that turns B1's pose
+      cannot score (hidden everywhere) leaves the agent's reading; for a far pair, only when that explains the views
+      (loss at most ``alone_max_loss``). An H2 fit (``source: refined``) that turns B1's pose
       by at most ``refined_turn_deg`` stands without the comparison (H2's own fit is the evidence).
 
     Breadth-2 (proxy B): the agent turned confident, multi-view-consistent charger poses by 80-180 deg (yaw typed in its
@@ -272,7 +278,7 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
     for j, b in enumerate(b1_objs):
         if _cat(b) in by_cat:
             by_cat[_cat(b)][1].append(j)
-    pairs = []
+    pairs, far = [], []
     for cat, (A, B) in by_cat.items():
         if not A or not B:
             continue
@@ -280,7 +286,13 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
                        for j in B] for i in A])
         ri, ci = linear_sum_assignment(np.minimum(C, pair_m + 1.0))
         pairs += [(A[r], B[c]) for r, c in zip(ri, ci) if C[r, c] <= pair_m]
-    pair_of = dict(pairs)
+        if len(A) == 1 and len(B) == 1 and C[0, 0] > pair_m and _cat(out[A[0]]) is not None:
+            # the only one of its kind on both sides, named by the agent: the same physical object however far the agent
+            # moved it (merge_into_record pairs it so and writes the move). 5.1 organize_table 100003: after the looks,
+            # the agent read the alarm on the drawer, 262 mm away and 115 mm up, from a scan-correct fit; unpaired, the
+            # move stood without a comparison
+            far.append((A[0], B[0]))
+    pair_of = dict(pairs)  # heights (rest_z): near pairs only; a far agent point is not at its B1 object's height
     h_b1 = {j: _hyp(b) for j, b in enumerate(b1_objs)}
     if rest_z:
         from .record import rest_quat
@@ -306,7 +318,7 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
             o["rest_dz_mm"] = round(dz * 1000, 1)
     # each pose is scored inside its own scene: B1's pose with B1's other objects (+ the agent's new ones) masked out,
     # the agent's with the agent's others (a row of tiles shifted together must not mask the true neighbours)
-    paired_a = {i for i, _ in pairs}
+    paired_a = {i for i, _ in pairs + far}
     h_ag = {i: _hyp(o) for i, o in enumerate(out)}
 
     sil_cache: dict = {}
@@ -323,16 +335,18 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
             m_out[name] = m
         return m_out
 
-    for i, j in pairs:
+    for i, j in pairs + far:
         o, b = out[i], b1_objs[j]
         moved = math.hypot(o["pos"][0] - b["pos"][0], o["pos"][1] - b["pos"][1]) * 1000
         turn = _quat_angle_deg(o["quat"], b["quat"]) if o.get("quat") and b.get("quat") else 0.0
         if moved <= move_mm and turn <= turn_deg and (not o.get("asset") or o.get("asset") == b.get("asset")):
             continue
-        if o.get("source") == "refined" and turn <= refined_turn_deg and not (b.get("flags") or {}).get("slot"):
+        if o.get("source") == "refined" and turn <= refined_turn_deg and not (b.get("flags") or {}).get("slot") \
+                and (i, j) not in far:
             # H2 fitted it in these views from the agent's point (loss < 0.5, a capped shift): that is the evidence. A
             # frame-0-only comparison reverted good H2 fits of blocks half under the home grippers, where B1's wrong
-            # fit to the visible half scores lower. A flipped H2 fit (plug 100003, 180 deg) is still compared
+            # fit to the visible half scores lower. A flipped H2 fit (plug 100003, 180 deg) is still compared, and so is
+            # one far from B1's pose (an H2 fit there is evidence of a look-alike, not that B1's fit is wrong)
             continue
         # merge keeps B1's turn / asset where the agent gives none
         cand = dict(o, quat=o.get("quat") or b.get("quat"), asset=o.get("asset") or b.get("asset"))
@@ -340,10 +354,15 @@ def arbitrate(views: dict, objects: list[dict], b1_objs: list[dict], margin: flo
         oth_b = masks([(("b", k), h) for k, h in h_b1.items() if k != j] + [(("a", k), h) for k, h in h_ag.items() if k not in paired_a])
         l_a, l_b = pose_loss(cand, views, oth_a), pose_loss(b, views, oth_b)
         m = pinned_margin if (b.get("flags") or {}).get("slot") else margin  # the config pins it there: a higher bar
-        keep_b1 = l_a is None or (l_b is not None and not (l_a < l_b - m))
+        # a FAR move of a pose B1's views cannot score (the arm over it after the looks): no evidence against B1's, so the
+        # agent's pose must explain the views on its own (5.1 organize_table 100003: the alarm moved 262 mm to the drawer
+        # at loss 0.995). Near moves keep the agent's reading (organize 100006: a frame corrected 13 mm at loss 0.999)
+        keep_b1 = l_a is None or (l_b is not None and not (l_a < l_b - m)) or \
+            (l_b is None and (i, j) in far and l_a > alone_max_loss)
         info = {"label": o.get("label"), "b1_label": b.get("label"), "moved_mm": round(moved, 1), "turn_deg": round(turn, 1),
                 "loss_agent": None if l_a is None else round(l_a, 4), "loss_b1": None if l_b is None else round(l_b, 4),
-                "agent_source": o.get("source"), "margin": m, "kept": "b1" if keep_b1 else "agent"}
+                "agent_source": o.get("source"), "margin": m, "kept": "b1" if keep_b1 else "agent",
+                **({"far_pair": True} if (i, j) in far else {})}
         if keep_b1:
             o.update({k: b[k] for k in ("pos", "quat", "asset", "size", "top_z", "category") if b.get(k) is not None})
             o["confidence"] = float(b.get("confidence", o.get("confidence", 0.5)))
