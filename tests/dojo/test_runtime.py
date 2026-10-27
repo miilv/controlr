@@ -2928,6 +2928,14 @@ def test_verifier_consistent_load_uses_the_belief_assets_and_counts_what_it_chan
     assert prov.checkpoint["objects"][0]["pos"][2] == TABLE_Z + 0.013
 
 
+def test_submit_v2_is_submit_v1_with_the_held_read_on_request():
+    from dojo.runtime.presets import PRESETS, resolve
+    v1, v2 = PRESETS["submit_v1"], PRESETS["submit_v2"]
+    assert v1["held_pose"] == "off" and v2["held_pose"] == "request"
+    assert {k: v for k, v in v2.items() if k != "held_pose"} == {k: v for k, v in v1.items() if k != "held_pose"}
+    assert resolve("submit_v2", {})["held_pose"] == "request"
+
+
 def test_presets_resolve_in_order_and_name_themselves():
     from dojo.runtime.presets import PRESETS, check_env, resolve
     d = resolve("submit_v1", {"agentic_max": 2}, mode=None, verify="off")

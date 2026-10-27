@@ -16,7 +16,7 @@
 #
 #   scripts/dojo/official_eval.sh --task T --layouts "100000 100001 ..." [--policy dojo.agent.policy:AgentPolicy]
 #       (rendered measurement uses 100000-09; ids >= 100100 are reserved for joint paired runs and refused)
-#       [--preset submit_v1] [--config JSON] [--twin-envs 8] [--id NAME] [--out DIR] [--episode-max-min 25]
+#       [--preset submit_v2] [--config JSON] [--twin-envs 8] [--id NAME] [--out DIR] [--episode-max-min 25]
 #
 # Env (defaults for a dojo GPU box, ~/dojo-env.sh): RD_SRC (the box's RoboDojo install, read-only; default $RD_HOME),
 #   OFFICIAL_RDHOME (our farm over it, scripts/dojo/rd_farm.sh; default ~/dojo-official-rdhome), BENCH (a robot-harness
@@ -53,7 +53,7 @@ if [[ "${1:-}" != --inner ]]; then
 fi
 shift   # --inner
 
-TASK="" LAYOUT_IDS="" POLICY="dojo.agent.policy:AgentPolicy" PRESET="submit_v1" CONFIG='{}' TWIN_ENVS=8 NAME="" OUT=""
+TASK="" LAYOUT_IDS="" POLICY="dojo.agent.policy:AgentPolicy" PRESET="submit_v2" CONFIG='{}' TWIN_ENVS=8 NAME="" OUT=""
 EP_MAX_MIN=25
 while [[ $# -gt 0 ]]; do
   case "$1" in
