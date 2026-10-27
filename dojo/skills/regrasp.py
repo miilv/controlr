@@ -699,9 +699,13 @@ def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = 
         return T_target
     try:
         sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {receptacle}")
+        sk._refine(receptacle, arm, "look")
+        # home again: the handover's moves are planned from home, and the taker's unchecked move to its pre-grasp from
+        # over the lock swept through the giver's hand and knocked the key out (G3 100004 lag 78 mm; rendered 5.1
+        # 100004 b21, replayed: the key pushed 20 mm in the giver's pads, then dropped)
+        sk.ex.run({arm: sk.plan_home(arm)}, name="home after the look")
     except (BudgetExceeded, EpisodeEnded):
         return T_target
-    sk._refine(receptacle, arm, "look")
     T_rec1 = sk.world.obj(receptacle).T
     d = T_rec1 @ inv_T(T_rec0)
     moved = float(np.linalg.norm(d[:3, 3])) * 1000
