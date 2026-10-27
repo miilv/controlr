@@ -1146,6 +1146,18 @@ def _seed_region(g: dict, prior: dict):
     return xs, ys, (r["yaw"][0] + r["yaw"][1]) / 2
 
 
+THIN_CHILD_M = 0.003  # a slot child this thin (deposit_coin's 2 mm coin, edge-on to the head) on a base whose pose is
+# itself uncertain (a low-contrast or re-chosen fit, mm off) is not refuted by its own few pixels: they miss the coin by
+# the base's error. It is placed from its base, flagged unverified (the pre-pick wrist refine measures it). On a tight
+# base fit an empty slot is still reported empty
+SMALL_RECHOOSE_SIL = 0.6  # a small unique object fitted looser than this may be re-chosen from the pool
+
+
+def _small(h) -> bool:
+    """A small object (largest extent <= SMALL_OBJECT_M): a few head pixels, easily fitted into a bigger blob's edge."""
+    return float(np.max(h.sm().asset.extents)) <= SMALL_OBJECT_M
+
+
 LOW_CONTRAST_CONF = 0.45  # confidence cap of an object found only in the low-contrast pass (a look should confirm)
 LOW_CONTRAST_MIN_SEEN = 0.3  # share of such an object's head silhouette that is foreground at the normal threshold
 
@@ -1798,7 +1810,10 @@ def _place_support_slots(slot_groups, chosen, groups, views, task, record) -> li
             fracs[name] = round(f, 3)
             support += f >= SLOT_SUPPORT_FG
             refute += f < SLOT_EMPTY_FG
-        if refute > 0 and support == 0:
+        hb0 = base_by_label[base]
+        thin = (float(np.min(a_cache[key].extents)) <= THIN_CHILD_M
+                and bool(hb0.per_view.get("low_contrast") or hb0.per_view.get("rechosen_over")))
+        if refute > 0 and support == 0 and not thin:
             record.setdefault("_not_found", []).append({"label": lab, "candidates": [key], "confidence": 0.0,
                                                         "reason": "support slot empty", "per_view_fg": fracs})
             continue
@@ -1810,6 +1825,7 @@ def _place_support_slots(slot_groups, chosen, groups, views, task, record) -> li
                "default_ori": [float(v) for v in q], "scale": [1.0, 1.0, 1.0],
                "_perception": {"place_tag": pl.get("place_tag"), "residual": round(1 - conf, 4), "cost": round(1 - conf, 4),
                                "confidence": round(conf, 3), "per_view_fg": fracs, "n_views": len(fracs),
+                               **({"unverified": True} if thin and refute > 0 and support == 0 else {}),
                                "occluded": not fracs, "ambiguous": not fracs, "slot": True, "support_slot": skey,
                                "stacked_on": base, "geom_group": list(g["candidates"])}}
         out.append((typ, cat, rec))
@@ -2491,6 +2507,7 @@ class EstimatorConfig:
     polish_color_candidates: int = 2  # ... and also tries the best-coloured candidates the ranking left out
     polish_color_veto: float | None = 0.2  # paired texture cannot pick a trial whose mean colour is this much worse
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
+    small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
     low_contrast_frac: float | None = 0.6  # still-unfound labels: re-segment at this x fg_thr in their region
     low_contrast_max_loss: float = 0.40  # ... and keep a find only at this silhouette loss or lower
     paired_tex_weight: float = 0.8
@@ -2760,6 +2777,25 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         if not add:
             break
         chosen += add
+    # a small unique object on a leftover piece of a bigger object's blob, while a tighter fit of it on its own blob is in
+    # the pool (deposit_coin: the coin stand at the piggy bank's edge under the home gripper, sil 0.73-0.80; its own
+    # 42 px blob fitted at 0.52-0.59 but, under-segmented, explained too little new foreground to be selected)
+    if cfg.small_rechoose:
+        for i, h in enumerate(chosen):
+            g = groups[h.label_group]
+            if len(g["labels"]) != 1 or not _small(h):
+                continue
+            s_h = float(h.per_view.get("sil_loss", h.loss))
+            if s_h <= SMALL_RECHOOSE_SIL:
+                continue
+            others = [c for j, c in enumerate(chosen) if j != i]
+            alts = [c for c in pool if c.label_group == h.label_group and c.blob != h.blob
+                    and float(c.per_view.get("sil_loss", c.loss)) <= min(SMALL_RECHOOSE_SIL, s_h - 0.1)
+                    and not _conflicts(c, others)]
+            if alts:
+                best = min(alts, key=lambda c: float(c.per_view.get("sil_loss", c.loss)))
+                best.per_view["rechosen_over"] = [round(float(h.x), 4), round(float(h.y), 4), round(s_h, 3)]
+                chosen[i] = best
     # low contrast: a group still short after the residual rounds may be an object whose colour is close to the
     # table's. insert_key's copper lock on the brown wood (5.1): the colour distance inside its silhouette has a median
     # of 17.6 against fg_thr 18, so 47-56 % of it is foreground, in pieces 15-25 px apart that no proposal explains
@@ -2776,10 +2812,22 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         # identity (stack_blocks 100014 swapped two blocks)
         short = [(gi, g, p) for gi, g, p in pending
                  if need.get(gi, 0) > 0 and len(g["labels"]) == 1 and g["type"] == "Geometry" and g.get("regions")]
+        # ... and a small fixture the rounds filled with a loose fit (a leftover piece of a bigger object's blob:
+        # deposit_coin's stand at the piggy bank's edge, sil 0.72-1.0): its low-contrast find replaces that fit
+        loose = {}
+        for i, h in enumerate(chosen):
+            g = groups[h.label_group]
+            if (len(g["labels"]) == 1 and g["type"] == "Geometry" and g.get("regions") and _small(h)
+                    and float(h.per_view.get("sil_loss", h.loss)) > SMALL_RECHOOSE_SIL):
+                loose[h.label_group] = i
+        short += [(gi, g, p) for gi, g, p in pending if gi in loose]
+        for gi in loose:
+            need[gi] = 1
         if short:
             expl = np.zeros_like(head.fg)
-            for h in chosen + slot_h:
-                h.sm().sil(head.cam, h.T(), out=expl)
+            for j, h in enumerate(chosen + slot_h):
+                if j not in loose.values():
+                    h.sm().sil(head.cam, h.T(), out=expl)
             free = (head.known > 0) & (head.robot == 0) & (cv2.dilate(expl, np.ones((5, 5), np.uint8)) == 0)
             low = ((head.dist > cfg.low_contrast_frac * cfg.fg_thr) & free).astype(np.uint8)
             low = cv2.morphologyEx(low, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
@@ -2795,9 +2843,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 bl = blobs(ViewMasks(head.cam, head.img, fg_g, head.known, head.dist, head.robot), "cam_head")
                 if not bl:
                     continue
-                others = _union_masks(chosen, vws)
+                kept = [h for j, h in enumerate(chosen) if not (gi in loose and j == loose[gi])]
+                others = _union_masks(kept, vws)
                 more = _propose(bl, [(gi, g, prior)], shapes_by_group, vws, cfg, groups, others=others, blob_offset=9000)
-                add = _assign_constrained(more, {gi: need[gi]}, [(gi, g, prior)], bl, vws, existing=chosen, blob_offset=9000)
+                add = _assign_constrained(more, {gi: need[gi]}, [(gi, g, prior)], bl, vws, existing=kept, blob_offset=9000)
                 # only a tight fit: on the G1 sets the right finds fit at 0.32-0.37, the wrong ones (table texture, a
                 # shadow, 150-540 mm from the object) at 0.45-1.0
                 # ... and part of it already foreground at the normal threshold (the lock: 47-56 %); table texture or
@@ -2808,6 +2857,14 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 add = [h for h in add if seen(h)]
                 for h in add:
                     h.per_view["low_contrast"] = True
+                if gi in loose and add:     # the loose fit gives way
+                    old_h = chosen[loose[gi]]
+                    add[0].per_view["rechosen_over"] = [round(float(old_h.x), 4), round(float(old_h.y), 4),
+                                                        round(float(old_h.per_view.get("sil_loss", old_h.loss)), 3)]
+                    chosen[loose[gi]] = add[0]
+                    continue
+                if gi in loose:
+                    continue
                 chosen += add               # (not into the pool: the occluded fallback below must not take them)
     # occluded fallback: a group still short takes its best remaining hypothesis whose head silhouette is
     # mostly hidden (robot / unknown pixels), flagged low-confidence (a wrist re-view should confirm it)
