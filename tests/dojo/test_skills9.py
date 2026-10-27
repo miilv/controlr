@@ -356,3 +356,24 @@ def test_declare_kong_in_mode_b_needs_confirm_pose():
         out[confirm] = (bool(res.get("ok")), sum(quat_to_R(rows[f"mahjong0_{i}"]["quat"])[2, 2] > 0.85 for i in range(3)))
     assert out[True] == (True, 3), out
     assert not out[False][0], out                               # the belief never sees the tiles tip
+
+
+
+def test_snap_row_puts_a_dense_row_back_on_its_slots_in_the_planning_world_only():
+    from dojo.skills.library import snap_row
+    from dojo.skills.world import AssetInfo, ObjectState, WorldState
+    half = np.array([0.0165, 0.011, 0.0325])
+    true = {f"t{i}": np.array([-0.325 + 0.046 * i, -0.15, 0.7974]) for i in range(14)}
+    objs = {l: ObjectState(l, "Rigid", "mahjong", 0, p.copy(), np.array([1.0, 0, 0, 0]),
+                           AssetInfo(key="Rigid/mahjong/00000", bbox_min=-half, bbox_max=half)) for l, p in true.items()}
+    w = WorldState("", "", objs, {}, {})
+    w.obj("t2").pos = true["t2"] + [0.0115, -0.0006, 0.0]                         # 5.1 perception: 11.5 mm into the gap
+    w.obj("t7").pos = true["t7"] + [-0.003, 0.002, 0.0]
+    labels = [l for l in true if l != "t4"]                                         # a gap (a toppled tile) is fine
+    moved = snap_row(w, labels)
+    assert set(moved) >= {"t2", "t7"}
+    for l in labels:
+        assert np.linalg.norm(w.obj(l).pos[:2] - true[l][:2]) < 0.0015, (l, w.obj(l).pos, true[l])
+    # not a row: nothing moves
+    w.obj("t0").pos = true["t0"] + [0.0, 0.08, 0.0]
+    assert snap_row(w, ["t0", "t9", "t13"]) == {}

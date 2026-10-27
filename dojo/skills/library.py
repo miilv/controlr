@@ -1955,13 +1955,16 @@ def is_standing(o, tol_deg: float = 20.0) -> bool:
     return abs(float(o.R[2, k])) > math.cos(math.radians(tol_deg))
 
 
-def topple(sk: Skills, label: str, axis_body, arm: str | None = None, tries: int = 2) -> SkillResult:
-    """Tip ``label`` over so that ``axis_body`` (a body unit axis) points up; checked after it falls."""
+def topple(sk: Skills, label: str, axis_body, arm: str | None = None, tries: int = 2, prepare=None) -> SkillResult:
+    """Tip ``label`` over so that ``axis_body`` (a body unit axis) points up; checked after it falls. ``prepare()``: called
+    on the refreshed world before each plan (``snap_row``: the neighbours where the row puts them)."""
     ax = np.asarray(axis_body, float)
     k = int(np.argmax(np.abs(ax)))
     sign = float(np.sign(ax[k]))
     for t in range(tries):
         sk.refresh()
+        if prepare is not None:
+            prepare()
         p = sk.plan_topple(label, k, sign, arm=arm, over=0.012 + 0.012 * t, below_top=0.012 + 0.004 * t)
         if isinstance(p, SkillResult):
             return sk._record(p)
@@ -1983,6 +1986,41 @@ def topple(sk: Skills, label: str, axis_body, arm: str | None = None, tries: int
                                           note=f"{label} axis up within {math.degrees(math.acos(min(1.0, up))):.0f} deg"))
         sk.log(f"[topple] {label}: axis at {math.degrees(math.acos(max(-1.0, min(1.0, up)))):.0f} deg from up, retry")
     return sk._record(SkillResult(False, "topple", "place_miss", 0, arm, note=f"{label} did not tip over"))
+
+
+def snap_row(w, labels: list[str], max_off: float = 0.02, max_resid: float = 0.006) -> dict:
+    """Identical objects standing in one straight row at a fixed pitch (a mahjong hand; gaps allowed): fit the row (each
+    object's slot from the median spacing, then pitch and start by least squares; y the median) and move each believed position that is within ``max_off`` of its slot
+    onto it, in ``w`` only (the planning world; the belief is untouched). Perception puts tiles of a dense row up to
+    11.5 mm off their slots (genuine 5.1, p90); a topple's fingertips need the 13 mm gap between two tiles, so a neighbour
+    believed 11 mm into it fails the push plan ("hits mahjong0_2", 4 of 10 on main). No fit (residual > ``max_resid``,
+    fewer than 4 objects): nothing moves. Returns {label: shift in mm} of what moved."""
+    labs = sorted([l for l in labels if l in w.objects], key=lambda l: float(w.obj(l).pos[0]))
+    if len(labs) < 4:
+        return {}
+    xs = np.array([float(w.obj(l).pos[0]) for l in labs])
+    p0 = float(np.median(np.diff(xs)))                  # one pitch: most neighbours are adjacent (a toppled one = a gap)
+    if p0 <= 0.005:
+        return {}
+    idx = np.round((xs - xs[0]) / p0)
+    if len(set(idx.tolist())) < len(idx):
+        return {}
+    pitch, x0 = np.polyfit(idx, xs, 1)
+    inl = np.abs(xs - (x0 + pitch * idx)) <= 0.005           # refit without the ones far off their slot
+    if inl.sum() >= 3:
+        pitch, x0 = np.polyfit(idx[inl], xs[inl], 1)
+    fit = x0 + pitch * idx
+    if float(np.median(np.abs(xs - fit))) > max_resid or pitch <= 0:
+        return {}
+    y = float(np.median([float(w.obj(l).pos[1]) for l in labs]))
+    moved = {}
+    for l, xf in zip(labs, fit):
+        o = w.obj(l)
+        d = float(np.hypot(o.pos[0] - xf, o.pos[1] - y))
+        if 1e-4 < d <= max_off:
+            o.pos = np.array([xf, y, o.pos[2]], float)
+            moved[l] = round(d * 1000, 1)
+    return moved
 
 
 def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int = 260, shift: float = 0.006) -> dict:
@@ -2037,7 +2075,11 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
     for l in sorted(match, key=lambda l: abs(float(w.obj(l).pos[0]) - float(sk.kin.base(arm)[0, 3]))):
         if face_up(sk.world.obj(l)):
             continue
-        r = topple(sk, l, up_body_axis(sk.world.obj(l)), arm=arm)
+        def prepare(hand=hand, l=l):
+            moved = snap_row(sk.world, [x for x in hand if x == l or is_standing(sk.world.obj(x))])
+            if moved and any(v > 3.0 for v in moved.values()):
+                sk.log(f"[kong] row snapped for the topple of {l}: {moved}")
+        r = topple(sk, l, up_body_axis(sk.world.obj(l)), arm=arm, prepare=prepare)
         if not r.ok:
             return {"ok": False, "stage": f"topple {l}", "result": r}
     w = sk.refresh()
