@@ -158,3 +158,46 @@ def test_tool_call_code_is_taken():
     assert tool_code([{"name": "python", "arguments": '{"code": "print(1)"}'}]) == "print(1)\n"
     assert tool_code([{"name": "other", "arguments": "{}"}]) is None
     assert tool_code([]) is None
+
+
+def test_planner_first_runs_the_rule_planners_skill_without_an_llm_call(tmp_path):
+    """planner_first: the planner names stack_objects, RuntimePolicy's program runs it, the episode ends with no call."""
+    def model(messages):
+        raise AssertionError("planner_first must not call the model when the planner's skill completes")
+    env = _env()
+    pol = AgentPolicy(RuntimeConfig(mode="gt", verify="off"), agent_cfg=AgentConfig(model="fake", planner_first=True),
+                      client=FakeLLM(model), assets=FakeAssets(), log_root=tmp_path)
+    rep = run_episode(pol, FakeEpisode(env), "gt")
+    assert rep["error"] is None, rep["error"]
+    assert _stacked(env)
+    assert rep["agent"]["outcome"] == "planner_done" and rep["agent"]["planner_skill"] == "stack_objects"
+    assert any(e["kind"] == "planner_first" and e["ok"] for e in rep["events"])
+
+
+def test_planner_first_hands_a_failed_skill_to_the_agent_with_a_note(tmp_path, monkeypatch):
+    """The planner's skill fails twice (its bounded retry): the agent gets the episode, told what was tried."""
+    from dojo.skills import library
+    calls = {"n": 0}
+
+    def failing(sk, **kw):
+        calls["n"] += 1
+        return {"ok": False, "stage": "stub failure"}
+    monkeypatch.setitem(library.SKILLS, "stack_objects", failing)
+    seen = {}
+
+    def model(messages):
+        seen["first"] = messages[1]["content"][0]["text"]
+        return "```python\nfinish('failed', 'nothing else to do')\n```"
+    env = _env()
+    pol = AgentPolicy(RuntimeConfig(mode="gt", verify="off"), agent_cfg=AgentConfig(model="fake", planner_first=True,
+                                                                                    max_calls=2),
+                      client=FakeLLM(model), assets=FakeAssets(), log_root=tmp_path)
+    rep = run_episode(pol, FakeEpisode(env), "gt")
+    assert rep["error"] is None, rep["error"]
+    assert calls["n"] == 2                                      # RuleSupervisor: first attempt + one retry
+    assert "ALREADY TRIED (no LLM)" in seen["first"] and "stack_objects" in seen["first"]
+    assert rep["agent"]["planner_first"] and rep["agent"]["usage"]["calls"] == 1
+
+
+def test_planner_first_is_off_by_default():
+    assert AgentConfig().planner_first is False

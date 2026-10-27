@@ -63,6 +63,11 @@ class AgentConfig:
     # Default 2 -> 4 (2026-10-27, docs/experiments/2026-10-27-routing-sonnet.md): with v2 the frame-taking skills
     # (hang_on_hooks, slots_and_press, strike_in_order, stack_on_pegs) were answered with code on 19/93 items
     scene_version: int = 4
+    # hybrid: the rule planner's library skill first, through RuntimePolicy's own program (its bounded retry, re-plan
+    # on divergence, lost-object search), with no LLM call; the agent only when the planner names no skill, or after
+    # that program failed with >= planner_first_budget_frac of the step budget left (journal 2026-10-27-dojo-official)
+    planner_first: bool = False
+    planner_first_budget_frac: float = 0.35
 
 
 def registry_skills(cfg: AgentConfig):

@@ -111,14 +111,46 @@ class AgentPolicy(RuntimePolicy):
         self._episode_cfg = self.episode_config(self.n_resets)
         self.n_resets += 1
 
+    def _planner_first(self, c, acfg: AgentConfig) -> tuple[dict | None, str]:
+        """``planner_first``: RuntimePolicy's own program (the rule planner's skill, its bounded retry), no LLM call.
+        Returns (its result when the agent must not run, else None; the note the agent gets about what was tried)."""
+        res = self._supervise(c)
+        skill = self.report.get("skill")
+        ok = bool((res or {}).get("ok"))
+        w = c.sk.refresh()
+        left = (w.steps_left / w.step_lim) if w.step_lim else 1.0
+        c.events.append({"kind": "planner_first", "skill": skill, "ok": ok, "step": int(c.bridge.steps_used),
+                         "budget_left": round(left, 3)})
+        base = {"planner_first": True, "planner_skill": skill, "model": acfg.model, "usage": {}, "cells": 0,
+                "skills_called": [skill] if skill else [], "code_commit": _deployed_commit(),
+                "skill_docs_version": SKILL_DOCS_VERSION}
+        if ok:
+            self.report["agent"] = {**base, "outcome": "planner_done"}
+            return res, ""
+        if skill and left < acfg.planner_first_budget_frac:
+            self.report["agent"] = {**base, "outcome": "planner_failed_low_budget"}
+            return res or {"ok": False, "stage": "planner_first"}, ""
+        if not skill:
+            return None, ""
+        last = next((h for h in reversed(c.sk.history) if not h.ok), None)
+        why = f"{last.skill} {last.status}: {str(last.note)[:200]}" if last is not None else str(res)[:200]
+        return None, (f"\n\nALREADY TRIED (no LLM): the library skill `{skill}` with the arguments the instruction "
+                      f"implies, with one retry, did not complete the task ({why}). The scene above is the state now.")
+
     def _program(self, c) -> dict:
         acfg = getattr(self, "_episode_cfg", None) or self.episode_config(0)
         self.n_episodes += 1
+        note = ""
+        if acfg.planner_first:
+            done, note = self._planner_first(c, acfg)
+            if done is not None:
+                return done
         ctx = _AgentCtx(c, self.assets())
         world = ctx.sk().refresh()
         ids = assign_ids(world)
         objects_root = getattr(ctx.assets, "root", None)
         text, ids = scene_text(world, ids, objects_root=objects_root, version=acfg.scene_version)
+        text += note
         robo = Robo(ctx, ids, objects_root=objects_root,
                     limits=CellLimits(acfg.max_cell_steps, acfg.max_cell_contacts), auto_frames=acfg.auto_frames)
         from dojo.agent.loop import registry_skills
@@ -132,7 +164,8 @@ class AgentPolicy(RuntimePolicy):
                "usage": {}, "cells": 0, "skills_called": [], "code_commit": _deployed_commit(),
                "manual": acfg.manual, "appendix": acfg.appendix, "skill_docs_version": SKILL_DOCS_VERSION,
                "registry": acfg.registry or None, "strict": acfg.strict,
-               "skills_prompted": sorted(robo.skills) if robo.skills is not None else None}
+               "skills_prompted": sorted(robo.skills) if robo.skills is not None else None,
+               "planner_first": bool(acfg.planner_first), "planner_skill": self.report.get("skill") if acfg.planner_first else None}
         self.report["agent"] = rep
 
         def live(lp):                     # the main thread may close the report while the worker is parked
