@@ -176,6 +176,13 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   so a vertex test of "what the pads touch" found nothing on its flat sides and fell back to a wrong width (the held
   object then hid under a finger mask). Sample the surface (`held.surface_points`).
 - **Two Isaac processes that start the same SDF task at once can fail to cook its SDF colliders** (nuts, bolts, the tube rack: `omni.physx.cooking.plugin`, "UjitsoMeshCookingContext: cooking failure for .../collision/collisions"). The uncooked object then has no proper collision, and every episode measures the infrastructure: fasten_screws G3 mode B on compute6 was 1/15 in two jobs started the same second, against 1.0 for the same layout alone. g3 reads its own Kit log (`dojo.simlab.kitlog.KitLogWatch`, carb `/log/file`): such episodes are `category` `infra_failure` and stay out of the summary's n (`infra_failures`, `infra_seeds`), and the twin service flags its load. Stagger same-task SDF jobs by a minute, and re-run the infra seeds.
+- **A catalogue colour of exactly 0.7 grey means "colour not read".** Some assets take their colour from an MDL preset
+  (`info:mdl:sourceAsset:subIdentifier`, e.g. `ABS_Soft_Leather_Pop_Orange`), with no shader inputs on the USD
+  side. `catalog.mdl_preset_color` reads the preset's flat colour argument (linear -> sRGB). Before it existed, the
+  four play_stacking_toy pieces (purple, yellow, blue, orange-red in the render) were all grey, and B1 told them
+  apart by silhouette alone. A preset whose colour comes from a texture (copper, marble, wood) still reads grey.
+  Rebuild an asset after a builder change (`catalog build --force --keys-json`), then sync the boxes
+  (`catalog_check`).
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
 - **G3 episodes are bit-deterministic, with two exceptions.** The same layout replays the same actions on a loaded

@@ -98,3 +98,23 @@ def test_perception_eval_scores_the_record_the_skills_planned_with():
     out = perception_eval(rep, gt, None)
     assert out["tube1"]["found"] and out["tube1"]["xy_mm"] < 1.0 and out["tube0"]["xy_mm_first"] < 1.0
     assert not perception_eval({"records": {"initial": initial}}, gt, None)["tube1"]["found"]
+
+
+def test_cooking_failures_are_read_from_the_episode_s_part_of_the_kit_log(tmp_path):
+    """Two processes cooking the same SDF asset race on the shared cache and leave an object without its collider:
+    eval reads this episode's part of its own Kit log and marks such an episode infra_failure; --breadth excludes it."""
+    from dojo.runtime.eval import cooking_failures, kit_log_offset
+    from dojo.runtime.report import breadth_table
+    log = tmp_path / "kit.log"
+    log.write_text("[Warning] [omni.physx.cooking.plugin] UjitsoMeshCookingContext: cooking failure for /World/old\n")
+    off = kit_log_offset(str(log))
+    with log.open("a") as f:
+        f.write("ok line\n[Warning] [omni.physx.cooking.plugin] UjitsoMeshCookingContext: cooking failure for "
+                "/World/envs/env_0/rigid/factory_nut/factory_nut_1_15/collision/collisions\n")
+    got = cooking_failures(str(log), off)
+    assert len(got) == 1 and "factory_nut_1_15" in got[0]
+    assert cooking_failures(None, 0) == [] and cooking_failures(str(tmp_path / "none.log"), 0) == []
+    base = {"task": "fasten_screws", "steps_used": 900, "step_lim": 1900, "wall_s": 200.0, "agentic": []}
+    t = breadth_table([{**base, "layout_id": 100000, "success": True, "score": 1.0, "category": None},
+                       {**base, "layout_id": 100001, "success": False, "score": 0.0, "category": "infra_failure"}])
+    assert "| fasten_screws | 1 | 1/1 | 100.0 |" in t and "infra_failure" in t and "fasten_screws 100001" in t

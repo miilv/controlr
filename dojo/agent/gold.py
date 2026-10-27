@@ -20,7 +20,8 @@ Where the rule-based planner's output disagrees with these rules it is wrong aga
 first rules (skills-3..8) are skill items now: fasten_screws (screw_on), insert_tubes (insert_each), play_Xylophone
 (strike_in_order), fill_egg_holder (fill_holes), hang_mugs (hang_on_hooks), make_toast (slots_and_press),
 play_stacking_toy (stack_on_pegs), play_tic_tac_toe (play_board_game), imitate_sorting_sequence (copy_demonstration),
-match_and_pick_from_conveyor (match_and_pick), pick_from_conveyor_by_image (pick_into_held). More comparisons:
+match_and_pick_from_conveyor (match_and_pick), pick_from_conveyor_by_image (pick_into_held); later fold_clothes
+(fold_garment, #103). More comparisons:
 ``any`` (not judged: the skill falls back by itself), ``in`` (one of these values), ``k_of`` (exactly ``k`` distinct
 ids from ``allowed``), ``pegmap`` (``groups[i]`` onto ``pegs[i]``: the same frame -> pieces map, any group order).
 """
@@ -83,6 +84,11 @@ def _gold(t: str, it: dict) -> dict:
     if t == "fill_pen_holder":
         return _skill("fill_container", objects={"op": "set", "value": _ids(it, _lab("target"))},
                       container={"op": "eq", "value": _id(it, "pen_holder")})
+    if t == "fold_clothes":
+        # the garment "target": both sleeves on the opposite chest (sleeves first), then the hems on the shoulders, judged
+        # with both grippers open and the arms home: fold_garment (#103). garment: its scene id, or null (the skill reads
+        # the garment from the provider)
+        return _skill("fold_garment", garment={"op": "in", "value": [_id(it, "target"), None], "default": None})
     if t == "hang_mugs":
         # every mug's handle on the rack's hooks (hook frames ``handle_support_point``, the checker's z > 0.9 handle)
         return _skill("hang_on_hooks", objects={"op": "set", "value": _ids(it, _lab("mug"))},
@@ -196,9 +202,6 @@ def _gold(t: str, it: dict) -> dict:
         mats = sorted(_ids(it, _lab("mat_")), key=lambda i: int(it["objects"][i]["label"].split("_")[1]))
         g["alt"] = [_skill("arrange", steps={"op": "set", "value": [["place", d, m] for d, m in zip(digits, mats)]})]
         return g
-    if t == "fold_clothes":
-        return _code("1. fold each sleeve onto the opposite chest (sleeves first); 2. fold the hem up onto the "
-                     "shoulders with both arms; 3. finish.")
     if t == "pack_objects_into_box":
         return _code("1. for each object: pick it, turn it so its front faces left and its long axis "
                      "follows the box, place it inside the box; bank after each; 2. finish.")

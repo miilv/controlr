@@ -73,3 +73,14 @@ def test_runtime_provider_reads_the_garment_once():
     g1, g2 = prov.garment("target"), prov.garment("target")
     assert g1 is g2 and len(calls) == 1 and g1["live"] is False
     assert any(e["kind"] == "garment_read" for e in prov.events)
+
+
+def test_shipped_templates_cover_both_garment_sets():
+    import json
+    from pathlib import Path
+    raw = json.loads((Path(__file__).resolve().parents[2] / "dojo" / "perception" / "data" / "garment_templates.json")
+                     .read_text())
+    keys = set(raw)
+    assert {f"Garment/Top_Long/{i:05d}" for i in (1, 4, 9, 6, 7, 11)} <= keys      # standard and random sets
+    assert all(isinstance(v.get("seed"), int) and v["seed"] >= 100000 for v in raw.values())   # our dev layouts only
+    assert all(len(v["xy"]) >= 1000 and "left_sleeve" in v["kp"] for v in raw.values())

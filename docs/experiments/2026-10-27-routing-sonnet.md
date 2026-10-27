@@ -117,8 +117,8 @@ Per config:
 
 | config (dim) | instruction (verbatim) | gold (checker) | Sonnet before | Sonnet after: choice (100000) | after | rule planner (100000) | planner |
 |---|---|---|---|---|---|---|---|
-| fold_clothes (G) | Fold the clothes neatly. | code | 3 right | code | 3 right | none | 3 no rule |
-| fold_clothes_random (G) | same | code | 3 right | code | 3 right | none | 3 no rule |
+| fold_clothes (G) | Fold the clothes neatly. | code (then; `fold_garment` since #103, below) | 3 right | code | 3 right | none | 3 no rule |
+| fold_clothes_random (G) | same | code (then; `fold_garment` since #103) | 3 right | code | 3 right | none | 3 no rule |
 | hang_mugs (G) | Hang all the mugs on the mug rack. | hang_on_hooks | 3 code-instead-of-skill | hang_on_hooks(objects=[mug0, mug1, mug2]; rack=cup_holder; hook_tag=handle_support_point; handle_tag=handle) | 3 right | the same | 3 right |
 | hang_mugs_random (G) | same | hang_on_hooks | 3 code-instead-of-skill | the same | 3 right | the same | 3 right |
 | make_toast (G) | Pick up two slices of bread, place them into the toaster, and press the lever down. | slots_and_press | 3 code-instead-of-skill | slots_and_press(objects=[bread_0, bread_1]; container=toaster; slots=[toast_slot1, toast_slot2]; press_tag=toast_botton) | 3 right | the same | 3 right |
@@ -186,6 +186,24 @@ Per config:
   `pick_into_held(..., picture=photo)`, as on docs v8: no regression (6 calls).
 - **With v10, Sol routes all 31 configs right (93/93, combining E, F and G).**
 
+**Follow-up: fold_clothes gold** (lead-approved; journal 2026-10-27-dojo-official §2.2).
+- #103 added `fold_garment(garment: id | null = null)`: each sleeve onto the opposite chest, then both hem corners
+  onto the shoulders, grippers opened after each fold.
+- That is what the checker judges for the garment `target` (fold_clothes and `_random` share the checker): sleeves
+  first, the hems on the shoulders, both grippers open and the arms home.
+- So fold_clothes (+ `_random`) is now a skill item: `fold_garment`, with garment = its scene id or null (the skill
+  reads the garment from the provider).
+- Re-run on the same 6 items, docs v10, scene v4. The scenes are byte-identical to run A-E's; the planner reference
+  was rebuilt on current main.
+
+| fold_clothes + `_random`, 100000-02 (6 items) | right | harmful |
+|---|---|---|
+| Sol 6.1 | 6/6 `fold_garment(garment=target)` | 0 |
+| Sonnet 5.5 | 6/6 `fold_garment(garment=target)` | 0 |
+| rule planner (since #103) | 6/6 `fold_garment(garment=target)` | 0 |
+
+- Calls: 12 (run H). Routing total: 320.
+
 ## Failure modes and fixes
 
 **1. Scene v2 lists no frames, so every frame-argument skill became code (A: 19/93, 6 configs).**
@@ -234,7 +252,8 @@ Per config:
 
 **5. Rule planner.** It is right on all 25 skill configs (75/75 items, fasten_screws included once meshes are loaded).
 Its gaps are the three code tasks:
-- fold_clothes and sweep_blocks: no rule, so RuntimePolicy finishes with nothing done;
+- fold_clothes and sweep_blocks: no rule, so RuntimePolicy finishes with nothing done (fold: since #103 the planner
+  routes it to `fold_garment`, 6/6, follow-up above);
 - store_laptop: `hang_on_hooks` for the headset only. That is the best a single skill can do today: the paired 20.
 
 Planner code was not changed.
@@ -259,11 +278,10 @@ Weights: Memory 3.33 %, Precision / Long-Horizon / Open 2.5 %, Generalization 0.
 
 | # | gap | tasks | points at stake | next |
 |---|---|---|---|---|
-| 1 | fold_clothes: no skill, no planner rule | fold_clothes (+ `_random`) | ≤ 1.67 | a fold skill (Generalization-New's lane) |
-| 2 | sweep_blocks: no skill, no planner rule | sweep_blocks (+ `_random`) | ≤ 1.67 (best entry 20) | a tool-sweep skill |
-| 3 | no laptop skill (close the lid, stand it in the rack); the planner banks the headphones' 20 | store_laptop_and_headphones (+ `_random`) | ≤ 1.33 (80 of 100 × 1.67) | a laptop skill; the agent writes code meanwhile |
-| 4 | wrong asset captions ("smartphone" rack, bread, coin) | hang_mugs (G), make_toast (G), deposit_coin (P) | small with v4 for Sonnet (6/6); unmeasured for other models | caption sanity check in `scene.caption` |
-| 5 | `robo.obj()` has no frames: code cannot look one up | the frame-skill tasks when code is chosen | small | add `frames` to `Obj` |
+| 1 | sweep_blocks: no skill, no planner rule | sweep_blocks (+ `_random`) | ≤ 1.67 (best entry 20) | a tool-sweep skill |
+| 2 | no laptop skill (close the lid, stand it in the rack); the planner banks the headphones' 20 | store_laptop_and_headphones (+ `_random`) | ≤ 1.33 (80 of 100 × 1.67) | a laptop skill; the agent writes code meanwhile |
+| 3 | wrong asset captions ("smartphone" rack, bread, coin) | hang_mugs (G), make_toast (G), deposit_coin (P) | small with v4 for Sonnet (6/6); unmeasured for other models | caption sanity check in `scene.caption` |
+| 4 | `robo.obj()` has no frames: code cannot look one up | the frame-skill tasks when code is chosen | small | add `frames` to `Obj` |
 
 ## Conclusions (given n)
 
@@ -278,7 +296,8 @@ Weights: Memory 3.33 %, Precision / Long-Horizon / Open 2.5 %, Generalization 0.
 - **The default model Sol 6.1 routes 30/31 configs right** (90/93, 0 harmful). Its one miss is the pen holder's
   "hold it with one hand" wording, which Sonnet reads through. SKILL_DOCS v10 fixes it: 0/3 -> 3/3, with no change on the conveyor-basket config (6/6).
 - The rule planner is right wherever a skill exists (25/25 configs). What it lacks, the agent's code path also
-  lacks: fold, sweep and the laptop.
+  lacks: sweep and the laptop. Fold had the same gap until #103's `fold_garment`, which both models and the
+  planner now pick (6/6 each).
 - This is routing, not success: whether the chosen skill succeeds in mode B is the skill streams' and the e2e
   evals' question.
 
@@ -299,4 +318,4 @@ uv run python -m dojo.agent.grounding score runs/official-routing/<run> --md
 
 Datasets on compute3: `~/dojo-data/official/routing/dataset_v{2,3,4m}.jsonl` and `dataset_v4m_toy10.jsonl`. Runs
 are local, under `runs/official-routing/`: `runA_v2_manual4_docs7`, `runB_v4_manual4_docs7`, `runB2_toy10_v4_docs7`,
-`runC_toy10_v4_docs8`, `runD_v4_docs8_rest`, `runE_sol_v4_docs8`, `runF_fillpen_v9`, `runG_conveyor_v10` (6 calls each; 308 in all).
+`runC_toy10_v4_docs8`, `runD_v4_docs8_rest`, `runE_sol_v4_docs8`, `runF_fillpen_v9`, `runG_conveyor_v10` (6 calls each), `runH_fold_v10` (12; dataset `dataset_v4m_fold.jsonl`); 320 in all.
