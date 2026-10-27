@@ -310,6 +310,8 @@ class RuntimeProvider:
         self.confirm_wrists = True              # confirm_pose also scores the wrist views (policy: confirm_wrists)
         self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
+        self.garment_reader = None              # (obs) -> a garment read (``dojo.perception.garment``) or None
+        self._garment = None
         self.actor_window = 12                  # actors_moving compares with the frame this many steps back
         self._head_hist: list = []              # (step, obs) for actors_moving
         self.track_reader = None                # (obs) -> record: B1 re-read for moving objects (belt tracking)
@@ -474,6 +476,22 @@ class RuntimeProvider:
         return out
 
     # ------------------------------------------------------------------ watch reads (scripted actors, belts)
+    def garment(self, label: str | None = None) -> dict | None:
+        """A garment lying flat on the table: the camera's first read (named points, root pose), kept for the episode
+        (``live`` False: it does not follow the cloth, the fold skill plans every fold from it). None without a reader
+        or a read."""
+        if self._garment is None and self.garment_reader is not None:
+            try:
+                r = self.garment_reader(self.bridge.observe())
+            except Exception as e:  # noqa: BLE001 (an optional read)
+                self.events.append({"kind": "garment_error", "note": f"{type(e).__name__}: {str(e)[:120]}"})
+                r = None
+            if r:
+                self._garment = {**r, "label": label, "live": False}
+                self.events.append({"kind": "garment_read", "asset": r.get("asset"), "iou": r.get("iou"),
+                                    "pos": r.get("pos"), "quat": r.get("quat")})
+        return self._garment
+
     def actors_moving(self) -> bool | None:
         """Did anything but our arms move: the current head frame vs the one ``actor_window`` steps back (a window
         longer than a scripted arm's pauses, e.g. ~10 steps while its gripper closes, so a pause reads as motion).
