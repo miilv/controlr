@@ -93,6 +93,30 @@ class OffsetBeliefProvider:
         return w
 
 
+LOOK_READ_NOISE = (0.0004, 0.8)       # m, deg: 5.1's keyhole read from the wrist 15 cm over a lock (median xy / yaw,
+                                      # 25 dev layouts; Perception-2, experiments/2026-10-27-keyhole-yaw)
+
+
+def look_read_refine(prov, sk, label: str, kind: str, mode: str, seed: int):
+    """Dev hook (G3 mode B, ``--look-read``): a refine of kind "look" corrects ``label``'s believed offset
+    (``OffsetBeliefProvider``) to a residual of ``LOOK_READ_NOISE`` and reports perception's ``yaw_source`` in
+    ``sk.last_refine``. "top_feature": the full-turn yaw; "axis": the axis only ("top_feature_axis"), the believed yaw
+    half a turn off on odd seeds. Other kinds see nothing, as without the hook."""
+    if kind != "look":
+        return None
+    p = prov
+    while p is not None and not isinstance(p, OffsetBeliefProvider):
+        p = getattr(p, "base", None)
+    rng = np.random.default_rng(seed + 7)
+    flip = 180.0 if (mode == "axis" and seed % 2) else 0.0
+    if p is not None:
+        p.offsets[label] = np.array([rng.normal(0, LOOK_READ_NOISE[0]), rng.normal(0, LOOK_READ_NOISE[0]),
+                                     rng.normal(0, LOOK_READ_NOISE[1]) + flip])
+    sk.last_refine = {"ok": True, "label": label, "for": kind,
+                      "yaw_source": "top_feature" if mode == "top_feature" else "top_feature_axis"}
+    return {label: None}
+
+
 class FrozenGarmentProvider:
     """Dev hook for mode B in G3: a garment is read once, as the camera reads it at eval (``dojo.perception.garment``:
     one read of the flat garment, not following the cloth), from GT plus ``noise_mm`` Gaussian xy noise per named point
@@ -133,13 +157,15 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False,
                 held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True,
                 freeze_touched: bool = False, confirm_pose: bool = False, belief_drop: str | None = None,
-                allow_bbox: bool = False, held_request: bool = False) -> dict:
+                allow_bbox: bool = False, held_request: bool = False,
+                look_read: str | None = None) -> dict:
     """``held_pose`` ("noise" / "gt", mode B): perception's in-hand read answered from GT (``heldsim``), with the
     runtime belief's in-hand transform (implied); ``held_belief``: that belief alone (no read); ``held_looks``: the
     protocol may look / show (``Skills.held_looks``). ``freeze_touched``: an object the robot moved without a grasp keeps
     its believed pose (the runtime belief's blind spot); ``confirm_pose``: + the provider's ``confirm_pose`` from GT.
     ``belief_drop`` ("runtime" / "fixtures"): a released object is where the runtime belief's drop rule puts it unless
-    the post-place re-measure can see it (``heldsim``)."""
+    the post-place re-measure can see it (``heldsim``). ``look_read`` ("top_feature" / "axis", mode B): a wrist refine
+    of kind "look" reads the object's pose as perception's keyhole read does (``look_read_refine``)."""
     """``task`` is bookkeeping only: the episode runs ``planner.solve`` from the instruction + world."""
     from dojo.skills import planner
     from dojo.skills.env import RunnerEnv
@@ -174,9 +200,12 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
         from dojo.skills.verify import InProcessTwin
         verifier = InProcessTwin(run, list(range(1, run.num_envs)), seed=seed)
     # mode_b: as the runtime's perception mode (no in-hand re-measure; a refine hook that observes nothing)
+    refine = None
+    if mode_b:
+        refine = ((lambda sk_, label, arm, kind: look_read_refine(prov, sk_, label, kind, look_read, seed)) if look_read
+                  else (lambda sk_, label, arm, kind: None))
     sk = Skills(env, prov, reserve=30, log=log, verifier=verifier,
-                verify_k=verify_k or 2, n_cands=4, remeasure=not mode_b,
-                refine=(lambda sk_, label, arm, kind: None) if mode_b else None)
+                verify_k=verify_k or 2, n_cands=4, remeasure=not mode_b, refine=refine)
     sk.held_looks = bool(held_looks)
     # an asset the full catalogue has a mesh for but this box's does not (a catalogue still syncing): its bbox would
     # stand in and the episode would differ without a word; refuse unless asked to plan on bboxes
@@ -339,18 +368,17 @@ def cmd_run(a) -> None:
                           verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b, held_pose=a.held_pose,
                           held_belief=a.held_belief, held_looks=not a.no_held_looks,
                           freeze_touched=a.freeze_touched, confirm_pose=a.confirm_pose, belief_drop=a.belief_drop, allow_bbox=a.allow_bbox,
-                          held_request=a.held_pose_request)
+                          held_request=a.held_pose_request, look_read=a.look_read)
         if offs or a.mode_b:
             rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b), "held_pose": a.held_pose,
                                 "held_belief": bool(a.held_belief or a.held_pose or a.freeze_touched or a.confirm_pose),
                                 "held_looks": not a.no_held_looks, "freeze_touched": bool(a.freeze_touched or a.confirm_pose),
                                 "confirm_pose": bool(a.confirm_pose), "belief_drop": a.belief_drop,
-                                "held_pose_request": bool(a.held_pose_request)}
+                                "held_pose_request": bool(a.held_pose_request), "look_read": a.look_read}
         rec["log"] = logs[-60:]
         rec["code"] = code
         rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
-        from dojo.simlab.grip_source import grip_source_mode
-        rec["grip_source"] = grip_source_mode()                              # what RunnerEnv handed the skills
+        rec["grip_obs"] = os.environ.get("DOJO_GRIP_OBS", "robodojo")        # dojo.simlab.gripobs (RunnerEnv)
         rows.append(rec)
         with summ_p.open("a") as f:
             f.write(json.dumps(rec, default=str) + "\n")
@@ -712,6 +740,9 @@ def main(argv=None) -> None:
                    help="LABEL:dx,dy[,dyaw_deg] (m, deg): the object's pose is believed this far off (the yaw about "
                         "the vertical through its bbox centre) until it is held (dev)")
     r.add_argument("--mode-b", action="store_true", help="no in-hand re-measure, a refine hook that sees nothing (dev)")
+    r.add_argument("--look-read", choices=("top_feature", "axis"), default=None,
+                   help="mode B: a wrist look reads the object as perception's keyhole read (residual 0.4 mm / 0.8 deg; "
+                        "axis: yaw_source top_feature_axis, half a turn off on odd seeds) (dev)")
     r.add_argument("--held-pose", choices=("noise", "gt"), default=None,
                    help="mode B: held_pose / show_pose answered from GT (+ perception-held's calibrated noise), with the "
                         "runtime belief's in-hand transform (dojo.skills.heldsim; dev)")

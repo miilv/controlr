@@ -120,3 +120,14 @@ def test_vertical_grasps_at_the_target_point_straight_down_across_the_bow():
         assert abs(abs(Tw[:3, 1] @ (T_tg[:3, :3] @ np.array([0.0, 1.0, 0.0]))) - 1.0) < 1e-9   # closing along y_key
         tip = T_ko[:3, 3] + T_ko[:3, 0] * TIP_BEYOND_TCP
         assert abs(tip[0]) < 1e-9 and abs(tip[1]) < 1e-9 and -0.0081 < tip[2] < -0.0059   # under the bow's centre
+
+
+def test_turned_about_a_point_moves_the_pose_around_it():
+    from dojo.skills.geometry import T_from, rot_z
+    from dojo.skills.regrasp import _turned_about
+    c = np.array([0.1, -0.2, 0.8])
+    T = T_from(c + np.array([0.0024, 0.0, 0.05]), rot_z(0.3))
+    Th = _turned_about(T, c, np.pi)
+    assert np.allclose(Th[:3, 3], c + np.array([-0.0024, 0.0, 0.05]), atol=1e-12)   # mirrored through the axis
+    assert np.allclose(Th[:3, :3], rot_z(0.3 + np.pi), atol=1e-12)
+    assert np.allclose(_turned_about(Th, c, np.pi), T, atol=1e-12)
