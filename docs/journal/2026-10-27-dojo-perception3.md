@@ -159,6 +159,25 @@ Paired, same frames, the 12-non-demo scene background, main's departure read (#1
 
 Left (3): 100014's far phone and 100017's near watch not found at frame 0; 100023's far watch hidden behind a figure.
 
+### 1.6 A second fit on one object, and matching by the mesh middle
+
+- **Eval fix.** The imitate evals matched objects to GT by their origin; the phone's origin sits at one end, so a phone
+  fitted turned 180 deg about its middle (same footprint, same silhouette for the departure read and the grasp) counted
+  as not found. They now match by the mesh's bounding-box middle. #159's records then read: demo found 64 / 65,
+  layouts all 10 right 11 / 13, order exact 12 / 13, twins right 63 / 65, plan right 11 / 13 (reported 10 / 13).
+- **Second fit** (`_quota_balance`, `QUOTA_DUP_OVERLAP` 0.6, `QUOTA_DUP_POOR_OVERLAP` 0.3 with a silhouette loss above
+  `QUOTA_DUP_POOR_LOSS` 0.5): a quota member mostly inside another member's head silhouette, or a poor fit partly on a
+  better one, is a second fit on that object and goes; the list then proposes its missing category on unexplained
+  foreground. A second balance runs after the category re-fit (100017: the re-fit put the missing "watch" 37 % on the
+  near figure, silhouette loss 0.66, while the real watch lay unexplained).
+
+| arm (same frames, centre matching) | ours found / cat | demo found / cat | order exact | twins right | false departures | phantoms | plan right |
+|---|---|---|---|---|---|---|---|
+| main (#159) | 64 / 64 | 64 / 64 | 12 / 13 | 63 / 65 | 0 | 2 | 11 / 13 |
+| + second fit | **65 / 65** | 64 / 64 | 12 / 13 | **64 / 65** | 0 | 1 | **12 / 13** |
+
+Left: 100023's far watch, hidden behind a figure at frame 0 (its departure is unseen).
+
 ## 2. make_toast: not perception
 
 breadth3's toast rows (compute7 `B3_make_toast_r1a`, 1f7e965) read "place_miss: xy err 0.0 mm, dz -62.6 mm (centre

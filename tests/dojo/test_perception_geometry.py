@@ -709,3 +709,28 @@ def test_copy_assets_hungarian_keeps_an_unfittable_row():
     C = np.array([[0.2, 0.5, 9.0], [9.0, 9.0, 9.0], [0.6, 0.1, 9.0]])
     assert il._assign_fitted(C) == {0: 0, 2: 1}
     assert il._assign_fitted(np.full((2, 2), 9.0)) == {}
+
+
+def test_quota_balance_drops_a_second_fit_on_one_object(monkeypatch):
+    """A list that is not over-full can still hold two fits on one object under different categories (imitate 100017: a
+    "watch" on the near figure while the real watch lay unexplained): the one mostly inside the other's silhouette goes,
+    and with no unexplained foreground left nothing is proposed in its place."""
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    for key, ext in (("Rigid/car/t", (0.06, 0.03, 0.03)), ("Rigid/fig/t", (0.05, 0.05, 0.08)), ("Rigid/ring/t", (0.04, 0.04, 0.01))):
+        sm = _box_shape(il, key, ext)
+        monkeypatch.setitem(il._FIXED_POSE_SHAPES, (key, "test"), sm)
+    monkeypatch.setattr(il, "gl", lambda: None)
+    reg = il._region({"xlim": [-0.3, 0.4], "ylim": [-0.2, -0.05], "rotate_rand": True, "rotate_deg": 180})
+    lists = [{"labels": ["t0", "t1", "t2"], "cats": ["car", "fig", "ring"], "placement": {"relative_plane": "Table"},
+              "regions": [reg]}]
+    z = np.zeros((480, 640), np.uint8)
+    head = SimpleNamespace(cam=cameras.head_camera(), fg=z.copy(), img=np.zeros((480, 640, 3), np.uint8), known=z + 1,
+                           dist=z.astype(np.float32), robot=z.copy())
+    real = il.Hypothesis(0, "Rigid/car/t", "test", 0.10, -0.12, 0.0, 0.2, {"sil_loss": 0.2})
+    fig = il.Hypothesis(0, "Rigid/fig/t", "test", -0.10, -0.12, 0.0, 0.2, {"sil_loss": 0.2})
+    ring = il.Hypothesis(0, "Rigid/ring/t", "test", -0.101, -0.121, 0.0, 0.66, {"sil_loss": 0.66})   # on the figure
+    out = il._quota_balance([real, fig, ring], {"cam_head": head}, None, None, 0, {"labels": ["t0", "t1", "t2"]}, None, lists)
+    assert out == [real, fig]

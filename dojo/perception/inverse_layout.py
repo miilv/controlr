@@ -2204,6 +2204,8 @@ def _quota_balance(out: list[Hypothesis], views, cfg, groups, gi, g, prior, list
         h.sm().sil(head.cam, h.T(), out=expl)
     resid = head.fg & (1 - cv2.dilate(expl, np.ones((3, 3), np.uint8)))
     rblobs = blobs(ViewMasks(head.cam, head.img, resid, head.known, head.dist, head.robot), "cam_head")
+    if not rblobs:
+        return keep
     member = _quota_members(keep, gi, lists)
     geom = _geometry_groups(g, prior)
     for li, L in enumerate(lists):
