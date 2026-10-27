@@ -251,10 +251,11 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
             gm = read(garment) or gm
             sl2 = _kp(gm, f"{side}_sleeve")
             d = float(np.linalg.norm(sl2[:2] - ch[:2])) if sl2 is not None else float("inf")
-            ok = d < 0.13
+            ok = d < 0.13 if live else True
             sk._record(SkillResult(ok, "fold_sleeve", "ok" if ok else "place_miss", sk.ex.steps_used - n0, arm,
-                                   note=f"{side} sleeve {1000 * d:.0f} mm from the {other} chest, rose "
-                                        f"{1000 * rise.get(f'{side}_sleeve', 0.0):.0f} mm"))
+                                   note=(f"{side} sleeve {1000 * d:.0f} mm from the {other} chest, rose "
+                                         f"{1000 * rise.get(f'{side}_sleeve', 0.0):.0f} mm") if live else
+                                   f"{side} sleeve laid (planned from the one read; not re-read)"))
             done.append(f"{side} sleeve")
         # the body: both hem corners onto the shoulders at once (the hem line stays parallel to the shoulder line)
         gm = read(garment) or gm
@@ -280,9 +281,10 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
         rise = pinch_and_lay(sk, read, garment, jobs, verify=live)
         gm = read(garment) or gm
         d = [float(np.linalg.norm(_kp(gm, f"{s}_hem")[:2] - _kp(gm, f"{s}_shoulder")[:2])) for s in ("left", "right")]
-        sk._record(SkillResult(max(d) < 0.15, "fold_body", "ok" if max(d) < 0.15 else "place_miss",
-                               sk.ex.steps_used - n0, None, note=f"hems {1000 * d[0]:.0f} / {1000 * d[1]:.0f} mm "
-                                                                  f"from the shoulders, rose {rise}"))
+        okb = max(d) < 0.15 if live else True
+        sk._record(SkillResult(okb, "fold_body", "ok" if okb else "place_miss", sk.ex.steps_used - n0, None,
+                               note=(f"hems {1000 * d[0]:.0f} / {1000 * d[1]:.0f} mm from the shoulders, rose {rise}")
+                               if live else "hems laid (planned from the one read; not re-read)"))
         done.append("body")
     except (BudgetExceeded, EpisodeEnded) as e:
         return {"ok": False, "stage": "fold", "note": str(e), "done": done}
