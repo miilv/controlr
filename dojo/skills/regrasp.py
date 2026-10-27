@@ -21,7 +21,6 @@ handover (G3: measured; mode B: the belief).
 from __future__ import annotations
 
 import math
-import time
 
 import numpy as np
 
@@ -34,6 +33,8 @@ from dojo.skills.skills import CLOSED, OPEN, Held, PlacePlan, SkillResult, Skill
 
 LENGTHWISE_TIP = (0.0028, 0.0038)   # m: the giver's fingertips over the support (twin: 2.8 mm passes the collision check)
 REST_CARRY = 0.04                   # rad/step: the giver's carry to the handover pose (eased)
+REST_PLACE_CARRY = 0.07             # rad/step: the taker's move from the handover to the hover over the receptacle (at
+                                    # the usual 0.14 the key turned 78 deg in the pads on the way, G3 100000)
 TILTS = (15.0, 30.0)                # deg: the taker's approach under the horizontal at the target (45 / 60: the pads
                                     # held only the bow's top edge)
 TOP_BAND = 0.02                     # m: the object's top part (the taker's pads) at the target
@@ -43,7 +44,8 @@ TAKE_PAST = (0.004, 0.006)          # m: its fingertip this far past the part's 
 HAND_CLEAR = 0.003                  # m between the hands at the handover (grasp and pre-grasp)
 HANDOVER_XY = ((0.06, -0.22), (0.0, -0.22), (0.06, -0.28), (0.10, -0.22), (0.0, -0.18), (0.06, -0.18), (-0.04, -0.22))
 HANDOVER_Z = (0.92, 0.98, 1.04)
-PLAN_S = 60.0                       # wall-time cap of the handover search
+MAX_TAKES = 4000                    # taker grasps tried at handover poses per search (a count, not a wall-clock cap:
+                                    # a time cap made the chosen handover depend on the box's load, G3)
 PLACE_CHECKS = 6                    # handover candidates whose taker place is planned before one is chosen
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
 TURN_LIFT = 0.0009                  # m: the object is turned this far above where it seated
@@ -162,7 +164,7 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
     """The giver, its lengthwise pick, the handover pose (the object as lifted, turned about the vertical) and the
     taker's grasp (object frame) that reaches a target, its turn and clears the receptacle. A dict or a SkillResult."""
     from dojo.skills.library import _grippers_apart, _hand_points, _min_dist
-    t0 = time.perf_counter()
+    n_takes = 0
     w = sk.refresh()
     o = w.obj(label)
     notes = []
@@ -207,7 +209,7 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                 hx = hx if g_arm == "right" else -hx
                 for hz in HANDOVER_Z:
                     for j in range(12):
-                        if time.perf_counter() - t0 > PLAN_S:
+                        if n_takes > MAX_TAKES:
                             break
                         R_H = rot_z(2 * math.pi * j / 12) @ T_lift[:3, :3]
                         T_H = T_from(np.array([hx, hy, hz]) - R_H @ G.mesh_com(o.asset), R_H)
@@ -216,6 +218,7 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                             continue
                         P_give = _hand_points(sk, sk.kin.flange(g_arm, rg.q), g_hold)
                         for note, T_ko, width, g_open, T_tg, frac in fam:
+                            n_takes += 1
                             Tt = T_H @ T_ko
                             pre = Tt.copy()
                             pre[:3, 3] -= Tt[:3, 0] * 0.06
@@ -333,6 +336,7 @@ def rest_handover(sk: Skills, label: str, targets: list, receptacle: str, place_
         return sk._record(SkillResult(False, "rest_handover", "step_budget", 0, g_arm, note=str(e)))
     kw = dict(place_kw)
     turn = float(kw.pop("turn", 0.0) or 0.0)
+    kw.setdefault("approach_rad", REST_PLACE_CARRY)
     # insert and let go; the turn takes a grasp of its own, the one whose wrist reaches the whole turn
     # (``turn_in_lock``: the handover's grasp reached -42 of -60 or less in most layouts, G3)
     kw["release"] = True
