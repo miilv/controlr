@@ -2114,6 +2114,63 @@ def test_belt_velocity_runs_along_the_moving_base_and_identity_carries_its_vote_
     prov._vote("block_0", e)
     prov._vote("block_0", e)
     assert prov.belief.objects["block_0"].confidence == 1.0
+    # the identity's own read sets the stable pose: orientation AND height; another asset's read moves neither
+    e2 = copy.deepcopy(e)
+    e2.pos = e.pos + np.array([0.01, 0.0, -0.047])
+    e2.quat = np.array([0.7071, 0.7071, 0.0, 0.0])
+    prov._vote("block_0", e2)
+    o = prov.belief.objects["block_0"]
+    assert abs(float(o.pos[2]) - float(e2.pos[2])) < 1e-9 and np.allclose(o.quat, e2.quat)
+    assert abs(float(o.pos[0]) - float(e.pos[0])) < 1e-9                  # xy is the track's, not one read's
+    e3 = copy.deepcopy(e)
+    e3.asset = AssetInfo(key="Rigid/bottle/00047", bbox_min=np.full(3, -0.02), bbox_max=np.full(3, 0.02))
+    e3.pos = e.pos + np.array([0.0, 0.0, 0.03])
+    prov._vote("block_0", e3)
+    assert abs(float(o.pos[2]) - float(e2.pos[2])) < 1e-9
+
+
+def test_a_belt_close_attaches_the_rider_where_it_is_by_then_and_never_the_conveyor():
+    """The riders move on while the arm descends: replayed actions see them predicted to their own step, so the jaws
+    closing on the rider's predicted pose attach the rider; the conveyor (a Dynamic base whose box holds every close
+    above the belt) never attaches, and a close a few cm off a rider's prediction still takes that rider."""
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.skills.world import AssetInfo, ObjectState
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    objs = objects_from_gt_rows(env.gt_objects(), None)
+    belt = AssetInfo(key="Dynamic/conveyor/00000", bbox_min=np.array([-3.0, -3.0, -3.0]), bbox_max=np.array([3.0, 3.0, 3.0]))
+    objs["conveyor"] = ObjectState("conveyor", "Dynamic", "conveyor", 0, np.zeros(3), np.array([1.0, 0, 0, 0]), belt)
+    prov.init_objects(objs)
+    st = b.obs["state"]
+    q = np.asarray(st["left_arm_joint_state"], float).reshape(-1)[:6]
+    tcp = prov.kin.tcp("left", q)[:3, 3]
+    s0, n, v = int(b.obs["steps_used"]), 30, np.array([0.004, 0.0])        # 4 mm / step along x
+    o = prov.belief.objects["block_0"]
+    o.pos = o.pos + (tcp - o.center_w)                                    # the rider's centre at the jaws ...
+    xy_close = o.pos[:2].copy()
+    o.pos[:2] = xy_close - v * (n - 1)                                    # ... n - 1 steps from now
+    prov._tracks = {"block_0": [(s0 - 16 + 4 * k, o.pos[:2] - v * (16 - 4 * k)) for k in range(5)]}
+    prov.velocity = {"block_0": v.copy()}
+    prov._fit = {"block_0": (float(s0), o.pos[:2].copy())}
+
+    def act(g):
+        return {"left_arm_joint_state": q.copy(), "right_arm_joint_state": np.asarray(st["right_arm_joint_state"], float),
+                "left_ee_joint_state": np.array([g]), "right_ee_joint_state": np.array([1.0])}
+    b.executed = b.executed + [act(1.0)] * (n - 1) + [act(0.0)]          # the descent, then the close at step s0 + n
+    b.obs, b.fresh = dict(b.obs, steps_used=s0 + n), True
+    prov._advance(b.obs["state"])
+    assert prov.belief.held_labels() == ("block_0",)                      # not the conveyor, not nothing
+    # a close 35 mm off the rider's prediction (the wrist look moved the aim; the track does not keep it): outside its
+    # box, still that rider; not a tracked rider: nothing (and never the conveyor around it); 70 mm off: nothing
+    bel = prov.belief
+    p_jaws = tcp.copy()
+    for dy, riders, want in ((0.035, {"block_0"}, "block_0"), (0.035, set(), None), (0.07, {"block_0"}, None)):
+        o2 = bel.objects["block_0"]
+        o2.pos = o2.pos + (p_jaws + np.array([0.0, dy, 0.0]) - o2.center_w)
+        bel.riders = set(riders)
+        assert bel._object_at(p_jaws) == want, (dy, riders)
 
 
 def test_twin_is_started_for_the_scene_the_policy_chose():
