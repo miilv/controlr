@@ -306,6 +306,9 @@ class HeldBeliefProvider:
         fits = (p_fit is not None and abs(float(p_fit[2] - o.pos[2])) <= MEASURED_TOL[0])
         if fits:
             self.stats["remeasured"] += 1
+            self.events.append({"kind": "release_remeasured", "label": lab, "step": int(self.env.steps_used),
+                                "pred_err_mm": round(float(np.linalg.norm(pred[0] - o.pos)) * 1000, 1),
+                                "truth7": np.round(np.r_[o.pos, o.quat], 5).tolist()})
             return
         self._frozen[lab] = pred
         self.stats["kept"] += 1
