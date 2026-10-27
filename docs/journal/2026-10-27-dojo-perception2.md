@@ -314,3 +314,39 @@ pixels).
 - Fix: `settle_slot_children` re-derives slot-pinned objects from their output base (within 40 mm).
 - Logged records: the 4 flat coins now stand, 1.2-3.2 mm.
 - **Open:** B1's coin + stand phantoms near the home grippers (6 / 10 layouts); coins not found (100001 / 02 / 06).
+
+## 20. Runtime search: a confidence floor for full-fuse finds (PR #185; default change)
+
+- 5.1 organize_table (Long-Horizon's B51_org_main6): in 100001 / 100004 the alarm was still missing after the looks.
+  The runtime search's wrist view did not refine it (iou 0.17 / 0.43); the full-fuse fallback (`add_found`) then
+  took whatever filled the missing label: the alarm 235 / 371 mm off at confidence 0.138 / 0.121.
+- Every object a search added (new label in the `searched` record) in all run dirs on compute5-8 with dev truth,
+  conveyor tasks excluded (their truth moves), n = 18:
+
+| conf | residual | error | task / layout / label | run |
+|---|---|---|---|---|
+| 0.059 | 0.8816 | 119.8 mm | deposit_coin 100002 coin0 | B3n_deposit_coin_r1a |
+| 0.059 | 0.8828 | 119.4 mm | deposit_coin 100002 coin0 | B_deposit_coin_coinmain_100000 |
+| 0.102 | 0.795 | 166.0 mm | play_Xylophone 100007 mallet | B3n_play_Xylophone_r2a |
+| 0.121 | 0.7574 | 371.0 mm | organize_table 100004 alarm | B51_org_main6_100000 |
+| 0.138 | 0.8416 | 43.5 mm | organize_table 100001 alarm | B51_org_main6_100000 |
+| 0.211 | 0.5783 | 115.7 mm | organize_table 100004 garage | B51_org_main6_100000 |
+| 0.239 | 0.5212 | 68.6 mm | organize_table 100004 alarm | B3n_organize_table_r1e |
+| 0.239 | 0.7607 | 710.1 mm | deposit_coin 100006 coin0 | B_deposit_coin_coinmain_100005 |
+| 0.277 | 0.6685 | 223.6 mm | store_laptop_and_headphones 100001 laptop | B3n_store_laptop_and_headphones_r1a |
+| 0.337 | 0.3269 | 0.2 mm | sweep_blocks 100008 broom_shovel | B3n_sweep_blocks_r2b |
+| 0.393 | 0.5866 | 16.0 mm | store_laptop_and_headphones 100003 stand | B3_store_laptop_and_headphones_r1b |
+| 0.408 | 0.4653 | 9.7 mm | store_laptop_and_headphones 100005 stand | B3n_store_laptop_and_headphones_r2a |
+| 0.447 | 0.5263 | 538.6 mm | deposit_coin 100001 coin0 | B_deposit_coin_coinmain_100000 |
+| 0.465 | 0.5347 | 538.4 mm | deposit_coin 100001 coin0 | B3n_deposit_coin_r1a |
+| 0.475 | 0.5249 | 0.2 mm | deposit_coin 100003 coin0 | B_deposit_coin_ho3B_100000 |
+| 0.604 | None | 704.3 mm | deposit_coin 100006 vertical_coin_stand | B_deposit_coin_coinmain_100005 |
+| 0.606 | None | 364.2 mm | deposit_coin 100004 vertical_coin_stand | B3_deposit_coin_r1a |
+| 0.804 | None | 52.1 mm | fill_pen_holder 100005 pen_holder | B3n_fill_pen_holder_r2a |
+
+- All 9 finds below 0.3 were wrong (44-710 mm); the 4 right ones were at 0.34-0.48; 5 wrong ones are at or above 0.3
+  and stay. n is small; the split is clean.
+- **Default change:** `RuntimeConfig.search_min_conf = 0.3` (before: every find taken). A find below it stays in
+  `_not_found` (the search log records it under `rejected_low_conf`), so the agentic stage or a later look can still
+  find the object instead of the skill going to a wrong place.
+
