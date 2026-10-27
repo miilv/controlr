@@ -31,7 +31,8 @@ RELEASE_Z = 0.045              # m: fingertips over the table when letting go (t
                                # first sleeve, already lying there, squeezed the cloth and it blew up)
 SLEEVE_OWN = 0.02              # m: a sleeve is laid this far short of the opposite chest point, on its own side
                                # (5 cm put the two sleeves 6 cm apart, the second onto the first)
-HEM_SHORT = 0.02               # m: a hem is laid this far short of its shoulder point (inside the checker's window)
+HEM_PAST = 0.04                # m: a hem is laid this far beyond its shoulder point: the checker's window runs from
+                               # 9.5 cm short to 17 cm past it, and laid hems pull back (twin: up to 13 cm short)
 
 
 def garment_axes(gm: dict) -> tuple[np.ndarray, np.ndarray]:
@@ -188,6 +189,11 @@ def pinch_and_lay(sk: Skills, read, garment: str, jobs: list[dict], tries: int =
                 held[a] = (j, lay if isinstance(lay, ArmPlan) else r[1])
             else:
                 pending.append(j)
+        if pending and held and t + 1 < tries:
+            # one corner of a two-hand fold missed: let go of every one and pinch them all again (twin: a hem held up
+            # while the other was re-pinched was dragged and ended 20-28 cm from its shoulder, 3/3)
+            pending = pending + [j for j, _ in held.values()]
+            held = {}
         if pending:
             _let_go(sk, [j["arm"] for j in pending])
     if held:
@@ -260,7 +266,7 @@ def fold_garment(sk: Skills, garment: str | None = None) -> dict:
             if hm is None or sh is None:
                 return {"ok": False, "stage": "hem", "note": f"no {side} hem / shoulder point", "done": done}
             v = sh[:2] - hm[:2]
-            dst = sh[:2] - v / (np.linalg.norm(v) or 1.0) * HEM_SHORT
+            dst = sh[:2] + v / (np.linalg.norm(v) or 1.0) * HEM_PAST
             jobs.append({"point": f"{side}_hem", "src": _inward(hm, centre if centre is not None else sh), "dst": dst,
                          "carry_z": 0.12})
         # each hem corner to the arm on its side
