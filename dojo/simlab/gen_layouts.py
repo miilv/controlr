@@ -665,7 +665,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--n", type=int, default=25)
     ap.add_argument("--start", type=int, default=paths.SEED_BASE)
     ap.add_argument("--out", default=None, help="default /root/dojo-data/simlab/layouts/<task>")
+    ap.add_argument("--reserved-slice", action="store_true",
+                    help="allow ids >= paths.RESERVED_MIN_ID (D-C10: only the agreed joint-run generation)")
     a = ap.parse_args(argv)
+    if paths.is_reserved_id(a.start + a.n - 1) and not a.reserved_slice:
+        raise SystemExit(f"ids {a.start}-{a.start + a.n - 1} reach the reserved slice (>= {paths.RESERVED_MIN_ID}, D-C10): "
+                         "only the agreed joint-run generation may create them (--reserved-slice)")
     out = Path(a.out) if a.out else paths.LAYOUTS / a.task
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)

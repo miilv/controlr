@@ -110,9 +110,12 @@ def drift(live: list[dict], top: list | None = None) -> tuple[float, float]:
 
 
 def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250, rest_window: int = 100,
-                   drift_tol_mm: float = 5.0, ids: list[int] | None = None, extra_passes: int = 0) -> dict:
+                   drift_tol_mm: float = 5.0, ids: list[int] | None = None, extra_passes: int = 0,
+                   reserved_slice: bool = False) -> dict:
     from dojo.simlab.runner import RoboDojoRunner, jsonable
     files = [p for p in layout_files(task) if not ids or int(p.stem) in ids]
+    if not reserved_slice:                      # D-C10: ids >= paths.RESERVED_MIN_ID belong to joint paired runs
+        files = [p for p in files if not paths.is_reserved_id(p.stem)]
     run = RoboDojoRunner(task, physics_only=physics_only, need_planner=False,
                          workdir=str(paths.DATA / "simlab" / "work" / f"presettle_{task}"))
     index_p = paths.LAYOUTS / task / "settled_index.json"
@@ -181,9 +184,11 @@ def main(argv=None) -> None:
     ap.add_argument("--rendered", action="store_true", help="use the full (rendering) env, e.g. on compute2")
     ap.add_argument("--extra-passes", type=int, default=0,
                     help="re-settle passes: write the pass-k poses back and reload again (marginal rests)")
+    ap.add_argument("--reserved-slice", action="store_true",
+                    help="also settle ids >= paths.RESERVED_MIN_ID (D-C10: only the agreed joint-run generation)")
     a = ap.parse_args(argv)
     presettle_task(a.task, physics_only=not a.rendered, extra_steps=a.extra_steps, ids=a.ids,
-                   extra_passes=a.extra_passes)
+                   extra_passes=a.extra_passes, reserved_slice=a.reserved_slice)
 
 
 if __name__ == "__main__":
