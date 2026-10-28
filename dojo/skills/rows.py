@@ -30,6 +30,7 @@ ROW_YS = (-0.13, -0.17, -0.09, -0.21, -0.05)
 ROW_XS = (0.0, -0.04, 0.04, -0.08, 0.08)
 MAX_X = 0.30              # m: |x| of a slot (both arms reach a standing object there)
 WIDE_MOVE = 0.4           # m of travel: what moving the widest object costs on top of its distance
+CENTRE_COST = 1.5         # m of travel per m the row's middle lies off (0, ROW_YS[0])
 YAW_DEG = tuple(range(0, 360, 30))   # target headings: a doll is round, any heading stands
 
 
@@ -110,7 +111,10 @@ def row_slots(world, labels: list, ascending: bool = True) -> list[dict]:
             continue
         xy = {k: np.array([x, y]) for k, x in zip(order, xs)}
         moves = {k: float(np.linalg.norm(objs[k].center_w[:2] - xy[k])) for k in order}
-        cost = sum(moves.values()) + (WIDE_MOVE if moves[widest] > THERE else 0.0)
+        # a row in the middle of both arms' reach costs less (G3 976bdf2-: rows at x centre 0.08 / y -0.21 put the end
+        # slots where only one arm reaches them, with no grasp-place pair after a slip)
+        cost = (sum(moves.values()) + (WIDE_MOVE if moves[widest] > THERE else 0.0)
+                + CENTRE_COST * (abs(float(np.mean(xs))) + abs(y - ROW_YS[0])))
         out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": float(xc), "anchor": anchor})
     return sorted(out, key=lambda r: r["cost"])
 
