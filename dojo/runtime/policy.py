@@ -268,6 +268,12 @@ class RuntimeConfig:
     # every contact-sensitive skill action logs a "consume" event (the belief pose it acts on, the precision it needs:
     # ``Skills._consume``) into the report's events. Logging only: the actions are identical either way, hence on
     consume_log: bool = True
+    # how a drop into a container is judged (``library.drop_verdict``): belief (today: the belief's rest pose after the
+    # drop rule) | release (a post-release measurement decides; else in when the jaws held it to the release over the
+    # container's footprint, and the belief puts it inside)
+    drop_verdict: str = "belief"
+    # ``library.put_into``'s options (``Skills.put_into_opts``; empty = today): spot | patient | sequence
+    put_into_opts: list = field(default_factory=list)
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -338,7 +344,9 @@ class RuntimePolicy:
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
                 or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on") or self.cfg.grip_official_key not in ("official_key", "ee_joint_state")
                 or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")
-                or self.cfg.refine_recentre_guard not in ("centre", "vis")):
+                or self.cfg.refine_recentre_guard not in ("centre", "vis")
+                or self.cfg.drop_verdict not in ("belief", "release")
+                or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -579,6 +587,8 @@ class RuntimePolicy:
                          **skills_kw)
             sk_.max_rehovers = max_rehovers
             sk_.consume_log = bool(cfg.consume_log)
+            sk_.drop_verdict = cfg.drop_verdict
+            sk_.put_into_opts = set(cfg.put_into_opts or ())
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_

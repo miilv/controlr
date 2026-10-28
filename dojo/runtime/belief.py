@@ -977,6 +977,33 @@ class RuntimeProvider:
             riders.add(lab)
         self.belief.riders = riders
 
+    def holds(self, arm: str, label: str) -> bool | None:
+        """Does the belief still have ``label`` in ``arm``'s jaws (the grip / held checks drop an empty grasp)? None
+        without a belief."""
+        if self.belief is None:
+            return None
+        a = self.belief.attached.get(arm)
+        return bool(a is not None and a[0] == label)
+
+    def place_inside(self, label: str, container: str, centre) -> None:
+        """A drop judged in (``library.drop_verdict`` "release"): ``label`` rests inside ``container`` (its bbox centre
+        over ``centre``'s xy, clamped into the container's footprint, its bottom on the container's floor). Event
+        ``drop_inside``."""
+        o, c = self.belief.objects.get(label), self.belief.objects.get(container)
+        if o is None or c is None or label in self.belief.held_labels():
+            return
+        mn, mx = c.aabb()
+        lo, hi = o.aabb()
+        half = (hi - lo) / 2
+        x = float(np.clip(centre[0], mn[0] + half[0], max(mn[0] + half[0], mx[0] - half[0])))
+        y = float(np.clip(centre[1], mn[1] + half[1], max(mn[1] + half[1], mx[1] - half[1])))
+        cw = (lo + hi) / 2
+        o.pos = o.pos + np.array([x - cw[0], y - cw[1], (float(mn[2]) + 0.005) - float(lo[2])])
+        o.source = "predicted"
+        self.touched.add(label)
+        self.events.append({"kind": "drop_inside", "label": label, "container": container, "step": self.bridge.steps_used,
+                            "pos": [round(float(v), 4) for v in o.pos]})
+
     def on_consume(self, ev: dict) -> None:
         """Skills' consumer-tolerance event (``Skills._consume``: the belief pose a contact-sensitive action consumed and
         the precision it needs) into the report's events. Logging only."""

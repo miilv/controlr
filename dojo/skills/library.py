@@ -247,6 +247,40 @@ def _inside(sk: Skills, label: str, container: str) -> bool:
                 and 0.0 <= omn[2] - mn[2] <= 0.4)
 
 
+def drop_verdict(sk: Skills, label: str, container: str, held, release_T, holding: bool | None) -> tuple[bool, str]:
+    """Did ``label``, let go at TCP pose ``release_T`` held as ``held`` (``Held``), land in ``container``?
+    ``sk.drop_verdict``:
+    - "belief" (today): ``_inside`` on the belief after the release (the drop rule's rest pose);
+    - "release": a post-release measurement of the object (belief source "perception") decides through ``_inside``;
+      else it is in when the jaws held it up to the release (``holding``: the provider's grip / held checks did not
+      drop it) and its centre was over the container's footprint at the release. A container off the table's side
+      (a dustbin under its edge) is no support the drop rule knows (it rests below the table top), so the belief let the
+      object fall to the floor beside it: on rendered put_bottles 8 of 10 such "missed" verdicts had a bottle that
+      physically fell in.
+    Returns (in, why)."""
+    if (getattr(sk, "drop_verdict", "belief") != "release" or getattr(sk, "remeasure", False) or release_T is None
+            or held is None):                    # mode A / gt: the world is measured, as before
+        return _inside(sk, label, container), "belief"
+    o = sk.world.obj(label)
+    if getattr(o, "source", None) == "perception":
+        return _inside(sk, label, container), "measured"
+    if holding is False:
+        return False, "jaws empty before the release"
+    T_obj = np.asarray(release_T, float) @ np.asarray(held.T_tcp_obj, float)
+    c = T_obj[:3, :3] @ np.asarray(o.asset.center, float) + T_obj[:3, 3]
+    mn, mx = sk.world.obj(container).aabb()
+    over = bool(mn[0] <= c[0] <= mx[0] and mn[1] <= c[1] <= mx[1])
+    if not over:
+        return False, "released outside the container's footprint"
+    f = getattr(sk.provider, "place_inside", None)
+    if callable(f):
+        try:
+            f(label, container, c)
+        except Exception:  # noqa: BLE001 (the verdict stands; the belief keeps the drop rule's pose)
+            pass
+    return True, "released over the opening"
+
+
 def drop_points(sk: Skills, container: str, margin: float = 0.06) -> list[tuple]:
     """Points over the container's opening that are off the table (an object dropped there falls in)."""
     mn, mx = sk.world.obj(container).aabb()
@@ -295,6 +329,7 @@ def plan_drop(sk: Skills, arm: str, xy, z_tcp: float = 0.93) -> ArmPlan | SkillR
             back = sk.motion.line(arm, mv.q_end, T_back, MEDIUM, "drop_back", gripper=OPEN, check=False)
             p = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv, "carry").hold(1, "still")
             p.grip(OPEN, 3, "release").hold(2, "fall").move(back, "back")
+            p.release_T = T                          # the TCP pose the object is let go at (``drop_verdict``)
             x_ext = float(cw[:, 0].max() - cw[:, 0].min())
             if best is None or (x_ext, p.steps) < best[0]:
                 best = ((x_ext, p.steps), p)
@@ -342,6 +377,20 @@ def _table_pose_keep(sk: Skills, label: str, xy) -> np.ndarray:
     return T_from(c - R @ o.asset.center, R)
 
 
+PUT_PICK_CLEAR = 0.12            # m: Skills.parallel's arm clearance; "sequence" adds the picked objects' width to it
+
+
+def _pick_width(sk: Skills, labels) -> float:
+    """The widest horizontal extent among the objects being picked (m): a held object widens what an arm sweeps."""
+    out = 0.0
+    for l in labels:
+        try:
+            out = max(out, float(np.max(sk.world.obj(l).asset.extents)))
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
 def put_into(sk: Skills, objects: list[str], container: str) -> dict:
     """Drop every object into ``container``. The arm nearer the container drops; objects only the
     other arm can pick are handed over through a free table spot while the dropper is busy."""
@@ -354,11 +403,15 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
         return {"ok": False, "stage": "plan", "note": "no drop point off the table"}
     done: list[str] = []
     tries: dict[str, int] = {}
-    for _ in range(3 * len(objects)):
+    opts = set(getattr(sk, "put_into_opts", ()) or ())
+    # "patient": the per-object tries and the round cap scale up while the budget lasts (G3 mode gt, put_bottles v1
+    # draws of 100030-39: 5 of 10 episodes ended on these caps with 300-420 of 700 steps left)
+    max_tries, rounds = (3, 6 * len(objects)) if "patient" in opts else (2, 3 * len(objects))
+    for _ in range(rounds):
         if len(done) == len(objects):
             break
         w = sk.refresh()
-        todo = [l for l in objects if l not in done and tries.get(l, 0) < 2]
+        todo = [l for l in objects if l not in done and tries.get(l, 0) < max_tries]
         if not todo:
             break
         def reach(l, a):
@@ -386,6 +439,13 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
                 break
         if not plans:
             return {"ok": False, "stage": "plan pick", "note": f"{d_cands[:1]} / {h_cands[:1]}"}
+        if "sequence" in opts and len(plans) == 2 and not sk.clear_of(
+                plans[dropper].plan, plans[helper].plan, PUT_PICK_CLEAR + _pick_width(sk, picks.values())):
+            # two picks this close (the shared middle of the table) knock each other's targets over: the arm that runs
+            # second meets the first one where it stopped, lagged 34-96 mm behind its command and pushed its bottle
+            # 62-130 mm before the close (G3 traces). The helper waits a round
+            plans.pop(helper)
+            picks.pop(helper)
         befores = {a: w.obj(l).pos.copy() for a, l in picks.items()}
         for l in picks.values():
             tries[l] = tries.get(l, 0) + 1
@@ -404,6 +464,10 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
                 sk.ex.run({a: sk.plan_home(a, gripper=OPEN)}, name="reset")
         sk.refresh()
         phase, place_r = [], None
+        held_d, holding_d = sk.held[dropper], None
+        if held_d is not None:
+            f_hold = getattr(sk.provider, "holds", None)
+            holding_d = f_hold(dropper, held_d.label) if callable(f_hold) else None
         if sk.held[dropper] is not None:
             pd = None
             for xy in drops[:6]:
@@ -416,12 +480,29 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
             phase.append(pd)
         if sk.held[helper] is not None:
             lab = sk.held[helper].label
-            for spot in free_spots(sk, lab, near_xy=(-0.05 if dropper == "left" else 0.05, -0.15)):
-                pl = sk.plan_place(helper, _table_pose_keep(sk, lab, spot), yaw_sym=8, release_gap=0.004)
-                if isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot):
+            near = [(-0.05 if dropper == "left" else 0.05, -0.15)]
+            if "spot" in opts:
+                # no spot in the 30 x 30 cm patch at the middle: anywhere both arms reach (G3: 2 of 10 episodes ended at
+                # steps 48 / 121 on "handover spot" with the whole budget left)
+                sx = -1.0 if dropper == "left" else 1.0
+                near += [(sx * 0.15, -0.15), (0.0, -0.25), (sx * 0.2, -0.25), (-sx * 0.1, -0.2)]
+            for nxy in near:
+                for spot in free_spots(sk, lab, near_xy=nxy):
+                    pl = sk.plan_place(helper, _table_pose_keep(sk, lab, spot), yaw_sym=8, release_gap=0.004)
+                    if isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot):
+                        place_r = pl
+                        phase.append(pl.plan)
+                        break
+                if place_r is not None:
+                    break
+            if place_r is None and "spot" in opts and befores.get(helper) is not None:
+                # still none: put it back where it was picked (it was clear there), the next round tries again
+                xy = (float(befores[helper][0]), float(befores[helper][1]))
+                pl = sk.plan_place(helper, _table_pose_keep(sk, lab, xy), yaw_sym=8, release_gap=0.004)
+                if isinstance(pl, PlacePlan):
                     place_r = pl
                     phase.append(pl.plan)
-                    break
+                    tries[lab] = max(0, tries.get(lab, 1) - 1)      # a put-back is no failed try
             if place_r is None:
                 return {"ok": False, "stage": "handover spot", "note": lab}
         if not phase:
@@ -438,9 +519,12 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
             sk.held[dropper] = None
             sk.ex.hold(4)
             sk.refresh()
-            ok = _inside(sk, lab, container)
-            sk._record(SkillResult(ok, "drop", "ok" if ok else "place_miss", 0, dropper,
-                                   note=f"{lab} {'in' if ok else 'missed: ' + str(np.round(sk.world.obj(lab).pos, 3))}"))
+            rel_T = next((getattr(p, "release_T", None) for p in phase if getattr(p, "arm", None) == dropper), None)
+            ok, why = drop_verdict(sk, lab, container, held_d, rel_T, holding_d)
+            note = f"{lab} {'in' if ok else 'missed: ' + str(np.round(sk.world.obj(lab).pos, 3))}"
+            if why != "belief":
+                note += f" ({why})"
+            sk._record(SkillResult(ok, "drop", "ok" if ok else "place_miss", 0, dropper, note=note))
             if ok:
                 done.append(lab)
             sk.bank()
