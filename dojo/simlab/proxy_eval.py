@@ -248,6 +248,21 @@ def run_eval(task: str, layout_files: list[str], policy, out: Path, dev_layout_i
     rc = RenderClient()
     ep = ProxyEpisode(task, rc, out)
     details, t_all = {}, time.perf_counter()
+    twins = None
+    if hasattr(policy, "_tcs") and os.environ.get("SIMLAB_TWIN_PORT"):
+        # a RuntimePolicy in a --bundle: its twin follows the scene it derives from the instruction (dev harness side;
+        # the bundle's own twin serves the launched task's scene), never the launcher's task (legality audit P1-4)
+        from dojo.bridge.twin import BundleTwins
+        twins = BundleTwins(task, int(os.environ.get("TWIN_ENVS") or 8), out / "twins")
+        policy._twin_factory = twins.client
+    try:
+        return _run_eval(task, layout_files, policy, out, dev_layout_info, rc, ep, details, t_all)
+    finally:
+        if twins is not None:
+            twins.stop()
+
+
+def _run_eval(task, layout_files, policy, out, dev_layout_info, rc, ep, details, t_all) -> dict:
     for i, lf in enumerate(layout_files):
         paths.assert_not_eval(lf)
         if paths.is_offslice_rendered(Path(lf).name.split(".")[0]):
