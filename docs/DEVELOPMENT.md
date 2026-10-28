@@ -284,6 +284,14 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   of ANY other renderer (GL silhouettes, `ColorMeshRenderer`, a `Gallery`) fails with `GLError 12289` in
   `eglMakeCurrent`. Keep renderers process-wide (module globals like `render.gl()`, `wrist_check._GALLERY`), never per
   object that may be dropped (E1 of the wrist check: a per-episode `Gallery` broke every later episode).
+- **CPU silhouettes (`DOJO_GL=0`) are only cheap for box-like meshes.** A wrist refine renders ~550 silhouettes; with a
+  25k-face silhouette mesh (mugs, bowls, most organize / pack items) that is 13 s on CPU against 0.4-0.8 s with GL
+  (EGL). build_tower's blocks (12 faces) are fine on CPU. Anything else offline needs a GL context, i.e. a light GPU job
+  in a slot.
+- **Per-step frames of a recorded episode: replay its actions, don't re-run the policy.** `dojo.perception.seq_capture`
+  (mode gt, `--policy dojo.perception.seq_capture:SeqReplayPolicy`, `scripts/perception/seq_render.sh`) reproduces the
+  recorded run exactly (same `dev_gt_probe`) and keeps every camera + state + dev GT per step; JPEG q95 4:4:4 changes
+  neither B1 nor refine measurably (journal 2026-10-28-dojo-bgperc §1).
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
   frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
 
