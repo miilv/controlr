@@ -685,6 +685,12 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
     rel = {}
     for a in arms:
         cands = G.candidates(o, sk.kin, a, "top")
+        if not cands and getattr(sk, "belt_container", "off") == "on":
+            # a rectangular container's real rim (``G.box_rim_grasps``), then a narrow top (a basket's handle,
+            # ``G.top_band_grasps``): the round-rim fallback below sat 7 cm above this basket's rim
+            tilts = tuple(float(x) for x in str(getattr(sk, "belt_container_tilts", "25,40")).split(","))
+            cands = sorted(G.box_rim_grasps(o, sk.kin, a, tilts=tilts), key=lambda g: g.score)[:8] + \
+                G.top_band_grasps(o, sk.kin, a)
         if not cands:          # wider than the hand on top: slices / antipodal, and the rim of a plate or a basket
             cands = G.slice_grasps(o, sk.kin, a) + G.antipodal_grasps(o, sk.kin, a)
             # (a basket's handle can be out of reach where its near rim is not)
@@ -845,7 +851,7 @@ def _belt_look_pose(sk: Skills, a: str, samples: list, track: list, go: float, n
 
 
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
-                   pull: float = 0.0, skip_methods=()) -> SkillResult:
+                   pull: float = 0.0, skip_methods=(), min_rise: float | None = None) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
     approach, then the tracked descent / close / lift (one IK target per env step). Checked by the object's height."""
     w = sk.refresh()
@@ -931,7 +937,7 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
             pass
         w = sk.refresh()
         dz = float(w.obj(label).pos[2]) - z0
-    ok = dz > 0.6 * lift
+    ok = dz > (0.6 * lift if min_rise is None else min_rise)   # (min_rise: a caller that raises it further itself)
     if ok:
         from dojo.skills.geometry import inv_T
         from dojo.skills.motion import held_box
@@ -1141,7 +1147,13 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
     ign = (conveyor,) if conveyor else ()
     # 1. the container off the belt (whichever arm intercepts it first), held up
     # lifted while pulled toward the arm (its handle is 1 m up, half a metre out: straight up is out of reach)
-    r = pick_from_belt(sk, container, v, lift=lift, ignore=ign, pull=0.18)
+    fix = getattr(sk, "belt_container", "off") == "on"
+    z_bottom0 = float(w.obj(container).bottom_z)
+    # (belt_container: taken by its real rim, the basket's near wall is ~30 cm from the base; pulled 18 cm in, the hand
+    # ended 5-18 cm in front of the base, inside the reach shell: lift-more and hold_up failed on IK. No pull here;
+    # hold_up below brings it ``lift`` over where it stood: G3 v13 variants)
+    r = pick_from_belt(sk, container, v, lift=lift, ignore=ign, pull=float(getattr(sk, "belt_container_pull", 0.0)) if fix
+                       else 0.18, min_rise=0.03 if fix else None)
     if not r.ok:
         return {"ok": False, "stage": f"lift {container}", "note": r.note}
     carm = r.arm
@@ -1150,7 +1162,20 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
     c = w.obj(container)
     base = sk.kin.base(carm)[:3, 3]
     hold_xy = (float(base[0]) + (0.12 if carm == "left" else -0.12), -0.18)
-    hr = hold_up(sk, carm, container, hold_xy, float(c.bottom_z))
+    if fix:
+        # a rim grasp holds the basket ~17 cm off its middle: the default spot (its middle 27 cm in front of the base)
+        # put the hand inside the arm's own reach shell (hold_up ik_fail 10 / 10): farther out first, then lower
+        hr = None
+        for dy in (0.10, 0.18, 0.0, 0.25):
+            for dz_ in (lift, 0.09):
+                hr = hold_up(sk, carm, container, (hold_xy[0], hold_xy[1] + dy), max(float(c.bottom_z), z_bottom0 + dz_))
+                if hr.ok:
+                    hold_xy = (hold_xy[0], hold_xy[1] + dy)
+                    break
+            if hr.ok:
+                break
+    else:
+        hr = hold_up(sk, carm, container, hold_xy, float(c.bottom_z))
     sk.log(f"[belt] {container} held by {carm} ({hr.status}) at {np.round(sk.refresh().obj(container).center_w, 3).tolist()}")
     # 2. the target off the belt with the other arm, dropped into the container
     r2 = pick_from_belt(sk, target, v, lift=0.15, ignore=ign + (container,), arms=[oarm])
