@@ -326,6 +326,7 @@ def main():
     ap.add_argument("--valid", default=None)
     ap.add_argument("--names", default="")
     ap.add_argument("--order", default="name", choices=("name", "task_rr"))
+    ap.add_argument("--per-task", type=int, default=0, help="with task_rr: at most this many episodes per task")
     a = ap.parse_args()
     sd = _seq_data()
     from dojo.runtime.perception_service import _Perception
@@ -340,7 +341,7 @@ def main():
         by: dict = {}
         for n in names:
             by.setdefault(json.load(open(os.path.join(a.root, "seq", n, "meta.json")))["task"], []).append(n)
-        lists = [by[t] for t in sorted(by)]
+        lists = [by[t][:a.per_task] if a.per_task else by[t] for t in sorted(by)]
         names = [lst[i] for i in range(max(map(len, lists), default=0)) for lst in lists if i < len(lst)]
     rows = json.load(open(a.out)).get("rows", []) if os.path.exists(a.out) else []     # resume
     done = {r["episode"] for r in rows}
