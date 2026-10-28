@@ -2759,6 +2759,53 @@ def test_held_confirmation_uses_the_head_view_at_the_jaw_and_pick_poses(jaw, pic
     assert r["held"] is held and r["source"] == "head" and r["calls"] == 0
 
 
+def test_post_place_read_6dof_moves_what_the_refine_cannot_fit():
+    """post_place_read "6dof": a released object whose post-place refine is not ok (a mug swung on its hook) is read in 6
+    DoF; an ok read moves position AND orientation and logs pose7 (the grasp metric applies it). A good refine (ok,
+    iou >= post_place_read_iou) is not re-read; "off" never reads."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    q_swung = [float(np.cos(0.2)), float(np.sin(0.2)), 0.0, 0.0]          # 23 deg about x
+
+    class Checker:
+        def __init__(self, ref_ok, ref_iou, read_ok=True):
+            self.ref_ok, self.ref_iou, self.read_ok, self.reads = ref_ok, ref_iou, read_ok, []
+
+        def refine(self, obs, o, others, arm, held=None):
+            return {"ok": self.ref_ok, "pos": [float(v) for v in o.pos], "quat": [float(v) for v in o.quat],
+                    "shift_mm": 0.0, "iou": self.ref_iou}
+
+        def release_read(self, obs, o, others, arm, cfg=None):
+            self.reads.append((o.label, arm, len(others), cfg))
+            p = [float(o.pos[0]) + 0.015, float(o.pos[1]), float(o.pos[2]) - 0.008]
+            return {"ok": self.read_ok, "pose7": p + q_swung, "moved_mm": 17.0, "turned_deg": 23.0,
+                    "ious": {"cam_head": 0.9, "cam_left_wrist": 0.92}}
+
+    for mode, ref_ok, ref_iou, read_ok, expect_read, expect_move in (
+            ("6dof", False, 0.2, True, True, True), ("6dof", True, 0.95, True, False, False),
+            ("6dof", True, 0.6, False, True, False), ("off", False, 0.2, True, False, False)):
+        ck = Checker(ref_ok, ref_iou, read_ok)
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=ck)
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        prov.post_place_read, prov.post_place_read_cfg = mode, {"max_turn_deg": 60}
+        o = prov.belief.objects["block_1"]
+        prov.belief.released_by["block_1"] = "left"
+        p0, q0 = o.pos.copy(), o.quat.copy()
+        ev = prov.post_place(b.obs, ["block_1"])[0]
+        assert bool(ck.reads) == expect_read, (mode, ref_ok, ref_iou)
+        if expect_read:
+            assert ck.reads[0][:2] == ("block_1", "left") and ck.reads[0][3] == {"max_turn_deg": 60}
+            assert ev["read6"]["ok"] == read_ok
+        if expect_move:
+            assert abs(float(o.pos[0] - p0[0]) - 0.015) < 1e-9 and np.allclose(o.quat, q_swung)
+            assert ev["ok"] and ev["pose7"][3:] == pytest.approx(q_swung, abs=1e-5) and ev.get("to")
+            assert "block_1" not in prov._pp_doubt and prov.stats["post_place_read_moved"] == 1
+        else:
+            assert np.allclose(o.pos, p0) and np.allclose(o.quat, q0) and "pose7" not in ev
+
+
 def test_post_place_adopts_a_height_only_correction():
     """A released block the belief floats 56 mm high (a no-candidate place): perception re-fits it from its support
     at the same xy; the belief comes down although the xy shift is 0."""

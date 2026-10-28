@@ -420,6 +420,9 @@ class RuntimeProvider:
         self._held_checked: dict = {}           # arm -> label already checked for the current grasp
         self.post_place_min_mm = 2.0
         self.post_place_confirm_mm = 20.0       # larger post-place corrections need the head view to agree
+        self.post_place_read = "off"            # "6dof": a release read when the post-place refine fails / fits poorly
+        self.post_place_read_iou = 0.85
+        self.post_place_read_cfg: dict = {}
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
         self.home_q = None
@@ -563,7 +566,14 @@ class RuntimeProvider:
                 ev["from"] = np.round(o.pos, 4).tolist()
                 o.pos, o.quat, o.source = np.asarray(r["pos"], float), np.asarray(r["quat"], float), "perception"
                 ev["to"] = np.round(o.pos, 4).tolist()
+                ev["pose7"] = [round(float(v), 5) for v in np.r_[o.pos, o.quat]]   # the adopted pose (grasp metric)
                 self.stats["post_place_moved"] = self.stats.get("post_place_moved", 0) + 1
+            elif (self.post_place_read == "6dof" and hasattr(self.checker, "release_read")
+                  and (not r.get("ok") or float(r.get("iou") or 0.0) < self.post_place_read_iou)):
+                # it does not rest as it was put down (a mug that swung on its hook, a tilted bottle): 6 DoF around the
+                # released pose, every camera that sees it
+                if self._release_read(obs, o, others, arm, ev):
+                    r = {**r, "ok": True}
             self.stats["post_place"] = self.stats.get("post_place", 0) + 1
             self.events.append(ev)
             if r.get("ok"):
@@ -572,6 +582,27 @@ class RuntimeProvider:
                 self._pp_doubt.add(lab)                 # not measured where it was let go (a mug off its hook?)
             out.append(ev)
         return out
+
+    def _release_read(self, obs: dict, o, others, arm: str, ev: dict) -> bool:
+        """``post_place_read`` "6dof": the release read of ``o``; an ok read moves it (pos and orientation) and is
+        logged in ``ev["read6"]`` (+ from / to / pose7). Returns whether the belief moved."""
+        try:
+            rr = self.checker.release_read(obs, o, others, arm, self.post_place_read_cfg) or {}
+        except Exception as e:  # noqa: BLE001 (advisory: the released pose stays)
+            ev["read6"] = {"ok": False, "why": f"error {type(e).__name__}: {e}"[:200]}
+            return False
+        ev["read6"] = {k: rr.get(k) for k in ("ok", "why", "moved_mm", "turned_deg", "ious", "views", "time_s")}
+        self.stats["post_place_read"] = self.stats.get("post_place_read", 0) + 1
+        if not rr.get("ok") or rr.get("pose7") is None:
+            return False
+        ev["from"] = np.round(o.pos, 4).tolist()
+        o.pos, o.quat, o.source = np.asarray(rr["pose7"][:3], float), np.asarray(rr["pose7"][3:7], float), "perception"
+        ev["to"] = np.round(o.pos, 4).tolist()
+        ev["pose7"] = [round(float(v), 5) for v in np.r_[o.pos, o.quat]]
+        ev["ok"] = True
+        self.touched.discard(o.label)                  # a good reading: the tracker's "last good reading"
+        self.stats["post_place_read_moved"] = self.stats.get("post_place_read_moved", 0) + 1
+        return True
 
     # ------------------------------------------------------------------ watch reads (scripted actors, belts)
     def garment(self, label: str | None = None) -> dict | None:

@@ -149,6 +149,12 @@ class RuntimeConfig:
     neighbour_mm: float = 25.0          # ... and must not land within this of another known object
     rehover_when_far: bool = True       # also re-hover after an OK refine that moved the object > rehover_min_shift_mm
     post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
+    # ... and when that refine is not ok or fits poorly (iou < post_place_read_iou): the 6-DoF release read
+    # (``dojo.perception.release_read``: releasing wrist + head + other wrist, render-and-compare around the released
+    # pose; an object that does not rest as put down, e.g. a mug swinging on its hook). off | 6dof
+    post_place_read: str = "off"
+    post_place_read_iou: float = 0.85
+    post_place_read_cfg: dict = field(default_factory=dict)
     search: bool = False                # objects still missing after the looks: wrist search over regions
     search_max_regions: int = 4
     search_min_conf: float = 0.3        # a full-fuse search find below this confidence stays missing: on breadth / long
@@ -263,6 +269,11 @@ class _Checker:
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [obj] + list(others)]
         return (self.pc.refine(obs, objs, self.fold, self.max_shift_m, arm=arm, held=held) or {}).get(obj.label)
+
+    def release_read(self, obs: dict, obj, others, arm: str, cfg: dict | None = None) -> dict:
+        return self.pc.release_read(obs, obj.asset.key, [float(v) for v in np.r_[obj.pos, obj.quat]], arm,
+                                    others=[(x.asset.key, [float(v) for v in np.r_[x.pos, x.quat]]) for x in others],
+                                    cfg=cfg) or {}
 
 
 class RuntimePolicy:
@@ -430,6 +441,9 @@ class RuntimePolicy:
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
         prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
+        prov.post_place_read = cfg.post_place_read if prov.post_place_refine else "off"
+        prov.post_place_read_iou = float(cfg.post_place_read_iou)
+        prov.post_place_read_cfg = dict(cfg.post_place_read_cfg)
         if checker is not None and cfg.agentic == "budget":
             checker.agentic_hook = lambda obs, rec: self._agentic_gate(obs, scene, rec, "risk")
         prov.tracker_on = bool(cfg.mode == "perception" and (cfg.tracker == "on" or (cfg.tracker == "auto"
