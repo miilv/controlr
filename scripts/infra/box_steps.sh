@@ -352,7 +352,10 @@ EOF
   1200%; g3 10G / 600%; light 8G / 600%); start only with >= $MIN_AVAIL_GB GB MemAvailable.
 - Eval data firewall: never read \`Assets/Eval_Layout/**\` or eval-paired \`Assets/Traj\` (they are not even downloaded here).
 $( [[ "$SHARED_HOME" == 1 ]] && echo "- SHARED HOME: other people use this \$HOME and machine too. Write only under ~/dojo-*, ~/controlr*; never touch
-  other dirs, processes or sessions; no apt / sudo / loginctl / system settings. Our pinned uv: \`$UV_DIR\`.")
+  other dirs, processes or sessions; no apt / sudo / loginctl / system settings. Our pinned uv: \`$UV_DIR\`.
+- NO LINGERING here: a \`systemd-run --user\` scope dies with the last session unless its launcher stays alive. Start
+  detached jobs as \`setsid nohup bash -c 'source ~/dojo-env.sh; <cmd>; echo rc=\$?' > LOG 2>&1 < /dev/null &\` (the bash
+  stays); g3.sh execs into its scope, so give it \`G3_ABORT_MEM_GB=8\` (it then waits as the scope's parent).")
 EOF
   fi
   box_json || log "WARN: ~/dojo-box.json not written now (the ready step writes it again)"
