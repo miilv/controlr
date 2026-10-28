@@ -274,7 +274,7 @@ def test_grip_check_and_the_release_read_compose_without_moving_an_object_twice(
     evs = prov.post_place(obs, prov.belief.pop_released())
     assert len(evs) == 1 and len(ck.reads) == 1 and len(ck.searches) == 1
     assert np.allclose(ck.reads[0], dropped) and np.allclose(ck.searches[0][0], dropped)  # the read starts from the drop
-    assert np.allclose(ck.searches[0][1], pose0)                            # the search knows where it was grasped
+    assert ck.searches[0][1] is None            # it rose with the jaws (grip_check said held): no "never left" seed
     assert np.allclose(prov.belief.objects["block_1"].pos, [0.3, -0.2, 0.78])  # moved once, to where it was seen
     assert evs[0]["search"]["via"] == "head_search" and evs[0]["pose7"][:3] == pytest.approx([0.3, -0.2, 0.78])
     assert "block_1" not in prov._pp_doubt

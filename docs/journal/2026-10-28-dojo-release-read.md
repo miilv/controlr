@@ -185,3 +185,26 @@ Next: the lead's rendered arm 9 (submit_v3, `post_place_read` "6dof_search" vs o
 store_tools / sweep + build_tower as a no-regression check).
 
 Data: compute3 `~/dojo-data/w-wrist/e2_final_{a,b,c}.json` (`e2_report.py` pools them), `e2m_oracle50.jsonl`.
+
+## Rendered arm 9 and the fix (fix/release-read-small)
+
+Integration's arm 9 (compute4, submit_v3, `post_place_read` "6dof_search" vs off, 35 pairs) lost fasten_screws: 5/5 -> 1/5
+(overall 13/35 vs 11/35). The reviewer's trace (runs2 `c4b_screws_rs*` vs `rsoff*`, dev_belief_probe):
+- the screwing skill turns the nut in place, releasing and re-closing; its post-place refine was ok at iou 0.69-0.78, below
+  `post_place_read_iou` 0.85, so the 6-DoF read ran, fit poorly (0.68-0.74), and the search's "never left" seed (the pose at
+  the close = the nut one turn higher) wrote the nut back up 3 mm, twice; the thread-on then read "belief_mismatch";
+- another episode: a head-only search moved a ~10 px nut 107 mm (place miss); one "pre_grasp" write had head IoU 0.0
+  (accepted on foreground precision alone).
+The offline E2 could not see it: the metric scores events at the task tolerance (15 mm) and replays keep the recorded
+actions, so a 3 mm creep is neutral there.
+
+Rules now:
+- an ok post-place refine is never re-read (`post_place_read_iou` default 0.0; 0.85 keeps the old trigger for an A/B);
+- foreground precision never places an object: the head fit must explain the view (IoU >= 0.65);
+- a small object (mesh: every side < 45 mm, or the thinnest < 5 mm: nuts, coins, blocks) is never placed from the head
+  alone: the wrist's 6-DoF read must agree;
+- "never left" (the pose at the close) is a seed only after a real lift (the TCP rose >= 3 cm with the object attached:
+  `KinematicBelief.released_lift`) that nothing showed the object rose with (no grip_check / held_look "held" in that
+  grasp). An in-place turn has no lift.
+Regression test: `test_release_read_never_ratchets_a_nut_being_threaded` (the recorded numbers of rs_100000 nut1 @684).
+The A1 base drops 6dof_search; these rules carry into A1's write path.

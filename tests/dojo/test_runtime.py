@@ -2811,13 +2811,18 @@ def test_post_place_read_6dof_moves_what_the_refine_cannot_fit():
             return {"ok": self.read_ok, "pose7": p + q_swung, "moved_mm": 17.0, "turned_deg": 23.0,
                     "ious": {"cam_head": 0.9, "cam_left_wrist": 0.92}}
 
-    for mode, ref_ok, ref_iou, read_ok, expect_read, expect_move in (
-            ("6dof", False, 0.2, True, True, True), ("6dof", True, 0.95, True, False, False),
-            ("6dof", True, 0.6, False, True, False), ("off", False, 0.2, True, False, False)):
+    # (mode, refine ok, refine iou, read ok, post_place_read_iou, expect a read, expect a move). An ok refine is never
+    # re-read by default (0.0): arm 9's fasten_screws re-read ok refines at iou 0.69-0.78 and its writes broke the
+    # thread-on; post_place_read_iou > 0 keeps the old trigger for an A/B
+    for mode, ref_ok, ref_iou, read_ok, rd_iou, expect_read, expect_move in (
+            ("6dof", False, 0.2, True, 0.0, True, True), ("6dof", True, 0.95, True, 0.85, False, False),
+            ("6dof", True, 0.6, True, 0.0, False, False), ("6dof", True, 0.6, False, 0.85, True, False),
+            ("off", False, 0.2, True, 0.0, False, False)):
         ck = Checker(ref_ok, ref_iou, read_ok)
         prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=ck)
         prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
         prov.post_place_read, prov.post_place_read_cfg = mode, {"max_turn_deg": 60}
+        prov.post_place_read_iou = rd_iou
         o = prov.belief.objects["block_1"]
         prov.belief.released_by["block_1"] = "left"
         p0, q0 = o.pos.copy(), o.quat.copy()
@@ -2855,6 +2860,8 @@ def test_post_place_read_6dof_search_finds_what_the_read_misses():
 
         def release_search(self, obs, o, others, arm, pre_pose7=None, cfg=None):
             self.searches.append((o.label, arm, pre_pose7))
+            if pre_pose7 is None:
+                return {"ok": False, "why": "not_found"}
             return {"ok": True, "via": "pre_grasp", "pose7": list(pre_pose7), "head_iou": 0.8}
 
     for mode in ("6dof_search", "6dof"):
@@ -2865,6 +2872,7 @@ def test_post_place_read_6dof_search_finds_what_the_read_misses():
         o = prov.belief.objects["block_1"]
         pre = np.r_[o.pos, o.quat].astype(float)
         prov.belief.grasp_z["left"] = (0.9, 1, pre.copy())
+        prov.belief.released_lift["block_1"] = 0.08                       # the TCP rose 8 cm with it attached
         o.pos = o.pos + np.array([0.0, 0.0, 0.08])                         # the belief carried it up and let it go
         prov.belief.released_by["block_1"] = "left"
         ev = prov.post_place(b.obs, ["block_1"])[0]
@@ -2874,6 +2882,54 @@ def test_post_place_read_6dof_search_finds_what_the_read_misses():
         assert ck.searches and ck.searches[0][:2] == ("block_1", "left") and np.allclose(ck.searches[0][2], pre)
         assert ev["search"]["via"] == "pre_grasp" and ev["ok"] and np.allclose(o.pos, pre[:3])
         assert prov.stats["post_place_search"] == 1 and "block_1" not in prov._pp_doubt
+
+
+def test_release_read_never_ratchets_a_nut_being_threaded():
+    """Regression, rendered arm 9 (compute4 runs2 c4b_screws_rs_100000, nut1 @684; rs_100002 nut0): fasten_screws turns
+    the nut in place, releasing and re-closing; the post-place refine is ok at iou 0.69-0.78, the 6-DoF read fit_poor
+    (0.74), and the search's "never left" seed wrote the nut back up one turn (+3 mm), so the thread-on read
+    "belief_mismatch". Now: an ok refine is not re-read, and with no lift (an in-place turn) the search gets no
+    "never left" seed, so nothing writes."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+
+    class Checker:
+        def __init__(self, ref_ok):
+            self.ref_ok, self.reads, self.searches = ref_ok, 0, []
+
+        def refine(self, obs, o, others, arm, held=None):         # the recorded post_place refine
+            return {"ok": self.ref_ok, "pos": [float(v) for v in o.pos], "quat": [float(v) for v in o.quat],
+                    "shift_mm": 0.4, "iou": 0.7283 if self.ref_ok else 0.31}
+
+        def release_read(self, obs, o, others, arm, cfg=None):    # the recorded read6
+            self.reads += 1
+            return {"ok": False, "why": "fit_poor", "ious": {"cam_left_wrist": 0.7408}}
+
+        def release_search(self, obs, o, others, arm, pre_pose7=None, cfg=None):
+            self.searches.append(pre_pose7)
+            if pre_pose7 is None:                                 # no seed but the (absent) head blobs
+                return {"ok": False, "why": "not_found"}
+            return {"ok": True, "via": "pre_grasp", "pose7": list(pre_pose7), "head_iou": 0.0}
+
+    for ref_ok in (True, False):
+        ck = Checker(ref_ok)
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=ck)
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        prov.post_place_read = "6dof_search"
+        o = prov.belief.objects["block_1"]
+        pre = np.r_[o.pos + np.array([0.0, 0.0, 0.003]), o.quat].astype(float)   # one turn higher
+        prov.belief.grasp_z["left"] = (0.84, 3, pre.copy())
+        prov.belief.released_lift["block_1"] = 0.0                # turned in place: the TCP never rose
+        prov.belief.released_by["block_1"] = "left"
+        p0 = o.pos.copy()
+        ev = prov.post_place(b.obs, ["block_1"])[0]
+        assert np.allclose(o.pos, p0) and "pose7" not in ev       # no write either way
+        if ref_ok:
+            assert ck.reads == 0 and ck.searches == []            # an ok refine is not re-read
+        else:
+            assert ck.reads == 1 and ck.searches == [None] and ev["never_left_seed"] is False
 
 
 def test_post_place_adopts_a_height_only_correction():
