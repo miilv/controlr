@@ -1467,6 +1467,7 @@ def _touches_unknown(b: Blob, v: ViewMasks) -> bool:
 
 
 _COLOR_M: list | None = None  # offline colour calibration (color_calib.py), set per estimate() call
+_SELECT_TIES: str = "dc17"    # EstimatorConfig.select_ties, set per estimate() call (``_options`` reads it)
 
 
 def _top_face_color_distance(sm: ShapeModel, x: float, y: float, z_off: float, views, ref: np.ndarray) -> float:
@@ -2823,6 +2824,8 @@ def _options(g: dict, geom_groups: dict) -> list[set] | None:
     selection round pick a single shape for every piece it placed."""
     sel = g["select_mode"]
     mode = sel.get("mode")
+    if _SELECT_TIES == "off":                   # the uniform alternative: no select-list constraint for any task
+        return None
     if mode == "hierarchical" and (sel.get("select_category_nums") or [0])[0] == 1:
         return [{f"{g['type']}/{c['name']}/{i:05d}" for i in c["index"]} for c in g["categories"]]
     if mode == "same" and set(g["labels"]) <= set(sel.get("label") or g["labels"]):
@@ -3404,6 +3407,9 @@ class EstimatorConfig:
     # ... and B1 (estimate): the polish's identity trials and the same-geometry identity use it too. Off: on the table
     # (d0_ext frame 0, 6.0) it changed nothing on organize / store_tools / stack_by_language and cost fill_pen 3 pens
     embed_b1: bool = False
+    # select-list identity ties (dojo.perception.select_ties): "dc17" = kept where the checker scores no identity, off
+    # for TIE_OFF's tasks (the default); "off" = no tie for any task (no per-task difference; the lead decides)
+    select_ties: str = "dc17"
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
     # height check (stereo.check_record): the frame's own head + wrist views, plane-swept, against every object's
@@ -3493,9 +3499,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     """``extra_frames``: [(images, state)] of later frames of the same episode with the objects assumed
     static (arms moved): their views join the render-and-compare loss as ``<cam>@<k>``. Proposals come
     from the first frame's head view."""
-    global _COLOR_M
+    global _COLOR_M, _SELECT_TIES
     cfg = cfg or EstimatorConfig()
     _COLOR_M = cfg.color_M if task in cfg.color_tasks else None
+    _SELECT_TIES = cfg.select_ties
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
     cams = cams or cameras_from_state(state)  # given cameras: a caller's own calibration (J1 harness)
@@ -3939,7 +3946,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         if len(geom_keys) <= 1:
             continue
         refs = {k: ref_color(k) for k in geom_keys}
-        mode = tie_mode(task, g["select_mode"].get("mode"))     # D-C17: no tie where the checker scores identity
+        mode = tie_mode(task, g["select_mode"].get("mode"), cfg.select_ties)   # D-C17 / uniform off
         glyph = all(k.split("/")[1] in TEXTURE_CRITICAL for k in geom_keys)
         if glyph:
             # glyph identity (mahjong tiles, digit cards): textured render-and-compare per candidate

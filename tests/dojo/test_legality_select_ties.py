@@ -104,3 +104,13 @@ def test_the_catalogue_firing_table_equals_the_review():
                 inert.add(task)
     assert acting == set(TIE_OFF) | set(KEPT), sorted(acting ^ (set(TIE_OFF) | set(KEPT)))
     assert inert - acting <= set(INERT) | set(KEPT) | set(TIE_OFF), sorted(inert - acting - set(INERT))
+
+
+def test_the_uniform_policy_turns_every_tie_off_and_the_default_is_unchanged():
+    from dojo.perception.select_ties import POLICIES
+    assert POLICIES[0] == "dc17"                                                 # the default policy
+    for t in [*KEPT, *TIE_OFF, "anything"]:
+        assert tie_mode(t, "same", "off") == tie_mode(t, "hierarchical", "off") == "allow_duplicate"
+    assert tie_mode("stack_bowls", "same", "dc17") == "same"
+    with pytest.raises(ValueError):
+        tie_mode("stack_bowls", "same", "nope")
