@@ -49,16 +49,21 @@ So for B1's gross errors the bottleneck is generating the right candidate, not s
 
 ## 3. A doubt signal: B1's own pose's distance (+ the learned height check)
 
-Detector of B1's wrong objects (gross or overshoot: 95 of 1016 objects):
+The distance of B1's pose scored alone (its own patches; what `b1_doubt` ships) detects B1's wrong objects (gross or
+overshoot: 95 of 1016) with **AUC 0.91**. Scored together with its yaw turns (their union of patches; the first
+measurement) the AUC is 0.85.
 
-| signal | flagged | precision | recall | false flags on right objects |
+| signal (pose alone) | flagged | precision | recall | false flags on right objects |
 |---|---|---|---|---|
-| feature distance d > 0.5 (AUC 0.85) | 114 | 52 / 114 | 52 / 95 | 6.7 % |
+| d > 0.55 | 112 | 68 / 112 | 68 / 95 | 4.8 % |
+| d > 0.6 | 82 | 60 / 82 | 60 / 95 | 2.4 % |
 | learned height check \|dh\| > 15 mm | 95 | 42 / 95 | 42 / 95 | 5.8 % |
-| **d > 0.55 or \|dh\| > 15 mm** | 140 | 61 / 140 | **61 / 95** | **8.6 %** |
-| d > 0.45 and \|dh\| > 10 mm | 66 | 43 / 66 | 43 / 95 | 2.5 % |
+| d > 0.55 or \|dh\| > 15 mm | 165 | 73 / 165 | 73 / 95 | 10.0 % |
+| **d > 0.6 or \|dh\| > 15 mm (the default)** | 138 | 67 / 138 | **67 / 95** | **7.7 %** |
 
 - Shipped as `EstimatorConfig.b1_doubt` (`perception/doubt.py`, mv3d server op `featdist`), default off.
+  - Defaults: `doubt_feat_d` 0.6, `doubt_dh_mm` 15, mode `or`.
+  - For a cheaper gate: d > 0.6 alone flags 60 of 95 at 2.4 %.
 - Consumers behind their own flags:
   - `AGENTIC_DOUBT_RISK` floors `j1.risk` for doubted objects. The gate, `needs_agent` and `risky_b1` all go through
     `j1.risk`.
@@ -68,6 +73,9 @@ Detector of B1's wrong objects (gross or overshoot: 95 of 1016 objects):
   - pack 100000 doubts the shoe (B1-gross);
   - nothing else is doubted;
   - about 0.2 s per object.
+- With D0's look wrists as extra views (frames 1-3, the union variant) the AUC does not improve (0.74 vs 0.78 on the
+  same objects). The scripted looks aim at one object each and add mostly views that cut objects at the crop edge.
+  Wrist frames taken at grasp time (stream C's sequences) are not measured.
 
 ## 4. The continuous stage: Nelder-Mead on the feature distance
 
@@ -137,7 +145,7 @@ Current-main B1 on compute2's CPU, with the mv3d server (VGGT bf16 + DINOv2-B) i
 ## Verdict
 
 - **ADOPT, flags default off:**
-  - `b1_doubt`, the signal: 61 / 95 of B1's wrong objects at 8.6 % false flags, no LLM.
+  - `b1_doubt`, the signal: 67 / 95 of B1's wrong objects at 7.7 % false flags (AUC 0.91), no LLM.
   - Its two consumers: `AGENTIC_DOUBT_RISK` for the gate and `risky_b1`; `look_doubt` for the look macro.
   - `fm_refine` (0.45 / 0.05, Rigid only): gross -9, within +9 net, 0 right objects into gross.
   - Next: a rendered A/B, Integration.

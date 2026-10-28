@@ -9,8 +9,8 @@ Two independent measurements per record object (both from the mv3d GPU server, `
   surface vs the measured one.
 
 ``doubt`` = d > ``feat_d`` or |dh| > ``dh_mm`` (mode ``or``), or both (``and``). On 1016 frame-0 dev objects (95
-gross / overshoot): ``or`` at 0.55 / 15 mm flags 61 of 95 wrong objects with 8.6 % false flags on right ones; ``and`` at
-0.45 / 10 mm flags 43 at 2.5 % (experiments/2026-10-28-mv3d-learned-depth and its E3 follow-up).
+gross / overshoot; d alone: AUC 0.91): ``or`` at 0.6 / 15 mm flags 67 of 95 wrong objects at 7.7 % false flags on right
+ones, at 0.55 / 15 mm 73 at 10 %; d > 0.6 alone 60 at 2.4 % (experiments/2026-10-28-e3-featmetric).
 
 Written per object as ``_perception.b1_doubt`` = {"d", "dh_mm", "doubt", "why"} and per record as
 ``_perception.b1_doubt`` = {"labels", "thr", "s"}. Consumers (each behind its own flag): the agentic gate
@@ -31,7 +31,7 @@ def _entries(record: dict):
                 yield typ, cat, r
 
 
-def annotate(record: dict, d: dict, dh: dict, feat_d: float = 0.55, dh_mm: float = 15.0, mode: str = "or") -> list[str]:
+def annotate(record: dict, d: dict, dh: dict, feat_d: float = 0.6, dh_mm: float = 15.0, mode: str = "or") -> list[str]:
     """Write the per-object doubt from measured feature distances ``d`` and height mismatches ``dh`` (both keyed by
     ``id(entry)``; a missing value = not measured). Returns the doubted labels."""
     out = []
@@ -53,7 +53,7 @@ def annotate(record: dict, d: dict, dh: dict, feat_d: float = 0.55, dh_mm: float
 
 
 def b1_doubt(record: dict, images: dict, cams: dict, robot_masks: dict, heights: np.ndarray | None = None,
-             feat_d: float = 0.55, dh_mm: float = 15.0, mode: str = "or", color_M=None, cl=None) -> dict:
+             feat_d: float = 0.6, dh_mm: float = 15.0, mode: str = "or", color_M=None, cl=None) -> dict:
     """Measure and annotate (see the module doc). ``heights``: the learned head height map when the caller already has
     it. Without a server: {"skipped": ...} and no annotation."""
     from . import mv3d
