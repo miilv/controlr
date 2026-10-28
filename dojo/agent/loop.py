@@ -74,7 +74,8 @@ class AgentConfig:
 
 def registry_skills(cfg: AgentConfig):
     """The registry entries this config prompts (None = no registry: SKILL_DOCS). The dojo runtime calls only the
-    ``dojo_skills`` backend; strict keeps contract-only entries."""
+    ``dojo_skills`` backend; strict keeps contract-only entries; ``status: candidate`` entries never reach the prompt
+    or ``Robo.skill`` (``Registry.select``'s default; no config opts in)."""
     if not cfg.registry:
         return None
     from dojo.agent import registry as R

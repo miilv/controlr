@@ -7,9 +7,11 @@ unchanged (a pinned copy of robot-harness's is in ``tests/fixtures/``) and valid
 ``harness/registry.py`` does, minus the checks that need robot-harness's tree: entry files, ``results/ledger.jsonl``,
 ``coord/LANES.md``.
 
-* ``select(entries, strict, benchmark, backends)``: ``harness/registry.filter_strict`` semantics
-  (``obs_needs.contract_only is True``, one benchmark), plus the backends this runtime can call. J5 losers
-  (``fallback``) are not prompted.
+* ``select(entries, strict, benchmark, backends, candidates)``: ``harness/registry.filter_strict`` semantics
+  (``obs_needs.contract_only is True``, one benchmark, no ``status: candidate`` entries unless ``candidates=True``),
+  plus the backends this runtime can call. J5 losers (``fallback``) are not prompted. A candidate is a new version
+  not promoted yet (robot-harness ``d918f85`` / ``a4f4d5e``); no status = promoted, and no chooser offers a candidate
+  unless the caller opts in, whatever its backend.
 * ``contract_only`` is derived from ``obs_needs.reads``: a ``true`` that reads a non-contract token is an error,
   as in ``harness/registry.validate``.
 * ``chooser_docs(entries)`` is the chooser block: name + args + doc only, byte for byte
@@ -37,8 +39,12 @@ BENCHMARKS = ("robodojo", "libero_pro")
 BACKENDS = ("robot_server", "dojo_skills")
 HELD = ("wrist", "operator", False)
 TIERS = ("A_gt", "B_camera", "official")
+STATUSES = ("candidate", "promoted")         # absent = promoted (harness/registry.STATUSES)
 REQUIRED = ("name", "side", "benchmark", "doc", "args", "obs_needs", "backend", "entry", "measured")
-CONTRACT_READS = {"joints", "flange", "grip_cmd", "instruction", "steps", "free_ik", "held_look", "object_args"}
+# catalog_mesh: grasps / geometry from the PUBLIC asset catalogue mesh of the PERCEIVED asset at the PERCEIVED pose
+# (contract; mesh_grasps = a mesh at a privileged pose or identity, non-contract), as in harness/registry.py (f7f9017)
+CONTRACT_READS = {"joints", "flange", "grip_cmd", "instruction", "steps", "free_ik", "held_look", "object_args",
+                  "catalog_mesh"}
 NON_CONTRACT_READS = {"privileged_poses", "mesh_grasps", "contacts", "finger_meas", "depth", "server_internals"}
 # the RoboDojo task table (harness/registry.LANES_TASKS); doc / args naming one, underscored or spaced, is P4
 TASKS = (
@@ -61,6 +67,11 @@ P4_FIXED = (
 
 class RegistryError(ValueError):
     pass
+
+
+def is_candidate(e: dict) -> bool:
+    """``harness/registry.is_candidate``: ``status: candidate`` (absent or ``promoted`` = selectable)."""
+    return e.get("status") == "candidate"
 
 
 def _p4_patterns():
@@ -97,6 +108,11 @@ class SkillEntry:
         return (self.raw.get("obs_needs") or {}).get("contract_only") is True
 
     @property
+    def is_candidate(self) -> bool:
+        """A new version not promoted yet (``status: candidate``): no chooser offers it unless the caller opts in."""
+        return is_candidate(self.raw)
+
+    @property
     def derived_contract_only(self) -> bool | None:
         reads = (self.raw.get("obs_needs") or {}).get("reads")
         return None if reads is None else set(reads) <= CONTRACT_READS
@@ -111,11 +127,14 @@ class Registry:
     def by_name(self) -> dict[str, SkillEntry]:
         return {e.name: e for e in self.entries}
 
-    def select(self, strict: bool = False, benchmark: str | None = "robodojo", backends=BACKENDS) -> list[SkillEntry]:
+    def select(self, strict: bool = False, benchmark: str | None = "robodojo", backends=BACKENDS,
+               candidates: bool = False) -> list[SkillEntry]:
         """What a run may prompt: strict -> contract_only true (``filter_strict``); one benchmark; callable backends;
-        no J5 losers."""
+        no J5 losers; no ``status: candidate`` entry unless ``candidates=True`` (dev runs only, never a scored one)."""
         out = []
         for e in self.entries:
+            if e.is_candidate and not candidates:
+                continue
             if strict and not e.contract_only:
                 continue
             if benchmark is not None and e.raw.get("benchmark") != benchmark:
@@ -224,6 +243,10 @@ def validate(entries: list[SkillEntry]) -> tuple[list[str], list[str]]:
         for k in ("stats", "inputs", "selects_on"):
             if k in e and not isinstance(e[k], (list, dict)):
                 errors.append(f"{tag}: {k} must be a list or mapping")
+        if "status" in e and e["status"] not in STATUSES:
+            errors.append(f"{tag}: status must be one of {STATUSES}")
+        if is_candidate(e) and e.get("default"):
+            errors.append(f"{tag}: a candidate cannot be the default (promote it first)")
     return errors, warnings
 
 
@@ -258,4 +281,4 @@ def resolve(se: SkillEntry):
 
 
 __all__ = ["Registry", "SkillEntry", "RegistryError", "load", "validate", "chooser_docs", "render", "resolve",
-           "REGISTRY", "SCHEMA"]
+           "is_candidate", "REGISTRY", "SCHEMA", "STATUSES"]

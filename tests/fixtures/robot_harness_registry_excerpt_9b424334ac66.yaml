@@ -1,0 +1,383 @@
+# J2 skill registry: one entry per skill, read by one LLM chooser for both runtimes (issue #5).
+# Schema and rules: docs/REGISTRY.md. Validate: python3 harness/registry.py
+# Only name + args + doc reach the chooser (harness/registry.py chooser_docs). doc and args must not name benchmark
+# tasks, layouts, seeds or task ids (rule P4). measured / stats are for people: counts copied from results/ledger.jsonl
+# (1-based line numbers), skills/<name>/stats.json, SKILL-NOTES.md, SKILL.md and results/*.md.
+# status: candidate = a new version not promoted yet (Isaac check on the generated dev slice + the founders' OK); every
+# chooser leaves it out unless the caller opts in (--candidates, dev runs only). No status = promoted.
+# Adapter for other runtimes: import an entry's run() and pass harness/robot_client_v2.Robot(server_id), the socket
+# client (v1 robot_client.py is frozen in md5 lists), or call the server verb `skill name=<dir> args={...}`.
+schema: j2-registry/1
+entries:
+
+  # ---- misha side, RoboDojo, contract_only (selectable in strict runs) ----
+
+  - name: lift_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Raise an object one arm already holds until the TCP is `by` m above a reference height (default: its height now).
+      Moves straight up, else pulled 6 or 12 cm toward the arm's base when IK refuses. Precondition: that arm's gripper is
+      commanded closed and its last held_look said yes. Asks held_look again after the move.
+      Verified = still held by the wrist look and the TCP rose >= by. Pass reserve=0 when no return home follows.
+    args:
+      arm: "left | right | auto = auto (the closed arm whose last look said held)"
+      by: "float m = 0.10; required rise"
+      obj: "str = None; leave None in strict runs (object mode needs privileged poses)"
+      z_ref: "float m = None"
+      margin: "float m = 0.03; extra rise"
+      tcp_ref: "float m = None (TCP height now)"
+      reserve: "int env steps = None (server default 20)"
+    selects_on:
+      words: [lift, raise, higher]
+      needs_categories: []
+    inputs:
+      source: none
+      objects: []
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/lift_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: general_pickup, success: 4, n: 5}, via: pick_up_rgb_strict}
+    stats: []
+    notes: "reads obs objects only when a privileged server provides them (obj given); the strict server never does. TCP-only successor lift_strict_v2 (candidate, S2 27 Oct)"
+
+  - name: place_on_rgb_strict
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put a located block on top of another located block or on a table point, one stage per call; re-locate after every stage.
+      stage=plan: blocks=[{name, c: [x, y], top_z, yaw, size}] -> base block, order and arms by free IK (0 env steps).
+      stage=pick: arm, block, clear_top_z -> top-down grasp, held_look after the close and after the lift; returns bottom_off.
+      stage=place: arm, base={c, top_z, yaw} (table point: top_z 0.765), bottom_off -> hover, lower, open, lift clear.
+      Precondition for place: the pick's last look said held. Placement is checked by your re-look.
+    args:
+      stage: "plan | pick | place, required"
+      blocks: "list[{name, c: [x, y], top_z, yaw, size}], required (stage plan)"
+      arm: "left | right (| auto for pick), required (stage pick, place)"
+      block: "{name, c: [x, y], top_z, yaw, size}, required (stage pick)"
+      clear_top_z: "float m = None; highest support the carry must clear (stage pick)"
+      support_z: "float m = 0.765 (table); what the block stands on (stage pick)"
+      pre: "float = 0.1 (stage pick)"
+      min_lift: "float = 0.08 (stage pick)"
+      base: "{c: [x, y], top_z, yaw}, required; block or table point (stage place)"
+      bottom_off: "float m, required; from the pick reply (stage place)"
+      release_dz: "float = 0.004 (stage place)"
+      hover_dz: "float = 0.05 (stage place)"
+      clear_dz: "float = 0.05 (stage place)"
+      yaw_mod: "float = 90.0 (stage place)"
+    selects_on:
+      words: [stack, on top of, put on, place on]
+      needs_categories: [block]
+    inputs:
+      source: args
+      objects:
+        - {what: block, fields: [pos, top_z, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/place_on_rgb_strict/skill_robodojo.py:run"
+    measured:
+      - {line: 9, tier: B_camera, success: 27, n: 30, part: {task: stack_blocks, success: 5, n: 5}, via: direct}
+    stats:
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: stack_blocks, seed: 1, layouts: 0-4, tier: B-strict, version: v1 (md5 e1f62c1d), n: 5, success: 5, by_hand: 1}
+      - {src: results/RESULTS-rgb-heldout-seed1-strict.md, bench: robodojo, cell: stack_blocks, seed: 0, layouts: '9', tier: B-strict, version: v1 (practice), n: 1, success: 1, by_hand: 1}
+    notes: "reuses place_on's free-IK planning helpers on synthetic records; never reads obs objects"
+
+  - name: put_into_bin_rgb_strict_v2
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Put located objects into located containers stage by stage, with rim-aware drops (every corner of the held object
+      inside the rim), edge- and wall-aware picks and a budget-aware finish. Records as put_into_bin_rgb_strict, plus optional
+      table = {x: [left, right], y: [near, far]}. Stages: plan, direct (arm, obj, container[, final]), relay, nudge (push an
+      object 6 cm off a container wall), survey (arms to a high pose so the head camera sees under them), home, check.
+      final=True refuses a stage that leaves no room for the cheapest home. held_look after each close and after the lift.
+    args:
+      stage: "plan | direct | relay | nudge | survey | home | check, required"
+      objects: "list[{name, kind: standing|lying, c: [x, y], top_z, h, len, wid, yaw}] = None"
+      containers: "list[{name, lo: [x0, y0, z_floor], hi: [x1, y1, z_rim]}] = None"
+      obj: "str = None; object name (direct, relay)"
+      container: "str = None; container name (direct)"
+      arm: "left | right = None (direct, relay)"
+      groups: "{group: [object names]} = None; one container per group (plan)"
+      table: "{x: [left, right], y: [near, far]} = None"
+      arms: "list = None; arms for survey / home"
+      final: "bool = False; refuse a stage that leaves no room for the cheapest home"
+      lift: "float = 0.08"
+      max_picks: "int = 2"
+      attach_xy: "float = 0.05"
+      margin: "float = 0.02"
+      clear: "float = 0.025"
+      d: "float = 0.06"
+      mode: "str = \"auto\""
+      margin_m: "float = 0.04"
+      margin_deg: "float = 7.0"
+      ignore_walls: "= None"
+      edge: "= None"
+      poses: "= None"
+      avoid: "= None"
+    selects_on:
+      words: [put into, throw away, sort, into the bin, into the basket]
+      needs_categories: [bottle, basket, dustbin, object]
+    inputs:
+      source: args
+      objects:
+        - {what: object, fields: [pos, top_z, size, quat]}
+        - {what: container, fields: [lo, hi]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/put_into_bin_rgb_strict_v2/skill_robodojo.py:run"
+    default: true
+    measured:
+      - {line: 11, tier: B_camera, success: 4, n: 5, part: {task: classify_objects, success: 4, n: 5}, via: direct}
+      - {line: 12, tier: B_camera, success: 2, n: 5, part: {task: put_bottles_into_dustbin, success: 2, n: 5}, via: direct}
+    stats:
+      - {src: results/ROBODOJO-BASKET-r1.md, bench: robodojo, cell: classify_objects, seed: 0, layouts: 0-4, tier: B-strict, version: v1 (md5 fe34d4a0), n: 5, success: 4}
+      - {src: results/ROBODOJO-BASKET-r1.md, bench: robodojo, cell: put_bottles_into_dustbin, seed: 0, layouts: 0-4, tier: B-strict, version: v1 (md5 fe34d4a0), n: 5, success: 2}
+    notes: "refuses a privileged server; home stage = return_home_budget"
+
+  # ---- misha side, RoboDojo, not contract_only (never selected in strict runs) ----
+
+  - name: pour_bottle
+    side: misha
+    benchmark: robodojo
+    doc: |
+      Pour a liquid from a standing bottle into a cup, using privileged poses and the mesh AABB: side pinch on the neck
+      (horizontal tool, approached along the tool axis), lift the bottom over the cup top, roll with the mouth rim held
+      over the cup opening (TCP re-solved from the measured in-hand transform), drain, untilt with the mouth still over
+      the cup, set the bottle back on its spot, both arms home. container / target override the noun grounding.
+      Verified = the roll reached drain_from without slip, bottle upright, arms home (liquid not measured).
+    args:
+      container: "str = None"
+      target: "str = None"
+      arm: "str = \"auto\""
+      grasp_frac: "float = 0.72; grasp height as a fraction of the bottle height"
+      back: "float = 0.10"
+      lift: "float = 0.04"
+      pitches: "= (0, -10, 10)"
+      yaws: "= (0, 15, -15, 30, -30)"
+      sides: "= \"auto\""
+      phis: "= (0, 40, 70, 90, 105, 120, 135, 150)"
+      drain_from: "float = 120"
+      hold_steps: "int = 3"
+      drain_steps: "int = 24"
+      untilt_phis: "= (90, 60, 0)"
+      lip_clear: "float = 0.012"
+      body_clear: "float = 0.012"
+      spout_back: "float = 0.0"
+      mouth_r: "float = 0.015"
+      shoulder_frac: "float = 0.55"
+      slip_deg: "float = 14.0"
+      slip_m: "float = 0.012"
+      set_dz: "float = 0.004"
+      min_return_steps: "int = 60"
+      home: "bool = True"
+    selects_on:
+      words: [pour the liquid, from the bottle, into the cup]
+      needs_categories: [bottle, cup]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: bottle, fields: [pos, quat, size]}
+        - {what: cup, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, instruction, steps, free_ik, privileged_poses, mesh_grasps]
+    backend: robot_server
+    entry: "skills/pour_bottle/skill_robodojo.py:run"
+    measured: none
+    notes: "night K2 27 Oct: offline rigid-fake tests only; neck height from the public catalogue mesh profile of the bottle"
+
+  - name: pour_bottle_v2
+    side: misha
+    benchmark: robodojo
+    status: candidate
+    doc: |
+      pour_bottle for scenes with several standing bottles and a row of targets: after the lift the bottle moves to
+      the target row at its own x, then sideways (and back the same way), so a carry never crosses the bottle row; the
+      other arm is homed only when it is near the work; a lean roll (0, 75, 115, 145 deg) and one untilt. Neck pinch,
+      mouth rim over the target, put back on its spot; home=False leaves the arm parked after the put-back.
+      Verified = the roll reached drain_from without slip, bottle upright, arms home or home=False (liquid not measured).
+    args:
+      container: "str = None"
+      target: "str = None"
+      arm: "str = \"auto\""
+      grasp_frac: "float = 0.72"
+      back: "float = 0.10"
+      lift: "float = 0.04"
+      pitches: "= (0, -10, 10)"
+      yaws: "= (0, 15, -15, 30, -30)"
+      sides: "= \"auto\""
+      phis: "= (0, 75, 115, 145)"
+      drain_from: "float = 115"
+      hold_steps: "int = 2"
+      drain_steps: "int = 16"
+      untilt_phis: "= (0,)"
+      lip_clear: "float = 0.012"
+      body_clear: "float = 0.012"
+      spout_back: "float = 0.0"
+      mouth_r: "float = 0.015"
+      shoulder_frac: "float = 0.55"
+      slip_deg: "float = 14.0"
+      slip_m: "float = 0.012"
+      set_dz: "float = 0.004"
+      min_return_steps: "int = 60"
+      home: "bool = True"
+      via: "bool = True"
+      near_x: "float = 0.25"
+    selects_on:
+      words: [pour, from the bottle, into the bowl]
+      needs_categories: [bottle, bowl]
+    inputs:
+      source: privileged_obs
+      objects:
+        - {what: bottle, fields: [pos, quat, size]}
+        - {what: bowl, fields: [pos, size]}
+    obs_needs:
+      contract_only: false
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, instruction, steps, free_ik, privileged_poses, mesh_grasps]
+    backend: robot_server
+    entry: "skills/pour_bottle_v2/skill_robodojo.py:run"
+    measured: none
+    notes: "night K3 27 Oct: offline rigid-fake tests only (path checked against standing bottles)"
+
+  # ---- ilia side: added by J4 import ----
+
+  - name: stack_objects
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Pile the listed objects on top of one another on the table (nest=True: concave objects such as bowls or cups
+      inside one another). ordered=False: the skill picks the base, the order and the site; ordered=True: objects[0]
+      stays the base and the others go on in list order. Not for pegs, poles or fixtures. Plans with own IK against
+      the estimate, re-measures each object from the wrist before contact, opens both grippers when done.
+    args:
+      objects: "[id], required; the objects to pile"
+      nest: "bool = False; nest concave objects inside one another"
+      ordered: "bool = False; keep the list order, first id at the bottom"
+    selects_on:
+      words: [stack, pile, nest, on top of, bottom to top]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: true
+      twin_verify: true
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, catalog_mesh]
+    backend: dojo_skills
+    entry: "skills.ilia.library:stack_objects"
+    measured: none
+    stats:
+      - {src: controlr@db48652:docs/journal/2026-10-24-dojo-integ.md, bench: robodojo, cell: stack_blocks, tier: A, verify: bundle, n: 10, success: 10}
+      - {src: controlr@db48652:docs/journal/2026-10-24-dojo-integ.md, bench: robodojo, cell: stack_blocks, tier: B, verify: bundle, version: closed loop, n: 25, success: 17}
+      - {src: controlr@db48652:docs/experiments/2026-10-25-agent-e2e.md, bench: robodojo, cell: stack_bowls, tier: B, verify: "off", version: nest, n: 6, success: 0}
+    notes: "grasps from the catalogue mesh of the perceived asset identity (public asset files) at the perceived pose; no privileged poses"
+
+  # ---- misha side, RoboDojo, S2 fix versions (27 Oct 2026); additive, candidates ----
+
+  - name: lift_strict_v2
+    side: misha
+    benchmark: robodojo
+    status: candidate
+    doc: |
+      Raise an object one arm already holds until the TCP is `by` m above a reference height (default: its height now).
+      Moves straight up, else pulled 6 or 12 cm toward the arm's base when IK refuses. Precondition: that arm's gripper is
+      commanded closed and its last held_look said yes. Asks held_look again after the move.
+      Verified = still held by the wrist look and the TCP rose >= by. Pass reserve=0 when no return home follows.
+      The rise is always measured on the TCP; obj and z_ref are accepted and ignored.
+    args:
+      arm: "left | right | auto = auto (the closed arm whose last look said held)"
+      by: "float m = 0.10; required rise"
+      obj: "str = None; ignored"
+      z_ref: "float m = None; ignored"
+      margin: "float m = 0.03; extra rise"
+      tcp_ref: "float m = None (TCP height now)"
+      reserve: "int env steps = None (server default 20)"
+    selects_on:
+      words: [lift, raise, higher]
+      needs_categories: []
+    inputs:
+      source: none
+      objects: []
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, held_look]
+    backend: robot_server
+    entry: "skills/lift_strict_v2/skill_robodojo.py:run"
+    measured: none
+    notes: "S2 27 Oct: routing integrity finding 2 (never reads object poses; lift_strict switched to them given obj and a server that sends them); offline fake tests only"
+
+  # ---- misha side, RoboDojo, V3 fix versions of the A3 / C5 audit findings (27 Oct 2026); additive ----
+
+  - name: place_on_rgb_strict_v2
+    side: misha
+    benchmark: robodojo
+    status: candidate
+    doc: |
+      Put a located block on top of another located block or on a table point, one stage per call; re-locate after every stage.
+      stage=plan: blocks=[{name, c: [x, y], top_z, yaw, size}] -> base block, order and arms by free IK (0 env steps).
+      stage=pick: arm, block, clear_top_z -> top-down grasp, held_look after the close and after the lift; returns bottom_off.
+      stage=place: arm, base={c, top_z, yaw} (table point: top_z 0.765), bottom_off -> hover, lower, open, lift clear; opens
+      only after the lowering arrived within lower_tol, else stays closed and replies holding (ok and verified false).
+      Precondition for place: the pick's last look said held. Placement is checked by your re-look.
+    args:
+      stage: "plan | pick | place, required"
+      blocks: "list[{name, c: [x, y], top_z, yaw, size}], required (stage plan)"
+      arm: "left | right (| auto for pick), required (stage pick, place)"
+      block: "{name, c: [x, y], top_z, yaw, size}, required (stage pick)"
+      clear_top_z: "float m = None; highest support the carry must clear (stage pick)"
+      support_z: "float m = 0.765 (table); what the block stands on (stage pick)"
+      pre: "float = 0.1 (stage pick)"
+      min_lift: "float = 0.08 (stage pick)"
+      base: "{c: [x, y], top_z, yaw}, required; block or table point (stage place)"
+      bottom_off: "float m, required; from the pick reply (stage place)"
+      release_dz: "float = 0.004 (stage place)"
+      hover_dz: "float = 0.05 (stage place)"
+      clear_dz: "float = 0.05 (stage place)"
+      yaw_mod: "float = 90.0 (stage place)"
+      lower_tol: "float m = 0.012; the lowering must end this close to its target before the gripper opens"
+    selects_on:
+      words: [stack, on top of, put on, place on]
+      needs_categories: [block]
+    inputs:
+      source: args
+      objects:
+        - {what: block, fields: [pos, top_z, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: wrist
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args, held_look]
+    backend: robot_server
+    entry: "skills/place_on_rgb_strict_v2/skill_robodojo.py:run"
+    measured: none
+    notes: "V3 27 Oct: A3 finding 3 (no release after a refused or short lowering); offline strict-fake tests only"
