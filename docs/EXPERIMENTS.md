@@ -71,6 +71,28 @@ tokens and cache-read share, number of STOP/CLAMP events, outcome (`success` / `
 `safety_stop` / `llm_error` / `unstable`), robot time vs wall time (`summary.json` `sim_time`;
 per turn `turns.jsonl` `backend.profile`). Summary: `uv run controlr report runs/...`.
 
+### Perception changes in the dojo stack: the adopt rule
+
+A perception or belief change (a refine, a release read, a search, a re-detection) is an **adopt-candidate** only if
+both of these hold:
+
+1. **Write audit.** No excess of harmful belief writes against its A arm on the same episodes.
+   - Run `scripts/perception/m95_score.py audit` on physics-only replays of both arms.
+   - It compares every belief write the report logs (refines, post_place moves, any `before7` / `after7` event) with
+     GT at that step.
+   - A write is **harmful** when it adds **more than 2 mm** of error to the tracked object (3-D, with z reported
+     apart), and helpful when it removes as much. The tracked object is the GT object of the label's group nearest
+     the pre-write belief.
+   - Compare B's harmful and helpful counts per writer with A's.
+2. **Rendered A/B.** The paired rendered run passes (success / score, n and spread as in §1).
+
+An offline "+N fixed / 0 broken" on grasp-time events (`m95_score.py table`) is evidence, not a qualifier on its own.
+Grasp and place events, judged at the task's tolerance, do not see a sub-tolerance write that a servo consumes. An
+open-loop replay keeps the recorded actions, so a harmful write cannot derail it.
+
+Score grasp-time perception with `dojo.perception.grasp_metric` (R = 10 cm headline, required-only and R = 5 cm
+alongside, gap table by root cause). Score consumers against their own precision with the skills' `consume` events.
+
 ## 4. Report template
 
 ```markdown

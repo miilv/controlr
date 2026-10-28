@@ -55,3 +55,16 @@ slot (never more than 4 of our GPU jobs on the box).
   right (75 % with make_kong's tile faces excused), against B1's 51 %.
 - **Process:** the lead steers the streams by the gap table: W released, H not_held / in-hand, C ttt actors,
   S clutter.
+
+## Afterwards: the review, the write audit, the adopt rule
+- An independent review (accepted by the lead) added the following to the scorer (#236):
+  - released-object sources;
+  - plan events, so episodes perception blocked count too;
+  - first attempts vs retries;
+  - the reviewer's root-cause classes A-G.
+  The G split (carried / intended push / knocked) was hand-checked on 10 cases against per-step replays.
+- The write-level audit (#240) explained why arm 9's release search lost fasten_screws (1/5 vs 5/5):
+  - it made 12 harmful writes out of 76, against 1 of 34 without it;
+  - +2.6 mm z writes left the belief one thread turn high;
+  - a head-search write moved a nut that sat on its bolt onto the table.
+- That set the adopt rule in [EXPERIMENTS.md](../EXPERIMENTS.md) ("Perception changes in the dojo stack").
