@@ -30,3 +30,25 @@ billing problem; Ilia has been asked.
 every 30 min, at most 20, status codes logged to `cx_probe.log`. After 3 successes in a row it runs the bench at full
 pace (about 1-1.5 h), then H2 + arbitration risky_b1 0.2 and the paired score against Sonnet / Opus
 (`paired_cxsol61.md`).
+
+## Verdict, after the route came back (bench 16:34-17:31Z)
+
+The health probe got 3 × 200 in a row (15:34, 16:04, 16:34Z), and the bench then ran at full pace. All 94 scenes
+answered: the 6 outage fallbacks were re-run, and 2 first-turn "no JSON object" replies recovered. Paired against the
+recorded arms on the same frames (B1: 290 within tolerance, 84 gross), with risky_b1 0.2:
+
+| arm | within tol | gross | fixed / broken / still gross | phantoms | LLM calls (med / max per scene) | prompt / completion k-tok | s per call med | s per scene med / p90 |
+|---|---|---|---|---|---|---|---|---|
+| Sonnet 5.5, run 1 | 310 | 52 | 36 / 4 / 48 | 13 | 307 (3 / 6) | 4365 / 265 | 9.3 | 31 / 57 |
+| Sonnet 5.5, run 2 | 310 | 50 | 37 / 3 / 47 | 10 | 305 (3 / 6) | 4432 / 265 | 9.1 | 31 / 54 |
+| Opus 5.5 | 314 | 43 | 42 / 1 / 42 | 14 | 400 (4 / 8) | 6456 / 333 | 10.8 | 47 / 80 |
+| **cx/gpt-6.1-sol** | **306** | **62** | **24 / 2 / 60** | 8 | 293 (3 / 8) | 3167 / 76 | 14.3 | 44 / 83 |
+
+Fixed / broken per task, cx/gpt-6.1-sol: pack_random 10 / 1, organize_table 5 / 1, deposit_coin 2 / 0,
+general_pickup 2 / 0, store_tools 2 / 0, build_tower 1 / 0, put_bottles 1 / 0, stack_bowls 1 / 0, all others 0 / 0.
+
+- **Rule.** The pre-registered rule needed fixed >= 34 and broken <= 4-5. cx/gpt-6.1-sol fixes 10 too few, so it is
+  **not a candidate**.
+- **No second cx model.** 6.1-sol was the strongest listed; a weaker sibling is unlikely to gain 10 fixes (lead).
+- **Total cx spend:** 328 calls (incl. the outage attempts and 13 pings / probes), 3.3M prompt tokens (2.8M cache
+  reads), 78k completion. Files: compute4 `~/dojo-data/pmodels/paired_cxsol61.md`, `cxstat_cxsol61.txt`.
