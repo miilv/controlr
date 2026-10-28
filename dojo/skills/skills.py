@@ -285,6 +285,11 @@ class Skills:
         # the precision it needs; logging only (the actions are the same with it off). Also handed to
         # ``provider.on_consume(ev)`` (the runtime's report events)
         self.consume_log = True
+        # how a drop into a container is judged (``library.drop_verdict``): "belief" (today) | "release"
+        self.drop_verdict = "belief"
+        # ``library.put_into``'s options (stream H; empty = today): "spot" (a wider handover search, else a put-back),
+        # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
+        self.put_into_opts: set = set()
         self.consume_events: list = []
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
@@ -663,7 +668,8 @@ class Skills:
         if dz < 0.5 * max(lift_planned, 0.02) or drift > 0.03:
             self.held[pp.arm] = None
             return SkillResult(False, "pick", "grasp_slip", pp.steps, pp.arm, exp, meas,
-                               f"object rose {dz*1000:.0f} mm (planned {lift_planned*1000:.0f}), in-hand drift {drift*1000:.0f} mm")
+                               f"object rose {dz*1000:.0f} mm (planned {lift_planned*1000:.0f}), in-hand drift {drift*1000:.0f} mm"
+                               f" [{pp.grasp.method} {pp.grasp.note}]")
         box = held_box(o, T_rel)
         self.held[pp.arm] = Held(pp.label, T_rel, box, pp.grasp)
         r = SkillResult(True, "pick", "ok", pp.steps, pp.arm, exp, meas,
