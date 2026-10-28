@@ -36,7 +36,8 @@ from dojo.simlab.layout import OBJECT_TYPES, fixtures_from_scene, validate
 if str(paths.RD_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.RD_ROOT))
 
-GENERATOR = "simlab/v14"     # v14: a child on an object without a place_tag takes a random place frame (v13: the first)
+GENERATOR = "simlab/v15"     # v15: solve_equation task semantics (a legal equation, one slot missing; other tasks as v14)
+#                              v14: a child on an object without a place_tag takes a random place frame (v13: the first)
 # Home-pose gripper footprint of both ARX arms (link6 .. fingertips, y up to ~-0.20, from GT) + 3 cm. At home the
 # fingers hang ~15 cm above the table, so only objects taller than ROBOT_KEEPOUT_TOP collide with them;
 # RoboDojo's placement engine does not know the robot (v1 put bottles on the grippers: 9/34 layouts then
@@ -644,6 +645,67 @@ def variant_subseed(seed: int, variant: int, attempt: int, max_tries: int = 40) 
     return seed * 1000 + off + attempt
 
 
+# solve_equation task semantics: copied from feat/dojo-simlab 53022ed ("simlab: generator v13: solve_equation task
+# semantics"), never merged to main; main's records for solve_equation had all four tiles and no missing slot, on
+# which RoboDojo's run_reward crashes (find_missing_list returns a list)
+EQ_OPS = ("plus", "minus", "multiplication", "division")
+
+
+def equation_groups(groups: dict[str, list], rng: random.Random) -> tuple[dict[str, list], dict]:
+    """solve_equation's task semantics, which the config alone does not carry. RoboDojo's reward needs a legal
+    ``a op b = answer`` on the mats, with exactly one of t0/t1/t2/t4(/t5) missing (the policy fills it). Without
+    that, ``find_missing_list`` returns a list and ``run_reward`` crashes. Same convention as the public
+    PhysicalRSI sampler:
+    - a uniform legal single-digit equation;
+    - mat5 + t5 for a two-digit answer;
+    - a uniform missing slot;
+    - digit tiles drawn among the ``number`` assets with index % 10 == digit."""
+    eqs = []
+    for a in range(10):
+        for b in range(10):
+            vals = {"plus": a + b, "minus": a - b, "multiplication": a * b}
+            if b and a % b == 0:
+                vals["division"] = a // b
+            eqs += [(a, op, b, v) for op, v in vals.items() if v >= 0]
+    a, op, b, ans = rng.choice(eqs)
+    values: dict = {0: a, 1: op, 2: b, 4: ans}
+    out = {t: [copy.deepcopy(g) for g in gl] for t, gl in groups.items()}
+    by_label = {lab: (t, g) for t, gl in out.items() for g in gl for lab in ((g.get("select_mode") or {}).get("label") or [])}
+    if ans >= 10:
+        values[4], values[5] = divmod(ans, 10)
+        tm, m4 = by_label["mat4"]
+        m3 = by_label["mat3"][1]
+        step = m4["common"]["xlim"][0] - m3["common"]["xlim"][0]
+        m5 = copy.deepcopy(m4)
+        m5["select_mode"]["label"] = ["mat5"]
+        m5["common"]["xlim"] = [v + step for v in m4["common"]["xlim"]]
+        out[tm].append(m5)
+        tt, t4 = by_label["t4"]
+        t5 = copy.deepcopy(t4)
+        t5["select_mode"]["label"] = ["t5"]
+        t5["common"]["relative_plane"] = "mat5"
+        out[tt].append(t5)
+    missing = rng.choice(sorted(values))
+    for t, gl in out.items():
+        keep = []
+        for g in gl:
+            labs = (g.get("select_mode") or {}).get("label") or []
+            lab = labs[0] if len(labs) == 1 else None
+            if lab is not None and lab[0] == "t" and lab[1:].isdigit():
+                k = int(lab[1:])
+                if k == missing:
+                    continue
+                v = values[k]
+                if isinstance(v, int):
+                    idx = [i for i in available_indices(t, "number") if i % 10 == v]
+                    g["category"] = [{"name": "number", "index": [rng.choice(idx)]}]
+                else:
+                    g["category"] = [{"name": v}]
+            keep.append(g)
+        out[t] = keep
+    return out, {"operands": [a, b], "operator": op, "result": ans, "missing_slot": missing}
+
+
 def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0) -> dict:
     """One layout record for ``task`` (seed >= SEED_BASE). Deterministic in ``seed`` (and ``variant``: v >= 1 is a new
     random draw for the same id, ``variant_subseed``; the twin-trained segmenter's training layouts)."""
@@ -658,7 +720,7 @@ def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0) -> dic
         _KEEPOUT_ON[0] = attempt < max_tries // 2
         sub = variant_subseed(seed, variant, attempt, max_tries)
         try:
-            layout, n_clutter, want = _draw(tcfg, scfg, groups, sub)
+            layout, n_clutter, want, task_meta = _draw(tcfg, scfg, groups, sub, semantics=True)
         except LayoutError as e:
             last = e
             continue
@@ -668,15 +730,18 @@ def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0) -> dic
         layout["_simlab"] = {"task": task, "id": seed, "seed": seed, "attempt": attempt, "generator": GENERATOR,
                              "n_clutter": n_clutter, "clutter_wanted": want,
                              "robot_keepout": _KEEPOUT_ON[0]}
+        if task_meta:
+            layout["_simlab"]["task_semantics"] = task_meta
         if variant:
             layout["_simlab"]["variant"] = variant
         return layout
     raise LayoutError(f"{task} seed {seed}: no valid layout in {max_tries} tries ({last})")
 
 
-def _draw(tcfg: dict, scfg: dict, groups: dict, sub: int) -> tuple[dict, int, int]:
+def _draw(tcfg: dict, scfg: dict, groups: dict, sub: int, semantics: bool = False) -> tuple:
     """One placement attempt of the config with the random streams seeded by ``sub``: (record, clutter placed,
-    clutter wanted); LayoutError when it does not fit."""
+    clutter wanted), + the task semantics drawn (``equation_groups``; None for other tasks) when ``semantics``;
+    LayoutError when it does not fit."""
     task_cats = {e["name"] for gl in groups.values() for g in gl for e in g["category"]}
     np.random.seed(sub % (2**32))
     rng = random.Random(sub)
@@ -685,13 +750,23 @@ def _draw(tcfg: dict, scfg: dict, groups: dict, sub: int) -> tuple[dict, int, in
         x0, y0, x1, y1 = a
         gens["table"].add_box_prohibited_area(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
     layout: dict = {}
+    task_meta = None
+    if semantics and _is_equation(groups):
+        groups, task_meta = equation_groups(groups, rng)
     place_task_objects(groups, gens, rng, layout)
     n_clutter = place_clutter(tcfg.get("Clutter") or [], gens, rng, layout, exclude=task_cats)
     # RoboDojo's own records hold fewer clutter objects than `nums` when the strips are tight
     # (push_T_random eval record: ~13 of 20), so a partial fill is kept, not retried.
     want = sum(int(b.get("nums", 0)) for b in tcfg.get("Clutter") or [])
     layout.update(fixtures_from_scene(scfg))
-    return layout, n_clutter, want
+    return (layout, n_clutter, want, task_meta) if semantics else (layout, n_clutter, want)
+
+
+def _is_equation(groups: dict) -> bool:
+    """solve_equation's config: the mats mat0-mat4 and the answer tile t4 (keyed by the config's labels, as
+    ``equation_groups`` itself)."""
+    labs = {lab for gl in groups.values() for g in gl for lab in ((g.get("select_mode") or {}).get("label") or [])}
+    return {"mat0", "mat1", "mat2", "mat3", "mat4", "t0", "t1", "t2", "t4"} <= labs
 
 
 # template draws: sub-seeds 1, 2, ... Every layout record's sub-seed is seed * 1000 + ... with seed >= SEED_BASE, so

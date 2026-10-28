@@ -166,7 +166,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True,
                 freeze_touched: bool = False, confirm_pose: bool = False, belief_drop: str | None = None,
                 allow_bbox: bool = False, held_request: bool = False, put_into_opts=(),
-                look_read: str | None = None, skill_attrs: dict | None = None) -> dict:
+                look_read: str | None = None, skill_attrs: dict | None = None, routes=()) -> dict:
     """``held_pose`` ("noise" / "gt", mode B): perception's in-hand read answered from GT (``heldsim``), with the
     runtime belief's in-hand transform (implied); ``held_belief``: that belief alone (no read); ``held_looks``: the
     protocol may look / show (``Skills.held_looks``). ``freeze_touched``: an object the robot moved without a grasp keeps
@@ -192,6 +192,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
         return rec
     env = RunnerEnv(run)
     prov = GTProvider(env, assets, instruction=env.instruction)
+    if routes:                                # ``--routes``: planner routes that are off by default (RuntimeConfig.new_routes)
+        prov.notes["routes"] = list(routes)
     if belief_offsets:
         prov = OffsetBeliefProvider(prov, belief_offsets)
     if held_pose or held_belief or freeze_touched or confirm_pose or belief_drop:
@@ -389,7 +391,8 @@ def cmd_run(a) -> None:
                           freeze_touched=a.freeze_touched, confirm_pose=a.confirm_pose, belief_drop=a.belief_drop, allow_bbox=a.allow_bbox,
                           held_request=a.held_pose_request, look_read=a.look_read,
                           put_into_opts=tuple(x for x in (a.put_into or "").split(",") if x),
-                          skill_attrs=dict(x.split("=", 1) for x in a.skill_attr or []))
+                          skill_attrs=dict(x.split("=", 1) for x in a.skill_attr or []),
+                          routes=tuple(x for x in (a.routes or "").split(",") if x))
         if offs or a.mode_b:
             rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b), "held_pose": a.held_pose,
                                 "held_belief": bool(a.held_belief or a.held_pose or a.freeze_touched or a.confirm_pose),
@@ -398,6 +401,7 @@ def cmd_run(a) -> None:
                                 "held_pose_request": bool(a.held_pose_request), "look_read": a.look_read,
                                 "put_into": a.put_into}
         rec["skill_attrs"] = dict(x.split("=", 1) for x in a.skill_attr or [])
+        rec["routes"] = [x for x in (a.routes or "").split(",") if x]
         rec["log"] = logs[-60:]
         rec["code"] = code
         rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
@@ -772,6 +776,7 @@ def main(argv=None) -> None:
     r.add_argument("--held-belief", action="store_true",
                    help="mode B: the runtime belief's in-hand transform (attached at the close), no held_pose (dev)")
     r.add_argument("--no-held-looks", action="store_true", help="the held-pose protocol reads at the hover only (dev)")
+    r.add_argument("--routes", default="", help="planner routes off by default, comma-separated (dojo.skills.routes.NEW_ROUTES)")
     r.add_argument("--put-into", default="", help="library.put_into options, comma-separated: spot,patient,sequence (dev)")
     r.add_argument("--skill-attr", action="append", default=[],
                    help="NAME=VALUE: a Skills switch (SKILL_ATTRS: place_surface=mesh, push_order=lookahead) (dev)")

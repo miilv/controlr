@@ -370,6 +370,14 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   perceiver's `value` and B1's read disagree, `digits.resolve` decides; don't add a second rule. A card's index follows
   its digit (`idx_for_digit`, `asset_for_digit`) so the twin and the planner agree (legality audit P2-6, G2-2, G2-4;
   journal 2026-10-28-legality-card-digit).
+- **solve_equation / arrange_largest_number's tiles are slippery and the pads sit at the edge of the reach.** The
+  `number` tiles' metadata friction is 0.0, and the operator tiles (plus / minus / multiplication / division / equal)
+  are 60 mm discs 8 mm thick. Off-centre grasps, the category's "top" grasps and in-air handovers let them slip.
+  solve_equation's pads lie at y 0: neither arm reaches (0, 0) pointing straight down, and the default 6 cm pre-place
+  over mat1 / mat2 has no IK. `dojo.skills.tiles` takes centred box grasps, a 3 cm pre-place, a relay patch between the
+  arms, and an in-air handover only as the last attempt. main's generator had also lost solve_equation's task
+  semantics (all four tiles and no missing slot, on which RoboDojo's `run_reward` crashes); generator v15 has them
+  again. Its other tasks' draws are byte-identical to v14 (journal 2026-10-28-dojo-newskill-tiles-align).
 
 ## 5. What lives where
 

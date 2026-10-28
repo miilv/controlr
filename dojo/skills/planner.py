@@ -311,6 +311,14 @@ def plan(instruction: str, world: WorldState, ported: bool | dict = False) -> Pl
 
 def _plan(instruction: str, world: WorldState) -> Plan:
     text = (instruction or "").lower()
+    # routes that are off by default (``RuntimeConfig.new_routes`` / G3 ``--routes`` put their names into the
+    # provider's notes): asked first, only when listed; with none listed the planner is unchanged
+    routes = (getattr(world, "notes", None) or {}).get("routes") or ()
+    if routes:
+        from dojo.skills.routes import route as _route
+        r = _route(text, world, routes)
+        if r is not None:
+            return Plan(*r)
     cats = _by_category(world)
     objs = _objects(world)
     named = _named(text, cats)

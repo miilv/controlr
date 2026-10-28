@@ -41,6 +41,7 @@ from .bridge import Bridge
 from .estimate import flagged
 from .firewall import check_obs, sanitize_info
 from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candidates
+from dojo.skills.routes import NEW_ROUTES
 
 
 # The perception service protocol still carries a ``fold`` field (offline dev tools pass a D0 half). The runtime
@@ -285,6 +286,12 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # planner routes that are off by default (stream N, ``dojo.skills.routes.NEW_ROUTES``): "equation" (an equation's
+    # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right),
+    # "align" (identical blocks slid into one aligned row), "row_by_size" (objects of one kind stood in a row by size);
+    # empty = today. Their names go into the provider's
+    # ``notes["routes"]``, which ``planner.plan`` reads
+    new_routes: list = field(default_factory=list)
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -366,6 +373,7 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
+                or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.ported_swap not in ("fixed", "reach")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
@@ -531,6 +539,8 @@ class RuntimePolicy:
                                checker=checker if cfg.resync else None, div_iou=cfg.div_iou, div_prec=cfg.div_prec,
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
+        if cfg.new_routes:
+            prov.notes["routes"] = list(cfg.new_routes)
         prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
         prov.post_place_read = cfg.post_place_read if prov.post_place_refine else "off"
         if cfg.mode == "perception" and cfg.a1 != "off":

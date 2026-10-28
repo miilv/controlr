@@ -430,8 +430,15 @@
 - [ ] **dojo agent: perception is the bottleneck in mode B** (Phase 2, 2026-10-25): stack_bowls 0/6 and build_tower
   100000 0/3 were perception_gross for every model; put_bottles 0/6 were put_into drop misses / pick collisions
   (verify off). The model choice did not change these outcomes ([report](experiments/2026-10-25-agent-e2e.md)).
-- [ ] **dojo agent: align_blocks' set square has no grasp** (skills: 0 feasible / no top candidates); Astra solved
-  one layout by sweeping the blocks with a fingertip `move_to` line. A tool-push skill would make it a skill task.
+- [x] ~~**dojo agent: align_blocks' set square has no grasp** (skills: 0 feasible / no top candidates); Astra solved
+  one layout by sweeping the blocks with a fingertip `move_to` line. A tool-push skill would make it a skill task~~ —
+  `align.align_in_row` (route "align", `RuntimeConfig.new_routes`, default off) slides the blocks with the gripper; the
+  checker never reads the set square (journal 2026-10-28-dojo-newskill-tiles-align).
+- [ ] **dojo skills: solve_equation's tiles from perception.** `tiles.tile_value` takes a `number` tile's digit from
+  `ObjectState.digit` only (GT rows in G3: index % 10) and an operator disc's identity from its category with
+  `identity_known`. Nothing in perception reads either yet (stream W / S: a twin-trained tile classifier); until then a
+  rendered episode looks with a wrist and stops "values unknown". Also no `supervisor.VOCABULARIES` row for
+  solve_equation / arrange_largest_number (catalog fallback).
 
 ## P2 — harness and infrastructure
 

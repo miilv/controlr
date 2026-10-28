@@ -3094,6 +3094,22 @@ from dojo.skills.sweep import SKILLS as _SWEEP_SKILLS  # noqa: E402
 
 SKILLS.update(_SWEEP_SKILLS)
 
+# number / operator tiles onto a row of pads: an equation's missing tile, digits into the largest number (stream N;
+# their planner routes are off unless ``RuntimeConfig.new_routes`` lists them)
+from dojo.skills.tiles import SKILLS as _TILE_SKILLS  # noqa: E402
+
+SKILLS.update(_TILE_SKILLS)
+
+# identical blocks slid into one aligned row (stream N; route off unless ``RuntimeConfig.new_routes`` lists "align")
+from dojo.skills.align import SKILLS as _ALIGN_SKILLS  # noqa: E402
+
+SKILLS.update(_ALIGN_SKILLS)
+
+# objects of one kind stood upright in one row by size (stream N; route "row_by_size", off by default)
+from dojo.skills.rows import SKILLS as _ROW_SKILLS  # noqa: E402
+
+SKILLS.update(_ROW_SKILLS)
+
 # Skills only the planner's routes call, never offered to the LLM agent (its manual and the J2 registry document
 # ``SKILLS``): Mikhail's measured skills through the robot-harness adapter (stream P; routes behind ``ported_routes``,
 # default off)
