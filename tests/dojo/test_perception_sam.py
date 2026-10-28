@@ -247,3 +247,40 @@ def test_series_labels_out(monkeypatch):
     assert [e["label"] for e in rec["Rigid"]["small_cube"]] == ["cube_1", "cube_0"]  # numbered by x
     assert series["rigid2"]["labels"] == ["cube_0", "cube_1"]
     assert [e["label"] for e in rec["Rigid"]["toy"]] == ["rigid0", "rigid0"]  # per-category prefixes kept
+
+
+def test_series_count_from_the_twin_segmenter_and_linked_counts(monkeypatch):
+    """series_count "seg": the distinct head masks of the group's own assets (score >= seg_count_min_score) set the
+    count within the config's range; a linked_count group (arrange's mats, one per digit tile) follows its series."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    tm = {"t": {"labels": {"rigid0": {"select_mode": {"mode": "hierarchical", "select_category_nums": [1, 1],
+                                                      "select_instance_nums": [4, 5], "label_prefix": ["digit"]}},
+                           "geometry0": {"select_mode": {"mode": "linked_count", "linked_label_prefix": "digit",
+                                                         "label_prefix": ["mat"]}}}}}
+    monkeypatch.setattr(il, "task_map", lambda: tm)
+    groups = [{"labels": ["rigid0"], "candidates": ["Rigid/number/00001", "Rigid/number/00002"]},
+              {"labels": ["geometry0"], "candidates": ["Geometry/cube_cushion/00001"]}]
+
+    def det(r, key, score=0.9):
+        m = np.zeros((30, 30), np.uint8)
+        m[r:r + 3, 0:3] = 1
+        return SimpleNamespace(mask=m, key=key, score=score)
+
+    dets = [det(0, "Rigid/number/00001"), det(0, "Rigid/number/00002"), det(5, "Rigid/number/00002"),
+            det(10, "Rigid/number/00001"), det(15, "Rigid/number/00002"), det(20, "Rigid/number/00001", 0.3),
+            det(25, "Geometry/cube_cushion/00001")]
+    out, info = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="seg"), dets=dets)
+    assert info["rigid0"]["seg"] == 4 and out[0]["labels"] == ["rigid0"] * 4      # a duplicate and a 0.3 mask dropped
+    assert out[1]["labels"] == ["geometry0"] * 4 and info["geometry0"] == {"linked": "digit", "n": 4}
+    dets.append(det(28, "Rigid/number/00001", 0.6))
+    out, info = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="seg"), dets=dets)
+    assert len(out[0]["labels"]) == 5 and len(out[1]["labels"]) == 5
+    out, info = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="seg"), dets=None)
+    assert len(out[0]["labels"]) == 4 and out[1]["labels"] == ["geometry0"] * 4    # no server: the minimum
+    out, _ = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="min"))
+    assert out[1]["labels"] == ["geometry0"]                                       # the default is unchanged
