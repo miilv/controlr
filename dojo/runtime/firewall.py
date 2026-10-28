@@ -1,7 +1,8 @@
 """Observation firewall: what may reach the runtime policy.
 
 The policy sees only the official observation contract (research/robodojo-teardown/robodojo-task-anatomy.md
-§5): three RGB frames 480x640, the six proprio fields, the instruction, and the step counters the reference
+§5): three RGB frames 480x640, the six proprio fields (+ optionally RoboDojo's own gripper value per arm under
+``{arm}_ee_joint_state_official``, when the gripper field carries the command: strict v2), the instruction, and the step counters the reference
 adapter also reads (``steps_used`` / ``step_lim``). The proxy render service adds a ``renderer`` label
 (a string naming the renderer, no state). Everything else is refused:
 
@@ -24,6 +25,11 @@ import numpy as np
 CAMS = ("cam_head", "cam_left_wrist", "cam_right_wrist")
 STATE_KEYS = {"left_arm_joint_state": 6, "right_arm_joint_state": 6, "left_ee_pose": 7, "right_ee_pose": 7,
               "left_ee_joint_state": 1, "right_ee_joint_state": 1}
+# Optional per arm: RoboDojo's official ``{arm}_ee_joint_state`` (the APPLIED gripper control) when the path carries it
+# under its own key next to the command: robot-harness's strict server v2 (``eef.<arm>.ee_joint_state_official``,
+# D-C11) and the dev harnesses' ``DOJO_GRIP_SOURCE=v2`` (``dojo.simlab.grip_source``). Part of RoboDojo's own
+# observation, never a simulator reading beyond it. Absent on strict v1 / ``command`` / ``robodojo``.
+OPTIONAL_STATE_KEYS = {"left_ee_joint_state_official": 1, "right_ee_joint_state_official": 1}
 OBS_KEYS = {"images", "state", "instruction", "steps_used", "step_lim"}
 PROXY_META_KEYS = {"renderer"}
 DEV_GT_KEY = "_dev_gt"
@@ -62,10 +68,11 @@ def check_obs(obs: dict, mode: str) -> tuple[dict, list | None]:
         if a.dtype != np.uint8 or a.ndim != 3 or a.shape[2] != 3:
             raise FirewallError(f"{k}: expected HxWx3 uint8 RGB, got {a.dtype} {a.shape}")
     st = obs["state"]
-    if set(st) != set(STATE_KEYS):
-        raise FirewallError(f"state keys {sorted(st)} != contract {sorted(STATE_KEYS)}")
+    if not set(STATE_KEYS) <= set(st) or set(st) - set(STATE_KEYS) - set(OPTIONAL_STATE_KEYS):
+        raise FirewallError(f"state keys {sorted(st)} != contract {sorted(STATE_KEYS)} (+ optional "
+                            f"{sorted(OPTIONAL_STATE_KEYS)})")
     clean_state = {}
-    for k, n in STATE_KEYS.items():
+    for k, n in {**STATE_KEYS, **{k: v for k, v in OPTIONAL_STATE_KEYS.items() if k in st}}.items():
         a = np.asarray(st[k], dtype=float).reshape(-1)
         if a.size != n:
             raise FirewallError(f"state {k}: {a.size} values, expected {n}")
@@ -83,5 +90,5 @@ def sanitize_info(info: dict) -> tuple[dict, list[str]]:
     return keep, sorted(set(info) - INFO_KEYS)
 
 
-__all__ = ["CAMS", "STATE_KEYS", "OBS_KEYS", "DEV_GT_KEY", "INFO_KEYS", "FirewallError", "check_obs",
+__all__ = ["CAMS", "STATE_KEYS", "OPTIONAL_STATE_KEYS", "OBS_KEYS", "DEV_GT_KEY", "INFO_KEYS", "FirewallError", "check_obs",
            "sanitize_info", "MODES"]

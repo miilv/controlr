@@ -12,6 +12,10 @@ measurement) sends the pure command instead, its ``grip_cmd`` (the shim's ``hold
   observation, as the shim initialises ``hold_g``.
 - ``robodojo``: the observation exactly as RoboDojo gives it (the default until 2026-10-27). The strict server v2 is
   to send this value too, under its own key (``ee_joint_state_official``), never in place of the command.
+- ``v2``: robot-harness's strict server v2 (D-C11): the command in ``{arm}_ee_joint_state`` exactly as ``command``,
+  plus RoboDojo's value under its own key ``{arm}_ee_joint_state_official`` (rounded to 1e-4, as the server replies).
+  The runtime reads that key only behind ``RuntimeConfig.grip_check`` (the empty-jaw check, stream H). Rows measured
+  with it are "strict v2 semantics": never in one table with v1 (``command``) rows.
 
 The names avoid robot-harness's ``eef.<arm>.grip_obs``, which its strict v1 server already uses for the command.
 
@@ -26,7 +30,8 @@ import os
 
 import numpy as np
 
-MODES = ("robodojo", "command")
+MODES = ("robodojo", "command", "v2")
+OFFICIAL_SUFFIX = "_official"     # strict v2: eef.<arm>.ee_joint_state_official -> state["<arm>_ee_joint_state_official"]
 ARMS = ("left", "right")
 ENV = "DOJO_GRIP_SOURCE"
 ALIAS = "DOJO_GRIP_OBS"          # deprecated name (PR #104); remove after 2026-10-28
@@ -74,8 +79,10 @@ class GripSource:
         out = dict(state)
         for a in ARMS:
             if _key(a) in out and a in self.cmd:
+                if self.mode == "v2":
+                    out[_key(a) + OFFICIAL_SUFFIX] = np.array([round(float(np.asarray(state[_key(a)], float).reshape(-1)[0]), 4)])
                 out[_key(a)] = np.array([round(self.cmd[a], 4)])
         return out
 
 
-__all__ = ["GripSource", "grip_source_mode", "MODES", "ENV", "ALIAS", "DEFAULT"]
+__all__ = ["GripSource", "grip_source_mode", "MODES", "ENV", "ALIAS", "DEFAULT", "OFFICIAL_SUFFIX"]

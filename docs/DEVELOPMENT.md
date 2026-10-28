@@ -270,6 +270,15 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **Physics-only replays are CPU-bound** (RoboDojo's PhysX runs on the CPU): on a loaded compute3 (load 30) one episode
   replays at ~2-5 steps/s. `scripts/perception/m95_replay.py` loads many episodes of a task in one runner and stops
   after the episode's last gripper change (`--full` for the whole list).
+- **RoboDojo's gripper observation is the APPLIED control, and that makes it a jaw sensor.** `{arm}_ee_joint_state` is
+  the measured finger value at most 0.2 of the range past the target (`process_gripper_val`). Closed on nothing it reads
+  the command itself (0.0 in 87 of 98 empty closes in stream M's replays); closed on an object w wide about
+  `(w/2 + 0.01) / 0.054 - 0.2` (`belief.expected_official`; a 40 mm block 0.33, a 3-5 mm mug wall 0.003-0.05). A
+  1.9 mm coin reads 0.0 held or not, and a mug taken by its hook reads 0.0 a step before the jaws open. The strict
+  server v1 / `DOJO_GRIP_SOURCE=command` hide it (the command in its place); strict v2 / `DOJO_GRIP_SOURCE=v2` add it
+  as `<arm>_ee_joint_state_official` (`RuntimeConfig.grip_check` reads it). Never put it in place of the command
+  (`DOJO_GRIP_SOURCE=robodojo`): held_look and the robot mask read that key as the command (the 14/24 vs 17/25 A/B,
+  experiments 2026-10-27-grip-source-ab).
 - **A garbage-collected pyrender renderer kills every GL context of the process.** `OffscreenRenderer.delete()` (run by
   `__del__`) calls `eglTerminate` on the EGL display, which all pyrender contexts of a process share; the next render
   of ANY other renderer (GL silhouettes, `ColorMeshRenderer`, a `Gallery`) fails with `GLError 12289` in

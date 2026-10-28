@@ -24,6 +24,18 @@
   `/root/visual` (15.6 mm off) but loads as a rigid prim: G3 fasten_screws 10/10 says harmless, unprobed;
   (4) the record's `scale` is not applied to the root offset (every record: 1).
 
+- [ ] **dojo skills: a held read at the place hover for hang / tools / sweep** (stream H; skills change, ~30 steps per
+  place). The in-hand error M's metric scores at those places arises AFTER the lift: on C's per-step hang_mugs
+  sequences the belief was within 2.5-6 mm / 2-7 deg at the lift in 9 of 11 carries, and the mug then swung 9-21 mm /
+  15-21 deg in its wall grasp before the hang; stack_bowls' bowl turned 12-22 deg after the lift. A read at the lift
+  (`held_pose` on the frame of the lift, `scripts/perception/h95_carry_eval.py`) fixed none of it, and held_pose on mugs
+  fits at IoU 0.6-0.8 (out_of_range / ambiguous / no_views). The read has to be where the insertion held read already
+  is: at the pre-place hover (`Skills._held_protocol`), for the non-insertion places, with a fit that can see a mug.
+  Journal 2026-10-28-dojo-h95-held-state.
+- [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
+  (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
+  vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the
+  jaws on another object (11 of M's 98 not_held: the reading > 0 on the wrong object). Logged as `grip_check.width_mm`.
 - [ ] **dojo runtime: log the belief at every grasp / release** (stream M). The grasp-time metric
   (`dojo.perception.grasp_metric`) rebuilds the runtime's belief from the report; what the report does not log (a
   divergence's re-estimate, the twin's nominal outcome under verify, the conveyor tracker's riders between reads) it

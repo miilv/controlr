@@ -7,7 +7,8 @@ tier B, tier A, a future verb that leaks) cannot feed the runtime anything outsi
 * **Whitelist.** ``contract_obs`` builds the runtime's observation (``dojo.runtime.firewall`` contract) from exactly:
   the three RGB frames (the PNGs the server wrote for this obs), per arm the MEASURED joints ``eef.<arm>.q``, the
   MEASURED flange pose ``eef.<arm>.flange`` and the COMMANDED gripper ``eef.<arm>.grip_cmd``, the instruction, and
-  the step counters (``step``; ``step_lim`` from the reset reply's ``step_budget``). Every other reply field (TCP,
+  the step counters (plus, from a strict v2 server, RoboDojo's official gripper value ``eef.<arm>.ee_joint_state_official``
+  under the runtime key ``<arm>_ee_joint_state_official``; robot-harness D-C11) (``step``; ``step_lim`` from the reset reply's ``step_budget``). Every other reply field (TCP,
   ``grip_obs``, ``home_dpos_max_m``, ``at_home``, ``held_look``, image paths, residuals, hints) stays in the backend.
   Camera calibration is never taken from a reply: our perception computes K / T from the public camera config and
   the measured joints (``dojo.perception.cameras.cameras_from_state``), as the server's ``strict_calib.py`` does.
@@ -71,7 +72,9 @@ def check_tier(info: dict) -> str:
 
 
 def state_from_eef(eef: dict) -> dict:
-    """The runtime's six proprio fields from a reply's ``eef`` (measured joints + flange, commanded gripper)."""
+    """The runtime's six proprio fields from a reply's ``eef`` (measured joints + flange, commanded gripper), plus
+    ``<arm>_ee_joint_state_official`` when a strict v2 server sends RoboDojo's own value (its first element; a v1 server
+    or a ``null`` adds nothing). The runtime reads it only behind ``RuntimeConfig.grip_check``."""
     st = {}
     for arm in ARMS:
         e = eef.get(arm)
@@ -86,6 +89,12 @@ def state_from_eef(eef: dict) -> dict:
         st[f"{arm}_arm_joint_state"] = q
         st[f"{arm}_ee_pose"] = pose
         st[f"{arm}_ee_joint_state"] = np.array([float(g)])
+        off = e.get("ee_joint_state_official")
+        if off is not None:
+            v = np.asarray(off, float).reshape(-1)
+            if v.size < 1 or not np.all(np.isfinite(v)):
+                raise ContractViolation(f"eef.{arm}.ee_joint_state_official: {off!r}")
+            st[f"{arm}_ee_joint_state_official"] = v[:1].copy()
     return st
 
 
