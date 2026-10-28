@@ -261,6 +261,9 @@
 
 ## P2 — harness and infrastructure
 
+- [ ] **A G2 replay record on an allowed layout (100000-09)** for the bootstrap smokes: smoke_twin's contact-restore check, smoke_dev_eval and smoke_proxy_eval replay G2 on 110007, inside the reserved >= 100100 range (D-C10a), so they are skipped unless `SMOKE_RESERVED_OK=1` (journal/2026-10-28-dojo-compute2-bootstrap.md).
+- [ ] **Code defaults `RD_HOME=/root/controlr-robodojo` on root boxes** (`rdpy.sh`, `dev_eval.sh`, `paths.py`, `world.py`, `interactive.py`): a job that forgets `source ~/dojo-env.sh` uses whatever that path is. On compute2 it is a symlink to `~/dojo-robodojo` now; the old install there had Eval_Layout.
+
 - [x] ~~**Turn latency, harness side:** execute on the STATUS word with the note + usage read in the background; keep-alive 120 s~~ — `llm.overlap_tail` (default on), `KEEPALIVE_S` (journal/2026-10-04-turn-latency.md)
 - [ ] **`observation.size: 336` A/B for Sonnet** (≈ −0.2 s/turn; 224 px makes Sonnet think — journal/2026-10-04-sonnet-latency.md).
 - [ ] **`observation.jpeg_quality: 75` A/B** (−41 % upload bytes, same image tokens) — success and latency vs 90 on the same seeds.

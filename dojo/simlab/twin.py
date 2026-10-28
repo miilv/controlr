@@ -615,14 +615,17 @@ def contact_restore_fidelity(tw: Twin, g2_dir: Path, split: int = 120, seg: int 
 
 
 def bench(task: str, num_envs: int, n_steps: int, out: Path, physics_only: bool = False,
-          g2_dir: Path | None = None) -> dict:
+          g2_dir: Path | None = None, seeds: tuple[int, int] | None = None) -> dict:
+    """seeds: the first layout's and the new layout's generator seeds (env i adds i); default SEED_BASE + 500 / + 600.
+    Those defaults lie in the reserved >= 100100 range (D-C10a): the bootstrap smoke passes 100000 / 100001."""
     from dojo.simlab.gen_layouts import generate
+    s1, s2 = seeds or (paths.SEED_BASE + 500, paths.SEED_BASE + 600)
     t0 = time.perf_counter()
     tw = Twin(task, num_envs=num_envs, physics_only=physics_only, need_planner=False)
     boot = time.perf_counter() - t0
-    lays = [generate(task, paths.SEED_BASE + 500 + i) for i in range(tw.num_envs)]
-    lays2 = [generate(task, paths.SEED_BASE + 600 + i) for i in range(tw.num_envs)]
-    res = {"task": task, "num_envs": tw.num_envs, "boot_s": boot, "physics_only": physics_only}
+    lays = [generate(task, s1 + i) for i in range(tw.num_envs)]
+    lays2 = [generate(task, s2 + i) for i in range(tw.num_envs)]
+    res = {"task": task, "num_envs": tw.num_envs, "boot_s": boot, "physics_only": physics_only, "seeds": [s1, s2]}
     info = tw.load(lays)
     res["load_first"] = {"close_s": info["close_s"], "reset_s": info["reset_s"], "stable": info["per_env_ok"]}
     info = tw.load(lays2)                               # a NEW layout (what an inverse-layout update costs)
@@ -687,9 +690,14 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", default=str(paths.DATA / "simlab" / "twin_bench"))
     ap.add_argument("--physics-only", action="store_true")
     ap.add_argument("--g2-dir", default=None, help="G2 record dir (stack_*.json) for the contact-restore check")
+    ap.add_argument("--seeds", default=None, help="FIRST,NEW: layout generator seeds of the first and the new layout "
+                    "(default SEED_BASE+500,+600, inside the reserved >= 100100 range)")
     a = ap.parse_args(argv)
+    seeds = tuple(int(x) for x in a.seeds.split(",")) if a.seeds else None
+    if seeds is not None and len(seeds) != 2:
+        ap.error("--seeds FIRST,NEW")
     bench(a.task, a.num_envs, a.steps, Path(a.out), physics_only=a.physics_only,
-          g2_dir=Path(a.g2_dir) if a.g2_dir else None)
+          g2_dir=Path(a.g2_dir) if a.g2_dir else None, seeds=seeds)
 
 
 if __name__ == "__main__":

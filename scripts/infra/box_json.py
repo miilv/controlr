@@ -45,6 +45,12 @@ def step(s: str) -> dict:
             "result": res.read_text().strip() if res.exists() else None}
 
 
+manifests = {}                                          # box_steps.sh manifest DIR NAME: data trees, md5-checked
+for f in sorted(st.glob("manifest_*.json")):
+    try:
+        manifests[f.stem[len("manifest_"):]] = json.loads(f.read_text())
+    except (OSError, ValueError):
+        pass
 smokes = {s: step(s) for s in ("smoke_twin", "smoke_render", "smoke_dev_eval", "smoke_proxy_eval", "smoke_perception",
                                "smoke_bridge")}
 
@@ -78,7 +84,7 @@ out = {
     "ram_gb": {"total": mem.get("MemTotal"), "available": mem.get("MemAvailable")},
     "disk_free_gb": int(disk) if disk.isdigit() else None,
     "os": sh(". /etc/os-release && echo $PRETTY_NAME"),
-    "capabilities": caps, "smokes": smokes,
+    "capabilities": caps, "smokes": smokes, "manifests": manifests,
     "paths": {"env_file": str(h / "dojo-env.sh"), "rd_home": e.get("BOXJ_RD"), "controlr": e.get("BOXJ_CODE"),
               "dojo_data": e.get("BOXJ_DATA"), "perception_data": e.get("BOXJ_PERC"),
               "isaac_sim_6": e.get("BOXJ_I6") if role == "physics" else None},

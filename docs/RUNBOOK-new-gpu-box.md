@@ -84,6 +84,7 @@ Logs:
 | `--assets all` | Every Asset except eval data: 40.6 GB instead of 13.5 GB. The default list covers all 54 task configs. |
 | `--env-file PATH` / `--no-secrets` | Which `.env` to take OMNIROUTE_* from (default: the main checkout's), or skip it. |
 | `--prefix /data` | The big disk is not `$HOME`. `~/dojo-robodojo`, `~/dojo-data`, `~/dojo-perception-data` and `~/dojo-isaac6` become symlinks into `/data`. Venvs and the uv / Kit caches stay in `$HOME` (keep ≥ 30 GB there). |
+| `--shared-home` | HOST's `$HOME` is shared with other people (compute2's `/root`). No `loginctl enable-linger`, no `~/.config/uv/uv.toml`; our pinned uv goes to `~/dojo-bootstrap/tools/uv` (unmanaged install: no receipt, no shell-profile edits) and the home's own `~/.local/bin/uv` stays. `~/DOJO_BOX.md` says the home is shared. Without lingering, a `systemd-run --user` scope lives while the script that started it does (integ_eval.sh and proxy_eval.sh wait for theirs). |
 | `--probe basic` | With `--only preflight`: run ONLY `nvidia-smi`, `df`, `free`, `nproc` on HOST and evaluate here. Use it for another team's box (isr-lab). |
 | `--only S1,S2` / `--skip S` / `--force S` | Run a subset, leave a step out, or redo a done step. `--force data,catalog` refreshes those from compute3. |
 | `--min-disk-gb N`, `--ignore-preflight` | Relax the disk gate, or go on after a NO-GO. Only do this deliberately. |
@@ -178,10 +179,10 @@ Measured on compute3 (Skoltech network: HF ~15-25 MB/s, compute3 → local ~50 M
 | smoke_perception | EGL context on the NVIDIA driver + `eval_g1` on push_T 100000 frame 0 (genuine 5.1). Expected: T 0.5 mm, pad 0.7 mm | — | 1-3 min |
 | smoke_bridge | CPU: `scripts/dojo/bridge_episode.sh --fake` with RuntimePolicy (the launcher path on the fake strict server, 0 LLM calls). Expected: end=ended, 172/550 steps | — | < 1 min |
 | assets_post | `RoboDojo/Assets` link, `curobo.yml` regeneration, `check_assets` over all task configs | — | 1-2 min |
-| smoke_twin | physics-only Twin: boot, load + settle, 40-step rollout, snapshot/restore + 40; G2 contact restore bitwise, or within 0.01 mm (WARN) | — | 2-4 min |
+| smoke_twin | physics-only Twin on generated layouts 100000 / 100001 (`--seeds`): boot, load + settle, 40-step rollout, snapshot/restore + 40. The G2 contact-restore check (bitwise, or within 0.01 mm: WARN) replays layout 110007, in the reserved >= 100100 range, so it runs only with `SMOKE_RESERVED_OK=1` | — | 2-4 min |
 | smoke_render | full: an Isaac Sim 5.1 RTX render of D0 stack_blocks 100000 (3 cameras), compared with isr-lab's genuine 5.1 frame 0 (MAD) | — | 5-15 min (the first RTX boot builds the shader cache) |
-| smoke_dev_eval | full: the official harness (`scripts/simlab/dev_eval.sh`, RoboDojo's `main.py`) on dev layout 110007, replaying G2's `stack` trajectory with the XPolicyLab policy `dojo_replay`. Expected: 1 episode, success 1.0 | — | 4-8 min |
-| smoke_proxy_eval | physics: `scripts/simlab/proxy_eval.sh` (physics-only 5.1 episode + the 6.0 render service in one scope, the heavy lock), replaying the same trajectory. Expected: success, 263/550 steps, ~0.12 s/obs | — | 3-8 min (first 6.0 RTX boot) |
+| smoke_dev_eval | full: the official harness (`scripts/simlab/dev_eval.sh`, RoboDojo's `main.py`) on dev layout 110007, replaying G2's `stack` trajectory with the XPolicyLab policy `dojo_replay`. Expected: 1 episode, success 1.0. Layout 110007 is reserved (D-C10a): skipped unless `SMOKE_RESERVED_OK=1` | — | 4-8 min |
+| smoke_proxy_eval | physics: `scripts/simlab/proxy_eval.sh` (physics-only 5.1 episode + the 6.0 render service in one scope, the heavy lock), replaying the same trajectory. Expected: success, 263/550 steps, ~0.12 s/obs. Same reserved-layout gate as smoke_dev_eval | — | 3-8 min (first 6.0 RTX boot) |
 | ready | `~/dojo-robodojo/READY` + the final `~/dojo-box.json` (capabilities from the smokes) | — | < 1 min |
 
 Order:
@@ -206,6 +207,10 @@ their RoboDojo installs.
   copies to the others.
 - Status by hand: `ssh HOST bash dojo-bootstrap/lib/box_steps.sh poll robodojo assets`.
 - Redo a step: `--force smoke_twin`. Rewrite `~/dojo-box.json` by hand: `ssh HOST bash dojo-bootstrap/lib/box_steps.sh boxjson`.
+- Check a data tree against the origin, and record it in `~/dojo-box.json` (`manifests`):
+  `ref=$(ssh compute3 'bash -s -- manifest ~/dojo-perception-data' < scripts/infra/box_steps.sh | md5sum | cut -c1-32)`, then
+  `ssh HOST bash dojo-bootstrap/lib/box_steps.sh manifest ~/dojo-perception-data perception $ref compute3`. Without a
+  NAME the command only prints the manifest (sorted `md5  path` lines) and writes nothing.
 
 ## 7. When a step fails
 
@@ -213,6 +218,7 @@ their RoboDojo installs.
 |---|---|---|
 | preflight | NO-GO on disk | `--prefix /bigdisk`, or ask for disk. `--min-disk-gb` only for a deliberate partial install. |
 | conventions | `WARN: loginctl enable-linger failed` | `sudo loginctl enable-linger <user>` (an admin). Without it, `systemd-run --user` scopes (proxy_eval, integ_eval, g3) need an open ssh session. |
+| any `systemd-run --user` | `Failed to connect to bus: $DBUS_SESSION_BUS_ADDRESS and $XDG_RUNTIME_DIR not defined` | The session exports no `XDG_RUNTIME_DIR` (tailscale ssh, `su`). `source ~/dojo-env.sh` sets `/run/user/<uid>` when it exists. |
 | secrets | `no OMNIROUTE_* in ...` / skipped | `--env-file` the right `.env`; the agent stream needs it, the rest does not. |
 | robodojo | `fetch ... origin <sha>` fails | GitHub lost the pinned commit (force-push). Copy compute3's checkout and its git dir: `ssh compute3 'tar -C ~/dojo-robodojo/RoboDojo -cf - <sub> .git/modules/<sub>' \| ssh HOST 'tar -C ~/dojo-robodojo/RoboDojo -xf -'`, then re-run. |
 | robodojo | `isaacsim` / `isaaclab` pip errors | Read `~/dojo-robodojo/install.log` and the step log. Re-running resumes (pip cache in `~/dojo-robodojo/.cache/pip`). A missing compiler means preflight `tools`. |
