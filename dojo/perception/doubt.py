@@ -111,7 +111,7 @@ def mark_for_look(record: dict) -> dict:
 
 
 def refine_doubted(record: dict, images: dict, cams: dict, robot_masks: dict, min_d: float = 0.45, min_gain: float = 0.05,
-                   color_M=None, iters: int = 40, cl=None) -> dict:
+                   color_M=None, iters: int = 40, cl=None, b1_views: dict | None = None, w_sil: float = 0.0) -> dict:
     """The continuous feature-metric stage (research R3, ``featmetric.refine`` on the mv3d server) for the Rigid
     objects whose measured feature distance (``_perception.b1_doubt.d``, from ``b1_doubt``) exceeds ``min_d``: a
     refined pose is kept when it lowers the distance by >= ``min_gain``. Frame 0, 207 dev scenes, d > 0.45: gross -9,
@@ -132,6 +132,8 @@ def refine_doubted(record: dict, images: dict, cams: dict, robot_masks: dict, mi
     names = [n for n in ("cam_head", "cam_left_wrist", "cam_right_wrist") if n in images and n in cams]
     if not todo or not names:
         return {"refined": 0, "kept": 0}
+    if w_sil > 0 and b1_views:
+        return _refine_joint(record, todo, images, cams, robot_masks, names, min_gain, color_M, iters, cl, b1_views, w_sil, t0)
     out = cl.fmrefine([images[n] for n in names], [cams[n] for n in names], [(robot_masks or {}).get(n) for n in names],
                       [(k, pose_to_T(r["default_pos"], r["default_ori"])) for k, r in todo], color_M, iters)
     kept = []
@@ -146,5 +148,45 @@ def refine_doubted(record: dict, images: dict, cams: dict, robot_masks: dict, mi
             kept.append(r.get("label"))
         r.setdefault("_perception", {})["fm_refine"] = info
     summ = {"refined": len(todo), "kept": kept, "s": round(time.time() - t0, 3)}
+    record.setdefault("_perception", {})["fm_refine"] = summ
+    return summ
+
+
+def _refine_joint(record, todo, images, cams, robot_masks, names, min_gain, color_M, iters, cl, b1_views, w_sil, t0) -> dict:
+    """The joint objective: the server's feature distance (one fixed window at the start pose) + ``w_sil`` x B1's
+    silhouette loss in B1's own views, Nelder-Mead in this process. Frame 0, 207 dev scenes, w_sil 1.0: gross -7,
+    within +8, 0 right objects broken (feature distance alone: gross -9, +9, 5 into overshoot)."""
+    from . import mv3d
+    from .cameras import R_to_quat_wxyz, pose_to_T
+    from .featmetric import refine_with
+    from .inverse_layout import make_roi_views, roi_loss
+    from .refine import _shape_for
+    from .render import load_asset
+
+    imgs = [images[n] for n in names]
+    cs = [cams[n] for n in names]
+    robs = [(robot_masks or {}).get(n) for n in names]
+    kept = []
+    for k, r in todo:
+        T0 = pose_to_T(r["default_pos"], r["default_ori"])
+        a = load_asset(k)
+        centre = T0[:3, :3] @ ((a.V.min(0) + a.V.max(0)) / 2) + T0[:3, 3]
+        sm = _shape_for(k, T0[:3, :3], None)
+        rvs = make_roi_views(sm, T0, b1_views, mv3d._others_masks(record, b1_views, skip=r))
+        extra = (lambda T, sm=sm, rvs=rvs: roi_loss(sm, T, rvs)[0]) if rvs else None
+
+        def dist(T, k=k, T0=T0):
+            v = cl.featdist(imgs, cs, robs, [(k, T)], color_M, box_pose=T0)["d"][0]
+            return 1.0 if v is None else v
+        T1, f0, f1 = refine_with(dist, T0, centre, iters=iters, extra=extra, w_extra=w_sil)
+        keep = f1 < f0 - min_gain
+        info = {"f0": round(f0, 4), "f1": round(f1, 4), "kept": bool(keep), "w_sil": w_sil,
+                "moved_mm": round(float(np.linalg.norm(T1[:3, 3] - T0[:3, 3])) * 1000, 1)}
+        if keep:
+            r["default_pos"] = [round(float(v), 6) for v in T1[:3, 3]]
+            r["default_ori"] = [round(float(v), 6) for v in R_to_quat_wxyz(T1[:3, :3])]
+            kept.append(r.get("label"))
+        r.setdefault("_perception", {})["fm_refine"] = info
+    summ = {"refined": len(todo), "kept": kept, "w_sil": w_sil, "s": round(time.time() - t0, 3)}
     record.setdefault("_perception", {})["fm_refine"] = summ
     return summ

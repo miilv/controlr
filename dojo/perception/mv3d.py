@@ -703,15 +703,25 @@ class Mv3dClient:
             raise RuntimeError(f"mv3d server: {r['error']}")
         return {"depths": [d.astype(np.float32) for d in r["depths"]], "timings": r.get("timings", {})}
 
-    def featdist(self, images: list[np.ndarray], cams: list[Camera], robots: list, objects: list, color_M=None) -> dict:
-        """Multi-view feature distance (``featmetric``) of each (asset key, 4x4 pose) in ``objects`` over the views."""
-        req = {"op": "featdist", "images": [np.ascontiguousarray(i, np.uint8) for i in images],
-               "cams": [(c.K.tolist(), c.T_wc.tolist(), c.w, c.h) for c in cams],
-               "robots": [None if r is None else np.ascontiguousarray(r, np.uint8) for r in robots],
-               "objects": [(k, np.asarray(T, float).tolist()) for k, T in objects],
-               "color_M": None if color_M is None else np.asarray(color_M, float).tolist()}
+    def featdist(self, images: list[np.ndarray], cams: list[Camera], robots: list, objects: list, color_M=None,
+                 box_pose=None) -> dict:
+        """Multi-view feature distance (``featmetric``) of each (asset key, 4x4 pose) in ``objects`` over the views
+        (``box_pose``: one fixed crop window, see ``FeatureMetric.score``). The views are sent once and cached by the
+        server under a content key; repeated calls on the same frame send only the key."""
+        import hashlib
+
+        vkey = hashlib.sha1(b"".join(np.ascontiguousarray(i, np.uint8).tobytes()[::997] for i in images)
+                            + repr([c.T_wc.round(6).tolist() for c in cams]).encode()).hexdigest()
+        req = {"op": "featdist", "vkey": vkey, "objects": [(k, np.asarray(T, float).tolist()) for k, T in objects],
+               "color_M": None if color_M is None else np.asarray(color_M, float).tolist(),
+               "box_pose": None if box_pose is None else np.asarray(box_pose, float).tolist()}
         self.conn.send(req)
         r = self.conn.recv()
+        if r.get("need_views"):
+            self.conn.send({"images": [np.ascontiguousarray(i, np.uint8) for i in images],
+                            "cams": [(c.K.tolist(), c.T_wc.tolist(), c.w, c.h) for c in cams],
+                            "robots": [None if x is None else np.ascontiguousarray(x, np.uint8) for x in robots]})
+            r = self.conn.recv()
         if "error" in r:
             raise RuntimeError(f"mv3d server: {r['error']}")
         return r
@@ -816,9 +826,10 @@ class _ServerModel:
         views = self._views(req)
         t0 = time.time()
         out = []
+        bp = None if req.get("box_pose") is None else np.array(req["box_pose"])
         for key, T in req["objects"]:
             try:
-                d = float(self.fm.score(key, [np.array(T)], views)[0][0])
+                d = float(self.fm.score(key, [np.array(T)], views, box_pose=bp)[0][0])
                 out.append(d if np.isfinite(d) else None)
             except Exception:  # an asset outside the catalogue, an object no view sees
                 out.append(None)
@@ -850,6 +861,7 @@ def serve(sock: str, weights: str | None = None, max_hours: float = 6.0, M=None,
 
     M = M or _ServerModel(weights, bf16_trunk=bf16_trunk)
     lock = threading.Lock()
+    views_cache: dict = {}
     if os.path.exists(sock):
         os.unlink(sock)
     lst = Listener(sock, family="AF_UNIX")
@@ -863,6 +875,14 @@ def serve(sock: str, weights: str | None = None, max_hours: float = 6.0, M=None,
                 if req.get("op") == "info":
                     conn.send(M.info())
                     continue
+                if req.get("op") == "featdist" and req.get("vkey") is not None:  # views cached by content key
+                    vk = req["vkey"]
+                    if vk not in views_cache:
+                        conn.send({"need_views": True})
+                        views_cache[vk] = conn.recv()
+                        while len(views_cache) > 8:
+                            views_cache.pop(next(iter(views_cache)))
+                    req = {**req, **views_cache[vk]}
                 try:
                     with lock:
                         conn.send(M.handle(req))

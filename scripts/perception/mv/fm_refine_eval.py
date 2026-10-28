@@ -30,12 +30,17 @@ def main(argv=None):
     ap.add_argument("--min-gain", type=float, default=0.02, help="keep the refined pose only if the distance drops this much")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--rigid-only", action="store_true", help="leave Geometry fixtures / Articulations alone")
+    ap.add_argument("--w-sil", type=float, default=0.0, help="add B1's silhouette loss to the objective with this weight")
     a = ap.parse_args(argv)
-    from dojo.perception import d0
-    from dojo.perception.cameras import R_to_quat_wxyz, pose_to_T
+    from dojo.perception import d0, mv3d
+    from dojo.perception.cameras import R_to_quat_wxyz, cameras_from_state, pose_to_T
+    from dojo.perception.eval_g1 import fold_backgrounds
     from dojo.perception.featmetric import FeatureMetric, refine
-    from dojo.perception.mv3d_eval import SET_ALIAS, _b1_record, _score, scene_list, scene_views
+    from dojo.perception.inverse_layout import EstimatorConfig, _views_subset, make_roi_views, roi_loss
+    from dojo.perception.mv3d_eval import BG_FOLDS, SET_ALIAS, _b1_record, _score, scene_list, scene_views
+    from dojo.perception.refine import _shape_for
     from dojo.perception.render import robot_mask
+    from dojo.perception.segment import segment_views
 
     fm = FeatureMetric("dinov2_b")
     b1 = Path(a.b1dump).expanduser()
@@ -57,6 +62,12 @@ def main(argv=None):
             rec0 = _b1_record(meta)
             rec1 = copy.deepcopy(rec0)
             log = []
+            b1views = None
+            if a.w_sil > 0:
+                os.environ["DOJO_BG_FOLDS"] = os.path.expanduser(f"~/dojo-perception-data/{BG_FOLDS.get(root_name, 'bg_folds')}")
+                obs = d0.load_obs(ep, 0)
+                b1views = _views_subset(segment_views(obs["images"], cameras_from_state(obs["state"]), obs["state"],
+                                                      fold_backgrounds(ep), thr=EstimatorConfig().fg_thr), EstimatorConfig(use_wrists=True))
             for typ in (("Rigid",) if a.rigid_only else ("Rigid", "Geometry", "Articulation")):
                 for cat, lst in (rec0.get(typ) or {}).items():
                     for j, r in enumerate(lst):
@@ -67,7 +78,12 @@ def main(argv=None):
                                 dd = float(fm.score(key, [T0], views)[0][0])
                                 if not np.isfinite(dd) or dd <= a.gate_d:
                                     continue
-                            T1, d_start, d_end = refine(fm, key, T0, views, iters=a.iters)
+                            extra = None
+                            if a.w_sil > 0:  # B1's silhouette loss as a second term (its own views, the others masked)
+                                sm = _shape_for(key, T0[:3, :3], None)
+                                rvs = make_roi_views(sm, T0, b1views, mv3d._others_masks(rec0, b1views, skip=r))
+                                extra = (lambda T, sm=sm, rvs=rvs: roi_loss(sm, T, rvs)[0]) if rvs else None
+                            T1, d_start, d_end = refine(fm, key, T0, views, iters=a.iters, extra=extra, w_extra=a.w_sil)
                         except Exception as e:  # an asset outside the catalogue, a view-less object
                             log.append({"label": r.get("label"), "error": f"{type(e).__name__}: {e}"})
                             continue
