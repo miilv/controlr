@@ -27,6 +27,9 @@ Worker environment (on top of j1_adapter.install_env):
                       explains this frame + the extra observations (the scan) better than B1's pose by
                       AGENTIC_ARB_MARGIN (default 0.0; AGENTIC_ARB_PINNED_MARGIN, default 0.15, for objects B1 placed
                       at their config slot); else B1's pose and asset stay (seed_refine.arbitrate)
+  AGENTIC_RISKY_B1    unset (default: off) | a risk, e.g. 0.2: in the arbitration, a pair whose B1 object has a calibrated
+                      risk (``risk``) at or above it keeps the agent's pose without the comparison (seed_refine.arbitrate's
+                      ``risky_b1``; perceiver-models bake-off: +7..+12 fixed objects on every model, 94 frame-0 scenes)
   AGENTIC_TRACK       auto (default: on with gate=budget) | 1 | 0: the episode tracker (dojo.perception.tracker) over the
                       B1-gated calls, initialised from the agent's answer
   AGENTIC_HELD        held_look source: b1_then_agent (default: B1's answer unless its confidence < 0.5 or dark_risk,
@@ -119,6 +122,19 @@ def _chat():
     return _CHAT
 
 
+def _opt_float(v) -> float | None:
+    """A float, or None for unset / empty / off / none."""
+    if v is None or (isinstance(v, str) and v.strip().lower() in ("", "off", "none")):
+        return None
+    return float(v)
+
+
+def arb_kwargs(cfg: dict) -> dict:
+    """``seed_refine.arbitrate``'s keyword arguments from ``_cfg``'s dict."""
+    return {"margin": cfg.get("arb_margin", 0.0), "pinned_margin": cfg.get("arb_pinned_margin", 0.15),
+            "risky_b1": cfg.get("risky_b1")}
+
+
 def _cfg(kw: dict) -> dict:
     import json
 
@@ -139,6 +155,7 @@ def _cfg(kw: dict) -> dict:
             "arbitrate": str(kw.get("arbitrate", os.environ.get("AGENTIC_ARBITRATE", "1"))) not in ("0", "false", "False"),
             "arb_margin": float(kw.get("arb_margin") or os.environ.get("AGENTIC_ARB_MARGIN", 0.0)),
             "arb_pinned_margin": float(kw.get("arb_pinned_margin") or os.environ.get("AGENTIC_ARB_PINNED_MARGIN", 0.15)),
+            "risky_b1": _opt_float(kw["risky_b1"] if "risky_b1" in kw else os.environ.get("AGENTIC_RISKY_B1")),
             "log_dir": Path(kw.get("log_dir") or os.environ.get("AGENTIC_LOG_DIR", str(home / "run" / "agentic")))}
 
 
@@ -546,8 +563,7 @@ def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd
             src = "agent+refine"
             if cfg.get("arbitrate"):
                 views = build_views(imgs, state, cams, bgs, _extra_views(kw.get("extra_obs"), grip_cmd))
-                objects, arb = arbitrate(views, objects, b1.get("objects") or [], margin=cfg.get("arb_margin", 0.0),
-                                         pinned_margin=cfg.get("arb_pinned_margin", 0.15))
+                objects, arb = arbitrate(views, objects, b1.get("objects") or [], **arb_kwargs(cfg))
                 ref_info = list(ref_info or []) + [dict(a, arbitration=True) for a in arb]
                 n_kept = sum(1 for a in arb if a.get("kept") == "b1")
                 if n_kept:

@@ -714,3 +714,20 @@ def test_arbitration_risky_b1_keeps_the_agent_where_b1_is_unsure(monkeypatch):
     assert out[0]["arbitrated"] == "b1"                                          # confident B1: still compared
     assert "arbitrated" not in out[1] and out[1]["pos"][:2] == [-0.12, 0.0]      # unsure B1: the agent stands
     assert {i["label"]: i["kept"] for i in info} == {"shoe": "b1", "car": "agent"}
+
+
+def test_risky_b1_reaches_the_runtime_arbitration_from_the_environment(monkeypatch):
+    """AGENTIC_RISKY_B1 (unset = off) -> _cfg -> arb_kwargs, the arguments finish_answer hands seed_refine.arbitrate;
+    the arbitration's other knobs keep their defaults."""
+    from dojo.perception.agentic import j1
+
+    for k in ("AGENTIC_RISKY_B1", "AGENTIC_ARB_MARGIN", "AGENTIC_ARB_PINNED_MARGIN"):
+        monkeypatch.delenv(k, raising=False)
+    assert j1.arb_kwargs(j1._cfg({})) == {"margin": 0.0, "pinned_margin": 0.15, "risky_b1": None}
+    for off in ("", "off", "none"):
+        monkeypatch.setenv("AGENTIC_RISKY_B1", off)
+        assert j1._cfg({})["risky_b1"] is None
+    monkeypatch.setenv("AGENTIC_RISKY_B1", "0.2")
+    assert j1.arb_kwargs(j1._cfg({})) == {"margin": 0.0, "pinned_margin": 0.15, "risky_b1": 0.2}
+    assert j1._cfg({"risky_b1": None})["risky_b1"] is None                     # a caller's kw wins over the env
+    assert j1._cfg({"risky_b1": 0.3})["risky_b1"] == 0.3
