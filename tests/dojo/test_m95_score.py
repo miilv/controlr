@@ -132,3 +132,12 @@ def test_belief_write_log_replaces_the_per_writer_events():
          "before7": [0.2, 0, 0.8, 1, 0, 0, 0], "after7": [0.25, 0, 0.8, 1, 0, 0, 0]}]}
     w = ms.belief_writes(rep)
     assert [(x["writer"], x["label"]) for x in w] == [("perception", "a"), ("a1", "b")]     # once each, no double count
+
+
+def test_x2_pairs_arms_with_rt():
+    rt = [dict(_ev("grasp", 10, "a"), arm="left"), dict(_ev("grasp", 20, "b", False), arm="left"),
+          dict(_ev("place", 30, "b", False), arm="left")]
+    arm = [dict(_ev("grasp", 10, "a", False), arm="left"), dict(_ev("grasp", 20, "b"), arm="left", verdict="fixed"),
+           dict(_ev("place", 30, "b"), arm="left", verdict="within noise"), dict(_ev("grasp", 99, "c"), arm="left")]
+    line = ms.x2_table(rt, {"J": arm}).splitlines()[-1]
+    assert line == "| J | 3 | 1 | 2 | 1 | 1 | 1 | 1 |"
