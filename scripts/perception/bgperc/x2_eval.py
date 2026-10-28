@@ -271,7 +271,7 @@ class A1Arm:
     """Stream W's A1 tick, imported unchanged (``dojo.runtime.tick.run`` + ``dojo.perception.redetect``), on the arm's
     own belief: the inputs are built the way ``RuntimeProvider.a1_tick`` builds them online (W's interface, 28 Oct)."""
 
-    def __init__(self, name: str, seq, dets_pkl: str | None, rd_cfg=None, tk_cfg=None):
+    def __init__(self, name: str, seq, dets_pkl: str | None, rd_cfg=None, tk_cfg=None, schedule: str = "event"):
         from dojo.perception.redetect import DetSource, RDConfig
         from dojo.runtime.tick import TickConfig, TickState
         self.name, self.seq = name, seq
@@ -283,6 +283,7 @@ class A1Arm:
         self.st = TickState()
         self.last = 0
         self.log: list = []
+        self.schedule = schedule                        # event (J): W's triggers only; always (S): + every stored frame
 
     def setup(self, report, actions, revs, world, scored):
         self.report, self.actions, self.world = report, actions, world
@@ -292,7 +293,8 @@ class A1Arm:
         self.grasp7 = {}                                # (label, grasp step) -> the arm's belief pose at the close
 
     def ticks(self, report, actions, revs) -> list[int]:
-        return sorted(s for s in self.tps if at_or_before(self.seq, s) is not None)
+        ev = {s for s in self.tps if at_or_before(self.seq, s) is not None}
+        return sorted(ev | set(self.seq.steps) if self.schedule == "always" else ev)
 
     def on_grasp(self, label, step, p7):
         self.grasp7[(label, int(step))] = p7
@@ -305,7 +307,7 @@ class A1Arm:
         s, w = int(step), self.world
         trig = self.tps.get(s, [])
         j = at_or_before(self.seq, s)
-        if not trig or j is None:
+        if j is None or (not trig and self.schedule != "always"):
             return {}
         grasped = {lab for k, _a, lab in self.grasps if k <= s}
         fixture = fixture_labels([e for e in self.events if e["step"] <= s], held_now=set(att.values()),
@@ -575,7 +577,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("root")
     ap.add_argument("--arm", default="null", choices=("null", "oracle", "a1"))
-    ap.add_argument("--arm-name", default=None, help="the arm's name in the output (a1: J / S per the frozen tag)")
+    ap.add_argument("--arm-name", default=None, help="the arm's name in the output (J / S)")
+    ap.add_argument("--schedule", default="event", choices=("event", "always"),
+                    help="a1: event = W's triggers only (J); always = + a tick on every stored frame (S)")
     ap.add_argument("--dets-dir", default=None, help="a1: the frozen detection cache, <dir>/<episode>.pkl")
     ap.add_argument("--prepare-dets", action="store_true",
                     help="build --dets-dir: v2b (SEG_WEIGHTS / SEG_CLASSES) on the 3 cameras of the frames, CPU")
@@ -620,6 +624,7 @@ def main():
     f_rt, f_arm = open(od / "rt" / "events.jsonl", "w"), open(od / an / "events.jsonl", "w")
     f_rc, f_tk = open(od / an / "recomputes.jsonl", "w"), open(od / an / "ticks.jsonl", "w")
     misses = 0
+    ticks_ep: list = []
     all_rt, all_arm, all_rc = [], [], []
 
     def log(r):
@@ -627,12 +632,16 @@ def main():
     for n in names:
         seq = sd.Sequence(os.path.join(a.root, "seq", n))
         if a.arm == "a1":
-            arm = A1Arm(an, seq, os.path.join(a.dets_dir, f"{n}.pkl") if a.dets_dir else None)
+            arm = A1Arm(an, seq, os.path.join(a.dets_dir, f"{n}.pkl") if a.dets_dir else None, schedule=a.schedule)
         else:
             arm = OracleArm(seq) if a.arm == "oracle" else NullArm()
         rt_rows, arm_rows, rcs = run_episode(P, seq, arm, floor, log, a.allow_no_probe)
         for t in getattr(arm, "log", []):
             f_tk.write(json.dumps({"episode": n, **t}) + "\n")
+        tl = getattr(arm, "log", [])
+        ticks_ep.append({"episode": n, "ticks": len(tl), "errors": sum("error" in t for t in tl),
+                         "writes": sum(len(t.get("writes") or []) for t in tl),
+                         "wall_s": round(sum(float(t.get("wall_s") or 0) for t in tl), 2)})
         misses += sum(1 for t in getattr(arm, "log", []) if "frozen detection cache" in str(t.get("error")))
         for fh, rows in ((f_rt, rt_rows), (f_arm, arm_rows), (f_rc, rcs)):
             for r in rows:
@@ -644,7 +653,14 @@ def main():
     for fh in (f_rt, f_arm, f_rc, f_tk):
         fh.close()
     nb = [i for i, r in enumerate(all_rt) if r["task"] != "put_bottles_into_dustbin"]
-    summ = {"arm": an, "kind": a.arm, "dets_cache_misses": misses, "all": summarize(all_rt, all_arm, all_rc),
+    cost = None
+    if ticks_ep:
+        cost = {"episodes": len(ticks_ep), "ticks": sum(t["ticks"] for t in ticks_ep),
+                "ticks_per_episode": round(sum(t["ticks"] for t in ticks_ep) / len(ticks_ep), 1),
+                "errors": sum(t["errors"] for t in ticks_ep), "writes": sum(t["writes"] for t in ticks_ep),
+                "tick_wall_s_per_episode": round(sum(t["wall_s"] for t in ticks_ep) / len(ticks_ep), 1)}
+    summ = {"arm": an, "kind": a.arm, "schedule": a.schedule if a.arm == "a1" else None, "dets_cache_misses": misses,
+            "online_cost": cost, "all": summarize(all_rt, all_arm, all_rc),
             "without_put_bottles": summarize([all_rt[i] for i in nb], [all_arm[i] for i in nb],
                                              [c for c in all_rc if "_bottles_" not in c["episode"]])}
     json.dump(summ, open(od / an / "summary.json", "w"), indent=1)
