@@ -138,7 +138,7 @@ def held_drift(frames: dict, track: dict, arm: str, k_grasp: int, gt_label: str,
 
 
 def cmd_score(a) -> None:
-    from dojo.perception.grasp_metric import Footprints, Groups, episode_events, score_event, tcp_track
+    from dojo.perception.grasp_metric import Footprints, Groups, episode_events, flatten_record, score_event, tcp_track
     from dojo.skills.kinematics import X5Kin
 
     out = Path(a.out)
@@ -172,6 +172,7 @@ def cmd_score(a) -> None:
         ev_rows, other = [], Counter()
         moving = any(e.get("kind") == "track_moving" for e in rep.get("events") or [])
         track = tcp_track(acts, kin)
+        rec0 = flatten_record((rep.get("records") or {}).get("initial")) if (rep.get("records") or {}).get("initial") else None
         last_grasp: dict = {}
         for ev, belief in episode_events(rep, acts, kin):
             if ev.kind not in ("grasp", "place"):
@@ -186,6 +187,11 @@ def cmd_score(a) -> None:
                 if d is not None:
                     ev.meta["held_drift_mm"] = round(d, 1)
             s = score_event(ev, belief, f["objects"], task, footprints=fp, groups=g)
+            if rec0 is not None:            # the same event against the frame-0 record (held objects: the runtime's)
+                b0 = {**rec0, **{lab: o for lab, o in belief.items() if str(o.get("source", "")).endswith("held")}}
+                s0 = score_event(ev, b0, f["objects"], task, footprints=fp, groups=g)
+                s["frame0"] = {"clean_r": s0["clean_r"], "clean_required": s0["clean_required"],
+                               "clean_target": s0["clean_target"], "target_cls": s0["required"][0]["cls"]}
             if ev.kind == "grasp" and s["required"][0].get("gt_label"):
                 last_grasp[ev.arm] = (ev.step, s["required"][0]["gt_label"])
             s.update(base)
@@ -270,6 +276,8 @@ def cmd_table(a) -> None:
             print(json.dumps(x))
     elif a.taxonomy:
         print(taxonomy(rows))
+    elif a.frame0:
+        print(frame0_table(rows))
     else:
         print(corr(rows) if a.corr else table(rows, a.by))
 
@@ -329,6 +337,31 @@ def taxonomy(rows: list[dict], R: str = "10") -> str:
         ts.update(src[t])
     lines.append(f"| **all** | {sum(tot.values())} | {', '.join(f'{k} {v}' for k, v in tot.most_common())} | "
                  f"{', '.join(f'{k} {v}' for k, v in ts.most_common())} |")
+    return "\n".join(lines)
+
+
+def frame0_table(rows: list[dict]) -> str:
+    """The runtime's belief at the event vs the frame-0 record on the same events (what the looks, refines and
+    re-reads between frame 0 and the event bought)."""
+    by = defaultdict(list)
+    for r in rows:
+        if r.get("frame0"):
+            by[r["task"]].append(r)
+    lines = ["| task | events | target ok: frame-0 record -> runtime | clean R10: frame-0 -> runtime | fixed / broken (R10) |",
+             "|---|---|---|---|---|"]
+    tot = []
+    for t in sorted(by) + ["**all**"]:
+        rs = tot if t == "**all**" else by[t]
+        if t != "**all**":
+            tot += rs
+        n = len(rs)
+        if not n:
+            continue
+        a0, a1 = sum(r["frame0"]["clean_target"] for r in rs), sum(r["clean_target"] for r in rs)
+        c0, c1 = sum(r["frame0"]["clean_r"]["10"] for r in rs), sum(r["clean_r"]["10"] for r in rs)
+        fx = sum(r["clean_r"]["10"] and not r["frame0"]["clean_r"]["10"] for r in rs)
+        br = sum(not r["clean_r"]["10"] and r["frame0"]["clean_r"]["10"] for r in rs)
+        lines.append(f"| {t} | {n} | {a0} -> {a1} | {c0} -> {c1} | {fx} / {br} |")
     return "\n".join(lines)
 
 
@@ -400,6 +433,7 @@ def main(argv=None) -> None:
     t.add_argument("--corr", action="store_true", help="episode outcome vs the clean rate per threshold")
     t.add_argument("--taxonomy", action="store_true", help="unclean events per task by first failure and belief source")
     t.add_argument("--fails", action="store_true", help="one JSON line per unclean event (R10)")
+    t.add_argument("--frame0", action="store_true", help="the runtime's belief vs the frame-0 record, same events")
     t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)
     {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table}[a.cmd](a)

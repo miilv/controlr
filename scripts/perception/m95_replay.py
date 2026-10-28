@@ -29,9 +29,11 @@ ARMS = ("left", "right")
 def snap(run) -> dict:
     rows = []
     for o in run.objects_gt(0):
-        if not o.get("label") or o.get("pos") is None:
+        if o.get("pos") is None or not (o.get("label") or o.get("clutter")):
             continue
-        rows.append({k: o.get(k) for k in ("label", "type", "category", "category_idx", "clutter", "pos", "quat")})
+        r = {k: o.get(k) for k in ("label", "type", "category", "category_idx", "clutter", "pos", "quat")}
+        r["label"] = r["label"] or f"clutter:{o.get('inst_name')}"     # a distractor: a neighbour, never a target
+        rows.append(r)
     s = run.obs_state(0)
     return {"objects": rows,
             "flange": {arm: [float(v) for v in np.asarray(s[f"{arm}_ee_pose"]).reshape(-1)[:7]] for arm in ARMS},

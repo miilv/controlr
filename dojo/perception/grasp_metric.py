@@ -453,7 +453,7 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
            "phantoms": [p for p in phant if p["dist_m"] <= max(radii)], "meta": ev.meta}
     out["clean_target"] = bool(req[0]["ok"])
     out["clean_required"] = all(r["ok"] for r in req)
-    out["clean_r"], out["reasons"] = {}, {}
+    out["clean_r"], out["reasons"], out["clean_r_noclutter"] = {}, {}, {}
     for R in radii:
         tag = str(int(round(R * 100)))
         bad = [f"{r['role']} {r['label']} {r['cls']}" + (f" {r['xy_mm']:.0f}mm" if r.get("xy_mm") is not None else "")
@@ -463,6 +463,8 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
         bad += [f"phantom {p['label']} ({p['nearest_gt_mm']:.0f}mm from any GT)" for p in out["phantoms"] if p["dist_m"] <= R]
         out["clean_r"][tag] = not bad
         out["reasons"][tag] = bad
+        clut = {n["label"] for n in out["neighbours"] if n.get("clutter")}
+        out["clean_r_noclutter"][tag] = not [b for b in bad if not any(b.startswith(f"neighbour {c} ") for c in clut)]
     out["clean"] = out["clean_r"].get("10", next(iter(out["clean_r"].values())))
     return out
 
