@@ -19,9 +19,17 @@ Write rules (reviewer, 28 Oct; rendered arm 9's fasten_screws loss):
   is gross (> ``gross_mm``) and two views / two ticks agree;
 - a collapsed object flips again only at 2 x margin over 2 ticks;
 - the pad volume of an empty close is falsified: no hypothesis inside it is taken;
-- a candidate whose footprint overlaps a believed, not-active object by > ``max_overlap`` of the smaller is rejected
+- a candidate whose footprint overlaps a believed, not-active object by > ``max_overlap`` of the smaller is rejected,
+  and so is a write onto another object's final footprint (``blocking_overlap``: same height layer, not a static
+  support / container, not resting one on the other)
   (an elongated neighbour; a look-alike already believed there);
 - an active object with no supported hypothesis is marked uncertain (never re-asserted at a falsified pose).
+
+Trigger kinds: close_empty / slip / release / lift (``triggers_from_events``), hover (pick / place, with a corridor),
+contact (the perception's swept-volume suspects), and ``periodic`` (label None: an always-on schedule's tick between
+events). A periodic tick activates no object and seeds nothing: only the touched objects, the contact suspects and
+"missing" promotions are active, under the same write rules, so it can confirm (a second tick), flag or relocate only
+what any tick could.
 """
 from __future__ import annotations
 
@@ -64,7 +72,7 @@ class TickConfig:
 
 @dataclass
 class Trigger:
-    kind: str                          # close_empty | release | slip | lift | contact | hover
+    kind: str                          # close_empty | release | slip | lift | contact | hover | periodic
     step: int
     arm: str | None = None
     label: str | None = None
@@ -243,7 +251,7 @@ def decide(resp: dict, objs: list[dict], triggers: list[Trigger], st: TickState,
                     if lab2 == lab or fp is None:
                         continue
                     fp2 = final_fp.get(lab2, (resp.get("footprints") or {}).get(lab2))
-                    if fp2 is not None and _poly_overlap(fp, fp2) > cfg.max_overlap:
+                    if fp2 is not None and blocking_overlap(fp, fp2) > cfg.max_overlap:
                         why = f"overlap:{lab2}"
                         break
             evid["why"] = why
@@ -353,6 +361,31 @@ def _poly_overlap(a, b) -> float:
     return abs(_area(_clip(a, b))) / sm if sm > 1e-12 else 0.0
 
 
+REST_TOL_M = 0.005          # a top this close under the other's bottom: one rests on the other
+LAYER_FRAC = 0.5            # two objects share a layer when their heights overlap by this share of the smaller
+
+
+def blocking_overlap(a, b) -> float:
+    """How much candidate ``a`` blocks on object ``b`` (footprints {"xy": hull, "z": [lo, hi] | None, "static": bool};
+    a bare hull = xy only): 0 when ``b`` is a static support / container (Geometry, Articulation: a bottle into the
+    bin, a nut on its bolt), when one rests on the other (a block on a block) or when their heights overlap by less
+    than ``LAYER_FRAC`` of the smaller; else the xy overlap / the smaller footprint. Two identical pieces in one layer
+    and a lock-on to a neighbour stay refused. Shared by the perception's per-hypothesis guard and ``decide``'s
+    final-footprint guard."""
+    a = a if isinstance(a, dict) else {"xy": a}
+    b = b if isinstance(b, dict) else {"xy": b}
+    if a.get("xy") is None or b.get("xy") is None or b.get("static"):
+        return 0.0
+    za, zb = a.get("z"), b.get("z")
+    if za is not None and zb is not None:
+        if zb[1] <= za[0] + REST_TOL_M or za[1] <= zb[0] + REST_TOL_M:
+            return 0.0
+        ov = min(za[1], zb[1]) - max(za[0], zb[0])
+        if ov < LAYER_FRAC * min(za[1] - za[0], zb[1] - zb[0]):
+            return 0.0
+    return _poly_overlap(a["xy"], b["xy"])
+
+
 # --------------------------------------------------------------------------------------------- the shared entry point
 def run(obs: dict, objs: list[dict], held: dict, triggers: list[Trigger], meta: dict, st: TickState, cfg: TickConfig,
         client, step: int, touched=(), q_path: dict | None = None, held_path: dict | None = None, corridor=None,
@@ -404,6 +437,33 @@ def triggers_from_events(new_events: list[dict], released: list[tuple], attached
     return trig
 
 
+def held_path_from_log(log: list[tuple], sampled: dict, keys: dict) -> dict:
+    """Which object each arm carried at each sampled q of the contact sweep, so a release tick still sweeps the carry:
+    ``log`` [(idx, arm, label | None, T_tcp_obj | None)] in idx order (from executed action idx on, the arm holds
+    ``label`` at that in-hand pose; None: nothing), ``sampled`` {arm: [executed index of each q in q_path[arm]]},
+    ``keys`` {label: asset key}. Returns {arm: [{"i0", "i1", "label", "key", "T_tcp_obj"}]}: q_path[arm][i0:i1] carried
+    it. Online: ``RuntimeProvider`` logs the kinematic belief's attachments; offline: the recorded grasps / releases."""
+    out: dict = {}
+    for arm, idxs in sorted(sampled.items()):
+        ent = [e for e in log if e[1] == arm]
+        segs: list = []
+        j, cur = 0, None
+        for i, k in enumerate(idxs):
+            while j < len(ent) and ent[j][0] <= k:
+                cur, j = j, j + 1
+            e = ent[cur] if cur is not None else None
+            if e is None or e[2] is None or keys.get(e[2]) is None:
+                continue
+            if segs and segs[-1]["i1"] == i and segs[-1]["_e"] == cur:
+                segs[-1]["i1"] = i + 1
+            else:
+                segs.append({"i0": i, "i1": i + 1, "label": e[2], "key": keys[e[2]],
+                             "T_tcp_obj": np.asarray(e[3], float).reshape(4, 4).tolist(), "_e": cur})
+        if segs:
+            out[arm] = [{k: v for k, v in sg.items() if k != "_e"} for sg in segs]
+    return out
+
+
 def fixture_labels(events: list[dict], held_now=(), grasps=()) -> set:
     """Labels a fixture holds now: the online rule (``RuntimeProvider._fixture_held``) on a recorded run. A label is in
     when its latest ``belief_drop`` event with how "held by a fixture" / "on a fixture" is later than its latest grasp
@@ -433,4 +493,4 @@ def rose_evidence(events: list[dict], label: str, grasp_step: int, release_step:
 
 
 __all__ = ["TickConfig", "Trigger", "Discrepancy", "TickState", "build_request", "decide", "seeds_for", "run",
-           "triggers_from_events", "fixture_labels", "rose_evidence"]
+           "triggers_from_events", "held_path_from_log", "fixture_labels", "rose_evidence", "blocking_overlap"]

@@ -351,35 +351,37 @@ def support(key: str, p7, scene: Scene, dets_by_cam: dict, exclude: dict | None 
     return out
 
 
-def footprint(key: str, p7) -> np.ndarray:
-    """World-xy convex hull of the asset's mesh at a pose (float32, K x 2)."""
+def footprint(key: str, p7) -> dict:
+    """The asset's mesh at a pose for the overlap guards: {"xy": world-xy convex hull (K x 2, rounded), "z": [lo, hi],
+    "static": a Geometry / Articulation asset (a support or container: never blocks)}."""
     import cv2
 
     from .cameras import pose_to_T
     from .render import load_asset, transform
 
-    W = transform(load_asset(key).Vs, pose_to_T(p7[:3], p7[3:7]))[:, :2].astype(np.float32)
-    return cv2.convexHull(W).reshape(-1, 2)
+    W = transform(load_asset(key).Vs, pose_to_T(p7[:3], p7[3:7]))
+    hull = cv2.convexHull(W[:, :2].astype(np.float32)).reshape(-1, 2)
+    return {"xy": [[round(float(a), 5), round(float(b), 5)] for a, b in hull],
+            "z": [round(float(W[:, 2].min()), 5), round(float(W[:, 2].max()), 5)],
+            "static": str(key).split("/")[0] in ("Geometry", "Articulation")}
 
 
 def footprint_overlap(key: str, p7, others: list[dict]) -> list:
-    """[label, overlap / the smaller footprint's area] of the most overlapped other object (footprint hulls in xy)."""
-    import cv2
+    """[label, overlap] of the most blocking other object (``tick.blocking_overlap``: the same rule as ``decide``'s
+    final-footprint guard)."""
+    from dojo.runtime.tick import blocking_overlap
 
     try:
         a = footprint(key, p7)
     except Exception:  # noqa: BLE001
         return [None, 0.0]
-    aa = float(cv2.contourArea(a))
     best = [None, 0.0]
     for o in sorted(others, key=lambda x: x["label"]):
         try:
             b = footprint(o["key"], o["pose7"])
         except Exception:  # noqa: BLE001
             continue
-        inter, _ = cv2.intersectConvexConvex(a, b)
-        sm = min(aa, float(cv2.contourArea(b)))
-        f = float(inter) / sm if sm > 1e-9 else 0.0
+        f = blocking_overlap(a, b)
         if f > best[1]:
             best = [o["label"], round(f, 3)]
     return best
@@ -389,9 +391,12 @@ def footprint_overlap(key: str, p7, others: list[dict]) -> list:
 def contact_suspects(q_path: dict, objs: list[dict], held: dict, cfg: RDConfig, model=None,
                      held_path: dict | None = None) -> list[str]:
     """Labels whose bbox (+ ``contact_margin_m``) the arm swept since the last tick: every link's mesh points (FK on the
-    joints of ``q_path`` {arm: [q6, ...]}: the executed actions since the last tick) and the held object's mesh points
-    riding the TCP (``held_path`` {arm: {"key", "T_tcp_obj"}}). Held objects are not suspects."""
+    joints of ``q_path`` {arm: [q6, ...]}: the executed actions since the last tick) and the mesh points of what the arm
+    carried, riding the TCP (``held_path`` {arm: [{"i0", "i1", "label", "key", "T_tcp_obj"}]}: q_path[arm][i0:i1]
+    carried it, ``tick.held_path_from_log``; a release tick still sweeps the carry). Objects held now are not suspects,
+    nor is a carried object by its own points."""
     from .cameras import pose_to_T
+    from .held import tcp_T
     from .render import load_asset, robot_link_meshes
     from .robot_model import X5Model
 
@@ -400,31 +405,36 @@ def contact_suspects(q_path: dict, objs: list[dict], held: dict, cfg: RDConfig, 
     rng = np.random.default_rng(0)
     pts_local = {ln: V[rng.choice(len(V), min(len(V), cfg.contact_pts_per_link), replace=False)]
                  for ln, (V, F) in sorted(meshes.items())}
-    P = []
-    hp = {}
-    for arm, h in sorted((held_path or {}).items()):
-        try:
-            Vh = np.asarray(load_asset(h["key"]).Vs, float)
-            hp[arm] = (Vh[rng.choice(len(Vh), min(len(Vh), cfg.contact_pts_per_link), replace=False)],
-                       np.asarray(h["T_tcp_obj"], float).reshape(4, 4))
-        except Exception:  # noqa: BLE001
-            continue
-    from .held import tcp_T
+    carried = {}                                         # arm -> [(i0, i1, label, points, T_rel)]
+    for arm, segs in sorted((held_path or {}).items()):
+        if isinstance(segs, dict):                       # one object over the whole path
+            segs = [{**segs, "i0": 0, "i1": len(q_path.get(arm) or [])}]
+        for sg in segs:
+            try:
+                Vh = np.asarray(load_asset(sg["key"]).Vs, float)
+            except Exception:  # noqa: BLE001
+                continue
+            carried.setdefault(arm, []).append(
+                (int(sg["i0"]), int(sg["i1"]), sg.get("label"),
+                 Vh[rng.choice(len(Vh), min(len(Vh), cfg.contact_pts_per_link), replace=False)],
+                 np.asarray(sg["T_tcp_obj"], float).reshape(4, 4)))
+    P, src = [], []
     for arm in sorted(q_path):
-        for q in q_path[arm]:
+        for i, q in enumerate(q_path[arm]):
             q6 = np.asarray(q, float)[:6]
             links = model.fk_world(arm, q6)
             for ln, Vl in pts_local.items():
                 if ln in links:
                     T = links[ln]
                     P.append(Vl @ T[:3, :3].T + T[:3, 3])
-            if arm in hp:
-                Vh, T_rel = hp[arm]
-                T = tcp_T(arm, q6, model) @ T_rel
-                P.append(Vh @ T[:3, :3].T + T[:3, 3])
+                    src.append(None)
+            for i0, i1, lab, Vh, T_rel in carried.get(arm, ()):
+                if i0 <= i < i1:
+                    T = tcp_T(arm, q6, model) @ T_rel
+                    P.append(Vh @ T[:3, :3].T + T[:3, 3])
+                    src.append(lab)
     if not P:
         return []
-    P = np.concatenate(P)
     held_labels = set(held.values())
     out = []
     for o in objs:
@@ -436,10 +446,13 @@ def contact_suspects(q_path: dict, objs: list[dict], held: dict, cfg: RDConfig, 
             continue
         T = pose_to_T(o["pose7"][:3], o["pose7"][3:7])
         lo, hi = np.asarray(a.info["bbox_min"], float), np.asarray(a.info["bbox_max"], float)
-        loc = (P - T[:3, 3]) @ T[:3, :3]
-        inside = np.all((loc >= lo - cfg.contact_margin_m) & (loc <= hi + cfg.contact_margin_m), axis=1)
-        if inside.any():
-            out.append(o["label"])
+        for Pk, sk in zip(P, src):
+            if sk == o["label"]:
+                continue
+            loc = (Pk - T[:3, 3]) @ T[:3, :3]
+            if np.all((loc >= lo - cfg.contact_margin_m) & (loc <= hi + cfg.contact_margin_m), axis=1).any():
+                out.append(o["label"])
+                break
     return sorted(out)
 
 
@@ -579,7 +592,7 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
             h["overlap"] = footprint_overlap(o["key"], h["pose7"], [x for x in free if x["label"] != lab
                                                                     and x["label"] not in active])
             try:
-                h["footprint"] = [[round(float(a), 5), round(float(b), 5)] for a, b in footprint(o["key"], h["pose7"])]
+                h["footprint"] = footprint(o["key"], h["pose7"])
             except Exception:  # noqa: BLE001
                 h["footprint"] = None
         hyps[lab] = hs
@@ -612,7 +625,7 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
     fps = {}
     for o in free:                                        # every object's footprint now (decide's overlap with writes)
         try:
-            fps[o["label"]] = [[round(float(a), 5), round(float(b), 5)] for a, b in footprint(o["key"], o["pose7"])]
+            fps[o["label"]] = footprint(o["key"], o["pose7"])
         except Exception:  # noqa: BLE001
             continue
     return {"dets_hash": dets_hash(dets), "n_dets": {c: len(v) for c, v in dets.items()}, "footprints": fps,

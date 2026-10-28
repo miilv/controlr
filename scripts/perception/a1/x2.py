@@ -69,17 +69,40 @@ def patched_tracker(G, before_tick, ticks: list[int], hook):
     to it first, then ``hook(bt, step)``."""
     Base = G.BeliefTracker
 
+    class AttLog(dict):
+        """The tracker's ``attached``, logging every change as (action idx, arm, label | None, T_tcp_obj | None): the
+        input of ``tick.held_path_from_log``, like ``RuntimeProvider``'s attach log online."""
+
+        def __init__(self, bt):
+            super().__init__()
+            self.bt = bt
+
+        def __setitem__(self, arm, v):
+            super().__setitem__(arm, v)
+            self.bt.att_log.append((self.bt.at, arm, v[0], np.asarray(v[1], float)))
+
+        def pop(self, arm, *d):
+            had = arm in self
+            r = super().pop(arm, *d)
+            if had:
+                self.bt.att_log.append((self.bt.at, arm, None, None))
+            return r
+
     class P(Base):
         def __init__(self, *a, **k):
             super().__init__(*a, **k)
             self._ticks = sorted(set(ticks))
+            self.at, self.att_log = 0, []
+            self.attached = AttLog(self)
 
         def advance(self, upto: int) -> None:
             while self._ticks and self._ticks[0] <= upto:
                 s = self._ticks.pop(0)
                 Base.advance(self, s)
+                self.at = s + 1
                 hook(self, s)
             Base.advance(self, upto)
+            self.at = upto + 1                       # episode_events attaches / releases at step upto + 1
 
     G.BeliefTracker = P
     try:
@@ -138,7 +161,7 @@ def run_episode(ep: str, seq, report, actions, src, rd_cfg, tk_cfg, use_contact:
     from dojo.perception import grasp_metric as G
     from dojo.perception.redetect import Scene, redetect
     from dojo.perception.release_read import small_object
-    from dojo.runtime.tick import TickState, fixture_labels, run
+    from dojo.runtime.tick import TickState, fixture_labels, held_path_from_log, run
 
     task = seq.task
     fp, groups = G.Footprints(), G.Groups(task)
@@ -198,9 +221,11 @@ def run_episode(ep: str, seq, report, actions, src, rd_cfg, tk_cfg, use_contact:
             c = np.asarray(snap[hov[0].label]["pos"], float)
             cor = [c.tolist(), (c + [0, 0, 0.12]).tolist()]
         qp = q_path(actions, last_tick[0], s) if use_contact else {}
+        sampled = {arm: [k for k in range(last_tick[0], min(s, len(actions)), 3)
+                         if f"{arm}_arm_joint_state" in actions[k]] for arm in qp}
         last_tick[0] = s
-        hp = {arm: {"key": snap[lab]["key"], "T_tcp_obj": np.asarray(v[1], float).tolist()}
-              for arm, v in bt.attached.items() for lab in [v[0]] if lab in snap and len(v) > 1} if use_contact else {}
+        hp = held_path_from_log(bt.att_log, sampled, {lab: o.get("key") for lab, o in snap.items()}) \
+            if use_contact else {}
         close_tcp = {t.label: np.asarray(track[t.arm][min(s, len(track[t.arm]) - 1)])[:3, 3].tolist()
                      for t in trig if t.kind == "close_empty" and t.arm in track}
         fr = seq.frame(j)

@@ -574,22 +574,95 @@ def test_contact_sweeps_the_held_object_riding_the_tcp(world, monkeypatch):
 
 
 def test_the_provider_sweeps_every_executed_action_since_the_last_tick():
-    """M2 online: q_path is every 3rd executed action since the last TICK (not since the last refresh), and the held
-    objects ride their TCP (held_path)."""
+    """M2 online: q_path is every 3rd executed action since the last TICK (not since the last refresh), and what each
+    arm carried along it rides its TCP, from the attach log: a release tick still sweeps the carry."""
     prov, b = _prov()
     prov.a1, prov.a1_client = "apply", _Client()
     q = lambda v: {"left_arm_joint_state": [v] * 6 + [0.0], "right_arm_joint_state": [0.0] * 7}   # noqa: E731
     b.executed = [q(0.01 * i) for i in range(9)]
-    prov.belief.attached["right"] = ("block_2", np.eye(4))
-    prov.a1_tick(b.obs, [Trigger("hover", 9, "left", "block_1")])
+    T = np.eye(4)
+    T[2, 3] = 0.05
+    prov.belief.attached["right"] = ("block_2", T)                    # carried from action 0 ...
+    prov._a1_log_attach(0)
+    prov.belief.attached.pop("right")                                 # ... released at action 5
+    prov._a1_log_attach(5)
+    prov.a1_tick(b.obs, [Trigger("release", 9, "right", "block_2")])
     r = prov.a1_client.reqs[-1]
     assert [x[0] for x in r["q_path"]["left"]] == pytest.approx([0.0, 0.03, 0.06])
-    assert r["held_path"]["right"]["key"] == prov.belief.objects["block_2"].asset.key
+    seg = r["held_path"]["right"]
+    assert [(x["i0"], x["i1"], x["label"]) for x in seg] == [(0, 2, "block_2")]   # q 0 and 3 carried it, q 6 not
+    assert seg[0]["key"] == prov.belief.objects["block_2"].asset.key and seg[0]["T_tcp_obj"][2][3] == 0.05
     b.executed += [q(0.5), q(0.6)]
     prov.a1_tick(b.obs, [])                                               # no trigger: no tick, nothing consumed
     b.executed += [q(0.7)]
     prov.a1_tick(b.obs, [Trigger("hover", 12, "left", "block_1")])
-    assert [x[0] for x in prov.a1_client.reqs[-1]["q_path"]["left"]] == pytest.approx([0.5])
+    r = prov.a1_client.reqs[-1]
+    assert [x[0] for x in r["q_path"]["left"]] == pytest.approx([0.5]) and not r.get("held_path")
+
+
+def test_held_path_from_log_segments_the_carries():
+    from dojo.runtime.tick import held_path_from_log
+    T = np.eye(4)
+    log = [(2, "left", "a", T), (8, "left", None, None), (9, "right", "b", T), (11, "left", "c", T)]
+    hp = held_path_from_log(log, {"left": [0, 3, 6, 9, 12], "right": [0, 3, 6, 9, 12]}, {"a": "ka", "b": "kb", "c": "kc"})
+    assert [(x["i0"], x["i1"], x["label"], x["key"]) for x in hp["left"]] == [(1, 3, "a", "ka"), (4, 5, "c", "kc")]
+    assert [(x["i0"], x["i1"], x["label"]) for x in hp["right"]] == [(3, 5, "b")]
+    assert held_path_from_log(log, {"left": [0, 1]}, {"a": "ka"}) == {}
+
+
+def test_a_release_tick_flags_the_neighbour_the_carry_swept(world, monkeypatch):
+    """The reviewer's M2 case: the arm carried an object over a neighbour, then released it; at the release tick
+    nothing is held, the carry's segment of the path still sweeps the neighbour, and the carried object is not a
+    suspect by its own points."""
+    from dojo.perception import held as H
+    from dojo.perception import render
+    RD = world.RD
+    monkeypatch.setattr(render, "robot_link_meshes", lambda: {})
+    nb = _pose(0.0, -0.1)
+    Ts = []
+    for x in (-0.2, 0.0, 0.2):                                          # the TCP passes over the neighbour
+        T = np.eye(4)
+        T[:3, 3] = [x, -0.1, nb[2] + 2 * HZ + 0.005]
+        Ts.append(T)
+    monkeypatch.setattr(H, "tcp_T", lambda arm, q, model=None: Ts[int(round(q[0]))].copy())
+    model = SimpleNamespace(fk_world=lambda arm, q: {})
+    carried = _pose(0.2, -0.1)                                          # released at the end of the path
+    objs = [{"label": "nb", "key": "Rigid/box/00000", "pose7": nb},
+            {"label": "car", "key": "Rigid/box/00000", "pose7": carried}]
+    qp = {"left": [[0.0] * 6, [1.0] * 6, [2.0] * 6]}
+    seg = [{"i0": 0, "i1": 3, "label": "car", "key": "Rigid/box/00000", "T_tcp_obj": np.eye(4).tolist()}]
+    assert RD.contact_suspects(qp, objs, {}, RD.RDConfig(), model=model, held_path={"left": seg}) == ["nb"]
+    seg_late = [{**seg[0], "i0": 2}]                                    # carried only over the last q: misses nb
+    assert RD.contact_suspects(qp, objs, {}, RD.RDConfig(), model=model, held_path={"left": seg_late}) == []
+
+
+def test_the_overlap_guard_allows_supports_containers_and_stacks():
+    """Reviewer round 3: an overlap blocks only within one height layer and never against a static support /
+    container. A bottle into the bin and a block on a believed block are allowed; two same-key pieces on one spot are
+    refused."""
+    from dojo.runtime.tick import blocking_overlap
+    sq = _sq(0.0, 0.0)
+    bin_ = {"xy": _sq(0.0, 0.0, 0.08), "z": [0.75, 0.95], "static": True}
+    bottle = {"xy": sq, "z": [0.76, 0.96], "static": False}
+    assert blocking_overlap(bottle, bin_) == 0.0
+    assert blocking_overlap(bottle, {**bin_, "static": False}) > 0.2                 # a movable box in its layer
+    block, lower = {"xy": sq, "z": [0.80, 0.83]}, {"xy": sq, "z": [0.77, 0.80]}
+    assert blocking_overlap(block, lower) == 0.0 and blocking_overlap(lower, block) == 0.0
+    assert blocking_overlap(block, {"xy": sq, "z": [0.80, 0.83]}) == pytest.approx(1.0)   # one spot, one layer
+    assert blocking_overlap(block, {"xy": sq, "z": [0.82, 0.90]}) == 0.0            # < half the smaller height
+    assert blocking_overlap(sq, sq) == pytest.approx(1.0)                           # bare hulls: xy only
+
+
+def test_the_per_hypothesis_guard_uses_the_same_rule(world):
+    RD = world.RD
+    at = _pose(0.0, -0.1)
+    on_top = _pose(0.0, -0.1, z=at[2] + 2 * HZ)
+    others = [{"label": "o", "key": "Rigid/box/00000", "pose7": at}]
+    assert RD.footprint_overlap("Rigid/box/00000", at, others)[1] == pytest.approx(1.0)
+    assert RD.footprint_overlap("Rigid/box/00000", on_top, others)[1] == 0.0
+    assert RD.footprint_overlap("Rigid/box/00000", at, [{**others[0], "key": "Geometry/bin/00000"}])[1] == 0.0
+    fp = RD.footprint("Geometry/bin/00000", at)
+    assert fp["static"] and fp["z"][1] - fp["z"][0] == pytest.approx(2 * HZ, abs=1e-4)
 
 
 def test_a_far_hover_relocation_rehovers_over_the_new_pose():
@@ -608,3 +681,46 @@ def test_a_far_hover_relocation_rehovers_over_the_new_pose():
     out = pol._refine_hook(prov, None, "block_1", "left", "pick")
     assert out and np.allclose(out["rehover"][0], found[:3]) and np.allclose(o.pos, found[:3])
     assert any(e["kind"] == "a1_rehover" for e in pol.report["events"])
+
+
+def test_decide_writes_into_a_bin_and_onto_a_block_but_not_onto_a_same_layer_piece():
+    good = {"cam_head": [0.9, 900, 1.0, 0.9], "cam_left_wrist": [0.9, 6000, 1.0, 0.9]}
+    bad = {"cam_head": [0.0, 900, 1.0, None]}
+    objs = [{"label": "a", "key": "Rigid/bottle/00000", "pose7": _pose(0.0, -0.1), "touched": True}]
+
+    def resp(other, z):
+        cand = {"xy": _sq(0.2, -0.1), "z": z}
+        return {"hyps": {"a": [{"src": "incumbent", "pose7": _pose(0.0, -0.1), "support": bad,
+                                "footprint": {"xy": _sq(0.0, -0.1), "z": [0.75, 0.78]}},
+                               {"src": "det:cam_head:0", "pose7": _pose(0.2, -0.1), "support": good, "fit_iou": 0.9,
+                                "footprint": cand}]},
+                "assignment": {"a": ["cam_head", 0, 1]}, "active": {"a": "release"}, "dets_hash": "h",
+                "footprints": {"o": other}}
+
+    trig = [Trigger("release", 9, "left", "a")]
+    into_bin = {"xy": _sq(0.2, -0.1, 0.08), "z": [0.75, 0.95], "static": True}
+    w, _ = decide(resp(into_bin, [0.76, 0.90]), objs, trig, TickState(), APPLY, 10)
+    assert "a" in w
+    block = {"xy": _sq(0.2, -0.1), "z": [0.75, 0.78], "static": False}
+    w, _ = decide(resp(block, [0.78, 0.81]), objs, trig, TickState(), APPLY, 10)     # on the believed block
+    assert "a" in w
+    w, ds = decide(resp(block, [0.75, 0.78]), objs, trig, TickState(), APPLY, 10)    # the same spot, same layer
+    assert w == {} and any(d.evidence.get("why") == "overlap:o" for d in ds)
+
+
+def test_a_periodic_tick_activates_and_seeds_nothing():
+    """The always-on arm (S): Trigger("periodic", s) between events. No object is active because of it and nothing is
+    seeded; the touched objects stay active under the normal rules (here a second tick confirms a small object)."""
+    objs = [{"label": "b", "key": "Rigid/box/00000", "pose7": _pose(0.0, -0.1), "small": True, "touched": True},
+            {"label": "c", "key": "Rigid/box/00000", "pose7": _pose(0.2, -0.1)}]
+    per = [Trigger("periodic", 20)]
+    req = build_request(objs, {}, per, touched={"b"})
+    assert {r["label"]: (r["active"], r["seeds"]) for r in req["objects"]} == {"b": ("touched", []), "c": (None, [])}
+    assert req["lift"] == [] and req["corridor"] is None
+    st = TickState()
+    one = {"cam_head": [0.9, 900, 1.0, 0.9]}
+    r = _resp("b", {"cam_head": [0.0, 900, 1.0, None]}, one, _pose(0.03, -0.1), src="own:cam_head:0", active="touched")
+    w, _ = decide(r, objs, per, st, APPLY, 20)
+    assert w == {} and "b" in st.pending                              # small: one view, first tick
+    w, _ = decide(r, objs, [Trigger("periodic", 22)], st, APPLY, 22)
+    assert "b" in w                                                   # the next tick confirms it

@@ -485,6 +485,8 @@ class RuntimeProvider:
         self._a1_ev_i = 0
         self._a1_lifted: set = set()
         self._a1_n_exec = 0                     # executed actions already swept by a tick
+        self._a1_att_log: list = []             # [(executed idx, arm, label | None, T_tcp_obj | None)]: the carries
+        self._a1_att: dict = {}                 # arm -> (label, T_tcp_obj) as last logged
         self._ver_pose: dict = {}               # label -> (pose7, asset key) at the last version bump
         self._fixture_held: set = set()         # labels a fixture took at their release (drop_rest)
         self.post_place_read_cfg: dict = {}
@@ -550,6 +552,8 @@ class RuntimeProvider:
                 self._predict(s_end - (len(new) - 1 - i), vb)
             self.belief.step(a)
             self.touched.update(self.belief.held_labels())
+            if self.a1 != "off":
+                self._a1_log_attach(self.n_seen + i)
         if self.belief.drop_events:
             self.events.extend({"kind": "belief_drop", "step": self.bridge.steps_used, **e} for e in self.belief.drop_events)
             # A1: an object a fixture took (a mug on its hook, a nut on its thread) belongs to the kinematic belief
@@ -1364,6 +1368,22 @@ class RuntimeProvider:
                 att.append((arm, lab, g[1], g[0], float(self.kin.tcp(arm, self.belief.q[arm])[2, 3])))
         return triggers_from_events(new, rel, att, self._a1_lifted, int(self.bridge.steps_used))
 
+    def _a1_log_attach(self, idx: int) -> None:
+        """Log a change of what an arm carries (after executed action ``idx``): the contact sweep of the next tick
+        moves the carried object with its TCP over the whole carry, even when the tick comes after the release."""
+        for arm in ARMS:
+            cur, last = self.belief.attached.get(arm), self._a1_att.get(arm)
+            if cur is None and last is None:
+                continue
+            if cur is not None and last is not None and cur[0] == last[0] and np.allclose(cur[1], last[1], atol=1e-6):
+                continue
+            ent = None if cur is None else (cur[0], np.asarray(cur[1], float).copy())
+            self._a1_att_log.append((idx, arm, None if ent is None else ent[0], None if ent is None else ent[1]))
+            if ent is None:
+                self._a1_att.pop(arm, None)
+            else:
+                self._a1_att[arm] = ent
+
     def a1_tick(self, obs: dict, triggers: list, corridor=None) -> list:
         """One tick (``dojo.runtime.tick.run``: the same lines as the offline X2 harness): the perception op "redetect" on
         this observation, ``decide``'s write rules, the writes (mode "apply") into the belief, Discrepancies into the
@@ -1403,19 +1423,26 @@ class RuntimeProvider:
                                  "lift_m": float(self.belief.released_lift.get(t.label, 0.0)), "rose": rose}
             if t.kind == "close_empty" and t.arm and t.arm in getattr(self.belief, "grasp_tcp", {}):
                 close_tcp[t.label] = [float(v) for v in self.belief.grasp_tcp[t.arm]]
-        # every executed action since the last tick (every 3rd): the arm's actual path, not an interpolation
+        # every executed action since the last tick (every 3rd): the arm's actual path, not an interpolation; what each
+        # arm carried along it rides its TCP (the attach log: a release tick still sweeps the carry)
+        from .tick import held_path_from_log
         allx = self.bridge.executed
-        q_path = {}
+        q_path, sampled = {}, {}
         for a in ARMS:
             key = f"{a}_arm_joint_state"
-            qs = [list(map(float, np.asarray(x[key], float).reshape(-1)[:6])) for x in allx[self._a1_n_exec::3]
-                  if key in x]
-            if qs:
-                q_path[a] = qs
-        self._a1_n_exec = len(allx)
-        held_path = {a: {"key": self.belief.objects[lab].asset.key, "T_tcp_obj": np.asarray(T, float).tolist()}
-                     for a, (lab, T) in self.belief.attached.items()
-                     if lab in self.belief.objects and self.belief.objects[lab].asset is not None}
+            idx = [k for k in range(self._a1_n_exec, len(allx), 3) if key in allx[k]]
+            if idx:
+                q_path[a] = [list(map(float, np.asarray(allx[k][key], float).reshape(-1)[:6])) for k in idx]
+                sampled[a] = idx
+        keys = {lab: o.asset.key for lab, o in self.belief.objects.items() if o.asset is not None}
+        held_path = held_path_from_log(self._a1_att_log, sampled, keys)
+        n1 = self._a1_n_exec = len(allx)
+        # keep only what the next tick can need: each arm's last entry before its first action, and any later ones
+        keep = {}
+        for e in self._a1_att_log:
+            if e[0] < n1:
+                keep[e[1]] = e
+        self._a1_att_log = sorted(keep.values(), key=lambda e: e[0]) + [e for e in self._a1_att_log if e[0] >= n1]
         step = int(self.bridge.steps_used)
         try:
             writes, ds, resp = run(obs, objs, held, triggers, meta, st, cfg, self.a1_client, step,
