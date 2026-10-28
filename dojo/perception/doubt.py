@@ -9,8 +9,8 @@ Two independent measurements per record object (both from the mv3d GPU server, `
   surface vs the measured one.
 
 ``doubt`` = d > ``feat_d`` or |dh| > ``dh_mm`` (mode ``or``), or both (``and``). On 1016 frame-0 dev objects (95
-gross / overshoot): ``or`` at 0.55 / 15 mm flags 61 of 95 wrong objects with 8.6 % false flags on right ones; ``and`` at
-0.45 / 10 mm flags 43 at 2.5 % (experiments/2026-10-28-mv3d-learned-depth and its E3 follow-up).
+gross / overshoot; d alone: AUC 0.91): ``or`` at 0.6 / 15 mm flags 67 of 95 wrong objects at 7.7 % false flags on right
+ones, at 0.55 / 15 mm 73 at 10 %; d > 0.6 alone 60 at 2.4 % (experiments/2026-10-28-e3-featmetric).
 
 Written per object as ``_perception.b1_doubt`` = {"d", "dh_mm", "doubt", "why"} and per record as
 ``_perception.b1_doubt`` = {"labels", "thr", "s"}. Consumers (each behind its own flag): the agentic gate
@@ -31,7 +31,7 @@ def _entries(record: dict):
                 yield typ, cat, r
 
 
-def annotate(record: dict, d: dict, dh: dict, feat_d: float = 0.55, dh_mm: float = 15.0, mode: str = "or") -> list[str]:
+def annotate(record: dict, d: dict, dh: dict, feat_d: float = 0.6, dh_mm: float = 15.0, mode: str = "or") -> list[str]:
     """Write the per-object doubt from measured feature distances ``d`` and height mismatches ``dh`` (both keyed by
     ``id(entry)``; a missing value = not measured). Returns the doubted labels."""
     out = []
@@ -53,7 +53,7 @@ def annotate(record: dict, d: dict, dh: dict, feat_d: float = 0.55, dh_mm: float
 
 
 def b1_doubt(record: dict, images: dict, cams: dict, robot_masks: dict, heights: np.ndarray | None = None,
-             feat_d: float = 0.55, dh_mm: float = 15.0, mode: str = "or", color_M=None, cl=None) -> dict:
+             feat_d: float = 0.6, dh_mm: float = 15.0, mode: str = "or", color_M=None, cl=None) -> dict:
     """Measure and annotate (see the module doc). ``heights``: the learned head height map when the caller already has
     it. Without a server: {"skipped": ...} and no annotation."""
     from . import mv3d
@@ -108,3 +108,43 @@ def mark_for_look(record: dict) -> dict:
         if (p.get("b1_doubt") or {}).get("doubt"):
             p["doubt_look"] = True
     return out
+
+
+def refine_doubted(record: dict, images: dict, cams: dict, robot_masks: dict, min_d: float = 0.45, min_gain: float = 0.05,
+                   color_M=None, iters: int = 40, cl=None) -> dict:
+    """The continuous feature-metric stage (research R3, ``featmetric.refine`` on the mv3d server) for the Rigid
+    objects whose measured feature distance (``_perception.b1_doubt.d``, from ``b1_doubt``) exceeds ``min_d``: a
+    refined pose is kept when it lowers the distance by >= ``min_gain``. Frame 0, 207 dev scenes, d > 0.45: gross -9,
+    within tolerance +9 net, 0 right objects broken into gross (5 into overshoot). Annotates
+    ``_perception.fm_refine`` per object. Returns a summary ({"skipped"} without a server)."""
+    from . import mv3d
+    from .cameras import R_to_quat_wxyz, pose_to_T
+
+    t0 = time.time()
+    cl = cl or mv3d.client()
+    if cl is None:
+        return {"skipped": f"no mv3d server at ${mv3d.ENV_ADDR}"}
+    todo = []
+    for typ, cat, r in _entries(record):
+        d = ((r.get("_perception") or {}).get("b1_doubt") or {}).get("d")
+        if typ == "Rigid" and d is not None and d > min_d:
+            todo.append((f"{typ}/{cat}/{int(r['category_idx']):05d}", r))
+    names = [n for n in ("cam_head", "cam_left_wrist", "cam_right_wrist") if n in images and n in cams]
+    if not todo or not names:
+        return {"refined": 0, "kept": 0}
+    out = cl.fmrefine([images[n] for n in names], [cams[n] for n in names], [(robot_masks or {}).get(n) for n in names],
+                      [(k, pose_to_T(r["default_pos"], r["default_ori"])) for k, r in todo], color_M, iters)
+    kept = []
+    for (k, r), T1, a, b in zip(todo, out["poses"], out["d0"], out["d1"]):
+        keep = a is not None and b is not None and b < a - min_gain
+        T1 = np.asarray(T1, float)
+        info = {"d0": a, "d1": b, "kept": bool(keep),
+                "moved_mm": round(float(np.linalg.norm(T1[:3, 3] - np.asarray(r["default_pos"], float))) * 1000, 1)}
+        if keep:
+            r["default_pos"] = [round(float(v), 6) for v in T1[:3, 3]]
+            r["default_ori"] = [round(float(v), 6) for v in R_to_quat_wxyz(T1[:3, :3])]
+            kept.append(r.get("label"))
+        r.setdefault("_perception", {})["fm_refine"] = info
+    summ = {"refined": len(todo), "kept": kept, "s": round(time.time() - t0, 3)}
+    record.setdefault("_perception", {})["fm_refine"] = summ
+    return summ

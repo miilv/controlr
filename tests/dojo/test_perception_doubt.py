@@ -41,6 +41,14 @@ class _Fake:
     def handle(self, req):
         if req.get("op") == "featdist":  # the first object looks wrong, the rest right
             return {"d": [0.8] + [0.2] * (len(req["objects"]) - 1), "timings": {}}
+        if req.get("op") == "fmrefine":  # every object moves 1 cm in x; only the first one's distance drops enough
+            poses = []
+            for _, T in req["objects"]:
+                T = np.array(T)
+                T[0, 3] += 0.01
+                poses.append(T.tolist())
+            n = len(poses)
+            return {"poses": poses, "d0": [0.8] + [0.5] * (n - 1), "d1": [0.3] + [0.48] * (n - 1), "timings": {}}
         cams = [mv3d.Camera(f"v{i}", np.array(K), np.array(T), int(w), int(h)) for i, (K, T, w, h) in enumerate(req["cams"])]
         return {"depths": [np.nan_to_num(mv3d.table_depth(c)).astype(np.float16) for c in cams], "timings": {}}
 
@@ -128,3 +136,25 @@ def test_look_macro_flags_and_plans_doubted_objects(monkeypatch):
     assert look.look_plan({}, rec) == []
     plan = look.look_plan({}, doubt.mark_for_look(rec))
     assert plan and plan[0]["purpose"] == "doubt" and plan[0]["label"] == "c" and plan[0]["arm"] == "right"
+
+
+def test_refine_doubted_keeps_only_real_gains(server):
+    rec = _rec()
+    a, b, c = rec["Rigid"]["block"]
+    a["_perception"] = {"b1_doubt": {"d": 0.8, "doubt": True}}
+    b["_perception"] = {"b1_doubt": {"d": 0.5, "doubt": False}}
+    c["_perception"] = {"b1_doubt": {"d": 0.3, "doubt": False}}  # below min_d: not refined
+    head = head_camera()
+    summ = doubt.refine_doubted(rec, {"cam_head": np.zeros((480, 640, 3), np.uint8)}, {"cam_head": head}, {},
+                                min_d=0.45, min_gain=0.05)
+    assert summ["refined"] == 2 and summ["kept"] == ["a"]
+    assert a["default_pos"][0] == pytest.approx(0.01) and b["default_pos"][0] == pytest.approx(0.1)
+    assert a["_perception"]["fm_refine"]["kept"] is True and b["_perception"]["fm_refine"]["kept"] is False
+    assert "fm_refine" not in c["_perception"]
+
+
+def test_fm_refine_flag_default_off():
+    from dojo.perception.inverse_layout import EstimatorConfig
+
+    c = EstimatorConfig()
+    assert c.fm_refine is False and c.b1_doubt is False
