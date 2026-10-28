@@ -6,6 +6,12 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo infra: compute2's physics differ from compute3 / compute4's.** Never replay a compute3 / compute4 recording on
+  compute2, and never split an A/B pair across boxes. Same RoboDojo commit (f57e163) and isaacsim 5.1.0, but different
+  CPUs (i9-13900KF vs 14900KF), and the Robots asset trees checksum differently on all three boxes. On compute2,
+  c4b_bottles_gcon_100000 (recorded on compute4) is 0.002 mm off at the settled start, 2 mm by step 161, 77 mm later;
+  its dev_gt_probe drifts from the 2nd close. compute3 physics-only replays reproduce compute4 at 0.0 mm, and compute2
+  is self-consistent (rendered == physics-only, bitwise). Cause not isolated (journal 2026-10-28-dojo-bgperc §7).
 - [ ] **dojo perception: robot-harness's G2 review, matching and refine findings (deferred, need rendered
   validation).** From their G1F verification's "For Ilia" list (journal 2026-10-28-legality-for-ilia-unknowns):
   G2-5 `add_unmentioned` / `seed_refine` pair by XY across categories (a T on its pad can take the pad's pose /
