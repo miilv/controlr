@@ -83,6 +83,52 @@ def with_watch_read(occ: dict, read: dict | None) -> dict:
     return out
 
 
+# mode B: a watch-confirmed opponent move also moves that opponent piece in the belief (the planner's collision model
+# and the grasp-time metric see it on the board; 2026-10-28, proxy tic-tac-toe 100004: opponent_piece0 sat on the board's
+# centre for the last 5 events while the belief kept it at its start, "neighbour not found")
+OPP_INTO_BELIEF = True
+OPP_EMPTY_PREC = 0.3          # a believed start place is "clearly empty" below this head precision ...
+OPP_MIN_PX = 40               # ... over at least this many front-most pixels
+
+
+def opponent_into_belief(sk: Skills, board: str, cells, k: int, pieces: list[str], opponent: list[str],
+                         top: float) -> dict:
+    """The watch saw an opponent piece land in cell ``k``; nothing of ours moved it, so the belief still has every
+    opponent piece at its start. Move the one whose believed place is now CLEARLY EMPTY in the head view (perception
+    check: front-most predicted pixels that are foreground < ``OPP_EMPTY_PREC``), and only when exactly one is: the
+    provider's ``confirm_pose`` then has to prefer the cell in the head view too (the second-look rule) before the
+    belief moves. Two gates, so a piece still at its place never moves: none empty (occluded, or the read was wrong),
+    or two empty (we cannot tell which one went where) changes nothing. G3 / no checker: nothing (the world is GT)."""
+    prov = sk.provider
+    chk = getattr(prov, "checker", None)
+    if chk is None or not hasattr(chk, "check") or getattr(prov, "confirm_pose", None) is None:
+        return {"moved": None, "why": "no head check"}
+    w = sk.refresh()
+    occ = board_state(w, board, cells, pieces, opponent)
+    on = {lab for _side, lab in occ.values()}
+    cand = [lab for lab in opponent if lab in w.objects and lab not in on]
+    if not cand:
+        return {"moved": None, "why": "every opponent piece is believed on the board"}
+    try:
+        res = chk.check(prov.bridge.observe(), [w.obj(lab) for lab in cand] +
+                        [o for o in w.task_objects() if o.label not in cand]) or {}
+    except Exception as e:  # noqa: BLE001 (an optional update)
+        return {"moved": None, "why": f"check error {type(e).__name__}"}
+    scored = {}
+    for lab in cand:
+        h = (res.get(lab) or {}).get("head") or {}
+        if h.get("prec") is not None and int(h.get("n_vis") or 0) >= OPP_MIN_PX:
+            scored[lab] = round(float(h["prec"]), 3)
+    empty = [lab for lab, p in scored.items() if p < OPP_EMPTY_PREC]
+    if len(empty) != 1:
+        return {"moved": None, "why": f"{len(empty)} clearly empty start places", "prec": scored}
+    lab = empty[0]
+    r = sk.confirm_moved(lab, rest_pose(sk, lab, np.asarray(cells[k][1], float)[:2], top),
+                         why=f"watch: an opponent piece landed in cell {k}")
+    return {"moved": lab if (r or {}).get("adopted") else None, "prec": scored,
+            "why": "confirmed" if (r or {}).get("adopted") else "the head view did not prefer the cell"}
+
+
 def choose_cell(occ: dict, lines: list, n_cells: int, cost=None, skip=()) -> int | None:
     """Tic-tac-toe move for "own": win, block, centre, a corner opposite the opponent's, any corner, an edge;
     equal choices by ``cost(cell)``. Boards that are not 3 x 3: the cheapest empty cell."""
@@ -208,13 +254,15 @@ def place_piece(sk: Skills, candidates: list[str], xy, z_bottom: float, ignore=(
 
 
 def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: list[str], after_land: int = 60,
-                    max_wait: int = 200, quiet: int = 2, tol_xy: float = 0.008) -> dict:
+                    max_wait: int = 200, quiet: int = 2, tol_xy: float = 0.008,
+                    opp_into_belief: bool | None = None) -> dict:
     """Turn-based placement game against a scripted opponent on a board's cells (support frames ``cell...``): on
     our turn put one of ``pieces`` on an empty cell (tic-tac-toe rules on a 3 x 3 board: win, block, centre,
     corners, edges), open both grippers, take both arms home; then hold still until a new opponent piece rests
     in a cell and ``after_land`` more steps have passed (its arm returns home after the release; moving while it
     moves fails the episode). Ends when the board is full or our pieces are used up. Everything is read from the
     observed scene: which pieces sit in which cells, whether they are still."""
+    opp_into_belief = OPP_INTO_BELIEF if opp_into_belief is None else bool(opp_into_belief)
     w = sk.refresh()
     b = w.obj(board)
     cells = board_cells(b)
@@ -297,6 +345,10 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
                 except BudgetExceeded:
                     return "budget"
                 sk.refresh()
+                if opp_into_belief:
+                    for k in new_opp:
+                        sk.log(f"[game] cell {k} -> belief: "
+                               f"{opponent_into_belief(sk, board, cells, int(k), pieces, opponent_pieces, top)}")
                 return "moved"
             if sk.ex.steps_used - t0 > max_wait:
                 return "timeout"
