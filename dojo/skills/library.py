@@ -462,6 +462,18 @@ def button_top(sk: Skills, label: str) -> np.ndarray:
     return o.pos + o.R @ np.array([0.0, 0.0, float(o.asset.bbox_max[2])])
 
 
+def _consume_button(sk: Skills, label: str, arm: str | None) -> None:
+    """Consumer event for a press on button ``label`` (logging only): its belief pose; the fingertips must land on the
+    cap (half its smaller horizontal size) and travel ``CAP_DEPTH`` (the checker counts < 5 mm of travel as pressed:
+    the stroke's 3 mm margin is the depth precision)."""
+    try:
+        o = sk.world.obj(label)
+        sk._consume("press", label, o.T, {"xy_mm": 500.0 * float(np.min(o.asset.extents[:2])),
+                                          "z_mm": (CAP_DEPTH - 0.005) * 1000.0}, "press", arm)
+    except Exception:  # noqa: BLE001 (logging only)
+        pass
+
+
 def press_sequence(sk: Skills, presses: list[tuple[str, int]]) -> dict:
     """Press each (button, n) in order with a full press-and-release per count; the arm nearer each
     button presses; the other arm hovers over its next button meanwhile (no extra press)."""
@@ -502,6 +514,7 @@ def press_sequence(sk: Skills, presses: list[tuple[str, int]]) -> dict:
                 hov = _hover(sk, a2, t2)
                 if hov is not None and sk.clear_of(p, hov, min_dist=0.14):
                     plans.append(hov)
+        _consume_button(sk, lab, arm)
         try:
             sk.parallel(plans, name=f"press {lab} x{n}")
         except (BudgetExceeded, EpisodeEnded) as e:
@@ -527,6 +540,7 @@ def press_once(sk: Skills, button: str) -> SkillResult:
     if not isinstance(p, SkillResult) and not sk.clear_of(p, ArmPlan(other, sk.ex.q[other].copy(), sk.ex.g[other]),
                                                           min_dist=0.14):
         sk.ex.run({other: sk.plan_home(other)}, name=f"clear {other}")
+    _consume_button(sk, button, arm)
     r = sk.press(arm, top, 1, depth=CAP_DEPTH, clearance=CAP_CLEAR, hold_down=1, hold_up=2)
     if not r.ok:
         r = sk.press("right" if arm == "left" else "left", top, 1, depth=CAP_DEPTH, clearance=CAP_CLEAR,
@@ -2284,6 +2298,10 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: flo
                     except (BudgetExceeded, EpisodeEnded) as e:
                         return sk._record(SkillResult(False, "press_joint", "step_budget", 0, other, note=str(e)))
                 try:
+                    # consumer event (logging only): the part's top must take the fingertips (half its smaller
+                    # horizontal size), the stroke overshoots the joint's travel by ``over``
+                    sk._consume("press_joint", label, o.T, {"xy_mm": 500.0 * float(np.min((hi - lo)[:2])),
+                                                            "z_mm": over * 1000.0}, "press", a, tag=tag)
                     r = sk.ex.run({a: pl}, name=f"press {label}/{tag}")
                 except BudgetExceeded as e:
                     return sk._record(SkillResult(False, "press_joint", "step_budget", 0, a, note=str(e)))
@@ -2618,7 +2636,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
             # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
             # lamp), and its via path over the top hook was out of reach
             r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), grasps=(lambda a, o=o: G_hang(sk, o, a)), max_full=8,
-                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY}, q_start=q_start,
+                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY, "purpose": "hang"}, q_start=q_start,
                                  lift_to_pre=high)
             if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
                 no_pairs.add(fi)

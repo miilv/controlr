@@ -961,6 +961,11 @@ class RuntimeProvider:
             riders.add(lab)
         self.belief.riders = riders
 
+    def on_consume(self, ev: dict) -> None:
+        """Skills' consumer-tolerance event (``Skills._consume``: the belief pose a contact-sensitive action consumed and
+        the precision it needs) into the report's events. Logging only."""
+        self.events.append(ev)
+
     def _grip_check(self, obs: dict) -> None:
         """Every refresh while an arm holds ``label`` in the belief: RoboDojo's official gripper value against the command.
         That value is the APPLIED control, the measured finger value at most 0.2 of the range past the target

@@ -138,6 +138,7 @@ class PlacePlan:
     steps: int
     label: str
     keep_tilt: bool = False
+    purpose: str | None = None    # the consumer event's purpose (``_consume_place``): hang / thread / ...; default by tail
 
 
 @dataclass
@@ -280,10 +281,91 @@ class Skills:
         self.held_looks = True
         self.held_events: list = []
         self.confirm_events: list = []              # ``confirm_moved``: what non-grasp actions asked the provider
+        # consumer-tolerance events (``_consume``): every contact-sensitive action logs the belief pose it consumed and
+        # the precision it needs; logging only (the actions are the same with it off). Also handed to
+        # ``provider.on_consume(ev)`` (the runtime's report events)
+        self.consume_log = True
+        self.consume_events: list = []
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
         # why the twin rejected candidates: {"rejects": {"<kind>: <criterion>": n}, "examples": [...]} (judges' ``why``)
         self.vreasons = {"rejects": {}, "examples": []}
+
+    # ------------------------------------------------------------------ consumer-tolerance events
+    def _consume(self, skill: str, label: str | None, T_used, need: dict, purpose: str, arm: str | None = None,
+                 **extra) -> None:
+        """Log one consumer event: ``{"kind": "consume", "step", "skill", "label", "key", "pose7_used", "need": {"xy_mm",
+        "z_mm", "yaw_deg"}, "purpose", "arm", ...}``.
+        Frame convention: ``pose7_used`` is the belief pose the action acts on, in the WORLD frame, of the object's ASSET
+        (mesh) frame, as grasp_metric and B1 records use it (position xyz, quaternion wxyz); a held object at a place
+        also logs ``T_tcp_obj7``, the in-hand transform (object in the TCP frame) the belief used. ``key``: the asset key
+        the belief has for ``label``. ``need``: the precision the action needs per axis, from the skill's own constants
+        / geometry (None: the action does not care about that axis). ``step``: env steps used when the action is about
+        to act on the pose. Reads nothing the actions depend on and never raises."""
+        if not self.consume_log or label is None:
+            return
+        try:
+            p7 = T_to_pose7(np.asarray(T_used, float))
+            w = getattr(self, "world", None)
+            o = w.objects.get(label) if w is not None else None
+            if "T_tcp_obj" in extra:
+                T = extra.pop("T_tcp_obj")
+                extra["T_tcp_obj7"] = None if T is None else [round(float(v), 5) for v in
+                                                              T_to_pose7(np.asarray(T, float))]
+            ev = {"kind": "consume", "step": int(self.ex.steps_used), "skill": skill, "label": label,
+                  "key": o.asset.key if o is not None and getattr(o, "asset", None) is not None else None,
+                  "pose7_used": [round(float(v), 5) for v in p7],
+                  "need": {k: (None if need.get(k) is None else round(float(need[k]), 2))
+                           for k in ("xy_mm", "z_mm", "yaw_deg")},
+                  "purpose": purpose, "arm": arm, **extra}
+        except Exception:  # noqa: BLE001 (logging only)
+            return
+        self.consume_events.append(ev)
+        f = getattr(self.provider, "on_consume", None)
+        if callable(f):
+            try:
+                f(ev)
+            except Exception:  # noqa: BLE001 (logging only)
+                pass
+
+    def _consume_pick(self, p: "PickPlan") -> None:
+        """The grasp about to descend: the object pose it was planned for, and the jaws' clearance per side across the
+        closing axis (``Grasp.open_gap`` - the object's width there) as the xy precision it needs."""
+        if not self.consume_log:
+            return
+        try:
+            g = p.grasp
+            clear = 0.5 * (float(g.open_gap()) - max(float(g.width), float(g.clear_w))) * 1000
+            self._consume("pick", p.label, g.T @ p.T_tcp_obj, {"xy_mm": max(clear, 0.0)}, "grasp", p.arm,
+                          method=g.method)
+        except Exception:  # noqa: BLE001 (logging only)
+            pass
+
+    def _consume_place(self, pp: "PlacePlan", tol_xy: float, tol_tilt: float, tol_yaw, tol_z: float,
+                       ref_label: str | None = None, measured=None) -> None:
+        """A place about to descend: the held object at the target pose the belief puts it at, and the reference
+        (support / receptacle) whose belief pose sets that target; ``need`` = the place's own tolerances (an insertion:
+        the lateral gate its in-hand read needs, ``held_gate`` / half of ``tol_xy``, and its ``seat_tol``)."""
+        if not self.consume_log:
+            return
+        try:
+            kw = getattr(pp, "tail_kw", None) or {}
+            purpose = getattr(pp, "purpose", None) or ("insert" if kw.get("servo") else "place")
+            yaw = None if tol_yaw is None else float(tol_yaw)
+            if kw.get("servo"):
+                xy = 1000.0 * float(kw["held_gate"] if kw.get("held_gate") is not None else 0.5 * tol_xy)
+                need = {"xy_mm": xy, "z_mm": 1000.0 * float(kw.get("seat_tol", 0.004)), "yaw_deg": yaw}
+            else:
+                need = {"xy_mm": 1000.0 * float(tol_xy), "z_mm": 1000.0 * float(tol_z), "yaw_deg": yaw}
+            h = self.held.get(pp.arm)
+            T_in = measured if measured is not None else (h.T_tcp_obj if h is not None else None)
+            self._consume("place", pp.label, pp.T_obj_target, need, purpose, pp.arm, role="held", T_tcp_obj=T_in)
+            ref = ref_label or kw.get("servo_ref")
+            if ref and ref != pp.label and ref in self.world.objects:
+                self._consume("place", ref, self.world.obj(ref).T, need, purpose, pp.arm, role="reference",
+                              held=pp.label)
+        except Exception:  # noqa: BLE001 (logging only)
+            pass
 
     # ------------------------------------------------------------------ world
     def refresh(self) -> WorldState:
@@ -513,6 +595,7 @@ class Skills:
         (``pp.repair``) re-plans both together (the executed plan's ``paired_place``), any other pick re-plans with
         the method's grasps, as before; with no plan, the original descent."""
         if self.refine is None:
+            self._consume_pick(pp)
             self.parallel([pp.plan], name=f"pick {pp.label}")
             return pp
         method = pp.method if method is None else method
@@ -526,6 +609,7 @@ class Skills:
         def rest_of(p: PickPlan, note: str) -> PickPlan:
             rest = ArmPlan(p.arm, self.ex.q[p.arm].copy(), self.ex.g[p.arm])
             rest.ops = p.plan.ops[2:]
+            self._consume_pick(p)
             self.ex.run({p.arm: rest}, name=f"pick {p.label} {note}")
             return p
 
@@ -549,6 +633,7 @@ class Skills:
             pp2 = pp2 if isinstance(pp2, PickPlan) else None
         if pp2 is None:
             return rest_of(pp, "descent")                     # keep the original descent
+        self._consume_pick(pp2)
         self.ex.run({pp2.arm: pp2.plan}, name=f"pick {pp.label} refined")
         return pp2
 
@@ -626,8 +711,10 @@ class Skills:
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
-                   held_read: bool | None = None):
+                   held_read: bool | None = None, purpose: str | None = None):
         """Approach above the target, descend in a straight line, settle, open, back out.
+        ``purpose``: logging only, the consumer event's purpose (``_consume_place``: "hang", "thread"; default "insert"
+        for a servo tail, else "place").
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
         ``held``: plan for this grasp instead of the current one (a place planned with its pick).
         ``turn`` (rad): after the descent, turn the object about the vertical through its root (a key in
@@ -724,7 +811,7 @@ class Skills:
             # now (mode B: the re-plan after the pick failed, this plan ran, and its approach let go of the charger)
             p = ArmPlan(arm, np.asarray(q0, float), CLOSED if held is not None else self.ex.g[arm]).move(to_pre, "approach")
             p.ops.extend(tail.ops)
-            cand = PlacePlan(arm, p, T_obj, p.steps, h.label, keep_tilt=keep_tilt)
+            cand = PlacePlan(arm, p, T_obj, p.steps, h.label, keep_tilt=keep_tilt, purpose=purpose)
             cand.approach = to_pre
             cand.tail_kw = tail_kw
             cand.pre_settle = pre_settle
@@ -845,6 +932,7 @@ class Skills:
                 h = self.held[pp.arm]
                 o = w.obj(pp.label)
                 measured = self._held_protocol(pp, h, o, tol_xy, tol_tilt, pre=pre) if not self.remeasure else None
+                self._consume_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z, ref_label, measured)
                 guarded_b = not self.remeasure and bool((pp.tail_kw or {}).get("guarded"))
                 tk = pp.tail_kw or {}
                 # mode B, a servo place that does not probe (a drop into an opening, a nut onto its bolt's top): the
@@ -935,6 +1023,7 @@ class Skills:
                 self.ex.run_lists(lists, name=f"place {pp.label} tail")
             else:
                 note_rm = ""
+                self._consume_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z, ref_label)
                 lists = {pp.arm: pp.plan.compile()[0]}
                 if other_arm:
                     lists[other_arm] = other
