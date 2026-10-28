@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # One seg_render job (genuine Isaac 5.1, RoboDojo's python) under compute4's sharing rules:
-#   - waits (polls every 15 s, up to SEG_WAIT_S) until fewer than SEG_MAX_APPS GPU apps run, >= 10 GB VRAM and
+#   - waits (polls every 15 s, up to SEG_WAIT_S) until fewer than SEG_MAX_APPS GPU apps and SEG_MAX_RENDERED rendered
+#     processes (apps >= 4 GiB) run, >= 10 GB VRAM and
 #     >= 16 GB RAM are free and the lock is free; with SEG_REQUIRE_IDLE=1 (default) also until no other GPU app holds
 #     >= 1 GiB (Mikhail's starter treats such a GPU as busy: a pilot only slips into a gap of theirs);
 #   - holds the GPU lock (SEG_GPU_LOCK, default the shared ~/dojo-gpu.lock) through rdpy.sh for at most SEG_MAX_S
@@ -14,6 +15,7 @@ MAX_S="${SEG_MAX_S:-600}"
 WAIT_S="${SEG_WAIT_S:-14400}"
 MAX_APPS="${SEG_MAX_APPS:-4}"
 IDLE="${SEG_REQUIRE_IDLE:-1}"
+MAX_RENDERED="${SEG_MAX_RENDERED:-99}"   # rendered (Isaac) processes on the box, ours included: apps holding >= 4 GiB
 OUT="${SEG_OUT:-$HOME/dojo-data/segtrain/render}"
 LOG="$HOME/dojo-data/segtrain/logs"
 mkdir -p "$LOG" "$OUT"
@@ -24,8 +26,10 @@ while true; do
   napps=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader | wc -l)
   avail=$(awk '/MemAvailable/ {print int($2 / 1048576)}' /proc/meminfo)
   vfree=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits | head -1 | tr -d ' ')
+  nrend=$(nvidia-smi --query-compute-apps=used_memory --format=csv,noheader,nounits | awk '$1 >= 4096' | wc -l)
   [[ "$IDLE" == 1 ]] || big=0
-  if [[ "$big" -eq 0 && "$napps" -lt "$MAX_APPS" && "$avail" -ge 16 && "$vfree" -ge 10240 ]] && flock -n "$LOCK" true; then break; fi
+  if [[ "$big" -eq 0 && "$napps" -lt "$MAX_APPS" && "$nrend" -lt "$MAX_RENDERED" && "$avail" -ge 16 && "$vfree" -ge 10240 ]] \
+      && flock -n "$LOCK" true; then break; fi
   if (( $(date +%s) - t0 > WAIT_S )); then echo "$(date -u +%FT%TZ) $TASK gave up waiting" >> "$LOG/render_jobs.txt"; exit 75; fi
   sleep 15
 done
