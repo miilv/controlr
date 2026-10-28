@@ -245,3 +245,20 @@ def test_stacked_objects_match_in_3d():
     g.lab2g = {"b0": 0, "b1": 0}
     s = gm.score_event(_event("place", "b1", (0.0, 0, 0.85), ref="b0"), bel, gt, "t", tol=TOL, groups=g)
     assert [r["cls"] for r in s["required"]] == ["ok", "ok"] and s["required"][0]["gt_label"] == "b1"
+
+
+def test_grip_check_air_restores_the_pick_pose_and_slip_drops_it_where_carried():
+    kin = X5Kin()
+    p = kin.tcp("left", Q0)[:3, 3]
+    q1 = list(Q0)
+    q1[0] = 0.3
+    p1 = kin.tcp("left", q1)[:3, 3]
+    rec = {"Rigid": {"cube": [{"label": "a", "category_idx": 0, "default_pos": list(p), "default_ori": [1, 0, 0, 0]}]}}
+    acts = [_act(1.0), _act(1.0), _act(0.0), _act(0.0, ql=q1), _act(0.0, ql=q1), _act(1.0, ql=q1)]
+    for how, want in (("air", p), ("slip", p1)):
+        rep = {"records": {"initial": rec},
+               "events": [{"kind": "refine", "label": "a", "arm": "left", "for": "pick", "step": 1, "ok": False},
+                          {"kind": "grip_check", "label": "a", "arm": "left", "step": 4, "dropped": how}]}
+        evs = gm.episode_events(rep, acts, kin)
+        assert [e.kind for e, _ in evs] == ["grasp", "release_other"]        # no place: the belief let it go
+        assert np.allclose(evs[1][1]["a"]["pos"], want, atol=1e-6) and evs[1][1]["a"]["source"] == "held_dropped"

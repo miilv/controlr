@@ -559,9 +559,17 @@ class BeliefTracker:
         elif k == "belief_drop" and lab in self.belief and e.get("z") is not None:
             self.belief[lab]["pos"][2] = float(e["z"])
         elif k in ("held_look", "grip_check") and e.get("dropped") and e.get("arm") in self.attached:
-            lab0, _, pre = self.attached.pop(e["arm"])
-            if lab0 in self.belief and pre is not None:
-                self.belief[lab0].update(pos=pre[0], quat=pre[1], source="held_dropped")
+            if e.get("dropped") == "slip":
+                # a slip (stream H's grip_check): the runtime releases the object where the jaws had carried it, a
+                # release without an opening command; not a scored place (no skill placed it)
+                lab0, p, q = self.held_pose(e["arm"], int(e["step"]))
+                self.attached.pop(e["arm"])
+                if lab0 in self.belief:
+                    self.belief[lab0].update(pos=p, quat=q, source="held_dropped")
+            else:                                   # empty jaws ("air", a held_look drop): it never left its place
+                lab0, _, pre = self.attached.pop(e["arm"])
+                if lab0 in self.belief and pre is not None:
+                    self.belief[lab0].update(pos=pre[0], quat=pre[1], source="held_dropped")
         elif k in ("divergence_replan", "lost_search") or (k == "resync" and e.get("diverged")):
             if self.diverged_at is None:
                 self.diverged_at = int(e["step"])
