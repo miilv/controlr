@@ -33,7 +33,7 @@ Ops (request dicts):
         front-most (z-buffer over the given objects) that are observed foreground, ``n_vis``; plus the plain
         silhouette IoU (others removed); "head" = cam_head
     {"op": "watch", "frame0": frame, "frame": frame, "vocabulary": str}            -> {"watch": json}
-        what the scene's own actors changed while the robot waits (``dojo.perception.task_state``; make_kong:
+        what the scene's own actors changed while the robot waits (``dojo.perception.task_state.actor_change``; make_kong:
         the push tile the opponent knocked over): {"supported", "knocked": [label], "detail"}
     {"op": "agentic_estimate", "frame": frame, "vocabulary": str, "fold": int, "b1_record": json|None,
      "extra_frame": scan frame (optional: the agent's second observation)}
@@ -457,12 +457,14 @@ class _Perception:
         return out
 
     def watch(self, frame0: dict, frame: dict, vocabulary: str) -> dict:
-        """State changes made by the scene's own actors (no robot contact), per vocabulary. make_kong: which push
-        tile the opponent knocked over (head view at the four tile slots, frame 0 vs now)."""
-        if vocabulary != "make_kong":
+        """State changes made by the scene's own actors (no robot contact): which standing object at a config slot was
+        knocked over (``task_state.actor_change``, head view, frame 0 vs now). The same read for every vocabulary; one
+        without standing slot objects is unsupported."""
+        from dojo.perception.task_state import actor_change, standing_slots
+        if len(standing_slots(vocabulary)) < 2:
             return {"supported": False, "knocked": []}
-        from dojo.perception.task_state import kong_discard
-        r = kong_discard(decode_frame(frame0)["images"]["cam_head"], decode_frame(frame)["images"]["cam_head"])
+        r = actor_change(decode_frame(frame0)["images"]["cam_head"], decode_frame(frame)["images"]["cam_head"],
+                         vocabulary)
         return {"supported": True, "knocked": [r["knocked"]] if r.get("knocked") and r.get("confident") else [],
                 "detail": r}
 
