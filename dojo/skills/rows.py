@@ -194,9 +194,12 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
             break
         free = [(k, xy) for k, xy in pairs if not blockers(k, xy)]
         if free:
-            # fill outward from the object that stays (else from the left end): the next one always has a free side,
-            # never a gap between two placed neighbours (G3 e7626c8 100030: the last doll's approach hit a neighbour)
-            seed = row["xy"][row["anchor"]][0] if row.get("anchor") else min(v[0] for v in row["xy"].values())
+            # fill outward from the object that stays, else from the widest one's slot (it goes first, while its
+            # neighbours' slots are empty): the next one always has a free side, never a gap between two placed
+            # neighbours (G3 e7626c8 100030: the last doll's approach hit a neighbour; 1ed92d3 100034: the widest, placed
+            # last at the row's end, had no plan beside its neighbour)
+            widest = max(row["order"], key=lambda k_: width(sk.world.obj(k_)))
+            seed = row["xy"][row.get("anchor") or widest][0]
             k, xy = min(free, key=lambda p: (abs(float(p[1][0]) - seed), arm_dist(p[0])))
             tries[k] += 1
             r = place_oriented(sk, k, upright_targets(sk, k, xy), yaw_sym=1, tol_xy=0.015, tol_tilt=10.0, tol_z=0.03,
