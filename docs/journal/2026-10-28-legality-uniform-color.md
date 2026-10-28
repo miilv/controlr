@@ -33,7 +33,13 @@ renderer and was dropped to fit the budget. Light lane 18:18-18:55Z.
 Per-task losers of "all" vs the current per-task setting: pack_objects_into_box_random (-1 / -1),
 put_bottles_into_dustbin (-2 within tol), general_pickup (-1 within tol); gainer store_tools_in_toolbox (+1 / +1).
 
-**Done** (branch `fix/legal-uniform-color`): `EstimatorConfig.color_map` "tasks" (default, unchanged) | "all" | "none",
-`inverse_layout.colour_map_for(task, cfg)`; test `tests/dojo/test_legality_color_map.py` (cv2: skips in CI, passes
-locally). The default flips to "all" when the lead decides (a rendered A/B is not needed for the aggregate tie, but the
-three loser tasks are worth watching in the next breadth run).
+**Done** (branch `fix/legal-uniform-color`): `EstimatorConfig.color_map` = "all" (DEFAULT) | "tasks" (the old per-task
+switch, kept for dev A/Bs) | "none"; `inverse_layout.colour_map_for(task, cfg)`; test `tests/dojo/test_legality_color_map.py`
+(cv2: skips in CI, passes locally).
+
+**Decision (the lead, 2026-10-28): the default is "all".** Reason: single-fixed-system compliance (no per-task switch in
+the perception's appearance cost). The cost, -3 of 1023 objects against the per-task setting, is within noise; "all" over
+"none" by the tie-break above.
+
+**Rendered behaviour changes** for every task outside the old `color_tasks`: B1's appearance cost now uses the colour
+map. Watch the three loser tasks (pack, bottles, general_pickup) in the next breadth run.

@@ -1472,7 +1472,7 @@ _SELECT_TIES: str = "dc17"    # EstimatorConfig.select_ties, set per estimate() 
 
 def colour_map_for(task: str, cfg) -> list | None:
     """The colour map B1's appearance cost uses for ``task`` (the instruction-derived vocabulary): ``cfg.color_map``
-    "tasks" = only for ``cfg.color_tasks`` (the default), "all" = for every task, "none" = never."""
+    "all" = for every task (the default), "tasks" = only for ``cfg.color_tasks`` (dev), "none" = never."""
     if cfg.color_map not in ("tasks", "all", "none"):
         raise ValueError(f"color_map {cfg.color_map!r}")
     if cfg.color_map == "all" or (cfg.color_map == "tasks" and task in cfg.color_tasks):
@@ -3509,10 +3509,10 @@ class EstimatorConfig:
     # select-list identity ties (dojo.perception.select_ties): "dc17" = kept where the checker scores no identity, off
     # for TIE_OFF's tasks (the default); "off" = no tie for any task (no per-task difference; the lead decides)
     select_ties: str = "dc17"
-    # the colour map (``color_M``) in B1's appearance cost: "tasks" = only for ``color_tasks`` (the default: a per-task
-    # switch keyed on the instruction-derived vocabulary); "all" / "none" = the same for every task (single-fixed-system
-    # audit, journal 2026-10-28-legality-uniform-color)
-    color_map: str = "tasks"
+    # the colour map (``color_M``) in B1's appearance cost: "all" = for every task (the default since the single-fixed-
+    # system audit, journal 2026-10-28-legality-uniform-color); "tasks" = only for ``color_tasks`` (the old per-task
+    # switch keyed on the instruction-derived vocabulary, kept for dev A/Bs); "none" = never
+    color_map: str = "all"
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
     # height check (stereo.check_record): the frame's own head + wrist views, plane-swept, against every object's
