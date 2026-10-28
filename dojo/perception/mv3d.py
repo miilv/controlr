@@ -716,6 +716,20 @@ class Mv3dClient:
             raise RuntimeError(f"mv3d server: {r['error']}")
         return r
 
+    def fmrefine(self, images: list[np.ndarray], cams: list[Camera], robots: list, objects: list, color_M=None,
+                 iters: int = 40) -> dict:
+        """``featmetric.refine`` of each (asset key, 4x4 pose): {"poses": [4x4], "d0": [...], "d1": [...]}."""
+        req = {"op": "fmrefine", "images": [np.ascontiguousarray(i, np.uint8) for i in images],
+               "cams": [(c.K.tolist(), c.T_wc.tolist(), c.w, c.h) for c in cams],
+               "robots": [None if r is None else np.ascontiguousarray(r, np.uint8) for r in robots],
+               "objects": [(k, np.asarray(T, float).tolist()) for k, T in objects],
+               "color_M": None if color_M is None else np.asarray(color_M, float).tolist(), "iters": int(iters)}
+        self.conn.send(req)
+        r = self.conn.recv()
+        if "error" in r:
+            raise RuntimeError(f"mv3d server: {r['error']}")
+        return r
+
     def info(self) -> dict:
         self.conn.send({"op": "info"})
         return self.conn.recv()
@@ -773,14 +787,33 @@ class _ServerModel:
         self.feat_model = feat_model
         self.fm = None
 
-    def featdist(self, req: dict) -> dict:
+    def _views(self, req: dict) -> list[dict]:
         from .featmetric import FeatureMetric
 
         if self.fm is None:
             self.fm = FeatureMetric(self.feat_model)
         self.fm.set_color(req.get("color_M"))
         cams = [Camera(f"v{i}", np.array(K), np.array(T), int(w), int(h)) for i, (K, T, w, h) in enumerate(req["cams"])]
-        views = [{"name": c.name, "img": im, "cam": c, "robot": rb} for c, im, rb in zip(cams, req["images"], req["robots"])]
+        return [{"name": c.name, "img": im, "cam": c, "robot": rb} for c, im, rb in zip(cams, req["images"], req["robots"])]
+
+    def fmrefine(self, req: dict) -> dict:
+        from .featmetric import refine
+
+        views = self._views(req)
+        t0 = time.time()
+        poses, d0, d1 = [], [], []
+        for key, T in req["objects"]:
+            try:
+                T1, a, b = refine(self.fm, key, np.array(T), views, iters=int(req.get("iters", 40)))
+            except Exception:
+                T1, a, b = np.array(T), float("nan"), float("nan")
+            poses.append(np.asarray(T1).tolist())
+            d0.append(a if np.isfinite(a) else None)
+            d1.append(b if np.isfinite(b) else None)
+        return {"poses": poses, "d0": d0, "d1": d1, "timings": {"fmrefine_s": round(time.time() - t0, 3), "n": len(poses)}}
+
+    def featdist(self, req: dict) -> dict:
+        views = self._views(req)
         t0 = time.time()
         out = []
         for key, T in req["objects"]:
@@ -794,6 +827,8 @@ class _ServerModel:
     def handle(self, req: dict) -> dict:
         if req.get("op") == "featdist":
             return self.featdist(req)
+        if req.get("op") == "fmrefine":
+            return self.fmrefine(req)
         cams = [Camera(f"v{i}", np.array(K), np.array(T), int(w), int(h)) for i, (K, T, w, h) in enumerate(req["cams"])]
         t0 = time.time()
         p = self.run.infer(req["images"])

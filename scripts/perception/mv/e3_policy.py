@@ -13,7 +13,14 @@ from pathlib import Path
 import numpy as np
 
 
-def apply(rows, b1dump: Path, margin: float, sil_max: float, srcs: set, w_sil: float = 0.0) -> dict:
+def gated(e: dict, gate_d: float, flag_mm: float) -> bool:
+    """The run's gate, re-applied: the height check flags it, or B1's own pose's distance exceeds gate_d."""
+    dh, d0 = e.get("dh_mm"), e["cands"][0]["d"]
+    return (dh is not None and abs(dh) > flag_mm) or (d0 is not None and d0 > gate_d)
+
+
+def apply(rows, b1dump: Path, margin: float, sil_max: float, srcs: set, w_sil: float = 0.0, gate_d: float = 0.55,
+          flag_mm: float = 15.0) -> dict:
     from dojo.perception import d0
     from dojo.perception.mv3d_eval import SET_ALIAS, _b1_record, _score, root_dir
 
@@ -27,7 +34,7 @@ def apply(rows, b1dump: Path, margin: float, sil_max: float, srcs: set, w_sil: f
         taken = []
         for e in r["log"]:
             cs = e["cands"]
-            if cs[0]["d"] is None:
+            if cs[0]["d"] is None or not gated(e, gate_d, flag_mm):
                 continue
             d0_ = cs[0]["d"]
             best, bs = None, None

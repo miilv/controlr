@@ -3128,6 +3128,12 @@ class EstimatorConfig:
     doubt_feat_d: float = 0.55
     doubt_dh_mm: float = 15.0
     doubt_mode: str = "or"
+    # fm_refine: the continuous feature-metric stage (research R3) for Rigid objects whose feature distance (b1_doubt's
+    # d, measured even when b1_doubt is off) exceeds fm_refine_d; kept when the distance drops >= fm_refine_gain.
+    # Frame 0, 207 dev scenes, 0.45 / 0.05: gross -9, within +9 net, 0 right objects into gross
+    fm_refine: bool = False
+    fm_refine_d: float = 0.45
+    fm_refine_gain: float = 0.05
     # SAM mask proposals (dojo.perception.sam_masks; a no-op without a SAM server at DOJO_SAM_ADDR). Default off.
     # sam_fg: the head foreground combined with SAM 3.1's text masks for the scene vocabulary: "union" | "gate" | "replace"
     sam_fg: str = "off"
@@ -3818,9 +3824,23 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         _mv3d_propose(record, views, learned, task, cams, cfg)
     if cfg.stereo_check:
         stereo_check(record, images, state, cams, {n: v.robot for n, v in views_all.items()}, cfg, heights=learned)
-    if cfg.b1_doubt:
+    if cfg.b1_doubt or cfg.fm_refine:
         _b1_doubt(record, images, cams, {n: v.robot for n, v in views_all.items()}, learned, cfg)
+    if cfg.fm_refine:
+        _fm_refine(record, images, cams, {n: v.robot for n, v in views_all.items()}, cfg)
     return record
+
+
+def _fm_refine(record: dict, images: dict, cams: dict, robot_masks: dict, cfg: EstimatorConfig) -> None:
+    from .doubt import refine_doubted
+
+    try:
+        r = refine_doubted(record, images, cams, robot_masks, min_d=cfg.fm_refine_d, min_gain=cfg.fm_refine_gain,
+                           color_M=cfg.color_M)
+        if "skipped" in r:
+            record.setdefault("_perception", {})["fm_refine"] = r
+    except Exception as e:  # never cost the estimate
+        record.setdefault("_perception", {})["fm_refine"] = {"error": f"{type(e).__name__}: {e}"}
 
 
 def _b1_doubt(record: dict, images: dict, cams: dict, robot_masks: dict, heights, cfg: EstimatorConfig) -> None:
