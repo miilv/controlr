@@ -7,7 +7,7 @@ list through ``dojo.runtime.eval`` in mode gt (physics-only 5.1 + the 6.0 render
 keeps each one: every camera as an image, the official state, and the dev-only GT object rows (scorer side: mode gt
 puts them under ``DEV_GT_KEY``; nothing here is a policy).
 
-    DOJO_SEQ_SRC=<run dir with *_actions.json.gz> DOJO_SEQ_OUT=<dir> [DOJO_SEQ_STRIDE=1] [DOJO_SEQ_FMT=jpg|png]
+    DOJO_SEQ_SRC=<run dir with *_actions.json.gz> DOJO_SEQ_OUT=<dir> [DOJO_SEQ_STRIDE=1] [DOJO_SEQ_FMT=png|jpg]
     scripts/dojo/integ_eval.sh --task T --layouts L.json --mode gt --verify off \
         --policy dojo.perception.seq_capture:SeqReplayPolicy
 
@@ -16,8 +16,9 @@ the recorded run itself observed and logged (its report's event steps: refine ho
 scans / looks; ``decisions[].step``), at k - 1 of every grip event (``grasp_metric.grip_events``) and at k + 1..5 after
 every release: where a decision-time perceiver runs (``meta.json`` ``forced_steps``).
 
-Per episode ``<out>/<task>_<lid>/``: ``frames/<step:04d>_<cam>.<fmt>`` (jpg: quality ``DOJO_SEQ_JPG_Q`` 95, 4:4:4,
-~0.3 MB per step for 3 cameras against 1.1 MB as PNG; frame 0 also as PNG) and ``steps.jsonl`` (one row per observation:
+Per episode ``<out>/<task>_<lid>/``: ``frames/<step:04d>_<cam>.<fmt>`` (png, the default: lossless, compress level 3,
+~1.1 MB per step for 3 cameras; jpg: quality ``DOJO_SEQ_JPG_Q`` 95, 4:4:4, ~0.3 MB, frame 0 also as PNG; JPEG moves a
+twin-trained segmenter's borderline detections: keep frames that feed a detector lossless) and ``steps.jsonl`` (one row per observation:
 step, state, the gripper commands of the actions that led to it; no GT) and ``gt.jsonl`` (step, the dev-only GT rows:
 the scorer's file, kept apart so a perceiver's inputs carry no GT). The physics is the recorded run's (G3 /
 the proxy are bit-deterministic on the same actions); the eval row's ``dev_gt_probe`` of the replay can be compared
@@ -113,7 +114,7 @@ class SeqReplayPolicy:
         self.src = os.environ.get("DOJO_SEQ_SRC", "")
         self.out = Path(os.environ.get("DOJO_SEQ_OUT", "seq_out"))
         self.stride = max(1, int(os.environ.get("DOJO_SEQ_STRIDE", "1")))
-        self.fmt = os.environ.get("DOJO_SEQ_FMT", "jpg")
+        self.fmt = os.environ.get("DOJO_SEQ_FMT", "png")
         self.quality = int(os.environ.get("DOJO_SEQ_JPG_Q", "95"))
         self.max_steps = int(os.environ.get("DOJO_SEQ_MAX_STEPS", "0"))
         self.decisions = os.environ.get("DOJO_SEQ_DECISIONS", "1") != "0"

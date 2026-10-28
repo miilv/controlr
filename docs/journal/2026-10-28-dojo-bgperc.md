@@ -138,3 +138,12 @@ refine per frame? Report: [../experiments/2026-10-28-bgperc.md](../experiments/2
   against a live run). The online arm runs v2b live on raw frames and logs its own detections.
 - **JPEG vs PNG for the segmenter** (`seg_jpeg_check.py`): v2b on frame 0's PNG and JPEG of every valid sequence,
   matched by mask IoU >= 0.5.
+  - The first 8 JPEG episodes give 24 frame-0 views: 70/71 detections matched, IoU mean 0.986, 2 class flips,
+    1 lost, 2 gained. That is 7 % of detections differing.
+  - Every difference is a wrist detection at score 0.25-0.46. At score >= 0.5: 0 of 74 differ.
+  - Borderline wrist detections are exactly where extra reads between events would show. So **the X2 frames are
+    lossless**: PNG, compress level 3, about 0.42 GB per episode. The 9 JPEG bottles episodes are re-rendered.
+  - `DOJO_SEQ_FMT` now defaults to png.
+- **X2 protocol: every arm reads the identical stored frames offline**, rt included: the runtime's own perception is
+  replayed on the same files. Nothing compares an online arm with offline numbers. The detection cache is keyed by
+  the sha1 of the stored PNG bytes, and `replay_check.py --seg-cache` records its hash per episode in `valid.json`.

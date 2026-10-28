@@ -301,8 +301,9 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **Per-step frames of a recorded episode: replay its actions, don't re-run the policy.** `dojo.perception.seq_capture`
   (mode gt, `--policy dojo.perception.seq_capture:SeqReplayPolicy`, `scripts/perception/seq_render.sh`) reproduces the
   recorded run exactly (same `dev_gt_probe`) and keeps every camera + state per step (`steps.jsonl`, no GT) and the dev
-  GT apart (`gt.jsonl`, for scoring only); JPEG q95 4:4:4 changes neither B1 nor refine measurably (journal
-  2026-10-28-dojo-bgperc §1). On top of the stride it always observes the decision frames (the recorded run's logged
+  GT apart (`gt.jsonl`, for scoring only). Frames are PNG (lossless) by default: JPEG q95 4:4:4 changes neither B1
+  nor refine measurably (journal 2026-10-28-dojo-bgperc §1), but it moves the v2b segmenter's borderline detections
+  (§7), so `DOJO_SEQ_FMT=jpg` only for frames no detector reads. On top of the stride it always observes the decision frames (the recorded run's logged
   steps, k-1 of every grip event, release+1..5: `meta.json` "forced_steps"). Gate every replay with
   `scripts/perception/bgperc/replay_check.py` and replay only on the box that recorded it (BACKLOG: compute2's physics).
 - **The segmenter flag needs its server too.** `seg_propose` acts only when `python -m dojo.perception.seg_twin serve

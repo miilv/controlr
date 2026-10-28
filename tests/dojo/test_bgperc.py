@@ -128,7 +128,8 @@ def test_seq_replay_policy_keeps_every_observation(tmp_path, monkeypatch):
     assert rows[2]["grip_cmds"] == [{"left_ee_joint_state": 0.5, "right_ee_joint_state": 1.0}]
     gt = [json.loads(ln) for ln in open(d / "gt.jsonl")]                      # the scorer's GT, apart from the inputs
     assert "gt" not in rows[0] and gt[0]["gt"][0]["label"] == "block0" and [g["step"] for g in gt] == [0, 1, 2, 3]
-    assert (d / "frames" / "0000_cam_head.png").exists() and (d / "frames" / "0003_cam_left_wrist.jpg").exists()
+    assert (d / "frames" / "0000_cam_head.png").exists() and (d / "frames" / "0003_cam_left_wrist.png").exists()
+    assert not list((d / "frames").glob("*.jpg"))                            # lossless by default
     assert pol.episode_report()["seq"]["replayed"] == 3
 
 

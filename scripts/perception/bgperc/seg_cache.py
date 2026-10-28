@@ -1,12 +1,12 @@
 """Stream C, X2: the frozen segmenter's detections on every stored frame, computed once and cached by the frame's
-content hash, so every OFFLINE arm (rt / J / S) reads identical detections. (The online arm runs the same weights live
-on raw frames and logs its own; JPEG keys never match raw arrays.)
+content hash, so every arm (rt / J / S, all replayed offline on the same stored frames) reads identical detections.
 
     SEG_WEIGHTS=.../v2b/best.pt SEG_CLASSES=.../v2b/classes.json \\
         python scripts/perception/bgperc/seg_cache.py SEQ_ROOT OUT_DIR [--valid VALID.json] [--names a,b]
 
 Per sequence ``OUT_DIR/<name>.json.gz``: {"header": {weights_sha1, imgsz, conf, classes_sha1, model}, "frames":
-{"<step:04d>_<cam>.jpg": {"sha1": sha1 of the JPEG bytes, "dets": [{"key", "score", "box", "mask"}]}}} where "mask"
+{"<step:04d>_<cam>.<fmt>": {"sha1": sha1 of the stored file's bytes, "dets": [{"key", "score", "box", "mask"}]}}}
+(``<fmt>``: the sequence's ``meta.json`` "fmt", png = lossless; a jpg sequence's frame-0 PNG is not cached) where "mask"
 is the mask cropped to its own bounding box, as base64 of ``np.packbits`` with its crop shape (``decode_mask``). ``OUT_DIR/index.json``:
 per sequence its file and that file's sha1 (the cache hash ``valid.json`` records).
 """
@@ -73,7 +73,8 @@ def main():
         if os.path.exists(dst) and n in index:
             continue
         t0, frames = time.time(), {}
-        for f in sorted(glob.glob(os.path.join(a.root, n, "frames", "*.jpg"))):
+        fmt = json.load(open(os.path.join(a.root, n, "meta.json"))).get("fmt", "png")
+        for f in sorted(glob.glob(os.path.join(a.root, n, "frames", f"*.{fmt}"))):
             raw = open(f, "rb").read()
             img = np.ascontiguousarray(cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1])
             dets = [{"key": k, "score": round(s, 4), "box": [round(v, 1) for v in b], "mask": encode_mask(m)}
