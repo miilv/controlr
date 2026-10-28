@@ -45,7 +45,9 @@ class AgentConfig:
     first_image_px: int = 640
     jpeg_quality: int = 80
     max_images_per_turn: int = 3
-    manual: str = "manual_v4"           # v3 + "hold what must be held" (the pick(lift) + finish() early release)
+    # v6 (2026-10-28, a compliance fix, journal 2026-10-28-dojo-agent-manual-v6): v4 minus its "instruction patterns"
+    # recipes and every checker number / judging phrase (robot-harness RULES-robodojo §14.5); v4 broke those rules
+    manual: str = "manual_v6"
     # v5 = v4 + "a retry passes a failed skill its complete arguments again" (2026-10-27: a retry of an every-object
     # skill with a subset of its ids; journal 2026-10-27-dojo-official §2.3)
     appendix: str = "agent_v5"

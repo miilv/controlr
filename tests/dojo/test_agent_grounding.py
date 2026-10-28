@@ -132,7 +132,7 @@ def test_scene_v4_lists_every_frame_with_series_positions():
 
 def test_agent_scene_default_is_v4():
     from dojo.agent.loop import AgentConfig
-    assert AgentConfig().scene_version == 4 and AgentConfig().manual == "manual_v4"
+    assert AgentConfig().scene_version == 4 and AgentConfig().manual == "manual_v6"
 
 
 def test_new_comparisons():

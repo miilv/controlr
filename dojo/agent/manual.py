@@ -1,12 +1,16 @@
-"""The agent's operating manual: skill library + ``robo`` primitive API + checker conventions.
+"""The agent's operating manual: skill library + ``robo`` primitive API + generic judging rules.
 
-One manual for every task (benchmark rule: one fixed system, no per-task text). The checker conventions in §2 are
-the generic facts every top RoboDojo entry states (home at the end, bank partial credit with open grippers, exact
-counts, push-not-lift, hold still while a scripted arm moves); they name no task. The skill docs are written for
-the model from ``dojo.skills.library``'s docstrings: what the skill does, which roles its arguments are, and what
-it does NOT do (so the model knows when to write code instead). The API section follows PyRUA-Lean's idea of typed
-results the code can check (``ok``, ``note``, ``holding``) - PyRUA-Lean, DAGroup-PKU, Apache-2.0, adapted, not
-copied (research/robodojo-teardown/pyrua-lean.md).
+One manual for every task (benchmark rule: one fixed system, no per-task text). From manual_v6 on (the default), §2
+holds only generic action rules (finish() at the end, open both grippers after each stage, exact counts and orders,
+hold still while another arm moves, no release unless asked, remember in code), number-free: no instruction-pattern
+recipes, checker thresholds, score ladders or reward predicates reach the model (robot-harness RULES-robodojo
+§14.5). Numbers that describe a robot action belong in skill code, not in prompt text; manual_v2-v4's §3
+"instruction patterns" and §2's tolerances and judging phrases broke the rule and were removed in v6
+(``tests/dojo/test_agent_manual_v6.py``). The skill docs are written for the model from ``dojo.skills.library``'s
+docstrings: what the skill does, which roles its arguments are, and what it does NOT do (so the model knows when to
+write code instead). The API section follows PyRUA-Lean's idea of typed results the code can check (``ok``,
+``note``, ``holding``) - PyRUA-Lean, DAGroup-PKU, Apache-2.0, adapted, not copied
+(research/robodojo-teardown/pyrua-lean.md).
 
 A new wording = a new ``prompts/manual_vN.md`` (+ ``SKILL_DOCS_VERSION``); never edit a version a run used.
 """
@@ -93,11 +97,11 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "match_and_pick(objects: [id, ...], conveyor: id | null = null)",
         "Objects ride a moving belt: measures the belt's speed from the objects' motion, remembers the first object "
         "(the one leading in the direction of motion), and picks the next object of the same kind on the move "
-        "(the hand follows the belt while it closes), then lifts it ~12 cm and holds it."),
+        "(the hand follows the belt while it closes), then lifts it and holds it."),
     "pick_into_held": (
         "pick_into_held(objects: [id, ...], container: id, picture: id | null = null, conveyor: id | null = null)",
-        "A container and objects ride a moving belt: takes the container off the belt with one arm and holds it up "
-        "~11 cm, then picks the object the board's picture shows on the move with the other arm and drops it into the "
+        "A container and objects ride a moving belt: takes the container off the belt with one arm and holds it up, "
+        "then picks the object the board's picture shows on the move with the other arm and drops it into the "
         "held container (which stays up). For 'lift the basket, pick the object shown on the board into it'."),
     "fill_holes": (
         "fill_holes(objects: [id, ...], holder: id, lid_tag: frame | null = null)",
@@ -115,10 +119,10 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "Puts long objects (pens, sticks, tubes) one by one into an upright holder: each is held leading end down "
         "just over the holder's opening, at its free spot, the hand kept out of the holder, and let go so it drops "
         "in (widest first; one that lands on the table is tried again). A holder that is out of comfortable reach "
-        "is first carried (upright) to where both arms reach it and put back down; grippers opened after each. An "
-        "instruction to hold the holder with one hand, fill it with the other and then put it back down is judged "
-        "by the end state only (the objects in it, the holder upright, both grippers open): this skill fills it "
-        "standing, without holding it, and that is the end state such an instruction asks for."),
+        "is first carried (upright) to where both arms reach it and put back down; grippers opened after each. For "
+        "an instruction to hold the holder with one hand, fill it with the other and then put it back down, this "
+        "skill fills it standing, without holding it, and leaves the same end state: the objects in the holder, "
+        "the holder upright and back down, both grippers open."),
     "arrange": (
         'arrange(steps: [["place" | "push", obj_id, support_id], ...])',
         'Does every step: "place" = put obj upright on top of support; "push" = slide obj (too wide to grasp) onto '
@@ -128,7 +132,7 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "strike_in_order(tool: id, instrument: id, points: [frame, ...])",
         "Picks a striking tool (mallet, stick) by its handle and strikes the instrument's target points (frames as "
         "listed for it in the scene) one after another with the tool's working end: a quick stroke down to touch the "
-        "surface, back up ~7 cm, next. Pass the points in the order to strike them (for 'from left to right': by "
+        "surface, back up, next. Pass the points in the order to strike them (for 'from left to right': by "
         "increasing x). The tool stays in the hand."),
     "insert_each": (
         "insert_each(objects: [id, ...], receptacle: id)",
@@ -138,8 +142,8 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
     "screw_on": (
         "screw_on(pairs: [[part, partner], ...])",
         "Puts each movable threaded part (a nut) on its fixed partner (a bolt), upright on its axis, and turns it down "
-        "the thread with wrist sweeps and re-grips (clockwise from above) until it sits ~1 cm down; grippers opened "
-        "after each pair. Pair them first (e.g. by matching colour)."),
+        "the thread with wrist sweeps and re-grips (clockwise from above) until it is seated on the thread; grippers "
+        "opened after each pair. Pair them first (e.g. by matching colour)."),
     "fold_garment": (
         "fold_garment(garment: id | null = null)",
         "Folds a long-sleeved top lying flat on the table with pinches: each sleeve is pinched at its end and laid "
@@ -153,7 +157,7 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "dustpan's axis, then along it over the lip into the pan; the broom is put down away from the dustpan. For "
         "'use the dustpan to sweep the blocks'."),
 }
-SKILL_DOCS_VERSION = 11  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 12  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
 #                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
@@ -164,6 +168,9 @@ SKILL_DOCS_VERSION = 11  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + 
 #                        10: fill_container: "hold the holder with one hand, fill it with the other, put it back down" is
 #                           judged by the end state; the skill fills it standing (routing 2026-10-27: Sol wrote code 3/3)
 #                        11: + sweep_into (gennew)
+#                        12: no numbers in the prompt text (match_and_pick, pick_into_held, strike_in_order, screw_on
+#                           describe their motion without magnitudes) and no judging language (fill_container); rules
+#                           §14.5: prompts carry no checker thresholds, score ladders or reward predicates
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',
