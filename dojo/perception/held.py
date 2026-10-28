@@ -577,8 +577,11 @@ def held_pose(frame: dict, arm: str, asset_key: str, prior_T_tcp_obj, cfg: dict 
         return _fail(T_prior, T_tcp, "no_views", base, t0, lead_obj, axis_obj)
     # a grid over the in-pad DoF: the turn about the closing axis and the slide along the approach trade off in the
     # own wrist view (a flat valley of the cost), so seeds span it rather than a few axis-aligned steps
+    # ``turn_starts_deg`` (cfg) widens the turn grid: an object that pivots in the pads during the carry (a mug held by
+    # its wall: 20-55 deg off the grasp-time estimate at the lift, stream H) lies far outside +-6 deg
+    turns = tuple(cfg.get("turn_starts_deg") or (-6, -3, 0, 3, 6))
     starts = [np.array([0, ry * deg, 0, dx * mm, 0, dz * mm], float)
-              for ry in (-6, -3, 0, 3, 6) for dx in (-3, 0, 3) for dz in (-2, 0, 2)]
+              for ry in turns for dx in (-3, 0, 3) for dz in (-2, 0, 2)]
     scored = sorted(((cost(s), i, s) for i, s in enumerate(starts)), key=lambda t: t[:2])
     best = None
     free = (1, 3, 5)                                    # the in-pad DoF: turn about y, slide along x / z

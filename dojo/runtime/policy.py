@@ -203,6 +203,28 @@ class RuntimeConfig:
                                         # wrist view that clearly prefers it (silhouette IoU >= 0.6 and >= prior + 0.15);
                                         # the head alone rejected a tile that had toppled (5.1 make_kong 100001: 0.59 vs
                                         # 0.57 under the hanging gripper, the wrist 0.075 vs 0.93)
+    # mode perception, stream H: RoboDojo's official gripper value (``<arm>_ee_joint_state_official``; strict server v2,
+    # dev harnesses DOJO_GRIP_SOURCE=v2) decides held / empty at every refresh while an object is attached: off | on.
+    # on: official - command <= grip_empty_eps after the command held still grip_settle_steps on a full close (<=
+    # grip_close_max) = the jaws closed on nothing: the object leaves the jaws in the belief; above it = held, and the
+    # vision held_look is skipped for that grasp; objects thinner than grip_thin_mm, a missing reading, a partial close:
+    # the vision held_look decides as before (M's replays: 74 / 74 empty caught, 0 / 490 held called empty)
+    grip_check: str = "off"
+    grip_empty_eps: float = 0.001
+    grip_settle_steps: int = 5
+    grip_close_max: float = 0.05
+    grip_thin_mm: float = 4.0
+    grip_miss_search_m: float = 0.07    # the next pick refine of an object a close missed searches this far (0 = off)
+    # mode perception, stream H: one in-hand read per grasp from the frame of the lift (perception's held_pose: the
+    # holding wrist + head + the other wrist, gripper-constrained; no extra steps), for every place, not only the
+    # insertions held_pose serves: off | on. A fit held_pose calls ok (or, with carry_read_max_sigma_mm > 0, "ambiguous"
+    # by the insertion-grade limits only, with every position sigma within it) that moved >= carry_read_min_mm /
+    # carry_read_min_deg re-anchors the belief's in-hand transform. carry_read_cfg goes to held_pose (search range)
+    carry_read: str = "off"
+    carry_read_cfg: dict = field(default_factory=lambda: {"max_shift_mm": 25.0, "max_turn_deg": 30.0})
+    carry_read_min_mm: float = 4.0
+    carry_read_min_deg: float = 6.0
+    carry_read_max_sigma_mm: float = 0.0
     held_drop_conf: float = 0.9         # a held_look "not held" at this confidence drops the grasp unless the head check sees
                                         # the object in the jaws (before: only when the head also saw it at the pick pose,
                                         # which kept 51 of 52 truly empty grasps on the proxy); > 1 = the old rule
@@ -268,7 +290,7 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request")
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on") or self.cfg.carry_read not in ("off", "on")
                 or self.cfg.twin_load not in ("raw", "consistent")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
@@ -432,6 +454,17 @@ class RuntimePolicy:
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         prov.confirm_wrists = bool(cfg.confirm_wrists)
         prov.fallen_check = bool(cfg.fallen_check)
+        if cfg.mode == "perception" and cfg.carry_read == "on" and hasattr(self.perception(), "held_pose"):
+            prov.carry_reader = lambda obs, arm, lab, key, T: self._carry_pose(prov, obs, arm, key, T)
+            prov.carry_min_mm, prov.carry_min_deg = float(cfg.carry_read_min_mm), float(cfg.carry_read_min_deg)
+            prov.carry_max_sigma_mm = float(cfg.carry_read_max_sigma_mm)
+        if cfg.mode == "perception" and cfg.grip_check == "on":
+            prov.grip_check = True
+            prov.grip_eps, prov.grip_settle = float(cfg.grip_empty_eps), int(cfg.grip_settle_steps)
+            prov.grip_close_max, prov.grip_thin_m = float(cfg.grip_close_max), float(cfg.grip_thin_mm) / 1000.0
+            # did this path carry the official value at all (strict v2 / DOJO_GRIP_SOURCE=v2)? Rows without it ran v1
+            self.report["grip_check"] = {"official_at_start": any(f"{a}_ee_joint_state_official" in obs0["state"]
+                                                                  for a in ("left", "right"))}
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()
@@ -719,6 +752,12 @@ class RuntimePolicy:
         if self.cfg.refine_search_radius > 0:   # the prior may be this far off (B1 / agentic read, a place target)
             kw["search_radius"] = float(self.cfg.refine_search_radius)
             max_shift = max(max_shift, float(self.cfg.refine_search_radius) + 0.01)
+        if (kind == "pick" and self.cfg.grip_miss_search_m > 0 and label in getattr(prov, "grip_missed", ())
+                and float(self.cfg.grip_miss_search_m) > float(kw.get("search_radius") or 0)):
+            # the official gripper value said the last close on it met nothing: the belief was off by more than the jaw
+            # clearance, so search a wider grid around it (the radius search's own acceptance rules apply)
+            kw["search_radius"] = float(self.cfg.grip_miss_search_m)
+            max_shift = max(max_shift, float(self.cfg.grip_miss_search_m) + 0.01)
         if self.cfg.refine_empty_hand and kind == "pick" and held is None and not prov.belief.attached:
             kw["empty_hand"] = True
         res = self.perception().refine(obs, objs, self.fold, max_shift, arm=arm, identity_vocabulary=idv, held=held, **kw)
@@ -1122,6 +1161,18 @@ class RuntimePolicy:
             prov.belief.attached[arm] = (lab, np.asarray(r["T_tcp_obj"], float))
             prov.belief.sync_robot(self.bridge.observe()["state"])
             prov.stats["held_pose"] = prov.stats.get("held_pose", 0) + 1
+        return r
+
+    def _carry_pose(self, prov, obs: dict, arm: str, key: str, prior_T_tcp_obj) -> dict:
+        """perception's held_pose for the provider's carry read (``RuntimeProvider._carry_read`` adopts or not): the
+        belief's other objects as occluders, ``carry_read_cfg`` as the search range."""
+        held = set(prov.belief.held_labels()) if prov.belief is not None else set()
+        others = [{"key": o.asset.key, "pose7": [float(v) for v in np.r_[o.pos, o.quat]]}
+                  for o in (prov.belief.movable() if prov.belief is not None else []) if o.label not in held]
+        t = time.perf_counter()
+        r = self.perception().held_pose(obs, arm, key, np.asarray(prior_T_tcp_obj, float).tolist(),
+                                        {"others": others, **(self.cfg.carry_read_cfg or {})}) or {}
+        r["s"] = round(time.perf_counter() - t, 2)
         return r
 
     def _watch_read(self, region: dict, prior: dict | None, scene: str) -> dict:
