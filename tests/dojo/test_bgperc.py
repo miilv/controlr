@@ -462,3 +462,36 @@ def test_seg_cache_masks_round_trip_bit_exact():
     m[47, 63] = True                                           # touches the frame corner
     assert np.array_equal(mod.decode_mask(mod.encode_mask(m), 48, 64), m)
     assert not mod.decode_mask(mod.encode_mask(np.zeros((48, 64), bool)), 48, 64).any()
+
+
+def test_write_rerun_rebuilds_the_belief_before_each_write():
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "write_rerun", Path(__file__).resolve().parents[2] / "scripts/perception/bgperc/write_rerun.py")
+    W = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(W)
+    q = [0.0] * 6
+    acts = [{"left_arm_joint_state": q, "right_arm_joint_state": q, "left_ee_joint_state": [1.0],
+             "right_ee_joint_state": [1.0]} for _ in range(30)]
+    A0, A1, B0 = [0.1, 0.0, 0.8, 1, 0, 0, 0], [0.12, 0.0, 0.8, 1, 0, 0, 0], [0.3, 0.1, 0.8, 1, 0, 0, 0]
+    obj = lambda p7, key: {"key": key, "pos": p7[:3], "quat": p7[3:], "source": "perception"}   # noqa: E731
+    snaps = [{"step": 9, "objects": {"a": obj(A0, "Rigid/x/00000"), "b": obj(B0, "Rigid/y/00000"),
+                                     "bin": obj([0, 0, 0.3, 1, 0, 0, 0], "Geometry/bin/00000")}, "attached": {}, "q": {}},
+             {"step": 25, "objects": {"a": obj(A1, "Rigid/x/00000"), "b": obj(B0, "Rigid/y/00000"),
+                                      "bin": obj([0, 0, 0.3, 1, 0, 0, 0], "Geometry/bin/00000")}, "attached": {}, "q": {}}]
+    ev_a = {"kind": "refine", "for": "pick", "label": "a", "arm": "left", "step": 12, "prior7": A0, "pose7": A1,
+            "ok": True}
+    ev_b = {"kind": "refine", "for": "pick", "label": "b", "arm": "right", "step": 20, "prior7": B0, "pose7": B0,
+            "ok": True}
+    report = {"events": [ev_a, ev_b], "dev_belief_probe": {"snaps": snaps}, "config": {"refine_max_shift_m": 0.07}}
+    revs = [ev_a, ev_b]
+    rb = W.RecordedBelief(report, acts, revs)
+    b, att, src = rb.before(0)                                  # before a's refine: a at its prior, not N's pose
+    assert src == "probe" and att == {} and b["a"]["pos"] == A0[:3] and b["b"]["pos"] == B0[:3]
+    b, _, _ = rb.before(1)                                      # before b's refine: a's adopted write since P
+    assert b["a"]["pos"] == A1[:3]
+    req = W.inputs(ev_b, b, {}, report["config"], report)
+    assert [o["label"] for o in req["objects"]] == ["b", "a"]   # the target first, fixtures never
+    assert req["max_shift_m"] == 0.07 and req["held"] is None

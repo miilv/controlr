@@ -162,3 +162,13 @@ refine per frame? Report: [../experiments/2026-10-28-bgperc.md](../experiments/2
     their recorded priors, diffed against the logged results.
   - The detection cache is keyed by the sha1 of the stored PNG bytes; `replay_check.py --seg-cache` records its
     hash per episode in `valid.json`.
+- **The write re-runner** (`scripts/perception/bgperc/write_rerun.py`, `write_rerun.sh`):
+  - It re-runs a recorded write (pick / place / held refine, post-place re-measure) on the stored frame of its step
+    with the runtime's own request: prior, the other believed objects, the object in the jaws, and the config's
+    search radius / empty hand / identity candidates. It calls `_Perception.refine` in process, with the recorded
+    runs' code and EGL on the recording box.
+  - The belief before a write is rebuilt from `dev_belief_probe` (a snapshot at every gripper change) plus the logged
+    writes in between. M's `BeliefTracker` alone does not model the jaws, so it misplaced released objects.
+  - Leave-one-out on the 10 JPEG-era episodes: 119/120 logged pick / place refine priors are reproduced to 0.06 mm
+    without using the refine's own prior. The miss is a grasp retry whose release the runtime undid; nothing logs that
+    release.
