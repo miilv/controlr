@@ -53,8 +53,16 @@ D-C10a; its dirs on compute3 are deleted.)
 **How different is it.** The first (withdrawn) 100010-19 build gave the yardstick: backgrounds within the fold0 /
 fold1 spread (mean abs difference 0.2-0.3 grey levels, robot-free head 0.8-1.1 vs fold0-fold1 1.2), colour map on the
 237 held-out objects of 100000-09 slightly better than the per-episode fold maps that ran (abs error 0.110 vs 0.115 on
-both renderers). The 100040-49 numbers are in the PR / the follow-up note once both builds exist. Every perception
-input changes, so rendered numbers are not comparable across this change: Integration re-measures the baseline.
+both renderers). The 100040-49 set:
+- 6.0 proxy (compute3, frames rendered 10:00-10:30Z under `~/dojo-gpu.lock`: 58 episodes, put_bottles_into_dustbin 8
+  of 10 ids fit, the guard stopped it at 100050; 231 MB; set 2.4 MB, tree md5 `661f0fcf9970228d55c5e0dd1ab6cded`):
+  backgrounds vs fold0 / fold1 0.30 / 0.31 (head), 0.24-0.28 (wrists), 1.17 / 1.71 (robot-free head; fold0-vs-fold1
+  1.21), unseen head pixels 13,906 vs fold0's 13,721; colour map on the 237 held-out objects of 100000-09 abs error
+  0.1128 (median 0.093) vs 0.1142 (0.111) for the per-episode fold maps that ran.
+- genuine 5.1 (compute2, stream S's frames): see the PR.
+
+Every perception input changes, so rendered numbers are not comparable across this change: Integration re-measures
+the baseline.
 
 **Tests:** `tests/dojo/test_legality_calib.py`:
 - `test_the_layout_id_never_changes_the_calibration_or_the_decisions` (the audit's regression test: identical frames,
