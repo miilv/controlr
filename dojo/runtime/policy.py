@@ -174,6 +174,12 @@ class RuntimeConfig:
     # under the tick's rules. off | log (Discrepancies only) | apply. ``a1_cfg``: TickConfig / RDConfig overrides
     a1: str = "off"
     a1_cfg: dict = field(default_factory=dict)
+    # held-identity guard (needs a1 on): at the lift tick, when the twin segmenter's mask between the holding arm's jaws
+    # is confidently ANOTHER category than the intended object (A1's lift identity: score >= 0.5, IoU >= 0.3 with the
+    # believed held silhouette), the intended object never left: it goes back out of the jaws in the belief (like an
+    # empty close), so the pick's own check fails (grasp_slip) and the program re-plans; the retry's open releases what
+    # the jaws took. 5.1 play_Xylophone 100000: the stand grasped for the mallet struck all 8 notes. Default off
+    held_identity_guard: bool = False
     post_place_read: str = "off"
     post_place_read_iou: float = 0.0    # 0 = only a failed refine is re-read. 0.85 (#210) re-read ok refines too and the
                                         # read's few-mm moves broke fasten_screws' thread-on (rendered arm 9: 5/5 -> 1/5)
@@ -545,6 +551,7 @@ class RuntimePolicy:
         prov.post_place_read = cfg.post_place_read if prov.post_place_refine else "off"
         if cfg.mode == "perception" and cfg.a1 != "off":
             prov.a1, prov.a1_cfg = cfg.a1, dict(cfg.a1_cfg)
+            prov.held_identity_guard = bool(cfg.held_identity_guard)
             prov.a1_client = lambda obs_, req_: self.perception().redetect(obs_, req_, dict(cfg.a1_cfg))
         prov.post_place_read_iou = float(cfg.post_place_read_iou)
         prov.post_place_read_cfg = dict(cfg.post_place_read_cfg)

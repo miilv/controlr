@@ -485,6 +485,7 @@ class RuntimeProvider:
         self._a1_ev_i = 0
         self._a1_lifted: set = set()
         self._a1_n_exec = 0                     # executed actions already swept by a tick
+        self.held_identity_guard = False        # RuntimeConfig.held_identity_guard (needs a1 on)
         self._a1_att_log: list = []             # [(executed idx, arm, label | None, T_tcp_obj | None)]: the carries
         self._a1_att: dict = {}                 # arm -> (label, T_tcp_obj) as last logged
         self._ver_pose: dict = {}               # label -> (pose7, asset key) at the last version bump
@@ -1411,6 +1412,41 @@ class RuntimeProvider:
             else:
                 self._a1_att[arm] = ent
 
+    HELD_ID_MIN_SCORE = 0.5     # the seed bar: a detection this sure can contradict the belief
+    HELD_ID_MIN_IOU = 0.3       # ... and it covers the believed held object's silhouette between the jaws
+
+    def _held_identity_guard(self, resp: dict, step: int) -> list[str]:
+        """``held_identity_guard``: a lift identity (A1, the wrist mask between the jaws) of another CATEGORY than the
+        intended object, at >= ``HELD_ID_MIN_SCORE`` and >= ``HELD_ID_MIN_IOU`` with its believed silhouette: the jaws
+        took something else, the intended object never left. It goes out of the jaws in the belief, back to where it
+        was at the close (like grip_check "air"), so the pick's own check fails and the program re-plans. Returns the
+        labels let go; event ``held_identity_mismatch``."""
+        out = []
+        for lf in resp.get("lift") or []:
+            d, arm, lab = lf.get("det"), lf.get("arm"), lf.get("label")
+            if (not d or lf.get("agrees") or float(d.get("score") or 0.0) < self.HELD_ID_MIN_SCORE
+                    or float(d.get("iou_with_belief") or 0.0) < self.HELD_ID_MIN_IOU):
+                continue
+            a = self.belief.attached.get(arm)
+            if a is None or a[0] != lab or lab in [v[0] for x, v in self.belief.attached.items() if x != arm]:
+                continue
+            o = self.belief.objects.get(lab)
+            g = self.belief.grasp_z.get(arm)
+            self.belief.attached.pop(arm)
+            getattr(self.belief, "g_held", {}).pop(arm, None)
+            if o is not None and g is not None:
+                o.pos, o.quat = g[2][:3].copy(), g[2][3:].copy()
+            self.belief._drop(lab)
+            self.touched.add(lab)
+            self.touched.update(lf.get("other_labels") or [])
+            self.grip_missed.add(lab)
+            self.events.append({"kind": "held_identity_mismatch", "arm": arm, "label": lab, "step": step, "det": dict(d),
+                                "other_labels": list(lf.get("other_labels") or [])})
+            self.log(f"[runtime] held identity: {arm} jaws hold a {d.get('key')} (score {d.get('score')}), not {lab}: "
+                     f"{lab} out of the jaws in the belief")
+            out.append(lab)
+        return out
+
     def a1_tick(self, obs: dict, triggers: list, corridor=None) -> list:
         """One tick (``dojo.runtime.tick.run``: the same lines as the offline X2 harness): the perception op "redetect" on
         this observation, ``decide``'s write rules, the writes (mode "apply") into the belief, Discrepancies into the
@@ -1478,6 +1514,8 @@ class RuntimeProvider:
         except Exception as e:  # noqa: BLE001 (the tick is advisory: the episode goes on without it)
             self.events.append({"kind": "a1_error", "step": self.bridge.steps_used, "error": f"{type(e).__name__}: {e}"[:300]})
             return []
+        if self.held_identity_guard:
+            self._held_identity_guard(resp, step)
         for lab, p7 in sorted(writes.items()):
             o = self.belief.objects.get(lab)
             if o is None or lab in self.belief.held_labels():
