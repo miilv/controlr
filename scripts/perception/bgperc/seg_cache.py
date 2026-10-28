@@ -60,7 +60,7 @@ def main():
     model = _SegModel(w, classes)
     header = {"weights_sha1": hashlib.sha1(open(w, "rb").read()).hexdigest(),
               "classes_sha1": hashlib.sha1(open(c, "rb").read()).hexdigest(), "imgsz": model.imgsz,
-              "conf": model.conf, "model": os.path.basename(os.path.dirname(w))}
+              "conf": model.conf, "model": os.path.basename(os.path.dirname(w)), "steps": a.steps}
     os.makedirs(a.out, exist_ok=True)
     names = sorted(os.listdir(a.root))
     if a.valid:
