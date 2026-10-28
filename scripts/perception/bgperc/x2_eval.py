@@ -841,3 +841,6 @@ def summarize(rt_rows: list[dict], arm_rows: list[dict], rcs: list[dict]) -> dic
 
 if __name__ == "__main__":
     main()
+    import sys
+    sys.stdout.flush()
+    os._exit(0)                                     # skip interpreter teardown: the EGL context segfaults there
