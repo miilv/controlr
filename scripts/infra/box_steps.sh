@@ -11,7 +11,7 @@
 #   box_steps.sh boxjson                   (re)write ~/dojo-box.json: role, specs, capabilities, locks, scopes, smokes
 #
 # Config: env vars, or $BOX/config.env written by the driver (ROLE, ASSETS, CODE_SHA, MIN_DISK_GB, PREFIX, BOX_ALIAS,
-# ROLE_REASON). DRY_RUN=1: print every command instead of running it; every "is it done already?" check answers no.
+# ROLE_REASON, SHARED_HOME). DRY_RUN=1: print every command instead of running it; every "is it done already?" check answers no.
 # Roles: full = Isaac Sim 5.1 renders here (driver 570/580): official dev_eval, the bridge, 5.1 frames;
 #        physics = like compute3: 5.1 physics-only (twin, G3) + an Isaac Sim 6.0 render install (proxy_eval);
 #        auto (preflight only) = full on driver 570/580, else physics.
@@ -31,6 +31,8 @@ BOX_ALIAS="${BOX_ALIAS:-}"                 # the ssh name the driver used for th
 ASSETS="${ASSETS:-needed}"                 # needed: pins/robodojo_assets.txt (13.5 GB); all: every Asset but eval data (40.6 GB)
 MIN_DISK_GB="${MIN_DISK_GB:-300}"
 PREFIX="${PREFIX:-}"                       # big disk elsewhere: ~/dojo-{robodojo,data,perception-data} become symlinks into it
+SHARED_HOME="${SHARED_HOME:-0}"            # 1: this $HOME is shared with other people (compute2's /root): no lingering, no
+                                           # ~/.config/uv/uv.toml, our pinned uv in $BOX/tools/uv instead of ~/.local/bin
 CODE_SHA="${CODE_SHA:-unknown}"
 RD_HOME="${RD_HOME:-$HOME/dojo-robodojo}"
 SRC="$RD_HOME/RoboDojo"
@@ -64,7 +66,8 @@ SCOPE_BATCH="-p MemoryMax=20G -p CPUQuota=1200%"      # presettle / d0_ext / loo
 SCOPE_G3="-p MemoryMax=10G -p CPUQuota=600%"          # g3 on the heavy lane
 SCOPE_LIGHT="-p MemoryMax=8G -p CPUQuota=600%"        # one light-lane slot (physics-only, no render service)
 MIN_AVAIL_GB=25                                       # start a heavy job only with >= 25 GB MemAvailable (light lane: 20)
-export PATH="$HOME/.local/bin:$PATH" UV_PYTHON_PREFERENCE=only-managed GIT_TERMINAL_PROMPT=0
+if [[ "$SHARED_HOME" == 1 ]]; then UV_DIR="$BOX/tools/uv"; else UV_DIR="$HOME/.local/bin"; fi   # where our pinned uv lives
+export PATH="$UV_DIR:$HOME/.local/bin:$PATH" UV_PYTHON_PREFERENCE=only-managed GIT_TERMINAL_PROMPT=0
 export RD_HOME DOJO_DATA="$DATA" OMNI_KIT_ACCEPT_EULA=YES ISAAC_SIM_ROOT="$ISAAC6"
 
 # --------------------------------------------------------------------------------------------- helpers
@@ -95,7 +98,7 @@ rd_commit() { head -1 "$PINS/robodojo_commit.txt" | tr -d ' +'; }
 note() { [[ "$DRY" == 1 ]] && return 0; mkdir -p "$BOX/state"; echo "$*" > "$BOX/state/$CUR.result"; log "RESULT $*"; }
 
 # fingerprints: a step is done when its marker holds the current one (a pin / commit change re-runs it)
-fp_conventions() { echo "v2 $ROLE ${PREFIX:-home}"; }
+fp_conventions() { echo "v2 $ROLE ${PREFIX:-home}$( [[ "$SHARED_HOME" == 1 ]] && echo " shared")"; }
 fp_code() { echo "$CODE_SHA"; }
 fp_venv() { echo "py3.12 $(hash12 "$PINS/controlr-venv.txt")"; }
 fp_robodojo() { echo "$(hash12 "$PINS/robodojo_commit.txt") uv$UV_VERSION"; }
@@ -225,7 +228,7 @@ preflight() {
   else pf PASS inotify "max_user_watches $w"; fi
   shm="$(df -BG --output=size /dev/shm 2>/dev/null | tail -1 | tr -dc 0-9)"
   [[ -n "$shm" && "$shm" -lt 8 ]] && pf WARN shm "/dev/shm ${shm} GB < 8 GB (docker default?)"
-  if systemctl --user show-environment >/dev/null 2>&1; then pf PASS systemd "user manager up (systemd-run --user scopes for proxy_eval / integ_eval)"
+  if XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" systemctl --user show-environment >/dev/null 2>&1; then pf PASS systemd "user manager up (systemd-run --user scopes for proxy_eval / integ_eval)"
   else pf WARN systemd "no systemd user manager: proxy_eval.sh / integ_eval.sh scopes will not start (loginctl enable-linger)"; fi
   # network: the install pulls from these
   local u code bad=()
@@ -262,7 +265,9 @@ step_conventions() {   # dojo/README.md machine conventions: dirs, GPU locks, en
   # physics-only light jobs (g3 light lane, twin probes) hold one ~/dojo-gpu-light*.lock slot each
   x touch "$HOME/dojo-gpu.lock" "${LIGHT_LOCKS[@]/#/$HOME/}" "$DATA/simlab/.queue.lock"
   # uv must never pick a system interpreter (Ubuntu 22.04's python3.11 is 3.11.0rc1: SAM3 / torch.jit segfault)
-  if ! is grep -qs 'python-preference' "$HOME/.config/uv/uv.toml"; then
+  if [[ "$SHARED_HOME" == 1 ]]; then
+    log "shared home: ~/.config/uv/uv.toml left alone (UV_PYTHON_PREFERENCE=only-managed comes from ~/dojo-env.sh and every step)"
+  elif ! is grep -qs 'python-preference' "$HOME/.config/uv/uv.toml"; then
     x mkdir -p "$HOME/.config/uv"
     xs "printf 'python-preference = \"only-managed\"\\n' >> $HOME/.config/uv/uv.toml"
   fi
@@ -271,7 +276,11 @@ step_conventions() {   # dojo/README.md machine conventions: dirs, GPU locks, en
     x ln -s dojo-robodojo /root/controlr-robodojo       # the compute2 default RD_HOME of rdpy.sh / dev_eval.sh / paths.py
   fi
   # systemd-run --user scopes outlive the ssh session only with lingering (proxy_eval.sh / integ_eval.sh / g3.sh need them)
-  if ! is test -e "/var/lib/systemd/linger/$(id -un)"; then
+  if [[ "$SHARED_HOME" == 1 ]]; then
+    dnote "shared home: no loginctl (a system setting of someone else's machine)"
+    is test -e "/var/lib/systemd/linger/$(id -un)" \
+      || log "shared home: lingering stays off: a --user scope lives while the script that started it does (integ_eval.sh / proxy_eval.sh wait for theirs)"
+  elif ! is test -e "/var/lib/systemd/linger/$(id -un)"; then
     dnote "only when lingering is off; no sudo: works where polkit allows it, else a WARN (loginctl enable-linger as admin)"
     xs "loginctl enable-linger $(id -un) 2>/dev/null || echo 'WARN: loginctl enable-linger failed: scopes need an open session (ask an admin)'"
   fi
@@ -310,7 +319,9 @@ export DOJO_MIN_AVAIL_GB=$MIN_AVAIL_GB
 #   DOJO_D0=\$DOJO_DATA/d0_51 DOJO_BG_FOLDS=\$DOJO_PERCEPTION_DATA/bg_folds_51 DOJO_COLOR_CALIB=\$DOJO_CATALOG/color_calib_51.json
 export UV_PYTHON_PREFERENCE=only-managed
 export OMNI_KIT_ACCEPT_EULA=YES
-export PATH="\$HOME/.local/bin:\$PATH"
+export PATH="$( [[ "$SHARED_HOME" == 1 ]] && echo "$UV_DIR:")\$HOME/.local/bin:\$PATH"
+# systemd-run --user needs the user manager's runtime dir; tailscale ssh and su sessions do not export it
+[ -n "\${XDG_RUNTIME_DIR:-}" ] || [ ! -d "/run/user/\$(id -u)" ] || export XDG_RUNTIME_DIR="/run/user/\$(id -u)"
 EOF
     log "wrote $envf"
   fi
@@ -337,6 +348,8 @@ EOF
 - Big jobs in a scope: \`systemd-run --user --scope -q \$DOJO_SCOPE_BUNDLE ...\` (24G / 1400%; proxy 16G / 1200%; batch 20G /
   1200%; g3 10G / 600%; light 8G / 600%); start only with >= $MIN_AVAIL_GB GB MemAvailable.
 - Eval data firewall: never read \`Assets/Eval_Layout/**\` or eval-paired \`Assets/Traj\` (they are not even downloaded here).
+$( [[ "$SHARED_HOME" == 1 ]] && echo "- SHARED HOME: other people use this \$HOME and machine too. Write only under ~/dojo-*, ~/controlr*; never touch
+  other dirs, processes or sessions; no apt / sudo / loginctl / system settings. Our pinned uv: \`$UV_DIR\`.")
 EOF
   fi
   box_json || log "WARN: ~/dojo-box.json not written now (the ready step writes it again)"
@@ -345,7 +358,7 @@ EOF
 box_json() {   # ~/dojo-box.json: what agents read to pick a box (role, specs, capabilities from the smokes, locks, scopes)
   if [[ "$DRY" == 1 ]]; then echo "    + python3 $LIBX/box_json.py > ~/dojo-box.json   # schema dojo-box/1: role, GPU, driver, CPU, RAM, disk, capabilities, locks, scopes, smokes"; return 0; fi
   local scopes=0
-  systemd-run --user --scope -q true >/dev/null 2>&1 && scopes=1
+  XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" systemd-run --user --scope -q true >/dev/null 2>&1 && scopes=1
   BOXJ_ROLE="$ROLE" BOXJ_REASON="$ROLE_REASON" BOXJ_ALIAS="$BOX_ALIAS" BOXJ_SCOPES="$scopes" BOXJ_BOX="$BOX" \
   BOXJ_RD="$RD_HOME" BOXJ_CODE="$CODE" BOXJ_DATA="$DATA" BOXJ_PERC="$PERC" BOXJ_I6="$ISAAC6" BOXJ_I6V="$ISAAC6_VERSION" \
   BOXJ_LOCKS="${LIGHT_LOCKS[*]}" BOXJ_SB="$SCOPE_BUNDLE" BOXJ_SP="$SCOPE_PROXY" BOXJ_SBA="$SCOPE_BATCH" BOXJ_SG="$SCOPE_G3" \
@@ -367,10 +380,14 @@ step_code() {   # the driver extracted \`git archive <ref>\` into $BOX/code.new;
   x rm -rf "$BOX/code.new"
 }
 
-ensure_uv() {   # uv $UV_VERSION in ~/.local/bin (one installer at a time: venv and robodojo run in parallel)
-  if is test -x "$HOME/.local/bin/uv" && [[ "$("$HOME/.local/bin/uv" --version 2>/dev/null | awk '{print $2}')" == "$UV_VERSION" ]]; then return 0; fi
-  dnote "only if ~/.local/bin/uv is not $UV_VERSION"
-  xs "mkdir -p $BOX/state && flock $BOX/state/.uv.lock sh -c 'curl -LsSf https://astral.sh/uv/$UV_VERSION/install.sh | env UV_NO_MODIFY_PATH=1 sh'"
+ensure_uv() {   # uv $UV_VERSION in $UV_DIR (one installer at a time: venv and robodojo run in parallel)
+  if is test -x "$UV_DIR/uv" && [[ "$("$UV_DIR/uv" --version 2>/dev/null | awk '{print $2}')" == "$UV_VERSION" ]]; then return 0; fi
+  dnote "only if $UV_DIR/uv is not $UV_VERSION"
+  if [[ "$SHARED_HOME" == 1 ]]; then   # the home's own ~/.local/bin/uv (and its receipt, shell profiles) stay untouched
+    xs "mkdir -p $BOX/state $UV_DIR && flock $BOX/state/.uv.lock sh -c 'curl -LsSf https://astral.sh/uv/$UV_VERSION/install.sh | env UV_UNMANAGED_INSTALL=$UV_DIR sh'"
+  else
+    xs "mkdir -p $BOX/state && flock $BOX/state/.uv.lock sh -c 'curl -LsSf https://astral.sh/uv/$UV_VERSION/install.sh | env UV_NO_MODIFY_PATH=1 sh'"
+  fi
 }
 
 make_venv() {   # CHECKOUT: CHECKOUT/.venv = compute3's ~/dojo-perception/.venv (perception extras), on uv-managed CPython 3.12
@@ -574,20 +591,27 @@ check_py() {   # ARGS < python-script: a result check in the controlr venv; its 
   return "$rc"
 }
 
-step_smoke_twin() {   # physics-only Twin: boot, load (+ settle check), 40-step rollout, snapshot/restore + 40, contact-restore bitwise check
-  local out="$SMOKE/twin"
+step_smoke_twin() {   # physics-only Twin: boot, load (+ settle check), 40-step rollout, snapshot/restore + 40
+  # Layouts 100000 / 100001 (D-C10a: >= 100100 is reserved for joint runs, never generated, read or run). The G2
+  # contact-restore check replays layout 110007, so it runs only with SMOKE_RESERVED_OK=1 (the joint-run owners' OK).
+  local out="$SMOKE/twin" g2=""
+  [[ "${SMOKE_RESERVED_OK:-0}" == 1 ]] && g2=" --g2-dir $DATA/simlab/g2_c3b"
+  dnote "contact-restore check (--g2-dir, layout 110007) only with SMOKE_RESERVED_OK=1"
   x rm -rf "$out"; x mkdir -p "$out"
   logrun "$out/run.log" '^\[twin\]|Error|error:' \
-    "cd $CODE && timeout 1800 $(rdpy) -m dojo.simlab.twin --task stack_blocks --num-envs 1 --steps 40 --physics-only --out $out --g2-dir $DATA/simlab/g2_c3b"
+    "cd $CODE && timeout 1800 $(rdpy) -m dojo.simlab.twin --task stack_blocks --num-envs 1 --steps 40 --physics-only --seeds 100000,100001 --out $out$g2"
   [[ "$DRY" == 1 ]] && return 0
   check_py "$out/bench_stack_blocks_n1.json" <<'PY'
 import json, sys
 r = json.load(open(sys.argv[1]))
 stable = all(r["load_first"]["stable"]) and all(r["load_new_layout"]["stable"])
-cr = r.get("contact_restore", {})
-print(f"RESULT smoke_twin: boot {r['boot_s']:.0f} s, layouts stable {stable}, 40 steps at {r['steps']['env_steps_per_s']:.1f} env-steps/s, "
-      f"restore+40 {r['segment']['restore_plus_40_steps_s']:.2f} s, contact restore bitwise {cr.get('bitwise')} "
-      f"(max {cr.get('max_obj_divergence_mm', float('nan')):.4f} mm)")
+cr = r.get("contact_restore")
+msg = (f"RESULT smoke_twin: layouts {r.get('seeds')}, boot {r['boot_s']:.0f} s, layouts stable {stable}, 40 steps at "
+       f"{r['steps']['env_steps_per_s']:.1f} env-steps/s, restore+40 {r['segment']['restore_plus_40_steps_s']:.2f} s, ")
+if cr is None:       # its G2 record is on reserved layout 110007 (D-C10a)
+    print(msg + "contact restore NOT checked (its G2 record is on reserved layout 110007)")
+    sys.exit(0 if stable and r["steps"]["n"] == 40 else 1)
+print(msg + f"contact restore bitwise {cr.get('bitwise')} (max {cr.get('max_obj_divergence_mm', float('nan')):.4f} mm)")
 # bitwise on compute3; another box can differ by float noise (compute4: 0.0001 mm). <= 0.01 mm passes with a WARN
 exact = cr.get("bitwise") is True
 close = cr.get("max_obj_divergence_mm", 1e9) <= 0.01
@@ -625,8 +649,17 @@ sys.exit(0 if ok else 1)
 PY
 }
 
+reserved_gate() {   # the smokes that replay G2 on layout 110007: D-C10a reserves >= 100100 for joint runs
+  [[ "${SMOKE_RESERVED_OK:-0}" == 1 ]] && return 1
+  dnote "only with SMOKE_RESERVED_OK=1: it replays G2 on layout 110007, inside the reserved >= 100100 range (D-C10a)"
+  [[ "$DRY" == 1 ]] && return 1
+  log "skipped: it replays G2 on layout 110007, inside the reserved >= 100100 range (D-C10a; SMOKE_RESERVED_OK=1 with the joint-run owners' OK)"
+  note "skipped (reserved layout 110007, D-C10a)"
+}
+
 step_smoke_dev_eval() {   # the OFFICIAL harness (RoboDojo main.py via dev_eval.sh) on one dev layout, replaying G2's stack trajectory
   [[ "$ROLE" == full ]] || { log "role $ROLE: skipped (dev_eval needs 5.1 rendering)"; note "skipped (role $ROLE)"; return 0; }
+  reserved_gate && return 0
   local lay="$SMOKE/dev_layouts" out="$SMOKE/dev_eval" pol="$SRC/XPolicyLab/policy/dojo_replay"
   x rm -rf "$lay" "$out"; x mkdir -p "$lay/stack_blocks" "$out" "$pol"
   x cp "$DATA/simlab/g2_c3b/stack_layout.json" "$lay/stack_blocks/110007.json"      # stack_blocks seed 110007 (G2 'stack': success)
@@ -677,6 +710,7 @@ step_smoke_proxy_eval() {   # PROXY dev-eval like compute3: physics-only 5.1 epi
     [[ "$ROLE" == physics ]] && die "no Isaac Sim 6.0 at $ISAAC6 (the isaac6 fetch)"
     log "no Isaac Sim 6.0 here (role $ROLE): skipped"; note "skipped (no Isaac Sim 6.0)"; return 0
   fi
+  reserved_gate && return 0
   x rm -rf "$out"; x mkdir -p "$out"
   # proxy_eval.sh: MemAvailable >= 25 GB, the heavy GPU lock, one systemd --user scope (16G / 1200%) for both processes
   logrun "$out/run.log" '^\[proxy_eval\]|Error|error:|refusing|Segmentation' \

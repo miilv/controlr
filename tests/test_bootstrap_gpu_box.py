@@ -58,6 +58,28 @@ def test_dry_run_prints_every_step_and_the_pins():
     assert "isaac6" not in out.split("### preflight")[1].split("### ready")[0].replace("isaac6.sh", "")  # role full: no 6.0
 
 
+def test_smokes_never_run_reserved_layouts():
+    """D-C10a: layouts >= 100100 are reserved for joint runs. smoke_twin generates 100000 / 100001; the G2 replays on
+    110007 (contact restore, dev_eval, proxy_eval) run only with SMOKE_RESERVED_OK=1."""
+    out = dry("--role", "full", "--with-isaac6")
+    twin = next(x for x in out.splitlines() if "-m dojo.simlab.twin" in x)
+    assert "--seeds 100000,100001" in twin and "--g2-dir" not in twin
+    assert out.count("only with SMOKE_RESERVED_OK=1: it replays G2 on layout 110007") == 2     # dev_eval + proxy_eval
+    lib = LIB.read_text()
+    assert "reserved_gate && return 0" in lib.split("step_smoke_dev_eval()")[1].split("\n}")[0]
+    assert "reserved_gate && return 0" in lib.split("step_smoke_proxy_eval()")[1].split("\n}")[0]
+
+
+def test_shared_home_dry_run():
+    out = dry("--role", "full", "--shared-home")
+    assert "SHARED_HOME=1" in out and "UV_UNMANAGED_INSTALL=~/dojo-bootstrap/tools/uv" in out
+    conv = out.split("### conventions")[1].split("### secrets")[0]
+    assert "enable-linger" not in conv and "uv.toml <<" not in conv and ">> ~/.config/uv/uv.toml" not in conv
+    out = dry("--role", "full")
+    conv = out.split("### conventions")[1].split("### secrets")[0]
+    assert "loginctl enable-linger" in conv and ">> ~/.config/uv/uv.toml" in conv and "UV_NO_MODIFY_PATH=1" in conv
+
+
 def test_dry_run_touches_nothing(tmp_path):
     before = set((ROOT / "runs").glob("bootstrap/*")) if (ROOT / "runs").exists() else set()
     dry()

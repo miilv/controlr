@@ -135,6 +135,40 @@ def test_secrets_and_conventions_on_a_box(sandbox, tmp_path):
     assert box["gpus"][0]["driver"] == "595.91.07" and box["scopes"]["light"]["MemoryMax"] == "8G"
 
 
+def test_shared_home_conventions_leave_the_home_alone(sandbox, tmp_path):
+    """--shared-home (compute2's /root): no loginctl, no ~/.config/uv/uv.toml, our uv in ~/dojo-bootstrap/tools/uv,
+    ~/dojo-env.sh exports XDG_RUNTIME_DIR for systemd-run --user under tailscale ssh / su."""
+    sbx, runs, env = sandbox
+    calls, spy = tmp_path / "loginctl.calls", tmp_path / "spy"
+    spy.mkdir()
+    (spy / "loginctl").write_text(f'#!/bin/sh\necho "$@" >> {calls}\n')
+    (spy / "loginctl").chmod(0o755)
+    h = sbx / "fakea"
+    tools = h / "dojo-bootstrap" / "tools" / "uv"
+    tools.mkdir(parents=True)
+    (tools / "uv").write_text('#!/bin/sh\necho "uv 0.12.1"\n')
+    (tools / "uv").chmod(0o755)
+    home_uv = (h / ".local" / "bin" / "uv").read_text()
+    env = {**env, "PATH": f"{spy}:{env['PATH']}"}
+    r = run(["bash", str(BOX), "fakea", "--only", "conventions", "--no-secrets", "--shared-home", "--min-disk-gb", "1"],
+            env=env)
+    assert "conventions: done" in r.stdout or "conventions       done" in r.stdout, r.stdout
+    assert not calls.exists(), calls.read_text()                                 # never loginctl
+    assert not (h / ".config" / "uv" / "uv.toml").exists()
+    assert (h / ".local" / "bin" / "uv").read_text() == home_uv                  # the home's own uv untouched
+    assert "SHARED_HOME=${SHARED_HOME:-1}" in (h / "dojo-bootstrap" / "config.env").read_text()
+    envsh = (h / "dojo-env.sh").read_text()
+    assert f'export PATH="{tools}:$HOME/.local/bin:$PATH"' in envsh
+    assert 'export XDG_RUNTIME_DIR="/run/user/$(id -u)"' in envsh
+    assert "SHARED HOME" in (h / "DOJO_BOX.md").read_text()
+    # the default (not shared) still lingers and keeps ~/.local/bin/uv
+    r = run(["bash", str(BOX), "fakeb", "--only", "conventions", "--no-secrets", "--min-disk-gb", "1"], env=env)
+    if not Path(f"/var/lib/systemd/linger/{os.environ.get('USER', '')}").exists():   # (lingering already on: no call)
+        assert "enable-linger" in calls.read_text()
+    assert (sbx / "fakeb" / ".config" / "uv" / "uv.toml").exists()
+    assert 'export PATH="$HOME/.local/bin:$PATH"' in (sbx / "fakeb" / "dojo-env.sh").read_text()
+
+
 def test_fleet_preflight_only_writes_nothing(sandbox):
     sbx, runs, env = sandbox
     r = run(["bash", str(FLEET), "--only", "preflight", "--probe", "basic", "--min-disk-gb", "1", "fakea", "fakeb"],
