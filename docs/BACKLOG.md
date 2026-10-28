@@ -666,6 +666,11 @@
     files; PhysicalRSI's own docstring: "no historical evaluation layout supplies board/basket transforms"), so
     perception should find the board by appearance in whatever view shows it, not at a pinned pose (journal
     2026-10-27-dojo-perception3).
+  - 28 Oct (stream C): the G3 ceiling on current code (~4309013) is 0/10 on v13 (100000-04 + 100020-24, physics-only).
+    The route is right (pick_into_held), the belt read and the picture read work, but every episode fails at
+    "lift basket": belt_pick of the basket riding the belt never lifts it ("basket rose 0 mm", grasp_slip, 10/10). The
+    cell is skill-blocked before perception. A camera arm on it must use the v13 layouts: on v12 the basket sits
+    inside the conveyor and "not found" says nothing.
 - [ ] **dojo perception: imitate twin pairing by appearance (B1 `twin_pairing`, default off; legal under D-C17).**
   No gain on the 6 allowed demo layouts (plan right 4/6 either way). Its uncertainty rule is too strict: a Hungarian
   override marked a physically right pair uncertain (100002). Revisit with more demo layouts, and a margin taken from
