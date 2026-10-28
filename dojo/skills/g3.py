@@ -361,6 +361,10 @@ def cmd_run(a) -> None:
             print(f"[g3] missing layout {lp}", flush=True)
             continue
         lay = json.loads(lp.read_text())
+        why = paths.training_refusal(seed, lay, allow_variants=True)     # D-C10c: variant rollouts (v >= 1) only
+        if why:
+            print(f"[g3] {a.task} {seed}: {why}: skipped", flush=True)
+            continue
         lay.setdefault("_simlab", {})["seed"] = seed
         lay["_simlab"]["layout_file"] = lp.name
         logs = []

@@ -327,8 +327,9 @@ def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minute
         if paths.is_offslice_rendered(Path(lf).name.split(".")[0]):
             raise SystemExit(f"{lf}: not ours to run rendered / proxy (D-C10a: Mikhail's 100010-19 / 100050-99, reserved "
                              f">= {paths.RESERVED_MIN_ID})")
-        if paths.is_calibration_id(Path(lf).name.split(".")[0]):
-            raise SystemExit(f"{lf}: calibration-only layout (D-C10b, {paths.CALIBRATION_SLICE}): never evaluated")
+        why = paths.training_refusal(Path(lf).name.split(".")[0])
+        if why:
+            raise SystemExit(f"{lf}: {why}")
         calib_ov = calib_overlap(calib, Path(lf).name.split(".")[0])
         if calib_ov:
             raise SystemExit(f"{lf}: the perception calibration set {calib['set']} was built from this layout "

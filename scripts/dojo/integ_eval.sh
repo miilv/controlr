@@ -46,8 +46,8 @@ for a in "${args[@]}"; do      # D-C10a: >= 100100 reserved for joint runs; 1000
         || (( id >= 100050 && id <= 100099 )); }; then
     echo "[integ] $a: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused" >&2; exit 2
   fi
-  if [[ "$a" == *.json && "$id" =~ ^[0-9]+$ ]] && (( id >= 100040 && id <= 100049 )); then
-    echo "[integ] $a: calibration-only layout (D-C10b: 100040-49 calibrate perception, never evaluated): refused" >&2; exit 2
+  if [[ "$a" == *.json && "$id" =~ ^[0-9]+$ ]] && (( id >= 100030 && id <= 100049 )); then
+    echo "[integ] $a: training / priors / calibration block (D-C10c: 100030-49, never evaluated): refused" >&2; exit 2
   fi
 done
 if [[ -n "$PRESET" ]]; then        # the services follow the preset's mode / verify (explicit flags win, as in eval)
