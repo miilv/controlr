@@ -315,6 +315,13 @@ class RuntimeConfig:
     ported_swap: str = "fixed"
     # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
     joint_limits: str = "wide"
+    # ... the drag onto a pad: v1 (Mikhail's planar_drag) | turn (planar_drag_p1: near a 180 deg turn both directions are
+    # planned and the feasible one driven; v1 takes the sign of the yaw difference, which perception noise flips there and
+    # then runs the wrist into j6's limit: camera push_T 100005, 4 legs of "no sane planar plan")
+    ported_drag: str = "v1"
+    # ... pouring balls: v1 (Mikhail's pour: stops when no ball is left in the cup) | full (pour_p1: the whole roll profile;
+    # camera mode sees no balls inside the cup, so v1 read "empty" at the first hold and stopped with the balls inside)
+    ported_pour: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -391,7 +398,8 @@ class RuntimePolicy:
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.belt_wrist_veto not in ("off", "on")
-                or self.cfg.ported_swap not in ("fixed", "reach")
+                or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
+                or self.cfg.ported_pour not in ("v1", "full")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -405,7 +413,9 @@ class RuntimePolicy:
         if supervisor is None and self.cfg.ported_routes:
             from dojo.skills.planner import plan as _plan
             supervisor = RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans,
-                                        planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap}))
+                                        planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap,
+                                                                                      "drag": self.cfg.ported_drag,
+                                                                                      "pour": self.cfg.ported_pour}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -654,6 +664,8 @@ class RuntimePolicy:
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
             sk_.joint_limits = cfg.joint_limits
+            sk_.ported_drag = cfg.ported_drag
+            sk_.ported_pour = cfg.ported_pour
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
