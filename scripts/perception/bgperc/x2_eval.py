@@ -243,7 +243,7 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print) -> list[dict]
         tl.append((int(ev.step) - 1, 3, "score", j))
     tl.sort(key=lambda x: (x[0], x[1]))
     released_since: list = []
-    rows = []
+    rows, recomputes = [], []
     for step, _o, kind, x in tl:
         if kind == "write":
             ev = revs[x]
@@ -251,8 +251,11 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print) -> list[dict]
                 continue
             t0 = time.time()
             p7, why, raw = rerun_write(P, seq, ev, x, world, report)
-            log({"episode": seq.dir.name, "recompute": WR.writer(ev), "step": step, "label": ev["label"], "why": why,
-                 "adopted": p7 is not None, **raw, "time_s": round(time.time() - t0, 2)})
+            rc = {"episode": seq.dir.name, "recompute": WR.writer(ev), "step": step, "label": ev["label"], "why": why,
+                  "adopted": p7 is not None, "offline_blind": "not replayed" in why, **raw,
+                  "time_s": round(time.time() - t0, 2)}
+            recomputes.append(rc)
+            log(rc)
             if p7 is not None:
                 if WR.writer(ev) == "refine_held" and "arm" in world.chain[ev["label"]]:
                     world.attach(ev["label"], world.chain[ev["label"]]["arm"], p7, step, WR.writer(ev))
@@ -312,7 +315,7 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print) -> list[dict]
                     row["changed"][lab] = {"mm": round(d, 2), "writer": wr,
                                            "floor_p95": ((floor or {}).get(wr) or {}).get("p95")}
             rows.append(row)
-    return rows
+    return rows, recomputes
 
 
 def verdict(row: dict, R: str = "10") -> str:
@@ -354,16 +357,43 @@ def main():
         if render.gl() is None:
             raise SystemExit("x2_eval: no GL renderer (EGL): never the CPU fallback")
         P = _Perception()
+    all_rows, all_rc = [], []
     with open(a.out, "w") as fh:
         def log(r):
             print(json.dumps(r), flush=True)
         for n in names:
             seq = sd.Sequence(os.path.join(a.root, "seq", n))
             arm = OracleArm(seq) if a.arm == "oracle" else NullArm()
-            for row in run_episode(P, seq, arm, floor, log):
+            rows, rcs = run_episode(P, seq, arm, floor, log)
+            for row in rows:
                 row["verdict"] = verdict(row)
                 fh.write(json.dumps(row) + "\n")
             fh.flush()
+            all_rows += rows
+            all_rc += rcs
+    summ = {"arm": a.arm, "all": summarize(all_rows, all_rc),
+            "without_put_bottles": summarize([r for r in all_rows if r["task"] != "put_bottles_into_dustbin"],
+                                             [c for c in all_rc if "_bottles_" not in c["episode"]])}
+    json.dump(summ, open(os.path.splitext(a.out)[0] + ".summary.json", "w"), indent=1)
+    print(json.dumps(summ, indent=1))
+
+
+def summarize(rows: list[dict], rcs: list[dict]) -> dict:
+    """Per R: rt / arm clean counts and the verdicts; the re-computed writes: adopted, and the ones X2 cannot see
+    (they need a re-hover / second view / head-view confirm online), per writer."""
+    from collections import Counter
+    out = {"events": len(rows), "episodes": len({r["episode"] for r in rows})}
+    for R in ("5", "10", "15"):
+        out[f"R{R}"] = {"rt_clean": sum(r["rt"][R] for r in rows), "arm_clean": sum(r["arm"][R] for r in rows),
+                        **Counter(verdict(r, R) for r in rows)}
+    out["recomputed"] = {"n": len(rcs), "adopted": sum(c["adopted"] for c in rcs),
+                         "offline_blind": sum(c["offline_blind"] for c in rcs),
+                         "by_writer": {w: {"n": sum(c["recompute"] == w for c in rcs),
+                                           "adopted": sum(c["adopted"] for c in rcs if c["recompute"] == w),
+                                           "offline_blind": sum(c["offline_blind"] for c in rcs if c["recompute"] == w)}
+                                       for w in sorted({c["recompute"] for c in rcs})},
+                         "why": dict(Counter(c["why"] for c in rcs))}
+    return out
 
 
 if __name__ == "__main__":
