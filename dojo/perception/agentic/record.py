@@ -19,6 +19,8 @@ import math
 
 import numpy as np
 
+from .. import digits
+
 TYPES = ("Rigid", "Geometry", "Articulation")
 
 
@@ -56,6 +58,14 @@ def record_objects(rec: dict) -> list[dict]:
                                **({"b1_doubt": True} if (p.get("b1_doubt") or {}).get("doubt") else {})}}
                 if p.get("alternative"):
                     o["alternative"] = {"asset": p["alternative"].get("key"), "margin": p["alternative"].get("margin")}
+                d, c, src = digits.from_record(cat, p)
+                if d is not None:  # the measured digit, as j1_adapter exports it (keep / unmentioned copies carry it)
+                    o["attributes"] = {"digit": d}
+                    o["digit_source"] = src
+                    if c is not None:
+                        o["digit_conf"] = c
+                elif src == "unread":
+                    o["digit_unread"] = p.get("digit_unread") or "not_read"
                 out.append(o)
     return out
 
@@ -77,13 +87,48 @@ def _calib_from_state(state: dict) -> dict:
     return {c: {"K": cam.K.tolist(), "T_world_cam": cam.T_wc.tolist()} for c, cam in cams.items()}
 
 
+def apply_digit(r: dict, o: dict, cand_idxs=None, idx_before: int | None = None) -> dict | None:
+    """The agent output object ``o``'s settled digit (``j1.settle_digits``: ``value`` + ``digit_source`` /
+    ``digit_conf``, or ``digit_unread``) onto its record entry ``r``: the ``_perception`` digit fields, and the asset
+    index that shows the digit (among the label's candidates ``cand_idxs`` when known). Applied whether or not the pose
+    moved: an identity-only correction is never dropped. ``o`` without either (not a digit object, or no reading) leaves
+    ``r`` as B1 had it. Returns the log entry when the digit or the index (B1's: ``idx_before``) changed."""
+    cat = r.get("category")
+    if cat not in digits.DIGIT_OF:
+        return None
+    d = digits.as_digit(o.get("value"))
+    if d is None and not o.get("digit_unread"):
+        return None
+    p = r.setdefault("_perception", {})
+    old_d, _, old_src = digits.from_record(cat, p)
+    old_idx = int(r["category_idx"]) if idx_before is None else int(idx_before)
+    if d is not None and cand_idxs is not None and digits.idx_for_digit(cat, d, cand_idxs) is None:
+        # no card the config allows for this label shows it (THE RULE, 1): B1's reading stays
+        return {"label": r.get("label"), "action": "identity_rejected", "digit": d, "why": "no candidate shows it",
+                "kept": old_d}
+    if d is None:
+        p.update(digit=None, digit_source="unread", digit_unread=o["digit_unread"])
+        p.pop("digit_conf", None)
+    else:
+        p.update(digit=d, digit_source=o.get("digit_source") or "agent")
+        p.pop("digit_unread", None)
+        if o.get("digit_conf") is not None:
+            p["digit_conf"] = float(o["digit_conf"])
+        idx = digits.idx_for_digit(cat, d, cand_idxs)
+        if idx is not None:
+            r["category_idx"] = idx
+    if d == old_d and int(r["category_idx"]) == old_idx:
+        return None
+    return {"label": r.get("label"), "action": "identity", "digit_from": old_d, "digit_to": d, "idx_from": old_idx,
+            "idx_to": int(r["category_idx"]), "source": p["digit_source"], "was": old_src}
+
+
 def merge_into_record(rec: dict, objects: list[dict], unmatched_cost_m: float = 0.15) -> tuple[dict, list[dict]]:
     """Write the agent's objects into a copy of B1's record. Per category, Hungarian on xy between the agent's objects
     and B1's objects + the category's not-found labels (a fixed cost); a matched B1 entry takes the agent's pose (and
-    asset, when given); a matched not-found label becomes a new entry. Returns (record, per-object log)."""
+    asset, when given) and the agent's settled digit (``apply_digit``, also when the pose did not move); a matched
+    not-found label becomes a new entry. Returns (record, per-object log)."""
     from scipy.optimize import linear_sum_assignment
-
-    from ..inverse_layout import label_groups
 
     out = copy.deepcopy(rec)
     log = []
@@ -95,7 +140,15 @@ def merge_into_record(rec: dict, objects: list[dict], unmatched_cost_m: float = 
                 by_cat_b1.setdefault(cat, []).append(r)
     nf_by_cat: dict[str, list[dict]] = {}
     task = out.get("task")
-    groups = label_groups(task) if task else []
+    groups = []
+    if task:
+        from ..inverse_layout import label_groups
+
+        groups = label_groups(task)
+
+    def cand_idxs(label):  # the asset indices the config allows for a label (None: not known here)
+        g = next((g for g in groups if label in g["labels"]), None)
+        return sorted({int(k.split("/")[2]) for k in g["candidates"]}) if g else None
     for nf in out.get("_not_found") or []:
         keys = nf.get("candidates") or next((g["candidates"] for g in groups if nf["label"] in g["labels"]), [])
         cats = {k.split("/")[1] for k in keys}
@@ -128,20 +181,26 @@ def merge_into_record(rec: dict, objects: list[dict], unmatched_cost_m: float = 
                 r = B[j]
                 moved = math.hypot(r["default_pos"][0] - o["pos"][0], r["default_pos"][1] - o["pos"][1])
                 if moved < 1e-3 and o.get("source") not in ("refined",):
-                    continue  # kept as B1 had it
-                old = list(r["default_pos"])
+                    ev = apply_digit(r, o, cand_idxs(r.get("label")))  # the pose as B1 had it, the identity corrected
+                    if ev:
+                        log.append(ev)
+                    continue
+                old, idx0 = list(r["default_pos"]), int(r["category_idx"])
                 r["default_pos"] = [float(v) for v in o["pos"]]
                 if o.get("quat"):
                     r["default_ori"] = [float(v) for v in o["quat"]]
                 a = str(o.get("asset") or "").split("/")
-                if len(a) == 3 and a[1] == cat:
-                    r["category_idx"] = int(a[2])
+                if len(a) == 3 and a[1] == cat and cat not in digits.DIGIT_OF:  # a card's index follows its digit
+                    r["category_idx"] = int(a[2])                              # (apply_digit below)
                 p = r.setdefault("_perception", {})
                 p.update(source="agent" if o.get("source") != "refined" else "agent+refine", confidence=float(o.get("confidence", 0.6)),
                          b1_pos=old)
                 if o.get("source") == "refined" and len(a) == 3:
                     p.pop("place_tag", None)  # the refined shape's tag is re-derived from the rotation downstream
                 log.append({"label": r["label"], "action": "moved", "moved_mm": round(moved * 1000, 1), "source": p["source"]})
+                ev = apply_digit(r, o, cand_idxs(r.get("label")), idx_before=idx0)
+                if ev:
+                    log.append(ev)
             else:
                 n = N[j - len(B)]
                 a = str(o.get("asset") or "").split("/")
@@ -154,6 +213,9 @@ def merge_into_record(rec: dict, objects: list[dict], unmatched_cost_m: float = 
                          "_perception": {"source": "agent" if o.get("source") != "refined" else "agent+refine",
                                          "confidence": float(o.get("confidence", 0.5)),
                                          "orientation_known": bool(o.get("quat")) and not o.get("orientation_default")}}
+                if cat in digits.DIGIT_OF:  # a found card: the agent's digit, else unknown (its index is a candidate's)
+                    src = o if (o.get("value") is not None or o.get("digit_unread")) else {"digit_unread": "not_read"}
+                    apply_digit(entry, src, sorted({int(k.split("/")[2]) for k in n["_keys"] if k.split("/")[1] == cat}))
                 out.setdefault(typ, {}).setdefault(cat, []).append(entry)
                 filled_nf.add(n["label"])
                 log.append({"label": n["label"], "action": "found", "source": entry["_perception"]["source"]})

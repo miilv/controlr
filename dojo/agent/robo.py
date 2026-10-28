@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from dojo.agent.scene import DIGIT_CATEGORIES, KIND, SceneIds, caption
+from dojo.agent.scene import KIND, SceneIds, caption, shown_digit
 from dojo.agent.session import CellCheckpoint, EpisodeFinished
 from dojo.skills.kinematics import ARMS
 
@@ -271,7 +271,7 @@ class Robo:
                            tuple(round(float(v), 4) for v in o.center_w),
                            tuple(round(float(v), 4) for v in o.asset.extents), round(math.degrees(o.yaw()), 1),
                            round(o.tilt(), 1), round(o.top_z, 4),
-                           DIGIT_CATEGORIES[o.category](int(o.idx)) if o.category in DIGIT_CATEGORIES else None,
+                           shown_digit(o),
                            cap.get("name"), cap.get("color"), held.get(lab), float(o.confidence), int(o.idx))
         return dict(sorted(out.items()))
 

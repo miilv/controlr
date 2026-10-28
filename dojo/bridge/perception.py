@@ -45,7 +45,11 @@ def record_from_perceived(perceived: list[dict], needs_look: list[dict] | None =
     is refused as a planning row until a later call measures it: listed in ``_orientation_unknown`` and
     ``_unusable`` (with its position), and in ``_not_found`` with its asset as the candidate, so the runtime treats
     it as missing (no plan on it, the twin check off, the search may re-measure it) instead of planning on a made-up
-    turn. Every row carries ``_perception.orientation_known``."""
+    turn. Every row carries ``_perception.orientation_known``. Nor is a digit: a number card's digit is the reply's
+    ``value`` (the J1 schema's form of ``attributes.digit``; the asset index follows it), and a card without one is
+    unread (``dojo.perception.digits``), never its asset's digit."""
+    from dojo.perception import digits
+
     rec: dict = {}
     unusable, ori_unknown, nf = [], [], []
     for o in perceived or []:
@@ -64,12 +68,20 @@ def record_from_perceived(perceived: list[dict], needs_look: list[dict] | None =
                              "pos": [float(v) for v in o["pos"]]})
             nf.append({"label": o["label"], "candidates": [key], "why": "orientation unknown"})
             continue
+        p = {"confidence": float(o.get("confidence", 0.5)), "source": o.get("source"),
+             "via": "server_perceive", "orientation_known": True, "orientation": ori}
+        if cat in digits.DIGIT_OF:
+            d = digits.as_digit(o.get("value"))
+            if d is None:
+                p.update(digit=None, digit_source="unread", digit_unread="no_value")
+            else:
+                p.update(digit=d, digit_source="j1")
+                i_d = digits.idx_for_digit(cat, d)
+                idx = idx if i_d is None else i_d
         rec.setdefault(typ, {}).setdefault(cat, []).append({
             "category": cat, "category_idx": int(idx), "label": o["label"],
             "default_pos": [float(v) for v in o["pos"]],
-            "default_ori": quat, "scale": [1.0, 1.0, 1.0],
-            "_perception": {"confidence": float(o.get("confidence", 0.5)), "source": o.get("source"),
-                            "via": "server_perceive", "orientation_known": True, "orientation": ori}})
+            "default_ori": quat, "scale": [1.0, 1.0, 1.0], "_perception": p})
     nf += [{"label": n["label"], "candidates": []} for n in needs_look or []
            if n.get("reason") == "not_found" and n.get("label") and n["label"] not in ori_unknown]
     if nf:

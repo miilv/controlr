@@ -48,6 +48,11 @@ def _asset(assets: AssetDB | None, typ: str, cat: str, idx: int, mesh: bool) -> 
 
 
 def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, meshes: bool = True) -> dict[str, ObjectState]:
+    """A digit-category entry (a number card) carries the record's digit read (``dojo.perception.digits.from_record``):
+    the digit and its confidence / source, or ``digit_source`` "unread" (digit unknown) when the record has no read
+    for it, so the planner never takes a digit from an index nobody read."""
+    from dojo.perception.digits import from_record
+
     out = {}
     for typ, cat, r in iter_records(record):
         lab = r.get("label")
@@ -55,11 +60,12 @@ def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, mes
             continue
         p = r.get("_perception") or {}
         info = _asset(assets, typ, cat, int(r["category_idx"]), mesh=meshes)
+        d, dc, ds = from_record(cat, p)
         out[lab] = ObjectState(label=lab, obj_type=typ, category=cat, idx=int(r["category_idx"]),
                                pos=np.asarray(r["default_pos"], float), quat=np.asarray(r["default_ori"], float),
                                asset=info, clutter=False, source="perception",
                                confidence=float(p.get("confidence", 1.0)), t=step,
-                               identity_known=identity_known(p))
+                               identity_known=identity_known(p), digit=d, digit_conf=dc, digit_source=ds)
     return out
 
 

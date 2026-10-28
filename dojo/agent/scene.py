@@ -27,6 +27,18 @@ from dojo.skills.world import ObjectState, WorldState
 
 # glyph identity (perception reads it by textured render-and-compare): the digit an asset shows
 DIGIT_CATEGORIES = {"number": lambda idx: idx % 10, "number_card": lambda idx: idx}
+
+
+def shown_digit(o: ObjectState) -> int | None:
+    """The digit an object shows: perception's read (``o.digit``), None when perception could not read it
+    (``digit_source`` "unread": its index is a placeholder), else its asset's (GT, objects not from perception)."""
+    if getattr(o, "digit", None) is not None:
+        return int(o.digit)
+    if getattr(o, "digit_source", None) == "unread" or o.category not in DIGIT_CATEGORIES:
+        return None
+    return DIGIT_CATEGORIES[o.category](int(o.idx))
+
+
 SKIP_CATEGORIES = {"camera_stand"}           # fixed rig furniture, never part of a task
 KIND = {"Rigid": "movable", "Geometry": "fixed", "Articulation": "articulated", "Dynamic": "dynamic",
         "Fluid": "fluid", "Garment": "cloth"}
@@ -206,8 +218,9 @@ def object_line(o: ObjectState, oid: str, objects_root=None, all_names: bool = T
         desc.append(f'"{cap["name"]}"')
     if cap.get("color"):
         desc.append(f"colour {cap['color']}")
-    if o.category in DIGIT_CATEGORIES:
-        desc.append(f"shows {DIGIT_CATEGORIES[o.category](int(o.idx))}")
+    if o.category in DIGIT_CATEGORIES or getattr(o, "digit", None) is not None:
+        d = shown_digit(o)
+        desc.append(f"shows {d}" if d is not None else "digit unread")
     if frames and frames_version >= 4:
         fr4 = frames_v4(o)
         if fr4:

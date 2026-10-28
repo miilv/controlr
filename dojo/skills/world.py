@@ -215,6 +215,12 @@ class ObjectState:
     # False: idx / asset are a placeholder no image read (perception's ``_perception.identity`` "unknown", e.g. a
     # make_kong tile among 42 glyphs); its key equals other placeholders without the objects matching
     identity_known: bool = True
+    # the digit perception read on it (a number card): B1's glyph read or the agentic perceiver's explicit reading,
+    # arbitrated by dojo.perception.digits.resolve; digit_source "unread" = perception could not read it (digit None:
+    # unknown, and ``idx`` is a placeholder no digit may be taken from); None = not from perception (GT, the skills' own rows)
+    digit: int | None = None
+    digit_conf: float | None = None
+    digit_source: str | None = None   # texture | config | agent | agent+texture | j1 | unread
 
     @property
     def T(self) -> np.ndarray:

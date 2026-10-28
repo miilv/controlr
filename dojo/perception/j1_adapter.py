@@ -485,8 +485,7 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
                 if p.get("alternative"):
                     a = p["alternative"]
                     o["alternative"] = {"asset": a.get("key"), "margin": a.get("margin")}
-                if info.get("attributes"):
-                    o["attributes"] = info["attributes"]
+                _digit_export(o, info.get("attributes"), p)
                 if p.get("joints"):
                     o["joints"] = p["joints"]
                 elif typ == "Articulation":
@@ -511,6 +510,7 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
         # wrist camera looks at get a close-up refinement
         relabel = stabilize_labels(objects, prior["objects"], task)
         objects, last_seen = merge_prior(objects, prior["objects"], state)
+        carry_prior_digit(objects, prior["objects"])
     # objects a moved (open-gripper) wrist camera looks at: close-up refinement in that view, seeded by the
     # current estimate (the head view under a hovering arm biased the T 15 mm; the wrist alone: 0.5 mm)
     objects = _refine_in_looks(objects, images, state, cams)
@@ -669,6 +669,50 @@ def stabilize_labels(objects: list[dict], prior_objects: list[dict], task: str |
         for i, o in enumerate(cur):
             o["label"] = new[i]
     return changed
+
+
+def _digit_export(o: dict, attributes: dict | None, p: dict) -> None:
+    """A B1 object's catalogue attributes, with the digit (``attributes.digit``, the J1 schema's ``value``) only from
+    a glyph read: the record's digit fields (``digits.record_fields``) decide. A card B1 could not read (no texture
+    score, a tie) gets no digit and ``digit_unread``; a read one carries ``digit_conf`` (identity confidence, separate
+    from the pose's ``confidence``). Before, every card carried its asset's digit, read or not (G2 review finding 2)."""
+    attrs = dict(attributes or {})
+    if "digit_source" in p:
+        attrs.pop("digit", None)
+        if p.get("digit") is not None:
+            attrs["digit"] = int(p["digit"])
+            o["digit_source"] = p["digit_source"]
+            if p.get("digit_conf") is not None:
+                o["digit_conf"] = p["digit_conf"]
+        else:
+            o["digit_unread"] = p.get("digit_unread") or "not_read"
+    if attrs:
+        o["attributes"] = attrs
+
+
+def carry_prior_digit(objects: list[dict], prior_objects: list[dict]) -> int:
+    """A card this call could not read keeps the digit (and asset) the episode's previous call read for the same label:
+    a read beats no read whatever the margins (``merge_prior`` compares runner-up margins, and an unread card can carry
+    a colour margin). Marks ``identity_from_prior``. A prior entry ``prior_unusable`` rejects (no confidence or pose of
+    its own) re-identifies nothing, as in ``merge_prior``. Returns how many."""
+    from .digits import b1_reading
+
+    n = 0
+    pri = {p.get("label"): p for p in prior_objects or []
+           if (b1_reading(p) or {}).get("digit") is not None and prior_unusable(p) is None}
+    for o in objects:
+        p = pri.get(o.get("label"))
+        if not o.get("digit_unread") or p is None or p.get("category") != o.get("category"):
+            continue
+        r = b1_reading(p)
+        o["identity_from_prior"] = {"current": o.get("asset"), "current_unread": o.pop("digit_unread"), "prior_digit": r["digit"]}
+        for k in ("asset", "alternative", "digit_conf"):
+            if p.get(k) is not None:
+                o[k] = p[k]
+        o["attributes"] = dict(o.get("attributes") or {}, digit=int(r["digit"]))
+        o["digit_source"] = p.get("digit_source") or "prior"
+        n += 1
+    return n
 
 
 PRIOR_MATCH_M = 0.03  # a current and a prior object of one category this close are the same object

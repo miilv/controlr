@@ -36,6 +36,17 @@
   agent's prompt for every task with unread slots: A/B it. Also, an agentic-perceiver asset change on such an entry
   keeps it "unknown" (`agentic.record.merge_into_record`). Decide whether an agent's glyph read counts as read.
 
+- [ ] **dojo runtime: an unread card digit is never re-read.** Since the legality fix (journal
+  2026-10-28-legality-card-digit) an unread card (no texture score, a tie) has no digit. The planner then reports the
+  press count unknown and the episode presses nothing. The card is flagged `ambiguous`, but conservative `fuse` keeps
+  identities, so a look does not re-read it. Also, a later record in initial -> scan -> agentic0 -> fused -> searched
+  replaces an earlier record's read of the card (rare for the scan, which pools frame 0's views; the J1 route keeps a
+  read: `j1_adapter.carry_prior_digit`). Wanted (in policy.py): a glyph re-read of an unread card from a look, and "a
+  read beats no read" across the pipeline's records. First count `digit_unread` cards in rendered press_by_number
+  records.
+- [ ] **dojo perception: calibrate `EstimatorConfig.glyph_min_margin`** (0.0 = only ties are unread). Known card margins:
+  a wrong read at 0.003 (J1 press L4), right reads at 0.043-0.053. Measure the dev G1 card margins before raising it.
+  arrange_largest_number's `number` tiles still take their digit from the index (`digits.DIGIT_OF` is number_card only).
 - [ ] **dojo perception: nothing re-finds an object a scripted actor moved off its generator region.** B1's placement
   priors keep tic-tac-toe's opponent pieces on their side of the table. On the proxy replay of B_breadth2 100004, 13
   head re-reads after the opponent's move never paired a reading with the moved piece, although the head check saw its
