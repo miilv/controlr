@@ -19,6 +19,7 @@ def main():
     per_task = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     pairs = defaultdict(lambda: defaultdict(lambda: [0, 0]))        # task -> arm -> [fixed, broken] vs base at R10
     looks = defaultdict(lambda: [0, 0, 0, 0])                      # arm -> [fires on unclean, fires on clean, unclean, clean]
+    looks_d = defaultdict(lambda: [0, 0, 0, 0])                    # the same, "doubt" requests only (absence evidence)
     cost = defaultdict(lambda: defaultdict(float))
     reasons = defaultdict(lambda: defaultdict(int))
     n_ep = defaultdict(int)
@@ -49,14 +50,14 @@ def main():
                     if b["clean_r"]["10"] and not e["clean_r"]["10"]:
                         pairs[task][arm][1] += 1
                 if "look_requests" in e:
-                    lk = looks[arm]
-                    fired = bool(e["look_requests"])
-                    if e["clean_r"]["10"]:
-                        lk[3] += 1
-                        lk[1] += int(fired)
-                    else:
-                        lk[2] += 1
-                        lk[0] += int(fired)
+                    for lk, fired in ((looks[arm], bool(e["look_requests"])),
+                                      (looks_d[arm], any(x.get("why") == "doubt" for x in e["look_requests"]))):
+                        if e["clean_r"]["10"]:
+                            lk[3] += 1
+                            lk[1] += int(fired)
+                        else:
+                            lk[2] += 1
+                            lk[0] += int(fired)
             st = r.get("stats") or {}
             if st:
                 c = cost[arm]
@@ -95,7 +96,9 @@ def main():
     out += "\n\nlook trigger (needs_look on a required object at the event), per arm: fires on unclean / unclean events, " \
            "fires on clean / clean events\n"
     for arm, lk in looks.items():
-        out += f"- {arm}: {lk[0]}/{lk[2]} unclean, {lk[1]}/{lk[3]} clean\n"
+        d = looks_d[arm]
+        out += (f"- {arm}: any request {lk[0]}/{lk[2]} unclean, {lk[1]}/{lk[3]} clean; doubt only {d[0]}/{d[2]} unclean, "
+                f"{d[1]}/{d[3]} clean\n")
     out += "\ncost (background arms): per step = refine + visibility CPU seconds / replayed steps\n"
     for arm, c in cost.items():
         s = max(1.0, c["steps"])

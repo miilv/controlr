@@ -361,3 +361,23 @@ def test_runtime_config_bg_perception_is_off_by_default_and_validated():
     RuntimePolicy(RuntimeConfig(bg_perception="reread", bg_obs_every=4))
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(bg_perception="always"))
+
+
+def test_moves_keep_the_belief_orientation_and_refines_supersede_older_evidence():
+    q_fit = [0.9962, 0.0, 0.0, 0.0872]                           # a fit turned 10 deg
+    bp = make([{"ok": True, "xy": (0.012, 0.0), "iou": 0.95, "vis": 0.9}])
+    bp._refine.fits[0]["xy"] = (0.012, 0.0)
+    orig = bp._refine
+
+    def turned(*a):
+        r = orig(*a)
+        r["pose"] = r["pose"][:3] + q_fit
+        return r
+    bp._refine = turned
+    ch = bp.step(FRAME, 0, required=["a"])
+    assert len(ch) == 1 and np.allclose(bp.tracks["a"].pose[3:], Q)              # position only (move_turn off)
+    # the caller re-measured it (same pose within 1 mm, a new source): our move belongs to the old epoch
+    bp.sync({"a": {"key": "Rigid/block/00000", "pos": [0.0, 0.0, 0.8], "quat": Q, "source": "record"}})
+    e0 = bp.tracks["a"].epoch
+    bp.sync({"a": {"key": "Rigid/block/00000", "pos": [0.0, 0.0, 0.8], "quat": Q, "source": "refine_pick"}})
+    assert bp.tracks["a"].epoch == e0 + 1 and bp.tracks["a"].moved is None

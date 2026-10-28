@@ -48,6 +48,8 @@ class BgConfig:
     strong_iou: float = 0.9        # ... or one fit this good (and visible_frac >= strong_vis) within strong_mm
     strong_vis: float = 0.8
     strong_mm: float = 15.0
+    move_turn: bool = False        # a move takes the fits' orientation too (default: position only, the belief's yaw
+                                   # stays; build_tower 100002: a fit's 7 deg turned a right block "rot" wrong)
     absent_iou: float = 0.25       # a not-ok fit in clear view (vis >= absent_vis) below this iou: nothing there
     absent_vis: float = 0.7
     search_radius: float = 0.06    # m: objects in doubt are refined with perception's radius search
@@ -137,6 +139,7 @@ class BackgroundPerceiver:
         self.cfg = cfg or BgConfig()
         self.writes_back = writes_back
         self._synced: dict = {}
+        self._sources: dict = {}
         self.tracks: dict[str, Track] = {}
         self.stats = {"steps": 0, "processed": 0, "vis_s": 0.0, "refine_s": 0.0, "refines": 0, "ok": 0,
                       "confirms": 0, "moves": 0, "absent": 0, "searches": 0}
@@ -172,22 +175,25 @@ class BackgroundPerceiver:
                                          float(o.get("conf", 0.5)))
                 synced[lab] = p
                 t = self.tracks[lab]
-            if lab in held:
-                if not t.held:
-                    self.touch(lab, held=True)
+            if lab in held or t.held:                       # in the jaws / just released: a new epoch, no evidence
+                if (lab in held) != t.held:
+                    self.touch(lab, held=lab in held)
                 t.pose = np.r_[p, np.asarray(o["quat"], float)[:4]]
                 synced[lab] = p
+                if o.get("source") is not None:
+                    self._sources[lab] = o["source"]
                 continue
-            if t.held:                                      # released: where the caller put it, a new epoch
-                self.touch(lab, held=False)
-                t.pose = np.r_[p, np.asarray(o["quat"], float)[:4]]
-                synced[lab] = p
-                continue
-            if lab not in synced or float(np.linalg.norm(p - synced[lab])) > 0.001:
+            src = o.get("source")
+            if lab not in synced or float(np.linalg.norm(p - synced[lab])) > 0.001 or \
+                    (src is not None and src != self._sources.get(lab, src)):
+                # moved, or re-measured by someone else (a refine that kept the pose within 1 mm still supersedes our
+                # older evidence: build_tower 100002, a pick refine 0 mm off after a background move)
                 self.set_pose(lab, p, o["quat"], touched=True)
                 if o.get("key"):
                     t.key = o["key"]
                 synced[lab] = p
+            if src is not None:
+                self._sources[lab] = src
         self._synced = synced
 
     def set_pose(self, label: str, pos, quat, touched: bool = True, step: int | None = None) -> None:
@@ -465,7 +471,7 @@ class BackgroundPerceiver:
                     if near:
                         pts = np.stack([x[1] for x in near] + [pose])
                         old = t.pose.copy()
-                        t.pose = np.r_[np.median(pts[:, :3], axis=0), pose[3:]]
+                        t.pose = np.r_[np.median(pts[:, :3], axis=0), pose[3:] if cfg.move_turn else old[3:]]
                         if r["key"] != t.key and all(x[2] == r["key"] for x in near):
                             ev["key_from"] = t.key
                             t.key = r["key"]
@@ -580,7 +586,7 @@ class BackgroundPerceiver:
         best = max(cl, key=lambda o: o["iou"])
         xy = np.median(np.stack([o["xy"] for o in cl]), axis=0)
         old = t.pose.copy()
-        t.pose = np.r_[xy, best["pose"][2], best["pose"][3:]]
+        t.pose = np.r_[xy, best["pose"][2], best["pose"][3:] if cfg.move_turn else old[3:]]
         t.confirmed, t.moved = step, step
         t.obs = cl
         if self.writes_back:
