@@ -402,3 +402,13 @@ def test_head_absence_and_reread_on_doubt_find_a_moved_object():
     ch = bp.reread(15, r)
     assert [c["label"] for c in ch] == ["opponent_piece0"]
     assert np.allclose(bp.tracks["opponent_piece0"].pose[:2], [0.0, -0.2]) and np.allclose(bp.tracks["player_piece0"].pose[:2], [0, 0])
+
+
+def test_absence_overrides_an_older_confirmation():
+    bp = make([{"ok": True, "xy": (0.0, 0.0), "iou": 0.9, "vis": 0.9}], BgConfig(every=1, head_check_every=1))
+    bp.step(FRAME, 0, required=[])
+    assert bp.tracks["a"].confirmed == 0
+    empty = {"a": {"head": {"n_vis": 150, "prec": 0.0}}}
+    bp.head_result(5, empty)
+    bp.head_result(6, empty)
+    assert bp.tracks["a"].confirmed is None and bp.tracks["a"].doubt     # an actor took it away after we confirmed it

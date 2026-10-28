@@ -452,6 +452,7 @@ class BackgroundPerceiver:
                 continue
             if float(h["prec"]) < cfg.head_absent_prec:
                 t.absent += 1
+                t.confirmed = None                          # moved by someone else (ttt 100004: the opponent's piece)
                 self.stats["head_absent"] = self.stats.get("head_absent", 0) + 1
                 self.events.append({"step": step, "label": lab, "head": True, "prec": round(float(h["prec"]), 3),
                                     "n_vis": int(h["n_vis"]), "action": "absent"})
@@ -619,6 +620,7 @@ class BackgroundPerceiver:
                 change = self._try_move(t, step, ev)
         elif not ok and vis >= cfg.absent_vis and iou < cfg.absent_iou:
             t.absent += 1
+            t.confirmed = None                              # an empty place: an older confirmation no longer holds
             self.stats["absent"] += 1
             ev["action"] = "absent"
         self.events.append(ev)

@@ -38,6 +38,15 @@ import numpy as np
 UNTOUCHED = ("record", "refine_pick", "refine_place")
 
 
+def gt_at(seq, k: int, back: int = 3) -> list:
+    """GT rows after ``k`` actions, else the nearest earlier observation within ``back`` steps (a sequence rendered
+    with ``DOJO_SEQ_STRIDE`` > 1; = ``m95_score.frame_at``)."""
+    for j in range(k, max(-1, k - back - 1), -1):
+        if j in seq.by_step:
+            return seq.gt(j)
+    raise KeyError(f"no observation within {back} steps before {k}")
+
+
 def load_report(seq):
     d = os.path.dirname(seq.meta["actions"])
     hits = glob.glob(os.path.join(d, f"{seq.task}_*_{seq.layout_id}_report.json.gz"))
@@ -276,7 +285,7 @@ def run(seq, actions, report, f0, arm, bg_cfg, lag, fp, groups, task, confs=None
                     if gap is not None:
                         e.meta["held_gap_mm"] = round(gap, 1)
                 bel, n_over = belief_at(k - 1 - lag)
-                sc = score_event(e, bel, seq.gt(k - 1), task, footprints=fp, groups=groups)
+                sc = score_event(e, bel, gt_at(seq, k - 1), task, footprints=fp, groups=groups)
                 if e.kind == "grasp" and sc["required"][0].get("gt_label"):
                     last_grasp[e.arm] = (e.step, sc["required"][0]["gt_label"])
                 sc["bg_overrides"] = n_over
@@ -286,7 +295,7 @@ def run(seq, actions, report, f0, arm, bg_cfg, lag, fp, groups, task, confs=None
                     sc["by_lag"] = {}
                     for lg in extra_lags:                      # the same event with fresher / older evidence
                         bel2, n2 = belief_at(k - 1 - lg)
-                        s2 = score_event(e, bel2, seq.gt(k - 1), task, footprints=fp, groups=groups)
+                        s2 = score_event(e, bel2, gt_at(seq, k - 1), task, footprints=fp, groups=groups)
                         sc["by_lag"][str(lg)] = {"clean_r": s2["clean_r"], "reasons": s2["reasons"], "overrides": n2,
                                                  "clean_target": s2["clean_target"]}
                 rows.append(sc)
