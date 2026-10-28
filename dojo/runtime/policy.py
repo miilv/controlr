@@ -793,7 +793,7 @@ class RuntimePolicy:
                 break
             w.notes["params"] = dict(d.params)
             try:
-                res = library.SKILLS[d.skill](sk, **d.params) or {}
+                res = library.skill_fn(d.skill)(sk, **d.params) or {}
                 self.report["result"] = _short(res)              # before finish(): success may end it there
                 if res.get("ok"):
                     f = sk.finish()

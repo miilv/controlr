@@ -60,6 +60,9 @@ REACH_MAX = 0.70                        # flange distance from the arm's mount
 MOUNTS = {"left": np.array([-0.30, -0.45, 0.765]), "right": np.array([0.30, -0.45, 0.765])}
 GRIP_SCALE = (-0.01, 0.044)             # finger joint for g = 0 / 1 (robot_config.yml gripper_scale)
 COMMANDS = ("obs", "move_to", "move_delta", "gripper", "hold", "return_home", "reach", "skill", "held_look")
+# the runtime's control-flow exceptions (dojo.runtime.belief: a confirmed divergence re-plans, a lost object is searched):
+# they leave a vendored skill untouched, as they leave our own skills (matched by name: skills never import the runtime)
+PASS_THROUGH = ("Divergence", "LostObject")
 NO_OBJECT_TYPES = ("Fluid", "Garment")  # no mesh body to grasp (the shim's cloud of a fluid is empty: no aabb)
 # the env's ground-truth accessors (dojo.skills.env.RunnerEnv / KinematicEnv): denied outside G3 mode gt
 TRUTH_NAMES = frozenset({"gt_objects", "reward", "score", "garment_gt", "actors_gt", "measured_gripper", "robot_gt",
@@ -908,6 +911,8 @@ class HarnessRobot:
         except (CmdError, TruthDenied):
             raise
         except Exception as e:  # noqa: BLE001
+            if type(e).__name__ in PASS_THROUGH:
+                raise
             raise CmdError(f"skill {name} raised {type(e).__name__}: {e}", traceback.format_exc(limit=4)[-800:]) from None
         finally:
             self.skill_depth -= 1
@@ -931,6 +936,8 @@ class HarnessRobot:
         except CmdError as e:
             rep = {"ok": False, "error": str(e), "hint": e.hint}
         except Exception as e:  # noqa: BLE001
+            if type(e).__name__ in PASS_THROUGH:
+                raise
             rep = {"ok": False, "error": f"{type(e).__name__}: {e}", "hint": traceback.format_exc(limit=3)[-600:]}
         f = self.facts()
         rep.update(cmd=cmd, t_wall=round(time.time() - t0, 4), step=f["steps_used"], steps_left=f["steps_left"],

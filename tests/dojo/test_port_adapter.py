@@ -323,3 +323,23 @@ def test_pick_up_grounds_the_phrase_by_the_public_description(monkeypatch):
     assert p.args["args"] == {"obj": "@d"}                         # a clutter object can be the one named
     p = planner.plan("Pick up the red mug by 10 cm.", sk.refresh(), ported=True)
     assert p.args == {"skill": "pick_up", "args": {}}              # no description match: the skill grounds by names
+
+
+def test_runtime_divergence_leaves_the_vendored_skill():
+    from dojo.runtime.belief import Divergence
+    env, sk = gt_skills(rows_pickup(), "Pick up the toy car by 10 cm.")
+    n = [0]
+    orig = sk.refresh
+
+    def refresh():
+        n[0] += 1
+        if n[0] > 3:
+            raise Divergence(["target"], {})
+        return orig()
+    sk.refresh = refresh
+    with pytest.raises(Divergence):
+        ported(sk, "pick_up")
+
+
+def test_one_reserve_for_every_ported_skill():
+    assert {r for r, _ in TIER_A.values()} == {20}

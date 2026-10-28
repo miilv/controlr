@@ -16,16 +16,19 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from dojo.skills.ported.harness_robot import SOURCE_COMMIT, HarnessRobot, TruthDenied
+from dojo.skills.ported.harness_robot import PASS_THROUGH, SOURCE_COMMIT, HarnessRobot, TruthDenied
 
-# robot-harness's tier-A runs (tools/sweep/rd_tierA/order_gen11.tsv, order_K4_gen.tsv): skill -> server reserve, args
+# skill -> (server move reserve, args). The arguments are robot-harness's tier-A ones (tools/sweep/rd_tierA/
+# order_gen11.tsv, order_K4_gen.tsv). The reserve is one value for every skill (the single-fixed-system audit,
+# 2026-10-28: his pick_up ran with reserve 0, here 20 like the rest)
+RESERVE = 20
 TIER_A = {
-    "cover_uncover_v2": (20, {}),
-    "swap_poses": (20, {}),
-    "pour": (20, {}),
-    "pour_bottle": (20, {"slip_m": 0.035, "slip_deg": 25.0}),     # D-C14
-    "pick_up": (0, {}),
-    "planar_drag": (20, {}),
+    "cover_uncover_v2": (RESERVE, {}),
+    "swap_poses": (RESERVE, {}),
+    "pour": (RESERVE, {}),
+    "pour_bottle": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),     # D-C14
+    "pick_up": (RESERVE, {}),
+    "planar_drag": (RESERVE, {}),
 }
 
 
@@ -48,7 +51,7 @@ def asset_descriptions(key: str) -> tuple:
 def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None) -> dict:
     """Run one vendored skill through the adapter. ``args`` may name objects as ``"@<belief label>"``."""
     from dojo.skills.skills import SkillResult
-    r0, a0 = TIER_A.get(skill, (20, {}))
+    r0, a0 = TIER_A.get(skill, (RESERVE, {}))
     robot = HarnessRobot(sk, reserve=r0 if reserve is None else int(reserve))
     n0 = sk.ex.steps_used
     try:
@@ -56,6 +59,8 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
     except TruthDenied:
         raise
     except Exception as e:  # noqa: BLE001 (a bad @label, a broken world: the skill did not run)
+        if type(e).__name__ in PASS_THROUGH:      # the runtime re-plans / searches, as after any skill of ours
+            raise
         rep = {"ok": False, "verified": False, "error": f"{type(e).__name__}: {e}"}
     verified = bool(rep.get("verified"))
     steps = sk.ex.steps_used - n0
