@@ -326,6 +326,8 @@ def cmd_table(a) -> None:
         print(taxonomy(rows))
     elif a.frame0:
         print(frame0_table(rows))
+    elif a.gap:
+        print(gap_table(rows))
     else:
         print(corr(rows) if a.corr else table(rows, a.by))
 
@@ -356,10 +358,12 @@ def failure_rows(rows: list[dict], R: str = "10") -> list[dict]:
             if nb:
                 n = nb[0]
                 what = {"what": "neighbour " + ("not found" if n.get("xy_mm") is None else "off"), "label": n["label"],
-                        "xy_mm": n.get("xy_mm"), "dist_m": n["dist_m"], "clutter": n.get("clutter")}
+                        "xy_mm": n.get("xy_mm"), "dist_m": n["dist_m"], "clutter": n.get("clutter"),
+                        "belief_source": n.get("belief_source")}
             else:
                 p = ph[0]
-                what = {"what": "phantom", "label": p["label"], "xy_mm": p["nearest_gt_mm"], "dist_m": p["dist_m"]}
+                what = {"what": "phantom", "label": p["label"], "xy_mm": p["nearest_gt_mm"], "dist_m": p["dist_m"],
+                        "belief_source": p.get("source")}
         what["thin"] = any(t in str(what.get("label")) for t in THIN)
         out.append({"task": r["task"], "run": r["run"], "layout_id": r["layout_id"], "kind": r["kind"], "step": r["step"],
                     "arm": r["arm"], "success": r.get("success"), "reasons": r["reasons"][R], **what})
@@ -385,6 +389,58 @@ def taxonomy(rows: list[dict], R: str = "10") -> str:
         ts.update(src[t])
     lines.append(f"| **all** | {sum(tot.values())} | {', '.join(f'{k} {v}' for k, v in tot.most_common())} | "
                  f"{', '.join(f'{k} {v}' for k, v in ts.most_common())} |")
+    return "\n".join(lines)
+
+
+RELEASED = ("released", "post_place", "held_dropped", "probe_released")
+
+
+def blocker(x: dict) -> str:
+    """The class that blocks an unclean event (its first failure), as the streams own them: not_held (the held state),
+    in-hand pose, released (an object the robot let go earlier, believed where the release put it), target pose,
+    reference pose, identity, neighbour / phantom."""
+    w = x["what"]
+    if w == "held not_held":
+        return "not_held"
+    if w.endswith("identity"):
+        return "identity"
+    if w.startswith("neighbour") or w == "phantom":
+        return "released" if x.get("belief_source") in RELEASED else "neighbour"
+    if x.get("source") in RELEASED:
+        return "released"
+    if w.startswith("held"):
+        return "in-hand pose"
+    if w.startswith("reference"):
+        return "reference pose"
+    return "target pose"
+
+
+BLOCKERS = ("not_held", "in-hand pose", "released", "target pose", "reference pose", "identity", "neighbour")
+
+
+def gap_table(rows: list[dict], goal: float = 0.95, R: str = "10") -> str:
+    """Per task: events, clean at R, the clean events still missing to ``goal``, and the unclean events by blocker."""
+    import math
+    by = defaultdict(list)
+    for r in rows:
+        by[r["task"]].append(r)
+    fails = defaultdict(Counter)
+    for x in failure_rows(rows, R):
+        fails[x["task"]][blocker(x)] += 1
+    lines = [f"| task | events | clean R{R} | events to {int(goal * 100)} % | unclean by blocker: " + " / ".join(BLOCKERS) + " |",
+             "|---|---|---|---|---|"]
+    tot_n = tot_c = tot_g = 0
+    tot_f = Counter()
+    order = sorted(by, key=lambda t: -(math.ceil(goal * len(by[t])) - sum(r["clean_r"][R] for r in by[t])))
+    for t in order:
+        n, c = len(by[t]), sum(bool(r["clean_r"][R]) for r in by[t])
+        g = max(0, math.ceil(goal * n) - c)
+        tot_n, tot_c, tot_g = tot_n + n, tot_c + c, tot_g + g
+        tot_f.update(fails[t])
+        lines.append(f"| {t} | {n} | {100 * c / n:.0f} % | {g} | " + " / ".join(str(fails[t].get(b, 0)) for b in BLOCKERS) + " |")
+    if tot_n:
+        lines.append(f"| **all** | {tot_n} | {100 * tot_c / tot_n:.0f} % | {max(0, math.ceil(goal * tot_n) - tot_c)} "
+                     f"(sum per task {tot_g}) | " + " / ".join(str(tot_f.get(b, 0)) for b in BLOCKERS) + " |")
     return "\n".join(lines)
 
 
@@ -483,6 +539,7 @@ def main(argv=None) -> None:
     t.add_argument("--fails", action="store_true", help="one JSON line per unclean event (R10)")
     t.add_argument("--frame0", action="store_true", help="the runtime's belief vs the frame-0 record, same events")
     t.add_argument("--latest", action="store_true", help="per task only its newest round (FAMILY_ORDER)")
+    t.add_argument("--gap", action="store_true", help="per task: events to 95 %% at R10 and what blocks them")
     t.add_argument("--old", action="store_true", help="per task every round but its newest")
     t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)

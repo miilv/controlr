@@ -438,7 +438,7 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
             continue
         taken_n.add(i)
         taken_b.add(lab)
-        neigh[i].update(belief_label=lab, xy_mm=round(xy, 1),
+        neigh[i].update(belief_label=lab, xy_mm=round(xy, 1), belief_source=cand_b[lab].get("source"),
                         dz_mm=round((float(cand_b[lab]["c"][2]) - neigh[i]["pos"][2]) * 1000, 1))
     for n in neigh:
         n["found"] = n.get("xy_mm") is not None and n["xy_mm"] <= neighbour_mm
@@ -452,7 +452,7 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
         if dmin <= max(PHANTOM_MM, tol[0]):
             continue
         poly = footprints.polygon(b.get("key"), b["pos"], b.get("quat"))
-        phant.append({"label": lab, "key": b.get("key"), "dist_m": round(footprint_dist(poly, path), 4),
+        phant.append({"label": lab, "key": b.get("key"), "source": b.get("source"), "dist_m": round(footprint_dist(poly, path), 4),
                       "nearest_gt_mm": round(dmin, 1), "pos": [round(float(v), 4) for v in bp]})
     out = {"kind": ev.kind, "step": ev.step, "arm": ev.arm, "target": ev.target, "reference": ev.reference,
            "point": [round(float(v), 4) for v in np.asarray(ev.point, float)[:3]], "required": req,
