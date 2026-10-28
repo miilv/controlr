@@ -613,10 +613,10 @@ step_calib_sets() {   # the frozen perception calibration sets (pins/calib_sets.
     for root in "$DATA/${dir}_ilia" "${extra[@]}"; do
       [[ -d "$root" ]] || continue
       if [[ ! -d "$root/$name" || "$(tree_md5 "$root/$name")" != "$want" ]]; then
-        rm -rf "$root/$name.new"
+        rm -rf "${root:?}/${name:?}.new"
         cp -a "$src" "$root/$name.new"
         [[ "$(tree_md5 "$root/$name.new")" == "$want" ]] || die "$root/$name.new: copy differs from $src"
-        rm -rf "$root/$name"; mv "$root/$name.new" "$root/$name"
+        rm -rf "${root:?}/${name:?}"; mv "$root/$name.new" "$root/$name"
         log "installed $name into $root"
       fi
       n=$((n + 1))
