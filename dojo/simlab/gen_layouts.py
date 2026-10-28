@@ -708,10 +708,16 @@ def template_draws(task: str, n: int = 4) -> list[dict]:
     out, sub = [], 0
     while len(out) < n and sub < TEMPLATE_SUBSEED_MAX:
         sub += 1
+        lay = None
+        for keepout in (True, False):           # as generate: some configs fix objects under the home grippers
+            _KEEPOUT_ON[0] = keepout
+            try:
+                lay = _draw(tcfg, scfg, groups, sub)[0]
+                break
+            except LayoutError:
+                continue
         _KEEPOUT_ON[0] = True
-        try:
-            lay = _draw(tcfg, scfg, groups, sub)[0]
-        except LayoutError:
+        if lay is None:
             continue
         errs = validate(lay)
         if errs:

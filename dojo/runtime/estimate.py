@@ -254,7 +254,11 @@ def public_constants(task: str) -> dict:
     from dojo.simlab import gen_layouts as G
     from dojo.simlab.layout import fixtures_from_scene
     groups = G.merged_object_groups(task)
-    draws = G.template_draws(task, TEMPLATE_DRAWS)
+    try:
+        draws = G.template_draws(task, TEMPLATE_DRAWS)
+    except G.LayoutError as e:                      # no fixed-pose record then: they stay unknown
+        print(f"[estimate] {task}: no template draws ({e}); no fixed-pose records in the twin", flush=True)
+        draws = []
     return constants_from(groups, fixtures_from_scene(G.scene_config(task)), draws, G.available_indices)
 
 

@@ -45,7 +45,13 @@ fixed-XY object perception misses. The integration baseline should be re-measure
 - A mutant that copies the fixed-XY label from the first draw whatever its pool fails 2 of them.
 - `test_runtime.py` / `test_skills_artroot.py` template tests ported to `constants_from`.
 
-**Not run:** `public_constants` on the real configs (they live on the boxes; this stream ran no box job). First use
-on a box generates 4 draws per task per process (lru_cache); generation is ~seconds per draw. Worth a one-off
-`python -c "from dojo.runtime.estimate import public_constants as p; print(sorted(p('swap_blocks')['fixed_records']))"`
-per task on a box before the A/B, to see which fixed records survive.
+**On the real configs** (compute3, RoboDojo's python, `SIMLAB_GPU=0`, generator only, 28 tasks, < 5 s per task, 0.1 s
+for most). Template draws relax the robot keep-out like `generate` does (else fill_egg_holder / deposit_coin fit none).
+Fixed-XY labels the old template filled from layout 100000 and the new one leaves to perception (identity or pose
+sampled): press_by_number `num0`, `num1` (the number cards: the audit's case); make_kong `mahjong5_0..9_0`,
+`other0..2`; swap_blocks `target0`, `target1` (support lists); put_bottles_into_dustbin `dustbin`; make_toast
+`bread_0..3`; play_Xylophone `mallet`; deposit_coin `coin0`; match_and_pick_from_conveyor `target0`;
+pick_from_conveyor_by_image `photo`. Kept as constants: `camera_stand` everywhere, plus swap_blocks `button0`,
+`mat0..2`; press_by_number `button0..2`; organize_table `cube_cushion`, `frame`; build_tower `block0`, `block7`;
+play_tic_tac_toe `checkerboard` and the pieces; imitate `basket0`, `basket1`; the conveyors. Perception normally reports
+the dropped labels; only an episode where it misses one changes (`IncompleteWorld` -> no twin verification).
