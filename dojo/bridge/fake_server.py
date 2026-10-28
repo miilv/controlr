@@ -195,7 +195,9 @@ class FakeStrictServer:
     def cmd_joint_steps(self, a):
         """robot-harness's contract (HARNESS-CONTRACT.md 1.1, robodojo_server_j2 + rd_shim_strict_v2): refusal codes
         keys / shape / non_finite / gripper_range / jump / budget / too_long / empty, with ``index``; executed replies
-        carry executed / requested / actions_md5 / tracking / grip_change_while_moving / max_step_dq / eef."""
+        carry executed / requested / actions_md5 / tracking / grip_change_while_moving / max_step_dq / eef.
+        ``grip_change_while_moving`` / ``max_step_dq`` cover the EXECUTED entries only (robot-harness G1F finding 8: an
+        episode that ends early never ran the rest); the whole list's values are ``requested_*``."""
         import hashlib
         self._need_env()
         if not self.has_joint_steps:
@@ -213,11 +215,11 @@ class FakeStrictServer:
         prev_g = {x: float(self.hold_g[x]) for x in ARMS}
         gmove = {x: 0 for x in ARMS}
         maxdq = {x: 0.0 for x in ARMS}
-        parsed = []
+        parsed, per_entry = [], []                          # per entry: {arm: (grip change while moving, dq)}
         for i, act in enumerate(acts):
             if not isinstance(act, dict) or set(act) != set(ACTION_KEYS):
                 return self._refused("keys", f"entry {i}: keys {sorted(act) if isinstance(act, dict) else act!r}", i, base)
-            p = {}
+            p, pe = {}, {}
             for x in ARMS:
                 for k, n in ((f"{x}_arm_joint_state", 6), (f"{x}_ee_joint_state", 1)):
                     v = act[k]
@@ -234,10 +236,13 @@ class FakeStrictServer:
                 if dq > cap + 1e-6:
                     return self._refused("jump", f"entry {i}: {x} joint jump {dq:.4f} rad > max_dq {cap}", i, base)
                 maxdq[x] = max(maxdq[x], dq)
-                if g != prev_g[x] and dq > 1e-9:
+                moving_grip = g != prev_g[x] and dq > 1e-9
+                if moving_grip:
                     gmove[x] += 1
+                pe[x] = (int(moving_grip), dq)
                 prev[x], prev_g[x] = q, g
             parsed.append(p)
+            per_entry.append(pe)
         left = self.env.step_lim - self.env.steps_used
         if len(parsed) > left - reserve:
             return self._refused("budget", f"needs {len(parsed)} steps, {left} left, reserve {reserve}", None, base)
@@ -254,9 +259,13 @@ class FakeStrictServer:
             k += 1
         eef = self._eef()
         track = {x: round(float(np.abs(np.asarray(eef[x]["q"]) - self.hold_q[x]).max()), 5) for x in ARMS}
+        done = per_entry[:k]                                # the executed prefix (the real shim re-validates it)
         return {**base, "steps": self.env.steps_used - n0, "executed": k, "refused": None, "tracking_rad": track,
-                "tracking_max_rad": track, "grip_change_while_moving": gmove,
-                "max_step_dq": {x: round(v, 5) for x, v in maxdq.items()},
+                "tracking_max_rad": track,
+                "grip_change_while_moving": {x: sum(e[x][0] for e in done) for x in ARMS},
+                "max_step_dq": {x: round(max((e[x][1] for e in done), default=0.0), 5) for x in ARMS},
+                "requested_grip_change_while_moving": gmove,
+                "requested_max_step_dq": {x: round(v, 5) for x, v in maxdq.items()},
                 "eef": {x: {kk: eef[x][kk] for kk in ("q", "flange", "grip_cmd")} for x in ARMS}}
 
     def _refused(self, code, hint="", index=None, base=None):

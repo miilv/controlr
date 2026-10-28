@@ -204,9 +204,13 @@ def _abs_frames(frames: dict) -> dict:
     return {c: (os.path.abspath(v) if isinstance(v, (str, Path)) else v) for c, v in frames.items()}
 
 
-def perceive(frames, calib, flange, grip_cmd, instruction, want=None, **kw) -> dict:
-    """Scene layout from the official observation. See the module docstring for inputs and output."""
+def perceive(frames, calib, flange, grip_cmd, instruction, want=None, episode=None, **kw) -> dict:
+    """Scene layout from the official observation. See the module docstring for inputs and output. ``episode``: the
+    strict server's opaque ``{id, perceive_n, agent_calls}`` (P1S; robot-harness's host passes it only to a callable
+    that names it): episode-scoped worker state (the IK seed cache) follows its id (``episode_begin``)."""
     frames = _abs_frames(frames)
+    if episode is not None:
+        kw["episode"] = episode
     if os.environ.get("J1_INPROC") == "1":
         return _perceive_impl(frames, calib, flange, grip_cmd, instruction, want, **kw)
     return _call("perceive", dict(frames=frames, calib=calib, flange=flange, grip_cmd=grip_cmd,
@@ -265,6 +269,19 @@ def _grip01(v) -> float:
 
 
 _Q_LAST: dict = {}
+_EPISODE_ID: list = [None]  # the opaque episode id of the latest perceive call that carried one
+
+
+def episode_begin(episode) -> bool:
+    """Episode-scoped worker state follows the server's opaque ``episode["id"]`` (P1S): a new id clears the IK seed
+    cache (``_Q_LAST``), so a persistent worker never seeds one episode's robot self-mask from another episode's
+    joints (G2-11). True when the id changed; no id (older servers, in-process callers): nothing changes."""
+    eid = episode.get("id") if isinstance(episode, dict) else None
+    if eid is None or eid == _EPISODE_ID[0]:
+        return False
+    _EPISODE_ID[0] = eid
+    _Q_LAST.clear()
+    return True
 
 
 def ik_flange(arm: str, pose, q0=None):
@@ -412,7 +429,9 @@ def _want_match(want, objects) -> dict:
 
 
 def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joints=None, gripper=None, task=None,
-                   prior=None, **_ignored) -> dict:
+                   prior=None, episode=None, **_ignored) -> dict:
+    episode_begin(episode)  # before anything reads the IK cache
+    require_data()          # J1_REQUIRE_DATA=1: no fallback data roots
     import cv2
     import numpy as np
 
@@ -510,11 +529,97 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
             "contained": rec.get("_contained", []), "last_seen": last_seen,
             "task": task, "t_ms": t_ms, "t_estimate_ms": round(1000 * (t_est - t0), 1),
             "unexplained_fg": rec.get("_perception", {}).get("unexplained", []),
-            "robot_state": ik, "gl": _gl_mode(), "version": VERSION,
+            "robot_state": ik, "gl": _gl_mode(), "version": VERSION, "data": data_identity(),
             "notes": f"candidate set via {routed}; background {'scene ' + scene_bg if scene_bg else 'table'}"}
 
 
 _BG: dict = {}
+_DATA: dict = {}
+
+
+def _sha256(path: Path) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
+def data_identity() -> dict:
+    """The B1 data this worker actually reads (G2-1, worker half), once per worker (its environment cannot change):
+    per input the configured value (the DOJO_* variable), the effective path the loaders resolve (``render.catalog_root``,
+    ``X5Model.default``, ``segment.bg_root``, DOJO_COLOR_CALIB), ``fallback`` (true when the configured path was unset
+    or lacked its marker and a fallback root was taken) and a content hash (sha256 of the catalogue's index.json,
+    X5A.urdf, the colour calibration, and of every file under the backgrounds dir); ``id`` hashes all of it. In every
+    perceive output as ``data`` (the strict schema strips it from the clean reply; the server's raw log keeps it)."""
+    if _DATA:
+        return _DATA
+    import hashlib
+    import json
+
+    out: dict = {}
+
+    def first(var):
+        return next((c for c in os.environ.get(var, "").split(os.pathsep) if c), None)
+
+    def entry(var, find, marker):
+        conf = first(var)
+        try:
+            eff = find()
+        except Exception as e:  # noqa: BLE001 (absent data is reported, not raised, here)
+            return {"configured": conf, "path": None, "fallback": True, "error": f"{type(e).__name__}: {e}"[:200]}
+        d = {"configured": conf, "path": str(eff) if eff is not None else None,
+             "fallback": eff is None or conf is None or Path(conf).resolve() != Path(eff).resolve()}
+        try:
+            if eff is not None and marker:
+                d["sha256"] = _sha256(Path(eff) / marker)
+            elif eff is not None:
+                h = hashlib.sha256()
+                for f in sorted(q for q in Path(eff).rglob("*") if q.is_file()):
+                    h.update(f"{f.relative_to(eff)}\0{_sha256(f)}\n".encode())
+                d["sha256"] = h.hexdigest()
+        except OSError as e:
+            d["error"] = f"{type(e).__name__}: {e}"[:200]
+        return d
+
+    def catalog():
+        from .render import catalog_root
+        return catalog_root()
+
+    def x5():
+        from .robot_model import X5Model
+        return X5Model.default().urdf_path.parent
+
+    def bg():
+        from .segment import bg_root
+        return bg_root()
+
+    out["catalog"] = entry("DOJO_CATALOG", catalog, "index.json")
+    out["x5"] = entry("DOJO_X5_DIR", x5, "X5A.urdf")
+    out["bg"] = entry("DOJO_BG", bg, None)
+    cc = os.environ.get("DOJO_COLOR_CALIB") or None
+    out["color_calib"] = {"configured": cc, "path": cc if cc and Path(cc).is_file() else None,
+                          "fallback": not (cc and Path(cc).is_file())}  # absent: B1 runs without the colour map
+    if out["color_calib"]["path"]:
+        out["color_calib"]["sha256"] = _sha256(Path(cc))
+    out["id"] = "b1d-" + hashlib.sha256(json.dumps(out, sort_keys=True).encode()).hexdigest()[:24]
+    _DATA.update(out)
+    return _DATA
+
+
+def require_data() -> None:
+    """``J1_REQUIRE_DATA=1`` (strict runs): refuse to perceive on a fallback or missing data root (``data_identity``),
+    the way ``J1_REQUIRE_GL`` refuses the CPU path. Unset: report only."""
+    if os.environ.get("J1_REQUIRE_DATA", "0") in ("", "0"):
+        return
+    d = data_identity()
+    bad = [k for k in ("catalog", "x5", "bg", "color_calib") if d[k].get("fallback") or d[k].get("error")]
+    if bad:
+        raise RuntimeError("J1_REQUIRE_DATA: B1 data from a fallback / missing root: "
+                           + "; ".join(f"{k}: {d[k].get('path') or d[k].get('error')} (configured {d[k].get('configured')})"
+                                       for k in bad))
 
 
 def _gl_mode() -> str:
