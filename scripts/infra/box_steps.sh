@@ -9,6 +9,9 @@
 #   box_steps.sh steps                     the step names
 #   box_steps.sh venv DIR                  DIR/.venv with the perception extras (for a stream's deploy dir)
 #   box_steps.sh boxjson                   (re)write ~/dojo-box.json: role, specs, capabilities, locks, scopes, smokes
+#   box_steps.sh manifest DIR [NAME [REF_MD5 REF_HOST]]
+#                                          md5 manifest of DIR (every file, sorted path + md5): prints it; with NAME also
+#                                          state/manifest_NAME.{md5,json} (+ whether it equals REF_HOST's), in ~/dojo-box.json
 #
 # Config: env vars, or $BOX/config.env written by the driver (ROLE, ASSETS, CODE_SHA, MIN_DISK_GB, PREFIX, BOX_ALIAS,
 # ROLE_REASON, SHARED_HOME). DRY_RUN=1: print every command instead of running it; every "is it done already?" check answers no.
@@ -766,6 +769,32 @@ step_ready() {   # READY note for the streams (like compute3's ~/dojo-robodojo/R
   python3 -c 'import json, os; c = json.load(open(os.path.expanduser("~/dojo-box.json")))["capabilities"]; print("capabilities:", ", ".join(k for k, v in c.items() if v) or "none")' 
 }
 
+manifest() {   # DIR [NAME [REF_MD5 REF_HOST]]: "md5  path" for every file under DIR (sorted, C locale); read-only without NAME
+  local dir="$1" name="${2:-}" ref="${3:-}" refh="${4:-}"
+  [[ -d "$dir" ]] || die "manifest: no $dir"
+  if [[ -z "$name" ]]; then
+    (cd "$dir" && find . \( -type f -o -type l \) -printf '%P\0' | LC_ALL=C sort -z | xargs -0 -r md5sum); return
+  fi
+  local m="$BOX/state/manifest_$name"
+  mkdir -p "$BOX/state"
+  if ! (cd "$dir" && find . \( -type f -o -type l \) -printf '%P\0' | LC_ALL=C sort -z | xargs -0 -r md5sum) > "$m.md5.new"; then
+    die "manifest: md5sum failed under $dir"
+  fi
+  mv "$m.md5.new" "$m.md5"
+  python3 - "$m.md5" "$dir" "$ref" "$refh" > "$m.json.new" <<'PY' && mv "$m.json.new" "$m.json"
+import hashlib, json, os, sys, time
+f, d, ref, refh = sys.argv[1:5]
+raw = open(f, "rb").read()
+out = {"dir": d, "files": raw.count(b"\n"), "bytes": sum(os.path.getsize(os.path.join(d, ln.split(b"  ", 1)[1].decode()))
+       for ln in raw.splitlines() if b"  " in ln), "md5": hashlib.md5(raw).hexdigest(),
+       "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+if ref:
+    out["ref"] = {"host": refh or None, "md5": ref, "equal": ref == out["md5"]}
+print(json.dumps(out))
+PY
+  cat "$m.json"
+}
+
 # --------------------------------------------------------------------------------------------- dispatch
 status_of() {
   local s="$1"
@@ -805,7 +834,8 @@ case "$cmd" in
         done ;;
   steps) echo "${STEPS[*]}" ;;
   boxjson) CUR=boxjson; box_json && cat "$HOME/dojo-box.json" ;;
+  manifest) CUR=manifest; manifest "$@" ;;
   venv) make_venv "$(cd "${1:?checkout dir}" && pwd)" ;;   # a stream's deploy dir (scripts/deploy.sh builds no perception extras)
   fn) f="${1:?function}"; shift; CUR="$f"; "$f" "$@" ;;     # debugging: one internal function (e.g. rd_clone_pinned)
-  *) echo "usage: box_steps.sh preflight | run STEP | status STEP... | poll STEP... | steps | venv DIR | boxjson" >&2; exit 2 ;;
+  *) echo "usage: box_steps.sh preflight | run STEP | status STEP... | poll STEP... | steps | venv DIR | boxjson | manifest DIR [NAME [REF_MD5 REF_HOST]]" >&2; exit 2 ;;
 esac

@@ -5,6 +5,7 @@ No network, no GPU, no ssh: the dry run executes nothing; the preflight runs loc
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -264,6 +265,30 @@ def test_box_json_capabilities_follow_the_smokes(tmp_path):
     assert not c["isaac51_render"] and not c["official_dev_eval"] and not c["perception_egl"] and not c["llm_env"]
     assert d["scopes"]["bundle"] == {"MemoryMax": "24G", "CPUQuota": "1400%"} and len(d["locks"]["light"]) == 2
     assert d["paths"]["isaac_sim_6"] == "/x/isaac-sim-6.0"
+
+
+def test_manifest_matches_a_reference_and_lands_in_box_json(tmp_path):
+    d = tmp_path / "perc"
+    (d / "bg_folds_51" / "fold0" / "scene").mkdir(parents=True)
+    (d / "bg_folds_51" / "fold0" / "scene" / "cam head.png").write_bytes(b"png")
+    (d / "catalog").mkdir()
+    (d / "catalog" / "index.json").write_text("{}")
+    env = {"BOX": str(tmp_path / "box"), "HOME": str(tmp_path)}
+    listing = run(["bash", str(LIB), "manifest", str(d)], env=env)
+    assert listing.returncode == 0 and not (tmp_path / "box").exists()           # read-only without NAME
+    assert [x.split("  ", 1)[1] for x in listing.stdout.splitlines()] == ["bg_folds_51/fold0/scene/cam head.png",
+                                                                        "catalog/index.json"]
+    ref = hashlib.md5(listing.stdout.encode()).hexdigest()                     # what the reference box prints
+    r = run(["bash", str(LIB), "manifest", str(d), "perception", ref, "compute3"], env=env)
+    m = json.loads(r.stdout.splitlines()[-1])
+    assert m["files"] == 2 and m["bytes"] == 5 and m["md5"] == ref and m["ref"] == {"host": "compute3", "md5": ref, "equal": True}
+    (d / "catalog" / "index.json").write_text("{ }")
+    r = run(["bash", str(LIB), "manifest", str(d), "perception", ref, "compute3"], env=env)
+    assert json.loads(r.stdout.splitlines()[-1])["ref"]["equal"] is False
+    bj = subprocess.run(["python3", str(ROOT / "scripts" / "infra" / "box_json.py")], capture_output=True, text=True,
+                        env={"HOME": str(tmp_path), "PATH": os.environ["PATH"], "BOXJ_BOX": str(tmp_path / "box"),
+                             "BOXJ_ROLE": "full"}, timeout=60)
+    assert json.loads(bj.stdout)["manifests"]["perception"]["ref"]["equal"] is False
 
 
 def shellcheck_cmd():
