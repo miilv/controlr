@@ -73,15 +73,37 @@ def sort_groups(instruction: str, world) -> list[tuple[str, list[str]]] | None:
     return sorted(out, key=lambda gc: float(np.linalg.norm(world.objects[gc[0]].center_w[:2])))
 
 
-def sort_into_bins(sk, groups: list) -> dict:
-    """Every object of each (container, objects) group put into its container with ``library.arrange`` ("put" steps:
-    placed upright inside, the container an obstacle for the approach); per-item credit as arrange gives it."""
+def inside(world, label: str, container: str) -> bool:
+    """The object's centre over the container's footprint and below its rim + 2 cm (believed or true poses)."""
+    o, c = world.objects.get(label), world.objects.get(container)
+    if o is None or c is None:
+        return False
+    mn, mx = c.aabb()
+    p = o.center_w
+    return bool(mn[0] <= p[0] <= mx[0] and mn[1] <= p[1] <= mx[1] and p[2] <= mx[2] + 0.02)
+
+
+def sort_into_bins(sk, groups: list, passes: int = 2, min_left: int = 120) -> dict:
+    """Every object of each (container, objects) group put into its container with ``library.arrange``'s "put" steps
+    (placed upright inside, the container an obstacle for the approach). A second pass takes the objects that are not
+    inside their container (a slipped grasp) while ``min_left`` steps remain. ok = every object inside."""
     from dojo.skills import library as L
-    steps = [("put", o, container) for container, objects in groups for o in objects]
-    r = L.arrange(sk, steps) or {}
-    return {**r, "groups": [{"container": c, "n": len(objs)} for c, objs in groups]}
+    want = {o: c for c, objects in groups for o in objects}
+    log = []
+    for k in range(int(passes)):
+        w = sk.refresh()
+        todo = [o for o, c in want.items() if not inside(w, o, c)]
+        if not todo or sk.ex.ended or sk.ex.steps_left < min_left:
+            break
+        w.notes.pop("arrange", None)                     # arrange's own "done" memory: this pass re-tries them
+        r = L.arrange(sk, [("put", o, want[o]) for c, objects in groups for o in objects if o in todo]) or {}
+        log.append({"pass": k, "todo": todo, "stage": r.get("stage"), "note": str(r.get("note") or "")[:160]})
+    w = sk.refresh()
+    left = [o for o, c in want.items() if not inside(w, o, c)]
+    return {"ok": not left, "stage": "done" if not left else "sort", "not_inside": left, "passes": log,
+            "groups": [{"container": c, "n": len(objs)} for c, objs in groups]}
 
 
 SKILLS = {"sort_into_bins": sort_into_bins}
 
-__all__ = ["sort_groups", "sort_into_bins", "parse_map", "SKILLS"]
+__all__ = ["sort_groups", "sort_into_bins", "inside", "parse_map", "SKILLS"]
