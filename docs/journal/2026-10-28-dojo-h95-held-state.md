@@ -64,6 +64,14 @@ close (TCP inside the believed bbox + 15 mm) and with what the run's vision `hel
 - **Vision calls:** held_look escalates to the agent in ~14 % of looks on recent rows (P3r3 12 / 84, c4 7 / 34). A
   conclusive official "held" skips the look.
 
+**Re-check on M's final set** (685 replays, 2304 grasp -> place pairs, scored with #205's runtime attach / release
+rules):
+- Truth empty 197 -> check empty 197; truth held 1952 -> check empty 0; 37 jaws on another object.
+- The 241 not_held: air 185, slip 16, on another object 40.
+- The latest round per task (56 not_held): 45 air, 6 slip, 5 on another object. Beyond today's main the check adds
+  about 27: 14 air with no look (deposit_coin's 4 coins excluded, thin guard), 7 air with a wrong vision "held",
+  6 slips. In those rounds 296 held grasps -> 0 called empty.
+
 ## 3. Built (PR, all default off / unchanged)
 
 - **Observation.** `firewall.OPTIONAL_STATE_KEYS`: `<arm>_ee_joint_state_official`, one value per arm; anything else
