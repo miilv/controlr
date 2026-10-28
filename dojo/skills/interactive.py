@@ -580,6 +580,13 @@ def belt_objects(w, exclude=()) -> list[str]:
     return [o.label for o in w.task_objects() if o.obj_type == "Rigid" and o.label not in exclude]
 
 
+def _nothing_moves(sk: Skills) -> dict:
+    """The belt skills' "no velocity" result; it says so when the provider's belt reads were blind (no scene
+    background for the belt), so a missing data file does not read as a perception or skill failure."""
+    why = getattr(sk.provider, "belt_blind", None)
+    return {"ok": False, "stage": "belt", "note": "nothing moves" + (f" (belt reads blind: {why})" if why else "")}
+
+
 def belt_velocity(sk: Skills, labels: list[str], steps: int = 4, max_wait: int = 60) -> np.ndarray:
     """The belt's velocity (m per env step, world xy): the provider's tracked belt velocity when it has one (the runtime
     fits each moving object's reads over a window), else the median displacement of the objects that moved over
@@ -919,7 +926,7 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     # a tracking provider (the runtime) may need the next riders' tracks for the velocity: wait longer for it
     v = belt_velocity(sk, labs, max_wait=250 if getattr(sk.provider, "belt_velocity", None) else 60)
     if float(np.linalg.norm(v)) < 1e-4:
-        return {"ok": False, "stage": "belt", "note": "nothing moves"}
+        return _nothing_moves(sk)
     u = v / np.linalg.norm(v)
     w = sk.refresh()
     t_first = w.step
@@ -1049,7 +1056,7 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
     labs = [l for l in objects if l in w.objects and l != container]
     v = belt_velocity(sk, labs + [container])
     if float(np.linalg.norm(v)) < 1e-4:
-        return {"ok": False, "stage": "belt", "note": "nothing moves"}
+        return _nothing_moves(sk)
     w = sk.refresh()
     ident = depicted_identity(w.obj(picture)) if picture else None
     cands = [l for l in labs if ident and w.obj(l).asset.key == ident]

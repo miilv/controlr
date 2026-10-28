@@ -13,6 +13,10 @@ appearance), and keeps its single best hypothesis. No label counts, no splitting
         record["Rigid"][cat] = [{category, category_idx, label "rider<k>", default_pos, default_ori,
                                  _perception {confidence, sil_loss, blob_px, alternative}}]
 
+A read with the table background where the belt should have its own (``blind_reason``: no scene background for
+the moving base in the fold) sees no rider; the perception service marks such a read ``_perception.blind`` and the
+runtime's tracker skips it (it neither confirms nor drops anything).
+
 With ``cfg.embed_model`` set (default None: off), each blob's asset is picked by learned image embeddings instead
 (``embed_id``: the head crop against catalogue renders of every rider candidate, similarity minus ``embed_weight`` x
 our fit loss); a picked asset our proposals did not fit is fitted on the blob. ``_perception.embed`` records the pick.
@@ -38,6 +42,38 @@ def rider_groups(groups: list[dict], task_labels: dict) -> list[int]:
         if g["type"] == "Rigid" and any((task_labels.get(str(b).split("/")[0]) or {}).get("type") == "Dynamic" for b in bases):
             out.append(gi)
     return out
+
+
+def moving_bases(task: str) -> list[str]:
+    """Asset keys of the Dynamic bases (belts) the task's Rigid labels ride (their placement's ``relative_plane``);
+    [] when nothing rides one, or for an unknown task."""
+    from .inverse_layout import task_map
+
+    try:
+        labels = task_map()[task]["labels"]
+    except Exception:  # noqa: BLE001 (an unknown set, or no catalogue)
+        return []
+    out: set = set()
+    for d in labels.values():
+        if d.get("type") != "Rigid":
+            continue
+        rp = (d.get("placement") or {}).get("relative_plane", "Table")
+        for b in rp if isinstance(rp, (list, tuple)) else [rp]:
+            base = labels.get(str(b).split("/")[0]) or {}
+            if base.get("type") == "Dynamic":
+                out.update(base.get("candidates") or [])
+    return sorted(out)
+
+
+def blind_reason(task: str, scene_bg: str | None) -> str | None:
+    """Why a belt read of ``task`` with the scene background ``scene_bg`` (``segment.scene_bg_key``; None = the
+    table's) cannot see the riders, or None. Without its belt's scene background the dark belt segments against the
+    table background as foreground: genuine-5.1 compute4 2026-10-28 (bg_folds_51 had no ``scene/``), 125 of 127 reads
+    found nothing and the rest were static fixture blobs, so no rider got a track and the skill read "nothing moves"."""
+    bases = moving_bases(task)
+    if bases and scene_bg not in bases:
+        return f"no scene background for {', '.join(bases)} in the fold (the belt segments as foreground)"
+    return None
 
 
 def belt_read(images: dict, state: dict, task: str, instruction: str = "", bgs: dict | None = None, cfg=None) -> dict:
@@ -204,4 +240,4 @@ def _merge_fragments(head_blobs, best: dict, picks: dict, gis: list, groups: lis
     return blobs_out, best, picks
 
 
-__all__ = ["belt_read", "rider_groups"]
+__all__ = ["belt_read", "blind_reason", "moving_bases", "rider_groups"]

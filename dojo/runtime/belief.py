@@ -411,6 +411,7 @@ class RuntimeProvider:
         self._tentative: list = []              # unmatched reads of the last re-read: (step, xy, ObjectState)
         self._unconfirmed: dict = {}            # label -> re-reads that did not see a never-confirmed object
         self.track_confirm_reads = 2
+        self.belt_blind: str | None = None      # why the belt reads cannot see the riders (no scene background), or None
         self._n_new = 0
         self._track_last = None
         self.velocity: dict = {}                # label -> np.array([vx, vy]) m / step (fitted)
@@ -683,6 +684,17 @@ class RuntimeProvider:
             rec = self.track_reader(obs)
         except Exception as e:  # noqa: BLE001
             self.events.append({"kind": "track_error", "note": f"{type(e).__name__}: {str(e)[:120]}"})
+            return
+        blind = ((rec or {}).get("_perception") or {}).get("blind")
+        if blind:
+            # a read that cannot see the riders (its belt has no scene background) is no read: it neither confirms nor
+            # drops anything, and adds nothing (genuine-5.1 compute4 2026-10-28: two blind reads dropped all five
+            # frame-0 labels at step 4, then static fixture blobs were the only "riders"; the skill read "nothing moves")
+            self.stats["track_blind"] = self.stats.get("track_blind", 0) + 1
+            if self.belt_blind is None:
+                self.belt_blind = str(blind)
+                self.events.append({"kind": "belt_blind", "step": step, "why": self.belt_blind})
+            self._predict(step)
             return
         est = objects_from_record(rec, self.assets, step)
         held = set(self.belief.held_labels())

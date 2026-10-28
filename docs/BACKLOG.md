@@ -34,6 +34,16 @@
   below 0.5). hang_mugs' wall grasp pre-shapes to 0.43 on the approach, so the probe's "closed on mug2 128 mm away"
   is the pre-shape, 30 steps before the real close. Use `grasp_metric.grip_events`' rule (the last closing command of
   a run) in `GTProbe.on_action`.
+- [ ] **dojo perception: no genuine-5.1 belt background for pick_from_conveyor_by_image** (`Dynamic/conveyor/00001`).
+  Only 6.0-proxy leave-one-out folds exist (`compute3:~/dojo-data/pbake-identity/bg_byimg{A,B}`), so every genuine-5.1
+  run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
+  dev layouts + `build` into every box's `bg_folds_51/fold{0,1}/scene/Dynamic_conveyor_00001/` (journal
+  2026-10-28-dojo-conveyor-belt-blind §5; waits for compute2).
+- [ ] **dojo infra: box perception data goes stale.** The bootstrap copies compute3's `dojo-perception-data` once.
+  compute4's `bg_folds_51` predated the scene backgrounds (built 27 Oct), and the conveyor ran blind there
+  (journal 2026-10-28-dojo-conveyor-belt-blind). Its fixed copies are `~/dojo-data/bg_folds{,_51}_ilia`. Wanted: a
+  refresh step (rsync the folds again) and a smoke check that lists the moving bases without a scene background
+  (`belt.moving_bases`, `segment.scene_bg_key`).
 - [ ] **dojo perception: learned identity on the conveyors needs torch in the perception venvs.** The belt read with
   `EstimatorConfig.embed_model="dinov2_s"` (5.1 belt reads: identity 79/116 -> 104/116, phantoms 77 -> 47; report
   2026-10-27-identity-embeddings) is off by default. The rendered A/B arm sets `DOJO_PERCEPTION_CFG='{"embed_model":
@@ -445,8 +455,8 @@
   / watch: 100016, 100018, 100023) and objects not found (a far phone, a near watch, a far watch hidden behind a figure
   at frame 0). Candidate: pair each far object with the near objects' assets (same asset per pair, the near side's
   categories are 64 / 65 right) by render-and-compare at the far blob.
-- [ ] **dojo perception: no 6.0-proxy scene background for imitate.** The genuine-5.1 one is in every box's
-  `bg_folds_51/fold{0,1}/scene/Geometry_basket_00005/` (`scripts/perception/scene_bg_frame0.py`); compute3's 6.0
+- [ ] **dojo perception: no 6.0-proxy scene background for imitate.** The genuine-5.1 one is in compute3's
+  `bg_folds_51/fold{0,1}/scene/Geometry_basket_00005/` (compute4: `~/dojo-data/bg_folds_51_ilia`) (`scripts/perception/scene_bg_frame0.py`); compute3's 6.0
   `bg_folds` has none, so proxy imitate runs still see the demonstrator's arm as foreground. Build it from 6.0 renders
   of the non-demo layouts' frame 0 when proxy imitate runs matter.
 - [ ] **dojo perception: the scan estimate assumes nothing moved since frame 0** (`scan.estimate_with_scan` fuses frame

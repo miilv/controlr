@@ -93,15 +93,23 @@ def scene_dir_name(key: str) -> str:
     return str(key).replace("/", "_")
 
 
+def scene_bg_key(fold_dir, keys) -> str | None:
+    """The first of ``keys`` (the scene's asset keys) with a scene background in ``fold_dir``, None without one (the
+    table backgrounds)."""
+    for k in keys or ():
+        if (Path(fold_dir) / SCENE_DIR / scene_dir_name(k) / "cam_head.png").exists():
+            return str(k)
+    return None
+
+
 def with_scene(bgs: dict, fold_dir, keys) -> dict:
     """The fold's (table) backgrounds, overlaid with a scene background when one of ``keys`` (the scene's asset keys)
     has one: ``<fold_dir>/scene/<Type_cat_idx>/`` built for a fixture that replaces the table in the head view (a
     conveyor belt; ``dojo.perception.belt_bg``). Every table image is dropped (it would show the table where the
     scene has its fixture); a camera the scene has no image for falls back to the head background warped onto it."""
-    for k in keys or ():
-        d = Path(fold_dir) / SCENE_DIR / scene_dir_name(k)
-        if (d / "cam_head.png").exists():
-            return load_backgrounds(d)
+    k = scene_bg_key(fold_dir, keys)
+    if k is not None:
+        return load_backgrounds(Path(fold_dir) / SCENE_DIR / scene_dir_name(k))
     return bgs
 
 

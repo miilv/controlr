@@ -43,7 +43,9 @@ Ops (request dicts):
         visible_px}; moving None when too little of the view is visible
     {"op": "belt_read", "frame": frame, "vocabulary": str, "fold": int}             -> {"record": json}
         the riders of a moving base, one best single-object fit per head-view blob (``dojo.perception.belt``): the belt
-        tracker's re-read (no label counts, so no split blobs / phantoms; ~2.5 s vs B1's ~9 s on 5.1 belt frames)
+        tracker's re-read (no label counts, so no split blobs / phantoms; ~2.5 s vs B1's ~9 s on 5.1 belt frames);
+        ``record._perception.scene_bg`` = the scene background it used (None: the table's), ``.blind`` = why it cannot
+        see the riders (its belt has no scene background in DOJO_BG_FOLDS)
     {"op": "watch_read", "frame": frame, "region": json, "vocabulary": str, "fold": int, "prior": json|None}
                                                                                    -> {"watch_read": json}
         perception's ``dojo.perception.watch.watch_read`` (cells of a board / contents of a container, what the scene's
@@ -262,6 +264,7 @@ class PerceptionClient:
 class _Perception:
     def __init__(self):
         self._bgs: dict = {}
+        self._bg_scene: dict = {}               # (fold, scene) -> the scene background's asset key, None = the table's
         self._cal = None
         self._scene: tuple = ()                 # asset keys of the current vocabulary's scene (scene backgrounds)
         cal = os.environ.get("DOJO_COLOR_CALIB")
@@ -286,7 +289,7 @@ class _Perception:
         if key not in self._bgs:
             import cv2
 
-            from dojo.perception.segment import load_backgrounds, with_scene
+            from dojo.perception.segment import load_backgrounds, scene_bg_key, with_scene
             d = Path(os.environ["DOJO_BG_FOLDS"]) / f"fold{int(fold)}"
             out = load_backgrounds(d)
             m = d / "cam_head_clean_unseen.png"
@@ -294,8 +297,20 @@ class _Perception:
                 out["cam_head_clean_unseen"] = (cv2.imread(str(m), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
             if "cam_head" not in out:
                 raise FileNotFoundError(f"no backgrounds in {d}")
+            self._bg_scene[key] = scene_bg_key(d, self._scene)
+            missing = [k for k in self._scene if k.startswith("Dynamic/") and k != self._bg_scene[key]]
+            if missing:
+                # a belt with no background of its own segments as foreground (every belt read blind): say so where
+                # the box's operator looks, once per fold and scene (compute4 2026-10-28: bg_folds_51 had no scene/)
+                print(f"[perception_service] WARNING: no scene background for {missing} in {d} "
+                      f"(scene/{{Type_cat_idx}}/): belt reads are blind", flush=True)
             self._bgs[key] = with_scene(out, d, self._scene)
         return self._bgs[key]
+
+    def bg_scene(self, fold: int) -> str | None:
+        """The asset key of the scene background ``bgs(fold)`` uses for the current scene, None for the table's."""
+        self.bgs(fold)
+        return self._bg_scene.get((int(fold), self._scene))
 
     def cfg(self, fold: int):
         from dojo.perception.inverse_layout import EstimatorConfig
@@ -752,6 +767,14 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         fold = int(req.get("fold", 0))
                         rec = belt_read(fr["images"], fr["state"], req["vocabulary"], fr["instruction"], bgs=p.bgs(fold),
                                         cfg=p.cfg(fold))
+                        # which background the read had; blind = its belt had none (the runtime's tracker skips it)
+                        from dojo.perception.belt import blind_reason
+                        sb = p.bg_scene(fold)
+                        pm = rec.setdefault("_perception", {})
+                        pm["scene_bg"] = sb
+                        why = blind_reason(req["vocabulary"], sb)
+                        if why:
+                            pm["blind"] = why
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
                     elif op == "watch_read":
                         from dojo.perception.watch import watch_read

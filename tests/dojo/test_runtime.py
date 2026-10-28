@@ -3375,6 +3375,41 @@ def test_belt_tracker_reads_through_the_belt_read_when_the_service_has_it(monkey
             assert pc.ops.count("belt_read") == n                              # every tracker read, nothing else
 
 
+def test_a_blind_belt_read_is_logged_and_the_belief_keeps_its_objects(monkeypatch):
+    """A belt read the service marks blind (no scene background for the belt in the fold: compute4 2026-10-28) shows
+    in the report (``track_read`` blind, one ``belt_blind`` event) and changes nothing in the belief."""
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png")
+    env = _env()
+
+    class Blind(_HeldPosePerception):
+        def __init__(self, env):
+            super().__init__(env, lambda prior: {})
+
+        def belt_read(self, frame, vocabulary, fold):
+            return {"Rigid": {}, "_perception": {"scene_bg": None, "blind": "no scene background for Dynamic/conveyor/00000"}}
+
+    seen = {}
+
+    def program(ctx):
+        labels = sorted(ctx.prov.belief.objects)
+        for _ in range(3):
+            ctx.prov.refresh()
+            ctx.sk.ex.hold(5)
+        seen["kept"] = sorted(ctx.prov.belief.objects) == labels
+        return {"ok": True}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", track_moving="on"), assets=FakeAssets(),
+                        perception_client=Blind(env), program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    tr = [e for e in rep["events"] if e["kind"] == "track_read"]
+    assert len(tr) >= 2 and all(e.get("blind") for e in tr)
+    blind = [e for e in rep["events"] if e["kind"] == "belt_blind"]
+    assert len(blind) == 1 and "Dynamic/conveyor/00000" in blind[0]["why"]
+    assert seen["kept"] and rep["provider"]["track_blind"] == len(tr)
+    assert not [e for e in rep["events"] if e["kind"] in ("track_drop", "track_new", "track_lost")]
+
+
 def test_kinematic_belief_attaches_a_narrow_pick_closed_from_below_half_open():
     """A pick that opens to less than half (a bread slice, a mallet handle, a thin mug wall: g 0.37-0.46) and then
     closes must attach its object like a wide one (breadth2 mode B: those picks read "rose 0 mm, drift = lift")."""
