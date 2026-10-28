@@ -1738,6 +1738,12 @@ def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
     return out
 
 
+def grasp_family(note: str) -> str:
+    """A grasp note without its offset along the object ("box close 2 approach +1 tilt +0 off +2mm" -> "box close 2
+    approach +1 tilt +0"): the grasps on the same faces, approach and tilt."""
+    return re.sub(r"\s+off [+-]?\d+mm\s*$", "", str(note)).strip()
+
+
 def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, box_tilts=(0.0, 25.0, -25.0),
                    skip=()):
     """A ``plan_transfer`` grasp source: the usual candidates (box grasps, the category's, slices of irregular ones)
@@ -1758,7 +1764,7 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
         k = int(np.argmax(o.asset.extents))
         out = []
         for g in cands:
-            if g.note in skip:
+            if g.note in skip or grasp_family(g.note) in skip:
                 continue
             Tg = Tinv @ g.T
             Tt = T_target @ Tg
@@ -1843,7 +1849,9 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
             m = next((re.search(r"(?:direct,|-> target) \w+ \((.+)\)\s*$", x) for x in reversed(said)
                       if x.startswith(f"[place_oriented] {lab}:")), None)
             if m:
-                bad.append(m.group(1))
+                # "family" (stream H): the same faces / approach / tilt at another offset slip the same way (G3: pen0, which
+                # lies rolled 26 deg on its clip, rose 0-3 mm at "off +2mm", then again at "off +0mm", 8/8)
+                bad.append(grasp_family(m.group(1)) if getattr(sk, "fill_skip", "exact") == "family" else m.group(1))
         try:
             sk.ex.hold(8)                       # it falls the rest of the way and settles
         except (BudgetExceeded, EpisodeEnded):

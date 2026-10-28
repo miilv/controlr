@@ -285,6 +285,10 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
+    joint_limits: str = "wide"
+    # ``fill_container``'s memory of grasps that did not lift (``Skills.fill_skip``): exact (today) | family
+    fill_skip: str = "exact"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -358,7 +362,8 @@ class RuntimePolicy:
                 or self.cfg.refine_recentre_guard not in ("centre", "vis")
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
-                or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")):
+                or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
+                or self.cfg.joint_limits not in ("wide", "measured") or self.cfg.fill_skip not in ("exact", "family")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -606,6 +611,8 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.joint_limits = cfg.joint_limits
+            sk_.fill_skip = cfg.fill_skip
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
