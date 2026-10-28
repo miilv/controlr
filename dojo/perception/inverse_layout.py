@@ -3333,11 +3333,15 @@ class EstimatorConfig:
     # a select list that holds every category of its entry exactly once (``hierarchical``, k categories x 1 instance), and
     # the ``same_as_label`` copies of such a list: a list whose objects (told apart by the lists' generator regions) repeat
     # a category re-fits the repeated ones as the missing categories, the best total cost wins (_category_quota;
-    # imitate_sorting_sequence: watches read as action cameras)
-    category_quota: bool = True
+    # imitate_sorting_sequence: watches read as action cameras). OFF by default (legality triage 2026-10-28): "each
+    # category once" is a config identity relation among labels, not an observation; it forces identities (and proposes
+    # objects) from the config's structure (journal 2026-10-28-legality-quota-relations)
+    category_quota: bool = False
     quota_variants: int = 2  # ... fitting each missing category's best-coloured variants
     quota_add_max_loss: float = 0.8  # ... and a list short of objects takes a missing category's fit on unexplained foreground up to this silhouette loss
-    quota_copy_assets: bool = True  # ... and a same_as_label copy list takes its complete source list's assets (Hungarian)
+    # ... and a same_as_label copy list takes its complete source list's assets (Hungarian). OFF by default: the copy
+    # relation hands the demonstrator's objects our objects' identities (the audit's P1-2 class)
+    quota_copy_assets: bool = False
     # objects placed inside a static container base (fill_egg_holder's eggs in the egg basket): fitted on the base's
     # top surface to the evidence that interrupts its texture, only their pixels in front of it counted (contained.py)
     contained_children: bool = True
