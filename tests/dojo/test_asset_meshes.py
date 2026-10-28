@@ -46,4 +46,6 @@ def test_mesh_less_list_loads():
     from dojo.skills import world
     world._MESH_LESS = None
     keys = world.mesh_less()
-    assert "Rigid/matryoshka_dolls/00000" in keys and "Rigid/key/00000" not in keys
+    # the matryoshka dolls had no mesh until the catalogue fix of 2026-10-28 (stream W; mesh_less regenerated)
+    assert "Rigid/audio/00000" in keys and "Rigid/key/00000" not in keys
+    assert "Rigid/matryoshka_dolls/00000" not in keys and "Rigid/number/00007" not in keys
