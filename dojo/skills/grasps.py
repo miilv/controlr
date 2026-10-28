@@ -189,6 +189,114 @@ def side_grasps(obj: ObjectState, kin: X5Kin, arm: str, heights=(0.5, 0.65), pit
     return out
 
 
+def top_band_grasps(obj: ObjectState, kin: X5Kin, arm: str, band: float = 0.02, depth: float = 0.012,
+                    tilts=(0.0, 15.0, 25.0), max_area_frac: float = 0.5) -> list[Grasp]:
+    """A narrow top on a wide object (a basket's handle arch, a lid's knob): the mesh's top ``band``, its narrowest
+    horizontal direction (5 deg steps) as the closing axis, the TCP ``depth`` under the top at the band's middle,
+    approached from above (tilted toward the arm). Only when the band fits between the pads and covers at most
+    ``max_area_frac`` of the bbox's footprint (a full-width top is the rim / box grasps' case). pick_from_conveyor_by_image:
+    the basket's rim grasp sat on a circle 7 cm above its real rim (the handle sets the bbox top) and closed on air,
+    10 / 10 (G3, v13)."""
+    if obj.asset.mesh is None:
+        return []
+    V = np.asarray(obj.asset.mesh[0], float)
+    ku, up_sign = up_axis(obj)
+    if ku != 2 or up_sign < 0:                                   # the object's own +z must be up (an upright basket)
+        return []
+    top = float(V[:, 2].max())
+    B = V[V[:, 2] >= top - band]
+    if len(B) < 8:
+        return []
+    best = None
+    for deg in range(0, 180, 5):
+        d = np.array([math.cos(math.radians(deg)), math.sin(math.radians(deg))])
+        e = np.array([-d[1], d[0]])
+        pd, pe = B[:, :2] @ d, B[:, :2] @ e
+        w = float(pd.max() - pd.min())
+        if best is None or w < best[0]:
+            best = (w, d, e, d * (pd.max() + pd.min()) / 2 + e * (pe.max() + pe.min()) / 2, float(pe.max() - pe.min()))
+    w, d, e, cxy, length = best
+    ext = obj.asset.extents
+    if w > MAX_WIDTH or w * length > max_area_frac * float(ext[0]) * float(ext[1]):
+        return []
+    R = obj.R
+    p_obj = np.array([cxy[0], cxy[1], top - depth + TIP_BEYOND_TCP])
+    p = obj.pos + R @ p_obj
+    closing = R @ np.array([d[0], d[1], 0.0])
+    along = R @ np.array([e[0], e[1], 0.0])
+    base = kin.base(arm)[:3, 3]
+    sgn = 1.0 if float(np.dot(p[:2] - base[:2], along[:2])) >= 0 else -1.0
+    out = []
+    for tilt in tilts:
+        t = math.radians(tilt)
+        appr = np.array([0.0, 0.0, -math.cos(t)]) + sgn * along * math.sin(t)
+        for flip in (1.0, -1.0):
+            out.append(Grasp("band", T_from(p, _frame(appr, flip * closing)), w, pre_dist=0.06,
+                             score=tilt / 50.0, note=f"band {1000 * w:.0f} x {1000 * length:.0f} mm tilt {tilt:.0f}"))
+    return out
+
+
+def box_rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, depth: float = 0.012, fracs=(-0.3, 0.0, 0.3),
+                   tilts=(0.0, 15.0, 25.0), span: float = 0.85) -> list[Grasp]:
+    """A rectangular open container's rim (a basket): the rim height from the mesh (the highest slice spanning
+    ``span`` of the bbox in both axes, so a handle arch above it does not count), each wall's thickness there (its
+    outer edge to where the wall's points end, across the side's middle), pads straddling the wall ``depth`` under the
+    rim at ``fracs`` along the side, approach from above (tilted outward-in). Nearer walls score better.
+    pick_from_conveyor_by_image: ``rim_grasps`` (a circle under the bbox top) closed on air 7 cm above this basket's
+    real rim, 10 / 10 (G3, v13)."""
+    if obj.asset.mesh is None:
+        return []
+    V = np.asarray(obj.asset.mesh[0], float)
+    ku, up_sign = up_axis(obj)
+    if ku != 2 or up_sign < 0:
+        return []
+    lo, hi = V.min(0), V.max(0)
+    ext = hi - lo
+    z_rim = None
+    for z in np.arange(hi[2], lo[2], -0.002):
+        S = V[np.abs(V[:, 2] - z) < 0.002]
+        if len(S) >= 20 and np.ptp(S[:, 0]) >= span * ext[0] and np.ptp(S[:, 1]) >= span * ext[1]:
+            z_rim = float(S[:, 2].max())
+            break
+    if z_rim is None or z_rim < lo[2] + 0.5 * ext[2]:
+        return []
+    band = V[(V[:, 2] > z_rim - 0.02) & (V[:, 2] <= z_rim + 0.002)]
+    base = kin.base(arm)[:3, 3]
+    R = obj.R
+    out = []
+    for ax in (0, 1):
+        oth = 1 - ax
+        mid = band[np.abs(band[:, oth] - 0.5 * (lo[oth] + hi[oth])) < 0.25 * ext[oth]]
+        for sgn in (-1.0, 1.0):
+            edge = lo[ax] if sgn < 0 else hi[ax]
+            w = mid[np.abs(mid[:, ax] - edge) < 0.04]            # this wall's points near its outer edge
+            if len(w) < 10:
+                continue
+            inner = float(w[:, ax].max()) if sgn < 0 else float(w[:, ax].min())
+            t = abs(inner - edge)
+            if t > MAX_WIDTH - 0.005 or t < 0.002:
+                continue
+            c_ax = 0.5 * (edge + inner)
+            n_out = np.zeros(3)
+            n_out[ax] = sgn
+            n_w = R @ n_out                                       # outward normal, world
+            for f in fracs:
+                q = np.zeros(3)
+                q[ax] = c_ax
+                q[oth] = 0.5 * (lo[oth] + hi[oth]) + f * ext[oth]
+                q[2] = z_rim - depth + TIP_BEYOND_TCP
+                p = obj.pos + R @ q
+                d_arm = float(np.linalg.norm(p[:2] - base[:2]))
+                for tilt in tilts:
+                    tr = math.radians(tilt)
+                    appr = np.array([0.0, 0.0, -math.cos(tr)]) - n_w * math.sin(tr)
+                    for flip in (1.0, -1.0):
+                        out.append(Grasp("box_rim", T_from(p, _frame(appr, flip * n_w)), t, pre_dist=0.06,
+                                         score=d_arm + tilt / 100.0 + 0.1 * abs(f),
+                                         note=f"wall {'-+'[sgn > 0]}{'xy'[ax]} {1000 * t:.0f} mm at {f:+.1f} tilt {tilt:.0f}"))
+    return out
+
+
 def rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, n: int = 16, wall: float = 0.006, depth: float = 0.024,
                tilts=(0.0, 15.0, 25.0)) -> list[Grasp]:
     """Bowl rim: pads straddle the wall at the rim, closing radially, approach from above."""
