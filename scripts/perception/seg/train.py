@@ -89,6 +89,7 @@ def main(argv=None):
     ap.add_argument("--power-max", type=float, default=420.0)
     ap.add_argument("--patience", type=int, default=20)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--close-mosaic", type=int, default=10)
     a = ap.parse_args(argv)
     os.environ.setdefault("YOLO_CONFIG_DIR", str(Path(a.project).expanduser().parent / "ultra_cfg"))
     from ultralytics import YOLO
@@ -103,7 +104,7 @@ def main(argv=None):
     model.train(data=os.path.expanduser(a.data), epochs=a.epochs, imgsz=a.imgsz, batch=a.batch, workers=a.workers,
                 project=str(Path(a.project).expanduser()), name=a.name, exist_ok=True, patience=a.patience,
                 hsv_h=0.005, hsv_s=0.3, hsv_v=0.25, degrees=0.0, translate=0.1, scale=0.3, fliplr=0.0, mosaic=1.0,
-                close_mosaic=10, overlap_mask=True, plots=False, amp=True, resume=a.resume, cache=False)
+                close_mosaic=a.close_mosaic, overlap_mask=True, plots=False, amp=True, resume=a.resume, cache=False)
     print(f"[train] done in {(time.time() - t0) / 3600:.2f} h; throttle slept {thr.stall_s:.0f} s stalled, "
           f"last sleep {thr.sleep:.2f} s/batch", flush=True)
 

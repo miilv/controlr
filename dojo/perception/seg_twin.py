@@ -190,7 +190,7 @@ def match_greedy(gt: dict[int, np.ndarray], preds: list[Det], thr: float = 0.0) 
 class _SegModel:
     """``handle(req, img)`` / ``info()`` for ``sam_masks.serve``: op ``detect`` -> masks + class keys + scores."""
 
-    def __init__(self, weights: str, classes: list[str] | None = None, imgsz: int = 640, conf: float = 0.25):
+    def __init__(self, weights: str, classes: list[str] | None = None, imgsz: int | None = None, conf: float = 0.25):
         import torch
         from ultralytics import YOLO
 
@@ -199,7 +199,9 @@ class _SegModel:
         self.model = YOLO(weights)
         names = self.model.names
         self.classes = classes or [names[i] for i in range(len(names))]
-        self.imgsz, self.conf = imgsz, conf
+        # the input size it was trained at (a model trained at 960 px for small objects must also infer at 960)
+        train_args = (getattr(self.model, "ckpt", None) or {}).get("train_args") or {}
+        self.imgsz, self.conf = int(imgsz or train_args.get("imgsz") or 640), conf
         self.timing: dict = {}
         self.load_s = round(time.time() - t0, 1)
 
@@ -225,7 +227,7 @@ class _SegModel:
     def info(self) -> dict:
         return {"timing": {k: (n, round(t / max(n, 1), 4)) for k, (n, t) in self.timing.items()},
                 "peak_vram_gb": round(self.torch.cuda.max_memory_allocated() / 1e9, 2), "load_s": self.load_s,
-                "n_classes": len(self.classes)}
+                "n_classes": len(self.classes), "imgsz": self.imgsz}
 
     def handle(self, req, img):
         from .sam_masks import pack
@@ -291,10 +293,11 @@ def main(argv=None):
     s.add_argument("--weights", required=True)
     s.add_argument("--classes", default=None, help="classes.json of the export (else the model's own names)")
     s.add_argument("--conf", type=float, default=0.25)
+    s.add_argument("--imgsz", type=int, default=None, help="inference size (default: the model's training size)")
     s.add_argument("--max-hours", type=float, default=6.0)
     a = ap.parse_args(argv)
     classes = json.load(open(a.classes))["names"] if a.classes else None
-    M = _SegModel(a.weights, classes, conf=a.conf)
+    M = _SegModel(a.weights, classes, imgsz=a.imgsz, conf=a.conf)
     print(f"[seg] loaded {a.weights}: {len(M.classes)} classes in {M.load_s} s", flush=True)
     serve(os.path.expanduser(a.sock), ["seg"], a.max_hours, M=M)
 
