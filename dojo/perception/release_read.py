@@ -27,7 +27,7 @@ import cv2
 import numpy as np
 
 from .cameras import R_to_quat_wxyz, cameras_from_state, pose_to_T
-from .held import Silhouettes, View, _iou, _roi_for, apply_delta, robot_unknown
+from .held import Silhouettes, View, _edge_cost, _iou, _roi_for, apply_delta, robot_unknown
 from .render import gl, load_asset, silhouette, transform
 
 CAMS = ("cam_head", "cam_left_wrist", "cam_right_wrist")
@@ -44,6 +44,7 @@ DEFAULTS = {
     "swing_deg": (-40.0, -20.0, 20.0, 40.0),   # starts: turns about world x / y through the centre
     "shift_mm": (-12.0, 12.0),                 # starts: shifts along world x / y
     "w_head": 0.6,
+    "w_edge": 0.5,                 # outline-to-image-edge term (held_pose's), per view, against 1 - IoU
     "rest_starts": True,           # also search around the asset's resting shapes at the release xy (it fell over)
     "rest_margin": 0.05,           # ... taken only when that fit's cost beats the local fit's by this much
 }
@@ -167,9 +168,13 @@ def release_read(frame: dict, key: str, prior_pose7, arm: str, others=(), cfg: d
         for v, wv in zip(views, w):
             if wv <= 0:
                 continue
-            iou = _iou(sil.render(v.cam, T), v)
+            sv = sil.render(v.cam, T)
+            iou = _iou(sv, v)
             ious[v.name] = round(iou, 4)
-            tot += wv * (1.0 - iou)
+            ec = _edge_cost(sv, v) if c["w_edge"] > 0 else None
+            # the outline against image edges: a gold ring on a black board with yellow grid lines has a colour model
+            # that confuses the lines with the ring (iou 0.4-0.5 at a 4 mm prior); its outline still sits on edges
+            tot += wv * ((1.0 - iou) + (c["w_edge"] * ec if ec is not None else c["w_edge"] * 0.5))
         tot /= max(float(w.sum()), 1e-9)
         sh, tr = float(np.linalg.norm(d[3:6])), float(np.linalg.norm(d[:3]))
         tot += 10.0 * (max(0.0, sh - max_shift) / 0.001 + max(0.0, tr - max_turn) / 0.01)
@@ -274,6 +279,8 @@ def release_read(frame: dict, key: str, prior_pose7, arm: str, others=(), cfg: d
 SEARCH_DEFAULTS = {
     "radius_mm": 150.0,            # head-view search around the release point (fell near: 50-150 mm, M's replays)
     "pre_max_shift_mm": 20.0,      # the pre-grasp check: the object still where it was picked from (a missed grasp)
+    "pre_min_prec": 0.6,           # ... its head silhouette there this much static-background foreground
+    "pre_min_px": 20,
     "head_min_iou": 0.65,          # a head-only (x, y, yaw) fit must explain its view this well ...
     "blob_min_cover": 0.5,         # ... and cover this much of its blob
     "min_blob_px": 25,
@@ -356,30 +363,42 @@ def release_search(frame: dict, key: str, prior_pose7, arm: str, others=(), pre_
             continue
     om = cv2.dilate(om, np.ones((5, 5), np.uint8))
 
-    def verify(T: np.ndarray, via: str, iou_h: float) -> dict | None:
-        """A wrist that sees the hypothesis polishes it (6-DoF read, any range rules); else the head fit stands."""
+    def verify(T: np.ndarray, via: str, iou_h: float, force: bool = False) -> dict | None:
+        """A wrist that sees the hypothesis polishes it (6-DoF read, any range rules); else the head fit stands
+        (``force``: the head evidence alone is enough, e.g. foreground where the object was grasped from)."""
         rr = release_read(frame, key, _pose7(T), arm, others=others, cfg={**rcfg, "rest_starts": False,
                                                                           "max_shift_mm": 20.0, "max_turn_deg": 30.0})
         if rr.get("ok"):
             return {**rr, "via": via, "head_iou": round(iou_h, 4)}
-        if rr.get("why") in ("one_far_view", "no_gain", "no_views") and iou_h >= c["head_min_iou"]:
+        if force or (rr.get("why") in ("one_far_view", "no_gain", "no_views") and iou_h >= c["head_min_iou"]):
             return {"ok": True, "via": via, "pose7": _pose7(T), "head_iou": round(iou_h, 4), "ious": {"cam_head": iou_h},
                     "read6_why": rr.get("why")}
         return None
 
-    # (1) the pre-grasp pose
+    # (1) the pre-grasp pose: the pose the object had when the jaws closed was a measured one (the pick hover's refine);
+    # a missed grasp leaves the object there. Its silhouette is foreground in the head view (``prec``: thin objects such
+    # as a mallet are 3-5 head px wide, so the fit's IoU is noisy and the precision decides), and a fit stays near it
     if pre_pose7 is not None:
         Tp = pose_to_T(pre_pose7[:3], pre_pose7[3:])
+        sp = silhouette(v.cam, transform(a.Vs, Tp), a.Fs)
+        vis = (sp > 0) & (v.known > 0) & (om == 0)
+        n_vis = int(vis.sum())
+        prec0 = float((vis & (v.fg > 0)).sum()) / max(n_vis, 1)
         f = _head_fit(v, key, Tp, om, yaws=1)
-        if f is not None:
-            T, iou, s = f
-            shift = float(np.hypot(T[0, 3] - Tp[0, 3], T[1, 3] - Tp[1, 3])) * 1000
-            prec = float(((s > 0) & (v.fg > 0) & (v.known > 0)).sum()) / max(int(((s > 0) & (v.known > 0)).sum()), 1)
-            tried.append({"via": "pre_grasp", "head_iou": round(iou, 3), "prec": round(prec, 3), "shift_mm": round(shift, 1)})
-            if shift <= c["pre_max_shift_mm"] and iou >= c["head_min_iou"]:
-                out = verify(T, "pre_grasp", iou)
-                if out is not None:
-                    return {**out, "tried": tried, "time_s": round(time.time() - t0, 3)}
+        T, iou = (f[0], f[1]) if f is not None else (Tp, 0.0)
+        shift = float(np.hypot(T[0, 3] - Tp[0, 3], T[1, 3] - Tp[1, 3])) * 1000
+        prec1 = 0.0
+        if f is not None and shift <= c["pre_max_shift_mm"]:
+            vis1 = (f[2] > 0) & (v.known > 0) & (om == 0)
+            prec1 = float((vis1 & (v.fg > 0)).sum()) / max(int(vis1.sum()), 1) if int(vis1.sum()) >= c["pre_min_px"] else 0.0
+        tried.append({"via": "pre_grasp", "head_iou": round(iou, 3), "prec": round(prec0, 3), "prec_fit": round(prec1, 3),
+                      "vis_px": n_vis, "shift_mm": round(shift, 1)})
+        there = (n_vis >= c["pre_min_px"] and prec0 >= c["pre_min_prec"]) or prec1 >= c["pre_min_prec"]
+        if there or (shift <= c["pre_max_shift_mm"] and iou >= c["head_min_iou"]):
+            T_use = T if (prec1 >= prec0 and shift <= c["pre_max_shift_mm"]) else Tp
+            out = verify(T_use, "pre_grasp", iou, force=there)
+            if out is not None:
+                return {**out, "pre_prec": round(prec0, 3), "tried": tried, "time_s": round(time.time() - t0, 3)}
     # (2) head-view blobs near the release
     T0 = pose_to_T(prior[:3], prior[3:])
     resid = ((v.fg > 0) & (v.known > 0) & (om == 0)).astype(np.uint8)

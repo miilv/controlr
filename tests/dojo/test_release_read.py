@@ -85,7 +85,7 @@ def test_release_read_without_views_keeps_the_prior(monkeypatch):
     assert not r["ok"] and r["why"] == "no_views" and r["pose7"] == pose7
 
 
-def _search_stubs(monkeypatch, fit_at, wrist_ok=False):
+def _search_stubs(monkeypatch, fit_at, wrist_ok=False, pre_occupied=False):
     """release_search with its head view, fits and 6-DoF read stubbed: a 200 x 200 px head view whose foreground holds
     one blob at pixel (150, 100); ``fit_at`` = {centre xy (rounded) or "pre": (T, iou)} of the head fits."""
     pytest.importorskip("cv2")
@@ -103,7 +103,10 @@ def _search_stubs(monkeypatch, fit_at, wrist_ok=False):
 
     v = SimpleNamespace(cam=Cam(), fg=fg, known=np.ones_like(fg), robot=np.zeros_like(fg))
     monkeypatch.setattr(RR, "_head_view", lambda frame, bgs, thr: v)
-    monkeypatch.setattr(RR, "load_asset", lambda key: SimpleNamespace(V=np.array([[0, 0, 0], [0, 0, 0.04]], float)))
+    V = np.array([[0, 0, 0], [0, 0, 0.04]], float)
+    monkeypatch.setattr(RR, "load_asset", lambda key: SimpleNamespace(V=V, Vs=V, Fs=np.zeros((0, 3), int)))
+    # the predicted head silhouette at the pre-grasp pose: the blob's pixels when the object is still there
+    monkeypatch.setattr(RR, "silhouette", lambda cam, Vw, F, **k: fg.copy() if pre_occupied else np.zeros_like(fg))
     calls = []
 
     def head_fit(v_, key, T_init, om, yaws=1, iters=60, centre_xy=None):
@@ -113,7 +116,8 @@ def _search_stubs(monkeypatch, fit_at, wrist_ok=False):
         if T is None:
             return None
         s = np.zeros((200, 200), np.uint8)
-        s[90:110, 140:160] = 1
+        if k != "pre" or pre_occupied:                      # a fit's silhouette lies on the blob only where it is
+            s[90:110, 140:160] = 1
         return T, iou, s
 
     monkeypatch.setattr(RR, "_head_fit", head_fit)
@@ -129,11 +133,15 @@ def _T(x, y, z=0.78):
 
 
 def test_release_search_takes_the_pre_grasp_pose_of_a_missed_grasp(monkeypatch):
-    RR, calls = _search_stubs(monkeypatch, {"pre": (_T(0.2, 0.1), 0.8)})
+    RR, calls = _search_stubs(monkeypatch, {"pre": (_T(0.2, 0.1), 0.8)}, pre_occupied=True)
     prior = [0.0, 0.0, 0.9, 1, 0, 0, 0]
     r = RR.release_search({}, "Rigid/x/00000", prior, "left", pre_pose7=[0.2, 0.1, 0.78, 1, 0, 0, 0], head_bgs={"x": 1})
     assert r["ok"] and r["via"] == "pre_grasp" and r["pose7"][:3] == pytest.approx([0.2, 0.1, 0.78])
     assert calls == ["pre"]                                   # found there: no head search
+    # a thin object (a mallet): the head fit's IoU is noisy, its silhouette there is foreground: still taken
+    RR, calls = _search_stubs(monkeypatch, {"pre": (_T(0.21, 0.1), 0.3)}, pre_occupied=True)
+    r = RR.release_search({}, "Rigid/x/00000", prior, "left", pre_pose7=[0.2, 0.1, 0.78, 1, 0, 0, 0], head_bgs={"x": 1})
+    assert r["ok"] and r["via"] == "pre_grasp" and r["pose7"][:3] == pytest.approx([0.21, 0.1, 0.78])   # the fit, 10 mm from it
 
 
 def test_release_search_finds_a_fallen_object_near_the_release_and_ignores_far_blobs(monkeypatch):
