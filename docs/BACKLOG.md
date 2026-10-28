@@ -31,15 +31,11 @@
 
   Measure on rendered 5.1 frames first: the hand faces are ~20 px tall in the head view, and S's segmenter reads
   mahjong glyphs at 0.19.
-- [ ] **dojo legality: a ruling for the lead** (journal 2026-10-28-legality-kong-identity): the kong draw takes the wall
-  stack nearest the hand row, and the fixed layout always puts the pair's tile there. Keep, flag off, or remove.
-  (imitate's `quota_copy_assets` and `category_quota`: off by default since journal 2026-10-28-legality-quota-relations.)
-- [ ] **dojo legality: B1's identity step pools or separates identities by the select list** (journal
-  2026-10-28-legality-quota-relations): `inverse_layout` identity step, `mode == "same"` gives every member the key with
-  the least summed cost, `unique` / `hierarchical` a distinct-key Hungarian; `_options` (`same` -> one asset for the
-  group, single-category `hierarchical` -> one category entry). A member with weak evidence takes its identity from the
-  others through the config tie. Many tasks (play_stacking_toy, stack_blocks, ...): needs a ruling (is "distinct" /
-  "same" a public prior where the instruction does not say it?) and a G1 + rendered A/B before any change.
+- [ ] **dojo skills: the kong draw must READ the drawn tile's face (D-C17 (3), robot-harness 5e0eaf8).** The near-stack
+  rule (the fixed layout puts the pair's tile on the stack nearest the hand row) is not an identity source. Lift or tilt
+  the top wall tile to a wrist camera, read its glyph, put it back if it does not complete a pair, try the next.
+  Until then `declare_kong` stops at "roles" (journal 2026-10-28-legality-kong-identity).
+
 - [ ] **dojo agent: the scene prints a placeholder `asset N` for identities no image read** (`ObjectState.identity_known`
   False, e.g. every make_kong tile). It should say "unread" and skip the placeholder's caption. That changes the
   agent's prompt for every task with unread slots: A/B it. Also, an agentic-perceiver asset change on such an entry

@@ -36,11 +36,12 @@ from functools import lru_cache
 
 import cv2
 import numpy as np
-from scipy.optimize import linear_sum_assignment, minimize
+from scipy.optimize import minimize
 from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
 from .identity_marks import identity_marks
+from .select_ties import assign_keys, tie_mode
 from .digits import glyph_evidence, record_fields as digit_fields
 from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
@@ -3915,7 +3916,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         if len(geom_keys) <= 1:
             continue
         refs = {k: ref_color(k) for k in geom_keys}
-        mode = g["select_mode"].get("mode", "unique")
+        mode = tie_mode(task, g["select_mode"].get("mode"))     # D-C17: no tie where the checker scores identity
         glyph = all(k.split("/")[1] in TEXTURE_CRITICAL for k in geom_keys)
         if glyph:
             # glyph identity (mahjong tiles, digit cards): textured render-and-compare per candidate
@@ -3944,17 +3945,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 hint = chosen[i].per_view.get("seg_key")
                 if hint and hint[0] in geom_keys:
                     C[row, geom_keys.index(hint[0])] -= cfg.seg_identity_w * float(hint[1])
-        if mode == "same":
-            k = geom_keys[int(np.argmin(C.sum(0)))]
-            for i in members:
-                chosen[i].key = k
-        elif mode in ("unique", "hierarchical") and len(geom_keys) >= len(members):
-            r, c = linear_sum_assignment(C)
-            for ri, ci in zip(r, c):
-                chosen[members[ri]].key = geom_keys[ci]
-        else:
-            for row, i in enumerate(members):
-                chosen[i].key = geom_keys[int(np.argmin(C[row]))]
+        for row, ci in enumerate(assign_keys(C, mode)):
+            chosen[members[row]].key = geom_keys[ci]
         for row, i in enumerate(members):
             chosen[i].appearance = float(C[row].min())
             if glyph and chosen[i].key in geom_keys:  # read or not (digits.glyph_evidence): the chosen key's texture
