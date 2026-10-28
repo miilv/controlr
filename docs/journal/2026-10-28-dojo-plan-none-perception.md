@@ -53,6 +53,25 @@ The default "min" is unchanged. Results:
 | arrange_largest_number mats | 15 / 69 | 62 / 69 |
 | arrange_largest_number_random mats | 15 / 69 | 60 / 69 |
 
+**The lead's regression, "seg" vs "min".** Same frames, B1 + v2b, every task whose config has a series or a
+linked_count group. "ok10" = found, right asset, within 10 mm. All other tasks are identical by construction: no
+series group. push_T and cover_blocks were run as controls.
+
+| task (set) | GT objects | found min → seg | ok10 min → seg | phantoms min → seg | s / frame |
+|---|---|---|---|---|---|
+| push_T (d0_51), control | 30 | 30 → 30 | 26 → 26 | 1 → 1 | 3.7 → 3.5 |
+| cover_blocks (d0_ext), control | 60 | 60 → 60 | 60 → 60 | 0 → 0 | 2.6 → 1.9 |
+| solve_equation (w51) | 345 | 345 → 345 | 171 → 171 | 15 → 13 | 19.6 → 19.4 |
+| classify_objects_by_language (p60) | 78 | 72 → 72 | 35 → 35 | 9 → 9 | 77 → 90 |
+| classify_objects (series) | 99 | 60 → 96 | 33 → 54 | 1 → 6 | 51 → 83 |
+| arrange_largest_number (w51) | 138 | 75 → 124 | 27 → 74 | 0 → 0 | 7 → 18 |
+| arrange_largest_number_random (w51) | 138 | 74 → 119 | 29 → 73 | 3 → 3 | 8 → 12 |
+
+- No task loses objects found or within tolerance.
+- The cost:
+  - classify gains 5 phantoms over 10 scenes, an over-count when masks outnumber objects;
+  - frames are slower where more objects are fitted.
+
 ## Need vs delivered
 
 (the table sent to the lead; the full numbers are in compute3 `~/dojo-data/w-ready/*/objects.jsonl`)
