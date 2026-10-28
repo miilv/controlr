@@ -33,7 +33,6 @@ import re
 import time
 from dataclasses import dataclass, field
 from functools import lru_cache
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -41,6 +40,7 @@ from scipy.optimize import linear_sum_assignment, minimize
 from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
+from .identity_marks import identity_marks
 from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 from .slots import settled as _settled, support_slot
@@ -807,10 +807,14 @@ def _slot_shape(key: str, placement: dict, tag: str | None) -> ShapeModel:
     return ([s_ for s_ in shape_models(key) if not tag or s_.tag == tag] or list(shape_models(key)))[0]
 
 
+SLOT_READ_MARGIN = 1e-4  # a slot's identity counts as read only when one candidate beats the runner-up by more than this
+
+
 def _slot_identity(h: "Hypothesis", g: dict, placement: dict, tag: str | None, views, cfg) -> "Hypothesis":
     """Which candidate sits in a slot (press_by_number's cards: digit 1-9 on identical boards): each
     candidate at the slot pose, silhouette loss when the geometry differs + texture NCC + colour; the runner-up
-    goes to ``alternative`` with its margin."""
+    goes to ``alternative`` with its margin. ``identity`` "read" when the pixels preferred one candidate (a face the
+    views do not see, e.g. a tile's back, scores every candidate the same: no read; ``identity_marks``)."""
     ext0 = h.sm().asset.extents
     scored = []
     for k in g["candidates"]:
@@ -833,6 +837,8 @@ def _slot_identity(h: "Hypothesis", g: dict, placement: dict, tag: str | None, v
         b2 = scored[1]
         out.per_view["alternative"] = {"key": b2[1], "tag": b2[2].tag, "x": h.x, "y": h.y, "yaw": h.yaw,
                                        "margin": round(float(b2[0] - best), 4)}
+    if len(scored) == 1 or float(scored[1][0] - best) > SLOT_READ_MARGIN:
+        out.per_view["identity"] = "read"
     return out
 
 
@@ -4061,7 +4067,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                **({"quota": h.per_view["quota"]} if h.per_view.get("quota") else {}),
                                **({"contained": h.per_view["contained"]} if h.per_view.get("contained") else {}),
                                **({"on_base": h.per_view["on_base"]} if h.per_view.get("on_base") else {}),
-                               **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {})}}
+                               **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {}),
+                               **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []
@@ -4090,7 +4097,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     ranking = {lab: g["target_ranking"] for g in groups if g.get("target_ranking") for lab in g["labels"]}
     if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
         record["_perception"]["target_ranking"] = ranking
-    index_structure(record, task)
+    identity_marks(record, task)  # unread slot identities stay "unknown": no config tie fills them
     if series:
         record["_perception"]["series"] = series
         _series_labels_out(record, task, series)
@@ -4252,63 +4259,3 @@ def _series_labels_out(record: dict, task: str, series: dict) -> None:
         for k, r in enumerate(ents):
             r["label"] = f"{p}_{k}"
         series[lab]["labels"] = [r["label"] for r in ents]
-
-
-IDENTITY_READ_MAX = 12  # _slot_identity reads the identity of slots with at most this many candidates
-
-
-def index_structure(record: dict, task: str) -> dict:
-    """Identity the config fixes but no view reads: labels tied to one asset index by the task config (select mode
-    ``same`` within a label list, ``same_index_as_label`` across lists; ``allow_global_same`` False = the lists differ)
-    whose candidates are too many to read (make_kong: 42 mahjong glyphs, ``_slot_identity`` reads <= 12). Each tied
-    group gets one index, a distinct one per group, so equality of ``category_idx`` follows the config (the kong
-    match: the discarded push tile mahjong(5+K)_0 matches triple K). The index itself is a placeholder; such entries
-    carry ``_perception.identity = "structural"``. Groups whose identity was read are left alone."""
-    labels = (task_map().get(task) or {}).get("labels") or {}
-    parent: dict[str, str] = {}
-
-    def root(a):
-        while parent.get(a, a) != a:
-            a = parent[a]
-        return a
-
-    for lab, d in labels.items():
-        sm = d.get("select_mode") or {}
-        parent.setdefault(lab, lab)
-        tied = []
-        if sm.get("mode") == "same":
-            tied = list(sm.get("label") or [])
-        elif sm.get("mode") == "same_index_as_label" and sm.get("same_label"):
-            tied = [sm["same_label"]]
-        for t in tied:
-            parent.setdefault(t, t)
-            ra, rb = root(lab), root(t)
-            if ra != rb:
-                parent[rb] = ra
-    groups: dict[str, list[str]] = {}
-    for lab in labels:
-        groups.setdefault(root(lab), []).append(lab)
-    entries = {}
-    for typ in ("Rigid", "Geometry", "Articulation"):
-        for lst in (record.get(typ) or {}).values():
-            for r in lst:
-                entries[r["label"]] = r
-    used: set[int] = set()
-    unread = [g for g in sorted(groups.values(), key=lambda g: sorted(g)[0])
-              if all(len(labels[lab].get("candidates") or []) > IDENTITY_READ_MAX for lab in g)]
-    if not any(len(g) >= 2 for g in unread):
-        return record
-    # tied groups first, then the untied unread labels (make_kong's other0..2): each its own index, so no stray tile
-    # equals a tied group's placeholder
-    for g in sorted(unread, key=lambda g: (len(g) < 2, sorted(g)[0])):
-        if not all((entries[lab].get("_perception") or {}).get("slot") for lab in g if lab in entries):
-            continue  # identity chosen by a fit among the candidates (not a config slot): keep it
-        cands = sorted({int(k.split("/")[-1]) for lab in g for k in labels[lab]["candidates"]})
-        idx = next((c for c in cands if c not in used), cands[0])
-        used.add(idx)
-        for lab in g:
-            r = entries.get(lab)
-            if r is not None:
-                r["category_idx"] = idx
-                r.setdefault("_perception", {})["identity"] = "structural"
-    return record

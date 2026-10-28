@@ -212,6 +212,9 @@ class ObjectState:
     confidence: float = 1.0
     t: int = 0                    # env step of the measurement
     joints: np.ndarray | None = None
+    # False: idx / asset are a placeholder no image read (perception's ``_perception.identity`` "unknown", e.g. a
+    # make_kong tile among 42 glyphs); its key equals other placeholders without the objects matching
+    identity_known: bool = True
 
     @property
     def T(self) -> np.ndarray:

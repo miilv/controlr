@@ -22,7 +22,10 @@ re-judges saved runs on M's replays); named, versioned config presets (`presets.
 
 Hard rule (the only one): at eval time the policy uses only the official observation contract. Never read
 `Assets/Eval_Layout/**` or eval-env state for development. Dev work uses our own generated layouts, where ground
-truth is ours.
+truth is ours. A task config's identity relations between labels (`same_index_as_label`: which unread objects match)
+are never policy input; its candidate pools are. An identity no image read stays unknown:
+`_perception.identity` "unknown" -> `ObjectState.identity_known` False (`dojo/perception/identity_marks.py`,
+`tests/dojo/test_legality_kong.py`).
 
 Shared machine conventions:
 - compute2 (4090 24 GB): RoboDojo install at `/root/controlr-robodojo` (read-only, shared); data at

@@ -1,10 +1,11 @@
 """Task-specific state reads that the checkers need beyond poses.
 
 - ``kong_discard(head_before, head_after)``: make_kong. The four "push" tiles mahjong5_0..mahjong8_0 stand at
-  config slots and are declared ``same_index_as_label`` with the hand triples mahjong0..3, so no glyph
-  identity is needed: the triple to expose is the one whose push tile the Franka knocked over. Compares the
-  head view at the four slots before and after the discard; returns the knocked label, its triple and the
-  per-slot change scores (mean Lab distance in a box around each standing tile).
+  public config slots; the scripted opponent knocks one over. Compares the head view at the four slots before and
+  after the discard; returns the knocked label and the per-slot change scores (mean Lab distance in a box around each
+  standing tile). Which hand tiles match the discard is NOT read here, and never from the config's
+  ``same_index_as_label`` ties (that is the task's answer): ``library.declare_kong`` matches glyphs read from the
+  images only (``dojo.perception.identity_marks``).
 """
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ import numpy as np
 
 from .cameras import TABLE_Z, head_camera
 
-PUSH_TO_TRIPLE = {"mahjong5_0": "mahjong0", "mahjong6_0": "mahjong1", "mahjong7_0": "mahjong2", "mahjong8_0": "mahjong3"}
+PUSH_LABELS = ("mahjong5_0", "mahjong6_0", "mahjong7_0", "mahjong8_0")  # the opponent's standing tiles (config slots)
 
 
 def kong_discard(head_before: np.ndarray, head_after: np.ndarray, task: str = "make_kong",
@@ -25,7 +26,7 @@ def kong_discard(head_before: np.ndarray, head_after: np.ndarray, task: str = "m
     a = cv2.cvtColor(head_before, cv2.COLOR_RGB2LAB).astype(np.float32)
     b = cv2.cvtColor(head_after, cv2.COLOR_RGB2LAB).astype(np.float32)
     scores = {}
-    for lab in PUSH_TO_TRIPLE:
+    for lab in PUSH_LABELS:
         if lab not in slots:
             continue
         x, y, _ = slots[lab]
@@ -40,9 +41,9 @@ def kong_discard(head_before: np.ndarray, head_after: np.ndarray, task: str = "m
         d[..., 0] *= 0.5
         scores[lab] = float(np.sqrt((d ** 2).sum(-1)).mean())
     if not scores:
-        return {"knocked": None, "triple": None, "scores": {}}
+        return {"knocked": None, "scores": {}}
     best = max(scores, key=scores.get)
     rest = sorted(v for k, v in scores.items() if k != best)
     margin = scores[best] - (rest[-1] if rest else 0.0)
-    return {"knocked": best, "triple": PUSH_TO_TRIPLE[best], "scores": {k: round(v, 2) for k, v in scores.items()},
+    return {"knocked": best, "scores": {k: round(v, 2) for k, v in scores.items()},
             "margin": round(margin, 2), "confident": bool(margin > 5.0)}
