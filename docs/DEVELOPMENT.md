@@ -270,6 +270,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **Physics-only replays are CPU-bound** (RoboDojo's PhysX runs on the CPU): on a loaded compute3 (load 30) one episode
   replays at ~2-5 steps/s. `scripts/perception/m95_replay.py` loads many episodes of a task in one runner and stops
   after the episode's last gripper change (`--full` for the whole list).
+- **A garbage-collected pyrender renderer kills every GL context of the process.** `OffscreenRenderer.delete()` (run by
+  `__del__`) calls `eglTerminate` on the EGL display, which all pyrender contexts of a process share; the next render
+  of ANY other renderer (GL silhouettes, `ColorMeshRenderer`, a `Gallery`) fails with `GLError 12289` in
+  `eglMakeCurrent`. Keep renderers process-wide (module globals like `render.gl()`, `wrist_check._GALLERY`), never per
+  object that may be dropped (E1 of the wrist check: a per-episode `Gallery` broke every later episode).
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
   frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
 
