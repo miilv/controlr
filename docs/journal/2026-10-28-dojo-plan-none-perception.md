@@ -60,6 +60,21 @@ The default "min" is unchanged. Results:
 - **With one**, the detector runs only for tasks that have a series or linked_count group.
 - **The candidate runs the seg_twin v2b server in every episode, for counting only.** seg_propose stays off.
 
+## seg_propose "add" (default since 2026-10-28)
+
+`seg_propose="add"` only fills a label group short of objects, from an unexplained head mask of the group's exact
+asset class. Members are never moved, re-fitted, flipped or re-identified, which is where "on" carries its risk.
+
+**Regression, "add" vs "off"** (same frames, every frame-0 set, series_count "seg" in both):
+- 32 task / sets and 1999 GT objects;
+- no task loses found or ok10, and phantoms are unchanged everywhere;
+- wins: build_tower ok10 104 -> 106, put_bottles 52 -> 55, organize_table 55 -> 57;
+- totals: found 1999 -> 2007, ok10 1180 -> 1187.
+
+The lead adopted it as the default, a uniform setting. It is a no-op without a segmenter server.
+
+It does not fix play_Xylophone: the mallet placed from a misread stand is a member, so its group is not short.
+
 ## Numeral digits (S's reader v2 + `glyph_read`)
 
 **Frame 0.** RoboDojo's 3-D numerals (`Rigid/number`; the checker's value is `category_idx % 10`) get their digit

@@ -3682,8 +3682,10 @@ class EstimatorConfig:
     # a group short of objects gains the fit; a member that no mask of its group explains (no mask under it, or a mask
     # of another category) moves there. Explained members are re-fitted inside their mask (local, by a margin) and keep
     # the mask's class as an identity hint for the appearance step. Default off
-    seg_propose: str = "off"         # off | on | add: "add" only fills a label group short of objects from an unexplained
-                                     # mask of the group's exact class; members are never moved, re-fitted or re-identified
+    seg_propose: str = "add"         # off | on | add: "add" only fills a label group short of objects from an unexplained
+                                     # mask of the group's exact class; members are never moved, re-fitted or re-identified.
+                                     # "off" until 2026-10-28 (journal 2026-10-28-dojo-plan-none-perception); a no-op
+                                     # without a segmenter server (DOJO_SEG_ADDR)
     seg_min_score: float = 0.4     # detections below are ignored
     seg_accept_iou: float = 0.55   # a proposal's head silhouette vs its mask, to be added / moved there
     seg_match_iou: float = 0.3     # a chosen object's head silhouette explains a mask
