@@ -120,7 +120,8 @@ def test_estimator_flags_default_off():
 
     cfg = EstimatorConfig()
     assert cfg.sam_fg == "off" and cfg.sam_propose == "off"
-    assert cfg.series_count == "min"  # a bug fix, not an experiment axis: journal 2026-10-27-dojo-sam
+    assert cfg.series_count == "seg"  # "min" until 2026-10-28; "seg" = "min" without a segmenter server (journals
+                                      # 2026-10-27-dojo-sam, 2026-10-28-dojo-plan-none-perception)
 
 
 def test_sam_fg_hook(fake_server, monkeypatch):
@@ -281,6 +282,7 @@ def test_series_count_from_the_twin_segmenter_and_linked_counts(monkeypatch):
     out, info = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="seg"), dets=dets)
     assert len(out[0]["labels"]) == 5 and len(out[1]["labels"]) == 5
     out, info = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="seg"), dets=None)
-    assert len(out[0]["labels"]) == 4 and out[1]["labels"] == ["geometry0"] * 4    # no server: the minimum
+    assert len(out[0]["labels"]) == 4 and out[1]["labels"] == ["geometry0"]        # no server: exactly "min"
     out, _ = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="min"))
-    assert out[1]["labels"] == ["geometry0"]                                       # the default is unchanged
+    assert out[1]["labels"] == ["geometry0"]                                       # "min": no linked counts
+    assert il.EstimatorConfig().series_count == "seg"                              # the default since 2026-10-28
