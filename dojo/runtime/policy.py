@@ -292,6 +292,8 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # ``stacking.plan_stack``'s reach (``Skills.stack_reach``): centre (today) | grasp (to the planned grasp's TCP)
+    stack_reach: str = "centre"
     # planner routes that are off by default (stream N, ``dojo.skills.routes.NEW_ROUTES``): "equation" (an equation's
     # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right),
     # "align" (identical blocks slid into one aligned row), "row_by_size" (objects of one kind stood in a row by size);
@@ -380,7 +382,8 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
-                or self.cfg.ported_swap not in ("fixed", "reach")):
+                or self.cfg.ported_swap not in ("fixed", "reach")
+                or self.cfg.stack_reach not in ("centre", "grasp")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -635,6 +638,7 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.stack_reach = cfg.stack_reach
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
             if verifier is not None and cfg.verify_select == "risky":

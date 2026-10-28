@@ -614,6 +614,11 @@
 - [x] ~~**dojo bridge: twin requests carried numpy-2 objects into RoboDojo's numpy 1.26**~~: they failed to unpickle (`numpy._core`) and the service died. `TwinClient` sends plain lists and numbers now (`twin_service.plain`).
 - [x] ~~**dojo bridge: `bridge_episode.sh` orphaned the perception service**~~: it killed only the subshell's bash. The orphan held fd 9, the session lock, and the next episode waited on it. The service is now exec'd, with fd 9 closed.
 - [ ] **dojo runtime: no perception vocabulary for make_toast, make_toast_random, store_laptop_and_headphones, hang_mugs** (`supervisor.VOCABULARIES`), so they cannot run in mode perception, i.e. not on the strict official path at all. With no rule skill, push_T and cover_blocks end at once under RuntimePolicy (`no skill for`); they need the agent.
+- [ ] **dojo skills: stack_bowls nested places miss** (stream H, journal 2026-10-28-dojo-h95-bowls). 4-5 of 10 G3
+  episodes on v1 draws end in a nested place xy 31-45 mm off with dz +10-22 mm: the bowl rests on the rim below. The
+  first nested place is accepted at up to 40 deg of tilt (one sat 28 mm off and 22 deg tilted), and the next bowl lands
+  on that. With `stack_reach` "grasp", the no-site episodes now plan and reach this failure too. On
+  stack_bowls_random, a fixed mid site can hold clutter.
 - [ ] **dojo twin: stack_bowls verify fails in the twin service**: `Pickling of "pxr.Usd.Stage" instances is not enabled` (isr-lab, ilbr-rt-bowls-s0L9-1). Probably a deepcopy of something holding the env during load / verify. It never showed in the proxy, where stack_bowls ran with verify off.
 - [ ] **dojo perception: swap_blocks' target cube (Rigid/cube/00003) has geometry only in the catalogue** (no `visual_lo.glb` / silhouettes), so B1 finds no foreground and the episode ends at frame 0 (strict s0L9: "estimate lacks target0, target1").
 - [x] ~~**dojo perception: held_look / post-place false negatives on genuine 5.1 frames**~~: 12 of 17 "not held" verdicts in the dev eval had the block in the jaws, and false post-place failures hit correct stacks; the runtime then undid the progress. Fixed by main #41-#46 (jaw opening + absence cap, head-confirmed release, never undo, post-place z-only adoption). Measured on the same genuine-5.1 layouts: stack 6/10 -> 9/10 (journal 2026-10-26-bridge-isr A5-A6).
