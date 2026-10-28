@@ -867,6 +867,37 @@ def _glyph_read_slot(h: "Hypothesis", g: dict, placement: dict, tag: str | None,
     return h
 
 
+def _glyph_read_numeral(h: "Hypothesis", views) -> None:
+    """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): the crop classifier reads its digit; the
+    chosen asset follows the read digit within its texture group (the geometry is shared, the checker reads idx % 10).
+    No read leaves the digit unknown (``digits.record_fields``); B1's texture compare never sets it."""
+    from .digits import GLYPH_ONLY, NUMERAL_DIGIT, as_digit
+
+    cands = list(h.per_view.get("geom_group") or [h.key])
+    cat = h.key.split("/")[1]
+    if cat not in GLYPH_ONLY or h.per_view.get("occluded"):
+        return
+    from . import glyph_read
+
+    try:
+        r = glyph_read.read(views, h.sm(), h.T(), cands)
+    except Exception as e:  # a reader failure never takes perception down: the digit stays unknown
+        r = {"read": False, "why": f"error: {type(e).__name__}"}
+    d = as_digit(r.get("name")) if r.get("read") else None
+    if r.get("read") and d is None:
+        r = {**r, "read": False, "why": "not a digit"}
+    if d is not None:
+        r = {**r, "conf": 1.0}          # above the classifier's own per-view margin (chosen for a precision target)
+        idxs = [int(k.split("/")[2]) for k in cands if k.split("/")[1] == cat]
+        grp = int(h.key.split("/")[2]) // 10
+        f = NUMERAL_DIGIT[cat]
+        same = [i for i in idxs if i // 10 == grp and f(i) == d] or [i for i in idxs if f(i) == d]
+        i = same[0] if same else None
+        if i is not None:
+            h.key = f"{h.key.split('/')[0]}/{cat}/{i:05d}"
+    h.per_view["glyph_read"] = r
+
+
 @lru_cache(maxsize=4096)
 def asset_info(key: str) -> dict:
     """info.json alone (no geometry): captions, description, extents."""
@@ -4139,6 +4170,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 chosen[i].per_view["glyph"] = glyph_evidence(chosen[i].key, TX[row][ci],  # score, its margin in its row
                                                              float(rest.min() - C[row, ci]) if rest.size else None,
                                                              cfg.glyph_min_margin, cfg.ambiguity_margin)
+    if cfg.glyph_read != "off":
+        for h in chosen:
+            _glyph_read_numeral(h, views)
     timings["identity_s"] = round(time.time() - t4, 3)
 
     # ---- yaw from a feature cut into the top (insert_key's round lock: its keyhole). Such an outline is the same at
@@ -4256,7 +4290,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         near_home = h.tag != "fixed" and any(np.hypot(h.x - c[0], h.y - c[1]) < HOME_HIDE_RADIUS for c in HOME_HIDDEN_XY)
         fg_near = resid_near.get(id(h), 0.0)
         # a digit only from a glyph read (digits.record_fields); an unread one is also a reason to look again
-        dfields = digit_fields(cat, idx, h.per_view.get("glyph"), h.key, len(h.per_view.get("geom_group") or g["candidates"]))
+        dfields = digit_fields(cat, idx, h.per_view.get("glyph"), h.key, len(h.per_view.get("geom_group") or g["candidates"]),
+                               classifier=h.per_view.get("glyph_read"))
         ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
                      or bool(h.per_view.get("low_contrast")) or dfields.get("digit_source") == "unread"
                      or rival is not None or hidden > cfg.hidden_frac_flag or near_home or fg_near > cfg.fg_resid_flag)

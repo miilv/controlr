@@ -37,6 +37,14 @@ from __future__ import annotations
 # category -> digit shown by asset index (catalog.CATEGORY_ATTRIBUTES: Geometry/number_card/0000<i> shows i)
 DIGIT_OF = {"number_card": lambda idx: int(idx)}
 
+# RoboDojo's 3-D numerals (Rigid/number/000<g><i>: texture group g, digit i; the checker's value is category_idx % 10).
+# Their digit is read ONLY by the crop classifier (``EstimatorConfig.glyph_read``: the record's ``glyph_read`` entry),
+# never by B1's texture compare: on held-out frame 0 that read them right 11-47 % of the time (journal
+# 2026-10-28-dojo-plan-none-perception). They are not in DIGIT_OF: without a classifier run their records carry no digit
+# fields (as before); with one, a read sets digit_source "glyph", anything else "unread" (a look again).
+NUMERAL_DIGIT = {"number": lambda idx: int(idx) % 10}
+GLYPH_ONLY = set(NUMERAL_DIGIT)
+
 AGENT_MIN_CONF = 0.5
 AGENT_DEFAULT_CONF = 0.8
 
@@ -98,10 +106,20 @@ def glyph_evidence(key: str, texture, margin, min_margin: float = 0.0, full_marg
             "margin": None if margin is None else round(float(margin), 4), "confidence": round(conf, 3)}
 
 
-def record_fields(category: str, idx, glyph: dict | None, key: str, n_same_geometry: int) -> dict:
+def record_fields(category: str, idx, glyph: dict | None, key: str, n_same_geometry: int,
+                  classifier: dict | None = None) -> dict:
     """``_perception`` digit fields of a B1 record entry ({} for a category without digits). ``glyph``: the entry's
     ``glyph_evidence`` (ignored when it is about another key); ``n_same_geometry``: candidates the geometry cannot tell
-    apart (1 = the config fixes the asset)."""
+    apart (1 = the config fixes the asset); ``classifier``: the crop classifier's read of a ``GLYPH_ONLY`` object
+    (``glyph_read.read``: "read", "name", "conf", "why"; None = the classifier did not run: no fields)."""
+    if category in GLYPH_ONLY:
+        if classifier is None:
+            return {}
+        d = as_digit(classifier.get("name")) if classifier.get("read") else None
+        if d is not None:
+            return {"digit": d, "digit_conf": round(min(1.0, max(0.0, float(classifier.get("conf", 1.0)))), 3),
+                    "digit_source": "glyph"}
+        return {"digit": None, "digit_source": "unread", "digit_unread": classifier.get("why") or "no_glyph_read"}
     if category not in DIGIT_OF:
         return {}
     if glyph is not None and glyph.get("key") == key:
@@ -117,7 +135,9 @@ def from_record(category: str, p: dict) -> tuple[int | None, float | None, str |
     """(digit, confidence, source) of a perception record entry's ``_perception`` ``p``. A digit-category entry
     without recorded digit fields (a label found by the runtime's search, an older record) is unread: its asset index
     was chosen, not read. (None, None, None) for other categories."""
-    if category not in DIGIT_OF:
+    if category in GLYPH_ONLY and "digit_source" not in p:
+        return None, None, None          # the classifier did not run: no digit fields, as before
+    if category not in DIGIT_OF and category not in GLYPH_ONLY:
         return None, None, None
     if "digit_source" not in p:
         return None, None, "unread"
