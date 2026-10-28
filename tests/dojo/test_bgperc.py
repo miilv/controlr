@@ -445,3 +445,19 @@ def test_decision_frames_are_observed_on_top_of_the_stride(tmp_path, monkeypatch
     assert rows == [0, 3, 5, 6, 8, 9, 10, 11, 12, 14]                         # stride 5 + every decision frame
     meta = json.load(open(tmp_path / "seq" / "stack_blocks_100001" / "meta.json"))
     assert meta["forced_steps"] == [0, 3, 6, 8, 9, 10, 11, 12]
+
+
+def test_seg_cache_masks_round_trip_bit_exact():
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "seg_cache", Path(__file__).resolve().parents[2] / "scripts/perception/bgperc/seg_cache.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rng = np.random.default_rng(0)
+    m = np.zeros((48, 64), bool)
+    m[5:20, 7:30] = rng.random((15, 23)) > 0.3                 # ragged, odd-sized: packbits padding must not leak
+    m[47, 63] = True                                           # touches the frame corner
+    assert np.array_equal(mod.decode_mask(mod.encode_mask(m), 48, 64), m)
+    assert not mod.decode_mask(mod.encode_mask(np.zeros((48, 64), bool)), 48, 64).any()
