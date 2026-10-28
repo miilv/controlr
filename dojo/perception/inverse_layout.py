@@ -3121,6 +3121,13 @@ class EstimatorConfig:
     # height-check suspects fitted there by B1's render-and-compare (mv3d.propose_unexplained). Needs the mv3d server
     mv3d_propose: bool = False
     mv3d_propose_loss: float = 0.5
+    # b1_doubt: per object, does the scene look and stand the way the record says (perception.doubt: the multi-view
+    # DINOv2 feature distance of the object at its pose + the learned height check; mv3d server). Annotation
+    # (_perception.b1_doubt); consumers: the agentic gate (AGENTIC_DOUBT_RISK) and the look macro (look_doubt)
+    b1_doubt: bool = False
+    doubt_feat_d: float = 0.55
+    doubt_dh_mm: float = 15.0
+    doubt_mode: str = "or"
     # SAM mask proposals (dojo.perception.sam_masks; a no-op without a SAM server at DOJO_SAM_ADDR). Default off.
     # sam_fg: the head foreground combined with SAM 3.1's text masks for the scene vocabulary: "union" | "gate" | "replace"
     sam_fg: str = "off"
@@ -3811,7 +3818,21 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         _mv3d_propose(record, views, learned, task, cams, cfg)
     if cfg.stereo_check:
         stereo_check(record, images, state, cams, {n: v.robot for n, v in views_all.items()}, cfg, heights=learned)
+    if cfg.b1_doubt:
+        _b1_doubt(record, images, cams, {n: v.robot for n, v in views_all.items()}, learned, cfg)
     return record
+
+
+def _b1_doubt(record: dict, images: dict, cams: dict, robot_masks: dict, heights, cfg: EstimatorConfig) -> None:
+    from .doubt import b1_doubt
+
+    try:
+        r = b1_doubt(record, images, cams, robot_masks, heights=heights, feat_d=cfg.doubt_feat_d, dh_mm=cfg.doubt_dh_mm,
+                     mode=cfg.doubt_mode, color_M=cfg.color_M)
+        if "skipped" in r:
+            record.setdefault("_perception", {})["b1_doubt"] = r
+    except Exception as e:  # never cost the estimate
+        record.setdefault("_perception", {})["b1_doubt"] = {"error": f"{type(e).__name__}: {e}"}
 
 
 def _mv3d_heights(images: dict, cams: dict, robot_masks: dict, record: dict):

@@ -1,0 +1,110 @@
+"""Per-object doubt about B1's record, without an LLM: does the scene look and stand the way the record says?
+
+Two independent measurements per record object (both from the mv3d GPU server, ``DOJO_MV3D_ADDR``):
+
+- ``d``: the multi-view DINOv2 feature distance of the object rendered at its recorded pose and composited over the
+  observed crops, against the observed crops (head + wrists; ``featmetric``). A right pose looks like the image; a swap,
+  a wrong blob or a flip does not.
+- ``dh_mm``: the learned height check (``stereo.check_heights`` on VGGT's fused head height map): the recorded object's
+  surface vs the measured one.
+
+``doubt`` = d > ``feat_d`` or |dh| > ``dh_mm`` (mode ``or``), or both (``and``). On 1016 frame-0 dev objects (95
+gross / overshoot): ``or`` at 0.55 / 15 mm flags 61 of 95 wrong objects with 8.6 % false flags on right ones; ``and`` at
+0.45 / 10 mm flags 43 at 2.5 % (experiments/2026-10-28-mv3d-learned-depth and its E3 follow-up).
+
+Written per object as ``_perception.b1_doubt`` = {"d", "dh_mm", "doubt", "why"} and per record as
+``_perception.b1_doubt`` = {"labels", "thr", "s"}. Consumers (each behind its own flag): the agentic gate
+(``agentic.record.needs_agent`` / ``j1.risk``) and the look planner (``runtime.estimate.flagged``,
+``look.look_plan``). For other streams: ``doubted(record)`` -> [(label, world xyz, info)].
+"""
+from __future__ import annotations
+
+import time
+
+import numpy as np
+
+
+def _entries(record: dict):
+    for typ in ("Rigid", "Geometry", "Articulation"):
+        for cat, lst in (record.get(typ) or {}).items():
+            for r in lst:
+                yield typ, cat, r
+
+
+def annotate(record: dict, d: dict, dh: dict, feat_d: float = 0.55, dh_mm: float = 15.0, mode: str = "or") -> list[str]:
+    """Write the per-object doubt from measured feature distances ``d`` and height mismatches ``dh`` (both keyed by
+    ``id(entry)``; a missing value = not measured). Returns the doubted labels."""
+    out = []
+    for typ, cat, r in _entries(record):
+        p = r.setdefault("_perception", {})
+        if p.get("place_tag") == "fixed":
+            continue
+        dv, hv = d.get(id(r)), dh.get(id(r))
+        a = dv is not None and np.isfinite(dv) and dv > feat_d
+        b = hv is not None and np.isfinite(hv) and abs(hv) > dh_mm
+        doubt = (a or b) if mode == "or" else (a and b)
+        why = (["appearance"] if a else []) + (["height"] if b else [])
+        p["b1_doubt"] = {"d": None if dv is None or not np.isfinite(dv) else round(float(dv), 4),
+                         "dh_mm": None if hv is None or not np.isfinite(hv) else round(float(hv), 1),
+                         "doubt": bool(doubt), "why": why}
+        if doubt:
+            out.append(r.get("label"))
+    return out
+
+
+def b1_doubt(record: dict, images: dict, cams: dict, robot_masks: dict, heights: np.ndarray | None = None,
+             feat_d: float = 0.55, dh_mm: float = 15.0, mode: str = "or", color_M=None, cl=None) -> dict:
+    """Measure and annotate (see the module doc). ``heights``: the learned head height map when the caller already has
+    it. Without a server: {"skipped": ...} and no annotation."""
+    from . import mv3d
+    from .cameras import pose_to_T
+    from .stereo import check_heights
+
+    t0 = time.time()
+    cl = cl or mv3d.client()
+    if cl is None:
+        return {"skipped": f"no mv3d server at ${mv3d.ENV_ADDR}"}
+    dh: dict = {}
+    if heights is None:
+        r = mv3d.learned_head_height(images, cams, robot_masks, cl=cl)
+        heights = None if r is None else r[0]
+    if heights is not None:
+        check_heights(record, cams["cam_head"], mv3d.height_sweep_like(heights, np.isfinite(heights)), key="mv3d")
+        for _, _, r in _entries(record):
+            v = ((r.get("_perception") or {}).get("mv3d") or {}).get("dh_mm")
+            if v is not None:
+                dh[id(r)] = float(v)
+    ents = [(typ, cat, r) for typ, cat, r in _entries(record)]
+    objs = [(f"{typ}/{cat}/{int(r['category_idx']):05d}", pose_to_T(r["default_pos"], r["default_ori"]).tolist())
+            for typ, cat, r in ents]
+    names = [n for n in ("cam_head", "cam_left_wrist", "cam_right_wrist") if n in images and n in cams]
+    d: dict = {}
+    if objs and names:
+        fd = cl.featdist([images[n] for n in names], [cams[n] for n in names],
+                         [(robot_masks or {}).get(n) for n in names], objs, color_M)
+        for (_, _, r), v in zip(ents, fd["d"]):
+            if v is not None:
+                d[id(r)] = float(v)
+    labels = annotate(record, d, dh, feat_d, dh_mm, mode)
+    summ = {"labels": labels, "thr": {"feat_d": feat_d, "dh_mm": dh_mm, "mode": mode}, "s": round(time.time() - t0, 3)}
+    record.setdefault("_perception", {})["b1_doubt"] = summ
+    return summ
+
+
+def doubted(record: dict) -> list[tuple[str | None, list, dict]]:
+    """[(label, world xyz, the object's b1_doubt)] of the doubted objects of an annotated record (empty otherwise)."""
+    return [(r.get("label"), [float(v) for v in r["default_pos"]], (r.get("_perception") or {})["b1_doubt"])
+            for _, _, r in _entries(record) if ((r.get("_perception") or {}).get("b1_doubt") or {}).get("doubt")]
+
+
+def mark_for_look(record: dict) -> dict:
+    """A copy of ``record`` whose doubted objects carry ``_perception.doubt_look`` (``look.look_plan`` gives them a
+    targeted look first)."""
+    import copy
+
+    out = copy.deepcopy(record)
+    for _, _, r in _entries(out):
+        p = r.get("_perception") or {}
+        if (p.get("b1_doubt") or {}).get("doubt"):
+            p["doubt_look"] = True
+    return out

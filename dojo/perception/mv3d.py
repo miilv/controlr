@@ -511,9 +511,11 @@ def _others_masks(record: dict, views: dict, skip=None) -> dict:
     return out
 
 
-def _fit_at(keys: list[str], x0: float, y0: float, views: dict, others: dict, n_yaw: int = 8, z_off: float = 0.0):
+def _fit_at(keys: list[str], x0: float, y0: float, views: dict, others: dict, n_yaw: int = 8, z_off: float = 0.0,
+            top_h: float | None = None):
     """B1's render-and-compare (``inverse_layout.refine``) from a seed point over candidate assets x resting poses x
-    yaw starts. Returns (loss, key, shape, x, y, yaw) of the best or None."""
+    yaw starts. ``top_h``: the measured top height at the seed; a shape whose resting height is >= 12 mm below it is
+    lifted onto whatever it stands on (z_off = top_h - its height). Returns (loss, key, shape, x, y, yaw, z_off)."""
     from .inverse_layout import refine as nm_refine, shape_models
 
     best = None
@@ -524,16 +526,19 @@ def _fit_at(keys: list[str], x0: float, y0: float, views: dict, others: dict, n_
             continue
         for sm in sms:
             per = sm.yaw_period
+            zo = z_off
+            if top_h is not None and top_h - _rest_height(sm) > 0.012:
+                zo = float(top_h - _rest_height(sm))
             yaws = [k * per / n_yaw for k in range(n_yaw)] if per > 0.2 else [0.0]
             for yaw in yaws:
                 c_off = sm.pose(0, 0, yaw)[:3, :3] @ ((sm.asset.V.min(0) + sm.asset.V.max(0)) / 2)
                 try:
                     x, y, yy, loss, _ = nm_refine(sm, x0 - c_off[0], y0 - c_off[1], yaw, views, others, xy_step=0.006,
-                                                  yaw_step=0.15, maxiter=150, fix_yaw=per < 0.2, z_off=z_off)
+                                                  yaw_step=0.15, maxiter=150, fix_yaw=per < 0.2, z_off=zo)
                 except Exception:
                     continue
                 if best is None or loss < best[0]:
-                    best = (float(loss), key, sm, x, y, yy)
+                    best = (float(loss), key, sm, x, y, yy, zo)
     return best
 
 
@@ -603,8 +608,8 @@ def propose_unexplained(record: dict, views: dict, height: np.ndarray, task: str
             fit = _fit_at(c["keys"][:4], x0, y0, views, others, n_yaw=n_yaw)
             if fit is None:
                 continue
-            loss, key, sm, x, y, yy = fit
-            T = sm.pose(x, y, yy)
+            loss, key, sm, x, y, yy, zo = fit
+            T = sm.pose(x, y, yy, zo)
             ctr = T[:3, :3] @ ((sm.asset.V.min(0) + sm.asset.V.max(0)) / 2) + T[:3, 3]
             shift = float(np.hypot(ctr[0] - x0, ctr[1] - y0)) * 1000
             near = [r for _, _, r in _entries(record) if r is not c["entry"]
@@ -698,6 +703,19 @@ class Mv3dClient:
             raise RuntimeError(f"mv3d server: {r['error']}")
         return {"depths": [d.astype(np.float32) for d in r["depths"]], "timings": r.get("timings", {})}
 
+    def featdist(self, images: list[np.ndarray], cams: list[Camera], robots: list, objects: list, color_M=None) -> dict:
+        """Multi-view feature distance (``featmetric``) of each (asset key, 4x4 pose) in ``objects`` over the views."""
+        req = {"op": "featdist", "images": [np.ascontiguousarray(i, np.uint8) for i in images],
+               "cams": [(c.K.tolist(), c.T_wc.tolist(), c.w, c.h) for c in cams],
+               "robots": [None if r is None else np.ascontiguousarray(r, np.uint8) for r in robots],
+               "objects": [(k, np.asarray(T, float).tolist()) for k, T in objects],
+               "color_M": None if color_M is None else np.asarray(color_M, float).tolist()}
+        self.conn.send(req)
+        r = self.conn.recv()
+        if "error" in r:
+            raise RuntimeError(f"mv3d server: {r['error']}")
+        return r
+
     def info(self) -> dict:
         self.conn.send({"op": "info"})
         return self.conn.recv()
@@ -750,10 +768,32 @@ def learned_head_height(images: dict, cams: dict, robot_masks: dict | None = Non
 
 
 class _ServerModel:
-    def __init__(self, weights: str, bf16_trunk: bool = True):
+    def __init__(self, weights: str, bf16_trunk: bool = True, feat_model: str = "dinov2_b"):
         self.run = VGGTRunner(weights, bf16_trunk=bf16_trunk)
+        self.feat_model = feat_model
+        self.fm = None
+
+    def featdist(self, req: dict) -> dict:
+        from .featmetric import FeatureMetric
+
+        if self.fm is None:
+            self.fm = FeatureMetric(self.feat_model)
+        self.fm.set_color(req.get("color_M"))
+        cams = [Camera(f"v{i}", np.array(K), np.array(T), int(w), int(h)) for i, (K, T, w, h) in enumerate(req["cams"])]
+        views = [{"name": c.name, "img": im, "cam": c, "robot": rb} for c, im, rb in zip(cams, req["images"], req["robots"])]
+        t0 = time.time()
+        out = []
+        for key, T in req["objects"]:
+            try:
+                d = float(self.fm.score(key, [np.array(T)], views)[0][0])
+                out.append(d if np.isfinite(d) else None)
+            except Exception:  # an asset outside the catalogue, an object no view sees
+                out.append(None)
+        return {"d": out, "timings": {"featdist_s": round(time.time() - t0, 3), "n": len(out)}}
 
     def handle(self, req: dict) -> dict:
+        if req.get("op") == "featdist":
+            return self.featdist(req)
         cams = [Camera(f"v{i}", np.array(K), np.array(T), int(w), int(h)) for i, (K, T, w, h) in enumerate(req["cams"])]
         t0 = time.time()
         p = self.run.infer(req["images"])

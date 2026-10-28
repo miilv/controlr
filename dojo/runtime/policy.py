@@ -99,6 +99,7 @@ class RuntimeConfig:
     twin_load: str = "raw"
     look: bool = True
     look_conf: float = 0.7
+    look_doubt: bool = False            # objects perception.doubt doubts (needs the b1_doubt perception flag) get a look
     max_looks: int = 2
     look_min_budget: float = 0.6        # look only while steps_left >= this fraction of step_lim
     look_merge: str = "all"             # all: the fused record replaces frame 0 | flagged: only flagged objects
@@ -1605,14 +1606,18 @@ class RuntimePolicy:
         from dojo.skills.geometry import pose7_to_T
         from dojo.skills.motion import FAST
         cfg, b = self.cfg, self.bridge
-        fl = flagged(rec0, cfg.look_conf)
+        fl = flagged(rec0, cfg.look_conf, doubt=cfg.look_doubt)
         self.report["flags"] = fl
         if not fl:
             return None
         if b.steps_used + 1 > b.step_lim * (1 - cfg.look_min_budget):
             self.report["looks"].append({"skipped": "budget"})
             return None
-        plan = self.perception().look_plan(obs0, rec0, cfg.max_looks)
+        rec_plan = rec0
+        if cfg.look_doubt:
+            from dojo.perception.doubt import mark_for_look
+            rec_plan = mark_for_look(rec0)
+        plan = self.perception().look_plan(obs0, rec_plan, cfg.max_looks)
         moves = {}
         for lk in plan:
             tries = [(lk["arm"], lk["flange_pose"], "plan")]

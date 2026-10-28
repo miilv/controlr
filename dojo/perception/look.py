@@ -106,6 +106,8 @@ def look_plan(obs: dict, record: dict, max_looks: int = 2) -> list[dict]:
         if p.get("review"):
             rv = p["review"]
             cands.append((0, rv["arm"], "review", r["label"], np.asarray(rv["look_at"]), np.asarray(rv["T_world_cam_cv"])))
+        elif p.get("doubt_look"):  # the runtime's look_doubt: perception.doubt doubts it (appearance / height)
+            cands.append((0, arm, "doubt", r["label"], pos, default_look(pos, arm, obstacles=obstacles(pos))))
         elif p.get("occluded") or p.get("hidden_frac", 0) > 0.1 or p.get("near_home_grippers"):
             # partly under the robot or in the region the home grippers hide: the visible part fits well, so
             # confidence is overstated (D0 stack_blocks 100006: 22 mm off at confidence 0.77)

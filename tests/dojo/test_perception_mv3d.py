@@ -260,9 +260,9 @@ def test_propose_unexplained_places_a_missing_label_at_a_raised_blob(monkeypatch
                                                                                  for n, v in views.items()})
     fits = []
 
-    def fake_fit(keys, x0, y0, views, others, n_yaw=8, z_off=0.0):
+    def fake_fit(keys, x0, y0, views, others, n_yaw=8, z_off=0.0, top_h=None):
         fits.append((x0, y0))
-        return 0.2, keys[0], _SM(), x0, y0, 0.0
+        return 0.2, keys[0], _SM(), x0, y0, 0.0, 0.0
     monkeypatch.setattr(mv3d, "_fit_at", fake_fit)
     view = SimpleNamespace(cam=head, fg=np.zeros((480, 640), np.uint8), known=np.ones((480, 640), np.uint8))
     # "a" sits outside the measured region (no height there: not a suspect); "b" is missing
