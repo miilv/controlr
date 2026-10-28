@@ -1056,6 +1056,12 @@ class RuntimeProvider:
                   **{k: r.get(k) for k in ("held", "confidence", "source", "calls", "dark_risk", "error", "evidence",
                                            "opening")}}
             self.events.append(ev)
+            if r.get("held") is None:
+                # no answer (held_look's explicit unknown: no evidence, the agent gave no yes / no, a failed check):
+                # never a "not held". The grasp stays; the place / post-place checks decide (the conservative path)
+                ev["unknown"], ev["kept"] = True, True
+                self.stats["held_look_unknown"] = self.stats.get("held_look_unknown", 0) + 1
+                continue
             if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5 and self.held_confirm is not None:
                 # never take an object out of the jaws on one vision negative (5.1: B1 said "not held" at confidence
                 # 1.0 on blocks lifted 87 mm in the jaws; skills then opened the jaws and dropped them): a second,

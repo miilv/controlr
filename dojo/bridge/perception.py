@@ -19,14 +19,35 @@ plus the measured proprio, inside our verifier (``dojo.runtime.verifier.BundleVe
 from __future__ import annotations
 
 ARM_OF_CAM = {"cam_left_wrist": "left", "cam_right_wrist": "right"}
+# categories whose pose is their position alone (a sphere looks and grasps the same at every turn): only these may
+# take the identity orientation when the server's object has no quat
+ROTATION_FREE_CATEGORIES = frozenset({"ball"})
+
+
+def _measured_quat(q) -> list[float] | None:
+    """A measured orientation (wxyz, 4 finite numbers of norm 0.9..1.1, normalised), else None."""
+    import math
+
+    try:
+        v = [float(x) for x in q]
+    except (TypeError, ValueError):
+        return None
+    n = math.sqrt(sum(x * x for x in v)) if len(v) == 4 and all(math.isfinite(x) for x in v) else 0.0
+    return [x / n for x in v] if 0.9 <= n <= 1.1 else None
 
 
 def record_from_perceived(perceived: list[dict], needs_look: list[dict] | None = None) -> dict:
     """J1 ``perceive`` objects -> perception's layout record (``Rigid/Geometry/Articulation -> category -> rows``).
     An object needs ``asset`` (``Type/category/NNNNN``, our catalogue key) to become a row; others are listed under
-    ``_unusable``. ``needs_look`` entries with reason ``not_found`` become ``_not_found`` (no candidates known)."""
+    ``_unusable``. ``needs_look`` entries with reason ``not_found`` become ``_not_found`` (no candidates known).
+    Orientation is never invented (I1-5): an object without a measured ``quat`` becomes a row only when its category
+    is rotation-free (``ROTATION_FREE_CATEGORIES``: identity, ``_perception.orientation`` "rotation_free"); any other
+    is refused as a planning row until a later call measures it: listed in ``_orientation_unknown`` and
+    ``_unusable`` (with its position), and in ``_not_found`` with its asset as the candidate, so the runtime treats
+    it as missing (no plan on it, the twin check off, the search may re-measure it) instead of planning on a made-up
+    turn. Every row carries ``_perception.orientation_known``."""
     rec: dict = {}
-    unusable = []
+    unusable, ori_unknown, nf = [], [], []
     for o in perceived or []:
         key = str(o.get("asset") or "")
         parts = key.split("/")
@@ -34,16 +55,27 @@ def record_from_perceived(perceived: list[dict], needs_look: list[dict] | None =
             unusable.append({"label": o.get("label"), "why": f"asset {key!r}"})
             continue
         typ, cat, idx = parts
+        quat, ori = _measured_quat(o.get("quat")), "measured"
+        if quat is None and cat in ROTATION_FREE_CATEGORIES:
+            quat, ori = [1.0, 0.0, 0.0, 0.0], "rotation_free"
+        if quat is None:
+            ori_unknown.append(o["label"])
+            unusable.append({"label": o["label"], "why": "orientation unknown (no measured quat)", "asset": key,
+                             "pos": [float(v) for v in o["pos"]]})
+            nf.append({"label": o["label"], "candidates": [key], "why": "orientation unknown"})
+            continue
         rec.setdefault(typ, {}).setdefault(cat, []).append({
             "category": cat, "category_idx": int(idx), "label": o["label"],
             "default_pos": [float(v) for v in o["pos"]],
-            "default_ori": [float(v) for v in (o.get("quat") or [1.0, 0.0, 0.0, 0.0])], "scale": [1.0, 1.0, 1.0],
+            "default_ori": quat, "scale": [1.0, 1.0, 1.0],
             "_perception": {"confidence": float(o.get("confidence", 0.5)), "source": o.get("source"),
-                            "via": "server_perceive"}})
-    nf = [{"label": n["label"], "candidates": []} for n in needs_look or []
-          if n.get("reason") == "not_found" and n.get("label")]
+                            "via": "server_perceive", "orientation_known": True, "orientation": ori}})
+    nf += [{"label": n["label"], "candidates": []} for n in needs_look or []
+           if n.get("reason") == "not_found" and n.get("label") and n["label"] not in ori_unknown]
     if nf:
         rec["_not_found"] = nf
+    if ori_unknown:
+        rec["_orientation_unknown"] = ori_unknown
     if unusable:
         rec["_unusable"] = unusable
     return rec

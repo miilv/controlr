@@ -154,7 +154,9 @@ def test_held_look_fake(tmp_path):
     assert "left gripper" in parts[0]["text"] and sum(p["type"] == "image_url" for p in parts) == 2
     fc = FakeChat(["maybe", "dunno"])
     out = j1.held_look_impl(_frames(), _calib(), FLANGE, {"left": 0.0}, chat=fc, model="fake", held_mode="agent", log_dir=str(tmp_path))
-    assert out["held"] is False and out["confidence"] == 0.0
+    # no yes / no: an explicit unknown at the top level and in the arm's entry, never a "no" (P1S I1-3)
+    assert out["held"] is None and out["confidence"] == 0.0 and out["error"] == "no answer"
+    assert out["left"] == {"held": None, "confidence": 0.0, "error": "no answer"}
 
 
 def test_libero_cell_fake_helpers(tmp_path, monkeypatch):
