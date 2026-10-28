@@ -67,7 +67,9 @@ def load_rows(crops: Path, split: str) -> list[dict]:
     for r in rows:
         if r["split"] == "train" and layout_id(r) in VAL_IDS:
             r["split"] = "val"
-    return [r for r in rows if r["split"] == split and label_of(r) is not None]
+    # val / test leave out crops cut by the frame border (``edge``): glyph_read.classify_mask refuses those masks, so
+    # they are never read; training keeps them
+    return [r for r in rows if r["split"] == split and label_of(r) is not None and not (split != "train" and r.get("edge"))]
 
 
 def view_kind(r: dict) -> str:

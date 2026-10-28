@@ -39,7 +39,9 @@ class _Client:
 
 
 def _views():
-    mk = lambda tag: SimpleNamespace(cam=tag, img=np.full((48, 64, 3), tag, np.uint8), known=np.ones((48, 64), np.uint8))
+    def mk(tag):
+        return SimpleNamespace(cam=tag, img=np.full((48, 64, 3), tag, np.uint8), known=np.ones((48, 64), np.uint8))
+
     return {"cam_head": mk(0), "cam_left_wrist": mk(1), "cam_head@1": mk(2)}
 
 
@@ -129,4 +131,7 @@ def test_classify_mask_reads_names_and_margins():
     r = gr.classify_mask(img, m, "cam_left_wrist", held=True, client_=C())     # the stricter held margin
     assert not r["read"] and r["why"] == "low_margin"
     assert gr.classify_mask(img, np.zeros_like(m), client_=C())["why"] == "not visible"
+    cut = np.zeros_like(m)
+    cut[0:12, 30:40] = 1                                                         # cut by the frame: never read
+    assert gr.classify_mask(img, cut, "cam_left_wrist", client_=C())["why"] == "edge"
     assert gr.class_name({}, 3) == "Rigid/mahjong/00003"

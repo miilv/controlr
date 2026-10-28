@@ -25,6 +25,11 @@ CAMS = ("cam_head", "cam_left_wrist", "cam_right_wrist")
 D0_EXT = Path.home() / "dojo-data/d0_ext"
 
 
+def touches_border(m: np.ndarray) -> bool:
+    """The mask reaches the image border: the object may be cut by the frame (a cut 8 reads as a 3 or a 0)."""
+    return bool(m[0].any() or m[-1].any() or m[:, 0].any() or m[:, -1].any())
+
+
 def tilt_deg(quat) -> float:
     """Angle between the tile's local +z and world +z (0 = lying as authored)."""
     from dojo.perception.cameras import quat_wxyz_to_R
@@ -114,6 +119,7 @@ def main(argv=None):
                                    "tilt": round(tilt_deg(objs[i]["quat"]), 1), "cls": cls,
                                    "face_dot": None if cams is None else round(face_dot(objs[i], cams, view), 3),
                                    "is_held": bool(held_inst) and objs[i].get("inst_name") == held_inst,
+                                   "edge": touches_border(m),
                                    "path": str(p.relative_to(out))}) + "\n")
             n += 1
 

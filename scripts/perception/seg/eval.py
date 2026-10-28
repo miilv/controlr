@@ -234,7 +234,7 @@ def cmd_dump(a):
 
 
 def cmd_table(a):
-    rows = [json.loads(l) for l in open(os.path.expanduser(a.rows))]
+    rows = [json.loads(line) for line in open(os.path.expanduser(a.rows))]
     objs = [r for r in rows if not r.get("frame_row")]
     frs = [r for r in rows if r.get("frame_row")]
 

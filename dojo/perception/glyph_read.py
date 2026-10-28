@@ -112,13 +112,17 @@ def class_name(reply: dict, top: int) -> str:
 def classify_mask(img: np.ndarray, mask: np.ndarray, view: str = "cam_head", held: bool = False, client_=None) -> dict:
     """One glyph read of an object outlined by ``mask`` in ``img`` (a detector's / segmenter's mask: no fitted pose
     needed, e.g. the number tiles B1 has no geometry for). ``view`` picks the margin kind (head / wrist, held_*).
-    Returns {"read", "name", "class", "margin", "why"}; no read below the margin, on a back, or without a server."""
+    Returns {"read", "name", "class", "margin", "why"}; no read below the margin, on a back, for a mask cut by the
+    image border (a cut digit is another digit: 8 -> 3, the margins are calibrated without those), or without a server."""
+    m_ = np.asarray(mask) > 0
+    bb = mask_bbox(m_)
+    if bb is None or int(m_.sum()) < MIN_PX:
+        return {"read": False, "why": "not visible"}
+    if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():
+        return {"read": False, "why": "edge"}
     c = client_ or client()
     if c is None:
         return {"read": False, "why": "no glyph server"}
-    bb = mask_bbox(np.asarray(mask) > 0)
-    if bb is None or int((np.asarray(mask) > 0).sum()) < MIN_PX:
-        return {"read": False, "why": "not visible"}
     r = c.classify(img, [bb])
     P, n_glyph, margins = np.asarray(r["probs"][0], float), int(r["n_glyph"]), r["margins"]
     kind = "head" if view == "cam_head" else "wrist"
