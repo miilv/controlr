@@ -905,8 +905,8 @@ def _glyph_read_numeral(h: "Hypothesis", views) -> None:
             kind = "cam_head" if name.split("@")[0] == "cam_head" else "cam_left_wrist"
             rob = getattr(v, "robot", None)
             # the arm's pixels (S's reader v2 refuses a tile half hidden by the gripper: a cut 3 reads as a 9)
-            r = (classify(v.img, m, view=kind, robot=np.asarray(rob) > 0) if rob is not None and _takes_robot(classify)
-                 else classify(v.img, m, view=kind))
+            r = (classify(v.img, m, view=kind, robot=np.asarray(rob) > 0, category=cat)
+                 if rob is not None and _takes_robot(classify) else classify(v.img, m, view=kind, category=cat))
         except Exception as e:  # a reader failure never takes perception down: the digit stays unknown
             r = {"read": False, "why": f"error: {type(e).__name__}"}
         d = as_digit(r.get("name")) if r.get("read") else None

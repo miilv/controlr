@@ -1940,14 +1940,19 @@ def _short(params: dict) -> dict:
     return {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v)[:200]) for k, v in params.items()}
 
 
+# the per-object perception fields an episode report keeps: the digit read is among them, so a run shows whether the
+# numeral reader ran (2026-10-28: the first glyph rows looked unread because the report dropped these fields)
+_SLIM_PERCEPTION = ("confidence", "ambiguous", "occluded", "place_tag", "residual", "review",
+                    "digit", "digit_conf", "digit_source", "digit_unread", "glyph_read")
+
+
 def _slim(rec: dict) -> dict:
     """The record without bulky per-view diagnostics (kept in the episode report)."""
     out = {}
     for k, v in rec.items():
         if isinstance(v, dict) and k in ("Rigid", "Geometry", "Articulation", "Dynamic"):
             out[k] = {c: [{kk: (vv if kk != "_perception" else {x: y for x, y in vv.items()
-                                                               if x in ("confidence", "ambiguous", "occluded",
-                                                                        "place_tag", "residual", "review")})
+                                                               if x in _SLIM_PERCEPTION})
                            for kk, vv in r.items()} for r in lst] for c, lst in v.items()}
         elif k in ("_missing", "_not_found", "_perception"):
             out[k] = v

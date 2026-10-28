@@ -794,9 +794,10 @@ class _Perception:
             if _takes_robot(classify):           # S's reader v2: a tile half hidden by the gripper is refused
                 from dojo.perception.render import robot_mask
                 rob = robot_mask(cam, f["state"], closed_jaws=False) > 0
-                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", robot=rob)
+                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", robot=rob,
+                             category=key.split("/")[1])
             else:
-                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist")
+                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", category=key.split("/")[1])
             return {k: r.get(k) for k in ("read", "name", "margin", "why")}
         except Exception as e:  # noqa: BLE001 (a reader failure never takes the refine down)
             return {"read": False, "why": f"error: {type(e).__name__}"}
