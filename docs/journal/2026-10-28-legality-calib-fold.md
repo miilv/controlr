@@ -59,7 +59,13 @@ both renderers). The 100040-49 set:
   backgrounds vs fold0 / fold1 0.30 / 0.31 (head), 0.24-0.28 (wrists), 1.17 / 1.71 (robot-free head; fold0-vs-fold1
   1.21), unseen head pixels 13,906 vs fold0's 13,721; colour map on the 237 held-out objects of 100000-09 abs error
   0.1128 (median 0.093) vs 0.1142 (0.111) for the per-episode fold maps that ran.
-- genuine 5.1 (compute2, stream S's frames): see the PR.
+- genuine 5.1 (compute2, stream S rendered the frames 10:41-10:59Z, 5.1 RTX, make_d0 @ 1aa7b7a; 58 episodes,
+  put_bottles_into_dustbin 100040 / 100049 unstable at reset; 209 MB; set built on compute2 CPU-only, copied to
+  compute3's `~/dojo-perception-data/bg_folds_51/`, tree md5 `dbb2a685ad265e2b05b238b217142630`, its `scene/` identical to
+  compute3's `fold0/scene`): backgrounds vs fold0 / fold1 0.35 / 0.37 (head; fold0-vs-fold1 0.39), 0.29-0.33 (wrists),
+  1.18 / 1.61 (robot-free head; 1.24); colour map on the 237 held-out objects of 100000-09 abs error 0.1130 (median
+  0.094) vs 0.1147 (0.108) for the per-episode fold maps that ran.
+- `box_steps.sh run calib_sets` on compute3 (from this branch): both sets verified against their pins.
 
 Every perception input changes, so rendered numbers are not comparable across this change: Integration re-measures
 the baseline.
