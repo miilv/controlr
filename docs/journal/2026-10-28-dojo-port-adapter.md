@@ -55,7 +55,9 @@ Ilia took over Mikhail's lanes while he travels. 19 cells (32.5 Average points) 
   pour_bottle keeps his D-C14 args (slip_m 0.035, slip_deg 25): skill parameters, classified fine by Legality.
 
 **G3 mode-gt ceilings** (compute7, settled v0, physics-only, single plan, 0 LLM). Mikhail's tier-A was on 100010-19, a
-different slice. "NN" marks a row still running when this was written.
+different slice. 564aeba / e1c0cee are this branch's commits before its rebase onto main (= 4aa99b0 / 2644a41: the same
+skills and adapter; pick_up then ran with reserve 0). "NN" marks a row still running when this was written. The rows at
+the PR head are in the PR thread and with stream M (`~/dojo-data/g3c/<task>_<sha7>/` on compute7).
 
 | cell | ours, 100000-09 | commit | Mikhail tier-A | our failures |
 |---|---|---|---|---|
