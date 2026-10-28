@@ -27,3 +27,15 @@
   near / carry speeds; free moves stay at RoboDojo's own peak, 0.008 rad per sub-step. The speeds go into the pkl
   (`_simlab.dq`) and the index.
 - 100025-29 had never been settled. `dojo.simlab.presettle` settled them: all 5 stable, pass-2 drift ≤ 0.05 mm.
+
+## Result: 15 / 15 demos (compute4 `~/dojo-data/simlab/traj/imitate_sorting_sequence`)
+
+| layouts | speed | attempts to an ok demo | validation replay (env steps, incl. 60 margin) | aims in basket1 | t moved (max) |
+|---|---|---|---|---|---|
+| 100005-09 | 1.5 | 1-3 | 813-956 | 5 / 5 each | ≤ 0.8 mm |
+| 100024 | 1.5 | 4 (3 orders dropped in validation) | 752 | 5 / 5 | 0.8 mm |
+| 100025-29 | 1.5 | 1 each | 691-870 | 5 / 5 each | ≤ 0.8 mm |
+| 100020-23 (existing) | 1.0 | — | 788-946 | 5 / 5 each | ≤ 0.7 mm |
+
+Every aim is lifted 12-37 cm and ends in basket1, and RoboDojo flags no env unstable. The base re-measurement
+(Integration: camera mode, submit_v3 + grip_check, twin_pairing off) runs on these 15.
