@@ -292,12 +292,20 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # ``stacking.plan_stack``'s reach (``Skills.stack_reach``): centre (today) | grasp (to the planned grasp's TCP)
+    stack_reach: str = "centre"
+    # ``library.bowl_geometry``'s nest height (``Skills.nest_height``): bins (today) | measured (twin table, else profile)
+    nest_height: str = "bins"
     # planner routes that are off by default (stream N, ``dojo.skills.routes.NEW_ROUTES``): "equation" (an equation's
     # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right),
     # "align" (identical blocks slid into one aligned row), "row_by_size" (objects of one kind stood in a row by size);
     # empty = today. Their names go into the provider's
     # ``notes["routes"]``, which ``planner.plan`` reads
     new_routes: list = field(default_factory=list)
+    # belt picks (``interactive.pick_from_belt`` / ``match_and_pick``, ``Skills.belt_wrist_veto``): off (today) | on (a
+    # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
+    # match: compute4 camera rows, every pick after such a look missed)
+    belt_wrist_veto: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -305,6 +313,15 @@ class RuntimeConfig:
     # ... swap_poses' carry height: fixed (his 0.86 m) | reach (the highest of 0.86 / 0.84 / 0.82 / 0.80 at which each arm
     # reaches the other object's spot top-down; G3: at 0.86 the left arm cannot reach a T at x >= ~0.09)
     ported_swap: str = "fixed"
+    # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
+    joint_limits: str = "wide"
+    # ... the drag onto a pad: v1 (Mikhail's planar_drag) | turn (planar_drag_p1: near a 180 deg turn both directions are
+    # planned and the feasible one driven; v1 takes the sign of the yaw difference, which perception noise flips there and
+    # then runs the wrist into j6's limit: camera push_T 100005, 4 legs of "no sane planar plan")
+    ported_drag: str = "v1"
+    # ... pouring balls: v1 (Mikhail's pour: stops when no ball is left in the cup) | full (pour_p1: the whole roll profile;
+    # camera mode sees no balls inside the cup, so v1 read "empty" at the first hold and stopped with the balls inside)
+    ported_pour: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -380,7 +397,11 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
-                or self.cfg.ported_swap not in ("fixed", "reach")):
+                or self.cfg.belt_wrist_veto not in ("off", "on")
+                or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
+                or self.cfg.ported_pour not in ("v1", "full")
+                or self.cfg.joint_limits not in ("wide", "measured")
+                or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -392,7 +413,9 @@ class RuntimePolicy:
         if supervisor is None and self.cfg.ported_routes:
             from dojo.skills.planner import plan as _plan
             supervisor = RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans,
-                                        planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap}))
+                                        planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap,
+                                                                                      "drag": self.cfg.ported_drag,
+                                                                                      "pour": self.cfg.ported_pour}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -635,8 +658,14 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.belt_wrist_veto = cfg.belt_wrist_veto
+            sk_.stack_reach = cfg.stack_reach
+            sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
+            sk_.joint_limits = cfg.joint_limits
+            sk_.ported_drag = cfg.ported_drag
+            sk_.ported_pour = cfg.ported_pour
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
@@ -843,6 +872,20 @@ class RuntimePolicy:
         return result
 
     # ------------------------------------------------------------------ helpers
+    def _merge_glyph(self, prov, label: str, g: dict) -> None:
+        """A wrist view's numeral read (perception ``refine``'s ``glyph``) merged into the belief's digit
+        (``digits.merge_view_read``: agree -> confirmed, first -> one view, disagree -> unknown). Event ``digit_read``."""
+        from dojo.perception.digits import as_digit, merge_view_read
+        o = prov.belief.objects.get(label) if prov.belief else None
+        if o is None:
+            return
+        d = as_digit(g.get("name")) if g.get("read") else None
+        before = (o.digit, o.digit_conf, o.digit_source)
+        o.digit, o.digit_conf, o.digit_source, why = merge_view_read(o.digit, o.digit_conf, o.digit_source, d)
+        self.report["events"].append({"kind": "digit_read", "label": label, "step": self.bridge.steps_used,
+                                      "read": d, "why": why or g.get("why"), "before": list(before),
+                                      "after": [o.digit, o.digit_conf, o.digit_source]})
+
     def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
         """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
         ``label`` locally on the new views (perception service ``refine``), write accepted poses into the belief.
@@ -914,6 +957,8 @@ class RuntimePolicy:
             kw["empty_hand"] = True
         res = self.perception().refine(obs, objs, self.fold, max_shift, arm=arm, identity_vocabulary=idv, held=held, **kw)
         r = res.get(label) or {}
+        if r.get("glyph") is not None:
+            self._merge_glyph(prov, label, r["glyph"])
         if sk is not None:
             sk.last_refine = {**r, "label": label, "for": kind}  # the raw reading (skills read e.g. its yaw_source)
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,

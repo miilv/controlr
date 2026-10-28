@@ -55,6 +55,13 @@ X5_CHAIN = (
 # j1-j5 and ±179.9 deg on j6, and self-collision is enabled, so the real limit is self-contact:
 # keep IK on the branch the arm uses from home (j2, j3 >= 0, |j4|, |j5| < 1.9).
 JOINT_LIMITS = np.array([[-2.9, 2.9], [-0.05, 3.4], [-0.05, 3.3], [-1.9, 1.9], [-1.9, 1.9], [-3.14, 3.14]])
+# The sim stops joint 5 at |q5| 1.571-1.585 rad, on both sides and at any wrist roll (self-contact; the asset declares
+# +-10 rad): of 7394 G3 trace steps commanding |q5| > 1.59, 6822 stopped there, and the TCP stayed 20-100 mm off the
+# plan (fill_pen drops let go beside the holder; journal 2026-10-28-dojo-h95-fill). "measured" keeps IK inside it.
+J5_STOP = 1.571
+JOINT_LIMITS_MEASURED = JOINT_LIMITS.copy()
+JOINT_LIMITS_MEASURED[4] = (-1.56, 1.56)
+JOINT_LIMIT_SETS = {"wide": JOINT_LIMITS, "measured": JOINT_LIMITS_MEASURED}   # RuntimeConfig.joint_limits
 # proximal joints cost more when choosing among IK solutions
 JOINT_WEIGHTS = np.array([2.0, 2.0, 1.5, 1.0, 1.0, 0.6])
 

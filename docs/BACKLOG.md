@@ -614,6 +614,11 @@
 - [x] ~~**dojo bridge: twin requests carried numpy-2 objects into RoboDojo's numpy 1.26**~~: they failed to unpickle (`numpy._core`) and the service died. `TwinClient` sends plain lists and numbers now (`twin_service.plain`).
 - [x] ~~**dojo bridge: `bridge_episode.sh` orphaned the perception service**~~: it killed only the subshell's bash. The orphan held fd 9, the session lock, and the next episode waited on it. The service is now exec'd, with fd 9 closed.
 - [ ] **dojo runtime: no perception vocabulary for make_toast, make_toast_random, store_laptop_and_headphones, hang_mugs** (`supervisor.VOCABULARIES`), so they cannot run in mode perception, i.e. not on the strict official path at all. With no rule skill, push_T and cover_blocks end at once under RuntimePolicy (`no skill for`); they need the agent.
+- [ ] **dojo skills: stack_bowls_random** (stream H, journal 2026-10-28-dojo-h95-bowls). `stack_reach` "grasp" +
+  `nest_height` "measured" lift stack_bowls 0.015 -> 0.33 on 10 v1 draws but leave _random at 0.13. Its failures:
+  clutter on the fixed shared sites (a held bowl's descent hits a key / clip / coffee bag), approach collisions, and 2
+  layouts with no site at all. A "clear sites" variant (more sites, only clutter-free ones), checked on CPU only, did
+  not help.
 - [ ] **dojo twin: stack_bowls verify fails in the twin service**: `Pickling of "pxr.Usd.Stage" instances is not enabled` (isr-lab, ilbr-rt-bowls-s0L9-1). Probably a deepcopy of something holding the env during load / verify. It never showed in the proxy, where stack_bowls ran with verify off.
 - [ ] **dojo perception: swap_blocks' target cube (Rigid/cube/00003) has geometry only in the catalogue** (no `visual_lo.glb` / silhouettes), so B1 finds no foreground and the episode ends at frame 0 (strict s0L9: "estimate lacks target0, target1").
 - [x] ~~**dojo perception: held_look / post-place false negatives on genuine 5.1 frames**~~: 12 of 17 "not held" verdicts in the dev eval had the block in the jaws, and false post-place failures hit correct stacks; the runtime then undid the progress. Fixed by main #41-#46 (jaw opening + absence cap, head-confirmed release, never undo, post-place z-only adoption). Measured on the same genuine-5.1 layouts: stack 6/10 -> 9/10 (journal 2026-10-26-bridge-isr A5-A6).
@@ -653,6 +658,19 @@
   top-down grasp keeps the finger's root block (38 x 56 mm) out of the wall. `nudge_from_wall` pushes one off when its
   fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
+- [ ] **dojo skills: fill_egg_holder picks an egg before its drop plans** (stream H, journal 2026-10-28-dojo-h95-fill;
+  G3 mode gt, current main, 5 settled dev layouts: 0/5, 0.22). 6 eggs were picked and then had no drop plan: "joint
+  move hits egg_basket; via failed: lift ik_fail", or "target unreachable". `fill_holes` plans the drop only after the
+  pick. Pairing them (`egg_pair`, branch `feat/dojo-h95-egg-pair`) cut those picks 5 -> 1 on 8 v1 draws but scored the
+  same (0.163 vs 0.163) at x3.3 planning time: the eggs it refuses still fail. What binds is the wall's foot (no pick)
+  and the reach to the holes.
+- [ ] **dojo skills: fill_pen with the joint-5 stop respected** (`joint_limits` "measured"; journal
+  2026-10-28-dojo-h95-fill). Many drops now hover 22-24 mm over the rim, because the 6 mm hover needs |q5| > 1.56, and
+  some pens still bounce out. pen0, which lies rolled 26 deg on its clip, slips in several grasp families (excluding
+  the failed grasp's family did not help).
+- [ ] **dojo skills: IK under `joint_limits` "measured" plans slower** (G3 plan_s: insert_tubes x2, fill_pen x1.6).
+  A failing IK costs ~2.4x a succeeding one (55-60 vs 23-25 ms), and "measured" fails more targets (53 vs 13 of 300
+  random ones). Cap the failing path, e.g. stop the remaining seeds once one stalls against the joint-5 stop.
 - [ ] **dojo skills: fill_egg_holder, an egg can land lying across a hole** (its centre 2-5 mm over the plate, the
   checker wants it in). Two presses from above did not free it; ordering the drops so the far end rests on the outer
   rim (not on the wall between two holes) did not help (G3, 11 layouts). `slide_in` pushes it along its axis until

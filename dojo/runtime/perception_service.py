@@ -736,6 +736,7 @@ class _Perception:
             pose = np.asarray(r.get("pose"), float) if r.get("pose") is not None else None
             shift = None if pose is None else float(np.hypot(*(pose[:2] - np.asarray(o["pos"][:2], float))))
             ok = bool(r.get("ok")) and pose is not None and shift <= max_shift_m
+            glyph = self._glyph_view_read(f, o["key"], arm, pose if ok else np.r_[prior], fold)
             sug = r.get("suggest_xy")
             # perception >= #36: a not-ok refine returns the PRIOR as "pose" and the raw fit as "fit_pose"
             fit = np.asarray(r["fit_pose"], float) if r.get("fit_pose") is not None else (None if ok else pose)
@@ -756,8 +757,37 @@ class _Perception:
                                  "identity_margin": r.get("identity_margin"), "n_candidates": len(cands),
                                  # a round object's yaw (and xy) read from a cut in its top: insert_key's keyhole
                                  "yaw_source": r.get("yaw_source"), "yaw_read": r.get("yaw_read"),
-                                 "why": None if ok else ("perception not ok" if not r.get("ok") else "shift too large")}}
+                                 "why": None if ok else ("perception not ok" if not r.get("ok") else "shift too large"),
+                                 **({"glyph": glyph} if glyph is not None else {})}}
         return self._refine_local(frame, objects, fold, max_shift_m)
+
+    def _glyph_view_read(self, f: dict, key: str, arm: str, pose7, fold: int) -> dict | None:
+        """``EstimatorConfig.glyph_read`` on a ``GLYPH_ONLY`` object (a 3-D numeral): the crop classifier's read of its
+        silhouette at ``pose7`` in this wrist view (``glyph_read.classify_mask``), for the runtime to merge into the
+        belief's digit (``digits.merge_view_read``). None when off / not a numeral / no reader."""
+        from dojo.perception.digits import GLYPH_ONLY
+        if key.split("/")[1] not in GLYPH_ONLY or self.cfg(fold).glyph_read == "off":
+            return None
+        try:
+            from dojo.perception import glyph_read
+            from dojo.perception.cameras import cameras_from_state, pose_to_T
+            from dojo.perception.refine import _shape_for
+            classify = getattr(glyph_read, "classify_mask", None)
+            if classify is None:
+                return {"read": False, "why": "no classify_mask"}
+            cam = cameras_from_state(f["state"])[f"cam_{arm}_wrist"]
+            T = pose_to_T(np.asarray(pose7[:3], float), np.asarray(pose7[3:7], float))
+            m = _shape_for(key, T[:3, :3], None).sil(cam, T)
+            from dojo.perception.inverse_layout import _takes_robot
+            if _takes_robot(classify):           # S's reader v2: a tile half hidden by the gripper is refused
+                from dojo.perception.render import robot_mask
+                rob = robot_mask(cam, f["state"], closed_jaws=False) > 0
+                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", robot=rob)
+            else:
+                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist")
+            return {k: r.get(k) for k in ("read", "name", "margin", "why")}
+        except Exception as e:  # noqa: BLE001 (a reader failure never takes the refine down)
+            return {"read": False, "why": f"error: {type(e).__name__}"}
 
     def _refine_local(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03) -> dict:
         """Re-fit each given object's (x, y, yaw) locally from its current pose on this frame's views (the wrist

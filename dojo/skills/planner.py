@@ -268,7 +268,7 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
     # pour from one container into another: balls (a cup into a vase) or a liquid (a bottle into a cup)
     if re.search(r"\bpour\b", text):
         if re.search(r"\bballs?\b", text):
-            return run("pour")
+            return run("pour_p1" if (opts or {}).get("pour") == "full" else "pour")
         if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
             return run("pour_bottle")
     # pick one named object up by a height. The object: the one whose PUBLIC asset description is the instruction's
@@ -294,7 +294,8 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         pairs = [(r, p) for r in rigid for p in pads if r.category.lower() in p.category.lower().split("_")
                  and r.category.lower() != p.category.lower()]
         if len(pairs) == 1:
-            return run("planar_drag", obj="@" + pairs[0][0].label, target="@" + pairs[0][1].label)
+            skill = "planar_drag_p1" if (opts or {}).get("drag") == "turn" else "planar_drag"
+            return run(skill, obj="@" + pairs[0][0].label, target="@" + pairs[0][1].label)
     return None
 
 
@@ -660,7 +661,8 @@ def solve(sk) -> dict:
     """The fixed procedure: plan from the instruction and the world, run the skill, finish."""
     w = sk.refresh()
     p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
-             and {"swap": getattr(sk, "ported_swap", "fixed")})
+             and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
+                  "pour": getattr(sk, "ported_pour", "v1")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":
