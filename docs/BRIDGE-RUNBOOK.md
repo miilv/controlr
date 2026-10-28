@@ -222,7 +222,7 @@ python -m dojo.bridge.official compare --official ~/dojo-data/official/runs/<id>
 | eval client | RoboDojo's `main.py`, unchanged | `scripts/simlab/dev_eval.sh` (`dojo/simlab/dev_eval.py`: SeedManager reads `OUT/layouts/<task>/<id>.settled.json`, ids ascending) |
 | strict J2 server + shim `harness_strict_j2` | Mikhail's files, unmodified (`$BENCH`, default `~/dojo-official-rh`) | the J2 launcher's md5 checks, its env (`HARNESS_STRICT=1`, `HARNESS_DEV=1` for `dev.jsonl` only); the shim is copied into OUR RoboDojo farm |
 | RoboDojo install | the box's `~/dojo-robodojo`, read-only | a symlink farm `~/dojo-official-rdhome` (`scripts/dojo/rd_farm.sh`): `XPolicyLab/policy/` and `eval_result/` are ours |
-| bridge driver, perception service, twin | ours | one driver per episode; the next driver's `reset` ends the previous episode on the server (the shim books an unfinished one as failed), the last one `--close`s; `--calib-fold` = crc32(layout id) % 2, as integ_eval |
+| bridge driver, perception service, twin | ours | one driver per episode; the next driver's `reset` ends the previous episode on the server (the shim books an unfinished one as failed), the last one `--close`s; the perception calibration is the service's one frozen set (`DOJO_CALIB_SET`, `scripts/dojo/calib_set.sh`), the same for every episode |
 
 - Everything runs under the heavy lock and in one systemd scope (24G / 1400 %). Keep a call <= 30 min.
 - Outputs, under `~/dojo-data/official/runs/<id>/`:

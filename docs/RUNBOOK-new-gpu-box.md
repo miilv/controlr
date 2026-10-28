@@ -176,6 +176,7 @@ Measured on compute3 (Skoltech network: HF ~15-25 MB/s, compute3 → local ~50 M
 | catalog | `dojo-perception-data/{catalog,bg_folds,bg_folds_51,task_config,looks}` | 2.9 GB | 2-6 min |
 | isaac6 | physics: compute3's `isaac-sim-6.0` minus `kit/cache`, `kit/logs` → `~/dojo-isaac6/isaac-sim-6.0`, then VERSION + bundled-python check | 31 GB | compute3 10-15 min; peer 2-6 min |
 | catalog_post | shape caches (`sil.npz`, `shape_cache.json`) for assets that lack them | — | < 1 min |
+| calib_sets | the frozen perception calibration sets (`scripts/infra/pins/calib_sets.txt`: md5 of each set under `~/dojo-perception-data/bg_folds{,_51}/`), verified and copied into `~/dojo-data/<dir>_ilia` (+ `CALIB_EXTRA_ROOTS`); a missing or different set fails the step | — | < 1 min |
 | smoke_perception | EGL context on the NVIDIA driver + `eval_g1` on push_T 100000 frame 0 (genuine 5.1). Expected: T 0.5 mm, pad 0.7 mm | — | 1-3 min |
 | smoke_bridge | CPU: `scripts/dojo/bridge_episode.sh --fake` with RuntimePolicy (the launcher path on the fake strict server, 0 LLM calls). Expected: end=ended, 172/550 steps | — | < 1 min |
 | assets_post | `RoboDojo/Assets` link, `curobo.yml` regeneration, `check_assets` over all task configs | — | 1-2 min |
@@ -188,7 +189,7 @@ Measured on compute3 (Skoltech network: HF ~15-25 MB/s, compute3 → local ~50 M
 Order:
 1. preflight → conventions → secrets → code.
 2. In parallel: venv and robodojo on the box, and the copy steps (assets, data, catalog, isaac6).
-3. venv → smoke_bridge; venv + catalog → catalog_post → smoke_perception. Perception is usable early.
+3. venv → smoke_bridge; venv + catalog → catalog_post → calib_sets → smoke_perception. Perception is usable early.
 4. robodojo + assets → assets_post → smoke_twin → (full) smoke_render → smoke_dev_eval / (physics) smoke_proxy_eval
    → ready.
 

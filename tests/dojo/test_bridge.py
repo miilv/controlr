@@ -196,7 +196,7 @@ def test_runtime_episode_through_the_server(bench, monkeypatch):
     res = run_episode(pol, be)
     s, rep = res["summary"], res["report"]
     assert s["end"] == "policy_done" and rep["error"] is None, (s, rep.get("error"))
-    assert pol.log_task is None and rep["info_dropped"] == []
+    assert set(pol.info) == {"instruction", "step_lim"} and rep["info_dropped"] == []
     assert pc.calls[0] == ("estimate", "stack_blocks", 1)
     assert _stacked(envs[0]) and _home(envs[0])
     assert s["steps_used"] == envs[0].steps_used == len(res["executed"])

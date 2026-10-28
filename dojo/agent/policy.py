@@ -5,7 +5,8 @@ verifier with ``verify=bundle``) and the tail (finish unless the program says ok
 in between, instead of the rule supervisor, ``AgentPolicy`` runs ``dojo.agent.loop.AgentLoop``: the model reads
 the manual, the instruction, the scene (neutral ids) and the head frame, and answers with code cells over ``robo``
 (skills, primitives, perception, verify inside the skills). The same model, manual and procedure for every task;
-``info["task"]`` is never read (RuntimePolicy keeps it for logs only).
+the launcher's task name and the layout id never reach it (``RuntimePolicy.reset`` keeps the instruction and the step
+limit only).
 
 Config: ``AgentConfig`` fields in the runtime config's ``extra.agent`` (``--config '{"extra":{"agent":{...}}}'``)
 or as JSON in ``$DOJO_AGENT`` (``model``, ``extra_body``, ``max_calls``, ...). Logs per episode under

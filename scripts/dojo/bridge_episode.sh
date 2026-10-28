@@ -66,6 +66,7 @@ export J1_PERCEIVER="${J1_PERCEIVER:-dojo.perception.j1_adapter:perceive}" J1_PE
 PD="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"
 export DOJO_CATALOG="${DOJO_CATALOG:-$PD/catalog}" DOJO_X5_DIR="${DOJO_X5_DIR:-$PD/catalog/robot/x5}"
 export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib.json}"
+source "$HERE/scripts/dojo/calib_set.sh"         # DOJO_CALIB_SET: ONE frozen calibration set for every episode
 if [[ "$FAKE" == 1 ]]; then
   "$PY" -m dojo.bridge.fake_server --id "$ID" --bench "$BENCH" > "$OUT/$ID/fake_server.log" 2>&1 &
   PIDS+=($!)

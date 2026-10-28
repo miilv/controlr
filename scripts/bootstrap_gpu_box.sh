@@ -28,7 +28,7 @@
 #
 # Steps (resumable, idempotent: a re-run skips what is done and re-attaches to what is still running on HOST;
 # the remote ones run detached, so a dropped ssh connection loses nothing):
-#   preflight conventions secrets code venv robodojo assets data catalog isaac6 catalog_post smoke_perception
+#   preflight conventions secrets code venv robodojo assets data catalog isaac6 catalog_post calib_sets smoke_perception
 #   smoke_bridge assets_post smoke_twin smoke_render smoke_dev_eval smoke_proxy_eval ready
 # Runbook: docs/RUNBOOK-new-gpu-box.md. Remote half: scripts/infra/box_steps.sh. Logs: runs/bootstrap/<host>/ here
 # (+ summary.tsv), ~/dojo-bootstrap/logs/<step>.log on HOST.
@@ -82,12 +82,12 @@ if [[ -z "$ENV_FILE" ]]; then          # the main checkout's .env (worktrees hav
   [[ -f "$ENV_FILE" ]] || ENV_FILE="$(cd "$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null || echo "$ROOT/.git")/.." && pwd)/.env"
 fi
 
-ALL_STEPS=(preflight conventions secrets code venv robodojo assets data catalog isaac6 catalog_post smoke_perception
+ALL_STEPS=(preflight conventions secrets code venv robodojo assets data catalog isaac6 catalog_post calib_sets smoke_perception
            smoke_bridge assets_post smoke_twin smoke_render smoke_dev_eval smoke_proxy_eval ready)
 FETCH_STEPS=(assets data catalog isaac6)          # copied from an origin (HF / compute3) or, in a fleet, from a peer
 declare -A DEPS=(
-  [venv]="code" [robodojo]="code" [catalog_post]="venv catalog" [assets_post]="robodojo assets"
-  [smoke_perception]="catalog_post data venv" [smoke_bridge]="venv code"
+  [venv]="code" [robodojo]="code" [catalog_post]="venv catalog" [calib_sets]="catalog" [assets_post]="robodojo assets"
+  [smoke_perception]="catalog_post calib_sets data venv" [smoke_bridge]="venv code"
   [smoke_twin]="assets_post data venv" [smoke_render]="assets_post data venv" [smoke_dev_eval]="assets_post data venv"
   [smoke_proxy_eval]="assets_post data venv isaac6"
 )
@@ -527,6 +527,7 @@ Estimated wall time (compute3 measurements, 2026-10-24/25; unknown networks may 
   catalog          2.9 GB perception catalogue + backgrounds          2-6 min    } (or a fleet peer)
   isaac6           physics only: 31 GB Isaac Sim 6.0 from $SOURCE       10-15 min / a peer 2-6 min }
   catalog_post     -                                                  < 1 min
+  calib_sets       verify the frozen calibration sets (md5 pins), copy into _ilia  < 1 min
   smoke_perception -                                                  1-3 min (during the installs)
   smoke_bridge     -                                                  < 1 min (CPU)
   assets_post      -                                                  1-2 min
@@ -614,6 +615,7 @@ wait_steps venv
 run_remote smoke_bridge
 wait_fetch catalog
 run_remote catalog_post
+run_remote calib_sets
 wait_fetch data
 run_remote smoke_perception
 wait_steps "${PAR[@]}"

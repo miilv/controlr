@@ -85,10 +85,14 @@ Ops (request dicts):
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
 ``vocabulary`` names perception's candidate-object set (``catalog/tasks.json``); the runtime derives it
-from the instruction (``supervisor.SKILLS``), never from the task id. ``fold``: which D0 half the
-backgrounds and the colour map were built from (dev protocol: never the half holding the evaluated
-layout). Env: DOJO_CATALOG, DOJO_X5_DIR, DOJO_BG_FOLDS, DOJO_COLOR_CALIB, DOJO_PERCEPTION_PORT,
-DOJO_PERCEPTION_AUTHKEY, DOJO_PERCEPTION_READY.
+from the instruction (``supervisor.SKILLS``), never from the task id. Calibration (backgrounds + colour map): ONE
+frozen set per service, ``DOJO_CALIB_SET`` (a directory under ``DOJO_BG_FOLDS`` and the same key in
+``DOJO_COLOR_CALIB``), used for every request whatever its ``fold`` field says; without it the legacy
+``fold<k>`` of the request (offline dev tools; the runtime always sends ``policy.CALIB_FOLD``). The set never depends on
+the episode: the old per-episode crc32(layout id) % 2 choice was a layout-id input (legality audit 2026-10-28, P1-1).
+A set directory may carry ``manifest.json`` (``{"layout_ids": [...], ...}``: what it was built from); ``info`` reports
+the set, so the dev drivers can check it is disjoint from the evaluated layouts. Env: DOJO_CATALOG, DOJO_X5_DIR,
+DOJO_BG_FOLDS, DOJO_CALIB_SET, DOJO_COLOR_CALIB, DOJO_PERCEPTION_PORT, DOJO_PERCEPTION_AUTHKEY, DOJO_PERCEPTION_READY.
 
 GT is never read here.
 """
@@ -315,15 +319,51 @@ class PerceptionClient:
 
 
 # ----------------------------------------------------------------------------- service side
+def calib_info() -> dict:
+    """The service's calibration set: name, background dir, whether the colour map has it, and the set's manifest
+    (``manifest.json`` in the set dir, what it was built from) when there is one. No request can change it."""
+    name = os.environ.get("DOJO_CALIB_SET") or None
+    root = os.environ.get("DOJO_BG_FOLDS")
+    out: dict = {"set": name, "bg_dir": str(Path(root) / name) if root and name else None, "color_key": None,
+                 "manifest": None}
+    cal = os.environ.get("DOJO_COLOR_CALIB")
+    if out["bg_dir"] and (Path(out["bg_dir"]) / "color_M.json").exists():
+        out["color_key"] = "color_M.json"
+    elif name and cal and Path(cal).exists():
+        try:
+            out["color_key"] = name if name in json.loads(Path(cal).read_text()) else None
+        except (OSError, ValueError):
+            pass
+    if out["bg_dir"] and (Path(out["bg_dir"]) / "manifest.json").exists():
+        try:
+            out["manifest"] = json.loads((Path(out["bg_dir"]) / "manifest.json").read_text())
+        except (OSError, ValueError):
+            out["manifest"] = {"error": "unreadable manifest.json"}
+    return out
+
+
 class _Perception:
     def __init__(self):
         self._bgs: dict = {}
-        self._bg_scene: dict = {}               # (fold, scene) -> the scene background's asset key, None = the table's
+        self._bg_scene: dict = {}               # (set, scene) -> the scene background's asset key, None = the table's
         self._cal = None
         self._scene: tuple = ()                 # asset keys of the current vocabulary's scene (scene backgrounds)
+        self._set = os.environ.get("DOJO_CALIB_SET") or None   # ONE frozen calibration set for every request
         cal = os.environ.get("DOJO_COLOR_CALIB")
         if cal and Path(cal).exists():
             self._cal = json.loads(Path(cal).read_text())
+        if self._set:                           # a frozen set's own colour map (calib_set) wins over DOJO_COLOR_CALIB
+            own = Path(os.environ.get("DOJO_BG_FOLDS", "")) / self._set / "color_M.json"
+            if own.exists():
+                self._cal = {self._set: json.loads(own.read_text())["M"]}
+            elif self._cal is None or self._set not in self._cal:
+                print(f"[perception_service] WARNING: DOJO_CALIB_SET={self._set} has no colour map ({own} or "
+                      f"{cal}): no colour calibration", flush=True)
+
+    def set_name(self, fold) -> str:
+        """The calibration set a request uses: the service's frozen ``DOJO_CALIB_SET`` whatever ``fold`` says, else
+        the legacy D0 half ``fold<k>`` (offline dev tools)."""
+        return self._set or f"fold{int(fold)}"
 
     def set_scene(self, vocabulary: str | None) -> None:
         """The episode's scene, from the vocabulary of the op that carries one (every episode starts with an
@@ -339,12 +379,12 @@ class _Perception:
         self._scene = scene_keys(vocabulary)        # () for an unknown vocabulary: the table backgrounds
 
     def bgs(self, fold: int) -> dict:
-        key = (int(fold), self._scene)
+        key = (self.set_name(fold), self._scene)
         if key not in self._bgs:
             import cv2
 
             from dojo.perception.segment import load_backgrounds, scene_bg_key, with_scene
-            d = Path(os.environ["DOJO_BG_FOLDS"]) / f"fold{int(fold)}"
+            d = Path(os.environ["DOJO_BG_FOLDS"]) / self.set_name(fold)
             out = load_backgrounds(d)
             m = d / "cam_head_clean_unseen.png"
             if m.exists():
@@ -364,13 +404,13 @@ class _Perception:
     def bg_scene(self, fold: int) -> str | None:
         """The asset key of the scene background ``bgs(fold)`` uses for the current scene, None for the table's."""
         self.bgs(fold)
-        return self._bg_scene.get((int(fold), self._scene))
+        return self._bg_scene.get((self.set_name(fold), self._scene))
 
     def cfg(self, fold: int):
         from dojo.perception.inverse_layout import EstimatorConfig
         kw = {}
-        if self._cal and f"fold{int(fold)}" in self._cal:
-            kw["color_M"] = self._cal[f"fold{int(fold)}"]
+        if self._cal and self.set_name(fold) in self._cal:
+            kw["color_M"] = self._cal[self.set_name(fold)]
         # A/B arms: EstimatorConfig overrides from the service's environment, e.g. '{"embed_model": "dinov2_s"}'
         kw.update(json.loads(os.environ.get("DOJO_PERCEPTION_CFG") or "{}"))
         return EstimatorConfig(use_wrists=True, **kw)
@@ -827,7 +867,10 @@ class _Perception:
 
 def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
     p = _Perception()
-    stats = {"calls": 0, "s": {}}
+    stats = {"calls": 0, "s": {}, "calib": calib_info()}
+    print(f"[perception_service] calibration set {stats['calib']['set'] or 'legacy fold<k> per request'} "
+          f"(colour map {stats['calib']['color_key']}, manifest {'yes' if stats['calib']['manifest'] else 'no'})",
+          flush=True)
     with Listener(("127.0.0.1", port), authkey=authkey) as lst:
         if ready:
             Path(ready).write_text(str(os.getpid()))

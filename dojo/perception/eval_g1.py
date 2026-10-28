@@ -217,9 +217,6 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80, use_all: bool
     import cv2
 
     from . import d0
-    from .cameras import head_camera
-    from .render import robot_mask
-    from .segment import CAMS, build_background, masked_median
 
     fold = zlib.crc32(ep.name.encode()) % 2 if not use_all else "all"
     root = ep.parent.parent
@@ -237,7 +234,22 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80, use_all: bool
         _BG_CACHE[key] = out
         return out
     others = [e for e in d0.episodes(root) if use_all or zlib.crc32(e.name.encode()) % 2 != fold]
-    rng = np.random.default_rng(2 if use_all else fold)
+    out = backgrounds_from(others, np.random.default_rng(2 if use_all else fold), max_n=max_n, n_clean=n_clean)
+    _BG_CACHE[key] = out
+    return out
+
+
+def backgrounds_from(others: list, rng, max_n: int = 40, n_clean: int = 80) -> dict:
+    """Backgrounds from these D0 episodes only: ``cam_<x>`` = per-pixel median of frame 0 of up to ``max_n`` of them;
+    ``cam_head_clean`` (+ ``_unseen``) = robot-free head median over up to ``n_clean`` of their frames 0-3 / scan frames,
+    each frame's FK robot mask excluded. Observations and proprio only."""
+    import cv2
+
+    from . import d0
+    from .cameras import head_camera
+    from .render import robot_mask
+    from .segment import CAMS, build_background, masked_median
+
     sel = [others[i] for i in sorted(rng.choice(len(others), min(max_n, len(others)), replace=False))]
     out = {}
     for cam in CAMS:
@@ -262,7 +274,6 @@ def fold_backgrounds(ep: Path, max_n: int = 40, n_clean: int = 80, use_all: bool
             masks.append(robot_mask(hc, st, dilate_px=4))
         if frames:
             out["cam_head_clean"], out["cam_head_clean_unseen"] = masked_median(frames, masks, out["cam_head"])
-    _BG_CACHE[key] = out
     return out
 
 

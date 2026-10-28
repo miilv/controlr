@@ -175,6 +175,9 @@ def main(argv: list[str] | None = None) -> None:
     index, seed, made = [], a.start, 0
     while made < a.n and seed < a.start + 3 * a.n:
         s, seed = seed, seed + 1
+        if paths.is_offslice_rendered(s):           # Mikhail's slices / reserved ids (D-C10a): never rendered here
+            print(f"[d0] {a.task}: stop at {s} (not ours to render)", flush=True)
+            break
         d = out / str(s)
         if (d / f"frame_{a.max_frame}.json").exists():
             made += 1

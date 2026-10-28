@@ -111,7 +111,7 @@ def test_firewall_refuses_anything_but_the_contract():
 def test_info_drops_layout_file():
     keep, dropped = sanitize_info({"task": "t", "instruction": "i", "step_lim": 5, "layout_file": "/x.json",
                                    "layout_record": {}})
-    assert "layout_file" not in keep and dropped == ["layout_file", "layout_record"]
+    assert keep == {"instruction": "i", "step_lim": 5} and dropped == ["layout_file", "layout_record", "task"]
 
 
 def test_mode_perception_never_touches_gt(monkeypatch):
@@ -146,7 +146,7 @@ def test_mode_perception_never_touches_gt(monkeypatch):
     monkeypatch.setattr(B.RuntimeProvider, "_gt_objects", lambda self: (_ for _ in ()).throw(AssertionError("GT read")))
     rep = run_episode(pol, ep, "perception")
     assert rep["error"] is None, rep["error"]
-    assert rep["info_dropped"] == ["layout_file"]
+    assert rep["info_dropped"] == ["layout_file", "layout_id", "render_stage_s", "reset_s", "stable", "task"]
     assert _stacked(env), [o["pos"] for o in env.objects]
     assert pc.calls[0] == ("estimate", "stack_blocks", 1)
     assert rep["provider"]["resync"] >= 1                  # checkpoints after releases
@@ -209,8 +209,7 @@ def test_decisions_never_read_the_task_name():
     assert all(np.abs(env2.q[a]).max() < 0.02 for a in ("left", "right"))
     for name in ("policy.py", "supervisor.py", "belief.py", "verifier.py"):
         for ln in (RUNTIME / name).read_text().splitlines():
-            if re.search(r"""info(\.get\(|\[)["']task["']""", ln):
-                assert "log_task" in ln, (name, ln)
+            assert not re.search(r"""info(\.get\(|\[)["'](task|layout_id)["']""", ln), (name, ln)
 
 
 # ------------------------------------------------------------------ episodes, bridge, belief

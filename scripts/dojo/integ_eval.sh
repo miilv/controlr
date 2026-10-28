@@ -46,6 +46,9 @@ for a in "${args[@]}"; do      # D-C10a: >= 100100 reserved for joint runs; 1000
         || (( id >= 100050 && id <= 100099 )); }; then
     echo "[integ] $a: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused" >&2; exit 2
   fi
+  if [[ "$a" == *.json && "$id" =~ ^[0-9]+$ ]] && (( id >= 100040 && id <= 100049 )); then
+    echo "[integ] $a: calibration-only layout (D-C10b: 100040-49 calibrate perception, never evaluated): refused" >&2; exit 2
+  fi
 done
 if [[ -n "$PRESET" ]]; then        # the services follow the preset's mode / verify (explicit flags win, as in eval)
   read -r P_MODE P_VERIFY < <(python3 -c 'import runpy, sys; p = runpy.run_path(sys.argv[1])["PRESETS"][sys.argv[2]]
@@ -88,6 +91,8 @@ if [[ "$RENDERER" == isaac51 ]]; then           # genuine 5.1 frames: the 5.1 ba
 else
   export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib.json}"
 fi
+source "$HERE/scripts/dojo/calib_set.sh"         # DOJO_CALIB_SET: ONE frozen calibration set for every episode
+if [[ "$MODE" == perception ]]; then calib_set_check || exit 2; fi
 # agentic perceiver (only read when the config sets "agentic"): omniroute keys from ONE named file (default the box's
 # ~/controlr/.env, OMNIROUTE_* only; no fallback), transcripts here. The render and twin services below never call the
 # model and start without it (env -u); Python-spawned children drop it too (controlr.keyguard.child_env)

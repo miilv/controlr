@@ -15,14 +15,15 @@
 # (python -m dojo.bridge.official rows OUT).
 #
 #   scripts/dojo/official_eval.sh --task T --layouts "100000 100001 ..." [--policy dojo.agent.policy:AgentPolicy]
-#       (rendered measurement uses 100000-09; ids >= 100100 are reserved for joint paired runs and refused)
+#       (rendered measurement uses 100000-09; 100040-49 are calibration-only and >= 100100 reserved: both refused)
 #       [--preset submit_v2] [--config JSON] [--twin-envs 8] [--id NAME] [--out DIR] [--episode-max-min 25]
 #
 # Env (defaults for a dojo GPU box, ~/dojo-env.sh): RD_SRC (the box's RoboDojo install, read-only; default $RD_HOME),
 #   OFFICIAL_RDHOME (our farm over it, scripts/dojo/rd_farm.sh; default ~/dojo-official-rdhome), BENCH (a robot-harness
 #   tree at a pinned commit, with a COMMIT file; default ~/dojo-official-rh), DOJO_DATA, DOJO_PERCEPTION_DATA,
 #   DOJO_GPU_LOCK (the HEAVY lock, held for the whole call; keep a call <= 30 min: ~5 short or ~3 long episodes).
-# Perception uses the genuine-5.1 set (bg_folds_51, color_calib_51) unless DOJO_BG_FOLDS / DOJO_COLOR_CALIB are set.
+# Perception uses the genuine-5.1 set (bg_folds_51, color_calib_51) unless DOJO_BG_FOLDS / DOJO_COLOR_CALIB are set,
+# and ONE frozen calibration set in it for every episode (DOJO_CALIB_SET, scripts/dojo/calib_set.sh).
 # Everything runs in one systemd user scope (24G / 1400 %); only PIDs this script started are stopped.
 # bash reads a script while it runs: the body is one brace group, read before any of it runs (integ_eval.sh's note).
 {
@@ -97,6 +98,9 @@ for lid in $(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n); do
   if (( lid >= 100010 && lid <= 100019 )) || (( lid >= 100050 && lid <= 100099 )); then
     log "layout id $lid: Mikhail's development slice (D-C10a: never run rendered on our side)"; exit 2
   fi
+  if (( lid >= 100040 && lid <= 100049 )); then
+    log "layout id $lid: calibration-only (D-C10b: 100040-49 calibrate perception, never evaluated)"; exit 2
+  fi
   f="$LAYOUTS_SRC/$lid.settled.json"
   [[ -f "$f" && "$f" != *Eval_Layout* ]] || { log "no settled dev layout $f"; exit 2; }
   cp "$f" "$OUT/layouts/$TASK/"
@@ -104,6 +108,17 @@ for lid in $(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n); do
 done
 N=${#IDS[@]}
 log "task $TASK, $N layouts: ${IDS[*]}; policy $POLICY preset $PRESET config $CONFIG; out $OUT"
+# perception data (genuine 5.1 calibration), checked before anything starts
+PD="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"
+export DOJO_CATALOG="${DOJO_CATALOG:-$PD/catalog}" DOJO_X5_DIR="${DOJO_X5_DIR:-$PD/catalog/robot/x5}"
+export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds_51}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib_51.json}"
+source "$HERE/scripts/dojo/calib_set.sh"         # DOJO_CALIB_SET: ONE frozen calibration set for every episode
+calib_set_check || exit 2
+# scorer side: never evaluate a layout the calibration set was built from (its manifest)
+( cd "$HERE" && "$PY" -c 'import sys; from dojo.perception.calib_set import load_manifest, overlap
+m = load_manifest(sys.argv[1]); bad = [i for i in sys.argv[2:] if overlap(m, i)]
+sys.exit("[official] calibration set built from layouts %s: refusing to evaluate them" % bad if bad else 0)' \
+  "$DOJO_BG_FOLDS/$DOJO_CALIB_SET" "${IDS[@]}" ) || exit 2
 
 # 1. our RoboDojo farm + robot-harness's shim in it (his launcher's own md5 checks, constants read from his launcher)
 bash "$HERE/scripts/dojo/rd_farm.sh" "$RD_SRC" "$FARM" >> "$LOG" 2>&1 || { log "rd_farm failed"; exit 1; }
@@ -158,9 +173,6 @@ EC=$!; PIDS+=($EC)
 log "eval client pid $EC"
 
 # 4. our perception service (genuine 5.1 calibration)
-PD="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"
-export DOJO_CATALOG="${DOJO_CATALOG:-$PD/catalog}" DOJO_X5_DIR="${DOJO_X5_DIR:-$PD/catalog/robot/x5}"
-export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds_51}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib_51.json}"
 # the router key for the agent (llmio) and the agentic perceiver: ONE named file each (default the box's ~/controlr/.env,
 # OMNIROUTE_* only; llmio has no home-dir fallback any more). Exported only now, after robot-harness's processes started
 export AGENTIC_ENV_FILE="${AGENTIC_ENV_FILE:-$HOME/controlr/.env}" DOJO_AGENT_DOTENV="${DOJO_AGENT_DOTENV:-$HOME/controlr/.env}"
@@ -175,19 +187,18 @@ for _ in $(seq 150); do [[ -f "$DOJO_PERCEPTION_READY" ]] && break; sleep 2; don
 [[ -f "$DOJO_PERCEPTION_READY" ]] || { log "perception service not ready: see perception_service.log"; exit 1; }
 log "perception service up"
 
-# 5. one driver per episode, in the eval client's layout order (ids ascending); the calibration fold of a dev layout is
-#    the integ_eval one (crc32(id) % 2: the D0 half its backgrounds must not come from), so the pair compares like for like
+# 5. one driver per episode, in the eval client's layout order (ids ascending); the perception calibration is the
+#    service's one frozen set (DOJO_CALIB_SET), the same for every episode (nothing derived from the layout id)
 k=0; RC=0
 for lid in "${IDS[@]}"; do
   k=$((k + 1))
   FIN=(); [[ "$k" -eq "$N" ]] && FIN=(--close)
-  fold="$(python3 -c 'import sys, zlib; print(zlib.crc32(sys.argv[1].encode()) % 2)' "$lid")"
   EPO="$OUT/eps/$lid"; mkdir -p "$EPO"
-  log "episode $k/$N (layout $lid, fold $fold): driver ${FIN[*]}"
+  log "episode $k/$N (layout $lid, calibration $DOJO_CALIB_SET): driver ${FIN[*]}"
   ( cd "$HERE" && DOJO_ILIA=1 DOJO_AGENT_LOG="$EPO/agent" exec timeout --signal=TERM "$((EP_MAX_MIN * 60 + 600))" \
       "$PY" -u -m dojo.bridge.driver --server-id "$ID" --bench "$BENCH" --policy "$POLICY" --preset "$PRESET" \
       --config "$CONFIG" --perception local --verify bundle --twin spawn --twin-envs "$TWIN_ENVS" --hold-gpu-lock \
-      --calib-fold "$fold" --keep-frames 20 --wait-episode 900 --out "$EPO" "${FIN[@]}" 9>&- ) >> "$EPO/driver.log" 2>&1
+      --keep-frames 20 --wait-episode 900 --out "$EPO" "${FIN[@]}" 9>&- ) >> "$EPO/driver.log" 2>&1
   rc=$?
   [[ "$rc" -eq 0 ]] || { RC=$rc; log "driver rc=$rc (layout $lid): see $EPO/driver.log"; }
   grep -a "^\[bridge\] $ID:" "$EPO/driver.log" | tail -1 | tee -a "$LOG" >&2
