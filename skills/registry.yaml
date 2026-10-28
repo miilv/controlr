@@ -747,3 +747,118 @@ entries:
     measured: none
     stats: []
     notes: "skills-5 first version"
+
+  - name: complete_equation
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Complete the equation on a row of pads (a op b = answer; the pad with the equals tile splits it, a two-digit answer
+      takes two pads): read every tile's value, find the value of the one empty pad by the arithmetic (minus never below
+      0, division exact), and put a loose tile showing it there, centred, upright, its x axis along the table's x.
+      Values nobody read are looked at with a wrist, never guessed.
+    args: {}
+    selects_on:
+      words: [equation, missing, number, operator, pad]
+      needs_categories: []
+    inputs:
+      source: provider
+      objects:
+        - {what: pads and tiles, fields: [pos, quat, size, digit, category]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.tiles:complete_equation"
+    measured: none
+    stats: []
+    notes: "stream N first version; route off by default (RuntimeConfig.new_routes: equation)"
+
+  - name: arrange_digits
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Put the digit tiles on a row of pads, one per pad, so that read from left to right (increasing x) they make the
+      largest number (descending) or the smallest; centred, upright, x axis along the table's x. A pad another tile sits
+      on is freed first; grippers opened after each tile (partial credit per tile).
+    args:
+      descending: "bool = true; largest number (true) or smallest (false)"
+    selects_on:
+      words: [arrange, largest, number, left to right, pad]
+      needs_categories: []
+    inputs:
+      source: provider
+      objects:
+        - {what: pads and digit tiles, fields: [pos, quat, size, digit]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.tiles:arrange_digits"
+    measured: none
+    stats: []
+    notes: "stream N first version; route off by default (RuntimeConfig.new_routes: largest_number)"
+
+  - name: align_in_row
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Slide identical blocks into one straight row without lifting them: one block (the anchor) stays, the row runs
+      through it along one of its face axes, the others are gripped on two opposite faces, raised barely off the table,
+      slid onto the row
+      at their nearest free spots turned to its heading, and set down (both arms in the same steps when they keep
+      apart); then one more slide of the worst block when the row is still off.
+    args:
+      objects: "[id], required; the blocks"
+    selects_on:
+      words: [align, aligned row, straight, line, blocks]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each block, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.align:align_in_row"
+    measured: none
+    stats: []
+    notes: "stream N first version; route off by default (RuntimeConfig.new_routes: align)"
+
+  - name: row_by_size
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Stand the objects upright in one row along x ordered by size (the asset's bbox volume): smallest on the left
+      (smaller x) when ascending. The slots are spaced by the neighbours' half widths plus a gap on a line clear of every
+      other object; an object standing on another's slot is moved first, or put aside; grippers opened after each.
+    args:
+      objects: "[id], required; the objects of the row"
+      ascending: "bool = true; smallest on the left (true) or largest (false)"
+    selects_on:
+      words: [row, smallest, largest, size, dolls]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.rows:row_by_size"
+    measured: none
+    stats: []
+    notes: "stream N first version; route off by default (RuntimeConfig.new_routes: row_by_size)"

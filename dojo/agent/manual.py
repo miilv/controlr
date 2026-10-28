@@ -156,8 +156,31 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "over through the table when out of reach) and pushes each object with the side of the broom's head onto the "
         "dustpan's axis, then along it over the lip into the pan; the broom is put down away from the dustpan. For "
         "'use the dustpan to sweep the blocks'."),
+    "complete_equation": (
+        "complete_equation()",
+        "Reads the equation on the row of pads (a op b = answer: the pad with the equals tile splits it; a two-digit "
+        "answer takes two pads), finds the value of its one empty pad, and puts a loose tile showing that digit or "
+        "operator onto it, centred and upright with its x axis along the table's x. Values it cannot read are looked "
+        "at with a wrist, never guessed. For 'complete the equation'."),
+    "arrange_digits": (
+        "arrange_digits(descending: bool = true)",
+        "Puts the digit tiles on the row of pads, one per pad, so that read from left to right (increasing x) they make "
+        "the largest number (descending) or the smallest; centred, upright, x axis along the table's x; a pad another "
+        "tile sits on is freed first; grippers opened after each tile. For 'form the largest possible number'."),
+    "align_in_row": (
+        "align_in_row(objects: [id, ...])",
+        "Slides identical blocks into one straight row without lifting them: one block stays, the row runs through it "
+        "along one of its faces, the others are gripped on two opposite faces, raised barely off the table, slid onto "
+        "the row turned to its heading and set down (two arms at once when they keep apart); one more slide of the "
+        "block furthest off the row. For 'push the blocks into a straight, aligned row'."),
+    "row_by_size": (
+        "row_by_size(objects: [id, ...], ascending: bool = true)",
+        "Stands the objects upright in one row along x ordered by size (the asset's bbox volume): smallest on the left "
+        "(smaller x) when ascending. Slots spaced by the neighbours' half widths plus a gap on a free line, or around "
+        "the widest object where it stands; an object standing on another's slot is moved first; grippers opened after "
+        "each. For 'arrange the dolls in a row from smallest to largest'."),
 }
-SKILL_DOCS_VERSION = 12  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 13  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
 #                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
@@ -171,6 +194,7 @@ SKILL_DOCS_VERSION = 12  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + 
 #                        12: no numbers in the prompt text (match_and_pick, pick_into_held, strike_in_order, screw_on
 #                           describe their motion without magnitudes) and no judging language (fill_container); rules
 #                           §14.5: prompts carry no checker thresholds, score ladders or reward predicates
+#                        13: + complete_equation, arrange_digits, align_in_row, row_by_size (stream N; number-free)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

@@ -41,6 +41,7 @@ from .bridge import Bridge
 from .estimate import flagged
 from .firewall import check_obs, sanitize_info
 from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candidates
+from dojo.skills.routes import NEW_ROUTES
 
 
 # The perception service protocol still carries a ``fold`` field (offline dev tools pass a D0 half). The runtime
@@ -173,6 +174,12 @@ class RuntimeConfig:
     # under the tick's rules. off | log (Discrepancies only) | apply. ``a1_cfg``: TickConfig / RDConfig overrides
     a1: str = "off"
     a1_cfg: dict = field(default_factory=dict)
+    # held-identity guard (needs a1 on): at the lift tick, when the twin segmenter's mask between the holding arm's jaws
+    # is confidently ANOTHER category than the intended object (A1's lift identity: score >= 0.5, IoU >= 0.3 with the
+    # believed held silhouette), the intended object never left: it goes back out of the jaws in the belief (like an
+    # empty close), so the pick's own check fails (grasp_slip) and the program re-plans; the retry's open releases what
+    # the jaws took. 5.1 play_Xylophone 100000: the stand grasped for the mallet struck all 8 notes. Default off
+    held_identity_guard: bool = False
     post_place_read: str = "off"
     post_place_read_iou: float = 0.0    # 0 = only a failed refine is re-read. 0.85 (#210) re-read ok refines too and the
                                         # read's few-mm moves broke fasten_screws' thread-on (rendered arm 9: 5/5 -> 1/5)
@@ -285,6 +292,12 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # planner routes that are off by default (stream N, ``dojo.skills.routes.NEW_ROUTES``): "equation" (an equation's
+    # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right),
+    # "align" (identical blocks slid into one aligned row), "row_by_size" (objects of one kind stood in a row by size);
+    # empty = today. Their names go into the provider's
+    # ``notes["routes"]``, which ``planner.plan`` reads
+    new_routes: list = field(default_factory=list)
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -368,6 +381,7 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
+                or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.ported_swap not in ("fixed", "reach")
                 or self.cfg.joint_limits not in ("wide", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -534,10 +548,13 @@ class RuntimePolicy:
                                checker=checker if cfg.resync else None, div_iou=cfg.div_iou, div_prec=cfg.div_prec,
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
+        if cfg.new_routes:
+            prov.notes["routes"] = list(cfg.new_routes)
         prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
         prov.post_place_read = cfg.post_place_read if prov.post_place_refine else "off"
         if cfg.mode == "perception" and cfg.a1 != "off":
             prov.a1, prov.a1_cfg = cfg.a1, dict(cfg.a1_cfg)
+            prov.held_identity_guard = bool(cfg.held_identity_guard)
             prov.a1_client = lambda obs_, req_: self.perception().redetect(obs_, req_, dict(cfg.a1_cfg))
         prov.post_place_read_iou = float(cfg.post_place_read_iou)
         prov.post_place_read_cfg = dict(cfg.post_place_read_cfg)

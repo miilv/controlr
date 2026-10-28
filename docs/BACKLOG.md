@@ -139,6 +139,11 @@
     - R3: predicted visibility < 0.3 means "not observed";
     - R4: `_partial_fit` only for long / short >= 2, else "uncertain".
   - Estimate on the 55 rows: 16 -> 5 -> 0 raw flips, 0 applied-write changes.
+- [ ] **dojo runtime: held_identity_guard recall** (stream W, #271, default off, parked). On X2's 296 lift ticks the
+  guard fired twice, both on empty jaws where the intended object never left (the right action), and missed both real
+  category-level wrong-object lifts (store_tools: a wrench / pliers rose for the hammer). v2b rarely classifies a held
+  object in the wrist view as anything else. Recall needs a better held-object wrist detector (v3 post-contact data)
+  before a camera A/B.
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the
@@ -430,8 +435,15 @@
 - [ ] **dojo agent: perception is the bottleneck in mode B** (Phase 2, 2026-10-25): stack_bowls 0/6 and build_tower
   100000 0/3 were perception_gross for every model; put_bottles 0/6 were put_into drop misses / pick collisions
   (verify off). The model choice did not change these outcomes ([report](experiments/2026-10-25-agent-e2e.md)).
-- [ ] **dojo agent: align_blocks' set square has no grasp** (skills: 0 feasible / no top candidates); Astra solved
-  one layout by sweeping the blocks with a fingertip `move_to` line. A tool-push skill would make it a skill task.
+- [x] ~~**dojo agent: align_blocks' set square has no grasp** (skills: 0 feasible / no top candidates); Astra solved
+  one layout by sweeping the blocks with a fingertip `move_to` line. A tool-push skill would make it a skill task~~ —
+  `align.align_in_row` (route "align", `RuntimeConfig.new_routes`, default off) slides the blocks with the gripper; the
+  checker never reads the set square (journal 2026-10-28-dojo-newskill-tiles-align).
+- [ ] **dojo skills: solve_equation's tiles from perception.** `tiles.tile_value` takes a `number` tile's digit from
+  `ObjectState.digit` only (GT rows in G3: index % 10) and an operator disc's identity from its category with
+  `identity_known`. Nothing in perception reads either yet (stream W / S: a twin-trained tile classifier); until then a
+  rendered episode looks with a wrist and stops "values unknown". Also no `supervisor.VOCABULARIES` row for
+  solve_equation / arrange_largest_number (catalog fallback).
 
 ## P2 — harness and infrastructure
 
