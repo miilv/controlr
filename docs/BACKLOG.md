@@ -6,6 +6,12 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo infra: compute2's physics differ from compute3 / compute4's.** Never replay a compute3 / compute4 recording on
+  compute2, and never split an A/B pair across boxes. Same RoboDojo commit (f57e163) and isaacsim 5.1.0, but different
+  CPUs (i9-13900KF vs 14900KF), and the Robots asset trees checksum differently on all three boxes. On compute2,
+  c4b_bottles_gcon_100000 (recorded on compute4) is 0.002 mm off at the settled start, 2 mm by step 161, 77 mm later;
+  its dev_gt_probe drifts from the 2nd close. compute3 physics-only replays reproduce compute4 at 0.0 mm, and compute2
+  is self-consistent (rendered == physics-only, bitwise). Cause not isolated (journal 2026-10-28-dojo-bgperc §7).
 - [ ] **dojo perception: nothing re-finds an object a scripted actor moved off its generator region.** B1's placement
   priors keep tic-tac-toe's opponent pieces on their side of the table. On the proxy replay of B_breadth2 100004, 13
   head re-reads after the opponent's move never paired a reading with the moved piece, although the head check saw its
