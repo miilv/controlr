@@ -466,3 +466,23 @@ def test_ported_pour_defaults_v1():
     from dojo.runtime.policy import RuntimeConfig
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().ported_pour == "v1" and SKILL_ATTRS["ported_pour"][0] == "v1"
+
+
+def test_library_pickup_route_and_lift():
+    from dojo.skills import library as L
+    instr = "Pick up the toy car by 10 cm."
+    env, sk = gt_skills(rows_pickup(), instr, step_lim=200)
+    w = sk.refresh()
+    p = planner.plan(instr, w, ported={"pickup": "library"})
+    assert p.skill == "lift_up" and p.args == {"obj": "target", "by": 0.10}
+    assert planner.plan(instr, w, ported=True).args == {"skill": "pick_up", "args": {}}       # default: unchanged
+    lifted = []
+    sk.ex.on_step = lambda ex: lifted.append(env.objects[0]["pos"][2])
+    res = L.skill_fn(p.skill)(sk, **p.args)
+    assert res["ok"] and max(lifted) > Z + 0.02 + 0.10
+
+
+def test_ported_pickup_defaults_v1():
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().ported_pickup == "v1" and SKILL_ATTRS["ported_pickup"][0] == "v1"

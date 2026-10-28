@@ -279,6 +279,15 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         phrase = m.group(1).strip()
         hits = [o for o in world.objects.values() if o.obj_type == "Rigid" and getattr(o, "identity_known", True)
                 and phrase in asset_descriptions(o.asset.key)]                 # clutter too: never assume the role
+        if (opts or {}).get("pickup") == "library":                           # our Skills.pick (dojo/skills/pickup.py)
+            if len(hits) != 1:
+                words = {_singular(w_) for w_ in re.findall(r"[a-z]+", phrase)}
+                hits = [o for o in world.objects.values() if o.obj_type == "Rigid" and getattr(o, "identity_known", True)
+                        and all(_singular(t) in words for t in o.category.lower().split("_") if t)]
+            if len(hits) == 1:
+                mby = re.search(r"\bby\s+(\d+(?:\.\d+)?)\s*(cm|mm|m)\b", text)
+                by = float(mby.group(1)) * {"cm": 0.01, "mm": 0.001, "m": 1.0}[mby.group(2)] if mby else 0.10
+                return Plan("lift_up", {"obj": hits[0].label, "by": by}, f"lift {hits[0].label} by {by:.2f} m (library)")
         return run("pick_up", obj="@" + hits[0].label) if len(hits) == 1 else run("pick_up")
     # sort objects into containers by category: free ("sort ... by category into the baskets") or a fixed map ("put X
     # objects into the left basket, ...", which the skill parses)
@@ -662,7 +671,7 @@ def solve(sk) -> dict:
     w = sk.refresh()
     p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
              and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
-                  "pour": getattr(sk, "ported_pour", "v1")})
+                  "pour": getattr(sk, "ported_pour", "v1"), "pickup": getattr(sk, "ported_pickup", "v1")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":
