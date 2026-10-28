@@ -76,3 +76,19 @@ under "### I".
   the instruction, and the frame-0 record is empty (BACKLOG). The remaining jobs were dropped.
 - Spend so far: about 80 perceiver calls (claude/claude-sonnet-5-5), ~1.1 M prompt tokens (~0.85 M of them cache
   reads), ~45 k completion tokens. No 429.
+
+## 4. grip_check's key per deployment path (arm 8 follow-up)
+
+- Arm 8 measured grip_check with DOJO_GRIP_SOURCE=v2. `belief._grip_check` read only `<arm>_ee_joint_state_official`
+  and took the command from `<arm>_ee_joint_state`.
+- On a path that hands over RoboDojo's observation as it is, `<arm>_ee_joint_state` IS the official value and there is
+  no `_official` key, so the check never fired.
+- `RuntimeConfig.grip_official_key` handles both paths:
+  - `"official_key"`: the default, today's behaviour.
+  - `"ee_joint_state"`: the official value from `<arm>_ee_joint_state`, the command from `KinematicBelief.g`.
+- The report's `grip_check` records the key.
+- The tests cover the trap both ways round:
+  - the default key on the robodojo path is a no-op;
+  - `"ee_joint_state"` on a command-semantics path drops a held block as empty.
+- The submission preset sets the key explicitly per path.
+

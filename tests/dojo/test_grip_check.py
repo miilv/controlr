@@ -2,7 +2,9 @@
 
 The value reaches the runtime under ``<arm>_ee_joint_state_official``: robot-harness's strict server v2
 (``eef.<arm>.ee_joint_state_official``, D-C11) through the bridge contract, or ``DOJO_GRIP_SOURCE=v2`` in the dev
-harnesses (the command stays in ``<arm>_ee_joint_state``). CPU only: the kinematic env, no Isaac, no perception service.
+harnesses (the command stays in ``<arm>_ee_joint_state``). A path that hands over RoboDojo's observation as it is carries
+it in ``<arm>_ee_joint_state`` itself: ``grip_official_key="ee_joint_state"`` (the command is then the runtime's own).
+CPU only: the kinematic env, no Isaac, no perception service.
 """
 
 import numpy as np
@@ -44,10 +46,11 @@ def _official(env, arm: str) -> float:
 
 
 class _Episode:
-    """proxy_eval's ProxyEpisode stand-in; ``official`` adds the strict v2 key per arm."""
+    """proxy_eval's ProxyEpisode stand-in; ``official`` adds the strict v2 key per arm; ``robodojo`` hands over RoboDojo's
+    observation as it is: ``<arm>_ee_joint_state`` IS the official value, no command anywhere in the obs."""
 
-    def __init__(self, env, official: bool):
-        self.env, self.official = env, official
+    def __init__(self, env, official: bool, robodojo: bool = False):
+        self.env, self.official, self.robodojo = env, official, robodojo
 
     def info(self):
         return {"stable": True, "task": "stack_blocks", "layout_id": 1, "instruction": self.env.instruction,
@@ -55,6 +58,9 @@ class _Episode:
 
     def observe(self):
         st = self.env.proprio()
+        if self.robodojo:
+            for a in ("left", "right"):
+                st[f"{a}_ee_joint_state"] = np.array([round(_official(self.env, a), 4)])
         if self.official:
             for a in ("left", "right"):
                 st[f"{a}_ee_joint_state_official"] = np.array([round(_official(self.env, a), 4)])
@@ -286,6 +292,75 @@ def test_off_by_default_and_validated():
     assert RuntimeConfig().grip_check == "off"
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(mode="perception", grip_check="maybe"), assets=_Assets())
+    assert RuntimeConfig().grip_official_key == "official_key"                # today's key unless a deployment says so
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(mode="perception", grip_check="on", grip_official_key="auto"), assets=_Assets())
+
+
+# ------------------------------------------------------------------ grip_official_key: where the official value is
+def _prov_ee(obs_value: float, own_cmd: float, mode: str = "ee_joint_state"):
+    """A held block_1 where the obs's left_ee_joint_state reads ``obs_value`` (no _official key) and the runtime's
+    own last command (``belief.g``) is ``own_cmd``."""
+    prov, obs, pose0, calls = _prov(official=None, cmd=obs_value)
+    prov.grip_official_key = mode
+    prov.belief.g["left"] = own_cmd
+    return prov, obs, pose0, calls
+
+
+def test_ee_joint_state_mode_reads_the_obs_value_against_our_own_command():
+    # RoboDojo's observation as it is: 0.2631 on a held 30 mm block while we commanded 0.0
+    prov, obs, _, calls = _prov_ee(0.2631, 0.0)
+    prov._grip_check(obs)
+    prov._held_check(obs)
+    ev = [e for e in prov.events if e["kind"] == "grip_check"]
+    assert ev[-1]["verdict"] == "held" and ev[-1]["official"] == 0.2631 and ev[-1]["cmd"] == 0.0
+    assert "left" in prov.belief.attached and calls == []                   # decided: no vision look
+    # closed on nothing: the applied control reads the command itself
+    prov, obs, pose0, calls = _prov_ee(0.0, 0.0)
+    prov._grip_check(obs)
+    ev = [e for e in prov.events if e["kind"] == "grip_check"][-1]
+    assert ev["verdict"] == "empty" and ev["dropped"] == "air" and "left" not in prov.belief.attached
+    assert np.allclose(prov.belief.objects["block_1"].pos, pose0[:3], atol=1e-6)
+
+
+def test_the_mode_must_match_the_path_it_cannot_be_guessed():
+    # the trap, both ways round:
+    # (1) the default key on a path whose obs carries the official value in <arm>_ee_joint_state: no reading at all
+    prov, obs, _, calls = _prov_ee(0.2631, 0.0, mode="official_key")
+    prov._grip_check(obs)
+    assert not any(e["kind"] == "grip_check" for e in prov.events)          # a silent no-op
+    prov._held_check(obs)
+    assert calls == [("left", "block_1")]                                   # the vision held_look runs as before
+    # (2) "ee_joint_state" on a command-semantics path (strict v1: the obs's value IS our command, 0.0): a block that is
+    # really held reads official - command = 0, exactly an empty grip -> wrongly dropped. Equal values carry no
+    # information about which semantics the path has, so the deployment must say which key it provides
+    prov, obs, _, _ = _prov_ee(0.0, 0.0)
+    prov._grip_check(obs)
+    assert [e for e in prov.events if e["kind"] == "grip_check"][-1]["verdict"] == "empty"
+    # (3) and the default key on that strict-v2 path still reads the official key against the obs's command
+    prov, obs, _, _ = _prov(official=0.2631, cmd=0.0)
+    prov._grip_check(obs)
+    assert [e for e in prov.events if e["kind"] == "grip_check"][-1]["verdict"] == "held"
+
+
+def test_episode_ee_joint_state_mode_on_robodojo_semantics():
+    def episode(key, off_m):
+        env = _env()
+        pc = _Perception(off_m)
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", held_look="b1_then_agent", tracker="on",
+                                          grip_check="on", grip_official_key=key), assets=_Assets(), perception_client=pc)
+        return _run(pol, _Episode(env, official=False, robodojo=True)), pc
+    rep, pc = episode("ee_joint_state", 0.0)
+    assert rep["error"] is None and rep["grip_check"] == {"official_at_start": True, "key": "ee_joint_state"}
+    picks = sum(1 for h in rep["history"] if h["skill"] == "pick" and h["ok"])
+    held = [e for e in rep["events"] if e["kind"] == "grip_check" and e["verdict"] == "held"]
+    assert picks >= 2 and len(held) >= picks and pc.held == []              # the reads replace the vision looks
+    rep, _ = episode("ee_joint_state", 0.028)                               # block_0 believed 28 mm off: a close on air
+    ev = [e for e in rep["events"] if e["kind"] == "grip_check" and e["verdict"] == "empty"]
+    assert ev and ev[0]["label"] == "block_0" and ev[0]["dropped"] == "air"
+    rep, pc = episode("official_key", 0.0)                                  # the default key on this path: a no-op
+    assert rep["grip_check"]["official_at_start"] is False and not any(e["kind"] == "grip_check" for e in rep["events"])
+    assert pc.held
 
 
 # ------------------------------------------------------------------ whole episodes
