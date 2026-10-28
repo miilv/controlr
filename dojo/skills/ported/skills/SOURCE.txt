@@ -9,6 +9,8 @@ dojo/skills/ported/harness_robot.py (HarnessRobot), never through robot-harness'
   skills/pour_bottle/skill_robodojo.py        pour_liquid_into_cup   (2/5, D-C14 args slip_m 0.035 slip_deg 25)
   skills/pick_up/skill_robodojo.py            general_pickup         (2/5, 3/5)
   skills/planar_drag/skill_robodojo.py        push_T                 (5/5, 5/5)
+  skills/classify_into_bins_v3b/             classify_objects + classify_objects_by_language (K4: 5/5, 3/5)
+  skills/classify_into_bins, put_into_bin*, planar_drag_rgb*, return_home_budget   classify's dependency tree
   skills/pick, place_on, lift, return_home    siblings the above call (robot.skill / colour_order.load_sibling)
   skills/colour_order.py, skills/skilllib.py  shared helpers
 
