@@ -266,3 +266,22 @@ def test_seg_model_reads_its_training_size(monkeypatch):
     monkeypatch.setitem(sys.modules, "torch", types.ModuleType("torch"))
     assert seg_twin._SegModel("w.pt").imgsz == 960
     assert seg_twin._SegModel("w.pt", imgsz=640).imgsz == 640
+
+
+def test_seg_dedup_keeps_one_detection_per_object():
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from dojo.perception import inverse_layout as il
+
+    a = np.zeros((20, 20), np.uint8)
+    a[2:8, 2:8] = 1
+    b = a.copy()
+    b[2:8, 8] = 1                       # the same block, a slightly larger mask, another class
+    c = np.zeros_like(a)
+    c[12:18, 12:18] = 1
+    dets = [seg_twin.Det(b, "Rigid/block/00014", 0.70), seg_twin.Det(a, "Rigid/block/00015", 0.86),
+            seg_twin.Det(c, "Rigid/block/00005", 0.91)]
+    kept, n = il._seg_dedup(dets, 0.7)
+    assert n == 1 and [d.key for d in kept] == ["Rigid/block/00005", "Rigid/block/00015"]
+    assert kept[1].alts == [("Rigid/block/00014", 0.7)]
+    assert il._seg_dedup(dets, 0.0)[1] == 0
