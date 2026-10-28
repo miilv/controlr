@@ -103,7 +103,7 @@ def _probe_check(row: dict, frames: dict, actions: list, kin) -> dict:
 def family(run: str) -> str:
     """A run's round: the name without its task and repeat suffix (B_hang_mugs_breadth2 -> B_*_breadth2)."""
     import re
-    for pat, fam in ((r"^c4_", "c4 (genuine 5.1)"), (r"^smoke51", "c4 (genuine 5.1)"), (r"^P3r3_", "P3r3"), (r"^P3n_", "P3n"),
+    for pat, fam in ((r"^c4b_", "c4b (Integration, latest code)"), (r"^c4_", "c4 (genuine 5.1)"), (r"^smoke51", "c4 (genuine 5.1)"), (r"^P3r3_", "P3r3"), (r"^P3n_", "P3n"),
                      (r"^P3_", "P3"), (r"^S79_", "S79"), (r"^TL_", "TL"), (r"^AGB?_", "AG"), (r"_breadth2$", "B_breadth2"),
                      (r"_breadth$", "B_breadth"), (r"^B_plug_heldpose", "B_heldpose")):
         if re.search(pat, run):
@@ -114,7 +114,7 @@ def family(run: str) -> str:
 # newest first (the rounds' dates and code: c4 27 Oct 17-22Z submit_v2/v3 genuine 5.1; P3r3 27 Oct 12Z submit_v2 13aaf9a;
 # TL 11Z; P3n 08Z eeb94de; P3 05Z 1f7e965; S79 03Z 48600bf; breadth2 26 Oct 21Z ed8ca42; heldpose 16Z; breadth 16Z
 # f9b0d75; early rounds 25-26 Oct)
-FAMILY_ORDER = ("c4 (genuine 5.1)", "P3r3", "TL", "P3n", "P3", "S79", "B_breadth2", "B_heldpose", "B_breadth", "AG",
+FAMILY_ORDER = ("c4b (Integration, latest code)", "c4 (genuine 5.1)", "P3r3", "TL", "P3n", "P3", "S79", "B_breadth2", "B_heldpose", "B_breadth", "AG",
                 "early (B_stack / B_build / B_tower ...)")
 
 
@@ -326,6 +326,8 @@ def cmd_table(a) -> None:
         print(taxonomy(rows))
     elif a.frame0:
         print(frame0_table(rows))
+    elif a.gap:
+        print(gap_table(rows))
     else:
         print(corr(rows) if a.corr else table(rows, a.by))
 
@@ -356,10 +358,12 @@ def failure_rows(rows: list[dict], R: str = "10") -> list[dict]:
             if nb:
                 n = nb[0]
                 what = {"what": "neighbour " + ("not found" if n.get("xy_mm") is None else "off"), "label": n["label"],
-                        "xy_mm": n.get("xy_mm"), "dist_m": n["dist_m"], "clutter": n.get("clutter")}
+                        "xy_mm": n.get("xy_mm"), "dist_m": n["dist_m"], "clutter": n.get("clutter"),
+                        "belief_source": n.get("belief_source")}
             else:
                 p = ph[0]
-                what = {"what": "phantom", "label": p["label"], "xy_mm": p["nearest_gt_mm"], "dist_m": p["dist_m"]}
+                what = {"what": "phantom", "label": p["label"], "xy_mm": p["nearest_gt_mm"], "dist_m": p["dist_m"],
+                        "belief_source": p.get("source")}
         what["thin"] = any(t in str(what.get("label")) for t in THIN)
         out.append({"task": r["task"], "run": r["run"], "layout_id": r["layout_id"], "kind": r["kind"], "step": r["step"],
                     "arm": r["arm"], "success": r.get("success"), "reasons": r["reasons"][R], **what})
@@ -385,6 +389,58 @@ def taxonomy(rows: list[dict], R: str = "10") -> str:
         ts.update(src[t])
     lines.append(f"| **all** | {sum(tot.values())} | {', '.join(f'{k} {v}' for k, v in tot.most_common())} | "
                  f"{', '.join(f'{k} {v}' for k, v in ts.most_common())} |")
+    return "\n".join(lines)
+
+
+RELEASED = ("released", "post_place", "held_dropped", "probe_released")
+
+
+def blocker(x: dict) -> str:
+    """The class that blocks an unclean event (its first failure), as the streams own them: not_held (the held state),
+    in-hand pose, released (an object the robot let go earlier, believed where the release put it), target pose,
+    reference pose, identity, neighbour / phantom."""
+    w = x["what"]
+    if w == "held not_held":
+        return "not_held"
+    if w.endswith("identity"):
+        return "identity"
+    if w.startswith("neighbour") or w == "phantom":
+        return "released" if x.get("belief_source") in RELEASED else "neighbour"
+    if x.get("source") in RELEASED:
+        return "released"
+    if w.startswith("held"):
+        return "in-hand pose"
+    if w.startswith("reference"):
+        return "reference pose"
+    return "target pose"
+
+
+BLOCKERS = ("not_held", "in-hand pose", "released", "target pose", "reference pose", "identity", "neighbour")
+
+
+def gap_table(rows: list[dict], goal: float = 0.95, R: str = "10") -> str:
+    """Per task: events, clean at R, the clean events still missing to ``goal``, and the unclean events by blocker."""
+    import math
+    by = defaultdict(list)
+    for r in rows:
+        by[r["task"]].append(r)
+    fails = defaultdict(Counter)
+    for x in failure_rows(rows, R):
+        fails[x["task"]][blocker(x)] += 1
+    lines = [f"| task | events | clean R{R} | events to {int(goal * 100)} % | unclean by blocker: " + " / ".join(BLOCKERS) + " |",
+             "|---|---|---|---|---|"]
+    tot_n = tot_c = tot_g = 0
+    tot_f = Counter()
+    order = sorted(by, key=lambda t: -(math.ceil(goal * len(by[t])) - sum(r["clean_r"][R] for r in by[t])))
+    for t in order:
+        n, c = len(by[t]), sum(bool(r["clean_r"][R]) for r in by[t])
+        g = max(0, math.ceil(goal * n) - c)
+        tot_n, tot_c, tot_g = tot_n + n, tot_c + c, tot_g + g
+        tot_f.update(fails[t])
+        lines.append(f"| {t} | {n} | {100 * c / n:.0f} % | {g} | " + " / ".join(str(fails[t].get(b, 0)) for b in BLOCKERS) + " |")
+    if tot_n:
+        lines.append(f"| **all** | {tot_n} | {100 * tot_c / tot_n:.0f} % | {max(0, math.ceil(goal * tot_n) - tot_c)} "
+                     f"(sum per task {tot_g}) | " + " / ".join(str(tot_f.get(b, 0)) for b in BLOCKERS) + " |")
     return "\n".join(lines)
 
 
@@ -483,6 +539,7 @@ def main(argv=None) -> None:
     t.add_argument("--fails", action="store_true", help="one JSON line per unclean event (R10)")
     t.add_argument("--frame0", action="store_true", help="the runtime's belief vs the frame-0 record, same events")
     t.add_argument("--latest", action="store_true", help="per task only its newest round (FAMILY_ORDER)")
+    t.add_argument("--gap", action="store_true", help="per task: events to 95 %% at R10 and what blocks them")
     t.add_argument("--old", action="store_true", help="per task every round but its newest")
     t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)
