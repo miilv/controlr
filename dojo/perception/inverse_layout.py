@@ -42,7 +42,7 @@ from scipy.spatial.transform import Rotation
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
 from .identity_marks import identity_marks
 from .select_ties import assign_keys, tie_mode
-from .digits import glyph_evidence, record_fields as digit_fields
+from .digits import GLYPH_ONLY, glyph_evidence, record_fields as digit_fields
 from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 from .slots import settled as _settled, support_slot
@@ -865,6 +865,72 @@ def _glyph_read_slot(h: "Hypothesis", g: dict, placement: dict, tag: str | None,
         h.key, h.tag = r["key"], sm_k.tag
         h.per_view["identity"] = "read"
     return h
+
+
+def _takes_robot(fn) -> bool:
+    import inspect
+    try:
+        return "robot" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
+
+
+NUMERAL_MIN_VIEWS = 2   # S's held-out test: one head read is wrong 1-5 % of the time; a digit is confirmed by 2 views
+
+
+def _glyph_read_numeral(h: "Hypothesis", views) -> None:
+    """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): the crop classifier
+    (``glyph_read.classify_mask``) reads the object's silhouette at its fitted pose in every view, frame 0 and looks
+    alike. Reads that disagree leave the digit unknown. Agreeing reads in >= ``NUMERAL_MIN_VIEWS`` views set it with
+    confidence 1; a single view sets it with confidence 0.5 (a skill confirms it with a wrist look before committing).
+    The chosen asset follows the digit within its texture group (the checker reads idx % 10). No read: unknown;
+    B1's texture compare never sets it."""
+    from .digits import GLYPH_ONLY, NUMERAL_DIGIT, as_digit
+
+    cat = h.key.split("/")[1]
+    if cat not in GLYPH_ONLY or h.per_view.get("occluded"):
+        return
+    from . import glyph_read
+
+    classify = getattr(glyph_read, "classify_mask", None)
+    if classify is None:
+        h.per_view["glyph_read"] = {"read": False, "why": "no classify_mask"}
+        return
+    reads, whys = {}, {}
+    for name, v in sorted(views.items()):
+        try:
+            m = h.sm().sil(v.cam, h.T())
+            if getattr(v, "known", None) is not None:
+                m = m & (v.known > 0)
+            kind = "cam_head" if name.split("@")[0] == "cam_head" else "cam_left_wrist"
+            rob = getattr(v, "robot", None)
+            # the arm's pixels (S's reader v2 refuses a tile half hidden by the gripper: a cut 3 reads as a 9)
+            r = (classify(v.img, m, view=kind, robot=np.asarray(rob) > 0) if rob is not None and _takes_robot(classify)
+                 else classify(v.img, m, view=kind))
+        except Exception as e:  # a reader failure never takes perception down: the digit stays unknown
+            r = {"read": False, "why": f"error: {type(e).__name__}"}
+        d = as_digit(r.get("name")) if r.get("read") else None
+        if d is not None:
+            reads[name] = (d, float(r.get("margin") or 0.0))
+        else:
+            whys[name] = r.get("why") or ("not a digit" if r.get("read") else "no read")
+    digits_read = {d for d, _ in reads.values()}
+    out = {"views": {k: v[0] for k, v in reads.items()}, "unread": whys}
+    if len(digits_read) != 1:
+        out.update(read=False, why="disagree" if digits_read else (sorted(set(whys.values()))[0] if whys else "not visible"))
+        h.per_view["glyph_read"] = out
+        return
+    d = digits_read.pop()
+    out.update(read=True, name=str(d), conf=1.0 if len(reads) >= NUMERAL_MIN_VIEWS else 0.5, n_views=len(reads),
+               margin=round(max(m for _, m in reads.values()), 3))
+    cands = list(h.per_view.get("geom_group") or [h.key])
+    idxs = [int(k.split("/")[2]) for k in cands if k.split("/")[1] == cat]
+    grp = int(h.key.split("/")[2]) // 10
+    f = NUMERAL_DIGIT[cat]
+    same = [i for i in idxs if i // 10 == grp and f(i) == d] or [i for i in idxs if f(i) == d]
+    if same:
+        h.key = f"{h.key.split('/')[0]}/{cat}/{same[0]:05d}"
+    h.per_view["glyph_read"] = out
 
 
 @lru_cache(maxsize=4096)
@@ -4139,6 +4205,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 chosen[i].per_view["glyph"] = glyph_evidence(chosen[i].key, TX[row][ci],  # score, its margin in its row
                                                              float(rest.min() - C[row, ci]) if rest.size else None,
                                                              cfg.glyph_min_margin, cfg.ambiguity_margin)
+    if cfg.glyph_read != "off":
+        for h in chosen:
+            _glyph_read_numeral(h, views)
     timings["identity_s"] = round(time.time() - t4, 3)
 
     # ---- yaw from a feature cut into the top (insert_key's round lock: its keyhole). Such an outline is the same at
@@ -4256,7 +4325,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         near_home = h.tag != "fixed" and any(np.hypot(h.x - c[0], h.y - c[1]) < HOME_HIDE_RADIUS for c in HOME_HIDDEN_XY)
         fg_near = resid_near.get(id(h), 0.0)
         # a digit only from a glyph read (digits.record_fields); an unread one is also a reason to look again
-        dfields = digit_fields(cat, idx, h.per_view.get("glyph"), h.key, len(h.per_view.get("geom_group") or g["candidates"]))
+        dfields = digit_fields(cat, idx, h.per_view.get("glyph"), h.key, len(h.per_view.get("geom_group") or g["candidates"]),
+                               classifier=h.per_view.get("glyph_read"))
         ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
                      or bool(h.per_view.get("low_contrast")) or dfields.get("digit_source") == "unread"
                      or rival is not None or hidden > cfg.hidden_frac_flag or near_home or fg_near > cfg.fg_resid_flag)
@@ -4286,7 +4356,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                **({"on_base": h.per_view["on_base"]} if h.per_view.get("on_base") else {}),
                                **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {}),
                                **({"twin": h.per_view["twin"]} if h.per_view.get("twin") else {}),
-                               **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {})}}
+                               **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {}),
+                               **({"glyph_read": h.per_view["glyph_read"]} if cat in GLYPH_ONLY and h.per_view.get("glyph_read") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []

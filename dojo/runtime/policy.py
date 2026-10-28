@@ -865,6 +865,20 @@ class RuntimePolicy:
         return result
 
     # ------------------------------------------------------------------ helpers
+    def _merge_glyph(self, prov, label: str, g: dict) -> None:
+        """A wrist view's numeral read (perception ``refine``'s ``glyph``) merged into the belief's digit
+        (``digits.merge_view_read``: agree -> confirmed, first -> one view, disagree -> unknown). Event ``digit_read``."""
+        from dojo.perception.digits import as_digit, merge_view_read
+        o = prov.belief.objects.get(label) if prov.belief else None
+        if o is None:
+            return
+        d = as_digit(g.get("name")) if g.get("read") else None
+        before = (o.digit, o.digit_conf, o.digit_source)
+        o.digit, o.digit_conf, o.digit_source, why = merge_view_read(o.digit, o.digit_conf, o.digit_source, d)
+        self.report["events"].append({"kind": "digit_read", "label": label, "step": self.bridge.steps_used,
+                                      "read": d, "why": why or g.get("why"), "before": list(before),
+                                      "after": [o.digit, o.digit_conf, o.digit_source]})
+
     def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
         """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
         ``label`` locally on the new views (perception service ``refine``), write accepted poses into the belief.
@@ -936,6 +950,8 @@ class RuntimePolicy:
             kw["empty_hand"] = True
         res = self.perception().refine(obs, objs, self.fold, max_shift, arm=arm, identity_vocabulary=idv, held=held, **kw)
         r = res.get(label) or {}
+        if r.get("glyph") is not None:
+            self._merge_glyph(prov, label, r["glyph"])
         if sk is not None:
             sk.last_refine = {**r, "label": label, "for": kind}  # the raw reading (skills read e.g. its yaw_source)
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
