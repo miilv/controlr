@@ -309,6 +309,9 @@ class A1Arm:
         j = at_or_before(self.seq, s)
         if j is None or (not trig and self.schedule != "always"):
             return {}
+        if not trig:                                    # S's background tick: activates and seeds nothing (W)
+            from dojo.runtime.tick import Trigger
+            trig = [Trigger("periodic", s)]
         grasped = {lab for k, _a, lab in self.grasps if k <= s}
         fixture = fixture_labels([e for e in self.events if e["step"] <= s], held_now=set(att.values()),
                                  grasps=[(lab, k) for k, _a, lab in self.grasps if k <= s])
@@ -354,6 +357,7 @@ class A1Arm:
         close_tcp = {t.label: w.T(t.arm, s)[:3, 3].tolist() for t in trig if t.kind == "close_empty" and t.arm}
         fr = self.seq.frame(j)
         obs = {"images": fr["images"], "state": {k: np.asarray(v, float) for k, v in fr["state"].items()}}
+        pend0 = {lab: int(v[0]) for lab, v in self.st.pending.items()}   # hypotheses awaiting a second tick
         t0 = time.perf_counter()
         try:
             writes, ds, resp = run(obs, objs, dict(att), trig, meta, self.st, self.tk_cfg,
@@ -366,6 +370,9 @@ class A1Arm:
         self.log.append({"step": s, "frame": j, "triggers": [(t.kind, t.label, t.arm) for t in trig],
                          "active": resp.get("active"), "dets_hash": resp.get("dets_hash"),
                          "writes": sorted(writes), "discrepancies": [d.to_dict() for d in ds],
+                         # a write whose label had a hypothesis pending from an earlier tick: the gap (W: in S, two
+                         # ticks < 10 steps apart see nearly the same images)
+                         "pending_gap": {lab: s - pend0[lab] for lab in writes if lab in pend0},
                          "wall_s": round(time.perf_counter() - t0, 3)})
         return writes
 
@@ -641,6 +648,9 @@ def main():
         tl = getattr(arm, "log", [])
         ticks_ep.append({"episode": n, "ticks": len(tl), "errors": sum("error" in t for t in tl),
                          "writes": sum(len(t.get("writes") or []) for t in tl),
+                         "writes_pending_lt10": sum(1 for t in tl for g in (t.get("pending_gap") or {}).values()
+                                                    if g < 10),
+                         "periodic_ticks": sum(1 for t in tl if any(x[0] == "periodic" for x in t.get("triggers") or [])),
                          "wall_s": round(sum(float(t.get("wall_s") or 0) for t in tl), 2)})
         misses += sum(1 for t in getattr(arm, "log", []) if "frozen detection cache" in str(t.get("error")))
         for fh, rows in ((f_rt, rt_rows), (f_arm, arm_rows), (f_rc, rcs)):
@@ -658,6 +668,8 @@ def main():
         cost = {"episodes": len(ticks_ep), "ticks": sum(t["ticks"] for t in ticks_ep),
                 "ticks_per_episode": round(sum(t["ticks"] for t in ticks_ep) / len(ticks_ep), 1),
                 "errors": sum(t["errors"] for t in ticks_ep), "writes": sum(t["writes"] for t in ticks_ep),
+                "periodic_ticks": sum(t["periodic_ticks"] for t in ticks_ep),
+                "writes_with_pending_lt10_steps": sum(t["writes_pending_lt10"] for t in ticks_ep),
                 "tick_wall_s_per_episode": round(sum(t["wall_s"] for t in ticks_ep) / len(ticks_ep), 1)}
     summ = {"arm": an, "kind": a.arm, "schedule": a.schedule if a.arm == "a1" else None, "dets_cache_misses": misses,
             "online_cost": cost, "all": summarize(all_rt, all_arm, all_rc),
