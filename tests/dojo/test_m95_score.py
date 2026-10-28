@@ -141,3 +141,13 @@ def test_x2_pairs_arms_with_rt():
            dict(_ev("place", 30, "b"), arm="left", verdict="within noise"), dict(_ev("grasp", 99, "c"), arm="left")]
     line = ms.x2_table(rt, {"J": arm}).splitlines()[-1]
     assert line == "| J | 3 | 1 | 2 | 1 | 1 | 1 | 1 |"
+
+
+def test_x2_split_by_run_group():
+    on, off = "c4b_swap_gcon_100000", "c4b_swap_gcoff_100000"
+    rt = [dict(_ev("grasp", 10, "a"), arm="left", run=on), dict(_ev("grasp", 10, "a", False), arm="left", run=off)]
+    arm = [dict(_ev("grasp", 10, "a", False), arm="left", run=on), dict(_ev("grasp", 10, "a"), arm="left", run=off)]
+    rows = lambda only: ms.x2_table(rt, {"J": arm}, only=only).splitlines()[-1]   # noqa: E731
+    assert rows(lambda r: "_gcon_" in r) == "| J | 1 | 1 | 0 | 0 | 1 | 0 | 0 |"
+    assert rows(lambda r: "_gcoff_" in r) == "| J | 1 | 0 | 1 | 1 | 0 | 0 | 0 |"
+    assert rows(None) == "| J | 2 | 1 | 1 | 1 | 1 | 0 | 0 |"
