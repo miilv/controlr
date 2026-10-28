@@ -54,6 +54,37 @@ Tracker replay (`RuntimeProvider._track` on the recorded scene reads):
   the runtime's read every 4, before `match_and_pick` has a velocity, so it does no harm.
 - Riding out of view past x ~0.72, the border cuts a rider and its reads jump 4-11 cm across the belt (#175's case).
 
+### 3.1 To step 440, plain and DINOv2, through match_and_pick's decision (compute3 light4, lead-approved)
+- Inputs: the same frames, steps 260-440 at a read every 20 steps, the scene background, plain reads and
+  `embed_model dinov2_s`.
+- A replay harness runs the real `match_and_pick` (first object, velocity, match rule) on the tracker. The robot is at
+  home and the pick is stubbed.
+
+| layout | plain | DINOv2 |
+|---|---|---|
+| 100000 (puppet) | no match by step 440: the puppet behind reads as "camera" | the same |
+| 100001 (ice cream) | target1 at step 386, 2 mm off | target1 at step 266, 13 mm off |
+| 100002 (phone) | target1 at step 346, 95 mm off across the belt (a flat phone at the far end; its reads are right from step 420) | the same |
+
+- Reads of the match rider at x in (-0.45, 0.70]:
+
+  | reads | at the rider | right identity |
+  |---|---|---|
+  | plain | 16 / 25 | 11 / 25 |
+  | DINOv2 | 13 / 25 | 13 / 25 |
+
+  DINOv2 is the same as plain for the first rider (23 / 23), and has fewer phantoms (34 against 52 over steps 0-250).
+- Two tracker / skill gaps showed up, and are fixed in §4:
+  - **The belt velocity fell to zero between riders.** Once the first rider's track left the 40-step window, no track
+    was trusted until the next rider had 4 reads: zeros for ~100 steps, and the next riders' predictions stood still.
+  - **A ghost of the first object was "the next one".** 100002, plain: the first phone's reads at the view's border
+    jumped 11 cm across the belt. Two of them started a second phone track there. Once the first's own track was lost,
+    match_and_pick's "comes from behind the first" guard was off (`first not in w.objects`), and it chose that ghost,
+    riding out of view at x 0.97, at step 126.
+- Far-end reads are noisy:
+  - newcomer tracks there give belt velocities of 2.1-5.5 mm / step while they are the only trusted tracks;
+  - identity there is the weak point: puppet -> camera, the flat phone's y.
+
 ## 4. The change (branch `feat/dojo-conveyor-belt-blind`)
 A missing belt background is now loud and harmless:
 - `segment.scene_bg_key(fold_dir, keys)`: the scene key whose background a fold has (`with_scene` uses it).
@@ -69,11 +100,21 @@ A missing belt background is now loud and harmless:
 - Skills: `match_and_pick` / `pick_into_held` answer `nothing moves (belt reads blind: ...)`. G3 is unchanged, since
   its provider has no `belt_blind`.
 
+Two fixes from §3.1:
+- `RuntimeProvider.belt_velocity` keeps the belt's last measured velocity when no track is trusted. Only in a scene
+  with a moving base: a belt runs at one speed.
+- `match_and_pick`'s "behind the first" now uses the first's last belief moved on with the belt once the first has
+  left the belief. While the first is in the belief nothing changes. In G3, where the GT world keeps every object,
+  nothing changes either.
+
 Tests:
 - `tests/dojo/test_belt_replay.py` replays the recorded sequences (`tests/fixtures/belt_reads_51.json`):
   - compute4's reads on main's rule reproduce the five drops at step 4;
   - the same reads marked blind keep the labels and name the cause;
-  - the scene-background reads track the first rider from frame 0 and give 4.0 mm / step by the 4th read;
+  - the scene-background reads track the first rider from frame 0 and give 4.0 mm / step by the 4th read, and keep
+    it between riders;
+  - match_and_pick on the replayed reads takes target1 in 100001 / 100002 (plain and DINOv2) and nothing in 100000.
+    The previous skill takes 100002's ghost;
   - `blind_reason`, the service's warning, and the `belt_read` op through the service process.
 - `test_runtime.py::test_a_blind_belt_read_is_logged_and_the_belief_keeps_its_objects` covers the policy end to end.
 
@@ -85,7 +126,9 @@ Tests:
   Only 6.0-proxy leave-one-out folds exist, in `compute3:~/dojo-data/pbake-identity/bg_byimg{A,B}`. Every genuine-5.1
   run of that task is blind until a 5.1 `belt_bg record` + `build` exists. It waits for compute2 (BACKLOG).
 - Next: the paired rendered re-run of matchbelt 100000-04 with the scene backgrounds (Integration).
+- Open (BACKLOG): far-end identity (puppet -> camera) and position (flat phone); far-end velocity noise.
 - Spend: 0 LLM calls.
-  - compute3: ~10 min of 4 CPU processes x 2 threads.
+  - compute3: ~10 min of 4 CPU processes x 2 threads, then ~35 min on light4 (flock): the DINOv2 arm and the
+    260-440 reads.
   - B1 / belt_read render through pyrender EGL, so those processes also held a ~315 MiB graphics context on the GPU
     for ~5 min, outside a slot. Stopped when seen, and reported to the lead. There is no OSMesa on the box.

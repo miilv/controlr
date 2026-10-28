@@ -4,8 +4,9 @@ Genuine-5.1 match_and_pick_from_conveyor on compute4 (main ad5b50e, 2026-10-28) 
 moves". That box's bg_folds_51 had no ``scene/`` background, so the belt read segmented the dark belt against the TABLE
 background and saw no rider. The tracker counted the first two blind reads (steps 0 and 4) against the five frame-0
 labels and dropped all of them (``track_drop``). The same reads with the belt's scene background (offline, genuine-5.1
-belt_bg record frames of our dev layouts) track the first rider from step 0 and give the belt's velocity by the 4th
-read. CPU only: the tracker on the recorded reads, no perception."""
+belt_bg record frames of our dev layouts, plain and with DINOv2 identity) track the first rider from step 0, give the
+belt's velocity by the 4th read and keep it between riders; match_and_pick's decision on them takes the next rider of
+the first one's identity, never a ghost of the first. CPU only: the tracker on the recorded reads, no perception."""
 
 import json
 from pathlib import Path
@@ -156,6 +157,11 @@ def test_with_the_belt_background_the_first_rider_is_tracked_from_frame0_and_giv
     for s in in_view:
         if s >= 30:
             assert float(np.linalg.norm(v[s] - v_gt)) < 2e-4, (s, v[s], v_gt)
+    # the belt runs on between riders: after the first rider left the view (no trusted track until the next one has
+    # its reads) the belt keeps its last measured velocity instead of falling back to zeros
+    assert all(float(np.linalg.norm(v[s])) > 0 for s in v if s >= 30)
+    for s in range(100, 151, 10):
+        assert float(np.linalg.norm(v[s] - v_gt)) < 3e-4, (s, v[s], v_gt)
 
 
 def test_belt_bases_and_why_a_read_is_blind(monkeypatch):
@@ -243,3 +249,75 @@ def test_the_belt_read_op_marks_a_blind_read(folds, monkeypatch):
     th.join(5)
     assert r0["scene_bg"] is None and "Dynamic/conveyor/00000" in r0["blind"] and r0["n_head_blobs"] == 19
     assert r1["scene_bg"] == "Dynamic/conveyor/00000" and "blind" not in r1
+
+
+class _Ex:
+    def __init__(self, sk):
+        self.sk = sk
+
+    def hold(self, n):
+        from dojo.skills.executor import BudgetExceeded
+        self.sk.step += int(n)
+        if self.sk.step > self.sk.last_read:
+            raise BudgetExceeded(f"replay ends at step {self.sk.last_read}")
+
+
+class _ReplaySkills:
+    """Skills as match_and_pick sees them, over the tracker replaying recorded reads: ``ex.hold`` moves the clock, a
+    refresh runs every recorded read since the last one and returns the belief at that step."""
+
+    def __init__(self, prov, b, obs, reads: dict):
+        self.provider, self.b, self.obs, self.reads = prov, b, obs, reads
+        prov.track_reader = lambda o: reads[o["steps_used"]]
+        self.step, self.read_upto, self.last_read = 0, -1, max(reads)
+        self.ex = _Ex(self)
+        self.held: dict = {}
+
+    def refresh(self):
+        import copy
+
+        from dojo.skills.world import WorldState
+        for s in sorted(r for r in self.reads if self.read_upto < r <= self.step):
+            self.b.obs, self.b.fresh = dict(self.obs, steps_used=s), True
+            self.provider._track(self.b.obs)
+        self.read_upto = self.step
+        self.provider._predict(self.step)
+        return WorldState(TASK, "", copy.deepcopy(self.provider.belief.objects), {}, {}, step=self.step, step_lim=700,
+                          notes=self.provider.notes)
+
+    def log(self, *a, **k):
+        pass
+
+
+@pytest.mark.parametrize("name, want", [("scene_100001", "target1"), ("scene_100002", "target1"),
+                                        ("scene_emb_100001", "target1"), ("scene_emb_100002", "target1"),
+                                        ("scene_100000", None), ("scene_emb_100000", None)])
+def test_match_and_pick_on_the_recorded_reads_takes_the_next_one_not_a_ghost_of_the_first(name, want, monkeypatch):
+    """match_and_pick's decision (first object, velocity, the match) on the tracker replaying the recorded reads (robot
+    at home, nothing picked). 100002 without DINOv2: the first phone's reads at the view's border jump 11 cm across the
+    belt and start a second phone track there; once the first's own track is lost that ghost, riding out of view, was
+    "the next phone" (step 120). The next one must come from behind where the belt has carried the first. 100000: the
+    puppet behind reads as a camera in both arms (BACKLOG: identity on the belt), so nothing is picked rather than a
+    wrong object."""
+    import dojo.skills.interactive as I
+    d = FIX[name]
+    prov, b, obs = _provider(d["start"])
+    sk = _ReplaySkills(prov, b, obs, _scene_reads(name))
+    picked = []
+
+    def pick(sk_, label, v, **k):
+        w = sk_.refresh()
+        picked.append((sk_.step, label, w.obj(label).pos[:2].copy(), np.asarray(v, float).copy()))
+        return SimpleNamespace(ok=True, status="ok", note="", arm="left")
+    monkeypatch.setattr(I, "pick_from_belt", pick)
+    r = I.match_and_pick(sk, ["target0", "target1", "other0", "other1", "other2"], conveyor="conveyor")
+    gt = {g["step"]: {x[0]: x for x in g["riders"]} for g in d["gt"]}
+    if want is None:
+        assert not picked and r["ok"] is False and r["stage"] == "match", r
+        return
+    assert r["ok"] and len(picked) == 1, r
+    s, label, xy, v = picked[0]
+    assert abs(float(v[0]) - 0.004) < 3e-4 and abs(float(v[1])) < 1e-6
+    g_s = max(k for k in gt if k <= s)                                  # the dev GT at the last read before the pick
+    near = min(gt[g_s].values(), key=lambda x: np.hypot(x[2] - xy[0], x[3] - xy[1]))
+    assert near[0] == want, (s, label, xy, near)

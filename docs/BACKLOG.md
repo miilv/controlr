@@ -39,6 +39,12 @@
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
   dev layouts + `build` into every box's `bg_folds_51/fold{0,1}/scene/Dynamic_conveyor_00001/` (journal
   2026-10-28-dojo-conveyor-belt-blind §5; waits for compute2).
+- [ ] **dojo runtime: far-end belt reads are noisy.** In the offline genuine-5.1 replays (journal
+  2026-10-28-dojo-conveyor-belt-blind §3.1), newcomer tracks at the upstream end give belt velocities of
+  2.1-5.5 mm / step (4.0 true) while they are the only trusted tracks. The rider predictions, and so the intercept, use
+  the current belt velocity. Candidate: weight the belt estimate by fit residual / span over the episode. The match's
+  identity and position are also weakest there: 100000's puppet reads as a camera to step 440 in both arms, and
+  100002's flat phone sits 95 mm off across the belt at the decision.
 - [ ] **dojo infra: box perception data goes stale.** The bootstrap copies compute3's `dojo-perception-data` once.
   compute4's `bg_folds_51` predated the scene backgrounds (built 27 Oct), and the conveyor ran blind there
   (journal 2026-10-28-dojo-conveyor-belt-blind). Its fixed copies are `~/dojo-data/bg_folds{,_51}_ilia`. Wanted: a

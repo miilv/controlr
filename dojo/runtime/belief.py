@@ -415,6 +415,7 @@ class RuntimeProvider:
         self._n_new = 0
         self._track_last = None
         self.velocity: dict = {}                # label -> np.array([vx, vy]) m / step (fitted)
+        self._belt_v = None                     # the belt's last measured velocity (a scene with a moving base)
         self._fit: dict = {}                    # label -> (step of the fit's origin, xy there)
         self._held_checked: dict = {}           # arm -> label already checked for the current grasp
         self.post_place_min_mm = 2.0
@@ -630,7 +631,8 @@ class RuntimeProvider:
     def belt_velocity(self) -> np.ndarray:
         """Median fitted velocity (m / step, world xy) of the objects tracked as moving, from tracks long enough to trust
         (>= ``track_vel_reads`` reads over >= ``track_vel_span`` steps) and not faster than ``track_max_speed`` (a track
-        that swapped riders or took a phantom); zeros when none. Genuine-5.1 100005: an early 3-read fit gave
+        that swapped riders or took a phantom); when none, the belt's last such velocity (a scene with a moving base),
+        else zeros. Genuine-5.1 100005: an early 3-read fit gave
         (7.95, -10.69) mm / step for a 4.0 mm / step belt, and the intercept missed."""
         v = []
         for lab, vv in self.velocity.items():
@@ -639,16 +641,20 @@ class RuntimeProvider:
             if (self.track_min_speed < sp <= self.track_max_speed and len(tr) >= self.track_vel_reads
                     and tr[-1][0] - tr[0][0] >= self.track_vel_span):
                 v.append((tr[-1][0] - tr[0][0], vv))
+        ax = self._belt_axis()
         if not v:
-            return np.zeros(2)
+            # a belt runs at one speed: between riders (the last trusted track rode out of view, the next has too few
+            # reads yet) it keeps its last measured velocity. Offline genuine-5.1 belt replays (100000-02) read zeros
+            # for ~100 steps after the first rider left, and the next riders' predictions stood still meanwhile
+            return self._belt_v.copy() if (ax is not None and self._belt_v is not None) else np.zeros(2)
         # the longest tracks: the cleanest fits (a rider alone in view; 100001: the median over every trusted track read
         # 2.69 mm / step for a 4.0 belt)
         v = [vv for _, vv in sorted(v, key=lambda t: -t[0])[:3]]
-        ax = self._belt_axis()
         if ax is not None:
             # a belt moves its riders along its long axis: the fits' components across it are track noise
             # (genuine-5.1 100005: (2.15, 3.29) mm / step from 4-read tracks on a belt running along x)
-            return float(np.median(np.array(v) @ ax)) * ax
+            self._belt_v = float(np.median(np.array(v) @ ax)) * ax
+            return self._belt_v.copy()
         return np.median(np.array(v), axis=0)
 
     def _belt_axis(self) -> np.ndarray | None:
