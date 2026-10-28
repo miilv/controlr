@@ -13,8 +13,12 @@ Per layout ``<out>/<task>/<id>_v<k>/``: ``layout.json``; per frame j (0 = after 
 ``frame_<j>_<cam>.png`` (RGB, the official observation), ``frame_<j>.json`` (D0 format: ``obs``, dev-only ``gt``,
 ``move``, plus ``inst``: the code table of the masks; frames only for reached poses), ``done.json`` last, ``inst_<j>_<cam>.png`` (uint16: 0 = nothing / unlabelled,
 i + 1 = ``gt.objects[i]``, ROBOT_CODE = either arm, OTHER_CODE = another prim: table, room, camera stand). The masks
-come from the same render product as the RGB (``instance_id_segmentation_fast``); without the annotator (an Isaac
+come from the same render product as the RGB (``instance_id_segmentation_fast``; ``--physics-only``: states only,
+the Isaac 6.0 proxy renders RGB + masks afterwards, ``render_d0_proxy.py --any-dirs --instance``); without the annotator (an Isaac
 error) the frame is still written with ``inst.source = null`` and the exporter falls back to GT-pose renders.
+
+Arm-pose frames are captured either as the official loop does (one render pass after the move: RTX's temporal
+accumulation leaves ghost trails of the moved arm, as in D0's frames 1-3) or after ``--settle-renders`` passes.
 
 Arm poses (``sample_moves``, seeded per layout): a wrist hovering 6-16 cm over an object with the jaws open, half or
 closed (the gripper over the object in the head view), a wrist look at an object from 12-25 cm, both TCPs over the
@@ -197,12 +201,17 @@ class InstanceMasks:
         return data[:h, :w], info.get("idToLabels") or {}
 
 
-def save_frame(run, d: Path, k: int, move: dict, masks: InstanceMasks) -> dict:
+def save_frame(run, d: Path, k: int, move: dict, masks: InstanceMasks, settle_renders: int = 0) -> dict:
+    """One labelled frame. ``settle_renders`` extra render passes first: RTX's temporal accumulation leaves ghost
+    trails of an arm that moved since the last render (a 40-step move renders once at capture)."""
     from PIL import Image
 
     from dojo.simlab.make_d0 import obs_record
     from dojo.simlab.runner import jsonable, save_png
 
+    if not run.physics_only:
+        for _ in range(max(0, settle_renders)):
+            run.env.obs_manager.render_for_capture()
     o = run.obs()
     gt = run.gt()
     for cam, img in o["images"].items():
@@ -223,8 +232,13 @@ def save_frame(run, d: Path, k: int, move: dict, masks: InstanceMasks) -> dict:
             Image.fromarray(code).save(d / f"inst_{k}_{cam}.png")
             u, c = np.unique(code, return_counts=True)
             inst["px"][cam] = {int(a): int(b) for a, b in zip(u, c)}
-    rec = {"frame": k, "obs": obs_record(o, k), "gt": gt, "move": move, "inst": inst,
-           "meta": {"renderer": "isaac-5.1 (RoboDojo native)", "physics": "isaac-5.1"}}
+    ob = obs_record(o, k)
+    meta = {"renderer": "isaac-5.1 (RoboDojo native)", "physics": "isaac-5.1"}
+    if run.physics_only:     # images and masks come later from the 6.0 proxy (render_d0_proxy.py --instance)
+        ob["images"] = {cam: f"frame_{k}_{cam}.png" for cam in CAMS}
+        ob["image_shape"] = {}
+        meta = {"renderer": None, "physics": "isaac-5.1 physics-only"}
+    rec = {"frame": k, "obs": ob, "gt": gt, "move": move, "inst": inst, "meta": meta}
     (d / f"frame_{k}.json").write_text(json.dumps(jsonable(rec)))
     return inst
 
@@ -275,6 +289,13 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--budget-s", type=float, default=0.0, help="start no new layout after this many seconds (0 = none)")
     ap.add_argument("--no-annotator", action="store_true", help="RGB + GT only (labels from GT-pose renders later)")
+    ap.add_argument("--physics-only", action="store_true",
+                    help="no renderer (compute3): states + stage.usd + cameras.json; RGB and masks from the Isaac 6.0 "
+                         "proxy afterwards (scripts/simlab/isaac6.sh dojo/simlab/render_d0_proxy.py --any-dirs --instance)")
+    ap.add_argument("--settle-renders", type=int, default=8, help="render passes before an arm-pose frame (ghosting)")
+    ap.add_argument("--raw-frac", type=float, default=0.4,
+                    help="share of arm-pose frames captured as the official loop does (one pass: the moved arm's ghost "
+                         "trails stay, as in D0's frames 1-3); the rest get --settle-renders")
     a = ap.parse_args(argv)
     t0 = time.perf_counter()
     from dojo.simlab import paths
@@ -297,7 +318,7 @@ def main(argv: list[str] | None = None) -> None:
     if not todo:
         print(f"[seg] {a.task}: nothing to do", flush=True)
         return
-    run = RoboDojoRunner(a.task, workdir=str(Path(a.out).expanduser() / "work" / a.task))
+    run = RoboDojoRunner(a.task, workdir=str(Path(a.out).expanduser() / "work" / a.task), physics_only=a.physics_only)
     masks = InstanceMasks()
     print(f"[seg] {a.task}: boot {time.perf_counter() - t0:.1f}s, {len(todo)} layouts to do", flush=True)
     index_p = out / "index.jsonl"
@@ -328,7 +349,10 @@ def main(argv: list[str] | None = None) -> None:
             continue
         d.mkdir(parents=True, exist_ok=True)
         (d / "layout.json").write_text(json.dumps(lay, indent=1))
-        if not a.no_annotator:
+        if a.physics_only:
+            run.export_stage(d / "stage.usd")
+            (d / "cameras.json").write_text(json.dumps(run.camera_spec(), indent=1))
+        elif not a.no_annotator:
             masks.attach(run)
         settle = settle_report(lay, run.objects_gt())
         inst0 = save_frame(run, d, 0, {"name": "initial"}, masks)
@@ -341,7 +365,9 @@ def main(argv: list[str] | None = None) -> None:
             moves.append(m)
             if m["ok"]:
                 k += 1
-                save_frame(run, d, k, m, masks)
+                raw = rng.random() < a.raw_frac
+                m["settle_renders"] = 0 if raw else a.settle_renders
+                save_frame(run, d, k, m, masks, m["settle_renders"])
         (d / "done.json").write_text(json.dumps({"frames": k + 1, "moves": moves}))
         row.update(status="ok", instruction=info["instruction"][0], moves_ok=[bool(m["ok"]) for m in moves],
                    inst_source=inst0.get("source"), inst_error=inst0.get("error"),

@@ -216,6 +216,15 @@ def cmd_table(a):
                     ("seen asset, head", lambda r: r["seen_class"] and r["cam"] == "cam_head"),
                     ("unseen asset, head", lambda r: not r["seen_class"] and r["cam"] == "cam_head")]:
         print(f"| {name} | {stats([r for r in objs if f(r)])} |")
+    print("\nBy view and object size (sqrt of visible px; research report E2 bins), task objects:\n")
+    print("| view | size px | n | recall@0.5 | mean IoU | class right & IoU>=0.5 | category right & IoU>=0.5 |")
+    print("|---|---|---|---|---|---|---|")
+    bins = [(0, 16, "<16"), (16, 32, "16-32"), (32, 64, "32-64"), (64, 1e9, "64+")]
+    for cam in CAMS:
+        for lo, hi, name in bins:
+            rs = [r for r in objs if r["cam"] == cam and not r["clutter"] and lo <= r["px"] ** 0.5 < hi]
+            if rs:
+                print(f"| {cam} | {name} | {stats(rs)} |")
     for s in sorted({r["set"] for r in objs}):
         print(f"| {s}, task objects, head | {stats([r for r in objs if r['set'] == s and not r['clutter'] and r['cam'] == 'cam_head'])} |")
     print("\nB1's frame-0 class of the same object (head view, task objects):\n")

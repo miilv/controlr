@@ -61,7 +61,7 @@ def label_frame(job, cams=CAMS, min_px: int = 20) -> list[dict]:
     objs = rec["gt"]["objects"]
     out = []
     for cam in cams:
-        img = d / f"frame_{k}_{cam}.png"
+        img = d / (rec["obs"].get("images") or {}).get(cam, f"frame_{k}_{cam}.png")   # .jpg from the 6.0 proxy --jpeg
         if not img.exists():
             continue
         codes, src = codes_for(d, k, cam, rec)
@@ -107,7 +107,7 @@ def main(argv=None):
     for f in frames:
         split = "val" if f["layout"].split("_")[0] in val_ids else "train"
         stem = f"{f['task']}__{f['layout']}__f{f['frame']}__{f['cam']}"
-        dst = out / "images" / split / f"{stem}.png"
+        dst = out / "images" / split / f"{stem}{Path(f['img']).suffix}"
         if dst.is_symlink() or dst.exists():
             dst.unlink()
         os.symlink(f["img"], dst)

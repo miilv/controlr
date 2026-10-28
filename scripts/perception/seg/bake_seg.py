@@ -7,7 +7,7 @@ summary). DEV ONLY (the scorer reads GT after the estimate).
     python scripts/perception/sam/bake.py summary DIR [BASE_DIR]
 
 Frames: ids 100000-09 and 100020-24 only (the segmenter's held-out evaluation ids; its training draws are variants of
-100030-49). CPU only by default: OpenGL through Mesa's llvmpipe (no GPU process; ``--gpu-gl`` uses the box's EGL).
+100030-49). CPU only by default (B1's CPU silhouettes, DOJO_GL=0: no GPU process; ``--gl gpu`` uses the box's EGL).
 """
 from __future__ import annotations
 
@@ -32,6 +32,39 @@ def held_out(i: int) -> bool:
     return 100000 <= i <= 100009 or 100020 <= i <= 100024
 
 
+def transitions(dir_a: str, dir_b: str) -> None:
+    """Per-object failure class in run B (baseline) -> run A, as a matrix, plus the per-task fixed / broken lists."""
+    from collections import Counter, defaultdict
+
+    from dojo.perception.eval_g1 import TOLERANCE, failure_class
+
+    def load(d):
+        out = {}
+        for line in open(Path(d) / "objects.jsonl"):
+            r = json.loads(line)
+            k = (r["set"], r["task"], r["episode"], r["label"], tuple(round(x, 4) for x in r["gt_pos"]))
+            out[k] = failure_class(r, TOLERANCE.get(r["task"], (None, None, "")))
+        return out
+
+    A, B = load(dir_a), load(dir_b)
+    keys = sorted(set(A) & set(B))
+    cls = ("ok", "identity", "overshoot", "gross", "missed")
+    m = Counter((B[k], A[k]) for k in keys)
+    print(f"{len(keys)} objects; rows = baseline ({dir_b}), columns = {dir_a}\n")
+    print("| baseline \\ arm | " + " | ".join(cls) + " |")
+    print("|---" * (len(cls) + 1) + "|")
+    for b in cls:
+        print(f"| {b} | " + " | ".join(str(m[(b, a)]) for a in cls) + " |")
+    by = defaultdict(lambda: [0, 0])
+    for k in keys:
+        good_b, good_a = B[k] in ("ok", "identity"), A[k] in ("ok", "identity")
+        if good_a and not good_b:
+            by[k[1]][0] += 1
+        if good_b and not good_a:
+            by[k[1]][1] += 1
+    print("\nwithin tolerance, fixed / broken per task: " + ", ".join(f"{t} {f}/{b}" for t, (f, b) in sorted(by.items())))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -41,17 +74,28 @@ def main(argv=None):
     r.add_argument("--sets", default="d0_51,d0_ext")
     r.add_argument("--tasks", nargs="*")
     r.add_argument("--workers", type=int, default=6)
-    r.add_argument("--gpu-gl", action="store_true")
+    r.add_argument("--episodes", nargs="*", help="only these TASK/ID frames (debugging)")
+    t = sub.add_parser("transitions")
+    t.add_argument("dir")
+    t.add_argument("base")
+    r.add_argument("--gl", choices=("none", "llvmpipe", "gpu"), default="none",
+                   help="none: B1's CPU silhouettes (DOJO_GL=0; ~5x faster than llvmpipe); llvmpipe: Mesa's software GL; "
+                        "gpu: the box's EGL (a GPU process)")
     a = ap.parse_args(argv)
-    if not a.gpu_gl:
+    if a.cmd == "transitions":
+        return transitions(a.dir, a.base)
+    if a.gl == "llvmpipe":
         os.environ.update(CPU_GL_ENV)
+    elif a.gl == "none":
+        os.environ["DOJO_GL"] = "0"
     sets = a.sets.split(",")
     jobs = [(s, ep, json.loads(a.cfg) if a.cfg else None, str(a.out), False) for s, ep in bake.frames(sets, a.tasks)
-            if held_out(int(Path(ep).name))]
+            if held_out(int(Path(ep).name))
+            and (not a.episodes or f"{Path(ep).parent.name}/{Path(ep).name}" in a.episodes)]
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "config.json").write_text(json.dumps({"cfg": a.cfg, "sets": sets, "tasks": a.tasks, "n_frames": len(jobs),
                                                    "seg_addr": os.environ.get("DOJO_SEG_ADDR", ""), "argv": sys.argv,
-                                                   "gl": "gpu" if a.gpu_gl else "llvmpipe"}))
+                                                   "gl": a.gl}))
     print(len(jobs), "frames", flush=True)
     t0 = time.time()
     with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, \

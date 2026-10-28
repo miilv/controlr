@@ -47,6 +47,33 @@ def write_png(path: Path, rgb: np.ndarray) -> None:
     path.write_bytes(png)
 
 
+def write_jpeg(path: Path, rgb: np.ndarray, quality: int) -> None:
+    from PIL import Image
+    Image.fromarray(rgb).save(path, quality=int(quality))
+
+
+def write_instances(pr, d: Path, rec: dict) -> dict:
+    """seg_render's code images (inst_<k>_<cam>.png, uint16) from the proxy's instance-id annotator."""
+    from PIL import Image
+
+    from dojo.simlab.seg_render import OTHER_CODE, ROBOT_CODE, map_instance_ids, relabel
+    k = rec["frame"]
+    inst = {"source": "isaac-6.0:instance_id_segmentation_fast", "codes": {"robot": ROBOT_CODE, "other": OTHER_CODE},
+            "px": {}}
+    for name in CAMS:
+        data, id2l = pr.instance_ids(name)
+        if data is None:
+            inst["source"] = None
+            continue
+        if data.ndim == 3:
+            data = data[..., 0]
+        code = relabel(data, map_instance_ids(id2l, rec["gt"]["objects"], rec["gt"]["robot"]))
+        Image.fromarray(code).save(d / f"inst_{k}_{name}.png")
+        u, c = np.unique(code, return_counts=True)
+        inst["px"][name] = {int(a): int(b) for a, b in zip(u, c)}
+    return inst
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True, help="D0 root (contains <task>/<id>/)")
@@ -55,6 +82,10 @@ def main(argv=None) -> None:
     ap.add_argument("--subframes", type=int, default=8)
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--keep-stage", action="store_true", help="keep stage.usd after rendering (38 MB each)")
+    ap.add_argument("--any-dirs", action="store_true", help="every layout dir, not only <id> (seg_render's <id>_v<k>)")
+    ap.add_argument("--instance", action="store_true",
+                    help="also write inst_<k>_<cam>.png (uint16 seg_render codes) from the instance-id annotator")
+    ap.add_argument("--jpeg", type=int, default=0, help="write RGB as JPEG of this quality instead of PNG (0 = PNG)")
     a = ap.parse_args(argv)
     root = Path(a.root)
     if "Eval_Layout" in root.resolve().parts:
@@ -66,14 +97,15 @@ def main(argv=None) -> None:
     todo = []
     for task in a.tasks:
         for d in sorted((root / task).iterdir()) if (root / task).is_dir() else []:
-            if not d.is_dir() or not d.name.isdigit() or (a.ids and int(d.name) not in a.ids):
+            if not d.is_dir() or not (d.name.isdigit() or a.any_dirs) or \
+                    (a.ids and int(d.name.split("_")[0]) not in a.ids):
                 continue
             if (d / "stage.usd").exists():
                 todo.append(d)
     print(f"[render] {len(todo)} layouts", flush=True)
     for d in todo:
         t0 = time.perf_counter()
-        pr.open(str(d / "stage.usd"), json.loads((d / "cameras.json").read_text()))
+        pr.open(str(d / "stage.usd"), json.loads((d / "cameras.json").read_text()), instance=a.instance)
         n_frames = 0
         for fj in sorted(d.glob("frame_*.json")):
             rec = json.loads(fj.read_text())
@@ -81,7 +113,13 @@ def main(argv=None) -> None:
                 continue
             images, cam_gt, missing = pr.render(rec["gt"], subframes=a.subframes)
             for name in CAMS:
-                write_png(d / rec["obs"]["images"][name], images[name])
+                if a.jpeg:
+                    rec["obs"]["images"][name] = str(Path(rec["obs"]["images"][name]).with_suffix(".jpg"))
+                    write_jpeg(d / rec["obs"]["images"][name], images[name], a.jpeg)
+                else:
+                    write_png(d / rec["obs"]["images"][name], images[name])
+            if a.instance:
+                rec["inst"] = write_instances(pr, d, rec)
             rec["gt"]["cameras"] = cam_gt
             rec["obs"]["image_shape"] = {n: list(im.shape) for n, im in images.items()}
             rec.setdefault("meta", {}).update({"renderer": RENDERER_TAG, "render_subframes": a.subframes,
