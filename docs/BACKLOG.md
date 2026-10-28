@@ -153,6 +153,13 @@
   category-level wrong-object lifts (store_tools: a wrench / pliers rose for the hammer). v2b rarely classifies a held
   object in the wrist view as anything else. Recall needs a better held-object wrist detector (v3 post-contact data)
   before a camera A/B.
+- [ ] **dojo perception: fuse_tags (parked, branch feat/dojo-fuse-tags)** (stream W). On a look, an ambiguous base
+  with more than one place frame tries each frame within its config yaw region, then re-places its relative_plane
+  children. On held-out play_Xylophone proxy frames (8 layouts, 2-3 arm-pose looks) it made 0 harmful accepts but did
+  not fix 100000: the 'up' frame scored better (loss 0.72 -> 0.59), yet a hidden stand never fits below the 0.35 look
+  bar a frame switch needs. The frame-0 fix was the v2b masks (`seg_propose`: mallet 5/8 -> 7/8 found). The branch
+  also has `child_unexplained_flag`, a matching unexplained blob near a base's child. Revisit with targeted looks at
+  the base.
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the

@@ -203,12 +203,12 @@ def test_client_is_none_without_server(monkeypatch, tmp_path):
 
 # ------------------------------------------------------------------ estimator hook (seg_propose)
 
-def test_seg_propose_default_off_and_noop_without_server(monkeypatch):
+def test_seg_propose_default_add_and_noop_without_server(monkeypatch):
     pytest.importorskip("scipy")
     pytest.importorskip("cv2")
     from dojo.perception import inverse_layout as il
 
-    assert il.EstimatorConfig().seg_propose == "off"
+    assert il.EstimatorConfig().seg_propose == "add"     # "off" until 2026-10-28; a no-op without a server
     monkeypatch.delenv(seg_twin.ENV_ADDR, raising=False)
     info = il._seg_propose([], {"cam_head": None}, np.zeros((4, 4, 3), np.uint8), il.EstimatorConfig(seg_propose="on"),
                            [], [], {})

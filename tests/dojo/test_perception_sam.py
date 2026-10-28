@@ -286,3 +286,39 @@ def test_series_count_from_the_twin_segmenter_and_linked_counts(monkeypatch):
     out, _ = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="min"))
     assert out[1]["labels"] == ["geometry0"]                                       # "min": no linked counts
     assert il.EstimatorConfig().series_count == "seg"                              # the default since 2026-10-28
+
+
+def test_seg_propose_add_only_fills_a_short_group_and_never_touches_members(monkeypatch):
+    """seg_propose "add": an unexplained mask of the group's EXACT class fills a short group; members are never moved,
+    re-fitted or given a hint, and a mask of another asset of the same category adds nothing."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+    from dojo.perception import seg_twin
+
+    def det(r, key):
+        m = np.zeros((40, 40), np.uint8)
+        m[r:r + 8, 0:8] = 1
+        return SimpleNamespace(mask=m, key=key, score=0.9, alts=[])
+
+    dets = [det(0, "Rigid/mallet/00000"), det(20, "Rigid/mallet/00001")]
+    monkeypatch.setattr(seg_twin, "client", lambda: SimpleNamespace(detect=lambda img, conf=0.4: list(dets)))
+    head = SimpleNamespace(cam=None, known=np.ones((40, 40), np.uint8))
+    g = {"labels": ["mallet"], "candidates": ["Rigid/mallet/00000"], "placement": {}}
+    fitted = []
+
+    def fake_fit(mask, key, gi, g_, prior, shapes, views, others, cfg, groups):
+        hy = SimpleNamespace(label_group=gi, x=0.1, y=0.2, key=key, per_view={},
+                             sm=lambda: SimpleNamespace(sil=lambda cam, T: mask), T=lambda: np.eye(4))
+        fitted.append(key)
+        return (0.9, hy)
+
+    monkeypatch.setattr(il, "_seg_fit", fake_fit)
+    monkeypatch.setattr(il, "_union_masks", lambda *a, **k: {})
+    chosen: list = []
+    info = il._seg_propose(chosen, {"cam_head": head}, np.zeros((40, 40, 3), np.uint8),
+                           il.EstimatorConfig(seg_propose="add"), [g], [(0, g, None)], {0: {}})
+    assert fitted == ["Rigid/mallet/00000"] and len(chosen) == 1 and info["added"] and not info["moved"]
+    assert any(t.get("why") == "add: not the group's exact class" for t in info["trace"])
