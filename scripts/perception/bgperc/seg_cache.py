@@ -2,7 +2,7 @@
 content hash, so every arm (rt / J / S, all replayed offline on the same stored frames) reads identical detections.
 
     SEG_WEIGHTS=.../v2b/best.pt SEG_CLASSES=.../v2b/classes.json \\
-        python scripts/perception/bgperc/seg_cache.py SEQ_ROOT OUT_DIR [--valid VALID.json] [--names a,b]
+        python scripts/perception/bgperc/seg_cache.py SEQ_ROOT OUT_DIR [--valid VALID.json] [--names a,b] [--steps forced]
 
 Per sequence ``OUT_DIR/<name>.json.gz``: {"header": {weights_sha1, imgsz, conf, classes_sha1, model}, "frames":
 {"<step:04d>_<cam>.<fmt>": {"sha1": sha1 of the stored file's bytes, "dets": [{"key", "score", "box", "mask"}]}}}
@@ -48,6 +48,8 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--valid", default=None)
     ap.add_argument("--names", default="")
+    ap.add_argument("--steps", default="all", choices=("all", "forced"),
+                    help="forced: frame 0 and the decision frames only (meta.json forced_steps: where a tick reads)")
     a = ap.parse_args()
     import cv2
 
@@ -73,8 +75,11 @@ def main():
         if os.path.exists(dst) and n in index:
             continue
         t0, frames = time.time(), {}
-        fmt = json.load(open(os.path.join(a.root, n, "meta.json"))).get("fmt", "png")
+        meta = json.load(open(os.path.join(a.root, n, "meta.json")))
+        fmt, keep = meta.get("fmt", "png"), {0, *(meta.get("forced_steps") or [])}
         for f in sorted(glob.glob(os.path.join(a.root, n, "frames", f"*.{fmt}"))):
+            if a.steps == "forced" and int(os.path.basename(f)[:4]) not in keep:
+                continue
             raw = open(f, "rb").read()
             img = np.ascontiguousarray(cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1])
             dets = [{"key": k, "score": round(s, 4), "box": [round(v, 1) for v in b], "mask": encode_mask(m)}
