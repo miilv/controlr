@@ -124,10 +124,12 @@ modified, and run with his offline mock shim; only `strict_calib.py` is stubbed:
 ```bash
 CONTROLR_ROBOT_HARNESS=<robot-harness checkout> uv run pytest -q tests/dojo/test_bridge_rh.py
 ```
-The agent on the fake server (live calls: about 1 per episode for the stack task; cx/gpt-6.1-sol by default):
+The agent on the fake server (live calls: about 1 per episode for the stack task; cx/gpt-6.1-sol by default). The agent
+reads the router key only from the file `DOJO_AGENT_DOTENV` names, or from exported `OMNIROUTE_*`, never both and never
+a home-dir `.env` by itself ([ENVIRONMENT.md](ENVIRONMENT.md)):
 ```bash
 .venv/bin/python -m dojo.bridge.fake_server --id fk-2 --bench /tmp/rbfake &
-DOJO_AGENT_LOG=/tmp/rbfake/agent .venv/bin/python -m dojo.bridge.driver --server-id fk-2 --bench /tmp/rbfake \
+DOJO_AGENT_DOTENV=$HOME/controlr/.env DOJO_AGENT_LOG=/tmp/rbfake/agent .venv/bin/python -m dojo.bridge.driver --server-id fk-2 --bench /tmp/rbfake \
     --policy dojo.agent.policy:AgentPolicy --perception server --twin off --config '{"extra":{"agent":{"max_calls":4}}}' \
     --out /tmp/rbfake/out --close
 ```
@@ -187,7 +189,7 @@ PD=~/dojo-perception-data; export DOJO_CATALOG=$PD/catalog DOJO_X5_DIR=$PD/catal
 DOJO_ILIA=1 PYOPENGL_PLATFORM=egl nice .venv/bin/python -u -m dojo.runtime.perception_service > $OUT/$ID/perception_service.log 2>&1 &
 PERC=$!; until [ -f $DOJO_PERCEPTION_READY ]; do sleep 2; done
 # the driver (spawns the twin for the instruction's scene; closes the server at the end)
-DOJO_ILIA=1 DOJO_AGENT_LOG=$OUT/$ID/agent .venv/bin/python -u -m dojo.bridge.driver --server-id $ID --bench $BENCH \
+DOJO_ILIA=1 DOJO_AGENT_DOTENV=$HOME/controlr/.env DOJO_AGENT_LOG=$OUT/$ID/agent .venv/bin/python -u -m dojo.bridge.driver --server-id $ID --bench $BENCH \
     --policy dojo.agent.policy:AgentPolicy --perception local --verify bundle --twin spawn --hold-gpu-lock \
     --config '{"refine":true,"search":true,"post_place":true,"max_rehovers":2,"refine_max_shift_m":0.07}' --out $OUT --close
 until [ -f $BENCH/run/$ID/launch_done.json ]; do sleep 2; done; kill $PERC

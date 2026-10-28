@@ -63,6 +63,7 @@ small steps.
 |---|---|
 | `controlr/types.py` | shared dataclasses (frozen contract — do not change without updating all users) |
 | `controlr/config.py` | experiment config (YAML + `--set` overrides); every experiment axis is a field |
+| `controlr/keyguard.py` | credential hygiene, standard library only (the agentic perceiver's stdlib client imports it): `redact` / `clip` (redact, then cut) / `safe_label` for anything a provider sends back, `router_credentials` (the router key from ONE source: a named dotenv file or the environment), `child_env` (a child's environment without credential names) |
 | `controlr/llm/client.py` | streaming OpenAI-compatible chat client with timings + normalised usage + early stop |
 | `controlr/llm/decisions.py` | decision head (`llm.backend=decisions`): `DecisionsClient` — the `LLMClient` signature over OpenRouter's Decisions API; transcript → state + typed questions → answers rendered as grammar text |
 | `controlr/llm/caching.py` | cache-marker placement per model route (applied at serialisation, never stored) |
@@ -127,6 +128,12 @@ class LLMClient:
   ends first, `truncated=True` and the loop stores the reply with the partial note stripped
   (`grammar.strip_partial_note`). `completion_tokens` then includes discarded tokens.
 * Retries: connection errors, 429, 5xx with exponential backoff; 4xx other -> no retry.
+* Nothing a provider sends back carries a credential into an `LLMResult`: `error` (HTTP error body, stream error,
+  transport exception text) is redacted whole and then cut (`keyguard.clip`; the client registers its own key, so an
+  echo of it is caught even when it matches no credential pattern); `headers` keeps only `KEEP_HEADER_PREFIXES`
+  (request ids, rate limits, `x-omniroute*`, `x-cache`, `retry-after`), values redacted, names with a credential word
+  dropped; `finish_reason` is a `keyguard.safe_label`. `DecisionsClient` does the same, and its record's served
+  `id` / `model` / `provider` are safe labels. Request bytes and the reply text are untouched (cache invariants).
 * Idle connections are kept 120 s (`KEEPALIVE_S`; httpx's 5 s default re-handshakes between slow turns).
 
 ### Decision head (`controlr/llm/decisions.py`, `llm.backend=decisions`)

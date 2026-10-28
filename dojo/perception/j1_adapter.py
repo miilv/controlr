@@ -147,11 +147,15 @@ def _recv(f):
     return pickle.loads(f.read(n))
 
 
-def install_env() -> dict:
+def install_env(model_calls: bool = False) -> dict:
     """Worker environment: the install dir (``J1_ILIA_HOME``, default the checkout's parent) holds catalog/,
-    bg/ and color_calib.json."""
+    bg/ and color_calib.json. The caller's environment minus every credential name (``controlr.keyguard.child_env``):
+    the B1 worker never calls the model, so it gets no OMNIROUTE_* / AGENTIC_ENV_FILE / DOJO_AGENT_DOTENV / other
+    keys; ``model_calls=True`` (the agentic worker, ``agentic.j1``) keeps only the router credential source."""
+    from controlr.keyguard import child_env
+
     home = Path(os.environ.get("J1_ILIA_HOME", ROOT.parent))
-    env = dict(os.environ)
+    env = child_env(model_calls=model_calls)
     env.update({
         "PYTHONPATH": str(ROOT),
         "DOJO_CATALOG": os.environ.get("DOJO_CATALOG", str(home / "catalog")),

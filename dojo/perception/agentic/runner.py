@@ -13,9 +13,17 @@ import re
 import time
 from pathlib import Path
 
+from controlr.keyguard import redact, safe_label
+
 from .llm import ChatReply, image_part
 
 FENCE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.S)
+
+
+def _line(rec: dict) -> str:
+    """One transcript line. Registered keys (``controlr.keyguard.register``: the router key once a client loaded it)
+    are never written, whichever field carries them (reply text, tool output, the parsed answer)."""
+    return redact(json.dumps(rec), patterns=False) + "\n"
 
 
 def parse_reply(text: str, keys=("answer", "commands")) -> dict | None:
@@ -53,8 +61,8 @@ def run_agent(chat, model: str, system: str, first_user: list[dict], tools, *, m
         log_dir = Path(log_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
         logf = open(log_dir / "transcript.jsonl", "a")
-        logf.write(json.dumps({"event": "start", "model": model, "system_chars": len(system),
-                               "first_user": [p.get("text", "<image>") if p.get("type") == "text" else "<image>" for p in first_user]}) + "\n")
+        logf.write(_line({"event": "start", "model": model, "system_chars": len(system),
+                          "first_user": [p.get("text", "<image>") if p.get("type") == "text" else "<image>" for p in first_user]}))
     try:
         for turn in range(max_turns):
             stats["turns"] = turn + 1
@@ -64,13 +72,17 @@ def run_agent(chat, model: str, system: str, first_user: list[dict], tools, *, m
             for k, a in (("prompt", r.prompt_tokens), ("completion", r.completion_tokens), ("reasoning", r.reasoning_tokens),
                          ("cache_read", r.cache_read_tokens)):
                 stats["tokens"][k] += a or 0
+            # one redaction step for what the response puts in the transcript and the stats: the error with every
+            # credential pattern (keyguard.redact), the finish reason as a safe label; every line also drops the
+            # registered keys (_line; the reply text gets no pattern pass, it could mangle a legitimate reply)
+            err = redact(r.error)
             if logf:
-                logf.write(json.dumps({"event": "reply", "turn": turn, "text": r.text, "error": r.error, "wall_s": round(r.wall_s, 2),
-                                       "tokens": [r.prompt_tokens, r.completion_tokens, r.reasoning_tokens, r.cache_read_tokens],
-                                       "request_bytes": r.request_bytes, "finish": r.finish_reason}) + "\n")
+                logf.write(_line({"event": "reply", "turn": turn, "text": r.text, "error": err, "wall_s": round(r.wall_s, 2),
+                                  "tokens": [r.prompt_tokens, r.completion_tokens, r.reasoning_tokens, r.cache_read_tokens],
+                                  "request_bytes": r.request_bytes, "finish": safe_label(r.finish_reason)}))
                 logf.flush()
             if r.error and not r.text:
-                stats["errors"].append(f"turn {turn}: {r.error}")
+                stats["errors"].append(f"turn {turn}: {err}")
                 if len(stats["errors"]) >= 2:
                     stats["stop"] = "llm_error"
                     break
@@ -103,7 +115,7 @@ def run_agent(chat, model: str, system: str, first_user: list[dict], tools, *, m
                     parts.append(image_part(png))
                     n_img += 1
                 if logf:
-                    logf.write(json.dumps({"event": "tool", "turn": turn, "cmd": c, "out": text[:2000], "images": [n for n, _ in imgs]}) + "\n")
+                    logf.write(_line({"event": "tool", "turn": turn, "cmd": c, "out": redact(text, patterns=False)[:2000], "images": [n for n, _ in imgs]}))
             if not cmds:
                 parts.append({"type": "text", "text": "No commands given."})
             left = max_turns - turn - 1
@@ -119,6 +131,6 @@ def run_agent(chat, model: str, system: str, first_user: list[dict], tools, *, m
     finally:
         stats["wall_s"] = round(time.time() - t0, 2)
         if logf:
-            logf.write(json.dumps({"event": "end", **{k: v for k, v in stats.items() if k != "answer"}, "answer": stats["answer"]}) + "\n")
+            logf.write(_line({"event": "end", **{k: v for k, v in stats.items() if k != "answer"}, "answer": stats["answer"]}))
             logf.close()
     return stats

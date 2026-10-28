@@ -22,6 +22,8 @@ from pathlib import Path
 
 import numpy as np
 
+from controlr.keyguard import child_env
+
 VENDOR = Path(__file__).resolve().parent / "vendor"
 RD_TOOLS = VENDOR / "robodojo"
 CAMS = ("cam_head", "cam_left_wrist", "cam_right_wrist")
@@ -116,7 +118,8 @@ class RoboDojoTools:
         try:
             p = subprocess.run([sys.executable, str(RD_TOOLS / prog)] + [a.rsplit("/", 1)[-1] if a.endswith(".json") or a.endswith(".png") else a
                                                                        for a in argv[1:]],
-                               cwd=self.ws, capture_output=True, text=True, timeout=self.timeout_s)
+                               cwd=self.ws, capture_output=True, text=True, timeout=self.timeout_s,
+                               env=child_env())   # a tool never calls the model: no key, no key file path
         except subprocess.TimeoutExpired:
             return f"error: {prog} timed out after {self.timeout_s:.0f} s", []
         out = (p.stdout or "").strip()

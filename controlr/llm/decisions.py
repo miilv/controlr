@@ -32,8 +32,10 @@ from typing import Any, Callable
 import httpx
 import yaml
 
+from controlr.keyguard import clip, register, safe_label, url_secrets
+
 from .client import (KEEPALIVE_S, RETRY_STATUS, LLMResult, Timings, Usage, _error_message,
-                     _parse_retry_after, _Retryable)
+                     _parse_retry_after, _Retryable, keep_headers)
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 # seen live (502): 'OpenAI refused to answer question "dir_x"' — the whole request fails, the same
@@ -379,6 +381,7 @@ class DecisionsClient:
         self.max_retries = max(0, int(max_retries))
         self.backoff_base, self.backoff_max = backoff_base, backoff_max
         self._sleep, self._rng = sleep, rng or random.Random()
+        register(api_key, *url_secrets(base_url))     # redact() replaces them in every error / header
         hdrs = {str(k): str(v) for k, v in (headers or {}).items()}
         hdrs.update({"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
         self._http = httpx.Client(timeout=httpx.Timeout(timeout_s, connect=min(15.0, timeout_s)),
@@ -459,9 +462,9 @@ class DecisionsClient:
         try:
             r = self._http.post(f"{self.base_url}/decisions", content=payload, **kw)
         except httpx.TransportError as e:
-            raise _Retryable(f"{type(e).__name__}: {e}") from None
+            raise _Retryable(clip(f"{type(e).__name__}: {e}", 400)) from None
         t_end = time.perf_counter() - t0
-        headers = {k: v for k, v in r.headers.items() if k.lower() not in ("set-cookie", "authorization")}
+        headers = keep_headers(r.headers)
         if r.status_code >= 400:
             msg = _error_message(r.status_code, r.content)
             if (r.status_code in RETRY_STATUS or r.status_code >= 500) and not _REFUSED.search(msg):
@@ -473,11 +476,13 @@ class DecisionsClient:
             answers = data["answers"]
         except (ValueError, KeyError, TypeError) as e:
             return LLMResult("", None, Timings(None, None, t_end), False, None,
-                             f"bad decisions response: {type(e).__name__}: {e}", r.status_code, 1,
+                             clip(f"bad decisions response: {type(e).__name__}: {e}", 400), r.status_code, 1,
                              headers=headers)
         text, rec = render_reply(answers, self.cfg.decisions, self.cfg.action)
         u = data.get("usage") or {}
         usage = Usage(int(u.get("input_tokens") or 0), int(u.get("output_tokens") or 0), 0, 0, 0, dict(u))
-        rec.update(id=data.get("id"), model=data.get("model"), provider=data.get("provider"))
+        # server-chosen ids go into the run log: only as safe labels (keyguard.safe_label)
+        rec.update(id=safe_label(data.get("id")), model=safe_label(data.get("model")),
+                   provider=safe_label(data.get("provider")))
         return LLMResult(text, usage, Timings(t_end, t_end, t_end, ttft_any=t_end, t_headers=t_end),
                          False, "decisions", None, r.status_code, 1, headers=headers, decisions=rec)

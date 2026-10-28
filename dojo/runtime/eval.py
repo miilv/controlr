@@ -33,6 +33,7 @@ from pathlib import Path
 
 import numpy as np
 
+from controlr.keyguard import child_env
 from dojo.simlab import paths
 from dojo.simlab.proxy_eval import PROXY_TAG, RENDERED_TAG, ProxyEpisode, RenderClient, RenderedEpisode
 from dojo.simlab.runner import jsonable
@@ -293,7 +294,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
             print(f"\n[integ] {tag}: time budget reached, skipping {Path(lf).name}", flush=True)
             continue
         if gate and stop is None:
-            g = subprocess.run(gate, shell=True, capture_output=True, text=True)
+            g = subprocess.run(gate, shell=True, capture_output=True, text=True, env=child_env())   # no credentials
             if g.returncode != 0:
                 stop = (g.stdout + g.stderr).strip()[:200] or f"rc {g.returncode}"
         if stop is not None:

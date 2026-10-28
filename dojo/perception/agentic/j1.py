@@ -66,7 +66,7 @@ def _worker():
     log = Path(os.environ.get("AGENTIC_WORKER_LOG", str(home / "run" / "agentic_worker.log")))
     log.parent.mkdir(parents=True, exist_ok=True)
     _PROC = subprocess.Popen(["nice", "-n", "5", py, "-m", "dojo.perception.agentic.j1", "--serve"], cwd=str(ROOT),
-                             env=_b1.install_env(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=open(log, "ab"))
+                             env=_b1.install_env(model_calls=True), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=open(log, "ab"))
     return _PROC
 
 

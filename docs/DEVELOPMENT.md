@@ -308,6 +308,14 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **RTX leaves ghost trails of a moved arm.** A frame captured with one render pass after a 40-step move (D0's frames
   1-3, `make_d0`) shows the arm smeared along its path (temporal accumulation). `seg_render` captures 40 % of its
   arm-pose frames that way and the rest after 8 extra `render_for_capture` passes.
+- **Provider responses and child processes are credential sinks.** A gateway can echo our `Authorization` header in an
+  error body, and a child inherits the whole environment (the router key, the path of the file that holds it). Any new
+  text from a response that reaches a log goes through `controlr.keyguard` (`clip`: redact, THEN cut, else a key that
+  straddles the cut leaves its head; `safe_label` for server-chosen ids), and any new `subprocess` / `Popen` in dojo
+  that does not call the model takes `env=child_env({...})`. A key is read from one named file or the environment,
+  never a mix and never a home-dir `.env` nobody named ([ENVIRONMENT.md](ENVIRONMENT.md), credentials in processes).
+  Tests: fake keys only, and assert on names / fragments, never print an environment (`tests/test_sec_redaction.py`,
+  `tests/dojo/test_sec_env.py`).
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
   frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
 

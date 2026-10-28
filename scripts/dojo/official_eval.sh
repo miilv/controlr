@@ -28,6 +28,11 @@
 {
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# the router key: one source per process. This script names the file (step 4: AGENTIC_ENV_FILE / DOJO_AGENT_DOTENV),
+# so the environment must not carry OMNIROUTE_* as well (checked before the lock wait)
+[[ -z "${OMNIROUTE_BASE_URL:-}${OMNIROUTE_API_KEY:-}" ]] || {   # values never printed
+  echo "[official] OMNIROUTE_* is set and this script names the key file (AGENTIC_ENV_FILE / DOJO_AGENT_DOTENV): unset OMNIROUTE_BASE_URL" \
+    "OMNIROUTE_API_KEY (one source per process: docs/ENVIRONMENT.md)" >&2; exit 2; }
 if [[ "${1:-}" != --inner ]]; then
   # outer: the memory gate, the heavy lock, then this script again inside a systemd user scope
   export DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
@@ -156,6 +161,8 @@ log "eval client pid $EC"
 PD="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"
 export DOJO_CATALOG="${DOJO_CATALOG:-$PD/catalog}" DOJO_X5_DIR="${DOJO_X5_DIR:-$PD/catalog/robot/x5}"
 export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds_51}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib_51.json}"
+# the router key for the agent (llmio) and the agentic perceiver: ONE named file each (default the box's ~/controlr/.env,
+# OMNIROUTE_* only; llmio has no home-dir fallback any more). Exported only now, after robot-harness's processes started
 export AGENTIC_ENV_FILE="${AGENTIC_ENV_FILE:-$HOME/controlr/.env}" DOJO_AGENT_DOTENV="${DOJO_AGENT_DOTENV:-$HOME/controlr/.env}"
 export DOJO_AGENTIC_LOG="${DOJO_AGENTIC_LOG:-$OUT/agentic}"
 key() { python3 -c 'import secrets; print(secrets.token_hex(16))'; }
