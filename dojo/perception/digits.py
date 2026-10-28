@@ -131,6 +131,19 @@ def record_fields(category: str, idx, glyph: dict | None, key: str, n_same_geome
     return {"digit": None, "digit_source": "unread", "digit_unread": "not_read"}
 
 
+def merge_view_read(digit: int | None, conf: float | None, source: str | None, read: int | None) -> tuple:
+    """A later view's classifier read of a ``GLYPH_ONLY`` object (a wrist look, a pick hover) merged into what the
+    belief holds: agreeing with a read digit -> confirmed (confidence 1); a first read -> one view (0.5); disagreeing ->
+    unknown ("unread", a look again). Returns (digit, conf, source, why)."""
+    if read is None:
+        return digit, conf, source, None
+    if digit is None or source in (None, "unread"):
+        return read, 0.5, "glyph", "first"
+    if digit == read:
+        return digit, 1.0, "glyph", "confirmed"
+    return None, None, "unread", "disagree"
+
+
 def from_record(category: str, p: dict) -> tuple[int | None, float | None, str | None]:
     """(digit, confidence, source) of a perception record entry's ``_perception`` ``p``. A digit-category entry
     without recorded digit fields (a label found by the runtime's search, an older record) is unread: its asset index

@@ -62,3 +62,27 @@ def test_glyph_read_numeral_needs_two_agreeing_views_for_full_confidence(monkeyp
     h3 = SimpleNamespace(key="Rigid/block/00001", per_view={}, sm=lambda: None, T=lambda: np.eye(4))
     il._glyph_read_numeral(h3, {})
     assert "glyph_read" not in h3.per_view                                             # other categories untouched
+
+
+def test_merge_view_read_confirms_first_reads_and_drops_disagreement():
+    m = digits.merge_view_read
+    assert m(None, None, None, 7) == (7, 0.5, "glyph", "first")                       # a first read: one view
+    assert m(None, None, "unread", 7) == (7, 0.5, "glyph", "first")
+    assert m(7, 0.5, "glyph", 7) == (7, 1.0, "glyph", "confirmed")                    # a second view agrees
+    assert m(7, 0.5, "glyph", 1) == (None, None, "unread", "disagree")                # disagreement: unknown
+    assert m(7, 1.0, "glyph", None) == (7, 1.0, "glyph", None)                         # no read: unchanged
+
+
+def test_the_refine_hook_merges_a_wrist_digit_read_into_the_belief():
+    from types import SimpleNamespace
+
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    pol = RuntimePolicy(RuntimeConfig())
+    pol.report = {"events": []}
+    pol.bridge = SimpleNamespace(steps_used=12)
+    o = SimpleNamespace(digit=7, digit_conf=0.5, digit_source="glyph")
+    prov = SimpleNamespace(belief=SimpleNamespace(objects={"digit_0": o}))
+    pol._merge_glyph(prov, "digit_0", {"read": True, "name": "7", "margin": 0.6})
+    assert (o.digit, o.digit_conf, o.digit_source) == (7, 1.0, "glyph")
+    pol._merge_glyph(prov, "digit_0", {"read": True, "name": "1", "margin": 0.6})
+    assert (o.digit, o.digit_source) == (None, "unread") and pol.report["events"][-1]["why"] == "disagree"
