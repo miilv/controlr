@@ -651,30 +651,17 @@ def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0) -> dic
         raise ValueError(f"our layout seeds start at {paths.SEED_BASE}")
     tcfg, scfg = task_config(task), scene_config(task)
     groups = merged_object_groups(task)
-    task_cats = {e["name"] for gl in groups.values() for g in gl for e in g["category"]}
     last = None
     for attempt in range(max_tries):
         # the keep-out is soft: some configs fix objects under the home-pose grippers on purpose
         # (fill_egg_holder's egg_basket, organize_table's alarm); then the second half drops it
         _KEEPOUT_ON[0] = attempt < max_tries // 2
         sub = variant_subseed(seed, variant, attempt, max_tries)
-        np.random.seed(sub % (2**32))
-        rng = random.Random(sub)
-        gens = make_generators(scfg)
-        for a in (tcfg.get("ProhibitedArea") or []) + (tcfg.get("Prohibited_Area") or []):   # one config has the typo
-            x0, y0, x1, y1 = a
-            gens["table"].add_box_prohibited_area(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
-        layout: dict = {}
         try:
-            place_task_objects(groups, gens, rng, layout)
-            n_clutter = place_clutter(tcfg.get("Clutter") or [], gens, rng, layout, exclude=task_cats)
+            layout, n_clutter, want = _draw(tcfg, scfg, groups, sub)
         except LayoutError as e:
             last = e
             continue
-        # RoboDojo's own records hold fewer clutter objects than `nums` when the strips are tight
-        # (push_T_random eval record: ~13 of 20), so a partial fill is kept, not retried.
-        want = sum(int(b.get("nums", 0)) for b in tcfg.get("Clutter") or [])
-        layout.update(fixtures_from_scene(scfg))
         errs = validate(layout)
         if errs:
             raise LayoutError(f"generated an invalid record: {errs[:5]}")
@@ -685,6 +672,60 @@ def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0) -> dic
             layout["_simlab"]["variant"] = variant
         return layout
     raise LayoutError(f"{task} seed {seed}: no valid layout in {max_tries} tries ({last})")
+
+
+def _draw(tcfg: dict, scfg: dict, groups: dict, sub: int) -> tuple[dict, int, int]:
+    """One placement attempt of the config with the random streams seeded by ``sub``: (record, clutter placed,
+    clutter wanted); LayoutError when it does not fit."""
+    task_cats = {e["name"] for gl in groups.values() for g in gl for e in g["category"]}
+    np.random.seed(sub % (2**32))
+    rng = random.Random(sub)
+    gens = make_generators(scfg)
+    for a in (tcfg.get("ProhibitedArea") or []) + (tcfg.get("Prohibited_Area") or []):   # one config has the typo
+        x0, y0, x1, y1 = a
+        gens["table"].add_box_prohibited_area(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
+    layout: dict = {}
+    place_task_objects(groups, gens, rng, layout)
+    n_clutter = place_clutter(tcfg.get("Clutter") or [], gens, rng, layout, exclude=task_cats)
+    # RoboDojo's own records hold fewer clutter objects than `nums` when the strips are tight
+    # (push_T_random eval record: ~13 of 20), so a partial fill is kept, not retried.
+    want = sum(int(b.get("nums", 0)) for b in tcfg.get("Clutter") or [])
+    layout.update(fixtures_from_scene(scfg))
+    return layout, n_clutter, want
+
+
+# template draws: sub-seeds 1, 2, ... Every layout record's sub-seed is seed * 1000 + ... with seed >= SEED_BASE, so
+# >= 100_000_000: a template draw is never a layout of ours (nor any evaluated one)
+TEMPLATE_SUBSEED_MAX = 10_000
+
+
+def template_draws(task: str, n: int = 4) -> list[dict]:
+    """``n`` draws of the task's public config that are no layout of ours or anyone's (sub-seeds 1, 2, ...): what all
+    of them agree on is what the config fixes. For the twin's template of public constants
+    (``dojo.runtime.estimate.public_constants``); never a record to run or to evaluate."""
+    tcfg, scfg = task_config(task), scene_config(task)
+    groups = merged_object_groups(task)
+    out, sub = [], 0
+    while len(out) < n and sub < TEMPLATE_SUBSEED_MAX:
+        sub += 1
+        lay = None
+        for keepout in (True, False):           # as generate: some configs fix objects under the home grippers
+            _KEEPOUT_ON[0] = keepout
+            try:
+                lay = _draw(tcfg, scfg, groups, sub)[0]
+                break
+            except LayoutError:
+                continue
+        _KEEPOUT_ON[0] = True
+        if lay is None:
+            continue
+        errs = validate(lay)
+        if errs:
+            raise LayoutError(f"generated an invalid record: {errs[:5]}")
+        out.append(strip_meta(lay))
+    if len(out) < n:
+        raise LayoutError(f"{task}: {len(out)} of {n} template draws fit")
+    return out
 
 
 def strip_meta(layout: dict) -> dict:

@@ -263,15 +263,18 @@ def test_kinematic_belief_follows_jaws_and_drops_on_support():
 
 
 def test_estimate_to_layout_fills_fields_from_public_template():
-    tmpl = {"Room": {"default": "r"}, "Table": {"default": "t"}, "Ground": {}, "Background": {},
-            "Rigid": {"block": [{"category": "block", "category_idx": 0, "label": "block_0", "group": 0,
-                                 "place_tag": "up", "default_pos": [9, 9, 9], "default_ori": [1, 0, 0, 0]}]},
-            "Geometry": {"camera_stand": [{"category": "camera_stand", "category_idx": 0, "label": "camera_stand",
-                                           "default_pos": [0, 0.4, 0.765], "default_ori": [1, 0, 0, 0]}]}}
+    from dojo.runtime.estimate import constants_from
+    groups = {"Rigid": [{"select_mode": {"label": ["block_0"]}, "common": {"group": 0, "place_tag": "up"},
+                         "category": [{"name": "block", "index": [0, 7]}]}],
+              "Geometry": [{"select_mode": {"label": ["camera_stand"]}, "common": {"xlim": [0, 0], "ylim": [0.4, 0.4]},
+                            "category": [{"name": "camera_stand", "index": [0]}]}]}
+    stand = {"category": "camera_stand", "category_idx": 0, "label": "camera_stand", "default_pos": [0, 0.4, 0.765],
+             "default_ori": [1, 0, 0, 0]}
+    const = constants_from(groups, {"Room": {"default": "r"}, "Table": {"default": "t"}, "Ground": {}, "Background": {}},
+                           [{"Geometry": {"camera_stand": [dict(stand)]}}] * 2, lambda t, c: [])
     objs = [{"type": "Rigid", "category": "block", "category_idx": 7, "label": "block_0", "pos": [0.1, -0.2, 0.78],
              "quat": [1, 0, 0, 0]}]
-    lay = estimate_to_layout("stack_blocks", objs, template=tmpl, fixed={"camera_stand"},
-                             meta_fn=lambda t, c, i: {"physics": {"mass": 0.1}})
+    lay = estimate_to_layout("stack_blocks", objs, constants=const, meta_fn=lambda t, c, i: {"physics": {"mass": 0.1}})
     b = lay["Rigid"]["block"][0]
     assert b["category_idx"] == 7 and b["default_pos"] == [0.1, -0.2, 0.78] and b["place_tag"] == "up"
     assert b["physics"] == {"mass": 0.1, "type": "rigid"} and lay["Geometry"]["camera_stand"][0]["label"] == "camera_stand"
