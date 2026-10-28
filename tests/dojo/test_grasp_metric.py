@@ -1,0 +1,159 @@
+"""Stream M's grasp-time perception metric (dojo.perception.grasp_metric): events from the gripper commands, the
+corridor, footprint distances, the per-event classes and the belief rebuilt from a report. numpy only (no catalogue:
+footprints fall back to discs, groups to one label each, the tolerance is passed in)."""
+
+import numpy as np
+
+from dojo.perception import grasp_metric as gm
+from dojo.skills.kinematics import X5Kin
+
+Q0 = [0.0, 0.6, 0.6, 0.0, 0.0, 0.0]
+TOL = (15.0, None)
+
+
+def _act(gl=1.0, gr=1.0, ql=Q0, qr=Q0):
+    return {"left_arm_joint_state": list(ql), "left_ee_joint_state": [gl],
+            "right_arm_joint_state": list(qr), "right_ee_joint_state": [gr]}
+
+
+def _row(label, pos, cat="cube", idx=0, typ="Rigid", clutter=False):
+    return {"label": label, "type": typ, "category": cat, "category_idx": idx, "pos": list(pos),
+            "quat": [1, 0, 0, 0], "clutter": clutter}
+
+
+def _bel(pos, cat="cube", idx=0):
+    return {"key": f"Rigid/{cat}/{idx:05d}", "pos": list(pos), "quat": [1, 0, 0, 0]}
+
+
+def test_grip_events_close_and_release():
+    acts = [_act(1.0), _act(0.8), _act(0.4), _act(0.0), _act(0.0), _act(0.3), _act(1.0), _act(0.45), _act(1.0, 0.2)]
+    ev = gm.grip_events(acts)
+    assert [(e["kind"], e["step"], e["arm"]) for e in ev] == [
+        ("grasp", 3, "left"), ("release", 6, "left"), ("grasp", 8, "left"), ("release", 9, "left"), ("grasp", 9, "right")]
+
+
+def test_corridor_stops_after_its_length():
+    track = []
+    for z in np.linspace(1.0, 0.8, 21):            # 1 cm per step down
+        T = np.eye(4)
+        T[:3, 3] = [0.1, 0.0, z]
+        track.append(T)
+    c = gm.corridor(track, 20, length=0.05)
+    assert np.allclose(c[0], [0.1, 0.0, 0.8])
+    assert 0.85 <= c[-1][2] <= 0.861 and len(c) == 6
+
+
+def test_footprint_distance():
+    sq = np.array([[0, 0], [0.1, 0], [0.1, 0.1], [0, 0.1]], float)
+    assert gm.footprint_dist(sq, np.array([[0.05, 0.05, 1.0], [0.05, 0.05, 0.9]])) == 0.0
+    assert abs(gm.footprint_dist(sq, np.array([[0.2, 0.05, 1.0]])) - 0.1) < 1e-9
+    assert abs(gm.footprint_dist(sq, np.array([[0.2, -0.05, 1.0], [0.2, 0.2, 1.0]])) - 0.1) < 1e-9
+    h = gm.hull2d(np.array([[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0.5]]))
+    assert len(h) == 4
+
+
+def _event(kind="grasp", target="a", point=(0.0, 0.0, 0.8), ref=None):
+    return gm.Event(kind, target, list(point), [list(point), [point[0], point[1], point[2] + 0.1]], reference=ref)
+
+
+def test_score_event_clean_and_classes():
+    gt = [_row("a", (0.0, 0.0, 0.78)), _row("b", (0.07, 0.0, 0.78), idx=1), _row("far", (0.5, 0.5, 0.78), idx=2)]
+    clean = {"a": _bel((0.003, 0.0, 0.78)), "b": _bel((0.07, 0.004, 0.78), idx=1), "far": _bel((0.5, 0.5, 0.78), idx=2)}
+    s = gm.score_event(_event(), clean, gt, "t", tol=TOL)
+    assert s["clean"] and s["clean_r"] == {"5": True, "10": True, "15": True}
+    assert s["required"][0]["cls"] == "ok" and [n["label"] for n in s["neighbours"]] == ["b"]
+    # the target 25 mm off: overshoot (15 < 25 <= 30); 40 mm: gross
+    s = gm.score_event(_event(), {**clean, "a": _bel((0.025, 0.0, 0.78))}, gt, "t", tol=TOL)
+    assert s["required"][0]["cls"] == "overshoot" and not s["clean"]
+    s = gm.score_event(_event(), {**clean, "a": _bel((0.0, 0.04, 0.78))}, gt, "t", tol=TOL)
+    assert s["required"][0]["cls"] == "gross"
+    # wrong asset at the right place: identity
+    s = gm.score_event(_event(), {**clean, "a": _bel((0.0, 0.0, 0.78), idx=7)}, gt, "t", tol=TOL)
+    assert s["required"][0]["cls"] == "identity"
+    # the target believed on its neighbour: wrong_object
+    s = gm.score_event(_event(), {**clean, "a": _bel((0.07, 0.0, 0.78))}, gt, "t", tol=TOL)
+    assert s["required"][0]["cls"] == "wrong_object"
+    # not in the belief
+    s = gm.score_event(_event(), {k: v for k, v in clean.items() if k != "a"}, gt, "t", tol=TOL)
+    assert s["required"][0]["cls"] == "not_believed"
+
+
+def test_neighbours_and_phantoms_per_radius():
+    gt = [_row("a", (0.0, 0.0, 0.78)), _row("b", (0.10, 0.0, 0.78), idx=1)]
+    # b's disc footprint (3 cm) is 7 cm from the corridor: inside R 10 / 15, outside R 5
+    bel = {"a": _bel((0.0, 0.0, 0.78))}
+    s = gm.score_event(_event(), bel, gt, "t", tol=TOL)
+    assert s["clean_r"] == {"5": True, "10": False, "15": False}
+    assert s["clean_required"] and any("neighbour b not found" in r for r in s["reasons"]["10"])
+    # b found 10 mm off: clean; 25 mm off: not
+    s = gm.score_event(_event(), {**bel, "b": _bel((0.11, 0.0, 0.78), idx=1)}, gt, "t", tol=TOL)
+    assert s["clean"]
+    s = gm.score_event(_event(), {**bel, "b": _bel((0.125, 0.0, 0.78), idx=1)}, gt, "t", tol=TOL)
+    assert not s["clean_r"]["10"]
+    # a believed object where nothing is, 9 cm away: a phantom at R 10, not at R 5
+    gt2 = [_row("a", (0.0, 0.0, 0.78))]
+    s = gm.score_event(_event(), {**bel, "ghost": _bel((0.0, 0.12, 0.78), idx=3)}, gt2, "t", tol=TOL)
+    assert s["clean_r"]["5"] and not s["clean_r"]["10"] and s["phantoms"][0]["label"] == "ghost"
+    # clutter counts as a neighbour unless excluded; camera_stand never does
+    gt3 = [_row("a", (0.0, 0.0, 0.78)), _row("junk", (0.06, 0.0, 0.78), idx=4, clutter=True),
+           _row("camera_stand", (0.0, 0.05, 0.78), cat="camera_stand", typ="Geometry")]
+    assert not gm.score_event(_event(), bel, gt3, "t", tol=TOL)["clean"]
+    assert gm.score_event(_event(), bel, gt3, "t", tol=TOL, include_clutter=False)["clean"]
+
+
+def test_place_reference_and_not_held():
+    gt = [_row("a", (0.0, 0.0, 0.83)), _row("base", (0.0, 0.0, 0.78), cat="plate", idx=0)]
+    bel = {"a": _bel((0.0, 0.0, 0.83)), "base": _bel((0.002, 0.0, 0.78), cat="plate")}
+    ev = _event("place", "a", (0.0, 0.0, 0.9), ref="base")
+    s = gm.score_event(ev, bel, gt, "t", tol=TOL)
+    assert s["clean"] and [r["role"] for r in s["required"]] == ["held", "reference"]
+    s = gm.score_event(ev, {**bel, "base": _bel((0.05, 0.0, 0.78), cat="plate")}, gt, "t", tol=TOL)
+    assert s["required"][1]["cls"] == "gross" and not s["clean_required"] and s["clean_target"]
+    ev.meta["held_drift_mm"] = 80.0
+    s = gm.score_event(ev, bel, gt, "t", tol=TOL)
+    assert s["required"][0]["cls"] == "not_held"
+
+
+def test_episode_events_rebuilds_the_belief():
+    kin = X5Kin()
+    p = kin.tcp("left", Q0)[:3, 3]
+    q1 = list(Q0)
+    q1[0] = 0.3                                    # the carry: joint 1 turns the arm
+    p1 = kin.tcp("left", q1)[:3, 3]
+    rec = {"Rigid": {"cube": [{"label": "a", "category_idx": 0, "default_pos": list(p), "default_ori": [1, 0, 0, 0]},
+                              {"label": "b", "category_idx": 1, "default_pos": [0.3, 0.3, 0.78],
+                               "default_ori": [1, 0, 0, 0]}]}}
+    acts = [_act(1.0), _act(1.0), _act(0.0), _act(0.0, ql=q1), _act(0.0, ql=q1), _act(1.0, ql=q1), _act(1.0, ql=q1)]
+    rep = {"records": {"initial": rec, "fused": rec},
+           "events": [{"kind": "refine", "label": "a", "arm": "left", "for": "pick", "step": 1, "ok": True,
+                       "pose7": list(p + [0.004, 0, 0]) + [1, 0, 0, 0]},
+                      {"kind": "belief_drop", "label": "a", "step": 6, "z": 0.7801}]}
+    evs = gm.episode_events(rep, acts, kin)
+    kinds = [(e.kind, e.target, e.step) for e, _ in evs]
+    assert kinds == [("grasp", "a", 3), ("place", "a", 6)]
+    (g, bg), (pl, bp) = evs
+    assert g.meta["attributed"] == "refine"
+    assert np.allclose(bg["a"]["pos"], p + [0.004, 0, 0])       # the refine was applied before the close
+    assert np.allclose(bp["a"]["pos"], p1 + [0.004, 0, 0], atol=0.02)   # carried with the TCP to the release
+    assert np.linalg.norm(np.asarray(bp["a"]["pos"]) - p) > 0.01
+    # a GT where a really travelled: the place is clean
+    gt = [_row("a", list(np.asarray(bp["a"]["pos"]))), _row("b", (0.3, 0.3, 0.78), idx=1)]
+    assert gm.score_event(pl, bp, gt, "t", tol=TOL)["clean_required"]
+    s = gm.summarize([{**gm.score_event(g, bg, gt, "t", tol=TOL)}, gm.score_event(pl, bp, gt, "t", tol=TOL)])
+    assert s["events"] == 2 and s["grasp"] == 1 and s["place"] == 1
+
+
+def test_close_without_a_target_is_not_a_grasp():
+    kin = X5Kin()
+    rec = {"Rigid": {"cube": [{"label": "a", "category_idx": 0, "default_pos": [0.4, 0.4, 0.78],
+                               "default_ori": [1, 0, 0, 0]}]}}
+    acts = [_act(1.0), _act(0.0), _act(1.0)]
+    evs = gm.episode_events({"records": {"initial": rec}, "events": []}, acts, kin)
+    assert [e.kind for e, _ in evs] == ["close_other", "release_other"]
+
+
+def test_quat_roundtrip():
+    for q in ([1, 0, 0, 0], [0.7071, 0, 0, 0.7071], [0.5, 0.5, -0.5, 0.5], [0, 1, 0, 0]):
+        q = np.asarray(q, float) / np.linalg.norm(q)
+        r = gm._R_quat(gm._quat_R(q))
+        assert min(np.linalg.norm(r - q), np.linalg.norm(r + q)) < 1e-6
