@@ -5,11 +5,15 @@
 * ``objects_from_gt_rows``: dev-only GT rows (``RoboDojoRunner.objects_gt``) -> the same (mode gt).
 * ``est_objects``: WorldState objects -> a flat list ``[{type, category, category_idx, label, pos, quat}]``
   (task objects only: the estimate the twin is loaded with).
-* ``estimate_to_layout``: that list -> a full RoboDojo layout record for ``Twin.load_from_estimate``:
-  fixtures (Room / Table / Ground / Background) from the public scene config, per-object fields
-  (physics from the asset's public metadata, the task config's group fields) as simlab's generator
-  writes them, and fixed-pose scene objects (``camera_stand``, a fixed dustbin) from a record our
-  generator builds from public configs only. Our dev layout files are never read here.
+* ``estimate_to_layout``: that list -> a full RoboDojo layout record for ``Twin.load_from_estimate``, from the
+  estimate plus what the PUBLIC configs fix (``public_constants``), never a sampled value: fixtures (Room / Table /
+  Ground / Background, scene default with randomisation off), per object its observed identity and pose, physics
+  from the asset's public metadata, the task config's placement fields for its observed category, and its support
+  (``relative_plane``) when the config names exactly one, else the believed one (the nearest observed candidate
+  support); fixed-pose objects the estimate does not carry only when the config fixes their identity (one candidate
+  asset) and their whole record agrees in every template draw (``gen_layouts.template_draws``: draws of the config
+  that are no layout). Unknown sampled identities / relations stay unknown. No layout id is generated as a template
+  and no dev layout file is read (legality audit 2026-10-28, P1-3).
 * ``flagged``: which records want a look (ambiguous, occluded, review request, confidence < threshold).
 """
 
@@ -185,12 +189,80 @@ def flagged(record: dict, conf_thr: float = 0.7, doubt: bool = False) -> list[di
 
 
 # ---------------------------------------------------------------------------- twin layout records
+# a placement field of the task config, per label and category (what simlab's generator copies into a record)
+CONFIG_FIELDS = ("group", "xlim", "ylim", "zlim", "qpos", "rotate_deg", "rotate_rand", "relative_plane", "place_tag",
+                 "margin", "check_mode", "need_check_stable")
+TEMPLATE_DRAWS = 4                      # template draws compared for the fixed-pose records (gen_layouts.template_draws)
+# identity tied to another label or a map: never a constant of the label itself
+TIED_MODES = ("same", "same_index_as_label", "same_as_label", "label_map", "linked_count")
+
+
+def _rounded(x):
+    if isinstance(x, dict):
+        return {k: _rounded(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_rounded(v) for v in x]
+    if isinstance(x, float):
+        return round(x, 9)
+    return x
+
+
+def constants_from(groups: dict, fixtures: dict, draws: list[dict], indices) -> dict:
+    """What the public config fixes, from its object groups (``gen_layouts.merged_object_groups``), the scene's
+    fixtures, ``indices(type, category)`` (the public catalogue's asset indices) and template draws:
+    ``{"fixtures", "labels": {label: {"type", "per_category": {cat: fields}, "pool": n assets, "prefix"}},
+    "fixed_records": {label: (type, record)}}``."""
+    from dojo.simlab.gen_layouts import SAMPLING_DEFAULTS, _is_fixed
+    from dojo.simlab.layout import iter_objects
+
+    def find(layout, label):
+        return next((inst for _t, _c, inst in iter_objects(layout) if inst.get("label") == label), None)
+    labels: dict = {}
+    fixed_cands = []
+    for typ, gl in groups.items():
+        for g in gl:
+            sm = g.get("select_mode") or {}
+            per_cat, pool = {}, set()
+            for e in g.get("category") or []:
+                prm = dict(SAMPLING_DEFAULTS)
+                prm.update(g.get("common") or {})
+                prm.update({k: v for k, v in e.items() if k not in ("name", "index", "_label", "_fixed_xy")})
+                per_cat[e["name"]] = {k: copy.deepcopy(prm[k]) for k in CONFIG_FIELDS}
+                idx = e.get("index") if e.get("index") is not None else indices(typ, e["name"])
+                pool |= {(e["name"], int(i)) for i in idx}
+            entry = {"type": typ, "per_category": per_cat, "pool": len(pool), "mode": sm.get("mode")}
+            for lab in sm.get("label") or []:
+                labels[lab] = entry
+                if (_is_fixed(g) and len(pool) == 1 and sm.get("mode") not in TIED_MODES
+                        and not any(isinstance(f["relative_plane"], (list, tuple)) for f in per_cat.values())):
+                    fixed_cands.append(lab)
+            prefix = sm.get("label_prefix")
+            for pfx in (prefix if isinstance(prefix, list) else [prefix] if prefix else []):
+                labels.setdefault(("prefix", str(pfx)), entry)
+    fixed_records = {}
+    for lab in fixed_cands:                             # identical in every draw: the config fixes the whole record
+        recs = [find(d, lab) for d in draws]
+        if draws and all(r is not None for r in recs) and all(_rounded(r) == _rounded(recs[0]) for r in recs[1:]):
+            fixed_records[lab] = (labels[lab]["type"], copy.deepcopy(recs[0]))
+    return {"fixtures": copy.deepcopy(fixtures), "labels": labels, "fixed_records": fixed_records}
+
+
 @lru_cache(maxsize=8)
-def _template(task: str) -> dict:
-    """A record our generator builds from the public task/scene configs (seed SEED_BASE): fixtures, the
-    per-label field template and fixed-pose scene objects. No dev layout file is read."""
-    from dojo.simlab import gen_layouts, paths
-    return gen_layouts.strip_meta(gen_layouts.generate(task, paths.SEED_BASE))
+def public_constants(task: str) -> dict:
+    """``constants_from`` the task's public configs: object groups, the scene's fixtures (randomisation off), the
+    catalogue's asset indices and ``TEMPLATE_DRAWS`` template draws (sub-seeds no layout uses)."""
+    from dojo.simlab import gen_layouts as G
+    from dojo.simlab.layout import fixtures_from_scene
+    groups = G.merged_object_groups(task)
+    draws = G.template_draws(task, TEMPLATE_DRAWS)
+    return constants_from(groups, fixtures_from_scene(G.scene_config(task)), draws, G.available_indices)
+
+
+def _label_entry(labels: dict, label: str) -> dict | None:
+    if label in labels:
+        return labels[label]
+    head, _, tail = str(label).rpartition("_")
+    return labels.get(("prefix", head)) if head and tail.isdigit() else None
 
 
 def _fixed_labels(task: str) -> set:
@@ -203,24 +275,35 @@ def _fixed_labels(task: str) -> set:
     return out
 
 
-def estimate_to_layout(task: str, objs: list[dict], template: dict | None = None, fixed: set | None = None,
-                       meta_fn=None) -> dict:
-    """Full layout record for the twin from an object estimate (``est_objects``)."""
-    from dojo.simlab.layout import FIXTURE_KEYS, iter_objects
-    if template is None:
-        template = _template(task)
-    if fixed is None:
-        fixed = _fixed_labels(task)
+def estimate_to_layout(task: str, objs: list[dict], constants: dict | None = None, meta_fn=None) -> dict:
+    """Full layout record for the twin from an object estimate (``est_objects``) and the public constants (see the
+    module docstring). ``constants``: ``public_constants(task)`` by default (tests pass ``constants_from(...)``)."""
+    from dojo.simlab.gen_layouts import on_object
+    from dojo.simlab.layout import FIXTURE_KEYS
+    if constants is None:
+        constants = public_constants(task)
     if meta_fn is None:
         from dojo.simlab.gen_layouts import metadata as meta_fn
     from dojo.skills.artroot import asset_key, to_root
-    by_label = {inst.get("label"): (t, inst) for t, _c, inst in iter_objects(template) if inst.get("label")}
-    out: dict = {k: copy.deepcopy(template[k]) for k in FIXTURE_KEYS if k in template}
+    labels = constants["labels"]
+    out: dict = {k: copy.deepcopy(constants["fixtures"][k]) for k in FIXTURE_KEYS if k in constants["fixtures"]}
+    pos_of = {o["label"]: np.asarray(o["pos"], float) for o in objs}
     have = set()
     for o in objs:
         lab = o["label"]
-        t_inst = by_label.get(lab)
-        inst = copy.deepcopy(t_inst[1]) if t_inst else {}
+        ent = _label_entry(labels, lab)
+        inst = copy.deepcopy((ent or {}).get("per_category", {}).get(o["category"]) or {}) if ent else {}
+        rp = inst.get("relative_plane")
+        if isinstance(rp, (list, tuple)):               # the config leaves the support to the draw: the believed one
+            cands = [str(c).split("/")[0] for c in rp]
+            seen = [c for c in cands if c in pos_of and c != lab]
+            if seen:
+                p = np.asarray(o["pos"], float)
+                inst["relative_plane"] = min(seen, key=lambda c: float(np.linalg.norm(pos_of[c][:2] - p[:2])))
+            else:
+                inst.pop("relative_plane")               # unknown stays unknown
+        elif rp is not None and on_object(rp):
+            inst["relative_plane"] = str(rp).split("/")[0]   # the one label the config names (the generator's form)
         # the estimate is in the asset frame; RoboDojo poses an Articulation on its root prim (artroot)
         pos, quat = (to_root(o["pos"], o["quat"], asset_key(o["type"], o["category"], o["category_idx"]))
                      if o["type"] == "Articulation" else (o["pos"], o["quat"]))
@@ -234,9 +317,9 @@ def estimate_to_layout(task: str, objs: list[dict], template: dict | None = None
         inst.setdefault("visual", {})
         out.setdefault(o["type"], {}).setdefault(o["category"], []).append(inst)
         have.add(lab)
-    for lab, (t, inst) in by_label.items():           # fixed-pose objects the estimate does not carry
-        if lab not in have and lab in fixed:
-            out.setdefault(t, {}).setdefault(inst["category"], []).append(copy.deepcopy(inst))
+    for lab, (t, rec) in constants["fixed_records"].items():   # fixed by the config, not in the estimate
+        if lab not in have:
+            out.setdefault(t, {}).setdefault(rec["category"], []).append(copy.deepcopy(rec))
     return out
 
 

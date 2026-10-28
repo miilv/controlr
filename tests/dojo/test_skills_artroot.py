@@ -64,14 +64,15 @@ def test_objects_from_gt_puts_an_articulation_in_its_asset_frame():
 
 
 def test_estimate_to_layout_writes_the_root_pose_robodojo_takes():
-    tmpl = {"Room": {}, "Table": {}, "Ground": {}, "Background": {},
-            "Articulation": {"laptop": [{"category": "laptop", "category_idx": 0, "label": "laptop",
-                                         "default_pos": [9, 9, 9], "default_ori": [1, 0, 0, 0]}]}}
+    from dojo.runtime.estimate import constants_from
+    const = constants_from({"Articulation": [{"select_mode": {"label": ["laptop"]},
+                                              "category": [{"name": "laptop", "index": [0]}]}]},
+                           {"Room": {}, "Table": {}, "Ground": {}, "Background": {}}, [], lambda t, c: [])
     pa, qa = [0.0848, 0.0152, 0.8432], qz(-4.1)
     objs = [{"type": "Articulation", "category": "laptop", "category_idx": 0, "label": "laptop", "pos": pa, "quat": qa},
             {"type": "Rigid", "category": "block", "category_idx": 0, "label": "block", "pos": [0.1, 0.2, 0.78],
              "quat": [1, 0, 0, 0]}]
-    lay = estimate_to_layout("store_laptop_and_headphones", objs, template=tmpl, fixed=set(), meta_fn=lambda t, c, i: {})
+    lay = estimate_to_layout("store_laptop_and_headphones", objs, constants=const, meta_fn=lambda t, c, i: {})
     lp = lay["Articulation"]["laptop"][0]
     assert np.linalg.norm(np.asarray(lp["default_pos"]) - [0.0793, -0.0617, 0.8469]) < 0.001
     assert lay["Rigid"]["block"][0]["default_pos"] == [0.1, 0.2, 0.78]
