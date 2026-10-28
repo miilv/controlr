@@ -254,6 +254,13 @@ class RuntimeConfig:
     scan_min_step_lim: int = 300
     scan_step_rad: float = 0.16
     scan_settle: int = 2                # hold steps at the scan pose before the observation
+    # mode perception: background perception (perception service op bg_step, dojo.perception.bgperc): every observation
+    # (and one every bg_obs_every buffered steps of a long segment, 0 = only the runtime's own) re-measures uncertain /
+    # required objects from the wrist views; moves of untouched objects confirmed by >= 2 views are written into the
+    # belief. off | refine (local wrist refines) | reread (+ a full B1 re-read every bg_cfg reread_every steps, 40)
+    bg_perception: str = "off"
+    bg_obs_every: int = 0
+    bg_cfg: dict = field(default_factory=dict)  # dojo.perception.bgperc.BgConfig overrides
     extra: dict = field(default_factory=dict)
     preset: str | None = None           # name of the preset these fields came from (dojo/runtime/presets.py), if any
 
@@ -307,7 +314,7 @@ class RuntimePolicy:
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
                 or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on")
-                or self.cfg.twin_load not in ("raw", "consistent")):
+                or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -364,6 +371,7 @@ class RuntimePolicy:
         self._pending_far, self._place_pending, self._vsel_seen = {}, {}, {}
         self._flip_pending = {}          # label -> a big turn one view found, awaiting a second view (held_flip_confirm)
         self._recentre_prior = {}
+        self._bg = None
         self.dev_gt = None
         self.log_lines = []
         self.t0 = time.perf_counter()
@@ -415,6 +423,8 @@ class RuntimePolicy:
                                      ("off (stub: single plan, no twin)" if self.cfg.verify == "off" else
                                       "unavailable (see events)"))
             self.report["provider"] = dict(live["prov"].stats)
+            if getattr(self, "_bg", None) is not None:
+                self.report["bg_perception"] = {**self._bg.report(), "extra_obs": b.n_extra_obs}
             if self._pc is not None:
                 calls = list(getattr(self._pc, "calls", [])[getattr(self, "_pc_calls0", 0):])   # this episode's only
                 self.report["perception_calls"] = calls[-200:]
@@ -637,6 +647,15 @@ class RuntimePolicy:
                     arm, T_tcp_obj, asset_key, cfg_)
             if hasattr(pc, "watch_read"):               # provider.watch_read(region, prior): board cells / container
                 prov.watch_read = lambda region, prior=None: self._watch_read(region, prior, scene)
+            if cfg.bg_perception != "off" and hasattr(pc, "bg_step"):
+                from .bg import BgHook
+                bgc = dict(cfg.bg_cfg)
+                if cfg.bg_perception == "reread":
+                    bgc.setdefault("reread_every", 40)
+                hook = BgHook(pc, prov, scene, self.fold, bgc, events, log=self.log)
+                b.on_obs, b.obs_every = hook, max(0, int(cfg.bg_obs_every))
+                self._bg = hook
+                events.append({"kind": "bg_perception", "mode": cfg.bg_perception, "obs_every": b.obs_every})
             cats = {o.category for o in prov.belief.objects.values()}
             if cfg.track_moving == "on" or (cfg.track_moving == "auto" and "conveyor" in cats):
                 prov.track_reader = lambda obs: self._track_read(pc, obs, scene)

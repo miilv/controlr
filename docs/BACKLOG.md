@@ -6,6 +6,14 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo perception: nothing re-finds an object a scripted actor moved off its generator region.** B1's placement
+  priors keep tic-tac-toe's opponent pieces on their side of the table. On the proxy replay of B_breadth2 100004, 13
+  head re-reads after the opponent's move never paired a reading with the moved piece, although the head check saw its
+  start place empty (precision 0.0). #215 fixes tic-tac-toe at the skill (the watch's cell). In general, the background
+  perceiver (`bg_perception`, default off) needs a region-free source for "where did it go": V's `b1_doubt` features,
+  SAM 2.1 clicks, or S's detector. Measure it then (journal 2026-10-28-dojo-bgperc).
+- [ ] **dojo perception: general_pickup's clutter distractors near the approach corridor are never estimated** (13
+  grasp-time failures in M's table). B1 estimates task labels only, so this is a candidate for S's detector.
 - [ ] **dojo perception: store_laptop headset identity 00002 vs 00004** (5.1 c4 frames; B1 picks 00002 with the alternative
   00004 at +0.03..+0.08, so `identity_margin_swap` never fires): try the embedding path (`embed_b1`) on these frames.
   The laptop flip: `on_base_refit` (off) fixes 7 of 17 estimates; A/B after the root-vs-mesh offset is resolved.
