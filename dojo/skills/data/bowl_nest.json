@@ -1,0 +1,42 @@
+{
+ "_doc": "Where an identical copy rests nested in a bowl asset: origin-to-origin height (m), measured in G3's physics-only twin by dropping one copy onto another on its axis and letting it settle (scripts/skills/h95_nest_probe.py, 2026-10-28). PhysX nests by the colliders, so this is the truth the mesh-only estimates (library.bowl_geometry 'bins', nest_profile_dz) approximate. An asset constant.",
+ "Rigid/bowl/00001": {
+  "rest_dz": 0.0229
+ },
+ "Rigid/bowl/00002": {
+  "rest_dz": 0.0232
+ },
+ "Rigid/bowl/00003": {
+  "rest_dz": 0.029
+ },
+ "Rigid/bowl/00005": {
+  "rest_dz": 0.0103
+ },
+ "Rigid/bowl/00007": {
+  "rest_dz": 0.021
+ },
+ "Rigid/bowl/00008": {
+  "rest_dz": 0.02
+ },
+ "Rigid/bowl/00009": {
+  "rest_dz": 0.0207
+ },
+ "Rigid/bowl/00010": {
+  "rest_dz": 0.0126
+ },
+ "Rigid/bowl/00011": {
+  "rest_dz": 0.0274
+ },
+ "Rigid/bowl/00012": {
+  "rest_dz": 0.0132
+ },
+ "Rigid/bowl/00013": {
+  "rest_dz": 0.0137
+ },
+ "Rigid/bowl/00014": {
+  "rest_dz": 0.014
+ },
+ "Rigid/bowl/00015": {
+  "rest_dz": 0.011
+ }
+}

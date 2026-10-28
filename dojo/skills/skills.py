@@ -297,6 +297,12 @@ class Skills:
         # ``library.push_to``'s axis order (stream H): "greedy" (today: most left to go first) | "lookahead" (the other
         # axis first when its stroke would be blocked once the first is done)
         self.push_order = "greedy"
+        # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
+        # (to its planned grasp's TCP)
+        self.stack_reach = "centre"
+        # ``library.bowl_geometry``'s nest height (stream H): "bins" (today) | "measured" (the twin's rest height per
+        # asset, else the mesh's radial profile)
+        self.nest_height = "bins"
         self.consume_events: list = []
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
@@ -2134,12 +2140,23 @@ class Skills:
 
     def can_pick(self, label: str, arm: str, method: str = "auto") -> bool:
         """Grasp feasibility from the arm's home pose (cached per world refresh)."""
+        return self._home_pick(label, arm, method) is not None
+
+    def _home_pick(self, label: str, arm: str, method: str = "auto") -> "PickPlan | None":
+        """The best pick of ``label`` by ``arm`` from its home pose, or None (cached per world refresh)."""
         key = (label, arm, method, self.world.step)
         cache = self.__dict__.setdefault("_can_pick", {})
         if key not in cache:
             pp = self.plan_pick(label, arm, method, q_start={arm: self.world.home_q[arm]}, keep=1)
-            cache[key] = isinstance(pp, PickPlan)
+            cache[key] = pp if isinstance(pp, PickPlan) else None
         return cache[key]
+
+    def pick_reach(self, label: str, arm: str, method: str = "auto") -> float:
+        """Horizontal distance (m) from ``arm``'s base to the TCP of its best pick of ``label`` from home; the object's
+        centre when it has none."""
+        pp = self._home_pick(label, arm, method)
+        p = pp.grasp.T[:2, 3] if pp is not None else self.world.obj(label).center_w[:2]
+        return float(np.linalg.norm(np.asarray(p, float) - self.kin.base(arm)[:2, 3]))
 
     def already_there(self, job: "Job") -> bool:
         """Does the job's object already rest at the job's target (within the job's tolerances)?"""

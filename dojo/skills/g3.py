@@ -161,7 +161,8 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach"), "ported_drag": ("v1", "turn"),
                "ported_pour": ("v1", "full"),
                "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
-               "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on")}
+               "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
+               "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured")}
 
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
