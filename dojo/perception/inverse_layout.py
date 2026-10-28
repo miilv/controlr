@@ -3058,7 +3058,7 @@ def _series_count(task: str, groups: list[dict], ms: list | None, instruction: s
         for pre in sel.get("label_prefix") or []:
             by_prefix[pre] = n
         g["labels"] = [g["labels"][0]] * n
-    if cfg.series_count == "seg":
+    if cfg.series_count == "seg" and dets is not None:     # no server: exactly "min"
         for g in out:
             pre = _linked_prefix(task, g)
             if pre is not None and by_prefix.get(pre, 1) > 1:
@@ -3603,7 +3603,8 @@ class EstimatorConfig:
     # 2026-10-27: 2 of 3 cubes never looked for), "min" = the config's minimum, "sam" = the distinct SAM 3.1 text masks
     # of its vocabulary within the range (needs a SAM server; "min" without one). Single-prefix series are reported
     # under the generator's labels (cube_0, cube_1, ...), which the checker looks up by prefix
-    series_count: str = "min"
+    series_count: str = "seg"     # 2026-10-28: "min" -> "seg" (journal 2026-10-28-dojo-plan-none-perception); without a
+                                   # segmenter server (DOJO_SEG_ADDR) "seg" is exactly "min"
     seg_count_min_score: float = 0.5   # series_count "seg": a detection counts an object at this score (the seed bar)
     # seg_propose: the twin-trained instance segmenter (dojo.perception.seg_twin, class = catalogue asset; a no-op without
     # its server at DOJO_SEG_ADDR). "on": after the joint refinement, the head view's masks of a label group's assets
@@ -3666,7 +3667,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         sam_info["text"]["s"] = round(time.time() - t_s, 3)
     series: dict = {}
     seg_dets = None
-    if cfg.series_count == "seg" and "cam_head" in images:
+    if (cfg.series_count == "seg" and "cam_head" in images
+            and any(instance_range(task, g) is not None or _linked_prefix(task, g) for g in groups)):
         from . import seg_twin
         c = seg_twin.client()
         if c is not None:
