@@ -85,7 +85,7 @@ def test_release_read_without_views_keeps_the_prior(monkeypatch):
     assert not r["ok"] and r["why"] == "no_views" and r["pose7"] == pose7
 
 
-def _search_stubs(monkeypatch, fit_at, wrist_ok=False, pre_occupied=False):
+def _search_stubs(monkeypatch, fit_at, wrist_ok=False, pre_occupied=False, extents=(0.06, 0.08, 0.10)):
     """release_search with its head view, fits and 6-DoF read stubbed: a 200 x 200 px head view whose foreground holds
     one blob at pixel (150, 100); ``fit_at`` = {centre xy (rounded) or "pre": (T, iou)} of the head fits."""
     pytest.importorskip("cv2")
@@ -104,7 +104,8 @@ def _search_stubs(monkeypatch, fit_at, wrist_ok=False, pre_occupied=False):
     v = SimpleNamespace(cam=Cam(), fg=fg, known=np.ones_like(fg), robot=np.zeros_like(fg))
     monkeypatch.setattr(RR, "_head_view", lambda frame, bgs, thr: v)
     V = np.array([[0, 0, 0], [0, 0, 0.04]], float)
-    monkeypatch.setattr(RR, "load_asset", lambda key: SimpleNamespace(V=V, Vs=V, Fs=np.zeros((0, 3), int)))
+    monkeypatch.setattr(RR, "load_asset", lambda key: SimpleNamespace(V=V, Vs=V, Fs=np.zeros((0, 3), int),
+                                                                     extents=np.asarray(extents, float)))
     # the predicted head silhouette at the pre-grasp pose: the blob's pixels when the object is still there
     monkeypatch.setattr(RR, "silhouette", lambda cam, Vw, F, **k: fg.copy() if pre_occupied else np.zeros_like(fg))
     calls = []
@@ -138,10 +139,32 @@ def test_release_search_takes_the_pre_grasp_pose_of_a_missed_grasp(monkeypatch):
     r = RR.release_search({}, "Rigid/x/00000", prior, "left", pre_pose7=[0.2, 0.1, 0.78, 1, 0, 0, 0], head_bgs={"x": 1})
     assert r["ok"] and r["via"] == "pre_grasp" and r["pose7"][:3] == pytest.approx([0.2, 0.1, 0.78])
     assert calls == ["pre"]                                   # found there: no head search
-    # a thin object (a mallet): the head fit's IoU is noisy, its silhouette there is foreground: still taken
+    # foreground where it was grasped from, but a fit that does not explain the view (head IoU 0.3): nothing is placed
+    # on precision alone (arm 9's nut at head IoU 0.0)
     RR, calls = _search_stubs(monkeypatch, {"pre": (_T(0.21, 0.1), 0.3)}, pre_occupied=True)
     r = RR.release_search({}, "Rigid/x/00000", prior, "left", pre_pose7=[0.2, 0.1, 0.78, 1, 0, 0, 0], head_bgs={"x": 1})
-    assert r["ok"] and r["via"] == "pre_grasp" and r["pose7"][:3] == pytest.approx([0.21, 0.1, 0.78])   # the fit, 10 mm from it
+    assert not r["ok"] and r["pose7"] == prior
+
+
+def test_release_search_never_places_a_small_object_from_the_head_alone(monkeypatch):
+    # a factory nut (19 x 35 x 41 mm): a good head fit at its grasp pose, the wrist read does not see it -> no write
+    RR, calls = _search_stubs(monkeypatch, {"pre": (_T(0.2, 0.1), 0.9)}, pre_occupied=True,
+                              extents=(0.0191, 0.0353, 0.0407))
+    prior = [0.0, 0.0, 0.9, 1, 0, 0, 0]
+    assert RR.small_object("Rigid/factory_nut/00000")
+    r = RR.release_search({}, "Rigid/factory_nut/00000", prior, "left", pre_pose7=[0.2, 0.1, 0.78, 1, 0, 0, 0],
+                          head_bgs={"x": 1})
+    assert not r["ok"] and r["pose7"] == prior
+    # ... unless the wrist's 6-DoF read agrees (a second view)
+    RR, calls = _search_stubs(monkeypatch, {"pre": (_T(0.2, 0.1), 0.9)}, pre_occupied=True, wrist_ok=True,
+                              extents=(0.0191, 0.0353, 0.0407))
+    r = RR.release_search({}, "Rigid/factory_nut/00000", prior, "left", pre_pose7=[0.2, 0.1, 0.78, 1, 0, 0, 0],
+                          head_bgs={"x": 1})
+    assert r["ok"] and r["pose7"] == [9.0] * 7
+    # thin (a coin, 1.9 mm) counts as small too; a 50 mm chessman ring does not
+    monkeypatch.setattr(RR, "load_asset", lambda key: SimpleNamespace(extents=np.array({"c": [0.0019, 0.0285, 0.0285],
+                                                                                      "r": [0.01, 0.05, 0.05]}[key])))
+    assert RR.small_object("c") and not RR.small_object("r")
 
 
 def test_release_search_finds_a_fallen_object_near_the_release_and_ignores_far_blobs(monkeypatch):

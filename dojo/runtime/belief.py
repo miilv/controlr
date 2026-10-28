@@ -264,6 +264,8 @@ class KinematicBelief:
         self.drop_events: list[dict] = []       # releases a fixture took (``fixture_rest``), for the provider's events
         self.cmd: dict[str, np.ndarray] = {}    # arm -> the last commanded joint target (a release counts when still)
         self.n_since_g: dict[str, int] = {a: 0 for a in ARMS}   # steps since the arm's gripper command last changed
+        self.lift_max: dict[str, float] = {}    # arm -> the highest TCP z since its object was attached
+        self.released_lift: dict[str, float] = {}   # label -> how far the TCP rose while it held it (last release)
 
     def movable(self):
         return [o for o in self.objects.values() if o.obj_type != "Geometry" and not o.clutter]
@@ -338,12 +340,15 @@ class KinematicBelief:
                     self._n_grasp += 1
                     o = self.objects[lab]
                     self.grasp_z[a] = (float(T_tcp[2, 3]), self._n_grasp, np.r_[o.pos, o.quat].astype(float))
+                    self.lift_max[a] = float(T_tcp[2, 3])
             if a in self.attached:
                 self.g_held[a] = min(self.g_held.get(a, g_new), g_new)
             # released by an opening command: above 0.6 as before, or RELEASE_OPEN above the tightest command since the
             # grasp (a narrow release, open_g < 0.6, must not leave the object riding with the hand)
             if a in self.attached and g_new > min(0.6, self.g_held[a] + RELEASE_OPEN):
                 lab, _ = self.attached.pop(a)
+                gz = self.grasp_z.get(a)
+                self.released_lift[lab] = (self.lift_max.pop(a, float(T_tcp[2, 3])) - gz[0]) if gz is not None else 0.0
                 self.g_held.pop(a, None)
                 if lab not in [v[0] for v in self.attached.values()]:     # the other hand still holds it: no drop
                     self._drop(lab, release=still)
@@ -354,6 +359,7 @@ class KinematicBelief:
             if a in self.attached:
                 lab, T_rel = self.attached[a]
                 self._set_T(lab, T_tcp @ T_rel)
+                self.lift_max[a] = max(self.lift_max.get(a, float(T_tcp[2, 3])), float(T_tcp[2, 3]))
 
     def sync_robot(self, state: dict) -> None:
         for a in ARMS:
@@ -425,6 +431,7 @@ class RuntimeProvider:
         self.grip_missed: set[str] = set()      # labels a close missed (the next pick refine may search wider)
         self._grip_last: dict = {}              # arm -> ((label, grasp n), verdict) last logged
         self._grip_held_seen: dict = {}         # arm -> (label, grasp n) once the reading said held in that grasp
+        self._vision_held_seen: dict = {}       # arm -> (label, grasp n) once held_look said held in that grasp
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
         self.garment_reader = None              # (obs) -> a garment read (``dojo.perception.garment``) or None
         self.garment_updater = None             # (obs0, obs, read) -> {"keypoints": the hem corners again} or None
@@ -464,7 +471,8 @@ class RuntimeProvider:
         self.post_place_min_mm = 2.0
         self.post_place_confirm_mm = 20.0       # larger post-place corrections need the head view to agree
         self.post_place_read = "off"            # "6dof": a release read when the post-place refine fails / fits poorly
-        self.post_place_read_iou = 0.85
+        self.post_place_read_iou = 0.0          # an ok refine below this iou is re-read too (0: only a failed refine)
+        self.never_left_lift_m = 0.03           # the search's "never left" seed needs a lift this high with it attached
         self.post_place_read_cfg: dict = {}
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
@@ -639,9 +647,17 @@ class RuntimeProvider:
         self.stats["post_place_read"] = self.stats.get("post_place_read", 0) + 1
         if (not rr.get("ok") and self.post_place_read == "6dof_search" and hasattr(self.checker, "release_search")
                 and rr.get("why") in ("fit_poor", "no_models", "no_views", "out_of_range", "one_far_view")):
-            # nothing at the release: it fell, bounced, or never left the table (the pose it was grasped from)
+            # nothing at the release: it fell, bounced, or never left the table (the pose it was grasped from). "Never
+            # left" only after a real lift (the TCP rose >= never_left_lift_m with it attached) that nothing showed it
+            # rose with (no grip_check / held_look "held" in that grasp): an in-place turn (fasten_screws' thread-on)
+            # has no lift, and its pre-grasp pose is the nut one turn higher (rendered arm 9: +3 mm writes, 5/5 -> 1/5)
             g = self.belief.grasp_z.get(arm) if hasattr(self.belief, "grasp_z") else None
-            pre = [float(v) for v in g[2]] if g is not None and len(g) > 2 and g[2] is not None else None
+            key = (o.label, g[1]) if g is not None else None
+            lifted = float(getattr(self.belief, "released_lift", {}).get(o.label, 0.0)) >= self.never_left_lift_m
+            rose = key is not None and (self._grip_held_seen.get(arm) == key or self._vision_held_seen.get(arm) == key)
+            pre = ([float(v) for v in g[2]] if g is not None and len(g) > 2 and g[2] is not None and lifted and not rose
+                   else None)
+            ev["never_left_seed"] = pre is not None
             try:
                 rr = self.checker.release_search(obs, o, others, arm, pre, self.post_place_read_cfg) or {}
             except Exception as e:  # noqa: BLE001
@@ -1062,6 +1078,8 @@ class RuntimeProvider:
                 continue
             self._held_checked[arm] = (lab, g[1])
             r = self.held_checker(obs, arm, lab) or {}
+            if r.get("held") is True and float(r.get("confidence") or 0) >= 0.5:
+                self._vision_held_seen[arm] = (lab, g[1])
             ev = {"kind": "held_look", "arm": arm, "label": lab, "step": self.bridge.steps_used,
                   **{k: r.get(k) for k in ("held", "confidence", "source", "calls", "dark_risk", "error", "evidence",
                                            "opening")}}

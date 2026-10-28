@@ -157,12 +157,13 @@ class RuntimeConfig:
     neighbour_mm: float = 25.0          # ... and must not land within this of another known object
     rehover_when_far: bool = True       # also re-hover after an OK refine that moved the object > rehover_min_shift_mm
     post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
-    # ... and when that refine is not ok or fits poorly (iou < post_place_read_iou): the 6-DoF release read
+    # ... and when that refine is not ok (or, with post_place_read_iou > 0, fits below it): the 6-DoF release read
     # (``dojo.perception.release_read``: releasing wrist + head + other wrist, render-and-compare around the released
     # pose; an object that does not rest as put down, e.g. a mug swinging on its hook). off | 6dof | 6dof_search (when
     # the read finds nothing: the pre-grasp pose, a missed grasp, then a head-view search around the release)
     post_place_read: str = "off"
-    post_place_read_iou: float = 0.85
+    post_place_read_iou: float = 0.0    # 0 = only a failed refine is re-read. 0.85 (#210) re-read ok refines too and the
+                                        # read's few-mm moves broke fasten_screws' thread-on (rendered arm 9: 5/5 -> 1/5)
     post_place_read_cfg: dict = field(default_factory=dict)
     search: bool = False                # objects still missing after the looks: wrist search over regions
     search_max_regions: int = 4

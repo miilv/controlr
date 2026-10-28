@@ -77,6 +77,20 @@ def _front_occluders(cam, a, T, others, margin: float = 0.01) -> np.ndarray:
     return m
 
 
+SMALL_MAX_EXTENT_M = 0.045    # every side below this: tiny (a factory nut 19 x 35 x 41 mm, a 30 mm block)
+THIN_MIN_EXTENT_M = 0.005     # the thinnest side below this: thin (a coin, 1.9 mm)
+
+
+def small_object(key: str) -> bool:
+    """A tiny or thin object (from its mesh, never its name): head-only evidence (~2.4 mm/px) cannot place it; a
+    second view (a wrist) must agree before the belief moves."""
+    try:
+        e = np.sort(np.asarray(load_asset(key).extents, float))
+    except Exception:  # noqa: BLE001 (no mesh: treat as small, i.e. the strict rule)
+        return True
+    return bool(e[-1] < SMALL_MAX_EXTENT_M or e[0] < THIN_MIN_EXTENT_M)
+
+
 def rest_poses(key: str, T0: np.ndarray, ctr: np.ndarray, others=()) -> list[tuple[np.ndarray, str]]:
     """The asset's resting shapes (``inverse_layout.shape_models``) with the body centre at the released xy, at the
     released yaw and +90 degrees, resting on the highest known support under it (``refine.support_z``), else the table."""
@@ -338,7 +352,8 @@ def release_search(frame: dict, key: str, prior_pose7, arm: str, others=(), pre_
                    head_thr: float = 18.0, cfg: dict | None = None) -> dict:
     """The released object when the local read finds nothing at the release (it fell, bounced, or never left the table):
     (1) the pre-grasp pose ``pre_pose7`` (a missed grasp: still where it was picked from), checked by a head-view
-    (x, y, yaw) fit and, when a wrist sees it, the 6-DoF read; (2) a head-view search within ``radius_mm`` of the
+    (x, y, yaw) fit that must explain the view (IoU >= ``head_min_iou``) and, when a wrist sees it, the 6-DoF read;
+    a small object (``small_object``) needs that wrist read: the head alone never moves it; (2) a head-view search within ``radius_mm`` of the
     release: static-background foreground (``head_bgs``) that no other believed object explains, blobs nearest
     first, each fitted with the asset's resting shapes; a wrist that sees the fit polishes it (6-DoF read). Returns
     {ok, via ("pre_grasp" | "head_search"), pose7, ious, tried, ...}; not ok keeps the prior."""
@@ -363,14 +378,19 @@ def release_search(frame: dict, key: str, prior_pose7, arm: str, others=(), pre_
             continue
     om = cv2.dilate(om, np.ones((5, 5), np.uint8))
 
-    def verify(T: np.ndarray, via: str, iou_h: float, force: bool = False) -> dict | None:
-        """A wrist that sees the hypothesis polishes it (6-DoF read, any range rules); else the head fit stands
-        (``force``: the head evidence alone is enough, e.g. foreground where the object was grasped from)."""
+    small = small_object(key)
+
+    def verify(T: np.ndarray, via: str, iou_h: float) -> dict | None:
+        """A wrist that sees the hypothesis polishes it (6-DoF read, any range rules); else the head fit alone stands
+        when it explains its view (IoU >= ``head_min_iou``) and the object is not small (``small_object``: a tiny or
+        thin object needs a second view; rendered arm 9: head-only "pre-grasp" re-placements of fasten_screws' nuts,
+        one at head IoU 0.0 on foreground precision alone, broke the thread-on 4 of 5 times)."""
         rr = release_read(frame, key, _pose7(T), arm, others=others, cfg={**rcfg, "rest_starts": False,
                                                                           "max_shift_mm": 20.0, "max_turn_deg": 30.0})
         if rr.get("ok"):
             return {**rr, "via": via, "head_iou": round(iou_h, 4)}
-        if force or (rr.get("why") in ("one_far_view", "no_gain", "no_views") and iou_h >= c["head_min_iou"]):
+        if (not small and iou_h >= c["head_min_iou"]
+                and rr.get("why") in ("one_far_view", "no_gain", "no_views")):
             return {"ok": True, "via": via, "pose7": _pose7(T), "head_iou": round(iou_h, 4), "ious": {"cam_head": iou_h},
                     "read6_why": rr.get("why")}
         return None
@@ -393,10 +413,10 @@ def release_search(frame: dict, key: str, prior_pose7, arm: str, others=(), pre_
             prec1 = float((vis1 & (v.fg > 0)).sum()) / max(int(vis1.sum()), 1) if int(vis1.sum()) >= c["pre_min_px"] else 0.0
         tried.append({"via": "pre_grasp", "head_iou": round(iou, 3), "prec": round(prec0, 3), "prec_fit": round(prec1, 3),
                       "vis_px": n_vis, "shift_mm": round(shift, 1)})
-        there = (n_vis >= c["pre_min_px"] and prec0 >= c["pre_min_prec"]) or prec1 >= c["pre_min_prec"]
-        if there or (shift <= c["pre_max_shift_mm"] and iou >= c["head_min_iou"]):
-            T_use = T if (prec1 >= prec0 and shift <= c["pre_max_shift_mm"]) else Tp
-            out = verify(T_use, "pre_grasp", iou, force=there)
+        # foreground precision alone never places the object (it only says "something is there": another nut of the
+        # pool, the bolt's base): the fit must explain the view, and a wrist must agree for a small object
+        if shift <= c["pre_max_shift_mm"] and iou >= c["head_min_iou"]:
+            out = verify(T, "pre_grasp", iou)
             if out is not None:
                 return {**out, "pre_prec": round(prec0, 3), "tried": tried, "time_s": round(time.time() - t0, 3)}
     # (2) head-view blobs near the release
