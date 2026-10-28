@@ -2984,6 +2984,22 @@ def _seg_fit(mask: np.ndarray, key: str, gi: int, g: dict, prior: dict, shapes: 
     return v, h
 
 
+def _seg_dedup(dets: list, iou_thr: float) -> tuple[list, int]:
+    """One detection per object: the detector's NMS is per class, so one block can come out twice under two classes
+    (stack_blocks 100000: a beige block as block/00015 and block/00014). Masks overlapping a higher-scoring one by more
+    than ``iou_thr`` are dropped (their class kept in ``alts``). Returns (kept, n dropped)."""
+    if iou_thr <= 0 or len(dets) < 2:
+        return dets, 0
+    kept: list = []
+    for d in sorted(dets, key=lambda d: -d.score):
+        dup = next((k for k in kept if _mask_iou(d.mask, k.mask, np.ones_like(d.mask)) > iou_thr), None)
+        if dup is None:
+            kept.append(d)
+        else:
+            dup.alts.append((d.key, round(float(d.score), 3)))
+    return kept, len(dets) - len(kept)
+
+
 def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[dict], pending, shapes_by_group) -> dict:
     """The twin-trained segmenter as a proposer for B1 (``cfg.seg_propose``): its head-view instance masks, each with a
     catalogue-asset class, against the chosen objects' head silhouettes. Per label group:
@@ -3011,6 +3027,7 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
         info["error"] = f"{type(e).__name__}: {e}"
         return info
     info["n_dets"] = len(dets)
+    dets, info["dup"] = _seg_dedup(dets, cfg.seg_dup_iou)
     if not dets:
         return info
     fixed = lambda h: bool(h.per_view.get("occluded") or h.per_view.get("contained") or h.per_view.get("fixed_from_config")
@@ -3432,6 +3449,7 @@ class EstimatorConfig:
     seg_refit_margin: float = 0.05  # a local re-fit inside the explained mask must gain this much IoU
     seg_move: bool = True          # move an unexplained member to an unexplained mask of its group
     seg_flip: bool = True          # an explained member's 180-degree flip inside its mask, taken when the texture agrees
+    seg_dup_iou: float = 0.7       # class-agnostic de-duplication of the masks (one object, two classes); 0 = off
     seg_identity_w: float = 0.3    # identity cost bonus x score for the mask's class (0 = off)
     # an explained member whose mask names another SHAPE of its group is re-fitted as that shape inside the mask, kept when
     # its mask IoU is no worse than seg_identity_slack (off by default: v2 measurement)
