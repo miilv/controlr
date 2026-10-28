@@ -264,13 +264,19 @@ def _look_value(sk, label: str):
 def centred_grasp(o, max_off: float = CENTRE_OFF, allow_top: bool = False):
     """``plan_transfer``'s ``pair_ok``: the pads close within ``max_off`` of the tile's centre (in its own plane), and
     with a box grasp unless ``allow_top``. The operator tiles are 60 mm discs 8 mm thick: held 18 mm off their centre
-    they slid out at the lift (G3 100044) or on the carry (100031). The number tiles' metadata friction is 0.0: the
-    category's "top" grasps came up loose (8-21 mm in-hand drift) in 4 of ~12 picks, the box grasps in none."""
+    they slid out at the lift (G3 100044) or on the carry (100031). The number tiles are 3D numerals (metadata friction
+    0.0; RoboDojo's catalogue had no mesh for them, so their bbox stood in): squeezed across their bbox the slanted
+    strokes shot them out of the pads (G3 100032: 36 cm). With a mesh their grasps are not held to the centre."""
     c = np.asarray(o.asset.center, float)
+    # a number tile with its mesh is a 3D numeral (a "7" is a slanted stroke under a bar): its antipodal grasps sit where
+    # its faces are parallel, often off the bbox centre. Without the mesh, and for the discs, the centre is the grasp
+    centred = getattr(o.asset, "mesh", None) is None or str(o.category).lower() not in DIGIT_CATS
 
     def ok(g, T_tcp_obj, T_obj, T_tcp) -> bool:
         if not allow_top and getattr(g, "method", "") == "top":
             return False
+        if not centred:
+            return True
         p = np.linalg.inv(np.asarray(T_tcp_obj, float))[:3, 3] - c          # the TCP in the tile's frame
         return float(np.linalg.norm(p[:2])) <= max_off
     return ok
