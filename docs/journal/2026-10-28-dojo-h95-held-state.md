@@ -73,11 +73,14 @@ close (TCP inside the believed bbox + 15 mm) and with what the run's vision `hel
   are "strict v2 semantics" and never share a table with v1 (`command`) rows.
 - **`RuntimeConfig.grip_check`** (`off` | `on`). At every refresh while an arm holds an object in the belief, after a
   full close (command <= 0.05) held still >= 5 steps:
-  - **empty** (official - command <= 0.001): the object leaves the jaws in the belief. "air" (it never read held in
-    this grasp): back where it was at the close. "slip": dropped under the jaws, and into the fallen-doubt set, so a
-    later divergence re-plans it. Either way it is touched, and the next pick refine of it searches 7 cm
-    (`grip_miss_search_m`). The pick's own check then sees no rise and the program retries, instead of carrying a
-    phantom to the place.
+  - **empty** (official - command <= 0.001): the object leaves the jaws in the belief, is touched, and the next pick
+    refine of it searches 7 cm (`grip_miss_search_m`).
+    - "air" (it never read held in this grasp): back where it was at the close. The pick's own check then sees no rise
+      and the program retries, instead of carrying a phantom to the place.
+    - "slip" (it read held earlier in this grasp): a release there. The fixture-aware drop goes under the jaws (a mug
+      its hook took before the jaws opened stays on the hook); the next refresh's resync measures it with the
+      post-place refine and the head check; it is fallen-doubt, so a divergence re-plans it.
+    - Not a re-plan on the spot: that would abort a hang whose hook took the mug a step before the release.
   - **held**: the vision held_look is skipped for that grasp.
   - **inconclusive** (thin object, partial close, still settling, no key): the vision check decides as before.
   - Event `grip_check` (verdict, official, command; for a held reading the planned vs measured pad width), stats
@@ -113,9 +116,28 @@ close (TCP inside the believed bbox + 15 mm) and with what the run's vision `hel
 
 ## 5. Smokes and spend
 
-- G3 mode B from the PR head with `DOJO_GRIP_SOURCE=v2` (compute3 light4): see PERCEPTION_95 ### H.
-- Proxy smoke (compute3 heavy1, `submit_v3` + agentic off + held_look b1 + `grip_check` on, v2): see PERCEPTION_95 ### H.
-- Spend: 0 LLM calls. CPU: ~30 held_pose fits on compute3, plus the offline analyses locally.
+- **G3 mode B** from the PR head with `DOJO_GRIP_SOURCE=v2` (compute3 light4), store_tools 100000-01: 1/2, mean
+  0.75, no errors. G3 never reads the key.
+- **Proxy smokes**, compute3 heavy1, store_tools 100000, one episode each (`submit_v3` + agentic off + held_look b1,
+  `DOJO_GRIP_SOURCE=v2`). The key arrived (`official_at_start`), with 19 reads per episode.
+
+| arm | score | held looks (vision) | grip_check |
+|---|---|---|---|
+| grip_check on (first commit) | 0.25 | 0 | 4 held; the wrench read 0.13 at the lift, then 0.0 at the toolbox hover: slip |
+| grip_check on (slip = release) | 0.50 | 0 | the same slip; the post-place refine measured it (not ok -> fallen-doubt) |
+| grip_check off | 0.25 | 4 (wrench and hammer "held" at B1 confidence 0.33, i.e. agent escalations under b1_then_agent) | - |
+
+  - One episode per arm is a smoke, not a result.
+  - What the smokes show:
+    - the plumbing works end to end in a real proxy episode;
+    - the held looks (and their agent escalations) go away;
+    - a real mid-carry slip is caught. Before the slip-as-release change, the program finished "ok" with the wrench
+      on the table.
+  - Measured pad widths: tape measure 52 vs 53 mm planned, pliers 38.5 vs 39.7, wrench 16 vs 18.5. Hammer: 16.7 vs
+    11 mm planned on the second run, and 32.5 on the first, where the jaws closed on the fallen wrench (hammer rise 0).
+    That is the width check's case (BACKLOG).
+- Spend: 0 LLM calls. CPU: ~30 held_pose fits on compute3, plus the offline analyses locally. GPU: 1 G3 job (2 layouts)
+  and 3 proxy episodes on compute3.
 
 ## 6. Incident (self-report)
 
