@@ -173,8 +173,131 @@ def held_gap(f: dict, track: dict, arm: str, gt_label: str, k: int, fp) -> float
     return float(np.linalg.norm(np.maximum(0, np.maximum(lo - loc, loc - hi)))) * 1000
 
 
+# objects a task's skill moves on purpose without grasping them (dev-only scorer knowledge, never a policy rule): the
+# cubes the broom sweeps, the T a push moves, the blocks the set square aligns. A tool knocked over is not one of them
+# (hand-check on per-step replays, 2026-10-28: c4_sweep_v2 100003's broom moved at step 66 with no jaw near it)
+INTENDED_PUSH = {"sweep_blocks": r"^(cube_|rigid2)", "push_T": r"^(t|T)$|^t_", "align_blocks": r"^(cube|block)"}
+ROOTS = ("A not_held", "B in-hand", "C1 stale retry", "C2 never-held placed", "C3 in-hand carried", "C4 later wrong",
+         "D misread", "F actor", "G carried under another label", "G1 intended push", "G2 knocked", "E clutter")
+
+
+def carried_intervals(frames: dict, acts: list, track: dict) -> list[dict]:
+    """Every close-to-open interval of an arm with the GT objects that rode the jaws through it (rigid in the TCP frame
+    within 20 mm while moving > 30 mm in the world: what each hand really carried, whatever the belief called it) and
+    those that moved > 15 mm meanwhile without riding (pushed by the held object / tool, or knocked)."""
+    import numpy as np
+
+    from dojo.perception.grasp_metric import grip_events
+    out, open_g = [], {}
+    for e in grip_events(acts):
+        if e["kind"] == "grasp":
+            open_g[e["arm"]] = e["step"]
+            continue
+        kg = open_g.pop(e["arm"], None)
+        if kg is None:
+            continue
+        f0, f1 = frame_at(frames, kg), frame_at(frames, e["step"] - 1)
+        if f0 is None or f1 is None:
+            continue
+        T0, T1 = np.asarray(track[e["arm"]][kg], float), np.asarray(track[e["arm"]][e["step"] - 1], float)
+        o1 = {o["label"]: np.asarray(o["pos"], float) for o in f1["objects"]}
+        rode, pushed = [], []
+        for o in f0["objects"]:
+            p0, p1 = np.asarray(o["pos"], float), o1.get(o["label"])
+            if p1 is None or float(np.linalg.norm(p1 - p0)) < 0.015:
+                continue
+            r0, r1 = T0[:3, :3].T @ (p0 - T0[:3, 3]), T1[:3, :3].T @ (p1 - T1[:3, 3])
+            if float(np.linalg.norm(p1 - p0)) >= 0.03 and float(np.linalg.norm(r1 - r0)) < 0.02:
+                rode.append(o["label"])
+            else:                           # moved while this hand held something, without riding it: pushed by it
+                pushed.append(o["label"])
+        out.append({"arm": e["arm"], "grasp": kg, "release": e["step"], "rode": rode, "pushed": pushed})
+    return out
+
+
+def gt_pos(frames: dict, label: str, k: int):
+    import numpy as np
+    f = frame_at(frames, k, back=10**6)
+    o = next((x for x in (f or {}).get("objects", []) if x["label"] == label), None)
+    return None if o is None else np.asarray(o["pos"], float)
+
+
+def root_cause(r: dict, x: dict, hist: dict, frames: dict, intervals: list, held_at: dict, intended: str | None) -> str:
+    """The reviewer's root-cause class of an unclean event (``x`` = its ``failure_rows`` entry; ``hist`` = the earlier
+    scored events per believed label; ``held_at`` = (arm, grasp step) -> the label the belief held). A not_held / B in-hand
+    (held state), E clutter, F actor (a scripted opponent's piece), C1-C4 an object the robot touched (stale retry,
+    never-held placed, in-hand error carried, released right but believed wrong later), G an untouched object that moved
+    (carried by jaws under another label / a skill's intended push / knocked), D a genuine misread (it never moved)."""
+    import numpy as np
+    w, lab = x["what"], x.get("label")
+    if w == "held not_held":
+        return "A not_held"
+    if w.startswith("held"):
+        return "B in-hand"
+    if x.get("clutter"):
+        return "E clutter"
+    if r["task"] == "play_tic_tac_toe" and "opponent" in str(lab):
+        return "F actor"
+    h = hist.get(lab) or []
+    if any(p["kind"] == "grasp" for p in h):
+        p = h[-1]
+        if p["kind"] == "grasp":
+            return "C1 stale retry"
+        hq = next((q for q in p["required"] if q["role"] == "held"), None)
+        hc = hq["cls"] if hq else "?"
+        return "C2 never-held placed" if hc == "not_held" else ("C3 in-hand carried" if hc != "ok" else "C4 later wrong")
+    gl = x.get("gt_label") or lab
+    g0, gk = gt_pos(frames, gl, 0), gt_pos(frames, gl, r["step"] - 1)
+    if g0 is None or gk is None or (float(np.linalg.norm((gk - g0)[:2])) <= 0.015 and abs(float(gk[2] - g0[2])) <= 0.015):
+        return "D misread"
+    for iv in intervals:
+        if iv["release"] <= r["step"] and gl in iv["rode"] and held_at.get((iv["arm"], iv["grasp"])) not in (gl, lab):
+            return "G carried under another label"
+    pushed = any(iv["grasp"] < r["step"] and gl in iv["pushed"] for iv in intervals)
+    # a skill that pushes on purpose (the broom sweeping the cubes) moved it while the hand held its tool: the outcome
+    # model (confirm_pose) should have predicted it; else an accidental knock (the arm, a carried object, a topple)
+    import re
+    return "G1 intended push" if (intended and pushed and re.search(intended, str(gl))) else "G2 knocked"
+
+
+def plan_event(rep: dict, row: dict, frames: dict, task: str, g, fp, tol=None, acted: bool = False) -> dict:
+    """One per launched episode: the routed skill's required labels (named in the first decision's parameters) in the
+    planning record at planning time, against GT then. An episode that never routed a skill (no vocabulary, blocked by
+    perception) is an unclean plan event (``not_believed``)."""
+    import re
+
+    from dojo.perception.grasp_metric import IGNORE_LABELS, flatten_record, gt_rows_asset, score_required, tolerance
+    from dojo.runtime.estimate import planning_record
+    out = {"run": None, "task": task, "layout_id": row["layout_id"], "success": row.get("success"),
+           "category": row.get("category"), "kind": "plan"}
+    ds = [d for d in rep.get("decisions") or [] if d.get("skill")]
+    stage = (rep.get("result") or {}).get("stage")
+    if not ds and acted:
+        # it acted without a supervisor decision (an agent program: AgentPolicy's own cells): no plan event to score
+        out.update(clean=None, cls="no_plan", why="acted without a routed skill (agent program)", required=[])
+        return out
+    if not ds:
+        out.update(clean=False, cls="not_believed", why=f"no skill routed ({stage or row.get('category')})", required=[])
+        return out
+    d = ds[0]
+    _, rec = planning_record(rep.get("records") or {})
+    belief = flatten_record(rec)
+    f = frame_at(frames, int(d.get("step") or 0), back=10**6) or frames.get("0")
+    gts = [x for x in gt_rows_asset(f["objects"]) if x.get("label") not in IGNORE_LABELS]
+    gts = [{**x, "c": fp.centre(x.get("key"), x["pos"], x.get("quat"))} for x in gts]
+    bel = {k: {**v, "c": fp.centre(v.get("key"), v["pos"], v.get("quat"))} for k, v in belief.items()}
+    names = set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", json.dumps(d.get("params") or {})))
+    labels = sorted(n for n in names if n in bel or any(x["label"] == n for x in gts))
+    req = [score_required(lab, bel, [x for x in gts if not x.get("clutter")], g, tol or tolerance(task), "plan")
+           for lab in labels]
+    out.update(skill=d["skill"], step=d.get("step"), required=req, clean=bool(req) and all(q["ok"] for q in req),
+               cls=next((q["cls"] for q in req if not q["ok"]), "ok" if req else "no_labels"))
+    return out
+
+
 def cmd_score(a) -> None:
-    from dojo.perception.grasp_metric import Footprints, Groups, episode_events, flatten_record, score_event, tcp_track
+    from dojo.perception.grasp_metric import (Footprints, Groups, episode_events, flatten_record, grip_events, score_event,
+                                              tcp_track)
     from dojo.skills.kinematics import X5Kin
 
     out = Path(a.out)
@@ -183,7 +306,7 @@ def cmd_score(a) -> None:
     kin = X5Kin()
     fp = Footprints()
     groups: dict = {}
-    fe, fo = open(out / "events.jsonl", "w"), open(out / "episodes.jsonl", "w")
+    fe, fo, fpl = open(out / "events.jsonl", "w"), open(out / "episodes.jsonl", "w"), open(out / "plans.jsonl", "w")
     n_ep = 0
     for d, r, rp, ap in episodes(a.runs):
         if not on_slice(r["layout_id"]):
@@ -236,7 +359,26 @@ def cmd_score(a) -> None:
             s.update(base)
             s["moving"] = moving
             ev_rows.append(s)
-            fe.write(json.dumps(s) + "\n")
+        # attempts (first occurrence vs retries) and the reviewer's root-cause classes, in episode order
+        intended = INTENDED_PUSH.get(task)
+        intervals = carried_intervals(frames, acts, track)
+        held_at = {(s_["arm"], s_["step"]): (s_["meta"].get("attached") or s_["target"]) for s_ in ev_rows if s_["kind"] == "grasp"}
+        seen, hist = Counter(), defaultdict(list)
+        for s_ in sorted(ev_rows, key=lambda e: (e["step"], e["kind"] != "grasp")):
+            seen[(s_["kind"], s_["target"])] += 1
+            s_["attempt"] = seen[(s_["kind"], s_["target"])]
+            if not s_["clean_r"]["10"]:
+                x = failure_rows([s_])[0]
+                s_["root"] = root_cause(s_, x, hist, frames, intervals, held_at, intended)
+            hist[s_["target"]].append(s_)
+        for s_ in ev_rows:
+            fe.write(json.dumps(s_) + "\n")
+        closes = [e for e in grip_events(acts) if e["kind"] == "grasp"]
+        pl = plan_event(rep, r, frames, task, g, fp, acted=bool(closes))
+        pl.update(run=run, family=base["family"], head=base["head"],
+                  blocked=bool(r.get("category") == "perception_gross" or (rep.get("result") or {}).get("stage") == "no_vocabulary")
+                  and not closes)
+        fpl.write(json.dumps(pl) + "\n")
         fid = _probe_check(r, frames, acts, kin)
         epi = {**base, "events": len(ev_rows), "clean_R10": sum(s["clean_r"]["10"] for s in ev_rows),
                "clean_R5": sum(s["clean_r"]["5"] for s in ev_rows), "clean_R15": sum(s["clean_r"]["15"] for s in ev_rows),
@@ -251,6 +393,7 @@ def cmd_score(a) -> None:
               f"probe {fid['probe_agree_2mm']}/{fid['probe_closes']}", flush=True)
     fe.close()
     fo.close()
+    fpl.close()
     if fp.missing:
         print(f"footprints: no mesh for {sorted(fp.missing)} (disc)", file=sys.stderr)
     print(f"{n_ep} episodes scored", file=sys.stderr)
@@ -299,6 +442,8 @@ def _row(name: str, rs: list[dict], radii) -> str:
 
 def cmd_table(a) -> None:
     rows = [json.loads(ln) for f in a.events for ln in open(f) if ln.strip()]
+    if a.exclude_task:
+        rows = [r for r in rows if r["task"] not in a.exclude_task.split(",")]
     if a.exclude_unavailable:
         rows = [r for r in rows if not r.get("agent_unavailable")]
     if a.where:
@@ -328,6 +473,15 @@ def cmd_table(a) -> None:
         print(frame0_table(rows))
     elif a.gap:
         print(gap_table(rows))
+    elif a.summary:
+        plans = [json.loads(ln) for f in a.events for p_ in [Path(f).with_name("plans.jsonl")] if p_.exists()
+                 for ln in open(p_) if ln.strip()]
+        if a.exclude_task:
+            plans = [p for p in plans if p["task"] not in a.exclude_task.split(",")]
+        if a.latest or a.old or a.where:  # the same rounds as the events (a blocked episode has none: select by round)
+            keep = {(r["task"], r["family"]) for r in rows}
+            plans = [p for p in plans if (p["task"], p.get("family")) in keep]
+        print(summary_table(rows, plans))
     else:
         print(corr(rows) if a.corr else table(rows, a.by))
 
@@ -392,7 +546,8 @@ def taxonomy(rows: list[dict], R: str = "10") -> str:
     return "\n".join(lines)
 
 
-RELEASED = ("released", "post_place", "held_dropped", "probe_released")
+RELEASED = ("released", "post_place", "held_dropped", "predicted", "probe_released", "probe_post_place",
+            "probe_held_dropped", "probe_predicted")   # belief.py writes "predicted" after a drop or a twin adopt
 
 
 def blocker(x: dict) -> str:
@@ -425,9 +580,16 @@ def gap_table(rows: list[dict], goal: float = 0.95, R: str = "10") -> str:
     for r in rows:
         by[r["task"]].append(r)
     fails = defaultdict(Counter)
-    for x in failure_rows(rows, R):
-        fails[x["task"]][blocker(x)] += 1
-    lines = [f"| task | events | clean R{R} | events to {int(goal * 100)} % | unclean by blocker: " + " / ".join(BLOCKERS) + " |",
+    roots = all(r.get("root") for r in rows if not r["clean_r"][R]) and any(r.get("root") for r in rows)
+    cols = ROOTS if roots else BLOCKERS
+    if roots:
+        for r in rows:
+            if not r["clean_r"][R]:
+                fails[r["task"]][r["root"]] += 1
+    else:
+        for x in failure_rows(rows, R):
+            fails[x["task"]][blocker(x)] += 1
+    lines = [f"| task | events | clean R{R} | events to {int(goal * 100)} % | unclean by root cause: " + " / ".join(cols) + " |",
              "|---|---|---|---|---|"]
     tot_n = tot_c = tot_g = 0
     tot_f = Counter()
@@ -437,10 +599,41 @@ def gap_table(rows: list[dict], goal: float = 0.95, R: str = "10") -> str:
         g = max(0, math.ceil(goal * n) - c)
         tot_n, tot_c, tot_g = tot_n + n, tot_c + c, tot_g + g
         tot_f.update(fails[t])
-        lines.append(f"| {t} | {n} | {100 * c / n:.0f} % | {g} | " + " / ".join(str(fails[t].get(b, 0)) for b in BLOCKERS) + " |")
+        lines.append(f"| {t} | {n} | {100 * c / n:.0f} % | {g} | " + " / ".join(str(fails[t].get(b, 0)) for b in cols) + " |")
     if tot_n:
         lines.append(f"| **all** | {tot_n} | {100 * tot_c / tot_n:.0f} % | {max(0, math.ceil(goal * tot_n) - tot_c)} "
-                     f"(sum per task {tot_g}) | " + " / ".join(str(tot_f.get(b, 0)) for b in BLOCKERS) + " |")
+                     f"(sum per task {tot_g}) | " + " / ".join(str(tot_f.get(b, 0)) for b in cols) + " |")
+    return "\n".join(lines)
+
+
+def summary_table(rows: list[dict], plans: list[dict], R: str = "10") -> str:
+    """Per task, the three headline numbers (survivorship: an episode perception blocked has no executed event):
+    clean at R over executed events, the plan event's clean rate over ALL launched episodes, the perception-blocked
+    rate; then first attempts vs retries and the episode-averaged clean rate."""
+    by, pb = defaultdict(list), defaultdict(list)
+    for r in rows:
+        by[r["task"]].append(r)
+    for p in plans:
+        pb[p["task"]].append(p)
+    pct = lambda c, n: f"{100 * c / n:.0f} % ({c}/{n})" if n else "-"   # noqa: E731
+    lines = [f"| task | episodes | clean R{R}, executed events | plan event clean (launched episodes; agent programs out) | perception-blocked | "
+             "first attempt clean | retries clean | episode-averaged clean |", "|---|---|---|---|---|---|---|---|"]
+    tasks = sorted(set(by) | set(pb))
+    for t in tasks + ["**all**"]:
+        rs = rows if t == "**all**" else by[t]
+        ps = plans if t == "**all**" else pb[t]
+        first = [r for r in rs if r.get("attempt", 1) == 1]
+        retry = [r for r in rs if r.get("attempt", 1) > 1]
+        eps = defaultdict(list)
+        for r in rs:
+            eps[(r["run"], r["layout_id"])].append(bool(r["clean_r"][R]))
+        avg = sum(sum(v) / len(v) for v in eps.values()) / len(eps) if eps else None
+        lines.append(f"| {t} | {len(ps)} | {pct(sum(bool(r['clean_r'][R]) for r in rs), len(rs))} | "
+                     f"{pct(sum(bool(p['clean']) for p in ps if p['clean'] is not None), sum(p['clean'] is not None for p in ps))} | "
+                     f"{pct(sum(bool(p.get('blocked')) for p in ps), len(ps))} | "
+                     f"{pct(sum(bool(r['clean_r'][R]) for r in first), len(first))} | "
+                     f"{pct(sum(bool(r['clean_r'][R]) for r in retry), len(retry))} | "
+                     f"{'-' if avg is None else f'{100 * avg:.0f} %'} |")
     return "\n".join(lines)
 
 
@@ -540,6 +733,8 @@ def main(argv=None) -> None:
     t.add_argument("--frame0", action="store_true", help="the runtime's belief vs the frame-0 record, same events")
     t.add_argument("--latest", action="store_true", help="per task only its newest round (FAMILY_ORDER)")
     t.add_argument("--gap", action="store_true", help="per task: events to 95 %% at R10 and what blocks them")
+    t.add_argument("--summary", action="store_true", help="executed-event / plan-event / blocked rates, first vs retries")
+    t.add_argument("--exclude-task", default="", help="TASK,...: leave these tasks out")
     t.add_argument("--old", action="store_true", help="per task every round but its newest")
     t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)
