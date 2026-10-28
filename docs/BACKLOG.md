@@ -69,6 +69,12 @@
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
   dev layouts + `build` into every box's `bg_folds_51/fold{0,1}/scene/Dynamic_conveyor_00001/` (journal
   2026-10-28-dojo-conveyor-belt-blind §5; waits for compute2).
+- [ ] **dojo runtime / perception: pick_from_conveyor_by_image has no skill route and an empty frame-0 record.**
+  The instruction "Lift the basket more than 8 cm, identify the target object on the conveyor according to the image on
+  the board, pick it up, and place it into the basket." routes to no skill (decision `finish`, "no skill for: ...").
+  On rendered 5.1 the frame-0 record is empty: B1 and the agentic perceiver miss all 6 labels (basket, target, object1-3,
+  photo), even with the `Dynamic_conveyor_00001` background installed. Every episode ends at step 3/700 (integ-c4
+  round 2, 7f29156, 4 rows; journal 2026-10-28-dojo-integ-c4-round2 §3).
 - [ ] **dojo runtime: far-end belt reads are noisy.** In the offline genuine-5.1 replays (journal
   2026-10-28-dojo-conveyor-belt-blind §3.1), newcomer tracks at the upstream end give belt velocities of
   2.1-5.5 mm / step (4.0 true) while they are the only trusted tracks. The rider predictions, and so the intercept, use
