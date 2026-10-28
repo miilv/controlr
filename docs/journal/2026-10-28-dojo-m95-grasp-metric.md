@@ -68,3 +68,10 @@ slot (never more than 4 of our GPU jobs on the box).
   - +2.6 mm z writes left the belief one thread turn high;
   - a head-search write moved a nut that sat on its bolt onto the table.
 - That set the adopt rule in [EXPERIMENTS.md](../EXPERIMENTS.md) ("Perception changes in the dojo stack").
+- The arm-8 audit (grip check on / off, 71 episodes) shows the current writers net helpful:
+  - direct pick refines: 13 harmful / 57 helpful;
+  - post_place: 2 / 12.
+  The exception is the pick refine's recentre-and-confirm chain on put_bottles (7 / 4). There the fit slides 30-47 mm
+  along the same lying bottle from a wrist view under 0.9 visible, and the recentred view then "confirms" it. It is
+  not a lock-on to a neighbour, which I first read into an interchangeable-label mismatch; stream H checked. The gate
+  is H's `refine_recentre_guard="vis"`. Its evidence is the rendered A/B on 100005-09 + 100020-29, not the audit set.
