@@ -300,6 +300,10 @@ class RuntimeConfig:
     # empty = today. Their names go into the provider's
     # ``notes["routes"]``, which ``planner.plan`` reads
     new_routes: list = field(default_factory=list)
+    # belt picks (``interactive.pick_from_belt`` / ``match_and_pick``, ``Skills.belt_wrist_veto``): off (today) | on (a
+    # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
+    # match: compute4 camera rows, every pick after such a look missed)
+    belt_wrist_veto: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -307,6 +311,8 @@ class RuntimeConfig:
     # ... swap_poses' carry height: fixed (his 0.86 m) | reach (the highest of 0.86 / 0.84 / 0.82 / 0.80 at which each arm
     # reaches the other object's spot top-down; G3: at 0.86 the left arm cannot reach a T at x >= ~0.09)
     ported_swap: str = "fixed"
+    # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
+    joint_limits: str = "wide"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -382,7 +388,9 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
+                or self.cfg.belt_wrist_veto not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach")
+                or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
@@ -638,9 +646,11 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.stack_reach = cfg.stack_reach
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
+            sk_.joint_limits = cfg.joint_limits
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
