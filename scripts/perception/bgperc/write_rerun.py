@@ -246,13 +246,17 @@ def rerun(P, frame: dict, req: dict) -> dict:
 
 def compare(ev: dict, r: dict) -> dict:
     ok_a, ok_b = bool(ev.get("ok")), bool(r.get("ok"))
-    out = {"ok_rec": ok_a, "ok_rep": ok_b, "iou_rec": ev.get("iou"), "iou_rep": r.get("iou")}
+    out = {"ok_rec": ok_a, "ok_rep": ok_b, "iou_rec": ev.get("iou"), "iou_rep": r.get("iou"),
+           "shift_rec": ev.get("shift_mm"), "shift_rep": r.get("shift_mm")}
     pa = ev.get("pose7")
     if ok_a and ok_b and pa is not None and r.get("pos") is not None:
         pb = list(r["pos"]) + list(r["quat"])
         out["d_mm"] = round(float(np.linalg.norm(np.subtract(pa[:3], pb[:3]))) * 1000, 2)
         out["d_xy_mm"] = round(float(np.linalg.norm(np.subtract(pa[:2], pb[:2]))) * 1000, 2)
         out["d_deg"] = round(quat_angle_deg(pa[3:7], pb[3:7]), 2)
+    elif ok_a and ok_b and ev.get("shift_mm") is not None and r.get("shift_mm") is not None:
+        # no logged pose (a post-place re-measure that moved nothing): the shifts from the same prior differ at least by
+        out["d_shift_mm"] = round(abs(float(ev["shift_mm"]) - float(r["shift_mm"])), 2)
     if not ok_a and not ok_b and ev.get("fit_shift_mm") is not None and r.get("fit_shift_mm") is not None:
         out["d_fit_shift_mm"] = round(abs(float(ev["fit_shift_mm"]) - float(r["fit_shift_mm"])), 2)
     return out
@@ -308,6 +312,7 @@ def summary(rows: list[dict]) -> dict:
                   "both_ok": len(both), "mm": q([r["d_mm"] for r in both]), "xy_mm": q([r["d_xy_mm"] for r in both]),
                   "deg": q([r["d_deg"] for r in both]),
                   "gt_2mm": sum(r["d_mm"] > 2.0 for r in both),
+                  "shift_only": q([r["d_shift_mm"] for r in rs if "d_shift_mm" in r]),
                   "fit_shift_mm": q([r["d_fit_shift_mm"] for r in rs if "d_fit_shift_mm" in r])}
     return out
 
