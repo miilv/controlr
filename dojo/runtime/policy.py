@@ -288,8 +288,8 @@ class RuntimeConfig:
     push_order: str = "greedy"
     # planner routes that are off by default (stream N, ``dojo.skills.routes.NEW_ROUTES``): "equation" (an equation's
     # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right),
-    # "align" (identical blocks slid into one aligned row), "row_by_size" (objects of one kind stood in a row by size);
-    # empty = today. Their names go into the provider's
+    # "align" (identical blocks slid into one aligned row), "row_by_size" (objects of one kind stood in a row by size),
+    # "pour_order" (bottles into bowls in the instruction's order, stream P's ported pour); empty = today. Their names go into the provider's
     # ``notes["routes"]``, which ``planner.plan`` reads
     new_routes: list = field(default_factory=list)
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,

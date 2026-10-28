@@ -3117,6 +3117,12 @@ from dojo.skills.ported import SKILLS as _PORTED_SKILLS  # noqa: E402
 
 ROUTE_ONLY = dict(_PORTED_SKILLS)
 
+# bottles poured into bowls in the instruction's order through the ported pour (stream N; route "pour_order", off by
+# default)
+from dojo.skills.pour_order import ROUTE_SKILLS as _POUR_ORDER  # noqa: E402
+
+ROUTE_ONLY.update(_POUR_ORDER)
+
 
 def skill_fn(name: str):
     """A planned skill's function: the library's, else a route-only one (``ROUTE_ONLY``)."""
