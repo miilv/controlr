@@ -1470,6 +1470,16 @@ _COLOR_M: list | None = None  # offline colour calibration (color_calib.py), set
 _SELECT_TIES: str = "dc17"    # EstimatorConfig.select_ties, set per estimate() call (``_options`` reads it)
 
 
+def colour_map_for(task: str, cfg) -> list | None:
+    """The colour map B1's appearance cost uses for ``task`` (the instruction-derived vocabulary): ``cfg.color_map``
+    "all" = for every task (the default), "tasks" = only for ``cfg.color_tasks`` (dev), "none" = never."""
+    if cfg.color_map not in ("tasks", "all", "none"):
+        raise ValueError(f"color_map {cfg.color_map!r}")
+    if cfg.color_map == "all" or (cfg.color_map == "tasks" and task in cfg.color_tasks):
+        return cfg.color_M
+    return None
+
+
 def _top_face_color_distance(sm: ShapeModel, x: float, y: float, z_off: float, views, ref: np.ndarray) -> float:
     """Colour distance between the catalogue colour and the pixels at the object's top-face centre, median over the
     views that see it unoccluded (a 5x5 patch each). 1.0 when no view sees it."""
@@ -3499,6 +3509,10 @@ class EstimatorConfig:
     # select-list identity ties (dojo.perception.select_ties): "dc17" = kept where the checker scores no identity, off
     # for TIE_OFF's tasks (the default); "off" = no tie for any task (no per-task difference; the lead decides)
     select_ties: str = "dc17"
+    # the colour map (``color_M``) in B1's appearance cost: "all" = for every task (the default since the single-fixed-
+    # system audit, journal 2026-10-28-legality-uniform-color); "tasks" = only for ``color_tasks`` (the old per-task
+    # switch keyed on the instruction-derived vocabulary, kept for dev A/Bs); "none" = never
+    color_map: str = "all"
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
     # height check (stereo.check_record): the frame's own head + wrist views, plane-swept, against every object's
@@ -3590,7 +3604,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     from the first frame's head view."""
     global _COLOR_M, _SELECT_TIES
     cfg = cfg or EstimatorConfig()
-    _COLOR_M = cfg.color_M if task in cfg.color_tasks else None
+    _COLOR_M = colour_map_for(task, cfg)
     _SELECT_TIES = cfg.select_ties
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
