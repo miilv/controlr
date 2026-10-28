@@ -285,3 +285,25 @@ def test_seg_dedup_keeps_one_detection_per_object():
     assert n == 1 and [d.key for d in kept] == ["Rigid/block/00005", "Rigid/block/00015"]
     assert kept[1].alts == [("Rigid/block/00014", 0.7)]
     assert il._seg_dedup(dets, 0.0)[1] == 0
+
+
+def test_held_candidates_skip_covered_and_other_categories():
+    objs = [{"inst_name": "a", "pos": [0.0, 0.0, 0.78], "type": "Rigid", "category": "mahjong", "clutter": False},
+            {"inst_name": "b", "pos": [0.005, 0.0, 0.80], "type": "Rigid", "category": "mahjong", "clutter": False},
+            {"inst_name": "c", "pos": [0.2, 0.0, 0.78], "type": "Rigid", "category": "mahjong", "clutter": False},
+            {"inst_name": "d", "pos": [0.3, 0.0, 0.78], "type": "Rigid", "category": "block", "clutter": False},
+            {"inst_name": "e", "pos": [0.4, 0.0, 0.78], "type": "Geometry", "category": "mahjong", "clutter": False}]
+    got = [o["inst_name"] for o in seg_render.held_candidates(objs, "mahjong")]
+    assert got == ["b", "c"]               # "a" is under "b"; "d" is another category; "e" is a fixture
+    assert [o["inst_name"] for o in seg_render.held_candidates(objs, None)] == ["b", "c", "d"]
+
+
+def test_test_mode_takes_only_held_out_ids_and_a_test_dir(tmp_path):
+    assert seg_render.parse_ids("100000-100002,100024", test=True) == [100000, 100001, 100002, 100024]
+    for spec in ("100030", "100010", "100025", "100100"):
+        with pytest.raises(SystemExit):
+            seg_render.parse_ids(spec, test=True)
+    with pytest.raises(SystemExit, match="test"):
+        seg_render.main(["--task", "make_kong", "--ids", "100000", "--variants", "0", "--test", "--out", str(tmp_path / "render")])
+    with pytest.raises(SystemExit, match="test"):
+        seg_render.main(["--task", "make_kong", "--ids", "100000", "--variants", "1", "--test", "--out", str(tmp_path / "render_test")])

@@ -310,6 +310,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   --sock S --weights W --classes classes.json` answers at `DOJO_SEG_ADDR` (torch + ultralytics in that venv); without
   one it is a no-op. Its classes are catalogue keys from the training export (`classes.json`): an asset that never
   appeared in the training renders cannot be named, only its category (`_seg_groups` falls back to the category).
+- **The glyph flag needs its server too.** `glyph_read` acts only when `python -m dojo.perception.glyph_read serve --sock S
+  --model kong_cls/model.pt` answers at `DOJO_GLYPH_ADDR` (torch + torchvision); without one, or with a back / grazing
+  / low-margin crop, the tile stays unread ("unknown"). The margins (per view kind) live in the checkpoint and were
+  chosen on 100030-49 validation draws; never pick them on the held-out ids.
 - **CPU OpenGL without OSMesa.** The boxes have no OSMesa, but Mesa's EGL vendor exposes llvmpipe as EGL device 1:
   `LIBGL_ALWAYS_SOFTWARE=1 EGL_DEVICE_ID=1 PYOPENGL_PLATFORM=egl
   __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json` gives pyrender with no GPU process
