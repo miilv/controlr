@@ -53,6 +53,13 @@ The default "min" is unchanged. Results:
 | arrange_largest_number mats | 15 / 69 | 62 / 69 |
 | arrange_largest_number_random mats | 15 / 69 | 60 / 69 |
 
+**Default flipped to "seg"** (the lead adopted it into the candidate after the regression above):
+- `EstimatorConfig.series_count` defaults to "seg".
+- **Without a segmenter server** (no DOJO_SEG_ADDR) it is exactly "min", linked counts included, so runs without the
+  server are unchanged.
+- **With one**, the detector runs only for tasks that have a series or linked_count group.
+- **The candidate runs the seg_twin v2b server in every episode, for counting only.** seg_propose stays off.
+
 ## Need vs delivered
 
 (the table sent to the lead; the full numbers are in compute3 `~/dojo-data/w-ready/*/objects.jsonl`)

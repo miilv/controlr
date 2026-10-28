@@ -850,6 +850,14 @@ def _belt_look_pose(sk: Skills, a: str, samples: list, track: list, go: float, n
     return app, np.asarray(r.q, float)
 
 
+def wrist_look_absent(lr: dict) -> bool:
+    """A pick's wrist look (``Skills.last_refine``) that found nothing where the track put the rider: not ok, IoU under
+    0.1, and not a view the object overfills (perception's "truncated": the prior is kept, the object may well be
+    there)."""
+    return (not lr.get("ok") and float(lr.get("iou") or 0.0) < 0.1
+            and not str(lr.get("p_why") or "").startswith("truncated") and "truncated" not in str(lr.get("why") or ""))
+
+
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
                    pull: float = 0.0, skip_methods=(), min_rise: float | None = None) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
@@ -889,6 +897,13 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
             except Exception as e:  # noqa: BLE001 (a look that fails keeps the tracker's reading)
                 sk.log(f"[belt] wrist look failed: {type(e).__name__}")
             lr = getattr(sk, "last_refine", None) or {}
+            if getattr(sk, "belt_wrist_veto", "off") == "on" and wrist_look_absent(lr):
+                # the wrist look from the hover over the track finds nothing there: the head track is a phantom (a
+                # border read of another rider, a split blob): do not descend on it. Camera rows (compute4, 10 match
+                # episodes): every pick after such a look missed (8 / 8), no pick that succeeded had one (0 / 3)
+                sk.log(f"[belt] wrist look: nothing at {label}'s track (iou {float(lr.get('iou') or 0):.3f}, visible "
+                       f"{float(lr.get('visible_frac') or 0):.2f}): not picked")
+                return SkillResult(False, "belt_pick", "absent", len(app), a, note=f"nothing at {label}'s track")
             if lr.get("ok") and lr.get("pos") is not None and float(lr.get("iou") or 0.0) >= 0.5:
                 p_now = np.asarray(lr["pos"], float)
                 max_shift = 0.05
@@ -1023,7 +1038,22 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         elif st.get("first_at") is None and first in start:
             st["first_at"] = ([float(x) for x in start[first][0]], int(s_start))
     first_seen(w)
-    same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key]
+    absent: set = set()                                 # tracks a wrist look found empty (``belt_wrist_veto``)
+    rounds = 3 if getattr(sk, "belt_wrist_veto", "off") == "on" else 1
+    for rnd in range(rounds):
+        res = _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyor, max_wait, confirm,
+                           id_share, first_seen)
+        if res is not None:
+            return res
+        w = sk.refresh()
+    return {"ok": False, "stage": "pick", "note": f"every match was absent at its track: {sorted(absent)}"}
+
+
+def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyor, max_wait, confirm, id_share,
+                 first_seen):
+    """One wait-for-a-match-and-pick round of ``match_and_pick``; None when the pick found nothing at the match's track
+    (``belt_wrist_veto``: wait for the next match), else the skill's result."""
+    same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key and l not in absent]
     t0 = w.step
     seen = confirm if same else 0
     while not same or seen < confirm:
@@ -1050,7 +1080,7 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         fp = None if fa is None else np.asarray(fa[0], float) + v * (w.step - fa[1])
         behind = (lambda l: float((w.obj(l).pos[:2] - fp) @ u) < -0.08) if fp is not None else (lambda l: True)
         same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share
-                and behind(l)]
+                and behind(l) and l not in absent]
         seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
@@ -1061,6 +1091,13 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip))
         if r.ok or r.status == "ended":
             return {"ok": True, "stage": "picked", "note": r.note}
+        if r.status == "absent":
+            absent.add(target)
+            try:
+                sk.home(gripper=OPEN)
+            except Exception:  # noqa: BLE001
+                pass
+            return None
         sk.log(f"[belt] pick {target}: {r.status} {r.note}")
         if r.status == "grasp_slip" and getattr(sk, "notes_belt_method", None):
             skip.add(sk.notes_belt_method)     # the retry takes another kind of grasp (a rim pinch of a solid toy)

@@ -39,7 +39,9 @@ class _Client:
 
 
 def _views():
-    mk = lambda tag: SimpleNamespace(cam=tag, img=np.full((48, 64, 3), tag, np.uint8), known=np.ones((48, 64), np.uint8))
+    def mk(tag):
+        return SimpleNamespace(cam=tag, img=np.full((48, 64, 3), tag, np.uint8), known=np.ones((48, 64), np.uint8))
+
     return {"cam_head": mk(0), "cam_left_wrist": mk(1), "cam_head@1": mk(2)}
 
 
@@ -113,3 +115,28 @@ def test_estimator_flag_default_off_and_read_rule(monkeypatch):
     other = {"candidates": ["Rigid/number_card/00001", "Rigid/number_card/00002"]}
     h = SimpleNamespace(per_view={"identity": "read"}, key="Rigid/number_card/00001", tag="up", sm=lambda: None, T=lambda: None)
     assert il._glyph_read_slot(h, other, {}, None, {}, cfg).per_view == {"identity": "read"}   # only mahjong tiles
+
+
+def test_classify_mask_reads_names_and_margins():
+    class C:
+        def classify(self, img, boxes):
+            return {"probs": [[0.02, 0.9, 0.03, 0.03, 0.02]], "n_glyph": 4, "margins": {"head": 0.5, "held_wrist": 0.95},
+                    "names": ["0", "6", "9", "plus"]}
+
+    m = np.zeros((48, 64), np.uint8)
+    m[10:20, 10:20] = 1
+    img = np.zeros((48, 64, 3), np.uint8)
+    r = gr.classify_mask(img, m, "cam_head", client_=C())
+    assert r["read"] and r["name"] == "6"
+    r = gr.classify_mask(img, m, "cam_left_wrist", held=True, client_=C())     # the stricter held margin
+    assert not r["read"] and r["why"] == "low_margin"
+    assert gr.classify_mask(img, np.zeros_like(m), client_=C())["why"] == "not visible"
+    cut = np.zeros_like(m)
+    cut[0:12, 30:40] = 1                                                         # cut by the frame: never read
+    assert gr.classify_mask(img, cut, "cam_left_wrist", client_=C())["why"] == "edge"
+    arm = np.zeros(m.shape, bool)
+    arm[8:22, 20:24] = True                                                      # an arm along the tile's right side
+    assert 0.2 < gr.robot_ring(m, arm) < 0.4
+    assert gr.classify_mask(img, m, "cam_head", client_=C(), robot=arm, robot_ring_max=0.2)["why"] == "robot"
+    assert gr.classify_mask(img, m, "cam_head", client_=C(), robot=np.zeros(m.shape, bool))["read"]
+    assert gr.class_name({}, 3) == "Rigid/mahjong/00003"
