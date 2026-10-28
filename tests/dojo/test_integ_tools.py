@@ -169,3 +169,23 @@ def test_rendered_runs_refuse_mikhail_s_slices():
         out = subprocess.run(["bash", str(ROOT / "scripts/dojo/integ_eval.sh"), "--task", "t", "--layouts", f"/x/{lid}.json"],
                              capture_output=True, text=True, timeout=30)
         assert out.returncode == 2 and "not ours" in out.stderr
+
+
+def test_catalog_md5_names_the_catalogue_a_row_was_measured_with(tmp_path):
+    """Every eval row carries ``catalog_md5``: the md5 of ``$DOJO_CATALOG/index.json``. W's additive overlay
+    (2026-10-28) changes index.json exactly when assets are added, so rows from before / after a sync stay apart."""
+    import hashlib
+
+    pytest.importorskip("numpy")
+    try:
+        from dojo.runtime.eval import catalog_md5
+    except ImportError as e:  # the eval driver imports RoboDojo-side modules on some setups
+        pytest.skip(f"dojo.runtime.eval not importable here: {e}")
+    cat = tmp_path / "catalog"
+    cat.mkdir()
+    (cat / "index.json").write_text('{"Rigid/block/00003": {}}')
+    want = hashlib.md5((cat / "index.json").read_bytes()).hexdigest()
+    assert catalog_md5({"DOJO_CATALOG": str(cat)}) == want
+    (cat / "index.json").write_text('{"Rigid/block/00003": {}, "Rigid/number/00000": {}}')   # an overlay landed
+    assert catalog_md5({"DOJO_CATALOG": str(cat)}) not in (None, want)
+    assert catalog_md5({"DOJO_CATALOG": str(tmp_path / "none")}) is None                       # no catalogue: None

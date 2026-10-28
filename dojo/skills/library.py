@@ -3093,3 +3093,15 @@ SKILLS.update(_GARMENT_SKILLS)
 from dojo.skills.sweep import SKILLS as _SWEEP_SKILLS  # noqa: E402
 
 SKILLS.update(_SWEEP_SKILLS)
+
+# Skills only the planner's routes call, never offered to the LLM agent (its manual and the J2 registry document
+# ``SKILLS``): Mikhail's measured skills through the robot-harness adapter (stream P; routes behind ``ported_routes``,
+# default off)
+from dojo.skills.ported import SKILLS as _PORTED_SKILLS  # noqa: E402
+
+ROUTE_ONLY = dict(_PORTED_SKILLS)
+
+
+def skill_fn(name: str):
+    """A planned skill's function: the library's, else a route-only one (``ROUTE_ONLY``)."""
+    return SKILLS[name] if name in SKILLS else ROUTE_ONLY[name]

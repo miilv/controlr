@@ -158,6 +158,7 @@ class FrozenGarmentProvider:
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
 SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
+               "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach"),
                "joint_limits": ("wide", "measured")}
 
 
@@ -288,6 +289,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
                                   for o in sk.refresh().task_objects()}})
     rec["category"] = classify(res_j, reward, hist)
+    if getattr(sk, "ported_runs", None):                 # stream P: the adapter's calls of each ported skill (tail)
+        rec["ported"] = sk.ported_runs
     infra = watch.since()
     if infra:
         # the episode measured the infrastructure, not the skill: out of every summary (``write_summary``)

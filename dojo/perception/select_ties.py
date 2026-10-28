@@ -44,10 +44,16 @@ INERT = {  # task: the groups whose configured tie cannot act (one option, or on
 }
 
 
-def tie_mode(task: str | None, mode: str | None) -> str:
+POLICIES = ("dc17", "off")    # dc17: TIE_OFF per task (the default); off: no select-list tie for ANY task (uniform)
+
+
+def tie_mode(task: str | None, mode: str | None, policy: str = "dc17") -> str:
     """The select mode the identity step may use for ``task`` (the instruction-derived vocabulary): the config's (default
-    ``unique``, as before), or ``allow_duplicate`` (no tie: each member by its own costs) where D-C17 forbids the tie."""
-    if task in TIE_OFF:
+    ``unique``, as before), or ``allow_duplicate`` (no tie: each member by its own costs) where D-C17 forbids the tie, or
+    for every task with ``policy="off"`` (the uniform alternative: no per-task difference at all)."""
+    if policy not in POLICIES:
+        raise ValueError(f"select_ties policy {policy!r}, expected one of {POLICIES}")
+    if policy == "off" or task in TIE_OFF:
         return "allow_duplicate"
     return mode or "unique"
 
@@ -70,4 +76,4 @@ def assign_keys(C, mode: str) -> list[int]:
     return [int(np.argmin(C[i])) for i in range(C.shape[0])]
 
 
-__all__ = ["MODES", "TIE_OFF", "KEPT", "INERT", "tie_mode", "assign_keys"]
+__all__ = ["MODES", "POLICIES", "TIE_OFF", "KEPT", "INERT", "tie_mode", "assign_keys"]

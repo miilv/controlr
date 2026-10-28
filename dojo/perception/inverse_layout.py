@@ -1467,6 +1467,7 @@ def _touches_unknown(b: Blob, v: ViewMasks) -> bool:
 
 
 _COLOR_M: list | None = None  # offline colour calibration (color_calib.py), set per estimate() call
+_SELECT_TIES: str = "dc17"    # EstimatorConfig.select_ties, set per estimate() call (``_options`` reads it)
 
 
 def _top_face_color_distance(sm: ShapeModel, x: float, y: float, z_off: float, views, ref: np.ndarray) -> float:
@@ -2411,6 +2412,88 @@ def _category_quota(chosen: list[Hypothesis], views, cfg, groups, pending, task)
     return out
 
 
+TWIN_TASK = "imitate_sorting_sequence"        # the instruction's "place the corresponding objects ... in the same order"
+OUR_BASE_XY = (0.0, -0.45)                   # the midpoint of our arms' bases (dojo.skills.kinematics.ARM_ROOTS)
+
+
+def twin_sides(xy: list, base=OUR_BASE_XY) -> tuple[list[int], list[int]]:
+    """(ours, the demonstrator's): the movers' indices split by distance from our arms' bases, the nearer half ours (the
+    observed positions; ``copy_demonstration``'s own rule). An odd count leaves the middle one out of both."""
+    d = [float(np.hypot(x - base[0], y - base[1])) for x, y in xy]
+    order = sorted(range(len(xy)), key=lambda i: d[i])
+    n = len(order) // 2
+    return order[:n], order[len(order) - n:]
+
+
+def twin_assign(C: np.ndarray, margin: float, unfit: float = 9.0) -> dict[int, tuple[int, float, bool]]:
+    """{row: (column, margin, uncertain)}: the Hungarian assignment of demonstrator blobs (rows) to our assets (columns)
+    by fit cost; a row's margin is its next-best column's cost minus the assigned one; within ``margin`` (or nothing
+    fitted for the runner-up) is a near-tie: uncertain. Rows with nothing fitted are left out."""
+    out = {}
+    for r, c in _assign_fitted(C, unfit).items():
+        alt = [C[r, j] for j in range(C.shape[1]) if j != c and C[r, j] < unfit]
+        m = float(min(alt) - C[r, c]) if alt else float("inf")
+        out[r] = (c, m, m < margin)
+    return out
+
+
+def _twin_pairing(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypothesis]:
+    """``twin_pairing``: the demonstrator's objects take the asset of the one of OURS whose re-fit at their blob explains
+    the pixels best (see ``EstimatorConfig.twin_pairing``). Every far mover is re-fitted at its own head-view blob as each
+    of our observed assets (colour scored, other objects masked; the label group's own region is a position prior), and
+    ``twin_assign`` pairs them one-to-one; an uncertain pair keeps its fit and is marked identity "unknown"."""
+    head = views["cam_head"]
+    out = list(chosen)
+    movers = [i for i, h in enumerate(out) if h.key.startswith("Rigid/") and h.key.split("/")[1] not in CONTAINER_CATEGORIES
+              and not h.per_view.get("occluded")]
+    if len(movers) < 4:
+        return out
+    near, far = twin_sides([(out[i].x, out[i].y) for i in movers])
+    ours, demo = [movers[j] for j in near], [movers[j] for j in far]
+    keys = [out[i].key for i in ours]
+    C = np.full((len(demo), len(keys)), 9.0)
+    fits: dict = {}
+    for r_, i in enumerate(demo):
+        h = out[i]
+        gi = h.label_group
+        g = groups[gi] if gi is not None and gi < len(groups) else None
+        others = _union_masks(out, views, skip=i, target=h)
+        s_h = h.sm().sil(head.cam, h.T())
+        m = cv2.dilate(s_h, np.ones((5, 5), np.uint8)) & head.fg & (1 - others["cam_head"])
+        if m.sum() < 10:
+            continue
+        n, lab, st, cents = cv2.connectedComponentsWithStats(m, connectivity=8)
+        j = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+        b = Blob("cam_head", (lab == j).astype(np.uint8), int(st[j, cv2.CC_STAT_AREA]), cents[j], tuple(st[j, :4]))
+        for c_, k in enumerate(keys):
+            best = None
+            if k == h.key:
+                best = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters, color=True)
+            for sm in shape_models(k):
+                for x, y, yaw, ln in coarse_fit(sm, b, {"cam_head": head}, cfg.yaw_step_deg)[:2]:
+                    t = Hypothesis(gi, sm.key, sm.tag, x, y, yaw, ln, blob=h.blob)
+                    t.per_view = {"geom_group": [k]}
+                    t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
+                    if g is not None and not region_ok(g, *_centre_xy(t2, g), t2.yaw, t2.sm().yaw_period):
+                        continue
+                    if best is None or t2.loss < best.loss:
+                        best = t2
+            if best is not None:
+                C[r_, c_], fits[(r_, c_)] = best.loss, best
+    for r_, (c_, mg, unc) in twin_assign(C, cfg.twin_margin).items():
+        i = demo[r_]
+        t2 = fits[(r_, c_)]
+        for k_, v_ in out[i].per_view.items():
+            if k_ not in t2.per_view and not k_.startswith("cam"):
+                t2.per_view[k_] = v_
+        t2.per_view["twin"] = {"key": keys[c_], "was": out[i].key, "cost": round(float(C[r_, c_]), 4),
+                               "margin": round(mg, 4) if np.isfinite(mg) else None, "uncertain": bool(unc)}
+        if unc:
+            t2.per_view["identity"] = "unknown"         # the copy stops before it (a correct prefix still scores)
+        out[i] = t2
+    return out
+
+
 def _assign_fitted(C: np.ndarray, unfit: float = 9.0) -> dict[int, int]:
     """Hungarian over a cost matrix whose ``unfit`` entries mark trials that did not fit: {row: column} for the rows
     assigned a fitted column. A row with nothing fitted keeps its incumbent (absent from the result)."""
@@ -2823,6 +2906,8 @@ def _options(g: dict, geom_groups: dict) -> list[set] | None:
     selection round pick a single shape for every piece it placed."""
     sel = g["select_mode"]
     mode = sel.get("mode")
+    if _SELECT_TIES == "off":                   # the uniform alternative: no select-list constraint for any task
+        return None
     if mode == "hierarchical" and (sel.get("select_category_nums") or [0])[0] == 1:
         return [{f"{g['type']}/{c['name']}/{i:05d}" for i in c["index"]} for c in g["categories"]]
     if mode == "same" and set(g["labels"]) <= set(sel.get("label") or g["labels"]):
@@ -3382,6 +3467,13 @@ class EstimatorConfig:
     # ... and a same_as_label copy list takes its complete source list's assets (Hungarian). OFF by default: the copy
     # relation hands the demonstrator's objects our objects' identities (the audit's P1-2 class)
     quota_copy_assets: bool = False
+    # imitate_sorting_sequence: the demonstrator's objects (the far half of the movers) paired one-to-one with OURS (the
+    # near half) by appearance: each far blob re-fitted as each of our OBSERVED assets, Hungarian on the fit cost; a pair
+    # whose cost is within ``twin_margin`` of the row's next-best is "uncertain" (identity unknown: the copy stops there).
+    # Legal under D-C17 (lead, 28 Oct): the correspondence is the instruction's, the candidates are observed, the pixels
+    # decide; no config list / quota / copy relation is read (journal 2026-10-28-dojo-imitate-pairing). OFF by default
+    twin_pairing: bool = False
+    twin_margin: float = 0.02
     # objects placed inside a static container base (fill_egg_holder's eggs in the egg basket): fitted on the base's
     # top surface to the evidence that interrupts its texture, only their pixels in front of it counted (contained.py)
     contained_children: bool = True
@@ -3404,6 +3496,9 @@ class EstimatorConfig:
     # ... and B1 (estimate): the polish's identity trials and the same-geometry identity use it too. Off: on the table
     # (d0_ext frame 0, 6.0) it changed nothing on organize / store_tools / stack_by_language and cost fill_pen 3 pens
     embed_b1: bool = False
+    # select-list identity ties (dojo.perception.select_ties): "dc17" = kept where the checker scores no identity, off
+    # for TIE_OFF's tasks (the default); "off" = no tie for any task (no per-task difference; the lead decides)
+    select_ties: str = "dc17"
     color_tasks: tuple = ("stack_blocks", "stack_blocks_random", "stack_blocks_by_language", "stack_bowls",
                           "stack_bowls_random")
     # height check (stereo.check_record): the frame's own head + wrist views, plane-swept, against every object's
@@ -3493,9 +3588,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     """``extra_frames``: [(images, state)] of later frames of the same episode with the objects assumed
     static (arms moved): their views join the render-and-compare loss as ``<cam>@<k>``. Proposals come
     from the first frame's head view."""
-    global _COLOR_M
+    global _COLOR_M, _SELECT_TIES
     cfg = cfg or EstimatorConfig()
     _COLOR_M = cfg.color_M if task in cfg.color_tasks else None
+    _SELECT_TIES = cfg.select_ties
     t0 = time.time()
     bgs = bgs if bgs is not None else load_backgrounds()
     cams = cams or cameras_from_state(state)  # given cameras: a caller's own calibration (J1 harness)
@@ -3891,6 +3987,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         chosen = _swap_pairs(chosen, views, cfg, groups)
     if cfg.category_quota:
         chosen = _category_quota(chosen, views, cfg, groups, pending, task)
+    if cfg.twin_pairing and task == TWIN_TASK:
+        chosen = _twin_pairing(chosen, views, cfg, groups, pending)
     if cfg.contained_children:
         chosen = _contained_children(chosen, views, cfg, groups, pending, task)
     if cfg.on_base_refit:
@@ -3939,7 +4037,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         if len(geom_keys) <= 1:
             continue
         refs = {k: ref_color(k) for k in geom_keys}
-        mode = tie_mode(task, g["select_mode"].get("mode"))     # D-C17: no tie where the checker scores identity
+        mode = tie_mode(task, g["select_mode"].get("mode"), cfg.select_ties)   # D-C17 / uniform off
         glyph = all(k.split("/")[1] in TEXTURE_CRITICAL for k in geom_keys)
         if glyph:
             # glyph identity (mahjong tiles, digit cards): textured render-and-compare per candidate
@@ -4124,6 +4222,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                **({"contained": h.per_view["contained"]} if h.per_view.get("contained") else {}),
                                **({"on_base": h.per_view["on_base"]} if h.per_view.get("on_base") else {}),
                                **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {}),
+                               **({"twin": h.per_view["twin"]} if h.per_view.get("twin") else {}),
                                **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful

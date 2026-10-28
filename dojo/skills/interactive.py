@@ -594,6 +594,11 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
             continue
         w = sk.refresh()
         l = key
+        if key in w.objects and not getattr(w.obj(key), "identity_known", True):
+            # perception could not tell which of ours this one is (B1's twin pairing marks a near-tie "unknown"): stop
+            # here; the checker scores the copied prefix stage by stage, a confident wrong twin scores nothing after it
+            sk.log(f"[imitate] #{i + 1} {key}: its twin is uncertain; stopping after {len(st['done'])}")
+            return {"ok": False, "stage": f"twin {key} uncertain", "note": f"{len(st['done'])}/{expect} copied"}
         if key in w.objects:                            # departure order: a label; its twin is on our side
             k_ = w.obj(key).asset.key
             free = [m for m in movers if m not in st["gone"] and m not in demo_side and m not in st["done"] and m in w.objects

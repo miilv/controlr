@@ -132,6 +132,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   function tool (`dojo.agent.loop.PYTHON_TOOL`); `LLMClient` assembles streamed `tool_calls` into `LLMResult.tool_calls`.
   JSON-only prompts (Phase 1 grounding) are unaffected. Sonnet on `claude/` sometimes writes the same call as
   `<invoke name="python"><parameter name="code">` markup in the text; `dojo.agent.loop.extract_code` accepts both.
+- **No checker knowledge in any prompt (dojo agent).** The manual, the appendix and the skill docs carry no checker
+  thresholds, tolerances, score ladders, reward predicates or per-instruction-pattern recipes (robot-harness
+  RULES-robodojo §14.5). A number that describes a robot action (a skill's motion, an API default) is allowed in skill
+  code, not in prompt text. `tests/dojo/test_agent_manual_v6.py` guards it; manual_v2-v4 broke it
+  ([journal](journal/2026-10-28-dojo-agent-manual-v6.md)).
 - **Sonnet 5.5: `reasoning_effort: low`, never `none`.** Through the router `none`/`minimal` fall back to
   the default and Sonnet thinks on most turns (17/22); `config.validate` rejects them on Claude routes.
   Very small frames (224 px) also make `low` think ([journal](journal/2026-10-04-sonnet-latency.md)).
