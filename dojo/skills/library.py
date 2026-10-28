@@ -3179,6 +3179,9 @@ SKILLS.update(_ROW_SKILLS)
 from dojo.skills.ported import SKILLS as _PORTED_SKILLS  # noqa: E402
 
 ROUTE_ONLY = dict(_PORTED_SKILLS)
+from dojo.skills.sorting import SKILLS as _SORT_SKILLS  # noqa: E402
+
+ROUTE_ONLY.update(_SORT_SKILLS)
 
 
 def skill_fn(name: str):

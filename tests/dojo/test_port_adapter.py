@@ -466,3 +466,27 @@ def test_ported_pour_defaults_v1():
     from dojo.runtime.policy import RuntimeConfig
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().ported_pour == "v1" and SKILL_ATTRS["ported_pour"][0] == "v1"
+
+
+def test_library_sort_groups_by_the_instructions_map():
+    from dojo.skills.sorting import sort_groups
+    instr = SCENES["classify_into_bins_v3b"][1]
+    env, sk = gt_skills(rows_classify(), instr)
+    w = sk.refresh()
+    g = dict(sort_groups(instr, w))
+    assert g == {"basket0": ["cat0"], "basket1": ["cat1"], "basket2": ["cat2"]}       # watch left, pen middle, car right
+    p = planner.plan(instr, w, ported={"classify": "library"})
+    assert p.skill == "sort_into_bins" and dict(p.args["groups"]) == g
+    assert planner.plan(instr, w, ported=True).args["skill"] == "classify_into_bins_v3b"    # default: unchanged
+    free = "Sort the objects by category into the three baskets."
+    gf = dict(sort_groups(free, w))
+    assert sorted(sum(gf.values(), [])) == ["cat0", "cat1", "cat2"] and len(gf) == 3
+
+
+def test_library_sort_runs_arrange_steps():
+    from dojo.skills import library as L
+    instr = SCENES["classify_into_bins_v3b"][1]
+    env, sk = gt_skills(rows_classify(), instr, step_lim=1100)
+    p = planner.plan(instr, sk.refresh(), ported={"classify": "library"})
+    res = L.skill_fn(p.skill)(sk, **p.args)
+    assert [g["container"] for g in res["groups"]] and set(res) >= {"ok", "groups"}

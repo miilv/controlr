@@ -287,6 +287,11 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
             or len(re.findall(r"\bobjects?\s+into\s+the\s+(?:left|middle|center|centre|right)\b", text)) >= 2):
         conts = [o for o in objs if re.search(r"basket|bin\b", o.category.lower())]
         if len(conts) >= 2 and len([o for o in rigid if o not in conts]) >= 2:
+            if (opts or {}).get("classify") == "library":          # our put_into per category group (sorting.py)
+                from dojo.skills.sorting import sort_groups
+                groups = sort_groups(instruction, world)
+                if groups:
+                    return Plan("sort_into_bins", {"groups": groups}, f"{len(groups)} groups by category (library)")
             return run("classify_into_bins_v3b")
     # push / drag a flat object onto its pad (a Geometry whose category names the object's kind)
     if re.search(r"\bpush\b|\bslide\b|\bdrag\b", text) and re.search(r"\bpad\b|\balign", text):
@@ -301,7 +306,8 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
 
 def plan(instruction: str, world: WorldState, ported: bool | dict = False) -> Plan:
     """``ported``: after our own routes, try the ported ones (``ported_plan``; ``RuntimeConfig.ported_routes``); a dict
-    turns them on with options (``{"swap": "reach"}``: ``RuntimeConfig.ported_swap``)."""
+    turns them on with options (``{"swap": "reach"}``: ``RuntimeConfig.ported_swap``; ``{"classify": "library"}``:
+    ``RuntimeConfig.ported_classify``)."""
     p = _plan(instruction, world)
     if ported and p.skill == "none" and not p.args:
         q = ported_plan(instruction, world, ported if isinstance(ported, dict) else None)
@@ -662,7 +668,8 @@ def solve(sk) -> dict:
     w = sk.refresh()
     p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
              and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
-                  "pour": getattr(sk, "ported_pour", "v1")})
+                  "pour": getattr(sk, "ported_pour", "v1"),
+                  "classify": getattr(sk, "ported_classify", "v3b")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":
