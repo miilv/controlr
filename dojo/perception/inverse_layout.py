@@ -3068,17 +3068,41 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                     cand, took_flip = fl, True
             info.setdefault("flips", []).append(ft)
         sc, x, y, yaw = cand
-        if not took_flip and (sc < base + cfg.seg_refit_margin or np.hypot(x - h.x, y - h.y) > float(np.max(h.sm().asset.extents))):
-            continue
-        loss, per = multi_view_loss(h.sm(), h.sm().pose(x, y, yaw, z_off), views, others)
-        info["refit"].append({"label_group": h.label_group, "from": [round(h.x, 4), round(h.y, 4), round(h.yaw, 3)],
-                              "to": [round(x, 4), round(y, 4), round(yaw, 3)], "iou": [round(base, 3), round(sc, 3)],
-                              "flip": took_flip})
-        sil0 = h.per_view.get("sil_loss", h.loss)
-        h.loss = h.loss - sil0 + loss
-        h.x, h.y, h.yaw = x, y, yaw
-        h.per_view["sil_loss"] = round(float(loss), 4)
-        sils[i] = h.sm().sil(head.cam, h.T())
+        if took_flip or (sc >= base + cfg.seg_refit_margin and np.hypot(x - h.x, y - h.y) <= float(np.max(h.sm().asset.extents))):
+            loss, per = multi_view_loss(h.sm(), h.sm().pose(x, y, yaw, z_off), views, others)
+            info["refit"].append({"label_group": h.label_group, "from": [round(h.x, 4), round(h.y, 4), round(h.yaw, 3)],
+                                  "to": [round(x, 4), round(y, 4), round(yaw, 3)], "iou": [round(base, 3), round(sc, 3)],
+                                  "flip": took_flip})
+            sil0 = h.per_view.get("sil_loss", h.loss)
+            h.loss = h.loss - sil0 + loss
+            h.x, h.y, h.yaw = x, y, yaw
+            h.per_view["sil_loss"] = round(float(loss), 4)
+            sils[i] = h.sm().sil(head.cam, h.T())
+        # identity across geometries: the mask's class is another shape of the group (a garage figure variant, another
+        # shoe) -> that shape fitted inside the mask; taken when its silhouette agrees at least as well (seg_identity_refit)
+        if cfg.seg_identity_refit and d.key != h.key and d.key in g["candidates"] and d.score >= cfg.seg_identity_min \
+                and d.key not in h.per_view.get("geom_group", [h.key]):
+            sm_new, gkeys = None, []
+            for sms in shapes_by_group.get(h.label_group, {}).values():
+                hit = next((s_ for s_ in sms if s_.key == d.key), None)
+                if hit is not None:
+                    sm_new, gkeys = hit, [s_.key for s_ in sms]
+                    break
+            if sm_new is not None:
+                cur = _mask_iou(sils[i], M, kn)
+                xr, yr, yawr, _, _ = refine(sm_new, h.x, h.y, h.yaw, vws, others, xy_step=0.004, yaw_step=0.08, maxiter=60,
+                                            fix_yaw=yaw_fixed, bounds=origin_bounds(g, sm_new, h.yaw), z_off=z_off)
+                vn = _mask_iou(sm_new.sil(head.cam, sm_new.pose(xr, yr, yawr, z_off)), M, kn)
+                if vn >= cur - cfg.seg_identity_slack:
+                    loss, per = multi_view_loss(sm_new, sm_new.pose(xr, yr, yawr, z_off), views, others)
+                    info.setdefault("identity", []).append({"label_group": h.label_group, "from": h.key, "to": sm_new.key,
+                                                            "iou": [round(cur, 3), round(vn, 3)]})
+                    sil0 = h.per_view.get("sil_loss", h.loss)
+                    h.loss = h.loss - sil0 + loss
+                    h.key, h.tag, h.x, h.y, h.yaw = sm_new.key, sm_new.tag, xr, yr, yawr
+                    h.per_view["geom_group"] = gkeys
+                    h.per_view["sil_loss"] = round(float(loss), 4)
+                    sils[i] = h.sm().sil(head.cam, h.T())
     # 2. unexplained masks: fit, then add (group short) or move an unexplained member there
     trace = info.setdefault("trace", [])
     for j in sorted((j for j in range(len(dets)) if j not in h_of), key=lambda j: -dets[j].score):
@@ -3390,6 +3414,11 @@ class EstimatorConfig:
     seg_move: bool = True          # move an unexplained member to an unexplained mask of its group
     seg_flip: bool = True          # an explained member's 180-degree flip inside its mask, taken when the texture agrees
     seg_identity_w: float = 0.3    # identity cost bonus x score for the mask's class (0 = off)
+    # an explained member whose mask names another SHAPE of its group is re-fitted as that shape inside the mask, kept when
+    # its mask IoU is no worse than seg_identity_slack (off by default: v2 measurement)
+    seg_identity_refit: bool = False
+    seg_identity_min: float = 0.5
+    seg_identity_slack: float = 0.02
 
 
 def _views_subset(views, cfg):

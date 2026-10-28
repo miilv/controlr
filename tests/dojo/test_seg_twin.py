@@ -233,3 +233,36 @@ def test_seg_groups_by_asset_then_category():
     b = il._seg_blob(m, known)
     assert b.area == 160 and b.bbox == (5, 12, 20, 8) and np.allclose(b.centroid, [15.0, 16.0])
     assert il._seg_blob(np.zeros_like(m), known) is None
+
+
+def test_repeat_factor_sampling():
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "seg_export", Path(__file__).resolve().parents[2] / "scripts/perception/seg/export_yolo.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    imgs = [{"common"}] * 98 + [{"common", "rare"}, set()]
+    r = mod.repeat_factors(imgs, 0.1)
+    assert r[0] == 1.0 and r[-1] == 1.0                       # frequent class / empty image: once
+    assert abs(r[98] - (0.1 / 0.01) ** 0.5) < 1e-9            # the rare class (1 % of images): sqrt(t / f)
+    assert mod.repeat_factors(imgs, 0.0) == [1.0] * 100
+
+
+def test_seg_model_reads_its_training_size(monkeypatch):
+    """A model trained at 960 px infers at 960 unless told otherwise (no torch: a stub YOLO)."""
+    import sys
+    import types
+
+    class FakeYOLO:
+        def __init__(self, w):
+            self.names = {0: "Rigid/block/00001"}
+            self.ckpt = {"train_args": {"imgsz": 960}}
+
+    fake_ul = types.ModuleType("ultralytics")
+    fake_ul.YOLO = FakeYOLO
+    monkeypatch.setitem(sys.modules, "ultralytics", fake_ul)
+    monkeypatch.setitem(sys.modules, "torch", types.ModuleType("torch"))
+    assert seg_twin._SegModel("w.pt").imgsz == 960
+    assert seg_twin._SegModel("w.pt", imgsz=640).imgsz == 640
