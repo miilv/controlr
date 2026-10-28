@@ -58,25 +58,36 @@ def episodes(run_globs: list[str]):
 
 
 def belief_writes(rep: dict) -> list[dict]:
-    """Every belief write the report logs with a before and an after position: accepted refines (prior7 -> pose7),
+    """Every belief write the report logs with a before and an after pose: accepted refines (prior7 -> pose7),
     post_place moves (from -> to / pose7: the release read, a search's write), and any event carrying before7 / after7
-    (the discrepancy writes of the release-read design). [{writer, step, label, before, after, quat}]"""
+    (the discrepancy writes of the release-read design). A provisional refine (``rehover`` recentre / confirm: the next
+    view of the label confirms or reverts it) is judged with its outcome: after = the pose the follow-up left.
+    [{writer, step, label, before, after, q_before, q_after}]"""
     from dojo.perception.grasp_metric import _applied
+    evs = [e for e in rep.get("events") or [] if e.get("label") and isinstance(e.get("step"), (int, float))]
     out = []
-    for e in rep.get("events") or []:
-        k, lab, st = e.get("kind"), e.get("label"), e.get("step")
-        if not lab or not isinstance(st, (int, float)):
-            continue
+    for i, e in enumerate(evs):
+        k, lab, st = e.get("kind"), e["label"], int(e["step"])
         if k == "refine" and _applied(e) and e.get("prior7") and e.get("pose7"):
-            out.append({"writer": f"refine_{e.get('for')}", "step": int(st), "label": lab, "before": e["prior7"][:3],
-                        "after": e["pose7"][:3], "quat": e["pose7"][3:7]})
+            after, writer = e["pose7"], f"refine_{e.get('for')}"
+            if e.get("rehover") in ("recentre", "confirm"):
+                nxt = next((x for x in evs[i + 1:] if x.get("kind") == "refine" and x["label"] == lab
+                            and x.get("for") == e.get("for")), None)
+                if nxt is not None and nxt.get("prior7"):
+                    w_ = str(nxt.get("why") or "")
+                    after = (nxt["pose7"] if _applied(nxt) else
+                             e["prior7"] if ("revert" in w_ or "not confirmed" in w_) else nxt["prior7"])
+                    writer += "+confirm"
+            out.append({"writer": writer, "step": st, "label": lab, "before": e["prior7"][:3], "after": after[:3],
+                        "q_before": e["prior7"][3:7], "q_after": after[3:7]})
         elif k == "post_place" and e.get("from") is not None and (e.get("to") is not None or e.get("pose7")):
             to = e.get("to") or e["pose7"][:3]
-            out.append({"writer": "post_place", "step": int(st), "label": lab, "before": e["from"][:3], "after": to[:3],
-                        "quat": (e.get("pose7") or [0, 0, 0, 1, 0, 0, 0])[3:7]})
+            q = (e.get("pose7") or [0, 0, 0, 1, 0, 0, 0])[3:7]
+            out.append({"writer": "post_place", "step": st, "label": lab, "before": e["from"][:3], "after": to[:3],
+                        "q_before": q, "q_after": q})
         elif e.get("before7") and e.get("after7"):
-            out.append({"writer": k, "step": int(st), "label": lab, "before": e["before7"][:3], "after": e["after7"][:3],
-                        "quat": e["after7"][3:7]})
+            out.append({"writer": k, "step": st, "label": lab, "before": e["before7"][:3], "after": e["after7"][:3],
+                        "q_before": e["before7"][3:7], "q_after": e["after7"][3:7]})
     return out
 
 
@@ -86,7 +97,8 @@ def cmd_audit(a) -> None:
     when it removes as much; reported per writer whatever the task's tolerance (the threading servo consumes z at
     ~1 mm). Replays with frames near each write step are needed (``m95_replay --every 4``)."""
     import numpy as np
-    from dojo.perception.grasp_metric import Groups
+    from dojo.perception.grasp_metric import Footprints, Groups, gt_rows_asset
+    fp = Footprints()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     rows, groups = [], {}
@@ -98,38 +110,58 @@ def cmd_audit(a) -> None:
         rep = json.load(gzip.open(rp, "rt"))
         rp_ = json.load(gzip.open(rpath, "rt"))
         frames = rp_["frames"]
+        ks = sorted(int(k) for k in frames)
         for w in belief_writes(rep):
             f = frame_at(frames, w["step"], back=a.back)
             if f is None:
                 continue
-            gts = {o["label"]: np.asarray(o["pos"], float) for o in f["objects"]}
-            b0, b1 = np.asarray(w["before"], float), np.asarray(w["after"], float)
+            rows_g = {o["label"]: o for o in gt_rows_asset(f["objects"])}
+            gts = {k: fp.centre(o.get("key"), o["pos"], o.get("quat")) for k, o in rows_g.items()}
+            # the GT at the write step is known when the frames bracketing it agree (an object at rest), else the
+            # write is "uncertain" (a carried / falling object between sparse frames: replay with --every 1-4)
+            nxt = next((k for k in ks if k >= w["step"]), None)
+            g_next = ({o["label"]: fp.centre(o.get("key"), o["pos"], o.get("quat"))
+                       for o in gt_rows_asset(frames[str(nxt)]["objects"])} if nxt is not None else {})
+            key = next((x.get("key") for x in rows_g.values() if x["label"] == w["label"]), None)
+            b0 = fp.centre(key, w["before"], w["q_before"]) if key else np.asarray(w["before"], float)
+            b1 = fp.centre(key, w["after"], w["q_after"]) if key else np.asarray(w["after"], float)
             # the object the belief tracked: the GT object of the label's group nearest the pre-write belief
             # (interchangeable nuts: the belief's nut0 was GT nut1 on 5.1 screws 100002); a label the layout lacks (a
             # tracker's rider): the nearest GT object
             grp = groups.setdefault(r["task"], Groups(r["task"]))
             same = {k: v for k, v in gts.items() if grp.of(k) == grp.of(w["label"])} or gts
             g = min(same.values(), key=lambda p: float(np.linalg.norm(p - b0)))
+            lab_g = next(k for k, v in same.items() if v is g)
+            moving = lab_g not in g_next or float(np.linalg.norm(g_next[lab_g] - g)) > 0.001
             e0, e1 = float(np.linalg.norm(b0 - g)) * 1000, float(np.linalg.norm(b1 - g)) * 1000
             rows.append({"run": run, "task": r["task"], "layout_id": r["layout_id"], "success": r.get("success"),
                          "score": r.get("score"), "replay_score": rp_.get("score"), **w,
                          "err_before_mm": round(e0, 1), "err_after_mm": round(e1, 1),
                          "z_before_mm": round((b0[2] - g[2]) * 1000, 1), "z_after_mm": round((b1[2] - g[2]) * 1000, 1),
                          "gt": [round(float(v), 4) for v in g], "frame_lag": w["step"] - max(int(k) for k in frames if int(k) <= w["step"]),
-                         "verdict": "harmful" if e1 - e0 > a.harm_mm else ("helpful" if e0 - e1 > a.harm_mm else "neutral")})
+                         "gt_label": lab_g, "gt_moving": bool(moving),
+                         "verdict": ("uncertain" if moving and w["step"] not in ks else
+                                     "harmful" if e1 - e0 > a.harm_mm else ("helpful" if e0 - e1 > a.harm_mm else "neutral"))})
     with open(out / "writes.jsonl", "w") as fo:
         for x in rows:
             fo.write(json.dumps(x) + "\n")
+    import re
     by = defaultdict(list)
     for x in rows:
-        by[(x["task"], x["writer"])].append(x)
-    print("| task | writer | writes | harmful | helpful | neutral | median error before -> after (mm) |")
-    print("|---|---|---|---|---|---|---|")
+        m = re.match(r"c4b_[a-z0-9]+_([a-z0-9]+)_\d+", x["run"])
+        arm = m.group(1) if m else "-"
+        key = {"task": (x["task"], x["writer"]), "arm": (arm, x["writer"]),
+               "task,arm": (f"{x['task']} {arm}", x["writer"])}[a.by]
+        by[key].append(x)
+    print(f"| {a.by} | writer | writes | harmful | helpful | neutral | uncertain (GT moving between frames) | "
+          "median error before -> after (mm, certain writes) |")
+    print("|---|---|---|---|---|---|---|---|")
     import statistics as st_
     for (t, w), xs in sorted(by.items()):
         c = Counter(x["verdict"] for x in xs)
-        print(f"| {t} | {w} | {len(xs)} | {c['harmful']} | {c['helpful']} | {c['neutral']} | "
-              f"{st_.median(x['err_before_mm'] for x in xs):.1f} -> {st_.median(x['err_after_mm'] for x in xs):.1f} |")
+        cs = [x for x in xs if x["verdict"] != "uncertain"] or xs
+        print(f"| {t} | {w} | {len(xs)} | {c['harmful']} | {c['helpful']} | {c['neutral']} | {c['uncertain']} | "
+              f"{st_.median(x['err_before_mm'] for x in cs):.1f} -> {st_.median(x['err_after_mm'] for x in cs):.1f} |")
 
 
 def cmd_jobs(a) -> None:
@@ -802,7 +834,9 @@ def main(argv=None) -> None:
     w.add_argument("--replays", required=True)
     w.add_argument("--out", required=True)
     w.add_argument("--harm-mm", type=float, default=2.0)
-    w.add_argument("--back", type=int, default=4, help="use a replay frame at most this many steps before a write")
+    w.add_argument("--back", type=int, default=25, help="use a replay frame at most this many steps before a write")
+    w.add_argument("--by", default="task", choices=("task", "arm", "task,arm"),
+                   help="group by task, by the run name's arm tag (c4b_<task>_<arm>_<id>: gcon / gcoff), or both")
     t = sub.add_parser("table")
     t.add_argument("events", nargs="+")
     t.add_argument("--by", default="task")

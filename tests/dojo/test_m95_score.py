@@ -103,3 +103,11 @@ def test_belief_writes_take_every_logged_before_and_after():
     assert [(x["writer"], x["step"], x["label"]) for x in w] == [("refine_pick", 5, "a"), ("post_place", 177, "nut0"),
                                                                   ("discrepancy", 9, "b")]
     assert w[1]["after"][2] == 0.823
+    # a provisional recentre is judged by its outcome: reverted by the next view = back to the prior
+    rep2 = {"events": [
+        {"kind": "refine", "label": "a", "for": "pick", "step": 5, "ok": True, "rehover": "recentre",
+         "prior7": [0, 0, 0.8, 1, 0, 0, 0], "pose7": [0.03, 0, 0.8, 1, 0, 0, 0]},
+        {"kind": "refine", "label": "a", "for": "pick", "step": 8, "ok": False, "why": " (recentre found nothing: "
+         "correction reverted)", "prior7": [0.03, 0, 0.8, 1, 0, 0, 0], "pose7": [0.03, 0, 0.8, 1, 0, 0, 0]}]}
+    w2 = ms.belief_writes(rep2)
+    assert w2[0]["writer"] == "refine_pick+confirm" and w2[0]["after"] == [0, 0, 0.8]
