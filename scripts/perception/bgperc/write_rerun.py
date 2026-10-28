@@ -124,13 +124,14 @@ class RecordedBelief:
         tr = self.track[arm]
         return np.asarray(tr[min(max(int(step), 0), len(tr) - 1)], float)
 
-    def before(self, i: int) -> tuple[dict, dict, str]:
-        """(belief {label: {key, pos, quat}}, attached {arm: label}, source) right before ``revs[i]``."""
-        s = int(self.revs[i]["step"])
+    def before(self, i: int, step: int | None = None) -> tuple[dict, dict, str]:
+        """(belief {label: {key, pos, quat}}, attached {arm: label}, source) right before ``revs[i]`` (events
+        ``[0, i)`` applied), after ``step`` actions (default: the event's own step; ``i == len(revs)``: all events)."""
+        s = int(self.revs[i]["step"]) if step is None else int(step)
         P = next((x for x in reversed(self.snaps) if x["step"] < s), None)
         N = next((x for x in self.snaps if x["step"] >= s), None)
         if P is None and N is None:
-            return self.tracker_snapshot(i), {}, "rebuilt"
+            return self.tracker_snapshot(i, s), {}, "rebuilt"
         p_step = P["step"] if P else -1
         att = dict((N or P).get("attached") or {})
         base = P or N
@@ -184,14 +185,15 @@ class RecordedBelief:
             return self._pb(P, self.track, P["step"] + 1, self.kin).get(lab, o0)   # where the jaws let it go
         if P is not None:
             return P["objects"].get(lab, o0)
-        return self.tracker_snapshot(i).get(lab, o0)    # before the first gripper change: record + writes
+        return self.tracker_snapshot(i, s).get(lab, o0)  # before the first gripper change: record + writes
 
-    def tracker_snapshot(self, i: int) -> dict:
+    def tracker_snapshot(self, i: int, step: int) -> dict:
         tr = self.tracker
-        while tr._i < len(tr.revs) and tr.revs[tr._i] is not self.revs[i]:
+        stop = self.revs[i] if i < len(self.revs) else None
+        while tr._i < len(tr.revs) and tr.revs[tr._i] is not stop:
             tr._apply(tr.revs[tr._i])
             tr._i += 1
-        return tr.snapshot(int(self.revs[i]["step"]))
+        return tr.snapshot(int(step))
 
 
 def inputs(ev: dict, snap: dict, attached: dict, cfg: dict, report: dict, prior7=None) -> dict:
@@ -323,6 +325,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--valid", default=None)
     ap.add_argument("--names", default="")
+    ap.add_argument("--order", default="name", choices=("name", "task_rr"))
     a = ap.parse_args()
     sd = _seq_data()
     from dojo.runtime.perception_service import _Perception
@@ -333,6 +336,12 @@ def main():
         names = [n for n in names if n in ok]
     if a.names:
         names = [n for n in names if n in set(a.names.split(","))]
+    if a.order == "task_rr":                    # one episode per task in turn: every writer's floor covers every task
+        by: dict = {}
+        for n in names:
+            by.setdefault(json.load(open(os.path.join(a.root, "seq", n, "meta.json")))["task"], []).append(n)
+        lists = [by[t] for t in sorted(by)]
+        names = [lst[i] for i in range(max(map(len, lists), default=0)) for lst in lists if i < len(lst)]
     rows = json.load(open(a.out)).get("rows", []) if os.path.exists(a.out) else []     # resume
     done = {r["episode"] for r in rows}
 
