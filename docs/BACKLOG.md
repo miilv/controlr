@@ -160,6 +160,11 @@
   bar a frame switch needs. The frame-0 fix was the v2b masks (`seg_propose`: mallet 5/8 -> 7/8 found). The branch
   also has `child_unexplained_flag`, a matching unexplained blob near a base's child. Revisit with targeted looks at
   the base.
+- [ ] **dojo perception: play_Xylophone frame 0, 2 of 8 held-out layouts left** (stream W). With add + move_weak +
+  refit_poor (all default), the stand and the mallet the config rests on it are right in 6 / 8. Still wrong:
+  - 100000: v2b detects no mallet at all; the stand is in the wrong place frame ('up_side' vs 'up');
+  - 100001: the stand's own exact-class mask lies under the misplaced stand, so the weak-member move does not fire.
+  Candidates: a mallet class in v3 post-contact data, or a frame-switch look at the base (fuse_tags, parked).
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the

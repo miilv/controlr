@@ -98,6 +98,15 @@ same frames, every frame-0 set:
 Still not play_Xylophone (21 / 13 unchanged): "on" fixed its mallet by moving or re-fitting the STAND (the mallet is
 placed from it), not the mallet itself.
 
+**`seg_add_refit_poor`** (with "add"; default on since 2026-10-28 if adopted). A member fitted below IoU 0.5 inside
+its own exact-class mask re-fits locally inside it, and is kept only for a gain of >= 0.25 IoU within its size. No
+hints, flips or identity changes. Regression vs add + move_weak, same frames, every frame-0 set:
+- no task loses found or ok10, and phantoms never go up;
+- play_Xylophone ok10 13 -> 19 / 24: the stand re-fits inside its own mask (0.42 -> 0.82-0.93) and the mallet the
+  config rests on it follows. 100004, 100021 and 100022 are fixed;
+- fill_pen 47 -> 48, store_tools 46 -> 47, classify 48 -> 49; total ok10 1208 -> 1217.
+- Left: 100000 (v2b sees no mallet) and 100001 (the stand's own mask lies under the wrong one).
+
 ## Numeral digits (S's reader v2 + `glyph_read`)
 
 **Frame 0.** RoboDojo's 3-D numerals (`Rigid/number`; the checker's value is `category_idx % 10`) get their digit
