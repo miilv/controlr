@@ -104,7 +104,7 @@ def score(sw, gt_h: np.ndarray, gt_id: np.ndarray, objects: list[dict], fg_h: fl
         gt_top = float(np.percentile(gt_h[vis], 90))
         kn = vis & (sw.known > 0)
         est = vis & np.isfinite(sw.height)
-        row = {"label": o.get("label"), "category": o.get("category"), "clutter": bool(o.get("clutter")), "px": nvis,
+        row = {"label": o.get("label"), "category": o.get("category"), "gt_idx": i, "clutter": bool(o.get("clutter")), "px": nvis,
                "px_known": int(kn.sum()), "px_est": int(est.sum()), "gt_top_mm": round(gt_top * 1000, 1)}
         if est.sum() >= min_px:
             z = float(np.percentile(sw.height[est], 90))

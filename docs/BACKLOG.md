@@ -46,6 +46,22 @@
   below 0.5). hang_mugs' wall grasp pre-shapes to 0.43 on the approach, so the probe's "closed on mug2 128 mm away"
   is the pre-shape, 30 steps before the real close. Use `grasp_metric.grip_events`' rule (the last closing command of
   a run) in `GTProbe.on_action`.
+- [ ] **dojo perception: no genuine-5.1 belt background for pick_from_conveyor_by_image** (`Dynamic/conveyor/00001`).
+  Only 6.0-proxy leave-one-out folds exist (`compute3:~/dojo-data/pbake-identity/bg_byimg{A,B}`), so every genuine-5.1
+  run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
+  dev layouts + `build` into every box's `bg_folds_51/fold{0,1}/scene/Dynamic_conveyor_00001/` (journal
+  2026-10-28-dojo-conveyor-belt-blind §5; waits for compute2).
+- [ ] **dojo runtime: far-end belt reads are noisy.** In the offline genuine-5.1 replays (journal
+  2026-10-28-dojo-conveyor-belt-blind §3.1), newcomer tracks at the upstream end give belt velocities of
+  2.1-5.5 mm / step (4.0 true) while they are the only trusted tracks. The rider predictions, and so the intercept, use
+  the current belt velocity. Candidate: weight the belt estimate by fit residual / span over the episode. The match's
+  identity and position are also weakest there: 100000's puppet reads as a camera to step 440 in both arms, and
+  100002's flat phone sits 95 mm off across the belt at the decision.
+- [ ] **dojo infra: box perception data goes stale.** The bootstrap copies compute3's `dojo-perception-data` once.
+  compute4's `bg_folds_51` predated the scene backgrounds (built 27 Oct), and the conveyor ran blind there
+  (journal 2026-10-28-dojo-conveyor-belt-blind). Its fixed copies are `~/dojo-data/bg_folds{,_51}_ilia`. Wanted: a
+  refresh step (rsync the folds again) and a smoke check that lists the moving bases without a scene background
+  (`belt.moving_bases`, `segment.scene_bg_key`).
 - [ ] **dojo perception: learned identity on the conveyors needs torch in the perception venvs.** The belt read with
   `EstimatorConfig.embed_model="dinov2_s"` (5.1 belt reads: identity 79/116 -> 104/116, phantoms 77 -> 47; report
   2026-10-27-identity-embeddings) is off by default. The rendered A/B arm sets `DOJO_PERCEPTION_CFG='{"embed_model":
@@ -90,7 +106,20 @@
   glossy and striped: its view-dependent streaks give ~20 phantom "proud" blobs per frame (a uniqueness gate does not
   help), so stereo there can only confirm colour candidates. The home wrists see only the table beyond y ≈ -0.15, the
   zone in front of the grippers needs the scan pose (coverage 0.34 -> 0.75). Vertical faces and textureless tops get no
-  height (experiments/2026-10-27-stereo-height).
+  height (experiments/2026-10-27-stereo-height). In front of the grippers and on vertical / textureless faces the learned
+  depth (`mv3d`, VGGT through our cameras) covers it at home: 1026 / 1043 objects, top 3.5 / 12.3 mm; the belt is not
+  measured yet (experiments/2026-10-28-mv3d-learned-depth).
+- [ ] **dojo perception: learned height check in the runtime (`height_source="mv3d"`), needs a rendered A/B.** At frame 0
+  it beats the sweep as a check of B1's records (15 mm flags: precision 65/107 vs 44/202, recall 65/88 vs 44/88, false
+  flags on right objects 4.5 % vs 17 %; experiments/2026-10-28-mv3d-learned-depth). Before an A/B: start
+  `python -m dojo.perception.mv3d serve --sock ... --weights <vggt-1b>` next to the perception service (3.5 GB VRAM, bf16
+  trunk) and set `DOJO_MV3D_ADDR`; arm `DOJO_PERCEPTION_CFG='{"stereo_check": true, "height_source": "mv3d"}'`. It does
+  not resolve thin parts (the coin stand, ~11 px in the head): keep `stereo_reject="slot_bases"` on the scan-pose sweep.
+  Not measured: the belt, the scan / look frames, timing inside the service.
+- [ ] **dojo perception: the raised-but-unexplained proposer engages rarely** (`mv3d_propose`, default off): 18-22 of
+  217 frame-0 scenes have a raised region no B1 object explains; +2 within / +2-3 overshoot, 0 broken. Most B1 gross
+  objects are swaps onto another object's blob, not gaps. Its fits are right in position and wrong in yaw (the organize
+  alarm 180 deg flipped): pair it with an appearance score (research R3 / E3) before enabling.
 - [ ] **dojo perception: classify_objects' series stay under the config label** (`rigid0` x n). Its per-category
   prefixes (`cat0_*`, `cat1_*`, `cat2_*`) follow the generator's random category order, which can't be observed, so
   `series_count` doesn't rename them. Check what the checker / twin need there. SAM 3.1 text also undercounts its
@@ -259,6 +288,9 @@
   one layout by sweeping the blocks with a fingertip `move_to` line. A tool-push skill would make it a skill task.
 
 ## P2 — harness and infrastructure
+
+- [ ] **A G2 replay record on an allowed layout (100000-09)** for the bootstrap smokes: smoke_twin's contact-restore check, smoke_dev_eval and smoke_proxy_eval replay G2 on 110007, inside the reserved >= 100100 range (D-C10a), so they are skipped unless `SMOKE_RESERVED_OK=1` (journal/2026-10-28-dojo-compute2-bootstrap.md).
+- [ ] **Code defaults `RD_HOME=/root/controlr-robodojo` on root boxes** (`rdpy.sh`, `dev_eval.sh`, `paths.py`, `world.py`, `interactive.py`): a job that forgets `source ~/dojo-env.sh` uses whatever that path is. On compute2 it is a symlink to `~/dojo-robodojo` now; the old install there had Eval_Layout.
 
 - [x] ~~**Turn latency, harness side:** execute on the STATUS word with the note + usage read in the background; keep-alive 120 s~~ — `llm.overlap_tail` (default on), `KEEPALIVE_S` (journal/2026-10-04-turn-latency.md)
 - [ ] **`observation.size: 336` A/B for Sonnet** (≈ −0.2 s/turn; 224 px makes Sonnet think — journal/2026-10-04-sonnet-latency.md).
@@ -457,8 +489,8 @@
   / watch: 100016, 100018, 100023) and objects not found (a far phone, a near watch, a far watch hidden behind a figure
   at frame 0). Candidate: pair each far object with the near objects' assets (same asset per pair, the near side's
   categories are 64 / 65 right) by render-and-compare at the far blob.
-- [ ] **dojo perception: no 6.0-proxy scene background for imitate.** The genuine-5.1 one is in every box's
-  `bg_folds_51/fold{0,1}/scene/Geometry_basket_00005/` (`scripts/perception/scene_bg_frame0.py`); compute3's 6.0
+- [ ] **dojo perception: no 6.0-proxy scene background for imitate.** The genuine-5.1 one is in compute3's
+  `bg_folds_51/fold{0,1}/scene/Geometry_basket_00005/` (compute4: `~/dojo-data/bg_folds_51_ilia`) (`scripts/perception/scene_bg_frame0.py`); compute3's 6.0
   `bg_folds` has none, so proxy imitate runs still see the demonstrator's arm as foreground. Build it from 6.0 renders
   of the non-demo layouts' frame 0 when proxy imitate runs matter.
 - [ ] **dojo perception: the scan estimate assumes nothing moved since frame 0** (`scan.estimate_with_scan` fuses frame

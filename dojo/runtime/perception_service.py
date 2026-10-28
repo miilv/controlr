@@ -13,6 +13,11 @@ Ops (request dicts):
     {"op": "refine", "frame": frame, "objects": [{label, key, pos, quat}], "fold"[, "search_radius", "empty_hand"]}
         -> {"refine": {label: ...}}
         local (x, y, yaw) re-fit of each object from its given pose on this frame (pre-contact wrist refine)
+    {"op": "wrist_check", "frame": frame, "objects": [{label, key, pos, quat}], "fold", "arm", "kind", "target",
+     "reference", "corridor", "held", "held_label", "cfg", "vocabulary"}             -> {"wrist_check": json}
+        the grasp-time wrist check at a pick / place hover (``dojo.perception.wrist_check``): existence (refine fit +
+        SAM 2.1-S click, head foreground when the wrist does not see it), neighbour / reference poses, relocations,
+        DINOv2 identity + flip; returns per-object verdicts and the belief after the check
     {"op": "check", "frame": frame, "objects": [{label, key, pos, quat}], "fold"}  -> {"check": {label: ...}}
         per object at the GIVEN pose and per view: ``prec`` = fraction of the pixels where it is predicted
         front-most (z-buffer over the given objects) that are observed foreground, ``n_vis``; plus the plain
@@ -43,7 +48,9 @@ Ops (request dicts):
         visible_px}; moving None when too little of the view is visible
     {"op": "belt_read", "frame": frame, "vocabulary": str, "fold": int}             -> {"record": json}
         the riders of a moving base, one best single-object fit per head-view blob (``dojo.perception.belt``): the belt
-        tracker's re-read (no label counts, so no split blobs / phantoms; ~2.5 s vs B1's ~9 s on 5.1 belt frames)
+        tracker's re-read (no label counts, so no split blobs / phantoms; ~2.5 s vs B1's ~9 s on 5.1 belt frames);
+        ``record._perception.scene_bg`` = the scene background it used (None: the table's), ``.blind`` = why it cannot
+        see the riders (its belt has no scene background in DOJO_BG_FOLDS)
     {"op": "watch_read", "frame": frame, "region": json, "vocabulary": str, "fold": int, "prior": json|None}
                                                                                    -> {"watch_read": json}
         perception's ``dojo.perception.watch.watch_read`` (cells of a board / contents of a container, what the scene's
@@ -171,6 +178,20 @@ class PerceptionClient:
             req["empty_hand"] = True
         return json.loads(self._call(req)["refine"])
 
+    def wrist_check(self, frame: dict, objects: list[dict], fold: int, arm: str, kind: str, target: str | None = None,
+                    reference: str | None = None, corridor=None, held=None, held_label: str | None = None,
+                    cfg: dict | None = None, vocabulary: str | None = None) -> dict:
+        """The grasp-time wrist check (``dojo.perception.wrist_check``) at a pick / place hover: ``objects`` = the
+        belief [{label, key, pos, quat}]; ``target`` (pick) / ``reference`` (place) labels; ``corridor`` (N, 3) the
+        approach; ``held`` = (key, pose7) in this arm's jaws; ``cfg`` = CheckConfig overrides. Returns {"objects":
+        {label: verdict...}, "found": [...], "belief": {label: {key, pos, quat}}, "time_s": {...}}."""
+        req = {"op": "wrist_check", "frame": encode_frame(frame), "objects": objects, "fold": int(fold), "arm": arm,
+               "kind": kind, "target": target, "reference": reference, "held_label": held_label, "cfg": cfg or {},
+               "vocabulary": vocabulary,
+               "corridor": None if corridor is None else np.asarray(corridor, float).reshape(-1, 3).tolist(),
+               "held": None if held is None else [held[0], [float(v) for v in held[1]]]}
+        return json.loads(self._call(req)["wrist_check"])
+
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
                                       "fold": int(fold)})["check"])
@@ -262,6 +283,7 @@ class PerceptionClient:
 class _Perception:
     def __init__(self):
         self._bgs: dict = {}
+        self._bg_scene: dict = {}               # (fold, scene) -> the scene background's asset key, None = the table's
         self._cal = None
         self._scene: tuple = ()                 # asset keys of the current vocabulary's scene (scene backgrounds)
         cal = os.environ.get("DOJO_COLOR_CALIB")
@@ -286,7 +308,7 @@ class _Perception:
         if key not in self._bgs:
             import cv2
 
-            from dojo.perception.segment import load_backgrounds, with_scene
+            from dojo.perception.segment import load_backgrounds, scene_bg_key, with_scene
             d = Path(os.environ["DOJO_BG_FOLDS"]) / f"fold{int(fold)}"
             out = load_backgrounds(d)
             m = d / "cam_head_clean_unseen.png"
@@ -294,8 +316,20 @@ class _Perception:
                 out["cam_head_clean_unseen"] = (cv2.imread(str(m), cv2.IMREAD_GRAYSCALE) > 0).astype(np.uint8)
             if "cam_head" not in out:
                 raise FileNotFoundError(f"no backgrounds in {d}")
+            self._bg_scene[key] = scene_bg_key(d, self._scene)
+            missing = [k for k in self._scene if k.startswith("Dynamic/") and k != self._bg_scene[key]]
+            if missing:
+                # a belt with no background of its own segments as foreground (every belt read blind): say so where
+                # the box's operator looks, once per fold and scene (compute4 2026-10-28: bg_folds_51 had no scene/)
+                print(f"[perception_service] WARNING: no scene background for {missing} in {d} "
+                      f"(scene/{{Type_cat_idx}}/): belt reads are blind", flush=True)
             self._bgs[key] = with_scene(out, d, self._scene)
         return self._bgs[key]
+
+    def bg_scene(self, fold: int) -> str | None:
+        """The asset key of the scene background ``bgs(fold)`` uses for the current scene, None for the table's."""
+        self.bgs(fold)
+        return self._bg_scene.get((int(fold), self._scene))
 
     def cfg(self, fold: int):
         from dojo.perception.inverse_layout import EstimatorConfig
@@ -498,6 +532,39 @@ class _Perception:
             out.append({"arm": arm, "dist": dist, "elev": elev, "flange_pose": np.round(flange_for_camera(T), 5).tolist(),
                         "T_world_cam_cv": np.round(T, 5).tolist()})
         return out
+
+    def wrist_check(self, req: dict) -> dict:
+        """op ``wrist_check``: ``dojo.perception.wrist_check.WristCheck`` on the frame's wrist view (SAM 2.1-S through
+        the SAM server when ``DOJO_SAM_ADDR`` answers; DINOv2 identity when ``cfg["embed_model"]``; the head view's
+        static-background foreground for objects the wrist does not see)."""
+        from dojo.perception import sam_masks
+        from dojo.perception.wrist_check import CheckConfig, WristCheck
+        f = decode_frame(req["frame"])
+        cfg = CheckConfig(**(req.get("cfg") or {}))
+        emb = None
+        if cfg.embed_model:
+            from dojo.perception.embed_id import Embedder
+            self._emb = getattr(self, "_emb", {})
+            if cfg.embed_model not in self._emb:
+                self._emb[cfg.embed_model] = Embedder(cfg.embed_model)
+            emb = self._emb[cfg.embed_model]
+        cands: dict = {}
+        if req.get("vocabulary"):
+            from dojo.perception.inverse_layout import label_groups
+            for g in label_groups(req["vocabulary"]):
+                for lab in g["labels"]:
+                    cands[lab] = list(g["candidates"])
+        wc = WristCheck(cfg, sam=sam_masks.client(), embed=emb, candidates=lambda label, key: cands.get(label, [key]))
+        belief = {o["label"]: {"key": o["key"], "pos": list(o["pos"]), "quat": list(o["quat"])} for o in req["objects"]}
+        fold = int(req.get("fold", 0))
+        try:
+            bgs, thr = self.bgs(fold), float(self.cfg(fold).fg_thr)
+        except Exception:  # noqa: BLE001 (no head backgrounds here: wrist only)
+            bgs, thr = None, 18.0
+        held = req.get("held")
+        return wc.check(f, belief, req["arm"], req["kind"], target=req.get("target"), reference=req.get("reference"),
+                        corridor=req.get("corridor"), held=None if held is None else (held[0], list(held[1])),
+                        held_label=req.get("held_label"), head_bgs=bgs, head_thr=thr)
 
     def shape_classes(self, vocabulary: str, current: str) -> list[str]:
         """One catalogue key per distinct shape (sorted bbox extents within 3 mm) among the vocabulary's
@@ -738,6 +805,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                                        float(req.get("max_shift_m", 0.03)), req.get("arm"), req.get("identity_vocabulary"),
                                        req.get("held"), req.get("search_radius"), bool(req.get("empty_hand")))
                         conn.send({"ok": True, "refine": json.dumps(ref, default=_default)})
+                    elif op == "wrist_check":
+                        out = p.wrist_check(req)
+                        conn.send({"ok": True, "wrist_check": json.dumps(out, default=_default)})
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
                         conn.send({"ok": True, "check": json.dumps(chk, default=_default)})
@@ -752,6 +822,14 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         fold = int(req.get("fold", 0))
                         rec = belt_read(fr["images"], fr["state"], req["vocabulary"], fr["instruction"], bgs=p.bgs(fold),
                                         cfg=p.cfg(fold))
+                        # which background the read had; blind = its belt had none (the runtime's tracker skips it)
+                        from dojo.perception.belt import blind_reason
+                        sb = p.bg_scene(fold)
+                        pm = rec.setdefault("_perception", {})
+                        pm["scene_bg"] = sb
+                        why = blind_reason(req["vocabulary"], sb)
+                        if why:
+                            pm["blind"] = why
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
                     elif op == "watch_read":
                         from dojo.perception.watch import watch_read

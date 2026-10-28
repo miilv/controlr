@@ -147,6 +147,20 @@ class SamClient:
         return self.conn.recv()
 
 
+class LocalSam:
+    """The server's models in this process, with ``SamClient``'s ``points`` interface (offline evals: one GPU process
+    for SAM + DINOv2 + renders, no socket). ``models``: e.g. ["sam2.1_small"]."""
+
+    def __init__(self, models: list[str], M=None):
+        self.M = M if M is not None else _Models(models)
+
+    def points(self, img: np.ndarray, uv: np.ndarray, model: str = "sam2.1_small", multimask: bool = True) -> list[SamMask]:
+        uv = np.asarray(uv, float).reshape(-1, 2)
+        r = self.M.handle({"op": "points", "model": model, "uv": uv.tolist(), "multimask": bool(multimask),
+                           "key": image_key(img)}, np.ascontiguousarray(img, np.uint8))
+        return [SamMask(unpack(m, s), sc, "", int(i)) for m, s, sc, i in r["masks"]]
+
+
 _CLIENT: dict = {}
 
 

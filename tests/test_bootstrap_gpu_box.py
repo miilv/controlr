@@ -5,6 +5,7 @@ No network, no GPU, no ssh: the dry run executes nothing; the preflight runs loc
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -56,6 +57,28 @@ def test_dry_run_prints_every_step_and_the_pins():
     assert "bridge_episode.sh --id fk-smoke --fake --policy dojo.runtime.policy:RuntimePolicy" in out
     assert "ssh testbox-dry" in out and "ssh compute3" in out
     assert "isaac6" not in out.split("### preflight")[1].split("### ready")[0].replace("isaac6.sh", "")  # role full: no 6.0
+
+
+def test_smokes_never_run_reserved_layouts():
+    """D-C10a: layouts >= 100100 are reserved for joint runs. smoke_twin generates 100000 / 100001; the G2 replays on
+    110007 (contact restore, dev_eval, proxy_eval) run only with SMOKE_RESERVED_OK=1."""
+    out = dry("--role", "full", "--with-isaac6")
+    twin = next(x for x in out.splitlines() if "-m dojo.simlab.twin" in x)
+    assert "--seeds 100000,100001" in twin and "--g2-dir" not in twin
+    assert out.count("only with SMOKE_RESERVED_OK=1: it replays G2 on layout 110007") == 2     # dev_eval + proxy_eval
+    lib = LIB.read_text()
+    assert "reserved_gate && return 0" in lib.split("step_smoke_dev_eval()")[1].split("\n}")[0]
+    assert "reserved_gate && return 0" in lib.split("step_smoke_proxy_eval()")[1].split("\n}")[0]
+
+
+def test_shared_home_dry_run():
+    out = dry("--role", "full", "--shared-home")
+    assert "SHARED_HOME=1" in out and "UV_UNMANAGED_INSTALL=~/dojo-bootstrap/tools/uv" in out
+    conv = out.split("### conventions")[1].split("### secrets")[0]
+    assert "enable-linger" not in conv and "uv.toml <<" not in conv and ">> ~/.config/uv/uv.toml" not in conv
+    out = dry("--role", "full")
+    conv = out.split("### conventions")[1].split("### secrets")[0]
+    assert "loginctl enable-linger" in conv and ">> ~/.config/uv/uv.toml" in conv and "UV_NO_MODIFY_PATH=1" in conv
 
 
 def test_dry_run_touches_nothing(tmp_path):
@@ -242,6 +265,30 @@ def test_box_json_capabilities_follow_the_smokes(tmp_path):
     assert not c["isaac51_render"] and not c["official_dev_eval"] and not c["perception_egl"] and not c["llm_env"]
     assert d["scopes"]["bundle"] == {"MemoryMax": "24G", "CPUQuota": "1400%"} and len(d["locks"]["light"]) == 2
     assert d["paths"]["isaac_sim_6"] == "/x/isaac-sim-6.0"
+
+
+def test_manifest_matches_a_reference_and_lands_in_box_json(tmp_path):
+    d = tmp_path / "perc"
+    (d / "bg_folds_51" / "fold0" / "scene").mkdir(parents=True)
+    (d / "bg_folds_51" / "fold0" / "scene" / "cam head.png").write_bytes(b"png")
+    (d / "catalog").mkdir()
+    (d / "catalog" / "index.json").write_text("{}")
+    env = {"BOX": str(tmp_path / "box"), "HOME": str(tmp_path)}
+    listing = run(["bash", str(LIB), "manifest", str(d)], env=env)
+    assert listing.returncode == 0 and not (tmp_path / "box").exists()           # read-only without NAME
+    assert [x.split("  ", 1)[1] for x in listing.stdout.splitlines()] == ["bg_folds_51/fold0/scene/cam head.png",
+                                                                        "catalog/index.json"]
+    ref = hashlib.md5(listing.stdout.encode()).hexdigest()                     # what the reference box prints
+    r = run(["bash", str(LIB), "manifest", str(d), "perception", ref, "compute3"], env=env)
+    m = json.loads(r.stdout.splitlines()[-1])
+    assert m["files"] == 2 and m["bytes"] == 5 and m["md5"] == ref and m["ref"] == {"host": "compute3", "md5": ref, "equal": True}
+    (d / "catalog" / "index.json").write_text("{ }")
+    r = run(["bash", str(LIB), "manifest", str(d), "perception", ref, "compute3"], env=env)
+    assert json.loads(r.stdout.splitlines()[-1])["ref"]["equal"] is False
+    bj = subprocess.run(["python3", str(ROOT / "scripts" / "infra" / "box_json.py")], capture_output=True, text=True,
+                        env={"HOME": str(tmp_path), "PATH": os.environ["PATH"], "BOXJ_BOX": str(tmp_path / "box"),
+                             "BOXJ_ROLE": "full"}, timeout=60)
+    assert json.loads(bj.stdout)["manifests"]["perception"]["ref"]["equal"] is False
 
 
 def shellcheck_cmd():

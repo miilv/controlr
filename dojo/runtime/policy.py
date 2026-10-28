@@ -215,6 +215,14 @@ class RuntimeConfig:
     grip_close_max: float = 0.05
     grip_thin_mm: float = 4.0
     grip_miss_search_m: float = 0.07    # the next pick refine of an object a close missed searches this far (0 = off)
+    # mode perception: the grasp-time wrist check at every pick / place hover (``dojo.perception.wrist_check``, service op
+    # "wrist_check"; research R1, stream W): the target, a place's reference and every believed object within
+    # wrist_check_cfg["radius_m"] (10 cm) of the approach, in the hover's wrist frame (SAM 2.1-S existence when a SAM
+    # server answers, the hover refine for poses, relocations, optional DINOv2 identity / flip). off | log (events
+    # only) | apply (neighbour / reference fits and relocations into the belief, phantoms marked touched for a re-read)
+    # | drop (apply, and phantom neighbours / references leave the belief). Runs before the target's own refine
+    wrist_check: str = "off"
+    wrist_check_cfg: dict = field(default_factory=dict)  # CheckConfig overrides (e.g. {"embed_model": "dinov2_b"})
     held_drop_conf: float = 0.9         # a held_look "not held" at this confidence drops the grasp unless the head check sees
                                         # the object in the jaws (before: only when the head also saw it at the pick pose,
                                         # which kept 51 of 52 truly empty grasps on the proxy); > 1 = the old rule
@@ -724,6 +732,14 @@ class RuntimePolicy:
         others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [o] + others]
+        if self.cfg.wrist_check != "off" and kind in ("pick", "place"):
+            self._wrist_check(prov, obs, label, arm, kind, held, held_label)
+            o = prov.belief.objects.get(label)
+            if o is None:
+                return None
+            others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
+            objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos],
+                     "quat": [float(v) for v in x.quat]} for x in [o] + others]
         idv = None
         if self.cfg.refine_identity and kind == "pick":
             # perception's instruction-ranked candidates for this label (general_pickup's target), else the
@@ -893,6 +909,72 @@ class RuntimePolicy:
             out["yaw_source"] = r["yaw_source"]
         return out
 
+    def _wrist_check(self, prov, obs: dict, label: str, arm: str, kind: str, held, held_label) -> dict | None:
+        """The grasp-time wrist check (``RuntimeConfig.wrist_check``) on this hover's frame: verdicts for ``label``
+        (the pick target / the place reference) and every believed object within the radius of the approach (a
+        vertical corridor above ``label``). ``apply`` / ``drop`` write ok neighbour / reference fits and relocations
+        into the belief (never the pick target's pose: its own refine follows), mark phantoms touched (``drop``:
+        delete phantom neighbours / references); a margin-gated identity / flip of ``label`` is applied too."""
+        b = prov.belief
+        o = b.objects.get(label)
+        if o is None:
+            return None
+        held_now = set(b.held_labels())
+        objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
+                for x in b.objects.values() if getattr(x, "asset", None) is not None and x.label not in held_now]
+        c = np.asarray(o.center_w, float)
+        corridor = [c.tolist(), (c + [0.0, 0.0, 0.12]).tolist()]
+        t0 = time.time()
+        try:
+            r = self.perception().wrist_check(obs, objs, self.fold, arm, kind, target=label if kind == "pick" else None,
+                                              reference=label if kind == "place" else None, corridor=corridor, held=held,
+                                              held_label=held_label, cfg=dict(self.cfg.wrist_check_cfg),
+                                              vocabulary=prov.task)
+        except Exception as e:  # noqa: BLE001 (the check is advisory: the hover refine goes on without it)
+            self.report["events"].append({"kind": "wrist_check", "label": label, "for": kind, "arm": arm,
+                                          "step": self.bridge.steps_used, "error": f"{type(e).__name__}: {e}"[:300]})
+            return None
+        ev = {"kind": "wrist_check", "label": label, "for": kind, "arm": arm, "step": self.bridge.steps_used,
+              "wall_s": round(time.time() - t0, 3), "time_s": r.get("time_s"),
+              "verdicts": {lab: v.get("verdict") for lab, v in (r.get("objects") or {}).items()}, "applied": [],
+              "relocated": [], "phantoms": [], "dropped": []}
+        self.report["events"].append(ev)
+        mode = self.cfg.wrist_check
+        if mode == "log":
+            return r
+        for lab, v in (r.get("objects") or {}).items():
+            x = b.objects.get(lab)
+            if x is None or lab in held_now or (lab == label and kind == "pick"):
+                continue
+            if v.get("applied") and v.get("pose7"):
+                x.pos, x.quat, x.source = np.asarray(v["pose7"][:3], float), np.asarray(v["pose7"][3:7], float), "perception"
+                ev["applied"].append(lab)
+            elif v.get("verdict") == "phantom":
+                ev["phantoms"].append(lab)
+                prov.touched.add(lab)
+                if mode == "drop" and lab != label:
+                    del b.objects[lab]
+                    ev["dropped"].append(lab)
+        for f in r.get("found") or []:
+            lab = f.get("label")
+            x = b.objects.get(lab) if lab else None
+            if not f.get("applied") or x is None or lab in held_now or (lab == label and kind == "pick"):
+                continue
+            x.pos, x.quat, x.source = np.asarray(f["pose7"][:3], float), np.asarray(f["pose7"][3:7], float), "perception"
+            ev["relocated"].append(lab)
+        idr = ((r.get("objects") or {}).get(label) or {}).get("identity") or {}
+        if idr.get("change_key") and label in b.objects:
+            from .estimate import _asset
+            typ, cat, idx = idr["change_key"].split("/")
+            ev.update({"identity_from": o.asset.key, "identity_to": idr["change_key"]})
+            o.category, o.idx, o.asset = cat, int(idx), _asset(prov.assets, typ, cat, int(idx), mesh=True)
+        elif idr.get("flip") and label in b.objects:
+            o.pos, o.quat = np.asarray(idr["flip_pose"][:3], float), np.asarray(idr["flip_pose"][3:7], float)
+            ev["flipped"] = True
+        if ev["applied"] or ev["relocated"] or ev["dropped"]:
+            prov.stats["wrist_check_changed"] = prov.stats.get("wrist_check_changed", 0) + 1
+        return r
+
     def _explain_vocabulary(self, cands: list, obs0: dict):
         """Set-level explain-away: B1 on frame 0 with each candidate set, scored by found-label share x mean
         confidence. The first candidate (the table's match) stays unless another set finds more of its labels or
@@ -944,8 +1026,11 @@ class RuntimePolicy:
         n = self.report.setdefault("track_reads", 0) + 1
         self.report["track_reads"] = n
         if n <= 60:
-            self.report["events"].append({"kind": "track_read", "step": int(obs["steps_used"]), "found": found[:12],
-                                          "not_found": len(rec.get("_not_found") or [])})
+            ev = {"kind": "track_read", "step": int(obs["steps_used"]), "found": found[:12],
+                  "not_found": len(rec.get("_not_found") or [])}
+            if (rec.get("_perception") or {}).get("blind"):
+                ev["blind"] = True                      # no scene background for the belt (the tracker skips it)
+            self.report["events"].append(ev)
         if n <= int(self.cfg.save_track_frames):
             self._keep_frame(f"track{n:02d}_s{int(obs['steps_used'])}", obs, force=True)
         return rec

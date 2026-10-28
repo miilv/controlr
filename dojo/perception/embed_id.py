@@ -94,6 +94,28 @@ class Embedder:
                 out.append(torch.nn.functional.normalize(f.float(), dim=-1).cpu().numpy())
         return np.concatenate(out) if out else np.zeros((0, 1), np.float32)
 
+    def tokens(self, imgs, batch: int = 32) -> tuple[np.ndarray, np.ndarray]:
+        """DINOv2 only: (L2-normalised CLS (N, D), layer-normed patch tokens (N, g, g, D)) of uint8 RGB crops
+        (``wrist_check.MuseScorer``: CLS + GeM-pooled patches)."""
+        import torch
+        import torch.nn.functional as F
+
+        if self.family != "dinov2":
+            raise ValueError(f"tokens() needs a DINOv2 model, not {self.name}")
+        cls, pat = [], []
+        with torch.inference_mode():
+            for i in range(0, len(imgs), batch):
+                x = torch.from_numpy(np.stack([np.asarray(a, np.uint8) for a in imgs[i:i + batch]])).to(self.device)
+                x = x.permute(0, 3, 1, 2).float() / 255.0
+                if x.shape[-1] != self.size or x.shape[-2] != self.size:
+                    x = F.interpolate(x, size=(self.size, self.size), mode="bicubic", antialias=True, align_corners=False)
+                o = self.model(pixel_values=((x - self.mean) / self.std).to(self.dtype))
+                h = o.last_hidden_state.float()             # layer-normed: [CLS, patches...]
+                g = int(round((h.shape[1] - 1) ** 0.5))
+                cls.append(torch.nn.functional.normalize(o.pooler_output.float(), dim=-1).cpu().numpy())
+                pat.append(h[:, 1:1 + g * g].reshape(h.shape[0], g, g, -1).cpu().numpy())
+        return np.concatenate(cls), np.concatenate(pat)
+
 
 def square_box(bbox, pad: float = 0.25, min_side: float = 32.0, w: int = 640, h: int = 480):
     """A square region (x0, y0, x1, y1) around an (x, y, w, h) bbox, padded; it may extend past the image."""

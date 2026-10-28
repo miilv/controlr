@@ -222,6 +222,16 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   deploy dir's `.venv`, and that needs `.[perception]` (opencv, trimesh, ...). Without it the episode ends at step 0,
   `cat=error ... No module named 'cv2'`. Before a rendered run: `uv pip install --python .venv/bin/python -e
   ".[dev,perception]"` in the deploy dir. G3 runs in RoboDojo's python and does not need it.
+- **A box's `bg_folds*` must carry the `scene/` backgrounds, or every belt read is blind.** The bootstrap copies
+  compute3's folds once, so backgrounds built after a box's copy are not there. compute4's `bg_folds_51` had no
+  `scene/` (2026-10-28). Belt and frame-0 reads then segment the belt against the table background, find nothing,
+  and match_and_pick ends with "nothing moves". The perception service now prints `WARNING: no scene background for
+  [...] ... belt reads are blind`, and the episode report has a `belt_blind` event and `track_read` `blind: true`. Before
+  a conveyor run: `ls $DOJO_BG_FOLDS/fold*/scene/` (Dynamic_conveyor_00000 for match_and_pick; pick_from_conveyor_by_image
+  needs Dynamic_conveyor_00001).
+- **Offline perception on a box (B1, belt_read, embed renders) takes the GPU.** It renders through pyrender EGL: a
+  ~300 MiB graphics context per process, even with CUDA hidden. compute3 has no OSMesa, so take a light slot (flock)
+  for it like any GPU job.
 - **Learned identity (`EstimatorConfig.embed_model`) needs torch in the perception venv.** `.[perception]` has no
   torch: with the flag set and no torch the first belt read raises `ModuleNotFoundError: torch`. On a box (RTX 5090,
   driver >= 570): `uv pip install --python .venv/bin/python "torch==2.9.1" --index-url https://download.pytorch.org/whl/cu128
@@ -269,6 +279,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   as `<arm>_ee_joint_state_official` (`RuntimeConfig.grip_check` reads it). Never put it in place of the command
   (`DOJO_GRIP_SOURCE=robodojo`): held_look and the robot mask read that key as the command (the 14/24 vs 17/25 A/B,
   experiments 2026-10-27-grip-source-ab).
+- **A garbage-collected pyrender renderer kills every GL context of the process.** `OffscreenRenderer.delete()` (run by
+  `__del__`) calls `eglTerminate` on the EGL display, which all pyrender contexts of a process share; the next render
+  of ANY other renderer (GL silhouettes, `ColorMeshRenderer`, a `Gallery`) fails with `GLError 12289` in
+  `eglMakeCurrent`. Keep renderers process-wide (module globals like `render.gl()`, `wrist_check._GALLERY`), never per
+  object that may be dropped (E1 of the wrist check: a per-episode `Gallery` broke every later episode).
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
   frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
 

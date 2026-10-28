@@ -579,6 +579,65 @@ def test_refine_hook_updates_the_belief_only_when_accepted():
         assert pol.report["events"][-1]["kind"] == "refine"
 
 
+def test_wrist_check_hook_applies_neighbour_fits_and_phantoms_by_mode():
+    """RuntimeConfig.wrist_check: off = no call; log = events only; apply = a neighbour's ok fit moves it and a phantom
+    is marked touched; drop = the phantom neighbour leaves the belief. The pick target's pose is never the check's."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+
+    class WristPerception:
+        def __init__(self):
+            self.wc, self.refines = [], 0
+
+        def wrist_check(self, frame, objects, fold, arm, kind, target=None, reference=None, corridor=None, held=None,
+                        held_label=None, cfg=None, vocabulary=None):
+            self.wc.append({"labels": sorted(o["label"] for o in objects), "target": target, "kind": kind,
+                            "corridor": corridor, "cfg": cfg})
+            nb = next(o for o in objects if o["label"] == "block_0")
+            p = list(nb["pos"])
+            p[1] += 0.004
+            return {"objects": {"block_1": {"role": "target", "verdict": "present", "applied": True,
+                                            "pose7": [9.0, 9.0, 9.0, 1, 0, 0, 0]},
+                                "block_0": {"role": "neighbour", "verdict": "ok", "applied": True,
+                                            "pose7": p + list(nb["quat"])},
+                                "block_2": {"role": "neighbour", "verdict": "phantom"}},
+                    "found": [], "time_s": {"total": 0.2}}
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None, **kw):
+            self.refines += 1
+            return {objects[0]["label"]: {"ok": False, "why": "perception not ok"}}
+
+    for mode in ("off", "log", "apply", "drop"):
+        pc = WristPerception()
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True, wrist_check=mode,
+                                          wrist_check_cfg={"radius_m": 0.1}), assets=FakeAssets(), perception_client=pc)
+        pol.reset(FakeEpisode(env).info())
+        b = pol.bridge
+        b.obs, b.fresh = FakeEpisode(env).observe(), True
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        t0 = prov.belief.objects["block_1"].pos.copy()
+        y0 = float(prov.belief.objects["block_0"].pos[1])
+        pol._refine_hook(prov, None, "block_1", "left", "pick")
+        bo = prov.belief.objects
+        assert pc.refines == 1                                             # the hover refine always follows
+        assert np.allclose(bo["block_1"].pos, t0)                          # the target's pose: never the check's
+        if mode == "off":
+            assert pc.wc == [] and not any(e["kind"] == "wrist_check" for e in pol.report["events"])
+            continue
+        call = pc.wc[0]
+        assert call["target"] == "block_1" and call["kind"] == "pick" and call["cfg"] == {"radius_m": 0.1}
+        assert call["labels"] == ["block_0", "block_1", "block_2"] and len(call["corridor"]) == 2
+        ev = next(e for e in pol.report["events"] if e["kind"] == "wrist_check")
+        assert ev["verdicts"] == {"block_1": "present", "block_0": "ok", "block_2": "phantom"}
+        if mode == "log":
+            assert float(bo["block_0"].pos[1]) == y0 and "block_2" in bo and "block_2" not in prov.touched
+            continue
+        assert abs(float(bo["block_0"].pos[1]) - y0 - 0.004) < 1e-9 and ev["applied"] == ["block_0"]
+        assert ev["phantoms"] == ["block_2"] and "block_2" in prov.touched
+        assert ("block_2" in bo) == (mode == "apply") and ev["dropped"] == ([] if mode == "apply" else ["block_2"])
+
+
 def test_refine_hook_passes_the_search_radius_and_empty_hand_only_when_configured():
     from dojo.runtime.belief import RuntimeProvider
     env = _env()
@@ -3373,6 +3432,41 @@ def test_belt_tracker_reads_through_the_belt_read_when_the_service_has_it(monkey
         assert n >= 2 and pc.ops.count(op) >= n
         if mode == "belt":
             assert pc.ops.count("belt_read") == n                              # every tracker read, nothing else
+
+
+def test_a_blind_belt_read_is_logged_and_the_belief_keeps_its_objects(monkeypatch):
+    """A belt read the service marks blind (no scene background for the belt in the fold: compute4 2026-10-28) shows
+    in the report (``track_read`` blind, one ``belt_blind`` event) and changes nothing in the belief."""
+    import dojo.runtime.policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png")
+    env = _env()
+
+    class Blind(_HeldPosePerception):
+        def __init__(self, env):
+            super().__init__(env, lambda prior: {})
+
+        def belt_read(self, frame, vocabulary, fold):
+            return {"Rigid": {}, "_perception": {"scene_bg": None, "blind": "no scene background for Dynamic/conveyor/00000"}}
+
+    seen = {}
+
+    def program(ctx):
+        labels = sorted(ctx.prov.belief.objects)
+        for _ in range(3):
+            ctx.prov.refresh()
+            ctx.sk.ex.hold(5)
+        seen["kept"] = sorted(ctx.prov.belief.objects) == labels
+        return {"ok": True}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", track_moving="on"), assets=FakeAssets(),
+                        perception_client=Blind(env), program=program)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    tr = [e for e in rep["events"] if e["kind"] == "track_read"]
+    assert len(tr) >= 2 and all(e.get("blind") for e in tr)
+    blind = [e for e in rep["events"] if e["kind"] == "belt_blind"]
+    assert len(blind) == 1 and "Dynamic/conveyor/00000" in blind[0]["why"]
+    assert seen["kept"] and rep["provider"]["track_blind"] == len(tr)
+    assert not [e for e in rep["events"] if e["kind"] in ("track_drop", "track_new", "track_lost")]
 
 
 def test_kinematic_belief_attaches_a_narrow_pick_closed_from_below_half_open():

@@ -8,6 +8,7 @@
 #   scripts/bootstrap_gpu_box.sh HOST [--role auto|full|physics] [--dry-run] [--only S1,S2] [--skip S1,S2] [--force S1,S2]
 #        [--probe full|basic] [--assets needed|all] [--assets-from hf|compute3|HOST] [--with-isaac6] [--ref origin/main]
 #        [--source compute3] [--env-file PATH | --no-secrets] [--min-disk-gb 300] [--prefix DIR] [--ignore-preflight]
+#        [--shared-home]
 #
 #   --role auto     (default) the preflight reads the driver: 570/580 -> full, anything else (595) -> physics; and if the
 #                   5.1 render smoke then fails on a "full" box, the box falls back to physics by itself
@@ -21,6 +22,8 @@
 #   --env-file      the .env whose OMNIROUTE_* lines go to HOST:~/controlr/.env (mode 600; default: the main checkout's
 #                   .env). Values are never printed or logged. --no-secrets: skip it
 #   --prefix DIR    big disk not under $HOME (e.g. /data): ~/dojo-robodojo, ~/dojo-data, ... -> DIR/...
+#   --shared-home   HOST's $HOME is shared with other people (compute2's /root): no loginctl enable-linger, no
+#                   ~/.config/uv/uv.toml, our pinned uv in ~/dojo-bootstrap/tools/uv (the home's ~/.local/bin/uv stays)
 #   --fleet-dir DIR (set by bootstrap_fleet.sh) peer-to-peer fetches coordinated through DIR on this box
 #
 # Steps (resumable, idempotent: a re-run skips what is done and re-attaches to what is still running on HOST;
@@ -34,7 +37,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIBDIR="$ROOT/scripts/infra"
 
 HOST="" ROLE=auto DRY=0 ONLY="" SKIP="" FORCE="" ASSETS=needed REF=origin/main SOURCE=compute3 MIN_DISK_GB=300 IGNORE_PF=0
-PREFIX="" PROBE=full ASSETS_FROM=hf WITH_ISAAC6=0 ENV_FILE="" SECRETS=1 FLEET_DIR="" SUMMARY="" P2P=direct
+PREFIX="" PROBE=full ASSETS_FROM=hf WITH_ISAAC6=0 ENV_FILE="" SECRETS=1 FLEET_DIR="" SUMMARY="" P2P=direct SHARED_HOME=0
 ISAAC6_SRC="${ISAAC6_SRC:-/home/physicalai/AAAI_MultiAgenticSIM/isaac-sim-6.0}"   # compute3's Isaac Sim 6.0 (isaac6.sh default)
 ISAAC6_VERSION="6.0.0-rc.59+release.41464.5f2772bc.gl"
 FLEET_WAIT_S="${FLEET_WAIT_S:-5400}"     # a fleet peer waits this long for a holder, then fetches from the origin itself
@@ -59,6 +62,7 @@ while [[ $# -gt 0 ]]; do
     --min-disk-gb) MIN_DISK_GB="$2"; shift 2 ;;
     --prefix) PREFIX="$2"; shift 2 ;;
     --ignore-preflight) IGNORE_PF=1; shift ;;
+    --shared-home) SHARED_HOME=1; shift ;;
     --fleet-dir) FLEET_DIR="$2"; shift 2 ;;
     --p2p) P2P="$2"; shift 2 ;;
     --summary) SUMMARY="$2"; shift 2 ;;
@@ -132,7 +136,7 @@ remote_dry() {   # print the commands a remote step would run (the remote librar
   local d; d="$(mktemp -d)"
   # shellcheck disable=SC2088  # a literal ~: printed commands name the box's paths
   ( cd "$d" && DRY_RUN=1 HOME='~' BOX='~/dojo-bootstrap' LIB_REMOTE='~/dojo-bootstrap/lib' ROLE="$ROLE" ASSETS="$ASSETS" \
-      CODE_SHA="$CODE_SHA" MIN_DISK_GB="$MIN_DISK_GB" PREFIX="$PREFIX" bash "$LIBDIR/box_steps.sh" "$@" )
+      CODE_SHA="$CODE_SHA" MIN_DISK_GB="$MIN_DISK_GB" PREFIX="$PREFIX" SHARED_HOME="$SHARED_HOME" bash "$LIBDIR/box_steps.sh" "$@" )
   rmdir "$d" 2>/dev/null || true
 }
 push_config() {   # this run's config -> HOST:~/dojo-bootstrap/config.env (sourced by every remote step)
@@ -142,8 +146,9 @@ BOX_ALIAS=\${BOX_ALIAS:-'${HOST//\'/}'}
 ASSETS=\${ASSETS:-$ASSETS}
 CODE_SHA=\${CODE_SHA:-$CODE_SHA}
 MIN_DISK_GB=\${MIN_DISK_GB:-$MIN_DISK_GB}
-PREFIX=\${PREFIX:-$PREFIX}"
-  if [[ "$DRY" == 1 ]]; then echo "  + ssh $HOST 'cat > $BR/config.env'   # ROLE=$ROLE ASSETS=$ASSETS CODE_SHA=$CODE_SHA MIN_DISK_GB=$MIN_DISK_GB PREFIX=$PREFIX BOX_ALIAS=$HOST"
+PREFIX=\${PREFIX:-$PREFIX}
+SHARED_HOME=\${SHARED_HOME:-$SHARED_HOME}"
+  if [[ "$DRY" == 1 ]]; then echo "  + ssh $HOST 'cat > $BR/config.env'   # ROLE=$ROLE ASSETS=$ASSETS CODE_SHA=$CODE_SHA MIN_DISK_GB=$MIN_DISK_GB PREFIX=$PREFIX SHARED_HOME=$SHARED_HOME BOX_ALIAS=$HOST"
   else printf '%s\n' "$cfg" | rssh "cat > $BR/config.env"; fi
 }
 launch() {   # start remote step $1 detached unless done / running
