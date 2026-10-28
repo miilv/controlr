@@ -208,7 +208,35 @@ def order_points(o, tags: list[str], text: str) -> list[str]:
     return list(tags)
 
 
-def ported_plan(instruction: str, world: WorldState) -> Plan | None:
+SWAP_CARRY_Z = (0.86, 0.84, 0.82, 0.80)   # swap_poses' carry heights tried by ``ported_opts["swap"] == "reach"``
+
+
+def swap_carry_z(world: WorldState, a, b) -> float | None:
+    """The highest carry height at which each arm reaches the OTHER object's spot top-down (the left arm takes the
+    lower-x object, as swap_poses does) with some tool yaw the skill may use there; None when none does."""
+    import math
+
+    from dojo.skills.kinematics import X5Kin
+    from dojo.skills.ported.harness_robot import GRASP_OFF, flange_from_tcp, qmat, tcp_of, tool_quat
+    kin = X5Kin(tcp_offset=GRASP_OFF)
+    lo, hi = sorted((a, b), key=lambda o: float(o.pos[0]))
+
+    def reach(arm, o, z):
+        yaw = math.degrees(o.yaw())
+        for d in (90.0, -90.0, 0.0, 180.0):
+            fl = flange_from_tcp([float(o.pos[0]), float(o.pos[1]), z], tool_quat(yaw + d))
+            T = np.eye(4)
+            T[:3, :3], T[:3, 3] = qmat(fl[3:7]), tcp_of(fl)
+            if kin.ik(arm, T, world.home_q.get(arm, np.zeros(6)) if world.home_q else np.zeros(6)).ok:
+                return True
+        return False
+    for z in SWAP_CARRY_Z:
+        if reach("left", hi, z) and reach("right", lo, z):
+            return z
+    return None
+
+
+def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -> Plan | None:
     """Routes to Mikhail's measured skills (``dojo.skills.ported``, stream P), for instructions no route of ours takes.
     Words + what the objects are (category, type, pose), never labels; an object is passed as ``"@<label>"`` only as a
     handle, which the adapter turns into that object's instance name. None: no ported route fits."""
@@ -231,6 +259,11 @@ def ported_plan(instruction: str, world: WorldState) -> Plan | None:
         for o in rigid:
             kinds.setdefault(o.category, []).append(o)
         if sum(len(v) == 2 for v in kinds.values()) == 1:
+            if (opts or {}).get("swap") == "reach":
+                pair = next(v for v in kinds.values() if len(v) == 2)
+                z = swap_carry_z(world, *pair)
+                if z is not None and z != SWAP_CARRY_Z[0]:
+                    return run("swap_poses", carry_z=z)
             return run("swap_poses")
     # pour from one container into another: balls (a cup into a vase) or a liquid (a bottle into a cup)
     if re.search(r"\bpour\b", text):
@@ -257,11 +290,12 @@ def ported_plan(instruction: str, world: WorldState) -> Plan | None:
     return None
 
 
-def plan(instruction: str, world: WorldState, ported: bool = False) -> Plan:
-    """``ported``: after our own routes, try the ported ones (``ported_plan``; ``RuntimeConfig.ported_routes``)."""
+def plan(instruction: str, world: WorldState, ported: bool | dict = False) -> Plan:
+    """``ported``: after our own routes, try the ported ones (``ported_plan``; ``RuntimeConfig.ported_routes``); a dict
+    turns them on with options (``{"swap": "reach"}``: ``RuntimeConfig.ported_swap``)."""
     p = _plan(instruction, world)
     if ported and p.skill == "none" and not p.args:
-        q = ported_plan(instruction, world)
+        q = ported_plan(instruction, world, ported if isinstance(ported, dict) else None)
         if q is not None:
             return q
     return p
@@ -609,7 +643,8 @@ def _plan(instruction: str, world: WorldState) -> Plan:
 def solve(sk) -> dict:
     """The fixed procedure: plan from the instruction and the world, run the skill, finish."""
     w = sk.refresh()
-    p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on")
+    p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
+             and {"swap": getattr(sk, "ported_swap", "fixed")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":
