@@ -41,9 +41,28 @@ def view_type(r: dict) -> str:
     return f"{'held' if r.get('is_held') else 'free'}:{v}"
 
 
+VAL_IDS: set = set()   # train-split layouts moved to val (``--val-ids``): more held views to calibrate on
+
+
+def layout_id(r: dict) -> str | None:
+    import re
+
+    m = re.search(r"_(1000\d\d)_v\d+_f", r["path"])
+    return m.group(1) if m else None
+
+
 def load_rows(crops: Path, split: str) -> list[dict]:
     rows = [json.loads(line) for line in open(crops / "meta.jsonl")]
+    for r in rows:
+        if r["split"] == "train" and layout_id(r) in VAL_IDS:
+            r["split"] = "val"
     return [r for r in rows if r["split"] == split and label_of(r) is not None]
+
+
+def view_kind(r: dict) -> str:
+    """The margin's view kind: head / wrist, and held_head / held_wrist for the tile in the jaws (the draw read)."""
+    v = "head" if r["view"] == "cam_head" else "wrist"
+    return f"held_{v}" if r.get("is_held") else v
 
 
 class Crops:
@@ -108,7 +127,7 @@ def report(rows, P, margin) -> dict:
     """Per view type: top-1, the read rate and the precision among reads. ``margin``: one value or {"head", "wrist"}."""
     pred, marg = margins(P)
     if isinstance(margin, dict):
-        thr = np.array([margin["head" if r["view"] == "cam_head" else "wrist"] for r in rows])
+        thr = np.array([margin.get(view_kind(r), margin["head" if r["view"] == "cam_head" else "wrist"]) for r in rows])
     else:
         thr = np.full(len(rows), float(margin))
     y = np.array([label_of(r) for r in rows])
@@ -130,6 +149,7 @@ def report(rows, P, margin) -> dict:
 def cmd_train(a):
     import torch
 
+    VAL_IDS.update(x.strip() for x in (a.val_ids or "").split(",") if x.strip())
     crops, out = Path(a.crops).expanduser(), Path(a.out).expanduser()
     out.mkdir(parents=True, exist_ok=True)
     dev = "cuda"
@@ -163,11 +183,12 @@ def cmd_train(a):
     margin = choose_margin(pred, marg, yv, a.precision)
     # per view kind (the runtime reads head and wrist crops): its own margin when val has >= 20 crops of it
     per_view = {}
-    for kind in ("head", "wrist"):
-        sel = np.array([(r["view"] == "cam_head") == (kind == "head") for r in va])
+    kinds = np.array([view_kind(r) for r in va])
+    for kind in ("head", "wrist", "held_head", "held_wrist"):
+        sel = kinds == kind
         per_view[kind] = choose_margin(pred[sel], marg[sel], yv[sel], a.precision) if sel.sum() >= 20 else margin
     torch.save({"state": model.state_dict(), "margin": margin, "margins": per_view, "precision": a.precision,
-                "n_glyph": N_GLYPH}, out / "model.pt")
+                "n_glyph": N_GLYPH, "val_ids": sorted(VAL_IDS)}, out / "model.pt")
     (out / "val_report.json").write_text(json.dumps({"margin": margin, "margins": per_view,
                                                      "report": report(va, P, margin)}, indent=1))
     print(f"[kong] margin {margin}, per view {per_view} (val precision target {a.precision}); {time.time() - t0:.0f}s",
@@ -179,6 +200,7 @@ def cmd_eval(a):
 
     crops = Path(a.crops).expanduser()
     ck = torch.load(Path(a.model).expanduser(), map_location="cpu")
+    VAL_IDS.update(ck.get("val_ids") or [])
     model = build_model(pretrained=False)
     model.load_state_dict(ck["state"])
     model = model.to("cuda")
@@ -206,6 +228,7 @@ def main(argv=None):
     t.add_argument("--batch", type=int, default=128)
     t.add_argument("--lr", type=float, default=1e-3)
     t.add_argument("--precision", type=float, default=0.98)
+    t.add_argument("--val-ids", default="", help="training layouts (ids 100030-49) moved to val, e.g. 100046,100047,100048")
     e = sub.add_parser("eval")
     e.add_argument("--crops", required=True)
     e.add_argument("--model", required=True)
