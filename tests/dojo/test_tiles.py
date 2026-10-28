@@ -203,3 +203,23 @@ def test_equation_semantics_one_slot_missing(monkeypatch):
         i = slots.index(miss)
         assert tiles.missing_values(vals, i)                         # the record is solvable by the skill's rule
     assert seen_two and seen_missing == 0b110111
+
+
+def test_centred_grasp_and_reach_shift_targets():
+    from types import SimpleNamespace
+
+    from dojo.skills.geometry import T_from
+    o = _obj("plus", "plus", 0, (0.0, -0.27, Z_TABLE + 0.004), OP_HALF)
+    ok = tiles.centred_grasp(o)
+    T_tcp_obj = np.linalg.inv(T_from([0.003, -0.002, 0.004], np.eye(3)))    # TCP 3.6 mm off the centre
+    assert ok(None, T_tcp_obj, None, None)
+    assert not ok(None, np.linalg.inv(T_from([0.018, 0.0, 0.004], np.eye(3))), None, None)
+    pad = _obj("mat1", "cube_cushion", 1, (-0.085, 0.0, Z_TABLE + 0.0025), PAD_HALF, "Geometry")
+    sk = SimpleNamespace(world=SimpleNamespace(obj={"plus": o, "mat1": pad}.__getitem__), held={})
+    tg = tiles.tile_targets(sk, "plus", "mat1")
+    n = len(tiles.YAWS_DEG)
+    assert len(tg) == n * len(tiles.REACH_SHIFTS)
+    assert np.allclose(tg[0][:2, 3], [-0.085, 0.0]) and np.allclose(tg[n][:2, 3], [-0.085, -tiles.REACH_SHIFTS[1]])
+    assert abs(tg[0][2, 3] - (Z_TABLE + 0.005 + OP_HALF[2])) < 1e-9                  # resting on the pad's top
+    for T in tg:                                                                    # inside the checker's 45 deg
+        assert abs(math.degrees(math.atan2(T[1, 0], T[0, 0]))) < 45.0

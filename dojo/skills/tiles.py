@@ -33,7 +33,12 @@ ON_PAD = 0.035            # m: a tile centre this close to a pad centre is on it
 OCCUPIED = 0.045          # m: another object's centre this close to a pad centre blocks a place there
 PAD_MAX_THICK = 0.012     # m: pads are thin (cube_cushion: 5 mm)
 MIN_PADS = 4
-YAWS_DEG = (0.0, 12.0, -12.0, 24.0, -24.0)   # target headings of the tile's body x (the checker: within 45 of world x)
+YAWS_DEG = (0.0, 12.0, -12.0, 24.0, -24.0, 34.0, -34.0)   # target headings of the tile's body x (checker: within 45)
+# the target's centre may move this far towards the robot (-y) when the pad's centre plans with no grasp: the pads lie
+# at the edge of the arms' reach (y 0; the checker allows 18 / 20 mm from the pad's centre)
+REACH_SHIFTS = (0.0, 0.007)
+CENTRE_OFF = 0.006        # m: the pads close this close to the tile's centre at most
+MAX_PICK_TILT = 30.0      # deg: a tile picked 40 deg off vertical slid out of the pads (G3 100033)
 ROUTES = ("equation", "largest_number")
 
 
@@ -198,12 +203,14 @@ def route(text: str, world, routes) -> tuple | None:
 
 
 # ------------------------------------------------------------------ acting
-def tile_targets(sk, label: str, pad: str, yaws_deg=YAWS_DEG) -> list:
-    """Object poses with the tile resting level on ``pad``, centred, its body x heading at each of ``yaws_deg``."""
+def tile_targets(sk, label: str, pad: str, yaws_deg=YAWS_DEG, shifts=REACH_SHIFTS) -> list:
+    """Object poses with the tile resting level on ``pad``, its body x heading at each of ``yaws_deg``: centred
+    first, then shifted towards the robot by each of ``shifts`` (``plan_transfer`` prefers earlier targets)."""
     from dojo.skills.targets import rest_pose
     p = sk.world.obj(pad)
     z = max(TABLE_Z, float(p.top_z))
-    return [rest_pose(sk, label, p.pos[:2], z, yaw=math.radians(y), sym=1) for y in yaws_deg]
+    return [rest_pose(sk, label, p.pos[:2] + np.array([0.0, -dy]), z, yaw=math.radians(y), sym=1)
+            for dy in shifts for y in yaws_deg]
 
 
 def _heading_ok(o, sym: int = 1, tol_deg: float = 30.0) -> bool:
@@ -231,15 +238,29 @@ def _look_value(sk, label: str):
     return v
 
 
+def centred_grasp(o, max_off: float = CENTRE_OFF):
+    """``plan_transfer``'s ``pair_ok``: the pads close within ``max_off`` of the tile's centre (in its own plane). The
+    operator tiles are 60 mm discs 8 mm thick: held 18 mm off their centre they slid out at the lift (G3 100044) or
+    on the carry (100031); the number tiles' metadata friction is 0.0."""
+    c = np.asarray(o.asset.center, float)
+
+    def ok(g, T_tcp_obj, T_obj, T_tcp) -> bool:
+        p = np.linalg.inv(np.asarray(T_tcp_obj, float))[:3, 3] - c          # the TCP in the tile's frame
+        return float(np.linalg.norm(p[:2])) <= max_off
+    return ok
+
+
 def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1):
     from dojo.skills.library import place_oriented
     tg = tile_targets(sk, label, pad)
     if yaw_sym == 2:
         tg += tile_targets(sk, label, pad, yaws_deg=tuple(y + 180.0 for y in YAWS_DEG))
-    return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,))
+    return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,),
+                          transfer_kw={"max_pick_tilt": MAX_PICK_TILT,
+                                       "pair_ok": centred_grasp(sk.world.obj(label))})
 
 
-def complete_equation(sk, max_looks: int = 4, max_tries: int = 3) -> dict:
+def complete_equation(sk, max_looks: int = 4, max_tries: int = 4) -> dict:
     """Read the equation on the pads, find the value of its one empty slot, put a tile showing it there (centred,
     upright, body x along world x). Unknown values are looked at with a wrist, never guessed."""
     from dojo.skills.skills import SkillResult
@@ -288,7 +309,8 @@ def complete_equation(sk, max_looks: int = 4, max_tries: int = 3) -> dict:
     if not cands:
         return {"ok": False, "stage": "select", "note": f"no tile shows {valid} (unknown {[o.label for o in unknown]})"}
     r = None
-    for o in cands[:max_tries]:
+    # each candidate twice (a second place_oriented re-plans from where the first left it, relays included), then the next
+    for o in [c for c in cands for _ in range(2)][:max_tries]:
         r = _place_tile(sk, o.label, pad)
         sk.log(f"[tiles] {o.label} -> {pad}: {r.status} {r.note[:120]}")
         if r.ok or r.status in ("step_budget", "ended"):
