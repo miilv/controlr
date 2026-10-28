@@ -3104,3 +3104,8 @@ SKILLS.update(_TILE_SKILLS)
 from dojo.skills.align import SKILLS as _ALIGN_SKILLS  # noqa: E402
 
 SKILLS.update(_ALIGN_SKILLS)
+
+# objects of one kind stood upright in one row by size (stream N; route "row_by_size", off by default)
+from dojo.skills.rows import SKILLS as _ROW_SKILLS  # noqa: E402
+
+SKILLS.update(_ROW_SKILLS)

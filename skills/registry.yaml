@@ -832,3 +832,32 @@ entries:
     measured: none
     stats: []
     notes: "stream N first version; route off by default (RuntimeConfig.new_routes: align)"
+
+  - name: row_by_size
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Stand the objects upright in one row along x ordered by size (the asset's bbox volume): smallest on the left
+      (smaller x) when ascending. The slots are spaced by the neighbours' half widths + 22 mm on a line clear of every
+      other object; an object standing on another's slot is moved first, or put aside; grippers opened after each.
+    args:
+      objects: "[id], required; the objects of the row"
+      ascending: "bool = true; smallest on the left (true) or largest (false)"
+    selects_on:
+      words: [row, smallest, largest, size, dolls]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each object, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.rows:row_by_size"
+    measured: none
+    stats: []
+    notes: "stream N first version; route off by default (RuntimeConfig.new_routes: row_by_size)"

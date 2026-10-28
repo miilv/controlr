@@ -169,6 +169,12 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "along one of its faces, the others are gripped on two opposite faces, raised 3 mm, slid onto the row turned to "
         "its heading and set down (two arms at once when they keep apart); one more slide of the worst block when the "
         "row is still off. For 'push the blocks into a straight, aligned row'."),
+    "row_by_size": (
+        "row_by_size(objects: [id, ...], ascending: bool = true)",
+        "Stands the objects upright in one row along x ordered by size (the asset's bbox volume): smallest on the left "
+        "(smaller x) when ascending. Slots spaced by the neighbours' half widths + 22 mm on a free line; an object "
+        "standing on another's slot is moved first; grippers opened after each. For 'arrange the dolls in a row from "
+        "smallest to largest'."),
 }
 SKILL_DOCS_VERSION = 12  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
@@ -181,7 +187,7 @@ SKILL_DOCS_VERSION = 12  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + 
 #                        10: fill_container: "hold the holder with one hand, fill it with the other, put it back down" is
 #                           judged by the end state; the skill fills it standing (routing 2026-10-27: Sol wrote code 3/3)
 #                        11: + sweep_into (gennew)
-#                        12: + complete_equation, arrange_digits, align_in_row (stream N)
+#                        12: + complete_equation, arrange_digits, align_in_row, row_by_size (stream N)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',
