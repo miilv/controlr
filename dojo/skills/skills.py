@@ -299,6 +299,9 @@ class Skills:
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"
+        # ``library.bowl_geometry``'s nest height (stream H): "bins" (today) | "measured" (the twin's rest height per
+        # asset, else the mesh's radial profile)
+        self.nest_height = "bins"
         self.consume_events: list = []
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
