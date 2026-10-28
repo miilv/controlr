@@ -261,32 +261,43 @@ def _look_value(sk, label: str):
     return v
 
 
-def centred_grasp(o, max_off: float = CENTRE_OFF):
-    """``plan_transfer``'s ``pair_ok``: the pads close within ``max_off`` of the tile's centre (in its own plane). The
-    operator tiles are 60 mm discs 8 mm thick: held 18 mm off their centre they slid out at the lift (G3 100044) or
-    on the carry (100031); the number tiles' metadata friction is 0.0."""
+def centred_grasp(o, max_off: float = CENTRE_OFF, allow_top: bool = False):
+    """``plan_transfer``'s ``pair_ok``: the pads close within ``max_off`` of the tile's centre (in its own plane), and
+    with a box grasp unless ``allow_top``. The operator tiles are 60 mm discs 8 mm thick: held 18 mm off their centre
+    they slid out at the lift (G3 100044) or on the carry (100031). The number tiles' metadata friction is 0.0: the
+    category's "top" grasps came up loose (8-21 mm in-hand drift) in 4 of ~12 picks, the box grasps in none."""
     c = np.asarray(o.asset.center, float)
 
     def ok(g, T_tcp_obj, T_obj, T_tcp) -> bool:
+        if not allow_top and getattr(g, "method", "") == "top":
+            return False
         p = np.linalg.inv(np.asarray(T_tcp_obj, float))[:3, 3] - c          # the TCP in the tile's frame
         return float(np.linalg.norm(p[:2])) <= max_off
     return ok
 
 
-def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, air_handover: bool = False):
-    """``place_oriented`` onto the pad. No in-air handover unless asked: its grasps skip this module's grasp filters,
-    and the frictionless number tiles / thin discs slipped out of 6 of 6 handovers (G3 v1 100030-49)."""
+# the attempts on one tile, each a fresh place_oriented from where the last left it: box grasps first, then the
+# category's top grasps too, then an in-air handover as the last resort
+ATTEMPTS = ({"allow_top": False, "air_handover": False}, {"allow_top": True, "air_handover": False},
+            {"allow_top": True, "air_handover": True})
+
+
+def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0):
+    """``place_oriented`` onto the pad, with ``ATTEMPTS[attempt]``. No in-air handover before the last attempt: its
+    grasps skip this module's grasp filters, and the frictionless number tiles / thin discs slipped out of 6 of 6
+    handovers (G3 v1 100030-49)."""
     from dojo.skills.library import place_oriented
+    a = ATTEMPTS[min(attempt, len(ATTEMPTS) - 1)]
     tg = tile_targets(sk, label, pad)
     if yaw_sym == 2:
         tg += tile_targets(sk, label, pad, yaws_deg=tuple(y + 180.0 for y in YAWS_DEG))
     return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,),
-                          air_handover=air_handover, relay_near=RELAY_NEAR, max_spots=5, place_kw=dict(PLACE_KW),
+                          air_handover=a["air_handover"], relay_near=RELAY_NEAR, max_spots=5, place_kw=dict(PLACE_KW),
                           transfer_kw={"max_pick_tilt": MAX_PICK_TILT,
-                                                                "pair_ok": centred_grasp(sk.world.obj(label))})
+                                       "pair_ok": centred_grasp(sk.world.obj(label), allow_top=a["allow_top"])})
 
 
-def complete_equation(sk, max_looks: int = 4, max_tries: int = 4) -> dict:
+def complete_equation(sk, max_looks: int = 4, max_tries: int = 5) -> dict:
     """Read the equation on the pads, find the value of its one empty slot, put a tile showing it there (centred,
     upright, body x along world x). Unknown values are looked at with a wrist, never guessed."""
     from dojo.skills.skills import SkillResult
@@ -336,8 +347,9 @@ def complete_equation(sk, max_looks: int = 4, max_tries: int = 4) -> dict:
         return {"ok": False, "stage": "select", "note": f"no tile shows {valid} (unknown {[o.label for o in unknown]})"}
     r = None
     # each candidate twice (a second place_oriented re-plans from where the first left it, relays included), then the next
-    for i, o in enumerate([c for c in cands for _ in range(2)][:max_tries]):
-        r = _place_tile(sk, o.label, pad, air_handover=i % 2 == 1)
+    # each candidate through the attempt ladder, then the next candidate
+    for o, k in [(c, k) for c in cands for k in range(len(ATTEMPTS))][:max_tries]:
+        r = _place_tile(sk, o.label, pad, attempt=k)
         sk.log(f"[tiles] {o.label} -> {pad}: {r.status} {r.note[:120]}")
         if r.ok or r.status in ("step_budget", "ended"):
             break
@@ -421,8 +433,8 @@ def arrange_digits(sk, descending: bool = True, max_looks: int = 6) -> dict:
         if free:
             # the nearest to an arm's base first (short carries; the far ones once the near pads are filled)
             t, pad = min(free, key=lambda tp: arm_dist(tp[0]))
+            r = _place_tile(sk, t, pad, sym[t], attempt=tries[t])
             tries[t] += 1
-            r = _place_tile(sk, t, pad, sym[t])
             sk.log(f"[tiles] {t} ({a['values'][t]}) -> {pad}: {r.status} {r.note[:120]}")
         else:
             # every remaining pad is blocked: move the first blocker aside (a cycle, or something else on a pad)
@@ -444,8 +456,8 @@ def arrange_digits(sk, descending: bool = True, max_looks: int = 6) -> dict:
         if r.status in ("step_budget", "ended"):
             failed += [tp[0] for tp in pairs]
             break
-        if not r.ok or tries.get(t, 0) >= 2:
-            # a failed place, or a tile placed twice that still is not there: give it up, go on with the rest
+        if tries.get(t, 0) >= len(ATTEMPTS):
+            # every attempt made and the tile still is not there: give it up, go on with the rest
             sk.refresh()
             if not (r.ok and there(t, pad)):
                 failed.append(t)
