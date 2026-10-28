@@ -18,6 +18,8 @@ Write rules (reviewer, 28 Oct; rendered arm 9's fasten_screws loss):
 - fixture-held objects (a nut on its thread, a mug on its hook: ``fixture``) keep the kinematic belief unless the error
   is gross (> ``gross_mm``) and two views / two ticks agree;
 - a collapsed object flips again only at 2 x margin over 2 ticks;
+- an object with a same-key twin in the belief moves farther than ``twin_far_mm`` only on ``twin_min_cams`` agreeing
+  cameras (the mask may be the twin's);
 - the pad volume of an empty close is falsified: no hypothesis inside it is taken;
 - a candidate whose footprint overlaps a believed, not-active object by > ``max_overlap`` of the smaller is rejected,
   and so is a write onto another object's final footprint (``blocking_overlap``: same height layer, not a static
@@ -65,6 +67,12 @@ class TickConfig:
                                                # fits slide along it: M's arm-8 audit, 30-47 mm at 0.53-0.63)
     pending_max_age: int = 60          # steps: a second-tick confirmation / pending obstacle older than this expires
     max_overlap: float = 0.20          # a candidate whose footprint covers this share of a believed, not-active object
+    # identical twins (the lead, a priori): a relocation farther than twin_far_mm of an object with a same-key twin in
+    # the belief needs twin_min_cams cameras agreeing on the candidate (IoU >= two_cam_iou, views >= min_vis_to_move);
+    # a wrist at the touched bar plus the head is such a pair. Association between identical objects is ambiguous and
+    # breaking a correct belief costs more than not fixing a wrong one
+    twin_far_mm: float = 50.0
+    twin_min_cams: int = 2
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -163,6 +171,19 @@ def _ev(h: dict, min_px: int = 30, min_vis: float = 0.0) -> dict:
             "scores": {c: (v[3] if len(v) > 3 else None) for c, v in sorted(s.items())}}
 
 
+def _agreeing_cams(h: dict, cfg: "TickConfig", min_score: float = 0.5) -> int:
+    """Distinct cameras supporting this one hypothesis at IoU >= two_cam_iou, on views showing >= min_vis_to_move of
+    it, from detections scoring >= ``min_score`` (the seed threshold; the perception's support already uses only
+    those)."""
+    n = 0
+    for v in (h.get("support") or {}).values():
+        vis_ok = len(v) < 3 or v[2] is None or float(v[2]) >= cfg.min_vis_to_move
+        score_ok = len(v) < 4 or v[3] is None or float(v[3]) >= min_score
+        if float(v[0]) >= cfg.two_cam_iou and int(v[1]) >= 30 and vis_ok and score_ok:
+            n += 1
+    return n
+
+
 def _inside(p, boxes) -> bool:
     p = np.asarray(p[:3], float)
     return any(np.all(np.abs(p - np.asarray(c, float)) <= np.asarray(hh, float)) for c, hh in boxes or ())
@@ -235,6 +256,9 @@ def decide(resp: dict, objs: list[dict], triggers: list[Trigger], st: TickState,
                 why = "near_move_iou"
             if why is None and o.get("fixture") and move <= cfg.gross_mm:
                 why = "fixture"
+            if why is None and move > cfg.twin_far_mm and _agreeing_cams(h, cfg) < cfg.twin_min_cams \
+                    and any(x["key"] == o["key"] and x["label"] != lab for x in objs):
+                why = "twin_far"
             two_tick = False
             if why is None and (o.get("small") or o.get("fixture") or lab in st.collapsed) and e["n50"] < 2:
                 prev = st.pending.get(lab)

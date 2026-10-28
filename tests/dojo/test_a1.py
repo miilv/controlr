@@ -724,3 +724,38 @@ def test_a_periodic_tick_activates_and_seeds_nothing():
     assert w == {} and "b" in st.pending                              # small: one view, first tick
     w, _ = decide(r, objs, [Trigger("periodic", 22)], st, APPLY, 22)
     assert "b" in w                                                   # the next tick confirms it
+
+
+def test_a_far_twin_relocation_needs_two_cameras():
+    """The lead's a-priori twin rule: an object with a same-key twin in the belief moves > 50 mm only when two cameras
+    agree on the candidate; one head view (the dev read's ttt breaks: a correctly released piece moved 160-380 mm onto
+    an identical piece's mask) is not enough. Near moves and twin-less objects keep the normal bar."""
+    twins = OBJ + [{"label": "b2", "key": "Rigid/box/00000", "pose7": _pose(0.3, -0.1)}]
+    inc = {"cam_head": [0.0, 150, 0.35, None]}
+    head = {"cam_head": [0.68, 444, 1.0, 0.92]}
+    two = {"cam_head": [0.68, 444, 1.0, 0.92], "cam_left_wrist": [0.7, 3000, 1.0, 0.9]}
+    trig = [Trigger("release", 9, "left", "b")]
+    far = _pose(0.2, -0.1)
+    w, ds = decide(_resp("b", inc, head, far), twins, trig, TickState(), APPLY, 10)
+    assert w == {}
+    w, _ = decide(_resp("b", inc, two, far), twins, trig, TickState(), APPLY, 10)
+    assert "b" in w
+    w, _ = decide(_resp("b", inc, head, far), OBJ, trig, TickState(), APPLY, 10)       # no twin: one camera suffices
+    assert "b" in w
+    w, _ = decide(_resp("b", inc, head, _pose(0.04, -0.1)), twins, trig, TickState(), APPLY, 10)   # a near move
+    assert "b" in w
+
+
+def test_twin_agreement_counts_only_full_views_and_seed_score_detections():
+    from dojo.runtime.tick import _agreeing_cams
+    h = {"support": {"cam_head": [0.68, 444, 1.0, 0.92], "cam_left_wrist": [0.7, 3000, 0.6, 0.9],
+                     "cam_right_wrist": [0.8, 3000, 1.0, 0.4]}}
+    assert _agreeing_cams(h, APPLY) == 1                     # the low-visibility wrist and the 0.4 detection do not count
+    twins = OBJ + [{"label": "b2", "key": "Rigid/box/00000", "pose7": _pose(0.3, -0.1)}]
+    w, ds = decide(_resp("b", {"cam_head": [0.0, 150, 0.35, None]}, h["support"], _pose(0.2, -0.1)), twins,
+                   [Trigger("release", 9, "left", "b")], TickState(), APPLY, 10)
+    assert w == {}
+    other_key = OBJ + [{"label": "b2", "key": "Rigid/box/00001", "pose7": _pose(0.3, -0.1)}]   # same category only
+    w, _ = decide(_resp("b", {"cam_head": [0.0, 150, 0.35, None]}, h["support"], _pose(0.2, -0.1)), other_key,
+                  [Trigger("release", 9, "left", "b")], TickState(), APPLY, 10)
+    assert "b" in w
