@@ -280,6 +280,11 @@ class RuntimeConfig:
     drop_verdict: str = "belief"
     # ``library.put_into``'s options (``Skills.put_into_opts``; empty = today): spot | patient | sequence
     put_into_opts: list = field(default_factory=list)
+    # ``library.on_targets``' support top (``Skills.place_surface``): bbox (today) | mesh (the support mesh's surface
+    # under the whole footprint, flat poses only)
+    place_surface: str = "bbox"
+    # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
+    push_order: str = "greedy"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -352,7 +357,8 @@ class RuntimePolicy:
                 or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")
                 or self.cfg.refine_recentre_guard not in ("centre", "vis")
                 or self.cfg.drop_verdict not in ("belief", "release")
-                or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}):
+                or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
+                or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -598,6 +604,8 @@ class RuntimePolicy:
             sk_.consume_log = bool(cfg.consume_log)
             sk_.drop_verdict = cfg.drop_verdict
             sk_.put_into_opts = set(cfg.put_into_opts or ())
+            sk_.place_surface = cfg.place_surface
+            sk_.push_order = cfg.push_order
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_

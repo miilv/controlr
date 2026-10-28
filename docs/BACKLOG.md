@@ -246,6 +246,20 @@
   a stroke. Tried on `feat/dojo-longh-organize` without a gain: mesh-height-map targets (their full plans collide at the
   pick), stand offsets to its half-size (the screen's 6000-IK budget runs out over 85 targets), a cover-the-frame push
   goal, a stroke-order lookahead, off-centre strokes.
+  Stream H (journal 2026-10-28-dojo-h95-organize), main + the switches `place_surface` "mesh" and `push_order`
+  "lookahead" (default off), G3 mode gt, 14 paired v1 draws:
+  - official mean 0.321 -> 0.375 (3 up, 0 down: noise);
+  - final-state alarm 1 -> 5: the flat tray poses now plan in full with the drawer as a height-map obstacle, and 5/5
+    stay flat;
+  - final-state keyboard 2 -> 3.
+  Adoption: the rendered A/B. Open:
+  - **The figurine:** pairs exist now (168-194). Once the alarm's step has made the drawer an obstacle
+    (`container_obstacle` stays in `sk.coll.include`), every place approach sweeps the held 19 cm figurine through the
+    drawer or the alarm, and the overhead via (z 1.0-1.04) is out of reach at 0.57 m. Targets 10-30 mm away from the
+    drawer (inside every category's tolerance) give more pairs (182 -> 478) but no approach (CPU replay of 100030).
+    Next: a lateral via around the drawer, or a lower pre-place (motion-level).
+  - **The alarm:** pick slips with "top axis 0 tilt 40" (4-5 of 14), and no plan in 2-4 of 14.
+  - **The keyboard:** pushes overshoot and turn it up to 34 deg.
 - [ ] **dojo skills: tic-tac-toe "wait opponent (timeout)" on layout 100003.** The opponent's move is never counted, the
   wait times out, and the episode ends not_home with the board unfinished:
   - c4b_ttt_gcoff_100003 (8dae375, 949/1100, own 4 / opp 3);
@@ -585,6 +599,11 @@
 - [ ] **isr-lab: Isaac's texture cache under our shim HOME grows ~0.1-0.4 GB per new task's assets** (1.6 -> 2.4 GB over 10 tasks); data2 has ~7-9 GB free. Never prune it (or the shader cache): the rebuild spiked the box to ~20 cores. The block gate stops below 7 GB free instead; free space must come from elsewhere (run dirs, or Mikhail's side).
 - [x] ~~**dojo skills: the perception catalogue lacks the skills2 tasks' meshes**~~: it has them. The files are md5-identical to `skills2/catalog`, and G3 has read perception's catalogue all along. The skills3 tasks' new assets (coin, coin stand, piggy bank, stacking toy, toaster, bread, bread shelf) are in `compute3:~/dojo-data/skills3/catalog` (`DOJO_CATALOG`); perception should add them.
 - [ ] **dojo skills: thin irregular tools still slip out** (store_tools). Two causes are fixed. First, every box grasp of a thin lying tool failed the table margin (the fingertip estimate sat 1 mm low; now taken from the finger model). Second, there were no grasps near the centre of mass (now stations every 6 mm). The hammer at its CoM lifts with 11-13 mm drift and is now carried on. Still open: the pliers' outline is rounded everywhere, so the patch is <= 0.08 at the joint. Try the handles' outer faces, or collider-based grasps; the colliders are convex decompositions of `/root/collision/model`, not the visual mesh. Skills-8 (journal 2026-10-26-dojo-skills8): the tools spawn lying as their slots want them, so a level carry suffices. A straight-down pinch at the centre of mass holds (hammer: 4-7 mm drift over a 15 cm carry); a 25-deg tilted one turns 37-81 mm. Straight down does not reach most slots, though: the IK at the slot fails for 28 of 40 hammer, 34 of 36 wrench and 16 of 16 tape-measure grasps. PhysX's centre of mass differs from the visual mesh's: the hammer's is 12.4 mm away, because the colliders are inflated to 20 mm `minThickness`. Read it in the twin (`RigidPrim.get_com`), e.g. into the catalogue, before ranking grasps by lever.
+  Done since: `data/physics_com.json` + `_level_grasps` rank by the simulated lever. Stream H on M's mode-gt rows
+  (08b0dd7, 100000-04; journal 2026-10-28-dojo-h95-organize): the level carry still took the hammer by "box close 2
+  approach +1 tilt +15 off -11mm" in 3/5 (12.6 mm from the PhysX CoM, 15 deg tilt: ranked worse, the better ones did not
+  plan) and it turned 55-79 mm in the pads before the slot; "tilt +0 off +0mm" held 2/2. The lever left is reach at the
+  slot (above), not the CoM.
 - [ ] **dojo skills: planning time on irregular meshes**. Done: meshes are clustered under 12k faces, hold quality is cached per grasp in the object frame, and the relay search is capped at 150 s (one store_tools episode had spent 21 min). Open: IK per (arm, grasp) is recomputed for every relay leg.
 - [x] ~~**dojo skills: with a refine hook, a transfer's pick is re-planned with any grasp** (skills-8, mode-B store_tools). `Skills.execute_pick` hovers, refines, then calls `plan_pick(label, arm, "auto")` with the default candidates, so the executed grasp can differ from the one `plan_transfer` paired with the place. Seen in mode B: a tape measure was planned with a 25-deg pinch, executed straight down, and the place re-planned for that grasp found no IK at the slot; the nominal plan put it 33 deg tilted. A level carry's custom grasp source is lost the same way. Fix: re-plan with the planned grasp moved by the refined pose (`grasps=[...]`), falling back to the defaults; regression-check every `plan_transfer` user in mode B (plug, tubes, coin, slots, fill).~~ Fixed (skills-9, journal/2026-10-26-dojo-skills9.md): the same grasp in the object frame at the refined pose, re-paired with its place only when infeasible; mode B store_tools 0.10 -> 0.40, deposit_coin 0.00 -> 0.68.
 - [x] ~~**dojo skills: insert_key's handover giver.**~~ Pegs (journal 2026-10-27-dojo-pegs §2-4): `regrasp.rest_handover`. The giver pinches the key lengthwise (bow end + tip: 0.1 mm / 0.1 deg in hand) and hands it over still lying. The taker's bow-face grasp is chosen at the lock. The key is inserted and let go; a fresh grasp in the lock turns it.
