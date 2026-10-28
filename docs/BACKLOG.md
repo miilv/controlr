@@ -6,6 +6,16 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo perception: robot-harness's G2 review, matching and refine findings (deferred, need rendered
+  validation).** From their G1F verification's "For Ilia" list (journal 2026-10-28-legality-for-ilia-unknowns):
+  G2-5 `add_unmentioned` / `seed_refine` pair by XY across categories (a T on its pad can take the pad's pose /
+  asset); G2-6 the tracker's < 4 mm jitter branch is XY-only and copies the old pose and quat (a 35 mm lift or a
+  90 deg turn is "jitter"); G2-7 `merge_prior` pairs a movable object by XY only (a low-confidence reading at
+  another height takes the old pose); G2-8 the wrist refine rebuilds the camera from FK instead of the supplied
+  calibration, and an IoU-0 edge fallback is marked `refined`; G2-9 a worker restart drops the episode tracker (the
+  budget PR flags it as `tracker=lost` in the gated reply). Each changes rendered poses: fix with replays of the
+  cases each rule was tuned on.
+
 - [ ] **dojo perception: nothing re-finds an object a scripted actor moved off its generator region.** B1's placement
   priors keep tic-tac-toe's opponent pieces on their side of the table. On the proxy replay of B_breadth2 100004, 13
   head re-reads after the opponent's move never paired a reading with the moved piece, although the head check saw its

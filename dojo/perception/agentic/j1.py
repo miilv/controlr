@@ -690,7 +690,10 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
 
 
 def held_look_impl(frames, calib, flange, grip_cmd, arm=None, stage=None, chat=None, **kw) -> dict:
-    """One call, no tools: the protocol's held_look question on the asking arm's wrist frame + the head frame."""
+    """One call, no tools: the protocol's held_look question on the asking arm's wrist frame + the head frame.
+    No answer is an explicit unknown, never a "no": ``held: None, confidence: 0.0, error`` at the top level and in the
+    asking arm's entry (the agent gave no yes / no; B1 failed in mode b1). With ``arm`` only that arm's B1 verdict
+    counts (G2-10: the other arm's answer never stands for it)."""
     from .llm import image_part
     from .prompt import system_prompt
     from .runner import parse_reply
@@ -706,10 +709,17 @@ def held_look_impl(frames, calib, flange, grip_cmd, arm=None, stage=None, chat=N
         except Exception as e:
             hb = {"_error": f"{type(e).__name__}: {e}"}
         a_ = arm or next((a for a in ("left", "right") if a in hb), None)
-        sub = hb.get(a_) if a_ else None
-        conf = (sub or hb).get("confidence", 0.0) if isinstance(sub or hb, dict) else 0.0
-        dark = bool((sub or {}).get("dark_risk")) if isinstance(sub, dict) else False
+        sub = hb.get(a_) if a_ and isinstance(hb.get(a_), dict) else None
+        ans = sub if arm is not None else (sub or hb)  # the asked arm's own verdict, never the aggregate
+        conf = float(ans.get("confidence") or 0.0) if isinstance(ans, dict) and ans.get("held") is not None else 0.0
+        dark = bool((sub or {}).get("dark_risk"))
         if mode == "b1" or ("_error" not in hb and conf >= 0.5 and not dark):
+            if "_error" in hb:  # B1 failed: an explicit unknown (an "_error" key would also fail the worker call)
+                err = f"B1 error: {hb['_error']}"
+                hb = {"held": None, "confidence": 0.0, "error": err, **({arm: {"held": None, "confidence": 0.0,
+                                                                                 "error": err}} if arm else {})}
+            elif arm is not None:  # the top level is the asked arm's own verdict (or its explicit unknown)
+                hb = {**hb, **_b1.held_summary({a: hb[a] for a in ("left", "right") if isinstance(hb.get(a), dict)}, arm)}
             hb = dict(hb, note=(hb.get("note") or "") + " source=B1")
             _log_call(cfg["log_dir"], {"t": time.time(), "fn": "held_look", "source": "b1", "arm": a_, "stage": stage,
                                        "held": hb.get("held"), "confidence": conf, "calls": 0})
@@ -740,11 +750,12 @@ def held_look_impl(frames, calib, flange, grip_cmd, arm=None, stage=None, chat=N
         msgs = msgs + [{"role": "assistant", "content": (r.text or "").strip() or "(empty reply)"},
                        {"role": "user", "content": [{"type": "text", "text": 'Reply with exactly {"held": "yes" | "no", "note": "..."}.'}]}]
     t_ms = round(1000 * (time.time() - t0), 1)
-    if held is None:
-        out = {"held": False, "confidence": 0.0, "note": "agent gave no yes/no answer", "t_ms": t_ms, "version": VERSION}
+    if held is None:  # unknown, not "no" (P1S I1-3): the server's B1-failure path, the runtime keeps the grasp
+        out = {"held": None, "confidence": 0.0, "error": "no answer", "note": "agent gave no yes/no answer", "t_ms": t_ms,
+               "version": VERSION}
     else:
         out = {"held": held, "confidence": 0.9, "note": note, "t_ms": t_ms, "version": VERSION}
-    out[arm] = {"held": out["held"], "confidence": out["confidence"]}
+    out[arm] = {k: out[k] for k in ("held", "confidence", "error") if k in out}
     b1_arm = hb.get(arm) if isinstance(hb.get(arm), dict) else {}
     if out["held"] and b1_arm.get("what") is not None:  # identity of what is there: B1's colour ranking
         out[arm].update({k: b1_arm[k] for k in ("what", "scored", "what_region") if k in b1_arm})

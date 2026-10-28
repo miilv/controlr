@@ -570,6 +570,34 @@ PRIOR_MATCH_M = 0.03  # a current and a prior object of one category this close 
 GRIP_NEAR_M = 0.08  # a prior object this close (xy) to a closed gripper may be the one it holds
 
 
+def _finite_vec(v, n: int) -> bool:
+    import math
+    from numbers import Real
+
+    if hasattr(v, "tolist") and not isinstance(v, (list, tuple)):  # a numpy array (in-process callers)
+        v = v.tolist()
+    return (isinstance(v, (list, tuple)) and len(v) == n
+            and all(isinstance(x, Real) and not isinstance(x, bool) and math.isfinite(x) for x in v))
+
+
+def prior_unusable(p: dict) -> str | None:
+    """Why a prior entry cannot stand for the current scene (None: it can). It needs its own measured confidence (a
+    number in 0..1) and a full pose (pos: 3 finite numbers; quat: 4 finite numbers of norm 0.9..1.1). ``merge_prior``
+    never invents either (G1-1: a prior pad without confidence came back at 0.45 on a default of 0.5)."""
+    import math
+    from numbers import Real
+
+    c = p.get("confidence") if isinstance(p, dict) else None
+    if not isinstance(c, Real) or isinstance(c, bool) or not math.isfinite(c) or not 0.0 <= c <= 1.0:
+        return "no valid confidence"
+    if not _finite_vec(p.get("pos"), 3):
+        return "no valid pos"
+    q = p.get("quat")
+    if not _finite_vec(q, 4) or not 0.9 <= math.sqrt(sum(float(x) ** 2 for x in q)) <= 1.1:
+        return "no valid quat"
+    return None
+
+
 def merge_prior(objects: list[dict], prior_objects: list[dict], state: dict | None = None) -> list[dict]:
     """What the previous call knew, where the current view is worse:
     - static fixtures (Geometry: push_T's pad, the number cards) keep the prior pose when the current reading
@@ -583,18 +611,33 @@ def merge_prior(objects: list[dict], prior_objects: list[dict], state: dict | No
     - a movable prior object without a current reading within 3 cm is NOT carried (it may have been picked or
       moved); the current reading is marked ``new_reading`` and the prior pose is listed in ``last_seen`` by
       the caller.
-    Reverted / carried entries get ``source: "prior"``. Returns (objects, last_seen)."""
+    Reverted / carried entries get ``source: "prior"``. A prior entry without its own confidence or a full pose
+    (``prior_unusable``) never reverts, carries or re-identifies anything: a current reading at its place stands as
+    read; with none, the entry is listed in ``last_seen`` only (``prior_unusable``: why; no confidence is invented).
+    Returns (objects, last_seen)."""
     import numpy as np
 
     used = set()
     last_seen = []
     for p in prior_objects:
+        bad = prior_unusable(p)
+        if bad and not _finite_vec(p.get("pos"), 3):
+            continue  # nowhere to compare it with: nothing to carry, nothing to list
         static = str(p.get("asset", "")).startswith("Geometry/")
         cand = [o for o in objects if o.get("category") == p.get("category") and id(o) not in used
                 and (np.hypot(o["pos"][0] - p["pos"][0], o["pos"][1] - p["pos"][1]) <= PRIOR_MATCH_M
                      or (static and o.get("label") == p.get("label")))]  # a fixture keeps its label wherever it reads
         cand.sort(key=lambda o: (o.get("label") != p.get("label"), np.hypot(o["pos"][0] - p["pos"][0], o["pos"][1] - p["pos"][1])))
-        pc = float(p.get("confidence", 0.5))
+        if bad:
+            if cand:
+                used.add(id(cand[0]))  # seen now: the current reading stands as read
+            else:
+                q = {k: v for k, v in p.items() if k not in ("refine", "refine_rejected", "kept_prior", "new_reading")
+                     and not (k == "confidence" and bad == "no valid confidence")}
+                q.update(source="prior", prior_unusable=bad)
+                last_seen.append(q)
+            continue
+        pc = float(p["confidence"])
         if cand:
             o = cand[0]
             used.add(id(o))
@@ -630,10 +673,11 @@ def _carry_static(objects: list[dict], prior_objects: list[dict]) -> list[dict]:
     pad, an arm hides it — keep their prior pose, ``source: "prior"``."""
     have = {o["label"] for o in objects}
     for p in prior_objects:
-        if p.get("label") not in have and str(p.get("asset", "")).startswith("Geometry/"):
+        if (p.get("label") not in have and str(p.get("asset", "")).startswith("Geometry/")
+                and prior_unusable(p) is None):  # never a carry without the prior's own confidence and pose
             q = dict(p)
             q["source"] = "prior"
-            q["confidence"] = round(0.9 * float(p.get("confidence", 0.5)), 3)
+            q["confidence"] = round(0.9 * float(p["confidence"]), 3)
             objects.append(q)
     return objects
 
@@ -720,13 +764,36 @@ HELD_CLOSED_FLOOR = 0.185  # commands at or below this all put the finger joints
 HELD_OPEN_CMD = 0.95  # commands at or above this are "open": no grasp to check. A board / pillar grasp commands 0.55-0.58
 # (5.1 build_tower: 27 of 33 held checks had no B1 verdict under the old "closed below 0.5" rule)
 HELD_ABSENCE_CAP = 0.3  # confidence cap of a not-held verdict that rests on "object not found" on a dark region
+# a silhouette fit that does not single out one opening is no measurement (G2-3: a uniform frame scored 0.0 at every
+# opening, the first one won, and the jaws read "closed on nothing" at confidence 1.0)
+HELD_FIT_MIN_SCORE = 0.05  # best score below this: the rendered fingers are not darker than their surround anywhere
+HELD_FIT_TIE = 0.02  # an opening at least HELD_FIT_TIE_SEP from the best scoring within this of it: a tie
+HELD_FIT_TIE_SEP = 0.2  # (0.2 = 10.8 mm per finger: two such fits put the fingers in clearly different places)
+HELD_UNIFORM_STD = 2.0  # wrist frame Lab-L standard deviation below this: a uniform frame carries no evidence
+
+
+def opening_fit_rejected(scores, openings) -> str | None:
+    """Why a silhouette fit over ``openings`` does not measure the jaw opening (None: it does): no opening makes the
+    fingers stand out as dark (best score < ``HELD_FIT_MIN_SCORE``), or an opening at least ``HELD_FIT_TIE_SEP`` away
+    from the best one scores within ``HELD_FIT_TIE`` of it (the image cannot tell the two apart)."""
+    if not scores:
+        return "no fit"
+    i = max(range(len(scores)), key=lambda k: scores[k])
+    best = float(scores[i])
+    if best < HELD_FIT_MIN_SCORE:
+        return f"no fit: best score {best:.3f} < {HELD_FIT_MIN_SCORE}"
+    rivals = [float(s) for s, o in zip(scores, openings) if abs(float(o) - float(openings[i])) >= HELD_FIT_TIE_SEP - 1e-9]
+    if rivals and max(rivals) >= best - HELD_FIT_TIE:
+        return f"tie: an opening >= {HELD_FIT_TIE_SEP} away scores {max(rivals):.3f} vs the best {best:.3f}"
+    return None
 
 
 def measure_opening(cam, arm: str, q6, image: np.ndarray, meshes=None, model=None) -> dict | None:
     """The gripper opening the wrist image shows (normalised 0..1), from the finger silhouettes: for each candidate
     opening, the share of dark pixels inside the rendered fingers minus the share in a thin band along their OUTER
     sides (the gap between the fingers excluded, so a dark object held there does not count against). The strict
-    observation has only the commanded opening; a jaw stopped by an object reads wider than commanded."""
+    observation has only the commanded opening; a jaw stopped by an object reads wider than commanded. A fit that does
+    not single out one opening (``opening_fit_rejected``) carries ``rejected`` (why): the caller must not use it."""
     import cv2
     import numpy as np
 
@@ -758,8 +825,12 @@ def measure_opening(cam, arm: str, q6, image: np.ndarray, meshes=None, model=Non
         sc = float(dark[F > 0].mean() - dark[band].mean())
         scores.append((sc, float(o), F))
     best = max(scores, key=lambda t: t[0])
-    return {"opening": best[1], "score": round(best[0], 3), "scores": [round(t[0], 3) for t in scores],
-            "fingers": best[2]}
+    out = {"opening": best[1], "score": round(best[0], 3), "scores": [round(t[0], 3) for t in scores],
+           "fingers": best[2]}
+    why = opening_fit_rejected([t[0] for t in scores], [t[1] for t in scores])
+    if why:
+        out["rejected"] = why
+    return out
 
 
 def held_from_opening(opening: float, cmd: float, held_px: bool, dark_like: bool) -> tuple[bool, float]:
@@ -832,7 +903,11 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
     the fingertips would be if the jaws had closed on nothing (FK at gripper 0, outer 3 cm of both fingers), the
     image shows the dark finger pads when the grasp is empty. Without a measurement the colour test decides alone
     (``held_from_colour``) and a not-held verdict there is absence evidence, capped. Per arm: held, confidence,
-    evidence ("opening" | "colour" | "absent"), opening {measured, commanded, score} | None, fg_frac, dark_risk."""
+    evidence ("opening" | "colour" | "absent"), opening {measured, commanded, score} | None, fg_frac, dark_risk.
+    Unknown is explicit, never a "no": an arm without evidence (a uniform wrist frame, fingertips out of view) has
+    ``held: None, confidence: 0.0, error``; a silhouette fit that does not single out one opening is not used
+    (``opening_rejected``; the colour test decides, a not-held verdict then capped at ``HELD_ABSENCE_CAP``). With
+    ``arm`` the top-level verdict is that arm's own (``held_summary``), never the other arm's."""
     import cv2
     import numpy as np
 
@@ -845,15 +920,22 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
     cams = _cameras(calib)
     model = X5Model.default()
     meshes = robot_link_meshes()
-    out = {}
+    out, why_none = {}, {}
     asked_arm = arm if arm in ("left", "right") else None
     for arm in ("left", "right"):
         c = f"cam_{arm}_wrist"
         g = _grip01((gripper or {}).get(arm, (grip_cmd or {}).get(arm, 1.0)))
-        if (c not in images or c not in cams or g >= HELD_OPEN_CMD or "link7" not in meshes or "link8" not in meshes
-                or f"{arm}_arm_joint_state" not in state):
+        miss = ("no wrist frame" if c not in images else "no wrist calibration" if c not in cams
+                else "gripper commanded open: no grasp to check" if g >= HELD_OPEN_CMD
+                else "no finger meshes" if "link7" not in meshes or "link8" not in meshes
+                else "no arm joints" if f"{arm}_arm_joint_state" not in state else None)
+        if miss:
+            why_none[arm] = miss
             continue
         cam = cams[c]
+        if float(cv2.cvtColor(images[c], cv2.COLOR_RGB2LAB)[..., 0].std()) < HELD_UNIFORM_STD:
+            out[arm] = {"held": None, "confidence": 0.0, "error": "uniform wrist frame: no evidence"}
+            continue
         L = model.fk_world(arm, state[f"{arm}_arm_joint_state"], 0.0)  # jaws fully closed
         W = [meshes[k][0] @ L[k][:3, :3].T + L[k][:3, 3] for k in ("link7", "link8")]
         tool = np.mean(np.concatenate(W), axis=0) - L["link6"][:3, 3]
@@ -865,12 +947,14 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
         uv, z = cam.project(np.concatenate(P))
         ok = z > 0.01
         if ok.sum() < 3:
+            why_none[arm] = "fingertips behind the wrist camera"
             continue
         reg = np.zeros((cam.h, cam.w), np.uint8)
         cv2.fillConvexPoly(reg, cv2.convexHull(np.round(uv[ok]).astype(np.int32)), 1)
         reg = cv2.erode(reg, np.ones((5, 5), np.uint8))
         if reg.sum() < 50:
-            out[arm] = {"held": None, "confidence": 0.0, "why": "fingertip region not visible"}
+            out[arm] = {"held": None, "confidence": 0.0, "why": "fingertip region not visible",
+                        "error": "fingertip region not visible"}
             continue
         lab = cv2.cvtColor(images[c], cv2.COLOR_RGB2LAB)[reg > 0].astype(float)
         Lc, chroma = lab[:, 0], np.hypot(lab[:, 1] - 128, lab[:, 2] - 128)
@@ -880,6 +964,10 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
         dark_like = bool(np.median(Lc) < HELD_DARK_L)  # the fingertip region is dark: pads OR a dark object
         meas = measure_opening(cam, arm, state[f"{arm}_arm_joint_state"], images[c], meshes, model)
         base = {"fg_frac": round(frac, 3), "region_px": int(reg.sum())}
+        rejected = None
+        if meas is not None and meas.get("rejected"):  # a fit that singles out no opening is no measurement
+            rejected = {"why": meas["rejected"], "opening": meas["opening"], "score": meas["score"]}
+            meas = None
         if meas is not None:
             held, conf = held_from_opening(meas["opening"], g, held_px, dark_like)
             out[arm] = {"held": held, "confidence": conf, "evidence": "opening",
@@ -887,16 +975,38 @@ def _held_look_impl(frames, calib, flange, grip_cmd, joints=None, gripper=None, 
                         **base, "dark_risk": bool(dark_like and not held and conf < 0.5)}
         else:
             held, conf, evidence = held_from_colour(frac, dark_like)
+            if rejected is not None and not held:
+                conf = min(conf, HELD_ABSENCE_CAP)
             out[arm] = {"held": held, "confidence": conf, "evidence": evidence, "opening": None, **base,
                         "dark_risk": bool(dark_like and not held)}
+            if rejected is not None:
+                out[arm]["opening_rejected"] = rejected
         if candidates and (asked_arm is None or arm == asked_arm):
             out[arm].update(held_what(cam, images[c], candidates, held, reg, (meas or {}).get("fingers")))
-    arms = [v for v in out.values() if v.get("held") is not None]
-    res = {**out, "t_ms": round(1000 * (time.time() - t0), 1), "version": VERSION}
+    return {**held_summary(out, asked_arm, why_none), "t_ms": round(1000 * (time.time() - t0), 1), "version": VERSION}
+
+
+def held_summary(per_arm: dict, asked_arm: str | None = None, why_none: dict | None = None) -> dict:
+    """The held_look reply from the per-arm verdicts: ``{left|right: {...}, held, confidence[, error]}``. With
+    ``asked_arm`` the top level is that arm's own verdict, and an asked arm without one gets an explicit unknown
+    entry (``held: None, confidence: 0.0, error``): an answer for the other arm is never the asked arm's (G2-10).
+    Without it, held = any arm held, confidence = the least sure arm's. No verdict at all: ``held: None``."""
+    why_none = why_none or {}
+    res = dict(per_arm)
+    if asked_arm is not None:
+        sub = res.get(asked_arm)
+        if not isinstance(sub, dict):
+            sub = res[asked_arm] = {"held": None, "confidence": 0.0,
+                                    "error": f"no answer for the {asked_arm} arm: {why_none.get(asked_arm, 'not checked')}"}
+        if sub.get("held") is None:
+            return {**res, "held": None, "confidence": 0.0,
+                    "error": sub.get("error") or sub.get("why") or f"no answer for the {asked_arm} arm"}
+        return {**res, "held": bool(sub["held"]), "confidence": sub["confidence"]}
+    arms = [v for v in per_arm.values() if isinstance(v, dict) and v.get("held") is not None]
     if arms:
-        res["held"] = any(v["held"] for v in arms)
-        res["confidence"] = min(v["confidence"] for v in arms)
-    return res
+        return {**res, "held": any(v["held"] for v in arms), "confidence": min(v["confidence"] for v in arms)}
+    why = "; ".join(f"{a}: {(per_arm.get(a) or {}).get('error') or why_none.get(a, 'not checked')}" for a in ("left", "right"))
+    return {**res, "held": None, "confidence": 0.0, "error": f"no arm answered ({why})"}
 
 
 def _serve():

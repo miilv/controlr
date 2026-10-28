@@ -318,6 +318,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   `tests/dojo/test_sec_env.py`).
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
   frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
+- **A held_look `held` has three values.** `None` (with `error`) is "no answer": no evidence (a uniform wrist frame, a
+  silhouette fit that singles out no opening is not used, the fingertips out of view), the agent gave no yes / no, B1
+  failed, or the asked arm had no verdict. Never read it as "not held" (`if not r["held"]` does), and with `arm` read
+  only that arm's entry: the other arm's answer is not this arm's (robot-harness G2-3 / G2-10, P1S I1-3). Likewise an
+  orientation or a confidence the perceiver did not measure is never filled in with a default (`merge_prior`'s
+  `prior_unusable`, the bridge's `_orientation_unknown`).
 
 ## 5. What lives where
 

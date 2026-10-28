@@ -550,12 +550,17 @@ class _Perception:
         kw = {"log_dir": str(Path(log) / "held")} if log else {}
         r = j1.held_look_impl(fr["images"], _calib_from_state(fr["state"]), flange, grip, arm=arm, stage="after_lift",
                               chat=chat, joints=joints, held_mode=mode, **kw)
+        # the requested arm's own verdict only (G2-10): the top level may be the other arm's answer; no entry or
+        # held None is an explicit unknown (``error``), which the belief never reads as "not held"
         sub = r.get(arm) if isinstance(r.get(arm), dict) else {}
-        return {"held": r.get("held") if sub.get("held") is None else sub.get("held"),
-                "confidence": float(sub.get("confidence", r.get("confidence", 0.0)) or 0.0),
-                "dark_risk": bool(sub.get("dark_risk", False)), "calls": n[0],
-                "evidence": sub.get("evidence", r.get("evidence")), "opening": sub.get("opening", r.get("opening")),
-                "source": "agent" if n[0] else "b1", "note": str(r.get("note") or "")[:200]}
+        held = sub.get("held")
+        out = {"held": held, "confidence": float(sub.get("confidence") or 0.0) if held is not None else 0.0,
+               "dark_risk": bool(sub.get("dark_risk", False)), "calls": n[0],
+               "evidence": sub.get("evidence"), "opening": sub.get("opening"),
+               "source": "agent" if n[0] else "b1", "note": str(r.get("note") or "")[:200]}
+        if held is None:
+            out["error"] = str(sub.get("error") or r.get("error") or f"no answer for the {arm} arm")[:200]
+        return out
 
     def estimate(self, frames: list[dict], vocabulary: str, fold: int, prior_record: dict | None = None,
                  fuse_mode: str | None = None) -> dict:

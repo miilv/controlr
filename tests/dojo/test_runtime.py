@@ -1611,6 +1611,31 @@ def test_held_look_drops_an_empty_grasp_from_the_jaws():
     assert "left" in bel.attached
 
 
+def test_held_look_unknown_keeps_the_grasp_and_is_logged():
+    """P1S I1-3: held_look's explicit unknown (``held: None``: the agent gave no yes / no) is never a "not held": the
+    grasp stays, no second look is spent on it, the event says unknown."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    confirm = []
+    prov.held_checker = lambda obs, arm, lab: {"held": None, "confidence": 0.0, "error": "no answer", "source": "agent"}
+    prov.held_confirm = lambda obs, arm, lab: confirm.append(arm) or {"held": False, "confidence": 0.9}
+    bel = prov.belief
+    o = bel.objects["block_1"]
+    pose0 = np.r_[o.pos, o.quat].copy()
+    z0 = float(bel.kin.tcp("left", bel.q["left"])[2, 3])
+    bel.attached["left"] = ("block_1", np.eye(4))
+    bel.grasp_z["left"] = (z0 - 0.05, 1, pose0)
+    prov._held_check(b.obs)
+    assert "left" in bel.attached and confirm == []
+    ev = prov.events[-1]
+    assert ev["kind"] == "held_look" and ev["unknown"] and ev["kept"] and ev["error"] == "no answer"
+    assert prov.stats["held_look_unknown"] == 1
+
+
 def test_episode_with_held_look_checks_every_grasp_once():
     env = _env()
 

@@ -222,7 +222,8 @@ def test_j1_labels_follow_the_prior_by_position():
 
     prior = [{"label": "block_0", "pos": [-0.14, -0.03, 0.78]}, {"label": "block_1", "pos": [0.26, -0.14, 0.78]},
              {"label": "block_2", "pos": [0.37, -0.15, 0.78]},
-             {"label": "target_t", "asset": "Geometry/t_cushion/00000", "pos": [-0.31, -0.11, 0.765], "confidence": 0.9}]
+             {"label": "target_t", "asset": "Geometry/t_cushion/00000", "pos": [-0.31, -0.11, 0.765], "quat": [1, 0, 0, 0],
+              "confidence": 0.9}]  # a carry needs the prior's own confidence and full pose (prior_unusable)
     # a later call: same blocks, labels permuted by the estimator, one block moved 3 cm
     cur = [{"label": "block_0", "pos": [0.37, -0.15, 0.78]}, {"label": "block_1", "pos": [-0.14, -0.03, 0.78]},
            {"label": "block_2", "pos": [0.29, -0.13, 0.78]}]
