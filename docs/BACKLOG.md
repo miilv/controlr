@@ -397,6 +397,18 @@
 
 ## P2 — harness and infrastructure
 
+- [ ] **dojo twin: a perturbed-physics margin for verify on container drops (deferred by the lead, 2026-10-28)**
+  (experiments/2026-10-28-twin-crossbox). Across box classes (compute3 5090 vs compute2 4090), 30 of 305 independent
+  decision points flip (9.8 %, 95 % upper 13.1 %): flat places 0 / 229, container drops 30 / 76 (tools 22 / 39, bottles
+  6 / 22, bowls 2 / 15); checker-relevant 3 / 305 (1.0 %, upper 2.5 %); within a box bit-exact. The points load the object
+  already in the jaws (the verifier's no-chain path, the harsh case). Design: per-sample friction / restitution / mass
+  jitter in `Twin.verify` (`perturb`), a k-sample vote in the verifier's place judge, default off. Test set: the 76
+  container points (`compute3:~/dojo-data/xbox/points_{put_bottles_into_dustbin,store_tools_in_toolbox,stack_bowls}.jsonl`),
+  rolled on both boxes: does the vote agree across boxes where the nominal does not?
+- [ ] **compute2 cleanup when it is back online** (offline since ~13:57Z 2026-10-28, cause unknown): remove
+  `~/controlr-xbox` and `~/dojo-data/xbox` (5 MB, the twin cross-box scratch; the data is archived in
+  `compute3:~/dojo-data/xbox`).
+
 - [ ] **dojo: install the frozen calibration set on every box** (`frozen_d0_100040_49`, journal
   2026-10-28-legality-calib-fold): `box_steps.sh run calib_sets` (md5-pinned; copies into the `_ilia` roots) on
   compute2/3/4, compute5-8, isr-lab (`CALIB_EXTRA_ROOTS=$ILIA/bridge/pdata/bg_folds_51`); a box without it refuses

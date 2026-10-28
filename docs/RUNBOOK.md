@@ -76,6 +76,13 @@ units `/etc/systemd/system/controlr-vpn{,-refresh}.service`, `controlr-vpn-refre
    minimum (Haiku 4.5 — 4096 tokens), requests landed on different upstream router accounts.
 3. Isolated check: `uv run controlr bench-cache --model <id> --turns 20` (⚠️ ~20 calls).
 
+## 4a. Two boxes disagree on the same run
+
+Physics (RoboDojo's PhysX in the physics-only twin / G3 / replays) is reproducible within a box class (compute3 =
+compute4 to 0.0 mm) but not across classes (compute2 drifts mm-to-cm over an episode). Before calling a difference a
+regression: same commit, same settled layout, same box class? Re-run on the recording box's class. A/B arms always on
+one class (DEVELOPMENT.md pitfalls; docs/experiments/2026-10-28-twin-crossbox.md).
+
 ## 5. Disk
 
 Locally, runs (`runs/`) and clones (`research/repos/`) are the main consumers; on compute3 —
