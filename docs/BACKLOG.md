@@ -32,6 +32,16 @@
   fits at IoU 0.6-0.8 (out_of_range / ambiguous / no_views). The read has to be where the insertion held read already
   is: at the pre-place hover (`Skills._held_protocol`), for the non-insertion places, with a fit that can see a mug.
   Journal 2026-10-28-dojo-h95-held-state.
+- [ ] **dojo perception: released objects too thin / small for the head need a wrist look** (stream W). The release
+  read + search (`post_place_read` "6dof_search") finds a released object only where a view resolves it.
+  - Xylophone mallet (3 of 3 releases on C's renders): a missed grasp. The search finds the mallet at its grasp pose
+    (head prec 0.49-0.69), but that pose was itself 20-27 mm off in the belief: the mallet is ~5 head px wide, so its
+    head fit is noisy. The events stay "overshoot 19-26 mm", against a ceiling of +6 of 12 events.
+  - fasten_screws nuts: ~10 head px wide (head IoU 0.33-0.49). A nut that rolled 33-42 mm from the release sits at
+    the releasing wrist's image edge (IoU 0.42-0.58).
+  - Next: a look with the releasing (or other) wrist at the search's head candidate before adopting it. That is a
+    motion step at release time, i.e. a skills hook; the provider cannot move arms.
+  - Journal 2026-10-28-dojo-release-read.
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the

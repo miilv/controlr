@@ -1,7 +1,8 @@
 """Per-task table of an E2 run (``e2_release.py``): clean@R10 per arm over the events every arm scored, fixed / broken
 against the runtime's belief, and the realised fraction of the oracle's gain; plus the reads' outcomes.
 
-    python scripts/perception/wrist/e2_report.py E2.json [--arm search] [--R 10]
+    python scripts/perception/wrist/e2_report.py E2.json [E2b.json ...] [--arm search] [--R 10]
+(several files: their episodes pooled, the later file's rows replace an episode already seen)
 """
 from __future__ import annotations
 
@@ -12,11 +13,17 @@ import json
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("path")
+    ap.add_argument("paths", nargs="+")
     ap.add_argument("--arm", default="search")
     ap.add_argument("--R", default="10")
     a = ap.parse_args()
-    d = json.load(open(a.path))
+    d = {"rows": [], "reads": []}
+    for p in a.paths:
+        di = json.load(open(p))
+        eps = {r["episode"] for r in di["rows"]}
+        d["rows"] = [r for r in d["rows"] if r["episode"] not in eps] + di["rows"]
+        d["reads"] = [x for x in d["reads"] if x["episode"] not in eps] + di.get("reads", [])
+        d["arms"] = di["arms"]
     arms, R, w = d["arms"], a.R, a.arm
     rows = [r for r in d["rows"] if not any(r["scores"][an]["reasons"][R] == ["not scored"] for an in arms)]
     by = collections.defaultdict(collections.Counter)
