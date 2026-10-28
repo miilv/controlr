@@ -86,6 +86,8 @@ def main(argv=None):
     ap.add_argument("--size", type=int, default=128)
     ap.add_argument("--min-px", type=int, default=40)
     ap.add_argument("--tasks", default="make_kong", help="render task dirs to read (comma list)")
+    ap.add_argument("--train-variants", default="", help="layout variants of the train / val renders to use (comma "
+                    "list, e.g. 1); default all done ones. Test renders (v0) are always used")
     ap.add_argument("--scheme", default="mahjong", choices=("mahjong", "digit_op"),
                     help="mahjong: class = the tile's asset index (42); digit_op: number tiles -> category_idx % 10 "
                          "(the checker's value), operator tiles -> plus / minus / multiplication / division / equal")
@@ -130,6 +132,8 @@ def main(argv=None):
             continue
         if "test" in d.parent.parent.name:     # seg_render --test: held-out ids, stored records
             split = "test"
+        elif a.train_variants and d.name.rsplit("_v", 1)[-1] not in a.train_variants.split(","):
+            continue
         else:
             split = "val" if d.name.split("_")[0] in val_ids else "train"
         for fj in sorted(d.glob("frame_*.json")):
@@ -145,7 +149,7 @@ def main(argv=None):
                     continue
                 img = np.asarray(Image.open(d / f"frame_{k}_{cam}.png").convert("RGB"))
                 codes = np.asarray(Image.open(ip)).astype(np.int64)
-                emit(split, "render", img, codes, rec["gt"]["objects"], cam, pose, f"{d.parent.parent.name}_{d.name}_f{k}_{cam}",
+                emit(split, "render", img, codes, rec["gt"]["objects"], cam, pose, f"{d.parent.parent.name}_{d.parent.name}_{d.name}_f{k}_{cam}",
                      rec["gt"]["cameras"], mv_.get("target_inst") if pose.startswith("held") else None)
     for mp in (sorted(Path(a.gt).expanduser().glob("d0_ext/make_kong/*/gt_*.json")) if "make_kong" in a.tasks else []):
         m = json.loads(mp.read_text())
