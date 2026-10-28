@@ -37,6 +37,9 @@ YAWS_DEG = (0.0, 12.0, -12.0, 24.0, -24.0, 34.0, -34.0)   # target headings of t
 # the target's centre may move this far towards the robot (-y) when the pad's centre plans with no grasp: the pads lie
 # at the edge of the arms' reach (y 0; the checker allows 18 / 20 mm from the pad's centre)
 REACH_SHIFTS = (0.0, 0.007)
+# the pads lie at the edge of the reach: the default pre-place 6 cm over the target (and a 5 cm retreat) had no IK
+# at mat1 / mat2 for either arm (G3 100031 / 100044 went through an in-air handover and slipped); 3 cm plans
+PLACE_KW = {"pre_h": 0.03, "retreat": 0.03}
 CENTRE_OFF = 0.006        # m: the pads close this close to the tile's centre at most
 MAX_PICK_TILT = 30.0      # deg: a tile picked 40 deg off vertical slid out of the pads (G3 100033)
 ROUTES = ("equation", "largest_number")
@@ -203,14 +206,31 @@ def route(text: str, world, routes) -> tuple | None:
 
 
 # ------------------------------------------------------------------ acting
+def upright_R(o) -> np.ndarray:
+    """The tile's orientation face up (its asset's ``up`` place pose; identity when the asset has none) with body x
+    along world x: the checker's x -> x, y -> y. A tile lying face down is NOT kept face down (G3 100042: a tile turned
+    over by a re-grasp was put on its pad face down and failed the y axis)."""
+    from dojo.skills.geometry import quat_to_R
+    q = (o.asset.place or {}).get("up")
+    return quat_to_R(np.asarray(q, float)) if q is not None else np.eye(3)
+
+
 def tile_targets(sk, label: str, pad: str, yaws_deg=YAWS_DEG, shifts=REACH_SHIFTS) -> list:
-    """Object poses with the tile resting level on ``pad``, its body x heading at each of ``yaws_deg``: centred
+    """Object poses with the tile resting face up on ``pad``, its body x heading at each of ``yaws_deg``: centred
     first, then shifted towards the robot by each of ``shifts`` (``plan_transfer`` prefers earlier targets)."""
-    from dojo.skills.targets import rest_pose
-    p = sk.world.obj(pad)
+    from dojo.skills.geometry import T_from, rot_z
+    from dojo.skills.targets import half_height
+    o, p = sk.world.obj(label), sk.world.obj(pad)
     z = max(TABLE_Z, float(p.top_z))
-    return [rest_pose(sk, label, p.pos[:2] + np.array([0.0, -dy]), z, yaw=math.radians(y), sym=1)
-            for dy in shifts for y in yaws_deg]
+    R0 = upright_R(o)
+    out = []
+    for dy in shifts:
+        xy = p.pos[:2] + np.array([0.0, -dy])
+        for y in yaws_deg:
+            R = rot_z(math.radians(y)) @ R0
+            c = np.array([xy[0], xy[1], z + half_height(o, R)])
+            out.append(T_from(c - R @ o.asset.center, R))
+    return out
 
 
 def _heading_ok(o, sym: int = 1, tol_deg: float = 30.0) -> bool:
@@ -250,14 +270,16 @@ def centred_grasp(o, max_off: float = CENTRE_OFF):
     return ok
 
 
-def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1):
+def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, air_handover: bool = False):
+    """``place_oriented`` onto the pad. No in-air handover unless asked: its grasps skip this module's grasp filters,
+    and the frictionless number tiles / thin discs slipped out of 6 of 6 handovers (G3 v1 100030-49)."""
     from dojo.skills.library import place_oriented
     tg = tile_targets(sk, label, pad)
     if yaw_sym == 2:
         tg += tile_targets(sk, label, pad, yaws_deg=tuple(y + 180.0 for y in YAWS_DEG))
     return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,),
-                          transfer_kw={"max_pick_tilt": MAX_PICK_TILT,
-                                       "pair_ok": centred_grasp(sk.world.obj(label))})
+                          air_handover=air_handover, place_kw=dict(PLACE_KW), transfer_kw={"max_pick_tilt": MAX_PICK_TILT,
+                                                                "pair_ok": centred_grasp(sk.world.obj(label))})
 
 
 def complete_equation(sk, max_looks: int = 4, max_tries: int = 4) -> dict:
@@ -310,8 +332,8 @@ def complete_equation(sk, max_looks: int = 4, max_tries: int = 4) -> dict:
         return {"ok": False, "stage": "select", "note": f"no tile shows {valid} (unknown {[o.label for o in unknown]})"}
     r = None
     # each candidate twice (a second place_oriented re-plans from where the first left it, relays included), then the next
-    for o in [c for c in cands for _ in range(2)][:max_tries]:
-        r = _place_tile(sk, o.label, pad)
+    for i, o in enumerate([c for c in cands for _ in range(2)][:max_tries]):
+        r = _place_tile(sk, o.label, pad, air_handover=i % 2 == 1)
         sk.log(f"[tiles] {o.label} -> {pad}: {r.status} {r.note[:120]}")
         if r.ok or r.status in ("step_budget", "ended"):
             break

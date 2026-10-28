@@ -51,8 +51,9 @@ def test_spread_keeps_order_side_and_spacing():
 
 def test_row_plans_anchor_and_targets():
     w = _world(_scene())
+    assert len(align.row_plans(w, ["cube0", "cube1", "cube2"], slots=False)) == 6     # 3 anchors x 2 headings
     plans = align.row_plans(w, ["cube0", "cube1", "cube2"])
-    assert len(plans) == 6 and plans[0]["cost"] <= plans[-1]["cost"]
+    assert len(plans) > 6 and plans[0]["cost"] <= plans[-1]["cost"]
     for p in plans:
         ts = p["targets"]
         pts = np.array([ts[k][0] for k in ("cube0", "cube1", "cube2")])

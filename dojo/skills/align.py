@@ -95,46 +95,63 @@ def _spread(ts: dict, anchor: str, spacing: float) -> dict:
     return out
 
 
-def row_plans(world, labels: list, spacing: float = SPACING) -> list[dict]:
-    """Every (anchor, heading) row plan, cheapest first: {"anchor", "theta" (deg, the line's heading), "targets":
-    {label: (xy, yaw_deg)}, "cost" (m of travel + 1 mm per deg of turn)}."""
+def row_plans(world, labels: list, spacing: float = SPACING, slots: bool = True) -> list[dict]:
+    """Row plans, cheapest first: {"anchor", "theta" (deg, the line's heading), "targets": {label: (xy, yaw_deg)},
+    "cost" (m of travel + 1 mm per deg of turn)}. Per (anchor, heading): the movers at their projections spread
+    ``spacing`` apart (``_spread``), and with ``slots`` also every assignment of the movers to the slots +-1, +-2
+    spacings from the anchor (a nearest spot behind the set square or across another block's path has others)."""
+    import itertools
     objs = {k: world.obj(k) for k in labels}
-    plans = []
+    plans, seen = [], set()
     for a in labels:
         pa = objs[a].center_w[:2]
+        movers = [k for k in labels if k != a]
         for dth in (0.0, 90.0):
             th = _wrap90(yaw_deg(objs[a])) + dth
             u = np.array([math.cos(math.radians(th)), math.sin(math.radians(th))])
             ts = {k: float((objs[k].center_w[:2] - pa) @ u) for k in labels}
-            tt = _spread(ts, a, spacing)
-            targets, cost = {}, 0.0
-            for k in labels:
-                xy = pa + tt[k] * u
-                turn = abs(_wrap90(th - yaw_deg(objs[k])))
-                targets[k] = (xy, th)
-                if k != a:
-                    cost += float(np.linalg.norm(xy - objs[k].center_w[:2])) + 0.001 * turn
-            plans.append({"anchor": a, "theta": th, "targets": targets, "cost": cost})
+            options = [_spread(ts, a, spacing)]
+            if slots:
+                grid = [-2 * spacing, -spacing, spacing, 2 * spacing]
+                for pick in itertools.permutations(grid, len(movers)):
+                    tt = {a: 0.0, **dict(zip(movers, pick))}
+                    vals = sorted(tt.values())
+                    if all(vals[i + 1] - vals[i] >= spacing - 1e-9 for i in range(len(vals) - 1)):
+                        options.append(tt)
+            for tt in options:
+                key = (a, round(th, 3), tuple(round(tt[k], 4) for k in labels))
+                if key in seen:
+                    continue
+                seen.add(key)
+                targets, cost = {}, 0.0
+                for k in labels:
+                    xy = pa + tt[k] * u
+                    turn = abs(_wrap90(th - yaw_deg(objs[k])))
+                    targets[k] = (xy, th)
+                    if k != a:
+                        cost += float(np.linalg.norm(xy - objs[k].center_w[:2])) + 0.001 * turn
+                plans.append({"anchor": a, "theta": th, "targets": targets, "cost": cost})
     return sorted(plans, key=lambda p: p["cost"])
 
 
 # ------------------------------------------------------------------ one slide
 def _closing_yaws(o, theta: float) -> list[tuple[float, float]]:
-    """(closing heading at the pick, at the place), rad: the pads on two opposite faces of the block, the closing axis
-    across the line at the place, the wrist turn under 45 deg; each also with the hand turned half a turn."""
-    phi_t = theta + 90.0
+    """(closing heading at the pick, at the place), rad: the pads on two opposite faces of the block, the wrist turn
+    under 45 deg; the closing axis across the line at the place first (the neighbours on the line stay clear of the
+    pads), then along it; each also with the hand turned half a turn."""
     psi = yaw_deg(o)
-    k = round((phi_t - psi) / 90.0)
-    phi_s = psi + 90.0 * k                       # a face normal of the block, nearest the place heading
     out = []
-    for flip in (0.0, 180.0):
-        out.append((math.radians(phi_s + flip), math.radians(phi_t + flip)))
+    for phi_t in (theta + 90.0, theta):
+        k = round((phi_t - psi) / 90.0)
+        phi_s = psi + 90.0 * k                   # a face normal of the block, nearest the place heading
+        for flip in (0.0, 180.0):
+            out.append((math.radians(phi_s + flip), math.radians(phi_t + flip)))
     return out
 
 
-def plan_slide(sk, label: str, xy, theta: float, arm: str, ignore=()) -> ArmPlan | str:
-    """The slide of ``label`` to centre ``xy`` turned to heading ``theta`` (deg) by ``arm``: an ``ArmPlan`` from the
-    arm's current joints, or why not (str)."""
+def plan_slide(sk, label: str, xy, theta: float, arm: str, ignore=(), q_start=None) -> ArmPlan | str:
+    """The slide of ``label`` to centre ``xy`` turned to heading ``theta`` (deg) by ``arm``: an ``ArmPlan`` from
+    ``q_start`` (default: the arm's current joints), or why not (str)."""
     o = sk.world.obj(label)
     c = o.center_w.copy()
     h = float(o.top_z - o.bottom_z)
@@ -152,7 +169,7 @@ def plan_slide(sk, label: str, xy, theta: float, arm: str, ignore=()) -> ArmPlan
         T_set[2, 3] = z + 0.0005
         T_away = T_set.copy()
         T_away[2, 3] += 0.06
-        q0 = sk.ex.q[arm]
+        q0 = np.asarray(sk.ex.q[arm] if q_start is None else q_start, float)
         m1 = sk.motion.to_pose(arm, q0, T_pre, FAST, "slide_approach", gripper=g_open)
         if not m1.ok:
             why.append(f"approach: {m1.note[:60]}")
@@ -174,9 +191,12 @@ def plan_slide(sk, label: str, xy, theta: float, arm: str, ignore=()) -> ArmPlan
         if not (m5.ok and m6.ok):
             why.append("set down / away")
             continue
+        from dojo.skills.kinematics import grip_to_gap
+        from dojo.skills.skills import close_steps
         p = ArmPlan(arm, q0.copy(), sk.ex.g[arm])
-        p.move(m1).move(m2).grip(0.0, 4, "slide_close").hold(1).move(m3).move(m4).move(m5).grip(g_open, 3, "slide_open")
-        p.move(m6)
+        p.grip(g_open, 0, "slide_open_for_grasp").move(m1).move(m2).hold(2, "slide_settle")
+        p.grip(0.0, close_steps(grip_to_gap(g_open), float(min(o.asset.extents[:2]))), "slide_close").hold(1)
+        p.move(m3).move(m4).move(m5).grip(g_open, 3, "slide_open").move(m6)
         return p
     return "; ".join(why) or "no closing heading"
 
@@ -202,55 +222,109 @@ def _off(o, xy, theta: float) -> tuple[float, float]:
 
 
 # ------------------------------------------------------------------ the skill
-def align_in_row(sk, objects: list[str], spacing: float = SPACING, max_plans: int = 6) -> dict:
+class _At:
+    """Context: objects virtually at the poses their slides will leave them in (restored on exit)."""
+
+    def __init__(self, world, poses: dict):
+        self.world, self.poses, self.saved = world, poses, {}
+
+    def __enter__(self):
+        from dojo.skills.geometry import R_to_quat
+        for k, T in self.poses.items():
+            o = self.world.obj(k)
+            self.saved[k] = (o.pos.copy(), o.quat.copy())
+            o.pos, o.quat = np.asarray(T, float)[:3, 3].copy(), R_to_quat(np.asarray(T, float)[:3, :3])
+        return self
+
+    def __exit__(self, *exc):
+        for k, (p, q) in self.saved.items():
+            o = self.world.obj(k)
+            o.pos, o.quat = p, q
+
+
+def _seg_dist(a0, a1, b) -> float:
+    """Distance from point ``b`` to the segment a0-a1 (xy)."""
+    a0, a1, b = (np.asarray(v, float)[:2] for v in (a0, a1, b))
+    d = a1 - a0
+    t = 0.0 if float(d @ d) < 1e-12 else float(np.clip((b - a0) @ d / float(d @ d), 0.0, 1.0))
+    return float(np.linalg.norm(a0 + t * d - b))
+
+
+def _plan_order(sk, pl: dict, order: list, notes: list) -> list | None:
+    """[(label, arm)] when every slide of ``order`` plans, each with the earlier movers virtually at their targets and
+    from home after the first (the arm goes home between slides); else None."""
+    w = sk.world
+    out, moved = [], {}
+    for i, k in enumerate(order):
+        xy, th = pl["targets"][k]
+        got = None
+        with _At(w, moved):
+            for arm in _arm_for(sk, k, xy):
+                r = plan_slide(sk, k, xy, th, arm, q_start=None if i == 0 else w.home_q[arm])
+                if isinstance(r, ArmPlan):
+                    got = arm
+                    break
+                notes.append(f"{k} by {arm}: {r[:120]}")
+        if got is None:
+            return None
+        out.append((k, got))
+        moved[k] = _expected_T(w.obj(k), xy, th)
+    return out
+
+
+def _parallel_plans(sk, pl: dict, seq: list) -> list | None:
+    """Both slides as plans from the current joints for ``Skills.parallel``: two movers on two arms whose paths keep
+    clear of each other's start and target (the blocks move at the same time); else None."""
+    if len(seq) != 2 or seq[0][1] == seq[1][1]:
+        return None
+    w = sk.world
+    (ka, _), (kb, _) = seq
+    pa0, pa1 = w.obj(ka).center_w[:2], pl["targets"][ka][0]
+    pb0, pb1 = w.obj(kb).center_w[:2], pl["targets"][kb][0]
+    if min(_seg_dist(pa0, pa1, pb0), _seg_dist(pa0, pa1, pb1), _seg_dist(pb0, pb1, pa0), _seg_dist(pb0, pb1, pa1)) < 0.06:
+        return None
+    plans = []
+    for k, arm in seq:
+        r = plan_slide(sk, k, *pl["targets"][k], arm)
+        if not isinstance(r, ArmPlan):
+            return None
+        plans.append(r)
+    return plans
+
+
+def _choose(sk, objects: list, spacing: float, max_plans: int) -> tuple:
+    """(plan, movers, seq) of the cheapest row plan whose slides plan in some order, or (None, notes)."""
+    import itertools
+    w = sk.world
+    notes = []
+    for pl in row_plans(w, objects, spacing)[:max_plans]:
+        movers = [k for k in objects if k != pl["anchor"]
+                  and not (_off(w.obj(k), *pl["targets"][k])[0] <= ROW_TOL
+                           and _off(w.obj(k), *pl["targets"][k])[1] <= YAW_TOL)]
+        if not movers:
+            return pl, movers, []
+        for order in itertools.islice(itertools.permutations(movers), 6):
+            seq = _plan_order(sk, pl, list(order), notes)
+            if seq is not None:
+                return pl, movers, seq
+    return None, notes
+
+
+def align_in_row(sk, objects: list[str], spacing: float = SPACING, max_plans: int = 16) -> dict:
     """Slide ``objects`` (identical blocks) into one straight row along a face axis of one of them (the anchor), turned
     to the row's heading, never lifting them more than ``SLIDE_LIFT``; then one correcting slide of the worst block when
     the row is still off by more than ``FIX_TOL``."""
     from dojo.skills.skills import SkillResult
     n0 = sk.ex.steps_used
     w = sk.refresh()
-    chosen, notes = None, []
-    for pl in row_plans(w, objects, spacing)[:max_plans]:
-        movers = [k for k in objects if k != pl["anchor"]
-                  and not (_off(w.obj(k), *pl["targets"][k])[0] <= ROW_TOL
-                           and _off(w.obj(k), *pl["targets"][k])[1] <= YAW_TOL)]
-        slides, ok = {}, True
-        for k in sorted(movers, key=lambda k: -float(np.linalg.norm(w.obj(k).center_w[:2]
-                                                                      - pl["targets"][k][0]))):
-            xy, th = pl["targets"][k]
-            # the other movers stand where they are now during this one's slide AND where they will be: their start
-            # poses are obstacles (the collision model), their targets must not be crossed either (checked by order)
-            got = None
-            for arm in _arm_for(sk, k, xy):
-                if arm in slides.values() and len(movers) > 1:
-                    continue
-                r = plan_slide(sk, k, xy, th, arm)
-                if isinstance(r, ArmPlan):
-                    got = (arm, r)
-                    break
-                notes.append(f"{k} by {arm}: {r}")
-            if got is None:
-                # the same arm for both: plan it from home (it slides after the first one)
-                for arm in _arm_for(sk, k, xy):
-                    r = plan_slide(sk, k, xy, th, arm)
-                    if isinstance(r, ArmPlan):
-                        got = (arm, r)
-                        break
-            if got is None:
-                ok = False
-                break
-            slides[k] = got[0]
-        if ok:
-            chosen = (pl, movers, slides)
-            break
-    if chosen is None:
-        return {"ok": False, "stage": "plan", "note": "no row plan slides: " + "; ".join(notes[:4])}
-    pl, movers, slides = chosen
-    sk.log(f"[align] anchor {pl['anchor']} heading {pl['theta']:.1f} deg, cost {pl['cost']:.3f}; slides "
-           f"{ {k: slides[k] for k in movers} }")
+    ch = _choose(sk, objects, spacing, max_plans)
+    if ch[0] is None:
+        return {"ok": False, "stage": "plan", "note": "no row plan slides: " + "; ".join(ch[1][:4])}
+    pl, movers, seq = ch
+    sk.log(f"[align] anchor {pl['anchor']} heading {pl['theta']:.1f} deg, cost {pl['cost']:.3f}; slides {seq}")
     w.notes["align"] = {"anchor": pl["anchor"], "theta": pl["theta"]}
     try:
-        _run_slides(sk, pl, movers, slides)
+        _run_slides(sk, pl, seq)
     except (BudgetExceeded, EpisodeEnded) as e:
         return {"ok": False, "stage": "slide", "note": str(e)[:200]}
     # re-read the row; one correcting slide of the worst block when it is still off
@@ -261,6 +335,10 @@ def align_in_row(sk, objects: list[str], spacing: float = SPACING, max_plans: in
         worst = max(movers or objects, key=lambda k: _off(w.obj(k), *pl["targets"][k])[0] * 1000
                     + _off(w.obj(k), *pl["targets"][k])[1])
         xy, th = pl["targets"][worst]
+        for a in ARMS:
+            if a != _arm_for(sk, worst, xy)[0]:
+                sk.ex.run({a: sk.plan_home(a)}, name=f"clear {a}")
+        done = False
         for arm in _arm_for(sk, worst, xy):
             r = plan_slide(sk, worst, xy, th, arm)
             if isinstance(r, ArmPlan):
@@ -269,37 +347,47 @@ def align_in_row(sk, objects: list[str], spacing: float = SPACING, max_plans: in
                 except (BudgetExceeded, EpisodeEnded):
                     break
                 sk.confirm_moved(worst, _expected_T(w.obj(worst), xy, th), "slide")
+                done = True
                 break
+            sk.log(f"[align] fix {worst} by {arm}: {r[:160]}")
         w = sk.refresh()
         dist, ang = row_error(np.array([w.obj(k).center_w for k in objects]), [yaw_deg(w.obj(k)) for k in objects])
-        sk.log(f"[align] row after the fix: {dist * 1000:.1f} mm / {ang:.1f} deg")
-    sk._record(SkillResult(dist <= 0.008 and ang <= 8.0, "align", "ok" if dist <= 0.008 and ang <= 8.0 else "place_miss",
-                           sk.ex.steps_used - n0, None, note=f"row {dist * 1000:.1f} mm / {ang:.1f} deg"))
+        sk.log(f"[align] row after the fix ({'ran' if done else 'none planned'}): {dist * 1000:.1f} mm / {ang:.1f} deg")
+    ok = dist <= 0.008 and ang <= 8.0
+    sk._record(SkillResult(ok, "align", "ok" if ok else "place_miss", sk.ex.steps_used - n0, None,
+                           note=f"row {dist * 1000:.1f} mm / {ang:.1f} deg"))
     return {"ok": True, "stage": "aligned", "note": f"row {dist * 1000:.1f} mm / {ang:.1f} deg"}
 
 
-def _run_slides(sk, pl: dict, movers: list, slides: dict) -> None:
-    """Run the planned slides: two movers on two arms in the same steps when ``Skills.parallel`` finds them apart,
-    else one after the other (each re-planned from the arm's joints at its start)."""
+def _log_slide(sk, k: str, xy, th: float, before) -> None:
+    o = sk.refresh().obj(k)
+    d, a = _off(o, xy, th)
+    moved = float(np.linalg.norm(o.center_w[:2] - before.center_w[:2]))
+    sk.log(f"[align] {k}: moved {moved * 1000:.0f} mm, now {d * 1000:.1f} mm / {a:.1f} deg off its target")
+
+
+def _run_slides(sk, pl: dict, seq: list) -> None:
+    """Run the planned slides: two on two arms in the same steps when their paths keep apart (``_parallel_plans``),
+    else in ``seq``'s order, each re-planned from the world and the arm's joints at its start."""
+    import copy
     w = sk.world
-    before = {k: w.obj(k) for k in movers}
-    arms = [slides[k] for k in movers]
-    if len(movers) == 2 and arms[0] != arms[1]:
-        plans = []
-        for k in movers:
-            r = plan_slide(sk, k, *pl["targets"][k], slides[k])
-            if isinstance(r, ArmPlan):
-                plans.append(r)
-        if len(plans) == 2:
-            sk.parallel(plans, name="slides")
-            for k in movers:
-                sk.confirm_moved(k, _expected_T(before[k], *pl["targets"][k]), "slide")
-            return
-    for k in movers:
+    before = {k: copy.deepcopy(w.obj(k)) for k, _ in seq}
+    par = _parallel_plans(sk, pl, seq)
+    if par is not None:
+        r = sk.parallel(par, name="slides")
+        sk.log(f"[align] parallel slides: {r}")
+        for k, _ in seq:
+            sk.confirm_moved(k, _expected_T(before[k], *pl["targets"][k]), "slide")
+            _log_slide(sk, k, *pl["targets"][k], before[k])
+        return
+    for i, (k, arm0) in enumerate(seq):
         sk.refresh()
         xy, th = pl["targets"][k]
         r = None
-        for arm in [slides[k]] + [a for a in ARMS if a != slides[k]]:
+        for arm in [arm0] + [a for a in ARMS if a != arm0]:
+            other = "right" if arm == "left" else "left"
+            if i > 0:
+                sk.ex.run({other: sk.plan_home(other)}, name=f"clear {other}")
             r = plan_slide(sk, k, xy, th, arm)
             if isinstance(r, ArmPlan):
                 break
@@ -308,9 +396,7 @@ def _run_slides(sk, pl: dict, movers: list, slides: dict) -> None:
             continue
         sk.ex.run({r.arm: r}, name=f"slide {k}")
         sk.confirm_moved(k, _expected_T(before[k], xy, th), "slide")
-        if k != movers[-1]:
-            # the arm stays over the block after a slide: home before the next slide works near it
-            sk.ex.run({r.arm: sk.plan_home(r.arm)}, name=f"clear {r.arm}")
+        _log_slide(sk, k, xy, th, before[k])
 
 
 SKILLS = {"align_in_row": align_in_row}
