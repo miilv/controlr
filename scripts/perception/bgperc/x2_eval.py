@@ -578,7 +578,10 @@ def main():
     ap.add_argument("--arm-name", default=None, help="the arm's name in the output (a1: J / S per the frozen tag)")
     ap.add_argument("--dets-dir", default=None, help="a1: the frozen detection cache, <dir>/<episode>.pkl")
     ap.add_argument("--prepare-dets", action="store_true",
-                    help="build --dets-dir: v2b (SEG_WEIGHTS / SEG_CLASSES) on every tick frame's 3 cameras, CPU")
+                    help="build --dets-dir: v2b (SEG_WEIGHTS / SEG_CLASSES) on the 3 cameras of the frames, CPU")
+    ap.add_argument("--dets-steps", default="all", choices=("all", "ticks"),
+                    help="all: every stored frame (S's ticks, a superset of J's); ticks: J's tick frames only")
+    ap.add_argument("--worker", default="0/1", help="i/n: this worker's share of the episodes (prepare-dets)")
     ap.add_argument("--out-dir", required=True, help="<out>/rt/events.jsonl, <out>/<arm>/events.jsonl (M's format)")
     ap.add_argument("--valid", default=None)
     ap.add_argument("--names", default="")
@@ -599,7 +602,10 @@ def main():
     if a.names:
         names = [n for n in names if n in set(a.names.split(","))]
     if a.prepare_dets:
-        return prepare_dets(a.root, names, a.dets_dir)
+        import zlib
+        i, k = (int(x) for x in a.worker.split("/"))
+        names = [n for n in names if zlib.crc32(n.encode()) % k == i]      # stable as the valid set grows
+        return prepare_dets(a.root, names, a.dets_dir, a.dets_steps)
     P = None
     if a.arm != "null":
         from dojo.perception import render
@@ -645,10 +651,12 @@ def main():
     print(json.dumps(summ, indent=1))
 
 
-def prepare_dets(root: str, names: list[str], out: str) -> None:
-    """The frozen detection cache of the A1 arms: v2b on all three cameras of every frame a tick reads (W's
-    ``tick_points`` on the recorded run), in W's ``DetSource`` (model id "seg_v2b", imgsz 960, conf 0.25), one pickle
-    per episode; ``index.json``: each file's sha1 (``valid.json``'s cache hash). Run where ultralytics is (CPU)."""
+def prepare_dets(root: str, names: list[str], out: str, steps: str = "all") -> None:
+    """The frozen detection cache of the A1 arms: v2b on all three cameras of every stored frame (``steps`` "all": S's
+    ticks, a superset of J's) or of the tick frames only ("ticks": W's ``tick_points``), in W's ``DetSource`` (model
+    id "seg_v2b", imgsz 960, conf 0.25), one pickle per episode and a sidecar ``<episode>.json`` with its sha1 (the
+    cache hash ``valid.json`` records; ``index.json`` gathers them). Run where ultralytics is (CPU); workers on
+    disjoint ``--names`` never share a file."""
     import hashlib
 
     from dojo.perception.grasp_metric import Footprints, episode_events
@@ -665,27 +673,35 @@ def prepare_dets(root: str, names: list[str], out: str) -> None:
             return [Det(np.asarray(m, np.uint8), k, sc, tuple(b)) for m, k, sc, b in self.m.detect(img, conf)]
     seg, sd, kin, fp = _Seg(), WR._seq_data(), X5Kin(), Footprints()
     os.makedirs(out, exist_ok=True)
-    idx_p = os.path.join(out, "index.json")
-    idx = json.load(open(idx_p)) if os.path.exists(idx_p) else {}
+    w_sha = hashlib.sha1(open(os.environ["SEG_WEIGHTS"], "rb").read()).hexdigest()
     for n in names:
-        dst = os.path.join(out, f"{n}.pkl")
-        if n in idx and os.path.exists(dst):
+        dst, side = os.path.join(out, f"{n}.pkl"), os.path.join(out, f"{n}.json")
+        if os.path.exists(side):
             continue
         seq = sd.Sequence(os.path.join(root, "seq", n))
-        report, actions = WR.load_src(seq)
-        scored = [(e, b) for e, b in episode_events(report, actions, kin, footprints=fp) if e.kind in ("grasp", "place")]
-        steps = sorted({j for s in tick_points(report, actions, scored, seq) for j in [at_or_before(seq, s)]
-                        if j is not None})
+        if steps == "all":
+            js = list(seq.steps)
+        else:
+            report, actions = WR.load_src(seq)
+            scored = [(e, b) for e, b in episode_events(report, actions, kin, footprints=fp)
+                      if e.kind in ("grasp", "place")]
+            js = sorted({j for s in tick_points(report, actions, scored, seq) for j in [at_or_before(seq, s)]
+                         if j is not None})
         src = DetSource(seg, "seg_v2b", 960)
         t0 = time.time()
-        for j in steps:
-            for cam, img in seq.frame(j)["images"].items():
+        for j in js:
+            for _cam, img in seq.frame(j)["images"].items():
                 src.detect(img)
-        src.save(dst)
-        idx[n] = {"file": os.path.basename(dst), "sha1": hashlib.sha1(open(dst, "rb").read()).hexdigest(),
-                  "frames": len(steps), "model_id": "seg_v2b", "imgsz": 960}
-        json.dump(idx, open(idx_p, "w"), indent=1)
-        print(f"[dets] {n}: {len(steps)} tick frames, {time.time() - t0:.0f} s", flush=True)
+        src.save(dst + ".tmp")
+        os.replace(dst + ".tmp", dst)
+        json.dump({"file": os.path.basename(dst), "sha1": hashlib.sha1(open(dst, "rb").read()).hexdigest(),
+                   "frames": len(js), "steps": steps, "model_id": "seg_v2b", "imgsz": 960, "conf": 0.25,
+                   "weights_sha1": w_sha}, open(side, "w"), indent=1)
+        print(f"[dets] {n}: {len(js)} frames, {time.time() - t0:.0f} s", flush=True)
+    idx = {os.path.basename(f)[:-5]: json.load(open(f)) for f in sorted(Path(out).glob("*.json"))
+           if f.name != "index.json"}
+    json.dump(idx, open(os.path.join(out, "index.json") + f".{os.getpid()}", "w"), indent=1)
+    os.replace(os.path.join(out, "index.json") + f".{os.getpid()}", os.path.join(out, "index.json"))
 
 
 def summarize(rt_rows: list[dict], arm_rows: list[dict], rcs: list[dict]) -> dict:
