@@ -2053,6 +2053,21 @@ def snap_row(w, labels: list[str], max_off: float = 0.02, max_resid: float = 0.0
     return moved
 
 
+def kong_match(w, hand: list[str], discard: str) -> tuple[list[str], str | None]:
+    """The hand tiles with the discard's identity, from identities known from the images only
+    (``ObjectState.identity_known``): a tile whose asset is perception's placeholder (``_perception.identity``
+    "unknown": 42 glyphs, none read) matches nothing, and an unread discard leaves no match at all. Which tiles share a
+    glyph is never taken from the task config (its ``same_index_as_label`` ties are the answer). Returns (matching
+    hand labels in hand order, why there is no evidence or None)."""
+    d = w.obj(discard)
+    if not d.identity_known:
+        return [], f"the discard {discard}'s glyph was not read from the images"
+    read = [l for l in hand if w.obj(l).identity_known]
+    if not read:
+        return [], "no hand tile's glyph was read from the images"
+    return [l for l in read if w.obj(l).asset.key == d.asset.key], None
+
+
 def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int = 260, shift: float = 0.006) -> dict:
     """Mahjong kong. Hold still until the opponent has discarded (a tile that lies face up) and its arm has
     had time to return (``min_wait`` steps from the start: the opponent's scripted motion is ~60 env steps;
@@ -2060,7 +2075,8 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
     face up, one push each, the rest of the hand left standing. Then a tile is drawn from the wall (the top
     of a face-down stack, preferring the one that completes a hand pair) and stood at the free end of the
     hand row (+x), re-oriented in the hand or relayed through a free spot. Roles from geometry (standing /
-    face up / face down, rows) and asset identity only."""
+    face up / face down, rows) and asset identities known from the images only (``kong_match``): with unread
+    glyphs the skill stops at stage "roles" before it moves anything."""
     w = sk.refresh()
     st = w.notes.setdefault("kong", {"t0": int(w.step)})
     tiles = [l for l in tiles if l in w.objects]
@@ -2085,19 +2101,24 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
             except (BudgetExceeded, EpisodeEnded) as e:
                 return {"ok": False, "stage": "wait", "note": str(e)}
             w = sk.refresh()
-        sk.log(f"[kong] discard {st['discard']} ({w.obj(st['discard']).asset.key}) seen at step {w.step}")
+        dk = w.obj(st["discard"])
+        sk.log(f"[kong] discard {st['discard']} ({dk.asset.key if dk.identity_known else 'glyph not read'}) "
+               f"seen at step {w.step}")
     d = w.obj(st["discard"])
     if st.get("hand") is None:
         standing = [l for l in tiles if is_standing(w.obj(l))]
         near = min(standing, key=lambda l: float(np.linalg.norm(w.obj(l).pos[:2] - robot)))
         y_row = float(w.obj(near).pos[1])
         hand = sorted([l for l in standing if abs(float(w.obj(l).pos[1]) - y_row) < 0.03], key=lambda l: w.obj(l).pos[0])
-        match = [l for l in hand if w.obj(l).asset.key == d.asset.key]
-        st["hand"], st["match"] = hand, match
-        sk.log(f"[kong] hand {len(hand)} tiles, matching {match}")
+        match, why = kong_match(w, hand, st["discard"])
+        st["hand"], st["match"], st["no_evidence"] = hand, match, why
+        sk.log(f"[kong] hand {len(hand)} tiles, matching {match}" + (f" (no image evidence: {why})" if why else ""))
     hand, match = st["hand"], st["match"]
     if len(match) < 3:
-        return {"ok": False, "stage": "roles", "note": f"{len(match)} hand tiles match {d.asset.key}"}
+        why = st.get("no_evidence")
+        note = (f"no image evidence for the matching tiles: {why}" if why
+                else f"{len(match)} hand tiles match {d.asset.key} by the glyphs read from the images")
+        return {"ok": False, "stage": "roles", "note": note}
     match = match[:3]
     # 1. the three matching tiles face up (pushed over, away from the robot side they face)
     cx = float(np.mean([w.obj(l).pos[0] for l in match]))
@@ -2127,10 +2148,12 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
     tops = [l for l in lying if on_stack(l)] or lying
     if not tops:
         return {"ok": False, "stage": "draw", "note": "no wall tile"}
-    keys = [w.obj(l).asset.key for l in hand if l not in match]
+    keys = [w.obj(l).asset.key for l in hand if l not in match and w.obj(l).identity_known]
     y_row = float(np.mean([w.obj(l).pos[1] for l in hand]))
-    draw = min(tops, key=lambda l: (keys.count(w.obj(l).asset.key) != 2, w.obj(l).asset.key not in keys,
-                                    abs(float(w.obj(l).pos[1]) - y_row)))
+
+    def same(l):  # unmatched hand tiles known to share l's glyph (an unread glyph, a placeholder key, shares none)
+        return keys.count(w.obj(l).asset.key) if w.obj(l).identity_known else 0
+    draw = min(tops, key=lambda l: (same(l) != 2, same(l) == 0, abs(float(w.obj(l).pos[1]) - y_row)))
     # 3. stand it at the free (+x) end of the hand row, next to the last tile, like the row's tiles
     end = max((l for l in hand if is_standing(w.obj(l))), key=lambda l: w.obj(l).pos[0])
     xs = sorted(float(w.obj(l).pos[0]) for l in hand)

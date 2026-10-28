@@ -1,7 +1,8 @@
 """Estimates in three shapes: perception's layout record, the skills WorldState, the twin's layout record.
 
 * ``objects_from_record``: perception's record (``inverse_layout.estimate`` / ``look.fuse``) ->
-  ``{label: ObjectState}`` (source "perception", per-object confidence).
+  ``{label: ObjectState}`` (source "perception", per-object confidence; ``identity_known`` False for an entry whose
+  asset index is a placeholder no image read, ``dojo.perception.identity_marks``).
 * ``objects_from_gt_rows``: dev-only GT rows (``RoboDojoRunner.objects_gt``) -> the same (mode gt).
 * ``est_objects``: WorldState objects -> a flat list ``[{type, category, category_idx, label, pos, quat}]``
   (task objects only: the estimate the twin is loaded with).
@@ -24,6 +25,7 @@ from functools import lru_cache
 
 import numpy as np
 
+from dojo.perception.identity_marks import identity_known
 from dojo.skills.world import AssetDB, AssetInfo, ObjectState, objects_from_gt
 
 RECORD_TYPES = ("Rigid", "Geometry", "Articulation", "Dynamic")
@@ -56,7 +58,8 @@ def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, mes
         out[lab] = ObjectState(label=lab, obj_type=typ, category=cat, idx=int(r["category_idx"]),
                                pos=np.asarray(r["default_pos"], float), quat=np.asarray(r["default_ori"], float),
                                asset=info, clutter=False, source="perception",
-                               confidence=float(p.get("confidence", 1.0)), t=step)
+                               confidence=float(p.get("confidence", 1.0)), t=step,
+                               identity_known=identity_known(p))
     return out
 
 

@@ -15,6 +15,26 @@
   calibration, and an IoU-0 edge fallback is marked `refined`; G2-9 a worker restart drops the episode tracker (the
   budget PR flags it as `tracker=lost` in the gated reply). Each changes rendered poses: fix with replays of the
   cases each rule was tuned on.
+- [ ] **dojo legality: make_kong needs a glyph read, or it scores 0 in perception modes.** Since the audit P1-2 fix,
+  `declare_kong` matches only identities read from the images. B1 reads no mahjong glyph (42 candidates >
+  `slot_identity_max`), so the skill stops at stage "roles" (journal 2026-10-28-legality-kong-identity). The image
+  route, behind a flag that defaults off:
+  1. read the face-up discard's glyph once the watcher lays it down;
+  2. read the hand tiles' visible faces (`slot_identity_max >= 42` with `texture_cost` at frame 0);
+  3. match on the reads with a margin.
+
+  Measure on rendered 5.1 frames first: the hand faces are ~20 px tall in the head view, and S's segmenter reads
+  mahjong glyphs at 0.19.
+- [ ] **dojo legality: two rulings for the lead** (journal 2026-10-28-legality-kong-identity):
+  1. imitate's `quota_copy_assets` narrows the far list to our list's assets by the config's `same_as_label`, as a
+     set, with the pairing by fit cost;
+  2. the kong draw takes the wall stack nearest the hand row, and the fixed layout always puts the pair's tile there.
+
+  Keep, flag off, or remove.
+- [ ] **dojo agent: the scene prints a placeholder `asset N` for identities no image read** (`ObjectState.identity_known`
+  False, e.g. every make_kong tile). It should say "unread" and skip the placeholder's caption. That changes the
+  agent's prompt for every task with unread slots: A/B it. Also, an agentic-perceiver asset change on such an entry
+  keeps it "unknown" (`agentic.record.merge_into_record`). Decide whether an agent's glyph read counts as read.
 
 - [ ] **dojo perception: nothing re-finds an object a scripted actor moved off its generator region.** B1's placement
   priors keep tic-tac-toe's opponent pieces on their side of the table. On the proxy replay of B_breadth2 100004, 13
