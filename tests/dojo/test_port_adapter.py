@@ -474,7 +474,7 @@ def test_library_pickup_route_and_lift():
     env, sk = gt_skills(rows_pickup(), instr, step_lim=200)
     w = sk.refresh()
     p = planner.plan(instr, w, ported={"pickup": "library"})
-    assert p.skill == "lift_up" and p.args == {"obj": "target", "by": 0.10}
+    assert p.skill == "lift_up" and p.args == {"obj": "target", "by": 0.10, "fallback": True}
     assert planner.plan(instr, w, ported=True).args == {"skill": "pick_up", "args": {}}       # default: unchanged
     lifted = []
     sk.ex.on_step = lambda ex: lifted.append(env.objects[0]["pos"][2])
@@ -486,3 +486,17 @@ def test_ported_pickup_defaults_v1():
     from dojo.runtime.policy import RuntimeConfig
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().ported_pickup == "v1" and SKILL_ATTRS["ported_pickup"][0] == "v1"
+
+
+def test_library_pickup_falls_back_to_the_ported_pick_up(monkeypatch):
+    from dojo.skills import pickup
+    calls = []
+    monkeypatch.setattr(pickup, "_lift_up", lambda sk, obj, by, tries, min_left: {"ok": False, "stage": "pick"})
+    import dojo.skills.ported as P
+    monkeypatch.setattr(P, "ported", lambda sk, skill, args: calls.append((skill, args)) or {"ok": True, "verified": True})
+    env, sk = gt_skills(rows_pickup(), "Pick up the toy car by 10 cm.", step_lim=200)
+    r = pickup.lift_up(sk, "target", 0.10, fallback=True)
+    assert calls == [("pick_up", {"obj": "@target", "by": 0.10})] and r["stage"] == "fallback" and r["ok"]
+    calls.clear()
+    pickup.lift_up(sk, "target", 0.10, fallback=False)
+    assert calls == []

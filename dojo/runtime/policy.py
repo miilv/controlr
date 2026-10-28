@@ -332,8 +332,9 @@ class RuntimeConfig:
     # ... pouring balls: v1 (Mikhail's pour: stops when no ball is left in the cup) | full (pour_p1: the whole roll profile;
     # camera mode sees no balls inside the cup, so v1 read "empty" at the first hold and stopped with the balls inside)
     ported_pour: str = "v1"
-    # ... "pick up the X by N cm": v1 (Mikhail's pick_up: top-down mesh-cloud grasps) | library (our Skills.pick, its grasp
-    # generator; dojo/skills/pickup.py), the object grounded by its public description or its category words
+    # ... "pick up the X by N cm": v1 (Mikhail's pick_up: top-down mesh-cloud grasps) | library (our Skills.pick first, its
+    # grasp generator, then v1 on the same object when ours fails with >= 120 steps left; dojo/skills/pickup.py), the object
+    # grounded by its public description or its category words
     ported_pickup: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,

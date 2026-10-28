@@ -10,7 +10,19 @@ from __future__ import annotations
 MARGIN = 0.03
 
 
-def lift_up(sk, obj: str, by: float = 0.10, tries: int = 2, min_left: int = 40) -> dict:
+def lift_up(sk, obj: str, by: float = 0.10, tries: int = 2, min_left: int = 40, fallback: bool = False,
+            fallback_min_left: int = 120) -> dict:
+    """``fallback``: when ours does not lift it and ``fallback_min_left`` steps remain, robot-harness's ported pick_up on
+    the same object (its top-down mesh-cloud grasps; G3 general_pickup 100000-09: the two fail on different objects)."""
+    r = _lift_up(sk, obj, by, tries, min_left)
+    if r.get("ok") or not fallback or sk.ex.ended or sk.ex.steps_left < fallback_min_left:
+        return r
+    from dojo.skills.ported import ported
+    f = ported(sk, "pick_up", {"obj": "@" + obj, "by": float(by)})
+    return {**f, "library": r, "stage": "fallback"}
+
+
+def _lift_up(sk, obj: str, by: float = 0.10, tries: int = 2, min_left: int = 40) -> dict:
     w = sk.refresh()
     if obj not in w.objects:
         return {"ok": False, "stage": "world", "note": f"no object {obj!r}"}
