@@ -267,8 +267,9 @@ def _run_eval(task, layout_files, policy, out, dev_layout_info, rc, ep, details,
         paths.assert_not_eval(lf)
         if paths.is_offslice_rendered(Path(lf).name.split(".")[0]):
             raise SystemExit(f"{lf}: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= {paths.RESERVED_MIN_ID})")
-        if paths.is_calibration_id(Path(lf).name.split(".")[0]):
-            raise SystemExit(f"{lf}: calibration-only layout (D-C10b, {paths.CALIBRATION_SLICE}): never evaluated")
+        why = paths.training_refusal(Path(lf).name.split(".")[0])
+        if why:
+            raise SystemExit(f"{lf}: {why}")
         lay = json.loads(Path(lf).read_text())
         info = ep.reset(lay)
         if not info["stable"]:

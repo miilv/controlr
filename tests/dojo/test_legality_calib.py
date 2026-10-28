@@ -258,20 +258,31 @@ def test_build_writes_the_set_and_its_manifest_from_the_named_ids_only(tmp_path,
         calib_set.build(d0, tmp_path / "bg", "frozen_bad", [100003, 100040], colour=False)
 
 
-def test_the_drivers_refuse_to_evaluate_a_calibration_only_layout(tmp_path):
-    """D-C10b: 100040-49 calibrate perception and are never evaluated (integ, official and proxy drivers)."""
+def test_the_drivers_refuse_to_evaluate_the_training_block(tmp_path):
+    """D-C10c (robot-harness 1c70562): 100030-49 (training / priors / calibration, incl. D-C10b's 100040-49) is never
+    evaluated: integ / official / proxy / dev_eval drivers refuse it; G3 runs only its variant records (v >= 1)."""
     import subprocess
     from pathlib import Path
+    from dojo.simlab import paths
     root = Path(__file__).resolve().parents[2]
-    for script in ("scripts/dojo/integ_eval.sh", "scripts/dojo/official_eval.sh"):
-        assert "100040 && id <= 100049" in (root / script).read_text() or \
-            "lid >= 100040 && lid <= 100049" in (root / script).read_text(), script
+    assert "id >= 100030 && id <= 100049" in (root / "scripts/dojo/integ_eval.sh").read_text()
+    assert "lid >= 100030 && lid <= 100049" in (root / "scripts/dojo/official_eval.sh").read_text()
     for mod in ("dojo/runtime/eval.py", "dojo/simlab/proxy_eval.py"):
-        assert "is_calibration_id" in (root / mod).read_text(), mod
-    r = subprocess.run(["bash", str(root / "scripts/dojo/integ_eval.sh"), "--task", "stack_blocks",
-                        "--out", str(tmp_path / "o"), "--layouts", "/nowhere/100043.settled.json"],
-                       capture_output=True, text=True, timeout=60, env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"})
-    assert r.returncode == 2 and "calibration-only" in r.stderr, r.stderr[-300:]
+        assert "training_refusal" in (root / mod).read_text(), mod
+    assert "is_training_id" in (root / "dojo/simlab/dev_eval.py").read_text()
+    assert "training_refusal(seed, lay, allow_variants=True)" in (root / "dojo/skills/g3.py").read_text()
+    for lid in (100030, 100035, 100043, 100049):
+        r = subprocess.run(["bash", str(root / "scripts/dojo/integ_eval.sh"), "--task", "stack_blocks",
+                            "--out", str(tmp_path / "o"), "--layouts", f"/nowhere/{lid}.settled.json"],
+                           capture_output=True, text=True, timeout=60, env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"})
+        assert r.returncode == 2 and "training" in r.stderr, (lid, r.stderr[-300:])
+    assert paths.training_refusal(100029) is None and paths.training_refusal(100050) is None
+    assert paths.training_refusal(100030) and paths.training_refusal("100049")
+    assert paths.training_refusal(100031, {"_simlab": {"variant": 0}}, allow_variants=True)      # the layout itself
+    assert paths.training_refusal(100031, {"_simlab": {"variant": 2}}, allow_variants=True) is None  # a new draw
+    assert paths.training_refusal(100031, {"_simlab": {"variant": 2}}) is not None                   # eval: never
+    assert all(not paths.is_our_measurement_id(i) for i in range(100030, 100050))
+    assert all(paths.is_calibration_id(i) == (i >= 100040) for i in range(100030, 100050))
 
 
 def test_every_box_gets_the_pinned_set_or_the_install_step_fails(tmp_path):
