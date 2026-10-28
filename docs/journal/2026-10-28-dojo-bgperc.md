@@ -138,3 +138,37 @@ refine per frame? Report: [../experiments/2026-10-28-bgperc.md](../experiments/2
   against a live run). The online arm runs v2b live on raw frames and logs its own detections.
 - **JPEG vs PNG for the segmenter** (`seg_jpeg_check.py`): v2b on frame 0's PNG and JPEG of every valid sequence,
   matched by mask IoU >= 0.5.
+  - The first 8 JPEG episodes give 24 frame-0 views: 70/71 detections matched, IoU mean 0.986, 2 class flips,
+    1 lost, 2 gained. That is 7 % of detections differing.
+  - Every difference is a wrist detection at score 0.25-0.46. At score >= 0.5: 0 of 74 differ.
+  - Borderline wrist detections are exactly where extra reads between events would show. So **the X2 frames are
+    lossless**: PNG, compress level 3, about 0.42 GB per episode. The 9 JPEG bottles episodes are re-rendered.
+  - `DOJO_SEQ_FMT` now defaults to png.
+- **RTX frames are not bit-identical from run to run.**
+  - The recorded run's saved frame 0 (look_frames, PNG) and the replay's differ on about 65 % of pixels, mean |Δ| 0.45
+    levels.
+  - v2b on the two, over 33 views: 2.9 % of detections differ, all below score 0.5. At >= 0.5: 0 / 97 differ.
+    Matched IoU is 0.997, against 0.986 for JPEG.
+  - So a replay never sees the recorded run's pixels, and re-running the runtime's perception on replay frames
+    would add render noise to rt.
+- **X2 protocol** (the reviewer's design, adopted by the lead):
+  - rt = the recorded belief (probe plus logged writes). It is exact, consistent with the replayed actions, and
+    needs 0 LLM calls.
+  - Each A1 arm = the recorded belief plus that arm's writes on the stored PNGs. Once the arm moves an object, that
+    object's later recorded writes (refine, post_place, held) are re-computed on the same step's stored frame from
+    the arm's pose. Untouched objects replay as recorded.
+  - Agentic records replay as recorded in every arm.
+  - A fidelity check bounds the render noise: the runtime's refines re-run offline at their recorded steps from
+    their recorded priors, diffed against the logged results.
+  - The detection cache is keyed by the sha1 of the stored PNG bytes; `replay_check.py --seg-cache` records its
+    hash per episode in `valid.json`.
+- **The write re-runner** (`scripts/perception/bgperc/write_rerun.py`, `write_rerun.sh`):
+  - It re-runs a recorded write (pick / place / held refine, post-place re-measure) on the stored frame of its step
+    with the runtime's own request: prior, the other believed objects, the object in the jaws, and the config's
+    search radius / empty hand / identity candidates. It calls `_Perception.refine` in process, with the recorded
+    runs' code and EGL on the recording box.
+  - The belief before a write is rebuilt from `dev_belief_probe` (a snapshot at every gripper change) plus the logged
+    writes in between. M's `BeliefTracker` alone does not model the jaws, so it misplaced released objects.
+  - Leave-one-out on the 10 JPEG-era episodes: 119/120 logged pick / place refine priors are reproduced to 0.06 mm
+    without using the refine's own prior. The miss is a grasp retry whose release the runtime undid; nothing logs that
+    release.
