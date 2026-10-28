@@ -29,6 +29,7 @@ OCCUPIED = 0.01           # m: another object's footprint this close to a slot's
 ROW_YS = (-0.13, -0.17, -0.09, -0.21, -0.05)
 ROW_XS = (0.0, -0.04, 0.04, -0.08, 0.08)
 MAX_X = 0.30              # m: |x| of a slot (both arms reach a standing object there)
+WIDE_MOVE = 0.4           # m of travel: what moving the widest object costs on top of its distance
 YAW_DEG = tuple(range(0, 360, 30))   # target headings: a doll is round, any heading stands
 
 
@@ -71,8 +72,12 @@ def route(text: str, world, routes) -> tuple | None:
 
 
 def row_slots(world, labels: list, ascending: bool = True) -> list[dict]:
-    """Candidate rows, cheapest first: {"order": labels left to right, "xy": {label: slot xy}, "cost"}; slots clear
-    every other object (not one of ``labels``) by ``OCCUPIED``, within ``MAX_X``."""
+    """Candidate rows, cheapest first: {"order": labels left to right, "xy": {label: slot xy}, "cost", "y", "xc",
+    "anchor"}; slots clear every other object (not one of ``labels``) by ``OCCUPIED``, within ``MAX_X`` (an anchor
+    may stay where it is beyond it). Two families: the row on a fixed line (``ROW_YS`` x ``ROW_XS``), and the row
+    built around one object that stays where it is (its line and its place in the order). A row that moves the
+    widest object costs ``WIDE_MOVE`` more: it fits the open gripper worst (G3 1911fbc: 4 of 5 dolls placed in both
+    episodes, the last one had no grasp)."""
     objs = {k: world.obj(k) for k in labels}
     order = sorted(labels, key=lambda k: size_key(objs[k]), reverse=not ascending)
     ws = [width(objs[k]) for k in order]
@@ -81,26 +86,32 @@ def row_slots(world, labels: list, ascending: bool = True) -> list[dict]:
     offs -= (offs[0] + offs[-1]) / 2
     others = [o for o in world.objects.values() if o.label not in labels and o.obj_type != "Garment"
               and o.label != "camera_stand" and not (o.obj_type == "Geometry" and float(o.top_z) < TABLE_Z + 0.004)]
+    widest = max(order, key=lambda k: width(objs[k]))
+    cands = [(y, xc + offs, None, xc) for y in ROW_YS for xc in ROW_XS]
+    for i, k in enumerate(order):                       # rows around one object that stays put
+        c = objs[k].center_w[:2]
+        cands.append((float(c[1]), float(c[0]) + offs - offs[i], k, float(c[0]) - offs[i]))
     out = []
-    for y in ROW_YS:
-        for xc in ROW_XS:
-            xs = xc + offs
-            if float(np.abs(xs).max()) > MAX_X:
-                continue
-            ok = True
-            for x, w in zip(xs, ws):
-                for o in others:
-                    r = width(o) / 2 if o.obj_type != "Geometry" else float(np.linalg.norm(o.asset.extents[:2])) / 2
-                    if float(np.linalg.norm(o.center_w[:2] - np.array([x, y]))) < w / 2 + r + OCCUPIED:
-                        ok = False
-                        break
-                if not ok:
+    for y, xs, anchor, xc in cands:
+        if any(abs(x) > MAX_X for x, k in zip(xs, order) if k != anchor):
+            continue
+        if not (min(ROW_YS) - 0.02 <= y <= max(ROW_YS) + 0.02):
+            continue
+        ok = True
+        for x, w in zip(xs, ws):
+            for o in others:
+                r = width(o) / 2 if o.obj_type != "Geometry" else float(np.linalg.norm(o.asset.extents[:2])) / 2
+                if float(np.linalg.norm(o.center_w[:2] - np.array([x, y]))) < w / 2 + r + OCCUPIED:
+                    ok = False
                     break
             if not ok:
-                continue
-            xy = {k: np.array([x, y]) for k, x in zip(order, xs)}
-            cost = sum(float(np.linalg.norm(objs[k].center_w[:2] - xy[k])) for k in order)
-            out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": xc})
+                break
+        if not ok:
+            continue
+        xy = {k: np.array([x, y]) for k, x in zip(order, xs)}
+        moves = {k: float(np.linalg.norm(objs[k].center_w[:2] - xy[k])) for k in order}
+        cost = sum(moves.values()) + (WIDE_MOVE if moves[widest] > THERE else 0.0)
+        out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": float(xc), "anchor": anchor})
     return sorted(out, key=lambda r: r["cost"])
 
 
@@ -145,7 +156,8 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
     if not rows:
         return {"ok": False, "stage": "plan", "note": "no free row for the slots"}
     row = rows[0]
-    sk.log(f"[rows] order {row['order']} at y {row['y']:.2f}, x centre {row['xc']:.2f}, travel {row['cost']:.2f} m")
+    sk.log(f"[rows] order {row['order']} at y {row['y']:.2f}, x centre {row['xc']:.2f}, anchor {row['anchor']}, "
+           f"cost {row['cost']:.2f}")
     w.notes["rows"] = {"order": row["order"], "xy": {k: v.tolist() for k, v in row["xy"].items()}}
     pairs = [(k, row["xy"][k]) for k in row["order"]]
     done, failed, tries, aside = [], [], {k: 0 for k in objects}, 0
