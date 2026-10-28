@@ -254,10 +254,17 @@ def rot_deg(key: str | None, q_rep, q_rec) -> float:
     return float(d) if d is not None else quat_angle_deg(q_rep, q_rec)
 
 
+def raw_ok(ev: dict) -> bool:
+    """Perception's own ok of a logged refine. The runtime's neighbour veto (``policy._refine_hook`` /
+    ``_place_refine``: "refined pose on a neighbour") overwrites the event's ok after the fit; a re-run's ok is the fit's
+    (W, 28 Oct: 11 of 16 place-refine "flips" were that asymmetry, the IoUs equal on both sides)."""
+    return bool(ev.get("ok")) or str(ev.get("why") or "").startswith("refined pose on a neighbour")
+
+
 def compare(ev: dict, r: dict, key: str | None = None) -> dict:
-    ok_a, ok_b = bool(ev.get("ok")), bool(r.get("ok"))
-    out = {"ok_rec": ok_a, "ok_rep": ok_b, "iou_rec": ev.get("iou"), "iou_rep": r.get("iou"),
-           "shift_rec": ev.get("shift_mm"), "shift_rep": r.get("shift_mm")}
+    ok_a, ok_b = raw_ok(ev), bool(r.get("ok"))
+    out = {"ok_rec": ok_a, "ok_rep": ok_b, "ok_rec_gated": bool(ev.get("ok")), "iou_rec": ev.get("iou"),
+           "iou_rep": r.get("iou"), "shift_rec": ev.get("shift_mm"), "shift_rep": r.get("shift_mm")}
     pa = ev.get("pose7")
     if ok_a and ok_b and pa is not None and r.get("pos") is not None:
         pb = list(r["pos"]) + list(r["quat"])
@@ -330,6 +337,24 @@ def summary(rows: list[dict]) -> dict:
     return out
 
 
+def resummarize(root: str, out: str, sd) -> None:
+    d = json.load(open(out))
+    evs: dict = {}
+    for r in d["rows"]:
+        n = r["episode"]
+        if n not in evs:
+            report, _a = load_src(sd.Sequence(os.path.join(root, "seq", n)))
+            evs[n] = [e for e in report.get("events") or [] if writer(e)]
+        ev = next((e for e in evs[n] if writer(e) == r["writer"] and int(e["step"]) == r["step"]
+                   and e.get("label") == r["label"]), None)
+        if ev is not None and "ok_rec" in r:
+            r["ok_rec_gated"] = bool(ev.get("ok"))
+            r["ok_rec"] = raw_ok(ev)
+    d["summary"] = summary(d["rows"])
+    json.dump(d, open(out, "w"), indent=1)
+    print(json.dumps({w: {k: v[k] for k in ("n", "ok_agree", "both_ok", "mm")} for w, v in d["summary"].items()}))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("root")
@@ -338,8 +363,12 @@ def main():
     ap.add_argument("--names", default="")
     ap.add_argument("--order", default="name", choices=("name", "task_rr"))
     ap.add_argument("--per-task", type=int, default=0, help="with task_rr: at most this many episodes per task")
+    ap.add_argument("--resummarize", action="store_true",
+                    help="no re-runs: rows' ok_rec = perception's raw ok (raw_ok) from the reports; summary rewritten")
     a = ap.parse_args()
     sd = _seq_data()
+    if a.resummarize:
+        return resummarize(a.root, a.out, sd)
     from dojo.runtime.perception_service import _Perception
     P = _Perception()
     names = sorted(os.listdir(os.path.join(a.root, "seq")))
