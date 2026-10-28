@@ -418,6 +418,8 @@ class RuntimeProvider:
         self.fallen_check = True                # policy: fallen_check
         self.confirm_wrists = True              # confirm_pose also scores the wrist views (policy: confirm_wrists)
         self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
+        self.held_thin = "off"                  # RuntimeConfig.held_thin: "on" = an opening-only "not held" on an object
+                                                # thinner than the opening's resolution is unknown (kept)
         # mode perception, stream H: RoboDojo's official gripper value (``<arm>_ee_joint_state_official``: strict v2,
         # DOJO_GRIP_SOURCE=v2; or ``<arm>_ee_joint_state`` itself with grip_official_key "ee_joint_state") decides held /
         # empty at every refresh while an object is attached (``_grip_check``); the
@@ -1145,6 +1147,14 @@ class RuntimeProvider:
                 ev["unknown"], ev["kept"] = True, True
                 self.stats["held_look_unknown"] = self.stats.get("held_look_unknown", 0) + 1
                 continue
+            thin = self._thinner_than_opening(r, lab) if self.held_thin == "on" else None
+            if r.get("held") is False and thin is not None:
+                # the verdict rests on the jaw opening alone, and the object is thinner than the opening can resolve:
+                # held or not, the jaws read "closed on nothing" (5.1 deposit_coin 100000 / 03: the 1.9 mm coin, held
+                # 149 mm up at the handover pose, "dropped"; the skill gave up the handover and opened the jaws)
+                ev["unknown"], ev["kept"], ev["thin_mm"] = True, True, thin
+                self.stats["held_look_thin"] = self.stats.get("held_look_thin", 0) + 1
+                continue
             if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5 and self.held_confirm is not None:
                 # never take an object out of the jaws on one vision negative (5.1: B1 said "not held" at confidence
                 # 1.0 on blocks lifted 87 mm in the jaws; skills then opened the jaws and dropped them): a second,
@@ -1184,6 +1194,19 @@ class RuntimeProvider:
                 self.touched.add(lab)
                 ev["dropped"] = True
                 self.stats["held_look_empty"] = self.stats.get("held_look_empty", 0) + 1
+
+    def _thinner_than_opening(self, r: dict, label: str) -> float | None:
+        """The held object's narrowest extent (mm) when ``r`` is an opening-only verdict and that extent is below the
+        opening's resolution under its command (``j1_adapter.opening_resolution_gap``), else None."""
+        op = r.get("opening") or {}
+        if r.get("evidence") != "opening" or op.get("measured") is None:
+            return None
+        o = self.belief.objects.get(label)
+        if o is None or o.asset is None:
+            return None
+        from dojo.perception.j1_adapter import opening_resolution_gap
+        w = float(np.min(o.asset.extents))
+        return round(1000 * w, 1) if w < opening_resolution_gap(op.get("commanded")) else None
 
     def _jaws_closed(self, r: dict, label: str) -> bool:
         """held_look measured the jaw opening (evidence "opening", from the finger silhouettes) narrower than half the

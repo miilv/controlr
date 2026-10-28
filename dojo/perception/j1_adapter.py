@@ -982,6 +982,15 @@ def measure_opening(cam, arm: str, q6, image: np.ndarray, meshes=None, model=Non
     return out
 
 
+def opening_resolution_gap(cmd: float | None) -> float:
+    """The narrowest pad gap (m) an object must hold the jaws at to read "held" from the measured opening under the
+    command ``cmd``: ``held_from_opening`` needs the opening ``HELD_OPEN_MARGIN`` above max(cmd, ``HELD_CLOSED_FLOOR``).
+    10.8 mm for a full close: a 1.9 mm coin between the pads reads "closed on nothing" (5.1 deposit_coin 100000 / 03)."""
+    from dojo.skills.kinematics import grip_to_gap
+
+    return float(grip_to_gap(max(float(cmd or 0.0), HELD_CLOSED_FLOOR) + HELD_OPEN_MARGIN))
+
+
 def held_from_opening(opening: float, cmd: float, held_px: bool, dark_like: bool) -> tuple[bool, float]:
     """Verdict from the measured jaw opening (primary evidence) vs the commanded one; ``held_px`` is the colour test.
     A jaw stopped by an object reads wider than commanded. Commands at or below ``HELD_CLOSED_FLOOR`` all put the

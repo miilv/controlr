@@ -213,6 +213,10 @@
   pre-grasp opening for a narrow object (`gap_to_grip`, Memory's conveyor approach at 0.444) is not a grip: at a 15 cm
   hover the box hid 197k of 307k wrist pixels. `refine(empty_hand=True)` / the service's `empty_hand` opt out; B1's wrist
   frames, looks and `held_look` still mask it. A caller that knows the hand is empty should say so.
+- [ ] **dojo deposit_coin: camera A/B of `slot_read` + `held_thin`** (stream C, journal/2026-10-28-dojo-coin-slot-read.md).
+  On c4b_coin_off, (a) the stand's yaw / offset at the pick (2 of 5) and (b) a false "dropped" of the 1.9 mm coin at
+  the handover (2 of 5) are fixed offline behind the two flags. The rendered A/B on the candidate decides. Left: (c)
+  the coin never found at frame 0 (100001; the stereo arm also loses 100002 / 04).
 - [ ] **dojo perception: deposit_coin's coin + stand read at a phantom near a home gripper** (5.1 coinmain, 6 of 10 layouts, at frame 0 or in the scan read). The real assembly is ~10 px in the head view; B1 fits the stand onto the piggy bank or gripper area instead. #153 makes the agent's correction stand the coin up; the B1 miss is the root. Also: coin not found when the stand fit is 19-115 mm off (the slot check refutes it).
   Candidate fix, off by default: the stereo height check at the scan pose rejects 11/11 phantom stands and flags 0 of 6 right ones
   (`DOJO_PERCEPTION_CFG='{"stereo_check": true, "stereo_reject": "slot_bases"}'`; experiments/2026-10-27-stereo-height);
