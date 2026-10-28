@@ -118,3 +118,17 @@ def test_consume_verdict_checks_only_the_axes_the_action_needs():
     assert not ms.consume_verdict({"xy_mm": 5.0, "z_mm": 1.0}, {"xy_mm": 4.0, "z_mm": 2.0})
     assert not ms.consume_verdict({"xy_mm": 1.0, "yaw_deg": None}, {"xy_mm": 4.0, "yaw_deg": 5.0})   # not measured
     assert ms.consume_verdict({}, {"xy_mm": None})
+
+
+def test_belief_write_log_replaces_the_per_writer_events():
+    rep = {"events": [
+        {"kind": "refine", "label": "a", "for": "pick", "step": 5, "ok": True, "prior7": [0, 0, 0.8, 1, 0, 0, 0],
+         "pose7": [0.01, 0, 0.8, 1, 0, 0, 0]},
+        {"kind": "belief_write", "label": "a", "step": 5, "writer": "perception", "version": 2,
+         "before7": [0, 0, 0.8, 1, 0, 0, 0], "after7": [0.01, 0, 0.8, 1, 0, 0, 0]},
+        {"kind": "belief_write", "label": "b", "step": 9, "writer": "a1", "version": 1,
+         "before7": [0.2, 0, 0.8, 1, 0, 0, 0], "after7": [0.25, 0, 0.8, 1, 0, 0, 0]},
+        {"kind": "a1_discrepancy", "a1_kind": "relocated", "label": "b", "step": 9, "applied": True,
+         "before7": [0.2, 0, 0.8, 1, 0, 0, 0], "after7": [0.25, 0, 0.8, 1, 0, 0, 0]}]}
+    w = ms.belief_writes(rep)
+    assert [(x["writer"], x["label"]) for x in w] == [("perception", "a"), ("a1", "b")]     # once each, no double count
