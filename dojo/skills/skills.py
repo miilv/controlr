@@ -1130,6 +1130,18 @@ class Skills:
         C = Tc @ inv_T(Tm)
         return C if float(np.linalg.norm(C[:3, 3])) < 0.02 else np.eye(4)
 
+    def _wants_held_read(self, pp: "PlacePlan", h, o) -> bool:
+        """A place that did not ask for the in-hand read (``held_read``) still reads at its hover when the provider wants
+        one for this held object (``provider.held_read_wanted(arm, label, T_tcp_obj, obj)``: the runtime's
+        ``place_held_read``: an object that turns in the pads during the carry, a doubted grasp)."""
+        f = getattr(self.provider, "held_read_wanted", None)
+        if not callable(f) or h is None:
+            return False
+        try:
+            return bool(f(pp.arm, h.label, np.asarray(h.T_tcp_obj, float), o))
+        except Exception:  # noqa: BLE001 (an optional read)
+            return False
+
     def _held_read(self, pp: "PlacePlan", h, o, view: str = "hover") -> dict | None:
         """One read of the provider's ``held_pose(arm, prior_T_tcp_obj, asset_key, cfg_)`` (perception's in-hand pose
         of the object in the jaws, ``dojo.perception.held``; G3 re-measures from GT instead). ``cfg_``: the place target
@@ -1137,16 +1149,18 @@ class Skills:
         (where the cameras are: "hover", "look" = the other arm's wrist looks, "show" = the holding arm at a show pose;
         perception uses every camera that sees the object, a test provider may key its noise on it). None: no provider
         or the read raised."""
-        return Skills._held_call(self.provider, pp, h, o, view)
+        return Skills._held_call(self.provider, pp, h, o, view, trigger=getattr(self, "_held_trigger", None))
 
     @staticmethod
-    def _held_call(provider, pp, h, o, view: str = "hover") -> dict | None:
+    def _held_call(provider, pp, h, o, view: str = "hover", trigger: str | None = None) -> dict | None:
         f = getattr(provider, "held_pose", None)
         if f is None or h is None:
             return None
+        cfg_ = {"T_obj_target": np.asarray(pp.T_obj_target, float).tolist(), "view": view}
+        if trigger:
+            cfg_["trigger"] = trigger         # "place": the provider asked for this read (``held_read_wanted``)
         try:
-            r = f(pp.arm, prior_T_tcp_obj=h.T_tcp_obj, asset_key=o.asset.key,
-                  cfg_={"T_obj_target": np.asarray(pp.T_obj_target, float).tolist(), "view": view}) or {}
+            r = f(pp.arm, prior_T_tcp_obj=h.T_tcp_obj, asset_key=o.asset.key, cfg_=cfg_) or {}
         except Exception:  # noqa: BLE001 (an optional read)
             return None
         return r
@@ -1201,8 +1215,11 @@ class Skills:
         if getattr(self.provider, "held_pose", None) is None or h is None:
             return None
         kw = pp.tail_kw or {}
+        self._held_trigger = None
         if getattr(self.provider, "held_pose_on_request", False) and not kw.get("held_read"):
-            return None                     # reads only where a place asks (``held_read``)
+            if not self._wants_held_read(pp, h, o):
+                return None                 # reads only where a place asks (``held_read``) or the provider wants one
+            self._held_trigger = "place"    # a non-insertion place: one read at the hover, no looks (not a servo place)
         gate = 1000.0 * float(kw["held_gate"] if kw.get("held_gate") is not None else 0.5 * tol_xy)
         good = 1000.0 * float(kw["held_tol"]) if kw.get("held_tol") is not None else gate
         gate_tilt = 0.5 * tol_tilt

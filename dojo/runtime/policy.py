@@ -258,6 +258,18 @@ class RuntimeConfig:
     # for it, ``plan_place(held_read=True)``; rendered plug, auto: no gain, 2026-10-27);
     # skills adopt it within the place's tolerances
     held_pose: str = "off"
+    # mode perception, stream H, with held_pose request: places that do not ask for the in-hand read still read the held
+    # object at their hover (the pre-place still step: no extra env steps, one held_pose call) when it pays:
+    # off | swing (its centre of mass >= place_lever_mm off the pads' pivot axis: it turns in the pads during the carry:
+    # mugs by the wall, brooms, bowls by the rim) | doubt (the grasp's pick refine was not ok or fit below
+    # held_doubt_iou) | swing_or_doubt | all. An ok read re-anchors the belief and the place's tail (within the place's
+    # gate); place_read_coarse_mm > 0 also takes an "ambiguous" fit (insertion-grade sigma missed) whose position sigmas
+    # are within it at a best-view IoU >= place_read_coarse_iou
+    place_held_read: str = "off"
+    place_lever_mm: float = 20.0
+    held_doubt_iou: float = 0.85
+    place_read_coarse_mm: float = 0.0
+    place_read_coarse_iou: float = 0.75
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -326,7 +338,7 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on") or self.cfg.grip_official_key not in ("official_key", "ee_joint_state")
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.place_held_read not in ("off", "swing", "doubt", "swing_or_doubt", "all") or self.cfg.grip_check not in ("off", "on") or self.cfg.grip_official_key not in ("official_key", "ee_joint_state")
                 or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
@@ -660,6 +672,9 @@ class RuntimePolicy:
                     prov, arm, prior_T_tcp_obj, asset_key, cfg_)
                 # request: the skills read only at places that ask for it (``plan_place(held_read=True)``: insertions)
                 prov.held_pose_on_request = cfg.held_pose == "request"
+                if cfg.place_held_read != "off":    # ... and where the provider wants one (``held_read_wanted``)
+                    prov.place_held_read = cfg.place_held_read
+                    prov.place_lever_m = float(cfg.place_lever_mm) / 1000.0
             if cfg.held_pose in ("auto", "request") and hasattr(pc, "show_pose"):   # observer looks / show poses
                 prov.show_pose = lambda arm, T_tcp_obj, asset_key, cfg_=None: self._show_pose(
                     arm, T_tcp_obj, asset_key, cfg_)
@@ -822,6 +837,13 @@ class RuntimePolicy:
             kw["empty_hand"] = True
         res = self.perception().refine(obs, objs, self.fold, max_shift, arm=arm, identity_vocabulary=idv, held=held, **kw)
         r = res.get(label) or {}
+        if kind == "pick" and getattr(prov, "place_held_read", None):
+            # ``place_held_read`` doubt: a pick refine that was not ok or fit poorly leaves the grasp-time in-hand prior
+            # uncertain; the place reads the held object at its hover
+            if not r.get("ok") or float(r.get("iou") or 0.0) < self.cfg.held_doubt_iou:
+                prov.held_doubt.add(label)
+            else:
+                prov.held_doubt.discard(label)
         if sk is not None:
             sk.last_refine = {**r, "label": label, "for": kind}  # the raw reading (skills read e.g. its yaw_source)
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
@@ -1282,8 +1304,19 @@ class RuntimePolicy:
         except Exception as e:  # noqa: BLE001
             self.report["events"].append({"kind": "held_pose", "arm": arm, "error": f"{type(e).__name__}: {str(e)[:160]}"})
             return {"ok": False, "why": "error"}
+        if (cfg.get("trigger") == "place" and not r.get("ok") and r.get("why") == "ambiguous"
+                and self.cfg.place_read_coarse_mm > 0 and r.get("fit_T_tcp_obj") is not None):
+            # a non-insertion place's read (``place_held_read``): mm-level in-hand error is what its tolerance allows, so a
+            # fit that missed only the insertion-grade sigma limits is taken when every position sigma and its best view
+            # are within the coarse bounds
+            sig = r.get("sigma") or {}
+            pos = max([float(v) for v in sig.get("pos_mm") or []] or [float("inf")])
+            iou = max([float(v) for v in (r.get("iou") or {}).values()] or [0.0])
+            if pos <= self.cfg.place_read_coarse_mm and iou >= self.cfg.place_read_coarse_iou:
+                r = {**r, "ok": True, "why": "coarse", "T_tcp_obj": r["fit_T_tcp_obj"]}
         self.report["events"].append({"kind": "held_pose", "arm": arm, "step": self.bridge.steps_used,
-                                      "view": cfg.get("view"), "s": round(time.perf_counter() - t, 2),
+                                      "view": cfg.get("view"), "trigger": cfg.get("trigger"),
+                                      "s": round(time.perf_counter() - t, 2),
                                       **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
         if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
             lab, _ = prov.belief.attached[arm]

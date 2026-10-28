@@ -160,7 +160,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 verify_k: int = 0, belief_offsets: dict | None = None, mode_b: bool = False,
                 held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True,
                 freeze_touched: bool = False, confirm_pose: bool = False, belief_drop: str | None = None,
-                allow_bbox: bool = False, held_request: bool = False,
+                allow_bbox: bool = False, held_request: bool = False, place_held_read: str | None = None,
                 look_read: str | None = None) -> dict:
     """``held_pose`` ("noise" / "gt", mode B): perception's in-hand read answered from GT (``heldsim``), with the
     runtime belief's in-hand transform (implied); ``held_belief``: that belief alone (no read); ``held_looks``: the
@@ -194,6 +194,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
         prov = HeldBeliefProvider(prov, env, mode=held_pose or None, seed=seed, freeze=freeze_touched,
                                   confirm=confirm_pose, drop=belief_drop)
         prov.held_pose_on_request = bool(held_request)     # the runtime's held_pose: request
+        prov.place_held_read = place_held_read or None     # ... and the runtime's place_held_read (stream H)
     if mode_b and hasattr(prov, "garment"):
         prov = FrozenGarmentProvider(prov, noise_mm=float(os.environ.get("G3_GARMENT_NOISE_MM", "0")), seed=seed)
     t1 = time.perf_counter()
@@ -371,13 +372,14 @@ def cmd_run(a) -> None:
                           verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b, held_pose=a.held_pose,
                           held_belief=a.held_belief, held_looks=not a.no_held_looks,
                           freeze_touched=a.freeze_touched, confirm_pose=a.confirm_pose, belief_drop=a.belief_drop, allow_bbox=a.allow_bbox,
-                          held_request=a.held_pose_request, look_read=a.look_read)
+                          held_request=a.held_pose_request, look_read=a.look_read, place_held_read=a.place_held_read)
         if offs or a.mode_b:
             rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b), "held_pose": a.held_pose,
                                 "held_belief": bool(a.held_belief or a.held_pose or a.freeze_touched or a.confirm_pose),
                                 "held_looks": not a.no_held_looks, "freeze_touched": bool(a.freeze_touched or a.confirm_pose),
                                 "confirm_pose": bool(a.confirm_pose), "belief_drop": a.belief_drop,
-                                "held_pose_request": bool(a.held_pose_request), "look_read": a.look_read}
+                                "held_pose_request": bool(a.held_pose_request), "look_read": a.look_read,
+                                "place_held_read": a.place_held_read}
         rec["log"] = logs[-60:]
         rec["code"] = code
         rec["usd_sync_links"] = bool(getattr(run, "usd_sync_links", False))
@@ -752,6 +754,9 @@ def main(argv=None) -> None:
     r.add_argument("--held-belief", action="store_true",
                    help="mode B: the runtime belief's in-hand transform (attached at the close), no held_pose (dev)")
     r.add_argument("--no-held-looks", action="store_true", help="the held-pose protocol reads at the hover only (dev)")
+    r.add_argument("--place-held-read", choices=("swing", "all"), default=None,
+                   help="with --held-pose and --held-pose-request: non-insertion places read at their hover too, as the "
+                        "runtime's place_held_read (stream H; swing = centre of mass off the pads' pivot axis) (dev)")
     r.add_argument("--held-pose-request", action="store_true",
                    help="with --held-pose: read only at places that ask (plan_place held_read), as the runtime's "
                         "held_pose: request (dev)")

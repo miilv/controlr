@@ -173,9 +173,27 @@ class HeldBeliefProvider:
             self.show_pose = self._show_pose
         self._step = env.step
         env.step = self._on_step
+        # the runtime's ``place_held_read`` rule (stream H), for G3's step cost: None | "swing" | "all" (G3 has no pick
+        # refine, so no doubt rule); ``held_read_wanted`` is what Skills asks at a place that did not ask for the read
+        self.place_held_read: str | None = None
+        self.place_lever_m = 0.02
 
     def __getattr__(self, name):
         return getattr(self.base, name)
+
+    def held_read_wanted(self, arm: str, label: str, T_tcp_obj, o) -> bool:
+        """The runtime provider's rule (``RuntimeProvider.held_read_wanted``) on G3's proprio: swing = the centre of mass
+        >= ``place_lever_m`` off the pads' pivot axis across gravity."""
+        if not self.place_held_read:
+            return False
+        if self.place_held_read == "all":
+            return True
+        from dojo.skills.grasps import swing_lever
+        from dojo.skills.library import physics_com
+        q = np.asarray(self.env.proprio()[f"{arm}_arm_joint_state"], float).reshape(-1)[:6]
+        lever = swing_lever(T_tcp_obj, physics_com(o), self.kin.tcp(arm, q))
+        self.events.append({"kind": "place_held_read", "arm": arm, "label": label, "lever_mm": round(lever * 1000, 1)})
+        return lever >= self.place_lever_m
 
     # ------------------------------------------------------------------ belief
     def _on_step(self, action: dict):

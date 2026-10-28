@@ -425,6 +425,11 @@ class RuntimeProvider:
         self.grip_missed: set[str] = set()      # labels a close missed (the next pick refine may search wider)
         self._grip_last: dict = {}              # arm -> ((label, grasp n), verdict) last logged
         self._grip_held_seen: dict = {}         # arm -> (label, grasp n) once the reading said held in that grasp
+        # mode perception, stream H: which places that did not ask for it still read the held object at their hover
+        # (``held_read_wanted``; policy ``place_held_read``): None (none) | swing | doubt | swing_or_doubt | all
+        self.place_held_read: str | None = None
+        self.place_lever_m = 0.02               # swing: the centre of mass this far off the pads' pivot axis
+        self.held_doubt: set[str] = set()       # labels whose last pick refine was not ok or fit poorly
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
         self.garment_reader = None              # (obs) -> a garment read (``dojo.perception.garment``) or None
         self.garment_updater = None             # (obs0, obs, read) -> {"keypoints": the hem corners again} or None
@@ -960,6 +965,37 @@ class RuntimeProvider:
             o.source = "tracked"
             riders.add(lab)
         self.belief.riders = riders
+
+    def held_read_wanted(self, arm: str, label: str, T_tcp_obj, o) -> bool:
+        """Skills' question at a place that did not ask for the in-hand read (``Skills._wants_held_read``): read the held
+        object at this hover? ``place_held_read``:
+        - ``swing``: its centre of mass sits >= ``place_lever_m`` off the closing axis across gravity at this TCP pose
+          (``swing_lever``), so gravity turns it in the pads during the carry: a mug by its wall, a broom by its handle,
+          a bowl by its rim. The in-hand error that M's metric scores at those places arises after the lift (stream C's
+          hang sequences: 9-21 mm / 15-21 deg of swing between the lift and the hook);
+        - ``doubt``: the grasp's pick refine was not ok or fit below the policy's ``held_doubt_iou``;
+        - ``swing_or_doubt``, ``all``.
+        Event ``place_held_read`` (lever, doubt, wanted)."""
+        mode = self.place_held_read
+        if not mode or self.belief is None:
+            return False
+        lever = None
+        try:
+            from dojo.skills.grasps import swing_lever
+            from dojo.skills.library import physics_com
+            T_tcp = self.kin.tcp(arm, self.belief.q[arm])
+            lever = swing_lever(T_tcp_obj, physics_com(o), T_tcp)
+        except Exception:  # noqa: BLE001 (no geometry: only the doubt rule can ask)
+            lever = None
+        doubt = label in self.held_doubt
+        swing = lever is not None and lever >= self.place_lever_m
+        want = {"swing": swing, "doubt": doubt, "swing_or_doubt": swing or doubt, "all": True}.get(mode, False)
+        self.events.append({"kind": "place_held_read", "arm": arm, "label": label, "step": self.bridge.steps_used,
+                            "lever_mm": None if lever is None else round(lever * 1000, 1), "doubt": doubt,
+                            "wanted": bool(want)})
+        if want:
+            self.stats["place_held_reads"] = self.stats.get("place_held_reads", 0) + 1
+        return bool(want)
 
     def _grip_check(self, obs: dict) -> None:
         """Every refresh while an arm holds ``label`` in the belief: RoboDojo's official gripper value against the command.

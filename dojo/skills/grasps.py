@@ -414,6 +414,15 @@ def mesh_width_at(obj: ObjectState, T_grasp: np.ndarray, reach: float = 0.05, de
     return w if w > 0.002 else None
 
 
+def swing_lever(T_tcp_obj, com_obj, T_tcp_world) -> float:
+    """How far (m) an object's centre of mass ``com_obj`` (object frame) sits off the pads' closing axis (TCP y) across
+    gravity, held at ``T_tcp_obj`` with the TCP at ``T_tcp_world``: the lever gravity turns it about the pads with."""
+    T = np.asarray(T_tcp_obj, float)
+    c = T[:3, :3] @ np.asarray(com_obj, float) + T[:3, 3]
+    g = np.asarray(T_tcp_world, float)[:3, :3].T @ np.array([0.0, 0.0, -1.0])
+    return abs(float(np.cross(c, g)[1]))
+
+
 def mesh_com(asset) -> np.ndarray:
     """Centre of mass in the object frame: the volume centroid of a closed mesh (PhysX takes the mass
     properties from the colliders at uniform density), else the area-weighted surface centroid, else the
