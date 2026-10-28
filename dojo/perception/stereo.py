@@ -401,7 +401,7 @@ def check_record(record: dict, images: dict, state: dict, cams: dict | None = No
     resting pose, a stand 1-2 cm off). Proud blobs no object explains go to ``_perception.stereo_unexplained`` (world xy
     at their measured height, area): objects standing up where the record has none. Returns a summary."""
     from .cameras import cameras_from_state
-    from .render import load_asset, robot_mask
+    from .render import robot_mask
 
     t0 = time.time()
     cams = cams or cameras_from_state(state)
@@ -422,17 +422,29 @@ def check_record(record: dict, images: dict, state: dict, cams: dict | None = No
     kw.update(sweep_kw or {})
     sw = plane_sweep(ref, list(views.values()), **kw)
     cam = scaled_camera(ref.cam, sw.scale)
+    summ = check_heights(record, cam, sw, dh_mm=dh_mm, min_px=min_px, blob_px=blob_px)
+    summ.update({"views": [ref.cam.name] + list(views), "sweep_s": sw.timings["total_s"], "total_s": round(time.time() - t0, 3)})
+    record["_perception"]["stereo_check"] = summ
+    return summ
+
+
+def check_heights(record: dict, cam: Camera, sw, dh_mm: float = 4.0, min_px: int = 8, blob_px: int = 30,
+                  key: str = "stereo") -> dict:
+    """The comparison half of ``check_record`` for any measured height map in ``cam`` (the plane sweep's, or a learned
+    model's: ``mv3d``). ``sw`` needs ``height`` (m above TABLE_Z, NaN unknown), ``known``, ``on_table`` and ``proud``
+    (uint8), all sized like ``cam``. Writes ``_perception[key]`` per object and ``_perception[key + "_unexplained"]``."""
+    from .cameras import pose_to_T
+    from .render import load_asset
+
     ents, items = [], []
     for typ, cat, r in _record_entries(record):
-        key = f"{typ}/{cat}/{int(r['category_idx']):05d}"
+        akey = f"{typ}/{cat}/{int(r['category_idx']):05d}"
         try:
-            a = load_asset(key)
+            a = load_asset(akey)
         except Exception:
             continue
-        from .cameras import pose_to_T
-
         ents.append(r)
-        items.append((key, a.Vs, a.Fs, pose_to_T(r["default_pos"], r["default_ori"])))
+        items.append((akey, a.Vs, a.Fs, pose_to_T(r["default_pos"], r["default_ori"])))
     ph, pid = object_heights(cam, items)
     n_mis = 0
     for i, r in enumerate(ents):
@@ -454,7 +466,7 @@ def check_record(record: dict, images: dict, state: dict, cams: dict | None = No
                 pr = float((sw.proud[kn] > 0).mean())
                 out["mismatch"] = bool(on >= 0.5 and pr < 0.2)
         n_mis += bool(out.get("mismatch"))
-        r.setdefault("_perception", {})["stereo"] = out
+        r.setdefault("_perception", {})[key] = out
     expl = cv2.dilate((pid >= 0).astype(np.uint8), np.ones((11, 11), np.uint8))
     n, lab, st, _ = cv2.connectedComponentsWithStats((sw.proud > 0).astype(np.uint8))
     unexpl = []
@@ -472,8 +484,5 @@ def check_record(record: dict, images: dict, state: dict, cams: dict | None = No
                            "height_mm": round(hm * 1000, 1), "source": "stereo"})
     unexpl.sort(key=lambda u: -u["area_px"])
     p = record.setdefault("_perception", {})
-    p["stereo_unexplained"] = unexpl[:8]
-    summ = {"objects": len(ents), "mismatch": n_mis, "unexplained": len(unexpl), "views": [ref.cam.name] + list(views),
-            "sweep_s": sw.timings["total_s"], "total_s": round(time.time() - t0, 3)}
-    p["stereo_check"] = summ
-    return summ
+    p[f"{key}_unexplained"] = unexpl[:8]
+    return {"objects": len(ents), "mismatch": n_mis, "unexplained": len(unexpl)}

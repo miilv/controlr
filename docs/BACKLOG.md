@@ -78,7 +78,20 @@
   glossy and striped: its view-dependent streaks give ~20 phantom "proud" blobs per frame (a uniqueness gate does not
   help), so stereo there can only confirm colour candidates. The home wrists see only the table beyond y ≈ -0.15, the
   zone in front of the grippers needs the scan pose (coverage 0.34 -> 0.75). Vertical faces and textureless tops get no
-  height (experiments/2026-10-27-stereo-height).
+  height (experiments/2026-10-27-stereo-height). In front of the grippers and on vertical / textureless faces the learned
+  depth (`mv3d`, VGGT through our cameras) covers it at home: 1026 / 1043 objects, top 3.5 / 12.3 mm; the belt is not
+  measured yet (experiments/2026-10-28-mv3d-learned-depth).
+- [ ] **dojo perception: learned height check in the runtime (`height_source="mv3d"`), needs a rendered A/B.** At frame 0
+  it beats the sweep as a check of B1's records (15 mm flags: precision 65/107 vs 44/202, recall 65/88 vs 44/88, false
+  flags on right objects 4.5 % vs 17 %; experiments/2026-10-28-mv3d-learned-depth). Before an A/B: start
+  `python -m dojo.perception.mv3d serve --sock ... --weights <vggt-1b>` next to the perception service (3.5 GB VRAM, bf16
+  trunk) and set `DOJO_MV3D_ADDR`; arm `DOJO_PERCEPTION_CFG='{"stereo_check": true, "height_source": "mv3d"}'`. It does
+  not resolve thin parts (the coin stand, ~11 px in the head): keep `stereo_reject="slot_bases"` on the scan-pose sweep.
+  Not measured: the belt, the scan / look frames, timing inside the service.
+- [ ] **dojo perception: the raised-but-unexplained proposer engages rarely** (`mv3d_propose`, default off): 18-22 of
+  217 frame-0 scenes have a raised region no B1 object explains; +2 within / +2-3 overshoot, 0 broken. Most B1 gross
+  objects are swaps onto another object's blob, not gaps. Its fits are right in position and wrong in yaw (the organize
+  alarm 180 deg flipped): pair it with an appearance score (research R3 / E3) before enabling.
 - [ ] **dojo perception: classify_objects' series stay under the config label** (`rigid0` x n). Its per-category
   prefixes (`cat0_*`, `cat1_*`, `cat2_*`) follow the generator's random category order, which can't be observed, so
   `series_count` doesn't rename them. Check what the checker / twin need there. SAM 3.1 text also undercounts its

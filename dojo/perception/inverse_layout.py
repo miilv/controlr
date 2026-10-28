@@ -3112,6 +3112,15 @@ class EstimatorConfig:
     # the stand phantoms a read puts on bare table or on the piggy bank. Other bases (kong tiles, the bread shelf, the
     # mallet stand) are never dropped: on 71 integ layouts the 10 mm flag was wrong on 9 % of right objects
     stereo_reject: str = "off"
+    # where the height check's measured heights come from: "sweep" (the plane sweep above) or "mv3d" (learned multi-view
+    # depth, VGGT-1B through our own cameras, table-fitted; dojo.perception.mv3d, a GPU server at DOJO_MV3D_ADDR; without
+    # a server the check falls back to the sweep). Frame 0, 207 dev scenes: 15 mm flags precision 65/107 vs 44/202,
+    # recall 65/88 vs 44/88, false flags on right objects 4.5 % vs 17 % (docs/experiments/2026-10-28-mv3d-learned-depth.md)
+    height_source: str = "sweep"
+    # mv3d_propose: raised regions of the learned height map that no object explains -> the record's missing labels and
+    # height-check suspects fitted there by B1's render-and-compare (mv3d.propose_unexplained). Needs the mv3d server
+    mv3d_propose: bool = False
+    mv3d_propose_loss: float = 0.5
     # SAM mask proposals (dojo.perception.sam_masks; a no-op without a SAM server at DOJO_SAM_ADDR). Default off.
     # sam_fg: the head foreground combined with SAM 3.1's text masks for the scene vocabulary: "union" | "gate" | "replace"
     sam_fg: str = "off"
@@ -3795,17 +3804,70 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if series:
         record["_perception"]["series"] = series
         _series_labels_out(record, task, series)
+    learned = None
+    if cfg.mv3d_propose or (cfg.stereo_check and cfg.height_source == "mv3d"):
+        learned = _mv3d_heights(images, cams, {n: v.robot for n, v in views_all.items()}, record)
+    if cfg.mv3d_propose and learned is not None:
+        _mv3d_propose(record, views, learned, task, cams, cfg)
     if cfg.stereo_check:
-        stereo_check(record, images, state, cams, {n: v.robot for n, v in views_all.items()}, cfg)
+        stereo_check(record, images, state, cams, {n: v.robot for n, v in views_all.items()}, cfg, heights=learned)
     return record
 
 
-def stereo_check(record: dict, images: dict, state: dict, cams: dict, robot_masks: dict, cfg: EstimatorConfig) -> dict:
-    """``EstimatorConfig.stereo_check``: annotate the record (stereo.check_record), then ``stereo_reject``."""
-    from .stereo import check_record
+def _mv3d_heights(images: dict, cams: dict, robot_masks: dict, record: dict):
+    """The learned head height map (mv3d.learned_head_height) or None (no server / an error, noted in the record)."""
+    from . import mv3d
 
     try:
-        summ = check_record(record, images, state, cams=cams, robot_masks=robot_masks, dh_mm=cfg.stereo_dh_mm)
+        r = mv3d.learned_head_height(images, cams, robot_masks)
+    except Exception as e:  # never cost the estimate
+        record.setdefault("_perception", {})["mv3d"] = {"error": f"{type(e).__name__}: {e}"}
+        return None
+    if r is None:
+        record.setdefault("_perception", {})["mv3d"] = {"skipped": f"no server at ${mv3d.ENV_ADDR}"}
+        return None
+    record.setdefault("_perception", {})["mv3d"] = r[1]
+    return r[0]
+
+
+def _mv3d_propose(record: dict, views: dict, heights: np.ndarray, task: str, cams: dict, cfg: EstimatorConfig) -> None:
+    import dataclasses
+
+    from . import mv3d
+
+    head = views.get("cam_head")
+    if head is None:
+        return
+    vws = dict(views)
+    vws["cam_head"] = dataclasses.replace(head, fg=head.fg.copy(), known=head.known.copy())  # the proposer adds to them
+    try:
+        t0 = time.time()
+        mv3d.propose_unexplained(record, vws, heights, task, valid=np.isfinite(heights) & (head.robot == 0),
+                                 max_loss=cfg.mv3d_propose_loss)
+        record["_perception"].setdefault("timings", {})["mv3d_propose_s"] = round(time.time() - t0, 3)
+    except Exception as e:  # never cost the estimate
+        record.setdefault("_perception", {})["mv3d_propose"] = {"error": f"{type(e).__name__}: {e}"}
+
+
+def stereo_check(record: dict, images: dict, state: dict, cams: dict, robot_masks: dict, cfg: EstimatorConfig,
+                 heights: np.ndarray | None = None) -> dict:
+    """``EstimatorConfig.stereo_check``: annotate the record (stereo.check_record, or ``stereo.check_heights`` on the
+    learned head height map when ``cfg.height_source == "mv3d"``), then ``stereo_reject``."""
+    from .stereo import check_heights, check_record
+
+    try:
+        if heights is None and cfg.height_source == "mv3d":
+            heights = _mv3d_heights(images, cams, robot_masks or {}, record)
+        if heights is not None:
+            from .mv3d import height_sweep_like
+
+            summ = check_heights(record, cams["cam_head"], height_sweep_like(heights, np.isfinite(heights)), dh_mm=cfg.stereo_dh_mm)
+            summ["source"] = "mv3d"
+            record.setdefault("_perception", {})["stereo_check"] = summ
+        else:
+            summ = check_record(record, images, state, cams=cams, robot_masks=robot_masks, dh_mm=cfg.stereo_dh_mm)
+            if cfg.height_source == "mv3d":
+                summ["source"] = "sweep (no mv3d server)"
     except Exception as e:  # a check must never cost the estimate
         record.setdefault("_perception", {})["stereo_check"] = {"error": f"{type(e).__name__}: {e}"}
         return record
