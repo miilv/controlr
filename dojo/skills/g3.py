@@ -158,7 +158,9 @@ class FrozenGarmentProvider:
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
 SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
-               "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach"), "stack_reach": ("centre", "grasp")}
+               "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach"),
+               "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
+               "stack_reach": ("centre", "grasp")}
 
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
