@@ -75,7 +75,7 @@ def rows_bottle():
 def rows_classify():
     out = [dict(label=f"basket{i}", category="basket", category_idx=2 + i, type="Geometry", pos=[x, 0.05, Z + 0.05],
                 quat=[1, 0, 0, 0], half=[0.09, 0.09, 0.05]) for i, x in enumerate((-0.28, 0.0, 0.28))]
-    for i, (cat, x) in enumerate((("watch", -0.25), ("watch", -0.05), ("pen", 0.1), ("toy_car", 0.25))):
+    for i, (cat, x) in enumerate((("watch", -0.25), ("pen", 0.05), ("toy_car", 0.25))):   # one per kind, as in 100001
         out.append(dict(label=f"cat{i}", category=cat, category_idx=i, pos=[x, -0.15, Z + 0.012], quat=[1, 0, 0, 0],
                         half=[0.03, 0.012, 0.012]))
     return out
