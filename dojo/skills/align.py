@@ -95,7 +95,7 @@ def _spread(ts: dict, anchor: str, spacing: float) -> dict:
     return out
 
 
-def row_plans(world, labels: list, spacing: float = SPACING, slots: bool = True) -> list[dict]:
+def row_plans(world, labels: list, spacing: float = SPACING, slots: bool = True, free_rows: bool = True) -> list[dict]:
     """Row plans, cheapest first: {"anchor", "theta" (deg, the line's heading), "targets": {label: (xy, yaw_deg)},
     "cost" (m of travel + 1 mm per deg of turn)}. Per (anchor, heading): the movers at their projections spread
     ``spacing`` apart (``_spread``), and with ``slots`` also every assignment of the movers to the slots +-1, +-2
@@ -131,7 +131,43 @@ def row_plans(world, labels: list, spacing: float = SPACING, slots: bool = True)
                     if k != a:
                         cost += float(np.linalg.norm(xy - objs[k].center_w[:2])) + 0.001 * turn
                 plans.append({"anchor": a, "theta": th, "targets": targets, "cost": cost})
+    if free_rows:
+        plans += _free_rows(objs, labels, spacing)
     return sorted(plans, key=lambda p: p["cost"])
+
+
+FREE_ROW_COST = 0.15      # m: a row that moves every block costs this much more (one slide more of the 200 steps)
+FREE_SHIFTS = (0.0, -0.04, 0.04)   # m: the free row's line moved across itself (around what blocks a slide)
+
+
+def _free_rows(objs: dict, labels: list, spacing: float) -> list[dict]:
+    """Rows that move every block (no anchor): along each block's face axes, through the blocks' centroid (and
+    ``FREE_SHIFTS`` across it), the projections spread ``spacing`` apart about their middle. When every anchored plan has
+    a slide through another block or the set square (G3 v0 100002)."""
+    P = np.array([objs[k].center_w[:2] for k in labels])
+    c0 = P.mean(0)
+    out = []
+    for k0 in labels:
+        for dth in (0.0, 90.0):
+            th = _wrap90(yaw_deg(objs[k0])) + dth
+            u = np.array([math.cos(math.radians(th)), math.sin(math.radians(th))])
+            n = np.array([-u[1], u[0]])
+            for dn in FREE_SHIFTS:
+                c = c0 + dn * n
+                ts = sorted(((float((objs[k].center_w[:2] - c) @ u), k) for k in labels))
+                p = [t for t, _ in ts]
+                mid = len(p) // 2
+                for i in range(mid + 1, len(p)):
+                    p[i] = max(p[i], p[i - 1] + spacing)
+                for i in range(mid - 1, -1, -1):
+                    p[i] = min(p[i], p[i + 1] - spacing)
+                targets, cost = {}, FREE_ROW_COST
+                for t, (_, k) in zip(p, ts):
+                    xy = c + t * u
+                    targets[k] = (xy, th)
+                    cost += float(np.linalg.norm(xy - objs[k].center_w[:2])) + 0.001 * abs(_wrap90(th - yaw_deg(objs[k])))
+                out.append({"anchor": None, "theta": th, "targets": targets, "cost": cost})
+    return out
 
 
 # ------------------------------------------------------------------ one slide
@@ -303,14 +339,14 @@ def _choose(sk, objects: list, spacing: float, max_plans: int) -> tuple:
                            and _off(w.obj(k), *pl["targets"][k])[1] <= YAW_TOL)]
         if not movers:
             return pl, movers, []
-        for order in itertools.islice(itertools.permutations(movers), 6):
+        for order in itertools.islice(itertools.permutations(movers), 6 if pl["anchor"] is not None else 3):
             seq = _plan_order(sk, pl, list(order), notes)
             if seq is not None:
                 return pl, movers, seq
     return None, notes
 
 
-def align_in_row(sk, objects: list[str], spacing: float = SPACING, max_plans: int = 16) -> dict:
+def align_in_row(sk, objects: list[str], spacing: float = SPACING, max_plans: int = 24) -> dict:
     """Slide ``objects`` (identical blocks) into one straight row along a face axis of one of them (the anchor), turned
     to the row's heading, never lifting them more than ``SLIDE_LIFT``; then one correcting slide of the worst block when
     the row is still off by more than ``FIX_TOL``."""

@@ -249,3 +249,37 @@ def test_equation_semantics_leave_other_tasks_byte_identical():
             with_sem = gl._draw(tcfg, scfg, groups, sub, semantics=True)
             assert with_sem[3] is None
             assert json.dumps(with_sem[:3], sort_keys=True, default=str) == json.dumps(plain, sort_keys=True, default=str)
+
+
+def test_one_view_reads_are_confirmed_with_a_wrist_look(monkeypatch):
+    """A digit read in one view (digit_conf 0.5) is looked at before the skill commits; two-view reads are not."""
+    objs = _equation_objs({0: ("number", 9), 1: ("minus", 0), 4: ("number", 17)})        # 9 - _ = 7
+    for o in objs:
+        if o.category == "number":
+            o.source, o.digit, o.digit_source = "perception", o.idx % 10, "glyph"
+            o.digit_conf = 0.5 if o.label in ("t0", "num_2", "num_5") else 1.0
+    w = _world(objs, routes=["equation"])
+    looked = []
+
+    class Sk:
+        world = w
+        held = {"left": None, "right": None}
+
+        def refresh(self):
+            return w
+
+        def log(self, m):
+            pass
+
+        def bank(self):
+            pass
+
+    def fake_look(sk, label):
+        looked.append(label)
+        sk.world.obj(label).digit_conf = 1.0
+        return tiles.tile_value(sk.world.obj(label))
+    monkeypatch.setattr(tiles, "_look_value", fake_look)
+    monkeypatch.setattr(tiles, "_place_tile", lambda *a, **k: type("R", (), {"ok": True, "status": "ok", "note": ""})())
+    r = tiles.complete_equation(Sk())
+    # the equation's one-view tile, then the tile about to be placed (2); never num_5, which nobody needs
+    assert r["ok"] and looked == ["t0", "num_2"]

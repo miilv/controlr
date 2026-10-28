@@ -89,3 +89,14 @@ def test_row_by_size_on_the_kinematic_env():
     for k in order:
         assert w.obj(k).R[2, 2] > math.cos(math.radians(15))
     assert env.steps_used <= 1050
+
+
+def test_row_around_the_widest_object_that_stays():
+    """The widest doll fits the open gripper worst: the cheapest row leaves it where it is when the others fit around
+    it (here: its line at y -0.15, the four smaller ones to its left)."""
+    objs = _dolls()
+    objs[0].pos = np.array([0.20, -0.15, Z + HALVES[0][2]])          # the widest, on the right where it belongs
+    r = rows.row_slots(_world(objs), [f"doll{i}" for i in range(5)])[0]
+    assert r["anchor"] == "doll0" and np.allclose(r["xy"]["doll0"], [0.20, -0.15])
+    xs = [r["xy"][k][0] for k in r["order"]]
+    assert all(xs[i + 1] - xs[i] > 0.03 for i in range(4)) and max(abs(x) for x in xs[:-1]) <= rows.MAX_X

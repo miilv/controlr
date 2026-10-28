@@ -39,7 +39,13 @@ YAWS_DEG = (0.0, 12.0, -12.0, 24.0, -24.0, 34.0, -34.0)   # target headings of t
 REACH_SHIFTS = (0.0, 0.007)
 # the pads lie at the edge of the reach: the default pre-place 6 cm over the target (and a 5 cm retreat) had no IK
 # at mat1 / mat2 for either arm (G3 100031 / 100044 went through an in-air handover and slipped); 3 cm plans
-PLACE_KW = {"pre_h": 0.03, "retreat": 0.03}
+# the carry of a frictionless numeral at CARRY speed (0.14 rad / step) shifted it 52 mm in the pads and dropped it 13 cm
+# off its pad (G3 v0 100001): the uneven-object carry speed
+# (and 0.09 still flung an "8" off the hand in 3 of 7 arrange episodes, G3 1ed92d3): SLOW, 0.05
+PLACE_KW = {"pre_h": 0.03, "retreat": 0.03, "approach_rad": 0.05}
+# a lower lift (less swing on the way up) and a 12-deg tilt next to the 25-deg one: the far pads need a tilted hand, and
+# the 25-deg one is where the numerals slid
+TRANSFER_KW = {"lift": 0.03, "box_tilts": (0.0, 12.0, -12.0, 25.0, -25.0), "pick_kw": {"lift_rad": 0.05}}
 # a tile on one side of the table bound for a pad the other arm reaches is put down between the arms first; the
 # default relay patch (0, -0.28) is where solve_equation's four operator discs lie (G3 100033 / 100038: no spot)
 RELAY_NEAR = (0.0, -0.16)
@@ -288,6 +294,25 @@ ATTEMPTS = ({"allow_top": False, "air_handover": False}, {"allow_top": True, "ai
             {"allow_top": True, "air_handover": True})
 
 
+# a digit read in one view only (perception's ``digit_conf`` 0.5; two agreeing views 1.0) is confirmed with a wrist look
+# before the skill commits to it (stream W / S: frame 0 reads one view for most numerals; a look that agrees makes
+# it 1.0, one that disagrees makes it unread)
+CONFIRM_BELOW = 1.0
+
+
+def _confirm(sk, labels, looks: int, max_looks: int) -> int:
+    """Look once at every tile of ``labels`` whose value was read with confidence < ``CONFIRM_BELOW``, within the look
+    budget; returns the looks used so far."""
+    for lab in labels:
+        if looks >= max_looks or lab not in sk.world.objects:
+            break
+        v = tile_value(sk.world.obj(lab))
+        if v is not None and v[1] < CONFIRM_BELOW:
+            _look_value(sk, lab)
+            looks += 1
+    return looks
+
+
 def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0):
     """``place_oriented`` onto the pad, with ``ATTEMPTS[attempt]``. No in-air handover before the last attempt: its
     grasps skip this module's grasp filters, and the frictionless number tiles / thin discs slipped out of 6 of 6
@@ -299,11 +324,11 @@ def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0):
         tg += tile_targets(sk, label, pad, yaws_deg=tuple(y + 180.0 for y in YAWS_DEG))
     return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,),
                           air_handover=a["air_handover"], relay_near=RELAY_NEAR, max_spots=5, place_kw=dict(PLACE_KW),
-                          transfer_kw={"max_pick_tilt": MAX_PICK_TILT,
+                          transfer_kw={**TRANSFER_KW, "max_pick_tilt": MAX_PICK_TILT,
                                        "pair_ok": centred_grasp(sk.world.obj(label), allow_top=a["allow_top"])})
 
 
-def complete_equation(sk, max_looks: int = 4, max_tries: int = 5) -> dict:
+def complete_equation(sk, max_looks: int = 6, max_tries: int = 5) -> dict:
     """Read the equation on the pads, find the value of its one empty slot, put a tile showing it there (centred,
     upright, body x along world x). Unknown values are looked at with a wrist, never guessed."""
     from dojo.skills.skills import SkillResult
@@ -313,6 +338,9 @@ def complete_equation(sk, max_looks: int = 4, max_tries: int = 5) -> dict:
     while eq["error"] is None and eq["unknown"] and looks < max_looks:
         _look_value(sk, eq["unknown"][0])
         looks += 1
+        eq = read_equation(sk.world)
+    if eq["error"] is None:
+        looks = _confirm(sk, [t for t in eq["tiles"] if t], looks, max_looks)
         eq = read_equation(sk.world)
     sk.log(f"[tiles] equation {eq}")
     if eq["error"] is not None:
@@ -347,6 +375,10 @@ def complete_equation(sk, max_looks: int = 4, max_tries: int = 5) -> dict:
     while not cands and unknown and looks < max_looks:
         _look_value(sk, unknown[0].label)
         looks += 1
+        cands, unknown = candidates()
+    if cands:
+        # the tile about to be placed: a one-view read is confirmed first (a wrong digit on the pad fails the episode)
+        looks = _confirm(sk, [cands[0].label], looks, max_looks)
         cands, unknown = candidates()
     sk.log(f"[tiles] slot {i} on {pad} needs {valid}: candidates {[o.label for o in cands]}")
     if not cands:
@@ -402,6 +434,9 @@ def arrange_digits(sk, descending: bool = True, max_looks: int = 6) -> dict:
         _look_value(sk, a["unknown"][0])
         looks += 1
         a = digit_assignment(sk.world, descending)
+    if a["error"] is None and not a["unknown"]:
+        looks = _confirm(sk, [t for t, _ in a["pairs"]], looks, max_looks + len(a["pairs"]))
+        a = digit_assignment(sk.world, descending)
     sk.log(f"[tiles] digits {a}")
     if a["error"] is not None:
         return {"ok": False, "stage": "read", "note": a["error"]}
@@ -418,7 +453,8 @@ def arrange_digits(sk, descending: bool = True, max_looks: int = 6) -> dict:
 
     def blockers(t, pad) -> list:
         p = sk.world.obj(pad)
-        return [o.label for o in sk.world.task_objects() if o.label != t and o.obj_type != "Geometry"
+        # clutter too (arrange_largest_number_random: 20 clutter objects; one on a pad blocks its place)
+        return [o.label for o in sk.world.objects.values() if o.label != t and o.obj_type not in ("Geometry", "Garment")
                 and float(np.linalg.norm(o.center_w[:2] - p.center_w[:2])) < OCCUPIED]
 
     def arm_dist(label) -> float:
