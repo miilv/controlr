@@ -103,7 +103,7 @@ def _probe_check(row: dict, frames: dict, actions: list, kin) -> dict:
 def family(run: str) -> str:
     """A run's round: the name without its task and repeat suffix (B_hang_mugs_breadth2 -> B_*_breadth2)."""
     import re
-    for pat, fam in ((r"^c4_", "c4 (genuine 5.1)"), (r"^smoke51", "c4 (genuine 5.1)"), (r"^P3r3_", "P3r3"), (r"^P3n_", "P3n"),
+    for pat, fam in ((r"^c4b_", "c4b (Integration, latest code)"), (r"^c4_", "c4 (genuine 5.1)"), (r"^smoke51", "c4 (genuine 5.1)"), (r"^P3r3_", "P3r3"), (r"^P3n_", "P3n"),
                      (r"^P3_", "P3"), (r"^S79_", "S79"), (r"^TL_", "TL"), (r"^AGB?_", "AG"), (r"_breadth2$", "B_breadth2"),
                      (r"_breadth$", "B_breadth"), (r"^B_plug_heldpose", "B_heldpose")):
         if re.search(pat, run):
@@ -114,7 +114,7 @@ def family(run: str) -> str:
 # newest first (the rounds' dates and code: c4 27 Oct 17-22Z submit_v2/v3 genuine 5.1; P3r3 27 Oct 12Z submit_v2 13aaf9a;
 # TL 11Z; P3n 08Z eeb94de; P3 05Z 1f7e965; S79 03Z 48600bf; breadth2 26 Oct 21Z ed8ca42; heldpose 16Z; breadth 16Z
 # f9b0d75; early rounds 25-26 Oct)
-FAMILY_ORDER = ("c4 (genuine 5.1)", "P3r3", "TL", "P3n", "P3", "S79", "B_breadth2", "B_heldpose", "B_breadth", "AG",
+FAMILY_ORDER = ("c4b (Integration, latest code)", "c4 (genuine 5.1)", "P3r3", "TL", "P3n", "P3", "S79", "B_breadth2", "B_heldpose", "B_breadth", "AG",
                 "early (B_stack / B_build / B_tower ...)")
 
 
