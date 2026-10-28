@@ -307,3 +307,15 @@ def test_test_mode_takes_only_held_out_ids_and_a_test_dir(tmp_path):
         seg_render.main(["--task", "make_kong", "--ids", "100000", "--variants", "0", "--test", "--out", str(tmp_path / "render")])
     with pytest.raises(SystemExit, match="test"):
         seg_render.main(["--task", "make_kong", "--ids", "100000", "--variants", "1", "--test", "--out", str(tmp_path / "render_test")])
+
+
+def test_rot_between_maps_a_onto_b():
+    rng = np.random.default_rng(3)
+    for _ in range(20):
+        a, b = rng.normal(size=3), rng.normal(size=3)
+        R = seg_render._rot_between(a, b)
+        assert np.allclose(R @ (a / np.linalg.norm(a)), b / np.linalg.norm(b), atol=1e-9)
+        assert np.allclose(R @ R.T, np.eye(3), atol=1e-9) and np.isclose(np.linalg.det(R), 1.0)
+    a = np.array([0.0, 0.0, 1.0])
+    R = seg_render._rot_between(a, -a)            # the antiparallel case
+    assert np.allclose(R @ a, -a) and np.isclose(np.linalg.det(R), 1.0)

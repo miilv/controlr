@@ -322,6 +322,8 @@ def run_held(mv, run, spec: dict, save, table_z: float) -> dict:
         mv.tcp({arm: p0 + [0.0, 0.0, 0.17]}, quat={arm: q2 / np.linalg.norm(q2)}, name="held_tilt")
         mv.wait(4, name="held_settle2")
         save("tilt")
+        if spec.get("present"):
+            res["present"] = _present(mv, run, spec, arm, gt_obj, save)
         after = spec.get("after")
         if after:
             res["after"] = _let_go(mv, run, spec, arm, q, qz, table_z)
@@ -330,6 +332,55 @@ def run_held(mv, run, spec: dict, save, table_z: float) -> dict:
             save("after")
         return res
     return {**res, "why": "unreachable"}
+
+
+def _rot_between(a, b) -> np.ndarray:
+    """The smallest rotation taking unit vector ``a`` onto ``b`` (Rodrigues)."""
+    a, b = np.asarray(a, float) / np.linalg.norm(a), np.asarray(b, float) / np.linalg.norm(b)
+    v, c = np.cross(a, b), float(a @ b)
+    if np.linalg.norm(v) < 1e-9:
+        if c > 0:
+            return np.eye(3)
+        p = np.cross(a, [1.0, 0.0, 0.0] if abs(a[0]) < 0.9 else [0.0, 1.0, 0.0])
+        p /= np.linalg.norm(p)
+        return 2 * np.outer(p, p) - np.eye(3)
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + K + K @ K * (1.0 / (1.0 + c))
+
+
+def _present(mv, run, spec: dict, arm: str, gt_obj, save) -> dict:
+    """The draw read's view: the held object's face (local +z) turned toward the OTHER arm's wrist camera (resting at
+    its home pose) and held ``spec['present_dist']`` (~15 cm) along that camera's optical axis, the face direction
+    jittered by up to ``spec['present_jitter_deg']``. Frame ``save('present')`` when the planner reaches it."""
+    from scipy.spatial.transform import Rotation
+
+    from dojo.simlab.motion import quat_to_mat, tcp_of
+
+    rng = random.Random(spec.get("seed", 0) + 7)
+    other = "right" if arm == "left" else "left"
+    Tc = np.asarray(run.cameras_gt()[f"cam_{other}_wrist"]["T_world_cam_cv"], float)
+    c, fwd = Tc[:3, 3], Tc[:3, 2]
+    for d in (spec.get("present_dist", 0.15), 0.12, 0.18):
+        o = gt_obj()
+        if o is None:
+            return {"ok": False, "why": "object gone"}
+        n = quat_to_mat(np.asarray(o["quat"], float))[:, 2]
+        j = np.radians(spec.get("present_jitter_deg", 20.0))
+        want = Rotation.from_rotvec(np.array([rng.uniform(-j, j), rng.uniform(-j, j), 0.0])).apply(-fwd)
+        dR = _rot_between(n, want)
+        fl = np.asarray(run.obs_state()[f"{arm}_ee_pose"], float)
+        R_new = dR @ quat_to_mat(fl[3:])
+        x, y, z, w = Rotation.from_matrix(R_new).as_quat()
+        q_new = np.array([w, x, y, z])
+        off = dR @ (np.asarray(o["pos"], float) - tcp_of(fl))
+        tcp_t = c + d * fwd - off
+        if mv.tcp({arm: tcp_t}, quat={arm: q_new}, name="present").get(arm):
+            mv.wait(4, name="present_settle")
+            o2 = gt_obj()
+            dot = float(quat_to_mat(np.asarray(o2["quat"], float))[:, 2] @ (-fwd)) if o2 else None
+            save("present")
+            return {"ok": True, "dist": d, "face_cos": None if dot is None else round(dot, 3)}
+    return {"ok": False, "why": "unreachable"}
 
 
 CONTAINER_CATEGORIES = ("box", "basket", "dustbin", "pen_holder", "toolbox", "drawer", "plate", "bowl", "egg_basket")
@@ -421,6 +472,8 @@ def main(argv: list[str] | None = None) -> None:
                          "named *test* (never mixed with the training renders)")
     ap.add_argument("--held", type=int, default=0, help="scripted top-down picks per layout after the poses (held frames)")
     ap.add_argument("--held-category", default=None, help="pick only objects of this category (make_kong: mahjong)")
+    ap.add_argument("--present", action="store_true",
+                    help="after a held pick, show the object's face to the other arm's wrist camera at ~15 cm (draw read)")
     ap.add_argument("--after", default=None,
                     help="post-contact outcomes after a held pick, chosen per pick: e.g. stack,container,topple,drop (v3)")
     ap.add_argument("--physics-only", action="store_true",
@@ -513,7 +566,8 @@ def main(argv: list[str] | None = None) -> None:
             o = rng.choice(cands)
             spec = {"kind": "held", "arm": "left" if o["pos"][0] < 0 else "right", "target_inst": o["inst_name"],
                     "target_label": o.get("label"), "yaw_off": rng.choice((0.0, np.pi / 2)), "dz": rng.uniform(0.0, 0.008),
-                    "tilt_deg": rng.uniform(20.0, 45.0), "seed": rng.randrange(1 << 30),
+                    "tilt_deg": rng.uniform(20.0, 45.0), "seed": rng.randrange(1 << 30), "present": a.present,
+                    "present_dist": rng.uniform(0.13, 0.17), "present_jitter_deg": 20.0,
                     "after": rng.choice(a.after.split(",")) if a.after else None}
             mv.home(name="home")
             stage = {}
