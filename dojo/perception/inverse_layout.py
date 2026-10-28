@@ -3369,6 +3369,12 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
             members = [i for i, h in enumerate(chosen) if h.label_group == gi]
             short = len(members) < len(g["labels"])
             movable = [i for i in members if unexplained(i)] if (cfg.seg_move and not add_only) else []
+            if add_only and cfg.seg_add_move_weak and not short:
+                # "add" + seg_add_move_weak: a weak member (confidence < seg_weak_conf) with no mask of its own exact
+                # class under it moves onto this unexplained exact-class mask (a slot child placed from a misread base)
+                movable = [i for i in members if not fixed(chosen[i]) and i not in d_of
+                           and 1.0 - float(chosen[i].per_view.get("sil_loss", chosen[i].loss)) < cfg.seg_weak_conf
+                           and not any(dd.key == chosen[i].key and any_iou[i][jj] >= 0.1 for jj, dd in enumerate(dets))]
             # members without head evidence first (occluded guesses), then the worst-fitting
             movable.sort(key=lambda i: (not chosen[i].per_view.get("occluded"),
                                         -chosen[i].per_view.get("sil_loss", chosen[i].loss)))
@@ -3697,6 +3703,8 @@ class EstimatorConfig:
     seg_refit_margin: float = 0.05  # a local re-fit inside the explained mask must gain this much IoU
     seg_move: bool = True          # move an unexplained member to an unexplained mask of its group
     seg_flip: bool = True          # an explained member's 180-degree flip inside its mask, taken when the texture agrees
+    seg_add_move_weak: bool = False  # "add" only: a weak member with no exact-class mask under it may move (see above)
+    seg_weak_conf: float = 0.5       # ... below this confidence (1 - its silhouette loss)
     seg_dup_iou: float = 0.7       # class-agnostic de-duplication of the masks (one object, two classes); 0 = off
     seg_identity_w: float = 0.3    # identity cost bonus x score for the mask's class (0 = off)
     # an explained member whose mask names another SHAPE of its group is re-fitted as that shape inside the mask, kept when
