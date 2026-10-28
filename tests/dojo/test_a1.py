@@ -91,9 +91,13 @@ def test_redetect_relocates_a_missing_object_into_its_unexplained_mask(world):
     RD = world.RD
     believed, true = _pose(-0.05, -0.08), _pose(0.04, -0.12, 0.3)
     fr = _frame(world)
-    dets = [Det(_mask(world, true), "Rigid/box/00001", 0.9)]   # same category, another asset of it
     req = build_request([{"label": "b", "key": "Rigid/box/00000", "pose7": believed}], {},
                         [Trigger("release", 10, "left", "b")])
+    # a mask of the same category but another asset is another object: never a seed
+    out = RD.redetect(fr, req, _Src([Det(_mask(world, true), "Rigid/box/00001", 0.9)]), RD.RDConfig(),
+                      scene=world.Scene(fr))
+    assert [h["src"] for h in out["hyps"]["b"]] == ["incumbent"] and out["assignment"] == {}
+    dets = [Det(_mask(world, true), "Rigid/box/00000", 0.9)]
     out = RD.redetect(fr, req, _Src(dets), RD.RDConfig(), scene=world.Scene(fr))
     hs = out["hyps"]["b"]
     assert hs[0]["src"] == "incumbent" and hs[0]["support"]["cam_head"][0] == 0.0
@@ -385,3 +389,82 @@ def test_kinematic_carry_never_bumps_a_version_and_corridor_newcomers_are_stale(
     assert prov.fresh(v0) == []
     c = bel.objects["block_2"].center_w
     assert prov.fresh({k: v for k, v in v0.items() if k != "block_2"}, corridor=[c, c + [0, 0, 0.12]]) == ["block_2"]
+
+
+def test_a_whole_runtime_episode_with_a1_on_ticks_and_stacks():
+    """RuntimePolicy with ``a1="apply"`` over the kinematic env and a fake perception service whose "redetect" sees
+    every object where the GT is (so nothing must be written): the episode still stacks, the tick runs at hovers,
+    lifts and releases, and every A1 event is well-formed."""
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from tests_a1_env import FakeAssets, FakeEpisode, env_and_obs, run_episode
+    env, _ = env_and_obs()
+
+    class Service:
+        ticks = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None, fuse_mode=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for o in env.objects]}}
+
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None, **kw):
+            return {objects[0]["label"]: {"ok": False, "why": "perception not ok"}}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"prec": 1.0, "n_vis": 500, "n_px": 600}} for o in objects}
+
+        def look_plan(self, *a, **k):
+            return []
+
+        def redetect(self, frame, req, cfg=None):
+            self.ticks.append(sorted({t for t in (r["active"] for r in req["objects"]) if t}))
+            hyps = {r["label"]: [{"src": "incumbent", "pose7": r["pose7"], "support": {"cam_head": [0.9, 800]}}]
+                    for r in req["objects"] if r["active"]}
+            return {"hyps": hyps, "assignment": {}, "active": {r["label"]: r["active"] for r in req["objects"]
+                                                                if r["active"]}, "dets_hash": "h", "time_s": {"total": 0.01}}
+
+    pc = Service()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True, a1="apply"), assets=FakeAssets(),
+                        perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env))
+    assert rep["error"] is None, rep["error"]
+    ev = rep["events"]
+    ticks = [e for e in ev if e["kind"] == "a1_tick"]
+    assert ticks and any(("hover", ) == tuple(t[0] for t in e["triggers"])[:1] for e in ticks)
+    assert not any(e["kind"] == "a1_discrepancy" and e.get("a1_kind") == "relocated" for e in ev)   # nothing to fix
+    assert all(e["writes"] == [] for e in ticks)
+    p = sorted((np.asarray(o["pos"]) for o in env.objects), key=lambda v: v[2])
+    assert all(np.linalg.norm(a[:2] - b[:2]) < 0.006 for a, b in zip(p[:-1], p[1:]))   # stacked
+
+
+def test_a_low_visibility_view_never_moves_a_belief():
+    """M's arm-8 audit: a fit from a view showing 0.53-0.63 of the object slid 30-47 mm along it. A candidate whose only
+    supporting views show < 0.9 of it does not write; the same support from a full view does."""
+    st = TickState()
+    part = {"cam_left_wrist": [0.9, 6000, 0.6, 0.8], "cam_head": [0.0, 900, 1.0, None]}
+    w, ds = decide(_resp("b", {"cam_head": [0.0, 900, 1.0, None]}, part, _pose(0.04, -0.1)), OBJ,
+                   [Trigger("release", 9, "left", "b")], st, APPLY, 10)
+    assert w == {} and not any(d.kind == "relocated" for d in ds)
+    full = {"cam_left_wrist": [0.9, 6000, 0.95, 0.8], "cam_head": [0.0, 900, 1.0, None]}
+    w, ds = decide(_resp("b", {"cam_head": [0.0, 900, 1.0, None]}, full, _pose(0.04, -0.1)), OBJ,
+                   [Trigger("release", 9, "left", "b")], st, APPLY, 11)
+    assert w and ds[0].evidence["cand"]["scores"]["cam_left_wrist"] == 0.8     # the detection score is logged
+
+
+def test_borderline_detections_explain_but_never_seed(world):
+    """C's JPEG-vs-raw check: detections at 0.25-0.46 flip between encodings. They may explain an object (block a
+    "missing" promotion) but never seed or support a write (seed_min_score 0.5)."""
+    from dojo.perception.seg_twin import Det
+    RD = world.RD
+    believed, true = _pose(-0.05, -0.08), _pose(0.04, -0.12, 0.3)
+    fr = _frame(world)
+    req = build_request([{"label": "b", "key": "Rigid/box/00000", "pose7": believed}], {},
+                        [Trigger("release", 10, "left", "b")])
+    out = RD.redetect(fr, req, _Src([Det(_mask(world, true), "Rigid/box/00000", 0.4)]), RD.RDConfig(),
+                      scene=world.Scene(fr))
+    assert [h["src"] for h in out["hyps"]["b"]] == ["incumbent"]
+    # explaining: an untouched object over a 0.4 detection is associated (not promoted "missing")
+    req = build_request([{"label": "c", "key": "Rigid/box/00000", "pose7": true}], {}, [])
+    out = RD.redetect(fr, req, _Src([Det(_mask(world, true), "Rigid/box/00000", 0.4)]), RD.RDConfig(),
+                      scene=world.Scene(fr))
+    assert out["assoc"]["c"] and out["active"] == {}

@@ -31,6 +31,7 @@ from dataclasses import asdict, dataclass, field
 import numpy as np
 
 WRISTS = ("cam_left_wrist", "cam_right_wrist")
+MIN_VIS_TO_MOVE = 0.9   # = RuntimeConfig.place_min_vis: a view showing less of the object cannot move a belief
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,8 @@ class TickConfig:
     added_views: int = 2
     added_miss_drop: int = 2
     max_replans: int = 2
+    min_vis_to_move: float = MIN_VIS_TO_MOVE   # deciding views must show this share of the object (low-visibility
+                                               # fits slide along it: M's arm-8 audit, 30-47 mm at 0.53-0.63)
     max_overlap: float = 0.20          # a candidate whose footprint covers this share of a believed, not-active object
 
     def to_dict(self) -> dict:
@@ -137,15 +140,18 @@ def build_request(objs: list[dict], held: dict, triggers: list[Trigger], meta: d
 
 
 # --------------------------------------------------------------------------------------------- deciding
-def _ev(h: dict, min_px: int = 30) -> dict:
-    """Support summary: best IoU, its camera, cams at >= 0.5, best wrist IoU."""
-    s = {c: v for c, v in (h.get("support") or {}).items() if v[1] >= min_px}
+def _ev(h: dict, min_px: int = 30, min_vis: float = 0.0) -> dict:
+    """Support summary over the cameras with >= ``min_px`` px and visible fraction >= ``min_vis``: best IoU, its
+    camera, cams at >= 0.5, best wrist IoU, the scores of the detections used."""
+    s = {c: v for c, v in (h.get("support") or {}).items()
+         if v[1] >= min_px and (len(v) < 3 or v[2] is None or float(v[2]) >= min_vis)}
     if not s:
-        return {"best": 0.0, "cam": None, "px": 0, "n50": 0, "wrist": 0.0}
+        return {"best": 0.0, "cam": None, "px": 0, "n50": 0, "wrist": 0.0, "scores": {}}
     cam = max(sorted(s), key=lambda c: s[c][0])
     return {"best": float(s[cam][0]), "cam": cam, "px": int(s[cam][1]),
             "n50": sum(1 for v in s.values() if v[0] >= TickConfig.two_cam_iou),
-            "wrist": max((float(v[0]) for c, v in s.items() if c in WRISTS), default=0.0)}
+            "wrist": max((float(v[0]) for c, v in s.items() if c in WRISTS), default=0.0),
+            "scores": {c: (v[3] if len(v) > 3 else None) for c, v in sorted(s.items())}}
 
 
 def _inside(p, boxes) -> bool:
@@ -186,7 +192,7 @@ def decide(resp: dict, objs: list[dict], triggers: list[Trigger], st: TickState,
         touched = bool(o.get("touched")) or reason in ("close_empty", "release", "slip", "touched", "hover")
         best = None
         for i, h in cands:
-            e = _ev(h)
+            e = _ev(h, min_vis=cfg.min_vis_to_move)   # a write rests only on views that show the object (>= 0.9)
             key = (e["n50"], e["best"])
             if best is None or key > best[0]:
                 best = (key, i, h, e)
@@ -194,7 +200,8 @@ def decide(resp: dict, objs: list[dict], triggers: list[Trigger], st: TickState,
         wrote = False
         if best is not None:
             _, i, h, e = best
-            evid["cand"] = {"src": h["src"], **e, "fit_iou": h.get("fit_iou")}
+            evid["cand"] = {"src": h["src"], **e, "fit_iou": h.get("fit_iou"), "overlap": h.get("overlap"),
+                            "all_views": _ev(h)}
             move = 1000.0 * float(np.linalg.norm(np.asarray(h["pose7"][:3]) - np.asarray(inc["pose7"][:3])))
             evid["move_mm"] = round(move, 1)
             if touched:

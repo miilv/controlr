@@ -40,6 +40,9 @@ GT_KEYS = ("gt", "_dev_gt", "objects_gt", "dev_gt", "layout_id", "task")
 @dataclass(frozen=True)
 class RDConfig:
     det_conf: float = 0.25
+    explain_min_score: float = 0.25   # a detection that explains a believed object (blocks a "missing" promotion)
+    seed_min_score: float = 0.50      # a detection that seeds / supports a write or an added object (C: ~7 % of wrist
+                                      # detections at 0.25-0.46 flip between JPEG and raw frames)
     min_det_px: int = 25
     gate_iou: float = 0.10
     exact_bonus: float = 0.10
@@ -237,7 +240,7 @@ def associate(objs: list[dict], dets_by_cam: dict, vis: dict, scene: Scene, cfg:
             o = by_label[lab]
             m, n_sil, n_vis, occ = pv[lab]
             for j, d in enumerate(dets):
-                if category(d.key) != category(o["key"]):
+                if category(d.key) != category(o["key"]) or float(d.score) < cfg.explain_min_score:
                     continue
                 v = _iou(m, d.mask)
                 # mask IoU only, never a centroid distance (reviewer: an elongated object's far centre with an
@@ -305,26 +308,41 @@ def fit_in_mask(key: str, cam_name: str, scene: Scene, mask: np.ndarray, cfg: RD
     return sorted(out, key=lambda t: -t[1])
 
 
-def support(key: str, p7, scene: Scene, dets_by_cam: dict, exclude: dict | None = None) -> dict:
-    """{cam: (best IoU of the pose's silhouette with a same-category detection there, silhouette px)} for every camera
-    where the pose projects; ``exclude`` {cam: det indices not available} (explained by other objects)."""
+def support(key: str, p7, scene: Scene, dets_by_cam: dict, exclude: dict | None = None,
+            min_score: float = 0.5) -> dict:
+    """{cam: [best IoU of the pose's silhouette with a same-category detection there, silhouette px, visible fraction,
+    that detection's score]} for every camera where the pose projects. Only detections at ``min_score`` or above count
+    (a write never rests on one a re-encoding can flip); ``exclude`` {cam: det indices explained by other objects}.
+    Visible fraction: the silhouette's share outside the robot times its vertices' share inside the image."""
+    from .cameras import pose_to_T
+    from .refine import truncated_frac
+    from .render import load_asset, transform
+
     out = {}
     for cam in sorted(scene.cams):
         if cam not in scene.frame["images"]:
             continue
         try:
-            s = scene.silhouette(cam, key, p7) & (1 - scene.robot(cam))
+            s_full = scene.silhouette(cam, key, p7)
+            a = load_asset(key)
+            trunc = truncated_frac(scene.cams[cam], transform(a.Vs, pose_to_T(p7[:3], p7[3:7])))
         except Exception:  # noqa: BLE001
             continue
+        n_full = int(s_full.sum())
+        s = s_full & (1 - scene.robot(cam))
         n = int(s.sum())
         if n == 0:
             continue
-        best = 0.0
+        vis = (n / max(n_full, 1)) * (1.0 - trunc)
+        best, sc = 0.0, None
         for j, d in enumerate(dets_by_cam.get(cam, [])):
-            if category(d.key) != category(key) or j in (exclude or {}).get(cam, ()):
+            if (category(d.key) != category(key) or j in (exclude or {}).get(cam, ())
+                    or float(d.score) < min_score):
                 continue
-            best = max(best, _iou(s, d.mask))
-        out[cam] = (round(best, 4), n)
+            v = _iou(s, d.mask)
+            if v > best:
+                best, sc = v, round(float(d.score), 3)
+        out[cam] = [round(best, 4), n, round(vis, 3), sc]
     return out
 
 
@@ -488,26 +506,38 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
     for lab in sorted(active):
         o = by_label[lab]
         hs = [{"src": "incumbent", "pose7": list(o["pose7"]),
-               "support": support(o["key"], o["pose7"], scene, dets, used_others(used, assoc, lab))}]
+               "support": support(o["key"], o["pose7"], scene, dets, used_others(used, assoc, lab),
+                                  cfg.seed_min_score)}]
         for sd in o.get("seeds") or []:
             hs.append({"src": sd.get("src", "seed"), "pose7": list(sd["pose7"]),
-                       "support": support(o["key"], sd["pose7"], scene, dets, used_others(used, assoc, lab))})
-        explained = bool(assoc.get(lab))
+                       "support": support(o["key"], sd["pose7"], scene, dets, used_others(used, assoc, lab),
+                                          cfg.seed_min_score)})
+        # local only: an object a camera associates, and a "touched" object at a later tick (its release-time read was
+        # the moment to find where it went; later it moves only by a contact, which has its own trigger)
+        explained = bool(assoc.get(lab)) or active.get(lab) == "touched"
         # an object a camera associates is near its belief: refit inside its own mask (a few mm .. cm), and never jump
         # to a far unexplained mask (ttt: a piece placed 24 mm off was "relocated" 270 mm onto another piece of the pool)
         for cam, (j, v_, _) in sorted((assoc.get(lab) or {}).items()):
             if n_fit >= cfg.max_fits:
                 break
+            if float(dets[cam][j].score) < cfg.seed_min_score:
+                continue
             n_fit += 1
             fits = fit_in_mask(o["key"], cam, scene, dets[cam][j].mask, cfg)
             if fits:
                 p7, v = fits[0]
+                if float(np.linalg.norm(np.asarray(p7[:2]) - np.asarray(o["pose7"][:2]))) > cfg.explained_max_jump_m:
+                    continue                    # its own mask is near its belief: a far fit is the plane's error
                 hs.append({"src": f"own:{cam}:{j}", "pose7": p7, "fit_iou": v,
-                           "support": support(o["key"], p7, scene, dets, used_others(used, assoc, lab))})
+                           "support": support(o["key"], p7, scene, dets, used_others(used, assoc, lab),
+                                              cfg.seed_min_score)})
         for cam in sorted(free_dets):
             for j in free_dets[cam]:
                 d = dets[cam][j]
-                if category(d.key) != category(o["key"]) or n_fit >= cfg.max_fits:
+                # an unexplained mask seeds a relocation only with the object's own asset class: the category gates the
+                # association, but a same-category mask of another asset is another object (ttt: a player piece moved
+                # onto an opponent's piece of the pool)
+                if d.key != o["key"] or float(d.score) < cfg.seed_min_score or n_fit >= cfg.max_fits:
                     continue
                 n_fit += 1
                 fits = fit_in_mask(o["key"], cam, scene, d.mask, cfg)
@@ -518,7 +548,8 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
                     continue
                 hs.append({"src": f"det:{cam}:{j}", "pose7": p7, "fit_iou": v, "det_key": d.key,
                            "det_score": round(float(d.score), 3),
-                           "support": support(o["key"], p7, scene, dets, used_others(used, assoc, lab))})
+                           "support": support(o["key"], p7, scene, dets, used_others(used, assoc, lab),
+                                              cfg.seed_min_score)})
                 det_hyps.append((lab, cam, j, len(hs) - 1))
         for h in hs[1:]:                                    # footprint overlap with a believed, not-active object
             h["overlap"] = footprint_overlap(o["key"], h["pose7"], [x for x in free if x["label"] != lab
@@ -534,7 +565,7 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
         P = np.asarray(cor, float).reshape(-1, 3)
         for cam in sorted(free_dets):
             for j in free_dets[cam]:
-                if (cam, j) in taken or n_fit >= cfg.max_fits:
+                if (cam, j) in taken or n_fit >= cfg.max_fits or float(dets[cam][j].score) < cfg.seed_min_score:
                     continue
                 d = dets[cam][j]
                 n_fit += 1
@@ -546,7 +577,8 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
                 if dist > cfg.added_max_corridor_m:
                     continue
                 added.append({"cam": cam, "det": j, "key": d.key, "score": round(float(d.score), 3), "pose7": p7,
-                              "fit_iou": v, "corridor_m": round(dist, 4), "support": support(d.key, p7, scene, dets)})
+                              "fit_iou": v, "corridor_m": round(dist, 4),
+                              "support": support(d.key, p7, scene, dets, None, cfg.seed_min_score)})
     lift = [lift_identity(scene, arm, held[arm], objs, dets) for arm in sorted(req.get("lift") or []) if arm in held]
     tm["total"] = time.perf_counter() - t0
     return {"dets_hash": dets_hash(dets), "n_dets": {c: len(v) for c, v in dets.items()},

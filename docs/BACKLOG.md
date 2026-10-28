@@ -100,6 +100,14 @@
   - Next: a look with the releasing (or other) wrist at the search's head candidate before adopting it. That is a
     motion step at release time, i.e. a skills hook; the provider cannot move arms.
   - Journal 2026-10-28-dojo-release-read.
+- [ ] **dojo runtime: A1 follow-ups** (stream W, journal 2026-10-28-dojo-a1). Behind `RuntimeConfig.a1`; open items:
+  - (1) added corridor obstacles are tracked but not put into the planner's world (static obstacles only, never the
+    vocabulary);
+  - (2) the lift relabel is log-only until measured: right on the "carried under another label" events, <= 1 % false on
+    clean held grasps;
+  - (3) a fresh() gate before the release in `run_place` (today only `retarget` reads a relocated reference);
+  - (4) 4 ttt events broke after GT-improving writes among identical pieces (debug set);
+  - (5) a tuning set on 100030-49 variants (seq renders of G3 rollouts) before any threshold is tuned.
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the

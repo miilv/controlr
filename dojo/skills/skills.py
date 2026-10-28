@@ -620,8 +620,10 @@ class Skills:
                 self.a1_replans = getattr(self, "a1_replans", 0) + 1
                 evs = getattr(self.provider, "events", None)
                 if isinstance(evs, list):
-                    evs.append({"kind": "a1_replan", "label": pp.label, "stale": stale,
-                                "step": int(getattr(getattr(self.provider, "bridge", None), "steps_used", 0) or 0)})
+                    self._a1_replan_ev = {"kind": "a1_replan", "label": pp.label, "stale": stale,
+                                          "step": int(getattr(getattr(self.provider, "bridge", None), "steps_used", 0)
+                                                      or 0)}
+                    evs.append(self._a1_replan_ev)
 
         def rest_of(p: PickPlan, note: str) -> PickPlan:
             rest = ArmPlan(p.arm, self.ex.q[p.arm].copy(), self.ex.g[p.arm])
@@ -650,6 +652,15 @@ class Skills:
             pp2 = pp2 if isinstance(pp2, PickPlan) else None
         if pp2 is None:
             return rest_of(pp, "descent")                     # keep the original descent
+        ev = getattr(self, "_a1_replan_ev", None)
+        if stale and ev is not None:                          # A1: what the re-plan cost (M's re-plan step audit)
+            try:
+                orig = ArmPlan(pp.arm, self.ex.q[pp.arm].copy(), self.ex.g[pp.arm])
+                orig.ops = pp.plan.ops[2:]
+                ev["steps"] = int(len(pp2.plan.compile()[0]) - len(orig.compile()[0]))
+            except Exception:  # noqa: BLE001 (a dev log only)
+                ev["steps"] = None
+            self._a1_replan_ev = None
         self._consume_pick(pp2)
         self.ex.run({pp2.arm: pp2.plan}, name=f"pick {pp.label} refined")
         return pp2
