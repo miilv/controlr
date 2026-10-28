@@ -173,7 +173,10 @@ def held_gap(f: dict, track: dict, arm: str, gt_label: str, k: int, fp) -> float
     return float(np.linalg.norm(np.maximum(0, np.maximum(lo - loc, loc - hi)))) * 1000
 
 
-INTENDED_PUSH = ("sweep", "push", "align")     # skills / tasks whose objects move on purpose without a grasp
+# objects a task's skill moves on purpose without grasping them (dev-only scorer knowledge, never a policy rule): the
+# cubes the broom sweeps, the T a push moves, the blocks the set square aligns. A tool knocked over is not one of them
+# (hand-check on per-step replays, 2026-10-28: c4_sweep_v2 100003's broom moved at step 66 with no jaw near it)
+INTENDED_PUSH = {"sweep_blocks": r"^(cube_|rigid2)", "push_T": r"^(t|T)$|^t_", "align_blocks": r"^(cube|block)"}
 ROOTS = ("A not_held", "B in-hand", "C1 stale retry", "C2 never-held placed", "C3 in-hand carried", "C4 later wrong",
          "D misread", "F actor", "G carried under another label", "G1 intended push", "G2 knocked", "E clutter")
 
@@ -219,7 +222,7 @@ def gt_pos(frames: dict, label: str, k: int):
     return None if o is None else np.asarray(o["pos"], float)
 
 
-def root_cause(r: dict, x: dict, hist: dict, frames: dict, intervals: list, held_at: dict, intended: bool) -> str:
+def root_cause(r: dict, x: dict, hist: dict, frames: dict, intervals: list, held_at: dict, intended: str | None) -> str:
     """The reviewer's root-cause class of an unclean event (``x`` = its ``failure_rows`` entry; ``hist`` = the earlier
     scored events per believed label; ``held_at`` = (arm, grasp step) -> the label the belief held). A not_held / B in-hand
     (held state), E clutter, F actor (a scripted opponent's piece), C1-C4 an object the robot touched (stale retry,
@@ -253,7 +256,8 @@ def root_cause(r: dict, x: dict, hist: dict, frames: dict, intervals: list, held
     pushed = any(iv["grasp"] < r["step"] and gl in iv["pushed"] for iv in intervals)
     # a skill that pushes on purpose (the broom sweeping the cubes) moved it while the hand held its tool: the outcome
     # model (confirm_pose) should have predicted it; else an accidental knock (the arm, a carried object, a topple)
-    return "G1 intended push" if (intended and pushed) else "G2 knocked"
+    import re
+    return "G1 intended push" if (intended and pushed and re.search(intended, str(gl))) else "G2 knocked"
 
 
 def plan_event(rep: dict, row: dict, frames: dict, task: str, g, fp, tol=None, acted: bool = False) -> dict:
@@ -356,8 +360,7 @@ def cmd_score(a) -> None:
             s["moving"] = moving
             ev_rows.append(s)
         # attempts (first occurrence vs retries) and the reviewer's root-cause classes, in episode order
-        intended = any(k in task for k in INTENDED_PUSH) or any(k in str(d_.get("skill")) for d_ in rep.get("decisions") or []
-                                                                for k in INTENDED_PUSH)
+        intended = INTENDED_PUSH.get(task)
         intervals = carried_intervals(frames, acts, track)
         held_at = {(s_["arm"], s_["step"]): (s_["meta"].get("attached") or s_["target"]) for s_ in ev_rows if s_["kind"] == "grasp"}
         seen, hist = Counter(), defaultdict(list)

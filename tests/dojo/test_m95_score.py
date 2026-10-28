@@ -29,33 +29,34 @@ def test_root_causes():
     bad = lambda role, lab, cls: [{"role": role, "label": lab, "ok": False, "cls": cls, "xy_mm": 40.0}]   # noqa: E731
     # held state
     r = _ev("place", 40, "a", False, bad("held", "a", "not_held"))
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, False) == "A not_held"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, None) == "A not_held"
     r = _ev("place", 40, "a", False, bad("held", "a", "gross"))
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, False) == "B in-hand"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, None) == "B in-hand"
     # touched: a retry after a missed close; after a never-held place
     prev_g = _ev("grasp", 10, "a")
     r = _ev("grasp", 30, "a", False, bad("target", "a", "gross"))
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {"a": [prev_g]}, frames, [], {}, False) == "C1 stale retry"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {"a": [prev_g]}, frames, [], {}, None) == "C1 stale retry"
     prev_p = _ev("place", 20, "a", False, bad("held", "a", "not_held"))
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {"a": [prev_g, prev_p]}, frames, [], {}, False) == "C2 never-held placed"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {"a": [prev_g, prev_p]}, frames, [], {}, None) == "C2 never-held placed"
     # untouched: never moved = a misread; moved = knocked, pushed on purpose, or carried under another label
     r = _ev("grasp", 30, "a", False, bad("target", "a", "gross"))
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, False) == "D misread"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, None) == "D misread"
     r = _ev("grasp", 60, "b", False, bad("target", "b", "gross"))
     iv_push = [{"arm": "left", "grasp": 20, "release": 45, "rode": [], "pushed": ["b"]}]
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, iv_push, {}, True) == "G1 intended push"
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, iv_push, {}, False) == "G2 knocked"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, iv_push, {}, r"^b$") == "G1 intended push"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, iv_push, {}, r"^cube") == "G2 knocked"   # not a push target
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, iv_push, {}, None) == "G2 knocked"
     iv_ride = [{"arm": "left", "grasp": 20, "release": 45, "rode": ["b"], "pushed": []}]
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, iv_ride, {("left", 20): "a"}, False) == \
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, iv_ride, {("left", 20): "a"}, None) == \
         "G carried under another label"
     # clutter and the scripted opponent
     nb = [{"label": "junk", "dist_m": 0.05, "found": False, "clutter": True}]
     r = _ev("grasp", 30, "a", False, neighbours=nb)
     r["required"][0]["ok"] = True
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, False) == "E clutter"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, None) == "E clutter"
     r = _ev("grasp", 30, "a", False, neighbours=[{"label": "opponent_piece0", "dist_m": 0.05, "found": False}],
             task="play_tic_tac_toe")
-    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, False) == "F actor"
+    assert ms.root_cause(r, ms.failure_rows([r])[0], {}, frames, [], {}, None) == "F actor"
 
 
 def test_carried_intervals_tell_riding_from_pushing():
