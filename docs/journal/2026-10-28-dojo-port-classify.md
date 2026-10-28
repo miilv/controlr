@@ -22,8 +22,8 @@ Mikhail's K4 numbers are on 100010-14):
 
 | cell | ours | mean score | Mikhail K4 |
 |---|---|---|---|
-| classify_objects | 2/10 (+1 still running when written) | ~0.4 | 5/5 |
-| classify_objects_by_language | 3/7 so far | ~0.55 | 3/5 (mean 70) |
+| classify_objects | 2/10 | 0.40 | 5/5 |
+| classify_objects_by_language | 3/7 (3 running when written) | 0.56 | 3/5 (mean 70) |
 
 **Failure classes** (from the details logs):
 - **v3's clearance model refuses a carry ("carry: no clear path")**, most often for the last 1-2 objects of 7-9. An object
