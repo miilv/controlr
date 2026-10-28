@@ -60,6 +60,30 @@ The default "min" is unchanged. Results:
 - **With one**, the detector runs only for tasks that have a series or linked_count group.
 - **The candidate runs the seg_twin v2b server in every episode, for counting only.** seg_propose stays off.
 
+## Numeral digits (S's reader v2 + `glyph_read`)
+
+**Frame 0.** RoboDojo's 3-D numerals (`Rigid/number`; the checker's value is `category_idx % 10`) get their digit
+only from S's crop classifier, never from B1's texture compare (11-47 % right):
+- each view's silhouette at the fitted pose goes through `glyph_read.classify_mask`, with the arm mask. A tile half
+  hidden by the gripper, or cut by the frame, is refused;
+- two agreeing views give `digit_conf` 1.0; one view gives 0.5 (a skill confirms it with a wrist look before
+  committing); disagreeing views give "unread".
+
+**Refine / look path (kind pick / place / look).** Perception's refine reads the target in that wrist view, and the
+runtime merges it: agree -> 1.0, first read -> 0.5, disagree -> "unread". Event `digit_read`.
+
+**End to end at frame 0** (held-out v0 100000-09 / 100020-24, genuine 5.1, v2b counting, digit_v2):
+
+| task | read right (two-view / one-view) | wrong | unread | layouts all right |
+|---|---|---|---|---|
+| solve_equation | 121 (55 / 66) | 0 | 48 | 0 / 15 |
+| arrange_largest_number | 51 (16 / 35) | 1, one-view | 8 | 8 / 15 |
+| arrange_largest_number_random | 42 (15 / 27) | 0 | 7 | 8 / 15 |
+
+- No two-view read is wrong.
+- The unread tiles are B1-occluded / unfitted, gripper-refused, edge-cut or low-margin. N's skills look at them.
+- solve's "0 / 15 all right" counts the 10 loose tiles. The skill needs only the tiles it uses, and looks at those.
+
 ## Need vs delivered
 
 (the table sent to the lead; the full numbers are in compute3 `~/dojo-data/w-ready/*/objects.jsonl`)
