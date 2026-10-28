@@ -60,8 +60,10 @@ class ProxyRenderer:
         self.cams: dict = {}
         self.rps: dict = {}
         self.anns: dict = {}
+        self.inst: dict = {}
 
-    def open(self, stage_path: str, cams: dict, warmup: int = 20) -> None:
+    def open(self, stage_path: str, cams: dict, warmup: int = 20, instance: bool = False) -> None:
+        """``instance``: also attach Replicator's ``instance_id_segmentation_fast`` to each camera (``instance_ids``)."""
         from pxr import Gf, UsdGeom
         self.close_stage()
         self.ctx.open_stage(str(stage_path))
@@ -86,6 +88,10 @@ class ProxyRenderer:
             self.rps[name] = self.rep.create.render_product(f"{xpath}/{name}", tuple(c["resolution"]))
             self.anns[name] = self.rep.AnnotatorRegistry.get_annotator("rgb")
             self.anns[name].attach([self.rps[name]])
+            if instance:
+                self.inst[name] = self.rep.AnnotatorRegistry.get_annotator("instance_id_segmentation_fast",
+                                                                           init_params={"colorize": False})
+                self.inst[name].attach([self.rps[name]])
         for _ in range(warmup):          # shader / texture warm-up
             self.app.update()
 
@@ -93,10 +99,21 @@ class ProxyRenderer:
         for name in list(self.rps):
             try:
                 self.anns[name].detach([self.rps[name]])
+                if name in self.inst:
+                    self.inst[name].detach([self.rps[name]])
                 self.rps[name].destroy()
             except Exception:  # noqa: BLE001
                 pass
-        self.rps, self.anns = {}, {}
+        self.rps, self.anns, self.inst = {}, {}, {}
+
+    def instance_ids(self, name: str):
+        """(H x W instance-id image, {id: prim path}) of the last render, or (None, {}) without ``open(instance=True)``."""
+        ann = self.inst.get(name)
+        if ann is None:
+            return None, {}
+        d = ann.get_data()
+        data, info = (d.get("data"), d.get("info") or {}) if isinstance(d, dict) else (d, {})
+        return (None if data is None else np.asarray(data)), (info.get("idToLabels") or {})
 
     def _set_world_pose(self, cache, path: str, pos, quat) -> bool:
         from pxr import Gf, UsdGeom

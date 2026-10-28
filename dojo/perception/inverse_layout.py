@@ -2911,6 +2911,227 @@ def _mask_iou(a: np.ndarray, b: np.ndarray, known: np.ndarray) -> float:
     return float((a & b).sum()) / u if u else 0.0
 
 
+def _seg_groups(key: str, pending) -> list[int]:
+    """Label groups a segmenter class can be: those listing the asset, else those with a candidate of its category."""
+    exact = [gi for gi, g, _ in pending if key in g["candidates"]]
+    if exact:
+        return exact
+    cat = key.split("/")[1] if key.count("/") >= 2 else key
+    return [gi for gi, g, _ in pending if any(k.split("/")[1] == cat for k in g["candidates"])]
+
+
+def _seg_blob(mask: np.ndarray, known: np.ndarray) -> Blob | None:
+    m = ((mask > 0) & (known > 0)).astype(np.uint8)
+    a = int(m.sum())
+    if a < MIN_BLOB_PX.get("cam_head", 25):
+        return None
+    ys, xs = np.nonzero(m)
+    return Blob("cam_head", m, a, np.array([xs.mean() + 0.5, ys.mean() + 0.5]),
+                (int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)))
+
+
+def _seg_views(views: dict, mask: np.ndarray) -> tuple[dict, np.ndarray, np.ndarray]:
+    """The views with the head foreground replaced by a segmenter mask; the mask's pixels count as known (B1's known
+    map drops the arms and, with a scene background, a fixture's area: organize_table's mouse on its mat)."""
+    head = views["cam_head"]
+    M = (np.asarray(mask) > 0).astype(np.uint8)
+    kn = ((head.known > 0) | (M > 0)).astype(np.uint8)
+    vws = dict(views)
+    vws["cam_head"] = ViewMasks(head.cam, head.img, M, kn, head.dist, head.robot)
+    return vws, M, kn
+
+
+def _seg_fit(mask: np.ndarray, key: str, gi: int, g: dict, prior: dict, shapes: dict, views: dict, others, cfg,
+             groups) -> tuple | None:
+    """B1's fit of label group ``gi`` inside one segmenter mask: the yaw-grid coarse fit at the mask's ray-plane centre,
+    then a refine on the mask as the head foreground (wrists as they are). The shape of the mask's class when the group
+    has it, else every geometry of the group. Returns (mask IoU, Hypothesis) of the best, or None."""
+    head = views["cam_head"]
+    vws, M, kn = _seg_views(views, mask)
+    b = _seg_blob(M, kn)
+    if b is None:
+        return None
+    mine = {gk: sms for gk, sms in shapes.items() if any(s_.key == key for s_ in sms)} or shapes
+    yaw_fixed = prior["yaw_fixed"]
+    best = None
+    for sms in mine.values():
+        sm = next((s_ for s_ in sms if s_.key == key), sms[0])
+        yr = (0.0, 0.0) if yaw_fixed else yaw_range(g, sm.yaw_period)
+        for x, y, yaw, _ in coarse_fit(sm, b, vws, cfg.yaw_step_deg, yr):
+            x, y, yaw, _, _ = refine(sm, x, y, yaw, vws, others, xy_step=0.004, yaw_step=0.08, maxiter=cfg.quick_iters,
+                                     fix_yaw=yaw_fixed, bounds=origin_bounds(g, sm, yaw))
+            v = _mask_iou(sm.sil(head.cam, sm.pose(x, y, yaw)), M, kn)
+            if best is None or v > best[0]:
+                best = (v, sm, x, y, yaw, [s_.key for s_ in sms])
+    if best is None:
+        return None
+    v, sm, x, y, yaw, keys = best
+    loss, per = multi_view_loss(sm, sm.pose(x, y, yaw), views, others)
+    h = Hypothesis(gi, sm.key, sm.tag, x, y, yaw, float(loss), dict(per))
+    h.per_view.update({"geom_group": keys, "sil_loss": round(float(loss), 4)})
+    return v, h
+
+
+def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[dict], pending, shapes_by_group) -> dict:
+    """The twin-trained segmenter as a proposer for B1 (``cfg.seg_propose``): its head-view instance masks, each with a
+    catalogue-asset class, against the chosen objects' head silhouettes. Per label group:
+
+    - a mask that a member explains (IoU >= ``seg_match_iou``, one-to-one) -> the member is re-fitted locally inside it
+      (kept only with ``seg_refit_margin`` more IoU, within the object's size) and takes the mask's class as an identity
+      hint (``per_view["seg_key"]``, used by the appearance step);
+    - a mask no member explains -> B1's proposal machinery on the mask as the blob (``_propose``: coarse fit + quick
+      refine); a fit whose silhouette agrees with the mask (IoU >= ``seg_accept_iou``) is added when the group is short of
+      objects, or replaces a member no mask of its group explains (``seg_move``: nothing under it, or a mask of another
+      category), the worst-fitting one first.
+
+    Edits ``chosen`` in place; occluded / contained / config-fixed members are left alone."""
+    from . import seg_twin
+
+    c = seg_twin.client()
+    info = {"n_dets": 0, "added": [], "moved": [], "refit": [], "hints": 0}
+    if c is None:
+        info["error"] = "no segmenter server"
+        return info
+    head = views["cam_head"]
+    try:
+        dets = [d for d in c.detect(img, conf=cfg.seg_min_score) if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
+    except Exception as e:  # a detector failure never takes perception down
+        info["error"] = f"{type(e).__name__}: {e}"
+        return info
+    info["n_dets"] = len(dets)
+    if not dets:
+        return info
+    fixed = lambda h: bool(h.per_view.get("occluded") or h.per_view.get("contained") or h.per_view.get("fixed_from_config")
+                           or h.per_view.get("slot"))
+    sils = [h.sm().sil(head.cam, h.T()) for h in chosen]
+    pend = {gi: (g, p) for gi, g, p in pending}
+    det_groups = [_seg_groups(d.key, pending) for d in dets]
+    # explained: one-to-one within each group by IoU
+    pairs = []
+    for i, h in enumerate(chosen):
+        for j, d in enumerate(dets):
+            if h.label_group in det_groups[j]:
+                v = _mask_iou(sils[i], d.mask, head.known)
+                if v >= cfg.seg_match_iou:
+                    pairs.append((v, i, j))
+    pairs.sort(reverse=True)
+    h_of: dict[int, int] = {}
+    d_of: dict[int, int] = {}
+    for v, i, j in pairs:
+        if i in d_of or j in h_of:
+            continue
+        d_of[i], h_of[j] = j, i
+    # members over a mask of another category (B1 put them on the wrong object) or over no mask at all
+    any_iou = [[_mask_iou(sils[i], d.mask, head.known) for d in dets] for i in range(len(chosen))]
+
+    def unexplained(i):
+        h = chosen[i]
+        if i in d_of or h.per_view.get("contained") or h.per_view.get("fixed_from_config") or h.per_view.get("slot"):
+            return False
+        if h.per_view.get("occluded"):    # B1's guess under an occluder: any unexplained mask of its group beats it
+            return True
+        best = int(np.argmax(any_iou[i]))
+        return any_iou[i][best] < 0.1 or chosen[i].label_group not in det_groups[best]
+
+    # 1. explained: identity hint + local re-fit inside the mask
+    for i, j in d_of.items():
+        h, d = chosen[i], dets[j]
+        if d.key in groups[h.label_group]["candidates"]:
+            h.per_view["seg_key"] = (d.key, round(float(d.score), 3))
+            info["hints"] += 1
+        if fixed(h):
+            continue
+        vws, M, kn = _seg_views(views, d.mask)
+        base = _mask_iou(sils[i], M, kn)
+        g = groups[h.label_group]
+        yaw_fixed = _placement_prior(g)["yaw_fixed"]
+        z_off = float(h.per_view.get("z_off", 0.0))
+        others = _union_masks(chosen, views, skip=i, target=h)
+
+        def fit_at(yaw0):
+            x_, y_, yaw_, _, _ = refine(h.sm(), h.x, h.y, yaw0, vws, others, xy_step=0.004, yaw_step=0.08, maxiter=60,
+                                        fix_yaw=yaw_fixed, bounds=origin_bounds(g, h.sm(), yaw0), z_off=z_off)
+            return _mask_iou(h.sm().sil(head.cam, h.sm().pose(x_, y_, yaw_, z_off)), M, kn), x_, y_, yaw_
+
+        cand = fit_at(h.yaw) if base < 0.85 else (base, h.x, h.y, h.yaw)
+        took_flip = False
+        # the 180-degree flip of a near-symmetric outline (a car / shoe / brush read backwards): the mask cannot tell,
+        # the texture decides, as in sam_propose
+        if cfg.seg_flip and not yaw_fixed and h.sm().yaw_period > 1.5 * np.pi:
+            fl = fit_at(h.yaw + np.pi)
+            ft = {"label_group": h.label_group, "iou": [round(cand[0], 3), round(fl[0], 3)]}
+            if fl[0] >= cand[0] - 0.03:
+                t_old = texture_cost(h.sm(), h.sm().pose(cand[1], cand[2], cand[3], z_off), views, h.key)
+                t_new = texture_cost(h.sm(), h.sm().pose(fl[1], fl[2], fl[3], z_off), views, h.key)
+                ft["texture"] = [None if t_old is None else round(t_old, 3), None if t_new is None else round(t_new, 3)]
+                if t_old is not None and t_new is not None and t_new < t_old - 0.02:
+                    cand, took_flip = fl, True
+            info.setdefault("flips", []).append(ft)
+        sc, x, y, yaw = cand
+        if not took_flip and (sc < base + cfg.seg_refit_margin or np.hypot(x - h.x, y - h.y) > float(np.max(h.sm().asset.extents))):
+            continue
+        loss, per = multi_view_loss(h.sm(), h.sm().pose(x, y, yaw, z_off), views, others)
+        info["refit"].append({"label_group": h.label_group, "from": [round(h.x, 4), round(h.y, 4), round(h.yaw, 3)],
+                              "to": [round(x, 4), round(y, 4), round(yaw, 3)], "iou": [round(base, 3), round(sc, 3)],
+                              "flip": took_flip})
+        sil0 = h.per_view.get("sil_loss", h.loss)
+        h.loss = h.loss - sil0 + loss
+        h.x, h.y, h.yaw = x, y, yaw
+        h.per_view["sil_loss"] = round(float(loss), 4)
+        sils[i] = h.sm().sil(head.cam, h.T())
+    # 2. unexplained masks: fit, then add (group short) or move an unexplained member there
+    trace = info.setdefault("trace", [])
+    for j in sorted((j for j in range(len(dets)) if j not in h_of), key=lambda j: -dets[j].score):
+        d = dets[j]
+        tr = {"key": d.key, "score": round(float(d.score), 3), "px": int(d.mask.sum()), "groups": det_groups[j]}
+        trace.append(tr)
+        if int(d.mask.sum()) < MIN_BLOB_PX.get("cam_head", 25):
+            tr["why"] = "mask too small"
+            continue
+        for gi in det_groups[j]:
+            if gi not in pend:
+                tr["why"] = "group not pending"
+                continue
+            g, prior = pend[gi]
+            members = [i for i, h in enumerate(chosen) if h.label_group == gi]
+            short = len(members) < len(g["labels"])
+            movable = [i for i in members if unexplained(i)] if cfg.seg_move else []
+            # members without head evidence first (occluded guesses), then the worst-fitting
+            movable.sort(key=lambda i: (not chosen[i].per_view.get("occluded"),
+                                        -chosen[i].per_view.get("sil_loss", chosen[i].loss)))
+            if not short and not movable:
+                tr["why"] = f"group {gi} full, every member explained"
+                continue
+            others = _union_masks(chosen, views, skip=movable[0] if (movable and not short) else None)
+            best = _seg_fit(d.mask, d.key, gi, g, prior, shapes_by_group[gi], views, others, cfg, groups)
+            if best is None or best[0] < cfg.seg_accept_iou:
+                tr["why"] = f"fit iou {round(best[0], 3) if best else None} < accept"
+                continue
+            hy = best[1]
+            tr["why"] = "added" if short else "moved"
+            hy.per_view["from_seg"] = {"key": d.key, "score": round(float(d.score), 3), "iou": round(best[0], 3)}
+            if d.key in g["candidates"]:
+                hy.per_view["seg_key"] = (d.key, round(float(d.score), 3))
+            if short:
+                chosen.append(hy)
+                d_of[len(chosen) - 1] = j
+                any_iou.append([_mask_iou(hy.sm().sil(head.cam, hy.T()), dd.mask, head.known) for dd in dets])
+                info["added"].append({"label_group": gi, "key": d.key, "xy": [round(hy.x, 4), round(hy.y, 4)],
+                                      "iou": round(best[0], 3)})
+            else:
+                i = movable[0]
+                old = chosen[i]
+                info["moved"].append({"label_group": gi, "key": d.key, "from": [round(old.x, 4), round(old.y, 4)],
+                                      "to": [round(hy.x, 4), round(hy.y, 4)], "iou": round(best[0], 3)})
+                chosen[i] = hy
+                any_iou[i] = [_mask_iou(hy.sm().sil(head.cam, hy.T()), dd.mask, head.known) for dd in dets]
+                d_of[i] = j
+            sils = [h.sm().sil(head.cam, h.T()) for h in chosen]
+            h_of[j] = len(chosen) - 1 if short else i
+            break
+    return info
+
+
 def _sam_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[dict]) -> dict:
     """REAL_RSI's mask proposer on our fits (``cfg.sam_propose``): for each chosen object, SAM clicks at its head-view
     centre + 4 offsets (half its projected radius) propose masks; the object is re-fitted (same shape, local) inside
@@ -3155,6 +3376,20 @@ class EstimatorConfig:
     # of its vocabulary within the range (needs a SAM server; "min" without one). Single-prefix series are reported
     # under the generator's labels (cube_0, cube_1, ...), which the checker looks up by prefix
     series_count: str = "min"
+    # seg_propose: the twin-trained instance segmenter (dojo.perception.seg_twin, class = catalogue asset; a no-op without
+    # its server at DOJO_SEG_ADDR). "on": after the joint refinement, the head view's masks of a label group's assets
+    # that no chosen object explains go through B1's own proposal machinery (coarse fit + refine on the mask as the blob):
+    # a group short of objects gains the fit; a member that no mask of its group explains (no mask under it, or a mask
+    # of another category) moves there. Explained members are re-fitted inside their mask (local, by a margin) and keep
+    # the mask's class as an identity hint for the appearance step. Default off
+    seg_propose: str = "off"
+    seg_min_score: float = 0.4     # detections below are ignored
+    seg_accept_iou: float = 0.55   # a proposal's head silhouette vs its mask, to be added / moved there
+    seg_match_iou: float = 0.3     # a chosen object's head silhouette explains a mask
+    seg_refit_margin: float = 0.05  # a local re-fit inside the explained mask must gain this much IoU
+    seg_move: bool = True          # move an unexplained member to an unexplained mask of its group
+    seg_flip: bool = True          # an explained member's 180-degree flip inside its mask, taken when the texture agrees
+    seg_identity_w: float = 0.3    # identity cost bonus x score for the mask's class (0 = off)
 
 
 def _views_subset(views, cfg):
@@ -3595,6 +3830,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         t_s = time.time()
         sam_info["propose"] = _sam_propose(chosen, views, images["cam_head"], cfg, groups)
         sam_info["propose"]["s"] = round(time.time() - t_s, 3)
+    if cfg.seg_propose != "off" and "cam_head" in images:
+        t_s = time.time()
+        sam_info["seg"] = _seg_propose(chosen, views, images["cam_head"], cfg, groups, pending, shapes_by_group)
+        sam_info["seg"]["s"] = round(time.time() - t_s, 3)
 
     # ---- identity by appearance within each geometry group
     t4 = time.time()
@@ -3632,6 +3871,12 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                            [(k, h.T()) for k in geom_keys], bg=views["cam_head"].bg)
                 if len(sims) == len(geom_keys):
                     C[row] = C[row] + np.array([1.0 - sims[k] for k in geom_keys])
+        if cfg.seg_propose != "off" and cfg.seg_identity_w > 0:
+            # the segmenter's class of each member's mask: a bonus for that key
+            for row, i in enumerate(members):
+                hint = chosen[i].per_view.get("seg_key")
+                if hint and hint[0] in geom_keys:
+                    C[row, geom_keys.index(hint[0])] -= cfg.seg_identity_w * float(hint[1])
         if mode == "same":
             k = geom_keys[int(np.argmin(C.sum(0)))]
             for i in members:

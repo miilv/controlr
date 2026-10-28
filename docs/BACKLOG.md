@@ -64,6 +64,12 @@
   below 0.5). hang_mugs' wall grasp pre-shapes to 0.43 on the approach, so the probe's "closed on mug2 128 mm away"
   is the pre-shape, 30 steps before the real close. Use `grasp_metric.grip_events`' rule (the last closing command of
   a run) in `GTProbe.on_action`.
+- [ ] **dojo perception: segmenter v2 (stream S, `seg_propose`).** v1 (18 tasks, 4725 genuine-5.1 images) fixes 40 / 0
+  of 1013 frame-0 objects. Its gaps on held-out frames: objects < 16 px (head recall 0.63), look-alike classes
+  (make_kong glyphs 0.19, stack_blocks variants 0.50), clutter (0.18). Next: render the 18 other tasks + more draws of
+  the look-alike / clutter-heavy tasks, YOLO11m-seg and / or a larger input or a tiled head view, class-balanced
+  sampling. Licence: Ultralytics is AGPL-3.0; an Apache-2.0 detector (YOLOX, RT-DETR) on the same labels if we ever
+  distribute (journal 2026-10-28-dojo-seg-twin).
 - [ ] **dojo perception: no genuine-5.1 belt background for pick_from_conveyor_by_image** (`Dynamic/conveyor/00001`).
   Only 6.0-proxy leave-one-out folds exist (`compute3:~/dojo-data/pbake-identity/bg_byimg{A,B}`), so every genuine-5.1
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
