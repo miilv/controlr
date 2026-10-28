@@ -34,7 +34,9 @@ import numpy as np
 
 ARMS = ("left", "right")
 CLOSE_BELOW = 0.5           # a closing command below half open closes the jaws
-OPEN_EPS = 0.01             # a command this much above the previous one, jaws closed: the jaws open (a release)
+RELEASE_OPEN = 0.15         # a command this far above the tightest since the close releases (dojo.runtime.belief's rule)
+RELEASE_ABOVE = 0.6         # ... or any command above this
+ATTACH_MARGIN = 0.015       # m: the runtime attaches the object whose bbox + this holds the TCP at a close (KinematicBelief)
 CORRIDOR_M = 0.10           # m: the last approach segment, as TCP path length before the event
 NEIGHBOUR_MM = 15.0         # mm: a neighbour is found when a believed object is this close (collision-safe)
 DEFAULT_TOL_MM = 15.0       # mm: tasks with no positional tolerance in eval_g1.TOLERANCE
@@ -51,9 +53,11 @@ def grip_events(actions: list[dict]) -> list[dict]:
     the action that closes / opens (the state before it is the replay's frame ``k - 1``). A grasp is the LAST closing
     command (below ``CLOSE_BELOW``) before the jaws open again: a pre-shape on the approach (hang_mugs' wall grasp
     1.0 -> 0.43, then 0.0 at the real close) is not the grasp (stream C, 2026-10-28; ``GTProbe``'s first-close rule
-    takes the pre-shape). A release is the first command that opens the jaws after a grasp."""
+    takes the pre-shape). A release is the runtime belief's (``KinematicBelief.step``): a command above
+    ``RELEASE_ABOVE`` or ``RELEASE_OPEN`` above the tightest since the close."""
     g = {a: 1.0 for a in ARMS}
     pending: dict = {a: None for a in ARMS}         # the latest closing command of the current closing run
+    tight: dict = {a: 1.0 for a in ARMS}            # the tightest command since the run began
     out = []
     for k, a in enumerate(actions, 1):
         for arm in ARMS:
@@ -63,10 +67,11 @@ def grip_events(actions: list[dict]) -> list[dict]:
             v = float(np.asarray(a[key], float).reshape(-1)[0])
             if v < CLOSE_BELOW and v < g[arm] - 1e-6:
                 pending[arm] = k
-            elif pending[arm] is not None and v > g[arm] + OPEN_EPS:
+                tight[arm] = min(tight[arm], v)
+            elif pending[arm] is not None and v > min(RELEASE_ABOVE, tight[arm] + RELEASE_OPEN):
                 out.append({"kind": "grasp", "step": pending[arm], "arm": arm})
                 out.append({"kind": "release", "step": k, "arm": arm})
-                pending[arm] = None
+                pending[arm], tight[arm] = None, 1.0
             g[arm] = v
     out += [{"kind": "grasp", "step": k, "arm": arm} for arm, k in pending.items() if k is not None]
     order = {"release": 0, "grasp": 1}              # same step: a hand opens before another closes
@@ -548,7 +553,7 @@ class BeliefTracker:
             self.belief[lab].update(pos=list(e["pose7"][:3]), quat=list(e["pose7"][3:7]), source="post_place")
         elif k == "belief_drop" and lab in self.belief and e.get("z") is not None:
             self.belief[lab]["pos"][2] = float(e["z"])
-        elif k == "held_look" and e.get("dropped") and e.get("arm") in self.attached:
+        elif k in ("held_look", "grip_check") and e.get("dropped") and e.get("arm") in self.attached:
             lab0, _, pre = self.attached.pop(e["arm"])
             if lab0 in self.belief and pre is not None:
                 self.belief[lab0].update(pos=pre[0], quat=pre[1], source="held_dropped")
@@ -605,11 +610,38 @@ def probe_belief(snap: dict, track: dict, step: int, kin) -> dict:
     return b
 
 
-def episode_events(report: dict, actions: list[dict], kin=None) -> list[tuple[Event, dict]]:
+def attach_label(belief: dict, p, footprints: "Footprints", exclude=()) -> str | None:
+    """The object the runtime's ``KinematicBelief`` attaches at a close: a believed movable (not Geometry, not Dynamic)
+    object whose bbox + ``ATTACH_MARGIN`` holds the TCP ``p``, the nearest to its centre; one another hand holds only
+    when no free one does (a handover). None: the runtime believed the jaws closed on nothing."""
+    def pick(excl):
+        best = None
+        for lab, o in belief.items():
+            key = str(o.get("key") or "")
+            if lab in excl or o.get("pos") is None or key.split("/")[0] in ("Geometry", "Dynamic"):
+                continue
+            V = footprints.verts(key)
+            if V is None:
+                continue
+            lo, hi = V.min(0), V.max(0)
+            R = _quat_R(o["quat"])
+            loc = R.T @ (np.asarray(p, float) - (np.asarray(o["pos"], float) + R @ ((lo + hi) / 2)))
+            if np.all(np.abs(loc) <= (hi - lo) / 2 + ATTACH_MARGIN):
+                d = float(np.linalg.norm(loc))
+                if best is None or d < best[0]:
+                    best = (d, lab)
+        return best[1] if best else None
+    return pick(set(exclude)) or pick(set())
+
+
+def episode_events(report: dict, actions: list[dict], kin=None,
+                   footprints: "Footprints | None" = None) -> list[tuple[Event, dict]]:
     """(event, belief) at every grasp / place of an episode, from the runtime's own logs. A close with no logged pick
     refine of that arm since its last grip event is attributed to the believed object nearest the TCP (within
-    ``ATTRIB_M``), else it is not a grasp (a press with closed jaws: kind ``close_other``). A release of an arm with
-    nothing attached in the belief is ``release_other``."""
+    ``ATTRIB_M``), else it is not a grasp (a press with closed jaws: kind ``close_other``). With ``footprints`` the
+    jaws attach what the runtime's own rule attaches (``attach_label``; nothing when the TCP is off every believed
+    object, the runtime knew it held nothing); without, the target. A release of an arm with nothing attached is
+    ``release_other``."""
     if kin is None:
         from dojo.skills.kinematics import X5Kin
         kin = X5Kin()
@@ -653,8 +685,13 @@ def episode_events(report: dict, actions: list[dict], kin=None) -> list[tuple[Ev
             else:
                 meta["attributed"] = how
                 out.append((Event("grasp", lab, pt.tolist(), cor.tolist(), step=k, arm=arm, meta=meta), belief))
-                o = bt.snapshot(k - 1).get(lab) or belief.get(lab)
+                att = lab
+                if footprints is not None:      # what the runtime's own attach rule takes (H, 2026-10-28: 18 of 98
+                    att = attach_label(belief, pt, footprints, exclude=held_now)    # not_held were never attached)
+                    meta["attached"] = att
+                o = (bt.snapshot(k - 1).get(att) or belief.get(att)) if att else None
                 if o is not None:
+                    lab = att
                     for a2 in list(bt.attached):    # a handover: the giver's object is the taker's now
                         if bt.attached[a2][0] == lab:
                             bt.attached.pop(a2)

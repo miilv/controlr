@@ -211,3 +211,22 @@ def test_belief_probe_snapshots_replace_the_rebuild_and_carry_held_objects():
     want = T[:3, :3] @ (p0 + [0.002, 0, 0]) + T[:3, 3]           # rides the TCP from Q0 to q1
     assert pl.kind == "place" and np.allclose(bp["a"]["pos"], want, atol=1e-6) and np.linalg.norm(want - p0) > 0.05
     assert bp["a"]["source"] == "probe_held"
+
+
+def test_release_needs_the_runtime_opening_and_attach_needs_the_object_at_the_pads():
+    # a 0.0 -> 0.1 loosening is not a release (KinematicBelief: > tightest + 0.15 or > 0.6)
+    acts = [_act(1.0), _act(0.0), _act(0.1), _act(0.0), _act(0.7)]
+    assert [(e["kind"], e["step"]) for e in gm.grip_events(acts)] == [("grasp", 4), ("release", 5)]
+    kin = X5Kin()
+    p = kin.tcp("left", Q0)[:3, 3]
+    V = np.array([[x, y, z] for x in (-0.02, 0.02) for y in (-0.02, 0.02) for z in (-0.02, 0.02)])
+    fp = gm.Footprints(loader=lambda key: V)
+    acts = [_act(1.0), _act(1.0), _act(0.0), _act(0.0), _act(1.0)]
+    for off, attached in ((0.01, True), (0.05, False)):     # inside bbox + 15 mm / 3 cm beyond it
+        rec = {"Rigid": {"cube": [{"label": "a", "category_idx": 0, "default_pos": list(p + [off, 0, 0]),
+                                   "default_ori": [1, 0, 0, 0]}]}}
+        rep = {"records": {"initial": rec},
+               "events": [{"kind": "refine", "label": "a", "arm": "left", "for": "pick", "step": 1, "ok": False}]}
+        evs = gm.episode_events(rep, acts, kin, footprints=fp)
+        assert [e.kind for e, _ in evs] == ["grasp", "place" if attached else "release_other"]
+        assert evs[0][0].target == "a" and evs[0][0].meta["attached"] == ("a" if attached else None)

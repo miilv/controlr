@@ -210,7 +210,7 @@ def cmd_score(a) -> None:
         track = tcp_track(acts, kin)
         rec0 = flatten_record((rep.get("records") or {}).get("initial")) if (rep.get("records") or {}).get("initial") else None
         last_grasp: dict = {}
-        for ev, belief in episode_events(rep, acts, kin):
+        for ev, belief in episode_events(rep, acts, kin, footprints=fp):
             if ev.kind not in ("grasp", "place"):
                 other[ev.kind] += 1
                 continue
