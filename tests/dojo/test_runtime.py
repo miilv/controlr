@@ -3658,3 +3658,44 @@ def test_pick_views_alone_never_flip_the_belief():
         pol.bridge.obs["steps_used"] = int(pol.bridge.obs["steps_used"]) + 3
         assert np.allclose(o.quat, q0) and "prior orientation kept" in pol.report["events"][-1]["why"]
     assert not pol._flip_pending
+
+
+def test_background_perception_sees_extra_observations(monkeypatch):
+    """RuntimeConfig.bg_perception (default off): every observation (and one every bg_obs_every buffered steps) goes to
+    the service's bg_step with the belief; its moves of free objects land in the belief; the episode is unchanged."""
+    import dojo.runtime.estimate as E
+    monkeypatch.setattr(E, "estimate_to_layout", lambda scene, objs: {"Rigid": {"block": [
+        {"label": o["label"], "category_idx": o["category_idx"], "default_pos": o["pos"], "default_ori": o["quat"]}
+        for o in objs]}})
+    env = _env()
+
+    class FakePerception:
+        def __init__(self):
+            self.bg = []
+
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": o["label"],
+                                         "default_pos": list(o["pos"]), "default_ori": [1, 0, 0, 0],
+                                         "_perception": {"confidence": 0.9}} for o in env.objects]}}
+
+        def check(self, frame, objects, fold):
+            return {o["label"]: {"head": {"iou": 0.9, "vis": 1.0}} for o in objects}
+
+        def look_plan(self, frame, record, max_looks=2):
+            return []
+
+        def bg_step(self, frame, step, belief, held, required, vocabulary, fold, cfg=None, reset=False):
+            self.bg.append({"step": step, "held": list(held), "n": len(belief), "reset": reset, "cfg": cfg})
+            return {"moves": [], "needs_look": [], "stats": {"refines": 0}}
+
+    pc = FakePerception()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", bg_perception="reread", bg_obs_every=5), assets=FakeAssets(),
+                        perception_client=pc)
+    rep = run_episode(pol, FakeEpisode(env), "perception")
+    assert rep["error"] is None, rep["error"]
+    assert _stacked(env)
+    assert len(pc.bg) >= 5 and pc.bg[0]["reset"] and not any(c["reset"] for c in pc.bg[1:])
+    assert pc.bg[0]["cfg"]["reread_every"] == 40 and pc.bg[0]["n"] == len(env.objects)
+    assert any(c["held"] for c in pc.bg)                       # observations during a carry name the held block
+    assert rep["bg_perception"]["calls"] == len(pc.bg) and rep["bg_perception"]["extra_obs"] > 0
+    assert any(e.get("kind") == "bg_perception" for e in rep["events"])

@@ -75,6 +75,12 @@ Ops (request dicts):
     {"op": "garment_update", "frame0": frame, "frame": frame, "read": json, "fold": int} -> {"garment": json|null}
         (the hem corners again from a later frame: ``dojo.perception.garment.update_hems``)
         (a garment lying flat, from the head view: asset, root pose, named points; ``dojo.perception.garment``)
+    {"op": "bg_step", "frame": frame, "step": int, "belief": [{label, key, pos, quat, conf}], "held": [label],
+     "required": [label], "vocabulary": str, "fold": int, "cfg": dict|None, "reset": bool}   -> {"bg": json}
+        background perception (``dojo.perception.bgperc``, RuntimeConfig.bg_perception): one observation of the
+        episode; the perceiver follows the given belief, re-measures what is uncertain or required (<= max_refines wrist
+        refines, a full re-read every reread_every steps when on) and returns {moves, needs_look, stats}; its state
+        lives here between calls (``reset`` at the episode's first call)
     {"op": "info"} / {"op": "close"}
 frame = {"images": {cam: {"data": bytes, "shape": [h, w, 3]}}, "state": {k: list}, "instruction": str}
 
@@ -282,6 +288,12 @@ class PerceptionClient:
                                       "T_tcp_obj": np.asarray(T_tcp_obj, float).tolist(),
                                       "state": {k: np.asarray(v, float).reshape(-1).tolist() for k, v in state.items()},
                                       "cfg": cfg or {}})["show_pose"])
+
+    def bg_step(self, frame: dict, step: int, belief: list[dict], held: list, required: list, vocabulary: str,
+                fold: int, cfg: dict | None = None, reset: bool = False) -> dict:
+        return json.loads(self._call({"op": "bg_step", "frame": encode_frame(frame), "step": int(step), "belief": belief,
+                                      "held": list(held), "required": list(required), "vocabulary": vocabulary,
+                                      "fold": int(fold), "cfg": cfg or {}, "reset": bool(reset)})["bg"])
 
     def needs_agent(self, record: dict) -> tuple[bool, str]:
         r = self._call({"op": "needs_agent", "record": json.dumps(record, default=_default)})
@@ -494,6 +506,27 @@ class _Perception:
             lead = np.asarray(cfg["lead_obj"], float)
         return propose(arm, key, np.asarray(T_tcp_obj, float), {k: np.asarray(v, float) for k, v in state.items()},
                        lead_obj=lead)
+
+    def bg_step(self, frame: dict, step: int, belief: list[dict], held: list, required: list, vocabulary: str,
+                fold: int, cfg: dict | None = None, reset: bool = False) -> dict:
+        """One observation for the episode's background perceiver (``dojo.perception.bgperc``); see the op doc."""
+        from dojo.perception.bgperc import BackgroundPerceiver, BgConfig, record_readings, reread_estimate
+        if reset or getattr(self, "_bg", None) is None:
+            self._bg = BackgroundPerceiver(BgConfig(**(cfg or {})), writes_back=True)
+        bp = self._bg
+        f = decode_frame(frame)
+        bp.sync({o["label"]: o for o in belief}, held=held)
+        if bp.cfg.contact:                              # a jaw inside an untouched object's footprint: re-measure it
+            from .bg import tcp_from_flange
+            bp.contacts(int(step), [tcp_from_flange(f["state"][f"{a}_ee_pose"]) for a in ("left", "right")
+                                    if f"{a}_ee_pose" in f["state"]])
+        moves = bp.step(f, int(step), required=required)
+        if bp.reread_due(int(step), f):
+            rec = reread_estimate(f["images"], f["state"], vocabulary, f["instruction"], self.bgs(fold), self.cfg(fold),
+                                  bp.cfg.reread_views)
+            moves += bp.reread(int(step), record_readings(rec))
+        return {"moves": moves, "needs_look": bp.needs_look(required),
+                "stats": {k: (round(v, 3) if isinstance(v, float) else v) for k, v in bp.stats.items()}}
 
     def held_look(self, frame: dict, arm: str, mode: str = "b1_then_agent") -> dict:
         """perception's held_look (``agentic.j1.held_look_impl``: B1 = the strict-tier fingertip-region read, then
@@ -904,6 +937,11 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         r0 = json.loads(req["rec0"]) if req.get("rec0") else None
                         rec = p.estimate_scan(req["frame"], req["frame0"], req["vocabulary"], int(req.get("fold", 0)), r0)
                         conn.send({"ok": True, "record": json.dumps(rec, default=_default)})
+                    elif op == "bg_step":
+                        r = p.bg_step(req["frame"], req["step"], req["belief"], req.get("held") or [],
+                                      req.get("required") or [], req.get("vocabulary") or "", int(req.get("fold", 0)),
+                                      req.get("cfg"), bool(req.get("reset")))
+                        conn.send({"ok": True, "bg": json.dumps(r, default=_default)})
                     elif op == "held_look":
                         h = p.held_look(req["frame"], req["arm"], req.get("mode") or "b1_then_agent")
                         conn.send({"ok": True, "held_look": json.dumps(h, default=_default)})

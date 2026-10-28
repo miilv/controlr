@@ -49,6 +49,11 @@ class Bridge:
         self.done = False
         self.t_worker = 0.0                 # wall time the worker ran (planning, perception, verify calls)
         self._t_resume = None
+        # background perception (RuntimeConfig.bg_perception): ``on_obs(obs)`` sees every observation; ``obs_every`` > 0
+        # also flushes a long segment every that many buffered steps (one more render, the same actions in order)
+        self.on_obs = None
+        self.obs_every = 0
+        self.n_extra_obs = 0
 
     # ------------------------------------------------------------------ main thread
     def start(self, target, obs: dict) -> dict:
@@ -104,6 +109,11 @@ class Bridge:
         self.executed.extend(acts)
         self.obs, self.fresh = obs, True
         self.n_flush += 1
+        if self.on_obs is not None:
+            try:
+                self.on_obs(obs)
+            except Exception:  # noqa: BLE001 (an observer never stops the episode)
+                pass
         return obs
 
     # ------------------------------------------------------------------ skills env protocol
@@ -120,6 +130,9 @@ class Bridge:
         ends the episode)."""
         self.pending.append({k: np.asarray(v, np.float32).copy() for k, v in action.items()})
         self.fresh = False
+        if self.obs_every and len(self.pending) >= self.obs_every and self.steps_used < self.step_lim:
+            self.n_extra_obs += 1
+            self.observe()
         return self.steps_used >= self.step_lim
 
     def proprio(self) -> dict:
