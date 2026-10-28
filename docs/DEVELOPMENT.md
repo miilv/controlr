@@ -206,6 +206,13 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   (`catalog_check`).
 - **compute3's CPU governor is `powersave`** and other users' jobs run there: Isaac timings vary
   with machine load — compare speed settings within one session, and note the load.
+- **Physics is deterministic per box CLASS, not across classes.** The same commit and settled layout replays to 0.0 mm
+  on compute3 vs compute4 (5090, i9-14900KF), but compute2 (4090, i9-13900KF) drifts: 2 mm at step 161, 77 mm by the
+  end of an episode (stream C, 2026-10-28). So: A/B arms run on the same box class (best the same box); a replay or a
+  `seq_capture` runs on the recording box's class; a number from another class is a different measurement. What it does
+  to the twin verifier's decisions (independent place / release outcomes, not end-of-episode drift):
+  docs/experiments/2026-10-28-twin-crossbox.md (`dojo.simlab.twin_crossbox`): flat places agree (0 / 229), drops
+  into containers flip (30 / 76).
 - **G3 episodes are bit-deterministic, with two exceptions.** The same layout replays the same actions on a loaded
   box (stacking 100001: 927 identical steps over 6 runs and 6 commits). Outcomes still differ when:
   - a search hits a wall-clock cap. `library.RELAY_PLAN_S` (relay chains), `HANDOVER_PLAN_S`, `HANG_SEARCH_S` and
