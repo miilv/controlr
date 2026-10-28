@@ -51,7 +51,7 @@ def test_spread_keeps_order_side_and_spacing():
 
 def test_row_plans_anchor_and_targets():
     w = _world(_scene())
-    assert len(align.row_plans(w, ["cube0", "cube1", "cube2"], slots=False)) == 6     # 3 anchors x 2 headings
+    assert len(align.row_plans(w, ["cube0", "cube1", "cube2"], slots=False, free_rows=False)) == 6   # 3 anchors x 2
     plans = align.row_plans(w, ["cube0", "cube1", "cube2"])
     assert len(plans) > 6 and plans[0]["cost"] <= plans[-1]["cost"]
     for p in plans:
@@ -59,7 +59,10 @@ def test_row_plans_anchor_and_targets():
         pts = np.array([ts[k][0] for k in ("cube0", "cube1", "cube2")])
         d, a = align.row_error(pts, [ts[k][1] for k in ts])
         assert d < 1e-9 and a < 1e-9                                  # on one line, all along it
-        assert np.allclose(ts[p["anchor"]][0], w.obj(p["anchor"]).center_w[:2])
+        if p["anchor"] is not None:
+            assert np.allclose(ts[p["anchor"]][0], w.obj(p["anchor"]).center_w[:2])
+        else:
+            assert p["cost"] >= align.FREE_ROW_COST                 # a free row (every block moves) costs more
         assert min(np.linalg.norm(pts[i] - pts[j]) for i in range(3) for j in range(i)) >= align.SPACING - 1e-9
 
 

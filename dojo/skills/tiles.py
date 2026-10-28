@@ -39,7 +39,12 @@ YAWS_DEG = (0.0, 12.0, -12.0, 24.0, -24.0, 34.0, -34.0)   # target headings of t
 REACH_SHIFTS = (0.0, 0.007)
 # the pads lie at the edge of the reach: the default pre-place 6 cm over the target (and a 5 cm retreat) had no IK
 # at mat1 / mat2 for either arm (G3 100031 / 100044 went through an in-air handover and slipped); 3 cm plans
-PLACE_KW = {"pre_h": 0.03, "retreat": 0.03}
+# the carry of a frictionless numeral at CARRY speed (0.14 rad / step) shifted it 52 mm in the pads and dropped it 13 cm
+# off its pad (G3 v0 100001): the uneven-object carry speed
+PLACE_KW = {"pre_h": 0.03, "retreat": 0.03, "approach_rad": 0.09}
+# a lower lift (less swing on the way up) and a 12-deg tilt next to the 25-deg one: the far pads need a tilted hand, and
+# the 25-deg one is where the numerals slid
+TRANSFER_KW = {"lift": 0.04, "box_tilts": (0.0, 12.0, -12.0, 25.0, -25.0)}
 # a tile on one side of the table bound for a pad the other arm reaches is put down between the arms first; the
 # default relay patch (0, -0.28) is where solve_equation's four operator discs lie (G3 100033 / 100038: no spot)
 RELAY_NEAR = (0.0, -0.16)
@@ -299,7 +304,7 @@ def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0):
         tg += tile_targets(sk, label, pad, yaws_deg=tuple(y + 180.0 for y in YAWS_DEG))
     return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,),
                           air_handover=a["air_handover"], relay_near=RELAY_NEAR, max_spots=5, place_kw=dict(PLACE_KW),
-                          transfer_kw={"max_pick_tilt": MAX_PICK_TILT,
+                          transfer_kw={**TRANSFER_KW, "max_pick_tilt": MAX_PICK_TILT,
                                        "pair_ok": centred_grasp(sk.world.obj(label), allow_top=a["allow_top"])})
 
 
