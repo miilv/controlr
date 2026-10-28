@@ -208,7 +208,100 @@ def order_points(o, tags: list[str], text: str) -> list[str]:
     return list(tags)
 
 
-def plan(instruction: str, world: WorldState) -> Plan:
+SWAP_CARRY_Z = (0.86, 0.84, 0.82, 0.80)   # swap_poses' carry heights tried by ``ported_opts["swap"] == "reach"``
+
+
+def swap_carry_z(world: WorldState, a, b) -> float | None:
+    """The highest carry height at which each arm reaches the OTHER object's spot top-down (the left arm takes the
+    lower-x object, as swap_poses does) with some tool yaw the skill may use there; None when none does."""
+    import math
+
+    from dojo.skills.kinematics import X5Kin
+    from dojo.skills.ported.harness_robot import GRASP_OFF, flange_from_tcp, qmat, tcp_of, tool_quat
+    kin = X5Kin(tcp_offset=GRASP_OFF)
+    lo, hi = sorted((a, b), key=lambda o: float(o.pos[0]))
+
+    def reach(arm, o, z):
+        yaw = math.degrees(o.yaw())
+        for d in (90.0, -90.0, 0.0, 180.0):
+            fl = flange_from_tcp([float(o.pos[0]), float(o.pos[1]), z], tool_quat(yaw + d))
+            T = np.eye(4)
+            T[:3, :3], T[:3, 3] = qmat(fl[3:7]), tcp_of(fl)
+            if kin.ik(arm, T, world.home_q.get(arm, np.zeros(6)) if world.home_q else np.zeros(6)).ok:
+                return True
+        return False
+    for z in SWAP_CARRY_Z:
+        if reach("left", hi, z) and reach("right", lo, z):
+            return z
+    return None
+
+
+def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -> Plan | None:
+    """Routes to Mikhail's measured skills (``dojo.skills.ported``, stream P), for instructions no route of ours takes.
+    Words + what the objects are (category, type, pose), never labels; an object is passed as ``"@<label>"`` only as a
+    handle, which the adapter turns into that object's instance name. None: no ported route fits."""
+    text = " ".join((instruction or "").lower().split())
+    objs = _objects(world)
+    rigid = [o for o in objs if o.obj_type == "Rigid"]
+
+    def run(skill, **args):
+        return Plan("ported", {"skill": skill, "args": args}, f"ported {skill} (robot-harness)")
+
+    # cover each block with a cup, then lift the cups off in a named colour order
+    if re.search(r"\bcover\b", text) and re.search(r"\buncover\b", text):
+        cups = [o for o in rigid if "cup" in o.category.lower()]
+        blocks = [o for o in rigid if re.search(r"cube|block", o.category.lower())]
+        if blocks and len(cups) >= len(blocks):
+            return run("cover_uncover_v2")
+    # swap the poses of two objects of one kind
+    if re.search(r"\bswap\b", text) and re.search(r"\bpositions?\b|\bposes?\b|\bplaces\b", text):
+        kinds: dict = {}
+        for o in rigid:
+            kinds.setdefault(o.category, []).append(o)
+        if sum(len(v) == 2 for v in kinds.values()) == 1:
+            if (opts or {}).get("swap") == "reach":
+                pair = next(v for v in kinds.values() if len(v) == 2)
+                z = swap_carry_z(world, *pair)
+                if z is not None and z != SWAP_CARRY_Z[0]:
+                    return run("swap_poses", carry_z=z)
+            return run("swap_poses")
+    # pour from one container into another: balls (a cup into a vase) or a liquid (a bottle into a cup)
+    if re.search(r"\bpour\b", text):
+        if re.search(r"\bballs?\b", text):
+            return run("pour")
+        if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
+            return run("pour_bottle")
+    # pick one named object up by a height. The object: the one whose PUBLIC asset description is the instruction's
+    # phrase (RoboDojo writes the phrase from that file), else the skill's own grounding by category names
+    m = re.search(r"^\s*(?:pick up|lift|raise) the (.+?) by\s+\d+(?:\.\d+)?\s*(?:cm|mm|m)\b", text)
+    if m:
+        from dojo.skills.ported import asset_descriptions
+        phrase = m.group(1).strip()
+        hits = [o for o in world.objects.values() if o.obj_type == "Rigid" and getattr(o, "identity_known", True)
+                and phrase in asset_descriptions(o.asset.key)]                 # clutter too: never assume the role
+        return run("pick_up", obj="@" + hits[0].label) if len(hits) == 1 else run("pick_up")
+    # push / drag a flat object onto its pad (a Geometry whose category names the object's kind)
+    if re.search(r"\bpush\b|\bslide\b|\bdrag\b", text) and re.search(r"\bpad\b|\balign", text):
+        pads = [o for o in objs if o.obj_type == "Geometry"]
+        pairs = [(r, p) for r in rigid for p in pads if r.category.lower() in p.category.lower().split("_")
+                 and r.category.lower() != p.category.lower()]
+        if len(pairs) == 1:
+            return run("planar_drag", obj="@" + pairs[0][0].label, target="@" + pairs[0][1].label)
+    return None
+
+
+def plan(instruction: str, world: WorldState, ported: bool | dict = False) -> Plan:
+    """``ported``: after our own routes, try the ported ones (``ported_plan``; ``RuntimeConfig.ported_routes``); a dict
+    turns them on with options (``{"swap": "reach"}``: ``RuntimeConfig.ported_swap``)."""
+    p = _plan(instruction, world)
+    if ported and p.skill == "none" and not p.args:
+        q = ported_plan(instruction, world, ported if isinstance(ported, dict) else None)
+        if q is not None:
+            return q
+    return p
+
+
+def _plan(instruction: str, world: WorldState) -> Plan:
     text = (instruction or "").lower()
     # routes that are off by default (``RuntimeConfig.new_routes`` / G3 ``--routes`` put their names into the
     # provider's notes): asked first, only when listed; with none listed the planner is unchanged
@@ -558,13 +651,14 @@ def plan(instruction: str, world: WorldState) -> Plan:
 def solve(sk) -> dict:
     """The fixed procedure: plan from the instruction and the world, run the skill, finish."""
     w = sk.refresh()
-    p = plan(w.instruction, w)
+    p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
+             and {"swap": getattr(sk, "ported_swap", "fixed")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":
         f = sk.finish()
         return {"ok": False, "stage": "plan", "note": p.why, "finish": f.status}
-    res = L.SKILLS[p.skill](sk, **p.args)
+    res = L.skill_fn(p.skill)(sk, **p.args)
     # finish either way: most checkers want both arms home and the grippers open, and a skill's own
     # check can be stricter than the task's (twin, plug_in_charger: the charger went in 13-17 mm deeper
     # than modelled, the skill called it a miss, the arms stayed out and the episode failed on "home")

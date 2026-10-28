@@ -217,3 +217,20 @@ refine per frame? Report: [../experiments/2026-10-28-bgperc.md](../experiments/2
     `os._exit`.
 - **The fidelity floor** for the verdicts was the interim 12-episode pass. Phase 2 (2 h cap on light1) adds swap and
   re-runs episodes with the symmetry-aware rotation (`fidelity/fid.json`, `fid_sym.json` on compute4).
+- **The final fidelity floor (phase 2, capped at 2 h of light1).**
+  - It covers 25 episodes, all 7 tasks, ON + OFF. Rotation is symmetry-aware (M's rule) on 9 re-run + 16 new
+    episodes.
+  - W found an asymmetry: a recorded refine's `ok` is the runtime's after its neighbour veto ("refined pose on a
+    neighbour"), while a re-run's is perception's. 11 of 16 place-refine flips were that. `write_rerun` now compares
+    perception's raw ok (`raw_ok`; `--resummarize` corrects old rows from the reports).
+
+| writer | writes | raw ok agree | both ok | Δpos p50 / p95 / max (mm) | Δrot p50 / p95 (deg, n) |
+|---|---|---|---|---|---|
+| refine_pick | 131 | 128 | 93 | 0.4 / 17.3 / 57.3 | 0.2 / 2.5 (93) |
+| refine_place | 55 | 49 | 5 | 9.5 / 34.4 / 35.7 | 0.3 / 2.2 (5) |
+| refine_held | 46 | 43 | 5 | 0.4 / 5.8 / 6.9 | 0.1 / 24 (5) |
+| post_place | 78 | 77 | 12 | 0.3 / 5.9 / 11.5 | 0.6 / 4.6 (12) |
+
+  - The OFF episodes widened refine_pick's tail: p95 went from 8.8 mm (interim) to 17.3 mm.
+  - Re-scored with this floor, every X2 verdict holds: J 15 fixed / 1 broken, S 22 / 1. No flip is driven by
+    refine_place, whose both-ok n of 5 makes its floor weak.

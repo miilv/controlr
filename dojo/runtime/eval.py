@@ -279,6 +279,20 @@ def deployed_code() -> dict | None:
         return None
 
 
+def catalog_md5(env=None) -> str | None:
+    """md5 of the perception catalogue's ``index.json`` this run reads (``DOJO_CATALOG``, else
+    ``~/dojo-perception-data/catalog``): it changes exactly when assets are added (stream W's overlays, 2026-10-28), so
+    rows measured on different catalogues stay apart. None when there is no catalogue (a gt-only box)."""
+    import hashlib
+
+    env = os.environ if env is None else env
+    root = Path(env.get("DOJO_CATALOG") or os.path.expanduser("~/dojo-perception-data/catalog"))
+    try:
+        return hashlib.md5((root / "index.json").read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
 def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_minutes: float = 25.0,
         policy_factory=None, renderer: str = "isaac60", episode_max_minutes: float | None = 25.0) -> dict:
     """``renderer``: ``isaac60`` = the proxy (physics-only 5.1 + the 6.0 render service, compute3); ``isaac51`` =
@@ -307,6 +321,7 @@ def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minute
     kin = _probe_kin()
     rows, t_all = [], time.perf_counter()
     code = deployed_code()
+    cat_md5 = catalog_md5()           # the perception catalogue this run reads (every row carries it)
     calib = calib_info() if cfg.mode == "perception" else {"set": None, "manifest": None}
     gate = os.environ.get("DOJO_EVAL_GATE")          # a command run before each episode (isr-lab: inbox / reserve / disk)
     stop = None
@@ -388,6 +403,7 @@ def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minute
         row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "preset": cfg.preset,
                "twins_served": [list(x) for x in twins.served],
                "calib_set": calib["set"], "calib_disjoint": None if calib_ov is None else not calib_ov,
+               "catalog_md5": cat_md5,
                "time_capped": capped, "cooking_failures": cook,
                "renderer": renderer, "grip_source": getattr(getattr(ep, "grip", None), "mode", None),
                "success": bool(res["success"]), "score": float(res["score"]), "steps_used": int(res["steps_used"]),

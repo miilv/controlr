@@ -140,13 +140,14 @@ def test_registry_peg_doc_says_which_group_fits_which_peg():
     assert sentence in norm(system_text(AgentConfig(registry="default")))
 
 
-def test_registry_fill_doc_says_the_hold_is_judged_by_the_end_state():
-    """SKILL_DOCS v9's fill_container sentence is in the registry's doc and its manual too (routing 2026-10-27: Sol
-    wrote code for "hold the pen holder with one hand, ..." 3/3 without it)."""
+def test_registry_fill_doc_says_the_skill_leaves_the_held_fill_end_state():
+    """SKILL_DOCS' fill_container sentence (v9; v12: the end state the skill leaves, no judging phrase) is in the
+    registry's doc and its manual too (routing 2026-10-27: Sol wrote code for "hold the pen holder with one hand, ..."
+    3/3 without it)."""
     from dojo.agent.manual import SKILL_DOCS
     norm = lambda s: " ".join(s.split())  # noqa: E731
     doc = SKILL_DOCS["fill_container"][1]
-    sentence = norm(doc[doc.index("An instruction to hold the holder"):])
+    sentence = norm(doc[doc.index("an instruction to hold the holder"):])
     reg = {e.name: e for e in R.load().entries}
     assert sentence in norm(reg["fill_container"].doc)
     assert sentence in norm(system_text(AgentConfig(registry="default")))

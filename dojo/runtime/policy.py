@@ -292,6 +292,13 @@ class RuntimeConfig:
     # empty = today. Their names go into the provider's
     # ``notes["routes"]``, which ``planner.plan`` reads
     new_routes: list = field(default_factory=list)
+    # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
+    # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
+    # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
+    ported_routes: bool = False
+    # ... swap_poses' carry height: fixed (his 0.86 m) | reach (the highest of 0.86 / 0.84 / 0.82 / 0.80 at which each arm
+    # reaches the other object's spot top-down; G3: at 0.86 the left arm cannot reach a T at x >= ~0.09)
+    ported_swap: str = "fixed"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -366,7 +373,8 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
-                or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)):
+                or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
+                or self.cfg.ported_swap not in ("fixed", "reach")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -375,6 +383,10 @@ class RuntimePolicy:
         self.bridge: Bridge | None = None
         self.dev_gt = None
         self.report: dict = {}
+        if supervisor is None and self.cfg.ported_routes:
+            from dojo.skills.planner import plan as _plan
+            supervisor = RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans,
+                                        planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -616,6 +628,8 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.ported_routes = "on" if cfg.ported_routes else "off"
+            sk_.ported_swap = cfg.ported_swap
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
@@ -794,7 +808,7 @@ class RuntimePolicy:
                 break
             w.notes["params"] = dict(d.params)
             try:
-                res = library.SKILLS[d.skill](sk, **d.params) or {}
+                res = library.skill_fn(d.skill)(sk, **d.params) or {}
                 self.report["result"] = _short(res)              # before finish(): success may end it there
                 if res.get("ok"):
                     f = sk.finish()
