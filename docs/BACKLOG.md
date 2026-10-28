@@ -335,6 +335,14 @@
 
 ## P2 — harness and infrastructure
 
+- [ ] **dojo: deploy the frozen calibration set to every box** (`frozen_d0_100010_19`, journal
+  2026-10-28-legality-calib-fold): compute3 has it in `~/dojo-perception-data/bg_folds{,_51}/`; compute4's
+  `~/dojo-data/bg_folds_51_ilia` / `bg_folds_ilia`, compute2, compute5-8 and isr-lab's `bridge/pdata/bg_folds_51` do
+  not, and refuse perception runs until they do (`scripts/dojo/calib_set.sh`).
+- [ ] **dojo: the scene backgrounds (`scene/`: conveyor, basket, cube_cushion) are not covered by a calibration
+  manifest.** The frozen set copies them from the legacy `fold0/scene`; they were built by their streams from other
+  layouts (some evaluated ids among them). Rebuild them from non-evaluated layouts into a new set and list the ids.
+
 - [ ] **A G2 replay record on an allowed layout (100000-09)** for the bootstrap smokes: smoke_twin's contact-restore check, smoke_dev_eval and smoke_proxy_eval replay G2 on 110007, inside the reserved >= 100100 range (D-C10a), so they are skipped unless `SMOKE_RESERVED_OK=1` (journal/2026-10-28-dojo-compute2-bootstrap.md).
 - [ ] **Code defaults `RD_HOME=/root/controlr-robodojo` on root boxes** (`rdpy.sh`, `dev_eval.sh`, `paths.py`, `world.py`, `interactive.py`): a job that forgets `source ~/dojo-env.sh` uses whatever that path is. On compute2 it is a symlink to `~/dojo-robodojo` now; the old install there had Eval_Layout.
 

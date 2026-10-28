@@ -229,6 +229,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   [...] ... belt reads are blind`, and the episode report has a `belt_blind` event and `track_read` `blind: true`. Before
   a conveyor run: `ls $DOJO_BG_FOLDS/fold*/scene/` (Dynamic_conveyor_00000 for match_and_pick; pick_from_conveyor_by_image
   needs Dynamic_conveyor_00001).
+- **The perception calibration is one frozen set, never chosen per episode.** The runtime's perception service reads
+  `$DOJO_BG_FOLDS/$DOJO_CALIB_SET` (backgrounds, `color_M.json`, `manifest.json`) for every request; the policy gets the
+  instruction and the step limit only. The old per-episode `fold = crc32(layout id) % 2` made the layout id a policy
+  input (legality audit, journal 2026-10-28-legality-calib-fold). A new set: `python -m dojo.perception.calib_set build`
+  (refuses ids we evaluate on; a set is never rebuilt in place); a box without the set refuses perception runs.
 - **Offline perception on a box (B1, belt_read, embed renders) takes the GPU.** It renders through pyrender EGL: a
   ~300 MiB graphics context per process, even with CUDA hidden. compute3 has no OSMesa, so take a light slot (flock)
   for it like any GPU job.
