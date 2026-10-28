@@ -278,7 +278,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   server v1 / `DOJO_GRIP_SOURCE=command` hide it (the command in its place); strict v2 / `DOJO_GRIP_SOURCE=v2` add it
   as `<arm>_ee_joint_state_official` (`RuntimeConfig.grip_check` reads it). Never put it in place of the command
   (`DOJO_GRIP_SOURCE=robodojo`): held_look and the robot mask read that key as the command (the 14/24 vs 17/25 A/B,
-  experiments 2026-10-27-grip-source-ab).
+  experiments 2026-10-27-grip-source-ab). A deployment path that hands the policy RoboDojo's observation as it is has
+  no `_official` key, and grip_check is then a silent no-op. `RuntimeConfig.grip_official_key="ee_joint_state"` makes it
+  read `<arm>_ee_joint_state` against the runtime's own last command (`KinematicBelief.g`). Set the key per path; it
+  cannot be detected, because under the command semantics the two values are equal, which is exactly an empty grip.
 - **A garbage-collected pyrender renderer kills every GL context of the process.** `OffscreenRenderer.delete()` (run by
   `__del__`) calls `eglTerminate` on the EGL display, which all pyrender contexts of a process share; the next render
   of ANY other renderer (GL silhouettes, `ColorMeshRenderer`, a `Gallery`) fails with `GLError 12289` in

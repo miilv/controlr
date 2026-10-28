@@ -218,6 +218,12 @@ class RuntimeConfig:
     # vision held_look is skipped for that grasp; objects thinner than grip_thin_mm, a missing reading, a partial close:
     # the vision held_look decides as before (M's replays: 74 / 74 empty caught, 0 / 490 held called empty)
     grip_check: str = "off"
+    # where grip_check reads RoboDojo's official value (set it per deployment path; it cannot be detected: under the
+    # command semantics <arm>_ee_joint_state equals the command, which is exactly what an empty grip reads):
+    # "official_key" = <arm>_ee_joint_state_official (strict v2 server, DOJO_GRIP_SOURCE=v2), the command from
+    # <arm>_ee_joint_state; "ee_joint_state" = <arm>_ee_joint_state IS the official value (a path that hands the policy
+    # RoboDojo's observation as it is), the command is the runtime's own last commanded value (``belief.g``)
+    grip_official_key: str = "official_key"
     grip_empty_eps: float = 0.001
     grip_settle_steps: int = 5
     grip_close_max: float = 0.05
@@ -313,7 +319,7 @@ class RuntimePolicy:
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
-                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on")
+                or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on") or self.cfg.grip_official_key not in ("official_key", "ee_joint_state")
                 or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
@@ -487,9 +493,13 @@ class RuntimePolicy:
             prov.grip_check = True
             prov.grip_eps, prov.grip_settle = float(cfg.grip_empty_eps), int(cfg.grip_settle_steps)
             prov.grip_close_max, prov.grip_thin_m = float(cfg.grip_close_max), float(cfg.grip_thin_mm) / 1000.0
-            # did this path carry the official value at all (strict v2 / DOJO_GRIP_SOURCE=v2)? Rows without it ran v1
-            self.report["grip_check"] = {"official_at_start": any(f"{a}_ee_joint_state_official" in obs0["state"]
-                                                                  for a in ("left", "right"))}
+            prov.grip_official_key = cfg.grip_official_key
+            # did this path carry the official value at all (strict v2 / DOJO_GRIP_SOURCE=v2)? Rows without it ran v1.
+            # With grip_official_key "ee_joint_state" the deployment declares <arm>_ee_joint_state to be that value
+            key = "_official" if cfg.grip_official_key == "official_key" else ""
+            self.report["grip_check"] = {"official_at_start": any(f"{a}_ee_joint_state{key}" in obs0["state"]
+                                                                  for a in ("left", "right")),
+                                         "key": cfg.grip_official_key}
         if cfg.watch and cfg.mode == "perception":
             prov.watcher = self._make_watcher(prov, obs0, scene)
         t = time.perf_counter()

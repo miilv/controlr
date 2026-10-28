@@ -410,9 +410,14 @@ class RuntimeProvider:
         self.confirm_wrists = True              # confirm_pose also scores the wrist views (policy: confirm_wrists)
         self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
         # mode perception, stream H: RoboDojo's official gripper value (``<arm>_ee_joint_state_official``: strict v2,
-        # DOJO_GRIP_SOURCE=v2) decides held / empty at every refresh while an object is attached (``_grip_check``); the
+        # DOJO_GRIP_SOURCE=v2; or ``<arm>_ee_joint_state`` itself with grip_official_key "ee_joint_state") decides held /
+        # empty at every refresh while an object is attached (``_grip_check``); the
         # vision held_look runs only where the reading is missing or inconclusive. Off = the reading is never read
         self.grip_check = False
+        # where the official value is (policy: grip_official_key): "official_key" = <arm>_ee_joint_state_official, the
+        # command from <arm>_ee_joint_state; "ee_joint_state" = <arm>_ee_joint_state is the official value, the command
+        # is the belief's own last commanded value (``KinematicBelief.g``, set from the actions)
+        self.grip_official_key = "official_key"
         self.grip_eps = 0.001                   # official - command at or below this: the jaws are closed on nothing
         self.grip_settle = 5                    # steps the gripper command must have held still before a verdict
         self.grip_close_max = 0.05              # only a full close is judged (a partial command can cage an object)
@@ -970,14 +975,19 @@ class RuntimeProvider:
         ``inconclusive`` (no reading, the command not settled or not a full close, a thin object): the vision check
         decides, as without this check."""
         st = obs["state"]
+        own_cmd = self.grip_official_key == "ee_joint_state"
         for arm, (lab, _T) in list(self.belief.attached.items()):
-            off = st.get(f"{arm}_ee_joint_state_official")
+            # the official value where this deployment carries it; the command: under "official_key" the obs's
+            # <arm>_ee_joint_state (the strict contract's command), under "ee_joint_state" our own last command (the
+            # obs's value is the official one there; read as the command it would equal itself and look empty)
+            off = st.get(f"{arm}_ee_joint_state" if own_cmd else f"{arm}_ee_joint_state_official")
             if off is None:
                 continue
             g = self.belief.grasp_z.get(arm)
             key = (lab, g[1] if g is not None else None)
             off = float(np.asarray(off, float).reshape(-1)[0])
-            cmd = float(np.asarray(st[f"{arm}_ee_joint_state"], float).reshape(-1)[0])
+            cmd = (float(self.belief.g[arm]) if own_cmd
+                   else float(np.asarray(st[f"{arm}_ee_joint_state"], float).reshape(-1)[0]))
             o = self.belief.objects.get(lab)
             thin = o is None or o.asset is None or float(np.min(o.asset.extents)) < self.grip_thin_m
             n_still = int(getattr(self.belief, "n_since_g", {}).get(arm, 0))
