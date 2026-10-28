@@ -593,18 +593,24 @@ tree_md5() {   # DIR: md5 of its manifest listing (what pins/calib_sets.txt pins
 
 step_calib_sets() {   # the frozen perception calibration sets (pins/calib_sets.txt), identical on every box and root
   # legality audit 2026-10-28 P1-1: the perception service uses ONE frozen set for every episode (DOJO_CALIB_SET); a
-  # set that is missing or differs on one box (compute4's silent missing scene background, 2026-10-28) must fail here
-  local dir name want src got root n=0
+  # set that is missing or differs on one box (compute4's silent missing scene background, 2026-10-28) must fail here.
+  # Source: ~/dojo-perception-data/<dir>/<set> (the catalog relay brings it from compute3), else a staged copy in
+  # $CALIB_STAGE/<dir>/<set> (default ~/dojo-bootstrap/calib_stage: a box whose ~/dojo-perception-data stays untouched).
+  # Installed and verified in ~/dojo-data/<dir>_ilia (when it exists) and every CALIB_EXTRA_ROOTS entry "<dir>=<root>".
+  local dir name want src got root extra n=0 stage="${CALIB_STAGE:-$BOX/calib_stage}"
   while read -r dir name want; do
     [[ -z "$dir" || "$dir" == \#* ]] && continue
     src="$PERC/$dir/$name"
+    [[ -f "$src/manifest.json" || ! -f "$stage/$dir/$name/manifest.json" ]] || src="$stage/$dir/$name"
     if [[ "$DRY" == 1 ]]; then
       echo "    + verify $src against $want, copy it into ~/dojo-data/${dir}_ilia ${CALIB_EXTRA_ROOTS:-}"; continue
     fi
-    [[ -f "$src/manifest.json" ]] || die "no calibration set $src (the catalog relay brings $dir from the source box)"
+    [[ -f "$src/manifest.json" ]] || die "no calibration set $dir/$name in $PERC or $stage (relay or stage it first)"
     got="$(tree_md5 "$src")"
     [[ "$got" == "$want" ]] || die "$src: md5 $got != pinned $want (pins/calib_sets.txt): a different set"
-    for root in "$DATA/${dir}_ilia" ${CALIB_EXTRA_ROOTS:-}; do
+    extra=()
+    for root in ${CALIB_EXTRA_ROOTS:-}; do [[ "${root%%=*}" == "$dir" ]] && extra+=("${root#*=}"); done
+    for root in "$DATA/${dir}_ilia" "${extra[@]}"; do
       [[ -d "$root" ]] || continue
       if [[ ! -d "$root/$name" || "$(tree_md5 "$root/$name")" != "$want" ]]; then
         rm -rf "$root/$name.new"

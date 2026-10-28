@@ -305,3 +305,15 @@ def test_every_box_gets_the_pinned_set_or_the_install_step_fails(tmp_path):
     pins.write_text("bg_folds_51 frozen_x 00000000000000000000000000000000\n")
     r = run()
     assert r.returncode != 0 and "pinned" in (r.stdout + r.stderr)
+    # a box whose ~/dojo-perception-data stays untouched: the set staged under ~/dojo-bootstrap/calib_stage, installed
+    # into a per-flavour extra root only
+    stage = tmp_path / "dojo-bootstrap" / "calib_stage" / "bg_folds_51"
+    stage.mkdir(parents=True)
+    s.rename(stage / "frozen_x")
+    extra = tmp_path / "pdata_51"
+    extra.mkdir()
+    pins.write_text(f"bg_folds_51 frozen_x {hashlib.md5(listing.encode()).hexdigest()}\n")
+    env["CALIB_EXTRA_ROOTS"] = f"bg_folds={tmp_path / 'nope'} bg_folds_51={extra}"
+    r = run()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (extra / "frozen_x" / "cam_head.png").read_bytes() == b"png" and not (perc / "bg_folds_51" / "frozen_x").exists()
