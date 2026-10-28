@@ -106,3 +106,37 @@ under "### I".
 - Fix: the log variable is `read_board`. A regression test drives one confirmed landing with a perception-like
   provider.
 
+## 6. Arms 2, 8, 9 and 10, and the lane changes after R2 (tables with M's grasp-time metric: PERCEPTION_95 "### I")
+
+All genuine 5.1 on compute4, 100000-04, one layout per job, paired. Per the lead's 28 Oct rule, adoption A/Bs move to
+100005-09 + 100020-29, because 100000-04 carries X2, the write audit and the mode-gt pairing.
+
+- **Arm 2, deposit_coin stereo (ad5b50e, 5 pairs): no gain.**
+  - Success 0/5 vs 0/5; score 8 vs 4.
+  - Stereo had 3 perception_gross episodes, off 1. Clean R10 62 % (8 events) vs 75 % (4 events).
+- **Arm 8, grip_check (8dae375, DOJO_GRIP_SOURCE=v2, 35 pairs): ADOPTED for the next preset.**
+  - not_held at the place 17 % -> 8 %; clean R10 56 -> 62 %; required-only 64 -> 71 %.
+  - Success 8/35 -> 9/35, rescued 1, lost 0. held_look agent calls 20 -> 0.
+  - Verdicts: held 121, empty 48, inconclusive 9.
+  - grip_check only read `<arm>_ee_joint_state_official`. #228 adds `grip_official_key` for the other deployment path (§4).
+- **Arm 9, release read + search (3e6aeed, 35 pairs): NO-GO.**
+  - fasten_screws 5/5 -> 1/5: on the thin nuts read6 is mostly fit_poor, and the pre_grasp search re-placed nut
+    beliefs 19 times.
+  - Clean R10 76 -> 69 %, not_held 17 -> 29. Overall rescued 2, lost 4.
+- **Arm 10, fm_refine + b1_doubt (209e169): stopped for the Claude budget** after 1 complete pair (organize 100000,
+  50 vs 50). The B path ran (b1_doubt, fm_refine w_sil 1.0, a per-job mv3d server).
+- **Arm 6+3 (laptop on_base_refit, compute2): stopped.** The headset hang never plans (BACKLOG).
+- **Arm 11** (S's segmenter): v1 jobs were stopped before any finished, and the arm now runs v2b with de-dup on
+  3f00139. The per-job seg server's address is checked in the perception service's environment like the backgrounds.
+
+Lanes and boxes:
+- Mikhail's R2 ended at 05:17Z. r2watch started heavy2 and heavy3. The lane's "ours" test missed the round-2 scopes
+  (`integ-c4b_*`), so its own jobs counted as other apps; fixed.
+- Side servers (SAM / mv3d / seg) count in the box total, not as rendered lanes.
+- heavy1 was lent to stream C for its X2 replays.
+- compute2 ran arm 7 from 12:05Z. Its store_laptop 100000 froze Kit 4 of 4 times (BACKLOG landmine). Since ~13:57Z the
+  box has been unreachable.
+- compute3 cannot be a genuine lane: Isaac 5.1 RTX segfaults at startup there (libcarb.tasking).
+- Claude route: 1,122 calls on compute4 today by 14:20Z, ~130 on compute2. The lead set <= ~900 more calls until Sunday.
+  The re-baseline (270 episodes) is held for Ilia's budget call.
+
