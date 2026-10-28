@@ -13,6 +13,11 @@ Ops (request dicts):
     {"op": "refine", "frame": frame, "objects": [{label, key, pos, quat}], "fold"[, "search_radius", "empty_hand"]}
         -> {"refine": {label: ...}}
         local (x, y, yaw) re-fit of each object from its given pose on this frame (pre-contact wrist refine)
+    {"op": "wrist_check", "frame": frame, "objects": [{label, key, pos, quat}], "fold", "arm", "kind", "target",
+     "reference", "corridor", "held", "held_label", "cfg", "vocabulary"}             -> {"wrist_check": json}
+        the grasp-time wrist check at a pick / place hover (``dojo.perception.wrist_check``): existence (refine fit +
+        SAM 2.1-S click, head foreground when the wrist does not see it), neighbour / reference poses, relocations,
+        DINOv2 identity + flip; returns per-object verdicts and the belief after the check
     {"op": "check", "frame": frame, "objects": [{label, key, pos, quat}], "fold"}  -> {"check": {label: ...}}
         per object at the GIVEN pose and per view: ``prec`` = fraction of the pixels where it is predicted
         front-most (z-buffer over the given objects) that are observed foreground, ``n_vis``; plus the plain
@@ -170,6 +175,20 @@ class PerceptionClient:
         if empty_hand:
             req["empty_hand"] = True
         return json.loads(self._call(req)["refine"])
+
+    def wrist_check(self, frame: dict, objects: list[dict], fold: int, arm: str, kind: str, target: str | None = None,
+                    reference: str | None = None, corridor=None, held=None, held_label: str | None = None,
+                    cfg: dict | None = None, vocabulary: str | None = None) -> dict:
+        """The grasp-time wrist check (``dojo.perception.wrist_check``) at a pick / place hover: ``objects`` = the
+        belief [{label, key, pos, quat}]; ``target`` (pick) / ``reference`` (place) labels; ``corridor`` (N, 3) the
+        approach; ``held`` = (key, pose7) in this arm's jaws; ``cfg`` = CheckConfig overrides. Returns {"objects":
+        {label: verdict...}, "found": [...], "belief": {label: {key, pos, quat}}, "time_s": {...}}."""
+        req = {"op": "wrist_check", "frame": encode_frame(frame), "objects": objects, "fold": int(fold), "arm": arm,
+               "kind": kind, "target": target, "reference": reference, "held_label": held_label, "cfg": cfg or {},
+               "vocabulary": vocabulary,
+               "corridor": None if corridor is None else np.asarray(corridor, float).reshape(-1, 3).tolist(),
+               "held": None if held is None else [held[0], [float(v) for v in held[1]]]}
+        return json.loads(self._call(req)["wrist_check"])
 
     def check(self, frame: dict, objects: list[dict], fold: int) -> dict:
         return json.loads(self._call({"op": "check", "frame": encode_frame(frame), "objects": objects,
@@ -499,6 +518,39 @@ class _Perception:
                         "T_world_cam_cv": np.round(T, 5).tolist()})
         return out
 
+    def wrist_check(self, req: dict) -> dict:
+        """op ``wrist_check``: ``dojo.perception.wrist_check.WristCheck`` on the frame's wrist view (SAM 2.1-S through
+        the SAM server when ``DOJO_SAM_ADDR`` answers; DINOv2 identity when ``cfg["embed_model"]``; the head view's
+        static-background foreground for objects the wrist does not see)."""
+        from dojo.perception import sam_masks
+        from dojo.perception.wrist_check import CheckConfig, WristCheck
+        f = decode_frame(req["frame"])
+        cfg = CheckConfig(**(req.get("cfg") or {}))
+        emb = None
+        if cfg.embed_model:
+            from dojo.perception.embed_id import Embedder
+            self._emb = getattr(self, "_emb", {})
+            if cfg.embed_model not in self._emb:
+                self._emb[cfg.embed_model] = Embedder(cfg.embed_model)
+            emb = self._emb[cfg.embed_model]
+        cands: dict = {}
+        if req.get("vocabulary"):
+            from dojo.perception.inverse_layout import label_groups
+            for g in label_groups(req["vocabulary"]):
+                for lab in g["labels"]:
+                    cands[lab] = list(g["candidates"])
+        wc = WristCheck(cfg, sam=sam_masks.client(), embed=emb, candidates=lambda label, key: cands.get(label, [key]))
+        belief = {o["label"]: {"key": o["key"], "pos": list(o["pos"]), "quat": list(o["quat"])} for o in req["objects"]}
+        fold = int(req.get("fold", 0))
+        try:
+            bgs, thr = self.bgs(fold), float(self.cfg(fold).fg_thr)
+        except Exception:  # noqa: BLE001 (no head backgrounds here: wrist only)
+            bgs, thr = None, 18.0
+        held = req.get("held")
+        return wc.check(f, belief, req["arm"], req["kind"], target=req.get("target"), reference=req.get("reference"),
+                        corridor=req.get("corridor"), held=None if held is None else (held[0], list(held[1])),
+                        held_label=req.get("held_label"), head_bgs=bgs, head_thr=thr)
+
     def shape_classes(self, vocabulary: str, current: str) -> list[str]:
         """One catalogue key per distinct shape (sorted bbox extents within 3 mm) among the vocabulary's
         candidates; ``current`` represents its own class."""
@@ -738,6 +790,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                                        float(req.get("max_shift_m", 0.03)), req.get("arm"), req.get("identity_vocabulary"),
                                        req.get("held"), req.get("search_radius"), bool(req.get("empty_hand")))
                         conn.send({"ok": True, "refine": json.dumps(ref, default=_default)})
+                    elif op == "wrist_check":
+                        out = p.wrist_check(req)
+                        conn.send({"ok": True, "wrist_check": json.dumps(out, default=_default)})
                     elif op == "check":
                         chk = p.check(req["frame"], req["objects"], int(req.get("fold", 0)))
                         conn.send({"ok": True, "check": json.dumps(chk, default=_default)})
