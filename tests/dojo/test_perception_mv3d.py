@@ -1,10 +1,15 @@
-"""mv3d: learned multi-view depth put into OUR cameras (no torch, no model: the geometry around it)."""
+"""mv3d: learned multi-view depth put into OUR cameras (no torch, no model: the geometry around it, the server / client
+protocol with a fake model, the estimator flags). The perception extra (scipy, opencv) is needed; CI skips without it."""
 import numpy as np
 import pytest
-from scipy.spatial.transform import Rotation
 
-from dojo.perception import mv3d
-from dojo.perception.cameras import TABLE_Z, Camera, head_camera, intrinsics
+pytest.importorskip("scipy")
+pytest.importorskip("cv2")
+
+from scipy.spatial.transform import Rotation  # noqa: E402
+
+from dojo.perception import mv3d  # noqa: E402
+from dojo.perception.cameras import TABLE_Z, Camera, head_camera, intrinsics  # noqa: E402
 
 
 def _side_camera() -> Camera:
