@@ -86,6 +86,18 @@ The lead adopted it as the default, a uniform setting. It is a no-op without a s
 
 It does not fix play_Xylophone: the mallet placed from a misread stand is a member, so its group is not short.
 
+**`seg_add_move_weak`** (with "add"; default on since 2026-10-28, adopted by the lead). A weak member (confidence < 0.5)
+that no mask of its own exact class explains moves onto an unexplained exact-class mask. Regression vs "add" alone,
+same frames, every frame-0 set:
+- no task loses found or ok10;
+- phantoms only go down, 47 -> 26 (classify 12 -> 4, arrange_random 8 -> 3, organize 13 -> 9, push_T_random 3 -> 1,
+  classify_by_language 12 -> 10, pack 9 -> 8, build_tower 1 -> 0);
+- ok10 1187 -> 1208: classify 41 -> 48, arrange_random 66 -> 71, organize 57 -> 60, classify_by_language 34 -> 36;
+  build_tower, store_tools, pack and push_T_random +1 each.
+
+Still not play_Xylophone (21 / 13 unchanged): "on" fixed its mallet by moving or re-fitting the STAND (the mallet is
+placed from it), not the mallet itself.
+
 ## Numeral digits (S's reader v2 + `glyph_read`)
 
 **Frame 0.** RoboDojo's 3-D numerals (`Rigid/number`; the checker's value is `category_idx % 10`) get their digit

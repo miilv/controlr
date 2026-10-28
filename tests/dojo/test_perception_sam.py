@@ -355,6 +355,7 @@ def test_seg_add_move_weak_moves_only_a_weak_member_off_its_class(monkeypatch):
 
     monkeypatch.setattr(il, "_seg_fit", fake_fit)
     monkeypatch.setattr(il, "_union_masks", lambda *a, **k: {})
+    assert il.EstimatorConfig().seg_add_move_weak is True                         # the default since 2026-10-28
     for sil_loss, on, moves in ((0.68, True, True), (0.68, False, False), (0.2, True, False)):
         chosen = [member(sil_loss)]
         info = il._seg_propose(chosen, {"cam_head": head}, np.zeros((40, 40, 3), np.uint8),

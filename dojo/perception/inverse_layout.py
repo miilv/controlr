@@ -3703,7 +3703,8 @@ class EstimatorConfig:
     seg_refit_margin: float = 0.05  # a local re-fit inside the explained mask must gain this much IoU
     seg_move: bool = True          # move an unexplained member to an unexplained mask of its group
     seg_flip: bool = True          # an explained member's 180-degree flip inside its mask, taken when the texture agrees
-    seg_add_move_weak: bool = False  # "add" only: a weak member with no exact-class mask under it may move (see above)
+    seg_add_move_weak: bool = True   # "add" only: a weak member with no exact-class mask under it may move (see above);
+                                     # False until 2026-10-28 (journal 2026-10-28-dojo-plan-none-perception)
     seg_weak_conf: float = 0.5       # ... below this confidence (1 - its silhouette loss)
     seg_dup_iou: float = 0.7       # class-agnostic de-duplication of the masks (one object, two classes); 0 = off
     seg_identity_w: float = 0.3    # identity cost bonus x score for the mask's class (0 = off)
