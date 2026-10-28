@@ -2,10 +2,12 @@
 run's ``dev_gt_probe`` closes exactly: the same number, the same (step, arm, GT label), and the same jaw distance (mm,
 as logged, to 0.0). Rises are not compared: they are maxima over the observation steps, which differ by construction.
 
-    python scripts/perception/bgperc/replay_check.py OUT_ROOT [--json OUT.json]
+    python scripts/perception/bgperc/replay_check.py OUT_ROOT [--json OUT.json] [--seg-cache CACHE_DIR]
 
 OUT_ROOT holds ``seq/<name>/meta.json`` (the recorded actions file: its dir has the recorded ``*_episodes.jsonl``) and
-``runs/<name>/*_episodes.jsonl`` (the replay's row). Prints one line per replay and the list of failures.
+``runs/<name>/*_episodes.jsonl`` (the replay's row). Prints one line per replay and the list of failures. With
+``--seg-cache`` (``seg_cache.py``'s output dir) each row also records its frozen detection cache: the file's sha1 and the
+segmenter's weights sha1.
 """
 import argparse
 import glob
@@ -54,13 +56,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("root")
     ap.add_argument("--json", default=None)
+    ap.add_argument("--seg-cache", default=None)
     a = ap.parse_args()
+    cache, head = {}, {}
+    if a.seg_cache:
+        cache = json.load(open(os.path.join(a.seg_cache, "index.json")))
+        head = json.load(open(os.path.join(a.seg_cache, "header.json")))
     res = []
     for d in sorted(glob.glob(os.path.join(a.root, "runs", "*", "_done"))):
         name = os.path.basename(os.path.dirname(d))
         if not os.path.exists(os.path.join(a.root, "seq", name, "meta.json")):
             continue
         r = check(a.root, name)
+        if name in cache:
+            r["detection_cache"] = {"sha1": cache[name]["sha1"], "frames": cache[name]["frames"],
+                                    "weights_sha1": head.get("weights_sha1"), "imgsz": head.get("imgsz")}
         res.append(r)
         print(f"{'OK  ' if r['valid'] else 'FAIL'} {name}: closes {r.get('n_rec')} / {r.get('n_rep')}, "
               f"max |d| {r.get('max_dist_diff_mm')} mm, steps {r.get('steps_rec')} / {r.get('steps_rep')}, "

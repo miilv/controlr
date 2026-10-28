@@ -1,7 +1,8 @@
 """Stream C, X2: does JPEG q95 (the sequences' storage) change the frozen segmenter's detections against the lossless
 frame? Every sequence keeps frame 0 as PNG and JPEG: run the segmenter on both, match detections greedily by mask IoU,
 and report the matched IoU, class agreement, and detections gained / lost (JPEG vs PNG), each difference with its
-classes and scores.
+classes and scores, and split by score (a difference's score is the higher of its two sides; matched pairs whose
+score crosses ``--hi`` with the same class are counted apart).
 
     CUDA_VISIBLE_DEVICES= SEG_WEIGHTS=.../v2b/best.pt SEG_CLASSES=.../v2b/classes.json \\
         python scripts/perception/bgperc/seg_jpeg_check.py SEQ_ROOT [--valid VALID.json] [--out OUT.json]
@@ -26,6 +27,7 @@ def main():
     ap.add_argument("--valid", default=None, help="only the episodes this validity file marks valid")
     ap.add_argument("--out", default=None)
     ap.add_argument("--iou", type=float, default=0.5, help="a JPEG detection matches a PNG one at this mask IoU")
+    ap.add_argument("--hi", type=float, default=0.5, help="score split: differences at >= hi vs below")
     a = ap.parse_args()
     from dojo.perception.seg_twin import _SegModel, iou
     w, c = os.environ["SEG_WEIGHTS"], os.environ["SEG_CLASSES"]
@@ -40,6 +42,7 @@ def main():
     tot = {"frames": 0, "png_dets": 0, "jpg_dets": 0, "matched": 0, "class_same": 0, "lost": 0, "gained": 0}
     ious = []
     per = {}
+    units = []                     # (score: the higher of its two sides, differs, crosses hi with the same class)
     for n in names:
         for png in sorted(glob.glob(os.path.join(a.root, n, "frames", "0000_*.png"))):
             jpg = png[:-4] + ".jpg"
@@ -56,11 +59,15 @@ def main():
                     ious.append(best[0])
                     same = dj[best[1]][1] == kp
                     tot["class_same"] += int(same)
+                    sj = float(dj[best[1]][2])
+                    units.append((max(float(sp), sj), not same, same and (float(sp) >= a.hi) != (sj >= a.hi)))
                     if not same:
-                        flips.append([kp, round(float(sp), 3), dj[best[1]][1], round(float(dj[best[1]][2]), 3)])
+                        flips.append([kp, round(float(sp), 3), dj[best[1]][1], round(sj, 3)])
                 else:
                     lost.append([kp, round(float(sp), 3)])
+                    units.append((float(sp), True, False))
             gained = [[k, round(float(s), 3)] for j, (_m, k, s, _b) in enumerate(dj) if j not in used]
+            units += [(s, True, False) for _k, s in gained]
             tot["frames"] += 1
             tot["png_dets"] += len(dp)
             tot["jpg_dets"] += len(dj)
@@ -73,7 +80,13 @@ def main():
     res = {"weights_sha1": wh, "imgsz": model.imgsz, "conf": model.conf, "iou_thr": a.iou, **tot,
            "matched_iou_mean": round(float(np.mean(ious)), 4) if ious else None,
            "matched_iou_p5": round(float(np.percentile(ious, 5)), 4) if ious else None,
-           "differ_frac": round(differ / max(1, tot["png_dets"]), 4), "per_frame": per}
+           "differ_frac": round(differ / max(1, tot["png_dets"]), 4)}
+    for name, keep in ((f">={a.hi}", lambda x: x >= a.hi), (f"{model.conf}-{a.hi}", lambda x: x < a.hi)):
+        u = [x for x in units if keep(x[0])]
+        res[f"by_score {name}"] = {"dets": len(u), "differ": sum(x[1] for x in u),
+                                   "differ_frac": round(sum(x[1] for x in u) / max(1, len(u)), 4),
+                                   f"same_class_crossing_{a.hi}": sum(x[2] for x in u)}
+    res["per_frame"] = per
     print(json.dumps({k: v for k, v in res.items() if k != "per_frame"}, indent=1))
     for f, r in per.items():
         if r["lost"] or r["gained"] or r["class_flips"]:

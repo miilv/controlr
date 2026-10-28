@@ -68,7 +68,17 @@
   "0 grasp-place pairs" on all of 100000-09. 8-99 of the 96-405 headset grasps are reachable per arm, but none pairs
   with a reachable hang. The episode then finishes with the laptop untouched (`not_home`, 0.0). Identical on main
   22f6339 and with #198's frame fix (journal 2026-10-27-dojo-integ-c4 §5; runs compute4
-  `~/dojo-data/integ-c4/g3/laptop_A_{main,pr}`). The laptop stage runs only once this plans.
+  `~/dojo-data/integ-c4/g3/laptop_A_{main,pr}`). The laptop stage runs only once this plans. It is the same on
+  rendered genuine 5.1 (compute2, bbc9b3a): c4b_laptop_obr_100000 and c4b_laptop_risky_100000 end at step 24/800,
+  not_home 0.0, "[hang] no plan for ['headset'] on hooks [0]: ... 0 grasp-place pairs". The laptop on_base_refit
+  arm was stopped for this (G3 hang plan blocker).
+- [ ] **dojo infra (landmine): store_laptop 100000 freezes Isaac 5.1's Kit on compute2.** No env step after step
+  ~20, then Kit's zenity "cannot open display" every 2 min until the integ_eval watchdog kills the scope
+  (infra_failure). It happened in 4 of 4 runs of the default-perception arms on compute2 (bbc9b3a,
+  `~/dojo-data/integ-c2/runs2/`): c4b_laptop_off_100000 (+ `__retry`), c4b_laptop_rbase_100000 (+ `__retry`). Also
+  c4b_laptop_rbase_100003. The on_base_refit / risky_b1 arms on 100000 ended at step 24 without a freeze. Not yet
+  seen on compute4. In the re-baseline the store_laptop cell runs on compute4; if 100000 freezes there too, that
+  row is infra, not 0.
 - [ ] **dojo: the rest of the articulation root frame (laptop).** `artroot` converts at objects_from_gt,
   estimate_to_layout, the twin's verify rows and eval_g1 (journal 2026-10-27-dojo-integ-c4 §4). Left: (1) dev tools
   that pair GT rows with meshes on their own (`color_calib`, `val_refine`, `val_what`, `review_exp`, `held_data`,
@@ -78,6 +88,11 @@
   `/root/visual` (15.6 mm off) but loads as a rigid prim: G3 fasten_screws 10/10 says harmless, unprobed;
   (4) the record's `scale` is not applied to the root offset (every record: 1).
 
+- [ ] **dojo runtime: a partial-view recentre that re-fits from the PRIOR** (stream H; variant of
+  `refine_recentre_guard` "vis"). Today "vis" keeps the prior when a pick refine would move the object > 10 mm from a
+  view < `place_min_vis` visible. A variant would re-hover so the object is fully in view and re-fit from the prior,
+  not from the slid fit; that might keep the one "helpful" partial-view recentre of M's arm-8 audit (a gross 202 -> 177
+  mm bottle). Journal 2026-10-28-dojo-recentre-vis-guard.
 - [ ] **dojo skills: a held read at the place hover for hang / tools / sweep** (stream H). PARKED 2026-10-28: built on
   branch `feat/dojo-h95-place-held-read` (0 extra steps: the existing pre-place still). The ceiling on C's 38 proxy
   sequences is R10 +10 / -5 of 297: the descent re-seats mugs / bowls, so the hover pose is not the release pose. Real

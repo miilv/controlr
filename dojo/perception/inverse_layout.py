@@ -849,6 +849,24 @@ def _slot_identity(h: "Hypothesis", g: dict, placement: dict, tag: str | None, v
     return out
 
 
+def _glyph_read_slot(h: "Hypothesis", g: dict, placement: dict, tag: str | None, views, cfg) -> "Hypothesis":
+    """``cfg.glyph_read``: a make_kong slot tile read by the twin-trained tile classifier, the only reader then. A read
+    above its per-view margin sets the asset and marks it "read"; anything else (a back, a grazing view, a low margin,
+    no server) leaves the identity unread, i.e. "unknown" (``identity_marks``). Other labels pass unchanged."""
+    if cfg.glyph_read == "off" or not g["candidates"] or not all(c.split("/")[1] == "mahjong" for c in g["candidates"]):
+        return h
+    from . import glyph_read
+
+    r = glyph_read.read(views, h.sm(), h.T(), list(g["candidates"]))
+    h.per_view["glyph_read"] = r
+    h.per_view.pop("identity", None)
+    if r.get("read"):
+        sm_k = _slot_shape(r["key"], placement, tag)
+        h.key, h.tag = r["key"], sm_k.tag
+        h.per_view["identity"] = "read"
+    return h
+
+
 @lru_cache(maxsize=4096)
 def asset_info(key: str) -> dict:
     """info.json alone (no geometry): captions, description, extents."""
@@ -3336,6 +3354,10 @@ class EstimatorConfig:
     # a glyph identity (number cards, tiles) counts as READ only when the chosen candidate's texture was scored and it
     # beats the runner-up by more than this (combined cost); else the record says the digit is unknown (digits.py)
     glyph_min_margin: float = 0.0
+    # glyph_read: make_kong's slot tiles read by the twin-trained tile classifier (dojo.perception.glyph_read; its server
+    # at DOJO_GLYPH_ADDR, else a no-op): "kong_cls" = a read above the classifier's per-view margin sets the tile's asset
+    # and marks it "read"; every other tile stays unread ("unknown"). "off" (default): the texture read as before
+    glyph_read: str = "off"
     stack_proposals: bool = True  # groups still short look for objects resting on chosen ones (_stack_proposals)
     stack_levels: int = 2
     stack_max_loss: float = 0.5
@@ -3526,6 +3548,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 h.per_view.update({"geom_group": [k for k in g["candidates"]], "slot": True, "sil_loss": round(float(loss), 4)})
                 if 1 < len(g["candidates"]) <= cfg.slot_identity_max:
                     h = _slot_identity(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
+                h = _glyph_read_slot(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
                 slot_placed.append((g, h, lab))
             g["labels"] = [lab for lab in g["labels"] if lab not in mine]
         # labels the config stacks on another (relative_plane "<label>/...", zero offset): on top of it
