@@ -2,8 +2,12 @@
 scored with stream M's grasp-time metric. 0 LLM calls.
 
     PYTHONPATH=<the recorded runs' code + A1> PYOPENGL_PLATFORM=egl <venv python> \\
-        scripts/perception/bgperc/x2_eval.py SEQ_ROOT --arm null|oracle|a1 --out OUT.jsonl [--valid VALID.json]
+        scripts/perception/bgperc/x2_eval.py SEQ_ROOT --arm null|oracle|a1 --out-dir OUT [--valid VALID.json]
         [--names a,b] [--floor FIDELITY.json]
+
+Output in stream M's format (``m95_score.cmd_score``'s ``events.jsonl``: score_event + held metas + frame-0 + base +
+attempt + root), one dir per arm: ``OUT/rt/events.jsonl``, ``OUT/<arm>/events.jsonl`` (+ "x2_arm", "changed",
+"verdict"; "arm" stays the hand), ``OUT/<arm>/recomputes.jsonl``, ``OUT/<arm>/summary.json``.
 
 Protocol (reviewer's design, adopted by the lead; journal 2026-10-28-dojo-bgperc §7):
 - rt = the RECORDED belief: M's ``episode_events`` (the runtime's ``dev_belief_probe`` at every grasp / place).
@@ -211,23 +215,14 @@ def rt_attached(rb, step: int) -> dict:
     return dict((sn or {}).get("attached") or {})
 
 
-def gt_at(seq, k: int, back: int = 3):
-    for j in range(k, max(-1, k - back - 1), -1):
-        if j in seq.by_step:
-            return seq.gt(j)
-    return None
-
-
-def run_episode(P, seq, arm, floor: dict | None = None, log=print) -> list[dict]:
-    from dojo.perception.grasp_metric import (Footprints, Groups, attach_label, episode_events, grip_events,
-                                              score_event)
+def run_episode(P, seq, arm, floor: dict | None = None, log=print) -> tuple[list, list, list]:
+    from dojo.perception.grasp_metric import Footprints, attach_label, episode_events, grip_events
     report, actions = WR.load_src(seq)
     cfg = report.get("config") or {}
     revs = sorted((e for e in report.get("events") or [] if isinstance(e.get("step"), (int, float))),
                   key=lambda e: e["step"])
     rb = WR.RecordedBelief(report, actions, revs)
-    kin, fp, task = rb.kin, Footprints(), seq.task
-    groups = Groups(task)
+    kin, fp = rb.kin, Footprints()
     world = ArmWorld(rb, rb.track, cfg, report)
     scored = [(ev, b) for ev, b in episode_events(report, actions, kin, footprints=fp) if ev.kind in ("grasp", "place")]
     # the timeline: recorded writes (index i), gripper changes, the arm's ticks, the scored events (at k - 1)
@@ -243,7 +238,7 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print) -> list[dict]
         tl.append((int(ev.step) - 1, 3, "score", j))
     tl.sort(key=lambda x: (x[0], x[1]))
     released_since: list = []
-    rows, recomputes = [], []
+    pairs, recomputes = [], []
     for step, _o, kind, x in tl:
         if kind == "write":
             ev = revs[x]
@@ -298,28 +293,97 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print) -> list[dict]
                 world.set_free(lab, p7, step, "a1")
         else:
             ev, b = scored[x]
-            gts = gt_at(seq, ev.step - 1)
-            if gts is None:
-                continue
             b_arm = world.overlay(b, ev.step - 1)
-            s_rt = score_event(ev, b, gts, task, footprints=fp, groups=groups)
-            s_arm = score_event(ev, b_arm, gts, task, footprints=fp, groups=groups) if b_arm != b else s_rt
-            row = {"episode": seq.dir.name, "task": task, "kind": ev.kind, "step": ev.step, "arm_hand": ev.arm,
-                   "target": ev.target, "reference": ev.reference,
-                   "rt": {R: bool(v) for R, v in s_rt["clean_r"].items()},
-                   "arm": {R: bool(v) for R, v in s_arm["clean_r"].items()}, "changed": {}}
+            changed = {}
             for lab in (ev.target, ev.reference):
                 if lab and lab in world.chain and lab in b:
                     d = float(np.linalg.norm(np.subtract(b_arm[lab]["pos"], b[lab]["pos"]))) * 1000
                     wr = world.hist[lab][-1][1] if world.hist.get(lab) else None
-                    row["changed"][lab] = {"mm": round(d, 2), "writer": wr,
-                                           "floor_p95": ((floor or {}).get(wr) or {}).get("p95")}
-            rows.append(row)
-    return rows, recomputes
+                    changed[lab] = {"mm": round(d, 2), "writer": wr,
+                                    "floor_p95": ((floor or {}).get(wr) or {}).get("p95")}
+            pairs.append((ev, b, b_arm, changed))
+    rt_rows = m95_rows(seq, report, actions, [(ev, b) for ev, b, _ba, _c in pairs], track=rb.track, fp=fp)
+    arm_rows = m95_rows(seq, report, actions, [(ev, ba) for ev, _b, ba, _c in pairs], track=rb.track, fp=fp)
+    for r_rt, r_arm, (_ev, _b, _ba, ch) in zip(rt_rows, arm_rows, pairs):
+        r_rt.update(x2_arm="rt", changed={}, verdict="rt")
+        r_arm.update(x2_arm=arm.name, changed=ch)
+        r_arm["verdict"] = verdict({"rt": r_rt["clean_r"], "arm": r_arm["clean_r"], "changed": ch})
+    return rt_rows, arm_rows, recomputes
+
+
+_M95 = None
+
+
+def m95():
+    """Stream M's scorer (``scripts/perception/m95_score.py``) from this checkout: its row format and root causes."""
+    global _M95
+    if _M95 is None:
+        spec = importlib.util.spec_from_file_location("m95_score", Path(__file__).resolve().parents[1] / "m95_score.py")
+        _M95 = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_M95)
+    return _M95
+
+
+def m95_rows(seq, report: dict, actions: list, pairs: list, track: dict, fp) -> list[dict]:
+    """M's ``events.jsonl`` rows (``m95_score.cmd_score``) for (event, belief) pairs: score_event's output, the held
+    metas, the frame-0 record's score, base fields, attempt and root cause. GT = the sequence's ``gt.jsonl``."""
+    from collections import Counter, defaultdict
+
+    from dojo.perception.grasp_metric import Groups, flatten_record, score_event
+    M = m95()
+    frames = {str(s): {"objects": seq.gt(s)} for s in seq.steps}
+    task = seq.task
+    g = Groups(task)
+    src = os.path.dirname(seq.meta["actions"])
+    run = seq.dir.name
+    row = next((r for f in sorted(Path(src).glob("*_episodes.jsonl")) for r in (json.loads(x) for x in open(f) if x.strip())
+                if r.get("layout_id") == seq.layout_id), {})
+    base = {"run": run, "task": task, "layout_id": seq.layout_id, "success": row.get("success"), "score": row.get("score"),
+            "category": row.get("category"), "preset": row.get("preset"), "renderer": row.get("renderer", "isaac60"),
+            "head": (row.get("code") or {}).get("head"), "agent_unavailable": False, "family": M.family(run)}
+    moving = any(e.get("kind") == "track_moving" for e in report.get("events") or [])
+    recs = report.get("records") or {}
+    rec0 = flatten_record(recs.get("initial")) if recs.get("initial") else None
+    out, last_grasp = [], {}
+    for ev, belief in pairs:
+        f = M.frame_at(frames, ev.step - 1)
+        if f is None:
+            continue
+        if ev.kind == "place" and ev.arm in last_grasp:
+            d = M.held_drift(frames, track, ev.arm, *last_grasp[ev.arm], ev.step)
+            if d is not None:
+                ev.meta["held_drift_mm"] = round(d, 1)
+            gap = M.held_gap(f, track, ev.arm, last_grasp[ev.arm][1], ev.step, fp)
+            if gap is not None:
+                ev.meta["held_gap_mm"] = round(gap, 1)
+        s = score_event(ev, belief, f["objects"], task, footprints=fp, groups=g)
+        if rec0 is not None:
+            b0 = {**rec0, **{lab: o for lab, o in belief.items() if str(o.get("source", "")).endswith("held")}}
+            s0 = score_event(ev, b0, f["objects"], task, footprints=fp, groups=g)
+            s["frame0"] = {"clean_r": s0["clean_r"], "clean_required": s0["clean_required"],
+                           "clean_target": s0["clean_target"], "target_cls": s0["required"][0]["cls"]}
+        if ev.kind == "grasp" and s["required"][0].get("gt_label"):
+            last_grasp[ev.arm] = (ev.step, s["required"][0]["gt_label"])
+        s.update(base)
+        s["moving"] = moving
+        out.append(s)
+    intended = M.INTENDED_PUSH.get(task)
+    intervals = M.carried_intervals(frames, actions, track)
+    held_at = {(s_["arm"], s_["step"]): (s_["meta"].get("attached") or s_["target"]) for s_ in out if s_["kind"] == "grasp"}
+    seen, hist = Counter(), defaultdict(list)
+    for s_ in sorted(out, key=lambda e: (e["step"], e["kind"] != "grasp")):
+        seen[(s_["kind"], s_["target"])] += 1
+        s_["attempt"] = seen[(s_["kind"], s_["target"])]
+        if not s_["clean_r"]["10"]:
+            x = M.failure_rows([s_])[0]
+            s_["root"] = M.root_cause(s_, x, hist, frames, intervals, held_at, intended)
+        hist[s_["target"]].append(s_)
+    return out
 
 
 def verdict(row: dict, R: str = "10") -> str:
-    a, b = row["rt"][R], row["arm"][R]
+    """rt vs arm at ``R`` cm: same | fixed | broken | within noise (every changed object below its writer's p95)."""
+    a, b = bool(row["rt"][R]), bool(row["arm"][R])
     if a == b:
         return "same"
     big = [c for c in row["changed"].values() if c["floor_p95"] is None or c["mm"] > c["floor_p95"]]
@@ -332,7 +396,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("root")
     ap.add_argument("--arm", default="null", choices=("null", "oracle"))
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--out-dir", required=True, help="<out>/rt/events.jsonl, <out>/<arm>/events.jsonl (M's format)")
     ap.add_argument("--valid", default=None)
     ap.add_argument("--names", default="")
     ap.add_argument("--floor", default=None, help="write_rerun fidelity output: per-writer p95 (mm)")
@@ -357,35 +421,46 @@ def main():
         if render.gl() is None:
             raise SystemExit("x2_eval: no GL renderer (EGL): never the CPU fallback")
         P = _Perception()
-    all_rows, all_rc = [], []
-    with open(a.out, "w") as fh:
-        def log(r):
-            print(json.dumps(r), flush=True)
-        for n in names:
-            seq = sd.Sequence(os.path.join(a.root, "seq", n))
-            arm = OracleArm(seq) if a.arm == "oracle" else NullArm()
-            rows, rcs = run_episode(P, seq, arm, floor, log)
-            for row in rows:
-                row["verdict"] = verdict(row)
-                fh.write(json.dumps(row) + "\n")
+    od = Path(a.out_dir)
+    for d in ("rt", a.arm):
+        (od / d).mkdir(parents=True, exist_ok=True)
+    f_rt, f_arm = open(od / "rt" / "events.jsonl", "w"), open(od / a.arm / "events.jsonl", "w")
+    f_rc = open(od / a.arm / "recomputes.jsonl", "w")
+    all_rt, all_arm, all_rc = [], [], []
+
+    def log(r):
+        print(json.dumps(r), flush=True)
+    for n in names:
+        seq = sd.Sequence(os.path.join(a.root, "seq", n))
+        arm = OracleArm(seq) if a.arm == "oracle" else NullArm()
+        rt_rows, arm_rows, rcs = run_episode(P, seq, arm, floor, log)
+        for fh, rows in ((f_rt, rt_rows), (f_arm, arm_rows), (f_rc, rcs)):
+            for r in rows:
+                fh.write(json.dumps(r) + "\n")
             fh.flush()
-            all_rows += rows
-            all_rc += rcs
-    summ = {"arm": a.arm, "all": summarize(all_rows, all_rc),
-            "without_put_bottles": summarize([r for r in all_rows if r["task"] != "put_bottles_into_dustbin"],
+        all_rt += rt_rows
+        all_arm += arm_rows
+        all_rc += rcs
+    for fh in (f_rt, f_arm, f_rc):
+        fh.close()
+    nb = [i for i, r in enumerate(all_rt) if r["task"] != "put_bottles_into_dustbin"]
+    summ = {"arm": a.arm, "all": summarize(all_rt, all_arm, all_rc),
+            "without_put_bottles": summarize([all_rt[i] for i in nb], [all_arm[i] for i in nb],
                                              [c for c in all_rc if "_bottles_" not in c["episode"]])}
-    json.dump(summ, open(os.path.splitext(a.out)[0] + ".summary.json", "w"), indent=1)
+    json.dump(summ, open(od / a.arm / "summary.json", "w"), indent=1)
     print(json.dumps(summ, indent=1))
 
 
-def summarize(rows: list[dict], rcs: list[dict]) -> dict:
+def summarize(rt_rows: list[dict], arm_rows: list[dict], rcs: list[dict]) -> dict:
     """Per R: rt / arm clean counts and the verdicts; the re-computed writes: adopted, and the ones X2 cannot see
     (they need a re-hover / second view / head-view confirm online), per writer."""
     from collections import Counter
-    out = {"events": len(rows), "episodes": len({r["episode"] for r in rows})}
+    out = {"events": len(rt_rows), "episodes": len({r["run"] for r in rt_rows})}
     for R in ("5", "10", "15"):
-        out[f"R{R}"] = {"rt_clean": sum(r["rt"][R] for r in rows), "arm_clean": sum(r["arm"][R] for r in rows),
-                        **Counter(verdict(r, R) for r in rows)}
+        out[f"R{R}"] = {"rt_clean": sum(bool(r["clean_r"][R]) for r in rt_rows),
+                        "arm_clean": sum(bool(r["clean_r"][R]) for r in arm_rows),
+                        **Counter(verdict({"rt": x["clean_r"], "arm": y["clean_r"], "changed": y["changed"]}, R)
+                                  for x, y in zip(rt_rows, arm_rows))}
     out["recomputed"] = {"n": len(rcs), "adopted": sum(c["adopted"] for c in rcs),
                          "offline_blind": sum(c["offline_blind"] for c in rcs),
                          "by_writer": {w: {"n": sum(c["recompute"] == w for c in rcs),
