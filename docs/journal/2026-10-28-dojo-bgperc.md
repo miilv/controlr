@@ -172,3 +172,23 @@ refine per frame? Report: [../experiments/2026-10-28-bgperc.md](../experiments/2
   - Leave-one-out on the 10 JPEG-era episodes: 119/120 logged pick / place refine priors are reproduced to 0.06 mm
     without using the refine's own prior. The miss is a grasp retry whose release the runtime undid; nothing logs that
     release.
+
+- **The official X2 harness** (`scripts/perception/bgperc/x2_eval.py`; the lead ruled it the one harness, and W's
+  `scripts/perception/a1/x2.py` stays a dev tool):
+  - rt is M's `episode_events`. On the 10 arm-8 ON episodes its events.jsonl counts equal M's scorer exactly:
+    103 events, clean@R10 56.
+  - An arm is the recorded belief plus its writes, with a causal chain:
+    - later recorded writes of an arm-moved label are re-run from the arm's pose (`write_rerun`);
+    - they are adopted by the runtime's main gates (`accept`);
+    - re-hovers, second views and the post-place head-view confirm cannot happen offline: such writes are not adopted
+      and are counted as "offline_blind";
+    - closes attach by M's `attach_label` on the arm's belief.
+  - Output is M's events.jsonl per arm (`OUT/<arm>/events.jsonl`), plus `changed` (every object the chain moved, its
+    writer and that writer's p95) and a verdict (same / fixed / broken / within noise).
+  - The A1 arm runs W's `dojo.runtime.tick.run` unchanged, with inputs as online, and reads one frozen detection
+    cache. `--prepare-dets` runs v2b on every tick frame; a cache miss is an error. GL is required.
+  - Checks:
+    - the null arm reproduces rt exactly;
+    - an oracle arm (dev only: GT before each refine / post-place) on 2 episodes: 30 re-computed writes, 7 adopted,
+      clean@R5 8 -> 11, 0 broken;
+    - W's tick on 2 compute3 dev proxies (no X2 data): 12 ticks, 0 errors, 0 cache misses.
