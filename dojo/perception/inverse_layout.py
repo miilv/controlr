@@ -2903,17 +2903,39 @@ def instance_range(task: str, g: dict) -> tuple[int, int, int] | None:
     return (lo, hi, step) if hi > 1 else None
 
 
-def _series_count(task: str, groups: list[dict], ms: list | None, instruction: str, cfg) -> tuple[list[dict], dict]:
+def _linked_prefix(task: str, g: dict) -> str | None:
+    """The series prefix a ``linked_count`` group's count follows (arrange_largest_number's mats: one per digit tile)."""
+    if len(g["labels"]) != 1:
+        return None
+    sel = (task_map()[task]["labels"].get(g["labels"][0]) or {}).get("select_mode") or {}
+    return sel.get("linked_label_prefix") if sel.get("mode") == "linked_count" else None
+
+
+def _seg_count(g: dict, dets: list, min_score: float) -> int:
+    """Distinct twin-segmenter head masks of a group's own assets (class = catalogue key) at ``min_score``."""
+    cands = set(g["candidates"])
+    mine: list[np.ndarray] = []
+    for d in sorted((d for d in dets if d.key in cands and float(d.score) >= min_score), key=lambda d: -d.score):
+        if not any(_mask_iou(d.mask, x, np.ones_like(x)) > 0.5 for x in mine):
+            mine.append(d.mask)
+    return len(mine)
+
+
+def _series_count(task: str, groups: list[dict], ms: list | None, instruction: str, cfg, dets: list | None = None
+                  ) -> tuple[list[dict], dict]:
     """How many objects a numbered-series group holds (``cfg.series_count``): "min" = the config's minimum; "sam" = the
     distinct SAM 3.1 text masks of the group's own vocabulary, rounded up to whole category sets and clamped to the
-    config's range (the minimum without masks). The group's label is repeated that many times (its objects are
-    interchangeable under it)."""
+    config's range (the minimum without masks); "seg" = the distinct twin-segmenter head masks of the group's own
+    assets (``dets``, score >= ``seg_count_min_score``), rounded and clamped the same way (the minimum without a
+    server). With "seg", a ``linked_count`` group (arrange_largest_number's mats) also takes the count of the series it
+    is linked to. The group's label is repeated that many times (its objects are interchangeable under it)."""
     import copy
 
     from . import sam_masks
 
     out = copy.deepcopy(groups)
     info = {}
+    by_prefix: dict = {}
     for g in out:
         rng = instance_range(task, g)
         if rng is None:
@@ -2921,6 +2943,11 @@ def _series_count(task: str, groups: list[dict], ms: list | None, instruction: s
         lo, hi, step = rng
         n = lo
         rec = {"range": [lo, hi]}
+        if cfg.series_count == "seg" and dets is not None:
+            k = _seg_count(g, dets, cfg.seg_count_min_score)
+            if k:
+                n = int(np.clip(step * int(np.ceil(k / step)), lo, hi))
+            rec["seg"] = k
         if cfg.series_count == "sam" and ms:
             voc = set(sam_masks.vocabulary([g], instruction))
             mine: list[np.ndarray] = []
@@ -2932,7 +2959,16 @@ def _series_count(task: str, groups: list[dict], ms: list | None, instruction: s
             rec["sam"] = len(mine)
         rec["n"] = n
         info[g["labels"][0]] = rec
+        sel = (task_map()[task]["labels"].get(g["labels"][0]) or {}).get("select_mode") or {}
+        for pre in sel.get("label_prefix") or []:
+            by_prefix[pre] = n
         g["labels"] = [g["labels"][0]] * n
+    if cfg.series_count == "seg":
+        for g in out:
+            pre = _linked_prefix(task, g)
+            if pre is not None and by_prefix.get(pre, 1) > 1:
+                info[g["labels"][0]] = {"linked": pre, "n": by_prefix[pre]}
+                g["labels"] = [g["labels"][0]] * by_prefix[pre]
     return out, info
 
 
@@ -3459,6 +3495,7 @@ class EstimatorConfig:
     # of its vocabulary within the range (needs a SAM server; "min" without one). Single-prefix series are reported
     # under the generator's labels (cube_0, cube_1, ...), which the checker looks up by prefix
     series_count: str = "min"
+    seg_count_min_score: float = 0.5   # series_count "seg": a detection counts an object at this score (the seed bar)
     # seg_propose: the twin-trained instance segmenter (dojo.perception.seg_twin, class = catalogue asset; a no-op without
     # its server at DOJO_SEG_ADDR). "on": after the joint refinement, the head view's masks of a label group's assets
     # that no chosen object explains go through B1's own proposal machinery (coarse fit + refine on the mask as the blob):
@@ -3518,8 +3555,18 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         sam_text, sam_info["text"] = _sam_text(images["cam_head"], groups, instruction, cfg)
         sam_info["text"]["s"] = round(time.time() - t_s, 3)
     series: dict = {}
+    seg_dets = None
+    if cfg.series_count == "seg" and "cam_head" in images:
+        from . import seg_twin
+        c = seg_twin.client()
+        if c is not None:
+            try:
+                seg_dets = [d for d in c.detect(images["cam_head"], conf=cfg.seg_min_score)
+                            if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
+            except Exception as e:  # a detector failure never takes perception down: the config's minimum
+                sam_info["series_seg_error"] = f"{type(e).__name__}: {e}"
     if cfg.series_count != "one":
-        groups, series = _series_count(task, groups, sam_text, instruction, cfg)
+        groups, series = _series_count(task, groups, sam_text, instruction, cfg, dets=seg_dets)
     if cfg.sam_fg != "off" and "cam_head" in images:
         views["cam_head"], sam_info["fg"] = _sam_fg(views["cam_head"], sam_text, cfg)
         head_blobs = blobs(views["cam_head"], "cam_head")
