@@ -13,6 +13,9 @@ Ops (request dicts):
     {"op": "refine", "frame": frame, "objects": [{label, key, pos, quat}], "fold"[, "search_radius", "empty_hand"]}
         -> {"refine": {label: ...}}
         local (x, y, yaw) re-fit of each object from its given pose on this frame (pre-contact wrist refine)
+    {"op": "release_read", "frame": frame, "key", "pose7", "arm", "others": [[key, pose7]], "cfg"}
+                                                                                   -> {"release_read": json}
+        the 6-DoF pose of an object right after the release (``dojo.perception.release_read``): ok, pose7, ious, ...
     {"op": "wrist_check", "frame": frame, "objects": [{label, key, pos, quat}], "fold", "arm", "kind", "target",
      "reference", "corridor", "held", "held_label", "cfg", "vocabulary"}             -> {"wrist_check": json}
         the grasp-time wrist check at a pick / place hover (``dojo.perception.wrist_check``): existence (refine fit +
@@ -177,6 +180,13 @@ class PerceptionClient:
         if empty_hand:
             req["empty_hand"] = True
         return json.loads(self._call(req)["refine"])
+
+    def release_read(self, frame: dict, key: str, pose7, arm: str, others=(), cfg: dict | None = None) -> dict:
+        """The 6-DoF pose of an object right after its release (``dojo.perception.release_read``): render-and-compare
+        around ``pose7`` in the releasing arm's wrist, the head and the other wrist; ``others`` = [(key, pose7)]."""
+        req = {"op": "release_read", "frame": encode_frame(frame), "key": key, "pose7": [float(v) for v in pose7],
+               "arm": arm, "others": [[k, [float(v) for v in p]] for k, p in others or ()], "cfg": cfg or {}}
+        return json.loads(self._call(req)["release_read"])
 
     def wrist_check(self, frame: dict, objects: list[dict], fold: int, arm: str, kind: str, target: str | None = None,
                     reference: str | None = None, corridor=None, held=None, held_label: str | None = None,
@@ -805,6 +815,11 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                                        float(req.get("max_shift_m", 0.03)), req.get("arm"), req.get("identity_vocabulary"),
                                        req.get("held"), req.get("search_radius"), bool(req.get("empty_hand")))
                         conn.send({"ok": True, "refine": json.dumps(ref, default=_default)})
+                    elif op == "release_read":
+                        from dojo.perception.release_read import release_read
+                        rr = release_read(decode_frame(req["frame"]), req["key"], req["pose7"], req["arm"],
+                                          others=[(k, p) for k, p in req.get("others") or ()], cfg=req.get("cfg"))
+                        conn.send({"ok": True, "release_read": json.dumps(rr, default=_default)})
                     elif op == "wrist_check":
                         out = p.wrist_check(req)
                         conn.send({"ok": True, "wrist_check": json.dumps(out, default=_default)})
