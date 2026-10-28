@@ -65,6 +65,12 @@ def belief_writes(rep: dict) -> list[dict]:
     [{writer, step, label, before, after, q_before, q_after}]"""
     from dojo.perception.grasp_metric import _applied
     evs = [e for e in rep.get("events") or [] if e.get("label") and isinstance(e.get("step"), (int, float))]
+    if any(e.get("kind") == "belief_write" for e in evs):
+        # runs with A1's write log: every semantic pose change (> 5 mm / 5 deg or an asset change, not held) is one
+        # belief_write {writer: the object's source, before7, after7}, whoever wrote it: use those alone
+        return [{"writer": str(e.get("writer")), "step": int(e["step"]), "label": e["label"], "before": e["before7"][:3],
+                 "after": e["after7"][:3], "q_before": e["before7"][3:7], "q_after": e["after7"][3:7]}
+                for e in evs if e.get("kind") == "belief_write" and e.get("before7") and e.get("after7")]
     out = []
     for i, e in enumerate(evs):
         k, lab, st = e.get("kind"), e["label"], int(e["step"])
@@ -556,7 +562,10 @@ def cmd_score(a) -> None:
                "replay_score": rp_.get("score"),
                "score_match": (None if (rp_.get("stopped_at") or len(acts)) < len(acts) and not rp_.get("ended_at")
                                else abs(float(rp_.get("score") or 0) - float(r.get("score") or 0)) < 1e-6),
-               "replay_ended_at": rp_.get("ended_at"), "n_actions": len(acts), **fid}
+               "replay_ended_at": rp_.get("ended_at"), "n_actions": len(acts),
+               "a1_replans": sum(1 for e in rep.get("events") or [] if e.get("kind") == "a1_replan"),
+               "a1_replan_steps": sum(int(e.get("steps") or 0) for e in rep.get("events") or [] if e.get("kind") == "a1_replan"),
+               **fid}
         fo.write(json.dumps(epi) + "\n")
         n_ep += 1
         print(f"{name}: {len(ev_rows)} events, clean@10 {epi['clean_R10']}, score match {epi['score_match']}, "
