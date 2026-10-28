@@ -219,6 +219,14 @@
   a stroke. Tried on `feat/dojo-longh-organize` without a gain: mesh-height-map targets (their full plans collide at the
   pick), stand offsets to its half-size (the screen's 6000-IK budget runs out over 85 targets), a cover-the-frame push
   goal, a stroke-order lookahead, off-centre strokes.
+- [ ] **dojo skills: tic-tac-toe "wait opponent (timeout)" on layout 100003.** The opponent's move is never counted, the
+  wait times out, and the episode ends not_home with the board unfinished:
+  - c4b_ttt_gcoff_100003 (8dae375, 949/1100, own 4 / opp 3);
+  - c4b_ttt_rs_100003 and c4b_ttt_rsoff_100003 (3e6aeed, 951 / 952 of 1100, own 4 / opp 3);
+  - c4b_tttcur_gc_100003 (08b0dd7, 530/1100, own 2 / opp 1).
+  All are genuine 5.1, perception mode, on compute4 `~/dojo-data/integ-c4/runs2/`. Every one is layout 100003. The
+  same layout also hit the 22-min time cap once (c4b_ttt_gcon_100003, 598/1100). Separate from the #215 label bug
+  (journal 2026-10-28-dojo-integ-c4-round2 §5).
 - [ ] **dojo perception: tic-tac-toe cell reads flicker on genuine 5.1 frames.** `watch_read` (kind cells) on compute8's
   rendered tic-tac-toe (Long-Horizon, journal 2026-10-27-dojo-longh): a board with our two pieces and one of the
   opponent's read "........." for 200 steps (100005), pieces appear and vanish between reads 1-2 steps apart

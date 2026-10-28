@@ -92,3 +92,17 @@ under "### I".
   - `"ee_joint_state"` on a command-semantics path drops a held block as empty.
 - The submission preset sets the key explicitly per path.
 
+## 5. The ttt baseline after #215: a shadowed `board`
+
+- The current-code ttt baseline (08b0dd7: #215 + the legality fixes; submit_v3 + grip_check, DOJO_GRIP_SOURCE=v2;
+  100000-04) ended not_home 0.3 at step ~450 in 4 of 5 episodes, each with "missing object '<board string>'"
+  (e.g. 'xo..x....').
+- The cause: `play_board_game`'s opponent wait reused `board` (the board's label) for the watch read's log string, and
+  #215 then passed it to `opponent_into_belief`. With a checker (perception mode), `board_state` looked the string up
+  as an object.
+- The mode-gt baseline on the same commit was 5/5, because `opponent_into_belief` returns before `board_state`
+  without a checker.
+- So #215 was never measured rendered before this: every post-#215 ttt run hit the bug.
+- Fix: the log variable is `read_board`. A regression test drives one confirmed landing with a perception-like
+  provider.
+

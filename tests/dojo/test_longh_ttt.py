@@ -119,3 +119,46 @@ def test_pieces_already_believed_on_the_board_are_not_candidates():
         w.obj("theirs0").pos = np.array([-0.074, -0.149, 0.781])                # believed in cell 0 already
     r, sk, occ = _into(dict(STEP530, theirs0=(0.0, 164)), prev=prev)
     assert r["moved"] is None and sk.provider.checker.calls == 1                # theirs0 is not a candidate any more
+
+
+class _GameSk(_Sk):
+    """Enough of Skills for play_board_game's turn loop: a log, an executor that holds still, home."""
+
+    def __init__(self, w, prov):
+        super().__init__(w, prov)
+        self.ex = type("Ex", (), {"steps_used": 0, "hold": lambda _s, n: None})()
+
+    def log(self, msg):
+        self.logs.append(msg)
+
+    def home(self, gripper=None):
+        return type("R", (), {"status": "ok"})()
+
+
+def test_play_board_game_hands_the_board_label_to_the_belief_update(monkeypatch):
+    """Rendered genuine 5.1 on 08b0dd7 (#215, OPP_INTO_BELIEF on): the opponent wait reused ``board`` for its log string,
+    so opponent_into_belief got 'xo..x....' instead of the board's label; with a checker (perception mode) board_state
+    raised KeyError -> 'missing object' -> the skill failed twice -> not_home 0.3 in 4 of 5 episodes (G3 / mode gt return
+    before board_state). One confirmed landing with a perception-like provider: the update gets the label, the piece
+    moves into the belief and the game goes on to our next turn."""
+    from dojo.skills import interactive as I
+    w = _board_world()
+    w.obj("mine2").pos = np.array([0.003, -0.077, 0.781])                          # ours on the centre: their turn
+    mine, theirs = [f"mine{i}" for i in range(5)], [f"theirs{i}" for i in range(4)]
+    sk = _GameSk(w, _Prov(STEP530))
+    read = {"cells": [{"k": k, "occupant": {4: "own", 0: "opponent"}.get(k)} for k in range(9)], "stable_vs_prior": True}
+    monkeypatch.setattr(I, "watch", lambda sk_, region, prior: read)
+    monkeypatch.setattr(I, "usable", lambda r: True)
+    monkeypatch.setattr(I, "wait_actors_still", lambda sk_, fallback=0: "still")
+    boards, real = [], I.opponent_into_belief
+
+    def spy(sk_, board, *a, **k):
+        boards.append(board)
+        return real(sk_, board, *a, **k)
+    monkeypatch.setattr(I, "opponent_into_belief", spy)
+    monkeypatch.setattr(I, "place_piece", lambda *a, **k: {"ok": False, "stage": "ended"})   # stop at our next turn
+    res = I.play_board_game(sk, "board", mine, theirs, quiet=1, opp_into_belief=True)
+    assert boards == ["board"]                                                   # the label, not the read's string
+    assert res == {"ok": True, "stage": "ended"}                                 # no world error: on to our turn
+    assert np.allclose(w.obj("theirs0").pos[:2], [-0.074, -0.149], atol=1e-6)    # moved into the belief, cell 0
+    assert any("[watch] step 0: o...x...." in m for m in sk.logs)               # the read's board is still logged
