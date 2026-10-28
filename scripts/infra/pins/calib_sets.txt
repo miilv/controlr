@@ -4,3 +4,4 @@
 # box_steps.sh step calib_sets verifies each against this md5 and installs it into the integration roots
 # (~/dojo-data/<dir>_ilia when it exists, plus $CALIB_EXTRA_ROOTS); a box without the set refuses perception runs.
 bg_folds frozen_d0_100040_49 661f0fcf9970228d55c5e0dd1ab6cded
+bg_folds_51 frozen_d0_100040_49 dbb2a685ad265e2b05b238b217142630
