@@ -60,6 +60,8 @@ REACH_MAX = 0.70                        # flange distance from the arm's mount
 MOUNTS = {"left": np.array([-0.30, -0.45, 0.765]), "right": np.array([0.30, -0.45, 0.765])}
 GRIP_SCALE = (-0.01, 0.044)             # finger joint for g = 0 / 1 (robot_config.yml gripper_scale)
 COMMANDS = ("obs", "move_to", "move_delta", "gripper", "hold", "return_home", "reach", "skill", "held_look")
+SETTLE_MAX = 3                          # camera mode: extra still steps after a close while the official reading moves
+SETTLE_EPS = 0.002                      # official-reading change (0..1) that counts as "still moving"
 # the runtime's control-flow exceptions (dojo.runtime.belief: a confirmed divergence re-plans, a lost object is searched):
 # they leave a vendored skill untouched, as they leave our own skills (matched by name: skills never import the runtime)
 PASS_THROUGH = ("Divergence", "LostObject")
@@ -403,6 +405,11 @@ class HarnessRobot:
             return np.array([f, f])
         return np.array([max(free, GRIP_SCALE[0]), max(free, GRIP_SCALE[0])])
 
+    def _official(self, arm) -> float | None:
+        """RoboDojo's official gripper reading (the applied control) where the observation carries it, else None."""
+        off = self._proprio().get(f"{arm}_ee_joint_state_official")
+        return None if off is None else float(np.asarray(off, float).reshape(-1)[0])
+
     def eef(self) -> dict:
         st = self._proprio()
         out = {}
@@ -677,7 +684,8 @@ class HarnessRobot:
         target = float(np.clip(GRIP_SCALE[0] + g * (GRIP_SCALE[1] - GRIP_SCALE[0]), 0.0, FINGER_MAX))
         moved = float(np.abs(fq - self._prev_finger[arm]).max())
         stopped = moved < 0.0005
-        return {"grip_cmd": round(g, 4), "cmd_width_m": round(2 * target, 4), "finger_q": _l(fq),
+        return {"official": None if self.truth else self._official(arm),
+                "grip_cmd": round(g, 4), "cmd_width_m": round(2 * target, 4), "finger_q": _l(fq),
                 "gap_m": round(float(fq.sum()), 5), "fingers_stopped": bool(stopped),
                 "blocked": bool(stopped and float(fq.min()) > target + 0.002),
                 "grasp_detected": bool(g < 0.5 and float(fq.min()) > EMPTY_Q)}
@@ -687,6 +695,7 @@ class HarnessRobot:
         if self.ended():
             return False
         self._prev_finger = {a: self.finger_q(a) for a in ARMS}
+        self._prev_off = {a: (None if self.truth else self._official(a)) for a in ARMS}
         lists = {}
         for arm in ARMS:
             g = float(self.ex.g[arm])
@@ -708,6 +717,16 @@ class HarnessRobot:
             if self.ended() or self.steps() >= self.step_lim():
                 break
             if not self._grip_step():
+                break
+        # camera mode: the finger state is read from the official gripper value; while it still changes from one step to
+        # the next after a close (fingers still moving onto the object), wait, at most SETTLE_MAX steps (the shim read
+        # the measured fingers, which needs no wait)
+        closing = [arm for arm, g in goals.items() if g < 0.5]
+        for _ in range(SETTLE_MAX if (closing and not self.truth and int(a.get("wait_steps", 0)) > 0) else 0):
+            prev = getattr(self, "_prev_off", {}) or {}
+            moving = [arm for arm in closing if prev.get(arm) is not None and self._official(arm) is not None
+                      and abs(self._official(arm) - prev[arm]) > SETTLE_EPS]
+            if not moving or self.ended() or self.steps() >= self.step_lim() or not self._grip_step():
                 break
         return {"arms": {arm: self.grip_report(arm) for arm in goals}, "steps": self.steps() - n0, **self.facts()}
 
@@ -946,7 +965,8 @@ class HarnessRobot:
         if cmd != "obs" or len(self.calls) < 4000:
             self.calls.append({"cmd": cmd, "step": n0, "steps": self.steps() - n0, "ok": rep.get("ok"),
                                **{k: rep.get(k) for k in ("moved", "reached", "plan_fail_reason", "path_mode",
-                                                          "verified", "error") if rep.get(k) is not None}})
+                                                          "planned_steps", "dry_run", "verified", "error",
+                                                          "grasp_detected", "official", "gap_m") if rep.get(k) is not None}})
         return rep
 
     def __getattr__(self, cmd):
