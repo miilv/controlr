@@ -65,3 +65,14 @@ in the bin).
 - n = 9 is a screen; the rendered arm is the evidence.
 
 Spend: 0 LLM calls. GPU: about 6 G3 jobs of 3-8 min on compute3 light2, outputs < 50 MB.
+
+## Other put_into callers, and the rendered arm
+
+- Only put_bottles reaches `put_into`'s drop + handover in any saved G3 / integ run. The on-table baskets of the
+  classify tasks have no off-table drop point (`drop_points`), so `put_into` returns at once there. The options touch no
+  other task today, and no other G3 smoke was needed.
+- Rendered arm (lead, passed to Integration): v0 of 100005-09 + 100020-29, one sha (main after #244 and #250).
+  - BASE = the current candidate: submit_v3 + grip_check (DOJO_GRIP_SOURCE=v2, grip_official_key as in arm 8 ON).
+  - ALL-ON = BASE + `put_into_opts` [spot, patient, sequence], `drop_verdict` "release", `refine_recentre_guard`
+    "vis"; optionally ALL-ON minus sequence.
+  - Tasks: put_bottles + guards organize_table, stack_bowls, build_tower.
