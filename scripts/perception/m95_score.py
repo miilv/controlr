@@ -65,6 +65,12 @@ def belief_writes(rep: dict) -> list[dict]:
     [{writer, step, label, before, after, q_before, q_after}]"""
     from dojo.perception.grasp_metric import _applied
     evs = [e for e in rep.get("events") or [] if e.get("label") and isinstance(e.get("step"), (int, float))]
+    if any(e.get("kind") == "belief_write" for e in evs):
+        # runs with A1's write log: every semantic pose change (> 5 mm / 5 deg or an asset change, not held) is one
+        # belief_write {writer: the object's source, before7, after7}, whoever wrote it: use those alone
+        return [{"writer": str(e.get("writer")), "step": int(e["step"]), "label": e["label"], "before": e["before7"][:3],
+                 "after": e["after7"][:3], "q_before": e["before7"][3:7], "q_after": e["after7"][3:7]}
+                for e in evs if e.get("kind") == "belief_write" and e.get("before7") and e.get("after7")]
     out = []
     for i, e in enumerate(evs):
         k, lab, st = e.get("kind"), e["label"], int(e["step"])
@@ -225,6 +231,47 @@ def cmd_consume(a) -> None:
         nd = lambda k: (f"{st_.median(v):.1f}" if (v := [x["need"][k] for x in xs if (x["need"] or {}).get(k) is not None]) else "-")  # noqa: E731
         print(f"| {t} | {pu} | {len(xs)} | {100 * sum(x['within'] for x in xs) / len(xs):.0f} % | "
               f"{med(xs, 'xy_mm')} / {med(xs, 'z_mm')}, {med(xs, 'yaw_deg')} | {nd('xy_mm')} / {nd('z_mm')} / {nd('yaw_deg')} |")
+
+
+def x2_table(rt: list[dict], arms: dict[str, list[dict]], R: str = "10", exclude=()) -> str:
+    """X2 (offline A1 arms on the recorded episodes): every arm's events paired with rt's by (run, step, kind, hand),
+    fixed / broken / same / within noise at R. An arm row's ``verdict`` (C's harness: a fixed / broken change counts
+    only when A1's belief change exceeds that writer's noise floor, p95) wins; without it the clean flags decide."""
+    key = lambda r: (r["run"], r["step"], r["kind"], r.get("arm"))   # noqa: E731
+    base = {key(r): r for r in rt if r["task"] not in exclude}
+    lines = [f"| arm | paired events | rt clean R{R} | arm clean R{R} | fixed | broken | within noise | unpaired |",
+             "|---|---|---|---|---|---|---|---|"]
+    for name, rows in arms.items():
+        rows = [r for r in rows if r["task"] not in exclude]
+        c, unp = Counter(), 0
+        arm_clean = rt_clean = 0
+        for r in rows:
+            b = base.get(key(r))
+            if b is None:
+                unp += 1
+                continue
+            rt_clean += bool(b["clean_r"][R])
+            arm_clean += bool(r["clean_r"][R])
+            v = r.get("verdict")
+            if v is None:
+                v = ("same" if bool(b["clean_r"][R]) == bool(r["clean_r"][R]) else
+                     "fixed" if r["clean_r"][R] else "broken")
+            c[v] += 1
+        n = sum(c.values())
+        lines.append(f"| {name} | {n} | {rt_clean} | {arm_clean} | {c['fixed']} | {c['broken']} | {c['within noise']} | {unp} |")
+    return "\n".join(lines)
+
+
+def cmd_x2(a) -> None:
+    root = Path(a.dir)
+    load = lambda p: [json.loads(ln) for ln in open(p) if ln.strip()]   # noqa: E731
+    rt = load(root / "rt" / "events.jsonl")
+    arms = {d.name: load(d / "events.jsonl") for d in sorted(root.iterdir())
+            if d.is_dir() and d.name != "rt" and (d / "events.jsonl").exists()}
+    for title, ex in (("all tasks", ()), ("without put_bottles", ("put_bottles_into_dustbin",))):
+        print(f"### {title}")
+        print(x2_table(rt, arms, exclude=ex))
+        print()
 
 
 def cmd_jobs(a) -> None:
@@ -556,7 +603,10 @@ def cmd_score(a) -> None:
                "replay_score": rp_.get("score"),
                "score_match": (None if (rp_.get("stopped_at") or len(acts)) < len(acts) and not rp_.get("ended_at")
                                else abs(float(rp_.get("score") or 0) - float(r.get("score") or 0)) < 1e-6),
-               "replay_ended_at": rp_.get("ended_at"), "n_actions": len(acts), **fid}
+               "replay_ended_at": rp_.get("ended_at"), "n_actions": len(acts),
+               "a1_replans": sum(1 for e in rep.get("events") or [] if e.get("kind") == "a1_replan"),
+               "a1_replan_steps": sum(int(e.get("steps") or 0) for e in rep.get("events") or [] if e.get("kind") == "a1_replan"),
+               **fid}
         fo.write(json.dumps(epi) + "\n")
         n_ep += 1
         print(f"{name}: {len(ev_rows)} events, clean@10 {epi['clean_R10']}, score match {epi['score_match']}, "
@@ -905,6 +955,8 @@ def main(argv=None) -> None:
     c.add_argument("--replays", required=True)
     c.add_argument("--out", required=True)
     c.add_argument("--back", type=int, default=25)
+    x = sub.add_parser("x2")
+    x.add_argument("dir", help="the X2 harness output: rt/events.jsonl and <arm>/events.jsonl")
     t = sub.add_parser("table")
     t.add_argument("events", nargs="+")
     t.add_argument("--by", default="task")
@@ -921,7 +973,8 @@ def main(argv=None) -> None:
     t.add_argument("--old", action="store_true", help="per task every round but its newest")
     t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)
-    {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table, "audit": cmd_audit, "consume": cmd_consume}[a.cmd](a)
+    {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table, "audit": cmd_audit, "consume": cmd_consume,
+     "x2": cmd_x2}[a.cmd](a)
 
 
 if __name__ == "__main__":
