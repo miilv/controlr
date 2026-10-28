@@ -77,15 +77,22 @@ def _named(text: str, cats: dict) -> list[str]:
     return [c for c in cats if c in words or _singular(c) in words or c.replace("_", " ") in text]
 
 
+def is_card(o) -> bool:
+    return "card" in o.category or "number" in o.category
+
+
 def card_digit(o) -> int | None:
-    """The number shown on a card: perception's reading when present, else the card asset's identity
-    (each number_card asset carries one digit)."""
+    """The number shown on a card: perception's reading when present (``ObjectState.digit``: B1's glyph read or the
+    agentic perceiver's, arbitrated by ``dojo.perception.digits``); None when perception could not read it
+    (``digit_source`` "unread": unknown; its asset index is a placeholder, never a digit); else, for a card that did not
+    come from perception (GT, the skills' own rows), the card asset's identity (each number_card asset carries one
+    digit). None for anything that is not a card."""
     d = getattr(o, "digit", None)
     if d is not None:
         return int(d)
-    if "card" in o.category or "number" in o.category:
-        return int(o.idx)
-    return None
+    if not is_card(o) or getattr(o, "digit_source", None) == "unread":
+        return None
+    return int(o.idx)
 
 
 def _phrase_score(phrase: str, cat: str) -> int:
@@ -462,19 +469,26 @@ def plan(instruction: str, world: WorldState) -> Plan:
 
     # --- buttons pressed a number of times given by cards, each followed by a confirm press
     if "press" in text and buttons and ("number" in text or "times" in text):
-        cards = [o for o in objs if card_digit(o) is not None]
+        cards = [o for o in objs if is_card(o)]
         kinds: dict = {}
         for b in buttons:
             kinds.setdefault(b.asset.key, []).append(b)
         counted = max(kinds.values(), key=len)              # "the two red buttons": the repeated kind
         confirm = [b for b in buttons if b not in counted]
-        seq = []
+        seq, unknown = [], []
         for b in sorted(counted, key=lambda o: o.pos[0]):    # left to right
             card = min(cards, key=lambda c: float(np.linalg.norm(c.pos[:2] - b.pos[:2]))) if cards else None
-            n = card_digit(card) if card is not None else 1
+            n = card_digit(card) if card is not None else None
+            if n is None:
+                unknown.append(f"{b.label}: " + (f"{card.label} digit unknown" if card is not None else "no card"))
+                continue
             seq.append((b.label, int(n)))
             if confirm and "confirm" in text:
                 seq.append((confirm[0].label, 1))
+        if unknown:
+            # a count nobody read is not guessed (an extra or missing press fails the episode either way): the planner
+            # reports it as it reports any instruction it cannot act on
+            return Plan("none", {"unknown_digits": unknown}, f"press count unknown: {unknown}")
         return Plan("press_sequence", {"presses": seq}, f"counted {[b.label for b in counted]}, cards")
 
     # --- swap two objects through the empty mat

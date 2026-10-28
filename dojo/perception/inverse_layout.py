@@ -41,6 +41,7 @@ from scipy.spatial.transform import Rotation
 
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
 from .identity_marks import identity_marks
+from .digits import glyph_evidence, record_fields as digit_fields
 from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 from .slots import settled as _settled, support_slot
@@ -839,6 +840,11 @@ def _slot_identity(h: "Hypothesis", g: dict, placement: dict, tag: str | None, v
                                        "margin": round(float(b2[0] - best), 4)}
     if len(scored) == 1 or float(scored[1][0] - best) > SLOT_READ_MARGIN:
         out.per_view["identity"] = "read"
+    if all(c.split("/")[1] in TEXTURE_CRITICAL for c in g["candidates"]):
+        # the identity lives in a glyph: read only with a scored texture and a margin (a card with no texture score
+        # took the first candidate on a tie of the 0.25 penalties, and its digit was exported as read)
+        out.per_view["glyph"] = glyph_evidence(k, tx, float(scored[1][0] - best) if len(scored) > 1 else None,
+                                               cfg.glyph_min_margin, cfg.ambiguity_margin)
     return out
 
 
@@ -3309,6 +3315,9 @@ class EstimatorConfig:
     # (build_tower: three pieces within 10 cm were one blob, never proposed)
     split_merged: bool = True
     slot_identity_max: int = 12  # slot labels with 2..N candidates get a per-candidate identity check
+    # a glyph identity (number cards, tiles) counts as READ only when the chosen candidate's texture was scored and it
+    # beats the runner-up by more than this (combined cost); else the record says the digit is unknown (digits.py)
+    glyph_min_margin: float = 0.0
     stack_proposals: bool = True  # groups still short look for objects resting on chosen ones (_stack_proposals)
     stack_levels: int = 2
     stack_max_loss: float = 0.5
@@ -3885,10 +3894,11 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             continue
         refs = {k: ref_color(k) for k in geom_keys}
         mode = g["select_mode"].get("mode", "unique")
-        if all(k.split("/")[1] in TEXTURE_CRITICAL for k in geom_keys):
+        glyph = all(k.split("/")[1] in TEXTURE_CRITICAL for k in geom_keys)
+        if glyph:
             # glyph identity (mahjong tiles, digit cards): textured render-and-compare per candidate
-            C = np.array([[(lambda t_: 1.0 if t_ is None else t_)(texture_cost(chosen[i].sm(), chosen[i].T(), views, k, min_px=20))
-                           for k in geom_keys] for i in members])
+            TX = [[texture_cost(chosen[i].sm(), chosen[i].T(), views, k, min_px=20) for k in geom_keys] for i in members]
+            C = np.array([[1.0 if t_ is None else t_ for t_ in row] for row in TX])
         else:
             C = np.array([[appearance_distance(obs_cols[i], refs[k]) if obs_cols[i] is not None else 1.0 for k in geom_keys]
                           for i in members])
@@ -3925,6 +3935,12 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 chosen[i].key = geom_keys[int(np.argmin(C[row]))]
         for row, i in enumerate(members):
             chosen[i].appearance = float(C[row].min())
+            if glyph and chosen[i].key in geom_keys:  # read or not (digits.glyph_evidence): the chosen key's texture
+                ci = geom_keys.index(chosen[i].key)
+                rest = np.delete(C[row], ci)
+                chosen[i].per_view["glyph"] = glyph_evidence(chosen[i].key, TX[row][ci],  # score, its margin in its row
+                                                             float(rest.min() - C[row, ci]) if rest.size else None,
+                                                             cfg.glyph_min_margin, cfg.ambiguity_margin)
     timings["identity_s"] = round(time.time() - t4, 3)
 
     # ---- yaw from a feature cut into the top (insert_key's round lock: its keyhole). Such an outline is the same at
@@ -4041,8 +4057,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 hidden = float((s_h & head.robot).sum() / s_h.sum())
         near_home = h.tag != "fixed" and any(np.hypot(h.x - c[0], h.y - c[1]) < HOME_HIDE_RADIUS for c in HOME_HIDDEN_XY)
         fg_near = resid_near.get(id(h), 0.0)
+        # a digit only from a glyph read (digits.record_fields); an unread one is also a reason to look again
+        dfields = digit_fields(cat, idx, h.per_view.get("glyph"), h.key, len(h.per_view.get("geom_group") or g["candidates"]))
         ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
-                     or bool(h.per_view.get("low_contrast"))
+                     or bool(h.per_view.get("low_contrast")) or dfields.get("digit_source") == "unread"
                      or rival is not None or hidden > cfg.hidden_frac_flag or near_home or fg_near > cfg.fg_resid_flag)
         review = None
         if ambiguous and alt is not None and cfg.view_requests and h.tag != "fixed":
@@ -4059,6 +4077,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "hidden_frac": round(hidden, 3), "near_home_grippers": bool(near_home),
                                "fg_resid_near": round(fg_near, 3),
                                "texture": h.per_view.get("texture"),
+                               **({"glyph": h.per_view["glyph"]} if h.per_view.get("glyph") else {}), **dfields,
                                "geom_group": h.per_view.get("geom_group"), "slot": bool(h.per_view.get("slot", False)),
                                **({"low_contrast": True} if h.per_view.get("low_contrast") else {}),
                                **({"yaw_read": {k: h.per_view["top_feature"][k] for k in

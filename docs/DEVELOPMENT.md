@@ -324,6 +324,14 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   only that arm's entry: the other arm's answer is not this arm's (robot-harness G2-3 / G2-10, P1S I1-3). Likewise an
   orientation or a confidence the perceiver did not measure is never filled in with a default (`merge_prior`'s
   `prior_unusable`, the bridge's `_orientation_unknown`).
+- **A number card's asset index is not its digit unless someone read the glyph.** B1 picks a card among identical
+  boards by textured render-and-compare. With no texture score (no GL, a hidden or flat glyph) every candidate ties, and
+  the first one wins as a placeholder. Take a digit only from the digit fields (`dojo.perception.digits`: record
+  `_perception.digit` / `digit_source`, `ObjectState.digit`, J1 `value` / `attributes.digit`), never from `category_idx`.
+  `digit_source == "unread"` means unknown, and the planner then reports the press count unknown. Where the agentic
+  perceiver's `value` and B1's read disagree, `digits.resolve` decides; don't add a second rule. A card's index follows
+  its digit (`idx_for_digit`, `asset_for_digit`) so the twin and the planner agree (legality audit P2-6, G2-2, G2-4;
+  journal 2026-10-28-legality-card-digit).
 
 ## 5. What lives where
 

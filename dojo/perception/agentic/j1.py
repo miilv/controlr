@@ -46,6 +46,7 @@ import threading
 import time
 from pathlib import Path
 
+from .. import digits
 from .. import j1_adapter as _b1
 
 VERSION = "agentic-j1-1"
@@ -218,6 +219,8 @@ def hint_text(b1: dict | None, calib: dict, title: str) -> str:
         extra = ""
         if o.get("value") is not None or (o.get("attributes") or {}).get("digit") is not None:
             extra += f" value={o.get('value', (o.get('attributes') or {}).get('digit'))}"
+        elif o.get("digit_unread"):
+            extra += f" value=unread ({o['digit_unread']})"
         if o.get("alternative"):
             extra += f" alternative={o['alternative'].get('asset')} (margin {_fmt(o['alternative'].get('margin'), 3)})"
         lines.append(f"  [{i}] label={o.get('label')!r} category={o.get('category')} pos={_fmt(o.get('pos'))} "
@@ -304,14 +307,20 @@ def answer_to_output(ans: dict, b1: dict | None) -> tuple[list[dict], list[dict]
         o = {}
         if a.get("keep") is not None:
             try:
-                o = {k: v for k, v in b1o[int(a["keep"])].items() if k in OBJ_FIELDS + ("source",)}
+                kept = b1o[int(a["keep"])]
+                o = {k: v for k, v in kept.items() if k in OBJ_FIELDS + ("source",)}
                 o["source"] = o.get("source") or "head"
             except (ValueError, IndexError, TypeError):
                 probs.append(f"objects[{i}]: keep {a.get('keep')!r} is not a hint index")
                 continue
+            if digits.b1_reading(kept) is not None:  # the kept object's measured digit (B1's attributes.digit)
+                o.pop("value", None)
+                o["_b1_digit"] = digits.b1_reading(kept)
         for k in OBJ_FIELDS:
             if a.get(k) is not None:
                 o[k] = a[k]
+        if a.get("value") is not None:  # the agent's explicit reading, at its own confidence for the entry
+            o["_value_conf"] = float(a["confidence"]) if isinstance(a.get("confidence"), (int, float)) else digits.AGENT_DEFAULT_CONF
         if a.get("yaw_deg") is not None:
             try:
                 o["quat"] = _quat_from_yaw(a["yaw_deg"])
@@ -388,6 +397,8 @@ def snap_to_b1(objects: list[dict], b1: dict | None, thr: float = 0.2, radius_m:
             q.update({k: b[k] for k in ("pos", "quat", "asset", "size", "top_z", "category") if b.get(k) is not None})
             q["source"] = b.get("source", "head")
             q.pop("_agent_point", None)
+            if "_b1_digit" not in q and digits.b1_reading(b) is not None:  # B1's measured digit of what it snapped to
+                q["_b1_digit"] = digits.b1_reading(b)
             out.append(q)
         else:
             out.append(o)
@@ -418,8 +429,12 @@ def add_unmentioned(objects: list[dict], b1: dict | None, radius_m: float = 0.03
         if str(o.get("label")) in labels or have.get(c, 0) >= want.get(c, 0):
             continue
         if all(math.hypot(o["pos"][0] - x["pos"][0], o["pos"][1] - x["pos"][1]) > radius_m for x in out):
-            out.append(dict({k: v for k, v in o.items() if k in OBJ_FIELDS + ("source",)},
-                            confidence=round(0.5 * float(o.get("confidence", 0.5)), 3)))
+            q = dict({k: v for k, v in o.items() if k in OBJ_FIELDS + ("source",)},
+                     confidence=round(0.5 * float(o.get("confidence", 0.5)), 3))
+            if digits.b1_reading(o) is not None:  # its measured digit stays (finish_answer writes it as value)
+                q.pop("value", None)
+                q["_b1_digit"] = digits.b1_reading(o)
+            out.append(q)
             have[c] = have.get(c, 0) + 1
             n += 1
     return out, n
@@ -564,6 +579,41 @@ def executable_looks(looks: list[dict], b1_looks: list[dict], objects: list[dict
     return out, n
 
 
+def settle_digits(objects: list[dict], b1_objects: list[dict] | None = None, radius_m: float = 0.03) -> list[str]:
+    """Every output object's digit by ``digits.resolve`` (THE RULE), once, after snap / unmentioned / H2 / arbitration:
+    B1's measured digit of the object it came from (a keep, a snap, an unmentioned copy: ``_b1_digit``; else the B1
+    object of its kind with its label, or within ``radius_m``) against the agent's explicit ``value`` (``_value_conf``).
+    The result is the object's ``value`` (+ ``digit_conf`` / ``digit_source``), or no ``value`` and ``digit_unread``;
+    the asset follows the digit. Returns the log lines."""
+    import math
+
+    log = []
+    for o in objects:
+        b, vc = o.pop("_b1_digit", None), o.pop("_value_conf", None)
+        if b is None and b1_objects and o.get("pos") is not None:
+            same = [x for x in b1_objects if digits.b1_reading(x) is not None and _cat_of(x) == _cat_of(o)]
+            pair = next((x for x in same if x.get("label") == o.get("label")), None) or min(
+                (x for x in same if math.hypot(x["pos"][0] - o["pos"][0], x["pos"][1] - o["pos"][1]) <= radius_m),
+                key=lambda x: math.hypot(x["pos"][0] - o["pos"][0], x["pos"][1] - o["pos"][1]), default=None)
+            b = digits.b1_reading(pair)
+        if b is None and vc is None:
+            continue
+        r = digits.resolve(b, o.get("value") if vc is not None else None, vc)
+        for k in ("value", "digit_conf", "digit_source", "digit_unread"):
+            o.pop(k, None)
+        if r["digit"] is None:
+            o["digit_unread"] = r["unread"]
+        else:
+            o.update(value=r["digit"], digit_source=r["source"])
+            if r["conf"] is not None:
+                o["digit_conf"] = r["conf"]
+            if o.get("asset"):
+                o["asset"] = digits.asset_for_digit(o["asset"], r["digit"])
+        if r["event"]:
+            log.append(f"digit {o.get('label')}: " + " ".join(f"{k}={v}" for k, v in r["event"].items()))
+    return log
+
+
 def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd, cfg: dict, joints=None,
                   instruction: str = "", **kw) -> tuple[list[dict], list[dict], str, list[str], dict | None]:
     """The agent's answer -> (objects, needs_look, source, problems, refine info): snap to B1, keep B1's unmentioned
@@ -608,6 +658,7 @@ def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd
         n_yaw = keep_read_yaws(objects, b1.get("objects") or [])
         if n_yaw:
             probs.append(f"b1_read_yaw_kept={n_yaw}")
+    probs += settle_digits(objects, (b1 or {}).get("objects") or [])
     task_ = kw.get("task") or (b1 or {}).get("task") or _b1.infer_task(instruction)
     if task_:
         try:

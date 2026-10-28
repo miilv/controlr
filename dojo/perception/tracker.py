@@ -21,6 +21,8 @@ import math
 
 import numpy as np
 
+from . import digits
+
 TABLE_Z = 0.765
 TCP_OFFSET = 0.1501  # flange -> grasp point along flange +x (robot config)
 
@@ -105,6 +107,8 @@ class Tracker:
                     events.append({"event": "moved", "label": t.get("label"), "moved_mm": round(d * 1000, 1)})
             if k.get("source") != "prior" and float(k.get("confidence", 0)) >= self.move_conf:
                 self.touched.discard(t["_tid"])
+            if k is not t and digits.keep_agent_digit(k, t):  # a re-read keeps the agent's digit reading (its rule)
+                events.append({"event": "digit", "label": t.get("label"), "value": k.get("value")})
             done[t["_tid"]] = k
         left_t = [t for t in self.objects if t["_tid"] not in done]
         left_r = [(j, r) for j, r in enumerate(readings) if j not in used]
