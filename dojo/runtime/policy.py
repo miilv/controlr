@@ -285,6 +285,10 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
+    # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
+    # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
+    ported_routes: bool = False
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -367,6 +371,10 @@ class RuntimePolicy:
         self.bridge: Bridge | None = None
         self.dev_gt = None
         self.report: dict = {}
+        if supervisor is None and self.cfg.ported_routes:
+            from dojo.skills.planner import plan as _plan
+            supervisor = RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans,
+                                        planner=lambda instr, w: _plan(instr, w, ported=True))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -606,6 +614,7 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.ported_routes = "on" if cfg.ported_routes else "off"
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
@@ -784,7 +793,7 @@ class RuntimePolicy:
                 break
             w.notes["params"] = dict(d.params)
             try:
-                res = library.SKILLS[d.skill](sk, **d.params) or {}
+                res = library.skill_fn(d.skill)(sk, **d.params) or {}
                 self.report["result"] = _short(res)              # before finish(): success may end it there
                 if res.get("ok"):
                     f = sk.finish()

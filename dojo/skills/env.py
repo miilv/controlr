@@ -82,6 +82,12 @@ class RunnerEnv:
         g = self.r.robot_gt(self.i)
         return {a: g[a].get("gripper_open_measured") for a in ARMS}
 
+    def finger_joints(self) -> dict:
+        """DEV-ONLY: each arm's measured finger joints (m), what robot-harness's shim reports as ``finger_q``; the
+        ported skills read it in G3 mode gt only (``dojo.skills.ported.harness_robot``)."""
+        g = self.r.robot_gt(self.i)
+        return {a: list(g[a].get("gripper_joint_pos") or []) for a in ARMS}
+
     @property
     def instruction(self) -> str:
         return str(self.r.env.obs_manager.instruction[self.i])
@@ -137,6 +143,14 @@ class KinematicEnv:
 
     def _obj(self, label: str) -> dict:
         return next(o for o in self.objects if o["label"] == label)
+
+    def finger_joints(self) -> dict:
+        """Ground truth (tests): fingers stopped at 10 mm on an attached object, else where the command puts them."""
+        out = {}
+        for a in ARMS:
+            f = 0.01 if a in self.attached else -0.01 + 0.054 * self.g[a]
+            out[a] = [f, f]
+        return out
 
     def step(self, action: dict) -> bool:
         if self.ended or self._steps >= self.step_lim:
