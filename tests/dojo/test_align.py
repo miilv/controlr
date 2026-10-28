@@ -97,3 +97,22 @@ def test_align_in_row_on_the_kinematic_env():
     assert d <= 0.008 and a <= 8.0, (d, a)
     assert max(rise.values()) < 0.007, rise                             # never lifted (the checker's 7 mm)
     assert env.steps_used <= 200
+
+
+def test_mode_b_measures_each_block_before_its_slide():
+    """With a refine hook (mode B) the slides run one at a time, a pick refine over each block before its slide; the
+    row still comes out straight within 200 steps (the hook here observes nothing)."""
+    objs = _scene()
+    env = KinematicEnv(_rows(objs), step_lim=200, instruction=ALIGN)
+    prov = GTProvider(env, None, instruction=ALIGN)
+    prov.notes["routes"] = ["align"]
+    calls = []
+    sk = Skills(env, prov, refine=lambda sk_, label, arm, kind: calls.append((label, kind)) or None)
+    res = planner.solve(sk)
+    assert res["ok"], res
+    anchor = sk.world.notes["align"]["anchor"]
+    assert set(calls) == {(k, "pick") for k in ("cube0", "cube1", "cube2") if k != anchor}
+    w = sk.refresh()
+    labs = ["cube0", "cube1", "cube2"]
+    d, a = align.row_error(np.array([w.obj(k).center_w for k in labs]), [align.yaw_deg(w.obj(k)) for k in labs])
+    assert d <= 0.008 and a <= 8.0 and env.steps_used <= 200, (d, a, env.steps_used)

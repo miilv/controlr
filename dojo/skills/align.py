@@ -366,13 +366,35 @@ def _log_slide(sk, k: str, xy, th: float, before) -> None:
     sk.log(f"[align] {k}: moved {moved * 1000:.0f} mm, now {d * 1000:.1f} mm / {a:.1f} deg off its target")
 
 
+def _unit(theta_deg: float) -> np.ndarray:
+    return np.array([math.cos(math.radians(theta_deg)), math.sin(math.radians(theta_deg))])
+
+
+def _hover(sk, label: str, arm: str, kind: str) -> bool:
+    """Mode B: ``arm``'s hand straight down 8 cm over ``label`` (``regrasp._look_move``), one still step, the refine
+    hook there (the belief is refreshed by ``Skills._refine``); False when no hover pose plans."""
+    from dojo.skills.regrasp import _look_move
+    o = sk.world.obj(label)
+    mv = _look_move(sk, arm, o.center_w[:2], float(o.top_z) + 0.08)
+    if mv is None:
+        return False
+    sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"hover {label}")
+    sk._refine(label, arm, kind)
+    return True
+
+
 def _run_slides(sk, pl: dict, seq: list) -> None:
     """Run the planned slides: two on two arms in the same steps when their paths keep apart (``_parallel_plans``),
-    else in ``seq``'s order, each re-planned from the world and the arm's joints at its start."""
+    else in ``seq``'s order, each re-planned from the world and the arm's joints at its start. With a refine hook (mode
+    B) one at a time, each block re-measured at a hover over it before its slide."""
     import copy
     w = sk.world
     before = {k: copy.deepcopy(w.obj(k)) for k, _ in seq}
-    par = _parallel_plans(sk, pl, seq)
+    # mode B: each block is re-measured at a hover before its slide (where the pads close decides where it ends up).
+    # The anchor is not looked at: its believed pose only shifts the row (an anchor 5 mm off leaves the fitted line
+    # ~3 mm off it, the checker allows 8), and a look costs ~35 of the 200 steps
+    measure = getattr(sk, "refine", None) is not None
+    par = None if measure else _parallel_plans(sk, pl, seq)
     if par is not None:
         r = sk.parallel(par, name="slides")
         sk.log(f"[align] parallel slides: {r}")
@@ -385,12 +407,14 @@ def _run_slides(sk, pl: dict, seq: list) -> None:
         xy, th = pl["targets"][k]
         r = None
         for arm in [arm0] + [a for a in ARMS if a != arm0]:
-            other = "right" if arm == "left" else "left"
-            if i > 0:
-                sk.ex.run({other: sk.plan_home(other)}, name=f"clear {other}")
+            if measure and _hover(sk, k, arm, "pick"):
+                before[k] = copy.deepcopy(sk.world.obj(k))
             r = plan_slide(sk, k, xy, th, arm)
             if isinstance(r, ArmPlan):
                 break
+        if isinstance(r, ArmPlan):
+            # the other arm, still over the last block, goes home only when it is in this slide's way
+            sk._park_if_blocking(r)
         if not isinstance(r, ArmPlan):
             sk.log(f"[align] {k}: no slide now ({r})")
             continue

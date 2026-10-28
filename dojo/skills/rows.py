@@ -120,6 +120,18 @@ def upright_targets(sk, label: str, xy) -> list:
     return out
 
 
+# a round doll gripped 24 mm off its axis slid out at the lift (G3 100030, twice), and the largest one carried in a
+# 40-deg slice grasp of its head toppled when set down (100040): grasps through the axis, at most 30 deg off vertical
+AXIS_OFF = 0.008
+MAX_PICK_TILT = 30.0
+
+
+def _transfer_kw(sk, label: str) -> dict:
+    from dojo.skills.tiles import centred_grasp
+    return {"pair_ok": centred_grasp(sk.world.obj(label), max_off=AXIS_OFF, allow_top=True),
+            "max_pick_tilt": MAX_PICK_TILT}
+
+
 def _upright(o, tol_deg: float = 12.0) -> bool:
     return float(o.R[2, 2]) >= math.cos(math.radians(tol_deg))
 
@@ -166,7 +178,8 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
         if free:
             k, xy = min(free, key=lambda p: arm_dist(p[0]))
             tries[k] += 1
-            r = place_oriented(sk, k, upright_targets(sk, k, xy), yaw_sym=1, tol_xy=0.015, tol_tilt=10.0, tol_z=0.03)
+            r = place_oriented(sk, k, upright_targets(sk, k, xy), yaw_sym=1, tol_xy=0.015, tol_tilt=10.0, tol_z=0.03,
+                               transfer_kw=_transfer_kw(sk, k))
             sk.log(f"[rows] {k} -> {np.round(xy, 3).tolist()}: {r.status} {r.note[:120]}")
         else:
             k, xy = pairs[0]
@@ -180,7 +193,8 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
                 pairs = pairs[1:]
                 continue
             aside += 1
-            r = place_oriented(sk, b, [table_rest(sk, b, s) for s in spots[:4]], yaw_sym=4, tol_xy=0.03, tol_tilt=10.0)
+            r = place_oriented(sk, b, [table_rest(sk, b, s) for s in spots[:4]], yaw_sym=4, tol_xy=0.03, tol_tilt=10.0,
+                               transfer_kw=_transfer_kw(sk, b))
             sk.log(f"[rows] {b} aside (blocks {k}'s slot): {r.status} {r.note[:120]}")
         for a in ARMS:
             if sk.held[a] is not None:
