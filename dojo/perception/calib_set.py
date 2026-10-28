@@ -88,6 +88,9 @@ def overlap(manifest: dict | None, layout_id) -> bool | None:
 
 
 def _commit() -> str | None:
+    import os
+    if os.environ.get("CALIB_SET_COMMIT"):          # a deploy without .git (the builder's commit, given by the caller)
+        return os.environ["CALIB_SET_COMMIT"]
     try:
         return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=Path(__file__).resolve().parents[2],
                               capture_output=True, text=True, timeout=10).stdout.strip() or None
