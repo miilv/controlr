@@ -56,9 +56,10 @@ def decide(probs: np.ndarray, n_glyph: int, margin: float) -> tuple[int, float, 
     return top, m, True, "read"
 
 
-def read(views: dict, sm, T: np.ndarray, candidates: list[str], client_=None) -> dict:
+def read(views: dict, sm, T: np.ndarray, candidates: list[str], client_=None, held: bool = False) -> dict:
     """The glyph read of one tile at pose ``T`` (shape ``sm``) over ``views`` (ViewMasks with ``img``, ``cam``,
-    ``known``). Returns {"read", "key", "class", "margin", "view", "why", "views": per-view summary}."""
+    ``known``). ``held``: the tile is in the jaws (the draw read): the model's ``held_<view>`` margins apply.
+    Returns {"read", "key", "class", "margin", "view", "why", "views": per-view summary}."""
     c = client_ or client()
     if c is None:
         return {"read": False, "why": "no glyph server"}
@@ -84,7 +85,9 @@ def read(views: dict, sm, T: np.ndarray, candidates: list[str], client_=None) ->
         r = c.classify(img, [bb])
         P, n_glyph, margins = np.asarray(r["probs"][0], float), int(r["n_glyph"]), r["margins"]
         kind = "head" if name == "cam_head" else "wrist"
-        top, m, ok, why = decide(P, n_glyph, float(margins.get(kind, 1.0)))
+        # the tile in the jaws (the draw read) has its own, stricter margin when the model carries one
+        thr = margins.get(f"held_{kind}", margins.get(kind, 1.0)) if held else margins.get(kind, 1.0)
+        top, m, ok, why = decide(P, n_glyph, float(thr))
         key = None if top == n_glyph else f"Rigid/mahjong/{top:05d}"
         if ok and key not in candidates:
             ok, why = False, "not a candidate"
