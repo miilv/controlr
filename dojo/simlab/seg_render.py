@@ -349,37 +349,72 @@ def _rot_between(a, b) -> np.ndarray:
 
 
 def _present(mv, run, spec: dict, arm: str, gt_obj, save) -> dict:
-    """The draw read's view: the held object's face (local +z) turned toward the OTHER arm's wrist camera (resting at
-    its home pose) and held ``spec['present_dist']`` (~15 cm) along that camera's optical axis, the face direction
-    jittered by up to ``spec['present_jitter_deg']``. Frame ``save('present')`` when the planner reaches it."""
+    """The draw read's view (an observer look): the holding arm brings the object to the table's centre ~22 cm up and
+    turns its face (local +z) toward the other arm's side (``spec['present_jitter_deg']`` of jitter); the OTHER arm
+    then puts its wrist camera ``spec['present_dist']`` (~15 cm) in front of that face, looking at it. Frame
+    ``save('present')`` when both moves are reached; ``face_cos`` = the face normal against the direction to the
+    observer camera (GT)."""
     from scipy.spatial.transform import Rotation
 
+    from dojo.simlab.layout import TABLE_TOP_Z
     from dojo.simlab.motion import quat_to_mat, tcp_of
 
     rng = random.Random(spec.get("seed", 0) + 7)
     other = "right" if arm == "left" else "left"
-    Tc = np.asarray(run.cameras_gt()[f"cam_{other}_wrist"]["T_world_cam_cv"], float)
-    c, fwd = Tc[:3, 3], Tc[:3, 2]
-    for d in (spec.get("present_dist", 0.15), 0.12, 0.18):
+    side = 1.0 if other == "right" else -1.0
+    j = np.radians(spec.get("present_jitter_deg", 20.0))
+    st = run.obs_state()
+    # the observer camera's mount on its flange (fixed): T_flange_cam from the current GT camera and flange poses
+    T_wc = np.asarray(run.cameras_gt()[f"cam_{other}_wrist"]["T_world_cam_cv"], float)
+    fo = np.asarray(st[f"{other}_ee_pose"], float)
+    T_wf = np.eye(4)
+    T_wf[:3, :3], T_wf[:3, 3] = quat_to_mat(fo[3:]), fo[:3]
+    T_fc = np.linalg.inv(T_wf) @ T_wc
+    for attempt in range(3):
         o = gt_obj()
         if o is None:
             return {"ok": False, "why": "object gone"}
         n = quat_to_mat(np.asarray(o["quat"], float))[:, 2]
-        j = np.radians(spec.get("present_jitter_deg", 20.0))
-        want = Rotation.from_rotvec(np.array([rng.uniform(-j, j), rng.uniform(-j, j), 0.0])).apply(-fwd)
-        dR = _rot_between(n, want)
+        h = np.array([side, -0.35, 0.25])
+        h = Rotation.from_rotvec(np.array([rng.uniform(-j, j), rng.uniform(-j, j), rng.uniform(-j, j)])).apply(h / np.linalg.norm(h))
+        dR = _rot_between(n, h)
         fl = np.asarray(run.obs_state()[f"{arm}_ee_pose"], float)
         R_new = dR @ quat_to_mat(fl[3:])
         x, y, z, w = Rotation.from_matrix(R_new).as_quat()
-        q_new = np.array([w, x, y, z])
         off = dR @ (np.asarray(o["pos"], float) - tcp_of(fl))
-        tcp_t = c + d * fwd - off
-        if mv.tcp({arm: tcp_t}, quat={arm: q_new}, name="present").get(arm):
-            mv.wait(4, name="present_settle")
-            o2 = gt_obj()
-            dot = float(quat_to_mat(np.asarray(o2["quat"], float))[:, 2] @ (-fwd)) if o2 else None
-            save("present")
-            return {"ok": True, "dist": d, "face_cos": None if dot is None else round(dot, 3)}
+        centre = np.array([-side * 0.05 + rng.uniform(-0.03, 0.03), rng.uniform(-0.15, -0.05), TABLE_TOP_Z + 0.22])
+        if not mv.tcp({arm: centre - off}, quat={arm: np.array([w, x, y, z])}, name="present_hold").get(arm):
+            continue
+        mv.wait(4, name="present_hold_settle")
+        o = gt_obj()
+        if o is None:
+            return {"ok": False, "why": "object dropped"}
+        pc = np.asarray(o["pos"], float)
+        n = quat_to_mat(np.asarray(o["quat"], float))[:, 2]
+        d = spec.get("present_dist", 0.15)
+        zc = -n / np.linalg.norm(n)                       # optical axis: from the camera to the face
+        up = np.array([0.0, 0.0, 1.0])
+        xc = np.cross(-up, zc)                            # image x to the right, image y down (world down-ish)
+        if np.linalg.norm(xc) < 1e-6:
+            xc = np.array([1.0, 0.0, 0.0])
+        xc /= np.linalg.norm(xc)
+        yc = np.cross(zc, xc)
+        T_cam = np.eye(4)
+        T_cam[:3, :3] = np.stack([xc, yc, zc], axis=1)
+        T_cam[:3, 3] = pc + d * n
+        T_f = T_cam @ np.linalg.inv(T_fc)
+        x, y, z, w = Rotation.from_matrix(T_f[:3, :3]).as_quat()
+        if not mv.flange({other: np.r_[T_f[:3, 3], [w, x, y, z]]}, name="present_look").get(other):
+            continue
+        mv.wait(4, name="present_settle")
+        o2 = gt_obj()
+        cam = np.asarray(run.cameras_gt()[f"cam_{other}_wrist"]["T_world_cam_cv"], float)[:3, 3]
+        fc = None
+        if o2 is not None:
+            v = cam - np.asarray(o2["pos"], float)
+            fc = float(quat_to_mat(np.asarray(o2["quat"], float))[:, 2] @ (v / np.linalg.norm(v)))
+        save("present")
+        return {"ok": True, "dist": d, "attempt": attempt, "face_cos": None if fc is None else round(fc, 3)}
     return {"ok": False, "why": "unreachable"}
 
 
