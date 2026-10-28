@@ -28,12 +28,16 @@ RESERVED_MIN_ID = 100_100
 
 
 # Mikhail's side develops on these (D-C10a, 2026-10-27): never run them rendered or proxy on our side (G3 overlap on
-# 100010-19 is harmless); our rendered measurement slices are 100000-09 and 100020-39 (100040-49: calibration only)
+# 100010-19 is harmless); our rendered measurement slices are 100000-09 and 100020-29 (100030-49: training block)
 MIKHAIL_SLICES = ((100_010, 100_019), (100_050, 100_099))
 # our rendered / proxy measurement slices (the ids our policy is evaluated on)
-OUR_MEASUREMENT_SLICES = ((100_000, 100_009), (100_020, 100_039))
-# calibration-only (D-C10b, 2026-10-28): the perception calibration set is built from these and they are never
-# evaluated (the drivers refuse them); dojo.perception.calib_set builds from nothing else
+OUR_MEASUREMENT_SLICES = ((100_000, 100_009), (100_020, 100_029))
+# training / priors / calibration block (D-C10c, robot-harness 1c70562): never evaluated. The evaluation drivers
+# (rendered / proxy eval, the official path, G3 A/B runs) refuse these ids; seg_render, G3 rollouts of variant records
+# (``_simlab.variant`` >= 1: new draws, not the layout itself) and the calibration build may use them
+TRAINING_BLOCK = (100_030, 100_049)
+# calibration-only (D-C10b, 2026-10-28), inside the training block: the perception calibration set is built from these
+# and nothing else (dojo.perception.calib_set)
 CALIBRATION_SLICE = (100_040, 100_049)
 
 
@@ -43,6 +47,26 @@ def is_our_measurement_id(layout_id) -> bool:
     except (TypeError, ValueError):
         return False
     return any(a <= i <= b for a, b in OUR_MEASUREMENT_SLICES)
+
+
+def is_training_id(layout_id) -> bool:
+    """A training / priors / calibration id (D-C10c): never an evaluated layout."""
+    try:
+        i = int(layout_id)
+    except (TypeError, ValueError):
+        return False
+    return TRAINING_BLOCK[0] <= i <= TRAINING_BLOCK[1]
+
+
+def training_refusal(layout_id, record: dict | None = None, allow_variants: bool = False) -> str | None:
+    """Why an evaluation run must not use this layout (D-C10c), None when it may. ``allow_variants``: a record that is a
+    new draw of the id (``_simlab.variant`` >= 1, e.g. G3 variant rollouts) is not the layout itself."""
+    if not is_training_id(layout_id):
+        return None
+    if allow_variants and int(((record or {}).get("_simlab") or {}).get("variant", 0) or 0) >= 1:
+        return None
+    return (f"layout {layout_id}: training / priors / calibration block {TRAINING_BLOCK[0]}-{TRAINING_BLOCK[1]} "
+            f"(D-C10c): never evaluated")
 
 
 def is_calibration_id(layout_id) -> bool:

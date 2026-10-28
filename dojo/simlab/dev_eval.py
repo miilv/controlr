@@ -39,6 +39,10 @@ def patch_seed_manager(layout_root: str | os.PathLike) -> None:
         if reserved:                                 # D-C10: ids >= 100100 belong to the joint paired runs
             raise SystemExit(f"dev-eval: layout ids not ours to run rendered in {d} (D-C10a: 100010-19, 100050-99, "
                              f">= {paths.RESERVED_MIN_ID}): {reserved[:5]}")
+        training = [p.name for p in files if paths.is_training_id(p.name.split(".")[0])]
+        if training:                                 # D-C10c: the training / priors / calibration block is never evaluated
+            raise SystemExit(f"dev-eval: training-block layout ids (D-C10c: {paths.TRAINING_BLOCK[0]}-"
+                             f"{paths.TRAINING_BLOCK[1]}) in {d}: {training[:5]}")
         if not files:
             raise FileNotFoundError(f"no dev layouts in {d}")
         self.eval_seed = self.config.get("seed", 0)
