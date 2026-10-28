@@ -318,6 +318,7 @@ class RuntimePolicy:
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
+        self._tcs: dict = {}                    # scene -> twin client, from the host's ``_twin_factory``
         self._pc = perception_client
         self.bridge: Bridge | None = None
         self.dev_gt = None
@@ -335,15 +336,21 @@ class RuntimePolicy:
         return self._assets
 
     def twin(self, scene: str | None = None):
-        """The twin client. A host that sets ``_twin_factory(scene) -> client`` (the bridge driver) gets the twin started
-        for the scene the episode actually uses (after the vocabulary choice); else the bundle's running service."""
+        """The twin client for ``scene``, the scene the policy derived from the instruction. A host that sets
+        ``_twin_factory(scene) -> client`` (the bridge driver, the integ driver) gets one twin per scene, started on first
+        use and kept for later episodes of that scene; without a factory, the client given at construction or the
+        bundle's running service, which its host must have started for the instruction's scene. The policy never asks a
+        twin which task it runs: the launcher's task must not decide whether or how the policy verifies (legality
+        audit 2026-10-28, P1-4)."""
+        f = getattr(self, "_twin_factory", None)
+        if f is not None and scene:
+            if scene not in self._tcs:
+                self._tcs[scene] = f(scene)
+            self._tc = self._tcs[scene]
+            return self._tc
         if self._tc is None:
-            f = getattr(self, "_twin_factory", None)
-            if f is not None and scene:
-                self._tc = f(scene)
-            else:
-                from dojo.simlab.twin_service import TwinClient
-                self._tc = TwinClient()
+            from dojo.simlab.twin_service import TwinClient
+            self._tc = TwinClient()
         return self._tc
 
     def perception(self):
@@ -509,15 +516,10 @@ class RuntimePolicy:
         verifier = None
         if cfg.verify == "bundle":
             from .verifier import BundleVerifier
-            tc = self.twin(scene)
-            tw_task = tc.info().get("task")
-            if tw_task != scene:
-                events.append({"kind": "verify_unavailable", "reason": f"twin runs {tw_task!r}, the instruction "
-                                                                        f"names scene {scene!r}"})
-            else:
-                verifier = BundleVerifier(tc, scene, prov, b, cfg.perturb_mm, cfg.perturb_deg, log=self.log,
-                                          load_noise=cfg.twin_load_noise if cfg.mode == "gt" else None,
-                                          seed=_layout_seed(prov), load=cfg.twin_load)
+            tc = self.twin(scene)                       # for the instruction's scene; never asked what it runs
+            verifier = BundleVerifier(tc, scene, prov, b, cfg.perturb_mm, cfg.perturb_deg, log=self.log,
+                                      load_noise=cfg.twin_load_noise if cfg.mode == "gt" else None,
+                                      seed=_layout_seed(prov), load=cfg.twin_load)
 
         def hooks(info):
             prov.on_verified(info)

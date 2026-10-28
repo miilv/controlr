@@ -2319,7 +2319,8 @@ def test_twin_is_started_for_the_scene_the_policy_chose():
     pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="bundle"))
     pol._twin_factory = lambda scene: started.append(scene) or FakeTwinClient(task=scene)
     assert pol.twin("cover_blocks").info()["task"] == "cover_blocks" and started == ["cover_blocks"]
-    assert pol.twin("build_tower").info()["task"] == "cover_blocks" and started == ["cover_blocks"]   # once
+    assert pol.twin("cover_blocks").info()["task"] == "cover_blocks" and started == ["cover_blocks"]  # once per scene
+    assert pol.twin("build_tower").info()["task"] == "build_tower" and started == ["cover_blocks", "build_tower"]
 
 
 def test_refine_suggestion_onto_a_neighbour_is_not_followed():

@@ -272,7 +272,6 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         policy_factory=None, renderer: str = "isaac60", episode_max_minutes: float | None = 25.0) -> dict:
     """``renderer``: ``isaac60`` = the proxy (physics-only 5.1 + the 6.0 render service, compute3); ``isaac51`` =
     one 5.1 EvalEnv with RTX (``RenderedEpisode``; a box where 5.1 renders, e.g. isr-lab)."""
-    from dojo.skills.world import AssetDB
     out.mkdir(parents=True, exist_ok=True)
     tag = f"{task}_{cfg.mode}_verify-{cfg.verify}"
     if renderer == "isaac51":
@@ -281,6 +280,18 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         rc = RenderClient()
         ep = ProxyEpisode(task, rc, out)
     pol = (policy_factory or RuntimePolicy)(cfg)
+    from dojo.bridge.twin import BundleTwins
+    twins = BundleTwins(task, int(os.environ.get("TWIN_ENVS") or 8), out / "twins")
+    if cfg.verify == "bundle":
+        pol._twin_factory = twins.client             # the twin follows the policy's scene, never the launcher's task
+    try:
+        return _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minutes, tag, rc, ep, pol, twins)
+    finally:
+        twins.stop()
+
+
+def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minutes, tag, rc, ep, pol, twins) -> dict:
+    from dojo.skills.world import AssetDB
     assets = AssetDB(paths.OBJECTS)
     kin = _probe_kin()
     rows, t_all = [], time.perf_counter()
@@ -357,6 +368,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         wall = time.perf_counter() - t0
         v = rep.get("verify")
         row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "preset": cfg.preset,
+               "twins_served": [list(x) for x in twins.served],
                "time_capped": capped, "cooking_failures": cook,
                "renderer": renderer, "grip_source": getattr(getattr(ep, "grip", None), "mode", None),
                "success": bool(res["success"]), "score": float(res["score"]), "steps_used": int(res["steps_used"]),

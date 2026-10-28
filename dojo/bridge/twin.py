@@ -102,4 +102,43 @@ class TwinProcess:
                     pass
 
 
-__all__ = ["TwinProcess", "twin_scene"]
+class BundleTwins:
+    """Harness side (a dev driver: ``dojo.runtime.eval``, simlab's ``proxy_eval``): the twin for the scene the POLICY
+    asks for (``RuntimePolicy._twin_factory``). integ_eval.sh / proxy_eval.sh --bundle pre-start one for the
+    launcher's task (``SIMLAB_TWIN_PORT``); a policy whose instruction names another scene gets its own twin service
+    (``TwinProcess``, inside this job's lock and scope), as behind the official client. So the launcher's task never
+    decides whether or how the policy verifies, and the policy never learns which task was launched (legality audit
+    2026-10-28, P1-4: the policy used to compare the twin's task with its scene and turn verification off on a
+    mismatch)."""
+
+    def __init__(self, launched_task: str, num_envs: int, log_dir: Path, spawn=None):
+        self.launched, self.num_envs, self.log_dir = launched_task, int(num_envs), Path(log_dir)
+        self.spawn = spawn                  # tests: scene -> (client, stoppable); default TwinProcess
+        self.procs: dict = {}               # scene -> the process we started
+        self.served: list = []              # (scene, "bundle" | "spawned"), in request order
+
+    def client(self, scene: str):
+        if scene == self.launched and os.environ.get("SIMLAB_TWIN_PORT"):
+            from dojo.simlab.twin_service import TwinClient
+            self.served.append((scene, "bundle"))
+            return TwinClient()
+        if self.spawn is not None:
+            c, proc = self.spawn(scene)
+        else:
+            proc = TwinProcess(self.num_envs, self.log_dir, hold_gpu_lock=True)
+            c = proc.start(scene)
+        self.procs[scene] = proc
+        self.served.append((scene, "spawned"))
+        print(f"[twin] for scene {scene!r} started (the bundle's runs {self.launched!r})", flush=True)
+        return c
+
+    def stop(self) -> None:
+        for proc in self.procs.values():
+            try:
+                proc.stop()
+            except Exception as e:  # noqa: BLE001
+                print(f"[twin] stop: {type(e).__name__}: {e}", flush=True)
+        self.procs = {}
+
+
+__all__ = ["BundleTwins", "TwinProcess", "twin_scene"]
