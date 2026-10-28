@@ -30,6 +30,8 @@ from typing import Any, Callable, Iterable, Iterator
 
 import httpx
 
+from controlr.keyguard import clip, credential_name, redact, register, safe_label, url_secrets
+
 
 # ---------------------------------------------------------------------------
 # result types (contract: ARCHITECTURE.md "LLM client")
@@ -82,8 +84,8 @@ class LLMResult:
     http_status: int | None
     attempts: int
     reasoning_text: str = ""   # addition: streamed thinking deltas, if the route exposes them
-    headers: dict = field(default_factory=dict)   # addition: response headers (diagnostics, e.g.
-                                                  # gateway response-cache hits); no cookies
+    headers: dict = field(default_factory=dict)   # addition: allow-listed response headers (KEEP_HEADER_PREFIXES:
+                                                  # request ids, rate limits, gateway response-cache hits), values redacted
     request_bytes: int = 0      # addition: serialised request size (all images are re-uploaded each turn)
     # addition: True when an early stop cut the STATUS line mid-note (the stream was closed
     # before that line ended); the loop then stores the reply without the partial note
@@ -215,11 +217,11 @@ class StreamState:
         if isinstance(chunk.get("error"), (dict, str)):
             err = chunk["error"]
             if isinstance(err, dict):
-                self.error = f"stream error: {err.get('message') or err}"
+                self.error = f"stream error: {clip(str(err.get('message') or err), 400)}"
                 code = err.get("code") or err.get("status")
                 self.error_status = code if isinstance(code, int) else None
             else:
-                self.error = f"stream error: {err}"
+                self.error = f"stream error: {clip(err, 400)}"
             return "", ""
         if isinstance(chunk.get("usage"), dict) and chunk["usage"]:
             self.usage_raw = chunk["usage"]
@@ -275,7 +277,9 @@ def _parse_retry_after(value: str | None) -> float | None:
 
 
 def _error_message(status: int, body: bytes) -> str:
-    """Short, key-free error string from an error response body."""
+    """Short, key-free error string from an error response body. The message is redacted
+    (``controlr.keyguard.redact``: bearer / x-api-key values, ``sk-...`` tokens, every registered
+    key) BEFORE it is cut to 400 characters, so a key straddling the cut leaves no fragment."""
     msg = ""
     try:
         data = json.loads(body)
@@ -286,10 +290,22 @@ def _error_message(status: int, body: bytes) -> str:
             msg = str(err)
     except (ValueError, AttributeError):
         msg = body.decode("utf-8", "replace")
-    msg = " ".join(msg.split())
-    if len(msg) > 400:
-        msg = msg[:400] + "..."
+    msg = clip(" ".join(redact(msg).split()), 400)
     return f"HTTP {status}: {msg}" if msg else f"HTTP {status}"
+
+
+# Response headers kept in ``LLMResult.headers``: the ones run logs and benchmarks read
+# (``loop._diag_headers``, ``bench.cache_probe.response_cache_header``). Everything else (cookies,
+# CSP, CORS, provider internals, anything a gateway echoes) is dropped at the source; a kept
+# value is redacted, and a name with a credential word (``x-omniroute-api-key``) is never kept.
+KEEP_HEADER_PREFIXES = ("x-omniroute", "x-request-id", "request-id", "x-ratelimit", "anthropic-ratelimit",
+                        "retry-after", "openai-processing-ms", "x-cache")
+
+
+def keep_headers(headers) -> dict:
+    """The allow-listed response headers (KEEP_HEADER_PREFIXES), values redacted."""
+    return {k: redact(v) for k, v in headers.items()
+            if k.lower().startswith(KEEP_HEADER_PREFIXES) and not credential_name(k)}
 
 
 # Idle connections are kept this long. httpx's default (5 s) is shorter than a turn on a slow
@@ -339,6 +355,7 @@ class LLMClient:
         self._sleep = sleep
         self._rng = rng or random.Random()
         self.timeout_s = timeout_s
+        register(api_key, *url_secrets(base_url))     # redact() replaces them in every error / header
         hdrs = {str(k): str(v) for k, v in (headers or {}).items()}
         hdrs.update({"Authorization": f"Bearer {api_key}", "Accept": "text/event-stream",
                      "Content-Type": "application/json"})
@@ -433,8 +450,7 @@ class LLMClient:
             with self._http.stream("POST", f"{self.base_url}/chat/completions", content=payload, **kw) as r:
                 t_headers = time.perf_counter() - t0
                 status = r.status_code
-                headers = {k: v for k, v in r.headers.items()
-                           if k.lower() not in ("set-cookie", "authorization")}
+                headers = keep_headers(r.headers)
                 if status >= 400:
                     raw = r.read()
                     msg = _error_message(status, raw)
@@ -493,10 +509,10 @@ class LLMClient:
                                 break     # leaving the `with` closes the connection
         except (httpx.TransportError,) as e:   # connect/read/protocol errors, timeouts
             if not stopped:
-                raise _Retryable(f"{type(e).__name__}: {e}", status) from None
+                raise _Retryable(clip(f"{type(e).__name__}: {e}", 400), status) from None
         except json.JSONDecodeError as e:
             return LLMResult(st.text, None, Timings(ttft, None, time.perf_counter() - t0),
-                             False, None, f"bad JSON body: {e}", status, 1, st.reasoning)
+                             False, None, clip(f"bad JSON body: {e}", 400), status, 1, st.reasoning)
         t_end = time.perf_counter() - t0
         if stopped:
             st.text, st.reasoning = frozen
@@ -509,7 +525,7 @@ class LLMClient:
         return LLMResult(
             text=st.text, usage=normalize_usage(st.usage_raw),
             timings=Timings(ttft, t_complete, t_end, ttft_any=ttft_any, t_headers=t_headers),
-            stopped_early=stopped, finish_reason=st.finish_reason,
+            stopped_early=stopped, finish_reason=safe_label(st.finish_reason),
             error=st.error, http_status=status, attempts=1, reasoning_text=st.reasoning,
             headers=headers, truncated=stopped and not line_done,
             tool_calls=[st.tool_calls[k] for k in sorted(st.tool_calls)])

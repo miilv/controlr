@@ -35,6 +35,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$ID" ]] || { echo "--id is required" >&2; exit 2; }
+# the agent's router key (dojo.agent.llmio, AgentPolicy): ONE named file, default the box's ~/controlr/.env (OMNIROUTE_*
+# only). llmio no longer falls back to a home-dir .env by itself, so the script names it; it goes to the driver alone
+# (not to robot-harness's processes), and OMNIROUTE_* in the environment as well is refused (one source per process)
+AGENT_DOTENV="${DOJO_AGENT_DOTENV:-$HOME/controlr/.env}"
+[[ -z "${OMNIROUTE_BASE_URL:-}${OMNIROUTE_API_KEY:-}" ]] || {   # values never printed
+  echo "[bridge_episode] OMNIROUTE_* is set and this script names the key file (DOJO_AGENT_DOTENV): unset OMNIROUTE_BASE_URL" \
+    "OMNIROUTE_API_KEY (one source per process: docs/ENVIRONMENT.md)" >&2; exit 2; }
 # a stop file ends a running block before its next episode (isr-lab: the disk floor, a GPU hand-back)
 STOPF="${BRIDGE_STOP_FILE:-${DOJO_DATA:-$HOME/dojo-data}/bridge/STOP}"
 [[ -e "$STOPF" ]] && { echo "[bridge_episode] stop file $STOPF present: not starting $ID" >&2; exit 79; }
@@ -86,7 +93,8 @@ fi
 
 # 3. the driver: waits for the episode, resets, spawns the twin for the instruction's scene, runs the policy, closes
 TWIN=spawn; [[ "$VERIFY" == bundle ]] || TWIN=off
-( cd "$HERE" && DOJO_ILIA=1 DOJO_AGENT_LOG="$OUT/$ID/agent" "$PY" -u -m dojo.bridge.driver --server-id "$ID" \
+( cd "$HERE" && DOJO_ILIA=1 DOJO_AGENT_LOG="$OUT/$ID/agent" DOJO_AGENT_DOTENV="$AGENT_DOTENV" \
+    "$PY" -u -m dojo.bridge.driver --server-id "$ID" \
     --bench "$BENCH" --policy "$POLICY" --perception "$PERC" --verify "$VERIFY" --twin "$TWIN" \
     --twin-envs "$TWIN_ENVS" --keep-frames "$KEEP" --hold-gpu-lock --config "$CONFIG" --out "$OUT" --close ) 2>&1 | tee -a "$LOG"
 RC=${PIPESTATUS[0]}

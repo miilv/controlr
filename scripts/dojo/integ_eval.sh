@@ -35,6 +35,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$TASK" ]] || { echo "--task is required" >&2; exit 2; }
+# the router key: one source per process. This script names the file (AGENTIC_ENV_FILE below), so the environment must
+# not carry OMNIROUTE_* as well (checked before the lock wait, not after it)
+[[ -z "${OMNIROUTE_BASE_URL:-}${OMNIROUTE_API_KEY:-}" ]] || {   # values never printed
+  echo "[integ] OMNIROUTE_* is set and this script names the key file (AGENTIC_ENV_FILE): unset OMNIROUTE_BASE_URL" \
+    "OMNIROUTE_API_KEY (one source per process: docs/ENVIRONMENT.md)" >&2; exit 2; }
 for a in "${args[@]}"; do      # D-C10a: >= 100100 reserved for joint runs; 100010-19 / 100050-99 are Mikhail's slices
   b=${a##*/}; id=${b%%.*}
   if [[ "$a" == *.json && "$id" =~ ^[0-9]+$ ]] && { (( id >= 100100 )) || (( id >= 100010 && id <= 100019 )) \
@@ -83,7 +88,9 @@ if [[ "$RENDERER" == isaac51 ]]; then           # genuine 5.1 frames: the 5.1 ba
 else
   export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib.json}"
 fi
-# agentic perceiver (only read when the config sets "agentic"): omniroute keys from the controlr .env, transcripts here
+# agentic perceiver (only read when the config sets "agentic"): omniroute keys from ONE named file (default the box's
+# ~/controlr/.env, OMNIROUTE_* only; no fallback), transcripts here. The render and twin services below never call the
+# model and start without it (env -u); Python-spawned children drop it too (controlr.keyguard.child_env)
 export AGENTIC_ENV_FILE="${AGENTIC_ENV_FILE:-$HOME/controlr/.env}" DOJO_AGENTIC_LOG="${DOJO_AGENTIC_LOG:-$OUT/agentic}"
 export OUT HERE MODE VERIFY TWIN_ENVS TASK RENDERER
 if [[ "$VERIFY" == bundle || "$MODE" == perception ]]; then MEM=24G CPU=1400%; else MEM=16G CPU=1200%; fi
@@ -95,11 +102,11 @@ systemd-run --user --scope -q --unit="$UNIT" -p MemoryMax=$MEM -p CPUQuota=$CPU 
   cpu0=$(awk "/usage_usec/ {print \$2}" $cg/cpu.stat); t0=$(date +%s.%N)
   svc=""; twin=""; perc=""
   if [[ "$RENDERER" != isaac51 ]]; then
-    "$HERE/scripts/simlab/isaac6.sh" dojo/simlab/render_service.py > "$OUT/render_service.log" 2>&1 &
+    env -u AGENTIC_ENV_FILE "$HERE/scripts/simlab/isaac6.sh" dojo/simlab/render_service.py > "$OUT/render_service.log" 2>&1 &
     svc=$!
   fi
   if [[ "$VERIFY" == bundle ]]; then
-    "$HERE/scripts/simlab/rdpy.sh" -u -m dojo.simlab.twin_service --task "$TASK" --num-envs "$TWIN_ENVS" > "$OUT/twin_service.log" 2>&1 &
+    env -u AGENTIC_ENV_FILE "$HERE/scripts/simlab/rdpy.sh" -u -m dojo.simlab.twin_service --task "$TASK" --num-envs "$TWIN_ENVS" > "$OUT/twin_service.log" 2>&1 &
     twin=$!
   fi
   if [[ "$MODE" == perception ]]; then

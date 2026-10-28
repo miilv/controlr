@@ -7,7 +7,9 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | Variable | Needed where | What |
 |---|---|---|
 | `OMNIROUTE_BASE_URL` | anywhere with live calls | OpenAI-compatible router (`.../v1`) |
-| `OMNIROUTE_API_KEY` | same | router key; only in `.env` locally, `~/controlr/.env` on compute3, `~/data2/ilia/.env` on isr-lab (owner-approved, Mikhail's side may use it; point `DOJO_AGENT_DOTENV` / `AGENTIC_ENV_FILE` at it) and `~/controlr/.env` on our own GPU boxes (owner-approved: `scripts/bootstrap_gpu_box.sh` copies the `OMNIROUTE_*` lines only, mode 600, values never printed or logged) |
+| `OMNIROUTE_API_KEY` | same | router key; only in `.env` locally, `~/controlr/.env` on compute3, `~/data2/ilia/.env` on isr-lab (owner-approved, Mikhail's side may use it; point `DOJO_AGENT_DOTENV` / `AGENTIC_ENV_FILE` at it) and `~/controlr/.env` on our own GPU boxes (owner-approved: `scripts/bootstrap_gpu_box.sh` copies the `OMNIROUTE_*` lines only, mode 600, values never printed or logged). A dojo process reads it from ONE source (below) |
+| `AGENTIC_ENV_FILE` | the agentic perceiver (`dojo.perception.agentic`: perception service, the J1 agentic worker) | the dotenv file its `OMNIROUTE_BASE_URL` / `OMNIROUTE_API_KEY` come from (only those two names are read). Set: both values from this file; unset: both from the environment; set while `OMNIROUTE_*` is in the environment: refused. `integ_eval.sh` / `official_eval.sh` default it to `$HOME/controlr/.env`, `isr_env.sh` to `~/data2/ilia/.env` |
+| `DOJO_AGENT_DOTENV` | the agent (`dojo.agent.llmio`: `AgentPolicy`, grounding, replay probe) | the same rule for the agent's client. No implicit fallback: before, llmio read `~/skoltech/controlr/.env` and then `~/controlr/.env` by itself. `official_eval.sh` / `bridge_episode.sh` default it to `$HOME/controlr/.env` (`bridge_episode.sh` passes it to the driver only), `isr_env.sh` to `~/data2/ilia/.env`; on a dev box name the file yourself (`DOJO_AGENT_DOTENV=~/skoltech/controlr/.env`) |
 | `OPENROUTER_API_KEY` | live runs with `llm.backend=decisions` | OpenRouter key for the Decisions API (`decisions.api_key_env`; omniroute has no decisions route); same storage rules as the router key |
 | `CONTROLR_ISAAC_AUTHKEY` | compute3 | shared secret client↔Isaac server; unset → the client generates one per launch (fallback `controlr-isaac-dev` is for a dev box only) |
 | `CONTROLR_SO101_AUTHKEY` | the SO-101 rig and the controlr process driving it | shared secret client↔so101 server ([SO101.md](SO101.md)); on the rig in `~/.so101_authkey` (0600); fallback `controlr-so101-dev` is for a dev box only |
@@ -40,6 +42,24 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `DOJO_EMBED_MODELS` | wherever perception runs with `EstimatorConfig.embed_model` set | dir with one subdir per image-embedding model (`dinov2-small`, `dinov2-base`, `siglip2-base-patch16-224-vision`, `clip-vit-large-patch14-vision`; `dojo/perception/embed_id.py`); default `~/dojo-data/pbake-identity/models`. Needs torch + transformers in the perception venv (DEVELOPMENT §4) |
 | `DOJO_PERCEPTION_CFG` | the perception service (`dojo.runtime.perception_service`) | optional JSON of `EstimatorConfig` overrides for an A/B arm, e.g. `{"embed_model": "dinov2_s", "embed_merge": true}` or `{"stereo_check": true, "stereo_reject": "slot_bases"}`; unset = the defaults |
 | `DOJO_BOX_ROLE`, `DOJO_GPU_LOCK`, `DOJO_GPU_LIGHT_LOCKS`, `DOJO_SCOPE_BUNDLE` / `_PROXY` / `_BATCH` / `_G3` / `_LIGHT`, `DOJO_MIN_AVAIL_GB` | a GPU box (`source ~/dojo-env.sh`) | the box's role (full / physics), the heavy lock and the four light-lane slots (`DOJO_GPU_LOCKS="$DOJO_GPU_LIGHT_LOCKS"` for g3's light lane), the `systemd-run --user --scope` settings, the memory floor for heavy jobs; the same facts in `~/dojo-box.json` |
+
+### Credentials in processes (`controlr/keyguard.py`)
+
+- **One source per process.** A process that calls the router takes `OMNIROUTE_BASE_URL` and `OMNIROUTE_API_KEY` both
+  from the file its variable names (`AGENTIC_ENV_FILE`, `DOJO_AGENT_DOTENV`) or both from the environment, never a URL
+  from one and the key from the other, and never from a home-dir `.env` nobody named. The dojo run scripts that name
+  the file refuse to start when `OMNIROUTE_*` is exported as well (exit 2; unset it or the file variable).
+- **Children that do not call the model get no credentials.** `keyguard.child_env` builds their environment: the
+  parent's minus `OMNIROUTE_*`, `AGENTIC_ENV_FILE`, `DOJO_AGENT_DOTENV`, `OPENROUTER_*` / `ANTHROPIC_*` / `OPENAI_*`,
+  `CONTROLR_CODEX_AUTH` and any name with a KEY / TOKEN / SECRET / PASSWORD / AUTH / COOKIE word (`HF_TOKEN`,
+  `SSH_AUTH_SOCK`, ...), except our localhost authkeys (`SIMLAB_TWIN_AUTHKEY`, `SIMLAB_RENDER_AUTHKEY`,
+  `DOJO_PERCEPTION_AUTHKEY`, `HARNESS_SHIM_AUTHKEY`), which those services need. A denylist, not an allowlist: the
+  children read PATH, HOME, CUDA / EGL / DISPLAY, `RD_*` / `DOJO_*` / `SIMLAB_*` / `J1_*` and whatever RoboDojo's and
+  Isaac's launchers read. Used by the B1 worker (`j1_adapter.install_env`), the twin (`dojo.bridge.twin`), the agent
+  tools (`agentic.tools_rd`, `agentic.libero`) and the eval gate (`DOJO_EVAL_GATE`); the agentic worker
+  (`install_env(model_calls=True)`) keeps only the router source. A new spawn in dojo: `env=child_env({...})`.
+- **Nothing a provider sends back carries a key into a log**: error bodies and exception texts are redacted whole,
+  then cut; response headers are allow-listed; served ids are safe labels (ARCHITECTURE.md, LLM client).
 
 ## Machines
 

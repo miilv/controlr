@@ -24,6 +24,8 @@ import sys
 import time
 from pathlib import Path
 
+from controlr.keyguard import child_env
+
 from .tools_rd import _fit, _png_state
 
 VENDOR = Path(__file__).resolve().parent / "vendor"
@@ -37,7 +39,7 @@ class LiberoTools:
         self.protected = {"agentview.png", "wrist.png"}
 
     def _sub(self, argv: list[str]) -> tuple[int, str, str]:
-        env = dict(os.environ, OMP_NUM_THREADS="1")
+        env = child_env({"OMP_NUM_THREADS": "1"})   # a tool never calls the model: no key, no key file path
         p = subprocess.run(argv, cwd=self.ws, capture_output=True, text=True, timeout=self.timeout_s, env=env)
         return p.returncode, p.stdout or "", p.stderr or ""
 
@@ -148,7 +150,7 @@ def perceive_cell(cap: str, instruction: str, cell: str = "object_task", out: st
         if (cap / n).exists():
             shutil.copy(cap / n, ws / n)
     subprocess.run([sys.executable, str(VENDOR / "libero" / "grid.py"), "full", "agentview.png", "av_grid.png", "--step", "32",
-                    "--scale", "2"], cwd=ws, capture_output=True, timeout=60)
+                    "--scale", "2"], cwd=ws, capture_output=True, timeout=60, env=child_env())
     tools = LiberoTools(ws, cap, cell, reply, os.environ.get("LIBERO_PY", sys.executable), os.environ.get("LIBERO_HARNESS", "harness"))
     # ``cell`` only routes the locate helper (HELPER); it is never shown to the model: a cell name is the suite name
     # (PERCEIVER-PROTOCOL §1, robot-harness audit A2 finding 1)

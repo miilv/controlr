@@ -22,6 +22,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from controlr.keyguard import child_env
+
 REPO = Path(__file__).resolve().parents[2]
 
 
@@ -60,8 +62,9 @@ class TwinProcess:
         port, key = _free_port(), secrets.token_hex(16)
         ready = self.log_dir / f"twin_{scene}.ready"
         ready.unlink(missing_ok=True)
-        env = dict(os.environ, SIMLAB_TWIN_PORT=str(port), SIMLAB_TWIN_AUTHKEY=key, SIMLAB_TWIN_READY=str(ready),
-                   DOJO_ILIA="1", PYTHONUNBUFFERED="1")
+        # the twin never calls the model: no credential names (keyguard.child_env), its own authkey explicitly
+        env = child_env({"SIMLAB_TWIN_PORT": str(port), "SIMLAB_TWIN_AUTHKEY": key, "SIMLAB_TWIN_READY": str(ready),
+                         "DOJO_ILIA": "1", "PYTHONUNBUFFERED": "1"})
         if self.hold_gpu_lock:
             env["SIMLAB_GPU"] = "0"
         log = open(self.log_dir / f"twin_service_{scene}.log", "ab")

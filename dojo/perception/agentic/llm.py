@@ -1,7 +1,9 @@
 """Chat calls for the agentic perceiver: omniroute (OpenAI-compatible) through ``controlr.llm.client.LLMClient``.
 
-Keys: ``OMNIROUTE_BASE_URL`` / ``OMNIROUTE_API_KEY`` from the environment or from the ``.env`` file named by
-``AGENTIC_ENV_FILE`` (never logged). ``FakeChat`` replays scripted replies for tests (no network).
+Keys: ``OMNIROUTE_BASE_URL`` / ``OMNIROUTE_API_KEY`` from ONE source: the ``.env`` file named by ``AGENTIC_ENV_FILE``
+(both values from it), or the environment when no file is named; both at once is refused (``controlr.keyguard``).
+Never logged: error bodies and exception texts are redacted before they are cut (``keyguard.clip``), the finish
+reason is a safe label. ``FakeChat`` replays scripted replies for tests (no network).
 """
 from __future__ import annotations
 
@@ -9,7 +11,11 @@ import base64
 import os
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
+
+from controlr import keyguard
+
+ERR_CHARS = 300          # an error string keeps at most this much of the (redacted) response body
+ERR_BODY_MAX = 65536     # read at most this much of an error body (redacted whole, then cut to ERR_CHARS)
 
 
 @dataclass
@@ -26,28 +32,24 @@ class ChatReply:
     raw: dict = field(default_factory=dict)
 
 
-def _read_env_file(path: str) -> dict:
-    out = {}
-    p = Path(path).expanduser()
-    if not p.is_file():
-        return out
-    for line in p.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        out[k.strip()] = v.strip().strip('"').strip("'")
-    return out
-
-
 def router_credentials() -> tuple[str, str]:
-    env = dict(os.environ)
-    if os.environ.get("AGENTIC_ENV_FILE"):
-        env = {**_read_env_file(os.environ["AGENTIC_ENV_FILE"]), **{k: v for k, v in os.environ.items() if k.startswith("OMNIROUTE_")}}
-    url, key = env.get("OMNIROUTE_BASE_URL"), env.get("OMNIROUTE_API_KEY")
-    if not url or not key:
-        raise RuntimeError("OMNIROUTE_BASE_URL / OMNIROUTE_API_KEY not set (environment or AGENTIC_ENV_FILE)")
-    return url, key
+    """(base URL, key): the file named by AGENTIC_ENV_FILE, else the environment; never a merge of the two (a URL
+    from one source with the key from the other), no home-dir fallback. The key is registered for redaction."""
+    return keyguard.router_credentials(os.environ.get("AGENTIC_ENV_FILE"), "AGENTIC_ENV_FILE")
+
+
+def _http_error_text(e) -> str:
+    """``HTTP <code>: <body>`` of a urllib HTTPError: the body (up to ERR_BODY_MAX bytes) redacted whole, then cut."""
+    try:
+        raw = e.read(ERR_BODY_MAX) or b""
+    except Exception:
+        raw = b""
+    body = raw.decode("utf-8", "replace")
+    if len(raw) >= ERR_BODY_MAX:   # cut by the read cap: drop the last token, it may be the head of a key
+        parts = body.rsplit(None, 1)
+        body = parts[0] if len(parts) > 1 else ""
+    body = keyguard.clip(" ".join(body.split()), ERR_CHARS)
+    return f"HTTP {e.code}: {body}" if body else f"HTTP {e.code}"
 
 
 def degenerate(text: str) -> bool:
@@ -61,6 +63,7 @@ class UrllibChat:
 
     def __init__(self, timeout_s: float = 240.0, max_retries: int = 2):
         self.url, self._key = router_credentials()
+        keyguard.register(self._key, *keyguard.url_secrets(self.url))   # also when router_credentials is replaced
         self.timeout_s, self.max_retries = timeout_s, max_retries
 
     def __call__(self, model: str, messages: list[dict], max_tokens: int = 8000, extra_body: dict | None = None) -> ChatReply:
@@ -116,13 +119,14 @@ class UrllibChat:
                 return ChatReply(text="".join(text), wall_s=time.time() - t0, prompt_tokens=int(u.get("prompt_tokens") or 0),
                                  completion_tokens=int(u.get("completion_tokens") or 0),
                                  reasoning_tokens=int(det.get("reasoning_tokens") or 0),
-                                 cache_read_tokens=int(pdet.get("cached_tokens") or 0), request_bytes=len(data), finish_reason=finish)
+                                 cache_read_tokens=int(pdet.get("cached_tokens") or 0), request_bytes=len(data),
+                                 finish_reason=keyguard.safe_label(finish))
             except urllib.error.HTTPError as e:
-                err = f"HTTP {e.code}: {e.read()[:300].decode('utf-8', 'replace')}"
+                err = _http_error_text(e)
                 if e.code not in (408, 429, 500, 502, 503, 504, 529):  # 529: Anthropic "overloaded"
                     break
             except Exception as e:  # network / timeout
-                err = f"{type(e).__name__}: {e}"
+                err = keyguard.clip(f"{type(e).__name__}: {e}", ERR_CHARS)
             time.sleep(min(20.0, 2.0 * 2 ** attempt))
         return ChatReply(text="", error=err, wall_s=time.time() - t0, request_bytes=len(data))
 

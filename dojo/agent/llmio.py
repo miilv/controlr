@@ -1,45 +1,24 @@
 """omniroute access for the agent layer: one client factory and per-call accounting.
 
-Keys: only ``OMNIROUTE_BASE_URL`` / ``OMNIROUTE_API_KEY``, from the environment or from a dotenv file
-(``DOJO_AGENT_DOTENV``, default the main checkout's ``.env``). Nothing else is read from that file, so
-other credentials in it never reach this process's environment. Keys are never printed.
+Keys: only ``OMNIROUTE_BASE_URL`` / ``OMNIROUTE_API_KEY``, from ONE source: the dotenv file named by ``dotenv`` /
+``DOJO_AGENT_DOTENV`` (both values from it; nothing else is read from that file, so other credentials in it never
+reach this process), or the environment when no file is named. Both at once is refused, and there is no implicit
+fallback to a home-dir ``.env`` (``controlr.keyguard.router_credentials``). Keys are never printed.
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import asdict
-from pathlib import Path
 
+from controlr.keyguard import ROUTER_KEYS, router_credentials
 from controlr.llm import LLMClient, LLMResult
 
-KEYS = ("OMNIROUTE_BASE_URL", "OMNIROUTE_API_KEY")
-DEFAULT_DOTENVS = ("~/skoltech/controlr/.env", "~/controlr/.env")
+KEYS = ROUTER_KEYS
 
 
 def omniroute_env(dotenv: str | None = None) -> dict[str, str]:
-    out = {k: os.environ[k] for k in KEYS if os.environ.get(k)}
-    if len(out) == len(KEYS):
-        return out
-    paths = [dotenv or os.environ.get("DOJO_AGENT_DOTENV") or ""] + list(DEFAULT_DOTENVS)
-    for p in paths:
-        if not p:
-            continue
-        f = Path(os.path.expanduser(p))
-        if not f.is_file():
-            continue
-        for line in f.read_text().splitlines():
-            line = line.strip()
-            if "=" not in line or line.startswith("#"):
-                continue
-            k, v = line.split("=", 1)
-            k = k.strip()
-            if k in KEYS and k not in out:
-                out[k] = v.strip().strip('"').strip("'")
-        if len(out) == len(KEYS):
-            return out
-    missing = [k for k in KEYS if k not in out]
-    raise RuntimeError(f"omniroute settings missing: {missing} (env or DOJO_AGENT_DOTENV)")
+    url, key = router_credentials(dotenv or os.environ.get("DOJO_AGENT_DOTENV"), "DOJO_AGENT_DOTENV")
+    return {"OMNIROUTE_BASE_URL": url, "OMNIROUTE_API_KEY": key}
 
 
 def make_client(timeout_s: float = 600.0, max_retries: int = 3, dotenv: str | None = None) -> LLMClient:

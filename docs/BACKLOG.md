@@ -356,6 +356,17 @@
   journal, and add the hosts to ENVIRONMENT.md. Isaac Sim 5.1 RTX on a 5090 with driver 580 has never been tried: with
   role auto a failed `smoke_render` turns the box into `physics` by itself (RUNBOOK-new-gpu-box §7). Never run end to end:
   the robodojo step, the Isaac smokes, the isaac6 copy (31 GB) and `smoke_proxy_eval`, the fallback to physics.
+- [ ] **Credential-free child envs outside dojo (SEC follow-up, journal 2026-10-28-legality-sec).** The controlr side
+  still copies the whole environment into its servers: `controlr/robot/isaac/client.py` starts the Isaac server with
+  `dict(os.environ)` while `remote_run.sh` sources `.env` (`OMNIROUTE_*` in the Isaac server's environment); same
+  pattern in `robot/robodojo/` and `robot/so101/`. Fix with `keyguard.child_env` + the Isaac tests on compute3 (rule 2:
+  `robot/` touched). Also not converted (no credentials expected in their parents, low value): `catalog_check` builds,
+  `held_eval`'s spawn pool, the git / nvidia-smi calls in `check_assets` / `g2` / `look`. The run scripts still export
+  `AGENTIC_ENV_FILE` / `DOJO_AGENT_DOTENV` (paths, not keys) to every process they start after step 4 / into the integ
+  driver; scoping them to the one consumer is open.
+- [ ] **robot-harness's imported copy needs `controlr/keyguard.py`.** Their mapping (perception/* -> dojo/perception/*,
+  runtime/llm/* -> controlr/llm/*) has no slot for a top-level controlr module; a re-import of the SEC fix must carry it
+  (stdlib only, so their J1 venv can import it).
 - [ ] **CLAUDE.md rule 5 still says `.env` lives only locally and on compute3.** The owner approved `~/controlr/.env`
   (OMNIROUTE_* only, mode 600) on our own GPU boxes, and the bootstrap writes it (ENVIRONMENT.md says so); the rule's
   text is the owner's to update.
