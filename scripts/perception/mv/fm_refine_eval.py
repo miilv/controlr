@@ -29,6 +29,7 @@ def main(argv=None):
     ap.add_argument("--iters", type=int, default=40)
     ap.add_argument("--min-gain", type=float, default=0.02, help="keep the refined pose only if the distance drops this much")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--rigid-only", action="store_true", help="leave Geometry fixtures / Articulations alone")
     a = ap.parse_args(argv)
     from dojo.perception import d0
     from dojo.perception.cameras import R_to_quat_wxyz, pose_to_T
@@ -56,7 +57,7 @@ def main(argv=None):
             rec0 = _b1_record(meta)
             rec1 = copy.deepcopy(rec0)
             log = []
-            for typ in ("Rigid", "Geometry", "Articulation"):
+            for typ in (("Rigid",) if a.rigid_only else ("Rigid", "Geometry", "Articulation")):
                 for cat, lst in (rec0.get(typ) or {}).items():
                     for j, r in enumerate(lst):
                         key = f"{typ}/{cat}/{int(r['category_idx']):05d}"
