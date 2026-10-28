@@ -42,7 +42,7 @@ from scipy.spatial.transform import Rotation
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
 from .identity_marks import identity_marks
 from .select_ties import assign_keys, tie_mode
-from .digits import glyph_evidence, record_fields as digit_fields
+from .digits import GLYPH_ONLY, glyph_evidence, record_fields as digit_fields
 from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 from .slots import settled as _settled, support_slot
@@ -4356,7 +4356,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                **({"on_base": h.per_view["on_base"]} if h.per_view.get("on_base") else {}),
                                **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {}),
                                **({"twin": h.per_view["twin"]} if h.per_view.get("twin") else {}),
-                               **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {})}}
+                               **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {}),
+                               **({"glyph_read": h.per_view["glyph_read"]} if cat in GLYPH_ONLY and h.per_view.get("glyph_read") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []
