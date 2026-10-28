@@ -653,6 +653,19 @@
   top-down grasp keeps the finger's root block (38 x 56 mm) out of the wall. `nudge_from_wall` pushes one off when its
   fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
+- [ ] **dojo skills: fill_egg_holder picks an egg before its drop plans** (stream H, journal 2026-10-28-dojo-h95-fill;
+  G3 mode gt, current main, 5 settled dev layouts: 0/5, 0.22). 6 eggs were picked and then had no drop plan: "joint
+  move hits egg_basket; via failed: lift ik_fail", or "target unreachable". `fill_holes` plans the drop only after the
+  pick. Pairing them (`egg_pair`, branch `feat/dojo-h95-egg-pair`) cut those picks 5 -> 1 on 8 v1 draws but scored the
+  same (0.163 vs 0.163) at x3.3 planning time: the eggs it refuses still fail. What binds is the wall's foot (no pick)
+  and the reach to the holes.
+- [ ] **dojo skills: fill_pen with the joint-5 stop respected** (`joint_limits` "measured"; journal
+  2026-10-28-dojo-h95-fill). Many drops now hover 22-24 mm over the rim, because the 6 mm hover needs |q5| > 1.56, and
+  some pens still bounce out. pen0, which lies rolled 26 deg on its clip, slips in several grasp families (excluding
+  the failed grasp's family did not help).
+- [ ] **dojo skills: IK under `joint_limits` "measured" plans slower** (G3 plan_s: insert_tubes x2, fill_pen x1.6).
+  A failing IK costs ~2.4x a succeeding one (55-60 vs 23-25 ms), and "measured" fails more targets (53 vs 13 of 300
+  random ones). Cap the failing path, e.g. stop the remaining seeds once one stalls against the joint-5 stop.
 - [ ] **dojo skills: fill_egg_holder, an egg can land lying across a hole** (its centre 2-5 mm over the plate, the
   checker wants it in). Two presses from above did not free it; ordering the drops so the far end rests on the outer
   rim (not on the wall between two holes) did not help (G3, 11 layouts). `slide_in` pushes it along its axis until

@@ -305,6 +305,8 @@ class RuntimeConfig:
     # ... swap_poses' carry height: fixed (his 0.86 m) | reach (the highest of 0.86 / 0.84 / 0.82 / 0.80 at which each arm
     # reaches the other object's spot top-down; G3: at 0.86 the left arm cannot reach a T at x >= ~0.09)
     ported_swap: str = "fixed"
+    # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
+    joint_limits: str = "wide"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -380,7 +382,8 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
-                or self.cfg.ported_swap not in ("fixed", "reach")):
+                or self.cfg.ported_swap not in ("fixed", "reach")
+                or self.cfg.joint_limits not in ("wide", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -637,6 +640,7 @@ class RuntimePolicy:
             sk_.push_order = cfg.push_order
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
+            sk_.joint_limits = cfg.joint_limits
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
