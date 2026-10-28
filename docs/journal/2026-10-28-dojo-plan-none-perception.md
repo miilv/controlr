@@ -37,6 +37,17 @@ Regression check: the B1 + v2b frame-0 records of push_T, swap_T, cover_blocks a
 without the additions (150 / 150 objects). Routing of 22 tasks' instructions is unchanged. compute4 follows through
 Integration.
 
+**Second sync: 26 more assets, compute3 at 21:41Z.**
+- Gaps across every task: fold_clothes_random target, hang_mugs_random mugs + cup_holder, make_toast_random toaster,
+  store_laptop_random headset + laptop, and sweep_blocks_random rigid2.
+- broom_shovel 00001 / 00004 are KNOWN_UNSHIPPED (no USD in RoboDojo), so they are not gaps.
+- Built with `catalog_check --vocabularies all --sync --assets` into an overlay (5 links.json for the Articulations),
+  then synced additively.
+- index.json md5 `2cd7455cbdce2ab38e4e9d586e28db61`; manifest `w_gaps_26.md5`. compute4 follows through Integration.
+- Every box now needs `scripts/dojo/catalog_gate.sh` before a lane starts. It fails loudly on any gap, so a
+  perception-blind cell can no longer run silently. Before these two syncs, 143 assets of 15 cells were missing on
+  every box.
+
 ## Finding 2: series counts (built behind the existing flag)
 
 `EstimatorConfig.series_count="seg"`:
