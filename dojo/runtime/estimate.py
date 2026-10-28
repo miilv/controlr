@@ -162,8 +162,9 @@ def add_found(rec0: dict, rec1: dict, min_sep_m: float = 0.03, min_conf: float =
     return out, found
 
 
-def flagged(record: dict, conf_thr: float = 0.7) -> list[dict]:
-    """Records the look macro should look at: ambiguous / occluded / review / confidence < thr, plus not found."""
+def flagged(record: dict, conf_thr: float = 0.7, doubt: bool = False) -> list[dict]:
+    """Records the look macro should look at: ambiguous / occluded / review / confidence < thr, plus not found; with
+    ``doubt``, also the objects perception.doubt doubts (``_perception.b1_doubt``)."""
     out = []
     for typ, cat, r in iter_records(record):
         p = r.get("_perception") or {}
@@ -172,6 +173,8 @@ def flagged(record: dict, conf_thr: float = 0.7) -> list[dict]:
         why = [k for k in ("ambiguous", "occluded") if p.get(k)]
         if p.get("review"):
             why.append("review")
+        if doubt and (p.get("b1_doubt") or {}).get("doubt"):
+            why.append("doubt:" + "+".join(p["b1_doubt"].get("why") or []))
         if float(p.get("confidence", 1.0)) < conf_thr:
             why.append(f"conf {float(p.get('confidence', 1.0)):.2f}")
         if why:

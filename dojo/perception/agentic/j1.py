@@ -455,7 +455,11 @@ def risk(o: dict, model: dict | None = None) -> float:
          float(bool(fl.get("ambiguous"))), float(o.get("source") in ("fused", "refined")),
          float(alt.get("margin") is not None and alt["margin"] < 0.05)]
     z = sum(a * b for a, b in zip(model["weights"], x))
-    return 1 / (1 + math.exp(-z))
+    r = 1 / (1 + math.exp(-z))
+    floor = _opt_float(os.environ.get("AGENTIC_DOUBT_RISK"))
+    if floor is not None and fl.get("b1_doubt"):  # perception.doubt flagged it (appearance / height): the gate fires,
+        r = max(r, floor)                         # and with risky_b1 <= floor the agent's reading of it stands
+    return r
 
 
 def gate_decision(b1: dict | None, want, prior, cfg: dict) -> tuple[bool, str]:

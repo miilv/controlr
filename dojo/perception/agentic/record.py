@@ -52,7 +52,8 @@ def record_objects(rec: dict) -> list[dict]:
                      "source": "fused" if p.get("n_views", 0) > 1 else "head",
                      "flags": {**{k: p[k] for k in ("occluded", "ambiguous", "hidden_frac", "near_home_grippers",
                                                     "fg_resid_near", "slot") if k in p},
-                               **({"yaw_read": True} if p.get("yaw_read") else {})}}
+                               **({"yaw_read": True} if p.get("yaw_read") else {}),
+                               **({"b1_doubt": True} if (p.get("b1_doubt") or {}).get("doubt") else {})}}
                 if p.get("alternative"):
                     o["alternative"] = {"asset": p["alternative"].get("key"), "margin": p["alternative"].get("margin")}
                 out.append(o)
