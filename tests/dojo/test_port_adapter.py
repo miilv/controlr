@@ -444,3 +444,25 @@ def test_camera_close_waits_while_the_official_reading_moves():
     robot = HarnessRobot(sk)
     g = robot.gripper(arm="left", action="close")              # 4 ramp + 3 wait steps; the reading still moves
     assert 7 < g["steps"] <= 7 + SETTLE_MAX and g["official"] == pytest.approx(0.163) and g["grasp_detected"]
+
+
+def test_pour_full_runs_the_whole_profile_when_the_belief_has_no_balls():
+    """Camera mode: the balls inside the cup are never in the belief. v1 then reads "cup empty" at its first hold and
+    stops; pour_p1 (ported_pour="full") runs the whole roll profile."""
+    import json as _json
+    instr = SCENES["pour"][1]
+    record = [r for r in rows_pour() if not r["label"].startswith("sphere")]
+    stops = {}
+    for skill in ("pour", "pour_p1"):
+        env0, sk = belief_skills(record, rows_pour(), instr, step_lim=600)
+        p = planner.plan(instr, sk.refresh(), ported={"pour": "full" if skill == "pour_p1" else "v1"})
+        assert p.args["skill"] == skill
+        ported(sk, **p.args)
+        stops[skill] = _json.loads(sk.ported_runs[-1]["details"])["pour_stop"]
+    assert stops["pour"] == "cup empty" and stops["pour_p1"] == "profile end"
+
+
+def test_ported_pour_defaults_v1():
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().ported_pour == "v1" and SKILL_ATTRS["ported_pour"][0] == "v1"
