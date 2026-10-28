@@ -259,6 +259,9 @@ class RuntimeConfig:
     # for it, ``plan_place(held_read=True)``; rendered plug, auto: no gain, 2026-10-27);
     # skills adopt it within the place's tolerances
     held_pose: str = "off"
+    # every contact-sensitive skill action logs a "consume" event (the belief pose it acts on, the precision it needs:
+    # ``Skills._consume``) into the report's events. Logging only: the actions are identical either way, hence on
+    consume_log: bool = True
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -568,6 +571,7 @@ class RuntimePolicy:
                          verify_k=cfg.verify_k, n_cands=cfg.n_cands, remeasure=(cfg.mode == "gt"), on_verified=hooks,
                          **skills_kw)
             sk_.max_rehovers = max_rehovers
+            sk_.consume_log = bool(cfg.consume_log)
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_

@@ -1295,7 +1295,7 @@ def screw_on(sk: Skills, pairs: list[list[str]], depth: float = SCREW_DEPTH, sig
         p_c = np.array([c_b[0], c_b[1], b.top_z + 0.001 + h])
         T = T_from(p_c - Rl @ o.asset.center, Rl)
         pk = {"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 2, "pre_settle": 2, "servo": True,
-              "servo_ref": bolt, "seat_tol": 0.02, "probe": False}
+              "servo_ref": bolt, "seat_tol": 0.02, "probe": False, "purpose": "thread"}
         res = place_oriented(sk, nut, [T], yaw_sym=n_fold(o), tol_xy=0.004, tol_tilt=8.0, tol_z=0.02, ignore=(bolt,),
                              place_kw=pk, air_handover=False)
         for a in ARMS:
