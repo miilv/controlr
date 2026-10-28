@@ -3,6 +3,7 @@
 # bg_folds_51, color_calib_51, the frozen calibration set), EGL on this box's GPU, on one light slot (flock -n: a busy
 # slot exits 75), nice'd in a user scope. Never the agentic env: refine calls no model.
 #   CODE=~/dojo-integ-c4-8dae375 LOCK=~/dojo-gpu-light.lock scripts/perception/bgperc/write_rerun.sh SEQ_ROOT --out OUT.json [...]
+#   (SCRIPT=x2_eval.py: the X2 harness in the same environment)
 # Starts only with >= 4 GB free VRAM and <= 3 rendered processes (>= 3 GB) on the GPU (compute4's caps), else exits 75.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -21,4 +22,4 @@ if [[ -f "$CODE/scripts/dojo/calib_set.sh" ]]; then source "$CODE/scripts/dojo/c
 unset AGENTIC_ENV_FILE DOJO_AGENTIC_LOG
 export PYOPENGL_PLATFORM=egl PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$CODE" OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 exec flock -n -E 75 "$LOCK" systemd-run --user --scope -q -p MemoryMax=8G -p CPUQuota=400% \
-  nice -n 10 "$CODE/.venv/bin/python" -u "$HERE/scripts/perception/bgperc/write_rerun.py" "$@"
+  nice -n 10 "$CODE/.venv/bin/python" -u "$HERE/scripts/perception/bgperc/${SCRIPT:-write_rerun.py}" "$@"
