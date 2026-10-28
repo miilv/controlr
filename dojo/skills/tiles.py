@@ -41,10 +41,11 @@ REACH_SHIFTS = (0.0, 0.007)
 # at mat1 / mat2 for either arm (G3 100031 / 100044 went through an in-air handover and slipped); 3 cm plans
 # the carry of a frictionless numeral at CARRY speed (0.14 rad / step) shifted it 52 mm in the pads and dropped it 13 cm
 # off its pad (G3 v0 100001): the uneven-object carry speed
-PLACE_KW = {"pre_h": 0.03, "retreat": 0.03, "approach_rad": 0.09}
+# (and 0.09 still flung an "8" off the hand in 3 of 7 arrange episodes, G3 1ed92d3): SLOW, 0.05
+PLACE_KW = {"pre_h": 0.03, "retreat": 0.03, "approach_rad": 0.05}
 # a lower lift (less swing on the way up) and a 12-deg tilt next to the 25-deg one: the far pads need a tilted hand, and
 # the 25-deg one is where the numerals slid
-TRANSFER_KW = {"lift": 0.04, "box_tilts": (0.0, 12.0, -12.0, 25.0, -25.0)}
+TRANSFER_KW = {"lift": 0.03, "box_tilts": (0.0, 12.0, -12.0, 25.0, -25.0), "pick_kw": {"lift_rad": 0.05}}
 # a tile on one side of the table bound for a pad the other arm reaches is put down between the arms first; the
 # default relay patch (0, -0.28) is where solve_equation's four operator discs lie (G3 100033 / 100038: no spot)
 RELAY_NEAR = (0.0, -0.16)
