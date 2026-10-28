@@ -327,10 +327,12 @@ def play_board_game(sk: Skills, board: str, pieces: list[str], opponent_pieces: 
                 sightings[int(k)] = sightings.get(int(k), 0) + 1
             stable = stable + 1 if read["stable_vs_prior"] else 0
             prior = read
-            board = "".join({"own": "x", "opponent": "o"}.get(c["occupant"], ".") for c in read["cells"])
-            if board != seen:                                   # the read's board, logged when it changes
-                sk.log(f"[watch] step {sk.ex.steps_used}: {board}")
-                seen = board
+            # the read's board as a string, logged when it changes. Not ``board``: that is the board's label, and the
+            # belief update below needs it (#215 rendered: 'missing object xo..x....', 4 of 5 ttt episodes not_home)
+            read_board = "".join({"own": "x", "opponent": "o"}.get(c["occupant"], ".") for c in read["cells"])
+            if read_board != seen:
+                sk.log(f"[watch] step {sk.ex.steps_used}: {read_board}")
+                seen = read_board
             often = [k for k, n in sightings.items() if n >= quiet + 2]
             if (new_opp and stable >= quiet) or often:
                 new_opp = new_opp if (new_opp and stable >= quiet) else often[:1]

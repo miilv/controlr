@@ -126,7 +126,8 @@ def test_seq_replay_policy_keeps_every_observation(tmp_path, monkeypatch):
     rows = [json.loads(ln) for ln in open(d / "steps.jsonl")]
     assert [r["step"] for r in rows] == [0, 1, 2, 3]
     assert rows[2]["grip_cmds"] == [{"left_ee_joint_state": 0.5, "right_ee_joint_state": 1.0}]
-    assert rows[0]["gt"][0]["label"] == "block0"
+    gt = [json.loads(ln) for ln in open(d / "gt.jsonl")]                      # the scorer's GT, apart from the inputs
+    assert "gt" not in rows[0] and gt[0]["gt"][0]["label"] == "block0" and [g["step"] for g in gt] == [0, 1, 2, 3]
     assert (d / "frames" / "0000_cam_head.png").exists() and (d / "frames" / "0003_cam_left_wrist.jpg").exists()
     assert pol.episode_report()["seq"]["replayed"] == 3
 
@@ -412,3 +413,51 @@ def test_absence_overrides_an_older_confirmation():
     bp.head_result(5, empty)
     bp.head_result(6, empty)
     assert bp.tracks["a"].confirmed is None and bp.tracks["a"].doubt     # an actor took it away after we confirmed it
+
+
+def test_decision_frames_are_observed_on_top_of_the_stride(tmp_path, monkeypatch):
+    from dojo.perception.seq_capture import decision_steps
+    # a close at action 4 (0.0 below 0.5), a release at action 7; the recorded run logged a refine at step 3
+    g = [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    acts = [{"left_arm_joint_state": [0.0] * 6, "left_ee_joint_state": [v], "right_arm_joint_state": [0.0] * 6,
+             "right_ee_joint_state": [1.0]} for v in g]
+    rep = {"events": [{"kind": "refine", "step": 3}], "decisions": [{"step": 0}]}
+    assert decision_steps(acts, rep) == [0, 3, 6, 8, 9, 10, 11, 12]
+    src = tmp_path / "run"
+    src.mkdir()
+    with gzip.open(src / "stack_blocks_perception_verify-bundle_100001_actions.json.gz", "wt") as f:
+        json.dump({"actions": acts}, f)
+    with gzip.open(src / "stack_blocks_perception_verify-bundle_100001_report.json.gz", "wt") as f:
+        json.dump(rep, f)
+    monkeypatch.setenv("DOJO_SEQ_SRC", str(src))
+    monkeypatch.setenv("DOJO_SEQ_OUT", str(tmp_path / "seq"))
+    monkeypatch.setenv("DOJO_SEQ_STRIDE", "5")
+    pol = SeqReplayPolicy()
+    pol.reset({"task": "stack_blocks", "layout_id": 100001, "instruction": "", "step_lim": 20})
+    img = np.zeros((4, 4, 3), np.uint8)
+    n = 0
+    while True:
+        out = pol.next({"images": {"cam_head": img}, "state": {}, "steps_used": n, "_dev_gt": []})
+        if out.get("done"):
+            break
+        n += len(out["actions"])
+    rows = [json.loads(ln)["step"] for ln in open(tmp_path / "seq" / "stack_blocks_100001" / "steps.jsonl")]
+    assert rows == [0, 3, 5, 6, 8, 9, 10, 11, 12, 14]                         # stride 5 + every decision frame
+    meta = json.load(open(tmp_path / "seq" / "stack_blocks_100001" / "meta.json"))
+    assert meta["forced_steps"] == [0, 3, 6, 8, 9, 10, 11, 12]
+
+
+def test_seg_cache_masks_round_trip_bit_exact():
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "seg_cache", Path(__file__).resolve().parents[2] / "scripts/perception/bgperc/seg_cache.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rng = np.random.default_rng(0)
+    m = np.zeros((48, 64), bool)
+    m[5:20, 7:30] = rng.random((15, 23)) > 0.3                 # ragged, odd-sized: packbits padding must not leak
+    m[47, 63] = True                                           # touches the frame corner
+    assert np.array_equal(mod.decode_mask(mod.encode_mask(m), 48, 64), m)
+    assert not mod.decode_mask(mod.encode_mask(np.zeros((48, 64), bool)), 48, 64).any()

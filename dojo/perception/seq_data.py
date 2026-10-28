@@ -35,6 +35,9 @@ class Sequence:
         self.instruction = self.meta.get("instruction") or ""
         self.rows = [json.loads(ln) for ln in open(self.dir / "steps.jsonl") if ln.strip()]
         self.by_step = {int(r["step"]): r for r in self.rows}
+        gp = self.dir / "gt.jsonl"                      # the scorer's GT, kept apart from the inputs (newer captures)
+        self._gt = ({int(r["step"]): r["gt"] for r in (json.loads(ln) for ln in open(gp) if ln.strip())}
+                    if gp.exists() else None)
         self.steps = sorted(self.by_step)
         self.fmt = self.meta.get("fmt", "png")
 
@@ -52,7 +55,8 @@ class Sequence:
         return {"images": imgs, "state": self.state(step), "instruction": self.instruction}
 
     def gt(self, step: int) -> list[dict]:
-        return self.by_step[step]["gt"]
+        """DEV-ONLY GT rows at ``step`` (scorer side)."""
+        return self._gt[step] if self._gt is not None else self.by_step[step]["gt"]
 
     def grip(self, step: int) -> dict:
         """The gripper command of the last action before ``step``'s observation, per arm (1 open, 0 closed)."""

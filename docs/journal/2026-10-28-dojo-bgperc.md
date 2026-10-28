@@ -128,3 +128,13 @@ refine per frame? Report: [../experiments/2026-10-28-bgperc.md](../experiments/2
   with `SEQ_RENDERER=isaac51 SEQ_NAME_BY_SRC=1 DOJO_SEQ_STRIDE=2`. Each replay is gated by
   `scripts/perception/bgperc/replay_check.py`: dev_gt_probe closes reproduced at 0.0 mm and the same step count,
   otherwise dropped.
+- **The reviewer's test-set hygiene, in the capture** (`seq_capture`, `replay_check.py`):
+  - decision frames are observed whatever the stride: every step the recorded run logged (report events, decisions),
+    k-1 of every grip event (M's last-closing-command rule), release+1..5. `valid.json` counts them present vs
+    expected per episode;
+  - the inputs carry no GT: `steps.jsonl` holds step, state and grip commands; the dev GT is in `gt.jsonl`.
+- **The offline arms read one frozen detection cache** (`scripts/perception/bgperc/seg_cache.py`): v2b (weights sha1
+  1a8bc5d4522c, imgsz 960, conf 0.25) on every stored JPEG, keyed by the JPEG bytes' sha1, masks lossless (bit-exact
+  against a live run). The online arm runs v2b live on raw frames and logs its own detections.
+- **JPEG vs PNG for the segmenter** (`seg_jpeg_check.py`): v2b on frame 0's PNG and JPEG of every valid sequence,
+  matched by mask IoU >= 0.5.

@@ -40,6 +40,10 @@ def check(root: str, name: str) -> dict:
         if x.get("dist_mm") is not None or y.get("dist_mm") is not None:
             d = max(d, abs(float(x.get("dist_mm") or 0) - float(y.get("dist_mm") or 0)))
     out["max_dist_diff_mm"] = round(d, 2)
+    steps = {json.loads(ln)["step"] for ln in open(os.path.join(root, "seq", name, "steps.jsonl")) if ln.strip()}
+    forced = [s for s in meta.get("forced_steps") or [] if s <= (out["steps_rep"] or 0)]
+    out["decision_frames"] = {"expected": len(forced), "present": sum(1 for s in forced if s in steps)}
+    out["observations"] = len(steps)
     out["valid"] = d == 0.0 and out["steps_rec"] == out["steps_rep"]
     if not out["valid"]:
         out["why"] = f"jaw distance differs by {d:.1f} mm" if d else f"steps {out['steps_rec']} vs {out['steps_rep']}"
@@ -59,7 +63,9 @@ def main():
         r = check(a.root, name)
         res.append(r)
         print(f"{'OK  ' if r['valid'] else 'FAIL'} {name}: closes {r.get('n_rec')} / {r.get('n_rep')}, "
-              f"max |d| {r.get('max_dist_diff_mm')} mm, steps {r.get('steps_rec')} / {r.get('steps_rep')}"
+              f"max |d| {r.get('max_dist_diff_mm')} mm, steps {r.get('steps_rec')} / {r.get('steps_rep')}, "
+              f"decision frames {(r.get('decision_frames') or {}).get('present')} / "
+              f"{(r.get('decision_frames') or {}).get('expected')}"
               f"{'' if r['valid'] else ' -- ' + r.get('why', '')}")
     bad = [r["name"] for r in res if not r["valid"]]
     print(f"{len(res) - len(bad)} / {len(res)} valid" + (f"; failing: {bad}" if bad else ""))
