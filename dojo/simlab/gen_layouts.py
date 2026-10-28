@@ -628,8 +628,25 @@ def place_clutter(clutter_cfg: list, gens: dict, rng: random.Random, layout: dic
     return placed
 
 
-def generate(task: str, seed: int, max_tries: int = 40) -> dict:
-    """One layout record for ``task`` (seed >= SEED_BASE). Deterministic in ``seed``."""
+VARIANT_BASE = 100   # variant draws start at sub-seed seed * 1000 + VARIANT_BASE (attempts of the plain draw: 0-39)
+
+
+def variant_subseed(seed: int, variant: int, attempt: int, max_tries: int = 40) -> int:
+    """The RNG seed of one generation attempt. Variant 0 is the plain draw (``seed * 1000 + attempt``, the stored
+    records). Variant v >= 1 is a NEW random draw of the same id (another layout from the same config): sub-seeds
+    ``seed * 1000 + VARIANT_BASE + max_tries * (v - 1) + attempt``, which stay inside the id's own 1000-block, so they
+    never coincide with another id's draws or with the plain draw."""
+    if variant < 0 or attempt < 0 or attempt >= max_tries:
+        raise ValueError(f"variant {variant} / attempt {attempt}")
+    off = 0 if variant == 0 else VARIANT_BASE + max_tries * (variant - 1)
+    if off + attempt >= 1000:
+        raise ValueError(f"variant {variant} leaves the id's sub-seed block (max {(1000 - VARIANT_BASE) // max_tries})")
+    return seed * 1000 + off + attempt
+
+
+def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0) -> dict:
+    """One layout record for ``task`` (seed >= SEED_BASE). Deterministic in ``seed`` (and ``variant``: v >= 1 is a new
+    random draw for the same id, ``variant_subseed``; the twin-trained segmenter's training layouts)."""
     if seed < paths.SEED_BASE:
         raise ValueError(f"our layout seeds start at {paths.SEED_BASE}")
     tcfg, scfg = task_config(task), scene_config(task)
@@ -640,7 +657,7 @@ def generate(task: str, seed: int, max_tries: int = 40) -> dict:
         # the keep-out is soft: some configs fix objects under the home-pose grippers on purpose
         # (fill_egg_holder's egg_basket, organize_table's alarm); then the second half drops it
         _KEEPOUT_ON[0] = attempt < max_tries // 2
-        sub = seed * 1000 + attempt
+        sub = variant_subseed(seed, variant, attempt, max_tries)
         np.random.seed(sub % (2**32))
         rng = random.Random(sub)
         gens = make_generators(scfg)
@@ -664,6 +681,8 @@ def generate(task: str, seed: int, max_tries: int = 40) -> dict:
         layout["_simlab"] = {"task": task, "id": seed, "seed": seed, "attempt": attempt, "generator": GENERATOR,
                              "n_clutter": n_clutter, "clutter_wanted": want,
                              "robot_keepout": _KEEPOUT_ON[0]}
+        if variant:
+            layout["_simlab"]["variant"] = variant
         return layout
     raise LayoutError(f"{task} seed {seed}: no valid layout in {max_tries} tries ({last})")
 
