@@ -3059,11 +3059,14 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
         # the texture decides, as in sam_propose
         if cfg.seg_flip and not yaw_fixed and h.sm().yaw_period > 1.5 * np.pi:
             fl = fit_at(h.yaw + np.pi)
+            ft = {"label_group": h.label_group, "iou": [round(cand[0], 3), round(fl[0], 3)]}
             if fl[0] >= cand[0] - 0.03:
                 t_old = texture_cost(h.sm(), h.sm().pose(cand[1], cand[2], cand[3], z_off), views, h.key)
                 t_new = texture_cost(h.sm(), h.sm().pose(fl[1], fl[2], fl[3], z_off), views, h.key)
+                ft["texture"] = [None if t_old is None else round(t_old, 3), None if t_new is None else round(t_new, 3)]
                 if t_old is not None and t_new is not None and t_new < t_old - 0.02:
                     cand, took_flip = fl, True
+            info.setdefault("flips", []).append(ft)
         sc, x, y, yaw = cand
         if not took_flip and (sc < base + cfg.seg_refit_margin or np.hypot(x - h.x, y - h.y) > float(np.max(h.sm().asset.extents))):
             continue
