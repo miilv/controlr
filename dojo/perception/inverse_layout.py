@@ -3278,8 +3278,9 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
         best = int(np.argmax(any_iou[i]))
         return any_iou[i][best] < 0.1 or chosen[i].label_group not in det_groups[best]
 
-    # 1. explained: identity hint + local re-fit inside the mask
-    for i, j in d_of.items():
+    add_only = cfg.seg_propose == "add"
+    # 1. explained: identity hint + local re-fit inside the mask ("add": members are never touched)
+    for i, j in ([] if add_only else d_of.items()):
         h, d = chosen[i], dets[j]
         if d.key in groups[h.label_group]["candidates"]:
             h.per_view["seg_key"] = (d.key, round(float(d.score), 3))
@@ -3362,9 +3363,12 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                 tr["why"] = "group not pending"
                 continue
             g, prior = pend[gi]
+            if add_only and d.key not in g["candidates"]:
+                tr["why"] = "add: not the group's exact class"
+                continue
             members = [i for i, h in enumerate(chosen) if h.label_group == gi]
             short = len(members) < len(g["labels"])
-            movable = [i for i in members if unexplained(i)] if cfg.seg_move else []
+            movable = [i for i in members if unexplained(i)] if (cfg.seg_move and not add_only) else []
             # members without head evidence first (occluded guesses), then the worst-fitting
             movable.sort(key=lambda i: (not chosen[i].per_view.get("occluded"),
                                         -chosen[i].per_view.get("sil_loss", chosen[i].loss)))
@@ -3678,7 +3682,8 @@ class EstimatorConfig:
     # a group short of objects gains the fit; a member that no mask of its group explains (no mask under it, or a mask
     # of another category) moves there. Explained members are re-fitted inside their mask (local, by a margin) and keep
     # the mask's class as an identity hint for the appearance step. Default off
-    seg_propose: str = "off"
+    seg_propose: str = "off"         # off | on | add: "add" only fills a label group short of objects from an unexplained
+                                     # mask of the group's exact class; members are never moved, re-fitted or re-identified
     seg_min_score: float = 0.4     # detections below are ignored
     seg_accept_iou: float = 0.55   # a proposal's head silhouette vs its mask, to be added / moved there
     seg_match_iou: float = 0.3     # a chosen object's head silhouette explains a mask
