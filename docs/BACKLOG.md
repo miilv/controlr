@@ -127,6 +127,18 @@
     elongated objects (journal);
   - (5) a tuning set on 100030-49 variants (seq renders of G3 rollouts) before any threshold is tuned;
   - (6) the always-on schedule (X2 arm S): its two-tick confirmations can come from frames 2 steps apart.
+- [ ] **dojo perception: place-refine robustness on supports** (stream W; parked by the lead: no belief changed). C's
+  fidelity floor showed 16 / 55 refine_place ok flips, but 0 of the 55 recorded place refines were applied.
+  - 11 are a scoring asymmetry: the recorded ok is after `_place_refine`'s 25 mm neighbour veto, which fires by
+    construction on supports (a piece on the board's centre, nested bowls). C takes R1, decision-level scoring.
+  - 3 are `_partial_fit` (built for planks) on a square board 38-67 % in view, IoU 0.6 bar: 0.52 / 0.63, 0.57 / 0.73,
+    0.04 / 0.80.
+  - 2 are bowl0 at predicted visibility <= 0.10, fitted on the nested bowl.
+  - Rules if it matters later:
+    - R2: the neighbour veto skips objects resting on / in the target (`tick.blocking_overlap`);
+    - R3: predicted visibility < 0.3 means "not observed";
+    - R4: `_partial_fit` only for long / short >= 2, else "uncertain".
+  - Estimate on the 55 rows: 16 -> 5 -> 0 raw flips, 0 applied-write changes.
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the
