@@ -11,9 +11,15 @@ puts them under ``DEV_GT_KEY``; nothing here is a policy).
     scripts/dojo/integ_eval.sh --task T --layouts L.json --mode gt --verify off \
         --policy dojo.perception.seq_capture:SeqReplayPolicy
 
+Decision frames (``DOJO_SEQ_DECISIONS=1``, default on): on top of every ``stride``-th step, an observation at every step
+the recorded run itself observed and logged (its report's event steps: refine hovers, post-place, held looks, resyncs,
+scans / looks; ``decisions[].step``), at k - 1 of every grip event (``grasp_metric.grip_events``) and at k + 1..5 after
+every release: where a decision-time perceiver runs (``meta.json`` ``forced_steps``).
+
 Per episode ``<out>/<task>_<lid>/``: ``frames/<step:04d>_<cam>.<fmt>`` (jpg: quality ``DOJO_SEQ_JPG_Q`` 95, 4:4:4,
 ~0.3 MB per step for 3 cameras against 1.1 MB as PNG; frame 0 also as PNG) and ``steps.jsonl`` (one row per observation:
-step, state, GT rows, the gripper commands of the actions that led to it). The physics is the recorded run's (G3 /
+step, state, the gripper commands of the actions that led to it; no GT) and ``gt.jsonl`` (step, the dev-only GT rows:
+the scorer's file, kept apart so a perceiver's inputs carry no GT). The physics is the recorded run's (G3 /
 the proxy are bit-deterministic on the same actions); the eval row's ``dev_gt_probe`` of the replay can be compared
 with the recorded run's.
 """
@@ -43,6 +49,37 @@ def load_actions(path: str) -> list[dict]:
     op = gzip.open if path.endswith(".gz") else open
     with op(path, "rt") as f:
         return json.load(f)["actions"]
+
+
+def decision_steps(actions: list[dict], report: dict | None, after_release: int = 5) -> list[int]:
+    """Steps (actions executed) at which a decision-time perceiver looks: every step the recorded run logged an event
+    or a decision at, k - 1 of every grip event and k + 1..``after_release`` after every release."""
+    out = set()
+    for e in (report or {}).get("events") or []:
+        if isinstance(e, dict) and isinstance(e.get("step"), (int, float)):
+            out.add(int(e["step"]))
+    for d in (report or {}).get("decisions") or []:
+        if isinstance(d, dict) and isinstance(d.get("step"), (int, float)):
+            out.add(int(d["step"]))
+    try:
+        from dojo.perception.grasp_metric import grip_events
+        evs = grip_events(actions)
+    except Exception:  # noqa: BLE001 (no metric module: the report's steps only)
+        evs = []
+    for e in evs:
+        k = int(e["step"])
+        out.add(k - 1)
+        if e["kind"] == "release":
+            out.update(k + j for j in range(1, after_release + 1))
+    return sorted(s for s in out if 0 <= s <= len(actions))
+
+
+def recorded_report(actions_path: str, task: str, lid) -> dict | None:
+    hits = sorted(glob.glob(os.path.join(os.path.dirname(actions_path), f"{task}_*_{lid}_report.json.gz")))
+    if not hits:
+        return None
+    with gzip.open(hits[0], "rt") as f:
+        return json.load(f)
 
 
 def encode_image(im: np.ndarray, fmt: str = "png", quality: int = 95) -> bytes:
@@ -79,6 +116,7 @@ class SeqReplayPolicy:
         self.fmt = os.environ.get("DOJO_SEQ_FMT", "jpg")
         self.quality = int(os.environ.get("DOJO_SEQ_JPG_Q", "95"))
         self.max_steps = int(os.environ.get("DOJO_SEQ_MAX_STEPS", "0"))
+        self.decisions = os.environ.get("DOJO_SEQ_DECISIONS", "1") != "0"
         self.report: dict = {}
 
     def reset(self, info: dict) -> None:
@@ -93,11 +131,15 @@ class SeqReplayPolicy:
         self.dir = self.out / (os.environ.get("DOJO_SEQ_NAME") or f"{task}_{lid}")   # one name per recorded run
         (self.dir / "frames").mkdir(parents=True, exist_ok=True)
         self._rows = open(self.dir / "steps.jsonl", "w")
+        self._gt = open(self.dir / "gt.jsonl", "w")
         self._last_acts: list[dict] = []
+        self.forced = decision_steps(self.actions, recorded_report(path, task, lid)) if self.decisions else []
+        self._forced_set = set(self.forced)
         (self.dir / "meta.json").write_text(json.dumps({"task": task, "layout_id": lid, "actions": path,
                                                          "n_actions": len(self.actions), "stride": self.stride,
                                                          "fmt": self.fmt, "instruction": info.get("instruction"),
-                                                         "step_lim": info.get("step_lim")}, indent=1))
+                                                         "step_lim": info.get("step_lim"),
+                                                         "forced_steps": self.forced}, indent=1))
         self.report = {"timings": {}, "events": [], "history": [], "records": {}, "looks": [], "result": None,
                        "error": None, "seq": {"dir": str(self.dir), "n_actions": len(self.actions)}}
 
@@ -109,26 +151,33 @@ class SeqReplayPolicy:
                 (self.dir / "frames" / f"{step:04d}_{cam}.png").write_bytes(encode_image(im, "png"))
         grip = [{k: float(np.asarray(v).reshape(-1)[0]) for k, v in a.items() if k.endswith("_ee_joint_state")}
                 for a in self._last_acts]
-        row = {"step": step, "state": _jsonable(obs["state"]), "gt": _jsonable(obs.get(DEV_GT_KEY) or []),
-               "grip_cmds": grip}
+        row = {"step": step, "state": _jsonable(obs["state"]), "grip_cmds": grip}
         self._rows.write(json.dumps(row) + "\n")
         self._rows.flush()
+        self._gt.write(json.dumps({"step": step, "gt": _jsonable(obs.get(DEV_GT_KEY) or [])}) + "\n")
+        self._gt.flush()
 
     def next(self, obs: dict) -> dict:
         self._keep(obs)
         if self.i >= len(self.actions):
             self._rows.close()
+            self._gt.close()
             return {"done": True}
-        acts = self.actions[self.i:self.i + self.stride]
+        n = self.stride - (self.i % self.stride)           # to the next stride multiple ...
+        nxt = next((s for s in self.forced if s > self.i), None)
+        if nxt is not None:                                 # ... or the next decision frame, whichever comes first
+            n = min(n, nxt - self.i)
+        acts = self.actions[self.i:self.i + max(1, n)]
         self.i += len(acts)
         self._last_acts = acts
         return {"actions": [{k: np.asarray(v, np.float32) for k, v in a.items()} for a in acts]}
 
     def episode_report(self) -> dict:
-        try:
-            self._rows.close()
-        except Exception:  # noqa: BLE001
-            pass
+        for f in (getattr(self, "_rows", None), getattr(self, "_gt", None)):
+            try:
+                f.close()
+            except Exception:  # noqa: BLE001
+                pass
         self.report["seq"]["replayed"] = getattr(self, "i", 0)
         return self.report
 

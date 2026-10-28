@@ -300,8 +300,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   in a slot.
 - **Per-step frames of a recorded episode: replay its actions, don't re-run the policy.** `dojo.perception.seq_capture`
   (mode gt, `--policy dojo.perception.seq_capture:SeqReplayPolicy`, `scripts/perception/seq_render.sh`) reproduces the
-  recorded run exactly (same `dev_gt_probe`) and keeps every camera + state + dev GT per step; JPEG q95 4:4:4 changes
-  neither B1 nor refine measurably (journal 2026-10-28-dojo-bgperc §1).
+  recorded run exactly (same `dev_gt_probe`) and keeps every camera + state per step (`steps.jsonl`, no GT) and the dev
+  GT apart (`gt.jsonl`, for scoring only); JPEG q95 4:4:4 changes neither B1 nor refine measurably (journal
+  2026-10-28-dojo-bgperc §1). On top of the stride it always observes the decision frames (the recorded run's logged
+  steps, k-1 of every grip event, release+1..5: `meta.json` "forced_steps"). Gate every replay with
+  `scripts/perception/bgperc/replay_check.py` and replay only on the box that recorded it (BACKLOG: compute2's physics).
 - **The segmenter flag needs its server too.** `seg_propose` acts only when `python -m dojo.perception.seg_twin serve
   --sock S --weights W --classes classes.json` answers at `DOJO_SEG_ADDR` (torch + ultralytics in that venv); without
   one it is a no-op. Its classes are catalogue keys from the training export (`classes.json`): an asset that never
