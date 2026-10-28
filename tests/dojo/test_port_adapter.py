@@ -483,10 +483,23 @@ def test_library_sort_groups_by_the_instructions_map():
     assert sorted(sum(gf.values(), [])) == ["cat0", "cat1", "cat2"] and len(gf) == 3
 
 
-def test_library_sort_runs_arrange_steps():
+def test_library_sort_runs_arrange_steps_and_a_second_pass(monkeypatch):
     from dojo.skills import library as L
+    from dojo.skills import sorting
     instr = SCENES["classify_into_bins_v3b"][1]
     env, sk = gt_skills(rows_classify(), instr, step_lim=1100)
     p = planner.plan(instr, sk.refresh(), ported={"classify": "library"})
+    calls = []
+    state = {"in": set()}
+
+    def fake_arrange(sk_, steps):
+        calls.append([tuple(s_) for s_ in steps])
+        for _, o, c in steps:                     # the first pass leaves cat1 out (a slipped grasp)
+            if len(calls) > 1 or o != "cat1":
+                state["in"].add(o)
+        return {"ok": True}
+    monkeypatch.setattr(L, "arrange", fake_arrange)
+    monkeypatch.setattr(sorting, "inside", lambda w, o, c: o in state["in"])
     res = L.skill_fn(p.skill)(sk, **p.args)
-    assert [g["container"] for g in res["groups"]] and set(res) >= {"ok", "groups"}
+    assert calls[0] == [("put", "cat1", "basket1"), ("put", "cat0", "basket0"), ("put", "cat2", "basket2")]
+    assert calls[1] == [("put", "cat1", "basket1")] and res["ok"] and res["not_inside"] == []
