@@ -38,7 +38,7 @@ def test_glyph_read_numeral_needs_two_agreeing_views_for_full_confidence(monkeyp
 
     def fake(reads):
         it = iter(reads)
-        return lambda img, mask, view="cam_head", held=False, client_=None: next(it)
+        return lambda img, mask, view="cam_head", held=False, client_=None, category=None: next(it)
 
     h = _h()
     monkeypatch.setattr(glyph_read, "classify_mask", fake([{"read": True, "name": "6", "margin": 0.6}] * 2), raising=False)
@@ -95,7 +95,7 @@ def test_the_arm_mask_goes_to_a_reader_that_takes_it(monkeypatch):
     from dojo.perception import inverse_layout as il
     seen = []
 
-    def v2(img, mask, view="cam_head", held=False, client_=None, robot=None):
+    def v2(img, mask, view="cam_head", held=False, client_=None, robot=None, category=None):
         seen.append(robot)
         return {"read": False, "why": "robot"}
 
