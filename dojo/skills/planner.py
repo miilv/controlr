@@ -208,7 +208,60 @@ def order_points(o, tags: list[str], text: str) -> list[str]:
     return list(tags)
 
 
-def plan(instruction: str, world: WorldState) -> Plan:
+def ported_plan(instruction: str, world: WorldState) -> Plan | None:
+    """Routes to Mikhail's measured skills (``dojo.skills.ported``, stream P), for instructions no route of ours takes.
+    Words + what the objects are (category, type, pose), never labels; an object is passed as ``"@<label>"`` only as a
+    handle, which the adapter turns into that object's instance name. None: no ported route fits."""
+    text = " ".join((instruction or "").lower().split())
+    objs = _objects(world)
+    rigid = [o for o in objs if o.obj_type == "Rigid"]
+
+    def run(skill, **args):
+        return Plan("ported", {"skill": skill, "args": args}, f"ported {skill} (robot-harness)")
+
+    # cover each block with a cup, then lift the cups off in a named colour order
+    if re.search(r"\bcover\b", text) and re.search(r"\buncover\b", text):
+        cups = [o for o in rigid if "cup" in o.category.lower()]
+        blocks = [o for o in rigid if re.search(r"cube|block", o.category.lower())]
+        if blocks and len(cups) >= len(blocks):
+            return run("cover_uncover_v2")
+    # swap the poses of two objects of one kind
+    if re.search(r"\bswap\b", text) and re.search(r"\bpositions?\b|\bposes?\b|\bplaces\b", text):
+        kinds: dict = {}
+        for o in rigid:
+            kinds.setdefault(o.category, []).append(o)
+        if sum(len(v) == 2 for v in kinds.values()) == 1:
+            return run("swap_poses")
+    # pour from one container into another: balls (a cup into a vase) or a liquid (a bottle into a cup)
+    if re.search(r"\bpour\b", text):
+        if re.search(r"\bballs?\b", text):
+            return run("pour")
+        if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
+            return run("pour_bottle")
+    # pick one named object up by a height
+    if re.search(r"^\s*(pick up|lift|raise)\b", text) and re.search(r"\bby\s+\d+(?:\.\d+)?\s*(?:cm|mm|m)\b", text):
+        return run("pick_up")
+    # push / drag a flat object onto its pad (a Geometry whose category names the object's kind)
+    if re.search(r"\bpush\b|\bslide\b|\bdrag\b", text) and re.search(r"\bpad\b|\balign", text):
+        pads = [o for o in objs if o.obj_type == "Geometry"]
+        pairs = [(r, p) for r in rigid for p in pads if r.category.lower() in p.category.lower().split("_")
+                 and r.category.lower() != p.category.lower()]
+        if len(pairs) == 1:
+            return run("planar_drag", obj="@" + pairs[0][0].label, target="@" + pairs[0][1].label)
+    return None
+
+
+def plan(instruction: str, world: WorldState, ported: bool = False) -> Plan:
+    """``ported``: after our own routes, try the ported ones (``ported_plan``; ``RuntimeConfig.ported_routes``)."""
+    p = _plan(instruction, world)
+    if ported and p.skill == "none" and not p.args:
+        q = ported_plan(instruction, world)
+        if q is not None:
+            return q
+    return p
+
+
+def _plan(instruction: str, world: WorldState) -> Plan:
     text = (instruction or "").lower()
     cats = _by_category(world)
     objs = _objects(world)
@@ -550,7 +603,7 @@ def plan(instruction: str, world: WorldState) -> Plan:
 def solve(sk) -> dict:
     """The fixed procedure: plan from the instruction and the world, run the skill, finish."""
     w = sk.refresh()
-    p = plan(w.instruction, w)
+    p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on")
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":

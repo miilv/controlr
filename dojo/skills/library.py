@@ -3093,3 +3093,8 @@ SKILLS.update(_GARMENT_SKILLS)
 from dojo.skills.sweep import SKILLS as _SWEEP_SKILLS  # noqa: E402
 
 SKILLS.update(_SWEEP_SKILLS)
+
+# Mikhail's measured skills through the robot-harness adapter (stream P; routes behind ``ported_routes``, default off)
+from dojo.skills.ported import SKILLS as _PORTED_SKILLS  # noqa: E402
+
+SKILLS.update(_PORTED_SKILLS)
