@@ -332,6 +332,10 @@ class RuntimeConfig:
     # ... pouring balls: v1 (Mikhail's pour: stops when no ball is left in the cup) | full (pour_p1: the whole roll profile;
     # camera mode sees no balls inside the cup, so v1 read "empty" at the first hold and stopped with the balls inside)
     ported_pour: str = "v1"
+    # ... "pick up the X by N cm": v1 (Mikhail's pick_up: top-down mesh-cloud grasps) | library (our Skills.pick first, its
+    # grasp generator, then v1 on the same object when ours fails with >= 120 steps left; dojo/skills/pickup.py), the object
+    # grounded by its public description or its category words
+    ported_pickup: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -410,7 +414,7 @@ class RuntimePolicy:
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
-                or self.cfg.ported_pour not in ("v1", "full")
+                or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -426,7 +430,8 @@ class RuntimePolicy:
             supervisor = RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans,
                                         planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap,
                                                                                       "drag": self.cfg.ported_drag,
-                                                                                      "pour": self.cfg.ported_pour}))
+                                                                                      "pour": self.cfg.ported_pour,
+                                                                                      "pickup": self.cfg.ported_pickup}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -678,6 +683,7 @@ class RuntimePolicy:
             sk_.joint_limits = cfg.joint_limits
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour = cfg.ported_pour
+            sk_.ported_pickup = cfg.ported_pickup
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
