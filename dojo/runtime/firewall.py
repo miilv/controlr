@@ -12,10 +12,11 @@ adapter also reads (``steps_used`` / ``step_lim``). The proxy render service add
 * ``sanitize_info`` keeps only whitelisted episode-info keys. simlab's proxy_eval passes
   ``layout_file`` (our dev record = ground truth) to every policy; it is dropped here and never read.
 
-``layout_id`` is kept for logging only (the official harness logs ``env_seeds`` the same way); nothing
-may key a cache, a skill or a memory on it. ``dev_calib_fold`` is a dev-eval protocol field set by
-our driver: which half of D0 the perception backgrounds / colour map were built from, so that they
-never include the evaluated layout.
+Episode info keeps only what the official observation also carries (``instruction``, ``step_lim``). The
+launcher's task name, the layout id, the reset's stability flag and timings, and any value derived from them
+(the old ``dev_calib_fold`` = crc32(layout id) % 2) never reach the policy: the drivers log them on the scorer
+side. The perception calibration (backgrounds, colour map) is ONE frozen set per perception service
+(``DOJO_CALIB_SET``), the same for every episode (legality audit 2026-10-28, P1 finding 1).
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ OPTIONAL_STATE_KEYS = {"left_ee_joint_state_official": 1, "right_ee_joint_state_
 OBS_KEYS = {"images", "state", "instruction", "steps_used", "step_lim"}
 PROXY_META_KEYS = {"renderer"}
 DEV_GT_KEY = "_dev_gt"
-INFO_KEYS = {"task", "instruction", "step_lim", "layout_id", "stable", "reset_s", "render_stage_s", "dev_calib_fold"}
+INFO_KEYS = {"instruction", "step_lim"}
 MODES = ("gt", "perception")
 
 

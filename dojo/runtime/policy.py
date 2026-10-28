@@ -18,9 +18,12 @@ Per episode, in a worker thread behind ``Bridge`` (the env is only stepped by th
    divergence -> re-estimate -> the supervisor re-plans.
 8. finish(): home + open grippers (banks the ladder tier; the 100 tier needs home), then still steps.
 
-The task name in ``info`` is logged only, never used for a decision (benchmark rule: one system, no
-per-task router). Config: ``RuntimeConfig`` or JSON in ``$DOJO_RUNTIME`` (for ``--policy
-dojo.runtime.policy:RuntimePolicy``).
+Episode info reaching the policy is the instruction and the step limit only (``firewall.sanitize_info``): the
+launcher's task name and the layout id are dropped before ``reset`` stores anything (benchmark rule: one system,
+no per-task router, nothing derived from the layout id). The perception calibration (backgrounds, colour map) is
+one frozen set per perception service (``DOJO_CALIB_SET``), the same for every episode: ``CALIB_FOLD``.
+
+Config: ``RuntimeConfig`` or JSON in ``$DOJO_RUNTIME`` (for ``--policy dojo.runtime.policy:RuntimePolicy``).
 """
 
 from __future__ import annotations
@@ -40,6 +43,10 @@ from .firewall import check_obs, sanitize_info
 from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candidates
 
 
+# The perception service protocol still carries a ``fold`` field (offline dev tools pass a D0 half). The runtime
+# always sends this constant: the service maps every request to its ONE frozen calibration set (``DOJO_CALIB_SET``),
+# never to a set chosen per episode (legality audit 2026-10-28, P1 finding 1: crc32(layout id) % 2 used to pick it).
+CALIB_FOLD = 0
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
 
 
@@ -375,9 +382,8 @@ class RuntimePolicy:
         if self.bridge is not None:
             self.bridge.cancel()
         self._live = None
-        self.info, dropped = sanitize_info(info)
-        self.log_task = self.info.get("task")            # logging only (never a decision input)
-        self.fold = int(self.info.get("dev_calib_fold", 0))
+        self.info, dropped = sanitize_info(info)        # instruction + step_lim only (no task, no layout id)
+        self.fold = CALIB_FOLD                          # the service's one frozen calibration set, every episode
         self.bridge = Bridge()
         self._pc_calls0 = len(getattr(self._pc, "calls", None) or [])   # the client's call log spans episodes
         self._lost_searched = set()

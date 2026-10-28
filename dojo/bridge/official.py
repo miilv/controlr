@@ -86,7 +86,7 @@ def episode_row(out: Path, task: str, lid: int, verdict: dict | None) -> dict:
     return {"path": "official", "task": task, "layout_id": lid, "success": succ,
             "score": (verdict or {}).get("score"), "steps_used": s.get("steps_used"), "step_lim": s.get("step_lim"),
             "end": s.get("end"), "wall_s": s.get("wall_s"), "policy_s": s.get("policy_s"), "exec_s": s.get("exec_s"),
-            "observe_s": s.get("observe_s"), "twin_scene": s.get("twin_scene"), "calib_fold": s.get("calib_fold"),
+            "observe_s": s.get("observe_s"), "twin_scene": s.get("twin_scene"), "calib_set": s.get("calib_set"),
             "policy_error": s.get("policy_error") or s.get("policy_error_handled"), "category": cat, "why": why,
             "skill": rep.get("skill"), "agent": rep.get("agent"), "agentic_n": len(rep.get("agentic") or []),
             "joint_steps_chunks": len(s.get("joint_steps_chunks") or []),

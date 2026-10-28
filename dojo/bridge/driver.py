@@ -39,7 +39,7 @@ from .twin import TwinProcess, twin_scene
 
 # Run settings that live in the environment (perception data sets, twin flags, agentic perceiver), recorded in
 # bridge.json -> "env" so a row says which sets it ran with. Names and paths only: never a key (OMNIROUTE_* stays out).
-ENV_NOTES = ("DOJO_CATALOG", "DOJO_BG_FOLDS", "DOJO_COLOR_CALIB", "DOJO_X5_DIR", "SIMLAB_USD_SYNC_LINKS", "AGENTIC_MODEL",
+ENV_NOTES = ("DOJO_CATALOG", "DOJO_BG_FOLDS", "DOJO_CALIB_SET", "DOJO_COLOR_CALIB", "DOJO_X5_DIR", "SIMLAB_USD_SYNC_LINKS", "AGENTIC_MODEL",
              "AGENTIC_MAX_TURNS", "AGENTIC_REFINE", "AGENTIC_EXTRA_BODY", "DOJO_AGENTIC_LOG", "J1_PERCEIVER", "RD_HOME",
              "BENCH")
 
@@ -58,10 +58,10 @@ def load_policy(spec: str | None):
 
 
 def run_episode(policy, backend: RobotServerBackend, twin_factory=None, reset_timeout_s: float = 600.0,
-                max_next: int = 100_000, calib_fold: int = 0, log=print) -> dict:
-    """One episode. ``twin_factory(scene) -> TwinClient`` (verify=bundle): started for the instruction's scene.
-    ``calib_fold``: which perception background / colour set to use (``info["dev_calib_fold"]``; any fold is
-    legal behind the official client: neither half of our D0 holds an eval layout)."""
+                max_next: int = 100_000, log=print) -> dict:
+    """One episode. ``twin_factory(scene) -> TwinClient`` (verify=bundle): started for the instruction's scene. The
+    policy gets the instruction and the step limit only; the perception calibration is the service's one frozen set
+    (``DOJO_CALIB_SET``), never chosen per episode."""
     t0 = time.perf_counter()
     ep = backend.reset(reset_timeout_s)
     instruction = ep["instruction"]
@@ -84,7 +84,7 @@ def run_episode(policy, backend: RobotServerBackend, twin_factory=None, reset_ti
             if scene is None:
                 events.append({"kind": "twin_scene_unknown", "reason": "the instruction lookup names no scene; the "
                                                                         "policy's choice decides"})
-    policy.reset({"instruction": instruction, "step_lim": ep["step_lim"], "dev_calib_fold": int(calib_fold)})
+    policy.reset({"instruction": instruction, "step_lim": ep["step_lim"]})
     obs = backend.observe()
     end, n_next, t_policy, t_exec, t_obs = None, 0, 0.0, 0.0, 0.0
     try:
@@ -150,7 +150,6 @@ def main(argv=None) -> None:
     ap.add_argument("--twin-envs", type=int, default=8)
     ap.add_argument("--hold-gpu-lock", action="store_true", help="the session holds the GPU lock (twin skips rdpy's)")
     ap.add_argument("--perception", choices=("local", "server"), default="local")
-    ap.add_argument("--calib-fold", type=int, default=0, help="perception background / colour set (DOJO_BG_FOLDS/fold<k>)")
     ap.add_argument("--out", default="runs/bridge")
     ap.add_argument("--keep-frames", type=int, default=20, help="keep every k-th observation's PNGs (0: first only)")
     ap.add_argument("--wait-episode", type=float, default=900.0)
@@ -191,12 +190,12 @@ def main(argv=None) -> None:
         pol._pc = ServerPerception(backend, local=local)
     twin = TwinProcess(a.twin_envs, out_dir, hold_gpu_lock=a.hold_gpu_lock) if (verify == "bundle" and a.twin == "spawn") else None
     try:
-        res = run_episode(pol, backend, twin_factory=twin.start if twin else None, calib_fold=a.calib_fold)
+        res = run_episode(pol, backend, twin_factory=twin.start if twin else None)
         if twin is not None:
             res["summary"]["twin_boot_s"] = twin.boot_s
         res["summary"].update(server_id=a.server_id, perception=a.perception, verify=verify, config=cfg.__dict__,
-                              twin_envs=a.twin_envs if twin is not None else None, calib_fold=a.calib_fold,
-                              env=env_notes())
+                              twin_envs=a.twin_envs if twin is not None else None,
+                              calib_set=os.environ.get("DOJO_CALIB_SET"), env=env_notes())
         write_outputs(res, out_dir)
         s = res["summary"]
         print(f"[bridge] {a.server_id}: end={s['end']} steps={s['steps_used']}/{s['step_lim']} ended={s['ended']} "

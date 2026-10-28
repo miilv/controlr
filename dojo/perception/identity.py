@@ -33,8 +33,19 @@ EMPTY_FG_FRAC = 0.25  # foreground below this share of the expected silhouette: 
 _M_CACHE: dict[str, np.ndarray | None] = {}
 
 
-def load_color_M(path: str | None = None, which: str = "all") -> np.ndarray | None:
-    """The catalogue -> renderer colour map (4x3) from ``color_calib.json`` (``DOJO_COLOR_CALIB``), or None."""
+def load_color_M(path: str | None = None, which: str | None = None) -> np.ndarray | None:
+    """The catalogue -> renderer colour map (4x3) from ``color_calib.json`` (``DOJO_COLOR_CALIB``), or None.
+    ``which`` None: the service's frozen calibration set (``DOJO_CALIB_SET``: its own ``color_M.json``, else that key)
+    when one is configured, else ``all``."""
+    cset = os.environ.get("DOJO_CALIB_SET") if which is None and path is None else None
+    if cset:
+        own = Path(os.environ.get("DOJO_BG_FOLDS", "")) / cset / "color_M.json"
+        k = f"{own}:M"
+        if own.is_file():
+            if k not in _M_CACHE:
+                _M_CACHE[k] = np.asarray(json.loads(own.read_text())["M"], float)
+            return _M_CACHE[k]
+    which = which or cset or "all"
     p = path or os.environ.get("DOJO_COLOR_CALIB", "")
     k = f"{p}:{which}"
     if k not in _M_CACHE:

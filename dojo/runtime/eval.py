@@ -7,8 +7,11 @@ This driver adds, around simlab's loop:
 * mode ``gt``: the dev-only GT rows (``objects_gt``), captured in the main thread at each observation and
   put under ``firewall.DEV_GT_KEY``; mode ``perception``: nothing but the official observation (the
   policy's firewall raises on anything else);
-* ``info["dev_calib_fold"]`` = crc32(layout id) % 2, the D0 half the perception backgrounds / colour map
-  must NOT come from (they are built from the other half);
+* nothing derived from the layout id or the task name reaches the policy (``firewall.sanitize_info``): the perception
+  calibration is the service's ONE frozen set (``DOJO_CALIB_SET``, ``dojo.perception.calib_set``); this driver
+  (scorer side) refuses a layout the set was built from (its manifest) and records ``calib_set`` /
+  ``calib_disjoint`` in every row (the old per-episode ``dev_calib_fold`` = crc32(layout id) % 2 is gone: legality
+  audit 2026-10-28, P1-1);
 * a dev-only scorer: perception's estimate vs GT at episode start, and the failure taxonomy
   (perception_gross / grasp_slip / plan / verify_reject / budget / not_home / divergence / error);
 * a dev-only GT probe (``GTProbe``, row ``dev_gt_probe``): each label's largest z rise over its reset pose and the GT
@@ -28,7 +31,6 @@ import json
 import os
 import subprocess
 import time
-import zlib
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +42,7 @@ from dojo.simlab.runner import jsonable
 
 from .estimate import objects_from_gt_rows, objects_from_record, planning_record, pose_errors
 from .firewall import DEV_GT_KEY
+from .perception_service import calib_info
 from .policy import RuntimeConfig, RuntimePolicy
 
 GROSS_XY_MM = 20.0
@@ -259,6 +262,13 @@ def load_policy_factory(spec: str | None):
     return getattr(importlib.import_module(mod), cls)
 
 
+def calib_overlap(calib: dict, layout_id) -> bool | None:
+    """Scorer side: was the perception calibration set built from ``layout_id`` (its manifest)? None = unknown (no set
+    configured or no manifest: a legacy ``fold<k>`` dir)."""
+    from dojo.perception.calib_set import overlap
+    return overlap(calib.get("manifest"), layout_id) if calib.get("set") else None
+
+
 def deployed_code() -> dict | None:
     """``.deployed.json`` written by scripts/deploy.sh in this checkout (head, skills / perception / simlab /
     runtime commits), or None (e.g. a local run)."""
@@ -297,6 +307,7 @@ def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minute
     kin = _probe_kin()
     rows, t_all = [], time.perf_counter()
     code = deployed_code()
+    calib = calib_info() if cfg.mode == "perception" else {"set": None, "manifest": None}
     gate = os.environ.get("DOJO_EVAL_GATE")          # a command run before each episode (isr-lab: inbox / reserve / disk)
     stop = None
     for lf in layout_files:
@@ -316,6 +327,10 @@ def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minute
         if paths.is_offslice_rendered(Path(lf).name.split(".")[0]):
             raise SystemExit(f"{lf}: not ours to run rendered / proxy (D-C10a: Mikhail's 100010-19 / 100050-99, reserved "
                              f">= {paths.RESERVED_MIN_ID})")
+        calib_ov = calib_overlap(calib, Path(lf).name.split(".")[0])
+        if calib_ov:
+            raise SystemExit(f"{lf}: the perception calibration set {calib['set']} was built from this layout "
+                             f"(manifest): evaluating it would test on calibration data")
         lay = json.loads(Path(lf).read_text())
         klog = kit_log_path()
         k_off = kit_log_offset(klog)                # cooking happens at the layout load: watch from here
@@ -324,7 +339,6 @@ def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minute
             rows.append({"layout": lf, "unstable": True})
             continue
         lid = info.get("layout_id")
-        info["dev_calib_fold"] = zlib.crc32(str(lid).encode()) % 2
         gt0 = ep.run.objects_gt(0)                  # scorer side (dev only)
         probe = GTProbe(gt0, kin)                   # scorer side (dev only): rises and closes, the row only
         bprobe = BeliefProbe(pol)                   # scorer side (dev only): the belief at each gripper change
@@ -370,6 +384,7 @@ def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minute
         v = rep.get("verify")
         row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "preset": cfg.preset,
                "twins_served": [list(x) for x in twins.served],
+               "calib_set": calib["set"], "calib_disjoint": None if calib_ov is None else not calib_ov,
                "time_capped": capped, "cooking_failures": cook,
                "renderer": renderer, "grip_source": getattr(getattr(ep, "grip", None), "mode", None),
                "success": bool(res["success"]), "score": float(res["score"]), "steps_used": int(res["steps_used"]),

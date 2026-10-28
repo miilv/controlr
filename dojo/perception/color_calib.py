@@ -20,8 +20,10 @@ from pathlib import Path
 import numpy as np
 
 
-def collect(root: Path, tasks=None, max_per_task: int = 25) -> list[dict]:
-    """(fold, ref colour, observed colour) per GT object, frame 0, all views. DEV-ONLY (uses GT poses)."""
+def collect(root: Path, tasks=None, max_per_task: int = 25, episodes: list | None = None, bgs_for=None) -> list[dict]:
+    """(fold, ref colour, observed colour) per GT object, frame 0, all views. DEV-ONLY (uses GT poses).
+    ``episodes`` / ``bgs_for(ep)``: an explicit episode list segmented against given backgrounds (a frozen calibration
+    set, ``calib_set``); default every task's first ``max_per_task`` against the other fold's backgrounds."""
     from . import d0
     from .cameras import cameras_from_state, pose_to_T
     from .eval_g1 import fold_backgrounds
@@ -30,25 +32,27 @@ def collect(root: Path, tasks=None, max_per_task: int = 25) -> list[dict]:
     from .segment import segment_views
 
     rows = []
-    tnames = tasks or sorted(p.name for p in root.iterdir() if p.is_dir() and p.name != "logs")
-    for t in tnames:
-        for ep in d0.episodes(root, t)[:max_per_task]:
-            obs = d0.load_obs(ep, 0)
-            gt = d0.load_gt(ep, 0)
-            views = segment_views(obs["images"], cameras_from_state(obs["state"]), obs["state"], fold_backgrounds(ep))
-            for o in gt["objects"]:
-                if o.get("clutter") or o["category"] in ("camera_stand", "dustbin") or o.get("pos") is None:
-                    continue
-                key = f"{o['type']}/{o['category']}/{o['category_idx']:05d}"
-                try:
-                    sm = shape_models(key)[0]
-                except Exception:
-                    continue
-                col, n = observed_color(sm, pose_to_T(o["pos"], o["quat"]), views)
-                if col is None or n < 30:
-                    continue
-                rows.append({"fold": zlib.crc32(ep.name.encode()) % 2, "key": key, "obs": col.tolist(),
-                             "ref": load_asset(key).info["mean_color"], "n": n})
+    if episodes is None:
+        tnames = tasks or sorted(p.name for p in root.iterdir() if p.is_dir() and p.name != "logs")
+        episodes = [ep for t in tnames for ep in d0.episodes(root, t)[:max_per_task]]
+    for ep in episodes:
+        obs = d0.load_obs(ep, 0)
+        gt = d0.load_gt(ep, 0)
+        views = segment_views(obs["images"], cameras_from_state(obs["state"]), obs["state"],
+                              (bgs_for or fold_backgrounds)(ep))
+        for o in gt["objects"]:
+            if o.get("clutter") or o["category"] in ("camera_stand", "dustbin") or o.get("pos") is None:
+                continue
+            key = f"{o['type']}/{o['category']}/{o['category_idx']:05d}"
+            try:
+                sm = shape_models(key)[0]
+            except Exception:
+                continue
+            col, n = observed_color(sm, pose_to_T(o["pos"], o["quat"]), views)
+            if col is None or n < 30:
+                continue
+            rows.append({"fold": zlib.crc32(ep.name.encode()) % 2, "key": key, "obs": col.tolist(),
+                         "ref": load_asset(key).info["mean_color"], "n": n})
     return rows
 
 

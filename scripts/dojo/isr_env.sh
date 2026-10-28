@@ -30,6 +30,8 @@ export DOJO_DATA="$ILIA/dojo-data" SIMLAB_KIT_ARGS="--portable-root $ILIA/kitroo
 export DOJO_PERCEPTION_DATA="$ILIA/bridge/pdata"
 export DOJO_CATALOG="$DOJO_PERCEPTION_DATA/catalog" DOJO_X5_DIR="$DOJO_PERCEPTION_DATA/catalog/robot/x5" \
   DOJO_BG_FOLDS="$DOJO_PERCEPTION_DATA/bg_folds_51" DOJO_COLOR_CALIB="$DOJO_PERCEPTION_DATA/catalog/color_calib_51.json"
+# ONE frozen calibration set for every episode (legality audit 2026-10-28, P1-1; dojo.perception.calib_set)
+export DOJO_CALIB_SET="${DOJO_CALIB_SET:-frozen_d0_100010_19}"
 # omniroute keys (OMNIROUTE_* only, mode 600, owner-approved): the agent (llmio) and the agentic perceiver
 export DOJO_AGENT_DOTENV="$ILIA/.env" AGENTIC_ENV_FILE="$ILIA/.env"
 # the box hard-resets under all-core load (robot-harness AGENTS.md rule 6): thread pools capped, twin with 4 envs

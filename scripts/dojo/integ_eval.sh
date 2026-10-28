@@ -88,6 +88,8 @@ if [[ "$RENDERER" == isaac51 ]]; then           # genuine 5.1 frames: the 5.1 ba
 else
   export DOJO_BG_FOLDS="${DOJO_BG_FOLDS:-$PD/bg_folds}" DOJO_COLOR_CALIB="${DOJO_COLOR_CALIB:-$PD/catalog/color_calib.json}"
 fi
+source "$HERE/scripts/dojo/calib_set.sh"         # DOJO_CALIB_SET: ONE frozen calibration set for every episode
+if [[ "$MODE" == perception ]]; then calib_set_check || exit 2; fi
 # agentic perceiver (only read when the config sets "agentic"): omniroute keys from ONE named file (default the box's
 # ~/controlr/.env, OMNIROUTE_* only; no fallback), transcripts here. The render and twin services below never call the
 # model and start without it (env -u); Python-spawned children drop it too (controlr.keyguard.child_env)
