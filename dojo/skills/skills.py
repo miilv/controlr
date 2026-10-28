@@ -290,6 +290,12 @@ class Skills:
         # ``library.put_into``'s options (stream H; empty = today): "spot" (a wider handover search, else a put-back),
         # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
         self.put_into_opts: set = set()
+        # ``library.on_targets``' support top (stream H): "bbox" (today: the support's bbox top) | "mesh" (the mesh's
+        # surface under the object's whole footprint, flat poses only)
+        self.place_surface = "bbox"
+        # ``library.push_to``'s axis order (stream H): "greedy" (today: most left to go first) | "lookahead" (the other
+        # axis first when its stroke would be blocked once the first is done)
+        self.push_order = "greedy"
         self.consume_events: list = []
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}

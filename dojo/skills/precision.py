@@ -88,13 +88,15 @@ def section_points(mesh, n, s: float) -> np.ndarray:
 _HM_CACHE: dict = {}
 
 
-def height_map(o, cell: float = 0.002, world: bool = False) -> dict | None:
+def height_map(o, cell: float = 0.002, world: bool = False, max_seg: int = 24) -> dict | None:
     """Top-surface height map of an object's mesh (max z of dense surface samples per ``cell``, dilated by one cell),
     for ``Collision.heightmaps``: in its own frame (an upright receptacle; cached per asset), or with ``world`` along
-    the world's vertical for the object's current orientation (a tube standing in a rack: its own z is horizontal)."""
+    the world's vertical for the object's current orientation (a tube standing in a rack: its own z is horizontal).
+    ``max_seg``: samples per triangle edge at most (a triangle longer than ``max_seg`` * 0.7 cells leaves empty cells
+    inside it: a decimated cabinet's flat top is two triangles)."""
     if o.asset.mesh is None:
         return None
-    key = (o.asset.key, cell)
+    key = (o.asset.key, cell) if max_seg == 24 else (o.asset.key, cell, max_seg)
     if not world and key in _HM_CACHE:
         return _HM_CACHE[key]
     V, F = np.asarray(o.asset.mesh[0], float), np.asarray(o.asset.mesh[1], int)
@@ -102,7 +104,7 @@ def height_map(o, cell: float = 0.002, world: bool = False) -> dict | None:
         V = V @ o.R.T
     a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
     L = np.maximum(np.maximum(np.linalg.norm(b - a, axis=1), np.linalg.norm(c - a, axis=1)), np.linalg.norm(c - b, axis=1))
-    nseg = np.clip(np.ceil(L / (0.7 * cell)), 1, 24).astype(int)
+    nseg = np.clip(np.ceil(L / (0.7 * cell)), 1, max_seg).astype(int)
     pts = [V]
     for n in np.unique(nseg):
         m = nseg == n

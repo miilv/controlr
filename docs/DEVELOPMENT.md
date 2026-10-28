@@ -69,6 +69,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **CI never runs a G3 / Isaac episode**, so a name that exists only on your measurement base passes CI and breaks main
   (#85 → #89: `belief_drop` in g3.py before #79 landed; every mode-A run died with NameError). Before a PR: run one G3
   episode from the PR head itself, and `uvx pyflakes` the files you touched (it flags undefined names).
+- **`timeout N scripts/skills/g3.sh ...` does not bound a G3 job.** The TERM reaches g3.sh, whose trap forwards it to
+  the Isaac python and waits, but the python keeps running its episodes: a `timeout 1900` job ran 40 min, on into the
+  next layout, until its python was killed by PID. Use `timeout -k 60 N` (a KILL to the process group 60 s later), or
+  give each job its own process group / systemd scope and stop that.
 - **omniroute replays responses** to byte-identical requests (~0.4 s, no usage). That's why
   `llm.request_nonce: true` puts the run id into the first turn. Benchmarks too.
 - **Thinking control through the router differs per model.** Opus planner: effort only via the id

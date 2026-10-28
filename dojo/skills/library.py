@@ -1879,10 +1879,75 @@ def _up_yaw(o) -> float:
     return float(math.atan2(Rrel[1, 0], Rrel[0, 0]))
 
 
-def on_targets(sk: Skills, label: str, support: str) -> list[np.ndarray]:
-    """Poses that put ``label`` upright (its ``up`` pose) on ``support``'s top, turned like the support
+PLACE_FLAT_TOL = 0.004        # m: "place_surface" mesh: the support's top under a footprint varies by at most this
+SUPPORT_CELL = 0.003          # m: its height map's cell (every triangle sampled densely: ``height_map(max_seg=)``)
+
+
+def support_z_fn(b):
+    """World z of support ``b``'s top surface seen from above (its mesh's ``precision.height_map``), as a function
+    of world xy points (N, 2) -> (N,), -inf where the map has no surface. None without a mesh."""
+    from dojo.skills.precision import height_map
+    if b.asset.mesh is None:
+        return None
+    upright = float(b.R[2, 2]) > math.cos(math.radians(2.0))
+    # its own frame (cached per asset) when upright
+    hm = height_map(b, cell=SUPPORT_CELL, world=not upright, max_seg=400)
+    if hm is None:
+        return None
+    R, pos = np.asarray(b.R, float), np.asarray(b.pos, float)
+    Z = hm["Z"]
+
+    def z_at(xy) -> np.ndarray:
+        xy = np.asarray(xy, float).reshape(-1, 2)
+        dw = np.c_[xy - pos[:2], np.zeros(len(xy))]
+        loc = dw @ R if upright else dw                 # world offset -> the map's frame
+        ix = np.floor((loc[:, 0] - hm["x0"]) / hm["cell"]).astype(int)
+        iy = np.floor((loc[:, 1] - hm["y0"]) / hm["cell"]).astype(int)
+        ok = (ix >= 0) & (ix < Z.shape[1]) & (iy >= 0) & (iy < Z.shape[0])
+        z = np.full(len(xy), -np.inf)
+        zl = Z[iy[ok], ix[ok]]
+        if upright:                                     # back to world z (the support's small tilt included)
+            fin = np.isfinite(zl)
+            zw = np.full(len(zl), -np.inf)
+            zw[fin] = pos[2] + R[2, 0] * loc[ok][fin, 0] + R[2, 1] * loc[ok][fin, 1] + R[2, 2] * zl[fin]
+            z[ok] = zw
+        else:
+            z[ok] = pos[2] + zl
+        return z
+
+    return z_at
+
+
+def footprint_xy(o, R, n: int = 9) -> np.ndarray:
+    """World xy offsets (n*n, 2) from the bbox centre of a grid over ``o``'s bbox face that points down in orientation
+    ``R`` (the face it would rest on)."""
+    ext = np.asarray(o.asset.extents, float)
+    k = int(np.argmax(np.abs(R[2, :])))
+    i, j = [a for a in range(3) if a != k]
+    s = np.linspace(-0.5, 0.5, n)
+    U, V = np.meshgrid(s * ext[i], s * ext[j])
+    P = np.zeros((U.size, 3))
+    P[:, i], P[:, j] = U.ravel(), V.ravel()
+    return (P @ R.T)[:, :2]
+
+
+def on_targets(sk: Skills, label: str, support: str, surface: str | None = None) -> list[np.ndarray]:
+    """``_on_targets``' poses (``surface``: "bbox" | "mesh", default ``sk.place_surface``)."""
+    return _on_targets(sk, label, support, surface)[0]
+
+
+def _on_targets(sk: Skills, label: str, support: str, surface: str | None = None) -> tuple[list[np.ndarray], bool]:
+    """(poses, rest on the mesh): poses that put ``label`` upright (its ``up`` pose) on ``support``'s top, turned like the support
     (both in their authored frames): the centre first, then points towards each arm's base down to the
-    top's edge (minus the object's footprint), each with the support's heading first, then the others."""
+    top's edge (minus the object's footprint), each with the support's heading first, then the others.
+
+    ``sk.place_surface`` "mesh" (stream H; default "bbox" = the above on the support's bbox): the top is read from
+    the support's mesh (``support_z_fn``). A pose is kept only where the surface under the object's whole footprint
+    exists and is flat (within ``PLACE_FLAT_TOL``), it rests at that surface (not at the bbox top), and the edge points
+    walk out only as far as such poses go. A drawer's top is a tray 23 mm below its bbox top, open at the front: on
+    the bbox the alarm was let go 40 mm over the floor with its front over the open strip, landed 15-18 deg tilted
+    (the checker allows 15) and 2/5 fell off (organize_table, mode gt). No such pose: the bbox targets (logged), and
+    the flag returned is False."""
     from dojo.skills.geometry import quat_to_R
     w = sk.world
     o, b = w.obj(label), w.obj(support)
@@ -1892,31 +1957,70 @@ def on_targets(sk: Skills, label: str, support: str) -> list[np.ndarray]:
     mn, mx = b.aabb()
     margin = float(np.linalg.norm(o.asset.extents[:2])) / 2 * 0.8
     c = b.center_w[:2]
-    pts = [c]
-    for a in ARMS:
-        d = sk.kin.base(a)[:2, 3] - c
-        d /= np.linalg.norm(d)
-        # how far the top extends from the centre in that direction
-        lim = min((mx[i] - c[i]) / d[i] if d[i] > 0 else (mn[i] - c[i]) / d[i] if d[i] < 0 else 9.0 for i in (0, 1))
-        for f in (0.4, 0.7, 1.0):
-            r = f * max(0.0, lim - margin)
-            if r > 0.01:
-                pts.append(c + d * r)
-    if len(pts) == 1:          # a support smaller than the object (a stand): small offsets around its centre
-        for k in range(8):
-            pts.append(c + 0.012 * np.array([math.cos(k * math.pi / 4), math.sin(k * math.pi / 4)]))
     # headings: the support's (and its quarter turns), then the object's own (its grasp keeps its tilt
     # towards the arm), then the diagonals
     yo = _up_yaw(o)
     yaws = [yb + k * math.pi / 2 for k in range(4)] + [yo]
-    if len(pts) <= 3:          # few positions: the diagonals too (on a small stand 9 x 9 poses cost minutes of IK)
-        yaws += [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
-    out = []
+    z_at = support_z_fn(b) if (surface or getattr(sk, "place_surface", "bbox")) == "mesh" else None
+
+    def rest_z(p, R) -> float | None:
+        z = z_at(np.asarray(p, float)[:2] + footprint_xy(o, R))
+        if not np.all(np.isfinite(z)) or float(z.max() - z.min()) > PLACE_FLAT_TOL:
+            return None
+        return float(z.max())
+
+    def points(reach_of) -> tuple[list, list]:
+        pts = [c]
+        for a in ARMS:
+            d = sk.kin.base(a)[:2, 3] - c
+            d /= np.linalg.norm(d)
+            # how far the top extends from the centre in that direction
+            lim = min((mx[i] - c[i]) / d[i] if d[i] > 0 else (mn[i] - c[i]) / d[i] if d[i] < 0 else 9.0 for i in (0, 1))
+            reach = reach_of(d, lim)
+            for f in (0.4, 0.7, 1.0):
+                r = f * reach
+                if r > 0.01:
+                    pts.append(c + d * r)
+        if len(pts) == 1:      # a support smaller than the object (a stand): small offsets around its centre
+            for k in range(8):
+                pts.append(c + 0.012 * np.array([math.cos(k * math.pi / 4), math.sin(k * math.pi / 4)]))
+        ys = list(yaws)
+        if len(pts) <= 3:      # few positions: the diagonals too (on a small stand 9 x 9 poses cost minutes of IK)
+            ys += [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
+        return pts, ys
+
+    def bbox_targets() -> list[np.ndarray]:
+        pts, ys = points(lambda d, lim: max(0.0, lim - margin))
+        return [rest_with_R(sk, label, p, rot_z(y) @ R_up, z_bottom=max(b.top_z, TABLE_Z)) for p in pts for y in ys]
+
+    if z_at is None:
+        return bbox_targets(), False
+
+    def supported_reach(d, lim) -> float:
+        # out from the centre in 5 mm steps while some heading's footprint rests flat
+        r_ok = None
+        for r in np.arange(0.0, lim + 1e-9, 0.005):
+            if any(rest_z(c + d * r, rot_z(y) @ R_up) is not None for y in yaws):
+                r_ok = float(r)
+            elif r_ok is not None:
+                break
+        return r_ok or 0.0
+
+    pts, ys = points(supported_reach)
+    out, zs = [], []
     for p in pts:
-        for y in yaws:
+        for y in ys:
             R = rot_z(y) @ R_up
-            out.append(rest_with_R(sk, label, p, R, z_bottom=max(b.top_z, TABLE_Z)))
-    return out
+            z = rest_z(p, R)
+            if z is not None:
+                zs.append(z)
+                out.append(rest_with_R(sk, label, p, R, z_bottom=max(z, TABLE_Z)))
+    if not out:
+        sk.log(f"[on_targets] {label} on {support}: no pose rests flat on the mesh top, bbox targets")
+        return bbox_targets(), False
+    sk.log(f"[on_targets] {label} on {support}: mesh top z {min(zs):.3f}-{max(zs):.3f} (bbox top {b.top_z:.3f}), "
+           f"{len(out)}/{len(pts) * len(ys)} poses rest flat")
+    return out, True
 
 
 def _face_height(o, u: np.ndarray, band: float = 0.012, half_w: float = 0.03) -> float | None:
@@ -1937,12 +2041,53 @@ def _face_height(o, u: np.ndarray, band: float = 0.012, half_w: float = 0.03) ->
     return float(W[m, 2].max() - W[:, 2].min())
 
 
+def _push_stroke(sk: Skills, o, label: str, u, step: float, centre=None):
+    """One push stroke of ``o`` along world unit ``u`` (2-D) by ``step``, with the object's centre at ``centre`` (default
+    where it is: another centre asks whether the stroke would plan from there): an ``ArmPlan`` or None."""
+    from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
+    c = o.center_w[:2] if centre is None else np.asarray(centre, float)
+    half_u = float(np.abs(o.R.T @ np.r_[u, 0.0]) @ (o.asset.extents / 2))
+    fh = _face_height(o, u)
+    hgt = float(o.top_z - o.bottom_z) if fh is None else fh
+    h = max(0.0035, min(0.012, 0.5 * hgt))
+    z = o.bottom_z + h + TIP_BEYOND_TCP
+    yaw = math.atan2(u[1], u[0]) + math.pi / 2               # the fingers' broad face across the push
+    start = c - u * (half_u + 0.02)
+    end = c - u * (half_u - step)
+    arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - start)))
+    for arm in arms:
+        for yw in (yaw, yaw + math.pi):
+            T_s = T_from([start[0], start[1], z], down_R(yw))
+            T_ab = T_s.copy()
+            T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+            T_e = T_from([end[0], end[1], z], down_R(yw))
+            T_up = T_e.copy()
+            T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+            m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=CLOSED, ignore=(label,))
+            if not m1.ok:
+                continue
+            m2 = sk.motion.line(arm, m1.q_end, T_s, MEDIUM, "push_down", gripper=CLOSED, ignore=(label,))
+            m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, T_e, 0.04, "push", gripper=CLOSED,
+                                ignore=(label,), max_step_m=0.01)
+            if not (m2.ok and m3.ok):
+                continue
+            m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "push_up", gripper=CLOSED, check=False)
+            plan = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3)
+            plan.move(m4)
+            return plan
+    return None
+
+
 def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.08, max_iter: int = 10) -> SkillResult:
     """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time (the one with the most
     left to go first, the other when that one has no stroke): closed fingertips against the middle of the
     face opposite the motion (no torque about the centre) at half the height of that face (from the mesh),
-    at most ``seg`` per stroke, the world re-read after each stroke."""
-    from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
+    at most ``seg`` per stroke, the world re-read after each stroke.
+
+    ``sk.push_order`` "lookahead" (stream H; default "greedy" = the above): with both axes left to go, the other
+    axis goes first when its stroke plans now but would not once the first axis is done (organize_table: the
+    keyboard pushed 170 mm towards the frame first, after which the fingers' start for the 50-150 mm sideways
+    stroke was in the drawer's front, "no push stroke along axis 0" in 5/5, mode gt)."""
     n0 = sk.ex.steps_used
     target_xy = np.asarray(target_xy, float)
     last = None
@@ -1962,45 +2107,20 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
                 a /= np.linalg.norm(a)
                 axes.append((abs(float(a[:2] @ d)), k, a))
         axes.sort(key=lambda x: -x[0])
+        todo = [(comp, k, a[:2] * np.sign(float(a[:2] @ d)), min(seg, comp + 0.003)) for comp, k, a in axes
+                if comp >= tol / 2]
+        plans: dict = {}
+        if getattr(sk, "push_order", "greedy") == "lookahead" and len(todo) == 2:
+            (c0, k0, u0, _), (c1, k1, u1, s1) = todo
+            plans[k1] = _push_stroke(sk, o, label, u1, s1)
+            if plans[k1] is not None and _push_stroke(sk, o, label, u1, s1, centre=o.center_w[:2] + u0 * c0) is None:
+                todo = [todo[1], todo[0]]
+                sk.log(f"[push] {label}: axis {k1} first (no stroke along it once axis {k0} is done)")
         plan, why = None, []
-        for comp, k, a in axes:
-            if comp < tol / 2:
-                continue
-            u = a[:2] * np.sign(float(a[:2] @ d))
-            step = min(seg, comp + 0.003)
-            half_u = float(np.abs(o.R.T @ np.r_[u, 0.0]) @ (o.asset.extents / 2))
-            fh = _face_height(o, u)
-            hgt = float(o.top_z - o.bottom_z) if fh is None else fh
-            h = max(0.0035, min(0.012, 0.5 * hgt))
-            z = o.bottom_z + h + TIP_BEYOND_TCP
-            yaw = math.atan2(u[1], u[0]) + math.pi / 2               # the fingers' broad face across the push
-            start = o.center_w[:2] - u * (half_u + 0.02)
-            end = o.center_w[:2] - u * (half_u - step)
-            arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - start)))
-            for arm in arms:
-                for yw in (yaw, yaw + math.pi):
-                    T_s = T_from([start[0], start[1], z], down_R(yw))
-                    T_ab = T_s.copy()
-                    T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
-                    T_e = T_from([end[0], end[1], z], down_R(yw))
-                    T_up = T_e.copy()
-                    T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
-                    m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=CLOSED, ignore=(label,))
-                    if not m1.ok:
-                        continue
-                    m2 = sk.motion.line(arm, m1.q_end, T_s, MEDIUM, "push_down", gripper=CLOSED, ignore=(label,))
-                    m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, T_e, 0.04, "push", gripper=CLOSED,
-                                        ignore=(label,), max_step_m=0.01)
-                    if not (m2.ok and m3.ok):
-                        continue
-                    m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "push_up", gripper=CLOSED, check=False)
-                    plan = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3)
-                    plan.move(m4)
-                    push_u, push_step = u, step
-                    break
-                if plan is not None:
-                    break
+        for comp, k, u, step in todo:
+            plan = plans[k] if k in plans else _push_stroke(sk, o, label, u, step)
             if plan is not None:
+                push_u, push_step = u, step
                 break
             why.append(f"axis {k}")
         if plan is None:
@@ -2044,8 +2164,14 @@ def arrange(sk: Skills, steps: list) -> dict:
         else:
             container_obstacle(sk, sup)
             tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05
-            r = place_oriented(sk, obj, on_targets(sk, obj, sup), yaw_sym=1, tol_xy=0.03, tol_tilt=10.0,
-                               tol_z=0.03, ignore=(sup,), place_kw={"pre_h": 0.015 if tall else 0.04})
+            kw = dict(yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.03, ignore=(sup,),
+                      place_kw={"pre_h": 0.015 if tall else 0.04})
+            tg, on_mesh = _on_targets(sk, obj, sup)
+            r = place_oriented(sk, obj, tg, **kw)
+            if on_mesh and not r.ok and r.status in ("ik_fail", "collision") and not r.steps:
+                # the flat poses lie further in than the bbox's edge ones: when none plans, today's (the edge in reach)
+                sk.log(f"[arrange] {obj} -> {sup}: no plan on the flat mesh poses, the bbox ones")
+                r = place_oriented(sk, obj, on_targets(sk, obj, sup, surface="bbox"), **kw)
         (st["done"] if r.ok else failed).append(obj)
         sk.log(f"[arrange] {verb} {obj} -> {sup}: {r.status} {r.note[:120]}")
         if any(sk.held[a] is not None for a in ARMS):
