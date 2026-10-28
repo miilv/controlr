@@ -335,7 +335,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **The glyph flag needs its server too.** `glyph_read` acts only when `python -m dojo.perception.glyph_read serve --sock S
   --model kong_cls/model.pt` answers at `DOJO_GLYPH_ADDR` (torch + torchvision); without one, or with a back / grazing
   / low-margin crop, the tile stays unread ("unknown"). The margins (per view kind) live in the checkpoint and were
-  chosen on 100030-49 validation draws; never pick them on the held-out ids.
+  chosen on 100030-49 validation draws; never pick them on the held-out ids. One server serves one model (kong tiles
+  or digits / operators); a second reader takes its own socket (`GlyphClient(addr)` as `client_`).
+- **`classify_mask` needs the arm mask.** The digit / operator margins were calibrated without the crops it refuses:
+  masks cut by the image border (`edge`) and masks whose 3-px ring is >= 30 % arm (`robot`, only when `robot=` is
+  passed: `~known` of a B1 view or `render.robot_mask`). Without `robot=`, a tile half hidden by the gripper is read
+  at a high margin and often wrong (a cut 3 is a 9).
 - **CPU OpenGL without OSMesa.** The boxes have no OSMesa, but Mesa's EGL vendor exposes llvmpipe as EGL device 1:
   `LIBGL_ALWAYS_SOFTWARE=1 EGL_DEVICE_ID=1 PYOPENGL_PLATFORM=egl
   __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json` gives pyrender with no GPU process
