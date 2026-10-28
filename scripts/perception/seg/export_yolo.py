@@ -37,6 +37,12 @@ def repeat_factors(img_classes: list[set], t: float) -> list[float]:
     return [max([max(1.0, math.sqrt(t / (freq[c] / n))) for c in cs] or [1.0]) for cs in img_classes]
 
 
+def frame_stem(f: dict) -> str:
+    """Image / label file stem: render root, task, layout, frame, camera (several roots can hold one task's layout)."""
+    root = Path(f["img"]).parent.parent.parent.name
+    return f"{root}__{f['task']}__{f['layout']}__f{f['frame']}__{f['cam']}"
+
+
 def frame_jobs(render: Path) -> list[tuple]:
     out = []
     for done in sorted(render.glob("*/*/done.json")):
@@ -99,18 +105,28 @@ def main(argv=None):
     ap.add_argument("--cams", default=",".join(CAMS))
     ap.add_argument("--min-px", type=int, default=20)
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--base-classes", default=None,
+                    help="classes.json of the model to extend (incremental fine-tune): its names keep their ids, new "
+                         "assets are appended (sorted); see expand_head.py")
+    ap.add_argument("--drop-prefix", default="",
+                    help="comma list of asset-key prefixes left out of the labels (e.g. Fluid/: liquids)")
     ap.add_argument("--rfs-t", type=float, default=0.0,
                     help="repeat-factor sampling threshold (LVIS; e.g. 0.02): a train list with rare-class images repeated")
     a = ap.parse_args(argv)
-    render, out = Path(a.render).expanduser(), Path(a.out).expanduser()
+    renders, out = [Path(r).expanduser() for r in a.render.split(",") if r.strip()], Path(a.out).expanduser()
     val_ids = {s.strip() for s in a.val_ids.split(",") if s.strip()}
     cams = tuple(a.cams.split(","))
-    jobs = frame_jobs(render)
+    jobs = [j for r in renders for j in frame_jobs(r)]
     print(f"[export] {len(jobs)} frames", flush=True)
     with ProcessPoolExecutor(a.workers) as ex:
         frames = [f for fr in ex.map(label_frame, jobs, [cams] * len(jobs), [a.min_px] * len(jobs), chunksize=4) for f in fr]
+    drop = tuple(x for x in a.drop_prefix.split(",") if x)
+    if drop:
+        for f in frames:
+            f["objs"] = [o for o in f["objs"] if not o[0].startswith(drop)]
     counts = Counter(k for f in frames for k, *_ in f["objs"])
-    names = sorted(counts)
+    base = json.loads(Path(a.base_classes).expanduser().read_text())["names"] if a.base_classes else []
+    names = list(base) + sorted(set(counts) - set(base))
     cid = {k: i for i, k in enumerate(names)}
     for split in ("train", "val"):
         (out / "images" / split).mkdir(parents=True, exist_ok=True)
@@ -119,7 +135,7 @@ def main(argv=None):
     n_split = Counter()
     for f in frames:
         split = "val" if f["layout"].split("_")[0] in val_ids else "train"
-        stem = f"{f['task']}__{f['layout']}__f{f['frame']}__{f['cam']}"
+        stem = frame_stem(f)
         dst = out / "images" / split / f"{stem}{Path(f['img']).suffix}"
         if dst.is_symlink() or dst.exists():
             dst.unlink()
@@ -128,7 +144,8 @@ def main(argv=None):
         (out / "labels" / split / f"{stem}.txt").write_text("\n".join(lines) + ("\n" if lines else ""))
         src[f["source"]] += 1
         n_split[split] += 1
-    (out / "classes.json").write_text(json.dumps({"names": names, "counts": {k: counts[k] for k in names},
+    (out / "classes.json").write_text(json.dumps({"names": names, "counts": {k: counts.get(k, 0) for k in names},
+                                                  "base": a.base_classes, "n_base": len(base),
                                                   "frames": len(frames), "splits": dict(n_split), "sources": dict(src),
                                                   "val_ids": sorted(val_ids)}, indent=1))
     (out / "frames.jsonl").write_text("".join(json.dumps({kk: v for kk, v in f.items() if kk != "objs"} |
@@ -145,7 +162,7 @@ def main(argv=None):
         lines = []
         for f, r in zip(tr, repeat_factors([{k for k, *_ in f["objs"]} for f in tr], a.rfs_t)):
             n = int(r) + (1 if rnd.random() < r - int(r) else 0)
-            stem = f"{f['task']}__{f['layout']}__f{f['frame']}__{f['cam']}{Path(f['img']).suffix}"
+            stem = f"{frame_stem(f)}{Path(f['img']).suffix}"
             lines += [str(out / "images" / "train" / stem)] * n
         (out / "train_rfs.txt").write_text("\n".join(lines) + "\n")
         train = "train_rfs.txt"
