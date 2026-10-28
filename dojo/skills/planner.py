@@ -238,9 +238,15 @@ def ported_plan(instruction: str, world: WorldState) -> Plan | None:
             return run("pour")
         if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
             return run("pour_bottle")
-    # pick one named object up by a height
-    if re.search(r"^\s*(pick up|lift|raise)\b", text) and re.search(r"\bby\s+\d+(?:\.\d+)?\s*(?:cm|mm|m)\b", text):
-        return run("pick_up")
+    # pick one named object up by a height. The object: the one whose PUBLIC asset description is the instruction's
+    # phrase (RoboDojo writes the phrase from that file), else the skill's own grounding by category names
+    m = re.search(r"^\s*(?:pick up|lift|raise) the (.+?) by\s+\d+(?:\.\d+)?\s*(?:cm|mm|m)\b", text)
+    if m:
+        from dojo.skills.ported import asset_descriptions
+        phrase = m.group(1).strip()
+        hits = [o for o in world.objects.values() if o.obj_type == "Rigid" and getattr(o, "identity_known", True)
+                and phrase in asset_descriptions(o.asset.key)]                 # clutter too: never assume the role
+        return run("pick_up", obj="@" + hits[0].label) if len(hits) == 1 else run("pick_up")
     # push / drag a flat object onto its pad (a Geometry whose category names the object's kind)
     if re.search(r"\bpush\b|\bslide\b|\bdrag\b", text) and re.search(r"\bpad\b|\balign", text):
         pads = [o for o in objs if o.obj_type == "Geometry"]

@@ -12,6 +12,10 @@ see our belief and the env's ground-truth accessors raise (``harness_robot.Truth
 
 from __future__ import annotations
 
+import json
+from functools import lru_cache
+from pathlib import Path
+
 from dojo.skills.ported.harness_robot import SOURCE_COMMIT, HarnessRobot, TruthDenied
 
 # robot-harness's tier-A runs (tools/sweep/rd_tierA/order_gen11.tsv, order_K4_gen.tsv): skill -> server reserve, args
@@ -23,6 +27,22 @@ TIER_A = {
     "pick_up": (0, {}),
     "planar_drag": (20, {}),
 }
+
+
+@lru_cache(maxsize=4096)
+def asset_descriptions(key: str) -> tuple:
+    """The asset's PUBLIC descriptions (RoboDojo ``Assets/Object/RoboDojo/<key>/description.json``: "description" and
+    any caption names), lower case; () when the file is not there. RoboDojo fills general_pickup's ``<target>`` from
+    this file, so the route can ground the instruction's phrase without the checker's label."""
+    from dojo.simlab.paths import OBJECTS
+    try:
+        d = json.loads((Path(OBJECTS) / key / "description.json").read_text())
+    except (OSError, ValueError):
+        return ()
+    out = []
+    for v in (d.get("description"), (d.get("caption") or {}).get("name")):
+        out.extend([v] if isinstance(v, str) else (v if isinstance(v, list) else []))
+    return tuple(sorted({str(x).strip().lower() for x in out if str(x).strip()}))
 
 
 def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None) -> dict:
@@ -60,4 +80,4 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
 
 SKILLS = {"ported": ported}
 
-__all__ = ["ported", "SKILLS", "TIER_A", "HarnessRobot", "TruthDenied"]
+__all__ = ["ported", "SKILLS", "TIER_A", "HarnessRobot", "TruthDenied", "asset_descriptions"]
