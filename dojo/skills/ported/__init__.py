@@ -49,6 +49,15 @@ def asset_descriptions(key: str) -> tuple:
     return tuple(sorted({str(x).strip().lower() for x in out if str(x).strip()}))
 
 
+def _clip(x, n: int = 20000) -> str:
+    """The skill's own ``details`` (its log), as JSON text cut to ``n`` characters (episode records stay small)."""
+    try:
+        t = json.dumps(x, default=str)
+    except (TypeError, ValueError):
+        t = str(x)
+    return t if len(t) <= n else t[:n] + "...(cut)"
+
+
 def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None) -> dict:
     """Run one vendored skill through the adapter. ``args`` may name objects as ``"@<belief label>"``."""
     from dojo.skills.skills import SkillResult
@@ -77,7 +86,8 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
     sk._record(SkillResult(verified, f"ported:{skill}", status, steps, rep.get("arm"), note=note))
     sk.ported_runs = getattr(sk, "ported_runs", []) + [{"skill": skill, "verified": verified, "steps": steps,
                                                         "truth": robot.truth, "error": note,
-                                                        "calls": len(robot.calls), "calls_tail": robot.calls[-30:]}]
+                                                        "calls": len(robot.calls), "calls_tail": robot.calls[-30:],
+                                                        "details": _clip(rep.get("details"))}]
     # "ok" = the skill ran its whole procedure (robot-harness's ``ok``), so the runtime's supervisor does not run it a
     # second time (his runs call it once per episode); a skill that could not start (grounding, an error) is not ok
     return {"ok": bool(rep.get("ok")), "status": status, "skill": f"ported:{skill}", "steps": steps,
