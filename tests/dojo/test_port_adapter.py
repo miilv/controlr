@@ -343,3 +343,24 @@ def test_runtime_divergence_leaves_the_vendored_skill():
 
 def test_one_reserve_for_every_ported_skill():
     assert {r for r, _ in TIER_A.values()} == {20}
+
+
+def test_swap_reach_lowers_the_carry_only_when_the_far_spot_is_out_of_reach():
+    instr = SCENES["swap_poses"][1]
+    near = rows_swap()                                       # both Ts near the centre: his 0.86 m
+    env, sk = gt_skills(near, instr)
+    assert planner.plan(instr, sk.refresh(), ported={"swap": "reach"}).args == {"skill": "swap_poses", "args": {}}
+    far = rows_swap()                                        # G3 swap_T 100000: t1 at x 0.091, yaw -61 deg
+    far[0]["pos"] = [-0.0466, -0.1894, Z + 0.0075]
+    far[1]["pos"], far[1]["quat"] = [0.0909, -0.1593, Z + 0.0075], [0.8619, 0, 0, -0.5070]
+    env, sk = gt_skills(far, instr)
+    w = sk.refresh()
+    p = planner.plan(instr, w, ported={"swap": "reach"})
+    assert p.args["skill"] == "swap_poses" and p.args["args"]["carry_z"] < 0.86
+    assert planner.plan(instr, w, ported=True).args == {"skill": "swap_poses", "args": {}}     # default: unchanged
+
+
+def test_ported_swap_defaults_fixed():
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().ported_swap == "fixed" and SKILL_ATTRS["ported_swap"][0] == "fixed"
