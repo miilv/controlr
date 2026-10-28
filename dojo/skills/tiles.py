@@ -293,6 +293,25 @@ ATTEMPTS = ({"allow_top": False, "air_handover": False}, {"allow_top": True, "ai
             {"allow_top": True, "air_handover": True})
 
 
+# a digit read in one view only (perception's ``digit_conf`` 0.5; two agreeing views 1.0) is confirmed with a wrist look
+# before the skill commits to it (stream W / S: frame 0 reads one view for most numerals; a look that agrees makes
+# it 1.0, one that disagrees makes it unread)
+CONFIRM_BELOW = 1.0
+
+
+def _confirm(sk, labels, looks: int, max_looks: int) -> int:
+    """Look once at every tile of ``labels`` whose value was read with confidence < ``CONFIRM_BELOW``, within the look
+    budget; returns the looks used so far."""
+    for lab in labels:
+        if looks >= max_looks or lab not in sk.world.objects:
+            break
+        v = tile_value(sk.world.obj(lab))
+        if v is not None and v[1] < CONFIRM_BELOW:
+            _look_value(sk, lab)
+            looks += 1
+    return looks
+
+
 def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0):
     """``place_oriented`` onto the pad, with ``ATTEMPTS[attempt]``. No in-air handover before the last attempt: its
     grasps skip this module's grasp filters, and the frictionless number tiles / thin discs slipped out of 6 of 6
@@ -308,7 +327,7 @@ def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0):
                                        "pair_ok": centred_grasp(sk.world.obj(label), allow_top=a["allow_top"])})
 
 
-def complete_equation(sk, max_looks: int = 4, max_tries: int = 5) -> dict:
+def complete_equation(sk, max_looks: int = 6, max_tries: int = 5) -> dict:
     """Read the equation on the pads, find the value of its one empty slot, put a tile showing it there (centred,
     upright, body x along world x). Unknown values are looked at with a wrist, never guessed."""
     from dojo.skills.skills import SkillResult
@@ -318,6 +337,9 @@ def complete_equation(sk, max_looks: int = 4, max_tries: int = 5) -> dict:
     while eq["error"] is None and eq["unknown"] and looks < max_looks:
         _look_value(sk, eq["unknown"][0])
         looks += 1
+        eq = read_equation(sk.world)
+    if eq["error"] is None:
+        looks = _confirm(sk, [t for t in eq["tiles"] if t], looks, max_looks)
         eq = read_equation(sk.world)
     sk.log(f"[tiles] equation {eq}")
     if eq["error"] is not None:
@@ -352,6 +374,10 @@ def complete_equation(sk, max_looks: int = 4, max_tries: int = 5) -> dict:
     while not cands and unknown and looks < max_looks:
         _look_value(sk, unknown[0].label)
         looks += 1
+        cands, unknown = candidates()
+    if cands:
+        # the tile about to be placed: a one-view read is confirmed first (a wrong digit on the pad fails the episode)
+        looks = _confirm(sk, [cands[0].label], looks, max_looks)
         cands, unknown = candidates()
     sk.log(f"[tiles] slot {i} on {pad} needs {valid}: candidates {[o.label for o in cands]}")
     if not cands:
@@ -406,6 +432,9 @@ def arrange_digits(sk, descending: bool = True, max_looks: int = 6) -> dict:
     while a["error"] is None and a["unknown"] and looks < max_looks:
         _look_value(sk, a["unknown"][0])
         looks += 1
+        a = digit_assignment(sk.world, descending)
+    if a["error"] is None and not a["unknown"]:
+        looks = _confirm(sk, [t for t, _ in a["pairs"]], looks, max_looks + len(a["pairs"]))
         a = digit_assignment(sk.world, descending)
     sk.log(f"[tiles] digits {a}")
     if a["error"] is not None:
