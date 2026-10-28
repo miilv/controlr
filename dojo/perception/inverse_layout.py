@@ -3280,9 +3280,16 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
 
     add_only = cfg.seg_propose == "add"
     # 1. explained: identity hint + local re-fit inside the mask ("add": members are never touched)
-    for i, j in ([] if add_only else d_of.items()):
+    # ("add" + seg_add_refit_poor: only a member fitted poorly inside its own exact-class mask, below seg_poor_iou, is
+    # re-fitted there, and only for a large gain; no hints, flips or identity changes. play_Xylophone: the stand fitted
+    # at IoU 0.42 inside its own mask re-fits to 0.82-0.93, and the mallet the config rests on it follows)
+    poor_only = add_only and cfg.seg_add_refit_poor
+    for i, j in ([] if (add_only and not poor_only) else d_of.items()):
         h, d = chosen[i], dets[j]
-        if d.key in groups[h.label_group]["candidates"]:
+        if poor_only and (d.key != h.key or fixed(h)
+                          or _mask_iou(sils[i], _seg_views(views, d.mask)[1], _seg_views(views, d.mask)[2]) >= cfg.seg_poor_iou):
+            continue
+        if d.key in groups[h.label_group]["candidates"] and not poor_only:
             h.per_view["seg_key"] = (d.key, round(float(d.score), 3))
             info["hints"] += 1
         if fixed(h):
@@ -3303,7 +3310,7 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
         took_flip = False
         # the 180-degree flip of a near-symmetric outline (a car / shoe / brush read backwards): the mask cannot tell,
         # the texture decides, as in sam_propose
-        if cfg.seg_flip and not yaw_fixed and h.sm().yaw_period > 1.5 * np.pi:
+        if cfg.seg_flip and not poor_only and not yaw_fixed and h.sm().yaw_period > 1.5 * np.pi:
             fl = fit_at(h.yaw + np.pi)
             ft = {"label_group": h.label_group, "iou": [round(cand[0], 3), round(fl[0], 3)]}
             if fl[0] >= cand[0] - 0.03:
@@ -3314,7 +3321,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                     cand, took_flip = fl, True
             info.setdefault("flips", []).append(ft)
         sc, x, y, yaw = cand
-        if took_flip or (sc >= base + cfg.seg_refit_margin and np.hypot(x - h.x, y - h.y) <= float(np.max(h.sm().asset.extents))):
+        margin_ = cfg.seg_poor_gain if poor_only else cfg.seg_refit_margin
+        if took_flip or (sc >= base + margin_ and np.hypot(x - h.x, y - h.y) <= float(np.max(h.sm().asset.extents))):
             loss, per = multi_view_loss(h.sm(), h.sm().pose(x, y, yaw, z_off), views, others)
             info["refit"].append({"label_group": h.label_group, "from": [round(h.x, 4), round(h.y, 4), round(h.yaw, 3)],
                                   "to": [round(x, 4), round(y, 4), round(yaw, 3)], "iou": [round(base, 3), round(sc, 3)],
@@ -3326,7 +3334,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
             sils[i] = h.sm().sil(head.cam, h.T())
         # identity across geometries: the mask's class is another shape of the group (a garage figure variant, another
         # shoe) -> that shape fitted inside the mask; taken when its silhouette agrees at least as well (seg_identity_refit)
-        if cfg.seg_identity_refit and d.key != h.key and d.key in g["candidates"] and d.score >= cfg.seg_identity_min \
+        if (cfg.seg_identity_refit and not poor_only and d.key != h.key and d.key in g["candidates"]
+                and d.score >= cfg.seg_identity_min) \
                 and d.key not in h.per_view.get("geom_group", [h.key]):
             sm_new, gkeys = None, []
             for sms in shapes_by_group.get(h.label_group, {}).values():
@@ -3706,6 +3715,9 @@ class EstimatorConfig:
     seg_add_move_weak: bool = True   # "add" only: a weak member with no exact-class mask under it may move (see above);
                                      # False until 2026-10-28 (journal 2026-10-28-dojo-plan-none-perception)
     seg_weak_conf: float = 0.5       # ... below this confidence (1 - its silhouette loss)
+    seg_add_refit_poor: bool = False  # "add" only: a member below seg_poor_iou inside its own exact-class mask re-fits
+    seg_poor_iou: float = 0.5        # ... there, kept only with a gain of seg_poor_gain IoU (within its size)
+    seg_poor_gain: float = 0.25
     seg_dup_iou: float = 0.7       # class-agnostic de-duplication of the masks (one object, two classes); 0 = off
     seg_identity_w: float = 0.3    # identity cost bonus x score for the mask's class (0 = off)
     # an explained member whose mask names another SHAPE of its group is re-fitted as that shape inside the mask, kept when
