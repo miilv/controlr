@@ -202,7 +202,6 @@ def fixture_rest(o, fixtures) -> tuple[str, float | None]:
 
 RELEASE_OPEN = 0.15             # a gripper command this far above its tightest since the grasp releases the object
 GRIP_PASS = 0.2                 # RoboDojo's process_gripper_val: the applied control is at most this past the measured finger
-CARRY_MAX_ORIGIN_M = 0.025      # a carry read never moves the in-hand origin this far (verify_pick: > 30 mm = grasp_slip)
 
 
 def expected_official(width_m: float, cmd: float = 0.0) -> float:
@@ -420,13 +419,6 @@ class RuntimeProvider:
         self.grip_thin_m = 0.004                # an object this thin can sit in closed jaws and read 0 (a coin: 1.9 mm)
         self.grip_missed: set[str] = set()      # labels a close missed (the next pick refine may search wider)
         self._grip_last: dict = {}              # arm -> ((label, grasp n), verdict) last logged
-        # mode perception, stream H: one in-hand read per grasp from the frame of the lift (no extra steps):
-        # (obs, arm, label, asset key, prior T_tcp_obj) -> perception's held_pose result; None = off (``_carry_read``)
-        self.carry_reader = None
-        self.carry_min_mm = 4.0                 # a fit closer than this (and carry_min_deg) to the prior changes nothing
-        self.carry_min_deg = 6.0
-        self.carry_max_sigma_mm = 0.0           # > 0: also adopt held_pose's "ambiguous" fits within this sigma (mm)
-        self._carry_done: dict = {}             # arm -> (label, grasp n) already read
         self._grip_held_seen: dict = {}         # arm -> (label, grasp n) once the reading said held in that grasp
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
         self.garment_reader = None              # (obs) -> a garment read (``dojo.perception.garment``) or None
@@ -481,7 +473,7 @@ class RuntimeProvider:
         self.belief = KinematicBelief(objects, self.kin, st)
         self.touched = set()
         self._held_checked = {}
-        self._grip_last, self._grip_held_seen, self._carry_done = {}, {}, {}
+        self._grip_last, self._grip_held_seen = {}, {}
         self.n_seen = self.bridge.n_executed
         self._checkpoint(st)
 
@@ -976,66 +968,6 @@ class RuntimeProvider:
             ev["dropped"] = "slip" if slip else "air"
             self.log(f"[runtime] grip_check: {arm} jaws empty ({ev['dropped']}), {lab} out of the jaws in the belief")
 
-    def _carry_read(self, obs: dict) -> None:
-        """Once per grasp, at the first refresh after the lift (``held_min_lift_m`` above the close, the jaws settled):
-        perception's held_pose on this observation (the holding wrist sees the object at 6-15 cm; the head and the other
-        wrist where they see it), prior = the belief's in-hand transform. Today nothing reads the in-hand pose before a
-        non-insertion place (hang, sweep, tools: the belief carries the grasp-time estimate). An accepted fit that moved
-        more than ``carry_min_mm`` / ``carry_min_deg`` re-anchors the in-hand transform; the skills' ``Held`` takes it at
-        this same refresh (``verify_pick``). A fit is accepted when held_pose calls it ok, or (``carry_max_sigma_mm`` > 0)
-        "ambiguous" only by the insertion-grade sigma limits with every position sigma within that bound; its centre
-        never leaves the closed jaws (half the object's largest extent). Event ``carry_read``."""
-        for arm, (lab, T_rel) in list(self.belief.attached.items()):
-            g = self.belief.grasp_z.get(arm)
-            if g is None or self._carry_done.get(arm) == (lab, g[1]):
-                continue
-            z = float(self.kin.tcp(arm, self.belief.q[arm])[2, 3])
-            if z - g[0] < self.held_min_lift_m or int(getattr(self.belief, "n_since_g", {}).get(arm, 99)) < self.grip_settle:
-                continue
-            self._carry_done[arm] = (lab, g[1])
-            o = self.belief.objects.get(lab)
-            if o is None or o.asset is None:
-                continue
-            ev = {"kind": "carry_read", "arm": arm, "label": lab, "step": self.bridge.steps_used}
-            try:
-                r = self.carry_reader(obs, arm, lab, o.asset.key, np.asarray(T_rel, float)) or {}
-            except Exception as e:  # noqa: BLE001 (no read: the belief keeps its in-hand transform)
-                ev["error"] = f"{type(e).__name__}: {str(e)[:160]}"
-                self.events.append(ev)
-                continue
-            sig = r.get("sigma") or {}
-            sig_pos = max([float(v) for v in sig.get("pos_mm") or []] or [float("inf")])
-            T_fit = r.get("T_tcp_obj") if r.get("ok") else r.get("fit_T_tcp_obj")
-            ev.update({k: r.get(k) for k in ("ok", "why", "views")})
-            ev.update(shift_mm=round(float(r.get("shift_mm") or 0), 1), turn_deg=round(float(r.get("turn_deg") or 0), 1),
-                      sigma_pos_mm=None if sig_pos == float("inf") else round(sig_pos, 2),
-                      iou=max([float(v) for v in (r.get("iou") or {}).values()] or [0.0]))
-            accept = bool(r.get("ok")) or (self.carry_max_sigma_mm > 0 and r.get("why") == "ambiguous"
-                                           and sig_pos <= self.carry_max_sigma_mm)
-            moved = ev["shift_mm"] >= self.carry_min_mm or ev["turn_deg"] >= self.carry_min_deg
-            if accept and T_fit is not None and moved:
-                T_fit = np.asarray(T_fit, float).reshape(4, 4)
-                c = np.asarray(o.asset.center, float)
-                dc = float(np.linalg.norm((T_fit[:3, :3] @ c + T_fit[:3, 3]) - (np.asarray(T_rel)[:3, :3] @ c
-                                                                                 + np.asarray(T_rel)[:3, 3])))
-                d_org = float(np.linalg.norm(T_fit[:3, 3] - np.asarray(T_rel)[:3, 3]))
-                if dc > 0.5 * float(np.max(o.asset.extents)):
-                    ev.update(adopted=False, why_not=f"centre {dc * 1000:.0f} mm off: outside the jaws")
-                elif d_org >= CARRY_MAX_ORIGIN_M:
-                    # the pick's own check (``Skills.verify_pick``, this refresh) calls an in-hand origin move of 30 mm
-                    # a slip and drops the grasp
-                    ev.update(adopted=False, why_not=f"origin {d_org * 1000:.0f} mm off: the pick check would call it a slip")
-                else:
-                    self.belief.attached[arm] = (lab, T_fit)
-                    self.belief.sync_robot(obs["state"])
-                    self.touched.add(lab)
-                    ev["adopted"] = True
-                    self.stats["carry_adopted"] = self.stats.get("carry_adopted", 0) + 1
-            else:
-                ev["adopted"] = False
-            self.stats["carry_reads"] = self.stats.get("carry_reads", 0) + 1
-            self.events.append(ev)
-
     def _held_check(self, obs: dict) -> None:
         """Once per grasp, when the arm holding ``label`` has lifted ``held_min_lift_m`` above the closing pose:
         perception's held_look on that arm's wrist frame. A confident "not held" takes the object out of the jaws in
@@ -1272,8 +1204,6 @@ class RuntimeProvider:
                 self._grip_check(obs)
             if self.held_checker is not None:
                 self._held_check(obs)
-            if self.carry_reader is not None:
-                self._carry_read(obs)
             if self.track_reader is not None:
                 self._track(obs)
             if released and self.checker is not None and not self.belief.held_labels():

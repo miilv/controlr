@@ -17,6 +17,11 @@ if the belief had adopted the fit at the read (``rel_*``: what M's metric would 
     python scripts/perception/h95_carry_eval.py --seq-root ~/dojo-data/bgperc/seq --events SCORE/events.jsonl \
         --out OUT.jsonl [--cfg '{"max_shift_mm": 10}'] [--tasks hang_mugs,stack_bowls] [--only-bad]
 
+Finding (2026-10-28, journal 2026-10-28-dojo-h95-held-state): on hang_mugs / stack_bowls the in-hand error that M
+scores at the place arises AFTER the lift (the mug swings in its wall grasp, the bowl turns), and held_pose on mugs fits
+at IoU 0.6-0.8; a read at the lift is not a lever, so the runtime carry read was dropped (the code is in this PR's
+first commit). A read belongs at the place hover (BACKLOG).
+
 DEV-ONLY: GT is read here, never by a policy. CPU (perception's CPU silhouettes when no GL).
 """
 
