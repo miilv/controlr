@@ -41,7 +41,12 @@ CAMS = ("cam_head", "cam_left_wrist", "cam_right_wrist")
 MOVE_KINDS = ("hover", "look", "both", "hover", "look", "both", "hover")
 
 
-def parse_ids(spec: str) -> list[int]:
+TEST_IDS = set(range(100000, 100010)) | set(range(100020, 100025))
+
+
+def parse_ids(spec: str, test: bool = False) -> list[int]:
+    """Training: ids of the training slice (100030-49) only. ``test``: the held-out evaluation ids (100000-09,
+    100020-24) only, rendered from their stored records (variant 0) into a separate test directory."""
     out: list[int] = []
     for part in spec.split(","):
         part = part.strip()
@@ -52,6 +57,11 @@ def parse_ids(spec: str) -> list[int]:
             out += list(range(int(a), int(b) + 1))
         else:
             out.append(int(part))
+    if test:
+        bad = [i for i in out if i not in TEST_IDS]
+        if bad:
+            raise SystemExit(f"ids {bad[:5]} are not held-out evaluation ids (100000-09, 100020-24)")
+        return out
     bad = [i for i in out if i not in TRAIN_IDS]
     if bad:
         raise SystemExit(f"ids {bad[:5]} are outside the segmenter's training slice {TRAIN_IDS.start}-{TRAIN_IDS.stop - 1}")
@@ -243,6 +253,123 @@ def save_frame(run, d: Path, k: int, move: dict, masks: InstanceMasks, settle_re
     return inst
 
 
+def held_candidates(objs: list[dict], category: str | None, max_extent_m: float = 0.09) -> list[dict]:
+    """Objects a top-down pick can take: task objects of ``category`` (any when None) whose top is not under another
+    object (nothing within 3 cm horizontally that sits higher)."""
+    out = []
+    for o in objs:
+        if o.get("pos") is None or o.get("clutter") or o["type"] not in ("Rigid", "Dynamic"):
+            continue
+        if category and o.get("category") != category:
+            continue
+        p = np.asarray(o["pos"], float)
+        if any(np.hypot(*(np.asarray(q["pos"][:2]) - p[:2])) < 0.03 and q["pos"][2] > p[2] + 0.01
+               for q in objs if q is not o and q.get("pos") is not None):
+            continue
+        out.append(o)
+    return out
+
+
+def _yaw_of(quat) -> float:
+    from dojo.simlab.motion import quat_to_mat
+
+    R = quat_to_mat(np.asarray(quat, float))
+    return float(np.arctan2(R[1, 0], R[0, 0]))
+
+
+def run_held(mv, run, spec: dict, save, table_z: float) -> dict:
+    """A scripted top-down pick of ``spec['target_inst']`` with ``spec['arm']`` (D-C17's read-after-lift view): the tool
+    near vertical and turned to the object's yaw (+ 0 / 90 deg), open, hover 12 cm over it, descend until the TCP sits
+    at the object's centre height, close, then frames at grasp height (``save('grasp')``), lifted 15 cm
+    (``save('lift')``) and lifted with the wrist tilted 35 deg (``save('tilt')``). ``ok`` = the object rose >= 5 cm with
+    the hand (GT); frames are saved only for a held object."""
+    from dojo.simlab.layout import quat_mul
+    from dojo.simlab.make_d0 import tilted
+
+    def gt_obj():
+        return next((r for r in run.objects_gt() if r.get("inst_name") == spec["target_inst"] and r.get("pos") is not None), None)
+
+    o = gt_obj()
+    res = dict(spec, ok=False)
+    if o is None:
+        return {**res, "why": "target gone"}
+    arm, p0 = spec["arm"], np.asarray(o["pos"], float)
+    mv.grip({arm: 1.0}, name="open")
+    for yaw_off in (spec.get("yaw_off", 0.0), spec.get("yaw_off", 0.0) + np.pi / 2):
+        yaw = _yaw_of(o["quat"]) + yaw_off
+        qz = np.array([np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)])
+        q = quat_mul(qz, tilted(mv.home_flange[arm][3:], 88.0))
+        q = q / np.linalg.norm(q)
+        if not mv.tcp({arm: p0 + [0.0, 0.0, 0.12]}, quat={arm: q}, name="held_hover").get(arm):
+            continue
+        if not mv.tcp({arm: p0 + [0.0, 0.0, spec.get("dz", 0.004)]}, quat={arm: q}, name="held_descend").get(arm):
+            mv.tcp({arm: p0 + [0.0, 0.0, 0.12]}, quat={arm: q}, name="held_back")
+            continue
+        mv.grip({arm: 0.0}, name="held_close")
+        mv.wait(6, name="held_squeeze")
+        z0 = float(gt_obj()["pos"][2]) if gt_obj() else p0[2]
+        save("grasp")
+        mv.tcp({arm: p0 + [0.0, 0.0, 0.15]}, quat={arm: q}, name="held_lift")
+        mv.wait(4, name="held_settle")
+        o2 = gt_obj()
+        if o2 is None or float(o2["pos"][2]) < z0 + 0.05:
+            res.update(why="not lifted", yaw_off=float(yaw_off))
+            mv.grip({arm: 1.0}, name="held_release")
+            return res
+        res.update(ok=True, yaw_off=float(yaw_off))
+        save("lift")
+        q2 = quat_mul(qz, tilted(mv.home_flange[arm][3:], 88.0 - spec.get("tilt_deg", 35.0)))
+        mv.tcp({arm: p0 + [0.0, 0.0, 0.17]}, quat={arm: q2 / np.linalg.norm(q2)}, name="held_tilt")
+        mv.wait(4, name="held_settle2")
+        save("tilt")
+        after = spec.get("after")
+        if after:
+            res["after"] = _let_go(mv, run, spec, arm, q, qz, table_z)
+            mv.home(name="home")
+            mv.wait(10, name="after_settle")
+            save("after")
+        return res
+    return {**res, "why": "unreachable"}
+
+
+CONTAINER_CATEGORIES = ("box", "basket", "dustbin", "pen_holder", "toolbox", "drawer", "plate", "bowl", "egg_basket")
+
+
+def _let_go(mv, run, spec: dict, arm: str, q, qz, table_z: float) -> dict:
+    """Post-contact states for the segmenter (v3): let the held object go ON another object (``stack``), INTO a container
+    fixture (``container``), on its side from 6 cm with the tool turned near horizontal (``topple``), or on the table
+    (``drop``); falls back to ``drop`` when the scene has no such target. Returns what was attempted (GT tells the
+    outcome)."""
+    from dojo.simlab.layout import quat_mul
+    from dojo.simlab.make_d0 import tilted
+
+    rng = random.Random(spec.get("seed", 0))
+    objs = [o for o in run.objects_gt() if o.get("pos") is not None and o.get("inst_name") != spec["target_inst"]]
+    kind, tgt = spec["after"], None
+    if kind == "stack":
+        cands = [o for o in objs if o["type"] in ("Rigid", "Dynamic") and not o.get("clutter")]
+        tgt = rng.choice(cands) if cands else None
+    elif kind == "container":
+        cands = [o for o in objs if o.get("category") in CONTAINER_CATEGORIES]
+        tgt = rng.choice(cands) if cands else None
+    if kind in ("stack", "container") and tgt is None:
+        kind = "drop"
+    if tgt is not None:
+        xy = np.asarray(tgt["pos"][:2], float)
+        z = float(tgt["pos"][2]) + (0.07 if kind == "stack" else 0.16)
+        qq = q
+    else:
+        xy = np.array([rng.uniform(-0.3, 0.3), rng.uniform(-0.25, 0.05)])
+        z = table_z + (0.08 if kind == "topple" else 0.05)
+        qq = quat_mul(qz, tilted(mv.home_flange[arm][3:], 10.0 if kind == "topple" else 88.0))
+        qq = qq / np.linalg.norm(qq)
+    reached = bool(mv.tcp({arm: np.r_[xy, z]}, quat={arm: qq}, name=f"let_go_{kind}").get(arm))
+    mv.grip({arm: 1.0}, name="let_go")
+    mv.wait(12, name="let_go_fall")
+    mv.tcp({arm: np.r_[xy, z + 0.10]}, quat={arm: qq}, name="let_go_up")
+    return {"kind": kind, "reached": reached, "onto": None if tgt is None else tgt.get("inst_name")}
+
+
 def run_move(mv, spec: dict, objs_now: list[dict]) -> dict:
     """Execute one ``sample_moves`` spec with the Mover (planner; unreachable targets get less tilt, then a skip)."""
     from dojo.simlab.make_d0 import tilted
@@ -289,6 +416,13 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--budget-s", type=float, default=0.0, help="start no new layout after this many seconds (0 = none)")
     ap.add_argument("--no-annotator", action="store_true", help="RGB + GT only (labels from GT-pose renders later)")
+    ap.add_argument("--test", action="store_true",
+                    help="held-out TEST frames: ids 100000-09 / 100020-24, their stored records (--variants 0), an out dir "
+                         "named *test* (never mixed with the training renders)")
+    ap.add_argument("--held", type=int, default=0, help="scripted top-down picks per layout after the poses (held frames)")
+    ap.add_argument("--held-category", default=None, help="pick only objects of this category (make_kong: mahjong)")
+    ap.add_argument("--after", default=None,
+                    help="post-contact outcomes after a held pick, chosen per pick: e.g. stack,container,topple,drop (v3)")
     ap.add_argument("--physics-only", action="store_true",
                     help="no renderer (compute3): states + stage.usd + cameras.json; RGB and masks from the Isaac 6.0 "
                          "proxy afterwards (scripts/simlab/isaac6.sh dojo/simlab/render_d0_proxy.py --any-dirs --instance)")
@@ -305,9 +439,12 @@ def main(argv: list[str] | None = None) -> None:
     from dojo.simlab.motion import Mover
     from dojo.simlab.runner import RoboDojoRunner, settle_report
 
-    ids = parse_ids(a.ids)
+    ids = parse_ids(a.ids, test=a.test)
     variants = [int(v) for v in a.variants.split(",") if v.strip()]
-    if any(v < 1 for v in variants):
+    if a.test:
+        if variants != [0] or "test" not in Path(a.out).name:
+            raise SystemExit("--test renders the stored records (--variants 0) into a directory named *test*")
+    elif any(v < 1 for v in variants):
         raise SystemExit("variant 0 is the stored (measured) record: training uses new draws only (v >= 1)")
     out = Path(a.out).expanduser() / a.task
     paths.assert_not_eval(out)
@@ -330,7 +467,8 @@ def main(argv: list[str] | None = None) -> None:
         t1 = time.perf_counter()
         row = {"id": s, "variant": v, "task": a.task}
         try:
-            lay = generate(a.task, s, variant=v)
+            sp = paths.LAYOUTS / a.task / f"{s}.settled.json"
+            lay = json.loads(sp.read_text()) if (a.test and sp.exists()) else generate(a.task, s, variant=v)
         except LayoutError as e:
             d.mkdir(parents=True, exist_ok=True)
             (d / "skip.json").write_text(json.dumps({"status": f"gen_fail: {e}"}))
@@ -368,6 +506,30 @@ def main(argv: list[str] | None = None) -> None:
                 raw = rng.random() < a.raw_frac
                 m["settle_renders"] = 0 if raw else a.settle_renders
                 save_frame(run, d, k, m, masks, m["settle_renders"])
+        for h in range(a.held):
+            cands = held_candidates(run.objects_gt(), a.held_category)
+            if not cands:
+                break
+            o = rng.choice(cands)
+            spec = {"kind": "held", "arm": "left" if o["pos"][0] < 0 else "right", "target_inst": o["inst_name"],
+                    "target_label": o.get("label"), "yaw_off": rng.choice((0.0, np.pi / 2)), "dz": rng.uniform(0.0, 0.008),
+                    "tilt_deg": rng.uniform(20.0, 45.0), "seed": rng.randrange(1 << 30),
+                    "after": rng.choice(a.after.split(",")) if a.after else None}
+            mv.home(name="home")
+            stage = {}
+
+            def save(tag, spec=spec, stage=stage):
+                nonlocal k
+                k += 1
+                m = dict(spec, held_stage=tag)
+                stage[tag] = k
+                save_frame(run, d, k, m, masks, a.settle_renders)
+
+            m = run_held(mv, run, spec, save, TABLE_TOP_Z)
+            m["frames"] = stage
+            moves.append(m)
+            mv.grip({"left": 1.0, "right": 1.0}, name="release")
+            mv.wait(10, name="drop")
         (d / "done.json").write_text(json.dumps({"frames": k + 1, "moves": moves}))
         row.update(status="ok", instruction=info["instruction"][0], moves_ok=[bool(m["ok"]) for m in moves],
                    inst_source=inst0.get("source"), inst_error=inst0.get("error"),
