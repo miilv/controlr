@@ -3,14 +3,13 @@
 The runtime's perception service uses ONE such set for every episode of an evaluation (``DOJO_CALIB_SET``). The set
 is chosen once per deployment, never per episode: the old choice, ``fold = crc32(layout id) % 2``, made the layout id
 a policy input (legality audit 2026-10-28, robot-harness docs/notes/ILIA-POLICY-LEGALITY-AUDIT-2026-10-28.md, P1-1).
-To keep dev numbers clean the set is built only from layouts that are never evaluated: ``build`` refuses ids in our
-rendered / proxy measurement slices (``paths.OUR_MEASUREMENT_SLICES``: 100000-09, 100020-49) and reserved ids, and the
-dev drivers refuse an episode whose layout id is in the set's manifest (``overlap``).
+To keep dev numbers clean the set is built only from layouts that are never evaluated: the calibration-only slice
+``paths.CALIBRATION_SLICE`` (100040-49, D-C10b). ``build`` refuses any other id; the dev drivers refuse to evaluate a
+calibration id and any layout the set's manifest lists (``overlap``).
 
-The default set, ``frozen_d0_100010_19``: D0 (6.0 proxy ``d0``, genuine 5.1 ``d0_51``; 6 tasks x 25 ids 100000-24) ids
-100010-100019 only, the D0 ids outside every slice our policy is evaluated on. Those ids are Mikhail's development
-slice (D-C10a): a set built from them must not calibrate an evaluation of 100010-19 (the manifest names them, and the
-driver check refuses such an episode).
+The default set, ``frozen_d0_100040_49``: D0-format frames (frames 0-3: home + 3 scripted arm moves) of ids
+100040-49 of the 6 D0 tasks, rendered for this (6.0 proxy on compute3: ``bg_folds``; genuine 5.1 on compute2:
+``bg_folds_51``).
 
 Layout of a set directory (``$DOJO_BG_FOLDS/<name>/``)::
 
@@ -20,8 +19,8 @@ Layout of a set directory (``$DOJO_BG_FOLDS/<name>/``)::
                           the manifest says so (their own provenance is not re-derived here)
     manifest.json         {"name", "layout_ids", "tasks", "episodes", "d0_root", "built_by", "built_at", "scene", ...}
 
-    python -m dojo.perception.calib_set build --d0 ~/dojo-data/d0_51 --ids 100010-100019 \\
-        --name frozen_d0_100010_19 --out ~/dojo-data/calib_sets/bg_folds_51 [--scene-from <fold dir>]
+    python -m dojo.perception.calib_set build --d0 ~/dojo-data/d0cal_51 --ids 100040-100049 \\
+        --name frozen_d0_100040_49 --out ~/dojo-data/calib_sets/bg_folds_51 [--scene-from <fold dir>]
 
 DEV-ONLY tool (the colour map is fitted at GT poses); the runtime reads only the PNGs, ``color_M.json`` and the
 manifest.
@@ -38,8 +37,8 @@ from pathlib import Path
 
 import numpy as np
 
-DEFAULT_SET = "frozen_d0_100010_19"
-DEFAULT_IDS = "100010-100019"
+DEFAULT_SET = "frozen_d0_100040_49"
+DEFAULT_IDS = "100040-100049"
 
 
 def parse_ids(spec: str) -> list[int]:
@@ -57,16 +56,13 @@ def parse_ids(spec: str) -> list[int]:
 
 
 def check_buildable(ids) -> None:
-    """Refuse ids a frozen set must never be built from: our measurement slices (the policy is evaluated there) and
-    reserved ids (never read on our side)."""
+    """A frozen set is built only from the calibration-only slice (D-C10b): never from a layout anyone evaluates (our
+    measurement slices, Mikhail's slices, reserved ids)."""
     from dojo.simlab import paths
-    bad = [i for i in ids if paths.is_our_measurement_id(i)]
-    if bad:
-        raise ValueError(f"ids {bad[:5]}{'...' if len(bad) > 5 else ''} are in our measurement slices "
-                         f"{paths.OUR_MEASUREMENT_SLICES}: a calibration set built from them would see evaluated layouts")
-    res = [i for i in ids if paths.is_reserved_id(i)]
-    if res:
-        raise ValueError(f"ids {res[:5]} are reserved (>= {paths.RESERVED_MIN_ID}): never read on our side")
+    bad = [i for i in ids if not paths.is_calibration_id(i)]
+    if bad or not ids:
+        raise ValueError(f"ids {bad[:5]}{'...' if len(bad) > 5 else ''} are outside the calibration-only slice "
+                         f"{paths.CALIBRATION_SLICE} (D-C10b): a calibration set is built from nothing else")
 
 
 def load_manifest(set_dir) -> dict | None:

@@ -335,10 +335,10 @@
 
 ## P2 — harness and infrastructure
 
-- [ ] **dojo: deploy the frozen calibration set to every box** (`frozen_d0_100010_19`, journal
-  2026-10-28-legality-calib-fold): compute3 has it in `~/dojo-perception-data/bg_folds{,_51}/`; compute4's
-  `~/dojo-data/bg_folds_51_ilia` / `bg_folds_ilia`, compute2, compute5-8 and isr-lab's `bridge/pdata/bg_folds_51` do
-  not, and refuse perception runs until they do (`scripts/dojo/calib_set.sh`).
+- [ ] **dojo: install the frozen calibration set on every box** (`frozen_d0_100040_49`, journal
+  2026-10-28-legality-calib-fold): `box_steps.sh run calib_sets` (md5-pinned; copies into the `_ilia` roots) on
+  compute2/3/4, compute5-8, isr-lab (`CALIB_EXTRA_ROOTS=$ILIA/bridge/pdata/bg_folds_51`); a box without it refuses
+  perception runs (`scripts/dojo/calib_set.sh`).
 - [ ] **dojo: the scene backgrounds (`scene/`: conveyor, basket, cube_cushion) are not covered by a calibration
   manifest.** The frozen set copies them from the legacy `fold0/scene`; they were built by their streams from other
   layouts (some evaluated ids among them). Rebuild them from non-evaluated layouts into a new set and list the ids.

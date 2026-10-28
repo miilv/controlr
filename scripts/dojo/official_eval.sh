@@ -15,7 +15,7 @@
 # (python -m dojo.bridge.official rows OUT).
 #
 #   scripts/dojo/official_eval.sh --task T --layouts "100000 100001 ..." [--policy dojo.agent.policy:AgentPolicy]
-#       (rendered measurement uses 100000-09; ids >= 100100 are reserved for joint paired runs and refused)
+#       (rendered measurement uses 100000-09; 100040-49 are calibration-only and >= 100100 reserved: both refused)
 #       [--preset submit_v2] [--config JSON] [--twin-envs 8] [--id NAME] [--out DIR] [--episode-max-min 25]
 #
 # Env (defaults for a dojo GPU box, ~/dojo-env.sh): RD_SRC (the box's RoboDojo install, read-only; default $RD_HOME),
@@ -97,6 +97,9 @@ for lid in $(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n); do
   [[ "$lid" -lt 100100 ]] || { log "layout id $lid: ids >= 100100 are reserved for joint paired runs (D-C10)"; exit 2; }
   if (( lid >= 100010 && lid <= 100019 )) || (( lid >= 100050 && lid <= 100099 )); then
     log "layout id $lid: Mikhail's development slice (D-C10a: never run rendered on our side)"; exit 2
+  fi
+  if (( lid >= 100040 && lid <= 100049 )); then
+    log "layout id $lid: calibration-only (D-C10b: 100040-49 calibrate perception, never evaluated)"; exit 2
   fi
   f="$LAYOUTS_SRC/$lid.settled.json"
   [[ -f "$f" && "$f" != *Eval_Layout* ]] || { log "no settled dev layout $f"; exit 2; }

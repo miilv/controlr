@@ -46,6 +46,9 @@ for a in "${args[@]}"; do      # D-C10a: >= 100100 reserved for joint runs; 1000
         || (( id >= 100050 && id <= 100099 )); }; then
     echo "[integ] $a: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused" >&2; exit 2
   fi
+  if [[ "$a" == *.json && "$id" =~ ^[0-9]+$ ]] && (( id >= 100040 && id <= 100049 )); then
+    echo "[integ] $a: calibration-only layout (D-C10b: 100040-49 calibrate perception, never evaluated): refused" >&2; exit 2
+  fi
 done
 if [[ -n "$PRESET" ]]; then        # the services follow the preset's mode / verify (explicit flags win, as in eval)
   read -r P_MODE P_VERIFY < <(python3 -c 'import runpy, sys; p = runpy.run_path(sys.argv[1])["PRESETS"][sys.argv[2]]

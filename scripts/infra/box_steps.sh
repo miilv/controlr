@@ -53,13 +53,14 @@ PERC="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"
 SMOKE="$DATA/infra/smoke"
 PINS="$LIB/pins"                                      # read here
 ASSETS_LIST="${ASSETS_PINS:-$PINS/robodojo_assets.txt}"   # ASSETS_PINS: another list (tests, a partial install)
+CALIB_PINS="${CALIB_SETS_PINS:-$PINS/calib_sets.txt}"      # CALIB_SETS_PINS: another pin file (tests)
 LIBX="${LIB_REMOTE:-$LIB}"                           # the same files as named in commands (dry runs print the box path)
 HF_URL=https://huggingface.co/datasets/RoboDojo-Benchmark/RoboDojo
 HF_REV=269457a3b42d8d0ae69898a601f2c1487c2f826e      # HF dataset main on 2026-10-25 = compute3's hf_git HEAD
 UV_VERSION=0.12.1                                     # compute3's uv
 GIT_LFS_VERSION=3.4.1                                 # compute3's git-lfs (only if the box has none)
 DRIVER_OK="${BOX_DRIVER_OK:-570 580}"                 # Isaac Sim 5.1 RTX: 580 renders (isr-lab 4090), 595 segfaults
-STEPS=(conventions code venv robodojo assets assets_post catalog_post smoke_twin smoke_render smoke_dev_eval
+STEPS=(conventions code venv robodojo assets assets_post catalog_post calib_sets smoke_twin smoke_render smoke_dev_eval
        smoke_proxy_eval smoke_perception smoke_bridge ready)
 LIGHT_LOCKS=(dojo-gpu-light.lock dojo-gpu-light2.lock dojo-gpu-light3.lock dojo-gpu-light4.lock)   # physics-only light lane slots
 # systemd-run --user --scope settings of the team (dojo/README.md, proxy_eval.sh, g3.sh); exported by ~/dojo-env.sh
@@ -108,6 +109,7 @@ fp_robodojo() { echo "$(hash12 "$PINS/robodojo_commit.txt") uv$UV_VERSION"; }
 fp_assets() { echo "$ASSETS $HF_REV $(hash12 "$ASSETS_LIST")"; }
 fp_assets_post() { echo "$(fp_robodojo) $(fp_assets)"; }
 fp_catalog_post() { echo "always"; }
+fp_calib_sets() { echo "$(hash12 "$CALIB_PINS") ${CALIB_EXTRA_ROOTS:-}"; }
 fp_smoke_twin() { echo "$CODE_SHA $(fp_assets_post)"; }
 fp_smoke_render() { fp_smoke_twin; }
 fp_smoke_dev_eval() { fp_smoke_twin; }
@@ -583,6 +585,39 @@ step_catalog_post() {   # shape caches (sil.npz + shape_cache.json) for catalogu
   if [[ "$DRY" != 1 ]]; then
     log "catalogue: $(find "$cat" -name info.json | wc -l) assets, $(find "$cat" -name shape_cache.json | wc -l) shape caches, $(du -sh "$cat" | cut -f1)"
   fi
+}
+
+tree_md5() {   # DIR: md5 of its manifest listing (what pins/calib_sets.txt pins)
+  (cd "$1" && find . \( -type f -o -type l \) -printf '%P\0' | LC_ALL=C sort -z | xargs -0 -r md5sum) | md5sum | cut -c1-32
+}
+
+step_calib_sets() {   # the frozen perception calibration sets (pins/calib_sets.txt), identical on every box and root
+  # legality audit 2026-10-28 P1-1: the perception service uses ONE frozen set for every episode (DOJO_CALIB_SET); a
+  # set that is missing or differs on one box (compute4's silent missing scene background, 2026-10-28) must fail here
+  local dir name want src got root n=0
+  while read -r dir name want; do
+    [[ -z "$dir" || "$dir" == \#* ]] && continue
+    src="$PERC/$dir/$name"
+    if [[ "$DRY" == 1 ]]; then
+      echo "    + verify $src against $want, copy it into ~/dojo-data/${dir}_ilia ${CALIB_EXTRA_ROOTS:-}"; continue
+    fi
+    [[ -f "$src/manifest.json" ]] || die "no calibration set $src (the catalog relay brings $dir from the source box)"
+    got="$(tree_md5 "$src")"
+    [[ "$got" == "$want" ]] || die "$src: md5 $got != pinned $want (pins/calib_sets.txt): a different set"
+    for root in "$DATA/${dir}_ilia" ${CALIB_EXTRA_ROOTS:-}; do
+      [[ -d "$root" ]] || continue
+      if [[ ! -d "$root/$name" || "$(tree_md5 "$root/$name")" != "$want" ]]; then
+        rm -rf "$root/$name.new"
+        cp -a "$src" "$root/$name.new"
+        [[ "$(tree_md5 "$root/$name.new")" == "$want" ]] || die "$root/$name.new: copy differs from $src"
+        rm -rf "$root/$name"; mv "$root/$name.new" "$root/$name"
+        log "installed $name into $root"
+      fi
+      n=$((n + 1))
+    done
+    log "$src: md5 $got ok"
+  done < "$CALIB_PINS"
+  note "calibration sets ok ($n extra roots)"
 }
 
 rdpy() { echo "env RD_HOME=$RD_HOME DOJO_DATA=$DATA nice -n 5 scripts/simlab/rdpy.sh"; }

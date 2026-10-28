@@ -203,21 +203,27 @@ def test_the_default_colour_map_follows_the_frozen_set(tmp_path, monkeypatch):
 
 
 # ------------------------------------------------------------------ the frozen set and the drivers' check
-def test_a_frozen_set_is_never_built_from_an_evaluated_layout():
+def test_a_frozen_set_is_built_from_the_calibration_only_slice_and_nothing_else():
     from dojo.perception.calib_set import DEFAULT_IDS, check_buildable, parse_ids
-    assert parse_ids("100010-100012,100015") == [100010, 100011, 100012, 100015]
-    check_buildable(parse_ids(DEFAULT_IDS))                       # the default set: D0 ids outside our slices
-    for bad in ("100000-100009", "100005", "100020-100024", "100049", "100100"):
+    from dojo.simlab import paths
+    assert parse_ids("100040-100042,100045") == [100040, 100041, 100042, 100045]
+    assert parse_ids(DEFAULT_IDS) == list(range(100040, 100050))
+    check_buildable(parse_ids(DEFAULT_IDS))                       # D-C10b: calibration-only, never evaluated
+    # our measurement slices, Mikhail's slices (D-C10a), reserved ids, a mix, nothing
+    for bad in ("100000-100009", "100005", "100010-100019", "100020-100039", "100039-100040", "100050", "100100", ""):
         with pytest.raises(ValueError):
             check_buildable(parse_ids(bad))
+    assert all(paths.is_calibration_id(i) and not paths.is_our_measurement_id(i) and not paths.is_offslice_rendered(i)
+               for i in range(100040, 100050))
+    assert not paths.is_calibration_id(100039) and not paths.is_calibration_id(100050)
 
 
 def test_the_dev_drivers_refuse_a_layout_the_set_was_built_from():
     from dojo.perception.calib_set import overlap
     from dojo.runtime.eval import calib_overlap
-    man = {"name": "frozen_x", "layout_ids": [100010, 100011]}
-    assert overlap(man, "100010") is True and overlap(man, 100003) is False and overlap(None, 100003) is None
-    assert calib_overlap({"set": "frozen_x", "manifest": man}, "100011") is True
+    man = {"name": "frozen_x", "layout_ids": [100040, 100041]}
+    assert overlap(man, "100040") is True and overlap(man, 100003) is False and overlap(None, 100003) is None
+    assert calib_overlap({"set": "frozen_x", "manifest": man}, "100041") is True
     assert calib_overlap({"set": "frozen_x", "manifest": man}, "100002") is False
     assert calib_overlap({"set": "fold0", "manifest": None}, "100002") is None      # legacy dir: unknown
     assert calib_overlap({"set": None, "manifest": None}, "100002") is None
@@ -228,7 +234,7 @@ def test_build_writes_the_set_and_its_manifest_from_the_named_ids_only(tmp_path,
     from dojo.perception import calib_set, eval_g1
     d0 = tmp_path / "d0"
     for task in ("stack_blocks", "push_T"):
-        for i in (100003, 100010, 100011):
+        for i in (100003, 100040, 100041):
             e = d0 / task / str(i)
             e.mkdir(parents=True)
             (e / "frame_0.json").write_text("{}")
@@ -241,12 +247,61 @@ def test_build_writes_the_set_and_its_manifest_from_the_named_ids_only(tmp_path,
                 "cam_head_clean_unseen": np.zeros((4, 4), np.uint8)}
 
     monkeypatch.setattr(eval_g1, "backgrounds_from", fake_bgs)
-    man = calib_set.build(d0, tmp_path / "bg", "frozen_t", [100010, 100011], colour=False)
-    assert seen["eps"] == ["push_T/100010", "push_T/100011", "stack_blocks/100010", "stack_blocks/100011"]
-    assert man["layout_ids"] == [100010, 100011] and man["episodes"] == 4
+    man = calib_set.build(d0, tmp_path / "bg", "frozen_t", [100040, 100041], colour=False)
+    assert seen["eps"] == ["push_T/100040", "push_T/100041", "stack_blocks/100040", "stack_blocks/100041"]
+    assert man["layout_ids"] == [100040, 100041] and man["episodes"] == 4
     assert (tmp_path / "bg" / "frozen_t" / "cam_head.png").exists()
-    assert calib_set.load_manifest(tmp_path / "bg" / "frozen_t")["layout_ids"] == [100010, 100011]
+    assert calib_set.load_manifest(tmp_path / "bg" / "frozen_t")["layout_ids"] == [100040, 100041]
     with pytest.raises(FileExistsError):                          # never rebuilt in place
-        calib_set.build(d0, tmp_path / "bg", "frozen_t", [100010], colour=False)
+        calib_set.build(d0, tmp_path / "bg", "frozen_t", [100040], colour=False)
     with pytest.raises(ValueError):
-        calib_set.build(d0, tmp_path / "bg", "frozen_bad", [100003, 100010], colour=False)
+        calib_set.build(d0, tmp_path / "bg", "frozen_bad", [100003, 100040], colour=False)
+
+
+def test_the_drivers_refuse_to_evaluate_a_calibration_only_layout(tmp_path):
+    """D-C10b: 100040-49 calibrate perception and are never evaluated (integ, official and proxy drivers)."""
+    import subprocess
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    for script in ("scripts/dojo/integ_eval.sh", "scripts/dojo/official_eval.sh"):
+        assert "100040 && id <= 100049" in (root / script).read_text() or \
+            "lid >= 100040 && lid <= 100049" in (root / script).read_text(), script
+    for mod in ("dojo/runtime/eval.py", "dojo/simlab/proxy_eval.py"):
+        assert "is_calibration_id" in (root / mod).read_text(), mod
+    r = subprocess.run(["bash", str(root / "scripts/dojo/integ_eval.sh"), "--task", "stack_blocks",
+                        "--out", str(tmp_path / "o"), "--layouts", "/nowhere/100043.settled.json"],
+                       capture_output=True, text=True, timeout=60, env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"})
+    assert r.returncode == 2 and "calibration-only" in r.stderr, r.stderr[-300:]
+
+
+def test_every_box_gets_the_pinned_set_or_the_install_step_fails(tmp_path):
+    """box_steps.sh calib_sets: the set under ~/dojo-perception-data must match its pinned md5; it is copied into the
+    integration roots (~/dojo-data/<dir>_ilia) and verified there; a different set fails the step."""
+    import hashlib
+    import subprocess
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    perc, data = tmp_path / "perc", tmp_path / "data"
+    s = perc / "bg_folds_51" / "frozen_x"
+    s.mkdir(parents=True)
+    (s / "cam_head.png").write_bytes(b"png")
+    (s / "manifest.json").write_text('{"layout_ids": [100040]}')
+    (data / "bg_folds_51_ilia").mkdir(parents=True)
+    listing = "".join(f"{hashlib.md5((s / n).read_bytes()).hexdigest()}  {n}\n"
+                      for n in sorted(p.name for p in s.iterdir()))
+    pins = tmp_path / "pins.txt"
+    env = {"HOME": str(tmp_path), "PATH": "/usr/bin:/bin", "DOJO_PERCEPTION_DATA": str(perc), "DOJO_DATA": str(data),
+           "CALIB_SETS_PINS": str(pins)}
+
+    def run():
+        return subprocess.run(["bash", str(root / "scripts/infra/box_steps.sh"), "fn", "step_calib_sets"],
+                              capture_output=True, text=True, timeout=60, env=env)
+    pins.write_text(f"# test\nbg_folds_51 frozen_x {hashlib.md5(listing.encode()).hexdigest()}\n")
+    r = run()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (data / "bg_folds_51_ilia" / "frozen_x" / "cam_head.png").read_bytes() == b"png"
+    (data / "bg_folds_51_ilia" / "frozen_x" / "cam_head.png").write_bytes(b"drifted")   # a root that drifted is fixed
+    assert run().returncode == 0 and (data / "bg_folds_51_ilia" / "frozen_x" / "cam_head.png").read_bytes() == b"png"
+    pins.write_text("bg_folds_51 frozen_x 00000000000000000000000000000000\n")
+    r = run()
+    assert r.returncode != 0 and "pinned" in (r.stdout + r.stderr)

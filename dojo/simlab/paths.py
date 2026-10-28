@@ -28,11 +28,13 @@ RESERVED_MIN_ID = 100_100
 
 
 # Mikhail's side develops on these (D-C10a, 2026-10-27): never run them rendered or proxy on our side (G3 overlap on
-# 100010-19 is harmless); our rendered measurement slices are 100000-09 and 100020-49
+# 100010-19 is harmless); our rendered measurement slices are 100000-09 and 100020-39 (100040-49: calibration only)
 MIKHAIL_SLICES = ((100_010, 100_019), (100_050, 100_099))
-# our rendered / proxy measurement slices (the ids our policy is evaluated on); a frozen perception calibration set
-# (dojo.perception.calib_set) is never built from them
-OUR_MEASUREMENT_SLICES = ((100_000, 100_009), (100_020, 100_049))
+# our rendered / proxy measurement slices (the ids our policy is evaluated on)
+OUR_MEASUREMENT_SLICES = ((100_000, 100_009), (100_020, 100_039))
+# calibration-only (D-C10b, 2026-10-28): the perception calibration set is built from these and they are never
+# evaluated (the drivers refuse them); dojo.perception.calib_set builds from nothing else
+CALIBRATION_SLICE = (100_040, 100_049)
 
 
 def is_our_measurement_id(layout_id) -> bool:
@@ -41,6 +43,15 @@ def is_our_measurement_id(layout_id) -> bool:
     except (TypeError, ValueError):
         return False
     return any(a <= i <= b for a, b in OUR_MEASUREMENT_SLICES)
+
+
+def is_calibration_id(layout_id) -> bool:
+    """A calibration-only id (D-C10b): its frames calibrate perception, so it is never an evaluated layout."""
+    try:
+        i = int(layout_id)
+    except (TypeError, ValueError):
+        return False
+    return CALIBRATION_SLICE[0] <= i <= CALIBRATION_SLICE[1]
 
 
 def is_offslice_rendered(layout_id) -> bool:

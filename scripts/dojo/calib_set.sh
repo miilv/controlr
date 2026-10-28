@@ -1,9 +1,9 @@
 # source me after DOJO_BG_FOLDS is set: the perception service's ONE frozen calibration set for every episode
 # (dojo.perception.calib_set; legality audit 2026-10-28, P1-1: the set used to be chosen per episode from the layout id).
-# The default set is built from D0 ids 100010-19 only, outside every slice our policy is evaluated on. A run on a
+# The default set is built from the calibration-only ids 100040-49 (D-C10b), which are never evaluated. A run on a
 # legacy D0 half is a labelled choice: DOJO_CALIB_SET=fold0 (constant too, but its manifest is unknown: rows carry
 # calib_disjoint null).
-export DOJO_CALIB_SET="${DOJO_CALIB_SET:-frozen_d0_100010_19}"
+export DOJO_CALIB_SET="${DOJO_CALIB_SET:-frozen_d0_100040_49}"
 calib_set_check() {
   if [[ -f "$DOJO_BG_FOLDS/$DOJO_CALIB_SET/cam_head.png" ]]; then
     return 0
