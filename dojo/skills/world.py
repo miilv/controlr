@@ -221,6 +221,10 @@ class ObjectState:
     digit: int | None = None
     digit_conf: float | None = None
     digit_source: str | None = None   # texture | config | agent | agent+texture | j1 | unread
+    # A1 (stream W): bumped by the runtime on a semantic change only (a move > 5 mm / 5 deg, an asset change; never the
+    # kinematic carry of a held object); skills compare it at plan time vs before the descent / release (``fresh``)
+    version: int = 0
+    uncertain: bool = False       # A1: an active object with no supported pose (an empty close, a release unseen)
 
     @property
     def T(self) -> np.ndarray:

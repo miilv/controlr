@@ -161,6 +161,12 @@ class RuntimeConfig:
     # (``dojo.perception.release_read``: releasing wrist + head + other wrist, render-and-compare around the released
     # pose; an object that does not rest as put down, e.g. a mug swinging on its hook). off | 6dof | 6dof_search (when
     # the read finds nothing: the pre-grasp pose, a missed grasp, then a head-view search around the release)
+    # A1 (stream W): region-free re-detection at decision points (``dojo.runtime.tick``: after an empty close, a release,
+    # a lift, a contact, and at pick / place hovers): the twin segmenter on all cameras (a seg_twin server at
+    # DOJO_SEG_ADDR), association with the belief, hypotheses for the objects the runtime is unsure of, written only
+    # under the tick's rules. off | log (Discrepancies only) | apply. ``a1_cfg``: TickConfig / RDConfig overrides
+    a1: str = "off"
+    a1_cfg: dict = field(default_factory=dict)
     post_place_read: str = "off"
     post_place_read_iou: float = 0.0    # 0 = only a failed refine is re-read. 0.85 (#210) re-read ok refines too and the
                                         # read's few-mm moves broke fasten_screws' thread-on (rendered arm 9: 5/5 -> 1/5)
@@ -494,6 +500,9 @@ class RuntimePolicy:
         prov.events = events
         prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
         prov.post_place_read = cfg.post_place_read if prov.post_place_refine else "off"
+        if cfg.mode == "perception" and cfg.a1 != "off":
+            prov.a1, prov.a1_cfg = cfg.a1, dict(cfg.a1_cfg)
+            prov.a1_client = lambda obs_, req_: self.perception().redetect(obs_, req_, dict(cfg.a1_cfg))
         prov.post_place_read_iou = float(cfg.post_place_read_iou)
         prov.post_place_read_cfg = dict(cfg.post_place_read_cfg)
         if checker is not None and cfg.agentic == "budget":
@@ -795,6 +804,17 @@ class RuntimePolicy:
         others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [o] + others]
+        if self.cfg.a1 != "off" and kind in ("pick", "place") and getattr(prov, "a1_client", None) is not None:
+            from .tick import Trigger
+            c = np.asarray(o.center_w, float)
+            prov.a1_tick(obs, [Trigger("hover", self.bridge.steps_used, arm, label, {"for": kind})],
+                         corridor=[c.tolist(), (c + [0.0, 0.0, 0.12]).tolist()])
+            o = prov.belief.objects.get(label)
+            if o is None:
+                return None
+            others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
+            objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos],
+                     "quat": [float(v) for v in x.quat]} for x in [o] + others]
         if self.cfg.wrist_check != "off" and kind in ("pick", "place"):
             self._wrist_check(prov, obs, label, arm, kind, held, held_label)
             o = prov.belief.objects.get(label)

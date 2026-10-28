@@ -602,9 +602,26 @@ class Skills:
         kw = {**pp.plan_kw, **{k: v for k, v in plan_kw.items() if k not in ("keep", "q_start", "return_all", "grasps")}}
         hover = ArmPlan(pp.arm, pp.plan.q0, pp.plan.g0)
         hover.ops = [op for op in pp.plan.ops[:2]]            # open-for-grasp + approach to the pre-grasp
+        # A1 (``provider.fresh``): the versions of the target's neighbourhood at plan time; a tick at the hover that
+        # moved one of them (or put a new object into the corridor) re-plans the descent from the world
+        fresh = getattr(self.provider, "fresh", None) if getattr(self.provider, "a1", "off") != "off" else None
+        c0 = self.world.obj(pp.label).center_w if pp.label in self.world.objects else None
+        near = [lab for lab, x in sorted(self.world.objects.items())
+                if c0 is not None and float(np.linalg.norm(x.center_w[:2] - c0[:2])) <= 0.15]
+        v0 = self.provider.versions(near) if fresh is not None else None
         self.parallel([hover], name=f"pick {pp.label} hover")
         T_plan = pp.grasp.T @ pp.T_tcp_obj                    # the object's pose the pick was planned for
         self._refine_hover(pp.label, pp.arm, "pick", self._pick_rehover(pp.label, pp.arm, method, kw, pp=pp))
+        stale = []
+        if fresh is not None and c0 is not None:
+            stale = [lab for lab in fresh(v0, corridor=[c0, c0 + [0.0, 0.0, 0.12]]) if lab != pp.label]
+            if stale:
+                self.log(f"[pick] {pp.label}: the belief changed under the plan ({stale}): descent re-planned")
+                self.a1_replans = getattr(self, "a1_replans", 0) + 1
+                evs = getattr(self.provider, "events", None)
+                if isinstance(evs, list):
+                    evs.append({"kind": "a1_replan", "label": pp.label, "stale": stale,
+                                "step": int(getattr(getattr(self.provider, "bridge", None), "steps_used", 0) or 0)})
 
         def rest_of(p: PickPlan, note: str) -> PickPlan:
             rest = ArmPlan(p.arm, self.ex.q[p.arm].copy(), self.ex.g[p.arm])
@@ -618,7 +635,7 @@ class Skills:
         if o is not None and float(np.abs(self.ex.q[pp.arm] - hover_q).max()) < 1e-6:
             from dojo.skills.geometry import angle_between_R
             dp = float(np.linalg.norm(o.T[:3, 3] - T_plan[:3, 3]))
-            if dp < 2e-4 and math.degrees(angle_between_R(o.R, T_plan[:3, :3])) < 0.2:
+            if dp < 2e-4 and math.degrees(angle_between_R(o.R, T_plan[:3, :3])) < 0.2 and not stale:
                 return rest_of(pp, "descent")                 # the refine saw it where it was planned
         pp2 = self._same_grasp_pick(pp, kw)
         if pp2 is None and pp.repair is not None:
