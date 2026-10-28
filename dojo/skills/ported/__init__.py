@@ -29,6 +29,7 @@ TIER_A = {
     "pour_bottle": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),     # D-C14
     "pick_up": (RESERVE, {}),
     "planar_drag": (RESERVE, {}),
+    "planar_drag_p1": (RESERVE, {}),             # P: planar_drag with the turn direction chosen by feasibility
     "classify_into_bins_v3b": (RESERVE, {}),     # K4: both classify cells; map "auto" = the instruction's fixed map
 }
 
@@ -84,6 +85,11 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
         status = "logic"
     note = str(rep.get("error") or "")[:300]
     sk._record(SkillResult(verified, f"ported:{skill}", status, steps, rep.get("arm"), note=note))
+    events = getattr(getattr(sk, "provider", None), "events", None)
+    if isinstance(events, list):                 # the runtime's report events: what the skill did and why
+        events.append({"kind": "ported", "skill": skill, "verified": verified, "status": status, "steps": steps,
+                       "error": note, "truth": robot.truth, "calls": len(robot.calls), "calls_tail": robot.calls[-60:],
+                       "details": _clip(rep.get("details"), 12000)})
     sk.ported_runs = getattr(sk, "ported_runs", []) + [{"skill": skill, "verified": verified, "steps": steps,
                                                         "truth": robot.truth, "error": note,
                                                         "calls": len(robot.calls), "calls_tail": robot.calls[-30:],
