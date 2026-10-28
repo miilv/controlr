@@ -29,6 +29,7 @@ TIER_A = {
     "pour_bottle": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),     # D-C14
     "pick_up": (RESERVE, {}),
     "planar_drag": (RESERVE, {}),
+    "classify_into_bins_v3b": (RESERVE, {}),     # K4: both classify cells; map "auto" = the instruction's fixed map
 }
 
 
