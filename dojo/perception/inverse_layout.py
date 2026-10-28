@@ -1928,7 +1928,7 @@ def _free_search_slot_children(slot_groups, chosen, slot_recs, views, cfg, group
     return out
 
 
-def _place_support_slots(slot_groups, chosen, groups, views, task, record) -> list:
+def _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_keep: bool = False) -> list:
     """Records for labels pinned in support slots (``support_slot``): pose from the chosen base, then a per-view check
     on the pixels only the object would explain (its silhouette minus the base's and every other object's). A slot
     that the views see empty (no view supports it, one refutes it) -> ``_not_found`` "support slot empty"."""
@@ -1988,7 +1988,7 @@ def _place_support_slots(slot_groups, chosen, groups, views, task, record) -> li
             refute += f < SLOT_EMPTY_FG
         hb0 = base_by_label[base]
         thin = (float(np.min(a_cache[key].extents)) <= THIN_CHILD_M
-                and bool(hb0.per_view.get("low_contrast") or hb0.per_view.get("rechosen_over")))
+                and (thin_keep or bool(hb0.per_view.get("low_contrast") or hb0.per_view.get("rechosen_over"))))
         if refute > 0 and support == 0 and not thin:
             record.setdefault("_not_found", []).append({"label": lab, "candidates": [key], "confidence": 0.0,
                                                         "reason": "support slot empty", "per_view_fg": fracs})
@@ -3527,6 +3527,11 @@ class EstimatorConfig:
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
     small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
     slot_free_search: bool = True  # a slot child whose slot looks empty is looked for loose on the table
+    # a thin slot child (``THIN_CHILD_M``: deposit_coin's 2 mm coin) is never refuted by its own few pixels, whatever the
+    # base's fit: placed from its base, flagged unverified (the pick hover's ``slot_read`` measures it). Off: only on a
+    # low-contrast / re-chosen base. 5.1 c4b_coin_off 100001: the stand 19 mm off on a tight fit (conf 0.63), the coin's
+    # pixels on the table, "support slot empty", and the episode had nothing to plan
+    thin_slot_keep: bool = False
     low_contrast_frac: float | None = 0.6  # still-unfound labels: re-segment at this x fg_thr in their region
     low_contrast_max_loss: float = 0.40  # ... and keep a find only at this silhouette loss or lower
     paired_tex_weight: float = 0.8
@@ -4270,7 +4275,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     # ---- support-slot labels (see above): from the chosen base's pose
     slot_recs = []
     if slot_groups:
-        slot_recs = _place_support_slots(slot_groups, chosen, groups, views, task, record)
+        slot_recs = _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_keep=cfg.thin_slot_keep)
         if cfg.slot_free_search:
             slot_recs += _free_search_slot_children(slot_groups, chosen, slot_recs, views, cfg, groups, record)
 
