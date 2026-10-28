@@ -139,6 +139,11 @@
     - R3: predicted visibility < 0.3 means "not observed";
     - R4: `_partial_fit` only for long / short >= 2, else "uncertain".
   - Estimate on the 55 rows: 16 -> 5 -> 0 raw flips, 0 applied-write changes.
+- [ ] **dojo runtime: held_identity_guard recall** (stream W, #271, default off, parked). On X2's 296 lift ticks the
+  guard fired twice, both on empty jaws where the intended object never left (the right action), and missed both real
+  category-level wrong-object lifts (store_tools: a wrench / pliers rose for the hammer). v2b rarely classifies a held
+  object in the wrist view as anything else. Recall needs a better held-object wrist detector (v3 post-contact data)
+  before a camera A/B.
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the
