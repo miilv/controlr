@@ -32,6 +32,26 @@ def tilt_deg(quat) -> float:
     return float(np.degrees(np.arccos(np.clip(quat_wxyz_to_R(quat)[2, 2], -1.0, 1.0))))
 
 
+OPERATORS = ("plus", "minus", "multiplication", "division", "equal")
+
+
+def class_names(scheme: str) -> list[str]:
+    """Class names in index order ("back" comes after them, at index len(names))."""
+    if scheme == "mahjong":
+        return [f"Rigid/mahjong/{i:05d}" for i in range(42)]
+    return [str(d) for d in range(10)] + list(OPERATORS)
+
+
+def class_of(o: dict, scheme: str) -> int | None:
+    """The glyph class of a GT object under ``scheme``, None for objects of other categories."""
+    cat = o.get("category")
+    if scheme == "mahjong":
+        return int(o["category_idx"]) if cat == "mahjong" else None
+    if cat == "number":
+        return int(o["category_idx"]) % 10     # the checker's value of a number tile (texture groups of 10)
+    return 10 + OPERATORS.index(cat) if cat in OPERATORS else None
+
+
 def crop(img: np.ndarray, mask: np.ndarray, size: int, margin: float = 0.25) -> np.ndarray:
     import cv2
 
@@ -60,6 +80,10 @@ def main(argv=None):
     ap.add_argument("--val-ids", default="100049")
     ap.add_argument("--size", type=int, default=128)
     ap.add_argument("--min-px", type=int, default=40)
+    ap.add_argument("--tasks", default="make_kong", help="render task dirs to read (comma list)")
+    ap.add_argument("--scheme", default="mahjong", choices=("mahjong", "digit_op"),
+                    help="mahjong: class = the tile's asset index (42); digit_op: number tiles -> category_idx % 10 "
+                         "(the checker's value), operator tiles -> plus / minus / multiplication / division / equal")
     a = ap.parse_args(argv)
     out = Path(a.out).expanduser()
     val_ids = {s.strip() for s in a.val_ids.split(",")}
@@ -77,10 +101,12 @@ def main(argv=None):
     def emit(split, src, img, codes, objs, view, pose, stem, cams=None, held_inst=None):
         nonlocal n
         for i, m in instances(codes, a.min_px).items():
-            if i >= len(objs) or objs[i].get("category") != "mahjong" or objs[i].get("pos") is None:
+            if i >= len(objs) or objs[i].get("pos") is None:
+                continue
+            cls = class_of(objs[i], a.scheme)
+            if cls is None:
                 continue
             c = crop(img, m, a.size)
-            cls = int(objs[i]["category_idx"])
             p = out / split / f"{cls:02d}" / f"{stem}_{i}.png"
             p.parent.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(p), cv2.cvtColor(c, cv2.COLOR_RGB2BGR))
@@ -91,7 +117,8 @@ def main(argv=None):
                                    "path": str(p.relative_to(out))}) + "\n")
             n += 1
 
-    dirs = [d for root in a.render.split(",") for d in sorted(Path(root).expanduser().glob("make_kong/*"))]
+    (out / "classes.json").write_text(json.dumps({"scheme": a.scheme, "names": class_names(a.scheme)}, indent=1))
+    dirs = [d for root in a.render.split(",") for t in a.tasks.split(",") for d in sorted(Path(root).expanduser().glob(f"{t}/*"))]
     for d in dirs:
         if not (d / "done.json").exists():
             continue
@@ -114,7 +141,7 @@ def main(argv=None):
                 codes = np.asarray(Image.open(ip)).astype(np.int64)
                 emit(split, "render", img, codes, rec["gt"]["objects"], cam, pose, f"{d.parent.parent.name}_{d.name}_f{k}_{cam}",
                      rec["gt"]["cameras"], mv_.get("target_inst") if pose.startswith("held") else None)
-    for mp in sorted(Path(a.gt).expanduser().glob("d0_ext/make_kong/*/gt_*.json")):
+    for mp in (sorted(Path(a.gt).expanduser().glob("d0_ext/make_kong/*/gt_*.json")) if "make_kong" in a.tasks else []):
         m = json.loads(mp.read_text())
         ep, k = int(m["episode"]), m["frame"]
         if not (100000 <= ep <= 100009 or 100020 <= ep <= 100024):

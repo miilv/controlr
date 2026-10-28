@@ -21,8 +21,19 @@ from pathlib import Path
 
 import numpy as np
 
-N_GLYPH = 42
+N_GLYPH = 42          # set from <crops>/classes.json when present (digit_op: 10 digits + 5 operators)
 BACK = N_GLYPH
+NAMES: list = []
+ROT_DEG = 180.0
+
+
+def set_classes(crops: Path) -> None:
+    global N_GLYPH, BACK, NAMES
+    p = Path(crops) / "classes.json"
+    if p.exists():
+        NAMES = json.loads(p.read_text())["names"]
+        N_GLYPH = len(NAMES)
+        BACK = N_GLYPH
 
 
 def label_of(r: dict) -> int | None:
@@ -72,7 +83,7 @@ class Crops:
         self.crops, self.rows = crops, rows
         norm = T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         if train:   # tiles lie at any yaw; sizes vary with the view; mild colour change
-            self.tf = T.Compose([T.RandomRotation(180), T.RandomResizedCrop(size, scale=(0.6, 1.0), ratio=(0.8, 1.25)),
+            self.tf = T.Compose([T.RandomRotation(ROT_DEG), T.RandomResizedCrop(size, scale=(0.6, 1.0), ratio=(0.8, 1.25)),
                                  T.ColorJitter(0.25, 0.25, 0.2, 0.02), T.RandomApply([T.GaussianBlur(5, (0.1, 1.5))], p=0.3),
                                  T.ToTensor(), norm])
         else:
@@ -149,6 +160,9 @@ def report(rows, P, margin) -> dict:
 def cmd_train(a):
     import torch
 
+    global ROT_DEG
+    ROT_DEG = a.rot_deg
+    set_classes(Path(a.crops).expanduser())
     VAL_IDS.update(x.strip() for x in (a.val_ids or "").split(",") if x.strip())
     crops, out = Path(a.crops).expanduser(), Path(a.out).expanduser()
     out.mkdir(parents=True, exist_ok=True)
@@ -188,7 +202,7 @@ def cmd_train(a):
         sel = kinds == kind
         per_view[kind] = choose_margin(pred[sel], marg[sel], yv[sel], a.precision) if sel.sum() >= 20 else margin
     torch.save({"state": model.state_dict(), "margin": margin, "margins": per_view, "precision": a.precision,
-                "n_glyph": N_GLYPH, "val_ids": sorted(VAL_IDS)}, out / "model.pt")
+                "n_glyph": N_GLYPH, "names": NAMES or None, "val_ids": sorted(VAL_IDS)}, out / "model.pt")
     (out / "val_report.json").write_text(json.dumps({"margin": margin, "margins": per_view,
                                                      "report": report(va, P, margin)}, indent=1))
     print(f"[kong] margin {margin}, per view {per_view} (val precision target {a.precision}); {time.time() - t0:.0f}s",
@@ -199,6 +213,7 @@ def cmd_eval(a):
     import torch
 
     crops = Path(a.crops).expanduser()
+    set_classes(crops)
     ck = torch.load(Path(a.model).expanduser(), map_location="cpu")
     VAL_IDS.update(ck.get("val_ids") or [])
     model = build_model(pretrained=False)
@@ -228,6 +243,8 @@ def main(argv=None):
     t.add_argument("--batch", type=int, default=128)
     t.add_argument("--lr", type=float, default=1e-3)
     t.add_argument("--precision", type=float, default=0.98)
+    t.add_argument("--rot-deg", type=float, default=180.0,
+                   help="rotation augmentation (digits: small, a 6 turned over is a 9)")
     t.add_argument("--val-ids", default="", help="training layouts (ids 100030-49) moved to val, e.g. 100046,100047,100048")
     e = sub.add_parser("eval")
     e.add_argument("--crops", required=True)

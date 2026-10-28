@@ -88,7 +88,7 @@ def read(views: dict, sm, T: np.ndarray, candidates: list[str], client_=None, he
         # the tile in the jaws (the draw read) has its own, stricter margin when the model carries one
         thr = margins.get(f"held_{kind}", margins.get(kind, 1.0)) if held else margins.get(kind, 1.0)
         top, m, ok, why = decide(P, n_glyph, float(thr))
-        key = None if top == n_glyph else f"Rigid/mahjong/{top:05d}"
+        key = None if top == n_glyph else class_name(r, top)
         if ok and key not in candidates:
             ok, why = False, "not a candidate"
         out["views"][name] = {"class": top, "margin": round(m, 3), "why": why}
@@ -100,6 +100,32 @@ def read(views: dict, sm, T: np.ndarray, candidates: list[str], client_=None, he
         whys = {v["why"] for v in out["views"].values()}
         out["why"] = "back" if whys == {"back"} else ("not a candidate" if "not a candidate" in whys else "low_margin")
     return out
+
+
+def class_name(reply: dict, top: int) -> str:
+    """A class index's name: the model's own names when it carries them (the digit / operator model: "0".."9", "plus",
+    ...), else make_kong's asset key."""
+    names = reply.get("names")
+    return names[top] if names and top < len(names) else f"Rigid/mahjong/{top:05d}"
+
+
+def classify_mask(img: np.ndarray, mask: np.ndarray, view: str = "cam_head", held: bool = False, client_=None) -> dict:
+    """One glyph read of an object outlined by ``mask`` in ``img`` (a detector's / segmenter's mask: no fitted pose
+    needed, e.g. the number tiles B1 has no geometry for). ``view`` picks the margin kind (head / wrist, held_*).
+    Returns {"read", "name", "class", "margin", "why"}; no read below the margin, on a back, or without a server."""
+    c = client_ or client()
+    if c is None:
+        return {"read": False, "why": "no glyph server"}
+    bb = mask_bbox(np.asarray(mask) > 0)
+    if bb is None or int((np.asarray(mask) > 0).sum()) < MIN_PX:
+        return {"read": False, "why": "not visible"}
+    r = c.classify(img, [bb])
+    P, n_glyph, margins = np.asarray(r["probs"][0], float), int(r["n_glyph"]), r["margins"]
+    kind = "head" if view == "cam_head" else "wrist"
+    thr = margins.get(f"held_{kind}", margins.get(kind, 1.0)) if held else margins.get(kind, 1.0)
+    top, m, ok, why = decide(P, n_glyph, float(thr))
+    return {"read": ok, "name": None if top == n_glyph else class_name(r, top), "class": top, "margin": round(m, 3),
+            "why": why}
 
 
 # --------------------------------------------------------------------------------------------
@@ -119,6 +145,7 @@ class _GlyphModel:
         m.load_state_dict(ck["state"])
         self.model = m.eval().to("cuda")
         self.margins = dict(ck.get("margins") or {"head": ck.get("margin", 1.0), "wrist": ck.get("margin", 1.0)})
+        self.names = ck.get("names")
         self.mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).cuda()
         self.std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1).cuda()
         self.timing: dict = {}
@@ -138,7 +165,7 @@ class _GlyphModel:
             p = torch.softmax(self.model(x), 1).cpu().numpy()
         n, tot = self.timing.get("glyph", (0, 0.0))
         self.timing["glyph"] = (n + 1, tot + time.time() - t0)
-        return {"probs": p.tolist(), "n_glyph": self.n_glyph, "margins": self.margins}
+        return {"probs": p.tolist(), "n_glyph": self.n_glyph, "margins": self.margins, "names": self.names}
 
 
 class GlyphClient:
