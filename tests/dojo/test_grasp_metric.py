@@ -137,7 +137,9 @@ def test_episode_events_rebuilds_the_belief():
     rep = {"records": {"initial": rec, "fused": rec},
            "events": [{"kind": "refine", "label": "a", "arm": "left", "for": "pick", "step": 1, "ok": True,
                        "pose7": list(p + [0.004, 0, 0]) + [1, 0, 0, 0]},
-                      {"kind": "belief_drop", "label": "a", "step": 6, "z": 0.7801}]}
+                      {"kind": "belief_drop", "label": "a", "step": 6, "z": 0.7801},
+                      {"kind": "post_place", "label": "b", "step": 6, "ok": True, "from": [0.3, 0.3, 0.78],
+                       "to": [0.31, 0.3, 0.78]}]}
     evs = gm.episode_events(rep, acts, kin)
     kinds = [(e.kind, e.target, e.step) for e, _ in evs]
     assert kinds == [("grasp", "a", 3), ("place", "a", 6)]
@@ -150,6 +152,9 @@ def test_episode_events_rebuilds_the_belief():
     gt = [_row("a", list(np.asarray(bp["a"]["pos"]))), _row("b", (0.3, 0.3, 0.78), idx=1)]
     assert gm.score_event(pl, bp, gt, "t", tol=TOL)["clean_required"]
     s = gm.summarize([{**gm.score_event(g, bg, gt, "t", tol=TOL)}, gm.score_event(pl, bp, gt, "t", tol=TOL)])
+    bt = gm.BeliefTracker(rep, acts, kin)
+    bt.advance(6)
+    assert bt.belief["b"]["pos"] == [0.31, 0.3, 0.78] and bt.belief["b"]["source"] == "post_place"
     assert s["events"] == 2 and s["grasp"] == 1 and s["place"] == 1
 
 

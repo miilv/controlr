@@ -552,6 +552,10 @@ class BeliefTracker:
                 pass                        # pending: the next refine of the label confirms or reverts it
         elif k == "post_place" and lab in self.belief and e.get("ok") and e.get("pose7") is not None:
             self.belief[lab].update(pos=list(e["pose7"][:3]), quat=list(e["pose7"][3:7]), source="post_place")
+        elif k == "post_place" and lab in self.belief and e.get("ok") and e.get("to") is not None:
+            # RuntimeProvider logs a post-place move as from / to positions (its new orientation is not logged; W,
+            # 2026-10-28: P3r3 hang_mugs 100000 mug1 moved 18 mm, the rebuild kept the released pose)
+            self.belief[lab].update(pos=[float(v) for v in e["to"]][:3], source="post_place")
         elif k == "belief_drop" and lab in self.belief and e.get("z") is not None:
             self.belief[lab]["pos"][2] = float(e["z"])
         elif k in ("held_look", "grip_check") and e.get("dropped") and e.get("arm") in self.attached:
