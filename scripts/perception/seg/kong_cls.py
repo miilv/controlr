@@ -104,8 +104,13 @@ def choose_margin(pred, marg, y, precision: float) -> float:
     return 1.0
 
 
-def report(rows, P, margin: float) -> dict:
+def report(rows, P, margin) -> dict:
+    """Per view type: top-1, the read rate and the precision among reads. ``margin``: one value or {"head", "wrist"}."""
     pred, marg = margins(P)
+    if isinstance(margin, dict):
+        thr = np.array([margin["head" if r["view"] == "cam_head" else "wrist"] for r in rows])
+    else:
+        thr = np.full(len(rows), float(margin))
     y = np.array([label_of(r) for r in rows])
     groups = defaultdict(list)
     for i, r in enumerate(rows):
@@ -116,7 +121,7 @@ def report(rows, P, margin: float) -> dict:
     for k, idx in sorted(groups.items()):
         idx = np.array(idx)
         acc = float((pred[idx] == y[idx]).mean())
-        read = marg[idx] >= margin
+        read = marg[idx] >= thr[idx]
         out[f"{k[0]}|{k[1]}"] = {"n": int(len(idx)), "top1": round(acc, 3), "read": round(float(read.mean()), 3),
                                  "read_right": round(float((pred[idx][read] == y[idx][read]).mean()) if read.any() else 0.0, 3)}
     return out
@@ -154,10 +159,19 @@ def cmd_train(a):
         print(f"[kong] epoch {ep + 1}/{a.epochs} loss {tot / len(dl):.3f} val top1 {acc:.3f} ({time.time() - t0:.0f}s)", flush=True)
     P = predict(model, Crops(crops, va, False), dev)
     pred, marg = margins(P)
-    margin = choose_margin(pred, marg, np.array([label_of(r) for r in va]), a.precision)
-    torch.save({"state": model.state_dict(), "margin": margin, "precision": a.precision, "n_glyph": N_GLYPH}, out / "model.pt")
-    (out / "val_report.json").write_text(json.dumps({"margin": margin, "report": report(va, P, margin)}, indent=1))
-    print(f"[kong] margin {margin} (val precision target {a.precision}); {time.time() - t0:.0f}s", flush=True)
+    yv = np.array([label_of(r) for r in va])
+    margin = choose_margin(pred, marg, yv, a.precision)
+    # per view kind (the runtime reads head and wrist crops): its own margin when val has >= 20 crops of it
+    per_view = {}
+    for kind in ("head", "wrist"):
+        sel = np.array([(r["view"] == "cam_head") == (kind == "head") for r in va])
+        per_view[kind] = choose_margin(pred[sel], marg[sel], yv[sel], a.precision) if sel.sum() >= 20 else margin
+    torch.save({"state": model.state_dict(), "margin": margin, "margins": per_view, "precision": a.precision,
+                "n_glyph": N_GLYPH}, out / "model.pt")
+    (out / "val_report.json").write_text(json.dumps({"margin": margin, "margins": per_view,
+                                                     "report": report(va, P, margin)}, indent=1))
+    print(f"[kong] margin {margin}, per view {per_view} (val precision target {a.precision}); {time.time() - t0:.0f}s",
+          flush=True)
 
 
 def cmd_eval(a):
@@ -170,8 +184,9 @@ def cmd_eval(a):
     model = model.to("cuda")
     rows = load_rows(crops, a.split)
     P = predict(model, Crops(crops, rows, False), "cuda")
-    rep = report(rows, P, ck["margin"])
-    print(f"split {a.split}, margin {ck['margin']} (chosen on val for precision {ck['precision']})")
+    mv = ck.get("margins") or {"head": ck["margin"], "wrist": ck["margin"]}
+    rep = report(rows, P, mv)
+    print(f"split {a.split}, margins {mv} (chosen on val for precision {ck['precision']})")
     print("| view (pose) | tiles | n | top-1 | read (margin) | right among read |")
     print("|---|---|---|---|---|---|")
     for k, v in rep.items():
