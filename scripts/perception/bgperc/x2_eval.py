@@ -422,7 +422,9 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print, allow_no_prob
     revs = sorted((e for e in report.get("events") or [] if isinstance(e.get("step"), (int, float))),
                   key=lambda e: e["step"])
     rb = WR.RecordedBelief(report, actions, revs)
-    if not rb.snaps and not allow_no_probe:
+    if not rb.snaps and not allow_no_probe and grip_events(actions):
+        # (no snapshot and no gripper change: an episode that never grasped, e.g. stopped at planning, has no jaws to
+        # know and no grasp / place to score)
         raise ValueError(f"{seq.dir.name}: no dev_belief_probe (rt = the recorded belief needs it)")
     kin, fp = rb.kin, Footprints()
     world = ArmWorld(rb, rb.track, cfg, report)
