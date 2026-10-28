@@ -264,6 +264,11 @@ class RuntimeConfig:
     # | drop (apply, and phantom neighbours / references leave the belief). Runs before the target's own refine
     wrist_check: str = "off"
     wrist_check_cfg: dict = field(default_factory=dict)  # CheckConfig overrides (e.g. {"embed_model": "dinov2_b"})
+    # a held_look "not held" resting on the jaw opening alone, for an object whose narrowest extent is below the opening's
+    # resolution (``j1_adapter.opening_resolution_gap``: 10.8 mm at a full close): off (today: it drops the grasp) | on
+    # (unknown: the object stays in the jaws; the place / post-place checks decide). 5.1 deposit_coin 100000 / 03: the
+    # 1.9 mm coin held at the handover pose read "closed on nothing", and the skill opened the jaws
+    held_thin: str = "off"
     held_drop_conf: float = 0.9         # a held_look "not held" at this confidence drops the grasp unless the head check sees
                                         # the object in the jaws (before: only when the head also saw it at the pick pose,
                                         # which kept 51 of 52 truly empty grasps on the proxy); > 1 = the old rule
@@ -306,6 +311,11 @@ class RuntimeConfig:
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
     belt_wrist_veto: str = "off"
+    # the pick hover of an object the task config pins in a support slot (deposit_coin's coin in its stand,
+    # ``dojo.perception.slot_read``): off (today: the object's own wrist refine) | on (base + object fitted together
+    # from the wrist frame over the base's whole yaw period; when ok, both poses are written and the refine is skipped.
+    # 5.1 camera rows: a stand yaw read 48 deg off turned the coin with it, and its 2 mm disc never refines)
+    slot_read: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -397,7 +407,8 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
-                or self.cfg.belt_wrist_veto not in ("off", "on")
+                or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
+                or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full")
                 or self.cfg.joint_limits not in ("wide", "measured")
@@ -585,6 +596,7 @@ class RuntimePolicy:
         if cfg.mode == "perception" and cfg.held_look != "off":
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
             prov.held_drop_conf = float(cfg.held_drop_conf)
+            prov.held_thin = cfg.held_thin
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         prov.confirm_wrists = bool(cfg.confirm_wrists)
         prov.fallen_check = bool(cfg.fallen_check)
@@ -933,6 +945,10 @@ class RuntimePolicy:
             others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
             objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos],
                      "quat": [float(v) for v in x.quat]} for x in [o] + others]
+        if self.cfg.slot_read == "on" and kind == "pick":
+            done = self._slot_read(prov, sk, label, arm, obs)
+            if done is not None:
+                return done
         idv = None
         if self.cfg.refine_identity and kind == "pick":
             # perception's instruction-ranked candidates for this label (general_pickup's target), else the
@@ -1113,6 +1129,37 @@ class RuntimePolicy:
         if r.get("yaw_source"):
             out["yaw_source"] = r["yaw_source"]
         return out
+
+    def _slot_read(self, prov, sk, label: str, arm: str, obs: dict) -> dict | None:
+        """``RuntimeConfig.slot_read``: ``label``, pinned in a support slot of another believed object and still in it,
+        read with its base from the pick hover's wrist frame (perception service ``slot_read``). An ok read writes both
+        poses and replaces the refine ({label: (pos, quat)}); otherwise None (the usual refine follows)."""
+        objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos],
+                 "quat": [float(v) for v in x.quat]} for x in prov.belief.objects.values()]
+        try:
+            r = self.perception().slot_read(obs, prov.task, label, objs, arm)
+        except Exception as e:  # noqa: BLE001 (a failed read leaves the refine as today)
+            self.report["events"].append({"kind": "slot_read", "label": label, "step": self.bridge.steps_used,
+                                          "error": f"{type(e).__name__}: {e}"[:200]})
+            return None
+        if not r.get("applicable"):
+            return None
+        o, b = prov.belief.objects.get(label), prov.belief.objects.get(r.get("base_label"))
+        ev = {"kind": "slot_read", "label": label, "base": r.get("base_label"), "arm": arm, "step": self.bridge.steps_used,
+              **{k: r.get(k) for k in ("ok", "why", "iou", "yaw_margin", "visible_frac", "moved_mm", "turned_deg", "time_s")},
+              "prior7": None if o is None else [round(float(v), 4) for v in np.r_[o.pos, o.quat]]}
+        self.report["events"].append(ev)
+        if not r.get("ok") or o is None or b is None:
+            ev["applied"] = False
+            return None
+        cp, bp = r["child_pose"], r["base_pose"]
+        o.pos, o.quat = np.asarray(cp[:3], float), np.asarray(cp[3:], float)
+        b.pos, b.quat = np.asarray(bp[:3], float), np.asarray(bp[3:], float)
+        ev.update(applied=True, pose7=[round(float(v), 4) for v in cp])
+        prov.stats["slot_read"] = prov.stats.get("slot_read", 0) + 1
+        if sk is not None:
+            sk.last_refine = {"ok": True, "iou": r.get("iou"), "label": label, "for": "pick", "via": "slot_read"}
+        return {label: (o.pos.copy(), o.quat.copy())}
 
     def _wrist_check(self, prov, obs: dict, label: str, arm: str, kind: str, held, held_label) -> dict | None:
         """The grasp-time wrist check (``RuntimeConfig.wrist_check``) on this hover's frame: verdicts for ``label``

@@ -16,6 +16,10 @@ Ops (request dicts):
     {"op": "release_read", "frame": frame, "key", "pose7", "arm", "others": [[key, pose7]], "cfg"}
                                                                                    -> {"release_read": json}
         the 6-DoF pose of an object right after the release (``dojo.perception.release_read``): ok, pose7, ious, ...
+    {"op": "slot_read", "frame": frame, "task", "label", "objects": [{label, key, pos, quat}], "arm", "cfg"}
+                                                                                   -> {"slot_read": json}
+        an object pinned in a support slot (deposit_coin's coin in its stand) at its pick hover: base + child fitted
+        together from the wrist frame (``dojo.perception.slot_read``): applicable, ok, base_pose, child_pose, iou, ...
     {"op": "redetect", "frame": frame, "req": dojo.runtime.tick.build_request(...), "cfg"} -> {"redetect": json}
         A1's tick perception (``dojo.perception.redetect``): segmenter detections on all cameras, association with the
         belief, pose hypotheses for the active objects, corridor additions, lift identity (no writes: the runtime decides)
@@ -204,6 +208,14 @@ class PerceptionClient:
         req = {"op": "release_read", "frame": encode_frame(frame), "key": key, "pose7": [float(v) for v in pose7],
                "arm": arm, "others": [[k, [float(v) for v in p]] for k, p in others or ()], "cfg": cfg or {}}
         return json.loads(self._call(req)["release_read"])
+
+    def slot_read(self, frame: dict, task: str, label: str, objects: list[dict], arm: str,
+                  cfg: dict | None = None) -> dict:
+        """``label`` pinned in a support slot of another believed object, read at its pick hover from ``arm``'s wrist
+        (``dojo.perception.slot_read.slot_read_for``): {"applicable", "ok", "base_label", "base_pose", "child_pose", ...}."""
+        req = {"op": "slot_read", "frame": encode_frame(frame), "task": task, "label": label, "objects": objects,
+               "arm": arm, "cfg": cfg or {}}
+        return json.loads(self._call(req)["slot_read"])
 
     def redetect(self, frame: dict, req: dict, cfg: dict | None = None) -> dict:
         """A1's tick perception (``dojo.perception.redetect``): the twin segmenter on all cameras (``DOJO_SEG_ADDR``),
@@ -955,6 +967,11 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         rr = release_read(decode_frame(req["frame"]), req["key"], req["pose7"], req["arm"],
                                           others=[(k, p) for k, p in req.get("others") or ()], cfg=req.get("cfg"))
                         conn.send({"ok": True, "release_read": json.dumps(rr, default=_default)})
+                    elif op == "slot_read":
+                        from dojo.perception.slot_read import slot_read_for
+                        sr = slot_read_for(decode_frame(req["frame"]), req["task"], req["label"], req["objects"],
+                                           req["arm"], req.get("cfg"))
+                        conn.send({"ok": True, "slot_read": json.dumps(sr, default=_default)})
                     elif op == "redetect":
                         from dojo.perception import seg_twin
                         from dojo.perception.redetect import DetSource, RDConfig, redetect
