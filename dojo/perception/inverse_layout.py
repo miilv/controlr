@@ -3125,7 +3125,7 @@ class EstimatorConfig:
     # DINOv2 feature distance of the object at its pose + the learned height check; mv3d server). Annotation
     # (_perception.b1_doubt); consumers: the agentic gate (AGENTIC_DOUBT_RISK) and the look macro (look_doubt)
     b1_doubt: bool = False
-    doubt_feat_d: float = 0.55
+    doubt_feat_d: float = 0.6   # frame 0, 1016 B1 objects: d > 0.6 or |dh| > 15 mm flags 67 / 95 wrong ones, 7.7 % of right
     doubt_dh_mm: float = 15.0
     doubt_mode: str = "or"
     # fm_refine: the continuous feature-metric stage (research R3) for Rigid objects whose feature distance (b1_doubt's

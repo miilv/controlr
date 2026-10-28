@@ -105,7 +105,7 @@
   not resolve thin parts (the coin stand, ~11 px in the head): keep `stereo_reject="slot_bases"` on the scan-pose sweep.
   Not measured: the belt, the scan / look frames, timing inside the service.
 - [ ] **dojo perception: `b1_doubt` (appearance + height doubt per B1 object) needs a rendered A/B through its consumers.**
-  Offline, frame 0: the OR rule (feature distance > 0.55 or |dh| > 15 mm) flags 61 of 95 wrong B1 objects at 8.6 % false
+  Offline, frame 0: the OR rule (feature distance > 0.6 or |dh| > 15 mm) flags 67 of 95 wrong B1 objects at 7.7 % false
   flags on right ones; today's agentic gate says "b1_confident" exactly when B1 is confidently wrong. Arms: perception
   `{"b1_doubt": true}` + `mv3d serve` (VGGT + DINOv2-B on one GPU), then `AGENTIC_DOUBT_RISK=0.5` (gate + risky_b1) and
   / or `RuntimeConfig.look_doubt`. Not built: "near the next grasp / place" (the look macro runs before the first skill;
