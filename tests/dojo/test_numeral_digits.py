@@ -104,3 +104,12 @@ def test_the_arm_mask_goes_to_a_reader_that_takes_it(monkeypatch):
     views = {"cam_head": SimpleNamespace(cam=None, img=None, known=None, robot=np.ones((4, 4), np.uint8))}
     il._glyph_read_numeral(h, views)
     assert seen and seen[0].dtype == bool and h.per_view["glyph_read"]["why"] == "robot"
+
+
+def test_the_report_keeps_the_digit_fields():
+    from dojo.runtime.policy import _slim
+    rec = {"Rigid": {"number": [{"label": "num_3", "_perception": {
+        "confidence": 0.8, "digit": 3, "digit_conf": 1.0, "digit_source": "glyph", "glyph_read": {"read": True},
+        "texture": {"big": "diagnostic"}}}]}}
+    p = _slim(rec)["Rigid"]["number"][0]["_perception"]
+    assert p == {"confidence": 0.8, "digit": 3, "digit_conf": 1.0, "digit_source": "glyph", "glyph_read": {"read": True}}
