@@ -4,7 +4,8 @@
 **Required objects**: the grasp target (for a place: the held object) and, for a place, its reference (the support /
 container / slot / stacked base under it). **Neighbours**: every GT object whose footprint lies within ``R`` (xy) of
 the approach corridor (the grasp / place point plus the last ``CORRIDOR_M`` of the TCP's path before it). **Phantoms**:
-believed objects within ``R`` of the corridor that match no GT object.
+believed objects within ``R`` of the corridor that match no GT object (``PHANTOM_MM`` from every one, and not
+matched to a neighbour).
 **Clean** = required objects within the task's tolerance (``eval_g1.TOLERANCE``; 15 mm where none) with the right
 identity; neighbours found within ``NEIGHBOUR_MM``; no phantom. Score = clean events / events.
 
@@ -15,8 +16,9 @@ Two layers:
   ``gt`` = list of GT rows (``objects_gt``: label, type, category, category_idx, pos, quat, clutter; root frames are
   converted with ``artroot.row_to_asset``), ``event`` = {"kind": "grasp" | "place", "target", "reference",
   "point", "corridor"} (``Event``).
-* ``episode_events(report, actions)``: the runtime's OWN belief at each grasp / release of a saved integ episode,
-  rebuilt from its report (the planning record, then every logged refine / held / drop / post-place update) and its
+* ``episode_events(report, actions)``: the runtime's OWN belief at each grasp / release of a saved integ episode:
+  the report's ``dev_belief_probe`` snapshot where the run has one (``dojo.runtime.eval.BeliefProbe``), else rebuilt
+  from its report (the planning record, then every logged refine / held / drop / post-place update) and its
   executed actions (jaws from the gripper commands, the TCP from the commanded joints: what was attached where).
   GT comes from a physics-only replay of the same actions (``scripts/perception/m95_replay.py``).
 
@@ -31,7 +33,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 ARMS = ("left", "right")
-CLOSE_BELOW = 0.5           # a closing command below half open closes the jaws (dojo.runtime.eval.GTProbe's rule)
+CLOSE_BELOW = 0.5           # a closing command below half open closes the jaws
 OPEN_EPS = 0.01             # a command this much above the previous one, jaws closed: the jaws open (a release)
 CORRIDOR_M = 0.10           # m: the last approach segment, as TCP path length before the event
 NEIGHBOUR_MM = 15.0         # mm: a neighbour is found when a believed object is this close (collision-safe)
@@ -39,17 +41,19 @@ DEFAULT_TOL_MM = 15.0       # mm: tasks with no positional tolerance in eval_g1.
 ATTRIB_M = 0.06             # m: a close / release with no logged refine is attributed to the believed object this near
 RADII = (0.05, 0.10, 0.15)  # m: the R values reported
 IGNORE_LABELS = {"camera_stand"}   # GT fixtures perception never estimates (dojo.runtime.eval.perception_eval)
+PHANTOM_MM = 50.0           # mm: a believed object this far from every GT object is a phantom (nearer: a pose error)
 NOT_HELD_MM = 30.0          # mm: a held object that moved this far relative to the TCP since its grasp is not in the jaws
 
 
 # ---------------------------------------------------------------------------------------------------------- events
 def grip_events(actions: list[dict]) -> list[dict]:
     """[{"kind": "grasp" | "release", "step": k, "arm"}] from the commanded grippers; ``step`` is the 1-based index of
-    the action that closes / opens (the state before it is the replay's frame ``k - 1``). A close is the first
-    command below ``CLOSE_BELOW`` that closes further, with the jaws not already closed (``GTProbe.on_action``); a
-    release is the first command that opens them again."""
+    the action that closes / opens (the state before it is the replay's frame ``k - 1``). A grasp is the LAST closing
+    command (below ``CLOSE_BELOW``) before the jaws open again: a pre-shape on the approach (hang_mugs' wall grasp
+    1.0 -> 0.43, then 0.0 at the real close) is not the grasp (stream C, 2026-10-28; ``GTProbe``'s first-close rule
+    takes the pre-shape). A release is the first command that opens the jaws after a grasp."""
     g = {a: 1.0 for a in ARMS}
-    closed = {a: False for a in ARMS}
+    pending: dict = {a: None for a in ARMS}         # the latest closing command of the current closing run
     out = []
     for k, a in enumerate(actions, 1):
         for arm in ARMS:
@@ -57,14 +61,16 @@ def grip_events(actions: list[dict]) -> list[dict]:
             if key not in a:
                 continue
             v = float(np.asarray(a[key], float).reshape(-1)[0])
-            if v < CLOSE_BELOW and v < g[arm] - 1e-6 and not closed[arm]:
-                closed[arm] = True
-                out.append({"kind": "grasp", "step": k, "arm": arm})
-            elif closed[arm] and v > g[arm] + OPEN_EPS:
-                closed[arm] = False
+            if v < CLOSE_BELOW and v < g[arm] - 1e-6:
+                pending[arm] = k
+            elif pending[arm] is not None and v > g[arm] + OPEN_EPS:
+                out.append({"kind": "grasp", "step": pending[arm], "arm": arm})
                 out.append({"kind": "release", "step": k, "arm": arm})
+                pending[arm] = None
             g[arm] = v
-    return out
+    out += [{"kind": "grasp", "step": k, "arm": arm} for arm, k in pending.items() if k is not None]
+    order = {"release": 0, "grasp": 1}              # same step: a hand opens before another closes
+    return sorted(out, key=lambda e: (e["step"], order[e["kind"]], ARMS.index(e["arm"])))
 
 
 def tcp_track(actions: list[dict], kin=None) -> dict[str, list]:
@@ -225,6 +231,16 @@ class Footprints:
             self._V[key] = V
         return self._V[key]
 
+    def centre(self, key: str | None, pos, quat) -> np.ndarray:
+        """World position of the asset's bbox centre (its body, not its origin: a 180-degree flip of an off-centre
+        origin is a rotation error, not a 50 mm one); the origin without a mesh."""
+        V = self.verts(key) if key else None
+        p = np.asarray(pos, float)[:3]
+        if V is None or quat is None:
+            return p
+        c = (V.min(0) + V.max(0)) / 2
+        return p + _quat_R(quat) @ c
+
     def polygon(self, key: str | None, pos, quat) -> np.ndarray:
         V = self.verts(key) if key else None
         if V is None or quat is None:
@@ -322,30 +338,32 @@ class Event:
 
 def score_required(label: str | None, belief: dict, gts: list[dict], groups: Groups, tol, role: str) -> dict:
     """One required object: the believed pose vs the nearest GT object of its group (interchangeable labels: what the
-    jaws meet). Class: ok | identity (right place, wrong asset) | wrong_object (on another object, not one of its
-    group) | overshoot (tol < xy <= max(15, 2 tol)) | gross | rot | not_believed (no such object in the belief)."""
+    jaws meet). Class: ok | identity (right place, wrong asset) | wrong_object (gross for its own object and within
+    tolerance of another one, not of its group) | overshoot (tol < xy <= max(15, 2 tol)) | gross | rot | not_believed (no such object in the belief)."""
     t_tol, r_tol = tol
     out = {"role": role, "label": label}
     b = belief.get(label) if label else None
     if b is None or b.get("pos") is None:
         out.update(cls="not_believed", ok=False)
         return out
-    bp = np.asarray(b["pos"], float)
+    bp = np.asarray(b.get("c", b["pos"]), float)
     g_lab = groups.of(label)
     same = [g for g in gts if groups.of(g["label"]) == g_lab]
-    near_any = min(gts, key=lambda g: float(np.linalg.norm(np.asarray(g["pos"])[:2] - bp[:2])), default=None)
+    gc = lambda g: np.asarray(g.get("c", g["pos"]), float)   # noqa: E731
+    near_any = min(gts, key=lambda g: float(np.linalg.norm(gc(g)[:2] - bp[:2])), default=None)
     if not same:
         out.update(cls="no_gt", ok=False)
         return out
-    g = min(same, key=lambda g: float(np.linalg.norm(np.asarray(g["pos"])[:2] - bp[:2])))
-    d = (bp - np.asarray(g["pos"], float)) * 1000
+    g = min(same, key=lambda g: float(np.linalg.norm(gc(g)[:2] - bp[:2])))
+    d = (bp - gc(g)) * 1000
     xy = float(np.linalg.norm(d[:2]))
     rot = _rot_err(g.get("key"), b.get("quat"), g.get("quat")) if r_tol else None
     out.update(gt_label=g["label"], xy_mm=round(xy, 1), dz_mm=round(float(d[2]), 1),
-               rot_deg=None if rot is None else round(rot, 1), key=b.get("key"), gt_key=g.get("key"))
+               rot_deg=None if rot is None else round(rot, 1), key=b.get("key"), gt_key=g.get("key"),
+               source=b.get("source"), perc=b.get("perc"))
     if near_any is not None and groups.of(near_any["label"]) != g_lab:
-        dn = float(np.linalg.norm(np.asarray(near_any["pos"])[:2] - bp[:2])) * 1000
-        if dn <= t_tol and xy > t_tol:
+        dn = float(np.linalg.norm(gc(near_any)[:2] - bp[:2])) * 1000
+        if dn <= t_tol and xy > max(15.0, 2 * t_tol):   # gross for its own object, on another one: a mix-up
             out.update(cls="wrong_object", ok=False, on=near_any["label"], on_mm=round(dn, 1))
             return out
     if xy > max(15.0, 2 * t_tol):
@@ -379,6 +397,9 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
     gts = [g for g in (gt if gt_asset_frame else gt_rows_asset(gt)) if g.get("label") not in IGNORE_LABELS]
     if not include_clutter:
         gts = [g for g in gts if not g.get("clutter")]
+    gts = [{**g, "c": footprints.centre(g.get("key"), g["pos"], g.get("quat"))} for g in gts]
+    belief = {lab: ({**b, "c": footprints.centre(b.get("key"), b["pos"], b.get("quat"))} if b.get("pos") is not None else b)
+              for lab, b in belief.items()}
     path = np.asarray(ev.corridor if len(ev.corridor) else [ev.point], float).reshape(-1, 3)
     req = [score_required(ev.target, belief, [g for g in gts if not g.get("clutter")], groups, tol,
                           "target" if ev.kind == "grasp" else "held")]
@@ -396,32 +417,34 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
             continue
         poly = footprints.polygon(g.get("key"), g["pos"], g.get("quat"))
         neigh.append({"label": g["label"], "key": g.get("key"), "clutter": bool(g.get("clutter")),
-                      "dist_m": round(footprint_dist(poly, path), 4), "pos": [round(float(v), 4) for v in g["pos"]]})
+                      "dist_m": round(footprint_dist(poly, path), 4), "pos": [round(float(v), 4) for v in g["c"]]})
     cand_b = {lab: b for lab, b in belief.items() if lab not in used_b and b.get("pos") is not None}
     # match neighbours to believed objects (any label: collision safety is geometric), nearest first, 3-D distance
-    pairs = sorted(((float(np.linalg.norm(np.asarray(b["pos"], float) - np.asarray(n["pos"], float))), i, lab)
+    pairs = sorted(((float(np.linalg.norm(np.asarray(b["c"], float) - np.asarray(n["pos"], float))), i, lab)
                     for i, n in enumerate(neigh) for lab, b in cand_b.items()))
     taken_n, taken_b = set(), set()
     for d, i, lab in pairs:
         if i in taken_n or lab in taken_b:
             continue
-        xy = float(np.linalg.norm(np.asarray(cand_b[lab]["pos"], float)[:2] - np.asarray(neigh[i]["pos"])[:2])) * 1000
+        xy = float(np.linalg.norm(np.asarray(cand_b[lab]["c"], float)[:2] - np.asarray(neigh[i]["pos"])[:2])) * 1000
         if xy > max(3 * neighbour_mm, 60.0):
             continue
         taken_n.add(i)
         taken_b.add(lab)
         neigh[i].update(belief_label=lab, xy_mm=round(xy, 1),
-                        dz_mm=round((float(cand_b[lab]["pos"][2]) - neigh[i]["pos"][2]) * 1000, 1))
+                        dz_mm=round((float(cand_b[lab]["c"][2]) - neigh[i]["pos"][2]) * 1000, 1))
     for n in neigh:
         n["found"] = n.get("xy_mm") is not None and n["xy_mm"] <= neighbour_mm
     # phantoms: believed objects near the corridor that sit on no GT object
     phant = []
     for lab, b in cand_b.items():
-        bp = np.asarray(b["pos"], float)
-        dmin = min((float(np.linalg.norm(np.asarray(g["pos"])[:2] - bp[:2])) * 1000 for g in gts), default=1e9)
-        if dmin <= max(neighbour_mm, tol[0]):
+        if lab in taken_b:                          # matched to a GT neighbour: its error counts there, once
             continue
-        poly = footprints.polygon(b.get("key"), bp, b.get("quat"))
+        bp = np.asarray(b["c"], float)
+        dmin = min((float(np.linalg.norm(np.asarray(g["c"])[:2] - bp[:2])) * 1000 for g in gts), default=1e9)
+        if dmin <= max(PHANTOM_MM, tol[0]):
+            continue
+        poly = footprints.polygon(b.get("key"), b["pos"], b.get("quat"))
         phant.append({"label": lab, "key": b.get("key"), "dist_m": round(footprint_dist(poly, path), 4),
                       "nearest_gt_mm": round(dmin, 1), "pos": [round(float(v), 4) for v in bp]})
     out = {"kind": ev.kind, "step": ev.step, "arm": ev.arm, "target": ev.target, "reference": ev.reference,
@@ -453,10 +476,13 @@ def flatten_record(rec: dict | None) -> dict:
             for r in lst or []:
                 if not r.get("label") or r.get("default_pos") is None:
                     continue
+                pp = r.get("_perception") or {}
                 out[r["label"]] = {"key": f"{typ}/{cat}/{int(r.get('category_idx', 0)):05d}",
                                    "pos": [float(v) for v in r["default_pos"]][:3],
                                    "quat": [float(v) for v in (r.get("default_ori") or [1, 0, 0, 0])][:4],
-                                   "type": typ, "source": "record"}
+                                   "type": typ, "source": "record",
+                                   "perc": {k: pp[k] for k in ("confidence", "occluded", "hidden_frac", "ambiguous", "source")
+                                            if pp.get(k) is not None}}
     return out
 
 
@@ -562,67 +588,99 @@ class BeliefTracker:
         return best[1] if best and best[0] <= ATTRIB_M * (1.5 if below_of is not None else 1.0) else None
 
 
+def probe_belief(snap: dict, track: dict, step: int, kin) -> dict:
+    """A ``dev_belief_probe`` snapshot (``dojo.runtime.eval.BeliefProbe``) as a belief after ``step`` actions: the
+    provider's objects, an attached one carried from the joints the belief last stepped to the commanded TCP now."""
+    b = {lab: {**o, "source": f"probe_{o.get('source')}"} for lab, o in (snap.get("objects") or {}).items()}
+    for arm, lab in (snap.get("attached") or {}).items():
+        if lab not in b or arm not in (snap.get("q") or {}):
+            continue
+        T0 = kin.tcp(arm, np.asarray(snap["q"][arm], float))
+        T1 = np.asarray(track[arm][min(step, len(track[arm]) - 1)], float)
+        T = T1 @ np.linalg.inv(T0) @ pose_T(b[lab]["pos"], b[lab]["quat"])
+        b[lab] = {**b[lab], "pos": T[:3, 3].tolist(), "quat": _R_quat(T[:3, :3]).tolist(), "source": "probe_held"}
+    return b
+
+
 def episode_events(report: dict, actions: list[dict], kin=None) -> list[tuple[Event, dict]]:
     """(event, belief) at every grasp / place of an episode, from the runtime's own logs. A close with no logged pick
     refine of that arm since its last grip event is attributed to the believed object nearest the TCP (within
     ``ATTRIB_M``), else it is not a grasp (a press with closed jaws: kind ``close_other``). A release of an arm with
     nothing attached in the belief is ``release_other``."""
+    if kin is None:
+        from dojo.skills.kinematics import X5Kin
+        kin = X5Kin()
     bt = BeliefTracker(report, actions, kin)
+    snaps = {int(x["step"]): x for x in ((report.get("dev_belief_probe") or {}).get("snaps") or [])}
     out = []
     last_grip = {a: 0 for a in ARMS}
+
+    def belief_at(j: int) -> tuple[dict, str]:
+        sn = snaps.get(j)
+        return (probe_belief(sn, bt.track, j, kin), "probe") if sn is not None else (bt.snapshot(j), "rebuilt")
+
     for ge in grip_events(actions):
         k, arm = ge["step"], ge["arm"]
         bt.advance(k - 1)
         Tk = bt.T(arm, k)
         pt = Tk[:3, 3]
         cor = corridor(bt.track[arm], k)
-        meta = {"record": bt.record, "after_divergence": bt.diverged_at is not None and bt.diverged_at <= k}
+        belief, src = belief_at(k - 1)
+        sn = snaps.get(k - 1)
+        meta = {"record": bt.record, "belief": src,
+                "after_divergence": bt.diverged_at is not None and bt.diverged_at <= k}
         if ge["kind"] == "grasp":
             lr = bt.last_refine.get((arm, "pick"))
             held_now = {v[0] for v in bt.attached.values()}
+            if sn is not None:
+                held_now = set((sn.get("attached") or {}).values())
             if lr and lr[0] >= last_grip[arm] and lr[1] not in held_now:
                 lab, how = lr[1], "refine"
             else:
-                snap = bt.snapshot(k)
                 cand = None
-                for lab_, o in snap.items():
-                    if lab_ in held_now and arm in bt.attached and bt.attached[arm][0] == lab_:
+                for lab_, o in belief.items():
+                    if lab_ in held_now or o.get("pos") is None:
                         continue
                     d = float(np.linalg.norm(np.asarray(o["pos"], float) - pt))
                     if cand is None or d < cand[0]:
                         cand = (d, lab_)
                 lab, how = (cand[1], "nearest") if cand and cand[0] <= ATTRIB_M else (None, None)
-            belief = bt.snapshot(k - 1)
             if lab is None:
                 out.append((Event("close_other", None, pt.tolist(), cor.tolist(), step=k, arm=arm, meta=meta), belief))
             else:
                 meta["attributed"] = how
                 out.append((Event("grasp", lab, pt.tolist(), cor.tolist(), step=k, arm=arm, meta=meta), belief))
-                o = bt.snapshot(k - 1).get(lab)
+                o = bt.snapshot(k - 1).get(lab) or belief.get(lab)
                 if o is not None:
                     for a2 in list(bt.attached):    # a handover: the giver's object is the taker's now
                         if bt.attached[a2][0] == lab:
                             bt.attached.pop(a2)
                     pre = (list(o["pos"]), list(o["quat"]))
                     bt.attached[arm] = (lab, np.linalg.inv(Tk) @ pose_T(o["pos"], o["quat"]), pre)
+                    bt.belief.setdefault(lab, {**o})
         else:
-            if arm not in bt.attached:
-                out.append((Event("release_other", None, pt.tolist(), cor.tolist(), step=k, arm=arm, meta=meta),
-                            bt.snapshot(k - 1)))
+            held = (sn.get("attached") or {}).get(arm) if sn is not None else None
+            if held is None and arm in bt.attached:
+                held = bt.attached[arm][0]
+            if held is None:
+                out.append((Event("release_other", None, pt.tolist(), cor.tolist(), step=k, arm=arm, meta=meta), belief))
             else:
-                lab, p, q = bt.held_pose(arm, k)
+                lab = held
+                if src == "rebuilt" or lab not in belief:
+                    _, p, q = bt.held_pose(arm, k) if arm in bt.attached else (lab, belief[lab]["pos"], belief[lab]["quat"])
+                else:
+                    p, q = belief[lab]["pos"], belief[lab]["quat"]
                 lr = bt.last_refine.get((arm, "place"))
                 if lr and lr[0] >= last_grip[arm] and lr[1] != lab:
                     ref, how = lr[1], "refine"
                 else:
                     ref, how = bt.nearest(p, exclude={lab}, below_of=p), "nearest"
                 meta.update(attributed_ref=how if ref else None)
-                belief = bt.snapshot(k - 1)
                 out.append((Event("place", lab, pt.tolist(), cor.tolist(), reference=ref, step=k, arm=arm, meta=meta),
                             belief))
-                bt.attached.pop(arm)
+                bt.attached.pop(arm, None)
                 if lab in bt.belief:
-                    bt.belief[lab].update(pos=p, quat=q, source="released")
+                    bt.belief[lab].update(pos=list(p), quat=list(q), source="released")
         last_grip[arm] = k
     return out
 

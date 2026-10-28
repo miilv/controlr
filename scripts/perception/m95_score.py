@@ -100,11 +100,31 @@ def _probe_check(row: dict, frames: dict, actions: list, kin) -> dict:
     return {"probe_closes": n, "probe_agree_2mm": agree, "probe_worst_mm": round(worst, 1)}
 
 
+def family(run: str) -> str:
+    """A run's round: the name without its task and repeat suffix (B_hang_mugs_breadth2 -> B_*_breadth2)."""
+    import re
+    for pat, fam in ((r"^c4_", "c4 (genuine 5.1)"), (r"^smoke51", "c4 (genuine 5.1)"), (r"^P3r3_", "P3r3"), (r"^P3n_", "P3n"),
+                     (r"^P3_", "P3"), (r"^S79_", "S79"), (r"^TL_", "TL"), (r"^AGB?_", "AG"), (r"_breadth2$", "B_breadth2"),
+                     (r"_breadth$", "B_breadth"), (r"^B_plug_heldpose", "B_heldpose")):
+        if re.search(pat, run):
+            return fam
+    return "early (B_stack / B_build / B_tower ...)"
+
+
+def frame_at(frames: dict, k: int, back: int = 3):
+    """The replay's frame after ``k`` actions, else the nearest earlier one within ``back`` steps (a replay recorded
+    before the grasp rule took a closing run's last command: a ramp's last step); None beyond (re-run the replay)."""
+    for j in range(k, max(-1, k - back - 1), -1):
+        if str(j) in frames:
+            return frames[str(j)]
+    return None
+
+
 def held_drift(frames: dict, track: dict, arm: str, k_grasp: int, gt_label: str, k_release: int) -> float | None:
     """mm: how far the GT object ``gt_label`` moved in the TCP frame between its grasp and the release (an object that
     stayed on the table, slipped or fell moved a lot; one carried in the jaws, a few mm)."""
     import numpy as np
-    fg, fr = frames.get(str(k_grasp - 1)), frames.get(str(k_release - 1))
+    fg, fr = frame_at(frames, k_grasp - 1), frame_at(frames, k_release - 1)
     if fg is None or fr is None:
         return None
     og = next((o for o in fg["objects"] if o["label"] == gt_label), None)
@@ -146,7 +166,9 @@ def cmd_score(a) -> None:
         mark = marks.get(f"{run}/{r['layout_id']}") or {}
         base = {"run": run, "task": task, "layout_id": r["layout_id"], "success": r.get("success"), "score": r.get("score"),
                 "category": r.get("category"), "preset": r.get("preset"), "renderer": r.get("renderer", "isaac60"),
-                "head": (r.get("code") or {}).get("head"), "agent_unavailable": bool(mark.get("excluded"))}
+                "head": (r.get("code") or {}).get("head"), "agent_unavailable": bool(mark.get("excluded")),
+                "date": __import__("time").strftime("%m-%d", __import__("time").gmtime(os.path.getmtime(ap))),
+                "family": family(run)}
         ev_rows, other = [], Counter()
         moving = any(e.get("kind") == "track_moving" for e in rep.get("events") or [])
         track = tcp_track(acts, kin)
@@ -155,7 +177,7 @@ def cmd_score(a) -> None:
             if ev.kind not in ("grasp", "place"):
                 other[ev.kind] += 1
                 continue
-            f = frames.get(str(ev.step - 1))
+            f = frame_at(frames, ev.step - 1)
             if f is None:
                 other["no_replay_frame"] += 1
                 continue
@@ -174,7 +196,9 @@ def cmd_score(a) -> None:
         epi = {**base, "events": len(ev_rows), "clean_R10": sum(s["clean_r"]["10"] for s in ev_rows),
                "clean_R5": sum(s["clean_r"]["5"] for s in ev_rows), "clean_R15": sum(s["clean_r"]["15"] for s in ev_rows),
                "clean_required": sum(s["clean_required"] for s in ev_rows), "other": dict(other),
-               "replay_score": rp_.get("score"), "score_match": abs(float(rp_.get("score") or 0) - float(r.get("score") or 0)) < 1e-6,
+               "replay_score": rp_.get("score"),
+               "score_match": (None if (rp_.get("stopped_at") or len(acts)) < len(acts) and not rp_.get("ended_at")
+                               else abs(float(rp_.get("score") or 0) - float(r.get("score") or 0)) < 1e-6),
                "replay_ended_at": rp_.get("ended_at"), "n_actions": len(acts), **fid}
         fo.write(json.dumps(epi) + "\n")
         n_ep += 1
@@ -234,7 +258,127 @@ def cmd_table(a) -> None:
     if a.where:
         k, v = a.where.split("=", 1)
         rows = [r for r in rows if str(r.get(k)) == v]
-    print(table(rows, a.by))
+    if a.match_only:
+        bad = set()
+        for f in a.events:
+            ep = Path(f).with_name("episodes.jsonl")
+            if ep.exists():
+                bad |= {(e["run"], e["layout_id"]) for e in map(json.loads, open(ep)) if e.get("score_match") is False}
+        rows = [r for r in rows if (r["run"], r["layout_id"]) not in bad]
+    if a.fails:
+        for x in failure_rows(rows):
+            print(json.dumps(x))
+    elif a.taxonomy:
+        print(taxonomy(rows))
+    else:
+        print(corr(rows) if a.corr else table(rows, a.by))
+
+
+THIN = ("coin", "pen", "key", "card", "toothbrush", "screwdriver", "spoon", "knife", "fork", "chopstick", "mallet",
+        "pencil", "marker", "nut", "bolt", "peg", "tube", "stick")
+
+
+def failure_rows(rows: list[dict], R: str = "10") -> list[dict]:
+    """One row per unclean event: what failed first (required objects before neighbours before phantoms) and its
+    context: the belief's source for that object (record = never re-measured, refine_pick / refine_place = the wrist
+    refine, held / released = carried by the jaws), the record's own occluded / hidden flags, thin objects."""
+    out = []
+    for r in rows:
+        if r["clean_r"][R]:
+            continue
+        bad = [q for q in r["required"] if not q["ok"]]
+        if bad:
+            q = bad[0]
+            perc = q.get("perc") or {}
+            what = {"what": f"{q['role']} {q['cls']}", "label": q["label"], "gt_label": q.get("gt_label"),
+                    "xy_mm": q.get("xy_mm"), "dz_mm": q.get("dz_mm"), "rot_deg": q.get("rot_deg"),
+                    "source": q.get("source"), "occluded": perc.get("occluded"), "hidden_frac": perc.get("hidden_frac"),
+                    "on": q.get("on")}
+        else:
+            nb = [n for n in r["neighbours"] if n["dist_m"] <= int(R) / 100 and not n["found"]]
+            ph = [p for p in r["phantoms"] if p["dist_m"] <= int(R) / 100]
+            if nb:
+                n = nb[0]
+                what = {"what": "neighbour " + ("not found" if n.get("xy_mm") is None else "off"), "label": n["label"],
+                        "xy_mm": n.get("xy_mm"), "dist_m": n["dist_m"], "clutter": n.get("clutter")}
+            else:
+                p = ph[0]
+                what = {"what": "phantom", "label": p["label"], "xy_mm": p["nearest_gt_mm"], "dist_m": p["dist_m"]}
+        what["thin"] = any(t in str(what.get("label")) for t in THIN)
+        out.append({"task": r["task"], "run": r["run"], "layout_id": r["layout_id"], "kind": r["kind"], "step": r["step"],
+                    "arm": r["arm"], "success": r.get("success"), "reasons": r["reasons"][R], **what})
+    return out
+
+
+def taxonomy(rows: list[dict], R: str = "10") -> str:
+    """Per task: unclean events by first failure, with the belief source of a failed required object."""
+    f = failure_rows(rows, R)
+    by = defaultdict(Counter)
+    src = defaultdict(Counter)
+    for x in f:
+        by[x["task"]][x["what"]] += 1
+        if x.get("source"):
+            src[x["task"]][x["source"]] += 1
+    lines = [f"| task | unclean events (R{R}) | first failure | belief source of a failed required object |", "|---|---|---|---|"]
+    for t in sorted(by):
+        lines.append(f"| {t} | {sum(by[t].values())} | {', '.join(f'{k} {v}' for k, v in by[t].most_common())} | "
+                     f"{', '.join(f'{k} {v}' for k, v in src[t].most_common())} |")
+    tot, ts = Counter(), Counter()
+    for t in by:
+        tot.update(by[t])
+        ts.update(src[t])
+    lines.append(f"| **all** | {sum(tot.values())} | {', '.join(f'{k} {v}' for k, v in tot.most_common())} | "
+                 f"{', '.join(f'{k} {v}' for k, v in ts.most_common())} |")
+    return "\n".join(lines)
+
+
+def _auc(pos: list[float], neg: list[float]) -> float | None:
+    """P(a random success episode's value > a random failed one's), ties half (Mann-Whitney)."""
+    if not pos or not neg:
+        return None
+    w = sum((p > n) + 0.5 * (p == n) for p in pos for n in neg)
+    return w / (len(pos) * len(neg))
+
+
+def corr(rows: list[dict]) -> str:
+    """Episode outcome vs the clean rate per threshold: which R separates successful from failed episodes best.
+    Per variant: mean clean rate (success / failure), AUC of the clean rate for success, and "any unclean event" as a
+    failure flag (share of failed episodes flagged = recall, share of flagged episodes that failed = precision)."""
+    eps = defaultdict(list)
+    for r in rows:
+        eps[(r["run"], r["layout_id"])].append(r)
+    variants = [("R5", lambda e: e["clean_r"]["5"]), ("R10", lambda e: e["clean_r"]["10"]),
+                ("R15", lambda e: e["clean_r"]["15"]), ("required only", lambda e: e["clean_required"]),
+                ("target only", lambda e: e["clean_target"])]
+    lines = ["| variant | episodes (succ / fail) | clean rate succ / fail | AUC (clean rate -> success) | "
+             "any-unclean flags: failed eps flagged (recall) | flagged eps that failed (precision) |",
+             "|---|---|---|---|---|---|"]
+    for name, f in variants:
+        succ, fail, fl_fail, fl_all = [], [], 0, 0
+        for evs in eps.values():
+            rate = sum(bool(f(e)) for e in evs) / len(evs)
+            flagged = rate < 1.0
+            if evs[0].get("success"):
+                succ.append(rate)
+            else:
+                fail.append(rate)
+                fl_fail += flagged
+            fl_all += flagged
+        auc = _auc(succ, fail)
+        mean = lambda v: f"{100 * sum(v) / len(v):.0f} %" if v else "-"   # noqa: E731
+        lines.append(f"| {name} | {len(succ)} / {len(fail)} | {mean(succ)} / {mean(fail)} | "
+                     f"{'-' if auc is None else f'{auc:.2f}'} | {fl_fail}/{len(fail)} | {fl_fail}/{fl_all} |")
+    # neighbours / phantoms on their own: episodes whose required objects were always right, split by whether some
+    # event had a neighbour / phantom problem within R (does the extra criterion predict a failure?)
+    lines += ["", "| R | episodes, required always ok | of them with a neighbour / phantom problem: failed | without: failed |",
+              "|---|---|---|---|"]
+    for R in ("5", "10", "15"):
+        clean_req = [evs for evs in eps.values() if all(e["clean_required"] for e in evs)]
+        nb = [evs for evs in clean_req if any(not e["clean_r"][R] for e in evs)]
+        ok = [evs for evs in clean_req if all(e["clean_r"][R] for e in evs)]
+        fr = lambda v: f"{sum(not x[0].get('success') for x in v)}/{len(v)}"   # noqa: E731
+        lines.append(f"| {R} cm | {len(clean_req)} | {fr(nb)} | {fr(ok)} |")
+    return "\n".join(lines)
 
 
 def main(argv=None) -> None:
@@ -253,6 +397,10 @@ def main(argv=None) -> None:
     t.add_argument("--by", default="task")
     t.add_argument("--where", default=None, help="KEY=VALUE filter")
     t.add_argument("--exclude-unavailable", action="store_true")
+    t.add_argument("--corr", action="store_true", help="episode outcome vs the clean rate per threshold")
+    t.add_argument("--taxonomy", action="store_true", help="unclean events per task by first failure and belief source")
+    t.add_argument("--fails", action="store_true", help="one JSON line per unclean event (R10)")
+    t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)
     {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table}[a.cmd](a)
 

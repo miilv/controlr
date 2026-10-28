@@ -24,6 +24,16 @@
   `/root/visual` (15.6 mm off) but loads as a rigid prim: G3 fasten_screws 10/10 says harmless, unprobed;
   (4) the record's `scale` is not applied to the root offset (every record: 1).
 
+- [ ] **dojo runtime: log the belief at every grasp / release** (stream M). The grasp-time metric
+  (`dojo.perception.grasp_metric`) rebuilds the runtime's belief from the report; what the report does not log (a
+  divergence's re-estimate, the twin's nominal outcome under verify, the conveyor tracker's riders between reads) it
+  cannot see. A dev-only `belief_probe` in `dojo.runtime.eval` next to `GTProbe` (the provider's objects at each close
+  and release, label / key / pose7) makes the metric exact for every new integ run; `episode_events` would take it
+  over the rebuild.
+- [ ] **dojo runtime: `GTProbe` takes a pre-shaped gripper for the close** (`dev_gt_probe` closes: the first command
+  below 0.5). hang_mugs' wall grasp pre-shapes to 0.43 on the approach, so the probe's "closed on mug2 128 mm away"
+  is the pre-shape, 30 steps before the real close. Use `grasp_metric.grip_events`' rule (the last closing command of
+  a run) in `GTProbe.on_action`.
 - [ ] **dojo perception: learned identity on the conveyors needs torch in the perception venvs.** The belt read with
   `EstimatorConfig.embed_model="dinov2_s"` (5.1 belt reads: identity 79/116 -> 104/116, phantoms 77 -> 47; report
   2026-10-27-identity-embeddings) is off by default. The rendered A/B arm sets `DOJO_PERCEPTION_CFG='{"embed_model":

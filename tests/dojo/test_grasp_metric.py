@@ -28,8 +28,16 @@ def _bel(pos, cat="cube", idx=0):
 def test_grip_events_close_and_release():
     acts = [_act(1.0), _act(0.8), _act(0.4), _act(0.0), _act(0.0), _act(0.3), _act(1.0), _act(0.45), _act(1.0, 0.2)]
     ev = gm.grip_events(acts)
+    # the closing run 0.4 -> 0.0 ends at step 4 (the last closing command); right's close at 9 never opens
     assert [(e["kind"], e["step"], e["arm"]) for e in ev] == [
-        ("grasp", 3, "left"), ("release", 6, "left"), ("grasp", 8, "left"), ("release", 9, "left"), ("grasp", 9, "right")]
+        ("grasp", 4, "left"), ("release", 6, "left"), ("grasp", 8, "left"), ("release", 9, "left"), ("grasp", 9, "right")]
+
+
+def test_grip_events_pre_shape_is_not_the_grasp():
+    # hang_mugs' wall grasp: the jaws pre-shape to 0.43 on the approach, close at 76, open at 150
+    acts = [_act(1.0)] * 41 + [_act(0.43)] * 34 + [_act(0.0)] * 74 + [_act(1.0)] * 3
+    ev = gm.grip_events(acts)
+    assert [(e["kind"], e["step"]) for e in ev] == [("grasp", 76), ("release", 150)]
 
 
 def test_corridor_stops_after_its_length():
@@ -157,3 +165,47 @@ def test_quat_roundtrip():
         q = np.asarray(q, float) / np.linalg.norm(q)
         r = gm._R_quat(gm._quat_R(q))
         assert min(np.linalg.norm(r - q), np.linalg.norm(r + q)) < 1e-6
+
+
+def test_flip_of_an_off_centre_origin_is_a_rotation_error():
+    # a 10 cm bar whose origin sits at one end: flipped 180 deg about z, the body lies where it was
+    V = np.array([[x, y, z] for x in (0.0, 0.1) for y in (-0.01, 0.01) for z in (0.0, 0.02)])
+    fp = gm.Footprints(loader=lambda key: V)
+    gt = [{**_row("bar", (0.0, 0.0, 0.78), cat="bar"), "quat": [1, 0, 0, 0]}]
+    flipped = {"bar": {**_bel((0.1, 0.0, 0.78), cat="bar"), "quat": [0, 0, 0, 1]}}
+    s = gm.score_event(_event(target="bar", point=(0.05, 0, 0.8)), flipped, gt, "t", tol=(15.0, 10.0), footprints=fp)
+    r = s["required"][0]
+    assert r["xy_mm"] < 1.0 and r["cls"] in ("rot", "ok")   # "rot" where eval_g1 (scipy) measures the turn
+    s = gm.score_event(_event(target="bar", point=(0.05, 0, 0.8)), {"bar": _bel((0.06, 0.0, 0.78), cat="bar")}, gt,
+                       "t", tol=(15.0, None), footprints=fp)
+    assert s["required"][0]["cls"] == "gross" and abs(s["required"][0]["xy_mm"] - 60.0) < 0.5
+
+
+def test_belief_probe_snapshots_replace_the_rebuild_and_carry_held_objects():
+    from types import SimpleNamespace
+
+    from dojo.runtime.eval import BeliefProbe
+    kin = X5Kin()
+    q1 = list(Q0)
+    q1[0] = 0.3
+    p0 = kin.tcp("left", Q0)[:3, 3]
+    asset = SimpleNamespace(key="Rigid/cube/00000")
+    cube = SimpleNamespace(asset=asset, pos=np.asarray(p0 + [0.002, 0, 0]), quat=np.array([1.0, 0, 0, 0]), source="perception")
+    bel = SimpleNamespace(objects={"a": cube}, attached={}, q={"left": np.asarray(Q0), "right": np.asarray(Q0)})
+    pol = SimpleNamespace(_live={"prov": SimpleNamespace(belief=bel)})
+    acts = [_act(1.0), _act(1.0), _act(0.0), _act(0.0, ql=q1), _act(0.0, ql=q1), _act(1.0, ql=q1)]
+    pr = BeliefProbe(pol)
+    for k, a in enumerate(acts, 1):
+        if k == 6:                                  # by the release the belief holds a, last stepped at Q0
+            bel.attached = {"left": ("a", None)}
+        pr.on_action(a, k)
+    rep = pr.report()
+    assert [s["step"] for s in rep["snaps"]] == [2, 5] and rep["errors"] == 0
+    evs = gm.episode_events({"records": {}, "events": [], "dev_belief_probe": rep}, acts, kin)
+    (g, bg), (pl, bp) = evs
+    assert g.kind == "grasp" and g.target == "a" and g.meta["belief"] == "probe"
+    assert np.allclose(bg["a"]["pos"], p0 + [0.002, 0, 0])
+    T = kin.tcp("left", q1) @ np.linalg.inv(kin.tcp("left", Q0))
+    want = T[:3, :3] @ (p0 + [0.002, 0, 0]) + T[:3, 3]           # rides the TCP from Q0 to q1
+    assert pl.kind == "place" and np.allclose(bp["a"]["pos"], want, atol=1e-6) and np.linalg.norm(want - p0) > 0.05
+    assert bp["a"]["source"] == "probe_held"

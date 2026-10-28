@@ -6,8 +6,8 @@ the grasp-time metric needs (``dojo.perception.grasp_metric``, stream M, PERCEPT
 
 ``JOBS.jsonl``: one ``{"name", "task", "layout", "actions"}`` per line (other tasks' lines are skipped). Per episode
 ``DIR/<name>.json.gz``: ``frames`` = {step: {"objects": [GT rows], "flange": {arm: pose7}}} for step 0, every
-``--every`` steps, the state BEFORE each grasp / release action (``grasp_metric.grip_events``: step k - 1) and the
-end; ``reward`` at the end (compare with the episode row: the replay reproduces a proxy episode bit for bit; a
+``--every`` steps, the state before and after every action that changes a gripper command (so every grasp / release
+of ``grasp_metric.grip_events``, at its step k - 1) and the end; ``reward`` at the end (compare with the episode row: the replay reproduces a proxy episode bit for bit; a
 genuine-5.1 rendered episode only approximately, see replay_kits.py). Episodes already in DIR are skipped. Dev layouts
 only (the runner's asset firewall).
 """
@@ -44,6 +44,7 @@ def main(argv=None) -> None:
     ap.add_argument("--jobs", required=True)
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--every", type=int, default=25)
+    ap.add_argument("--full", action="store_true", help="replay every action (else stop after the last gripper change)")
     a = ap.parse_args(argv)
     from dojo.perception.grasp_metric import grip_events
     from dojo.simlab import paths
@@ -67,8 +68,17 @@ def main(argv=None) -> None:
             continue
         with gzip.open(j["actions"], "rt") as f:
             acts = json.load(f)["actions"]
-        want = {0, len(acts)} | {k for k in range(0, len(acts) + 1, max(1, a.every))}
-        want |= {e["step"] - 1 for e in grip_events(acts)}
+        need = {e["step"] - 1 for e in grip_events(acts)}
+        prev = {}
+        for k, act in enumerate(acts, 1):           # every gripper change: any later grasp rule finds its frame
+            g = {arm: float(np.asarray(act.get(f"{arm}_ee_joint_state", [1.0]), float).reshape(-1)[0]) for arm in ARMS}
+            if prev and any(abs(g[x] - prev[x]) > 1e-6 for x in ARMS):
+                need |= {k - 1, k}
+            prev = g
+        # nothing after the last gripper change is scored: stop there (a loaded box replays ~2 steps/s); the final
+        # reward then is the one at the stop (``stopped_at``): compare it with the episode's only when it ran out
+        stop = len(acts) if a.full else min(len(acts), max(need | {0}) + 2)
+        want = {0, stop} | need | set(range(0, stop + 1, max(1, a.every)))
         info = run.load(json.loads(Path(j["layout"]).read_text()))
         frames = {}
         if 0 in want:
@@ -79,10 +89,11 @@ def main(argv=None) -> None:
                 ended_at = k
             if k in want or ended_at is not None:
                 frames[k] = snap(run)
-            if ended_at is not None:
+            if ended_at is not None or k >= stop:
                 break
         res = {"name": j["name"], "task": a.task, "layout": j["layout"], "layout_id": lid, "actions": j["actions"],
-               "n_actions": len(acts), "stable": info["stable"], "ended_at": ended_at, "reward": run.reward(0),
+               "n_actions": len(acts), "stopped_at": min(stop, ended_at or stop), "stable": info["stable"], "ended_at": ended_at,
+               "reward": run.reward(0),
                "score": run.score(0), "replay_s": round(time.perf_counter() - t0, 1), "frames": frames}
         with gzip.open(out / f"{j['name']}.json.gz", "wt") as f:
             json.dump(res, f)
