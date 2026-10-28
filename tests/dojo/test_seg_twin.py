@@ -3,7 +3,6 @@ instance-id mapping, labels (polygons), matching, the power throttle, and the de
 model, no torch). No GPU, no Isaac, no weights."""
 import random
 import threading
-import time
 
 import numpy as np
 import pytest
