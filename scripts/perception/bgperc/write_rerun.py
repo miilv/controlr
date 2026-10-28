@@ -246,7 +246,15 @@ def rerun(P, frame: dict, req: dict) -> dict:
     return out.get(req["objects"][0]["label"]) or {}
 
 
-def compare(ev: dict, r: dict) -> dict:
+def rot_deg(key: str | None, q_rep, q_rec) -> float:
+    """The rotation between two fits modulo the object's symmetry: M's scorer's rule (``grasp_metric._rot_err``:
+    ``eval_g1``'s symmetry of the placement), the raw angle without the catalogue."""
+    from dojo.perception.grasp_metric import _rot_err
+    d = _rot_err(key, q_rep, q_rec) if key else None
+    return float(d) if d is not None else quat_angle_deg(q_rep, q_rec)
+
+
+def compare(ev: dict, r: dict, key: str | None = None) -> dict:
     ok_a, ok_b = bool(ev.get("ok")), bool(r.get("ok"))
     out = {"ok_rec": ok_a, "ok_rep": ok_b, "iou_rec": ev.get("iou"), "iou_rep": r.get("iou"),
            "shift_rec": ev.get("shift_mm"), "shift_rep": r.get("shift_mm")}
@@ -255,7 +263,9 @@ def compare(ev: dict, r: dict) -> dict:
         pb = list(r["pos"]) + list(r["quat"])
         out["d_mm"] = round(float(np.linalg.norm(np.subtract(pa[:3], pb[:3]))) * 1000, 2)
         out["d_xy_mm"] = round(float(np.linalg.norm(np.subtract(pa[:2], pb[:2]))) * 1000, 2)
-        out["d_deg"] = round(quat_angle_deg(pa[3:7], pb[3:7]), 2)
+        out["d_deg_raw"] = round(quat_angle_deg(pa[3:7], pb[3:7]), 2)
+        out["d_deg"] = round(rot_deg(key, pb[3:7], pa[3:7]), 2)
+        out["pose7_rep"] = [round(float(v), 5) for v in pb]
     elif ok_a and ok_b and ev.get("shift_mm") is not None and r.get("shift_mm") is not None:
         # no logged pose (a post-place re-measure that moved nothing): the shifts from the same prior differ at least by
         out["d_shift_mm"] = round(abs(float(ev["shift_mm"]) - float(r["shift_mm"])), 2)
@@ -286,7 +296,7 @@ def episode(P, seq, log) -> list[dict]:
             req = inputs(ev, snap, att, cfg, report)
             t0 = time.time()
             r = rerun(P, seq.frame(step), req)
-            row.update(compare(ev, r), time_s=round(time.time() - t0, 2),
+            row.update(compare(ev, r, req["objects"][0]["key"]), key=req["objects"][0]["key"], time_s=round(time.time() - t0, 2),
                        n_cands=len(req["identity_vocabulary"] or []) or 1)
         except Exception as e:  # noqa: BLE001 (one write's failure is a row, not the run's end)
             row["skip"] = f"{type(e).__name__}: {e}"
@@ -312,7 +322,8 @@ def summary(rows: list[dict]) -> dict:
                   "ok_flips": [f"{r['episode']}@{r['step']} {r['label']} {r['ok_rec']}->{r['ok_rep']}"
                                for r in rs if r["ok_rec"] != r["ok_rep"]],
                   "both_ok": len(both), "mm": q([r["d_mm"] for r in both]), "xy_mm": q([r["d_xy_mm"] for r in both]),
-                  "deg": q([r["d_deg"] for r in both]),
+                  "deg": q([r["d_deg"] for r in both if "d_deg_raw" in r]),     # symmetry-aware rows only
+                  "deg_raw": q([r.get("d_deg_raw", r["d_deg"]) for r in both]),
                   "gt_2mm": sum(r["d_mm"] > 2.0 for r in both),
                   "shift_only": q([r["d_shift_mm"] for r in rs if "d_shift_mm" in r]),
                   "fit_shift_mm": q([r["d_fit_shift_mm"] for r in rs if "d_fit_shift_mm" in r])}
