@@ -666,6 +666,10 @@
     files; PhysicalRSI's own docstring: "no historical evaluation layout supplies board/basket transforms"), so
     perception should find the board by appearance in whatever view shows it, not at a pinned pose (journal
     2026-10-27-dojo-perception3).
+- [ ] **dojo perception: imitate twin pairing by appearance (B1 `twin_pairing`, default off; legal under D-C17).**
+  No gain on the 6 allowed demo layouts (plan right 4/6 either way). Its uncertainty rule is too strict: a Hungarian
+  override marked a physically right pair uncertain (100002). Revisit with more demo layouts, and a margin taken from
+  data rather than 0.02 (journal 2026-10-28-dojo-imitate-pairing).
 - [ ] **dojo perception: imitate_sorting_sequence, what frame 0 still gets wrong** (experiments/2026-10-27-imitate-frame0,
   plan right 8 / 13 offline): category swaps among the demonstrator's small far objects (action camera / garage figure
   / watch: 100016, 100018, 100023) and objects not found (a far phone, a near watch, a far watch hidden behind a figure

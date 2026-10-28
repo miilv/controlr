@@ -40,3 +40,32 @@ Conditions:
 - Offline uses only the frames we already have of 100002 / 04 / 20-23 (dev; 100000-04 are "seen").
 - The rendered check that counts goes to Integration: v0 of 100005-09 + 100020-29 (D-C10c), behind the flag, default
   off.
+
+## Built, measured, parked
+
+- Code: B1 `twin_pairing` (default off) and `copy_demonstration` stopping before an uncertain twin.
+  - Each far mover is re-fitted at its head blob as each of our observed assets, colour scored, other objects masked;
+    then a Hungarian assignment.
+  - A pair is uncertain when its next-best column is within `twin_margin` (0.02), or when the Hungarian overrode the
+    row's own best.
+- Legality tests (`tests/dojo/test_imitate_pairing.py`; they need cv2, so they skip in CI):
+  - the pairing is reached only behind its flag;
+  - its code reads no select / quota / copy relation;
+  - a flipped hidden relation gives the same pairing.
+- Offline: B1's frame-0 record on the allowed demo layouts (100002 / 04 / 20-23, genuine 5.1). Each plan copies in
+  our dev demo's order, so the departure order is taken as right.
+
+| frame-0 B1 | demonstrator found / cat / asset | ours cat / asset | plan right | mean transition score |
+|---|---|---|---|---|
+| main (pairing off) | 29 / 27 / 26 of 30 | 28 / 25 | 4 / 6 | 67.5 |
+| twin_pairing | 28 / 28 / 25 | 28 / 25 | 4 / 6 | 70.0 |
+
+- **No gain at n = 6.** On these layouts the demonstrator side is mostly right without the quota.
+- **The failures:**
+  - 100023's demonstrator watch is not found at frame 0, so its departure is never seen;
+  - 100002's own toy car is read as garage/00015. The pairing matched the demonstrator's toy car to that same object
+    (physically right), but a Hungarian override marked it uncertain and the copy stopped. The uncertainty rule is too
+    strict.
+- **Parked** (lead): merged default off, BACKLOG item.
+- **The board's imitate 0/5** came from layouts with no dev demonstration, where the stub never moves. The base is
+  re-measured on layouts with demos.
