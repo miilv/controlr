@@ -233,16 +233,17 @@ def cmd_consume(a) -> None:
               f"{med(xs, 'xy_mm')} / {med(xs, 'z_mm')}, {med(xs, 'yaw_deg')} | {nd('xy_mm')} / {nd('z_mm')} / {nd('yaw_deg')} |")
 
 
-def x2_table(rt: list[dict], arms: dict[str, list[dict]], R: str = "10", exclude=()) -> str:
+def x2_table(rt: list[dict], arms: dict[str, list[dict]], R: str = "10", exclude=(), only=None) -> str:
     """X2 (offline A1 arms on the recorded episodes): every arm's events paired with rt's by (run, step, kind, hand),
     fixed / broken / same / within noise at R. An arm row's ``verdict`` (C's harness: a fixed / broken change counts
     only when A1's belief change exceeds that writer's noise floor, p95) wins; without it the clean flags decide."""
     key = lambda r: (r["run"], r["step"], r["kind"], r.get("arm"))   # noqa: E731
-    base = {key(r): r for r in rt if r["task"] not in exclude}
+    keep = lambda r: r["task"] not in exclude and (only is None or only(r["run"]))   # noqa: E731  (only: one split group)
+    base = {key(r): r for r in rt if keep(r)}
     lines = [f"| arm | paired events | rt clean R{R} | arm clean R{R} | fixed | broken | within noise | unpaired |",
              "|---|---|---|---|---|---|---|---|"]
     for name, rows in arms.items():
-        rows = [r for r in rows if r["task"] not in exclude]
+        rows = [r for r in rows if keep(r)]
         c, unp = Counter(), 0
         arm_clean = rt_clean = 0
         for r in rows:
@@ -268,10 +269,18 @@ def cmd_x2(a) -> None:
     rt = load(root / "rt" / "events.jsonl")
     arms = {d.name: load(d / "events.jsonl") for d in sorted(root.iterdir())
             if d.is_dir() and d.name != "rt" and (d / "events.jsonl").exists()}
+    groups = [("", None)]
+    if a.split:     # one table per value of the regex's first group in the run name, then all runs
+        import re
+        pat = re.compile(a.split)
+        group = lambda run: (m.group(1) if (m := pat.search(run)) else "other")   # noqa: E731
+        groups = [(g, (lambda run, g=g: group(run) == g)) for g in sorted({group(r["run"]) for r in rt})] + [("all", None)]
     for title, ex in (("all tasks", ()), ("without put_bottles", ("put_bottles_into_dustbin",))):
-        print(f"### {title}")
-        print(x2_table(rt, arms, exclude=ex))
-        print()
+        for g, only in groups:
+            n = len({r["run"] for r in rt if r["task"] not in ex and (only is None or only(r["run"]))})
+            print(f"### {title}" + (f", {g} ({n} episodes)" if g else f" ({n} episodes)"))
+            print(x2_table(rt, arms, exclude=ex, only=only))
+            print()
 
 
 def cmd_jobs(a) -> None:
@@ -957,6 +966,8 @@ def main(argv=None) -> None:
     c.add_argument("--back", type=int, default=25)
     x = sub.add_parser("x2")
     x.add_argument("dir", help="the X2 harness output: rt/events.jsonl and <arm>/events.jsonl")
+    x.add_argument("--split", default=None, help="REGEX with one group over the run name: a table per group + all "
+                   "(e.g. '_(gcon|gcoff)_' for the grip-check arms)")
     t = sub.add_parser("table")
     t.add_argument("events", nargs="+")
     t.add_argument("--by", default="task")
