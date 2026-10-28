@@ -66,6 +66,15 @@ class BgConfig:
     reread_agree_mm: float = 15.0  # two re-reads within this of each other (and off the belief) move it
     reread_match_m: float = 0.35   # a reading pairs with a believed object of its category within this
     reread_held_m: float = 0.10    # readings this close to a held object are dropped (the jaws' object, not a free one)
+    reread_on_doubt: bool = False  # also a re-read as soon as an object is in doubt (its place looked empty twice)
+    reread_doubt_match_m: float = 0.8  # an object in doubt pairs with a reading this far (someone moved it)
+    reread_doubt_gap: int = 10     # ... at most this often
+    # head checks: is each untouched object still where the belief has it in the head view (perception's ``check``:
+    # front-most predicted pixels that are foreground)? Objects moved by someone else (an opponent's arm) show here
+    head_check_every: int = 0      # steps between two head checks (0: off)
+    head_min_px: int = 60          # front-most visible pixels a check needs
+    head_absent_prec: float = 0.3  # below: absence evidence
+    head_present_prec: float = 0.7 # above: present (clears absence)
     wide_search: bool = False      # perception's wide search after a failed fit (slow; the absence evidence replaces it)
     max_s: float = 0.0             # 0: no wall budget per step; else stop refining in a step after this many s
     # held checks during a carry (perception's B1 held_look on the holding wrist, no LLM): is it still in the jaws?
@@ -115,6 +124,14 @@ def reread_estimate(images: dict, state: dict, task: str, instruction: str, bgs:
     if views == "head":
         cfg = dataclasses.replace(cfg, use_wrists=False)
     return estimate(images, state, task, instruction, bgs=bgs, cfg=cfg)
+
+
+def _group(label: str, key: str) -> str:
+    """Interchangeable labels: the label's stem (``player_piece3`` -> ``player_piece``) and the asset's category, so a
+    reading never pairs across groups of one category (own vs opponent pieces)."""
+    stem = str(label).rstrip("0123456789").rstrip("_")
+    cat = str(key).split("/")[1] if str(key).count("/") == 2 else str(key)
+    return f"{stem}|{cat}"
 
 
 def record_readings(rec: dict | None) -> dict:
@@ -412,11 +429,45 @@ class BackgroundPerceiver:
                     break
         return out
 
+    # ------------------------------------------------------------------ head checks
+    def head_due(self, step: int) -> list[str]:
+        """Labels of untouched objects to check in the head view now (every ``head_check_every`` steps)."""
+        cfg = self.cfg
+        if not cfg.head_check_every or step - getattr(self, "_last_head", -10 ** 6) < cfg.head_check_every:
+            return []
+        return [lab for lab, t in self.tracks.items() if not t.held]
+
+    def head_result(self, step: int, check: dict) -> list[str]:
+        """Perception's ``check`` of the believed objects (label -> {"head": {"n_vis", "prec", ...}}): a clearly
+        empty believed place (``prec`` < ``head_absent_prec`` over >= ``head_min_px`` front-most pixels) is absence
+        evidence like a wrist's; a clearly occupied one clears it. Returns the labels with new absence evidence."""
+        cfg = self.cfg
+        self._last_head = step
+        self.stats["head_checks"] = self.stats.get("head_checks", 0) + 1
+        out = []
+        for lab, c in (check or {}).items():
+            t = self.tracks.get(lab)
+            h = (c or {}).get("head") or {}
+            if t is None or t.held or h.get("prec") is None or int(h.get("n_vis") or 0) < cfg.head_min_px:
+                continue
+            if float(h["prec"]) < cfg.head_absent_prec:
+                t.absent += 1
+                self.stats["head_absent"] = self.stats.get("head_absent", 0) + 1
+                self.events.append({"step": step, "label": lab, "head": True, "prec": round(float(h["prec"]), 3),
+                                    "n_vis": int(h["n_vis"]), "action": "absent"})
+                out.append(lab)
+            elif float(h["prec"]) >= cfg.head_present_prec:
+                t.absent = 0
+        return out
+
     # ------------------------------------------------------------------ re-reads
     def reread_due(self, step: int, frame: dict | None = None) -> bool:
         """A re-read is due (``reread_every`` steps since the last) and the frame's head view is clear enough."""
         cfg = self.cfg
-        if not cfg.reread_every or step - getattr(self, "_last_reread", -10 ** 6) < cfg.reread_every:
+        last = getattr(self, "_last_reread", -10 ** 6)
+        doubt = cfg.reread_on_doubt and step - last >= cfg.reread_doubt_gap and \
+            any(t.doubt for t in self.tracks.values() if not t.held)
+        if not doubt and (not cfg.reread_every or step - last < cfg.reread_every):
             return False
         if frame is None:
             return True
@@ -435,23 +486,24 @@ class BackgroundPerceiver:
         cfg = self.cfg
         self._last_reread = step
         self.stats["rereads"] = self.stats.get("rereads", 0) + 1
-        cat = lambda key: str(key).split("/")[1] if str(key).count("/") == 2 else str(key)   # noqa: E731
         changes = []
         free = {lab: t for lab, t in self.tracks.items() if not t.held}
         # a reading at a held object is that object in the jaws (or under them), never a free one of its category
         held_p = [t.pose[:3] for t in self.tracks.values() if t.held]
         readings = {lab: r for lab, r in readings.items()
                     if all(float(np.linalg.norm(np.asarray(r["pos"], float)[:3] - p)) > cfg.reread_held_m for p in held_p)}
-        for c in sorted({cat(t.key) for t in free.values()}):
-            T = [lab for lab, t in free.items() if cat(t.key) == c]
-            Rr = [lab for lab, r in readings.items() if cat(r["key"]) == c and float(r.get("conf", 1.0)) >= cfg.reread_conf]
+        for c in sorted({_group(lab, t.key) for lab, t in free.items()}):
+            T = [lab for lab, t in free.items() if _group(lab, t.key) == c]
+            Rr = [lab for lab, r in readings.items() if _group(lab, r["key"]) == c
+                  and float(r.get("conf", 1.0)) >= cfg.reread_conf]
             if not T or not Rr:
                 continue
             C = np.array([[float(np.linalg.norm(np.asarray(readings[r]["pos"], float) - self.tracks[t].pose[:3]))
                            for r in Rr] for t in T])
             pairs, used_i, used_j = [], set(), set()       # greedy nearest pairs (a few objects per category)
+            lim = [cfg.reread_doubt_match_m if self.tracks[t].doubt else cfg.reread_match_m for t in T]
             for i, j in sorted(np.ndindex(*C.shape), key=lambda ij: C[ij]):
-                if i not in used_i and j not in used_j and C[i, j] <= cfg.reread_match_m:
+                if i not in used_i and j not in used_j and C[i, j] <= lim[i]:
                     pairs.append((i, j))
                     used_i.add(i)
                     used_j.add(j)

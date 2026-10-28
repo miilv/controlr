@@ -381,3 +381,24 @@ def test_moves_keep_the_belief_orientation_and_refines_supersede_older_evidence(
     e0 = bp.tracks["a"].epoch
     bp.sync({"a": {"key": "Rigid/block/00000", "pos": [0.0, 0.0, 0.8], "quat": Q, "source": "refine_pick"}})
     assert bp.tracks["a"].epoch == e0 + 1 and bp.tracks["a"].moved is None
+
+
+def test_head_absence_and_reread_on_doubt_find_a_moved_object():
+    objs = {"opponent_piece0": {"key": "Rigid/piece/00001", "pos": [0.3, 0.3, 0.78], "quat": Q, "conf": 0.9},
+            "player_piece0": {"key": "Rigid/piece/00000", "pos": [0.0, 0.0, 0.78], "quat": Q, "conf": 0.9}}
+    bp = make([], BgConfig(every=1, head_check_every=10, reread_on_doubt=True, reread_doubt_gap=5), objs)
+    assert bp.head_due(0) and not bp.reread_due(0)
+    empty = {"opponent_piece0": {"head": {"n_vis": 200, "prec": 0.05}}, "player_piece0": {"head": {"n_vis": 200, "prec": 0.95}}}
+    assert bp.head_result(0, empty) == ["opponent_piece0"]
+    assert bp.head_due(5) == [] and bp.head_due(10)
+    bp.head_result(10, empty)
+    assert bp.tracks["opponent_piece0"].doubt and bp.reread_due(10)
+    # the re-read sees an opponent piece on the board 0.5 m away (beyond reread_match_m, within the doubt radius) and the
+    # player's piece where it was; a reading never pairs across the two groups of one category
+    r = {"opponent_piece0": {"key": "Rigid/piece/00001", "pos": [0.0, -0.2, 0.78], "quat": Q, "conf": 0.9},
+         "player_piece0": {"key": "Rigid/piece/00000", "pos": [0.001, 0.0, 0.78], "quat": Q, "conf": 0.9}}
+    assert bp.reread(10, r) == []
+    assert not bp.reread_due(12) and bp.reread_due(15)
+    ch = bp.reread(15, r)
+    assert [c["label"] for c in ch] == ["opponent_piece0"]
+    assert np.allclose(bp.tracks["opponent_piece0"].pose[:2], [0.0, -0.2]) and np.allclose(bp.tracks["player_piece0"].pose[:2], [0, 0])

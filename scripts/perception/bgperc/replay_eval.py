@@ -14,6 +14,8 @@ Arms (all share the runtime's own event attribution and in-hand propagation, M's
   bg_f0  f0 + background perception (priors from f0);
   bgr_*  bg_* + periodic B1 re-reads of later frames (``reread_every``, default 40 steps; head view);
   bgc_*  bg_* + contact suspects only;
+  bgd_*  bgc_* + head checks of every untouched object every 10 steps (perception's ``check``: an empty believed place
+         is absence evidence) + a head re-read as soon as an object is in doubt (objects moved by an actor);
   bgh_*  bg_* + held checks while carrying (perception's B1 held_look on the holding wrist every 6 steps from 8 steps
          after the close; two confident "not held" in a row = the runtime's held_look drop, lag steps later) + contact
          suspects (a jaw inside an untouched object's footprint below its top: searched at its next view).
@@ -46,12 +48,13 @@ def apply_event(bt, ev, k):
     """The belief mutation ``grasp_metric.episode_events`` makes after scoring an event (attach / release)."""
     from dojo.perception.grasp_metric import pose_T
     if ev.kind == "grasp" and ev.target:
-        o = bt.snapshot(k - 1).get(ev.target)
+        att = (ev.meta or {}).get("attached", ev.target)       # grasp_metric >= #205: the runtime's own attach rule
+        o = bt.snapshot(k - 1).get(att) if att else None
         if o is not None:
             for a2 in list(bt.attached):
-                if bt.attached[a2][0] == ev.target:
+                if bt.attached[a2][0] == att:
                     bt.attached.pop(a2)
-            bt.attached[ev.arm] = (ev.target, np.linalg.inv(bt.T(ev.arm, k)) @ pose_T(o["pos"], o["quat"]),
+            bt.attached[ev.arm] = (att, np.linalg.inv(bt.T(ev.arm, k)) @ pose_T(o["pos"], o["quat"]),
                                    (list(o["pos"]), list(o["quat"])))
     elif ev.kind == "place" and ev.arm in bt.attached:
         lab, p, q = bt.held_pose(ev.arm, k)
@@ -142,6 +145,13 @@ def m95_held_meta():
     return m95_score
 
 
+def make_head_check(fold: int):
+    """Perception's head check of the believed objects (GL z-buffer; the service op ``check``)."""
+    from dojo.runtime.perception_service import _Perception, encode_frame
+    P = _Perception()
+    return lambda fr, objs: P.check(encode_frame(fr), objs, fold)
+
+
 def make_held_fn():
     """Perception's held check on one frame, B1 only (``mode="b1"`` never calls an LLM; the LLM path is disabled here
     on top of that)."""
@@ -156,13 +166,15 @@ def make_held_fn():
 
 
 def run(seq, actions, report, f0, arm, bg_cfg, lag, fp, groups, task, confs=None, reader=None, extra_lags=(),
-        held_fn=None):
+        held_fn=None, head_fn=None):
     import bisect
 
     from dojo.perception.bgperc import BackgroundPerceiver
     from dojo.perception.grasp_metric import BeliefTracker, episode_events, score_event
     from dojo.runtime.bg import tcp_from_flange
-    evs = [(e, b) for e, b in episode_events(report, actions)]
+    import inspect
+    kw = {"footprints": fp} if "footprints" in inspect.signature(episode_events).parameters else {}
+    evs = [(e, b) for e, b in episode_events(report, actions, **kw)]
     bt = BeliefTracker(report, actions)
     m95 = m95_held_meta()
     track = bt.track if m95 is not None else None
@@ -220,6 +232,15 @@ def run(seq, actions, report, f0, arm, bg_cfg, lag, fp, groups, task, confs=None
                         bt.revs.insert(j, e_d)
                         drops.append(d)
                         pending_suspect[lab] = s + lag
+            if head_fn is not None and bp.head_due(s):
+                t_c = time.perf_counter()
+                objs = [{"label": lab, "key": t.key, "pos": t.pose[:3].tolist(), "quat": t.pose[3:].tolist()}
+                        for lab, t in bp.tracks.items() if not t.held]
+                try:
+                    bp.head_result(s, head_fn(fr, objs))
+                except Exception as ex:  # noqa: BLE001
+                    bp.events.append({"step": s, "head_error": str(ex)[:120]})
+                bp.stats["head_s"] = bp.stats.get("head_s", 0.0) + time.perf_counter() - t_c
             chs = bp.step(fr, s, required=req)
             if reader is not None and bp.reread_due(s, fr):
                 t_r = time.perf_counter()
@@ -332,10 +353,14 @@ def main():
             cfg_a = dataclasses.replace(cfg_a, held_every=cfg.held_every or 6, contact=True)
         if arm.startswith("bgc"):                    # contact suspects only (the held state is stream H's)
             cfg_a = dataclasses.replace(cfg_a, contact=True)
-        reader = make_reader(task, fold, cfg_a.reread_views) if cfg_a.reread_every else None
+        if arm.startswith("bgd"):                    # + head checks every 10 steps, a head re-read when in doubt
+            cfg_a = dataclasses.replace(cfg_a, contact=True, head_check_every=cfg.head_check_every or 10,
+                                        reread_on_doubt=True)
+        reader = make_reader(task, fold, cfg_a.reread_views) if (cfg_a.reread_every or cfg_a.reread_on_doubt) else None
         r = run(seq, actions, report, f0, arm, cfg_a, a.lag, fp, groups, task, confs=conf, reader=reader,
                 extra_lags=[int(x) for x in a.extra_lags.split(",") if x != ""],
-                held_fn=make_held_fn() if cfg_a.held_every else None)
+                held_fn=make_held_fn() if cfg_a.held_every else None,
+                head_fn=make_head_check(fold) if cfg_a.head_check_every else None)
         r["summary"] = summarize(r["events"])
         out["arms"][arm] = r
         print(f"[bgperc] {task} {seq.layout_id} {arm}: {r['summary']} stats {r.get('stats')} wall {r['wall_s']}s",
