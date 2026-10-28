@@ -668,6 +668,12 @@
   2026-10-28-dojo-h95-fill). Many drops now hover 22-24 mm over the rim, because the 6 mm hover needs |q5| > 1.56, and
   some pens still bounce out. pen0, which lies rolled 26 deg on its clip, slips in several grasp families (excluding
   the failed grasp's family did not help).
+  Parked (stream H, 2026-10-28): the slips are pen0 only (158 x 16 x 20 mm, lying rolled 26 deg on its clip). Its "box
+  close 2/1" families rise 0-6 mm; they close level (0-8 deg), so a tilted closing axis is not the cause. A
+  fill_container run on 100033 whose own grasp source was restricted to one family still picked "top axis 1 tilt 0"
+  through the relay leg (ok, 0.3 mm drift), and the pen still did not end inside. So the top grasp may hold and the
+  miss may be in the relay / drop. Next: thread the family through the relay, then screen pen0 on 3 layouts
+  (`h95_family_screen2.py`, kept off main: compute3 `~/controlr-h95n/scripts/skills/`).
 - [ ] **dojo skills: IK under `joint_limits` "measured" plans slower** (G3 plan_s: insert_tubes x2, fill_pen x1.6).
   A failing IK costs ~2.4x a succeeding one (55-60 vs 23-25 ms), and "measured" fails more targets (53 vs 13 of 300
   random ones). Cap the failing path, e.g. stop the remaining seeds once one stalls against the joint-5 stop.
