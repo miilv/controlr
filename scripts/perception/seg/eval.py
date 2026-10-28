@@ -141,6 +141,7 @@ def cmd_pred(a):
     gt_root = Path(a.gt).expanduser()
     metas = sorted(gt_root.glob("*/*/*/gt_*.json"))
     out = open(os.path.expanduser(a.out), "w")
+    dump = open(os.path.expanduser(a.dump), "w") if a.dump else None
     t_det = []
     for mp in metas:
         meta = json.loads(mp.read_text())
@@ -155,6 +156,13 @@ def cmd_pred(a):
             t0 = time.time()
             dets = [Det(m.astype(np.uint8), key, sc, tuple(b)) for m, key, sc, b in M.detect(img, a.conf)]
             t_det.append(time.time() - t0)
+            if dump is not None:   # for other streams (V's multi-view selector): class, score, box, mask polygon
+                rows_d = []
+                for p_ in dets:
+                    poly = st.mask_polygon(p_.mask)
+                    rows_d.append({"key": p_.key, "score": round(p_.score, 4), "box": [round(v, 1) for v in p_.box],
+                                   "px": int(p_.mask.sum()), "poly": None if poly is None else poly.round(1).tolist()})
+                dump.write(json.dumps({"set": s, "task": task, "episode": ep, "frame": k, "cam": cam, "dets": rows_d}) + "\n")
             gt = instances(codes, MIN_VIS)
             m = match_greedy(gt, dets, thr=0.0)
             robot = codes == st.ROBOT_CODE
@@ -190,6 +198,39 @@ def cmd_pred(a):
         out.flush()
     print(f"[pred] {len(metas)} frames; detect {np.median(t_det) * 1000:.0f} ms median, "
           f"{np.percentile(t_det, 90) * 1000:.0f} ms p90; {M.info()}", flush=True)
+
+
+def cmd_dump(a):
+    """Detections on frame-0 head images of every allowed scene (ids 100000-09, 100020-49), for other streams."""
+    from PIL import Image
+
+    from dojo.perception import seg_twin as st
+    from dojo.perception.seg_twin import category_of
+
+    classes = json.load(open(os.path.expanduser(a.classes)))["names"]
+    M = st._SegModel(os.path.expanduser(a.weights), classes, conf=a.conf)
+    out = open(os.path.expanduser(a.out), "w")
+    n = 0
+    for s in a.sets.split(","):
+        root = SETS[s]
+        for td in sorted(p for p in root.iterdir() if p.is_dir() and p.name != "logs"):
+            for ep in sorted(td.iterdir()):
+                if not (ep.is_dir() and ep.name.isdigit()):
+                    continue
+                i = int(ep.name)
+                if not (100000 <= i <= 100009 or 100020 <= i <= 100049) or not (ep / "frame_0_cam_head.png").exists():
+                    continue
+                img = np.asarray(Image.open(ep / "frame_0_cam_head.png").convert("RGB"))
+                dets = []
+                for m, key, sc, b in M.detect(img, a.conf):
+                    poly = st.mask_polygon(m)
+                    dets.append({"key": key, "category": category_of(key), "bbox_xyxy": [round(v, 1) for v in b],
+                                 "score": round(sc, 4), "px": int(m.sum()),
+                                 "poly": None if poly is None else poly.round(1).tolist()})
+                out.write(json.dumps({"set": s, "task": td.name, "episode": ep.name, "frame": 0, "cam": "cam_head",
+                                      "train_id_range": i >= 100025, "dets": dets}) + "\n")
+                n += 1
+    print(f"[dump] {n} scenes -> {a.out}", flush=True)
 
 
 def cmd_table(a):
@@ -260,10 +301,17 @@ def main(argv=None):
     p.add_argument("--out", required=True)
     p.add_argument("--b1", default=str(HOME / "dojo-data/sam/b1/objects.jsonl"))
     p.add_argument("--conf", type=float, default=0.25)
+    p.add_argument("--dump", default=None, help="also write every detection (class, score, box, polygon) here")
+    dd = sub.add_parser("dump")
+    dd.add_argument("--weights", required=True)
+    dd.add_argument("--classes", required=True)
+    dd.add_argument("--out", required=True)
+    dd.add_argument("--sets", default="d0_51,d0_ext")
+    dd.add_argument("--conf", type=float, default=0.25)
     t = sub.add_parser("table")
     t.add_argument("rows")
     a = ap.parse_args(argv)
-    {"gt": cmd_gt, "pred": cmd_pred, "table": cmd_table}[a.cmd](a)
+    {"gt": cmd_gt, "pred": cmd_pred, "dump": cmd_dump, "table": cmd_table}[a.cmd](a)
 
 
 if __name__ == "__main__":

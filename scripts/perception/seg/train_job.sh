@@ -25,12 +25,12 @@ done
 LOGGER=$!
 trap 'kill $LOGGER 2>/dev/null' EXIT
 note "$NAME: start ($LOCK)"
-cd "$HERE"
+cd "$SEG/models"      # Ultralytics' AMP check loads yolo11n.pt from the cwd (put it there: no download mid-run)
 exec 9>>"$LOCK"
 flock -w 60 9 || { note "$NAME: lost the lock race"; exit 75; }
 printf 'pid=%s stream=seg-S start=%s cmd=train %s\n' "$$" "$(date -u +%FT%TZ)" "$NAME" > "$LOCK"
 YOLO_CONFIG_DIR="$SEG/ultra_cfg" systemd-run --user --scope -q -p MemoryMax=16G -p CPUQuota=800% \
-  "$PY" scripts/perception/seg/train.py --data "$DATA" --project "$SEG/runs" --name "$NAME" "$@" > "$RUN/train.log" 2>&1
+  "$PY" "$HERE/scripts/perception/seg/train.py" --data "$DATA" --project "$SEG/runs" --name "$NAME" "$@" > "$RUN/train.log" 2>&1
 rc=$?
 note "$NAME: end rc=$rc"
 exit $rc

@@ -292,6 +292,19 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   (mode gt, `--policy dojo.perception.seq_capture:SeqReplayPolicy`, `scripts/perception/seq_render.sh`) reproduces the
   recorded run exactly (same `dev_gt_probe`) and keeps every camera + state + dev GT per step; JPEG q95 4:4:4 changes
   neither B1 nor refine measurably (journal 2026-10-28-dojo-bgperc §1).
+- **The segmenter flag needs its server too.** `seg_propose` acts only when `python -m dojo.perception.seg_twin serve
+  --sock S --weights W --classes classes.json` answers at `DOJO_SEG_ADDR` (torch + ultralytics in that venv); without
+  one it is a no-op. Its classes are catalogue keys from the training export (`classes.json`): an asset that never
+  appeared in the training renders cannot be named, only its category (`_seg_groups` falls back to the category).
+- **CPU OpenGL without OSMesa.** The boxes have no OSMesa, but Mesa's EGL vendor exposes llvmpipe as EGL device 1:
+  `LIBGL_ALWAYS_SOFTWARE=1 EGL_DEVICE_ID=1 PYOPENGL_PLATFORM=egl
+  __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json` gives pyrender with no GPU process
+  (GT-mask renders: ~0.2 s for a frame's 3 cameras). For B1 itself `DOJO_GL=0` (its CPU silhouettes) is ~5x faster
+  than llvmpipe; the two B1 backends differ on ~5 % of objects (D0 frame 0: 891 vs 903 within tolerance), so compare
+  arms on one.
+- **RTX leaves ghost trails of a moved arm.** A frame captured with one render pass after a 40-step move (D0's frames
+  1-3, `make_d0`) shows the arm smeared along its path (temporal accumulation). `seg_render` captures 40 % of its
+  arm-pose frames that way and the rest after 8 extra `render_for_capture` passes.
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
   frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
 
