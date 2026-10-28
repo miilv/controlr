@@ -230,3 +230,13 @@ def test_release_needs_the_runtime_opening_and_attach_needs_the_object_at_the_pa
         evs = gm.episode_events(rep, acts, kin, footprints=fp)
         assert [e.kind for e, _ in evs] == ["grasp", "place" if attached else "release_other"]
         assert evs[0][0].target == "a" and evs[0][0].meta["attached"] == ("a" if attached else None)
+
+
+def test_stacked_objects_match_in_3d():
+    # a held block 4 cm over its interchangeable twin: xy-nearest would pick the base and call it an identity error
+    gt = [_row("b0", (0.0, 0.0, 0.78), idx=0), _row("b1", (0.002, 0.0, 0.82), idx=1)]
+    bel = {"b1": _bel((0.0, 0.0, 0.82), idx=1), "b0": _bel((0.0, 0.0, 0.78), idx=0)}
+    g = gm.Groups("t")
+    g.lab2g = {"b0": 0, "b1": 0}
+    s = gm.score_event(_event("place", "b1", (0.0, 0, 0.85), ref="b0"), bel, gt, "t", tol=TOL, groups=g)
+    assert [r["cls"] for r in s["required"]] == ["ok", "ok"] and s["required"][0]["gt_label"] == "b1"

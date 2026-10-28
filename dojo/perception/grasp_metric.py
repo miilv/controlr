@@ -342,8 +342,8 @@ class Event:
 
 
 def score_required(label: str | None, belief: dict, gts: list[dict], groups: Groups, tol, role: str) -> dict:
-    """One required object: the believed pose vs the nearest GT object of its group (interchangeable labels: what the
-    jaws meet). Class: ok | identity (right place, wrong asset) | wrong_object (gross for its own object and within
+    """One required object: the believed pose vs the nearest (3-D) GT object of its group (interchangeable labels: what
+    the jaws meet; stacked objects share xy). Class: ok | identity (right place, wrong asset) | wrong_object (gross for its own object and within
     tolerance of another one, not of its group) | overshoot (tol < xy <= max(15, 2 tol)) | gross | rot | not_believed (no such object in the belief)."""
     t_tol, r_tol = tol
     out = {"role": role, "label": label}
@@ -355,11 +355,12 @@ def score_required(label: str | None, belief: dict, gts: list[dict], groups: Gro
     g_lab = groups.of(label)
     same = [g for g in gts if groups.of(g["label"]) == g_lab]
     gc = lambda g: np.asarray(g.get("c", g["pos"]), float)   # noqa: E731
-    near_any = min(gts, key=lambda g: float(np.linalg.norm(gc(g)[:2] - bp[:2])), default=None)
+    # nearest in 3-D: stacked objects share xy (the held block over its base, a tower's blocks)
+    near_any = min(gts, key=lambda g: float(np.linalg.norm(gc(g) - bp)), default=None)
     if not same:
         out.update(cls="no_gt", ok=False)
         return out
-    g = min(same, key=lambda g: float(np.linalg.norm(gc(g)[:2] - bp[:2])))
+    g = min(same, key=lambda g: float(np.linalg.norm(gc(g) - bp)))
     d = (bp - gc(g)) * 1000
     xy = float(np.linalg.norm(d[:2]))
     rot = _rot_err(g.get("key"), b.get("quat"), g.get("quat")) if r_tol else None
@@ -447,7 +448,7 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
         if lab in taken_b:                          # matched to a GT neighbour: its error counts there, once
             continue
         bp = np.asarray(b["c"], float)
-        dmin = min((float(np.linalg.norm(np.asarray(g["c"])[:2] - bp[:2])) * 1000 for g in gts), default=1e9)
+        dmin = min((float(np.linalg.norm(np.asarray(g["c"]) - bp)) * 1000 for g in gts), default=1e9)
         if dmin <= max(PHANTOM_MM, tol[0]):
             continue
         poly = footprints.polygon(b.get("key"), b["pos"], b.get("quat"))
