@@ -111,3 +111,10 @@ def test_belief_writes_take_every_logged_before_and_after():
          "correction reverted)", "prior7": [0.03, 0, 0.8, 1, 0, 0, 0], "pose7": [0.03, 0, 0.8, 1, 0, 0, 0]}]}
     w2 = ms.belief_writes(rep2)
     assert w2[0]["writer"] == "refine_pick+confirm" and w2[0]["after"] == [0, 0, 0.8]
+
+
+def test_consume_verdict_checks_only_the_axes_the_action_needs():
+    assert ms.consume_verdict({"xy_mm": 3.0, "z_mm": 9.0, "yaw_deg": None}, {"xy_mm": 4.0, "z_mm": None, "yaw_deg": None})
+    assert not ms.consume_verdict({"xy_mm": 5.0, "z_mm": 1.0}, {"xy_mm": 4.0, "z_mm": 2.0})
+    assert not ms.consume_verdict({"xy_mm": 1.0, "yaw_deg": None}, {"xy_mm": 4.0, "yaw_deg": 5.0})   # not measured
+    assert ms.consume_verdict({}, {"xy_mm": None})

@@ -164,6 +164,69 @@ def cmd_audit(a) -> None:
               f"{st_.median(x['err_before_mm'] for x in cs):.1f} -> {st_.median(x['err_after_mm'] for x in cs):.1f} |")
 
 
+def consume_verdict(err: dict, need: dict) -> bool:
+    """A consume event is within its need when every axis the action cares about (a non-null ``need``) is."""
+    return all(err.get(k) is not None and err[k] <= float(v) for k, v in (need or {}).items() if v is not None)
+
+
+def cmd_consume(a) -> None:
+    """Consumer-tolerance points (#239): each ``consume`` event's belief pose against GT at that step, per axis
+    (xy / z of the body centre, yaw modulo the GT placement's symmetry), judged against the precision the action
+    needs. Per task x purpose: n, within need, median errors."""
+    import numpy as np
+
+    from dojo.perception.grasp_metric import Footprints, Groups, _rot_err, gt_rows_asset
+    fp = Footprints()
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    rows, groups = [], {}
+    for d, r, rp, ap in episodes(a.runs):
+        run = os.path.basename(d)
+        rpath = Path(a.replays) / f"{run}_{r['layout_id']}.json.gz"
+        if not rpath.exists():
+            continue
+        rep = json.load(gzip.open(rp, "rt"))
+        frames = json.load(gzip.open(rpath, "rt"))["frames"]
+        grp = groups.setdefault(r["task"], Groups(r["task"]))
+        for e in rep.get("events") or []:
+            if e.get("kind") != "consume" or not e.get("pose7_used"):
+                continue
+            f = frame_at(frames, int(e["step"]), back=a.back)
+            if f is None:
+                continue
+            gts = [g for g in gt_rows_asset(f["objects"]) if not g.get("clutter")]
+            p7 = e["pose7_used"]
+            bc = fp.centre(e.get("key"), p7[:3], p7[3:7])
+            same = [g for g in gts if grp.of(g["label"]) == grp.of(e["label"])] or gts
+            if not same:
+                continue
+            g = min(same, key=lambda g: float(np.linalg.norm(fp.centre(g.get("key"), g["pos"], g.get("quat")) - bc)))
+            gc = fp.centre(g.get("key"), g["pos"], g.get("quat"))
+            d3 = (bc - gc) * 1000
+            err = {"xy_mm": round(float(np.linalg.norm(d3[:2])), 1), "z_mm": round(abs(float(d3[2])), 1),
+                   "yaw_deg": _rot_err(g.get("key"), p7[3:7], g.get("quat"))}
+            if err["yaw_deg"] is not None:
+                err["yaw_deg"] = round(err["yaw_deg"], 1)
+            rows.append({"run": run, "task": r["task"], "layout_id": r["layout_id"], "success": r.get("success"),
+                         "step": e["step"], "skill": e.get("skill"), "purpose": e.get("purpose"), "label": e["label"],
+                         "gt_label": g["label"], "need": e.get("need"), "err": err,
+                         "within": consume_verdict(err, e.get("need"))})
+    with open(out / "consume.jsonl", "w") as fo:
+        for x in rows:
+            fo.write(json.dumps(x) + "\n")
+    import statistics as st_
+    by = defaultdict(list)
+    for x in rows:
+        by[(x["task"], x["purpose"])].append(x)
+    med = lambda xs, k: (f"{st_.median(v):.1f}" if (v := [x["err"][k] for x in xs if x["err"].get(k) is not None]) else "-")  # noqa: E731
+    print("| task | purpose | events | within need | median xy / z (mm), yaw (deg) | median need xy / z / yaw |")
+    print("|---|---|---|---|---|---|")
+    for (t, pu), xs in sorted(by.items(), key=lambda kv: str(kv[0])):
+        nd = lambda k: (f"{st_.median(v):.1f}" if (v := [x["need"][k] for x in xs if (x["need"] or {}).get(k) is not None]) else "-")  # noqa: E731
+        print(f"| {t} | {pu} | {len(xs)} | {100 * sum(x['within'] for x in xs) / len(xs):.0f} % | "
+              f"{med(xs, 'xy_mm')} / {med(xs, 'z_mm')}, {med(xs, 'yaw_deg')} | {nd('xy_mm')} / {nd('z_mm')} / {nd('yaw_deg')} |")
+
+
 def cmd_jobs(a) -> None:
     n = 0
     for d, r, rp, ap in episodes(a.runs):
@@ -837,6 +900,11 @@ def main(argv=None) -> None:
     w.add_argument("--back", type=int, default=25, help="use a replay frame at most this many steps before a write")
     w.add_argument("--by", default="task", choices=("task", "arm", "task,arm"),
                    help="group by task, by the run name's arm tag (c4b_<task>_<arm>_<id>: gcon / gcoff), or both")
+    c = sub.add_parser("consume")
+    c.add_argument("runs", nargs="+")
+    c.add_argument("--replays", required=True)
+    c.add_argument("--out", required=True)
+    c.add_argument("--back", type=int, default=25)
     t = sub.add_parser("table")
     t.add_argument("events", nargs="+")
     t.add_argument("--by", default="task")
@@ -853,7 +921,7 @@ def main(argv=None) -> None:
     t.add_argument("--old", action="store_true", help="per task every round but its newest")
     t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)
-    {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table, "audit": cmd_audit}[a.cmd](a)
+    {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table, "audit": cmd_audit, "consume": cmd_consume}[a.cmd](a)
 
 
 if __name__ == "__main__":
