@@ -16,6 +16,9 @@ Ops (request dicts):
     {"op": "release_read", "frame": frame, "key", "pose7", "arm", "others": [[key, pose7]], "cfg"}
                                                                                    -> {"release_read": json}
         the 6-DoF pose of an object right after the release (``dojo.perception.release_read``): ok, pose7, ious, ...
+    {"op": "redetect", "frame": frame, "req": dojo.runtime.tick.build_request(...), "cfg"} -> {"redetect": json}
+        A1's tick perception (``dojo.perception.redetect``): segmenter detections on all cameras, association with the
+        belief, pose hypotheses for the active objects, corridor additions, lift identity (no writes: the runtime decides)
     {"op": "release_search", "frame": frame, "key", "pose7", "arm", "others", "pre_pose7", "fold", "cfg"}
                                                                                    -> {"release_search": json}
         the released object when the release read finds nothing (``release_read.release_search``): the pre-grasp
@@ -201,6 +204,12 @@ class PerceptionClient:
         req = {"op": "release_read", "frame": encode_frame(frame), "key": key, "pose7": [float(v) for v in pose7],
                "arm": arm, "others": [[k, [float(v) for v in p]] for k, p in others or ()], "cfg": cfg or {}}
         return json.loads(self._call(req)["release_read"])
+
+    def redetect(self, frame: dict, req: dict, cfg: dict | None = None) -> dict:
+        """A1's tick perception (``dojo.perception.redetect``): the twin segmenter on all cameras (``DOJO_SEG_ADDR``),
+        association, hypotheses for the request's active objects; ``req`` from ``dojo.runtime.tick.build_request``."""
+        return json.loads(self._call({"op": "redetect", "frame": encode_frame(frame), "req": req, "cfg": cfg or {}})
+                          ["redetect"])
 
     def release_search(self, frame: dict, key: str, pose7, arm: str, others=(), pre_pose7=None, fold: int = 0,
                        cfg: dict | None = None) -> dict:
@@ -914,6 +923,15 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         rr = release_read(decode_frame(req["frame"]), req["key"], req["pose7"], req["arm"],
                                           others=[(k, p) for k, p in req.get("others") or ()], cfg=req.get("cfg"))
                         conn.send({"ok": True, "release_read": json.dumps(rr, default=_default)})
+                    elif op == "redetect":
+                        from dojo.perception import seg_twin
+                        from dojo.perception.redetect import DetSource, RDConfig, redetect
+                        if getattr(p, "_a1_src", None) is None:
+                            p._a1_src = DetSource(seg_twin.client(), os.environ.get(seg_twin.ENV_ADDR, ""))
+                        rcfg = RDConfig(**{k: v for k, v in (req.get("cfg") or {}).items()
+                                           if k in RDConfig.__dataclass_fields__})
+                        rd = redetect(decode_frame(req["frame"]), req["req"], p._a1_src, rcfg)
+                        conn.send({"ok": True, "redetect": json.dumps(rd, default=_default)})
                     elif op == "release_search":
                         from dojo.perception.release_read import release_search
                         fold = int(req.get("fold", 0))

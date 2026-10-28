@@ -25,6 +25,7 @@ measures the twin's prediction error against GT in mode gt (a dev metric, never 
 from __future__ import annotations
 
 import copy
+import math
 
 import numpy as np
 
@@ -265,6 +266,7 @@ class KinematicBelief:
         self.cmd: dict[str, np.ndarray] = {}    # arm -> the last commanded joint target (a release counts when still)
         self.n_since_g: dict[str, int] = {a: 0 for a in ARMS}   # steps since the arm's gripper command last changed
         self.lift_max: dict[str, float] = {}    # arm -> the highest TCP z since its object was attached
+        self.grasp_tcp: dict[str, np.ndarray] = {}   # arm -> the TCP position at its last close
         self.released_lift: dict[str, float] = {}   # label -> how far the TCP rose while it held it (last release)
 
     def movable(self):
@@ -340,6 +342,7 @@ class KinematicBelief:
                     self._n_grasp += 1
                     o = self.objects[lab]
                     self.grasp_z[a] = (float(T_tcp[2, 3]), self._n_grasp, np.r_[o.pos, o.quat].astype(float))
+                    self.grasp_tcp[a] = T_tcp[:3, 3].copy()       # A1: the pad volume of an empty close
                     self.lift_max[a] = float(T_tcp[2, 3])
             if a in self.attached:
                 self.g_held[a] = min(self.g_held.get(a, g_new), g_new)
@@ -473,6 +476,19 @@ class RuntimeProvider:
         self.post_place_read = "off"            # "6dof": a release read when the post-place refine fails / fits poorly
         self.post_place_read_iou = 0.0          # an ok refine below this iou is re-read too (0: only a failed refine)
         self.never_left_lift_m = 0.03           # the search's "never left" seed needs a lift this high with it attached
+        # A1 (stream W, ``dojo.runtime.tick``): off | log | apply; ``a1_client(obs, req) -> resp`` (perception op
+        # "redetect"); the tick's state and its trigger cursors
+        self.a1 = "off"
+        self.a1_client = None
+        self.a1_cfg: dict = {}
+        self._a1_state = None
+        self._a1_ev_i = 0
+        self._a1_lifted: set = set()
+        self._a1_n_exec = 0                     # executed actions already swept by a tick
+        self._a1_att_log: list = []             # [(executed idx, arm, label | None, T_tcp_obj | None)]: the carries
+        self._a1_att: dict = {}                 # arm -> (label, T_tcp_obj) as last logged
+        self._ver_pose: dict = {}               # label -> (pose7, asset key) at the last version bump
+        self._fixture_held: set = set()         # labels a fixture took at their release (drop_rest)
         self.post_place_read_cfg: dict = {}
         self.replan = replan_on_divergence
         self.log = log or (lambda *a, **k: None)
@@ -536,9 +552,15 @@ class RuntimeProvider:
                 self._predict(s_end - (len(new) - 1 - i), vb)
             self.belief.step(a)
             self.touched.update(self.belief.held_labels())
+            if self.a1 != "off":
+                self._a1_log_attach(self.n_seen + i)
         if self.belief.drop_events:
             self.events.extend({"kind": "belief_drop", "step": self.bridge.steps_used, **e} for e in self.belief.drop_events)
+            # A1: an object a fixture took (a mug on its hook, a nut on its thread) belongs to the kinematic belief
+            self._fixture_held |= {e["label"] for e in self.belief.drop_events
+                                   if e.get("how") in ("held by a fixture", "on a fixture")}
             self.belief.drop_events = []
+        self._fixture_held -= set(self.belief.held_labels())
         self.n_seen = len(allx)
         self.belief.sync_robot(st)
         self.touched.update(self.belief.released)
@@ -1315,6 +1337,163 @@ class RuntimeProvider:
                 out[bl[i].label] = el[j]
         return out
 
+    # ------------------------------------------------------------------ A1: versions, triggers, the tick
+    def _bump_versions(self, move_m: float = 0.005, turn_deg: float = 5.0) -> None:
+        """A version per object, bumped on a SEMANTIC change only (reviewer B2): a move > 5 mm / 5 deg or an asset change
+        since the last bump. A held object's kinematic carry never bumps (it is not compared while attached); every bump
+        is logged as a ``belief_write`` event (before7 / after7 / writer = the object's source) for M's write audit."""
+        held = set(self.belief.held_labels())
+        for lab, o in self.belief.objects.items():
+            if lab in held or o.asset is None:
+                continue
+            p7 = np.r_[o.pos, o.quat].astype(float)
+            prev = self._ver_pose.get(lab)
+            if prev is None:
+                self._ver_pose[lab] = (p7, o.asset.key)
+                continue
+            d = float(np.linalg.norm(p7[:3] - prev[0][:3]))
+            c = abs(float(np.dot(p7[3:7], prev[0][3:7])))
+            ang = math.degrees(2 * math.acos(min(1.0, c)))
+            if d > move_m or ang > turn_deg or o.asset.key != prev[1]:
+                o.version = int(getattr(o, "version", 0)) + 1
+                self.events.append({"kind": "belief_write", "label": lab, "step": self.bridge.steps_used,
+                                    "writer": o.source, "version": o.version,
+                                    "before7": [round(float(v), 5) for v in prev[0]],
+                                    "after7": [round(float(v), 5) for v in p7]})
+                self._ver_pose[lab] = (p7, o.asset.key)
+
+    def versions(self, labels) -> dict:
+        self._bump_versions()                   # every object has its baseline before a plan records its versions
+        return {lab: int(getattr(self.belief.objects[lab], "version", 0)) for lab in labels if lab in self.belief.objects}
+
+    def fresh(self, versions: dict, corridor=None, radius: float = 0.10) -> list[str]:
+        """Labels whose version changed since ``versions`` (recorded at plan time) or that are gone, plus objects inside
+        the ``corridor`` (N x 3 path) that were not in the plan's map (a relocation into it, an added obstacle)."""
+        self._bump_versions()
+        out = sorted(lab for lab, v in versions.items()
+                     if lab not in self.belief.objects or int(getattr(self.belief.objects[lab], "version", 0)) != v)
+        if corridor is not None:
+            P = np.asarray(corridor, float).reshape(-1, 3)
+            for lab, o in sorted(self.belief.objects.items()):
+                if lab in versions or lab in self.belief.held_labels():
+                    continue
+                if float(np.min(np.linalg.norm(P[:, :2] - np.asarray(o.pos, float)[None, :2], axis=1))) <= radius:
+                    out.append(lab)
+        return out
+
+    def _a1_triggers(self, obs: dict, released) -> list:
+        """The tick's triggers since the last one (events the provider itself logged, the release list, lifts), through
+        ``tick.triggers_from_events``: the function offline harnesses call on a recorded report."""
+        from .tick import triggers_from_events
+        new = self.events[self._a1_ev_i:]
+        self._a1_ev_i = len(self.events)
+        rel = [(lab, self.belief.released_by.get(lab)) for lab in released or ()]
+        att = []
+        for arm, (lab, _T) in sorted(self.belief.attached.items()):
+            g = self.belief.grasp_z.get(arm)
+            if g is not None:
+                att.append((arm, lab, g[1], g[0], float(self.kin.tcp(arm, self.belief.q[arm])[2, 3])))
+        return triggers_from_events(new, rel, att, self._a1_lifted, int(self.bridge.steps_used))
+
+    def _a1_log_attach(self, idx: int) -> None:
+        """Log a change of what an arm carries (after executed action ``idx``): the contact sweep of the next tick
+        moves the carried object with its TCP over the whole carry, even when the tick comes after the release."""
+        for arm in ARMS:
+            cur, last = self.belief.attached.get(arm), self._a1_att.get(arm)
+            if cur is None and last is None:
+                continue
+            if cur is not None and last is not None and cur[0] == last[0] and np.allclose(cur[1], last[1], atol=1e-6):
+                continue
+            ent = None if cur is None else (cur[0], np.asarray(cur[1], float).copy())
+            self._a1_att_log.append((idx, arm, None if ent is None else ent[0], None if ent is None else ent[1]))
+            if ent is None:
+                self._a1_att.pop(arm, None)
+            else:
+                self._a1_att[arm] = ent
+
+    def a1_tick(self, obs: dict, triggers: list, corridor=None) -> list:
+        """One tick (``dojo.runtime.tick.run``: the same lines as the offline X2 harness): the perception op "redetect" on
+        this observation, ``decide``'s write rules, the writes (mode "apply") into the belief, Discrepancies into the
+        events. The contact sweep covers every executed action since the last TICK (every 3rd), with the held objects
+        riding the TCP. Returns the Discrepancies."""
+        from .tick import TickConfig, TickState, run
+        if not triggers:
+            return []
+        if self._a1_state is None:
+            self._a1_state = TickState()
+        st = self._a1_state
+        cfg = TickConfig(mode=self.a1, **{k: v for k, v in self.a1_cfg.items() if k in TickConfig.__dataclass_fields__
+                                          and k != "mode"})
+        held = {a: v[0] for a, v in self.belief.attached.items()}
+        try:
+            from dojo.perception.release_read import small_object
+        except Exception:  # noqa: BLE001 (the runtime's python may lack the perception extras)
+            small_object = None
+        objs, meta = [], {}
+        for lab, o in sorted(self.belief.objects.items()):
+            if o.asset is None or o.clutter:
+                continue
+            p7 = [float(v) for v in np.r_[o.pos, o.quat]]
+            ext = np.sort(np.asarray(getattr(o.asset, "extents", [1, 1, 1]), float))
+            small = bool(small_object(o.asset.key)) if small_object else bool(ext[-1] < 0.045 or ext[0] < 0.005)
+            objs.append({"label": lab, "key": o.asset.key, "pose7": p7, "small": small,
+                         "fixture": lab in self._fixture_held, "touched": lab in self.touched})
+        close_tcp = {}
+        for t in triggers:
+            if t.kind in ("release", "slip") and t.label in self.belief.objects:
+                o = self.belief.objects[t.label]
+                g = self.belief.grasp_z.get(t.arm) if t.arm else None
+                key = (t.label, g[1]) if g is not None else None
+                rose = key is not None and (self._grip_held_seen.get(t.arm) == key or self._vision_held_seen.get(t.arm) == key)
+                meta[t.label] = {"drop7": [float(v) for v in np.r_[o.pos, o.quat]],
+                                 "grasp7": None if g is None else [float(v) for v in g[2]],
+                                 "lift_m": float(self.belief.released_lift.get(t.label, 0.0)), "rose": rose}
+            if t.kind == "close_empty" and t.arm and t.arm in getattr(self.belief, "grasp_tcp", {}):
+                close_tcp[t.label] = [float(v) for v in self.belief.grasp_tcp[t.arm]]
+        # every executed action since the last tick (every 3rd): the arm's actual path, not an interpolation; what each
+        # arm carried along it rides its TCP (the attach log: a release tick still sweeps the carry)
+        from .tick import held_path_from_log
+        allx = self.bridge.executed
+        q_path, sampled = {}, {}
+        for a in ARMS:
+            key = f"{a}_arm_joint_state"
+            idx = [k for k in range(self._a1_n_exec, len(allx), 3) if key in allx[k]]
+            if idx:
+                q_path[a] = [list(map(float, np.asarray(allx[k][key], float).reshape(-1)[:6])) for k in idx]
+                sampled[a] = idx
+        keys = {lab: o.asset.key for lab, o in self.belief.objects.items() if o.asset is not None}
+        held_path = held_path_from_log(self._a1_att_log, sampled, keys)
+        n1 = self._a1_n_exec = len(allx)
+        # keep only what the next tick can need: each arm's last entry before its first action, and any later ones
+        keep = {}
+        for e in self._a1_att_log:
+            if e[0] < n1:
+                keep[e[1]] = e
+        self._a1_att_log = sorted(keep.values(), key=lambda e: e[0]) + [e for e in self._a1_att_log if e[0] >= n1]
+        step = int(self.bridge.steps_used)
+        try:
+            writes, ds, resp = run(obs, objs, held, triggers, meta, st, cfg, self.a1_client, step,
+                                   touched=self.touched, q_path=q_path, held_path=held_path, corridor=corridor,
+                                   close_tcp=close_tcp)
+        except Exception as e:  # noqa: BLE001 (the tick is advisory: the episode goes on without it)
+            self.events.append({"kind": "a1_error", "step": self.bridge.steps_used, "error": f"{type(e).__name__}: {e}"[:300]})
+            return []
+        for lab, p7 in sorted(writes.items()):
+            o = self.belief.objects.get(lab)
+            if o is None or lab in self.belief.held_labels():
+                continue
+            o.pos, o.quat, o.source = np.asarray(p7[:3], float), np.asarray(p7[3:7], float), "a1"
+            self._pp_doubt.discard(lab)
+        for lab, o in self.belief.objects.items():
+            o.uncertain = lab in st.uncertain if self.a1 == "apply" else False
+        self.events.append({"kind": "a1_tick", "step": step, "triggers": [(t.kind, t.label, t.arm) for t in triggers],
+                            "dets_hash": resp.get("dets_hash"), "active": resp.get("active"),
+                            "time_s": (resp.get("time_s") or {}).get("total"), "writes": sorted(writes)})
+        self.events.extend({**d.to_dict(), "kind": "a1_discrepancy", "a1_kind": d.kind} for d in ds)
+        self.stats["a1_ticks"] = self.stats.get("a1_ticks", 0) + 1
+        self.stats["a1_writes"] = self.stats.get("a1_writes", 0) + len(writes)
+        return ds
+
     # ------------------------------------------------------------------ skills provider
     def refresh(self, holding: dict | None = None) -> WorldState:
         obs = self.bridge.observe()
@@ -1347,6 +1526,9 @@ class RuntimeProvider:
                 self.resync(obs, released)
             if self.watcher is not None and not self.belief.held_labels():
                 self.watcher(obs)
+            if self.a1 != "off" and self.a1_client is not None:
+                self.a1_tick(obs, self._a1_triggers(obs, released))
+            self._bump_versions()
             objects = {k: copy.deepcopy(v) for k, v in self.belief.objects.items()}
         if not self.belief.held_labels() and not any((holding or {}).values()):
             self._checkpoint(st)

@@ -338,6 +338,13 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   never a mix and never a home-dir `.env` nobody named ([ENVIRONMENT.md](ENVIRONMENT.md), credentials in processes).
   Tests: fake keys only, and assert on names / fragments, never print an environment (`tests/test_sec_redaction.py`,
   `tests/dojo/test_sec_env.py`).
+- **`inverse_layout.coarse_fit` assumes the table plane.** A mask whose ray meets the table plane far away (a wrist
+  camera looking along the table) gives it a huge ROI (minutes per fit, A1's first offline run). Callers that fit
+  arbitrary masks guard the view first (`redetect.fit_in_mask`: table-plane point within 1.5 m, projected extent
+  < 2 x the image).
+- **Identical instances fool a nearest-GT error.** A belief write that puts a ttt piece (or a block) onto ANOTHER identical
+  piece "improves" its error to the nearest GT of its group while making two events wrong. Seeds from unexplained masks
+  need the object's exact asset class, and associated objects refit only locally (`redetect`).
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
   frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
 - **A held_look `held` has three values.** `None` (with `error`) is "no answer": no evidence (a uniform wrist frame, a
