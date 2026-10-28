@@ -250,7 +250,10 @@ class _RelationFinder(ast.NodeVisitor):
 def test_policy_code_reads_no_config_identity_relation():
     """No policy-side module (perception, runtime, skills, agent, bridge) names the config's per-label identity ties;
     only the layout generator (dojo/simlab, dev) does. The one reviewed set-level use is listed."""
-    reviewed = {("dojo/perception/inverse_layout.py", "quota_lists")}  # a same_as_label copy list = the source list's
+    reviewed = {("dojo/perception/inverse_layout.py", "quota_lists"),
+                # estimate.TIED_MODES (P1-3): tied identities are EXCLUDED from the twin's public constants; no
+                # relation's value is read
+                ("dojo/runtime/estimate.py", "<module>")}  # a same_as_label copy list = the source list's
     # assets as a set (imitate_sorting_sequence: "the corresponding objects"); journal 2026-10-28-legality-kong-identity
     found = set()
     for d in ("dojo/perception", "dojo/runtime", "dojo/skills", "dojo/agent", "dojo/bridge"):
