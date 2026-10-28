@@ -6,8 +6,8 @@ as logged, to 0.0). Rises are not compared: they are maxima over the observation
 
 OUT_ROOT holds ``seq/<name>/meta.json`` (the recorded actions file: its dir has the recorded ``*_episodes.jsonl``) and
 ``runs/<name>/*_episodes.jsonl`` (the replay's row). Prints one line per replay and the list of failures. With
-``--seg-cache`` (``seg_cache.py``'s output dir) each row also records its frozen detection cache: the file's sha1 and the
-segmenter's weights sha1.
+``--seg-cache`` (``seg_cache.py``'s or ``x2_eval.py --prepare-dets``'s output dir) each row also records its frozen
+detection cache: the file's sha1 and the segmenter's weights sha1.
 """
 import argparse
 import glob
@@ -61,7 +61,8 @@ def main():
     cache, head = {}, {}
     if a.seg_cache:
         cache = json.load(open(os.path.join(a.seg_cache, "index.json")))
-        head = json.load(open(os.path.join(a.seg_cache, "header.json")))
+        hp = os.path.join(a.seg_cache, "header.json")          # seg_cache.py's; x2_eval --prepare-dets: per entry
+        head = json.load(open(hp)) if os.path.exists(hp) else {}
     res = []
     for d in sorted(glob.glob(os.path.join(a.root, "runs", "*", "_done"))):
         name = os.path.basename(os.path.dirname(d))
@@ -69,8 +70,10 @@ def main():
             continue
         r = check(a.root, name)
         if name in cache:
-            r["detection_cache"] = {"sha1": cache[name]["sha1"], "frames": cache[name]["frames"],
-                                    "weights_sha1": head.get("weights_sha1"), "imgsz": head.get("imgsz")}
+            c = cache[name]
+            r["detection_cache"] = {"sha1": c["sha1"], "frames": c["frames"], "file": c.get("file"),
+                                    "weights_sha1": c.get("weights_sha1", head.get("weights_sha1")),
+                                    "imgsz": c.get("imgsz", head.get("imgsz")), "model_id": c.get("model_id")}
         res.append(r)
         print(f"{'OK  ' if r['valid'] else 'FAIL'} {name}: closes {r.get('n_rec')} / {r.get('n_rep')}, "
               f"max |d| {r.get('max_dist_diff_mm')} mm, steps {r.get('steps_rec')} / {r.get('steps_rep')}, "

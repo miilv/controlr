@@ -192,3 +192,28 @@ refine per frame? Report: [../experiments/2026-10-28-bgperc.md](../experiments/2
     - an oracle arm (dev only: GT before each refine / post-place) on 2 episodes: 30 re-computed writes, 7 adopted,
       clean@R5 8 -> 11, 0 broken;
     - W's tick on 2 compute3 dev proxies (no X2 data): 12 ticks, 0 errors, 0 cache misses.
+
+## 8. X2: A1 on the genuine-5.1 test set (results: [../experiments/2026-10-28-x2-a1.md](../experiments/2026-10-28-x2-a1.md))
+
+- **The run.**
+  - 68 of 70 replays are valid; swap OFF 100001 / 100004 fail the gate (jaw distance 15 / 2.2 mm). 67 episodes have
+    events.
+  - Detections: the frozen v2b cache on all stored frames (CPU, 2 workers).
+  - J and S of dojo-a1-frozen-v1 ran on compute4 light1 with EGL: about 0.6 min per episode for J, about 3 min for S.
+  - M's `m95_score.py x2 --split` matches the harness exactly (517 paired, 0 unpaired).
+- **clean@R10.** rt 57.3 % → J 60.0 % (15 fixed / 1 broken) → S 61.3 % (22 / 1). Without put_bottles nothing moves:
+  62.5 → 62.7 → 62.7.
+- **The pre-registered rule.** S − J = +1.4 points < 3: always-on is not built.
+  - S paid 278 ticks per episode, 9× J.
+  - 24 of its 25 two-tick writes came from a pending tick < 10 steps earlier, i.e. near-identical frames.
+- **What J fixes.** Bottles the belief left elsewhere after a failed or knocked grasp: C1 stale retry 9 of 14, G2
+  knocked 2. All of them are on the table, so there is no overlap with H's drop-verdict fix (a binned bottle believed
+  beside the bin).
+- **Landmines met on the way.**
+  - `seq_render.sh`'s SEQ_MAX_GB (default 4) is a cap on the whole OUT_ROOT. A PNG lane stops at 11 episodes without
+    `SEQ_MAX_GB=40`.
+  - An episode that never closes a gripper has no probe snapshot. The harness used to stop there.
+  - The EGL context segfaults at interpreter exit, after the outputs are written. `x2_eval` now exits with
+    `os._exit`.
+- **The fidelity floor** for the verdicts was the interim 12-episode pass. Phase 2 (2 h cap on light1) adds swap and
+  re-runs episodes with the symmetry-aware rotation (`fidelity/fid.json`, `fid_sym.json` on compute4).

@@ -271,7 +271,7 @@ class A1Arm:
     """Stream W's A1 tick, imported unchanged (``dojo.runtime.tick.run`` + ``dojo.perception.redetect``), on the arm's
     own belief: the inputs are built the way ``RuntimeProvider.a1_tick`` builds them online (W's interface, 28 Oct)."""
 
-    def __init__(self, name: str, seq, dets_pkl: str | None, rd_cfg=None, tk_cfg=None):
+    def __init__(self, name: str, seq, dets_pkl: str | None, rd_cfg=None, tk_cfg=None, schedule: str = "event"):
         from dojo.perception.redetect import DetSource, RDConfig
         from dojo.runtime.tick import TickConfig, TickState
         self.name, self.seq = name, seq
@@ -283,6 +283,9 @@ class A1Arm:
         self.st = TickState()
         self.last = 0
         self.log: list = []
+        self.schedule = schedule                        # event (J): W's triggers only; always (S): + every stored frame
+        self.jaw_log: list = []                         # [(action idx, arm, label | None, T_tcp_obj | None)]
+        self.write_log: list = []
 
     def setup(self, report, actions, revs, world, scored):
         self.report, self.actions, self.world = report, actions, world
@@ -292,21 +295,28 @@ class A1Arm:
         self.grasp7 = {}                                # (label, grasp step) -> the arm's belief pose at the close
 
     def ticks(self, report, actions, revs) -> list[int]:
-        return sorted(s for s in self.tps if at_or_before(self.seq, s) is not None)
+        ev = {s for s in self.tps if at_or_before(self.seq, s) is not None}
+        return sorted(ev | set(self.seq.steps) if self.schedule == "always" else ev)
 
     def on_grasp(self, label, step, p7):
         self.grasp7[(label, int(step))] = p7
+
+    def on_jaws(self, step, arm, label, T):
+        self.jaw_log.append((int(step), arm, label, None if T is None else np.asarray(T, float).tolist()))
 
     def tick(self, step, frame, belief, att, ctx) -> dict:
         from dojo.perception.grasp_metric import pose_T
         from dojo.perception.redetect import Scene, redetect
         from dojo.perception.release_read import small_object
-        from dojo.runtime.tick import fixture_labels, rose_evidence, run
+        from dojo.runtime.tick import fixture_labels, held_path_from_log, rose_evidence, run
         s, w = int(step), self.world
         trig = self.tps.get(s, [])
         j = at_or_before(self.seq, s)
-        if not trig or j is None:
+        if j is None or (not trig and self.schedule != "always"):
             return {}
+        if not trig:                                    # S's background tick: activates and seeds nothing (W)
+            from dojo.runtime.tick import Trigger
+            trig = [Trigger("periodic", s)]
         grasped = {lab for k, _a, lab in self.grasps if k <= s}
         fixture = fixture_labels([e for e in self.events if e["step"] <= s], held_now=set(att.values()),
                                  grasps=[(lab, k) for k, _a, lab in self.grasps if k <= s])
@@ -339,19 +349,26 @@ class A1Arm:
         if hov:
             c = np.asarray(belief[hov[0].label]["pos"], float)
             cor = [c.tolist(), (c + [0, 0, 0.12]).tolist()]
-        qp = {}
+        qp, sampled = {}, {}
         for arm in ("left", "right"):
             key = f"{arm}_arm_joint_state"
-            qs = [np.asarray(x[key], float).reshape(-1)[:6].tolist() for x in self.actions[self.last:s:3] if key in x]
-            if qs:
-                qp[arm] = qs
+            idx = [i for i in range(self.last, s, 3) if i < len(self.actions) and key in self.actions[i]]
+            if idx:
+                qp[arm] = [np.asarray(self.actions[i][key], float).reshape(-1)[:6].tolist() for i in idx]
+                sampled[arm] = idx
         self.last = s
-        hp = {arm: {"key": belief[lab]["key"],
-                    "T_tcp_obj": (np.linalg.inv(w.T(arm, s)) @ pose_T(belief[lab]["pos"], belief[lab]["quat"])).tolist()}
-              for arm, lab in att.items() if lab in belief}
+        log = list(self.jaw_log)
+        for arm, lab in att.items():                   # (the current carry, should the log have missed its close)
+            if lab in belief and not any(e[1] == arm and e[2] == lab for e in log):
+                T = np.linalg.inv(w.T(arm, s)) @ pose_T(belief[lab]["pos"], belief[lab]["quat"])
+                log.append((0, arm, lab, T.tolist()))
+        log.sort(key=lambda e: e[0])
+        hp = held_path_from_log(log, sampled, {lab: o.get("key") for lab, o in belief.items()})
         close_tcp = {t.label: w.T(t.arm, s)[:3, 3].tolist() for t in trig if t.kind == "close_empty" and t.arm}
         fr = self.seq.frame(j)
         obs = {"images": fr["images"], "state": {k: np.asarray(v, float) for k, v in fr["state"].items()}}
+        pend0 = {lab: int(v[0]) for lab, v in self.st.pending.items()}   # hypotheses awaiting a second tick
+        coll0 = set(self.st.collapsed)
         t0 = time.perf_counter()
         try:
             writes, ds, resp = run(obs, objs, dict(att), trig, meta, self.st, self.tk_cfg,
@@ -364,11 +381,34 @@ class A1Arm:
         self.log.append({"step": s, "frame": j, "triggers": [(t.kind, t.label, t.arm) for t in trig],
                          "active": resp.get("active"), "dets_hash": resp.get("dets_hash"),
                          "writes": sorted(writes), "discrepancies": [d.to_dict() for d in ds],
+                         # a write whose label had a hypothesis pending from an earlier tick: the gap (W: in S, two
+                         # ticks < 10 steps apart see nearly the same images)
+                         "pending_gap": {lab: s - pend0[lab] for lab in writes if lab in pend0},
+                         # W's exact rule: the write needed the two-tick path (small / fixture-held / collapsed before
+                         # this tick, and fewer than 2 views at IoU >= 0.5 showing >= 0.9 of it)
+                         "two_tick": sorted(lab for lab in writes if any(
+                             d.label == lab and int(((d.evidence or {}).get("cand") or {}).get("n50", 0)) < 2
+                             for d in ds) and (lab in coll0 or any(o["label"] == lab and (o["small"] or o["fixture"])
+                                                                   for o in objs))),
                          "wall_s": round(time.perf_counter() - t0, 3)})
         return writes
 
 
 # ------------------------------------------------------------------------------------------- one episode
+def gt_err(seq, step: int, lab: str, belief: dict, p7, fp, groups) -> float | None:
+    """DEV-ONLY (the scorer's side, never a tick input): mm from ``lab``'s pose ``p7`` (its centre) to the nearest GT
+    object of its group at ``step`` (W's x2 ``_gt_err``): judges a write helpful / harmful."""
+    from dojo.perception.grasp_metric import gt_key, gt_rows_asset
+    j = next((j for j in range(int(step), int(step) - 4, -1) if j in seq.by_step), None)
+    if j is None or p7 is None:
+        return None
+    same = [g for g in gt_rows_asset(seq.gt(j)) if groups.of(g["label"]) == groups.of(lab)]
+    if not same:
+        return None
+    c = fp.centre(belief[lab].get("key"), p7[:3], p7[3:7])
+    return round(1000 * min(float(np.linalg.norm(fp.centre(gt_key(g), g["pos"], g["quat"]) - c)) for g in same), 1)
+
+
 def rt_attached(rb, step: int) -> dict:
     """rt's jaws after ``step`` actions: the last probe snapshot at or before it (the jaws change only at snapshots)."""
     sn = next((x for x in reversed(rb.snaps) if x["step"] <= step), None)
@@ -376,13 +416,15 @@ def rt_attached(rb, step: int) -> dict:
 
 
 def run_episode(P, seq, arm, floor: dict | None = None, log=print, allow_no_probe: bool = False) -> tuple[list, list, list]:
-    from dojo.perception.grasp_metric import Footprints, attach_label, episode_events, grip_events
+    from dojo.perception.grasp_metric import Footprints, Groups, attach_label, episode_events, grip_events
     report, actions = WR.load_src(seq)
     cfg = report.get("config") or {}
     revs = sorted((e for e in report.get("events") or [] if isinstance(e.get("step"), (int, float))),
                   key=lambda e: e["step"])
     rb = WR.RecordedBelief(report, actions, revs)
-    if not rb.snaps and not allow_no_probe:
+    if not rb.snaps and not allow_no_probe and grip_events(actions):
+        # (no snapshot and no gripper change: an episode that never grasped, e.g. stopped at planning, has no jaws to
+        # know and no grasp / place to score)
         raise ValueError(f"{seq.dir.name}: no dev_belief_probe (rt = the recorded belief needs it)")
     kin, fp = rb.kin, Footprints()
     world = ArmWorld(rb, rb.track, cfg, report)
@@ -402,7 +444,8 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print, allow_no_prob
         tl.append((int(ev.step) - 1, 3, "score", j))
     tl.sort(key=lambda x: (x[0], x[1]))
     released_since: list = []
-    pairs, recomputes, tick_writes = [], [], []
+    pairs, recomputes, tick_writes, write_log = [], [], [], []
+    groups = Groups(seq.task)
     for step, _o, kind, x in tl:
         if kind == "write":
             ev = revs[x]
@@ -433,21 +476,28 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print, allow_no_prob
                 held = world.attached(rt_att).get(a)
                 if held is not None:
                     released_since.append(held)
-            if ge["kind"] == "grasp" and hasattr(arm, "on_grasp"):
+            if ge["kind"] == "release" and hasattr(arm, "on_jaws"):
+                arm.on_jaws(k, a, None, None)
+            if ge["kind"] == "grasp":
                 b0 = world.overlay(snap, k - 1)
-                for m, _b in scored:
-                    if m.kind == "grasp" and m.step == k and m.arm == a and m.target in b0:
-                        arm.on_grasp(m.target, k, [*b0[m.target]["pos"][:3], *b0[m.target]["quat"][:4]])
-            if ge["kind"] == "grasp" and world.chain:                            # a close: does the arm's belief attach what rt's did?
-                b = world.overlay(snap, k - 1)
-                excl = {lab for arm_, lab in world.attached(rt_att).items() if arm_ != a}
-                att_arm = attach_label(b, world.T(a, k)[:3, 3], fp, exclude=excl)
                 rt_lab = next((m.meta.get("attached") for m, _b in scored if m.kind == "grasp" and m.step == k
                                and m.arm == a), None)
-                if att_arm is not None and (att_arm in world.chain or att_arm != rt_lab):
-                    world.attach(att_arm, a, [*b[att_arm]["pos"], *b[att_arm]["quat"]], k, "attach")
-                if rt_lab is not None and rt_lab != att_arm and rt_lab not in world.chain and rt_lab in snap:
-                    world.set_free(rt_lab, [*snap[rt_lab]["pos"], *snap[rt_lab]["quat"]], k, "not attached")
+                for m, _b in scored:
+                    if m.kind == "grasp" and m.step == k and m.arm == a and m.target in b0 and hasattr(arm, "on_grasp"):
+                        arm.on_grasp(m.target, k, [*b0[m.target]["pos"][:3], *b0[m.target]["quat"][:4]])
+                att_arm = rt_lab
+                if world.chain:                          # does the arm's belief attach what rt's did?
+                    excl = {lab for arm_, lab in world.attached(rt_att).items() if arm_ != a}
+                    att_arm = attach_label(b0, world.T(a, k)[:3, 3], fp, exclude=excl)
+                    if att_arm is not None and (att_arm in world.chain or att_arm != rt_lab):
+                        world.attach(att_arm, a, [*b0[att_arm]["pos"], *b0[att_arm]["quat"]], k, "attach")
+                    if rt_lab is not None and rt_lab != att_arm and rt_lab not in world.chain and rt_lab in snap:
+                        world.set_free(rt_lab, [*snap[rt_lab]["pos"], *snap[rt_lab]["quat"]], k, "not attached")
+                if hasattr(arm, "on_jaws"):              # what this hand carries from action k on (W's held_path log)
+                    from dojo.perception.grasp_metric import pose_T
+                    T = (np.linalg.inv(world.T(a, k)) @ pose_T(b0[att_arm]["pos"], b0[att_arm]["quat"])
+                         if att_arm is not None and att_arm in b0 else None)
+                    arm.on_jaws(k, a, att_arm if T is not None else None, T)
         elif kind == "tick":
             i_next = next((j for j, e in enumerate(revs) if int(e["step"]) > step), len(revs))
             snap, _att, _ = rb.before(i_next, step=step)
@@ -459,7 +509,14 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print, allow_no_prob
                 if lab in att.values():
                     continue
                 d = float(np.linalg.norm(np.subtract(p7[:3], b[lab]["pos"][:3]))) * 1000 if lab in b else None
-                log({"episode": seq.dir.name, "tick": step, "write": lab, "moved_mm": None if d is None else round(d, 1)})
+                e0 = gt_err(seq, step, lab, b, b[lab]["pos"][:3] + list(b[lab]["quat"][:4]), fp, groups) if lab in b else None
+                e1 = gt_err(seq, step, lab, b, p7, fp, groups) if lab in b else None
+                wl = {"episode": seq.dir.name, "tick": step, "write": lab, "moved_mm": None if d is None else round(d, 1),
+                      "err_before_mm": e0, "err_after_mm": e1,
+                      "by_gt": (None if e0 is None or e1 is None else "helpful" if e1 < e0 - 2.0 else
+                                "harmful" if e1 > e0 + 2.0 else "neutral")}
+                log(wl)
+                write_log.append(wl)
                 tick_writes.append(d)
                 world.set_free(lab, p7, step, "a1")
         else:
@@ -479,10 +536,8 @@ def run_episode(P, seq, arm, floor: dict | None = None, log=print, allow_no_prob
             pairs.append((ev, b, b_arm, changed))
     rt_rows = m95_rows(seq, report, actions, [(ev, b) for ev, b, _ba, _c in pairs], track=rb.track, fp=fp)
     arm_rows = m95_rows(seq, report, actions, [(ev, ba) for ev, _b, ba, _c in pairs], track=rb.track, fp=fp)
-    if tick_writes:
-        recomputes.append({"episode": seq.dir.name, "recompute": "a1_ticks", "n": len(tick_writes),
-                           "moved_mm_p50": round(float(np.median([d for d in tick_writes if d is not None] or [0])), 1),
-                           "adopted": True, "offline_blind": False, "why": "arm write"})
+    if hasattr(arm, "write_log"):
+        arm.write_log = write_log
     for r_rt, r_arm, (_ev, _b, _ba, ch) in zip(rt_rows, arm_rows, pairs):
         r_rt.update(x2_arm="rt", changed={}, verdict="rt")
         r_arm.update(x2_arm=arm.name, changed=ch)
@@ -575,10 +630,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("root")
     ap.add_argument("--arm", default="null", choices=("null", "oracle", "a1"))
-    ap.add_argument("--arm-name", default=None, help="the arm's name in the output (a1: J / S per the frozen tag)")
+    ap.add_argument("--arm-name", default=None, help="the arm's name in the output (J / S)")
+    ap.add_argument("--schedule", default="event", choices=("event", "always"),
+                    help="a1: event = W's triggers only (J); always = + a tick on every stored frame (S)")
     ap.add_argument("--dets-dir", default=None, help="a1: the frozen detection cache, <dir>/<episode>.pkl")
     ap.add_argument("--prepare-dets", action="store_true",
-                    help="build --dets-dir: v2b (SEG_WEIGHTS / SEG_CLASSES) on every tick frame's 3 cameras, CPU")
+                    help="build --dets-dir: v2b (SEG_WEIGHTS / SEG_CLASSES) on the 3 cameras of the frames, CPU")
+    ap.add_argument("--dets-steps", default="all", choices=("all", "ticks"),
+                    help="all: every stored frame (S's ticks, a superset of J's); ticks: J's tick frames only")
+    ap.add_argument("--worker", default="0/1", help="i/n: this worker's share of the episodes (prepare-dets)")
     ap.add_argument("--out-dir", required=True, help="<out>/rt/events.jsonl, <out>/<arm>/events.jsonl (M's format)")
     ap.add_argument("--valid", default=None)
     ap.add_argument("--names", default="")
@@ -599,7 +659,19 @@ def main():
     if a.names:
         names = [n for n in names if n in set(a.names.split(","))]
     if a.prepare_dets:
-        return prepare_dets(a.root, names, a.dets_dir)
+        import zlib
+        i, k = (int(x) for x in a.worker.split("/"))
+        names = [n for n in names if zlib.crc32(n.encode()) % k == i]      # stable as the valid set grows
+        return prepare_dets(a.root, names, a.dets_dir, a.dets_steps)
+    if a.arm == "a1" and a.dets_dir:                  # only episodes whose frozen detections are complete
+        names = [n for n in names if os.path.exists(os.path.join(a.dets_dir, f"{n}.json"))]
+    on = [n for n in names if "_gcoff_" not in n]       # the ON set (the primary baseline) first, tasks in turn
+    by: dict = {}
+    for n in on:
+        by.setdefault(n.split("_")[1] if n.startswith("c4b_") else n, []).append(n)
+    lists = [by[t] for t in sorted(by)]
+    names = [x[i] for i in range(max(map(len, lists), default=0)) for x in lists if i < len(x)] + \
+        [n for n in names if "_gcoff_" in n]
     P = None
     if a.arm != "null":
         from dojo.perception import render
@@ -609,46 +681,99 @@ def main():
         P = _Perception()
     od = Path(a.out_dir)
     an = a.arm_name or a.arm
-    for d in ("rt", an):
-        (od / d).mkdir(parents=True, exist_ok=True)
-    f_rt, f_arm = open(od / "rt" / "events.jsonl", "w"), open(od / an / "events.jsonl", "w")
-    f_rc, f_tk = open(od / an / "recomputes.jsonl", "w"), open(od / an / "ticks.jsonl", "w")
-    misses = 0
-    all_rt, all_arm, all_rc = [], [], []
+    (od / an).mkdir(parents=True, exist_ok=True)
+    done_p = od / an / "done.txt"                     # resumable: episodes already scored for this arm
+    done = set(done_p.read_text().split()) if done_p.exists() else set()
+    meta = {"arm": an, "kind": a.arm, "schedule": a.schedule if a.arm == "a1" else None, "floor": a.floor,
+            "code": os.environ.get("PYTHONPATH", "")}
+    json.dump(meta, open(od / an / "meta.json", "w"), indent=1)
 
     def log(r):
         print(json.dumps(r), flush=True)
     for n in names:
+        if n in done:
+            continue
         seq = sd.Sequence(os.path.join(a.root, "seq", n))
         if a.arm == "a1":
-            arm = A1Arm(an, seq, os.path.join(a.dets_dir, f"{n}.pkl") if a.dets_dir else None)
+            arm = A1Arm(an, seq, os.path.join(a.dets_dir, f"{n}.pkl") if a.dets_dir else None, schedule=a.schedule)
         else:
             arm = OracleArm(seq) if a.arm == "oracle" else NullArm()
         rt_rows, arm_rows, rcs = run_episode(P, seq, arm, floor, log, a.allow_no_probe)
-        for t in getattr(arm, "log", []):
-            f_tk.write(json.dumps({"episode": n, **t}) + "\n")
-        misses += sum(1 for t in getattr(arm, "log", []) if "frozen detection cache" in str(t.get("error")))
-        for fh, rows in ((f_rt, rt_rows), (f_arm, arm_rows), (f_rc, rcs)):
-            for r in rows:
-                fh.write(json.dumps(r) + "\n")
-            fh.flush()
-        all_rt += rt_rows
-        all_arm += arm_rows
-        all_rc += rcs
-    for fh in (f_rt, f_arm, f_rc, f_tk):
-        fh.close()
+        for fn, rows in (("rt_events.jsonl", rt_rows), ("events.jsonl", arm_rows), ("recomputes.jsonl", rcs),
+                         ("ticks.jsonl", [{"episode": n, **t} for t in getattr(arm, "log", [])]),
+                         ("writes.jsonl", getattr(arm, "write_log", []))):
+            with open(od / an / fn, "a") as fh:
+                for r in rows:
+                    fh.write(json.dumps(r) + "\n")
+        with open(done_p, "a") as fh:
+            fh.write(n + "\n")
+    summ = summary_from_dir(od, an)
+    print(json.dumps({k: summ[k] for k in ("arm", "episodes", "online_cost", "writes_by_gt")}, indent=1))
+
+
+def _jsonl(p: Path) -> list[dict]:
+    return [json.loads(x) for x in open(p) if x.strip()] if p.exists() else []
+
+
+def summary_from_dir(od: Path, an: str) -> dict:
+    """``OUT/<arm>/summary.json`` from the arm's files: rt vs arm per R (all, without put_bottles, per task), the
+    re-computed writes, the A1 writes judged by GT, the online cost (ticks, writes, two-tick confirmations from
+    frames < 10 steps apart, tick wall time per episode); ``OUT/rt/events.jsonl`` = the rt rows of the scored
+    episodes (one copy, for M's ``m95_score.py x2``)."""
+    from collections import Counter
+    d = od / an
+    meta = json.load(open(d / "meta.json")) if (d / "meta.json").exists() else {}
+    all_rt, all_arm = _jsonl(d / "rt_events.jsonl"), _jsonl(d / "events.jsonl")
+    all_rc, all_wr, tk = _jsonl(d / "recomputes.jsonl"), _jsonl(d / "writes.jsonl"), _jsonl(d / "ticks.jsonl")
+    eps = sorted({r["run"] for r in all_rt} | {t["episode"] for t in tk})
+    cost = None
+    if tk or meta.get("kind") == "a1":
+        n = max(1, len(eps))
+        cost = {"episodes": len(eps), "ticks": len(tk), "ticks_per_episode": round(len(tk) / n, 1),
+                "errors": sum("error" in t for t in tk),
+                "dets_cache_misses": sum("frozen detection cache" in str(t.get("error")) for t in tk),
+                "writes": sum(len(t.get("writes") or []) for t in tk),
+                "periodic_ticks": sum(any(x[0] == "periodic" for x in t.get("triggers") or []) for t in tk),
+                "writes_with_pending_lt10_steps": sum(1 for t in tk for g in (t.get("pending_gap") or {}).values()
+                                                      if g < 10),
+                "two_tick_writes": sum(len(t.get("two_tick") or []) for t in tk),
+                "two_tick_writes_lt10_steps": sum(1 for t in tk for lab in t.get("two_tick") or []
+                                                  if (t.get("pending_gap") or {}).get(lab, 99) < 10),
+                "tick_wall_s_per_episode": round(sum(float(t.get("wall_s") or 0) for t in tk) / n, 1)}
+
+    def wsum(ws):
+        return {"n": len(ws), **Counter(w.get("by_gt") for w in ws)}
     nb = [i for i, r in enumerate(all_rt) if r["task"] != "put_bottles_into_dustbin"]
-    summ = {"arm": an, "kind": a.arm, "dets_cache_misses": misses, "all": summarize(all_rt, all_arm, all_rc),
+    summ = {**meta, "episodes": len(eps), "online_cost": cost, "writes_by_gt": wsum(all_wr),
+            "all": summarize(all_rt, all_arm, all_rc),
             "without_put_bottles": summarize([all_rt[i] for i in nb], [all_arm[i] for i in nb],
-                                             [c for c in all_rc if "_bottles_" not in c["episode"]])}
-    json.dump(summ, open(od / an / "summary.json", "w"), indent=1)
-    print(json.dumps(summ, indent=1))
+                                             [c for c in all_rc if "_bottles_" not in c["episode"]]),
+            "by_task": {}}
+    for t in sorted({r["task"] for r in all_rt}):
+        ii = [i for i, r in enumerate(all_rt) if r["task"] == t]
+        runs = {all_rt[i]["run"] for i in ii}
+        sm = summarize([all_rt[i] for i in ii], [all_arm[i] for i in ii], [c for c in all_rc if c["episode"] in runs])
+        sm.pop("recomputed", None)
+        sm["writes_by_gt"] = wsum([w for w in all_wr if w["episode"] in runs])
+        summ["by_task"][t] = sm
+    json.dump(summ, open(d / "summary.json", "w"), indent=1)
+    (od / "rt").mkdir(exist_ok=True)
+    rt_all = {}
+    for f in sorted(od.glob("*/rt_events.jsonl")):
+        for r in _jsonl(f):
+            rt_all.setdefault((r["run"], r["step"], r["kind"], r["arm"]), r)
+    with open(od / "rt" / "events.jsonl", "w") as fh:
+        for r in rt_all.values():
+            fh.write(json.dumps(r) + "\n")
+    return summ
 
 
-def prepare_dets(root: str, names: list[str], out: str) -> None:
-    """The frozen detection cache of the A1 arms: v2b on all three cameras of every frame a tick reads (W's
-    ``tick_points`` on the recorded run), in W's ``DetSource`` (model id "seg_v2b", imgsz 960, conf 0.25), one pickle
-    per episode; ``index.json``: each file's sha1 (``valid.json``'s cache hash). Run where ultralytics is (CPU)."""
+def prepare_dets(root: str, names: list[str], out: str, steps: str = "all") -> None:
+    """The frozen detection cache of the A1 arms: v2b on all three cameras of every stored frame (``steps`` "all": S's
+    ticks, a superset of J's) or of the tick frames only ("ticks": W's ``tick_points``), in W's ``DetSource`` (model
+    id "seg_v2b", imgsz 960, conf 0.25), one pickle per episode and a sidecar ``<episode>.json`` with its sha1 (the
+    cache hash ``valid.json`` records; ``index.json`` gathers them). Run where ultralytics is (CPU); workers on
+    disjoint ``--names`` never share a file."""
     import hashlib
 
     from dojo.perception.grasp_metric import Footprints, episode_events
@@ -665,27 +790,35 @@ def prepare_dets(root: str, names: list[str], out: str) -> None:
             return [Det(np.asarray(m, np.uint8), k, sc, tuple(b)) for m, k, sc, b in self.m.detect(img, conf)]
     seg, sd, kin, fp = _Seg(), WR._seq_data(), X5Kin(), Footprints()
     os.makedirs(out, exist_ok=True)
-    idx_p = os.path.join(out, "index.json")
-    idx = json.load(open(idx_p)) if os.path.exists(idx_p) else {}
+    w_sha = hashlib.sha1(open(os.environ["SEG_WEIGHTS"], "rb").read()).hexdigest()
     for n in names:
-        dst = os.path.join(out, f"{n}.pkl")
-        if n in idx and os.path.exists(dst):
+        dst, side = os.path.join(out, f"{n}.pkl"), os.path.join(out, f"{n}.json")
+        if os.path.exists(side):
             continue
         seq = sd.Sequence(os.path.join(root, "seq", n))
-        report, actions = WR.load_src(seq)
-        scored = [(e, b) for e, b in episode_events(report, actions, kin, footprints=fp) if e.kind in ("grasp", "place")]
-        steps = sorted({j for s in tick_points(report, actions, scored, seq) for j in [at_or_before(seq, s)]
-                        if j is not None})
+        if steps == "all":
+            js = list(seq.steps)
+        else:
+            report, actions = WR.load_src(seq)
+            scored = [(e, b) for e, b in episode_events(report, actions, kin, footprints=fp)
+                      if e.kind in ("grasp", "place")]
+            js = sorted({j for s in tick_points(report, actions, scored, seq) for j in [at_or_before(seq, s)]
+                         if j is not None})
         src = DetSource(seg, "seg_v2b", 960)
         t0 = time.time()
-        for j in steps:
-            for cam, img in seq.frame(j)["images"].items():
+        for j in js:
+            for _cam, img in seq.frame(j)["images"].items():
                 src.detect(img)
-        src.save(dst)
-        idx[n] = {"file": os.path.basename(dst), "sha1": hashlib.sha1(open(dst, "rb").read()).hexdigest(),
-                  "frames": len(steps), "model_id": "seg_v2b", "imgsz": 960}
-        json.dump(idx, open(idx_p, "w"), indent=1)
-        print(f"[dets] {n}: {len(steps)} tick frames, {time.time() - t0:.0f} s", flush=True)
+        src.save(dst + ".tmp")
+        os.replace(dst + ".tmp", dst)
+        json.dump({"file": os.path.basename(dst), "sha1": hashlib.sha1(open(dst, "rb").read()).hexdigest(),
+                   "frames": len(js), "steps": steps, "model_id": "seg_v2b", "imgsz": 960, "conf": 0.25,
+                   "weights_sha1": w_sha}, open(side, "w"), indent=1)
+        print(f"[dets] {n}: {len(js)} frames, {time.time() - t0:.0f} s", flush=True)
+    idx = {os.path.basename(f)[:-5]: json.load(open(f)) for f in sorted(Path(out).glob("*.json"))
+           if f.name != "index.json"}
+    json.dump(idx, open(os.path.join(out, "index.json") + f".{os.getpid()}", "w"), indent=1)
+    os.replace(os.path.join(out, "index.json") + f".{os.getpid()}", os.path.join(out, "index.json"))
 
 
 def summarize(rt_rows: list[dict], arm_rows: list[dict], rcs: list[dict]) -> dict:
@@ -710,3 +843,6 @@ def summarize(rt_rows: list[dict], arm_rows: list[dict], rcs: list[dict]) -> dic
 
 if __name__ == "__main__":
     main()
+    import sys
+    sys.stdout.flush()
+    os._exit(0)                                     # skip interpreter teardown: the EGL context segfaults there
