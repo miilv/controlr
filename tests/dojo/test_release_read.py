@@ -83,3 +83,68 @@ def test_release_read_without_views_keeps_the_prior(monkeypatch):
     RR, frame, pose7, T_gt = _scene(monkeypatch, cams_used=())
     r = RR.release_read(frame, "Rigid/box/00000", pose7, "left")
     assert not r["ok"] and r["why"] == "no_views" and r["pose7"] == pose7
+
+
+def _search_stubs(monkeypatch, fit_at, wrist_ok=False):
+    """release_search with its head view, fits and 6-DoF read stubbed: a 200 x 200 px head view whose foreground holds
+    one blob at pixel (150, 100); ``fit_at`` = {centre xy (rounded) or "pre": (T, iou)} of the head fits."""
+    pytest.importorskip("cv2")
+    from dojo.perception import release_read as RR
+
+    fg = np.zeros((200, 200), np.uint8)
+    fg[90:110, 140:160] = 1
+
+    class Cam:
+        w = h = 200
+
+        def ray_plane(self, uv, z):                          # 1 px = 1 mm, origin at pixel (100, 100)
+            uv = np.asarray(uv, float).reshape(-1, 2)
+            return np.c_[(uv[:, 0] - 100) / 1000.0, (uv[:, 1] - 100) / 1000.0, np.full(len(uv), z)]
+
+    v = SimpleNamespace(cam=Cam(), fg=fg, known=np.ones_like(fg), robot=np.zeros_like(fg))
+    monkeypatch.setattr(RR, "_head_view", lambda frame, bgs, thr: v)
+    monkeypatch.setattr(RR, "load_asset", lambda key: SimpleNamespace(V=np.array([[0, 0, 0], [0, 0, 0.04]], float)))
+    calls = []
+
+    def head_fit(v_, key, T_init, om, yaws=1, iters=60, centre_xy=None):
+        k = "pre" if centre_xy is None else tuple(round(c, 2) for c in centre_xy)
+        calls.append(k)
+        T, iou = fit_at.get(k, (None, 0.0))
+        if T is None:
+            return None
+        s = np.zeros((200, 200), np.uint8)
+        s[90:110, 140:160] = 1
+        return T, iou, s
+
+    monkeypatch.setattr(RR, "_head_fit", head_fit)
+    monkeypatch.setattr(RR, "release_read", lambda *a, **k: {"ok": wrist_ok, "why": None if wrist_ok else "one_far_view",
+                                                             "pose7": [9.0] * 7, "ious": {"cam_left_wrist": 0.9}})
+    return RR, calls
+
+
+def _T(x, y, z=0.78):
+    T = np.eye(4)
+    T[:3, 3] = [x, y, z]
+    return T
+
+
+def test_release_search_takes_the_pre_grasp_pose_of_a_missed_grasp(monkeypatch):
+    RR, calls = _search_stubs(monkeypatch, {"pre": (_T(0.2, 0.1), 0.8)})
+    prior = [0.0, 0.0, 0.9, 1, 0, 0, 0]
+    r = RR.release_search({}, "Rigid/x/00000", prior, "left", pre_pose7=[0.2, 0.1, 0.78, 1, 0, 0, 0], head_bgs={"x": 1})
+    assert r["ok"] and r["via"] == "pre_grasp" and r["pose7"][:3] == pytest.approx([0.2, 0.1, 0.78])
+    assert calls == ["pre"]                                   # found there: no head search
+
+
+def test_release_search_finds_a_fallen_object_near_the_release_and_ignores_far_blobs(monkeypatch):
+    # the blob's centre is 50 mm from the release in x: found by the search (the pre-grasp check fails: iou 0.2)
+    RR, calls = _search_stubs(monkeypatch, {"pre": (_T(0.3, 0.3), 0.2), (0.05, 0.0): (_T(0.05, 0.0), 0.75)},
+                              wrist_ok=True)
+    prior = [0.0, 0.0, 0.9, 1, 0, 0, 0]
+    r = RR.release_search({}, "Rigid/x/00000", prior, "left", pre_pose7=[0.3, 0.3, 0.78, 1, 0, 0, 0], head_bgs={"x": 1})
+    assert r["ok"] and r["via"] == "head_search" and r["pose7"] == [9.0] * 7   # a wrist saw it: the 6-DoF read's pose
+    assert calls == ["pre", (0.05, 0.0)]
+    # the same blob beyond the search radius: nothing
+    RR, calls = _search_stubs(monkeypatch, {(0.05, 0.0): (_T(0.05, 0.0), 0.75)})
+    r = RR.release_search({}, "Rigid/x/00000", prior, "left", head_bgs={"x": 1}, cfg={"radius_mm": 30.0})
+    assert not r["ok"] and r["why"] == "not_found" and r["pose7"] == prior and calls == []

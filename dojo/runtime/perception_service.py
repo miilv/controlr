@@ -16,6 +16,10 @@ Ops (request dicts):
     {"op": "release_read", "frame": frame, "key", "pose7", "arm", "others": [[key, pose7]], "cfg"}
                                                                                    -> {"release_read": json}
         the 6-DoF pose of an object right after the release (``dojo.perception.release_read``): ok, pose7, ious, ...
+    {"op": "release_search", "frame": frame, "key", "pose7", "arm", "others", "pre_pose7", "fold", "cfg"}
+                                                                                   -> {"release_search": json}
+        the released object when the release read finds nothing (``release_read.release_search``): the pre-grasp
+        pose (a missed grasp), then a head-view search of unexplained foreground around the release
     {"op": "wrist_check", "frame": frame, "objects": [{label, key, pos, quat}], "fold", "arm", "kind", "target",
      "reference", "corridor", "held", "held_label", "cfg", "vocabulary"}             -> {"wrist_check": json}
         the grasp-time wrist check at a pick / place hover (``dojo.perception.wrist_check``): existence (refine fit +
@@ -187,6 +191,15 @@ class PerceptionClient:
         req = {"op": "release_read", "frame": encode_frame(frame), "key": key, "pose7": [float(v) for v in pose7],
                "arm": arm, "others": [[k, [float(v) for v in p]] for k, p in others or ()], "cfg": cfg or {}}
         return json.loads(self._call(req)["release_read"])
+
+    def release_search(self, frame: dict, key: str, pose7, arm: str, others=(), pre_pose7=None, fold: int = 0,
+                       cfg: dict | None = None) -> dict:
+        """The released object when the release read finds nothing at the release (``release_read.release_search``):
+        its pre-grasp pose ``pre_pose7`` (a missed grasp), then a head-view search around the release."""
+        req = {"op": "release_search", "frame": encode_frame(frame), "key": key, "pose7": [float(v) for v in pose7],
+               "arm": arm, "others": [[k, [float(v) for v in p]] for k, p in others or ()], "fold": int(fold),
+               "pre_pose7": None if pre_pose7 is None else [float(v) for v in pre_pose7], "cfg": cfg or {}}
+        return json.loads(self._call(req)["release_search"])
 
     def wrist_check(self, frame: dict, objects: list[dict], fold: int, arm: str, kind: str, target: str | None = None,
                     reference: str | None = None, corridor=None, held=None, held_label: str | None = None,
@@ -820,6 +833,14 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         rr = release_read(decode_frame(req["frame"]), req["key"], req["pose7"], req["arm"],
                                           others=[(k, p) for k, p in req.get("others") or ()], cfg=req.get("cfg"))
                         conn.send({"ok": True, "release_read": json.dumps(rr, default=_default)})
+                    elif op == "release_search":
+                        from dojo.perception.release_read import release_search
+                        fold = int(req.get("fold", 0))
+                        rs = release_search(decode_frame(req["frame"]), req["key"], req["pose7"], req["arm"],
+                                            others=[(k, p) for k, p in req.get("others") or ()],
+                                            pre_pose7=req.get("pre_pose7"), head_bgs=p.bgs(fold),
+                                            head_thr=float(p.cfg(fold).fg_thr), cfg=req.get("cfg"))
+                        conn.send({"ok": True, "release_search": json.dumps(rs, default=_default)})
                     elif op == "wrist_check":
                         out = p.wrist_check(req)
                         conn.send({"ok": True, "wrist_check": json.dumps(out, default=_default)})

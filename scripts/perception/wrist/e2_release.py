@@ -27,6 +27,21 @@ import time
 import numpy as np
 
 
+def at_or_before(seq, s: int, back: int = 3):
+    """The sequence's observation step nearest at or before ``s`` (within ``back``: strided sequences), else None."""
+    for j in range(int(s), int(s) - back - 1, -1):
+        if j in seq.by_step:
+            return j
+    return None
+
+
+def at_or_after(seq, s: int, ahead: int = 3):
+    for j in range(int(s), int(s) + ahead + 1):
+        if j in seq.by_step:
+            return j
+    return at_or_before(seq, s)
+
+
 def load_report(seq):
     d = os.path.dirname(seq.meta["actions"])
     hits = glob.glob(os.path.join(d, f"{seq.task}_*_{seq.layout_id}_report.json.gz"))
@@ -67,6 +82,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--episodes", default="")
     ap.add_argument("--arms", default="rt,oracle")
+    ap.add_argument("--require-done", default="", help="stream C's runs root: only episodes with <root>/<ep>/_done")
     ap.add_argument("--delay", type=int, default=8, help="read frame = release + delay when the report has no post_place")
     ap.add_argument("--set", action="append", default=[], help="release_read cfg field=value (JSON value)")
     a = ap.parse_args()
@@ -82,6 +98,8 @@ def main():
     eps = sorted(x for x in os.listdir(root) if x != "smoke" and os.path.exists(os.path.join(root, x, "meta.json")))
     if a.episodes:
         eps = [x for x in eps if x in a.episodes.split(",")]
+    if a.require_done:
+        eps = [x for x in eps if os.path.exists(os.path.join(os.path.expanduser(a.require_done), x, "_done"))]
     arms = a.arms.split(",")
     rows, reads = [], []
     t_all = time.perf_counter()
@@ -97,11 +115,20 @@ def main():
             if e.get("kind") == "post_place" and e.get("label"):
                 pp.setdefault(e["label"], []).append(int(e["step"]))
         rel = releases(G, report, actions)
+        head = None
+        if "search" in arms:
+            import zlib
+
+            from dojo.runtime.perception_service import _Perception
+            P = _Perception()
+            P.set_scene(task)
+            fold = zlib.crc32(str(seq.layout_id).encode()) % 2      # = stream C's replay_eval fold
+            head = (P.bgs(fold), float(P.cfg(fold).fg_thr))
         last = max(seq.steps)
         read_at = {}
         for k, arm, lab in rel:
             s = next((s for s in sorted(pp.get(lab, [])) if k <= s <= k + 40), None)
-            read_at[(k, lab)] = min(s if s is not None else k + a.delay, last)
+            read_at[(k, lab)] = at_or_after(seq, min(s if s is not None else k + a.delay, last))
         per_arm = {}
         for arm_name in arms:
             patches = []                                  # (step, label, pose7 | None, info)
@@ -109,17 +136,22 @@ def main():
                 j = read_at[(k, lab)]
                 if arm_name == "oracle":                  # resolved at the read step: the GT object of the label's
                     patches.append((j, lab, None, {"src": "gt"}))   # group nearest to the released belief
-                elif arm_name == "read":
-                    patches.append((j, lab, None, {"src": "read", "k": k, "arm": arm}))
+                elif arm_name in ("read", "search"):
+                    patches.append((j, lab, None, {"src": arm_name, "k": k, "arm": arm}))
             done = set()
 
-            def patcher(bt, upto, patches=patches, done=done, seq=seq, ep=ep, groups=groups, fp=fp):
+            pre: dict = {}                               # label -> its pose before the last grasp (pre-grasp evidence)
+
+            def patcher(bt, upto, patches=patches, done=done, seq=seq, ep=ep, groups=groups, fp=fp, pre=pre):
+                for _, (lab_, _, p_) in bt.attached.items():
+                    if p_ is not None:
+                        pre[lab_] = list(p_[0]) + list(p_[1])
                 for i, (j, lab, p7, info) in enumerate(patches):
                     if i in done or j > upto or lab not in bt.belief:
                         continue
                     done.add(i)
-                    if info["src"] == "read":
-                        p7 = _read(bt, seq, j, lab, info, cfg, reads, ep)
+                    if info["src"] in ("read", "search"):
+                        p7 = _read(bt, seq, j, lab, info, cfg, reads, ep, pre=pre.get(lab), head=head)
                     elif info["src"] == "gt":
                         p7 = _gt_pose(G, bt, seq, j, lab, groups, fp)
                     if p7 is not None:
@@ -129,9 +161,10 @@ def main():
                 evs = G.episode_events(report, actions)
             out = {}
             for e, b in evs:
-                if e.kind not in ("grasp", "place"):
+                jg = at_or_before(seq, int(e.step) - 1)
+                if e.kind not in ("grasp", "place") or jg is None:
                     continue
-                s = G.score_event(e, b, seq.gt(int(e.step) - 1), task, footprints=fp, groups=groups)
+                s = G.score_event(e, b, seq.gt(jg), task, footprints=fp, groups=groups)
                 out[(int(e.step), e.arm)] = {"kind": e.kind, "step": int(e.step), "target": e.target,
                                              "reference": e.reference, "clean_r": s["clean_r"], "reasons": s["reasons"],
                                              "clean_required": s["clean_required"], "clean_target": s["clean_target"]}
@@ -169,10 +202,12 @@ def _gt_pose(G, bt, seq, j, lab, groups, fp):
     return list(g["pos"]) + list(g["quat"])
 
 
-def _read(bt, seq, j, lab, info, cfg, reads, ep):
-    """The GT-free release read of ``lab`` on frame ``j`` (the belief there as its prior); logs it with its dev error."""
+def _read(bt, seq, j, lab, info, cfg, reads, ep, pre=None, head=None):
+    """The GT-free release read of ``lab`` on frame ``j`` (the belief there as its prior; arm "search": the wide search
+    when it fails, with ``pre`` = the pre-grasp pose and ``head`` = (backgrounds, threshold)); logs it with its dev
+    error."""
     from dojo.perception import grasp_metric as G
-    from dojo.perception.release_read import release_read
+    from dojo.perception.release_read import release_read, release_search
 
     b = bt.snapshot(j)
     o = b.get(lab)
@@ -181,10 +216,18 @@ def _read(bt, seq, j, lab, info, cfg, reads, ep):
     others = [(x["key"], list(x["pos"]) + list(x["quat"])) for l2, x in b.items()
               if l2 != lab and x.get("pos") is not None and x.get("key")]
     t0 = time.perf_counter()
+    fr = seq.frame(j)
     try:
-        r = release_read(seq.frame(j), o["key"], list(o["pos"]) + list(o["quat"]), info["arm"], others=others, cfg=cfg)
+        r = release_read(fr, o["key"], list(o["pos"]) + list(o["quat"]), info["arm"], others=others, cfg=cfg)
+        r["via"] = r.get("via") or "local"
+        if (info["src"] == "search" and not r.get("ok") and head is not None
+                and r.get("why") in ("fit_poor", "no_models", "no_views", "out_of_range", "one_far_view")):
+            r2 = release_search(fr, o["key"], list(o["pos"]) + list(o["quat"]), info["arm"], others=others, pre_pose7=pre,
+                                head_bgs=head[0], head_thr=head[1], cfg=cfg)
+            r = {**r2, "local_why": r.get("why")}
     except Exception as ex:  # noqa: BLE001
-        r = {"ok": False, "why": f"error {type(ex).__name__}: {ex}"[:300]}
+        import traceback
+        r = {"ok": False, "why": f"error {type(ex).__name__}: {ex} {traceback.format_exc()[-300:]}"[:600]}
     dt = time.perf_counter() - t0
     # dev only: the error before / after against the GT object of the label's group nearest to the prior
     fp = G.Footprints()
@@ -202,12 +245,13 @@ def _read(bt, seq, j, lab, info, cfg, reads, ep):
         return round(1000 * float(np.linalg.norm(np.asarray(c) - np.asarray(gc))), 1)
 
     rec = {"episode": ep, "label": lab, "step": j, "release": info["k"], "arm": info["arm"], "ok": r.get("ok"),
+           "src": info["src"], "via": r.get("via"), "tried": r.get("tried"), "local_why": r.get("local_why"),
            "why": r.get("why"), "ious": r.get("ious"), "views": r.get("views"), "moved_mm": r.get("moved_mm"),
            "turned_deg": r.get("turned_deg"), "wall_s": round(dt, 3), "err_before_mm": err(list(o["pos"]) + list(o["quat"])),
            "err_after_mm": err(r.get("pose7")) if r.get("ok") else None,
            "err_fit_mm": err(r.get("fit_pose7") or r.get("pose7"))}
     reads.append(rec)
-    print(f"   [read] {ep} {lab} @{j} ok={r.get('ok')} why={r.get('why')} err {rec['err_before_mm']} -> "
+    print(f"   [{info['src']}] {ep} {lab} @{j} ok={r.get('ok')} via={r.get('via')} why={r.get('why')} err {rec['err_before_mm']} -> "
           f"{rec['err_fit_mm']} mm ious {r.get('ious')} {dt:.2f}s", flush=True)
     return r.get("pose7") if r.get("ok") else None
 

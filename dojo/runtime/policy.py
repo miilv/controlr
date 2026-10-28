@@ -152,7 +152,8 @@ class RuntimeConfig:
     post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
     # ... and when that refine is not ok or fits poorly (iou < post_place_read_iou): the 6-DoF release read
     # (``dojo.perception.release_read``: releasing wrist + head + other wrist, render-and-compare around the released
-    # pose; an object that does not rest as put down, e.g. a mug swinging on its hook). off | 6dof
+    # pose; an object that does not rest as put down, e.g. a mug swinging on its hook). off | 6dof | 6dof_search (when
+    # the read finds nothing: the pre-grasp pose, a missed grasp, then a head-view search around the release)
     post_place_read: str = "off"
     post_place_read_iou: float = 0.85
     post_place_read_cfg: dict = field(default_factory=dict)
@@ -282,6 +283,11 @@ class _Checker:
         objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos], "quat": [float(v) for v in x.quat]}
                 for x in [obj] + list(others)]
         return (self.pc.refine(obs, objs, self.fold, self.max_shift_m, arm=arm, held=held) or {}).get(obj.label)
+
+    def release_search(self, obs: dict, obj, others, arm: str, pre_pose7=None, cfg: dict | None = None) -> dict:
+        return self.pc.release_search(obs, obj.asset.key, [float(v) for v in np.r_[obj.pos, obj.quat]], arm,
+                                      others=[(x.asset.key, [float(v) for v in np.r_[x.pos, x.quat]]) for x in others],
+                                      pre_pose7=pre_pose7, fold=self.fold, cfg=cfg) or {}
 
     def release_read(self, obs: dict, obj, others, arm: str, cfg: dict | None = None) -> dict:
         return self.pc.release_read(obs, obj.asset.key, [float(v) for v in np.r_[obj.pos, obj.quat]], arm,

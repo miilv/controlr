@@ -607,7 +607,7 @@ class RuntimeProvider:
                 ev["to"] = np.round(o.pos, 4).tolist()
                 ev["pose7"] = [round(float(v), 5) for v in np.r_[o.pos, o.quat]]   # the adopted pose (grasp metric)
                 self.stats["post_place_moved"] = self.stats.get("post_place_moved", 0) + 1
-            elif (self.post_place_read == "6dof" and hasattr(self.checker, "release_read")
+            elif (self.post_place_read in ("6dof", "6dof_search") and hasattr(self.checker, "release_read")
                   and (not r.get("ok") or float(r.get("iou") or 0.0) < self.post_place_read_iou)):
                 # it does not rest as it was put down (a mug that swung on its hook, a tilted bottle): 6 DoF around the
                 # released pose, every camera that sees it
@@ -632,6 +632,17 @@ class RuntimeProvider:
             return False
         ev["read6"] = {k: rr.get(k) for k in ("ok", "why", "moved_mm", "turned_deg", "ious", "views", "time_s")}
         self.stats["post_place_read"] = self.stats.get("post_place_read", 0) + 1
+        if (not rr.get("ok") and self.post_place_read == "6dof_search" and hasattr(self.checker, "release_search")
+                and rr.get("why") in ("fit_poor", "no_models", "no_views", "out_of_range", "one_far_view")):
+            # nothing at the release: it fell, bounced, or never left the table (the pose it was grasped from)
+            g = self.belief.grasp_z.get(arm) if hasattr(self.belief, "grasp_z") else None
+            pre = [float(v) for v in g[2]] if g is not None and len(g) > 2 and g[2] is not None else None
+            try:
+                rr = self.checker.release_search(obs, o, others, arm, pre, self.post_place_read_cfg) or {}
+            except Exception as e:  # noqa: BLE001
+                rr = {"ok": False, "why": f"error {type(e).__name__}: {e}"[:200]}
+            ev["search"] = {k: rr.get(k) for k in ("ok", "why", "via", "head_iou", "ious", "tried", "time_s")}
+            self.stats["post_place_search"] = self.stats.get("post_place_search", 0) + 1
         if not rr.get("ok") or rr.get("pose7") is None:
             return False
         ev["from"] = np.round(o.pos, 4).tolist()
