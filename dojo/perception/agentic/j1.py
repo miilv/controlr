@@ -17,7 +17,9 @@ Worker environment (on top of j1_adapter.install_env):
   AGENTIC_LOG_DIR     per-call workspaces + transcripts + calls.jsonl (default <J1_ILIA_HOME>/run/agentic)
   AGENTIC_GATE        always (default: the agent on every call) | budget (the agent on the episode's first call, i.e.
                       prior is None, and at most AGENTIC_MAX_PER_EPISODE - 1 more times when B1 misses a wanted object or
-                      a B1 object's calibrated risk >= AGENTIC_GATE_THR (flag_model.json); else B1 with the prior)
+                      a B1 object's calibrated risk >= AGENTIC_GATE_THR (flag_model.json); else B1 with the prior; with
+                      the strict server's ``episode`` the count is per episode id, seeded from the server's, and a spent
+                      budget without B1 is a fail-closed reply: ``episode_begin``, ``gate_decision``)
   AGENTIC_KEEP_UNMENTIONED  1 (default): B1 objects the agent did not mention (none of its objects within 3 cm) stay,
                       at half confidence
   AGENTIC_SNAP        1 (default): agent objects within 2 cm of a confident B1 object (risk < AGENTIC_GATE_THR) of the
@@ -80,8 +82,12 @@ def _call(fn: str, kwargs: dict) -> dict:
     return out
 
 
-def perceive(frames, calib, flange, grip_cmd, instruction, want=None, **kw) -> dict:
+def perceive(frames, calib, flange, grip_cmd, instruction, want=None, episode=None, **kw) -> dict:
+    """``episode``: the strict server's opaque ``{id, perceive_n, agent_calls}`` (P1S; robot-harness's host passes it
+    only to a callable that names it): the agent budget is counted per episode id, seeded from the server's count."""
     frames = _b1._abs_frames(frames)
+    if episode is not None:
+        kw["episode"] = episode
     if os.environ.get("J1_INPROC") == "1":
         return perceive_impl(frames, calib, flange, grip_cmd, instruction, want, **kw)
     return _call("perceive", dict(frames=frames, calib=calib, flange=flange, grip_cmd=grip_cmd, instruction=instruction,
@@ -437,7 +443,26 @@ def _log_call(log_dir: Path, row: dict) -> None:
         f.write(json.dumps(row) + "\n")
 
 
-_EPISODE = {"agent_calls": 0}
+_EPISODE = {"agent_calls": 0, "id": None}
+
+
+def episode_begin(episode=None, prior=None) -> None:
+    """The worker's episode state (agent count, tracker). With the server's opaque ``episode`` (P1S I1-1): a new
+    ``id`` starts an episode with the agent count seeded from the server's ``agent_calls`` (the server outlives a
+    worker restart after a timeout); the same id keeps the larger of the two counts. Without one (older servers,
+    in-process callers): a call without ``prior`` starts the episode, as before."""
+    eid = episode.get("id") if isinstance(episode, dict) else None
+    if eid is not None:
+        try:
+            n = max(0, int(episode.get("agent_calls") or 0))
+        except (TypeError, ValueError):
+            n = 0
+        if _EPISODE.get("id") != eid:
+            _EPISODE.update(id=eid, agent_calls=n, tracker=None)
+        else:
+            _EPISODE["agent_calls"] = max(int(_EPISODE.get("agent_calls") or 0), n)
+    elif prior is None:
+        _EPISODE.update(id=None, agent_calls=0)
 
 
 def risk(o: dict, model: dict | None = None) -> float:
@@ -462,16 +487,19 @@ def risk(o: dict, model: dict | None = None) -> float:
     return r
 
 
-def gate_decision(b1: dict | None, want, prior, cfg: dict) -> tuple[bool, str]:
-    """AGENTIC_GATE=budget: the agent at the episode's first call (prior is None) and at most once more, when B1 misses a
-    wanted object or a B1 object's calibrated risk >= the threshold; else B1 with the prior (it tracks the agent's scene)."""
+def gate_decision(b1: dict | None, want, prior, cfg: dict, episode=None) -> tuple[bool, str]:
+    """AGENTIC_GATE=budget: the agent at the episode's first call and at most ``max_per_episode`` times in the episode,
+    when B1 misses a wanted object or a B1 object's calibrated risk >= the threshold; else B1 with the prior (it tracks
+    the agent's scene). The episode and its count: ``episode_begin`` (the server's ``episode``: its first call is
+    ``perceive_n`` 1; without one, a call without ``prior``). A spent budget is spent whatever else holds."""
     if cfg["gate"] == "always":
         return True, "always"
-    if prior is None:
-        _EPISODE["agent_calls"] = 0
-        return True, "first_call"
+    episode_begin(episode, prior)
     if _EPISODE["agent_calls"] >= cfg["max_per_episode"]:
         return False, "episode_budget_spent"
+    pn = episode.get("perceive_n") if isinstance(episode, dict) and episode.get("id") is not None else None
+    if (int(pn) <= 1) if pn is not None else prior is None:
+        return True, "first_call"
     if b1 is None:
         return True, "no_b1"
     wm = b1.get("want_match") or {}
@@ -603,13 +631,17 @@ def finish_answer(answer: dict, b1: dict | None, frames, calib, flange, grip_cmd
 
 
 def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joints=None, prior=None, b1=None, chat=None,
-                  **kw) -> dict:
+                  episode=None, **kw) -> dict:
     """Worker side. ``b1``: a precomputed B1 output (dev harness); else B1 runs here when AGENTIC_B1=1.
-    ``chat``: a chat callable (tests: FakeChat)."""
+    ``chat``: a chat callable (tests: FakeChat). ``episode``: the server's ``{id, perceive_n, agent_calls}``
+    (``episode_begin``). Every output says ``agent_call`` true / false (the server counts by it, P1S I1-1); a spent
+    budget without a B1 output is a fail-closed reply (no objects, ``error``, ``result=budget_spent_no_b1``), never an
+    agent call."""
     from .prompt import pin, system_prompt
     from .runner import run_agent
     from .tools_rd import RoboDojoTools, write_calib
 
+    _b1.require_data()  # J1_REQUIRE_DATA=1: refuse here, not as a B1 failure the agent would run without
     cfg = _cfg(kw)
     t0 = time.time()
     _N[0] += 1
@@ -621,7 +653,7 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
     if b1 is None and cfg["b1"]:
         try:
             b1 = _b1._perceive_impl(frames, calib, flange, grip_cmd, instruction, want, joints=joints, prior=prior,
-                                    **{k: v for k, v in kw.items() if k in ("gripper", "task")})
+                                    episode=episode, **{k: v for k, v in kw.items() if k in ("gripper", "task")})
         except Exception as e:  # the agent still runs without its hint
             b1, b1_err = None, f"{type(e).__name__}: {e}"
     if b1 is not None:
@@ -629,10 +661,18 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
 
         (ws / "b1.json").write_text(json.dumps(b1, default=str))
     t_b1 = time.time()
-    use_agent, why = gate_decision(b1, want, prior, cfg)
+    use_agent, why = gate_decision(b1, want, prior, cfg, episode)
     track = cfg["track"] == "1" or (cfg["track"] == "auto" and cfg["gate"] == "budget")
     if prior is None:
         _EPISODE["tracker"] = None
+    if not use_agent and b1 is None:  # budget spent and no B1 output: fail closed, never an agent call (P1S I1-1)
+        t_ms = round(1000 * (time.time() - t0), 1)
+        _log_call(cfg["log_dir"], {"t": time.time(), "fn": "perceive", "ws": str(ws), "model": cfg["model"],
+                                   "result": "budget_spent_no_b1", "gate": why, "calls": 0, "b1_error": b1_err})
+        return {"objects": [], "regions": [], "needs_look": [], "last_seen": [], "t_ms": t_ms, "version": VERSION,
+                "agent_call": False, "error": f"agent budget spent and no B1 output ({b1_err or 'B1 off'})"[:300],
+                "notes": (f"{VERSION} result=budget_spent_no_b1 gate={why} agent_calls_this_episode="
+                          f"{_EPISODE['agent_calls']}" + (f" b1_error={b1_err}" if b1_err else ""))[:1500]}
     if not use_agent and b1 is not None:
         out = dict(b1)
         out.pop("task", None)
@@ -641,7 +681,10 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
             objs, last, ev = _EPISODE["tracker"].update(list(b1.get("objects") or []), flange, grip_cmd)
             out["objects"], out["last_seen"] = objs, list(b1.get("last_seen") or []) + last
             tev = " track=" + ",".join(sorted({e["event"] for e in ev if e["event"] not in ("carried",)}))[:200]
+        elif track and _EPISODE.get("id") is not None and _EPISODE["agent_calls"] > 0:
+            tev = " tracker=lost"  # the episode had an agent scene this worker never saw (a restart): B1 untracked (G2-9)
         out["notes"] = f"{VERSION} result=b1_gated gate={why} agent_calls_this_episode={_EPISODE['agent_calls']}{tev}"
+        out["agent_call"] = False
         _log_call(cfg["log_dir"], {"t": time.time(), "fn": "perceive", "ws": str(ws), "model": cfg["model"], "result": "b1_gated",
                                    "gate": why, "calls": 0, "b1_s": round(t_b1 - t0, 2)})
         return out
@@ -674,7 +717,8 @@ def perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, joint
              f"agent_s={st['wall_s']} b1_s={round(t_b1 - t0, 1)}" + (f" b1_error={b1_err}" if b1_err else "")
              + (f" problems={probs}" if probs else ""))
     out = {"objects": objects, "regions": list((b1 or {}).get("regions") or []), "needs_look": looks,
-           "last_seen": list((b1 or {}).get("last_seen") or []), "t_ms": t_ms, "version": VERSION, "notes": notes[:1500]}
+           "last_seen": list((b1 or {}).get("last_seen") or []), "t_ms": t_ms, "version": VERSION, "notes": notes[:1500],
+           "agent_call": True, "data": (b1 or {}).get("data") or _b1.data_identity()}
     if b1 is not None and b1.get("gl"):
         out["gl"] = b1["gl"]
     if kw.get("return_stats"):  # in-process callers (record.agentic_estimate); never sent over J1
