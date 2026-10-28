@@ -130,7 +130,7 @@ def run_scene(f: Path, fm, b1dump: Path, a) -> dict:
                       if r2 is not r and gi is not None and lab2g.get(r2.get("label")) == gi]
         mine = [sd for k_, c_, sd in det_seeds if k_ == key or (k_ is None and c_ == cat)
                 or (gi is not None and k_ in groups[gi]["candidates"])]
-        seeds = mine + swap_seeds + gap_seeds + fg_seeds
+        seeds = [sd for sd in mine + swap_seeds + gap_seeds + fg_seeds if sd[0] in a.seed_srcs]
         # seeds closer than nms to each other are one seed (the first kept: swaps, then raised, then foreground)
         uniq = []
         for sd in seeds:
@@ -139,7 +139,8 @@ def run_scene(f: Path, fm, b1dump: Path, a) -> dict:
             if any(np.hypot(sd[1] - u[1], sd[2] - u[2]) < a.nms_mm / 1000 for u in uniq):
                 continue
             uniq.append(sd)
-        others = mv3d._others_masks(rec0, views, skip=r)
+        # other B1 objects' silhouettes out of the foreground: but in a swap the right place IS another (wrong) object's
+        others = None if a.no_others else mv3d._others_masks(rec0, views, skip=r)
         for src, x, y, th in uniq[:a.max_seeds]:
             fit = mv3d._fit_at([key], x, y, views, others, n_yaw=a.n_yaw, top_h=th)
             if fit is None or fit[0] > a.max_loss:
@@ -205,6 +206,8 @@ def main(argv=None):
     ap.add_argument("--no-yaw", dest="yaw", action="store_false", help="no yaw turns of B1's own pose as candidates")
     ap.add_argument("--dets", default="", help="detector candidates (stream S jsonl: set, task, episode, dets[key, bbox_xyxy, score, poly])")
     ap.add_argument("--det-thr", type=float, default=0.25)
+    ap.add_argument("--seed-srcs", nargs="+", default=["det", "swap", "raised", "fg"])
+    ap.add_argument("--no-others", action="store_true", help="fit seeds against the whole foreground (swaps)")
     ap.add_argument("--model", default="dinov2_b")
     ap.add_argument("--union", dest="each", action="store_false", help="all candidates on one shared crop (default: each its own)")
     ap.add_argument("--match", nargs="*")
