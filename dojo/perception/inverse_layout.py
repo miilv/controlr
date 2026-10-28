@@ -867,35 +867,59 @@ def _glyph_read_slot(h: "Hypothesis", g: dict, placement: dict, tag: str | None,
     return h
 
 
+NUMERAL_MIN_VIEWS = 2   # S's held-out test: one head read is wrong 1-5 % of the time; a digit is confirmed by 2 views
+
+
 def _glyph_read_numeral(h: "Hypothesis", views) -> None:
-    """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): the crop classifier reads its digit; the
-    chosen asset follows the read digit within its texture group (the geometry is shared, the checker reads idx % 10).
-    No read leaves the digit unknown (``digits.record_fields``); B1's texture compare never sets it."""
+    """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): the crop classifier
+    (``glyph_read.classify_mask``) reads the object's silhouette at its fitted pose in every view, frame 0 and looks
+    alike. Reads that disagree leave the digit unknown. Agreeing reads in >= ``NUMERAL_MIN_VIEWS`` views set it with
+    confidence 1; a single view sets it with confidence 0.5 (a skill confirms it with a wrist look before committing).
+    The chosen asset follows the digit within its texture group (the checker reads idx % 10). No read: unknown;
+    B1's texture compare never sets it."""
     from .digits import GLYPH_ONLY, NUMERAL_DIGIT, as_digit
 
-    cands = list(h.per_view.get("geom_group") or [h.key])
     cat = h.key.split("/")[1]
     if cat not in GLYPH_ONLY or h.per_view.get("occluded"):
         return
     from . import glyph_read
 
-    try:
-        r = glyph_read.read(views, h.sm(), h.T(), cands)
-    except Exception as e:  # a reader failure never takes perception down: the digit stays unknown
-        r = {"read": False, "why": f"error: {type(e).__name__}"}
-    d = as_digit(r.get("name")) if r.get("read") else None
-    if r.get("read") and d is None:
-        r = {**r, "read": False, "why": "not a digit"}
-    if d is not None:
-        r = {**r, "conf": 1.0}          # above the classifier's own per-view margin (chosen for a precision target)
-        idxs = [int(k.split("/")[2]) for k in cands if k.split("/")[1] == cat]
-        grp = int(h.key.split("/")[2]) // 10
-        f = NUMERAL_DIGIT[cat]
-        same = [i for i in idxs if i // 10 == grp and f(i) == d] or [i for i in idxs if f(i) == d]
-        i = same[0] if same else None
-        if i is not None:
-            h.key = f"{h.key.split('/')[0]}/{cat}/{i:05d}"
-    h.per_view["glyph_read"] = r
+    classify = getattr(glyph_read, "classify_mask", None)
+    if classify is None:
+        h.per_view["glyph_read"] = {"read": False, "why": "no classify_mask"}
+        return
+    reads, whys = {}, {}
+    for name, v in sorted(views.items()):
+        try:
+            m = h.sm().sil(v.cam, h.T())
+            if getattr(v, "known", None) is not None:
+                m = m & (v.known > 0)
+            kind = "cam_head" if name.split("@")[0] == "cam_head" else "cam_left_wrist"
+            r = classify(v.img, m, view=kind)
+        except Exception as e:  # a reader failure never takes perception down: the digit stays unknown
+            r = {"read": False, "why": f"error: {type(e).__name__}"}
+        d = as_digit(r.get("name")) if r.get("read") else None
+        if d is not None:
+            reads[name] = (d, float(r.get("margin") or 0.0))
+        else:
+            whys[name] = r.get("why") or ("not a digit" if r.get("read") else "no read")
+    digits_read = {d for d, _ in reads.values()}
+    out = {"views": {k: v[0] for k, v in reads.items()}, "unread": whys}
+    if len(digits_read) != 1:
+        out.update(read=False, why="disagree" if digits_read else (sorted(set(whys.values()))[0] if whys else "not visible"))
+        h.per_view["glyph_read"] = out
+        return
+    d = digits_read.pop()
+    out.update(read=True, name=str(d), conf=1.0 if len(reads) >= NUMERAL_MIN_VIEWS else 0.5, n_views=len(reads),
+               margin=round(max(m for _, m in reads.values()), 3))
+    cands = list(h.per_view.get("geom_group") or [h.key])
+    idxs = [int(k.split("/")[2]) for k in cands if k.split("/")[1] == cat]
+    grp = int(h.key.split("/")[2]) // 10
+    f = NUMERAL_DIGIT[cat]
+    same = [i for i in idxs if i // 10 == grp and f(i) == d] or [i for i in idxs if f(i) == d]
+    if same:
+        h.key = f"{h.key.split('/')[0]}/{cat}/{same[0]:05d}"
+    h.per_view["glyph_read"] = out
 
 
 @lru_cache(maxsize=4096)

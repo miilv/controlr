@@ -20,22 +20,45 @@ def test_record_fields_for_numerals_only_from_the_classifier():
     assert "number" not in digits.DIGIT_OF                                             # agent / bridge paths unchanged
 
 
-def test_glyph_read_numeral_sets_the_digit_within_the_texture_group(monkeypatch):
+def _h(key="Rigid/number/00013"):
+    cands = [f"Rigid/number/{i:05d}" for i in range(30)]
+    sm = SimpleNamespace(sil=lambda cam, T: np.ones((4, 4), np.uint8))
+    return SimpleNamespace(key=key, per_view={"geom_group": cands}, sm=lambda: sm, T=lambda: np.eye(4))
+
+
+def _views(*names):
+    return {n: SimpleNamespace(cam=None, img=None, known=None) for n in names}
+
+
+def test_glyph_read_numeral_needs_two_agreeing_views_for_full_confidence(monkeypatch):
     pytest.importorskip("scipy")
     pytest.importorskip("cv2")
     from dojo.perception import glyph_read
     from dojo.perception import inverse_layout as il
 
-    cands = [f"Rigid/number/{i:05d}" for i in range(30)]
-    h = SimpleNamespace(key="Rigid/number/00013", per_view={"geom_group": cands}, sm=lambda: None, T=lambda: np.eye(4))
-    monkeypatch.setattr(glyph_read, "read", lambda views, sm, T, c, **k: {"read": True, "name": "6", "margin": 0.4})
-    il._glyph_read_numeral(h, {})
+    def fake(reads):
+        it = iter(reads)
+        return lambda img, mask, view="cam_head", held=False, client_=None: next(it)
+
+    h = _h()
+    monkeypatch.setattr(glyph_read, "classify_mask", fake([{"read": True, "name": "6", "margin": 0.6}] * 2), raising=False)
+    il._glyph_read_numeral(h, _views("cam_head", "cam_left_wrist"))
     assert h.key == "Rigid/number/00016" and h.per_view["glyph_read"]["conf"] == 1.0   # group 1 kept, digit 6
-    h2 = SimpleNamespace(key="Rigid/number/00013", per_view={"geom_group": cands}, sm=lambda: None, T=lambda: np.eye(4))
-    monkeypatch.setattr(glyph_read, "read", lambda views, sm, T, c, **k: {"read": True, "name": "plus", "margin": 0.9})
-    il._glyph_read_numeral(h2, {})
-    assert h2.key == "Rigid/number/00013" and h2.per_view["glyph_read"] == {"read": False, "name": "plus", "margin": 0.9,
-                                                                          "why": "not a digit"}
+    h = _h()
+    monkeypatch.setattr(glyph_read, "classify_mask", fake([{"read": True, "name": "6", "margin": 0.6},
+                                                           {"read": False, "why": "edge"}]), raising=False)
+    il._glyph_read_numeral(h, _views("cam_head", "cam_left_wrist"))
+    assert h.per_view["glyph_read"]["conf"] == 0.5 and h.per_view["glyph_read"]["n_views"] == 1   # one view: confirm
+    h = _h()
+    monkeypatch.setattr(glyph_read, "classify_mask", fake([{"read": True, "name": "6", "margin": 0.6},
+                                                           {"read": True, "name": "9", "margin": 0.7}]), raising=False)
+    il._glyph_read_numeral(h, _views("cam_head", "cam_left_wrist"))
+    assert h.key == "Rigid/number/00013" and h.per_view["glyph_read"] == {
+        "views": {"cam_head": 6, "cam_left_wrist": 9}, "unread": {}, "read": False, "why": "disagree"}
+    h = _h()
+    monkeypatch.setattr(glyph_read, "classify_mask", fake([{"read": True, "name": "plus", "margin": 0.9}]), raising=False)
+    il._glyph_read_numeral(h, _views("cam_head"))
+    assert h.per_view["glyph_read"]["read"] is False and h.key == "Rigid/number/00013"
     h3 = SimpleNamespace(key="Rigid/block/00001", per_view={}, sm=lambda: None, T=lambda: np.eye(4))
     il._glyph_read_numeral(h3, {})
     assert "glyph_read" not in h3.per_view                                             # other categories untouched
