@@ -361,3 +361,11 @@ def test_seg_add_move_weak_moves_only_a_weak_member_off_its_class(monkeypatch):
         info = il._seg_propose(chosen, {"cam_head": head}, np.zeros((40, 40, 3), np.uint8),
                                il.EstimatorConfig(seg_propose="add", seg_add_move_weak=on), [g], [(0, g, None)], {0: {}})
         assert bool(info["moved"]) == moves and (chosen[0].x == 0.3) == moves
+
+
+def test_seg_add_refit_poor_is_on_by_default():
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from dojo.perception import inverse_layout as il
+    cfg = il.EstimatorConfig()
+    assert cfg.seg_add_refit_poor is True and cfg.seg_poor_iou == 0.5 and cfg.seg_poor_gain == 0.25

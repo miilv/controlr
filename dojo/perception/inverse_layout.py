@@ -3715,9 +3715,9 @@ class EstimatorConfig:
     seg_add_move_weak: bool = True   # "add" only: a weak member with no exact-class mask under it may move (see above);
                                      # False until 2026-10-28 (journal 2026-10-28-dojo-plan-none-perception)
     seg_weak_conf: float = 0.5       # ... below this confidence (1 - its silhouette loss)
-    seg_add_refit_poor: bool = False  # "add" only: a member below seg_poor_iou inside its own exact-class mask re-fits
+    seg_add_refit_poor: bool = True   # "add" only: a member below seg_poor_iou inside its own exact-class mask re-fits
     seg_poor_iou: float = 0.5        # ... there, kept only with a gain of seg_poor_gain IoU (within its size)
-    seg_poor_gain: float = 0.25
+    seg_poor_gain: float = 0.25      # (seg_add_refit_poor: False until 2026-10-28, journal 2026-10-28-dojo-plan-none-perception)
     seg_dup_iou: float = 0.7       # class-agnostic de-duplication of the masks (one object, two classes); 0 = off
     seg_identity_w: float = 0.3    # identity cost bonus x score for the mask's class (0 = off)
     # an explained member whose mask names another SHAPE of its group is re-fitted as that shape inside the mask, kept when
