@@ -209,7 +209,7 @@ def test_an_inconclusive_or_missing_reading_leaves_it_to_the_vision_look(why, kw
     assert calls == [("left", "block_1")]                                   # the vision held_look runs as before
 
 
-def test_a_slip_after_a_held_reading_drops_the_object_under_the_jaws():
+def test_a_slip_after_a_held_reading_is_a_release_under_the_jaws_for_the_next_resync():
     prov, obs, pose0, _ = _prov(official=0.2631)
     prov._grip_check(obs)
     prov.belief.objects["block_1"].pos += np.array([0.10, 0.0, 0.0])        # carried 10 cm before it slipped out
@@ -219,7 +219,9 @@ def test_a_slip_after_a_held_reading_drops_the_object_under_the_jaws():
     o = prov.belief.objects["block_1"]
     assert "left" not in prov.belief.attached
     assert np.allclose(o.pos[:2], carried[:2]) and not np.allclose(o.pos[:2], pose0[:2])   # fell from the jaws
-    assert prov.events[-1]["dropped"] == "slip" and "block_1" in prov._pp_doubt
+    ev = [e for e in prov.events if e["kind"] == "grip_check"][-1]
+    assert ev["dropped"] == "slip" and "block_1" in prov._pp_doubt
+    assert prov.belief.pop_released() == ["block_1"] and prov.belief.released_by["block_1"] == "left"
 
 
 def test_an_empty_hand_in_a_handover_releases_only_that_hand():

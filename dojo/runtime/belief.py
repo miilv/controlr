@@ -905,7 +905,8 @@ class RuntimeProvider:
 
         Verdicts (event ``grip_check``, logged when it changes): ``held`` (the vision held_look is skipped for this
         grasp), ``empty`` (the object leaves the jaws in the belief: closed on air -> where it was at the close, a slip
-        later in the carry -> under the jaws; touched; ``grip_missed`` so the next pick refine may search wider) or
+        later in the carry -> a release there: the fixture-aware drop under the jaws, measured by the next resync;
+        touched; ``grip_missed`` so the next pick refine may search wider) or
         ``inconclusive`` (no reading, the command not settled or not a full close, a thin object): the vision check
         decides, as without this check."""
         st = obs["state"]
@@ -958,14 +959,24 @@ class RuntimeProvider:
             if lab in [v[0] for v in self.belief.attached.values()]:
                 ev["dropped"] = "this hand only (the other hand holds it)"
                 continue
-            if not slip and g is not None:              # closed on air: the object never left where it was at the close
-                o.pos, o.quat = g[2][:3].copy(), g[2][3:].copy()
-            self.belief._drop(lab)                      # a slip: it fell from the jaws, onto the support below them
             self.touched.add(lab)
             self.grip_missed.add(lab)
-            if slip:
-                self._pp_doubt.add(lab)                 # where it fell is a guess: a later divergence re-plans (fallen)
             ev["dropped"] = "slip" if slip else "air"
+            if not slip:
+                if g is not None:                       # closed on air: the object never left where it was at the close
+                    o.pos, o.quat = g[2][:3].copy(), g[2][3:].copy()
+                self.belief._drop(lab)                  # the pick's own check then sees no rise: grasp_slip, retry
+            else:
+                # it left the jaws after it was held: a slip on the way, or a fixture that took it before the jaws opened
+                # (a mug its hook took reads 0 a few steps before the release). Treated as a release here: the fixture-
+                # aware drop under the jaws, and the next refresh's resync measures it (post-place refine, head check;
+                # fallen if it then diverges). A skill mid-place still "places" it (its check reads the belief); without
+                # the release nothing measured it afterwards (proxy store_tools 100000: the wrench slipped at the toolbox
+                # hover, the place check passed and the program finished "ok")
+                self.belief._drop(lab, release=True)
+                self.belief.released.append(lab)
+                self.belief.released_by[lab] = arm
+                self._pp_doubt.add(lab)
             self.log(f"[runtime] grip_check: {arm} jaws empty ({ev['dropped']}), {lab} out of the jaws in the belief")
 
     def _held_check(self, obs: dict) -> None:
