@@ -13,6 +13,8 @@ This driver adds, around simlab's loop:
   (perception_gross / grasp_slip / plan / verify_reject / budget / not_home / divergence / error);
 * a dev-only GT probe (``GTProbe``, row ``dev_gt_probe``): each label's largest z rise over its reset pose and the GT
   object nearest the jaws at each gripper close;
+* a dev-only belief probe (``BeliefProbe``, report ``dev_belief_probe``): the runtime's belief at every gripper change,
+  for the grasp-time metric (``dojo.perception.grasp_metric``);
 * results per (task, mode, verify) in separate files: ``<task>_<mode>_<verify>_{episodes.jsonl,summary.json}``.
 
 GT is read here (the scorer) and handed to the policy only in mode gt.
@@ -194,6 +196,51 @@ class GTProbe:
         return {"rise_mm": {k: round(1000 * v, 1) for k, v in sorted(self.rise.items())}, "closes": self.closes}
 
 
+class BeliefProbe:
+    """DEV-ONLY, the scorer's side: the runtime's own belief (the provider's ``KinematicBelief``) at every action that
+    changes a gripper command, for the grasp-time metric (``dojo.perception.grasp_metric``, PERCEPTION_95.md). Snapshot
+    ``step`` = the actions executed BEFORE the changing one (the belief the grasp / release was planned on); each object
+    as label / asset key / pose7 / source, the attached objects per arm and the arm joints the belief last stepped
+    (``q``: a held object rides the TCP from there). Read-only: it touches nothing the policy uses. Written to the
+    report (``dev_belief_probe``), never to the policy."""
+
+    def __init__(self, pol, max_snaps: int = 600):
+        self.pol = pol
+        self.max_snaps = max_snaps
+        self.snaps: list[dict] = []
+        self._g: dict = {}
+        self.errors = 0
+
+    def on_action(self, a: dict, step: int) -> None:
+        g = {arm: float(np.asarray(a[f"{arm}_ee_joint_state"]).reshape(-1)[0]) for arm in ("left", "right")
+             if f"{arm}_ee_joint_state" in a}
+        changed = any(abs(v - self._g.get(arm, 1.0)) > 1e-6 for arm, v in g.items())
+        self._g.update(g)
+        if changed and len(self.snaps) < self.max_snaps:
+            snap = self.snapshot(step - 1)
+            if snap is not None:
+                self.snaps.append(snap)
+
+    def snapshot(self, step: int) -> dict | None:
+        try:
+            prov = (getattr(self.pol, "_live", None) or {}).get("prov")
+            b = getattr(prov, "belief", None)
+            if b is None:
+                return None
+            objs = {lab: {"key": o.asset.key, "pos": [round(float(v), 5) for v in o.pos],
+                          "quat": [round(float(v), 5) for v in o.quat], "source": o.source}
+                    for lab, o in b.objects.items() if not getattr(o, "clutter", False)}
+            return {"step": int(step), "objects": objs,
+                    "attached": {arm: lab for arm, (lab, _) in (getattr(b, "attached", None) or {}).items()},
+                    "q": {arm: [round(float(v), 6) for v in q] for arm, q in (getattr(b, "q", None) or {}).items()}}
+        except Exception:  # noqa: BLE001 (a dev probe never breaks an episode)
+            self.errors += 1
+            return None
+
+    def report(self) -> dict:
+        return {"snaps": self.snaps, "errors": self.errors}
+
+
 def _probe_kin():
     try:
         from dojo.skills.kinematics import X5Kin
@@ -268,6 +315,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         info["dev_calib_fold"] = zlib.crc32(str(lid).encode()) % 2
         gt0 = ep.run.objects_gt(0)                  # scorer side (dev only)
         probe = GTProbe(gt0, kin)                   # scorer side (dev only): rises and closes, the row only
+        bprobe = BeliefProbe(pol)                   # scorer side (dev only): the belief at each gripper change
         pol.reset(info)
         t0 = time.perf_counter()
         sim_s, obs_s, ended, capped = 0.0, [], False, False
@@ -290,6 +338,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
             for a in d["actions"]:
                 executed.append(a)
                 probe.on_action(a, len(executed), lambda: ep.run.objects_gt(0))
+                bprobe.on_action(a, len(executed))
                 if ep.step(a):
                     ended = True
                     break
@@ -332,6 +381,7 @@ def run(task: str, layout_files: list[str], cfg: RuntimeConfig, out: Path, max_m
         rows.append(row)
         with (out / f"{tag}_episodes.jsonl").open("a") as f:
             f.write(json.dumps(jsonable(row), default=str) + "\n")
+        rep["dev_belief_probe"] = bprobe.report()   # the grasp-time metric's belief source (dev only, after the episode)
         frames = rep.pop("look_frames", None)
         if frames:
             fd = out / f"{tag}_{lid}_look_frames"

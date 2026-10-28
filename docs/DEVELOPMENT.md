@@ -245,6 +245,21 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   (1-6 GB VRAM by models; `scripts/perception/sam/setup_venv.sh`) next to the perception service and export
   `DOJO_SAM_ADDR` into the service's environment. Without one the flags are a no-op (plain B1, `series_count=sam`
   falls back to `min`).
+- **A grasp is the LAST closing gripper command of a run, not the first one below half open.** Some skills pre-shape the
+  jaws on the approach (hang_mugs' wall grasp: 1.0 -> 0.43 at the start of the approach, 0.0 at the real close ~30
+  steps later). A "first command below 0.5" rule takes the pre-shape as the close: `dojo.runtime.eval.GTProbe`'s
+  `dev_gt_probe` closes still do (P3r3 hang_mugs 100003: "(42, right, mug2, 128.5 mm)" is the pre-shape), and the
+  first version of the grasp-time metric scored no hang_mugs event at all. `grasp_metric.grip_events` takes the last
+  closing command before the jaws open again.
+- **The grasp-time metric rebuilds the runtime's belief from the report, and only from what the report logs**
+  (`grasp_metric.BeliefTracker`): the planning record, every accepted refine (pick / place / held), the jaws (an
+  attached object rides the commanded TCP), `belief_drop`, `post_place`, held_look drops. A divergence's re-estimate and
+  the twin's nominal outcome are not in the report: events after a `resync` divergence carry `after_divergence`.
+  The conveyors' riders are tracked between reads and their beliefs are not logged per step (`moving`): do not read
+  belt tasks' numbers as perception numbers until the runtime logs its belief per event.
+- **Physics-only replays are CPU-bound** (RoboDojo's PhysX runs on the CPU): on a loaded compute3 (load 30) one episode
+  replays at ~2-5 steps/s. `scripts/perception/m95_replay.py` loads many episodes of a task in one runner and stops
+  after the episode's last gripper change (`--full` for the whole list).
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
   frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
 
