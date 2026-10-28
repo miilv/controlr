@@ -120,6 +120,8 @@ def test_place_reference_and_not_held():
     ev.meta["held_drift_mm"] = 80.0
     s = gm.score_event(ev, bel, gt, "t", tol=TOL)
     assert s["required"][0]["cls"] == "not_held"
+    ev.meta["held_gap_mm"] = 0.0                    # turned in the hand, the jaws still on it: the gap decides
+    assert gm.score_event(ev, bel, gt, "t", tol=TOL)["required"][0]["cls"] == "ok"
 
 
 def test_episode_events_rebuilds_the_belief():

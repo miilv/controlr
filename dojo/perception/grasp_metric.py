@@ -42,7 +42,7 @@ ATTRIB_M = 0.06             # m: a close / release with no logged refine is attr
 RADII = (0.05, 0.10, 0.15)  # m: the R values reported
 IGNORE_LABELS = {"camera_stand"}   # GT fixtures perception never estimates (dojo.runtime.eval.perception_eval)
 PHANTOM_MM = 50.0           # mm: a believed object this far from every GT object is a phantom (nearer: a pose error)
-NOT_HELD_MM = 30.0          # mm: a held object that moved this far relative to the TCP since its grasp is not in the jaws
+NOT_HELD_MM = 30.0          # mm: the TCP this far outside the held object's GT bbox at a release: the jaws are not on it
 
 
 # ---------------------------------------------------------------------------------------------------------- events
@@ -388,8 +388,9 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
     event (``objects_gt``; ``gt_asset_frame`` when already converted). Returns the required rows, every neighbour and
     phantom candidate with its corridor distance, and ``clean`` / ``clean_required`` / ``clean_target`` (bools; clean
     per R in ``clean_r``: {"5": .., "10": .., "15": ..} cm) plus ``reasons`` per R. ``tol`` overrides the task's
-    (mm, deg or None). A place whose ``event.meta["held_drift_mm"]`` (the GT held object's motion relative to the TCP
-    since its grasp, from the caller's GT) exceeds ``NOT_HELD_MM`` scores the held object ``not_held``."""
+    (mm, deg or None). A place whose ``event.meta["held_gap_mm"]`` (how far the TCP is outside the GT held object's
+    oriented bbox at the release, from the caller's GT; else ``held_drift_mm``, its motion in the TCP frame since the
+    grasp) exceeds ``NOT_HELD_MM`` scores the held object ``not_held``: the jaws are not on it."""
     ev = event if isinstance(event, Event) else Event(**{k: v for k, v in event.items() if k in Event.__dataclass_fields__})
     footprints = footprints or Footprints()
     groups = groups or Groups(task)
@@ -403,9 +404,9 @@ def score_event(event: Event | dict, belief: dict, gt: list[dict], task: str, ra
     path = np.asarray(ev.corridor if len(ev.corridor) else [ev.point], float).reshape(-1, 3)
     req = [score_required(ev.target, belief, [g for g in gts if not g.get("clutter")], groups, tol,
                           "target" if ev.kind == "grasp" else "held")]
-    drift = (ev.meta or {}).get("held_drift_mm")
-    if ev.kind == "place" and drift is not None and float(drift) > NOT_HELD_MM and req[0].get("cls") != "not_believed":
-        req[0].update(cls="not_held", ok=False, drift_mm=round(float(drift), 1))
+    gap = (ev.meta or {}).get("held_gap_mm", (ev.meta or {}).get("held_drift_mm"))
+    if ev.kind == "place" and gap is not None and float(gap) > NOT_HELD_MM and req[0].get("cls") != "not_believed":
+        req[0].update(cls="not_held", ok=False, gap_mm=round(float(gap), 1))
     if ev.kind == "place" and ev.reference:
         req.append(score_required(ev.reference, belief, [g for g in gts if not g.get("clutter")], groups, tol, "reference"))
     used_gt = {r.get("gt_label") for r in req if r.get("gt_label")}

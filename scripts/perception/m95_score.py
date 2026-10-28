@@ -111,6 +111,24 @@ def family(run: str) -> str:
     return "early (B_stack / B_build / B_tower ...)"
 
 
+# newest first (the rounds' dates and code: c4 27 Oct 17-22Z submit_v2/v3 genuine 5.1; P3r3 27 Oct 12Z submit_v2 13aaf9a;
+# TL 11Z; P3n 08Z eeb94de; P3 05Z 1f7e965; S79 03Z 48600bf; breadth2 26 Oct 21Z ed8ca42; heldpose 16Z; breadth 16Z
+# f9b0d75; early rounds 25-26 Oct)
+FAMILY_ORDER = ("c4 (genuine 5.1)", "P3r3", "TL", "P3n", "P3", "S79", "B_breadth2", "B_heldpose", "B_breadth", "AG",
+                "early (B_stack / B_build / B_tower ...)")
+
+
+def latest_split(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Per task, the events of its newest round (``FAMILY_ORDER``) vs all older rounds."""
+    best = {}
+    for r in rows:
+        k = FAMILY_ORDER.index(r.get("family")) if r.get("family") in FAMILY_ORDER else len(FAMILY_ORDER)
+        best[r["task"]] = min(best.get(r["task"], 99), k)
+    new = [r for r in rows if FAMILY_ORDER.index(r["family"]) == best[r["task"]]]
+    old = [r for r in rows if FAMILY_ORDER.index(r["family"]) != best[r["task"]]]
+    return new, old
+
+
 def frame_at(frames: dict, k: int, back: int = 3):
     """The replay's frame after ``k`` actions, else the nearest earlier one within ``back`` steps (a replay recorded
     before the grasp rule took a closing run's last command: a ramp's last step); None beyond (re-run the replay)."""
@@ -135,6 +153,24 @@ def held_drift(frames: dict, track: dict, arm: str, k_grasp: int, gt_label: str,
     pg = Tg[:3, :3].T @ (np.asarray(og["pos"], float) - Tg[:3, 3])
     pr = Tr[:3, :3].T @ (np.asarray(orr["pos"], float) - Tr[:3, 3])
     return float(np.linalg.norm(pr - pg)) * 1000
+
+
+def held_gap(f: dict, track: dict, arm: str, gt_label: str, k: int, fp) -> float | None:
+    """mm: how far the TCP is outside the GT object's oriented bbox (its catalogue mesh) at the release: 0 when the
+    jaws are on it (held, perhaps turned in the hand), large when the object stayed behind or fell."""
+    import numpy as np
+
+    from dojo.perception.grasp_metric import _quat_R, gt_rows_asset
+    o = next((x for x in gt_rows_asset(f["objects"]) if x["label"] == gt_label), None)
+    if o is None:
+        return None
+    V = fp.verts(o.get("key"))
+    p = np.asarray(track[arm][k], float)[:3, 3]
+    loc = _quat_R(o["quat"]).T @ (p - np.asarray(o["pos"], float))
+    if V is None:
+        return float(np.linalg.norm(loc)) * 1000
+    lo, hi = V.min(0), V.max(0)
+    return float(np.linalg.norm(np.maximum(0, np.maximum(lo - loc, loc - hi)))) * 1000
 
 
 def cmd_score(a) -> None:
@@ -186,6 +222,9 @@ def cmd_score(a) -> None:
                 d = held_drift(frames, track, ev.arm, *last_grasp[ev.arm], ev.step)
                 if d is not None:
                     ev.meta["held_drift_mm"] = round(d, 1)
+                gap = held_gap(f, track, ev.arm, last_grasp[ev.arm][1], ev.step, fp)
+                if gap is not None:
+                    ev.meta["held_gap_mm"] = round(gap, 1)
             s = score_event(ev, belief, f["objects"], task, footprints=fp, groups=g)
             if rec0 is not None:            # the same event against the frame-0 record (held objects: the runtime's)
                 b0 = {**rec0, **{lab: o for lab, o in belief.items() if str(o.get("source", "")).endswith("held")}}
@@ -230,8 +269,8 @@ def table(rows: list[dict], by: str = "task", radii=("5", "10", "15")) -> str:
     groups = defaultdict(list)
     for r in rows:
         groups[r.get(by)].append(r)
-    lines = [f"| {by} | episodes | events (grasp / place) | clean R5 | clean R10 | clean R15 | required only | target only "
-             "| top failures at R10 (class: n; examples) |", "|---|---|---|---|---|---|---|---|---|"]
+    lines = [f"| {by} | episodes | events (grasp / place) | clean R5 | clean R10 | clean R15 | R10 w/o clutter | required only "
+             "| target only | top failures at R10 (class: n; examples) |", "|---|---|---|---|---|---|---|---|---|---|"]
     tot = []
     for k in sorted(groups, key=str):
         rs = groups[k]
@@ -254,6 +293,7 @@ def _row(name: str, rs: list[dict], radii) -> str:
     top = "; ".join(f"{c}: {m} ({', '.join(f'{lab} {v}' for lab, v in ex[c].most_common(3))})" for c, m in cls.most_common(4))
     return (f"| {name} | {eps} | {n} ({sum(r['kind'] == 'grasp' for r in rs)} / {sum(r['kind'] == 'place' for r in rs)}) | "
             + " | ".join(pct(sum(bool(r["clean_r"][t]) for r in rs)) for t in radii)
+            + f" | {pct(sum(bool((r.get('clean_r_noclutter') or r['clean_r'])['10']) for r in rs))}"
             + f" | {pct(sum(r['clean_required'] for r in rs))} | {pct(sum(r['clean_target'] for r in rs))} | {top or '-'} |")
 
 
@@ -271,6 +311,14 @@ def cmd_table(a) -> None:
             if ep.exists():
                 bad |= {(e["run"], e["layout_id"]) for e in map(json.loads, open(ep)) if e.get("score_match") is False}
         rows = [r for r in rows if (r["run"], r["layout_id"]) not in bad]
+    if a.latest or a.old:
+        new, old = latest_split(rows)
+        rows = new if a.latest else old
+        if a.latest:
+            fams = defaultdict(set)
+            for r in rows:
+                fams[r["task"]].add(r["family"])
+            print("rounds: " + "; ".join(f"{t} {', '.join(sorted(f))}" for t, f in sorted(fams.items())))
     if a.fails:
         for x in failure_rows(rows):
             print(json.dumps(x))
@@ -434,6 +482,8 @@ def main(argv=None) -> None:
     t.add_argument("--taxonomy", action="store_true", help="unclean events per task by first failure and belief source")
     t.add_argument("--fails", action="store_true", help="one JSON line per unclean event (R10)")
     t.add_argument("--frame0", action="store_true", help="the runtime's belief vs the frame-0 record, same events")
+    t.add_argument("--latest", action="store_true", help="per task only its newest round (FAMILY_ORDER)")
+    t.add_argument("--old", action="store_true", help="per task every round but its newest")
     t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)
     {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table}[a.cmd](a)
