@@ -90,9 +90,16 @@ def main(argv=None):
     ap.add_argument("--patience", type=int, default=20)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--close-mosaic", type=int, default=10)
+    ap.add_argument("--no-amp-check", action="store_true",
+                    help="AMP on without Ultralytics' check (it downloads a YOLO model to run the check)")
     a = ap.parse_args(argv)
     os.environ.setdefault("YOLO_CONFIG_DIR", str(Path(a.project).expanduser().parent / "ultra_cfg"))
     from ultralytics import YOLO
+
+    if a.no_amp_check:
+        import ultralytics.engine.trainer as _tr
+
+        _tr.check_amp = lambda *args, **kw: True
 
     run = Path(a.project).expanduser() / a.name
     thr = Throttle(a.power_target, a.power_max, run / "power_train.csv")
