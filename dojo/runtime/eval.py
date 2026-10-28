@@ -230,6 +230,23 @@ class BeliefProbe:
             objs = {lab: {"key": o.asset.key, "pos": [round(float(v), 5) for v in o.pos],
                           "quat": [round(float(v), 5) for v in o.quat], "source": o.source}
                     for lab, o in b.objects.items() if not getattr(o, "clutter", False)}
+            # belt riders: the provider moves them on only when it catches up with the executed actions (refresh), so
+            # mid-batch their pose is the last refresh's (5.1 belt: 6-8 steps, 25-33 mm upstream at a close). Record
+            # where the provider's own track predicts each one at this step (``_predicted_xy``), as the skills aimed
+            held = {lab for lab, _ in (getattr(b, "attached", None) or {}).values()}
+            for lab in sorted(getattr(b, "riders", None) or ()):
+                o = b.objects.get(lab)
+                if o is None or lab in held or lab not in objs or not hasattr(prov, "_predicted_xy"):
+                    continue
+                saved = getattr(prov, "_belt_v", None)          # belt_velocity() caches into it: leave no trace
+                try:
+                    xy = prov._predicted_xy(o, int(step))
+                finally:
+                    if hasattr(prov, "_belt_v"):
+                        prov._belt_v = saved
+                objs[lab]["pos_refresh"] = objs[lab]["pos"]
+                objs[lab]["pos"] = [round(float(xy[0]), 5), round(float(xy[1]), 5), objs[lab]["pos"][2]]
+                objs[lab]["source"] = "rider_predicted"
             return {"step": int(step), "objects": objs,
                     "attached": {arm: lab for arm, (lab, _) in (getattr(b, "attached", None) or {}).items()},
                     "q": {arm: [round(float(v), 6) for v in q] for arm, q in (getattr(b, "q", None) or {}).items()}}

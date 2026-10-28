@@ -358,8 +358,13 @@ def score_required(label: str | None, belief: dict, gts: list[dict], groups: Gro
     # nearest in 3-D: stacked objects share xy (the held block over its base, a tower's blocks)
     near_any = min(gts, key=lambda g: float(np.linalg.norm(gc(g) - bp)), default=None)
     if not same:
-        out.update(cls="no_gt", ok=False)
-        return out
+        # a label the task's config does not have: the belt tracker's own riders (camera_t2, rider0) are named by the
+        # runtime, not by the layout. Then the object is the GT object nearest the belief, and identity is its asset
+        if not gts:
+            out.update(cls="no_gt", ok=False)
+            return out
+        same = gts
+        out["label_free"] = True
     g = min(same, key=lambda g: float(np.linalg.norm(gc(g) - bp)))
     d = (bp - gc(g)) * 1000
     xy = float(np.linalg.norm(d[:2]))
@@ -367,7 +372,7 @@ def score_required(label: str | None, belief: dict, gts: list[dict], groups: Gro
     out.update(gt_label=g["label"], xy_mm=round(xy, 1), dz_mm=round(float(d[2]), 1),
                rot_deg=None if rot is None else round(rot, 1), key=b.get("key"), gt_key=g.get("key"),
                source=b.get("source"), perc=b.get("perc"))
-    if near_any is not None and groups.of(near_any["label"]) != g_lab:
+    if near_any is not None and groups.of(near_any["label"]) != g_lab and not out.get("label_free"):
         dn = float(np.linalg.norm(gc(near_any)[:2] - bp[:2])) * 1000
         if dn <= t_tol and xy > max(15.0, 2 * t_tol):   # gross for its own object, on another one: a mix-up
             out.update(cls="wrong_object", ok=False, on=near_any["label"], on_mm=round(dn, 1))

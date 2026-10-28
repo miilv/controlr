@@ -262,3 +262,28 @@ def test_grip_check_air_restores_the_pick_pose_and_slip_drops_it_where_carried()
         evs = gm.episode_events(rep, acts, kin)
         assert [e.kind for e, _ in evs] == ["grasp", "release_other"]        # no place: the belief let it go
         assert np.allclose(evs[1][1]["a"]["pos"], want, atol=1e-6) and evs[1][1]["a"]["source"] == "held_dropped"
+
+
+def test_tracker_labels_match_by_position_and_asset():
+    # a belt rider the runtime named itself ("camera_t2"): the nearest GT object is the one, its asset the identity
+    gt = [_row("target1", (0.0, 0.0, 0.78), cat="camera", idx=1), _row("other0", (0.1, 0.0, 0.78), cat="phone", idx=0)]
+    bel = {"camera_t2": _bel((0.004, 0.0, 0.78), cat="camera", idx=1)}
+    s = gm.score_event(_event(target="camera_t2"), bel, gt, "t", tol=TOL)
+    r = s["required"][0]
+    assert r["cls"] == "ok" and r["gt_label"] == "target1" and r["label_free"]
+    bel = {"camera_t2": _bel((0.1, 0.004, 0.78), cat="camera", idx=1)}       # on the phone: a wrong identity
+    assert gm.score_event(_event(target="camera_t2"), bel, gt, "t", tol=TOL)["required"][0]["cls"] == "identity"
+
+
+def test_belief_probe_moves_belt_riders_to_the_snapshot_step():
+    from types import SimpleNamespace
+
+    from dojo.runtime.eval import BeliefProbe
+    rider = SimpleNamespace(asset=SimpleNamespace(key="Rigid/phone/00000"), pos=np.array([0.0, 0.1, 0.8]),
+                            quat=np.array([1.0, 0, 0, 0]), source="perception")
+    bel = SimpleNamespace(objects={"phone_t2": rider}, attached={}, q={}, riders={"phone_t2"})
+    prov = SimpleNamespace(belief=bel, _predicted_xy=lambda o, step: np.array([0.004 * step, 0.1]))
+    pr = BeliefProbe(SimpleNamespace(_live={"prov": prov}))
+    pr.on_action(_act(0.0), 11)                     # a close at action 11: the state after 10 actions
+    o = pr.report()["snaps"][0]["objects"]["phone_t2"]
+    assert o["pos"] == [0.04, 0.1, 0.8] and o["pos_refresh"] == [0.0, 0.1, 0.8] and o["source"] == "rider_predicted"
