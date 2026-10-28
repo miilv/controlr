@@ -867,6 +867,14 @@ def _glyph_read_slot(h: "Hypothesis", g: dict, placement: dict, tag: str | None,
     return h
 
 
+def _takes_robot(fn) -> bool:
+    import inspect
+    try:
+        return "robot" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
+
+
 NUMERAL_MIN_VIEWS = 2   # S's held-out test: one head read is wrong 1-5 % of the time; a digit is confirmed by 2 views
 
 
@@ -895,7 +903,10 @@ def _glyph_read_numeral(h: "Hypothesis", views) -> None:
             if getattr(v, "known", None) is not None:
                 m = m & (v.known > 0)
             kind = "cam_head" if name.split("@")[0] == "cam_head" else "cam_left_wrist"
-            r = classify(v.img, m, view=kind)
+            rob = getattr(v, "robot", None)
+            # the arm's pixels (S's reader v2 refuses a tile half hidden by the gripper: a cut 3 reads as a 9)
+            r = (classify(v.img, m, view=kind, robot=np.asarray(rob) > 0) if rob is not None and _takes_robot(classify)
+                 else classify(v.img, m, view=kind))
         except Exception as e:  # a reader failure never takes perception down: the digit stays unknown
             r = {"read": False, "why": f"error: {type(e).__name__}"}
         d = as_digit(r.get("name")) if r.get("read") else None

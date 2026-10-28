@@ -86,3 +86,21 @@ def test_the_refine_hook_merges_a_wrist_digit_read_into_the_belief():
     assert (o.digit, o.digit_conf, o.digit_source) == (7, 1.0, "glyph")
     pol._merge_glyph(prov, "digit_0", {"read": True, "name": "1", "margin": 0.6})
     assert (o.digit, o.digit_source) == (None, "unread") and pol.report["events"][-1]["why"] == "disagree"
+
+
+def test_the_arm_mask_goes_to_a_reader_that_takes_it(monkeypatch):
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from dojo.perception import glyph_read
+    from dojo.perception import inverse_layout as il
+    seen = []
+
+    def v2(img, mask, view="cam_head", held=False, client_=None, robot=None):
+        seen.append(robot)
+        return {"read": False, "why": "robot"}
+
+    monkeypatch.setattr(glyph_read, "classify_mask", v2, raising=False)
+    h = _h()
+    views = {"cam_head": SimpleNamespace(cam=None, img=None, known=None, robot=np.ones((4, 4), np.uint8))}
+    il._glyph_read_numeral(h, views)
+    assert seen and seen[0].dtype == bool and h.per_view["glyph_read"]["why"] == "robot"
