@@ -22,7 +22,7 @@ import numpy as np
 
 from dojo.skills.kinematics import ARMS, TABLE_Z
 
-GAP = 0.022               # m: clear space between neighbours in the row (the open pads of the next place fit in it)
+GAP = 0.03                # m: clear space between neighbours in the row (the open pads of the next place fit in it)
 MIN_STEP = 0.042          # m: the checker wants > 30 mm between neighbours' centres along x
 THERE = 0.015             # m: an object this close to its slot (and upright) is done
 OCCUPIED = 0.01           # m: another object's footprint this close to a slot's footprint blocks it
@@ -188,7 +188,10 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
             break
         free = [(k, xy) for k, xy in pairs if not blockers(k, xy)]
         if free:
-            k, xy = min(free, key=lambda p: arm_dist(p[0]))
+            # fill outward from the object that stays (else from the left end): the next one always has a free side,
+            # never a gap between two placed neighbours (G3 e7626c8 100030: the last doll's approach hit a neighbour)
+            seed = row["xy"][row["anchor"]][0] if row.get("anchor") else min(v[0] for v in row["xy"].values())
+            k, xy = min(free, key=lambda p: (abs(float(p[1][0]) - seed), arm_dist(p[0])))
             tries[k] += 1
             r = place_oriented(sk, k, upright_targets(sk, k, xy), yaw_sym=1, tol_xy=0.015, tol_tilt=10.0, tol_z=0.03,
                                transfer_kw=_transfer_kw(sk, k))
