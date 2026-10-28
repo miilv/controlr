@@ -57,6 +57,81 @@ def episodes(run_globs: list[str]):
                         yield d, r, rp, ap
 
 
+def belief_writes(rep: dict) -> list[dict]:
+    """Every belief write the report logs with a before and an after position: accepted refines (prior7 -> pose7),
+    post_place moves (from -> to / pose7: the release read, a search's write), and any event carrying before7 / after7
+    (the discrepancy writes of the release-read design). [{writer, step, label, before, after, quat}]"""
+    from dojo.perception.grasp_metric import _applied
+    out = []
+    for e in rep.get("events") or []:
+        k, lab, st = e.get("kind"), e.get("label"), e.get("step")
+        if not lab or not isinstance(st, (int, float)):
+            continue
+        if k == "refine" and _applied(e) and e.get("prior7") and e.get("pose7"):
+            out.append({"writer": f"refine_{e.get('for')}", "step": int(st), "label": lab, "before": e["prior7"][:3],
+                        "after": e["pose7"][:3], "quat": e["pose7"][3:7]})
+        elif k == "post_place" and e.get("from") is not None and (e.get("to") is not None or e.get("pose7")):
+            to = e.get("to") or e["pose7"][:3]
+            out.append({"writer": "post_place", "step": int(st), "label": lab, "before": e["from"][:3], "after": to[:3],
+                        "quat": (e.get("pose7") or [0, 0, 0, 1, 0, 0, 0])[3:7]})
+        elif e.get("before7") and e.get("after7"):
+            out.append({"writer": k, "step": int(st), "label": lab, "before": e["before7"][:3], "after": e["after7"][:3],
+                        "quat": e["after7"][3:7]})
+    return out
+
+
+def cmd_audit(a) -> None:
+    """Write-level audit (the perceptor review, 2026-10-28): for every logged belief write, the belief's error against
+    GT at that step before vs after the write (mm, 3-D and z). A write is harmful when it adds > ``--harm-mm``, helpful
+    when it removes as much; reported per writer whatever the task's tolerance (the threading servo consumes z at
+    ~1 mm). Replays with frames near each write step are needed (``m95_replay --every 4``)."""
+    import numpy as np
+    from dojo.perception.grasp_metric import Groups
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    rows, groups = [], {}
+    for d, r, rp, ap in episodes(a.runs):
+        run = os.path.basename(d)
+        rpath = Path(a.replays) / f"{run}_{r['layout_id']}.json.gz"
+        if not rpath.exists():
+            continue
+        rep = json.load(gzip.open(rp, "rt"))
+        rp_ = json.load(gzip.open(rpath, "rt"))
+        frames = rp_["frames"]
+        for w in belief_writes(rep):
+            f = frame_at(frames, w["step"], back=a.back)
+            if f is None:
+                continue
+            gts = {o["label"]: np.asarray(o["pos"], float) for o in f["objects"]}
+            b0, b1 = np.asarray(w["before"], float), np.asarray(w["after"], float)
+            # the object the belief tracked: the GT object of the label's group nearest the pre-write belief
+            # (interchangeable nuts: the belief's nut0 was GT nut1 on 5.1 screws 100002); a label the layout lacks (a
+            # tracker's rider): the nearest GT object
+            grp = groups.setdefault(r["task"], Groups(r["task"]))
+            same = {k: v for k, v in gts.items() if grp.of(k) == grp.of(w["label"])} or gts
+            g = min(same.values(), key=lambda p: float(np.linalg.norm(p - b0)))
+            e0, e1 = float(np.linalg.norm(b0 - g)) * 1000, float(np.linalg.norm(b1 - g)) * 1000
+            rows.append({"run": run, "task": r["task"], "layout_id": r["layout_id"], "success": r.get("success"),
+                         "score": r.get("score"), "replay_score": rp_.get("score"), **w,
+                         "err_before_mm": round(e0, 1), "err_after_mm": round(e1, 1),
+                         "z_before_mm": round((b0[2] - g[2]) * 1000, 1), "z_after_mm": round((b1[2] - g[2]) * 1000, 1),
+                         "gt": [round(float(v), 4) for v in g], "frame_lag": w["step"] - max(int(k) for k in frames if int(k) <= w["step"]),
+                         "verdict": "harmful" if e1 - e0 > a.harm_mm else ("helpful" if e0 - e1 > a.harm_mm else "neutral")})
+    with open(out / "writes.jsonl", "w") as fo:
+        for x in rows:
+            fo.write(json.dumps(x) + "\n")
+    by = defaultdict(list)
+    for x in rows:
+        by[(x["task"], x["writer"])].append(x)
+    print("| task | writer | writes | harmful | helpful | neutral | median error before -> after (mm) |")
+    print("|---|---|---|---|---|---|---|")
+    import statistics as st_
+    for (t, w), xs in sorted(by.items()):
+        c = Counter(x["verdict"] for x in xs)
+        print(f"| {t} | {w} | {len(xs)} | {c['harmful']} | {c['helpful']} | {c['neutral']} | "
+              f"{st_.median(x['err_before_mm'] for x in xs):.1f} -> {st_.median(x['err_after_mm'] for x in xs):.1f} |")
+
+
 def cmd_jobs(a) -> None:
     n = 0
     for d, r, rp, ap in episodes(a.runs):
@@ -722,6 +797,12 @@ def main(argv=None) -> None:
     s.add_argument("--replays", required=True)
     s.add_argument("--out", required=True)
     s.add_argument("--marks", default=None, help="c4_429_marks.json: episodes whose agentic route was unavailable")
+    w = sub.add_parser("audit")
+    w.add_argument("runs", nargs="+")
+    w.add_argument("--replays", required=True)
+    w.add_argument("--out", required=True)
+    w.add_argument("--harm-mm", type=float, default=2.0)
+    w.add_argument("--back", type=int, default=4, help="use a replay frame at most this many steps before a write")
     t = sub.add_parser("table")
     t.add_argument("events", nargs="+")
     t.add_argument("--by", default="task")
@@ -738,7 +819,7 @@ def main(argv=None) -> None:
     t.add_argument("--old", action="store_true", help="per task every round but its newest")
     t.add_argument("--match-only", action="store_true", help="only episodes whose replay reproduced the score")
     a = ap.parse_args(argv)
-    {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table}[a.cmd](a)
+    {"jobs": cmd_jobs, "score": cmd_score, "table": cmd_table, "audit": cmd_audit}[a.cmd](a)
 
 
 if __name__ == "__main__":

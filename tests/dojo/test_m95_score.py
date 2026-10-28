@@ -88,3 +88,18 @@ def test_summary_counts_blocked_episodes_and_retries():
     line = next(ln for ln in md.splitlines() if ln.startswith("| t |"))
     assert "50 % (1/2)" in line and "33 % (1/3)" in line                          # executed / blocked
     assert "| 100 % (1/1) | 0 % (0/1) | 50 % |" in line                          # first / retries / episode average
+
+
+def test_belief_writes_take_every_logged_before_and_after():
+    rep = {"events": [
+        {"kind": "refine", "label": "a", "for": "pick", "step": 5, "ok": True, "prior7": [0, 0, 0.8, 1, 0, 0, 0],
+         "pose7": [0.01, 0, 0.8, 1, 0, 0, 0]},
+        {"kind": "refine", "label": "a", "for": "pick", "step": 6, "ok": False, "prior7": [0, 0, 0.8, 1, 0, 0, 0],
+         "pose7": [0.05, 0, 0.8, 1, 0, 0, 0]},                                  # not applied: not a write
+        {"kind": "post_place", "label": "nut0", "step": 177, "ok": True, "from": [0.34, -0.19, 0.8204],
+         "to": [0.34, -0.19, 0.823], "pose7": [0.34, -0.19, 0.823, 1, 0, 0, 0]},
+        {"kind": "discrepancy", "label": "b", "step": 9, "before7": [0, 0, 0, 1, 0, 0, 0], "after7": [0, 0, 0.01, 1, 0, 0, 0]}]}
+    w = ms.belief_writes(rep)
+    assert [(x["writer"], x["step"], x["label"]) for x in w] == [("refine_pick", 5, "a"), ("post_place", 177, "nut0"),
+                                                                  ("discrepancy", 9, "b")]
+    assert w[1]["after"][2] == 0.823
