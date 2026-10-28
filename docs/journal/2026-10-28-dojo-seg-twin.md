@@ -54,4 +54,26 @@ Report with the tables: [../experiments/2026-10-28-seg-twin.md](../experiments/2
 - The genuine-5.1 belt background for pick_from_conveyor_by_image (`Dynamic/conveyor/00001`) was built between the
   renders on compute2, in 4 min of the rendered lane. The lead installed it into the boxes' folds.
 
-TODO: training set, trained model, end to end.
+- **Training set** (compute2, 02:06-04:27Z): 18 eval tasks × 20 draws, 4725 images, 247 classes, 1.7 GB.
+- **v1** (YOLO11s-seg, 23 min):
+  - held-out head view: recall 0.91, IoU 0.84, class 0.77;
+  - end to end with GPU GL: 902 -> 942 of 1013 (40 / 0), scenes 128 -> 147;
+  - ceiling with GPU GL: 954 (53 / 1).
+- **Orchestration slip.** A STOP file that stopped my render queue also stopped the training job, which checks the
+  same file. The chained script then went straight to the eval (no weights) and started rendering again. I killed my
+  chain and restarted training by hand, losing 1 min. The STOP file is now only for the queue. Use a separate file per
+  job, not one shared flag.
+- **ssh.** `setsid nohup ... &` inside a plain `ssh host '...'` can keep the session open until the 2-min timeout.
+  `ssh -n host '(setsid nohup ... > log 2>&1 < /dev/null &)'`, with the subshell parentheses, returns at once.
+- **For other streams.**
+  - Stream V took the v1 frame-0 detections (`compute2:~/dojo-data/segtrain/eval_v1_frame0_head.jsonl`) as seeds for
+    its multi-view selector. Seeding a fit with the other B1 objects masked lost most swap fixes, which confirms that
+    fitting inside the detection's own mask (`seg_propose`) is the right path.
+  - Weights for Integration: `compute4:~/dojo-data/segtrain/models/v1/{best.pt,classes.json}`, server per job through
+    `scripts/perception/seg/with_seg_server.sh`.
+
+## Licence
+Ultralytics YOLO11 (code and weights) is AGPL-3.0. That is fine for internal research. It matters only if we
+distribute the system, the submitted policy included. If that happens, retrain the same data on an Apache-2.0
+detector (YOLOX / GDRNPP's YOLOX config, RT-DETR / D-FINE) plus SAM 2.1 box prompts for masks. The labels and the
+`seg_twin` wire format do not depend on the model.
