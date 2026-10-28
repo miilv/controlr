@@ -160,3 +160,46 @@ def test_arrange_digits_on_the_kinematic_env():
     assert res["ok"], res
     for t, k in (("digit_2", 0), ("digit_0", 1), ("digit_3", 2), ("digit_1", 3)):
         assert np.linalg.norm(np.asarray(rows[t]["pos"][:2]) - [PAD_X[k] - 0.0425, -0.074]) < 0.02, t
+
+
+# ------------------------------------------------------------------ dev layouts: the equation's semantics
+def _eq_groups():
+    """solve_equation's config groups as ``merged_object_groups`` gives them (labels only; the parts the semantics use)."""
+    def g(name, label, plane="Table", x=0.0):
+        return {"category": [{"name": name}], "select_mode": {"label": [label], "nums": 1},
+                "common": {"xlim": [x, x], "ylim": [0.0, 0.0], "relative_plane": plane}}
+    rigid = [g("number", "t0", "mat0"), g("number", "t2", "mat2"), g("plus", "t1", "mat1"), g("number", "t4", "mat4"),
+             g("equal", "equal", "mat3")]
+    geo = [g("cube_cushion", f"mat{i}", "Table", x) for i, x in enumerate((-0.17, -0.085, 0.0, 0.085, 0.17))]
+    return {"Rigid": rigid, "Geometry": geo}
+
+
+def test_equation_semantics_one_slot_missing(monkeypatch):
+    import random
+
+    from dojo.simlab import gen_layouts as gl
+    monkeypatch.setattr(gl, "available_indices", lambda t, c, clutter=False: list(range(50)))
+    assert gl._is_equation(_eq_groups())
+    assert not gl._is_equation({"Rigid": _eq_groups()["Rigid"][:2]})
+    seen_two = seen_missing = 0
+    for s in range(60):
+        out, meta = gl.equation_groups(_eq_groups(), random.Random(s))
+        labs = {lab: g for gs in out.values() for g in gs for lab in g["select_mode"]["label"]}
+        ts = sorted(k for k in labs if k[0] == "t" and k[1:].isdigit())
+        two = "mat5" in labs
+        seen_two += two
+        slots = [0, 1, 2, 4] + ([5] if two else [])
+        assert len(ts) == len(slots) - 1                             # exactly one slot left for the policy
+        miss = meta["missing_slot"]
+        assert f"t{miss}" not in labs and miss in slots
+        seen_missing |= 1 << miss
+        vals = []
+        for k in slots:
+            if k == miss:
+                vals.append(None)
+                continue
+            c = labs[f"t{k}"]["category"][0]
+            vals.append(c["name"] if c["name"] != "number" else c["index"][0] % 10)
+        i = slots.index(miss)
+        assert tiles.missing_values(vals, i)                         # the record is solvable by the skill's rule
+    assert seen_two and seen_missing == 0b110111
