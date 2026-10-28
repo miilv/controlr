@@ -152,8 +152,19 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "over through the table when out of reach) and pushes each object with the side of the broom's head onto the "
         "dustpan's axis, then along it over the lip into the pan; the broom is put down away from the dustpan. For "
         "'use the dustpan to sweep the blocks'."),
+    "complete_equation": (
+        "complete_equation()",
+        "Reads the equation on the row of pads (a op b = answer: the pad with the equals tile splits it; a two-digit "
+        "answer takes two pads), finds the value of its one empty pad, and puts a loose tile showing that digit or "
+        "operator onto it, centred and upright with its x axis along the table's x. Values it cannot read are looked "
+        "at with a wrist, never guessed. For 'complete the equation'."),
+    "arrange_digits": (
+        "arrange_digits(descending: bool = true)",
+        "Puts the digit tiles on the row of pads, one per pad, so that read from left to right (increasing x) they make "
+        "the largest number (descending) or the smallest; centred, upright, x axis along the table's x; a pad another "
+        "tile sits on is freed first; grippers opened after each tile. For 'form the largest possible number'."),
 }
-SKILL_DOCS_VERSION = 11  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
+SKILL_DOCS_VERSION = 12  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
 #                        5: + strike_in_order, insert_each, screw_on (skills-5)
 #                        6: stack_on_pegs (shortest peg first, seated), hang_on_hooks (highest hooks, relay) (skills-7)
@@ -164,6 +175,7 @@ SKILL_DOCS_VERSION = 11  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + 
 #                        10: fill_container: "hold the holder with one hand, fill it with the other, put it back down" is
 #                           judged by the end state; the skill fills it standing (routing 2026-10-27: Sol wrote code 3/3)
 #                        11: + sweep_into (gennew)
+#                        12: + complete_equation, arrange_digits (stream N)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

@@ -41,6 +41,7 @@ from .bridge import Bridge
 from .estimate import flagged
 from .firewall import check_obs, sanitize_info
 from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candidates
+from dojo.skills.tiles import ROUTES as TILE_ROUTES
 
 
 # The perception service protocol still carries a ``fold`` field (offline dev tools pass a D0 half). The runtime
@@ -285,6 +286,10 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # planner routes that are off by default (stream N, ``dojo.skills.tiles.ROUTES``): "equation" (an equation's
+    # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right);
+    # empty = today. Their names go into the provider's ``notes["routes"]``, which ``planner.plan`` reads
+    new_routes: list = field(default_factory=list)
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -358,7 +363,8 @@ class RuntimePolicy:
                 or self.cfg.refine_recentre_guard not in ("centre", "vis")
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
-                or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")):
+                or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
+                or not set(self.cfg.new_routes or ()) <= set(TILE_ROUTES)):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -519,6 +525,8 @@ class RuntimePolicy:
                                checker=checker if cfg.resync else None, div_iou=cfg.div_iou, div_prec=cfg.div_prec,
                                replan_on_divergence=cfg.replan_on_divergence, log=self.log)
         prov.events = events
+        if cfg.new_routes:
+            prov.notes["routes"] = list(cfg.new_routes)
         prov.post_place_refine = bool(cfg.post_place and cfg.mode == "perception")
         prov.post_place_read = cfg.post_place_read if prov.post_place_refine else "off"
         if cfg.mode == "perception" and cfg.a1 != "off":

@@ -3093,3 +3093,9 @@ SKILLS.update(_GARMENT_SKILLS)
 from dojo.skills.sweep import SKILLS as _SWEEP_SKILLS  # noqa: E402
 
 SKILLS.update(_SWEEP_SKILLS)
+
+# number / operator tiles onto a row of pads: an equation's missing tile, digits into the largest number (stream N;
+# their planner routes are off unless ``RuntimeConfig.new_routes`` lists them)
+from dojo.skills.tiles import SKILLS as _TILE_SKILLS  # noqa: E402
+
+SKILLS.update(_TILE_SKILLS)
