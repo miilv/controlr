@@ -280,6 +280,14 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         hits = [o for o in world.objects.values() if o.obj_type == "Rigid" and getattr(o, "identity_known", True)
                 and phrase in asset_descriptions(o.asset.key)]                 # clutter too: never assume the role
         return run("pick_up", obj="@" + hits[0].label) if len(hits) == 1 else run("pick_up")
+    # sort objects into containers by category: free ("sort ... by category into the baskets") or a fixed map ("put X
+    # objects into the left basket, ...", which the skill parses)
+    if re.search(r"\bbaskets?\b|\bbins?\b", text) and (
+            re.search(r"\b(sort|classify|group)\b.*\bcategor", text)
+            or len(re.findall(r"\bobjects?\s+into\s+the\s+(?:left|middle|center|centre|right)\b", text)) >= 2):
+        conts = [o for o in objs if re.search(r"basket|bin\b", o.category.lower())]
+        if len(conts) >= 2 and len([o for o in rigid if o not in conts]) >= 2:
+            return run("classify_into_bins_v3b")
     # push / drag a flat object onto its pad (a Geometry whose category names the object's kind)
     if re.search(r"\bpush\b|\bslide\b|\bdrag\b", text) and re.search(r"\bpad\b|\balign", text):
         pads = [o for o in objs if o.obj_type == "Geometry"]

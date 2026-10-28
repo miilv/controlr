@@ -72,6 +72,15 @@ def rows_bottle():
                  half=[0.04, 0.04, 0.05])]
 
 
+def rows_classify():
+    out = [dict(label=f"basket{i}", category="basket", category_idx=2 + i, type="Geometry", pos=[x, 0.05, Z + 0.05],
+                quat=[1, 0, 0, 0], half=[0.09, 0.09, 0.05]) for i, x in enumerate((-0.28, 0.0, 0.28))]
+    for i, (cat, x) in enumerate((("watch", -0.25), ("pen", 0.05), ("toy_car", 0.25))):   # one per kind, as in 100001
+        out.append(dict(label=f"cat{i}", category=cat, category_idx=i, pos=[x, -0.15, Z + 0.012], quat=[1, 0, 0, 0],
+                        half=[0.03, 0.012, 0.012]))
+    return out
+
+
 SCENES = {
     "pick_up": (rows_pickup, "Pick up the toy car by 10 cm."),
     "planar_drag": (rows_push, "Push the T-shaped block to align it precisely with the gray T-shaped pad."),
@@ -81,6 +90,8 @@ SCENES = {
                                      "in the order: red, green, and blue."),
     "pour": (rows_pour, "Pour all the balls from the cup into the vase."),
     "pour_bottle": (rows_bottle, "Pour the liquid from the bottle into the cup."),
+    "classify_into_bins_v3b": (rows_classify, "Put watch objects into the left basket, pen objects into the middle "
+                                              "basket, and toy_car objects into the right basket, then reset the robot arm."),
 }
 
 
@@ -364,3 +375,12 @@ def test_ported_swap_defaults_fixed():
     from dojo.runtime.policy import RuntimeConfig
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().ported_swap == "fixed" and SKILL_ATTRS["ported_swap"][0] == "fixed"
+
+
+def test_free_sort_instruction_routes_to_classify():
+    instr = "Sort the objects by category into the three baskets."
+    env, sk = gt_skills(rows_classify(), instr)
+    w = sk.refresh()
+    assert planner.plan(instr, w).skill == "none"
+    p = planner.plan(instr, w, ported=True)
+    assert p.skill == "ported" and p.args["skill"] == "classify_into_bins_v3b"
