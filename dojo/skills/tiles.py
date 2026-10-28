@@ -40,6 +40,9 @@ REACH_SHIFTS = (0.0, 0.007)
 # the pads lie at the edge of the reach: the default pre-place 6 cm over the target (and a 5 cm retreat) had no IK
 # at mat1 / mat2 for either arm (G3 100031 / 100044 went through an in-air handover and slipped); 3 cm plans
 PLACE_KW = {"pre_h": 0.03, "retreat": 0.03}
+# a tile on one side of the table bound for a pad the other arm reaches is put down between the arms first; the
+# default relay patch (0, -0.28) is where solve_equation's four operator discs lie (G3 100033 / 100038: no spot)
+RELAY_NEAR = (0.0, -0.16)
 CENTRE_OFF = 0.006        # m: the pads close this close to the tile's centre at most
 MAX_PICK_TILT = 30.0      # deg: a tile picked 40 deg off vertical slid out of the pads (G3 100033)
 ROUTES = ("equation", "largest_number")
@@ -278,7 +281,8 @@ def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, air_handover: bool =
     if yaw_sym == 2:
         tg += tile_targets(sk, label, pad, yaws_deg=tuple(y + 180.0 for y in YAWS_DEG))
     return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,),
-                          air_handover=air_handover, place_kw=dict(PLACE_KW), transfer_kw={"max_pick_tilt": MAX_PICK_TILT,
+                          air_handover=air_handover, relay_near=RELAY_NEAR, max_spots=5, place_kw=dict(PLACE_KW),
+                          transfer_kw={"max_pick_tilt": MAX_PICK_TILT,
                                                                 "pair_ok": centred_grasp(sk.world.obj(label))})
 
 

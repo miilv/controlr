@@ -4,6 +4,7 @@ scene read, the off-by-default routes, and whole episodes on the kinematic env. 
 
 from __future__ import annotations
 
+import json
 import math
 
 import numpy as np
@@ -224,3 +225,27 @@ def test_centred_grasp_and_reach_shift_targets():
     assert abs(tg[0][2, 3] - (Z_TABLE + 0.005 + OP_HALF[2])) < 1e-9                  # resting on the pad's top
     for T in tg:                                                                    # inside the checker's 45 deg
         assert abs(math.degrees(math.atan2(T[1, 0], T[0, 0]))) < 45.0
+
+
+def test_equation_semantics_leave_other_tasks_byte_identical():
+    """Generator v15 changes solve_equation's draws only. Needs RoboDojo's configs and ClutteredGenerator (the boxes;
+    skipped elsewhere). On compute7 (2026-10-28) main's v14 vs v15 over all 54 tasks x 4 draws: 212 identical, the 4
+    different ones all solve_equation (journal 2026-10-28-dojo-newskill-tiles-align)."""
+    pytest.importorskip("shapely")
+    pytest.importorskip("utils.cluttered_generator")
+    from dojo.simlab import gen_layouts as gl
+    try:
+        gl.task_config("stack_blocks")
+    except (FileNotFoundError, OSError):
+        pytest.skip("no RoboDojo task configs here")
+    for task in ("stack_blocks", "arrange_largest_number", "align_blocks", "press_by_number", "swap_blocks"):
+        tcfg, scfg, groups = gl.task_config(task), gl.scene_config(task), gl.merged_object_groups(task)
+        assert not gl._is_equation(groups)
+        for sub in (100030101, 100031101):
+            try:
+                plain = gl._draw(tcfg, scfg, groups, sub)
+            except gl.LayoutError:
+                continue
+            with_sem = gl._draw(tcfg, scfg, groups, sub, semantics=True)
+            assert with_sem[3] is None
+            assert json.dumps(with_sem[:3], sort_keys=True, default=str) == json.dumps(plain, sort_keys=True, default=str)
