@@ -69,6 +69,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **CI never runs a G3 / Isaac episode**, so a name that exists only on your measurement base passes CI and breaks main
   (#85 → #89: `belief_drop` in g3.py before #79 landed; every mode-A run died with NameError). Before a PR: run one G3
   episode from the PR head itself, and `uvx pyflakes` the files you touched (it flags undefined names).
+- **The sim stops joint 5 at +-pi/2, not at the asset's +-10 rad.** The stop holds on both sides and at any wrist roll;
+  it is likely self-contact, since the URDF / ARX.usd declare +-10 rad and nothing clamps the commands.
+  `kinematics.JOINT_LIMITS` ("wide") lets the IK go to 1.9 rad, so a plan past pi/2 leaves the arm stuck there, with
+  the TCP 20-100 mm from where the planner believes it is: fill_pen drops let go beside the holder. Check commanded
+  against measured joints (`q` / `qm` in the G3 trace frames) before blaming the skill. `RuntimeConfig.joint_limits`
+  "measured" keeps joint 5 within +-1.56.
 - **`timeout N scripts/skills/g3.sh ...` does not bound a G3 job.** The TERM reaches g3.sh, whose trap forwards it to
   the Isaac python and waits, but the python keeps running its episodes: a `timeout 1900` job ran 40 min, on into the
   next layout, until its python was killed by PID. Use `timeout -k 60 N` (a KILL to the process group 60 s later), or

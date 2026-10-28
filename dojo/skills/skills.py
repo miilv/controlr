@@ -291,9 +291,6 @@ class Skills:
         # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
         self.put_into_opts: set = set()
         self._joint_limits = "wide"
-        # ``fill_container``'s memory of grasps that did not lift (stream H): "exact" (today: that grasp only) | "family"
-        # (every grasp on the same faces, approach and tilt, whatever its offset along the object)
-        self.fill_skip = "exact"
         # ``library.on_targets``' support top (stream H): "bbox" (today: the support's bbox top) | "mesh" (the mesh's
         # surface under the object's whole footprint, flat poses only)
         self.place_surface = "bbox"

@@ -1,6 +1,5 @@
 """Stream H: ``RuntimeConfig.joint_limits`` / ``Skills.joint_limits`` ("wide" = today | "measured": joint 5 inside the
-sim's +-pi/2 stop) and ``fill_skip`` ("exact" = today | "family"). Their effect is screened in G3; here: the IK honours
-the range, the defaults, plumbing, the grasp family. CPU only."""
+sim's +-pi/2 stop). The effect is screened in G3; here: the IK honours the range, the default, plumbing. CPU only."""
 
 from types import SimpleNamespace
 
@@ -9,7 +8,6 @@ import pytest
 
 from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
 from dojo.skills.kinematics import J5_STOP, JOINT_LIMIT_SETS, JOINT_LIMITS, X5Kin
-from dojo.skills.library import grasp_family
 from dojo.skills.skills import Skills
 from dojo.skills.world import AssetInfo
 
@@ -36,38 +34,28 @@ def test_measured_ik_never_commands_joint_5_past_the_stop():
         Skills.joint_limits.fset(sk, "tight")
 
 
-def test_grasp_family_drops_only_the_offset():
-    assert grasp_family("box close 2 approach +1 tilt +0 off +2mm") == "box close 2 approach +1 tilt +0"
-    assert grasp_family("box close 0 approach -1 tilt -25 off -16mm") == "box close 0 approach -1 tilt -25"
-    assert grasp_family("top axis 0 tilt 0") == "top axis 0 tilt 0"
-    assert grasp_family("slice z 0.048 dir 68 w 49mm tilt 40") == "slice z 0.048 dir 68 w 49mm tilt 40"
-
-
 class _Assets:
     def get(self, typ, cat, idx, clutter=False, mesh=False):
         return AssetInfo(key=f"{typ}/{cat}/{int(idx):05d}", bbox_min=np.full(3, -0.015), bbox_max=np.full(3, 0.015))
 
 
 def test_defaults_validation_and_plumbing():
-    assert RuntimeConfig().joint_limits == "wide" and RuntimeConfig().fill_skip == "exact"
-    for bad in (dict(joint_limits="tight"), dict(fill_skip="all")):
-        with pytest.raises(ValueError):
-            RuntimePolicy(RuntimeConfig(mode="perception", **bad), assets=_Assets())
+    assert RuntimeConfig().joint_limits == "wide"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(mode="perception", joint_limits="tight"), assets=_Assets())
     from dojo.skills.env import KinematicEnv
     env = KinematicEnv([{"label": "b", "category": "block", "category_idx": 5, "pos": (0.3, -0.1, 0.78),
                          "quat": [1, 0, 0, 0], "half": [0.015] * 3}], step_lim=50, instruction="Stack the blocks.")
-    pol = RuntimePolicy(RuntimeConfig(mode="gt", verify="off", joint_limits="measured", fill_skip="family"),
-                        assets=_Assets())
+    pol = RuntimePolicy(RuntimeConfig(mode="gt", verify="off", joint_limits="measured"), assets=_Assets())
     pol.reset({"task": "x", "instruction": env.instruction, "step_lim": 50, "layout_id": 1})
     obs = {"images": {c: np.zeros((8, 8, 3), np.uint8) for c in ("cam_head", "cam_left_wrist", "cam_right_wrist")},
            "state": env.proprio(), "instruction": env.instruction, "steps_used": 0, "step_lim": 50,
            "_dev_gt": env.gt_objects()}
     pol.next(obs)
     sk = pol._live["sk"]
-    assert sk.joint_limits == "measured" and sk.fill_skip == "family" and sk.kin.limits[4, 1] == pytest.approx(1.56)
+    assert sk.joint_limits == "measured" and sk.kin.limits[4, 1] == pytest.approx(1.56)
 
 
-def test_g3_skill_attrs_match_the_runtime_defaults():
+def test_g3_skill_attrs_match_the_runtime_default():
     from dojo.skills.g3 import SKILL_ATTRS
     assert SKILL_ATTRS["joint_limits"][0] == RuntimeConfig().joint_limits
-    assert SKILL_ATTRS["fill_skip"][0] == RuntimeConfig().fill_skip
