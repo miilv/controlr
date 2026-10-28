@@ -224,6 +224,56 @@ def test_a_slip_after_a_held_reading_is_a_release_under_the_jaws_for_the_next_re
     assert prov.belief.pop_released() == ["block_1"] and prov.belief.released_by["block_1"] == "left"
 
 
+class _ReadChecker:
+    """post_place's checker: the refine and the 6-DoF read find nothing; the wide search finds the object at ``found``
+    (stream W's release read). Records what each was asked."""
+
+    def __init__(self, found):
+        self.found, self.reads, self.searches = found, [], []
+
+    def refine(self, obs, o, others, arm, held=None):
+        return {"ok": False, "iou": 0.0}
+
+    def release_read(self, obs, o, others, arm, cfg=None):
+        self.reads.append(np.r_[o.pos, o.quat].copy())
+        return {"ok": False, "why": "fit_poor"}
+
+    def release_search(self, obs, o, others, arm, pre_pose7=None, cfg=None):
+        self.searches.append((np.r_[o.pos, o.quat].copy(), None if pre_pose7 is None else np.asarray(pre_pose7)))
+        return {"ok": True, "via": "head_search", "pose7": list(self.found)}
+
+
+def test_grip_check_and_the_release_read_compose_without_moving_an_object_twice():
+    """grip_check (H) and post_place_read "6dof_search" (W) on the same grasp. Closed on air: grip_check puts the object
+    back where it was grasped and nothing is released, so no release read runs (no second move). A slip after a held
+    reading: grip_check drops it under the jaws as a release; the next post-place read starts from that drop and its
+    search moves it once, to where it is seen."""
+    # closed on air
+    prov, obs, pose0, _ = _prov(official=0.0)
+    ck = _ReadChecker(found=[0.3, -0.2, 0.78, 1.0, 0.0, 0.0, 0.0])
+    prov.checker, prov.post_place_read = ck, "6dof_search"
+    prov._grip_check(obs)
+    assert prov.post_place(obs, prov.belief.pop_released()) == []
+    assert ck.reads == [] and ck.searches == []
+    assert np.allclose(prov.belief.objects["block_1"].pos, pose0[:3], atol=1e-6)
+    # a slip after a held reading
+    prov, obs, pose0, _ = _prov(official=0.2631)
+    ck = _ReadChecker(found=[0.3, -0.2, 0.78, 1.0, 0.0, 0.0, 0.0])
+    prov.checker, prov.post_place_read = ck, "6dof_search"
+    prov._grip_check(obs)
+    prov.belief.objects["block_1"].pos += np.array([0.10, 0.0, 0.0])
+    obs["state"]["left_ee_joint_state_official"] = np.array([0.0])
+    prov._grip_check(obs)
+    dropped = np.r_[prov.belief.objects["block_1"].pos, prov.belief.objects["block_1"].quat].copy()
+    evs = prov.post_place(obs, prov.belief.pop_released())
+    assert len(evs) == 1 and len(ck.reads) == 1 and len(ck.searches) == 1
+    assert np.allclose(ck.reads[0], dropped) and np.allclose(ck.searches[0][0], dropped)  # the read starts from the drop
+    assert np.allclose(ck.searches[0][1], pose0)                            # the search knows where it was grasped
+    assert np.allclose(prov.belief.objects["block_1"].pos, [0.3, -0.2, 0.78])  # moved once, to where it was seen
+    assert evs[0]["search"]["via"] == "head_search" and evs[0]["pose7"][:3] == pytest.approx([0.3, -0.2, 0.78])
+    assert "block_1" not in prov._pp_doubt
+
+
 def test_an_empty_hand_in_a_handover_releases_only_that_hand():
     prov, obs, _, _ = _prov(official=0.0)
     prov.belief.attached["right"] = ("block_1", np.eye(4))

@@ -2806,6 +2806,48 @@ def test_post_place_read_6dof_moves_what_the_refine_cannot_fit():
             assert np.allclose(o.pos, p0) and np.allclose(o.quat, q0) and "pose7" not in ev
 
 
+def test_post_place_read_6dof_search_finds_what_the_read_misses():
+    """post_place_read "6dof_search": the 6-DoF read finds nothing at the release (fit_poor) -> the wide search gets the
+    pose the object had when the jaws closed on it (a missed grasp leaves it there) and its found pose is adopted;
+    "6dof" never searches."""
+    from dojo.runtime.belief import RuntimeProvider
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+
+    class Checker:
+        def __init__(self):
+            self.searches = []
+
+        def refine(self, obs, o, others, arm, held=None):
+            return {"ok": False, "iou": 0.0}
+
+        def release_read(self, obs, o, others, arm, cfg=None):
+            return {"ok": False, "why": "fit_poor"}
+
+        def release_search(self, obs, o, others, arm, pre_pose7=None, cfg=None):
+            self.searches.append((o.label, arm, pre_pose7))
+            return {"ok": True, "via": "pre_grasp", "pose7": list(pre_pose7), "head_iou": 0.8}
+
+    for mode in ("6dof_search", "6dof"):
+        ck = Checker()
+        prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=ck)
+        prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+        prov.post_place_read = mode
+        o = prov.belief.objects["block_1"]
+        pre = np.r_[o.pos, o.quat].astype(float)
+        prov.belief.grasp_z["left"] = (0.9, 1, pre.copy())
+        o.pos = o.pos + np.array([0.0, 0.0, 0.08])                         # the belief carried it up and let it go
+        prov.belief.released_by["block_1"] = "left"
+        ev = prov.post_place(b.obs, ["block_1"])[0]
+        if mode == "6dof":
+            assert ck.searches == [] and "search" not in ev and abs(float(o.pos[2]) - pre[2] - 0.08) < 1e-9
+            continue
+        assert ck.searches and ck.searches[0][:2] == ("block_1", "left") and np.allclose(ck.searches[0][2], pre)
+        assert ev["search"]["via"] == "pre_grasp" and ev["ok"] and np.allclose(o.pos, pre[:3])
+        assert prov.stats["post_place_search"] == 1 and "block_1" not in prov._pp_doubt
+
+
 def test_post_place_adopts_a_height_only_correction():
     """A released block the belief floats 56 mm high (a no-candidate place): perception re-fits it from its support
     at the same xy; the belief comes down although the xy shift is 0."""

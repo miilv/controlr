@@ -35,6 +35,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--delay", type=int, default=5)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--max-mm", type=float, default=0.0,
+                    help="a local read's ceiling: patch only when the GT body centre is within this of the belief's")
     a = ap.parse_args()
 
     sys.path.insert(0, HERE)
@@ -98,6 +100,8 @@ def main():
                         continue
                     x = min(same, key=lambda x: float(np.linalg.norm(fp.centre(G.gt_key(x), x["pos"], x["quat"])[:2]
                                                                      - c[:2])))
+                    if a.max_mm and float(np.linalg.norm(fp.centre(G.gt_key(x), x["pos"], x["quat"]) - c)) * 1000 > a.max_mm:
+                        continue                          # beyond a local read's reach (fell, bounced, never carried)
                     bt.belief[lab].update(pos=list(x["pos"]), quat=list(x["quat"]), source="release_gt")
 
             out = {}
