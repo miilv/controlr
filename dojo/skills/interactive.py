@@ -580,6 +580,13 @@ def belt_objects(w, exclude=()) -> list[str]:
     return [o.label for o in w.task_objects() if o.obj_type == "Rigid" and o.label not in exclude]
 
 
+def _nothing_moves(sk: Skills) -> dict:
+    """The belt skills' "no velocity" result; it says so when the provider's belt reads were blind (no scene
+    background for the belt), so a missing data file does not read as a perception or skill failure."""
+    why = getattr(sk.provider, "belt_blind", None)
+    return {"ok": False, "stage": "belt", "note": "nothing moves" + (f" (belt reads blind: {why})" if why else "")}
+
+
 def belt_velocity(sk: Skills, labels: list[str], steps: int = 4, max_wait: int = 60) -> np.ndarray:
     """The belt's velocity (m per env step, world xy): the provider's tracked belt velocity when it has one (the runtime
     fits each moving object's reads over a window), else the median displacement of the objects that moved over
@@ -916,10 +923,11 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     # where the riders were at the start: the first one is the one leading there, even when it has ridden out of view
     # (or the tracker dropped it) by the time the belt's direction is known
     start = {l: (w.obj(l).pos[:2].copy(), w.obj(l).asset.key) for l in riders}
+    s_start = w.step
     # a tracking provider (the runtime) may need the next riders' tracks for the velocity: wait longer for it
     v = belt_velocity(sk, labs, max_wait=250 if getattr(sk.provider, "belt_velocity", None) else 60)
     if float(np.linalg.norm(v)) < 1e-4:
-        return {"ok": False, "stage": "belt", "note": "nothing moves"}
+        return _nothing_moves(sk)
     u = v / np.linalg.norm(v)
     w = sk.refresh()
     t_first = w.step
@@ -942,6 +950,14 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         w = sk.refresh()
     first = st["first"]
     key = st["first_key"] = w.obj(first).asset.key if first in w.objects else st.get("first_key")
+
+    def first_seen(w):
+        # where the first one was last believed (xy, step): it rides out of view and the tracker drops it
+        if first in w.objects:
+            st["first_at"] = ([float(x) for x in w.obj(first).pos[:2]], int(w.step))
+        elif st.get("first_at") is None and first in start:
+            st["first_at"] = ([float(x) for x in start[first][0]], int(s_start))
+    first_seen(w)
     same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key]
     t0 = w.step
     seen = confirm if same else 0
@@ -959,10 +975,15 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         labs = [l for l in w.objects if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter]
         if first in w.objects:                      # (the first one rides out of view and leaves the belief: keep its key)
             key = st["first_key"] = w.obj(first).asset.key
+        first_seen(w)
         # a newcomer's identity counts once most of its latest reads agree (the tracker's vote share; GT: 1), and the
-        # next one comes from behind the first (a second track of the first object itself is not it: 100002)
-        behind = ((lambda l: float((w.obj(l).pos[:2] - w.obj(first).pos[:2]) @ u) < -0.08) if first in w.objects
-                  else (lambda l: True))
+        # next one comes from behind the first (a second track of the first object itself is not it: 100002). Once the
+        # first has left the belief, "behind" is behind where the belt has carried it since its last belief: offline
+        # genuine-5.1 100002, the first phone's border reads jumped 11 cm, started a second phone track there, and with
+        # no guard after the first's track was lost that ghost riding out of view was the match
+        fa = st.get("first_at")
+        fp = None if fa is None else np.asarray(fa[0], float) + v * (w.step - fa[1])
+        behind = (lambda l: float((w.obj(l).pos[:2] - fp) @ u) < -0.08) if fp is not None else (lambda l: True)
         same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share
                 and behind(l)]
         seen = seen + 1 if same else 0
@@ -1049,7 +1070,7 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
     labs = [l for l in objects if l in w.objects and l != container]
     v = belt_velocity(sk, labs + [container])
     if float(np.linalg.norm(v)) < 1e-4:
-        return {"ok": False, "stage": "belt", "note": "nothing moves"}
+        return _nothing_moves(sk)
     w = sk.refresh()
     ident = depicted_identity(w.obj(picture)) if picture else None
     cands = [l for l in labs if ident and w.obj(l).asset.key == ident]

@@ -919,8 +919,11 @@ class RuntimePolicy:
         n = self.report.setdefault("track_reads", 0) + 1
         self.report["track_reads"] = n
         if n <= 60:
-            self.report["events"].append({"kind": "track_read", "step": int(obs["steps_used"]), "found": found[:12],
-                                          "not_found": len(rec.get("_not_found") or [])})
+            ev = {"kind": "track_read", "step": int(obs["steps_used"]), "found": found[:12],
+                  "not_found": len(rec.get("_not_found") or [])}
+            if (rec.get("_perception") or {}).get("blind"):
+                ev["blind"] = True                      # no scene background for the belt (the tracker skips it)
+            self.report["events"].append(ev)
         if n <= int(self.cfg.save_track_frames):
             self._keep_frame(f"track{n:02d}_s{int(obs['steps_used'])}", obs, force=True)
         return rec
