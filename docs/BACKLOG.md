@@ -72,6 +72,15 @@
   rendered genuine 5.1 (compute2, bbc9b3a): c4b_laptop_obr_100000 and c4b_laptop_risky_100000 end at step 24/800,
   not_home 0.0, "[hang] no plan for ['headset'] on hooks [0]: ... 0 grasp-place pairs". The laptop on_base_refit
   arm was stopped for this (G3 hang plan blocker).
+- [ ] **dojo infra (landmine): a box's perception catalogue can silently miss assets.** `task_map()` drops every
+  label whose candidates have no `geom.npz` (one warning in `perception_service.log`), so camera rows of that task
+  run perception-blind and end `perception_gross` in seconds. compute4's `~/dojo-perception-data/catalog` lacked W's
+  overlay (`manifests/w_plan_none_117.md5`, 117 assets) until 28 Oct 21:5xZ: solve_equation, arrange_largest_number
+  x2, classify x2 (baskets), sort_nesting_dolls x2, pour_by_language, pour_liquid x2 had no geometry there. Fixed by
+  relaying the overlay from compute3 (md5-checked; index md5 371abdc7…). Gaps left on every box: fold_clothes_random,
+  hang_mugs_random, make_toast_random, store_laptop_random, sweep_blocks_random rigid2 (sweep_blocks' two brooms are
+  `KNOWN_UNSHIPPED`, not a gap). Before a rendered round on a box: compare `index.json` md5 with compute3's and
+  list the gap labels (stream W is adding a per-box coverage check). Journal 2026-10-28-dojo-integ-c4-round2.
 - [ ] **dojo infra (landmine): store_laptop 100000 freezes Isaac 5.1's Kit on compute2.** No env step after step
   ~20, then Kit's zenity "cannot open display" every 2 min until the integ_eval watchdog kills the scope
   (infra_failure). It happened in 4 of 4 runs of the default-perception arms on compute2 (bbc9b3a,
