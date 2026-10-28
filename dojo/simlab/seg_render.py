@@ -28,7 +28,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
+import sys
 import time
 from pathlib import Path
 
@@ -564,7 +566,16 @@ def main(argv: list[str] | None = None) -> None:
             with index_p.open("a") as f:
                 f.write(json.dumps(row) + "\n")
             continue
-        info = run.load(lay)
+        try:
+            info = run.load(lay)
+        except Exception as e:      # e.g. a task's run_reward rejecting the record: skip it, do not hang the app
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "skip.json").write_text(json.dumps({"status": f"load_error: {type(e).__name__}: {e}"}))
+            row["status"] = "load_error"
+            with index_p.open("a") as f:
+                f.write(json.dumps(row) + "\n")
+            print(f"[seg] {a.task} {s}_v{v}: load error {type(e).__name__}: {e}, skipped", flush=True)
+            continue
         if not info["stable"]:
             d.mkdir(parents=True, exist_ok=True)
             (d / "skip.json").write_text(json.dumps({"status": "unstable"}))
@@ -634,4 +645,13 @@ def main(argv: list[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException:        # an uncaught exception leaves Isaac's app threads alive (the process hangs): hard exit
+        import traceback
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)
