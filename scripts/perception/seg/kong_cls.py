@@ -157,6 +157,29 @@ def report(rows, P, margin) -> dict:
     return out
 
 
+def confusions(rows, P, margin) -> list[dict]:
+    """Wrong top-1 predictions by (true, predicted) class name, most frequent first; ``n_read``: those above the
+    margin (the errors a reader would actually emit)."""
+    from collections import Counter
+
+    pred, marg = margins(P)
+
+    def name(c):
+        return "back" if c == BACK else (NAMES[c] if NAMES else str(c))
+
+    allc, readc = Counter(), Counter()
+    for i, r in enumerate(rows):
+        y = label_of(r)
+        if pred[i] == y:
+            continue
+        key = (name(y), name(int(pred[i])))
+        allc[key] += 1
+        thr = margin.get(view_kind(r), margin["head" if r["view"] == "cam_head" else "wrist"]) if isinstance(margin, dict) \
+            else float(margin)
+        readc[key] += int(marg[i] >= thr)
+    return [{"true": t, "pred": q, "n": n, "n_read": readc[(t, q)]} for (t, q), n in allc.most_common()]
+
+
 def cmd_train(a):
     import torch
 
@@ -229,6 +252,9 @@ def cmd_eval(a):
     for k, v in rep.items():
         view, kind = k.split("|")
         print(f"| {view} | {kind} | {v['n']} | {v['top1']:.2f} | {v['read']:.2f} | {v['read_right']:.2f} |")
+    rep["confusions"] = confusions(rows, P, mv)
+    print("top confusions (true -> predicted: all / among reads):",
+          ", ".join(f"{c['true']}->{c['pred']} {c['n']}/{c['n_read']}" for c in rep["confusions"][:12]) or "none")
     if a.json:
         Path(a.json).write_text(json.dumps(rep, indent=1))
 
