@@ -495,3 +495,33 @@ def test_write_rerun_rebuilds_the_belief_before_each_write():
     req = W.inputs(ev_b, b, {}, report["config"], report)
     assert [o["label"] for o in req["objects"]] == ["b", "a"]   # the target first, fixtures never
     assert req["max_shift_m"] == 0.07 and req["held"] is None
+
+
+def test_x2_eval_runtime_gates_and_verdicts():
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "x2_eval", Path(__file__).resolve().parents[2] / "scripts/perception/bgperc/x2_eval.py")
+    X = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(X)
+    cfg = {"refine_turn_check_deg": 45.0, "refine_turn_min_iou": 0.9, "big_shift_mm": 30.0, "big_shift_min_iou": 0.7,
+           "neighbour_mm": 25.0, "refine_max_turn_deg": 90.0, "place_confirm": True, "place_cap_mm": 12.0,
+           "place_min_vis": 0.9, "post_place_confirm_mm": 20.0}
+    prior = [0.0, 0.0, 0.8, 1, 0, 0, 0]
+    r = {"ok": True, "pos": [0.005, 0, 0.8], "quat": [1, 0, 0, 0], "shift_mm": 5.0, "iou": 0.8, "turned_deg": 2.0,
+         "visible_frac": 1.0}
+    assert X.accept("refine_pick", r, prior, cfg, {})[0] == [0.005, 0, 0.8, 1, 0, 0, 0]
+    assert X.accept("refine_pick", {**r, "ok": False}, prior, cfg, {})[0] is None
+    assert X.accept("refine_pick", {**r, "turned_deg": 60.0}, prior, cfg, {})[1] == "turn at low iou: prior kept"
+    far = {**r, "pos": [0.05, 0, 0.8], "shift_mm": 50.0}
+    assert "re-hover" in X.accept("refine_pick", {**far, "iou": 0.6}, prior, cfg, {})[1]          # offline-blind
+    assert X.accept("refine_pick", far, prior, cfg, {"n": {"pos": [0.06, 0, 0.8]}})[1] == "on a neighbour"
+    assert X.accept("refine_place", {**r, "shift_mm": 15.0}, prior, cfg, {})[0] is None            # needs a 2nd view
+    assert X.accept("post_place", {**r, "shift_mm": 1.0, "pos": [0.001, 0, 0.8]}, prior, cfg, {})[0] is None
+    assert X.accept("post_place", r, prior, cfg, {})[1] == "post-place moved"
+    row = {"rt": {"10": False}, "arm": {"10": True}, "changed": {"a": {"mm": 1.0, "floor_p95": 3.0}}}
+    assert X.verdict(row) == "within noise"
+    row["changed"]["a"]["mm"] = 8.0
+    assert X.verdict(row) == "fixed"
+    assert X.verdict({**row, "rt": {"10": True}, "arm": {"10": False}}) == "broken"
