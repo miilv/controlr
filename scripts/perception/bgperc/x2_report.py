@@ -81,11 +81,17 @@ def main():
         lines.append(f"\n### clean@R{R} (paired events; episodes: {len({k[0] for k in keys})})\n")
         lines.append("| " + " | ".join(head) + " |")
         lines.append("|" + "---|" * len(head))
-        sets = [("all", keys), ("without put_bottles", [k for k in keys if rt[k]["task"] != "put_bottles_into_dustbin"])]
-        by = defaultdict(list)
+        on = [k for k in keys if "_gcon_" in k[0]]
+        off = [k for k in keys if "_gcoff_" in k[0]]
+        nb = [k for k in keys if rt[k]["task"] != "put_bottles_into_dustbin"]
+        sets = [("all", keys), ("ON (gcon, primary)", on), ("OFF (gcoff)", off), ("all without put_bottles", nb),
+                ("ON without put_bottles", [k for k in on if k in set(nb)])]
+        by, by_on = defaultdict(list), defaultdict(list)
         for k in keys:
             by[rt[k]["task"]].append(k)
-        sets += sorted(by.items())
+            if k in set(on):
+                by_on[rt[k]["task"]].append(k)
+        sets += sorted(by.items()) + [(f"{t} (ON)", v) for t, v in sorted(by_on.items())]
         for nm, ks in sets:
             lines.append(md(nm, table(ks, rt, arms, R), names))
     if "J" in arms and "S" in arms:
