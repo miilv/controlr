@@ -90,7 +90,7 @@ class SeqReplayPolicy:
         if self.max_steps:
             self.actions = self.actions[: self.max_steps]
         self.i = 0
-        self.dir = self.out / f"{task}_{lid}"
+        self.dir = self.out / (os.environ.get("DOJO_SEQ_NAME") or f"{task}_{lid}")   # one name per recorded run
         (self.dir / "frames").mkdir(parents=True, exist_ok=True)
         self._rows = open(self.dir / "steps.jsonl", "w")
         self._last_acts: list[dict] = []

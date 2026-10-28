@@ -113,3 +113,18 @@ refine per frame? Report: [../experiments/2026-10-28-bgperc.md](../experiments/2
 - general_pickup's clutter distractors near the corridor: an item for S.
 - B1's placement priors make it blind to actor-moved objects off their generator region: a re-detector should not
   carry them.
+
+## 7. X2: genuine-5.1 replays of Integration's arm-8 episodes (the review's test set)
+
+- **compute2 cannot reproduce compute4's recordings** (now in BACKLOG):
+  - c4b_bottles_gcon_100000 replayed on compute2 drifts from compute4's physics from the settled start: 0.002 mm at
+    step 0, 2 mm by step 161, 77 mm later. Its dev_gt_probe fails from the 2nd close, and the 6th close names another
+    bottle.
+  - compute2 is self-consistent: its rendered replay is bitwise equal to its physics-only replay, so rendering does not
+    perturb physics.
+  - compute3's physics-only replays reproduce compute4 at 0.0 mm (stream M).
+  - The boxes have different CPUs (13900KF vs 14900KF), and their Robots asset trees checksum differently.
+- **So the 70 replays render on compute4 itself**, one lane on ~/dojo-gpu.lock, ON first. `scripts/perception/seq_render.sh`
+  with `SEQ_RENDERER=isaac51 SEQ_NAME_BY_SRC=1 DOJO_SEQ_STRIDE=2`. Each replay is gated by
+  `scripts/perception/bgperc/replay_check.py`: dev_gt_probe closes reproduced at 0.0 mm and the same step count,
+  otherwise dropped.
