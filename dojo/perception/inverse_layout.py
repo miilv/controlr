@@ -3134,6 +3134,9 @@ class EstimatorConfig:
     fm_refine: bool = False
     fm_refine_d: float = 0.45
     fm_refine_gain: float = 0.05
+    # > 0: the objective is the feature distance + fm_refine_w_sil x B1's silhouette loss (B1's own views; the loop in
+    # this process, the distance from the server). 1.0: gross -7, within +8, 0 right objects broken (0: 5 into overshoot)
+    fm_refine_w_sil: float = 0.0
     # SAM mask proposals (dojo.perception.sam_masks; a no-op without a SAM server at DOJO_SAM_ADDR). Default off.
     # sam_fg: the head foreground combined with SAM 3.1's text masks for the scene vocabulary: "union" | "gate" | "replace"
     sam_fg: str = "off"
@@ -3827,16 +3830,16 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if cfg.b1_doubt or cfg.fm_refine:
         _b1_doubt(record, images, cams, {n: v.robot for n, v in views_all.items()}, learned, cfg)
     if cfg.fm_refine:
-        _fm_refine(record, images, cams, {n: v.robot for n, v in views_all.items()}, cfg)
+        _fm_refine(record, images, cams, {n: v.robot for n, v in views_all.items()}, cfg, views)
     return record
 
 
-def _fm_refine(record: dict, images: dict, cams: dict, robot_masks: dict, cfg: EstimatorConfig) -> None:
+def _fm_refine(record: dict, images: dict, cams: dict, robot_masks: dict, cfg: EstimatorConfig, views: dict | None = None) -> None:
     from .doubt import refine_doubted
 
     try:
         r = refine_doubted(record, images, cams, robot_masks, min_d=cfg.fm_refine_d, min_gain=cfg.fm_refine_gain,
-                           color_M=cfg.color_M)
+                           color_M=cfg.color_M, b1_views=views, w_sil=cfg.fm_refine_w_sil)
         if "skipped" in r:
             record.setdefault("_perception", {})["fm_refine"] = r
     except Exception as e:  # never cost the estimate

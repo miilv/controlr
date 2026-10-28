@@ -88,9 +88,12 @@ class FeatureMetric:
             info.append(inf)
         return np.array(out), info
 
-    def score(self, key: str, poses: list[np.ndarray], views: list[dict]) -> tuple[np.ndarray, list[dict]]:
+    def score(self, key: str, poses: list[np.ndarray], views: list[dict], box_pose: np.ndarray | None = None,
+              box_pad: float = 0.8) -> tuple[np.ndarray, list[dict]]:
         """Feature-metric distance of each pose (lower = better) over the views that see the object, and per-view
-        info. ``views``: [{"name", "img", "cam", "robot" (uint8 mask or None)}]."""
+        info. ``views``: [{"name", "img", "cam", "robot" (uint8 mask or None)}]. ``box_pose``: the crops come from
+        that pose's projection (padded by ``box_pad``) instead of the candidates' own, so an optimiser moving the pose
+        sees one fixed window (``refine``'s setting)."""
         import cv2
 
         from .embed_id import composite, crop
@@ -116,7 +119,13 @@ class FeatureMetric:
             allv = np.concatenate(uvs)
             if allv[:, 0].max() < 0 or allv[:, 1].max() < 0 or allv[:, 0].min() > cam.w or allv[:, 1].min() > cam.h:
                 continue
-            box = _box_of(allv)
+            if box_pose is not None:
+                ub, zb = cam.project(V @ box_pose[:3, :3].T + box_pose[:3, 3])
+                if (zb <= 0).any():
+                    continue
+                box = _box_of(ub, pad=box_pad)
+            else:
+                box = _box_of(allv)
             real = crop(v["img"], box, self.crop_px, interp=cv2.INTER_LINEAR)
             rob = None
             if v.get("robot") is not None:
@@ -174,10 +183,11 @@ def _pose_xyyaw(T: np.ndarray, centre: np.ndarray, dx: float, dy: float, dyaw: f
 
 
 def refine(fm: FeatureMetric, key: str, T0: np.ndarray, views: list[dict], iters: int = 40, step_xy: float = 0.006,
-           step_yaw: float = 0.12, pad: float = 0.8) -> tuple[np.ndarray, float, float]:
+           step_yaw: float = 0.12, pad: float = 0.8, extra=None, w_extra: float = 0.0) -> tuple[np.ndarray, float, float]:
     """AlignPose-style continuous stage: Nelder-Mead over (dx, dy, dyaw) of the feature-metric distance, each view's
     crop fixed at the start pose (padded, so the object can move inside it) and its observed features computed once.
-    Returns (pose, distance at the start, distance at the end)."""
+    ``extra(T) -> float`` (e.g. B1's silhouette loss) is added with weight ``w_extra`` to the objective.
+    Returns (pose, objective at the start, objective at the end)."""
     import cv2
     from scipy.optimize import minimize
 
@@ -221,10 +231,33 @@ def refine(fm: FeatureMetric, key: str, T0: np.ndarray, views: list[dict], iters
             d = 1.0 - (fc[pm] * fr[pm]).sum(-1)
             num += float(pm.sum()) * float(d.mean())
             den += float(pm.sum())
-        return num / den if den > 0 else 1.0
+        v = num / den if den > 0 else 1.0
+        if extra is not None and w_extra > 0:
+            v += w_extra * float(extra(T))
+        return v
 
     d0 = dist(np.zeros(3))
     simplex = np.array([[0, 0, 0], [step_xy, 0, 0], [0, step_xy, 0], [0, 0, step_yaw]], float)
     r = minimize(dist, np.zeros(3), method="Nelder-Mead", options={"initial_simplex": simplex, "maxfev": iters,
                                                                     "xatol": 5e-4, "fatol": 1e-3})
     return _pose_xyyaw(T0, centre, *r.x), d0, float(r.fun)
+
+
+def refine_with(dist, T0: np.ndarray, centre: np.ndarray, iters: int = 40, step_xy: float = 0.006, step_yaw: float = 0.12,
+                extra=None, w_extra: float = 0.0) -> tuple[np.ndarray, float, float]:
+    """``refine``'s Nelder-Mead with any distance ``dist(T) -> float`` (e.g. a remote feature metric) plus
+    ``w_extra`` x ``extra(T)`` (e.g. B1's silhouette loss). Returns (pose, objective at the start, at the end)."""
+    from scipy.optimize import minimize
+
+    def f(p):
+        T = _pose_xyyaw(T0, centre, p[0], p[1], p[2])
+        v = float(dist(T))
+        if extra is not None and w_extra > 0:
+            v += w_extra * float(extra(T))
+        return v
+
+    f0 = f(np.zeros(3))
+    simplex = np.array([[0, 0, 0], [step_xy, 0, 0], [0, step_xy, 0], [0, 0, step_yaw]], float)
+    r = minimize(f, np.zeros(3), method="Nelder-Mead", options={"initial_simplex": simplex, "maxfev": iters,
+                                                                "xatol": 5e-4, "fatol": 1e-3})
+    return _pose_xyyaw(T0, centre, *r.x), f0, float(r.fun)
