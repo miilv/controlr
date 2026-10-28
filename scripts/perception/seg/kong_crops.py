@@ -30,6 +30,16 @@ def touches_border(m: np.ndarray) -> bool:
     return bool(m[0].any() or m[-1].any() or m[:, 0].any() or m[:, -1].any())
 
 
+def robot_ring(m: np.ndarray, codes: np.ndarray) -> float:
+    """Share of the ring around the mask that is an arm (instance code ROBOT_CODE): the object is partly hidden
+    behind the robot (a half-hidden 3 reads as a 9). glyph_read.classify_mask refuses those masks given the arms'
+    pixels (the runtime has them from the joint state)."""
+    from dojo.perception.glyph_read import robot_ring as ring_share
+    from dojo.perception.seg_twin import ROBOT_CODE
+
+    return round(ring_share(m, codes == ROBOT_CODE), 3)
+
+
 def tilt_deg(quat) -> float:
     """Angle between the tile's local +z and world +z (0 = lying as authored)."""
     from dojo.perception.cameras import quat_wxyz_to_R
@@ -122,6 +132,7 @@ def main(argv=None):
                                    "face_dot": None if cams is None else round(face_dot(objs[i], cams, view), 3),
                                    "is_held": bool(held_inst) and objs[i].get("inst_name") == held_inst,
                                    "edge": touches_border(m),
+                                   "robot_ring": robot_ring(m, codes),
                                    "path": str(p.relative_to(out))}) + "\n")
             n += 1
 

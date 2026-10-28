@@ -19,6 +19,11 @@ import numpy as np
 
 ENV_ADDR = "DOJO_GLYPH_ADDR"
 MIN_PX = 40
+# classify_mask: no read when this share (or more) of the 3-px ring around the mask is an arm: a tile half hidden by
+# the robot reads as another glyph (a 3 as a 9). Chosen on the digit val draws (100045-48): reads with ring < 0.3 kept
+# >= 98 % precision, ring >= 0.3 fell to ~85 %.
+ROBOT_RING_MAX = 0.3
+RING_PX = 3
 
 
 def crop_square(img: np.ndarray, bbox: tuple, size: int = 128, margin: float = 0.25) -> np.ndarray:
@@ -109,17 +114,37 @@ def class_name(reply: dict, top: int) -> str:
     return names[top] if names and top < len(names) else f"Rigid/mahjong/{top:05d}"
 
 
-def classify_mask(img: np.ndarray, mask: np.ndarray, view: str = "cam_head", held: bool = False, client_=None) -> dict:
+def robot_ring(mask: np.ndarray, robot: np.ndarray, px: int = RING_PX) -> float:
+    """Share of the ``px``-wide ring around ``mask`` covered by ``robot`` (bool: the arms' pixels in the view)."""
+    m = np.asarray(mask) > 0
+    d = m.copy()
+    for axis in (0, 1):            # square (2 px + 1) dilation, separable; no cv2 needed
+        g = d.copy()
+        for k in range(1, px + 1):
+            g |= np.roll(d, k, axis) | np.roll(d, -k, axis)
+        d = g
+    ring = d & ~m
+    return float(np.asarray(robot, bool)[ring].mean()) if ring.any() else 0.0
+
+
+def classify_mask(img: np.ndarray, mask: np.ndarray, view: str = "cam_head", held: bool = False, client_=None,
+                  robot: np.ndarray | None = None, robot_ring_max: float = ROBOT_RING_MAX) -> dict:
     """One glyph read of an object outlined by ``mask`` in ``img`` (a detector's / segmenter's mask: no fitted pose
     needed, e.g. the number tiles B1 has no geometry for). ``view`` picks the margin kind (head / wrist, held_*).
+    ``robot``: the arms' pixels in this view (bool, e.g. ``~known`` of a B1 view or ``render.robot_mask``); with it a
+    mask bordered by an arm (``robot_ring`` >= ``robot_ring_max``) is not read. Pass it: the margins are calibrated
+    without such crops, and without it a tile half hidden by the gripper can be read wrong at a high margin.
     Returns {"read", "name", "class", "margin", "why"}; no read below the margin, on a back, for a mask cut by the
-    image border (a cut digit is another digit: 8 -> 3, the margins are calibrated without those), or without a server."""
+    image border (a cut digit is another digit: 8 -> 3, the margins are calibrated without those), next to an arm,
+    or without a server."""
     m_ = np.asarray(mask) > 0
     bb = mask_bbox(m_)
     if bb is None or int(m_.sum()) < MIN_PX:
         return {"read": False, "why": "not visible"}
     if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():
         return {"read": False, "why": "edge"}
+    if robot is not None and robot_ring(m_, robot) >= robot_ring_max:
+        return {"read": False, "why": "robot"}
     c = client_ or client()
     if c is None:
         return {"read": False, "why": "no glyph server"}

@@ -134,4 +134,9 @@ def test_classify_mask_reads_names_and_margins():
     cut = np.zeros_like(m)
     cut[0:12, 30:40] = 1                                                         # cut by the frame: never read
     assert gr.classify_mask(img, cut, "cam_left_wrist", client_=C())["why"] == "edge"
+    arm = np.zeros(m.shape, bool)
+    arm[8:22, 20:24] = True                                                      # an arm along the tile's right side
+    assert 0.2 < gr.robot_ring(m, arm) < 0.4
+    assert gr.classify_mask(img, m, "cam_head", client_=C(), robot=arm, robot_ring_max=0.2)["why"] == "robot"
+    assert gr.classify_mask(img, m, "cam_head", client_=C(), robot=np.zeros(m.shape, bool))["read"]
     assert gr.class_name({}, 3) == "Rigid/mahjong/00003"

@@ -15,11 +15,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from dojo.perception.glyph_read import ROBOT_RING_MAX  # noqa: E402  (numpy only)
 
 N_GLYPH = 42          # set from <crops>/classes.json when present (digit_op: 10 digits + 5 operators)
 BACK = N_GLYPH
@@ -67,9 +71,14 @@ def load_rows(crops: Path, split: str) -> list[dict]:
     for r in rows:
         if r["split"] == "train" and layout_id(r) in VAL_IDS:
             r["split"] = "val"
-    # val / test leave out crops cut by the frame border (``edge``): glyph_read.classify_mask refuses those masks, so
-    # they are never read; training keeps them
-    return [r for r in rows if r["split"] == split and label_of(r) is not None and not (split != "train" and r.get("edge"))]
+    # val / test leave out crops cut by the frame border (``edge``) or bordered by an arm (``robot_ring`` >=
+    # glyph_read.ROBOT_RING_MAX): classify_mask refuses those masks, so they are never read; training keeps them
+    return [r for r in rows if r["split"] == split and label_of(r) is not None and not (split != "train" and refused(r))]
+
+
+def refused(r: dict) -> bool:
+    """classify_mask never reads this crop (cut by the image border, or next to an arm)."""
+    return bool(r.get("edge")) or float(r.get("robot_ring") or 0.0) >= ROBOT_RING_MAX
 
 
 def view_kind(r: dict) -> str:
