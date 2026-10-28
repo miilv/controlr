@@ -156,6 +156,12 @@ class RuntimeConfig:
     confirm_shift_mm: float = 10.0      # ... which must move < this
     neighbour_mm: float = 25.0          # ... and must not land within this of another known object
     rehover_when_far: bool = True       # also re-hover after an OK refine that moved the object > rehover_min_shift_mm
+    # a pick refine that would move the object far enough to recentre (> rehover_min_shift_mm): centre (today: applied,
+    # then re-hovered) | vis (from a view showing less than place_min_vis of the object the prior pose is kept and no
+    # recentre runs: a partial view lets the fit slide along the object; M's arm-8 audit: 5 of 11 harmful recentre writes
+    # came from views 0.53-0.63 visible, 18 of 19 helpful ones from views >= 0.97; chosen looking at those episodes, so
+    # only a rendered A/B on other layouts is its evidence)
+    refine_recentre_guard: str = "centre"
     post_place: bool = False            # after each release: wrist refine of the placed object (needs refine)
     # ... and when that refine is not ok (or, with post_place_read_iou > 0, fits below it): the 6-DoF release read
     # (``dojo.perception.release_read``: releasing wrist + head + other wrist, render-and-compare around the released
@@ -331,7 +337,8 @@ class RuntimePolicy:
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
                 or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on") or self.cfg.grip_official_key not in ("official_key", "ee_joint_state")
-                or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")):
+                or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")
+                or self.cfg.refine_recentre_guard not in ("centre", "vis")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -861,6 +868,16 @@ class RuntimePolicy:
             ev.update({"applied": False, "why": (ev.get("why") or "") + f" (turned {float(r['turned_deg']):.0f} deg at "
                        f"iou {float(r.get('iou') or 0):.2f}: prior pose kept)"})
             prov.stats["turn_low_iou"] = prov.stats.get("turn_low_iou", 0) + 1
+            return None
+        if (r.get("ok") and pend is None and kind == "pick" and self.cfg.refine_recentre_guard == "vis"
+                and (r.get("shift_mm") or 0) > self.cfg.rehover_min_shift_mm
+                and float(r.get("visible_frac") if r.get("visible_frac") is not None else 1.0) < self.cfg.place_min_vis):
+            # the fit moved the object far (a recentre / confirm would follow) from a view that shows only part of it: on
+            # a partial view the silhouette slides along the object (arm-8 audit: bottles 30-47 mm along themselves at
+            # iou 0.85-0.90, visible 0.53-0.63; the recentre's second view then "confirmed" it). The prior pose stands
+            ev.update({"applied": False, "why": (ev.get("why") or "") + f" (moved {float(r.get('shift_mm') or 0):.0f} mm "
+                       f"from a view {float(r.get('visible_frac')):.2f} visible: prior kept, no recentre)"})
+            prov.stats["recentre_partial_view"] = prov.stats.get("recentre_partial_view", 0) + 1
             return None
         if r.get("ok") and (r.get("shift_mm") or 0) > self.cfg.big_shift_mm and pend is None:
             # a large correction is also how a refine can lock onto a neighbour: check it before believing it

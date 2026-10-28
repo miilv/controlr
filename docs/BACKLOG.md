@@ -78,6 +78,11 @@
   `/root/visual` (15.6 mm off) but loads as a rigid prim: G3 fasten_screws 10/10 says harmless, unprobed;
   (4) the record's `scale` is not applied to the root offset (every record: 1).
 
+- [ ] **dojo runtime: a partial-view recentre that re-fits from the PRIOR** (stream H; variant of
+  `refine_recentre_guard` "vis"). Today "vis" keeps the prior when a pick refine would move the object > 10 mm from a
+  view < `place_min_vis` visible. A variant would re-hover so the object is fully in view and re-fit from the prior,
+  not from the slid fit; that might keep the one "helpful" partial-view recentre of M's arm-8 audit (a gross 202 -> 177
+  mm bottle). Journal 2026-10-28-dojo-recentre-vis-guard.
 - [ ] **dojo skills: a held read at the place hover for hang / tools / sweep** (stream H). PARKED 2026-10-28: built on
   branch `feat/dojo-h95-place-held-read` (0 extra steps: the existing pre-place still). The ceiling on C's 38 proxy
   sequences is R10 +10 / -5 of 297: the descent re-seats mugs / bowls, so the hover pose is not the release pose. Real
