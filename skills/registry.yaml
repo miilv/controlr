@@ -266,10 +266,10 @@ entries:
     doc: |
       Put long objects (pens, sticks, tubes) one by one into an upright holder: each held leading end down just over
       the opening's free spot, the hand kept out of the holder, and let go so it drops in (widest first). A holder out
-      of comfortable reach is first carried upright to where both arms reach it. Both grippers opened after each. An
-      instruction to hold the holder with one hand, fill it with the other and then put it back down is judged by the
-      end state only (the objects in it, the holder upright, both grippers open): this skill fills it standing,
-      without holding it, and that is the end state such an instruction asks for.
+      of comfortable reach is first carried upright to where both arms reach it. Both grippers opened after each. For
+      an instruction to hold the holder with one hand, fill it with the other and then put it back down, this skill
+      fills it standing, without holding it, and leaves the same end state: the objects in the holder, the holder
+      upright and back down, both grippers open.
     args:
       objects: "[id], required; the long objects"
       container: "id, required; the holder"
@@ -560,7 +560,7 @@ entries:
     doc: |
       Objects ride a moving belt: measure the belt's velocity from the objects' motion, remember the first object (the
       one leading in the direction of motion), and pick the next object of the same kind on the move (the hand follows
-      the belt through the descent and the close), then lift it about 12 cm and hold it.
+      the belt through the descent and the close), then lift it and hold it.
     args:
       objects: "[id], required; every object on the belt"
       conveyor: "id = null; the belt (left out of collision checks)"
@@ -620,8 +620,8 @@ entries:
     side: ilia
     benchmark: robodojo
     doc: |
-      A container and objects ride a moving belt: take the container off the belt with one arm and hold it up about
-      11 cm, then pick the object the board's picture shows on the move with the other arm and drop it into the held
+      A container and objects ride a moving belt: take the container off the belt with one arm and hold it up,
+      then pick the object the board's picture shows on the move with the other arm and drop it into the held
       container, which stays up.
     args:
       objects: "[id], required; every object on the belt"
@@ -656,7 +656,7 @@ entries:
     doc: |
       Pick a striking tool (a mallet, a stick) by its handle, well away from its working end, and strike the listed
       target points of an instrument one after another with that end: over each target a quick stroke down until the
-      working end touches the surface, then back up about 7 cm before the next. Pass the targets in the order to
+      working end touches the surface, then back up before the next. Pass the targets in the order to
       strike them (e.g. sorted left to right). One tool orientation serves every target; its pose in the hand is re-read
       after each strike. The tool stays in the hand at the end.
     args:
@@ -723,8 +723,8 @@ entries:
     doc: |
       Screw each movable threaded part onto its fixed partner (pairs = [[nut, bolt], ...]): the part is put on the
       partner's top, upright and on its axis, let go so it seats on the thread, then turned down the thread in wrist
-      sweeps with re-grips (clockwise from above), following the pitch down, until it sits about 1 cm below the
-      partner's top. Both grippers are opened after each pair. Pair the parts first (e.g. by colour).
+      sweeps with re-grips (clockwise from above), following the pitch down, until it is seated on the
+      thread. Both grippers are opened after each pair. Pair the parts first (e.g. by colour).
     args:
       pairs: "[[id, id]], required; [movable part, fixed partner] pairs"
       depth: "float m = 0.010; how far below the partner's top the part's bottom ends"
@@ -809,7 +809,8 @@ entries:
     benchmark: robodojo
     doc: |
       Slide identical blocks into one straight row without lifting them: one block (the anchor) stays, the row runs
-      through it along one of its face axes, the others are gripped on two opposite faces, raised 3 mm, slid onto the row
+      through it along one of its face axes, the others are gripped on two opposite faces, raised barely off the table,
+      slid onto the row
       at their nearest free spots turned to its heading, and set down (both arms in the same steps when they keep
       apart); then one more slide of the worst block when the row is still off.
     args:
@@ -838,7 +839,7 @@ entries:
     benchmark: robodojo
     doc: |
       Stand the objects upright in one row along x ordered by size (the asset's bbox volume): smallest on the left
-      (smaller x) when ascending. The slots are spaced by the neighbours' half widths + 22 mm on a line clear of every
+      (smaller x) when ascending. The slots are spaced by the neighbours' half widths plus a gap on a line clear of every
       other object; an object standing on another's slot is moved first, or put aside; grippers opened after each.
     args:
       objects: "[id], required; the objects of the row"

@@ -759,3 +759,31 @@ def test_twin_agreement_counts_only_full_views_and_seed_score_detections():
     w, _ = decide(_resp("b", {"cam_head": [0.0, 150, 0.35, None]}, h["support"], _pose(0.2, -0.1)), other_key,
                   [Trigger("release", 9, "left", "b")], TickState(), APPLY, 10)
     assert "b" in w
+
+
+def test_held_identity_guard_lets_go_of_the_intended_object_on_a_confident_mismatch():
+    """RuntimeConfig.held_identity_guard: a lift identity of another category (score >= 0.5, IoU >= 0.3) means the
+    jaws took something else: the intended object goes back out of the jaws to its pose at the close (the pick's check
+    then fails and the program re-plans). Off, or a weak / same-category detection: nothing changes."""
+    def lift(cat_ok, score=0.9, iou=0.6):
+        return {"hyps": {}, "assignment": {}, "active": {}, "dets_hash": "x",
+                "lift": [{"arm": "left", "label": "block_1", "agrees": cat_ok, "exact": False, "other_labels": ["block_2"],
+                          "det": {"key": "Geometry/stand/00000", "score": score, "px": 900, "iou_with_belief": iou}}]}
+
+    for guard, resp, let_go in ((True, lift(False), True), (False, lift(False), False), (True, lift(True), False),
+                                (True, lift(False, score=0.4), False), (True, lift(False, iou=0.1), False)):
+        prov, b = _prov()
+        o = prov.belief.objects["block_1"]
+        p_close = o.pos.copy()
+        T = np.eye(4)
+        prov.belief.attached["left"] = ("block_1", T)
+        prov.belief.grasp_z["left"] = (0.8, 1, np.r_[p_close, o.quat].astype(float))
+        o.pos = o.pos + [0.0, 0.0, 0.05]                                  # carried up 5 cm
+        prov.a1, prov.held_identity_guard = "apply", guard
+        prov.a1_client = lambda obs, req, r=resp: r
+        prov.a1_tick(b.obs, [Trigger("lift", 30, "left", "block_1")])
+        ev = [e for e in prov.events if e["kind"] == "held_identity_mismatch"]
+        assert ("left" not in prov.belief.attached) == let_go and bool(ev) == let_go
+        if let_go:
+            assert np.allclose(o.pos[:2], p_close[:2]) and abs(o.pos[2] - p_close[2]) < 0.01
+            assert {"block_1", "block_2"} <= prov.touched and ev[0]["det"]["key"] == "Geometry/stand/00000"

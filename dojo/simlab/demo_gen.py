@@ -279,7 +279,8 @@ def plan_demo(run, seed: int, order: list[int] | None = None) -> tuple[dict | No
     dp.home()
     data = {"joint_path": dp.segments, "target_label": [f"t{i}" for i in order],
             "aim_label": [f"aim{i}" for i in order], "target_place_tag": [None] * 5,
-            "_simlab": {"generator": "simlab/demo_gen v1", "seed": seed, "order": order}}
+            "_simlab": {"generator": "simlab/demo_gen v1", "seed": seed, "order": order,
+                        "dq": {"free": DQ_FREE, "carry": DQ_CARRY, "near": DQ_NEAR}}}
     if dp.n_steps() / 10 > MAX_DEMO_ENV_STEPS:
         return None, {**info, "status": f"too long: {dp.n_steps() / 10:.0f} env steps", "segments": dp.log}
     return data, {**info, "status": "planned", "substeps": dp.n_steps(), "segments": dp.log}
@@ -341,7 +342,12 @@ def main(argv=None) -> None:
     ap.add_argument("--probe", action="store_true", help="print the support arm / planner facts and stop")
     ap.add_argument("--raw", action="store_true", help="use <id>.json instead of the pre-settled <id>.settled.json")
     ap.add_argument("--tries", type=int, default=ORDER_TRIES, help="orders to try per layout")
+    ap.add_argument("--speed", type=float, default=1.0,
+                    help="scale the near / carry joint speeds (DQ_NEAR, DQ_CARRY; free moves stay at RoboDojo's own "
+                         "peak): a layout whose demo is too long at 1.0 (100005-09 ran 935-1304 env steps)")
     a = ap.parse_args(argv)
+    global DQ_NEAR, DQ_CARRY
+    DQ_NEAR, DQ_CARRY = DQ_NEAR * a.speed, DQ_CARRY * a.speed
     if a.task != TASK:
         raise SystemExit(f"demos are implemented for {TASK} only")
     files = [p for p in layout_files(TASK) if not a.ids or int(p.stem) in a.ids]
@@ -382,7 +388,7 @@ def main(argv=None) -> None:
                     break
             order = demo_order(seed) if k == 0 else demo_order(seed * 31 + k)
             data, info = plan_demo(run, seed, order)
-            rec = {"from": f.name, "attempt": k, **info}
+            rec = {"from": f.name, "attempt": k, "speed": a.speed, **info}
             if data is not None:
                 pk.write_bytes(pickle.dumps(data, protocol=4))
                 v = validate(run, lay, info["substeps"])

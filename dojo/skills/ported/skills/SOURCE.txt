@@ -1,0 +1,18 @@
+Vendored from robot-harness (Mikhail's side, github: the robot-harness repo), commit a21dd6f6f2db323bd0fe84f8afd20312cb8dffc6
+(2026-10-28 15:05Z), directory skills/. Copied unchanged apart from a two-line attribution header per file; the RoboDojo
+variant of each skill (skill_robodojo.py, else skill.py), as robot-harness's server loads it. Run through
+dojo/skills/ported/harness_robot.py (HarnessRobot), never through robot-harness's server.
+
+  skills/cover_uncover_v2/skill_robodojo.py   cover_blocks           (tier-A 5/5 seed 0, results/ROBODOJO-TIERA-*)
+  skills/swap_poses/skill.py                  swap_T                 (4/5 100010-14, 3/5 100015-19)
+  skills/pour/skill_robodojo.py               pour_balls_into_vase   (4/5)
+  skills/pour_bottle/skill_robodojo.py        pour_liquid_into_cup   (2/5, D-C14 args slip_m 0.035 slip_deg 25)
+  skills/pick_up/skill_robodojo.py            general_pickup         (2/5, 3/5)
+  skills/planar_drag/skill_robodojo.py        push_T                 (5/5, 5/5)
+  skills/classify_into_bins_v3b/             classify_objects + classify_objects_by_language (K4: 5/5, 3/5)
+  skills/classify_into_bins, put_into_bin*, planar_drag_rgb*, return_home_budget   classify's dependency tree
+  skills/pick, place_on, lift, return_home    siblings the above call (robot.skill / colour_order.load_sibling)
+  skills/colour_order.py, skills/skilllib.py  shared helpers
+
+Tier-A numbers: robot-harness results/ROBODOJO-TIERA-GEN-2026-10-27.md (ids 100010-19, not our slice).
+Logic changes, if any, go into NEW directories (a new name), never into these copies.

@@ -139,6 +139,11 @@
     - R3: predicted visibility < 0.3 means "not observed";
     - R4: `_partial_fit` only for long / short >= 2, else "uncertain".
   - Estimate on the 55 rows: 16 -> 5 -> 0 raw flips, 0 applied-write changes.
+- [ ] **dojo runtime: held_identity_guard recall** (stream W, #271, default off, parked). On X2's 296 lift ticks the
+  guard fired twice, both on empty jaws where the intended object never left (the right action), and missed both real
+  category-level wrong-object lifts (store_tools: a wrench / pliers rose for the hammer). v2b rarely classifies a held
+  object in the wrist view as anything else. Recall needs a better held-object wrist detector (v3 post-contact data)
+  before a camera A/B.
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the
@@ -673,6 +678,10 @@
     files; PhysicalRSI's own docstring: "no historical evaluation layout supplies board/basket transforms"), so
     perception should find the board by appearance in whatever view shows it, not at a pinned pose (journal
     2026-10-27-dojo-perception3).
+- [ ] **dojo perception: imitate twin pairing by appearance (B1 `twin_pairing`, default off; legal under D-C17).**
+  No gain on the 6 allowed demo layouts (plan right 4/6 either way). Its uncertainty rule is too strict: a Hungarian
+  override marked a physically right pair uncertain (100002). Revisit with more demo layouts, and a margin taken from
+  data rather than 0.02 (journal 2026-10-28-dojo-imitate-pairing).
 - [ ] **dojo perception: imitate_sorting_sequence, what frame 0 still gets wrong** (experiments/2026-10-27-imitate-frame0,
   plan right 8 / 13 offline): category swaps among the demonstrator's small far objects (action camera / garage figure
   / watch: 100016, 100018, 100023) and objects not found (a far phone, a near watch, a far watch hidden behind a figure
