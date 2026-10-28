@@ -423,7 +423,8 @@ def arrange_digits(sk, descending: bool = True, max_looks: int = 6) -> dict:
 
     def blockers(t, pad) -> list:
         p = sk.world.obj(pad)
-        return [o.label for o in sk.world.task_objects() if o.label != t and o.obj_type != "Geometry"
+        # clutter too (arrange_largest_number_random: 20 clutter objects; one on a pad blocks its place)
+        return [o.label for o in sk.world.objects.values() if o.label != t and o.obj_type not in ("Geometry", "Garment")
                 and float(np.linalg.norm(o.center_w[:2] - p.center_w[:2])) < OCCUPIED]
 
     def arm_dist(label) -> float:
