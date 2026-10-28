@@ -100,7 +100,7 @@ def run_scene(f: Path, fm, b1dump: Path, a) -> dict:
             continue
         sd = seed("det", m, (xs.mean(), ys.mean()))
         if sd:
-            det_seeds.append((dt.get("key"), dt.get("category"), sd))
+            det_seeds.append((dt.get("key"), dt.get("category"), sd + (m,)))
     log = []
     rec1 = copy.deepcopy(rec0)
     taken = []
@@ -128,7 +128,7 @@ def run_scene(f: Path, fm, b1dump: Path, a) -> dict:
         gi = lab2g.get(r.get("label"))
         swap_seeds = [("swap", float(r2["default_pos"][0]), float(r2["default_pos"][1]), None) for _, _, _, r2 in entries
                       if r2 is not r and gi is not None and lab2g.get(r2.get("label")) == gi]
-        mine = [sd for k_, c_, sd in det_seeds if k_ == key or (k_ is None and c_ == cat)
+        mine = [sd for k_, c_, sd in det_seeds if k_ == key or c_ == cat
                 or (gi is not None and k_ in groups[gi]["candidates"])]
         seeds = [sd for sd in mine + swap_seeds + gap_seeds + fg_seeds if sd[0] in a.seed_srcs]
         # seeds closer than nms to each other are one seed (the first kept: swaps, then raised, then foreground)
@@ -141,7 +141,9 @@ def run_scene(f: Path, fm, b1dump: Path, a) -> dict:
             uniq.append(sd)
         # other B1 objects' silhouettes out of the foreground: but in a swap the right place IS another (wrong) object's
         others = None if a.no_others else mv3d._others_masks(rec0, views, skip=r)
-        for src, x, y, th in uniq[:a.max_seeds]:
+        for sd in uniq[:a.max_seeds]:
+            src, x, y, th = sd[:4]
+            # (a detector seed fitted inside its own mask is stream S's seg_propose path; not duplicated here)
             fit = mv3d._fit_at([key], x, y, views, others, n_yaw=a.n_yaw, top_h=th)
             if fit is None or fit[0] > a.max_loss:
                 continue
@@ -221,9 +223,13 @@ def main(argv=None):
     if a.dets:
         for line in open(os.path.expanduser(a.dets)):
             r = json.loads(line)
-            if r.get("train_id_range"):
+            if r.get("train_id_range") or r.get("frame", 0) != 0 or r.get("cam", "cam_head") != "cam_head":
                 continue
-            a.dets_by_scene[(r["set"], r["task"], str(r["episode"]))] = r.get("dets", [])
+            dets = r.get("dets", [])
+            for dt in dets:  # stream S's raw dump names the box "box"
+                if "bbox_xyxy" not in dt and "box" in dt:
+                    dt["bbox_xyxy"] = dt["box"]
+            a.dets_by_scene[(r["set"], r["task"], str(r["episode"]))] = dets
     files = sorted(Path(a.pred).expanduser().glob("pred/*__home.npz"))
     if a.match:
         files = [f for f in files if any(mm in f.name for mm in a.match)]
