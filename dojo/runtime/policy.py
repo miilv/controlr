@@ -807,11 +807,22 @@ class RuntimePolicy:
         if self.cfg.a1 != "off" and kind in ("pick", "place") and getattr(prov, "a1_client", None) is not None:
             from .tick import Trigger
             c = np.asarray(o.center_w, float)
+            p_before = o.pos.copy()
             prov.a1_tick(obs, [Trigger("hover", self.bridge.steps_used, arm, label, {"for": kind})],
                          corridor=[c.tolist(), (c + [0.0, 0.0, 0.12]).tolist()])
             o = prov.belief.objects.get(label)
             if o is None:
                 return None
+            moved = float(np.linalg.norm(o.pos[:2] - p_before[:2])) * 1000
+            if moved > self.cfg.rehover_min_shift_mm and o.source == "a1":
+                # the tick found it well off its belief: hover over it and refine there (reviewer S3: the refine would
+                # otherwise measure its shift from the moved prior and never re-hover)
+                self.report["events"].append({"kind": "a1_rehover", "label": label, "for": kind,
+                                              "step": self.bridge.steps_used, "moved_mm": round(moved, 1)})
+                hint = {"rehover": (o.pos.copy(), o.quat.copy())}
+                if kind == "place":
+                    hint["rehover_dz"] = self.cfg.rehover_place_dz
+                return hint
             others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
             objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos],
                      "quat": [float(v) for v in x.quat]} for x in [o] + others]

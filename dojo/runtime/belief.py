@@ -266,6 +266,7 @@ class KinematicBelief:
         self.cmd: dict[str, np.ndarray] = {}    # arm -> the last commanded joint target (a release counts when still)
         self.n_since_g: dict[str, int] = {a: 0 for a in ARMS}   # steps since the arm's gripper command last changed
         self.lift_max: dict[str, float] = {}    # arm -> the highest TCP z since its object was attached
+        self.grasp_tcp: dict[str, np.ndarray] = {}   # arm -> the TCP position at its last close
         self.released_lift: dict[str, float] = {}   # label -> how far the TCP rose while it held it (last release)
 
     def movable(self):
@@ -341,6 +342,7 @@ class KinematicBelief:
                     self._n_grasp += 1
                     o = self.objects[lab]
                     self.grasp_z[a] = (float(T_tcp[2, 3]), self._n_grasp, np.r_[o.pos, o.quat].astype(float))
+                    self.grasp_tcp[a] = T_tcp[:3, 3].copy()       # A1: the pad volume of an empty close
                     self.lift_max[a] = float(T_tcp[2, 3])
             if a in self.attached:
                 self.g_held[a] = min(self.g_held.get(a, g_new), g_new)
@@ -482,7 +484,7 @@ class RuntimeProvider:
         self._a1_state = None
         self._a1_ev_i = 0
         self._a1_lifted: set = set()
-        self._a1_q_last: dict | None = None
+        self._a1_n_exec = 0                     # executed actions already swept by a tick
         self._ver_pose: dict = {}               # label -> (pose7, asset key) at the last version bump
         self._fixture_held: set = set()         # labels a fixture took at their release (drop_rest)
         self.post_place_read_cfg: dict = {}
@@ -1349,32 +1351,27 @@ class RuntimeProvider:
         return out
 
     def _a1_triggers(self, obs: dict, released) -> list:
-        """The tick's triggers since the last one (events the provider itself logged, the release list, lifts)."""
-        from .tick import Trigger
-        step = int(self.bridge.steps_used)
-        trig = []
-        for e in self.events[self._a1_ev_i:]:
-            k = e.get("kind")
-            if k == "grip_check" and e.get("dropped") in ("air", "slip"):
-                trig.append(Trigger("close_empty" if e["dropped"] == "air" else "slip", step, e.get("arm"), e.get("label")))
-            elif k == "held_look" and e.get("held") is False and not e.get("kept") and e.get("label"):
-                trig.append(Trigger("close_empty", step, e.get("arm"), e["label"]))
+        """The tick's triggers since the last one (events the provider itself logged, the release list, lifts), through
+        ``tick.triggers_from_events``: the function offline harnesses call on a recorded report."""
+        from .tick import triggers_from_events
+        new = self.events[self._a1_ev_i:]
         self._a1_ev_i = len(self.events)
-        for lab in released or ():
-            trig.append(Trigger("release", step, self.belief.released_by.get(lab), lab))
+        rel = [(lab, self.belief.released_by.get(lab)) for lab in released or ()]
+        att = []
         for arm, (lab, _T) in sorted(self.belief.attached.items()):
             g = self.belief.grasp_z.get(arm)
-            if g is None or (lab, g[1]) in self._a1_lifted:
-                continue
-            if float(self.kin.tcp(arm, self.belief.q[arm])[2, 3]) - g[0] >= 0.03:
-                self._a1_lifted.add((lab, g[1]))
-                trig.append(Trigger("lift", step, arm, lab))
-        return trig
+            if g is not None:
+                att.append((arm, lab, g[1], g[0], float(self.kin.tcp(arm, self.belief.q[arm])[2, 3])))
+        return triggers_from_events(new, rel, att, self._a1_lifted, int(self.bridge.steps_used))
 
     def a1_tick(self, obs: dict, triggers: list, corridor=None) -> list:
-        """One tick (``dojo.runtime.tick``): the perception op "redetect" on this observation, ``decide``'s write rules,
-        the writes (mode "apply") into the belief, Discrepancies into the events. Returns the Discrepancies."""
-        from .tick import TickConfig, TickState, build_request, decide
+        """One tick (``dojo.runtime.tick.run``: the same lines as the offline X2 harness): the perception op "redetect" on
+        this observation, ``decide``'s write rules, the writes (mode "apply") into the belief, Discrepancies into the
+        events. The contact sweep covers every executed action since the last TICK (every 3rd), with the held objects
+        riding the TCP. Returns the Discrepancies."""
+        from .tick import TickConfig, TickState, run
+        if not triggers:
+            return []
         if self._a1_state is None:
             self._a1_state = TickState()
         st = self._a1_state
@@ -1394,6 +1391,7 @@ class RuntimeProvider:
             small = bool(small_object(o.asset.key)) if small_object else bool(ext[-1] < 0.045 or ext[0] < 0.005)
             objs.append({"label": lab, "key": o.asset.key, "pose7": p7, "small": small,
                          "fixture": lab in self._fixture_held, "touched": lab in self.touched})
+        close_tcp = {}
         for t in triggers:
             if t.kind in ("release", "slip") and t.label in self.belief.objects:
                 o = self.belief.objects[t.label]
@@ -1403,27 +1401,29 @@ class RuntimeProvider:
                 meta[t.label] = {"drop7": [float(v) for v in np.r_[o.pos, o.quat]],
                                  "grasp7": None if g is None else [float(v) for v in g[2]],
                                  "lift_m": float(self.belief.released_lift.get(t.label, 0.0)), "rose": rose}
-            if t.kind == "close_empty" and t.label in self.belief.objects:
-                o = self.belief.objects[t.label]
-                st.falsified.setdefault(t.label, []).append(([float(v) for v in o.pos], [0.02, 0.02, 0.03]))
-        q_now = {a: [float(v) for v in self.belief.q[a]] for a in ARMS}
+            if t.kind == "close_empty" and t.arm and t.arm in getattr(self.belief, "grasp_tcp", {}):
+                close_tcp[t.label] = [float(v) for v in self.belief.grasp_tcp[t.arm]]
+        # every executed action since the last tick (every 3rd): the arm's actual path, not an interpolation
+        allx = self.bridge.executed
         q_path = {}
-        if self._a1_q_last is not None:
-            for a in ARMS:
-                q0, q1 = np.asarray(self._a1_q_last[a]), np.asarray(q_now[a])
-                q_path[a] = [list(map(float, q0 + (q1 - q0) * f)) for f in np.linspace(0, 1, 5)]
-        self._a1_q_last = q_now
-        if not triggers:
-            return []
-        req = build_request(objs, held, triggers, meta=meta, touched=set(self.touched), q_path=q_path,
-                            corridor=corridor)
+        for a in ARMS:
+            key = f"{a}_arm_joint_state"
+            qs = [list(map(float, np.asarray(x[key], float).reshape(-1)[:6])) for x in allx[self._a1_n_exec::3]
+                  if key in x]
+            if qs:
+                q_path[a] = qs
+        self._a1_n_exec = len(allx)
+        held_path = {a: {"key": self.belief.objects[lab].asset.key, "T_tcp_obj": np.asarray(T, float).tolist()}
+                     for a, (lab, T) in self.belief.attached.items()
+                     if lab in self.belief.objects and self.belief.objects[lab].asset is not None}
+        step = int(self.bridge.steps_used)
         try:
-            resp = self.a1_client(obs, req) or {}
+            writes, ds, resp = run(obs, objs, held, triggers, meta, st, cfg, self.a1_client, step,
+                                   touched=self.touched, q_path=q_path, held_path=held_path, corridor=corridor,
+                                   close_tcp=close_tcp)
         except Exception as e:  # noqa: BLE001 (the tick is advisory: the episode goes on without it)
             self.events.append({"kind": "a1_error", "step": self.bridge.steps_used, "error": f"{type(e).__name__}: {e}"[:300]})
             return []
-        step = int(self.bridge.steps_used)
-        writes, ds = decide(resp, objs, triggers, st, cfg, step)
         for lab, p7 in sorted(writes.items()):
             o = self.belief.objects.get(lab)
             if o is None or lab in self.belief.held_labels():

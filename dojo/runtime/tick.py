@@ -55,6 +55,7 @@ class TickConfig:
     max_replans: int = 2
     min_vis_to_move: float = MIN_VIS_TO_MOVE   # deciding views must show this share of the object (low-visibility
                                                # fits slide along it: M's arm-8 audit, 30-47 mm at 0.53-0.63)
+    pending_max_age: int = 60          # steps: a second-tick confirmation / pending obstacle older than this expires
     max_overlap: float = 0.20          # a candidate whose footprint covers this share of a believed, not-active object
 
     def to_dict(self) -> dict:
@@ -175,6 +176,11 @@ def decide(resp: dict, objs: list[dict], triggers: list[Trigger], st: TickState,
     writes: dict = {}
     out: list[Discrepancy] = []
     assignment = resp.get("assignment") or {}
+    final_fp: dict = {}                                   # footprints of this tick's writes
+    for lab_, (step_, _) in list(st.pending.items()):     # S4: a confirmation never older than pending_max_age
+        if step - step_ > cfg.pending_max_age:
+            st.pending.pop(lab_)
+    st.added_pending = [p for p in st.added_pending if step - p[0] <= cfg.pending_max_age]
     for lab in sorted(resp.get("hyps") or {}):
         o = by_label.get(lab)
         if o is None:
@@ -189,7 +195,9 @@ def decide(resp: dict, objs: list[dict], triggers: list[Trigger], st: TickState,
                  if not h["src"].startswith("det:") or (won is not None and won[2] == i)]
         cands = [(i, h) for i, h in cands if not _inside(h["pose7"], st.falsified.get(lab))
                  and float((h.get("overlap") or [None, 0.0])[1]) <= cfg.max_overlap]
-        touched = bool(o.get("touched")) or reason in ("close_empty", "release", "slip", "touched", "hover")
+        # the touched bar only for objects the robot moved (reviewer M1: an untouched pick target at its hover needs a
+        # wrist at 0.7 or two cameras, like any untouched object)
+        touched = bool(o.get("touched")) or reason in ("close_empty", "release", "slip")
         best = None
         for i, h in cands:
             e = _ev(h, min_vis=cfg.min_vis_to_move)   # a write rests only on views that show the object (>= 0.9)
@@ -222,18 +230,31 @@ def decide(resp: dict, objs: list[dict], triggers: list[Trigger], st: TickState,
             two_tick = False
             if why is None and (o.get("small") or o.get("fixture") or lab in st.collapsed) and e["n50"] < 2:
                 prev = st.pending.get(lab)
-                two_tick = prev is not None and prev[0] < step and \
+                two_tick = prev is not None and prev[0] < step and step - prev[0] <= cfg.pending_max_age and \
                     1000.0 * float(np.linalg.norm(np.asarray(prev[1][:3]) - np.asarray(h["pose7"][:3]))) <= cfg.confirm_mm
                 if not two_tick:
                     st.pending[lab] = (step, list(h["pose7"]))
                     why = "second_tick"
+            if why is None:
+                # S1: the write's footprint against every other object's FINAL pose (this tick's writes included): two
+                # active identical pieces must not end up on one another
+                fp = h.get("footprint")
+                for lab2 in sorted(set((resp.get("footprints") or {})) | set(final_fp)):
+                    if lab2 == lab or fp is None:
+                        continue
+                    fp2 = final_fp.get(lab2, (resp.get("footprints") or {}).get(lab2))
+                    if fp2 is not None and _poly_overlap(fp, fp2) > cfg.max_overlap:
+                        why = f"overlap:{lab2}"
+                        break
             evid["why"] = why
             if why is None:
                 apply = cfg.mode == "apply"
                 out.append(Discrepancy("relocated", lab, step, reason, list(inc["pose7"]), list(h["pose7"]), evid, apply))
-                if apply:
+                if apply:                     # S5: log mode keeps no state as if it had written
                     writes[lab] = list(h["pose7"])
-                st.collapsed[lab] = list(h["pose7"])
+                    st.collapsed[lab] = list(h["pose7"])
+                    if h.get("footprint") is not None:
+                        final_fp[lab] = h["footprint"]
                 st.pending.pop(lab, None)
                 st.uncertain.discard(lab)
                 wrote = True
@@ -241,7 +262,8 @@ def decide(resp: dict, objs: list[dict], triggers: list[Trigger], st: TickState,
             sup = (e_inc["best"] >= cfg.touched_min_iou and e_inc["px"] >= cfg.touched_min_px) or e_inc["n50"] >= 2
             if sup:
                 st.uncertain.discard(lab)
-            elif reason in ("close_empty", "slip", "release") and not _supported_anywhere(inc):
+            elif (reason in ("close_empty", "slip", "release") and not _supported_anywhere(inc)
+                  and not (resp.get("assoc") or {}).get(lab)):        # S2: explained at the 0.25 level: seen
                 if lab not in st.uncertain:
                     st.uncertain.add(lab)
                     out.append(Discrepancy("uncertain", lab, step, reason, list(inc["pose7"]), None, evid,
@@ -282,4 +304,133 @@ def _added(resp: dict, st: TickState, cfg: TickConfig, step: int) -> list[Discre
     return out
 
 
-__all__ = ["TickConfig", "Trigger", "Discrepancy", "TickState", "build_request", "decide", "seeds_for"]
+def _clip(subject: np.ndarray, clip: np.ndarray) -> np.ndarray:
+    """Sutherland-Hodgman: the convex polygon ``subject`` clipped by the convex polygon ``clip`` (both CCW or both CW)."""
+    out = [np.asarray(p, float) for p in subject]
+    c = np.asarray(clip, float)
+    sgn = 1.0 if _area(c) >= 0 else -1.0
+    for i in range(len(c)):
+        a, b = c[i], c[(i + 1) % len(c)]
+        inp, out = out, []
+        if not inp:
+            break
+
+        def inside(p):
+            return sgn * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])) >= 0
+
+        def cross(p, q):
+            d1, d2 = q - p, b - a
+            den = d1[0] * d2[1] - d1[1] * d2[0]
+            if abs(den) < 1e-15:
+                return p
+            t = ((a[0] - p[0]) * d2[1] - (a[1] - p[1]) * d2[0]) / den
+            return p + t * d1
+        for j in range(len(inp)):
+            p, q = inp[j], inp[(j + 1) % len(inp)]
+            if inside(q):
+                if not inside(p):
+                    out.append(cross(p, q))
+                out.append(q)
+            elif inside(p):
+                out.append(cross(p, q))
+    return np.asarray(out) if out else np.zeros((0, 2))
+
+
+def _area(p) -> float:
+    p = np.asarray(p, float)
+    if len(p) < 3:
+        return 0.0
+    x, y = p[:, 0], p[:, 1]
+    return 0.5 * float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+
+
+def _poly_overlap(a, b) -> float:
+    """Intersection area / the smaller area of two convex xy footprints."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    if len(a) < 3 or len(b) < 3:
+        return 0.0
+    sm = min(abs(_area(a)), abs(_area(b)))
+    return abs(_area(_clip(a, b))) / sm if sm > 1e-12 else 0.0
+
+
+# --------------------------------------------------------------------------------------------- the shared entry point
+def run(obs: dict, objs: list[dict], held: dict, triggers: list[Trigger], meta: dict, st: TickState, cfg: TickConfig,
+        client, step: int, touched=(), q_path: dict | None = None, held_path: dict | None = None, corridor=None,
+        close_tcp: dict | None = None) -> tuple[dict, list[Discrepancy], dict]:
+    """One tick, the same lines online (``RuntimeProvider.a1_tick``) and offline (stream C's X2 harness):
+    the falsified pad volumes of this tick's empty closes (centred on the TCP at the close: ``close_tcp`` {label: xyz},
+    else the object's pose), the request, ``client(obs, req)`` (perception op "redetect"), ``decide``.
+    Returns (writes, discrepancies, the perception's response)."""
+    for t in triggers:
+        if t.kind == "close_empty" and t.label:
+            c = (close_tcp or {}).get(t.label)
+            if c is None:
+                o = next((x for x in objs if x["label"] == t.label), None)
+                c = None if o is None else o["pose7"][:3]
+            if c is not None:
+                st.falsified.setdefault(t.label, []).append(([float(v) for v in c[:3]], [0.02, 0.02, 0.03]))
+    req = build_request(objs, held, triggers, meta=meta, touched=set(touched), q_path=q_path, corridor=corridor)
+    if held_path:
+        req["held_path"] = held_path
+    resp = client(obs, req) or {}
+    writes, ds = decide(resp, objs, triggers, st, cfg, step)
+    return writes, ds, resp
+
+
+# --------------------------------------------------------------------------------------------- inputs from a log
+def triggers_from_events(new_events: list[dict], released: list[tuple], attached: list[tuple], lifted: set,
+                         step: int, lift_m: float = 0.03) -> list[Trigger]:
+    """The tick's triggers, as ``RuntimeProvider._a1_triggers`` derives them (offline harnesses rebuild them from a
+    recorded report with this, so offline triggers equal online ones):
+    - ``new_events``: the provider's events since the last tick (grip_check "dropped" air / slip; held_look "held"
+      False that was not "kept");
+    - ``released``: [(label, arm)] released since the last tick;
+    - ``attached``: [(arm, label, grasp n, TCP z at the close, TCP z now)]; a lift fires once per (label, grasp n) when
+      the TCP rose >= ``lift_m`` (``lifted`` is updated in place)."""
+    trig = []
+    for e in new_events:
+        k = e.get("kind")
+        if k == "grip_check" and e.get("dropped") in ("air", "slip"):
+            trig.append(Trigger("close_empty" if e["dropped"] == "air" else "slip", step, e.get("arm"), e.get("label")))
+        elif k == "held_look" and e.get("held") is False and not e.get("kept") and e.get("label"):
+            trig.append(Trigger("close_empty", step, e.get("arm"), e["label"]))
+    for lab, arm in released:
+        trig.append(Trigger("release", step, arm, lab))
+    for arm, lab, n, z0, z in sorted(attached):
+        if (lab, n) in lifted or z - z0 < lift_m:
+            continue
+        lifted.add((lab, n))
+        trig.append(Trigger("lift", step, arm, lab))
+    return trig
+
+
+def fixture_labels(events: list[dict], held_now=(), grasps=()) -> set:
+    """Labels a fixture holds now: the online rule (``RuntimeProvider._fixture_held``) on a recorded run. A label is in
+    when its latest ``belief_drop`` event with how "held by a fixture" / "on a fixture" is later than its latest grasp
+    (``grasps``: [(label, step)], the steps it was attached) and it is not held now."""
+    last_drop: dict = {}
+    for e in events:
+        if e.get("kind") == "belief_drop" and e.get("how") in ("held by a fixture", "on a fixture") and e.get("label"):
+            last_drop[e["label"]] = max(last_drop.get(e["label"], -1), int(e.get("step", 0)))
+    last_grasp: dict = {}
+    for lab, st in grasps:
+        last_grasp[lab] = max(last_grasp.get(lab, -1), int(st))
+    return {lab for lab, sd in last_drop.items() if sd > last_grasp.get(lab, -1)} - set(held_now)
+
+
+def rose_evidence(events: list[dict], label: str, grasp_step: int, release_step: int) -> bool:
+    """A grip_check "held" verdict or a held_look "held" (>= 0.5) for ``label`` between its close and its release: the
+    object rose with the jaws (``_grip_held_seen`` / ``_vision_held_seen``), so no "never left" seed."""
+    for e in events:
+        s = e.get("step")
+        if e.get("label") != label or not isinstance(s, (int, float)) or not grasp_step <= s <= release_step:
+            continue
+        if e.get("kind") == "grip_check" and e.get("verdict") == "held":
+            return True
+        if e.get("kind") == "held_look" and e.get("held") is True and float(e.get("confidence") or 1.0) >= 0.5:
+            return True
+    return False
+
+
+__all__ = ["TickConfig", "Trigger", "Discrepancy", "TickState", "build_request", "decide", "seeds_for", "run",
+           "triggers_from_events", "fixture_labels", "rose_evidence"]

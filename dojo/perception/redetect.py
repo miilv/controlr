@@ -151,9 +151,14 @@ class Scene:
     """The cameras of one frame and the believed objects' silhouettes in them (z-buffered; the robot from FK is an
     occluder). Pieces are overridable (tests)."""
 
-    def __init__(self, frame: dict, cams: dict | None = None):
+    def __init__(self, frame: dict, cams: dict | None = None, require_gl: bool = True):
         from .cameras import cameras_from_state
+        from .render import gl
 
+        if require_gl and gl() is None:
+            # the CPU fallback orders overlapping objects differently (constant depth): online and offline must both
+            # z-buffer on GL (reviewer M5)
+            raise RuntimeError("redetect needs GL silhouettes (DOJO_GL=1, EGL); refusing the CPU fallback")
         self.frame = frame
         self.state = frame["state"]
         self.cams = cams if cams is not None else cameras_from_state(self.state)
@@ -381,9 +386,11 @@ def footprint_overlap(key: str, p7, others: list[dict]) -> list:
 
 
 # ------------------------------------------------------------------------------------------------- contact
-def contact_suspects(q_path: dict, objs: list[dict], held: dict, cfg: RDConfig, model=None) -> list[str]:
+def contact_suspects(q_path: dict, objs: list[dict], held: dict, cfg: RDConfig, model=None,
+                     held_path: dict | None = None) -> list[str]:
     """Labels whose bbox (+ ``contact_margin_m``) the arm swept since the last tick: every link's mesh points (FK on the
-    sampled joints of ``q_path`` {arm: [q6, ...]}) and the held object's box. Held objects are not suspects."""
+    joints of ``q_path`` {arm: [q6, ...]}: the executed actions since the last tick) and the held object's mesh points
+    riding the TCP (``held_path`` {arm: {"key", "T_tcp_obj"}}). Held objects are not suspects."""
     from .cameras import pose_to_T
     from .render import load_asset, robot_link_meshes
     from .robot_model import X5Model
@@ -394,13 +401,27 @@ def contact_suspects(q_path: dict, objs: list[dict], held: dict, cfg: RDConfig, 
     pts_local = {ln: V[rng.choice(len(V), min(len(V), cfg.contact_pts_per_link), replace=False)]
                  for ln, (V, F) in sorted(meshes.items())}
     P = []
+    hp = {}
+    for arm, h in sorted((held_path or {}).items()):
+        try:
+            Vh = np.asarray(load_asset(h["key"]).Vs, float)
+            hp[arm] = (Vh[rng.choice(len(Vh), min(len(Vh), cfg.contact_pts_per_link), replace=False)],
+                       np.asarray(h["T_tcp_obj"], float).reshape(4, 4))
+        except Exception:  # noqa: BLE001
+            continue
+    from .held import tcp_T
     for arm in sorted(q_path):
         for q in q_path[arm]:
-            links = model.fk_world(arm, np.asarray(q, float)[:6])
+            q6 = np.asarray(q, float)[:6]
+            links = model.fk_world(arm, q6)
             for ln, Vl in pts_local.items():
                 if ln in links:
                     T = links[ln]
                     P.append(Vl @ T[:3, :3].T + T[:3, 3])
+            if arm in hp:
+                Vh, T_rel = hp[arm]
+                T = tcp_T(arm, q6, model) @ T_rel
+                P.append(Vh @ T[:3, :3].T + T[:3, 3])
     if not P:
         return []
     P = np.concatenate(P)
@@ -476,7 +497,8 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
     assoc, used = associate(free, dets, vis, scene, cfg)
     tm["assoc"] = time.perf_counter() - t0
     active = {o["label"]: o["active"] for o in free if o.get("active")}
-    contact = contact_suspects(req.get("q_path") or {}, free, held, cfg) if req.get("q_path") else []
+    contact = (contact_suspects(req.get("q_path") or {}, free, held, cfg, held_path=req.get("held_path"))
+               if req.get("q_path") else [])
     tm["contact"] = time.perf_counter() - t0
     for lab in contact:
         active.setdefault(lab, "contact")
@@ -503,7 +525,9 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
     n_fit = 0
     det_hyps = []                                         # (label, cam, det j, hyp index)
     by_label = {o["label"]: o for o in free}
-    for lab in sorted(active):
+    # the fit budget by priority (reviewer M3): the triggers' objects, then "missing", contact, touched
+    prio = {"hover": 0, "close_empty": 0, "release": 0, "slip": 0, "missing": 1, "contact": 2, "touched": 3}
+    for lab in sorted(active, key=lambda lb: (prio.get(active[lb], 4), lb)):
         o = by_label[lab]
         hs = [{"src": "incumbent", "pose7": list(o["pose7"]),
                "support": support(o["key"], o["pose7"], scene, dets, used_others(used, assoc, lab),
@@ -554,6 +578,10 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
         for h in hs[1:]:                                    # footprint overlap with a believed, not-active object
             h["overlap"] = footprint_overlap(o["key"], h["pose7"], [x for x in free if x["label"] != lab
                                                                     and x["label"] not in active])
+            try:
+                h["footprint"] = [[round(float(a), 5), round(float(b), 5)] for a, b in footprint(o["key"], h["pose7"])]
+            except Exception:  # noqa: BLE001
+                h["footprint"] = None
         hyps[lab] = hs
     tm["fits"] = time.perf_counter() - t0
     assignment = joint_assignment(hyps, det_hyps)
@@ -581,7 +609,13 @@ def redetect(frame: dict, req: dict, src: DetSource, cfg: RDConfig | None = None
                               "support": support(d.key, p7, scene, dets, None, cfg.seed_min_score)})
     lift = [lift_identity(scene, arm, held[arm], objs, dets) for arm in sorted(req.get("lift") or []) if arm in held]
     tm["total"] = time.perf_counter() - t0
-    return {"dets_hash": dets_hash(dets), "n_dets": {c: len(v) for c, v in dets.items()},
+    fps = {}
+    for o in free:                                        # every object's footprint now (decide's overlap with writes)
+        try:
+            fps[o["label"]] = [[round(float(a), 5), round(float(b), 5)] for a, b in footprint(o["key"], o["pose7"])]
+        except Exception:  # noqa: BLE001
+            continue
+    return {"dets_hash": dets_hash(dets), "n_dets": {c: len(v) for c, v in dets.items()}, "footprints": fps,
             "assoc": {lab: {c: list(v) for c, v in a.items()} for lab, a in assoc.items()},
             "active": active, "hyps": hyps, "assignment": {lab: list(v) for lab, v in assignment.items()},
             "added": added, "lift": lift, "contact": contact, "n_fits": n_fit,

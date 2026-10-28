@@ -46,7 +46,7 @@ def world(monkeypatch):
 
     class Scene(RD.Scene):
         def __init__(self, frame):
-            super().__init__(frame, cams={"cam_head": cam})
+            super().__init__(frame, cams={"cam_head": cam}, require_gl=False)
 
         def robot(self, cam_name):
             return np.zeros((cam.h, cam.w), np.uint8)
@@ -468,3 +468,143 @@ def test_borderline_detections_explain_but_never_seed(world):
     out = RD.redetect(fr, req, _Src([Det(_mask(world, true), "Rigid/box/00000", 0.4)]), RD.RDConfig(),
                       scene=world.Scene(fr))
     assert out["assoc"]["c"] and out["active"] == {}
+
+
+# ------------------------------------------------------------------------------- the reviewer's must-fix round
+def _sq(x, y, h=0.02):
+    return [[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]]
+
+
+def test_a_write_onto_another_objects_final_footprint_is_refused():
+    """S1: the overlap guard covers every object's FINAL pose: the believed footprints of the others and this tick's
+    earlier writes. Two active identical pieces must not end up on one another."""
+    objs = [{"label": "a", "key": "Rigid/box/00000", "pose7": _pose(0.0, -0.1), "touched": True},
+            {"label": "c", "key": "Rigid/box/00000", "pose7": _pose(0.2, -0.1), "touched": True}]
+    good = {"cam_head": [0.9, 900, 1.0, 0.9], "cam_left_wrist": [0.9, 6000, 1.0, 0.9]}
+    bad = {"cam_head": [0.0, 900, 1.0, None]}
+
+    def resp(c_to):
+        hyps = {"a": [{"src": "incumbent", "pose7": _pose(0.0, -0.1), "support": bad, "footprint": _sq(0.0, -0.1)},
+                      {"src": "det:cam_head:0", "pose7": _pose(0.1, -0.1), "support": good, "fit_iou": 0.9,
+                       "footprint": _sq(0.1, -0.1)}],
+                "c": [{"src": "incumbent", "pose7": _pose(0.2, -0.1), "support": bad, "footprint": _sq(0.2, -0.1)},
+                      {"src": "det:cam_head:1", "pose7": _pose(*c_to), "support": good, "fit_iou": 0.9,
+                       "footprint": _sq(*c_to)}]}
+        return {"hyps": hyps, "assignment": {"a": ["cam_head", 0, 1], "c": ["cam_head", 1, 1]},
+                "active": {"a": "release", "c": "release"}, "dets_hash": "h",
+                "footprints": {"a": _sq(0.0, -0.1), "c": _sq(0.2, -0.1), "z": _sq(0.3, -0.1)}}
+
+    trig = [Trigger("release", 9, "left", "a"), Trigger("release", 9, "right", "c")]
+    w, ds = decide(resp((0.1, -0.1)), objs, trig, TickState(), APPLY, 10)       # c onto a's new pose
+    assert sorted(w) == ["a"] and any(d.evidence.get("why") == "overlap:a" for d in ds if d.label == "c")
+    w, ds = decide(resp((0.3, -0.1)), objs, trig, TickState(), APPLY, 10)       # c onto an untouched z
+    assert "c" not in w and any(str(d.evidence.get("why")).startswith("overlap:z") for d in ds if d.label == "c")
+    w, ds = decide(resp((0.2, -0.05)), objs, trig, TickState(), APPLY, 10)      # clear of everything
+    assert sorted(w) == ["a", "c"]
+
+
+def test_run_falsifies_the_close_at_the_tcp_and_passes_the_held_path():
+    """``tick.run`` (the online and offline entry point): the pad volume of an empty close is centred on the TCP at
+    the close, the held objects' path goes to the perception op, and nothing GT-like is in the request."""
+    seen = []
+
+    def client(obs, req):
+        seen.append(req)
+        return {"hyps": {"b": [{"src": "incumbent", "pose7": req["objects"][0]["pose7"],
+                                "support": {"cam_head": [0.0, 900, 1.0, None]}}]},
+                "assignment": {}, "active": {"b": "close_empty"}, "dets_hash": "h"}
+
+    from dojo.runtime.tick import run
+    st = TickState()
+    hp = {"right": {"key": "Rigid/box/00000", "T_tcp_obj": np.eye(4).tolist()}}
+    w, ds, resp = run({}, OBJ, {}, [Trigger("close_empty", 5, "left", "b")], {}, st, APPLY, client, 5,
+                      q_path={"left": [[0.0] * 6]}, held_path=hp, close_tcp={"b": [0.01, -0.09, 0.8]})
+    assert st.falsified["b"][0][0] == [0.01, -0.09, 0.8] and seen[0]["held_path"] == hp
+    assert seen[0]["q_path"] == {"left": [[0.0] * 6]} and not {"gt", "layout_id", "task"} & set(seen[0])
+    assert w == {} and "b" in st.uncertain                             # the falsified pose is not re-asserted
+    st2 = TickState()
+    run({}, OBJ, {}, [Trigger("close_empty", 5, "left", "b")], {}, st2, APPLY, client, 5)
+    assert st2.falsified["b"][0][0] == pytest.approx(OBJ[0]["pose7"][:3])   # no TCP: the believed pose
+
+
+def test_triggers_from_events_are_the_online_rules():
+    from dojo.runtime.tick import triggers_from_events
+    ev = [{"kind": "grip_check", "dropped": "air", "label": "a", "arm": "left"},
+          {"kind": "grip_check", "dropped": "slip", "label": "b", "arm": "right"},
+          {"kind": "grip_check", "verdict": "held", "label": "c", "arm": "left"},
+          {"kind": "held_look", "held": False, "kept": True, "label": "d", "arm": "left"},
+          {"kind": "held_look", "held": False, "label": "e", "arm": "right"}]
+    lifted = set()
+    t = triggers_from_events(ev, [("f", "left")], [("left", "g", 3, 0.80, 0.84), ("right", "h", 4, 0.80, 0.81)],
+                             lifted, 50)
+    assert [(x.kind, x.label, x.arm) for x in t] == [("close_empty", "a", "left"), ("slip", "b", "right"),
+                                                      ("close_empty", "e", "right"), ("release", "f", "left"),
+                                                      ("lift", "g", "left")]
+    assert lifted == {("g", 3)}
+    assert triggers_from_events([], [], [("left", "g", 3, 0.80, 0.90)], lifted, 60) == []   # once per grasp
+
+
+def test_fixture_labels_follow_the_latest_fixture_drop_and_grasp():
+    from dojo.runtime.tick import fixture_labels
+    ev = [{"kind": "belief_drop", "label": "mug", "how": "held by a fixture", "step": 100},
+          {"kind": "belief_drop", "label": "nut", "how": "on a fixture", "step": 120},
+          {"kind": "belief_drop", "label": "cup", "how": "something else", "step": 130}]
+    assert fixture_labels(ev) == {"mug", "nut"}
+    assert fixture_labels(ev, held_now={"nut"}) == {"mug"}
+    assert fixture_labels(ev, grasps=[("mug", 150)]) == {"nut"}          # re-grasped after the fixture took it
+    assert fixture_labels(ev, grasps=[("mug", 90)]) == {"mug", "nut"}
+
+
+def test_contact_sweeps_the_held_object_riding_the_tcp(world, monkeypatch):
+    """M2: the contact sweep covers the held object's points at every executed q, not just the links."""
+    from dojo.perception import held as H
+    from dojo.perception import render
+    RD = world.RD
+    monkeypatch.setattr(render, "robot_link_meshes", lambda: {})
+    target = _pose(0.0, -0.1)
+    T = np.eye(4)
+    T[:3, 3] = [0.0, -0.1, target[2] + 2 * HZ + 0.005]                 # the held box rides just over the target
+    monkeypatch.setattr(H, "tcp_T", lambda arm, q, model=None: T.copy())
+    model = SimpleNamespace(fk_world=lambda arm, q: {})
+    objs = [{"label": "t", "key": "Rigid/box/00000", "pose7": target}]
+    hp = {"left": {"key": "Rigid/box/00000", "T_tcp_obj": np.eye(4).tolist()}}
+    qp = {"left": [[0.0] * 6]}
+    assert RD.contact_suspects(qp, objs, {"left": "h"}, RD.RDConfig(), model=model, held_path=hp) == ["t"]
+    assert RD.contact_suspects(qp, objs, {"left": "h"}, RD.RDConfig(), model=model) == []
+
+
+def test_the_provider_sweeps_every_executed_action_since_the_last_tick():
+    """M2 online: q_path is every 3rd executed action since the last TICK (not since the last refresh), and the held
+    objects ride their TCP (held_path)."""
+    prov, b = _prov()
+    prov.a1, prov.a1_client = "apply", _Client()
+    q = lambda v: {"left_arm_joint_state": [v] * 6 + [0.0], "right_arm_joint_state": [0.0] * 7}   # noqa: E731
+    b.executed = [q(0.01 * i) for i in range(9)]
+    prov.belief.attached["right"] = ("block_2", np.eye(4))
+    prov.a1_tick(b.obs, [Trigger("hover", 9, "left", "block_1")])
+    r = prov.a1_client.reqs[-1]
+    assert [x[0] for x in r["q_path"]["left"]] == pytest.approx([0.0, 0.03, 0.06])
+    assert r["held_path"]["right"]["key"] == prov.belief.objects["block_2"].asset.key
+    b.executed += [q(0.5), q(0.6)]
+    prov.a1_tick(b.obs, [])                                               # no trigger: no tick, nothing consumed
+    b.executed += [q(0.7)]
+    prov.a1_tick(b.obs, [Trigger("hover", 12, "left", "block_1")])
+    assert [x[0] for x in prov.a1_client.reqs[-1]["q_path"]["left"]] == pytest.approx([0.5])
+
+
+def test_a_far_hover_relocation_rehovers_over_the_new_pose():
+    """S3: a hover tick that moves the target > rehover_min_shift_mm returns a re-hover hint (skills hovers over the
+    new pose and refines there) instead of refining from the old hover."""
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from tests_a1_env import FakeAssets, FakeEpisode, env_and_obs
+    env, _ = env_and_obs()
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", a1="apply"), assets=FakeAssets(), perception_client=object())
+    pol.reset(FakeEpisode(env).info())
+    prov, b = _prov()
+    pol.bridge = b
+    o = prov.belief.objects["block_1"]
+    found = [float(o.pos[0]) + 0.04, float(o.pos[1]), float(o.pos[2])] + [float(v) for v in o.quat]
+    prov.a1, prov.a1_client = "apply", _Client(found)
+    out = pol._refine_hook(prov, None, "block_1", "left", "pick")
+    assert out and np.allclose(out["rehover"][0], found[:3]) and np.allclose(o.pos, found[:3])
+    assert any(e["kind"] == "a1_rehover" for e in pol.report["events"])

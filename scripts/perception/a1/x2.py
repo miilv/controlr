@@ -13,8 +13,8 @@ Tick points, from the recorded run (its report + actions):
 - hover: every pick / place refine the runtime logged (label = the refined object; corridor = above it);
 - contact: the joints between ticks (sampled), swept against every believed box.
 The belief at a tick is M's ``BeliefTracker`` (report events applied up to that step); the tick's writes go into it and
-ride until the report's next update of that label. Development set only (the lead: C's compute3 proxy sequences); the
-genuine-5.1 X2 set runs once, frozen.
+ride until the report's next update of that label. A DEV TOOL (smoke / debugging): the official X2 scorer is stream C's
+harness, which calls the same ``dojo.runtime.tick.run`` (as this does). Never run it on the X2 test set.
 """
 from __future__ import annotations
 
@@ -52,11 +52,11 @@ def at_or_before(seq, s: int, back: int = 3):
 class LocalSeg:
     """The twin-trained segmenter in this process (offline): ``seg_twin._SegModel`` with the client's interface."""
 
-    def __init__(self, weights: str, classes: str | None = None):
+    def __init__(self, weights: str, classes: str | None = None, model_id: str = "seg_v2b"):
         from dojo.perception.seg_twin import _SegModel
         names = json.load(open(classes))["names"] if classes else None
         self.m = _SegModel(weights, names)
-        self.model_id = os.path.basename(os.path.dirname(os.path.dirname(weights))) or os.path.basename(weights)
+        self.model_id = model_id                         # the detection cache key: the same string online and offline
 
     def detect(self, img, conf: float = 0.25):
         from dojo.perception.seg_twin import Det
@@ -90,7 +90,7 @@ def patched_tracker(G, before_tick, ticks: list[int], hook):
 
 def tick_points(report, actions, evs, seq, lift_m: float = 0.03, delay: int = 8):
     """{step: [Trigger]} from the recorded run."""
-    from dojo.runtime.tick import Trigger
+    from dojo.runtime.tick import Trigger, triggers_from_events
     from dojo.perception import grasp_metric as G
     track = G.tcp_track(actions)
     pp = collections.defaultdict(list)
@@ -102,11 +102,8 @@ def tick_points(report, actions, evs, seq, lift_m: float = 0.03, delay: int = 8)
         s = int(e["step"])
         if k == "post_place" and e.get("label"):
             pp[e["label"]].append(s)
-        elif k == "held_look" and e.get("held") is False and not e.get("kept") and e.get("label"):
-            out[s].append(Trigger("close_empty", s, e.get("arm"), e["label"], {"via": "held_look"}))
-        elif k == "grip_check" and e.get("dropped") in ("air", "slip") and e.get("label"):
-            out[s].append(Trigger("close_empty" if e["dropped"] == "air" else "slip", s, e.get("arm"), e["label"],
-                                  {"via": "grip_check"}))
+        elif k in ("held_look", "grip_check"):
+            out[s].extend(t for t in triggers_from_events([e], [], [], set(), s) if t.label)   # the online rule
         elif k == "refine" and e.get("for") in ("pick", "place") and e.get("label"):
             out[s].append(Trigger("hover", s, e.get("arm"), e["label"], {"for": e.get("for")}))
     last = max(seq.steps)
@@ -125,12 +122,12 @@ def tick_points(report, actions, evs, seq, lift_m: float = 0.03, delay: int = 8)
     return dict(out)
 
 
-def q_path(actions, s0: int, s1: int, every: int = 5) -> dict:
+def q_path(actions, s0: int, s1: int, every: int = 3) -> dict:
+    """The executed actions since the last tick, every 3rd: ``RuntimeProvider.a1_tick``'s ``executed[n_last::3]``."""
     out = {}
     for arm in ("left", "right"):
         key = f"{arm}_arm_joint_state"
-        qs = [np.asarray(actions[j - 1][key], float).reshape(-1)[:6].tolist() for j in range(max(1, s0 + 1), s1 + 1, every)
-              if j - 1 < len(actions) and key in actions[j - 1]]
+        qs = [np.asarray(x[key], float).reshape(-1)[:6].tolist() for x in actions[s0:s1:every] if key in x]
         if qs:
             out[arm] = qs
     return out
@@ -141,8 +138,7 @@ def run_episode(ep: str, seq, report, actions, src, rd_cfg, tk_cfg, use_contact:
     from dojo.perception import grasp_metric as G
     from dojo.perception.redetect import Scene, redetect
     from dojo.perception.release_read import small_object
-    from dojo.perception.cameras import TABLE_Z
-    from dojo.runtime.tick import TickState, build_request, decide
+    from dojo.runtime.tick import TickState, fixture_labels, run
 
     task = seq.task
     fp, groups = G.Footprints(), G.Groups(task)
@@ -154,6 +150,7 @@ def run_episode(ep: str, seq, report, actions, src, rd_cfg, tk_cfg, use_contact:
     # grasps of the recorded run: (step, arm, label, the belief's pose at the close = the pre-grasp pose)
     grasps = [(int(e.step), e.arm, e.target, list(b[e.target]["pos"])[:3] + list(b[e.target]["quat"])[:4])
               for e, b in evs0 if e.kind == "grasp" and e.target and b.get(e.target, {}).get("pos") is not None]
+    rep_events = [e for e in report.get("events") or [] if isinstance(e.get("step"), (int, float))]
     held_ev = [(int(e["step"]), e.get("label")) for e in report.get("events") or []
                if (e.get("kind") == "held_look" and e.get("held") is True)
                or (e.get("kind") == "grip_check" and e.get("verdict") == "held")]
@@ -167,6 +164,8 @@ def run_episode(ep: str, seq, report, actions, src, rd_cfg, tk_cfg, use_contact:
         grasped = {lab for k, _, lab, _ in grasps if k <= s}
         snap = bt.snapshot(s)
         held = {arm: v[0] for arm, v in bt.attached.items()}
+        fixture = fixture_labels([e for e in rep_events if e["step"] <= s], held_now=set(held.values()),
+                                 grasps=[(lab, k) for k, _, lab, _ in grasps if k <= s])
         objs, meta = [], {}
         for lab in sorted(snap):
             o = snap[lab]
@@ -178,7 +177,7 @@ def run_episode(ep: str, seq, report, actions, src, rd_cfg, tk_cfg, use_contact:
             except Exception:  # noqa: BLE001
                 small = True
             objs.append({"label": lab, "key": o["key"], "pose7": p7, "small": small,
-                         "fixture": p7[2] > TABLE_Z + 0.03 + 0.5 * 0.03 and lab in grasped,
+                         "fixture": lab in fixture,
                          "touched": lab in grasped})
         for t in trig:
             if t.kind in ("release", "slip") and t.label in snap and snap[t.label].get("pos") is not None:
@@ -200,20 +199,21 @@ def run_episode(ep: str, seq, report, actions, src, rd_cfg, tk_cfg, use_contact:
             cor = [c.tolist(), (c + [0, 0, 0.12]).tolist()]
         qp = q_path(actions, last_tick[0], s) if use_contact else {}
         last_tick[0] = s
-        req = build_request(objs, held, trig, meta=meta, touched=grasped & set(snap), q_path=qp, corridor=cor)
+        hp = {arm: {"key": snap[lab]["key"], "T_tcp_obj": np.asarray(v[1], float).tolist()}
+              for arm, v in bt.attached.items() for lab in [v[0]] if lab in snap and len(v) > 1} if use_contact else {}
+        close_tcp = {t.label: np.asarray(track[t.arm][min(s, len(track[t.arm]) - 1)])[:3, 3].tolist()
+                     for t in trig if t.kind == "close_empty" and t.arm in track}
         fr = seq.frame(j)
         frame = {"images": fr["images"], "state": {k: np.asarray(v, float) for k, v in fr["state"].items()}}
         t0 = time.perf_counter()
-        try:
-            resp = redetect(frame, req, src, rd_cfg, scene=Scene(frame))
+        try:                                             # the online lines (tick.run), the perception op in-process
+            w, ds, resp = run(frame, objs, held, trig, meta, st, tk_cfg,
+                              lambda f, r: redetect(f, r, src, rd_cfg, scene=Scene(f)), s,
+                              touched=grasped & set(snap), q_path=qp, held_path=hp, corridor=cor, close_tcp=close_tcp)
         except Exception as ex:  # noqa: BLE001
             import traceback
             ticks_log.append({"step": s, "error": f"{type(ex).__name__}: {ex} {traceback.format_exc()[-400:]}"})
             return
-        for t in trig:                                   # the empty close's pad volume is falsified
-            if t.kind == "close_empty" and t.label in snap and snap[t.label].get("pos") is not None:
-                st.falsified.setdefault(t.label, []).append((list(snap[t.label]["pos"])[:3], [0.02, 0.02, 0.03]))
-        w, ds = decide(resp, objs, trig, st, tk_cfg, s)
         dt = time.perf_counter() - t0
         gts = G.gt_rows_asset(seq.gt(j))
         for lab, p7 in sorted(w.items()):
@@ -332,7 +332,10 @@ def main():
     ap.add_argument("--det-cache", default="")
     ap.add_argument("--mode", default="apply")
     ap.add_argument("--no-contact", action="store_true")
+    ap.add_argument("--model-id", default="seg_v2b")
     a = ap.parse_args()
+    from dojo.perception import render
+    assert render.gl() is not None, "A1 needs GL (z-buffered silhouettes); no EGL here"
     if os.environ.get("X2_DUMP_S"):                      # dev: where a slow tick spends its time
         import faulthandler
         import sys
@@ -342,7 +345,7 @@ def main():
     from dojo.perception.seq_data import Sequence
     from dojo.runtime.tick import TickConfig
 
-    seg = LocalSeg(a.weights, a.classes or None) if a.weights else None
+    seg = LocalSeg(a.weights, a.classes or None, a.model_id) if a.weights else None
     if a.det_cache and os.path.exists(a.det_cache):
         src = DetSource.load(a.det_cache, seg)
     else:
