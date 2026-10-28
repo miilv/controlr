@@ -803,3 +803,32 @@ entries:
     measured: none
     stats: []
     notes: "stream N first version; route off by default (RuntimeConfig.new_routes: largest_number)"
+
+  - name: align_in_row
+    side: ilia
+    benchmark: robodojo
+    doc: |
+      Slide identical blocks into one straight row without lifting them: one block (the anchor) stays, the row runs
+      through it along one of its face axes, the others are gripped on two opposite faces, raised 3 mm, slid onto the row
+      at their nearest free spots turned to its heading, and set down (both arms in the same steps when they keep
+      apart); then one more slide of the worst block when the row is still off.
+    args:
+      objects: "[id], required; the blocks"
+    selects_on:
+      words: [align, aligned row, straight, line, blocks]
+      needs_categories: []
+    inputs:
+      source: args
+      objects:
+        - {what: each block, fields: [pos, quat, size]}
+    obs_needs:
+      contract_only: true
+      held_look: false
+      refine: false
+      twin_verify: false
+      reads: [joints, flange, grip_cmd, steps, free_ik, object_args]
+    backend: dojo_skills
+    entry: "dojo.skills.align:align_in_row"
+    measured: none
+    stats: []
+    notes: "stream N first version; route off by default (RuntimeConfig.new_routes: align)"

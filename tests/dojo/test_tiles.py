@@ -119,10 +119,11 @@ def test_digit_assignment_largest_left():
 
 def test_runtime_config_new_routes_default_and_validation():
     from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.routes import NEW_ROUTES
     assert RuntimeConfig().new_routes == []
     with pytest.raises(ValueError):
         RuntimePolicy(cfg=RuntimeConfig(new_routes=["equation", "bogus"]))
-    RuntimePolicy(cfg=RuntimeConfig(new_routes=list(tiles.ROUTES)))
+    RuntimePolicy(cfg=RuntimeConfig(new_routes=list(NEW_ROUTES)))
 
 
 # ------------------------------------------------------------------ whole episodes, kinematic env (no physics)

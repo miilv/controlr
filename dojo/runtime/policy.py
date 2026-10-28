@@ -41,7 +41,7 @@ from .bridge import Bridge
 from .estimate import flagged
 from .firewall import check_obs, sanitize_info
 from .supervisor import RuleSupervisor, perception_vocabulary, vocabulary_candidates
-from dojo.skills.tiles import ROUTES as TILE_ROUTES
+from dojo.skills.routes import NEW_ROUTES
 
 
 # The perception service protocol still carries a ``fold`` field (offline dev tools pass a D0 half). The runtime
@@ -286,9 +286,10 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
-    # planner routes that are off by default (stream N, ``dojo.skills.tiles.ROUTES``): "equation" (an equation's
-    # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right);
-    # empty = today. Their names go into the provider's ``notes["routes"]``, which ``planner.plan`` reads
+    # planner routes that are off by default (stream N, ``dojo.skills.routes.NEW_ROUTES``): "equation" (an equation's
+    # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right),
+    # "align" (identical blocks slid into one aligned row); empty = today. Their names go into the provider's
+    # ``notes["routes"]``, which ``planner.plan`` reads
     new_routes: list = field(default_factory=list)
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
@@ -364,7 +365,7 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
-                or not set(self.cfg.new_routes or ()) <= set(TILE_ROUTES)):
+                or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client

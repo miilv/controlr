@@ -3099,3 +3099,8 @@ SKILLS.update(_SWEEP_SKILLS)
 from dojo.skills.tiles import SKILLS as _TILE_SKILLS  # noqa: E402
 
 SKILLS.update(_TILE_SKILLS)
+
+# identical blocks slid into one aligned row (stream N; route off unless ``RuntimeConfig.new_routes`` lists "align")
+from dojo.skills.align import SKILLS as _ALIGN_SKILLS  # noqa: E402
+
+SKILLS.update(_ALIGN_SKILLS)

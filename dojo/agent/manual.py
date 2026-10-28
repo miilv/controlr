@@ -163,6 +163,12 @@ SKILL_DOCS: dict[str, tuple[str, str]] = {
         "Puts the digit tiles on the row of pads, one per pad, so that read from left to right (increasing x) they make "
         "the largest number (descending) or the smallest; centred, upright, x axis along the table's x; a pad another "
         "tile sits on is freed first; grippers opened after each tile. For 'form the largest possible number'."),
+    "align_in_row": (
+        "align_in_row(objects: [id, ...])",
+        "Slides identical blocks into one straight row without lifting them: one block stays, the row runs through it "
+        "along one of its faces, the others are gripped on two opposite faces, raised 3 mm, slid onto the row turned to "
+        "its heading and set down (two arms at once when they keep apart); one more slide of the worst block when the "
+        "row is still off. For 'push the blocks into a straight, aligned row'."),
 }
 SKILL_DOCS_VERSION = 12  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + hang_on_hooks (skills-4);
 #                        4: + play_board_game, copy_demonstration, match_and_pick, pick_into_held, fill_holes (skills-6)
@@ -175,7 +181,7 @@ SKILL_DOCS_VERSION = 12  # 2: + stack_on_pegs, slots_and_press (skills-3); 3: + 
 #                        10: fill_container: "hold the holder with one hand, fill it with the other, put it back down" is
 #                           judged by the end state; the skill fills it standing (routing 2026-10-27: Sol wrote code 3/3)
 #                        11: + sweep_into (gennew)
-#                        12: + complete_equation, arrange_digits (stream N)
+#                        12: + complete_equation, arrange_digits, align_in_row (stream N)
 
 API_DOC = """\
 Results: every action returns a `Result` with `ok` (bool), `status` ('ok', 'unreachable', 'collision', 'slip',

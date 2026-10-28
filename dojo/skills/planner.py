@@ -214,8 +214,8 @@ def plan(instruction: str, world: WorldState) -> Plan:
     # provider's notes): asked first, only when listed; with none listed the planner is unchanged
     routes = (getattr(world, "notes", None) or {}).get("routes") or ()
     if routes:
-        from dojo.skills import tiles as _tiles
-        r = _tiles.route(text, world, routes)
+        from dojo.skills.routes import route as _route
+        r = _route(text, world, routes)
         if r is not None:
             return Plan(*r)
     cats = _by_category(world)
