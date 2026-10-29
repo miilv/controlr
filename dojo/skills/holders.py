@@ -734,6 +734,12 @@ def _container_obstacle(sk: Skills, c, on: bool) -> None:
         sk.coll.include.discard(c.label)
 
 
+EGG_CARRY_RAD = 0.05          # rad/step: ``Skills.egg_carry`` "slow" (stream H): the lift out of the basket and the carry to
+                              # the hole. At the default speeds (lift 0.10, carry 0.14) 10 of 32 G3 drops ended with no egg
+                              # in the hand: it left the pads during the transit (a 16 mm loose hold, but also 2-8 mm ones)
+                              # and landed 0.1-0.65 m away; the drop then logged "NOT in a hole"
+
+
 def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, ignore: tuple, st: dict,
                tries: int = 3) -> list[str]:
     """``FILL_MODE`` "drop": each object picked top-down (``egg_grasps``), lifted over its container's rim, carried as
@@ -763,7 +769,9 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
                 gs = [g for g in egg_grasps(sk, lab, a) if g.note not in bad]
                 if not gs:
                     continue
-                r = sk.plan_pick(lab, a, grasps=gs, lift=0.06, lift_to_z=lift_z, max_eval=60)
+                slow = getattr(sk, "egg_carry", "v1") == "slow"
+                r = sk.plan_pick(lab, a, grasps=gs, lift=0.06, lift_to_z=lift_z, max_eval=60,
+                                 **({"lift_rad": EGG_CARRY_RAD} if slow else {}))
                 if not isinstance(r, SkillResult):
                     pp = r
                     break
@@ -791,7 +799,9 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             for h in free:                 # front holes first (``holes`` order)
                 for off, yd, side, T in egg_drop_targets(o, h, plate_top, o.R):
                     q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0, pre_h=0.05, ignore=ignore, descend_rad=0.03,
-                                      settle=2, retreat=0.04)
+                                      settle=2, retreat=0.04,
+                                      **({"approach_rad": EGG_CARRY_RAD}
+                                         if getattr(sk, "egg_carry", "v1") == "slow" else {}))
                     if not isinstance(q, SkillResult):
                         pl = (h, yd, side, q, off)
                         break

@@ -297,6 +297,8 @@ class Skills:
         # ``library.push_to``'s axis order (stream H): "greedy" (today: most left to go first) | "lookahead" (the other
         # axis first when its stroke would be blocked once the first is done)
         self.push_order = "greedy"
+        # ``holders._fill_drop``'s transit (stream H): "v1" (today) | "slow" (the lift and the carry at ``EGG_CARRY_RAD``)
+        self.egg_carry = "v1"
         # ``align.align_in_row`` in mode B (stream N): "seq" (today: hover, refine and slide one block after the other)
         # | "parallel" (both movers' hovers in one move, each wrist refines, both slides in the same steps when apart)
         self.align_measure = "seq"

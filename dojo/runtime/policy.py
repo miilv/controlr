@@ -297,6 +297,8 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # ``holders._fill_drop``'s transit (``Skills.egg_carry``): v1 (today) | slow (lift + carry at 0.05 rad/step)
+    egg_carry: str = "v1"
     # ``stacking.plan_stack``'s reach (``Skills.stack_reach``): centre (today) | grasp (to the planned grasp's TCP)
     stack_reach: str = "centre"
     # ``library.bowl_geometry``'s nest height (``Skills.nest_height``): bins (today) | measured (twin table, else profile)
@@ -416,6 +418,7 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
+                or self.cfg.egg_carry not in ("v1", "slow")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
@@ -686,6 +689,7 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.egg_carry = cfg.egg_carry
             sk_.align_measure = cfg.align_measure
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.stack_reach = cfg.stack_reach
