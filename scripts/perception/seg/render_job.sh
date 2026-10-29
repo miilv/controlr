@@ -4,13 +4,13 @@
 #     processes (apps >= 4 GiB) run, >= 10 GB VRAM and
 #     >= 16 GB RAM are free and the lock is free; with SEG_REQUIRE_IDLE=1 (default) also until no other GPU app holds
 #     >= 1 GiB (Mikhail's starter treats such a GPU as busy: a pilot only slips into a gap of theirs);
-#   - holds the GPU lock (SEG_GPU_LOCK, default the shared ~/dojo-gpu.lock) through rdpy.sh for at most SEG_MAX_S
+#   - holds the GPU lock (SEG_GPU_LOCK, else DOJO_GPU_LOCK, else our ~/dojo-ours-gpu.lock) through rdpy.sh for at most SEG_MAX_S
 #     seconds (default 600: boot + layouts until SEG_MAX_S - 200 s + close), in a 16 GB / 12-core scope.
 #   scripts/perception/seg/render_job.sh TASK [seg_render args...]     (--out defaults to ~/dojo-data/segtrain/render)
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 TASK="$1"; shift
-LOCK="${SEG_GPU_LOCK:-$HOME/dojo-gpu.lock}"
+LOCK="${SEG_GPU_LOCK:-${DOJO_GPU_LOCK:-$HOME/dojo-ours-gpu.lock}}"   # never compute4's ~/dojo-gpu.lock (Mikhail's)
 MAX_S="${SEG_MAX_S:-600}"
 WAIT_S="${SEG_WAIT_S:-14400}"
 MAX_APPS="${SEG_MAX_APPS:-4}"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The segmenter's Isaac 6.0 PROXY training set (compute3): per task, physics-only 5.1 states of new layout draws
 # (seg_render --physics-only), then RGB (JPEG) + instance masks from the 6.0 proxy (render_d0_proxy.py --any-dirs
-# --instance), each phase one job under the heavy lock (~/dojo-gpu.lock, shared by flock with stream C's renders).
+# --instance), each phase one job under our heavy lock (SEG_GPU_LOCK / DOJO_GPU_LOCK, default ~/dojo-ours-gpu.lock).
 # Before every job: fewer than SEG_MAX_APPS GPU apps on the box (the cap counts everyone's), >= 10 GB VRAM and
 # >= 20 GB RAM free, the lock free, and the data dir under SEG_CAP_MB (compute3's disk is 97 % full). A 90 s yield
 # follows every job. ~/dojo-data/segtrain/STOP stops the queue.
@@ -9,7 +9,7 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 ARGS="$1"; shift
-LOCK="${SEG_GPU_LOCK:-$HOME/dojo-gpu.lock}"
+LOCK="${SEG_GPU_LOCK:-${DOJO_GPU_LOCK:-$HOME/dojo-ours-gpu.lock}}"   # never compute4's ~/dojo-gpu.lock (Mikhail's)
 MAX_APPS="${SEG_MAX_APPS:-4}"
 CAP_MB="${SEG_CAP_MB:-3000}"
 OUT="${SEG_OUT:-$HOME/dojo-data/segtrain/proxy60}"

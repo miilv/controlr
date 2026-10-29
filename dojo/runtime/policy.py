@@ -49,6 +49,9 @@ from dojo.skills.routes import NEW_ROUTES
 # never to a set chosen per episode (legality audit 2026-10-28, P1 finding 1: crc32(layout id) % 2 used to pick it).
 CALIB_FOLD = 0
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
+PEG_BASE_MAX_SHIFT = 0.006              # peg_base_refine: the base's local refine (m; the frame-0 error is ~2 mm)
+PEG_BASE_MAX_TURN_DEG = 2.0             # ... and turn
+PEG_BASE_TRIES = 2                      # ... places it may take before the frame-0 pose is kept for good
 
 
 def keep_centre(o, fit_pos, fit_quat) -> np.ndarray:
@@ -411,6 +414,14 @@ class RuntimeConfig:
     # place = the measured v2 (b131264e: kongon2 9/15); place3 = + the oblique discard look with a pose refine and the
     # draw matched to any read hand glyph (#315; kongon3 8/15 vs 9/15: not adopted, kept for its own A/B)
     kong_draw_read: str = "off"
+    # stack_on_pegs (play_stacking_toy): the base's pegs are 65 mm apart, so a radius-searched place refine of the base
+    # snaps onto a neighbouring peg (5.1 dev: 30-75 mm "shifts" at iou 0.6-0.97, each a place_confirm re-hover) and the
+    # good local fix of the first view (1.3-2.3 mm) is dropped as below noise: the pegs keep frame 0's ~2 mm error
+    # against RoboDojo's 1 mm judge. "local": the base's FIRST place refine is local (no radius search, <= 6 mm) and
+    # applied when iou >= peg_base_min_iou; the skill re-reads the peg axes from it; later base refines are skipped
+    # (measured once). off (today) | local
+    peg_base_refine: str = "off"
+    peg_base_min_iou: float = 0.95
     # insert_key's rest handover (``regrasp.plan_rest_handover``, ``Skills.key_handover``): v1 (today) | v2 (all four
     # lengthwise giver picks, an upright handover pass when the as-lifted one finds none, 16 taker places checked, vias
     # 8 / 5 / 3 / 12 cm over the receptacle). v15 dev layouts 100030-49, G3 mode A: 7/20 failed in the handover search
@@ -536,7 +547,7 @@ class RuntimePolicy:
                 or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
-                or self.cfg.kong_draw_read not in ("off", "place", "place3")
+                or self.cfg.kong_draw_read not in ("off", "place", "place3") or self.cfg.peg_base_refine not in ("off", "local")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
@@ -619,6 +630,8 @@ class RuntimePolicy:
         self._pc_calls0 = len(getattr(self._pc, "calls", None) or [])   # the client's call log spans episodes
         self._lost_searched = set()
         self._glyph_reads: dict = {}                    # label -> its glyph identity read (read_persist), per episode
+        self._peg_base_tries: dict = {}                 # peg_base_refine: base label -> local refines tried (per episode)
+        self._peg_base_done: set = set()                # ... bases measured once (or given up on): no more refines
         self._pending_far, self._place_pending, self._vsel_seen = {}, {}, {}
         self._flip_pending = {}          # label -> a big turn one view found, awaiting a second view (held_flip_confirm)
         self._recentre_prior = {}
@@ -833,6 +846,7 @@ class RuntimePolicy:
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
             sk_.kong_draw_read = cfg.kong_draw_read
+            sk_.peg_base_refine = cfg.peg_base_refine
             sk_.key_handover = cfg.key_handover
             sk_.key_lean = cfg.key_lean
             sk_.stack_reach = cfg.stack_reach
@@ -1250,6 +1264,15 @@ class RuntimePolicy:
             max_shift = max(max_shift, float(self.cfg.grip_miss_search_m) + 0.01)
         if self.cfg.refine_empty_hand and kind == "pick" and held is None and not prov.belief.attached:
             kw["empty_hand"] = True
+        peg = (self.cfg.peg_base_refine == "local" and kind == "place" and sk is not None
+               and label == getattr(sk, "peg_base", None))
+        if peg:                                         # stack_on_pegs' base: local, once (see RuntimeConfig)
+            if label in self._peg_base_done:
+                self.report["events"].append({"kind": "refine", "label": label, "arm": arm, "for": kind,
+                                              "step": self.bridge.steps_used, "skipped": "peg_base_refine: measured once"})
+                return None
+            kw.pop("search_radius", None)
+            max_shift = PEG_BASE_MAX_SHIFT
         res = self.perception().refine(obs, objs, self.fold, max_shift, arm=arm, identity_vocabulary=idv, held=held, **kw)
         r = res.get(label) or {}
         if r.get("glyph") is not None:
@@ -1265,6 +1288,22 @@ class RuntimePolicy:
         if r.get("radius_search"):
             ev["radius_search"] = {k: r["radius_search"].get(k) for k in ("used", "grid", "time_s")}
         self.report["events"].append(ev)
+        if peg:
+            self._peg_base_tries[label] = self._peg_base_tries.get(label, 0) + 1
+            good = (bool(r.get("ok")) and r.get("pos") is not None and float(r.get("iou") or 0) >= self.cfg.peg_base_min_iou
+                    and float(r.get("turned_deg") or 0) <= PEG_BASE_MAX_TURN_DEG)
+            if good:
+                o.pos, o.quat = np.asarray(r["pos"], float), np.asarray(r["quat"], float)
+                o.source = "perception"
+                prov.touched.discard(label)
+                prov.stats["refined"] = prov.stats.get("refined", 0) + 1
+                self._peg_base_done.add(label)
+                ev.update({"applied": True, "peg_base_refine": "applied"})
+                return {label: (o.pos.copy(), o.quat.copy())}
+            if self._peg_base_tries[label] >= PEG_BASE_TRIES:
+                self._peg_base_done.add(label)          # no good local view in two places: the frame-0 pose stays
+            ev.update({"applied": False, "peg_base_refine": "rejected"})
+            return None
         if kind == "read":
             # a glyph read (skills: the make_kong discard / draw): the read is merged above, the pose is never written
             # (a refine from an arm that is not over the object fits whatever its wrist sees)
