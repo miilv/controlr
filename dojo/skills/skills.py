@@ -441,6 +441,14 @@ class Skills:
         self.log(f"[skill] {r.skill} {r.arm or ''} {r.status} steps={r.steps} {r.note}")
         return r
 
+    def geometry_refusal(self, label: str, skill: str, arm: str | None = None) -> SkillResult | None:
+        """A plan that moves ``label`` needs its geometry. An object whose asset has none (``AssetInfo.unknown_geometry``:
+        no catalogue metadata, or metadata without a bbox) is refused, never planned on its placeholder box."""
+        o = self.world.objects.get(label) if self.world is not None else None
+        if o is not None and getattr(o.asset, "unknown_geometry", False):
+            return SkillResult(False, skill, "unknown_geometry", 0, arm, note=f"{label}: {o.asset.key} has no known geometry")
+        return None
+
     # ------------------------------------------------------------------ pick
     def plan_pick(self, label: str, arm: str | None = None, method: str = "auto", lift: float = 0.08,
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
@@ -452,6 +460,9 @@ class Skills:
         it stayed in its holder, 3/3; four more steps and it came out, 3/3)."""
         w = self.world
         obj = w.obj(label)
+        refused = self.geometry_refusal(label, "pick", arm)
+        if refused is not None:
+            return refused
         # what a re-plan of this pick (after a wrist refine) must plan with again: everything but the grasps and the
         # start (``execute_pick``)
         plan_kw = dict(lift=lift, max_eval=max_eval, grasp_kw=grasp_kw, lift_to_z=lift_to_z, approach_rad=approach_rad,
@@ -1904,6 +1915,9 @@ class Skills:
         infeasible)."""
         w = self.world
         obj = w.obj(label)
+        refused = self.geometry_refusal(label, "transfer")
+        if refused is not None:
+            return refused
         call = dict(targets=list(targets), ignore=ignore, yaw_sym=yaw_sym, lift=lift, place_kw=place_kw,
                     pick_kw=pick_kw, max_full=max_full, grasps=grasps, max_pick_tilt=max_pick_tilt,
                     box_tilts=box_tilts, lift_to_pre=lift_to_pre, screen_fingers_out=screen_fingers_out,
@@ -2106,6 +2120,9 @@ class Skills:
         the fingers' 18 mm face meets the object."""
         from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
         o = self.world.obj(label)
+        refused = self.geometry_refusal(label, "topple", arm)
+        if refused is not None:
+            return refused
         n = o.R[:, up_axis] * sign
         n = np.array([n[0], n[1], 0.0])
         if np.linalg.norm(n) < 0.5:
@@ -2795,6 +2812,9 @@ class Skills:
         from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
         n0 = self.ex.steps_used
         target_xy = np.asarray(target_xy, float)
+        refused = self.geometry_refusal(label, "push", arm)
+        if refused is not None:
+            return self._record(refused)
         for it in range(max_iter):
             w = self.refresh()
             o = w.obj(label)

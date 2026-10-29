@@ -39,12 +39,17 @@ def iter_records(record: dict):
 
 
 def _asset(assets: AssetDB | None, typ: str, cat: str, idx: int, mesh: bool) -> AssetInfo:
+    """The asset's catalogue entry. An asset the catalogue cannot give (no or unreadable metadata) is no 4 cm cube
+    with confidence: ``unknown_geometry`` (the cube only keeps it an obstacle), which ``objects_from_record`` gives
+    confidence 0 and planning refuses to move. Without any catalogue (``assets`` None: offline tools) the cube stays
+    the plain placeholder it always was."""
+    key = f"{typ}/{cat}/{int(idx):05d}"
     if assets is not None:
         try:
             return assets.get(typ, cat, idx, mesh=mesh)
-        except (FileNotFoundError, OSError, KeyError):
-            pass
-    return AssetInfo(key=f"{typ}/{cat}/{int(idx):05d}", bbox_min=np.full(3, -0.02), bbox_max=np.full(3, 0.02))
+        except (FileNotFoundError, OSError, KeyError, ValueError, TypeError):
+            return AssetInfo(key=key, bbox_min=np.full(3, -0.02), bbox_max=np.full(3, 0.02), unknown_geometry=True)
+    return AssetInfo(key=key, bbox_min=np.full(3, -0.02), bbox_max=np.full(3, 0.02))
 
 
 def series_names(record: dict) -> dict[int, str]:
@@ -92,7 +97,7 @@ def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, mes
         out[lab] = ObjectState(label=lab, obj_type=typ, category=cat, idx=int(r["category_idx"]),
                                pos=np.asarray(r["default_pos"], float), quat=np.asarray(r["default_ori"], float),
                                asset=info, clutter=False, source="perception",
-                               confidence=float(p.get("confidence", 1.0)), t=step,
+                               confidence=0.0 if info.unknown_geometry else float(p.get("confidence", 1.0)), t=step,
                                identity_known=identity_known(p), digit=d, digit_conf=dc, digit_source=ds)
     return out
 

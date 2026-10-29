@@ -49,8 +49,9 @@ def rh_server():
     T = Path(tempfile.mkdtemp(prefix="rh", dir="/tmp"))
     (T / "harness").mkdir()
     for f in ("robodojo_server.py", "robodojo_server_strict.py", "robodojo_server_j1.py", "j1_schema.py",
-              "j1_perceiver_host.py", "j1_mock_perceiver.py"):
-        shutil.copy(rh / "harness" / f, T / "harness" / f)
+              "j1_perceiver_host.py", "j1_mock_perceiver.py", "ask_pause.py"):
+        if (rh / "harness" / f).exists():          # ask_pause.py: imported by the J1 server since late Oct 2026
+            shutil.copy(rh / "harness" / f, T / "harness" / f)
     (T / "harness" / "strict_calib.py").write_text(STUB_CALIB)
     (T / "run" / "strict-tools").mkdir(parents=True)
     tools = rh / "tools" / "perceiver" / "robodojo" / "compute"

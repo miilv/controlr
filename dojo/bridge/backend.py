@@ -16,8 +16,11 @@ Two faces over one server connection (``client.RobotServerClient``):
   the same for every episode, never chosen by task).
 
 Plus thin wrappers for the server's own verbs (``gripper``, ``hold``, ``return_home``, ``perceive`` and
-``held_look`` on the J1 / strict servers), each flushing the buffer first and passing ``contract.check_reply``. The
-client is available as ``robot`` for robot-harness skills (``skill_robodojo.run(robot, **args)``; flushes too).
+``held_look`` on the J1 / strict servers), each flushing the buffer first and passing ``contract.check_reply``.
+robot-harness skills (``skill_robodojo.run(robot, **args)``) get ``robot``: a ``ForeignRobot`` over the client, never
+the client itself. It refuses the grader / episode verbs (``FOREIGN_REFUSED``: success, end, reset, close) before
+anything is sent, flushes our buffer before its verbs, and checks every reply (``contract.check_reply``): with a
+``--dev`` server, the grader stays out of a skill's reach.
 
 Strict mode (default): the server's ``info`` must be strict tier B, every reply is scanned for banned keys
 (``contract.BANNED``: fail closed), and only whitelisted fields leave this class.
@@ -38,6 +41,35 @@ from .client import RobotServerClient, ServerError
 
 ACTION_KEYS = ("left_arm_joint_state", "left_ee_joint_state", "right_arm_joint_state", "right_ee_joint_state")
 JOINT_STEPS = "joint_steps"
+# verbs only the driver may send (the grader and the episode's own life cycle); a skill's are refused before sending
+FOREIGN_REFUSED = ("success", "end", "reset", "close")
+
+
+class ForeignRobot:
+    """The ``robot`` a robot-harness skill gets: ``robot.<verb>(**kw)``, ``call`` and ``ok`` as on
+    ``RobotServerClient``, minus the grader / episode verbs (``FOREIGN_REFUSED``: ``ContractViolation`` before
+    anything reaches the socket), with every reply through ``contract.check_reply`` (a leak raises). Our buffered
+    steps run before each verb (the client's ``on_request`` hook)."""
+
+    def __init__(self, client: RobotServerClient):
+        self._client = client
+
+    def call(self, _verb: str, **kw) -> dict:
+        if str(_verb).strip().lower() in FOREIGN_REFUSED:
+            raise contract.ContractViolation(f"a skill may not call `{_verb}`: the grader / episode verbs are the "
+                                             "driver's (refused before sending)")
+        return contract.check_reply(_verb, self._client.call(_verb, **kw))
+
+    def ok(self, _verb: str, **kw) -> dict:
+        rep = self.call(_verb, **kw)
+        if not rep.get("ok"):
+            raise ServerError(_verb, rep)
+        return rep
+
+    def __getattr__(self, verb):
+        if verb.startswith("_"):
+            raise AttributeError(verb)
+        return lambda **kw: self.call(verb, **kw)
 
 
 def read_png(path: str) -> np.ndarray:
@@ -122,8 +154,8 @@ class RobotServerBackend:
         self.fresh = False
 
     @property
-    def robot(self) -> RobotServerClient:
-        return self.c
+    def robot(self) -> ForeignRobot:
+        return ForeignRobot(self.c)
 
     # ------------------------------------------------------------------ session
     def connect(self) -> dict:
@@ -327,4 +359,5 @@ class RobotServerBackend:
         return {"arm": arm, "held": bool(rep.get("held")), "confidence": rep.get("confidence"), "source": rep.get("source")}
 
 
-__all__ = ["RobotServerBackend", "ACTION_KEYS", "JOINT_STEPS", "action_json", "actions_md5", "read_png"]
+__all__ = ["RobotServerBackend", "ForeignRobot", "FOREIGN_REFUSED", "ACTION_KEYS", "JOINT_STEPS", "action_json",
+           "actions_md5", "read_png"]

@@ -588,6 +588,8 @@ class RuntimePolicy:
         self.info, dropped = sanitize_info(info)        # instruction + step_lim only (no task, no layout id)
         self.fold = CALIB_FOLD                          # the service's one frozen calibration set, every episode
         self.bridge = Bridge()
+        if getattr(self._pc, "dead", None):             # an op timed out last episode (PerceptionClient): reconnect
+            self._pc = None
         self._pc_calls0 = len(getattr(self._pc, "calls", None) or [])   # the client's call log spans episodes
         self._lost_searched = set()
         self._glyph_reads: dict = {}                    # label -> its glyph identity read (read_persist), per episode

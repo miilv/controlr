@@ -255,6 +255,18 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   [...] ... belt reads are blind`, and the episode report has a `belt_blind` event and `track_read` `blind: true`. Before
   a conveyor run: `ls $DOJO_BG_FOLDS/fold*/scene/` (Dynamic_conveyor_00000 for match_and_pick; pick_from_conveyor_by_image
   needs Dynamic_conveyor_00001).
+- **A robot-harness skill never holds the raw server client.** `RobotServerBackend.robot` is a `ForeignRobot`. It
+  refuses `success` / `end` / `reset` / `close` before sending, so a `--dev` server's grader stays out of reach, and
+  it checks every reply against `contract.BANNED`. Only the driver ends an episode. A new verb that skills need goes
+  through the same proxy (`tests/dojo/test_g5_review.py`).
+- **Perception ops have a reply deadline.** `PerceptionClient(op_timeout_s=600)`: a reply later than that
+  (the slowest op in 306 rendered dev episodes took 243 s) closes the connection and raises `TimeoutError`. Later ops in that episode raise
+  at once, and `RuntimePolicy.reset` reconnects. A stalled service no longer holds an episode past its wall cap
+  indefinitely.
+- **No geometry is invented for an asset the catalogue lacks.** With an `AssetDB`, missing or bbox-less metadata
+  gives `AssetInfo.unknown_geometry`: its 4 cm box only keeps the object an obstacle. Its estimate has confidence 0,
+  and pick / transfer / topple / push refuse it (`status "unknown_geometry"`). Of the 749 RoboDojo assets, only
+  `Clutter/vehicle/00000` has no aligned bbox.
 - **The perception calibration is one frozen set, never chosen per episode.** The runtime's perception service reads
   `$DOJO_BG_FOLDS/$DOJO_CALIB_SET` (backgrounds, `color_M.json`, `manifest.json`) for every request; the policy gets the
   instruction and the step limit only. The old per-episode `fold = crc32(layout id) % 2` made the layout id a policy
