@@ -42,6 +42,7 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | `DOJO_EMBED_MODELS` | wherever perception runs with `EstimatorConfig.embed_model` set | dir with one subdir per image-embedding model (`dinov2-small`, `dinov2-base`, `siglip2-base-patch16-224-vision`, `clip-vit-large-patch14-vision`; `dojo/perception/embed_id.py`); default `~/dojo-data/pbake-identity/models`. Needs torch + transformers in the perception venv (DEVELOPMENT §4) |
 | `DOJO_PERCEPTION_CFG` | the perception service (`dojo.runtime.perception_service`) | optional JSON of `EstimatorConfig` overrides for an A/B arm, e.g. `{"embed_model": "dinov2_s", "embed_merge": true}` or `{"stereo_check": true, "stereo_reject": "slot_bases"}`; unset = the defaults |
 | `DOJO_BOX_ROLE`, `DOJO_GPU_LOCK`, `DOJO_GPU_LIGHT_LOCKS`, `DOJO_SCOPE_BUNDLE` / `_PROXY` / `_BATCH` / `_G3` / `_LIGHT`, `DOJO_MIN_AVAIL_GB` | a GPU box (`source ~/dojo-env.sh`) | the box's role (full / physics), the heavy lock and the four light-lane slots (`DOJO_GPU_LOCKS="$DOJO_GPU_LIGHT_LOCKS"` for g3's light lane), the `systemd-run --user --scope` settings, the memory floor for heavy jobs; the same facts in `~/dojo-box.json` |
+| `DOJO_MIN_FREE_GB` | any box running `integ_eval.sh` / `rdpy.sh` GPU jobs | the free-disk floor on the `$HOME` / `$DOJO_DATA` filesystem below which a job refuses to start (exit 6; default 10; compute1's lanes on `~/data2`: 2; 0 disables) — `scripts/dojo/disk_guard.sh` |
 
 ### Credentials in processes (`controlr/keyguard.py`)
 

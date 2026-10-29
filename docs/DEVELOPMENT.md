@@ -63,6 +63,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 
 ## 4. Pitfalls (already stepped on)
 
+- **A full disk takes the whole box down.** compute3's `/` hit 100 % (2026-10-29: other tools' data plus ours). `integ_eval.sh`
+  and `rdpy.sh` GPU jobs now refuse to start below `DOJO_MIN_FREE_GB` (default 10) free on the `$HOME` / `$DOJO_DATA`
+  filesystem (`scripts/dojo/disk_guard.sh`, exit 6). Boxes with a small data disk set their own floor (compute1: 2).
+  Clean your old deploy copies / run dirs by explicit path, never by pattern.
 - **A test must not import from `tests.`** (`from tests.dojo.test_skills2 import ...`): CI collects with no repo root on
   `sys.path`, so collection dies with `No module named 'tests'` (fold, ttt: 2026-10-27). Give the test its own helpers or
   import from `dojo/`.
