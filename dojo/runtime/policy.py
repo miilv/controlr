@@ -382,7 +382,8 @@ class RuntimeConfig:
     ported_pour_aim: str = "v1"
     # ... sorting into baskets (both classify cells): v3b (Mikhail's classify_into_bins_v3b: a scene whose categories are not
     # the instruction's three, or more groups than baskets, fails grounding and nothing is sorted) | p1
-    # (classify_into_bins_p1: sorts the named / largest groups, leaves the rest on the table)
+    # (classify_into_bins_p1: sorts the named / largest groups, leaves the rest on the table) | p2 (classify_into_bins_p2:
+    # p1, and a carry v3 refuses is tried once more from higher up, then the object is put back and the arm homed)
     ported_classify: str = "v3b"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
@@ -471,7 +472,7 @@ class RuntimePolicy:
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
-                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1")
+                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
