@@ -931,6 +931,22 @@ def _glyph_key(key: str, cands: list[str], name: str) -> str | None:
     return next((k for k in cands if k.split("/")[1] == name), None)
 
 
+def _glyph_read_config_slot(h: "Hypothesis", g: dict, views) -> None:
+    """``cfg.glyph_read`` on a numeral / operator the config pins to a slot (solve_equation's t0 / t1 / t2 / t4 on
+    the mats): the crop classifier reads it at the slot pose (``_glyph_views``). A read sets the asset and identity
+    "read" (a numeral's digit fields follow from ``glyph_read``); no read leaves the label's first candidate a
+    placeholder, identity unknown (``identity_marks``) -- B1's texture compare never names it."""
+    h.per_view.pop("identity", None)
+    out = _glyph_views(lambda cam: h.sm().sil(cam, h.T()), views, h.key.split("/")[1])
+    k = _glyph_key(h.key, list(g["candidates"]), out["name"]) if out.get("read") else None
+    if out.get("read") and k is None:
+        out = {**out, "read": False, "why": "not a candidate"}
+    if k is not None:
+        h.key = k
+        h.per_view["identity"] = "read"
+    h.per_view["glyph_read"] = out
+
+
 def _glyph_read_numeral(h: "Hypothesis", views) -> None:
     """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): ``_glyph_views`` on its silhouette at
     its fitted pose; the chosen asset follows the read digit within its texture group (the checker reads idx % 10).
@@ -3860,6 +3876,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 if 1 < len(g["candidates"]) <= cfg.slot_identity_max:
                     h = _slot_identity(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
                 h = _glyph_read_slot(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
+                if cfg.glyph_read != "off" and len(set(g["candidates"])) > 1 and _glyph_slot_group(g["candidates"]):
+                    _glyph_read_config_slot(h, g, views)
                 slot_placed.append((g, h, lab))
             g["labels"] = [lab for lab in g["labels"] if lab not in mine]
         # labels the config stacks on another (relative_plane "<label>/...", zero offset): on top of it

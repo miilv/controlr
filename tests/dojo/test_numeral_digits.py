@@ -219,3 +219,43 @@ def test_a_slot_mahjong_read_reaches_the_record_and_the_report(monkeypatch):
     p = _slim(rec)["Rigid"]["mahjong"][0]["_perception"]
     assert p["identity"] == "read" and p["slot"] is True and p["glyph_read"]["key"] == "Rigid/mahjong/00005"
     assert "texture" not in p
+
+
+def test_config_slot_numerals_and_operators_are_read_and_placeholders_stay_unknown(monkeypatch):
+    """solve_equation's t0 / t2 / t4 (numerals) and t1 (an operator) pinned on the mats go through the config-slot
+    path: the classifier reads them there; a texture-based identity never stands without a classifier read."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import glyph_read
+    from dojo.perception import inverse_layout as il
+
+    def world(reads):
+        it = iter(reads)
+        monkeypatch.setattr(glyph_read, "classify_mask",
+                            lambda img, mask, view="cam_head", held=False, client_=None, robot=None, category=None: next(it),
+                            raising=False)
+        cam = SimpleNamespace(h=8, w=8)
+        return {n: SimpleNamespace(cam=cam, img=None, known=None, robot=np.zeros((8, 8), np.uint8))
+                for n in ("cam_head", "cam_left_wrist")}
+
+    def hyp(key):
+        sm = SimpleNamespace(sil=lambda cam, T: np.ones((8, 8), np.uint8))
+        return SimpleNamespace(key=key, per_view={"identity": "read"}, sm=lambda: sm, T=lambda: np.eye(4))
+
+    ops = {"candidates": ["Rigid/division/00000", "Rigid/plus/00000", "Rigid/minus/00000", "Rigid/multiplication/00000"]}
+    h = hyp("Rigid/division/00000")
+    il._glyph_read_config_slot(h, ops, world([{"read": True, "name": "minus", "margin": 0.9}] * 2))
+    assert h.key == "Rigid/minus/00000" and h.per_view["identity"] == "read"
+    h = hyp("Rigid/division/00000")                       # a texture "read" never stands without the classifier
+    il._glyph_read_config_slot(h, ops, world([{"read": False, "why": "low_margin"}] * 2))
+    assert h.key == "Rigid/division/00000" and "identity" not in h.per_view
+    nums = {"candidates": [f"Rigid/number/{i:05d}" for i in range(50)]}
+    h = hyp("Rigid/number/00000")
+    il._glyph_read_config_slot(h, nums, world([{"read": True, "name": "4", "margin": 0.8}] * 2))
+    assert h.key == "Rigid/number/00004" and h.per_view["glyph_read"]["conf"] == 1.0
+    f = digits.record_fields("number", 4, None, h.key, 50, classifier=h.per_view["glyph_read"])
+    assert f == {"digit": 4, "digit_conf": 1.0, "digit_source": "glyph"}
+    assert il._glyph_slot_group(nums["candidates"]) and il._glyph_slot_group(ops["candidates"])
+    assert not il._glyph_slot_group(["Rigid/mahjong/00001", "Rigid/mahjong/00002"])     # kong: its own path
