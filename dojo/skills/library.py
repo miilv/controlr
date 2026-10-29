@@ -362,6 +362,9 @@ def drop_points(sk: Skills, container: str, margin: float = 0.06) -> list[tuple]
                                       float(np.linalg.norm(np.asarray(p) - c))))
 
 
+DROP_GENTLE = (MEDIUM, 6)        # put_into "gentle": the drop carry's joint step (rad) and ease steps (v1: CARRY, 3)
+
+
 def plan_drop(sk: Skills, arm: str, xy, z_tcp: float = 0.93) -> ArmPlan | SkillResult:
     """Carry the held object over ``xy`` and open: approach pointing away from the arm, pitch 0-45 deg
     (straight down is out of reach that far out); the held object's low point must clear the table top
@@ -381,8 +384,11 @@ def plan_drop(sk: Skills, arm: str, xy, z_tcp: float = 0.93) -> ArmPlan | SkillR
                     (cw[:, 1].max() > TABLE_Y[0] - 0.01) and (cw[:, 1].min() < TABLE_Y[1] + 0.01):
                 notes.append(f"pitch {pitch:.0f}: object still over the table")
                 continue
-            mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, CARRY, "drop_carry", gripper=CLOSED, held=h.box,
-                                   ignore=(h.label,), ease=3)
+            # put_into "gentle": a slower carry with a longer ease. At CARRY a side-pinched standing bottle left the
+            # fingers in the carry's stop and flew 0.3-1.1 m past the bin (G3 put_bottles v15 draws, 3 of 16 episodes)
+            step, ease = DROP_GENTLE if "gentle" in (getattr(sk, "put_into_opts", ()) or ()) else (CARRY, 3)
+            mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, step, "drop_carry", gripper=CLOSED, held=h.box,
+                                   ignore=(h.label,), ease=ease)
             if not mv.ok:
                 notes.append(f"pitch {pitch:.0f}: {mv.note[:80]}")
                 continue
@@ -454,21 +460,33 @@ def _pick_width(sk: Skills, labels) -> float:
     return out
 
 
+SPOT_SLACK = 0.015               # m: a placed object rests up to ~11 mm off its plan (G3 "xy err"); the check shifts it
+
+
 def _spot_blocks(sk: Skills, label: str, T_obj, others) -> list[str]:
     """The objects in ``others`` that some arm can pick from home now but none could with ``label`` resting at
-    ``T_obj`` (the place plan's object pose: its yaw is the one the place chose among its symmetric yaws). A handover
-    spot in front of a standing bottle closes its grasps: G3 put_bottles v15 draws, 2 of 16 episodes ended "no arm can
-    pick" on two bottles that blocked each other, and either one moved away freed the other."""
+    ``T_obj`` (the place plan's object pose: its yaw is the one the place chose among its symmetric yaws), or at that
+    pose shifted ``SPOT_SLACK`` along x or y. A handover spot in front of a standing bottle closes its grasps: G3
+    put_bottles v15 draws, 2 of 16 episodes ended "no arm can pick" on two bottles that blocked each other, either one
+    moved away freed the other, and one spot passed at its planned pose but blocked from 13 mm off it."""
     free = [l for l in others if any(sk.can_pick(l, a) for a in ARMS)]
     if not free:
         return []
     o = sk.world.obj(label)
     saved = (o.pos.copy(), o.quat.copy())
     T_obj = np.asarray(T_obj, float)
-    o.pos, o.quat = T_obj[:3, 3].copy(), R_to_quat(T_obj[:3, :3])
+    blocked: list[str] = []
     try:
-        return [l for l in free if not any(isinstance(sk.plan_pick(l, a, q_start={a: sk.world.home_q[a]}, keep=1), PickPlan)
-                                           for a in ARMS)]
+        o.quat = R_to_quat(T_obj[:3, :3])
+        for d in ((0, 0), (SPOT_SLACK, 0), (-SPOT_SLACK, 0), (0, SPOT_SLACK), (0, -SPOT_SLACK)):
+            o.pos = T_obj[:3, 3] + np.array([d[0], d[1], 0.0])
+            for l in free:
+                if l not in blocked and not any(
+                        isinstance(sk.plan_pick(l, a, q_start={a: sk.world.home_q[a]}, keep=1), PickPlan) for a in ARMS):
+                    blocked.append(l)
+            if len(blocked) == len(free):
+                break
+        return blocked
     finally:
         o.pos, o.quat = saved
 
@@ -573,11 +591,15 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
             for nxy in near:
                 for spot in free_spots(sk, lab, near_xy=nxy):
                     pl = sk.plan_place(helper, _table_pose_keep(sk, lab, spot), yaw_sym=8, release_gap=0.004)
-                    if (isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot)
-                            and not (others and _spot_blocks(sk, lab, pl.T_obj_target, others))):
-                        place_r = pl
-                        phase.append(pl.plan)
-                        break
+                    if not (isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot)):
+                        continue
+                    blocked = _spot_blocks(sk, lab, pl.T_obj_target, others) if others else []
+                    if blocked:
+                        sk.log(f"[put_into] handover spot {np.round(spot, 3).tolist()} for {lab} would block {blocked}")
+                        continue
+                    place_r = pl
+                    phase.append(pl.plan)
+                    break
                 if place_r is not None:
                     break
             if place_r is None and "spot" in opts and befores.get(helper) is not None:

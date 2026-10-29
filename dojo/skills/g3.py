@@ -833,7 +833,7 @@ def main(argv=None) -> None:
                    help="mode B: the runtime belief's in-hand transform (attached at the close), no held_pose (dev)")
     r.add_argument("--no-held-looks", action="store_true", help="the held-pose protocol reads at the hover only (dev)")
     r.add_argument("--routes", default="", help="planner routes off by default, comma-separated (dojo.skills.routes.NEW_ROUTES)")
-    r.add_argument("--put-into", default="", help="library.put_into options, comma-separated: spot,patient,sequence,unblock (dev)")
+    r.add_argument("--put-into", default="", help="library.put_into options, comma-separated: spot,patient,sequence,unblock,gentle (dev)")
     r.add_argument("--glyph-gt", action="store_true",
                    help="perception's tile reads (refine kind read) answered from GT: the asset when its face turns to the "
                         "head / wrist camera (dev)")
