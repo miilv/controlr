@@ -760,6 +760,17 @@ def plan_disc_handover(sk: Skills, obj: str, rec: str, tg: list, place_kw: dict,
     return SkillResult(False, "handover", "ik_fail", 0, None, note="; ".join(dict.fromkeys(notes))[:400])
 
 
+def taker_place_kw(sk: Skills, place_kw: dict) -> dict:
+    """The taker's insertion after an in-air handover: a slow carry (twin: a coin taken by its rim fell out at 0.14), and
+    with ``Skills.disc_handover_read`` "on" the in-hand read at the pre-insert hover: the pose after a handover is the
+    planned one, unmeasured (a provider that reads only on request reads here). 5.1 deposit_coin rb 100006: the taker's
+    coin sat 11 mm off the planned grasp, entered the slot off its line and jammed 25 mm short (GT replay)."""
+    kw = {**place_kw, "approach_rad": DISC_CARRY}
+    if getattr(sk, "disc_handover_read", "off") == "on":
+        kw["held_read"] = True
+    return kw
+
+
 def run_disc_handover(sk: Skills, h: dict) -> SkillResult:
     """Execute ``plan_disc_handover``: giver pick, carry to the handover pose, taker grasp re-planned on the measured
     disc, squeeze, giver lets go and backs off, taker inserts (re-planned for the measured grasp)."""
@@ -850,7 +861,7 @@ def run_disc_handover(sk: Skills, h: dict) -> SkillResult:
     sk.held[taker] = Held(obj, T_rel, held_box(o, T_rel))
     sk._record(SkillResult(True, "handover", "ok", 0, taker, note=f"{giver} -> {taker}"))
     best = None
-    kw = {**h["place_kw"], "approach_rad": DISC_CARRY}     # a slow carry (twin: a coin taken by its rim fell out at 0.14)
+    kw = taker_place_kw(sk, h["place_kw"])
     for T_obj in hand_down_first(h["tg"], T_rel):
         pl = sk.plan_place(taker, T_obj, ignore=(h["rec"],), **kw)
         if not isinstance(pl, SkillResult):

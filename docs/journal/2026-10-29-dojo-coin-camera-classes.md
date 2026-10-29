@@ -21,3 +21,18 @@ the merged record, where the labels are the task's, and writes the settled poses
 
 **The queued coin A/B.** Arm B (slot_read + held_thin + thin_slot_keep) targets 13 of the 15. This flag would add 1
 more (`DOJO_PERCEPTION_CFG`).
+
+## The handover case (rb 100006): the coin jams in the slot (physics-only GT replay)
+
+- **What GT shows.**
+  - The right arm picks the coin and the left takes it in the air; the left carries it over the slot and lowers it.
+  - It ends stuck in the slot at centre z 0.878 and y -0.166: 25 mm above the planned insertion depth (0.8526) and
+    11 mm off the bank's centre line.
+  - The log's "dz -64 mm" was the post-place perception read (it put the coin at 0.789), not GT.
+  - The place target was right. The taker's in-hand pose after the handover is the planned one, unmeasured: the belief
+    said "in-hand shift 0.0 mm". The disc insertion never asks for an in-hand read, so with held_pose "request" it is
+    blind.
+- **Change.** `Skills.disc_handover_read` / `RuntimeConfig.disc_handover_read` (default off). On, the taker's insertion
+  asks for the in-hand read at the pre-insert hover (`precision.taker_place_kw`).
+- **Open.** Whether `held_pose` reads a 1.9 mm edge-on coin in the jaws well enough needs a camera run. It is the next
+  coin arm if the coin A/B's B arm leaves ≥ 2 handover jams.
