@@ -315,6 +315,9 @@ class Skills:
         # articulated objects' geometry (stream N): "authored" (today: the USD's authored joint state) | "measured" (the
         # measured joint's: ``_pose_articulations``)
         self.artic_geom = "authored"
+        # ``store.store_laptop`` (stream N, route "store_laptop"): the shut laptop's pick, "edge" (an edge pinch where it
+        # lies) | "overhang" (slid towards the arms until it overhangs its stand, then pinched on the overhang)
+        self.laptop_pick = "edge"
         # ``library.push_to`` (stream N): "face" (today: fingertips against a face) | "press" (when no face stroke plans,
         # drag with the fingertips pressed on the top)
         self.push_stroke = "face"

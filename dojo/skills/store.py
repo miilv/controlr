@@ -23,6 +23,8 @@ YAWS_DEG = (0.0, 180.0, 8.0, -8.0, 188.0, 172.0)
 EDGE_PICK_TILT = 95.0   # deg: the shut laptop's pick approach may be horizontal (an edge pinch across the slab)
 EDGE_OFF = 0.010        # m: an edge pinch this close to the middle of its edge (G3: 51 mm off-centre pinches dropped it)
 EDGE_SQUEEZE = 4        # still steps after the close before the lift
+OVERHANG = 0.05         # m: the shut laptop slid towards the arms until it overhangs its stand this far
+OVERHANG_CLEAR = 0.012  # m: a pinch's TCP at least this far past the stand's footprint
 LID_REPUSH_HEIGHTS = ((0.6, 0.9, 0.75), (0.9, 0.6, 0.75))   # swing_closed's lid heights for the extra pushes
 
 
@@ -115,6 +117,80 @@ def checker_ok(o, T_obj, rk, up_tol_deg: float = 10.0) -> bool:
     return bool(np.all(q >= rk.asset.bbox_min - 1e-6) and np.all(q <= rk.asset.bbox_max + 1e-6))
 
 
+def support_under(w, label):
+    """The object ``label`` rests on (the highest other object whose top is just under its bottom and whose box covers
+    its centre), or None (the table)."""
+    o = w.obj(label)
+    best = None
+    for s in w.objects.values():
+        if s.label == label or s.category == "camera_stand":
+            continue
+        p = s.R.T @ (o.center_w - s.pos) - s.asset.center
+        if np.all(np.abs(p[:2]) <= s.asset.extents[:2] / 2 + 0.01) and abs(float(s.top_z) - float(o.bottom_z)) < 0.03:
+            if best is None or s.top_z > best.top_z:
+                best = s
+    return best
+
+
+def overhang(o, s, u) -> float:
+    """How far ``o``'s footprint reaches past support ``s``'s footprint along world direction ``u`` (m; < 0: short)."""
+    u = np.asarray(u, float) / np.linalg.norm(u)
+    pts = np.array([[x, y, 0.0] for x in (o.asset.bbox_min[0], o.asset.bbox_max[0])
+                    for y in (o.asset.bbox_min[1], o.asset.bbox_max[1])])
+    reach_o = max(float(((o.R @ p) + o.pos)[:2] @ u) for p in pts)
+    sp = np.array([[x, y, 0.0] for x in (s.asset.bbox_min[0], s.asset.bbox_max[0])
+                   for y in (s.asset.bbox_min[1], s.asset.bbox_max[1])])
+    reach_s = max(float(((s.R @ p) + s.pos)[:2] @ u) for p in sp)
+    return reach_o - reach_s
+
+
+def slide_to_overhang(sk, laptop: str, want: float = OVERHANG, tries: int = 3) -> dict:
+    """Drag the shut laptop towards the arms (closed fingertips pressed on its top: ``library._press_stroke``) until it
+    overhangs its stand by ``want`` (the pinch's lower finger goes under the overhang: an edge pinch on the stand's own
+    top slipped in every G3 attempt)."""
+    from dojo.skills.library import _press_stroke
+    from dojo.skills.kinematics import ARMS
+    out = {"strokes": 0}
+    for _ in range(tries):
+        w = sk.refresh()
+        o = w.obj(laptop)
+        s = support_under(w, laptop)
+        if s is None:
+            out["why"] = "on the table"
+            break
+        base = np.mean([sk.kin.base(a)[:2, 3] for a in ARMS], axis=0)
+        u = base - o.center_w[:2]
+        u /= np.linalg.norm(u)
+        oh = overhang(o, s, u)
+        out["overhang"] = round(oh, 3)
+        if oh >= want:
+            break
+        plan = _press_stroke(sk, o, laptop, u, min(0.08, want - oh + 0.01))
+        if plan is None:
+            out["why"] = "no press stroke"
+            break
+        sk.ex.run({plan.arm: plan}, name=f"slide {laptop}")
+        out["strokes"] += 1
+    return out
+
+
+def overhang_edge(sk, o, s):
+    """``pair_ok``: an edge pinch within EDGE_OFF of an edge's middle whose TCP is past the support's footprint by
+    OVERHANG_CLEAR (the lower finger under the overhang, not on the stand)."""
+    mid = mid_edge(o)
+
+    def ok(g, T_tcp_obj, T_obj, T_tcp) -> bool:
+        if not mid(g, T_tcp_obj, T_obj, T_tcp):
+            return False
+        if s is None:
+            return True
+        p = np.asarray(g.T, float)[:3, 3]                      # the TCP at the pick (the grasp pose)
+        q = s.R.T @ (p - s.pos) - s.asset.center
+        out_by = np.abs(q[:2]) - s.asset.extents[:2] / 2
+        return float(out_by.max()) >= OVERHANG_CLEAR
+    return ok
+
+
 def mid_edge(o):
     """``plan_transfer``'s ``pair_ok``: the TCP within EDGE_OFF of the middle of one of the slab's horizontal edges (in
     the object frame, along the edge it pinches)."""
@@ -154,11 +230,18 @@ def store_laptop(sk, hang: dict, laptop: str, hinge_tag: str | None, rack: str) 
     saved = getattr(sk, "artic_geom", "authored")
     sk.artic_geom = "measured"
     try:
-        sk.refresh()
+        w = sk.refresh()
+        over = getattr(sk, "laptop_pick", "edge") == "overhang"
+        if over:
+            notes["slide"] = slide_to_overhang(sk, laptop)
+            sk.bank()
+            w = sk.refresh()
         tg = upright_targets(sk, laptop, rack)
+        o = w.obj(laptop)
+        pok = overhang_edge(sk, o, support_under(w, laptop)) if over else mid_edge(o)
         r3 = place_oriented(sk, laptop, tg, yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.04, ignore=(rack,),
                             place_kw={"pre_h": 0.06, "release_gap": 0.003}, max_spots=2,
-                            transfer_kw={"max_pick_tilt": EDGE_PICK_TILT, "pair_ok": mid_edge(sk.world.obj(laptop)),
+                            transfer_kw={"max_pick_tilt": EDGE_PICK_TILT, "pair_ok": pok,
                                          "pick_kw": {"squeeze": EDGE_SQUEEZE}})
     finally:
         sk.artic_geom = saved

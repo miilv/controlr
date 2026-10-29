@@ -202,7 +202,7 @@ class FrozenGarmentProvider:
 SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"),
-               "artic_geom": ("authored", "measured"),
+               "artic_geom": ("authored", "measured"), "laptop_pick": ("edge", "overhang"),
                "align_measure": ("seq", "parallel"), "tile_grasp": ("any", "flat", "prefer"),
                "imitate_pairing": ("greedy", "one_to_one"), "imitate_wait": ("still", "origin"),
                "imitate_look": ("off", "ambiguous"),

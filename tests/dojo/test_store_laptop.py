@@ -115,3 +115,21 @@ def test_route_off_by_default_and_on():
     assert p.skill == "store_laptop" and p.args["laptop"] == "laptop" and p.args["rack"] == "rack"
     assert p.args["hang"]["rack"] == "stand" and p.args["hang"]["objects"] == ["headset"]
     assert p.args["hinge_tag"] == "laptop_hinge"
+
+
+def test_overhang_and_the_overhang_edge_pinch():
+    """The laptop's footprint past its stand along a direction; a pinch counts only past the stand's footprint."""
+    o = _laptop(pos=(0.05, 0.02, Z + 0.05))
+    o.asset = artgeom.posed_asset(o.asset, "J", 0.0)
+    st = ObjectState("laptop_stand", "Geometry", "laptop_stand", 0, np.array([0.05, 0.02, Z + 0.02]),
+                     np.array([1.0, 0, 0, 0]), AssetInfo(key="Geometry/laptop_stand/00001",
+                                                         bbox_min=np.array([-0.15, -0.06, -0.03]),
+                                                         bbox_max=np.array([0.15, 0.06, 0.03])))
+    oh = store.overhang(o, st, np.array([0.0, -1.0]))
+    assert oh == pytest.approx(0.018, abs=1e-3)                    # front edge -0.078 vs stand -0.06
+    ok = store.overhang_edge(None, o, st)
+    from dojo.skills.geometry import T_from
+    inside = SimpleNamespace(T=T_from([0.05, -0.03, Z + 0.05], np.eye(3)))
+    outside = SimpleNamespace(T=T_from([0.05, -0.075, Z + 0.05], np.eye(3)))
+    T_tcp_obj = np.linalg.inv(outside.T) @ o.T
+    assert ok(outside, T_tcp_obj, None, None) and not ok(inside, np.linalg.inv(inside.T) @ o.T, None, None)
