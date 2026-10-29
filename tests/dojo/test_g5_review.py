@@ -166,3 +166,95 @@ def test_the_runtime_reconnects_a_dead_perception_client_at_the_next_episode():
     pol._pc = live
     pol.reset({"instruction": "Stack the three blocks with different textures.", "step_lim": 100})
     assert pol._pc is live
+
+
+# ------------------------------------------------------------------ 6: server perception's missing ops
+def test_server_perception_forwards_local_ops_and_says_when_nothing_can_check():
+    from dojo.bridge.perception import UNAVAILABLE, ServerPerception, local_only_features
+    from dojo.runtime.policy import RuntimeConfig
+
+    class Local:
+        def scan_looks(self):
+            return [{"arm": "left"}]
+
+        def agentic_estimate(self, *a, **k):
+            return {"via": "local"}
+
+        def check(self, frame, objects, fold):
+            return {"a": {"head": {"prec": 1.0}}}
+
+    sp = ServerPerception(backend=None, local=Local())
+    assert sp.scan_looks() == [{"arm": "left"}] and sp.agentic_estimate(None, "x", 0) == {"via": "local"}
+    assert sp.check(None, [], 0) == {"a": {"head": {"prec": 1.0}}}
+    bare = ServerPerception(backend=None)
+    with pytest.raises(AttributeError, match="no `scan_looks` and no local client"):
+        bare.scan_looks()
+    assert bare.check(None, [], 0) == {UNAVAILABLE: "server perception: no local checker"}
+    assert bare.refine(None, [], 0) == {} and bare.search_regions(None, {}, "") == [] and bare.look_poses(None, "left") == []
+    assert local_only_features(RuntimeConfig()) == []
+    assert local_only_features(RuntimeConfig(scan="trigger", held_look="b1", watch=True)) == ["held_look", "scan", "watch"]
+
+
+def test_the_driver_refuses_server_perception_without_a_local_client(monkeypatch, tmp_path):
+    from dojo.bridge import driver
+
+    monkeypatch.delenv("DOJO_PERCEPTION_PORT", raising=False)
+    with pytest.raises(SystemExit, match=r"enables \['scan'\]"):     # before any server is contacted
+        driver.main(["--server-id", "nosuch", "--sock", str(tmp_path / "none.sock"), "--perception", "server",
+                     "--config", '{"scan": "trigger"}', "--twin", "off", "--out", str(tmp_path)])
+
+
+def test_resync_logs_an_unavailable_check_as_unverified():
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.runtime.bridge import Bridge
+    from dojo.runtime.estimate import objects_from_gt_rows
+    from test_runtime import STACK, FakeAssets, FakeEpisode, _env
+
+    class Checker:
+        def check(self, obs, objects):
+            return {"_unavailable": "server perception: no local checker"}
+
+        def estimate(self, obs):
+            raise AssertionError("no re-estimate without a divergence")
+
+    env = _env()
+    b = Bridge()
+    b.obs, b.fresh = FakeEpisode(env).observe(), True
+    prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets(), checker=Checker(), replan_on_divergence=False)
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    ev = prov.resync(b.obs)
+    assert ev["diverged"] == [] and ev["unverified"] == "server perception: no local checker" and ev["check"] == {}
+
+
+# ------------------------------------------------------------------ 7: a search find's identity
+@pytest.mark.parametrize("cands", [["Rigid/block/00005", "Rigid/block/00006"], ["Rigid/block/00006", "Rigid/block/00005"]])
+def test_search_identity_unknown_when_several_candidates_fit(cands):
+    from dojo.runtime.estimate import objects_from_record
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from test_runtime import FakeAssets
+
+    class P:
+        def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None):
+            return {"block_1": {"ok": True, "pos": [0.2, -0.1, 0.78], "quat": [1, 0, 0, 0], "iou": 0.9}}
+
+    rec = {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": "block_0", "default_pos": [0.1, -0.1, 0.78],
+                                "default_ori": [1, 0, 0, 0]}]},
+           "_not_found": [{"label": "block_1", "candidates": list(cands)}]}
+    for mode, known in (("first", True), ("unknown", False)):
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", search=True, search_identity=mode), assets=FakeAssets(),
+                            perception_client=None)
+        pol.perception = lambda: P()
+        pol.report, pol.fold = {"events": []}, 0
+        out, found = pol._search_refine(rec, {"target": [0.2, -0.1, 0.78], "why": "test"}, {}, "right")
+        assert found == ["block_1"]
+        o = objects_from_record(out, None)["block_1"]
+        assert o.identity_known is known and o.confidence == pytest.approx(0.9)    # pose IoU stays pose confidence
+    one = {**rec, "_not_found": [{"label": "block_1", "candidates": [cands[0]]}]}
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", search=True, search_identity="unknown"), assets=FakeAssets(),
+                        perception_client=None)
+    pol.perception = lambda: P()
+    pol.report, pol.fold = {"events": []}, 0
+    out, _ = pol._search_refine(one, {"target": [0.2, -0.1, 0.78], "why": "test"}, {}, "right")
+    assert objects_from_record(out, None)["block_1"].identity_known is True      # one candidate: its identity is known
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(search_identity="bogus"))

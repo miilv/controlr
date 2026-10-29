@@ -197,8 +197,9 @@ until [ -f $BENCH/run/$ID/launch_done.json ]; do sleep 2; done; kill $PERC
 Variants (one flag each):
 - `--policy dojo.runtime.policy:RuntimePolicy`: the rule supervisor instead of the agent, 0 LLM calls.
 - `--perception server`: estimates from the server's `perceive` verb, i.e. our B1 adapter inside Mikhail's server,
-  logged in `run/<id>/perceive.jsonl`. Refine / check / search then come from the local service if one runs, else they
-  are off. The adapter (`j1_adapter.task_for`) routes by the six J1 patterns, then by the runtime's
+  logged in `run/<id>/perceive.jsonl`. Every other op (refine, check, search, scan, agentic, held_look, watch, ...)
+  then comes from the local service if one runs. Without it, refine / search are off and the resync check is logged
+  `unverified`; the driver refuses a config that enables a local-only feature (`perception.LOCAL_ONLY`). The adapter (`j1_adapter.task_for`) routes by the six J1 patterns, then by the runtime's
   `perception_vocabulary`, and uses the scene backgrounds under `DOJO_BG/scene/` (the conveyor belt).
 - `--verify off`: no twin.
 

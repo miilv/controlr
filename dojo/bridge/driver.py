@@ -176,6 +176,12 @@ def main(argv=None) -> None:
         raise SystemExit("behind a robot server the runtime runs in mode perception only (no GT on this path)")
     verify = a.verify if a.twin != "off" else "off"
     cfg = RuntimeConfig(**{**cfg_d, "mode": "perception", "verify": verify})
+    if a.perception == "server":
+        from .perception import local_only_features
+        need = local_only_features(cfg)
+        if need and not os.environ.get("DOJO_PERCEPTION_PORT"):   # would fail mid-episode or silently degrade
+            raise SystemExit(f"--perception server without a local perception client, but the config enables {need}: "
+                             "they need our perception service (DOJO_PERCEPTION_PORT/AUTHKEY) or --perception local")
     out_dir = Path(a.out) / a.server_id
     out_dir.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("DOJO_AGENT_LOG", str(out_dir / "agent"))      # AgentPolicy's transcript / calls / cells

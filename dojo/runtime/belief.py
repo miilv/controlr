@@ -1332,6 +1332,7 @@ class RuntimeProvider:
         # nothing left to check (a one-object task right after its release: breadth3 deposit_coin / insert_key crashed
         # the perception service with an empty z-buffer stack)
         chk = self.checker.check(obs, objs) if objs else {}
+        unverified = chk.pop("_unavailable", None) if isinstance(chk, dict) else None   # nothing could check (bridge)
         bad = {}
         for lab, c in chk.items():
             head = c.get("head") or {}
@@ -1343,6 +1344,8 @@ class RuntimeProvider:
                 bad[lab] = c
         ev = {"kind": "resync", "step": self.bridge.steps_used, "check": {k: c.get("head") for k, c in chk.items()},
               "diverged": sorted(bad)}
+        if unverified:
+            ev["unverified"] = unverified
         self.events.append(ev)
         if not bad:
             return ev
