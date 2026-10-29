@@ -3704,6 +3704,10 @@ class EstimatorConfig:
     # low-contrast / re-chosen base. 5.1 c4b_coin_off 100001: the stand 19 mm off on a tight fit (conf 0.63), the coin's
     # pixels on the table, "support slot empty", and the episode had nothing to plan
     thin_slot_keep: bool = False
+    # the agentic read's merged record re-places slot children from their base (``agentic.record.settle_record_slots``):
+    # the agent may name a child otherwise than the task does, and the settle inside its adapter then misses it (5.1
+    # deposit_coin 100005: "coin" for coin0, the coin left lying flat in its stand, no edge grasp, nothing planned)
+    slot_settle_merged: bool = False
     low_contrast_frac: float | None = 0.6  # still-unfound labels: re-segment at this x fg_thr in their region
     low_contrast_max_loss: float = 0.40  # ... and keep a find only at this silhouette loss or lower
     paired_tex_weight: float = 0.8
