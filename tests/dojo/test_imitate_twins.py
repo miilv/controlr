@@ -27,3 +27,27 @@ def test_missing_objects_are_skipped():
     objs = {"aim0": _o("Rigid/watch/00000"), "t0": _o("Rigid/watch/00000"), "t1": _o("Rigid/pen/00000")}
     assert twin_assignment(_w(objs), ["aim0", "aim9"], ["t0", "t1"]) == {"aim0": "t0"}
     assert twin_assignment(_w(objs), [], ["t0"]) == {}
+
+
+def test_a_wait_timeout_keeps_holding_only_with_imitate_wait_origin(monkeypatch):
+    """camera 100007 / 100009: the copy started on a wait_actors_still timeout while the demonstrator's arm was still
+    moving, and RoboDojo's query ended the episode. "origin" holds round after round until it reads at rest, keeping
+    the copy's steps; "still" (default) proceeds as before."""
+    from dojo.skills import interactive as ia
+
+    calls = []
+
+    def fake_wait(sk, fallback=70):
+        calls.append(1)
+        return "timeout" if len(calls) < 3 else "still after 5"
+
+    monkeypatch.setattr(ia, "wait_actors_still", fake_wait)
+    ex = SimpleNamespace(steps_left=lambda: 900)
+    sk = SimpleNamespace(imitate_wait="origin", ex=ex)
+    assert ia.wait_demo_done(sk, 110, 5) == "still after 5 (after 2 timeouts)" and len(calls) == 3
+    calls.clear()
+    sk.imitate_wait = "still"
+    assert ia.wait_demo_done(sk, 110, 5) == "timeout" and len(calls) == 1
+    calls.clear()
+    sk = SimpleNamespace(imitate_wait="origin", ex=SimpleNamespace(steps_left=lambda: 250))   # 250 - 160 < one copy
+    assert ia.wait_demo_done(sk, 110, 5).startswith("timeout x1, budget kept") and len(calls) == 1

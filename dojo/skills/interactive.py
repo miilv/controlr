@@ -178,6 +178,31 @@ def wait_actors_still(sk: Skills, still_steps: int = 12, max_steps: int = 160, f
     return f"still after {n}"
 
 
+COPY_STEPS_PER_OBJECT = 120   # imitate_wait "origin": steps kept back per object still to copy (put_in_open + bank)
+
+
+def wait_demo_done(sk: Skills, after_last: int, n_copy: int) -> str:
+    """The demonstrator's arm done before our arms move (RoboDojo's imitate query ends the episode when ours leave their
+    origin while the support arm is away from its own). ``Skills.imitate_wait``: "still" (today: one
+    ``wait_actors_still``, a "timeout" proceeds) | "origin": a timeout means its arm is still moving (on its way back
+    to its origin), so keep holding, round after round, until it reads at rest, while one copy's
+    ``COPY_STEPS_PER_OBJECT`` still fit (camera 100007 / 100009: the copy started on a timeout at step 830 / 699 while
+    the speed-1.5 demo was still running, and the episode ended). ``n_copy``: logged only."""
+    r = wait_actors_still(sk, fallback=after_last)
+    if getattr(sk, "imitate_wait", "still") != "origin":
+        return r
+    rounds = 1
+    while r == "timeout":
+        left = sk.ex.steps_left() if hasattr(sk.ex, "steps_left") else None
+        # moving while that arm is away ends the episode at once, so waiting is never worse: hold while one copy (the
+        # first transition's credit) still fits after another round
+        if left is not None and left - 160 < COPY_STEPS_PER_OBJECT:
+            return f"timeout x{rounds}, budget kept for one copy"
+        r = wait_actors_still(sk, fallback=after_last)
+        rounds += 1
+    return r if rounds == 1 else f"{r} (after {rounds - 1} timeouts)"
+
+
 def _still(prev: dict, w, labels, tol: float = 5e-4) -> bool:
     return all(float(np.linalg.norm(w.obj(l).pos - prev[l])) < tol for l in labels if l in prev and l in w.objects)
 
@@ -592,7 +617,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
                 st["order"] = list(st["gone"])
                 quiet_long = st["gone"] and sk.ex.steps_used - last_new > gone_quiet
                 if len(st["gone"]) >= len(demo_side) or quiet_long:
-                    r = wait_actors_still(sk, fallback=after_last)
+                    r = wait_demo_done(sk, after_last, len(st["gone"]))
                     sk.log(f"[imitate] {len(st['gone'])} of {len(demo_side)} left; demonstrator's arm: {r} (step {sk.ex.steps_used})")
                     break
                 if sk.ex.steps_used - t0 > max_wait:
@@ -609,7 +634,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
             prior = read
             st["order"] = res["order"]
             if res["done"] and stable >= 1:
-                r = wait_actors_still(sk, fallback=after_last)
+                r = wait_demo_done(sk, after_last, len(res["order"]))
                 sk.log(f"[imitate] demonstrator's arm: {r} (step {sk.ex.steps_used})")
                 break
             if sk.ex.steps_used - t0 > max_wait:
