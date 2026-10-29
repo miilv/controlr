@@ -236,6 +236,19 @@ def top_band_grasps(obj: ObjectState, kin: X5Kin, arm: str, band: float = 0.02, 
     return out
 
 
+def box_rim_z(V: np.ndarray, span: float = 0.85) -> float | None:
+    """A rectangular open container's rim height in its own frame (mesh vertices ``V``): the highest slice spanning
+    ``span`` of the bbox in both axes (a handle arch above it does not count); None when that is not in its upper half."""
+    lo, hi = V.min(0), V.max(0)
+    ext = hi - lo
+    for z in np.arange(hi[2], lo[2], -0.002):
+        S = V[np.abs(V[:, 2] - z) < 0.002]
+        if len(S) >= 20 and np.ptp(S[:, 0]) >= span * ext[0] and np.ptp(S[:, 1]) >= span * ext[1]:
+            z_rim = float(S[:, 2].max())
+            return z_rim if z_rim >= lo[2] + 0.5 * ext[2] else None
+    return None
+
+
 def box_rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, depth: float = 0.012, fracs=(-0.3, 0.0, 0.3),
                    tilts=(0.0, 15.0, 25.0), span: float = 0.85) -> list[Grasp]:
     """A rectangular open container's rim (a basket): the rim height from the mesh (the highest slice spanning
@@ -252,13 +265,8 @@ def box_rim_grasps(obj: ObjectState, kin: X5Kin, arm: str, depth: float = 0.012,
         return []
     lo, hi = V.min(0), V.max(0)
     ext = hi - lo
-    z_rim = None
-    for z in np.arange(hi[2], lo[2], -0.002):
-        S = V[np.abs(V[:, 2] - z) < 0.002]
-        if len(S) >= 20 and np.ptp(S[:, 0]) >= span * ext[0] and np.ptp(S[:, 1]) >= span * ext[1]:
-            z_rim = float(S[:, 2].max())
-            break
-    if z_rim is None or z_rim < lo[2] + 0.5 * ext[2]:
+    z_rim = box_rim_z(V, span)
+    if z_rim is None:
         return []
     band = V[(V[:, 2] > z_rim - 0.02) & (V[:, 2] <= z_rim + 0.002)]
     base = kin.base(arm)[:3, 3]
