@@ -211,6 +211,10 @@ class Collision:
         # frame) instead of one box: a mug rack is a pole with thin arms, its box covers every hook; the held object is
         # checked against them with its mesh points (``HeldBox.dense``)
         self.parts: dict = {}
+        # label -> (centre xy, radius, z low, z high): a ``parts`` object's boxes inside this cylinder are no obstacle
+        # for the HELD object (the arm and the hand still are): a headset straddling its stand's top (``library``
+        # hang_on_hooks with ``Skills.hang_cradle`` "straddle")
+        self.held_skip: dict = {}
 
     def obstacles(self, ignore=()) -> list[tuple[np.ndarray, np.ndarray, np.ndarray, str]]:
         if self.world is None:
@@ -289,12 +293,25 @@ class Collision:
                     Hb = np.array([o[2] for o in pb])
                     reach = np.abs(Rb) @ Hb[:, :, None]                        # world half extents of each box
                     lo, hi = (Cb - reach[:, :, 0]).min(0), (Cb + reach[:, :, 0]).max(0)
-                    P = pts_parts[np.all((pts_parts >= lo) & (pts_parts <= hi), axis=1)]
-                    if len(P):
-                        loc = (P[None, :, :] - Cb[:, None, :]) @ Rb
-                        hit = np.all(np.abs(loc) <= Hb[:, None, :], axis=2).any(axis=1)
-                        if hit.any():
-                            return False, f"hits {pb[int(np.argmax(hit))][3]}"
+                    groups = [(pts_parts, np.ones(len(pb), bool))]
+                    if held is not None and self.held_skip and any(o[3] in self.held_skip for o in pb):
+                        # the hand against every box, the held object only against the boxes outside held_skip
+                        n_hand = len(links) + len(palm) + len(fingers)
+                        keep = np.ones(len(pb), bool)
+                        for i, o in enumerate(pb):
+                            sk_ = self.held_skip.get(o[3])
+                            if sk_ is not None:
+                                c_xy, r_, z0, z1 = sk_
+                                keep[i] = not (float(np.hypot(*(o[0][:2] - np.asarray(c_xy, float)))) <= r_
+                                               and z0 <= float(o[0][2]) <= z1)
+                        groups = [(pts_parts[:n_hand], np.ones(len(pb), bool)), (pts_parts[n_hand:], keep)]
+                    for P_all, use in groups:
+                        P = P_all[np.all((P_all >= lo) & (P_all <= hi), axis=1)]
+                        if len(P) and use.any():
+                            loc = (P[None, :, :] - Cb[use][:, None, :]) @ Rb[use]
+                            hit = np.all(np.abs(loc) <= Hb[use][:, None, :], axis=2).any(axis=1)
+                            if hit.any():
+                                return False, f"hits {[o for o, u in zip(pb, use) if u][int(np.argmax(hit))][3]}"
             for c, R, h, lab in obs:
                 loc = ((pts_parts if lab in self.parts else pts) - c) @ R
                 inside = np.all(np.abs(loc) <= h, axis=1)

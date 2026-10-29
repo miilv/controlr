@@ -330,6 +330,9 @@ class RuntimeConfig:
     # ``library.push_to``'s strokes (``Skills.push_stroke``): face (today) | press (when no face stroke plans on either
     # axis, a drag with the closed fingertips pressed on the object's top)
     push_stroke: str = "face"
+    # ``library.hang_on_hooks`` on a cradle (``Skills.hang_cradle``): strict (today: the rack's top is an obstacle for
+    # the held object too) | straddle (the held object may straddle the rack's top around the cradle: a headset)
+    hang_cradle: str = "strict"
     # ``stacking.plan_stack``'s reach (``Skills.stack_reach``): centre (today) | grasp (to the planned grasp's TCP)
     stack_reach: str = "centre"
     # ``library.bowl_geometry``'s nest height (``Skills.nest_height``): bins (today) | measured (twin table, else profile)
@@ -523,6 +526,7 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
+                or self.cfg.hang_cradle not in ("strict", "straddle")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
                 or self.cfg.tile_grasp not in ("any", "flat", "prefer")
@@ -816,6 +820,7 @@ class RuntimePolicy:
             sk_.push_order = cfg.push_order
             sk_.arrange_order = cfg.arrange_order
             sk_.push_stroke = cfg.push_stroke
+            sk_.hang_cradle = cfg.hang_cradle
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp
             sk_.tile_recover = bool(cfg.tile_recover)
