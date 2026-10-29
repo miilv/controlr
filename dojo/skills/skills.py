@@ -294,6 +294,7 @@ class Skills:
         # 2 cm slot tolerance goes on) | "regrasp" (put it down and re-plan the leg, as tighter places do)
         self.slot_loose: str = "carry"
         self._loose_regrasp = False
+        self._loose_notes: dict = {}           # label -> notes of its grasps that came out loose (the re-plan skips them)
         self._joint_limits = "wide"
         # ``library.on_targets``' support top (stream H): "bbox" (today: the support's bbox top) | "mesh" (the mesh's
         # surface under the object's whole footprint, flat poses only)
@@ -1952,6 +1953,9 @@ class Skills:
             n_g = n_p = 0
             min_down = math.cos(math.radians(max_pick_tilt))
             n_ik = 0
+            if getattr(self, "_loose_regrasp", False):                   # slot_loose "regrasp": not a loose one again
+                bad = (getattr(self, "_loose_notes", {}) or {}).get(label, ())
+                cands = [g for g in cands if g.note not in bad]
             cands = sorted(cands, key=lambda g: g.score)            # the IK budget goes to the best grasps first
             for g in cands:
                 if n_ik > SCREEN_IK_BUDGET:
@@ -2055,7 +2059,10 @@ class Skills:
             return r
         if r.status == "ok" and self.refine is not None:
             r = self._held_review(pp, r)
-        if r.status == "loose" and (tol_xy < LOOSE_OK_TOL or "in-hand view" in r.note or self._loose_regrasp):
+        if r.status == "loose" and getattr(self, "_loose_regrasp", False):
+            # slot_loose "regrasp": this grasp is not offered again for the object (the same one came out loose twice)
+            self.__dict__.setdefault("_loose_notes", {}).setdefault(pp.label, set()).add(getattr(getattr(pp, "grasp", None), "note", ""))
+        if r.status == "loose" and (tol_xy < LOOSE_OK_TOL or "in-hand view" in r.note or getattr(self, "_loose_regrasp", False)):
             # turned / slid in the pads: put it down, the caller re-plans
             self._record(self.regrasp(pp.arm))
             return SkillResult(False, "transfer", "loose", r.steps, pp.arm, note=r.note)

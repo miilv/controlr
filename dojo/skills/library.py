@@ -1704,10 +1704,12 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
         kw = dict(yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03, ignore=(container, *done),
                   place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
         r = None
-        # "regrasp" (``Skills.slot_loose``): a loose pick is put down and the leg re-planned instead of carried (G3
-        # store_tools v15 draws: 7 of 11 lost tools moved 45-394 mm in the hand during the carry, most after a loose
-        # pick, and were dropped off their slots)
+        # "regrasp" (``Skills.slot_loose``): a loose pick is put down and the leg re-planned with another grasp
+        # instead of carried (G3 store_tools v15 draws: 7 of 11 lost tools moved 45-394 mm in the hand during the
+        # carry, most after a loose pick, and were dropped off their slots; re-picking with the same grasp came out
+        # loose again in 2 of 2)
         sk._loose_regrasp = getattr(sk, "slot_loose", "carry") == "regrasp"
+        sk._loose_notes = {}                 # the grasps that came out loose, per object: the re-plan skips them
         try:
             r = _slot_place(sk, lab, level, tg, kw)
         finally:

@@ -39,8 +39,10 @@ def test_a_loose_slot_pick_is_put_down_only_with_regrasp(monkeypatch):
         Skills.run_transfer(sk, pp, None, tol_xy=0.02)
     assert calls == []
     sk, calls = _sk(monkeypatch, True)
+    pp.grasp = SimpleNamespace(note="box close 2 approach +1 tilt +15 off -11mm")
     r = Skills.run_transfer(sk, pp, None, tol_xy=0.02)
     assert r.status == "loose" and not r.ok and calls == ["left"]
+    assert sk._loose_notes == {"hammer": {"box close 2 approach +1 tilt +15 off -11mm"}}    # not offered again
 
 
 def test_the_flag_is_scoped_to_place_in_slots_and_reset(monkeypatch):
