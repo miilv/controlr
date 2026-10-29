@@ -693,7 +693,9 @@
   move hits egg_basket; via failed: lift ik_fail", or "target unreachable". `fill_holes` plans the drop only after the
   pick. Pairing them (`egg_pair`, branch `feat/dojo-h95-egg-pair`) cut those picks 5 -> 1 on 8 v1 draws but scored the
   same (0.163 vs 0.163) at x3.3 planning time: the eggs it refuses still fail. What binds is the wall's foot (no pick)
-  and the reach to the holes.
+  and the reach to the holes. A slow lift and carry (`egg_carry`, branch `feat/dojo-h95-egg-carry`, journal
+  2026-10-29-dojo-h95-egg-carry) lost fewer eggs in transit but scored the same or lower (0.150 / 0.150, dev 0.235 /
+  0.205). Re-measure on the v15 layouts first: the current fill_egg set is generator v6.
 - [ ] **dojo skills: fill_pen with the joint-5 stop respected** (`joint_limits` "measured"; journal
   2026-10-28-dojo-h95-fill). Many drops now hover 22-24 mm over the rim, because the 6 mm hover needs |q5| > 1.56, and
   some pens still bounce out. pen0, which lies rolled 26 deg on its clip, slips in several grasp families (excluding
