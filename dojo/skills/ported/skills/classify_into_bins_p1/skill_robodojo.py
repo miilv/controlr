@@ -5,6 +5,8 @@
 #   * free sort: more groups than containers keeps the len(containers) largest groups and leaves the rest. v3b's plan2
 #     found no permutation and raised;
 #   * a left item is still an obstacle for v3's motions (it is passed with the objects, never assigned).
+#   * a one-arm step starts with the other arm at home (v3 planned around the idle arm where it stopped, and it refused
+#     carries: "other_arm");
 # The loop, the stages and the fallback are v3b's.
 """classify_into_bins_v3b (RoboDojo, tier A; night K4, 27 Oct 2026): classify_into_bins_v3a with true-size placed
 footprints, spread drops, and the old tier-A drop as a fallback.
@@ -342,6 +344,16 @@ def run(robot, map="auto", pairs=None, noun="basket", lift=0.08, max_picks=2, re
             k, c = s["obj"], s["container"]
             last = i == len(steps) - 1
             rec = {"obj": k, "mode": s["mode"], "container": c}
+            # N: a one-arm step starts with the other arm at home. v3 plans around the idle arm where it stopped (above a
+            # basket after its own drop or put-back), and that arm refused the carries into the middle basket (G3 v1
+            # 100030: "other_arm" at every via height)
+            if s["mode"] in ("direct", "nudge_first") and s.get("arm") in ("left", "right"):
+                idle = "right" if s["arm"] == "left" else "left"
+                if not (o.get("eef") or {}).get(idle, {}).get("at_home", True) and not A.held_look(arm=idle).get("held"):
+                    hp = V3.run(A, "home", objects=[raw_of(j, ob[j]) for j in pending(ob)],
+                                containers=[cont_of(cc, ob[cc]) for cc in conts], placed=placed_entries(ob), arms=[idle])
+                    rec["parked"] = {"arm": idle, "ok": hp.get("ok"), "error": hp.get("error")}
+                    o, ob = truth()
             if s["mode"] == "skip":
                 rec["why"] = s.get("why")
                 log.append(rec)
