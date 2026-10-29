@@ -339,6 +339,9 @@ class RuntimeConfig:
     # ``library.hang_on_hooks``: grasps at least HANG_WIDE_W (35 mm) across planned first, the rest as the fallback
     # (``Skills.hang_wide``; off = today)
     hang_wide: bool = False
+    # articulated objects' geometry for collision and grasps (``Skills.artic_geom``): authored (today: the asset as
+    # authored, e.g. an open laptop) | measured (the measured joint position's: the lid turned about its hinge)
+    artic_geom: str = "authored"
     # ``stacking.plan_stack``'s reach (``Skills.stack_reach``): centre (today) | grasp (to the planned grasp's TCP)
     stack_reach: str = "centre"
     # ``library.bowl_geometry``'s nest height (``Skills.nest_height``): bins (today) | measured (twin table, else profile)
@@ -540,7 +543,7 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
-                or self.cfg.hang_cradle not in ("strict", "straddle")
+                or self.cfg.hang_cradle not in ("strict", "straddle") or self.cfg.artic_geom not in ("authored", "measured")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
                 or self.cfg.tile_grasp not in ("any", "flat", "prefer")
@@ -838,6 +841,7 @@ class RuntimePolicy:
             sk_.push_stroke = cfg.push_stroke
             sk_.hang_cradle = cfg.hang_cradle
             sk_.hang_wide = bool(cfg.hang_wide)
+            sk_.artic_geom = cfg.artic_geom
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp
             sk_.tile_recover = bool(cfg.tile_recover)
