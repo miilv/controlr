@@ -91,6 +91,9 @@ def _layout_seed(prov) -> int:
     return int(zlib.crc32(key.encode()))
 
 
+MAKE_SKILLS_TRIES = 3     # fresh ``Skills`` after a re-plan: tries while its first world read keeps diverging
+
+
 @dataclass
 class RuntimeConfig:
     mode: str = "gt"                    # gt (dev-only upper bound) | perception
@@ -972,8 +975,22 @@ class RuntimePolicy:
         """The default program: supervisor decide -> library skill -> finish on success, re-plan on divergence,
         retry on failure (bounded by the supervisor)."""
         b, events, instruction, library = ctx.bridge, ctx.events, ctx.instruction, ctx.library
-        make_skills, sk = ctx.make_skills, ctx.sk
+        sk = ctx.sk
         result = None
+
+        def make_skills(prev):
+            """``ctx.make_skills``, whose ``Skills`` reads the world (``provider.refresh`` -> resync): a divergence found
+            there is a re-plan too (the belief is already updated), at most ``MAKE_SKILLS_TRIES`` times. It escaped
+            ``_supervise`` before and ended the episode as an error (camera sweep_blocks_random 100005 / 07 / 09: 3
+            of 5 rows). None when every try diverged."""
+            for i in range(MAKE_SKILLS_TRIES):
+                try:
+                    return ctx.make_skills(prev if i == 0 else None)
+                except Divergence as e:
+                    events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used,
+                                   "at": "make_skills"})
+            return None
+
         while True:
             w = sk.refresh()
             d = self.supervisor.decide(instruction, w, events)
@@ -992,12 +1009,16 @@ class RuntimePolicy:
                     res = {**res, "finish": f.status}
             except Divergence as e:
                 events.append({"kind": "divergence_replan", "labels": e.labels, "step": b.steps_used})
-                sk = make_skills(sk)
+                sk = make_skills(sk) or self._stop_diverged(sk, events)
+                if sk is None:
+                    break
                 continue
             except LostObject as e:
                 found = self._search_lost(ctx, e)
                 events.append({"kind": "lost_search", "label": e.label, "found": found, "step": b.steps_used})
-                sk = make_skills(sk)
+                sk = make_skills(sk) or self._stop_diverged(sk, events)
+                if sk is None:
+                    break
                 continue
             except KeyError as e:                    # a label the program needs is not in the WorldState
                 res = {"ok": False, "stage": "world", "error": f"missing object {e}"}
@@ -1009,8 +1030,20 @@ class RuntimePolicy:
             self.report["result"] = result
             if res.get("ok"):
                 break
-            sk = make_skills(sk)
+            sk = make_skills(sk) or self._stop_diverged(sk, events)
+            if sk is None:
+                break
         return result
+
+    def _stop_diverged(self, sk, events) -> None:
+        """Every fresh ``Skills`` diverged: a safe stop (arms home, grippers open: ``finish``) with what is scored so far
+        kept. Always None (the caller ends the episode's program)."""
+        events.append({"kind": "divergence_stop", "step": self.bridge.steps_used})
+        try:
+            sk.finish()
+        except Exception:  # noqa: BLE001 (the stop is best effort; the episode ends either way)
+            pass
+        return None
 
     # ------------------------------------------------------------------ helpers
     def _persist_reads(self, rec: dict | None, stage: str) -> dict | None:
