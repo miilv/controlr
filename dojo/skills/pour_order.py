@@ -71,21 +71,61 @@ def route(text: str, world, routes) -> tuple | None:
     return ("pour_in_order", {"pairs": pairs}, f"{len(pairs)} pours in order: {pairs}")
 
 
+CENTRE_X = 0.05     # m: a bottle this close to x = 0 is on both arms' side (pour_bottle_lean.CENTRE_X)
+
+
+def alternate_arms(xs: list) -> list:
+    """The arm per pour (bottle x in order) that alternates the most between consecutive pours: a bottle right of
+    +CENTRE_X is the right arm's, left of -CENTRE_X the left's, one in between either; ties keep the vendored skill's
+    choice (right for x >= 0). The overlap pace hands a bottle to the other arm only across an arm switch."""
+    import itertools as it
+    free = [i for i, x in enumerate(xs) if abs(x) <= CENTRE_X]
+    best, best_key = None, None
+    for pick in it.product(("right", "left"), repeat=len(free)):
+        arms = ["right" if x > CENTRE_X else "left" if x < -CENTRE_X else None for x in xs]
+        for i, a in zip(free, pick):
+            arms[i] = a
+        key = (sum(a != b for a, b in zip(arms, arms[1:])), sum(a == ("right" if xs[i] >= 0 else "left")
+                                                                for i, a in enumerate(arms)))
+        if best_key is None or key > best_key:
+            best, best_key = arms, key
+    return best
+
+
 def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
     """Pour each [bottle, bowl] in ``pairs`` in order through the ported ``pour_bottle``; stop at the first pour that
     did not run its whole procedure (a later pour must never come before an earlier one)."""
     from dojo.skills.ported import ported
     done = []
+    held = None                     # overlap: the bottle the other arm grasped and lifted during the previous pour
+    plan_arms = None
+    if getattr(sk, "ported_pour_pace", "v1") == "overlap":
+        try:
+            w = sk.refresh()
+            plan_arms = alternate_arms([float(w.obj(b).pos[0]) for b, _ in pairs])
+        except Exception:  # noqa: BLE001 (no world: the skill picks its arms itself)
+            plan_arms = None
     for i, (bottle, bowl) in enumerate(pairs):
         sk.refresh()
         from dojo.skills.planner import pour_bottle_call
-        skill, args = pour_bottle_call(getattr(sk, "ported_pour_aim", "v1"), getattr(sk, "ported_pour_pace", "v1"))
+        pace = getattr(sk, "ported_pour_pace", "v1")
+        skill, args = pour_bottle_call(getattr(sk, "ported_pour_aim", "v1"), pace)
         if skill != "pour_bottle" and i < len(pairs) - 1:
             # a lean pour does not home between pours: the checker banks nothing at home (its arms-home condition is
             # "either arm", and the idle arm never leaves), the next pour starts from the retreat (the skill homes
             # the other arm itself when it switches arms), and the episode's finish homes both at the end
             args["home"] = False
+        if pace == "overlap":
+            # the other arm grasps and lifts the next pair's bottle while this pour runs; that pour then starts with
+            # it in hand. The pours themselves stay strictly in order
+            if i < len(pairs) - 1:
+                args["companion"] = [f"@{pairs[i + 1][0]}", f"@{pairs[i + 1][1]}"]
+            if held is not None:
+                args["pre_held"] = held
+            elif plan_arms:
+                args["arm_pref"] = plan_arms[i]
         r = ported(sk, skill, {"container": f"@{bottle}", "target": f"@{bowl}", **args}, reserve=reserve)
+        held = r.get("companion")
         sk.log(f"[pour_order] {i + 1}/{len(pairs)} {bottle} -> {bowl}: ok {r.get('ok')} verified {r.get('verified')} "
                f"steps {r.get('steps')} {str(r.get('error') or '')[:120]}")
         if not r.get("ok"):

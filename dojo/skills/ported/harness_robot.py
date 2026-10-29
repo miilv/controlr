@@ -60,6 +60,10 @@ REACH_MAX = 0.70                        # flange distance from the arm's mount
 MOUNTS = {"left": np.array([-0.30, -0.45, 0.765]), "right": np.array([0.30, -0.45, 0.765])}
 GRIP_SCALE = (-0.01, 0.044)             # finger joint for g = 0 / 1 (robot_config.yml gripper_scale)
 COMMANDS = ("obs", "move_to", "move_delta", "gripper", "hold", "return_home", "reach", "skill", "held_look")
+# stream H: a two-arm move (both arms' move_to targets in one synchronised move), for pour_bottle_lean's overlap pace
+# only. Off unless the adapter is built with ``pair_moves=True`` (``ported`` sets it for ``ported_pour_pace``
+# "overlap"); every other caller gets "unknown command", as before
+PAIR_COMMANDS = ("move_pair",)
 SETTLE_MAX = 3                          # camera mode: extra still steps after a close while the official reading moves
 SETTLE_EPS = 0.002                      # official-reading change (0..1) that counts as "still moving"
 # the runtime's control-flow exceptions (dojo.runtime.belief: a confirmed divergence re-plans, a lost object is searched):
@@ -317,8 +321,10 @@ def is_gt_provider(provider) -> bool:
 class HarnessRobot:
     """``robot`` for a vendored skill: ``robot.<verb>(**kw) -> reply dict`` (robot-harness's ``LocalRobot``)."""
 
-    def __init__(self, sk, reserve: int = 20, truth: bool | None = None, root: str = PORTED_ROOT, log=None):
+    def __init__(self, sk, reserve: int = 20, truth: bool | None = None, root: str = PORTED_ROOT, log=None,
+                 pair_moves: bool = False):
         self.sk = sk
+        self.pair_moves = bool(pair_moves)
         self.ex = sk.ex
         self.truth = is_gt_provider(sk.provider) if truth is None else bool(truth)
         if self.truth and not is_gt_provider(sk.provider):
@@ -833,6 +839,30 @@ class HarnessRobot:
         out.update(arm=arm, orientation=qsrc, target_tcp=[round(float(v), 4) for v in a.get("pos", fl[:3])])
         return out
 
+    def cmd_move_pair(self, a) -> dict:
+        """Both arms to their TCP targets in one synchronised move (stream H, ``pair_moves`` only): ``moves`` =
+        {arm: {pos, quat, speed, max_dev, path}}. Atomic like every move: when one arm's plan is refused neither
+        moves. The reply has each arm's ``motion_reply`` under ``arms``."""
+        moves = a.get("moves") or {}
+        if not moves or any(arm not in ARMS for arm in moves):
+            raise CmdError(f"move_pair needs moves={{arm: {{pos, ...}}}} for left / right, got {list(moves)}", "")
+        cmds = {}
+        for arm, m in moves.items():
+            if m.get("pos") is None:
+                raise CmdError(f"move_pair: {arm} needs pos", "")
+            q, _ = self.target_quat(m, self.flange(arm)[3:7])
+            cmd = {"flange": flange_from_tcp(m["pos"], q).tolist(), "path": m.get("path", "auto"),
+                   "speed": m.get("speed", "normal")}
+            if m.get("max_dev") is not None:
+                cmd["max_dev"] = float(m["max_dev"])
+            cmds[arm] = cmd
+        res = self.op_move({"arms": cmds, "ramp": int(a.get("ramp", 2)), "max_steps": a.get("max_steps"),
+                            "reserve": int(a.get("reserve", self.reserve)), "dry_run": bool(a.get("dry_run"))})
+        arms = {arm: self.motion_reply(res, arm, float(m.get("tol", 0.01)), float(m.get("rot_tol_deg", 5.0)))
+                for arm, m in moves.items()}
+        return {"moved": bool(res.get("moved")), "steps": res.get("steps", 0), "planned_steps": res.get("planned_steps"),
+                "plan_fail_reason": res.get("plan_fail_reason"), "refused_arm": res.get("refused_arm"), "arms": arms}
+
     def cmd_move_delta(self, a) -> dict:
         arm = self.arm_arg(a)
         fl0 = self.flange(arm)
@@ -947,7 +977,7 @@ class HarnessRobot:
         t0 = time.time()
         n0 = self.steps()
         try:
-            if cmd not in COMMANDS:
+            if cmd not in COMMANDS and not (self.pair_moves and cmd in PAIR_COMMANDS):
                 raise CmdError(f"unknown command {cmd!r}", f"commands: {list(COMMANDS)}")
             rep = {"ok": True, **getattr(self, "cmd_" + cmd)(kw)}
         except TruthDenied:

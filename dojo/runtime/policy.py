@@ -412,7 +412,8 @@ class RuntimeConfig:
     ported_classify: str = "v3b"
     # ... the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
     # (pour_bottle_lean: the tilt-up to 90 deg and the untilt at normal speed, a 12-step drain, no home between pours):
-    # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way
+    # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way | overlap (v1's stages at 0.8 of the
+    # held joint limit, a 12-step drain, the other arm grasping the next bottle during each pour, no homes)
     ported_pour_pace: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
@@ -506,7 +507,7 @@ class RuntimePolicy:
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
-                or self.cfg.ported_pour_pace not in ("v1", "lean")
+                or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")

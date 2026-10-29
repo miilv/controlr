@@ -692,15 +692,13 @@
   2026-10-29-dojo-h95-put-bottles-v15; G3 v15 dev draws 13/16).
   - An arm's reset home after a failed pick sweeps straight through and knocked a standing bottle over (100032).
   - The left arm's side pinch on standing bottles slips (rose -59 / -92 mm; 100032, 100049).
-- [ ] **dojo skills: pour_by_language, the lean pour's remaining failures** (stream H, journal
-  2026-10-29-dojo-h95-pour-lean; `ported_pour_pace` "lean", G3 3/10, successes end at steps 721-754 of 800).
-  Failures:
-  - 5 of 7 are in-hand slips, mostly on the left arm. Three start in v1's normal-speed carry over the cup when that
-    move is long (20-34 steps).
-  - 1 move was refused mid-profile, and 1 episode ran out of steps.
-  Next:
-  - a slow carry when the carry is long;
-  - the idle arm grasping the next bottle while the current pour runs (the pours stay in order).
+- [ ] **dojo skills: pour_by_language, what binds after the overlap pace** (stream H, journals
+  2026-10-29-dojo-h95-pour-lean and -pour-overlap; `ported_pour_pace` "overlap", G3 5/10, successes end at 682-747 of
+  800; camera mode adds 42-46 look steps).
+  - Bottle orders that cannot alternate arms (right, centre, left) get no hand-over and run out of steps.
+  - A companion of the centre bottle is unsafe between both bowls. A collision-aware companion check (the pouring
+    bottle's swept volume, not a fixed 0.20 m around the bowl) could allow more hand-overs.
+  - Lean (normal-speed moves) slips: 5 of 12 camera pours.
   Landmine: the checker's arms-home trigger is "either arm" (a nested list ORs), so the 20/50 tiers never bank with
   single-arm pours. We do not exploit that (the lead's ruling); only the full success scores.
 - [ ] **dojo skills: sweep_blocks(_random): stroke reach binds** (stream H, journal 2026-10-29-dojo-h95-sweep). G3 v1
