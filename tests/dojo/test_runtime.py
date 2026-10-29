@@ -1544,6 +1544,19 @@ def test_watch_relocate_off_by_default_lays_the_tile_where_it_stood():
     assert np.allclose(o.pos[:2], slot) and pc.bases == []
 
 
+def test_frame0_is_kept_only_when_save_look_frames_is_on(monkeypatch):
+    from dojo.runtime import policy as P
+    monkeypatch.setattr(P, "_png", lambda im: b"png")                 # no cv2 in the unit-test venv
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", save_look_frames=True))
+    obs = {"instruction": STACK, "state": {"left_arm_joint_state": np.zeros(6)},
+           "images": {"cam_head": np.zeros((4, 4, 3), np.uint8)}}
+    pol._keep_frame("frame0", obs)
+    assert set(pol.report["look_frames"]["frame0"]["png"]) == {"cam_head"}
+    off = RuntimePolicy(RuntimeConfig(mode="perception"))
+    off._keep_frame("frame0", obs)
+    assert "look_frames" not in off.report
+
+
 @pytest.mark.parametrize("needs", [False, True])
 def test_agentic_budget_estimates_at_frame0_and_once_more_only_when_perception_asks(needs):
     env = _env()
@@ -1796,6 +1809,7 @@ def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs,
     ev = next(e for e in rep["events"] if e["kind"] == "scan")
     lf = rep.get("look_frames") or {}
     assert ("scan" in lf) == ran                                     # the scan frame kept for replay (save_look_frames)
+    assert "frame0" in lf and set(lf["frame0"]["png"]) == set(FakeEpisode(env).observe()["images"])   # scan or not
     if ran:
         assert set(lf) >= {"frame0", "scan"} and set(lf["scan"]["png"]) == set(FakeEpisode(env).observe()["images"])
         assert np.allclose(lf["scan"]["state"]["left_arm_joint_state"][:6], scan_q["left"], atol=1e-3)
