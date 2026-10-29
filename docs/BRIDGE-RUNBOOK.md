@@ -218,6 +218,25 @@ scripts/dojo/official_eval.sh --task press_by_number --layouts "100000 100001 10
 python -m dojo.bridge.official compare --official ~/dojo-data/official/runs/<id> --integ <integ_eval out dir> --md pair.md
 ```
 
+**A sealed joint block (D-C19).** This is the only way ids >= 100100 run; every other call refuses them:
+
+```bash
+scripts/dojo/official_eval.sh --candidate CANDIDATE.txt --task T --layouts "100100 100101" \
+    --sealed-block <sealed dir> --manifest <manifest.json> --lock <the lock agreed for the joint run>
+```
+
+- **The manifest (`dojo.simlab.sealed`):**
+  `{"tasks": {T: {"settled": true|false, "records": {"100100": "<md5>", ...}}}}`. Records are
+  `DIR/T/<id>.settled.json`, or `<id>.json` where `settled` is false (make_toast, the conveyors).
+- **Checks:** only listed ids run, all >= 100100. Each record's md5 is checked before it is staged into the run's
+  layout dir (read-only, nowhere else), and again in RoboDojo's process (`SIMLAB_SEALED_MANIFEST`). A mismatch or an
+  unlisted id refuses the call before anything starts.
+- **No dev path:** logs name id, md5 and pass/fail only. robot-harness's server runs without `--dev` (no truth log), and
+  HARNESS_DEV / HARNESS_PRIVILEGED are refused.
+- **Lock:** `--lock` has no default.
+- **Pre-flight before tranche A:** `scripts/dojo/route_probe.py` makes one tiny call on the agentic route (ok /
+  rate-limited / error). `freeze_manifest.py --route-probe` records it.
+
 **The candidate on this path (D-C19).** `--candidate ~/dojo-integ-c4-state/CANDIDATE.txt` takes Integration's file
 verbatim:
 - preset, `--config`, and `--setenv` (for our processes only);
