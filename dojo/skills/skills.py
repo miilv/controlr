@@ -297,7 +297,8 @@ class Skills:
         # ``library.push_to``'s axis order (stream H): "greedy" (today: most left to go first) | "lookahead" (the other
         # axis first when its stroke would be blocked once the first is done)
         self.push_order = "greedy"
-        # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first"
+        # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
+        # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"
         # ``library.push_to`` (stream N): "face" (today: fingertips against a face) | "press" (when no face stroke plans,
         # drag with the fingertips pressed on the top)

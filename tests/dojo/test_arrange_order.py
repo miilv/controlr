@@ -24,7 +24,8 @@ def _rows():
                  quat=[1, 0, 0, 0], half=[0.05, 0.05, 0.02])]
 
 
-@pytest.mark.parametrize("order,expected", [("near", ["small", "big"]), ("big_first", ["big", "small"])])
+@pytest.mark.parametrize("order,expected", [("near", ["small", "big"]), ("big_first", ["big", "small"]),
+                                            ("push_big_first", ["kb", "big", "small"])])
 def test_arrange_order(monkeypatch, order, expected):
     env = KinematicEnv(_rows(), step_lim=300)
     sk = Skills(env, GTProvider(env, None), reserve=30)
@@ -34,8 +35,9 @@ def test_arrange_order(monkeypatch, order, expected):
     monkeypatch.setattr(library, "_on_targets", lambda sk_, obj, sup: ([np.eye(4)], False))
     monkeypatch.setattr(library, "place_oriented", lambda sk_, obj, tg, **kw: done.append(obj) or SkillResult(
         True, "place", "ok", 0, None))
-    r = library.arrange(sk, [("place", "small", "pad_a"), ("place", "big", "pad_b")])
-    assert r["ok"] and done == expected
+    monkeypatch.setattr(library, "push_to", lambda sk_, obj, xy: done.append("kb") or SkillResult(True, "push", "ok", 0, None))
+    r = library.arrange(sk, [("place", "small", "pad_a"), ("push", "kbd", "pad_a"), ("place", "big", "pad_b")])
+    assert r["ok"] and [d for d in done if order == "push_big_first" or d != "kb"] == expected
 
 
 def test_arrange_order_default_near():
