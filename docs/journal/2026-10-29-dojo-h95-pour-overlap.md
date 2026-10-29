@@ -118,3 +118,6 @@ G3 check (v1 draws 100030-39, same code): 5/10 → 5/10, 0 up / 0 down.
 - G3's own near misses (100033, 100035, 100038) are truly out of steps: 14-20 left at the refused move.
 - So the fix can only show in camera mode, where the refused moves had 34-47 steps left. Integration's compute4
   A/B is the judge.
+
+**#332 on camera** (compute4, 4f90f975, ovlres vs ovlon): identical at 7 pairs (5.7 vs 5.7, ties everywhere, 0
+successes). The refused upright was not the only blocker, and the near misses do not flip. pour_by_language stays parked.
