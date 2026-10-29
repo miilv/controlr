@@ -203,6 +203,14 @@ def merge_into_record(rec: dict, objects: list[dict], unmatched_cost_m: float = 
                     log.append(ev)
             else:
                 n = N[j - len(B)]
+                if n.get("raised") and (cat in digits.GLYPH_ONLY
+                                        or (cat in digits.DIGIT_OF and digits.as_digit(o.get("value")) is None)):
+                    # a label a count raise added (series_link_raise) is only looked for: the agent's object counts only
+                    # with a digit read, and a 3-D numeral's digit comes from the glyph reader alone, never the agent
+                    # (slrchk2 lnumr 100001: an unread "rigid0" at a clutter spot stopped the skill at "digits unknown",
+                    # where "4 read + 1 not found" places four tiles)
+                    log.append({"label": n["label"], "action": "raised_unread_skipped"})
+                    continue
                 a = str(o.get("asset") or "").split("/")
                 key = o["asset"] if len(a) == 3 and a[1] == cat else next(k for k in n["_keys"] if k.split("/")[1] == cat)
                 typ, _, idx = key.split("/")
