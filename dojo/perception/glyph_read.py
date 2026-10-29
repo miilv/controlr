@@ -26,6 +26,17 @@ MIN_PX = 40
 # >= 98 % precision, ring >= 0.3 fell to ~85 %.
 ROBOT_RING_MAX = 0.3
 RING_PX = 3
+# ``EstimatorConfig.glyph_upright`` (default off): a wrist crop is turned so that world +y at the object points up in
+# the image before the classifier reads it (``upright_deg``, ``turn_upright``). The digit model was trained on head
+# crops (world +y up within ~16 deg) and on wrist crops at the home flange's roll (within ~70 deg), with a small
+# rotation augmentation (a 6 turned over is a 9). The straight-down look-over (``regrasp._look_move``, wrist yaw 0
+# first) rolls the wrist camera 180 deg against that: in the rendered arrange rows 17 of 18 wrist reads of a 6 / 9
+# named its twin at a confident margin, and 2 / 3 / 4 / 5 / 7 fell below it (stream W, journal
+# 2026-10-29-dojo-glyph-upright). Only for flat glyphs lying face up, whose up is world +y within 45 deg (numerals and operators: the
+# layouts' rotate_deg, and our places). make_kong's standing tiles have no such up, and its reader is roll-invariant
+# on the dev wrist crops.
+UPRIGHT_MODELS = ("digit",)
+UPRIGHT_STEP_M = 0.03
 
 
 def crop_square(img: np.ndarray, bbox: tuple, size: int = 128, margin: float = 0.25) -> np.ndarray:
@@ -134,9 +145,59 @@ def robot_ring(mask: np.ndarray, robot: np.ndarray, px: int = RING_PX) -> float:
     return float(np.asarray(robot, bool)[ring].mean()) if ring.any() else 0.0
 
 
+def upright_deg(cam, center, up=(0.0, 1.0, 0.0), step: float = UPRIGHT_STEP_M) -> float | None:
+    """How far world ``up`` at ``center`` is turned from image up in ``cam`` (deg, clockwise on screen: 0 = up,
+    90 = right, 180 = upside down); turning the image counter-clockwise by it (``turn_upright``) puts ``up`` up. None
+    when a point is behind the camera or the projection is under a pixel (looking along ``up``)."""
+    c = np.asarray(center, float).reshape(3)
+    uv, z = cam.project(np.stack([c, c + step * np.asarray(up, float)]))
+    if np.any(np.asarray(z) <= 0):
+        return None
+    v = np.asarray(uv[1], float) - np.asarray(uv[0], float)
+    if float(np.hypot(v[0], v[1])) < 1.0:
+        return None
+    return float(np.degrees(np.arctan2(v[0], -v[1])))
+
+
+def turn_upright(img: np.ndarray, mask: np.ndarray, deg: float) -> tuple[np.ndarray, np.ndarray]:
+    """``img`` and ``mask`` turned counter-clockwise (on screen) by ``deg`` about the mask's bbox centre: a square patch
+    around it, large enough for the classifier's crop of the turned mask (``crop_square``: +25 % per side), the image
+    border-replicated past its edge like that crop. Bilinear for the image, nearest for the mask. numpy only. Returns
+    (uint8 image patch, bool mask patch)."""
+    x0, y0, x1, y1 = mask_bbox(np.asarray(mask) > 0)
+    diag = max(float(np.hypot(x1 - x0 + 1, y1 - y0 + 1)), 8.0)
+    R = int(np.ceil(1.1 * diag)) + 2           # the turned bbox's crop (half <= 0.75 diag) fits, corners included
+    cx, cy = int(round((x0 + x1) / 2)), int(round((y0 + y1) / 2))
+    t = np.radians(float(deg))
+    c, s_ = np.cos(t), np.sin(t)
+    d = np.arange(-R, R + 1, dtype=float)
+    du, dv = np.meshgrid(d, d)                 # output offsets (x right, y down) from the centre
+    # the source of each output pixel: the inverse of the counter-clockwise turn (right -> up for 90 deg)
+    sx = cx + du * c - dv * s_
+    sy = cy + du * s_ + dv * c
+    im = np.asarray(img)
+    H, W = im.shape[:2]
+    x_ = np.clip(sx, 0, W - 1)
+    y_ = np.clip(sy, 0, H - 1)                 # clamped: border-replicated
+    xa, ya = np.floor(x_).astype(int), np.floor(y_).astype(int)
+    xb, yb = np.minimum(xa + 1, W - 1), np.minimum(ya + 1, H - 1)
+    fx, fy = (x_ - xa), (y_ - ya)
+    if im.ndim == 3:
+        fx, fy = fx[..., None], fy[..., None]
+    f = im.astype(np.float32)
+    out = (f[ya, xa] * (1 - fx) * (1 - fy) + f[ya, xb] * fx * (1 - fy) + f[yb, xa] * (1 - fx) * fy
+           + f[yb, xb] * fx * fy)
+    m = np.asarray(mask) > 0
+    xn, yn = np.rint(sx).astype(int), np.rint(sy).astype(int)
+    inside = (xn >= 0) & (xn < W) & (yn >= 0) & (yn < H)
+    mo = np.zeros(xn.shape, bool)
+    mo[inside] = m[yn[inside], xn[inside]]
+    return np.clip(np.rint(out), 0, 255).astype(np.uint8), mo
+
+
 def classify_mask(img: np.ndarray, mask: np.ndarray, view: str = "cam_head", held: bool = False, client_=None,
                   robot: np.ndarray | None = None, robot_ring_max: float = ROBOT_RING_MAX,
-                  category: str | None = None) -> dict:
+                  category: str | None = None, upright_deg: float | None = None) -> dict:
     """One glyph read of an object outlined by ``mask`` in ``img`` (a detector's / segmenter's mask: no fitted pose
     needed, e.g. the number tiles B1 has no geometry for). ``view`` picks the margin kind (head / wrist, held_*).
     ``robot``: the arms' pixels in this view (bool, e.g. ``~known`` of a B1 view or ``render.robot_mask``); with it a
@@ -145,7 +206,8 @@ def classify_mask(img: np.ndarray, mask: np.ndarray, view: str = "cam_head", hel
     Returns {"read", "name", "class", "margin", "why"}; no read below the margin, on a back, for a mask cut by the
     image border (a cut digit is another digit: 8 -> 3, the margins are calibrated without those), next to an arm,
     or without a server. ``category``: the object's asset category picks the reader (``client(category)``; a server of
-    another model gives no read, "wrong model")."""
+    another model gives no read, "wrong model"). ``upright_deg`` (``glyph_upright``): the crop is turned by it
+    (``turn_upright``) after the edge / arm checks on the view's own mask, and the read carries ``turned`` (deg)."""
     m_ = np.asarray(mask) > 0
     bb = mask_bbox(m_)
     if bb is None or int(m_.sum()) < MIN_PX:
@@ -157,6 +219,13 @@ def classify_mask(img: np.ndarray, mask: np.ndarray, view: str = "cam_head", hel
     c = client_ or client(category)
     if c is None:
         return {"read": False, "why": "no glyph server"}
+    turned = {}
+    if upright_deg is not None:
+        img, m_ = turn_upright(img, m_, upright_deg)
+        bb = mask_bbox(m_)
+        if bb is None:
+            return {"read": False, "why": "not visible"}
+        turned = {"turned": round(float(upright_deg), 1)}
     try:
         r = c.classify(img, [bb])
     except WrongModel:
@@ -166,7 +235,7 @@ def classify_mask(img: np.ndarray, mask: np.ndarray, view: str = "cam_head", hel
     thr = margins.get(f"held_{kind}", margins.get(kind, 1.0)) if held else margins.get(kind, 1.0)
     top, m, ok, why = decide(P, n_glyph, float(thr))
     return {"read": ok, "name": None if top == n_glyph else class_name(r, top), "class": top, "margin": round(m, 3),
-            "why": why}
+            "why": why, **turned}
 
 
 # --------------------------------------------------------------------------------------------

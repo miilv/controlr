@@ -141,5 +141,8 @@ def test_numeral_reader_reraises_a_dead_server_but_keeps_other_errors_quiet(monk
     pytest.importorskip("cv2")
     from dojo.perception import inverse_layout as il
 
-    src = inspect.getsource(il._glyph_read_numeral)
+    # the numeral / config-slot reads go through _glyph_views (the reader's handlers live there; a behavioural check
+    # with an erroring server: test_glyph_upright.test_an_erroring_glyph_server_is_infra_in_both_read_paths)
+    assert "_glyph_views(" in inspect.getsource(il._glyph_read_numeral)
+    src = inspect.getsource(il._glyph_views)
     assert src.index("except SideServerDown") < src.index("except Exception")

@@ -1075,7 +1075,8 @@ class RuntimePolicy:
                 o.identity_known = True
             self.report["events"].append({"kind": "digit_read", "label": label, "step": self.bridge.steps_used,
                                           "read": d, "why": why or g.get("why"), "before": list(before),
-                                          "after": [o.digit, o.digit_conf, o.digit_source]})
+                                          "after": [o.digit, o.digit_conf, o.digit_source],
+                                          **({"turned": g["turned"]} if g.get("turned") is not None else {})})
             return
         name = g.get("name") if g.get("read") else None
         if name is None or d is not None:

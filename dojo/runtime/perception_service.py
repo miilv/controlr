@@ -815,17 +815,24 @@ class _Perception:
             T = pose_to_T(np.asarray(pose7[:3], float), np.asarray(pose7[3:7], float))
             from dojo.perception.inverse_layout import _takes_robot
             views = [f"cam_{arm}_wrist"] + (["cam_head"] if model == "kong" else [])
+            # glyph_upright: a flat glyph's wrist crop turned so world +y points up (the look-over rolls the wrist 180)
+            upright = self.cfg(fold).glyph_upright == "on" and model in glyph_read.UPRIGHT_MODELS
             best, whys = None, {}
             for view in views:
                 if view not in cams or view not in f["images"]:
                     continue
                 m = _shape_for(key, T[:3, :3], None).sil(cams[view], T)
+                kw = {}
+                if upright and view != "cam_head":
+                    deg = glyph_read.upright_deg(cams[view], T[:3, 3])
+                    if deg is not None:
+                        kw["upright_deg"] = deg
                 if _takes_robot(classify):       # S's reader v2: a tile half hidden by the gripper is refused
                     from dojo.perception.render import robot_mask
                     rob = robot_mask(cams[view], f["state"], closed_jaws=False) > 0
-                    r = classify(f["images"][view], m, view=view, robot=rob, category=cat)
+                    r = classify(f["images"][view], m, view=view, robot=rob, category=cat, **kw)
                 else:
-                    r = classify(f["images"][view], m, view=view, category=cat)
+                    r = classify(f["images"][view], m, view=view, category=cat, **kw)
                 whys[view] = r.get("why")
                 if r.get("read") and (best is None or float(r.get("margin") or 0) > float(best.get("margin") or 0)):
                     best = {**r, "view": view}
@@ -834,6 +841,8 @@ class _Perception:
                     ",".join(f"{v}:{w}" for v, w in whys.items())
                 return {"read": False, "name": None, "margin": None, "why": why}
             out = {k: best.get(k) for k in ("read", "name", "margin", "why")}
+            if best.get("turned") is not None:
+                out["turned"] = best["turned"]
             if model == "kong":
                 out["view"] = best["view"]
             return out
