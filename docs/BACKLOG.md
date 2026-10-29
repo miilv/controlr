@@ -335,6 +335,14 @@
     Next: a lateral via around the drawer, or a lower pre-place (motion-level).
   - **The alarm:** pick slips with "top axis 0 tilt 40" (4-5 of 14), and no plan in 2-4 of 14.
   - **The keyboard:** pushes overshoot and turn it up to 34 deg.
+  Stream H (journal 2026-10-29-dojo-h95-organize-v15), switch `push_goal` "cover" | "cover_obb" (default "centre"),
+  G3 mode gt on 17 v15 dev draws (100030-49). Every arm is within noise of today's 0.397: "cover" + lookahead 0.397,
+  + mesh + press 0.426, "cover_obb" + lookahead + mesh 0.412 (2 up / 1 down). The keyboard has two classes left:
+  - **No +x stroke** ("no push stroke along axis 0", 5/17 in every arm). The goal can't fix these.
+  - **Yawed 17-42 deg.** Rotated 25 deg, the keyboard can cover the checker's rect only within about 5 mm of centred,
+    so `push_to`'s 12 mm tolerance is too loose. Rotated much past 27 deg it can't cover the rect at all, and more
+    strokes turn it further.
+  Next: a yaw-correcting stroke before the translation. Off-centre strokes were tried before (longh) without a gain.
 - [ ] **dojo skills: tic-tac-toe "wait opponent (timeout)" on layout 100003.** The opponent's move is never counted, the
   wait times out, and the episode ends not_home with the board unfinished:
   - c4b_ttt_gcoff_100003 (8dae375, 949/1100, own 4 / opp 3);
