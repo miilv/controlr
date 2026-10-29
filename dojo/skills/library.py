@@ -2185,6 +2185,40 @@ def _push_stroke(sk: Skills, o, label: str, u, step: float, centre=None):
     return None
 
 
+PRESS_DEPTH = 0.003      # m: the fingertips' press below the top of a dragged object (``_press_stroke``)
+
+
+def _press_stroke(sk: Skills, o, label: str, u, step: float):
+    """``Skills.push_stroke`` "press": drag ``o`` along world unit ``u`` by ``step`` with the closed fingertips pressed
+    ``PRESS_DEPTH`` into its top at its centre (no face to reach: organize_table's keyboard, whose sideways face stroke
+    starts 0.24 m out from its centre, by the drawer or the garage, "no push stroke along axis 0" in 13/14 G3 rows). An
+    ``ArmPlan`` or None."""
+    from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
+    c = o.center_w[:2]
+    z = float(o.top_z) - PRESS_DEPTH + TIP_BEYOND_TCP
+    z_ab = float(o.top_z) + 0.03 + TIP_BEYOND_TCP
+    yaw = math.atan2(u[1], u[0]) + math.pi / 2
+    end = c + np.asarray(u, float) * step
+    arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - c)))
+    for arm in arms:
+        for yw in (yaw, yaw + math.pi):
+            T_ab = T_from([c[0], c[1], z_ab], down_R(yw))
+            T_s = T_from([c[0], c[1], z], down_R(yw))
+            T_e = T_from([end[0], end[1], z], down_R(yw))
+            T_up = T_from([end[0], end[1], z_ab], down_R(yw))
+            m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "press_above", gripper=CLOSED, ignore=(label,))
+            if not m1.ok:
+                continue
+            m2 = sk.motion.line(arm, m1.q_end, T_s, SLOW, "press_down", gripper=CLOSED, ignore=(label,))
+            m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, T_e, 0.04, "press_drag", gripper=CLOSED,
+                                ignore=(label,), max_step_m=0.01)
+            if not (m2.ok and m3.ok):
+                continue
+            m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "press_up", gripper=CLOSED, check=False)
+            return ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3).move(m4)
+    return None
+
+
 def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.08, max_iter: int = 10) -> SkillResult:
     """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time (the one with the most
     left to go first, the other when that one has no stroke): closed fingertips against the middle of the
@@ -2230,6 +2264,15 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
                 push_u, push_step = u, step
                 break
             why.append(f"axis {k}")
+        if plan is None and getattr(sk, "push_stroke", "face") == "press":
+            # no face stroke on either axis: drag it with the closed fingertips pressed on its top
+            for comp, k, u, step in todo:
+                plan = _press_stroke(sk, o, label, u, step)
+                if plan is not None:
+                    push_u, push_step = u, step
+                    sk.log(f"[push] {label}: press stroke along axis {k} ({step * 1000:.0f} mm)")
+                    break
+                why.append(f"press {k}")
         if plan is None:
             return sk._record(SkillResult(False, "push", "ik_fail", sk.ex.steps_used - n0, None,
                                           note=f"{label}: no push stroke along {', '.join(why) or 'any axis'}"))

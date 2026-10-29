@@ -44,3 +44,30 @@ def test_arrange_order_default_near():
     assert RuntimeConfig().arrange_order == "near" and SKILL_ATTRS["arrange_order"][0] == "near"
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(arrange_order="random"))
+
+
+def _kb_rows():
+    return [dict(label="keyboard", category="keyboard", category_idx=0, pos=[0.0, -0.22, Z + 0.0125], quat=[1, 0, 0, 0],
+                 half=[0.22, 0.065, 0.0125]),
+            dict(label="wall", category="drawer", category_idx=0, pos=[-0.27, -0.22, Z + 0.1], quat=[1, 0, 0, 0],
+                 half=[0.03, 0.12, 0.1])]
+
+
+@pytest.mark.parametrize("stroke", ["face", "press"])
+def test_press_stroke_when_no_face_stroke_plans(stroke):
+    """The sideways face stroke would start 0.24 m out from the keyboard's centre, inside a box: "face" (today) has no
+    stroke; "press" drags it with the fingertips on its top."""
+    env = KinematicEnv(_kb_rows(), step_lim=400)
+    logs = []
+    sk = Skills(env, GTProvider(env, None), reserve=30, log=logs.append)
+    sk.push_stroke = stroke
+    r = library.push_to(sk, "keyboard", np.array([0.08, -0.22]))
+    if stroke == "face":
+        assert r.status == "ik_fail" and "no push stroke" in r.note and r.steps == 0
+    else:                                   # the kinematic env does not drag the keyboard: the stroke plans and runs
+        assert r.steps > 0 and any("press stroke" in m for m in logs), (r.status, r.note)
+
+
+def test_push_stroke_default_face():
+    from dojo.runtime.policy import RuntimeConfig
+    assert RuntimeConfig().push_stroke == "face"
