@@ -68,6 +68,13 @@ UPRIGHT_CARRY = 0.04                # rad/step, eased: mode B's upright carry to
                                     # lagged 2.2 mm and the key swung 5 deg in the pads on the way, twin)
 VIA_UP = 0.08                       # m: the via over the receptacle when the direct move to its hover does not plan
 PLACE_CHECKS = 6                    # handover candidates whose taker place is planned before one is chosen
+# ``Skills.key_handover`` "v2" (default "v1"): v15 dev layouts 100030-49, G3 mode A 7/20 with no handover: 3 found no
+# handover pose (every taker grasp within HAND_CLEAR of the giver's hand, 3336 of 3336, with the first two lengthwise
+# picks), 4 found handovers whose taker place did not plan (the joint move to the hover hit the lock or the table, the
+# via 8 cm over it out of reach at z 1.02-1.08)
+V2_PICKS = 4                        # lengthwise picks tried as the giver's grasp (v1: 2)
+V2_PLACE_CHECKS = 16                # handover candidates whose taker place is planned (v1: PLACE_CHECKS)
+V2_VIA_UPS = (0.08, 0.05, 0.03, 0.12)   # m: vias over the receptacle, in order (v1: VIA_UP only)
 TURN_FRACTIONS = (1.0, 0.85, 0.7, 0.6)
 TURN_LIFT = 0.0009                  # m: the object is turned this far above where it seated
 TURN_STEP_DEG = 3.0                 # deg per env step of that turn ...
@@ -281,10 +288,16 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
             notes.append(f"{g_arm} lengthwise pick: {picks.note[:80]}")
             continue
         best, sols = None, []
+        rej = {"giver_ik": 0, "clear": 0, "pre_ik": 0, "take_ik": 0, "apart": 0, "poses": 0}
         R_up = np.asarray(targets[0], float)[:3, :3]
-        for pp, R_base in [(pp, R) for R in ([R_up] if upright else []) + [None] for pp in picks[:2]]:
+        v2 = getattr(sk, "key_handover", "v1") == "v2"
+        n_picks = V2_PICKS if v2 else 2
+        bases = ([R_up] if upright else []) + [None] + ([R_up] if v2 and not upright else [])
+        for pp, R_base in [(pp, R) for R in bases for pp in picks[:n_picks]]:
             if upright and R_base is None and sols:
                 break                                   # upright handovers found: the as-lifted ones not needed
+            if v2 and not upright and R_base is R_up and sols:
+                break                                   # v2: the upright pass only when the as-lifted one found none
             g_hold = gap_to_grip(pp.grasp.width)
             T_lift = sk.kin.tcp(g_arm, pp.plan.q_end) @ pp.T_tcp_obj
             R_base = T_lift[:3, :3] if R_base is None else R_base
@@ -297,7 +310,9 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                         R_H = rot_z(2 * math.pi * j / 12) @ R_base
                         T_H = T_from(np.array([hx, hy, hz]) - R_H @ G.mesh_com(o.asset), R_H)
                         rg = sk.kin.ik(g_arm, T_H @ inv_T(pp.T_tcp_obj), pp.plan.q_end, n_random=0 if R_base is not R_up else 2)
+                        rej["poses"] += 1
                         if not rg.ok:
+                            rej["giver_ik"] += 1
                             continue
                         P_give = _hand_points(sk, sk.kin.flange(g_arm, rg.q), g_hold)
                         for note, T_ko, width, g_open, T_tg, frac in fam:
@@ -307,13 +322,18 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                             pre[:3, 3] -= Tt[:3, 0] * 0.06
                             if (_min_dist(P_give, _hand_points(sk, sk.kin.flange_from_tcp(Tt), g_open)) < HAND_CLEAR
                                     or _min_dist(P_give, _hand_points(sk, sk.kin.flange_from_tcp(pre), g_open)) < HAND_CLEAR):
+                                rej["clear"] += 1
                                 continue
                             rp = sk.kin.ik(t_arm, pre, w.home_q[t_arm], n_random=4)
                             if not rp.ok:
+                                rej["pre_ik"] += 1
                                 continue
                             rt = sk.kin.ik(t_arm, Tt, rp.q, n_random=0)
-                            if not rt.ok or not _grippers_apart(sk, g_arm, rg.q, g_hold, t_arm, rt.q, g_open,
-                                                                min_d=HAND_CLEAR):
+                            if not rt.ok:
+                                rej["take_ik"] += 1
+                                continue
+                            if not _grippers_apart(sk, g_arm, rg.q, g_hold, t_arm, rt.q, g_open, min_d=HAND_CLEAR):
+                                rej["apart"] += 1
                                 continue
                             cost = (float(np.abs(rg.q - pp.plan.q_end).max() + np.abs(rp.q - w.home_q[t_arm]).max())
                                     + pp.steps / 100.0 + 3.0 * (1.0 - frac))     # the full turn first
@@ -326,7 +346,7 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                             break
         # the taker's place from where it takes the object must plan too (the joint move from the handover to the
         # hover met the lock block or the table in G3, 2 of 13); the cheapest few are checked
-        for cost, sol in sorted(sols, key=lambda x: x[0])[:PLACE_CHECKS]:
+        for cost, sol in sorted(sols, key=lambda x: x[0])[:(V2_PLACE_CHECKS if v2 else PLACE_CHECKS)]:
             held = Held(label, inv_T(sol["T_ko"]), held_box(o, inv_T(sol["T_ko"])), None)
             kw = dict(place_kw or {})
             kw.pop("turn", None)
@@ -337,19 +357,20 @@ def plan_rest_handover(sk: Skills, label: str, targets: list, receptacle: str, t
                 return sol
             # through a waypoint over the receptacle first: the joint move from the handover to the hover swept through
             # the lock block or the table, and the planner's via (1.02 m) was out of reach (G3 100001, 100013)
-            T_via = np.asarray(sol["target"], float) @ sol["T_ko"]
-            T_via[2, 3] += VIA_UP
-            mv = sk.motion.to_pose(t_arm, sol["q_take"], T_via, REST_PLACE_CARRY, "via_receptacle", gripper=CLOSED,
-                                   held=held.box, ignore=(label,), safe_z=float(T_via[2, 3]))
-            if mv.ok:
-                pl = sk.plan_place(t_arm, sol["target"], yaw_sym=1, ignore=(receptacle,), q_start=mv.q_end, held=held,
-                                   **kw)
-                if isinstance(pl, PlacePlan):
-                    sol["via"] = T_via
-                    return sol
+            for via_up in (V2_VIA_UPS if v2 else (VIA_UP,)):
+                T_via = np.asarray(sol["target"], float) @ sol["T_ko"]
+                T_via[2, 3] += via_up
+                mv = sk.motion.to_pose(t_arm, sol["q_take"], T_via, REST_PLACE_CARRY, "via_receptacle", gripper=CLOSED,
+                                       held=held.box, ignore=(label,), safe_z=float(T_via[2, 3]))
+                if mv.ok:
+                    pl = sk.plan_place(t_arm, sol["target"], yaw_sym=1, ignore=(receptacle,), q_start=mv.q_end,
+                                       held=held, **kw)
+                    if isinstance(pl, PlacePlan):
+                        sol["via"] = T_via
+                        return sol
             notes.append(f"{sol['note']}: place from the handover: {pl.note[:80]}")
         notes.append(f"{g_arm} -> {t_arm}: no handover pose ({len(fam)} taker grasps reach the target, "
-                     f"{len(sols)} handovers)")
+                     f"{len(sols)} handovers; rejected {rej})")
     return SkillResult(False, "rest_handover", "ik_fail", 0, None, note="; ".join(notes[:4]))
 
 
@@ -901,6 +922,15 @@ def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_
             break
     if mv is None:
         return SkillResult(False, "turn", "ik_fail", 0, arm, note=f"{label}: no turn of {math.degrees(turn):.0f} deg reaches")
+    cut = ""
+    if getattr(sk, "key_lean", "off") == "on" and len(mv) + 3 > sk.ex.steps_left:
+        # ``Skills.key_lean``: the episode ends the moment the checker passes, part-way through the turn (insert_key: the
+        # key's bit within 30 deg of its turned direction, i.e. half of the -60 deg turn; G3 mode A ended 12-13 steps
+        # into the 31). Turning as far as the steps left allow beats not turning (G3 mode B on v15 dev layouts: 4 / 20
+        # stopped with "need 31 steps, 8-30 available")
+        keep = max(1, int(sk.ex.steps_left) - 3)
+        cut = f" (cut to {keep} of {len(mv)} steps: the steps left)"
+        mv = mv[:keep]
     n0 = sk.ex.steps_used
     p = ArmPlan(arm, sk.ex.q[arm].copy(), CLOSED)
     from dojo.skills.motion import Segment
@@ -909,7 +939,7 @@ def turn_held(sk: Skills, arm: str, label: str, turn: float, lift: float = TURN_
         sk.ex.run({arm: p}, name=f"turn {label}", use_reserve=True)
     except EpisodeEnded as e:
         return SkillResult(True, "turn", "ended", sk.ex.steps_used - n0, arm,
-                           note=f"{label} turned {math.degrees(turn * frac):.0f} deg: {e}")
+                           note=f"{label} turned {math.degrees(turn * frac):.0f} deg: {e}{cut}")
     except BudgetExceeded as e:
         return SkillResult(False, "turn", "step_budget", sk.ex.steps_used - n0, arm, note=str(e))
     o = sk.refresh().obj(label)

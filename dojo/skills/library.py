@@ -2399,14 +2399,16 @@ def kong_match(w, hand: list[str], discard: str) -> tuple[list[str], str | None]
     return [l for l in read if w.obj(l).asset.key == d.asset.key], None
 
 
-def kong_read(sk: Skills, label: str, look: str | None = "down", skip_first: bool = False) -> dict | None:
+def kong_read(sk: Skills, label: str, look: str | None = "down", skip_first: bool = False, v3: bool = False) -> dict | None:
     """make_kong (``Skills.kong_draw_read`` on): ``label``'s glyph read from the images by the refine hook of kind
     "read" (perception: the tile classifier on the head view and the nearer arm's wrist view, the larger margin; the
     belief's pose is never written by it). Unread: one wrist look and the read once more with that arm. ``look``:
     "down" (a face-up tile: the hand straight down over it, ``LOOK_HEIGHT``, lower when out of reach), "front" (a
     standing tile's face toward the robot: the hand ``FRONT_LOOK`` in front of and above it, looking at it from 45 deg
-    up), None (no look). ``skip_first``: straight to the look (a second view of a tile already read once). Returns the
-    read ({"read", "name", "margin", "why", "view"}) or None (no refine hook)."""
+    up), None (no look). ``skip_first``: straight to the look (a second view of a tile already read once). ``v3``
+    (``kong_draw_read`` "place3"): a "down" look that does not plan falls back to an oblique look from the robot side
+    (``OBLIQUE_LOOKS``), and a "down" look refines the pose before the read. Returns the read ({"read", "name",
+    "margin", "why", "view"}) or None (no refine hook)."""
     from dojo.skills.regrasp import LOOK_HEIGHT, _look_move
     o = sk.world.obj(label)
     arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.center_w[:2])))
@@ -2436,7 +2438,7 @@ def kong_read(sk: Skills, label: str, look: str | None = "down", skip_first: boo
                 mv = _look_move(sk, arm, o.center_w[:2], float(o.top_z) + hgt)
                 if mv is not None:
                     break
-            if mv is None:
+            if mv is None and v3:
                 # a face-up tile beyond reach of a look straight down (5.1 kongon 100005 / 06 / 22: the fallen discard
                 # past the standing ones, y >= 0.1): from the robot side, steeper and lower
                 mv, kind = _front_look_move(sk, arm, o, OBLIQUE_LOOKS), "oblique"
@@ -2446,7 +2448,7 @@ def kong_read(sk: Skills, label: str, look: str | None = "down", skip_first: boo
             sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {label}")
         except (BudgetExceeded, EpisodeEnded):
             return g
-        if look == "down":
+        if look == "down" and v3:
             # the read crops the silhouette at the believed pose: refine it from this view first (a fallen discard's
             # pose is the weak part: the head crop at it gave "back", a standing neighbour's back)
             was = label in sk.no_refine
@@ -2524,9 +2526,27 @@ READ_SPOT = (0.10, -0.07)       # m: where a drawn tile is stood to be read (beh
 READ_TOL = (0.05, 15.0)         # m, deg: the read stand need not be precise, only standing with its face to the camera
 
 
-def kong_draw_read(sk: Skills, st: dict, hand: list[str], match: list[str], tops: list[str], shift: float) -> dict:
+def draw_glyphs(w, hand: list[str], match: list[str], v3: bool = False) -> tuple[set | None, str]:
+    """The glyphs a wall draw may complete, from the unmatched hand tiles' reads (images only). "place" (v2, measured):
+    the one glyph read on exactly two of them (the hand pair); none or several such -> None. "place3" (``v3``): every
+    glyph read on any of them (a triple with one misread / unread tile also leaves its glyph twice: 5.1 kongon 100021;
+    the other wall top is drawn unique by the config, so it matches no hand tile). Returns (glyphs or None, a note)."""
+    keys = [w.obj(lab).asset.key for lab in hand if lab not in match and w.obj(lab).identity_known]
+    if v3:
+        if not keys:
+            return None, "no unmatched hand tile's glyph was read from the images"
+        return set(keys), f"hand glyphs {sorted(set(keys))}"
+    pairs = sorted({k for k in keys if keys.count(k) == 2})
+    if len(pairs) != 1:
+        return None, f"the hand pair's glyph was not read from the images ({pairs})"
+    return {pairs[0]}, f"pair glyph {pairs[0]}"
+
+
+def kong_draw_read(sk: Skills, st: dict, hand: list[str], match: list[str], tops: list[str], shift: float,
+                   v3: bool = False) -> dict:
     """``Skills.kong_draw_read`` "place": the wall draw read from the images before it is used (Legality D-C17 (3)).
-    The draw must complete the hand: its glyph read as that of an unmatched hand tile (read). Each stack top in turn (nearest the hand
+    The draw must complete the hand: its glyph one of ``draw_glyphs`` (place: the pair's; place3: any unmatched hand
+    tile's). Each stack top in turn (nearest the hand
     row first: an order only, never an identity) is stood on a free spot near ``READ_SPOT`` with its face shown to the
     head camera (``facings_to_head``), both arms go home, and it is read there (head + wrist views; unread, or read as
     another glyph: one front wrist look, a hand tile's glyph in either view keeps it). Read as a hand tile's glyph:
@@ -2535,14 +2555,10 @@ def kong_draw_read(sk: Skills, st: dict, hand: list[str], match: list[str], tops
     stays there and the skill stops ("draw"). It never reaches the target unread: RoboDojo scores the stand the moment
     the tile is released there (G3: success at the release, before a read at the target could run)."""
     w = sk.refresh()
-    # the glyphs the draw may complete: those of the unmatched hand tiles read from the images. Not "the key read twice":
-    # one misread / unread tile of a triple also leaves its key twice (5.1 kongon 100021: [00006, 00038]; 100008: none
-    # at exactly two). The other wall top is drawn unique by the config, so it matches no hand tile; that is why the rule
-    # is right, the decision itself is image reads only (lead, 29 Oct)
-    hand_keys = sorted({w.obj(lab).asset.key for lab in hand if lab not in match and w.obj(lab).identity_known})
-    if not hand_keys:
-        return {"ok": False, "stage": "roles", "note": "no unmatched hand tile's glyph was read from the images"}
-    hand_set = set(hand_keys)
+    hand_set, why = draw_glyphs(w, hand, match, v3=v3)
+    if hand_set is None:
+        return {"ok": False, "stage": "roles", "note": why}
+    hand_keys = sorted(hand_set)
     end = max((lab for lab in hand if is_standing(w.obj(lab))), key=lambda lab: w.obj(lab).pos[0])
     xs = sorted(float(w.obj(lab).pos[0]) for lab in hand)
     pitch = float(np.median(np.diff(xs))) if len(xs) > 1 else float(w.obj(end).asset.extents[0]) + 0.002
@@ -2641,7 +2657,7 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
         # the discard fell face up after frame 0, so no slot read covers it (5.1 camera rows: all stopped at "roles",
         # the discard unread): read it from the images now, a wrist look over it when the head view does not read it
         st["discard_read"] = True            # read even when an identity is held (a confirmation, or the first read)
-        g = kong_read(sk, st["discard"], look="down")
+        g = kong_read(sk, st["discard"], look="down", v3=mode == "place3")
         w = sk.refresh()
         sk.log(f"[kong] discard {st['discard']} read: {(g or {}).get('name') if (g or {}).get('read') else g} -> "
                f"{w.obj(st['discard']).asset.key if w.obj(st['discard']).identity_known else 'unread'}")
@@ -2693,7 +2709,7 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
     if not tops:
         return {"ok": False, "stage": "draw", "note": "no wall tile"}
     if mode != "off":
-        return kong_draw_read(sk, st, hand, match, tops, shift)
+        return kong_draw_read(sk, st, hand, match, tops, shift, v3=mode == "place3")
     keys = [w.obj(l).asset.key for l in hand if l not in match and w.obj(l).identity_known]
     y_row = float(np.mean([w.obj(l).pos[1] for l in hand]))
 
