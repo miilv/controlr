@@ -384,8 +384,10 @@ def align_in_row(sk, objects: list[str], spacing: float = SPACING, max_plans: in
                     sk.ex.run({arm: r}, name=f"slide {worst} again")
                 except (BudgetExceeded, EpisodeEnded):
                     break
-                sk.confirm_moved(worst, _expected_T(w.obj(worst), xy, th), "slide")
+                c = sk.confirm_moved(worst, _expected_T(w.obj(worst), xy, th), "slide")
                 done = True
+                if c is not None and not c.get("adopted") and getattr(sk, "align_measure", "seq") == "parallel":
+                    _fix_unconfirmed(sk, worst, xy, th, arm)
                 break
             sk.log(f"[align] fix {worst} by {arm}: {r[:160]}")
         w = sk.refresh()
@@ -395,6 +397,30 @@ def align_in_row(sk, objects: list[str], spacing: float = SPACING, max_plans: in
     sk._record(SkillResult(ok, "align", "ok" if ok else "place_miss", sk.ex.steps_used - n0, None,
                            note=f"row {dist * 1000:.1f} mm / {ang:.1f} deg"))
     return {"ok": True, "stage": "aligned", "note": f"row {dist * 1000:.1f} mm / {ang:.1f} deg"}
+
+
+def _fix_unconfirmed(sk, k: str, xy, th: float, arm: str) -> None:
+    """``align_measure`` "parallel": the head view did not confirm the fixing slide's outcome, so the belief is not
+    evidence that the block is in place. The slide's own release put it at the target, and the row then read 0.0 mm /
+    0.0 deg with the block 30 deg off (camera c4b_alignsg_par_100020). Measure it from ``arm``'s hover (wrist refine, yaw
+    included). If it is still off, slide it once more from the measured pose, within the budget."""
+    if sk.world.steps_left < 60 or not _hover(sk, k, arm, "pick"):
+        sk.log(f"[align] {k}: unconfirmed slide, no re-measure")
+        return
+    o = sk.refresh().obj(k)
+    d, a = _off(o, xy, th)
+    sk.log(f"[align] {k}: unconfirmed slide, measured {d * 1000:.1f} mm / {a:.1f} deg off its target")
+    if (d <= FIX_TOL[0] and a <= FIX_TOL[1]) or sk.world.steps_left < 60:
+        return
+    r = plan_slide(sk, k, xy, th, arm)
+    if not isinstance(r, ArmPlan):
+        sk.log(f"[align] {k}: no slide from the measured pose ({r[:120]})")
+        return
+    try:
+        sk.ex.run({arm: r}, name=f"slide {k} measured")
+    except (BudgetExceeded, EpisodeEnded):
+        return
+    sk.confirm_moved(k, _expected_T(o, xy, th), "slide")
 
 
 def _log_slide(sk, k: str, xy, th: float, before) -> None:

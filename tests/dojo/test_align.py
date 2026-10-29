@@ -159,3 +159,24 @@ def test_runtime_config_align_measure():
     assert RuntimeConfig().align_measure == "seq"
     with _pytest.raises(ValueError):
         RuntimePolicy(cfg=RuntimeConfig(align_measure="bogus"))
+
+
+def test_an_unconfirmed_fix_slide_is_measured_and_slid_again():
+    """align_measure "parallel": the head view did not confirm the fixing slide (camera c4b_alignsg_par_100020: the row
+    read 0.0 mm / 0.0 deg with a block 30 deg off). The block is measured from the arm's hover and slid once more from
+    where it is."""
+    objs = _scene(yaws=(0.0, 0.0, 30.0))
+    env = KinematicEnv(_rows(objs), step_lim=400, instruction=ALIGN)
+    calls = []
+    sk = Skills(env, GTProvider(env, None, instruction=ALIGN),
+                refine=lambda sk_, label, arm, kind: calls.append((label, arm, kind)) or None)
+    sk.align_measure = "parallel"
+    o = sk.refresh().obj("cube2")
+    xy, th = o.center_w[:2] + np.array([0.0, -0.02]), 0.0
+    d0, a0 = align._off(o, xy, th)
+    assert a0 > 20.0
+    arm = align._arm_for(sk, "cube2", xy)[0]
+    align._fix_unconfirmed(sk, "cube2", xy, th, arm)
+    d1, a1 = align._off(sk.refresh().obj("cube2"), xy, th)
+    assert calls == [("cube2", arm, "pick")]
+    assert d1 <= align.FIX_TOL[0] and a1 <= align.FIX_TOL[1], (d1, a1)
