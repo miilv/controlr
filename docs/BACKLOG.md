@@ -692,7 +692,8 @@
   2026-10-29-dojo-h95-put-bottles-v15; G3 v15 dev draws 13/16).
   - An arm's reset home after a failed pick sweeps straight through and knocked a standing bottle over (100032).
   - The left arm's side pinch on standing bottles slips (rose -59 / -92 mm; 100032, 100049).
-- [ ] **dojo skills: pour_by_language, what binds after the overlap pace** (stream H, journals
+- [ ] **dojo skills: pour_by_language, what binds after the overlap pace** (PARKED: the overlap camera A/B was 0/10, as was
+  the candidate; stream H, journals
   2026-10-29-dojo-h95-pour-lean and -pour-overlap; `ported_pour_pace` "overlap", G3 5/10, successes end at 682-747 of
   800; camera mode adds 42-46 look steps).
   - Bottle orders that cannot alternate arms (right, centre, left) get no hand-over and run out of steps.
