@@ -41,6 +41,8 @@ TURN_RAD = 0.05               # rad/step of a place's turn (a key's -60 deg at 0
 SCREEN_IK_BUDGET = 6000       # place IKs per arm in a transfer screen (a figurine x 81 stand poses: 9k IKs, 3 min)
 UNEVEN_CARRY = 0.09           # rad/step, carries of uneven objects (tools, figurines, pens) instead of CARRY 0.14
 LOOSE_OK_TOL = 0.02           # place tolerance (m) from which a loose grasp is carried on rather than redone
+NEST_SUPPORT_XY = 0.03        # m, nest_verify "support": the placed object's centre this close (xy) to its support's
+NEST_SUPPORT_TILT = 30.0      # deg, ... and its axis this close to vertical
 GUARD_LAG = 0.004             # m: measured-vs-commanded TCP gap that stops a guarded descent (contact)
 GUARD_SEATED = 0.004          # m: a guarded descent that stops this close to its target counts as seated
 PROBE_RADII = (0.0015, 0.003, 0.0045)   # m: probe circles around a contact beside the hole (nearest first)
@@ -162,6 +164,7 @@ class Job:
     exclusive: bool = False       # no concurrent pick by the other arm while this one places
     tol_z: float = 0.02
     alt_targets: list = field(default_factory=list)   # tried in order when the target cannot be planned
+    support: str | None = None    # a nested place's support object (``Skills.nest_verify`` "support" judges against it)
 
 
 class GTProvider:
@@ -290,6 +293,10 @@ class Skills:
         # ``library.put_into``'s options (stream H; empty = today): "spot" (a wider handover search, else a put-back),
         # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
         self.put_into_opts: set = set()
+        # nested places' verdict (stream H; ``RuntimeConfig.nest_verify``): "target" (today: vs the planned on-top pose)
+        # | "support" (vs the support object as it is: NEST_SUPPORT_XY / NEST_SUPPORT_TILT, inside the checker's
+        # is_stacked 0.04 m / 45 deg)
+        self.nest_verify: str = "target"
         self._joint_limits = "wide"
         # ``library.on_targets``' support top (stream H): "bbox" (today: the support's bbox top) | "mesh" (the mesh's
         # surface under the object's whole footprint, flat poses only)
@@ -2499,6 +2506,26 @@ class Skills:
         return r, side
 
     # ------------------------------------------------------------------ job pipeline
+    def _nested_on_support(self, job: "Job", r: SkillResult) -> SkillResult:
+        """``nest_verify`` "support": a nested place that missed its planned pose but rests in its support (centre within
+        NEST_SUPPORT_XY, above it, axis within NEST_SUPPORT_TILT) counts. G3 stack_bowls v15 draws: 8 "misses" of
+        31-45 mm vs the planned pose were nested 5-22 mm from the lower bowl's centre (the checker's is_stacked takes
+        0.04 m), and each stopped the chain before the last bowl."""
+        if (r.ok or r.status != "place_miss" or getattr(self, "nest_verify", "target") != "support"
+                or not getattr(job, "support", None)):
+            return r
+        w = self.refresh()
+        if job.label not in w.objects or job.support not in w.objects:
+            return r
+        o, sup = w.obj(job.label), w.obj(job.support)
+        dxy = float(np.linalg.norm(o.center_w[:2] - sup.center_w[:2]))
+        tilt = math.degrees(math.acos(float(np.clip(o.R[2, 2], -1.0, 1.0))))
+        if dxy <= NEST_SUPPORT_XY and float(o.center_w[2]) > float(sup.center_w[2]) and tilt <= NEST_SUPPORT_TILT:
+            return self._record(SkillResult(True, "place", "ok", 0, job.arm,
+                                            note=f"nested in {job.support}: {dxy * 1000:.0f} mm off its centre, "
+                                                 f"tilt {tilt:.0f} deg ({r.note[:60]})"))
+        return r
+
     def run_jobs(self, jobs: list["Job"], bank_after: bool = True) -> SkillResult:
         """Pick-and-place jobs in order, two arms pipelined: while one arm places job k, the other
         picks job k+1 (when it is the other arm's). A job's target is computed right before its place
@@ -2593,6 +2620,7 @@ class Skills:
                     pn = pn if isinstance(pn, PickPlan) and pn.arm == other else None
                 r, side = self._verified_place(job, T, ign, pn)
                 self._record(r)
+                r = self._nested_on_support(job, r)
                 if side is not None:
                     self._record(side)
                 if r.status in ("step_budget", "ended"):
@@ -2613,6 +2641,7 @@ class Skills:
             r = self._record(self.run_place(pl, job.tol_xy, job.tol_tilt, other=other_list,
                                             other_arm=other if other_list else None, tol_z=job.tol_z,
                                             retarget=lambda job=job: job.target(self), ref_label=ref))
+            r = self._nested_on_support(job, r)
             if r.status in ("step_budget", "ended"):
                 return fail(r.status, job.arm, r.note)
             if side_pick is not None:

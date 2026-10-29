@@ -375,6 +375,9 @@ class RuntimeConfig:
     # from the wrist frame over the base's whole yaw period; when ok, both poses are written and the refine is skipped.
     # 5.1 camera rows: a stand yaw read 48 deg off turned the coin with it, and its 2 mm disc never refines)
     slot_read: str = "off"
+    # nested places' verdict (stream H; ``Skills.nest_verify``): target (today: vs the planned on-top pose) | support
+    # (vs the support object as it rests: within 0.03 m of its centre, above it, axis within 30 deg)
+    nest_verify: str = "target"
     # make_kong (``library.declare_kong``, ``Skills.kong_draw_read``): off (today) | place (the discard read from the
     # images once it lies face up, a wrist look when the head view does not read it; the drawn wall tile stood at the hand
     # end face to the head camera and read there, kept only when the read names the hand pair's glyph, else moved to a free
@@ -505,6 +508,7 @@ class RuntimePolicy:
                 or self.cfg.imitate_look not in ("off", "ambiguous")
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
+                or self.cfg.nest_verify not in ("target", "support")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
@@ -805,6 +809,7 @@ class RuntimePolicy:
             sk_.ported_pour_aim = cfg.ported_pour_aim
             sk_.ported_classify = cfg.ported_classify
             sk_.ported_pour_pace = cfg.ported_pour_pace
+            sk_.nest_verify = cfg.nest_verify
             sk_.ported_pour = cfg.ported_pour
             sk_.ported_pickup = cfg.ported_pickup
             if verifier is not None and cfg.verify_select == "risky":

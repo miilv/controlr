@@ -164,6 +164,7 @@ def stack_objects(sk: Skills, objects: list[str], nest: bool = False, ordered: b
             # wall pinch (pads flat on both wall faces); lift and carry gently
             j.pick_kw = {"lift": 0.09, "lift_rad": 0.05, "descend_rad": 0.05}
             j.tol_tilt, j.tol_z = 40.0, 0.05
+            j.support = j.ignore[-1] if j.ignore else None         # the bowl it nests in (``Skills.nest_verify``)
             j.place_kw = {"release_gap": 0.0, "pre_h": 0.04, "approach_rad": 0.06, "ease": 5, "keep_tilt": True,
                           "descend_rad": 0.04}
     else:
