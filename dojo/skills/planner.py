@@ -208,6 +208,10 @@ def order_points(o, tags: list[str], text: str) -> list[str]:
     return list(tags)
 
 
+# ``ported_opts["pour_aim"]`` (stream H): pour_bottle's ``spout_back`` (m), its stream aimed this far back from the cup's
+# centre against the pour direction. The stream leaves the mouth moving along the pour: G3, the mouth held over the cup's
+# centre, 18-23 % of the liquid landed 45-74 mm beyond the far wall (the checker wants >= 97 % inside)
+POUR_AIM = {"v1": None, "b10": 0.010, "b20": 0.020}
 SWAP_CARRY_Z = (0.86, 0.84, 0.82, 0.80)   # swap_poses' carry heights tried by ``ported_opts["swap"] == "reach"``
 
 
@@ -270,7 +274,8 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         if re.search(r"\bballs?\b", text):
             return run("pour_p1" if (opts or {}).get("pour") == "full" else "pour")
         if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
-            return run("pour_bottle")
+            back = POUR_AIM.get((opts or {}).get("pour_aim", "v1"))
+            return run("pour_bottle", **({} if back is None else {"spout_back": back}))
     # pick one named object up by a height. The object: the one whose PUBLIC asset description is the instruction's
     # phrase (RoboDojo writes the phrase from that file), else the skill's own grounding by category names
     m = re.search(r"^\s*(?:pick up|lift|raise) the (.+?) by\s+\d+(?:\.\d+)?\s*(?:cm|mm|m)\b", text)
@@ -672,7 +677,8 @@ def solve(sk) -> dict:
     w = sk.refresh()
     p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
              and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
-                  "pour": getattr(sk, "ported_pour", "v1"), "pickup": getattr(sk, "ported_pickup", "v1")})
+                  "pour": getattr(sk, "ported_pour", "v1"), "pickup": getattr(sk, "ported_pickup", "v1"),
+                  "pour_aim": getattr(sk, "ported_pour_aim", "v1")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":

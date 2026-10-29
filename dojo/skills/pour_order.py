@@ -78,7 +78,10 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
     done = []
     for i, (bottle, bowl) in enumerate(pairs):
         sk.refresh()
-        r = ported(sk, "pour_bottle", {"container": f"@{bottle}", "target": f"@{bowl}"}, reserve=reserve)
+        from dojo.skills.planner import POUR_AIM
+        back = POUR_AIM.get(getattr(sk, "ported_pour_aim", "v1"))
+        r = ported(sk, "pour_bottle", {"container": f"@{bottle}", "target": f"@{bowl}",
+                                       **({} if back is None else {"spout_back": back})}, reserve=reserve)
         sk.log(f"[pour_order] {i + 1}/{len(pairs)} {bottle} -> {bowl}: ok {r.get('ok')} verified {r.get('verified')} "
                f"steps {r.get('steps')} {str(r.get('error') or '')[:120]}")
         if not r.get("ok"):
