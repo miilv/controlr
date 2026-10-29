@@ -1038,6 +1038,31 @@ def restrict_by_instruction(groups: list[dict], instruction: str) -> list[dict]:
     return out
 
 
+def twin_task(task: str) -> str | None:
+    """The other variant of a std / ``_random`` pair the catalogue lists, else None."""
+    tm = task_map()
+    other = task[: -len("_random")] if task.endswith("_random") else task + "_random"
+    return other if other in tm else None
+
+
+def union_twin_pool(task: str, groups: list[dict]) -> list[dict]:
+    """``cfg.twin_union_pool``: each group's candidates and categories extended with its labels' candidates in the twin
+    variant's public config (same labels; the union, the routed set's own first)."""
+    import copy
+
+    tw = twin_task(task)
+    if tw is None:
+        return groups
+    tl = task_map()[tw]["labels"]
+    out = copy.deepcopy(groups)
+    for g in out:
+        extra = [k for lab in g["labels"] for k in (tl.get(lab) or {}).get("candidates") or []]
+        cats = [c for lab in g["labels"] for c in (tl.get(lab) or {}).get("categories") or []]
+        g["candidates"] = list(dict.fromkeys(list(g["candidates"]) + extra))
+        g["categories"] = list(g["categories"] or []) + [c for c in cats if c not in (g["categories"] or [])]
+    return out
+
+
 def label_groups(task: str) -> list[dict]:
     """Labels grouped by identical candidate sets (interchangeable labels)."""
     labels = task_map()[task]["labels"]
@@ -3700,6 +3725,10 @@ class EstimatorConfig:
     # a four-fold symmetric box's (a cube's) yaw from the image gradient along its rendered outline (``edge_yaw``): its
     # silhouette barely constrains the yaw (align_blocks 5.1: cubes 17.8 / 35 deg off, rows left 30 deg off)
     edge_yaw: bool = False
+    # a std / _random twin pair has one instruction, so the routed set cannot say which variant the scene is: every label
+    # draws its candidates from both public configs (``union_twin_pool``; 12 pairs differ in assets: pour_liquid's
+    # _random bottle / cup are not among the std candidates). One fixed rule, never picked by variant
+    twin_union_pool: bool = False
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
     small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
     slot_free_search: bool = True  # a slot child whose slot looks empty is looked for loose on the table
@@ -4027,6 +4056,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     t_seg = time.time() - t0
     head_blobs = blobs(views["cam_head"], "cam_head")
     groups = label_groups(task)
+    if cfg.twin_union_pool:
+        groups = union_twin_pool(task, groups)
     if instruction:
         groups = restrict_by_instruction(groups, instruction)
     sam_info: dict = {}
