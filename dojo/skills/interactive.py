@@ -510,6 +510,35 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
     return transfer(near[:1])
 
 
+def twin_assignment(w, demo: list[str], ours: list[str]) -> dict[str, str]:
+    """``Skills.imitate_pairing`` "one_to_one": each of the demonstrator's objects to one of ours, the assignment of least
+    total cost (believed asset: same 0, same category 0.5, else 1). Each side holds one twin of each (the instruction's
+    "corresponding objects"), so one misread per side is absorbed: 5.1 frame 0 of 100002 read our toy car as a garage
+    and the demonstrator's watch as an action camera; the greedy first-free match took a garage twice and stopped at 1/5,
+    the assignment pairs all five right (C's six demo frames: plans right 4 -> 5 of 6, with twin_pairing 4 -> 6)."""
+    import itertools
+
+    demo = [d for d in demo if d in w.objects]
+    ours = [o for o in ours if o in w.objects]
+    if not demo or not ours:
+        return {}
+
+    def cost(a, b):
+        oa, ob = w.obj(a), w.obj(b)
+        return 0.0 if oa.asset.key == ob.asset.key else (0.5 if oa.category == ob.category else 1.0)
+
+    C = np.array([[cost(a, b) for b in ours] for a in demo])
+    try:
+        from scipy.optimize import linear_sum_assignment
+        ri, ci = linear_sum_assignment(C)
+        pairs = list(zip(ri, ci))
+    except ImportError:                                   # (n <= 7 here: exhaustive)
+        n = min(len(demo), len(ours))
+        best = min(itertools.permutations(range(len(ours)), n), key=lambda p: sum(C[i, j] for i, j in enumerate(p)))
+        pairs = list(enumerate(best))
+    return {demo[int(i)]: ours[int(j)] for i, j in pairs}
+
+
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
                        every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 3,
                        gone_quiet: int = 260) -> dict:
@@ -589,6 +618,9 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
     # copy: the twin of each demonstrated object, in order
     if st["gone"]:
         expect = len(st["gone"])
+    if getattr(sk, "imitate_pairing", "greedy") == "one_to_one" and "twins" not in st:
+        st["twins"] = twin_assignment(w, demo_side, [m for m in movers if m not in demo_side])
+        sk.log(f"[imitate] one-to-one twins {st['twins']}")
     for i, key in enumerate(st["order"]):
         if i < len(st["done"]):
             continue
@@ -605,6 +637,9 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
                     and not inside_xy(w.obj(m), w.obj(container))]
             cands = [m for m in free if w.obj(m).asset.key == k_] or \
                 [m for m in free if w.obj(m).category == w.obj(key).category]
+            tw = (st.get("twins") or {}).get(key)
+            if tw is not None and tw in free:           # one_to_one: the assignment's twin, whatever the first free one
+                cands = [tw] + [m for m in cands if m != tw]
             key = k_
         else:
             cands = [m for m in keys.get(key, []) if m not in st["done"]
