@@ -369,3 +369,31 @@ def test_seg_add_refit_poor_is_on_by_default():
     from dojo.perception import inverse_layout as il
     cfg = il.EstimatorConfig()
     assert cfg.seg_add_refit_poor is True and cfg.seg_poor_iou == 0.5 and cfg.seg_poor_gain == 0.25
+
+
+def test_slot_exclusive_drops_free_hypotheses_on_a_pinned_place():
+    """slot_exclusive (default off): a free numeral's hypothesis 2 mm from a pinned operator disc, covering its pixels,
+    is dropped before selection (5.1 solve 100005: num_3 on minus, num_5 on multiplication); one beside it stays, and
+    so does a small object resting on a pinned support (a block on its mat)."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    def hyp(x, y, ext, box):
+        m = np.zeros((40, 40), np.uint8)
+        m[box[0]:box[1], box[2]:box[3]] = 1
+        sm = SimpleNamespace(asset=SimpleNamespace(extents=np.array(ext)), sil=lambda cam, T: m)
+        return SimpleNamespace(x=x, y=y, sm=lambda: sm, T=lambda: np.eye(4))
+
+    head = SimpleNamespace(cam=None)
+    minus = hyp(-0.05, -0.27, [0.04, 0.04, 0.005], (0, 8, 0, 8))
+    on_it = hyp(-0.048, -0.274, [0.03, 0.035, 0.01], (0, 7, 1, 8))
+    beside = hyp(0.0, -0.27, [0.03, 0.035, 0.01], (0, 7, 20, 27))
+    assert il._off_pinned([on_it, beside], [minus], head) == [beside]
+    assert il._off_pinned([on_it, beside], [], head) == [on_it, beside]
+    mat = hyp(0.0, 0.0, [0.08, 0.08, 0.005], (0, 20, 0, 20))
+    block = hyp(0.002, 0.001, [0.03, 0.03, 0.03], (5, 11, 5, 11))
+    assert il._off_pinned([block], [mat], head) == [block]
+    assert il.EstimatorConfig().slot_exclusive is False

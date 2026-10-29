@@ -1782,6 +1782,28 @@ def _hyp_masks(h: Hypothesis, views) -> dict:
     return out
 
 
+PINNED_DUP_IOU = 0.5  # slot_exclusive: a free hypothesis this congruent with a pinned object in the head view is that object
+
+
+def _off_pinned(hyps: list, pinned: list, head=None) -> list:
+    """``cfg.slot_exclusive``: a free hypothesis never takes a config-pinned object's place: near one (``_conflicts``)
+    and covering the same head-view pixels (silhouette IoU > ``PINNED_DUP_IOU``), it explains that object again. An
+    object resting on a pinned support (a block on its mat, a mouse on its pad) covers a small part of it and stays.
+    5.1 solve_equation 100005: two free numerals sat 2 mm from the pinned minus / multiplication discs (the glyph reader
+    read the operator under them), so two real numerals went unaccounted."""
+    if not pinned:
+        return list(hyps)
+    out = []
+    for h in hyps:
+        near = [c for c in pinned if _conflicts(h, [c])]
+        if near and head is not None:
+            s_h = h.sm().sil(head.cam, h.T()) > 0
+            near = [c for c in near if _mask_iou(s_h, c.sm().sil(head.cam, c.T()) > 0, np.ones_like(s_h)) > PINNED_DUP_IOU]
+        if not near:
+            out.append(h)
+    return out
+
+
 def _conflicts(h: Hypothesis, others) -> bool:
     return any(np.hypot(h.x - c.x, h.y - c.y) < 0.6 * min(c.sm().asset.extents[:2].min(), h.sm().asset.extents[:2].min())
                for c in others)
@@ -3637,6 +3659,10 @@ class EstimatorConfig:
     # the pinned (slot) objects' head-view pixels are explained before blob proposals: a piece touching a pinned base
     # board merged into its blob (> 3x its own silhouette) and was never proposed (build_tower)
     slot_blob_cut: bool = True
+    # a free label's hypothesis on a pinned object's place (centre within _conflicts' distance, head silhouette IoU >
+    # PINNED_DUP_IOU) is dropped before selection, so the label looks elsewhere or stays not found (solve_equation:
+    # free numerals on the pinned operator discs); an object resting on a pinned support stays
+    slot_exclusive: bool = False
     # a head blob > 2.5x the largest candidate's silhouette (pieces lying together) also proposes object-sized pieces of it
     # (build_tower: three pieces within 10 cm were one blob, never proposed)
     split_merged: bool = True
@@ -4020,6 +4046,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         short = [(gi, g, p) for gi, g, p in pending
                  if len({h.blob for h in refined if h.label_group == gi}) < len(g["labels"])]
         refined += _region_seeds(head_blobs, short, shapes_by_group, views, cfg, groups)
+    pinned = [h for _, h, _ in slot_placed] if cfg.slot_exclusive else []
+    refined = _off_pinned(refined, pinned, views["cam_head"])
     chosen = _assign_constrained(refined, need0, pending, head_blobs, views)
     pool = list(refined)
     head = views["cam_head"]
@@ -4040,6 +4068,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         others = _union_masks(chosen, views)
         more = _propose(rblobs, [(gi, g, p) for gi, g, p in pending if need[gi] > 0], shapes_by_group, views, cfg,
                         groups, others=others, blob_offset=1000 * (_round + 1))
+        more = _off_pinned(more, pinned, views["cam_head"])
         pool += more
         add = _assign_constrained(more, need, [(gi, g, p) for gi, g, p in pending if need[gi] > 0], rblobs, views,
                                   existing=chosen, blob_offset=1000 * (_round + 1))
