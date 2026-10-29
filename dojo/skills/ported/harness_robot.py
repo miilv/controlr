@@ -395,7 +395,7 @@ class HarnessRobot:
                     return np.array([f, f])
             return np.array([free, free])
         st = self._proprio()
-        off = st.get(f"{arm}_ee_joint_state_official")
+        off = st.get(f"{arm}_ee_joint_state_official") if self.official_on() else None
         if off is not None:
             v = float(np.asarray(off, float).reshape(-1)[0])
             if v > g + 0.001:                                  # the jaws stopped short of the command: an object
@@ -411,8 +411,24 @@ class HarnessRobot:
             return np.array([f, f])
         return np.array([max(free, GRIP_SCALE[0]), max(free, GRIP_SCALE[0])])
 
+    def official_on(self) -> bool:
+        """The official gripper key is read only behind the runtime's grip check (D-C11, Misha's review P2-6: no skill
+        reads it until a paired A/B says it helps; ``RuntimeConfig.grip_check`` "on" sets ``provider.grip_check``)."""
+        return bool(getattr(getattr(self.sk, "provider", None), "grip_check", False))
+
+    def grip_source(self) -> str:
+        """Where the ported skills' grasp sense comes from in this run: measured fingers (G3 mode gt), the official
+        gripper reading (behind the grip check), else the belief's attachment."""
+        if self.truth:
+            return "measured"
+        st = self._proprio()
+        return "official" if self.official_on() and any(f"{a}_ee_joint_state_official" in st for a in ARMS) else "belief"
+
     def _official(self, arm) -> float | None:
-        """RoboDojo's official gripper reading (the applied control) where the observation carries it, else None."""
+        """RoboDojo's official gripper reading (the applied control) where the observation carries it and the grip
+        check is on (``official_on``), else None."""
+        if not self.official_on():
+            return None
         off = self._proprio().get(f"{arm}_ee_joint_state_official")
         return None if off is None else float(np.asarray(off, float).reshape(-1)[0])
 
@@ -425,7 +441,9 @@ class HarnessRobot:
             hf = self.home_flange[arm]
             dpos, ddeg = float(np.abs(fl[:3] - hf[:3]).max()), qangle_deg(fl[3:7], hf[3:7])
             g = float(self.ex.g[arm])
-            obs_g = st.get(f"{arm}_ee_joint_state_official", st.get(f"{arm}_ee_joint_state", [g]))
+            obs_g = st.get(f"{arm}_ee_joint_state", [g])
+            if self.official_on():
+                obs_g = st.get(f"{arm}_ee_joint_state_official", obs_g)
             out[arm] = {"pos": _l(tcp_of(fl)), "quat": _l(fl[3:7]), "flange": {"pos": _l(fl[:3]), "quat": _l(fl[3:7])},
                         "gripper": round(g, 4), "grip_cmd": round(g, 4),
                         "grip_obs": round(float(np.asarray(obs_g, float).reshape(-1)[0]), 4),
