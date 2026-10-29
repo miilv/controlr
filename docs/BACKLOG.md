@@ -683,6 +683,11 @@
   top-down grasp keeps the finger's root block (38 x 56 mm) out of the wall. `nudge_from_wall` pushes one off when its
   fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
+- [ ] **dojo skills: sweep_blocks(_random): stroke reach binds** (stream H, journal 2026-10-29-dojo-h95-sweep). G3 v1
+  draws, 0/5 in both arms. Ranking the broom by hold quality (`broom_rank` "hold", branch `feat/dojo-h95-broom-rank`)
+  removes the loose +19 mm station that the CoM ranking picks, but the firmer grasp sits ~24 mm further from the head,
+  and strokes without IK rose 7 -> 24. Next: the pan's position vs the cubes and the arms, and the strokes' IK (CPU
+  replay first). Also open: the broom relay pick slips, and episodes run out of steps.
 - [ ] **dojo skills: fill_egg_holder picks an egg before its drop plans** (stream H, journal 2026-10-28-dojo-h95-fill;
   G3 mode gt, current main, 5 settled dev layouts: 0/5, 0.22). 6 eggs were picked and then had no drop plan: "joint
   move hits egg_basket; via failed: lift ik_fail", or "target unreachable". `fill_holes` plans the drop only after the
