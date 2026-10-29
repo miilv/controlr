@@ -564,6 +564,40 @@ def twin_assignment(w, demo: list[str], ours: list[str]) -> dict[str, str]:
     return {demo[int(i)]: ours[int(j)] for i, j in pairs}
 
 
+MAX_TWIN_LOOKS = 3   # imitate_look "ambiguous": wrist looks before the copy (each ~30-60 steps; the copy needs ~120 per object)
+
+
+def look_twins(sk: Skills, twins: dict) -> list[str]:
+    """``Skills.imitate_look`` "ambiguous": a wrist look (``regrasp._look_over``, the refine hook of kind "look", which
+    re-reads the identity) at each of our objects whose assigned demonstrator twin has another believed asset, up to
+    ``MAX_TWIN_LOOKS`` while the budget keeps one copy per pair. Returns the labels looked at."""
+    from dojo.skills.regrasp import _look_over
+    w = sk.refresh()
+    looked = []
+    for d, o in twins.items():
+        if len(looked) >= MAX_TWIN_LOOKS:
+            break
+        if d not in w.objects or o not in w.objects or w.obj(d).asset.key == w.obj(o).asset.key:
+            continue
+        left = sk.ex.steps_left() if hasattr(sk.ex, "steps_left") else None
+        if left is not None and left < COPY_STEPS_PER_OBJECT * (len(twins) + 1):
+            break
+        ob = w.obj(o)
+        arm = min(("left", "right"), key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - ob.center_w[:2])))
+        try:
+            _look_over(sk, arm, o, np.eye(4))
+        except Exception as e:  # noqa: BLE001 (a look that cannot run leaves the identity as it was)
+            sk.log(f"[imitate] look at {o} failed: {type(e).__name__}: {e}")
+        looked.append(o)
+        w = sk.refresh()
+    if looked:
+        try:
+            sk.home(gripper=OPEN)
+        except Exception:  # noqa: BLE001
+            pass
+    return looked
+
+
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
                        every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 3,
                        gone_quiet: int = 260) -> dict:
@@ -644,8 +678,17 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
     if st["gone"]:
         expect = len(st["gone"])
     if getattr(sk, "imitate_pairing", "greedy") == "one_to_one" and "twins" not in st:
-        st["twins"] = twin_assignment(w, demo_side, [m for m in movers if m not in demo_side])
+        ours = [m for m in movers if m not in demo_side]
+        st["twins"] = twin_assignment(w, demo_side, ours)
         sk.log(f"[imitate] one-to-one twins {st['twins']}")
+        if getattr(sk, "imitate_look", "off") == "ambiguous":
+            # a wrist look at each of OUR objects in a pair whose believed assets differ (a misread on either side),
+            # then the assignment again: with our side read right, one misread demonstrator object pairs by elimination
+            looked = look_twins(sk, st["twins"])
+            if looked:
+                w = sk.refresh()
+                st["twins"] = twin_assignment(w, demo_side, ours)
+                sk.log(f"[imitate] looked at {looked}; one-to-one twins {st['twins']}")
     for i, key in enumerate(st["order"]):
         if i < len(st["done"]):
             continue

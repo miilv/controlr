@@ -313,6 +313,9 @@ class Skills:
         # ``interactive.wait_demo_done`` (stream W): "still" (today: a wait_actors_still timeout proceeds) | "origin" (a
         # timeout keeps holding until the demonstrator's arm is at rest, the copy's steps kept back)
         self.imitate_wait = "still"
+        # ``interactive.look_twins`` (stream W): "off" (today) | "ambiguous" (with imitate_pairing "one_to_one": a wrist
+        # look at each of our objects whose assigned twin has another believed asset, then the assignment again)
+        self.imitate_look = "off"
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"

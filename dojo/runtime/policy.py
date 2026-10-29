@@ -330,6 +330,10 @@ class RuntimeConfig:
     # never starts the copy: hold until its arm is at rest, the copy's steps kept back; camera 100007 / 100009 ended on
     # RoboDojo's "our arm left its origin while the support arm is away" query)
     imitate_wait: str = "still"
+    # ``copy_demonstration`` with one_to_one twins (``Skills.imitate_look``): off (today) | ambiguous (a wrist look at our
+    # objects in pairs whose believed assets differ, then the assignment again; camera: frame-0 category misreads on
+    # both sides in 6 of 6 runs)
+    imitate_look: str = "off"
     # the belief's labels for a series perception keeps under one config label (classify_objects' ``rigid0`` x 6, its
     # per-category prefixes not observable): keep (today: keyed by that label, one object stands for all; the classify
     # route saw one item and planned nothing) | numbered (``<label>_<k>``, k by x then y: ``estimate.series_names``)
@@ -483,6 +487,7 @@ class RuntimePolicy:
                 or self.cfg.tile_grasp not in ("any", "flat", "prefer")
                 or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
                 or self.cfg.imitate_wait not in ("still", "origin")
+                or self.cfg.imitate_look not in ("off", "ambiguous")
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3")
@@ -765,6 +770,7 @@ class RuntimePolicy:
             sk_.tile_recover = bool(cfg.tile_recover)
             sk_.imitate_pairing = cfg.imitate_pairing
             sk_.imitate_wait = cfg.imitate_wait
+            sk_.imitate_look = cfg.imitate_look
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
