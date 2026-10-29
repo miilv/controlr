@@ -81,7 +81,9 @@
     - posed geometry (`Skills.artic_geom` "measured": the lid turned shut);
     - a lid re-push: shut in 19/20.
   - The pick is the blocker: the shut laptop's edge pinch across its 9 mm slab, approached horizontally, plans but slips
-    in every G3 attempt (rises 0 mm or falls off the stand). Next idea: slide it to overhang the stand, then pinch.
+    in every G3 attempt (rises 0 mm or falls off the stand). Tried and parked: sliding it to overhang the stand (press
+    drags tip it off the stand in 10/20 rows; after a slide no overhang pinch pairs). Left: a two-arm lift, or a pick
+    with the lid still open (journal 2026-10-29-dojo-newskill-hang, "the overhang grasp").
 - [ ] **dojo infra (landmine): a box's perception catalogue can silently miss assets.** `task_map()` drops every
   label whose candidates have no `geom.npz` (one warning in `perception_service.log`), so camera rows of that task
   run perception-blind and end `perception_gross` in seconds. compute4's `~/dojo-perception-data/catalog` lacked W's

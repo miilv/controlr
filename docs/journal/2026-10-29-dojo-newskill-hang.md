@@ -82,3 +82,22 @@ G3, dev v1 100030-39, std + random (e240ce6d, then 6eb9e16c):
 
 The edge pinch across the slab does not hold the laptop in physics. Next: slide it to overhang the stand, then pinch
 the overhang.
+
+## store_laptop: the overhang grasp (parked)
+
+`Skills.laptop_pick` "overhang" (branch `feat/dojo-newskill-laptop-overhang` @ 7a43456d, not merged):
+- the shut laptop is dragged towards the arms with closed fingertips pressed on its top (`library._press_stroke`) until
+  it overhangs its stand by 5 cm;
+- then it is pinched only past the stand's footprint (`overhang_edge`).
+
+G3, dev v1 100030-39, std + random: the laptop tier is still 0/20, so it is parked. The physics findings:
+- **The press drag does not slide the laptop along its stand; it tips it off.** After the first stroke, 10 of 20 rows
+  have the laptop on the table (no support found under it).
+- Where it stays on the stand, 3 strokes leave it overhanging 1-5.5 cm, inconsistently.
+- After any slide, the pinches past the stand's footprint have 0 grasp-place pairs in every row; on the table, no lower
+  finger fits under the slab.
+
+What the laptop stage leaves in main (#350, all off): the checker frames, posed articulation geometry, the lid re-push
+(shut in 19/20), and the route skeleton. The open problem is a hold on a 9 mm, ~1 kg-class slab lying on a raised
+stand, 0.5-0.6 m out. The candidates left are a two-arm lift (both hands under the overhanging sides), or a pick before
+the lid is shut (the open lid as a handle), which then needs the lid closed in hand.
