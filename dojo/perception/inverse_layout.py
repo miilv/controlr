@@ -4251,10 +4251,13 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 sm = _slot_shape(key0, tlabels[lab]["placement"], tag)
                 xr, yr, yawr, loss, per = refine(sm, x, y, 0.0, views, maxiter=40, xy_step=0.003, yaw_step=0.03,
                                                  fix_yaw=True)
-                if np.hypot(xr - x, yr - y) > 0.02:  # settling moves a few mm; a big jump is a wrong fit
+                slot_prior = bool(np.hypot(xr - x, yr - y) > 0.02)
+                if slot_prior:  # settling moves a few mm; a big jump is a wrong fit: the config's slot pose, unfitted
                     xr, yr, loss, per = x, y, 0.5, {}
                 h = Hypothesis(gi, key0, sm.tag, xr, yr, 0.0, loss, per)
                 h.per_view.update({"geom_group": [k for k in g["candidates"]], "slot": True, "sil_loss": round(float(loss), 4)})
+                if slot_prior:
+                    h.per_view["slot_prior"] = True
                 if 1 < len(g["candidates"]) <= cfg.slot_identity_max:
                     h = _slot_identity(h, g, tlabels[lab]["placement"], tag, views, cfg)
                 h = _glyph_read_slot(h, g, tlabels[lab]["placement"], tag, views, cfg)
@@ -4867,6 +4870,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                "texture": h.per_view.get("texture"),
                                **({"glyph": h.per_view["glyph"]} if h.per_view.get("glyph") else {}), **dfields,
                                "geom_group": h.per_view.get("geom_group"), "slot": bool(h.per_view.get("slot", False)),
+                               **({"slot_prior": True} if h.per_view.get("slot_prior") else {}),
                                **({"low_contrast": True} if h.per_view.get("low_contrast") else {}),
                                **({"yaw_read": {k: h.per_view["top_feature"][k] for k in
                                                 ("sign_ok", "tail_mm", "ratio_axis", "ratio_flip", "camera")}}

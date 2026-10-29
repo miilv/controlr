@@ -407,6 +407,16 @@ def _colour_name(rgb) -> str | None:
     return best[1]
 
 
+def j1_source(p: dict) -> str:
+    """The J1 ``source`` of a B1 record entry (its ``_perception`` ``p``): "fused" (seen in > 1 view) / "head". With
+    ``J1_SLOT_PRIOR_SOURCE=1``: "prior" for an entry at its config slot pose that no fit supports (B1's slot fallback,
+    ``slot_prior``: the local fit jumped > 2 cm, so the pose is the config's, bit-identical in every scene, confidence
+    0.5). Off by default: the adapter's own carry logic and the agent's features read "prior"."""
+    if p.get("slot_prior") and os.environ.get("J1_SLOT_PRIOR_SOURCE") == "1":
+        return "prior"
+    return "fused" if p.get("n_views", 0) > 1 else "head"
+
+
 def _want_match(want, objects) -> dict:
     """Free-text wants ("blue block", "T", "button red 0") -> best object label by token overlap with the
     label, category, colour words and catalogue captions."""
@@ -467,13 +477,12 @@ def _perceive_impl(frames, calib, flange, grip_cmd, instruction, want=None, join
                     sm = shape_by_tag(key, p.get("place_tag")) if p.get("place_tag") not in (None, "fixed") else None
                 except StopIteration:
                     sm = None
-                n_views = p.get("n_views", 0)
                 o = {"label": r["label"], "category": cat, "asset": key,
                      "pos": [round(float(v), 5) for v in r["default_pos"]],
                      "quat": [round(float(v), 6) for v in r["default_ori"]],
                      "size": _size(key, sm) if sm is not None else [round(float(v), 4) for v in info["extents"]],
                      "confidence": round(float(p.get("confidence", 0.5)), 3),
-                     "source": "fused" if n_views > 1 else "head",
+                     "source": j1_source(p),
                      "flags": {**{k: p[k] for k in ("occluded", "ambiguous", "hidden_frac", "near_home_grippers",
                                                      "fg_resid_near") if k in p},
                                **({"yaw_read": True} if p.get("yaw_read") else {})},
