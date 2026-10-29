@@ -51,5 +51,21 @@ calls.
     head's wrong-shape fit on the same blob costs 0.30-0.56 and is chosen.
   - 1 object has no wrist mask; 1 is fully hidden behind the Franka.
 
+**Occlusion-aware cost: tried, dropped (dev)**
+- B1's ROI silhouette cost was replaced in a prototype, not committed.
+- Views weighted by visible fraction squared, views under half visible dropped: 8 / 5.
+- The clearest view decides: 7 / 7.
+- Neither improves on both flags' 7 / 5. The per-view IoUs show the wrong-shape fits explain the far blobs better in
+  the head and usually in the wrists too: 100030 aim0, action_camera 30 mm off at head 0.83 / left 0.49 vs the watch in
+  place at 0.58 / 0.39.
+- The remaining limit is small-object shape / foreground fidelity, not occlusion. Parked for the segmenter / S.
+
+**`wrist_pool` "support_masked"**
+- A third value next to off / on: the wrist proposals run only in a frame where `support_mask` masked a support robot,
+  a scene-content condition. Every other estimate is unchanged.
+- False / True keep their meaning.
+- Offline: an imitate frame runs them (11 wrist blobs); make_kong dev 100000 does not ("no support robot masked in this
+  frame").
+
 Next: judge both flags on the runtime frame-0 dumps of `c4b_imitatesg_dev_r2_100000-04`, the runtime render domain. If
-they hold, an A/B on the imitate cell.
+they hold, an A/B on the imitate cell (B = `support_mask` + `wrist_pool` "support_masked"), guarded by make_kong.

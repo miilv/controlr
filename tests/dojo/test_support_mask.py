@@ -105,3 +105,17 @@ def test_flags_default_off():
     from dojo.perception.inverse_layout import EstimatorConfig
     c = EstimatorConfig()
     assert c.support_mask is False and c.wrist_pool is False
+
+
+def test_wrist_pool_values_keep_their_meaning_and_support_masked_follows_the_mask():
+    pytest.importorskip("cv2")
+    pytest.importorskip("scipy")
+    from dojo.perception.inverse_layout import _wrist_pool_off
+    masked = {"applied": "franka_home", "diff": 2.3, "views": ["cam_head"]}
+    for v in (False, "off", None):
+        assert _wrist_pool_off(v, masked) == "off"
+    for v in (True, "on"):
+        assert _wrist_pool_off(v, None) is None and _wrist_pool_off(v, masked) is None
+    assert _wrist_pool_off("support_masked", masked) is None
+    assert _wrist_pool_off("support_masked", None) == "no support robot masked in this frame"
+    assert _wrist_pool_off("support_masked", {"why": "no support robot at its home"}) is not None
