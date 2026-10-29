@@ -377,3 +377,16 @@ def test_snap_row_puts_a_dense_row_back_on_its_slots_in_the_planning_world_only(
     # not a row: nothing moves
     w.obj("t0").pos = true["t0"] + [0.0, 0.08, 0.0]
     assert snap_row(w, ["t0", "t9", "t13"]) == {}
+
+
+def test_pair_rank_reorders_the_screen_and_none_keeps_it():
+    """``plan_transfer(pair_rank=...)``: added to each screened pair's rank (tiles' ``tile_grasp`` "prefer"); the
+    best-ranked grasp is penalised -> another one is planned; a pair_rank that is 0 everywhere changes nothing."""
+    env, prov, sk = _scene(offset=(0.0, 0.0), refine_fixes=False)
+    pp0, _ = sk.plan_transfer("b", [_target(sk)], grasps=_tilted(sk))
+    pp1, _ = sk.plan_transfer("b", [_target(sk)], grasps=_tilted(sk), pair_rank=lambda g, *a: 0.0)
+    assert np.allclose(pp1.grasp.T, pp0.grasp.T)
+    first = pp0.grasp.T.copy()
+    pp2, _ = sk.plan_transfer("b", [_target(sk)], grasps=_tilted(sk),
+                              pair_rank=lambda g, *a: 10.0 if np.allclose(g.T, first) else 0.0)
+    assert not np.allclose(pp2.grasp.T, first)

@@ -31,3 +31,18 @@ must not count as placed. Re-find it and retry it within the attempt ladder.
 
 This applies to complete_equation's answer tile and to every arranged digit. With no `in_doubt` on the provider
 (G3 mode gt), nothing changes. Unit test: `test_tile_recover_retries_a_tile_that_is_not_on_its_pad`.
+
+## tile_grasp "prefer"
+
+Used as a hard filter, "flat" left no reachable grasp for 2 of 5 tiles (G3 v1 100030-34: ik_fail on digit_0 and
+digit_1). "prefer" keeps every grasp but plans the flat ones first. The new `plan_transfer(pair_rank=...)` adds
+`PREFER_RANK` (10) to the screen rank of a numeral's non-flat pairs (`tiles.flat_rank`), so they remain as the
+fallback. Discs and tiles without a mesh get no rank. The default is still "any".
+
+G3 arrange_largest_number v1 100030-39, compute3 (e9ef4065 / 00173040, same layouts):
+
+| tile_grasp | 100030-34 | 100030-39 | score | losers |
+|---|---|---|---|---|
+| any | 4/5 | 7/10 | 0.795 | 100030, 100035, 100036 (place_miss) |
+| flat | 2/5 | (30-min cap at n=5) | 0.6 | 100030, 100032 (ik_fail), 100034 (place_miss) |
+| prefer | 5/5 | 9/10 | 0.925 | 100035 (place_miss digit_4, digit_3) |

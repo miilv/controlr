@@ -301,6 +301,7 @@ class Skills:
         # | "parallel" (both movers' hovers in one move, each wrist refines, both slides in the same steps when apart)
         self.align_measure = "seq"
         # ``tiles`` (stream N): numeral grasps "any" (today) | "flat" (the pads on faces square to the closing axis)
+        # | "prefer" (flat grasps planned first, the others as the fallback)
         self.tile_grasp = "any"
         # ``tiles`` (stream N): a placed tile the provider doubts (post-place not ok, empty close) is looked at, put back
         # where it was picked from or searched for, and placed again (off = today: it counts as placed)
@@ -1860,7 +1861,7 @@ class Skills:
                       place_kw: dict | None = None, pick_kw: dict | None = None, max_full: int = 24, grasps=None,
                       q_start: dict | None = None, max_pick_tilt: float = 50.0, box_tilts=(0.0, 25.0, -25.0),
                       lift_to_pre: bool = False, screen_fingers_out: bool = False, pair_ok=None, yaw_about=None,
-                      place_reach: float | None = None):
+                      place_reach: float | None = None, pair_rank=None):
         """Pick ``label`` with a grasp that ALSO fits a place pose in ``targets`` (object 4x4 poses, earlier =
         preferred): the grasp fixes the object's orientation in the hand, so a re-orienting place (lying ->
         standing, tip down, upright) is planned together with its pick. Grasps: ``box_grasps`` (every face
@@ -1876,6 +1877,7 @@ class Skills:
         ``screen_fingers_out``: screen each place at the pose ``place_kw["fingers_out"]`` lets go from (the TCP raised
         until the fingertips clear the receptacle's top; a coin dropped into a slot from a grasp at its middle).
         ``pair_ok(grasp, T_tcp_obj, T_obj, T_tcp) -> bool``: an extra test of each screened grasp-place pair.
+        ``pair_rank(grasp, T_tcp_obj, T_obj, T_tcp) -> float``: added to a screened pair's rank (lower = planned first).
         ``yaw_about``: the point (object frame) the ``yaw_sym`` turns are about, instead of the bbox centre (a star-shaped
         ring's hole sits 2.9 mm off its bbox centre: turned about the centre, 3 of 4 targets missed the peg by 4-6 mm).
         ``place_reach``: the farthest place TCP from the placing arm's base in the plane (default ``PLACE_REACH``).
@@ -1887,7 +1889,7 @@ class Skills:
         call = dict(targets=list(targets), ignore=ignore, yaw_sym=yaw_sym, lift=lift, place_kw=place_kw,
                     pick_kw=pick_kw, max_full=max_full, grasps=grasps, max_pick_tilt=max_pick_tilt,
                     box_tilts=box_tilts, lift_to_pre=lift_to_pre, screen_fingers_out=screen_fingers_out,
-                    pair_ok=pair_ok, yaw_about=yaw_about, place_reach=place_reach)
+                    pair_ok=pair_ok, yaw_about=yaw_about, place_reach=place_reach, pair_rank=pair_rank)
         reach = PLACE_REACH if place_reach is None else float(place_reach)
         place_kw = dict(place_kw or {})
         pick_kw = dict(pick_kw or {})
@@ -1983,7 +1985,8 @@ class Skills:
                         T_l[2, 3] = max(g.T[2, 3] + lift, self._pre_place_z(obj, g, T_obj, ignore, place_kw))
                         if not self.kin.ik(a, T_l, r.q, n_random=0).ok:
                             continue
-                    screened.append((g.score + hq + 0.05 * (ti // max(1, yaw_sym)), a, g, T_obj))
+                    pr = 0.0 if pair_rank is None else float(pair_rank(g, T_tcp_obj, T_obj, T_tcp))
+                    screened.append((g.score + hq + 0.05 * (ti // max(1, yaw_sym)) + pr, a, g, T_obj))
             notes.append(f"{a}: {n_g}/{len(cands)} grasps reachable, {n_p} grasp-place pairs")
         screened.sort(key=lambda x: x[0])
         for _, a, g, T_obj in screened[:max_full]:

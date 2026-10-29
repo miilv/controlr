@@ -340,6 +340,12 @@ def test_flat_numeral_grasps_behind_tile_grasp():
     anyg = tiles.centred_grasp(o)
     assert anyg(across_y, None, None, None) and anyg(across_x, None, None, None)
     assert RuntimeConfig().tile_grasp == "any"
+    # "prefer": the flat grasp ranks first, the slanted one stays as the fallback; discs / bbox tiles have no rank
+    rank = tiles.flat_rank(o)
+    assert rank(across_y, None, None, None) == 0.0 and rank(across_x, None, None, None) == tiles.PREFER_RANK
+    disc = ObjectState("d", "Rigid", "operator", 0, o.pos, o.quat, AssetInfo(key="Rigid/operator/00000",
+                                                                           bbox_min=V.min(0), bbox_max=V.max(0)))
+    assert tiles.flat_rank(disc) is None
 
 
 def test_tile_recover_retries_a_tile_that_is_not_on_its_pad(monkeypatch):
