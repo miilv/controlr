@@ -811,6 +811,7 @@ def _slot_shape(key: str, placement: dict, tag: str | None) -> ShapeModel:
     return ([s_ for s_ in shape_models(key) if not tag or s_.tag == tag] or list(shape_models(key)))[0]
 
 
+EDGE_SIL_SLACK = 0.02  # edge_yaw: a new yaw may raise the silhouette loss by at most this (the outline stays ambiguous)
 SLOT_READ_MARGIN = 1e-4  # a slot's identity counts as read only when one candidate beats the runner-up by more than this
 
 
@@ -3696,6 +3697,9 @@ class EstimatorConfig:
     polish_color_veto: float | None = 0.2  # paired texture cannot pick a trial whose mean colour is this much worse
     identity_margin_swap: bool = False  # polish: another asset whose combined cost beats the kept one by > eps replaces it
     identity_margin_swap_eps: float = 0.01  # (= the cost rule's own hysteresis in _polish_prefers)
+    # a four-fold symmetric box's (a cube's) yaw from the image gradient along its rendered outline (``edge_yaw``): its
+    # silhouette barely constrains the yaw (align_blocks 5.1: cubes 17.8 / 35 deg off, rows left 30 deg off)
+    edge_yaw: bool = False
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
     small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
     slot_free_search: bool = True  # a slot child whose slot looks empty is looked for loose on the table
@@ -4524,6 +4528,34 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             h.per_view["top_feature"] = best
             if best is not None:
                 h.yaw = best["yaw"]
+
+    # ---- a cube's yaw from the image edges along its outline (``edge_yaw``)
+    if cfg.edge_yaw and any(h.sm().sym == 4 and not h.per_view.get("occluded") for h in chosen):
+        from .edge_yaw import edge_yaw as _edge_yaw, gradient as _gradient
+
+        grads = {n: _gradient(v.img) for n, v in views.items()}
+        for i, h in enumerate(chosen):
+            if h.per_view.get("occluded") or h.sm().sym != 4:
+                continue
+            g_h = groups[h.label_group] if h.label_group is not None and h.label_group < len(groups) else None
+            if g_h is None or _placement_prior(g_h)["yaw_fixed"]:
+                continue                                # the config places it unrotated: its yaw is known
+            others_i = _union_masks(chosen, views, skip=i, target=h)
+            z_off = float(h.per_view.get("z_off", 0.0))
+            r = _edge_yaw(h.sm(), h.x, h.y, h.yaw, z_off, views, others_i, grads)
+            if r is not None and r["changed"]:
+                # the edges refine the yaw only within the silhouette's own ambiguity (a cube's square outline): a yaw
+                # the silhouette fits clearly worse is a wrong fit's outline matching other edges (stack_blocks 5.1:
+                # blocks 8-32 mm off took 27-40 deg turns)
+                l0 = multi_view_loss(h.sm(), h.sm().pose(h.x, h.y, h.yaw, z_off), views, others_i)[0]
+                l1 = multi_view_loss(h.sm(), h.sm().pose(h.x, h.y, r["yaw"], z_off), views, others_i)[0]
+                r.update(sil_loss=[round(float(l0), 4), round(float(l1), 4)])
+                if l1 > l0 + EDGE_SIL_SLACK:
+                    r.update(changed=False, why="silhouette worse", yaw=float(h.yaw))
+                else:
+                    h.yaw = r["yaw"]
+            if r is not None:
+                h.per_view["edge_yaw"] = r
 
     # ---- unexplained foreground near each fit (head view): an object fitted to part of a blob, or a neighbour
     # shifted onto it, leaves foreground uncovered right next to it
