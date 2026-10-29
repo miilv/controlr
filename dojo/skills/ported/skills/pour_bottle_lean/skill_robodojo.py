@@ -129,15 +129,22 @@ def mouth_radius(rec, default):
     return float(min(0.03, max(0.006, 0.5 * min(g["jaw_width_m"] for g in gs)))), "top-band mesh grasp"
 
 
+COMPANION_CLEAR = 0.15          # H: m, the companion's approach stays this far (xy) from the bowl this pour works over
+
+
 def companion_plan(robot, P, Bottle, objs, instr, container, target, arm, q_from, grasp_frac, back, lift, pitches, yaws,
-                   sides, phis, lip_clear, body_clear, spout_back, mouth_r, shoulder_frac):
+                   sides, phis, lip_clear, body_clear, spout_back, mouth_r, shoulder_frac, avoid_xy=None):
     """H: ``arm``'s neck grasp of the NEXT pour's bottle from ``q_from`` (the overlap pace: it grasps and lifts it
     while this pour runs), with that pour's whole profile reachable from the lift, as ``run`` plans its own; None
-    when there is none. Returns the grasp (pre / grasp / lift TCP positions, tool quaternion) and what ``pre_held``
-    needs."""
+    when there is none. Only on the arm's own side (the arm ``run`` would pick for that bottle: right for x >= 0): a
+    left arm reaching over to x = +0.2 met the pouring right arm (G3, 0.44 rad tracking error, the grasp missed). The
+    approach and grasp points stay ``COMPANION_CLEAR`` from ``avoid_xy`` (this pour's bowl). Returns the grasp (pre /
+    grasp / lift TCP positions, tool quaternion) and what ``pre_held`` needs."""
     try:
         ci, ti, _ = ground(objs, instr, container, target)
     except ValueError:
+        return None
+    if ("right" if float(objs[ci]["pos"][0]) >= 0 else "left") != arm:
         return None
     mr, _ = mouth_radius(objs[ci], mouth_r)
     cup = Bottle(objs[ci], mr, shoulder_frac)
@@ -154,6 +161,9 @@ def companion_plan(robot, P, Bottle, objs, instr, container, target, arm, q_from
             head_h = np.array([head[0], head[1], 0.0]) / max(1e-9, math.hypot(head[0], head[1]))
             g = np.array([c0[0], c0[1], gz])
             pre, up = g - back * head_h, g + np.array([0, 0, lift_dz])
+            if avoid_xy is not None and min(float(np.linalg.norm(x[:2] - np.asarray(avoid_xy, float)[:2]))
+                                            for x in (pre, g)) < COMPANION_CLEAR:
+                continue
             ok, _, ql, _ = P._reach_chain(robot, arm, [(pre, Q0), (g, Q0), (up, Q0)], q_from)
             if not ok:
                 continue
@@ -261,7 +271,7 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
     if companion:
         comp = companion_plan(robot, P, Bottle, objs, instr, companion[0], companion[1], other,
                               robot.obs(cameras=[])["eef"][other].get("q"), grasp_frac, back, lift, pitches_all, yaws_all,
-                              sides, phis, lip_clear, body_clear, spout_back, mouth_r, shoulder_frac)
+                              sides, phis, lip_clear, body_clear, spout_back, mouth_r, shoulder_frac, avoid_xy=tc)
         details["companion_plan"] = comp or {"none": True}
         if comp:
             cq = [("move", comp["pre"], "normal", None), ("move", comp["g"], "slow", 0.008), ("grip",),
