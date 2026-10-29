@@ -2225,7 +2225,30 @@ def _press_stroke(sk: Skills, o, label: str, u, step: float):
     return None
 
 
-def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.08, max_iter: int = 10) -> SkillResult:
+COVER_MARGIN = 0.005       # m: ``push_goal`` "cover" keeps the object this far inside its allowed centre range
+
+
+def cover_region(o, sup) -> tuple[np.ndarray, np.ndarray]:
+    """``push_goal`` "cover" (stream H): the world-axis ranges ``(lo, hi)`` of ``o``'s centre for which its footprint
+    covers ``sup``'s (where ``o`` is the larger along that axis: organize_table's 368 mm keyboard over its 240 mm
+    frame) or lies inside it (where ``o`` is the smaller), ``COVER_MARGIN`` inside; a range that cannot hold collapses
+    to the support's centre."""
+    half_o = np.abs(o.R[:2, :2]) @ (np.asarray(o.asset.extents, float)[:2] / 2)
+    mn, mx = sup.aabb()
+    s_lo, s_hi = np.asarray(mn, float)[:2], np.asarray(mx, float)[:2]
+    lo, hi = np.empty(2), np.empty(2)
+    for k in range(2):
+        if 2 * half_o[k] >= s_hi[k] - s_lo[k]:          # cover: o's edges outside the support's on both sides
+            lo[k], hi[k] = s_hi[k] - half_o[k] + COVER_MARGIN, s_lo[k] + half_o[k] - COVER_MARGIN
+        else:                                            # inside
+            lo[k], hi[k] = s_lo[k] + half_o[k] + COVER_MARGIN, s_hi[k] - half_o[k] - COVER_MARGIN
+        if lo[k] > hi[k]:
+            lo[k] = hi[k] = 0.5 * (s_lo[k] + s_hi[k])
+    return lo, hi
+
+
+def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.08, max_iter: int = 10,
+            support: str | None = None) -> SkillResult:
     """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time (the one with the most
     left to go first, the other when that one has no stroke): closed fingertips against the middle of the
     face opposite the motion (no torque about the centre) at half the height of that face (from the mesh),
@@ -2239,9 +2262,20 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
     target_xy = np.asarray(target_xy, float)
     last = None
     stuck = 0
+    cover = support is not None and getattr(sk, "push_goal", "centre") == "cover"
     for it in range(max_iter):
         w = sk.refresh()
         o = w.obj(label)
+        if cover:
+            # ``push_goal`` "cover": done once the centre is in the range where the footprint covers (or lies inside)
+            # the support; else aim at the nearest point of that range (organize_table: the keyboard must cover the
+            # frame, a 13 x 5 cm range of centres, not its centre within 12 mm)
+            lo, hi = cover_region(o, w.obj(support))
+            c = o.center_w[:2]
+            if bool(np.all(c >= lo) and np.all(c <= hi)):
+                return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
+                                              note=f"covers {support} after {it} strokes"))
+            target_xy = np.clip(c, lo, hi)
         d = target_xy - o.center_w[:2]
         if float(np.linalg.norm(d)) <= tol:
             return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
@@ -2296,6 +2330,13 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
         if stuck >= 2:
             break
     w = sk.refresh()
+    if cover:
+        lo, hi = cover_region(w.obj(label), w.obj(support))
+        c = w.obj(label).center_w[:2]
+        inside = bool(np.all(c >= lo) and np.all(c <= hi))
+        gap = float(np.linalg.norm(np.clip(c, lo, hi) - c))
+        return sk._record(SkillResult(inside, "push", "ok" if inside else "place_miss", sk.ex.steps_used - n0, last,
+                                      note=f"{gap * 1000:.0f} mm short of covering {support}"))
     dist = float(np.linalg.norm(target_xy - w.obj(label).center_w[:2]))
     return sk._record(SkillResult(dist <= tol, "push", "ok" if dist <= tol else "place_miss",
                                   sk.ex.steps_used - n0, last, note=f"{dist*1000:.0f} mm left"))
@@ -2325,7 +2366,7 @@ def arrange(sk: Skills, steps: list) -> dict:
             continue
         sk.refresh()
         if verb == "push":
-            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2])
+            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2], support=sup)
         else:
             container_obstacle(sk, sup)
             tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05

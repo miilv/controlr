@@ -304,6 +304,9 @@ class Skills:
         # ``library.push_to``'s axis order (stream H): "greedy" (today: most left to go first) | "lookahead" (the other
         # axis first when its stroke would be blocked once the first is done)
         self.push_order = "greedy"
+        # ``library.push_to``'s goal (stream H; ``RuntimeConfig.push_goal``): "centre" (today: the support's centre within
+        # 12 mm) | "cover" (the range of centres where the object covers / lies inside the support: ``cover_region``)
+        self.push_goal = "centre"
         # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
         # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"
