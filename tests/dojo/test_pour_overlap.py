@@ -77,7 +77,7 @@ def test_overlap_grasps_the_next_bottle_during_the_pour():
     assert steps["overlap"] <= steps["v1"] - 140                     # kinematic env: 753 -> 584
 
 
-def test_a_centre_bottle_goes_to_either_arm_and_a_side_bottle_to_its_own():
+def test_a_companion_only_for_a_side_bottle_on_its_own_side():
     from dojo.skills.ported.skills.pour_bottle_lean import skill_robodojo as lean
     objs = {"b": {"pos": [0.03, 0.0, 0.8]}, "w": {"pos": [0.0, -0.15, 0.78]}}
 
@@ -89,7 +89,7 @@ def test_a_centre_bottle_goes_to_either_arm_and_a_side_bottle_to_its_own():
         except Exception:            # past the side rule: it went on to plan (no robot here)
             return True
         return False
-    assert side_ok(0.03, "left") and side_ok(0.03, "right") and side_ok(0.2, "right") and not side_ok(0.2, "left")
+    assert not side_ok(0.03, "left") and not side_ok(0.03, "right") and side_ok(0.2, "right") and not side_ok(0.2, "left")
     assert side_ok(-0.2, "left") and not side_ok(-0.2, "right")
 
 

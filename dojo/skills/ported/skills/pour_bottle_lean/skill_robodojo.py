@@ -131,15 +131,17 @@ def mouth_radius(rec, default):
 
 COMPANION_CLEAR = 0.20          # H: m, the companion's approach stays this far (xy) from the bowl this pour works over (G3:
 #                                  at 0.158 the pouring bottle met the companion arm and turned 28-50 deg in the hand)
-CENTRE_X = 0.05                 # H: m, a bottle this close to x = 0 is on both arms' side
+CENTRE_X = 0.05                 # H: m, a bottle this close to x = 0 gets no companion: between both bowls' working
+#                                  areas the pouring bottle met the companion arm (G3: 2 slips of 36-47 deg), and its
+#                                  side-arm grasp (yaw +-30) slipped once more
 
 
 def companion_plan(robot, P, Bottle, objs, instr, container, target, arm, q_from, grasp_frac, back, lift, pitches, yaws,
                    sides, phis, lip_clear, body_clear, spout_back, mouth_r, shoulder_frac, avoid_xy=None):
     """H: ``arm``'s neck grasp of the NEXT pour's bottle from ``q_from`` (the overlap pace: it grasps and lifts it
     while this pour runs), with that pour's whole profile reachable from the lift, as ``run`` plans its own; None
-    when there is none. Only on the arm's own side (the arm ``run`` would pick for that bottle: right for x >= 0): a
-    left arm reaching over to x = +0.2 met the pouring right arm (G3, 0.44 rad tracking error, the grasp missed). The
+    when there is none. Only for a side bottle on the arm's own side (|x| > CENTRE_X): a left arm reaching over to
+    x = +0.2 met the pouring right arm (G3, 0.44 rad tracking error, the grasp missed). The
     approach and grasp points stay ``COMPANION_CLEAR`` (0.20 m) from ``avoid_xy`` (this pour's bowl). Returns the grasp (pre /
     grasp / lift TCP positions, tool quaternion) and what ``pre_held`` needs."""
     try:
@@ -147,7 +149,7 @@ def companion_plan(robot, P, Bottle, objs, instr, container, target, arm, q_from
     except ValueError:
         return None
     x = float(objs[ci]["pos"][0])
-    if ("right" if x > CENTRE_X else "left" if x < -CENTRE_X else arm) != arm:        # a centre bottle: either arm
+    if abs(x) <= CENTRE_X or ("right" if x > 0 else "left") != arm:      # side bottles only, on their own side
         return None
     mr, _ = mouth_radius(objs[ci], mouth_r)
     cup = Bottle(objs[ci], mr, shoulder_frac)
