@@ -303,6 +303,9 @@ class Skills:
         # ``library.bowl_geometry``'s nest height (stream H): "bins" (today) | "measured" (the twin's rest height per
         # asset, else the mesh's radial profile)
         self.nest_height = "bins"
+        # ``sweep.handle_grasps``' ranking (stream H): "com" (today: the grasp's distance from the tool's CoM along its
+        # handle) | "hold" (``grasps.hold_quality``)
+        self.broom_rank = "com"
         self.consume_events: list = []
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}

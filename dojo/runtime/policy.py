@@ -301,6 +301,8 @@ class RuntimeConfig:
     stack_reach: str = "centre"
     # ``library.bowl_geometry``'s nest height (``Skills.nest_height``): bins (today) | measured (twin table, else profile)
     nest_height: str = "bins"
+    # ``sweep.handle_grasps``' ranking (``Skills.broom_rank``): com (today) | hold (the pads' hold quality)
+    broom_rank: str = "com"
     # planner routes that are off by default (stream N, ``dojo.skills.routes.NEW_ROUTES``): "equation" (an equation's
     # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right),
     # "align" (identical blocks slid into one aligned row), "row_by_size" (objects of one kind stood in a row by size);
@@ -416,7 +418,8 @@ class RuntimePolicy:
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.joint_limits not in ("wide", "measured")
-                or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
+                or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")
+                or self.cfg.broom_rank not in ("com", "hold")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -678,6 +681,7 @@ class RuntimePolicy:
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
+            sk_.broom_rank = cfg.broom_rank
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
             sk_.joint_limits = cfg.joint_limits

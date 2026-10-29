@@ -110,7 +110,14 @@ def handle_grasps(sk: Skills, tool, arm: str) -> list:
             # nearest the head's root first (the least lever on a level carry), straight down first
             # nearest the centre of mass first (the broom's is at its head's root: twin, a pinch 7 mm in held with 5 mm
             # drift, 19 mm in came loose with 13 mm), straight down first
-            g.score = float(g.score) + 3.0 * abs(float(p[k] - com_k)) + 0.5 * (1.0 + float(g.T[2, 0]))
+            if getattr(sk, "broom_rank", "com") == "hold":
+                # stream H: by how the pads hold it (``grasps.hold_quality``). The broom weighs 40 g, so its centre of
+                # mass gives no torque worth ranking by, and it sits nearer the station that came loose (G3, v1 draws:
+                # off 0 / -5 mm held with 5-6 mm drift; +19 mm, nearest the CoM, 13 mm loose; hold_quality 2.1 / 1.8
+                # vs 4.3)
+                g.score = float(g.score) + G.hold_quality(tool, g.T) + 0.5 * (1.0 + float(g.T[2, 0]))
+            else:
+                g.score = float(g.score) + 3.0 * abs(float(p[k] - com_k)) + 0.5 * (1.0 + float(g.T[2, 0]))
             out.append(g)
     # box grasps only when there are any (twin probe: a box pinch 7 mm into the head held with 5 mm drift; a 76 mm slice
     # across the bristles caught nothing; plan_transfer re-ranks by score, so filter rather than sort)
