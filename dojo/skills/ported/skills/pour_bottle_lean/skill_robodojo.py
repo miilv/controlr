@@ -129,7 +129,8 @@ def mouth_radius(rec, default):
     return float(min(0.03, max(0.006, 0.5 * min(g["jaw_width_m"] for g in gs)))), "top-band mesh grasp"
 
 
-COMPANION_CLEAR = 0.15          # H: m, the companion's approach stays this far (xy) from the bowl this pour works over
+COMPANION_CLEAR = 0.20          # H: m, the companion's approach stays this far (xy) from the bowl this pour works over (G3:
+#                                  at 0.158 the pouring bottle met the companion arm and turned 28-50 deg in the hand)
 CENTRE_X = 0.05                 # H: m, a bottle this close to x = 0 is on both arms' side
 
 
@@ -139,7 +140,7 @@ def companion_plan(robot, P, Bottle, objs, instr, container, target, arm, q_from
     while this pour runs), with that pour's whole profile reachable from the lift, as ``run`` plans its own; None
     when there is none. Only on the arm's own side (the arm ``run`` would pick for that bottle: right for x >= 0): a
     left arm reaching over to x = +0.2 met the pouring right arm (G3, 0.44 rad tracking error, the grasp missed). The
-    approach and grasp points stay ``COMPANION_CLEAR`` from ``avoid_xy`` (this pour's bowl). Returns the grasp (pre /
+    approach and grasp points stay ``COMPANION_CLEAR`` (0.20 m) from ``avoid_xy`` (this pour's bowl). Returns the grasp (pre /
     grasp / lift TCP positions, tool quaternion) and what ``pre_held`` needs."""
     try:
         ci, ti, _ = ground(objs, instr, container, target)
