@@ -22,6 +22,7 @@ from dojo.skills.ported.harness_robot import PASS_THROUGH, SOURCE_COMMIT, Harnes
 # order_gen11.tsv, order_K4_gen.tsv). The reserve is one value for every skill (the single-fixed-system audit,
 # 2026-10-28: his pick_up ran with reserve 0, here 20 like the rest)
 RESERVE = 20
+BALL_POURS = ("pour", "pour_p1")              # pours verified by counting balls (``ported``: no ball, no verdict)
 TIER_A = {
     "cover_uncover_v2": (RESERVE, {}),
     "swap_poses": (RESERVE, {}),
@@ -80,6 +81,13 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
             raise
         rep = {"ok": False, "verified": False, "error": f"{type(e).__name__}: {e}"}
     verified = bool(rep.get("verified"))
+    no_evidence = None
+    fin = (rep.get("details") or {}).get("final") if isinstance(rep.get("details"), dict) else None
+    if (verified and skill in BALL_POURS and not robot.truth and isinstance(fin, dict)
+            and not fin.get("balls")):
+        # Misha's review P2-3: camera mode's belief has no balls inside the cup, so "every ball in the target" held
+        # with nothing poured (0 == 0). No ball evidence: not verified, and said so
+        verified, no_evidence = False, "no ball evidence: the belief holds no balls (camera mode)"
     steps = sk.ex.steps_used - n0
     if verified:
         status = "ok"
@@ -89,15 +97,17 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
         status = "step_budget"
     else:
         status = "logic"
-    note = str(rep.get("error") or "")[:300]
+    note = str(rep.get("error") or no_evidence or "")[:300]
     sk._record(SkillResult(verified, f"ported:{skill}", status, steps, rep.get("arm"), note=note))
     events = getattr(getattr(sk, "provider", None), "events", None)
     if isinstance(events, list):                 # the runtime's report events: what the skill did and why
         events.append({"kind": "ported", "skill": skill, "verified": verified, "status": status, "steps": steps,
-                       "error": note, "truth": robot.truth, "calls": len(robot.calls), "calls_tail": robot.calls[-60:],
+                       "error": note, "truth": robot.truth, "grip_source": robot.grip_source(),
+                       "calls": len(robot.calls), "calls_tail": robot.calls[-60:],
                        "details": _clip(rep.get("details"), 12000)})
     sk.ported_runs = getattr(sk, "ported_runs", []) + [{"skill": skill, "verified": verified, "steps": steps,
                                                         "truth": robot.truth, "error": note,
+                                                        "grip_source": robot.grip_source(),
                                                         "calls": len(robot.calls), "calls_tail": robot.calls[-30:],
                                                         "details": _clip(rep.get("details"))}]
     # "ok" = the skill ran its whole procedure (robot-harness's ``ok``), so the runtime's supervisor does not run it a

@@ -441,9 +441,33 @@ def test_camera_close_waits_while_the_official_reading_moves():
         return orig_step(action)
     env0.step = step
     sk.env._env = env0
+    sk.provider.grip_check = True                              # the official key is read behind the grip check only
     robot = HarnessRobot(sk)
+    assert robot.grip_source() == "official"
     g = robot.gripper(arm="left", action="close")              # 4 ramp + 3 wait steps; the reading still moves
     assert 7 < g["steps"] <= 7 + SETTLE_MAX and g["official"] == pytest.approx(0.163) and g["grasp_detected"]
+
+
+def test_the_official_gripper_key_is_not_read_without_the_grip_check():
+    """Misha's review P2-6 (D-C11): with grip_check off the adapter ignores ``<arm>_ee_joint_state_official``; the
+    grasp sense is the belief's, and the run says so (``grip_source``)."""
+    env0, sk = belief_skills(rows_push(), rows_push(), SCENES["planar_drag"][1])
+    orig = env0.proprio
+
+    def prop():
+        st = orig()
+        for a in ARMS:
+            st[f"{a}_ee_joint_state_official"] = np.array([0.4])
+        return st
+    env0.proprio = prop
+    sk.env._env = env0
+    robot = HarnessRobot(sk)
+    assert getattr(sk.provider, "grip_check", False) is False
+    assert robot._official("left") is None and robot.grip_source() == "belief"
+    e = robot.eef()["left"]
+    assert e["grip_obs"] != pytest.approx(0.4)
+    g = robot.gripper(arm="left", action="close")
+    assert g["official"] is None
 
 
 def test_pour_full_runs_the_whole_profile_when_the_belief_has_no_balls():
@@ -500,3 +524,17 @@ def test_library_pickup_falls_back_to_the_ported_pick_up(monkeypatch):
     calls.clear()
     pickup.lift_up(sk, "target", 0.10, fallback=False)
     assert calls == []
+
+
+def test_a_ball_pour_without_ball_evidence_is_not_verified():
+    """Misha's review P2-3: camera mode's belief holds no balls inside the cup, so pour / pour_p1 counted "every ball in
+    the target" as 0 == 0 and verified with nothing poured. No ball evidence: not verified, and the run says why."""
+    import json as _json
+    instr = SCENES["pour"][1]
+    record = [r for r in rows_pour() if not r["label"].startswith("sphere")]
+    for skill in ("pour", "pour_p1"):
+        env0, sk = belief_skills(record, rows_pour(), instr, step_lim=600)
+        p = planner.plan(instr, sk.refresh(), ported={"pour": "full" if skill == "pour_p1" else "v1"})
+        res = ported(sk, **p.args)
+        fin = _json.loads(sk.ported_runs[-1]["details"])["final"]
+        assert fin["balls"] == [] and res["verified"] is False and "no ball evidence" in res["error"], (skill, res)
