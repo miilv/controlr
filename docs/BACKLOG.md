@@ -688,6 +688,17 @@
   top-down grasp keeps the finger's root block (38 x 56 mm) out of the wall. `nudge_from_wall` pushes one off when its
   fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
+- [ ] **dojo skills: pour_by_language, the lean pour's remaining failures** (stream H, journal
+  2026-10-29-dojo-h95-pour-lean; `ported_pour_pace` "lean", G3 3/10, successes end at steps 721-754 of 800).
+  Failures:
+  - 5 of 7 are in-hand slips, mostly on the left arm. Three start in v1's normal-speed carry over the cup when that
+    move is long (20-34 steps).
+  - 1 move was refused mid-profile, and 1 episode ran out of steps.
+  Next:
+  - a slow carry when the carry is long;
+  - the idle arm grasping the next bottle while the current pour runs (the pours stay in order).
+  Landmine: the checker's arms-home trigger is "either arm" (a nested list ORs), so the 20/50 tiers never bank with
+  single-arm pours. We do not exploit that (the lead's ruling); only the full success scores.
 - [ ] **dojo skills: sweep_blocks(_random): stroke reach binds** (stream H, journal 2026-10-29-dojo-h95-sweep). G3 v1
   draws, 0/5 in both arms. Ranking the broom by hold quality (`broom_rank` "hold", branch `feat/dojo-h95-broom-rank`)
   removes the loose +19 mm station that the CoM ranking picks, but the firmer grasp sits ~24 mm further from the head,
