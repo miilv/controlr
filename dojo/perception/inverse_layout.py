@@ -3876,8 +3876,6 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 if 1 < len(g["candidates"]) <= cfg.slot_identity_max:
                     h = _slot_identity(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
                 h = _glyph_read_slot(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
-                if cfg.glyph_read != "off" and len(set(g["candidates"])) > 1 and _glyph_slot_group(g["candidates"]):
-                    _glyph_read_config_slot(h, g, views)
                 slot_placed.append((g, h, lab))
             g["labels"] = [lab for lab in g["labels"] if lab not in mine]
         # labels the config stacks on another (relative_plane "<label>/...", zero offset): on top of it
@@ -4312,6 +4310,11 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if cfg.glyph_read != "off":
         for h in chosen:
             _glyph_read_numeral(h, views)
+        # numerals / operators the config pins to a slot or stacks on a base (solve_equation's t0 / t1 / t2 / t4 on
+        # the mats): every slot placement path ends in slot_placed
+        for g_s, h_s, _lab in slot_placed:
+            if len(set(g_s["candidates"])) > 1 and _glyph_slot_group(g_s["candidates"]):
+                _glyph_read_config_slot(h_s, g_s, views)
     timings["identity_s"] = round(time.time() - t4, 3)
 
     # ---- yaw from a feature cut into the top (insert_key's round lock: its keyhole). Such an outline is the same at
