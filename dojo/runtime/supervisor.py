@@ -63,6 +63,9 @@ VOCABULARIES: tuple[Vocabulary, ...] = (
     Vocabulary("pick_from_conveyor_by_image", (r"\bconveyor\b", r"\bimage\b")),
     Vocabulary("match_and_pick_from_conveyor", (r"\bconveyor\b", r"\bremember\b")),
     Vocabulary("imitate_sorting_sequence", (r"\bplacement order\b", r"\bbasket\b")),
+    # public template (tasks/pour_liquid_into_cup.py): routed by the catalogue before, where pour_by_language's
+    # config-pinned bottles / bowls ("found" by construction) out-voted it on the _random scenes (camera 8 / 8)
+    Vocabulary("pour_liquid_into_cup", (r"\bpour the liquid from the bottle into the cup\b",)),
     Vocabulary("store_tools_in_toolbox", (r"\btools?\b", r"\btoolbox\b")),
 )
 
