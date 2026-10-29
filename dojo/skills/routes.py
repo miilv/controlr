@@ -10,11 +10,12 @@ name listed the planner is unchanged. A route reads only the instruction text an
 | row_by_size | row_by_size | ``dojo.skills.rows`` |
 | pour_order | pour_in_order (route-only: stream P's ported ``pour_bottle`` per pair) | ``dojo.skills.pour_order`` |
 | pack | pack_box (route-only) | ``dojo.skills.pack`` |
+| store_laptop | store_laptop (route-only: hang, close, stand in the rack) | ``dojo.skills.store`` |
 """
 
 from __future__ import annotations
 
-NEW_ROUTES = ("equation", "largest_number", "align", "row_by_size", "pour_order", "pack")
+NEW_ROUTES = ("equation", "largest_number", "align", "row_by_size", "pour_order", "pack", "store_laptop")
 
 
 def route(text: str, world, routes) -> tuple | None:
@@ -22,8 +23,8 @@ def route(text: str, world, routes) -> tuple | None:
     routes = set(routes or ()) & set(NEW_ROUTES)
     if not routes:
         return None
-    from dojo.skills import align, pack, pour_order, rows, tiles
-    for mod in (tiles, align, rows, pour_order, pack):
+    from dojo.skills import align, pack, pour_order, rows, store, tiles
+    for mod in (tiles, align, rows, pour_order, pack, store):
         r = mod.route(text, world, routes)
         if r is not None:
             return r
