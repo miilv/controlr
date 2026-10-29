@@ -733,3 +733,34 @@ def test_risky_b1_reaches_the_runtime_arbitration_from_the_environment(monkeypat
     assert j1.arb_kwargs(j1._cfg({})) == {"margin": 0.0, "pinned_margin": 0.15, "risky_b1": 0.2}
     assert j1._cfg({"risky_b1": None})["risky_b1"] is None                     # a caller's kw wins over the env
     assert j1._cfg({"risky_b1": 0.3})["risky_b1"] == 0.3
+
+
+def test_a_raised_digit_label_is_filled_only_with_a_digit_read(monkeypatch):
+    """slrchk2 lnumr 100001 (series_link_raise): B1 left the raised fifth digit "rigid0" not found; the agent filled it
+    with an unread object (a clutter spot) and the skill stopped at "digits unknown". A raised digit label takes an
+    agent object only with a settled digit; other not-found labels are filled as before."""
+    pytest.importorskip("scipy")
+    from dojo.perception.agentic import record
+
+    monkeypatch.setattr(record, "rest_quat", lambda key: None)
+    keys = [f"Rigid/number/{i:05d}" for i in range(10)]
+    rec = {"Rigid": {"number": [{"category": "number", "category_idx": 3, "label": "digit_0", "default_pos": [0.1, -0.1, 0.78],
+                                 "default_ori": [1, 0, 0, 0], "scale": [1, 1, 1], "_perception": {"confidence": 0.9}}]},
+           "_not_found": [{"label": "rigid0", "candidates": keys, "confidence": 0.0, "raised": True}]}
+    unread = [{"label": "a tile", "category": "number", "pos": [-0.39, -0.2, 0.78], "confidence": 0.8, "source": "head"}]
+    new, log = record.merge_into_record(rec, unread)
+    assert [r["label"] for r in new["Rigid"]["number"]] == ["digit_0"] and new["_not_found"][0]["label"] == "rigid0"
+    assert {"label": "rigid0", "action": "raised_unread_skipped"} in log
+    read = [dict(unread[0], value=7, digit_source="agent")]
+    new, _ = record.merge_into_record(rec, read)
+    assert [r["label"] for r in new["Rigid"]["number"]] == ["digit_0"]                 # a numeral: the glyph reader only
+    card_keys = [f"Rigid/number_card/{i:05d}" for i in range(10)]
+    cards = {"Rigid": {}, "_not_found": [{"label": "card0", "candidates": card_keys, "confidence": 0.0, "raised": True}]}
+    obj = [{"label": "a card", "category": "number_card", "pos": [0.1, -0.2, 0.78], "confidence": 0.8, "source": "head"}]
+    new, _ = record.merge_into_record(cards, obj)
+    assert new["_not_found"][0]["label"] == "card0"                                     # a card, no value: skipped
+    new, _ = record.merge_into_record(cards, [dict(obj[0], value=7)])
+    assert new["_not_found"] == [] and new["Rigid"]["number_card"][0]["label"] == "card0"
+    plain = dict(rec, _not_found=[{"label": "rigid0", "candidates": keys, "confidence": 0.0}])
+    new, _ = record.merge_into_record(plain, unread)
+    assert sorted(r["label"] for r in new["Rigid"]["number"]) == ["digit_0", "rigid0"]          # not raised: as before
