@@ -96,3 +96,33 @@ def test_free_sort_with_more_groups_than_baskets_sorts_three():
     r1 = ported(sk, "classify_into_bins_p1")
     d = json.loads(sk.ported_runs[-1]["details"])
     assert r1["ok"] and r1["steps"] > 0 and len(d["left"]) == 1 and len(d["left_groups"]) == 1
+
+
+def test_a_refused_carry_is_tried_again_from_higher_up():
+    """v3's first carry of the run is refused ("carry: no clear path", nothing moved); p1 tries it once more with the
+    release HIGH_CLEAR over the rim and HIGH_MARGIN inside it, and the object ends in its basket."""
+    from dojo.skills.ported.harness_robot import HarnessRobot
+    m = _p1()
+    real = m.load_v3()
+    seen = []
+
+    class OnceRefused:
+        def __getattr__(self, name):
+            return getattr(real, name)
+
+        def run(self, robot, stage, **kw):
+            if stage == "direct":
+                seen.append({k: kw.get(k) for k in ("obj", "clear", "margin")})
+                if len(seen) == 1:
+                    return {"ok": False, "verified": False, "held": False, "in_container": False,
+                            "why": "carry: no clear path"}
+            return real.run(robot, stage, **kw)
+
+    m.load_v3 = lambda: OnceRefused()
+    env, sk = gt_skills(rows_classify(), INSTR, step_lim=1100)
+    rep = m.run(HarnessRobot(sk, reserve=20))
+    first = [x for x in rep["details"]["log"] if x.get("obj") == seen[0]["obj"]][0]
+    assert first["high_retry"]["in"] is True and first["truth_in"] is True
+    assert seen[0]["clear"] is None and seen[1]["obj"] == seen[0]["obj"]
+    assert seen[1]["clear"] == m.HIGH_CLEAR and seen[1]["margin"] == m.HIGH_MARGIN
+    assert rep["verified"]

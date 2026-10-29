@@ -5,8 +5,8 @@
 #   * free sort: more groups than containers keeps the len(containers) largest groups and leaves the rest. v3b's plan2
 #     found no permutation and raised;
 #   * a left item is still an obstacle for v3's motions (it is passed with the objects, never assigned).
-#   * a one-arm step starts with the other arm at home (v3 planned around the idle arm where it stopped, and it refused
-#     carries: "other_arm");
+#   * a carry v3 refuses ("carry: no clear path") gets one more try from higher up and further inside the basket (G3 v1
+#     100030-39: 6 of 9 refused carries into the basket were the gripper over the rim at v3's own drop pose);
 # The loop, the stages and the fallback are v3b's.
 """classify_into_bins_v3b (RoboDojo, tier A; night K4, 27 Oct 2026): classify_into_bins_v3a with true-size placed
 footprints, spread drops, and the old tier-A drop as a fallback.
@@ -41,6 +41,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TABLE_Z = 0.765
 FIXTURES = ("camera_stand",)
 POS_WORDS = {"left": 0, "middle": 1, "center": 1, "centre": 1, "right": 2}
+HIGH_CLEAR = 0.06       # N: high_retry's release height over the rim (v3: 0.025)
+HIGH_MARGIN = 0.035     # N: high_retry's inset from the rim footprint (v3: 0.02)
 
 
 def load_v3():
@@ -300,6 +302,20 @@ def run(robot, map="auto", pairs=None, noun="basket", lift=0.08, max_picks=2, re
                     out.extend(footprint(k, ob[k], c, float(ob[c]["aabb"][0][2])))
         return out
 
+    def high_retry(r, k, c, arm, last, rec):
+        """N: a carry v3 refused once more, released HIGH_CLEAR over the rim and HIGH_MARGIN inside it (v3's drop pose
+        left the gripper over the basket wall). From the hand when the object is still held, else picked again."""
+        if r.get("why") != "carry: no clear path" or arm not in ("left", "right"):
+            return r
+        o2, ob2 = truth()
+        if o2.get("ended") or o2.get("steps_left", 0) < reserve + 60:
+            return r
+        held = bool(A.held_look(arm=arm).get("held"))
+        kw = dict(obj=k, container=c, arm=arm, avoid=avoid_for(ob2, c), clear=HIGH_CLEAR, margin=HIGH_MARGIN)
+        r2, _ = stage("drop_held", ob2, **kw) if held else stage("direct", ob2, final=last, **kw)
+        rec["high_retry"] = {"held": held, "in": r2.get("in_container"), "why": r2.get("why") or r2.get("error")}
+        return r2
+
     def stage(name, ob, **kw):
         # N: the left items still on the table go with the objects of a motion stage (v3 keeps clear of them); never with
         # the plan's (plan2 gives every object it is given a container)
@@ -344,16 +360,6 @@ def run(robot, map="auto", pairs=None, noun="basket", lift=0.08, max_picks=2, re
             k, c = s["obj"], s["container"]
             last = i == len(steps) - 1
             rec = {"obj": k, "mode": s["mode"], "container": c}
-            # N: a one-arm step starts with the other arm at home. v3 plans around the idle arm where it stopped (above a
-            # basket after its own drop or put-back), and that arm refused the carries into the middle basket (G3 v1
-            # 100030: "other_arm" at every via height)
-            if s["mode"] in ("direct", "nudge_first") and s.get("arm") in ("left", "right"):
-                idle = "right" if s["arm"] == "left" else "left"
-                if not (o.get("eef") or {}).get(idle, {}).get("at_home", True) and not A.held_look(arm=idle).get("held"):
-                    hp = V3.run(A, "home", objects=[raw_of(j, ob[j]) for j in pending(ob)],
-                                containers=[cont_of(cc, ob[cc]) for cc in conts], placed=placed_entries(ob), arms=[idle])
-                    rec["parked"] = {"arm": idle, "ok": hp.get("ok"), "error": hp.get("error")}
-                    o, ob = truth()
             if s["mode"] == "skip":
                 rec["why"] = s.get("why")
                 log.append(rec)
@@ -364,6 +370,7 @@ def run(robot, map="auto", pairs=None, noun="basket", lift=0.08, max_picks=2, re
                 o, ob = truth()
                 arm = s["arm"]
                 r, _ = stage("direct", ob, obj=k, container=c, arm=arm, final=last, avoid=avoid_for(ob, c))
+                r = high_retry(r, k, c, arm, last, rec)
             elif s["mode"] == "direct":
                 r, _ = stage("direct", ob, obj=k, container=c, arm=s["arm"], final=last, avoid=avoid_for(ob, c))
                 if r.get("why") == "nudge_first":
@@ -371,6 +378,7 @@ def run(robot, map="auto", pairs=None, noun="basket", lift=0.08, max_picks=2, re
                     rec["nudge"] = {"ok": rn.get("ok"), "step": rn.get("step")}
                     o, ob = truth()
                     r, _ = stage("direct", ob, obj=k, container=c, arm=s["arm"], final=last, avoid=avoid_for(ob, c))
+                r = high_retry(r, k, c, s["arm"], last, rec)
             else:
                 rr, _ = stage("relay", ob, obj=k, arm=s["giver"])
                 rec["relay"] = {"ok": rr.get("ok"), "relayed": rr.get("relayed"), "spot": rr.get("spot"), "step": rr.get("step")}
