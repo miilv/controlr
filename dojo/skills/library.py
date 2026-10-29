@@ -3172,6 +3172,14 @@ def hook_order(hooks: list, n: int) -> list:
 
 
 def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
+    """``_hang_on_hooks``; the rack's ``held_skip`` (``Skills.hang_cradle`` "straddle") lasts only while it runs."""
+    try:
+        return _hang_on_hooks(sk, objects, rack, hook_tag, handle_tag)
+    finally:
+        sk.coll.held_skip.pop(rack, None)
+
+
+def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
     """Hang each object by its handle on one of the rack's hooks. The handle frame (on the outside of the handle's
     bar) goes onto the hook frame, raised by the handle's hole depth so the hook's arm runs through the hole; hooks
     oriented like the rack's first one. Each object is carried, re-oriented, to just beyond the hook's tip (hole on
@@ -3195,6 +3203,17 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         parts = mesh_parts(*rk.asset.mesh)
         sk.coll.parts[rack] = parts
     fr_local = functional_frames(rk, hook_tag)
+    if not thread and parts is not None and getattr(sk, "hang_cradle", "strict") == "straddle":
+        # ``Skills.hang_cradle`` "straddle" (default "strict" = today): what hangs on a cradle straddles the rack's top
+        # (a headset's band on the cradle, its ear cups down both sides of the pole), so the rack's boxes around and
+        # below the cradle are no obstacle for the HELD object; the arm and the hand still avoid them. Strict: every
+        # hang pose of the headset hit the stand ("0 grasp-place pairs" on every G3 store_laptop row; 43-45 of the
+        # otherwise feasible pairs of dev v1 100030-32 failed on the held headset alone)
+        hgt = max(float(sk.world.obj(l).asset.extents.max()) for l in objects if l in sk.world.objects)
+        rad = max(float(np.max(sk.world.obj(l).asset.extents[:2])) for l in objects if l in sk.world.objects)
+        for _i, Hc, _t in hooks:
+            sk.coll.held_skip[rack] = (Hc[:2, 3].copy(), 0.5 * rad + 0.02, float(Hc[2, 3]) - hgt - 0.02,
+                                       float(Hc[2, 3]) + 0.04)
 
     def without_arm(hi: int, tip):
         """The rack's boxes less the hook's own arm (what the handle is threaded onto may come close to it)."""
