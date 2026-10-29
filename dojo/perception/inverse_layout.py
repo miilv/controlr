@@ -3383,6 +3383,18 @@ def _support_mask(views: dict, state: dict) -> dict:
     return {"why": "no support robot at its home"}
 
 
+def _wrist_pool_off(value, support_info: dict | None) -> str | None:
+    """Why ``cfg.wrist_pool`` does not run for this estimate ("off", or the unmet condition of "support_masked"), or
+    None when it runs. False / "off" -> off; True / "on" -> runs; "support_masked" -> runs only when ``support_mask``
+    masked a support robot in this frame."""
+    v = "on" if value is True else ("off" if value is False or value is None else str(value))
+    if v == "on":
+        return None
+    if v == "support_masked":
+        return None if (support_info or {}).get("applied") else "no support robot masked in this frame"
+    return "off"
+
+
 def _wrist_seg_blobs(images: dict, views: dict, state: dict, cfg) -> tuple[list, dict]:
     """``cfg.wrist_pool``: the twin segmenter's masks in the home wrist views (known pixels only, >= ``MIN_BLOB_PX``)
     as class-agnostic blobs for ``_propose``. Our arms must be at home (the frame-0 views); none without a segmenter."""
@@ -3907,9 +3919,11 @@ class EstimatorConfig:
     # home wrist views (imitate's demonstrator Franka merged with the far objects into one head blob), when our arms
     # are at home too. wrist_pool: the twin segmenter's wrist-view masks at the home pose go into the proposal pool as
     # class-agnostic blobs before the scene-level selection (an object the head view cannot separate stands alone in a
-    # wrist view). Both off by default
+    # wrist view). Both off by default. wrist_pool values: False / "off"; True / "on" (every home-pose estimate);
+    # "support_masked" (only in a frame where support_mask masked a support robot: the scene it was built for, objects
+    # under that robot's gripper; every other estimate unchanged)
     support_mask: bool = False
-    wrist_pool: bool = False
+    wrist_pool: bool | str = False
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     # a select list that holds every category of its entry exactly once (``hierarchical``, k categories x 1 instance), and
     # the ``same_as_label`` copies of such a list: a list whose objects (told apart by the lists' generator regions) repeat
@@ -4385,7 +4399,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         head_blobs = _split_merged(head_blobs, pending, shapes_by_group, views)
     refined = _propose(head_blobs, pending, shapes_by_group, views, cfg, groups)
     wpool_info = None
-    if cfg.wrist_pool:
+    wp_off = _wrist_pool_off(cfg.wrist_pool, support_info)
+    if wp_off is not None and wp_off != "off":
+        wpool_info = {"blobs": 0, "why": wp_off}
+    elif wp_off is None:
         wb, wpool_info = _wrist_seg_blobs(images, views, state, cfg)
         if wb:
             more = _propose(wb, pending, shapes_by_group, views, cfg, groups, blob_offset=8000)
