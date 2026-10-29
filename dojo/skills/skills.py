@@ -309,6 +309,8 @@ class Skills:
         # ``tiles`` (stream N): numeral grasps "any" (today) | "flat" (the pads on faces square to the closing axis)
         # | "prefer" (flat grasps planned first, the others as the fallback)
         self.tile_grasp = "any"
+        # ``tiles.arrange_digits`` (stream N): at most LOOKS_PER_TILE wrist looks per unread digit tile (off = today)
+        self.tile_look_cap = False
         # ``tiles`` (stream N): a placed tile the provider doubts (post-place not ok, empty close) is looked at, put back
         # where it was picked from or searched for, and placed again (off = today: it counts as placed)
         self.tile_recover = False
