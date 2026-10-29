@@ -2100,6 +2100,30 @@ def _occluded_fill(pool, chosen, need0, head, groups) -> list:
     return chosen
 
 
+def _drop_unread_raised(chosen, groups, record: dict) -> list:
+    """``series_link_raise`` with ``glyph_read``: the labels a count raise added are credited only with members the
+    glyph reader reads as a digit. Per raised group of glyph objects with more members than ``raised_from``, its
+    unread members (worst fit first) are dropped down to ``raised_from``; their labels go to ``_not_found``. w51
+    arrange: 3 of 13 raised fills sat 126-686 mm from any digit (a fit on other foreground); a skill would look at an
+    unread one and stop, where "4 read + 1 not found" still places four tiles."""
+    out = list(chosen)
+    for gi, g in enumerate(groups):
+        if g.get("raised_from") is None:
+            continue
+        mine = [h for h in out if h.label_group == gi]
+        extra = len(mine) - int(g["raised_from"])
+        if extra <= 0 or not all(h.key.split("/")[1] in GLYPH_ONLY for h in mine):
+            continue
+        unread = sorted((h for h in mine if not (h.per_view.get("glyph_read") or {}).get("read")),
+                        key=lambda h: -float(h.per_view.get("sil_loss", h.loss)))
+        for h in unread[:extra]:
+            out.remove(h)
+            record.setdefault("_raised_unread", []).append(
+                {"group": g["labels"][0], "xy": [round(float(h.x), 4), round(float(h.y), 4)],
+                 "why": (h.per_view.get("glyph_read") or {}).get("why") or "no read"})
+    return out
+
+
 def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
     """Explain-away selection: repeatedly add the hypothesis that most increases (new foreground covered -
     new background covered - penalty x own area), summed over views and normalised by each view's
@@ -4353,6 +4377,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if cfg.glyph_read != "off":
         for h in chosen:
             _glyph_read_numeral(h, views)
+        chosen = _drop_unread_raised(chosen, groups, record)
         # numerals / operators the config pins to a slot or stacks on a base (solve_equation's t0 / t1 / t2 / t4 on
         # the mats): every slot placement path ends in slot_placed
         for g_s, h_s, _lab in slot_placed:

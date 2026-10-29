@@ -354,6 +354,35 @@ def test_a_raised_label_is_only_looked_for_never_placed_hidden():
     assert len(out) == 5 and out[-1] is hidden and hidden.per_view["occluded"] is True
 
 
+def test_a_raised_digit_counts_only_with_a_digit_read():
+    """series_link_raise + glyph_read: a fifth numeral the glyph reader does not read as a digit (a fit on other
+    foreground) is dropped, its label goes to _not_found; read ones stay; a raised group of mats (no glyph) is kept."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    def h(gi, key, read, loss):
+        return SimpleNamespace(label_group=gi, key=key, x=0.1, y=0.2, loss=loss,
+                               per_view={"glyph_read": {"read": read, "why": None if read else "not a digit"}})
+
+    groups = [{"labels": ["rigid0"] * 5, "raised_from": 4}, {"labels": ["geometry0"] * 5, "raised_from": 4}]
+    digits = [h(0, "Rigid/number/00003", True, 0.2) for _ in range(3)]
+    junk, unread_good = h(0, "Rigid/number/00001", False, 0.8), h(0, "Rigid/number/00007", False, 0.3)
+    mats = [h(1, "Geometry/cube_cushion/00001", False, 0.1) for _ in range(5)]
+    rec: dict = {}
+    out = il._drop_unread_raised(digits + [junk, unread_good] + mats, groups, rec)
+    assert junk not in out and unread_good in out and all(m in out for m in mats)      # down to raised_from, worst first
+    assert rec["_raised_unread"][0]["why"] == "not a digit"
+    out = il._drop_unread_raised(digits + [unread_good] + mats, groups, {})
+    assert unread_good in out                                                          # 4 members: nothing raised
+    out = il._drop_unread_raised(digits + [junk, h(0, "Rigid/number/00009", True, 0.3)], groups, {})
+    assert junk not in out and len(out) == 4
+    plain = [{"labels": ["rigid0"] * 5}]
+    assert il._drop_unread_raised(digits + [junk, unread_good], plain, {}) == digits + [junk, unread_good]
+
+
 def test_seg_propose_add_only_fills_a_short_group_and_never_touches_members(monkeypatch):
     """seg_propose "add": an unexplained mask of the group's EXACT class fills a short group; members are never moved,
     re-fitted or given a hint, and a mask of another asset of the same category adds nothing."""
