@@ -492,6 +492,7 @@ class RuntimePolicy:
         self.bridge = Bridge()
         self._pc_calls0 = len(getattr(self._pc, "calls", None) or [])   # the client's call log spans episodes
         self._lost_searched = set()
+        self._glyph_reads: dict = {}                    # label -> its glyph identity read (read_persist), per episode
         self._pending_far, self._place_pending, self._vsel_seen = {}, {}, {}
         self._flip_pending = {}          # label -> a big turn one view found, awaiting a second view (held_flip_confirm)
         self._recentre_prior = {}
@@ -631,12 +632,13 @@ class RuntimePolicy:
         if cfg.mode == "gt":
             prov.init_from_gt()
         elif cfg.agentic == "budget" and cfg.scan == "off":
-            rec = self._agentic(obs0, scene, rec_b1, "frame0")
+            rec = self._persist_reads(self._agentic(obs0, scene, self._persist_reads(rec_b1, "b1"), "frame0"), "initial")
             self.report["records"]["initial"] = _slim(rec)
             self._last_record = rec
             prov.init_from_record(rec)
         else:
             rec = rec_b1 if rec_b1 is not None else self.perception().estimate([obs0], scene, self.fold)
+            rec = self._persist_reads(rec, "initial")
             self.report["records"]["initial"] = _slim(rec)
             self._last_record = rec
             prov.init_from_record(rec)
@@ -714,13 +716,15 @@ class RuntimePolicy:
         if cfg.mode == "perception" and cfg.scan != "off" and not hold:
             t = time.perf_counter()
             srec, obs_s = self._scan(sk, obs0, rec, scene)
+            srec = self._persist_reads(srec, "scan")
             self.report["timings"]["scan_s"] = round(time.perf_counter() - t, 2)
             if cfg.agentic == "budget":
                 # ONE agentic estimate, frame 0 with the scan as its second observation when the scan ran (B1 hint =
                 # the scan-primary record), else frame 0 alone; it counts as the frame0 call
                 if srec is not None:
                     self.report["records"]["scan"] = _slim(srec)
-                rec = self._agentic(obs0, scene, srec if srec is not None else rec, "frame0", extra=obs_s)
+                rec = self._persist_reads(self._agentic(obs0, scene, srec if srec is not None else rec, "frame0", extra=obs_s),
+                                          "agentic0")
                 self.report["records"]["agentic0"] = _slim(rec)
                 self._last_record = rec
                 prov.init_from_record(rec)
@@ -735,7 +739,7 @@ class RuntimePolicy:
                 sk = make_skills()
         if cfg.mode == "perception" and cfg.look and not hold:
             t = time.perf_counter()
-            rec = self._look(sk, obs0, rec, scene, kin)
+            rec = self._persist_reads(self._look(sk, obs0, rec, scene, kin), "fused")
             self.report["timings"]["look_s"] = round(time.perf_counter() - t, 2)
             if rec is not None and prov.tracker_on:
                 rec = self._track_record(prov, rec, "look")
@@ -749,7 +753,7 @@ class RuntimePolicy:
             cur = rec if rec is not None else None
             base = cur or self._last_record
             t = time.perf_counter()
-            srec = self._search(sk, obs0, base, scene, kin)
+            srec = self._persist_reads(self._search(sk, obs0, base, scene, kin), "searched")
             self.report["timings"]["search_s"] = round(time.perf_counter() - t, 2)
             if srec is not None:
                 self.report["records"]["searched"] = _slim(srec)
@@ -760,6 +764,7 @@ class RuntimePolicy:
             cur = self._last_record
             rec2 = self._agentic_gate(b.observe(), scene, cur, "after_looks")
             if rec2 is not cur:
+                rec2 = self._persist_reads(rec2, "agentic2")
                 self.report["records"]["agentic2"] = _slim(rec2)
                 self._last_record = rec2
                 prov.init_from_record(rec2)
@@ -901,6 +906,18 @@ class RuntimePolicy:
         return result
 
     # ------------------------------------------------------------------ helpers
+    def _persist_reads(self, rec: dict | None, stage: str) -> dict | None:
+        """A slot's glyph read (``EstimatorConfig.glyph_read``) survives later records of the run that cannot read
+        it (``dojo.perception.read_persist``: kept / refreshed / a contradiction makes it unknown). Event
+        ``glyph_persist``. A no-op for records without classifier reads."""
+        if rec is None:
+            return rec
+        from dojo.perception.read_persist import persist_reads
+        rec, self._glyph_reads, evs = persist_reads(rec, getattr(self, "_glyph_reads", {}))
+        for e in evs:
+            self.report["events"].append({"kind": "glyph_persist", "stage": stage, "step": self.bridge.steps_used, **e})
+        return rec
+
     def _merge_glyph(self, prov, label: str, g: dict) -> None:
         """A wrist view's glyph read (perception ``refine``'s ``glyph``) merged into the belief. A numeral's digit:
         ``digits.merge_view_read`` (agree -> confirmed, first -> one view, disagree -> unknown). An operator (a slot's
