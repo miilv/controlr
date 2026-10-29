@@ -12,6 +12,7 @@ the same on B1's frame-0 pose (what a runtime would click). One SAM session per 
 from __future__ import annotations
 
 import argparse
+import atexit
 import contextlib
 import json
 import os
@@ -152,6 +153,7 @@ def main():
     seq = Sequence(a.seq)
     steps = [s for s in seq.steps if s >= a.start][:: a.stride][: a.n]
     tmp = tempfile.mkdtemp(prefix="bgperc_sam_")
+    atexit.register(shutil.rmtree, tmp, ignore_errors=True)   # the frame copies (13 dirs had piled up in /tmp)
     for i, s in enumerate(steps):
         shutil.copy(seq.dir / "frames" / f"{s:04d}_{a.cam}.jpg", os.path.join(tmp, f"{i}.jpg"))
     gtm = {}
