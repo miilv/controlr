@@ -221,7 +221,9 @@ POUR_AIM = {"v1": None, "b10": 0.010, "b20": 0.020}
 # and a rush straight from the lift let the bottle turn 20-74 deg in the hand
 POUR_PACE = {"v1": None,
              "lean": {"rush_to": 90, "rush_carry": True, "rush_ramp": 8, "drain_steps": 12, "untilt_phis": (90, 0),
-                      "untilt_speed": "normal", "lift_speed": "normal"}}
+                      "untilt_speed": "normal", "lift_speed": "normal"},
+             "lean2": {"rush_to": 90, "rush_carry": True, "rush_speed": "slow", "drain_steps": 12, "untilt_phis": (90, 0),
+                       "untilt_speed": "normal"}}
 
 
 def pour_bottle_call(aim: str | None, pace: str | None) -> tuple[str, dict]:

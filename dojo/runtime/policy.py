@@ -434,7 +434,7 @@ class RuntimePolicy:
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20")
-                or self.cfg.ported_pour_pace not in ("v1", "lean")
+                or self.cfg.ported_pour_pace not in ("v1", "lean", "lean2")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
