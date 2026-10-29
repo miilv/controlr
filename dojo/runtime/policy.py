@@ -691,6 +691,9 @@ class RuntimePolicy:
 
         cfg, b = self.cfg, self.bridge
         instruction = obs0["instruction"]
+        # dev (save_look_frames): frame 0 kept whether or not a scan / look runs later (imitate makes none: its frame-0
+        # misses could not be sized on the camera rows); the scan / look paths keep the same observation under this tag
+        self._keep_frame("frame0", obs0)
         vocab = perception_vocabulary(instruction)
         rec_b1 = None                                   # the chosen set's frame-0 B1 estimate (explain-away)
         if cfg.mode == "perception" and cfg.vocab_explain:
