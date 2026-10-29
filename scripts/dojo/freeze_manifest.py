@@ -117,7 +117,6 @@ def main(argv=None) -> int:
                                       "--dry-run"], capture_output=True, text=True, timeout=300,
                                      env={**os.environ, "DOJO_SEG_MODELS": str(models)}).stdout.strip().splitlines()[-1])
     rh = Path(a.bench).expanduser()
-    pd = Path(os.environ.get("DOJO_PERCEPTION_DATA", str(Path.home() / "dojo-perception-data")))
     calib = os.environ.get("DOJO_CALIB_SET", "frozen_d0_100040_49")
     man = {
         "kind": "controlr freeze manifest (D-C19)", "written_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -137,8 +136,11 @@ def main(argv=None) -> int:
         "versions": versions(a.rd_python),
         "robodojo_commit": sh("git", "rev-parse", "HEAD", cwd=Path(a.rd_home) / "RoboDojo") if a.rd_home else None,
         "robot_harness": {"tree": str(rh), "commit": (rh / "COMMIT").read_text().strip() if (rh / "COMMIT").exists() else None},
-        "perception": {"calib_set": calib, "bg_folds": os.environ.get("DOJO_BG_FOLDS", str(pd / "bg_folds_51")),
-                       "calib_manifest_md5": md5(pd / "bg_folds_51" / calib / "manifest.json")},
+        "perception": {"calib_set": calib, "bg_folds": full["perception_env"]["DOJO_BG_FOLDS"],
+                       "color_calib": full["perception_env"]["DOJO_COLOR_CALIB"],
+                       "color_calib_md5": md5(Path(full["perception_env"]["DOJO_COLOR_CALIB"])),
+                       "calib_set_files_md5": {f.name: md5(f) for f in sorted(
+                           (Path(full["perception_env"]["DOJO_BG_FOLDS"]) / calib).glob("*")) if f.is_file()}},
         "grip": "the strict v2 server supplies eef.<arm>.ee_joint_state_official (D-C11); DOJO_GRIP_SOURCE is inert there",
     }
     text = json.dumps(man, indent=1, sort_keys=True, default=str)
