@@ -1592,6 +1592,9 @@ SLOT_LEVEL_DEG = 20.0          # deg: a slot pose this close to the object's cur
                                # carry (tools spawn lying as their slots want them: 0.6-5.4 deg off)
 LEVEL_GRASP_DEG = 25.0         # deg: a level carry's grasps come down at most this far from vertical
 LEVEL_CARRY = 0.05             # rad/step: the lift and the carry of a level carry
+# ``Skills.slot_carry`` "gentle" (stream H): every slot transfer's lift and carry at this joint step (rad) with this many
+# ease steps (today: the level carry 0.05 / ease 3, the re-orienting transfer UNEVEN_CARRY 0.09 / MEDIUM lift / ease 3)
+SLOT_GENTLE = (0.05, 8)
 
 
 LEVEL_TILT_COST = 10.0        # deg of approach tilt that cost as much as 1 cm of lever (slots at the edge of a straight-
@@ -1703,6 +1706,11 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
         # the objects already in their slots are ignored for the place (their boxes overlap the next slot's)
         kw = dict(yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03, ignore=(container, *done),
                   place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
+        gentle = getattr(sk, "slot_carry", "v1") == "gentle"
+        if gentle:
+            # "gentle": tools moved 45-394 mm in the hand on the way to their slots (G3 store_tools v15 draws, 7 of 11
+            # lost tools); put_into's gentle drop carry took put_bottles 9 -> 11 of 16
+            kw["place_kw"] = {**kw["place_kw"], "approach_rad": SLOT_GENTLE[0], "ease": SLOT_GENTLE[1]}
         r = None
         if level:
             # heavy flat objects swing in the pads on brisk moves (twin: a 0.5 kg hammer at its centre of mass held 4 mm
@@ -1715,7 +1723,8 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
                 sk.log(f"[slots] {lab}: no level carry ({r.note[:100]}), re-orienting transfer")
                 r = None
         if r is None:
-            r = place_oriented(sk, lab, tg, **kw)
+            r = place_oriented(sk, lab, tg, **kw, **({"transfer_kw": {"pick_kw": {"lift_rad": SLOT_GENTLE[0]}}}
+                                                     if gentle else {}))
         (done if r.ok else failed).append(lab)
         if r.status in ("step_budget", "ended"):
             break

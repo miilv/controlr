@@ -290,6 +290,9 @@ class Skills:
         # ``library.put_into``'s options (stream H; empty = today): "spot" (a wider handover search, else a put-back),
         # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
         self.put_into_opts: set = set()
+        # ``place_in_slots``' carries (stream H; ``RuntimeConfig.slot_carry``): "v1" (today) | "gentle"
+        # (``library.SLOT_GENTLE``: lift and carry at 0.05 rad/step with an 8-step ease)
+        self.slot_carry: str = "v1"
         self._joint_limits = "wide"
         # ``library.on_targets``' support top (stream H): "bbox" (today: the support's bbox top) | "mesh" (the mesh's
         # surface under the object's whole footprint, flat poses only)
