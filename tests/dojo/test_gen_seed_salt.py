@@ -56,7 +56,10 @@ TODAY = {("stack_blocks", 100000): "8ef6bd33ab4cd5290a4662c32c9e9089",
 
 def _have_robodojo() -> bool:
     from dojo.simlab import paths
-    return (paths.TASK_CONFIGS / "stack_blocks.yml").is_file()
+    try:
+        return (paths.TASK_CONFIGS / "stack_blocks.yml").is_file()
+    except OSError:                      # e.g. /root/... seen by a CI user
+        return False
 
 
 @pytest.mark.skipif(not _have_robodojo(), reason="needs RoboDojo's task configs (a dojo box)")
