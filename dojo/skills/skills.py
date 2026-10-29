@@ -297,6 +297,9 @@ class Skills:
         # ``library.push_to``'s axis order (stream H): "greedy" (today: most left to go first) | "lookahead" (the other
         # axis first when its stroke would be blocked once the first is done)
         self.push_order = "greedy"
+        # ``align.align_in_row`` in mode B (stream N): "seq" (today: hover, refine and slide one block after the other)
+        # | "parallel" (both movers' hovers in one move, each wrist refines, both slides in the same steps when apart)
+        self.align_measure = "seq"
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"

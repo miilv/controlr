@@ -119,3 +119,42 @@ def test_mode_b_measures_each_block_before_its_slide():
     labs = ["cube0", "cube1", "cube2"]
     d, a = align.row_error(np.array([w.obj(k).center_w for k in labs]), [align.yaw_deg(w.obj(k)) for k in labs])
     assert d <= 0.008 and a <= 8.0 and env.steps_used <= 200, (d, a, env.steps_used)
+
+
+def _run_mode_b(measure: str):
+    objs = _scene()
+    env = KinematicEnv(_rows(objs), step_lim=200, instruction=ALIGN)
+    prov = GTProvider(env, None, instruction=ALIGN)
+    prov.notes["routes"] = ["align"]
+    calls = []
+    sk = Skills(env, prov, refine=lambda sk_, label, arm, kind: calls.append((label, arm, kind)) or None)
+    sk.align_measure = measure
+    res = planner.solve(sk)
+    w = sk.refresh()
+    labs = ["cube0", "cube1", "cube2"]
+    d, a = align.row_error(np.array([w.obj(k).center_w for k in labs]), [align.yaw_deg(w.obj(k)) for k in labs])
+    return res, calls, env.steps_used, d, a, sk
+
+
+def test_mode_b_parallel_hovers_save_steps_and_keep_the_row():
+    """align_measure "parallel" (default "seq"): both movers' hovers in one move, one refine per arm, both slides from
+    there; the row is as straight and the episode needs fewer steps (the camera arm ran out of its 200)."""
+    from dojo.skills.skills import Skills as _S
+    assert getattr(_S.__new__(_S), "align_measure", "seq") == "seq"
+    r0, c0, n0, d0, a0, _ = _run_mode_b("seq")
+    r1, c1, n1, d1, a1, sk = _run_mode_b("parallel")
+    assert r0["ok"] and r1["ok"]
+    assert d1 <= 0.008 and a1 <= 8.0
+    anchor = sk.world.notes["align"]["anchor"]
+    movers = {k for k in ("cube0", "cube1", "cube2") if k != anchor}
+    assert {c[0] for c in c1} == movers and {c[1] for c in c1} == {"left", "right"} and all(c[2] == "pick" for c in c1)
+    assert n1 < n0, (n0, n1)
+
+
+def test_runtime_config_align_measure():
+    import pytest as _pytest
+
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    assert RuntimeConfig().align_measure == "seq"
+    with _pytest.raises(ValueError):
+        RuntimePolicy(cfg=RuntimeConfig(align_measure="bogus"))
