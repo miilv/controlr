@@ -2355,6 +2355,52 @@ def kong_match(w, hand: list[str], discard: str) -> tuple[list[str], str | None]
     return [l for l in read if w.obj(l).asset.key == d.asset.key], None
 
 
+def kong_read(sk: Skills, label: str, look: str | None = "down") -> dict | None:
+    """make_kong (``Skills.kong_draw_read`` on): ``label``'s glyph read from the images by the refine hook of kind
+    "read" (perception: the tile classifier on the head view and the nearer arm's wrist view, the larger margin; the
+    belief's pose is never written by it). Unread: one wrist look and the read once more with that arm. ``look``:
+    "down" (a face-up tile: the hand straight down over it, ``LOOK_HEIGHT``, lower when out of reach), None (no look).
+    Returns the read ({"read", "name", "margin", "why", "view"}) or None (no refine hook)."""
+    from dojo.skills.regrasp import LOOK_HEIGHT, _look_move
+    o = sk.world.obj(label)
+    arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.center_w[:2])))
+
+    def once(arm):
+        was = label in sk.no_refine
+        sk.no_refine.discard(label)          # the kong skill keeps its tiles out of pose refines; a read is no refine
+        sk.last_refine = None
+        try:
+            sk._refine(label, arm, "read")
+        finally:
+            if was:
+                sk.no_refine.add(label)
+        lr = getattr(sk, "last_refine", None) or {}
+        return lr.get("glyph") if lr.get("label", label) == label else None
+
+    g = once(arms[0])
+    if (g or {}).get("read") or look is None or sk.refine is None:
+        return g
+    o = sk.world.obj(label)
+    for arm in arms:
+        mv = None
+        if look == "down":
+            for hgt in (LOOK_HEIGHT, LOOK_HEIGHT - 0.04, LOOK_HEIGHT - 0.07):
+                mv = _look_move(sk, arm, o.center_w[:2], float(o.top_z) + hgt)
+                if mv is not None:
+                    break
+        if mv is None:
+            continue
+        try:
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {label}")
+        except (BudgetExceeded, EpisodeEnded):
+            return g
+        g2 = once(arm)
+        sk.log(f"[kong] {look} look at {label} with {arm}: {g2}")
+        return g2 if g2 is not None else g
+    sk.log(f"[kong] {look} look at {label}: no look pose for either arm")
+    return g
+
+
 def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int = 260, shift: float = 0.006) -> dict:
     """Mahjong kong. Hold still until the opponent has discarded (a tile that lies face up) and its arm has
     had time to return (``min_wait`` steps from the start: the opponent's scripted motion is ~60 env steps;
@@ -2391,6 +2437,18 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
         dk = w.obj(st["discard"])
         sk.log(f"[kong] discard {st['discard']} ({dk.asset.key if dk.identity_known else 'glyph not read'}) "
                f"seen at step {w.step}")
+    mode = getattr(sk, "kong_draw_read", "off")
+    if mode != "off" and not st.get("discard_read"):
+        # the discard fell face up after frame 0, so no slot read covers it (5.1 camera rows: all stopped at "roles",
+        # the discard unread): read it from the images now, a wrist look over it when the head view does not read it
+        st["discard_read"] = True            # read even when an identity is held (a confirmation, or the first read)
+        g = kong_read(sk, st["discard"], look="down")
+        w = sk.refresh()
+        sk.log(f"[kong] discard {st['discard']} read: {(g or {}).get('name') if (g or {}).get('read') else g} -> "
+               f"{w.obj(st['discard']).asset.key if w.obj(st['discard']).identity_known else 'unread'}")
+        if any(np.linalg.norm(sk.ex.q[a] - w.home_q[a]) > 1e-3 for a in ARMS):
+            sk.home()
+            w = sk.refresh()
     d = w.obj(st["discard"])
     if st.get("hand") is None:
         standing = [l for l in tiles if is_standing(w.obj(l))]
@@ -2435,6 +2493,10 @@ def declare_kong(sk: Skills, tiles: list[str], min_wait: int = 64, max_wait: int
     tops = [l for l in lying if on_stack(l)] or lying
     if not tops:
         return {"ok": False, "stage": "draw", "note": "no wall tile"}
+    if mode != "off":
+        # Legality D-C17 (3): the wall draw is used only once its face was read from the images (the read is the next
+        # piece of this flag); until then the skill stops before the draw
+        return {"ok": False, "stage": "draw", "note": "the wall draw's face is not read yet (D-C17 (3))"}
     keys = [w.obj(l).asset.key for l in hand if l not in match and w.obj(l).identity_known]
     y_row = float(np.mean([w.obj(l).pos[1] for l in hand]))
 

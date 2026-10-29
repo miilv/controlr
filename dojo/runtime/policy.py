@@ -352,6 +352,11 @@ class RuntimeConfig:
     # from the wrist frame over the base's whole yaw period; when ok, both poses are written and the refine is skipped.
     # 5.1 camera rows: a stand yaw read 48 deg off turned the coin with it, and its 2 mm disc never refines)
     slot_read: str = "off"
+    # make_kong (``library.declare_kong``, ``Skills.kong_draw_read``): off (today) | place (the discard read from the
+    # images once it lies face up, a wrist look when the head view does not read it; the drawn wall tile stood at the hand
+    # end face to the head camera and read there, kept only when the read names the hand pair's glyph, else moved to a free
+    # spot and the other stack top tried; unread -> moved off and stop). Legality D-C17 (3): no draw without a read
+    kong_draw_read: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -459,6 +464,7 @@ class RuntimePolicy:
                 or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
+                or self.cfg.kong_draw_read not in ("off", "place")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on")
@@ -739,6 +745,7 @@ class RuntimePolicy:
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
+            sk_.kong_draw_read = cfg.kong_draw_read
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
@@ -992,6 +999,9 @@ class RuntimePolicy:
         name = g.get("name") if g.get("read") else None
         if name is None or d is not None:
             return
+        if name.count("/") == 2:
+            self._merge_tile_read(prov, label, o, name, g)
+            return
         before = (o.category, o.identity_known)
         if name == o.category:
             o.identity_known, why = True, "confirmed"
@@ -1004,6 +1014,37 @@ class RuntimePolicy:
         self.report["events"].append({"kind": "glyph_identity", "label": label, "step": self.bridge.steps_used,
                                       "read": name, "why": why, "before": list(before),
                                       "after": [o.category, o.identity_known]})
+
+    def _merge_tile_read(self, prov, label: str, o, key: str, g: dict) -> None:
+        """A view's read of a tile whose model names asset keys (make_kong's tile model: "Rigid/mahjong/000NN"),
+        merged into the belief: no identity yet (a placeholder) -> the read asset, known; the same asset -> confirmed; another
+        asset -> unknown. Only within the object's own category. A read identity is kept by later records of the run
+        (``_glyph_reads``, ``read_persist``): a tile read after frame 0 (the discard face-up, a drawn tile) is not a slot
+        read at frame 0. Event ``glyph_identity``."""
+        typ, cat, idx = key.split("/")
+        if cat != o.category:
+            return
+        before = (o.asset.key if getattr(o, "asset", None) is not None else None, bool(o.identity_known))
+        reads = getattr(self, "_glyph_reads", None)
+        if reads is None:
+            reads = self._glyph_reads = {}
+        if o.identity_known and before[0] == key:
+            why = "confirmed"
+        elif not o.identity_known:
+            from dojo.runtime.estimate import _asset
+            o.asset = _asset(getattr(prov, "assets", None), o.obj_type, cat, int(idx), mesh=True)
+            o.idx, o.identity_known, why = int(idx), True, "read"
+        else:
+            o.identity_known, why = False, "disagree"
+        if o.identity_known:
+            reads[label] = {"asset": key, "perception": {"identity": "read", "glyph_read": {
+                "read": True, "key": key, "margin": g.get("margin"), "view": g.get("view"), "via": "refine"}}}
+        else:
+            reads.pop(label, None)
+        self.report["events"].append({"kind": "glyph_identity", "label": label, "step": self.bridge.steps_used,
+                                      "read": key, "why": why, "view": g.get("view"), "margin": g.get("margin"),
+                                      "before": list(before), "after": [key if o.identity_known else None,
+                                                                        bool(o.identity_known)]})
 
     def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
         """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
@@ -1093,6 +1134,11 @@ class RuntimePolicy:
         if r.get("radius_search"):
             ev["radius_search"] = {k: r["radius_search"].get(k) for k in ("used", "grid", "time_s")}
         self.report["events"].append(ev)
+        if kind == "read":
+            # a glyph read (skills: the make_kong discard / draw): the read is merged above, the pose is never written
+            # (a refine from an arm that is not over the object fits whatever its wrist sees)
+            ev["applied"] = False
+            return None
         rc = getattr(self, "_recentre_prior", {}).pop(label, None)
         looked = (float(r.get("visible_frac") or 0) >= 0.3 and not str(r.get("p_why") or "").startswith("truncated"))
         if rc is not None and not r.get("ok") and float(r.get("iou") or 0) < 0.2 and not looked:

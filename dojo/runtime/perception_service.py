@@ -793,12 +793,16 @@ class _Perception:
         return self._refine_local(frame, objects, fold, max_shift_m)
 
     def _glyph_view_read(self, f: dict, key: str, arm: str, pose7, fold: int) -> dict | None:
-        """``EstimatorConfig.glyph_read`` on a ``GLYPH_ONLY`` object (a 3-D numeral): the crop classifier's read of its
-        silhouette at ``pose7`` in this wrist view (``glyph_read.classify_mask``), for the runtime to merge into the
-        belief's digit (``digits.merge_view_read``). None when off / not a numeral / no reader."""
+        """``EstimatorConfig.glyph_read`` on an object a glyph model reads (``glyph_read.MODEL_OF``): the crop
+        classifier's read of its silhouette at ``pose7`` (``glyph_read.classify_mask``), for the runtime to merge into
+        the belief (``RuntimePolicy._merge_glyph``). A numeral / operator (the digit model): this wrist view. A mahjong
+        tile (make_kong's tile model): this wrist view and the head view, the read with the larger margin (each view
+        against its own margin; the head reads a standing hand tile or a face-up discard without moving an arm).
+        None when off / no model for the category."""
         from dojo.perception.glyph_read import MODEL_OF
-        # numerals and operators (the digit model's categories): a slot's operator (solve_equation's t1) is read here too
-        if MODEL_OF.get(key.split("/")[1]) != "digit" or self.cfg(fold).glyph_read == "off":
+        cat = key.split("/")[1]
+        model = MODEL_OF.get(cat)
+        if model is None or self.cfg(fold).glyph_read == "off":
             return None
         try:
             from dojo.perception import glyph_read
@@ -807,18 +811,32 @@ class _Perception:
             classify = getattr(glyph_read, "classify_mask", None)
             if classify is None:
                 return {"read": False, "why": "no classify_mask"}
-            cam = cameras_from_state(f["state"])[f"cam_{arm}_wrist"]
+            cams = cameras_from_state(f["state"])
             T = pose_to_T(np.asarray(pose7[:3], float), np.asarray(pose7[3:7], float))
-            m = _shape_for(key, T[:3, :3], None).sil(cam, T)
             from dojo.perception.inverse_layout import _takes_robot
-            if _takes_robot(classify):           # S's reader v2: a tile half hidden by the gripper is refused
-                from dojo.perception.render import robot_mask
-                rob = robot_mask(cam, f["state"], closed_jaws=False) > 0
-                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", robot=rob,
-                             category=key.split("/")[1])
-            else:
-                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", category=key.split("/")[1])
-            return {k: r.get(k) for k in ("read", "name", "margin", "why")}
+            views = [f"cam_{arm}_wrist"] + (["cam_head"] if model == "kong" else [])
+            best, whys = None, {}
+            for view in views:
+                if view not in cams or view not in f["images"]:
+                    continue
+                m = _shape_for(key, T[:3, :3], None).sil(cams[view], T)
+                if _takes_robot(classify):       # S's reader v2: a tile half hidden by the gripper is refused
+                    from dojo.perception.render import robot_mask
+                    rob = robot_mask(cams[view], f["state"], closed_jaws=False) > 0
+                    r = classify(f["images"][view], m, view=view, robot=rob, category=cat)
+                else:
+                    r = classify(f["images"][view], m, view=view, category=cat)
+                whys[view] = r.get("why")
+                if r.get("read") and (best is None or float(r.get("margin") or 0) > float(best.get("margin") or 0)):
+                    best = {**r, "view": view}
+            if best is None:
+                why = next(iter(whys.values()), "not visible") if len(set(whys.values())) == 1 else \
+                    ",".join(f"{v}:{w}" for v, w in whys.items())
+                return {"read": False, "name": None, "margin": None, "why": why}
+            out = {k: best.get(k) for k in ("read", "name", "margin", "why")}
+            if model == "kong":
+                out["view"] = best["view"]
+            return out
         except SideServerDown:  # the reader's server is gone: an infra failure, never a silent "no read"
             raise
         except Exception as e:  # noqa: BLE001 (a reader failure never takes the refine down)
