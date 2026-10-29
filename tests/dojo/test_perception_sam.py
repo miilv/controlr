@@ -288,6 +288,72 @@ def test_series_count_from_the_twin_segmenter_and_linked_counts(monkeypatch):
     assert il.EstimatorConfig().series_count == "seg"                              # the default since 2026-10-28
 
 
+def test_series_link_raise_lets_the_linked_masks_raise_the_series(monkeypatch):
+    """series_link_raise (default off): arrange's mats (linked_count, one per digit) segment well where the small
+    numerals do not; their own exact-class masks raise the digit series within its range [4, 5], never lower it."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    tm = {"t": {"labels": {"rigid0": {"select_mode": {"mode": "hierarchical", "select_category_nums": [1, 1],
+                                                      "select_instance_nums": [4, 5], "label_prefix": ["digit"]}},
+                           "geometry0": {"select_mode": {"mode": "linked_count", "linked_label_prefix": "digit",
+                                                         "label_prefix": ["mat"]}}}}}
+    monkeypatch.setattr(il, "task_map", lambda: tm)
+    groups = [{"labels": ["rigid0"], "candidates": ["Rigid/number/00001"]},
+              {"labels": ["geometry0"], "candidates": ["Geometry/cube_cushion/00001"]}]
+
+    def det(r, key):
+        m = np.zeros((60, 60), np.uint8)
+        m[r:r + 3, 0:3] = 1
+        return SimpleNamespace(mask=m, key=key, score=0.9)
+
+    digits = [det(5 * i, "Rigid/number/00001") for i in range(2)]                # the numerals: 2 masks -> the minimum
+    mats = lambda n: [det(30 + 5 * i, "Geometry/cube_cushion/00001") for i in range(n)]
+    on, off = il.EstimatorConfig(series_link_raise=True), il.EstimatorConfig()
+    assert off.series_link_raise is False
+    out, _ = il._series_count("t", groups, None, "", off, dets=digits + mats(5))
+    assert [len(g["labels"]) for g in out] == [4, 4] and "raised_from" not in out[0]
+    out, info = il._series_count("t", groups, None, "", on, dets=digits + mats(5))
+    assert [len(g["labels"]) for g in out] == [5, 5] and info["rigid0"]["raised_by"]["to"] == 5
+    assert out[0]["raised_from"] == 4 and out[1]["raised_from"] == 4 and info["geometry0"]["own_seg"] == 5
+    out, _ = il._series_count("t", groups, None, "", on, dets=digits + mats(7))
+    assert [len(g["labels"]) for g in out] == [5, 5]                                # clamped to the series' range
+    out, _ = il._series_count("t", groups, None, "", on, dets=digits + mats(3))
+    assert [len(g["labels"]) for g in out] == [4, 4] and "raised_from" not in out[0]  # never lowered
+    out, _ = il._series_count("t", groups, None, "", on, dets=None)
+    assert [len(g["labels"]) for g in out] == [4, 1]                                # no server: exactly "min"
+
+
+def test_a_raised_label_is_only_looked_for_never_placed_hidden():
+    """The occluded fallback (a mostly hidden pose, no new foreground) never fills a label a count raise added: with
+    no fifth digit in the images, the record has four digits and one ``_not_found``, not a placeholder."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+
+    sil = np.zeros((20, 20), np.uint8)
+    sil[0:4, 0:4] = 1
+    head = SimpleNamespace(cam=None, known=np.zeros((20, 20), np.uint8))           # its pixels: all unknown (hidden)
+
+    def hyp(x):
+        sm = SimpleNamespace(sil=lambda cam, T: sil, asset=SimpleNamespace(extents=np.array([0.03, 0.03, 0.01])))
+        return SimpleNamespace(label_group=0, x=x, y=0.0, loss=0.5, per_view={}, sm=lambda: sm, T=lambda: np.eye(4))
+
+    chosen = [hyp(0.1 * i) for i in range(4)]
+    hidden = hyp(0.9)
+    raised = [{"labels": ["rigid0"] * 5, "raised_from": 4}]
+    out = il._occluded_fill([hidden], chosen, {0: 5}, head, raised)
+    assert len(out) == 4 and hidden not in out and "occluded" not in hidden.per_view
+    plain = [{"labels": ["rigid0"] * 5}]                                            # the config's own count: as before
+    out = il._occluded_fill([hidden], chosen, {0: 5}, head, plain)
+    assert len(out) == 5 and out[-1] is hidden and hidden.per_view["occluded"] is True
+
+
 def test_seg_propose_add_only_fills_a_short_group_and_never_touches_members(monkeypatch):
     """seg_propose "add": an unexplained mask of the group's EXACT class fills a short group; members are never moved,
     re-fitted or given a hint, and a mask of another asset of the same category adds nothing."""
