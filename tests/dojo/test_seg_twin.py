@@ -192,12 +192,14 @@ def test_client_server_roundtrip(tmp_path, monkeypatch):
     seg_twin._CLIENT.clear()
 
 
-def test_client_is_none_without_server(monkeypatch, tmp_path):
+def test_client_none_only_without_an_address_and_loud_when_set_but_down(monkeypatch, tmp_path):
+    from dojo.perception.sam_masks import SideServerDown
+
     monkeypatch.delenv(seg_twin.ENV_ADDR, raising=False)
     assert seg_twin.client() is None
     monkeypatch.setenv(seg_twin.ENV_ADDR, str(tmp_path / "nobody.sock"))
-    with pytest.warns(UserWarning, match="unreachable"):
-        assert seg_twin.client() is None
+    with pytest.raises(SideServerDown, match="unreachable"):
+        seg_twin.client()
     seg_twin._CLIENT.clear()
 
 

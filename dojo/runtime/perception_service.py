@@ -115,6 +115,25 @@ from pathlib import Path
 
 import numpy as np
 
+from dojo.perception.sam_masks import SideServerDown
+
+SIDE_SERVER_DOWN_RC = 70
+SIDE_SERVER_DOWN_FILE = "side_server_down"   # in the run dir (next to DOJO_PERCEPTION_READY): eval marks the row infra
+
+
+def side_server_down(msg: str) -> str | None:
+    """Record a dead side server for the eval (``SIDE_SERVER_DOWN_FILE`` next to ``DOJO_PERCEPTION_READY``); the path."""
+    import sys
+
+    print(f"[perception_service] SIDE SERVER DOWN: {msg}", file=sys.stderr, flush=True)
+    ready = os.environ.get("DOJO_PERCEPTION_READY", "")
+    if not ready:
+        return None
+    path = os.path.join(os.path.dirname(ready), SIDE_SERVER_DOWN_FILE)
+    with open(path, "a") as f:
+        f.write(msg.replace("\n", " ")[:500] + "\n")
+    return path
+
 
 def encode_frame(obs: dict) -> dict:
     return {"images": {k: {"data": np.ascontiguousarray(v, np.uint8).tobytes(), "shape": list(np.shape(v))}
@@ -800,6 +819,8 @@ class _Perception:
             else:
                 r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", category=key.split("/")[1])
             return {k: r.get(k) for k in ("read", "name", "margin", "why")}
+        except SideServerDown:  # the reader's server is gone: an infra failure, never a silent "no read"
+            raise
         except Exception as e:  # noqa: BLE001 (a reader failure never takes the refine down)
             return {"read": False, "why": f"error: {type(e).__name__}"}
 
@@ -1081,6 +1102,12 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         break
                     else:
                         conn.send({"ok": False, "error": f"unknown op {op!r}"})
+                except SideServerDown as e:  # a set seg / glyph server is gone: the job is an infra failure, loudly
+                    side_server_down(str(e))
+                    try:
+                        conn.send({"ok": False, "error": f"SideServerDown: {e}", "infra": True})
+                    finally:
+                        os._exit(SIDE_SERVER_DOWN_RC)
                 except Exception as e:  # noqa: BLE001 (report, keep serving)
                     conn.send({"ok": False, "error": f"{type(e).__name__}: {e}", "trace": traceback.format_exc()[-3000:]})
                 s = stats["s"].setdefault(op, [])

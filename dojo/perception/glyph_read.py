@@ -213,7 +213,7 @@ class GlyphClient:
     def __init__(self, addr: str, model: str | None = None):
         from .sam_masks import SamClient
 
-        self._c = SamClient(addr)
+        self._c = SamClient(addr, loud=True)     # unreachable / gone / erroring -> SideServerDown
         self.model = model       # the model this address must serve ("digit" / "kong"); None = unchecked (legacy)
 
     def classify(self, img: np.ndarray, boxes: list) -> dict:
@@ -251,7 +251,8 @@ def client(category: str | None = None) -> GlyphClient | None:
     """The glyph reader for an asset ``category`` (``MODEL_OF``: numerals and operators -> the digit model at
     ``DOJO_GLYPH_ADDR_DIGIT``, mahjong tiles -> the kong model at ``DOJO_GLYPH_ADDR_KONG``; any other category: None).
     The old single ``DOJO_GLYPH_ADDR`` is a fallback, used only when its replies fit the category's model (checked on
-    every reply: a digit model never reads a mahjong tile). ``category`` None: the legacy unchecked client."""
+    every reply: a digit model never reads a mahjong tile). ``category`` None: the legacy unchecked client. None only when
+    no address is set; a set address that does not answer raises ``sam_masks.SideServerDown``."""
     if category is None:
         model, addr = None, os.environ.get(ENV_ADDR, "")
     else:
@@ -264,15 +265,9 @@ def client(category: str | None = None) -> GlyphClient | None:
     key = (addr, model)
     c = _CLIENT.get(key)
     if c is None:
-        try:
-            c = GlyphClient(addr, model)
-        except Exception as e:  # pragma: no cover - depends on a live server
-            import warnings
-
-            warnings.warn(f"glyph server at {addr} unreachable ({e}); glyph_read ignored")
-            c = False
+        c = GlyphClient(addr, model)     # a SET address that does not answer raises SideServerDown (infra, not "no read")
         _CLIENT[key] = c
-    return c or None
+    return c
 
 
 def main(argv=None):

@@ -17,7 +17,7 @@ def servers(monkeypatch):
     replies = {"/s/digit": DIGIT, "/s/kong": KONG}
 
     class Fake:
-        def __init__(self, addr):
+        def __init__(self, addr, **kw):
             self.addr = addr
 
         def _call(self, req, img):

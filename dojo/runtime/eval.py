@@ -90,6 +90,17 @@ def event_counts(events: list) -> dict:
         out[k] = out.get(k, 0) + 1
     return out
 
+def side_server_down_why(ready_path: str) -> str | None:
+    """The perception service's record of a dead side server (``perception_service.SIDE_SERVER_DOWN_FILE`` next to
+    ``DOJO_PERCEPTION_READY``): its first line, else None."""
+    if not ready_path:
+        return None
+    p = os.path.join(os.path.dirname(ready_path), "side_server_down")
+    if not os.path.exists(p):
+        return None
+    with open(p) as f:
+        return (f.readline().strip() or "side server down")[:200]
+
 def classify(res: dict, reward: dict, rep: dict, perc: dict | None, mode: str) -> tuple[str | None, str]:
     if reward.get("unstable"):
         return "unstable_episode", "the task marked the episode invalid (RoboDojo's eval client drops it)"
@@ -398,6 +409,9 @@ def _run(task, layout_files, cfg, out, max_minutes, renderer, episode_max_minute
         cook = cooking_failures(klog, k_off)
         if cook:                                    # an object without its collider: not a measurement of the policy
             cat, why = "infra_failure", f"collider cooking failed ({len(cook)}): {cook[0][-120:]}"
+        down = side_server_down_why(os.environ.get("DOJO_PERCEPTION_READY", ""))
+        if down:                                    # a set seg / glyph server died: perception ran blind, not a measurement
+            cat, why = "infra_failure", f"side server down: {down}"
         wall = time.perf_counter() - t0
         v = rep.get("verify")
         row = {"task": task, "layout": lf, "layout_id": lid, "mode": cfg.mode, "verify": cfg.verify, "preset": cfg.preset,
