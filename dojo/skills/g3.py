@@ -120,6 +120,48 @@ def look_read_refine(prov, sk, label: str, kind: str, mode: str, seed: int):
     return {label: None}
 
 
+FACE_COS = 0.17         # the tile classifier's face rule (kong_cls.label_of): the glyph within 80 deg of the view ray
+
+
+def glyph_gt_read(env, sk, label: str, arm: str | None) -> dict:
+    """Dev answer (G3 ``--glyph-gt``) to perception's tile read (the refine hook of kind "read"): the GT asset when the
+    tile's face (local +z, its glyph) turns toward the head camera or ``arm``'s wrist camera (``FACE_COS``) and its centre
+    projects into that image; otherwise unread ("back" / "not visible"). The classifier's misreads are not modelled."""
+    from dojo.perception.cameras import cameras_from_state, quat_wxyz_to_R
+    row = next((r for r in env.gt_objects() if r.get("label") == label), None)
+    if row is None:
+        return {"read": False, "name": None, "margin": None, "why": "not visible"}
+    cams = cameras_from_state(env.proprio())
+    p = np.asarray(row["pos"], float)
+    z = quat_wxyz_to_R(row["quat"])[:, 2]
+    why = "not visible"
+    for view in ["cam_head"] + ([f"cam_{arm}_wrist"] if arm else []):
+        cam = cams.get(view)
+        if cam is None:
+            continue
+        pc = cam.T_cw[:3, :3] @ p + cam.T_cw[:3, 3]
+        if pc[2] <= 0.05:
+            continue
+        u, v = (cam.K @ (pc / pc[2]))[:2]
+        if not (0 <= u < cam.w and 0 <= v < cam.h):
+            continue
+        ray = cam.center - p
+        if float(z @ ray) / float(np.linalg.norm(ray)) > FACE_COS:
+            key = f"{row.get('type', 'Rigid')}/{row['category']}/{int(row['category_idx']):05d}"
+            return {"read": True, "name": key, "margin": 1.0, "why": "read", "view": view}
+        why = "back"
+    return {"read": False, "name": None, "margin": None, "why": why}
+
+
+def glyph_gt_refine(env, base, sk, label: str, arm: str, kind: str):
+    """G3 ``--glyph-gt``: kind "read" answered by ``glyph_gt_read`` (``sk.last_refine["glyph"]``, as the runtime's
+    refine hook reports it); any other kind goes to ``base`` (mode B's hook, or nothing)."""
+    if kind == "read":
+        sk.last_refine = {"label": label, "for": kind, "glyph": glyph_gt_read(env, sk, label, arm)}
+        return {label: None}
+    return base(sk, label, arm, kind) if base is not None else None
+
+
 class FrozenGarmentProvider:
     """Dev hook for mode B in G3: a garment is read once, as the camera reads it at eval (``dojo.perception.garment``:
     one read of the flat garment, not following the cloth), from GT plus ``noise_mm`` Gaussian xy noise per named point
@@ -166,7 +208,8 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
                "belt_deposit": ("off", "on"), "belt_confirm_zone": ("off", "on", "uncertain"), "disc_handover_read": ("off", "on"),
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
-               "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured")}
+               "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
+               "kong_draw_read": ("off", "place"), "kong_draw_first": ("near", "far")}
 
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
@@ -174,7 +217,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True,
                 freeze_touched: bool = False, confirm_pose: bool = False, belief_drop: str | None = None,
                 allow_bbox: bool = False, held_request: bool = False, put_into_opts=(),
-                look_read: str | None = None, skill_attrs: dict | None = None, routes=()) -> dict:
+                look_read: str | None = None, skill_attrs: dict | None = None, routes=(), glyph_gt: bool = False) -> dict:
     """``held_pose`` ("noise" / "gt", mode B): perception's in-hand read answered from GT (``heldsim``), with the
     runtime belief's in-hand transform (implied); ``held_belief``: that belief alone (no read); ``held_looks``: the
     protocol may look / show (``Skills.held_looks``). ``freeze_touched``: an object the robot moved without a grasp keeps
@@ -222,6 +265,9 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     if mode_b:
         refine = ((lambda sk_, label, arm, kind: look_read_refine(prov, sk_, label, kind, look_read, seed)) if look_read
                   else (lambda sk_, label, arm, kind: None))
+    if glyph_gt:                               # ``--glyph-gt``: perception's tile reads answered from GT (dev)
+        def refine(sk_, label, arm, kind, base=refine):
+            return glyph_gt_refine(env, base, sk_, label, arm, kind)
     sk = Skills(env, prov, reserve=30, log=log, verifier=verifier,
                 verify_k=verify_k or 2, n_cands=4, remeasure=not mode_b, refine=refine)
     sk.held_looks = bool(held_looks)
@@ -400,7 +446,7 @@ def cmd_run(a) -> None:
                           held_request=a.held_pose_request, look_read=a.look_read,
                           put_into_opts=tuple(x for x in (a.put_into or "").split(",") if x),
                           skill_attrs=dict(x.split("=", 1) for x in a.skill_attr or []),
-                          routes=tuple(x for x in (a.routes or "").split(",") if x))
+                          routes=tuple(x for x in (a.routes or "").split(",") if x), glyph_gt=a.glyph_gt)
         if offs or a.mode_b:
             rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b), "held_pose": a.held_pose,
                                 "held_belief": bool(a.held_belief or a.held_pose or a.freeze_touched or a.confirm_pose),
@@ -786,6 +832,9 @@ def main(argv=None) -> None:
     r.add_argument("--no-held-looks", action="store_true", help="the held-pose protocol reads at the hover only (dev)")
     r.add_argument("--routes", default="", help="planner routes off by default, comma-separated (dojo.skills.routes.NEW_ROUTES)")
     r.add_argument("--put-into", default="", help="library.put_into options, comma-separated: spot,patient,sequence (dev)")
+    r.add_argument("--glyph-gt", action="store_true",
+                   help="perception's tile reads (refine kind read) answered from GT: the asset when its face turns to the "
+                        "head / wrist camera (dev)")
     r.add_argument("--skill-attr", action="append", default=[],
                    help="NAME=VALUE: a Skills switch (SKILL_ATTRS, e.g. place_surface=mesh, joint_limits=measured) (dev)")
     r.add_argument("--held-pose-request", action="store_true",
