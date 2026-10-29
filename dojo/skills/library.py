@@ -454,6 +454,25 @@ def _pick_width(sk: Skills, labels) -> float:
     return out
 
 
+def _spot_blocks(sk: Skills, label: str, xy, others) -> list[str]:
+    """The objects in ``others`` that some arm can pick from home now but none could with ``label`` resting level on
+    the table at ``xy`` (a handover spot in front of a standing bottle closes its grasps; G3 put_bottles v15 draws: 2 of
+    16 episodes ended "no arm can pick" on two bottles that blocked each other, either one moved away freed the other)."""
+    free = [l for l in others if any(sk.can_pick(l, a) for a in ARMS)]
+    if not free:
+        return []
+    o = sk.world.obj(label)
+    saved = (o.pos.copy(), o.quat.copy())
+    R = level_R(current_R(sk, label))
+    c = np.array([xy[0], xy[1], TABLE_Z + half_height(o, R)])
+    o.pos, o.quat = c - R @ o.asset.center, R_to_quat(R)
+    try:
+        return [l for l in free if not any(isinstance(sk.plan_pick(l, a, q_start={a: sk.world.home_q[a]}, keep=1), PickPlan)
+                                           for a in ARMS)]
+    finally:
+        o.pos, o.quat = saved
+
+
 def put_into(sk: Skills, objects: list[str], container: str) -> dict:
     """Drop every object into ``container``. The arm nearer the container drops; objects only the
     other arm can pick are handed over through a free table spot while the dropper is busy."""
@@ -549,10 +568,13 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
                 # steps 48 / 121 on "handover spot" with the whole budget left)
                 sx = -1.0 if dropper == "left" else 1.0
                 near += [(sx * 0.15, -0.15), (0.0, -0.25), (sx * 0.2, -0.25), (-sx * 0.1, -0.2)]
+            # "unblock": a spot where the handed-over object would leave another object no arm can pick is skipped
+            others = [x for x in objects if x not in done and x not in picks.values()] if "unblock" in opts else []
             for nxy in near:
                 for spot in free_spots(sk, lab, near_xy=nxy):
                     pl = sk.plan_place(helper, _table_pose_keep(sk, lab, spot), yaw_sym=8, release_gap=0.004)
-                    if isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot):
+                    if (isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot)
+                            and not (others and _spot_blocks(sk, lab, spot, others))):
                         place_r = pl
                         phase.append(pl.plan)
                         break

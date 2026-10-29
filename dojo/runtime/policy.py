@@ -294,7 +294,8 @@ class RuntimeConfig:
     # drop rule) | release (a post-release measurement decides; else in when the jaws held it to the release over the
     # container's footprint, and the belief puts it inside)
     drop_verdict: str = "belief"
-    # ``library.put_into``'s options (``Skills.put_into_opts``; empty = today): spot | patient | sequence
+    # ``library.put_into``'s options (``Skills.put_into_opts``; empty = today): spot | patient | sequence | unblock (a
+    # handover spot that would leave another object no arm can pick is skipped)
     put_into_opts: list = field(default_factory=list)
     # ``library.on_targets``' support top (``Skills.place_surface``): bbox (today) | mesh (the support mesh's surface
     # under the whole footprint, flat poses only)
@@ -461,7 +462,7 @@ class RuntimePolicy:
                 or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")
                 or self.cfg.refine_recentre_guard not in ("centre", "vis")
                 or self.cfg.drop_verdict not in ("belief", "release")
-                or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
+                or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
