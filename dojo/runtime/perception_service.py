@@ -39,6 +39,9 @@ Ops (request dicts):
     {"op": "watch", "frame0": frame, "frame": frame, "vocabulary": str}            -> {"watch": json}
         what the scene's own actors changed while the robot waits (``dojo.perception.task_state.actor_change``; make_kong:
         the push tile the opponent knocked over): {"supported", "knocked": [label], "detail"}
+    {"op": "support_home", "frame": frame}                                        -> {"support_home": json}
+        is a support robot (imitate's demonstrator) standing at its home in the head view
+        (``dojo.perception.inverse_layout.support_home``): {"name", "diff", "at_home"}
     {"op": "locate_laid", "frame0": frame, "frame": frame, "key": str, "pose7": [7]} -> {"locate_laid": json}
         where a knocked-over object laid at ``pose7`` (where it stood) actually lies, from the head view
         (``dojo.perception.task_state.laid_pose``): {"ok", "pos", "quat", "iou", "shift_mm", "yaw_deg", "why"}
@@ -375,6 +378,10 @@ class PerceptionClient:
         return json.loads(self._call({"op": "watch", "frame0": head_only(frame0), "frame": head_only(frame),
                                       "vocabulary": vocabulary})["watch"])
 
+    def support_home(self, frame: dict) -> dict:
+        f = encode_frame({**frame, "images": {"cam_head": frame["images"]["cam_head"]}})
+        return json.loads(self._call({"op": "support_home", "frame": f})["support_home"])
+
     def locate_laid(self, frame0: dict, frame: dict, key: str, pose7) -> dict:
         def head_only(f):
             return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
@@ -530,6 +537,11 @@ class _Perception:
                          vocabulary)
         return {"supported": True, "knocked": [r["knocked"]] if r.get("knocked") and r.get("confident") else [],
                 "detail": r}
+
+    def support_home(self, frame: dict) -> dict:
+        """Is a support robot at its home in this frame's head view (``inverse_layout.support_home``)."""
+        from dojo.perception.inverse_layout import support_home
+        return support_home(decode_frame(frame)["images"]["cam_head"])
 
     def locate_laid(self, frame0: dict, frame: dict, key: str, pose7) -> dict:
         """Where a knocked-over object, laid face up where it stood (``pose7``), actually lies: the head view, frame 0
@@ -1162,6 +1174,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "watch":
                         w = p.watch(req["frame0"], req["frame"], req["vocabulary"])
                         conn.send({"ok": True, "watch": json.dumps(w, default=_default)})
+                    elif op == "support_home":
+                        r = p.support_home(req["frame"])
+                        conn.send({"ok": True, "support_home": json.dumps(r, default=_default)})
                     elif op == "locate_laid":
                         r = p.locate_laid(req["frame0"], req["frame"], req["key"], req["pose7"])
                         conn.send({"ok": True, "locate_laid": json.dumps(r, default=_default)})

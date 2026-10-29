@@ -181,6 +181,11 @@ class GTProvider:
         self.home_q = None
         self.notes: dict = {}
         self._actors_prev = None
+        f = getattr(env, "actors_gt", None)            # the scripted arms at the episode start: their home (support_at_home)
+        try:
+            self._actors_home = {k: np.asarray(v, float) for k, v in (f() or {}).items()} if f is not None else None
+        except Exception:  # noqa: BLE001 (an env without them)
+            self._actors_home = None
 
     def garment(self, label: str | None = None) -> dict | None:
         """Dev-only GT of a garment lying on the table (``RunnerEnv.garment_gt``: particles, named points, root pose);
@@ -202,6 +207,15 @@ class GTProvider:
         if prev is None:
             return True
         return any(k not in prev or float(np.abs(v - prev[k]).max()) > tol for k, v in cur.items())
+
+    def support_at_home(self, tol: float = 0.02) -> bool | None:
+        """Dev-only GT: are the scripted arms back at their episode-start joints (within ``tol`` rad)? None when the env
+        cannot tell or has none. At eval the runtime's provider answers it from the head view's appearance."""
+        f = getattr(self.env, "actors_gt", None)
+        if f is None or not self._actors_home:
+            return None
+        cur = {k: np.asarray(v, float) for k, v in (f() or {}).items()}
+        return all(k in cur and float(np.abs(cur[k] - v).max()) <= tol for k, v in self._actors_home.items())
 
     def watch_read(self, region: dict, prior: dict | None = None) -> dict:
         """Dev-only GT answer to perception's watch read (same dict shape, so G3 -> eval is a provider swap):
@@ -340,6 +354,7 @@ class Skills:
         # ``interactive.wait_demo_done`` (stream W): "still" (today: a wait_actors_still timeout proceeds) | "origin" (a
         # timeout keeps holding until the demonstrator's arm is at rest, the copy's steps kept back)
         self.imitate_wait = "still"
+        self.imitate_keep_sides = False   # copy_demonstration: the episode start's demonstrator / our halves on re-entry
         # ``interactive.look_twins`` (stream W): "off" (today) | "ambiguous" (with imitate_pairing "one_to_one": a wrist
         # look at each of our objects whose assigned twin has another believed asset, then the assignment again)
         self.imitate_look = "off"

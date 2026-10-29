@@ -443,6 +443,8 @@ class RuntimeProvider:
         self._grip_held_seen: dict = {}         # arm -> (label, grasp n) once the reading said held in that grasp
         self._vision_held_seen: dict = {}       # arm -> (label, grasp n) once held_look said held in that grasp
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
+        self.support_reader = None              # (obs) -> {"at_home": bool|None}: a support robot at its home (head view)
+        self.support_home0 = None               # its frame-0 read: True when the scene has one standing at home
         self.garment_reader = None              # (obs) -> a garment read (``dojo.perception.garment``) or None
         self.garment_updater = None             # (obs0, obs, read) -> {"keypoints": the hem corners again} or None
         self._garment = None
@@ -802,6 +804,20 @@ class RuntimeProvider:
             return None
         self.stats["motion_reads"] = self.stats.get("motion_reads", 0) + 1
         return r.get("moving")
+
+    def support_at_home(self) -> bool | None:
+        """Is the scene's support robot (imitate's demonstrator) back at its home now: perception's appearance read of the
+        head view (``inverse_layout.support_home``). None when this provider cannot tell (no reader, or no support robot
+        stood at home at frame 0, ``support_home0``)."""
+        if self.support_reader is None or not self.support_home0:
+            return None
+        try:
+            r = self.support_reader(self.bridge.observe()) or {}
+        except Exception as e:  # noqa: BLE001 (an optional read)
+            self.events.append({"kind": "support_home_error", "note": f"{type(e).__name__}: {str(e)[:120]}"})
+            return None
+        self.stats["support_reads"] = self.stats.get("support_reads", 0) + 1
+        return r.get("at_home")
 
     def belt_velocity(self) -> np.ndarray:
         """Median fitted velocity (m / step, world xy) of the objects tracked as moving, from tracks long enough to trust
