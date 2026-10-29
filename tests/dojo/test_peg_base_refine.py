@@ -109,3 +109,17 @@ def test_pegs_skill_marks_its_base_and_rereads_the_axes_only_with_the_flag(monke
         r = pegs.stack_on_pegs(sk, [["p"]], "base", ["pole/0"])
         assert r["ok"] and sk.peg_base is None
         assert len([x for x in seen if x != "on"]) == n_geo           # off: the axes once; local: again before the piece
+
+
+def test_more_tries_keep_refining_until_a_good_local_fit():
+    env = _env()
+    pc = _Seq([(1.5, 0.0), (0.0, 0.0), (1.2, 0.97)])
+    cfg = RuntimeConfig(mode="perception", refine=True, refine_max_shift_m=0.07, place_confirm=True,
+                        refine_search_radius=0.07, peg_base_refine="local", peg_base_tries=8)
+    pol, prov = _place_setup(cfg, pc, env)
+    x0 = float(prov.belief.objects["block_0"].pos[0])
+    assert pol._refine_hook(prov, _Sk("block_0"), "block_0", "left", "place") is None
+    assert pol._refine_hook(prov, _Sk("block_0"), "block_0", "left", "place") is None
+    out = pol._refine_hook(prov, _Sk("block_0"), "block_0", "left", "place")      # the third view is good: applied
+    assert "block_0" in out and np.isclose(float(prov.belief.objects["block_0"].pos[0]), x0 + 0.0012)
+    assert all("search_radius" not in c for c in pc.calls) and RuntimeConfig().peg_base_tries == 2
