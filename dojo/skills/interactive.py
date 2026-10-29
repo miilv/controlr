@@ -1583,6 +1583,94 @@ def _handle_lift(sk: Skills, container: str, arm: str, holder: str, ign) -> Skil
     return SkillResult(False, "handle_lift", "ik_fail", 0, arm, note=f"no lift by the handle ({HANDLE_LIFTS})")
 
 
+HOOK_DROP = 0.035                    # belt_lift "hook": the closed fingers' TCP this far under the handle bar's underside
+HOOK_BACK = 0.15                     # ... and slid in from this far back, horizontally, across the bar
+HOOK_LIFTS = (0.12, 0.10)
+
+
+def _hook_lift(sk: Skills, container: str, arm: str, holder: str, ign) -> SkillResult:
+    """``belt_lift`` "hook" (stream H): ``arm`` slides its closed fingers horizontally under the middle of the
+    container's handle bar (across it, aimed where the bar will be when the hand arrives: the container still rides
+    the belt), ``holder`` lets go of the wall, and ``arm`` lifts straight up: the bar rests on the fingers, no friction
+    needed. A pinch of the 9-11 mm bar lifted the 0.2 kg basket 1 mm while the hand rose 9 cm (G3 v15 draws)."""
+    import math
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.geometry import T_from
+    from dojo.skills.motion import CARRY, MEDIUM, SLOW
+    o = sk.refresh().obj(container)
+    if o.asset.mesh is None:
+        return SkillResult(False, "hook", "ik_fail", 0, arm, note="no mesh for the handle")
+    V = np.asarray(o.asset.mesh[0], float)                       # object frame
+    top = float(V[:, 2].max())
+    band = V[V[:, 2] >= top - 0.02]
+    _, _, vt = np.linalg.svd(band[:, :2] - band[:, :2].mean(0), full_matrices=False)
+    dl, mid = vt[0], band[:, :2].mean(0)
+    along = (V[:, :2] - mid) @ dl
+    across = (V[:, :2] - mid) @ np.array([-dl[1], dl[0]])
+    near = V[(np.abs(along) < 0.012) & (np.abs(across) < 0.012) & (V[:, 2] > top - 0.04)]
+    p_obj = np.r_[mid, float(near[:, 2].min()) if len(near) else top - 0.011]
+    p_a = np.asarray(o.pos, float)
+    try:
+        sk.ex.hold(2)
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return SkillResult(False, "hook", "step_budget", 0, arm, note=str(e))
+    o = sk.refresh().obj(container)
+    vel = (np.asarray(o.pos, float) - p_a) / 2.0
+    vel[2] = 0.0
+    p_w = o.R @ p_obj + o.pos
+    d_w = o.R @ np.r_[dl, 0.0]
+    d_w[2] = 0.0
+    d_w /= max(1e-9, float(np.linalg.norm(d_w)))
+    a_w = np.array([-d_w[1], d_w[0], 0.0])
+    if a_w[:2] @ (p_w[:2] - sk.kin.base(arm)[:2, 3]) < 0:
+        a_w = -a_w
+    R = np.stack([a_w, d_w, np.cross(a_w, d_w)], axis=1)       # approach across the bar, closing axis along it
+    n, mv1, mv2 = 0, None, None
+    for _ in range(3):                                           # aim where the bar is when the hand arrives
+        T = T_from(p_w + vel * n - np.array([0.0, 0.0, HOOK_DROP]), R)
+        T_pre = T.copy()
+        T_pre[:3, 3] -= a_w * HOOK_BACK
+        mv1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_pre, CARRY, "hook_pre", gripper=0.0, ignore=tuple(ign) + (container,))
+        if not mv1.ok:
+            return SkillResult(False, "hook", "ik_fail", 0, arm, note=f"hook pre: {mv1.status}")
+        mv2 = sk.motion.line(arm, mv1.q_end, T, MEDIUM, "hook_in", gripper=0.0, check=False)
+        if not mv2.ok:
+            return SkillResult(False, "hook", "ik_fail", 0, arm, note=f"hook in: {mv2.status}")
+        n_new = sum(sg.n_steps() for sg in list(mv1.segments) + list(mv2.segments))
+        if abs(n_new - n) <= 1:
+            break
+        n = n_new
+    try:
+        sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).move(mv1, "hook_pre").move(mv2, "hook_in")},
+                  name=f"hook under {container}'s handle")
+        sk.ex.run({holder: ArmPlan(holder, sk.ex.q[holder].copy(), 0.0).grip(OPEN, 3, "release").hold(2, "still")},
+                  name=f"release {container}")
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return SkillResult(False, "hook", "step_budget", 0, arm, note=str(e))
+    sk.held[holder] = None
+    z0 = float(sk.refresh().obj(container).bottom_z)
+    for dz in HOOK_LIFTS:
+        T2 = sk.kin.tcp(arm, sk.ex.q[arm])
+        T2[2, 3] += dz
+        mv = sk.motion.line(arm, sk.ex.q[arm], T2, SLOW, "hook_lift", gripper=0.0, check=False)
+        if not mv.ok:
+            continue
+        try:
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).move(mv, "hook_lift").hold(8, "still")},
+                      name=f"lift {container} on the hook")
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return SkillResult(False, "hook", "step_budget", 0, arm, note=str(e))
+        o2 = sk.refresh().obj(container)
+        rose = float(o2.bottom_z) - z0
+        tilt = math.degrees(math.acos(max(-1.0, min(1.0, float(o2.R[2, 2])))))
+        sk.log(f"[belt] {container} lifted {dz * 100:.0f} cm on the hook (its bottom rose {rose * 1000:.0f} mm, "
+               f"tilt {tilt:.0f} deg; belt drift {np.round(vel * 1000, 1).tolist()} mm/step)")
+        ok = rose > 0.6 * dz
+        return sk._record(SkillResult(ok, "hook", "ok" if ok else "grasp_slip", 0, arm,
+                                      note=f"{container} bottom rose {rose * 1000:.0f} mm"))
+    return SkillResult(False, "hook", "ik_fail", 0, arm, note=f"no lift on the hook ({HOOK_LIFTS})")
+
+
 def _deposit_then_lift(sk: Skills, container: str, target: str, v: np.ndarray, ign) -> dict:
     """``belt_deposit``: stop the container on the belt by its downstream wall (the downstream arm), pick the pictured
     object off the belt with the other arm and let it fall into the still container, then that arm takes the upstream
@@ -1608,7 +1696,8 @@ def _deposit_then_lift(sk: Skills, container: str, target: str, v: np.ndarray, i
     w = sk.refresh()
     inside = inside_xy(w.obj(target), w.obj(container))
     sk.log(f"[belt] {target} {'in' if inside else 'not in'} {container} after the drop")
-    rl = _handle_lift(sk, container, parm, sarm, ign + (target,))
+    lift = _hook_lift if getattr(sk, "belt_lift", "handle") == "hook" else _handle_lift      # stream H
+    rl = lift(sk, container, parm, sarm, ign + (target,))
     w = sk.refresh()
     ok = rl.ok and inside_xy(w.obj(target), w.obj(container))
     return {"ok": ok, "stage": "lifted" if rl.ok else "lift", "note": rl.note}

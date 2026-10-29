@@ -293,6 +293,9 @@ class Skills:
         # ``library.put_into``'s options (stream H; empty = today): "spot" (a wider handover search, else a put-back),
         # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
         self.put_into_opts: set = set()
+        # belt_deposit's final lift (stream H; ``RuntimeConfig.belt_lift``): "handle" (today: a pinch of the handle bar)
+        # | "hook" (closed fingers slid under the bar, then up: ``interactive._hook_lift``)
+        self.belt_lift: str = "handle"
         # nested places' verdict (stream H; ``RuntimeConfig.nest_verify``): "target" (today: vs the planned on-top pose)
         # | "support" (vs the support object as it is: NEST_SUPPORT_XY / NEST_SUPPORT_TILT, inside the checker's
         # is_stacked 0.04 m / 45 deg)
