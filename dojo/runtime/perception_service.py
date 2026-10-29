@@ -39,6 +39,9 @@ Ops (request dicts):
     {"op": "watch", "frame0": frame, "frame": frame, "vocabulary": str}            -> {"watch": json}
         what the scene's own actors changed while the robot waits (``dojo.perception.task_state.actor_change``; make_kong:
         the push tile the opponent knocked over): {"supported", "knocked": [label], "detail"}
+    {"op": "locate_laid", "frame0": frame, "frame": frame, "key": str, "pose7": [7]} -> {"locate_laid": json}
+        where a knocked-over object laid at ``pose7`` (where it stood) actually lies, from the head view
+        (``dojo.perception.task_state.laid_pose``): {"ok", "pos", "quat", "iou", "shift_mm", "yaw_deg", "why"}
     {"op": "agentic_estimate", "frame": frame, "vocabulary": str, "fold": int, "b1_record": json|None,
      "extra_frame": scan frame (optional: the agent's second observation)}
                                                                                    -> {"record": json}
@@ -372,6 +375,12 @@ class PerceptionClient:
         return json.loads(self._call({"op": "watch", "frame0": head_only(frame0), "frame": head_only(frame),
                                       "vocabulary": vocabulary})["watch"])
 
+    def locate_laid(self, frame0: dict, frame: dict, key: str, pose7) -> dict:
+        def head_only(f):
+            return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
+        return json.loads(self._call({"op": "locate_laid", "frame0": head_only(frame0), "frame": head_only(frame),
+                                      "key": key, "pose7": [float(v) for v in pose7]})["locate_laid"])
+
     def close(self, stop_service: bool = False) -> None:
         try:
             if stop_service:
@@ -521,6 +530,13 @@ class _Perception:
                          vocabulary)
         return {"supported": True, "knocked": [r["knocked"]] if r.get("knocked") and r.get("confident") else [],
                 "detail": r}
+
+    def locate_laid(self, frame0: dict, frame: dict, key: str, pose7) -> dict:
+        """Where a knocked-over object, laid face up where it stood (``pose7``), actually lies: the head view, frame 0
+        vs now (``task_state.laid_pose``)."""
+        from dojo.perception.task_state import laid_pose
+        return laid_pose(decode_frame(frame0)["images"]["cam_head"], decode_frame(frame)["images"]["cam_head"], key,
+                         list(pose7))
 
     def agentic_estimate(self, frame: dict, vocabulary: str, fold: int, b1_record: dict | None = None,
                          extra_frame: dict | None = None) -> dict:
@@ -1146,6 +1162,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "watch":
                         w = p.watch(req["frame0"], req["frame"], req["vocabulary"])
                         conn.send({"ok": True, "watch": json.dumps(w, default=_default)})
+                    elif op == "locate_laid":
+                        r = p.locate_laid(req["frame0"], req["frame"], req["key"], req["pose7"])
+                        conn.send({"ok": True, "locate_laid": json.dumps(r, default=_default)})
                     elif op == "close":
                         conn.send({"ok": True})
                         stop = True

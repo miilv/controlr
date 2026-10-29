@@ -92,6 +92,8 @@ def _layout_seed(prov) -> int:
 
 
 MAKE_SKILLS_TRIES = 3     # fresh ``Skills`` after a re-plan: tries while its first world read keeps diverging
+WATCH_RELOCATE_TRIES = 12    # ``watch_relocate``: head-view locations of a laid object at most (every watch_every steps)
+WATCH_RELOCATE_AGREE_MM = 3.0  # ... two in a row this close: settled, the search ends
 
 
 @dataclass
@@ -213,6 +215,11 @@ class RuntimeConfig:
     # changed (service op "watch"; make_kong: the opponent's discard); two equal reads update the belief
     watch: bool = False
     watch_every: int = 4
+    # with watch: a knocked-over object, once laid face up where it stood, is located in the head view (service op
+    # "locate_laid": frame 0 vs now, the new tile-face pixels around the laid pose) at each later watch read until two
+    # locations agree within WATCH_RELOCATE_AGREE_MM (make_kong: the discard lies 48 mm off its slot in 25 of 25 dev
+    # renders, and the read cropped at the slot saw a standing neighbour's back). False: it stays where it stood
+    watch_relocate: bool = False
     # mode perception: perception R&D's agentic perceiver (LLM calls via omniroute, in the perception service).
     # "budget": the first estimate is agentic; then, while fewer than agentic_max estimates ran, perception's
     # needs_agent(record) decides once after the looks / search and at each re-estimate after a confirmed divergence
@@ -1771,8 +1778,53 @@ class RuntimePolicy:
                 events.append({"kind": "watch", "knocked": list(k), "laid": laid, "step": b.steps_used,
                                "detail": w.get("detail")})
                 st["on"] = False
+                if self.cfg.watch_relocate and laid:
+                    st["relocate"] = {lab: {"base": np.r_[prov.belief.objects[lab].pos, prov.belief.objects[lab].quat],
+                                            "last": None, "tries": 0} for lab in laid}
+                    self._relocate_laid(prov, obs0, obs, st)
             st["prev"] = k or None
-        return watch
+
+        def watch_or_relocate(obs: dict) -> None:
+            if st.get("relocate"):
+                if b.steps_used - st["last"] < self.cfg.watch_every:
+                    return
+                st["last"] = b.steps_used
+                self._relocate_laid(prov, obs0, obs, st)
+                return
+            watch(obs)
+        return watch_or_relocate
+
+    def _relocate_laid(self, prov, obs0: dict, obs: dict, st: dict) -> None:
+        """``watch_relocate``: each laid object located in the head view (perception ``locate_laid``, searched around
+        where it was laid). A location is written to the belief; two in a row within ``WATCH_RELOCATE_AGREE_MM`` end the
+        search for that object, as do ``WATCH_RELOCATE_TRIES`` reads. Events ``watch_relocate``."""
+        events = self.report["events"]
+        for lab, r in list(st["relocate"].items()):
+            o = prov.belief.objects.get(lab) if prov.belief else None
+            if o is None:
+                st["relocate"].pop(lab)
+                continue
+            r["tries"] += 1
+            try:
+                res = self.perception().locate_laid(obs0, obs, o.asset.key, r["base"])
+            except Exception as e:  # noqa: BLE001 (an optional read: the object stays where it was laid)
+                events.append({"kind": "watch_relocate_error", "label": lab, "note": f"{type(e).__name__}: {str(e)[:160]}"})
+                st["relocate"].pop(lab)
+                continue
+            ev = {"kind": "watch_relocate", "label": lab, "step": self.bridge.steps_used, "ok": bool(res.get("ok")),
+                  "iou": res.get("iou"), "shift_mm": res.get("shift_mm"), "why": res.get("why")}
+            if res.get("ok"):
+                pos = np.asarray(res["pos"], float)
+                settled = r["last"] is not None and float(np.linalg.norm(pos[:2] - r["last"][:2])) * 1000 \
+                    <= WATCH_RELOCATE_AGREE_MM
+                o.pos, o.quat, o.source = pos, np.asarray(res["quat"], float), "perception"
+                r["last"] = pos
+                ev.update(pos=[round(float(v), 4) for v in pos], settled=settled)
+                if settled:
+                    st["relocate"].pop(lab)
+            if r["tries"] >= WATCH_RELOCATE_TRIES:
+                st["relocate"].pop(lab, None)
+            events.append(ev)
 
     @staticmethod
     def _lay_face_up(prov, label: str) -> bool:

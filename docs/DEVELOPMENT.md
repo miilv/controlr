@@ -359,6 +359,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   a 9 at a confident margin, and 2 / 3 / 4 / 5 / 7 fall below the margin. `EstimatorConfig.glyph_upright` "on" turns
   the runtime wrist crop of a flat glyph so world +y is up first (`glyph_read.upright_deg` / `turn_upright`). Any new
   wrist read of an oriented glyph needs the same thought: which roll was the reader trained on?
+- **A knocked-over object is not where it stood.** The watcher (`RuntimeConfig.watch`) lays a knocked object face up
+  at its slot, but make_kong's discard lies 48 mm toward the robot in every dev render. A read or plan at the laid pose
+  looks at the empty slot (head "back", wrist "edge"). `RuntimeConfig.watch_relocate` locates it in the head view
+  (`task_state.laid_pose`: new tile-face pixels since frame 0 near the slot) until two reads agree.
 - **A set side-server address fails loudly.** With `DOJO_SEG_ADDR` / `DOJO_GLYPH_ADDR*` unset the flags are no-ops;
   with one SET but unreachable, gone mid-run or answering an error, the clients raise `sam_masks.SideServerDown`
   (never a silent run without the server). Callers re-raise it past their "a failure never takes perception down"
