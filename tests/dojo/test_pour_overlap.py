@@ -69,10 +69,28 @@ def test_overlap_grasps_the_next_bottle_during_the_pour():
         if pace == "overlap":
             comp = runs[0]["companion"]
             assert comp["ok"] and comp["arm"] != runs[0]["plan"]["arm"]
-            kinds = [next(iter(c)) for c in comp["log"]]
-            assert kinds == ["move", "move", "close", "move"] and not any(c.get("alone") for c in comp["log"])
+            kinds = [next(iter(c)) for c in comp["log"]]          # pre, in, close, lift, then the carry over its bowl
+            assert kinds == ["move", "move", "close", "move", "move"] and not any(c.get("alone") for c in comp["log"])
+            assert comp["carried"]
             assert runs[1]["plan"]["arm"] == comp["arm"] and runs[1]["log"][0]["grasp"]["pre"] == {}  # no second grasp
-    assert steps["overlap"] <= steps["v1"] - 120                     # kinematic env: 753 -> 601
+            assert runs[1]["pour"][0]["phi"] != 0                                  # it starts over its bowl
+    assert steps["overlap"] <= steps["v1"] - 140                     # kinematic env: 753 -> 584
+
+
+def test_a_centre_bottle_goes_to_either_arm_and_a_side_bottle_to_its_own():
+    from dojo.skills.ported.skills.pour_bottle_lean import skill_robodojo as lean
+    objs = {"b": {"pos": [0.03, 0.0, 0.8]}, "w": {"pos": [0.0, -0.15, 0.78]}}
+
+    def side_ok(x, arm):
+        objs["b"]["pos"][0] = x
+        try:
+            lean.companion_plan(None, None, None, objs, "", "b", "w", arm, None, 0.72, 0.1, 0.04, (0,), (0,), "auto",
+                                (0,), 0.012, 0.012, 0.0, 0.015, 0.55)
+        except Exception:            # past the side rule: it went on to plan (no robot here)
+            return True
+        return False
+    assert side_ok(0.03, "left") and side_ok(0.03, "right") and side_ok(0.2, "right") and not side_ok(0.2, "left")
+    assert side_ok(-0.2, "left") and not side_ok(-0.2, "right")
 
 
 def test_pour_order_hands_the_held_bottle_on(monkeypatch):
@@ -98,3 +116,10 @@ def test_pour_order_hands_the_held_bottle_on(monkeypatch):
     assert ["pre_held" in c[1] for c in calls] == [False, True, True]
     assert [c[1].get("home", True) for c in calls] == [False, False, True]
     assert calls[0][1]["tilt_speed"] == planner.POUR_PACE["overlap"]["tilt_speed"]
+
+
+def test_alternate_arms():
+    assert pour_order.alternate_arms([0.0, 0.2, -0.2]) == ["left", "right", "left"]
+    assert pour_order.alternate_arms([0.2, -0.2, 0.0]) == ["right", "left", "right"]
+    assert pour_order.alternate_arms([0.2, 0.0, -0.2]) in (["right", "left", "left"], ["right", "right", "left"])
+    assert pour_order.alternate_arms([0.2, 0.0, -0.2]) == ["right", "right", "left"]      # tie: the vendored choice

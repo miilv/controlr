@@ -130,6 +130,7 @@ def mouth_radius(rec, default):
 
 
 COMPANION_CLEAR = 0.15          # H: m, the companion's approach stays this far (xy) from the bowl this pour works over
+CENTRE_X = 0.05                 # H: m, a bottle this close to x = 0 is on both arms' side
 
 
 def companion_plan(robot, P, Bottle, objs, instr, container, target, arm, q_from, grasp_frac, back, lift, pitches, yaws,
@@ -144,7 +145,8 @@ def companion_plan(robot, P, Bottle, objs, instr, container, target, arm, q_from
         ci, ti, _ = ground(objs, instr, container, target)
     except ValueError:
         return None
-    if ("right" if float(objs[ci]["pos"][0]) >= 0 else "left") != arm:
+    x = float(objs[ci]["pos"][0])
+    if ("right" if x > CENTRE_X else "left" if x < -CENTRE_X else arm) != arm:        # a centre bottle: either arm
         return None
     mr, _ = mouth_radius(objs[ci], mouth_r)
     cup = Bottle(objs[ci], mr, shoulder_frac)
@@ -175,8 +177,11 @@ def companion_plan(robot, P, Bottle, objs, instr, container, target, arm, q_from
                 poses = [P._pour_pose(cup, Q0, sd, ph, sxy, top_z + lip_clear, top_z, body_clear, "tool", head_h)[:2]
                          for ph in phis]
                 if P._reach_chain(robot, arm, poses, ql)[0]:
-                    return {"arm": arm, "container": ci, "pitch": pitch, "yaw": yaw, "Q0": P.r4(Q0, 6), "pre": P.r4(pre),
-                            "g": P.r4(g), "up": P.r4(up), "lift_dz": round(lift_dz, 4), "z0": round(float(objs[ci]["pos"][2]), 4)}
+                    carry = P._pour_pose(cup, Q0, sd, phis[0], sxy, top_z + lip_clear, top_z, body_clear, "tool", head_h)
+                    return {"arm": arm, "container": ci, "pitch": pitch, "yaw": yaw, "side": sd, "Q0": P.r4(Q0, 6),
+                            "pre": P.r4(pre), "g": P.r4(g), "up": P.r4(up), "lift_dz": round(lift_dz, 4),
+                            "z0": round(float(objs[ci]["pos"][2]), 4), "spot": P.r4(c0[:2]),
+                            "carry": [P.r4(carry[0]), P.r4(carry[1], 6)], "carry_phi": phis[0]}
     return None
 
 
@@ -186,7 +191,7 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         shoulder_frac=0.55, slip_deg=14.0, slip_m=0.012, set_dz=0.004, min_return_steps=60, home=True,
         rush_to=None, rush_carry=False, rush_speed="normal", rush_ramp=2,
         flow_speed="slow", untilt_speed="slow", lift_speed="slow", tilt_speed=None, tilt_below=100.0,
-        companion=None, pre_held=None):  # H
+        companion=None, pre_held=None, arm_pref=None):  # H
     P = load_pour()
     Bottle = bottle_class(P)
     log = []
@@ -216,11 +221,19 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
     if pre_held:      # H: the bottle is already in this arm's hand (grasped and lifted during the previous pour)
         arm, pitches, yaws = pre_held["arm"], (pre_held["pitch"],), (pre_held["yaw"],)
     arms = [arm] if arm in ("left", "right") else (["right", "left"] if c0[0] >= 0 else ["left", "right"])
+    if arm_pref in ("left", "right") and arm not in ("left", "right"):           # H: try this arm first
+        arms = [arm_pref] + [a_ for a_ in ("left", "right") if a_ != arm_pref]
     # H: the profile actually run: the rush angle, then the angles above it (rush_carry: the first angle first)
     prof = list(phis) if rush_to is None else [float(rush_to)] + [p_ for p_ in phis if p_ > float(rush_to)]
     prof = [phis[0]] + prof if rush_to is not None and rush_carry else prof
+    if pre_held and pre_held.get("carried") and prof and prof[0] == phis[0]:        # H: already over its bowl
+        prof = prof[1:]
     plan_phis = list(phis) if rush_to is None else sorted(set(phis) | set(prof))
     best, tried = None, 0
+    if pre_held:      # H: in hand already; its grasp and profile were planned with it (``companion_plan``)
+        best = {"arm": pre_held["arm"], "pitch": pre_held["pitch"], "yaw": pre_held["yaw"], "side": pre_held["side"],
+                "travel": 0.0, "pre_held": True}
+        arms = []
     for a_ in arms:
         sd_list = [int(sides)] if sides in (1, -1) else ([-1, 1] if a_ == "right" else [1, -1])
         for pitch in pitches:
@@ -275,17 +288,19 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         details["companion_plan"] = comp or {"none": True}
         if comp:
             cq = [("move", comp["pre"], "normal", None), ("move", comp["g"], "slow", 0.008), ("grip",),
-                  ("move", comp["up"], "slow", None)]
+                  ("move", comp["up"], "slow", None), ("carry", comp["carry"][0], "normal", 0.03)]
+    state = {"after_edge": False}                 # H: the companion's carry waits for this pour's upright edge
     if comp is None and robot.obs(cameras=[])["eef"][other].get("at_home") is False:
         robot.return_home(arms=[other])
 
     def mv(**kw):                                                                                 # H
         """This arm's move_to, with the companion's next move merged in when there is one."""
-        if cq and cq[0][0] == "move":
-            _, pos_b, sp_b, dev_b = cq[0]
-            mb = {"pos": pos_b, "quat": comp["Q0"], "speed": sp_b, **({} if dev_b is None else {"max_dev": dev_b})}
+        if cq and (cq[0][0] == "move" or (cq[0][0] == "carry" and state["after_edge"])):
+            kind, pos_b, sp_b, dev_b = cq[0]
+            q_b = comp["carry"][1] if kind == "carry" else comp["Q0"]
+            mb = {"pos": pos_b, "quat": q_b, "speed": sp_b, **({} if dev_b is None else {"max_dev": dev_b})}
             ma = {k: kw[k] for k in ("pos", "quat", "speed", "max_dev") if k in kw}
-            r = robot.move_pair(moves={A: ma, other: mb}, **({"max_steps": kw["max_steps"]} if "max_steps" in kw else {}))
+            r = robot.move_pair(moves={A: ma, other: mb}, **{k: kw[k] for k in ("max_steps", "reserve") if k in kw})
             if r.get("moved"):
                 cq.pop(0)
                 comp_log.append({"move": P._short(r.get("arms", {}).get(other, {}))})
@@ -399,24 +414,29 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
                                speed="slow", max_dev=0.05)
             ret["untilt"].append({"phi": "direct upright", **P._short(mu)})
             break
+    state["after_edge"] = True                                                                    # H
+    spot = np.asarray(pre_held["spot"], float) if pre_held and pre_held.get("spot") else c0[:2]      # H
     o = P._obs(robot, [ci])
     if not o.get("ended") and o.get("steps_left", 0) >= min_return_steps:
         e, cp = o["eef"][A], o["objects"][ci]
         cup.set_hand(e["pos"], e["quat"], cp["pos"], cp["quat"])
         bot_rel = P.rotm(Qg) @ (cup.r_hc + cup.R_hc @ cup.bot_c)
-        tcp_set = np.array([c0[0], c0[1], TABLE_Z + set_dz]) - bot_rel
+        tcp_set = np.array([spot[0], spot[1], TABLE_Z + set_dz]) - bot_rel                         # H: spot
         hov = tcp_set + np.array([0, 0, max(0.04, top_z + 0.03 - TABLE_Z)])
         hov[2] = max(hov[2], min(float(e["pos"][2]), 1.05))
-        ret["hover"] = P._short(robot.move_to(arm=A, pos=P.r4(hov), quat=P.r4(Qg, 6), max_dev=0.05))
-        ret["down"] = P._short(robot.move_to(arm=A, pos=P.r4(tcp_set), quat=P.r4(Qg, 6), speed="slow", max_dev=0.01))
+        ret["hover"] = P._short(mv(pos=P.r4(hov), quat=P.r4(Qg, 6), max_dev=0.05))                  # H: mv
+        ret["down"] = P._short(mv(pos=P.r4(tcp_set), quat=P.r4(Qg, 6), speed="slow", max_dev=0.01))   # H: mv
         robot.gripper(arm=A, action="open", wait_steps=2)
         back_pos = np.asarray(robot.obs(cameras=[])["eef"][A]["pos"], float) - back * head_h
-        ret["retreat"] = P._short(robot.move_to(arm=A, pos=P.r4(back_pos), quat=P.r4(Qg, 6), reserve=0))
+        ret["retreat"] = P._short(mv(pos=P.r4(back_pos), quat=P.r4(Qg, 6), reserve=0))               # H: mv
     details["return"] = ret
     comp_out = None                                                                               # H: the companion
     if comp:
         while cq and not robot.obs(cameras=[]).get("ended"):        # what did not ride along runs now, on its own
             it = cq.pop(0)
+            if it[0] == "carry":                    # not alone: the next pour carries it itself
+                cq.insert(0, it)
+                break
             if it[0] == "grip":
                 gb = robot.gripper(arm=other, action="close", wait_steps=3)
                 comp_log.append({"close": gb.get("steps"), "grasp_detected": gb.get("grasp_detected"), "alone": True})
@@ -430,9 +450,11 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         cp2 = (o2.get("objects") or {}).get(comp["container"])
         rise2 = float(cp2["pos"][2] - comp["z0"]) if cp2 else 0.0
         tilt2 = P.ang(P.rotm(cp2["quat"])[:, 2], [0, 0, 1]) if cp2 else 180.0
-        ok2 = not cq and rise2 >= 0.6 * comp["lift_dz"] and tilt2 <= 20
-        comp_out = {"arm": other, "pitch": comp["pitch"], "yaw": comp["yaw"], "rise_m": round(rise2, 4),
-                    "tilt": round(tilt2, 1), "ok": bool(ok2)}
+        carried = not cq
+        ok2 = all(it[0] == "carry" for it in cq) and rise2 >= 0.6 * comp["lift_dz"] and tilt2 <= 20
+        comp_out = {"arm": other, "pitch": comp["pitch"], "yaw": comp["yaw"], "side": comp["side"],
+                    "rise_m": round(rise2, 4), "tilt": round(tilt2, 1), "spot": comp["spot"], "carried": carried,
+                    "ok": bool(ok2)}
         details["companion"] = {**comp_out, "log": comp_log}
         if not ok2 and not o2.get("ended"):        # not holding it: let go, go home; the next pour grasps it itself
             robot.gripper(arm=other, action="open", wait_steps=2)
