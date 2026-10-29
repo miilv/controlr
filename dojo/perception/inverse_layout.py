@@ -1647,6 +1647,51 @@ def _app(obs_rgb, keys) -> float:
     return min(appearance_distance(obs_rgb, ref_color(k)) for k in keys)
 
 
+WRIST_RECHOOSE_SEP = 0.03   # m: a wrist-view proposal this close to another chosen object is that object, not a new one
+
+
+def _wrist_rechoose(chosen: list, pending, shapes_by_group, views, cfg, groups) -> tuple[list, list]:
+    """``cfg.wrist_rechoose``: in a multi-object Rigid label group, a member fitted worse than ``wrist_rechoose_loss``
+    (B1 placed the label where nothing fits: an object it did not see) is re-proposed from the wrist views' blobs (cut to
+    the group's object size), away from the other chosen objects; the lowest-cost proposal replaces it when it costs
+    ``wrist_rechoose_gain`` less. An object the head view cannot separate (under another robot, merged with a
+    neighbour, a few far pixels) can stand alone in a wrist view at the home pose. Returns (chosen, events)."""
+    events = []
+    for gi, g, prior in pending:
+        if g["type"] != "Rigid" or len(g["labels"]) < 2 or _single_target(g):
+            continue
+        poor = [h for h in chosen if h.label_group == gi and h.per_view.get("sil_loss", h.loss) >= cfg.wrist_rechoose_loss
+                and not (h.per_view.get("occluded") or h.per_view.get("contained") or h.per_view.get("fixed_from_config")
+                         or h.per_view.get("slot"))]
+        if not poor:
+            continue
+        sm0 = next(iter(shapes_by_group[gi].values()))[0]
+        wb = []
+        for name in ("cam_left_wrist", "cam_right_wrist"):
+            if name in views:
+                for b in blobs(views[name], name):
+                    pieces = _split_blob(b, views[name], sm0)
+                    wb += pieces if pieces else [b]
+        if not wb:
+            continue
+        for h_old in sorted(poor, key=lambda h: -float(h.per_view.get("sil_loss", h.loss))):
+            rest = [h for h in chosen if h is not h_old]
+            more = _propose(wb, [(gi, g, prior)], shapes_by_group, views, cfg, groups, others=_union_masks(rest, views),
+                            blob_offset=6000)
+            more = [h for h in more if all(np.hypot(h.x - o.x, h.y - o.y) > WRIST_RECHOOSE_SEP for o in rest)]
+            best = min(more, key=lambda h: h.loss, default=None)
+            ev = {"label_group": gi, "from": [round(float(h_old.x), 4), round(float(h_old.y), 4),
+                                               round(float(h_old.per_view.get("sil_loss", h_old.loss)), 3)],
+                  "n": len(more)}
+            if best is not None and best.loss < h_old.loss - cfg.wrist_rechoose_gain:
+                best.per_view["from_wrist"] = True
+                best.per_view["rechosen_over"] = ev["from"]
+                chosen[chosen.index(h_old)] = best
+                ev["to"] = [round(float(best.x), 4), round(float(best.y), 4), round(float(best.per_view.get("sil_loss", best.loss)), 3)]
+            events.append(ev)
+    return chosen, events
+
+
 def _single_target(g: dict) -> bool:
     """One label named by the instruction out of a big vocabulary (general_pickup's target among clutter).
     Instruction-ranked groups only: pack's single-label groups (12 cars) keep the D0-validated path."""
@@ -3790,6 +3835,12 @@ class EstimatorConfig:
     slot_assembly: bool = True  # a base with slot objects is also proposed as one shape with them (settled poses)
     wrist_proposals: bool = True  # single-target groups with a poor head fit also propose from wrist blobs
     wrist_fallback_loss: float = 0.6
+    # wrist_rechoose: a multi-object label group's member fitted at a silhouette loss >= wrist_rechoose_loss (B1 placed the
+    # label where nothing fits: an object it did not see in the head view) is re-proposed from the wrist views' blobs and
+    # replaced by the cheapest proposal away from the other objects that costs wrist_rechoose_gain less (_wrist_rechoose)
+    wrist_rechoose: bool = False
+    wrist_rechoose_loss: float = 0.7
+    wrist_rechoose_gain: float = 0.05
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     # a select list that holds every category of its entry exactly once (``hierarchical``, k categories x 1 instance), and
     # the ``same_as_label`` copies of such a list: a list whose objects (told apart by the lists' generator regions) repeat
@@ -4440,6 +4491,11 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                     chosen.remove(cur[0])
                 best.per_view["from_wrist"] = True
                 chosen.append(best)
+
+    if cfg.wrist_rechoose:
+        chosen, info_wr = _wrist_rechoose(chosen, pending, shapes_by_group, views, cfg, groups)
+        if info_wr:
+            pool += [h for h in chosen if h.per_view.get("from_wrist")]
 
     t3 = time.time()
     if cfg.polish:
