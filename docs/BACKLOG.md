@@ -6,6 +6,14 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **dojo D-C19: the scored joint block cannot run on official_eval.sh yet.**
+  - It refuses ids >= 100100, and so does dev_eval.py's seed patch (`paths.is_reserved_id`).
+  - It stages only `*.settled.json`; make_toast and the conveyors run raw.
+  - Its default lock is compute4's coord lock.
+  - Needed: a joint-block mode that reads only the sealed directory against its md5 manifest. Decide it with Misha's
+    side before tranche A.
+  - The candidate path itself is ready: `--candidate`, parity zero, freeze manifest (journal
+    2026-10-29-dojo-dc19-readiness).
 - [ ] **dojo infra: compute2's physics differ from compute3 / compute4's.** Never replay a compute3 / compute4 recording on
   compute2, and never split an A/B pair across boxes. Same RoboDojo commit (f57e163) and isaacsim 5.1.0, but different
   CPUs (i9-13900KF vs 14900KF), and the Robots asset trees checksum differently on all three boxes. On compute2,
