@@ -3098,6 +3098,7 @@ HANG_CARRY = 0.06              # rad/step: the re-orienting carry to a hook (twi
 HANG_PRE = 0.025               # m: the handle's hole is carried to this far beyond the hook arm's tip, then slid on
 HANG_SEARCH_S = 150.0          # s: wall-time cap of one round's hook x object search (twin: a 35 min episode)
 HANG_RELAY_DY = 0.2            # m: relay spots this far in front of a rack (towards the robot; both arms reach there)
+HANG_RELAY_CLEAR = 0.07        # m: a relay spot's clearance with ``Skills.hang_relay`` "any" (room for the hand)
 
 _SURF: dict = {}
 
@@ -3261,19 +3262,32 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                 note = r.note                    # keep the most telling note (one that got as far as full plans)
         return note
 
+    any_relay = getattr(sk, "hang_relay", "handle") == "any"
+
+    def relay_kw(lab):
+        """The relay leg's grasps: the hang grasps (today), or with ``Skills.hang_relay`` "any" the planner's own set
+        (box faces, the category's candidates, slices): the leg only stands the object elsewhere as it is, and the hang
+        grasps (a handle's wall) found no pair for it in 9 of 10 G3 hang_mugs_random rows"""
+        if any_relay:
+            return {}
+        return {"grasps": (lambda a, lab=lab: G_hang(sk, sk.world.obj(lab), a))}
+
     def relay_spot(labels, free_hooks, max_spots: int = 3, budget_s: float = 90.0):
         """(lab, spot pose, transfer plan) of the first object that, stood as it is on a free spot in front of the
         rack, has a hook plan from there; None."""
         import time as _time
         t0 = _time.perf_counter()
         near = (float(rk.center_w[0]), float(rk.center_w[1]) - HANG_RELAY_DY)
+        # "any": spots with room for the hand too (a clutter plier 3 cm from a 0.03-clearance spot was in every place
+        # pose's way, G3 hang_mugs_random 100032), and twice as many tried
+        clear, n_sp = (HANG_RELAY_CLEAR, 2 * max_spots) if any_relay else (0.03, max_spots)
         for lab in labels:
             o = sk.world.obj(lab)
-            for sp in free_spots(sk, lab, near_xy=near, clearance=0.03, avoid=(rack,))[:max_spots]:
+            for sp in free_spots(sk, lab, near_xy=near, clearance=clear, avoid=(rack,))[:n_sp]:
                 if _time.perf_counter() - t0 > budget_s:
                     return None
                 T_sp = rest_with_R(sk, lab, sp, level_R(o.R))
-                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw={"grasps": (lambda a, o=o: G_hang(sk, o, a))})
+                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw=relay_kw(lab))
                 if isinstance(leg, SkillResult):
                     continue
                 saved = (o.pos.copy(), o.quat.copy())
@@ -3318,7 +3332,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
                 lab, T_sp, leg = mv
                 sk.log(f"[hang] {lab}: no hook plans from where it is; relay to {np.round(T_sp[:2, 3], 3).tolist()} "
                        f"({leg[0].arm})")
-                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw={"grasps": (lambda a, lab=lab: G_hang(sk, sk.world.obj(lab), a))})
+                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw=relay_kw(lab))
                 for a in ARMS:
                     if sk.held[a] is not None:
                         sk._record(sk.regrasp(a))
