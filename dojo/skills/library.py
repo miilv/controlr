@@ -3521,6 +3521,11 @@ from dojo.skills.pour_order import ROUTE_SKILLS as _POUR_ORDER  # noqa: E402
 
 ROUTE_ONLY.update(_POUR_ORDER)
 
+# objects into a box with their fronts to one side (stream N; route "pack", off by default)
+from dojo.skills.pack import SKILLS as _PACK  # noqa: E402
+
+ROUTE_ONLY.update(_PACK)
+
 
 def skill_fn(name: str):
     """A planned skill's function: the library's, else a route-only one (``ROUTE_ONLY``)."""
