@@ -2716,6 +2716,100 @@ def _twin_pairing(chosen: list[Hypothesis], views, cfg, groups, pending) -> list
     return out
 
 
+def _refit_as(out: list, i: int, keys: list[str], views, cfg, groups) -> dict:
+    """{key: fitted Hypothesis}: mover ``i`` re-fitted at its own head-view blob as each asset of ``keys`` (colour scored,
+    other objects masked, its label group's region a position prior; ``_twin_pairing``'s re-fit)."""
+    head = views["cam_head"]
+    h = out[i]
+    gi = h.label_group
+    g = groups[gi] if gi is not None and gi < len(groups) else None
+    others = _union_masks(out, views, skip=i, target=h)
+    s_h = h.sm().sil(head.cam, h.T())
+    m = cv2.dilate(s_h, np.ones((5, 5), np.uint8)) & head.fg & (1 - others["cam_head"])
+    if m.sum() < 10:
+        return {}
+    n, lab, st, cents = cv2.connectedComponentsWithStats(m, connectivity=8)
+    j = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+    b = Blob("cam_head", (lab == j).astype(np.uint8), int(st[j, cv2.CC_STAT_AREA]), cents[j], tuple(st[j, :4]))
+    fits = {}
+    for k in keys:
+        best = None
+        if k == h.key:
+            best = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters, color=True)
+        for sm in shape_models(k):
+            for x, y, yaw, ln in coarse_fit(sm, b, {"cam_head": head}, cfg.yaw_step_deg)[:2]:
+                t = Hypothesis(gi, sm.key, sm.tag, x, y, yaw, ln, blob=h.blob)
+                t.per_view = {"geom_group": [k]}
+                t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
+                if g is not None and not region_ok(g, *_centre_xy(t2, g), t2.yaw, t2.sm().yaw_period):
+                    continue
+                if best is None or t2.loss < best.loss:
+                    best = t2
+        if best is not None:
+            fits[k] = best
+    return fits
+
+
+def _twin_pairing_sym(chosen: list[Hypothesis], views, cfg, groups, pending) -> list[Hypothesis]:
+    """``twin_pairing_sym``: the two sides' movers are twins (the instruction's "corresponding objects": D-C17 ruling,
+    28 Oct, cross-side one-to-one by observed appearance), so a misread on EITHER side can be fixed by its twin's.
+    Objects whose read category already has a twin read the same on the other side keep their fits (the same asset
+    first). Only the LEFTOVERS (reads with no same-category twin across) are re-fitted as each leftover asset (``_refit_as``); a demonstrator leftover
+    i and one of ours j cost min over a shared asset k of loss(i as k) + loss(j as k); one Hungarian pairs them, and an
+    object takes its pair's asset only when it differs from its own read. No within-side "each category once"
+    constraint: that is the config relation the legality triage turned off. No uncertainty marking.
+    camera imitate (diagnosis): 6 of 8 frame-0 misreads had their twin read right on the other side; on the training
+    frames, re-fitting every object instead (also the consistent pairs) turned 2 misreads into 7, and pairing only
+    exact assets (an action camera 00000 vs 00002 a "leftover") still re-labelled right categories."""
+    from scipy.optimize import linear_sum_assignment
+
+    out = list(chosen)
+    movers = [i for i, h in enumerate(out) if h.key.startswith("Rigid/") and h.key.split("/")[1] not in CONTAINER_CATEGORIES
+              and not h.per_view.get("occluded")]
+    if len(movers) < 4:
+        return out
+    near, far = twin_sides([(out[i].x, out[i].y) for i in movers])
+    ours, demo = [movers[j] for j in near], [movers[j] for j in far]
+    left_o = list(ours)
+    left_d = []
+    cat = lambda i: out[i].key.split("/")[1]          # noqa: E731
+    for i in demo:                                   # consistent pairs: the same read category on both sides
+        j = next((j for j in left_o if out[j].key == out[i].key), None) \
+            or next((j for j in left_o if cat(j) == cat(i)), None)
+        if j is None:
+            left_d.append(i)
+        else:
+            left_o.remove(j)
+    if not left_d or not left_o:
+        return out
+    keys = sorted({out[i].key for i in left_d + left_o})
+    fit = {i: _refit_as(out, i, keys, views, cfg, groups) for i in left_d + left_o}
+    big = 9.0
+    C = np.full((len(left_d), len(left_o)), 2 * big)
+    K = {}
+    for r_, i in enumerate(left_d):
+        for c_, j in enumerate(left_o):
+            shared = [(fit[i][k].loss + fit[j][k].loss, k) for k in keys if k in fit[i] and k in fit[j]]
+            if shared:
+                C[r_, c_], K[(r_, c_)] = min(shared)
+    ri, ci = linear_sum_assignment(C)
+    for r_, c_ in zip(ri, ci):
+        if (r_, c_) not in K:
+            continue
+        k = K[(r_, c_)]
+        for idx, side in ((left_d[r_], "demo"), (left_o[c_], "ours")):
+            if out[idx].key == k:
+                continue
+            t2 = fit[idx][k]
+            was = out[idx].key
+            for k_, v_ in out[idx].per_view.items():
+                if k_ not in t2.per_view and not k_.startswith("cam"):
+                    t2.per_view[k_] = v_
+            t2.per_view["twin_sym"] = {"key": k, "was": was, "cost": round(float(C[r_, c_]), 4), "side": side}
+            out[idx] = t2
+    return out
+
+
 def _assign_fitted(C: np.ndarray, unfit: float = 9.0) -> dict[int, int]:
     """Hungarian over a cost matrix whose ``unfit`` entries mark trials that did not fit: {row: column} for the rows
     assigned a fitted column. A row with nothing fitted keeps its incumbent (absent from the result)."""
@@ -3805,6 +3899,10 @@ class EstimatorConfig:
     # decide; no config list / quota / copy relation is read (journal 2026-10-28-dojo-imitate-pairing). OFF by default
     twin_pairing: bool = False
     twin_margin: float = 0.02
+    # ... symmetric (``_twin_pairing_sym``): BOTH sides re-fitted as every observed asset, one Hungarian over (theirs,
+    # ours) pairs on the shared-asset cost, each pair takes its best shared asset; a misread on either side is fixed by
+    # its twin. Cross-side only (no within-side quota). Takes precedence over ``twin_pairing``. OFF by default
+    twin_pairing_sym: bool = False
     # objects placed inside a static container base (fill_egg_holder's eggs in the egg basket): fitted on the base's
     # top surface to the evidence that interrupts its texture, only their pixels in front of it counted (contained.py)
     contained_children: bool = True
@@ -4443,7 +4541,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         chosen = _swap_pairs(chosen, views, cfg, groups)
     if cfg.category_quota:
         chosen = _category_quota(chosen, views, cfg, groups, pending, task)
-    if cfg.twin_pairing and task == TWIN_TASK:
+    if cfg.twin_pairing_sym and task == TWIN_TASK:
+        chosen = _twin_pairing_sym(chosen, views, cfg, groups, pending)
+    elif cfg.twin_pairing and task == TWIN_TASK:
         chosen = _twin_pairing(chosen, views, cfg, groups, pending)
     if cfg.contained_children:
         chosen = _contained_children(chosen, views, cfg, groups, pending, task)
