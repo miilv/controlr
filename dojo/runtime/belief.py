@@ -416,6 +416,10 @@ class RuntimeProvider:
         self.held_min_lift_m = 0.04
         self.held_confirm = None                # second, independent held look (agent) required before a drop
         self._pp_doubt: set[str] = set()        # released, post-place refine not ok (``resync``: fallen if it then diverges)
+        # ``RuntimeConfig.place_verdict`` "measured" (G5 #4; off = today): a released object counts as placed only once a
+        # measurement since its release saw it (``measured_since_release``), and only measured labels skip the head check
+        self.place_measured = False
+        self._unmeasured: set[str] = set()      # released, no measurement since
         self.fallen_check = True                # policy: fallen_check
         self.confirm_wrists = True              # confirm_pose also scores the wrist views (policy: confirm_wrists)
         self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
@@ -515,6 +519,7 @@ class RuntimeProvider:
         st = self.bridge.observe()["state"]
         self.belief = KinematicBelief(objects, self.kin, st)
         self.touched = set()
+        self._unmeasured = set()
         self._held_checked = {}
         self._grip_last, self._grip_held_seen = {}, {}
         self.n_seen = self.bridge.n_executed
@@ -522,6 +527,17 @@ class RuntimeProvider:
 
     def init_from_record(self, record: dict) -> None:
         self.init_objects(objects_from_record(record, self.assets, self.bridge.steps_used, unique=self.unique_labels))
+
+    def merge_found(self, record: dict) -> list[str]:
+        """The objects of ``record`` the belief does not have yet (a late search's finds), added as they are; nothing
+        else changes: held / released objects, current poses, the checkpoint (G5 #3). Returns the added labels."""
+        new = objects_from_record(record, self.assets, self.bridge.steps_used, unique=self.unique_labels)
+        added = sorted(lab for lab in new if lab not in self.belief.objects)
+        for lab in added:
+            self.belief.objects[lab] = new[lab]
+        if added:
+            self.events.append({"kind": "search_merge", "step": self.bridge.steps_used, "added": added})
+        return added
 
     def init_from_gt(self) -> None:
         self.init_objects(self._gt_objects())
@@ -604,6 +620,7 @@ class RuntimeProvider:
         if ok:
             o.pos, o.quat, o.source = np.asarray(pos, float).copy(), np.asarray(quat, float).copy(), "perception"
             self.touched.add(label)
+            self._unmeasured.discard(label)
             if not self.belief.held_labels():
                 self._checkpoint(obs["state"])
             self.stats["confirm_pose_adopted"] = self.stats.get("confirm_pose_adopted", 0) + 1
@@ -612,6 +629,11 @@ class RuntimeProvider:
         return {"adopted": ok, "confirm": ev.get("confirm")}
 
     # ------------------------------------------------------------------ resync
+    def measured_since_release(self, label: str) -> bool:
+        """Whether a measurement (post-place refine ok, a confirmed pose, a resync re-estimate, an a1 write) saw
+        ``label`` since it was last released; True for an object never released (G5 #4)."""
+        return label not in self._unmeasured
+
     def in_doubt(self, label: str) -> bool:
         """Released (or let go: an empty close) but not measured where it was let go: the post-place refine was not ok,
         or the grip check found the jaws empty (``_pp_doubt``). Skills that must not count such an object as placed
@@ -667,6 +689,7 @@ class RuntimeProvider:
             self.events.append(ev)
             if r.get("ok"):
                 self._pp_doubt.discard(lab)
+                self._unmeasured.discard(lab)
             else:
                 self._pp_doubt.add(lab)                 # not measured where it was let go (a mug off its hook?)
             out.append(ev)
@@ -1304,7 +1327,8 @@ class RuntimeProvider:
             measured = {e["label"] for e in self.post_place(obs, released) if e.get("ok")}
         # the wrist just measured these; the just-released ones are judged by their post-place check (and the place
         # check), never "fixed" from a low head check (5.1: a perfect 3-stack re-estimated from iou 0.09-0.32)
-        objs = [o for o in self.belief.movable() if o.label not in measured and o.label not in set(released or ())]
+        skip = measured if self.place_measured else measured | set(released or ())
+        objs = [o for o in self.belief.movable() if o.label not in skip]
         # nothing left to check (a one-object task right after its release: breadth3 deposit_coin / insert_key crashed
         # the perception service with an empty z-buffer stack)
         chk = self.checker.check(obs, objs) if objs else {}
@@ -1348,6 +1372,7 @@ class RuntimeProvider:
             upd[lab] = {"from": np.round(o.pos, 4).tolist(), "to": np.round(e.pos, 4).tolist(), "mm": round(d_mm, 1)}
             o.pos, o.quat, o.source, o.confidence = e.pos.copy(), e.quat.copy(), "perception", e.confidence
             self.touched.discard(lab)
+            self._unmeasured.discard(lab)
         ev["updated"] = upd
         fallen = sorted(lab for lab in bad if lab in self._pp_doubt and lab not in upd and self.fallen_check
                         and lab not in self.belief.held_labels())
@@ -1583,6 +1608,7 @@ class RuntimeProvider:
                 continue
             o.pos, o.quat, o.source = np.asarray(p7[:3], float), np.asarray(p7[3:7], float), "a1"
             self._pp_doubt.discard(lab)
+            self._unmeasured.discard(lab)
         for lab, o in self.belief.objects.items():
             o.uncertain = lab in st.uncertain if self.a1 == "apply" else False
         self.events.append({"kind": "a1_tick", "step": step, "triggers": [(t.kind, t.label, t.arm) for t in triggers],
@@ -1604,6 +1630,7 @@ class RuntimeProvider:
         had_pred = self.pred is not None
         self._advance(st)
         released = self.belief.pop_released()
+        self._unmeasured |= set(released)
         if self.mode == "gt":
             objects = self._gt_objects()
             if had_pred and self.pred is None:          # dev metric: twin prediction vs GT after the segment

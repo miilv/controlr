@@ -1890,6 +1890,12 @@ class Skills:
         note = (f"xy err {dxy*1000:.1f} mm, dz {dz*1000:+.1f} mm (centre {o.center_w[2]:.4f} vs {exp_c[2]:.4f}), "
                 f"rel tilt {tilt:.1f} deg")
         ok = dxy <= tol_xy and abs(dz) < tol_z and tilt <= tol_tilt
+        prov = self.provider
+        if (ok and getattr(prov, "place_measured", False) and hasattr(prov, "measured_since_release")
+                and not prov.measured_since_release(pp.label)):
+            # ``RuntimeConfig.place_verdict`` "measured" (G5 #4): the pose compared is the release prediction, no
+            # measurement saw it since, so the place is not verified either way
+            return SkillResult(False, "place", "unverified", pp.steps, pp.arm, exp, meas, note + "; no measurement since the release")
         return SkillResult(ok, "place", "ok" if ok else "place_miss", pp.steps, pp.arm, exp, meas, note)
 
     # ------------------------------------------------------------------ re-orienting transfer
