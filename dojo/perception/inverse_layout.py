@@ -2077,6 +2077,53 @@ def _glyph_slot_group(cands: list[str]) -> bool:
     return len(models) == 1 and None not in models and "kong" not in models
 
 
+def _occluded_fill(pool, chosen, need0, head, groups) -> list:
+    """Occluded fallback: a group still short takes its best remaining hypothesis whose head silhouette is mostly
+    hidden (robot / unknown pixels), flagged low-confidence (a wrist re-view should confirm it). Never for the labels a
+    count raise added (``raised_from``, ``series_link_raise``): those are only looked for, a hidden pose is no evidence
+    that the raised object exists, and they stay ``_not_found`` (no placeholder with an invented pose)."""
+    chosen = list(chosen)
+    need = dict(need0)
+    for h in chosen:
+        need[h.label_group] -= 1
+    for h in sorted(pool, key=lambda h: h.loss):
+        g = groups[h.label_group]
+        extra = len(g["labels"]) - int(g.get("raised_from", len(g["labels"])))
+        if need.get(h.label_group, 0) <= max(0, extra) or h in chosen or _conflicts(h, chosen):
+            continue
+        s_h = h.sm().sil(head.cam, h.T())
+        area = int(s_h.sum())
+        if area and (s_h & (1 - head.known)).sum() > 0.3 * area:
+            h.per_view["occluded"] = True
+            chosen.append(h)
+            need[h.label_group] -= 1
+    return chosen
+
+
+def _drop_unread_raised(chosen, groups, record: dict) -> list:
+    """``series_link_raise`` with ``glyph_read``: the labels a count raise added are credited only with members the
+    glyph reader reads as a digit. Per raised group of glyph objects with more members than ``raised_from``, its
+    unread members (worst fit first) are dropped down to ``raised_from``; their labels go to ``_not_found``. w51
+    arrange: 3 of 13 raised fills sat 126-686 mm from any digit (a fit on other foreground); a skill would look at an
+    unread one and stop, where "4 read + 1 not found" still places four tiles."""
+    out = list(chosen)
+    for gi, g in enumerate(groups):
+        if g.get("raised_from") is None:
+            continue
+        mine = [h for h in out if h.label_group == gi]
+        extra = len(mine) - int(g["raised_from"])
+        if extra <= 0 or not all(h.key.split("/")[1] in GLYPH_ONLY for h in mine):
+            continue
+        unread = sorted((h for h in mine if not (h.per_view.get("glyph_read") or {}).get("read")),
+                        key=lambda h: -float(h.per_view.get("sil_loss", h.loss)))
+        for h in unread[:extra]:
+            out.remove(h)
+            record.setdefault("_raised_unread", []).append(
+                {"group": g["labels"][0], "xy": [round(float(h.x), 4), round(float(h.y), 4)],
+                 "why": (h.per_view.get("glyph_read") or {}).get("why") or "no read"})
+    return out
+
+
 def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
     """Explain-away selection: repeatedly add the hypothesis that most increases (new foreground covered -
     new background covered - penalty x own area), summed over views and normalised by each view's
@@ -3199,7 +3246,38 @@ def _series_count(task: str, groups: list[dict], ms: list | None, instruction: s
             if pre is not None and by_prefix.get(pre, 1) > 1:
                 info[g["labels"][0]] = {"linked": pre, "n": by_prefix[pre]}
                 g["labels"] = [g["labels"][0]] * by_prefix[pre]
+        if cfg.series_link_raise:
+            _raise_by_linked(task, out, info, dets, cfg)
     return out, info
+
+
+def _raise_by_linked(task: str, groups: list[dict], info: dict, dets: list, cfg) -> None:
+    """``cfg.series_link_raise``: a ``linked_count`` group's own exact-class head masks raise the count of the series
+    it is linked to (and its own: one per member), rounded and clamped to the series' range; never lower it. The
+    config links them one-to-one (arrange_largest_number: one mat per digit tile). The thin mats segment well (v2b
+    0.97) where the small numerals do not (<= 4 digit masks on every 5-digit w51 layout), so the digit count fell to the
+    range minimum and the mats followed: 4 + 4 of 5 + 5, the fifth mat seen and logged "group full"."""
+    for g in groups:
+        pre = _linked_prefix(task, {"labels": g["labels"][:1]})
+        if pre is None:
+            continue
+        s = next((h for h in groups if pre in ((((task_map()[task]["labels"].get(h["labels"][0]) or {})
+                                                   .get("select_mode") or {}).get("label_prefix")) or [])), None)
+        rng = instance_range(task, {"labels": s["labels"][:1]}) if s is not None else None
+        if rng is None:
+            continue
+        lo, hi, step = rng
+        k = _seg_count(g, dets, cfg.seg_count_min_score)
+        n = int(np.clip(step * int(np.ceil(k / step)), lo, hi)) if k else 0
+        rec = info.setdefault(g["labels"][0], {"linked": pre, "n": len(g["labels"])})
+        rec["own_seg"] = k
+        if n > len(s["labels"]):
+            info.setdefault(s["labels"][0], {})["raised_by"] = {"label": g["labels"][0], "from": len(s["labels"]), "to": n}
+            s.setdefault("raised_from", len(s["labels"]))       # the raised labels are only looked for (_occluded_fill)
+            g.setdefault("raised_from", len(g["labels"]))
+            s["labels"] = [s["labels"][0]] * n
+            g["labels"] = [g["labels"][0]] * n
+            rec["n"] = n
 
 
 def _mask_iou(a: np.ndarray, b: np.ndarray, known: np.ndarray) -> float:
@@ -3765,6 +3843,8 @@ class EstimatorConfig:
     series_count: str = "seg"     # 2026-10-28: "min" -> "seg" (journal 2026-10-28-dojo-plan-none-perception); without a
                                    # segmenter server (DOJO_SEG_ADDR) "seg" is exactly "min"
     seg_count_min_score: float = 0.5   # series_count "seg": a detection counts an object at this score (the seed bar)
+    series_link_raise: bool = False    # series_count "seg": a linked_count group's own exact-class masks (arrange's mats)
+                                       # raise its series' count (the digits) within the series' range; never lower it
     # seg_propose: the twin-trained instance segmenter (dojo.perception.seg_twin, class = catalogue asset; a no-op without
     # its server at DOJO_SEG_ADDR). "on": after the joint refinement, the head view's masks of a label group's assets
     # that no chosen object explains go through B1's own proposal machinery (coarse fit + refine on the mask as the blob):
@@ -4135,20 +4215,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 if gi in loose:
                     continue
                 chosen += add               # (not into the pool: the occluded fallback below must not take them)
-    # occluded fallback: a group still short takes its best remaining hypothesis whose head silhouette is
-    # mostly hidden (robot / unknown pixels), flagged low-confidence (a wrist re-view should confirm it)
-    need = dict(need0)
-    for h in chosen:
-        need[h.label_group] -= 1
-    for h in sorted(pool, key=lambda h: h.loss):
-        if need.get(h.label_group, 0) <= 0 or h in chosen or _conflicts(h, chosen):
-            continue
-        s_h = h.sm().sil(head.cam, h.T())
-        area = int(s_h.sum())
-        if area and (s_h & (1 - head.known)).sum() > 0.3 * area:
-            h.per_view["occluded"] = True
-            chosen.append(h)
-            need[h.label_group] -= 1
+    chosen = _occluded_fill(pool, chosen, need0, head, groups)
     # stacked objects: a group still short may have objects on top of chosen ones (a finished tower read as one
     # block). Candidates sit on a chosen object's top (z from its fit), yaw-gridded, fitted in xy/yaw with the
     # support kept in their foreground; selected by the same explain-away rule, up to cfg.stack_levels high.
@@ -4310,6 +4377,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if cfg.glyph_read != "off":
         for h in chosen:
             _glyph_read_numeral(h, views)
+        chosen = _drop_unread_raised(chosen, groups, record)
         # numerals / operators the config pins to a slot or stacks on a base (solve_equation's t0 / t1 / t2 / t4 on
         # the mats): every slot placement path ends in slot_placed
         for g_s, h_s, _lab in slot_placed:
