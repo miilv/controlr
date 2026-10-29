@@ -216,7 +216,7 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "kong_draw_read": ("off", "place", "place3"), "kong_draw_first": ("near", "far"),
                "ported_pour_pace": ("v1", "lean", "overlap"),
                "nest_verify": ("target", "support"),
-               "push_goal": ("centre", "cover"),
+               "push_goal": ("centre", "cover", "cover_obb"),
                "kong_read_look": ("fallback", "always"), "key_handover": ("v1", "v2"), "key_lean": ("off", "on")}
 
 
