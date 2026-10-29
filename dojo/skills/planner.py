@@ -325,7 +325,8 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
             or len(re.findall(r"\bobjects?\s+into\s+the\s+(?:left|middle|center|centre|right)\b", text)) >= 2):
         conts = [o for o in objs if re.search(r"basket|bin\b", o.category.lower())]
         if len(conts) >= 2 and len([o for o in rigid if o not in conts]) >= 2:
-            return run("classify_into_bins_p1" if (opts or {}).get("classify") == "p1" else "classify_into_bins_v3b")
+            mode = (opts or {}).get("classify")
+            return run({"p1": "classify_into_bins_p1", "p2": "classify_into_bins_p2"}.get(mode, "classify_into_bins_v3b"))
     # push / drag a flat object onto its pad (a Geometry whose category names the object's kind)
     if re.search(r"\bpush\b|\bslide\b|\bdrag\b", text) and re.search(r"\bpad\b|\balign", text):
         pads = [o for o in objs if o.obj_type == "Geometry"]

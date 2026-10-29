@@ -15,12 +15,13 @@ from dojo.skills.ported import TIER_A, ported
 from test_port_adapter import Z, gt_skills, rows_classify
 
 P1 = Path(__file__).resolve().parents[2] / "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py"
+P2 = P1.parent.parent / "classify_into_bins_p2" / "skill_robodojo.py"
 INSTR = ("Put watch objects into the left basket, pen objects into the middle basket, and toy_car objects into the right "
          "basket, then reset the robot arm.")
 
 
-def _p1():
-    spec = importlib.util.spec_from_file_location("cib_p1_test", P1)
+def _p1(path=P1):
+    spec = importlib.util.spec_from_file_location(f"cib_{path.parent.name}_test", path)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -58,7 +59,8 @@ def test_route_takes_p1_only_when_switched():
     w = sk.refresh()
     assert planner.plan(INSTR, w, ported=True).args["skill"] == "classify_into_bins_v3b"
     assert planner.plan(INSTR, w, ported={"classify": "p1"}).args["skill"] == "classify_into_bins_p1"
-    assert "classify_into_bins_p1" in TIER_A
+    assert planner.plan(INSTR, w, ported={"classify": "p2"}).args["skill"] == "classify_into_bins_p2"
+    assert "classify_into_bins_p1" in TIER_A and "classify_into_bins_p2" in TIER_A
 
 
 def test_ported_classify_defaults_v3b():
@@ -96,3 +98,65 @@ def test_free_sort_with_more_groups_than_baskets_sorts_three():
     r1 = ported(sk, "classify_into_bins_p1")
     d = json.loads(sk.ported_runs[-1]["details"])
     assert r1["ok"] and r1["steps"] > 0 and len(d["left"]) == 1 and len(d["left_groups"]) == 1
+
+
+def test_a_refused_carry_is_tried_again_from_higher_up():
+    """v3's first carry of the run is refused ("carry: no clear path", nothing moved); p1 tries it once more with the
+    release HIGH_CLEAR over the rim and HIGH_MARGIN inside it, and the object ends in its basket."""
+    from dojo.skills.ported.harness_robot import HarnessRobot
+    m = _p1(P2)
+    real = m.load_v3()
+    seen = []
+
+    class OnceRefused:
+        def __getattr__(self, name):
+            return getattr(real, name)
+
+        def run(self, robot, stage, **kw):
+            if stage == "direct":
+                seen.append({k: kw.get(k) for k in ("obj", "clear", "margin")})
+                if len(seen) == 1:
+                    return {"ok": False, "verified": False, "held": False, "in_container": False,
+                            "why": "carry: no clear path"}
+            return real.run(robot, stage, **kw)
+
+    m.load_v3 = lambda: OnceRefused()
+    env, sk = gt_skills(rows_classify(), INSTR, step_lim=1100)
+    rep = m.run(HarnessRobot(sk, reserve=20))
+    first = [x for x in rep["details"]["log"] if x.get("obj") == seen[0]["obj"]][0]
+    assert first["high_retry"]["in"] is True and first["truth_in"] is True
+    assert seen[0]["clear"] is None and seen[1]["obj"] == seen[0]["obj"]
+    assert seen[1]["clear"] == m.HIGH_CLEAR and seen[1]["margin"] == m.HIGH_MARGIN
+    assert rep["verified"]
+
+
+def test_an_object_still_held_after_the_retry_is_put_back():
+    """Every carry of a held object refused (v3's own clearance model, patched to refuse): the retry fails with the object
+    in the hand, and p1 sets it down (v3's put_back) and homes the arm instead of leaving it in a parked hand."""
+    from dojo.skills.ported.harness_robot import HarnessRobot
+    m = _p1(P2)
+    real = m.load_v3()
+    orig = real.plan_legs
+
+    def refuse_held(robot, arm, pos, quat, exclude=(), o=None):
+        if real._held_flange_pts(robot, arm)[0] is not None:
+            return None, {"direct_block": {"what": "wall:test"}}
+        return orig(robot, arm, pos, quat, exclude=exclude, o=o)
+
+    real.plan_legs = refuse_held
+    m.load_v3 = lambda: real
+    env, sk = gt_skills(rows_classify(), INSTR, step_lim=1100)
+    rep = m.run(HarnessRobot(sk, reserve=20), rounds=1)
+    recs = [x for x in rep["details"]["log"] if x.get("high_retry")]
+    hr = recs[0]["high_retry"]
+    assert hr["held"] is True and hr["in"] is False and hr["put_back"] is True
+    assert "fallback" in recs[0]                 # back on the table, v3b's own last try (its old tier-A drop) runs
+
+
+def test_p1_has_no_retry_and_p2_is_p1_plus_it():
+    """p1 is adopted as it is: the retry lives only in p2, whose grounding is p1's."""
+    t1, t2 = P1.read_text(), P2.read_text()
+    assert "high_retry" not in t1 and "high_retry" in t2
+    for fn in ("def fixed_map", "def keep_groups"):
+        a1, a2 = t1.index(fn), t2.index(fn)
+        assert t1[a1:t1.index("\n\n\n", a1)] == t2[a2:t2.index("\n\n\n", a2)]

@@ -34,6 +34,7 @@ TIER_A = {
     "pour_p1": (RESERVE, {}),                    # P: pour with the whole roll profile (no "cup empty" stop)
     "classify_into_bins_v3b": (RESERVE, {}),     # K4: both classify cells; map "auto" = the instruction's fixed map
     "classify_into_bins_p1": (RESERVE, {}),      # N: v3b whose grounding leaves unnamed / surplus categories on the table
+    "classify_into_bins_p2": (RESERVE, {}),      # N: p1 + a refused carry retried from higher up, then put back
 }
 
 

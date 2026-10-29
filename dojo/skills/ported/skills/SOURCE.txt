@@ -20,5 +20,6 @@ Logic changes, if any, go into NEW directories (a new name), never into these co
 Our variants (new directories, changes marked in the file):
   skills/planar_drag_p1, skills/pour_p1        stream P
   skills/classify_into_bins_p1                 stream N: v3b with grounding that leaves unnamed / surplus categories
+  skills/classify_into_bins_p2                 stream N: p1 + a refused carry retried from higher up, then put back
   skills/pour_bottle_lean                      stream H: pour_bottle paced for pour_by_language's three pours
                                                (RuntimeConfig.ported_pour_pace)
