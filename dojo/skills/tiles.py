@@ -531,9 +531,17 @@ def arrange_digits(sk, descending: bool = True, max_looks: int = 6) -> dict:
     from dojo.skills.targets import table_rest
     w = sk.refresh()
     a = digit_assignment(w, descending)
-    looks = 0
+    looks, looked = 0, {}
+    cap = bool(getattr(sk, "tile_look_cap", False))
     while a["error"] is None and a["unknown"] and looks < max_looks:
-        _look_value(sk, a["unknown"][0])
+        # ``Skills.tile_look_cap`` (default off = today): at most LOOKS_PER_TILE looks per tile, as complete_equation
+        # does, then the next unread tile. Off, one unread tile was looked at max_looks times from the same pose (camera
+        # arrange_random 100007 / 08 / 20 / 22: 12 looks, none read)
+        todo = [t for t in a["unknown"] if not cap or looked.get(t, 0) < LOOKS_PER_TILE]
+        if not todo:
+            break
+        _look_value(sk, todo[0])
+        looked[todo[0]] = looked.get(todo[0], 0) + 1
         looks += 1
         a = digit_assignment(sk.world, descending)
     if a["error"] is None and not a["unknown"]:

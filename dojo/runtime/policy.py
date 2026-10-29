@@ -329,6 +329,9 @@ class RuntimeConfig:
     # at on its pad; not there, it goes back where it was picked from (head view) or is searched for (LostObject), then
     # placed again (``Skills.tile_recover``; off = today)
     tile_recover: bool = False
+    # ``tiles.arrange_digits``: at most LOOKS_PER_TILE wrist looks per unread digit tile, then the next one
+    # (``Skills.tile_look_cap``; off = today: one unread tile looked at up to max_looks times)
+    tile_look_cap: bool = False
     # ``copy_demonstration``'s twins (``Skills.imitate_pairing``): greedy (today) | one_to_one (a least-cost assignment of
     # the demonstrator's objects to ours; the instruction pairs them one-to-one, by appearance: D-C17 ruling 28 Oct)
     imitate_pairing: str = "greedy"
@@ -778,6 +781,7 @@ class RuntimePolicy:
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp
             sk_.tile_recover = bool(cfg.tile_recover)
+            sk_.tile_look_cap = bool(cfg.tile_look_cap)
             sk_.imitate_pairing = cfg.imitate_pairing
             sk_.imitate_wait = cfg.imitate_wait
             sk_.imitate_look = cfg.imitate_look
