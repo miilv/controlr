@@ -202,6 +202,11 @@
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
   dev layouts + `build` into every box's `bg_folds_51/fold{0,1}/scene/Dynamic_conveyor_00001/` (journal
   2026-10-28-dojo-conveyor-belt-blind §5; waits for compute2).
+- [ ] **dojo skills: pick_from_conveyor_by_image, the lift binds** (stream H after C, parked; journal
+  2026-10-29-dojo-h95-conveyor-image). On my v15 dev draws C's belt_deposit scores 1/20: 14 episodes end at the lift
+  with the target already in the basket. A horizontal hook under the handle bar (`belt_lift` "hook", branch
+  `feat/dojo-h95-conveyor-image`) engaged twice in probes but 0 extra in screens, because the basket drifts 6-22 cm
+  before the hook. Hold it still first. The basket's collider is one convexDecomposition mesh.
 - [ ] **dojo skills: pick_from_conveyor_by_image, the basket lifted level with the target in it** (stream C, parked;
   journal/2026-10-29-dojo-conveyor-deposit.md). The checker wants the target on the basket's bottom 8 cm above its
   start. A rim pinch holds the basket 40 deg tilted. `belt_deposit` (default off) stops it on the belt, drags it toward
