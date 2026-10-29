@@ -9,7 +9,9 @@ rejection sampling against already-placed footprints). This module drives (b) wi
 writes records in the eval schema (``dojo/simlab/layout.py``).
 
 Seeds: our namespace starts at ``paths.SEED_BASE`` (100000). Layout ``id`` == its seed; the same
-id always gives the same record (numpy + random seeded per layout).
+id always gives the same record (numpy + random seeded per layout). With ``--seed-salt`` (default off) the random
+streams of id ``i`` start from H(i ‖ salt) instead (``salted_seed``): a block nobody can pre-generate before the salt is
+fixed (robot-harness D-C19); without it every record is byte-identical to before.
 
 Run in RoboDojo's conda python (needs shapely, rtree, transforms3d from that env; no Isaac):
 
@@ -20,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import math
 import random
@@ -630,6 +633,22 @@ def place_clutter(clutter_cfg: list, gens: dict, rng: random.Random, layout: dic
 
 
 VARIANT_BASE = 100   # variant draws start at sub-seed seed * 1000 + VARIANT_BASE (attempts of the plain draw: 0-39)
+SALT_BASE = 2 ** 40  # salted seeds live above every id's own sub-seed block (ids are ~1e5, their blocks ~1e8)
+
+
+def salted_seed(seed: int, salt: str | None = None) -> int:
+    """The random-stream base of layout ``seed``: the id itself (no salt: today's records, byte for byte), or
+    ``SALT_BASE`` + the first 48 bits of sha256(id ‖ salt), so a salted record cannot be drawn before the salt exists."""
+    if salt is None:
+        return int(seed)
+    if not salt:
+        raise ValueError("an empty seed salt: give a real one or none")
+    return SALT_BASE + int.from_bytes(hashlib.sha256(f"{int(seed)}\x00{salt}".encode()).digest()[:6], "big")
+
+
+def salt_fingerprint(salt: str) -> str:
+    """What a record carries of its salt (the salt itself is published with the block's md5 manifest)."""
+    return "sha256:" + hashlib.sha256(salt.encode()).hexdigest()[:16]
 
 
 def variant_subseed(seed: int, variant: int, attempt: int, max_tries: int = 40) -> int:
@@ -728,11 +747,13 @@ def extra_groups(groups: dict, assets: list[str], label_prefix: str = "seg_extra
     return out
 
 
-def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0, extra: list[str] | None = None) -> dict:
+def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0, extra: list[str] | None = None,
+             seed_salt: str | None = None) -> dict:
     """One layout record for ``task`` (seed >= SEED_BASE). Deterministic in ``seed`` (and ``variant``: v >= 1 is a new
     random draw for the same id, ``variant_subseed``; the twin-trained segmenter's training layouts). ``extra``
     (default none): asset keys added as extra objects (``extra_groups``); only for variant draws (v >= 1), never for
-    a stored / measured record (v0)."""
+    a stored / measured record (v0). ``seed_salt`` (default none = today's records): the random streams start from
+    ``salted_seed(seed, salt)``; the record keeps its id and carries the salt's fingerprint only."""
     if seed < paths.SEED_BASE:
         raise ValueError(f"our layout seeds start at {paths.SEED_BASE}")
     if extra and variant < 1:
@@ -742,11 +763,12 @@ def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0, extra:
     if extra:
         groups = extra_groups(groups, list(extra))
     last = None
+    base = salted_seed(seed, seed_salt)
     for attempt in range(max_tries):
         # the keep-out is soft: some configs fix objects under the home-pose grippers on purpose
         # (fill_egg_holder's egg_basket, organize_table's alarm); then the second half drops it
         _KEEPOUT_ON[0] = attempt < max_tries // 2
-        sub = variant_subseed(seed, variant, attempt, max_tries)
+        sub = variant_subseed(base, variant, attempt, max_tries)
         try:
             layout, n_clutter, want, task_meta = _draw(tcfg, scfg, groups, sub, semantics=True)
         except LayoutError as e:
@@ -762,6 +784,8 @@ def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0, extra:
             layout["_simlab"]["task_semantics"] = task_meta
         if variant:
             layout["_simlab"]["variant"] = variant
+        if seed_salt is not None:
+            layout["_simlab"]["seed_salt"] = salt_fingerprint(seed_salt)
         if extra:
             layout["_simlab"]["seg_extra"] = list(extra)
         return layout
@@ -846,7 +870,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", default=None, help="default /root/dojo-data/simlab/layouts/<task>")
     ap.add_argument("--reserved-slice", action="store_true",
                     help="allow ids >= paths.RESERVED_MIN_ID (D-C10: only the agreed joint-run generation)")
+    ap.add_argument("--seed-salt", default=None,
+                    help="default off (today's records, byte for byte); with a salt the streams start from "
+                         "H(id ‖ salt) (salted_seed): a joint block nobody can pre-generate (D-C19)")
     a = ap.parse_args(argv)
+    if a.seed_salt is not None and not a.seed_salt:
+        raise SystemExit("--seed-salt: an empty salt (give a real one or none)")
     if paths.is_reserved_id(a.start + a.n - 1) and not a.reserved_slice:
         raise SystemExit(f"ids {a.start}-{a.start + a.n - 1} reach the reserved slice (>= {paths.RESERVED_MIN_ID}, D-C10): "
                          "only the agreed joint-run generation may create them (--reserved-slice)")
@@ -854,7 +883,7 @@ def main(argv: list[str] | None = None) -> None:
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)
     for s in range(a.start, a.start + a.n):
-        lay = generate(a.task, s)
+        lay = generate(a.task, s, seed_salt=a.seed_salt)
         (out / f"{s}.json").write_text(json.dumps(lay, indent=1))
         n_obj = sum(len(v) for t in OBJECT_TYPES for v in (lay.get(t) or {}).values())
         print(f"{a.task} {s}: {n_obj} objects ({lay['_simlab']['n_clutter']} clutter, attempt "
