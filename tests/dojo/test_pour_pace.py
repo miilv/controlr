@@ -1,7 +1,7 @@
 """Stream H: ``RuntimeConfig.ported_pour_pace`` / ``Skills.ported_pour_pace`` ("v1" = the vendored pour_bottle |
-"lean" / "rush": ``pour_bottle_lean``, a marked copy whose tilt-up, untilt and drain are paced for three pours in
+"lean": ``pour_bottle_lean``, a marked copy whose tilt-up, untilt and drain are paced for three pours in
 pour_by_language's 800 steps; ``planner.POUR_PACE``). The liquid's behaviour is screened in G3; here: the copy with its
-defaults is the vendored skill, the paces cut steps, the planner / pour_order pass them, the default, validation. CPU
+defaults is the vendored skill, the pace cuts steps, the planner / pour_order pass it, the default, validation. CPU
 only (the adapter tests' kinematic env)."""
 
 from __future__ import annotations
@@ -49,19 +49,19 @@ def test_every_change_in_the_copy_is_marked():
         assert any("H:" in ln or "# H" in ln for ln in new[head + j1:head + j2]), new[head + j1:head + j2]
 
 
-@pytest.mark.parametrize("pace", ["lean", "rush"])
-def test_paces_cut_the_steps_and_still_run_the_whole_profile(pace):
+def test_lean_cuts_the_steps_and_still_runs_the_whole_profile():
     r0, _, _ = _pour("pour_bottle", {})
-    r, _, d = _pour("pour_bottle_lean", dict(planner.POUR_PACE[pace]))
+    r, run, d = _pour("pour_bottle_lean", dict(planner.POUR_PACE["lean"]))
     assert r["verified"] and d["pour_stop"] == "profile end"
     phis = [p["phi"] for p in d["pour"]]
-    assert phis[0] == 90 and phis[-1] == 150                               # straight to 90, then the flow angles
-    assert r["steps"] <= r0["steps"] - 100                                 # kinematic env: 380 -> 269 / 257
+    assert phis[:2] == [0, 90] and phis[-1] == 150                         # the carry, one move to 90, the flow angles
+    assert [u["phi"] for u in d["return"]["untilt"]] == [90, 0]            # upright over the cup, then the carry back
+    assert r["steps"] <= r0["steps"] - 70                                  # kinematic env: 380 -> 301
 
 
 @pytest.mark.parametrize("aim, pace, skill, back", [(None, None, "pour_bottle", None), ("b10", "v1", "pour_bottle", 0.010),
                                                     ("b10", "lean", "pour_bottle_lean", 0.010),
-                                                    ("v1", "rush", "pour_bottle_lean", None)])
+                                                    ("v1", "lean", "pour_bottle_lean", None)])
 def test_planner_passes_the_pace(aim, pace, skill, back):
     w = _world()
     opts = {k: v for k, v in (("pour_aim", aim), ("pour_pace", pace)) if v is not None}
@@ -89,14 +89,19 @@ def test_pour_order_pours_with_the_pace(monkeypatch):
 
         def log(self, m):
             pass
-    assert pour_order.pour_in_order(Sk(), [["b0", "w0"], ["b1", "w1"]])["ok"]
-    assert [c[0] for c in calls] == ["pour_bottle_lean"] * 2
+    assert pour_order.pour_in_order(Sk(), [["b0", "w0"], ["b1", "w1"], ["b2", "w2"]])["ok"]
+    assert [c[0] for c in calls] == ["pour_bottle_lean"] * 3
     assert calls[0][1]["spout_back"] == 0.010 and calls[0][1]["rush_to"] == 90 and calls[1][1]["container"] == "@b1"
+    assert [c[1].get("home", True) for c in calls] == [False, False, True]     # no home between lean pours
+    calls.clear()
+    Sk.ported_pour_pace = "v1"
+    pour_order.pour_in_order(Sk(), [["b0", "w0"], ["b1", "w1"]])
+    assert [c[0] for c in calls] == ["pour_bottle"] * 2 and all("home" not in c[1] for c in calls)
 
 
 def test_default_and_validation():
     assert RuntimeConfig().ported_pour_pace == "v1" and planner.POUR_PACE["v1"] is None
     with pytest.raises(ValueError):
-        RuntimePolicy(RuntimeConfig(mode="perception", ported_pour_pace="fast"), assets=_Assets())
+        RuntimePolicy(RuntimeConfig(mode="perception", ported_pour_pace="rush"), assets=_Assets())
     from dojo.skills.g3 import SKILL_ATTRS
     assert SKILL_ATTRS["ported_pour_pace"][0] == RuntimeConfig().ported_pour_pace

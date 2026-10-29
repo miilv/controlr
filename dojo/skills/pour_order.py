@@ -80,6 +80,11 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
         sk.refresh()
         from dojo.skills.planner import pour_bottle_call
         skill, args = pour_bottle_call(getattr(sk, "ported_pour_aim", "v1"), getattr(sk, "ported_pour_pace", "v1"))
+        if skill != "pour_bottle" and i < len(pairs) - 1:
+            # a lean pour does not home between pours: the checker banks nothing at home (its arms-home condition is
+            # "either arm", and the idle arm never leaves), the next pour starts from the retreat (the skill homes
+            # the other arm itself when it switches arms), and the episode's finish homes both at the end
+            args["home"] = False
         r = ported(sk, skill, {"container": f"@{bottle}", "target": f"@{bowl}", **args}, reserve=reserve)
         sk.log(f"[pour_order] {i + 1}/{len(pairs)} {bottle} -> {bowl}: ok {r.get('ok')} verified {r.get('verified')} "
                f"steps {r.get('steps')} {str(r.get('error') or '')[:120]}")

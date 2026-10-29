@@ -349,8 +349,8 @@ class RuntimeConfig:
     # ... pouring a liquid (pour_bottle, also pour_order's pours): v1 (the stream aimed at the cup's centre) | b10 / b20
     # (aimed 10 / 20 mm back against the pour direction: ``planner.POUR_AIM``)
     ported_pour_aim: str = "v1"
-    # ... and its pacing (stream H): v1 (the vendored pour_bottle) | lean (pour_bottle_lean: the tilt to 90 deg and the
-    # untilt at normal speed, a 12-step drain) | rush (lean + the flow angles at normal speed): ``planner.POUR_PACE``
+    # ... and its pacing (stream H): v1 (the vendored pour_bottle) | lean (pour_bottle_lean: the tilt-up to 90 deg and the
+    # untilt at normal speed, a 12-step drain, no home between pour_order's pours): ``planner.POUR_PACE``
     ported_pour_pace: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
@@ -434,7 +434,7 @@ class RuntimePolicy:
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20")
-                or self.cfg.ported_pour_pace not in ("v1", "lean", "rush")
+                or self.cfg.ported_pour_pace not in ("v1", "lean")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")

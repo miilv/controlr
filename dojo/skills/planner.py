@@ -213,16 +213,15 @@ def order_points(o, tags: list[str], text: str) -> list[str]:
 # centre, 18-23 % of the liquid landed 45-74 mm beyond the far wall (the checker wants >= 97 % inside)
 POUR_AIM = {"v1": None, "b10": 0.010, "b20": 0.020}
 # ``ported_opts["pour_pace"]`` (stream H): None = the vendored pour_bottle; else pour_bottle_lean (``dojo.skills.ported``)
-# with these arguments. "lean": the tilt goes from the lift straight to 90 deg at normal speed (no liquid leaves below a
-# 107 deg tilt in the G3 pour probes), the flow angles 105-150 stay slow with v1's holds, a 12-step drain (v1 24: the
-# residual is under 6 % 10 steps after the last angle), the untilt to 90 over the cup at normal speed, and the rest of it
-# inside the carry back to the bottle's spot (the skill's hover move; v1 untilts to 0 over the cup first). "rush": also
-# the flow angles at normal speed. One vendored pour is ~355 steps; pour_by_language needs three in 800, a home after each
+# with these arguments. One vendored pour is ~357 steps and pour_by_language needs three in 800. "lean", from the G3 pour
+# probes (journal 2026-10-29-dojo-h95-pour-lean): the carry over the cup as v1, then one move 0 -> 90 deg at normal speed
+# with an 8-step ramp (no liquid leaves below a 107 deg tilt; v1 takes three slow moves); the flow angles 105-150 slow
+# with v1's holds; a 12-step drain (v1 24); the untilt through 90 to upright over the cup at normal speed (v1: three
+# slow moves); the lift at normal speed. Righting the bottle inside the carry back instead spilled 21-60 % of the pour,
+# and a rush straight from the lift let the bottle turn 20-74 deg in the hand
 POUR_PACE = {"v1": None,
-             "lean": {"rush_to": 90, "drain_steps": 12, "untilt_phis": (90,), "untilt_speed": "normal",
-                      "lift_speed": "normal"},
-             "rush": {"rush_to": 90, "drain_steps": 12, "untilt_phis": (90,), "untilt_speed": "normal",
-                      "lift_speed": "normal", "flow_speed": "normal"}}
+             "lean": {"rush_to": 90, "rush_carry": True, "rush_ramp": 8, "drain_steps": 12, "untilt_phis": (90, 0),
+                      "untilt_speed": "normal", "lift_speed": "normal"}}
 
 
 def pour_bottle_call(aim: str | None, pace: str | None) -> tuple[str, dict]:

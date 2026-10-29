@@ -1,12 +1,11 @@
 # Stream H (2026-10-29): robot-harness a21dd6f skills/pour_bottle/skill_robodojo.py (Mikhail's side; vendored unchanged in
-# ../pour_bottle) with step-lean pacing, every change marked "H:". New arguments, whose defaults are the vendored skill's
-# behaviour: `rush_to` (deg: the profile's first move goes straight from the lift to this roll, at normal speed, and the
-# profile angles below it are skipped; G3 pour probes: no liquid leaves these bottles below a 107 deg tilt) with
-# `rush_speed` / `rush_ramp` (its speed and its trapezoid's ramp steps) and `rush_carry` (carry to the first angle
-# over the cup first, as v1 does, then rush),
-# `flow_speed` (speed of the profile moves after the first), `untilt_speed`, `lift_speed`. Why: pour_by_language needs
-# three pours (and a home after each) in 800 steps, and one vendored pour takes ~355 (G3 2026-10-29: 0/8, every
-# episode out of steps in the third pour); its slow tilt-up, untilt and drain are most of that.
+# ../pour_bottle) with step-lean pacing; every change is marked "H:". New arguments, whose defaults are the vendored
+# skill's behaviour: `rush_to` (deg: one move from the first profile angle straight to this roll; the angles below it are
+# skipped; no liquid leaves these bottles below a 107 deg tilt in the G3 pour probes), `rush_carry` (the carry to the
+# first angle over the cup runs first, as in v1; without it the rush starts from the lift, and that combined move let the
+# bottle turn 20-74 deg in the hand in G3), `rush_speed` / `rush_ramp` (the rush move's speed and trapezoid ramp steps),
+# `flow_speed` (the profile moves after the rush), `untilt_speed`, `lift_speed`. Why: pour_by_language needs three pours
+# in 800 steps and one vendored pour takes ~357 (G3 2026-10-29: 0/8, every episode out of steps in the third pour).
 """pour_bottle_lean (stream H; from pour_bottle, RoboDojo, tier A; night K2, 27 Oct 2026): pour a liquid from a
 standing bottle into a cup, set the bottle back upright, return both arms home.
 
@@ -162,8 +161,7 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
 
     # ------------------------------------------------------------ plan (free IK): pre, grasp, lift, whole profile
     arms = [arm] if arm in ("left", "right") else (["right", "left"] if c0[0] >= 0 else ["left", "right"])
-    # H: the profile actually run: the rush angle first (from the lift, normal speed), then the angles above it
-    # (rush_carry: the carry to the first angle over the cup first, as v1, then the rush)
+    # H: the profile actually run: the rush angle, then the angles above it (rush_carry: the first angle first)
     prof = list(phis) if rush_to is None else [float(rush_to)] + [p_ for p_ in phis if p_ > float(rush_to)]
     prof = [phis[0]] + prof if rush_to is not None and rush_carry else prof
     plan_phis = list(phis) if rush_to is None else sorted(set(phis) | set(prof))
@@ -303,23 +301,7 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
                                speed="slow", max_dev=0.05)
             ret["untilt"].append({"phi": "direct upright", **P._short(mu)})
             break
-    # H: an untilt that stops short of upright (untilt_phis above 0) leaves the rest to the carry back (the hover move
-    # below rights the bottle); with no budget for the carry, or the carry refused, right it over the cup as v1 does
-    short = max_phi is not None and bool(untilt_phis) and min(untilt_phis) > 0
-
-    def upright_over_cup():                                                                       # H
-        o_ = P._obs(robot, [ci])
-        if o_.get("ended"):
-            return
-        e_, cp_ = o_["eef"][A], o_["objects"][ci]
-        Rf_ = P.rotm(e_["quat"])
-        cup.r_hc, cup.R_hc = Rf_.T @ (np.asarray(cp_["pos"]) - np.asarray(e_["pos"])), Rf_.T @ P.rotm(cp_["quat"])
-        tcp_, Qn_, _ = P._pour_pose(cup, Qg, sd, 0, sxy, top_z + lip_clear, top_z, body_clear, "tool", head_h)
-        mu_ = robot.move_to(arm=A, pos=P.r4(tcp_), quat=P.r4(Qn_, 6), speed=untilt_speed, max_dev=0.03, max_steps=80)
-        ret["untilt"].append({"phi": "0 (H: upright over the cup)", **P._short(mu_)})
     o = P._obs(robot, [ci])
-    if short and not o.get("ended") and o.get("steps_left", 0) < min_return_steps:               # H
-        upright_over_cup()
     if not o.get("ended") and o.get("steps_left", 0) >= min_return_steps:
         e, cp = o["eef"][A], o["objects"][ci]
         cup.set_hand(e["pos"], e["quat"], cp["pos"], cp["quat"])
@@ -328,9 +310,6 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         hov = tcp_set + np.array([0, 0, max(0.04, top_z + 0.03 - TABLE_Z)])
         hov[2] = max(hov[2], min(float(e["pos"][2]), 1.05))
         ret["hover"] = P._short(robot.move_to(arm=A, pos=P.r4(hov), quat=P.r4(Qg, 6), max_dev=0.05))
-        if short and not ret["hover"].get("moved"):                                               # H
-            upright_over_cup()
-            ret["hover2"] = P._short(robot.move_to(arm=A, pos=P.r4(hov), quat=P.r4(Qg, 6), max_dev=0.05))
         ret["down"] = P._short(robot.move_to(arm=A, pos=P.r4(tcp_set), quat=P.r4(Qg, 6), speed="slow", max_dev=0.01))
         robot.gripper(arm=A, action="open", wait_steps=2)
         back_pos = np.asarray(robot.obs(cameras=[])["eef"][A]["pos"], float) - back * head_h
