@@ -454,18 +454,18 @@ def _pick_width(sk: Skills, labels) -> float:
     return out
 
 
-def _spot_blocks(sk: Skills, label: str, xy, others) -> list[str]:
-    """The objects in ``others`` that some arm can pick from home now but none could with ``label`` resting level on
-    the table at ``xy`` (a handover spot in front of a standing bottle closes its grasps; G3 put_bottles v15 draws: 2 of
-    16 episodes ended "no arm can pick" on two bottles that blocked each other, either one moved away freed the other)."""
+def _spot_blocks(sk: Skills, label: str, T_obj, others) -> list[str]:
+    """The objects in ``others`` that some arm can pick from home now but none could with ``label`` resting at
+    ``T_obj`` (the place plan's object pose: its yaw is the one the place chose among its symmetric yaws). A handover
+    spot in front of a standing bottle closes its grasps: G3 put_bottles v15 draws, 2 of 16 episodes ended "no arm can
+    pick" on two bottles that blocked each other, and either one moved away freed the other."""
     free = [l for l in others if any(sk.can_pick(l, a) for a in ARMS)]
     if not free:
         return []
     o = sk.world.obj(label)
     saved = (o.pos.copy(), o.quat.copy())
-    R = level_R(current_R(sk, label))
-    c = np.array([xy[0], xy[1], TABLE_Z + half_height(o, R)])
-    o.pos, o.quat = c - R @ o.asset.center, R_to_quat(R)
+    T_obj = np.asarray(T_obj, float)
+    o.pos, o.quat = T_obj[:3, 3].copy(), R_to_quat(T_obj[:3, :3])
     try:
         return [l for l in free if not any(isinstance(sk.plan_pick(l, a, q_start={a: sk.world.home_q[a]}, keep=1), PickPlan)
                                            for a in ARMS)]
@@ -574,7 +574,7 @@ def put_into(sk: Skills, objects: list[str], container: str) -> dict:
                 for spot in free_spots(sk, lab, near_xy=nxy):
                     pl = sk.plan_place(helper, _table_pose_keep(sk, lab, spot), yaw_sym=8, release_gap=0.004)
                     if (isinstance(pl, PlacePlan) and sk.can_pick_at(lab, dropper, spot)
-                            and not (others and _spot_blocks(sk, lab, spot, others))):
+                            and not (others and _spot_blocks(sk, lab, pl.T_obj_target, others))):
                         place_r = pl
                         phase.append(pl.plan)
                         break

@@ -8,6 +8,7 @@ import numpy as np
 from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
 from dojo.skills import library
 from dojo.skills.env import KinematicEnv
+from dojo.skills.geometry import R_to_quat, quat_to_R, rot_z
 from dojo.skills.skills import GTProvider, Skills
 
 Z = 0.765
@@ -23,12 +24,20 @@ def _sk(lying_xy=(0.25, -0.05)):
     return Skills(env, GTProvider(env, None, instruction=env.instruction), reserve=30)
 
 
+def _T(xy, quat=LYING):
+    T = np.eye(4)
+    T[:3, :3], T[:3, 3] = quat_to_R(np.asarray(quat, float)), [xy[0], xy[1], Z + 0.0312]
+    return T
+
+
 def test_a_spot_in_front_of_a_standing_bottle_blocks_it():
     sk = _sk()
     sk.refresh()
     assert any(sk.can_pick("bottle3", a) for a in ("left", "right"))
-    assert library._spot_blocks(sk, "bottle2", (-0.063, -0.257), ["bottle3"]) == ["bottle3"]
-    assert library._spot_blocks(sk, "bottle2", (0.2, -0.25), ["bottle3"]) == []
+    assert library._spot_blocks(sk, "bottle2", _T((-0.063, -0.257)), ["bottle3"]) == ["bottle3"]
+    assert library._spot_blocks(sk, "bottle2", _T((0.2, -0.25)), ["bottle3"]) == []
+    other_yaw = R_to_quat(rot_z(np.radians(90.0)) @ quat_to_R(np.asarray(LYING, float)))   # the same spot, another yaw
+    assert library._spot_blocks(sk, "bottle2", _T((-0.063, -0.257), other_yaw), ["bottle3"]) == []
     o = sk.world.obj("bottle2")
     assert np.allclose(o.pos[:2], [0.25, -0.05])                  # the check leaves the world as it was
 
