@@ -49,6 +49,36 @@ def test_a_persisted_tile_read_survives_a_later_record_without_one():
     assert r["category_idx"] == 17 and r["_perception"]["identity"] == "read" and evs[0]["why"] == "carried"
 
 
+def _tile(face_body=(0.0, 0.0, 1.0)):
+    from dojo.skills.geometry import R_to_quat
+    from dojo.skills.world import AssetInfo
+    # a mahjong tile: 30 x 40 x 22 mm, its glyph on local +z (the "up" place pose = identity)
+    info = AssetInfo(key="Rigid/mahjong/00001", bbox_min=np.array([-0.015, -0.02, -0.011]),
+                     bbox_max=np.array([0.015, 0.02, 0.011]), place={"up": R_to_quat(np.eye(3)).tolist()})
+    return SimpleNamespace(asset=info)
+
+
+def test_facing_R_stands_the_tile_on_its_end_with_the_glyph_to_the_robot():
+    from dojo.skills.library import facing_R
+    R = facing_R(_tile())
+    assert np.allclose(R @ R.T, np.eye(3), atol=1e-9) and np.isclose(np.linalg.det(R), 1.0)
+    assert np.allclose(R @ [0, 1, 0], [0, 0, 1])                  # the longest axis (local y) up: the checker's stand
+    assert np.allclose(R @ [0, 0, 1], [0, -1, 0])                 # the glyph toward the robot / head camera
+    assert np.allclose(facing_R(_tile(), toward=(1.0, 0.0, 0.3)) @ [0, 0, 1], [1, 0, 0])   # horizontal part only
+
+
+def test_the_stand_shows_the_face_to_the_head_camera_best_first():
+    from dojo.skills.library import HEAD_CAM_XYZ, facings_to_head
+    xy, z = (0.325, -0.15), 0.80
+    f = facings_to_head(xy, z)
+    d = np.asarray(HEAD_CAM_XYZ) - [xy[0], xy[1], z]
+    d /= np.linalg.norm(d)
+    cos = [float(np.dot(t, d)) for t in f]
+    assert f and cos == sorted(cos, reverse=True) and min(cos) > 0.3
+    assert f[0][0] < 0 and f[0][1] < 0                    # at the right end of the row: toward the robot and the middle
+    assert all(t[0] < 0.5 for t in f)                     # never the side away from the camera (+x there)
+
+
 class _FakeSkills:
     """The parts of ``Skills`` ``kong_read`` uses: a refine hook that answers per (arm, call) from ``answers``."""
 
