@@ -35,3 +35,21 @@ On the 5-digit layouts, digits within 10 mm went 65 -> 75 of 90. 3 of the 13 new
 fits on other foreground, which the phantom count does not show because they match the unfound GT digit. That is why
 the glyph guard was added. It can only remove a fill, so with glyph on the worst case is "4 read + 1 not found". The
 guard's own effect needs a glyph server: Integration's dev check (arrange ×2, 100000-04).
+
+## Follow-up: series_link_raise tipped vocab_explain to solve_equation (Integration slrchk, 8e7f6502)
+
+**What happened.** In 5 of 10 dev runs (arrange ×2, 100000-04, slr on), `vocab_explain` chose solve_equation:
+- arrange found 9 of 10 labels (the raised fifth digit not found) at mean confidence 0.83, score 0.75;
+- solve_equation "found" every label at 0.37, score 0.37. Its config-pinned slots are always placed, at low confidence.
+- The rule lets a set that finds a larger share of its labels replace the incumbent at any score. Both candidates came
+  from the catalogue fallback (no table match), so the instruction never weighed in beyond the candidate list.
+
+**The fix.**
+- A raised label's `_not_found` entry carries `raised: true`. `_explain_vocabulary` doesn't count it: the label was
+  only looked for, so not finding it is no evidence against the set.
+- `RuntimeConfig.vocab_found_needs_score` (default off) adds a weighting guard: a set that finds a larger share wins
+  only if its score is within `vocab_explain_margin` of the incumbent's. With it on, the 0.37-vs-0.75 swap can't happen
+  for any reason.
+
+**Tests.** Regression test with arrange (9 found + 1 raised) vs solve (all found at 0.37): arrange is chosen. Without
+the raised flag, solve is chosen, as before; with the guard on, arrange is chosen.
