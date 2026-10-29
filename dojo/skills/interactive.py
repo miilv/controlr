@@ -510,6 +510,35 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
     return transfer(near[:1])
 
 
+def twin_assignment(w, demo: list[str], ours: list[str]) -> dict[str, str]:
+    """``Skills.imitate_pairing`` "one_to_one": each of the demonstrator's objects to one of ours, the assignment of least
+    total cost (believed asset: same 0, same category 0.5, else 1). Each side holds one twin of each (the instruction's
+    "corresponding objects"), so one misread per side is absorbed: 5.1 frame 0 of 100002 read our toy car as a garage
+    and the demonstrator's watch as an action camera; the greedy first-free match took a garage twice and stopped at 1/5,
+    the assignment pairs all five right (C's six demo frames: plans right 4 -> 5 of 6, with twin_pairing 4 -> 6)."""
+    import itertools
+
+    demo = [d for d in demo if d in w.objects]
+    ours = [o for o in ours if o in w.objects]
+    if not demo or not ours:
+        return {}
+
+    def cost(a, b):
+        oa, ob = w.obj(a), w.obj(b)
+        return 0.0 if oa.asset.key == ob.asset.key else (0.5 if oa.category == ob.category else 1.0)
+
+    C = np.array([[cost(a, b) for b in ours] for a in demo])
+    try:
+        from scipy.optimize import linear_sum_assignment
+        ri, ci = linear_sum_assignment(C)
+        pairs = list(zip(ri, ci))
+    except ImportError:                                   # (n <= 7 here: exhaustive)
+        n = min(len(demo), len(ours))
+        best = min(itertools.permutations(range(len(ours)), n), key=lambda p: sum(C[i, j] for i, j in enumerate(p)))
+        pairs = list(enumerate(best))
+    return {demo[int(i)]: ours[int(j)] for i, j in pairs}
+
+
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
                        every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 3,
                        gone_quiet: int = 260) -> dict:
@@ -589,6 +618,9 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
     # copy: the twin of each demonstrated object, in order
     if st["gone"]:
         expect = len(st["gone"])
+    if getattr(sk, "imitate_pairing", "greedy") == "one_to_one" and "twins" not in st:
+        st["twins"] = twin_assignment(w, demo_side, [m for m in movers if m not in demo_side])
+        sk.log(f"[imitate] one-to-one twins {st['twins']}")
     for i, key in enumerate(st["order"]):
         if i < len(st["done"]):
             continue
@@ -605,6 +637,9 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
                     and not inside_xy(w.obj(m), w.obj(container))]
             cands = [m for m in free if w.obj(m).asset.key == k_] or \
                 [m for m in free if w.obj(m).category == w.obj(key).category]
+            tw = (st.get("twins") or {}).get(key)
+            if tw is not None and tw in free:           # one_to_one: the assignment's twin, whatever the first free one
+                cands = [tw] + [m for m in cands if m != tw]
             key = k_
         else:
             cands = [m for m in keys.get(key, []) if m not in st["done"]
@@ -784,7 +819,10 @@ def _intercept_search(sk: Skills, label: str, o, v3, rel: dict, arms, t_min, t_m
                 if qs is None:
                     continue
                 # everything on the belt rides along: check against the objects where they will be at the descent
-                moving = [m for m in w.task_objects() if m.obj_type == "Rigid" and m.label != label]
+                # (belt_deposit: a container held still on the belt does not ride along)
+                still = ({h.label for h in sk.held.values() if h is not None}
+                         if getattr(sk, "belt_deposit", "off") == "on" else set())
+                moving = [m for m in w.task_objects() if m.obj_type == "Rigid" and m.label != label and m.label not in still]
                 for m in moving:
                     m.pos = m.pos + v3 * (t - n_desc)
                 try:
@@ -1049,13 +1087,31 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     return {"ok": False, "stage": "pick", "note": f"every match was absent at its track: {sorted(absent)}"}
 
 
+ZONE_MARGIN = 0.10   # belt_confirm_zone: a match counts this far past the downstream arm's home hand along the belt
+ZONE_SURE = 0.9      # ... ("uncertain") unless the tracker's identity share for it is at least this
+
+
 def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyor, max_wait, confirm, id_share,
                  first_seen):
     """One wait-for-a-match-and-pick round of ``match_and_pick``; None when the pick found nothing at the match's track
     (``belt_wrist_veto``: wait for the next match), else the skill's result."""
-    same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key and l not in absent]
+    zmode = getattr(sk, "belt_confirm_zone", "off")
+    zone = zmode in ("on", "uncertain")
+    down = max(ARMS, key=lambda a: float(sk.kin.base(a)[:2, 3] @ u)) if zone else None
+    # belt_confirm_zone: a match counts only once it has ridden past the downstream arm's home hand (+ZONE_MARGIN), where
+    # the head view sees riders whole (identity 100 % right at x 0.4-0.7 against 5-53 % at the entry and around the home
+    # grippers: compute4 camera rows, physics-only GT replays); the downstream arm then picks it
+    s_zone = (float(sk.kin.tcp(down, sk.world.home_q[down])[:2, 3] @ u) + ZONE_MARGIN) if zone else None
+    def in_zone(lab):
+        # "uncertain": only a match the tracker is not sure of waits for the zone (G3 / sure reads keep today's pick)
+        if not zone or (zmode == "uncertain" and float(w.obj(lab).confidence) >= ZONE_SURE):
+            return True
+        return float(w.obj(lab).pos[:2] @ u) >= s_zone
+
+    same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key and l not in absent
+            and in_zone(l)]
     t0 = w.step
-    seen = confirm if same else 0
+    seen = confirm if same and not zone else 0
     while not same or seen < confirm:
         # not in view yet (at eval the far end of the belt may be out of the head camera): keep looking. A rider that
         # came into view is read again before it counts: its first readings are at the edge of the view, and the
@@ -1080,7 +1136,7 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
         fp = None if fa is None else np.asarray(fa[0], float) + v * (w.step - fa[1])
         behind = (lambda l: float((w.obj(l).pos[:2] - fp) @ u) < -0.08) if fp is not None else (lambda l: True)
         same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share
-                and behind(l) and l not in absent]
+                and behind(l) and l not in absent and in_zone(l)]
         seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
@@ -1088,7 +1144,8 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
     skip: set = set()
     for attempt in range(2):
         sk.notes_belt_method = None
-        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip))
+        late = zone and float(w.obj(target).pos[:2] @ u) >= s_zone
+        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip), arms=[down] if late else None)
         if r.ok or r.status == "ended":
             return {"ok": True, "stage": "picked", "note": r.note}
         if r.status == "absent":
@@ -1162,6 +1219,328 @@ def hold_up(sk: Skills, arm: str, label: str, xy, z_bottom: float) -> SkillResul
     return sk._record(SkillResult(True, "hold_up", "ok", mv.n_steps() if hasattr(mv, "n_steps") else 0, arm))
 
 
+def drop_into_held(sk: Skills, arm: str, label: str, container: str, clear: float = 0.02,
+                   tilts=(0.0, 20.0, 40.0, 60.0), n_yaw: int = 6, ignore=()) -> SkillResult:
+    """Let what ``arm`` holds fall into an open container (held up by the other arm): over the container's middle and
+    +-25 % along its long side, the object's lowest point ``clear`` over the rim (``grasps.box_rim_z``), its footprint
+    inside the container's walls when some hand pose allows. The hand keeps its orientation if it can, else turns and
+    tilts toward its arm: how the object falls in does not matter. pick_from_conveyor_by_image: a place that kept the
+    pick's orientation found no plan over the held basket (5 / 5, G3)."""
+    import math
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.grasps import box_rim_z
+    from dojo.skills.kinematics import down_R
+    from dojo.skills.motion import CARRY
+    from dojo.skills.skills import OPEN_STEPS
+    w = sk.refresh()
+    h = sk.held.get(arm)
+    if h is None or h.label != label:
+        return SkillResult(False, "drop", "logic", 0, arm, note=f"{arm} does not hold {label}")
+    c, o = w.obj(container), w.obj(label)
+    Vc = np.asarray(c.asset.mesh[0], float) if c.asset.mesh is not None else None
+    z_rim_l = box_rim_z(Vc) if Vc is not None else None
+    if z_rim_l is None:
+        z_rim_l = float(c.asset.bbox_max[2])
+    lo_c, hi_c = c.asset.bbox_min, c.asset.bbox_max
+    mid = 0.5 * (lo_c + hi_c)
+    long_ax = int(np.argmax((hi_c - lo_c)[:2]))
+    pts = []
+    for f in (0.0, -0.25, 0.25):
+        for f2 in (0.0, -0.25, 0.25):                  # across the short side too: the half nearer the arm may reach
+            q = mid.copy()
+            q[long_ax] += f * (hi_c - lo_c)[long_ax]
+            q[1 - long_ax] += f2 * (hi_c - lo_c)[1 - long_ax]
+            q[2] = z_rim_l
+            pts.append(c.pos + c.R @ q)
+    rim_w = max(float(p[2]) for p in pts)
+    half_in = 0.5 * (hi_c - lo_c)[:2] - 0.03                     # the interior, a wall + margin in from the bbox
+    Vo = np.asarray(o.asset.mesh[0], float) if o.asset.mesh is not None else np.array(
+        [[x, y, z] for x in (o.asset.bbox_min[0], o.asset.bbox_max[0]) for y in (o.asset.bbox_min[1], o.asset.bbox_max[1])
+         for z in (o.asset.bbox_min[2], o.asset.bbox_max[2])], float)
+    Tto = h.T_tcp_obj
+    base = sk.kin.base(arm)[:3, 3]
+    q0 = sk.ex.q[arm].copy()
+    R_now = sk.kin.tcp(arm, q0)[:3, :3]
+
+    def rz(t):
+        return np.array([[math.cos(t), -math.sin(t), 0.0], [math.sin(t), math.cos(t), 0.0], [0.0, 0.0, 1.0]])
+
+    def ry(t):
+        return np.array([[math.cos(t), 0.0, math.sin(t)], [0.0, 1.0, 0.0], [-math.sin(t), 0.0, math.cos(t)]])
+
+    why = []
+    other = [sk.kin.tcp(a2, sk.ex.q[a2])[:2, 3] for a2 in ARMS if a2 != arm and sk.held.get(a2) is not None]
+
+    def clearance(p):                                    # from the hand that holds the container (a drop near it bounced)
+        return min((float(np.linalg.norm(p[:2] - t)) for t in other), default=1.0)
+
+    for p in sorted(pts, key=lambda p: (-round(min(clearance(p), 0.12), 2), float(np.linalg.norm(p[:2] - base[:2])))):
+        ang = math.atan2(float(p[1] - base[1]), float(p[0] - base[0]))
+        Rs = [R_now] + [rz(ang) @ ry(-math.radians(t)) @ rz(-ang) @ down_R(math.pi * k / n_yaw)
+                        for t in tilts for k in range(n_yaw)]
+        cands = []
+        for R in Rs:
+            P = (R @ (Tto[:3, :3] @ Vo.T + Tto[:3, 3:4])).T          # the object's points, the TCP at the origin
+            cxy = 0.5 * (P[:, :2].min(0) + P[:, :2].max(0))
+            loc = (c.R.T @ np.c_[P[:, :2] - cxy, np.zeros(len(P))].T).T[:, :2]   # its footprint in the container frame
+            fits = bool(np.all(np.abs(loc) <= half_in + 1e-9))
+            T = np.eye(4)
+            T[:3, :3] = R
+            T[:3, 3] = [p[0] - cxy[0], p[1] - cxy[1], rim_w + clear - float(P[:, 2].min())]
+            cands.append((not fits, T))
+        for _, T in sorted(cands, key=lambda t: t[0]):
+            mv = sk.motion.to_pose(arm, q0, T, CARRY, "drop", gripper=0.0, held=h.box,
+                                   ignore=tuple(ignore) + (label, container))
+            if not mv.ok:
+                why.append(mv.status)
+                if len(why) <= 3 or (mv.status == "collision" and why.count("collision") <= 4):
+                    sk.log(f"[belt] drop try {np.round(T[:3, 3], 3).tolist()} appr {np.round(T[:3, 0], 2).tolist()}: "
+                           f"{mv.status} {str(mv.note)[:110]} (ik alone {sk.kin.ik(arm, T, q0).ok})")
+                continue
+            try:
+                sk.ex.run({arm: ArmPlan(arm, q0, 0.0).move(mv, "drop").hold(1, "still").grip(OPEN, OPEN_STEPS, "release")
+                           .hold(6, "fall")}, name=f"drop {label}")
+            except (BudgetExceeded, EpisodeEnded) as e:
+                return SkillResult(False, "drop", "step_budget", 0, arm, note=str(e))
+            sk.held[arm] = None
+            sk.log(f"[belt] {label} let go over {container} at {np.round(T[:3, 3], 3).tolist()}")
+            return sk._record(SkillResult(True, "drop", "ok", 0, arm, note=f"{label} let go over {container}"))
+    from collections import Counter
+    return SkillResult(False, "drop", "no_plan", 0, arm, note=f"no drop over {container}: {dict(Counter(why))}")
+
+
+STOP_WINDOW = (-0.12, -0.02)  # belt_deposit: the container stopped with its middle this far along the belt from midway between the
+STOP_AT = -0.07               # arms (upstream of it: the picking arm reaches over it), dragged back there if it stopped beyond,
+STOP_Y = -0.10                # and to world y STOP_Y when the pinch is on its robot-side wall: its handle is in reach there
+                              # (IK: lift 10-14 cm), at y ~0 it is not
+DRAG_STEP = 0.004             # m per step when dragging it on the belt (a 6 mm step let the pinch slide along the wall)
+
+
+def _wall_grasps(sk: Skills, o, arm: str, u: np.ndarray, side: float) -> list:
+    """``G.box_rim_grasps`` on the container's wall facing downstream (``side`` +1) or upstream (-1) along the belt
+    direction ``u``, nearest that wall's middle first (one hand on each of those walls holds it near level between
+    them), and separately any other rim point on that side (a near wall's end): (walls, ends)."""
+    from dojo.skills import grasps as G
+    gs = G.box_rim_grasps(o, sk.kin, arm, fracs=(-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3), tilts=(0.0, 15.0, 25.0, 40.0, 55.0))
+    c = o.center_w[:2]
+    half = 0.5 * float(np.max(np.abs((o.R[:2, :2] @ np.diag(o.asset.extents[:2])).T @ u[:2])))   # half extent along u
+    first, then = [], []
+    for g in gs:
+        d = g.T[:2, 3] - c
+        along = side * float(d @ u[:2])
+        perp = float(np.linalg.norm(d - (d @ u[:2]) * u[:2]))
+        if along > half - 0.03 and perp <= 0.12:
+            first.append((perp, g))                       # the wall facing that way, nearest its middle first
+        elif along > 0.06:
+            then.append((g.score, g))                     # else any rim point on that side (a near wall's end)
+    return ([g for _, g in sorted(first, key=lambda t: (round(t[0], 2), t[1].score))],
+            [g for _, g in sorted(then, key=lambda t: t[0])])
+
+
+def _near_wall_grasps(sk: Skills, o, arm: str) -> list:
+    """``G.box_rim_grasps`` on the container's wall facing the robot (-y), nearest that wall's middle first: a pull
+    toward the robot from there is along the pads' closing axis (the inner finger pushes the wall), where a pinch at a
+    wall's end turned and let go when dragged sideways (3 / 7); tilted 55 deg the pads rode up the wall (5 / 5)."""
+    from dojo.skills import grasps as G
+    gs = G.box_rim_grasps(o, sk.kin, arm, fracs=(-0.1, 0.0, 0.1), tilts=(0.0, 15.0, 25.0))
+    c = o.center_w[:2]
+    half_y = 0.5 * float(np.max(np.abs((o.R[:2, :2] @ np.diag(o.asset.extents[:2]))[1])))
+    out = []
+    for g in gs:
+        d = g.T[:2, 3] - c
+        if -float(d[1]) > half_y - 0.03:
+            out.append((abs(float(d[0])), g))
+    return [g for _, g in sorted(out, key=lambda t: (round(t[0], 2), t[1].score))]
+
+
+def _stop_on_belt(sk: Skills, container: str, v: np.ndarray, arm: str, ign) -> SkillResult:
+    """Pinch the container's downstream wall with ``arm`` as its middle passes midway between the arms (the intercept
+    tracks it through the close) and hold still: it stays on the belt, which slides under it."""
+    import math
+    o = sk.world.obj(container)
+    u = np.r_[v / np.linalg.norm(v), 0.0]
+    mid = 0.5 * (sk.kin.base("left")[:3, 3] + sk.kin.base("right")[:3, 3])
+    s0, sm = float(o.pos @ u), float(mid @ u)
+    speed = float(np.linalg.norm(v))
+    t_min = max(25, int(math.ceil((sm + STOP_WINDOW[0] - s0) / speed)))
+    t_max = max(t_min + 6, int((sm + STOP_WINDOW[1] - s0) / speed))
+    walls, ends = _wall_grasps(sk, o, arm, u, +1.0)
+    rel = {arm: [(g, g.T[:3, 3] - o.pos, UP) for g in _near_wall_grasps(sk, o, arm)[:12] + walls[:8] + ends[:8]]}
+    best = _intercept_search(sk, container, o, np.r_[v, 0.0], rel, [arm], t_min, t_max, 8, 5, 0.06, 0.03, ign, 0.0)
+    if best is None:
+        return SkillResult(False, "belt_stop", "ik_fail", 0, arm, note=f"no stop grasp for {container} in t {t_min}-{t_max}")
+    a, t, app, track, g, samples, go = best
+    wait = max(0, t - 8 - len(app))
+    sk.log(f"[belt] stop {container}: {a} at +{t} steps ({g.note}), wait {wait}, approach {len(app)}")
+    try:
+        if wait:
+            sk.ex.hold(wait)
+        sk.ex.run_lists({a: app}, name="belt approach")
+        sk.ex.run_lists({a: track[:8 + 1 + 5]}, name=f"belt stop {container}")   # the descent and the close only
+        sk.ex.hold(6)
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return SkillResult(False, "belt_stop", "step_budget", 0, a, note=str(e))
+    w = sk.refresh()
+    o = w.obj(container)
+    beyond = float(o.pos @ u) - (sm + STOP_AT)
+    shift = -u * max(beyond, 0.0)
+    if float(o.pos[1]) > STOP_Y and _pinch_on_near_wall(sk, a, o):
+        shift = shift + np.array([0.0, STOP_Y - float(o.pos[1]), 0.0])   # toward the robot: both long walls in reach
+    # slide it on the belt to where its handle is in reach: back along the belt (it may have been past the window when
+    # the arm got there) and toward the robot, in one move (back first, then toward the robot failed IK 3 / 10)
+    moves = [shift] if float(np.linalg.norm(shift)) > 0.02 else []
+    for mvec in moves:
+        T0 = sk.kin.tcp(a, sk.ex.q[a])
+        n = max(4, int(math.ceil(float(np.linalg.norm(mvec)) / DRAG_STEP)))
+        samples = []
+        for k in range(1, n + 1):
+            T = T0.copy()
+            T[:3, 3] += mvec * k / n
+            samples.append(("drag", T))
+        qs = _track_ik(sk, a, samples, sk.ex.q[a])
+        if qs is None:
+            sk.log(f"[belt] no drag for {container} ({np.round(mvec * 1000, 0).tolist()} mm)")
+            break
+        try:
+            sk.ex.run_lists({a: [(qq, 0.0) for _, qq in qs]}, name=f"drag {container}")
+            sk.ex.hold(4)
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return SkillResult(False, "belt_stop", "step_budget", 0, a, note=str(e))
+        w = sk.refresh()
+        o = w.obj(container)
+        sk.log(f"[belt] dragged {container} by {np.round(mvec * 1000, 0).tolist()} mm: now {np.round(o.center_w, 3).tolist()}")
+    from dojo.skills.geometry import inv_T
+    from dojo.skills.motion import held_box
+    from dojo.skills.skills import Held
+    T_rel = inv_T(sk.kin.tcp(a, w.arms[a].q)) @ o.T
+    sk.held[a] = Held(container, T_rel, held_box(o, T_rel), g)
+    sk.log(f"[belt] {container} stopped at {np.round(o.center_w, 3).tolist()}")
+    return sk._record(SkillResult(True, "belt_stop", "ok", len(app) + 14, a, note=f"{container} stopped"))
+
+
+def _pinch_on_near_wall(sk: Skills, arm: str, o) -> bool:
+    """Whether ``arm``'s TCP sits on the container's robot-side wall, near its middle."""
+    T = sk.kin.tcp(arm, sk.ex.q[arm])
+    d = T[:2, 3] - o.center_w[:2]
+    half_y = 0.5 * float(np.max(np.abs((o.R[:2, :2] @ np.diag(o.asset.extents[:2]))[1])))
+    return -float(d[1]) > half_y - 0.04 and abs(float(d[0])) < 0.05
+
+
+def _grasp_still(sk: Skills, container: str, arm: str, grasps: list, ign) -> SkillResult:
+    """A still container taken with the first of ``grasps`` that plans: pre-grasp, straight down, close."""
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.kinematics import gap_to_grip
+    from dojo.skills.motion import CARRY, SLOW
+    why = []
+    for g in grasps:
+        go = gap_to_grip(g.open_gap())
+        T_pre = g.T.copy()
+        T_pre[:3, 3] -= g.T[:3, 0] * 0.06                  # back along the approach
+        mv1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_pre, CARRY, "wall_pre", gripper=go, ignore=tuple(ign) + (container,))
+        if not mv1.ok:
+            why.append(mv1.status)
+            continue
+        q_pre = mv1.q_end() if callable(getattr(mv1, "q_end", None)) else mv1.q_end
+        mv2 = sk.motion.to_pose(arm, q_pre, g.T, SLOW,
+                                "wall_down", gripper=go, ignore=ign + (container,), check=False)
+        if not mv2.ok:
+            why.append(mv2.status)
+            continue
+        try:
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), go).move(mv1, "wall_pre").move(mv2, "wall_down")
+                       .grip(0.0, 4, "close").hold(4, "still")}, name=f"grasp {container}")
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return SkillResult(False, "wall_grasp", "step_budget", 0, arm, note=str(e))
+        w = sk.refresh()
+        from dojo.skills.geometry import inv_T
+        from dojo.skills.motion import held_box
+        from dojo.skills.skills import Held
+        T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ w.obj(container).T
+        sk.held[arm] = Held(container, T_rel, held_box(w.obj(container), T_rel), g)
+        sk.log(f"[belt] {arm} took {container} ({g.note})")
+        return sk._record(SkillResult(True, "still_grasp", "ok", 0, arm))
+    from collections import Counter
+    return SkillResult(False, "still_grasp", "no_plan", 0, arm, note=f"no grasp of {container}: {dict(Counter(why))}")
+
+
+HANDLE_LIFTS = (0.12, 0.10, 0.09)     # belt_deposit: the container lifted by its handle this much at the end
+
+
+def _handle_lift(sk: Skills, container: str, arm: str, holder: str, ign) -> SkillResult:
+    """``arm`` takes the still container by its handle (``G.top_band_grasps``), ``holder`` lets go of its wall, and
+    ``arm`` lifts it straight up: hanging from its handle it stays level (a wall pinch tilted it 40 deg; two hands on
+    its walls tipped it about its far edge, the far half out of both arms' reach)."""
+    from dojo.skills import grasps as G
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.motion import CARRY, SLOW
+    o = sk.refresh().obj(container)
+    gs = sorted(G.top_band_grasps(o, sk.kin, arm, depth=0.02, tilts=(0.0, 15.0, 25.0, 40.0, 55.0)),
+                key=lambda g: g.score)                    # 20 mm down the bar: the pads hold more of it
+    rg = _grasp_still(sk, container, arm, gs, ign)
+    if not rg.ok:
+        return rg
+    try:
+        sk.ex.run({holder: ArmPlan(holder, sk.ex.q[holder].copy(), 0.0).grip(OPEN, 3, "release").hold(2, "still")},
+                  name=f"release {container}")
+    except (BudgetExceeded, EpisodeEnded) as e:
+        return SkillResult(False, "handle_lift", "step_budget", 0, arm, note=str(e))
+    sk.held[holder] = None
+    T = sk.kin.tcp(holder, sk.ex.q[holder])
+    T[2, 3] += 0.05
+    mv = sk.motion.to_pose(holder, sk.ex.q[holder], T, CARRY, "back_off", gripper=OPEN, check=False)
+    if mv.ok:
+        sk.ex.run({holder: ArmPlan(holder, sk.ex.q[holder].copy(), OPEN).move(mv, "back_off")}, name="back off")
+    z0 = float(sk.refresh().obj(container).bottom_z)
+    for dz in HANDLE_LIFTS:
+        T = sk.kin.tcp(arm, sk.ex.q[arm])
+        T[2, 3] += dz
+        mv = sk.motion.to_pose(arm, sk.ex.q[arm], T, SLOW, "handle_lift", gripper=0.0, check=False)
+        if not mv.ok:
+            continue
+        try:
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).move(mv, "handle_lift").hold(6, "still")},
+                      name=f"lift {container} by its handle")
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return SkillResult(False, "handle_lift", "step_budget", 0, arm, note=str(e))
+        rose = float(sk.refresh().obj(container).bottom_z) - z0
+        sk.log(f"[belt] {container} lifted {dz * 100:.0f} cm by its handle (its bottom rose {rose * 1000:.0f} mm)")
+        ok = rose > 0.6 * dz
+        return sk._record(SkillResult(ok, "handle_lift", "ok" if ok else "grasp_slip", 0, arm,
+                                      note=f"{container} bottom rose {rose * 1000:.0f} mm"))
+    return SkillResult(False, "handle_lift", "ik_fail", 0, arm, note=f"no lift by the handle ({HANDLE_LIFTS})")
+
+
+def _deposit_then_lift(sk: Skills, container: str, target: str, v: np.ndarray, ign) -> dict:
+    """``belt_deposit``: stop the container on the belt by its downstream wall (the downstream arm), pick the pictured
+    object off the belt with the other arm and let it fall into the still container, then that arm takes the upstream
+    wall and both lift it level. A container lifted by one rim pinch swung 40 deg about the pads (G3 v15 variants: its
+    far end 2 cm under the belt's top, 0 / 10), and its handle is out of the arms' reach on the belt."""
+    u = np.r_[v / np.linalg.norm(v), 0.0]
+    order = sorted(ARMS, key=lambda a: -float(sk.kin.base(a)[:3, 3] @ u))
+    sarm, parm = order[0], order[1]                     # the downstream arm stops it, the upstream one picks
+    r = _stop_on_belt(sk, container, v, sarm, ign)
+    if not r.ok:
+        return {"ok": False, "stage": f"stop {container}", "note": r.note}
+    r2 = pick_from_belt(sk, target, v, lift=0.15, ignore=ign, arms=[parm])
+    if not r2.ok and r2.status == "grasp_slip":
+        # it slipped and rides on: once more with another grasp family
+        m = getattr(sk, "notes_belt_method", None)
+        sk.home(arms=[parm], gripper=OPEN)
+        r2 = pick_from_belt(sk, target, v, lift=0.15, ignore=ign, arms=[parm], skip_methods=(m,) if m else ())
+    if not r2.ok:
+        return {"ok": False, "stage": f"pick {target}", "note": r2.note}
+    rd = drop_into_held(sk, parm, target, container, ignore=ign)
+    if not rd.ok:
+        return {"ok": False, "stage": "drop", "note": rd.note}
+    w = sk.refresh()
+    inside = inside_xy(w.obj(target), w.obj(container))
+    sk.log(f"[belt] {target} {'in' if inside else 'not in'} {container} after the drop")
+    rl = _handle_lift(sk, container, parm, sarm, ign + (target,))
+    w = sk.refresh()
+    ok = rl.ok and inside_xy(w.obj(target), w.obj(container))
+    return {"ok": ok, "stage": "lifted" if rl.ok else "lift", "note": rl.note}
+
+
 def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str | None = None,
                    conveyor: str | None = None, lift: float = 0.11, max_wait: int = 650) -> dict:
     """Objects (and an open container) ride a moving belt: take the container off the belt with the arm it is
@@ -1182,6 +1561,8 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
     u = v / np.linalg.norm(v)
     target = max(cands, key=lambda l: float(w.obj(l).pos[:2] @ u))
     ign = (conveyor,) if conveyor else ()
+    if getattr(sk, "belt_deposit", "off") == "on":
+        return _deposit_then_lift(sk, container, target, v, ign)
     # 1. the container off the belt (whichever arm intercepts it first), held up
     # lifted while pulled toward the arm (its handle is 1 m up, half a metre out: straight up is out of reach)
     fix = getattr(sk, "belt_container", "off") == "on"
@@ -1206,6 +1587,8 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
         for dy in (0.10, 0.18, 0.0, 0.25):
             for dz_ in (lift, 0.09):
                 hr = hold_up(sk, carm, container, (hold_xy[0], hold_xy[1] + dy), max(float(c.bottom_z), z_bottom0 + dz_))
+                if not hr.ok:
+                    sk.log(f"[belt] hold_up at dy {dy:+.2f} dz {dz_:.2f}: {hr.status} {str(hr.note)[:100]}")
                 if hr.ok:
                     hold_xy = (hold_xy[0], hold_xy[1] + dy)
                     break
@@ -1237,6 +1620,7 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
         if not isinstance(pl, SkillResult):
             best = pl
             break
+        sk.log(f"[belt] drop over {container} at {np.round(T[:3, 3], 3).tolist()}: {pl.status} {str(pl.note)[:120]}")
     if best is None:
         return {"ok": False, "stage": "drop", "note": "no drop over the container"}
     try:
@@ -1254,4 +1638,4 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
 
 __all__ = ["play_board_game", "board_cells", "grid_lines", "board_state", "choose_cell", "copy_demonstration", "inside_xy",
            "put_in_open", "match_and_pick", "pick_from_belt", "belt_velocity", "plan_intercept", "pick_into_held",
-           "depicted_identity", "hold_up"]
+           "depicted_identity", "hold_up", "drop_into_held"]

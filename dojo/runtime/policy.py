@@ -223,6 +223,10 @@ class RuntimeConfig:
     # of the scene (a higher found-label share) or scores at least this much higher (2026-10-26: a 0.55 vs 0.52 score
     # difference at the same found share swapped stack_blocks_by_language's cubes for stack_blocks' blocks)
     vocab_explain_margin: float = 0.15
+    # ... and a set that finds a larger share of its labels replaces the incumbent only if its score is within
+    # vocab_explain_margin below the incumbent's (2026-10-29 slrchk: solve_equation "found" all its config-pinned slots
+    # at confidence 0.37, score 0.37, and replaced arrange_largest_number at 0.75 with one label short). Default off
+    vocab_found_needs_score: bool = False
     # mode perception: perception's episode tracker on B1 re-reads (look fuse, divergence re-estimate): only objects
     # the robot moved since their last good reading take a re-read pose. auto = on iff agentic == "budget"
     tracker: str = "auto"
@@ -311,21 +315,48 @@ class RuntimeConfig:
     # and refines at once, both slides in the same steps when their paths keep apart: ~65-80 steps instead of ~128)
     align_measure: str = "seq"
     # ``tiles``' numeral grasps (``Skills.tile_grasp``): any (today) | flat (pads on faces square to the closing axis:
-    # not across a "7"'s or a "2"'s slanted stroke)
+    # not across a "7"'s or a "2"'s slanted stroke) | prefer (flat grasps planned first, the others as the fallback)
     tile_grasp: str = "any"
     # ``tiles``: a placed tile the provider doubts (``RuntimeProvider.in_doubt``: post-place not ok, empty close) is looked
     # at on its pad; not there, it goes back where it was picked from (head view) or is searched for (LostObject), then
     # placed again (``Skills.tile_recover``; off = today)
     tile_recover: bool = False
+    # ``copy_demonstration``'s twins (``Skills.imitate_pairing``): greedy (today) | one_to_one (a least-cost assignment of
+    # the demonstrator's objects to ours; the instruction pairs them one-to-one, by appearance: D-C17 ruling 28 Oct)
+    imitate_pairing: str = "greedy"
+    # the belief's labels for a series perception keeps under one config label (classify_objects' ``rigid0`` x 6, its
+    # per-category prefixes not observable): keep (today: keyed by that label, one object stands for all; the classify
+    # route saw one item and planned nothing) | numbered (``<label>_<k>``, k by x then y: ``estimate.series_names``)
+    series_labels: str = "keep"
     # belt picks (``interactive.pick_from_belt`` / ``match_and_pick``, ``Skills.belt_wrist_veto``): off (today) | on (a
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
     belt_wrist_veto: str = "off"
+    # pick_from_conveyor_by_image (``interactive.pick_into_held``; ``Skills.belt_container`` / ``Skills.belt_deposit``):
+    # belt_container off (today) | on (a rectangular container by its real rim, ``grasps.box_rim_grasps``);
+    # belt_deposit off | on (with belt_container on: the container by its handle, held up toward the robot's middle,
+    # the depicted object dropped into it from whatever hand pose reaches)
+    belt_container: str = "off"
+    belt_deposit: str = "off"
+    # match_and_pick (``interactive._match_round``, ``Skills.belt_confirm_zone``): off (today) | on (a match counts only
+    # once it has ridden 10 cm past the downstream arm's home hand, where the head view reads riders whole; that arm
+    # picks it) | uncertain (only a match whose tracker identity share is under 0.9 waits for that). G3 v15: on 13 / 20
+    # vs 18 / 20 (far-reach slips); camera rows: identity right 5 / 5 from zone reads vs 1 / 5 before it
+    belt_confirm_zone: str = "off"
+    # deposit_coin's in-air handover (``precision.run_disc_handover``, ``Skills.disc_handover_read``): off (today: the
+    # taker inserts the coin with its planned in-hand pose) | on (the taker's insertion asks for the in-hand read at the
+    # pre-insert hover; with held_pose "request" that is the only place that reads). 5.1 rb 100006: 11 mm off, jammed
+    disc_handover_read: str = "off"
     # the pick hover of an object the task config pins in a support slot (deposit_coin's coin in its stand,
     # ``dojo.perception.slot_read``): off (today: the object's own wrist refine) | on (base + object fitted together
     # from the wrist frame over the base's whole yaw period; when ok, both poses are written and the refine is skipped.
     # 5.1 camera rows: a stand yaw read 48 deg off turned the coin with it, and its 2 mm disc never refines)
     slot_read: str = "off"
+    # make_kong (``library.declare_kong``, ``Skills.kong_draw_read``): off (today) | place (the discard read from the
+    # images once it lies face up, a wrist look when the head view does not read it; the drawn wall tile stood at the hand
+    # end face to the head camera and read there, kept only when the read names the hand pair's glyph, else moved to a free
+    # spot and the other stack top tried; unread -> moved off and stop). Legality D-C17 (3): no draw without a read
+    kong_draw_read: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -349,6 +380,10 @@ class RuntimeConfig:
     # ... pouring a liquid (pour_bottle, also pour_order's pours): v1 (the stream aimed at the cup's centre) | b10 / b20
     # (aimed 10 / 20 mm back against the pour direction: ``planner.POUR_AIM``)
     ported_pour_aim: str = "v1"
+    # ... sorting into baskets (both classify cells): v3b (Mikhail's classify_into_bins_v3b: a scene whose categories are not
+    # the instruction's three, or more groups than baskets, fails grounding and nothing is sorted) | p1
+    # (classify_into_bins_p1: sorts the named / largest groups, leaves the rest on the table)
+    ported_classify: str = "v3b"
     # ... and the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
     # (pour_bottle_lean: the tilt-up to 90 deg and the untilt at normal speed, a 12-step drain, no home between pours):
     # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way
@@ -429,12 +464,18 @@ class RuntimePolicy:
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
-                or self.cfg.tile_grasp not in ("any", "flat")
+                or self.cfg.tile_grasp not in ("any", "flat", "prefer")
+                or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
+                or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
+                or self.cfg.kong_draw_read not in ("off", "place")
+                or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
+                or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
+                or self.cfg.disc_handover_read not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
-                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20")
+                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1")
                 or self.cfg.ported_pour_pace not in ("v1", "lean")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
@@ -453,7 +494,8 @@ class RuntimePolicy:
                                                                                       "drag": self.cfg.ported_drag,
                                                                                       "pour": self.cfg.ported_pour,
                                                                                       "pickup": self.cfg.ported_pickup,
-                                                                                      "pour_aim": self.cfg.ported_pour_aim}))
+                                                                                      "pour_aim": self.cfg.ported_pour_aim,
+                                                                                      "classify": self.cfg.ported_classify}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -619,6 +661,7 @@ class RuntimePolicy:
         prov.post_place_read_cfg = dict(cfg.post_place_read_cfg)
         if checker is not None and cfg.agentic == "budget":
             checker.agentic_hook = lambda obs, rec: self._agentic_gate(obs, scene, rec, "risk")
+        prov.unique_labels = cfg.series_labels == "numbered"
         prov.tracker_on = bool(cfg.mode == "perception" and (cfg.tracker == "on" or (cfg.tracker == "auto"
                                                                                       and cfg.agentic == "budget")))
         if cfg.mode == "perception" and cfg.held_look != "off":
@@ -702,7 +745,12 @@ class RuntimePolicy:
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp
             sk_.tile_recover = bool(cfg.tile_recover)
+            sk_.imitate_pairing = cfg.imitate_pairing
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
+            sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
+            sk_.belt_confirm_zone = cfg.belt_confirm_zone
+            sk_.disc_handover_read = cfg.disc_handover_read
+            sk_.kong_draw_read = cfg.kong_draw_read
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
@@ -710,6 +758,7 @@ class RuntimePolicy:
             sk_.joint_limits = cfg.joint_limits
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour_aim = cfg.ported_pour_aim
+            sk_.ported_classify = cfg.ported_classify
             sk_.ported_pour_pace = cfg.ported_pour_pace
             sk_.ported_pour = cfg.ported_pour
             sk_.ported_pickup = cfg.ported_pickup
@@ -956,6 +1005,9 @@ class RuntimePolicy:
         name = g.get("name") if g.get("read") else None
         if name is None or d is not None:
             return
+        if name.count("/") == 2:
+            self._merge_tile_read(prov, label, o, name, g)
+            return
         before = (o.category, o.identity_known)
         if name == o.category:
             o.identity_known, why = True, "confirmed"
@@ -968,6 +1020,37 @@ class RuntimePolicy:
         self.report["events"].append({"kind": "glyph_identity", "label": label, "step": self.bridge.steps_used,
                                       "read": name, "why": why, "before": list(before),
                                       "after": [o.category, o.identity_known]})
+
+    def _merge_tile_read(self, prov, label: str, o, key: str, g: dict) -> None:
+        """A view's read of a tile whose model names asset keys (make_kong's tile model: "Rigid/mahjong/000NN"),
+        merged into the belief: no identity yet (a placeholder) -> the read asset, known; the same asset -> confirmed; another
+        asset -> unknown. Only within the object's own category. A read identity is kept by later records of the run
+        (``_glyph_reads``, ``read_persist``): a tile read after frame 0 (the discard face-up, a drawn tile) is not a slot
+        read at frame 0. Event ``glyph_identity``."""
+        typ, cat, idx = key.split("/")
+        if cat != o.category:
+            return
+        before = (o.asset.key if getattr(o, "asset", None) is not None else None, bool(o.identity_known))
+        reads = getattr(self, "_glyph_reads", None)
+        if reads is None:
+            reads = self._glyph_reads = {}
+        if o.identity_known and before[0] == key:
+            why = "confirmed"
+        elif not o.identity_known:
+            from dojo.runtime.estimate import _asset
+            o.asset = _asset(getattr(prov, "assets", None), o.obj_type, cat, int(idx), mesh=True)
+            o.idx, o.identity_known, why = int(idx), True, "read"
+        else:
+            o.identity_known, why = False, "disagree"
+        if o.identity_known:
+            reads[label] = {"asset": key, "perception": {"identity": "read", "glyph_read": {
+                "read": True, "key": key, "margin": g.get("margin"), "view": g.get("view"), "via": "refine"}}}
+        else:
+            reads.pop(label, None)
+        self.report["events"].append({"kind": "glyph_identity", "label": label, "step": self.bridge.steps_used,
+                                      "read": key, "why": why, "view": g.get("view"), "margin": g.get("margin"),
+                                      "before": list(before), "after": [key if o.identity_known else None,
+                                                                        bool(o.identity_known)]})
 
     def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
         """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
@@ -1057,6 +1140,11 @@ class RuntimePolicy:
         if r.get("radius_search"):
             ev["radius_search"] = {k: r["radius_search"].get(k) for k in ("used", "grid", "time_s")}
         self.report["events"].append(ev)
+        if kind == "read":
+            # a glyph read (skills: the make_kong discard / draw): the read is merged above, the pose is never written
+            # (a refine from an arm that is not over the object fits whatever its wrist sees)
+            ev["applied"] = False
+            return None
         rc = getattr(self, "_recentre_prior", {}).pop(label, None)
         looked = (float(r.get("visible_frac") or 0) >= 0.3 and not str(r.get("p_why") or "").startswith("truncated"))
         if rc is not None and not r.get("ok") and float(r.get("iou") or 0) < 0.2 and not looked:
@@ -1311,7 +1399,9 @@ class RuntimePolicy:
                 scored.append({"name": v.name, "source": v.source, "error": f"{type(e).__name__}: {str(e)[:120]}"})
                 continue
             confs = [float((r.get("_perception") or {}).get("confidence", 0.5)) for _t, _c, r in iter_records(rec)]
-            n_nf = len(rec.get("_not_found") or [])
+            # labels a count raise added (series_link_raise) were only looked for: not finding one is no evidence against
+            # the set (slrchk 100001 / 100002 / 100004: arrange "found" 0.9 and lost to solve_equation)
+            n_nf = len([nf for nf in rec.get("_not_found") or [] if not nf.get("raised")])
             found = len(confs) / max(1, len(confs) + n_nf)
             sc = found * (float(np.mean(confs)) if confs else 0.0)
             scored.append({"name": v.name, "source": v.source, "found": round(found, 3), "conf": round(float(np.mean(confs)), 3)
@@ -1326,8 +1416,10 @@ class RuntimePolicy:
                 # classify_objects at 0.65 vs 0.47, both finding everything, and ended at step 3
                 better = []
             else:
-                better = [x for x in ok[1:] if x["found"] > inc["found"] + 1e-9
-                          or x["score"] >= inc["score"] + self.cfg.vocab_explain_margin]
+                m = self.cfg.vocab_explain_margin
+                better = [x for x in ok[1:] if (x["found"] > inc["found"] + 1e-9
+                                                and (not self.cfg.vocab_found_needs_score or x["score"] >= inc["score"] - m))
+                          or x["score"] >= inc["score"] + m]
             best = max(better, key=lambda x: x["score"]) if better else inc
         self.report["events"].append({"kind": "vocab_explain", "chosen": best["name"] if best else None,
                                       "candidates": [{k: v for k, v in x.items() if not k.startswith("_")} for x in scored]})
@@ -1413,9 +1505,9 @@ class RuntimePolicy:
         tracker does not accept keep the belief pose in the returned record."""
         import copy as _copy
 
-        from .estimate import iter_records, objects_from_record
+        from .estimate import iter_records, objects_from_record, series_names
         from .track import filter_readings
-        est = objects_from_record(rec, self.assets(), self.bridge.steps_used, meshes=False)
+        est = objects_from_record(rec, self.assets(), self.bridge.steps_used, meshes=False, unique=prov.unique_labels)
         ok, tev = filter_readings(prov.belief.objects, {l: e for l, e in est.items() if l in prov.belief.objects},
                                   prov.touched)
         kept = sorted(l for l, a in ok.items() if not a)
@@ -1424,9 +1516,11 @@ class RuntimePolicy:
         if not kept:
             return rec
         out = _copy.deepcopy(rec)
+        names = series_names(out) if prov.unique_labels else {}
         for _t, _c, r in iter_records(out):
-            if r.get("label") in kept:
-                o = prov.belief.objects[r["label"]]
+            lab = names.get(id(r), r.get("label"))
+            if lab in kept:
+                o = prov.belief.objects[lab]
                 r["default_pos"], r["default_ori"] = o.pos.tolist(), o.quat.tolist()
                 r.setdefault("_perception", {})["tracker"] = "kept"
         return out

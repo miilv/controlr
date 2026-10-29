@@ -47,15 +47,43 @@ def _asset(assets: AssetDB | None, typ: str, cat: str, idx: int, mesh: bool) -> 
     return AssetInfo(key=f"{typ}/{cat}/{int(idx):05d}", bbox_min=np.full(3, -0.02), bbox_max=np.full(3, 0.02))
 
 
-def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, meshes: bool = True) -> dict[str, ObjectState]:
+def series_names(record: dict) -> dict[int, str]:
+    """``{id(entry): name}`` for the labels ``record`` holds more than once: ``<label>_<k>``, k by x then y (as
+    perception numbers a single-prefix series: ``rigid2`` x 3 -> ``cube_0..cube_2``). Perception keeps a series with
+    per-category prefixes under its config label (classify_objects' ``rigid0`` x 6, prefixes cat0 / cat1 / cat2: which
+    category the generator numbered first is not observable), and keyed by that label the belief kept one of them."""
+    by: dict = {}
+    for _t, _c, r in iter_records(record):
+        if r.get("label"):
+            by.setdefault(r["label"], []).append(r)
+    taken = set(by)
+    out = {}
+    for lab, rs in by.items():
+        if len(rs) < 2:
+            continue
+        rs = sorted(rs, key=lambda r: (round(float(r["default_pos"][0]), 3), float(r["default_pos"][1])))
+        for k, r in enumerate(rs):
+            name = f"{lab}_{k}"
+            while name in taken:
+                name += "x"
+            taken.add(name)
+            out[id(r)] = name
+    return out
+
+
+def objects_from_record(record: dict, assets: AssetDB | None, step: int = 0, meshes: bool = True,
+                        unique: bool = False) -> dict[str, ObjectState]:
     """A digit-category entry (a number card) carries the record's digit read (``dojo.perception.digits.from_record``):
     the digit and its confidence / source, or ``digit_source`` "unread" (digit unknown) when the record has no read
-    for it, so the planner never takes a digit from an index nobody read."""
+    for it, so the planner never takes a digit from an index nobody read. ``unique`` (``RuntimeConfig.series_labels``
+    "numbered"): a label the record holds more than once names each of its objects (``series_names``); off, the last
+    one of them stands for all."""
     from dojo.perception.digits import from_record
 
+    names = series_names(record) if unique else {}
     out = {}
     for typ, cat, r in iter_records(record):
-        lab = r.get("label")
+        lab = names.get(id(r), r.get("label"))
         if not lab:
             continue
         p = r.get("_perception") or {}
@@ -275,7 +303,10 @@ def _label_entry(labels: dict, label: str) -> dict | None:
     if label in labels:
         return labels[label]
     head, _, tail = str(label).rpartition("_")
-    return labels.get(("prefix", head)) if head and tail.isdigit() else None
+    if not (head and tail.isdigit()):
+        return None
+    # a series perception numbered (``series_names``: ``rigid0_3``) is its config label's
+    return labels.get(("prefix", head)) or (labels.get(head) if isinstance(labels.get(head), dict) else None)
 
 
 def _fixed_labels(task: str) -> set:
@@ -406,5 +437,5 @@ def pose_errors(est: dict[str, ObjectState], gt: dict[str, ObjectState]) -> dict
     return out
 
 
-__all__ = ["objects_from_record", "objects_from_gt_rows", "est_objects", "estimate_to_layout", "robot_from_state",
+__all__ = ["series_names", "objects_from_record", "objects_from_gt_rows", "est_objects", "estimate_to_layout", "robot_from_state",
            "flagged", "pose_errors", "iter_records", "planning_record", "PLANNING_ORDER"]

@@ -247,5 +247,6 @@ exec 9>&-
 sleep "${INTEG_YIELD_S:-90}"
 [[ -f "$OUT/services_not_ready" ]] && exit 3
 [[ -f "$OUT/watchdog_fired" ]] && exit 4
+[[ -f "$OUT/side_server_down" ]] && { echo "[integ] side server down: $(head -1 "$OUT/side_server_down")"; exit 4; }   # infra row: the runner re-queues
 exit 0
 }

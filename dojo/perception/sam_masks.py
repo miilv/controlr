@@ -111,24 +111,44 @@ class SamMask:
     point: int = -1  # index of the prompting point (points requests)
 
 
-class SamClient:
-    """Talks to ``serve`` over a unix socket. Thread-unsafe; one per process (``client()``)."""
+class SideServerDown(RuntimeError):
+    """A side server whose address is SET (seg_twin ``DOJO_SEG_ADDR``, glyph_read ``DOJO_GLYPH_ADDR*``) is unreachable,
+    died mid-run, or answered an error. Never a silent "no read": callers re-raise it, the perception service records
+    it (``side_server_down`` in the run dir) and exits, and the eval row is ``infra_failure`` (the runner re-queues)."""
 
-    def __init__(self, addr: str, timeout_s: float = 60.0):
+
+class SamClient:
+    """Talks to ``serve`` over a unix socket. Thread-unsafe; one per process (``client()``). ``loud``: connection loss
+    and server-side errors raise ``SideServerDown`` (the seg / glyph clients) instead of the plain errors (SAM)."""
+
+    def __init__(self, addr: str, timeout_s: float = 60.0, loud: bool = False):
         from multiprocessing.connection import Client
 
         self.addr = addr
-        self.conn = Client(addr, family="AF_UNIX")
+        self.loud = loud
+        try:
+            self.conn = Client(addr, family="AF_UNIX")
+        except (OSError, EOFError) as e:
+            if loud:
+                raise SideServerDown(f"side server at {addr} unreachable: {type(e).__name__}: {e}") from e
+            raise
         self.timeout_s = timeout_s
 
     def _call(self, req: dict, img: np.ndarray) -> dict:
         req = dict(req, key=image_key(img), shape=img.shape)
-        self.conn.send(req)
-        r = self.conn.recv()
-        if r.get("need_image"):
-            self.conn.send({"image": np.ascontiguousarray(img, np.uint8).tobytes()})
+        try:
+            self.conn.send(req)
             r = self.conn.recv()
+            if r.get("need_image"):
+                self.conn.send({"image": np.ascontiguousarray(img, np.uint8).tobytes()})
+                r = self.conn.recv()
+        except (EOFError, OSError) as e:
+            if self.loud:
+                raise SideServerDown(f"side server at {self.addr} gone mid-run: {type(e).__name__}: {e}") from e
+            raise
         if "error" in r:
+            if self.loud:
+                raise SideServerDown(f"side server at {self.addr} error: {r['error']}")
             raise RuntimeError(f"sam server: {r['error']}")
         return r
 
@@ -372,8 +392,8 @@ class _Models:
 
 
 def serve(sock: str, models: list[str], max_hours: float = 6.0, M=None, ready: threading.Event | None = None) -> None:
-    """Answer SAM requests on a unix socket until killed (or ``max_hours``). One thread per client; the GPU is used by
-    one request at a time. ``M``: a models object with ``handle(req, img)`` / ``info()`` (tests pass a fake)."""
+    """Answer SAM requests on a unix socket until killed (or ``max_hours``). One thread per client; the model runs one
+    request at a time (``model_lock``; the image cache under ``img_lock``), so one server can serve several lanes. ``M``: a models object with ``handle(req, img)`` / ``info()`` (tests pass a fake)."""
     from multiprocessing.connection import Listener
 
     if M is None:
@@ -386,6 +406,7 @@ def serve(sock: str, models: list[str], max_hours: float = 6.0, M=None, ready: t
     if ready is not None:
         ready.set()
     images: dict = {}
+    img_lock, model_lock = threading.Lock(), threading.Lock()
     t_end = time.time() + max_hours * 3600
 
     def run(conn):
@@ -396,15 +417,19 @@ def serve(sock: str, models: list[str], max_hours: float = 6.0, M=None, ready: t
                     conn.send({"models": models, **M.info()})
                     continue
                 key = req["key"]
-                img = images.get(key)
+                with img_lock:
+                    img = images.get(key)
                 if img is None:
                     conn.send({"need_image": True})
                     img = np.frombuffer(conn.recv()["image"], np.uint8).reshape(req["shape"])
-                    if len(images) > 64:
-                        images.pop(next(iter(images)))
-                    images[key] = img
+                    with img_lock:
+                        while len(images) > 64:
+                            images.pop(next(iter(images)))
+                        images[key] = img
                 try:
-                    conn.send(M.handle(req, img))
+                    with model_lock:             # one request on the model at a time: a server shared by lanes
+                        out = M.handle(req, img)
+                    conn.send(out)
                 except Exception as e:  # report, keep serving
                     import traceback
 

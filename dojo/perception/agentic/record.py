@@ -203,6 +203,14 @@ def merge_into_record(rec: dict, objects: list[dict], unmatched_cost_m: float = 
                     log.append(ev)
             else:
                 n = N[j - len(B)]
+                if n.get("raised") and (cat in digits.GLYPH_ONLY
+                                        or (cat in digits.DIGIT_OF and digits.as_digit(o.get("value")) is None)):
+                    # a label a count raise added (series_link_raise) is only looked for: the agent's object counts only
+                    # with a digit read, and a 3-D numeral's digit comes from the glyph reader alone, never the agent
+                    # (slrchk2 lnumr 100001: an unread "rigid0" at a clutter spot stopped the skill at "digits unknown",
+                    # where "4 read + 1 not found" places four tiles)
+                    log.append({"label": n["label"], "action": "raised_unread_skipped"})
+                    continue
                 a = str(o.get("asset") or "").split("/")
                 key = o["asset"] if len(a) == 3 and a[1] == cat else next(k for k in n["_keys"] if k.split("/")[1] == cat)
                 typ, _, idx = key.split("/")
@@ -247,7 +255,38 @@ def agentic_estimate(images: dict, state: dict, task: str, instruction: str, bgs
     stats = out.get("_agent") or {"result": "b1_fallback"}
     if stats.get("result", "").startswith("agent"):
         new, log = merge_into_record(rec, out["objects"])
+        if cfg is not None and getattr(cfg, "slot_settle_merged", False):
+            n = settle_record_slots(new, task)
+            if n:
+                stats = {**stats, "slot_children_settled_merged": n}
     else:
         new, log = copy.deepcopy(rec), []
     new.setdefault("_perception", {})["agentic"] = {**{k: v for k, v in stats.items() if k != "refine"}, "merge": log}
     return new
+
+
+def settle_record_slots(rec: dict, task: str) -> int:
+    """``seed_refine.settle_slot_children`` on a merged record, where the labels are the task's: the agent's own
+    output may name an object otherwise (5.1 deposit_coin 100005: "coin" for coin0), and the settle inside the agent's
+    adapter, which looks children up by the task label, then left the coin lying flat in its stand; the skill found no
+    edge grasp (``EstimatorConfig.slot_settle_merged``). Returns how many changed."""
+    from .seed_refine import settle_slot_children
+
+    objs = record_objects(rec)
+    before = {o["label"]: (list(o["pos"]), list(o["quat"])) for o in objs}
+    try:
+        n = settle_slot_children(objs, task)
+    except Exception:  # noqa: BLE001 (a catalogue gap: the merged poses stand)
+        return 0
+    if not n:
+        return 0
+    by = {o["label"]: o for o in objs}
+    for typ in TYPES:
+        for lst in (rec.get(typ) or {}).values():
+            for r in lst:
+                o = by.get(r.get("label"))
+                if o is None or (list(o["pos"]), list(o["quat"])) == before.get(r["label"]):
+                    continue
+                r["default_pos"], r["default_ori"] = [float(v) for v in o["pos"]], [float(v) for v in o["quat"]]
+                r.setdefault("_perception", {})["slot_from_base"] = o.get("slot_from_base")
+    return n

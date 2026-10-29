@@ -189,6 +189,11 @@
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
   dev layouts + `build` into every box's `bg_folds_51/fold{0,1}/scene/Dynamic_conveyor_00001/` (journal
   2026-10-28-dojo-conveyor-belt-blind §5; waits for compute2).
+- [ ] **dojo skills: pick_from_conveyor_by_image, the basket lifted level with the target in it** (stream C, parked;
+  journal/2026-10-29-dojo-conveyor-deposit.md). The checker wants the target on the basket's bottom 8 cm above its
+  start. A rim pinch holds the basket 40 deg tilted. `belt_deposit` (default off) stops it on the belt, drags it toward
+  the robot, drops the target in and lifts it by its handle: G3 1 / 10 on v15 variants. Blockers: the handle bar slides
+  out of the pads (0 / 2), the drag works 5 / 10, target picks slip 3 / 10.
 - [ ] **dojo runtime / perception: pick_from_conveyor_by_image has no skill route and an empty frame-0 record.**
   The instruction "Lift the basket more than 8 cm, identify the target object on the conveyor according to the image on
   the board, pick it up, and place it into the basket." routes to no skill (decision `finish`, "no skill for: ...").
@@ -704,7 +709,9 @@
   move hits egg_basket; via failed: lift ik_fail", or "target unreachable". `fill_holes` plans the drop only after the
   pick. Pairing them (`egg_pair`, branch `feat/dojo-h95-egg-pair`) cut those picks 5 -> 1 on 8 v1 draws but scored the
   same (0.163 vs 0.163) at x3.3 planning time: the eggs it refuses still fail. What binds is the wall's foot (no pick)
-  and the reach to the holes.
+  and the reach to the holes. A slow lift and carry (`egg_carry`, branch `feat/dojo-h95-egg-carry`, journal
+  2026-10-29-dojo-h95-egg-carry) lost fewer eggs in transit but scored the same or lower (0.150 / 0.150, dev 0.235 /
+  0.205). Re-measure on the v15 layouts first: the current fill_egg set is generator v6.
 - [ ] **dojo skills: fill_pen with the joint-5 stop respected** (`joint_limits` "measured"; journal
   2026-10-28-dojo-h95-fill). Many drops now hover 22-24 mm over the rim, because the 6 mm hover needs |q5| > 1.56, and
   some pens still bounce out. pen0, which lies rolled 26 deg on its clip, slips in several grasp families (excluding

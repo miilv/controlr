@@ -33,6 +33,7 @@ TIER_A = {
     "planar_drag_p1": (RESERVE, {}),             # P: planar_drag with the turn direction chosen by feasibility
     "pour_p1": (RESERVE, {}),                    # P: pour with the whole roll profile (no "cup empty" stop)
     "classify_into_bins_v3b": (RESERVE, {}),     # K4: both classify cells; map "auto" = the instruction's fixed map
+    "classify_into_bins_p1": (RESERVE, {}),      # N: v3b whose grounding leaves unnamed / surplus categories on the table
 }
 
 
