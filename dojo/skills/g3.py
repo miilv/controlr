@@ -210,7 +210,7 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
                "kong_draw_read": ("off", "place", "place3"), "kong_draw_first": ("near", "far"),
-               "ported_pour_pace": ("v1", "lean"),
+               "ported_pour_pace": ("v1", "lean", "overlap"),
                "kong_read_look": ("fallback", "always"), "key_handover": ("v1", "v2"), "key_lean": ("off", "on")}
 
 

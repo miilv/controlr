@@ -76,16 +76,26 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
     did not run its whole procedure (a later pour must never come before an earlier one)."""
     from dojo.skills.ported import ported
     done = []
+    held = None                     # overlap: the bottle the other arm grasped and lifted during the previous pour
     for i, (bottle, bowl) in enumerate(pairs):
         sk.refresh()
         from dojo.skills.planner import pour_bottle_call
-        skill, args = pour_bottle_call(getattr(sk, "ported_pour_aim", "v1"), getattr(sk, "ported_pour_pace", "v1"))
+        pace = getattr(sk, "ported_pour_pace", "v1")
+        skill, args = pour_bottle_call(getattr(sk, "ported_pour_aim", "v1"), pace)
         if skill != "pour_bottle" and i < len(pairs) - 1:
             # a lean pour does not home between pours: the checker banks nothing at home (its arms-home condition is
             # "either arm", and the idle arm never leaves), the next pour starts from the retreat (the skill homes
             # the other arm itself when it switches arms), and the episode's finish homes both at the end
             args["home"] = False
+        if pace == "overlap":
+            # the other arm grasps and lifts the next pair's bottle while this pour runs; that pour then starts with
+            # it in hand. The pours themselves stay strictly in order
+            if i < len(pairs) - 1:
+                args["companion"] = [f"@{pairs[i + 1][0]}", f"@{pairs[i + 1][1]}"]
+            if held is not None:
+                args["pre_held"] = held
         r = ported(sk, skill, {"container": f"@{bottle}", "target": f"@{bowl}", **args}, reserve=reserve)
+        held = r.get("companion")
         sk.log(f"[pour_order] {i + 1}/{len(pairs)} {bottle} -> {bowl}: ok {r.get('ok')} verified {r.get('verified')} "
                f"steps {r.get('steps')} {str(r.get('error') or '')[:120]}")
         if not r.get("ok"):

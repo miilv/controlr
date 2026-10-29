@@ -67,7 +67,9 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
     """Run one vendored skill through the adapter. ``args`` may name objects as ``"@<belief label>"``."""
     from dojo.skills.skills import SkillResult
     r0, a0 = TIER_A.get(skill, (RESERVE, {}))
-    robot = HarnessRobot(sk, reserve=r0 if reserve is None else int(reserve))
+    # the two-arm move verb exists only for the overlap pour pace (stream H; ``harness_robot.PAIR_COMMANDS``)
+    robot = HarnessRobot(sk, reserve=r0 if reserve is None else int(reserve),
+                         pair_moves=skill == "pour_bottle_lean" and getattr(sk, "ported_pour_pace", "v1") == "overlap")
     n0 = sk.ex.steps_used
     try:
         rep = robot.run_skill(skill, {**a0, **(args or {})})
@@ -100,8 +102,11 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
                                                         "details": _clip(rep.get("details"))}]
     # "ok" = the skill ran its whole procedure (robot-harness's ``ok``), so the runtime's supervisor does not run it a
     # second time (his runs call it once per episode); a skill that could not start (grounding, an error) is not ok
-    return {"ok": bool(rep.get("ok")), "status": status, "skill": f"ported:{skill}", "steps": steps,
-            "verified": verified, "error": note, "source": f"robot-harness {SOURCE_COMMIT[:7]} skills/{skill}"}
+    out = {"ok": bool(rep.get("ok")), "status": status, "skill": f"ported:{skill}", "steps": steps,
+           "verified": verified, "error": note, "source": f"robot-harness {SOURCE_COMMIT[:7]} skills/{skill}"}
+    if rep.get("companion") is not None:          # pour_bottle_lean's overlap: the next bottle the other arm now holds
+        out["companion"] = rep["companion"]
+    return out
 
 
 SKILLS = {"ported": ported}

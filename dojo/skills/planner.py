@@ -223,7 +223,12 @@ POUR_AIM = {"v1": None, "b10": 0.010, "b20": 0.020}
 # bottle turn 20-74 deg in the hand; on pour_liquid's bottles "lean" lost 10 of 10 (in-hand slips)
 POUR_PACE = {"v1": None,
              "lean": {"rush_to": 90, "rush_carry": True, "rush_ramp": 8, "drain_steps": 12, "untilt_phis": (90, 0),
-                      "untilt_speed": "normal", "lift_speed": "normal"}}
+                      "untilt_speed": "normal", "lift_speed": "normal"},
+             # "overlap": v1's stages (no rush), the tilt-up below 100 deg and the untilt at 0.8 of the held joint limit
+             # (v1 "slow" = 0.6), a 12-step drain; pour_order adds the other arm grasping and lifting the next bottle
+             # during each pour (``companion``) and no home between pours. The camera rows (compute1) slipped 5 of 12
+             # lean pours, v1's pace none of 10, and three v1-speed pours cannot fit 800 steps even fully overlapped
+             "overlap": {"tilt_speed": 0.8, "untilt_speed": 0.8, "drain_steps": 12}}
 
 
 def pour_bottle_call(aim: str | None, pace: str | None) -> tuple[str, dict]:
