@@ -368,6 +368,9 @@ class RuntimeConfig:
     # insert_key's turn (``regrasp.turn_held``, ``Skills.key_lean``): off (today: a turn that does not fit the steps left
     # is not started) | on (it runs as far as the steps left allow: the checker passes part-way through the turn)
     key_lean: str = "off"
+    # insert_key's turn in the lock (``regrasp.turn_in_lock``, ``Skills.key_turn2``): off (today) | on (when no grasp's
+    # wrist reaches 60 % of the turn: a first stage as far as the best one reaches, let go, a fresh grasp for the rest)
+    key_turn2: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -482,6 +485,7 @@ class RuntimePolicy:
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
+                or self.cfg.key_turn2 not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on")
@@ -766,6 +770,7 @@ class RuntimePolicy:
             sk_.kong_draw_read = cfg.kong_draw_read
             sk_.key_handover = cfg.key_handover
             sk_.key_lean = cfg.key_lean
+            sk_.key_turn2 = cfg.key_turn2
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"

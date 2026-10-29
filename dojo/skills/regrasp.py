@@ -202,10 +202,10 @@ MIN_TURN_FRAC = 0.7                 # of the turn the taker's wrist must reach a
                                     # lock's narrow zone at -30..-36 deg commanded, probes; -36 = 0.6 left no margin)
 
 
-def _turn_reach(sk: Skills, arm: str, T_tg, T_ko, q0, turn_rad: float) -> float:
-    """The largest of ``TURN_FRACTIONS`` whose stepped turn (``_turn_schedule``) the arm follows from ``q0`` at the
-    target with the grasp ``T_ko``; 0 when none."""
-    for frac in TURN_FRACTIONS:
+def _turn_reach(sk: Skills, arm: str, T_tg, T_ko, q0, turn_rad: float, fracs=None) -> float:
+    """The largest of ``fracs`` (default ``TURN_FRACTIONS``) whose stepped turn (``_turn_schedule``) the arm follows
+    from ``q0`` at the target with the grasp ``T_ko``; 0 when none."""
+    for frac in (TURN_FRACTIONS if fracs is None else fracs):
         q, ok = q0, True
         sched = _turn_schedule(abs(math.degrees(turn_rad * frac)))
         for f in sched:
@@ -805,8 +805,12 @@ def _turned_about(T, c, ang: float) -> np.ndarray:
     return T
 
 
+STAGE_FRACTIONS = (0.5, 0.45, 0.4, 0.35, 0.3)   # ``Skills.key_turn2``: a first stage of the turn, when no grasp reaches
+                                                # TURN_FRACTIONS[-1] of it
+
+
 def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm: str | None = None,
-                 T_seat=None) -> SkillResult:
+                 T_seat=None, _staged: bool = False) -> SkillResult:
     """Grip the object standing in its receptacle (``top_grasps_at`` its pose there, ``vertical_grasps_at`` when none of
     those reaches 60% of the turn) with the arm and grasp whose wrist reaches the most of the turn, then ``turn_held``.
     The arm that let go goes home first when the other one turns."""
@@ -814,6 +818,7 @@ def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm:
     w = sk.refresh()
     o = w.obj(label)
     best = None
+    stage = None                                  # (cost, arm, note, T_ko, width, frac): the best first stage
     # the tilted grasps (the handover's family); straight down only when none of them reaches 60% of the turn (G3
     # 100021 / 100023). Preferred whenever it reached all of it, a straight-down grasp's turn did not plan from the
     # measured grip (100003: "no turn of -60 deg reaches", where a tilted grasp's 85% had turned it -51 deg)
@@ -835,11 +840,21 @@ def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm:
                 T_up[2, 3] += TURN_LIFT
                 frac = _turn_reach(sk, arm, T_up, T_ko, r.q, turn)
                 if frac < TURN_FRACTIONS[-1]:             # -36 of -60 at least (the key snaps through by -30..-36)
+                    if getattr(sk, "key_turn2", "off") == "on" and not _staged:
+                        fs = _turn_reach(sk, arm, T_up, T_ko, r.q, turn, fracs=STAGE_FRACTIONS)
+                        if fs > 0 and (stage is None or fs > stage[5] + 1e-9):
+                            stage = (0.0, arm, note, T_ko, width, fs)
                     continue
                 cost = (3.0 * (1.0 - frac) + 0.3 * float(np.abs(r.q - sk.ex.q[arm]).max())
                         + (0.0 if arm == last_arm else 0.2))
                 if best is None or cost < best[0]:
                     best = (cost, arm, note, T_ko, width, frac)
+    staged = False
+    if best is None and stage is not None:
+        # ``Skills.key_turn2``: no grasp's wrist reaches 60 % of the turn (G3 mode A, v15 dev layouts: 5 / 20 ended here or
+        # at "no turn of -60 deg reaches"): the turn in two stages, the first as far as the best grasp reaches, then let go
+        # and a fresh grasp for the rest
+        best, staged = stage, True
     if best is None:
         return sk._record(SkillResult(False, "turn", "ik_fail", 0, None,
                                       note=f"{label}: no grasp in the {receptacle} reaches {TURN_FRACTIONS[-1]:.0%} of the turn"))
@@ -873,7 +888,32 @@ def turn_in_lock(sk: Skills, label: str, receptacle: str, turn: float, last_arm:
     o = w.obj(label)
     T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ o.T
     sk.held[arm] = Held(label, T_rel, held_box(o, T_rel), G.Grasp("turn_grip", o.T @ inv_T(T_rel), width, note=note))
-    return sk._record(turn_held(sk, arm, label, turn, T_seat=T_seat))
+    yaw0 = math.atan2(o.R[1, 0], o.R[0, 0])
+    if not staged:
+        rt = turn_held(sk, arm, label, turn, T_seat=T_seat)
+        if (rt.status != "ik_fail" or getattr(sk, "key_turn2", "off") != "on" or _staged):
+            return sk._record(rt)
+        # ``Skills.key_turn2``: the measured grip's turn does not reach (G3 mode A: "no turn of -60 deg reaches" after a
+        # grasp planned to reach 60 %): a first stage with this grip as far as it reaches, then the rest
+        for f in STAGE_FRACTIONS:
+            rt = turn_held(sk, arm, label, turn * f, T_seat=T_seat)
+            if rt.status != "ik_fail":
+                break
+        sk._record(rt)
+        if rt.status in ("ended", "step_budget") or not rt.ok:
+            return rt
+        frac = f
+    else:
+        rt = sk._record(turn_held(sk, arm, label, turn * frac, T_seat=T_seat))
+        if rt.status in ("ended", "step_budget") or not rt.ok:
+            return rt
+    o = sk.refresh().obj(label)
+    done = (math.atan2(o.R[1, 0], o.R[0, 0]) - yaw0 + math.pi) % (2 * math.pi) - math.pi
+    rest = turn - done if abs(done) < abs(turn) else turn * (1.0 - frac)
+    sk.log(f"[turn_in_lock] {label}: first stage {math.degrees(done):.0f} deg; the rest {math.degrees(rest):.0f} deg "
+           f"with a fresh grasp")
+    _let_go(sk, arm, label)
+    return turn_in_lock(sk, label, receptacle, rest, last_arm=arm, T_seat=None, _staged=True)
 
 
 def _turn_schedule(deg: float) -> list[float]:
