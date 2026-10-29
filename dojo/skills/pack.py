@@ -30,6 +30,8 @@ from dojo.skills.kinematics import ARMS
 LANE_GAP = 0.006          # m: between neighbours across the box
 WALL_MARGIN = 0.004       # m: inside the box's floor polygon
 YAWS_DEG = (0.0, 15.0, -15.0, 30.0, -30.0)   # around the ideal heading (front within 45 / 60 deg)
+RELEASE_UP = 0.008       # m: a packed object is let go this far over the box's floor (or what is inside)
+MAX_SPOTS = 2            # relay spots ``place_oriented`` may try for one object (planning time)
 SIDES = {"left": np.array([-1.0, 0.0]), "right": np.array([1.0, 0.0])}
 
 
@@ -204,6 +206,8 @@ def pack_box(sk, objects: list[str], box: str, facing: str = "left", tries: int 
     sk.log(f"[pack] box rim {g['rim']:.3f} floor {g['floor']:.3f}; slots "
            f"{ {k: (np.round(v['xy'], 3).tolist(), round(math.degrees(v['heading']), 1), v['top']) for k, v in slots.items()} }"
            + (f"; no front known: {unknown}" if unknown else ""))
+    from dojo.skills.library import container_obstacle
+    container_obstacle(sk, box)
     st = w.notes.setdefault("pack", {"inside": []})
     order = [k for k in slots if not slots[k]["top"]] + [k for k in slots if slots[k]["top"]]
     failed = []
@@ -218,11 +222,13 @@ def pack_box(sk, objects: list[str], box: str, facing: str = "left", tries: int 
             inside = [x for x in st["inside"] if x in w.objects]
             # the release: fingertips over the side walls' top, or over the top of what is already in the box
             top = max([float((b.T @ np.r_[0.0, 0.0, g["rim"], 1.0])[2])] + [w.obj(x).top_z for x in inside])
-            tg = pack_targets(sk, k, slots[k], floor_z if not slots[k]["top"] else top - 0.01)
-            r = place_oriented(sk, k, tg, yaw_sym=1, tol_xy=0.06, tol_tilt=45.0, tol_z=0.25, ignore=(box, *inside),
-                               place_kw={"pre_h": 0.04, "release_gap": 0.0, "settle": 1, "fingers_out": True,
-                                         "ref_top": top + 0.01, "grip_only": (box, *inside)},
-                               air_handover=False)
+            # released RELEASE_UP over the floor (or over what is already inside), the box an obstacle by its mesh's
+            # height map (``container_obstacle``): its open inside is free. The box's bbox as a grip_only obstacle left
+            # no grasp-place pair at all (the gripper inside a solid box: G3 v1 100030, 0 of ~2000 pairs)
+            tg = pack_targets(sk, k, slots[k], (floor_z if not slots[k]["top"] else top - 0.01) + RELEASE_UP)
+            r = place_oriented(sk, k, tg, yaw_sym=1, tol_xy=0.06, tol_tilt=45.0, tol_z=0.25, ignore=tuple(inside),
+                               place_kw={"pre_h": 0.04, "release_gap": 0.0, "settle": 1}, air_handover=False,
+                               max_spots=MAX_SPOTS)
             sk.log(f"[pack] {k} -> {np.round(slots[k]['xy'], 3).tolist()} (try {t + 1}): {r.status} {r.note[:120]}")
             for a in ARMS:
                 if sk.held[a] is not None:
