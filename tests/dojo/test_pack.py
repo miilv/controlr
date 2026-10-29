@@ -110,3 +110,22 @@ def test_targets_turn_the_front_to_the_side():
         f = (T[:3, :3] @ pack.front_axis(w.obj("shoe")))[:2]
         ang = math.degrees(math.acos(float(f @ np.array([-1.0, 0.0])) / float(np.linalg.norm(f))))
         assert ang <= 30.0 + 1e-6                                          # within YAWS_DEG of facing left
+
+
+def test_pack_box_uses_the_box_height_map_and_no_grip_only(monkeypatch):
+    """The box is an obstacle by its mesh's height map (its open inside free), never a grip_only solid: as grip_only its
+    bbox left no grasp-place pair at all (CPU replay of G3 v1 100030: 0 of ~2000)."""
+    from types import SimpleNamespace
+
+    from dojo.skills import library
+    seen, kws = [], []
+    monkeypatch.setattr(library, "container_obstacle", lambda sk_, label: seen.append(label))
+    monkeypatch.setattr(library, "place_oriented", lambda sk_, k, tg, **kw: kws.append(kw) or SimpleNamespace(
+        ok=False, status="ik_fail", steps=0, note="test"))
+    w = _world([_shoebox(), _shoe(), _car()])
+    sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, held={"left": None, "right": None},
+                         bank=lambda: None, _record=lambda r: r)
+    r = pack.pack_box(sk, [k for k in w.objects if k != "box"], "box", "left", tries=2)
+    assert seen == ["box"] and not r["ok"]
+    assert kws and all("grip_only" not in kw["place_kw"] and "box" not in kw["ignore"] for kw in kws)
+    assert len(kws) == len([k for k in w.objects if k != "box"])      # a planning failure that moved nothing: one try

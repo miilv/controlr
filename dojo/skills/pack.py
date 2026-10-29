@@ -246,9 +246,11 @@ def pack_box(sk, objects: list[str], box: str, facing: str = "left", tries: int 
             if r.status in ("step_budget", "ended"):
                 return {"ok": False, "stage": "pack", "note": f"inside {st['inside']}, budget"}
             if not r.steps and r.status in ("ik_fail", "collision"):
-                break                       # nothing moved: the same world plans the same again (planning time)
+                failed.append(k)            # nothing moved: the same world plans the same again (planning time)
+                break
         else:
             failed.append(k)
+    failed = sorted(set(failed) - set(st["inside"]))
     if failed or unknown:
         return {"ok": False, "stage": "pack", "note": f"inside {st['inside']}, failed {failed}, unknown {unknown}"}
     return {"ok": True, "stage": "packed", "note": f"inside {st['inside']}"}
