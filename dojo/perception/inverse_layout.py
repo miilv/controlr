@@ -3325,6 +3325,102 @@ def _seg_groups(key: str, pending) -> list[int]:
     return [gi for gi, g, _ in pending if any(k.split("/")[1] == cat for k in g["candidates"])]
 
 
+SUPPORT_DIR = os.path.join(os.path.dirname(__file__), "data", "support")
+SUPPORT_MATCH = 6.0     # mean |RGB| difference inside the head mask: the support robot stands at its home (imitate's
+                        # dev / training frames 1.8-2.8; make_kong's opponent at its own home 9.9-10.0: not this robot)
+
+
+@lru_cache(maxsize=1)
+def _support_models() -> tuple:
+    """(name, head RGB reference, {view: mask}) per ``data/support/<name>_cam_head.png`` (RGBA, alpha = the robot's
+    head-view mask at its home; from a training render's instance codes) and its ``<name>_<wrist>.png`` masks."""
+    out = []
+    if not os.path.isdir(SUPPORT_DIR):
+        return ()
+    for f in sorted(os.listdir(SUPPORT_DIR)):
+        if not f.endswith("_cam_head.png"):
+            continue
+        name = f[: -len("_cam_head.png")]
+        im = cv2.imread(os.path.join(SUPPORT_DIR, f), cv2.IMREAD_UNCHANGED)
+        if im is None or im.ndim != 3 or im.shape[2] != 4:
+            continue
+        masks = {"cam_head": im[..., 3] > 0}
+        for v in ("cam_left_wrist", "cam_right_wrist"):
+            w = cv2.imread(os.path.join(SUPPORT_DIR, f"{name}_{v}.png"), cv2.IMREAD_GRAYSCALE)
+            if w is not None:
+                masks[v] = w > 0
+        out.append((name, cv2.cvtColor(im[..., :3], cv2.COLOR_BGR2RGB), masks))
+    return tuple(out)
+
+
+def _support_mask(views: dict, state: dict) -> dict:
+    """``cfg.support_mask``: a support robot found at its home pose in the head view (``_support_models``, within
+    ``SUPPORT_MATCH``) has its pixels unknown (not foreground; robot) in the head view and, with our arms at home, in
+    the home wrist views. Edits ``views`` in place; returns what was applied."""
+    from .segment import is_home
+
+    head = views.get("cam_head")
+    if head is None:
+        return {"why": "no head view"}
+    at_home = all(is_home(state).values())
+    for name, ref, masks in _support_models():
+        m = masks["cam_head"]
+        if head.img.shape[:2] != m.shape:
+            continue
+        diff = float(np.abs(head.img[m].astype(np.float32) - ref[m].astype(np.float32)).mean())
+        if diff > SUPPORT_MATCH:
+            continue
+        done = []
+        for v, mk in masks.items():
+            vm = views.get(v)
+            if vm is None or vm.known.shape != mk.shape or (v != "cam_head" and not at_home):
+                continue
+            vm.known = (vm.known & ~mk).astype(np.uint8)
+            vm.fg = (vm.fg & ~mk).astype(np.uint8)
+            vm.robot = (vm.robot | mk).astype(np.uint8)
+            done.append(v)
+        return {"applied": name, "diff": round(diff, 2), "views": done}
+    return {"why": "no support robot at its home"}
+
+
+def _wrist_seg_blobs(images: dict, views: dict, state: dict, cfg) -> tuple[list, dict]:
+    """``cfg.wrist_pool``: the twin segmenter's masks in the home wrist views (known pixels only, >= ``MIN_BLOB_PX``)
+    as class-agnostic blobs for ``_propose``. Our arms must be at home (the frame-0 views); none without a segmenter."""
+    from . import seg_twin
+    from .segment import is_home
+
+    info = {"blobs": 0}
+    if not all(is_home(state).values()):
+        info["why"] = "arms moved"
+        return [], info
+    c = seg_twin.client()
+    if c is None:
+        info["why"] = "no segmenter server"
+        return [], info
+    out = []
+    for v in ("cam_left_wrist", "cam_right_wrist"):
+        if v not in images or v not in views:
+            continue
+        vm = views[v]
+        try:
+            dets = c.detect(images[v], conf=cfg.seg_min_score)
+        except SideServerDown:
+            raise
+        except Exception as e:  # a detector failure never takes perception down
+            info["error"] = f"{type(e).__name__}: {e}"
+            continue
+        for d in dets:
+            m = ((d.mask > 0) & (vm.known > 0)).astype(np.uint8)
+            a = int(m.sum())
+            if a < MIN_BLOB_PX.get(v, 150):
+                continue
+            ys, xs = np.nonzero(m)
+            out.append(Blob(v, m, a, np.array([xs.mean() + 0.5, ys.mean() + 0.5]),
+                            (int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1))))
+    info["blobs"] = len(out)
+    return out, info
+
+
 def _seg_blob(mask: np.ndarray, known: np.ndarray) -> Blob | None:
     m = ((mask > 0) & (known > 0)).astype(np.uint8)
     a = int(m.sum())
@@ -3806,6 +3902,14 @@ class EstimatorConfig:
     slot_assembly: bool = True  # a base with slot objects is also proposed as one shape with them (settled poses)
     wrist_proposals: bool = True  # single-target groups with a poor head fit also propose from wrist blobs
     wrist_fallback_loss: float = 0.6
+    # support_mask: a support robot standing at its home pose in the head view (``data/support/<name>_cam_head.png``:
+    # its appearance + mask, matched within SUPPORT_MATCH) has its pixels unknown, not foreground, in the head and the
+    # home wrist views (imitate's demonstrator Franka merged with the far objects into one head blob), when our arms
+    # are at home too. wrist_pool: the twin segmenter's wrist-view masks at the home pose go into the proposal pool as
+    # class-agnostic blobs before the scene-level selection (an object the head view cannot separate stands alone in a
+    # wrist view). Both off by default
+    support_mask: bool = False
+    wrist_pool: bool = False
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     # a select list that holds every category of its entry exactly once (``hierarchical``, k categories x 1 instance), and
     # the ``same_as_label`` copies of such a list: a list whose objects (told apart by the lists' generator regions) repeat
@@ -4079,6 +4183,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     for name, cam_v, img_v in extra_views or []:
         views[name] = segment_virtual(img_v, cam_v, bgs, thr=cfg.fg_thr)
     t_seg = time.time() - t0
+    support_info = _support_mask(views, state) if cfg.support_mask else None
     head_blobs = blobs(views["cam_head"], "cam_head")
     groups = label_groups(task)
     if cfg.twin_union_pool:
@@ -4279,6 +4384,15 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if cfg.split_merged:
         head_blobs = _split_merged(head_blobs, pending, shapes_by_group, views)
     refined = _propose(head_blobs, pending, shapes_by_group, views, cfg, groups)
+    wpool_info = None
+    if cfg.wrist_pool:
+        wb, wpool_info = _wrist_seg_blobs(images, views, state, cfg)
+        if wb:
+            more = _propose(wb, pending, shapes_by_group, views, cfg, groups, blob_offset=8000)
+            for h in more:
+                h.per_view["from_wrist_seg"] = True
+            refined += more
+            wpool_info["hyps"] = len(more)
     if cfg.region_seeds:  # only groups the blob proposals left short (seeds can win by hiding in unknown pixels)
         short = [(gi, g, p) for gi, g, p in pending
                  if len({h.blob for h in refined if h.label_group == gi}) < len(g["labels"])]
@@ -4772,6 +4886,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                              "views": list(views), "unexplained": unexplained}
     if sam_info:
         record["_perception"]["sam"] = sam_info
+    if support_info is not None:
+        record["_perception"]["support_mask"] = support_info
+    if wpool_info is not None:
+        record["_perception"]["wrist_pool"] = wpool_info
     ranking = {lab: g["target_ranking"] for g in groups if g.get("target_ranking") for lab in g["labels"]}
     if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
         record["_perception"]["target_ranking"] = ranking
