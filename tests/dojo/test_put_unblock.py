@@ -48,3 +48,24 @@ def test_unblock_is_off_by_default_and_validated():
     import pytest
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(mode="perception", put_into_opts=["unblok"]), assets=None)
+
+
+def test_gentle_slows_the_drop_carry(monkeypatch):
+    from dojo.skills.motion import CARRY, HeldBox, MoveResult
+    from dojo.skills.skills import Held
+    sk = _sk()
+    sk.refresh()
+    T = np.eye(4)                                    # the bottle's box centred on the TCP
+    sk.held["left"] = Held("bottle3", T, HeldBox(T, np.zeros(3), np.array([0.0275, 0.0275, 0.095])))
+    seen = []
+
+    def to_pose(arm, q0, T_goal, step_rad=0.18, name="move", gripper=1.0, ignore=(), held=None, check=True, ease=4):
+        seen.append((step_rad, ease))
+        return MoveResult("ik_fail", arm, note="recorded")
+    monkeypatch.setattr(sk.motion, "to_pose", to_pose)
+    library.plan_drop(sk, "left", (-0.78, -0.1))
+    assert seen and set(seen) == {(CARRY, 3)}                                    # today
+    seen.clear()
+    sk.put_into_opts = {"gentle"}
+    library.plan_drop(sk, "left", (-0.78, -0.1))
+    assert seen and set(seen) == {library.DROP_GENTLE}

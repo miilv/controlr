@@ -688,6 +688,10 @@
   top-down grasp keeps the finger's root block (38 x 56 mm) out of the wall. `nudge_from_wall` pushes one off when its
   fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
+- [ ] **dojo skills: put_bottles, what is left after unblock + gentle** (stream H, journal
+  2026-10-29-dojo-h95-put-bottles-v15; G3 v15 dev draws 13/16).
+  - An arm's reset home after a failed pick sweeps straight through and knocked a standing bottle over (100032).
+  - The left arm's side pinch on standing bottles slips (rose -59 / -92 mm; 100032, 100049).
 - [ ] **dojo skills: pour_by_language, the lean pour's remaining failures** (stream H, journal
   2026-10-29-dojo-h95-pour-lean; `ported_pour_pace` "lean", G3 3/10, successes end at steps 721-754 of 800).
   Failures:
