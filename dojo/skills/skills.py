@@ -300,6 +300,8 @@ class Skills:
         # ``align.align_in_row`` in mode B (stream N): "seq" (today: hover, refine and slide one block after the other)
         # | "parallel" (both movers' hovers in one move, each wrist refines, both slides in the same steps when apart)
         self.align_measure = "seq"
+        # ``tiles`` (stream N): numeral grasps "any" (today) | "flat" (the pads on faces square to the closing axis)
+        self.tile_grasp = "any"
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"

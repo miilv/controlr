@@ -317,3 +317,26 @@ def test_the_unreadable_placeholder_on_the_empty_pad_is_the_empty_slot(monkeypat
     r = tiles.complete_equation(Sk())
     assert r["ok"] and looked == ["t2", "t2"]
     assert placed == [("num_2", "mat2", ("t2",))]
+
+
+def test_flat_numeral_grasps_behind_tile_grasp():
+    """``flat`` (tile_grasp, default "any"): a numeral's grasp must meet faces square to the closing axis on both pads;
+    one across a slanted stroke (a parallelogram's slanted sides) is refused. "any" keeps today's behaviour."""
+    from types import SimpleNamespace
+
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.geometry import T_from
+    from dojo.skills.kinematics import down_R
+    xs = [(-0.022, -0.025), (0.002, -0.025), (0.022, 0.025), (-0.002, 0.025)]
+    V = np.array([[x, y, z] for z in (-0.008, 0.008) for x, y in xs], float)
+    F = np.array([[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [1, 5, 6], [1, 6, 2],
+                  [2, 6, 7], [2, 7, 3], [3, 7, 4], [3, 4, 0]])
+    info = AssetInfo(key="Rigid/number/00007", bbox_min=V.min(0), bbox_max=V.max(0), mesh=(V, F))
+    o = ObjectState("n7", "Rigid", "number", 7, np.array([0.0, -0.15, Z_TABLE + 0.008]), np.array([1.0, 0, 0, 0]), info)
+    across_y = SimpleNamespace(method="box", T=T_from(o.pos, down_R(math.pi / 2)))   # flat top / bottom edges
+    across_x = SimpleNamespace(method="box", T=T_from(o.pos, down_R(0.0)))           # the slanted sides
+    flat = tiles.centred_grasp(o, flat=True)
+    assert flat(across_y, None, None, None) and not flat(across_x, None, None, None)
+    anyg = tiles.centred_grasp(o)
+    assert anyg(across_y, None, None, None) and anyg(across_x, None, None, None)
+    assert RuntimeConfig().tile_grasp == "any"

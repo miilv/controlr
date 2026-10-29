@@ -310,6 +310,9 @@ class RuntimeConfig:
     # ``align.align_in_row`` in mode perception (``Skills.align_measure``): seq (today) | parallel (both movers' hovers
     # and refines at once, both slides in the same steps when their paths keep apart: ~65-80 steps instead of ~128)
     align_measure: str = "seq"
+    # ``tiles``' numeral grasps (``Skills.tile_grasp``): any (today) | flat (pads on faces square to the closing axis:
+    # not across a "7"'s or a "2"'s slanted stroke)
+    tile_grasp: str = "any"
     # belt picks (``interactive.pick_from_belt`` / ``match_and_pick``, ``Skills.belt_wrist_veto``): off (today) | on (a
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
@@ -418,6 +421,7 @@ class RuntimePolicy:
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
+                or self.cfg.tile_grasp not in ("any", "flat")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
@@ -687,6 +691,7 @@ class RuntimePolicy:
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
             sk_.align_measure = cfg.align_measure
+            sk_.tile_grasp = cfg.tile_grasp
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
