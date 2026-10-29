@@ -2355,13 +2355,14 @@ def kong_match(w, hand: list[str], discard: str) -> tuple[list[str], str | None]
     return [l for l in read if w.obj(l).asset.key == d.asset.key], None
 
 
-def kong_read(sk: Skills, label: str, look: str | None = "down") -> dict | None:
+def kong_read(sk: Skills, label: str, look: str | None = "down", skip_first: bool = False) -> dict | None:
     """make_kong (``Skills.kong_draw_read`` on): ``label``'s glyph read from the images by the refine hook of kind
     "read" (perception: the tile classifier on the head view and the nearer arm's wrist view, the larger margin; the
     belief's pose is never written by it). Unread: one wrist look and the read once more with that arm. ``look``:
     "down" (a face-up tile: the hand straight down over it, ``LOOK_HEIGHT``, lower when out of reach), "front" (a
     standing tile's face toward the robot: the hand ``FRONT_LOOK`` in front of and above it, looking at it from 45 deg
-    up), None (no look). Returns the read ({"read", "name", "margin", "why", "view"}) or None (no refine hook)."""
+    up), None (no look). ``skip_first``: straight to the look (a second view of a tile already read once). Returns the
+    read ({"read", "name", "margin", "why", "view"}) or None (no refine hook)."""
     from dojo.skills.regrasp import LOOK_HEIGHT, _look_move
     o = sk.world.obj(label)
     arms = sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.center_w[:2])))
@@ -2378,7 +2379,7 @@ def kong_read(sk: Skills, label: str, look: str | None = "down") -> dict | None:
         lr = getattr(sk, "last_refine", None) or {}
         return lr.get("glyph") if lr.get("label", label) == label else None
 
-    g = once(arms[0])
+    g = None if skip_first else once(arms[0])
     if (g or {}).get("read") or look is None or sk.refine is None:
         return g
     o = sk.world.obj(label)
@@ -2465,8 +2466,8 @@ def kong_draw_read(sk: Skills, st: dict, hand: list[str], match: list[str], tops
     """``Skills.kong_draw_read`` "place": the wall draw read from the images before it is used (Legality D-C17 (3)).
     The hand pair's glyph is the asset two unmatched hand tiles were read as. Each stack top in turn (nearest the hand
     row first: an order only, never an identity) is stood on a free spot near ``READ_SPOT`` with its face shown to the
-    head camera (``facings_to_head``), both arms go home, and it is read there (head + wrist views; unread: one front
-    wrist look). Read as the pair's glyph: carried to the free (+x) end of the hand row (the kong). Read as another
+    head camera (``facings_to_head``), both arms go home, and it is read there (head + wrist views; unread, or read as
+    another glyph: one front wrist look, the pair's glyph in either view keeps it). Read as the pair's glyph: carried to the free (+x) end of the hand row (the kong). Read as another
     glyph: it stays on its read spot (no checker term covers the wall tiles) and the next top is tried. Unread: it
     stays there and the skill stops ("draw"). It never reaches the target unread: RoboDojo scores the stand the moment
     the tile is released there (G3: success at the release, before a read at the target could run)."""
@@ -2503,10 +2504,20 @@ def kong_draw_read(sk: Skills, st: dict, hand: list[str], match: list[str], tops
             return {"ok": False, "stage": f"stand {cand}", "result": res}
         sk.home()
         g = kong_read(sk, cand, look="front")
-        sk.home()
         name = (g or {}).get("name") if (g or {}).get("read") else None
-        st["draw_tries"].append({"label": cand, "read": name, "why": (g or {}).get("why"), "view": (g or {}).get("view")})
-        sk.log(f"[kong] drawn {cand} read: {name or (g or {}).get('why')}")
+        reads = [(name, (g or {}).get("view"), (g or {}).get("margin"))]
+        if name is not None and name != pair:
+            # a second view before the tile is given up (5.1 camera 100000: the head read the drawn pair tile as
+            # another glyph at margin 0.79; a rejected first try costs the episode: the second top does not fit in the
+            # step budget, G3 far-first 582-586 of 600): the front wrist look; the pair's glyph read in either view keeps it
+            g2 = kong_read(sk, cand, look="front", skip_first=True)
+            n2 = (g2 or {}).get("name") if (g2 or {}).get("read") else None
+            reads.append((n2, (g2 or {}).get("view"), (g2 or {}).get("margin")))
+            if n2 == pair:
+                name = n2
+        sk.home()
+        st["draw_tries"].append({"label": cand, "read": name, "reads": reads, "why": (g or {}).get("why")})
+        sk.log(f"[kong] drawn {cand} read: {name or (g or {}).get('why')} (views {reads})")
         if name is None:
             return {"ok": False, "stage": "draw", "note": f"the drawn {cand} was not read ({(g or {}).get('why')}): left "
                                                          f"on its read spot"}

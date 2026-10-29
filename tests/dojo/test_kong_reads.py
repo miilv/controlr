@@ -145,3 +145,12 @@ def test_g3_answers_a_read_only_when_the_glyph_faces_a_camera():
     assert g3.glyph_gt_read(env_with(away), None, "t", None) == {"read": False, "name": None, "margin": None,
                                                                  "why": "back"}
     assert g3.glyph_gt_read(env_with(away), None, "nope", None)["why"] == "not visible"
+
+
+def test_a_second_view_skips_the_first_read_and_looks(monkeypatch):
+    from dojo.skills import library as L
+    monkeypatch.setattr(L, "_front_look_move", lambda sk, arm, o: "move")
+    monkeypatch.setattr(L, "ArmPlan", lambda arm, q, g: SimpleNamespace(move=lambda mv: SimpleNamespace(hold=lambda n: "p")))
+    sk = _FakeSkills([{"read": True, "name": "Rigid/mahjong/00007", "view": "cam_left_wrist"}])
+    g = L.kong_read(sk, "m", look="front", skip_first=True)
+    assert g["name"] == "Rigid/mahjong/00007" and len(sk.calls) == 1 and sk.ran == ["look at m"]
