@@ -341,6 +341,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   / low-margin crop, the tile stays unread ("unknown"). The margins (per view kind) live in the checkpoint and were
   chosen on 100030-49 validation draws; never pick them on the held-out ids. One server serves one model (kong tiles
   or digits / operators); a second reader takes its own socket (`GlyphClient(addr)` as `client_`).
+- **A straight-down wrist look sees the table upside down.** `regrasp._look_move` tries wrist yaw 0 first, and that
+  pose rolls the wrist camera 180 deg against the head camera and the home wrist (world +y points down in the image).
+  The digit reader was trained on head / home-roll crops with a small rotation augmentation. Seen that way, a 6 reads as
+  a 9 at a confident margin, and 2 / 3 / 4 / 5 / 7 fall below the margin. `EstimatorConfig.glyph_upright` "on" turns
+  the runtime wrist crop of a flat glyph so world +y is up first (`glyph_read.upright_deg` / `turn_upright`). Any new
+  wrist read of an oriented glyph needs the same thought: which roll was the reader trained on?
 - **A set side-server address fails loudly.** With `DOJO_SEG_ADDR` / `DOJO_GLYPH_ADDR*` unset the flags are no-ops;
   with one SET but unreachable, gone mid-run or answering an error, the clients raise `sam_masks.SideServerDown`
   (never a silent run without the server). Callers re-raise it past their "a failure never takes perception down"

@@ -3774,6 +3774,11 @@ class EstimatorConfig:
     # at DOJO_GLYPH_ADDR, else a no-op): "kong_cls" = a read above the classifier's per-view margin sets the tile's asset
     # and marks it "read"; every other tile stays unread ("unknown"). "off" (default): the texture read as before
     glyph_read: str = "off"
+    # glyph_upright: a runtime wrist read (the perception service's refine: a look-over, a pick hover) of a flat glyph
+    # (the digit model's numerals / operators) is turned so that world +y at the object points up in the crop
+    # (glyph_read.upright_deg / turn_upright): "on"; "off" (default): the crop as the camera sees it. Frame-0 reads
+    # unchanged either way
+    glyph_upright: str = "off"
     stack_proposals: bool = True  # groups still short look for objects resting on chosen ones (_stack_proposals)
     stack_levels: int = 2
     stack_max_loss: float = 0.5
