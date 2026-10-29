@@ -408,3 +408,38 @@ def test_tile_recover_retries_a_tile_that_is_not_on_its_pad(monkeypatch):
 def test_tile_recover_default_off():
     from dojo.runtime.policy import RuntimeConfig
     assert RuntimeConfig().tile_recover is False
+
+
+@pytest.mark.parametrize("cap", [False, True])
+def test_arrange_digits_look_cap(monkeypatch, cap):
+    """``tile_look_cap`` (default off): an unread digit tile is looked at LOOKS_PER_TILE times at most, then the next
+    one; off, one tile took every look (camera arrange_random 100007: 12 looks, none read)."""
+    objs = [_obj(f"mat_{i}", "cube_cushion", 1, (PAD_X[i] - 0.0425, -0.074, Z_TABLE + 0.0025), PAD_HALF, "Geometry")
+            for i in range(4)]
+    for k, (idx, x) in enumerate(((7, 0.12), (0, -0.30), (9, 0.30), (3, -0.22))):
+        o = _obj(f"digit_{k}", "number", idx, (x, -0.21, Z_TABLE + 0.0078), NUM_HALF)
+        o.source, o.digit, o.digit_source, o.digit_conf = "perception", None, "unread", None
+        objs.append(o)
+    w = _world(objs, routes=["largest_number"])
+    looked = []
+
+    class Sk:
+        world = w
+        held = {"left": None, "right": None}
+        tile_look_cap = cap
+
+        def refresh(self):
+            return w
+
+        def log(self, m):
+            pass
+
+    monkeypatch.setattr(tiles, "_look_value", lambda sk, label: looked.append(label))
+    r = tiles.arrange_digits(Sk(), max_looks=6)
+    assert not r["ok"] and r["stage"] == "read"
+    if cap:
+        assert looked == ["digit_0"] * tiles.LOOKS_PER_TILE + ["digit_1"] * tiles.LOOKS_PER_TILE + ["digit_2"] * 2
+    else:
+        assert looked == ["digit_0"] * 6
+    from dojo.runtime.policy import RuntimeConfig
+    assert RuntimeConfig().tile_look_cap is False
