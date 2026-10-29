@@ -42,3 +42,20 @@ The 11 tools lost in those 7 episodes:
   "ok" pick. The next lever is in the carry, and the 2 pairing failures are reach at the slot.
 
 Spend: 0 LLM calls. G3 on compute3: 7 store_tools jobs (30 min each, 3-5 episodes) and 1 presettle; one at a time.
+
+## Tried: `slot_carry` "gentle" (branch `feat/dojo-h95-slot-carry`, not merged)
+
+- Inside `place_in_slots` only (`library.SLOT_GENTLE`), every slot transfer's lift and carry runs at 0.05 rad/step
+  with an 8-step ease. Today: the level carry 0.05 / ease 3, the re-orienting transfer 0.09 / MEDIUM lift / ease 3.
+- This is put_into's "gentle" shape, which took put_bottles 9 → 11/16.
+
+| | n | mean | success | up / down |
+|---|---|---|---|---|
+| base | 11 | 0.659 | 2 | |
+| gentle | 11 | 0.659 | 2 | 1 / 1 (100036 0.25 → 0.5; 100044 0.5 → 0.25) |
+
+- The hammer and wrench still shift 63-158 mm in the hand. The level carry was already at 0.05, so the motion speed
+  is not what moves them.
+- Where they move (the carry, or the place's descent and contact; several logs read "re-plan failed: descend:
+  ik_fail") would need a trace of the tool's pose relative to the TCP.
+- Fails the bar (a lift with 0 losers). **store_tools is parked** (the lead's ruling).
