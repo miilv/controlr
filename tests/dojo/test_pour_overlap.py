@@ -123,3 +123,51 @@ def test_alternate_arms():
     assert pour_order.alternate_arms([0.2, -0.2, 0.0]) == ["right", "left", "right"]
     assert pour_order.alternate_arms([0.2, 0.0, -0.2]) in (["right", "left", "left"], ["right", "right", "left"])
     assert pour_order.alternate_arms([0.2, 0.0, -0.2]) == ["right", "right", "left"]      # tie: the vendored choice
+
+
+def test_only_the_last_pours_untilt_spends_the_reserve(monkeypatch):
+    seen = []
+    op_move = hr.HarnessRobot.op_move
+
+    def spy(self, a):
+        seen.append(int(a.get("reserve", 0)))
+        return op_move(self, a)
+    monkeypatch.setattr(hr.HarnessRobot, "op_move", spy)
+    runs = {}
+    for res in (None, 0):
+        seen.clear()
+        _, sk = gt_skills(rows_bottle(), "Pour the liquid from the bottle into the cup.", step_lim=800)
+        sk.ported_pour_pace = "overlap"
+        args = dict(planner.POUR_PACE["overlap"], **({} if res is None else {"untilt_reserve": res}))
+        ported(sk, "pour_bottle_lean", args)
+        runs[res] = (list(seen), json.loads(sk.ported_runs[-1]["details"]))
+    (r_none, d_none), (r_zero, d_zero) = runs[None], runs[0]
+    assert len(r_none) == len(r_zero)                                   # the same moves either way
+    n_untilt = len(d_zero["return"]["untilt"])
+    diff = [i for i, (a, b) in enumerate(zip(r_none, r_zero)) if a != b]
+    assert len(diff) == n_untilt and all(r_zero[i] == 0 and r_none[i] > 0 for i in diff)   # only the untilt moves
+
+
+def test_pour_order_spends_the_reserve_on_the_last_pour_only(monkeypatch):
+    calls = []
+
+    def fake(sk, skill, args, reserve=None):
+        calls.append(dict(args))
+        return {"ok": True, "status": "ok", "verified": True, "steps": 10}
+    import dojo.skills.ported as ported_mod
+    monkeypatch.setattr(ported_mod, "ported", fake)
+
+    class Sk:
+        ported_pour_aim, ported_pour_pace = "b10", "overlap"
+
+        def refresh(self):
+            return None
+
+        def log(self, m):
+            pass
+    pour_order.pour_in_order(Sk(), [["b0", "w0"], ["b1", "w1"], ["b2", "w2"]])
+    assert [c.get("untilt_reserve") for c in calls] == [None, None, 0]
+    calls.clear()
+    Sk.ported_pour_pace = "lean"
+    pour_order.pour_in_order(Sk(), [["b0", "w0"], ["b1", "w1"]])
+    assert all("untilt_reserve" not in c for c in calls)                 # overlap only

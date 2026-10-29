@@ -124,6 +124,10 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
                 args["pre_held"] = held
             elif plan_arms:
                 args["arm_pref"] = plan_arms[i]
+            if i == len(pairs) - 1:
+                # the last pour's untilt may spend the move reserve: its upright edge ends the episode (camera rows:
+                # three third pours poured out and stopped at 60-150 deg, the untilt refused for "budget")
+                args["untilt_reserve"] = 0
         r = ported(sk, skill, {"container": f"@{bottle}", "target": f"@{bowl}", **args}, reserve=reserve)
         held = r.get("companion")
         sk.log(f"[pour_order] {i + 1}/{len(pairs)} {bottle} -> {bowl}: ok {r.get('ok')} verified {r.get('verified')} "

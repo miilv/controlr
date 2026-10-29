@@ -194,7 +194,7 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         shoulder_frac=0.55, slip_deg=14.0, slip_m=0.012, set_dz=0.004, min_return_steps=60, home=True,
         rush_to=None, rush_carry=False, rush_speed="normal", rush_ramp=2,
         flow_speed="slow", untilt_speed="slow", lift_speed="slow", tilt_speed=None, tilt_below=100.0,
-        companion=None, pre_held=None, arm_pref=None):  # H
+        companion=None, pre_held=None, arm_pref=None, untilt_reserve=None):  # H
     P = load_pour()
     Bottle = bottle_class(P)
     log = []
@@ -410,11 +410,15 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         Rf = P.rotm(e["quat"])
         cup.r_hc, cup.R_hc = Rf.T @ (np.asarray(cp["pos"]) - np.asarray(e["pos"])), Rf.T @ P.rotm(cp["quat"])
         tcp, Qn, _ = P._pour_pose(cup, Qg, sd, ph, sxy, top_z + lip_clear, top_z, body_clear, "tool", head_h)
-        mu = mv(pos=P.r4(tcp), quat=P.r4(Qn, 6), speed=untilt_speed, max_dev=0.03, max_steps=80)  # H
+        # H: ``untilt_reserve``: the untilt may spend the adapter's move reserve (the last pour of a sequence: its
+        # upright edge ends the episode, nothing comes after it; camera rows: three full pours whose 60 -> 0 move was
+        # refused for "budget" with 34-47 steps left, the bottle left at 60-150 deg)
+        rkw = {} if untilt_reserve is None else {"reserve": int(untilt_reserve)}
+        mu = mv(pos=P.r4(tcp), quat=P.r4(Qn, 6), speed=untilt_speed, max_dev=0.03, max_steps=80, **rkw)  # H
         ret["untilt"].append({"phi": ph, **P._short(mu)})
         if not mu.get("moved"):
             mu = robot.move_to(arm=A, pos=P.r4(np.asarray(e["pos"], float) + [0, 0, 0.03]), quat=P.r4(Qg, 6),
-                               speed="slow", max_dev=0.05)
+                               speed="slow", max_dev=0.05, **rkw)                                         # H
             ret["untilt"].append({"phi": "direct upright", **P._short(mu)})
             break
     state["after_edge"] = True                                                                    # H
