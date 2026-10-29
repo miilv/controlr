@@ -188,9 +188,10 @@
   car classes took classify's toy_cars. The narrow v2cn (12 classes) had 3 small losers and left the watches unchanged.
   Landmine: a new class next to a look-alike in another category (car vs toy_car) costs that category.
 - [ ] **dojo perception: classify_objects_by_language drops the watches after the segmenter.** On p60, watch 4-7 come
-  out right 2 of 14 with any segmenter (v2b, v3ep6, v2cn), with no prediction within 77 mm of 12 of the 14, though
-  v2b's YOLO fires a watch on the head frame (0.97 on 100000). The loss is in the bake's proposal / count / fit of thin
-  flat objects, not in the vocabulary (journal 2026-10-29-dojo-seg-v2c).
+  out right 1 of 12 on the dev ids 100000-04 with any segmenter (v2b, v3ep6, v2cn). The other 11 have no prediction
+  within 77 mm, though v2b's YOLO fires a watch on the head frame (0.97 on 100000). The loss is in the bake's
+  proposal / count / fit of thin flat objects, not in the vocabulary (journal 2026-10-29-dojo-seg-v2c). Develop on
+  dev / training ids only.
 - [ ] **dojo perception: no genuine-5.1 belt background for pick_from_conveyor_by_image** (`Dynamic/conveyor/00001`).
   Only 6.0-proxy leave-one-out folds exist (`compute3:~/dojo-data/pbake-identity/bg_byimg{A,B}`), so every genuine-5.1
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
