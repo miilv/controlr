@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import numpy as np
 
+import pytest
+
 from dojo.skills import library, planner, pour_order
 from dojo.skills.world import AssetInfo, ObjectState, WorldState
 
@@ -59,3 +61,49 @@ def test_route_only_and_runs_in_order_stopping_at_a_failed_pour(monkeypatch):
             pass
     r = pour_order.pour_in_order(Sk(), [["b1", "w2"], ["b2", "w0"], ["b0", "w1"]])
     assert not r["ok"] and calls == [("pour_bottle", "@b1", "@w2"), ("pour_bottle", "@b2", "@w0")]
+
+
+@pytest.mark.parametrize("first,goes_on", [
+    ({"ok": True, "verified": False, "error": "no reachable neck grasp + pour plan"}, False),         # Misha's probe
+    ({"ok": True, "verified": False, "error": "neck grasp failed (bottle did not rise upright)"}, False),
+    ({"ok": True, "verified": False, "error": "", "pour": {"max_phi": 105.0, "stop": "budget"}}, False),
+    ({"ok": True, "verified": False, "error": "", "pour": {"max_phi": 150.0, "stop": "in-hand slip"}}, False),
+    ({"ok": True, "verified": False, "error": "", "pour": {"max_phi": 150.0, "stop": "profile end"}}, True),
+    ({"ok": True, "verified": True, "error": ""}, True),
+])
+def test_a_later_pour_only_after_one_that_poured(monkeypatch, first, goes_on):
+    """Misha's review P1-1: the vendored pour_bottle returns ok=True / verified=False when it finds no neck grasp or
+    the grasp fails. The next pair must not be poured before it: stop and report the unrun pair."""
+    calls = []
+
+    def fake(sk, skill, args, reserve=None):
+        calls.append(args["container"])
+        r = first if len(calls) == 1 else {"ok": True, "verified": True, "error": ""}
+        return {"status": "ok", "steps": 10, **r}
+    import dojo.skills.ported as ported_mod
+    monkeypatch.setattr(ported_mod, "ported", fake)
+
+    class Sk:
+        def refresh(self):
+            return None
+
+        def log(self, m):
+            pass
+    r = pour_order.pour_in_order(Sk(), [["b1", "w2"], ["b2", "w0"]])
+    if goes_on:
+        assert r["ok"] and calls == ["@b1", "@b2"]
+    else:
+        assert not r["ok"] and calls == ["@b1"] and r["not_poured"] == ["b1", "w2"]
+
+
+def test_ported_reports_the_pour_trace(monkeypatch):
+    """``ported`` passes a liquid pour's deepest roll and its stop reason on (``pour_order.poured`` reads them)."""
+    import dojo.skills.ported as ported_mod
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.skills import GTProvider, Skills
+    rep = {"ok": True, "verified": False, "details": {"pour": [{"phi": 40}, {"phi": 120}, {"phi": 135}],
+                                                      "pour_stop": "profile end"}}
+    monkeypatch.setattr(ported_mod.HarnessRobot, "run_skill", lambda self, name, args=None: rep)
+    env = KinematicEnv([], step_lim=100)
+    r = ported_mod.ported(Skills(env, GTProvider(env, None), reserve=30), "pour_bottle", {})
+    assert r["pour"] == {"max_phi": 135.0, "stop": "profile end"} and pour_order.poured(r)
