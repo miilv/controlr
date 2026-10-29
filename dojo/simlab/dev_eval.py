@@ -32,10 +32,18 @@ def patch_seed_manager(layout_root: str | os.PathLike) -> None:
 
     def init_eval(self, completed_layout_ids=None, abandoned_layout_ids=None):
         d = root / self.task_name
-        suffix = os.environ.get("SIMLAB_DEV_LAYOUT_SUFFIX", "")      # ".settled": pre-settled records
+        sealed_m = os.environ.get("SIMLAB_SEALED_MANIFEST")   # a sealed joint block (D-C19): its manifest decides
+        if sealed_m:
+            from dojo.simlab import sealed
+            man = sealed.load_manifest(sealed_m)
+            suffix = ".settled" if sealed.task_entry(man, self.task_name)["settled"] else ""
+        else:
+            suffix = os.environ.get("SIMLAB_DEV_LAYOUT_SUFFIX", "")      # ".settled": pre-settled records
         files = sorted((p for p in d.glob(f"*{suffix}.json") if p.name[: -len(f"{suffix}.json")].isdigit()),
                        key=lambda p: int(p.name.split(".")[0]))
-        reserved = [p.name for p in files if paths.is_offslice_rendered(p.name.split(".")[0])]
+        if sealed_m:                                 # every staged record listed and md5-checked again in this process
+            sealed.check_staged(d, man, self.task_name, files)
+        reserved = [] if sealed_m else [p.name for p in files if paths.is_offslice_rendered(p.name.split(".")[0])]
         if reserved:                                 # D-C10: ids >= 100100 belong to the joint paired runs
             raise SystemExit(f"dev-eval: layout ids not ours to run rendered in {d} (D-C10a: 100010-19, 100050-99, "
                              f">= {paths.RESERVED_MIN_ID}): {reserved[:5]}")

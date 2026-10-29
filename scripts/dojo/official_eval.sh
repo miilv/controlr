@@ -26,6 +26,11 @@
 #   --setenv K=V: set for OUR processes only (perception service, side servers' clients, drivers), never for robot-
 #   harness's. --dry-run: print the resolved policy / RuntimeConfig / env / side-server weights (md5) as JSON and exit
 #   (no lock, nothing started; scripts/dojo/candidate_parity.py, scripts/dojo/freeze_manifest.py).
+#   --sealed-block DIR --manifest FILE --lock LOCKFILE: a sealed joint block (robot-harness D-C19; dojo.simlab.sealed):
+#   only the ids the manifest lists for the task (all >= 100100), each md5-verified before it is staged into this run's
+#   layout dir (nowhere else; logs name id + md5 + pass / fail only); raw records where the manifest says
+#   "settled": false; robot-harness's server WITHOUT --dev (no truth log, HARNESS_DEV=0); the lock is required (no
+#   default: the joint run's lock is chosen per D-C19 scheduling). Every other call keeps refusing ids >= 100100.
 #
 # Env (defaults for a dojo GPU box, ~/dojo-env.sh): RD_SRC (the box's RoboDojo install, read-only; default $RD_HOME),
 #   OFFICIAL_RDHOME (our farm over it, scripts/dojo/rd_farm.sh; default ~/dojo-official-rdhome), BENCH (a robot-harness
@@ -46,6 +51,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 for _a in "$@"; do [[ "$_a" == --dry-run && "${1:-}" != --inner ]] && exec bash "$HERE/scripts/dojo/official_eval.sh" --inner "$@"; done
 if [[ "${1:-}" != --inner ]]; then
   # outer: the memory gate, the heavy lock, then this script again inside a systemd user scope
+  _sealed="" _lock="" _prev=""                 # a sealed block names its lock (no default): checked before any wait
+  for _a in "$@"; do [[ "$_prev" == --sealed-block ]] && _sealed="$_a"; [[ "$_prev" == --lock ]] && _lock="$_a"; _prev="$_a"; done
+  [[ -z "$_sealed" || -n "$_lock" ]] || { echo "[official] --sealed-block needs an explicit --lock FILE (no default)" >&2; exit 2; }
   export DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
   avail() { awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo; }
   for i in $(seq 30); do
@@ -53,7 +61,7 @@ if [[ "${1:-}" != --inner ]]; then
     [[ "$i" -eq 30 ]] && { echo "[official] MemAvailable $(avail) GB too low: refusing to start" >&2; exit 75; }
     echo "[official] MemAvailable $(avail) GB, waiting..." >&2; sleep 20
   done
-  LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"; exec 9>>"$LOCK"
+  LOCK="${_lock:-${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}}"; exec 9>>"$LOCK"
   echo "[official] waiting for $LOCK: $(head -c 160 "$LOCK" | tr '\n' ' ')" >&2
   flock -w "${OFFICIAL_LOCK_WAIT_S:-10800}" 9 || { echo "[official] gave up waiting for $LOCK" >&2; exit 75; }
   printf 'pid=%s stream=official start=%s cmd=official_eval %s\n' "$$" "$(date -u +%FT%TZ)" "$*" > "$LOCK"
@@ -70,7 +78,7 @@ fi
 shift   # --inner
 
 TASK="" LAYOUT_IDS="" POLICY="dojo.agent.policy:AgentPolicy" PRESET="submit_v2" CONFIG='{}' TWIN_ENVS=8 NAME="" OUT=""
-EP_MAX_MIN=25 CANDIDATE="" POLICY_SET="" DRY="" SEG="" GLYPH="" GLYPHK="" SETENV=()
+EP_MAX_MIN=25 CANDIDATE="" POLICY_SET="" DRY="" SEG="" GLYPH="" GLYPHK="" SETENV=() SEALED_DIR="" MANIFEST="" LOCK_ARG=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --task) TASK="$2"; shift 2 ;;        --layouts) LAYOUT_IDS="$2"; shift 2 ;;
@@ -89,10 +97,18 @@ while [[ $# -gt 0 ]]; do
     --seg) SEG="$2"; shift 2 ;;          --glyph) GLYPH="$2"; shift 2 ;;
     --glyph-kong) GLYPHK="$2"; shift 2 ;;
     --dry-run) DRY=1; shift ;;
+    --sealed-block) SEALED_DIR="$2"; shift 2 ;;    --manifest) MANIFEST="$2"; shift 2 ;;
+    --lock) LOCK_ARG="$2"; shift 2 ;;              # taken by the outer part
     *) echo "[official] unknown option $1" >&2; exit 2 ;;
   esac
 done
 [[ -n "$CANDIDATE" && -z "$POLICY_SET" ]] && POLICY="dojo.runtime.policy:RuntimePolicy"   # integ_eval's policy
+if [[ -n "$SEALED_DIR$MANIFEST" ]]; then     # a sealed joint block: its own rules, nothing of the dev path's
+  [[ -d "$SEALED_DIR" && -f "$MANIFEST" ]] || { echo "[official] --sealed-block DIR and --manifest FILE are both required" >&2; exit 2; }
+  [[ -n "$DRY" || -n "$LOCK_ARG" ]] || { echo "[official] --sealed-block needs an explicit --lock FILE (no default)" >&2; exit 2; }
+  [[ "${HARNESS_DEV:-0}" == 0 && "${HARNESS_PRIVILEGED:-0}" == 0 ]] || {
+    echo "[official] --sealed-block refuses HARNESS_DEV / HARNESS_PRIVILEGED (no dev or debug path in a scored block)" >&2; exit 2; }
+fi
 MODELS="${DOJO_SEG_MODELS:-$HOME/dojo-data/segtrain/models}"
 SIDE=()                                  # "kind|model|ENVVAR..." of the side servers this call starts
 [[ -n "$SEG" ]] && SIDE+=("seg|$SEG|DOJO_SEG_ADDR")
@@ -151,6 +167,16 @@ trap 'exit 143' TERM INT          # (a TERM waits for the running foreground dri
 # 0. our layouts only (settled records >= 100000), staged so dev_eval.py sees exactly these, in id order
 LAYOUTS_SRC="$DOJO_DATA/simlab/layouts/$TASK"
 IDS=()
+SUFFIX=.settled
+if [[ -n "$SEALED_DIR" ]]; then          # the sealed block: manifest ids only, md5-verified, staged here only
+  ST="$( cd "$HERE" && "$PY" -m dojo.simlab.sealed stage --dir "$SEALED_DIR" --manifest "$MANIFEST" --task "$TASK" \
+          --ids "$LAYOUT_IDS" --dest "$OUT/layouts" 2>&1 )"; rc=$?
+  echo "$ST" | tee -a "$LOG" >&2
+  [[ "$rc" -eq 0 ]] || { log "sealed block refused: nothing started"; exit 2; }
+  [[ "$( cd "$HERE" && "$PY" -m dojo.simlab.sealed settled --manifest "$MANIFEST" --task "$TASK" )" == 1 ]] || SUFFIX=""
+  mapfile -t IDS < <(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n)
+  LAYOUT_IDS=""                          # the dev loop below stages nothing
+fi
 for lid in $(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n); do
   [[ "$lid" =~ ^[0-9]+$ && "$lid" -ge 100000 ]] || { log "layout id $lid: dev layouts are >= 100000"; exit 2; }
   [[ "$lid" -lt 100100 ]] || { log "layout id $lid: ids >= 100100 are reserved for joint paired runs (D-C10)"; exit 2; }
@@ -215,10 +241,11 @@ cp "$BENCH/harness/rd_shim_strict_v2/"{__init__.py,deploy.py,model.py,deploy.yml
 cp "$BENCH/harness/rd_shim_strict/deploy.py" "$POL/strict_deploy.py"
 cp "$BENCH/harness/rd_shim/deploy.py" "$POL/base_deploy.py"
 SPY="$FARM/policy_venv/bin/python"
-"$PY" - "$OUT/provenance.json" "$BENCH" "$HERE" "$POL" "$CANDIDATE" "$MODELS" "${SIDE[@]}" <<'PY'
-import hashlib, json, sys
+SEALED_INFO="$MANIFEST|${IDS[*]}" "$PY" - "$OUT/provenance.json" "$BENCH" "$HERE" "$POL" "$CANDIDATE" "$MODELS" "${SIDE[@]}" <<'PY'
+import hashlib, json, os, sys
 from pathlib import Path
 out, bench, here, pol, cand, models = sys.argv[1:7]
+man, sealed_ids = os.environ.get("SEALED_INFO", "|").split("|", 1)
 md5 = lambda p: hashlib.md5(Path(p).read_bytes()).hexdigest()
 FILES = {"seg": ("best.pt", "classes.json"), "glyph": ("model.pt",), "glyphk": ("model.pt",)}
 d = {"robot_harness_commit": (Path(bench) / "COMMIT").read_text().strip() if (Path(bench) / "COMMIT").exists() else None,
@@ -229,23 +256,27 @@ d = {"robot_harness_commit": (Path(bench) / "COMMIT").read_text().strip() if (Pa
      "candidate": {"path": cand, "md5": md5(cand), "text": Path(cand).read_text()} if cand else None,
      "side_servers": {s.split("|")[0]: {"model": s.split("|")[1], "md5": {f: md5(Path(models) / s.split("|")[1] / f)
                                                                           for f in FILES[s.split("|")[0]]}}
-                      for s in sys.argv[7:]}}
+                      for s in sys.argv[7:]},
+     "sealed_block": {"manifest": man, "manifest_md5": md5(man), "ids": sealed_ids.split(), "server_dev": False}
+     if man else None}
 Path(out).write_text(json.dumps(d, indent=1))
 PY
 
 # 2. robot-harness's strict J2 server (his launcher's environment; the J1 perceiver = our adapter, unused on the local
 #    perception route, warmed CPU-only)
 RUNDIR="$BENCH/run/$ID"; mkdir -p "$RUNDIR"
-printf '{"id": "%s", "kind": "robodojo", "strict": true, "j1": true, "j2": true, "privileged": false, "dev": true, "ready": false, "started_t": %s}\n' \
+DEVF=(--dev); DEVJ=true; HDEV=1
+[[ -n "$SEALED_DIR" ]] && { DEVF=(); DEVJ=false; HDEV=0; }     # a sealed block: no truth log, no dev path
+printf '{"id": "%s", "kind": "robodojo", "strict": true, "j1": true, "j2": true, "privileged": false, "dev": '"$DEVJ"', "ready": false, "started_t": %s}\n' \
   "$ID" "$(date +%s)" > "$RUNDIR/meta.json"
 export HARNESS_SHIM_ADDR="$RUNDIR/shim.sock" HARNESS_SHIM_AUTHKEY="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
-export HARNESS_PRIVILEGED=0 HARNESS_DEV=1 HARNESS_STRICT=1
+export HARNESS_PRIVILEGED=0 HARNESS_DEV="$HDEV" HARNESS_STRICT=1
 export HARNESS_SHIM_IDLE_S="$("$SPY" "$BENCH/harness/ask_pause.py" shim-idle)" || { log "ask_pause shim-idle failed"; exit 2; }
 export J1_PERCEIVER="${J1_PERCEIVER:-dojo.perception.j1_adapter:perceive}" J1_PERCEIVER_PATH="${J1_PERCEIVER_PATH:-$HERE}"
 export J1_PERCEIVER_PYTHON="${J1_PERCEIVER_PYTHON:-$PY}" J1_ORIG_HOME="$HOME" J1_PERCEIVER_CPU_ONLY="${J1_PERCEIVER_CPU_ONLY:-1}"
 export J1_HELD_FALLBACK="${J1_HELD_FALLBACK:-no}"          # no operator here: never wait for one
 export PYTHONDONTWRITEBYTECODE=1
-( exec setsid nice -n 5 "$SPY" "$BENCH/harness/robodojo_server_j2.py" --id "$ID" --strict --dev --reserve 20 \
+( exec setsid nice -n 5 "$SPY" "$BENCH/harness/robodojo_server_j2.py" --id "$ID" --strict "${DEVF[@]}" --reserve 20 \
     --idle-timeout 3600 9>&- ) > "$RUNDIR/server.log" 2>&1 < /dev/null &
 PIDS+=($!)
 for _ in $(seq 120); do [[ -S "$BENCH/run/$ID.sock" ]] && break; sleep 0.5; done
@@ -253,7 +284,7 @@ for _ in $(seq 120); do [[ -S "$BENCH/run/$ID.sock" ]] && break; sleep 0.5; done
 log "strict J2 server up ($ID)"
 
 # 3. RoboDojo's eval client on our staged layouts (dev_eval.sh: ws policy server + dev_eval.py; we hold the lock)
-( cd "$HERE" && RD_HOME="$FARM" RD_ROOT="$FARM/RoboDojo" DOJO_GPU_LOCK_HELD=1 SIMLAB_DEV_LAYOUT_SUFFIX=.settled exec setsid \
+( cd "$HERE" && RD_HOME="$FARM" RD_ROOT="$FARM/RoboDojo" DOJO_GPU_LOCK_HELD=1 SIMLAB_DEV_LAYOUT_SUFFIX="$SUFFIX" SIMLAB_SEALED_MANIFEST="${MANIFEST:+$(readlink -f "$MANIFEST")}" exec setsid \
     bash scripts/simlab/dev_eval.sh --task "$TASK" --policy harness_strict_j2 --eval-num "$N" \
     --layouts "$OUT/layouts" --out "$OUT/eval" 9>&- ) > "$OUT/dev_eval.log" 2>&1 < /dev/null &
 EC=$!; PIDS+=($EC)

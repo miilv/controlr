@@ -15,7 +15,8 @@ unless --allow-mismatch for a dry run). It writes:
   (OMNIROUTE_* values are not read);
 - versions: python and the perception stack (numpy, torch, ultralytics), Isaac Sim (RoboDojo's python), the RoboDojo
   and robot-harness commits; the perception calibration set (``DOJO_CALIB_SET``);
-- the gripper semantics: the strict v2 server supplies ``eef.<arm>.ee_joint_state_official`` (D-C11).
+- the gripper semantics: the strict v2 server supplies ``eef.<arm>.ee_joint_state_official`` (D-C11);
+- with ``--route-probe``: one tiny call on the agentic route (``route_probe.py``: ok / rate-limited / error).
 """
 from __future__ import annotations
 
@@ -82,6 +83,8 @@ def main(argv=None) -> int:
     ap.add_argument("--bench", default=os.environ.get("BENCH", str(Path.home() / "dojo-official-rh")),
                     help="the robot-harness tree official_eval.sh uses (its COMMIT)")
     ap.add_argument("--allow-mismatch", action="store_true", help="dry run: HEAD != --sha or a dirty tree is noted")
+    ap.add_argument("--route-probe", action="store_true",
+                    help="pre-flight: one tiny call on the agentic route (route_probe.py), recorded; costs one call")
     ap.add_argument("--out", default=None)
     a = ap.parse_args(argv)
     import candidate_parity as CP
@@ -143,6 +146,9 @@ def main(argv=None) -> int:
                            (Path(full["perception_env"]["DOJO_BG_FOLDS"]) / calib).glob("*")) if f.is_file()}},
         "grip": "the strict v2 server supplies eef.<arm>.ee_joint_state_official (D-C11); DOJO_GRIP_SOURCE is inert there",
     }
+    if a.route_probe:                  # headroom / errors of the perceiver's route, before tranche A
+        import route_probe
+        man["route_probe"] = route_probe.probe(man["routes"]["agentic_model"])
     text = json.dumps(man, indent=1, sort_keys=True, default=str)
     if a.out:
         Path(a.out).write_text(text + "\n")
