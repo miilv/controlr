@@ -370,6 +370,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **RTX leaves ghost trails of a moved arm.** A frame captured with one render pass after a 40-step move (D0's frames
   1-3, `make_d0`) shows the arm smeared along its path (temporal accumulation). `seg_render` captures 40 % of its
   arm-pose frames that way and the rest after 8 extra `render_for_capture` passes.
+- **A segmenter class increment costs its look-alikes.** Fine-tuning v2b with new asset classes
+  (`export_yolo --base-classes`, `expand_head.py`) moves detections from an old class in another category to the
+  new one: car 10-15 took classify's toy_cars. Leaving an asset unlabelled teaches it as background. `--new-keep`
+  keeps only the listed new assets and leaves out every image that shows another one. Gate any increment on the
+  full frame-0 bake, every task, 0 losers.
 - **Provider responses and child processes are credential sinks.** A gateway can echo our `Authorization` header in an
   error body, and a child inherits the whole environment (the router key, the path of the file that holds it). Any new
   text from a response that reaches a log goes through `controlr.keyguard` (`clip`: redact, THEN cut, else a key that

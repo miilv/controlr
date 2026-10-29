@@ -706,13 +706,41 @@ def equation_groups(groups: dict[str, list], rng: random.Random) -> tuple[dict[s
     return out, {"operands": [a, b], "operator": op, "result": ans, "missing_slot": missing}
 
 
-def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0) -> dict:
+def extra_groups(groups: dict, assets: list[str], label_prefix: str = "seg_extra") -> dict:
+    """``groups`` + one group per asset key ("Rigid/<category>/<index>") placed like a task object (collision-checked,
+    random yaw) in the region of the task's first table-level Rigid group. Segmenter TRAINING draws only
+    (``generate(..., extra=...)``): rare assets shown more often than the config draws them."""
+    region = ([-0.4, 0.4], [-0.25, 0.05])
+    for g in groups.get("Rigid") or []:
+        c = g.get("common") or {}
+        if c.get("relative_plane", "Table") == "Table" and c.get("xlim") and c["xlim"][0] < c["xlim"][1] \
+                and c.get("ylim") and c["ylim"][0] < c["ylim"][1]:
+            region = (list(c["xlim"]), list(c["ylim"]))
+            break
+    out = {t: list(gl) for t, gl in groups.items()}
+    for i, key in enumerate(assets):
+        typ, cat, idx = key.split("/")
+        out.setdefault(typ, []).append({
+            "common": {"xlim": region[0], "ylim": region[1], "rotate_rand": True, "rotate_deg": 180,
+                       "relative_plane": "Table", "margin": 0.01},
+            "category": [{"name": cat, "index": [int(idx)]}],
+            "select_mode": {"nums": 1, "mode": "allow_duplicate", "label": [f"{label_prefix}{i}"]}})
+    return out
+
+
+def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0, extra: list[str] | None = None) -> dict:
     """One layout record for ``task`` (seed >= SEED_BASE). Deterministic in ``seed`` (and ``variant``: v >= 1 is a new
-    random draw for the same id, ``variant_subseed``; the twin-trained segmenter's training layouts)."""
+    random draw for the same id, ``variant_subseed``; the twin-trained segmenter's training layouts). ``extra``
+    (default none): asset keys added as extra objects (``extra_groups``); only for variant draws (v >= 1), never for
+    a stored / measured record (v0)."""
     if seed < paths.SEED_BASE:
         raise ValueError(f"our layout seeds start at {paths.SEED_BASE}")
+    if extra and variant < 1:
+        raise ValueError("extra objects only in training draws (variant >= 1), never in a measured record (v0)")
     tcfg, scfg = task_config(task), scene_config(task)
     groups = merged_object_groups(task)
+    if extra:
+        groups = extra_groups(groups, list(extra))
     last = None
     for attempt in range(max_tries):
         # the keep-out is soft: some configs fix objects under the home-pose grippers on purpose
@@ -734,6 +762,8 @@ def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0) -> dic
             layout["_simlab"]["task_semantics"] = task_meta
         if variant:
             layout["_simlab"]["variant"] = variant
+        if extra:
+            layout["_simlab"]["seg_extra"] = list(extra)
         return layout
     raise LayoutError(f"{task} seed {seed}: no valid layout in {max_tries} tries ({last})")
 
