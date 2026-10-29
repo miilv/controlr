@@ -349,6 +349,9 @@ class RuntimeConfig:
     # ... pouring a liquid (pour_bottle, also pour_order's pours): v1 (the stream aimed at the cup's centre) | b10 / b20
     # (aimed 10 / 20 mm back against the pour direction: ``planner.POUR_AIM``)
     ported_pour_aim: str = "v1"
+    # ... and its pacing (stream H): v1 (the vendored pour_bottle) | lean (pour_bottle_lean: the tilt to 90 deg and the
+    # untilt at normal speed, a 12-step drain) | rush (lean + the flow angles at normal speed): ``planner.POUR_PACE``
+    ported_pour_pace: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -431,6 +434,7 @@ class RuntimePolicy:
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20")
+                or self.cfg.ported_pour_pace not in ("v1", "lean", "rush")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -448,7 +452,8 @@ class RuntimePolicy:
                                                                                       "drag": self.cfg.ported_drag,
                                                                                       "pour": self.cfg.ported_pour,
                                                                                       "pickup": self.cfg.ported_pickup,
-                                                                                      "pour_aim": self.cfg.ported_pour_aim}))
+                                                                                      "pour_aim": self.cfg.ported_pour_aim,
+                                                                                      "pour_pace": self.cfg.ported_pour_pace}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -705,6 +710,7 @@ class RuntimePolicy:
             sk_.joint_limits = cfg.joint_limits
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour_aim = cfg.ported_pour_aim
+            sk_.ported_pour_pace = cfg.ported_pour_pace
             sk_.ported_pour = cfg.ported_pour
             sk_.ported_pickup = cfg.ported_pickup
             if verifier is not None and cfg.verify_select == "risky":

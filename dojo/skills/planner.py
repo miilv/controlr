@@ -212,6 +212,28 @@ def order_points(o, tags: list[str], text: str) -> list[str]:
 # centre against the pour direction. The stream leaves the mouth moving along the pour: G3, the mouth held over the cup's
 # centre, 18-23 % of the liquid landed 45-74 mm beyond the far wall (the checker wants >= 97 % inside)
 POUR_AIM = {"v1": None, "b10": 0.010, "b20": 0.020}
+# ``ported_opts["pour_pace"]`` (stream H): None = the vendored pour_bottle; else pour_bottle_lean (``dojo.skills.ported``)
+# with these arguments. "lean": the tilt goes from the lift straight to 90 deg at normal speed (no liquid leaves below a
+# 107 deg tilt in the G3 pour probes), the flow angles 105-150 stay slow with v1's holds, a 12-step drain (v1 24: the
+# residual is under 6 % 10 steps after the last angle), the untilt to 90 over the cup at normal speed, and the rest of it
+# inside the carry back to the bottle's spot (the skill's hover move; v1 untilts to 0 over the cup first). "rush": also
+# the flow angles at normal speed. One vendored pour is ~355 steps; pour_by_language needs three in 800, a home after each
+POUR_PACE = {"v1": None,
+             "lean": {"rush_to": 90, "drain_steps": 12, "untilt_phis": (90,), "untilt_speed": "normal",
+                      "lift_speed": "normal"},
+             "rush": {"rush_to": 90, "drain_steps": 12, "untilt_phis": (90,), "untilt_speed": "normal",
+                      "lift_speed": "normal", "flow_speed": "normal"}}
+
+
+def pour_bottle_call(aim: str | None, pace: str | None) -> tuple[str, dict]:
+    """(skill, args) of one liquid pour: the vendored pour_bottle, or pour_bottle_lean under a pace; the aim's
+    ``spout_back`` on top (``POUR_AIM``)."""
+    back = POUR_AIM.get(aim or "v1")
+    lean = POUR_PACE.get(pace or "v1")
+    args = {} if lean is None else dict(lean)
+    if back is not None:
+        args["spout_back"] = back
+    return ("pour_bottle" if lean is None else "pour_bottle_lean"), args
 SWAP_CARRY_Z = (0.86, 0.84, 0.82, 0.80)   # swap_poses' carry heights tried by ``ported_opts["swap"] == "reach"``
 
 
@@ -274,8 +296,8 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         if re.search(r"\bballs?\b", text):
             return run("pour_p1" if (opts or {}).get("pour") == "full" else "pour")
         if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
-            back = POUR_AIM.get((opts or {}).get("pour_aim", "v1"))
-            return run("pour_bottle", **({} if back is None else {"spout_back": back}))
+            skill, args = pour_bottle_call((opts or {}).get("pour_aim"), (opts or {}).get("pour_pace"))
+            return run(skill, **args)
     # pick one named object up by a height. The object: the one whose PUBLIC asset description is the instruction's
     # phrase (RoboDojo writes the phrase from that file), else the skill's own grounding by category names
     m = re.search(r"^\s*(?:pick up|lift|raise) the (.+?) by\s+\d+(?:\.\d+)?\s*(?:cm|mm|m)\b", text)
@@ -678,7 +700,7 @@ def solve(sk) -> dict:
     p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
              and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
                   "pour": getattr(sk, "ported_pour", "v1"), "pickup": getattr(sk, "ported_pickup", "v1"),
-                  "pour_aim": getattr(sk, "ported_pour_aim", "v1")})
+                  "pour_aim": getattr(sk, "ported_pour_aim", "v1"), "pour_pace": getattr(sk, "ported_pour_pace", "v1")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":
