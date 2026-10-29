@@ -311,7 +311,7 @@ class RuntimeConfig:
     # and refines at once, both slides in the same steps when their paths keep apart: ~65-80 steps instead of ~128)
     align_measure: str = "seq"
     # ``tiles``' numeral grasps (``Skills.tile_grasp``): any (today) | flat (pads on faces square to the closing axis:
-    # not across a "7"'s or a "2"'s slanted stroke)
+    # not across a "7"'s or a "2"'s slanted stroke) | prefer (flat grasps planned first, the others as the fallback)
     tile_grasp: str = "any"
     # ``tiles``: a placed tile the provider doubts (``RuntimeProvider.in_doubt``: post-place not ok, empty close) is looked
     # at on its pad; not there, it goes back where it was picked from (head view) or is searched for (LostObject), then
@@ -429,7 +429,7 @@ class RuntimePolicy:
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
-                or self.cfg.tile_grasp not in ("any", "flat")
+                or self.cfg.tile_grasp not in ("any", "flat", "prefer")
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")

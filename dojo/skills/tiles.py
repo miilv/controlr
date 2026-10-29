@@ -50,6 +50,7 @@ TRANSFER_KW = {"lift": 0.03, "box_tilts": (0.0, 12.0, -12.0, 25.0, -25.0), "pick
 # default relay patch (0, -0.28) is where solve_equation's four operator discs lie (G3 100033 / 100038: no spot)
 RELAY_NEAR = (0.0, -0.16)
 MIN_PATCH = 0.15          # a numeral's grasp (tile_grasp "flat"): the smaller side's flat contact, fraction of a pad
+PREFER_RANK = 10.0        # tile_grasp "prefer": added to a non-flat grasp's screen rank (after every flat one)
 CENTRE_OFF = 0.006        # m: the pads close this close to the tile's centre at most
 MAX_PICK_TILT = 30.0      # deg: a tile picked 40 deg off vertical slid out of the pads (G3 100033)
 ROUTES = ("equation", "largest_number")
@@ -277,32 +278,54 @@ def centred_grasp(o, max_off: float = CENTRE_OFF, allow_top: bool = False, flat:
     c = np.asarray(o.asset.center, float)
     # a number tile with its mesh is a 3D numeral (a "7" is a slanted stroke under a bar): its antipodal grasps sit where
     # its faces are parallel, often off the bbox centre. Without the mesh, and for the discs, the centre is the grasp
-    centred = getattr(o.asset, "mesh", None) is None or str(o.category).lower() not in DIGIT_CATS
-    memo: dict = {}
+    centred = not _numeral(o)
+    is_flat = _flat_test(o) if flat and not centred else None
 
     def ok(g, T_tcp_obj, T_obj, T_tcp) -> bool:
         if not allow_top and getattr(g, "method", "") == "top":
             return False
         if not centred:
-            if not flat:
-                return True
             # ``flat`` (``Skills.tile_grasp`` "flat"): the pads must meet faces square to the closing axis on both
-            # sides (``grasps.pad_contact``). Squeezed across a slanted stroke, a frictionless "7" or "2" slid out of the
-            # pads: the rendered arrange arm at 3ad78f28 lost one tile so in each of its 4 "arranged" failures, the
-            # jaws closing to ~14 mm (official ~0.12) on a 35 mm numeral. Once per grasp (memo): the screen asks for
-            # every grasp x target pair
-            from dojo.skills.grasps import pad_contact
-            T_g = getattr(g, "T", None)
-            if T_g is None:
-                return True
-            key = (np.round(np.asarray(T_g, float), 4).tobytes(), np.round(o.pos, 4).tobytes(),
-                   np.round(o.quat, 4).tobytes())
-            if key not in memo:
-                memo[key] = pad_contact(o, np.asarray(T_g, float))[0] >= MIN_PATCH
-            return memo[key]
+            # sides. Squeezed across a slanted stroke, a frictionless "7" or "2" slid out of the pads: the rendered
+            # arrange arm at 3ad78f28 lost one tile so in each of its 4 "arranged" failures, the jaws closing to
+            # ~14 mm (official ~0.12) on a 35 mm numeral
+            return True if is_flat is None else is_flat(g)
         p = np.linalg.inv(np.asarray(T_tcp_obj, float))[:3, 3] - c          # the TCP in the tile's frame
         return float(np.linalg.norm(p[:2])) <= max_off
     return ok
+
+
+def _numeral(o) -> bool:
+    """A number tile with its mesh (a 3D numeral, not a disc or a bbox stand-in)."""
+    return getattr(o.asset, "mesh", None) is not None and str(o.category).lower() in DIGIT_CATS
+
+
+def _flat_test(o):
+    """``g -> bool``: the grasp's pads meet faces square to the closing axis on both sides (``grasps.pad_contact`` >=
+    ``MIN_PATCH``). Once per grasp (memo): the screen asks for every grasp x target pair."""
+    from dojo.skills.grasps import pad_contact
+    memo: dict = {}
+
+    def is_flat(g) -> bool:
+        T_g = getattr(g, "T", None)
+        if T_g is None:
+            return True
+        key = (np.round(np.asarray(T_g, float), 4).tobytes(), np.round(o.pos, 4).tobytes(),
+               np.round(o.quat, 4).tobytes())
+        if key not in memo:
+            memo[key] = pad_contact(o, np.asarray(T_g, float))[0] >= MIN_PATCH
+        return memo[key]
+    return is_flat
+
+
+def flat_rank(o):
+    """``plan_transfer``'s ``pair_rank`` for ``Skills.tile_grasp`` "prefer": a numeral's flat grasps (``_flat_test``)
+    rank before all its others, which stay as the fallback ("flat" as a hard filter left no reachable grasp for 2 of
+    5 tiles at G3 v1 100030-34: ik_fail). None for discs and tiles without a mesh (nothing to prefer)."""
+    if not _numeral(o):
+        return None
+    is_flat = _flat_test(o)
+    return lambda g, T_tcp_obj, T_obj, T_tcp: 0.0 if is_flat(g) else PREFER_RANK
 
 
 # the attempts on one tile, each a fresh place_oriented from where the last left it: box grasps first, then the
@@ -377,11 +400,15 @@ def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0, ig
     tg = tile_targets(sk, label, pad)
     if yaw_sym == 2:
         tg += tile_targets(sk, label, pad, yaws_deg=tuple(y + 180.0 for y in YAWS_DEG))
+    o = sk.world.obj(label)
+    mode = getattr(sk, "tile_grasp", "any")
+    tkw = {**TRANSFER_KW, "max_pick_tilt": MAX_PICK_TILT,
+           "pair_ok": centred_grasp(o, allow_top=a["allow_top"], flat=mode == "flat")}
+    if mode == "prefer" and (rank := flat_rank(o)) is not None:
+        tkw["pair_rank"] = rank
     return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,) + tuple(ignore),
                           air_handover=a["air_handover"], relay_near=RELAY_NEAR, max_spots=5, place_kw=dict(PLACE_KW),
-                          transfer_kw={**TRANSFER_KW, "max_pick_tilt": MAX_PICK_TILT,
-                                       "pair_ok": centred_grasp(sk.world.obj(label), allow_top=a["allow_top"],
-                                                                flat=getattr(sk, "tile_grasp", "any") == "flat")})
+                          transfer_kw=tkw)
 
 
 def complete_equation(sk, max_looks: int = 6, max_tries: int = 5) -> dict:
