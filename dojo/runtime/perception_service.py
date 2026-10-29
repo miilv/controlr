@@ -777,8 +777,9 @@ class _Perception:
         """``EstimatorConfig.glyph_read`` on a ``GLYPH_ONLY`` object (a 3-D numeral): the crop classifier's read of its
         silhouette at ``pose7`` in this wrist view (``glyph_read.classify_mask``), for the runtime to merge into the
         belief's digit (``digits.merge_view_read``). None when off / not a numeral / no reader."""
-        from dojo.perception.digits import GLYPH_ONLY
-        if key.split("/")[1] not in GLYPH_ONLY or self.cfg(fold).glyph_read == "off":
+        from dojo.perception.glyph_read import MODEL_OF
+        # numerals and operators (the digit model's categories): a slot's operator (solve_equation's t1) is read here too
+        if MODEL_OF.get(key.split("/")[1]) != "digit" or self.cfg(fold).glyph_read == "off":
             return None
         try:
             from dojo.perception import glyph_read

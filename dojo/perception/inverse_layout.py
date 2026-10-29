@@ -878,28 +878,20 @@ def _takes_robot(fn) -> bool:
 NUMERAL_MIN_VIEWS = 2   # S's held-out test: one head read is wrong 1-5 % of the time; a digit is confirmed by 2 views
 
 
-def _glyph_read_numeral(h: "Hypothesis", views) -> None:
-    """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): the crop classifier
-    (``glyph_read.classify_mask``) reads the object's silhouette at its fitted pose in every view, frame 0 and looks
-    alike. Reads that disagree leave the digit unknown. Agreeing reads in >= ``NUMERAL_MIN_VIEWS`` views set it with
-    confidence 1; a single view sets it with confidence 0.5 (a skill confirms it with a wrist look before committing).
-    The chosen asset follows the digit within its texture group (the checker reads idx % 10). No read: unknown;
-    B1's texture compare never sets it."""
-    from .digits import GLYPH_ONLY, NUMERAL_DIGIT, as_digit
-
-    cat = h.key.split("/")[1]
-    if cat not in GLYPH_ONLY or h.per_view.get("occluded"):
-        return
+def _glyph_views(sil_of, views, cat: str) -> dict:
+    """The crop classifier (``glyph_read.classify_mask``, the reader of ``cat``'s model) on an object's silhouette in
+    every view (``sil_of(cam)``), with the view's arm mask. Reads that disagree, or none: no read. Agreeing reads in
+    >= ``NUMERAL_MIN_VIEWS`` views: confidence 1; one view: 0.5. Returns {"read", "name", "conf", "n_views",
+    "margin", "views", "unread", "why"}."""
     from . import glyph_read
 
     classify = getattr(glyph_read, "classify_mask", None)
     if classify is None:
-        h.per_view["glyph_read"] = {"read": False, "why": "no classify_mask"}
-        return
+        return {"read": False, "why": "no classify_mask"}
     reads, whys = {}, {}
     for name, v in sorted(views.items()):
         try:
-            m = h.sm().sil(v.cam, h.T())
+            m = sil_of(v.cam)
             if getattr(v, "known", None) is not None:
                 m = m & (v.known > 0)
             kind = "cam_head" if name.split("@")[0] == "cam_head" else "cam_left_wrist"
@@ -907,29 +899,54 @@ def _glyph_read_numeral(h: "Hypothesis", views) -> None:
             # the arm's pixels (S's reader v2 refuses a tile half hidden by the gripper: a cut 3 reads as a 9)
             r = (classify(v.img, m, view=kind, robot=np.asarray(rob) > 0, category=cat)
                  if rob is not None and _takes_robot(classify) else classify(v.img, m, view=kind, category=cat))
-        except Exception as e:  # a reader failure never takes perception down: the digit stays unknown
+        except Exception as e:  # a reader failure never takes perception down: the identity stays unknown
             r = {"read": False, "why": f"error: {type(e).__name__}"}
-        d = as_digit(r.get("name")) if r.get("read") else None
-        if d is not None:
-            reads[name] = (d, float(r.get("margin") or 0.0))
+        if r.get("read") and r.get("name"):
+            reads[name] = (str(r["name"]), float(r.get("margin") or 0.0))
         else:
-            whys[name] = r.get("why") or ("not a digit" if r.get("read") else "no read")
-    digits_read = {d for d, _ in reads.values()}
+            whys[name] = r.get("why") or "no read"
+    names = {n for n, _ in reads.values()}
     out = {"views": {k: v[0] for k, v in reads.items()}, "unread": whys}
-    if len(digits_read) != 1:
-        out.update(read=False, why="disagree" if digits_read else (sorted(set(whys.values()))[0] if whys else "not visible"))
-        h.per_view["glyph_read"] = out
-        return
-    d = digits_read.pop()
-    out.update(read=True, name=str(d), conf=1.0 if len(reads) >= NUMERAL_MIN_VIEWS else 0.5, n_views=len(reads),
+    if len(names) != 1:
+        out.update(read=False, why="disagree" if names else (sorted(set(whys.values()))[0] if whys else "not visible"))
+        return out
+    out.update(read=True, name=names.pop(), conf=1.0 if len(reads) >= NUMERAL_MIN_VIEWS else 0.5, n_views=len(reads),
                margin=round(max(m for _, m in reads.values()), 3))
-    cands = list(h.per_view.get("geom_group") or [h.key])
-    idxs = [int(k.split("/")[2]) for k in cands if k.split("/")[1] == cat]
-    grp = int(h.key.split("/")[2]) // 10
-    f = NUMERAL_DIGIT[cat]
-    same = [i for i in idxs if i // 10 == grp and f(i) == d] or [i for i in idxs if f(i) == d]
-    if same:
-        h.key = f"{h.key.split('/')[0]}/{cat}/{same[0]:05d}"
+    return out
+
+
+def _glyph_key(key: str, cands: list[str], name: str) -> str | None:
+    """The candidate a glyph read ``name`` names: a numeral's digit (idx % 10, within ``key``'s texture group when it
+    can be) or an operator's category; None when no candidate shows it."""
+    from .digits import NUMERAL_DIGIT, as_digit
+
+    d = as_digit(name)
+    cat = key.split("/")[1]
+    if d is not None and cat in NUMERAL_DIGIT:
+        f = NUMERAL_DIGIT[cat]
+        idxs = [int(k.split("/")[2]) for k in cands if k.split("/")[1] == cat]
+        grp = int(key.split("/")[2]) // 10
+        same = [i for i in idxs if i // 10 == grp and f(i) == d] or [i for i in idxs if f(i) == d]
+        return f"{key.split('/')[0]}/{cat}/{same[0]:05d}" if same else None
+    return next((k for k in cands if k.split("/")[1] == name), None)
+
+
+def _glyph_read_numeral(h: "Hypothesis", views) -> None:
+    """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): ``_glyph_views`` on its silhouette at
+    its fitted pose; the chosen asset follows the read digit within its texture group (the checker reads idx % 10).
+    No read: unknown; B1's texture compare never sets it."""
+    from .digits import as_digit
+
+    cat = h.key.split("/")[1]
+    if cat not in GLYPH_ONLY or h.per_view.get("occluded"):
+        return
+    out = _glyph_views(lambda cam: h.sm().sil(cam, h.T()), views, cat)
+    if out.get("read") and as_digit(out["name"]) is None:
+        out = {**out, "read": False, "why": "not a digit"}
+    if out.get("read"):
+        k = _glyph_key(h.key, list(h.per_view.get("geom_group") or [h.key]), out["name"])
+        if k is not None:
+            h.key = k
     h.per_view["glyph_read"] = out
 
 
@@ -1928,7 +1945,8 @@ def _free_search_slot_children(slot_groups, chosen, slot_recs, views, cfg, group
     return out
 
 
-def _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_keep: bool = False) -> list:
+def _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_keep: bool = False,
+                         glyph: bool = False) -> list:
     """Records for labels pinned in support slots (``support_slot``): pose from the chosen base, then a per-view check
     on the pixels only the object would explain (its silhouette minus the base's and every other object's). A slot
     that the views see empty (no view supports it, one refutes it) -> ``_not_found`` "support slot empty"."""
@@ -1996,16 +2014,51 @@ def _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_
         conf = float(np.clip(np.mean(list(fracs.values())), 0, 1)) if fracs else 0.3
         hb = base_by_label[base]  # no surer than the base it is placed from
         conf = min(conf, float(np.clip(1 - hb.per_view.get("sil_loss", hb.loss), 0, 1)))
-        typ, cat, idx = key.split("/")
+        key_r, gread, dfields = key, None, {}
+        if glyph and len(set(g["candidates"])) > 1 and _glyph_slot_group(g["candidates"]):
+            # a numeral / operator pinned in a slot (solve_equation's t0 / t1 / t2 / t4 on the mats): the label's
+            # first candidate is a placeholder until the classifier reads it ("unknown" otherwise: identity_marks)
+            a_k = a_cache[key]
+            gread = _glyph_views(lambda cam: silhouette(cam, a_k.Vs @ T_of(pos, q)[:3, :3].T + T_of(pos, q)[:3, 3], a_k.Fs),
+                                 views, key.split("/")[1])
+            k_read = _glyph_key(key, list(g["candidates"]), gread["name"]) if gread.get("read") else None
+            if gread.get("read") and k_read is None:
+                gread = {**gread, "read": False, "why": "not a candidate"}
+            if k_read is not None:
+                key_r = k_read
+            dfields = digit_fields(key.split("/")[1], int(key_r.split("/")[2]), None, key_r, len(g["candidates"]),
+                                   classifier=gread)
+        typ, cat, idx = key_r.split("/")
         rec = {"category": cat, "category_idx": int(idx), "label": lab, "default_pos": [float(v) for v in pos],
                "default_ori": [float(v) for v in q], "scale": [1.0, 1.0, 1.0],
                "_perception": {"place_tag": pl.get("place_tag"), "residual": round(1 - conf, 4), "cost": round(1 - conf, 4),
                                "confidence": round(conf, 3), "per_view_fg": fracs, "n_views": len(fracs),
                                **({"unverified": True} if thin and refute > 0 and support == 0 else {}),
                                "occluded": not fracs, "ambiguous": not fracs, "slot": True, "support_slot": skey,
-                               "stacked_on": base, "geom_group": list(g["candidates"])}}
+                               "stacked_on": base, "geom_group": list(g["candidates"]),
+                               **dfields, **({"glyph_read": gread} if gread is not None else {}),
+                               **({"identity": "read"} if gread is not None and gread.get("read") else {})}}
         out.append((typ, cat, rec))
     return out
+
+
+def _slim_glyph(r: dict) -> dict:
+    """A glyph read for the record (make_kong's ``read`` carries per-view details: kept small)."""
+    return {k: v for k, v in r.items() if k in ("read", "name", "key", "class", "conf", "n_views", "margin", "view", "views",
+                                                "unread", "why")}
+
+
+def T_of(pos, q) -> np.ndarray:
+    T = np.eye(4)
+    T[:3, :3], T[:3, 3] = quat_wxyz_to_R(q), pos
+    return T
+
+
+def _glyph_slot_group(cands: list[str]) -> bool:
+    """A slot label whose candidates all live in one glyph reader's model (numerals / operators -> the digit model)."""
+    from .glyph_read import MODEL_OF
+    models = {MODEL_OF.get(k.split("/")[1]) for k in cands}
+    return len(models) == 1 and None not in models and "kong" not in models
 
 
 def _scene_select(cands, need, views, existing=(), min_gain: float = 0.2):
@@ -4303,7 +4356,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     # ---- support-slot labels (see above): from the chosen base's pose
     slot_recs = []
     if slot_groups:
-        slot_recs = _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_keep=cfg.thin_slot_keep)
+        slot_recs = _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_keep=cfg.thin_slot_keep,
+                                         glyph=cfg.glyph_read != "off")
         if cfg.slot_free_search:
             slot_recs += _free_search_slot_children(slot_groups, chosen, slot_recs, views, cfg, groups, record)
 
@@ -4390,7 +4444,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {}),
                                **({"twin": h.per_view["twin"]} if h.per_view.get("twin") else {}),
                                **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {}),
-                               **({"glyph_read": h.per_view["glyph_read"]} if cat in GLYPH_ONLY and h.per_view.get("glyph_read") else {})}}
+                               **({"glyph_read": _slim_glyph(h.per_view["glyph_read"])} if h.per_view.get("glyph_read") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []

@@ -891,18 +891,39 @@ class RuntimePolicy:
 
     # ------------------------------------------------------------------ helpers
     def _merge_glyph(self, prov, label: str, g: dict) -> None:
-        """A wrist view's numeral read (perception ``refine``'s ``glyph``) merged into the belief's digit
-        (``digits.merge_view_read``: agree -> confirmed, first -> one view, disagree -> unknown). Event ``digit_read``."""
-        from dojo.perception.digits import as_digit, merge_view_read
+        """A wrist view's glyph read (perception ``refine``'s ``glyph``) merged into the belief. A numeral's digit:
+        ``digits.merge_view_read`` (agree -> confirmed, first -> one view, disagree -> unknown). An operator (a slot's
+        placeholder asset until read): the read operator's asset becomes the object's identity (known); a read
+        contradicting a known identity makes it unknown. Event ``digit_read`` / ``glyph_identity``."""
+        from dojo.perception.digits import NUMERAL_DIGIT, as_digit, merge_view_read
         o = prov.belief.objects.get(label) if prov.belief else None
         if o is None:
             return
         d = as_digit(g.get("name")) if g.get("read") else None
-        before = (o.digit, o.digit_conf, o.digit_source)
-        o.digit, o.digit_conf, o.digit_source, why = merge_view_read(o.digit, o.digit_conf, o.digit_source, d)
-        self.report["events"].append({"kind": "digit_read", "label": label, "step": self.bridge.steps_used,
-                                      "read": d, "why": why or g.get("why"), "before": list(before),
-                                      "after": [o.digit, o.digit_conf, o.digit_source]})
+        if o.category in NUMERAL_DIGIT:
+            before = (o.digit, o.digit_conf, o.digit_source)
+            o.digit, o.digit_conf, o.digit_source, why = merge_view_read(o.digit, o.digit_conf, o.digit_source, d)
+            if o.digit is not None:
+                o.identity_known = True
+            self.report["events"].append({"kind": "digit_read", "label": label, "step": self.bridge.steps_used,
+                                          "read": d, "why": why or g.get("why"), "before": list(before),
+                                          "after": [o.digit, o.digit_conf, o.digit_source]})
+            return
+        name = g.get("name") if g.get("read") else None
+        if name is None or d is not None:
+            return
+        before = (o.category, o.identity_known)
+        if name == o.category:
+            o.identity_known, why = True, "confirmed"
+        elif not o.identity_known:
+            from dojo.runtime.estimate import _asset
+            o.asset = _asset(getattr(prov, "assets", None), o.obj_type, name, 0, mesh=True)
+            o.category, o.idx, o.identity_known, why = name, 0, True, "read"
+        else:
+            o.identity_known, why = False, "disagree"
+        self.report["events"].append({"kind": "glyph_identity", "label": label, "step": self.bridge.steps_used,
+                                      "read": name, "why": why, "before": list(before),
+                                      "after": [o.category, o.identity_known]})
 
     def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
         """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
@@ -1949,7 +1970,7 @@ def _short(params: dict) -> dict:
 # the per-object perception fields an episode report keeps: the digit read is among them, so a run shows whether the
 # numeral reader ran (2026-10-28: the first glyph rows looked unread because the report dropped these fields)
 _SLIM_PERCEPTION = ("confidence", "ambiguous", "occluded", "place_tag", "residual", "review",
-                    "digit", "digit_conf", "digit_source", "digit_unread", "glyph_read")
+                    "digit", "digit_conf", "digit_source", "digit_unread", "glyph_read", "identity", "slot")
 
 
 def _slim(rec: dict) -> dict:
