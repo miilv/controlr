@@ -14,6 +14,9 @@ export OMNI_KIT_ACCEPT_EULA=YES
 # (fd 9 is inherited through exec), with "pid stream start" written into the file.
 # SIMLAB_GPU=0 (CPU-only tools: gen_layouts, check_assets, pytest) skips the lock and the VRAM check.
 if [[ "${SIMLAB_GPU:-1}" != 0 ]]; then
+  # a GPU job never starts below DOJO_MIN_FREE_GB (default 10) free on the $HOME / $DOJO_DATA disk
+  source "$HERE/scripts/dojo/disk_guard.sh"
+  disk_guard "[rdpy]" || exit 6
   LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"
   # Fairness: our several drivers (coverage, d0_ext, demos) queue on a simlab-only lock first, so at most
   # ONE simlab job waits on the team lock at a time (flock wakes waiters at random). Default: on for the

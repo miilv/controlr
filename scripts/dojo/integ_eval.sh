@@ -12,7 +12,8 @@
 # holds $DOJO_GPU_LOCK (default ~/dojo-gpu.lock; compute5-8: Integration-3's ~/dojo-gpu-heavy2.lock) (blocking flock -w)
 # for its lifetime (keep a job <= 30 min: --max-minutes), every child runs with SIMLAB_GPU=0; services stopped
 # on exit; after releasing the lock it yields 90 s (INTEG_YIELD_S) before returning. Exit 3: a service never got
-# ready (no episode ran), 75: resources / the lock never came: the queue runner retries such a job once.
+# ready (no episode ran), 75: resources / the lock never came: the queue runner retries such a job once. Exit 6: less
+# than DOJO_MIN_FREE_GB (default 10) free on the $HOME / $DOJO_DATA filesystem (scripts/dojo/disk_guard.sh).
 # bash reads a script while it runs: a deploy that rewrites this file in place (cp, an editor) would make a
 # running copy execute a mix of old and new lines (2026-10-26: the runner re-ran a finished job with mangled
 # args, then died on a syntax error). The whole body is one brace group, read before any of it runs.
@@ -72,6 +73,9 @@ wait_res() {
   done
   ready
 }
+# a full disk takes the whole box down: never start below DOJO_MIN_FREE_GB (default 10) free (scripts/dojo/disk_guard.sh)
+source "$(dirname "${BASH_SOURCE[0]}")/disk_guard.sh"
+disk_guard "[integ]" || exit 6
 wait_res || { echo "[integ] MemAvailable $(avail) GB / VRAM free $(vram) MiB below $MIN_GB GB / $MIN_MB MiB: refusing to start" >&2; exit 75; }
 LOCK="${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}"; exec 9>>"$LOCK"
 echo "[integ] waiting for $LOCK: $(head -c 160 "$LOCK" | tr '\n' ' ')" >&2
