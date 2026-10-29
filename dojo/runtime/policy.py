@@ -51,7 +51,6 @@ CALIB_FOLD = 0
 IDENTITY_TOPK = 3                       # refine identity: perception's top-k target candidates (target_ranking)
 PEG_BASE_MAX_SHIFT = 0.006              # peg_base_refine: the base's local refine (m; the frame-0 error is ~2 mm)
 PEG_BASE_MAX_TURN_DEG = 2.0             # ... and turn
-PEG_BASE_TRIES = 2                      # ... places it may take before the frame-0 pose is kept for good
 
 
 def keep_centre(o, fit_pos, fit_quat) -> np.ndarray:
@@ -428,6 +427,9 @@ class RuntimeConfig:
     # (measured once). off (today) | local
     peg_base_refine: str = "off"
     peg_base_min_iou: float = 0.95
+    # ... places whose local base refine may be tried before the frame-0 pose is kept for good (5.1 dev screen: the 2nd
+    # place's wrist often does not see the base at all, visible 0.0; a later place's view does)
+    peg_base_tries: int = 2
     # insert_key's rest handover (``regrasp.plan_rest_handover``, ``Skills.key_handover``): v1 (today) | v2 (all four
     # lengthwise giver picks, an upright handover pass when the as-lifted one finds none, 16 taker places checked, vias
     # 8 / 5 / 3 / 12 cm over the receptacle). v15 dev layouts 100030-49, G3 mode A: 7/20 failed in the handover search
@@ -1308,7 +1310,7 @@ class RuntimePolicy:
                 self._peg_base_done.add(label)
                 ev.update({"applied": True, "peg_base_refine": "applied"})
                 return {label: (o.pos.copy(), o.quat.copy())}
-            if self._peg_base_tries[label] >= PEG_BASE_TRIES:
+            if self._peg_base_tries[label] >= max(1, int(self.cfg.peg_base_tries)):
                 self._peg_base_done.add(label)          # no good local view in two places: the frame-0 pose stays
             ev.update({"applied": False, "peg_base_refine": "rejected"})
             return None
