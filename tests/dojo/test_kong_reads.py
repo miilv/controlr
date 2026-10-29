@@ -193,3 +193,14 @@ def test_the_flag_takes_place3():
     from dojo.skills.g3 import SKILL_ATTRS
     assert "place3" in SKILL_ATTRS["kong_draw_read"]
     RuntimePolicy(RuntimeConfig(kong_draw_read="place3"))       # validated, not refused
+
+
+def test_insert_key_switches_are_validated_and_off_by_default():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.g3 import SKILL_ATTRS
+    cfg = RuntimeConfig()
+    assert (cfg.key_handover, cfg.key_lean) == ("v1", "off")
+    assert SKILL_ATTRS["key_handover"] == ("v1", "v2") and SKILL_ATTRS["key_lean"] == ("off", "on")
+    RuntimePolicy(RuntimeConfig(key_handover="v2", key_lean="on"))
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(key_lean="maybe"))
