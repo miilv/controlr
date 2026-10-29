@@ -137,8 +137,9 @@ def _run_mode_b(measure: str):
 
 
 def test_mode_b_parallel_hovers_save_steps_and_keep_the_row():
-    """align_measure "parallel" (default "seq"): both movers' hovers in one move, one refine per arm, both slides from
-    there; the row is as straight and the episode needs fewer steps (the camera arm ran out of its 200)."""
+    """align_measure "parallel" (default "seq"): every hover is the slide's pre-grasp; here the two hovers are too close
+    to share the steps (``ARMS_APART``), so one block at a time, still one refine per mover; the row is as straight and
+    the episode needs fewer steps (the camera arm ran out of its 200)."""
     from dojo.skills.skills import Skills as _S
     assert getattr(_S.__new__(_S), "align_measure", "seq") == "seq"
     r0, c0, n0, d0, a0, _ = _run_mode_b("seq")

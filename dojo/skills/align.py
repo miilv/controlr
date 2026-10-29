@@ -32,6 +32,8 @@ ROW_TOL = 0.004           # m: a block this close to the line ...
 YAW_TOL = 3.0             # deg: ... and turned this close to its heading needs no slide
 FIX_TOL = (0.005, 5.0)    # (m, deg): after the slides, a block further off than this gets one more slide
 CLEAR = 0.008             # m: the open pads' clearance on each side of the block
+ARMS_APART = 0.12         # m: the two arms' closest sampled points over a merged schedule (links ~7-8 cm thick:
+#                           ``motion.min_arm_distance``); G3 mode B 100031 ran two slides 9 mm apart and neither moved
 SLIDE_RAD = 0.04          # rad per step on the slide (slow: the block rides in the pads)
 
 
@@ -475,21 +477,54 @@ def _hover_plan(sk, label: str, xy, theta: float, arm: str) -> ArmPlan | None:
     return None
 
 
-def _measured_parallel(sk, pl: dict, seq: list, before: dict) -> bool:
-    """Mode B, ``Skills.align_measure`` "parallel": two movers on two arms go to their hovers in one move, each is
-    re-measured by its own wrist, then both slides are planned from there and run in the same steps when their paths
-    keep apart (``Skills.parallel`` checks the two arms' distance over the merged schedule and runs them one after the
-    other when they come too close), else one after the other. The sequential path spent ~62 steps per slide
-    (separate hover, then the approach): on 2 of 3 camera episodes the second slide did not fit in the 200 steps
-    (compute4 c4b_alignblockssg 100006 / 100007). False (nothing moved) when this does not apply."""
+def _measured_one_by_one(sk, pl: dict, seq: list, before: dict) -> bool:
+    """Mode B, one block after the other: the arm goes to the slide's pre-grasp (the other arm parked first when it is
+    in the way), the wrist refines there, the slide is re-planned from that hover and run."""
     import copy
-    if len(seq) != 2 or seq[0][1] == seq[1][1]:
+    for k, arm0 in seq:
+        sk.refresh()
+        xy, th = pl["targets"][k]
+        p = None
+        for arm in [arm0] + [a for a in ARMS if a != arm0]:
+            h = _hover_plan(sk, k, xy, th, arm)
+            if h is None:
+                continue
+            sk._park_if_blocking(h)
+            sk.ex.run({arm: h}, name=f"hover {k}")
+            sk._refine(k, arm, "pick")
+            before[k] = copy.deepcopy(sk.world.obj(k))
+            p = plan_slide(sk, k, xy, th, arm)
+            if isinstance(p, ArmPlan):
+                break
+        if not isinstance(p, ArmPlan):
+            sk.log(f"[align] {k}: no slide from a hover ({p})")
+            continue
+        sk._park_if_blocking(p)
+        sk.ex.run({p.arm: p}, name=f"slide {k}")
+        sk.confirm_moved(k, _expected_T(before[k], xy, th), "slide")
+        _log_slide(sk, k, xy, th, before[k])
+    return True
+
+
+def _measured_parallel(sk, pl: dict, seq: list, before: dict) -> bool:
+    """Mode B, ``Skills.align_measure`` "parallel": every hover IS the slide's pre-grasp (no separate look pose). Two
+    movers on two arms whose hovers keep ``ARMS_APART`` go there in one move, each is re-measured by its own wrist,
+    and both slides run in the same steps when the merged schedule keeps the arms apart too, else one after the other
+    with the other arm parked when in the way. Otherwise one block at a time (``_measured_one_by_one``). The "seq"
+    path spent ~62 steps per slide (look pose, then the approach): on 2 of 3 camera episodes the second slide did not
+    fit in the 200 steps (compute4 c4b_alignblockssg 100006 / 100007). False (nothing moved) when no hover plans."""
+    import copy
+    if not seq:
         return False
     hov = [_hover_plan(sk, k, *pl["targets"][k], arm) for k, arm in seq]
     if any(h is None for h in hov):
         return False
-    r = sk.parallel(hov, name="slide hovers")
-    sk.log(f"[align] hovers: {r}")
+    if len(seq) == 2 and seq[0][1] != seq[1][1] and sk.clear_of(hov[0], hov[1], ARMS_APART):
+        sk.ex.run({h.arm: h for h in hov}, name="slide hovers")
+        sk.log("[align] hovers in one move")
+    else:
+        # one block at a time, each hovering at its slide's pre-grasp (no separate look pose: ~15 steps less a slide)
+        return _measured_one_by_one(sk, pl, seq, before)
     for k, arm in seq:
         sk._refine(k, arm, "pick")
         before[k] = copy.deepcopy(sk.world.obj(k))
@@ -501,14 +536,18 @@ def _measured_parallel(sk, pl: dict, seq: list, before: dict) -> bool:
         pb0, pb1 = sk.world.obj(kb).center_w[:2], pl["targets"][kb][0]
         apart = min(_seg_dist(pa0, pa1, pb0), _seg_dist(pa0, pa1, pb1), _seg_dist(pb0, pb1, pa0),
                     _seg_dist(pb0, pb1, pa1)) >= 0.06
-        if apart:
-            r = sk.parallel([plans[ka], plans[kb]], name="slides")
-            sk.log(f"[align] parallel slides from the hovers: {r}")
+        # in the same steps only when the two arms keep apart over the whole merged schedule; ``Skills.parallel``
+        # would otherwise run them one after the other with the second arm still at its hover, in the first one's way
+        # (G3 mode B 100031: the arms came 9 mm apart and neither block moved)
+        if apart and sk.clear_of(plans[ka], plans[kb], ARMS_APART):
+            sk.ex.run({plans[ka].arm: plans[ka], plans[kb].arm: plans[kb]}, name="slides")
+            sk.log("[align] parallel slides from the hovers")
             for k, _ in seq:
                 sk.confirm_moved(k, _expected_T(before[k], *pl["targets"][k]), "slide")
                 _log_slide(sk, k, *pl["targets"][k], before[k])
             return True
-    # one after the other from the hovers; the second re-planned once the first is done
+    # one after the other from the hovers, the other arm parked first when it is in the way (a parked arm's block
+    # keeps its refined belief); the second re-planned once the first is done
     for k, arm in seq:
         sk.refresh()
         xy, th = pl["targets"][k]
