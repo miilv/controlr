@@ -1465,6 +1465,85 @@ def test_watch_lays_the_knocked_tile_face_up_after_two_equal_reads():
     assert pc2.n == 1
 
 
+class _LaidWatch:
+    """A watch read that reports block_0 knocked from the 2nd call on, and scripted ``locate_laid`` answers
+    ((dx, dy) in mm from the laid pose, or None = not found); records the pose each locate searched from."""
+
+    def __init__(self, locates):
+        self.n, self.locates, self.bases = 0, list(locates), []
+
+    def watch(self, frame0, frame, vocabulary):
+        self.n += 1
+        return {"supported": True, "knocked": ["block_0"] if self.n >= 2 else []}
+
+    def locate_laid(self, frame0, frame, key, pose7):
+        self.bases.append([float(v) for v in pose7])
+        a = self.locates.pop(0)
+        if a is None:
+            return {"ok": False, "iou": 0.1, "why": "best iou 0.10 < 0.4"}
+        return {"ok": True, "pos": [pose7[0] + a[0] / 1000, pose7[1] + a[1] / 1000, pose7[2]], "quat": list(pose7[3:]),
+                "iou": 0.8, "shift_mm": float(np.hypot(*a))}
+
+
+def _laid_setup(cfg, pc):
+    env = _env()
+    up = [np.cos(np.pi / 4), np.sin(np.pi / 4), 0.0, 0.0]
+    tile = AssetInfo(key="Rigid/mahjong/00005", bbox_min=np.array([-0.012, -0.008, 0.0]),
+                     bbox_max=np.array([0.012, 0.008, 0.034]), place={"up": np.asarray(up)})
+    pol, prov = _place_setup(cfg, pc, env)
+    prov.belief.objects["block_0"].asset = tile
+    return pol, prov, pol._make_watcher(prov, pol.bridge.obs, "make_kong")
+
+
+def test_watch_relocate_moves_the_laid_tile_to_where_the_head_view_finds_it_until_two_agree():
+    from dojo.skills.library import face_up
+    pc = _LaidWatch([(0, -45), (1, -47), (0, -40)])
+    pol, prov, w = _laid_setup(RuntimeConfig(mode="perception", watch=True, watch_every=0, watch_relocate=True), pc)
+    o = prov.belief.objects["block_0"]
+    slot = o.pos[:2].copy()
+    obs = pol.bridge.obs
+    w(obs)
+    w(obs)
+    assert not face_up(o) and pc.bases == []
+    w(obs)                                                            # 2nd equal read: laid, then located at once
+    assert face_up(o) and np.allclose(o.pos[:2], slot + [0, -0.045])
+    w(obs)                                                            # 2 mm from the last location: settled
+    assert np.allclose(o.pos[:2], slot + [0.001, -0.047])
+    w(obs)
+    w(obs)
+    assert len(pc.bases) == 2 and pc.n == 3                           # done: no more reads of either kind
+    assert all(np.allclose(b[:2], slot) for b in pc.bases)            # every search starts where it was laid
+    ev = [e for e in pol.report["events"] if e["kind"] == "watch_relocate"]
+    assert [e["settled"] for e in ev] == [False, True] and ev[0]["label"] == "block_0"
+
+
+def test_watch_relocate_keeps_the_laid_pose_when_nothing_is_found_and_gives_up():
+    from dojo.runtime import policy as P
+    pc = _LaidWatch([None] * 20)
+    pol, prov, w = _laid_setup(RuntimeConfig(mode="perception", watch=True, watch_every=0, watch_relocate=True), pc)
+    o = prov.belief.objects["block_0"]
+    obs = pol.bridge.obs
+    w(obs)
+    w(obs)
+    w(obs)
+    laid = o.pos.copy()
+    for _ in range(P.WATCH_RELOCATE_TRIES + 5):
+        w(obs)
+    assert np.allclose(o.pos, laid) and len(pc.bases) == P.WATCH_RELOCATE_TRIES
+
+
+def test_watch_relocate_off_by_default_lays_the_tile_where_it_stood():
+    assert RuntimeConfig().watch_relocate is False
+    pc = _LaidWatch([(0, -45)])
+    pol, prov, w = _laid_setup(RuntimeConfig(mode="perception", watch=True, watch_every=0), pc)
+    o = prov.belief.objects["block_0"]
+    slot = o.pos[:2].copy()
+    obs = pol.bridge.obs
+    for _ in range(4):
+        w(obs)
+    assert np.allclose(o.pos[:2], slot) and pc.bases == []
+
+
 @pytest.mark.parametrize("needs", [False, True])
 def test_agentic_budget_estimates_at_frame0_and_once_more_only_when_perception_asks(needs):
     env = _env()
