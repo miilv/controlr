@@ -333,6 +333,9 @@ class RuntimeConfig:
     # ``library.hang_on_hooks`` on a cradle (``Skills.hang_cradle``): strict (today: the rack's top is an obstacle for
     # the held object too) | straddle (the held object may straddle the rack's top around the cradle: a headset)
     hang_cradle: str = "strict"
+    # ``library.hang_on_hooks``: grasps at least HANG_WIDE_W (35 mm) across planned first, the rest as the fallback
+    # (``Skills.hang_wide``; off = today)
+    hang_wide: bool = False
     # ``stacking.plan_stack``'s reach (``Skills.stack_reach``): centre (today) | grasp (to the planned grasp's TCP)
     stack_reach: str = "centre"
     # ``library.bowl_geometry``'s nest height (``Skills.nest_height``): bins (today) | measured (twin table, else profile)
@@ -821,6 +824,7 @@ class RuntimePolicy:
             sk_.arrange_order = cfg.arrange_order
             sk_.push_stroke = cfg.push_stroke
             sk_.hang_cradle = cfg.hang_cradle
+            sk_.hang_wide = bool(cfg.hang_wide)
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp
             sk_.tile_recover = bool(cfg.tile_recover)

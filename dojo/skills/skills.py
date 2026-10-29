@@ -310,6 +310,8 @@ class Skills:
         # ``library.hang_on_hooks`` (stream N): a cradle hang's held object vs the rack's top, "strict" (today: an
         # obstacle) | "straddle" (the held object may straddle it: a headset on its stand; the hand still avoids it)
         self.hang_cradle = "strict"
+        # ``library.hang_on_hooks`` (stream N): grasps >= HANG_WIDE_W planned first (off = today)
+        self.hang_wide = False
         # ``library.push_to`` (stream N): "face" (today: fingertips against a face) | "press" (when no face stroke plans,
         # drag with the fingertips pressed on the top)
         self.push_stroke = "face"
