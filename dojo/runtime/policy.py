@@ -317,6 +317,10 @@ class RuntimeConfig:
     # at on its pad; not there, it goes back where it was picked from (head view) or is searched for (LostObject), then
     # placed again (``Skills.tile_recover``; off = today)
     tile_recover: bool = False
+    # the belief's labels for a series perception keeps under one config label (classify_objects' ``rigid0`` x 6, its
+    # per-category prefixes not observable): keep (today: keyed by that label, one object stands for all; the classify
+    # route saw one item and planned nothing) | numbered (``<label>_<k>``, k by x then y: ``estimate.series_names``)
+    series_labels: str = "keep"
     # belt picks (``interactive.pick_from_belt`` / ``match_and_pick``, ``Skills.belt_wrist_veto``): off (today) | on (a
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
@@ -426,6 +430,7 @@ class RuntimePolicy:
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
                 or self.cfg.tile_grasp not in ("any", "flat")
+                or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
@@ -614,6 +619,7 @@ class RuntimePolicy:
         prov.post_place_read_cfg = dict(cfg.post_place_read_cfg)
         if checker is not None and cfg.agentic == "budget":
             checker.agentic_hook = lambda obs, rec: self._agentic_gate(obs, scene, rec, "risk")
+        prov.unique_labels = cfg.series_labels == "numbered"
         prov.tracker_on = bool(cfg.mode == "perception" and (cfg.tracker == "on" or (cfg.tracker == "auto"
                                                                                       and cfg.agentic == "budget")))
         if cfg.mode == "perception" and cfg.held_look != "off":
@@ -1407,9 +1413,9 @@ class RuntimePolicy:
         tracker does not accept keep the belief pose in the returned record."""
         import copy as _copy
 
-        from .estimate import iter_records, objects_from_record
+        from .estimate import iter_records, objects_from_record, series_names
         from .track import filter_readings
-        est = objects_from_record(rec, self.assets(), self.bridge.steps_used, meshes=False)
+        est = objects_from_record(rec, self.assets(), self.bridge.steps_used, meshes=False, unique=prov.unique_labels)
         ok, tev = filter_readings(prov.belief.objects, {l: e for l, e in est.items() if l in prov.belief.objects},
                                   prov.touched)
         kept = sorted(l for l, a in ok.items() if not a)
@@ -1418,9 +1424,11 @@ class RuntimePolicy:
         if not kept:
             return rec
         out = _copy.deepcopy(rec)
+        names = series_names(out) if prov.unique_labels else {}
         for _t, _c, r in iter_records(out):
-            if r.get("label") in kept:
-                o = prov.belief.objects[r["label"]]
+            lab = names.get(id(r), r.get("label"))
+            if lab in kept:
+                o = prov.belief.objects[lab]
                 r["default_pos"], r["default_ori"] = o.pos.tolist(), o.quat.tolist()
                 r.setdefault("_perception", {})["tracker"] = "kept"
         return out

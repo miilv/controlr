@@ -410,6 +410,7 @@ class RuntimeProvider:
         self.post_place_refine = False          # set by the policy (RuntimeConfig.post_place)
         self.watcher = None                     # mode perception: (obs) -> None, may update at-rest objects (watch)
         self.tracker_on = False                 # mode perception: re-estimates pass perception's episode tracker
+        self.unique_labels = False              # RuntimeConfig.series_labels "numbered" (estimate.series_names)
         self.touched: set[str] = set()          # labels the robot moved since their last good reading (tracker)
         self.held_checker = None                # mode perception: (obs, arm, label) -> {"held": bool|None, ...}
         self.held_min_lift_m = 0.04
@@ -515,7 +516,7 @@ class RuntimeProvider:
         self._checkpoint(st)
 
     def init_from_record(self, record: dict) -> None:
-        self.init_objects(objects_from_record(record, self.assets, self.bridge.steps_used))
+        self.init_objects(objects_from_record(record, self.assets, self.bridge.steps_used, unique=self.unique_labels))
 
     def init_from_gt(self) -> None:
         self.init_objects(self._gt_objects())
@@ -835,7 +836,7 @@ class RuntimeProvider:
                 self.events.append({"kind": "belt_blind", "step": step, "why": self.belt_blind})
             self._predict(step)
             return
-        est = objects_from_record(rec, self.assets, step)
+        est = objects_from_record(rec, self.assets, step, unique=self.unique_labels)
         held = set(self.belief.held_labels())
         from .estimate import _assign
         el = [e for e in est.values() if e.obj_type == "Rigid" and not e.clutter]
@@ -1292,7 +1293,7 @@ class RuntimeProvider:
             return ev
         self.stats["checks_failed"] = self.stats.get("checks_failed", 0) + 1
         rec = self.checker.estimate(obs)
-        est = objects_from_record(rec, self.assets, self.bridge.steps_used)
+        est = objects_from_record(rec, self.assets, self.bridge.steps_used, unique=self.unique_labels)
         # labels of same-category objects are interchangeable in a fresh estimate: match by position
         est = self._match_by_position(est)
         upd = {}
