@@ -321,6 +321,9 @@ class RuntimeConfig:
     # at on its pad; not there, it goes back where it was picked from (head view) or is searched for (LostObject), then
     # placed again (``Skills.tile_recover``; off = today)
     tile_recover: bool = False
+    # ``copy_demonstration``'s twins (``Skills.imitate_pairing``): greedy (today) | one_to_one (a least-cost assignment of
+    # the demonstrator's objects to ours; the instruction pairs them one-to-one, by appearance: D-C17 ruling 28 Oct)
+    imitate_pairing: str = "greedy"
     # the belief's labels for a series perception keeps under one config label (classify_objects' ``rigid0`` x 6, its
     # per-category prefixes not observable): keep (today: keyed by that label, one object stands for all; the classify
     # route saw one item and planned nothing) | numbered (``<label>_<k>``, k by x then y: ``estimate.series_names``)
@@ -440,6 +443,7 @@ class RuntimePolicy:
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
                 or self.cfg.tile_grasp not in ("any", "flat", "prefer")
+                or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
@@ -714,6 +718,7 @@ class RuntimePolicy:
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp
             sk_.tile_recover = bool(cfg.tile_recover)
+            sk_.imitate_pairing = cfg.imitate_pairing
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.stack_reach = cfg.stack_reach

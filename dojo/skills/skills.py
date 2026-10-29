@@ -306,6 +306,10 @@ class Skills:
         # ``tiles`` (stream N): a placed tile the provider doubts (post-place not ok, empty close) is looked at, put back
         # where it was picked from or searched for, and placed again (off = today: it counts as placed)
         self.tile_recover = False
+        # ``interactive.copy_demonstration``'s twins (stream W): "greedy" (today: per departure, the first free object of
+        # the same asset, else category) | "one_to_one" (one assignment of all the demonstrator's objects to ours at the
+        # least total cost, same asset 0 / same category 0.5 / else 1: one misread on each side still pairs right)
+        self.imitate_pairing = "greedy"
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"
