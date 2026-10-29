@@ -20,6 +20,7 @@ CLOSE = re.compile(r"\bclose\s+the\s+([a-z ]+?)\s*(?:,|\bthen\b|\band\b|\.|$)")
 INTO = re.compile(r"\bplace\s+it\s+(?:into|in|on)\s+the\s+([a-z ]+?)\s*(?:,|\bthen\b|\.|$)")
 RACK_DROP = 0.006       # m: the laptop's bottom edge this far over the rack's floor (its bbox bottom) at the release
 YAWS_DEG = (0.0, 180.0, 8.0, -8.0, 188.0, 172.0)
+EDGE_PICK_TILT = 95.0   # deg: the shut laptop's pick approach may be horizontal (an edge pinch across the slab)
 
 
 def _words(s: str) -> set:
@@ -127,9 +128,19 @@ def store_laptop(sk, hang: dict, laptop: str, hinge_tag: str | None, rack: str) 
     sk.refresh()
     if not r2.ok:
         return {"ok": False, "stage": "close", "note": str(notes)}
-    tg = upright_targets(sk, laptop, rack)
-    r3 = place_oriented(sk, laptop, tg, yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.04, ignore=(rack,),
-                        place_kw={"pre_h": 0.06, "release_gap": 0.003}, max_spots=2)
+    # the shut laptop as it is now (``Skills.artic_geom`` "measured": the lid turned onto the body, a 9 mm slab; the
+    # authored asset is an OPEN laptop), picked by an edge (a side pinch across the slab: top-down pinches would span
+    # 126-180 mm), turned to stand in the rack
+    saved = getattr(sk, "artic_geom", "authored")
+    sk.artic_geom = "measured"
+    try:
+        sk.refresh()
+        tg = upright_targets(sk, laptop, rack)
+        r3 = place_oriented(sk, laptop, tg, yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.04, ignore=(rack,),
+                            place_kw={"pre_h": 0.06, "release_gap": 0.003}, max_spots=2,
+                            transfer_kw={"max_pick_tilt": EDGE_PICK_TILT})
+    finally:
+        sk.artic_geom = saved
     notes["store"] = f"{r3.status} {r3.note[:80]}"
     for a in ARMS:
         if sk.held[a] is not None:
