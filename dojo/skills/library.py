@@ -2261,6 +2261,11 @@ def arrange(sk: Skills, steps: list) -> dict:
     places = [s for s in steps if s[0] != "push"]
     pushes = [s for s in steps if s[0] == "push"]
     places.sort(key=lambda s: min(float(np.linalg.norm(sk.kin.base(a)[:2, 3] - w.obj(s[1]).center_w[:2])) for a in ARMS))
+    if getattr(sk, "arrange_order", "near") == "big_first":
+        # the largest object first (stable: then nearest the arms), while the table is emptiest: organize_table's 19 cm
+        # garage, carried after the alarm, swept through the drawer and the alarm on every place approach (0 of 10 G3
+        # v1 rows placed it), and standing by the keyboard's end it blocked the keyboard's sideways push stroke
+        places.sort(key=lambda s: -float(np.max(w.obj(s[1]).asset.extents)))
     failed = []
     for verb, obj, sup in places + pushes:
         if obj in st["done"]:
