@@ -39,6 +39,9 @@ Ops (request dicts):
     {"op": "watch", "frame0": frame, "frame": frame, "vocabulary": str}            -> {"watch": json}
         what the scene's own actors changed while the robot waits (``dojo.perception.task_state.actor_change``; make_kong:
         the push tile the opponent knocked over): {"supported", "knocked": [label], "detail"}
+    {"op": "locate_laid", "frame0": frame, "frame": frame, "key": str, "pose7": [7]} -> {"locate_laid": json}
+        where a knocked-over object laid at ``pose7`` (where it stood) actually lies, from the head view
+        (``dojo.perception.task_state.laid_pose``): {"ok", "pos", "quat", "iou", "shift_mm", "yaw_deg", "why"}
     {"op": "agentic_estimate", "frame": frame, "vocabulary": str, "fold": int, "b1_record": json|None,
      "extra_frame": scan frame (optional: the agent's second observation)}
                                                                                    -> {"record": json}
@@ -155,8 +158,19 @@ def _default(o):
     return str(o)
 
 
+# per-op reply deadline: the slowest ops of 306 rendered dev episodes (ids 100000-04, compute4, 2026-10-28/29) took
+# 243 s (agentic_estimate; estimate 223 s); a reply this late is a stalled service, which must not hold the episode
+# past its wall cap
+OP_TIMEOUT_S = 600.0
+
+
 class PerceptionClient:
-    def __init__(self, port: int | None = None, authkey: bytes | None = None, timeout_s: float = 600.0):
+    """``op_timeout_s``: each op's reply must come within it (``conn.poll``); else the connection is closed, the
+    client is dead (``dead``: every later op raises at once, a late reply can never answer a later request) and the
+    op raises ``TimeoutError`` into the caller's handlers. The runtime reconnects at the next episode."""
+
+    def __init__(self, port: int | None = None, authkey: bytes | None = None, timeout_s: float = 600.0,
+                 op_timeout_s: float = OP_TIMEOUT_S):
         port = port or int(os.environ["DOJO_PERCEPTION_PORT"])
         authkey = authkey or bytes.fromhex(os.environ["DOJO_PERCEPTION_AUTHKEY"])
         t0 = time.perf_counter()
@@ -169,10 +183,22 @@ class PerceptionClient:
                     raise
                 time.sleep(2)
         self.calls: list[dict] = []
+        self.op_timeout_s = float(op_timeout_s)
+        self.dead: str | None = None
 
     def _call(self, req: dict) -> dict:
+        if self.dead:
+            raise TimeoutError(f"perception service: connection closed after {self.dead}")
         t0 = time.perf_counter()
         self.conn.send(req)
+        if not self.conn.poll(self.op_timeout_s):
+            self.dead = f"no {req.get('op')} reply within {self.op_timeout_s:.0f} s"
+            self.calls.append({"op": req["op"], "s": round(time.perf_counter() - t0, 3), "timeout": True})
+            try:
+                self.conn.close()
+            except OSError:
+                pass
+            raise TimeoutError(f"perception service: {self.dead}")
         res = self.conn.recv()
         self.calls.append({"op": req["op"], "s": round(time.perf_counter() - t0, 3)})
         if not res.get("ok"):
@@ -349,6 +375,12 @@ class PerceptionClient:
         return json.loads(self._call({"op": "watch", "frame0": head_only(frame0), "frame": head_only(frame),
                                       "vocabulary": vocabulary})["watch"])
 
+    def locate_laid(self, frame0: dict, frame: dict, key: str, pose7) -> dict:
+        def head_only(f):
+            return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
+        return json.loads(self._call({"op": "locate_laid", "frame0": head_only(frame0), "frame": head_only(frame),
+                                      "key": key, "pose7": [float(v) for v in pose7]})["locate_laid"])
+
     def close(self, stop_service: bool = False) -> None:
         try:
             if stop_service:
@@ -498,6 +530,13 @@ class _Perception:
                          vocabulary)
         return {"supported": True, "knocked": [r["knocked"]] if r.get("knocked") and r.get("confident") else [],
                 "detail": r}
+
+    def locate_laid(self, frame0: dict, frame: dict, key: str, pose7) -> dict:
+        """Where a knocked-over object, laid face up where it stood (``pose7``), actually lies: the head view, frame 0
+        vs now (``task_state.laid_pose``)."""
+        from dojo.perception.task_state import laid_pose
+        return laid_pose(decode_frame(frame0)["images"]["cam_head"], decode_frame(frame)["images"]["cam_head"], key,
+                         list(pose7))
 
     def agentic_estimate(self, frame: dict, vocabulary: str, fold: int, b1_record: dict | None = None,
                          extra_frame: dict | None = None) -> dict:
@@ -1123,6 +1162,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "watch":
                         w = p.watch(req["frame0"], req["frame"], req["vocabulary"])
                         conn.send({"ok": True, "watch": json.dumps(w, default=_default)})
+                    elif op == "locate_laid":
+                        r = p.locate_laid(req["frame0"], req["frame"], req["key"], req["pose7"])
+                        conn.send({"ok": True, "locate_laid": json.dumps(r, default=_default)})
                     elif op == "close":
                         conn.send({"ok": True})
                         stop = True
@@ -1136,7 +1178,10 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     finally:
                         os._exit(SIDE_SERVER_DOWN_RC)
                 except Exception as e:  # noqa: BLE001 (report, keep serving)
-                    conn.send({"ok": False, "error": f"{type(e).__name__}: {e}", "trace": traceback.format_exc()[-3000:]})
+                    try:
+                        conn.send({"ok": False, "error": f"{type(e).__name__}: {e}", "trace": traceback.format_exc()[-3000:]})
+                    except OSError:     # the client gave up on this op (its deadline) and closed: serve the next one
+                        break
                 s = stats["s"].setdefault(op, [])
                 s.append(round(time.perf_counter() - t0, 3))
             conn.close()

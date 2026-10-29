@@ -47,6 +47,9 @@ class AssetInfo:
     # "position"}, all in the asset frame at the USD's authored state
     links: dict | None = None
     joints: dict | None = None
+    # no geometry is known (metadata without an aligned bbox, or no metadata at all): the box is a placeholder that
+    # only keeps the object an obstacle; planning refuses to move it (``Skills.geometry_refusal``)
+    unknown_geometry: bool = False
 
     @property
     def extents(self) -> np.ndarray:
@@ -184,8 +187,10 @@ def _is_dir(p: str) -> bool:
 
 
 def asset_from_metadata(key: str, m: dict) -> AssetInfo:
-    g = m.get("geometry", {})
-    verts = np.asarray(g.get("aligned_bbox", {}).get("vertices") or [[0, 0, 0]], float)
+    g = m.get("geometry") or {}
+    v = (g.get("aligned_bbox") or {}).get("vertices")
+    verts = np.asarray(v or [[0, 0, 0]], float).reshape(-1, 3)
+    unknown = not v or not np.all(np.isfinite(verts)) or bool(np.all(np.ptp(verts, axis=0) <= 0.0))
     act, pas = m.get("active", {}) or {}, m.get("passive", {}) or {}
     place = {k: np.asarray(v.get("orientation", [1, 0, 0, 0]), float) for k, v in (act.get("place") or {}).items()}
     support = {}
@@ -195,7 +200,7 @@ def asset_from_metadata(key: str, m: dict) -> AssetInfo:
         support[k] = [(np.asarray(c, float), float(r)) for c, r in zip(cs, rs)]
     return AssetInfo(key=key, bbox_min=verts.min(0), bbox_max=verts.max(0), mass=(m.get("physics") or {}).get("mass"),
                      place=place, support=support, functional=dict(pas.get("functional") or {}),
-                     active_functional=dict(act.get("functional") or {}))
+                     active_functional=dict(act.get("functional") or {}), unknown_geometry=unknown)
 
 
 @dataclass

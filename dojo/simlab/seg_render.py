@@ -76,6 +76,15 @@ def layout_dir_name(seed: int, variant: int) -> str:
 
 # ------------------------------------------------------------------------------------------------ arm poses (pure)
 
+def extra_assets(pool: list[str], seed: int, variant: int, n: int) -> list[str]:
+    """The ``n`` extra assets of training draw (seed, variant): the pool cycled over the training slice, so every
+    pool asset shows up about equally often (draw k takes pool[k n .. k n + n - 1], wrapping)."""
+    if not pool or n <= 0:
+        return []
+    k = (variant - 1) * len(TRAIN_IDS) + (seed - TRAIN_IDS.start)
+    return [pool[(k * n + i) % len(pool)] for i in range(min(n, len(pool)))]
+
+
 def sample_moves(rng: random.Random, objs: list[dict], n: int, table_z: float) -> list[dict]:
     """``n`` move specs over the task objects ``objs`` (GT rows with ``pos``; env frame, world -x = the robot's left).
     Kinds cycle through MOVE_KINDS from a random start; targets, heights, pitches and gripper openings are random."""
@@ -516,6 +525,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--physics-only", action="store_true",
                     help="no renderer (compute3): states + stage.usd + cameras.json; RGB and masks from the Isaac 6.0 "
                          "proxy afterwards (scripts/simlab/isaac6.sh dojo/simlab/render_d0_proxy.py --any-dirs --instance)")
+    ap.add_argument("--extra-pool", default=None,
+                    help="file of asset keys (one per line, 'Rigid/<category>/<index>'): rare assets added as extra "
+                         "objects to TRAINING draws (gen_layouts.extra_groups); never with --test")
+    ap.add_argument("--extra-n", type=int, default=3, help="extra objects per layout from --extra-pool (cycled)")
     ap.add_argument("--settle-renders", type=int, default=8, help="render passes before an arm-pose frame (ghosting)")
     ap.add_argument("--raw-frac", type=float, default=0.4,
                     help="share of arm-pose frames captured as the official loop does (one pass: the moved arm's ghost "
@@ -536,6 +549,10 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit("--test renders the stored records (--variants 0) into a directory named *test*")
     elif any(v < 1 for v in variants):
         raise SystemExit("variant 0 is the stored (measured) record: training uses new draws only (v >= 1)")
+    pool = [ln.strip() for ln in Path(a.extra_pool).expanduser().read_text().splitlines() if ln.strip()] \
+        if a.extra_pool else []
+    if pool and a.test:
+        raise SystemExit("--extra-pool is for training draws only, never for the held-out (--test) records")
     out = Path(a.out).expanduser() / a.task
     paths.assert_not_eval(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -558,7 +575,8 @@ def main(argv: list[str] | None = None) -> None:
         row = {"id": s, "variant": v, "task": a.task}
         try:
             sp = paths.LAYOUTS / a.task / f"{s}.settled.json"
-            lay = json.loads(sp.read_text()) if (a.test and sp.exists()) else generate(a.task, s, variant=v)
+            lay = json.loads(sp.read_text()) if (a.test and sp.exists()) else \
+                generate(a.task, s, variant=v, extra=extra_assets(pool, s, v, a.extra_n) or None)
         except LayoutError as e:
             d.mkdir(parents=True, exist_ok=True)
             (d / "skip.json").write_text(json.dumps({"status": f"gen_fail: {e}"}))

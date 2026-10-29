@@ -92,6 +92,19 @@ def alternate_arms(xs: list) -> list:
     return best
 
 
+DRAIN_FROM = 120.0  # deg: the vendored pour skills' ``drain_from`` (their liquid profile pours from this roll on)
+
+
+def poured(r: dict) -> bool:
+    """A ported liquid pour that poured: verified, or it ran its profile to ``DRAIN_FROM`` without an in-hand slip and
+    with no error (an unverified end: the bottle left tilted, an arm not home)."""
+    if r.get("verified"):
+        return True
+    p = r.get("pour") or {}
+    return bool(r.get("ok") and not r.get("error") and p.get("max_phi") is not None
+                and float(p["max_phi"]) >= DRAIN_FROM and p.get("stop") != "in-hand slip")
+
+
 def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
     """Pour each [bottle, bowl] in ``pairs`` in order through the ported ``pour_bottle``; stop at the first pour that
     did not run its whole procedure (a later pour must never come before an earlier one)."""
@@ -134,6 +147,12 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
                f"steps {r.get('steps')} {str(r.get('error') or '')[:120]}")
         if not r.get("ok"):
             return {"ok": False, "stage": f"pour {i + 1}", "note": f"done {done}; {bottle} -> {bowl}: {r.get('status')}"}
+        if not poured(r):
+            # ok=True also when it found no neck grasp, or the grasp failed (Misha's review P1-1): the later pours must
+            # not come before this one, so stop here and report the pair that did not run
+            return {"ok": False, "stage": f"pour {i + 1}", "note": f"done {done}; {bottle} -> {bowl} not poured: "
+                    f"{str(r.get('error') or (r.get('pour') or {}).get('stop') or 'unverified')[:120]}",
+                    "not_poured": [bottle, bowl]}
         done.append([bottle, bowl])
         if r.get("status") in ("ended", "step_budget"):
             break

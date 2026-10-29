@@ -8,7 +8,8 @@
 #   * a left item is still an obstacle for v3's motions (it is passed with the objects, never assigned).
 #   * p2: a carry v3 refuses ("carry: no clear path") gets one more try from higher up and further inside the basket (G3 v1
 #     100030-39: 6 of 9 refused carries into the basket were the gripper over the rim at v3's own drop pose); an object
-#     still in the hand after that is set down where it was picked and the arm goes home (v3b kept it in the hand);
+#     still in the hand after that is set down where it was picked and the arm goes home (v3b kept it in the hand),
+#     released only where the lowering arrived (``put_back_held``; v3's put_back opened after a refused one);
 # The loop, the stages and the fallback are v3b's.
 """classify_into_bins_v3b (RoboDojo, tier A; night K4, 27 Oct 2026): classify_into_bins_v3a with true-size placed
 footprints, spread drops, and the old tier-A drop as a fallback.
@@ -200,6 +201,37 @@ def footprint(k, rec, cont, z0, pad=0.004):
             for i, p in enumerate(c + s * u for s in ss)]
 
 
+def put_back_held(V3, robot, arm, log):
+    """N: v3's ``put_back`` with the release only where the lowering arrived (Misha's review P1-2: v3 opens after any
+    lowering, a refused one (budget) included, and so dropped the object from ~6 cm over the rim or onto a neighbour;
+    put_into_bin_v4's ``_drop`` opens only on arrival). No pick pose, or the lowering refused / short: the object stays
+    in the hand (False). Else open, retreat, home (True), as v3."""
+    pk = [t_ for t_ in log if t_.get("op") == "pick3" and t_.get("held")]
+    e = robot.obs(cameras=[])["eef"][arm]
+    q = [float(v) for v in e["flange"]["quat"]]
+    t = {"op": "put_back", "arm": arm}
+    log.append(t)
+    if not (pk and pk[-1].get("grasp")):
+        t["kept"] = "no pick pose"
+        return False
+    g = np.asarray(pk[-1]["grasp"], float) + np.array([0.0, 0.0, 0.004])
+    m = robot.move_to(arm=arm, pos=[float(v) for v in g], quat=q, speed="slow", max_dev=0.01, path="line")
+    t["lower"] = V3.V()._mv(m)
+    if not (m.get("moved") and m.get("reached")):
+        t["kept"] = "lowering " + ("short" if m.get("moved") else str(m.get("plan_fail_reason") or "refused"))
+        return False
+    robot.gripper(arm=arm, action="open", wait_steps=3)
+    e = robot.obs(cameras=[])["eef"][arm]
+    if pk[-1].get("side") and pk[-1].get("pre_pos"):
+        back = [float(v) for v in pk[-1]["pre_pos"]]
+    else:
+        back = [float(e["pos"][0]), float(e["pos"][1]), float(e["pos"][2]) + 0.06]
+    m = robot.move_to(arm=arm, pos=back, quat=q, speed="normal", max_dev=0.01, path="line")
+    t["retreat"] = V3.V()._mv(m)
+    robot.return_home(arms=[arm], open=True)
+    return True
+
+
 def load_old():
     """classify_into_bins (tier A, unchanged): its put_into_bin_rgb module (plan_core, do_direct)."""
     p = os.path.join(HERE, "..", "classify_into_bins", "skill_robodojo.py")
@@ -322,7 +354,7 @@ def run(robot, map="auto", pairs=None, noun="basket", lift=0.08, max_picks=2, re
         if not r2.get("in_container") and A.held_look(arm=arm).get("held"):
             lg = [t for t in list(r.get("log") or []) + list(r2.get("log") or []) if isinstance(t, dict)]
             try:
-                rec["high_retry"]["put_back"] = bool(V3.put_back(A, arm, lg))
+                rec["high_retry"]["put_back"] = bool(put_back_held(V3, A, arm, lg))
             except Exception as ex:  # noqa: BLE001
                 rec["high_retry"]["put_back"] = f"{type(ex).__name__}: {ex}"[:160]
         return r2

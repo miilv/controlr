@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import hashlib
 import importlib
 import json
 import os
@@ -42,11 +43,17 @@ from .twin import TwinProcess, twin_scene
 ENV_NOTES = ("DOJO_CATALOG", "DOJO_BG_FOLDS", "DOJO_CALIB_SET", "DOJO_COLOR_CALIB", "DOJO_X5_DIR", "SIMLAB_USD_SYNC_LINKS", "AGENTIC_MODEL",
              "AGENTIC_MAX_TURNS", "AGENTIC_REFINE", "AGENTIC_EXTRA_BODY", "DOJO_AGENTIC_LOG", "J1_PERCEIVER", "RD_HOME",
              "BENCH")
+# free-form values that may carry a credential (a provider request body): recorded as a fingerprint, never verbatim
+HASHED_NOTES = ("AGENTIC_EXTRA_BODY",)
+
+
+def fingerprint(value: str) -> str:
+    return "sha256:" + hashlib.sha256(value.encode()).hexdigest()[:16]
 
 
 def env_notes(environ=None) -> dict:
     e = os.environ if environ is None else environ
-    return {k: e[k] for k in ENV_NOTES if k in e}
+    return {k: fingerprint(e[k]) if k in HASHED_NOTES else e[k] for k in ENV_NOTES if k in e}
 
 
 def load_policy(spec: str | None):

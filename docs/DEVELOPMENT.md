@@ -255,6 +255,18 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   [...] ... belt reads are blind`, and the episode report has a `belt_blind` event and `track_read` `blind: true`. Before
   a conveyor run: `ls $DOJO_BG_FOLDS/fold*/scene/` (Dynamic_conveyor_00000 for match_and_pick; pick_from_conveyor_by_image
   needs Dynamic_conveyor_00001).
+- **A robot-harness skill never holds the raw server client.** `RobotServerBackend.robot` is a `ForeignRobot`. It
+  refuses `success` / `end` / `reset` / `close` before sending, so a `--dev` server's grader stays out of reach, and
+  it checks every reply against `contract.BANNED`. Only the driver ends an episode. A new verb that skills need goes
+  through the same proxy (`tests/dojo/test_g5_review.py`).
+- **Perception ops have a reply deadline.** `PerceptionClient(op_timeout_s=600)`: a reply later than that
+  (the slowest op in 306 rendered dev episodes took 243 s) closes the connection and raises `TimeoutError`. Later ops in that episode raise
+  at once, and `RuntimePolicy.reset` reconnects. A stalled service no longer holds an episode past its wall cap
+  indefinitely.
+- **No geometry is invented for an asset the catalogue lacks.** With an `AssetDB`, missing or bbox-less metadata
+  gives `AssetInfo.unknown_geometry`: its 4 cm box only keeps the object an obstacle. Its estimate has confidence 0,
+  and pick / transfer / topple / push refuse it (`status "unknown_geometry"`). Of the 749 RoboDojo assets, only
+  `Clutter/vehicle/00000` has no aligned bbox.
 - **The perception calibration is one frozen set, never chosen per episode.** The runtime's perception service reads
   `$DOJO_BG_FOLDS/$DOJO_CALIB_SET` (backgrounds, `color_M.json`, `manifest.json`) for every request; the policy gets the
   instruction and the step limit only. The old per-episode `fold = crc32(layout id) % 2` made the layout id a policy
@@ -347,6 +359,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   a 9 at a confident margin, and 2 / 3 / 4 / 5 / 7 fall below the margin. `EstimatorConfig.glyph_upright` "on" turns
   the runtime wrist crop of a flat glyph so world +y is up first (`glyph_read.upright_deg` / `turn_upright`). Any new
   wrist read of an oriented glyph needs the same thought: which roll was the reader trained on?
+- **A knocked-over object is not where it stood.** The watcher (`RuntimeConfig.watch`) lays a knocked object face up
+  at its slot, but make_kong's discard lies 48 mm toward the robot in every dev render. A read or plan at the laid pose
+  looks at the empty slot (head "back", wrist "edge"). `RuntimeConfig.watch_relocate` locates it in the head view
+  (`task_state.laid_pose`: new tile-face pixels since frame 0 near the slot) until two reads agree.
 - **A set side-server address fails loudly.** With `DOJO_SEG_ADDR` / `DOJO_GLYPH_ADDR*` unset the flags are no-ops;
   with one SET but unreachable, gone mid-run or answering an error, the clients raise `sam_masks.SideServerDown`
   (never a silent run without the server). Callers re-raise it past their "a failure never takes perception down"
@@ -370,6 +386,11 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 - **RTX leaves ghost trails of a moved arm.** A frame captured with one render pass after a 40-step move (D0's frames
   1-3, `make_d0`) shows the arm smeared along its path (temporal accumulation). `seg_render` captures 40 % of its
   arm-pose frames that way and the rest after 8 extra `render_for_capture` passes.
+- **A segmenter class increment costs its look-alikes.** Fine-tuning v2b with new asset classes
+  (`export_yolo --base-classes`, `expand_head.py`) moves detections from an old class in another category to the
+  new one: car 10-15 took classify's toy_cars. Leaving an asset unlabelled teaches it as background. `--new-keep`
+  keeps only the listed new assets and leaves out every image that shows another one. Gate any increment on the
+  full frame-0 bake, every task, 0 losers.
 - **Provider responses and child processes are credential sinks.** A gateway can echo our `Authorization` header in an
   error body, and a child inherits the whole environment (the router key, the path of the file that holds it). Any new
   text from a response that reaches a log goes through `controlr.keyguard` (`clip`: redact, THEN cut, else a key that

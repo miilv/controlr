@@ -29,9 +29,10 @@ import numpy as np
 from dojo.runtime.firewall import CAMS, FirewallError
 
 # the strict server's BANNED list (robodojo_server_strict.py) + what a dev / privileged / grader reply carries
+# (a superset of robot-harness J1's IDENTITY_KEYS, robodojo_server_j1.py)
 BANNED = ("objects", "calib", "finger_q", "gap_m", "grasp_detected", "fingers_stopped", "blocked", "grasps",
           "objects_dev", "objects_dev_pos", "final_objects_dev", "success", "success_dev", "reward", "score",
-          "layout_id", "layout", "seed", "task_name", "env_seeds", "marked_failed")
+          "layout_id", "layout", "seed", "task", "task_name", "env_seeds", "marked_failed")
 ARMS = ("left", "right")
 
 

@@ -128,6 +128,29 @@ def _b1_for(rows: list[dict], o: dict) -> dict | None:
     return best[1] if best else None
 
 
+def _eval_metas(a) -> list[tuple[dict, Path, object]]:
+    """(meta, frame dir, cam -> GT code image path) per evaluation frame: the GT-pose code renders of ``--gt``
+    (d0_51 / d0_ext), or ``--renders``: seg_render ``--test`` roots (held-out ids, Isaac's instance codes; the set
+    name is the root's name)."""
+    out = []
+    if a.gt:
+        for mp in sorted(Path(a.gt).expanduser().glob("*/*/*/gt_*.json")):
+            meta = json.loads(mp.read_text())
+            out.append((meta, SETS[meta["set"]] / meta["task"] / meta["episode"],
+                        lambda cam, mp=mp, k=meta["frame"]: mp.parent / f"gt_{k}_{cam}.png"))
+    for root in [Path(r).expanduser() for r in (a.renders or "").split(",") if r.strip()]:
+        if "test" not in root.name:
+            raise SystemExit(f"--renders takes seg_render --test roots (held-out ids) only: {root}")
+        for done in sorted(root.glob("*/*/done.json")):
+            d = done.parent
+            for fj in sorted(d.glob("frame_*.json")):
+                k = int(fj.stem.split("_")[1])
+                cams = [c for c in CAMS if (d / f"inst_{k}_{c}.png").exists()]
+                meta = {"set": root.name, "task": d.parent.name, "episode": d.name, "frame": k, "cams": cams}
+                out.append((meta, d, lambda cam, d=d, k=k: d / f"inst_{k}_{cam}.png"))
+    return out
+
+
 def cmd_pred(a):
     from PIL import Image
 
@@ -138,21 +161,18 @@ def cmd_pred(a):
     seen = set(classes)
     M = st._SegModel(os.path.expanduser(a.weights), classes, conf=a.conf)
     b1 = _b1_index(a.b1)
-    gt_root = Path(a.gt).expanduser()
-    metas = sorted(gt_root.glob("*/*/*/gt_*.json"))
     out = open(os.path.expanduser(a.out), "w")
     dump = open(os.path.expanduser(a.dump), "w") if a.dump else None
     t_det = []
-    for mp in metas:
-        meta = json.loads(mp.read_text())
+    metas = _eval_metas(a)
+    for meta, d, code_path in metas:
         s, task, ep, k = meta["set"], meta["task"], meta["episode"], meta["frame"]
-        d = SETS[s] / task / ep
         rec = json.loads((d / f"frame_{k}.json").read_text())
         objs = rec["gt"]["objects"]
         b1rows = b1.get((s, task, ep), []) if k == 0 else []
         for cam in meta["cams"]:
             img = np.asarray(Image.open(d / f"frame_{k}_{cam}.png").convert("RGB"))
-            codes = np.asarray(Image.open(mp.parent / f"gt_{k}_{cam}.png")).astype(np.int64)
+            codes = np.asarray(Image.open(code_path(cam))).astype(np.int64)
             t0 = time.time()
             dets = [Det(m.astype(np.uint8), key, sc, tuple(b)) for m, key, sc, b in M.detect(img, a.conf)]
             t_det.append(time.time() - t0)
@@ -278,6 +298,19 @@ def cmd_table(a):
     print("|---|---|---|---|---|---|")
     for t in sorted({r["task"] for r in objs}):
         print(f"| {t} | {stats([r for r in objs if r['task'] == t and not r['clutter'] and r['cam'] == 'cam_head'])} |")
+    if a.keys:
+        keys = [ln.strip() for ln in open(os.path.expanduser(a.keys)) if ln.strip()]
+        print(f"\nPer class, the {len(keys)} listed assets (all cams | head):\n")
+        print("| asset | n | recall@0.5 | mean IoU | class right & IoU>=0.5 | category right & IoU>=0.5 | head: n | recall | "
+              "IoU | class | category |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|")
+        for k in keys:
+            rs = [r for r in objs if r["key"] == k]
+            if rs:
+                print(f"| {k} | {stats(rs)} | {stats([r for r in rs if r['cam'] == 'cam_head'])} |")
+        ks = set(keys)
+        print(f"| **all listed** | {stats([r for r in objs if r['key'] in ks])} | "
+              f"{stats([r for r in objs if r['key'] in ks and r['cam'] == 'cam_head'])} |")
     for cam in CAMS:
         fs = [r for r in frs if r["cam"] == cam]
         if fs:
@@ -295,7 +328,8 @@ def main(argv=None):
     g.add_argument("--workers", type=int, default=6)
     g.add_argument("--force", action="store_true")
     p = sub.add_parser("pred")
-    p.add_argument("--gt", required=True)
+    p.add_argument("--gt", default=None, help="GT code renders of d0_51 / d0_ext (eval.py gt)")
+    p.add_argument("--renders", default=None, help="seg_render --test roots (comma list): Isaac's instance codes")
     p.add_argument("--weights", required=True)
     p.add_argument("--classes", required=True)
     p.add_argument("--out", required=True)
@@ -310,6 +344,7 @@ def main(argv=None):
     dd.add_argument("--conf", type=float, default=0.25)
     t = sub.add_parser("table")
     t.add_argument("rows")
+    t.add_argument("--keys", default=None, help="file of asset keys: a per-class table for them")
     a = ap.parse_args(argv)
     {"gt": cmd_gt, "pred": cmd_pred, "dump": cmd_dump, "table": cmd_table}[a.cmd](a)
 

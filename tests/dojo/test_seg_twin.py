@@ -47,6 +47,32 @@ def test_variant_zero_is_refused(tmp_path):
         seg_render.main(["--task", "stack_blocks", "--ids", "100030", "--variants", "0", "--out", str(tmp_path)])
 
 
+def test_extra_objects_are_training_only(tmp_path):
+    from dojo.simlab.gen_layouts import extra_groups, generate
+
+    pool = tmp_path / "pool.txt"
+    pool.write_text("Rigid/bell/00000\nRigid/hoe/00000\n")
+    with pytest.raises(SystemExit, match="training draws only"):
+        seg_render.main(["--task", "general_pickup", "--ids", "100000", "--variants", "0", "--test",
+                         "--out", str(tmp_path / "x_test"), "--extra-pool", str(pool)])
+    with pytest.raises(ValueError, match="never in a measured record"):
+        generate("general_pickup", 100030, variant=0, extra=["Rigid/bell/00000"])
+    g = {"Rigid": [{"common": {"xlim": [-0.3, 0.3], "ylim": [-0.2, 0.0], "relative_plane": "Table"},
+                    "category": [{"name": "cube"}], "select_mode": {"nums": 1, "label": ["target"]}}]}
+    out = extra_groups(g, ["Rigid/bell/00000", "Rigid/hoe/00003"])
+    assert len(g["Rigid"]) == 1 and len(out["Rigid"]) == 3                      # the input is not modified
+    assert out["Rigid"][2]["category"] == [{"name": "hoe", "index": [3]}]
+    assert out["Rigid"][2]["select_mode"]["label"] == ["seg_extra1"] and out["Rigid"][2]["common"]["xlim"] == [-0.3, 0.3]
+
+
+def test_extra_assets_cycle_the_pool_evenly():
+    pool = [f"Rigid/a/{i:05d}" for i in range(7)]
+    seen = [x for v in (1, 2) for s in seg_render.TRAIN_IDS for x in seg_render.extra_assets(pool, s, v, 3)]
+    counts = [seen.count(p) for p in pool]
+    assert max(counts) - min(counts) <= 1 and len(seen) == 120
+    assert seg_render.extra_assets([], 100030, 1, 3) == [] and len(seg_render.extra_assets(pool[:2], 100030, 1, 3)) == 2
+
+
 # ------------------------------------------------------------------ arm poses
 
 def test_sample_moves_is_seeded_and_covers_the_kinds():
@@ -250,6 +276,14 @@ def test_repeat_factor_sampling():
     assert r[0] == 1.0 and r[-1] == 1.0                       # frequent class / empty image: once
     assert abs(r[98] - (0.1 / 0.01) ** 0.5) < 1e-9            # the rare class (1 % of images): sqrt(t / f)
     assert mod.repeat_factors(imgs, 0.0) == [1.0] * 100
+    f = {"img": "/d/render_v3reh/build_tower/100030_v1/frame_2_cam_head.png", "task": "build_tower",
+         "layout": "100030_v1", "frame": 2, "cam": "cam_head"}
+    assert mod.frame_stem(f) == "render_v3reh__build_tower__100030_v1__f2__cam_head"   # roots never collide
+    fr = [{"objs": [("Rigid/watch/00001", [], 9, False), ("Rigid/watch/00005", [], 9, False)]},
+          {"objs": [("Rigid/watch/00001", [], 9, False), ("Rigid/car/00012", [], 9, False)]},
+          {"objs": []}]
+    kept, out_of = mod.narrow_frames(fr, {"Rigid/watch/00001", "Rigid/watch/00005"})
+    assert kept == [fr[0], fr[2]] and out_of == {"Rigid/car/00012": 1}   # a look-alike is never unlabelled background
 
 
 def test_seg_model_reads_its_training_size(monkeypatch):

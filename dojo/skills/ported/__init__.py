@@ -106,6 +106,12 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
            "verified": verified, "error": note, "source": f"robot-harness {SOURCE_COMMIT[:7]} skills/{skill}"}
     if rep.get("companion") is not None:          # pour_bottle_lean's overlap: the next bottle the other arm now holds
         out["companion"] = rep["companion"]
+    d = rep.get("details") if isinstance(rep.get("details"), dict) else {}
+    if isinstance(d.get("pour"), list):
+        # a liquid pour's own trace: the deepest roll it reached and why it stopped (``pour_order`` goes on only after a
+        # pour that poured: the skill returns ok=True also when it found no neck grasp, or the grasp failed)
+        phis = [float(t["phi"]) for t in d["pour"] if isinstance(t, dict) and t.get("phi") is not None]
+        out["pour"] = {"max_phi": max(phis) if phis else None, "stop": d.get("pour_stop")}
     return out
 
 
