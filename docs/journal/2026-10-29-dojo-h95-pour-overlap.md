@@ -97,3 +97,24 @@ The arithmetic that binds:
 **pour_by_language is parked** (the lead's ruling). Both switches stay default off. Unparking needs one of:
 - a pour that is reliably faster without in-hand slip;
 - a step-lean perception, which would be a generic all-task change with its own A/B, not a per-task look budget.
+
+## The last pour's untilt may spend the move reserve (census, compute4 overlap rows)
+
+- In 3 of 10 camera overlap rows (100006, 100020, 100023) the third pour ran its whole profile to 150 deg.
+- Then its untilt's next move was refused for "budget" with 34-47 steps left, and the episode ended with the bottle at
+  60 / 150 / 90 deg: no upright edge, no success.
+- What refused it: the adapter's 20-step move reserve (TIER_A RESERVE, kept for a final home). The last pour has no
+  use for that home, because its upright edge ends the episode. A 60 -> 0 move needs ~25 steps.
+- In the candidate rows (v1 pace) the third pour never starts (15 steps, "step_budget" before the profile), so there
+  is nothing to save there.
+
+Fix:
+- `pour_bottle_lean(untilt_reserve=0)`: the untilt moves and their "direct upright" fallback may spend the reserve.
+- pour_order passes it only for the last pair, and only under "overlap".
+- Every other move keeps its reserve (unit test: the same move sequence, and only the untilt moves change their
+  reserve).
+
+G3 check (v1 draws 100030-39, same code): 5/10 → 5/10, 0 up / 0 down.
+- G3's own near misses (100033, 100035, 100038) are truly out of steps: 14-20 left at the refused move.
+- So the fix can only show in camera mode, where the refused moves had 34-47 steps left. Integration's compute4
+  A/B is the judge.
