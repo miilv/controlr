@@ -343,6 +343,10 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   handlers; the perception service writes `side_server_down` next to `DOJO_PERCEPTION_READY` and exits; eval marks the
   row `infra_failure` and `integ_eval.sh` exits 4 (the runner re-queues once). One `sam_masks.serve` server may serve
   several lanes: the model runs one request at a time (`model_lock`), the image cache sits under its own lock.
+- **RoboDojo scores a goal the moment it holds.** An episode ends in success at the step its checker passes, e.g.
+  make_kong's stand at the release of the drawn tile. A read or confirm planned AFTER the final placement never runs,
+  and the tile was used unread. Read before the final place, on a spot the checker does not score
+  (`library.kong_draw_read`'s read spot).
 - **`classify_mask` needs the arm mask.** The digit / operator margins were calibrated without the crops it refuses:
   masks cut by the image border (`edge`) and masks whose 3-px ring is >= 30 % arm (`robot`, only when `robot=` is
   passed: `~known` of a B1 view or `render.robot_mask`). Without `robot=`, a tile half hidden by the gripper is read
