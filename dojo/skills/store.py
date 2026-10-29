@@ -21,6 +21,9 @@ INTO = re.compile(r"\bplace\s+it\s+(?:into|in|on)\s+the\s+([a-z ]+?)\s*(?:,|\bth
 RACK_DROP = 0.006       # m: the laptop's bottom edge this far over the rack's floor (its bbox bottom) at the release
 YAWS_DEG = (0.0, 180.0, 8.0, -8.0, 188.0, 172.0)
 EDGE_PICK_TILT = 95.0   # deg: the shut laptop's pick approach may be horizontal (an edge pinch across the slab)
+EDGE_OFF = 0.010        # m: an edge pinch this close to the middle of its edge (G3: 51 mm off-centre pinches dropped it)
+EDGE_SQUEEZE = 4        # still steps after the close before the lift
+LID_REPUSH_HEIGHTS = ((0.6, 0.9, 0.75), (0.9, 0.6, 0.75))   # swing_closed's lid heights for the extra pushes
 
 
 def _words(s: str) -> set:
@@ -112,6 +115,17 @@ def checker_ok(o, T_obj, rk, up_tol_deg: float = 10.0) -> bool:
     return bool(np.all(q >= rk.asset.bbox_min - 1e-6) and np.all(q <= rk.asset.bbox_max + 1e-6))
 
 
+def mid_edge(o):
+    """``plan_transfer``'s ``pair_ok``: the TCP within EDGE_OFF of the middle of one of the slab's horizontal edges (in
+    the object frame, along the edge it pinches)."""
+    c = np.asarray(o.asset.center, float)
+
+    def ok(g, T_tcp_obj, T_obj, T_tcp) -> bool:
+        p = np.linalg.inv(np.asarray(T_tcp_obj, float))[:3, 3] - c          # the TCP in the object frame, from its centre
+        return min(abs(float(p[0])), abs(float(p[1]))) <= EDGE_OFF
+    return ok
+
+
 def store_laptop(sk, hang: dict, laptop: str, hinge_tag: str | None, rack: str) -> dict:
     """Hang, close, store: each stage banked (grippers open) before the next; the later stages run even when the hang
     failed (the checker credits them on their own)."""
@@ -123,6 +137,12 @@ def store_laptop(sk, hang: dict, laptop: str, hinge_tag: str | None, rack: str) 
     notes["hang"] = r1.get("note") or r1.get("stage")
     sk.bank()
     r2 = swing_closed(sk, laptop, hinge_tag, ratio=0.92)
+    for hts in LID_REPUSH_HEIGHTS:
+        # the measured lid short of shut (G3: 8 of 20 rows stopped at 0.30-0.89 after the first two pushes; the checker
+        # wants >= 0.85): push again, at other heights of the lid
+        if r2.ok or sk.ex.steps_left < 120:
+            break
+        r2 = swing_closed(sk, laptop, hinge_tag, ratio=0.92, heights=hts)
     notes["close"] = f"{r2.status} {r2.note[:60]}"
     sk.bank()
     sk.refresh()
@@ -138,7 +158,8 @@ def store_laptop(sk, hang: dict, laptop: str, hinge_tag: str | None, rack: str) 
         tg = upright_targets(sk, laptop, rack)
         r3 = place_oriented(sk, laptop, tg, yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.04, ignore=(rack,),
                             place_kw={"pre_h": 0.06, "release_gap": 0.003}, max_spots=2,
-                            transfer_kw={"max_pick_tilt": EDGE_PICK_TILT})
+                            transfer_kw={"max_pick_tilt": EDGE_PICK_TILT, "pair_ok": mid_edge(sk.world.obj(laptop)),
+                                         "pick_kw": {"squeeze": EDGE_SQUEEZE}})
     finally:
         sk.artic_geom = saved
     notes["store"] = f"{r3.status} {r3.note[:80]}"
