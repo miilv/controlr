@@ -359,6 +359,13 @@ class RuntimeConfig:
     # place = the measured v2 (b131264e: kongon2 9/15); place3 = + the oblique discard look with a pose refine and the
     # draw matched to any read hand glyph (#315; kongon3 8/15 vs 9/15: not adopted, kept for its own A/B)
     kong_draw_read: str = "off"
+    # insert_key's rest handover (``regrasp.plan_rest_handover``, ``Skills.key_handover``): v1 (today) | v2 (all four
+    # lengthwise giver picks, an upright handover pass when the as-lifted one finds none, 16 taker places checked, vias
+    # 8 / 5 / 3 / 12 cm over the receptacle). v15 dev layouts 100030-49, G3 mode A: 7/20 failed in the handover search
+    key_handover: str = "v1"
+    # insert_key's turn (``regrasp.turn_held``, ``Skills.key_lean``): off (today: a turn that does not fit the steps left
+    # is not started) | on (it runs as far as the steps left allow: the checker passes part-way through the turn)
+    key_lean: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -472,6 +479,7 @@ class RuntimePolicy:
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3")
+                or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on")
@@ -754,6 +762,8 @@ class RuntimePolicy:
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
             sk_.kong_draw_read = cfg.kong_draw_read
+            sk_.key_handover = cfg.key_handover
+            sk_.key_lean = cfg.key_lean
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
