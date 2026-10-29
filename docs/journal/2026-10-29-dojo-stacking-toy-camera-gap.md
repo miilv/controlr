@@ -47,3 +47,40 @@ axis instead of re-picking) is held until the screen shows whether threading sti
 | make_toast | 2/5, 55 | 92 | ~0.31 |
 | fold_clothes_random | 2/5, 48 | 84 | ~0.30 |
 | fold_clothes | 55 | 62 | ~0.06 |
+
+## Dev screen (n = 5, paired; a screen, not a measurement)
+
+| id | off (c128b9ae) | local (71bd4bed) | base refine |
+|---|---|---|---|
+| 100000 | 0.1 | 0.6 | applied (1.4 mm, IoU 0.97) |
+| 100001 | 0.3 | 0.6 | applied (1.5 mm, IoU 0.97) |
+| 100002 | 1.0 | 0.6 | never applied |
+| 100003 | 0.6 | 0.6 | never applied |
+| 100004 | 0.6 | 0.6 | never applied |
+
+- **The mean** rose from 0.52 to 0.60.
+- **Where the refine was applied,** post-place errors fell from 2.4-3.9 mm to 0.1-2.2 mm, and the 4-piece pole threaded
+  fully.
+- **Where it never applied,** the first place's view had IoU 0 and the second place's wrist did not see the base
+  (visible 0.0), so the 2-try cap kept the frame-0 pose. The 100002 loss came with no pose change, i.e. variance.
+- **Follow-up:** #351 (57dd7f36) adds `peg_base_tries` (default 2).
+
+**Rendered A/B (lead-approved, pre-registered).** 100005-09 + 100020-24, 10 pairs on 57dd7f36:
+- A = candidate (`c4b_playstackingtoysg_pbrA_<id>`);
+- B = candidate + `peg_base_refine: "local"` + `peg_base_tries: 8` (`..._pbrB_<id>`).
+- Adopt iff B's pooled score mean > A's and no pair loses more than 0.3. Score counts, not successes. M scores it.
+
+## The "0 grasp-place pairs" class (dev rows, both arms)
+
+It always follows one chain:
+1. A piece rests tilted on its peg after the place ("rests tilted on pole/k: once more").
+2. The re-pick closes on air (grip_check "jaws empty"; "rose 0 mm, in-hand drift 77-103 mm"), 7 of 7 times across
+   the rows.
+3. The stuck piece then occupies the pole in the belief, and every later piece of that pole gets "0 grasp-place pairs".
+
+It occurs with the axis corrected too (100001 local: a piece 8.1 mm off on pole/1). So the in-hand offset, never
+measured on this path, also matters. Re-picking a stuck piece never works on camera.
+
+**Candidate lever (not built in this box):** for a stuck piece, a short sideways nudge towards the peg axis at
+mid-ring height (`Skills.push` with a ~1.5 mm tolerance) instead of the re-pick. Check it first in G3 mode B with a
+camera-like base offset (compute3:~/dojo-data/s-pst/g3_modeB_off2: does the chain reproduce there?).
