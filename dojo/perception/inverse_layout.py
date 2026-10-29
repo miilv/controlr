@@ -3715,6 +3715,11 @@ class EstimatorConfig:
     # the pinned (slot) objects' head-view pixels are explained before blob proposals: a piece touching a pinned base
     # board merged into its blob (> 3x its own silhouette) and was never proposed (build_tower)
     slot_blob_cut: bool = True
+    # a row of pinned pads (>= 3 Geometry labels <p>0..<p>n at one pitch) whose last pad carries a stacked label with its
+    # index (solve_equation: mat4 / t4) may continue one pitch further (RoboDojo's solve_equation adds mat5 + t5 for a
+    # two-digit answer: tasks/solve_equation.py has_mat5): placed only when a twin-segmenter mask of the pad's class
+    # covers the extension pad's head silhouette (IoU > PAD_EXT_IOU); its stacked label is placed and read like the others
+    pad_row_extend: bool = False
     # a head blob > 2.5x the largest candidate's silhouette (pieces lying together) also proposes object-sized pieces of it
     # (build_tower: three pieces within 10 cm were one blob, never proposed)
     split_merged: bool = True
@@ -3880,6 +3885,109 @@ def _views_subset(views, cfg):
     return views if cfg.use_wrists else {k: v for k, v in views.items() if k == "cam_head"}
 
 
+PAD_EXT_IOU = 0.5   # pad_row_extend: a segmenter mask of the pad's class covers the extension pad's silhouette this well
+PAD_EXT_FG = 0.8    # ... or this share of its known head pixels is foreground (a pad under a tile: no pad mask, but a
+                    # ring of pad around the tile; no pad there: only the tile's ~20 % of the pad's area)
+PAD_EXT_KNOWN = 0.5  # ... over at least this share of its silhouette known (not robot / unknown)
+
+
+def _suffix(lab: str) -> tuple[str, int] | None:
+    m = re.fullmatch(r"(.*?)(\d+)", lab)
+    return (m.group(1), int(m.group(2))) if m else None
+
+
+def pad_row_extensions(labels: dict, slots: dict) -> list[dict]:
+    """Rows of config-pinned pads that may continue one pitch beyond their last pad (``pad_row_extend``): >= 3 Geometry
+    labels ``<p>0..<p>n`` with one candidate set, at one y, at a constant pitch (1 mm), the last carrying a stacked
+    label ``<q>n`` (relative_plane ``<p>n``, zero offset) and neither ``<p>n+1`` nor ``<q>n+1`` in the config.
+    [{"pad": new pad label, "from": last pad, "xy": (x, y), "tag", "children": {new child: child it copies}}]"""
+    rows: dict = {}
+    for lab, (x, y, tag) in slots.items():
+        d, sx = labels.get(lab) or {}, _suffix(lab)
+        if not sx or d.get("type") != "Geometry":
+            continue
+        rows.setdefault((sx[0], tuple(d.get("candidates") or ()), round(float(y), 4), tag), []).append((sx[1], lab, x))
+    out = []
+    for (pre, _c, y, tag), mem in rows.items():
+        mem.sort()
+        if len(mem) < 3 or [i for i, _, _ in mem] != list(range(mem[0][0], mem[0][0] + len(mem))):
+            continue
+        xs = [x for _, _, x in mem]
+        pitch = xs[-1] - xs[-2]
+        if abs(pitch) < 0.01 or any(abs((b - a) - pitch) > 0.001 for a, b in zip(xs, xs[1:])):
+            continue
+        n, last = mem[-1][0], mem[-1][1]
+        new = f"{pre}{n + 1}"
+        if new in labels:
+            continue
+        kids = {}
+        for c, dc in labels.items():
+            pc, sc = dc.get("placement") or {}, _suffix(c)
+            if (sc and sc[1] == n and str(pc.get("relative_plane", "")).split("/")[0] == last
+                    and pc.get("xlim") in ([0.0, 0.0], [0, 0]) and f"{sc[0]}{n + 1}" not in labels):
+                kids[f"{sc[0]}{n + 1}"] = c
+        if kids:
+            out.append({"pad": new, "from": last, "xy": (float(xs[-1] + pitch), float(y)), "tag": tag, "children": kids})
+    return out
+
+
+def _pad_ext_seen(ext: dict, labels: dict, dets: list | None, head) -> dict:
+    """Evidence for one extension pad at its pose in the head view: the best IoU of a segmenter mask of the pad's own
+    class with its silhouette (> ``PAD_EXT_IOU``), or, a pad under a tile having no pad mask, the foreground share of its
+    known silhouette pixels (> ``PAD_EXT_FG``, with >= ``PAD_EXT_KNOWN`` of it known). {"iou", "fg", "seen"}."""
+    d = labels[ext["from"]]
+    sm = _slot_shape(d["candidates"][0], d["placement"], ext["tag"])
+    sil = sm.sil(head.cam, sm.pose(ext["xy"][0], ext["xy"][1], 0.0)) > 0
+    if not sil.any():
+        return {"iou": 0.0, "fg": 0.0, "seen": False, "why": "outside the head view"}
+    cands = set(d["candidates"])
+    best = max((_mask_iou(sil, np.asarray(m.mask) > 0, np.ones_like(sil)) for m in dets or [] if m.key in cands),
+               default=0.0)
+    kn = sil & (np.asarray(head.known) > 0)
+    fg = float((kn & (np.asarray(head.fg) > 0)).sum()) / max(1, int(kn.sum()))
+    known = int(kn.sum()) / int(sil.sum())
+    seen = best > PAD_EXT_IOU or (known >= PAD_EXT_KNOWN and fg > PAD_EXT_FG)
+    return {"iou": round(float(best), 3), "fg": round(fg, 3), "known": round(known, 3), "seen": bool(seen)}
+
+
+def _extend_pad_rows(tlabels: dict, slots: dict, groups: list, images, views, dets, cfg, record: dict):
+    """``cfg.pad_row_extend``: each extendable row (``pad_row_extensions``) whose extension pad a segmenter mask shows
+    gains the pad (a pinned slot, ``slots`` updated in place) and its stacked children, in copies of the label map and
+    the groups of the labels they copy. Trace: ``record["_pad_ext"]``."""
+    exts = pad_row_extensions(tlabels, slots)
+    if not exts:
+        return tlabels, groups
+    if dets is None and "cam_head" in images:
+        from . import seg_twin
+        c = seg_twin.client()
+        if c is not None:
+            try:
+                dets = [d for d in c.detect(images["cam_head"], conf=cfg.seg_min_score)
+                        if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
+            except Exception as e:  # no detector: no extension
+                record.setdefault("_pad_ext", []).append({"error": f"{type(e).__name__}: {e}"})
+    tlabels = dict(tlabels)
+    for ext in exts:
+        ev = _pad_ext_seen(ext, tlabels, dets, views["cam_head"])
+        record.setdefault("_pad_ext", []).append({"pad": ext["pad"], "xy": [round(v, 4) for v in ext["xy"]], **ev})
+        if not ev["seen"]:
+            continue
+        d = tlabels[ext["from"]]
+        tlabels[ext["pad"]] = {**d, "placement": {**d["placement"], "xlim": [ext["xy"][0]] * 2, "ylim": [ext["xy"][1]] * 2}}
+        slots[ext["pad"]] = (ext["xy"][0], ext["xy"][1], ext["tag"])
+        for kid, src in ext["children"].items():
+            dk = tlabels[src]
+            rp = str(dk["placement"].get("relative_plane", ""))
+            tlabels[kid] = {**dk, "placement": {**dk["placement"], "relative_plane": ext["pad"] + rp[len(ext["from"]):]}}
+        for g in groups:
+            for lab in list(g["labels"]):
+                if lab == ext["from"]:
+                    g["labels"].append(ext["pad"])
+                if lab in ext["children"].values():
+                    g["labels"] += [k for k, v in ext["children"].items() if v == lab]
+    return tlabels, groups
+
+
 def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction: str = "",
              bgs: dict | None = None, cfg: EstimatorConfig | None = None,
              extra_frames: list[tuple[dict, dict]] | None = None,
@@ -3937,6 +4045,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
 
     # ---- labels pinned to table slots by the config: start at the slot (place frame, yaw 0), refine locally
     slots = fixed_slot_labels(task) if cfg.use_slots else {}
+    tlabels = task_map()[task]["labels"]
+    if cfg.pad_row_extend and slots:
+        tlabels, groups = _extend_pad_rows(tlabels, slots, groups, images, views, seg_dets, cfg, record)
     slot_placed = []
     if slots:
         for gi, g in enumerate(groups):
@@ -3946,7 +4057,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             for lab in mine:
                 x, y, tag = slots[lab]
                 key0 = g["candidates"][0]
-                sm = _slot_shape(key0, task_map()[task]["labels"][lab]["placement"], tag)
+                sm = _slot_shape(key0, tlabels[lab]["placement"], tag)
                 xr, yr, yawr, loss, per = refine(sm, x, y, 0.0, views, maxiter=40, xy_step=0.003, yaw_step=0.03,
                                                  fix_yaw=True)
                 if np.hypot(xr - x, yr - y) > 0.02:  # settling moves a few mm; a big jump is a wrong fit
@@ -3954,8 +4065,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 h = Hypothesis(gi, key0, sm.tag, xr, yr, 0.0, loss, per)
                 h.per_view.update({"geom_group": [k for k in g["candidates"]], "slot": True, "sil_loss": round(float(loss), 4)})
                 if 1 < len(g["candidates"]) <= cfg.slot_identity_max:
-                    h = _slot_identity(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
-                h = _glyph_read_slot(h, g, task_map()[task]["labels"][lab]["placement"], tag, views, cfg)
+                    h = _slot_identity(h, g, tlabels[lab]["placement"], tag, views, cfg)
+                h = _glyph_read_slot(h, g, tlabels[lab]["placement"], tag, views, cfg)
                 slot_placed.append((g, h, lab))
             g["labels"] = [lab for lab in g["labels"] if lab not in mine]
         # labels the config stacks on another (relative_plane "<label>/...", zero offset): on top of it
@@ -3964,7 +4075,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         for gi, g in enumerate(groups):
             stacked = []
             for lab in list(g["labels"]):
-                p_ = task_map()[task]["labels"][lab]["placement"]
+                p_ = tlabels[lab]["placement"]
                 rp = p_.get("relative_plane", "Table")
                 if p_.get("xlim") not in ([0.0, 0.0], [0, 0]):
                     continue
