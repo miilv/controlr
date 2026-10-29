@@ -68,24 +68,47 @@ def route(text: str, world, routes) -> tuple | None:
 
 
 def upright_targets(sk, laptop: str, rack: str) -> list:
-    """Closed-laptop poses in the rack: body y up, width (body x) along the rack's long side, its ``bottom`` point
-    RACK_DROP over the rack's floor at the rack's centre."""
+    """Closed-laptop poses (asset frame) in the rack, as the checker reads them (``artgeom``): the root frame's y axis
+    up (``is_axis_up(laptop, [0, 1, 0])`` reads the root prim), the width (root x) along the rack's long side, the
+    ``bottom`` point, placed on its base link (``checker_point``: the body's front edge), RACK_DROP over the rack's
+    bottom at the rack's centre (``is_A_functional_point_in_B_bbox``)."""
+    from dojo.skills.artgeom import checker_point, root_axis
     from dojo.skills.geometry import T_from, rot_z
-    from dojo.skills.library import functional_frames
     w = sk.world
     o, rk = w.obj(laptop), w.obj(rack)
-    bt = functional_frames(o, "bottom", active=True)
+    bt = checker_point(o, "bottom", active=True)
     p_b = bt[0][:3, 3] if bt else np.asarray(o.asset.center, float)
     ext = np.asarray(rk.asset.extents, float)
     long_ax = rk.R[:, 0] if ext[0] >= ext[1] else rk.R[:, 1]
     yaw0 = float(np.arctan2(long_ax[1], long_ax[0]))
-    up_y = np.array([[1.0, 0, 0], [0, 0, -1.0], [0, 1.0, 0]])     # body y -> world z, body x -> world x, body z -> -y
-    target = np.array([rk.center_w[0], rk.center_w[1], float(rk.bottom_z) + RACK_DROP])
+    y_ = root_axis(o, [0.0, 1.0, 0.0])
+    x_ = root_axis(o, [1.0, 0.0, 0.0])
+    # the asset rotation that takes the root's y to world z and its x to world x (then turned to the rack's long side)
+    A = np.stack([x_, y_, np.cross(x_, y_)], axis=1)               # root axes in the asset frame (columns)
+    W = np.stack([[1.0, 0, 0], [0, 0, 1.0], [0, -1.0, 0]], axis=1)  # where they go in the world, before the yaw
+    up = W @ A.T
+    c = rk.center_w
+    target = np.array([c[0], c[1], float(rk.bottom_z) + RACK_DROP])
     out = []
     for dy in YAWS_DEG:
-        R = rot_z(yaw0 + np.radians(dy)) @ up_y
+        R = rot_z(yaw0 + np.radians(dy)) @ up
         out.append(T_from(target - R @ p_b, R))
     return out
+
+
+def checker_ok(o, T_obj, rk, up_tol_deg: float = 10.0) -> bool:
+    """The checker's laptop conditions at pose ``T_obj`` (asset frame) but the hinge: root y within ``up_tol_deg`` of
+    up, and the ``bottom`` point (on its base link) inside the rack's box."""
+    from dojo.skills.artgeom import checker_point, root_axis
+    y_w = T_obj[:3, :3] @ root_axis(o, [0.0, 1.0, 0.0])
+    if np.degrees(np.arccos(np.clip(float(y_w[2]) / float(np.linalg.norm(y_w)), -1.0, 1.0))) > up_tol_deg:
+        return False
+    bt = checker_point(o, "bottom", active=True)
+    if not bt:
+        return False
+    p = (T_obj @ bt[0])[:3, 3]
+    q = rk.R.T @ (p - rk.pos)
+    return bool(np.all(q >= rk.asset.bbox_min - 1e-6) and np.all(q <= rk.asset.bbox_max + 1e-6))
 
 
 def store_laptop(sk, hang: dict, laptop: str, hinge_tag: str | None, rack: str) -> dict:
@@ -117,4 +140,4 @@ def store_laptop(sk, hang: dict, laptop: str, hinge_tag: str | None, rack: str) 
 
 ROUTE_SKILLS = {"store_laptop": store_laptop}
 
-__all__ = ["route", "upright_targets", "store_laptop", "ROUTE_SKILLS"]
+__all__ = ["route", "upright_targets", "checker_ok", "store_laptop", "ROUTE_SKILLS"]
