@@ -255,8 +255,20 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
         sk.peg_base = None
 
 
+def _recheck(sk: Skills, lab: str, arm: str | None, why: str) -> None:
+    """peg_stuck_confirm: a fresh read of ``lab`` through the provider (runtime: ``RuntimeProvider.recheck``; none in the
+    twin's GT provider), then the world from the belief."""
+    f = getattr(sk.provider, "recheck", None)
+    if f is None:
+        return
+    ev = f(lab, arm) or {}
+    sk.log(f"[pegs] {lab}: re-read {why}: ok {ev.get('ok')} shift {ev.get('shift_mm')} mm")
+    sk.refresh()
+
+
 def _stack_on_pegs(sk: Skills, w, b, groups, base: str, pegs: list[str], drop: float, thread: float, seat: bool) -> dict:
     reread = getattr(sk, "peg_base_refine", "off") != "off"     # the base may be re-measured mid-skill: re-read the pegs
+    confirm = getattr(sk, "peg_stuck_confirm", "off") == "on"   # a stuck judgment needs a second read (default off)
     sk.coll.include.add(base)
     if b.asset.mesh is not None:
         # the base as small boxes (plate and pegs): its box is mostly air between the pegs, and a hand let go of a seated
@@ -289,11 +301,20 @@ def _stack_on_pegs(sk: Skills, w, b, groups, base: str, pegs: list[str], drop: f
                 sk.bank()
                 if r.status in ("step_budget", "ended"):
                     return {"ok": False, "stage": f"peg {tag}", "result": r}
+                if confirm and attempt == 1 and r.status == "grasp_slip":
+                    # (b) the re-pick closed on air: where the piece really is, not where the dropped belief left it
+                    _recheck(sk, lab, r.arm, "after the slipped re-pick")
                 ok = on_peg(sk, lab, peg)
                 # stuck tilted on the peg's top (or on its neighbours) blocks this peg and the next: lift it off and
                 # try once more (twin, mode B: a ring 27 deg tilted on a peg left 0 grasp-place pairs for 6 pieces)
                 if ok or not stuck(sk, lab, peg, on_this) or not r.ok and r.status == "ik_fail":
                     break
+                if confirm and attempt == 0:    # (a) a second read must agree before the re-pick
+                    _recheck(sk, lab, r.arm, "before a re-pick")
+                    ok = on_peg(sk, lab, peg)
+                    if ok or not stuck(sk, lab, peg, on_this):
+                        sk.log(f"[pegs] {lab}: the second read does not confirm it resting tilted on {tag}: no re-pick")
+                        break
                 sk.log(f"[pegs] {lab} rests tilted on {tag}: once more")
             sk._record(SkillResult(ok, "peg", "ok" if ok else "place_miss", 0, None,
                                    note=f"{lab} {'on' if ok else 'not on'} {tag}"))

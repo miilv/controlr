@@ -695,6 +695,19 @@ class RuntimeProvider:
             out.append(ev)
         return out
 
+    def recheck(self, label: str, arm: str | None = None) -> dict | None:
+        """A fresh post-place read of ``label`` from the current wrist view of ``arm`` (the skills' peg_stuck_confirm):
+        the same refine and adoption rules as ``post_place``. The event (tagged ``recheck``) or None (no checker, no arm,
+        no such object)."""
+        if label not in self.belief.objects:
+            return None
+        if arm is not None:
+            self.belief.released_by[label] = arm      # the wrist that reads it (after a slipped re-pick: the picking arm)
+        out = self.post_place(self.bridge.observe(), [label])
+        if out:
+            out[0]["recheck"] = True
+        return out[0] if out else None
+
     def _release_read(self, obs: dict, o, others, arm: str, ev: dict) -> bool:
         """``post_place_read`` "6dof": the release read of ``o``; an ok read moves it (pos and orientation) and is
         logged in ``ev["read6"]`` (+ from / to / pose7). Returns whether the belief moved."""
