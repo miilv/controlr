@@ -223,6 +223,10 @@ class RuntimeConfig:
     # of the scene (a higher found-label share) or scores at least this much higher (2026-10-26: a 0.55 vs 0.52 score
     # difference at the same found share swapped stack_blocks_by_language's cubes for stack_blocks' blocks)
     vocab_explain_margin: float = 0.15
+    # ... and a set that finds a larger share of its labels replaces the incumbent only if its score is within
+    # vocab_explain_margin below the incumbent's (2026-10-29 slrchk: solve_equation "found" all its config-pinned slots
+    # at confidence 0.37, score 0.37, and replaced arrange_largest_number at 0.75 with one label short). Default off
+    vocab_found_needs_score: bool = False
     # mode perception: perception's episode tracker on B1 re-reads (look fuse, divergence re-estimate): only objects
     # the robot moved since their last good reading take a re-read pose. auto = on iff agentic == "budget"
     tracker: str = "auto"
@@ -1311,7 +1315,9 @@ class RuntimePolicy:
                 scored.append({"name": v.name, "source": v.source, "error": f"{type(e).__name__}: {str(e)[:120]}"})
                 continue
             confs = [float((r.get("_perception") or {}).get("confidence", 0.5)) for _t, _c, r in iter_records(rec)]
-            n_nf = len(rec.get("_not_found") or [])
+            # labels a count raise added (series_link_raise) were only looked for: not finding one is no evidence against
+            # the set (slrchk 100001 / 100002 / 100004: arrange "found" 0.9 and lost to solve_equation)
+            n_nf = len([nf for nf in rec.get("_not_found") or [] if not nf.get("raised")])
             found = len(confs) / max(1, len(confs) + n_nf)
             sc = found * (float(np.mean(confs)) if confs else 0.0)
             scored.append({"name": v.name, "source": v.source, "found": round(found, 3), "conf": round(float(np.mean(confs)), 3)
@@ -1326,8 +1332,10 @@ class RuntimePolicy:
                 # classify_objects at 0.65 vs 0.47, both finding everything, and ended at step 3
                 better = []
             else:
-                better = [x for x in ok[1:] if x["found"] > inc["found"] + 1e-9
-                          or x["score"] >= inc["score"] + self.cfg.vocab_explain_margin]
+                m = self.cfg.vocab_explain_margin
+                better = [x for x in ok[1:] if (x["found"] > inc["found"] + 1e-9
+                                                and (not self.cfg.vocab_found_needs_score or x["score"] >= inc["score"] - m))
+                          or x["score"] >= inc["score"] + m]
             best = max(better, key=lambda x: x["score"]) if better else inc
         self.report["events"].append({"kind": "vocab_explain", "chosen": best["name"] if best else None,
                                       "candidates": [{k: v for k, v in x.items() if not k.startswith("_")} for x in scored]})

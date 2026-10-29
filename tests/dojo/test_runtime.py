@@ -3810,3 +3810,32 @@ def test_catalog_gate_fails_loudly_on_a_gap_and_passes_when_complete(tmp_path):
     (cat / "tasks.json").write_text(_json.dumps({v.name: {"labels": {"a": {"candidates": [k]}}} for v in VOCABULARIES}))
     r = subprocess.run(["bash", str(gate), str(cat)], capture_output=True, text=True, env=env)
     assert r.returncode == 0 and "catalog gate OK" in r.stdout, r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("raised_flag, needs_score, chosen", [(True, False, "arrange_largest_number"),
+                                                              (False, False, "solve_equation"),
+                                                              (False, True, "arrange_largest_number")])
+def test_vocab_explain_ignores_raised_labels_and_can_require_a_close_score(raised_flag, needs_score, chosen):
+    """2026-10-29 slrchk 100001 / 100002 / 100004 (series_link_raise on): arrange found 9 of 10 labels (the raised
+    fifth digit not found) at 0.83, solve_equation "found" every config-pinned slot at 0.37 and won on found share. A
+    raised label's _not_found does not count; vocab_found_needs_score (default off) also keeps a much better scoring set."""
+    from dojo.runtime.supervisor import Vocabulary
+
+    class P:
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            if vocabulary == "arrange_largest_number":
+                recs = [{"category": "number", "category_idx": i, "label": f"digit_{i}", "default_pos": [0.1 * i, 0, 0.78],
+                         "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.83}} for i in range(9)]
+                nf = [{"label": "rigid0", "reason": "no foreground explained", **({"raised": True} if raised_flag else {})}]
+                return {"Rigid": {"number": recs}, "_not_found": nf}
+            recs = [{"category": "number", "category_idx": i, "label": f"t{i}", "default_pos": [0.1 * i, 0, 0.78],
+                     "default_ori": [1, 0, 0, 0], "_perception": {"confidence": 0.37}} for i in range(12)]
+            return {"Rigid": {"number": recs}, "_not_found": []}
+
+    pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", vocab_found_needs_score=needs_score),
+                        assets=FakeAssets(), perception_client=P())
+    pol.reset({"instruction": "x", "step_lim": 1050})
+    cands = [Vocabulary("arrange_largest_number", (), source="catalog"), Vocabulary("solve_equation", (), source="catalog")]
+    v, _rec = pol._explain_vocabulary(cands, {"instruction": "x"})
+    assert v.name == chosen
+    assert RuntimeConfig().vocab_found_needs_score is False

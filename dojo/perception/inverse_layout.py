@@ -4577,10 +4577,12 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         for lab, h in zip(g["labels"], members):
             placed.append((g, h))
             h.per_view["label"] = lab
-        for lab in g["labels"][len(members):]:
+        base = int(g.get("raised_from", len(g["labels"])))     # series_link_raise: labels past it were only looked for
+        for k, lab in enumerate(g["labels"][len(members):], start=len(members)):
             record.setdefault("_missing", []).append(lab)
             record.setdefault("_not_found", []).append({"label": lab, "candidates": g["candidates"][:20],
-                                                        "confidence": 0.0, "reason": "no foreground explained"})
+                                                        "confidence": 0.0, "reason": "no foreground explained",
+                                                        **({"raised": True} if k >= base else {})})
     for g, h, lab in slot_placed:
         h.per_view["label"] = lab
         placed.append((g, h))
