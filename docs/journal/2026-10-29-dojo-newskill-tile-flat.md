@@ -19,3 +19,15 @@ Built: `Skills.tile_grasp` / `RuntimeConfig.tile_grasp` / G3 `--skill-attr tile_
 
 Next, same flag family: a tile whose close the grip check calls empty, or whose post-place finds nothing at its mat,
 must not count as placed. Re-find it and retry it within the attempt ladder.
+
+## The safety net: `tile_recover` (default off)
+
+`Skills.tile_recover` / `RuntimeConfig.tile_recover`. A tile just placed that the provider doubts
+(`RuntimeProvider.in_doubt`: post-place refine not ok, or an empty close) is not counted as placed.
+1. A wrist looks at it on its pad. Seen within 15 mm of the pad's centre, it counts.
+2. Otherwise its belief goes back to where it was picked from, if the head view confirms it there (`confirm_pose`),
+   and the skill places it again.
+3. Failing that, `LostObject` is raised: the runtime's `_search_lost` looks for it, then the supervisor re-plans.
+
+This applies to complete_equation's answer tile and to every arranged digit. With no `in_doubt` on the provider
+(G3 mode gt), nothing changes. Unit test: `test_tile_recover_retries_a_tile_that_is_not_on_its_pad`.

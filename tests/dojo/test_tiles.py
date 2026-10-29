@@ -340,3 +340,65 @@ def test_flat_numeral_grasps_behind_tile_grasp():
     anyg = tiles.centred_grasp(o)
     assert anyg(across_y, None, None, None) and anyg(across_x, None, None, None)
     assert RuntimeConfig().tile_grasp == "any"
+
+
+def test_tile_recover_retries_a_tile_that_is_not_on_its_pad(monkeypatch):
+    """tile_recover (default off): a placed tile the provider doubts is looked at; not on its pad and confirmed back
+    where it was picked from, it is placed again; not found anywhere, LostObject asks the runtime to search."""
+    import pytest as _pytest
+
+    from dojo.runtime.belief import LostObject
+    from dojo.skills import regrasp
+    from dojo.skills.kinematics import X5Kin
+    objs = _equation_objs({0: ("number", 9), 1: ("minus", 0), 4: ("number", 17)})        # 9 - _ = 7: needs a 2
+    w = _world(objs, routes=["equation"])
+    doubt = {"num_2"}
+    placed, confirms = [], []
+
+    class Prov:
+        def in_doubt(self, label):
+            return label in doubt
+
+    class Sk:
+        world = w
+        held = {"left": None, "right": None}
+        provider = Prov()
+        kin = X5Kin()
+        tile_recover = True
+        last_refine = None
+
+        def refresh(self):
+            return w
+
+        def log(self, m):
+            pass
+
+        def bank(self):
+            pass
+
+        def confirm_moved(self, label, T, why=""):
+            confirms.append(label)
+            doubt.discard(label)                      # back where it was: the next place is believed
+            return {"adopted": True}
+
+    monkeypatch.setattr(regrasp, "_look_over", lambda sk, arm, label, T: None)       # the look sees nothing
+    monkeypatch.setattr(tiles, "_place_tile", lambda sk, label, pad, **kw: placed.append((label, pad))
+                        or type("R", (), {"ok": True, "status": "ok", "note": ""})())
+    r = tiles.complete_equation(Sk())
+    assert r["ok"] and placed == [("num_2", "mat2"), ("num_2", "mat2")] and confirms == ["num_2"]
+    # off: today's behaviour, the first place counts
+    doubt.add("num_2")
+    placed.clear()
+    s2 = Sk()
+    s2.tile_recover = False
+    assert tiles.complete_equation(s2)["ok"] and placed == [("num_2", "mat2")]
+    # not where it was picked from either: the runtime searches for it
+    s3 = Sk()
+    s3.confirm_moved = lambda label, T, why="": {"adopted": False}
+    with _pytest.raises(LostObject):
+        tiles.complete_equation(s3)
+
+
+def test_tile_recover_default_off():
+    from dojo.runtime.policy import RuntimeConfig
+    assert RuntimeConfig().tile_recover is False
