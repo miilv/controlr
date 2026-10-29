@@ -255,7 +255,9 @@ disclose it.
 ## 6. Outputs, and the rules for a scored run
 
 `$OUT/<id>/` (ours, verdict-free):
-- `bridge.json`: end reason, steps, wall / policy / exec / observe seconds, twin boot, server call count, backend stats.
+- `bridge.json`: end reason, steps, wall / policy / exec / observe seconds, twin boot, server call count, backend stats,
+  and `env`: the run's data-set / perceiver settings (`driver.ENV_NOTES`: names and paths). `AGENTIC_EXTRA_BODY`
+  is recorded only as `sha256:<16 hex>`, since a request body can carry a credential.
 - `report.json.gz`: the policy's episode report (perception records, events, verify stats, agent usage).
 - `actions.json.gz`: every executed action.
 - `calls.jsonl`: one line per server call.
