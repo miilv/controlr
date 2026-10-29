@@ -120,11 +120,16 @@ def test_kong_read_reads_once_and_looks_only_when_unread(monkeypatch):
     sk = _FakeSkills([{"read": False, "why": "low_margin"}, {"read": True, "name": "Rigid/mahjong/00009"}])
     g = L.kong_read(sk, "m", look="down")
     assert g["name"] == "Rigid/mahjong/00009" and sk.ran == ["look at m"]
-    assert [c[2] for c in sk.calls] == ["read", "look", "read"]            # at the look: the pose refined, then read
-    sk = _FakeSkills([{"read": False, "why": "back"}, {"read": True, "name": "Rigid/mahjong/00011"}])
+    assert [c[2] for c in sk.calls] == ["read", "read"]                    # place (v2): no pose refine at the look
+    sk = _FakeSkills([{"read": False, "why": "low_margin"}, {"read": True, "name": "Rigid/mahjong/00009"}])
+    L.kong_read(sk, "m", look="down", v3=True)
+    assert [c[2] for c in sk.calls] == ["read", "look", "read"]            # place3: the pose refined, then read
     monkeypatch.setattr(regrasp, "_look_move", lambda sk, arm, xy, z: None)  # out of reach straight down
     monkeypatch.setattr(L, "_front_look_move", lambda sk, arm, o, looks=None: "oblique" if looks == L.OBLIQUE_LOOKS else None)
-    assert L.kong_read(sk, "m", look="down")["name"] == "Rigid/mahjong/00011" and sk.ran == ["look at m"]
+    sk = _FakeSkills([{"read": False, "why": "back"}])
+    assert L.kong_read(sk, "m", look="down")["why"] == "back" and not sk.ran   # place (v2): no oblique look
+    sk = _FakeSkills([{"read": False, "why": "back"}, {"read": True, "name": "Rigid/mahjong/00011"}])
+    assert L.kong_read(sk, "m", look="down", v3=True)["name"] == "Rigid/mahjong/00011" and sk.ran == ["look at m"]
     sk = _FakeSkills([{"read": False, "why": "back"}])
     assert L.kong_read(sk, "m", look=None)["why"] == "back" and not sk.ran
 
@@ -162,3 +167,29 @@ def test_a_second_view_skips_the_first_read_and_looks(monkeypatch):
     sk = _FakeSkills([{"read": True, "name": "Rigid/mahjong/00007", "view": "cam_left_wrist"}])
     g = L.kong_read(sk, "m", look="front", skip_first=True)
     assert g["name"] == "Rigid/mahjong/00007" and len(sk.calls) == 1 and sk.ran == ["look at m"]
+
+
+def test_place_completes_only_the_read_pair_place3_any_read_hand_glyph():
+    """``kong_draw_read`` "place" is the measured v2 (b131264e): the draw completes the one glyph read on exactly two
+    unmatched hand tiles; "place3" (#315, not adopted) takes any read hand glyph."""
+    from dojo.skills.library import draw_glyphs
+
+    def world(reads):
+        objs = {lab: SimpleNamespace(asset=SimpleNamespace(key=k), identity_known=k is not None) for lab, k in reads.items()}
+        return SimpleNamespace(obj=lambda lab: objs[lab])
+    A, B, C, P = ("Rigid/mahjong/%05d" % i for i in (1, 2, 3, 7))
+    clean = {"a0": A, "a1": A, "a2": A, "b0": B, "b1": B, "b2": B, "p0": P, "p1": P, "m0": C}
+    hand = list(clean)
+    assert draw_glyphs(world(clean), hand, ["m0"])[0] == {P}
+    assert draw_glyphs(world(clean), hand, ["m0"], v3=True)[0] == {A, B, P}
+    one_misread = dict(clean, a2=None)                     # a triple with one tile unread: its glyph twice as well
+    assert draw_glyphs(world(one_misread), hand, ["m0"])[0] is None
+    assert draw_glyphs(world(one_misread), hand, ["m0"], v3=True)[0] == {A, B, P}
+    assert draw_glyphs(world({k: None for k in clean}), hand, [], v3=True)[0] is None
+
+
+def test_the_flag_takes_place3():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert "place3" in SKILL_ATTRS["kong_draw_read"]
+    RuntimePolicy(RuntimeConfig(kong_draw_read="place3"))       # validated, not refused

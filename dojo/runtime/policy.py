@@ -355,7 +355,9 @@ class RuntimeConfig:
     # make_kong (``library.declare_kong``, ``Skills.kong_draw_read``): off (today) | place (the discard read from the
     # images once it lies face up, a wrist look when the head view does not read it; the drawn wall tile stood at the hand
     # end face to the head camera and read there, kept only when the read names the hand pair's glyph, else moved to a free
-    # spot and the other stack top tried; unread -> moved off and stop). Legality D-C17 (3): no draw without a read
+    # spot and the other stack top tried; unread -> moved off and stop). Legality D-C17 (3): no draw without a read.
+    # place = the measured v2 (b131264e: kongon2 9/15); place3 = + the oblique discard look with a pose refine and the
+    # draw matched to any read hand glyph (#315; kongon3 8/15 vs 9/15: not adopted, kept for its own A/B)
     kong_draw_read: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
@@ -469,7 +471,7 @@ class RuntimePolicy:
                 or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
-                or self.cfg.kong_draw_read not in ("off", "place")
+                or self.cfg.kong_draw_read not in ("off", "place", "place3")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on")
