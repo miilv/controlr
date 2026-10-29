@@ -279,6 +279,11 @@ def test_repeat_factor_sampling():
     f = {"img": "/d/render_v3reh/build_tower/100030_v1/frame_2_cam_head.png", "task": "build_tower",
          "layout": "100030_v1", "frame": 2, "cam": "cam_head"}
     assert mod.frame_stem(f) == "render_v3reh__build_tower__100030_v1__f2__cam_head"   # roots never collide
+    fr = [{"objs": [("Rigid/watch/00001", [], 9, False), ("Rigid/watch/00005", [], 9, False)]},
+          {"objs": [("Rigid/watch/00001", [], 9, False), ("Rigid/car/00012", [], 9, False)]},
+          {"objs": []}]
+    kept, out_of = mod.narrow_frames(fr, {"Rigid/watch/00001", "Rigid/watch/00005"})
+    assert kept == [fr[0], fr[2]] and out_of == {"Rigid/car/00012": 1}   # a look-alike is never unlabelled background
 
 
 def test_seg_model_reads_its_training_size(monkeypatch):

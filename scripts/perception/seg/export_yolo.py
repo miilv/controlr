@@ -95,6 +95,13 @@ def label_frame(job, cams=CAMS, min_px: int = 20) -> list[dict]:
     return out
 
 
+def narrow_frames(frames: list[dict], allow: set[str]) -> tuple[list[dict], Counter]:
+    """``--new-keep``: the images whose labels are all in ``allow`` (base classes + the kept new assets), and a count of
+    the other assets that put an image out. Unlabelling such an asset instead would teach it as background."""
+    out_of = Counter(o[0] for f in frames for o in f["objs"] if o[0] not in allow)
+    return [f for f in frames if all(o[0] in allow for o in f["objs"])], out_of
+
+
 def main(argv=None):
     from dojo.perception.seg_twin import yolo_line
 
@@ -108,6 +115,10 @@ def main(argv=None):
     ap.add_argument("--base-classes", default=None,
                     help="classes.json of the model to extend (incremental fine-tune): its names keep their ids, new "
                          "assets are appended (sorted); see expand_head.py")
+    ap.add_argument("--new-keep", default=None,
+                    help="with --base-classes: file of the only new asset keys kept (one per line); an image showing "
+                         "any other asset outside the base classes is left out (a narrow increment: a look-alike is "
+                         "neither a new class nor taught as background)")
     ap.add_argument("--drop-prefix", default="",
                     help="comma list of asset-key prefixes left out of the labels (e.g. Fluid/: liquids)")
     ap.add_argument("--rfs-t", type=float, default=0.0,
@@ -124,8 +135,14 @@ def main(argv=None):
     if drop:
         for f in frames:
             f["objs"] = [o for o in f["objs"] if not o[0].startswith(drop)]
-    counts = Counter(k for f in frames for k, *_ in f["objs"])
     base = json.loads(Path(a.base_classes).expanduser().read_text())["names"] if a.base_classes else []
+    if a.new_keep:
+        allow = set(base) | {x.strip() for x in Path(a.new_keep).expanduser().read_text().splitlines() if x.strip()}
+        n0 = len(frames)
+        frames, dropped = narrow_frames(frames, allow)
+        print(f"[export] --new-keep: left out {n0 - len(frames)} images showing {len(dropped)} other new assets: "
+              f"{dict(dropped.most_common(12))}", flush=True)
+    counts = Counter(k for f in frames for k, *_ in f["objs"])
     names = list(base) + sorted(set(counts) - set(base))
     cid = {k: i for i, k in enumerate(names)}
     for split in ("train", "val"):
