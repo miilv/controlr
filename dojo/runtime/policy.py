@@ -434,6 +434,11 @@ class RuntimeConfig:
     # ... places whose local base refine may be tried before the frame-0 pose is kept for good (5.1 dev screen: the 2nd
     # place's wrist often does not see the base at all, visible 0.0; a later place's view does)
     peg_base_tries: int = 2
+    # stack_on_pegs: a "rests tilted" judgment from one post-place read sends the piece back to be re-picked; on camera
+    # every such re-pick closed on air (5.1 dev, 7/7) and left the piece's dropped belief blocking its peg ("0
+    # grasp-place pairs" for the rest). "on": (a) re-pick only when a second read (``RuntimeProvider.recheck``)
+    # confirms the judgment; (b) after a re-pick that slips, re-read the piece and keep its measured pose. off | on
+    peg_stuck_confirm: str = "off"
     # insert_key's rest handover (``regrasp.plan_rest_handover``, ``Skills.key_handover``): v1 (today) | v2 (all four
     # lengthwise giver picks, an upright handover pass when the as-lifted one finds none, 16 taker places checked, vias
     # 8 / 5 / 3 / 12 cm over the receptacle). v15 dev layouts 100030-49, G3 mode A: 7/20 failed in the handover search
@@ -561,6 +566,7 @@ class RuntimePolicy:
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3") or self.cfg.peg_base_refine not in ("off", "local")
+                or self.cfg.peg_stuck_confirm not in ("off", "on")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
@@ -863,6 +869,7 @@ class RuntimePolicy:
             sk_.disc_handover_read = cfg.disc_handover_read
             sk_.kong_draw_read = cfg.kong_draw_read
             sk_.peg_base_refine = cfg.peg_base_refine
+            sk_.peg_stuck_confirm = cfg.peg_stuck_confirm
             sk_.key_handover = cfg.key_handover
             sk_.key_lean = cfg.key_lean
             sk_.stack_reach = cfg.stack_reach
