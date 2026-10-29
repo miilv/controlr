@@ -3099,6 +3099,8 @@ HANG_CARRY = 0.06              # rad/step: the re-orienting carry to a hook (twi
 HANG_PRE = 0.025               # m: the handle's hole is carried to this far beyond the hook arm's tip, then slid on
 HANG_SEARCH_S = 150.0          # s: wall-time cap of one round's hook x object search (twin: a 35 min episode)
 HANG_RELAY_DY = 0.2            # m: relay spots this far in front of a rack (towards the robot; both arms reach there)
+HANG_WIDE_W = 0.035            # m: ``Skills.hang_wide``: grasps at least this wide are planned first
+HANG_WIDE_RANK = 10.0          # added to a narrower grasp's screen rank (after every wide one)
 
 _SURF: dict = {}
 
@@ -3234,6 +3236,12 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
         sk.log(f"[hang] already on hooks: {already}")
         pool = [l for l in pool if l not in already]
 
+    # ``Skills.hang_wide`` (default off): grasps at least HANG_WIDE_W across are planned first, the narrower ones stay as
+    # the fallback (G3 store_laptop dev v1: both hung headsets were held 39-41 mm wide; the 24-26 mm band pinches
+    # slipped at the lift or slid off the cradle)
+    wide_rank = ((lambda g, *a: 0.0 if float(g.width) >= HANG_WIDE_W else HANG_WIDE_RANK)
+                 if getattr(sk, "hang_wide", False) in (True, "on") else None)
+
     def plan_hook(lab: str, hi: int, H, tip, q_start=None):
         """(lab, hook, H, T_obj, T_pre, (pick, place)) for hanging ``lab`` on hook ``hi`` with one arm, or a note."""
         if parts is not None:
@@ -3260,7 +3268,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
             # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
             # lamp), and its via path over the top hook was out of reach
-            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=8,
+            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=8, pair_rank=wide_rank,
                                  grasps=(lambda a, o=o: [g for g in G_hang(sk, o, a)
                                                          if g.method not in slipped.get(o.label, ())]),
                                  place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY, "purpose": "hang"}, q_start=q_start,
@@ -3559,6 +3567,11 @@ ROUTE_ONLY.update(_POUR_ORDER)
 from dojo.skills.pack import SKILLS as _PACK  # noqa: E402
 
 ROUTE_ONLY.update(_PACK)
+
+# hang the headphones, close the laptop, stand it in its rack (stream N; route "store_laptop", off by default)
+from dojo.skills.store import ROUTE_SKILLS as _STORE  # noqa: E402
+
+ROUTE_ONLY.update(_STORE)
 
 
 def skill_fn(name: str):

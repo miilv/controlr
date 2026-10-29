@@ -310,6 +310,11 @@ class Skills:
         # ``library.hang_on_hooks`` (stream N): a cradle hang's held object vs the rack's top, "strict" (today: an
         # obstacle) | "straddle" (the held object may straddle it: a headset on its stand; the hand still avoids it)
         self.hang_cradle = "strict"
+        # ``library.hang_on_hooks`` (stream N): grasps >= HANG_WIDE_W planned first (off = today)
+        self.hang_wide = False
+        # articulated objects' geometry (stream N): "authored" (today: the USD's authored joint state) | "measured" (the
+        # measured joint's: ``_pose_articulations``)
+        self.artic_geom = "authored"
         # ``library.push_to`` (stream N): "face" (today: fingertips against a face) | "press" (when no face stroke plans,
         # drag with the fingertips pressed on the top)
         self.push_stroke = "face"
@@ -440,8 +445,32 @@ class Skills:
     # ------------------------------------------------------------------ world
     def refresh(self) -> WorldState:
         self.world = self.provider.refresh({a: (h.label if h else None) for a, h in self.held.items()})
+        if getattr(self, "artic_geom", "authored") == "measured":
+            self._pose_articulations(self.world)
         self.coll.world = self.world
         return self.world
+
+    def _pose_articulations(self, w) -> None:
+        """``Skills.artic_geom`` "measured": an articulated object whose joint is measured (its state's joint value)
+        takes that joint position's geometry (``artgeom.posed_asset``: the moving link turned about the hinge; links,
+        box, no mesh) for collision and grasps. "authored" (today): the asset as authored (store_laptop's laptop stays
+        an OPEN laptop for the planner after its lid is shut). First revolute joint only; cached per asset and angle."""
+        from dojo.skills.artgeom import posed_asset
+        from dojo.skills.holders import joint_angle
+        cache = self.__dict__.setdefault("_posed_cache", {})
+        for o in w.objects.values():
+            if o.obj_type != "Articulation" or not o.asset.links or not o.asset.joints or o.joints is None:
+                continue
+            jn, J = next(((k, v) for k, v in o.asset.joints.items() if (v or {}).get("type") == "revolute"), (None, None))
+            if jn is None:
+                continue
+            pos = float(joint_angle(o, J))
+            if abs(pos - float(J.get("position") or J.get("lower", 0.0))) < 1.0:
+                continue
+            k = (o.asset.key, jn, round(pos, 1))
+            if k not in cache:
+                cache[k] = posed_asset(o.asset, jn, pos)
+            o.asset = cache[k]
 
     def tcp(self, arm: str, q=None) -> np.ndarray:
         return self.kin.tcp(arm, self.ex.q[arm] if q is None else q)
