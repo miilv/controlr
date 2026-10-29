@@ -2225,7 +2225,72 @@ def _press_stroke(sk: Skills, o, label: str, u, step: float):
     return None
 
 
-def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.08, max_iter: int = 10) -> SkillResult:
+COVER_MARGIN = 0.005       # m: ``push_goal`` "cover" keeps the object this far inside its allowed centre range
+
+
+def cover_region(o, sup) -> tuple[np.ndarray, np.ndarray]:
+    """``push_goal`` "cover" (stream H): the world-axis ranges ``(lo, hi)`` of ``o``'s centre for which its footprint
+    covers ``sup``'s (where ``o`` is the larger along that axis: organize_table's 368 mm keyboard over its 240 mm
+    frame) or lies inside it (where ``o`` is the smaller), ``COVER_MARGIN`` inside; a range that cannot hold collapses
+    to the support's centre."""
+    half_o = np.abs(o.R[:2, :2]) @ (np.asarray(o.asset.extents, float)[:2] / 2)
+    mn, mx = sup.aabb()
+    s_lo, s_hi = np.asarray(mn, float)[:2], np.asarray(mx, float)[:2]
+    lo, hi = np.empty(2), np.empty(2)
+    for k in range(2):
+        if 2 * half_o[k] >= s_hi[k] - s_lo[k]:          # cover: o's edges outside the support's on both sides
+            lo[k], hi[k] = s_hi[k] - half_o[k] + COVER_MARGIN, s_lo[k] + half_o[k] - COVER_MARGIN
+        else:                                            # inside
+            lo[k], hi[k] = s_lo[k] + half_o[k] + COVER_MARGIN, s_hi[k] - half_o[k] - COVER_MARGIN
+        if lo[k] > hi[k]:
+            lo[k] = hi[k] = 0.5 * (s_lo[k] + s_hi[k])
+    return lo, hi
+
+
+def cover_goal_obb(o, sup) -> tuple[bool, np.ndarray]:
+    """``push_goal`` "cover_obb" (stream H): ``cover_region`` in ``o``'s own frame, i.e. on its rotated footprint (the
+    world-axis ranges take the rotated footprint's bounding box: organize_table's keyboard at a 14-43 deg yaw "covered"
+    the frame by them in 5/17 G3 rows and failed the checker's footprint test in all 5). Along each of ``o``'s
+    horizontal axes its centre must lie where its extent covers the support's corners' extent along that axis (where
+    ``o`` is the larger: its longer side against the support's longer one) or lies inside it, ``COVER_MARGIN`` in; an
+    axis whose range cannot hold at this yaw (the
+    rotated keyboard narrower across than the frame's corners) aims at the support's centre along that axis. Returns
+    ``(inside, target_xy)``: whether the centre is in the range, and the nearest such centre in the world. An object
+    not lying on a face (its most vertical axis over 30 deg off) falls back to ``cover_region``."""
+    R = np.asarray(o.R, float)
+    ext = np.asarray(o.asset.extents, float)
+    c = np.asarray(o.center_w, float)[:2]
+    up = int(np.argmax(np.abs(R[2, :])))
+    if abs(R[2, up]) < math.cos(math.radians(30.0)):
+        lo, hi = cover_region(o, sup)
+        return bool(np.all(c >= lo) and np.all(c <= hi)), np.clip(c, lo, hi)
+    ks = [k for k in range(3) if k != up]
+    A = R[:2, ks]
+    A = A / np.linalg.norm(A, axis=0)                    # columns: o's horizontal axes in the world (2 x 2)
+    h = ext[ks] / 2
+    mn, mx = sup.aabb()
+    corners = np.array([[x, y] for x in (mn[0], mx[0]) for y in (mn[1], mx[1])], float)
+    q = corners @ A                                      # the support's corners in o's frame
+    cq = A.T @ c
+    # cover or inside per axis by size, not by this yaw's projection (rotated, the frame's corners span more than the
+    # keyboard's width across, which would make that axis "inside"): o's longer axis against the support's longer side
+    s_ext = np.sort(np.asarray(mx, float)[:2] - np.asarray(mn, float)[:2])
+    rank = np.argsort(np.argsort(h))
+    lo, hi = np.empty(2), np.empty(2)
+    for k in range(2):
+        q_lo, q_hi = float(q[:, k].min()), float(q[:, k].max())
+        if 2 * h[k] >= s_ext[rank[k]]:                   # cover
+            lo[k], hi[k] = q_hi - h[k] + COVER_MARGIN, q_lo + h[k] - COVER_MARGIN
+        else:                                            # inside
+            lo[k], hi[k] = q_lo + h[k] + COVER_MARGIN, q_hi - h[k] - COVER_MARGIN
+        if lo[k] > hi[k]:
+            lo[k] = hi[k] = 0.5 * (q_lo + q_hi)
+    inside = bool(np.all(cq >= lo) and np.all(cq <= hi) and np.all(lo < hi))
+    return inside, A @ np.clip(cq, lo, hi)
+
+
+def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.08, max_iter: int = 10,
+            support: str | None = None) -> SkillResult:
     """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time (the one with the most
     left to go first, the other when that one has no stroke): closed fingertips against the middle of the
     face opposite the motion (no torque about the centre) at half the height of that face (from the mesh),
@@ -2239,9 +2304,26 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
     target_xy = np.asarray(target_xy, float)
     last = None
     stuck = 0
+    goal = getattr(sk, "push_goal", "centre")
+    cover = support is not None and goal in ("cover", "cover_obb")
+
+    def _cover(o, s):
+        if goal == "cover_obb":
+            return cover_goal_obb(o, s)
+        lo, hi = cover_region(o, s)
+        c = o.center_w[:2]
+        return bool(np.all(c >= lo) and np.all(c <= hi)), np.clip(c, lo, hi)
     for it in range(max_iter):
         w = sk.refresh()
         o = w.obj(label)
+        if cover:
+            # ``push_goal`` "cover" / "cover_obb": done once the centre is in the range where the footprint covers (or
+            # lies inside) the support; else aim at the nearest point of that range (organize_table: the keyboard must
+            # cover the frame, a 13 x 5 cm range of centres, not its centre within 12 mm)
+            inside, target_xy = _cover(o, w.obj(support))
+            if inside:
+                return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
+                                              note=f"covers {support} after {it} strokes"))
         d = target_xy - o.center_w[:2]
         if float(np.linalg.norm(d)) <= tol:
             return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
@@ -2296,6 +2378,12 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
         if stuck >= 2:
             break
     w = sk.refresh()
+    if cover:
+        inside, tgt = _cover(w.obj(label), w.obj(support))
+        gap = float(np.linalg.norm(tgt - w.obj(label).center_w[:2]))
+        inside = inside or (goal == "cover_obb" and gap <= tol)   # an axis that cannot cover: at the centre
+        return sk._record(SkillResult(inside, "push", "ok" if inside else "place_miss", sk.ex.steps_used - n0, last,
+                                      note=f"{gap * 1000:.0f} mm short of covering {support}"))
     dist = float(np.linalg.norm(target_xy - w.obj(label).center_w[:2]))
     return sk._record(SkillResult(dist <= tol, "push", "ok" if dist <= tol else "place_miss",
                                   sk.ex.steps_used - n0, last, note=f"{dist*1000:.0f} mm left"))
@@ -2325,7 +2413,8 @@ def arrange(sk: Skills, steps: list) -> dict:
             continue
         sk.refresh()
         if verb == "push":
-            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2])
+            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2],
+                        **({"support": sup} if getattr(sk, "push_goal", "centre") in ("cover", "cover_obb") else {}))
         else:
             container_obstacle(sk, sup)
             tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05
