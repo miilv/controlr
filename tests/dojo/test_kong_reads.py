@@ -99,6 +99,9 @@ class _FakeSkills:
     def _refine(self, label, arm, kind):
         assert label not in self.no_refine                  # a read lifts the skill's no-refine for the label
         self.calls.append((label, arm, kind))
+        if kind != "read":                   # a pose refine at a look: no glyph
+            self.last_refine = {"label": label, "for": kind}
+            return
         self.last_refine = {"label": label, "for": kind, "glyph": self.answers.pop(0)}
 
     def log(self, m):
@@ -116,7 +119,12 @@ def test_kong_read_reads_once_and_looks_only_when_unread(monkeypatch):
     assert "m" in sk.no_refine                                     # restored
     sk = _FakeSkills([{"read": False, "why": "low_margin"}, {"read": True, "name": "Rigid/mahjong/00009"}])
     g = L.kong_read(sk, "m", look="down")
-    assert g["name"] == "Rigid/mahjong/00009" and len(sk.calls) == 2 and sk.ran == ["look at m"]
+    assert g["name"] == "Rigid/mahjong/00009" and sk.ran == ["look at m"]
+    assert [c[2] for c in sk.calls] == ["read", "look", "read"]            # at the look: the pose refined, then read
+    sk = _FakeSkills([{"read": False, "why": "back"}, {"read": True, "name": "Rigid/mahjong/00011"}])
+    monkeypatch.setattr(regrasp, "_look_move", lambda sk, arm, xy, z: None)  # out of reach straight down
+    monkeypatch.setattr(L, "_front_look_move", lambda sk, arm, o, looks=None: "oblique" if looks == L.OBLIQUE_LOOKS else None)
+    assert L.kong_read(sk, "m", look="down")["name"] == "Rigid/mahjong/00011" and sk.ran == ["look at m"]
     sk = _FakeSkills([{"read": False, "why": "back"}])
     assert L.kong_read(sk, "m", look=None)["why"] == "back" and not sk.ran
 
@@ -149,7 +157,7 @@ def test_g3_answers_a_read_only_when_the_glyph_faces_a_camera():
 
 def test_a_second_view_skips_the_first_read_and_looks(monkeypatch):
     from dojo.skills import library as L
-    monkeypatch.setattr(L, "_front_look_move", lambda sk, arm, o: "move")
+    monkeypatch.setattr(L, "_front_look_move", lambda sk, arm, o, looks=None: "move")
     monkeypatch.setattr(L, "ArmPlan", lambda arm, q, g: SimpleNamespace(move=lambda mv: SimpleNamespace(hold=lambda n: "p")))
     sk = _FakeSkills([{"read": True, "name": "Rigid/mahjong/00007", "view": "cam_left_wrist"}])
     g = L.kong_read(sk, "m", look="front", skip_first=True)

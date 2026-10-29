@@ -210,7 +210,8 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
                "kong_draw_read": ("off", "place"), "kong_draw_first": ("near", "far"),
-               "ported_pour_pace": ("v1", "lean")}
+               "ported_pour_pace": ("v1", "lean"),
+               "kong_read_look": ("fallback", "always")}
 
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
