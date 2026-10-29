@@ -302,6 +302,9 @@ class Skills:
         self.align_measure = "seq"
         # ``tiles`` (stream N): numeral grasps "any" (today) | "flat" (the pads on faces square to the closing axis)
         self.tile_grasp = "any"
+        # ``tiles`` (stream N): a placed tile the provider doubts (post-place not ok, empty close) is looked at, put back
+        # where it was picked from or searched for, and placed again (off = today: it counts as placed)
+        self.tile_recover = False
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"

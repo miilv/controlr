@@ -606,6 +606,12 @@ class RuntimeProvider:
         return {"adopted": ok, "confirm": ev.get("confirm")}
 
     # ------------------------------------------------------------------ resync
+    def in_doubt(self, label: str) -> bool:
+        """Released (or let go: an empty close) but not measured where it was let go: the post-place refine was not ok,
+        or the grip check found the jaws empty (``_pp_doubt``). Skills that must not count such an object as placed
+        ask this (``tiles``' ``tile_recover``)."""
+        return label in self._pp_doubt
+
     def post_place(self, obs: dict, released: list[str]) -> list[dict]:
         """Right after a release the arm is at its retreat pose above the placed object: re-measure that object
         from the releasing arm's wrist view (perception refine from the predicted pose, stacked height kept) and

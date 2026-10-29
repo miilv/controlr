@@ -313,6 +313,10 @@ class RuntimeConfig:
     # ``tiles``' numeral grasps (``Skills.tile_grasp``): any (today) | flat (pads on faces square to the closing axis:
     # not across a "7"'s or a "2"'s slanted stroke)
     tile_grasp: str = "any"
+    # ``tiles``: a placed tile the provider doubts (``RuntimeProvider.in_doubt``: post-place not ok, empty close) is looked
+    # at on its pad; not there, it goes back where it was picked from (head view) or is searched for (LostObject), then
+    # placed again (``Skills.tile_recover``; off = today)
+    tile_recover: bool = False
     # belt picks (``interactive.pick_from_belt`` / ``match_and_pick``, ``Skills.belt_wrist_veto``): off (today) | on (a
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
@@ -692,6 +696,7 @@ class RuntimePolicy:
             sk_.push_order = cfg.push_order
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp
+            sk_.tile_recover = bool(cfg.tile_recover)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height

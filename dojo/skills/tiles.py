@@ -331,6 +331,43 @@ def _confirm(sk, labels, looks: int, max_looks: int) -> int:
     return looks
 
 
+def _verify_placed(sk, label: str, pad: str, T_before) -> bool:
+    """``Skills.tile_recover``: does the tile just placed on ``pad`` count as placed? Yes unless the provider doubts it
+    (``in_doubt``: its post-place refine found nothing, or the grip check called the close empty). Then a wrist looks at
+    it on the pad; seen within 15 mm of the pad's centre, it counts. Otherwise it goes back where it was picked from
+    when the head view confirms it there (False: the caller places it again), else ``LostObject`` is raised (the
+    runtime searches for it, then re-plans). The rendered arrange arm lost one numeral per failed episode: it slid out
+    of the jaws on the carry, the release put it on its mat in the belief, nothing retried it (3ad78f28)."""
+    if not getattr(sk, "tile_recover", False):
+        return True
+    doubt = getattr(sk.provider, "in_doubt", None)
+    if doubt is None or not doubt(label):
+        return True
+    from dojo.skills.regrasp import _look_over
+    p = sk.world.obj(pad)
+    arm = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - p.center_w[:2])))
+    sk.last_refine = None
+    try:
+        _look_over(sk, arm, label, np.eye(4))
+    except Exception as e:  # noqa: BLE001 (a look that cannot run: the tile stays in doubt)
+        sk.log(f"[tiles] look at {label} on {pad} failed: {type(e).__name__}: {e}")
+    r = getattr(sk, "last_refine", None) or {}
+    w = sk.refresh()
+    off = float(np.linalg.norm(w.obj(label).pos[:2] - w.obj(pad).pos[:2]))
+    if r.get("ok") and off <= 0.015:
+        sk.log(f"[tiles] {label}: in doubt, seen on {pad} ({off * 1000:.0f} mm)")
+        return True
+    a = sk.confirm_moved(label, T_before, "not on its pad")
+    if a and a.get("adopted"):
+        sk.log(f"[tiles] {label}: not on {pad}, back where it was picked from")
+        return False
+    from dojo.runtime.belief import LostObject
+    from dojo.skills.geometry import R_to_quat
+    T = np.asarray(T_before, float)
+    sk.log(f"[tiles] {label}: not on {pad}, not where it was picked from: search")
+    raise LostObject(label, T[:3, 3], R_to_quat(T[:3, :3]), w.obj(label).asset.key)
+
+
 def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0, ignore=()):
     """``place_oriented`` onto the pad, with ``ATTEMPTS[attempt]``. No in-air handover before the last attempt: its
     grasps skip this module's grasp filters, and the frictionless number tiles / thin discs slipped out of 6 of 6
@@ -422,8 +459,11 @@ def complete_equation(sk, max_looks: int = 6, max_tries: int = 5) -> dict:
     # each candidate twice (a second place_oriented re-plans from where the first left it, relays included), then the next
     # each candidate through the attempt ladder, then the next candidate
     for o, k in [(c, k) for c in cands for k in range(len(ATTEMPTS))][:max_tries]:
+        T_before = sk.world.obj(o.label).T.copy()
         r = _place_tile(sk, o.label, pad, attempt=k, ignore=(phantom,) if phantom else ())
         sk.log(f"[tiles] {o.label} -> {pad}: {r.status} {r.note[:120]}")
+        if r.ok and not _verify_placed(sk, o.label, pad, T_before):
+            continue
         if r.ok or r.status in ("step_budget", "ended"):
             break
         if any(sk.held[a] is not None for a in ARMS):
@@ -510,9 +550,12 @@ def arrange_digits(sk, descending: bool = True, max_looks: int = 6) -> dict:
         if free:
             # the nearest to an arm's base first (short carries; the far ones once the near pads are filled)
             t, pad = min(free, key=lambda tp: arm_dist(tp[0]))
+            T_before = sk.world.obj(t).T.copy()
             r = _place_tile(sk, t, pad, sym[t], attempt=tries[t])
             tries[t] += 1
             sk.log(f"[tiles] {t} ({a['values'][t]}) -> {pad}: {r.status} {r.note[:120]}")
+            if r.ok:
+                _verify_placed(sk, t, pad, T_before)          # not there: back in the belief where it was, retried
         else:
             # every remaining pad is blocked: move the first blocker aside (a cycle, or something else on a pad)
             t, pad = pairs[0]
